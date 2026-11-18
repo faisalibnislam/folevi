@@ -1,6 +1,6 @@
-// The note page's own tools. On the Mac they're the card's inspector in the native look (NoteInspector.swift: a flat
-// side panel at the card's right, its sections in a capsule track, the system font); on the iPad the note's own
-// sidebar, drawn as the web's (apps/web/src/components/doc/DocumentSidebar.tsx and
+// The note page's own tools. On the Mac they're the sidebar's on a note, as the web's (WebSidebar+Mac.swift: its
+// sections in a capsule track, the system font; the title bar's switch brings the folders back); on the iPad the
+// note's own sidebar, drawn as the web's (apps/web/src/components/doc/DocumentSidebar.tsx and
 // Outline.tsx, as Folevi for Mac shows them), from the live app's computed styles (FoleviDesign WebStyles
 // "notetools.*", packages/design-tokens/match/app-styles/notetools.json):
 //

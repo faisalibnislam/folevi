@@ -126,12 +126,18 @@ public final class TabsModel {
     /// Home first, then the open tabs in strip order.
     public private(set) var tabs: [FrameTab] = [FrameTab(route: .home)]
     public private(set) var activeID: String = FrameTab.homeID {
+        willSet {
+            // (Still drawn as it was: the tab's picture is taken now, as Safari takes one when you leave a tab.)
+            if newValue != activeID { willLeave?(activeID) }
+        }
         didSet {
             guard activeID != oldValue else { return }
             useClock += 1
             usedAt[activeID] = useClock
         }
     }
+    /// Called with the tab on screen just before another takes its place (the Tab Overview's pictures).
+    @ObservationIgnored public var willLeave: (@MainActor (String) -> Void)?
     /// When each tab was last on screen (a clock that only goes up): a folder clicked from Home or a note reuses the
     /// folder tab used last.
     @ObservationIgnored private var usedAt: [String: Int] = [:]

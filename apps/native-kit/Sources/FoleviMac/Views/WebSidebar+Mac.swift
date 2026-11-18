@@ -34,6 +34,27 @@ extension WebSidebar {
             .padding(.horizontal, MacLook.sidebarInset)
             .padding(.top, MacLook.Space.xs)
             .padding(.bottom, MacLook.Space.s)
+            if let noteId = model.route.noteId, model.noteToolsShown {
+                // On a note, its own tools (WebNoteSidebar: its name and place, its pages, Table of contents, Comments,
+                // Tasks, Attachments, Find), as the web's sidebar shows them; the title bar's switch brings the
+                // folders back. Format, Style, Insert and Foli AI keep the column at the right (the owner, 2026-11-18).
+                WebNoteSidebar(model: model, noteId: noteId)
+                    .id(noteId)
+                    .padding(.horizontal, MacLook.sidebarInset - 4)
+                    .frame(maxHeight: .infinity, alignment: .top)
+                    .accessibilityElement(children: .contain)
+                    .accessibilityLabel("Note tools")
+            } else {
+                macList
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("Sidebar")
+    }
+
+    /// The places, folders and tags.
+    private var macList: some View {
             ScrollView(.vertical) {
                 VStack(alignment: .leading, spacing: 0) {
                     macDestinations
@@ -50,10 +71,6 @@ extension WebSidebar {
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
             .scrollIndicators(.automatic)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .accessibilityElement(children: .contain)
-        .accessibilityLabel("Sidebar")
     }
 
     // MARK: destinations

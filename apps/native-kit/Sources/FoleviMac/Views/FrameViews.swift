@@ -2,11 +2,11 @@
 //
 //   FrameRootViewController
 //   ├── FrameSplitViewController (the window's translucent material and everything on it)
-//   │   ├── the title bar strip: WebTopBar (traffic lights, the sidebar's button, the tabs, the bell, the inspector's)
-//   │   ├── WebSidebarController: WebSidebar (SwiftUI; on the Mac its native body, WebSidebar+Mac.swift)
+//   │   ├── the title bar strip: WebTopBar (traffic lights, the sidebar's buttons, the tabs, the sync status, the bell)
+//   │   ├── WebSidebarController: WebSidebar (SwiftUI; on the Mac its native body, WebSidebar+Mac.swift; on a note
+//   │   │   the note's tools, as the web's)
 //   │   ├── ContentViewController: the content card, its controls floating in glass at its top (CardControls)
 //   │   │   └── body: the native screen (SwiftUI) over the Page View, or the Page View (a note draws its own card)
-//   │   ├── the note's inspector on the material at the right (NoteInspector)
 //   │   └── a tab's picture under the pointer (TabPreviewLayer)
 //   └── the Page View full window while the engine isn't up (the web's sign-in, onboarding and lock gates)
 //
@@ -135,10 +135,9 @@ public final class FrameSplitViewController: NSViewController {
     private var observers: [Observer] = []
     /// Under the strip's SwiftUI: the window moves from here too (never `isMovableByWindowBackground`).
     private let strip = WindowDragStrip()
-    /// The note's tools on the window's material at the right (NoteInspector).
-    private var inspector: NSHostingView<AnyView>?
-    /// Whether the inspector is on screen (asked for, and the window wide enough beside the card).
-    public private(set) var showsInspector = false
+    /// Whether the note's tools are on screen: in the sidebar, on a note, as the web's (the right-hand column is
+    /// the page's own panels').
+    public var showsInspector: Bool { model.route.isNote && model.noteToolsShown && !model.sidebarHidden }
     private var laidOut: (hidden: Bool, wanted: Bool, panel: Bool)?
 
     init(model: FrameModel, pageView: NSView) {
@@ -162,12 +161,6 @@ public final class FrameSplitViewController: NSViewController {
         addChild(content)
         root.addSubview(sidebar.view)
         root.addSubview(content.view)
-        let tools = ClickThroughHostingView(rootView: AnyView(NoteInspector(model: model).defaultAppStorage(WebSidebarController.defaults).macClickThrough()))
-        tools.safeAreaRegions = []
-        tools.sizingOptions = []
-        tools.isHidden = true
-        root.addSubview(tools)
-        inspector = tools
         root.addSubview(strip)
         titleBar.safeAreaRegions = []
         titleBar.sizingOptions = []
@@ -202,10 +195,8 @@ public final class FrameSplitViewController: NSViewController {
         })
     }
 
-    /// Whether a note's tools are asked for now (the inspector shows when the window also has the room).
-    private var inspectorWanted: Bool {
-        model.route.isNote && model.noteToolsShown && model.editorPanel == nil && !model.focusMode
-    }
+    /// The note's tools are the sidebar's now (WebSidebar+Mac), never a column of their own.
+    private var inspectorWanted: Bool { false }
 
     /// A note's page has its own panel open: the page takes the inspector's column for it.
     private var pagePanel: Bool { model.route.isNote && model.editorPanel != nil }
@@ -218,11 +209,7 @@ public final class FrameSplitViewController: NSViewController {
         content.view.frame = f.card
         strip.frame = f.strip
         titleBar.frame = f.strip
-        if let inspector {
-            inspector.isHidden = f.inspector == nil
-            if let r = f.inspector { inspector.frame = r }
-        }
-        if showsInspector != (f.inspector != nil) { showsInspector = f.inspector != nil }
+
     }
 
     /// Where the strip, the sidebar, the card and the inspector go in the window's content (AppKit's origin, bottom
@@ -246,6 +233,7 @@ public final class FrameSplitViewController: NSViewController {
         if inspector, column.minX - left >= MacLook.inspectorMinContent {
             return (side, CGRect(x: left, y: m, width: max(0, column.minX - left), height: max(0, below - m)), column, strip)
         }
+
         return (side, CGRect(x: left, y: m, width: max(0, b.width - left - m), height: max(0, below - m)), nil, strip)
     }
 
@@ -369,7 +357,12 @@ public final class WebSidebarController: NSViewController {
         popover?.close()
         let p = NSPopover()
         p.behavior = .transient
-        p.contentViewController = NSHostingController(rootView: content)
+        let host = NSHostingController(rootView: content)
+        // Its size before it shows, and AppKit told when it changes: sized only after showing, the popover kept its
+        // first, taller guess's bottom edge and so hung far below its button.
+        host.sizingOptions = .preferredContentSize
+        p.contentViewController = host
+        p.contentSize = host.view.fittingSize
         let target = anchor ?? view
         p.appearance = target.window?.appearance
         p.show(relativeTo: target.bounds, of: target, preferredEdge: .maxY)
@@ -437,7 +430,9 @@ public final class ContentViewController: NSViewController {
         edge.translatesAutoresizingMaskIntoConstraints = false
         edge.isHidden = true
         clip.addSubview(edge)
-        let bar = PassThroughControlsHostingView(rootView: CardControls(model: model))
+        let regions = CardHitRegions()
+        let bar = PassThroughControlsHostingView(rootView: CardControls(model: model, regions: regions))
+        bar.regions = regions
         bar.safeAreaRegions = []
         bar.sizingOptions = []
         bar.translatesAutoresizingMaskIntoConstraints = false
@@ -547,6 +542,12 @@ public final class ContentViewController: NSViewController {
     public override func viewDidLoad() {
         super.viewDidLoad()
         adoptPageView()
+        // The Tab Overview's pictures: the tab on screen as it was when you left it, or opened the overview.
+        model.tabs.willLeave = { [weak self] id in self?.capture(tab: id) }
+        model.captureTab = { [weak self] in
+            guard let self else { return }
+            self.capture(tab: self.model.tabs.activeID)
+        }
         observers.append(Observer { [weak self] in
             guard let self else { return }
             self.show(self.model.route)
@@ -643,6 +644,7 @@ public final class ContentViewController: NSViewController {
             }
         }
         shownRoute = route
+        settleCapture()
         syncPageAccessibility()
         models.keep(only: Set(model.tabs.tabs.map(\.route)))
         let title = route.isNote ? (model.activeNote?.title.nonEmpty ?? model.tabs.active.title) : model.tabs.active.title
@@ -650,6 +652,77 @@ public final class ContentViewController: NSViewController {
     }
 
     private var reloadsSeen = 0
+
+    // MARK: the tabs' pictures (the Tab Overview, the strip's hover card)
+
+    private var captureLater: DispatchWorkItem?
+
+    /// A moment after a tab has drawn (its note on the page, its screen's first rows), its picture is taken, so one
+    /// is there even before it's left.
+    private func settleCapture() {
+        captureLater?.cancel()
+        let tab = model.tabs.activeID, route = model.route
+        let work = DispatchWorkItem { [weak self] in
+            guard let self, self.model.tabs.activeID == tab, self.model.route == route, !self.model.overviewShown else { return }
+            self.capture(tab: tab)
+        }
+        captureLater = work
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.2, execute: work)
+    }
+
+    /// Whether a screen is never pictured: the Vault (its notes stay behind its lock).
+    static func unpictured(_ route: FrameRoute) -> Bool {
+        if case .web(let path) = route { return path.hasPrefix("/vault") }
+        return false
+    }
+
+    /// The widest a picture is kept, in pixels (a card in the overview is at most a few hundred points wide).
+    private static let pictureWidth: CGFloat = 960
+
+    /// Pictures what the card shows now as `tab`'s: the note's page (WebKit draws it), or the native screen.
+    private func capture(tab: String) {
+        guard isViewLoaded, view.window != nil, let route = shownRoute else { return }
+        let store = model.pictures
+        if Self.unpictured(route) { return store.setShot(nil, for: tab) }
+        if route.isNote {
+            // (Only once the page shows this note: until then the screen before still covers it.)
+            guard body.isHidden, let web = pageView as? WKWebView, web.bounds.width > 0 else { return }
+            let config = WKSnapshotConfiguration()
+            config.snapshotWidth = NSNumber(value: Double(Self.pictureWidth / max(1, view.window?.backingScaleFactor ?? 2)))
+            config.rect = Self.pictureRect(in: web.bounds, flipped: web.isFlipped)
+            web.takeSnapshot(with: config) { image, _ in
+                guard let image, let cg = image.cgImage(forProposedRect: nil, context: nil, hints: nil) else { return }
+                MainActor.assumeIsolated { store.setShot(cg, for: tab) }
+            }
+        } else if let s = screen, !s.isHidden, s.bounds.width > 0 {
+            let r = Self.pictureRect(in: s.bounds, flipped: s.isFlipped)
+            guard let rep = s.bitmapImageRepForCachingDisplay(in: r) else { return }
+            s.cacheDisplay(in: r, to: rep)
+            guard let cg = rep.cgImage else { return }
+            store.setShot(Self.scaled(cg, width: Self.pictureWidth), for: tab)
+        }
+    }
+
+    /// The part of the card a picture shows: the content column (a screen's 1180 pt and its margins; a note's page
+    /// lies inside it), from the top, as tall as the overview's 16:10 card. The whole card left the content a small
+    /// island in a wide window.
+    static func pictureRect(in b: CGRect, flipped: Bool) -> CGRect {
+        let w = min(b.width, 1244)
+        let h = min(b.height, w * 10 / 16)
+        let x = b.minX + (b.width - w) / 2
+        return CGRect(x: x, y: flipped ? b.minY : b.maxY - h, width: w, height: h)
+    }
+
+    /// `image` at most `width` pixels wide.
+    private static func scaled(_ image: CGImage, width: CGFloat) -> CGImage {
+        guard CGFloat(image.width) > width else { return image }
+        let h = Int((CGFloat(image.height) * width / CGFloat(image.width)).rounded())
+        guard let ctx = CGContext(data: nil, width: Int(width), height: h, bitsPerComponent: 8, bytesPerRow: 0,
+                                  space: CGColorSpace(name: CGColorSpace.sRGB)!, bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { return image }
+        ctx.interpolationQuality = .high
+        ctx.draw(image, in: CGRect(x: 0, y: 0, width: Int(width), height: h))
+        return ctx.makeImage() ?? image
+    }
 
     /// Reload: the screen on show lets go of its models and draws again from the engine's views (the web reloads
     /// its page). A note reloads in its own page.

@@ -11,6 +11,7 @@ import SwiftUI
 import WebKit
 import FoleviDesign
 import FoleviEngine
+import FoleviScreens
 
 /// The notes' pictures, fetched once and kept a little while (a picture shows a page's top; it needn't be live).
 @MainActor @Observable
@@ -18,6 +19,10 @@ public final class TabPictureStore {
     public static let pageWidth: CGFloat = 600
     private static let fresh: TimeInterval = 30
     private(set) var html: [String: String] = [:]
+    /// Each tab as it was last on screen (Safari's tab overview): the real page, its colours and its folder's notes.
+    /// Kept in memory only, for the open tabs; a tab not shown yet this run falls back to its note's page or its
+    /// folder's notes drawn from the engine.
+    private(set) var shots: [String: CGImage] = [:]
     private var fetched: [String: Date] = [:]
     private var loading: Set<String> = []
     weak var frame: FrameModel?
@@ -38,6 +43,15 @@ public final class TabPictureStore {
                 self.fetched[id] = Date()
                 self.trim()
             }
+        }
+    }
+
+    /// A tab's picture as it's drawn now (nil forgets it: a screen that mustn't be pictured, the Vault).
+    func setShot(_ image: CGImage?, for tab: String) {
+        shots[tab] = image
+        // (Only the open tabs keep theirs.)
+        if let open = frame.map({ Set($0.tabs.tabs.map(\.id)) }) {
+            for id in shots.keys where !open.contains(id) { shots[id] = nil }
         }
     }
 
@@ -201,13 +215,26 @@ struct TabPicture: View {
     @Environment(\.colorScheme) private var scheme
 
     var body: some View {
-        if let tab, let notes = tab.panes ?? tab.route.noteId.map({ [$0] }) {
+        if let shot = model.pictures.shots[tab?.id ?? FrameTab.homeID] {
+            // The tab as it was last on screen (Safari's way): its page's own colours, its folder's notes.
+            GeometryReader { g in
+                Image(decorative: shot, scale: 1)
+                    .resizable()
+                    .interpolation(.high)
+                    .scaledToFill()
+                    .frame(width: g.size.width, height: g.size.height, alignment: .top)
+                    .clipped()
+            }
+            .accessibilityHidden(true)
+        } else if let tab, let notes = tab.panes ?? tab.route.noteId.map({ [$0] }) {
             HStack(spacing: 1) {
                 ForEach(notes, id: \.self) { id in
                     MiniPage(id: id, title: model.tabs.paneTitles[id] ?? (tab.panes == nil ? model.tabs.label(tab) : "Untitled"), store: model.pictures)
                 }
             }
             .background(WebStyles.vars["color-line"]?.resolve(scheme).color ?? .gray)
+        } else if let tab, let list = FolderPicture.list(for: tab.route) {
+            FolderPicture(view: list.view, folderId: list.folderId, tagId: list.tagId, label: model.tabs.label(tab), model: model)
         } else {
             let label = tab.map { model.tabs.label($0) } ?? "Home"
             ZStack {
@@ -223,6 +250,73 @@ struct TabPicture: View {
                 }
             }
         }
+    }
+}
+
+/// A folder (or a list of notes: All notes, Drafts, a tag) not on screen yet this run: its first notes as its grid
+/// shows them, each card in its own colours.
+struct FolderPicture: View {
+    let view: NotesListView
+    var folderId: String? = nil
+    var tagId: String? = nil
+    let label: String
+    let model: FrameModel
+    @Environment(\.colorScheme) private var scheme
+    @State private var store: ListStore<NoteRow>?
+
+    /// The notes a tab's route lists, if it lists notes as cards.
+    static func list(for route: FrameRoute) -> (view: NotesListView, folderId: String?, tagId: String?)? {
+        switch route {
+        case .folder(let id): return (.folder, id, nil)
+        case .tag(let id): return (.tag, nil, id)
+        case .notes(let v) where v != .folder && v != .tag: return (v, nil, nil)
+        default: return nil
+        }
+    }
+
+    /// The grid drawn at this width, then scaled to the picture (the card's look holds at any size).
+    private static let width: CGFloat = 640
+    private static let columns = 3
+
+    var body: some View {
+        GeometryReader { g in
+            let rows = Array((store?.rows ?? []).prefix(Self.columns * 2))
+            ZStack(alignment: .topLeading) {
+                (WebStyles.vars["color-surface-raised"]?.resolve(scheme).color ?? .clear)
+                if rows.isEmpty {
+                    VStack(spacing: 8) {
+                        WebIconView(view == .folder ? .folder : .files, size: 24)
+                            .foregroundStyle(WebStyles.vars["color-ink-muted"]?.resolve(scheme).color ?? .gray)
+                        Text(store?.status == .loading ? label : "No notes")
+                            .webText(WebTextStyle(size: 13, leading: 18, weight: 600))
+                            .foregroundStyle(WebStyles.vars["color-heading"]?.resolve(scheme).color ?? .primary)
+                    }
+                    .frame(width: g.size.width, height: g.size.height)
+                } else {
+                    let gap: CGFloat = 20, pad: CGFloat = 28
+                    let w = (Self.width - pad * 2 - gap * CGFloat(Self.columns - 1)) / CGFloat(Self.columns)
+                    LazyVGrid(columns: Array(repeating: GridItem(.fixed(w), spacing: gap), count: Self.columns), alignment: .leading, spacing: gap) {
+                        ForEach(rows, id: \.id) { row in
+                            WebNoteCard(CardMapping.noteCard(row)).frame(width: w)
+                        }
+                    }
+                    .padding(pad)
+                    .frame(width: Self.width, alignment: .topLeading)
+                    .scaleEffect(g.size.width / Self.width, anchor: .topLeading)
+                    .allowsHitTesting(false)
+                }
+            }
+            .clipped()
+        }
+        .onAppear {
+            guard store == nil else { return }
+            store = model.client.watchList(.notesList(view: view, folderId: folderId, tagId: tagId))
+        }
+        .onDisappear {
+            store?.cancel()
+            store = nil
+        }
+        .accessibilityHidden(true)
     }
 }
 

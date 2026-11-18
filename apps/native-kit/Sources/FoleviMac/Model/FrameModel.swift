@@ -432,12 +432,18 @@ public final class FrameModel {
 
     /// Whether the Tab Overview (every tab as a picture) is showing.
     public var overviewShown = false {
+        willSet {
+            // The tab on screen pictured as it is now, before the overview covers it.
+            if newValue, !overviewShown { captureTab?() }
+        }
         didSet {
             #if os(macOS) || os(iOS)
             if overviewShown { preview.hide() }
             #endif
         }
     }
+    /// Pictures the tab on screen as it's drawn now (ContentViewController): the Tab Overview's picture of it.
+    @ObservationIgnored public var captureTab: (@MainActor () -> Void)?
     /// The tab picture under the pointer in the strip, and the notes' pictures.
     #if os(macOS) || os(iOS)
     public let preview = TabPreviewState()

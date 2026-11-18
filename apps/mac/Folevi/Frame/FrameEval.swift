@@ -171,6 +171,21 @@ extension NativeFrame {
             // Answer after the frame has drawn the change.
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) { done(["value": state(frame, window: mains[i].window)]) }
         }
+        MacEval.commands["popoverFrame"] = { _, done in
+            // The open sync, account or bell popover: its window's frame and the window's, on screen (where it sits
+            // against what it came from).
+            guard let frame = WindowManager.shared.mains.first?.frame, let p = frame.sidebar.shownPopover,
+                  let pw = p.contentViewController?.view.window, let w = frame.root.view.window else { return done(["value": ["open": false]]) }
+            let r = { (f: CGRect) in [f.minX, f.minY, f.width, f.height] }
+            done(["value": ["open": true, "popover": r(pw.frame), "window": r(w.frame), "positioningRect": r(p.positioningRect)]])
+        }
+        MacEval.commands["hit"] = { req, done in
+            // The view a click at a point of the front window's content (points, from its top left) goes to.
+            guard let window = WindowManager.shared.frontMain?.window, let cv = window.contentView, let frameView = cv.superview ?? Optional(cv) else { return done(["error": "no window"]) }
+            let p = NSPoint(x: req["x"] as? Double ?? 0, y: cv.bounds.height - (req["y"] as? Double ?? 0))
+            let v = frameView.hitTest(cv.convert(p, to: frameView))
+            done(["value": v.map { String(describing: type(of: $0)) } ?? "none"])
+        }
         MacEval.commands["ax"] = { req, done in
             // The window's accessibility elements with a label (what a screen shows, as VoiceOver reads it), with their
             // frames: checks overlays the window shot can't draw.

@@ -1115,7 +1115,7 @@ struct WebNoteBrowser: View {
          "\(model.screenActions.contains(.generateTemplate))", "\(builtIns.count)", "\(model.menuFolder(model.kind.folderId ?? "") != nil)"].joined(separator: "|")
     }
 
-    /// The count after the title, the layout switch, Sort, a folder's way up and Share, New template, and the rest
+    /// The count after the title, Sort, the layout switch, a folder's way up and Share, New template, and the rest
     /// (a folder's options, Empty Trash, Generate with Foli AI) in "…".
     private var cardItems: CardItems {
         let n = model.isFiltering ? model.slots.count : model.total
@@ -1123,12 +1123,13 @@ struct WebNoteBrowser: View {
         if !model.isLoading {
             items.subtitle = model.kind.view == .templates ? NotesListModel.templatesCountText(builtIn: builtIns.count, custom: n) : n.formatted()
         }
+        // Sort, then the view switch, as the web's page has them.
+        let model = self.model
+        items.trailing.append(.sort(model.sortOptions.map { ($0.0, $0.1) }, value: model.sort) { model.sort = $0 })
         let layouts: [(WebNotesLayout, WebIcon, String)] = [(.grid, .layoutGrid, "Grid"), (.compact, .rows3, "Compact cards"), (.list, .list, "List")]
         items.trailing.append(.segmented("layout", "View as", layouts.map { CardOption(id: $0.0.rawValue, title: $0.2, symbol: WebSegmented<WebNotesLayout>.symbol($0.1)) }, selected: layout.rawValue) { id in
             layoutRaw = id
         })
-        let model = self.model
-        items.trailing.append(.sort(model.sortOptions.map { ($0.0, $0.1) }, value: model.sort) { model.sort = $0 })
         let frame = self.frame
         let id = model.kind.folderId ?? ""
         if model.kind.view == .folder {
@@ -1952,16 +1953,16 @@ struct WebFoldersIndex: View {
         .cardItems(key: "\(sortRaw)|\(layoutRaw)|\(home.canEdit)|\(allFolders.value?.folders.count ?? -1)|\(list.count)|\(query)") { cardItems }
     }
 
-    /// The card's glass controls (CardItems.swift): the count, the view switch, Sort and New folder.
+    /// The card's glass controls (CardItems.swift): the count, Sort, the view switch and New folder.
     private var cardItems: CardItems {
         var items = CardItems()
         if let total = allFolders.value?.folders.count {
             items.subtitle = query.trimmingCharacters(in: .whitespaces).isEmpty ? total.formatted() : "\(list.count) of \(total)"
         }
+        items.trailing.append(.sort(FoldersSort.options, value: sort) { sortRaw = $0.rawValue })
         items.trailing.append(.segmented("layout", "View as", [CardOption(id: "grid", title: "Grid", symbol: "square.grid.2x2"), CardOption(id: "list", title: "List", symbol: "list.bullet")], selected: layoutRaw) { id in
             layoutRaw = id
         })
-        items.trailing.append(.sort(FoldersSort.options, value: sort) { sortRaw = $0.rawValue })
         if home.canEdit {
             let home = self.home
             items.trailing.append(.button("newFolder", "New folder", symbol: "folder.badge.plus", help: "New folder") { _ in home.dialogs.open(.newFolder(parent: nil)) })

@@ -56,6 +56,9 @@ export function usePageBreakMask(sheet: HTMLElement | null) {
     const measure = () => {
       frame = 0;
       const breaks = sheet.querySelectorAll<HTMLElement>(".fb-editor > .fb-page-break:not(.fb-hidden)");
+      // A plain note is one flat page until it has a page break: then its pages are cards (globals.css,
+      // [data-pages]).
+      sheet.toggleAttribute("data-pages", breaks.length > 0);
       if (!breaks.length) {
         if (last) clear();
         return;

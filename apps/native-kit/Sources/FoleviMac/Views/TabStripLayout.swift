@@ -42,10 +42,6 @@ public enum TabStripMath {
         /// Joined notes' tab, as wide as two: `min-w-[240px] flex-[0_1_460px]`.
         public static let joined = Flex(basis: 460, min: joinedMin)
         #if os(macOS)
-        /// The Mac's title bar tabs: each up to 180 pt, shrinking to 90 before the strip scrolls; joined notes as
-        /// wide as two.
-        public static let titleBar = Flex(basis: 180, min: 90)
-        public static let titleBarJoined = Flex(basis: 320, min: 160)
         static let joinedMin: CGFloat = 160
         #else
         static let joinedMin: CGFloat = 240
@@ -100,6 +96,37 @@ public enum TabStripMath {
             short -= taken
         }
         return Sizes(widths: widths, visible: visible, content: padding + widths.reduce(0, +) + gaps)
+    }
+
+    /// The Mac's title bar (Safari's rule, the owner, 2026-11-18): every tab the same width whatever its title, open
+    /// or not, together filling the room the bar gives the list; a joined tab (notes side by side) counts as two.
+    /// `items`: a tab of its own width (Home, a pinned tab) keeps it (`.fixed`); the others give their weight
+    /// (`.flex` with `basis` 1 or 2). Below `minimum` per weight the tabs stop shrinking and the list scrolls. With
+    /// no room given (an ideal-size pass) each takes `ideal` per weight.
+    public static func filling(items: [Item], gap: CGFloat, padding: CGFloat, available: CGFloat?, minimum: CGFloat = 90, ideal: CGFloat = 180) -> Sizes {
+        let gaps = gap * CGFloat(max(0, items.count - 1))
+        var fixed: CGFloat = 0, units: CGFloat = 0
+        for item in items {
+            switch item {
+            case .fixed(let w): fixed += w
+            case .flex(let f): units += f.basis
+            }
+        }
+        let unit: CGFloat
+        if let available, units > 0 {
+            // (Whole points: the tabs' edges stay crisp; the last few points go to the room after them.)
+            unit = max(minimum, ((available - padding - gaps - fixed) / units).rounded(.down))
+        } else {
+            unit = ideal
+        }
+        let widths = items.map { item -> CGFloat in
+            switch item {
+            case .fixed(let w): return w
+            case .flex(let f): return unit * f.basis + gap * (f.basis - 1)
+            }
+        }
+        let content = padding + widths.reduce(0, +) + gaps
+        return Sizes(widths: widths, visible: min(content, max(0, available ?? content)), content: content)
     }
 
     /// The furthest the list scrolls.
@@ -167,7 +194,7 @@ struct TabRow: Layout {
     var gap: CGFloat
     var padding: EdgeInsets
     var offset: CGFloat
-    /// The Mac's title bar tabs (TabStripMath.Flex.titleBar) instead of the web's.
+    /// The Mac's title bar tabs (TabStripMath.filling: equal widths filling the bar) instead of the web's.
     var titleBar = false
     var report: (TabRowMetrics) -> Void
 
@@ -177,6 +204,18 @@ struct TabRow: Layout {
     }
 
     private func sizes(_ subviews: Subviews, _ available: CGFloat?) -> TabStripMath.Sizes {
+        #if os(macOS)
+        if titleBar {
+            let items: [TabStripMath.Item] = subviews.map { s in
+                switch s[TabRoleKey.self] {
+                case .own: return .fixed(s.sizeThatFits(.unspecified).width)
+                case .other: return .flex(TabStripMath.Flex(basis: 1, min: 1))
+                case .joined: return .flex(TabStripMath.Flex(basis: 2, min: 2))
+                }
+            }
+            return TabStripMath.filling(items: items, gap: gap, padding: padding.leading + padding.trailing, available: available)
+        }
+        #endif
         let items: [TabStripMath.Item] = subviews.map { s in
             switch s[TabRoleKey.self] {
             case .own: return .fixed(s.sizeThatFits(.unspecified).width)
@@ -188,17 +227,7 @@ struct TabRow: Layout {
     }
 
     private func flex(joined: Bool, _ tab: LayoutSubview) -> TabStripMath.Flex {
-        #if os(macOS)
-        if titleBar {
-            // A title bar tab is as wide as its icon and title (up to the most), and all shrink together. A tab that
-            // needs less than the least ("Vault", "Tasks") keeps its own width, so its padding is every other tab's
-            // (the owner, 2026-11-18: no extra room round a short tab).
-            let f: TabStripMath.Flex = joined ? .titleBarJoined : .titleBar
-            let own = tab.sizeThatFits(.unspecified).width.rounded(.up)
-            return TabStripMath.Flex(basis: min(f.basis, own), min: min(f.min, own))
-        }
-        #endif
-        return joined ? .joined : .tab
+        joined ? .joined : .tab
     }
 
     private func height(_ subviews: Subviews) -> CGFloat {

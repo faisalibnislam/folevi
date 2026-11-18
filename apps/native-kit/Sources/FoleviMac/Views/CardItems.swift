@@ -250,6 +250,7 @@ struct CardSegmented: View {
         .frame(height: MacLook.barControlHeight)
         .glassEffect(.regular.interactive(), in: .capsule)
         .fixedSize()
+        .cardHitRegion()
         .accessibilityElement(children: .contain)
         .accessibilityLabel(label)
     }
@@ -284,6 +285,7 @@ struct CardMenuButton: View {
         .foregroundStyle(MacLook.Colors.label)
         .glassEffect(.regular.interactive(), in: .capsule)
         .fixedSize()
+        .cardHitRegion()
         .foleviTooltip(help)
         .accessibilityLabel(label)
     }
@@ -312,6 +314,7 @@ struct CardActionButton: View {
         .buttonStyle(QuietHoverStyle(shape: AnyShape(Circle())))
         .foregroundStyle(MacLook.Colors.label)
         .glassEffect(.regular.interactive(), in: .circle)
+        .cardHitRegion()
         .foleviTooltip(help)
         .accessibilityLabel(label)
     }

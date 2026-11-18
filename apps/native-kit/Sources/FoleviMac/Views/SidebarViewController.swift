@@ -349,7 +349,11 @@ public final class SidebarViewController: NSViewController {
         popover?.close()
         let p = NSPopover()
         p.behavior = .transient
-        p.contentViewController = NSHostingController(rootView: content)
+        let host = NSHostingController(rootView: content)
+        // (Sized before it shows: see WebSidebarController.show.)
+        host.sizingOptions = .preferredContentSize
+        p.contentViewController = host
+        p.contentSize = host.view.fittingSize
         p.appearance = view.window?.appearance
         p.show(relativeTo: view.bounds, of: view, preferredEdge: .maxY)
         popover = p

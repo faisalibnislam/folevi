@@ -1418,3 +1418,44 @@
 @layer utilities {
   :root[data-desktop="mac"] [data-fb-context-menu] .ui-menu-item { min-height: 32px !important; font-size: var(--type-body) !important; }
 }
+
+/* The note's page on the web and the Mac (the owner, 2026-11-18, after Craft):
+   - A plain note (no style backdrop) is one flat page: the sheet fills the note's area edge to edge, with no card,
+     corners or shadow, and its text keeps its centered column.
+   - Once it has a page break (usePageBreakMask sets [data-pages]) its pages are cards again, on the light grey
+     backdrop, which shows in the gaps.
+   - Every page card (a styled note's, a paged note's) has a much lighter shadow than the sheet's old one.
+   - The room round the page grows and shrinks smoothly with the note's area (container units of the note panel),
+     roomy in a wide window and tight in a narrow one, never jumping at a breakpoint.
+   The iPhone has its own (above, [data-iphone-scroll]). */
+[data-note-panel] { container-type: inline-size; }
+.fb-page:not([data-iphone-scroll]) {
+  padding-inline: clamp(12px, 3.2cqi, 40px);
+  padding-top: max(var(--native-inset-top, 0px), clamp(16px, 5.5cqi, 72px));
+}
+:root[data-mac-native] .fb-page:not([data-iphone-scroll]) { padding-top: max(var(--native-inset-top, 0px), clamp(16px, 5.5cqi, 72px)); }
+.fb-page:not([data-iphone-scroll]) > .fb-sheet {
+  box-shadow:
+    0 0 0 1px color-mix(in oklab, var(--color-heading) 7%, transparent),
+    0 1px 2px rgb(0 0 0 / 0.04),
+    0 12px 32px -20px rgb(0 0 0 / 0.16);
+}
+
+/* Plain, no page breaks: flat. (The page's own padding goes; the sheet keeps the room at its top and foot.) */
+.fb-page:not([data-backdrop]):not([data-iphone-scroll]):has(> .fb-sheet:not([data-pages])) { padding: 0; background: transparent !important; }
+.fb-page:not([data-backdrop]):not([data-iphone-scroll]) > .fb-sheet:not([data-pages]) {
+  max-width: none !important;
+  min-height: 100%;
+  border-radius: 0;
+  box-shadow: none;
+  padding-top: max(var(--native-inset-top, 0px), clamp(20px, 6cqi, 80px));
+  padding-bottom: 7rem;
+}
+.fb-page:not([data-backdrop]):not([data-iphone-scroll]) > .fb-sheet:not([data-pages]) > * {
+  max-width: calc(var(--editor-width) + 8rem);
+  margin-inline: auto;
+}
+.fb-page:not([data-backdrop]):not([data-iphone-scroll]):has(> .fb-sheet:not([data-pages])) > :not(.fb-sheet) { padding-inline: clamp(20px, 5.5cqi, 64px); }
+
+/* Plain with page breaks: the pages as cards on the light grey backdrop (the Mac's card is otherwise white). */
+:root[data-mac-native] .fb-page:not([data-backdrop]):has(> .fb-sheet[data-pages]) { background: var(--color-surface-sunken) !important; }

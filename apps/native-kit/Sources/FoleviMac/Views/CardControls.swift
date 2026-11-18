@@ -22,6 +22,8 @@ import FoleviScreens
 @MainActor
 struct CardControls: View {
     @Bindable var model: FrameModel
+    /// Where its controls are, for its hosting view's hit test (PassThroughControlsHostingView).
+    let regions: CardHitRegions
     @State private var text = ""
     @FocusState private var focused: Bool
     @State private var searching = false
@@ -57,6 +59,9 @@ struct CardControls: View {
             DispatchQueue.main.async { focused = true }
         }
         .macClickThrough()
+        .environment(\.cardHitRegions, regions)
+        // (The whole hosting view: the controls' frames in it.)
+        .coordinateSpace(.named(CardHitRegions.space))
     }
 
     /// One line of the controls at a fit.
@@ -98,6 +103,7 @@ struct CardControls: View {
             BarSearchField(text: $text, prompt: "Search", focus: $focused) { openPalette(text) }
                 .frame(minWidth: 170, idealWidth: 240, maxWidth: 240)
                 .foleviTooltip("Search or jump to… (⌘K)")
+                .cardHitRegion()
                 .onChange(of: text) { _, q in if !q.isEmpty { openPalette(q) } }
                 .onKeyPress(.escape) {
                     guard text.isEmpty else { return .ignored }
@@ -122,6 +128,7 @@ struct CardControls: View {
             .buttonStyle(QuietHoverStyle(shape: AnyShape(Capsule())))
             .foregroundStyle(MacLook.Colors.label)
             .glassEffect(.regular.interactive(), in: .capsule)
+            .cardHitRegion()
             .foleviTooltip("Search or jump to… (⌘K)")
             .accessibilityLabel("Search")
         }
@@ -154,12 +161,45 @@ struct CardControls: View {
     }
 }
 
-/// A hosting view that takes only the clicks its SwiftUI controls take: everything else goes through to what's
-/// under it (the card's controls over a screen or a note).
+/// Where the card's controls are drawn, in their hosting view (top left origin): the clicks it takes.
+@MainActor
+final class CardHitRegions {
+    nonisolated static let space = "cardControls"
+    private var rects: [UUID: CGRect] = [:]
+    func set(_ id: UUID, _ rect: CGRect?) { rects[id] = rect }
+    func contains(_ p: CGPoint) -> Bool { rects.values.contains { $0.insetBy(dx: -2, dy: -2).contains(p) } }
+}
+
+extension EnvironmentValues {
+    @Entry var cardHitRegions: CardHitRegions? = nil
+}
+
+private struct CardHitRegion: ViewModifier {
+    @State private var id = UUID()
+    @Environment(\.cardHitRegions) private var regions
+    func body(content: Content) -> some View {
+        content
+            .onGeometryChange(for: CGRect.self, of: { $0.frame(in: .named(CardHitRegions.space)) }) { regions?.set(id, $0) }
+            .onDisappear { regions?.set(id, nil) }
+    }
+}
+
+extension View {
+    /// A control of the card's: its hosting view takes the clicks on it.
+    func cardHitRegion() -> some View { modifier(CardHitRegion()) }
+}
+
+/// A hosting view that takes only the clicks on its controls (cardHitRegion): everything else goes through to what's
+/// under it (the card's controls over a screen or a note). SwiftUI draws its buttons in the hosting view itself, with
+/// no view of their own, so a hit test alone can't tell a button from the empty room around it: it was taken as room,
+/// and every click on Sort, the layouts or "…" went to the page under them.
 final class PassThroughControlsHostingView<Content: View>: ClickThroughHostingView<Content> {
+    var regions: CardHitRegions?
     override func hitTest(_ point: NSPoint) -> NSView? {
-        let hit = super.hitTest(point)
-        return hit === self ? nil : hit
+        let local = convert(point, from: superview)
+        let top = isFlipped ? local : CGPoint(x: local.x, y: bounds.height - local.y)
+        guard regions?.contains(top) == true else { return nil }
+        return super.hitTest(point) ?? self
     }
 }
 #endif

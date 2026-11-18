@@ -1,14 +1,14 @@
 // The Mac's title bar in the native look (docs/MAC_NATIVE_LOOK.md; the owner's layout, 2026-11-18): the window's
 // top strip, with no toolbar inside the card:
 //
-//   ● ● ●  [sidebar]   ‹ ›  (⌂) (▦) [ Calendar | (× Kyoto in November) | Recipes ]  ......  [sync] [bell] [inspector]
+//   ● ● ●  [note tools/folders] [sidebar]   ‹ ›  (⌂) (▦) [ Calendar | (× Kyoto in November) | Recipes ]  [sync] [bell]
 //
 // The traffic lights; the sidebar's button at the sidebar's trailing end; then, from the content card's leading
 // edge, Back and Forward and the tab bar drawn as Finder's (the owner, 2026-11-18): Home in a round button, the tabs in a grey capsule
 // track with a hairline between them, each its own width with its icon and title centred, the open one a Liquid
 // Glass capsule inset in the track, and the Tab Overview's round button right after Home. With only Home open there
-// is no track. The bell and, on a note, the inspector's button sit at the strip's end, the sync status before the bell. Empty strip space
-// moves the window.
+// is no track. The bell sits at the strip's end, the sync status before it; on a note, the switch between the note's
+// tools and the folders in the sidebar is beside the sidebar's button. Empty strip space moves the window.
 //
 // Folevi's tab model is unchanged (WebTopBar.swift keeps it: pinned, joined and per-place tabs, folder tabs, close,
 // middle click, dragging to reorder, sideways scrolling, a picture on hover, the Tab Overview, the tab's menu); only
@@ -45,12 +45,26 @@ extension WebTopBar {
         return HStack(spacing: 0) {
             Color.clear.frame(width: MacLook.trafficLightsRoom)
             Spacer(minLength: 0)
+            // On a note the sidebar shows the note's tools or the folders, as the web's (its sidebar mode): this
+            // switches between them, beside the sidebar's own button (the owner, 2026-11-18).
+            if model.route.isNote {
+                let tools = model.noteToolsShown
+                stripButton(tools ? "folder" : "list.bullet.rectangle", label: tools ? "Show folders" : "Show note tools",
+                            help: tools ? "Show Folders in the Sidebar" : "Show Note Tools in the Sidebar") {
+                    withAnimation(MacLook.animation(NSWorkspace.shared.accessibilityDisplayShouldReduceMotion)) {
+                        // (Hidden, the sidebar comes back with what was asked for.)
+                        if model.sidebarHidden { model.sidebarCollapsed = false; WebSidebarController.setNoteTools(model, shown: true) }
+                        else { WebSidebarController.setNoteTools(model, shown: !tools) }
+                    }
+                }
+                .accessibilityValue(tools ? "Note tools" : "Folders")
+            }
             stripButton("sidebar.left", label: hidden ? "Show sidebar" : "Hide sidebar", help: hidden ? "Show Sidebar (⌘\\)" : "Hide Sidebar (⌘\\)") {
                 withAnimation(MacLook.animation(NSWorkspace.shared.accessibilityDisplayShouldReduceMotion)) { model.sidebarCollapsed.toggle() }
             }
             .padding(.trailing, 8)
         }
-        .frame(width: hidden ? MacLook.trafficLightsRoom + 38 : MacLook.sidebarWidth)
+        .frame(width: hidden ? MacLook.trafficLightsRoom + (model.route.isNote ? 76 : 38) : MacLook.sidebarWidth)
     }
 
     /// Back and Forward, the tabs, and the strip's trailing buttons, after its leading part.
@@ -61,20 +75,14 @@ extension WebTopBar {
             // changes, not the whole strip.)
             MacHistoryButtons(model: model)
                 .padding(.trailing, 2)
+            // The tabs fill the bar up to the sync status (Safari's rule: every tab the same width).
             tabStrip
-            Spacer(minLength: 8)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .layoutPriority(1)
+                .padding(.trailing, 2)
             // Whether everything is saved and synced, then the bell (the owner, 2026-11-18).
             MacSyncStatus(model: model) { model.showSync?($0) }
             stripButton("bell", label: "Notifications", help: "Notifications", anchored: true) { model.showNotifications?(bellAnchor) }
-            if model.route.isNote {
-                let shown = model.noteToolsShown
-                stripButton("sidebar.right", label: "Note tools", help: shown ? "Hide Note Tools" : "Show Note Tools") {
-                    withAnimation(MacLook.animation(NSWorkspace.shared.accessibilityDisplayShouldReduceMotion)) {
-                        WebSidebarController.setNoteTools(model, shown: !shown)
-                    }
-                }
-                .accessibilityValue(shown ? "Shown" : "Hidden")
-            }
         }
     }
 
@@ -179,8 +187,8 @@ extension WebTopBar {
             let listed = model.tabs.tabs.filter { !$0.isHome }
             ForEach(Array(listed.enumerated()), id: \.element.id) { i, t in
                 macTab(t, separator: i > 0 && !lit(t) && !lit(listed[i - 1]))
-                    // Each tab its own width up to 180 pt, all shrinking together to 90 before the strip scrolls;
-                    // Home and pinned tabs their icon's width, joined notes as wide as two.
+                    // Every tab the same width, together filling the bar, down to 90 pt before the strip scrolls
+                    // (TabStripMath.filling); pinned tabs their icon's width, joined notes as wide as two.
                     .layoutValue(key: TabRoleKey.self, value: t.isHome || t.pinned ? .own : t.isJoined ? .joined : .other)
                     .layoutValue(key: TabActiveKey.self, value: t.id == model.tabs.activeID)
                     .transition(.opacity)

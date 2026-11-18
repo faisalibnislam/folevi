@@ -71,6 +71,10 @@ struct TaskEditDialog: View {
     @State private var error: String?
     @State private var overLink = false
     @Environment(\.colorScheme) private var scheme
+    #if os(macOS)
+    /// The Mac's native look: the task's settings as a grouped form of native controls.
+    @Environment(\.macNativeLook) private var native
+    #endif
 
     init(tasks: PlannerTasks, task: TaskRow, close: @escaping () -> Void) {
         self.tasks = tasks
@@ -92,6 +96,77 @@ struct TaskEditDialog: View {
                 Text(task.title.isEmpty ? "Untitled task" : task.title).webText(t.text).foregroundStyle(t.color.color)
                     .fixedSize(horizontal: false, vertical: true)
                     .padding(.top, t.margin.top).padding(.bottom, t.margin.bottom)
+                #if os(macOS)
+                if native {
+                    nativeForm
+                } else {
+                    webForm(form: form, row: row)
+                }
+                #else
+                webForm(form: form, row: row)
+                #endif
+            }
+        }
+    }
+
+    #if os(macOS)
+    /// Status, due date and time, priority and assignee as FormRows in one FormGroup, then the buttons.
+    private var nativeForm: some View {
+        VStack(alignment: .leading, spacing: MacLook.Space.l) {
+            FormGroup {
+                FormRow("Status", first: true) {
+                    Picker("Status", selection: $status) {
+                        Text("Open").tag("open")
+                        Text("Done").tag("done")
+                        Text("Canceled").tag("canceled")
+                    }
+                    .labelsHidden()
+                    .fixedSize()
+                }
+                FormRow("Due date") {
+                    HStack(spacing: MacLook.Space.s) {
+                        if !dueDate.isEmpty {
+                            Button("Clear") {
+                                dueDate = ""
+                                dueTime = ""
+                            }
+                            .buttonStyle(.borderless)
+                        }
+                        PlannerDateField(value: $dueDate, clearable: false)
+                    }
+                }
+                if !dueDate.isEmpty {
+                    FormRow("Time", helper: "Optional") { PlannerTimeField(value: $dueTime) }
+                }
+                FormRow("Priority") {
+                    Picker("Priority", selection: $priority) {
+                        ForEach(priorities, id: \.id) { Text($0.title).tag($0.id) }
+                    }
+                    .labelsHidden()
+                    .fixedSize()
+                }
+                FormRow("Assignee") {
+                    Picker("Assignee", selection: $assignee) {
+                        ForEach(people, id: \.id) { Text($0.title).tag($0.id) }
+                    }
+                    .labelsHidden()
+                    .fixedSize()
+                }
+            }
+            DialogError(text: error)
+            DialogButtons(primary: "Save", busy: busy, cancel: close, submit: save) {
+                Button("Open in \(task.noteTitle.isEmpty ? "Untitled" : task.noteTitle)") {
+                    tasks.openNote(task)
+                    close()
+                }
+                .buttonStyle(.link)
+                .lineLimit(1)
+            }
+        }
+    }
+    #endif
+
+    @ViewBuilder private func webForm(form: WebComputedStyle, row: WebComputedStyle) -> some View {
                 VStack(alignment: .leading, spacing: form.gap) {
                     VStack(alignment: .leading, spacing: PS("edit.seg").resolve(scheme).margin.top) {
                         StyledText("Status", "edit.legend")
@@ -130,8 +205,6 @@ struct TaskEditDialog: View {
                         .onHover { overLink = $0 }
                     }
                 }
-            }
-        }
     }
 
     private var people: [PlannerSelect.Option] {

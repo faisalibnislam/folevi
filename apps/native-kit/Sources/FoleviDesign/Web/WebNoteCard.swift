@@ -239,6 +239,11 @@ public struct WebNoteCard: View {
     }
 
     public var body: some View {
+        // What a note draws: Folevi's own fonts and look under the Mac's native chrome (NativeChrome).
+        cardBody.noteContent()
+    }
+
+    @ViewBuilder private var cardBody: some View {
         GeometryReader { geo in
             face(width: geo.size.width, height: geo.size.height).flattened()
         }
@@ -602,6 +607,11 @@ public struct WebCompactNoteCard: View {
     }
 
     public var body: some View {
+        // What a note draws: Folevi's own fonts and look under the Mac's native chrome (NativeChrome).
+        cardBody.noteContent()
+    }
+
+    @ViewBuilder private var cardBody: some View {
         let link = WebStyles.named("notes.compact.link").resolve(scheme)
         let card = WebStyles.named("notes.compact.card").resolve(scheme)
         let title = WebStyles.named("notes.compact.title").resolve(scheme)
@@ -698,6 +708,11 @@ public struct WebFolderCard: View {
     }
 
     public var body: some View {
+        // What a note draws: Folevi's own fonts and look under the Mac's native chrome (NativeChrome).
+        cardBody.noteContent()
+    }
+
+    @ViewBuilder private var cardBody: some View {
         GeometryReader { geo in
             drawing(w: geo.size.width, h: geo.size.height)
         }
@@ -947,6 +962,7 @@ public struct WebEmptyState<Action: View>: View {
     let page: Bool
     let action: Action
     @Environment(\.colorScheme) private var scheme
+    @Environment(\.nativeChrome) private var chrome
 
     public init(icon: WebIcon?, title: String, message: String?, page: Bool = true, @ViewBuilder action: () -> Action) {
         self.icon = icon
@@ -970,7 +986,8 @@ public struct WebEmptyState<Action: View>: View {
                     .padding(.bottom, page ? tile.margin.bottom : 12)
             }
             let textWidth: CGFloat = page ? 448 - box.padding.left - box.padding.right : 448 - 32
-            WebClampedText(title, style: page ? t.text : WebTextStyle.role(.body, weight: 600), maxLines: 4, width: textWidth, alignment: .center, balance: true)
+            // (Under the Mac's native look a page's empty state heads with a section title, not a page title.)
+            WebClampedText(title, style: page ? (chrome != nil ? WebTextStyle.role(.title3, weight: 600) : t.text) : WebTextStyle.role(.body, weight: 600), maxLines: 4, width: textWidth, alignment: .center, balance: true)
                 .foregroundStyle(t.color.color)
             if let message {
                 // `text-wrap: pretty`, as globals.css sets it on every <p>: no word left alone on the last line.
@@ -1065,7 +1082,22 @@ public struct WebClampedText: View {
         self.balance = balance
     }
 
+    @Environment(\.nativeChrome) private var chrome
+
     public var body: some View {
+        if let chrome, style.family != .mono {
+            // Interface text under the Mac's native look (an empty state's heading): the system font, wrapped and
+            // clamped as AppKit does it.
+            Text(text).webText(chrome.text(style)).lineLimit(maxLines).truncationMode(.tail)
+                .multilineTextAlignment(alignment == .center ? .center : alignment == .trailing ? .trailing : .leading)
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(width: width, alignment: Alignment(horizontal: alignment, vertical: .top))
+        } else {
+            webBody
+        }
+    }
+
+    @ViewBuilder private var webBody: some View {
         // One word (a folder called "Brainstorming") is never broken across lines: it stays on one and ends in
         // "…" when it doesn't fit (the owner, 2026-11-01).
         let maxLines = text.contains(where: \.isWhitespace) ? maxLines : 1

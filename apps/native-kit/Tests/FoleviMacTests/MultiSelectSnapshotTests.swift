@@ -31,6 +31,8 @@ struct MultiSelectSnapshotTests {
                     let models = ScreenModels(frame: frame)
                     let list: NotesListModel = if case .folder(let id) = route { models.list(.folder(id)) } else { models.list(NotesListKind(.all)) }
                     let root = ScreenRoot(model: frame, models: models, route: route)
+                        // (The iPad's layout keeps the web's look: the native look is the Mac's only.)
+                        .environment(\.macNativeLook, name == "mac")
                         .background(WebStyles.vars["color-canvas"]?.resolve(scheme).color ?? .white)
                         .environment(\.colorScheme, scheme)
                         .frame(width: size.width, height: size.height)

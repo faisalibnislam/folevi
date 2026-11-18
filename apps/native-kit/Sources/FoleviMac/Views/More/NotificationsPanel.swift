@@ -99,6 +99,8 @@ struct NotificationsPanel: View {
                 }
             }
         }
+        // The Mac's native look inside the panel (its frame stays the presenter's).
+        .nativeDialogContent()
         .frame(maxHeight: min(560, (FrameSheets.window(for: frame)?.contentView?.bounds.height ?? 820) - 72))
         .fixedSize(horizontal: false, vertical: true)
         .modifier(WebSheetPanel(style: WebStyles.named("more.dialog.sm"), width: 380))

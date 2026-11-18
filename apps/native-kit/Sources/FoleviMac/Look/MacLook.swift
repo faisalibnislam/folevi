@@ -9,6 +9,7 @@
 // a number. macOS only: the iPad's wide layout keeps the web's look until the owner decides (2026-11-18).
 #if os(macOS)
 import AppKit
+import FoleviDesign
 import SwiftUI
 
 public enum MacLook {
@@ -87,6 +88,15 @@ public enum MacLook {
         /// 22 pt: large numbers and hero text, rarely.
         public static let title = Font.title
         public static let titleStrong = Font.title.weight(.semibold)
+
+        /// The four styles' point sizes on macOS, for text laid out by size (the shared web components under
+        /// NativeChrome).
+        public enum Size {
+            public static let small: CGFloat = 11
+            public static let body: CGFloat = 13
+            public static let title3: CGFloat = 15
+            public static let title: CGFloat = 22
+        }
     }
 
     // MARK: Colour roles (views never use literals)
@@ -125,6 +135,13 @@ public enum MacLook {
         appearance.isDark ? NSColor(srgbRed: 0x10 / 255, green: 0x10 / 255, blue: 0x11 / 255, alpha: 1) : .white
     }
 
+    // MARK: The screens' native chrome
+
+    /// What the shared web components (FoleviDesign) draw natively inside the card's screens and their dialogs:
+    /// interface text in the four sizes, the accent for the one prominent action, the hover fill.
+    public static let chrome = NativeChrome(title: Text.Size.title, title3: Text.Size.title3, body: Text.Size.body, small: Text.Size.small,
+                                            accent: Colors.accent, onAccent: Colors.onAccent, hover: Colors.hover)
+
     // MARK: Motion
 
     /// Restrained, prompt transitions; Reduce Motion gets none (state still changes).
@@ -135,6 +152,27 @@ public enum MacLook {
 
 extension NSAppearance {
     var isDark: Bool { bestMatch(from: [.aqua, .darkAqua]) == .darkAqua }
+}
+
+// MARK: - Which look FoleviMac's SwiftUI draws
+
+extension EnvironmentValues {
+    /// The native look (true on the Mac). False where FoleviMac's SwiftUI stands for the iPad's wide layout or the
+    /// iPhone's (the tests that picture those layouts on the Mac): they keep the web's look until the owner decides.
+    @Entry public var macNativeLook = true
+}
+
+public extension View {
+    /// The screens' native chrome (MacLook.chrome) for everything inside, unless this draws the iPad's or iPhone's
+    /// layout (`macNativeLook` false).
+    func macNativeChrome() -> some View { modifier(MacNativeChromeModifier()) }
+}
+
+struct MacNativeChromeModifier: ViewModifier {
+    @Environment(\.macNativeLook) private var native
+    func body(content: Content) -> some View {
+        content.environment(\.nativeChrome, native ? MacLook.chrome : nil)
+    }
 }
 
 // MARK: - The window's translucent material (behind the sidebar and the card's margins)

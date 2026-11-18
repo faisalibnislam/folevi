@@ -181,6 +181,8 @@ struct Around {
                 let frame = FrameModel(client: demo.client())
                 let models = ScreenModels(frame: frame)
                 let root = ScreenRoot(model: frame, models: models, route: .web(o.route))
+                    // (The iPhone's layout keeps the web's look: the native look is the Mac's only.)
+                    .environment(\.macNativeLook, o.name.hasSuffix("-mac"))
                     .environment(\.colorScheme, scheme)
                     .frame(width: o.size.width, height: o.size.height)
                 let view = NSHostingView(rootView: root)

@@ -147,6 +147,8 @@ struct WebCalendarScreen: View {
     @State private var bodyHeight: CGFloat = 748
     @FocusState private var gridFocused: Bool
     @Environment(\.colorScheme) private var scheme
+    /// The Mac's native look (NativeChrome).
+    @Environment(\.nativeChrome) private var chrome
 
     init(model: CalendarModel, frame: FrameModel) {
         self.frame = frame
@@ -219,7 +221,7 @@ struct WebCalendarScreen: View {
             toolbarRow(heading: heading, compact: false).frame(height: bar.height)
             toolbarRow(heading: shortHeading, compact: true).frame(height: bar.height)
             VStack(alignment: .leading, spacing: 8) {
-                HStack(spacing: bar.gap) { StyledText(shortHeading, "cal.heading").fixedSize(); Spacer(minLength: 0) }
+                HStack(spacing: bar.gap) { headingText(shortHeading); Spacer(minLength: 0) }
                 HStack(spacing: bar.gap) { stepper; Spacer(minLength: 0); actions(compact: true) }
             }
         }
@@ -228,10 +230,19 @@ struct WebCalendarScreen: View {
 
     private func toolbarRow(heading: String, compact: Bool) -> some View {
         HStack(spacing: PS("cal.toolbar").resolve(scheme).gap) {
-            StyledText(heading, "cal.heading").fixedSize()
+            headingText(heading)
             stepper
             Spacer(minLength: 0)
             actions(compact: compact)
+        }
+    }
+
+    /// The page's title: the month, the week or "Next 30 days" (the native look: 22 pt semibold, as every page's).
+    @ViewBuilder private func headingText(_ text: String) -> some View {
+        if chrome != nil {
+            Text(text).font(NativeLook.pageTitle).foregroundStyle(NativeLook.label).lineLimit(1).fixedSize().accessibilityAddTraits(.isHeader)
+        } else {
+            StyledText(text, "cal.heading").fixedSize()
         }
     }
 

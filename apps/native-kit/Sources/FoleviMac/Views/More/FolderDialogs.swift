@@ -176,6 +176,12 @@ struct PromptSheet: View {
     @State private var value: String
     @FocusState private var focused: Bool
     @Environment(\.colorScheme) private var scheme
+    #if os(macOS)
+    /// The Mac's native look: the system's rounded text field.
+    @Environment(\.macNativeLook) private var native
+    #else
+    private let native = false
+    #endif
 
     init(title: String, label: String, initial: String, confirm: String, close: @escaping @MainActor () -> Void, onSubmit: @escaping @MainActor (String) -> Void) {
         self.title = title
@@ -196,6 +202,15 @@ struct PromptSheet: View {
         WebSheetDialog(title: title, close: close) {
             VStack(alignment: .leading, spacing: 0) {
                 Text(verbatim: label).webText(l.text).lineLimit(1).foregroundStyle(l.color.color)
+                if native {
+                    TextField("", text: $value)
+                        .textFieldStyle(.roundedBorder)
+                        .focused($focused)
+                        .onSubmit(submit)
+                        .onChange(of: value) { _, v in if v.count > 80 { value = String(v.prefix(80)) } }
+                        .padding(.top, 6)
+                        .accessibilityLabel(label)
+                } else {
                 TextField("", text: $value)
                     .textFieldStyle(.plain)
                     .webText(i.text)
@@ -211,6 +226,7 @@ struct PromptSheet: View {
                     .webBox(input)
                     .padding(.top, i.margin.top)
                     .accessibilityLabel(label)
+                }
                 HStack(spacing: actions.gap) {
                     Spacer(minLength: 0)
                     WebSheetButton(title: "Cancel", action: close)
@@ -218,6 +234,7 @@ struct PromptSheet: View {
                 }
                 .padding(.top, actions.margin.top)
             }
+            .nativeDialogContent()
         }
         .task {
             try? await Task.sleep(for: .milliseconds(60))
@@ -249,6 +266,7 @@ struct DeleteFoldersSheet: View {
                 WebSheetButton(title: "Delete folders", danger: true, action: confirm)
             }
             .padding(.top, actions.margin.top)
+            .nativeDialogContent()
         }
     }
 }
@@ -375,6 +393,11 @@ struct FolderPickerView: View {
     private func unavailable(_ o: Option) -> Bool { isCurrent(o) || o.blocked }
 
     var body: some View {
+        // The Mac's native look inside the dialog (its frame stays the presenter's).
+        dialogBody.nativeDialogContent()
+    }
+
+    @ViewBuilder private var dialogBody: some View {
         let input = focused ? webFocused(WebStyles.named("more.prompt.input")) : WebStyles.named("more.prompt.input")
         let i = input.resolve(scheme)
         let opts = options
@@ -502,6 +525,11 @@ struct CopyPickerView: View {
     @Environment(\.colorScheme) private var scheme
 
     var body: some View {
+        // The Mac's native look inside the dialog (its frame stays the presenter's).
+        dialogBody.nativeDialogContent()
+    }
+
+    @ViewBuilder private var dialogBody: some View {
         VStack(alignment: .leading, spacing: 12) {
             if spaces.count > 1 {
                 HStack(spacing: 12) {

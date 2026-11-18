@@ -163,6 +163,7 @@ struct PlannerTaskRow<Action: View>: View {
     var editable = true
     @ViewBuilder var action: () -> Action
     @Environment(\.colorScheme) private var scheme
+    @Environment(\.nativeChrome) private var chrome
     @State private var over = false
     @State private var overLink = false
 
@@ -215,7 +216,14 @@ struct PlannerTaskRow<Action: View>: View {
         }
         .padding(row.padding.edgeInsets)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(over ? PV("color-surface").c(scheme) : .clear)
+        // The native look: a rounded hover highlight, clear of the separators above and below (2 pt each way).
+        .background {
+            if chrome != nil {
+                NativeRowHighlight(selected: false, hovered: over).padding(.vertical, 2)
+            } else {
+                (over ? PV("color-surface").c(scheme) : .clear)
+            }
+        }
         .contentShape(Rectangle())
         .onHover { over = $0 }
         .webContextMenu { tasks.menu(t, canEdit: editable) }
@@ -317,11 +325,22 @@ struct EditTaskButton: View {
 struct TaskCard<Content: View>: View {
     @ViewBuilder let content: () -> Content
     @Environment(\.colorScheme) private var scheme
+    @Environment(\.nativeChrome) private var chrome
 
     var body: some View {
+        if chrome != nil {
+            // The Mac's native look: the rows straight on the page, separators inset to their text.
+            _VariadicView.Tree(DividedLayout(line: NativeLook.separator, inset: 12)) { content() }
+                .frame(maxWidth: .infinity)
+        } else {
+            web
+        }
+    }
+
+    private var web: some View {
         let card = PS("tasks.card")
         let r = card.resolve(scheme).radius
-        _VariadicView.Tree(DividedLayout(line: PV("color-line").c(scheme))) { content() }
+        return _VariadicView.Tree(DividedLayout(line: PV("color-line").c(scheme))) { content() }
             .frame(maxWidth: .infinity)
             .clipShape(RoundedRectangle(cornerRadius: r, style: .circular))
             .webBox(card)
@@ -331,13 +350,14 @@ struct TaskCard<Content: View>: View {
 /// Children one under another with a 1 pt line between them.
 struct DividedLayout: _VariadicView_MultiViewRoot {
     let line: Color
+    var inset: CGFloat = 0
 
     @ViewBuilder
     func body(children: _VariadicView.Children) -> some View {
         VStack(spacing: 0) {
             ForEach(Array(children.enumerated()), id: \.element.id) { i, child in
                 child
-                if i < children.count - 1 { Rectangle().fill(line).frame(height: 1) }
+                if i < children.count - 1 { Rectangle().fill(line).frame(height: 1).padding(.horizontal, inset) }
             }
         }
     }

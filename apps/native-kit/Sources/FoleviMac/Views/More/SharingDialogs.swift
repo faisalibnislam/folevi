@@ -40,6 +40,7 @@ extension FrameDialogs {
         FrameSheets.present(frame) { close in
             WebSheetDialog(title: "Share", close: close) {
                 MoreEmptyState(icon: .users, title: "Sign in to Folevi to share and collaborate", message: "Your notes are kept on your devices. Sharing, comments and workspaces need a Folevi account.")
+                    .nativeDialogContent()
             }
         }
     }
@@ -363,6 +364,7 @@ struct PageShareSheet: View {
             }
             .frame(maxHeight: shareBodyMaxHeight())
             .fixedSize(horizontal: false, vertical: true)
+            .nativeDialogContent()
         } footer: {
             ShareFooter(copyLink: { copyToPasteboard(frame, FoleviLinks.note(noteId)) }, done: close)
         }
@@ -647,6 +649,7 @@ struct FolderShareSheet: View {
             }
             .frame(maxHeight: shareBodyMaxHeight())
             .fixedSize(horizontal: false, vertical: true)
+            .nativeDialogContent()
         } footer: {
             ShareFooter(copyLink: { copyToPasteboard(frame, FoleviLinks.folder(folderId)) }, done: close)
         }

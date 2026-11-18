@@ -48,10 +48,26 @@ struct WebListCard<Row: View, Item>: View {
     let id: KeyPath<Item, String>
     @ViewBuilder let row: (Item) -> Row
     @Environment(\.colorScheme) private var scheme
+    @Environment(\.nativeChrome) private var chrome
 
     var body: some View {
+        if chrome != nil {
+            // The Mac's native look: rows on the page, separators inset to their text (the rows' rounded hover
+            // keeps clear of them).
+            VStack(spacing: 0) {
+                ForEach(Array(items.enumerated()), id: \.offset) { i, item in
+                    if i > 0 { NativeRowSeparator(hidden: false) }
+                    row(item)
+                }
+            }
+        } else {
+            web
+        }
+    }
+
+    private var web: some View {
         let card = WebStyles.named("more.help.table")
-        VStack(spacing: 0) {
+        return VStack(spacing: 0) {
             ForEach(Array(items.enumerated()), id: \.offset) { i, item in
                 if i > 0 { Rectangle().fill(moreVar("color-line", scheme)).frame(height: 1) }
                 row(item)
@@ -68,13 +84,21 @@ struct WebHoverRow<Content: View>: View {
     @ViewBuilder let content: () -> Content
     @State private var hovering = false
     @Environment(\.colorScheme) private var scheme
+    @Environment(\.nativeChrome) private var chrome
 
     var body: some View {
         Button(action: action) {
             content()
-                .padding(.horizontal, 16).padding(.vertical, 12)
+                .padding(.horizontal, chrome != nil ? 12 : 16).padding(.vertical, 12)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .background(hovering ? moreVar("color-surface", scheme) : .clear)
+                .background {
+                    // The native look: a rounded hover, 2 pt clear of the separators above and below.
+                    if chrome != nil {
+                        NativeRowHighlight(selected: false, hovered: hovering).padding(.vertical, 2)
+                    } else {
+                        (hovering ? moreVar("color-surface", scheme) : .clear)
+                    }
+                }
                 .contentShape(Rectangle())
         }
         .buttonStyle(.webPlain)
@@ -124,7 +148,7 @@ struct SharedWithMeScreen: View {
             SignInToCollaboratePage()
         } else {
             VStack(spacing: 0) {
-                WebFactsRow(subtitle: model.counts.map { "\($0) · from anyone" }) { EmptyView() }
+                WebFactsRow(title: "Shared with Me", subtitle: model.counts.map { "\($0) · from anyone" }) { EmptyView() }
                 WebPageColumn { content }
             }
             .accessibilityIdentifier("screen.shared")
@@ -202,7 +226,7 @@ struct SharedFolderScreen: View {
     var body: some View {
         let d = model.store.value
         VStack(spacing: 0) {
-            WebFactsRow(subtitle: d.flatMap { $0.found ? "\(Roles.place(workspace: $0.workspaceName, owner: $0.ownerName, inYourPlace: $0.inYourPlace)) · \($0.roleLabel ?? Roles.access($0.access))" : nil }) {
+            WebFactsRow(title: d.map { $0.name.isEmpty ? "Shared folder" : $0.name } ?? "Shared folder", subtitle: d.flatMap { $0.found ? "\(Roles.place(workspace: $0.workspaceName, owner: $0.ownerName, inYourPlace: $0.inYourPlace)) · \($0.roleLabel ?? Roles.access($0.access))" : nil }) {
                 if let d, d.found {
                     WebButton("People", icon: .users, variant: .quiet, size: .sm) { FrameDialogs.folderShare(frame, folderId: d.id, name: d.name) }
                 }
@@ -335,7 +359,7 @@ struct ChangesWebScreen: View {
                 [v.proposals.isEmpty ? nil : "\(v.proposals.count) proposed", v.notes.isEmpty ? nil : "\(v.notes.count) \(v.notes.count == 1 ? "note" : "notes") changed since you last looked"].compactMap { $0 }.joined(separator: " · ").nonEmpty ?? "Nothing new"
             }
             VStack(spacing: 0) {
-                WebFactsRow(subtitle: subtitle) { EmptyView() }
+                WebFactsRow(title: "Changes", subtitle: subtitle) { EmptyView() }
                 WebPageColumn { content(v) }
             }
             .accessibilityIdentifier("screen.changes")

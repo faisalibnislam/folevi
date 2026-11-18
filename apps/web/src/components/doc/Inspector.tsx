@@ -223,6 +223,14 @@ export function Inspector({
 }
 
 
+// A row of the Style panel on the desktop: its words line up with the section's heading (16 px from the panel's
+// edge) and its hover reaches 8 px past them on both sides, so the words never sit against the hover's edge. 36 px
+// tall, the height of the segmented controls below, so every section keeps the same rhythm.
+const STYLE_ROW_BOX = "-mx-1 flex h-9 w-[calc(100%+0.5rem)] items-center justify-between gap-3 rounded-chip px-2 text-left text-body text-ink";
+const STYLE_ROW = `${STYLE_ROW_BOX} transition-colors hover:bg-accent-soft/60 disabled:opacity-50`;
+// A section of rows: its heading sits as close to the first row's control as a segmented control's does.
+const STYLE_ROWS_CAPS = "ui-caps mb-1 px-1";
+
 // Each font's name is set at the same x-height, so Serif doesn't look smaller than Mono at the same size.
 const OPTICAL = "ex-height 0.52";
 // The font types; each draws in the note theme's typeface for it (the standard ones without a theme).
@@ -274,7 +282,7 @@ function StyleRow({ label, swatch, open, onToggle, children, disabled }: { label
         aria-expanded={open}
         aria-controls={id}
         onClick={onToggle}
-        className="flex h-10 w-full items-center justify-between rounded-chip px-1 text-left text-body text-ink transition-colors hover:bg-accent-soft/60 disabled:opacity-50"
+        className={STYLE_ROW}
       >
         {label}
         <span className="flex items-center gap-2">{swatch}</span>
@@ -501,15 +509,17 @@ function StylePanel({ documentId, meta, disabled }: { documentId: string; meta: 
           ) : null}
         </fieldset>
       ) : (
-      <fieldset disabled={disabled}>
-        <legend className="ui-caps mb-1 px-1">Note Theme</legend>
+      // (mb-4, not the list's 20 px: a row keeps 4 px of air under its swatch, which a segmented control doesn't, so
+      // every section ends the same distance from the next heading.)
+      <fieldset disabled={disabled} className="mb-4">
+        <legend className={STYLE_ROWS_CAPS}>Note Theme</legend>
         {/* One choice: the theme is the note's cover, page background, colours and fonts. Its gallery opens in a modal. */}
         <button
           type="button"
           disabled={disabled}
           aria-haspopup="dialog"
           onClick={() => setGallery(true)}
-          className="flex h-10 w-full items-center justify-between rounded-chip px-1 text-left text-body text-ink transition-colors hover:bg-accent-soft/60 disabled:opacity-50"
+          className={STYLE_ROW}
         >
           {styleName}
           <span className="flex items-center gap-2">
@@ -530,18 +540,16 @@ function StylePanel({ documentId, meta, disabled }: { documentId: string; meta: 
           uploading={uploading}
         />
         {hasBackdrop ? (
-          <div className="flex items-center justify-between gap-3 px-1 pt-2">
-            <span aria-hidden className="text-subheadline text-heading">
-              Blur background
-            </span>
+          <div className={STYLE_ROW_BOX}>
+            <span aria-hidden>Blur background</span>
             <Switch checked={Boolean(style.blur)} label="Blur background" disabled={disabled} onChange={(on) => set({ blur: on || undefined })} />
           </div>
         ) : null}
       </fieldset>
       )}
 
-      <fieldset disabled={disabled}>
-        <legend className={phone ? caps : "ui-caps mb-1 px-1"}>Color</legend>
+      <fieldset disabled={disabled} className={phone ? undefined : "mb-4"}>
+        <legend className={phone ? caps : STYLE_ROWS_CAPS}>Color</legend>
         <div className={phone ? "iphone-style-list" : undefined}>
         <StyleRow label="Document color" swatch={<ColorDot css={sheetColor} />} open={open === "sheet"} onToggle={() => toggle("sheet")} disabled={disabled}>
           <div role="radiogroup" aria-label="Document color" ref={sheetGroup.ref} onKeyDown={sheetGroup.onKeyDown} className={phone ? "grid grid-cols-5 gap-y-3" : "grid grid-cols-4 gap-2"}>

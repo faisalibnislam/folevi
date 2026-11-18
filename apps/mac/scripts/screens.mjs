@@ -5,6 +5,7 @@
 // light and dark; diff.mjs compares the two.
 //
 //   node apps/mac/scripts/screens.mjs [--fresh] [--only home,notes] [--size 1280x820]
+//   node apps/mac/scripts/screens.mjs --look [--only home,notes]   (the native frame only, real window captures to look at)
 //   node apps/mac/scripts/screens.mjs --gates [--only first-launch]   (the screens before the app, gates.mjs)
 //   node apps/mac/scripts/screens.mjs --switch [--only home]   (the Mac switching light and dark with a screen open)
 //   node apps/mac/scripts/screens.mjs --strip   (the tab strip: 2, 8 and 12 tabs, wide and narrow, ends and middle)
@@ -24,6 +25,7 @@ import { fileURLToPath } from "node:url";
 import { setTimeout as sleep } from "node:timers/promises";
 import { command, evaluate, launch, waitFor } from "./mac.mjs";
 import { diffAll, writeReport } from "./diff.mjs";
+import { lookShot } from "./look.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const MAC = resolve(here, "..");
@@ -356,13 +358,20 @@ async function quit() {
   throw new Error("the app didn't quit");
 }
 
+// --look: the native frame only, every screen in light and dark, as real window captures (`screencapture -l`):
+// the app's own windowShot can't draw glass, materials or shadows (docs/MAC_NATIVE_LOOK.md), so this is the one
+// to look at. One capture at a time, never several at once (see holdUiLock in mac.mjs). A popover, menu, sheet
+// or second window open over the screen is its own window and its own picture (`<id>-<scheme>-w2.png`).
+const LOOK = process.argv.includes("--look");
+
 /** Every screen, light and dark, in one frame (native, or the web frame). */
 async function shoot(kind) {
   await launch({ dir, env: { FOLEVI_TEST_FOLDER: library, ...FAKE_AI, ...(kind === "web" ? { FOLEVI_WEB_FRAME: "1" } : {}) } });
   await waitFor(dir, kind === "web" ? `return document.readyState === "complete" && !!document.querySelector('nav[aria-label="Folio"]')` : `return !!window.__foleviEngine`, 90_000);
   await sleep(2000);
   ensure(await command(dir, { cmd: "resize", width, height }));
-  mkdirSync(join(out, kind), { recursive: true });
+  const shots = LOOK ? join(out, "look") : join(out, kind);
+  mkdirSync(shots, { recursive: true });
   for (const scheme of ["light", "dark"]) {
     ensure(await command(dir, { cmd: "appearance", value: scheme }));
     for (const s of screens) {
@@ -398,7 +407,8 @@ async function shoot(kind) {
       }
       // The window drawn by the app itself (MacEval windowShot), never a screen capture: capturing windows goes
       // through WindowServer's privacy checks, and many at once hung WindowServer and restarted the Mac (2026-10-28).
-      ensure(await command(dir, { cmd: "windowShot", out: join(out, kind, `${s.id}-${scheme}.png`) }, 60_000));
+      if (LOOK) await lookShot(dir, join(shots, `${s.id}-${scheme}.png`));
+      else ensure(await command(dir, { cmd: "windowShot", out: join(shots, `${s.id}-${scheme}.png`) }, 60_000));
       // Where the web draws the first starred card (its cover, with a few points round it): both frames' pictures
       // are cropped there after.
       if (s.card && kind === "web") {
@@ -956,6 +966,12 @@ if (process.argv.includes("--avatars")) {
 try {
   stopOwnApp();
   if (process.argv.includes("--fresh") || !existsSync(join(dir, "fixture.json"))) await setUp();
+  if (LOOK) {
+    await ensureAiFixture();
+    await shoot("native");
+    console.log(`pictures: ${join(out, "look")}`);
+    process.exit(0);
+  }
   for (const d of ["web", "native", "diff"]) {
     rmSync(join(out, d), { recursive: true, force: true });
     mkdirSync(join(out, d), { recursive: true });

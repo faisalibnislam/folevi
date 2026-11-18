@@ -28,3 +28,13 @@ export function toolsPanelOverlays(o: { narrowWindow: boolean; rowWidth: number;
   if (!o.rowWidth) return false;
   return o.rowWidth - clampPanelWidth(o.panelWidth) < NOTE_MIN_WRITABLE;
 }
+
+/**
+ * The window width under which the panel always opens over the note. The web's window holds its own sidebar too
+ * (about 260 px of the 1200); in Folevi for Mac's native frame the page is only the card beside the native
+ * sidebar, so the same note width is reached 260 px sooner. With the web's number there, the panel covered the
+ * note's words in every Mac window narrower than about 1490 pt (2026-11-18).
+ */
+export function narrowWindowQuery(macNativeFrame: boolean): string {
+  return `(max-width: ${macNativeFrame ? 939 : 1199}px)`;
+}

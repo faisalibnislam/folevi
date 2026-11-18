@@ -296,15 +296,18 @@ public struct WebTopBar: View {
     func measured(_ m: TabRowMetrics) {
         defer { debugStrip() }
         guard m != scroller.metrics else { return }
-        let resized = m.visible != scroller.metrics.visible || m.openWidth != scroller.metrics.openWidth
+        let change = m.change(from: scroller.metrics)
         scroller.metrics = m
         let kept = TabStripMath.clamp(scroller.scroll, visible: m.visible, content: m.content)
         if kept != scroller.scroll { scrollTo(kept, animated: false) }
         if let animated = scroller.pendingReveal {
             scroller.pendingReveal = nil
             reveal(animated: animated)
-        } else if resized {
+        } else if change == .resized {
             reveal(animated: false)
+        } else if change == .relaid {
+            // (The arrows came or went: see TabMeasureChange.relaid.)
+            reveal(animated: scroller.shownOnce)
         }
     }
 

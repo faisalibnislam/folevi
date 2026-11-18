@@ -28,7 +28,7 @@ struct HelpScreen: View {
 
     static let shortcuts: [(String, String)] = [
         ("Search or jump anywhere", "⌘ K"),
-        ("New document", "⌘ ⌥ N"),
+        newNoteShortcut,
         ("Quick add task", "⌘ ⇧ A"),
         ("Toggle sidebar", "⌘ \\"),
         ("Toggle inspector", "⌘ ⌥ I"),
@@ -47,6 +47,13 @@ struct HelpScreen: View {
         ("Soft line break", "⇧ Enter"),
         ("Undo / redo", "⌘ Z / ⌘ ⇧ Z"),
     ]
+
+    /// The Mac's own words and keys for a new note (File > New Note, ⌘N); the iPad keeps the web's.
+    #if os(macOS)
+    static let newNoteShortcut = ("New note", "⌘ N")
+    #else
+    static let newNoteShortcut = ("New document", "⌘ ⌥ N")
+    #endif
 
     static let statuses: [(String, String)] = [
         ("Saved", "Every change has been confirmed by the server."),
@@ -112,7 +119,10 @@ struct HelpScreen: View {
             if let r = text.range(of: address) { text[r].link = URL(string: "mailto:\(address)") }
         }
         return VStack(alignment: .leading, spacing: 0) {
+            // (On the Mac the card's bar already says "Help": the page starts at its first words.)
+            #if !os(macOS)
             Text("Help").webText(h2.text).lineLimit(1).foregroundStyle(h2.color.color)
+            #endif
             Text(text).webText(intro.text).foregroundStyle(intro.color.color)
                 .tint(link.color.color)
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -131,12 +141,18 @@ struct HelpScreen: View {
             WebPrettyText(account ? "A person on the Folevi team reads every request and replies by email. Replies show here too." : "A person on the Folevi team reads every email and replies.", style: p.text)
                 .foregroundStyle(p.color.color)
                 .padding(.top, p.margin.top)
+            #if os(macOS)
+            // The Mac's one prominent push button (a capsule at the app's control size), as in its dialogs.
+            WebButton(account ? "Contact support" : "Email support", variant: .primary) { open("mailto:support@folevi.com") }
+                .padding(.top, b.margin.top)
+            #else
             Button { open("mailto:support@folevi.com") } label: {
                 Text(account ? "Contact support" : "Email support").webText(b.text).lineLimit(1).fixedSize()
                     .webElement(button)
             }
             .buttonStyle(.webHover(radius: b.radius))
             .padding(.top, b.margin.top)
+            #endif
         }
     }
 

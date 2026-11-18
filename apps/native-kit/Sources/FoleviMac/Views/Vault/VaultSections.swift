@@ -129,6 +129,8 @@ struct VaultSelect: View {
     let selected: String
     /// As wide as its place (`w-full`), as the Add dialog's Kind.
     var fill = false
+    /// A height of its own (the Add dialog's Kind sits over the dialog's text fields and takes their height).
+    var height: CGFloat? = nil
     let onSelect: (String) -> Void
     @Environment(\.colorScheme) private var scheme
     private var capturedLabel: String { style == "vault.settings.select" ? "5 minutes" : "All kinds" }
@@ -142,7 +144,7 @@ struct VaultSelect: View {
                 WebIconView(.chevronDown, size: 14).opacity(0.6)
             }
             .padding(s.padding.edgeInsets)
-            .frame(height: s.height)
+            .frame(height: height ?? s.height)
             Group {
                 // The web's trigger is as wide as its label, chevron and padding: the captured width for that label.
                 if fill {

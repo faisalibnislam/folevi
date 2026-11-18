@@ -73,6 +73,11 @@ private struct DialogField: View {
                     .padding(6)
                     .frame(height: CGFloat(rows) * 18 + 16)
                     .webBox(box)
+            } else if mono, chrome != nil {
+                // The Mac's native look: the same system field as the plain ones beside it, its text in the fixed-width
+                // font. (It was a box of its own, 8 pt taller than Title and Username in the same dialog.)
+                TextField("", text: $text).textFieldStyle(.roundedBorder).font(WebFont.interface(chrome, .mono, size: 13))
+                    .focused($focused)
             } else if mono {
                 TextField("", text: $text).textFieldStyle(.plain).font(WebFont.interface(chrome, .mono, size: 13))
                     .focused($focused)
@@ -136,7 +141,7 @@ private struct ItemDialog: View {
                     if existing == nil {
                         VStack(alignment: .leading, spacing: 4) {
                             Text("Kind").webText(VS.style("vault.gate.label", scheme).text)
-                            VaultSelect(style: "vault.pw.kind", label: def?.label ?? "Login", options: kinds.map { ($0.kind, $0.label) }, selected: kind, fill: true) { kind = $0 }
+                            VaultSelect(style: "vault.pw.kind", label: def?.label ?? "Login", options: kinds.map { ($0.kind, $0.label) }, selected: kind, fill: true, height: MacLook.controlHeight) { kind = $0 }
                         }
                     }
                     DialogField(label: "Title", text: $title)
@@ -164,7 +169,7 @@ private struct ItemDialog: View {
             }
             // (The web's dialog grows to the window less its margins, `calc(100dvh - 76px)`: the header and footer
             // take about 130 of that.)
-            .frame(maxHeight: max(320, (NSApp.keyWindow?.contentView?.bounds.height ?? 820) - 76 - 130))
+            .frame(maxHeight: max(320, (model.windowHeight ?? 820) - 76 - 130))
             // (Only as tall as the fields: a scroll view takes all the height it's allowed otherwise.)
             .fixedSize(horizontal: false, vertical: true)
         } footer: {

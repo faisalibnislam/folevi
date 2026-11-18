@@ -127,6 +127,30 @@ struct TabStripTests {
         #expect(TabStripMath.reveal(left: lefts[n - 2], width: s.widths[n - 2], scroll: atEnd, visible: s.visible, content: s.content) == nil)
     }
 
+    /// The first time the tabs overflow, the arrows appear after the open tab was brought into view: the list then
+    /// grows by their room at the same width, and the strip must reveal again or the open tab stays under them.
+    @Test func theOpenTabClearsTheArrowsWhenTheyFirstAppear() {
+        let arrows: CGFloat = 44, visible: CGFloat = 756
+        // Nine tabs just past the room, measured before the arrows show: the open (last) tab ends 6 pt from the end.
+        var m = TabRowMetrics(visible: visible, content: 767, openLeft: 671, openWidth: 90)
+        let first = TabStripMath.reveal(left: m.openLeft, width: m.openWidth, scroll: 0, visible: visible, content: m.content, trailingInset: arrows) ?? 0
+        // As far as the list goes, and still under the arrows.
+        #expect(first == m.content - visible)
+        #expect(m.openLeft + m.openWidth - first > visible - arrows)
+        // The arrows' room joins the list: same width, longer content.
+        let old = m
+        m.content += arrows
+        #expect(m.change(from: old) == .relaid)
+        let second = TabStripMath.reveal(left: m.openLeft, width: m.openWidth, scroll: first, visible: visible, content: m.content, trailingInset: arrows)
+        #expect(second != nil)
+        #expect(m.openLeft + m.openWidth - (second ?? first) <= visible - arrows)
+        // A change of width is still the one answered at once, and no change asks for nothing.
+        var wider = m
+        wider.visible += 40
+        #expect(wider.change(from: m) == .resized)
+        #expect(m.change(from: m) == TabMeasureChange.none)
+    }
+
     @Test func aNarrowListLeavesLessRoomForTheSoftEdges() {
         // A list barely wider than the open tab: the room either side is half what's left, not 32.
         let to = TabStripMath.reveal(left: 400, width: 200, scroll: 0, visible: 240, content: 1000)

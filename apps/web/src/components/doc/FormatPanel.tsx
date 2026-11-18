@@ -55,6 +55,11 @@ import { useToast } from "@/components/ui/Toast";
  * the app's Inspector and the site's editable note both use it.
  */
 
+// The chosen tile of the desktop panel's choices (Text, Groups, Decorations): one look for all of them. Groups had
+// two others of its own (Page bold with no edge, Card filled black), its icon on a different side in each tile,
+// and tiles 4 px taller than the rows above and below.
+const CHOSEN_TILE = "bg-accent-soft font-semibold text-heading shadow-[inset_0_0_0_1.5px_color-mix(in_oklab,var(--color-accent)_35%,transparent)]";
+
 function Tile({ label, icon, onClick, disabled, pressed, tone = "ink" }: { label: string; icon: React.ReactNode; onClick: () => void; disabled?: boolean; pressed?: boolean; tone?: string }) {
   return (
     <button
@@ -313,11 +318,11 @@ export function FormatPanel({ editor, disabled }: { editor: Editor | null; disab
       <section>
         <h3 className="ui-caps mb-2 px-1">Groups</h3>
         <div className="grid grid-cols-2 gap-1.5" role="group" aria-label="Group">
-          <button type="button" disabled={blockOff} aria-pressed={fmt.group !== "card"} onMouseDown={(e) => e.preventDefault()} onClick={() => setBlockFormat(editor, { group: null })} className={`flex h-11 items-center justify-center gap-2 rounded-chip text-body disabled:opacity-40 ${fmt.group !== "card" ? "bg-accent-soft font-semibold text-heading" : "bg-sunken/80 text-ink hover:bg-accent-soft/70"}`}>
+          <button type="button" disabled={blockOff} aria-pressed={fmt.group !== "card"} onMouseDown={(e) => e.preventDefault()} onClick={() => setBlockFormat(editor, { group: null })} className={`flex h-10 items-center justify-center gap-2 rounded-chip text-body disabled:opacity-40 ${fmt.group !== "card" ? CHOSEN_TILE : "bg-sunken/80 text-ink hover:bg-accent-soft/70"}`}>
             <FileText size={15} aria-hidden /> Page
           </button>
-          <button type="button" disabled={blockOff} aria-pressed={fmt.group === "card"} onMouseDown={(e) => e.preventDefault()} onClick={() => setBlockFormat(editor, { group: fmt.group === "card" ? null : "card" })} className={`flex h-11 items-center justify-center gap-2 rounded-chip text-body disabled:opacity-40 ${fmt.group === "card" ? "bg-heading font-semibold text-canvas" : "bg-sunken/80 text-ink hover:bg-accent-soft/70"}`}>
-            Card <PanelTop size={15} aria-hidden />
+          <button type="button" disabled={blockOff} aria-pressed={fmt.group === "card"} onMouseDown={(e) => e.preventDefault()} onClick={() => setBlockFormat(editor, { group: fmt.group === "card" ? null : "card" })} className={`flex h-10 items-center justify-center gap-2 rounded-chip text-body disabled:opacity-40 ${fmt.group === "card" ? CHOSEN_TILE : "bg-sunken/80 text-ink hover:bg-accent-soft/70"}`}>
+            <PanelTop size={15} aria-hidden /> Card
           </button>
         </div>
         {blockOff && !disabled ? <p className="mt-1.5 px-1 text-footnote text-muted">{BLOCK_OFF_HINT}</p> : null}

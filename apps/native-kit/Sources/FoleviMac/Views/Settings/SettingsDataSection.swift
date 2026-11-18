@@ -40,7 +40,9 @@ struct DataSettings: View {
                         SButton(importing ? "Importing…" : "Choose files…", icon: .upload, iconSize: 14) { pick(folder: false) }.disabled(importing)
                         SButton("Import a folder…", icon: .folderUp, iconSize: 14) { pick(folder: true) }.disabled(importing)
                     }
-                    Group { if progress.isEmpty { Color.clear.frame(height: 0) } else { SText(progress, "progress") } }.padding(.top, SettingsStyle.pair("progress").light.margin.top)
+                    // (Only while there is progress to show: its room under the buttons made this card's bottom
+                    // padding larger than its top and than the other cards'.)
+                    if !progress.isEmpty { SText(progress, "progress").padding(.top, SettingsStyle.pair("progress").light.margin.top) }
                     if !results.isEmpty { resultList.padding(.top, 12) }
                 }
             }

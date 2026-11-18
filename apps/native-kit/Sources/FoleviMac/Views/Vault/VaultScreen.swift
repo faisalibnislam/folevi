@@ -57,6 +57,9 @@ struct VaultScreen: View {
             .uiInvert()
             .onChange(of: model.dialog?.id) { _, id in
                 guard id != nil, let dialog = model.dialog else { return FrameSheets.dismiss(frame, notify: false) }
+                #if os(macOS)
+                model.windowHeight = FrameSheets.window(for: frame)?.contentView?.bounds.height
+                #endif
                 FrameSheets.present(frame, onClose: { [model] in model.dialog = nil }) { _ in
                     VaultDialogHost(model: model, dialog: dialog)
                 }

@@ -173,6 +173,24 @@ struct TabRowMetrics: Equatable {
     var openWidth: CGFloat = 0
 }
 
+/// What changed between two measures of the list, for the strip to decide whether to bring the open tab back in view.
+enum TabMeasureChange: Equatable {
+    case none
+    /// The list's width or the open tab's width changed (the window, the sidebar, a title typed or loaded): at once.
+    case resized
+    /// The list got longer or shorter at the same width: the Mac's arrows came or went (their room is kept after the
+    /// last tab, so the list's own width never changes). The reveal made before the arrows showed stopped at the old
+    /// end, which left the open tab under them the first time the tabs overflowed (2026-11-18).
+    case relaid
+}
+
+extension TabRowMetrics {
+    func change(from old: TabRowMetrics) -> TabMeasureChange {
+        if visible != old.visible || openWidth != old.openWidth { return .resized }
+        return content != old.content ? .relaid : .none
+    }
+}
+
 /// The list's scroll and what it last measured. A class, so the layout's reports and the delayed reveal change the
 /// one the strip draws from, never a copy of the view.
 @MainActor @Observable

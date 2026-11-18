@@ -104,7 +104,44 @@ What is native, what could be, and what can't: `docs/MAC_NATIVE_CHECKLIST.md`.
 SidebarRow, SidebarHeading, SidePanel, FormGroup, FormRow, EdgeFade). Use them; don't restate a number. Add a
 component there when a second caller needs it.
 
+## The note page (the one web part) follows the same rules
+
+The note, its bar and its panels (Foli AI, Insert, Format, Style) are the web page inside the card; everything else
+is native. Rules added in the 2026-11-18 audit (the owner: "text pushing too far left to the hover", "spacing is
+uneven"):
+
+- **A hover never touches its words.** A full-width row's words and its swatch sit at least 8 px inside the row's
+  hover fill, and still line up with the section's heading: the hover reaches past the words (`-mx-1 px-2`), the
+  words don't move in. A control that is only an icon keeps 3 px.
+- **One row, one rhythm.** The Style panel's rows (the theme, Blur background, Document colour, Text colour) are one
+  shared row (`STYLE_ROW_BOX` in `Inspector.tsx`), 36 px, the height of the segmented controls under them, so every
+  section is the same distance from the next heading.
+- **One look for the chosen tile** in the Format panel (`CHOSEN_TILE`): Text, Groups and Decorations alike, the icon
+  before the words.
+- **The panel sits beside the note** whenever the note keeps a writable width. The page's own width decides
+  (`narrowWindowQuery` in `panelLayout.ts`: the Mac's page is the card, without the web's sidebar), so a 1280 pt
+  window docks it; only a small window lays it over the note.
+- **Push buttons in the page are capsules** (a dialog's Done, "Use your own image…"), as the native dialogs' are.
+- **Fields in one dialog are one height**: a secret or one-time-code field is the same system field as the plain
+  ones, in the fixed-width font.
+
 ## Checks before calling a part done
+
+Real pictures and two automatic checks (2026-11-18):
+
+- `node apps/mac/scripts/screens.mjs --look [--only note,help]`: every screen of the native frame in light and dark
+  as real window captures (`screencapture -l`, so glass, materials and shadows show), into
+  `apps/mac/screens-report/look`. A popover, menu or second window open over the screen is its own picture.
+- `node apps/mac/scripts/look.mjs shot|windows|hover <user-data> ...`: one capture of the running Debug app, its
+  windows, or the pointer over a point of it. A system menu (`NSMenu`) holds the app until it closes: picture it
+  from outside, then send Escape.
+- `node apps/mac/scripts/mac.mjs eval @apps/mac/scripts/hover-lint.js`: the controls of the page on screen whose
+  words or icon sit against the edge of their own hover fill. It must answer `[]` with each panel of a note open.
+- `node apps/mac/scripts/mac.mjs eval @apps/mac/scripts/font-lint.js`: interface text of the page that isn't in the
+  system font. It must answer `[]` too (the note's own text and theme previews aren't counted).
+- `apps/web/test/note-panels-polish.test.ts` and `TabStripTests.theOpenTabClearsTheArrowsWhenTheyFirstAppear` hold
+  the same rules in CI.
+
 
 Build with no new warnings; unit tests pass (update tests that encoded the old web-matched chrome and say which);
 screenshots of every affected screen in light and dark from the Debug app on the scratch library

@@ -871,7 +871,11 @@
    own fonts (--editor-font, --note-*). Small headings are sentence case, as on the Mac. */
 :root[data-mac-native] { --font-sans: -apple-system, BlinkMacSystemFont, system-ui, sans-serif; }
 :root[data-mac-native] .ui-caps { font-size: var(--type-caption-2); line-height: var(--type-caption-2-leading); font-weight: 600; letter-spacing: 0; text-transform: none; color: var(--color-ink-muted); }
-:root[data-mac-native] aside[aria-label="Page tools"] .ui-display { font-family: var(--font-sans); letter-spacing: 0; font-size: var(--type-headline); }
+/* (#document-inspector: the same tools in a small window, where they open over the note; their title was still Spectral there.) */
+:root[data-mac-native] :is(aside[aria-label="Page tools"], #document-inspector) .ui-display { font-family: var(--font-sans); letter-spacing: 0; font-size: var(--type-headline); }
+/* Push buttons in the page (a dialog's Done and Cancel, "Use your own image…"): the Mac's one shape for a push
+   button, a capsule, as its native dialogs draw them (docs/MAC_NATIVE_LOOK.md, Controls). */
+:root[data-mac-native] :is(.ui-btn-primary, .ui-btn-secondary, .ui-btn-danger) { border-radius: var(--radius-capsule); }
 /* The page tools' open tool is a quiet raised segment, not a second black button beside the bar's New note. */
 :root[data-mac-native] [role="toolbar"][aria-label="Page tools"] button[aria-pressed="true"] {
   background: color-mix(in srgb, var(--color-ink) 10%, transparent); color: var(--color-heading);

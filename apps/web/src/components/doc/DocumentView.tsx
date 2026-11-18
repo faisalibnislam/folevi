@@ -127,7 +127,7 @@ import { useLockMenuItem } from "@/components/e2ee/LockDialog";
 import { usePrimaryPane } from "@/lib/app/panes";
 import { noteFolderIdOf, shareIndicatorLabel, shareIndicatorOf } from "./noteStatus";
 import { TrashBanner } from "./TrashBanner";
-import { PANEL_DEFAULT, PANEL_MAX, PANEL_MIN, clampPanelWidth, toolsPanelOverlays } from "./panelLayout";
+import { PANEL_DEFAULT, PANEL_MAX, PANEL_MIN, clampPanelWidth, narrowWindowQuery, toolsPanelOverlays } from "./panelLayout";
 import { useElementWidth } from "@/lib/hooks/useElementWidth";
 
 // Only a collection's row pages have properties; the collection code loads for those alone.
@@ -228,7 +228,7 @@ export function DocumentView({ documentId }: { documentId: string }) {
     setInspectorOpen(true);
   }, [wantsRelated, canRelate, documentId, setInspectorTab, setInspectorOpen]);
   const [panelWidth, setPanelWidth] = useLocalStorage<number>("folevi:inspector-width", PANEL_DEFAULT);
-  const narrowWindow = useMediaQuery("(max-width: 1199px)");
+  const narrowWindow = useMediaQuery(narrowWindowQuery(macNativeFrame));
   // The note and its tools panel side by side: the panel slides over the note when the note would get too
   // narrow to write in beside it (a joined note, a narrow window; QA audit F02).
   const [noteRow, setNoteRow] = useState<HTMLDivElement | null>(null);

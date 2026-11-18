@@ -476,13 +476,18 @@ struct FolderPickerView: View {
         let s = style.resolve(scheme)
         let searching = !query.trimmingCharacters(in: .whitespaces).isEmpty
         return HStack(spacing: s.gap) {
-            if o.isNew {
-                WebIconView(.folderPlus, size: 15).foregroundStyle(moreVar("color-ink-muted", scheme))
-            } else if o.id != nil {
-                FolderGlyph(colorId: o.color, size: 17)
-            } else {
-                WebIconView(topLevel ? .cornerLeftUp : .inbox, size: 15).foregroundStyle(moreVar("color-ink-muted", scheme))
+            // One column for the row's mark, whatever it is (a folder's glyph is narrower than an icon), so every
+            // row's name starts on the same line: "Top level" sat 3 pt right of the folders' names.
+            Group {
+                if o.isNew {
+                    WebIconView(.folderPlus, size: 15).foregroundStyle(moreVar("color-ink-muted", scheme))
+                } else if o.id != nil {
+                    FolderGlyph(colorId: o.color, size: 17)
+                } else {
+                    WebIconView(topLevel ? .cornerLeftUp : .inbox, size: 15).foregroundStyle(moreVar("color-ink-muted", scheme))
+                }
             }
+            .frame(width: 17, alignment: .center)
             (Text(verbatim: o.name) + (searching && o.path != nil && !o.isNew ? Text(verbatim: "  in \(o.path!)").font(WebFont.interface(chrome, size: 12)).foregroundColor(moreVar("color-ink-faint", scheme)) : Text(verbatim: "")))
                 .webText(s.text).lineLimit(1)
                 .frame(maxWidth: .infinity, alignment: .leading)

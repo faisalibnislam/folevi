@@ -14,6 +14,10 @@ import AppKit
 @MainActor
 @Observable
 public final class VaultModel {
+    /// The height of the window the Vault's dialogs open over (the Mac sets it as one is presented): a dialog grows to
+    /// it less its margins. It was read from the app's key window, which isn't this window while the app is behind
+    /// another or Settings is open: the Add dialog then cut its Notes field off.
+    public var windowHeight: CGFloat?
     public let client: EngineClient
     public let feedback: ScreenFeedback
     public let summary: ValueStore<VaultSummaryValue>

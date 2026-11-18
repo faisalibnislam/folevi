@@ -19,7 +19,6 @@
 // Other packages add commands through MacEval.commands (WM2: "menu", WM1: "places").
 #if DEBUG
 import AppKit
-import CoreImage
 import FoleviDesign
 import FoleviMac
 import WebKit
@@ -69,62 +68,17 @@ enum MacEval {
     /// The window's content at 2x in sRGB, drawn by the app itself (no screen capture: capturing other windows goes
     /// through WindowServer's privacy checks, and many captures at once hung WindowServer, docs/MAC_SCREEN_PLAYBOOK.md).
     /// AppKit draws the native views; the page, a GPU layer cacheDisplay can't read, is its own snapshot drawn where
-    /// it sits; then whatever lies above the page (the glass bar over a note) is drawn again over it, in view order.
+    /// it sits. (The window's material and the top bar's Liquid Glass are drawn by the window server, not by the
+    /// views: a real screen capture shows them, this doesn't.)
     static func windowShot(content: NSView, page: FoleviWebView, path: String, done: @escaping ([String: Any]) -> Void) {
-        // The glass bar blurs what's under it live (a layer background filter), which caching the views doesn't draw:
-        // the shot is taken without the bar, the same filters are applied to what's under it, then the bar on top.
-        let glasses = Self.descendants(content).compactMap { $0 as? GlassBackdrop }.filter { !$0.isHidden && $0.window != nil }
-        let bars = glasses.flatMap { g in (g.superview?.subviews ?? []).drop { $0 !== g }.dropFirst().filter { !$0.isHidden && $0.frame.intersects(g.frame) } }
-        // Each bar as drawn now, before it's taken out of the shot.
-        let drawnBars: [(NSView, NSBitmapImageRep)] = bars.compactMap { bar in
-            guard let over = bitmap(bar.bounds.size) else { return nil }
-            bar.cacheDisplay(in: bar.bounds, to: over)
-            return (bar, over)
-        }
-        bars.forEach { $0.alphaValue = 0 }
         // The Tab Overview covers the page: the shot leaves the page out under it (caching the views can't draw the
         // overview over the page's snapshot), then draws the tabs' pictures (web views of their own) where they show.
         let overview = Self.descendants(content).first { String(describing: type(of: $0)).contains("TabOverviewHost") && !$0.isHidden && $0.window != nil && $0.subviews.count + 1 > 0 && $0.fittingSize.height > 1 }
         if overview != nil { page.isHidden = true }
         let pictures = Self.descendants(content).compactMap { $0 as? WKWebView }.filter { $0 !== page && $0.window != nil && !$0.bounds.isEmpty && Self.showing($0, in: content) }
         compose(content: content, page: page) { rep in
-            bars.forEach { $0.alphaValue = 1 }
             if overview != nil { page.isHidden = false }
             guard var rep else { return done(["error": "no bitmap"]) }
-            let size = content.bounds.size
-            // A new picture: the shot, what's under each bar blurred, then the bars.
-            if !glasses.isEmpty, let whole = rep.cgImage, let out = bitmap(size), let ctx = NSGraphicsContext(bitmapImageRep: out) {
-                NSGraphicsContext.saveGraphicsState()
-                NSGraphicsContext.current = ctx
-                ctx.cgContext.draw(whole, in: CGRect(origin: .zero, size: size))
-                for g in glasses {
-                    let r = g.convert(g.bounds, to: content)
-                    let drawn = content.isFlipped ? CGRect(x: r.minX, y: size.height - r.maxY, width: r.width, height: r.height) : r
-                    // In the bitmap's pixels (2x), from the top.
-                    let px = CGRect(x: r.minX * 2, y: (content.isFlipped ? r.minY : size.height - r.maxY) * 2, width: r.width * 2, height: r.height * 2)
-                    var image = CIImage(cgImage: whole).clampedToExtent()
-                    for f in GlassBackdrop.filters() {
-                        if f.name == "CIGaussianBlur" { f.setValue(60, forKey: kCIInputRadiusKey) }
-                        f.setValue(image, forKey: kCIInputImageKey)
-                        image = f.outputImage ?? image
-                    }
-                    let flippedPx = CGRect(x: px.minX, y: CGFloat(whole.height) - px.maxY, width: px.width, height: px.height)
-                    guard let blurred = CIContext().createCGImage(image, from: flippedPx) else { continue }
-                    NSBezierPath(roundedRect: drawn, xRadius: g.layer?.cornerRadius ?? 0, yRadius: g.layer?.cornerRadius ?? 0).addClip()
-                    NSImage(cgImage: blurred, size: drawn.size).draw(in: drawn)
-                    NSGraphicsContext.restoreGraphicsState()
-                    NSGraphicsContext.saveGraphicsState()
-                    NSGraphicsContext.current = ctx
-                }
-                for (bar, over) in drawnBars {
-                    let r = bar.convert(bar.bounds, to: content)
-                    let drawn = content.isFlipped ? CGRect(x: r.minX, y: size.height - r.maxY, width: r.width, height: r.height) : r
-                    over.draw(in: drawn, from: .zero, operation: .sourceOver, fraction: 1, respectFlipped: false, hints: nil)
-                }
-                ctx.flushGraphics()
-                NSGraphicsContext.restoreGraphicsState()
-                rep = out
-            }
             // Folevi's tooltip is a panel of its own over the window: drawn in where it shows.
             if let tip = FoleviTooltipCenter.shared.shownWindow, tip.parent === content.window, let view = tip.contentView, let over = bitmap(view.bounds.size),
                let window = content.window, let out = bitmap(content.bounds.size), let ctx = NSGraphicsContext(bitmapImageRep: out), let whole = rep.cgImage {

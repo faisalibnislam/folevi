@@ -191,6 +191,16 @@ public final class FrameModel {
     public func toggleSidebar() {
         if sidebarFloats { sidebarOverlayShown.toggle() } else { sidebarCollapsed.toggle() }
     }
+
+    #if os(macOS)
+    /// The Mac's sidebar is always shown (docs/MAC_NATIVE_LOOK.md); only Focus mode on a note hides it.
+    public var sidebarHidden: Bool { sidebarCollapsed || (route.isNote && focusMode) }
+    /// The note's tools (its outline, comments, tasks, attachments, Find) in the inspector on the card's right.
+    /// The top bar's Note Tools button shows or hides them; the frame keeps the choice.
+    public var noteToolsShown = true
+    /// Asks the top bar's search field for the keyboard (⌘K, Edit > Search All Notes): each ask counts up.
+    public var barSearchFocus = 0
+    #endif
     /// This Mac's Touch ID for its encryption keys (the app sets it from E2eeKeys; nil in tests and the demo).
     public var touchId: TouchIdHook?
     #if DEBUG

@@ -1,4 +1,5 @@
-// The Mac sidebar drawn as the web app's (apps/web/src/components/app/Sidebar.tsx, as Folevi for Mac shows it),
+// The sidebar. On the Mac, the native look (WebSidebar+Mac.swift, docs/MAC_NATIVE_LOOK.md): compact rows on the
+// window's translucent material. On the iPad, drawn as the web app's (apps/web/src/components/app/Sidebar.tsx),
 // from the live app's computed styles (FoleviDesign WebStyles "frame.sidebar.*", pnpm styles:gen --app):
 //
 //   the top bar (52 pt: the window buttons' room, sync status, notifications), the "Search or jump to…" well,
@@ -35,31 +36,31 @@ public struct WebSidebar: View {
     #else
     private let active = ControlActiveStateShim.key
     #endif
-    @AppStorage("folevi.sidebar.starredOpen") private var starredOpen = true
-    @AppStorage("folevi.sidebar.section.folders") private var foldersOpen = true
-    @AppStorage("folevi.sidebar.section.tags") private var tagsOpen = false
+    @AppStorage("folevi.sidebar.starredOpen") var starredOpen = true
+    @AppStorage("folevi.sidebar.section.folders") var foldersOpen = true
+    @AppStorage("folevi.sidebar.section.tags") var tagsOpen = false
     /// On a note: the note's own tools ("document", the web's default) or the folders (`folevi:doc-sidebar-mode`).
-    @AppStorage("folevi.sidebar.docMode") private var docMode = "document"
+    @AppStorage("folevi.sidebar.docMode") var docMode = "document"
     /// The folders closed in the sidebar (every folder starts open; lib/app/folders.ts useOpenFolders keeps the
     /// closed ones, `folevi:sidebar-folders-closed`).
-    @AppStorage("folevi.sidebar-folders-closed") private var closedFolders = ""
+    @AppStorage("folevi.sidebar-folders-closed") var closedFolders = ""
     /// The sidebar's own folder order (Manual, Name or Recent; Sidebar.tsx `folevi:sidebar-folders-sort`).
-    @AppStorage("folevi.sidebar.folders-sort") private var folderSortRaw = SidebarFolderSort.manual.rawValue
+    @AppStorage("folevi.sidebar.folders-sort") var folderSortRaw = SidebarFolderSort.manual.rawValue
     /// Every top-level folder listed, after Show more (`folevi:sidebar-folders-all`).
-    @AppStorage("folevi.sidebar.folders-all") private var allFoldersShown = false
+    @AppStorage("folevi.sidebar.folders-all") var allFoldersShown = false
     /// Each folder's last change, for Recent (watched only while the sidebar is sorted by it).
-    @State private var folderChanges: ValueStore<FolderCardsValue>?
+    @State var folderChanges: ValueStore<FolderCardsValue>?
     /// The list goes on under the account button (MAC-64).
-    @State private var moreBelow = false
+    @State var moreBelow = false
     /// The account row, for the account menu's place (on the Mac it opens 8 pt above it: MAC-38).
-    @State private var accountAnchor: NSView?
+    @State var accountAnchor: NSView?
     /// The folder row a dragged note or folder is over, and where on it (a folder: the line above, inside, the line
     /// below), on the iPad and the Mac alike.
-    @State private var dropTarget: String?
-    @State private var dropZone: FolderRules.Zone?
-    @State private var spring = SpringLoader()
+    @State var dropTarget: String?
+    @State var dropZone: FolderRules.Zone?
+    @State var spring = SpringLoader()
     /// `dropTarget` while a folder is over the Folders heading.
-    private static let topLevel = "@top"
+    static let topLevel = "@top"
 
     /// The first few starred notes, folders and tags; the rest are a click away on their own pages.
     static let limit = 5
@@ -73,8 +74,17 @@ public struct WebSidebar: View {
     private func style(_ id: String) -> WebComputedStyle { WebStyles.named("frame.sidebar.\(id)").resolve(scheme) }
 
     public var body: some View {
+        #if os(macOS)
+        macBody
+        #else
+        webBody
+        #endif
+    }
+
+    /// The web's sidebar (the iPad's).
+    var webBody: some View {
         let list = style("list")
-        VStack(alignment: .leading, spacing: 0) {
+        return VStack(alignment: .leading, spacing: 0) {
             topBar
             search
                 .padding(.horizontal, list.padding.left)
@@ -281,7 +291,7 @@ public struct WebSidebar: View {
 
     /// The page's own row (a place's every view: Tasks on any of its lists, the Calendar on any day, Foli AI, Settings
     /// and the Vault on any section, as Sidebar.tsx isActive).
-    private func isSelected(_ route: FrameRoute) -> Bool {
+    func isSelected(_ route: FrameRoute) -> Bool {
         model.route == route || (!route.isNote && model.route.tabKey == route.tabKey)
     }
 
@@ -343,7 +353,7 @@ public struct WebSidebar: View {
     }
 
     /// The folders as the sidebar lists them: its own order, then sorted by the sort chosen.
-    private var shownFolders: [FolderNode] {
+    var shownFolders: [FolderNode] {
         let sort = SidebarFolderSort(rawValue: folderSortRaw) ?? .manual
         var changed: [String: Double] = [:]
         for c in folderChanges?.value?.folders ?? [] { changed[c.id] = c.updatedAt }
@@ -351,7 +361,7 @@ public struct WebSidebar: View {
     }
 
     /// The top-level folder the open folder is in (or is), kept listed when the rest are folded away.
-    private func activeRootId(_ all: [FolderNode]) -> String? {
+    func activeRootId(_ all: [FolderNode]) -> String? {
         guard case .folder(let id) = model.route else { return nil }
         var cur = all.first { $0.id == id }
         var guardCount = 0
@@ -442,7 +452,7 @@ public struct WebSidebar: View {
     /// moves in the sidebar's own order (sorted by Name or Recent, the order shown becomes it, and the sort Manual);
     /// onto a folder, or between rows of another level, it really moves there too, last by rank among its new
     /// siblings (SidebarFolderSort.planDrop, the web's Sidebar.tsx). One Undo puts it all back.
-    private func dropFolder(_ dragged: FolderDragItem, on target: String?, zone: FolderRules.Zone, shown all: [FolderNode], sort: SidebarFolderSort) {
+    func dropFolder(_ dragged: FolderDragItem, on target: String?, zone: FolderRules.Zone, shown all: [FolderNode], sort: SidebarFolderSort) {
         guard canEdit else { return }
         let rank = model.folders.value?.folders ?? []
         let order = model.folders.value?.sidebarOrder
@@ -478,7 +488,7 @@ public struct WebSidebar: View {
     }
 
     /// The folder on screen and the folders it's in (Sidebar.tsx folderAncestors), open whatever was closed.
-    private func activePath(_ all: [FolderNode]) -> Set<String> {
+    func activePath(_ all: [FolderNode]) -> Set<String> {
         guard case .folder(let id) = model.route else { return [] }
         var out: Set<String> = []
         var p = all.first { $0.id == id }?.parentId
@@ -492,19 +502,19 @@ public struct WebSidebar: View {
     }
 
     /// A folder's menu (the web's FolderMenu, WebFolderMenu.swift): its "…" button and its right click.
-    private func folderMenu(_ f: FolderNode) -> [WebMenuEntry] {
+    func folderMenu(_ f: FolderNode) -> [WebMenuEntry] {
         WebFolderMenu.entries(MenuFolder(f), context: WebFolderMenu.context(model, locks: nil), frame: model)
     }
 
     // MARK: tags
 
-    private var canEdit: Bool {
+    var canEdit: Bool {
         guard let s = model.session.value else { return true }
         return s.spaces.first { $0.id == s.space }?.canEdit ?? true
     }
 
     /// The web's TagMenu: Edit tag…, the other colours, Delete tag….
-    private func tagMenu(_ t: TagRow) -> [WebMenuEntry] {
+    func tagMenu(_ t: TagRow) -> [WebMenuEntry] {
         var out = [WebMenuEntry(.item("Edit tag…")) { FrameDialogs.editTag(model, id: t.id, name: t.name, color: t.color) }]
         for c in Self.tagColors where c.id != t.color {
             out.append(WebMenuEntry(.item("Color: \(c.label)", swatch: Self.tagColor(c.id), id: "color:\(c.id)")) {
@@ -662,7 +672,7 @@ public struct WebSidebar: View {
     /// What the account button shows (WorkspaceMenu.tsx): in a team workspace its logo (or initial), its name and
     /// you under it; in Personal your picture (or initial), you and "Personal"; in the library your picture and "On
     /// your devices". The picture is the profile's signed avatarUrl, so a new photo comes with the next session.
-    private func accountFoot(_ name: String) -> (markName: String, markUrl: String?, title: String, detail: String) {
+    func accountFoot(_ name: String) -> (markName: String, markUrl: String?, title: String, detail: String) {
         guard let s = model.session.value else { return (name, nil, name, "") }
         if s.mode == .local { return (name, s.profile.avatarUrl, name, "On your devices") }
         if let space = s.spaces.first(where: { $0.id == s.space }), space.kind == .workspace {
@@ -820,12 +830,15 @@ struct DisclosureChevron: View {
     }
 }
 /// Foli DNA's saved views in the sidebar, under Foli DNA (the `graph.views` view, small: it doesn't load the map).
-private struct DnaSidebarViews: View {
+struct DnaSidebarViews: View {
     @State private var store: ValueStore<GraphViewsValue>
     let row: (GraphSavedView) -> AnyView
+    /// The rows' indent under Foli DNA (the Mac's rows indent themselves).
+    var indent: CGFloat = 20
 
-    init(model: FrameModel, row: @escaping (GraphSavedView) -> AnyView) {
+    init(model: FrameModel, indent: CGFloat = 20, row: @escaping (GraphSavedView) -> AnyView) {
         _store = State(initialValue: model.client.watch(.graphViews()))
+        self.indent = indent
         self.row = row
     }
 
@@ -835,7 +848,7 @@ private struct DnaSidebarViews: View {
             VStack(alignment: .leading, spacing: 2) {
                 ForEach(views.prefix(WebSidebar.limit), id: \.id) { v in row(v) }
             }
-            .padding(.leading, 20)
+            .padding(.leading, indent)
         }
     }
 }

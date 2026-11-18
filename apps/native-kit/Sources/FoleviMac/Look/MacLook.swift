@@ -25,6 +25,9 @@ public enum MacLook {
     public static let sidebarInset: CGFloat = 12
     /// The smallest window: sidebar, a usable card, and the top bar's essential controls without clipping.
     public static let minWindowSize = CGSize(width: 820, height: 520)
+    /// The strip above the card while the sidebar is hidden (Focus mode): the traffic lights' room, and where the
+    /// window is dragged from (the guide's no-sidebar profile).
+    public static let titlebarStrip: CGFloat = 28
 
     // MARK: Top bar (drawn inside the card, first thing in it)
 
@@ -57,6 +60,9 @@ public enum MacLook {
     /// The gutter between the card's content and a side panel, and the panel's inset from the card's edges.
     public static let panelGutter: CGFloat = 10
     public static let inspectorWidth: CGFloat = 272
+    /// The least room the content keeps beside the inspector: in a narrower card the inspector steps aside until
+    /// the window is wider again (the page never runs under it).
+    public static let inspectorMinContent: CGFloat = 440
 
     /// A horizontal overflow fade at a scroll view's edge (only while content continues past that edge).
     public static let edgeFadeWidth: CGFloat = 20

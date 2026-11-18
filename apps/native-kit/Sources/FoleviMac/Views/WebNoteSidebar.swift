@@ -1,4 +1,6 @@
-// The note page's own sidebar, drawn as the web's (apps/web/src/components/doc/DocumentSidebar.tsx and
+// The note page's own tools. On the Mac they're the card's inspector in the native look (NoteInspector.swift: a flat
+// side panel at the card's right, its sections in a capsule track, the system font); on the iPad the note's own
+// sidebar, drawn as the web's (apps/web/src/components/doc/DocumentSidebar.tsx and
 // Outline.tsx, as Folevi for Mac shows them), from the live app's computed styles (FoleviDesign WebStyles
 // "notetools.*", packages/design-tokens/match/app-styles/notetools.json):
 //
@@ -42,6 +44,17 @@ enum NoteToolTab: String, CaseIterable, Identifiable {
         case .tasks: .circleCheck
         case .attachments: .paperclip
         case .find: .search
+        }
+    }
+
+    /// The Mac's SF Symbol for the tab.
+    var symbol: String {
+        switch self {
+        case .contents: "list.bullet.indent"
+        case .comments: "bubble.left"
+        case .tasks: "checkmark.circle"
+        case .attachments: "paperclip"
+        case .find: "magnifyingglass"
         }
     }
 }
@@ -98,7 +111,13 @@ struct WebNoteSidebar: View {
     private func style(_ id: String) -> WebComputedStyle { WebStyles.named("notetools.\(id)").resolve(scheme) }
     private func pair(_ id: String) -> WebStylePair { WebStyles.named("notetools.\(id)") }
     /// A CSS colour variable of the web app, in this appearance.
-    private func v(_ name: String, _ fallback: Color = .clear) -> Color { WebStyles.vars[name]?.resolve(scheme).color ?? fallback }
+    private func v(_ name: String, _ fallback: Color = .clear) -> Color {
+        #if os(macOS)
+        // The native look: the system's semantic colours for the web's palette.
+        if let c = NoteToolsLook.color(name) { return c }
+        #endif
+        return WebStyles.vars[name]?.resolve(scheme).color ?? fallback
+    }
     /// An unchecked task's outline, as the web draws it (muted ink mixed into the strong line; QA audit F10).
     private var checkboxEdge: Color {
         guard let muted = WebStyles.vars["color-ink-muted"]?.resolve(scheme), let line = WebStyles.vars["color-line-strong"]?.resolve(scheme) else { return Folevi.color.checkboxEdge }
@@ -110,9 +129,10 @@ struct WebNoteSidebar: View {
             card
             if let pages = tools?.pages, !pages.isEmpty { pageTree(pages) }
             tabs
+            // (The tabs stay put; the panel scrolls under them.)
             ScrollView(.vertical) {
                 panel
-                    .padding(style("panel").padding.edgeInsets)
+                    .padding(panelPadding)
                     .frame(maxWidth: .infinity, alignment: .topLeading)
             }
             .scrollIndicators(.never)
@@ -120,6 +140,14 @@ struct WebNoteSidebar: View {
         }
         .onChange(of: tools?.outline.map(\.id)) { _, _ in refind() }
         .onChange(of: tools?.tasks.map(\.text)) { _, _ in refind() }
+    }
+
+    private var panelPadding: EdgeInsets {
+        #if os(macOS)
+        EdgeInsets(top: MacLook.Space.s, leading: MacLook.Space.m, bottom: MacLook.Space.l, trailing: MacLook.Space.m)
+        #else
+        style("panel").padding.edgeInsets
+        #endif
     }
 
     private func refind() {
@@ -133,6 +161,20 @@ struct WebNoteSidebar: View {
         let c = pair("card")
         let title = style("card.title")
         let name = (tools?.title).flatMap { $0.isEmpty ? nil : $0 } ?? model.activeNote.map { $0.title.isEmpty ? "Untitled" : $0.title } ?? "Untitled"
+        #if os(macOS)
+        // The inspector's heading: the note's name and where it lives.
+        _ = (wrap, c, title)
+        return VStack(alignment: .leading, spacing: 2) {
+            MacTruncatingText(text: name, font: MacLook.Text.headline)
+                .foregroundStyle(MacLook.Colors.label)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            crumbs
+        }
+        .padding(.horizontal, MacLook.Space.l)
+        .padding(.top, MacLook.Space.m)
+        .padding(.bottom, MacLook.Space.s)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        #else
         return VStack(alignment: .leading, spacing: 0) {
             // The whole name in a tooltip only when it's cut off.
             TruncatingLabel(text: name, style: title.text).foregroundStyle(title.color.color)
@@ -143,6 +185,7 @@ struct WebNoteSidebar: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .webBox(c)
         .padding(wrap.padding.edgeInsets)
+        #endif
     }
 
     private var trail: [NoteToolsCrumb] { Self.trail(tools: tools?.trail, meta: model.activeNote) }
@@ -167,12 +210,12 @@ struct WebNoteSidebar: View {
             ForEach(Array(trail.enumerated()), id: \.offset) { i, c in
                 HStack(spacing: 2) {
                     if i == 0 {
-                        Text("In").webText(inStyle.text).lineLimit(1).foregroundStyle(inStyle.color.color)
+                        Text("In").toolText(inStyle.text).lineLimit(1).foregroundStyle(inStyle.color.color)
                     } else {
                         WebIconView(.chevronRight, size: 11).frame(width: 11, height: 11).foregroundStyle(chevron.color.color)
                     }
                     Button { model.open(FrameRoute(path: c.href), .replace) } label: {
-                        Text(c.label).webText(link.text).lineLimit(1).truncationMode(.tail)
+                        Text(c.label).toolText(link.text).lineLimit(1).truncationMode(.tail)
                             .padding(link.padding.edgeInsets)
                             .frame(maxWidth: 152, minHeight: link.height, alignment: .leading)
                             .fixedSize()
@@ -190,7 +233,7 @@ struct WebNoteSidebar: View {
 
     private func pageTree(_ pages: [NoteToolsPage]) -> some View {
         VStack(alignment: .leading, spacing: 0) {
-            Text("PAGES").webText(.caps).lineLimit(1).foregroundStyle(v("color-ink-faint", Folevi.color.inkFaint))
+            Text("PAGES").toolText(.caps).lineLimit(1).foregroundStyle(v("color-ink-faint", Folevi.color.inkFaint))
                 .padding(.horizontal, 4).padding(.bottom, 4)
             ScrollView(.vertical) {
                 VStack(alignment: .leading, spacing: 1) {
@@ -199,7 +242,7 @@ struct WebNoteSidebar: View {
                         Button { if !here { model.open(.note(p.id), .replace) } } label: {
                             HStack(spacing: 6) {
                                 WebIconView(.fileText, size: 13).frame(width: 13, height: 13).opacity(0.6)
-                                Text(p.title).webText(WebTextStyle.role(.subheadline, weight: here ? 600 : 400)).lineLimit(1)
+                                Text(p.title).toolText(WebTextStyle.role(.subheadline, weight: here ? 600 : 400)).lineLimit(1)
                             }
                             .foregroundStyle(here ? v("color-heading") : v("color-ink").opacity(0.9))
                             .padding(.leading, 8 + CGFloat(p.depth) * 13.6)
@@ -211,7 +254,7 @@ struct WebNoteSidebar: View {
                         .buttonStyle(WebHoverRowStyle(radius: 6, hover: WebStyles.vars["glass-hover"], press: WebStyles.vars["mac-press"], selected: here))
                     }
                     if tools?.pagesTruncated == true {
-                        Text("More pages than fit here. Open a page to see its own.").webText(.role(.footnote)).foregroundStyle(v("color-ink-muted"))
+                        Text("More pages than fit here. Open a page to see its own.").toolText(.role(.footnote)).foregroundStyle(v("color-ink-muted"))
                             .padding(.horizontal, 8).padding(.vertical, 4)
                     }
                 }
@@ -226,6 +269,24 @@ struct WebNoteSidebar: View {
 
     // MARK: the tabs
 
+    #if os(macOS)
+    /// The sections in a capsule track at the panel's top (the owner's inspector profile).
+    private var tabs: some View {
+        let unread = tools?.comments.threads.contains { $0.unread && $0.status == .open } ?? false
+        return CapsuleTrack(NoteToolTab.allCases, selection: Binding(get: { tab }, set: { choose($0) }), height: 30) { t, _ in
+            ZStack(alignment: .topTrailing) {
+                Image(systemName: t.symbol).font(.system(size: 13))
+                if t == .comments, unread {
+                    Circle().fill(MacLook.Colors.red).frame(width: 6, height: 6).offset(x: 4, y: -2)
+                }
+            }
+            .help(t.label)
+            .accessibilityLabel(t == .comments && unread ? "Comments (unread)" : t.label)
+        }
+        .padding(.horizontal, MacLook.Space.m)
+        .padding(.bottom, MacLook.Space.xs)
+    }
+    #else
     private var tabs: some View {
         let wrap = style("tabs.wrap")
         let bar = pair("tabs")
@@ -258,6 +319,7 @@ struct WebNoteSidebar: View {
         .webBox(bar)
         .padding(wrap.padding.edgeInsets)
     }
+    #endif
 
     private func choose(_ t: NoteToolTab) {
         if tab == .find, t != .find, !find.query.isEmpty { find.clear(model) }
@@ -280,10 +342,10 @@ struct WebNoteSidebar: View {
         let row = style("panel.title.row")
         let t = style(idStyle)
         return HStack {
-            Text(text).webText(t.text).lineLimit(1).foregroundStyle(t.color.color)
+            Text(text).toolText(t.text).lineLimit(1).foregroundStyle(t.color.color)
             Spacer(minLength: 0)
             if let aside {
-                Text(aside).webText(.role(.footnote)).lineLimit(1).monospacedDigit().foregroundStyle(v("color-ink-muted"))
+                Text(aside).toolText(.role(.footnote)).lineLimit(1).monospacedDigit().foregroundStyle(v("color-ink-muted"))
             }
         }
         .padding(row.padding.edgeInsets)
@@ -294,12 +356,22 @@ struct WebNoteSidebar: View {
     private func emptyText(_ text: String, _ id: String, centered: Bool = false) -> some View {
         let s = style(id)
         let room = s.width - s.padding.left - s.padding.right
-        return Text(Self.pretty(text, s.text, room)).webText(s.text).foregroundStyle(s.color.color)
+        return Text(Self.shownText(text, s.text, room)).toolText(s.text).foregroundStyle(s.color.color)
             .multilineTextAlignment(centered ? .center : .leading)
             .frame(maxWidth: .infinity, alignment: centered ? .center : .leading)
             .padding(s.padding.edgeInsets)
             .padding(.bottom, s.margin.bottom)
             .fixedSize(horizontal: false, vertical: true)
+    }
+
+    /// A short paragraph as shown: broken as the web breaks it on the iPad (`pretty`); the Mac's system text wraps
+    /// as the system does.
+    static func shownText(_ text: String, _ style: WebTextStyle, _ room: CGFloat) -> String {
+        #if os(macOS)
+        text
+        #else
+        pretty(text, style, room)
+        #endif
     }
 
     /// `text` with its lines broken as WebKit breaks a short paragraph (`text-wrap: pretty` and `balance`): as many
@@ -361,10 +433,10 @@ struct WebNoteSidebar: View {
         return VStack(alignment: .leading, spacing: 0) {
             panelTitle("Table of contents")
             Button { model.editor(.scrollToTop) } label: {
-                Text(name).webText(t.text).lineLimit(1).foregroundStyle(t.color.color)
+                Text(name).toolText(t.text).lineLimit(1).foregroundStyle(t.color.color)
                     .padding(t.padding.edgeInsets)
                     .frame(maxWidth: .infinity, minHeight: t.height, maxHeight: t.height, alignment: .leading)
-                    .webBox(top)
+                    .modifier(NoteToolsBox(style: top))
                     .contentShape(Rectangle())
             }
             .buttonStyle(.webHover(radius: t.radius))
@@ -383,7 +455,7 @@ struct WebNoteSidebar: View {
         let sub = WebTextStyle.role(.subheadline)
         if item.kind == .page {
             return AnyView(Button { if let d = item.documentId { model.open(.note(d), .replace) } } label: {
-                Text("↳ \(item.text)").webText(sub).lineLimit(1).foregroundStyle(v("color-ink-muted"))
+                Text("↳ \(item.text)").toolText(sub).lineLimit(1).foregroundStyle(v("color-ink-muted"))
                     .padding(.horizontal, 10).padding(.vertical, 6)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .contentShape(Rectangle())
@@ -396,7 +468,7 @@ struct WebNoteSidebar: View {
         return AnyView(ZStack(alignment: .leading) {
             Button { model.editor(.blockJump(blockId: item.id)) } label: {
                 Text(item.text.isEmpty ? "Untitled heading" : item.text)
-                    .webText(level == 1 ? sub.weight(600) : sub).lineLimit(1).foregroundStyle(color)
+                    .toolText(level == 1 ? sub.weight(600) : sub).lineLimit(1).foregroundStyle(color)
                     .padding(.leading, level == 1 ? 12 : level == 2 ? 24 : 36).padding(.trailing, 8).padding(.vertical, 6)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .contentShape(Rectangle())
@@ -418,7 +490,7 @@ struct WebNoteSidebar: View {
             } else if let c = tools?.comments, c.loaded {
                 CommentsList(model: model, comments: c, v: v)
             } else {
-                Text("Loading comments…").webText(.role(.subheadline)).foregroundStyle(v("color-ink-muted"))
+                Text("Loading comments…").toolText(.role(.subheadline)).foregroundStyle(v("color-ink-muted"))
             }
         }
     }
@@ -439,10 +511,10 @@ struct WebNoteSidebar: View {
                 .frame(width: icon.width, height: icon.height)
                 .background(RoundedRectangle(cornerRadius: icon.radius, style: .circular).fill(icon.background.color))
                 .padding(.bottom, icon.margin.bottom)
-            Text(Self.pretty(Self.signInTitle, title.text, title.width)).webText(title.text).multilineTextAlignment(.center).foregroundStyle(title.color.color)
+            Text(Self.shownText(Self.signInTitle, title.text, title.width)).toolText(title.text).multilineTextAlignment(.center).foregroundStyle(title.color.color)
                 .fixedSize(horizontal: false, vertical: true)
-            Text(Self.pretty(Self.signInWhy, body.text, body.width))
-                .webText(body.text).multilineTextAlignment(.center).foregroundStyle(body.color.color)
+            Text(Self.shownText(Self.signInWhy, body.text, body.width))
+                .toolText(body.text).multilineTextAlignment(.center).foregroundStyle(body.color.color)
                 .fixedSize(horizontal: false, vertical: true)
                 .padding(.top, body.margin.top)
         }
@@ -488,7 +560,7 @@ struct WebNoteSidebar: View {
             .padding(.top, 3)
             .accessibilityLabel("\(t.checked ? "Mark as not done" : "Mark as done"): \(t.text)")
             Button { model.editor(.blockJump(blockId: t.id)) } label: {
-                Text(t.text).webText(sub).strikethrough(t.checked).foregroundStyle(t.checked ? v("color-ink-muted") : v("color-ink"))
+                Text(t.text).toolText(sub).strikethrough(t.checked).foregroundStyle(t.checked ? v("color-ink-muted") : v("color-ink"))
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .fixedSize(horizontal: false, vertical: true)
                     .contentShape(Rectangle())
@@ -519,7 +591,7 @@ struct WebNoteSidebar: View {
                                     .foregroundStyle(v("color-ink-muted"))
                                     .frame(width: 28, height: 28)
                                     .background(RoundedRectangle(cornerRadius: 6, style: .circular).fill(v("color-surface-sunken", Folevi.color.surfaceSunken)))
-                                Text(a.name).webText(.role(.subheadline)).lineLimit(1).foregroundStyle(v("color-ink"))
+                                Text(a.name).toolText(.role(.subheadline)).lineLimit(1).foregroundStyle(v("color-ink"))
                                     .frame(maxWidth: .infinity, alignment: .leading)
                             }
                             .padding(.horizontal, 8).padding(.vertical, 6)
@@ -531,7 +603,7 @@ struct WebNoteSidebar: View {
                 .padding(.bottom, 20)
             }
             HStack {
-                Text("Links").webText(style("attachments.title").text).lineLimit(1).foregroundStyle(style("attachments.title").color.color)
+                Text("Links").toolText(style("attachments.title").text).lineLimit(1).foregroundStyle(style("attachments.title").color.color)
                 Spacer(minLength: 0)
             }
             .padding(linksRow.padding.edgeInsets)
@@ -554,9 +626,9 @@ struct WebNoteSidebar: View {
             HStack(spacing: 8) {
                 WebIconView(l.internal ? .fileText : .externalLink, size: 14).frame(width: 14, height: 14).foregroundStyle(v("color-ink-muted"))
                 VStack(alignment: .leading, spacing: 0) {
-                    Text(l.label).webText(.role(.subheadline, weight: 500)).lineLimit(1).foregroundStyle(v("color-ink"))
+                    Text(l.label).toolText(.role(.subheadline, weight: 500)).lineLimit(1).foregroundStyle(v("color-ink"))
                     if !l.internal {
-                        Text(Self.host(l.href)).webText(.role(.footnote)).lineLimit(1).foregroundStyle(v("color-ink-faint"))
+                        Text(Self.host(l.href)).toolText(.role(.footnote)).lineLimit(1).foregroundStyle(v("color-ink-faint"))
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -598,7 +670,7 @@ struct WebNoteSidebar: View {
                           onFocus: { findFocused = $0 })
                     .padding(f.padding.edgeInsets)
                     .frame(height: f.height)
-                    .webBox(findFocused ? webFocused(field) : field)
+                    .modifier(NoteToolsBox(style: findFocused ? webFocused(field) : field, field: true, focused: findFocused))
                 WebIconView(.search, size: 14).frame(width: 14, height: 14).foregroundStyle(icon.color.color)
                     .padding(.leading, icon.x - f.x)
                     .allowsHitTesting(false)
@@ -615,7 +687,7 @@ struct WebNoteSidebar: View {
                 }
             }
             HStack(spacing: bar.gap) {
-                Text(status).webText(count.text).lineLimit(1).foregroundStyle(count.color.color).frame(maxWidth: .infinity, alignment: .leading)
+                Text(status).toolText(count.text).lineLimit(1).foregroundStyle(count.color.color).frame(maxWidth: .infinity, alignment: .leading)
                 stepButton(.chevronUp, "Previous match", enabled: has) { find.step(model, by: -1) }
                 stepButton(.chevronDown, "Next match", enabled: has) { find.step(model, by: 1) }
             }
@@ -657,7 +729,7 @@ struct WebNoteSidebar: View {
         let mark = style("find.mark")
         let text = Text(m.before) + Text(AttributedString(m.hit, attributes: AttributeContainer().backgroundColor(mark.background.color).foregroundColor(v("color-ink")))) + Text(m.after)
         return Button(action: action) {
-            text.webText(row.text).foregroundStyle(current ? v("color-ink") : row.color.color)
+            text.toolText(row.text).foregroundStyle(current ? v("color-ink") : row.color.color)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .fixedSize(horizontal: false, vertical: true)
                 .padding(row.padding.edgeInsets)
@@ -683,7 +755,7 @@ private struct CommentsList: View {
         let shown = (filter == "open" ? open : resolved).sorted { $0.lastActivityAt > $1.lastActivityAt }
         VStack(alignment: .leading, spacing: 12) {
             if !comments.canComment {
-                Text("You can read comments on this note but not add them.").webText(.role(.subheadline)).foregroundStyle(v("color-ink-muted", .secondary))
+                Text("You can read comments on this note but not add them.").toolText(.role(.subheadline)).foregroundStyle(v("color-ink-muted", .secondary))
             }
             HStack(spacing: 2) {
                 seg("Open\(open.isEmpty ? "" : " · \(open.count)")", on: filter == "open") { filter = "open" }
@@ -692,7 +764,7 @@ private struct CommentsList: View {
             .padding(4)
             .background(RoundedRectangle(cornerRadius: 10, style: .circular).fill(v("color-ink", .primary).opacity(0.06)))
             if shown.isEmpty {
-                Text(filter == "open" ? "No open comments." : "No resolved comments.").webText(.role(.subheadline)).foregroundStyle(v("color-ink-muted", .secondary))
+                Text(filter == "open" ? "No open comments." : "No resolved comments.").toolText(.role(.subheadline)).foregroundStyle(v("color-ink-muted", .secondary))
                     .frame(maxWidth: .infinity).padding(.vertical, 16)
             } else {
                 VStack(alignment: .leading, spacing: 6) {
@@ -704,7 +776,7 @@ private struct CommentsList: View {
 
     private func seg(_ title: String, on: Bool, action: @escaping () -> Void) -> some View {
         Button(action: action) {
-            Text(title).webText(.role(.callout, weight: 550)).lineLimit(1)
+            Text(title).toolText(.role(.callout, weight: 550)).lineLimit(1)
                 .foregroundStyle(on ? v("color-heading", .primary) : v("color-ink-muted", .secondary))
                 .frame(maxWidth: .infinity, minHeight: 28)
                 .background(RoundedRectangle(cornerRadius: 6, style: .circular).fill(on ? v("glass-active", .white) : .clear))
@@ -716,21 +788,21 @@ private struct CommentsList: View {
     private func row(_ t: NoteToolsThread) -> some View {
         Button { model.editor(.threadOpen(threadId: t.id)) } label: {
             VStack(alignment: .leading, spacing: 0) {
-                Text(t.anchor).webText(.role(.footnote)).lineLimit(1).foregroundStyle(v("color-ink-faint", .secondary))
+                Text(t.anchor).toolText(.role(.footnote)).lineLimit(1).foregroundStyle(v("color-ink-faint", .secondary))
                 HStack(spacing: 8) {
                     Text(String(t.author.prefix(1)).uppercased())
                         // Caption 2 (11), the smallest desktop size (MAC-53), not 9.
-                        .font(WebFont.font(.sans, size: 11, weight: 600))
+                        .modifier(AvatarInitialFont())
                         .foregroundStyle(v("color-canvas", .white))
                         .frame(width: 20, height: 20)
                         .background(RoundedRectangle(cornerRadius: 6, style: .circular).fill(v("color-heading", .primary)))
                     (Text(t.author).fontWeight(.semibold).foregroundColor(v("color-heading", .primary)) + Text(" · \(when(t))").foregroundColor(v("color-ink-faint", .secondary)))
-                        .webText(.role(.subheadline)).lineLimit(1)
+                        .toolText(.role(.subheadline)).lineLimit(1)
                         .frame(maxWidth: .infinity, alignment: .leading)
                     if t.unread { Circle().fill(v("color-coral", .red)).frame(width: 8, height: 8).accessibilityLabel("Unread") }
                 }
                 .padding(.top, 6)
-                Text(t.deleted ? "Comment deleted" : t.text).webText(WebTextStyle.role(.subheadline).leading(17.875)).lineLimit(2)
+                Text(t.deleted ? "Comment deleted" : t.text).toolText(WebTextStyle.role(.subheadline).leading(17.875)).lineLimit(2)
                     .italic(t.deleted)
                     .foregroundStyle(t.deleted ? v("color-ink-faint", .secondary) : v("color-ink", .primary))
                     .padding(.top, 4)
@@ -744,7 +816,7 @@ private struct CommentsList: View {
                         }
                         if t.status == .resolved { Text("Resolved\(t.resolvedBy.map { " by \($0)" } ?? "")") }
                     }
-                    .webText(.role(.footnote)).foregroundStyle(v("color-ink-muted", .secondary))
+                    .toolText(.role(.footnote)).foregroundStyle(v("color-ink-muted", .secondary))
                     .padding(.top, 4)
                 }
             }
@@ -866,7 +938,8 @@ private struct FindField: NSViewRepresentable {
     func updateNSView(_ f: NSTextField, context: Context) {
         context.coordinator.parent = self
         if f.stringValue != text { f.stringValue = text }
-        let font = style.ctFont as NSFont
+        // (The system font at the native look's body size.)
+        let font = NSFont.systemFont(ofSize: NSFont.systemFontSize)
         f.font = font
         f.textColor = NSColor(color)
         f.placeholderAttributedString = NSAttributedString(string: "Text in document", attributes: [.font: font, .foregroundColor: NSColor(placeholderColor)])
@@ -946,6 +1019,74 @@ private struct FindField: View {
             }
             .accessibilityLabel("Find text in this page")
             .onAppear { focused = true }
+    }
+}
+#endif
+extension View {
+    /// Text in the note's tools: the web's text style on the iPad; on the Mac the system font at the native look's
+    /// sizes (11, 13, 15 pt), the web's weight kept.
+    func toolText(_ s: WebTextStyle) -> some View {
+        #if os(macOS)
+        font(NoteToolsLook.font(s))
+        #else
+        webText(s)
+        #endif
+    }
+}
+
+/// A comment author's initial: Caption 2 (11), the smallest desktop size (MAC-53); the system's on the Mac.
+private struct AvatarInitialFont: ViewModifier {
+    func body(content: Content) -> some View {
+        #if os(macOS)
+        content.font(MacLook.Text.smallStrong)
+        #else
+        content.font(WebFont.font(.sans, size: 11, weight: 600))
+        #endif
+    }
+}
+
+/// A box of the note's tools (the outline's top row, the Find field's well): the web's box on the iPad; on the Mac
+/// a quiet rounded fill (a field's ring in the accent while it has the keyboard).
+private struct NoteToolsBox: ViewModifier {
+    let style: WebStylePair
+    var field = false
+    var focused = false
+
+    func body(content: Content) -> some View {
+        #if os(macOS)
+        let shape = RoundedRectangle(cornerRadius: MacLook.rowRadius, style: .continuous)
+        content
+            .background(field ? MacLook.Colors.container.opacity(0.9) : MacLook.Colors.hover.opacity(0.35), in: shape)
+            .overlay {
+                if field { shape.strokeBorder(focused ? MacLook.Colors.accent : MacLook.Colors.separator, lineWidth: focused ? 2 : 1) }
+            }
+        #else
+        content.webBox(style)
+        #endif
+    }
+}
+
+#if os(macOS)
+/// The note tools' type and colours in the native look.
+enum NoteToolsLook {
+    static func font(_ s: WebTextStyle) -> Font {
+        let base: Font = s.size >= 17 ? MacLook.Text.title3 : s.size >= 13 ? MacLook.Text.body : MacLook.Text.small
+        return s.weight >= 600 ? base.weight(.semibold) : s.weight >= 500 ? base.weight(.medium) : base
+    }
+
+    /// The web palette's variables the tools use, as the system's semantic colours.
+    static func color(_ name: String) -> Color? {
+        switch name {
+        case "color-heading", "color-ink": return MacLook.Colors.label
+        case "color-ink-muted": return MacLook.Colors.secondary
+        case "color-ink-faint": return MacLook.Colors.tertiary
+        case "glass-hover", "color-accent-soft", "color-surface-sunken": return MacLook.Colors.hover
+        case "glass-active", "color-surface", "color-canvas": return MacLook.Colors.container
+        case "color-line", "color-line-strong": return MacLook.Colors.separator
+        case "color-coral": return MacLook.Colors.red
+        case "color-moss": return MacLook.Colors.green
+        default: return nil
+        }
     }
 }
 #endif

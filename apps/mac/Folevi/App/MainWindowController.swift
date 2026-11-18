@@ -22,7 +22,8 @@ final class MainWindowController: NSWindowController, NSWindowDelegate {
         window.titlebarAppearsTransparent = true
         window.titleVisibility = .hidden
         window.title = "Folevi"
-        window.minSize = NSSize(width: 800, height: 480)
+        // The native frame's narrowest window (the sidebar, a usable card and the top bar's controls); the web frame's.
+        window.minSize = NativeFrame.enabled ? MacLook.minWindowSize : NSSize(width: 800, height: 480)
         window.tabbingMode = .disallowed
         window.isReleasedWhenClosed = false
         window.collectionBehavior.insert(.fullScreenPrimary)

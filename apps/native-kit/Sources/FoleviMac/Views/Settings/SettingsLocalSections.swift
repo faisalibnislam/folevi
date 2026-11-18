@@ -81,6 +81,7 @@ extension ValueStore where Value == SettingsQueryValue {
 struct LibrarySettings: View {
     let model: MacSettingsModel
     @Environment(\.colorScheme) private var scheme
+    @Environment(\.settingsNative) private var native
 
     var body: some View {
         let store = model.query(.library)
@@ -98,7 +99,7 @@ struct LibrarySettings: View {
                     }
                 }
                 SettingsCard("Folevi account", description: "Sign in to Folevi to share notes and work on them with other people. Your library comes with you into the account.") {
-                    WebButton("Sign in to Folevi…") { model.frame.host?.frameSignInAnotherAccount() }
+                    SButton("Sign in to Folevi…") { model.frame.host?.frameSignInAnotherAccount() }
                 }
                 if let f = d.forget { forgetCard(f) }
             }
@@ -113,9 +114,9 @@ struct LibrarySettings: View {
                 SettingsTerms(rows: [("Syncs with", d.place.kind, nil), ("Location", d.place.path, nil), ("Status", d.place.status, nil)] + (d.place.problem.map { [("Last problem", $0, SettingsColor.v("color-danger", scheme))] } ?? []))
                 if let c = d.place.connection { connection(c) }
                 SettingsButtons {
-                    WebButton(model.busy.contains("library.syncNow") ? "Syncing…" : "Sync now") { Task { await model.run(.librarySyncNow, tone: .info) } }
+                    SButton(model.busy.contains("library.syncNow") ? "Syncing…" : "Sync now") { Task { await model.run(.librarySyncNow, tone: .info) } }
                         .disabled(!d.place.canSync || model.busy.contains("library.syncNow"))
-                    WebButton("Move library…") { move(d) }.disabled(!d.place.canMove)
+                    SButton("Move library…") { move(d) }.disabled(!d.place.canMove)
                 }
                 .padding(.top, SettingsStyle.pair("buttons").light.margin.top)
             }
@@ -127,21 +128,21 @@ struct LibrarySettings: View {
         return VStack(alignment: .leading, spacing: 12) {
             if model.busy.contains("library.cloudConnect") {
                 HStack(spacing: 12) {
-                    WebSpinner()
+                    SSpinner()
                     SText(c.signInWait, "dd").frame(maxWidth: .infinity, alignment: .leading)
-                    WebButton("Cancel", size: .sm) { Task { await model.run(.libraryCloudCancel, quiet: true) } }
+                    SButton("Cancel", size: .sm) { Task { await model.run(.libraryCloudCancel, quiet: true) } }
                 }
             } else {
                 if c.state == "connected" || c.state == "offline" {
                     (Text("Connected as ") + Text(c.account).foregroundColor(SettingsColor.v("color-heading", scheme)) + Text(c.offline ?? "").foregroundColor(SettingsColor.v("color-ink-muted", scheme)))
-                        .webText(SettingsStyle.pair("dd").resolve(scheme).text).fixedSize(horizontal: false, vertical: true)
+                        .sFont(SettingsStyle.pair("dd").resolve(scheme).text, .body).fixedSize(horizontal: false, vertical: true)
                 } else {
                     SText(c.text, c.state == "reconnect" ? "dd" : "muted")
                 }
                 HStack(spacing: 8) {
-                    if c.canConnect { WebButton(c.connectLabel, variant: .primary, size: .sm) { Task { await model.run(.libraryCloudConnect, ["provider": .string(c.provider)]) } } }
+                    if c.canConnect { SButton(c.connectLabel, variant: .primary, size: .sm) { Task { await model.run(.libraryCloudConnect, ["provider": .string(c.provider)]) } } }
                     if c.canSignOut {
-                        WebButton("Sign out of \(c.name)…", size: .sm) {
+                        SButton("Sign out of \(c.name)…", size: .sm) {
                             settingsConfirm("Sign out of \(c.name)?", message: "Folevi stops syncing with \(c.name). Your notes stay on this Mac and in \(c.name). To sync again, connect again or move the library somewhere else.", confirm: "Sign out", in: NSApp.keyWindow) {
                                 Task { await model.run(.libraryCloudSignOut, tone: .info) }
                             }
@@ -180,7 +181,7 @@ struct LibrarySettings: View {
                 ForEach(h.groups) { g in
                     VStack(alignment: .leading, spacing: 0) {
                         HStack(spacing: 8) {
-                            WebIconView(g.icon == "triangleAlert" ? .triangleAlert : g.icon == "cloudDownload" ? .cloudDownload : .hourglass, size: 15)
+                            SIcon(g.icon == "triangleAlert" ? .triangleAlert : g.icon == "cloudDownload" ? .cloudDownload : .hourglass, size: 15)
                                 .foregroundStyle(g.icon == "triangleAlert" ? SettingsColor.v("color-danger", scheme) : SettingsColor.v("color-ink-muted", scheme))
                             SText(g.title, "dd", weight: 600, color: SettingsColor.v("color-heading", scheme))
                             SText("\(g.count)", "muted")
@@ -190,7 +191,7 @@ struct LibrarySettings: View {
                             ForEach(g.items) { i in
                                 HStack(alignment: .firstTextBaseline, spacing: 8) {
                                     SText(i.title ?? i.path, "dd", weight: 500)
-                                    if i.title != nil { Text(i.path).font(WebFont.font(.mono, size: 12)).foregroundStyle(SettingsColor.v("color-ink-faint", scheme)).lineLimit(1) }
+                                    if i.title != nil { Text(i.path).sMono().foregroundStyle(SettingsColor.v("color-ink-faint", scheme)).lineLimit(1) }
                                     SText(i.since, "muted")
                                 }
                                 if let detail = i.detail { SMuted(detail) }
@@ -208,16 +209,21 @@ struct LibrarySettings: View {
         SettingsCard("Passphrase", description: p.description) {
             SettingsButtons {
                 if p.encrypted {
-                    WebButton("Change passphrase…") { passphrase(.change, min: p.min) }
-                    // The quiet button in the danger colour, with the quiet button's hover and press fills (MAC-56).
+                    SButton("Change passphrase…") { passphrase(.change, min: p.min) }
+                    // The quiet button in the danger colour, with the quiet button's hover and press fills (MAC-56);
+                    // a destructive push button in the Settings window.
+                    if native {
+                        SButton("Remove passphrase…", variant: .danger) { passphrase(.remove, min: p.min) }
+                    } else {
                     Button { passphrase(.remove, min: p.min) } label: {
                         Text("Remove passphrase…").webText(WebStyles.named("button.quiet.md").resolve(scheme).text)
                             .foregroundStyle(SettingsColor.v("color-danger", scheme))
                             .webElement(WebStyles.named("button.quiet.md"))
                     }
                     .buttonStyle(WebHoverRowStyle(radius: WebStyles.named("button.quiet.md").resolve(scheme).radius, hover: WebStyles.vars["mac-hover"], press: WebStyles.vars["mac-press"], selected: false))
+                    }
                 } else {
-                    WebButton("Encrypt with a passphrase…") { passphrase(.set, min: p.min) }
+                    SButton("Encrypt with a passphrase…") { passphrase(.set, min: p.min) }
                 }
             }
         }
@@ -253,8 +259,8 @@ struct LibrarySettings: View {
     }
 
     private func forgetCard(_ f: LibraryData.Forget) -> some View {
-        SettingsCard(f.title, description: f.description) {
-            WebButton(f.button, variant: .danger) {
+        SettingsCard(f.title, anchor: "forget", description: f.description) {
+            SButton(f.button, variant: .danger) {
                 settingsConfirm(f.dialogTitle, message: f.dialogDescription, confirm: "Remove", in: NSApp.keyWindow) {
                     Task { await model.run(.libraryForget) }
                 }
@@ -272,7 +278,7 @@ private struct DeviceRow: View {
         let icon = SettingsStyle.pair("device.icon")
         let row = SettingsStyle.pair("device.row").light
         HStack(spacing: row.gap) {
-            WebIconView(device.phone ? .smartphone : .laptop, size: 16)
+            SIcon(device.phone ? .smartphone : .laptop, size: 16)
                 .frame(width: icon.light.width, height: icon.light.height)
                 .foregroundStyle(icon.resolve(scheme).color.color)
                 .webBox(icon)
@@ -295,6 +301,7 @@ private struct MoveLibraryDialog: View {
     let choices: [LibraryData.Choice]
     @State private var busy: String?
     @Environment(\.colorScheme) private var scheme
+    @Environment(\.settingsNative) private var native
 
     var body: some View {
         SettingsDialogView(title: "Move your library", description: "Folevi copies every file to the new place, checks each one arrived, then uses it. Keep Folevi open until it's done. Other devices need to be moved too.", width: 512, close: { SettingsDialogWindow.closeCurrent() }) {
@@ -309,13 +316,13 @@ private struct MoveLibraryDialog: View {
                         }
                     } label: {
                         HStack(alignment: .top, spacing: 12) {
-                            WebIconView(c.kind == "icloud" ? .cloud : c.kind == "folder" ? .folder : .hardDrive, size: 20)
+                            SIcon(c.kind == "icloud" ? .cloud : c.kind == "folder" ? .folder : .hardDrive, size: 20)
                             VStack(alignment: .leading, spacing: 2) {
                                 SText(c.title, "dd", weight: 600, color: SettingsColor.v("color-heading", scheme))
                                 SMuted(c.detail)
                             }
                             .frame(maxWidth: .infinity, alignment: .leading)
-                            if busy == c.kind { WebSpinner() }
+                            if busy == c.kind { SSpinner() }
                         }
                         .padding(14)
                         .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(SettingsColor.v("color-line", scheme)))
@@ -326,7 +333,10 @@ private struct MoveLibraryDialog: View {
                     .disabled(busy != nil)
                 }
             }
-        } footer: { EmptyView() }
+        } footer: {
+            // A sheet has no close box in the Settings window: Cancel (Escape) closes it.
+            if native { SButton("Cancel") { SettingsDialogWindow.closeCurrent() }.keyboardShortcut(.cancelAction).disabled(busy != nil) }
+        }
     }
 }
 
@@ -359,27 +369,25 @@ private struct PassphraseDialog: View {
                 if kind != .set { labelled(kind == .change ? "Current passphrase" : "Passphrase") { SettingsField(placeholder: "", text: $current, secure: true, height: 40) } }
                 if kind != .remove {
                     HStack(alignment: .top, spacing: 10) {
-                        WebIconView(.shieldAlert, size: 18).foregroundStyle(SettingsColor.v("color-danger", scheme))
+                        SIcon(.shieldAlert, size: 18).foregroundStyle(SettingsColor.v("color-danger", scheme))
                         (Text("If you lose this passphrase, nobody can open the synced copy of your notes.").bold() + Text(" Folevi can't reset it or recover it. Write it down and keep it somewhere safe."))
-                            .webText(.role(.body)).foregroundStyle(SettingsColor.v("color-ink", scheme)).fixedSize(horizontal: false, vertical: true)
+                            .sFont(.role(.body), .body).foregroundStyle(SettingsColor.v("color-ink", scheme)).fixedSize(horizontal: false, vertical: true)
                     }
                     .padding(EdgeInsets(top: 12, leading: 14, bottom: 12, trailing: 14))
                     .background(RoundedRectangle(cornerRadius: 10).fill(SettingsColor.v("color-danger", scheme).opacity(0.09)))
                     labelled(kind == .change ? "New passphrase" : "Passphrase") { SettingsField(placeholder: "", text: $passphrase, secure: true, height: 40) }
                     labelled("Type it again") { SettingsField(placeholder: "", text: $confirm, secure: true, height: 40) }
                     SMuted("Use at least \(min) characters. A few unrelated words are easy to remember and hard to guess.")
-                    Toggle("I understand Folevi can't recover a lost passphrase", isOn: $understood)
-                        .toggleStyle(WebCheckboxStyle())
-                        .webText(.role(.body))
+                    SCheckbox("I understand Folevi can't recover a lost passphrase", isOn: $understood)
                 }
-                if let problem { Text(problem).webText(.role(.body)).foregroundStyle(SettingsColor.v("color-danger", scheme)) }
+                if let problem { Text(problem).sFont(.role(.body), .body).foregroundStyle(SettingsColor.v("color-danger", scheme)) }
             }
             .onChange(of: current) { problem = nil }
             .onChange(of: passphrase) { problem = nil }
             .onChange(of: confirm) { problem = nil }
         } footer: {
-            WebButton("Cancel") { SettingsDialogWindow.closeCurrent() }.disabled(busy)
-            WebButton(kind == .set ? (busy ? "Encrypting…" : "Encrypt") : kind == .change ? "Change passphrase" : (busy ? "Removing…" : "Remove passphrase"), variant: kind == .remove ? .danger : .primary) { submit() }.disabled(busy)
+            SButton("Cancel") { SettingsDialogWindow.closeCurrent() }.disabled(busy)
+            SButton(kind == .set ? (busy ? "Encrypting…" : "Encrypt") : kind == .change ? "Change passphrase" : (busy ? "Removing…" : "Remove passphrase"), variant: kind == .remove ? .danger : .primary) { submit() }.disabled(busy)
         }
     }
 
@@ -433,7 +441,7 @@ struct LocalAiSettings: View {
                     SettingsCard("On this device") { SMuted("Foli AI in a library on your devices needs Folevi for Mac: it runs on Apple Intelligence there, or on your own key.") }
                 } else {
                     if !d.loaded {
-                        HStack(spacing: 8) { WebSpinner(size: 13); SMuted(d.checking) }
+                        HStack(spacing: 8) { SSpinner(size: 13); SMuted(d.checking) }
                     }
                     onDeviceCard(d.onDevice)
                     SettingsCard("Your own keys", description: d.keysDescription) {
@@ -465,7 +473,7 @@ struct LocalAiSettings: View {
         SettingsCard(o.title) {
             HStack(alignment: .top, spacing: 12) {
                 let badge = SettingsStyle.pair("ai.badge")
-                WebIconView(.laptop, size: 16)
+                SIcon(.laptop, size: 16)
                     .foregroundStyle(badge.resolve(scheme).color.color)
                     .frame(width: badge.light.width, height: badge.light.height)
                     .webBox(badge)
@@ -536,7 +544,7 @@ private struct KeyRow: View {
             HStack(alignment: .center, spacing: 12) {
                 VStack(alignment: .leading, spacing: 0) {
                     HStack(spacing: SettingsStyle.pair("key.name").light.gap) {
-                        WebIconView(.keyRound, size: 14).foregroundStyle(SettingsStyle.pair("key.icon").resolve(scheme).color.color)
+                        SIcon(.keyRound, size: 14).foregroundStyle(SettingsStyle.pair("key.icon").resolve(scheme).color.color)
                         SText(key.label, "key.name", lines: 1)
                     }
                     SText(key.status, "key.status").padding(.top, 2)
@@ -544,10 +552,10 @@ private struct KeyRow: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 HStack(spacing: 8) {
                     if key.stored {
-                        if key.canTest { WebButton("Test", size: .sm) { test() }.disabled(busy) }
-                        WebButton("Remove", variant: .ghost, size: .sm) { remove() }.disabled(busy)
+                        if key.canTest { SButton("Test", size: .sm) { test() }.disabled(busy) }
+                        SButton("Remove", variant: .ghost, size: .sm) { remove() }.disabled(busy)
                     } else if !adding {
-                        WebButton("Add key…", size: .sm) { adding = true }.disabled(busy || !key.canAdd)
+                        SButton("Add key…", size: .sm) { adding = true }.disabled(busy || !key.canAdd)
                     }
                 }
             }
@@ -555,8 +563,8 @@ private struct KeyRow: View {
                 VStack(alignment: .leading, spacing: 8) {
                     HStack(spacing: 8) {
                         SettingsField(placeholder: "Paste your \(key.label) key", text: $value, secure: true, onSubmit: save)
-                        WebButton("Save", variant: .primary, size: .sm) { save() }.disabled(busy || value.trimmingCharacters(in: .whitespaces).isEmpty)
-                        WebButton("Cancel", variant: .ghost, size: .sm) { adding = false; value = ""; result = nil }
+                        SButton("Save", variant: .primary, size: .sm) { save() }.disabled(busy || value.trimmingCharacters(in: .whitespaces).isEmpty)
+                        SButton("Cancel", variant: .ghost, size: .sm) { adding = false; value = ""; result = nil }
                     }
                     if let url = key.keyUrl.flatMap(URL.init(string:)) {
                         SettingsLink("Get a key from \(key.label)", style: "muted") { NSWorkspace.shared.open(url) }
@@ -566,7 +574,7 @@ private struct KeyRow: View {
             }
             if let result {
                 HStack(spacing: 6) {
-                    if result.ok { WebIconView(.check, size: 14) }
+                    if result.ok { SIcon(.check, size: 14) }
                     SText(result.text, "muted", color: result.ok ? SettingsColor.v("color-heading", scheme) : nil)
                 }
                 .padding(.top, 8)
@@ -642,7 +650,7 @@ struct MemoryCard: View {
                         HStack(spacing: SettingsStyle.pair("memory.form").light.gap) {
                             SettingsSelect(options: Self.kinds, value: kind, width: SettingsStyle.pair("memory.select").light.width, style: "memory.select") { kind = $0 }
                             SettingsField(placeholder: Self.placeholder[kind] ?? "", text: $text, onSubmit: add)
-                            WebButton("Add") { add() }.disabled(text.trimmingCharacters(in: .whitespaces).isEmpty || m.items.count >= m.max)
+                            SButton("Add") { add() }.disabled(text.trimmingCharacters(in: .whitespaces).isEmpty || m.items.count >= m.max)
                         }
                     }
                     if m.items.isEmpty {
@@ -656,7 +664,7 @@ struct MemoryCard: View {
                         .frame(maxWidth: .infinity)
                     } else {
                         SettingsDivided(m.items, gap: 8) { item in row(item) }
-                        WebButton("Clear all", variant: .quiet, size: .sm) {
+                        SButton("Clear all", variant: .quiet, size: .sm) {
                             settingsConfirm("Clear memory?", message: "Everything Foli AI remembers about you is deleted, everywhere. This can't be undone.", confirm: "Clear all", in: NSApp.keyWindow) {
                                 Task { await model.mutate("aiMemory.clear", done: "Memory cleared") }
                             }
@@ -675,8 +683,8 @@ struct MemoryCard: View {
             HStack(spacing: 8) {
                 SettingsSelect(options: Self.kinds, value: editKind, width: 144, style: "memory.select") { editKind = $0 }
                 SettingsField(placeholder: "", text: $editText) { save(item) }
-                WebIconButton(.check, label: "Save") { save(item) }
-                WebIconButton(.x, label: "Cancel") { editing = nil }
+                SIconButton(.check, label: "Save") { save(item) }
+                SIconButton(.x, label: "Cancel") { editing = nil }
             }
         } else {
             HStack(spacing: 12) {
@@ -686,8 +694,8 @@ struct MemoryCard: View {
                     if let w = item.workspace { SText("Only in \(w.name)", "row.hint", color: SettingsColor.v("color-ink-faint", scheme)) }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
-                WebIconButton(.pencil, label: "Edit \"\(item.text)\"") { editing = item.id; editKind = item.kind; editText = item.text }
-                WebIconButton(.trash, label: "Delete \"\(item.text)\"") { Task { await model.mutate("aiMemory.remove", ["id": .string(item.id)], done: "Memory deleted") } }
+                SIconButton(.pencil, label: "Edit \"\(item.text)\"") { editing = item.id; editKind = item.kind; editText = item.text }
+                SIconButton(.trash, label: "Delete \"\(item.text)\"") { Task { await model.mutate("aiMemory.remove", ["id": .string(item.id)], done: "Memory deleted") } }
             }
         }
     }
@@ -714,8 +722,80 @@ struct AppearanceSettingsView: View {
     @State private var theme = SettingsPending<String>()
     @Environment(\.colorScheme) private var scheme
     @Environment(\.settingsWindowed) private var windowed
+    @Environment(\.settingsNative) private var native
 
     var body: some View {
+        #if os(macOS)
+        if native { nativeBody } else { webBody }
+        #else
+        webBody
+        #endif
+    }
+
+    #if os(macOS)
+    /// The native look: the theme as a segmented choice, the text size on the system's slider with its value and a
+    /// line of note text at that size (note text keeps Folevi's own type).
+    @ViewBuilder private var nativeBody: some View {
+        let a = model.appearance.value
+        let stored = a?.appearance.rawValue ?? model.session?.appearance.rawValue ?? "system"
+        let storedZoom = a?.editorZoom ?? 1
+        VStack(alignment: .leading, spacing: MacSettingsLook.groupGap) {
+            SettingsCard("Theme", description: "Dark mode is designed, not inverted: document colors are softened and code stays readable.") {
+                Picker("Theme", selection: Binding(get: { theme.shown(stored) }, set: { chooseTheme($0) })) {
+                    Label("Light", systemImage: "sun.max").tag("light")
+                    Label("Dark", systemImage: "moon").tag("dark")
+                    Label("System", systemImage: "desktopcomputer").tag("system")
+                }
+                .pickerStyle(.segmented)
+                .labelsHidden()
+                .fixedSize()
+                .accessibilityLabel("Theme")
+            }
+            SettingsCard("Editor text size") {
+                let shownZoom = zoom.shown(storedZoom)
+                let value = Binding<Double>(get: { zoom.shown(storedZoom) }, set: { zoom.begin($0) })
+                VStack(alignment: .leading, spacing: MacLook.Space.m) {
+                    HStack(spacing: MacLook.Space.m) {
+                        Slider(value: value, in: 0.85...1.35, step: 0.05) {
+                            Text("Editor text size")
+                        } minimumValueLabel: {
+                            Text("Smaller").font(MacLook.Text.small).foregroundStyle(MacLook.Colors.secondary)
+                        } maximumValueLabel: {
+                            Text("Larger").font(MacLook.Text.small).foregroundStyle(MacLook.Colors.secondary)
+                        } onEditingChanged: { editing in
+                            if !editing { saveZoom(zoom.shown(storedZoom), stored: storedZoom) }
+                        }
+                        .labelsHidden()
+                        .tint(MacLook.Colors.accent)
+                        Text("\(Int((shownZoom * 100).rounded()))%").font(MacLook.Text.body).monospacedDigit()
+                            .foregroundStyle(MacLook.Colors.label)
+                            .frame(width: 44, alignment: .trailing)
+                    }
+                    .frame(maxWidth: 448, alignment: .leading)
+                    Text("Notes read like this.")
+                        .webText(WebTextStyle(size: 16 * shownZoom, leading: 26 * shownZoom, weight: 400))
+                        .foregroundStyle(MacLook.Colors.label)
+                        .lineLimit(1)
+                        .accessibilityHidden(true)
+                }
+                .onChange(of: storedZoom) { _, v in if zoom.value == v { zoom.stored(v) } }
+            }
+        }
+        .onChange(of: stored) { _, v in theme.stored(v) }
+    }
+    #endif
+
+    private func chooseTheme(_ value: String) {
+        guard value != theme.shown(model.appearance.value?.appearance.rawValue ?? model.session?.appearance.rawValue ?? "system") else { return }
+        theme.begin(value)
+        Task { @MainActor in
+            let ok = await model.perform(.settingsUpdate(appearance: SettingsUpdateArgs.Appearance(rawValue: value))) != nil
+            guard theme.value == value else { return }
+            theme.finish(ok: ok, stored: model.appearance.value?.appearance.rawValue ?? model.session?.appearance.rawValue ?? "system")
+        }
+    }
+
+    @ViewBuilder private var webBody: some View {
         let a = model.appearance.value
         let stored = a?.appearance.rawValue ?? model.session?.appearance.rawValue ?? "system"
         let current = theme.shown(stored)
@@ -780,7 +860,7 @@ struct AppearanceSettingsView: View {
             }
         } label: {
             VStack(spacing: s.gap) {
-                WebIconView(icon, size: 18)
+                SIcon(icon, size: 18)
                 Text(label).webText(s.text).lineLimit(1)
             }
             .foregroundStyle(s.color.color)
@@ -803,6 +883,7 @@ struct DesktopSettingsView: View {
     @State private var hint: String?
     @State private var monitor: Any?
     @Environment(\.colorScheme) private var scheme
+    @Environment(\.settingsNative) private var native
 
     var body: some View {
         let d = model.query(.desktop).data(DesktopData.self)
@@ -857,6 +938,34 @@ struct DesktopSettingsView: View {
         return VStack(alignment: .leading, spacing: 0) {
             SText("Shortcut", "shortcut.label")
             HStack(spacing: SettingsStyle.pair("shortcut.row").light.gap) {
+                #if os(macOS)
+                if native {
+                    // The shortcut as a push button that records the next keys pressed (the accent ring while it does).
+                    Button { recording ? stop() : start() } label: {
+                        Text(recording ? "Press keys…" : s.shortcutLabel)
+                            .foregroundStyle(recording ? MacLook.Colors.secondary : MacLook.Colors.label)
+                            .frame(minWidth: 120, alignment: .leading)
+                    }
+                    .buttonStyle(.bordered)
+                    .overlay(RoundedRectangle(cornerRadius: 7, style: .continuous).strokeBorder(MacLook.Colors.accent, lineWidth: recording ? 2 : 0).padding(-2))
+                    .accessibilityLabel(recording ? "Press the new shortcut" : "Quick Add shortcut: \(s.shortcutLabel). Change")
+                } else {
+                    webShortcutField(s, field: field, f: f)
+                }
+                #else
+                webShortcutField(s, field: field, f: f)
+                #endif
+                if !s.quickAddShortcut.isEmpty { SButton("Turn off") { set("quickAddShortcut", .string("")) } }
+                if s.quickAddShortcut != s.defaultShortcut { SButton("Use \(s.defaultLabel)") { set("quickAddShortcut", .string(s.defaultShortcut)) } }
+            }
+            .padding(.top, SettingsStyle.pair("shortcut.row").light.margin.top)
+            SText(error ?? (recording ? "Press the keys together. Esc cancels." : "Click, then press the keys you want."), "shortcut.hint", color: error != nil ? SettingsColor.v("color-danger", scheme) : nil)
+                .padding(.top, SettingsStyle.pair("shortcut.hint").light.margin.top)
+        }
+        .onDisappear { stop() }
+    }
+
+    private func webShortcutField(_ s: DesktopData.Settings, field: WebStylePair, f: WebComputedStyle) -> some View {
                 Button { recording ? stop() : start() } label: {
                     Text(recording ? "Press keys…" : s.shortcutLabel)
                         .webText(f.text).lineLimit(1)
@@ -871,14 +980,6 @@ struct DesktopSettingsView: View {
                 // The field shows the hover fill and takes no system dimming (MAC-56).
                 .buttonStyle(SettingsHoverOverlayStyle(radius: f.radius, enabled: !recording))
                 .accessibilityLabel(recording ? "Press the new shortcut" : "Quick Add shortcut: \(s.shortcutLabel). Change")
-                if !s.quickAddShortcut.isEmpty { WebButton("Turn off") { set("quickAddShortcut", .string("")) } }
-                if s.quickAddShortcut != s.defaultShortcut { WebButton("Use \(s.defaultLabel)") { set("quickAddShortcut", .string(s.defaultShortcut)) } }
-            }
-            .padding(.top, SettingsStyle.pair("shortcut.row").light.margin.top)
-            SText(error ?? (recording ? "Press the keys together. Esc cancels." : "Click, then press the keys you want."), "shortcut.hint", color: error != nil ? SettingsColor.v("color-danger", scheme) : nil)
-                .padding(.top, SettingsStyle.pair("shortcut.hint").light.margin.top)
-        }
-        .onDisappear { stop() }
     }
 
     private func start() {

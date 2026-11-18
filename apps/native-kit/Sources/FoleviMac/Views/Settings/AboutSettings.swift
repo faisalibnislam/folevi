@@ -7,6 +7,7 @@ import FoleviDesign
 
 struct AboutSettingsView: View {
     let model: MacSettingsModel
+    @Environment(\.settingsNative) private var native
 
     /// The pages About links to (AboutSection.tsx ABOUT_LINKS).
     static let links: [(label: String, path: String)] = [
@@ -19,13 +20,31 @@ struct AboutSettingsView: View {
     ]
 
     var body: some View {
-        SettingsCard(model.version) {
-            VStack(alignment: .leading, spacing: 4) {
+        SettingsCard(model.version, anchor: "about") {
+            VStack(alignment: .leading, spacing: native ? 8 : 4) {
                 ForEach(Self.links, id: \.path) { link in
-                    WebButton(link.label, icon: .externalLink, variant: .ghost, size: .sm) {
+                    #if os(macOS)
+                    if native {
+                        // The Settings window: links in the system's link style, each saying it leaves for the website.
+                        Button {
+                            if let url = URL(string: "https://folevi.com\(link.path)") { model.frame.host?.frameOpenExternal(url) }
+                        } label: {
+                            Label(link.label, systemImage: "arrow.up.right")
+                        }
+                        .buttonStyle(.link)
+                        .help("folevi.com\(link.path)")
+                    } else {
+                        SButton(link.label, icon: .externalLink, variant: .ghost, size: .sm) {
+                            if let url = URL(string: "https://folevi.com\(link.path)") { model.frame.host?.frameOpenExternal(url) }
+                        }
+                        .fixedSize()
+                    }
+                    #else
+                    SButton(link.label, icon: .externalLink, variant: .ghost, size: .sm) {
                         if let url = URL(string: "https://folevi.com\(link.path)") { model.frame.host?.frameOpenExternal(url) }
                     }
                     .fixedSize()
+                    #endif
                 }
             }
         }

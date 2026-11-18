@@ -51,6 +51,7 @@ struct AccountSettingsView: View {
     let model: MacSettingsModel
     @State private var name: String?
     @Environment(\.colorScheme) private var scheme
+    @Environment(\.settingsNative) private var native
 
     var body: some View {
         let a = model.account.value
@@ -60,16 +61,22 @@ struct AccountSettingsView: View {
                     SText("Profile picture", "field.label").padding(.bottom, 8)
                     HStack(spacing: 16) {
                         avatar(a)
-                        WebButton(a?.avatarUrl == nil ? "Upload…" : "Change…") { pickAvatar() }
-                        if a?.avatarUrl != nil { WebButton("Remove", variant: .ghost) { Task { await model.perform(.settingsRemoveAvatar, done: "Removed") } } }
+                        SButton(a?.avatarUrl == nil ? "Upload…" : "Change…") { pickAvatar() }
+                        if a?.avatarUrl != nil { SButton("Remove", variant: .ghost) { Task { await model.perform(.settingsRemoveAvatar, done: "Removed") } } }
                     }
                     .padding(.bottom, 20)
                     VStack(alignment: .leading, spacing: 16) {
                         SettingsLabelled(label: "Name") { SettingsField(placeholder: "", text: Binding(get: { name ?? a?.name ?? "" }, set: { name = $0 })) { save() } }
                         SettingsLabelled(label: "Email", hint: "Your sign-in address. Contact support to change it.") {
+                            if native {
+                                // A value, not a field: it can't be changed here.
+                                Text(a?.email ?? "").font(.body).foregroundStyle(SettingsColor.v("color-ink-muted", scheme)).textSelection(.enabled)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                            } else {
                             Text(a?.email ?? "").webText(SettingsStyle.pair("input").resolve(scheme).text).foregroundStyle(SettingsColor.v("color-ink-muted", scheme))
                                 .padding(.horizontal, 12).frame(maxWidth: .infinity, minHeight: 28, alignment: .leading)
                                 .webBox(WebStyles.named("frame.sidebar.search"))
+                            }
                         }
                         SettingsLabelled(label: "Time zone", hint: "Used for Today, the calendar and reminders.") {
                             #if os(macOS)
@@ -83,7 +90,7 @@ struct AccountSettingsView: View {
                             })
                             #endif
                         }
-                        WebButton("Save", variant: .primary) { save() }
+                        SButton("Save", variant: .primary) { save() }
                     }
                     .frame(maxWidth: 448, alignment: .leading)
                 }
@@ -98,7 +105,7 @@ struct AccountSettingsView: View {
             if let url = a?.avatarUrl.flatMap(URL.init(string:)) {
                 AsyncImage(url: url) { $0.resizable().scaledToFill() } placeholder: { Color.clear }.clipShape(RoundedRectangle(cornerRadius: 12, style: .circular))
             } else {
-                Text(String((a?.name ?? "?").prefix(1)).uppercased()).webText(.role(.title3)).foregroundStyle(SettingsColor.v("color-heading", scheme))
+                Text(String((a?.name ?? "?").prefix(1)).uppercased()).sFont(.role(.title3), .title3).foregroundStyle(SettingsColor.v("color-heading", scheme))
             }
         }
         .frame(width: 56, height: 56)
@@ -203,6 +210,7 @@ struct AccountAiSettings: View {
 struct NotificationSettingsView: View {
     let model: MacSettingsModel
     @Environment(\.colorScheme) private var scheme
+    @Environment(\.settingsNative) private var native
 
     var body: some View {
         let n = model.notifications.value
@@ -232,8 +240,9 @@ struct NotificationSettingsView: View {
                 }
                 .settingsRowWidth(576, alignment: .center)
             }
-            SettingsCard("Notifications on this \(ThisDevice.noun)", description: "Reminders and mentions show up here even when Folevi isn’t open, following the In app choices above. A reminder shows its to-do line; a mention says only who and where.") {
-                WebButton("Open Desktop app settings") { model.frame.open(.web("/settings/desktop")) }
+            SettingsCard("Notifications on this \(ThisDevice.noun)", anchor: "notifications-device", description: "Reminders and mentions show up here even when Folevi isn’t open, following the In app choices above. A reminder shows its to-do line; a mention says only who and where.") {
+                // (The Mac window calls the Mac app's own settings General.)
+                SButton(native ? "Open General settings" : "Open Desktop app settings") { model.frame.open(.web("/settings/desktop")) }
             }
             SettingsCard("Email delivery", description: "How comment, reply and mention emails arrive. Shares, invitations and access changes are always sent as they happen.") {
                 HStack(spacing: 16) {
@@ -269,7 +278,7 @@ struct SecuritySettingsView: View {
             SettingsCard("Two-step verification") {
                 VStack(alignment: .leading, spacing: 12) {
                     SettingsTerms(rows: [("Status", s?.twoFactor == true ? "On" : s?.twoFactor == false ? "Off" : "…", nil)])
-                    WebButton(s?.twoFactor == true ? "Manage two-step verification…" : "Turn on two-step verification…") { model.frame.toast("Two-step verification opens in your browser.") ; open("/settings/security") }
+                    SButton(s?.twoFactor == true ? "Manage two-step verification…" : "Turn on two-step verification…") { model.frame.toast("Two-step verification opens in your browser.") ; open("/settings/security") }
                 }
             }
             SettingsCard("Passkeys", description: "Sign in with Touch ID or your device's lock instead of a password.") {
@@ -311,7 +320,7 @@ struct DeleteAccountCard: View {
     let model: MacSettingsModel
     var body: some View {
         SettingsCard("Delete account", description: "Deletes your account, your Personal and everything in it after a 7-day grace period, along with workspaces you own that nobody else is in. Export your data first if you want to keep it.") {
-            WebButton("Delete account…", variant: .danger) {
+            SButton("Delete account…", variant: .danger) {
                 settingsConfirm("Delete your account?", message: "Your account, your Personal and everything in it are deleted after 7 days. Sign in before then to cancel.", confirm: "Schedule deletion", in: NSApp.keyWindow) {
                     Task { await model.mutate("users.requestAccountDeletion", done: "Deletion scheduled") }
                 }
@@ -342,7 +351,7 @@ struct DevicesSettingsView: View {
                                 SText("\(s.client) · Last active \(RelativeDateTimeFormatter().localizedString(for: Date(timeIntervalSince1970: s.lastSeenAt / 1000), relativeTo: Date()))", "row.hint")
                             }
                             .frame(maxWidth: .infinity, alignment: .leading)
-                            if !s.current { WebButton("Sign out", size: .sm) { Task { await model.perform(.sessionRevoke(id: s.id), done: "Signed out") } } }
+                            if !s.current { SButton("Sign out", size: .sm) { Task { await model.perform(.sessionRevoke(id: s.id), done: "Signed out") } } }
                         }
                     }
                 }
@@ -373,7 +382,7 @@ struct SyncSettingsView: View {
                     if store.canRetryReadings {
                         HStack(spacing: 12) {
                             SText("This \(ThisDevice.noun) didn't give every reading.", "row.hint")
-                            WebButton("Retry", icon: .refreshCw, iconSize: 14, size: .sm) { model.remeasureStorage() }
+                            SButton("Retry", icon: .refreshCw, iconSize: 14, size: .sm) { model.remeasureStorage() }
                         }
                     }
                     SettingsSwitchRow(label: "Keep all notes on this \(ThisDevice.noun)", hint: "Every note and its attachments stay on this \(ThisDevice.noun), so all of them open offline.", isOn: s?.keepAll ?? false, disabled: s?.available == false) { on in
@@ -381,8 +390,8 @@ struct SyncSettingsView: View {
                     }
                     .settingsRowWidth(576, alignment: .center)
                     SettingsButtons {
-                        WebButton("Download everything now") { Task { await model.perform(.deviceDownload) } }
-                        WebButton("Remove this \(ThisDevice.noun)'s copy…", variant: .danger) {
+                        SButton("Download everything now") { Task { await model.perform(.deviceDownload) } }
+                        SButton("Remove this \(ThisDevice.noun)'s copy…", variant: .danger) {
                             settingsConfirm("Remove this \(ThisDevice.noun)'s copy?", message: "Notes stay in your account. They download again when you open them.", confirm: "Remove", in: NSApp.keyWindow) {
                                 Task { await model.perform(.deviceRemoveCopy(force: true), done: "Removed") }
                             }
@@ -401,7 +410,7 @@ struct AccountOnlySettings: View {
     var body: some View {
         if model.isLocal {
             SettingsCard("Sign in to Folevi", description: "This needs a Folevi account. Your library stays on your devices.") {
-                WebButton("Sign in to Folevi…") { model.frame.host?.frameSignInAnotherAccount() }
+                SButton("Sign in to Folevi…") { model.frame.host?.frameSignInAnotherAccount() }
             }
         } else {
             AccountMoreSettings(model: model, section: section)

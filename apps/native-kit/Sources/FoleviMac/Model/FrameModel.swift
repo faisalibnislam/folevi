@@ -325,6 +325,12 @@ public final class FrameModel {
         // The Mac searches in its command palette, the query filled in (a folevi://search link, /search?q=): not the
         // iPhone's search screen in a tab (MAC-61).
         if case .search(let q) = route, let searchInPalette { return searchInPalette(q) }
+        #if os(macOS)
+        // Settings are their own window on the Mac (docs/MAC_NATIVE_LOOK.md): a /settings link opens it at its section.
+        if case .web(let p) = route, p == "/settings" || p.hasPrefix("/settings/") || p.hasPrefix("/settings?"), let host {
+            return host.frameOpenSettings(section: MacSettingsSection(path: p)?.rawValue)
+        }
+        #endif
         let shown = tabs.show(route, opening)
         // (A folder tab's id is its own; a joined note's name goes to its pane.)
         if let title { tabs.setTitle(title, icon: icon, for: shown.isFolderBrowsing ? tabs.activeID : shown.tabKey) }

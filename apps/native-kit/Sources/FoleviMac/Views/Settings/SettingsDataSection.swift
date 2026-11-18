@@ -34,11 +34,11 @@ struct DataSettings: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: SettingsStyle.pair("card").light.margin.bottom) {
-            SettingsCard("Import into \(whereName)", description: "Markdown and text files, a folder or a ZIP (an Obsidian vault works), a Notion export (Export → Markdown & CSV, as a ZIP), an Evernote export (.enex), Word documents (.docx), HTML and CSV files. Pages keep their headings, lists, to-dos, links, code, quotes, tables and images; Notion pages stay nested and linked, a folder or ZIP keeps its subfolders, and Evernote notes go into a folder named after the notebook. Anything we can’t convert is kept as text and listed below.") {
+            SettingsCard("Import into \(whereName)", anchor: "import", description: "Markdown and text files, a folder or a ZIP (an Obsidian vault works), a Notion export (Export → Markdown & CSV, as a ZIP), an Evernote export (.enex), Word documents (.docx), HTML and CSV files. Pages keep their headings, lists, to-dos, links, code, quotes, tables and images; Notion pages stay nested and linked, a folder or ZIP keeps its subfolders, and Evernote notes go into a folder named after the notebook. Anything we can’t convert is kept as text and listed below.") {
                 VStack(alignment: .leading, spacing: 0) {
                     SettingsButtons {
-                        WebButton(importing ? "Importing…" : "Choose files…", icon: .upload, iconSize: 14) { pick(folder: false) }.disabled(importing)
-                        WebButton("Import a folder…", icon: .folderUp, iconSize: 14) { pick(folder: true) }.disabled(importing)
+                        SButton(importing ? "Importing…" : "Choose files…", icon: .upload, iconSize: 14) { pick(folder: false) }.disabled(importing)
+                        SButton("Import a folder…", icon: .folderUp, iconSize: 14) { pick(folder: true) }.disabled(importing)
                     }
                     Group { if progress.isEmpty { Color.clear.frame(height: 0) } else { SText(progress, "progress") } }.padding(.top, SettingsStyle.pair("progress").light.margin.top)
                     if !results.isEmpty { resultList.padding(.top, 12) }
@@ -48,15 +48,15 @@ struct DataSettings: View {
                 SettingsCard("Takeout", description: model.isLocal ? "Import a takeout file from a Folevi account: everything in it comes into this library, in a folder of its own." : "One file with everything in your account: notes, files, history, folders and tags, and the workspaces you manage. Another account or a library on your Mac, iPhone, iPad or phone can import it.") {
                     VStack(alignment: .leading, spacing: 0) {
                         SettingsButtons {
-                            WebButton("Import a takeout file…") { pickTakeout() }.disabled(takeoutBusy)
+                            SButton("Import a takeout file…") { pickTakeout() }.disabled(takeoutBusy)
                         }
                         if let takeoutStatus { SText(takeoutStatus, "progress").padding(.top, 8) }
                     }
                 }
             }
-            SettingsCard("Export \(whereName)", description: "A ZIP with every document in \(whereName) as Markdown (in folders matching your sidebar), all attachments in an assets folder, and a manifest.json describing folders, documents and files. Single pages can be exported from their ••• menu as Markdown, HTML or PDF.") {
+            SettingsCard("Export \(whereName)", anchor: "export", description: "A ZIP with every document in \(whereName) as Markdown (in folders matching your sidebar), all attachments in an assets folder, and a manifest.json describing folders, documents and files. Single pages can be exported from their ••• menu as Markdown, HTML or PDF.") {
                 VStack(alignment: .leading, spacing: 0) {
-                    WebButton(exporting ? "Preparing…" : "Export \(whereName) (.zip)", variant: .primary) { export() }.disabled(exporting)
+                    SButton(exporting ? "Preparing…" : "Export \(whereName) (.zip)", variant: .primary) { export() }.disabled(exporting)
                     if let exportNote { SText(exportNote, "progress").padding(.top, 8) }
                 }
             }

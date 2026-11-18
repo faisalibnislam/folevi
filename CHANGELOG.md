@@ -4,6 +4,38 @@ Every Folevi release, newest first, written by `node scripts/version.mjs` from `
 
 Versions are MAJOR.UPDATE.PATCH, PATCH at least two digits: a Major release (2.0.00), a Big update (1.1.05 after 1.0.05) or a Small update (1.0.06 after 1.0.05).
 
+## Version 1.4.44: Big update
+
+Released 2026-11-18 13:23:31+06:00 (build 58, tag v1.4.44)
+
+Folevi for Mac looks and feels like a native macOS app: tabs in the title bar like Finder, Liquid Glass controls, a roomier sidebar, a new Settings window and the system font throughout, with notes keeping their own fonts.
+
+### Added
+
+- Tabs in the title bar like Finder's, the open tab in Liquid Glass, with Back, Forward and Show All Tabs beside them
+- A Settings window of its own, with a category list and search
+- The sync status in the title bar, beside notifications
+
+### Improved
+
+- A roomier sidebar with taller rows and clearer sections
+- One button size and the system font across the app; notes and folders keep their own fonts
+- Folevi's own icons throughout, and the Foli AI flower for Foli AI
+- The floating Foli AI chat on Liquid Glass, with answers easier to read
+- Nothing floats over a note, so the page starts right at the top
+- Quieter title bar while switching tabs
+
+### Fixed
+
+- The open tab's shadow was cut off
+- Lines of a Foli AI answer could be drawn over each other
+- The Stop button was cut off while Foli AI was writing
+- The Vault showed a light band across its top
+
+### Breaking changes
+
+- Folevi for Mac now needs macOS 26 or later; Macs on earlier versions keep Folevi 1.3.44
+
 ## Version 1.3.44: Small update
 
 Released 2026-11-17 14:51:01+06:00 (build 57, tag v1.3.44)

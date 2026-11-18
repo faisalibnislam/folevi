@@ -212,6 +212,8 @@ public final class FrameModel {
     var cardItems: [String: CardItems] = [:]
     /// The title bar's bell: the notifications popover, anchored to it (the sidebar's controller shows it).
     @ObservationIgnored public var showNotifications: (@MainActor (AppKit.NSView?) -> Void)?
+    /// The title bar's sync status: the sync popover, anchored to it (the sidebar's controller shows it).
+    @ObservationIgnored public var showSync: (@MainActor (AppKit.NSView?) -> Void)?
     #endif
     /// This Mac's Touch ID for its encryption keys (the app sets it from E2eeKeys; nil in tests and the demo).
     public var touchId: TouchIdHook?

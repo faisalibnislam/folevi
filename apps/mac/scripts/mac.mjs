@@ -110,7 +110,8 @@ export async function holdUiLock({ timeoutMs = 60 * 60_000, label = process.argv
 }
 
 /** Starts the app on its own data folder; resolves with { pid, userData } once its eval hook is up. */
-export async function launch({ dir, offline = false, appearance = null, env = {}, app = appPath(false), timeoutMs = 60000 } = {}) {
+// FOLEVI_APP: another Debug build to run instead of this checkout's (a before and after comparison, perf-*.mjs).
+export async function launch({ dir, offline = false, appearance = null, env = {}, app = process.env.FOLEVI_APP || appPath(false), timeoutMs = 60000 } = {}) {
   await holdUiLock();
   const ud = userData(dir);
   const running = appInfo(ud);

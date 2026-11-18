@@ -4,8 +4,9 @@
 //
 //   the place and account switcher; New note; Home, Work with Foli AI, Foli DNA (and its saved views), Bookmarks (and
 //   the first bookmarked notes), Drafts, All notes, Tasks, Calendar, Reviews, Shared with Me, Vault, Changes,
-//   Templates; Folders (the tree, sorting, New folder); Tags; Archive and Trash. At the bottom, small buttons: the
-//   sync status, Settings and Help, the list scrolling behind them with its last row reachable.
+//   Templates; Folders (the tree, sorting, New folder); Tags; Archive and Trash. No footer (the owner, 2026-11-18):
+//   the sync status is in the title bar by the bell, and Settings and Help are the menu bar's (Folevi > Settings,
+//   ⌘, and the Help menu).
 //
 // Every row's behaviour is WebSidebar's (WebSidebar.swift): opening in place or in a tab behind (⌘-click, the middle
 // button), the folder tree's drag and drop (notes into a folder, folders above, below or inside one, onto the Folders
@@ -49,11 +50,6 @@ extension WebSidebar {
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
             .scrollIndicators(.automatic)
-            // More below the account: a hairline over the footer marks the edge (MAC-64), only while there is.
-            .onScrollGeometryChange(for: Bool.self) { g in
-                g.contentOffset.y + g.containerSize.height < g.contentSize.height - 1
-            } action: { _, more in moreBelow = more }
-            .safeAreaInset(edge: .bottom, spacing: 0) { macFooter }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .accessibilityElement(children: .contain)
@@ -380,32 +376,12 @@ extension WebSidebar {
         .foleviTooltip(foot.detail.isEmpty ? "Account, places and workspaces" : foot.detail)
         .accessibilityLabel("Account: \(foot.title)\(foot.detail.isEmpty ? "" : ", \(foot.detail)")")
     }
-
-    /// Small buttons at the bottom: the sync status, Settings, Help.
-    private var macFooter: some View {
-        HStack(spacing: 4) {
-            MacSyncStatus(model: model) { actions.sync($0) }
-            MacFooterButton(symbol: "gearshape", label: "Settings", help: "Settings (⌘,)") { _ in model.host?.frameOpenSettings(section: nil) }
-            MacFooterButton(symbol: "questionmark.circle", label: "Help", help: "Help") { _ in model.host?.frameOpenHelp() }
-            Spacer(minLength: 0)
-        }
-        // (The first button's symbol sits in the rows' icon column: 28 pt buttons round a 20 pt slot.)
-        .padding(.horizontal, MacLook.sidebarInset + MacLook.rowPadding - 4)
-        .padding(.vertical, MacLook.Space.s)
-        .background {
-            // The window's own material, so the list scrolls away under the footer rather than through it.
-            WindowMaterial().allowsHitTesting(false)
-        }
-        .overlay(alignment: .top) {
-            Rectangle().fill(MacLook.Colors.separator.opacity(moreBelow ? 1 : 0.6)).frame(height: 1)
-                .padding(.horizontal, MacLook.sidebarInset).allowsHitTesting(false)
-        }
-    }
 }
 
-/// The sync state in the sidebar's footer: a cloud with a dot in the state's status colour (green saved, orange
-/// while saving or syncing, red for a conflict or an error, quiet offline), as the popover it opens says it.
-private struct MacSyncStatus: View {
+/// The sync state in the title bar, before the bell (the owner, 2026-11-18): a cloud with a dot in the state's
+/// status colour (green saved, orange while saving or syncing, red for a conflict or an error, quiet offline), as
+/// the popover it opens says it.
+struct MacSyncStatus: View {
     let model: FrameModel
     let action: (NSView?) -> Void
     @State private var anchor: NSView?
@@ -419,35 +395,14 @@ private struct MacSyncStatus: View {
                 MacSymbol("icloud", size: MacLook.iconButtonSymbol).foregroundStyle(MacLook.Colors.secondary)
                 Circle().fill(SyncPopover.tone(state)).frame(width: 6, height: 6).offset(x: 1, y: 1)
             }
-            .frame(width: MacLook.iconButton, height: MacLook.iconButton)
+            // (The title bar's buttons' size and hover: 32 by 28, a capsule.)
+            .frame(width: 32, height: MacLook.iconButton)
             .contentShape(Rectangle())
             .background(MenuAnchor { anchor = $0 })
         }
-        .buttonStyle(QuietHoverStyle(shape: AnyShape(RoundedRectangle(cornerRadius: 6, style: .continuous))))
+        .buttonStyle(QuietHoverStyle(shape: AnyShape(Capsule())))
         .foleviTooltip(headline)
         .accessibilityLabel("Sync status: \(headline)")
-    }
-}
-
-/// A footer icon button (Notifications), anchored for the panel it opens.
-private struct MacFooterButton: View {
-    let symbol: String
-    let label: String
-    var help: String? = nil
-    let action: (NSView?) -> Void
-    @State private var anchor: NSView?
-
-    var body: some View {
-        Button { action(anchor) } label: {
-            MacSymbol(symbol, size: MacLook.iconButtonSymbol)
-                .frame(width: MacLook.iconButton, height: MacLook.iconButton)
-                .contentShape(Rectangle())
-                .background(MenuAnchor { anchor = $0 })
-        }
-        .buttonStyle(QuietHoverStyle(shape: AnyShape(RoundedRectangle(cornerRadius: 6, style: .continuous))))
-        .foregroundStyle(MacLook.Colors.secondary)
-        .foleviTooltip(help ?? label)
-        .accessibilityLabel(label)
     }
 }
 

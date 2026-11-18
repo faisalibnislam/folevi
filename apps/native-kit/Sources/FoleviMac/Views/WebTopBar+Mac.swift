@@ -7,7 +7,7 @@
 // edge, Back and Forward and the tab bar drawn as Finder's (the owner, 2026-11-18): Home in a round button, the tabs in a grey capsule
 // track with a hairline between them, each its own width with its icon and title centred, the open one a Liquid
 // Glass capsule inset in the track, and the Tab Overview's round button after the track. With only Home open there
-// is no track. The bell and, on a note, the inspector's button sit at the strip's end. Empty strip space
+// is no track. The bell and, on a note, the inspector's button sit at the strip's end, the sync status before the bell. Empty strip space
 // moves the window.
 //
 // Folevi's tab model is unchanged (WebTopBar.swift keeps it: pinned, joined and per-place tabs, folder tabs, close,
@@ -57,18 +57,14 @@ extension WebTopBar {
     private var tail: some View {
         HStack(spacing: 6) {
             // Back and Forward stay put, dimmed with nowhere to go (Finder's and Safari's), so the tabs never shift
-            // and nothing floats over the page for them.
-            HStack(spacing: 0) {
-                stripButton("chevron.left", label: "Back", help: "Back (⌘[)") { model.goBack() }
-                    .disabled(!model.history.canGoBack)
-                    .opacity(model.history.canGoBack ? 1 : 0.35)
-                stripButton("chevron.right", label: "Forward", help: "Forward (⌘])") { model.goForward() }
-                    .disabled(!model.history.canGoForward)
-                    .opacity(model.history.canGoForward ? 1 : 0.35)
-            }
-            .padding(.trailing, 2)
+            // and nothing floats over the page for them. (A view of their own: only they redraw when the history
+            // changes, not the whole strip.)
+            MacHistoryButtons(model: model)
+                .padding(.trailing, 2)
             tabStrip
             Spacer(minLength: 8)
+            // Whether everything is saved and synced, then the bell (the owner, 2026-11-18).
+            MacSyncStatus(model: model) { model.showSync?($0) }
             stripButton("bell", label: "Notifications", help: "Notifications", anchored: true) { model.showNotifications?(bellAnchor) }
             if model.route.isNote {
                 let shown = model.noteToolsShown
@@ -144,10 +140,7 @@ extension WebTopBar {
             // (No + here, the owner, 2026-11-18: the sidebar's New note is the one way to a new note on screen;
             // ⌘T and File > New Tab still open a tab.)
             // Every tab at a glance (File > Show All Tabs, ⌘⇧\), Safari's button after the tabs.
-            trackCircle("square.grid.2x2", label: "Show all tabs", help: "Show All Tabs (⌘⇧\\)", on: model.overviewShown) {
-                model.overviewShown.toggle()
-            }
-            .accessibilityValue(model.overviewShown ? "Shown" : "Hidden")
+            MacOverviewButton(model: model)
         }
     }
 
@@ -155,20 +148,6 @@ extension WebTopBar {
     static let trackInset = MacLook.capsuleInset
     static var trackHeight: CGFloat { MacLook.tabHeight + trackInset * 2 }
 
-    /// A round button beside the track, on the track's own fill (Finder's +): a symbol, its tooltip and its name.
-    /// `on`: the button's view is showing (the Tab Overview): its symbol in the label colour on a deeper fill.
-    private func trackCircle(_ symbol: String, label: String, help: String, on: Bool = false, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            MacSymbol(symbol, size: 14, weight: .medium)
-                .frame(width: Self.trackHeight, height: Self.trackHeight)
-                .contentShape(Circle())
-        }
-        .buttonStyle(QuietHoverStyle(shape: AnyShape(Circle()), active: !on))
-        .background(on ? MacLook.Colors.hover : MacLook.Colors.track, in: Circle())
-        .foregroundStyle(on ? MacLook.Colors.label : MacLook.Colors.secondary)
-        .foleviTooltip(help)
-        .accessibilityLabel(label)
-    }
 
     /// The arrows' room after the last tab while the tabs overflow (two 20 pt chevrons and a little air).
     static let arrowsRoom: CGFloat = 44
@@ -236,6 +215,9 @@ extension WebTopBar {
     /// title, centred; the open one in Liquid Glass. Pinned tabs are their icon alone; Home is its icon in a round
     /// button before the track. `separator`: a hairline in the gap before it.
     func macTab(_ t: FrameTab, separator: Bool = false) -> some View {
+        // (Read once: FrameTab.route parses the tab's path every time.)
+        let route = t.route
+        let flower = Self.wearsFlower(route)
         let active = t.id == model.tabs.activeID
         let label = model.tabs.label(t)
         let hovered = hoveredTab == t.id
@@ -245,19 +227,19 @@ extension WebTopBar {
             if compact {
                 if t.isJoined, let panes = t.panes {
                     ForEach(panes, id: \.self) { _ in MacSymbol("doc.text", size: 11) }
-                } else if Self.wearsFlower(t.route) {
+                } else if flower {
                     AiMarkGlyph(size: 13)
                 } else {
-                    WebIconView(Self.icon(for: t.route), size: 15, strokeWidth: active ? 2.3 : 2)
+                    WebIconView(Self.icon(for: route), size: 15, strokeWidth: active ? 2.3 : 2)
                 }
             } else {
                 ZStack {
                     if closes {
                         macCloseButton(t, label: label, visible: true)
-                    } else if Self.wearsFlower(t.route) {
+                    } else if flower {
                         AiMarkGlyph(size: 12)
                     } else {
-                        WebIconView(Self.icon(for: t.route), size: 14)
+                        WebIconView(Self.icon(for: route), size: 14)
                     }
                 }
                 .frame(width: 16, height: 16)
@@ -266,7 +248,7 @@ extension WebTopBar {
                 } else {
                     MacTruncatingText(text: label, font: active ? MacLook.Text.body.weight(.medium) : MacLook.Text.body)
                 }
-                if !t.isJoined, let id = t.route.noteId, model.floatingNotes.contains(id) { macFloatingBadge(id, label: label) }
+                if !t.isJoined, let id = route.noteId, model.floatingNotes.contains(id) { macFloatingBadge(id, label: label) }
             }
         }
         .padding(.horizontal, compact ? 0 : 10)
@@ -375,6 +357,65 @@ extension WebTopBar {
         .allowsHitTesting(visible)
         .accessibilityLabel("Close \(label)")
         .foleviTooltip("Close Tab (⌘W)")
+    }
+}
+
+/// Back and Forward in the title bar: a view of its own, so the history changing (every tab switch) redraws only
+/// these two buttons, not the whole strip.
+struct MacHistoryButtons: View {
+    let model: FrameModel
+
+    var body: some View {
+        HStack(spacing: 0) {
+            MacStripButton(symbol: "chevron.left", label: "Back", help: "Back (⌘[)") { model.goBack() }
+                .disabled(!model.history.canGoBack)
+                .opacity(model.history.canGoBack ? 1 : 0.35)
+            MacStripButton(symbol: "chevron.right", label: "Forward", help: "Forward (⌘])") { model.goForward() }
+                .disabled(!model.history.canGoForward)
+                .opacity(model.history.canGoForward ? 1 : 0.35)
+        }
+    }
+}
+
+/// Show All Tabs, a round button after the tab track (Safari's): a view of its own, so only it watches whether the
+/// overview is showing.
+struct MacOverviewButton: View {
+    let model: FrameModel
+
+    var body: some View {
+        let on = model.overviewShown
+        Button { model.overviewShown.toggle() } label: {
+            MacSymbol("square.grid.2x2", size: 14, weight: .medium)
+                .frame(width: WebTopBar.trackHeight, height: WebTopBar.trackHeight)
+                .contentShape(Circle())
+        }
+        // (While the overview shows, its symbol in the label colour on a deeper fill.)
+        .buttonStyle(QuietHoverStyle(shape: AnyShape(Circle()), active: !on))
+        .background(on ? MacLook.Colors.hover : MacLook.Colors.track, in: Circle())
+        .foregroundStyle(on ? MacLook.Colors.label : MacLook.Colors.secondary)
+        .foleviTooltip("Show All Tabs (⌘⇧\\)")
+        .accessibilityLabel("Show all tabs")
+        .accessibilityValue(on ? "Shown" : "Hidden")
+    }
+}
+
+/// A button in the title bar: a symbol in a 32 by 28 capsule with the quiet hover, its tooltip and its name.
+struct MacStripButton: View {
+    let symbol: String
+    let label: String
+    let help: String
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            MacSymbol(symbol, size: MacLook.iconButtonSymbol)
+                .frame(width: 32, height: MacLook.iconButton)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(QuietHoverStyle(shape: AnyShape(Capsule())))
+        .foregroundStyle(MacLook.Colors.secondary)
+        .foleviTooltip(help)
+        .accessibilityLabel(label)
     }
 }
 

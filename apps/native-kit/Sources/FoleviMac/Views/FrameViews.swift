@@ -337,6 +337,8 @@ public final class WebSidebarController: NSViewController {
         AppContextMenu.attach(model, window: view.window)
         // The title bar's bell opens the notifications here.
         model.showNotifications = { [weak self] anchor in self?.showNotifications(anchor) }
+        // The title bar's sync status opens the sync details here.
+        model.showSync = { [weak self] anchor in self?.showSync(anchor) }
         // A search link opens ⌘K with its query, not a search tab (MAC-61).
         model.searchInPalette = { [weak self] q in
             guard let self else { return }

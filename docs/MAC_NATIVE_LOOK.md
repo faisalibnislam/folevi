@@ -38,7 +38,7 @@ Branch: `mac-native-look`. Not released: the owner approves the look first.
   in a round button after the track. No + (the sidebar's New note; ⌘T opens a tab). With only Home open there is
   no track. The track clips its tabs, the list fades out before the scroll
   arrows (`EdgeFade(trailingInset:)`), and hovering a tab's × hides the tab's picture so the × keeps its tooltip.
-  The bell and (on a note) the inspector's button are at the strip's end.
+  The sync status, the bell and (on a note) the inspector's button are at the strip's end.
 - **The card's controls** float in Liquid Glass at a screen's top (`CardControls`), 36 pt, 12 pt in, 8 pt apart, in
   one `GlassEffectContainer`: the screen's title, the screen's own controls (`CardItems`), search. Screens leave
   their room (60 pt). **Nothing floats over a note**, so a note's page keeps no band for controls: the sheet starts
@@ -48,9 +48,9 @@ Branch: `mac-native-look`. Not released: the owner approves the look first.
 - **Sidebar** (240 pt, hidden by its button, ⌘\ and Focus mode): drawn directly in a scroll view (not `List`, not
   `NavigationSplitView`), 12 pt side inset. Rows are 32 pt with 2 pt between them, 8 pt corners, 13 pt labels,
   15 pt symbols in a 20 pt column, 10 pt content inset, 8 pt gap; folders indent 16 pt a level. Section headings
-  are 11 pt semibold secondary with 22 pt above and 6 pt below; a heading that opens a page hovers as a whole row. The account's picture, the rows' symbols and the
-  footer's first button share one column. The footer (sync, Settings, Help) is pinned at the bottom in a safe-area
-  inset; the sync dot is the real state's colour.
+  are 11 pt semibold secondary with 22 pt above and 6 pt below; a heading that opens a page hovers as a whole row. The account's picture and the rows' symbols share one
+  column. No footer (the owner, 2026-11-18): Settings and Help are the menu bar's (⌘, and the Help menu), and the
+  sync status (a cloud with the real state's coloured dot) sits in the title bar before the bell.
 - **Glass** on the navigation layer and on small controls floating over content: the open tab, the card's controls,
   Ask Foli AI's button, the multi-select bar, toasts. Never on content (cards, rows, panels in the card, sheets'
   bodies). Panels inside the card are a flat fill.

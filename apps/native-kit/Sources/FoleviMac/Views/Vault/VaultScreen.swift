@@ -89,11 +89,15 @@ private struct VaultBody: View {
     @Bindable var model: VaultModel
     @Environment(\.colorScheme) private var scheme
     @Environment(\.nativeChrome) private var chrome
+    #if os(macOS)
+    /// The bar's room now (the tab bar comes and goes).
+    @Environment(\.macBarRoom) private var barRoomNow
+    #endif
 
     /// The room the card's top bar takes (the native look's bar is MacLook's).
     private var barRoom: CGFloat {
         #if os(macOS)
-        chrome != nil ? MacLook.barHeight : ContentViewController.barHeight
+        chrome != nil ? barRoomNow : ContentViewController.barHeight
         #else
         ContentViewController.barHeight
         #endif

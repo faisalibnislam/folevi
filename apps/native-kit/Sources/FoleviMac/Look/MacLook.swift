@@ -31,16 +31,31 @@ public enum MacLook {
     public static let titlebarStrip: CGFloat = 28
 
     // MARK: Top bar (drawn inside the card, first thing in it)
+    //
+    // Two rows (the HIG's toolbars.md): the toolbar (Back and Forward, the view's title, New note, search, the
+    // inspector's button), and under it, with two or more tabs open, the tab bar (macOS's own tab bar, Safari's).
 
     public static let barPaddingTop: CGFloat = 14
     public static let barPaddingSides: CGFloat = 14
-    public static let barPaddingBottom: CGFloat = 10
-    /// Every top bar control is a capsule this tall.
+    public static let barPaddingBottom: CGFloat = 8
+    /// Every toolbar control is a capsule this tall.
     public static let barControlHeight: CGFloat = 36
     /// The gap between top bar groups.
     public static let barSpacing: CGFloat = 10
-    /// The room the bar takes at the card's top: the note page leaves this much space (its top inset).
-    public static var barHeight: CGFloat { barPaddingTop + barControlHeight + barPaddingBottom }
+    /// The toolbar row's room: its padding and its controls.
+    public static var toolbarHeight: CGFloat { barPaddingTop + barControlHeight + barPaddingBottom }
+    /// The tab bar row: its track this tall, then `tabRowPaddingBottom` under it.
+    public static let tabRowHeight: CGFloat = 30
+    public static let tabRowPaddingBottom: CGFloat = 8
+    /// A tab in the tab bar's track (the track's height less a 1 pt inset on each side).
+    public static let tabHeight: CGFloat = 28
+    /// The least a tab shrinks to before the tab bar scrolls (Home and pinned tabs are their icon's width).
+    public static let tabMinWidth: CGFloat = 120
+    /// The room the bar takes at the card's top, with the tab bar or without: the note page and the screens leave
+    /// this much space (their top inset). FrameModel.barHeight is the live one.
+    public static func barHeight(tabRow: Bool) -> CGFloat {
+        toolbarHeight + (tabRow ? tabRowHeight + tabRowPaddingBottom : 0)
+    }
     /// The inset of a selected capsule inside its capsule track (selectedHeight = trackHeight - 2 * inset).
     public static let capsuleInset: CGFloat = 3
 
@@ -166,6 +181,9 @@ extension EnvironmentValues {
     /// The native look (true on the Mac). False where FoleviMac's SwiftUI stands for the iPad's wide layout or the
     /// iPhone's (the tests that picture those layouts on the Mac): they keep the web's look until the owner decides.
     @Entry public var macNativeLook = true
+    /// The room the card's top bar takes now (FrameModel.barHeight: the toolbar, and the tab bar while it shows),
+    /// for a screen's own views that reach up under it.
+    @Entry public var macBarRoom: CGFloat = MacLook.barHeight(tabRow: false)
 }
 
 public extension View {

@@ -130,10 +130,45 @@ struct AiLauncher: View {
     @Environment(\.colorScheme) private var scheme
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
+    #if os(macOS)
+    /// The Mac's native look: a regular Liquid Glass capsule, not a second coloured action beside New note
+    /// (liquid-glass.md: refrain from adding colour to the background of more than one control).
+    @Environment(\.macNativeLook) private var native
+    #endif
+
     var body: some View {
+        #if os(macOS)
+        if native { glass } else { web }
+        #else
+        web
+        #endif
+    }
+
+    #if os(macOS)
+    private var glass: some View {
+        Button(action: action) {
+            HStack(spacing: 8) {
+                if open { Image(systemName: "xmark").font(.system(size: 13, weight: .semibold)) } else { AiMarkGlyph(size: 16).rotationEffect(.degrees(thinking && !reduceMotion ? 20 : 0)) }
+                Text("Ask Foli AI").font(MacLook.Text.body.weight(.medium)).lineLimit(1)
+            }
+            .foregroundStyle(MacLook.Colors.label)
+            .padding(.horizontal, 16)
+            .frame(height: MacLook.barControlHeight + 4)
+            .contentShape(Capsule())
+        }
+        .buttonStyle(QuietHoverStyle(shape: AnyShape(Capsule())))
+        .glassEffect(.regular.interactive(), in: .capsule)
+        // It says "Ask Foli AI": the tooltip is its shortcut alone (or what a click does while it is open).
+        .foleviTooltip(open ? "Close Foli AI" : "(⌘J)")
+        .accessibilityLabel(open ? "Close Foli AI" : "Ask Foli AI")
+        .accessibilityValue(open ? "Open" : "Closed")
+    }
+    #endif
+
+    private var web: some View {
         let look = AiLook(scheme: scheme)
         let s = look.s("ai.fab")
-        Button(action: action) {
+        return Button(action: action) {
             HStack(spacing: s.gap) {
                 if open { WebIconView(.x, size: 18) } else { AiMarkGlyph(size: 17).rotationEffect(.degrees(thinking && !reduceMotion ? 20 : 0)) }
                 Text("Ask Foli AI").webText(look.text("ai.fab.label")).lineLimit(1)

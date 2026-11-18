@@ -295,7 +295,7 @@ struct ScreenRoot: View {
     /// The room the card's top bar takes: the screen starts below it.
     private var barRoom: CGFloat {
         #if os(macOS)
-        native ? MacLook.barHeight : ContentViewController.barHeight
+        native ? model.barHeight : ContentViewController.barHeight
         #else
         ContentViewController.barHeight
         #endif
@@ -365,6 +365,7 @@ struct ScreenRoot: View {
         .environment(\.screenIntents, FrameNavigation.intents(model))
         .environment(\.screenFeedback, models.feedback)
         #if os(macOS)
+        .environment(\.macBarRoom, barRoom)
         // System chrome, Folevi content: the screens' interface parts draw natively (note cards opt out).
         .macNativeChrome()
         #endif

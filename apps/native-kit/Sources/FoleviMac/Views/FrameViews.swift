@@ -341,8 +341,12 @@ public final class ContentViewController: NSViewController {
     private var observers: [Observer] = []
     private var overviewView: NSView?
     private var shownRoute: FrameRoute?
-    /// Where the content starts under the top bar (MacLook.barHeight: the bar's padding and its 36 pt controls).
-    static var barHeight: CGFloat { MacLook.barHeight }
+    /// The web frame's bar room (the web's main: padding-top 56), as the iPad's frame keeps it (Platform.swift): for
+    /// the iPad's layout pictured on the Mac (`macNativeLook` false). The Mac's own bar is FrameModel.barHeight.
+    static var barHeight: CGFloat { WebStyles.named("frame.main").light.padding.top }
+    /// The top bar's height, following the tab bar as it comes and goes.
+    private var barHeightConstraint: NSLayoutConstraint?
+    private var barShown: CGFloat = 0
 
     init(model: FrameModel, pageView: NSView) {
         self.model = model
@@ -419,7 +423,6 @@ public final class ContentViewController: NSViewController {
             topBar.topAnchor.constraint(equalTo: clip.topAnchor),
             topBar.leadingAnchor.constraint(equalTo: clip.leadingAnchor),
             topBar.trailingAnchor.constraint(equalTo: clip.trailingAnchor),
-            topBar.heightAnchor.constraint(equalToConstant: MacLook.barHeight),
             body.topAnchor.constraint(equalTo: clip.topAnchor),
             body.leadingAnchor.constraint(equalTo: clip.leadingAnchor),
             body.trailingAnchor.constraint(equalTo: clip.trailingAnchor),
@@ -435,6 +438,9 @@ public final class ContentViewController: NSViewController {
         ])
         toastCentre = toastView.centerXAnchor.constraint(equalTo: clip.centerXAnchor)
         toastCentre?.isActive = true
+        barShown = model.barHeight
+        barHeightConstraint = topBar.heightAnchor.constraint(equalToConstant: barShown)
+        barHeightConstraint?.isActive = true
         WebSidebarController.loadNoteToolsChoice(model)
     }
 
@@ -444,7 +450,7 @@ public final class ContentViewController: NSViewController {
     /// card too narrow for both, the inspector steps aside.
     private func layoutPage() {
         let b = clip.bounds
-        let f = Self.pageLayout(card: b.size, wanted: inspectorWanted)
+        let f = Self.pageLayout(card: b.size, wanted: inspectorWanted, bar: model.barHeight)
         if let inspector {
             if inspector.isHidden == (f.inspector != nil) { inspector.isHidden = f.inspector == nil }
             if let r = f.inspector, inspector.frame != r { inspector.frame = r }
@@ -459,12 +465,12 @@ public final class ContentViewController: NSViewController {
     }
 
     /// The page's and the inspector's frames in the card (AppKit's origin, bottom left). A pure function (tests).
-    nonisolated public static func pageLayout(card: CGSize, wanted: Bool) -> (page: CGRect, inspector: CGRect?) {
+    nonisolated public static func pageLayout(card: CGSize, wanted: Bool, bar: CGFloat) -> (page: CGRect, inspector: CGRect?) {
         let full = CGRect(origin: .zero, size: card)
         let g = MacLook.panelGutter
         let reserve = MacLook.inspectorWidth + g * 2
         guard wanted, card.width - reserve >= MacLook.inspectorMinContent else { return (full, nil) }
-        let panel = CGRect(x: card.width - g - MacLook.inspectorWidth, y: g, width: MacLook.inspectorWidth, height: max(0, card.height - MacLook.barHeight - g))
+        let panel = CGRect(x: card.width - g - MacLook.inspectorWidth, y: g, width: MacLook.inspectorWidth, height: max(0, card.height - bar - g))
         return (CGRect(x: 0, y: 0, width: card.width - reserve, height: card.height), panel)
     }
 
@@ -507,6 +513,17 @@ public final class ContentViewController: NSViewController {
             _ = self.inspectorWanted
             self.clip.needsLayout = true
         })
+        // The tab bar coming or going: the bar's height, the note page's top inset and the inspector's top follow
+        // (the screens read FrameModel.barHeight themselves).
+        observers.append(Observer { [weak self] in
+            guard let self else { return }
+            let h = self.model.barHeight
+            guard h != self.barShown else { return }
+            self.barShown = h
+            self.barHeightConstraint?.constant = h
+            if self.model.route.isNote { self.sendInsets() }
+            self.clip.needsLayout = true
+        })
         observers.append(Observer { [weak self] in
             guard let self else { return }
             let shown = self.model.overviewShown
@@ -522,7 +539,7 @@ public final class ContentViewController: NSViewController {
         pageView.removeFromSuperview()
         // (Laid out with the inspector beside it: layoutPage.)
         pageView.autoresizingMask = []
-        pageView.frame = Self.pageLayout(card: clip.bounds.size, wanted: inspectorWanted).page
+        pageView.frame = Self.pageLayout(card: clip.bounds.size, wanted: inspectorWanted, bar: model.barHeight).page
         clip.addSubview(pageView, positioned: .below, relativeTo: body)
         sendInsets()
         if model.route.isNote { view.window?.makeFirstResponder(pageView) }
@@ -533,7 +550,7 @@ public final class ContentViewController: NSViewController {
     /// 42 pt tall and the note's title slid under the bar. So the bar's height is sent divided by the zoom.
     private func sendInsets() {
         let zoom = max(0.1, (pageView as? WKWebView)?.pageZoom ?? 1)
-        model.editor(.insets(top: Double(Self.barHeight / zoom), bottom: 0))
+        model.editor(.insets(top: Double(model.barHeight / zoom), bottom: 0))
     }
 
     /// View > Zoom changed the page's zoom (the app says so): the page's top inset is sent again at the new size.

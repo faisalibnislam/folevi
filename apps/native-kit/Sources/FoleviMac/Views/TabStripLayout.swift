@@ -42,6 +42,11 @@ public enum TabStripMath {
         /// Joined notes' tab, as wide as two: `min-w-[240px] flex-[0_1_460px]`.
         public static let joined = Flex(basis: 460, min: joinedMin)
         #if os(macOS)
+        /// The Mac's tab bar (a row of its own, as Safari's): the tabs share the row equally, down to `fillMin`,
+        /// then it scrolls; joined notes as wide as two.
+        public static let fill = Flex(basis: 100_000, min: fillMin)
+        public static let fillJoined = Flex(basis: 200_000, min: fillMin * 2)
+        public static let fillMin: CGFloat = 120
         static let joinedMin: CGFloat = 160
         #else
         static let joinedMin: CGFloat = 240
@@ -151,6 +156,9 @@ final class TabScroller {
     var shownOnce = false
     /// A tab is being dragged (the strip stays put under the pointer).
     var dragging = false
+    /// The list's width on screen, as laid out for real (the Mac's tab bar takes only the measures made at it: a
+    /// measure at another width, an ideal-size pass, would have the strip go back and forth between the two).
+    var shownWidth: CGFloat = 0
 }
 
 /// Lays the tabs out in a row as the web's list does, scrolled by `offset` (animatable, for the smooth scrolls).
@@ -158,6 +166,8 @@ struct TabRow: Layout {
     var gap: CGFloat
     var padding: EdgeInsets
     var offset: CGFloat
+    /// The tabs share the whole row equally (the Mac's tab bar) instead of each taking up to its own basis.
+    var fill = false
     var report: (TabRowMetrics) -> Void
 
     var animatableData: CGFloat {
@@ -169,11 +179,18 @@ struct TabRow: Layout {
         let items: [TabStripMath.Item] = subviews.map { s in
             switch s[TabRoleKey.self] {
             case .own: return .fixed(s.sizeThatFits(.unspecified).width)
-            case .other: return .flex(.tab)
-            case .joined: return .flex(.joined)
+            case .other: return .flex(flex(joined: false))
+            case .joined: return .flex(flex(joined: true))
             }
         }
         return TabStripMath.sizes(items: items, gap: gap, padding: padding.leading + padding.trailing, available: available)
+    }
+
+    private func flex(joined: Bool) -> TabStripMath.Flex {
+        #if os(macOS)
+        if fill { return joined ? .fillJoined : .fill }
+        #endif
+        return joined ? .joined : .tab
     }
 
     private func height(_ subviews: Subviews) -> CGFloat {
@@ -181,7 +198,9 @@ struct TabRow: Layout {
     }
 
     func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
-        CGSize(width: sizes(subviews, proposal.width).visible, height: height(subviews))
+        // (Filling the row, its ideal width is whatever it's offered: asked without an offer, the tabs at their least.)
+        let width = fill && (proposal.width == nil || proposal.width == .infinity) ? sizes(subviews, 0).content : sizes(subviews, proposal.width).visible
+        return CGSize(width: width, height: height(subviews))
     }
 
     func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {

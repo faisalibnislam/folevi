@@ -17,7 +17,7 @@ export const RELEASES: Release[] = [
     version: "0.4",
     name: "Folevi for Mac runs the web app",
     date: "2026-10-09",
-    label: "9 October 2026",
+    label: "October 9, 2026",
     intro: "Folevi for Mac now runs the same app as the web, so every feature reaches the Mac the day it ships. It isn't available to download yet.",
     groups: [
       {
@@ -36,7 +36,7 @@ export const RELEASES: Release[] = [
     version: "0.3",
     name: "New plans and AI credits",
     date: "2026-09-30",
-    label: "30 September 2026",
+    label: "September 30, 2026",
     intro: "Four plans, the same for you and for your team, and AI counted in credits so every plan can say exactly what it includes.",
     groups: [
       {
@@ -65,7 +65,7 @@ export const RELEASES: Release[] = [
     version: "0.2",
     name: "Plans, AI and a new look",
     date: "2026-09-28",
-    label: "28 September 2026",
+    label: "September 28, 2026",
     intro: "Folevi gets plans, an AI Assistant and a lighter, glassier look. They're on the web now, and the Mac app will follow.",
     groups: [
       {
@@ -106,7 +106,7 @@ export const RELEASES: Release[] = [
     version: "0.1",
     name: "Preview",
     date: "2026-09-25",
-    label: "25 September 2026",
+    label: "September 25, 2026",
     intro: "The first public preview of Folevi, on the web and (for preview accounts) on the Mac.",
     groups: [
       {

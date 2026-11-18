@@ -2,6 +2,7 @@ import Link from "next/link";
 import { DocShell } from "@/components/marketing/DocShell";
 import { pageMetadata } from "@/components/marketing/seo";
 import { SECURITY_EMAIL } from "@/components/marketing/site";
+import { PACK_VALID_MONTHS, TIER_NAMES, TRIAL_CREDITS, TRIAL_DAYS, TRIAL_TIER } from "@/lib/plans";
 import { DraftNotice, PageHeader } from "@/components/marketing/ui";
 import { PageFrame } from "@/components/marketing/cards";
 
@@ -31,12 +32,12 @@ export default function TermsPage() {
   return (
     <PageFrame>
       <PageHeader eyebrow="Legal" title="Terms of use" lede="The ground rules for using Folevi, in plain language.">
-        <DraftNotice updated="27 October 2026" />
+        <DraftNotice updated="November 18, 2026" />
       </PageHeader>
       <DocShell toc={toc}>
         <h2 id="agreement">The agreement</h2>
         <p>
-          By creating an account or using Folevi (the website, the web app and, once it’s released, the Mac app), you agree to these terms and
+          By creating an account or using Folevi (the website, the web app, and the Mac, iPhone and iPad apps), you agree to these terms and
           to our <Link href="/privacy">privacy policy</Link>. If you’re using Folevi for an organization, you confirm you’re
           allowed to accept these terms on its behalf.
         </p>
@@ -135,10 +136,13 @@ export default function TermsPage() {
             handles sales tax or VAT at checkout.
           </li>
           <li>
-            AI credit packs are one-time purchases for Pro and Pro AI. Their credits last 12 months from purchase and are used
+            AI credit packs are one-time purchases for Pro and Pro AI. Their credits last {PACK_VALID_MONTHS} months from purchase and are used
             after the monthly credits.
           </li>
-          <li>New accounts get a free 7-day Pro AI trial with 100 AI credits. It ends without charge; you choose whether to pay.</li>
+          <li>
+            New accounts get a free {TRIAL_DAYS}-day {TIER_NAMES[TRIAL_TIER]} trial with {TRIAL_CREDITS} AI credits. It ends without charge;
+            you choose whether to pay.
+          </li>
           <li>
             Paid plans renew automatically until canceled. You can cancel a personal plan in Settings → Plan & billing; a
             workspace plan is canceled by its owner or an admin they allow. A canceled plan keeps working until the end of the

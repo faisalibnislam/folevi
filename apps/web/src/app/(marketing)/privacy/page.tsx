@@ -30,7 +30,7 @@ export default function PrivacyPage() {
   return (
     <PageFrame>
       <PageHeader eyebrow="Legal" title="Privacy policy" lede="How Folevi handles your information, written to be read.">
-        <DraftNotice updated="30 September 2026" />
+        <DraftNotice updated="September 30, 2026" />
       </PageHeader>
       <DocShell toc={toc}>
         <h2 id="short">The short version</h2>

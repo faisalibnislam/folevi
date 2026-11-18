@@ -485,7 +485,7 @@ export const FEATURES: Feature[] = [
     faq: [
       { q: "How do I record audio in a Folevi note?", a: "Type /record on an empty line and press Return, or pick Audio recording in the Insert panel. Allow the microphone when your browser asks, then press Stop and save." },
       { q: "How long can a recording be?", a: "Up to three hours. The recorder stops by itself at three hours, and you can pause and resume as often as you like." },
-      { q: "Does Folevi transcribe recordings?", a: "Yes, on plans with Foli AI. Press Transcribe on a recording and Foli AI writes it out word for word, with speakers marked. Recordings of any length up to 4 hours can be transcribed, and Folevi shows what it will cost in AI credits before it starts." },
+      { q: "Does Folevi transcribe recordings?", a: "Yes, on plans with Foli AI. Press Transcribe on a recording and Foli AI writes it out word for word, with speakers marked. Anything up to 4 hours long can be transcribed: your recordings, which stop at three hours, and audio files you add to a note. Folevi shows what it will cost in AI credits before it starts." },
       { q: "Which plans include audio recordings?", a: "Every plan, including Free and Core. Recordings count toward your storage." },
       { q: "Which browsers can record?", a: "Recent versions of Chrome, Safari, Edge and Firefox. Chrome, Edge and Firefox record WebM audio and Safari records MP4 audio; recent browsers play both." },
     ],

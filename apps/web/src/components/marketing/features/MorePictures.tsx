@@ -146,7 +146,7 @@ export function CalendarPicture() {
             </div>
           </div>
           <div className="hidden border-l border-(--color-line) p-4 sm:block">
-            <p className="font-semibold text-(--color-heading)">Wednesday, 7 October</p>
+            <p className="font-semibold text-(--color-heading)">Wednesday, October 7</p>
             <div className="mt-2 space-y-2">
               {[
                 ["10:30", "Movers", "Studio move"],

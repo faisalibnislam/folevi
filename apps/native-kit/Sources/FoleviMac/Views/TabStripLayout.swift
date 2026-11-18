@@ -190,10 +190,12 @@ struct TabRow: Layout {
     private func flex(joined: Bool, _ tab: LayoutSubview) -> TabStripMath.Flex {
         #if os(macOS)
         if titleBar {
-            // A title bar tab is as wide as its title (between the least and the most), and all shrink together.
+            // A title bar tab is as wide as its icon and title (up to the most), and all shrink together. A tab that
+            // needs less than the least ("Vault", "Tasks") keeps its own width, so its padding is every other tab's
+            // (the owner, 2026-11-18: no extra room round a short tab).
             let f: TabStripMath.Flex = joined ? .titleBarJoined : .titleBar
-            let own = tab.sizeThatFits(.unspecified).width
-            return TabStripMath.Flex(basis: min(f.basis, max(f.min, own)), min: f.min)
+            let own = tab.sizeThatFits(.unspecified).width.rounded(.up)
+            return TabStripMath.Flex(basis: min(f.basis, own), min: min(f.min, own))
         }
         #endif
         return joined ? .joined : .tab

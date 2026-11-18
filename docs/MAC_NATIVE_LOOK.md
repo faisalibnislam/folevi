@@ -35,7 +35,7 @@ Branch: `mac-native-look`. Not released: the owner approves the look first.
   Finder's (the owner, 2026-11-18): Home in a round button, the tabs in a grey capsule track (34 pt, `MacLook.Colors.track`)
   with a hairline between two tabs that have no fill, each tab a 28 pt capsule of its own width (90 to 180 pt)
   with its icon and title centred, the open one a Liquid Glass capsule inset 3 pt in the track, and Show All Tabs
-  in a round button after the track. No + (the sidebar's New note; ⌘T opens a tab). With only Home open there is
+  in a round button right after Home. A tab narrower than 90 pt keeps its own width (the same padding as every tab). No + (the sidebar's New note; ⌘T opens a tab). With only Home open there is
   no track. The track clips its tabs, the list fades out before the scroll
   arrows (`EdgeFade(trailingInset:)`), and hovering a tab's × hides the tab's picture so the × keeps its tooltip.
   The sync status, the bell and (on a note) the inspector's button are at the strip's end.

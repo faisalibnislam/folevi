@@ -1,12 +1,12 @@
 // The Mac's title bar in the native look (docs/MAC_NATIVE_LOOK.md; the owner's layout, 2026-11-18): the window's
 // top strip, with no toolbar inside the card:
 //
-//   ● ● ●  [sidebar]   ‹ ›  (⌂) [ Calendar | (× Kyoto in November) | Recipes ] (▦)  .......  [bell] [inspector]
+//   ● ● ●  [sidebar]   ‹ ›  (⌂) (▦) [ Calendar | (× Kyoto in November) | Recipes ]  ......  [sync] [bell] [inspector]
 //
 // The traffic lights; the sidebar's button at the sidebar's trailing end; then, from the content card's leading
 // edge, Back and Forward and the tab bar drawn as Finder's (the owner, 2026-11-18): Home in a round button, the tabs in a grey capsule
 // track with a hairline between them, each its own width with its icon and title centred, the open one a Liquid
-// Glass capsule inset in the track, and the Tab Overview's round button after the track. With only Home open there
+// Glass capsule inset in the track, and the Tab Overview's round button right after Home. With only Home open there
 // is no track. The bell and, on a note, the inspector's button sit at the strip's end, the sync status before the bell. Empty strip space
 // moves the window.
 //
@@ -95,13 +95,16 @@ extension WebTopBar {
 
     // MARK: the tabs
 
-    /// Home in its round button; then the tabs in their track, the only part that scrolls; Show All Tabs after it.
+    /// Home and Show All Tabs in their round buttons; then the tabs in their track, the only part that scrolls.
     private var tabStrip: some View {
         HStack(spacing: MacLook.barSpacing) {
             HStack(spacing: MacLook.barSpacing) {
                 if let home = model.tabs.tabs.first(where: \.isHome) {
                     macTab(home).fixedSize()
                 }
+                // Every tab at a glance (File > Show All Tabs, ⌘⇧\), right after Home (the owner, 2026-11-18): it
+                // stays put however many tabs there are.
+                MacOverviewButton(model: model)
                 // (No empty track while Home is the only tab.)
                 if model.tabs.tabs.contains(where: { !$0.isHome }) {
                     macTabs
@@ -139,8 +142,6 @@ extension WebTopBar {
             .accessibilityLabel("Tabs")
             // (No + here, the owner, 2026-11-18: the sidebar's New note is the one way to a new note on screen;
             // ⌘T and File > New Tab still open a tab.)
-            // Every tab at a glance (File > Show All Tabs, ⌘⇧\), Safari's button after the tabs.
-            MacOverviewButton(model: model)
         }
     }
 
@@ -377,7 +378,7 @@ struct MacHistoryButtons: View {
     }
 }
 
-/// Show All Tabs, a round button after the tab track (Safari's): a view of its own, so only it watches whether the
+/// Show All Tabs, a round button right after Home: a view of its own, so only it watches whether the
 /// overview is showing.
 struct MacOverviewButton: View {
     let model: FrameModel

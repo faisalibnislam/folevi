@@ -191,6 +191,21 @@ actions on a band behind a hairline. Checked by typing into it: empty, active, f
 
 ![add-dialog-empty](add-dialog-empty.jpg)
 
+## Vault settings, redesigned (eighth pass, the owner: "need vast UI improvement")
+
+A status header says what the Vault is doing now (open here, when it locks itself) with Lock now beside it. Under
+it, named groups of rows: each row has its icon in a small tile, its name, a line about it and one control. Export
+is two rows (an encrypted backup, a readable CSV with a plain warning) instead of two buttons in a line. The Lock
+after menu is the form's pop-up field.
+
+### Vault settings: a status header with Lock now, then named groups of rows, each with its icon, its words and its control
+
+![vault-settings](vault-settings.jpg)
+
+### The same on a Mac in dark mode (the Vault is the light one there)
+
+![vault-settings-dark-mac](vault-settings-dark-mac.jpg)
+
 Also fixed, without a picture: the Import card in Settings had more padding under its buttons than above them; the
 Vault's Add dialog took its height from whichever window was key, so it cut off its Notes field when Settings was
 open or the app was behind another.

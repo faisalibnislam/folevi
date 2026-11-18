@@ -93,7 +93,8 @@ Branch: `mac-native-look`. Not released: the owner approves the look first.
   (`MacLook.webShadowScale`, the `nativeShadowScale` environment). Never write a shadow's numbers by hand
   (`NativeShadowTests` fails on one heavier than the overlay level).
 - **The Vault** follows the same look: its sections are a pill track (a section from the ⋯ menu is a third pill
-  with its close), its view switch a pill, its Settings named groups of rows in cards as the Settings window's,
+  with its close), its view switch a pill, its Settings a status header (what the Vault is doing now, with Lock now) over named groups of rows in cards, each
+  row its icon in a 32 pt tile, its name, a line about it and one control,
   and a section never repeats its tab's name as a heading.
 - **One segmented design, the pill** (the owner, 2026-11-18: the left tools were pills, the right panel's tabs
   rounded rectangles): a capsule track 34 pt tall (`MacLook.segmentHeight`, the title bar's tab track's height) with

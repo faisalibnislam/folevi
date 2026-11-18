@@ -808,37 +808,39 @@ struct VaultSettingsView: View {
         if chrome != nil { grouped } else { webBody }
     }
 
-    // MARK: the native look: named groups, each a card of rows (as the Settings window's)
+    // MARK: the native look: what the Vault is doing now, then named groups, each a card of rows
 
     private var grouped: some View {
         let v = model.value
         let member = v?.role == "member"
+        let minutes = v?.autoLockMinutes ?? 5
         return VStack(alignment: .leading, spacing: 28) {
+            status(minutes)
             if !member {
                 group("Locking") {
-                    row("Lock after", "Idle minutes before the Vault locks itself on a device.") {
-                        let m = v?.autoLockMinutes ?? 5
-                        VaultSelect(style: "vault.settings.select", label: "\(m) \(m == 1 ? "minute" : "minutes")", options: [1, 2, 5, 10, 15, 30].map { ("\($0)", "\($0) \($0 == 1 ? "minute" : "minutes")") }, selected: "\(m)") { value in
+                    row(.timer, "Lock after", "How long the Vault stays open on a device when nobody is using it.") {
+                        VaultSelect(style: "vault.settings.select", label: "\(minutes) \(minutes == 1 ? "minute" : "minutes")", options: [1, 2, 5, 10, 15, 30].map { ("\($0)", "\($0) \($0 == 1 ? "minute" : "minutes")") }, selected: "\(minutes)", height: NativeField.height) { value in
                             model.run {
                                 _ = try await model.client.command(.vaultSettingsUpdate(vaultId: vaultId, autoLockMinutes: Int(value)))
                                 model.toast("Saved")
                             }
                         }
                     }
-                    row("Lock now", "Close the Vault on this device until the passcode is typed again.") {
-                        WebButton("Lock now") { model.lock() }
-                    }
                 }
-            } else {
-                group("Locking") {
-                    row("Lock now", "Close the Vault on this device until the passcode is typed again.") {
-                        WebButton("Lock now") { model.lock() }
+            }
+            group("Passcode and recovery") {
+                row(.keyRound, "Passcode", "What you type to open the Vault.") {
+                    WebButton("Change passcode…") { model.dialog = .changePasscode }
+                }
+                row(.lifeBuoy, "Recovery key", "Opens the Vault if you forget the passcode. A new key replaces the old one.") {
+                    WebButton("Make a new key") {
+                        model.run { _ = try await model.client.command(.vaultNewRecoveryKey(vaultId: vaultId)) }
                     }
                 }
             }
             if v?.role == "owner", v?.personal == false {
                 group("People") {
-                    row("Custodians can name custodians", "Otherwise only you do. Custodians always add and remove members.") {
+                    row(.users, "Custodians can name custodians", "Otherwise only you do. Custodians always add and remove members.") {
                         FoleviSwitch("Custodians can name custodians", on: v?.custodiansNameCustodians ?? false) { on in
                             model.run {
                                 _ = try await model.client.command(.vaultSettingsUpdate(vaultId: vaultId, custodiansNameCustodians: on))
@@ -848,55 +850,76 @@ struct VaultSettingsView: View {
                     }
                 }
             }
-            group("Passcode and recovery") {
-                row("Passcode", "What you type to open the Vault.") {
-                    WebButton("Change passcode…") { model.dialog = .changePasscode }
-                }
-                row("Recovery key", "Opens the Vault if you forget the passcode.") {
-                    WebButton("Make a new recovery key") {
-                        model.run { _ = try await model.client.command(.vaultNewRecoveryKey(vaultId: vaultId)) }
-                    }
-                }
-            }
             group("Import and export") {
-                row("Import", "A CSV from 1Password, Bitwarden, LastPass, Chrome, Safari or Firefox, or a Folevi Vault backup. Items are encrypted on this device before they're sent.") {
-                    WebButton("Import…", icon: .upload) { importExportLater() }
+                row(.upload, "Import", "A CSV from 1Password, Bitwarden, LastPass, Chrome, Safari or Firefox, or a Folevi Vault backup. Items are encrypted on this device before they're sent.") {
+                    WebButton("Import…") { importExportLater() }
                 }
                 if !member {
-                    row("Export", "An encrypted backup of the whole Vault, or a CSV anyone can read.") {
-                        HStack(spacing: 8) {
-                            WebButton("Encrypted backup…", icon: .download) { importExportLater() }
-                            WebButton("Readable CSV…", icon: .download) { importExportLater() }
-                        }
+                    row(.archive, "Encrypted backup", "The whole Vault in one encrypted file.") {
+                        WebButton("Export…") { importExportLater() }
+                    }
+                    row(.fileSpreadsheet, "Readable CSV", "Not encrypted: anyone who has the file can read it.") {
+                        WebButton("Export…") { importExportLater() }
                     }
                 }
             }
         }
-        .frame(maxWidth: 720, alignment: .leading)
+        .frame(maxWidth: 760, alignment: .leading)
+        .padding(.bottom, 32)
+    }
+
+    /// What the Vault is doing now, with the one thing to do about it: it is open here, and Lock now closes it.
+    private func status(_ minutes: Int) -> some View {
+        let shape = RoundedRectangle(cornerRadius: 14, style: .continuous)
+        return HStack(spacing: 14) {
+            WebIconView(.shieldCheck, size: 22)
+                .foregroundStyle(Color.primary)
+                .frame(width: 44, height: 44)
+                .background(Color.primary.opacity(0.1), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+            VStack(alignment: .leading, spacing: 3) {
+                HStack(spacing: 7) {
+                    Circle().fill(Color.green).frame(width: 7, height: 7)
+                    Text("Open on this device").font(.system(size: 15, weight: .semibold)).foregroundStyle(Color.primary)
+                }
+                Text("It locks itself after \(minutes) idle \(minutes == 1 ? "minute" : "minutes"). Everything in it is encrypted on this device before it leaves it.")
+                    .font(.system(size: 12)).foregroundStyle(Color.primary.opacity(0.62))
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            WebButton("Lock now", icon: .lock, variant: .primary) { model.lock() }
+        }
+        .padding(16)
+        .background(Color.primary.opacity(0.055), in: shape)
+        .overlay(shape.strokeBorder(Color.primary.opacity(0.09), lineWidth: 1))
+        .accessibilityElement(children: .contain)
     }
 
     /// A named group: its name, then one card holding its rows.
     private func group<Rows: View>(_ title: String, @ViewBuilder rows: () -> Rows) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 10) {
             Text(title).font(.system(size: 13, weight: .semibold)).foregroundStyle(Color.primary)
-                .padding(.leading, 2)
+                .padding(.leading, 4)
             VaultList { rows() }
         }
     }
 
-    /// A row: what it is and a line about it leading, its control trailing.
-    private func row<Control: View>(_ title: String, _ hint: String, @ViewBuilder control: () -> Control) -> some View {
-        HStack(alignment: .center, spacing: 16) {
+    /// A row: its picture in a small tile, what it is and a line about it, then its control.
+    private func row<Control: View>(_ icon: WebIcon, _ title: String, _ hint: String, @ViewBuilder control: () -> Control) -> some View {
+        HStack(alignment: .center, spacing: 12) {
+            WebIconView(icon, size: 16)
+                .foregroundStyle(Color.primary.opacity(0.85))
+                .frame(width: 32, height: 32)
+                .background(Color.primary.opacity(0.08), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
             VStack(alignment: .leading, spacing: 2) {
-                Text(title).font(.system(size: 13)).foregroundStyle(Color.primary)
-                Text(hint).font(.system(size: 11)).foregroundStyle(Color.primary.opacity(0.6))
+                Text(title).font(.system(size: 13, weight: .medium)).foregroundStyle(Color.primary)
+                Text(hint).font(.system(size: 12)).foregroundStyle(Color.primary.opacity(0.6))
                     .fixedSize(horizontal: false, vertical: true)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             control()
         }
         .padding(.horizontal, 16).padding(.vertical, 12)
-        .frame(minHeight: 56)
+        .frame(minHeight: 60)
     }
 
     // MARK: the web's look

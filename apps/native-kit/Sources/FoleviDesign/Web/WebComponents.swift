@@ -628,6 +628,7 @@ public struct WebDialog<Body: View, Footer: View>: View {
     let content: Body
     let footer: Footer
     @Environment(\.colorScheme) private var scheme
+    @Environment(\.nativeChrome) private var chrome
 
     public init(_ title: String, description: String? = nil, width: CGFloat? = nil, close: (() -> Void)? = nil, @ViewBuilder content: () -> Body, @ViewBuilder footer: () -> Footer) {
         self.title = title
@@ -644,6 +645,49 @@ public struct WebDialog<Body: View, Footer: View>: View {
     }
 
     public var body: some View {
+        if chrome != nil { nativeBody } else { webBody }
+    }
+
+    /// The Mac's native look (the owner, 2026-11-18: the Vault's Add dialog "needs huge improvement"): one plain
+    /// panel with 24 pt of room at its sides, a 15 pt title with what it's for under it, the form, then the actions
+    /// on a quiet band behind a hairline. Its edge is a hairline; its shadow is the presenter's (the overlay level).
+    private var nativeBody: some View {
+        let shape = RoundedRectangle(cornerRadius: 14, style: .continuous)
+        return VStack(alignment: .leading, spacing: 0) {
+            HStack(alignment: .top, spacing: 12) {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(title).font(.system(size: 15, weight: .semibold)).foregroundStyle(Color.primary).lineLimit(1).truncationMode(.middle)
+                    if let description {
+                        Text(description).font(.system(size: 12)).foregroundStyle(Color.primary.opacity(0.62)).fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                if let close {
+                    WebIconButton(.x, label: "Close", action: close)
+                        .padding(.top, -5)
+                        .padding(.trailing, -8)
+                }
+            }
+            .padding(.horizontal, 24).padding(.top, 20).padding(.bottom, 16)
+            content
+                .padding(.horizontal, 24).padding(.bottom, 20)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            Rectangle().fill(Color.primary.opacity(0.09)).frame(height: 1)
+            HStack(spacing: 8) {
+                Spacer(minLength: 0)
+                footer
+            }
+            .padding(.horizontal, 24).padding(.vertical, 14)
+            .frame(maxWidth: .infinity)
+            .background(Color.primary.opacity(0.03))
+        }
+        .frame(width: width ?? WebStyles.named("dialog.panel").resolve(scheme).width)
+        .background(scheme == .dark ? Color(white: 0.17) : Color.white)
+        .clipShape(shape)
+        .overlay(shape.strokeBorder(Color.primary.opacity(scheme == .dark ? 0.14 : 0.1), lineWidth: 1))
+    }
+
+    private var webBody: some View {
         let panel = WebStyles.named("dialog.panel")
         let p = panel.resolve(scheme)
         let header = WebStyles.named("dialog.header").resolve(scheme)
@@ -652,7 +696,7 @@ public struct WebDialog<Body: View, Footer: View>: View {
         let bodyStyle = WebStyles.named("dialog.body").resolve(scheme)
         let footerStyle = WebStyles.named("dialog.footer")
         let f = footerStyle.resolve(scheme)
-        VStack(alignment: .leading, spacing: 0) {
+        return VStack(alignment: .leading, spacing: 0) {
             HStack(alignment: .top, spacing: 12) {
                 VStack(alignment: .leading, spacing: 0) {
                     // (One line, cut in the middle: a long name inside the title loses its middle, never the end of the

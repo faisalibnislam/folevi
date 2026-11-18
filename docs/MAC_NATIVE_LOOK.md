@@ -157,14 +157,19 @@ uneven"):
   (`narrowWindowQuery` in `panelLayout.ts`: the Mac's page is the card, without the web's sidebar), so a 1280 pt
   window docks it; only a small window lays it over the note.
 - **Push buttons in the page are capsules** (a dialog's Done, "Use your own image…"), as the native dialogs' are.
-- **One text field** (the owner, 2026-11-18: "form fields look tiny and weird"): `NativeField` in
-  `FoleviDesign/Web/NativeChrome.swift`, used with `.nativeTextField()` on a `TextField` or `SecureField` and
-  `NativeFieldBox` round a text area or a menu that sits in a form. 32 pt tall, 8 pt continuous corners, 10 pt
-  before its words, 13 pt text; its own surface (white in light, white at 7% in dark) with a hairline edge in both
-  themes; a 1.5 pt edge and a 3 pt ring outside it while it has the cursor, so it never changes size. The system's
-  `.roundedBorder` field is not used: it came out 22 to 28 pt depending on where it sat and had no edge on a dark
-  surface. A secret or one-time-code field is the same field in the fixed-width font. Search fields keep their own
-  shapes (the card's glass search, the Vault's, Foli DNA's, Settings').
+- **One text field** (the owner, 2026-11-18: "form fields look tiny and weird", then "the selected active field ...
+  very poorly done"): `NativeField` in `FoleviDesign/Web/NativeChrome.swift`, used with `.nativeTextField()` on a
+  `TextField` or `SecureField` and `NativeFieldBox` round a text area or a menu that sits in a form. 34 pt tall (a
+  segmented control's height), 8 pt continuous corners, 12 pt before its words, 13 pt text. Three states: at rest
+  a quiet well with a hairline edge; under the pointer the edge firms up; with the cursor in it the well lifts,
+  the edge is a crisp 1.5 pt line in the ink's colour and a soft 3 pt halo sits outside it (so the field never
+  changes size). A label is `NativeFieldLabel` (12 pt medium), 6 pt over its field, fields 16 pt apart. The system's
+  `.roundedBorder` field is not used. A secret is the same field in the fixed-width font. Search fields keep their
+  own shapes.
+- **A dialog** in the native look (`WebDialog`): one plain panel with 14 pt corners and a hairline edge, 24 pt at
+  its sides, a 15 pt semibold title with a line under it saying what the dialog is for, the form, then the actions
+  on a quiet band behind a hairline. A form's small actions (Generate) are 24 pt capsules under their field, never
+  floating over a label. A scroller round a form keeps 4 pt at its sides so a focused field's halo isn't cut.
 
 ## Checks before calling a part done
 

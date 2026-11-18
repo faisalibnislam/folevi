@@ -175,23 +175,29 @@ public struct NativeAccentInk: ViewModifier {
 
 // MARK: - The Mac's text field
 
-/// The one text field of Folevi for Mac's native look (the owner, 2026-11-18: "form fields look tiny and weird").
-/// The system's rounded field came out 22 to 28 pt tall depending on where it sat, with no edge to speak of on a
-/// dark surface, so a dialog's fields read as thin slabs. Every field is now this one: 32 pt, 8 pt corners, a
-/// surface of its own with a hairline edge in both themes, 10 pt of room before its words, and a ring while it has
-/// the cursor.
+/// The one text field of Folevi for Mac's native look (the owner, 2026-11-18: "form fields look tiny and weird",
+/// then "the selected active field ... very poorly done"). Every field is this one: 34 pt (a segmented control's
+/// height), 8 pt corners, 12 pt before its words. At rest a quiet well with a hairline edge; under the pointer the
+/// edge firms up; with the cursor in it the well lifts, the edge is a crisp 1.5 pt line in the ink's colour and a
+/// soft halo sits outside it, so the field never changes size and the active one is unmistakable.
 public enum NativeField {
-    public static let height: CGFloat = 32
+    public static let height: CGFloat = 34
     public static let radius: CGFloat = 8
-    public static let inset: CGFloat = 10
+    public static let inset: CGFloat = 12
     public static let textSize: CGFloat = 13
+    /// A label over a field, and the room between the two and between one field and the next.
+    public static let labelSize: CGFloat = 12
+    public static let labelGap: CGFloat = 6
+    public static let fieldGap: CGFloat = 16
 
-    static func fill(_ scheme: ColorScheme) -> Color { scheme == .dark ? Color.white.opacity(0.07) : Color.white }
-    static func edge(_ scheme: ColorScheme, focused: Bool) -> Color {
-        let ink = scheme == .dark ? Color.white : Color.black
-        return ink.opacity(focused ? (scheme == .dark ? 0.62 : 0.55) : (scheme == .dark ? 0.16 : 0.14))
+    static func ink(_ scheme: ColorScheme) -> Color { scheme == .dark ? .white : .black }
+    static func fill(_ scheme: ColorScheme, focused: Bool) -> Color {
+        scheme == .dark ? Color.white.opacity(focused ? 0.1 : 0.055) : Color.black.opacity(focused ? 0 : 0.035)
     }
-    static func ring(_ scheme: ColorScheme) -> Color { (scheme == .dark ? Color.white : Color.black).opacity(scheme == .dark ? 0.22 : 0.14) }
+    static func edge(_ scheme: ColorScheme, focused: Bool, hovered: Bool) -> Color {
+        ink(scheme).opacity(focused ? (scheme == .dark ? 0.92 : 0.82) : hovered ? (scheme == .dark ? 0.3 : 0.26) : (scheme == .dark ? 0.14 : 0.12))
+    }
+    static func halo(_ scheme: ColorScheme) -> Color { ink(scheme).opacity(scheme == .dark ? 0.16 : 0.1) }
 }
 
 /// The field's surface round its text: `height` nil for a text area, which keeps its own height.
@@ -201,6 +207,7 @@ public struct NativeFieldBox: ViewModifier {
     var vertical: CGFloat
     @Environment(\.colorScheme) private var scheme
     @Environment(\.isEnabled) private var enabled
+    @State private var hovered = false
 
     public init(focused: Bool, height: CGFloat? = NativeField.height, vertical: CGFloat = 0) {
         self.focused = focused
@@ -214,19 +221,30 @@ public struct NativeFieldBox: ViewModifier {
             .padding(.horizontal, NativeField.inset)
             .padding(.vertical, vertical)
             .frame(height: height)
-            .background(shape.fill(NativeField.fill(scheme)))
-            .overlay(shape.strokeBorder(NativeField.edge(scheme, focused: focused), lineWidth: focused ? 1.5 : 1))
-            // The ring sits outside the field, so the field never changes size as the cursor comes and goes.
-            .overlay {
+            .background(shape.fill(NativeField.fill(scheme, focused: focused)))
+            .overlay(shape.strokeBorder(NativeField.edge(scheme, focused: focused, hovered: hovered), lineWidth: focused ? 1.5 : 1))
+            // The halo sits outside the field, so the field never changes size as the cursor comes and goes.
+            .background {
                 if focused {
-                    RoundedRectangle(cornerRadius: NativeField.radius + 1.5, style: .continuous)
-                        .stroke(NativeField.ring(scheme), lineWidth: 3)
-                        .padding(-1.5)
+                    RoundedRectangle(cornerRadius: NativeField.radius + 3, style: .continuous)
+                        .fill(NativeField.halo(scheme))
+                        .padding(-3)
                         .allowsHitTesting(false)
                 }
             }
             .opacity(enabled ? 1 : 0.5)
-            .animation(.easeOut(duration: 0.12), value: focused)
+            .onHover { hovered = $0 }
+            .animation(.easeOut(duration: 0.14), value: focused)
+            .animation(.easeOut(duration: 0.1), value: hovered)
+    }
+}
+
+/// A field's label in a form: 12 pt medium, a step quieter than the field's words.
+public struct NativeFieldLabel: View {
+    let text: String
+    public init(_ text: String) { self.text = text }
+    public var body: some View {
+        Text(text).font(.system(size: NativeField.labelSize, weight: .medium)).foregroundStyle(Color.primary.opacity(0.72)).lineLimit(1)
     }
 }
 

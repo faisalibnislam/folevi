@@ -172,6 +172,25 @@ Vault's tabs and view switch are pills, its Settings are grouped cards, and its 
 
 ![shadows-home](shadows-home.jpg)
 
+## Add to the Vault, redesigned (seventh pass, the owner: "very poorly done ... vastly improve this")
+
+The dialog's shell, its fields and its active state were rebuilt: a plain panel with a title and a line saying what
+it is for; labelled 34 pt fields 16 pt apart with a hover edge and an unmistakable active state; the Kind menu as a
+field with its icon; the password's strength (four bars and a word) and Generate / Memorable under the field; the
+actions on a band behind a hairline. Checked by typing into it: empty, active, filled, in both themes.
+
+### Add to the Vault, redesigned: a clear active field, labelled 34 pt fields, the password's strength and tools under it
+
+![add-dialog](add-dialog.jpg)
+
+### The same on a Mac in dark mode (the Vault is the light one there)
+
+![add-dialog-dark-mac](add-dialog-dark-mac.jpg)
+
+### Just opened: the cursor in Title
+
+![add-dialog-empty](add-dialog-empty.jpg)
+
 Also fixed, without a picture: the Import card in Settings had more padding under its buttons than above them; the
 Vault's Add dialog took its height from whichever window was key, so it cut off its Notes field when Settings was
 open or the app was behind another.

@@ -131,6 +131,8 @@ struct VaultSelect: View {
     var fill = false
     /// A height of its own (the Add dialog's Kind sits over the dialog's text fields and takes their height).
     var height: CGFloat? = nil
+    /// What's chosen, pictured before its name (a form's select).
+    var icon: WebIcon? = nil
     let onSelect: (String) -> Void
     @Environment(\.colorScheme) private var scheme
     private var capturedLabel: String { style == "vault.settings.select" ? "5 minutes" : "All kinds" }
@@ -140,10 +142,16 @@ struct VaultSelect: View {
         WebMenuButton(select: true, hover: s.radius, entries: { options.map { o in WebMenuEntry(.item(o.1, checked: o.0 == selected)) { onSelect(o.0) } } }) {
             // In a form (`height`): the form's own field surface, so the menu reads as one of its fields.
             let inForm = height != nil
-            let row = HStack(spacing: s.gap) {
-                Text(label).webText(s.text).lineLimit(1)
+            let row = HStack(spacing: inForm ? 8 : s.gap) {
+                if let icon { WebIconView(icon, size: 15).opacity(0.75) }
+                if inForm {
+                    Text(label).font(.system(size: NativeField.textSize)).lineLimit(1)
+                } else {
+                    Text(label).webText(s.text).lineLimit(1)
+                }
                 Spacer(minLength: 0)
-                WebIconView(.chevronDown, size: 14).opacity(0.6)
+                // (A form's select wears the pop-up button's two arrows; a filter's, the one.)
+                WebIconView(inForm ? .chevronsUpDown : .chevronDown, size: inForm ? 13 : 14).opacity(0.6)
             }
             .padding(inForm ? EdgeInsets() : s.padding.edgeInsets)
             .frame(height: height ?? s.height)

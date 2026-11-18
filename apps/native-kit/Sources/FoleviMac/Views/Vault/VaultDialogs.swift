@@ -56,25 +56,42 @@ private struct DialogField: View {
     var multiline = false
     /// A text area's rows (`rows={4}` for a field, 3 for Notes): 18 pt lines and 8 pt padding above and below.
     var rows = 4
+    /// What the empty field says it is for (the native look only).
+    var placeholder = ""
     @Environment(\.colorScheme) private var scheme
     @FocusState private var focused: Bool
 
     var body: some View {
+        if chrome != nil { nativeBody } else { webBody }
+    }
+
+    /// The Mac's native look: the label, then the app's one field (NativeField); a text area on the same surface.
+    private var nativeBody: some View {
+        VStack(alignment: .leading, spacing: NativeField.labelGap) {
+            NativeFieldLabel(label)
+            if multiline {
+                TextEditor(text: $text)
+                    .font(mono ? .system(size: 12.5, design: .monospaced) : .system(size: NativeField.textSize))
+                    .scrollContentBackground(.hidden)
+                    .focused($focused)
+                    // (A text editor keeps 5 pt of its own before its words: 12 in all, as a field's.)
+                    .padding(.horizontal, -5)
+                    .modifier(NativeFieldBox(focused: focused, height: CGFloat(rows) * 18 + 18, vertical: 8))
+            } else if mono {
+                TextField(placeholder, text: $text).font(.system(size: 12.5, design: .monospaced)).nativeTextField()
+            } else {
+                TextField(placeholder, text: $text).nativeTextField()
+            }
+        }
+    }
+
+    @ViewBuilder private var webBody: some View {
         let l = VS.style("vault.gate.label", scheme)
         // A focused field shows the web's focus ring (`.ui-input:focus`), the text areas too (MAC-40).
         let box = focused ? webFocused(VS.pair("vault.gate.input")) : VS.pair("vault.gate.input")
         VStack(alignment: .leading, spacing: 4) {
             Text(label).webText(l.text).foregroundStyle(l.color.color)
-            if multiline, chrome != nil {
-                // The Mac's native look: a text area on the same surface as the fields beside it.
-                TextEditor(text: $text)
-                    .font(WebFont.interface(chrome, mono ? .mono : .sans, size: 13))
-                    .scrollContentBackground(.hidden)
-                    .focused($focused)
-                    // (A text editor keeps 5 pt of its own before its words: 10 in all, as a field's.)
-                    .padding(.horizontal, -5)
-                    .modifier(NativeFieldBox(focused: focused, height: CGFloat(rows) * 18 + 16, vertical: 7))
-            } else if multiline {
+            if multiline {
                 TextEditor(text: $text)
                     .font(WebFont.interface(chrome, mono ? .mono : .sans, size: 13))
                     .scrollContentBackground(.hidden)
@@ -82,11 +99,6 @@ private struct DialogField: View {
                     .padding(6)
                     .frame(height: CGFloat(rows) * 18 + 16)
                     .webBox(box)
-            } else if mono, chrome != nil {
-                // The Mac's native look: the same system field as the plain ones beside it, its text in the fixed-width
-                // font. (It was a box of its own, 8 pt taller than Title and Username in the same dialog.)
-                TextField("", text: $text).font(WebFont.interface(chrome, .mono, size: 13))
-                    .nativeTextField()
             } else if mono {
                 TextField("", text: $text).textFieldStyle(.plain).font(WebFont.interface(chrome, .mono, size: 13))
                     .focused($focused)
@@ -95,6 +107,50 @@ private struct DialogField: View {
                 WebTextField(text: $text)
             }
         }
+    }
+}
+
+/// A small action under a field (Generate, Memorable): a 24 pt capsule, the compact control inside a form.
+private struct VaultFieldAction: View {
+    let title: String
+    let icon: WebIcon
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 5) {
+                WebIconView(icon, size: 12)
+                Text(title).font(.system(size: 12, weight: .medium)).lineLimit(1)
+            }
+            .foregroundStyle(Color.primary.opacity(0.82))
+            .padding(.horizontal, 10)
+            .frame(height: 24)
+            .background(Color.primary.opacity(0.07), in: Capsule())
+            .contentShape(Capsule())
+        }
+        .buttonStyle(.webHover(radius: 12))
+    }
+}
+
+/// How strong a password is: four short bars filled to its score, in red, amber or green, and the word for it.
+private struct VaultStrengthMeter: View {
+    let score: Int
+    let label: String
+
+    private var tint: Color { score >= 3 ? .green : score == 2 ? .orange : .red }
+
+    var body: some View {
+        HStack(spacing: 8) {
+            HStack(spacing: 3) {
+                ForEach(0..<4, id: \.self) { i in
+                    Capsule().fill(i < max(1, score) ? tint : Color.primary.opacity(0.14)).frame(width: 22, height: 4)
+                }
+            }
+            Text(label).font(.system(size: 11, weight: .medium)).foregroundStyle(Color.primary.opacity(0.72)).lineLimit(1).fixedSize()
+        }
+        .fixedSize()
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Password strength: \(label)")
     }
 }
 
@@ -142,10 +198,66 @@ private struct ItemDialog: View {
         (model.store("passwords") { .vaultItems(vaultId: model.vaultId ?? "", section: .passwords) }).value?.kinds ?? []
     }
 
+    @Environment(\.nativeChrome) private var chrome
+
+    /// A kind's picture in its menu.
+    static func icon(_ kind: String) -> WebIcon {
+        switch kind {
+        case "login": .keyRound
+        case "apiKey": .codeXml
+        case "card": .creditCard
+        case "bankAccount": .wallet
+        case "secureNote": .stickyNote
+        case "sshKey": .fileKey
+        case "wifi": .wifi
+        case "licence": .tag
+        case "identity": .userRound
+        default: .lock
+        }
+    }
+
+    /// The native look's form: 16 pt between fields, the password's tools and its strength under it.
+    @ViewBuilder private func nativeForm(_ def: VaultKindDef?) -> some View {
+        VStack(alignment: .leading, spacing: NativeField.fieldGap) {
+            if existing == nil {
+                VStack(alignment: .leading, spacing: NativeField.labelGap) {
+                    NativeFieldLabel("Kind")
+                    VaultSelect(style: "vault.pw.kind", label: def?.label ?? "Login", options: kinds.map { ($0.kind, $0.label) }, selected: kind, fill: true, height: NativeField.height, icon: Self.icon(kind)) { kind = $0 }
+                }
+            }
+            DialogField(label: "Title", text: $title, placeholder: "A name to find it by")
+            ForEach(def?.fields ?? [], id: \.key) { f in
+                VStack(alignment: .leading, spacing: 8) {
+                    DialogField(label: f.label, text: binding(f.key), mono: f.type == "secret" || f.type == "totp" || f.type == "multiline", multiline: f.type == "multiline",
+                                placeholder: f.type == "url" ? "example.com" : "")
+                    if f.key == "password" { passwordTools }
+                }
+            }
+            DialogField(label: "Notes", text: $notes, multiline: true, rows: 3)
+        }
+        // (Room for a focused field's halo inside the scroller's clip.)
+        .padding(.horizontal, 4).padding(.top, 1).padding(.bottom, 4)
+    }
+
+    /// Under the password: how strong it is (once there is one), and the two ways to have one made.
+    private var passwordTools: some View {
+        HStack(spacing: 8) {
+            if let strength, !(values["password"] ?? "").isEmpty {
+                VaultStrengthMeter(score: strength.score, label: strength.label)
+            }
+            Spacer(minLength: 0)
+            VaultFieldAction(title: "Generate", icon: .refreshCw) { generate(.password) }
+            VaultFieldAction(title: "Memorable", icon: .sparkles) { generate(.passphrase) }
+        }
+    }
+
     var body: some View {
         let def = kinds.first { $0.kind == kind }
-        WebDialog(existing.map { "Edit \($0.title)" } ?? "Add to the Vault", width: 512, close: { model.dialog = nil }) {
+        WebDialog(existing.map { "Edit \($0.title)" } ?? "Add to the Vault", description: chrome != nil ? "Encrypted on this device before it is saved." : nil, width: 512, close: { model.dialog = nil }) {
             ScrollView {
+                if chrome != nil {
+                    nativeForm(def)
+                } else {
                 VStack(alignment: .leading, spacing: 12) {
                     if existing == nil {
                         VStack(alignment: .leading, spacing: 4) {
@@ -175,7 +287,9 @@ private struct ItemDialog: View {
                     DialogField(label: "Notes", text: $notes, multiline: true, rows: 3)
                 }
                 .padding(.bottom, 8)
+                }
             }
+            .padding(.horizontal, chrome != nil ? -4 : 0)
             // (The web's dialog grows to the window less its margins, `calc(100dvh - 76px)`: the header and footer
             // take about 130 of that.)
             .frame(maxHeight: max(320, (model.windowHeight ?? 820) - 76 - 130))

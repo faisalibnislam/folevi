@@ -55,7 +55,9 @@ public final class EngineClient {
     @ObservationIgnored private var entries: [String: Entry] = [:]
     @ObservationIgnored private var decoders = SubscriptionDecoders()
     @ObservationIgnored private var listeners: [UUID: AsyncStream<EngineEvent>.Continuation] = [:]
-    @ObservationIgnored private var readyWaiters: [UUID: CheckedContinuation<Void, any Error>] = [:]
+    /// In the order they asked: a burst of calls made while the engine was down (tabs switched quickly while the
+    /// page reloaded) goes out in that order, so the last note asked for is the one the page shows.
+    @ObservationIgnored private var readyWaiters: [(id: UUID, c: CheckedContinuation<Void, any Error>)] = []
     @ObservationIgnored private var connectTask: Task<Void, Never>?
     @ObservationIgnored private let pipeline = InboundPipeline()
     @ObservationIgnored private static let signposter = OSSignposter(subsystem: "com.folevi.engine", category: "bridge")
@@ -77,6 +79,14 @@ public final class EngineClient {
         }
         transport.onLifecycle = { [weak self] event in self?.pageChanged(event) }
         connect()
+    }
+
+    /// Ends the client's own work (its window closed): the connect loop stops retrying a page that's gone, and
+    /// calls still waiting for the engine fail now instead of at their timeout. Live views end with their stores.
+    public func stop() {
+        connectTask?.cancel()
+        connectTask = nil
+        failWaiters(EngineFailure.pageGone)
     }
 
     // MARK: Live views
@@ -275,34 +285,41 @@ public final class EngineClient {
         connectTask = Task { [weak self] in
             if delay > .zero { try? await Task.sleep(for: delay) }
             var backoff: Duration = .milliseconds(150)
+            // The client is held only while it tries (not over the wait between tries), so a client nobody keeps
+            // goes, and its loop with it.
             while !Task.isCancelled {
-                guard let self else { return }
-                do {
-                    let value = try await self.sayHello()
-                    if Task.isCancelled { return }
-                    self.hello = value
-                    guard value.protocol == EngineContract.protocolVersion else {
-                        self.state = .mismatch("The app speaks protocol \(EngineContract.protocolVersion), the engine \(value.protocol).")
-                        Self.log.fault("protocol mismatch: app \(EngineContract.protocolVersion), engine \(value.protocol)")
-                        self.failWaiters(EngineFailure.protocolMismatch(app: EngineContract.protocolVersion, engine: value.protocol))
-                        return
-                    }
-                    self.contractWarning = value.schemaHash == EngineContract.schemaHash ? nil : "The engine's contract (\(value.schemaHash), revision \(value.revision)) differs from this build's (\(EngineContract.schemaHash), revision \(EngineContract.revision)). Run pnpm engine:gen and rebuild."
-                    if let warning = self.contractWarning { Self.log.error("\(warning, privacy: .public)") }
-                    if value.ready {
-                        self.becameReady()
-                    } else {
-                        // Up but not ready: `engine.ready` brings it on.
-                        self.state = .waiting
-                    }
-                    return
-                } catch {
-                    if Task.isCancelled { return }
-                    if self.state != .disconnected { self.state = .connecting }
-                    try? await Task.sleep(for: backoff)
-                    backoff = min(backoff * 2, .seconds(2))
-                }
+                guard let finished = await self?.connectOnce(), !finished else { return }
+                try? await Task.sleep(for: backoff)
+                backoff = min(backoff * 2, .seconds(2))
             }
+        }
+    }
+
+    /// One hello. True when connecting is over (connected, a protocol mismatch, or cancelled); false to try again.
+    private func connectOnce() async -> Bool {
+        do {
+            let value = try await sayHello()
+            if Task.isCancelled { return true }
+            hello = value
+            guard value.protocol == EngineContract.protocolVersion else {
+                state = .mismatch("The app speaks protocol \(EngineContract.protocolVersion), the engine \(value.protocol).")
+                Self.log.fault("protocol mismatch: app \(EngineContract.protocolVersion), engine \(value.protocol)")
+                failWaiters(EngineFailure.protocolMismatch(app: EngineContract.protocolVersion, engine: value.protocol))
+                return true
+            }
+            contractWarning = value.schemaHash == EngineContract.schemaHash ? nil : "The engine's contract (\(value.schemaHash), revision \(value.revision)) differs from this build's (\(EngineContract.schemaHash), revision \(EngineContract.revision)). Run pnpm engine:gen and rebuild."
+            if let warning = contractWarning { Self.log.error("\(warning, privacy: .public)") }
+            if value.ready {
+                becameReady()
+            } else {
+                // Up but not ready: `engine.ready` brings it on.
+                state = .waiting
+            }
+            return true
+        } catch {
+            if Task.isCancelled { return true }
+            if state != .disconnected { state = .connecting }
+            return false
         }
     }
 
@@ -317,7 +334,7 @@ public final class EngineClient {
         for (sub, entry) in entries where !entry.paused { sendWatch(sub, entry) }
         let waiters = readyWaiters
         readyWaiters.removeAll()
-        for w in waiters.values { w.resume() }
+        for w in waiters { w.c.resume() }
     }
 
     private func whenReady() async throws {
@@ -331,19 +348,19 @@ public final class EngineClient {
         let wait = readyWait
         let timer = Task { @MainActor [weak self] in
             try? await Task.sleep(for: wait)
-            guard !Task.isCancelled, let self, let w = self.readyWaiters.removeValue(forKey: id) else { return }
-            w.resume(throwing: EngineFailure.notReady)
+            guard !Task.isCancelled, let self, let i = self.readyWaiters.firstIndex(where: { $0.id == id }) else { return }
+            self.readyWaiters.remove(at: i).c.resume(throwing: EngineFailure.notReady)
         }
         defer { timer.cancel() }
         try await withCheckedThrowingContinuation { (c: CheckedContinuation<Void, any Error>) in
-            readyWaiters[id] = c
+            readyWaiters.append((id, c))
         }
     }
 
     private func failWaiters(_ error: any Error) {
         let waiters = readyWaiters
         readyWaiters.removeAll()
-        for w in waiters.values { w.resume(throwing: error) }
+        for w in waiters { w.c.resume(throwing: error) }
     }
 
     // MARK: Sending

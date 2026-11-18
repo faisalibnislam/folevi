@@ -891,7 +891,10 @@ struct WebNoteCarousel: View {
     let list: NotesListModel
     let frame: FrameModel
     let recent: Bool
-    @State private var offset: CGFloat = 0
+    /// Where the row is scrolled to, kept outside the view's state: written on every scroll frame, it re-ran the
+    /// body (every card in the row) each frame. The body needs only whether either end is reached (`ends`).
+    @State private var offset = Offset()
+    @State private var ends: Ends?
     @State private var contentWidth: CGFloat = 0
     @State private var hovered = false
     @State private var position = ScrollPosition(edge: .leading)
@@ -900,11 +903,14 @@ struct WebNoteCarousel: View {
     static let cardWidth: CGFloat = 250
     static let gap: CGFloat = 32
 
+    final class Offset { var x: CGFloat = 0 }
+    struct Ends: Equatable { var start: Bool; var end: Bool }
+
     var body: some View {
         let ul = notesStyle("carousel", scheme)
         let visible = width - ul.margin.left - ul.margin.right
-        let atStart = offset <= 2
-        let atEnd = offset + visible >= contentWidth - 2
+        let atStart = ends?.start ?? true
+        let atEnd = ends?.end ?? (visible >= contentWidth - 2)
         ZStack(alignment: .topLeading) {
             ScrollView(.horizontal) {
                 HStack(alignment: .top, spacing: ul.gap) {
@@ -922,7 +928,10 @@ struct WebNoteCarousel: View {
             .scrollIndicators(.never)
             .scrollTargetBehavior(.viewAligned)
             .scrollPosition($position)
-            .onScrollGeometryChange(for: CGFloat.self) { $0.contentOffset.x } action: { _, x in offset = x }
+            .onScrollGeometryChange(for: CGFloat.self) { $0.contentOffset.x } action: { _, x in offset.x = x }
+            .onScrollGeometryChange(for: Ends.self) { g in
+                Ends(start: g.contentOffset.x <= 2, end: g.contentOffset.x + g.containerSize.width >= g.contentSize.width - 2)
+            } action: { _, e in ends = e }
             .mask {
                 HStack(spacing: 0) {
                     LinearGradient(colors: [atStart ? .black : .clear, .black], startPoint: .leading, endPoint: .trailing).frame(width: 64)
@@ -983,7 +992,7 @@ struct WebNoteCarousel: View {
 
     private func scroll(_ dir: CGFloat, visible: CGFloat) {
         let step = max(Self.cardWidth + Self.gap, visible - Self.cardWidth / 2)
-        let target = max(0, min(contentWidth - visible, offset + dir * step))
+        let target = max(0, min(contentWidth - visible, offset.x + dir * step))
         withAnimation(.easeInOut(duration: 0.35)) { position.scrollTo(x: target) }
     }
 }

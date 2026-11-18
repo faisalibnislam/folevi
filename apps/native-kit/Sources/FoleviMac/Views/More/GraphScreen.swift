@@ -1099,7 +1099,21 @@ struct GraphCanvasView: View {
     struct DragNode: Equatable { var id: String; var at: CGPoint }
     struct Offer: Equatable { var s: GraphSuggestion; var at: CGPoint }
 
-    private var byId: [String: GraphNode] { Dictionary(nodes.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a }) }
+    /// Made once per view value: as a computed property it was built again on every lookup, and the drawing,
+    /// the hover's hit test and the fit look up every node (at the cap of 700 nodes and 2,500 lines, millions of
+    /// inserts a frame while panning or pointing).
+    private let byId: [String: GraphNode]
+
+    init(model: GraphModel, value: GraphValue, nodes: [GraphNode], edges: [GraphEdge], frame: FrameModel, exporter: DnaExporter, onWhole: @escaping () -> Void = {}) {
+        self.model = model
+        self.value = value
+        self.nodes = nodes
+        self.edges = edges
+        self.frame = frame
+        self.exporter = exporter
+        self.onWhole = onWhole
+        self.byId = Dictionary(nodes.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
+    }
 
     /// Where a node is: dragged, pinned, or as laid out. (Around one note the rings hold: pins are the whole map's.)
     private func at(_ id: String) -> CGPoint? {

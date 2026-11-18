@@ -3,6 +3,7 @@
 // caller's type; a batch from the engine (updates and events) is decoded in one pass, with each update's payload
 // decoded as its subscription's type (looked up in `SubscriptionDecoders`, passed through `userInfo`).
 import Foundation
+import os
 
 /// A message to the engine.
 struct OutgoingMessage: Encodable, Sendable {
@@ -133,6 +134,22 @@ enum InboundItem: Decodable, Sendable {
         let decoder = JSONDecoder()
         decoder.userInfo[SubscriptionDecoders.key] = decoders
         if data.first == UInt8(ascii: "{") { return [try decoder.decode(InboundItem.self, from: data)] }
-        return try decoder.decode([InboundItem].self, from: data)
+        // Item by item: one that doesn't decode (a value this build doesn't know) is dropped and logged, and the
+        // rest of the batch still lands. Decoding the array whole lost every item with it, `engine.ready` and
+        // `note.ready` too (the page stayed covered, the client waiting).
+        let items = try decoder.decode([Lossy].self, from: data)
+        for case .failed(let error) in items {
+            Logger(subsystem: "com.folevi.engine", category: "bridge").error("couldn't decode a batch item: \(String(describing: error), privacy: .public)")
+        }
+        return items.compactMap { if case .item(let i) = $0 { i } else { nil } }
+    }
+
+    private enum Lossy: Decodable {
+        case item(InboundItem)
+        case failed(any Error)
+
+        init(from decoder: any Decoder) throws {
+            do { self = .item(try InboundItem(from: decoder)) } catch { self = .failed(error) }
+        }
     }
 }

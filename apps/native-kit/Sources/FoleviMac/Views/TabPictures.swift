@@ -36,7 +36,22 @@ public final class TabPictureStore {
             if let page = got?.html {
                 self.html[id] = page
                 self.fetched[id] = Date()
+                self.trim()
             }
+        }
+    }
+
+    /// The most pictures kept: each is a whole page's HTML, pictures and all, and every tab hovered over a long
+    /// run added one that stayed. (Never fewer than the open tabs, which the Tab Overview shows at once.)
+    private static let kept = 40
+
+    private func trim() {
+        let limit = max(Self.kept, (frame?.tabs.tabs.count ?? 0) + 8)
+        guard html.count > limit else { return }
+        let oldest = fetched.sorted { $0.value < $1.value }.prefix(html.count - limit).map(\.key)
+        for id in oldest {
+            html[id] = nil
+            fetched[id] = nil
         }
     }
 }

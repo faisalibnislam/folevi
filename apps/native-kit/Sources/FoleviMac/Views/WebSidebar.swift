@@ -831,13 +831,15 @@ struct DisclosureChevron: View {
 }
 /// Foli DNA's saved views in the sidebar, under Foli DNA (the `graph.views` view, small: it doesn't load the map).
 struct DnaSidebarViews: View {
-    @State private var store: ValueStore<GraphViewsValue>
+    /// The window's one subscription (FrameModel.dnaViews): `State(initialValue: client.watch…)` here started a new
+    /// one, and let it go, every time the sidebar's body ran (each change to Home or the folders).
+    let store: ValueStore<GraphViewsValue>
     let row: (GraphSavedView) -> AnyView
     /// The rows' indent under Foli DNA (the Mac's rows indent themselves).
     var indent: CGFloat = 20
 
     init(model: FrameModel, indent: CGFloat = 20, row: @escaping (GraphSavedView) -> AnyView) {
-        _store = State(initialValue: model.client.watch(.graphViews()))
+        store = model.dnaViews
         self.indent = indent
         self.row = row
     }

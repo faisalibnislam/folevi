@@ -77,6 +77,9 @@ final class QuickAddPanel: NSObject, NSWindowDelegate {
 
     var isShown: Bool { panel?.isVisible == true }
 
+    /// Counts the times the panel was shown (a hide's fade-out ends only if none came since).
+    private var shows = 0
+
     func toggle() {
         if let panel, panel.isVisible, panel.isKeyWindow { hide() } else { show() }
     }
@@ -88,6 +91,8 @@ final class QuickAddPanel: NSObject, NSWindowDelegate {
             return
         }
         let panel = self.panel ?? makePanel()
+        // A hide still fading out (the shortcut pressed twice quickly) mustn't order out the panel shown now.
+        shows += 1
         release?.cancel()
         release = nil
         shownAt = Date()
@@ -103,7 +108,11 @@ final class QuickAddPanel: NSObject, NSWindowDelegate {
                 panel.animator().alphaValue = 1
             }
         } else {
-            panel.alphaValue = 1
+            // Shown already, or caught mid fade-out: back in (an animation of its own replaces the one going out).
+            NSAnimationContext.runAnimationGroup { ctx in
+                ctx.duration = 0.1
+                panel.animator().alphaValue = 1
+            }
         }
         // Accidental dismissal must not discard a capture. A successful save already clears the field.
         if let model = nativeModel, model.added == nil { model.resumeDraft() }
@@ -114,11 +123,13 @@ final class QuickAddPanel: NSObject, NSWindowDelegate {
 
     func hide() {
         guard let panel, panel.isVisible else { return }
+        let shown = shows
         NSAnimationContext.runAnimationGroup({ ctx in
             ctx.duration = 0.15
             panel.animator().alphaValue = 0
         }, completionHandler: {
             MainActor.assumeIsolated {
+                guard QuickAddPanel.shared.shows == shown else { return }
                 panel.orderOut(nil)
                 panel.alphaValue = 1
                 QuickAddPanel.shared.releaseLater()

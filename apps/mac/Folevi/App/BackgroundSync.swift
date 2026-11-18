@@ -96,6 +96,7 @@ final class BackgroundSync {
     private var tick: Timer?
     private var poll: Timer?
     private var polling = false
+    private var lastPoll: Date?
     private var libraryWake: DispatchWorkItem?
     /// Why each place woke last, and when (`mac.mjs cmd places`).
     private(set) var log: [[String: Any]] = []
@@ -145,6 +146,7 @@ final class BackgroundSync {
         awake[place] = BackgroundPlan.Awake(since: now, waiting: nil, holdUntil: hold.map { now.addingTimeInterval($0) })
         lastSync[place] = now
         note(place, why)
+        start()
     }
 
     /// Memory is short: runners whose page said nothing waits go now (not those still at work or held). Returns how
@@ -162,6 +164,7 @@ final class BackgroundSync {
         lastSync[place] = Date()
         Places.shared.stopRunner(place)
         note(place, "released: \(why)")
+        start()
     }
 
     private func note(_ place: String, _ what: String) {
@@ -171,15 +174,34 @@ final class BackgroundSync {
 
     // MARK: timers
 
+    /// The step's pace: every 2 s while a runner is up (it goes soon after its work), otherwise only often enough to
+    /// catch up on time (the interval is 10 minutes), and no timer at all when nothing is in the background. A
+    /// 2 s timer that never stopped woke the app all day, even with no runner and nothing wanted.
+    private var tickPace: TimeInterval? {
+        if !awake.isEmpty { return 2 }
+        if wanted.isEmpty { return nil }
+        return min(20, max(2, plan.interval / 2))
+    }
+
     private func start() {
-        if tick == nil {
-            let t = Timer(timeInterval: 2, repeats: true) { _ in MainActor.assumeIsolated { BackgroundSync.shared.step() } }
-            t.tolerance = 1
-            RunLoop.main.add(t, forMode: .common)
-            tick = t
+        let pace = tickPace
+        if tick?.timeInterval != pace {
+            tick?.invalidate()
+            tick = nil
+            if let pace {
+                let t = Timer(timeInterval: pace, repeats: true) { _ in MainActor.assumeIsolated { BackgroundSync.shared.step() } }
+                t.tolerance = pace / 2
+                RunLoop.main.add(t, forMode: .common)
+                tick = t
+            }
         }
-        if poll == nil {
-            let t = Timer(timeInterval: pollInterval, repeats: true) { _ in MainActor.assumeIsolated { BackgroundSync.shared.pollUnread() } }
+        // The unread poll only while an account is in the background (it asks nothing for the library).
+        let accounts = wanted.contains { ShellPlaces.userIdOf($0) != nil }
+        if !accounts {
+            poll?.invalidate()
+            poll = nil
+        } else if poll == nil {
+            let t = Timer(timeInterval: pollInterval, repeats: true) { _ in MainActor.assumeIsolated { BackgroundSync.shared.pollUnread(timer: true) } }
             t.tolerance = min(10, pollInterval / 4)
             RunLoop.main.add(t, forMode: .common)
             poll = t
@@ -208,10 +230,14 @@ final class BackgroundSync {
     // MARK: notifications without a page
 
     /// Every account in the background, asleep: its unread count from Folevi. A new one wakes its page.
-    func pollUnread() {
+    /// From the timer while Folevi isn't the app in front, every third tick (3 minutes, not 1): a person away from
+    /// the app doesn't need each account's count every minute, and each ask wakes the network.
+    func pollUnread(timer: Bool = false) {
         guard !polling, !Paths.offline, let convex = Self.convexURL else { return }
         let accounts = wanted.filter { ShellPlaces.userIdOf($0) != nil }
         guard !accounts.isEmpty else { return }
+        if timer, !NSApp.isActive, let last = lastPoll, Date().timeIntervalSince(last) < pollInterval * 3 - 1 { return }
+        lastPoll = Date()
         polling = true
         Task { @MainActor in
             defer { self.polling = false }

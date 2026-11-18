@@ -251,13 +251,12 @@ public final class FrameModel {
                 self.handle(event)
             }
         }
+        // (The model is never held over the wait: the store is, until the task is cancelled.)
         spaceObserver = Task { [weak self] in
             while !Task.isCancelled {
-                guard let self else { return }
-                if let s = self.session.value?.space { self.entered(space: s) }
-                await withCheckedContinuation { (c: CheckedContinuation<Void, Never>) in
-                    withObservationTracking { _ = self.session.value?.space } onChange: { c.resume() }
-                }
+                guard let session = self?.session else { return }
+                if let s = session.value?.space { self?.entered(space: s) }
+                await nextChange { _ = session.value?.space }
             }
         }
         #if os(macOS) || os(iOS)
@@ -281,6 +280,15 @@ public final class FrameModel {
         if CoverFiles.shared.loader == nil { CoverFiles.shared.loader = CoverFiles.engineLoader(client) }
     }
 
+    /// Foli DNA's saved views for the sidebar, watched from the first time the sidebar shows them.
+    @ObservationIgnored private var dnaViewsStore: ValueStore<GraphViewsValue>?
+    public var dnaViews: ValueStore<GraphViewsValue> {
+        if let s = dnaViewsStore { return s }
+        let s = client.watch(.graphViews())
+        dnaViewsStore = s
+        return s
+    }
+
     /// Ends the model's work (the window closed).
     public func stop() {
         eventsTask?.cancel()
@@ -293,6 +301,8 @@ public final class FrameModel {
         folders.cancel()
         sync.cancel()
         places.cancel()
+        dnaViewsStore?.cancel()
+        client.stop()
     }
 
     public var route: FrameRoute { tabs.activeRoute }
@@ -515,8 +525,10 @@ public final class FrameModel {
                     if reply.ready, self.drawnNote != reply.id { self.drawnNote = reply.id }
                     if let meta = try? await self.client.query(.noteMeta(id: id)) { self.took(meta) }
                 } catch let f as EngineFailure {
-                    if self.shownNote == id { self.shownNote = nil }
-                    if f.code != BridgeErrorCode.engineNotReady.rawValue { self.toast(f.message, tone: .error) }
+                    // (Only for the note still asked for: one the person already left says nothing.)
+                    guard self.shownNote == id else { return }
+                    self.shownNote = nil
+                    if f.code != BridgeErrorCode.engineNotReady.rawValue, f.code != BridgeErrorCode.pageGone.rawValue { self.toast(f.message, tone: .error) }
                 } catch {}
             }
         } else if shownNote != nil, closeNoteTask == nil {
@@ -557,11 +569,9 @@ public final class FrameModel {
         tabMeta = store
         tabMetaObserver = Task { [weak self, weak store] in
             while !Task.isCancelled {
-                guard let self, let store else { return }
-                self.applyTabMeta(store.value)
-                await withCheckedContinuation { (c: CheckedContinuation<Void, Never>) in
-                    withObservationTracking { _ = store.value } onChange: { c.resume() }
-                }
+                guard let store, self != nil else { return }
+                self?.applyTabMeta(store.value)
+                await nextChange { _ = store.value }
             }
         }
     }

@@ -853,6 +853,23 @@
 :root[data-mac-native] .ui-canvas::after { display: none; }
 :root[data-mac-native] .fb-page { border-radius: 0; box-shadow: none; }
 :root[data-mac-native] .fb-page:not([data-backdrop]) { background: transparent !important; }
+/* The note runs under the glass top bar (Shell's underBars) and keeps the bar's room inside, so a cover or
+   backdrop reaches the card's top edge (HIG Liquid Glass: content extends beneath toolbars). The page's own
+   panel (Style, Info, Foli AI) keeps clear of the bar. */
+:root[data-mac-native] .fb-page { padding-top: calc(var(--native-inset-top, 0px) + 2rem); scroll-padding-top: var(--native-inset-top, 0px); }
+:root[data-mac-native] aside[aria-label="Page tools"]:not(.ui-pop) {
+  height: auto; margin: var(--native-inset-top, 0px) 10px 10px 0; border-radius: 18px;
+  background: color-mix(in srgb, var(--color-ink) 5%, transparent); overflow: hidden;
+}
+/* Interface text in the page (the page tools, its panels, menus) is the system font; note text keeps the note's
+   own fonts (--editor-font, --note-*). Small headings are sentence case, as on the Mac. */
+:root[data-mac-native] { --font-sans: -apple-system, BlinkMacSystemFont, system-ui, sans-serif; }
+:root[data-mac-native] .ui-caps { font-size: 11px; line-height: 14px; font-weight: 600; letter-spacing: 0; text-transform: none; color: var(--color-ink-muted); }
+:root[data-mac-native] aside[aria-label="Page tools"] .ui-display { font-family: var(--font-sans); letter-spacing: 0; font-size: 15px; }
+/* The page tools' open tool is a quiet raised segment, not a second black button beside the bar's New note. */
+:root[data-mac-native] [role="toolbar"][aria-label="Page tools"] button[aria-pressed="true"] {
+  background: color-mix(in srgb, var(--color-ink) 10%, transparent); color: var(--color-heading);
+}
 :root[data-iphone] body { background: var(--color-canvas); overscroll-behavior: none; }
 /* With the keyboard up, a sheet runs down behind it rather than stopping above it with round corners: it
    meets the screen's edges, solid, and the colour behind the keyboard (chrome.tsx) carries it on. */

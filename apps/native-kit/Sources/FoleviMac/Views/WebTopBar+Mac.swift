@@ -45,7 +45,7 @@ extension WebTopBar {
             newNoteButton
             BarSearchField(text: $searchText, prompt: "Search", focus: $searchFocused) { openPalette(searchText) }
                 .frame(width: barWidth > 0 && barWidth < Self.compactBar ? 170 : 240)
-                .help("Search or jump to… (⌘K)")
+                .foleviTooltip("Search or jump to… (⌘K)")
                 .onChange(of: searchText) { _, q in if !q.isEmpty { openPalette(q) } }
                 .onChange(of: model.barSearchFocus) { searchFocused = true }
                 .onKeyPress(.escape) {
@@ -73,7 +73,7 @@ extension WebTopBar {
         }
         .buttonStyle(BarButtonStyle())
         .disabled(!enabled)
-        .help(help)
+        .foleviTooltip(help)
         .accessibilityLabel(label)
     }
 
@@ -95,7 +95,7 @@ extension WebTopBar {
         .buttonBorderShape(.capsule)
         .tint(MacLook.Colors.accent)
         .fixedSize()
-        .help("New Note (⌘N)")
+        .foleviTooltip("New Note (⌘N)")
         .accessibilityLabel("New note")
     }
 
@@ -152,7 +152,7 @@ extension WebTopBar {
         .buttonStyle(QuietHoverStyle(shape: AnyShape(Capsule())))
         .disabled(!enabled)
         .opacity(enabled ? 1 : 0.35)
-        .help(label)
+        .foleviTooltip(label)
         .accessibilityLabel(label)
     }
 
@@ -242,7 +242,7 @@ extension WebTopBar {
         .modifier(TabDrag(id: t.id, enabled: !t.isHome, dragging: $dragging, drag: drag))
         .onHover { hoveredTab = $0 ? t.id : (hoveredTab == t.id ? nil : hoveredTab) }
         .modifier(TabPreviewHover(id: t.id, active: active, model: model))
-        .help(t.isHome ? "Home" : "")
+        .foleviTooltip(t.isHome ? "Home" : "")
         .accessibilityElement(children: .contain)
         .accessibilityLabel(t.isHome ? "Home" : label)
         .accessibilityAddTraits(active ? [.isSelected, .isButton] : .isButton)
@@ -286,7 +286,7 @@ extension WebTopBar {
         .foregroundStyle(t.pinned ? MacLook.Colors.secondary : MacLook.Colors.tertiary)
         .opacity(t.pinned || hovered ? 1 : 0)
         .accessibilityLabel(t.pinned ? "Unpin \(label)" : "Pin \(label)")
-        .help(t.pinned ? "Unpin Tab" : "Pin Tab")
+        .foleviTooltip(t.pinned ? "Unpin Tab" : "Pin Tab")
     }
 
     /// A note floating in its own window (Float note) says so on its tab; clicking brings that window forward.
@@ -297,7 +297,7 @@ extension WebTopBar {
         .buttonStyle(QuietHoverStyle(shape: AnyShape(Circle())))
         .foregroundStyle(MacLook.Colors.secondary)
         .accessibilityLabel("Show \(label)'s floating window")
-        .help("Floating in Its Own Window")
+        .foleviTooltip("Floating in Its Own Window")
     }
 
     private func macCloseButton(_ t: FrameTab, label: String, visible: Bool) -> some View {
@@ -313,7 +313,7 @@ extension WebTopBar {
         .foregroundStyle(MacLook.Colors.secondary)
         .opacity(visible ? 1 : 0)
         .accessibilityLabel("Close \(label)")
-        .help("Close Tab (⌘W)")
+        .foleviTooltip("Close Tab (⌘W)")
     }
 
     /// The SF Symbol for a tab's page (WebTopBar.icon(for:) names the web's).
@@ -366,7 +366,7 @@ struct MacTruncatingText: View {
                 Text(text).font(font).lineLimit(1).fixedSize().hidden()
                     .onGeometryChange(for: CGFloat.self, of: { $0.size.width }) { full = $0 }
             }
-            .help(full > shown + 0.5 ? text : "")
+            .foleviTooltip(full > shown + 0.5 ? text : "")
     }
 }
 #endif

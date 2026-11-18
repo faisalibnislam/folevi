@@ -656,7 +656,7 @@ struct WebSheetCloseButton: View {
         }
         .buttonStyle(.plain)
         .onHover { over = $0 }
-        .help("Close")
+        .foleviTooltip("Close")
         .accessibilityLabel("Close")
         #else
         let xs = WebStyles.named("more.dialog.close").resolve(scheme)

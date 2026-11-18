@@ -286,6 +286,8 @@ public final class WebSidebarController: NSViewController {
     private func showNotifications(_ anchor: NSView?) {
         FrameSheets.attach(model, window: view.window)
         if FrameSheets.isShowing(model) { return FrameSheets.dismiss(model) }
+        // The panel is a popover from the bell.
+        FrameSheets.attach(model, popoverAnchor: anchor)
         FrameDialogs.notifications(model, model: notifications)
     }
 

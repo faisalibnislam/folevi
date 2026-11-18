@@ -92,7 +92,7 @@ struct SIconButton: View {
                 Image(systemName: SIcon.symbol(icon) ?? "circle").imageScale(.medium)
             }
             .buttonStyle(.borderless)
-            .help(label)
+            .foleviTooltip(label)
             .accessibilityLabel(label)
         } else {
             WebIconButton(icon, label: label, action: action)

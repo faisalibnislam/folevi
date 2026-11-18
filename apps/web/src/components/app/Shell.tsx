@@ -222,6 +222,8 @@ function NativeContentShell() {
   }, []);
   useLayoutEffect(() => {
     document.documentElement.setAttribute("data-native-chrome", "");
+    // Folevi for Mac's native look (docs/MAC_NATIVE_LOOK.md): the page sits straight on the window's native card.
+    if (macFrame) document.documentElement.setAttribute("data-mac-native", "");
   }, []);
   // An iPhone (marker platform "ios"): the phone page layout and its styles (globals.css, editor-phone.css).
   const iphone = useIphoneApp();

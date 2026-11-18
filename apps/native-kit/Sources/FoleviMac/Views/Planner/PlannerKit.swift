@@ -532,7 +532,6 @@ final class PlannerPanel: NSPanel {
                 if cur === self { return event }
                 w = cur.parent
             }
-            if event.window is WebMenuWindow { return event }
             self.close()
             // The window under the click takes the keys before the click reaches it, so it acts at once (MAC-06).
             OutsideClicks.prepare(event)

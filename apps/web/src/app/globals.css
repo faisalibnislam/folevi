@@ -842,6 +842,17 @@
 /* In the iPhone and iPad app a tap is never the first half of a double-tap zoom (the page doesn't zoom), so
    WebKit answers it at once instead of waiting to see whether a second tap follows (docs/IOS_PERFORMANCE.md). */
 :root[data-native="ios"] { touch-action: manipulation; }
+
+/* Folevi for Mac's native look (docs/MAC_NATIVE_LOOK.md, Shell sets data-mac-native in the Mac's native frame): the
+   note page sits straight on the window's native card (controlBackgroundColor) instead of the web's canvas and its
+   grey rounded panel and its decorative glow. A note's own backdrop (its style or cover) is content and stays; the sheet is untouched. */
+:root[data-mac-native],
+:root[data-mac-native] body,
+:root[data-mac-native] .ui-canvas { background: transparent; }
+:root[data-mac-native] .ui-canvas::before,
+:root[data-mac-native] .ui-canvas::after { display: none; }
+:root[data-mac-native] .fb-page { border-radius: 0; box-shadow: none; }
+:root[data-mac-native] .fb-page:not([data-backdrop]) { background: transparent !important; }
 :root[data-iphone] body { background: var(--color-canvas); overscroll-behavior: none; }
 /* With the keyboard up, a sheet runs down behind it rather than stopping above it with round corners: it
    meets the screen's edges, solid, and the colour behind the keyboard (chrome.tsx) carries it on. */

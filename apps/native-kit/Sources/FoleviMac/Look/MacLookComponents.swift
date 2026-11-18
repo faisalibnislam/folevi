@@ -10,6 +10,7 @@
 #if os(macOS)
 import AppKit
 import SwiftUI
+import FoleviDesign
 
 // MARK: - Top bar
 
@@ -87,7 +88,7 @@ public struct BarIconButton: View {
             Image(systemName: symbol).imageScale(.medium)
         }
         .buttonStyle(BarButtonStyle())
-        .help(label)
+        .foleviTooltip(label)
         .accessibilityLabel(label)
     }
 }
@@ -119,7 +120,7 @@ public struct BarSearchField: View {
                 }
                 .buttonStyle(QuietHoverStyle(shape: AnyShape(Circle())))
                 .accessibilityLabel("Clear search")
-                .help("Clear search")
+                .foleviTooltip("Clear search")
             }
         }
         .padding(.horizontal, 12)
@@ -308,7 +309,7 @@ public struct SidebarHeading<Trailing: View>: View {
             if let action {
                 Button(action: action) { label.contentShape(Rectangle()) }
                     .buttonStyle(QuietHoverStyle(shape: AnyShape(RoundedRectangle(cornerRadius: 4, style: .continuous))))
-                    .help("Open \(title)")
+                    .foleviTooltip("Open \(title)")
             } else {
                 label
             }

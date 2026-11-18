@@ -32,7 +32,7 @@ struct AboutSettingsView: View {
                             Label(link.label, systemImage: "arrow.up.right")
                         }
                         .buttonStyle(.link)
-                        .help("folevi.com\(link.path)")
+                        .foleviTooltip("folevi.com\(link.path)")
                     } else {
                         SButton(link.label, icon: .externalLink, variant: .ghost, size: .sm) {
                             if let url = URL(string: "https://folevi.com\(link.path)") { model.frame.host?.frameOpenExternal(url) }

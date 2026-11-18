@@ -152,7 +152,7 @@ struct ToastStack: View {
                 ToastControl(label: title) { model.runToastAction(t) }
             }
             ToastControl(symbol: "xmark", label: "Dismiss") { model.dismissToast(t.id) }
-                .help("Dismiss")
+                .foleviTooltip("Dismiss")
         }
         // (The width is held before the padding, so the padding stays inside the 448 pt pill: MAC-36.)
         .frame(maxWidth: Self.maxWidth - 32)

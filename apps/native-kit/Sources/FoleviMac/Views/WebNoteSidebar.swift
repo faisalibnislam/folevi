@@ -280,7 +280,7 @@ struct WebNoteSidebar: View {
                     Circle().fill(MacLook.Colors.red).frame(width: 6, height: 6).offset(x: 4, y: -2)
                 }
             }
-            .help(t.label)
+            .foleviTooltip(t.label)
             .accessibilityLabel(t == .comments && unread ? "Comments (unread)" : t.label)
         }
         .padding(.horizontal, MacLook.Space.m)

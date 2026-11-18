@@ -353,7 +353,7 @@ struct MacSettingsSidebar: View {
                     SidebarRow(c.title, symbol: c.symbol, selected: !c.action && c.id == state.listedSelection)
                 }
                 .buttonStyle(.plain) // (hover: SidebarRow draws its own)
-                .help(c.action ? c.title : "")
+                .foleviTooltip(c.action ? c.title : "")
                 .accessibilityIdentifier("settings.category.\(c.id)")
             }
         }
@@ -389,7 +389,7 @@ struct MacSettingsSidebar: View {
                             .padding(.leading, MacLook.rowIconSlot + MacLook.rowIconGap)
                     }
                     .buttonStyle(.plain) // (hover: SidebarRow draws its own)
-                    .help("\(r.entry.label), in \(r.category)")
+                    .foleviTooltip("\(r.entry.label), in \(r.category)")
                 }
             }
         }

@@ -138,7 +138,7 @@ extension WebSidebar {
         }
         .buttonStyle(QuietHoverStyle(shape: AnyShape(RoundedRectangle(cornerRadius: 6, style: .continuous))))
         .foregroundStyle(MacLook.Colors.secondary)
-        .help(open ? "Hide \(label)" : "Show \(label)")
+        .foleviTooltip(open ? "Hide \(label)" : "Show \(label)")
         .accessibilityLabel(open ? "Hide \(label)" : "Show \(label)")
     }
 
@@ -217,7 +217,7 @@ extension WebSidebar {
                     .frame(width: 18, height: 18)
                     .contentShape(Rectangle())
             }
-            .help("Sort Folders")
+            .foleviTooltip("Sort Folders")
             .accessibilityLabel("Sort folders")
             Button { FrameDialogs.newFolder(model) } label: {
                 Image(systemName: "folder.badge.plus")
@@ -226,7 +226,7 @@ extension WebSidebar {
                     .contentShape(Rectangle())
             }
             .buttonStyle(QuietHoverStyle(shape: AnyShape(RoundedRectangle(cornerRadius: 6, style: .continuous))))
-            .help("New Folder (⌃⌘N)")
+            .foleviTooltip("New Folder (⌃⌘N)")
             .accessibilityLabel("New folder")
         } rows: {
             if roots.isEmpty { note("No folders yet") }
@@ -371,7 +371,7 @@ extension WebSidebar {
                 .background(MenuAnchor { accountAnchor = $0 })
             }
             .buttonStyle(SidebarRowButtonStyle(hoverFill: true))
-            .help("Account, Places and Workspaces")
+            .foleviTooltip("Account, Places and Workspaces")
             .accessibilityLabel("Account: \(foot.title)")
             MacSyncStatus(model: model) { actions.sync($0) }
             if !local {
@@ -411,7 +411,7 @@ private struct MacSyncStatus: View {
             .background(MenuAnchor { anchor = $0 })
         }
         .buttonStyle(QuietHoverStyle(shape: AnyShape(RoundedRectangle(cornerRadius: 6, style: .continuous))))
-        .help("Saved")
+        .foleviTooltip("Saved")
         .accessibilityLabel("Sync status: saved")
     }
 }
@@ -432,7 +432,7 @@ private struct MacFooterButton: View {
         }
         .buttonStyle(QuietHoverStyle(shape: AnyShape(RoundedRectangle(cornerRadius: 6, style: .continuous))))
         .foregroundStyle(MacLook.Colors.secondary)
-        .help(label)
+        .foleviTooltip(label)
         .accessibilityLabel(label)
     }
 }

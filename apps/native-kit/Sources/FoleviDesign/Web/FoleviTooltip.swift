@@ -1,9 +1,9 @@
 // Folevi's one tooltip on the Mac, never the system's (the owner's rule: "always use our native tooltip, across the
-// whole apps"). Drawn as the web's `[data-mac-tooltip]` (lib/desktop/tooltip.ts, globals.css): footnote text 12/16,
-// 3 x 8 padding, chip corners, the --mac-pop glass with a 0.5 pt edge and a soft shadow, a shortcut written as
-// "New note (⌘⌥N)" in a keycap. It shows after 700 ms of the pointer resting on the control, at once while another
-// has just shown (until a second passes with none), under the control or above it when there's no room, inside the
-// window; a press, a key, a scroll or the window losing focus hides it.
+// whole apps"). Since the native look (2026-11-18, docs/MAC_NATIVE_LOOK.md) it is drawn like the system's: 11 pt
+// system text in the menu material with a hairline edge, a shortcut written as "New note (⌘⌥N)" in a small
+// keycap. It shows after 700 ms of the pointer resting on the control, at once while another has just shown (until
+// a second passes with none), under the control or above it when there's no room, inside the window; a press, a
+// key, a scroll or the window losing focus hides it.
 //
 //   Button { … } label: { … }.foleviTooltip("New note (⌘⌥N)")     SwiftUI
 //   button.foleviTooltip = "Notifications"                           AppKit
@@ -44,63 +44,50 @@ public struct FoleviTooltipChip: View {
     }
 
     public var body: some View {
-        let ink = (WebStyles.vars["color-ink"]?.resolve(scheme) ?? RGBA(24, 24, 27)).color
-        let edge = (WebStyles.vars["mac-pop-edge"]?.resolve(scheme) ?? RGBA(0, 0, 0, 0.12)).color
-        // --mac-pop: the glass's tint over the blur.
-        let tint = scheme == .dark ? RGBA(40, 40, 44, 0.86) : RGBA(255, 255, 255, 0.82)
-        let shape = RoundedRectangle(cornerRadius: 6, style: .continuous)
+        // The Mac's native look (docs/MAC_NATIVE_LOOK.md): the system tooltip's type, colours and material, still
+        // Folevi's one tooltip (its timing, placement and the shortcut in a keycap).
+        let shape = RoundedRectangle(cornerRadius: 5, style: .continuous)
         HStack(spacing: 4) {
             // A labelled button's tooltip is its shortcut alone ("(⌘⌥N)"): the words are on the button already.
             if !text.isEmpty {
-                Text(text).webText(WebTextStyle(size: 12, leading: 16)).foregroundStyle(ink)
+                Text(text).font(.system(size: 11)).foregroundStyle(Color(nsColor: .labelColor))
                     .multilineTextAlignment(.leading)
                     .fixedSize(horizontal: false, vertical: true)
             }
             if let shortcut { Keycap(shortcut) }
         }
         .padding(.vertical, 3)
-        .padding(.horizontal, 8)
+        .padding(.horizontal, 7)
         .frame(maxWidth: 320, alignment: .leading)
         .fixedSize(horizontal: true, vertical: false)
-        .background {
-            ZStack {
-                TooltipBlur()
-                tint.color
-            }
-            .clipShape(shape)
-        }
-        .overlay { shape.strokeBorder(edge, lineWidth: 0.5) }
-        .shadow(color: .black.opacity(0.14), radius: 7, y: 4)
+        .background { TooltipBlur().clipShape(shape) }
+        .overlay { shape.strokeBorder(Color(nsColor: .separatorColor), lineWidth: 0.5) }
+        .shadow(color: .black.opacity(0.12), radius: 4, y: 2)
         .accessibilityElement(children: .combine)
         .accessibilityAddTraits(.isStaticText)
     }
 
-    /// `.ui-kbd` at the tooltip's size: caption 2, 16 tall, 4 pt sides, raised with a line ring.
+    /// The shortcut, as a small system keycap.
     private struct Keycap: View {
         let keys: String
-        @Environment(\.colorScheme) private var scheme
         init(_ keys: String) { self.keys = keys }
 
         var body: some View {
-            let v = { (name: String, fallback: RGBA) in (WebStyles.vars[name]?.resolve(scheme) ?? fallback).color }
             let shape = RoundedRectangle(cornerRadius: 4, style: .continuous)
-            Text(keys).webText(WebTextStyle(size: 11, leading: 16, weight: 550))
-                .foregroundStyle(v("color-ink-muted", RGBA(86, 86, 94)))
+            Text(keys).font(.system(size: 10, weight: .medium))
+                .foregroundStyle(Color(nsColor: .secondaryLabelColor))
                 .padding(.horizontal, 4)
-                .frame(height: 16)
-                .background(shape.fill(v("color-surface-raised", RGBA(255, 255, 255))))
-                .overlay(shape.strokeBorder(v("color-line", RGBA(226, 226, 230)), lineWidth: 1))
-                .overlay(alignment: .bottom) { Rectangle().fill(v("color-line-strong", RGBA(207, 207, 213))).frame(height: 1).offset(y: 1).clipShape(shape) }
-                .offset(y: -0.5)
+                .frame(height: 15)
+                .background(shape.fill(Color(nsColor: .quaternaryLabelColor).opacity(0.6)))
         }
     }
 }
 
-/// The blur behind the glass (backdrop-filter: blur(24px) saturate(1.8)).
+/// The menu material behind the words (as the system's tooltips).
 private struct TooltipBlur: NSViewRepresentable {
     func makeNSView(context: Context) -> NSVisualEffectView {
         let v = NSVisualEffectView()
-        v.material = .popover
+        v.material = .menu
         v.blendingMode = .behindWindow
         v.state = .active
         return v

@@ -129,7 +129,7 @@ public struct FloatingNoteBar: View {
         .onHover { pinHover = $0 }
         .accessibilityLabel(hint)
         .accessibilityAddTraits(on ? .isSelected : [])
-        .help(hint)
+        .foleviTooltip(hint)
         #else
         drawnPin
         #endif

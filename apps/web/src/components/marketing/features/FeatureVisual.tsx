@@ -212,8 +212,8 @@ const STATUS_ROWS: Array<{ status: SyncStatus; icon: ReactNode; detail?: string;
   { status: "Saved", icon: <Cloud size={15} />, body: "Every change has reached the server and been confirmed." },
   { status: "Saving", icon: <Loader2 size={15} />, body: "Online, and recent edits are on their way." },
   { status: "Offline", icon: <CloudOff size={15} />, detail: "3 waiting", body: "No connection. Edits are stored on this device." },
-  { status: "Syncing", icon: <Loader2 size={15} />, body: "Back online. Sending yours, fetching the rest." },
-  { status: "Conflict", icon: <GitMerge size={15} />, body: "The same block changed in two places. You choose." },
+  { status: "Syncing", icon: <Loader2 size={15} />, body: "Back online. Sending your edits and fetching new ones." },
+  { status: "Conflict", icon: <GitMerge size={15} />, body: "The same block changed in two places. You pick which to keep." },
   { status: "Error", icon: <AlertTriangle size={15} />, body: "A change couldn’t be applied. Open it to retry." },
 ];
 
@@ -302,7 +302,7 @@ function WhiteboardPicture({ art }: { art: string }) {
   return (
     <div
       role="img"
-      aria-label="A whiteboard block in a note: a toolbar with Pen, Highlighter and Eraser, six pen colours, three pen sizes, Undo and Clear, above a sketch of three jars on a shelf, drawn with the pen and the highlighter."
+      aria-label="A whiteboard block in a note: a toolbar with Pen, Highlighter and Eraser, six pen colors, three pen sizes, Undo and Clear, above a sketch of three jars on a shelf, drawn with the pen and the highlighter."
       className="mk-note mx-auto max-w-[760px] overflow-hidden"
       style={artVars(artById(art))}
     >
@@ -367,7 +367,7 @@ function SharePanel() {
   ];
   return (
     <Pop
-      label="The Share dialog for a page. Ines can edit, Sam is a guest who can comment, and there's a row to invite someone by email with Can view, Can comment or Can edit. Below, a public link that expires on 12 October, is password protected and has been opened 4 times, with a Revoke button, and fields to set an expiry and a password for a new link."
+      label="The Share dialog for a page. Ines can edit, Sam is a guest who can comment, and there's a row to invite someone by email with Can view, Can comment or Can edit. Below, a public link that expires on October 12, is password protected and has been opened 4 times, with a Revoke button, and fields to set an expiry and a password for a new link."
       title="Share Seed library"
       icon={<Share2 size={15} className="text-muted" />}
       className="max-w-[560px]"
@@ -501,7 +501,7 @@ function ExportPanels() {
   return (
     <div
       role="img"
-      aria-label="A page's menu with Share, Version history, Export as Markdown, Export as HTML, Export as PDF (print), Duplicate, Save as template and Archive. Beside it, Settings, Import and export: import Markdown or text files or a folder, and export everything in Personal as a ZIP."
+      aria-label="A page's menu with Share, Version history, Export as Markdown, Export as HTML, Export as PDF (print), Duplicate, Save as template and Archive. Beside it, the Import and export settings: import Markdown or text files, a folder or a ZIP, and export everything in Personal as a ZIP."
       className="grid items-start gap-6 lg:grid-cols-2"
     >
       <div aria-hidden="true" className="mk-app-pop mx-auto w-full max-w-[320px] rounded-panel p-1.5 text-[13px]">

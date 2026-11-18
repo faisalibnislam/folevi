@@ -63,7 +63,7 @@ const faqs: FaqItem[] = [
   },
   {
     q: "Can I move my notes between the two?",
-    a: "Yes. From a library on your devices you can sign in and upload it to your account, and from an account you can export everything into a folder. Your notes are never stuck in one place.",
+    a: "Yes, both ways. Sign in to upload a library from your devices to your account, or export everything in your account into a folder.",
   },
   {
     q: "How does the free trial work?",
@@ -75,7 +75,7 @@ const faqs: FaqItem[] = [
   },
   {
     q: "Why does Core have no AI?",
-    a: "Some people want more room and no AI at all. On Core, nothing you write is sent to an AI model: Foli AI is off in your Personal, and in a Core workspace it’s off for everyone there.",
+    a: "Some people want more room and no AI at all. On Core, nothing you write is sent to an AI model. Foli AI is off in your Personal, and in a Core workspace it’s off for everyone.",
   },
   {
     q: "When do AI credits reset?",
@@ -175,8 +175,8 @@ export default function PricingPage() {
               <span className="text-[17px] font-semibold text-(--color-heading)">forever</span>
             </h2>
             <p className="mk-lede mt-4 max-w-[52ch]">
-              The whole workspace, on your devices. Choose Keep notes on my devices: your pages are files in a folder you
-              pick, and Folevi’s servers never see them.
+              The whole workspace, on your devices. Choose Keep notes on my devices and your pages are files in a folder
+              you pick. Folevi’s servers never see them.
             </p>
             <Checks
               className="mt-6"

@@ -165,7 +165,7 @@ export default function SecurityPage() {
         <h1 className="mk-display mt-5 max-w-[15ch] text-[44px] leading-[0.98] sm:text-[64px] lg:text-[72px] xl:text-[80px]">
           <Mark>Private</Mark> by default. Plain about the rest.
         </h1>
-        <p className="mk-lede mt-6 max-w-[60ch]">What protects your account and notes today, stated plainly.</p>
+        <p className="mk-lede mt-6 max-w-[60ch]">What protects your account and notes today.</p>
       </HeaderCard>
       <div className={cx(container, "grid grid-cols-1 gap-(--mk-stack-gap) lg:grid-cols-2")}>
         <Section

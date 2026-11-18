@@ -135,7 +135,7 @@ const POSTS: BlogPost[] = [
     title: "How offline-first notes work in Folevi",
     description: "Folevi saves every edit on your device before it syncs. Where edits wait, what each sync status means, and what happens when two devices edit one block.",
     published: "2026-09-30",
-    updated: "2026-09-30",
+    updated: "2026-11-18",
     author: BLOG_AUTHOR,
     tags: ["Sync", "Offline"],
     related: ["moving-your-notes-into-folevi", "meeting-notes-that-turn-into-tasks"],
@@ -143,7 +143,7 @@ const POSTS: BlogPost[] = [
     body: () => (
       <>
         <p>
-          Many note apps save to a server and keep a copy on your device. Folevi works the other way round. Every change is written to your device first, and the server hears about it afterwards. This post explains what that means day to day: where your edits wait, what the status on each page tells you, and what happens when two devices change the same thing.
+          Many note apps save to a server and keep a copy on your device. Folevi works the other way around. Every change is written to your device first, and the server hears about it afterward. This post explains what that means day to day: where your edits wait, what the status on each page tells you, and what happens when two devices change the same thing.
         </p>
 
         <h2 id="device-first">Where an edit goes first</h2>
@@ -154,11 +154,11 @@ const POSTS: BlogPost[] = [
           The queue is durable. If you reload the tab, close the browser or restart the computer, the waiting edits are still there, and Folevi sends them the next time it can.
         </p>
         <p>
-          Each queued change has its own ID. If a change is sent twice, say because the connection dropped just as the server replied, the server recognises the ID and doesn’t apply it again. That is why Folevi can retry as often as it needs to without duplicating a paragraph.
+          Each queued change has its own ID. If a change is sent twice, say because the connection dropped just as the server replied, the server recognizes the ID and doesn’t apply it again. That is why Folevi can retry as often as it needs to without duplicating a paragraph.
         </p>
 
         <h2 id="statuses">What the sync status means</h2>
-        <p>Every page shows a small status. There are six, and each one means one thing.</p>
+        <p>Every page shows a small sync status. There are six of them:</p>
         <Table
           label="Sync statuses"
           head={["Status", "What it means"]}
@@ -172,7 +172,7 @@ const POSTS: BlogPost[] = [
           ]}
         />
         <p>
-          The rule we care most about is the first one. Folevi shows Saved only after the server has confirmed every change on the page, including the sentence you are still typing. If the status says Saved, the server has it. If it says anything else, some of your work is only on this device for now, and the status tells you why. Open it to see which pages still have changes waiting.
+          The rule we care most about is the first one: Folevi shows Saved only after the server has confirmed every change on the page, including the sentence you are still typing. Any other status means some of your work is only on this device for now, and the status tells you why. Open it to see which pages still have changes waiting.
         </p>
 
         <h2 id="offline">Writing with no connection</h2>
@@ -223,7 +223,7 @@ const POSTS: BlogPost[] = [
     title: "Why Folevi has a plan with no AI",
     description: `Core costs ${p(PRICES.core.month)} a month and never sends your notes to an AI model. The server refuses AI in a Core space for everyone in it.`,
     published: "2026-09-30",
-    updated: "2026-09-30",
+    updated: "2026-11-18",
     author: BLOG_AUTHOR,
     tags: ["Plans", "AI", "Privacy"],
     related: ["what-an-ai-credit-is", "how-offline-first-notes-work"],
@@ -241,7 +241,7 @@ const POSTS: BlogPost[] = [
 
         <h2 id="enforced">What “no AI” means in practice</h2>
         <p>
-          On Core, the AI isn’t only hidden. The server refuses every AI request from a Core Personal or a Core workspace, whoever sends it: the owner, a member or a guest. The app also hides every AI entry point there, so you won’t see Ask Foli AI, the <Kbd>⌘J</Kbd> writing menu or Catch me up. The server check is the one that counts. It holds even if an older copy of the app, or a script, tried to call the AI.
+          On Core, the server refuses every AI request from a Core Personal or a Core workspace, whoever sends it: the owner, a member or a guest. The app also hides every AI entry point there, so you won’t see Ask Foli AI, the <Kbd>⌘J</Kbd> writing menu or Catch me up. The server check is the one that counts, because it holds even if an older copy of the app, or a script, tried to call the AI.
         </p>
         <p>Core also covers the edges:</p>
         <ul>
@@ -261,7 +261,7 @@ const POSTS: BlogPost[] = [
 
         <h2 id="sometimes">If you want AI some of the time</h2>
         <p>
-          Free has Foli AI during its {TRIAL_DAYS}-day trial, Pro has {MONTHLY_CREDITS.pro} AI credits a month and Pro AI {MONTHLY_CREDITS.pro_ai}. On any of them you can turn Foli AI off in Settings, and while it’s off none of your notes are sent. The difference with Core is who decides. In Settings, each person decides for themselves. On Core, the plan decides, for everyone in that space.
+          Free has Foli AI during its {TRIAL_DAYS}-day trial, Pro has {MONTHLY_CREDITS.pro} AI credits a month and Pro AI {MONTHLY_CREDITS.pro_ai}. On any of them you can turn Foli AI off in Settings, and while it’s off none of your notes are sent. The difference with Core is who decides. In Settings, each person decides for themselves; on Core, the plan decides for everyone in that space.
         </p>
 
         <h2 id="moving">Moving to Core</h2>
@@ -292,7 +292,7 @@ const POSTS: BlogPost[] = [
     title: "What an AI credit is, and why we count them",
     description: "One Folevi AI credit is one cent of what the AI costs to run. How a request becomes credits, what common actions cost, and how packs and fair use work.",
     published: "2026-09-30",
-    updated: "2026-09-30",
+    updated: "2026-11-18",
     author: BLOG_AUTHOR,
     tags: ["AI", "Plans"],
     related: ["why-folevi-has-a-plan-with-no-ai", "meeting-notes-that-turn-into-tasks"],
@@ -300,7 +300,7 @@ const POSTS: BlogPost[] = [
     body: () => (
       <>
         <p>
-          Folevi measures AI use in credits. One credit is one cent ($0.01) of what the AI model costs Folevi to run. That is the whole definition. This post explains how it works out in practice.
+          Folevi measures AI use in credits. One credit is one cent ($0.01) of what the AI model costs Folevi to run. The rest of this post is about how that adds up in practice.
         </p>
 
         <h2 id="how">How a request becomes credits</h2>
@@ -381,7 +381,7 @@ const POSTS: BlogPost[] = [
     title: "Meeting notes that turn into tasks",
     description: "Use Folevi’s Meeting Notes template so the follow-ups you write become tasks with dates, owners and reminders, and show up in Today when they’re due.",
     published: "2026-09-30",
-    updated: "2026-09-30",
+    updated: "2026-11-18",
     author: BLOG_AUTHOR,
     tags: ["Tasks", "Templates"],
     related: ["what-an-ai-credit-is", "how-offline-first-notes-work"],
@@ -455,7 +455,7 @@ const POSTS: BlogPost[] = [
           Keep typing. Folevi saves the notes on your device first and syncs them when you reconnect. The status on the page says Offline in the meantime and counts the edits waiting. <Link href="/blog/how-offline-first-notes-work">How offline-first notes work</Link> explains what happens underneath.
         </p>
 
-        <h2 id="share">Share the notes afterwards</h2>
+        <h2 id="share">Share the notes afterward</h2>
         <p>
           In a workspace, members can already open the page unless it’s restricted. For people outside it, open the page’s Share menu and invite them by email to view, comment or edit. They join that one page as guests, and guests are free on every plan. A comment that @mentions someone notifies them, so a question about a follow-up can sit right next to it.
         </p>

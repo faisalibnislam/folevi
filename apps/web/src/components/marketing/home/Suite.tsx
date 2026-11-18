@@ -147,7 +147,7 @@ const PILLARS: Array<{ title: string; body: string; href: string; label: string;
   },
   {
     title: "Teams and sharing",
-    body: "Workspaces for your team, editing together in real time, comments and free guests.",
+    body: "Team workspaces with real-time editing and comments. Guests are free.",
     href: "/features/team-workspaces",
     label: "A shared page with three people in it and a comment from Sam.",
     picture: <TeamPicture />,
@@ -169,7 +169,7 @@ export function Suite() {
               and your <Mark>team</Mark>, in one place.
             </>
           }
-          lede="Everything you would use a few apps for, in one calm workspace that works offline and syncs."
+          lede="What you’d otherwise spread across a few apps, in one workspace that works offline and syncs."
         />
         <ul className="mt-10 grid gap-x-5 gap-y-8 sm:grid-cols-2">
           {PILLARS.map((p) => (

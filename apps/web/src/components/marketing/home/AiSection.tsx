@@ -24,7 +24,7 @@ export function AiSection() {
             Ask, write and draw with <Mark>your notes.</Mark>
           </span>
         </h2>
-        <p className="mk-lede mt-4 max-w-[54ch]">It only reads notes you can open, and asks before changes. In the Mac app it can run on Apple Intelligence or your own key.</p>
+        <p className="mk-lede mt-4 max-w-[54ch]">It only reads notes you can open, and it asks before it changes anything. In the Mac app it can run on Apple Intelligence or your own key.</p>
 
         <div className="mt-12 grid gap-12 lg:grid-cols-2 lg:gap-x-10 lg:gap-y-8">
           <Feature

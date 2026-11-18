@@ -18,7 +18,7 @@ const PLACES: Array<{ icon: ReactNode; title: string; body: string }> = [
 
 const POINTS: Array<{ icon: ReactNode; title: string; body: string }> = [
   { icon: <WifiOff size={17} />, title: "Offline, always", body: "Everything is on your device first. Write on a plane and it syncs when you land." },
-  { icon: <Sparkles size={17} />, title: "Private Foli AI", body: "On your Mac, Foli AI runs on Apple Intelligence or on your own key, straight from your Mac." },
+  { icon: <Sparkles size={17} />, title: "Private Foli AI", body: "On the Mac, Foli AI runs on Apple Intelligence or on your own key, and requests go straight from your Mac." },
   { icon: <ArrowLeftRight size={17} />, title: "Never stuck", body: "Sign in later to move your notes to Folevi Cloud, or export them back into a folder." },
 ];
 
@@ -26,8 +26,8 @@ const FILES = [
   { name: "Seed library", when: "Today, 9:41" },
   { name: "Trip sketch", when: "Yesterday" },
   { name: "Reading list", when: "Yesterday" },
-  { name: "Studio move", when: "3 Nov" },
-  { name: "Weekly reset", when: "1 Nov" },
+  { name: "Studio move", when: "Nov 3" },
+  { name: "Weekly reset", when: "Nov 1" },
 ];
 
 function FolderPicture() {

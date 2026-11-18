@@ -37,7 +37,7 @@ export default function TermsPage() {
         <h2 id="agreement">The agreement</h2>
         <p>
           By creating an account or using Folevi (the website, the web app and, once it’s released, the Mac app), you agree to these terms and
-          to our <Link href="/privacy">privacy policy</Link>. If you’re using Folevi for an organisation, you confirm you’re
+          to our <Link href="/privacy">privacy policy</Link>. If you’re using Folevi for an organization, you confirm you’re
           allowed to accept these terms on its behalf.
         </p>
 
@@ -149,7 +149,7 @@ export default function TermsPage() {
             one allowance; on paid plans, each person has their own), AI credits, and, on the Free personal plan, the number of devices
             signed in at once, which being in a workspace doesn’t change. Going over a limit, for example after moving to a
             smaller plan, pauses new uploads or holds a new device until you make room or upgrade. Nothing already stored is
-            deleted, and you can still open, edit, organise, export and delete it.
+            deleted, and you can still open, edit, organize, export and delete it.
           </li>
           <li>
             If we change prices, we’ll tell you by email at least 30 days before the change applies to your plan.

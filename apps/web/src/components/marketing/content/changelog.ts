@@ -90,8 +90,8 @@ export const RELEASES: Release[] = [
         title: "Look and feel",
         items: [
           "A new logo and app icon",
-          "Translucent, glassy chrome with a calmer, neutral palette so your notes carry the colour",
-          "57 note styles, each colouring text, highlights and blocks from its image, or upload your own",
+          "Translucent, glassy chrome with a calmer, neutral palette so your notes carry the color",
+          "57 note styles, each coloring text, highlights and blocks from its image, or upload your own",
           "26 built-in templates with their own icons",
           "Folders that show the notes inside them",
         ],
@@ -115,12 +115,12 @@ export const RELEASES: Release[] = [
           "Block documents: text, headings (three levels), bulleted and numbered lists, checklists, toggles, quotes, callouts, dividers, code, tables, images, files and bookmarks",
           "Slash menu to insert or turn a block into any type, plus keyboard shortcuts for headings and checklists",
           "Drag or use ⌥⇧↑ / ⌥⇧↓ to move blocks; nest blocks to build outlines",
-          "Inline formatting, text colours and highlights, links, dates and mentions",
-          "Page style: sans, serif or mono type; narrow, default or wide width; paper, plain, tinted or grid backgrounds; five accent colours; colour, gradient and 20 artwork covers; icons",
+          "Inline formatting, text colors and highlights, links, dates and mentions",
+          "Page style: sans, serif or mono type; narrow, default or wide width; paper, plain, tinted or grid backgrounds; five accent colors; color, gradient and 20 artwork covers; icons",
         ],
       },
       {
-        title: "Organising",
+        title: "Organizing",
         items: [
           "Nested pages, shown as links or cards",
           "Links between pages with [[, and backlinks on the linked page",

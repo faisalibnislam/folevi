@@ -43,23 +43,23 @@ export function NoteStyles() {
               eyebrow="Note themes and folders"
               title={
                 <>
-                  Your notes bring the <Mark kind="squiggle">colour</Mark>.
+                  Your notes bring the <Mark kind="squiggle">color</Mark>.
                 </>
               }
             />
           </div>
           <div className="lg:pb-1">
-            <p className="mk-lede">{COVER_ART.length} note themes for your pages, and a colour for each folder.</p>
+            <p className="mk-lede">{COVER_ART.length} note themes for your pages, and a color for each folder.</p>
             <Checks
               className="mt-5"
-              items={[<>On Auto, colours come from the theme</>, <>Use your own image as a theme</>, <>Dark colours for every theme</>]}
+              items={[<>On Auto, colors come from the theme</>, <>Use your own image as a theme</>, <>Dark colors for every theme</>]}
             />
           </div>
         </div>
 
         <div
           role="img"
-          aria-label={`Recent notes and folders in the app: ${CARDS.length} notes, each in its own note theme (${CARDS.map((card) => artById(card.art).name).join(", ")}), and ${FOLDERS.length} folders, each in its own colour.`}
+          aria-label={`Recent notes and folders in the app: ${CARDS.length} notes, each in its own note theme (${CARDS.map((card) => artById(card.art).name).join(", ")}), and ${FOLDERS.length} folders, each in its own color.`}
           className="mt-10"
         >
           <Play className="mk-panel p-4 sm:p-8">

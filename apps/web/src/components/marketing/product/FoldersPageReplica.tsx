@@ -43,7 +43,7 @@ export function DemoFolderCard({ folder }: { folder: DemoFolder }) {
 export function FoldersPageReplica({ className }: { className?: string }) {
   const folders = [...DEMO_FOLDERS].sort((a, b) => a.name.localeCompare(b.name));
   const names = folders.map((f) => f.name);
-  const label = `The Folders page in Folevi. ${folders.length} folders are shown as cards, each in its own colour: ${names.slice(0, -1).join(", ")} and ${names.at(-1)}. Each card shows how many notes the folder holds, when it last changed, and its newest notes showing through the front cover. The sidebar lists the first five folders and ${folders.length - SIDEBAR_FOLDERS} more.`;
+  const label = `The Folders page in Folevi. ${folders.length} folders are shown as cards, each in its own color: ${names.slice(0, -1).join(", ")} and ${names.at(-1)}. Each card shows how many notes the folder holds and when it last changed, with its newest notes showing through the front cover. The sidebar lists the first five folders and ${folders.length - SIDEBAR_FOLDERS} more.`;
   return (
     <div role="img" aria-label={label} className={cx("mk-app", className)} style={{ ["--app-art" as string]: artThumb(artById("art-44")) }}>
       <div aria-hidden="true" className="mk-app-ambient" />

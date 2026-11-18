@@ -90,7 +90,7 @@ export const DEMO_FOLDERS: DemoFolder[] = [
     color: "amber",
     age: "4 hours ago",
     notes: [
-      { title: "Design review", lines: ["Tighter spacing on the cards.", "Try the lighter grey for the sidebar."] },
+      { title: "Design review", lines: ["Tighter spacing on the cards.", "Try the lighter gray for the sidebar."] },
       { title: "Team offsite agenda", style: "Festival", lines: ["Morning for the roadmap, afternoon for the walk.", "Lunch is booked for twelve."] },
       { title: "Monday planning", style: "Folded mist", lines: ["What shipped last week and what's next.", "Keep it to twenty minutes."] },
     ],

@@ -77,6 +77,8 @@ Branch: `mac-native-look`. Not released: the owner approves the look first.
 - **A screen in the other theme** (the Vault: dark in a light window, light in a dark one): the card's own chrome
   over it (fill, scroll edge effect, glass controls, Ask Foli AI, toasts) takes that theme too
   (`ContentViewController.syncChromeAppearance`).
+- **A choice of look is shown, not named**: Settings > Appearance > Theme is three pictures of the window across
+  the card (`ThemeTiles`), as System Settings shows its appearances, never a small segmented control.
 - **Settings groups** read as System Settings': the group's name (13 pt semibold), what it is for in small
   secondary words under the name, then one rounded surface holding only the rows and controls
   (`NativeSettingsCard`). A row is its name and helper leading, its control trailing. The category list shows no

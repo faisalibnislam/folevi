@@ -83,6 +83,23 @@ Kind menu sits on the same surface.
 Not pictured: Settings' own fields (a key, a passphrase) open from buttons in the Settings window, which the test
 tools can't click. They use the same field.
 
+## The Theme picker (third pass, the owner: "show thumbnails/previews, full width")
+
+Settings > Appearance > Theme was a small segmented control at the card's left. It is now three tiles across the
+card, each a small picture of Folevi's window in that theme (System is the two halves side by side), with the
+chosen one ringed in the accent and checked. `ThemeTiles.swift`.
+
+### Settings > Appearance: the theme is chosen from three pictures of the window, across the card
+
+![theme-picker](theme-picker.jpg)
+
+### The same in dark mode
+
+![theme-picker-dark](theme-picker-dark.jpg)
+
+Not checked by a click: the test tools can't click inside the Settings window. The tiles call the same function
+the segmented control did.
+
 Also fixed, without a picture: the Import card in Settings had more padding under its buttons than above them; the
 Vault's Add dialog took its height from whichever window was key, so it cut off its Notes field when Settings was
 open or the app was behind another.

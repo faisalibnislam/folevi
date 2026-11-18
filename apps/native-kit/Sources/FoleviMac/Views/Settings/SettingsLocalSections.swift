@@ -747,7 +747,7 @@ struct AppearanceSettingsView: View {
     }
 
     #if os(macOS)
-    /// The native look: the theme as a segmented choice, the text size on the system's slider with its value and a
+    /// The native look: the theme as three pictures of the window to choose from, the text size on the system's slider with its value and a
     /// line of note text at that size (note text keeps Folevi's own type).
     @ViewBuilder private var nativeBody: some View {
         let a = model.appearance.value
@@ -755,15 +755,8 @@ struct AppearanceSettingsView: View {
         let storedZoom = a?.editorZoom ?? 1
         VStack(alignment: .leading, spacing: MacSettingsLook.groupGap) {
             SettingsCard("Theme", description: "Dark mode is designed, not inverted: document colors are softened and code stays readable.") {
-                Picker("Theme", selection: Binding(get: { theme.shown(stored) }, set: { chooseTheme($0) })) {
-                    Label("Light", systemImage: "sun.max").tag("light")
-                    Label("Dark", systemImage: "moon").tag("dark")
-                    Label("System", systemImage: "desktopcomputer").tag("system")
-                }
-                .pickerStyle(.segmented)
-                .labelsHidden()
-                .fixedSize()
-                .accessibilityLabel("Theme")
+                // Three pictures of the window across the card (ThemeTiles), not a small segmented control.
+                ThemeTiles(selected: theme.shown(stored)) { chooseTheme($0) }
             }
             SettingsCard("Editor text size") {
                 let shownZoom = zoom.shown(storedZoom)

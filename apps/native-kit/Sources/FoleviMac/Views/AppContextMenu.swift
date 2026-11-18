@@ -1,7 +1,8 @@
 // Folevi's right-click menu wherever a part of the window has none of its own (apps/web/src/components/app/
-// AppContextMenu.tsx as Folevi for Mac shows it; Shift+right-click keeps the system's):
+// AppContextMenu.tsx's rows, shown on the Mac as the system's context menu; Shift+right-click keeps the system's
+// own text menu):
 // - a text field: Cut, Copy, Paste and Select all, with the Mac's spelling guesses, Look Up and Share
-//   (lib/desktop/textMenu.ts);
+//   (lib/desktop/textMenu.ts), Share being the system's Share submenu;
 // - anywhere else: New note, Search or jump to…, Ask Foli AI, then Back, Forward and Reload.
 // The note page draws its own menus (the editor's), so a right click over it is left to the page.
 // The iPad's wide layout has the "anywhere" menu too, from a pointer's secondary click (a two-finger click on a
@@ -34,8 +35,28 @@ enum AppContextMenu {
         frames[ObjectIdentifier(window)] = Attached(window: window, model: model)
     }
 
+    /// The system menu for a right click no view answered (its rows, and the menu with the system's Share submenu
+    /// for selected text), or nil to leave the click alone.
+    static func menu(for event: NSEvent, in window: NSWindow) -> (entries: [WebMenuEntry], menu: NSMenu)? {
+        guard let entries = entries(for: event, in: window), !entries.isEmpty else { return nil }
+        let menu = NativeMenu.build(entries)
+        // Share: the system's own submenu of sharing services (Mail, Messages, Notes, AirDrop…) for the selection.
+        if let i = menu.items.firstIndex(where: { $0.identifier?.rawValue == shareId }), let text = sharedText {
+            let share = NSSharingServicePicker(items: [text]).standardShareMenuItem
+            share.identifier = NSUserInterfaceItemIdentifier(shareId)
+            menu.removeItem(at: i)
+            menu.insertItem(share, at: i)
+        }
+        return (entries, menu)
+    }
+
+    /// The Share row's id, and the selection it shares (set as the text menu is built).
+    static let shareId = "text-share"
+    private static var sharedText: String?
+
     /// The menu for a right click no view answered, or nil to leave the click alone.
     static func entries(for event: NSEvent, in window: NSWindow) -> [WebMenuEntry]? {
+        sharedText = nil
         if event.modifierFlags.contains(.shift) { return nil }
         guard let content = window.contentView else { return nil }
         let hit = content.hitTest(content.convert(event.locationInWindow, from: nil))
@@ -123,26 +144,17 @@ enum AppContextMenu {
             if !s.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                 let at = event.locationInWindow
                 out.append(.separator(4))
-                // The Mac's sharing services in a Folevi menu where the right click was (MAC-41: the system's picker
-                // was the one OS menu left in this menu).
-                out.append(WebMenuEntry(.item("Share…", icon: .share)) {
-                    guard let window = text.window else { return }
-                    let services = shareEntries(for: s)
-                    if !services.isEmpty { WebMenuWindow.show(services, at: at, in: window) }
+                // In the menu this row is the system's Share submenu (menu(for:in:)); picked on its own, the system's
+                // sharing picker opens where the right click was.
+                sharedText = s
+                out.append(WebMenuEntry(.item("Share…", icon: .share, id: shareId)) {
+                    guard let view = text.window?.contentView else { return }
+                    let p = view.convert(at, from: nil)
+                    NSSharingServicePicker(items: [s]).show(relativeTo: NSRect(x: p.x, y: p.y, width: 1, height: 1), of: view, preferredEdge: .minY)
                 })
             }
         }
         return out
-    }
-
-    /// The sharing services that take this text (Mail, Messages, Notes, AirDrop…), each a row of a Folevi menu.
-    static func shareEntries(for text: String) -> [WebMenuEntry] {
-        // (`sharingServices(forItems:)` is deprecated in favour of the system's picker menu, which is what this
-        // replaces; it still lists the same services.)
-        let services = NSSharingService.sharingServices(forItems: [text])
-        return services.enumerated().map { i, service in
-            WebMenuEntry(.item(service.menuItemTitle, id: "share-\(i)")) { service.perform(withItems: [text]) }
-        }
     }
 
     /// The system's Look Up panel for a range of the text, at its first line's baseline.

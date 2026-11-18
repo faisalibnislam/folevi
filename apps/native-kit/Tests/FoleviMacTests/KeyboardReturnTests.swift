@@ -1,5 +1,5 @@
-// The keyboard after a dialog (FrameSheets): what had it before the dialog gets it back when the dialog closes, so
-// ⌘K over a note and then Escape leaves the typing in the note; on another route by then the note's page takes it
+// The keyboard after a dialog (FrameSheets, a system sheet on the Mac): what had it before the dialog has it again
+// when the dialog closes, so ⌘K over a note and then Escape leaves the typing in the note; on another route by then the note's page takes it
 // when a note is on screen; and a dialog that replaces another hands on where the first one took it from. Also
 // Help > Keyboard Shortcuts (the Help page, at its shortcuts table).
 #if os(macOS)
@@ -34,7 +34,8 @@ struct KeyboardReturnTests {
         window.makeFirstResponder(list)
         FrameSheets.present(model) { _ in Text("Dialog") }
         #expect(FrameSheets.isShowing(model))
-        #expect(window.firstResponder !== list)
+        // The dialog is a sheet on the window (the system's: it takes the keyboard while the window keeps its own).
+        #expect(FrameSheets.sheetWindow(for: model) != nil)
         FrameSheets.dismiss(model)
         #expect(window.firstResponder === list)
         model.stop()

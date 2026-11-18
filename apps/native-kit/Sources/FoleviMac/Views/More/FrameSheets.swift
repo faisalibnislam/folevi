@@ -1,7 +1,10 @@
-// Dialogs as Folevi for Mac shows them (globals.css `:root[data-desktop="mac"] dialog.ui-pop`): over the whole
-// window with a clear backdrop, attached at the top (56 pt down, or where the dialog's own margin puts it, as
-// ⌘K's 12vh), centred across the window, in frosted glass (82% surface over a 24 pt blur) with the Mac sheet
-// shadow. A click on the backdrop, Escape or ⌘. closes it; the window behind takes no clicks meanwhile.
+// The frame's dialogs. On the Mac they are the system's (owner decision 2026-11-18, docs/MAC_NATIVE_LOOK.md): a
+// dialog or the command palette is a sheet on the frame's window, a panel anchored to a control (the bell's
+// notifications) is an NSPopover; Escape or ⌘. closes either, Return presses a dialog's default button, and the
+// keyboard goes back to what had it. The dialog pieces (WebSheetDialog, WebSheetButton, WebSheetFooter) are drawn in
+// the system font and colours there, with the system's buttons.
+// On the iPad they are still the web's (globals.css `dialog.ui-pop`): over the whole window with a clear backdrop,
+// in frosted glass (82% surface over a 24 pt blur); a tap on the backdrop closes it.
 #if os(macOS) || os(iOS)
 #if os(macOS)
 import AppKit
@@ -18,6 +21,8 @@ public enum FrameSheets {
     private final class Shown {
         let host: NSView
         let monitor: Any?
+        /// The Mac's Escape monitor (set once the sheet or popover is up).
+        var monitorBox: Any?
         let onClose: (() -> Void)?
         /// (The iPad's hosting controller, kept while its view shows.)
         var keep: AnyObject?
@@ -28,6 +33,10 @@ public enum FrameSheets {
         /// the route on screen then: the keyboard goes back there when the dialog closes.
         weak var returnTo: NSResponder?
         var route: FrameRoute?
+        /// The frame's window, the dialog's sheet on it, or the panel's popover.
+        weak var parent: NSWindow?
+        var sheet: NSWindow?
+        var popover: NSPopover?
         #endif
         init(host: NSView, monitor: Any?, onClose: (() -> Void)?) {
             self.host = host
@@ -57,18 +66,106 @@ public enum FrameSheets {
     }
 
     /// A dialog is closing: the keyboard goes back to what had it before (⌘K over a note, then Escape, and typing
-    /// goes on in the note). Only while the dialog still has it, or nothing has: what closed the dialog may have
-    /// given it to something already (a note opened from the palette takes it itself). On another route by now,
-    /// or with that view gone, the note's page takes it when a note is on screen.
+    /// goes on in the note), unless something took it meanwhile. On another route by now (the palette opened a note),
+    /// the note's page takes it when a note is on screen.
     private static func returnKeyboard(from s: Shown, model: FrameModel) {
-        guard let window = s.host.window else { return }
-        let now = window.firstResponder
-        guard now === window || now === s.host || (now as? NSView)?.isDescendant(of: s.host) == true else { return }
-        if s.route == model.route, let view = s.returnTo as? NSView, view.window === window, !view.isHiddenOrHasHiddenAncestor, !view.isDescendant(of: s.host) {
-            window.makeFirstResponder(view)
-        } else if model.route.isNote, let page = pages[ObjectIdentifier(model)]?.view, page.window === window {
-            window.makeFirstResponder(page)
+        guard let window = s.parent else { return }
+        if s.route != model.route {
+            if model.route.isNote, let page = pages[ObjectIdentifier(model)]?.view, page.window === window { window.makeFirstResponder(page) }
+            return
         }
+        let now = window.firstResponder
+        guard now == nil || now === window else { return }
+        if let view = s.returnTo as? NSView, view.window === window, !view.isHiddenOrHasHiddenAncestor { window.makeFirstResponder(view) }
+    }
+
+    /// The bell (or another control) a popover panel opens from: the frame registers it before it opens one.
+    private static var anchors: [ObjectIdentifier: WeakView] = [:]
+    public static func attach(_ model: FrameModel, popoverAnchor view: NSView?) {
+        anchors[ObjectIdentifier(model)] = WeakView(view: view)
+    }
+
+    /// The sheet a dialog shows in (tests, the palette's early keys).
+    static func sheetWindow(for model: FrameModel) -> NSWindow? { shown[ObjectIdentifier(model)]?.sheet }
+
+    /// The popover a panel shows in (tests).
+    static func popover(for model: FrameModel) -> NSPopover? { shown[ObjectIdentifier(model)]?.popover }
+
+    /// Closes the panel's entry when the popover goes by itself (a click outside it).
+    private final class PopoverWatcher: NSObject, NSPopoverDelegate {
+        weak var model: FrameModel?
+        init(model: FrameModel) { self.model = model }
+        func popoverDidClose(_ notification: Notification) {
+            MainActor.assumeIsolated {
+                guard let model, let s = FrameSheets.shown[ObjectIdentifier(model)], s.popover === notification.object as? NSPopover else { return }
+                FrameSheets.dismiss(model)
+            }
+        }
+    }
+
+    /// The Mac's presentation: a sheet on the window (a dialog, the palette), or a popover from a control (a panel
+    /// at `leading`).
+    private static func presentMac(_ model: FrameModel, leading: CGFloat?, top: CGFloat?, onClose: (() -> Void)?, content: AnyView) {
+        let key = ObjectIdentifier(model)
+        let replaced = shown[key]
+        dismiss(model, notify: false, returnKeyboard: false)
+        guard let window = window(for: model), let root = window.contentView else { return }
+        let returnTo = replaced != nil ? replaced?.returnTo : keyboardOwner(window)
+        let route = replaced?.route ?? model.route
+        let close: @MainActor () -> Void = { [weak model] in if let model { FrameSheets.dismiss(model) } }
+        let entry: Shown
+        if leading != nil {
+            let controller = NSHostingController(rootView: content)
+            controller.sizingOptions = .preferredContentSize
+            let popover = NSPopover()
+            popover.behavior = .transient
+            popover.animates = !WebMotion.reduced
+            popover.contentViewController = controller
+            let watcher = PopoverWatcher(model: model)
+            popover.delegate = watcher
+            entry = Shown(host: controller.view, monitor: nil, onClose: onClose)
+            entry.keep = watcher
+            entry.popover = popover
+            entry.parent = window
+            shown[key] = entry
+            if let anchor = anchors[key]?.view, anchor.window === window {
+                popover.show(relativeTo: anchor.bounds, of: anchor, preferredEdge: anchor.isFlipped ? .maxY : .minY)
+            } else if window.isVisible {
+                // (No control registered: where the panel used to drop from, under the sidebar's top bar.)
+                let y = root.isFlipped ? (top ?? 0) : root.bounds.height - (top ?? 0)
+                popover.show(relativeTo: NSRect(x: (leading ?? 0) + 8, y: y, width: 24, height: 1), of: root, preferredEdge: root.isFlipped ? .maxY : .minY)
+            }
+        } else {
+            let host = SheetHostingView(rootView: content)
+            host.sizingOptions = [.minSize, .maxSize]
+            let size = host.fittingSize
+            let sheet = NSWindow(contentRect: NSRect(origin: .zero, size: size), styleMask: [.titled, .fullSizeContentView], backing: .buffered, defer: false)
+            sheet.titleVisibility = .hidden
+            sheet.titlebarAppearsTransparent = true
+            sheet.isReleasedWhenClosed = false
+            sheet.contentView = host
+            sheet.initialFirstResponder = host
+            entry = Shown(host: host, monitor: nil, onClose: onClose)
+            entry.sheet = sheet
+            entry.parent = window
+            shown[key] = entry
+            // (A window that isn't on screen, as in unit tests, gets no sheet: the dialog is still the frame's.)
+            if window.isVisible { window.beginSheet(sheet) }
+        }
+        // Escape and ⌘. close it, wherever the focus is inside it (AppKit's field editor keeps Escape otherwise).
+        let target: NSWindow? = entry.sheet ?? entry.popover?.contentViewController?.view.window
+        entry.monitorBox = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak sheet = entry.sheet, weak popover = entry.popover] e in
+            let mine = (sheet != nil && e.window === sheet) || (popover != nil && e.window === popover?.contentViewController?.view.window) || (target == nil && e.window === window)
+            guard mine else { return e }
+            let cmdDot = e.modifierFlags.contains(.command) && e.charactersIgnoringModifiers == "."
+            if e.keyCode == 53 || cmdDot {
+                close()
+                return nil
+            }
+            return e
+        }
+        entry.returnTo = returnTo
+        entry.route = route
     }
     #endif
 
@@ -89,43 +186,24 @@ public enum FrameSheets {
     /// `scrim`: the window behind dims (the command palette: it stands apart from the sidebar's labels, MAC-45).
     static func present<Content: View>(_ model: FrameModel, top: CGFloat? = nil, leading: CGFloat? = nil, scrim: Bool = false, onClose: (() -> Void)? = nil, @ViewBuilder content: (_ close: @escaping @MainActor () -> Void) -> Content) {
         #if os(macOS)
-        // (A dialog that replaces another hands on what the first one took the keyboard from.)
-        let replaced = shown[ObjectIdentifier(model)]
-        dismiss(model, notify: false, returnKeyboard: false)
-        guard let window = window(for: model), let root = window.contentView else { return }
-        let returnTo = replaced != nil ? replaced?.returnTo : keyboardOwner(window)
-        let route = replaced?.route ?? model.route
+        let close: @MainActor () -> Void = { [weak model] in if let model { FrameSheets.dismiss(model) } }
+        presentMac(model, leading: leading, top: top, onClose: onClose, content: AnyView(content(close)))
         #else
+        presentDrawn(model, top: top, leading: leading, scrim: scrim, onClose: onClose, content: content)
+        #endif
+    }
+
+    #if os(iOS)
+    /// The iPad's dialog: drawn over the window as the web's.
+    private static func presentDrawn<Content: View>(_ model: FrameModel, top: CGFloat? = nil, leading: CGFloat? = nil, scrim: Bool = false, onClose: (() -> Void)? = nil, @ViewBuilder content: (_ close: @escaping @MainActor () -> Void) -> Content) {
         dismiss(model, notify: false)
         guard let window = window(for: model) else { return }
         let root: UIView = window
-        #endif
         let key = ObjectIdentifier(model)
         let close: @MainActor () -> Void = { [weak model] in if let model { FrameSheets.dismiss(model) } }
         let backdrop = SheetBackdropImage(image: blurredSnapshot(of: root))
         let layer = SheetLayer(top: top, leading: leading, scrim: scrim, close: close, content: content(close))
             .environment(\.sheetBackdrop, backdrop)
-        #if os(macOS)
-        let host = SheetHostingView(rootView: AnyView(layer.macClickThrough()))
-        host.safeAreaRegions = []
-        host.frame = root.bounds
-        host.autoresizingMask = [.width, .height]
-        root.addSubview(host, positioned: .above, relativeTo: nil)
-        // The dialog takes the keys (its field gets the focus, as `autoFocus` gives it).
-        window.makeFirstResponder(host)
-        let keep: AnyObject? = nil
-        // The window resized under the dialog (a zoom, the end of a live resize, full screen): the frost is drawn again
-        // from the window as it now is, without the dialog (MAC-44).
-        let resized: @MainActor () -> Void = { [weak host, weak root, weak window] in
-            guard let host, let root, window?.inLiveResize == false else { return }
-            host.isHidden = true
-            backdrop.box.image = blurredSnapshot(of: root)
-            host.isHidden = false
-        }
-        let observers = [NSWindow.didResizeNotification, NSWindow.didEndLiveResizeNotification].map { name in
-            NotificationCenter.default.addObserver(forName: name, object: window, queue: .main) { _ in MainActor.assumeIsolated { resized() } }
-        }
-        #else
         let observers: [Any] = []
         let controller = UIHostingController(rootView: AnyView(layer))
         controller.safeAreaRegions = []
@@ -135,8 +213,7 @@ public enum FrameSheets {
         host.autoresizingMask = [.flexibleWidth, .flexibleHeight]
         root.addSubview(host)
         let keep: AnyObject? = controller
-        #endif
-        // Escape and ⌘. close it, wherever the focus is inside it (AppKit's field editor keeps Escape otherwise).
+        // Escape and ⌘. close it (a hardware keyboard).
         let monitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { e in
             guard e.window === window else { return e }
             let cmdDot = e.modifierFlags.contains(.command) && e.charactersIgnoringModifiers == "."
@@ -149,19 +226,20 @@ public enum FrameSheets {
         let entry = Shown(host: host, monitor: monitor, onClose: onClose)
         entry.keep = keep
         entry.observers = observers
-        #if os(macOS)
-        entry.returnTo = returnTo
-        entry.route = route
-        #endif
         shown[key] = entry
     }
+    #endif
 
     /// Closes every frame's dialog (the eval hook between screens).
     public static func dismissAll() {
         for (key, s) in shown {
             shown[key] = nil
             if let m = s.monitor { NSEvent.removeMonitor(m) }
+            if let m = s.monitorBox { NSEvent.removeMonitor(m) }
             s.observers.forEach(NotificationCenter.default.removeObserver)
+            #if os(macOS)
+            if s.sheet != nil || s.popover != nil { takeAway(s); continue }
+            #endif
             s.host.removeFromSuperview()
         }
     }
@@ -220,12 +298,29 @@ public enum FrameSheets {
         guard let s = shown.removeValue(forKey: key) else { return }
         s.observers.forEach(NotificationCenter.default.removeObserver)
         if let m = s.monitor { NSEvent.removeMonitor(m) }
+        if let m = s.monitorBox { NSEvent.removeMonitor(m) }
         #if os(macOS)
+        if s.sheet != nil || s.popover != nil {
+            takeAway(s)
+        } else {
+            fadeAway(s.host)
+        }
         if returnKeyboard { Self.returnKeyboard(from: s, model: model) }
-        #endif
+        #else
         fadeAway(s.host)
+        #endif
         if notify { s.onClose?() }
     }
+
+    #if os(macOS)
+    /// The sheet ends (the system's animation) or the popover closes.
+    private static func takeAway(_ s: Shown) {
+        if let sheet = s.sheet {
+            if let parent = sheet.sheetParent { parent.endSheet(sheet) } else { sheet.orderOut(nil) }
+        }
+        if let popover = s.popover, popover.isShown { popover.performClose(nil) }
+    }
+    #endif
 
     /// Takes a dialog away as macOS does: a short fade, then gone (at once with Reduce Motion).
     private static func fadeAway(_ host: NSView) {
@@ -338,6 +433,10 @@ struct WebSheetPanel: ViewModifier {
 
     func body(content: Content) -> some View {
         let s = style.resolve(scheme)
+        #if os(macOS)
+        // The sheet or popover is the surface (the system's material, corners and shadow): only the width here.
+        content.frame(width: width ?? s.width)
+        #else
         let shape = RoundedRectangle(cornerRadius: s.radius, style: .circular)
         content
             .frame(width: width ?? s.width)
@@ -345,11 +444,12 @@ struct WebSheetPanel: ViewModifier {
             .webBox(style)
             .background(WebBackdrop().clipShape(shape))
             .overlay(shape.strokeBorder(moreVar("mac-pop-edge", scheme), lineWidth: 0.5))
+        #endif
     }
 }
 
-/// `<Dialog>` (components/ui/Dialog.tsx) as the Mac draws it: a Spectral title with an optional description and
-/// a Close button, the body, and an optional footer.
+/// `<Dialog>` (components/ui/Dialog.tsx): a title with an optional description and a Close button, the body, and an
+/// optional footer. The Mac draws it in the system's type inside a sheet; the iPad as the web (a Spectral title).
 struct WebSheetDialog<Body: View, Footer: View>: View {
     let title: String
     var description: String? = nil
@@ -361,6 +461,32 @@ struct WebSheetDialog<Body: View, Footer: View>: View {
     @Environment(\.colorScheme) private var scheme
 
     var body: some View {
+        #if os(macOS)
+        // A sheet's content in the system's type: the title (13 pt bold), what will happen in the secondary label
+        // colour, the body, the buttons at the end.
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(alignment: .top, spacing: MacLook.Space.m) {
+                VStack(alignment: .leading, spacing: MacLook.Space.xs) {
+                    // (One line, cut in the middle: a long name loses its middle and the question keeps its "?", MAC-11.)
+                    Text(verbatim: title).font(MacLook.Text.headline).lineLimit(1).truncationMode(.middle)
+                        .foregroundStyle(MacLook.Colors.label)
+                        .accessibilityAddTraits(.isHeader)
+                    if let description {
+                        Text(verbatim: description).font(MacLook.Text.body).foregroundStyle(MacLook.Colors.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                WebSheetCloseButton(action: close)
+            }
+            .padding(.horizontal, MacLook.Space.l + 4).padding(.top, MacLook.Space.l + 4).padding(.bottom, MacLook.Space.m)
+            content()
+                .padding(.horizontal, MacLook.Space.l + 4).padding(.bottom, MacLook.Space.l)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            footer()
+        }
+        .modifier(WebSheetPanel(style: WebStyles.named("more.dialog.sm"), width: width))
+        #else
         let header = moreStyle("more.dialog.header", scheme)
         let t = moreStyle("more.dialog.title", scheme)
         let b = moreStyle("more.dialog.body", scheme)
@@ -387,6 +513,7 @@ struct WebSheetDialog<Body: View, Footer: View>: View {
             footer()
         }
         .modifier(WebSheetPanel(style: WebStyles.named("more.dialog.sm"), width: width))
+        #endif
     }
 }
 
@@ -414,7 +541,8 @@ func webFocused(_ pair: WebStylePair) -> WebStylePair {
     return WebStylePair(light: focus(pair.light, .light), dark: focus(pair.dark, .dark))
 }
 
-/// A dialog's button: `ui-btn` secondary or primary at the Mac's 28 pt (more.prompt.cancel / submit).
+/// A dialog's button: the system's push button on the Mac (the default one in Folevi's accent), `ui-btn` secondary
+/// or primary at 28 pt on the iPad (more.prompt.cancel / submit).
 /// Keys (MAC-09): Return presses a primary button and Escape the secondary (Cancel); a destructive button never
 /// answers Return (it takes a click, as the web's and the Settings confirmations: MAC-03).
 struct WebSheetButton: View {
@@ -433,6 +561,27 @@ struct WebSheetButton: View {
     }
 
     var body: some View {
+        #if os(macOS)
+        // The system's push buttons: the default one in Folevi's accent, a destructive one red, the others plain.
+        Group {
+            if primary, !danger {
+                Button { if enabled { action() } } label: {
+                    Text(verbatim: title).lineLimit(1).fixedSize().frame(minWidth: 56)
+                }
+                .buttonStyle(MacProminentButtonStyle())
+            } else {
+                Button(role: danger ? .destructive : nil) { if enabled { action() } } label: {
+                    Text(verbatim: title).lineLimit(1).fixedSize().frame(minWidth: 56)
+                }
+                .buttonStyle(.bordered)
+                .foregroundStyle(danger ? MacLook.Colors.red : MacLook.Colors.label)
+            }
+        }
+        .font(MacLook.Text.body)
+        .controlSize(.large)
+        .modifier(DialogKey(key: Self.key(primary: primary, danger: danger)))
+        .disabled(!enabled)
+        #else
         let style = danger ? WebStyles.named("button.danger.md") : WebStyles.named(primary ? "more.prompt.submit" : "more.prompt.cancel")
         let s = style.resolve(scheme)
         Button { if enabled { action() } } label: {
@@ -447,6 +596,7 @@ struct WebSheetButton: View {
         .modifier(DialogKey(key: Self.key(primary: primary, danger: danger)))
         .disabled(!enabled)
         .opacity(enabled ? 1 : 0.4)
+        #endif
     }
 
     private struct DialogKey: ViewModifier {
@@ -461,6 +611,31 @@ struct WebSheetButton: View {
     }
 }
 
+#if os(macOS)
+/// The one prominent action of a sheet: a capsule as tall as the system's large push buttons, in Folevi's accent
+/// with its ink while the window is active, the quaternary fill and the label colour while it isn't (as the system
+/// greys its default button), dimmed while disabled.
+struct MacProminentButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View { Face(configuration: configuration) }
+
+    private struct Face: View {
+        let configuration: ButtonStyleConfiguration
+        @Environment(\.controlActiveState) private var active
+        @Environment(\.isEnabled) private var enabled
+        var body: some View {
+            let on = active != .inactive && enabled
+            configuration.label
+                .foregroundStyle(on ? MacLook.Colors.onAccent : MacLook.Colors.label)
+                .padding(.horizontal, 14)
+                .frame(minHeight: 28)
+                .background(Capsule().fill(on ? MacLook.Colors.accent : MacLook.Colors.hover))
+                .opacity(enabled ? (configuration.isPressed ? 0.8 : 1) : 0.45)
+                .contentShape(Capsule())
+        }
+    }
+}
+#endif
+
 /// A dialog's Close (ui/Dialog.tsx's IconButton): the muted ×, the glass hover and heading ink under the pointer,
 /// the Mac's press fill. One for the frame's dialogs and the planner's (MAC-10).
 struct WebSheetCloseButton: View {
@@ -469,6 +644,21 @@ struct WebSheetCloseButton: View {
     @State private var over = false
 
     var body: some View {
+        #if os(macOS)
+        // The system's: a small xmark in the secondary label colour, the quaternary hover fill, a tooltip.
+        Button(action: action) {
+            Image(systemName: "xmark")
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundStyle(over ? MacLook.Colors.label : MacLook.Colors.secondary)
+                .frame(width: 22, height: 22)
+                .background(Circle().fill(over ? MacLook.Colors.hover : .clear))
+                .contentShape(Circle())
+        }
+        .buttonStyle(.plain)
+        .onHover { over = $0 }
+        .help("Close")
+        .accessibilityLabel("Close")
+        #else
         let xs = WebStyles.named("more.dialog.close").resolve(scheme)
         Button(action: action) {
             WebIconView(.x, size: 16)
@@ -480,6 +670,7 @@ struct WebSheetCloseButton: View {
         .onHover { over = $0 }
         .foleviTooltip("Close")
         .accessibilityLabel("Close")
+        #endif
     }
 }
 #endif

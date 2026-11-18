@@ -1,10 +1,9 @@
-// The account and place menu at the foot of the sidebar, drawn as the web's (components/app/WorkspaceMenu.tsx,
-// owner decisions in docs/MULTI_ACCOUNT_PLAN.md): a quiet "Places" label; each account a 52 pt row (its picture or
-// initial, the name over the email), the open account's workspaces under it as 32 pt rows with their plan and
-// "New workspace..."; the library "On this Mac" with where it syncs; one check column for where you are. Then
-// Settings (⌘,), Sign in to another account..., Move or copy notes..., Help; then Sign out of <name>. About 300
-// wide, opening up from the account button without covering it. Styles: "acct.*" (gates.json, the live web).
-// Keyboard: arrows, Return, Escape, type to select; a click outside closes it.
+// The account and place menu at the foot of the sidebar (components/app/WorkspaceMenu.tsx's rows, owner decisions
+// in docs/MULTI_ACCOUNT_PLAN.md): "Places"; each account (its picture or initial, the name over the email), the open
+// account's workspaces under it with their plan and "New workspace..."; the library "On this Mac" with where it
+// syncs; a check for where you are. Then Settings (⌘,), Sign in to another account..., Move or copy notes..., Help;
+// then Sign out of <name>. AccountMenuRows builds the rows. On the Mac they open as a system menu (AccountMenu.build
+// in Menus.swift, 2026-11-18); on the iPad they're drawn as the web's (AccountMenuPanel, styles "acct.*").
 #if os(macOS) || os(iOS)
 #if os(macOS)
 import AppKit
@@ -276,131 +275,65 @@ struct WebPersonAvatar: View {
 }
 
 #if os(macOS)
-/// A borderless panel holding the account menu, above its window.
+/// The account menu on the Mac: a system menu (AccountMenu.build) opening up from the account button. Its places
+/// carry their picture or initial, the name over the email (a subtitle), an unread count (a badge), the open place's
+/// workspaces indented under it with their plan, and the system's checkmark for where you are.
 @MainActor
-public final class AccountMenuWindow: NSPanel {
-    private static weak var current: AccountMenuWindow?
-    private var monitors: [Any] = []
-    private let state: AccountMenuState
-    static let margin: CGFloat = 32
-    /// On the left only as much room as there is to the window's edge (the web's shadow stops there too, and the
-    /// panel never pokes out of the window).
-    static var leading: CGFloat { min(margin, WebStyles.named("acct.menu").light.x) }
+public final class AccountMenuWindow: NSObject {
+    private static var current: AccountMenuWindow?
+    /// The system menu shown.
+    public let menu: NSMenu
+    private var tracking = false
+    private var closed = false
 
-    private init(rows: [AccountMenuRow]) {
-        state = AccountMenuState(rows)
-        super.init(contentRect: .zero, styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: true)
-        isOpaque = false
-        backgroundColor = .clear
-        hasShadow = false
-        level = .popUpMenu
-        isReleasedWhenClosed = false
-        let host = ClickThroughHostingView(rootView: AccountMenuPanel(state: state) { [weak self] r in self?.pick(r) }.padding(EdgeInsets(top: Self.margin, leading: Self.leading, bottom: Self.margin, trailing: Self.margin)))
-        host.safeAreaRegions = []
-        contentView = host
-        setContentSize(host.fittingSize)
+    private init(menu: NSMenu) {
+        self.menu = menu
     }
 
-    override public var canBecomeKey: Bool { true }
-
-    /// Opens the menu for `model` in `window`, its bottom-left corner where the web puts it (8 pt above the
-    /// account button, at its left edge).
+    /// Opens the menu for `model` in `window`, up from the account button (`anchor`) with its leading edge at the
+    /// button's; without a button, from the window's bottom-left corner.
     @discardableResult
     public static func show(model: FrameModel, in window: NSWindow, anchor: NSView? = nil) -> AccountMenuWindow {
         current?.close()
-        let menu = AccountMenuWindow(rows: AccountMenuRows.build(model: model))
-        let local: NSPoint
-        if let anchor, anchor.window === window {
-            // From the account button where it really is (MAC-38): the web's gap above it and its offset from its left
-            // edge, whatever moved the sidebar's foot (an update or sync banner, the window's height).
-            let a = anchor.convert(anchor.bounds, to: nil)
-            menu.triggerRect = a
-            local = placement(trigger: a)
-        } else {
-            // (No button to go by: web coordinates from the top of a 820 pt window, the sidebar's foot pinned to the
-            // bottom.)
-            let m = WebStyles.named("acct.menu").light
-            local = NSPoint(x: m.x, y: 820 - (m.y + m.height))
-        }
-        let screen = window.convertPoint(toScreen: local)
-        var frame = menu.frame
-        frame.origin = NSPoint(x: screen.x - leading, y: screen.y - margin)
-        menu.setFrame(frame, display: false)
-        menu.appearance = window.appearance
-        window.addChildWindow(menu, ordered: .above)
-        menu.makeKeyAndOrderFront(nil)
-        menu.watch()
-        current = menu
-        return menu
-    }
-
-    public static var shown: AccountMenuWindow? { current?.isVisible == true ? current : nil }
-
-    /// The account button's frame in its window (bottom-left origin), when it opened from it.
-    private var triggerRect: NSRect = .zero
-
-    /// Where the menu's bottom-left corner goes for a button at `a` (window coordinates, bottom-left origin): as far
-    /// above it and from its left edge as the web measures (acct.menu over acct.trigger).
-    static func placement(trigger a: NSRect) -> NSPoint {
-        let m = WebStyles.named("acct.menu").light
-        let t = WebStyles.named("acct.trigger").light
-        let gap = t.y - (m.y + m.height)
-        return NSPoint(x: a.minX + (m.x - t.x), y: a.maxY + gap)
-    }
-
-    private func watch() {
-        monitors.append(NSEvent.addLocalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown, .otherMouseDown]) { [weak self] event in
-            guard let self, event.window !== self else { return event }
-            // As a Folevi menu's (WebMenuWindow): on its own button a click only closes it (MAC-08); anywhere else
-            // the window under it is made key first so the click acts at once (MAC-06).
-            let decision = WebMenuWindow.outsideClick(at: event.locationInWindow, inParent: event.window != nil && event.window === self.parent, left: event.type == .leftMouseDown, trigger: self.triggerRect)
-            self.close()
-            if decision == .closeAndSwallow { return nil }
-            OutsideClicks.prepare(event)
-            return event
-        } as Any)
-        monitors.append(NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
-            guard let self, self.isVisible else { return event }
-            switch event.keyCode {
-            case 53: self.close()
-            case 125: self.state.move(1)
-            case 126: self.state.move(-1)
-            case 36, 76:
-                if let id = self.state.highlighted, let r = self.state.selectable.first(where: { $0.id == id }) { self.pick(r) }
-            default:
-                if let c = event.charactersIgnoringModifiers?.lowercased().first, c.isLetter {
-                    let list = self.state.selectable
-                    let start = list.firstIndex { $0.id == self.state.highlighted }.map { $0 + 1 } ?? 0
-                    let order = Array(list[start...] + list[..<start])
-                    if let hit = order.first(where: { $0.title.lowercased().first == c }) { self.state.highlighted = hit.id }
+        let m = AccountMenuWindow(menu: AccountMenu.build(model: model))
+        current = m
+        DispatchQueue.main.async {
+            MainActor.assumeIsolated {
+                guard current === m, !m.closed, NSApp?.isRunning == true else { return }
+                m.tracking = true
+                let size = m.menu.size
+                if let anchor, anchor.window === window {
+                    let b = anchor.bounds
+                    let top = anchor.isFlipped ? b.minY - 4 - size.height : b.maxY + 4 + size.height
+                    m.menu.popUp(positioning: nil, at: NSPoint(x: b.minX, y: top), in: anchor)
+                } else if let view = window.contentView {
+                    let top = view.isFlipped ? view.bounds.maxY - 56 - size.height : 56 + size.height
+                    m.menu.popUp(positioning: nil, at: NSPoint(x: MacLook.sidebarInset, y: top), in: view)
                 }
+                m.tracking = false
+                m.finish()
             }
-            return nil
-        } as Any)
-    }
-
-    private func pick(_ r: AccountMenuRow) {
-        close()
-        DispatchQueue.main.async { MainActor.assumeIsolated { r.action() } }
-    }
-
-    private var closing = false
-
-    /// Goes: a short fade (macOS's menus fade as they close), then closed.
-    override public func close() {
-        guard !closing else { return }
-        closing = true
-        monitors.forEach(NSEvent.removeMonitor)
-        monitors.removeAll()
-        handKeyBack()
-        fadeAway { [weak self] in
-            guard let self else { return }
-            self.parent?.removeChildWindow(self)
-            self.closeNow()
         }
+        return m
     }
 
-    private func closeNow() { super.close() }
+    public static var shown: AccountMenuWindow? { current.flatMap { $0.closed ? nil : $0 } }
+
+    /// The window AppKit draws the open menu in, when this process can read it (the eval hook's pictures).
+    public var menuWindow: NSWindow? { NativeMenu.openMenuWindow }
+
+    /// Its items as text (the eval hook, the before-and-after dumps).
+    public var rows: [String] { NativeMenu.describe(menu) }
+
+    public func close() {
+        if tracking { menu.cancelTracking() } else { finish() }
+    }
+
+    private func finish() {
+        guard !closed else { return }
+        closed = true
+        if Self.current === self { Self.current = nil }
+    }
 }
 #else
 /// The account menu in a layer over the window, above the account button (a tap outside closes it).

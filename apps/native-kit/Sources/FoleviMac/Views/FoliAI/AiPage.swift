@@ -256,7 +256,7 @@ struct AiConversationList: View {
                 if history.search.isEmpty { Text("Search conversations").webText(look.text("ai.list.search.input")).lineLimit(1).foregroundStyle(look.faint) }
                 TextField("", text: $history.search)
                     .textFieldStyle(.plain)
-                    .font(Font(look.text("ai.list.search.input").ctFont))
+                    .font(chrome.map { .system(size: $0.body) } ?? Font(look.text("ai.list.search.input").ctFont))
                     .foregroundStyle(look.ink)
                     .accessibilityLabel("Search conversations")
             }
@@ -357,7 +357,7 @@ struct AiConversationList: View {
         if renaming == r.id {
             TextField("", text: $name)
                 .textFieldStyle(.plain)
-                .font(WebFont.font(.sans, size: WebTypeRole.body.desktop.size))
+                .font(WebFont.interface(chrome, size: chrome?.body ?? WebTypeRole.body.desktop.size))
                 .padding(.horizontal, 10)
                 .frame(height: 32)
                 .background(RoundedRectangle(cornerRadius: 6).fill(look.glassHover))

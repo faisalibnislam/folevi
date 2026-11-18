@@ -269,6 +269,8 @@ final class QuickAddPanel: NSObject, NSWindowDelegate {
         client.start()
         let root = AnyView(
             WebQuickAddPanel(model: model, places: Self.nativePlaces(current: place), close: { QuickAddPanel.shared.hide() }, openPage: { QuickAddPanel.shared.openPage($0) })
+                // System type and controls, as the rest of the app (the owner, 2026-11-18).
+                .macNativeChrome()
                 .fixedSize(horizontal: false, vertical: true)
                 .background(GeometryReader { g in
                     Color.clear

@@ -48,6 +48,8 @@ struct VaultDialogHost: View {
 
 /// A labelled text field in a dialog (`label > span + input.ui-input`).
 private struct DialogField: View {
+    /// The Mac's native look: interface text in the system font (WebFont.interface).
+    @Environment(\.nativeChrome) private var chrome
     let label: String
     @Binding var text: String
     var mono = false
@@ -65,14 +67,14 @@ private struct DialogField: View {
             Text(label).webText(l.text).foregroundStyle(l.color.color)
             if multiline {
                 TextEditor(text: $text)
-                    .font(mono ? WebFont.font(.mono, size: 13) : .custom("Instrument Sans", size: 13))
+                    .font(WebFont.interface(chrome, mono ? .mono : .sans, size: 13))
                     .scrollContentBackground(.hidden)
                     .focused($focused)
                     .padding(6)
                     .frame(height: CGFloat(rows) * 18 + 16)
                     .webBox(box)
             } else if mono {
-                TextField("", text: $text).textFieldStyle(.plain).font(WebFont.font(.mono, size: 13))
+                TextField("", text: $text).textFieldStyle(.plain).font(WebFont.interface(chrome, .mono, size: 13))
                     .focused($focused)
                     .padding(.horizontal, 12).frame(height: 36).webBox(box)
             } else {
@@ -415,6 +417,8 @@ private struct ShareDialog: View {
 
 /// A vault note (Files.tsx NoteDialog): its text, editable by who may change it, each save keeping the version before.
 private struct NoteDialog: View {
+    /// The Mac's native look: interface text in the system font (WebFont.interface).
+    @Environment(\.nativeChrome) private var chrome
     @Bindable var model: VaultModel
     let row: VaultItemRow
     @State private var note: VaultNoteValue?
@@ -428,7 +432,7 @@ private struct NoteDialog: View {
             if note != nil {
                 // In the input's box, with the focus ring while it's being written in (MAC-40).
                 TextEditor(text: $text)
-                    .font(.custom("Instrument Sans", size: 15))
+                    .font(WebFont.interface(chrome, size: 15))
                     .scrollContentBackground(.hidden)
                     .disabled(note?.canChange != true)
                     .focused($focused)
@@ -695,6 +699,8 @@ private struct MediaPreview: UIViewControllerRepresentable {
 
 /// CSV as a table (FilePreview.tsx parseCsv: quotes, doubled quotes, commas and line breaks inside quotes).
 private struct CSVPreview: View {
+    /// The Mac's native look: interface text in the system font (WebFont.interface).
+    @Environment(\.nativeChrome) private var chrome
     let text: String
     @Environment(\.colorScheme) private var scheme
 
@@ -721,7 +727,7 @@ private struct CSVPreview: View {
                     }
                 }
             }
-            .font(.custom("Instrument Sans", size: 12))
+            .font(WebFont.interface(chrome, size: 12))
             .textSelection(.enabled)
         }
         .frame(maxHeight: 540)

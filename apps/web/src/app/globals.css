@@ -861,8 +861,9 @@
 :root[data-mac-native] [data-note-panel] { padding: 0; border-radius: 12px; overflow: hidden; background: var(--mac-card); }
 :root[data-mac-native] .fb-page { border-radius: 0; box-shadow: none; }
 :root[data-mac-native] .fb-page:not([data-backdrop]) { background: transparent !important; }
-/* The page keeps the room of the floating controls at the card's top (--native-inset-top). */
-:root[data-mac-native] .fb-page { padding-top: calc(var(--native-inset-top, 0px) + 1.5rem); scroll-padding-top: var(--native-inset-top, 0px); }
+/* The sheet starts the frame's inset from the card's top (--native-inset-top, MacLook.notePageTop): as far as its
+   sides are at the narrowest (px-3), with nothing floating over a note (the owner, 2026-11-18: no empty band). */
+:root[data-mac-native] .fb-page { padding-top: var(--native-inset-top, 0.75rem); scroll-padding-top: var(--native-inset-top, 0px); }
 :root[data-mac-native] aside[aria-label="Page tools"]:not(.ui-pop) { height: 100%; margin: 0 0 0 8px; background: transparent; }
 /* Interface text in the page (the page tools, its panels, menus) is the system font; note text keeps the note's
    own fonts (--editor-font, --note-*). Small headings are sentence case, as on the Mac. */

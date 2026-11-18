@@ -62,9 +62,9 @@ public enum MacLook {
     /// A screen's title: inset from the controls' leading edge so that it starts where the screens' content does
     /// (34 pt from the card's edge).
     public static let titleInset: CGFloat = 22
-    /// The room a note's page keeps at its top: none for controls (nothing floats over a note), only what makes
-    /// the gap over the sheet the same as beside it (the page adds 24 pt of its own).
-    public static let notePageTop: CGFloat = 10
+    /// The gap over a note's sheet: nothing floats over a note, so it is the sheet's least gap at its sides (the
+    /// page's px-3), whatever the window's width.
+    public static let notePageTop: CGFloat = 12
     /// The room the controls take at the card's top: screens and the note page leave this much space (their top
     /// inset) and run on under the controls.
     public static var barHeight: CGFloat { barPaddingTop + barControlHeight + barPaddingBottom }
@@ -93,6 +93,8 @@ public enum MacLook {
     /// The air above a sidebar section's heading, and under it before its first row.
     public static let sectionGap: CGFloat = 22
     public static let headingGap: CGFloat = 6
+    /// A section heading's row (its hover fill): a row's height.
+    public static let headingHeight: CGFloat = 28
 
     // MARK: Panels
 

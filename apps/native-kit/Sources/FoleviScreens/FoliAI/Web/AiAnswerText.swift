@@ -236,7 +236,7 @@ private struct AiAnswerBlockContent: View, Equatable {
                 let n = Int(url.host ?? "") ?? 0
                 if cited.contains(n) {
                     // The web's cite chip: a small rounded number on the glass, beside the word.
-                    s[run.range].font = WebFont.font(.sans, size: cite.fontSize + 1, weight: 600)
+                    s[run.range].font = WebFont.interface(chrome, size: cite.fontSize + 1, weight: 600)
                     s[run.range].foregroundColor = look.muted
                     s[run.range].backgroundColor = look.glassHover
                     s[run.range].baselineOffset = 1.5
@@ -244,19 +244,19 @@ private struct AiAnswerBlockContent: View, Equatable {
                 } else {
                     s[run.range].link = nil
                     var plain = AttributedString("[\(n)]")
-                    plain.font = WebFont.font(.sans, size: size, weight: weight)
+                    plain.font = WebFont.interface(chrome, size: size, weight: weight)
                     s.replaceSubrange(run.range, with: plain)
                     continue
                 }
             } else if run.link != nil {
                 s[run.range].foregroundColor = look.ink
                 s[run.range].underlineStyle = .single
-                s[run.range].font = WebFont.font(.sans, size: size, weight: bold ? 700 : weight, italic: italic)
+                s[run.range].font = WebFont.interface(chrome, size: chrome?.body ?? size, weight: bold ? 700 : weight, italic: italic)
             } else if intent.contains(.code) {
-                s[run.range].font = WebFont.font(.mono, size: size - 1)
+                s[run.range].font = WebFont.interface(chrome, .mono, size: (chrome?.body ?? size) - 1)
                 s[run.range].backgroundColor = look.glassHover
             } else {
-                s[run.range].font = WebFont.font(.sans, size: size, weight: bold ? 700 : weight, italic: italic)
+                s[run.range].font = WebFont.interface(chrome, size: chrome?.body ?? size, weight: bold ? 700 : weight, italic: italic)
             }
         }
         // Thin spaces around a chip, as its margin.

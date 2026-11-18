@@ -324,6 +324,8 @@ struct FolderTarget {
 /// The folder search and list (FolderPicker): Drafts or the top level first, then the tree; while searching
 /// each match says where it is. ↑/↓ choose, Return picks; the current folder can't be picked.
 struct FolderPickerView: View {
+    /// The Mac's native look: interface text in the system font (WebFont.interface).
+    @Environment(\.nativeChrome) private var chrome
     let folders: [FolderNode]
     /// Where the notes are now: .some(nil) Drafts, nil unknown.
     let current: String??
@@ -481,7 +483,7 @@ struct FolderPickerView: View {
             } else {
                 WebIconView(topLevel ? .cornerLeftUp : .inbox, size: 15).foregroundStyle(moreVar("color-ink-muted", scheme))
             }
-            (Text(verbatim: o.name) + (searching && o.path != nil && !o.isNew ? Text(verbatim: "  in \(o.path!)").font(WebFont.font(.sans, size: 12)).foregroundColor(moreVar("color-ink-faint", scheme)) : Text(verbatim: "")))
+            (Text(verbatim: o.name) + (searching && o.path != nil && !o.isNew ? Text(verbatim: "  in \(o.path!)").font(WebFont.interface(chrome, size: 12)).foregroundColor(moreVar("color-ink-faint", scheme)) : Text(verbatim: "")))
                 .webText(s.text).lineLimit(1)
                 .frame(maxWidth: .infinity, alignment: .leading)
             if isCurrent(o) {

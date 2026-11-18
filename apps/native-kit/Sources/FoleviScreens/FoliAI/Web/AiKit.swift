@@ -212,12 +212,16 @@ public struct AiRunStatus: View {
             }
             Text(label).webText(.role(.subheadline)).lineLimit(1).foregroundStyle(look.muted)
                 .accessibilityAddTraits(.updatesFrequently)
+                // (Never squeezed: the status and Stop keep their whole words, MAC: "S…" in the floating chat.)
+                .fixedSize()
             if let onStop {
                 Button(action: onStop) {
                     HStack(spacing: 6) {
                         RoundedRectangle(cornerRadius: 2).frame(width: 9, height: 9)
                         Text("Stop").webText(.role(phone ? .subheadline : .footnote, weight: 500)).lineLimit(1)
+                            .fixedSize()
                     }
+                    .fixedSize()
                     .padding(.horizontal, phone ? 12 : 10)
                     .frame(height: phone ? 32 : 28)
                     .foregroundStyle(look.heading)
@@ -228,9 +232,11 @@ public struct AiRunStatus: View {
                 .webHover(radius: 12)
                 .padding(.leading, 4)
                 .keyboardShortcut(".", modifiers: .command)
+                .fixedSize()
             }
         }
         .frame(minHeight: phone ? 44 : 32)
+        .frame(maxWidth: .infinity, alignment: .leading)
         .onAppear { pulse = true }
     }
 }

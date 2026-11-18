@@ -34,29 +34,34 @@ Branch: `mac-native-look`. Not released: the owner approves the look first.
   the card's leading edge, Back and Forward (always there, dimmed with nowhere to go), and the tab bar drawn as
   Finder's (the owner, 2026-11-18): Home in a round button, the tabs in a grey capsule track (34 pt, `MacLook.Colors.track`)
   with a hairline between two tabs that have no fill, each tab a 28 pt capsule of its own width (90 to 180 pt)
-  with its icon and title centred, the open one a Liquid Glass capsule inset 3 pt in the track, and a round + after
-  the track. With only Home open there is no track. The track clips its tabs, the list fades out before the scroll
+  with its icon and title centred, the open one a Liquid Glass capsule inset 3 pt in the track, and Show All Tabs
+  in a round button after the track. No + (the sidebar's New note; ⌘T opens a tab). With only Home open there is
+  no track. The track clips its tabs, the list fades out before the scroll
   arrows (`EdgeFade(trailingInset:)`), and hovering a tab's × hides the tab's picture so the × keeps its tooltip.
   The bell and (on a note) the inspector's button are at the strip's end.
 - **The card's controls** float in Liquid Glass at a screen's top (`CardControls`), 36 pt, 12 pt in, 8 pt apart, in
   one `GlassEffectContainer`: the screen's title, the screen's own controls (`CardItems`), search. Screens leave
-  their room (60 pt). **Nothing floats over a note**, so a note's page keeps no band for controls
-  (`MacLook.notePageTop`): the gap over the sheet is the same as beside it.
+  their room (60 pt). **Nothing floats over a note**, so a note's page keeps no band for controls: the sheet starts
+  12 pt from the card's top (`MacLook.notePageTop`), its least gap at the sides.
 - **No control twice.** Nothing in the card repeats a control already on screen: New note is the sidebar's row (its
   row, ⌘N and File > New Note), a note's Share is in the note's own bar, Tasks has no shortcut to Calendar.
 - **Sidebar** (240 pt, hidden by its button, ⌘\ and Focus mode): drawn directly in a scroll view (not `List`, not
   `NavigationSplitView`), 12 pt side inset. Rows are 32 pt with 2 pt between them, 8 pt corners, 13 pt labels,
   15 pt symbols in a 20 pt column, 10 pt content inset, 8 pt gap; folders indent 16 pt a level. Section headings
-  are 11 pt semibold secondary with 22 pt above and 6 pt below. The account's picture, the rows' symbols and the
+  are 11 pt semibold secondary with 22 pt above and 6 pt below; a heading that opens a page hovers as a whole row. The account's picture, the rows' symbols and the
   footer's first button share one column. The footer (sync, Settings, Help) is pinned at the bottom in a safe-area
   inset; the sync dot is the real state's colour.
 - **Glass** on the navigation layer and on small controls floating over content: the open tab, the card's controls,
   Ask Foli AI's button, the multi-select bar, toasts. Never on content (cards, rows, panels in the card, sheets'
   bodies). Panels inside the card are a flat fill.
-- **Type**: the system font in four sizes for every piece of interface text: 11 (`.subheadline`), 13 (`.body`,
-  `.headline`), 15 (`.title3`), 22 (`.title`). This covers the card's screens, dialogs, popovers, the floating
-  Foli AI chat, the Tab Overview, the sign-in and lock screens, and Settings. Only what a note draws keeps Folevi's
-  fonts: the editor, and note and folder cards (`noteContent()`).
+- **Type** (the owner, 2026-11-18): the system font for the whole app, but for notes, folders and the editor.
+  Interface text is the system font in four sizes: 11 (`.subheadline`), 13 (`.body`, `.headline`), 15 (`.title3`),
+  22 (`.title`); this covers the card's screens, dialogs, popovers, Quick Add, the floating Foli AI chat and its
+  answers, the Tab Overview, Foli DNA's map labels, the Vault, the sign-in and lock screens, and Settings. What
+  keeps Folevi's fonts: the note page (title and body in the note's own fonts); a note card's title (Spectral) and
+  its preview (the note's fonts); a folder card's name (Spectral) and the notes pictured in it. A card's dates,
+  folder or tag chip and a folder's count line are the system font (`WebTextStyle.cardInterface`). Text set
+  straight in a font goes through `WebFont.interface(chrome, ...)`.
 - **Controls**: one size everywhere (`MacLook.controlSize`, the system's large: 28 pt push buttons, pop-up buttons
   and fields, 13 pt labels) and one shape for push buttons (a capsule). A compact action inside a row is 24 pt,
   never the system's small or mini. Icon-only buttons are 28 pt with a 15 pt symbol outside the glass controls.

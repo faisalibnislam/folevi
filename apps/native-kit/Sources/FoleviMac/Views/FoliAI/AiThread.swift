@@ -405,6 +405,8 @@ struct AiIntroBody: View {
 /// The chips above the box (ContextChips.tsx): the notes it reads, the folder it searches, or everything here;
 /// Add offers the open note or folder and recent notes. A saved conversation keeps what it was about.
 struct AiContextChips: View {
+    /// The Mac's native look: interface text in the system font (WebFont.interface).
+    @Environment(\.nativeChrome) private var chrome
     let model: FoliChatModel
     let host: AiHost
     @Environment(\.colorScheme) private var scheme
@@ -487,7 +489,7 @@ struct AiContextChips: View {
 
     private func folderLine(_ name: String, look: AiLook) -> AttributedString {
         var strong = AttributedString(name)
-        strong.font = WebFont.font(.sans, size: look.s("ai.chip").fontSize, weight: 600)
+        strong.font = WebFont.interface(chrome, size: look.s("ai.chip").fontSize, weight: 600)
         strong.foregroundColor = look.heading
         return AttributedString("In folder ") + strong
     }

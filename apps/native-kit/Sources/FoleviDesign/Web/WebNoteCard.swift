@@ -202,6 +202,9 @@ public struct WebNoteCard: View {
     @Environment(\.colorScheme) private var scheme
     @Environment(\.webPhoneCards) private var phone
     @Environment(\.webCardMenuRoom) private var menuRoom
+    /// The native chrome round the card (the card itself resets it for what the note draws): its dates and chip
+    /// are set in the system font then (WebTextStyle.cardInterface).
+    @Environment(\.nativeChrome) private var chrome
 
     public static let aspect: CGFloat = 25.0 / 27.0
 
@@ -385,7 +388,7 @@ public struct WebNoteCard: View {
         let titleStyle = phone
             ? WebTextStyle(family: .display, size: 17, leading: 22, weight: 600, letterSpacing: -0.005 * 17)
             : WebTextStyle(family: .display, size: 6.6 * cq, leading: 6.6 * cq * 1.22, weight: 500, letterSpacing: 0.005 * 6.6 * cq)
-        let createdStyle = WebTextStyle(size: 4.5 * cq, leading: 4.5 * cq * 1.3)
+        let createdStyle = WebTextStyle(size: 4.5 * cq, leading: 4.5 * cq * 1.3).cardInterface(chrome != nil)
         let bodyStyle = WebTextStyle(size: 3.6 * cq, leading: 5 * cq)
         let text = NoteCardView.previewText(model.preview, excerpt: model.excerpt)
         // A template's title is a typed label (the iPhone's 12/16, as globals.css sets [data-card="memo"], Caption 1).
@@ -468,12 +471,12 @@ public struct WebNoteCard: View {
     }
 
     private func footer(cq: CGFloat, heading: RGBA, muted: RGBA, chip: RGBA) -> some View {
-        let footStyle = WebTextStyle(size: 3.8 * cq, leading: 3.8 * cq * 1.55)
+        let footStyle = WebTextStyle(size: 3.8 * cq, leading: 3.8 * cq * 1.55).cardInterface(chrome != nil)
         return HStack(spacing: 2 * cq) {
             if unsynced {
                 HStack(spacing: 4) {
                     Circle().fill(heading.color).frame(width: 6, height: 6)
-                    Text("Waiting to sync").webText(WebTextStyle.role(.footnote, weight: 500)).lineLimit(1)
+                    Text("Waiting to sync").webText(WebTextStyle.role(.footnote, weight: 500).cardInterface(chrome != nil)).lineLimit(1)
                 }
                 .foregroundStyle(heading.color)
                 .fixedSize()
@@ -487,10 +490,10 @@ public struct WebNoteCard: View {
                 HStack(spacing: 1.8 * cq) {
                     if let name = model.folderName {
                         FolderGlyph(colorId: model.folderColorId, size: 4.4 * cq)
-                        Text(name).webText(footStyle.weight(600)).lineLimit(1)
+                        Text(name).webText(footStyle.weight(600).cardInterface(chrome != nil)).lineLimit(1)
                     } else {
                         WebIconView(.pencilLine, size: 3.8 * cq)
-                        Text("Draft").webText(footStyle.weight(600)).lineLimit(1)
+                        Text("Draft").webText(footStyle.weight(600).cardInterface(chrome != nil)).lineLimit(1)
                     }
                 }
                 .foregroundStyle(heading.color)
@@ -600,6 +603,8 @@ public struct WebCompactNoteCard: View {
     let model: NoteCardModel
     let hovered: Bool
     @Environment(\.colorScheme) private var scheme
+    /// The native chrome round the card: its folder badge is set in the system font then.
+    @Environment(\.nativeChrome) private var chrome
 
     public init(_ model: NoteCardModel, hovered: Bool = false) {
         self.model = model
@@ -628,9 +633,9 @@ public struct WebCompactNoteCard: View {
             if model.showsFolder {
                 HStack(spacing: 8) {
                     Spacer(minLength: 0)
-                    WebFolderBadge(name: model.folderName, colorId: model.folderColorId)
+                    WebFolderBadge(name: model.folderName, colorId: model.folderColorId, system: chrome != nil)
                 }
-                .webText(footer.text)
+                .webText(footer.text.cardInterface(chrome != nil))
                 .foregroundStyle(footer.color.color)
                 .padding(.horizontal, 16)
                 .frame(maxHeight: .infinity, alignment: .bottom)
@@ -648,11 +653,15 @@ public struct WebCompactNoteCard: View {
 public struct WebFolderBadge: View {
     let name: String?
     let colorId: String?
+    /// Its words in the system font (inside a card under the Mac's native look, where the chrome is reset).
+    let system: Bool
     @Environment(\.colorScheme) private var scheme
+    @Environment(\.nativeChrome) private var chrome
 
-    public init(name: String?, colorId: String?) {
+    public init(name: String?, colorId: String?, system: Bool = false) {
         self.name = name
         self.colorId = colorId
+        self.system = system
     }
 
     public var body: some View {
@@ -661,10 +670,10 @@ public struct WebFolderBadge: View {
             if let name {
                 WebIconView(.check, size: 11, strokeWidth: 2.5)
                 FolderGlyph(colorId: colorId, size: 13)
-                Text(name).webText(s.text).lineLimit(1)
+                Text(name).webText(s.text.cardInterface(system || chrome != nil)).lineLimit(1)
             } else {
                 WebIconView(.pencilLine, size: 11)
-                Text("Draft").webText(s.text).lineLimit(1)
+                Text("Draft").webText(s.text.cardInterface(system || chrome != nil)).lineLimit(1)
             }
         }
         .foregroundStyle(s.color.color)
@@ -686,6 +695,8 @@ public struct WebFolderCard: View {
     let menuRoom: Bool
     @Environment(\.colorScheme) private var scheme
     @Environment(\.webPhoneCards) private var phone
+    /// The native chrome round the card: its count line is set in the system font then (the name keeps Spectral).
+    @Environment(\.nativeChrome) private var chrome
 
     public static let aspect: CGFloat = 820.0 / 912.0
     /// Where the front pocket starts, as a share of the card's height.
@@ -827,7 +838,7 @@ public struct WebFolderCard: View {
         let nameStyle = phone ? WebTextStyle(family: .display, size: 17, leading: 22, weight: 500) : WebTextStyle(family: .display, size: nameSize, leading: nameSize * 1.15, weight: 500)
         // The count and age: clamp(12px, 5cqw, 20px), medium, 1.25, figures all one width.
         let ageSize = min(20, max(12, 5 * cq * k))
-        let ageStyle = WebTextStyle(size: ageSize, leading: ageSize * 1.25, weight: 500)
+        let ageStyle = WebTextStyle(size: ageSize, leading: ageSize * 1.25, weight: 500).cardInterface(chrome != nil)
         let ageInk = dark ? base.oklabMix(RGBA(220, 222, 229), 0.22) : base.oklabMix(RGBA(42, 44, 51), 0.14)
         return ZStack(alignment: .topLeading) {
             WebShapeBox(shape: shape, fill: nil, shadows: outer)

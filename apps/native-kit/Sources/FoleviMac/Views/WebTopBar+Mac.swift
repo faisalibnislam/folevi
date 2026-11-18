@@ -1,13 +1,13 @@
 // The Mac's title bar in the native look (docs/MAC_NATIVE_LOOK.md; the owner's layout, 2026-11-18): the window's
 // top strip, with no toolbar inside the card:
 //
-//   ● ● ●  [sidebar]   ‹ ›  (⌂) [ Calendar | (× Kyoto in November) | Recipes ] (+)  .......  [bell] [inspector]
+//   ● ● ●  [sidebar]   ‹ ›  (⌂) [ Calendar | (× Kyoto in November) | Recipes ] (▦)  .......  [bell] [inspector]
 //
 // The traffic lights; the sidebar's button at the sidebar's trailing end; then, from the content card's leading
 // edge, Back and Forward and the tab bar drawn as Finder's (the owner, 2026-11-18): Home in a round button, the tabs in a grey capsule
 // track with a hairline between them, each its own width with its icon and title centred, the open one a Liquid
-// Glass capsule inset in the track, and a round + after the track. With only Home open there is no track, just the
-// two round buttons. The bell and, on a note, the inspector's button sit at the strip's end. Empty strip space
+// Glass capsule inset in the track, and the Tab Overview's round button after the track. With only Home open there
+// is no track. The bell and, on a note, the inspector's button sit at the strip's end. Empty strip space
 // moves the window.
 //
 // Folevi's tab model is unchanged (WebTopBar.swift keeps it: pinned, joined and per-place tabs, folder tabs, close,
@@ -99,7 +99,7 @@ extension WebTopBar {
 
     // MARK: the tabs
 
-    /// Home in its round button; then the tabs in their track, the only part that scrolls; a round + after it.
+    /// Home in its round button; then the tabs in their track, the only part that scrolls; Show All Tabs after it.
     private var tabStrip: some View {
         HStack(spacing: MacLook.barSpacing) {
             HStack(spacing: MacLook.barSpacing) {
@@ -141,10 +141,13 @@ extension WebTopBar {
             #endif
             .accessibilityElement(children: .contain)
             .accessibilityLabel("Tabs")
-            trackCircle("plus", label: "New tab", help: "New Tab (⌘T)") {
-                model.open(.home)
-                model.barSearchFocus += 1
+            // (No + here, the owner, 2026-11-18: the sidebar's New note is the one way to a new note on screen;
+            // ⌘T and File > New Tab still open a tab.)
+            // Every tab at a glance (File > Show All Tabs, ⌘⇧\), Safari's button after the tabs.
+            trackCircle("square.grid.2x2", label: "Show all tabs", help: "Show All Tabs (⌘⇧\\)", on: model.overviewShown) {
+                model.overviewShown.toggle()
             }
+            .accessibilityValue(model.overviewShown ? "Shown" : "Hidden")
         }
     }
 
@@ -153,15 +156,16 @@ extension WebTopBar {
     static var trackHeight: CGFloat { MacLook.tabHeight + trackInset * 2 }
 
     /// A round button beside the track, on the track's own fill (Finder's +): a symbol, its tooltip and its name.
-    private func trackCircle(_ symbol: String, label: String, help: String, action: @escaping () -> Void) -> some View {
+    /// `on`: the button's view is showing (the Tab Overview): its symbol in the label colour on a deeper fill.
+    private func trackCircle(_ symbol: String, label: String, help: String, on: Bool = false, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             MacSymbol(symbol, size: 14, weight: .medium)
                 .frame(width: Self.trackHeight, height: Self.trackHeight)
                 .contentShape(Circle())
         }
-        .buttonStyle(QuietHoverStyle(shape: AnyShape(Circle())))
-        .background(MacLook.Colors.track, in: Circle())
-        .foregroundStyle(MacLook.Colors.secondary)
+        .buttonStyle(QuietHoverStyle(shape: AnyShape(Circle()), active: !on))
+        .background(on ? MacLook.Colors.hover : MacLook.Colors.track, in: Circle())
+        .foregroundStyle(on ? MacLook.Colors.label : MacLook.Colors.secondary)
         .foleviTooltip(help)
         .accessibilityLabel(label)
     }

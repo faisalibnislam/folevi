@@ -782,6 +782,8 @@ private struct PanelField: NSViewRepresentable {
 /// The task's field in Instrument Sans 17 (`text-title-3`) with the web's letter spacing, heading ink, the faint
 /// placeholder. Return submits (Shift-Return and Command-Return from a hardware keyboard), Escape closes.
 private struct PanelField: View {
+    /// The Mac's native look: interface text in the system font (WebFont.interface).
+    @Environment(\.nativeChrome) private var chrome
     enum Key { case plain, shift, command }
 
     @Binding var text: String
@@ -798,8 +800,8 @@ private struct PanelField: View {
 
     var body: some View {
         TextField("", text: $text, prompt: Text(placeholder).foregroundStyle(faint.color))
-            .font(Font(WebTextStyle(size: 17, leading: 22, letterSpacing: Self.kern).ctFont))
-            .tracking(Self.kern)
+            .font(chrome != nil ? .system(size: 17) : Font(WebTextStyle(size: 17, leading: 22, letterSpacing: Self.kern).ctFont))
+            .tracking(chrome != nil ? 0 : Self.kern)
             .foregroundStyle(ink.color)
             .textFieldStyle(.plain)
             .focused($focused)

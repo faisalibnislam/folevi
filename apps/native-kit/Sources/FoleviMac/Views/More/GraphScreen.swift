@@ -1071,6 +1071,8 @@ struct KindGlyph: View {
 /// The map itself: quiet edges, nodes sized by their connections, the best-connected labelled, entities shaped by
 /// kind, clusters shaded behind, suggested links dashed; the hovered or focused node and its neighbours stand out.
 struct GraphCanvasView: View {
+    /// The Mac's native look: interface text in the system font (WebFont.interface).
+    @Environment(\.nativeChrome) private var chrome
     let model: GraphModel
     let value: GraphValue
     let nodes: [GraphNode]
@@ -1363,7 +1365,7 @@ struct GraphCanvasView: View {
                 let center = GraphMath.screen(t, mid)
                 let tint = moreVar(GraphMath.clusterTints[c.id % GraphMath.clusterTints.count], scheme)
                 ctx.fill(Path(ellipseIn: CGRect(x: center.x - r * k, y: center.y - r * k, width: r * k * 2, height: r * k * 2)), with: .color(tint.opacity(0.06)))
-                let font = WebFont.font(.sans, size: 12, weight: 600)
+                let font = WebFont.interface(chrome, size: 12, weight: 600)
                 let text = ctx.resolve(Text(verbatim: c.name).font(font).foregroundColor(tint))
                 let halo = ctx.resolve(Text(verbatim: c.name).font(font).foregroundColor(moreVar("color-canvas", scheme)))
                 let size = text.measure(in: CGSize(width: 600, height: 40))
@@ -1411,7 +1413,7 @@ struct GraphCanvasView: View {
         ctx.stroke(quiet, with: .color(moreVar("color-line-strong", scheme).opacity(0.45)), lineWidth: 1.2)
         // Around one note: each line says why, at its middle.
         if let around = model.around, !large {
-            let small = WebFont.font(.sans, size: 10.5)
+            let small = WebFont.interface(chrome, size: 10.5)
             let halo = moreVar("color-canvas", scheme), muted = moreVar("color-ink-muted", scheme)
             for e in edges {
                 guard let label = around.labels[DnaAround.pairKey(e.source, e.target)], !label.isEmpty, shows(e.source), shows(e.target), let a0 = at(e.source), let b0 = at(e.target) else { continue }
@@ -1435,7 +1437,7 @@ struct GraphCanvasView: View {
         let dim: CGFloat = model.focusMode ? 0.06 : 0.16
         let drawnNodes = nodes.filter { shows($0.id) }
         let bridges = model.settings.clusters ? GraphMath.shownBridges(drawnNodes, edges.filter { shows($0.source) && shows($0.target) }) : []
-        let font = WebFont.font(.sans, size: 11.5)
+        let font = WebFont.interface(chrome, size: 11.5)
         let text = { (n: GraphNode) in GraphMath.shortLabel(n.label) }
         var always = Set(near ?? [])
         if searching { always.formUnion(matches) }

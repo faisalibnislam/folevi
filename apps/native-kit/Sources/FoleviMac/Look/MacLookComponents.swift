@@ -375,23 +375,55 @@ public struct SidebarHeading<Trailing: View>: View {
     }
 
     public var body: some View {
-        HStack {
-            let label = Text(title).font(MacLook.Text.smallStrong)
-                .foregroundStyle(selected ? MacLook.Colors.label : MacLook.Colors.secondary)
+        let label = Text(title).font(MacLook.Text.smallStrong)
+            .foregroundStyle(selected ? MacLook.Colors.label : MacLook.Colors.secondary)
+        ZStack(alignment: .trailing) {
             if let action {
-                Button(action: action) { label.contentShape(Rectangle()) }
-                    .buttonStyle(QuietHoverStyle(shape: AnyShape(RoundedRectangle(cornerRadius: 4, style: .continuous))))
-                    .foleviTooltip("Open \(title)")
+                // The whole row opens the heading's page, with a row's hover (as tall and round as a row's fill),
+                // not a thin one round the word.
+                Button(action: action) {
+                    label
+                        .padding(.horizontal, MacLook.rowPadding)
+                        .frame(maxWidth: .infinity, minHeight: MacLook.headingHeight, alignment: .leading)
+                        .contentShape(RoundedRectangle(cornerRadius: MacLook.rowRadius, style: .continuous))
+                }
+                .buttonStyle(SidebarHeadingStyle())
+                .foleviTooltip("Open \(title)")
             } else {
                 label
+                    .padding(.horizontal, MacLook.rowPadding)
+                    .frame(maxWidth: .infinity, minHeight: MacLook.headingHeight, alignment: .leading)
             }
-            Spacer(minLength: 4)
+            // The heading's actions over its trailing end, each with its own hover.
             trailing.foregroundStyle(MacLook.Colors.secondary)
+                .padding(.trailing, 4)
         }
-        .padding(.horizontal, MacLook.rowPadding)
-        .padding(.top, MacLook.sectionGap)
-        .padding(.bottom, MacLook.headingGap)
+        // (The row is taller than the words: the gaps above and below it are kept as they were round the words.)
+        .padding(.top, MacLook.sectionGap - (MacLook.headingHeight - 14) / 2)
+        .padding(.bottom, max(0, MacLook.headingGap - (MacLook.headingHeight - 14) / 2))
         .accessibilityAddTraits(.isHeader)
+    }
+}
+
+/// A heading row's hover and press: a row's fill under the whole row.
+struct SidebarHeadingStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View { Face(configuration: configuration) }
+
+    private struct Face: View {
+        let configuration: ButtonStyleConfiguration
+        @State private var hovered = false
+        var body: some View {
+            configuration.label
+                .background {
+                    let shape = RoundedRectangle(cornerRadius: MacLook.rowRadius, style: .continuous)
+                    if configuration.isPressed {
+                        shape.fill(MacLook.Colors.hover.opacity(0.8))
+                    } else if hovered {
+                        shape.fill(MacLook.Colors.hover.opacity(0.5))
+                    }
+                }
+                .onHover { hovered = $0 }
+        }
     }
 }
 

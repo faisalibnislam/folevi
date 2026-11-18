@@ -228,11 +228,20 @@ struct WebAvatar: View {
     let size: CGFloat
     @Environment(\.colorScheme) private var scheme
 
+    /// An initial's font: the system's on the Mac (an interface mark), the web's elsewhere.
+    static func initialFont(size: CGFloat) -> Font {
+        #if os(macOS)
+        .system(size: size, weight: .semibold)
+        #else
+        Font(WebFont.ctFont(.sans, size: size, weight: 600))
+        #endif
+    }
+
     var body: some View {
         let heading = WebStyles.vars["color-heading"]?.resolve(scheme) ?? RGBA(11, 11, 12)
         let canvas = WebStyles.vars["color-canvas"]?.resolve(scheme) ?? RGBA(255, 255, 255)
         let letter = name.trimmingCharacters(in: .whitespaces).first.map { String($0).uppercased() } ?? "\u{00B7}"
-        let initial = Text(letter).font(Font(WebFont.ctFont(.sans, size: (size * 0.46).rounded(), weight: 600))).foregroundStyle(canvas.color)
+        let initial = Text(letter).font(Self.initialFont(size: (size * 0.46).rounded())).foregroundStyle(canvas.color)
             .frame(width: size, height: size).background(RoundedRectangle(cornerRadius: 6, style: .continuous).fill(heading.color))
         if let url, let u = URL(string: url), u.scheme == "https" {
             AsyncImage(url: u) { phase in
@@ -259,7 +268,7 @@ struct WebPersonAvatar: View {
         let heading = WebStyles.vars["color-heading"]?.resolve(scheme) ?? RGBA(11, 11, 12)
         let ink = WebStyles.vars["color-ink"]?.resolve(scheme) ?? RGBA(24, 24, 27)
         let letter = name.trimmingCharacters(in: .whitespaces).first.map { String($0).uppercased() } ?? "?"
-        let initial = Text(letter).font(Font(WebFont.ctFont(.sans, size: max(9, (size * 0.42).rounded()), weight: 600))).foregroundStyle(heading.color)
+        let initial = Text(letter).font(WebAvatar.initialFont(size: max(9, (size * 0.42).rounded()))).foregroundStyle(heading.color)
             .frame(width: size, height: size)
             .background(shape.fill(sunken.color))
             .overlay(shape.strokeBorder(ink.opacity(0.08).color, lineWidth: 1))

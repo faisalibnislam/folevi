@@ -650,6 +650,8 @@ struct VaultTotp: View {
 // MARK: Health
 
 struct VaultHealth: View {
+    /// The Mac's native look: interface text in the system font (WebFont.interface).
+    @Environment(\.nativeChrome) private var chrome
     @Bindable var model: VaultModel
     let vaultId: String
     @Environment(\.colorScheme) private var scheme
@@ -670,7 +672,7 @@ struct VaultHealth: View {
                     let body = VS.style("vault.health.body", scheme)
                     VStack(alignment: .leading, spacing: 0) {
                         (Text(g.title + " ").foregroundStyle(g.tone == "danger" ? VS.color("danger", scheme) : heading.color.color)
-                            + Text("(\(g.items.count))").font(.custom("Instrument Sans", size: count.fontSize).weight(.regular)).foregroundStyle(count.color.color))
+                            + Text("(\(g.items.count))").font(WebFont.interface(chrome, size: count.fontSize)).foregroundStyle(count.color.color))
                             .webText(heading.text)
                         Text(g.body).webText(body.text).foregroundStyle(body.color.color).padding(.bottom, body.margin.bottom)
                         VaultList {

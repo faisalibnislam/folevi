@@ -29,6 +29,10 @@ enum FakeAI {
         if system.contains("title") && !system.contains("answer") {
             return AiResult(text: "Three days in Kyoto", stopReason: "end", error: nil, errorCode: nil)
         }
+        // FOLEVI_FAKE_AI_WAIT_MS: a pause before the first words, so a script can picture the chat while it's working.
+        if let ms = Int(ProcessInfo.processInfo.environment["FOLEVI_FAKE_AI_WAIT_MS"] ?? ""), ms > 0 {
+            try? await Task.sleep(for: .milliseconds(ms))
+        }
         var shown = ""
         for (i, word) in answer.split(separator: " ", omittingEmptySubsequences: false).enumerated() {
             if Task.isCancelled { return AiResult(text: shown, stopReason: "cancelled", error: nil, errorCode: nil) }

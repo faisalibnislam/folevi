@@ -143,10 +143,10 @@ extension WebSidebar {
         Button(action: action) {
             MacSymbol("chevron.right", size: 11, weight: .semibold)
                 .rotationEffect(.degrees(open ? 90 : 0))
-                .frame(width: 22, height: 22)
+                .frame(width: 24, height: 24)
                 .contentShape(Rectangle())
         }
-        .buttonStyle(QuietHoverStyle(shape: AnyShape(RoundedRectangle(cornerRadius: 6, style: .continuous))))
+        .buttonStyle(QuietHoverStyle(shape: AnyShape(RoundedRectangle(cornerRadius: MacLook.rowRadius - 2, style: .continuous))))
         .foregroundStyle(MacLook.Colors.secondary)
         .foleviTooltip(open ? "Hide \(label)" : "Show \(label)")
         .accessibilityLabel(open ? "Hide \(label)" : "Show \(label)")
@@ -223,17 +223,17 @@ extension WebSidebar {
                 }
             }) {
                 MacSymbol("arrow.up.arrow.down", size: 13, weight: .medium)
-                    .frame(width: 24, height: 22)
+                    .frame(width: 24, height: 24)
                     .contentShape(Rectangle())
             }
             .foleviTooltip("Sort Folders")
             .accessibilityLabel("Sort folders")
             Button { FrameDialogs.newFolder(model) } label: {
                 MacSymbol("folder.badge.plus", size: 13, weight: .medium)
-                    .frame(width: 24, height: 22)
+                    .frame(width: 24, height: 24)
                     .contentShape(Rectangle())
             }
-            .buttonStyle(QuietHoverStyle(shape: AnyShape(RoundedRectangle(cornerRadius: 6, style: .continuous))))
+            .buttonStyle(QuietHoverStyle(shape: AnyShape(RoundedRectangle(cornerRadius: MacLook.rowRadius - 2, style: .continuous))))
             .foleviTooltip("New Folder (⌃⌘N)")
             .accessibilityLabel("New folder")
         } rows: {

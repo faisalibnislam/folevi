@@ -15,6 +15,8 @@ import FoleviEngine
 // MARK: your message
 
 public struct AiUserMessage: View {
+    /// The Mac's native look: interface text in the system font (WebFont.interface).
+    @Environment(\.nativeChrome) private var chrome
     let text: String
     /// The last question of a saved conversation: Edit puts it in a box here and sends it again.
     var onEdit: ((String) -> Void)?
@@ -38,7 +40,7 @@ public struct AiUserMessage: View {
             VStack(alignment: .trailing, spacing: 4) {
                 TextField("", text: $draft, axis: .vertical)
                     .textFieldStyle(.plain)
-                    .font(WebFont.font(.sans, size: bubble.fontSize))
+                    .font(WebFont.interface(chrome, size: chrome?.body ?? bubble.fontSize))
                     .foregroundStyle(look.ink)
                     .lineLimit(3...8)
                     .padding(.horizontal, 6).padding(.vertical, 4)
@@ -544,6 +546,8 @@ struct AiCard<C: View>: View {
 
 /// The changes an answer proposes (folders, notes, moves): Apply changes or Not now (ActionsCard.tsx).
 struct AiActionsCard: View {
+    /// The Mac's native look: interface text in the system font (WebFont.interface).
+    @Environment(\.nativeChrome) private var chrome
     let model: FoliChatModel
     let message: ChatMessage
     @Environment(\.colorScheme) private var scheme
@@ -580,7 +584,7 @@ struct AiActionsCard: View {
     private func line(_ a: ChatAction, look: AiLook) -> AttributedString {
         func strong(_ s: String) -> AttributedString {
             var t = AttributedString(s)
-            t.font = WebFont.font(.sans, size: WebTypeRole.subheadline.desktop.size, weight: 600)
+            t.font = WebFont.interface(chrome, size: WebTypeRole.subheadline.desktop.size, weight: 600)
             t.foregroundColor = look.heading
             return t
         }
@@ -634,6 +638,8 @@ struct AiMemoryCard: View {
 
 /// The agent's proposed changes: tick them, Approve, Discard; after, what happened and one Undo (AgentRunCard.tsx).
 struct AiAgentRunCard: View {
+    /// The Mac's native look: interface text in the system font (WebFont.interface).
+    @Environment(\.nativeChrome) private var chrome
     let model: FoliChatModel
     let run: ChatAgentRun
     @State private var unticked: Set<String> = []
@@ -658,7 +664,7 @@ struct AiAgentRunCard: View {
                     if preview, run.operations.count > 1 {
                         // A small ghost button with the hover fill (MAC-25), not bare text.
                         Button { unticked = all ? Set(run.operations.map(\.id)) : [] } label: {
-                            Text(all ? "Select none" : "Select all").font(WebFont.font(.sans, size: 12)).padding(.horizontal, 6).frame(height: 22)
+                            Text(all ? "Select none" : "Select all").font(WebFont.interface(chrome, size: 12)).padding(.horizontal, 6).frame(height: 22)
                         }
                         .buttonStyle(AiHoverStyle(radius: 6)).foregroundStyle(look.muted).disabled(busy)
                     }

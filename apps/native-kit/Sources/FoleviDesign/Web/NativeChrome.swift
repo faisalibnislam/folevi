@@ -80,6 +80,29 @@ extension EnvironmentValues {
     @Entry public var nativeChrome: NativeChrome? = nil
 }
 
+public extension WebFont {
+    /// Interface text set straight in a font (a field, a run in an attributed string, a canvas label): the system
+    /// font at the same size and weight under the Mac's native look (`chrome` set), its monospaced design for code;
+    /// Folevi's own family everywhere else (the iPhone, the iPad). The owner, 2026-11-18: the whole Mac app is the
+    /// system font but for notes, folders and the editor.
+    static func interface(_ chrome: NativeChrome?, _ family: WebFontFamily = .sans, size: CGFloat, weight: CGFloat = 400, italic: Bool = false) -> Font {
+        guard chrome != nil else { return font(family, size: size, weight: weight, italic: italic) }
+        let f = Font.system(size: size, weight: nearestStatic(weight), design: family == .mono ? .monospaced : .default)
+        return italic ? f.italic() : f
+    }
+}
+
+public extension WebTextStyle {
+    /// A card's interface words (its dates, its folder chip, a folder's count line) in the system font at the same
+    /// size and weight, under the Mac's native look (`native`: the chrome round the card is set). The owner,
+    /// 2026-11-18: the whole app is the system font but for notes (a card's title and preview) and folders (a
+    /// folder's name).
+    func cardInterface(_ native: Bool) -> WebTextStyle {
+        guard native else { return self }
+        return WebTextStyle(family: .system, size: size, leading: leading, weight: weight, letterSpacing: 0)
+    }
+}
+
 public extension View {
     /// What a note draws (a note card's title and preview, a folder card's art, the editor's text): Folevi's own
     /// fonts and look, under any native chrome around it.

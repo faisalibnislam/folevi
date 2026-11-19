@@ -8,7 +8,7 @@ const ORIGIN = "https://app.folevi.com";
 const REDIRECT = "https://abcdefghijklmnopabcdefghijklmnop.chromiumapp.org/";
 
 describe("registration and authorize", () => {
-  test("registers as a public client asking only for notes:write and a refresh token", async () => {
+  test("registers as a public client that may ask for reading later (sign-in itself asks only to write)", async () => {
     const fetch = scriptedFetch(() => json(200, { client_id: "c1" }));
     expect(await registerClient(ORIGIN, REDIRECT, fetch)).toBe("c1");
     const [req] = fetch.sent;
@@ -19,8 +19,14 @@ describe("registration and authorize", () => {
       token_endpoint_auth_method: "none",
       grant_types: ["authorization_code", "refresh_token"],
       response_types: ["code"],
-      scope: "notes:write offline_access",
+      scope: "notes:read notes:write offline_access",
     });
+  });
+
+  test("asking to read is a wider scope on the same authorize URL", () => {
+    const url = new URL(authorizeUrl(ORIGIN, { clientId: "c1", redirectUri: REDIRECT, challenge: "ch", state: "st", scope: "notes:read notes:write offline_access" }));
+    expect(url.searchParams.get("scope")).toBe("notes:read notes:write offline_access");
+    expect(new URL(authorizeUrl(ORIGIN, { clientId: "c1", redirectUri: REDIRECT, challenge: "ch", state: "st" })).searchParams.get("scope")).toBe("notes:write offline_access");
   });
 
   test("a refused registration says why", async () => {

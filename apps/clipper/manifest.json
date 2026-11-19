@@ -49,5 +49,8 @@
       },
       "description": "Clip this page, or the selection, to your Folevi Inbox"
     }
+  },
+  "omnibox": {
+    "keyword": "fo"
   }
 }

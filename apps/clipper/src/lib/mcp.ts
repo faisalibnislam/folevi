@@ -27,6 +27,29 @@ export class McpError extends Error {
   }
 }
 
+/** Folevi refused the call for this connection's permissions (403): reading needs the person's OK first. */
+export class ForbiddenError extends McpError {
+  constructor(message: string) {
+    super(message);
+    this.name = "ForbiddenError";
+  }
+}
+
+/** A note search found. */
+export interface FoundNote {
+  id: string;
+  title: string;
+  place: string;
+  snippet: string;
+  updated: string;
+  url: string;
+}
+
+/** Plain text of a snippet (Folevi marks text from notes as untrusted; it's shown as text, never as HTML). */
+export function plainSnippet(s: unknown): string {
+  return String(s ?? "").replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim().slice(0, 200);
+}
+
 type RpcResponse = { result?: Record<string, unknown>; error?: { message?: string } };
 
 export class FoleviMcp {
@@ -49,7 +72,7 @@ export class FoleviMcp {
       throw e;
     }
     const body = (await res.json().catch(() => ({}))) as RpcResponse;
-    if (res.status === 403) throw new McpError(body.error?.message ?? "This connection isn't allowed to do that. Sign out and sign in again.");
+    if (res.status === 403) throw new ForbiddenError(body.error?.message ?? "This connection isn't allowed to do that. Sign out and sign in again.");
     if (!res.ok) throw new McpError(body.error?.message ?? `Folevi answered with an error (${res.status}). Try again in a moment.`);
     if (body.error) throw new McpError(body.error.message ?? "Folevi couldn't do that.");
     return body.result ?? {};
@@ -70,6 +93,15 @@ export class FoleviMcp {
       throw new McpError(text ?? "Folevi couldn't do that.");
     }
     return (result.structuredContent as Record<string, unknown> | undefined) ?? {};
+  }
+
+  /** Notes matching `query` in every place the connection may read, newest first. */
+  async searchNotes(query: string, limit = 8): Promise<FoundNote[]> {
+    const out = await this.callTool("search_notes", { query, limit });
+    const rows = Array.isArray(out.results) ? (out.results as Record<string, unknown>[]) : [];
+    return rows
+      .filter((r) => typeof r?.id === "string" && typeof r?.url === "string")
+      .map((r) => ({ id: String(r.id), title: String(r.title || "Untitled"), place: String(r.place ?? ""), snippet: plainSnippet(r.snippet), updated: String(r.updated ?? ""), url: String(r.url) }));
   }
 
   async listPlaces(): Promise<Place[]> {

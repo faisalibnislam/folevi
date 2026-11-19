@@ -3,7 +3,7 @@
 // extension's https://<id>.chromiumapp.org/ redirect, authorize with PKCE in a browser window
 // (chrome.identity.launchWebAuthFlow, in background.ts), then trade the code for tokens. Pure functions over
 // `fetch`, so tests can stub the server.
-import { CLIENT_NAME, SCOPES } from "../config";
+import { CLIENT_NAME, READ_SCOPES, SCOPES } from "../config";
 
 export interface TokenSet {
   accessToken: string;
@@ -36,7 +36,8 @@ export async function registerClient(origin: string, redirectUri: string, fetchF
       token_endpoint_auth_method: "none",
       grant_types: ["authorization_code", "refresh_token"],
       response_types: ["code"],
-      scope: SCOPES,
+      // (Registered for the most it may ask, so asking to read later needs no new registration.)
+      scope: READ_SCOPES,
     }),
   });
   const body = (await res.json().catch(() => ({}))) as { client_id?: unknown; error?: string; error_description?: string };
@@ -45,9 +46,9 @@ export async function registerClient(origin: string, redirectUri: string, fetchF
 }
 
 /** The URL the sign-in window opens. */
-export function authorizeUrl(origin: string, p: { clientId: string; redirectUri: string; challenge: string; state: string }): string {
+export function authorizeUrl(origin: string, p: { clientId: string; redirectUri: string; challenge: string; state: string; scope?: string }): string {
   const url = new URL(endpoint(origin, "authorize"));
-  const params = { response_type: "code", client_id: p.clientId, redirect_uri: p.redirectUri, scope: SCOPES, state: p.state, code_challenge: p.challenge, code_challenge_method: "S256" };
+  const params = { response_type: "code", client_id: p.clientId, redirect_uri: p.redirectUri, scope: p.scope ?? SCOPES, state: p.state, code_challenge: p.challenge, code_challenge_method: "S256" };
   for (const [k, v] of Object.entries(params)) url.searchParams.set(k, v);
   return url.toString();
 }
@@ -61,7 +62,7 @@ export async function clientKnown(url: string, fetchFn: typeof fetch = fetch): P
     const res = await fetchFn(url, { credentials: "omit", redirect: "manual", headers: { accept: "application/json" } });
     const body = (await res.json().catch(() => null)) as { url?: unknown } | null;
     const next = typeof body?.url === "string" ? body.url : "";
-    return !/[?&]error=(invalid_client|client_disabled|invalid_redirect|unauthorized_client)\b/.test(next);
+    return !/[?&]error=(invalid_client|client_disabled|invalid_redirect|unauthorized_client|invalid_scope)\b/.test(next);
   } catch {
     return true;
   }

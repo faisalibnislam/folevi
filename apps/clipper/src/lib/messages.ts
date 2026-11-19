@@ -2,7 +2,7 @@
 // that has to outlive the popup (signing in in its own window, saving a clip); the popup reads the page
 // and shows the result.
 import type { Clip } from "./note";
-import type { Place } from "./mcp";
+import type { FoundNote, Place } from "./mcp";
 
 export type ExtractMode = "article" | "selection" | "link";
 
@@ -34,7 +34,12 @@ export type Request =
   | { type: "signOut" }
   | { type: "places" }
   | { type: "save"; clip: Clip; place?: string }
-  | { type: "saveNote"; text: string; place?: string };
+  | { type: "saveNote"; text: string; place?: string }
+  | { type: "allowRead" }
+  | { type: "search"; query: string };
+
+/** A search's answer: the notes, or that reading needs the person's OK first. */
+export type SearchResponse = { needsRead: true } | { needsRead: false; notes: FoundNote[] };
 
 export interface StateResponse {
   signedIn: boolean;

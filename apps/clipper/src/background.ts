@@ -2,11 +2,11 @@
 // chrome.identity), saves clips (create_note over Folevi's MCP endpoint, into the Inbox page), lists the
 // places the connection may use, and handles the "Clip to Folevi" context menu on pages, selections and
 // links. The popup asks for all of this by message (lib/messages.ts), so nothing is lost when it closes.
-import { FOLEVI_ORIGIN } from "./config";
+import { FOLEVI_ORIGIN, READ_SCOPES, SCOPES } from "./config";
 import { chromeStore } from "./lib/chromeStore";
 import { CantReadPage, extractFromTab } from "./lib/extract";
-import { FoleviMcp, McpError } from "./lib/mcp";
-import type { LastClip, Request, Response, StateResponse } from "./lib/messages";
+import { ForbiddenError, FoleviMcp, McpError, type FoundNote } from "./lib/mcp";
+import type { LastClip, Request, Response, SearchResponse, StateResponse } from "./lib/messages";
 import { buildNote, buildQuickNote, type Clip } from "./lib/note";
 import { authorizeUrl, clientKnown, codeFromRedirect, exchangeCode, OAuthError, registerClient } from "./lib/oauth";
 import { newPkce } from "./lib/pkce";
@@ -23,18 +23,42 @@ const CLIP_COMMAND = "clip-page";
 let signingIn: Promise<void> | null = null;
 
 /** One sign-in at a time (the popup and the context menu can both ask). */
-function signIn(): Promise<void> {
-  signingIn ??= doSignIn().finally(() => {
+function signIn(scope: string = SCOPES): Promise<void> {
+  signingIn ??= doSignIn(scope).finally(() => {
     signingIn = null;
   });
   return signingIn;
 }
 
-async function doSignIn(): Promise<void> {
+/** Whether this connection may read notes (the person allowed it the first time they searched). */
+async function canRead(): Promise<boolean> {
+  const { canRead: value } = await chrome.storage.local.get("canRead");
+  return value === true;
+}
+
+/** Asks Folevi to let the clipper read notes too: its consent screen again, for the wider permission. */
+async function allowRead(): Promise<void> {
+  await signIn(READ_SCOPES);
+  await chrome.storage.local.set({ canRead: true });
+}
+
+/** A search, or that reading needs the person's OK first (never asked, or taken back in Folevi). */
+async function search(query: string): Promise<SearchResponse> {
+  if (!(await canRead())) return { needsRead: true };
+  try {
+    return { needsRead: false, notes: await mcp.searchNotes(query) };
+  } catch (e) {
+    if (!(e instanceof ForbiddenError)) throw e;
+    await chrome.storage.local.remove("canRead");
+    return { needsRead: true };
+  }
+}
+
+async function doSignIn(scope: string): Promise<void> {
   const redirectUri = chrome.identity.getRedirectURL();
   const pkce = await newPkce();
   let client = await session.client();
-  const urlFor = (clientId: string) => authorizeUrl(FOLEVI_ORIGIN, { clientId, redirectUri, challenge: pkce.challenge, state: pkce.state });
+  const urlFor = (clientId: string) => authorizeUrl(FOLEVI_ORIGIN, { clientId, redirectUri, challenge: pkce.challenge, state: pkce.state, scope });
   // Register once per install (again if the extension's address changed or Folevi no longer knows it).
   if (!client || client.redirectUri !== redirectUri || !(await clientKnown(urlFor(client.clientId)))) {
     client = { clientId: await registerClient(FOLEVI_ORIGIN, redirectUri), redirectUri };
@@ -186,6 +210,43 @@ async function clipTab(tab: chrome.tabs.Tab & { id: number }) {
   }
 }
 
+// ---------------------------------------------------------------- the address bar: "fo" and your words
+
+/** XML-escaped, for the omnibox's suggestion markup. */
+const xml = (s: string) => s.replace(/[<>&"']/g, (c) => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;", '"': "&quot;", "'": "&apos;" })[c]!);
+
+let omniboxTimer: ReturnType<typeof setTimeout> | undefined;
+let omniboxResults: FoundNote[] = [];
+
+chrome.omnibox.setDefaultSuggestion({ description: "Search your Folevi notes" });
+
+chrome.omnibox.onInputChanged.addListener((text, suggest) => {
+  clearTimeout(omniboxTimer);
+  const query = text.trim();
+  if (query.length < 2) return suggest([]);
+  // (A short pause first, so a search isn't sent for every key.)
+  omniboxTimer = setTimeout(async () => {
+    try {
+      if (!(await session.signedIn())) return chrome.omnibox.setDefaultSuggestion({ description: "Open the Folevi clipper and sign in to search your notes" });
+      const found = await search(query);
+      if (found.needsRead) return chrome.omnibox.setDefaultSuggestion({ description: "Open the Folevi clipper and allow search to search your notes" });
+      omniboxResults = found.notes;
+      chrome.omnibox.setDefaultSuggestion({ description: found.notes.length ? `Search Folevi for <match>${xml(query)}</match>` : `No notes match <match>${xml(query)}</match>` });
+      suggest(found.notes.map((n) => ({ content: n.url, description: `${xml(n.title)}${n.place ? ` <dim>${xml(n.place)}</dim>` : ""}` })));
+    } catch {
+      chrome.omnibox.setDefaultSuggestion({ description: "Couldn't search Folevi just now" });
+    }
+  }, 250);
+});
+
+chrome.omnibox.onInputEntered.addListener((text, disposition) => {
+  // A picked note opens it; Return on the words opens the best match (Folevi itself when nothing matched).
+  const picked = omniboxResults.find((n) => n.url === text) ?? omniboxResults[0];
+  const url = picked ? picked.url : `${FOLEVI_ORIGIN}/`;
+  if (disposition === "currentTab") void chrome.tabs.update({ url });
+  else void chrome.tabs.create({ url, active: disposition === "newForegroundTab" });
+});
+
 // ---------------------------------------------------------------- popup messages
 
 async function handle(request: Request): Promise<unknown> {
@@ -201,7 +262,7 @@ async function handle(request: Request): Promise<unknown> {
       return null;
     case "signOut":
       await session.signOut();
-      await chrome.storage.local.remove("lastPlace");
+      await chrome.storage.local.remove(["lastPlace", "canRead"]);
       await chrome.storage.session.remove("lastClip");
       return null;
     case "places":
@@ -210,6 +271,11 @@ async function handle(request: Request): Promise<unknown> {
       return await save(request.clip, request.place);
     case "saveNote":
       return await saveQuick(request.text, request.place);
+    case "allowRead":
+      await allowRead();
+      return null;
+    case "search":
+      return await search(request.query);
   }
 }
 

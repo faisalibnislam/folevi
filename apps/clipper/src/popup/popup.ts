@@ -5,7 +5,7 @@
 // a link to the new note. Everything is built with DOM calls, never from HTML strings.
 import { CantReadPage, extractFromTab } from "../lib/extract";
 import type { Place } from "../lib/mcp";
-import type { Extracted, LastClip, PlacesResponse, Request, Response, SaveResponse, StateResponse } from "../lib/messages";
+import type { Extracted, LastClip, PlacesResponse, Request, Response, SaveResponse, SearchResponse, StateResponse } from "../lib/messages";
 import type { Clip, ClipKind } from "../lib/note";
 
 const app = document.getElementById("app")!;
@@ -183,8 +183,67 @@ function mainView(view: View, error?: string) {
     status,
     page && !page.readable ? h("p", { class: "small muted" }, "This page doesn’t look like an article, so its main text will be clipped.") : null,
     quickNote(view),
+    searchBox(),
     footer(),
   );
+}
+
+/**
+ * Search your notes. The first time, it says why it needs more and asks: "Allow search" opens Folevi's
+ * consent screen for reading notes (the owner, 2026-11-19: ask for reading only when it's first needed).
+ */
+function searchBox(): HTMLElement {
+  const input = h("input", { type: "search", id: "search", placeholder: "Search your notes", autocomplete: "off", spellcheck: "false" }) as HTMLInputElement;
+  const results = h("ul", { class: "results", "aria-label": "Notes found" });
+  const status = h("p", { class: "status small muted", role: "status" }, "");
+  const allow = h("button", { class: "btn", type: "button", hidden: true }, "Allow search");
+  const run = async () => {
+    const query = input.value.trim();
+    results.replaceChildren();
+    allow.hidden = true;
+    if (query.length < 2) return void (status.textContent = "");
+    status.className = "status small muted";
+    status.textContent = "Searching…";
+    const res = await send<SearchResponse>({ type: "search", query });
+    if (!res.ok) {
+      if (res.signedOut) return signedOutView(res.error);
+      status.className = "status small error";
+      return void (status.textContent = res.error);
+    }
+    if (res.value.needsRead) {
+      status.className = "status small muted";
+      status.textContent = "To search, the clipper needs to read your notes. Folevi asks you once.";
+      allow.hidden = false;
+      return;
+    }
+    const notes = res.value.notes;
+    status.textContent = notes.length ? "" : "No notes match.";
+    for (const n of notes) {
+      const meta = [n.place, n.updated].filter(Boolean).join(" · ");
+      results.append(h("li", {}, h("a", { href: n.url, target: "_blank", rel: "noopener" }, h("span", { class: "result-title" }, n.title), meta ? h("span", { class: "small muted" }, meta) : null, n.snippet ? h("span", { class: "small muted snippet" }, n.snippet) : null)));
+    }
+  };
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  input.addEventListener("input", () => {
+    clearTimeout(timer);
+    timer = setTimeout(() => void run(), 300);
+  });
+  input.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      clearTimeout(timer);
+      void run();
+    }
+  });
+  allow.addEventListener("click", async () => {
+    allow.disabled = true;
+    status.textContent = "Finish in the window that opened.";
+    const res = await send<null>({ type: "allowRead" });
+    allow.disabled = false;
+    if (res.ok) return void run();
+    status.className = "status small error";
+    status.textContent = res.error;
+  });
+  return h("div", { class: "quick field" }, h("label", { for: "search" }, "Search Folevi"), input, status, h("div", { class: "actions" }, allow), results, h("p", { class: "small muted" }, "Tip: type fo and a space in the address bar to search from there."));
 }
 
 /** A quick note: a thought typed here, saved to the Inbox, no page needed (it works on any tab, a browser page too). */

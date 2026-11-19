@@ -340,7 +340,7 @@ export function CalendarView({ month }: { month: string | null }) {
             </div>
             <aside aria-label="Selected day">
               <h3 className="font-semibold">{formatCalendarDate(selected, { weekday: "long", month: "long", day: "numeric" })}</h3>
-              <ul className="mt-3 divide-y divide-line overflow-hidden ui-card rounded-control">
+              <ul className="mt-3 divide-y divide-transparent overflow-hidden ui-card rounded-control">
                 {(byDate.get(selected) ?? []).length === 0 ? (
                   <li>
                     <EmptyState size="inline" icon={CalendarCheck} title="No tasks due" body="Drag a task onto this day to schedule it." />
@@ -353,7 +353,7 @@ export function CalendarView({ month }: { month: string | null }) {
               {(eventsByDate.get(selected) ?? []).length ? (
                 <section aria-label="Events" className="mt-4">
                   <h4 className="mb-2 text-subheadline font-semibold">Events</h4>
-                  <ul className="divide-y divide-line overflow-hidden ui-card rounded-control">
+                  <ul className="divide-y divide-transparent overflow-hidden ui-card rounded-control">
                     {(eventsByDate.get(selected) ?? []).map(({ event: ev }) => (
                       <EventRow key={ev.id} event={ev} timeZone={timeZone} onOpen={showEvent} />
                     ))}
@@ -369,7 +369,7 @@ export function CalendarView({ month }: { month: string | null }) {
             {overdue?.length ? (
               <section aria-label="Overdue">
                 <h3 className="mb-2 text-subheadline font-semibold text-danger">Overdue</h3>
-                <ul className="divide-y divide-line overflow-hidden ui-card rounded-control">
+                <ul className="divide-y divide-transparent overflow-hidden ui-card rounded-control">
                   {[...overdue]
                     .sort((a, b) => ((a.dueDate ?? "") < (b.dueDate ?? "") ? -1 : 1))
                     .map((t) => (
@@ -385,7 +385,7 @@ export function CalendarView({ month }: { month: string | null }) {
                   <h3 className="mb-2 flex items-center gap-3 text-subheadline font-semibold">
                     {d === today ? "Today" : formatCalendarDate(d, { weekday: "long", month: "long", day: "numeric" })}
                   </h3>
-                  <ul className="divide-y divide-line overflow-hidden ui-card rounded-control">
+                  <ul className="divide-y divide-transparent overflow-hidden ui-card rounded-control">
                     {(byDate.get(d) ?? []).length === 0 && !eventsByDate.has(d) ? <li className="px-4 py-3 text-subheadline text-muted">Nothing due.</li> : null}
                     {(byDate.get(d) ?? []).map((t) => (
                       <TaskItem key={t.blockId} task={t} today={today} onToggle={toggle} onEdit={setEditing} />
@@ -467,7 +467,7 @@ function Unscheduled({
           <EmptyState size="inline" title="Nothing unscheduled" body="Every open task has a date." />
         </div>
       ) : (
-        <ul className="divide-y divide-line overflow-hidden ui-card rounded-control">
+        <ul className="divide-y divide-transparent overflow-hidden ui-card rounded-control">
           {tasks.slice(0, 8).map((t) => (
             <TaskItem
               key={t.blockId}

@@ -92,7 +92,7 @@ export function Passwords({ vaultId, initialSelected = null }: { vaultId: string
           ) : !shown.length ? (
             <EmptyState icon={Search} title={opened.length ? "Nothing matches" : "No passwords yet"} body={opened.length ? undefined : "Add logins, API keys, cards and other credentials. Only people in the Vault can open them."} />
           ) : (
-            <ul className="divide-y divide-line overflow-hidden ui-card rounded-control">
+            <ul className="divide-y divide-transparent overflow-hidden ui-card rounded-control">
               {shown.map((o) => (
                 <li key={o.row.id}>
                   <button

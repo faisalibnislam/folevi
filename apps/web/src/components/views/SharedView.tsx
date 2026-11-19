@@ -43,7 +43,7 @@ export function SharedView() {
             {folders.length ? (
               <section aria-label="Folders" className="mt-6">
                 <h2 className="mb-2 text-footnote font-semibold text-muted">Folders</h2>
-                <ul className="divide-y divide-line overflow-hidden ui-card rounded-control" data-testid="shared-folders">
+                <ul className="divide-y divide-transparent overflow-hidden ui-card rounded-control" data-testid="shared-folders">
                   {folders.map((f) => (
                     <li key={f.id}>
                       <AppLink href={`/shared/${f.id}`} className="flex items-start gap-3 px-4 py-3 hover:bg-surface">
@@ -65,7 +65,7 @@ export function SharedView() {
             {docs.length ? (
               <section aria-label="Pages" className="mt-6">
                 {folders.length ? <h2 className="mb-2 text-footnote font-semibold text-muted">Pages</h2> : null}
-                <ul className="divide-y divide-line overflow-hidden ui-card rounded-control">
+                <ul className="divide-y divide-transparent overflow-hidden ui-card rounded-control">
                   {docs.map((d) => (
                     <li key={d.id}>
                       <AppLink href={`/d/${d.id}`} className="flex items-start gap-3 px-4 py-3 hover:bg-surface">

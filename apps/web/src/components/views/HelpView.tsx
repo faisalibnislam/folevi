@@ -100,7 +100,7 @@ export function HelpView() {
           <table className="w-full overflow-hidden ui-card rounded-control text-subheadline">
             <tbody>
               {SHORTCUTS.map(([label, keys]) => (
-                <tr key={label} className="border-b border-line last:border-0">
+                <tr key={label} className="border-b border-transparent last:border-0">
                   <th scope="row" className="px-4 py-2 text-left font-normal">
                     {label}
                   </th>

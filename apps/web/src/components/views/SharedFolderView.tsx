@@ -81,7 +81,7 @@ export function SharedFolderView({ folderId }: { folderId: string }) {
             {data.notes.length === 0 ? (
               data.subfolders.length ? null : <EmptyState icon={FileText} title="No notes here yet" body="Notes added to this folder show up here." />
             ) : (
-              <ul className="divide-y divide-line overflow-hidden ui-card rounded-control" aria-label="Notes">
+              <ul className="divide-y divide-transparent overflow-hidden ui-card rounded-control" aria-label="Notes">
                 {data.notes.map((d) => (
                   <li key={d.id}>
                     <AppLink href={`/d/${d.id}`} className="flex items-start gap-3 px-4 py-3 hover:bg-surface">

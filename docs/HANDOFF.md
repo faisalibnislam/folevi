@@ -4,6 +4,47 @@ Written at the end of a long Claude Code session on the owner's Mac, so work can
 computer and another Claude Code account. Read this first, then `docs/claude-context/` (the owner's saved
 decisions and rules), then the plan docs named below.
 
+## 0. Latest: 2026-11-19, the note editor audit (branch `editor/rock-solid`, pull request 40)
+
+The sections below this one are from 24 October and are not kept up to date by every session: for this work,
+read this section and `docs/EDITOR_AUDIT_2026-11-19.md` (the full report, sections 1 to 10).
+
+### Current state
+
+- `main` is at 1.5.52. The audit's first 18 commits are on `main` (pushed 19 November with the owner's OK, as
+  `e734cb9b`) and live on the website and production Convex.
+- Branch `editor/rock-solid` = `main` 1.5.52 + 2 commits, open as
+  https://github.com/faisalibnislam/folevi/pull/40 (not merged, nothing deployed from it):
+  - `12e7c419` web fixes: the tools panel no longer covers a note in a narrow window (on load or after a
+    resize), a tool picked during load stays, Foli AI's panel failing to load offline no longer takes the page
+    down (`doc/PanelBoundary.tsx`), a nested page's path strip is visible again, no grey band at a note's
+    foot, a canvas saves on losing focus only when something is pending.
+  - `88f22d83` 22 end-to-end specs brought up to date (helpers `openFoliAi` and `closeToolsPanel` in
+    `apps/web/e2e/helpers.ts`), and section 10 of the audit doc.
+- Checked on that branch: web unit tests 2,120 passed, typecheck and lint clean; every test that failed in CI
+  run 44497359828 and both shards that timed out there pass on a Mac against the dev backend.
+- Not checked: the specs that expect a backend with no AI key (ai-study, ai-agent, ai-find-todos, ai-page,
+  ai-panel-height, ai-research) and admin's revenue table, which only CI's own backend can run; the Mac app,
+  the Simulator, a device.
+
+### Next steps
+
+1. Read pull request 40's CI result. The browser tests had been red or hidden on `main` since 18 November (a
+   stale generated icons file stopped CI before them), so expect to fix whatever it still shows.
+2. With CI green, ask the owner before merging: merging pushes `main`, which deploys the website and
+   production Convex.
+3. The web fixes reach the Mac, iPhone and iPad apps only with a rebuilt bundled web copy, in the next release
+   (releases are run by the session that owns them; this branch bumps no version).
+4. Still open from the audit, with reasons: section 6 of the audit doc (owner decisions, device checks, native
+   frame items, larger work). The iPhone and iPad fixes have not been tried on a device.
+
+### Change log
+
+- 2026-11-19: audit of the note editor (8 read-only audit passes, then fixes with a test each): speed in a
+  2,000-block note, lost-text cases in sync, paste, canvases, tables, media, touch. 18 commits, on `main`.
+- 2026-11-19: after the push, the first full end-to-end run since 18 November: 7 bugs fixed (6 from the
+  18 November tools panel and flat note changes, 1 from this branch) and 22 specs updated. Pull request 40.
+
 ## 1. Where things stand
 
 **Released and live (version 1.0.04, build 8, origin/main `f5f00a26`):**

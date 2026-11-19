@@ -185,3 +185,13 @@ causes (section 3 item 4).
 - Every iPhone feedback also applies to iPad. Every web change ships to the Mac app.
 - No buying in the iOS app (no prices, buy buttons or upgrade links).
 - Ask the owner with clear options when a decision is theirs; give before/after screenshots for UI work.
+
+## 9. Marketing pages branch `claude/marketing-pages-091dac` (2026-11-19)
+
+Commit c39116e6 on top of the 1.5.52 release (6099b01e), not pushed or deployed. The owner picked an accuracy pass:
+the Mac requirement is macOS 26 (`site.ts`); the home showcase's iPhone draws iOS 26's tab bar over the frame
+(`home/DeviceShowcase.tsx` NativeTabBar, `showcase/phone.ts` NATIVE_LOOK); the Apps page has a new iPad and iPhone
+picture (`product/TouchDevices.tsx`); the Search feature page has "Filter a list"; the changelog has 1.5.50 to 1.5.52.
+Next: the owner reviews, then merges and releases the site. The App Store link in `site.ts` is still a search link.
+
+Change log: 2026-11-19 marketing accuracy pass for 1.5.50 to 1.5.52 (branch above).

@@ -120,6 +120,26 @@ export function splitInline(nodes: readonly InlineNode[], max: number): InlineNo
   return parts;
 }
 
+/**
+ * Code cut into pieces of at most `max` characters, each to be its own code block, so code over the schema's
+ * length limit is kept instead of rejected. Cuts fall on a line break when there is one.
+ */
+export function splitCode(code: string, max: number): string[] {
+  if (code.length <= max) return [code];
+  const parts: string[] = [];
+  let rest = code;
+  while (rest.length > max) {
+    const newline = rest.lastIndexOf("\n", max);
+    let cut = newline > 0 ? newline : max;
+    // Never between the two halves of an emoji or other surrogate pair.
+    if (newline <= 0 && /[\uD800-\uDBFF]/.test(rest[cut - 1] ?? "")) cut--;
+    parts.push(rest.slice(0, cut));
+    rest = rest.slice(newline > 0 ? cut + 1 : cut);
+  }
+  if (rest) parts.push(rest);
+  return parts;
+}
+
 export function text(value: string, marks?: Mark[]): InlineNode[] {
   if (!value) return [];
   return marks && marks.length ? [{ type: "text", text: value, marks }] : [{ type: "text", text: value }];

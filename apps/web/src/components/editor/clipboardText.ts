@@ -97,6 +97,14 @@ export function sliceToText(slice: Slice): string {
       case "formula":
         lines.push(String(node.attrs.latex ?? ""));
         break;
+      case "page":
+        // A page in the note: its title, as the note shows it.
+        lines.push(`${indent}${String(node.attrs.titleCache || "Untitled")}`);
+        break;
+      case "file":
+      case "audio":
+        if (node.attrs.name) lines.push(`${indent}${String(node.attrs.name)}`);
+        break;
       case "tab":
         // A tab under its name, as the exports write it.
         lines.push(`${indent}### ${String(node.attrs.name ?? "").trim() || "Untitled"}`);

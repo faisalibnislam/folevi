@@ -447,6 +447,11 @@ export const Editor = forwardRef<EditorHandle, Props>(function Editor(
         ed.view.dispatch(tr.scrollIntoView());
       }
       window.dispatchEvent(new CustomEvent("folevi:uploads-changed"));
+      // (Ten at a time: the rest used to be left out without a word.)
+      if (files.length > 10) {
+        const left = files.length - 10;
+        window.dispatchEvent(new CustomEvent("folevi:error", { detail: `Only the first 10 files were added. ${left} ${left === 1 ? "was" : "were"} left out.` }));
+      }
     },
     [accountKey, engine, documentId],
   );

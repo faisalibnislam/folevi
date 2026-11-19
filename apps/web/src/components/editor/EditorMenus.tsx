@@ -100,6 +100,7 @@ import {
   turnInto,
 } from "./commands";
 import { blockSelectionRange, clearBlockSelection, extendBlockSelectionTo, setBlockSelection } from "./blockSelection";
+import { blockCopyCount, blockedMessage } from "./blockClipboard";
 import { syncDomSelection } from "./blockSelectionState";
 import { insertTabs } from "./tabs/tabsExtension";
 import { blockElements, triggerRunsDry, type TriggerState } from "./plugins";
@@ -2251,14 +2252,19 @@ function BlockHandle({
     if (!at) return closeMenu();
     editor.view.focus();
     setBlockSelection(editor.view, at.from, at.to);
+    const copies = blockCopyCount();
     let ok: boolean;
     try {
       ok = document.execCommand(command);
     } catch {
       ok = false;
     }
+    // WebKit (the Mac, iPhone and iPad apps, Safari) runs the copy and still answers "no" while only a caret
+    // is selected, as it is under selected blocks: whether the blocks reached the clipboard is what counts.
+    // (It used to say "blocked" after copying, and after a cut that had already taken the blocks away.)
+    ok = ok || blockCopyCount() !== copies;
     const n = at.to - at.from + 1;
-    if (!ok) toast.show(`Your browser blocked ${command === "cut" ? "cutting" : "copying"} from the menu. Press ${command === "cut" ? "⌘X" : "⌘C"} instead.`, { tone: "error" });
+    if (!ok) toast.show(blockedMessage(command), { tone: "error" });
     else announce(`${n === 1 ? "Block" : `${n} blocks`} ${command === "cut" ? "cut" : "copied"}`);
     if (command === "copy") clearBlockSelection(editor.view);
     closeMenu();

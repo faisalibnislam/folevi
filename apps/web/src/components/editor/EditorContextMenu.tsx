@@ -79,6 +79,7 @@ import { insertBelowColumns } from "./columns/columnsCommands";
 import { rowOf } from "./columns/columnsModel";
 import { macTextActions, macTextServices, wordAround, type MacTextItems } from "@/lib/desktop/textMenu";
 import { pastePlainText } from "./paste";
+import { blockCopyCount, blockedMessage } from "./blockClipboard";
 
 /** Asks the selection toolbar to open its link field (the "Edit link…" item). */
 export const EDIT_LINK_EVENT = "folevi:edit-link";
@@ -196,6 +197,12 @@ export function EditorContextMenu({ editor, editable, onCommentBlock }: { editor
       if (el?.closest("input, textarea, select, [data-native-menu]")) return;
       // A synced block's own editor (synced/nested.ts) opens its own menu.
       if (inNestedNote(el, dom)) return;
+      // Writing (the caret's in the note), a held finger is iOS's: its loupe and its text selection, no menu.
+      // Decided before anything is done with the press. The event is left as it came, so the hold
+      // (lib/touchContextMenu.ts) reads "no menu here": it used to be told a menu had opened, froze the page's
+      // scrolling, and when the finger then slid to place the caret (the loupe) the block lifted and was
+      // dropped somewhere else. On the iPad too, where both menus used to start.
+      if (isLongPress(e) && editor.view.hasFocus()) return;
       syncDomSelection(editor.view);
       const { state, view } = editor;
       const hit = view.posAtCoords({ left: e.clientX, top: e.clientY });
@@ -241,8 +248,6 @@ export function EditorContextMenu({ editor, editable, onCommentBlock }: { editor
       const line = held && phoneRef.current ? (blockElements(dom)[target.index] ?? null) : null;
       const box = line?.getBoundingClientRect();
       // (A block taller than most of the screen doesn't lift; its menu opens at the finger.)
-      // Writing (the caret's in the note), a held finger is iOS's: its loupe and text selection, no menu.
-      if (held && phoneRef.current && view.hasFocus()) return;
       if (line && box && box.height < window.innerHeight * 0.6) {
         setMenu({ x: Math.max(16, box.left), y: box.bottom + 6, top: box.top - 6, target, keyboard: false, held: line });
       } else setMenu({ x: e.clientX, y: e.clientY, top: e.clientY, target, keyboard: false });
@@ -818,13 +823,16 @@ function buildEntries({
 function clipboardCommand(editor: Editor, command: "copy" | "cut", toast: ReturnType<typeof useToast>) {
   editor.view.focus();
   // ProseMirror (and the block selection) handle the copy/cut events this raises, so blocks keep their types.
+  const copies = blockCopyCount();
   let ok: boolean;
   try {
     ok = document.execCommand(command);
   } catch {
     ok = false;
   }
-  if (!ok) toast.show(`Your browser blocked ${command === "cut" ? "cutting" : "copying"} from the menu. Press ${command === "cut" ? "⌘X" : "⌘C"} instead.`, { tone: "error" });
+  // (WebKit answers "no" for selected blocks after copying them: see the block menu's clipboard, EditorMenus.tsx.)
+  ok = ok || blockCopyCount() !== copies;
+  if (!ok) toast.show(blockedMessage(command), { tone: "error" });
 }
 
 /**
@@ -878,13 +886,16 @@ async function pasteFromClipboard(editor: Editor, plain: boolean, toast: ReturnT
       data.setData("text/plain", await navigator.clipboard.readText());
     }
   } catch {
-    toast.show("Your browser blocked reading the clipboard. Press ⌘V to paste.", { tone: "error" });
+    // (No ⌘V to press on a touch screen: the system's own Paste, from holding the place, works there.)
+    const touch = typeof window.matchMedia === "function" && window.matchMedia("(pointer: coarse)").matches;
+    toast.show(touch ? "Your browser blocked reading the clipboard. Hold where you want it and use Paste there." : "Your browser blocked reading the clipboard. Press ⌘V to paste.", { tone: "error" });
     return;
   }
   editor.view.focus();
   if (plain) {
     const text = data.getData("text/plain");
-    if (text) editor.view.pasteText(text);
+    // (The same plain paste as the key's: lines in a list become list items, one undo step.)
+    if (text) pastePlainText(editor.view, text);
     return;
   }
   // The editor's own paste handling (Markdown, Folevi blocks, web pages, images) reads this event.

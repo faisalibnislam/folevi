@@ -6,7 +6,7 @@ import { rankSequence } from "./rank";
 import { flattenTree } from "./tree";
 import { liftTabs, tabName } from "./tabs";
 import { columnsFromFence, liftColumns } from "./columns";
-import { normalizeInline, plainText, sanitizeHref, splitInline, textLength } from "./richtext";
+import { normalizeInline, plainText, sanitizeHref, splitCode, splitInline, textLength } from "./richtext";
 import { whiteboardToSvg } from "./whiteboard";
 import { parseFlowchart } from "./flowchart";
 import { flowchartToMermaid } from "./flowchartMermaid";
@@ -324,6 +324,16 @@ export interface MarkdownImportOptions {
    * have steered into carrying data out in an image address (docs/SECURITY_PLAN.md P0.2). Default "image".
    */
   remoteImages?: "image" | "link";
+  /**
+   * false: a "---" first line is a divider like any other, never the start of front matter. For pasted text,
+   * where everything up to the next "---" would otherwise be read as fields and left out. Default true (files).
+   */
+  frontMatter?: boolean;
+}
+
+/** The warning for a table larger than the schema allows (pasting says the same in its own words). */
+export function tableCutWarning(): string {
+  return `A table was cut to ${LIMITS.maxTableRows} rows and ${LIMITS.maxTableColumns} columns`;
 }
 
 /** A link or image target: <anything but brackets>, or a bare one (balanced parentheses allowed, "wiki/A_(b)"). */
@@ -505,7 +515,7 @@ export function markdownToBlocks(markdown: string, opts: MarkdownImportOptions =
   const warnings: ImportWarning[] = [];
   const src = markdown.replace(/\r\n?/g, "\n").replace(/^\uFEFF/, "");
   const all = src.split("\n");
-  const { data: frontMatter, consumed } = parseFrontMatter(all);
+  const { data: frontMatter, consumed } = opts.frontMatter === false ? { data: {} as Record<string, string>, consumed: 0 } : parseFrontMatter(all);
   const lines = all.slice(consumed);
   const drafts: Draft[] = [];
   let title: string | null = frontMatter.title ?? null;
@@ -532,7 +542,8 @@ export function markdownToBlocks(markdown: string, opts: MarkdownImportOptions =
 
   for (let i = 0; i < lines.length; i++) {
     const raw = lines[i]!;
-    const line = raw.replace(/\t/g, "    ");
+    // A tab that indents counts as four spaces (how deep a list item is); a tab inside the text stays a tab.
+    const line = raw.replace(/^[ \t]+/, (lead) => lead.replace(/\t/g, "    "));
     if (!line.trim()) {
       flushParagraph();
       continue;
@@ -683,7 +694,7 @@ export function markdownToBlocks(markdown: string, opts: MarkdownImportOptions =
       i--;
       drafts.push({ id: newId(), type: "table", depth, text: [], props: { rows, headerRow: true } });
       if (cut) {
-        warnings.push({ line: lineNo(startLine), code: "unsupported", message: `A table was cut to ${LIMITS.maxTableRows} rows and ${LIMITS.maxTableColumns} columns` });
+        warnings.push({ line: lineNo(startLine), code: "unsupported", message: tableCutWarning() });
       }
       continue;
     }
@@ -818,6 +829,15 @@ export function markdownToBlocks(markdown: string, opts: MarkdownImportOptions =
   // Text over the schema's length limit continues in more blocks (a longer block would be rejected).
   for (let k = 0; k < drafts.length; k++) {
     const d = drafts[k]!;
+    // Code over its own limit continues in more code blocks of the same language.
+    const code = d.type === "code" ? (d.props.code as string) : "";
+    if (code.length > LIMITS.maxCodeLength) {
+      const [head, ...tail] = splitCode(code, LIMITS.maxCodeLength);
+      d.props = { ...d.props, code: head ?? "" };
+      drafts.splice(k + 1, 0, ...tail.map((part) => ({ id: newId(), type: "code", depth: d.depth, text: [], props: { ...d.props, code: part } })));
+      k += tail.length;
+      continue;
+    }
     if (textLength(d.text) <= LIMITS.maxTextLength) continue;
     const [first, ...more] = splitInline(d.text, LIMITS.maxTextLength);
     d.text = first ?? [];

@@ -12,7 +12,7 @@ import { Eyebrow } from "@/components/marketing/ui";
 export const metadata = pageMetadata({
   title: "Folevi docs: how the workspace and the free apps work",
   description:
-    "How Folevi works: getting started, blocks and the / menu, tasks, sync and offline, sharing, workspaces, import and export, Foli AI (the AI assistant) and security.",
+    "How Folevi works: getting started, blocks and the / menu, tasks, sync and offline, sharing, workspaces, import and export, the Foli AI assistant and security.",
   path: "/docs",
   ogImage: "segment",
 });

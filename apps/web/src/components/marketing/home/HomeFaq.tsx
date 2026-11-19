@@ -26,11 +26,11 @@ export const HOME_FAQS: FaqItem[] = [
   },
   {
     q: "Can I use Foli AI without an account?",
-    a: "On the Mac, yes: Foli AI runs on Apple Intelligence, or on your own OpenAI, Anthropic or Google key, sent straight from your Mac. Folevi Cloud plans include Foli AI credits on every device.",
+    a: "On the Mac, yes: Foli AI runs on Apple Intelligence, or on your own OpenAI, Anthropic or Google key, with requests sent straight from your Mac. Folevi Cloud plans include Foli AI credits on every device.",
   },
   {
     q: "What does a Folevi account add?",
-    a: `Folevi Cloud: the web app, editing together in real time, public pages, workspaces for teams, email-in and the web clipper. The Free plan costs nothing. Paid plans from ${formatPrice(PRICES.core.month)} a month add more storage and Foli AI credits.`,
+    a: `It adds Folevi Cloud: the web app, editing together in real time, public pages, workspaces for teams, email-in and the web clipper. The Free plan costs nothing. Paid plans from ${formatPrice(PRICES.core.month)} a month add more storage and Foli AI credits.`,
   },
   {
     q: "Is there an app for Windows or Android?",

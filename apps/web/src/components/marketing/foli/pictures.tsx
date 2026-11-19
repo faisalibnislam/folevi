@@ -34,7 +34,7 @@ export function ChangesPicture() {
   return (
     <Panel
       title="Foli AI"
-      label="The Foli AI panel in a note. The person asked: the section numbers are messed up, please fix. Foli AI proposes three changes to the note's own headings, shown as before and after: Section #4 becomes Section 4, a duplicate section 5 becomes Section 7, and Inight/Blog becomes Section 9: Insights / Blog. Approve and Discard buttons sit under the changes."
+      label="The Foli AI panel in a note. Someone asked Foli AI to fix the messed-up section numbers. It proposes three changes to the note's own headings, shown as before and after: Section #4 becomes Section 4, a duplicate section 5 becomes Section 7, and Inight/Blog becomes Section 9: Insights / Blog. Approve and Discard buttons sit under the changes."
     >
       <div className="space-y-3 p-2">
         <p data-step className={userBubble}>The section numbers are all messed up. Please fix.</p>
@@ -121,7 +121,7 @@ export function StudyPicture() {
   return (
     <Panel
       title="Study"
-      label="The Study tab of the Foli AI panel: flashcard 3 of 12 from a biology note, showing the question 'What does the mitochondria do?' and its answer, 'It turns food into energy the cell can use (ATP).' Below are Again and Know it buttons and a progress bar."
+      label="The Study tab of the Foli AI panel: flashcard 3 of 12 from a biology note, showing the question 'What do mitochondria do?' and its answer, 'They turn food into energy the cell can use (ATP).' Below are Again and Know it buttons and a progress bar."
     >
       <div className="p-4">
         <div className="flex items-center justify-between text-[12px] text-muted">
@@ -132,8 +132,8 @@ export function StudyPicture() {
           <div className="h-full w-1/4 rounded-tiny bg-(--color-heading)" />
         </div>
         <div data-step className="mt-4 rounded-control bg-(--color-surface) p-4 shadow-(--shadow-control)">
-          <p className="mk-display text-[17px] leading-snug text-(--color-heading)">What does the mitochondria do?</p>
-          <p data-step className="mt-3 border-t border-(--color-line) pt-3 text-[13px] leading-relaxed text-ink">It turns food into energy the cell can use (ATP).</p>
+          <p className="mk-display text-[17px] leading-snug text-(--color-heading)">What do mitochondria do?</p>
+          <p data-step className="mt-3 border-t border-(--color-line) pt-3 text-[13px] leading-relaxed text-ink">They turn food into energy the cell can use (ATP).</p>
         </div>
         <div className="mt-3 grid grid-cols-2 gap-2">
           <span data-step className="mk-btn mk-btn-secondary h-9 gap-1.5 text-[13px]">
@@ -153,7 +153,7 @@ export function MeetingPicture() {
   return (
     <Panel
       title="Meeting summary"
-      label="A recording in a note, transcribed by Foli AI, and the meeting summary made from it: decisions, then action items as to-dos with owners and due dates, like '@Maya: send the venue shortlist (due 14 October)'."
+      label="A recording in a note, transcribed by Foli AI, and the meeting summary made from it: decisions, then action items as to-dos with owners and due dates, like '@Maya: send the venue shortlist (due October 14)'."
     >
       <div className="space-y-3 p-4">
         <div data-step className="flex items-center gap-2.5 rounded-control bg-(--color-surface-sunken) px-3 py-2">
@@ -212,7 +212,7 @@ export function ResearchPicture() {
         <div data-step className="rounded-control bg-(--glass-hover) p-3 text-[13px] leading-relaxed text-ink">
           <p className="font-semibold text-(--color-heading)">Running costs</p>
           <p className="mt-1">
-            A heat pump uses about a third of the energy for the same heat <sup className="text-muted">[1]</sup>, so it costs less to run where electricity isn’t much dearer than gas <sup className="text-muted">[2]</sup>.
+            A heat pump uses about a third of the energy for the same heat <sup className="text-muted">[1]</sup>, so it costs less to run where electricity doesn’t cost much more than gas <sup className="text-muted">[2]</sup>.
           </p>
           <div className="mt-2.5 flex flex-wrap gap-1.5 text-[11px]">
             <span className="inline-flex items-center gap-1 rounded-chip bg-(--color-surface) px-1.5 py-0.5 shadow-(--shadow-control)">

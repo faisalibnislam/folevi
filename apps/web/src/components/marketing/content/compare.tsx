@@ -143,7 +143,7 @@ const diff = {
     title: "Note themes with artwork",
     body: (
       <p>
-        Each page can take one of {STYLE_COUNT} artwork themes, or your own image, and the theme colours the cover, the paper and the text. The app around it stays plain white, or near-black in dark mode. See <Link href="/features/note-themes">note themes</Link>.
+        Each page can take one of {STYLE_COUNT} artwork themes, or your own image, and the theme colors the cover, the paper and the text. The app around it stays plain white, or near-black in dark mode. See <Link href="/features/note-themes">note themes</Link>.
       </p>
     ),
   } satisfies Section,
@@ -209,7 +209,7 @@ const PLATFORMS_HONEST = `Folevi has apps for Mac (${MAC_REQUIREMENT}) and for i
 
 const importSteps = (exportStep: ReactNode) => (
   <>
-    <p>Folevi imports Markdown and plain text. The way across is to export your notes as Markdown, then import the files.</p>
+    <p>Folevi imports Markdown and plain text. To move across, export your notes as Markdown, then import the files.</p>
     <ol>
       <li>{exportStep}</li>
       <li>
@@ -226,19 +226,19 @@ export const COMPETITORS: Competitor[] = [
     name: "Notion",
     trademarks: ["Notion"],
     title: "Folevi vs Notion: a workspace with free Mac and iPhone apps",
-    description: "A Notion alternative workspace: docs, tasks and databases, plus free native Mac, iPhone and iPad apps that work offline with no account. Every fact sourced.",
+    description: "A Notion alternative for docs, tasks and databases, with free native Mac, iPhone and iPad apps that work offline and need no account. Every fact sourced.",
     h1: "Folevi vs Notion",
     intro:
       "Notion is a workspace for documents, wikis, databases and projects, with apps on every major platform and a large set of integrations. It suits teams that run their work from linked databases. Folevi is a workspace too: block documents and pages inside pages, tasks with a calendar, and databases you can see as a table, a gallery or a kanban board, with formulas. Its native Mac, iPhone and iPad apps are free forever with no account and work fully offline. Folevi Cloud adds the web app, team workspaces, comments and guests when you want them.",
     summary: "Deep team databases, or a workspace with free native apps.",
-    updated: "2026-11-06",
+    updated: "2026-11-18",
     rows: [
       { key: "price", them: "$0. File uploads up to 5 MB each. Up to 10 guests.", sources: ["pricing"] },
       { key: "account", them: "No. You sign in with a Notion account, in the mobile apps too.", sources: ["login", "mobilehelp"] },
       { key: "monthly", them: "Plus $12 and Business $24 per member a month. Enterprise: contact sales.", sources: ["pricing"] },
       { key: "yearly", them: "Plus $10 and Business $20 per member a month, billed yearly", sources: ["pricing"] },
       { key: "ai", them: "A trial of Notion AI on Free and Plus. Notion AI included on Business and Enterprise. Extra usage and Custom Agents use Notion credits, $10 per 1,000 a month.", sources: ["pricing", "credits"] },
-      { key: "offline", them: "In the desktop and mobile apps. On Free you pick pages to download; paid plans also download recent and favourite pages.", sources: ["offline", "pricing"] },
+      { key: "offline", them: "In the desktop and mobile apps. On Free you pick pages to download; paid plans also download recent and favorite pages.", sources: ["offline", "pricing"] },
       { key: "platforms", them: "Web, Mac, Windows, iOS and Android", sources: ["desktop", "mobile", "web"] },
       { key: "collaboration", them: "Shared pages with presence, comments, guests and permission levels from Full access to Can view", sources: ["sharing"] },
       { key: "publish", them: "Publish pages to the web. Custom domains cost $8 a month per domain, billed yearly.", sources: ["pricing", "sharing"] },
@@ -254,7 +254,7 @@ export const COMPETITORS: Competitor[] = [
         title: "A workspace with nothing to set up first",
         body: (
           <p>
-            Folevi has docs, wikis, tasks and databases in one place: block documents, pages inside pages, tasks on a calendar, and collections you can see as a table, a gallery or a kanban board, with formulas. It starts with a blank page, not a setup, and the Mac, iPhone and iPad apps are native, so they start quickly and feel at home on each device. See <Link href="/features/blocks">blocks</Link>.
+            Folevi has docs, wikis, tasks and databases in one place: block documents, pages inside pages, tasks on a calendar, and collections you can see as a table, a gallery or a kanban board, with formulas. You start on a blank page with nothing to configure. The Mac, iPhone and iPad apps are native, so they open quickly and work the way other apps on each device do. See <Link href="/features/blocks">blocks</Link>.
           </p>
         ),
       },
@@ -273,7 +273,7 @@ export const COMPETITORS: Competitor[] = [
         title: "Lower prices",
         body: (
           <p>
-            The apps are free with no account. Folevi Cloud’s paid plans are {p(PRICES.core.month)}, {p(PRICES.pro.month)} and {p(PRICES.pro_ai.month)} a month, and a workspace pays the same per member. Guests are free on every plan. On 30 September 2026, Notion’s Plus plan was $12 per member a month, or $10 billed yearly.
+            The apps are free with no account. Folevi Cloud’s paid plans are {p(PRICES.core.month)}, {p(PRICES.pro.month)} and {p(PRICES.pro_ai.month)} a month, and a workspace pays the same per member. Guests are free on every plan. On September 30, 2026, Notion’s Plus plan was $12 per member a month, or $10 billed yearly.
           </p>
         ),
       },
@@ -299,7 +299,7 @@ export const COMPETITORS: Competitor[] = [
       { q: "Does Folevi work offline?", a: "Yes. The Mac, iPhone and iPad apps work fully offline. In the browser, every edit is saved on the device first and syncs when you reconnect." },
       { q: "Can I import my Notion pages?", a: "Yes, as Markdown. Export from Notion as Markdown, then import the ZIP in Settings → Import & export. Databases export as CSV, which Folevi doesn’t import." },
       { q: "Does Folevi have mobile apps?", a: `Yes, for iPhone and iPad (${IOS_REQUIREMENT}), on the App Store. There is no Android app.` },
-      { q: "How much does Folevi cost compared with Notion?", a: `The apps are free with no account. Folevi Cloud’s paid plans are ${p(PRICES.core.month)}, ${p(PRICES.pro.month)} and ${p(PRICES.pro_ai.month)} a month, per member in a workspace. On 30 September 2026, Notion’s website listed Plus at $12 and Business at $24 per member a month, or $10 and $20 billed yearly.` },
+      { q: "How much does Folevi cost compared with Notion?", a: `The apps are free with no account. Folevi Cloud’s paid plans are ${p(PRICES.core.month)}, ${p(PRICES.pro.month)} and ${p(PRICES.pro_ai.month)} a month, per member in a workspace. On September 30, 2026, Notion’s website listed Plus at $12 and Business at $24 per member a month, or $10 and $20 billed yearly.` },
     ],
     sources: [
       src2("login", "Notion Help: Log in and out of Notion", "https://www.notion.com/help/log-in-and-out"),
@@ -322,14 +322,14 @@ export const COMPETITORS: Competitor[] = [
     name: "Obsidian",
     trademarks: ["Obsidian"],
     title: "Folevi vs Obsidian: a linked workspace that stays your files",
-    description: "An Obsidian alternative: linked notes, tasks and databases as files you own, in native Mac, iPhone and iPad apps. Free, no account, no plugins. Sourced.",
+    description: "An Obsidian alternative: linked notes, tasks and databases as your own files, in native Mac, iPhone and iPad apps. Free, no account or plugins. Every fact sourced.",
     h1: "Folevi vs Obsidian",
     intro:
       "Obsidian keeps your notes as Markdown files in a folder on your own device, and it’s free to use. It has apps for desktop and mobile, a large library of community plugins and themes, and paid add-ons for sync and publishing. It suits people who want to shape the app themselves. Folevi is a workspace that also keeps your pages as files you own, in a folder you pick: linked notes, tasks and databases, in a native app for Mac, iPhone and iPad that is ready the moment you open it. It’s free with no account, and syncs through iCloud Drive, Dropbox or Google Drive.",
     summary: "A linked workspace as your own files, ready when you open it.",
-    updated: "2026-11-06",
+    updated: "2026-11-18",
     rows: [
-      { key: "price", them: "The app is free, including for work. A commercial licence is optional, at $50 per user a year.", sources: ["license", "pricing"] },
+      { key: "price", them: "The app is free, including for work. A commercial license is optional, at $50 per user a year.", sources: ["license", "pricing"] },
       { key: "account", them: "Yes. Obsidian’s pricing page says no sign-up is required.", sources: ["pricing"] },
       { key: "files", them: "Markdown files in a folder (a vault) on your device, wherever you create it", sources: ["storage"] },
       { key: "monthly", them: "Sync: Standard $5 or Plus $10 per user a month. Publish: $10 per site a month.", sources: ["sync", "publish"] },
@@ -359,7 +359,7 @@ export const COMPETITORS: Competitor[] = [
         title: "Sync through the cloud you already have",
         body: (
           <p>
-            Put the library in iCloud Drive and it syncs across your iPhone, iPad and Mac at no cost, or use Dropbox or Google Drive. Folevi’s servers never see it. With Obsidian, its own Sync is a paid add-on. If you want sharing and team workspaces, Folevi Cloud has them on every plan, including Free.
+            Put the library in iCloud Drive and it syncs across your iPhone, iPad and Mac at no cost, or use Dropbox or Google Drive. Folevi’s servers never see it. Obsidian’s own Sync is a paid add-on. Folevi Cloud adds sharing and team workspaces, on every plan including Free.
           </p>
         ),
       },
@@ -387,7 +387,7 @@ export const COMPETITORS: Competitor[] = [
       { q: "Can I import my Obsidian vault?", a: "Yes. Choose the vault folder, or a ZIP of it, in Settings → Import & export. Wiki links come in as plain text." },
       { q: "Does Folevi have backlinks?", a: "Yes. Type [[ to link a page. The linked page lists every page that links to it, with a line of text around each link." },
       { q: "Does Folevi have mobile apps?", a: `Yes, for iPhone and iPad (${IOS_REQUIREMENT}), on the App Store. There is no Android app.` },
-      { q: "Is Folevi end-to-end encrypted?", a: "Yes, when you turn it on. Folevi Cloud is end-to-end encrypted when you turn it on in Settings → Privacy, on every plan, and you choose which features may still read your notes. Without an account, Folevi’s servers never see your notes, and you can encrypt the synced copy with a passphrase." },
+      { q: "Is Folevi end-to-end encrypted?", a: "Yes, when you turn it on in Settings → Privacy. That works on every Folevi Cloud plan, and you choose which features may still read your notes. Without an account, Folevi’s servers never see your notes, and you can encrypt the synced copy with a passphrase." },
     ],
     sources: [
       src("license", "Obsidian: License", "https://obsidian.md/license"),

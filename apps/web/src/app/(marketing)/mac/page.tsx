@@ -40,8 +40,8 @@ export default function MacPage() {
                 Folevi, in a window of <Mark>its own</Mark>.
               </h1>
               <p className="mk-lede mt-6 max-w-[50ch]">
-                Your workspace for docs, tasks and databases, as a native Mac app. Free forever, no account. Quick Add, a
-                menu bar icon and Mac notifications.
+                Your workspace for docs, tasks and databases as a native Mac app, free forever with no account. It has
+                Quick Add, a menu bar icon and Mac notifications.
               </p>
             </div>
             <div className="mk-card relative p-6 pt-12 sm:p-7 sm:pt-14">
@@ -93,7 +93,7 @@ export default function MacPage() {
                 Everything on the web, plus <Mark kind="circle">more</Mark>.
               </>
             }
-            lede="Docs, tasks and databases are kept on your Mac, so your work never waits."
+            lede="Docs, tasks and databases are kept on your Mac, so you never wait on the network."
           />
           <ul className="mt-10 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {features.map((feature) => (
@@ -118,7 +118,7 @@ export default function MacPage() {
                     Your notes, in a folder <Mark kind="squiggle">you pick</Mark>.
                   </>
                 }
-                lede="Choose Keep notes on my devices when Folevi opens. Free forever. No account."
+                lede="Choose Keep notes on my devices when Folevi opens. It’s free forever and needs no account."
               />
               <Checks
                 className="mt-6"
@@ -182,7 +182,7 @@ export default function MacPage() {
                     Hands stay on the <Mark kind="squiggle">keys</Mark>.
                   </>
                 }
-                lede="Most work on the web too; ⌘N, ⇧⌘N and ⌥Space are Mac only."
+                lede="Most of these work on the web too. ⌘N, ⇧⌘N and ⌥Space are Mac only."
               />
               <div aria-hidden="true" className="pointer-events-none mt-12 hidden pl-16 xl:block">
                 <Hand rotate={-5} arrow="up-left">
@@ -232,7 +232,7 @@ export default function MacPage() {
                 The same workspace in <Mark kind="squiggle">any browser</Mark>.
               </>
             }
-            lede="With a Folevi account, your pages sync in real time with your Mac, you can invite your team, and it works offline once loaded."
+            lede="With a Folevi account, your pages sync in real time with your Mac and you can invite your team. The web app works offline once loaded."
           />
           <div className="mx-auto mt-12 max-w-[1080px]">
             <AppWindow

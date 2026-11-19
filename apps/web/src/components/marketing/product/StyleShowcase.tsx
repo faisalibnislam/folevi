@@ -32,7 +32,7 @@ export function StyleShowcase({ artSize = "large" }: { artSize?: "thumb" | "larg
       <AppWindow
         artSize={artSize}
         art={art}
-        label={`The Folevi app with a note called Seed library open. The note uses the ${art.name} theme, which colours its cover, page and text.`}
+        label={`The Folevi app with a note called Seed library open. The note uses the ${art.name} theme, which colors its cover, page and text.`}
         className="h-[500px] sm:h-[540px] lg:h-[600px]"
       />
       <div className="mt-5 flex flex-col items-center gap-3 sm:flex-row sm:justify-center sm:gap-4">

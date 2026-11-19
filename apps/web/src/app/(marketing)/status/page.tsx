@@ -28,9 +28,9 @@ export default function StatusPage() {
       <DocShell toc={toc}>
         <h2 id="dashboard">Public status</h2>
         <p>
-          We don’t publish a live status page yet. Rather than show a dashboard that isn’t connected to
-          anything, we’d rather say so plainly. During planned maintenance the app tells you it can’t sync right now, and your
-          edits wait safely on your device until it’s over.
+          We don’t publish a live status page yet, and we’d rather say so than show a dashboard that isn’t connected to
+          anything. During planned maintenance the app tells you it can’t sync right now, and your edits wait safely on
+          your device until it’s over.
         </p>
 
         <h2 id="in-app">Status in the app</h2>
@@ -59,7 +59,7 @@ export default function StatusPage() {
           </li>
         </ul>
         <p>
-          More detail is in <Link href="/docs/sync-and-offline">Sync &amp; offline</Link>.
+          More detail is in <Link href="/docs/sync-and-offline">Sync and offline</Link>.
         </p>
 
         <h2 id="report">Reporting a problem</h2>

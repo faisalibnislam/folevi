@@ -21,7 +21,7 @@ export async function generateMetadata() {
   const count = (await availableGalleryTemplates()).length;
   return pageMetadata({
     title: "Free templates for notes, docs and planning",
-    description: `${count} free templates for notes, docs and planning: meeting notes, 1:1s, a weekly reset, project briefs, a travel plan and more. Preview one and use it.`,
+    description: `${count} free templates for notes, docs and planning: meeting notes, 1:1s, a weekly reset, project briefs, a travel plan and more. Preview one, then start a page from it.`,
     path: "/template-gallery",
     ogImage: "segment",
   });

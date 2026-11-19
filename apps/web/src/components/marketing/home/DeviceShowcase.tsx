@@ -21,7 +21,7 @@ const CHAPTERS: Array<{ id: ChapterId; label: string; says: string }> = [
   { id: "together", label: "Write together", says: "Sam edits the same page live, Maya leaves a comment for him and he replies." },
   { id: "tasks", label: "Tasks and calendar", says: "This week's tasks with their dates, one ticked off, then the same tasks on the calendar." },
   { id: "board", label: "Databases", says: "The Content plan collection as a table, then as a board grouped by status." },
-  { id: "ai", label: "Foli AI", says: "Foli AI is asked what's left before the launch and answers with sources from the workspace." },
+  { id: "ai", label: "Foli AI", says: "Someone asks Foli AI what's left before the launch, and it answers with sources from the workspace." },
   { id: "vault", label: "Vault", says: "The Vault keeps passwords, an API key and a 2FA code behind a passcode." },
 ];
 const ICONS: Record<ChapterId, ReactNode> = {

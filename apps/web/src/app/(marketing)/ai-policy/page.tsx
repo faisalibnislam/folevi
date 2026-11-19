@@ -28,8 +28,8 @@ export default function AiPolicyPage() {
       <DocShell toc={toc}>
         <h2 id="helps">What it helps with</h2>
         <p>
-          Foli AI is there for your notes and your writing: answering questions from your notes, summarising, editing,
-          drafting, translating and organising. If your notes don’t have the answer, it gives a short general answer and
+          Foli AI is there for your notes and your writing: answering questions from your notes, summarizing, editing,
+          drafting, translating and organizing. If your notes don’t have the answer, it gives a short general answer and
           says that it didn’t come from your notes.
         </p>
 
@@ -37,12 +37,12 @@ export default function AiPolicyPage() {
         <p>
           For legal but sensitive subjects, such as alcohol, gambling, cannabis where it’s legal, sexual health and harm
           reduction, Foli AI answers factually and neutrally, with safety information where it matters. It never promotes
-          or glamorises them.
+          or glamorizes them.
         </p>
 
         <h2 id="advice">Medical, legal and money questions</h2>
         <p>
-          Foli AI can explain general information, but it isn’t a doctor, lawyer or financial adviser, and it says so. For
+          Foli AI can explain general information, but it isn’t a doctor, lawyer or financial advisor, and it says so. For
           decisions about your own health, a legal matter or your money, talk to a professional. If something sounds like a
           medical emergency, it will tell you to contact emergency services straight away. AI can be wrong: check what it
           says before relying on it.
@@ -72,7 +72,7 @@ export default function AiPolicyPage() {
 
         <h2 id="writing">Writing about dark subjects</h2>
         <p>
-          Crime novels, journalism, research on addiction, history: Foli AI helps you write, edit and summarise them. It
+          Crime novels, journalism, research on addiction, history: Foli AI helps you write, edit and summarize them. It
           won’t add real step-by-step instructions for causing harm, even inside a story.
         </p>
 
@@ -85,7 +85,7 @@ export default function AiPolicyPage() {
           </li>
           <li>
             If an account asks for harmful things again and again (five times within an hour), Foli AI is paused for that
-            account for 24 hours. Conversations about being in crisis never count towards a pause. If you think a pause was a
+            account for 24 hours. Conversations about being in crisis never count toward a pause. If you think a pause was a
             mistake, <Link href="/support">contact support</Link>.
           </li>
         </ul>

@@ -36,7 +36,7 @@ function reply(req: AiRequest): string {
       "What's due after the launch?",
     ].join("\n");
   }
-  return "This is a demo of Foli AI, and it only knows a few questions about the Studio launch.";
+  return "This demo of Foli AI only knows a few questions about the Studio launch.";
 }
 
 const CAPS: AiCaps = { onDevice: false, keys: { "ai.anthropic": true } };

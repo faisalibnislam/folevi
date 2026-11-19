@@ -67,7 +67,7 @@ export function PricingSection() {
               <Mark>Cloud</Mark> when you want it.
             </>
           }
-          lede={`The apps cost nothing with no account. Folevi Cloud adds the web app, sharing and Foli AI, and every new account gets ${TIER_NAMES[TRIAL_TIER]} free for ${TRIAL_DAYS} days, no card.`}
+          lede={`Without an account, the apps cost nothing. Folevi Cloud adds the web app, sharing and Foli AI, and every new account gets ${TIER_NAMES[TRIAL_TIER]} free for ${TRIAL_DAYS} days, with no card needed.`}
         />
         <div className="mk-card mt-10 flex flex-col gap-5 p-6 sm:p-7 lg:flex-row lg:items-center">
           <div className="flex-1">
@@ -82,7 +82,7 @@ export function PricingSection() {
               <span className="text-[14px] text-muted">forever</span>
             </p>
             <p className="mt-3 max-w-[60ch] text-[15px] leading-snug text-muted">
-              Mac, iPhone and iPad. Unlimited notes in iCloud Drive, Dropbox, Google Drive or any folder, offline, with Foli AI on your Mac.
+              Mac, iPhone and iPad. Unlimited notes in iCloud Drive, Dropbox, Google Drive or any folder. They work offline, and Foli AI runs on your Mac.
             </p>
           </div>
           <div className="flex flex-wrap gap-2.5">

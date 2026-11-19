@@ -49,5 +49,5 @@ export function absoluteUrl(path: string): string {
 
 /** "2026-09-30" → "30 September 2026" (UTC, so the day never shifts). */
 export function formatDay(day: string): string {
-  return new Date(`${day}T00:00:00Z`).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" });
+  return new Date(`${day}T00:00:00Z`).toLocaleDateString("en-US", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" });
 }

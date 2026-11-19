@@ -55,7 +55,7 @@ export default function CompareIndexPage() {
             How Folevi <Mark>compares.</Mark>
           </h1>
           <p className="mk-lede mt-6 max-w-[60ch]">
-            Folevi is a workspace for docs, tasks and databases. Its Mac, iPhone and iPad apps are free forever, with no account, and your pages stay files in a folder you pick. Here is how that compares, one page per app, with sources and how to move across.
+            Folevi is a workspace for docs, tasks and databases. Its Mac, iPhone and iPad apps are free forever, with no account, and your pages stay files in a folder you pick. Each app below has its own comparison page, with sources and the steps for moving your notes across.
           </p>
         </HeaderCard>
         <Card as="div">

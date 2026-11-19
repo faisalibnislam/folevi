@@ -43,7 +43,7 @@ const TILES: Tile[] = [
   {
     title: "Flowcharts",
     href: "/features/flowcharts",
-    label: "A small flowchart in a note: Idea, then Draft, then two arrows to Share and Keep.",
+    label: "A small flowchart in a note: Draft, then a Ready? decision, with Yes going on to Publish and No going back to Draft.",
     picture: <FlowPicture />,
   },
   {
@@ -55,7 +55,7 @@ const TILES: Tile[] = [
   {
     title: "Edit together",
     href: "/features/sharing",
-    label: "A shared note with three people in it, a line Maya is typing, and a comment mentioning Sam.",
+    label: "A shared note with three people in it, a line Maya is typing, and a comment from Sam mentioning Maya.",
     picture: <TogetherPicture />,
     wide: true,
   },

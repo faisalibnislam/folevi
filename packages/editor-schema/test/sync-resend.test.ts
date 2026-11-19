@@ -45,6 +45,27 @@ describe("resending", () => {
     expect(textOf(s.blocks.b1!.block)).toBe("One two three");
   });
 
+  it("a block whose text is being edited still follows the server's new rank, and keeps the typing", () => {
+    const held = (id: string, text: string, rank: string) => ({ documentId: DOC, block: { ...block(id, text), rank }, serverRevision: 1, deleted: false });
+    let s: SyncState = { ...sync.emptySyncState(), blocks: { a: held("a", "A", "V"), b: held("b", "B", "W"), c: held("c", "C", "X") } };
+    // Typing in B waits to be sent (its text only).
+    s = sync.localUpsert(s, { opId: "op-typing-01", documentId: DOC, block: { ...block("b", "B typed"), rank: "W" }, fields: ["content"] });
+    // The server re-spaces the list: every sibling gets a new rank.
+    const row = (id: string, text: string, rank: string) => ({ documentId: DOC, block: { ...block(id, text), rank, revision: 2 }, deleted: false });
+    s = sync.remoteUpdates(s, [row("a", "A", "G"), row("b", "B", "N"), row("c", "C", "U")]);
+    expect([s.blocks.a!.block.rank, s.blocks.b!.block.rank, s.blocks.c!.block.rank]).toEqual(["G", "N", "U"]);
+    expect(textOf(s.blocks.b!.block)).toBe("B typed");
+    // Its edit is still based on the version it was written on.
+    expect(s.blocks.b!.serverRevision).toBe(1);
+    expect(upserts(s).map((op) => [op.opId, textOf(op.block)])).toEqual([["op-typing-01", "B typed"]]);
+
+    // A block this device is moving keeps the place it was given here.
+    let t: SyncState = { ...sync.emptySyncState(), blocks: { a: held("a", "A", "V"), b: held("b", "B", "W") } };
+    t = sync.localUpsert(t, { opId: "op-moving-01", documentId: DOC, block: { ...block("b", "B"), rank: "M" }, fields: ["position"] });
+    t = sync.remoteUpdates(t, [row("b", "B", "N")]);
+    expect(t.blocks.b!.block.rank).toBe("M");
+  });
+
   it("queues the local text again when a replay answers with something else", () => {
     // An op whose content changed after it was first sent (older builds merged typing into it).
     let s = sync.localUpsert(sync.emptySyncState(), { opId: "op-merged-001", documentId: DOC, block: block("b1", "Hello world"), fields: ["content", "position"] });

@@ -59,6 +59,8 @@ interface Props {
   label?: string;
 }
 
+/** How long writing rests before the server is asked to re-space a list's long ranks. */
+const REBALANCE_REST_MS = 4000;
 const FLUSH_DELAY = 250;
 const FLUSH_MAX_WAIT = 1000;
 
@@ -72,6 +74,8 @@ export const Editor = forwardRef<EditorHandle, Props>(function Editor(
   const onExitTopRef = useRef(onExitTop);
   onExitTopRef.current = onExitTop;
   const dirty = useRef(false);
+  /** When the note was last edited here (runRebalance waits for a pause). */
+  const editedAt = useRef(0);
   // The empty-line hint mentions ⌘J while the AI assistant is on (read by the placeholder at render time).
   const aiHint = useRef(false);
   aiHint.current = useAiEnabled() && editable;
@@ -92,8 +96,19 @@ export const Editor = forwardRef<EditorHandle, Props>(function Editor(
   // long, ask the server to re-space that sibling list once our own queued changes have synced.
   const rebalance = useMutation(api.blocks.rebalance);
   const rebalanceParents = useRef(new Set<string | null>());
+  const rebalanceLater = useRef<ReturnType<typeof setTimeout> | null>(null);
   const runRebalance = useCallback(() => {
+    // Not while the person is writing (the editor holds typing it hasn't saved, or saved it a moment ago):
+    // a re-spacing that lands mid-sentence moves every line's rank under the caret. It waits for a pause.
     if (!rebalanceParents.current.size || engine.hasLocalWork(documentId) || !navigator.onLine) return;
+    if (dirty.current || Date.now() - editedAt.current < REBALANCE_REST_MS) {
+      // (Asked again once writing has rested: the engine may have nothing more to say until the next edit.)
+      rebalanceLater.current ??= setTimeout(() => {
+        rebalanceLater.current = null;
+        runRebalanceRef.current();
+      }, REBALANCE_REST_MS);
+      return;
+    }
     const parents = [...rebalanceParents.current];
     rebalanceParents.current.clear();
     for (const parentId of parents) {
@@ -102,7 +117,15 @@ export const Editor = forwardRef<EditorHandle, Props>(function Editor(
       });
     }
   }, [engine, documentId, rebalance]);
+  const runRebalanceRef = useRef(runRebalance);
+  runRebalanceRef.current = runRebalance;
   useEffect(() => engine.subscribe(() => runRebalance()), [engine, runRebalance]);
+  useEffect(
+    () => () => {
+      if (rebalanceLater.current) clearTimeout(rebalanceLater.current);
+    },
+    [],
+  );
 
   const extensions = useMemo(
     () => editorExtensions({ aiHint, placeholder, onTrigger: setTrigger }),
@@ -268,6 +291,7 @@ export const Editor = forwardRef<EditorHandle, Props>(function Editor(
       // (If the engine has newer blocks than the editor opened with, they are drawn once this change is in.)
       if (!hydrated.current && hydrate(transaction.before)) queueMicrotask(() => applyToRef.current(ed));
       dirty.current = true;
+      editedAt.current = Date.now();
       engine.setEditing(documentId, true);
       if (flushTimer.current) clearTimeout(flushTimer.current);
       // Steady typing keeps pushing the debounce back: still save at least once a second.

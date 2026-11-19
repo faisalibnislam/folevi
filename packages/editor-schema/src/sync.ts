@@ -626,7 +626,20 @@ export function remoteUpdates(prev: SyncState, inputs: readonly RemoteRow[]): Sy
     const existing = (state ?? prev).blocks[input.block.id];
     if (existing && existing.serverRevision !== null && existing.serverRevision >= rev) continue;
     outstanding ??= new Set([...prev.pending, ...prev.inflight].flatMap((op) => opBlockId(op) ?? []));
-    if (outstanding.has(input.block.id)) continue;
+    if (outstanding.has(input.block.id)) {
+      // What this device wrote is kept, but where the block is follows the server when nothing queued here
+      // moves it (only its text is being edited). The server re-spaces a list's ranks now and then: every
+      // sibling got its new rank and the line being typed in kept its old one, so it sorted somewhere else and
+      // jumped under the caret, and a line added then stayed in the wrong place for good.
+      if (existing && !input.deleted && !existing.deleted && (existing.block.parentId !== input.block.parentId || existing.block.rank !== input.block.rank)) {
+        const moves = [...prev.pending, ...prev.inflight].some((op) => opBlockId(op) === input.block.id && (op.kind !== "block.upsert" || op.fields.includes("position")));
+        if (!moves) {
+          state ??= { ...prev, blocks: { ...prev.blocks } };
+          state.blocks[input.block.id] = { ...existing, block: { ...existing.block, parentId: input.block.parentId, rank: input.block.rank } };
+        }
+      }
+      continue;
+    }
     state ??= { ...prev, blocks: { ...prev.blocks } };
     const b = clone(input.block);
     delete b.revision;

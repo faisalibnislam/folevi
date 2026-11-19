@@ -295,7 +295,7 @@ export function VaultSettings({ info }: { info: Info }) {
         </span>
         <span className="min-w-0 flex-1">
           <span className="flex items-center gap-2 text-subheadline font-semibold text-heading">
-            <span aria-hidden className="size-2 flex-none rounded-full bg-success" />
+            <span aria-hidden className="size-2 flex-none rounded-tiny bg-success" />
             Open on this device
           </span>
           <span className="block text-footnote text-muted text-pretty">

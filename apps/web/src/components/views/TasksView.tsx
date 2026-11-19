@@ -445,7 +445,7 @@ export function TasksView({ view }: { view: View }) {
                 setFilter("");
                 filterRef.current?.focus();
               }}
-              className="absolute right-1.5 top-1/2 grid size-6 -translate-y-1/2 place-items-center rounded-full text-faint transition-colors hover:bg-[color-mix(in_oklab,var(--color-ink)_8%,transparent)] hover:text-ink pointer-coarse:size-8"
+              className="absolute right-1.5 top-1/2 grid size-6 -translate-y-1/2 place-items-center rounded-container text-faint transition-colors hover:bg-[color-mix(in_oklab,var(--color-ink)_8%,transparent)] hover:text-ink pointer-coarse:size-8"
             >
               <X size={13} aria-hidden />
             </button>

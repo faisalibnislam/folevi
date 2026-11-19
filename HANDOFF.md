@@ -328,6 +328,7 @@ the e2e suite was not re-run after the Foli AI panel change; the dev backend lac
 
 ## 12. Change log
 
+- 2026-11-19: `CLAUDE.md` says to read this file first and keep it current (the owner's OK in chat).
 - 2026-11-19: committed on `editor/rock-solid` with pull request 40; next step 1 and the e2e gotcha brought up to
   date (the edits they called uncommitted are in the pull request).
 - 2026-11-19: Git state updated: editor/rock-solid pushed as pull request 40; docs/HANDOFF.md section 0 noted.

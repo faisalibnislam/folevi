@@ -360,6 +360,8 @@ private struct RebuildRoot: View {
     @State private var selecting = false
     /// The bell's sheet.
     @State private var notifications = false
+    /// The sync status's sheet (the cloud beside the bell).
+    @State private var sync = false
     /// New folder's card, over everything.
     @State private var newFolder: NewFolderRequest?
     /// New workspace's card, over everything (from the account sheet).
@@ -406,7 +408,7 @@ private struct RebuildRoot: View {
             if case .note(let id) = route {
                 RebuildNoteScreen(noteId: id, model: phone, pageHost: pageHost, frame: model, menus: menus)
             } else if route == .home {
-                RebuildHomeScreen(frame: model, menus: menus, home: home, phone: phone, openAccount: { account = true }, openNotifications: { notifications = true }, newFolder: { newFolder = NewFolderRequest(parent: $0) })
+                RebuildHomeScreen(frame: model, menus: menus, home: home, phone: phone, openAccount: { account = true }, openNotifications: { notifications = true }, openSync: { sync = true }, newFolder: { newFolder = NewFolderRequest(parent: $0) })
             } else if case .tasks(let view) = route {
                 RebuildTasksScreen(view: view, frame: model, menus: menus, home: home, phone: phone, openAccount: { account = true }, openNotifications: { notifications = true })
             } else if case .calendar(let date) = route {
@@ -486,6 +488,9 @@ private struct RebuildRoot: View {
         }
         .phoneSheet(isPresented: $notifications, size: .medium) {
             RebuildNotificationsSheet(frame: model, menus: menus, phone: phone) { notifications = false }
+        }
+        .phoneSheet(isPresented: $sync, size: .fit) {
+            RebuildSyncSheet(phone: phone) { sync = false }
         }
         // Move or copy notes (the account sheet, a folder's "Move to another place…").
         .phoneSheet(isPresented: Binding(get: { phone.movePlaces != nil }, set: { if !$0 { phone.movePlaces = nil } }), size: .fit) {

@@ -52,13 +52,28 @@ public struct PhoneVaultScreen: View {
         self.back = back
     }
 
+    /// The native look (the owner, 2026-11-19, the Mac's Vault): the state under the title (iOS's subtitle), Lock and
+    /// ⋯ in the bar, the sections as one segmented control.
+    private var native: Bool { PhoneNotesListScreen.nativeSearch }
+
+    private var options: PhoneScreenOptions {
+        var o = PhoneScreenOptions(title: "Vault")
+        if native { o.subtitle = subtitle }
+        return o
+    }
+
     public var body: some View {
-        PhoneScreen(PhoneScreenOptions(title: "Vault"), root: false, back: back) {
+        PhoneScreen(options, root: false, back: back) {
             EmptyView()
         } trailing: {
-            EmptyView()
+            if native, model.isOpen {
+                WebGlassTextButton("Lock") { model.lock() }
+                PhoneMenuButton("More in the Vault", menus: menus, build: { showMore() }) {
+                    WebIconView(.ellipsis, size: 22, strokeWidth: 2.2)
+                }
+            }
         } header: {
-            header
+            if !native { header }
         } content: {
             let content = PV.style("content", scheme)
             VStack(alignment: .leading, spacing: 0) {
@@ -190,11 +205,31 @@ public struct PhoneVaultScreen: View {
 private struct PhoneVaultTabs: View {
     @Bindable var model: VaultModel
     @Environment(\.colorScheme) private var scheme
+    @Environment(\.nativeChrome) private var chrome
 
     var body: some View {
+        if chrome != nil {
+            // The native look: the sections as iOS's segmented control (a section from ⋯ is a third segment until
+            // another is picked), never a heading repeating the tab's name.
+            Picker("Section", selection: Binding(get: { model.section }, set: { model.open($0) })) {
+                // (Short names, so a third segment fits beside them.)
+                Text("Files & Notes").tag(VaultSection.files)
+                Text("Passwords").tag(VaultSection.passwords)
+                if let s = model.fromMenu { Text(s.label).tag(s) }
+            }
+            .pickerStyle(.segmented)
+            .controlSize(.large)
+            .labelsHidden()
+            .padding(.bottom, 16)
+        } else {
+            drawn
+        }
+    }
+
+    private var drawn: some View {
         let tabs = PV.style("tabs", scheme)
         // (Each tab's -mb-px: a second row starts 1 pt higher than the gap alone.)
-        PhoneVaultFlow(gap: tabs.gap, rowGap: tabs.gap - 1, pushAfterFirst: false) {
+        return PhoneVaultFlow(gap: tabs.gap, rowGap: tabs.gap - 1, pushAfterFirst: false) {
             tab(.files)
             tab(.passwords)
             if let s = model.fromMenu { menuTab(s) }

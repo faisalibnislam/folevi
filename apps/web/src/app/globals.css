@@ -837,44 +837,51 @@
    WebKit answers it at once instead of waiting to see whether a second tap follows (docs/IOS_PERFORMANCE.md). */
 :root[data-native="ios"] { touch-action: manipulation; }
 
-/* Folevi for Mac's native look (docs/MAC_NATIVE_LOOK.md, Shell sets data-mac-native in the Mac's native frame): the
+/* Folevi for Mac's native look (docs/MAC_NATIVE_LOOK.md, Shell sets data-mac-native in the Mac's native frame, and
+   data-ipad-native in the iPad's wide layout, which has the same look since the owner's 2026-11-19 decision): the
    note page sits straight on the window's native card (controlBackgroundColor) instead of the web's canvas and its
    grey rounded panel and its decorative glow. A note's own backdrop (its style or cover) is content and stays; the sheet is untouched. */
-:root[data-mac-native],
-:root[data-mac-native] body,
-:root[data-mac-native] .ui-canvas { background: transparent; }
-:root[data-mac-native] .ui-canvas::before,
-:root[data-mac-native] .ui-canvas::after { display: none; }
+:root:is([data-mac-native], [data-ipad-native]),
+:root:is([data-mac-native], [data-ipad-native]) body,
+:root:is([data-mac-native], [data-ipad-native]) .ui-canvas { background: transparent; }
+:root:is([data-mac-native], [data-ipad-native]) .ui-canvas::before,
+:root:is([data-mac-native], [data-ipad-native]) .ui-canvas::after { display: none; }
 /* Layout v2 (the owner's reference, 2026-11-18): the native frame draws no card behind a note; the page draws it.
    The note panel is the rounded card (the Mac's control background), flush with the web view's edges; the page's
    own tools panel (Style, Format, Insert, Foli AI) sits beside it, transparent, on the window's material. */
-:root[data-mac-native] { --mac-card: #ffffff; }
-:root[data-mac-native][data-theme="dark"] { --mac-card: #1e1e1e; }
-@media (prefers-color-scheme: dark) { :root[data-mac-native]:not([data-theme="light"]) { --mac-card: #1e1e1e; } }
+:root:is([data-mac-native], [data-ipad-native]) { --mac-card: #ffffff; }
+:root:is([data-mac-native], [data-ipad-native])[data-theme="dark"] { --mac-card: #1e1e1e; }
+@media (prefers-color-scheme: dark) { :root:is([data-mac-native], [data-ipad-native]):not([data-theme="light"]) { --mac-card: #1e1e1e; } }
 /* The note's card has the native window's content card corners (MacLook.containerRadius, 12 pt). */
-:root[data-mac-native] { --mac-card-radius: 12px; }
-:root[data-mac-native] div:has(> [data-note-panel]) { padding: 0; }
-:root[data-mac-native] [data-note-panel] { padding: 0; border-radius: var(--mac-card-radius, var(--radius-control)); overflow: hidden; background: var(--mac-card); }
-:root[data-mac-native] .fb-page { border-radius: 0; box-shadow: none; }
-:root[data-mac-native] .fb-page:not([data-backdrop]) { background: transparent !important; }
+:root:is([data-mac-native], [data-ipad-native]) { --mac-card-radius: 12px; }
+:root:is([data-mac-native], [data-ipad-native]) div:has(> [data-note-panel]) { padding: 0; }
+:root:is([data-mac-native], [data-ipad-native]) [data-note-panel] { padding: 0; border-radius: var(--mac-card-radius, var(--radius-control)); overflow: hidden; background: var(--mac-card); }
+:root:is([data-mac-native], [data-ipad-native]) .fb-page { border-radius: 0; box-shadow: none; }
+:root:is([data-mac-native], [data-ipad-native]) .fb-page:not([data-backdrop]) { background: transparent !important; }
 /* The sheet starts the frame's inset from the card's top (--native-inset-top, MacLook.notePageTop): as far as its
    sides are at the narrowest (px-3), with nothing floating over a note (the owner, 2026-11-18: no empty band). */
-:root[data-mac-native] .fb-page { padding-top: var(--native-inset-top, 0.75rem); scroll-padding-top: var(--native-inset-top, 0px); }
-:root[data-mac-native] aside[aria-label="Page tools"]:not(.ui-pop) { height: 100%; margin: 0 0 0 8px; background: transparent; }
+:root:is([data-mac-native], [data-ipad-native]) .fb-page { padding-top: var(--native-inset-top, 0.75rem); scroll-padding-top: var(--native-inset-top, 0px); }
+:root:is([data-mac-native], [data-ipad-native]) aside[aria-label="Page tools"]:not(.ui-pop) { height: 100%; margin: 0 0 0 8px; background: transparent; }
 /* Interface text in the page (the page tools, its panels, menus) is the system font; note text keeps the note's
    own fonts (--editor-font, --note-*). Small headings are sentence case, as on the Mac. */
-:root[data-mac-native] { --font-sans: -apple-system, BlinkMacSystemFont, system-ui, sans-serif; }
-:root[data-mac-native] .ui-caps { font-size: var(--type-caption-2); line-height: var(--type-caption-2-leading); font-weight: 600; letter-spacing: 0; text-transform: none; color: var(--color-ink-muted); }
+:root:is([data-mac-native], [data-ipad-native]) { --font-sans: -apple-system, BlinkMacSystemFont, system-ui, sans-serif; }
+:root:is([data-mac-native], [data-ipad-native]) .ui-caps { font-size: var(--type-caption-2); line-height: var(--type-caption-2-leading); font-weight: 600; letter-spacing: 0; text-transform: none; color: var(--color-ink-muted); }
 /* (#document-inspector: the same tools in a small window, where they open over the note; their title was still Spectral there.) */
-:root[data-mac-native] :is(aside[aria-label="Page tools"], #document-inspector) .ui-display { font-family: var(--font-sans); letter-spacing: 0; font-size: var(--type-headline); }
+:root:is([data-mac-native], [data-ipad-native]) :is(aside[aria-label="Page tools"], #document-inspector) .ui-display { font-family: var(--font-sans); letter-spacing: 0; font-size: var(--type-headline); }
 /* Push buttons in the page (a dialog's Done and Cancel, "Use your own image…"): the Mac's one shape for a push
    button, a capsule, as its native dialogs draw them (docs/MAC_NATIVE_LOOK.md, Controls). */
-:root[data-mac-native] :is(.ui-btn-primary, .ui-btn-secondary, .ui-btn-danger) { border-radius: var(--radius-capsule); }
+:root:is([data-mac-native], [data-ipad-native]) :is(.ui-btn-primary, .ui-btn-secondary, .ui-btn-danger) { border-radius: var(--radius-capsule); }
 /* The page tools' open tool is a quiet raised segment, not a second black button beside the bar's New note. */
-:root[data-mac-native] [role="toolbar"][aria-label="Page tools"] button[aria-pressed="true"] {
+:root:is([data-mac-native], [data-ipad-native]) [role="toolbar"][aria-label="Page tools"] button[aria-pressed="true"] {
   background: color-mix(in srgb, var(--color-ink) 10%, transparent); color: var(--color-heading);
 }
 :root[data-iphone] body { background: var(--color-canvas); overscroll-behavior: none; }
+/* Folevi for iPhone's native look (the owner, 2026-11-19; Shell sets data-iphone-native in the iPhone's native
+   frame): as on the Mac, interface text in the note page (its menus, popovers, dialogs and pickers) is the system
+   font, SF Pro; the note's own text keeps the note's fonts (--editor-font, --note-*). Push buttons are capsules,
+   as iOS 26 draws them. */
+:root[data-iphone-native] { --font-sans: -apple-system, system-ui, sans-serif; }
+:root[data-iphone-native] :is(.ui-btn-primary, .ui-btn-secondary, .ui-btn-danger) { border-radius: var(--radius-capsule); }
 /* With the keyboard up, a sheet runs down behind it rather than stopping above it with round corners: it
    meets the screen's edges, solid, and the colour behind the keyboard (chrome.tsx) carries it on. */
 :root[data-iphone-keyboard] [data-iphone-sheet="sheet"] {
@@ -1436,8 +1443,8 @@
 }
 /* The Mac with the page's own panel beside the note: the web view reaches the window's bottom edge (so the panel's
    list scrolls out of the window, as the sidebar's does); the note's card keeps the window card's 8pt margin. */
-:root[data-mac-native] [data-note-panel]:has(~ aside[aria-label="Page tools"]:not(.ui-pop)) { margin-bottom: 8px; }
-:root[data-mac-native] .fb-page:not([data-iphone-scroll]) { padding-top: max(var(--native-inset-top, 0px), clamp(16px, 5.5cqi, 72px)); }
+:root:is([data-mac-native], [data-ipad-native]) [data-note-panel]:has(~ aside[aria-label="Page tools"]:not(.ui-pop)) { margin-bottom: 8px; }
+:root:is([data-mac-native], [data-ipad-native]) .fb-page:not([data-iphone-scroll]) { padding-top: max(var(--native-inset-top, 0px), clamp(16px, 5.5cqi, 72px)); }
 .fb-page:not([data-iphone-scroll]) > .fb-sheet {
   box-shadow:
     0 0 0 1px color-mix(in oklab, var(--color-heading) 7%, transparent),
@@ -1467,7 +1474,7 @@
 .fb-page[data-sheet-host]:not([data-sheet-pages]):not([data-backdrop]):not([data-iphone-scroll]) > :not(.fb-sheet) { padding-inline: clamp(20px, 5.5cqi, 64px); }
 
 /* Plain with page breaks: the pages as cards on the light grey backdrop (the Mac's card is otherwise white). */
-:root[data-mac-native] .fb-page[data-sheet-pages]:not([data-backdrop]) { background: var(--color-surface-sunken) !important; }
+:root:is([data-mac-native], [data-ipad-native]) .fb-page[data-sheet-pages]:not([data-backdrop]) { background: var(--color-surface-sunken) !important; }
 
 /* The note's floating bar (Foli AI, Insert, Format, Style, Share): a larger, softer, lighter shadow than a
    popover's in light mode (the owner, 2026-11-18: it read as dark on white); dark mode keeps the popover's. */
@@ -1478,8 +1485,8 @@
 
 /* Folevi for Mac: the page's tools panel is as wide as the window's sidebar (the owner, 2026-11-18: the two columns
    the same width): MacLook.sidebarWidth (288 pt) is this 8px gap and the 280px panel. Its width doesn't drag here. */
-:root[data-mac-native] aside[aria-label="Page tools"]:not(.ui-pop) { width: 280px !important; }
-:root[data-mac-native] aside[aria-label="Page tools"]:not(.ui-pop) > [role="separator"] { display: none; }
+:root:is([data-mac-native], [data-ipad-native]) aside[aria-label="Page tools"]:not(.ui-pop) { width: 280px !important; }
+:root:is([data-mac-native], [data-ipad-native]) aside[aria-label="Page tools"]:not(.ui-pop) > [role="separator"] { display: none; }
 
 /* Folevi for Mac's native look: Liquid Glass for everything that floats over a note (the owner, 2026-11-18: the
    note's menu "doesn't feel native ... it is pure white"). Menus, the floating bar and popovers were white at 82%:
@@ -1487,14 +1494,14 @@
    with a sheen down from its top edge, a bright rim inside and a hairline and two soft shadows outside, so it
    reads as a pane of glass over white and picks up a themed note's colours. Dialogs (a sheet's body) stay nearly
    opaque: glass is for what floats, never for content (docs/MAC_NATIVE_LOOK.md). */
-:root[data-mac-native] {
+:root:is([data-mac-native], [data-ipad-native]) {
   --mac-pop: rgb(242 242 245 / 0.66);
   --mac-glass-sheen: linear-gradient(180deg, rgb(255 255 255 / 0.6), rgb(255 255 255 / 0.12) 46%, rgb(255 255 255 / 0) 100%);
   --mac-glass-edge: inset 0 1px 0 rgb(255 255 255 / 0.95), inset 0 0 0 0.5px rgb(255 255 255 / 0.7);
   --mac-pop-shadow: 0 0 0 0.5px rgb(0 0 0 / 0.14), 0 9px 20px rgb(0 0 0 / 0.13);
   --mac-highlight: rgb(0 0 0 / 0.075);
 }
-:root[data-mac-native][data-theme="dark"] {
+:root:is([data-mac-native], [data-ipad-native])[data-theme="dark"] {
   --mac-pop: rgb(52 52 56 / 0.62);
   --mac-glass-sheen: linear-gradient(180deg, rgb(255 255 255 / 0.1), rgb(255 255 255 / 0.02) 46%, rgb(255 255 255 / 0) 100%);
   --mac-glass-edge: inset 0 1px 0 rgb(255 255 255 / 0.2), inset 0 0 0 0.5px rgb(255 255 255 / 0.11);
@@ -1502,7 +1509,7 @@
   --mac-highlight: rgb(255 255 255 / 0.13);
 }
 @media (prefers-color-scheme: dark) {
-  :root[data-mac-native]:not([data-theme="light"]) {
+  :root:is([data-mac-native], [data-ipad-native]):not([data-theme="light"]) {
     --mac-pop: rgb(52 52 56 / 0.62);
     --mac-glass-sheen: linear-gradient(180deg, rgb(255 255 255 / 0.1), rgb(255 255 255 / 0.02) 46%, rgb(255 255 255 / 0) 100%);
     --mac-glass-edge: inset 0 1px 0 rgb(255 255 255 / 0.2), inset 0 0 0 0.5px rgb(255 255 255 / 0.11);
@@ -1510,70 +1517,87 @@
     --mac-highlight: rgb(255 255 255 / 0.13);
   }
 }
-:root[data-mac-native] .ui-pop {
+:root:is([data-mac-native], [data-ipad-native]) .ui-pop {
   background: var(--mac-glass-sheen), var(--mac-pop);
   -webkit-backdrop-filter: blur(30px) saturate(1.9);
   backdrop-filter: blur(30px) saturate(1.9);
   box-shadow: var(--mac-glass-edge), var(--mac-pop-shadow);
 }
 /* A menu's corners, as macOS 26's (the panel radius, 14), and its rows' inside them (14 less the menu's 6 of padding). */
-:root[data-mac-native] :is([role="menu"], [data-menu-ghost], [role="listbox"]).ui-pop { border-radius: var(--radius-panel); }
-:root[data-mac-native] :is([role="menu"], [data-menu-ghost], [role="listbox"]) :is(.ui-menu-item, [role="option"]) { border-radius: var(--radius-small); }
+:root:is([data-mac-native], [data-ipad-native]) :is([role="menu"], [data-menu-ghost], [role="listbox"]).ui-pop { border-radius: var(--radius-panel); }
+:root:is([data-mac-native], [data-ipad-native]) :is([role="menu"], [data-menu-ghost], [role="listbox"]) :is(.ui-menu-item, [role="option"]) { border-radius: var(--radius-small); }
 /* The note's floating bar: a glass capsule, its buttons capsules in it, as the window's own glass controls. */
-:root[data-mac-native] [role="toolbar"][aria-label="Page tools"].ui-pop { border-radius: var(--radius-capsule); padding: 4px; }
-:root[data-mac-native] [role="toolbar"][aria-label="Page tools"].ui-pop button { border-radius: var(--radius-capsule); }
+:root:is([data-mac-native], [data-ipad-native]) [role="toolbar"][aria-label="Page tools"].ui-pop { border-radius: var(--radius-capsule); padding: 4px; }
+:root:is([data-mac-native], [data-ipad-native]) [role="toolbar"][aria-label="Page tools"].ui-pop button { border-radius: var(--radius-capsule); }
 /* A dialog is content: nearly opaque, with the glass's edge. */
-:root[data-mac-native] dialog.ui-pop { background: color-mix(in srgb, var(--color-surface-raised) 94%, transparent); }
+:root:is([data-mac-native], [data-ipad-native]) dialog.ui-pop { background: color-mix(in srgb, var(--color-surface-raised) 94%, transparent); }
 @media (prefers-reduced-transparency: reduce) {
-  :root[data-mac-native] .ui-pop { background: var(--color-surface-raised); -webkit-backdrop-filter: none; backdrop-filter: none; }
+  :root:is([data-mac-native], [data-ipad-native]) .ui-pop { background: var(--color-surface-raised); -webkit-backdrop-filter: none; backdrop-filter: none; }
 }
 @media (prefers-contrast: more) {
-  :root[data-mac-native] .ui-pop { box-shadow: inset 0 0 0 1px var(--color-line-strong), var(--mac-pop-shadow); }
+  :root:is([data-mac-native], [data-ipad-native]) .ui-pop { box-shadow: inset 0 0 0 1px var(--color-line-strong), var(--mac-pop-shadow); }
 }
 /* A separator on glass: a hairline in the ink's own colour, so it shows in dark as it does in light. */
-:root[data-mac-native] :is([role="menu"], [data-menu-ghost], [role="listbox"]) [role="separator"] { background: color-mix(in srgb, var(--color-ink) 13%, transparent); }
+:root:is([data-mac-native], [data-ipad-native]) :is([role="menu"], [data-menu-ghost], [role="listbox"]) [role="separator"] { background: color-mix(in srgb, var(--color-ink) 13%, transparent); }
 
 /* Folevi for Mac's native look: one segmented design, the pill (the owner, 2026-11-18: the left sidebar's tools
    were pills and the right panel's tabs rounded rectangles). The page's segmented controls (the panel's tabs, Write
    / Ask / Study, Separator, Font, Page width, the theme gallery's filter) are the look's capsule track
    (MacLook.segmentHeight, CapsuleTrack): 34 px, a 28 px pill 3 px inside it on a quiet fill with no edge, the
    chosen one raised and semibold. */
-:root[data-mac-native] .ui-seg { gap: 0; padding: 3px; border-radius: var(--radius-capsule); background: color-mix(in srgb, var(--color-ink) 7%, transparent); box-shadow: none; }
-:root[data-mac-native] .ui-seg > * { min-height: 28px !important; border-radius: var(--radius-capsule); font-size: var(--type-subheadline); font-weight: 400; color: var(--color-ink-muted); }
-:root[data-mac-native] .ui-seg > *:hover:not([data-active="true"], [aria-selected="true"], [aria-pressed="true"]) { background: color-mix(in srgb, var(--color-ink) 6%, transparent); }
-:root[data-mac-native] .ui-seg > :is([data-active="true"], [aria-selected="true"], [aria-pressed="true"]) {
+:root:is([data-mac-native], [data-ipad-native]) .ui-seg { gap: 0; padding: 3px; border-radius: var(--radius-capsule); background: color-mix(in srgb, var(--color-ink) 7%, transparent); box-shadow: none; }
+:root:is([data-mac-native], [data-ipad-native]) .ui-seg > * { min-height: 28px !important; border-radius: var(--radius-capsule); font-size: var(--type-subheadline); font-weight: 400; color: var(--color-ink-muted); }
+:root:is([data-mac-native], [data-ipad-native]) .ui-seg > *:hover:not([data-active="true"], [aria-selected="true"], [aria-pressed="true"]) { background: color-mix(in srgb, var(--color-ink) 6%, transparent); }
+:root:is([data-mac-native], [data-ipad-native]) .ui-seg > :is([data-active="true"], [aria-selected="true"], [aria-pressed="true"]) {
   background: var(--mac-seg-raised, #fff); color: var(--color-heading); font-weight: 600; box-shadow: 0 0.5px 1.5px rgb(0 0 0 / 0.12);
 }
-:root[data-mac-native][data-theme="dark"] { --mac-seg-raised: rgb(255 255 255 / 0.16); }
-@media (prefers-color-scheme: dark) { :root[data-mac-native]:not([data-theme="light"]) { --mac-seg-raised: rgb(255 255 255 / 0.16); } }
+:root:is([data-mac-native], [data-ipad-native])[data-theme="dark"] { --mac-seg-raised: rgb(255 255 255 / 0.16); }
+@media (prefers-color-scheme: dark) { :root:is([data-mac-native], [data-ipad-native]):not([data-theme="light"]) { --mac-seg-raised: rgb(255 255 255 / 0.16); } }
 
 /* Folevi for Mac's native look: one light shadow scale (the owner, 2026-11-18: "shadows are inconsistent ... I
    prefer less shadows"), the same four levels as the native side's NativeShadow: raised (a pill in its track),
    card (content on the page), floating (a control over content), overlay (a menu, popover or dialog). The page's
    menus and popovers are the overlay (--mac-pop-shadow above); these are the rest. */
-:root[data-mac-native] {
+:root:is([data-mac-native], [data-ipad-native]) {
   --mac-shadow-card: 0 0 0 0.5px rgb(0 0 0 / 0.08), 0 1.5px 4px rgb(0 0 0 / 0.05);
   --mac-shadow-floating: 0 0 0 0.5px rgb(0 0 0 / 0.12), 0 4px 9px rgb(0 0 0 / 0.09);
   --mac-sheet-shadow: 0 0 0 0.5px rgb(0 0 0 / 0.14), 0 9px 20px rgb(0 0 0 / 0.13);
   --shadow-card: var(--mac-shadow-card);
   --glass-shadow: var(--mac-shadow-card);
 }
-:root[data-mac-native][data-theme="dark"] {
+:root:is([data-mac-native], [data-ipad-native])[data-theme="dark"] {
   --mac-shadow-card: 0 0 0 0.5px rgb(255 255 255 / 0.08), 0 1.5px 4px rgb(0 0 0 / 0.12);
   --mac-shadow-floating: 0 0 0 0.5px rgb(0 0 0 / 0.6), 0 4px 9px rgb(0 0 0 / 0.22);
   --mac-sheet-shadow: 0 0 0 0.5px rgb(0 0 0 / 0.7), 0 9px 20px rgb(0 0 0 / 0.32);
 }
 @media (prefers-color-scheme: dark) {
-  :root[data-mac-native]:not([data-theme="light"]) {
+  :root:is([data-mac-native], [data-ipad-native]):not([data-theme="light"]) {
     --mac-shadow-card: 0 0 0 0.5px rgb(255 255 255 / 0.08), 0 1.5px 4px rgb(0 0 0 / 0.12);
     --mac-shadow-floating: 0 0 0 0.5px rgb(0 0 0 / 0.6), 0 4px 9px rgb(0 0 0 / 0.22);
     --mac-sheet-shadow: 0 0 0 0.5px rgb(0 0 0 / 0.7), 0 9px 20px rgb(0 0 0 / 0.32);
   }
 }
 /* The note's floating bar is a control over the page, not an overlay: the floating level. */
-:root[data-mac-native] [role="toolbar"][aria-label="Page tools"].ui-pop { box-shadow: var(--mac-glass-edge), var(--mac-shadow-floating); }
+:root:is([data-mac-native], [data-ipad-native]) [role="toolbar"][aria-label="Page tools"].ui-pop { box-shadow: var(--mac-glass-edge), var(--mac-shadow-floating); }
 /* A dialog over the note: the overlay level, with the glass's edge. */
-:root[data-mac-native] dialog.ui-pop { box-shadow: var(--mac-glass-edge), var(--mac-sheet-shadow); }
+:root:is([data-mac-native], [data-ipad-native]) dialog.ui-pop { box-shadow: var(--mac-glass-edge), var(--mac-sheet-shadow); }
+
+/* Folevi for iPad's wide layout in the Mac's native look (the owner, 2026-11-19: "the same layout as the Mac", with
+   iPadOS's touch sizes). Everything above that says :is([data-mac-native], [data-ipad-native]) is shared; these are
+   the iPad's own numbers (FoleviMac's MacLook on iOS):
+   - the page sits on the frame's solid grey (an iPad window has nothing behind it to see through, and the web view
+     is opaque), MacLook.Colors.window: #ececec light, #2a2a2a dark;
+   - the note's card has the iPad card's corners (MacLook.containerRadius, 18 pt);
+   - the tools panel is as wide as the iPad's sidebar (300 pt: this 8px gap and a 292px panel);
+   - a segmented control's pill is a finger's height (36 px in a 44 px track, MacLook.segmentHeight). */
+:root[data-ipad-native] { --ipad-frame: #ececec; --mac-card-radius: 18px; }
+:root[data-ipad-native][data-theme="dark"] { --ipad-frame: #2a2a2a; }
+@media (prefers-color-scheme: dark) { :root[data-ipad-native]:not([data-theme="light"]) { --ipad-frame: #2a2a2a; } }
+:root[data-ipad-native],
+:root[data-ipad-native] body { background: var(--ipad-frame); }
+:root[data-ipad-native] aside[aria-label="Page tools"]:not(.ui-pop) { width: 292px !important; }
+:root[data-ipad-native] .ui-seg { padding: 4px; }
+:root[data-ipad-native] .ui-seg > * { min-height: 36px !important; }
 
 /* The iPhone's note page follows the same rules (the owner, 2026-11-18): a plain note stays one flat page
    ([data-iphone-plain], above) until it has a page break; then its pages are cards on the light grey backdrop,

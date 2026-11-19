@@ -8,17 +8,17 @@ import FoleviEngine
 
 struct SyncPopover: View {
     let model: FrameModel
+    @Environment(\.macNativeLook) private var native
 
     var body: some View {
         #if os(macOS)
         mac
         #else
-        drawn
+        if native { mac } else { drawn }
         #endif
     }
 
-    #if os(macOS)
-    /// The Mac's: in an NSPopover, the system's type and colours: the state's symbol in its status colour, the
+    /// The Mac's (and the iPad's wide layout's): in an NSPopover, the system's type and colours: the state's symbol in its status colour, the
     /// headline, what it means, what's waiting, a download's progress, and Retry as the system's button.
     private var mac: some View {
         let s = model.sync.value
@@ -69,7 +69,6 @@ struct SyncPopover: View {
         case .conflict, .error: MacLook.Colors.red
         }
     }
-    #endif
 
     private var drawn: some View {
         let s = model.sync.value
@@ -103,6 +102,7 @@ struct SyncPopover: View {
 struct ToastStack: View {
     let model: FrameModel
     @Environment(\.colorScheme) private var scheme
+    @Environment(\.macNativeLook) private var native
 
     var body: some View {
         let region = moreStyle("more.toast.region", scheme)
@@ -129,15 +129,14 @@ struct ToastStack: View {
     }
     static let noteDockClearance: CGFloat = 96
 
-    private func toast(_ t: FrameToast) -> some View {
+    @ViewBuilder private func toast(_ t: FrameToast) -> some View {
         #if os(macOS)
         macToast(t)
         #else
-        drawnToast(t)
+        if native { macToast(t) } else { drawnToast(t) }
         #endif
     }
 
-    #if os(macOS)
     private func macToast(_ t: FrameToast) -> some View {
         HStack(spacing: MacLook.Space.s + 2) {
             switch t.tone {
@@ -158,11 +157,10 @@ struct ToastStack: View {
         .frame(maxWidth: Self.maxWidth - 32)
         .fixedSize(horizontal: false, vertical: true)
         .padding(.leading, MacLook.Space.l).padding(.trailing, MacLook.Space.s + 2).padding(.vertical, MacLook.Space.s + 2)
-        .glassEffect(.regular, in: .capsule)
+        .nativeGlass(Capsule())
         .transition(.asymmetric(insertion: .move(edge: .bottom).combined(with: .opacity), removal: .offset(y: 8).combined(with: .opacity)))
         .accessibilityElement(children: .combine)
     }
-    #endif
 
     private func drawnToast(_ t: FrameToast) -> some View {
         let pill = WebStyles.named("more.toast")
@@ -210,7 +208,6 @@ struct ToastStack: View {
         return c
     }
 }
-#if os(macOS)
 /// A toast's action (a capsule with its title) or its Dismiss (an xmark), with the quaternary hover fill.
 private struct ToastControl: View {
     var symbol: String?
@@ -244,5 +241,4 @@ private struct ToastControl: View {
         .accessibilityLabel(label)
     }
 }
-#endif
 #endif

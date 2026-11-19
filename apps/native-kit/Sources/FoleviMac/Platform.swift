@@ -402,12 +402,12 @@ extension String {
 }
 
 extension View {
-    /// A checkbox on the Mac; the iPad's switch.
+    /// A checkbox on the Mac; the iPad's switch, in the switch's own colour (FoleviSwitchTint).
     func checkboxStyle() -> some View {
         #if os(macOS)
         toggleStyle(.checkbox)
         #else
-        self
+        toggleStyle(NativeSwitchStyle())
         #endif
     }
 }
@@ -416,6 +416,19 @@ extension View {
 /// Where the sidebar's choices are kept (the Mac's controller holds this; the iPad has no controller).
 enum WebSidebarController {
     nonisolated(unsafe) static var defaults: UserDefaults = .standard
+    /// Whether a note shows its tools in the sidebar ("document") or the folders ("folders"), as on the Mac.
+    static let noteToolsKey = "folevi.sidebar.docMode"
+
+    @MainActor static func loadNoteToolsChoice(_ model: FrameModel) {
+        let shown = (defaults.string(forKey: noteToolsKey) ?? "document") == "document"
+        if model.noteToolsShown != shown { model.noteToolsShown = shown }
+    }
+
+    /// The strip's Note Tools button: the note's tools shown or the folders, and kept.
+    @MainActor static func setNoteTools(_ model: FrameModel, shown: Bool) {
+        model.noteToolsShown = shown
+        defaults.set(shown ? "document" : "folders", forKey: noteToolsKey)
+    }
 }
 #endif
 

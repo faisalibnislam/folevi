@@ -88,7 +88,7 @@ public struct WebParagraph: View {
             let system = chrome.text(style)
             Text(runs.reduce(into: AttributedString()) { text, run in
                 var t = AttributedString(run.text)
-                if let w = run.weight { t.font = NativeChrome.font(system.weight(w)) }
+                if let w = run.weight { t.font = chrome.font(system.weight(w)) }
                 if let c = run.color { t.foregroundColor = c.color }
                 text += t
             })

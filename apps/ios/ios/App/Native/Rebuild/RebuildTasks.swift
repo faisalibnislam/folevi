@@ -68,7 +68,6 @@ struct RebuildRootPill: View {
     let menus: PhoneMenus
     let openNotifications: () -> Void
     let more: () -> [PhoneMenuEntry]
-    @State private var moreFrame: CGRect = .zero
 
     var body: some View {
         WebGlassPill {
@@ -77,11 +76,11 @@ struct RebuildRootPill: View {
                     WebIconView(.bell, size: 21, strokeWidth: 1.9)
                 }
             }
-            // (A moment after the press: opened in the same update as the pill's own press, the menu was lost.)
-            WebPillButton("More", action: { DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { menus.show(more(), from: moreFrame, side: .bottom, align: .end) } }) {
-                WebIconView(.ellipsis, size: 24, strokeWidth: 2.2)
+            // iOS's own menu (the native look).
+            Menu { PhoneMenuItems(more()) } label: {
+                WebIconView(.ellipsis, size: 22, strokeWidth: 2.2)
             }
-            .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { moreFrame = $0 }
+            .accessibilityLabel("More")
         }
     }
 }
@@ -121,8 +120,18 @@ struct RebuildTasksScreen: View {
         PhoneTasksActions(select: { frame.open(.tasks($0)) }, openNote: { phone.router?.openNote($0, source: nil, focus: false) })
     }
 
+    /// The title, and the filter in iOS's own search field (the native look).
+    private var tasksOptions: PhoneScreenOptions {
+        var o = PhoneScreenOptions(title: "Tasks")
+        if PhoneNotesListScreen.nativeSearch {
+            o.search = Bindable(model).filter
+            o.searchPrompt = "Filter by task or note"
+        }
+        return o
+    }
+
     var body: some View {
-        PhoneScreen(PhoneScreenOptions(title: "Tasks"), root: true, scrollToTop: frame.scrollToTop) {
+        PhoneScreen(tasksOptions, root: true, scrollToTop: frame.scrollToTop) {
             RebuildRootAvatar(home: home, open: openAccount)
         } trailing: {
             RebuildRootPill(home: home, menus: menus, openNotifications: openNotifications) {

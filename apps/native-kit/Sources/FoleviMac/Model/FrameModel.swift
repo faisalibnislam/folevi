@@ -220,7 +220,7 @@ public final class FrameModel {
         if sidebarFloats { sidebarOverlayShown.toggle() } else { sidebarCollapsed.toggle() }
     }
 
-    #if os(macOS)
+    #if os(macOS) || os(iOS)
     /// The sidebar is hidden: by its button, ⌘\ or View > Hide Sidebar (`sidebarCollapsed`), or by Focus mode on a
     /// note.
     public var sidebarHidden: Bool { sidebarCollapsed || (route.isNote && focusMode) }
@@ -236,9 +236,9 @@ public final class FrameModel {
     /// show is drawn before the search capsule.
     var cardItems: [String: CardItems] = [:]
     /// The title bar's bell: the notifications popover, anchored to it (the sidebar's controller shows it).
-    @ObservationIgnored public var showNotifications: (@MainActor (AppKit.NSView?) -> Void)?
+    @ObservationIgnored public var showNotifications: (@MainActor (NSView?) -> Void)?
     /// The title bar's sync status: the sync popover, anchored to it (the sidebar's controller shows it).
-    @ObservationIgnored public var showSync: (@MainActor (AppKit.NSView?) -> Void)?
+    @ObservationIgnored public var showSync: (@MainActor (NSView?) -> Void)?
     #endif
     /// This Mac's Touch ID for its encryption keys (the app sets it from E2eeKeys; nil in tests and the demo).
     public var touchId: TouchIdHook?
@@ -385,16 +385,24 @@ public final class FrameModel {
         // The Mac searches in its command palette, the query filled in (a folevi://search link, /search?q=): not the
         // iPhone's search screen in a tab (MAC-61).
         if case .search(let q) = route, let searchInPalette { return searchInPalette(q) }
-        #if os(macOS)
-        // Settings are their own window on the Mac (docs/MAC_NATIVE_LOOK.md): a /settings link opens it at its section.
-        if case .web(let p) = route, p == "/settings" || p.hasPrefix("/settings/") || p.hasPrefix("/settings?"), let host {
+        // Settings are their own window on the Mac (docs/MAC_NATIVE_LOOK.md), their own sheet in the iPad's wide layout:
+        // a /settings link opens it at its section.
+        if Self.settingsApart, case .web(let p) = route, p == "/settings" || p.hasPrefix("/settings/") || p.hasPrefix("/settings?"), let host {
             return host.frameOpenSettings(section: MacSettingsSection(path: p)?.rawValue)
         }
-        #endif
         let shown = tabs.show(route, opening)
         // (A folder tab's id is its own; a joined note's name goes to its pane.)
         if let title { tabs.setTitle(title, icon: icon, for: shown.isFolderBrowsing ? tabs.activeID : shown.tabKey) }
         routeChanged()
+    }
+
+    /// Whether Settings open apart from the tabs (the Mac's window, the iPad's wide layout's sheet), not in a tab.
+    static var settingsApart: Bool {
+        #if os(macOS)
+        true
+        #else
+        MacLook.padWide
+        #endif
     }
 
     /// Adds a route's tab without going there (TabsModel.addInBackground), named `title` until the engine names it.

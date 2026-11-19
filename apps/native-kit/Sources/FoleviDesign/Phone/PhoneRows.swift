@@ -28,9 +28,12 @@ public struct PhoneListRow<Icon: View>: View {
     @Environment(\.colorScheme) private var scheme
     @Environment(\.phoneRowGrouped) private var grouped
     @Environment(\.phoneRowSeparator) private var separator
+    /// At the accessibility text sizes a label wraps rather than being cut short.
+    @Environment(\.dynamicTypeSize) private var typeSize
     @State private var pressed = false
     @State private var pressGeneration = 0
     @State private var frame: CGRect = .zero
+    @Environment(\.phoneMenus) private var menus
 
     public init(_ label: String, detail: String? = nil, chevron: Bool = true, action: @escaping () -> Void, onLongPress: ((CGRect) -> Void)? = nil, @ViewBuilder icon: () -> Icon) {
         self.label = label
@@ -53,7 +56,7 @@ public struct PhoneListRow<Icon: View>: View {
                 icon.frame(width: iconBox.width).foregroundStyle(ps("phone.row.icon.svg", scheme).color.color)
             }
             HStack(spacing: body.gap) {
-                Text(label).webText(text.text).lineLimit(1).truncationMode(.tail)
+                Text(label).webText(text.text).lineLimit(typeSize.isAccessibilitySize ? 3 : 1).truncationMode(.tail)
                     .foregroundStyle(text.color.color)
                     .frame(maxWidth: .infinity, alignment: .leading)
                 if let detail, !detail.isEmpty {
@@ -77,7 +80,12 @@ public struct PhoneListRow<Icon: View>: View {
         // (An iPad's pointer lights the row under it: IPAD-21.)
         .hoverEffect(.highlight)
         #endif
-        if let onLongPress {
+        if let onLongPress, let menus {
+            // The native look: a tap opens, a long press lifts the row into iOS's own context menu.
+            Button(action: action) { content }
+                .buttonStyle(PhoneRowPressStyle())
+                .phoneContextMenu(menus) { onLongPress(.zero) }
+        } else if let onLongPress {
             // A Button can't also be held, so a row with a menu takes the tap and the hold itself, with the same
             // press fill.
             content
@@ -116,12 +124,16 @@ public extension PhoneListRow where Icon == EmptyView {
 }
 
 /// `.ui-row-sep::after`: half a point of --iphone-separator from the label to past the row's right padding (16).
+/// In the native look no line shows between a list's rows (the owner, 2026-11-19, as on the Mac and the web: "keep
+/// the spacing but remove the horizontal lines"): the line keeps its half point, so no row moves. Grouped lists
+/// (Settings) keep theirs.
 public struct PhoneRowHairlineView: View {
     let overhang: CGFloat
     @Environment(\.colorScheme) private var scheme
+    @Environment(\.nativeChrome) private var chrome
     public init(overhang: CGFloat = 16) { self.overhang = overhang }
     public var body: some View {
-        PhoneSurface.separator.resolve(scheme).color
+        (chrome != nil ? Color.clear : PhoneSurface.separator.resolve(scheme).color)
             .frame(height: 0.5)
             .padding(.trailing, -overhang)
     }
@@ -202,6 +214,7 @@ public struct PhoneHomeSection<Content: View>: View {
     let seeAll: (() -> Void)?
     let content: Content
     @State private var moreFrame: CGRect = .zero
+    @Environment(\.phoneMenus) private var menus
     @Environment(\.colorScheme) private var scheme
 
     public init(_ title: String, open: (() -> Void)? = nil, more: ((CGRect) -> Void)? = nil, opened: Bool? = nil, seeAll: (() -> Void)? = nil, @ViewBuilder content: () -> Content) {
@@ -255,7 +268,15 @@ public struct PhoneHomeSection<Content: View>: View {
                     #endif
                     .accessibilityLabel("See all \(title.lowercased())")
                 }
-                if let more {
+                if let more, let menus {
+                    // The native look: iOS's own menu.
+                    PhoneMenuButton("\(title) options", menus: menus, build: { more(.zero) }) {
+                        WebIconView(.ellipsis, size: 22, strokeWidth: 2.2)
+                            .foregroundStyle(dots.color.color)
+                            .frame(width: dots.width, height: dots.height)
+                            .contentShape(Rectangle())
+                    }
+                } else if let more {
                     Button { more(moreFrame) } label: {
                         WebIconView(.ellipsis, size: 22, strokeWidth: 2.2)
                             .foregroundStyle(dots.color.color)

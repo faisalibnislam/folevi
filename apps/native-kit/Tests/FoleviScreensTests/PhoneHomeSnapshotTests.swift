@@ -1,5 +1,5 @@
 // The iPhone layout's Home (FoleviPhone's PhoneHomeContent, as the rebuild frame shows it on iPhone and on an
-// iPad under 700 pt): the search field, recent notes, Catch me up as its own card, the places as tiles two by
+// iPad under 700 pt), in the native look (the owner, 2026-11-19: the system font; search is the tab bar's): recent notes, Catch me up as its own card, the places as tiles two by
 // two (Reviews, the odd fifth, across the row), Bookmarks and the More rows in rounded cards. Light and dark
 // against the contract's home fixture.
 #if os(iOS)
@@ -24,12 +24,12 @@ struct PhoneHomeSnapshotTests {
         for scheme in [ColorScheme.light, .dark] {
             let view = ScrollView {
                 VStack(spacing: 0) {
-                    PhoneSearchButton(model.searchPrompt) {}
                     PhoneHomeContent(model: model, actions: PhoneHomeActions(open: { _ in }, openNote: { _ in }, foldersMenu: { _ in }))
                 }
                 .padding(.bottom, 24)
             }
             .defaultScrollAnchor(anchor)
+            .phoneNativeChrome()
             .background(FoleviTokens.Chrome.canvas.resolve(scheme).color)
             let host = ScreenHost(view, size: .iphone, scheme: scheme)
             await eventually("phone home", timeout: .seconds(8)) { model.value != nil && model.session.value != nil }
@@ -66,6 +66,7 @@ struct PhoneHomeSnapshotTests {
                     .padding(.bottom, 24)
             }
             .defaultScrollAnchor(.bottom)
+            .phoneNativeChrome()
             .background(FoleviTokens.Chrome.canvas.resolve(scheme).color)
             let host = ScreenHost(view, size: .iphone, scheme: scheme)
             await eventually("phone home with a Vault", timeout: .seconds(8)) { model.value != nil && model.session.value != nil && model.hasVault }

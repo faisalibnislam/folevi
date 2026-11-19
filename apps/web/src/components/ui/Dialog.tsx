@@ -3,7 +3,7 @@
 import { useEffect, useId, useLayoutEffect, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import { X } from "lucide-react";
 import { IconButton } from "./Button";
-import { useIphoneApp } from "@/lib/iphone";
+import { isIpadNativeWide, useIphoneApp } from "@/lib/iphone";
 import { Sheet } from "@/components/iphone/Sheet";
 import { confirmAction, hasNative } from "@/lib/native/ui";
 import { nativeChrome } from "@/lib/nativeApp";
@@ -14,7 +14,7 @@ import { nativeChrome } from "@/lib/nativeApp";
  * scrolls inside when the window is short). Null elsewhere: the dialog centres in the whole window.
  */
 function macFrameRoom(): { top: number; bottom: number } | null {
-  if (typeof window === "undefined" || nativeChrome()?.platform !== "macos") return null;
+  if (typeof window === "undefined" || (nativeChrome()?.platform !== "macos" && !isIpadNativeWide())) return null;
   const inset = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--native-inset-top"));
   const dock = document.querySelector<HTMLElement>('[role="toolbar"][aria-label="Page tools"]')?.getBoundingClientRect();
   const bottom = dock && dock.height ? Math.max(0, window.innerHeight - dock.top) : 0;

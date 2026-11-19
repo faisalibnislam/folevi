@@ -55,10 +55,22 @@ struct RebuildSettingsScreen: View {
         return host
     }
 
+    /// Settings' search (the native look: iOS's own field on the list, as iOS's Settings has).
+    @State private var query = ""
+
+    private func options(_ section: PhoneSettingsSection?, _ screen: String?) -> PhoneScreenOptions {
+        var o = PhoneScreenOptions(title: section.map { PhoneSettingsSectionView.title($0, screen: screen) } ?? "Settings", grouped: true)
+        if section == nil, PhoneNotesListScreen.nativeSearch {
+            o.search = $query
+            o.searchPrompt = "Search Settings"
+        }
+        return o
+    }
+
     var body: some View {
         let model = RebuildSettings.model(phone, frame: frame)
         let (section, screen) = PhoneSettingsSection.parse(path)
-        PhoneScreen(PhoneScreenOptions(title: section.map { PhoneSettingsSectionView.title($0, screen: screen) } ?? "Settings", grouped: true), scrollToTop: frame.scrollToTop, back: { frame.back() }) {
+        PhoneScreen(options(section, screen), scrollToTop: frame.scrollToTop, back: { frame.back() }) {
             EmptyView()
         } trailing: {
             EmptyView()
@@ -66,7 +78,7 @@ struct RebuildSettingsScreen: View {
             if let section {
                 PhoneSettingsSectionView(model: model, host: host, section: section, screen: screen)
             } else {
-                PhoneSettingsList(model: model, host: host)
+                PhoneSettingsList(model: model, host: host, query: query)
             }
         }
     }

@@ -36,14 +36,21 @@ extension View {
 /// The colour variables Settings uses (`--color-danger`, `--color-line`).
 enum SettingsColor {
     static func v(_ name: String, _ scheme: ColorScheme) -> Color {
-        #if os(macOS)
-        // The Mac's Settings are native (docs/MAC_NATIVE_LOOK.md): the words' and lines' colours are the system's.
-        if let system = Self.system(name) { return system }
-        #endif
+        // The Mac's Settings are native (docs/MAC_NATIVE_LOOK.md): the words' and lines' colours are the system's; so
+        // are the iPad's wide layout's.
+        if Self.native, let system = Self.system(name) { return system }
         return (WebStyles.vars[name]?.resolve(scheme) ?? RGBA(0, 0, 0, 1)).color
     }
 
-    #if os(macOS)
+    /// Whether Settings draws natively here: on the Mac; on iOS while the iPad's wide layout shows.
+    static var native: Bool {
+        #if os(macOS)
+        true
+        #else
+        MacLook.padWide
+        #endif
+    }
+
     /// The system's semantic colour for a colour the sections name (nil: a fill the web's controls draw).
     static func system(_ name: String) -> Color? {
         switch name {
@@ -59,7 +66,6 @@ enum SettingsColor {
         default: nil
         }
     }
-    #endif
 }
 
 /// Where the web breaks paragraphs (`p { text-wrap: pretty }`): asked of the page (settings.run text.lines), kept
@@ -155,7 +161,6 @@ struct SText: View {
     }
 
     var body: some View {
-        #if os(macOS)
         if native {
             Text(text)
                 .font(SettingsNativeText.font(style, weight: weight))
@@ -166,9 +171,6 @@ struct SText: View {
         } else {
             web
         }
-        #else
-        web
-        #endif
     }
 
     private var web: some View {
@@ -210,15 +212,11 @@ struct SettingsCard<Content: View>: View {
     @Environment(\.settingsNative) private var native
 
     var body: some View {
-        #if os(macOS)
         if native {
             NativeSettingsCard(title: title, description: description, anchor: anchor, content: content)
         } else {
             web
         }
-        #else
-        web
-        #endif
     }
 
     @ViewBuilder private var web: some View {
@@ -381,11 +379,7 @@ struct SettingsLink: View {
     }
 
     private var nativeFont: Font {
-        #if os(macOS)
         SettingsNativeText.font(style, weight: weight)
-        #else
-        .body
-        #endif
     }
 }
 
@@ -410,11 +404,7 @@ struct SettingsLinkedText: View {
         l.underlineStyle = .single
         text += l
         text += AttributedString(after)
-        #if os(macOS)
         let font = SettingsNativeText.font("muted", weight: nil)
-        #else
-        let font = Font.body
-        #endif
         return Text(text)
             .sFont(s.text, font)
             .foregroundStyle(s.color.color)
@@ -447,7 +437,6 @@ struct SettingsSwitch: View {
     @Environment(\.settingsNative) private var native
 
     var body: some View {
-        #if os(macOS)
         if native {
             NativeSettingsSwitch(isOn: Binding(get: { pending.shown(isOn) }, set: { v in
                 let shown = pending.shown(isOn)
@@ -458,9 +447,6 @@ struct SettingsSwitch: View {
         } else {
             web
         }
-        #else
-        web
-        #endif
     }
 
     private var web: some View {
@@ -496,7 +482,6 @@ struct SettingsToggleRow<Words: View>: View {
     @Environment(\.settingsNative) private var native
 
     var body: some View {
-        #if os(macOS)
         if native {
             // The words and a native switch: a click on the words flips it too (MAC-27), the switch takes its own.
             HStack(alignment: alignment == .top ? .firstTextBaseline : .center, spacing: MacLook.Space.l) {
@@ -516,9 +501,6 @@ struct SettingsToggleRow<Words: View>: View {
         } else {
             web
         }
-        #else
-        web
-        #endif
     }
 
     @ViewBuilder private var web: some View {
@@ -582,7 +564,6 @@ struct SettingsSelect: View {
     @Environment(\.settingsNative) private var native
 
     var body: some View {
-        #if os(macOS)
         if native {
             Picker("", selection: Binding(get: { pending.shown(value) }, set: { choose($0) })) {
                 ForEach(options, id: \.value) { o in Text(o.label).tag(o.value) }
@@ -596,9 +577,6 @@ struct SettingsSelect: View {
         } else {
             web
         }
-        #else
-        web
-        #endif
     }
 
     @ViewBuilder private var web: some View {
@@ -652,7 +630,6 @@ struct SettingsField: View {
     @Environment(\.settingsNative) private var native
 
     var body: some View {
-        #if os(macOS)
         if native {
             Group {
                 if secure { SecureField(placeholder, text: $text) } else { TextField(placeholder, text: $text) }
@@ -664,9 +641,6 @@ struct SettingsField: View {
         } else {
             web
         }
-        #else
-        web
-        #endif
     }
 
     @ViewBuilder private var web: some View {
@@ -733,9 +707,7 @@ struct SettingsDivided<Item: Identifiable, Row: View>: View {
 
     var body: some View {
         let color: Color = {
-            #if os(macOS)
             if native { return MacLook.Colors.separator }
-            #endif
             return SettingsStyle.pair(line).resolve(scheme).borderColor.color
         }()
         VStack(alignment: .leading, spacing: 0) {
@@ -758,7 +730,6 @@ struct SettingsTerms: View {
     @Environment(\.settingsNative) private var native
 
     var body: some View {
-        #if os(macOS)
         if native {
             Grid(alignment: .topLeading, horizontalSpacing: MacLook.Space.m, verticalSpacing: MacLook.Space.s) {
                 ForEach(Array(rows.enumerated()), id: \.offset) { _, r in
@@ -775,9 +746,6 @@ struct SettingsTerms: View {
         } else {
             web
         }
-        #else
-        web
-        #endif
     }
 
     @ViewBuilder private var web: some View {
@@ -800,7 +768,6 @@ struct SettingsButtons<Content: View>: View {
     @ViewBuilder let content: Content
     @Environment(\.settingsNative) private var native
     var body: some View {
-        #if os(macOS)
         if native {
             // A narrow window stacks them rather than clip one (the guide's planned reflow).
             ViewThatFits(in: .horizontal) {
@@ -810,9 +777,6 @@ struct SettingsButtons<Content: View>: View {
         } else {
             HStack(spacing: SettingsStyle.pair("buttons").light.gap) { content }
         }
-        #else
-        HStack(spacing: SettingsStyle.pair("buttons").light.gap) { content }
-        #endif
     }
 }
 
@@ -831,7 +795,6 @@ struct SettingsDialogView<Body: View, Footer: View>: View {
     @Environment(\.settingsNative) private var native
 
     var body: some View {
-        #if os(macOS)
         if native {
             // A sheet's content: the title and what it does, the body, the buttons trailing (Escape cancels).
             VStack(alignment: .leading, spacing: MacLook.Space.m) {
@@ -856,9 +819,6 @@ struct SettingsDialogView<Body: View, Footer: View>: View {
         } else {
             web
         }
-        #else
-        web
-        #endif
     }
 
     @ViewBuilder private var web: some View {
@@ -1031,6 +991,23 @@ final class SettingsDialogWindow {
         current?.dismiss()
         let d = SettingsDialogWindow()
         d.onClose = onClose
+        if MacLook.padWide, let presenter = window.rootViewController?.topmostPresented {
+            // The iPad's wide layout: the system's form sheet with the native dialog in it, as the Mac's sheet.
+            let h = UIHostingController(rootView: AnyView(content()
+                .environment(\.settingsNative, true)
+                .environment(\.settingsWindowed, true)
+                .environment(\.macNativeLook, true)
+                .macNativeChrome()
+                .tint(MacLook.Colors.accent)))
+            h.sizingOptions = .preferredContentSize
+            h.modalPresentationStyle = .formSheet
+            h.isModalInPresentation = true
+            d.host = h
+            d.sheet = h
+            current = d
+            presenter.present(h, animated: !WebMotion.reduced)
+            return d
+        }
         let h = UIHostingController(rootView: AnyView(content().padding(margin)))
         h.view.backgroundColor = .clear
         h.safeAreaRegions = []
@@ -1048,7 +1025,11 @@ final class SettingsDialogWindow {
 
     static func closeCurrent() { current?.dismiss() }
 
+    /// The iPad's wide layout's form sheet, while it shows.
+    private weak var sheet: UIViewController?
+
     func dismiss() {
+        if let sheet { sheet.presentingViewController?.dismiss(animated: !WebMotion.reduced) }
         layer.removeFromSuperview()
         host = nil
         if Self.current === self { Self.current = nil }

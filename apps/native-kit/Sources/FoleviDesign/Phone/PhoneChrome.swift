@@ -31,15 +31,23 @@ public struct WebGlassCircle<Label: View>: View {
         self.content = content()
     }
 
+    @Environment(\.phoneInSystemBar) private var inBar
+
     public var body: some View {
-        Button(action: action) {
-            content
-                .frame(width: size, height: size)
-                .foregroundStyle(Folevi.color.heading)
-                .liquidGlass()
+        if inBar {
+            // In iOS's bar: the bar gives the button its glass.
+            Button(action: action) { content.foregroundStyle(Color.primary) }
+                .accessibilityLabel(label)
+        } else {
+            Button(action: action) {
+                content
+                    .frame(width: size, height: size)
+                    .foregroundStyle(Folevi.color.heading)
+                    .liquidGlass()
+            }
+            .buttonStyle(GlassPressStyle())
+            .accessibilityLabel(label)
         }
-        .buttonStyle(GlassPressStyle())
-        .accessibilityLabel(label)
     }
 }
 
@@ -51,11 +59,18 @@ public struct WebGlassPill<Content: View>: View {
         self.content = content()
     }
 
+    @Environment(\.phoneInSystemBar) private var inBar
+
     public var body: some View {
-        HStack(spacing: 0) { content }
-            .padding(.horizontal, 2)
-            .frame(height: 44)
-            .liquidGlass()
+        if inBar {
+            // In iOS's bar: its buttons share the bar's glass capsule.
+            HStack(spacing: 0) { content }
+        } else {
+            HStack(spacing: 0) { content }
+                .padding(.horizontal, 2)
+                .frame(height: 44)
+                .liquidGlass()
+        }
     }
 }
 
@@ -75,7 +90,23 @@ public struct WebPillButton<Label: View>: View {
         self.content = content()
     }
 
+    @Environment(\.phoneInSystemBar) private var inBar
+
     public var body: some View {
+        if inBar {
+            Button(action: action) {
+                content
+                    .foregroundStyle(Color.primary)
+                    .frame(minWidth: 36, minHeight: 36)
+                    .contentShape(Rectangle())
+            }
+            .accessibilityLabel(label)
+        } else {
+            webBody
+        }
+    }
+
+    private var webBody: some View {
         Button(action: action) {
             content
                 .padding(.horizontal, 10)
@@ -105,7 +136,30 @@ public struct WebGlassTextButton: View {
         self.action = action
     }
 
+    @Environment(\.phoneInSystemBar) private var inBar
+
     public var body: some View {
+        if inBar {
+            // In iOS's bar: a text button on the bar's glass; the strong one ("Done") the prominent glass in the
+            // accent, as iOS draws a confirming action.
+            if strong {
+                // (The accent is near white in dark mode: the words take the accent's own ink.)
+                if #available(iOS 26, macOS 26, *) {
+                    Button(action: action) { Text(title).fontWeight(.semibold).foregroundStyle(PhoneNativeLook.onAccent) }
+                        .buttonStyle(.glassProminent)
+                } else {
+                    Button(action: action) { Text(title).fontWeight(.semibold).foregroundStyle(PhoneNativeLook.onAccent) }
+                        .buttonStyle(.borderedProminent)
+                }
+            } else {
+                Button(action: action) { Text(title).fontWeight(semibold ? .semibold : .regular) }
+            }
+        } else {
+            webBody
+        }
+    }
+
+    private var webBody: some View {
         Button(action: action) {
             let text = Text(title)
                 .webText(.role(.headline, weight: strong || semibold ? FoleviTokens.FontWeight.semibold : FoleviTokens.FontWeight.medium))

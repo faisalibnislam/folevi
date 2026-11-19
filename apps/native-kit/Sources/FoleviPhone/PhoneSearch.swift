@@ -34,6 +34,8 @@ public struct PhoneSearchScreen: View {
     let close: () -> Void
     /// A scope chip's menu, from where it was tapped.
     let scopeMenu: (String, CGRect) -> Void
+    /// iOS's own menus for the chips (the native look): `scopeMenu`'s rows through them.
+    var menus: PhoneMenus?
     @FocusState private var focused: Bool
     /// The opening: the field rises from where Home's search sits to the top, the rest fades up after it (the
     /// owner's videos), on FoleviSpring.pop; under Reduce Motion everything only fades.
@@ -42,8 +44,9 @@ public struct PhoneSearchScreen: View {
     @State private var viewed: ValueStore<RecentViewedValue>?
     @Environment(\.colorScheme) private var scheme
 
-    public init(model: SearchModel, aiOn: Bool, actions: [PhoneSearchAction], askAI: @escaping (String?) -> Void, openNote: @escaping (String) -> Void, close: @escaping () -> Void, scopeMenu: @escaping (String, CGRect) -> Void) {
+    public init(model: SearchModel, aiOn: Bool, actions: [PhoneSearchAction], askAI: @escaping (String?) -> Void, openNote: @escaping (String) -> Void, close: @escaping () -> Void, scopeMenu: @escaping (String, CGRect) -> Void, menus: PhoneMenus? = nil) {
         self.model = model
+        self.menus = menus
         self.aiOn = aiOn
         self.actions = actions
         self.askAI = askAI
@@ -59,6 +62,46 @@ public struct PhoneSearchScreen: View {
     private var sub15: WebTextStyle { WebTextStyle(size: 15, leading: 20) }
 
     public var body: some View {
+        if #available(iOS 26, *) {
+            nativeBody
+        } else {
+            legacyBody
+        }
+    }
+
+    /// The native look (the owner, 2026-11-19): search is the tab bar's own search tab, its field iOS's at the
+    /// screen's foot (`.searchable`, where the tab bar was), the scope chips and the results above it.
+    private var nativeBody: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 0) {
+                    scopes.padding(.top, 4)
+                    LazyVStack(alignment: .leading, spacing: 0) { results }
+                        .padding(.bottom, 16)
+                }
+            }
+            .scrollDismissesKeyboard(.interactively)
+            .background(FoleviTokens.Chrome.canvas.resolve(scheme).color.ignoresSafeArea())
+            .navigationTitle("Search")
+            .navigationBarTitleDisplayMode(.large)
+        }
+        .searchable(text: $model.text, placement: .navigationBarDrawer(displayMode: .always), prompt: Text("Search notes and commands"))
+        .searchFocused($focused)
+        .autocorrectionDisabled()
+        .textInputAutocapitalization(.never)
+        .onSubmit(of: .search) { model.remember() }
+        .onAppear {
+            if viewed == nil { viewed = model.client.watch(.recentViewed(limit: 8)) }
+            // (A moment after it shows: the field is in the tab bar by then.)
+            if !Self.noKeyboard { DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) { focused = true } }
+        }
+        .task {
+            await EarlyKeys.current?.settle { [model] text in model.text = text + model.text }
+        }
+        .onDisappear { EarlyKeys.current?.cancel() }
+    }
+
+    private var legacyBody: some View {
         GeometryReader { geo in
             VStack(spacing: 0) {
                 header
@@ -98,9 +141,7 @@ public struct PhoneSearchScreen: View {
     }
 
     static func relative(_ ms: Double) -> String {
-        let f = RelativeDateTimeFormatter()
-        f.unitsStyle = .full
-        return f.localizedString(for: Date(timeIntervalSince1970: ms / 1000), relativeTo: ScreenClock.now())
+        PhoneFormat.relative(ms)
     }
 
     /// FOLEVI_GATE_NO_KEYBOARD=1 (Debug): opens without the keyboard, for comparing the screen.
@@ -145,13 +186,13 @@ public struct PhoneSearchScreen: View {
         ScrollView(.horizontal) {
             HStack(spacing: 8) {
                 if model.offersEverywhere {
-                    PhoneScopeChip(label: model.scope == .everywhere ? "All places" : model.spaceName, on: model.scope == .everywhere) { scopeMenu("where", $0) }
+                    PhoneScopeChip(label: model.scope == .everywhere ? "All places" : model.spaceName, on: model.scope == .everywhere, menus: menus, build: { scopeMenu("where", .zero) }) { scopeMenu("where", $0) }
                 }
                 if model.filtersAllowed {
-                    PhoneScopeChip(label: model.folderName ?? "Folder", on: model.folderId != nil) { scopeMenu("folder", $0) }
-                    PhoneScopeChip(label: model.tagName.map { "#\($0)" } ?? "Tag", on: model.tagId != nil) { scopeMenu("tag", $0) }
+                    PhoneScopeChip(label: model.folderName ?? "Folder", on: model.folderId != nil, menus: menus, build: { scopeMenu("folder", .zero) }) { scopeMenu("folder", $0) }
+                    PhoneScopeChip(label: model.tagName.map { "#\($0)" } ?? "Tag", on: model.tagId != nil, menus: menus, build: { scopeMenu("tag", .zero) }) { scopeMenu("tag", $0) }
                 }
-                PhoneScopeChip(label: model.updated?.title ?? "Edited", on: model.updated != nil) { scopeMenu("updated", $0) }
+                PhoneScopeChip(label: model.updated?.title ?? "Edited", on: model.updated != nil, menus: menus, build: { scopeMenu("updated", .zero) }) { scopeMenu("updated", $0) }
             }
             .padding(.horizontal, 16)
             .padding(.bottom, 4)
@@ -273,13 +314,27 @@ public struct PhoneSearchScreen: View {
 struct PhoneScopeChip: View {
     let label: String
     let on: Bool
+    /// iOS's own menu, its rows from `build` (the native look); else `action` shows Folevi's from the chip.
+    var menus: PhoneMenus? = nil
+    var build: (() -> Void)? = nil
     let action: (CGRect) -> Void
     @State private var frame: CGRect = .zero
     @Environment(\.colorScheme) private var scheme
 
     var body: some View {
+        if let menus, let build {
+            PhoneMenuButton(label, menus: menus, build: build) { chip }
+        } else {
+            Button { action(frame) } label: { chip }
+                .buttonStyle(PhoneChipPressStyle())
+                .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { frame = $0 }
+                .accessibilityLabel(label)
+        }
+    }
+
+    private var chip: some View {
         let ink = FoleviTokens.Chrome.ink.resolve(scheme)
-        Button { action(frame) } label: {
+        return Group {
             HStack(spacing: 4) {
                 Text(label).webText(WebTextStyle(size: 15, leading: 20)).lineLimit(1)
                 WebIconView(.chevronDown, size: 14, strokeWidth: 2.4)
@@ -294,9 +349,6 @@ struct PhoneScopeChip: View {
             .frame(height: 44)
             .contentShape(Rectangle())
         }
-        .buttonStyle(PhoneChipPressStyle())
-        .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { frame = $0 }
-        .accessibilityLabel(label)
     }
 }
 

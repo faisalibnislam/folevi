@@ -8,8 +8,9 @@
 // - WebButton, WebTextField and WebCheckboxStyle become the system's Button, TextField and checkbox.
 //
 // Note content keeps Folevi's own fonts and look: note and folder cards reset the chrome for what they draw
-// (`noteContent()`), as does anything else a note draws. Nothing sets a chrome on iPhone or iPad, so they draw
-// exactly as before.
+// (`noteContent()`), as does anything else a note draws. The iPad sets none, so it draws
+// exactly as before. Since 2026-11-19 the iPhone sets one too (FoleviDesign/Phone/PhoneNativeLook.swift), with
+// `dynamicType`: Apple's text sizes, following the person's text size.
 import SwiftUI
 
 public struct NativeChrome: Hashable, Sendable {
@@ -23,8 +24,12 @@ public struct NativeChrome: Hashable, Sendable {
     public var onAccent: Color
     /// A borderless control's hover fill.
     public var hover: Color
+    /// The iPhone's native look (the owner, 2026-11-19): interface text keeps the size the web gives it, snapped to
+    /// the nearest of Apple's text styles (Body 17, Subheadline 15, Footnote 13, ...), and follows Dynamic Type.
+    /// The Mac's four fixed sizes otherwise.
+    public var dynamicType: Bool
 
-    public init(title: CGFloat, title3: CGFloat, body: CGFloat, small: CGFloat, accent: Color, onAccent: Color, hover: Color) {
+    public init(title: CGFloat, title3: CGFloat, body: CGFloat, small: CGFloat, accent: Color, onAccent: Color, hover: Color, dynamicType: Bool = false) {
         self.title = title
         self.title3 = title3
         self.body = body
@@ -32,6 +37,32 @@ public struct NativeChrome: Hashable, Sendable {
         self.accent = accent
         self.onAccent = onAccent
         self.hover = hover
+        self.dynamicType = dynamicType
+    }
+
+    /// Apple's text styles by their default (Large) size, largest first (the HIG's iOS type sizes).
+    static let appleStyles: [(size: CGFloat, style: Font.TextStyle)] = [
+        (34, .largeTitle), (28, .title), (22, .title2), (20, .title3), (17, .body), (16, .callout), (15, .subheadline),
+        (13, .footnote), (12, .caption), (11, .caption2),
+    ]
+
+    /// The Apple text size nearest a web size (14 reads as Subheadline, 18 as Body, 24 as Title 2).
+    public static func appleSize(_ web: CGFloat) -> CGFloat {
+        appleStyles.min { abs($0.size - web) < abs($1.size - web) || (abs($0.size - web) == abs($1.size - web) && $0.size > $1.size) }!.size
+    }
+
+    /// The text style whose default size is `size` (an Apple size, see `appleSize`).
+    static func textStyle(_ size: CGFloat) -> Font.TextStyle? {
+        appleStyles.first { $0.size == size }?.style
+    }
+
+    /// The font for interface text in this chrome: under `dynamicType` Apple's text style at that size (so it
+    /// grows and shrinks with the person's text size), else the system font at the fixed size.
+    public func font(_ s: WebTextStyle) -> Font {
+        if dynamicType, s.family == .system, let style = Self.textStyle(s.size) {
+            return .system(style, weight: WebFont.nearestStatic(s.weight))
+        }
+        return Self.font(s)
     }
 
     /// The interface size for a web size: a page title (24 pt and up on the web) is the title; a section title (17
@@ -49,6 +80,10 @@ public struct NativeChrome: Hashable, Sendable {
     /// semibold), no letter spacing. Code (mono) and text already in the system font stay as they are.
     public func text(_ s: WebTextStyle) -> WebTextStyle {
         guard s.family == .sans || s.family == .display else { return s }
+        if dynamicType {
+            let size = Self.appleSize(s.size)
+            return WebTextStyle(family: .system, size: size, leading: Self.leading(size), weight: s.weight, letterSpacing: 0)
+        }
         let size = size(for: s.size)
         let weight = size == title ? max(s.weight, 600) : s.weight
         return WebTextStyle(family: .system, size: size, leading: Self.leading(size), weight: weight, letterSpacing: 0)
@@ -61,6 +96,10 @@ public struct NativeChrome: Hashable, Sendable {
         case .medium: 500
         case .bold: 700
         default: 400
+        }
+        if dynamicType {
+            let size = Self.appleSize(s == .caps ? 13 : s.size)
+            return WebTextStyle(family: .system, size: size, leading: Self.leading(size), weight: s == .caps ? 600 : weight, letterSpacing: 0)
         }
         let size = s == .caps ? small : size(for: s.size)
         return WebTextStyle(family: .system, size: size, leading: Self.leading(size), weight: size == title ? max(weight, 600) : weight, letterSpacing: 0)
@@ -86,7 +125,11 @@ public extension WebFont {
     /// Folevi's own family everywhere else (the iPhone, the iPad). The owner, 2026-11-18: the whole Mac app is the
     /// system font but for notes, folders and the editor.
     static func interface(_ chrome: NativeChrome?, _ family: WebFontFamily = .sans, size: CGFloat, weight: CGFloat = 400, italic: Bool = false) -> Font {
-        guard chrome != nil else { return font(family, size: size, weight: weight, italic: italic) }
+        guard let chrome else { return font(family, size: size, weight: weight, italic: italic) }
+        if chrome.dynamicType, family != .mono {
+            let f = chrome.font(WebTextStyle(family: .system, size: NativeChrome.appleSize(size), leading: 0, weight: weight))
+            return italic ? f.italic() : f
+        }
         let f = Font.system(size: size, weight: nearestStatic(weight), design: family == .mono ? .monospaced : .default)
         return italic ? f.italic() : f
     }

@@ -32,7 +32,7 @@ import { PlaceRunners } from "@/components/places/PlaceRunners";
 import { MovePlacesHost } from "@/components/places/MovePlaces";
 import { NativeBridge } from "./NativeBridge";
 import { DeviceCopyRunner } from "./DeviceCopyRunner";
-import { displayCornerRadius, useIpadLayout, useIphoneApp } from "@/lib/iphone";
+import { displayCornerRadius, useIpadLayout, useIpadNativeWide, useIphoneApp } from "@/lib/iphone";
 import { nativeApp, nativeChrome } from "@/lib/nativeApp";
 import { NativeGate } from "@/lib/engine/NativeGate";
 import { WEB_SETTINGS_SECTIONS } from "@/lib/engine/webSettings";
@@ -227,16 +227,28 @@ function NativeContentShell() {
     // Folevi for Mac's native look (docs/MAC_NATIVE_LOOK.md): the page sits straight on the window's native card.
     if (macFrame) document.documentElement.setAttribute("data-mac-native", "");
   }, []);
+  // The iPad's wide layout has the same look (the owner, 2026-11-19): its own marker, set while the window is wide
+  // enough for it (under 700 pt the iPad shows the phone's layout, whose page keeps its own look).
+  const ipadNative = useIpadNativeWide();
+  useLayoutEffect(() => {
+    if (!ipadNative) return;
+    document.documentElement.setAttribute("data-ipad-native", "");
+    return () => document.documentElement.removeAttribute("data-ipad-native");
+  }, [ipadNative]);
   // An iPhone (marker platform "ios"): the phone page layout and its styles (globals.css, editor-phone.css).
   const iphone = useIphoneApp();
   useLayoutEffect(() => {
     if (!iphone) return;
     const root = document.documentElement;
     root.dataset.iphone = "";
+    // Folevi for iPhone's native look (the owner, 2026-11-19): the native frame draws system chrome, and the note
+    // page's own interface (its menus, popovers, dialogs) follows in the system font (globals.css).
+    root.dataset.iphoneNative = "";
     const corner = displayCornerRadius();
     if (corner) root.style.setProperty("--iphone-sheet-bottom", `${Math.max(28, corner - 8)}px`);
     return () => {
       delete root.dataset.iphone;
+      delete root.dataset.iphoneNative;
       root.style.removeProperty("--iphone-sheet-bottom");
     };
   }, [iphone]);
@@ -656,6 +668,7 @@ export function ViewChrome({ title, subtitle, leading, actions, children, tabTit
   useViewTab(tabTitle ?? (typeof title === "string" ? title : undefined));
   const inIphone = useIphoneApp();
   const ipad = useIpadLayout();
+  const ipadNativeWide = useIpadNativeWide();
   const pane = usePane();
   if (nativeChrome()) {
     // Native chrome mode: the native app draws the bars; the view keeps clear of them by the insets it was given.
@@ -663,7 +676,8 @@ export function ViewChrome({ title, subtitle, leading, actions, children, tabTit
     const nativeJoined = route.name === "doc" ? pane.joined : undefined;
     // A note on the iPhone runs under the bars and keeps their room itself (DocumentView's #doc-scroll). So does a
     // note on the Mac (globals.css, data-mac-native): its backdrop reaches under the glass top bar.
-    const underBars = (inIphone || macFrame) && route.name === "doc";
+    // So does a note in the iPad's wide layout, which has the Mac's look.
+    const underBars = (inIphone || macFrame || ipadNativeWide) && route.name === "doc";
     return (
       <div className={`relative flex min-h-0 flex-1 flex-col ${underBars ? "" : "pb-[var(--native-inset-bottom,0px)] pt-[var(--native-inset-top,0px)]"}`}>
         {nativeJoined ? <JoinedBar joined={nativeJoined} primary={pane.primary} title={title} tabTitle={tabTitle} sync={null} actions={actions} /> : null}

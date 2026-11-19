@@ -4,6 +4,37 @@ Every Folevi release, newest first, written by `node scripts/version.mjs` from `
 
 Versions are MAJOR.UPDATE.PATCH, PATCH at least two digits: a Major release (2.0.00), a Big update (1.1.05 after 1.0.05) or a Small update (1.0.06 after 1.0.05).
 
+## Version 1.5.50: Big update
+
+Released 2026-11-19 14:17:51+06:00 (build 65, tag v1.5.50)
+
+iPhone and iPad: Folevi looks like an iOS 26 app now. The iPhone uses the system tab bar, bars, menus and sheets, and the iPad's wide layout is laid out like Folevi for Mac. Notes keep their own fonts.
+
+### Added
+
+- iPhone: Search is its own tab, next to Home, Tasks and Calendar
+- iPhone: Ask Foli AI and the + button sit in a bar just above the tab bar
+- iPhone: Settings has a search field, and Appearance shows the theme as three pictures of the iPhone
+- iPad: in the wide layout, tabs along the top, the sidebar, and each screen in a rounded card with its controls floating in glass, as on the Mac
+- iPad: Settings opens in a sheet with a list of categories on the left and a working search field
+
+### Improved
+
+- iPhone: large titles that shrink as you scroll, the system Back button and edge swipe, and glass buttons in the bars
+- iPhone: the system's menus, with Folevi's icons, for "…" buttons, the Create menu and a long press on a note or row
+- iPhone: sheets are the system's glass sheets, with a drag handle and a round close button
+- iPhone: interface text is SF Pro at Apple's text sizes and follows your text size setting; notes, note cards and the editor keep Instrument Sans and Spectral
+- iPhone: a task's status is a segmented control, and its priority and assignee are menus
+- iPhone: the Vault shows its state under its title, with Lock and "…" in the bar
+- iPhone and iPad: no lines between the rows of a list, with the same spacing
+- iPad: Home, the lists, folders, Tasks, Calendar, the Vault, a note's tools, notifications and Help use the Mac's native screens
+- iPad: dialogs open as sheets, the bell opens a popover, and confirmations are system alerts
+- iPhone and iPad: Folevi lets go of note covers and card text when the device runs low on memory, and lists scroll more smoothly
+
+### Fixed
+
+- iPhone and iPad: in dark mode a switch that was on was hard to see; it's now graphite, so the white knob shows
+
 ## Version 1.4.50: Small update
 
 Released 2026-11-19 11:15:21+06:00 (build 64, tag v1.4.50)

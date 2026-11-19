@@ -176,12 +176,8 @@ struct PromptSheet: View {
     @State private var value: String
     @FocusState private var focused: Bool
     @Environment(\.colorScheme) private var scheme
-    #if os(macOS)
-    /// The Mac's native look: the system's rounded text field.
+    /// The native look (the Mac's, the iPad's wide layout's): the system's rounded text field.
     @Environment(\.macNativeLook) private var native
-    #else
-    private let native = false
-    #endif
 
     init(title: String, label: String, initial: String, confirm: String, close: @escaping @MainActor () -> Void, onSubmit: @escaping @MainActor (String) -> Void) {
         self.title = title

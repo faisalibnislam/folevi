@@ -724,6 +724,8 @@ enum PlannerSheet {
         #if os(macOS)
         FrameSheets.present(frame, content: content)
         #else
+        // (The iPad's wide layout: the system's form sheet, as every other dialog there.)
+        if MacLook.padWide { return FrameSheets.present(frame, content: content) }
         guard let window else { return }
         PlannerPanel.dialog(in: window, content)
         #endif
@@ -751,12 +753,9 @@ struct PlannerDialog<Content: View>: View {
     let close: () -> Void
     @ViewBuilder let content: () -> Content
     @Environment(\.colorScheme) private var scheme
-    #if os(macOS)
     @Environment(\.macNativeLook) private var native
-    #endif
 
     var body: some View {
-        #if os(macOS)
         if native {
             // The Mac's native look: the frame's own sheet (FrameSheets presents it), as every other dialog. Drawn
             // by itself over the window it had no panel at all behind its fields (found 2026-11-19).
@@ -766,9 +765,6 @@ struct PlannerDialog<Content: View>: View {
         } else {
             drawn
         }
-        #else
-        drawn
-        #endif
     }
 
     /// The web's dialog, drawn (the iPad, and the Mac's web-matched look).

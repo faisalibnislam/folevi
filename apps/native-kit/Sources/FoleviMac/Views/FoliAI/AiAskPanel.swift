@@ -63,21 +63,31 @@ struct AiAskOverlay: View {
     /// --fab-clearance): the button's top above the card's bottom edge plus a 24 pt gap (100 pt, as the measured
     /// pages' bottom padding), none on the iPad, which has no button. Pages pad their end by at least this.
     static var clearance: CGFloat {
-        guard !WebStyles.isPad else { return 0 }
+        #if os(iOS)
+        // (The iPad's wide layout has the Mac's button since the native look; the web-matched layout had none.)
+        guard !WebStyles.isPad || MacLook.padWide else { return 0 }
+        #endif
         let fab = WebStyles.named("ai.fab").light
         return 820 - fab.y - cardInset + 24
     }
 
-    #if os(macOS)
-    /// How far above the card's bottom edge the chat's own bottom edge sits on the Mac (the button's inset, the
-    /// button, the gap between them), plus the air it keeps under the card's controls.
+    /// How far above the card's bottom edge the chat's own bottom edge sits in the native look (the button's inset,
+    /// the button, the gap between them), plus the air it keeps under the card's controls.
     static var panelLift: CGFloat {
         let fab = WebStyles.named("ai.fab").light
         let panel = WebStyles.named("ai.panel").light
-        let inset = 820 - (fab.y + fab.height) - cardInset
-        return inset + MacLook.barControlHeight + 4 + (fab.y - (panel.y + panel.height)) + MacLook.Space.s
+        return launcherInset.bottom + MacLook.barControlHeight + 4 + (fab.y - (panel.y + panel.height)) + MacLook.Space.s
     }
-    #endif
+
+    /// The button's distance from the card's trailing and bottom edges: the web's on the Mac; on the iPad's wide
+    /// layout the card's own control inset and a touch more, so it sits inside the card's rounded corner.
+    static var launcherInset: (trailing: CGFloat, bottom: CGFloat) {
+        let fab = WebStyles.named("ai.fab").light
+        #if os(iOS)
+        if MacLook.padWide { return (MacLook.barPaddingSides + 8, MacLook.barPaddingSides + 8) }
+        #endif
+        return (1280 - (fab.x + fab.width) - cardInset, 820 - (fab.y + fab.height) - cardInset)
+    }
 
     private var shows: Bool {
         guard frame.session.value?.capabilities.ai ?? false else { return false }
@@ -104,8 +114,8 @@ struct AiAskOverlay: View {
         // the Mac's floating window gets one from the system.)
         .compositingGroup()
         .nativeShadow(launcher ? nil : .overlay)
-        .padding(.trailing, launcher ? 1280 - (fab.x + fab.width) - Self.cardInset : 16)
-        .padding(.bottom, launcher ? 820 - (fab.y + fab.height) - Self.cardInset : 16)
+        .padding(.trailing, launcher ? Self.launcherInset.trailing : 16)
+        .padding(.bottom, launcher ? Self.launcherInset.bottom : 16)
         .animation(.easeOut(duration: 0.18), value: frame.askAiOpen)
         .onChange(of: frame.askAiOpen) { _, open in if !open { state.model.closed() } }
         .onChange(of: frame.askAbout, initial: true) { _, about in
@@ -142,21 +152,14 @@ struct AiLauncher: View {
     @Environment(\.colorScheme) private var scheme
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    #if os(macOS)
-    /// The Mac's native look: a regular Liquid Glass capsule, not a second coloured action beside New note
+    /// The native look: a regular Liquid Glass capsule, not a second coloured action beside New note
     /// (liquid-glass.md: refrain from adding colour to the background of more than one control).
     @Environment(\.macNativeLook) private var native
-    #endif
 
     var body: some View {
-        #if os(macOS)
         if native { glass } else { web }
-        #else
-        web
-        #endif
     }
 
-    #if os(macOS)
     private var glass: some View {
         Button(action: action) {
             HStack(spacing: 8) {
@@ -169,13 +172,12 @@ struct AiLauncher: View {
             .contentShape(Capsule())
         }
         .buttonStyle(QuietHoverStyle(shape: AnyShape(Capsule())))
-        .glassEffect(.regular.interactive(), in: .capsule)
+        .nativeGlass(Capsule(), interactive: true)
         // It says "Ask Foli AI": the tooltip is its shortcut alone (or what a click does while it is open).
         .foleviTooltip(open ? "Close Foli AI" : "(⌘J)")
         .accessibilityLabel(open ? "Close Foli AI" : "Ask Foli AI")
         .accessibilityValue(open ? "Open" : "Closed")
     }
-    #endif
 
     private var web: some View {
         let look = AiLook(scheme: scheme)
@@ -212,24 +214,18 @@ struct AiLauncher: View {
 /// blur, the hairlines and the soft shadow.
 struct AiAskSurface: ViewModifier {
     let radius: CGFloat
-    #if os(macOS)
     @Environment(\.macNativeLook) private var native
-    #endif
 
     func body(content: Content) -> some View {
-        #if os(macOS)
         if native {
             let shape = RoundedRectangle(cornerRadius: 18, style: .continuous)
             content
                 .clipShape(shape)
-                .glassEffect(.regular, in: shape)
+                .nativeGlass(shape)
                 .nativeShadow(.overlay)
         } else {
             web(content)
         }
-        #else
-        web(content)
-        #endif
     }
 
     private func web(_ content: Content) -> some View {

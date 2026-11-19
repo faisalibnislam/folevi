@@ -1,5 +1,6 @@
 // The iPhone's Shared with Me with the folders shared with this person (SharedView.tsx: Folders, then Pages) and
 // the Move or copy notes sheet (MovePlaces.tsx as a phone sheet), light and dark, against the contract's fixtures.
+// In the iPhone's native look (the owner, 2026-11-19): the system font, iOS's navigation bar and large title.
 #if os(iOS)
 import Foundation
 import SwiftUI
@@ -20,7 +21,9 @@ struct PhoneSharingSnapshotTests {
         engine.values["shared.folders"] = Fixtures.value("view.shared.folders.json")
         let model = SharedListModel(client: engine.client())
         for scheme in [ColorScheme.light, .dark] {
-            let view = PhoneSharedScreen(model: model, openNote: { _ in }, back: {})
+            // (In a navigation stack in the native look, as the frame shows it: iOS's bar and large title.)
+            let view = NavigationStack { PhoneSharedScreen(model: model, openNote: { _ in }, back: {}) }
+                .phoneNativeChrome()
                 .background(FoleviTokens.Chrome.canvas.resolve(scheme).color)
             let host = ScreenHost(view, size: .iphone, scheme: scheme)
             await eventually("shared", timeout: .seconds(8)) { !model.isLoading }
@@ -35,7 +38,8 @@ struct PhoneSharingSnapshotTests {
         engine.values["tags.index"] = Fixtures.value("view.tags.index.json")
         let model = TagsIndexModel(client: engine.client(), defaults: UserDefaults(suiteName: "folevi.tags.\(UUID().uuidString)")!)
         for scheme in [ColorScheme.light, .dark] {
-            let view = PhoneTagsScreen(model: model, open: { _ in }, back: {}, menu: { _ in })
+            let view = NavigationStack { PhoneTagsScreen(model: model, open: { _ in }, back: {}, menu: { _ in }) }
+                .phoneNativeChrome()
                 .background(FoleviTokens.Chrome.canvas.resolve(scheme).color)
             let host = ScreenHost(view, size: .iphone, scheme: scheme)
             await eventually("tags", timeout: .seconds(8)) { !model.isLoading }
@@ -60,6 +64,7 @@ struct PhoneSharingSnapshotTests {
                 PhoneMovePlacesSheet(model: model, close: {})
                 Spacer(minLength: 0)
             }
+            .phoneNativeChrome()
             .background(PhoneSurface.solid.resolve(scheme).color)
             let host = ScreenHost(view, size: .iphone, scheme: scheme)
             await eventually("move preview", timeout: .seconds(8)) { model.loaded }

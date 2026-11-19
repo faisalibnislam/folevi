@@ -47,7 +47,7 @@ import { useCapabilities } from "@/lib/mode";
 import { FolderShareDialog } from "@/components/app/FolderShareDialog";
 import { FolderMenu } from "@/components/app/FolderMenu";
 import { FolderGlyph } from "@/components/ui/FolderGlyph";
-import { ListPageHeader, ROW_ICON_BUTTON, ROW_SEG, RowSort, RowTraySep, SECTION_LABEL } from "./ListPageHeader";
+import { FilterField, ListPageHeader, ROW_ICON_BUTTON, ROW_SEG, RowSort, RowTraySep, SECTION_LABEL } from "./ListPageHeader";
 
 // Foli AI's "Generate a template" brings the read-only drawing of every block (its preview): it loads the first
 // time it's opened, not with every list (docs/IOS_PERFORMANCE.md, "Startup").
@@ -283,6 +283,17 @@ function DocumentList({ view, folderId, tagId, org, titleOverride }: { view: Vie
       folderId,
       byUpdated: sort === "updated",
     }) ?? served;
+  // "Filter notes" narrows the notes loaded so far, by title or text (as the iPhone's list does); it starts empty on
+  // each list. Typing in it never asks the server: Search looks through every note.
+  const [filterState, setFilterState] = useState({ view, q: "" });
+  const q = filterState.view === view ? filterState.q : "";
+  const setQ = (next: string) => setFilterState({ view, q: next });
+  const filtering = q.trim() !== "";
+  const shown = useMemo(() => {
+    const needle = q.trim().toLocaleLowerCase();
+    if (!needle) return docs;
+    return docs.filter((d) => (d.title || "Untitled").toLocaleLowerCase().includes(needle) || d.excerpt.toLocaleLowerCase().includes(needle));
+  }, [docs, q]);
   const moreCached = fromCache && (kept?.length ?? 0) > cachedShown;
   const canLoadMore = status === "CanLoadMore" || moreCached;
   const loading = status === "LoadingFirstPage" && !cached && docs.length === 0;
@@ -301,8 +312,9 @@ function DocumentList({ view, folderId, tagId, org, titleOverride }: { view: Vie
   // folders first as they show. (Templates have their own actions and aren't selectable; the phone layout selects
   // its notes in its own way.)
   const selectable = view !== "templates";
-  const subfolderIds = useMemo(() => (iphone ? [] : subfolders.map((f) => f.id)), [iphone, subfolders]);
-  const itemIds = useMemo(() => [...subfolderIds, ...docs.map((d) => d.id)], [subfolderIds, docs]);
+  // While filtering, the page shows only the notes that match: its folders step aside.
+  const subfolderIds = useMemo(() => (iphone || filtering ? [] : subfolders.map((f) => f.id)), [iphone, filtering, subfolders]);
+  const itemIds = useMemo(() => [...subfolderIds, ...shown.map((d) => d.id)], [subfolderIds, shown]);
   const selection = useCardSelection(itemIds, selectable);
   const selectedEntries = useMemo<SelectionEntry[]>(() => {
     const out: SelectionEntry[] = [];
@@ -421,7 +433,10 @@ function DocumentList({ view, folderId, tagId, org, titleOverride }: { view: Vie
   const heading = <h1 className="truncate text-subheadline font-semibold">{title}</h1>;
   // Nothing in the list (and, on Templates, no built-in ones either).
   const listEmpty = !loading && docs.length === 0 && !(view === "templates" && builtIns?.length);
-  const countText = `${docs.length}${canLoadMore ? "+" : ""} ${docs.length === 1 ? "note" : "notes"}`;
+  const allText = `${docs.length}${canLoadMore ? "+" : ""} ${docs.length === 1 ? "note" : "notes"}`;
+  const countText = filtering ? `${shown.length} of ${allText}` : allText;
+  // The filter shows wherever there are notes to narrow (and stays while it has words, so they can be cleared).
+  const filterField = (inRow: boolean) => (docs.length || filtering ? <FilterField value={q} onChange={setQ} label="Filter notes" inRow={inRow} /> : null);
   // How the list is shown: in the toolbar on most lists, in a folder's title row on its page.
   const layoutSwitch = (compact: boolean) => (
     <div role="radiogroup" aria-label="Layout" className={compact ? ROW_SEG : "ui-seg ui-well"}>
@@ -449,6 +464,7 @@ function DocumentList({ view, folderId, tagId, org, titleOverride }: { view: Vie
         markColor={folder?.color}
         path={crumbs.length ? crumbs.map((c) => ({ label: c.name, href: `/folders/${c.id}`, color: c.color })) : undefined}
         count={loading ? undefined : `${countText}${!online && cached ? " · saved on this device" : ""}`}
+        before={filterField(true)}
         controls={
           <>
             <RowSort<Sort> value={sort} onChange={setSort} options={NOTE_SORTS} />
@@ -590,6 +606,7 @@ function DocumentList({ view, folderId, tagId, org, titleOverride }: { view: Vie
           {/* An empty list has nothing to sort or lay out: its empty state says so, without a "0 notes" over it. */}
           {listEmpty ? null : (
             <>
+              {filterField(false)}
               <label className="flex items-center gap-2 text-subheadline text-muted">
                 <span>Sort</span>
                 <Select value={sort} onChange={(e) => setSort(e.target.value as Sort)} className="h-9 ui-input rounded-chip px-3 text-callout text-ink">
@@ -627,7 +644,7 @@ function DocumentList({ view, folderId, tagId, org, titleOverride }: { view: Vie
         </div>
         )}
 
-        {subfolderCards.length ? (
+        {subfolderCards.length && !filtering ? (
           // A third smaller than All folders' cards: the page's own notes stay the main thing here. A section of its
           // own, under a small heading as Built-in templates has.
           <section aria-labelledby="subfolders-title">
@@ -679,6 +696,8 @@ function DocumentList({ view, folderId, tagId, org, titleOverride }: { view: Vie
               <div key={i} className="h-52 animate-pulse ui-card rounded-control motion-reduce:animate-none" />
             ))}
           </div>
+        ) : filtering && shown.length === 0 ? (
+          <EmptyState icon={FileText} title={`No notes match “${q.trim()}”`} body={canLoadMore ? "Load more to look further, or search every note with Search." : "Try other words, or search every note with Search."} />
         ) : docs.length === 0 ? (
           <EmptyState
             icon={EMPTY[view].icon}
@@ -695,7 +714,7 @@ function DocumentList({ view, folderId, tagId, org, titleOverride }: { view: Vie
           />
         ) : layout === "list" ? (
           <ul className="divide-y divide-transparent overflow-hidden ui-card rounded-control">
-            {docs.map((d) => {
+            {shown.map((d) => {
               const on = selection.selected.has(d.id);
               return (
                 <li
@@ -728,7 +747,7 @@ function DocumentList({ view, folderId, tagId, org, titleOverride }: { view: Vie
           </ul>
         ) : (
           <ul className={`grid gap-x-8 gap-y-10 ${layout === "compact" ? "grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5" : "grid-cols-[repeat(auto-fill,minmax(230px,1fr))]"}`}>
-            {docs.map((d) => {
+            {shown.map((d) => {
               const on = selection.selected.has(d.id);
               return (
                 <li

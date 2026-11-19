@@ -1,6 +1,17 @@
 {
   "releases": [
     {
+      "version": "1.5.52",
+      "build": 67,
+      "released": "2026-11-19T17:43:27+06:00",
+      "type": "patch",
+      "summary": "Note lists on the Mac, iPad and web have a Filter notes field you can always see.",
+      "added": [
+        "Mac, iPad and web: All notes, Bookmarks, Drafts, Archive, Trash, Templates, folders and tags have a Filter notes field with a filter icon. It narrows the list by title or text, and Escape clears it"
+      ],
+      "tag": "v1.5.52"
+    },
+    {
       "version": "1.5.51",
       "build": 66,
       "released": "2026-11-19T15:26:19+06:00",

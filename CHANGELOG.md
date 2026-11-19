@@ -4,6 +4,16 @@ Every Folevi release, newest first, written by `node scripts/version.mjs` from `
 
 Versions are MAJOR.UPDATE.PATCH, PATCH at least two digits: a Major release (2.0.00), a Big update (1.1.05 after 1.0.05) or a Small update (1.0.06 after 1.0.05).
 
+## Version 1.5.52: Small update
+
+Released 2026-11-19 17:43:27+06:00 (build 67, tag v1.5.52)
+
+Note lists on the Mac, iPad and web have a Filter notes field you can always see.
+
+### Added
+
+- Mac, iPad and web: All notes, Bookmarks, Drafts, Archive, Trash, Templates, folders and tags have a Filter notes field with a filter icon. It narrows the list by title or text, and Escape clears it
+
 ## Version 1.5.51: Small update
 
 Released 2026-11-19 15:26:19+06:00 (build 66, tag v1.5.51)

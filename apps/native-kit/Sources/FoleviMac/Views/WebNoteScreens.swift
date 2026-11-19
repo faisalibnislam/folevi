@@ -1024,6 +1024,16 @@ struct WebNoteBrowser: View {
 
     private var layout: WebNotesLayout { WebNotesLayout(rawValue: layoutRaw) ?? .grid }
 
+    /// "Filter notes" shows wherever there are notes to narrow, and stays while it has words so they can be cleared.
+    private var showsFilter: Bool { model.total > 0 || model.isFiltering }
+
+    /// "Filter notes" in a title row (the web's FilterField: its width follows the window's, up to 300).
+    @ViewBuilder private var rowFilter: some View {
+        if showsFilter {
+            WebIndexSearch(placeholder: "Filter notes", text: $model.filter, width: min(300, max(160, columnWidth * 0.26)), height: WebListPageHeaderMetrics.controlHeight)
+        }
+    }
+
     var body: some View {
         let content = notesStyle("browser.content", scheme)
         GeometryReader { geo in
@@ -1038,12 +1048,22 @@ struct WebNoteBrowser: View {
                         // A folder's page: one compact title row with Sort and the view switch, no toolbar under it.
                         Group {
                             if slot != nil {
-                                // (The page's controls are in the card's glass controls; this keeps the column's measure.)
-                                Color.clear.frame(maxWidth: .infinity).frame(height: 12)
+                                // The page's controls are in the card's glass controls; "Filter notes" stays on the
+                                // page, as on the Folders page (this row also keeps the column's measure).
+                                if showsFilter {
+                                    NativeSearchField(placeholder: "Filter notes", text: $model.filter, width: 260, filter: true)
+                                        .frame(maxWidth: 260)
+                                        .padding(.top, 12)
+                                        .padding(.bottom, 24)
+                                        .frame(maxWidth: .infinity, alignment: .leading)
+                                } else {
+                                    Color.clear.frame(maxWidth: .infinity).frame(height: 12)
+                                }
                             } else if model.kind.view == .folder { folderHeader } else { toolbar }
                         }
                         .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { columnWidth = $0 }
-                        if !model.subfolders.isEmpty { subfolders }
+                        // While filtering, only the notes that match: a folder's folders step aside.
+                        if !model.subfolders.isEmpty && !model.isFiltering { subfolders }
                         if model.kind.view == .templates, !builtIns.isEmpty { builtInTemplates(width: inner) }
                         if model.isLoading {
                             // Placeholders while the first page comes (MAC-47), not a blank gap.
@@ -1238,6 +1258,7 @@ struct WebNoteBrowser: View {
         let id = model.kind.folderId ?? ""
         let path = model.ancestors.map { a in WebPageStep(id: a.id, label: a.name, color: a.color) { frame.open(.folder(a.id)) } }
         return WebListPageHeader(title: model.title, mark: .some(model.folder?.color), count: model.isLoading ? "" : countText) {
+            rowFilter
             WebRowTray {
                 if !path.isEmpty {
                     WebPathMenuButton(title: model.title, color: model.folder?.color, path: path) { frame.open(.web("/folders")) }
@@ -1263,6 +1284,7 @@ struct WebNoteBrowser: View {
     @ViewBuilder private var toolbar: some View {
         if chrome != nil {
             WebListPageHeader(title: model.title, count: model.isLoading ? "" : statusText) {
+                rowFilter
                 WebRowSort(options: model.sortOptions.map { ($0.0, $0.1) }, value: $model.sort)
                 WebSegmented(options: [(WebNotesLayout.grid, WebIcon.layoutGrid, "Grid"), (.compact, .rows3, "Compact cards"), (.list, .list, "List")], value: Binding(get: { layout }, set: { layoutRaw = $0.rawValue }), prefix: "toolbar")
                 toolbarActions
@@ -1299,6 +1321,9 @@ struct WebNoteBrowser: View {
         return HStack(spacing: bar.gap) {
             Text(model.isLoading ? "" : statusText).webText(status.text).lineLimit(1).foregroundStyle(status.color.color)
                 .frame(maxWidth: .infinity, alignment: .leading)
+            if showsFilter {
+                WebIndexSearch(placeholder: "Filter notes", text: $model.filter, width: 260)
+            }
             WebSortSelect(options: model.sortOptions.map { ($0.0, $0.1) }, value: $model.sort)
             WebSegmented(options: [(WebNotesLayout.grid, WebIcon.layoutGrid, "Grid"), (.compact, .rows3, "Compact cards"), (.list, .list, "List")], value: Binding(get: { layout }, set: { layoutRaw = $0.rawValue }), prefix: "toolbar")
             if model.isTrash && model.total > 0 {
@@ -2355,7 +2380,7 @@ struct WebIndexSearch: View {
         .onTapGesture { focused = true }
         .animation(.easeOut(duration: 0.12), value: focused)
         .overlay(alignment: .leading) {
-            WebIconView(.search, size: 14).foregroundStyle(webVar("color-ink-faint", scheme).color).padding(.leading, 12).allowsHitTesting(false)
+            WebIconView(.funnel, size: 14).foregroundStyle(webVar("color-ink-faint", scheme).color).padding(.leading, 12).allowsHitTesting(false)
         }
         .overlay(alignment: .trailing) {
             if !text.isEmpty {
@@ -2364,7 +2389,7 @@ struct WebIndexSearch: View {
                 }
                 .buttonStyle(.webHover(radius: 6))
                 .padding(.trailing, 8)
-                .accessibilityLabel("Clear search")
+                .accessibilityLabel("Clear filter")
             }
         }
     }

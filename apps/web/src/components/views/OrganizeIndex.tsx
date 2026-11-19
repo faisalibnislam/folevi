@@ -1,8 +1,8 @@
 "use client";
 
 import { useQuery } from "convex/react";
-import { useCallback, useId, useMemo, useState } from "react";
-import { Check, Funnel, Hash, LayoutGrid, Rows3, X, FolderOpen } from "lucide-react";
+import { useCallback, useMemo, useState } from "react";
+import { Check, Hash, LayoutGrid, Rows3, FolderOpen } from "lucide-react";
 import { folderAncestors } from "@folevi/editor-schema";
 import { FolderGlyph } from "@/components/ui/FolderGlyph";
 import { FolderCard, type FolderSummary } from "./FolderCard";
@@ -17,7 +17,7 @@ import { useLocalStorage } from "@/lib/hooks/useEngine";
 import { ageText } from "@/lib/format";
 import { NewFolderButton } from "@/components/app/NewFolderButton";
 import { ViewChrome } from "@/components/app/Shell";
-import { ListPageHeader, ROW_CONTROL, ROW_SEG, RowSort, RowTraySep } from "./ListPageHeader";
+import { FilterField, ListPageHeader, ROW_SEG, RowSort, RowTraySep } from "./ListPageHeader";
 import { Select } from "@/components/ui/Select";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { useIphoneApp } from "@/lib/iphone";
@@ -37,25 +37,6 @@ type TagSort = "name" | "count" | "created";
 
 const tagColor = (color: string) => `var(--color-${color === "muted" ? "ink-muted" : color})`;
 const pages = (n: number) => (n === 1 ? "1 page" : `${n.toLocaleString()} pages`);
-
-function SearchField({ value, onChange, label, inRow = false }: { value: string; onChange: (v: string) => void; label: string; inRow?: boolean }) {
-  const id = useId();
-  return (
-    // In a title row: as tall as the row's other controls, its width following the window's up to 300 px.
-    <div className={inRow ? "relative w-[clamp(10rem,26vw,300px)] min-w-0 flex-none" : "relative min-w-0 flex-1 max-sm:basis-full sm:max-w-sm"}>
-      <label htmlFor={id} className="sr-only">
-        {label}
-      </label>
-      <Funnel size={14} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-faint" aria-hidden />
-      <input id={id} type="text" value={value} onChange={(e) => onChange(e.target.value)} placeholder={label} autoComplete="off" className={`ui-input ${inRow ? ROW_CONTROL : "h-9"} w-full rounded-chip pl-8 pr-8 text-callout`} />
-      {value ? (
-        <button type="button" aria-label="Clear filter" onClick={() => onChange("")} className="absolute right-2 top-1/2 grid h-6 w-6 -translate-y-1/2 place-items-center rounded-chip text-faint hover:text-ink">
-          <X size={13} aria-hidden />
-        </button>
-      ) : null}
-    </div>
-  );
-}
 
 /**
  * The Folders page's cards put in order by dragging (useFolderReorder): the folder goes in the gap it's dropped in.
@@ -211,7 +192,7 @@ export function FoldersIndex() {
         <ListPageHeader
           title="Folders"
           count={data === undefined ? "Loading…" : q.trim() ? `${list.length} of ${data.folders.length} folders` : `${list.length} ${list.length === 1 ? "folder" : "folders"}`}
-          before={<SearchField value={q} onChange={setQ} label="Filter folders" inRow />}
+          before={<FilterField value={q} onChange={setQ} label="Filter folders" inRow />}
           after={<NewFolderButton parentId={null} inPage />}
           controls={
             <>
@@ -330,7 +311,7 @@ export function TagsIndex() {
     >
       <div className="mx-auto max-w-[1180px] px-4 pb-[max(6rem,var(--fab-clearance))] pt-3 sm:px-8">
         <div className="flex flex-wrap items-center gap-3">
-          <SearchField value={q} onChange={setQ} label="Filter tags" />
+          <FilterField value={q} onChange={setQ} label="Filter tags" />
           <p role="status" className="min-w-0 truncate text-subheadline text-muted">
             {data === undefined ? "Loading…" : q.trim() ? `${list.length} of ${data.tags.length} tags` : `${data.tags.length} ${data.tags.length === 1 ? "tag" : "tags"}`}
           </p>

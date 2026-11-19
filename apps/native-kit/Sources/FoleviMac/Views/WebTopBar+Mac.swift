@@ -1,7 +1,7 @@
 // The Mac's title bar in the native look (docs/MAC_NATIVE_LOOK.md; the owner's layout, 2026-11-18): the window's
 // top strip, with no toolbar inside the card:
 //
-//   ● ● ●  [note tools/folders] [sidebar]   ‹ ›  (⌂) (▦) [ Calendar | (× Kyoto in November) | Recipes ] (+)  [sync] [bell]
+//   ● ● ●  [note tools/folders] [sidebar]   ‹ ›  (⌂) (▦) [ Calendar | (× Kyoto in November) | Recipes ]  (+ New note)  [sync] [bell]
 //
 // The traffic lights; the sidebar's button at the sidebar's trailing end; then, from the content card's leading
 // edge, Back and Forward and the tab bar drawn as Finder's (the owner, 2026-11-18): Home in a round button, the tabs in a grey capsule
@@ -88,6 +88,10 @@ extension WebTopBar {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .layoutPriority(1)
                 .padding(.trailing, 2)
+            // New note, the web's top bar's black pill (the owner, 2026-11-19: the one New note on screen, moved
+            // from the sidebar), right after the tabs. It opens the note in a new tab, ready to type.
+            MacNewNotePill(model: model)
+                .padding(.horizontal, 2)
             // Whether everything is saved and synced, then the bell (the owner, 2026-11-18).
             MacSyncStatus(model: model) { model.showSync?($0) }
             stripButton("bell", label: "Notifications", help: "Notifications", anchored: true) { model.showNotifications?(bellAnchor) }
@@ -142,9 +146,6 @@ extension WebTopBar {
                         .clipShape(Capsule())
                         .layoutPriority(1)
                 }
-                // New note at the tabs' trailing end, as Safari's + (the owner, 2026-11-19: a quick way to a new note
-                // on the Mac and the iPad, in the tab bar's top right). It opens in a new tab, ready to type.
-                MacNewNoteButton(model: model)
             }
             .coordinateSpace(name: Self.strip)
             .animation(MacLook.animation(NSWorkspace.shared.accessibilityDisplayShouldReduceMotion), value: model.tabs.activeID)
@@ -442,20 +443,41 @@ struct MacOverviewButton: View {
     }
 }
 
-/// New note at the tabs' trailing end (Safari's +): a round button the size of Home's and Show All Tabs'.
-struct MacNewNoteButton: View {
+/// New note, as the web's top bar has it: a capsule with + and its words, black in light mode and white in dark
+/// (the web's primary button), in the system's prominent Liquid Glass button.
+struct MacNewNotePill: View {
     let model: FrameModel
+    @Environment(\.colorScheme) private var scheme
 
     var body: some View {
-        Button { model.newNote() } label: {
-            MacSymbol("plus", size: 14, weight: .medium)
-                .frame(width: WebTopBar.trackHeight, height: WebTopBar.trackHeight)
-                .contentShape(Circle())
+        let dark = scheme == .dark
+        let button = Button { model.newNote() } label: {
+            HStack(spacing: 5) {
+                MacSymbol("plus", size: 13, weight: .semibold)
+                Text("New note").font(.system(size: 13, weight: .semibold))
+            }
+            .foregroundStyle(dark ? Color.black : Color.white)
+            .padding(.horizontal, 14)
+            .frame(height: WebTopBar.trackHeight - 8)
+            .contentShape(Capsule())
         }
-        .buttonStyle(QuietHoverStyle(shape: AnyShape(Circle())))
-        .background(MacLook.Colors.track, in: Circle())
-        .foregroundStyle(MacLook.Colors.secondary)
-        .foleviTooltip("New Note (⌘N)")
+        // (A solid black or white under Liquid Glass, not the system's prominent button or a tint alone: those came out
+        // grey on the Mac's dark window, the dark words then unreadable on them. The glass gives its edge and its
+        // press.)
+        let fill = dark ? Color.white : Color.black
+        Group {
+            if #available(iOS 26, macOS 26, *) {
+                button.buttonStyle(.plain)
+                    .background(fill, in: Capsule())
+                    .glassEffect(.regular.tint(fill).interactive(), in: Capsule())
+            } else {
+                button.buttonStyle(.plain)
+                    .background(fill, in: Capsule())
+            }
+        }
+        .fixedSize()
+        // (The button says New note: its tooltip is the shortcut alone.)
+        .foleviTooltip("(⌘N)")
         .accessibilityLabel("New note")
         .accessibilityIdentifier("strip.newNote")
     }

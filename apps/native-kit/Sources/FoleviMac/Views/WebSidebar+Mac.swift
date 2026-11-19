@@ -27,15 +27,9 @@ extension WebSidebar {
             macAccount
                 .padding(.horizontal, MacLook.sidebarInset)
                 .padding(.top, MacLook.sidebarTop)
-            Button { model.newNote() } label: {
-                SidebarRow("New note", symbol: "square.and.pencil")
-            }
-            .buttonStyle(SidebarRowButtonStyle())
-            .foleviTooltip("New Note (⌘N)")
-            .accessibilityLabel("New note")
-            .padding(.horizontal, MacLook.sidebarInset)
-            .padding(.top, MacLook.Space.xs)
-            .padding(.bottom, MacLook.Space.s)
+                // (New note is the title bar's black pill, as the web's top bar has it: the owner, 2026-11-19, one
+                // New note on screen, not here as well.)
+                .padding(.bottom, MacLook.Space.s)
             if let noteId = model.route.noteId, model.noteToolsShown {
                 // On a note, its own tools (WebNoteSidebar: its name and place, its pages, Table of contents, Comments,
                 // Tasks, Attachments, Find), as the web's sidebar shows them; the title bar's switch brings the

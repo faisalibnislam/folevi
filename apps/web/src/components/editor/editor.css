@@ -242,6 +242,10 @@
   transition: background 140ms, border-color 140ms, box-shadow 140ms, transform 120ms; grid-area: 1 / 1;
 }
 .fb-check:hover::before { border-color: var(--color-moss); }
+/* Under a finger the box is a full-size target (it is drawn 18 wide): a near miss landed in the task's text
+   and raised the keyboard. The button grows to 44 by 44 around the same centre, with margins that give the
+   extra back, so nothing in the line moves. (Its ::before and ::after are the box and the tick.) */
+@media (pointer: coarse) { .fb-editor .fb-check { width: 44px; height: 44px; margin: calc(0.8em - 12px - 10px) -13px -10px -14px; } }
 .fb-check:active::before { transform: scale(0.96); }
 .fb-check:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 0; }
 .fb-check:disabled { opacity: 1; }

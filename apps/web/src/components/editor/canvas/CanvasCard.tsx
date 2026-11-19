@@ -48,6 +48,9 @@ export interface CanvasCardProps {
   /** Escape from anywhere in the block, its toolbar too, before anything else (close an open panel, say);
    *  return true when it was used. */
   onEscape?: () => boolean;
+  /** The keyboard is leaving the block (a click in the note, Escape): save what is pending, so the note's own
+   *  commands (copy, duplicate, delete, what is typed next) see the block as shown. */
+  onLeave?: () => void;
 }
 
 /** Clamps a stored height into the block's range (bad or missing values read as the default). */
@@ -56,7 +59,7 @@ export const clampHeight = (h: unknown, min: number, max: number, fallback: numb
   return Math.round(Math.max(min, Math.min(max, Number.isFinite(n) && n > 0 ? n : fallback)));
 };
 
-export function CanvasCard({ view, type, name, icon, minHeight, maxHeight, defaultHeight, empty, blank = empty, hint, tools, children, onRefit, onKey, onEscape }: CanvasCardProps) {
+export function CanvasCard({ view, type, name, icon, minHeight, maxHeight, defaultHeight, empty, blank = empty, hint, tools, children, onRefit, onKey, onEscape, onLeave }: CanvasCardProps) {
   const { node, selected, editor, getPos, updateAttributes } = view;
   const cardRef = useRef<HTMLDivElement>(null);
   const bodyRef = useRef<HTMLDivElement>(null);
@@ -74,6 +77,8 @@ export function CanvasCard({ view, type, name, icon, minHeight, maxHeight, defau
   const exitToNote = () => {
     const pos = typeof getPos === "function" ? getPos() : null;
     if (typeof pos !== "number") return;
+    // (Before the block is selected: its step in the note's undo comes before whatever is done next.)
+    onLeave?.();
     editor.view.dispatch(editor.state.tr.setSelection(NodeSelection.create(editor.state.doc, pos)));
     editor.view.focus();
   };
@@ -133,7 +138,9 @@ export function CanvasCard({ view, type, name, icon, minHeight, maxHeight, defau
           onKeyDown={onKeyDown}
           onFocus={() => setActive(true)}
           onBlur={(e) => {
-            if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setActive(false);
+            if (e.currentTarget.contains(e.relatedTarget as Node | null)) return;
+            setActive(false);
+            onLeave?.();
           }}
         >
           {typeof children === "function" ? children(fullCanvas, height) : children}

@@ -11,7 +11,7 @@ import { Decoration, DecorationSet, type EditorView } from "@tiptap/pm/view";
 import type { Node as PMNode } from "@tiptap/pm/model";
 import { sliceHasBlocks, writeBlocksToEvent } from "./blockClipboard";
 import { deleteVisibleRange } from "./plugins";
-import { blockAt, changeDepth, deleteBlocks, duplicateBlocks, moveBlock, normalizeDepths, subtreeRange } from "./commands";
+import { blockAt, changeDepth, deleteBlocks, duplicateBlocks, moveBlock, subtreeRange } from "./commands";
 import { blockSelectionKey, blockSelectionRange, hiddenIndices, indexOfBlock, neighbourIndex, syncDomSelection, type BlockSelection, type BlockSelectionMeta, type TextPoint } from "./blockSelectionState";
 
 export { blockSelectionKey, blockSelectionRange };
@@ -81,28 +81,38 @@ export function actedRange(state: EditorState): { from: number; to: number } | n
   return { from: range.from, to };
 }
 
-function copySelection(view: EditorView, event: ClipboardEvent): boolean {
+function copySelection(view: EditorView, event: ClipboardEvent, cut = false): boolean {
   const range = actedRange(view.state);
   if (!range || !event.clipboardData) return false;
   const nodes: PMNode[] = [];
   for (let i = range.from; i <= range.to; i++) nodes.push(view.state.doc.child(i));
   // The blocks themselves (blockClipboard.ts), so a paste in any note recreates them exactly.
-  return writeBlocksToEvent(view, event, nodes);
+  return writeBlocksToEvent(view, event, nodes, { cut });
 }
 
 /**
  * Copying a selection without selected blocks: a selected block (a table, an image, a chart) or text that
  * runs over a whole block goes on the clipboard as blocks too. Text within lines is ProseMirror's own copy.
  */
-function copyBlocksInSelection(view: EditorView, event: ClipboardEvent): boolean {
+function copyBlocksInSelection(view: EditorView, event: ClipboardEvent, cut = false): boolean {
   const { selection } = view.state;
   if (selection.empty) return false;
-  if (selection instanceof NodeSelection && selection.$from.depth === 0 && selection.node.isBlock) return writeBlocksToEvent(view, event, [selection.node]);
+  if (selection instanceof NodeSelection && selection.$from.depth === 0 && selection.node.isBlock) return writeBlocksToEvent(view, event, [selection.node], { cut });
   const slice = selection.content();
   if (!sliceHasBlocks(slice)) return false;
   const nodes: PMNode[] = [];
   slice.content.forEach((n) => nodes.push(n));
-  return writeBlocksToEvent(view, event, nodes);
+  return writeBlocksToEvent(view, event, nodes, { cut });
+}
+
+/**
+ * WebKit (Safari, the Mac app, iPhone and iPad) only sends "copy" and "cut", and only offers them in the Edit
+ * menu, where something is selected, unless their "before" event is refused. While blocks are selected the
+ * text selection is a bare caret, so this refuses them and the copy and cut below get to run.
+ */
+function allowCopyOfBlocks(view: EditorView, event: Event): boolean {
+  if (blockSelectionKey.getState(view.state)) event.preventDefault();
+  return false;
 }
 
 const MODIFIER_KEYS = new Set(["Shift", "Meta", "Control", "Alt", "CapsLock", "Fn"]);
@@ -150,9 +160,13 @@ export const BlockSelectionExtension = Extension.create({
           },
           attributes: (state): Record<string, string> => (blockSelectionKey.getState(state) ? { class: "fb-block-selecting" } : {}),
           handleDOMEvents: {
+            beforecopy: allowCopyOfBlocks,
+            beforecut: allowCopyOfBlocks,
             copy: (view, event) => copySelection(view, event),
             cut: (view, event) => {
-              if (!copySelection(view, event)) return false;
+              // A note that can't be edited keeps its blocks: the cut is a copy.
+              if (!editor.isEditable) return copySelection(view, event);
+              if (!copySelection(view, event, true)) return false;
               const range = actedRange(view.state)!;
               const indices: number[] = [];
               for (let i = range.from; i <= range.to; i++) indices.push(i);
@@ -160,24 +174,8 @@ export const BlockSelectionExtension = Extension.create({
               deleteBlocks(editor, indices, false);
               return true;
             },
-            // Pasting while blocks are selected replaces them.
-            paste: (view, event) => {
-              const range = actedRange(view.state);
-              if (!range) return false;
-              // Nothing usable on the clipboard: leave the blocks alone.
-              const data = event.clipboardData;
-              if (!data || (!data.getData("text/plain") && !data.getData("text/html") && !data.files.length)) return false;
-              // One step (undoes together with the paste): the blocks give way to an empty line the paste fills.
-              const { state } = view;
-              const start = blockAt(state, range.from)!;
-              const last = blockAt(state, range.to)!;
-              const line = state.schema.nodes.paragraph!.create({ id: null, depth: Number(start.node.attrs.depth ?? 0) });
-              const tr = state.tr.replaceWith(start.pos, last.pos + last.node.nodeSize, line);
-              tr.setSelection(TextSelection.create(tr.doc, start.pos + 1)).setMeta(blockSelectionKey, { clear: true } satisfies BlockSelectionMeta);
-              normalizeDepths(tr);
-              view.dispatch(tr);
-              return false;
-            },
+            // (Pasting while blocks are selected replaces them: paste.ts does that in the paste's own step,
+            // and only once it knows something will be pasted.)
             mousedown: (view, event) => {
               const range = blockSelectionRange(view.state);
               if (!range) return false;
@@ -222,6 +220,11 @@ export const BlockSelectionExtension = Extension.create({
                 const { $head } = state.selection;
                 if ($head.depth < 1 || !$head.parent.isTextblock) return false;
                 if (dir > 0 ? $head.parentOffset < $head.parent.content.size : $head.parentOffset > 0) return false;
+                // Only while the selection is growing: the key that takes a line back off it (Shift+Up after
+                // Shift+Down) shrinks the text selection, as anywhere. It used to turn it into whole blocks
+                // whenever the moving end happened to rest at a line's start or end.
+                const { anchor, head } = state.selection;
+                if (dir > 0 ? head < anchor : head > anchor) return false;
                 const anchorIndex = state.selection.$anchor.index(0);
                 const headIndex = state.selection.$head.index(0);
                 const next = neighbourIndex(state, headIndex, dir);
@@ -360,7 +363,7 @@ export const BlockSelectionExtension = Extension.create({
           handleDOMEvents: {
             copy: (view, event) => !blockSelectionKey.getState(view.state) && copyBlocksInSelection(view, event),
             cut: (view, event) => {
-              if (blockSelectionKey.getState(view.state) || !editor.isEditable || !copyBlocksInSelection(view, event)) return false;
+              if (blockSelectionKey.getState(view.state) || !editor.isEditable || !copyBlocksInSelection(view, event, true)) return false;
               // As Backspace would: a collapsed toggle's hidden lines stay (plugins.ts).
               view.dispatch((deleteVisibleRange(view.state) ?? view.state.tr.deleteSelection()).scrollIntoView().setMeta("uiEvent", "cut"));
               return true;

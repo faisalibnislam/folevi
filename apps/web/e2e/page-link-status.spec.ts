@@ -2,7 +2,7 @@ import { expect, test, type Page } from "@playwright/test";
 import { newPerson, waitForSaved } from "./helpers";
 
 async function newPage(page: Page, title: string) {
-  await page.getByRole("button", { name: "New note", exact: true }).click();
+  await page.getByRole("button", { name: "New note", exact: true }).first().click();
   await page.waitForURL(/\/d\/[0-9A-Z]{26}\?new=1/);
   const t = page.getByRole("textbox", { name: "Title" });
   await expect(t).toBeFocused();

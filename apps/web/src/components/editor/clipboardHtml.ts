@@ -50,21 +50,54 @@ function inside(node: PMNode): DOMOutputSpec[] {
 }
 
 class ClipboardSerializer extends DOMSerializer {
+  /**
+   * Each list item comes out of the schema as a list of its own, at the top level. Here they become the
+   * lists other apps read (Mail, Notes, Docs, Word): one list per run of items, an item nested under another
+   * (by data-depth) inside that item, numbering that counts on after something came between, and a to-do
+   * with a check box that says whether it is done. Every item keeps its own attributes, so pasted back into
+   * a note it is the block it was.
+   */
   override serializeFragment(fragment: Fragment, options: { document?: Document } = {}, target?: HTMLElement | DocumentFragment): HTMLElement | DocumentFragment {
     const out = super.serializeFragment(fragment, options, target);
-    // One list per run of items (each item was its own list), so numbering counts on and bullets group.
-    let prev: Element | null = null;
+    /** The lists a next item could go into: the last list at each depth, outermost first. */
+    const open: { depth: number; list: Element; item: Element }[] = [];
+    /** The number the last numbered item had at each depth, counted as the note counts them (editor.css). */
+    const numbers: number[] = [];
     for (const el of [...out.childNodes]) {
-      if (!(el instanceof Element)) {
-        prev = null;
+      const element = el.nodeType === 1 ? (el as Element) : null;
+      const item = element && (element.tagName === "UL" || element.tagName === "OL") && element.hasAttribute("data-fb-list") ? element.firstElementChild : null;
+      const depth = Number((item ?? element)?.getAttribute("data-depth") ?? 0) || 0;
+      if (!element || !item) {
+        // Anything else ends the lists before it; numbers at its depth and deeper start again after it.
+        open.length = 0;
+        numbers.length = Math.min(numbers.length, depth);
         continue;
       }
-      if (prev && el.tagName === prev.tagName && (el.tagName === "UL" || el.tagName === "OL") && el.hasAttribute("data-fb-list") && prev.hasAttribute("data-fb-list")) {
-        while (el.firstChild) prev.appendChild(el.firstChild);
-        el.remove();
+      const numbered = element.tagName === "OL";
+      numbers.length = Math.min(numbers.length, numbered ? depth + 1 : depth);
+      if (numbered) numbers[depth] = (numbers[depth] ?? 0) + 1;
+      if (item.getAttribute("data-list") === "todo") {
+        const box = item.ownerDocument.createElement("input");
+        box.setAttribute("type", "checkbox");
+        box.setAttribute("disabled", "");
+        if (item.getAttribute("data-checked") === "true") box.setAttribute("checked", "");
+        item.insertBefore(box, item.firstChild);
+      }
+      while (open.length && open[open.length - 1]!.depth > depth) open.pop();
+      const same = open.length && open[open.length - 1]!.depth === depth ? open[open.length - 1]! : null;
+      if (same && same.list.tagName === element.tagName) {
+        // The next item of the list that is open at this depth.
+        same.list.appendChild(item);
+        same.item = item;
+        element.remove();
         continue;
       }
-      prev = el;
+      // A new list: beside a list of another kind at this depth, or the first one this deep.
+      if (same) open.pop();
+      const parent = open[open.length - 1];
+      if (parent) parent.item.appendChild(element);
+      if (numbered && numbers[depth]! > 1) element.setAttribute("start", String(numbers[depth]));
+      open.push({ depth, list: element, item });
     }
     return out;
   }

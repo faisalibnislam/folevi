@@ -435,8 +435,11 @@
 
   // The app coming back to the front, said reliably (a web view's visibilitychange doesn't always fire when
   // iOS suspends and resumes the app): the page picks up what the share extension kept, for one.
+  // Leaving is said too (folevi:app-inactive): the page saves what was typed in the last second and sends it,
+  // without waiting for a visibilitychange that may come late or not at all.
   listen("App", "appStateChange", function (state) {
-    if (state && state.isActive) window.dispatchEvent(new Event("folevi:app-active"));
+    if (!state) return;
+    window.dispatchEvent(new Event(state.isActive ? "folevi:app-active" : "folevi:app-inactive"));
   });
 
   // What iOS knows and a web view can't read (Native/SystemSettings.swift), as marks on <html>: Reduce

@@ -35,8 +35,26 @@
 }
 .fb-col-resize:hover::after { opacity: 0.55; }
 .fb-col-resize.is-on::after { opacity: 1; }
-/* A finger needs more to land on than a mouse pointer does. */
-@media (pointer: coarse) { .fb-col-resize { width: 20px; } }
+/* Where touch is the way in (iPhone, iPad), the line is only as tall as the tools row and shows only with
+   it. Running the full height of the table, 20 px wide on every column edge and there even while the tools
+   were hidden, it lay over the cells: a tap near a column's edge landed on it and opened no cell, and a
+   sideways swipe that began there resized the column instead of scrolling the table. The tools row's cells
+   are what it is placed against here, so it ends where they do, and it takes its visibility from that row
+   again. By touch a column is sized by dragging this part of the line, or with Narrower and Wider in the
+   column's menu. (It stays 20 px wide: any wider and it would lie over the column tools beside it.) */
+@media (pointer: coarse) {
+  .fb-table > thead > tr > td { position: relative; }
+  .fb-col-resize { width: 20px; visibility: inherit; }
+}
+
+/* ---- Touch: more to land on. The total picker in a totals cell is a 20 px button 4 px in from the cell's
+   left edge and 6 px down from its top. A finger gets 44 px of height and 32 of width around it, all of it
+   inside the cell (up to the cell's top and left edges, the rest down and to the right), so the rest of the
+   cell still opens the cell and no other row's cell is covered. */
+@media (pointer: coarse) {
+  .fb-table .fb-total-pick > button { position: relative; }
+  .fb-table .fb-total-pick > button::after { content: ""; position: absolute; inset: -6px -8px -18px -4px; }
+}
 
 /* ---- The handles that drag a row or a column to another place: its number or letter with a grip. */
 .fb-table-grip {

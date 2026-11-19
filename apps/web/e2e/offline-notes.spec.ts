@@ -124,7 +124,7 @@ test("a note made offline shows in Home, All notes and search, then syncs and th
 
   await context.setOffline(true);
   await expect(page.getByTestId("sync-status")).toHaveAttribute("data-status", "offline", { timeout: 15_000 });
-  await page.getByRole("button", { name: "New note", exact: true }).click();
+  await page.getByRole("button", { name: "New note", exact: true }).first().click();
   const id = await writeNote(page, "Offline test", "I'm working offline now");
   // The tab carries the title given offline.
   await expect(page.getByRole("tab", { name: /Offline test/ }).or(page.getByRole("link", { name: /Offline test/ })).first()).toBeVisible();
@@ -175,7 +175,7 @@ test("relaunched with no connection, a note made offline is still there; back on
   await page.reload();
   await expect(page.getByRole("navigation", { name: "Folio" })).toBeVisible({ timeout: 25_000 });
   await expect(page.getByTestId("sync-status")).toHaveAttribute("data-status", "offline", { timeout: 15_000 });
-  await page.getByRole("button", { name: "New note", exact: true }).click();
+  await page.getByRole("button", { name: "New note", exact: true }).first().click();
   const id = await writeNote(page, "Cold start note", "Written with no server at all");
   await page.waitForTimeout(800);
 
@@ -206,7 +206,7 @@ test("relaunched with no connection, a note made offline is still there; back on
 test("one note edited on two devices while one is offline: both edits are kept", async ({ browser }) => {
   test.setTimeout(180_000);
   const { page: a, context } = await newPerson(browser, "Two Places");
-  await a.getByRole("button", { name: "New note", exact: true }).click();
+  await a.getByRole("button", { name: "New note", exact: true }).first().click();
   const id = await writeNote(a, "Shared plan", "First line");
   await waitForSaved(a);
   const b = await secondDevice(browser, context);
@@ -272,7 +272,7 @@ for (const device of ["iPhone", "iPad"] as const) {
       await page.getByRole("button", { name: "Create" }).click();
       await page.getByRole("menuitem", { name: "New note" }).click();
     } else {
-      await page.getByRole("button", { name: "New note", exact: true }).click();
+      await page.getByRole("button", { name: "New note", exact: true }).first().click();
     }
     const id = await writeNote(page, `${device} offline note`, "Typed on the train");
     await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());

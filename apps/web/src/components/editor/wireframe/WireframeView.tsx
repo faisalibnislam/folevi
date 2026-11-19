@@ -93,6 +93,7 @@ import {
 } from "./ops";
 import { useWireDoc } from "./useWireDoc";
 import { targetUnder } from "../canvas/targetUnder";
+import { capturePointer, dropFocusIn, notePress, pinchPair, useTapFocus, type DownPointer } from "../canvas/pointers";
 
 const MIN_K = 0.05;
 const MAX_K = 4;
@@ -199,7 +200,7 @@ function WireframeEditor(props: ReactNodeViewProps) {
   const { node } = props;
   const data = String(node.attrs.data ?? "");
   const write = useBlockDataWriter(props);
-  const { doc, docRef, setLive, commit, undo, redo, canUndo, canRedo, tooLarge } = useWireDoc(data, write);
+  const { doc, docRef, setLive, commit, undo, redo, flush, canUndo, canRedo, tooLarge } = useWireDoc(data, write);
   const demo = useEditorEnvironment().demo;
   // The small on-device model can't draw screens (WP11, lib/local/ai/features.ts).
   const wireframeAi = useAiFeature("wireframe");
@@ -236,7 +237,7 @@ function WireframeEditor(props: ReactNodeViewProps) {
   const [multi, setMulti] = useState(false);
   const [ghost, setGhost] = useState<{ pick: LibraryPick; x: number; y: number } | null>(null);
   const drag = useRef<Drag | null>(null);
-  const pointers = useRef(new Map<number, Pt>());
+  const pointers = useRef(new Map<number, DownPointer>());
   const frame = useRef<number | null>(null);
   const lastMove = useRef<PointerEvent | null>(null);
 
@@ -542,7 +543,8 @@ function WireframeEditor(props: ReactNodeViewProps) {
       const p = toWorld(e.clientX, e.clientY);
       const k = viewRef.current.k;
       if (d.kind === "items" || d.kind === "screens") {
-        if (!d.moved && Math.hypot(e.clientX - d.sx, e.clientY - d.sy) < 4) return;
+        // (A finger wobbles more than a mouse: a tap that slides a little is still a tap, not a move.)
+        if (!d.moved && Math.hypot(e.clientX - d.sx, e.clientY - d.sy) < (e.pointerType === "mouse" ? 4 : 8)) return;
         if (!d.moved) setDragging(true);
         d.moved = true;
         const dx = p.x - d.start.x;
@@ -635,10 +637,11 @@ function WireframeEditor(props: ReactNodeViewProps) {
 
   const onPointerMove = (e: React.PointerEvent<SVGSVGElement>) => {
     const pts = pointers.current;
-    if (pts.has(e.pointerId)) pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (pts.has(e.pointerId)) pts.set(e.pointerId, { x: e.clientX, y: e.clientY, type: e.pointerType });
     const d = drag.current;
-    if (d?.kind === "pinch" && pts.size >= 2) {
-      const [a, b] = [...pts.values()] as [Pt, Pt];
+    const pair = d?.kind === "pinch" ? pinchPair(pts) : null;
+    if (d?.kind === "pinch" && pair) {
+      const [a, b] = pair;
       const r = svgRef.current!.getBoundingClientRect();
       const mid = { x: (a.x + b.x) / 2 - r.left, y: (a.y + b.y) / 2 - r.top };
       const k = clamp(d.view.k * (Math.hypot(a.x - b.x, a.y - b.y) / d.dist), MIN_K, MAX_K);
@@ -657,16 +660,25 @@ function WireframeEditor(props: ReactNodeViewProps) {
     }
   };
 
+  // A finger on a wireframe that does not have the keyboard gives it the keyboard only when it turns out to
+  // be a tap, not a scroll of the note (canvas/pointers.ts).
+  const tapFocus = useTapFocus({ isActive: active, focus: focusCanvas, drop: () => dropFocusIn(stageRef.current?.closest(".fb-canvas-card")) });
+
   const onPointerDown = (e: React.PointerEvent<SVGSVGElement>) => {
     if (editingRef.current) finishEdit(false);
-    focusCanvas();
     const pts = pointers.current;
-    pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    const what = notePress(pts, e);
+    // A palm resting beside the pen: no gesture of its own, and the pen's carries on.
+    if (what === "palm") return;
+    tapFocus.down(e);
+    // Captured before anything else, the second finger of a pinch too: what it came down on (a resize handle,
+    // a link handle) may be hidden by the gesture, and its release would go there instead of here.
+    if (e.pointerType !== "mouse" || e.button === 0 || e.button === 1) capturePointer(e.currentTarget, e.pointerId);
     // Two fingers: pinch to zoom (and pan), whatever the first finger was doing.
-    if (pts.size === 2 && e.pointerType === "touch") {
+    if (what === "pinch") {
       const cur = drag.current;
       if (cur && (cur.kind === "items" || cur.kind === "screens" || cur.kind === "resize")) setLive(cur.before);
-      const [a, b] = [...pts.values()] as [Pt, Pt];
+      const [a, b] = pinchPair(pts)!;
       const r = svgRef.current!.getBoundingClientRect();
       drag.current = { kind: "pinch", dist: Math.max(10, Math.hypot(a.x - b.x, a.y - b.y)), view: viewRef.current, mid: { x: (a.x + b.x) / 2 - r.left, y: (a.y + b.y) / 2 - r.top } };
       setMarquee(null);
@@ -678,7 +690,6 @@ function WireframeEditor(props: ReactNodeViewProps) {
     if (e.pointerType === "mouse" && e.button !== 0 && e.button !== 1) return;
     const target = e.target as Element;
     const p = toWorld(e.clientX, e.clientY);
-    e.currentTarget.setPointerCapture(e.pointerId);
     const touch = e.pointerType === "touch";
     const adding = e.shiftKey || e.metaKey || (touch && multi);
     const wf = docRef.current;
@@ -793,10 +804,11 @@ function WireframeEditor(props: ReactNodeViewProps) {
   const tapScreen = useRef<string | null>(null);
 
   const onPointerUp = (e: React.PointerEvent<SVGSVGElement>) => {
+    tapFocus.up(e);
     pointers.current.delete(e.pointerId);
     const d = drag.current;
     if (d?.kind === "pinch") {
-      if (pointers.current.size < 2) drag.current = null;
+      if (!pinchPair(pointers.current)) drag.current = null;
       return;
     }
     if (!d || d.pointer !== e.pointerId) return;
@@ -1169,6 +1181,7 @@ function WireframeEditor(props: ReactNodeViewProps) {
       blank={!nScreens}
       hint={null}
       onKey={onKey}
+      onLeave={flush}
       onRefit={() => {
         const el = stageRef.current;
         if (el) fitTo(wireframeBounds(docRef.current), el.clientWidth, el.clientHeight);

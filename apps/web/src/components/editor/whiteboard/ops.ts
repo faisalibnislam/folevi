@@ -105,3 +105,15 @@ export function strokeAt(strokes: readonly WhiteboardStroke[], p: Point, radius:
   for (let i = strokes.length - 1; i >= 0; i--) if (strokeHit(strokes[i]!, p, radius)) return i;
   return -1;
 }
+
+/**
+ * Whether a touch that is starting comes from a pen (Apple Pencil). WebKit lets the Pencil scroll the page
+ * wherever a finger may (touch-action), which cancels the stroke it was drawing: the sheet stops that touch
+ * from scrolling, and only that one, so fingers still scroll the note.
+ */
+export function stylusTouch(e: { changedTouches?: ArrayLike<unknown> | null }): boolean {
+  const touches = e.changedTouches;
+  if (!touches) return false;
+  for (let i = 0; i < touches.length; i++) if ((touches[i] as { touchType?: string } | null)?.touchType === "stylus") return true;
+  return false;
+}

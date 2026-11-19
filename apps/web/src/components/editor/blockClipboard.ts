@@ -5,7 +5,9 @@
 //   application/x-folevi-blocks  the blocks as wire blocks (JSON: { v, documentId, blocks }), so pasting into
 //                                any Folevi note (web, the Mac app, the iPhone and iPad app: all the same site)
 //                                recreates them exactly, with new ids. Browsers keep custom types for pages
-//                                of the same site, which every Folevi app is.
+//                                of the same site, which every Folevi app is. Blocks that were cut say so
+//                                and keep their ids: pasted back into the note they were cut from, they are
+//                                the same blocks moved (paste.ts), so their comments move with them.
 //   text/html                    for other apps: real lists and tables (cells show formulas' results), images,
 //                                and a picture of a chart, mind map, flowchart, wireframe or sticky board. It
 //                                carries the same wire blocks in a data attribute, the fallback when a custom
@@ -31,10 +33,25 @@ export interface BlockClip {
   /** The note the blocks were copied from (its files are shared with the note they're pasted into). */
   documentId: string | null;
   blocks: WireBlock[];
+  /** The blocks were cut, not copied: they carry the ids they had in the note (see the note above). */
+  cut?: boolean;
 }
 
-/** Top-level editor nodes (each with its depth) as wire blocks: a tree, depths relative to the first. */
-export function nodesToBlocks(nodes: readonly PMNode[]): WireBlock[] {
+/**
+ * How many times blocks have been written to the clipboard by a copy or cut here. The menus read it around
+ * document.execCommand("copy" | "cut"): WebKit runs the copy and still answers false when nothing but a caret
+ * is selected (as while blocks are), so whether the count went up is what says the copy was made.
+ */
+let blockCopies = 0;
+export function blockCopyCount(): number {
+  return blockCopies;
+}
+
+/**
+ * Top-level editor nodes (each with its depth) as wire blocks: a tree, depths relative to the first. With
+ * new ids, or with `keepIds` (a cut) the ids the nodes have.
+ */
+export function nodesToBlocks(nodes: readonly PMNode[], options: { keepIds?: boolean } = {}): WireBlock[] {
   const flat = nodes
     .map((n) => nodeToFlat(n.attrs.id ? n : n.type.create({ ...n.attrs, id: ulid() }, n.content, n.marks)))
     .filter((f): f is NonNullable<typeof f> => Boolean(f));
@@ -45,7 +62,7 @@ export function nodesToBlocks(nodes: readonly PMNode[]): WireBlock[] {
   for (const f of flat) {
     const depth = Math.min(f.depth - base, stack.length ? stack[stack.length - 1]!.depth + 1 : 0);
     while (stack.length && stack[stack.length - 1]!.depth >= depth) stack.pop();
-    const id = ulid();
+    const id = options.keepIds ? f.id : ulid();
     placed.push({ id, parentId: depth > 0 && stack.length ? stack[stack.length - 1]!.id : null, f });
     stack.push({ id, depth });
   }
@@ -106,7 +123,7 @@ export function readBlockClip(data: DataTransfer | null): BlockClip | null {
     if (!blocks.length) return null;
     // Back in tree order (nesting from parentId), whatever order they came in.
     const ordered = flattenTree(blocks).map((e) => e.block);
-    return { v: 1, documentId: typeof parsed.documentId === "string" ? parsed.documentId : null, blocks: ordered };
+    return { v: 1, documentId: typeof parsed.documentId === "string" ? parsed.documentId : null, blocks: ordered, ...(parsed.cut === true ? { cut: true } : {}) };
   } catch {
     return null;
   }
@@ -190,7 +207,7 @@ function htmlFor(view: EditorView, nodes: readonly PMNode[], clip: BlockClip, im
 }
 
 /** The note's id (the editor's root carries it). */
-function documentIdOf(view: EditorView): string | null {
+export function documentIdOf(view: EditorView): string | null {
   return (view.dom as HTMLElement).closest("[data-fb-root]")?.getAttribute("data-fb-root") ?? null;
 }
 
@@ -208,11 +225,12 @@ export function sliceHasBlocks(slice: Slice): boolean {
 /**
  * Writes blocks to a copy or cut event: the custom type, HTML and text at once, then (for picture blocks) a
  * richer copy through the async clipboard with their pictures. Returns false when the event can't take data.
+ * `cut`: the blocks are about to be removed from the note, so they go with their own ids.
  */
-export function writeBlocksToEvent(view: EditorView, event: ClipboardEvent, nodes: readonly PMNode[]): boolean {
+export function writeBlocksToEvent(view: EditorView, event: ClipboardEvent, nodes: readonly PMNode[], options: { cut?: boolean } = {}): boolean {
   const data = event.clipboardData;
   if (!data || !nodes.length) return false;
-  const clip: BlockClip = { v: 1, documentId: documentIdOf(view), blocks: nodesToBlocks(nodes) };
+  const clip: BlockClip = { v: 1, documentId: documentIdOf(view), blocks: nodesToBlocks(nodes, { keepIds: options.cut }), ...(options.cut ? { cut: true } : {}) };
   const slice = new Slice(Fragment.fromArray([...nodes]), 0, 0);
   const text = sliceToText(slice);
   const json = JSON.stringify(clip);
@@ -226,6 +244,7 @@ export function writeBlocksToEvent(view: EditorView, event: ClipboardEvent, node
     /* custom types refused here: the HTML carries the blocks */
   }
   copyPictures(view, nodes, clip, text);
+  blockCopies++;
   return true;
 }
 
@@ -259,3 +278,14 @@ const blobDataUrl = (blob: Blob) =>
     r.onerror = () => reject(r.error);
     r.readAsDataURL(blob);
   });
+
+/**
+ * What to say when the browser really did refuse a copy or cut asked for from a menu. With a keyboard the key
+ * still works; on a touch screen the system's own Copy and Cut (hold the text) do.
+ */
+export function blockedMessage(command: "copy" | "cut"): string {
+  const what = command === "cut" ? "cutting" : "copying";
+  const touch = typeof window !== "undefined" && typeof window.matchMedia === "function" && window.matchMedia("(pointer: coarse)").matches;
+  if (touch) return `Your browser blocked ${what} from the menu. Hold the text and use ${command === "cut" ? "Cut" : "Copy"} there instead.`;
+  return `Your browser blocked ${what} from the menu. Press ${command === "cut" ? "⌘X" : "⌘C"} instead.`;
+}

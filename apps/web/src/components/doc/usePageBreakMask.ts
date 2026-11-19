@@ -44,6 +44,21 @@ export function pageMask(w: number, h: number, r: number, gaps: [number, number]
   return `url("data:image/svg+xml,${encodeURIComponent(svg)}")`;
 }
 
+/**
+ * Whether a change in the sheet can move a page break: a block added to or removed from an editor (or
+ * anything changing outside one, such as the editor itself arriving), or a block's own class changing
+ * (folded away, selected). A change inside a block (its text, a mark) cannot.
+ */
+export function movesBlocks(record: MutationRecord): boolean {
+  const target = record.target as Element;
+  if (target.nodeType !== 1) return false;
+  if (target.classList.contains("fb-editor")) return record.type === "childList";
+  const editor = target.closest(".fb-editor");
+  if (!editor) return true;
+  // A block is a direct child of its editor.
+  return record.type === "attributes" && target.parentElement === editor;
+}
+
 export function usePageBreakMask(sheet: HTMLElement | null) {
   useLayoutEffect(() => {
     if (!sheet) return;
@@ -53,12 +68,16 @@ export function usePageBreakMask(sheet: HTMLElement | null) {
       for (const p of MASK_PROPS) sheet.style.removeProperty(p);
       last = "";
     };
+    /** The page that holds the sheet, when it is one ([data-sheet-host]). */
+    const host = () => (sheet.parentElement?.hasAttribute("data-sheet-host") ? sheet.parentElement : null);
     const measure = () => {
       frame = 0;
       const breaks = sheet.querySelectorAll<HTMLElement>(".fb-editor > .fb-page-break:not(.fb-hidden)");
       // A plain note is one flat page until it has a page break: then its pages are cards (globals.css,
       // [data-pages]).
       sheet.toggleAttribute("data-pages", breaks.length > 0);
+      // The page around the sheet says so too (globals.css styles the page by it, without :has()).
+      host()?.toggleAttribute("data-sheet-pages", breaks.length > 0);
       if (!breaks.length) {
         if (last) clear();
         return;
@@ -106,8 +125,12 @@ export function usePageBreakMask(sheet: HTMLElement | null) {
     schedule();
     const resize = new ResizeObserver(schedule);
     resize.observe(sheet);
-    // Blocks added, removed, moved, folded away or resized change where the breaks are.
-    const mutations = new MutationObserver(schedule);
+    // Blocks added, removed, moved or folded away change where the breaks are (the ResizeObserver above sees
+    // a line growing or an image arriving). Typing inside a line changes neither: it only replaces text inside
+    // a block, and measuring after every key walked the whole sheet once a frame for nothing.
+    const mutations = new MutationObserver((records) => {
+      if (records.some(movesBlocks)) schedule();
+    });
     mutations.observe(sheet, { childList: true, subtree: true, attributes: true, attributeFilter: ["class"] });
     sheet.addEventListener("animationend", schedule);
     // Hovering a break shows its label (no class changes for the observer to see).
@@ -124,6 +147,7 @@ export function usePageBreakMask(sheet: HTMLElement | null) {
       mutations.disconnect();
       sheet.removeEventListener("animationend", schedule);
       clear();
+      host()?.removeAttribute("data-sheet-pages");
     };
   }, [sheet]);
 }

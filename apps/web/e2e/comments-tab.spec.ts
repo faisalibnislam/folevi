@@ -4,7 +4,7 @@ import { newPerson } from "./helpers";
 test("comments tab lists, jumps and manages threads", async ({ browser }) => {
   test.setTimeout(120_000);
   const { page, context } = await newPerson(browser, "Commenter");
-  await page.getByRole("button", { name: "New note", exact: true }).click();
+  await page.getByRole("button", { name: "New note", exact: true }).first().click();
   await page.waitForURL(/\/d\/[0-9A-Z]{26}\?new=1/);
   await page.keyboard.type("Comments test");
   await page.keyboard.press("Enter");

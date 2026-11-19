@@ -148,6 +148,16 @@ export function isFormula(text: string): boolean {
   return /^\s*=/.test(text) && text.trim().length > 1;
 }
 
+/**
+ * Text that starts with "=" and is meant as text, written with an apostrophe before it as in a spreadsheet
+ * ('=> see below): what it reads as, without the apostrophe. Null for any other text (an apostrophe before
+ * anything else is just an apostrophe: '90s, 'tis).
+ */
+export function escapedTableText(text: string): string | null {
+  const m = /^(\s*)'(=[\s\S]*)$/.exec(text);
+  return m ? m[1]! + m[2]! : null;
+}
+
 const ERROR_MESSAGES: Record<FormulaErrorCode, string> = {
   "#DIV/0!": "This divides by zero (or by an empty cell).",
   "#REF!": "This refers to a cell that isn't in the table.",
@@ -234,6 +244,8 @@ function literal(cell: TableCellInput | null | undefined): V {
   }
   const text = tableCellText(cell);
   if (!text.trim()) return EMPTY;
+  const plain = escapedTableText(text);
+  if (plain !== null) return str(plain);
   const n = parseTableNumber(text);
   if (n !== null) return num(n);
   const d = parseTableDate(text);
@@ -626,6 +638,47 @@ function parseFormula(src: string, names: readonly string[]): Ast {
   return ast;
 }
 
+/** A formula as it was read: its tree, or why it couldn't be read. */
+interface Parsed {
+  ast: Ast | null;
+  error: V | null;
+}
+
+// Formulas already read, by the column names they were read with and then by their text. A table is worked
+// out again at every key typed in it, and a collection gives every row the same formulas: each distinct
+// formula is read once, not once per cell per pass. (The trees are never changed after they are made.)
+const PARSED = new Map<string, Map<string, Parsed>>();
+const PARSED_NAME_SETS = 6;
+const PARSED_PER_NAMES = 5000;
+let parseCount = 0;
+
+/** How many formulas have been read from their text so far (one already read isn't counted again). For tests. */
+export function tableFormulaParses(): number {
+  return parseCount;
+}
+
+function parseKept(src: string, names: readonly string[], namesKey: string): Parsed {
+  let byText = PARSED.get(namesKey);
+  if (!byText) {
+    // A header cell being typed in is a new set of names at every key: only the latest few are kept.
+    if (PARSED.size >= PARSED_NAME_SETS) PARSED.delete(PARSED.keys().next().value!);
+    byText = new Map();
+    PARSED.set(namesKey, byText);
+  }
+  let parsed = byText.get(src);
+  if (!parsed) {
+    parseCount++;
+    try {
+      parsed = { ast: parseFormula(src, names), error: null };
+    } catch (e) {
+      parsed = { ast: null, error: e instanceof ParseError ? err("#ERROR!", "Folevi couldn't read this formula. Check its brackets, commas and quotes.") : err("#ERROR!") };
+    }
+    if (byText.size >= PARSED_PER_NAMES) byText.clear();
+    byText.set(src, parsed);
+  }
+  return parsed;
+}
+
 /**
  * Where a formula (its text, with or without the "=") names a column: each name (Price, [Unit price]) with the
  * column it means and where it is in the text. A1 references and functions aren't names.
@@ -642,48 +695,194 @@ interface Ctx {
   width: number;
   names: string[];
   body: { first: number; last: number };
+  /** The names as one key (formulas already read are kept by it). */
+  namesKey: string;
   today: number;
   values: Map<number, V>;
   visiting: Set<number>;
+  /** The cells being worked out now, outermost first: one that reads a cell in this list depends on itself. */
+  path: number[];
+  /** Cells found to depend on themselves. Each shows the cycle error, whatever its own formula made of it. */
+  cyclic: Set<number>;
+  /** How often a cell was read while it was still being worked out (a range read meanwhile isn't kept). */
+  loops: number;
   depth: number;
+  /** Each cell's formula as read (null: the cell isn't a formula). */
+  parsed: Map<number, Parsed | null>;
+  /** Ranges already read, and the formula cells in a rectangle, both by the rectangle. */
+  grids: Map<number, Grid>;
+  rects: Map<number, number[]>;
   literals?: TableOptions["literals"];
   rowNames?: boolean;
 }
 
+/**
+ * How deep formulas may read each other inside one another. Formulas that don't lead back to themselves are
+ * worked out in the order they depend on each other (settle), so this is only reached by formulas whose
+ * references lead round in a loop of more than this many cells.
+ */
 const MAX_DEPTH = 400;
+
+const keyOf = (ctx: Ctx, r: number, c: number) => r * (ctx.width + 1) + c;
+const rectKey = (ctx: Ctx, r1: number, c1: number, r2: number, c2: number) => ((r1 * (ctx.height + 1) + r2) * (ctx.width + 1) + c1) * (ctx.width + 1) + c2;
+
+/** The formula in a cell as read, or null when the cell isn't a formula. */
+function formulaAt(ctx: Ctx, r: number, c: number): Parsed | null {
+  const key = keyOf(ctx, r, c);
+  let parsed = ctx.parsed.get(key);
+  if (parsed !== undefined) return parsed;
+  parsed = null;
+  if (ctx.literals?.(r, c) === undefined) {
+    const text = tableCellText(ctx.rows[r]?.[c]);
+    if (isFormula(text)) parsed = parseKept(text.trim().slice(1), ctx.names, ctx.namesKey);
+  }
+  ctx.parsed.set(key, parsed);
+  return parsed;
+}
+
+/** The formula cells in a rectangle of the table (none when it reaches past the table's edge: that is an error, not a read). */
+function formulasIn(ctx: Ctx, r1: number, c1: number, r2: number, c2: number): number[] {
+  if (r1 < 0 || c1 < 0 || r2 >= ctx.height || c2 >= ctx.width || r2 < r1 || c2 < c1) return NO_CELLS;
+  if (r1 === r2 && c1 === c2) return formulaAt(ctx, r1, c1) ? [keyOf(ctx, r1, c1)] : NO_CELLS;
+  const id = rectKey(ctx, r1, c1, r2, c2);
+  let list = ctx.rects.get(id);
+  if (!list) {
+    list = [];
+    for (let r = r1; r <= r2; r++) for (let c = c1; c <= c2; c++) if (formulaAt(ctx, r, c)) list.push(keyOf(ctx, r, c));
+    ctx.rects.set(id, list);
+  }
+  return list;
+}
+const NO_CELLS: number[] = [];
+
+/**
+ * The formula cells a formula in row `row` may read, as lists (one per reference). More than it reads in
+ * the end is fine (both branches of an IF are listed): this only decides what is worked out first.
+ */
+function reads(ctx: Ctx, ast: Ast, row: number, out: number[][]): void {
+  const add = (list: number[]) => {
+    if (list.length) out.push(list);
+  };
+  switch (ast.t) {
+    case "cell":
+      add(formulasIn(ctx, ast.r, ast.c, ast.r, ast.c));
+      return;
+    case "range":
+      add(formulasIn(ctx, ast.r1, ast.c1, ast.r2, ast.c2));
+      return;
+    case "cols":
+      add(formulasIn(ctx, ctx.body.first, ast.c1, ctx.body.last, ast.c2));
+      return;
+    case "name":
+      add(formulasIn(ctx, row, ast.c, row, ast.c));
+      if (!ctx.rowNames) add(formulasIn(ctx, ctx.body.first, ast.c, ctx.body.last, ast.c));
+      return;
+    case "call":
+      for (const a of ast.args) reads(ctx, a, row, out);
+      return;
+    case "un":
+    case "pct":
+      reads(ctx, ast.a, row, out);
+      return;
+    case "bin":
+      reads(ctx, ast.a, row, out);
+      reads(ctx, ast.b, row, out);
+      return;
+  }
+}
+
+/**
+ * Works out cell (r, c) with the formulas it reads worked out first, and the ones those read before them,
+ * down any length of chain, without one being worked out inside another: a column of two hundred running
+ * totals, or four thousand cells each reading the one before, is as fine as two. A formula that leads back to
+ * one still waiting here is left to evalCell, which finds the loop.
+ */
+function settle(ctx: Ctx, r: number, c: number): V {
+  const first = keyOf(ctx, r, c);
+  const known = ctx.values.get(first);
+  if (known) return known;
+  const w = ctx.width + 1;
+  if (!formulaAt(ctx, r, c)) return evalCell(ctx, r, c);
+  const waiting = new Set<number>();
+  const stack: { key: number; lists: number[][]; list: number; at: number }[] = [];
+  const push = (key: number) => {
+    const row = Math.floor(key / w);
+    const lists: number[][] = [];
+    const ast = formulaAt(ctx, row, key % w)?.ast;
+    if (ast) reads(ctx, ast, row, lists);
+    stack.push({ key, lists, list: 0, at: 0 });
+    waiting.add(key);
+  };
+  push(first);
+  while (stack.length) {
+    const top = stack[stack.length - 1]!;
+    let next = -1;
+    while (next < 0 && top.list < top.lists.length) {
+      const list = top.lists[top.list]!;
+      while (top.at < list.length) {
+        const key = list[top.at++]!;
+        if (!ctx.values.has(key) && !waiting.has(key)) {
+          next = key;
+          break;
+        }
+      }
+      if (next < 0) {
+        top.list++;
+        top.at = 0;
+      }
+    }
+    if (next >= 0) {
+      push(next);
+      continue;
+    }
+    stack.pop();
+    waiting.delete(top.key);
+    evalCell(ctx, Math.floor(top.key / w), top.key % w);
+  }
+  return ctx.values.get(first) ?? evalCell(ctx, r, c);
+}
 
 function evalCell(ctx: Ctx, r: number, c: number): V {
   if (r < 0 || c < 0 || r >= ctx.height || c >= ctx.width) return err("#REF!", `${cellReference(Math.max(0, r), Math.max(0, c))} is outside the table.`);
-  const key = r * (ctx.width + 1) + c;
+  const key = keyOf(ctx, r, c);
   const known = ctx.values.get(key);
   if (known) return known;
-  if (ctx.visiting.has(key)) return err("#CYCLE!");
-  const given = ctx.literals?.(r, c);
-  if (given !== undefined) {
-    const v = fromLiteral(given);
+  if (ctx.visiting.has(key)) {
+    // This cell is being worked out and something it reads has come back to it. Every cell on the way round
+    // is part of the loop and shows the cycle error, so the result is the same whichever cell of the loop
+    // was worked out first, and an IFERROR around one reference can't hide the loop from the others.
+    for (let i = ctx.path.lastIndexOf(key); i >= 0 && i < ctx.path.length; i++) ctx.cyclic.add(ctx.path[i]!);
+    ctx.loops++;
+    return err("#CYCLE!");
+  }
+  const parsed = formulaAt(ctx, r, c);
+  if (!parsed) {
+    const given = ctx.literals?.(r, c);
+    const v = given !== undefined ? fromLiteral(given) : literal(ctx.rows[r]?.[c]);
     ctx.values.set(key, v);
     return v;
   }
-  const raw = ctx.rows[r]?.[c];
-  const text = tableCellText(raw);
-  if (!isFormula(text)) {
-    const v = literal(raw);
-    ctx.values.set(key, v);
-    return v;
+  if (ctx.depth > MAX_DEPTH) {
+    for (const k of ctx.path) ctx.cyclic.add(k);
+    ctx.loops++;
+    return err("#CYCLE!", "Too many formulas depend on each other in a loop.");
   }
-  if (ctx.depth > MAX_DEPTH) return err("#CYCLE!", "Too many formulas depend on each other in a chain.");
   ctx.visiting.add(key);
+  ctx.path.push(key);
   ctx.depth++;
   let v: V;
-  try {
-    const ast = parseFormula(text.trim().slice(1), ctx.names);
-    v = scalar(ctx, ast, r);
-  } catch (e) {
-    v = e instanceof ParseError ? err("#ERROR!", "Folevi couldn't read this formula. Check its brackets, commas and quotes.") : err("#ERROR!");
+  if (!parsed.ast) v = parsed.error ?? err("#ERROR!");
+  else {
+    try {
+      v = scalar(ctx, parsed.ast, r);
+    } catch {
+      v = err("#ERROR!");
+    }
   }
   ctx.depth--;
+  ctx.path.pop();
   ctx.visiting.delete(key);
-  // A cycle found further down leaves every cell in it with the cycle error.
+  if (ctx.cyclic.has(key) && !(v.k === "err" && v.code === "#CYCLE!")) v = err("#CYCLE!");
   ctx.values.set(key, v);
   return v;
 }
@@ -691,12 +890,20 @@ function evalCell(ctx: Ctx, r: number, c: number): V {
 /** A rectangle of cells, clipped to the table (a reference past its edge is an error). */
 function grid(ctx: Ctx, r1: number, c1: number, r2: number, c2: number): Grid | V {
   if (r1 < 0 || c1 < 0 || r2 >= ctx.height || c2 >= ctx.width) return err("#REF!", "This range goes past the edge of the table.");
+  // The same range is often read by many formulas (a lookup in every row): it is read once. One read while a
+  // cell in it was still being worked out isn't kept, since that cell's value wasn't its last.
+  const keep = r1 !== r2 || c1 !== c2;
+  const id = keep ? rectKey(ctx, r1, c1, r2, c2) : -1;
+  const kept = keep ? ctx.grids.get(id) : undefined;
+  if (kept) return kept;
+  const loops = ctx.loops;
   const out: Grid = [];
   for (let r = r1; r <= r2; r++) {
     const row: V[] = [];
     for (let c = c1; c <= c2; c++) row.push(evalCell(ctx, r, c));
     out.push(row);
   }
+  if (keep && ctx.loops === loops) ctx.grids.set(id, out);
   return out;
 }
 
@@ -1227,31 +1434,70 @@ function bodyRange(height: number, headerRow: boolean | undefined, totalsRow: bo
 }
 
 /**
- * Every cell's value and what it shows. Formulas are worked out (in any order: each cell once, cycles
- * found), numbers take their column's format, and everything else shows its text. Never throws.
+ * Every cell's value and what it shows. Formulas are worked out (each cell once, the ones it reads before
+ * it; every cell of a loop shows the cycle error), numbers take their column's format, and everything else
+ * shows its text. Never throws.
  */
 export function evaluateTable(rows: readonly (readonly (TableCellInput | null | undefined)[])[], options: TableOptions = {}): EvaluatedTable {
+  const ctx = contextOf(rows, options);
+  const { height, width, names, body } = ctx;
+  const locale = options.locale ?? "en-US";
+  const cells: EvaluatedCell[][] = [];
+  for (let r = 0; r < height; r++) {
+    const out: EvaluatedCell[] = [];
+    for (let c = 0; c < width; c++) out.push(shownAt(ctx, r, c, options, locale));
+    cells.push(out);
+  }
+  return { cells, display: cells.map((r) => r.map((c) => c.display)), bodyRows: Array.from({ length: Math.max(0, body.last - body.first + 1) }, (_, i) => body.first + i), names };
+}
+
+/**
+ * Only the cells asked for (and whatever they read), each as evaluateTable would give it. For checking a few
+ * formulas in a large grid many times over (spreadsheet paste), where working out every cell each time is
+ * what made a large paste freeze.
+ */
+export function evaluateTableCells(rows: readonly (readonly (TableCellInput | null | undefined)[])[], options: TableOptions, at: readonly { r: number; c: number }[]): EvaluatedCell[] {
+  const ctx = contextOf(rows, options);
+  const locale = options.locale ?? "en-US";
+  return at.map(({ r, c }) => shownAt(ctx, r, c, options, locale));
+}
+
+function shownAt(ctx: Ctx, r: number, c: number, options: TableOptions, locale: string): EvaluatedCell {
+  const raw = tableCellText(ctx.rows[r]?.[c]);
+  const inside = r >= 0 && c >= 0 && r < ctx.height && c < ctx.width;
+  const formula = inside && formulaAt(ctx, r, c) !== null;
+  const v = inside ? settle(ctx, r, c) : evalCell(ctx, r, c);
+  const column = options.columns?.[c] ?? null;
+  // The header row is names, never formatted.
+  const header = Boolean(options.headerRow) && r === 0;
+  return describe(v, raw, formula, header ? null : column, locale);
+}
+
+function contextOf(rows: readonly (readonly (TableCellInput | null | undefined)[])[], options: TableOptions): Ctx {
   const height = rows.length;
   const width = rows.reduce((w, r) => Math.max(w, r.length), 0);
   const names = tableColumnNames(rows, options.headerRow);
   const body = bodyRange(height, options.headerRow, options.totalsRow);
-  const locale = options.locale ?? "en-US";
-  const ctx: Ctx = { rows, height, width, names, body, today: todayNumber(options.today), values: new Map(), visiting: new Set(), depth: 0, literals: options.literals, rowNames: options.rowNames };
-  const cells: EvaluatedCell[][] = [];
-  for (let r = 0; r < height; r++) {
-    const out: EvaluatedCell[] = [];
-    for (let c = 0; c < width; c++) {
-      const raw = tableCellText(rows[r]?.[c]);
-      const formula = options.literals?.(r, c) === undefined && isFormula(raw);
-      const v = evalCell(ctx, r, c);
-      const column = options.columns?.[c] ?? null;
-      // The header row is names, never formatted.
-      const header = Boolean(options.headerRow) && r === 0;
-      out.push(describe(v, raw, formula, header ? null : column, locale));
-    }
-    cells.push(out);
-  }
-  return { cells, display: cells.map((r) => r.map((c) => c.display)), bodyRows: Array.from({ length: Math.max(0, body.last - body.first + 1) }, (_, i) => body.first + i), names };
+  return {
+    rows,
+    height,
+    width,
+    names,
+    namesKey: names.join("\u0001"),
+    body,
+    today: todayNumber(options.today),
+    values: new Map(),
+    visiting: new Set(),
+    path: [],
+    cyclic: new Set(),
+    loops: 0,
+    depth: 0,
+    parsed: new Map(),
+    grids: new Map(),
+    rects: new Map(),
+    literals: options.literals,
+    rowNames: options.rowNames,
+  };
 }
 
 function describe(v: V, raw: string, formula: boolean, column: TableColumnSettings | null, locale: string): EvaluatedCell {
@@ -1265,7 +1511,8 @@ function describe(v: V, raw: string, formula: boolean, column: TableColumnSettin
       return { raw, display: formula ? display : raw, value: v.b, kind: "boolean", formula, numeric: false, changed: formula };
     }
     case "str":
-      return { raw, display: v.s, value: v.s, kind: "text", formula, numeric: false, changed: formula };
+      // (Text written with an apostrophe before its "=" shows without the apostrophe.)
+      return { raw, display: v.s, value: v.s, kind: "text", formula, numeric: false, changed: formula || v.s !== raw };
     case "num": {
       const formatted = column?.format || v.date ? formatTableNumber(v.n, column, locale, Boolean(v.date)) : plainNumber(v.n);
       // A number typed in a column without a format shows as it was typed ("1,000" stays "1,000").
@@ -1400,8 +1647,9 @@ export function totalsFunctionOf(text: string, column: number): TotalsFunction |
 /**
  * A formula with its A1 references moved after rows or columns move or are deleted: `rows(r)` and `cols(c)`
  * give an old index's new one, or null when it was deleted. A deleted cell becomes #REF!; a range loses the
- * deleted rows or columns at its ends (and is #REF! when nothing is left). Column names are left alone (they
- * follow their column). Text that isn't a formula comes back as it is.
+ * deleted rows or columns at its ends (and is #REF! when nothing is left), and a row or column moved out of
+ * the middle of it (mappedSpan). Column names are left alone (they follow their column). Text that isn't a
+ * formula comes back as it is.
  */
 export function remapFormulaReferences(text: string, maps: { rows?: (r: number) => number | null; cols?: (c: number) => number | null }): string {
   if (!isFormula(text)) return text;
@@ -1412,14 +1660,7 @@ export function remapFormulaReferences(text: string, maps: { rows?: (r: number) 
   // Names aren't known here: a bracketed name is skipped as a whole, a bare word that isn't A1 is left.
   const toks = tokenize(src, []);
   const edits: { at: number; end: number; text: string }[] = [];
-  const span = (lo: number, hi: number, map: (i: number) => number | null): [number, number] | null => {
-    const kept: number[] = [];
-    for (let i = lo; i <= hi; i++) {
-      const m = map(i);
-      if (m !== null) kept.push(m);
-    }
-    return kept.length ? [Math.min(...kept), Math.max(...kept)] : null;
-  };
+  const span = mappedSpan;
   const ref = (word: string, r: number, c: number) => {
     const m = /^(\$?)([A-Za-z]{1,3})(\$?)(\d+)$/.exec(word)!;
     return `${m[1]}${columnLetter(c)}${m[3]}${r + 1}`;
@@ -1466,6 +1707,31 @@ export function remapFormulaReferences(text: string, maps: { rows?: (r: number) 
   return text.slice(0, lead) + out;
 }
 
+/**
+ * Where a range from `lo` to `hi` is after its rows (or columns) were renumbered by `map` (null: deleted).
+ *
+ * The range runs from the first to the last place its kept rows went: it grows round a row added inside it,
+ * loses a deleted end, and follows its first or last row when that one is moved. A row moved out from the
+ * middle of it (moveIndexMap says which row moved) is the exception: the range's ends stayed, so it is just
+ * one row shorter. Without this a row dragged out of =SUM(A2:A5) to below row 7 made it =SUM(A2:A7), adding
+ * up rows 6 and 7 as well.
+ */
+function mappedSpan(lo: number, hi: number, map: (i: number) => number | null): [number, number] | null {
+  const moved = (map as { moved?: number }).moved;
+  if (moved !== undefined && moved > lo && moved < hi) {
+    const to = map(moved);
+    const first = map(lo);
+    const last = map(hi);
+    if (to !== null && first !== null && last !== null && (to < lo || to > hi)) return [first, last];
+  }
+  const kept: number[] = [];
+  for (let i = lo; i <= hi; i++) {
+    const m = map(i);
+    if (m !== null) kept.push(m);
+  }
+  return kept.length ? [Math.min(...kept), Math.max(...kept)] : null;
+}
+
 /** Every formula cell of a table remapped (see remapFormulaReferences); other cells are kept as they are. */
 export function remapTableFormulas(rows: InlineNode[][][], maps: { rows?: (r: number) => number | null; cols?: (c: number) => number | null }): InlineNode[][][] {
   let changed = false;
@@ -1483,14 +1749,18 @@ export function remapTableFormulas(rows: InlineNode[][][], maps: { rows?: (r: nu
   return changed ? out : rows;
 }
 
-/** Index maps for a move of one row or column from `from` to `to` (the rest shift to make room). */
-export function moveIndexMap(from: number, to: number): (i: number) => number {
-  return (i) => {
+/**
+ * Index maps for a move of one row or column from `from` to `to` (the rest shift to make room). The map says
+ * which index it moved (`moved`), so a range can tell a row that left its middle from rows that only shifted.
+ */
+export function moveIndexMap(from: number, to: number): ((i: number) => number) & { moved: number } {
+  const map = (i: number) => {
     if (i === from) return to;
     if (from < to && i > from && i <= to) return i - 1;
     if (from > to && i >= to && i < from) return i + 1;
     return i;
   };
+  return Object.assign(map, { moved: from });
 }
 
 /** Index maps for deleting index `at` (it's gone; later ones move up). */

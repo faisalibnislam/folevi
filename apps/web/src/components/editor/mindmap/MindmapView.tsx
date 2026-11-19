@@ -56,6 +56,7 @@ import { insertAfterMindmap, mindmapToList, takePendingAi, tasksMarkdown } from 
 import { addChild, addIdeas, addSibling, branchIds, byId, depthOf, moveIdea, outdent, removeIdeas, reorder, setAllCollapsed, setCollapsed, setColor, setLayout, setText, startMap, tidy } from "./ops";
 import { useMindDoc } from "./useMindDoc";
 import { targetUnder } from "../canvas/targetUnder";
+import { capturePointer, dropFocusIn, notePress, pinchPair, useTapFocus, type DownPointer } from "../canvas/pointers";
 
 const MIN_K = 0.2;
 const MAX_K = 2.5;
@@ -142,7 +143,7 @@ function MindmapEditor(props: ReactNodeViewProps) {
   const [active, setActive] = useState(false);
   const activeRef = useRef(active);
   const drag = useRef<Drag | null>(null);
-  const pointers = useRef(new Map<number, Pt & { type: string }>());
+  const pointers = useRef(new Map<number, DownPointer>());
   const pressTimer = useRef<number | null>(null);
   const lastTap = useRef<{ id: string; at: number } | null>(null);
   const reveal = useRef(false);
@@ -539,16 +540,26 @@ function MindmapEditor(props: ReactNodeViewProps) {
     }
   };
 
+  // A finger on a map that does not have the keyboard gives it the keyboard only when it turns out to be a
+  // tap, not a scroll of the note (canvas/pointers.ts).
+  const tapFocus = useTapFocus({ isActive: () => activeRef.current, focus: focusCanvas, drop: () => dropFocusIn(wrapRef.current) });
+
   const onPointerDown = (e: React.PointerEvent<SVGSVGElement>) => {
     if (editingRef.current) finishEdit({ refocus: false });
-    focusCanvas();
     const pts = pointers.current;
-    pts.set(e.pointerId, { x: e.clientX, y: e.clientY, type: e.pointerType });
+    const what = notePress(pts, e);
+    // A palm resting beside the pen: no gesture of its own, and the pen's carries on.
+    if (what === "palm") return;
+    tapFocus.down(e);
+    // Captured before anything else. A tap on "+" or a fold toggle takes that control off the page there and
+    // then, and WebKit sends a touch's release to the element it began on, gone or not: the map would never
+    // hear it, and would count that finger as still down (every later touch a pinch).
+    if (e.pointerType !== "mouse" || e.button === 0 || e.button === 1) capturePointer(e.currentTarget, e.pointerId);
     // Two fingers: pinch to zoom (and pan), whatever the first one was doing.
-    if (pts.size === 2 && e.pointerType === "touch") {
+    if (what === "pinch") {
       clearPress();
       setGhost(null);
-      const [a, b] = [...pts.values()].slice(0, 2) as Pt[] as [Pt, Pt];
+      const [a, b] = pinchPair(pts)!;
       const r = svgRef.current!.getBoundingClientRect();
       drag.current = { kind: "pinch", dist: Math.max(10, Math.hypot(a.x - b.x, a.y - b.y)), view: viewRef.current, mid: { x: (a.x + b.x) / 2 - r.left, y: (a.y + b.y) / 2 - r.top } };
       return;
@@ -567,7 +578,6 @@ function MindmapEditor(props: ReactNodeViewProps) {
       toggle(tog.getAttribute("data-mm-toggle")!);
       return;
     }
-    e.currentTarget.setPointerCapture(e.pointerId);
     const idea = target.closest("[data-mm-node]");
     if (idea && e.button === 0) {
       const id = idea.getAttribute("data-mm-node")!;
@@ -603,8 +613,9 @@ function MindmapEditor(props: ReactNodeViewProps) {
     const d = drag.current;
     if (!d) return;
     if (d.kind === "pinch") {
-      if (pts.size < 2) return;
-      const [a, b] = [...pts.values()].slice(0, 2) as Pt[] as [Pt, Pt];
+      const pair = pinchPair(pts);
+      if (!pair) return;
+      const [a, b] = pair;
       const r = svgRef.current!.getBoundingClientRect();
       const mid = { x: (a.x + b.x) / 2 - r.left, y: (a.y + b.y) / 2 - r.top };
       const k = clamp(d.view.k * (Math.hypot(a.x - b.x, a.y - b.y) / d.dist), MIN_K, MAX_K);
@@ -641,11 +652,14 @@ function MindmapEditor(props: ReactNodeViewProps) {
   };
 
   const onPointerUp = (e: React.PointerEvent<SVGSVGElement>) => {
-    pointers.current.delete(e.pointerId);
-    clearPress();
+    tapFocus.up(e);
+    // (A palm beside the pen was never listed, and ends nothing.)
+    const listed = pointers.current.delete(e.pointerId);
     const d = drag.current;
+    if (!listed && d && "pointer" in d && d.pointer !== e.pointerId) return;
+    clearPress();
     if (d?.kind === "pinch") {
-      if (pointers.current.size < 2) drag.current = null;
+      if (!pinchPair(pointers.current)) drag.current = null;
       return;
     }
     if (!d || d.pointer !== e.pointerId) return;
@@ -1080,6 +1094,7 @@ function MindmapEditor(props: ReactNodeViewProps) {
       tools={tools}
       onKey={onKey}
       onRefit={() => fitView()}
+      onLeave={flush}
     >
       <div
         ref={wrapRef}

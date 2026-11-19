@@ -8,7 +8,7 @@ test.describe("audio recordings", () => {
   test("/Audio recording records, uploads, plays back and survives a reload", async ({ browser }) => {
     const { context, page } = await newPerson(browser, "Recording Tester");
     await context.grantPermissions(["microphone"]);
-    await page.getByRole("button", { name: "New note", exact: true }).click();
+    await page.getByRole("button", { name: "New note", exact: true }).first().click();
     await page.waitForURL(/\/d\/[0-9A-Z]{26}\?new=1/);
     await page.getByRole("textbox", { name: "Title" }).fill("Voice memo");
     await page.keyboard.press("Enter");
@@ -56,7 +56,7 @@ test.describe("audio recordings", () => {
   test("closing the recorder throws the recording away", async ({ browser }) => {
     const { context, page } = await newPerson(browser, "Recording Canceller");
     await context.grantPermissions(["microphone"]);
-    await page.getByRole("button", { name: "New note", exact: true }).click();
+    await page.getByRole("button", { name: "New note", exact: true }).first().click();
     await page.waitForURL(/\/d\/[0-9A-Z]{26}\?new=1/);
     await page.keyboard.press("Enter");
     await page.keyboard.type("/record");
@@ -102,7 +102,7 @@ test.describe("audio recordings", () => {
       };
     });
     await page.reload();
-    await page.getByRole("button", { name: "New note", exact: true }).click();
+    await page.getByRole("button", { name: "New note", exact: true }).first().click();
     await page.waitForURL(/\/d\/[0-9A-Z]{26}\?new=1/);
     await page.getByRole("textbox", { name: "Title" }).fill("Call");
     await page.keyboard.press("Enter");

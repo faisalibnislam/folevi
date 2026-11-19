@@ -59,24 +59,49 @@ interface GestureEvent extends UIEvent {
  * Trackpad pinch in Safari and the Mac app, which report it as gesturestart / gesturechange (with a scale
  * relative to the start) and never as a wheel. `zoomAt` gets the new scale and the point under the fingers,
  * relative to `el`. Returns the function that stops listening. (Other browsers never fire these events.)
+ *
+ * On the iPhone and iPad the same events also fire for two fingers on the screen, which each canvas already
+ * handles itself from its pointer events: while a finger is down on `el` they are left alone here, or the two
+ * would zoom against each other. And not every WebKit says where the pinch is: without a place it zooms about
+ * the middle, never about "not a number" (which would leave the canvas blank until it is fitted again).
  */
 export function listenPinch(el: Element, { scale, zoomAt }: { scale: () => number; zoomAt: (k: number, x: number, y: number) => void }): () => void {
   let from = 1;
+  const fingers = new Set<number>();
+  const press = (e: Event) => {
+    const p = e as PointerEvent;
+    if (p.pointerType !== "touch") return;
+    // (A first finger: any still listed from before are gone, their release unheard.)
+    if (p.isPrimary) fingers.clear();
+    fingers.add(p.pointerId);
+  };
+  const lift = (e: Event) => fingers.delete((e as PointerEvent).pointerId);
   const start = (e: Event) => {
     e.preventDefault();
     from = scale();
   };
   const change = (e: Event) => {
     e.preventDefault();
+    if (fingers.size) return;
     const g = e as GestureEvent;
+    const k = from * g.scale;
+    if (!Number.isFinite(k) || k <= 0) return;
     const r = el.getBoundingClientRect();
-    zoomAt(from * g.scale, g.clientX - r.left, g.clientY - r.top);
+    const x = g.clientX - r.left;
+    const y = g.clientY - r.top;
+    zoomAt(k, Number.isFinite(x) ? x : r.width / 2, Number.isFinite(y) ? y : r.height / 2);
   };
   const end = (e: Event) => e.preventDefault();
+  el.addEventListener("pointerdown", press, true);
+  window.addEventListener("pointerup", lift, true);
+  window.addEventListener("pointercancel", lift, true);
   el.addEventListener("gesturestart", start);
   el.addEventListener("gesturechange", change);
   el.addEventListener("gestureend", end);
   return () => {
+    el.removeEventListener("pointerdown", press, true);
+    window.removeEventListener("pointerup", lift, true);
+    window.removeEventListener("pointercancel", lift, true);
     el.removeEventListener("gesturestart", start);
     el.removeEventListener("gesturechange", change);
     el.removeEventListener("gestureend", end);

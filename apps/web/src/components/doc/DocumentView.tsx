@@ -67,6 +67,8 @@ import { ViewChrome, useShell } from "@/components/app/Shell";
 import { setBlockHighlight } from "@/components/editor/blockHighlight";
 import { usePageBreakMask } from "./usePageBreakMask";
 import { Editor, type EditorHandle } from "@/components/editor/Editor";
+import { focusEndOfNote } from "@/components/editor/commands";
+import { AI_FOCUS_EVENT, noteAiAsked, noteAiOpensQuietly } from "@/components/ai/chat/events";
 import type { DecorationInputs } from "@/components/editor/plugins";
 import { coverArtOf, coverArtThumbUrl, coverBackground, pageBackdrop, sheetProps, styleColorsOf } from "@/lib/cover";
 import { themeFontVars } from "@/lib/themes";
@@ -196,7 +198,11 @@ export function DocumentView({ documentId }: { documentId: string }) {
   const [narrowHold, setNarrowHold] = useState(false);
   const setInspectorOpen = useCallback(
     (open: boolean) => {
-      if (open) setNarrowHold(false);
+      if (open) {
+        setNarrowHold(false);
+        // Asked for: Foli AI's composer may take the keyboard (it doesn't when the panel came up with the note).
+        noteAiAsked();
+      }
       setInspectorWanted(open);
     },
     [setInspectorWanted],
@@ -241,6 +247,8 @@ export function DocumentView({ documentId }: { documentId: string }) {
   holdRef.current = panelOverlays || drawerMode;
   useLayoutEffect(() => {
     setNarrowHold(holdRef.current);
+    // (The panel that shows as this note opens leaves the keyboard alone: components/ai/chat/events.ts.)
+    noteAiOpensQuietly(documentId);
   }, [documentId]);
   // The iPad's wide layout hands the page to the note's card only as the note shows, so its first size can be a
   // passing one: it asks again once the card has laid it out.
@@ -274,7 +282,6 @@ export function DocumentView({ documentId }: { documentId: string }) {
   const [scrollEl, setScrollEl] = useState<HTMLDivElement | null>(null);
   // Coming back to the note's tab shows it where it was left (scroll, caret, keyboard): its page went meanwhile.
   useNoteViewState(documentId, scrollEl, editor, reconciled || cacheLoaded);
-  const [focusedBlock, setFocusedBlock] = useState<string | null>(null);
   const [shareOpen, setShareOpen] = useState(false);
   const shareButton = useRef<HTMLButtonElement>(null);
   const [historyOpen, setHistoryOpen] = useState(false);
@@ -358,7 +365,9 @@ export function DocumentView({ documentId }: { documentId: string }) {
     if (!engine || !server) return;
     let revisions = 0;
     for (const b of server.blocks) revisions += b.revision ?? 0;
-    const at = `${server.revision}:${server.contentSeq}:${server.blocks.length}:${revisions}`;
+    // (`head` rises with every block change, deleted blocks included: a line cut and pasted elsewhere, both at
+    // revision 1, leaves the count and the sum of revisions as they were, and that change was skipped.)
+    const at = `${server.revision}:${server.contentSeq}:${server.head}:${server.blocks.length}:${revisions}`;
     if (reconciledAt.current?.engine === engine && reconciledAt.current.at === at) return;
     reconciledAt.current = { engine, at };
     editorRef.current?.flush();
@@ -402,25 +411,44 @@ export function DocumentView({ documentId }: { documentId: string }) {
   }, [meta?.document.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Presence heartbeat with the focused block (never leaves the authorization boundary: server-checked).
-  const focusedRef = useRef(focusedBlock);
-  focusedRef.current = focusedBlock;
+  // The block the caret is in is kept in a ref, never in state: as state it drew the whole note page again
+  // (this component, the editor's menus, every panel) each time the caret entered another line, on every Enter
+  // and arrow key, only to restart the timer below.
+  const focusedRef = useRef<string | null>(null);
   const sentFocus = useRef<string | null | undefined>(undefined);
   const beat = () => {
     sentFocus.current = focusedRef.current;
     void heartbeat({ documentId, sessionId, focusedBlockId: focusedRef.current }).catch(() => undefined);
   };
+  const beatRef = useRef(beat);
+  beatRef.current = beat;
+  const presenceOn = useRef(false);
+  presenceOn.current = Boolean(meta && online && caps.presence);
+  const beatLater = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Moving through the note tells others where the caret is once it rests, not at every block it passes.
+  const onFocusBlock = useCallback((id: string | null) => {
+    if (id === focusedRef.current) return;
+    focusedRef.current = id;
+    if (beatLater.current) clearTimeout(beatLater.current);
+    beatLater.current = null;
+    if (!presenceOn.current || id === sentFocus.current) return;
+    beatLater.current = setTimeout(() => {
+      beatLater.current = null;
+      if (presenceOn.current) beatRef.current();
+    }, 1500);
+  }, []);
+  useEffect(
+    () => () => {
+      if (beatLater.current) clearTimeout(beatLater.current);
+    },
+    [],
+  );
   useEffect(() => {
     if (!meta || !online || !caps.presence) return;
     beat();
     const id = setInterval(beat, 20_000);
     return () => clearInterval(id);
   }, [meta?.document.id, online]); // eslint-disable-line react-hooks/exhaustive-deps
-  // Moving through the note tells others where the caret is once it rests, not at every block it passes.
-  useEffect(() => {
-    if (!meta || !online || !caps.presence || focusedBlock === sentFocus.current) return;
-    const t = setTimeout(beat, 1500);
-    return () => clearTimeout(t);
-  }, [meta?.document.id, online, focusedBlock]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => () => void (caps.presence ? leave({ documentId, sessionId }).catch(() => undefined) : undefined), []); // eslint-disable-line react-hooks/exhaustive-deps
   const presenceNow = Math.floor(Date.now() / 15_000) * 15_000;
   const livePresence = useQuery(api.presence.list, meta && caps.presence ? { documentId, now: presenceNow } : "skip");
@@ -692,7 +720,17 @@ export function DocumentView({ documentId }: { documentId: string }) {
   const openAi = useCallback(() => {
     setInspectorTab("ai");
     setInspectorOpen(true);
+    // (A composer already on screen, as it is by default, takes the keyboard now that it was asked for.)
+    requestAnimationFrame(() => window.dispatchEvent(new Event(AI_FOCUS_EVENT)));
   }, [setInspectorTab, setInspectorOpen]);
+  // A tab chosen in the panel is asked for too.
+  const pickInspectorTab = useCallback(
+    (t: InspectorTab) => {
+      noteAiAsked();
+      setInspectorTab(t);
+    },
+    [setInspectorTab],
+  );
   // AI turned off while its tool is open: Insert instead (the default without Foli AI).
   useEffect(() => {
     if (!aiOn && inspectorTab === "ai") setInspectorTab("insert");
@@ -1133,6 +1171,7 @@ export function DocumentView({ documentId }: { documentId: string }) {
         <div
           id="doc-scroll"
           ref={setScrollEl}
+          data-sheet-host=""
           data-iphone-scroll={iphone ? "" : undefined}
           data-iphone-plain={iphone && !pageBackdrop(style, look?.cover ?? DEFAULT_COVER, coverImageUrl) ? "" : undefined}
           data-native-chrome={iphone && nativeChromeMode ? "" : undefined}
@@ -1163,6 +1202,12 @@ export function DocumentView({ documentId }: { documentId: string }) {
           {meta?.breadcrumbs.length && !iphone ? <NestedPath crumbs={meta.breadcrumbs} title={pageTitle} /> : null}
           <article
             ref={setSheetEl}
+            // A click or a tap on the empty paper under the note writes there (the paper itself, nothing on it).
+            onClick={(e) => {
+              const ed = editorRef.current?.editor;
+              if (readOnly || !ed || ed.isDestroyed || e.target !== e.currentTarget || e.clientY <= ed.view.dom.getBoundingClientRect().bottom) return;
+              focusEndOfNote(ed);
+            }}
             className="fb-sheet ui-sheet relative mx-auto animate-[folio-settle_240ms_var(--ease-folio)]"
             data-background={style.background}
             {...sheetAttrs}
@@ -1227,7 +1272,7 @@ export function DocumentView({ documentId }: { documentId: string }) {
                       editable={!readOnly}
                       label={meta?.inTrash ? "Document body, in Trash: restore the note to edit it" : undefined}
                       decorations={decorations}
-                      onFocusBlock={setFocusedBlock}
+                      onFocusBlock={onFocusBlock}
                       onCommentBlock={caps.comments ? (id) => openComments(id) : undefined}
                       onEditorReady={setEditor}
                       onExitTop={() => {
@@ -1328,7 +1373,7 @@ export function DocumentView({ documentId }: { documentId: string }) {
               editor={editor}
               meta={meta ?? null}
               tab={inspectorTab}
-              onTab={setInspectorTab}
+              onTab={pickInspectorTab}
               focusThreadId={focusThreadId}
               onOpenThread={(t) => {
                 if (!t.blockId) return;
@@ -1363,7 +1408,7 @@ export function DocumentView({ documentId }: { documentId: string }) {
               editor={editor}
               meta={meta ?? null}
               tab={inspectorTab}
-              onTab={setInspectorTab}
+              onTab={pickInspectorTab}
               focusThreadId={focusThreadId}
               onOpenThread={(t) => {
                 if (!t.blockId) return;
@@ -1405,7 +1450,7 @@ export function DocumentView({ documentId }: { documentId: string }) {
                 editor={editor}
                 meta={meta ?? null}
                 tab={inspectorTab}
-                onTab={setInspectorTab}
+                onTab={pickInspectorTab}
                 focusThreadId={focusThreadId}
                 onOpenThread={(t) => {
                   if (!t.blockId) return;
@@ -1781,9 +1826,12 @@ function DocumentHeader({
     };
     const onVisibility = () => document.visibilityState === "hidden" && onHide();
     window.addEventListener("pagehide", onHide);
+    // (The iPhone and iPad app leaving the front: see Editor.tsx.)
+    window.addEventListener("folevi:app-inactive", onHide);
     document.addEventListener("visibilitychange", onVisibility);
     return () => {
       window.removeEventListener("pagehide", onHide);
+      window.removeEventListener("folevi:app-inactive", onHide);
       document.removeEventListener("visibilitychange", onVisibility);
       onHide();
     };

@@ -19,7 +19,7 @@ test("two people in a note see each other's caret and name", async ({ browser })
   const guest = await newPerson(browser, "Sasha Guest");
   await showFolders(guest.page);
 
-  await owner.page.getByRole("button", { name: "New note", exact: true }).click();
+  await owner.page.getByRole("button", { name: "New note", exact: true }).first().click();
   await owner.page.waitForURL(/\/d\/[0-9A-Z]{26}\?new=1/);
   await owner.page.getByRole("textbox", { name: "Title" }).fill("Caret plan");
   await owner.page.keyboard.press("Enter");

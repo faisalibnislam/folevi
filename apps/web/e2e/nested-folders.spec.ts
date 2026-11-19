@@ -20,7 +20,7 @@ test("a folder inside a folder: make it, file a note in it, and it's all still t
   await expect(inWork.getByRole("link", { name: "Clients" })).toBeVisible();
 
   // A note filed into the subfolder from its Move dialog, which lists folders as a tree.
-  await page.getByRole("button", { name: "New note", exact: true }).click();
+  await page.getByRole("button", { name: "New note", exact: true }).first().click();
   await page.waitForURL(/\/d\/[0-9A-Z]{26}\?new=1/);
   await page.getByRole("textbox", { name: "Title" }).fill("Kickoff notes");
   await waitForSaved(page);

@@ -58,6 +58,7 @@ import { CollectionFeed, useTableSource } from "./LiveSources";
 import { ChartTable, Takeaway } from "./render";
 import { blankChart, sampleChart } from "./samples";
 import { sameRows, type ChartRows } from "./sources";
+import { storedChart } from "./model";
 import { SourcePanel } from "./SourcePanel";
 import { StylePanel } from "./StylePanel";
 
@@ -279,13 +280,19 @@ export function ChartView(props: ReactNodeViewProps) {
       if (typeof pos !== "number" || !editor.isEditable) return;
       const cur = editor.state.doc.nodeAt(pos);
       if (!cur || cur.type.name !== "chart") return;
-      const nextData = serializeChart(next);
+      const nextData = storedChart(next);
+      // Too large to store (it would read back as an empty chart, which the next edit would save): the
+      // chart stays as it was. Said once per change the person made, not for rows a live source sends.
+      if (nextData === null) {
+        if (history) toast.show("That is more data than a chart can hold. Use fewer rows or shorter text.", { tone: "error" });
+        return;
+      }
       if (nextData === cur.attrs.data) return;
       const tr = editor.state.tr.setNodeMarkup(pos, undefined, { ...cur.attrs, data: nextData });
       if (!history) tr.setMeta("addToHistory", false);
       editor.view.dispatch(tr);
     },
-    [editor, getPos],
+    [editor, getPos, toast],
   );
   const update = useCallback(
     (patch: Partial<ChartData>) => write({ ...chartRef.current, ...patch }),

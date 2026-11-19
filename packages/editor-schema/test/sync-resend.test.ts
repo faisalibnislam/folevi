@@ -29,6 +29,43 @@ describe("resending", () => {
     expect(textOf(s.blocks.b1!.block)).toBe("Hello world");
   });
 
+  it("typing queued behind a resent op keeps its base when someone else changed the block in between", () => {
+    // The block at revision 1. Op A is sent and lands (revision 2), but its answer is lost.
+    let s: SyncState = { ...sync.emptySyncState(), blocks: { b1: { documentId: DOC, block: block("b1", "One"), serverRevision: 1, deleted: false } } };
+    s = sync.localUpsert(s, { opId: "op-a-0000001", documentId: DOC, block: block("b1", "One two"), fields: ["content"] });
+    s = sync.batchFailed(sync.takeBatch(s), "server");
+    // More typing here: op B, written on revision 1, waits behind A.
+    s = sync.localUpsert(s, { opId: "op-b-0000001", documentId: DOC, block: block("b1", "One two three"), fields: ["content"] });
+    // Meanwhile another device edits the block on top of A: revision 3. A is resent and answered as a replay.
+    s = sync.takeBatch(s);
+    expect(s.inflight.map((op) => op.opId)).toEqual(["op-a-0000001"]);
+    s = sync.applyResults(s, [{ opId: "op-a-0000001", status: "duplicate", revision: 3, block: { ...block("b1", "One two, and theirs"), revision: 3 } }]);
+    // B was written without their change: it still says so, and the server will ask.
+    expect(upserts(s).map((op) => [op.opId, textOf(op.block), op.baseRevision])).toEqual([["op-b-0000001", "One two three", 1]]);
+    expect(textOf(s.blocks.b1!.block)).toBe("One two three");
+  });
+
+  it("a block whose text is being edited still follows the server's new rank, and keeps the typing", () => {
+    const held = (id: string, text: string, rank: string) => ({ documentId: DOC, block: { ...block(id, text), rank }, serverRevision: 1, deleted: false });
+    let s: SyncState = { ...sync.emptySyncState(), blocks: { a: held("a", "A", "V"), b: held("b", "B", "W"), c: held("c", "C", "X") } };
+    // Typing in B waits to be sent (its text only).
+    s = sync.localUpsert(s, { opId: "op-typing-01", documentId: DOC, block: { ...block("b", "B typed"), rank: "W" }, fields: ["content"] });
+    // The server re-spaces the list: every sibling gets a new rank.
+    const row = (id: string, text: string, rank: string) => ({ documentId: DOC, block: { ...block(id, text), rank, revision: 2 }, deleted: false });
+    s = sync.remoteUpdates(s, [row("a", "A", "G"), row("b", "B", "N"), row("c", "C", "U")]);
+    expect([s.blocks.a!.block.rank, s.blocks.b!.block.rank, s.blocks.c!.block.rank]).toEqual(["G", "N", "U"]);
+    expect(textOf(s.blocks.b!.block)).toBe("B typed");
+    // Its edit is still based on the version it was written on.
+    expect(s.blocks.b!.serverRevision).toBe(1);
+    expect(upserts(s).map((op) => [op.opId, textOf(op.block)])).toEqual([["op-typing-01", "B typed"]]);
+
+    // A block this device is moving keeps the place it was given here.
+    let t: SyncState = { ...sync.emptySyncState(), blocks: { a: held("a", "A", "V"), b: held("b", "B", "W") } };
+    t = sync.localUpsert(t, { opId: "op-moving-01", documentId: DOC, block: { ...block("b", "B"), rank: "M" }, fields: ["position"] });
+    t = sync.remoteUpdates(t, [row("b", "B", "N")]);
+    expect(t.blocks.b!.block.rank).toBe("M");
+  });
+
   it("queues the local text again when a replay answers with something else", () => {
     // An op whose content changed after it was first sent (older builds merged typing into it).
     let s = sync.localUpsert(sync.emptySyncState(), { opId: "op-merged-001", documentId: DOC, block: block("b1", "Hello world"), fields: ["content", "position"] });

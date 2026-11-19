@@ -9,7 +9,8 @@ import { LIMITS, SCHEMA_VERSION, rankBetween, ulid, type WireBlock } from "@fole
 import { useMutation } from "convex/react";
 import { api } from "@/lib/convex/api";
 import type { SyncEngine } from "@/lib/sync/engine";
-import { enqueueUpload } from "@/lib/sync/uploads";
+import { enqueueUpload, imageFileSize } from "@/lib/sync/uploads";
+import { restoreUploadedFiles } from "./NodeViews";
 import { MAX_FILE_BYTES, MAX_IMAGE_BYTES } from "@folevi/editor-schema/fileBytes";
 import { decorationsKey, type DecorationInputs, type TriggerState } from "./plugins";
 import { editorExtensions } from "./editorExtensions";
@@ -29,7 +30,7 @@ import type { SideDrop } from "./columns/columnsLayout";
 import { closeHistory } from "@tiptap/pm/history";
 import { SYNCED_BODY_ATTR } from "./synced/nested";
 import { useAiEnabled } from "@/components/ai/useAi";
-import { flushBlocks } from "./canvas/leaveFlush";
+import { FLUSH_BLOCKS_EVENT, commitOpenField, flushBlocks } from "./canvas/leaveFlush";
 import { ownSpelling } from "@/lib/spelling/web";
 import { keepNoteHistory, restoreNoteHistory } from "./historyKeep";
 
@@ -58,6 +59,8 @@ interface Props {
   label?: string;
 }
 
+/** How long writing rests before the server is asked to re-space a list's long ranks. */
+const REBALANCE_REST_MS = 4000;
 const FLUSH_DELAY = 250;
 const FLUSH_MAX_WAIT = 1000;
 
@@ -71,6 +74,8 @@ export const Editor = forwardRef<EditorHandle, Props>(function Editor(
   const onExitTopRef = useRef(onExitTop);
   onExitTopRef.current = onExitTop;
   const dirty = useRef(false);
+  /** When the note was last edited here (runRebalance waits for a pause). */
+  const editedAt = useRef(0);
   // The empty-line hint mentions ⌘J while the AI assistant is on (read by the placeholder at render time).
   const aiHint = useRef(false);
   aiHint.current = useAiEnabled() && editable;
@@ -91,8 +96,19 @@ export const Editor = forwardRef<EditorHandle, Props>(function Editor(
   // long, ask the server to re-space that sibling list once our own queued changes have synced.
   const rebalance = useMutation(api.blocks.rebalance);
   const rebalanceParents = useRef(new Set<string | null>());
+  const rebalanceLater = useRef<ReturnType<typeof setTimeout> | null>(null);
   const runRebalance = useCallback(() => {
+    // Not while the person is writing (the editor holds typing it hasn't saved, or saved it a moment ago):
+    // a re-spacing that lands mid-sentence moves every line's rank under the caret. It waits for a pause.
     if (!rebalanceParents.current.size || engine.hasLocalWork(documentId) || !navigator.onLine) return;
+    if (dirty.current || Date.now() - editedAt.current < REBALANCE_REST_MS) {
+      // (Asked again once writing has rested: the engine may have nothing more to say until the next edit.)
+      rebalanceLater.current ??= setTimeout(() => {
+        rebalanceLater.current = null;
+        runRebalanceRef.current();
+      }, REBALANCE_REST_MS);
+      return;
+    }
     const parents = [...rebalanceParents.current];
     rebalanceParents.current.clear();
     for (const parentId of parents) {
@@ -101,7 +117,15 @@ export const Editor = forwardRef<EditorHandle, Props>(function Editor(
       });
     }
   }, [engine, documentId, rebalance]);
+  const runRebalanceRef = useRef(runRebalance);
+  runRebalanceRef.current = runRebalance;
   useEffect(() => engine.subscribe(() => runRebalance()), [engine, runRebalance]);
+  useEffect(
+    () => () => {
+      if (rebalanceLater.current) clearTimeout(rebalanceLater.current);
+    },
+    [],
+  );
 
   const extensions = useMemo(
     () => editorExtensions({ aiHint, placeholder, onTrigger: setTrigger }),
@@ -138,23 +162,44 @@ export const Editor = forwardRef<EditorHandle, Props>(function Editor(
     [engine, documentId],
   );
 
+  // What the editor opens with, worked out once: Tiptap compares its options after every render, and a new
+  // document (or a new editorProps object) each time made it set them again and update the whole view.
+  // With it, the engine's blocks it was made from (hydrate, below).
+  const [opened] = useState(() => {
+    const blocks = engine.documentBlocks(documentId);
+    return { blocks, content: blocksToDoc(blocks) };
+  });
+  const content = opened.content;
+
   // What the editor opened with (the engine's blocks as they were then): from here on, what differs from it is
   // the person's own and is saved. Only ever a document from before any local change, never one with typing
   // in it, or that typing would count as already saved and be lost.
+  //
+  // The editor is made a moment after its first render, and the engine may have taken in newer blocks in
+  // between (the note was open on this device before and has changed elsewhere: the server's answer, already
+  // at hand, is reconciled by the page before the editor exists to be told). The editor then shows the older
+  // blocks. `shown` says so, and the engine is not told its newer ones were shown, so an edit made before they
+  // are drawn goes out based on the older version and the server sees the conflict. (It used to go out as an
+  // edit of the newer version, replacing the other device's change to that line with no question asked, and
+  // the note kept showing the old text until something else changed.) Returns whether the editor is behind:
+  // the caller then draws the engine's blocks (applyTo).
   const hydrate = useCallback(
-    (doc: PMNode) => {
-      shown.current = new Map(docToBlocks(doc, new Map(engine.documentBlocks(documentId).map((b) => [b.id, b]))).map((b) => [b.id, b]));
-      engine.markShown(documentId);
+    (doc: PMNode): boolean => {
+      const now = engine.documentBlocks(documentId);
+      const behind = now !== opened.blocks;
+      shown.current = new Map(docToBlocks(doc, new Map((behind ? opened.blocks : now).map((b) => [b.id, b]))).map((b) => [b.id, b]));
+      if (!behind) engine.markShown(documentId);
       hydrated.current = true;
+      return behind;
     },
-    [engine, documentId],
+    [engine, documentId, opened],
   );
-
-  // What the editor opens with, worked out once: Tiptap compares its options after every render, and a new
-  // document (or a new editorProps object) each time made it set them again and update the whole view.
-  const [content] = useState(() => blocksToDoc(engine.documentBlocks(documentId)));
   // (Pasted and dropped files go through insertFiles, defined below with the editor it needs.)
   const insertFilesRef = useRef<(files: File[]) => Promise<void>>(async () => undefined);
+  // (Draws the engine's blocks in an editor: defined below, used by the editor's own callbacks.)
+  const applyToRef = useRef<(ed: TiptapEditor | null) => void>(() => undefined);
+  /** The engine's list of blocks last drawn (applyTo). */
+  const applied = useRef<readonly WireBlock[] | null>(null);
   const editorProps = useMemo<EditorOptions["editorProps"]>(
     () => ({
       attributes: {
@@ -221,7 +266,7 @@ export const Editor = forwardRef<EditorHandle, Props>(function Editor(
     content,
     editorProps,
     onCreate: ({ editor: ed }) => {
-      if (!hydrated.current) hydrate(ed.state.doc);
+      if (!hydrated.current && hydrate(ed.state.doc)) applyToRef.current(ed);
       // Back in a note that was left a moment ago and has not changed: Cmd+Z still works (historyKeep.ts).
       restoreNoteHistory(`${accountKey}:${documentId}`, ed);
       // A note that starts with an image (or any media) opens with nothing selected: ProseMirror would
@@ -233,10 +278,20 @@ export const Editor = forwardRef<EditorHandle, Props>(function Editor(
       // Only genuine local document changes count (setEditable and meta-only transactions emit updates too).
       // Someone who can only read may still open and close toggles: that's theirs alone, never saved.
       if (!transaction.docChanged || transaction.getMeta("remote") || !ed.isEditable) return;
+      // A picture, file or recording that came back (redo, after its block was undone mid-upload) without the
+      // file its upload finished with meanwhile: it gets it back. (That change comes through here again and
+      // is saved as the person's own.)
+      const refile = restoreUploadedFiles(ed.state, documentId);
+      if (refile) {
+        ed.view.dispatch(refile);
+        return;
+      }
       // Typed before the editor said it was ready (a new note's first line, typed right after the title's
       // Enter): it opened with the document as it was before this change, and this change is the person's.
-      if (!hydrated.current) hydrate(transaction.before);
+      // (If the engine has newer blocks than the editor opened with, they are drawn once this change is in.)
+      if (!hydrated.current && hydrate(transaction.before)) queueMicrotask(() => applyToRef.current(ed));
       dirty.current = true;
+      editedAt.current = Date.now();
       engine.setEditing(documentId, true);
       if (flushTimer.current) clearTimeout(flushTimer.current);
       // Steady typing keeps pushing the debounce back: still save at least once a second.
@@ -281,16 +336,19 @@ export const Editor = forwardRef<EditorHandle, Props>(function Editor(
     editor.view.dispatch(editor.state.tr.setMeta(decorationsKey, decorations).setMeta("addToHistory", false).setMeta("remote", true));
   }, [editor, decorations]);
 
-  const applyFromEngine = useCallback(() => {
-    const ed = editorRef.current;
+  const applyTo = useCallback((ed: TiptapEditor | null) => {
     if (!ed || ed.isDestroyed) return;
     // Never while an input method is composing text (it would break the composition): apply when it ends.
     if (ed.view.composing) {
-      ed.view.dom.addEventListener("compositionend", () => setTimeout(() => applyFromEngineRef.current(), 0), { once: true });
+      ed.view.dom.addEventListener("compositionend", () => setTimeout(() => applyToRef.current(ed), 0), { once: true });
       return;
     }
     flushLocal(ed);
-    const tr = remoteTransaction(ed.state, engine.documentBlocks(documentId), shown.current);
+    // The engine hands out the same list while nothing in the note changed: then there is nothing to draw
+    // (the page asks after every answer from the server, most of which only confirm a save).
+    const blocks = engine.documentBlocks(documentId);
+    if (blocks === applied.current) return;
+    const tr = remoteTransaction(ed.state, blocks, shown.current);
     if (tr) {
       // The note's content arriving (or changing elsewhere) never selects a media block by itself.
       if (!ed.view.hasFocus() && tr.selection instanceof NodeSelection && !(ed.state.selection instanceof NodeSelection)) {
@@ -300,7 +358,14 @@ export const Editor = forwardRef<EditorHandle, Props>(function Editor(
       ed.view.dispatch(tr.setMeta("remote", true).setMeta("addToHistory", false));
     }
     showEngine();
+    applied.current = blocks;
   }, [engine, documentId, flushLocal, showEngine]);
+  applyToRef.current = applyTo;
+  // Before the editor has said it is ready there is nothing to apply to: what it opens with is brought up to
+  // date when it is (hydrate), and applying here first would count typing not yet seen as already saved.
+  const applyFromEngine = useCallback(() => {
+    if (hydrated.current) applyTo(editorRef.current);
+  }, [applyTo]);
   const applyFromEngineRef = useRef(applyFromEngine);
   applyFromEngineRef.current = applyFromEngine;
 
@@ -337,11 +402,29 @@ export const Editor = forwardRef<EditorHandle, Props>(function Editor(
   // Flush on tab hide / unload so nothing typed is lost.
   useEffect(() => {
     const onHide = () => flushLocal(editorRef.current);
+    // The iPhone and iPad app leaving the front (bridge.js says so; a web view's visibilitychange may come
+    // late there, or never before iOS suspends the app): the note's canvases write what they hold, then the
+    // note saves, as when it closes.
+    // (Asked to write, not to end the edit: the app is often back a moment later, a notification pulled down
+    // or Control Center, and a field being typed in should still have the keyboard.)
+    const onAppInactive = () => {
+      window.dispatchEvent(new CustomEvent(FLUSH_BLOCKS_EVENT));
+      onHide();
+    };
+    // The page is going away (a tab closed, the Mac app quitting): a field still being typed in inside a block
+    // (a caption, a formula) ends its edit first, so its text is the block's before the note saves. That used
+    // to depend on the note having a canvas in it, whose own leave rules did it for every block.
+    const onPageHide = () => {
+      commitOpenField();
+      onHide();
+    };
     document.addEventListener("visibilitychange", onHide);
-    window.addEventListener("pagehide", onHide);
+    window.addEventListener("pagehide", onPageHide);
+    window.addEventListener("folevi:app-inactive", onAppInactive);
     return () => {
       document.removeEventListener("visibilitychange", onHide);
-      window.removeEventListener("pagehide", onHide);
+      window.removeEventListener("pagehide", onPageHide);
+      window.removeEventListener("folevi:app-inactive", onAppInactive);
       // The note is closing: its canvases write what they still hold (their views are already down, so
       // they write by block id), and the last save below takes it along.
       flushBlocks();
@@ -378,9 +461,12 @@ export const Editor = forwardRef<EditorHandle, Props>(function Editor(
           continue;
         }
         const blockId = ulid();
+        // A picture's size is known before its address is, so its place in the note is held from the start
+        // (nothing below it jumps when it arrives).
+        const size = isImage ? await imageFileSize(file).catch(() => null) : null;
         const node = isImage
           ? // No alt from the file's name ("IMG_2041" describes nothing): the person adds a description in the image's tools.
-            ed.schema.nodes.image!.create({ id: blockId, depth, alt: "", caption: "" })
+            ed.schema.nodes.image!.create({ id: blockId, depth, alt: "", caption: "", naturalWidth: size?.width ?? null, naturalHeight: size?.height ?? null })
           : ed.schema.nodes.file!.create({ id: blockId, depth, name: file.name, size: file.size, mimeType: file.type || "application/octet-stream" });
         // Register the upload before the block exists so its sync op is held until the upload finishes.
         await enqueueUpload(accountKey, engine, { documentId, blockId, file, kind: isImage ? "image" : "file" });
@@ -406,6 +492,11 @@ export const Editor = forwardRef<EditorHandle, Props>(function Editor(
         ed.view.dispatch(tr.scrollIntoView());
       }
       window.dispatchEvent(new CustomEvent("folevi:uploads-changed"));
+      // (Ten at a time: the rest used to be left out without a word.)
+      if (files.length > 10) {
+        const left = files.length - 10;
+        window.dispatchEvent(new CustomEvent("folevi:error", { detail: `Only the first 10 files were added. ${left} ${left === 1 ? "was" : "were"} left out.` }));
+      }
     },
     [accountKey, engine, documentId],
   );
@@ -445,7 +536,11 @@ export const Editor = forwardRef<EditorHandle, Props>(function Editor(
     () => ({
       flush: () => flushLocal(editorRef.current),
       applyFromEngine,
-      editor: editorRef.current,
+      // Read when asked: the editor is made after the first render, and a copy taken then stayed null for good
+      // (this handle is only made again when flush or applyFromEngine change, which is never).
+      get editor() {
+        return editorRef.current;
+      },
       // The caret in that block, in view: a block folded away in a toggle or a tab is shown first, and a
       // block without text (an image, a table) is selected (findReplace.ts).
       focusBlock: (blockId: string) => {

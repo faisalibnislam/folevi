@@ -1,56 +1,165 @@
 // Paste normalization: arbitrary HTML (web pages, Google Docs, Word, other editors) → canonical blocks.
 // Only structure and safe inline formatting survive; scripts, styles and unknown markup are dropped.
-import { LIMITS, SCHEMA_VERSION, flattenTree, markdownToBlocks, normalizeLanguage, normalizeInline, rankSequence, sanitizeHref, splitInline, ulid, type InlineNode, type Mark, type WireBlock } from "@folevi/editor-schema";
-import { NodeSelection, TextSelection } from "@tiptap/pm/state";
+import { LIMITS, SCHEMA_VERSION, flattenTree, isValidId, markdownToBlocks, normalizeLanguage, normalizeInline, rankSequence, sanitizeHref, splitCode, splitInline, tableCutWarning, textLength, ulid, type InlineNode, type Mark, type WireBlock } from "@folevi/editor-schema";
+import { MAX_FILE_BYTES, MAX_IMAGE_BYTES } from "@folevi/editor-schema/fileBytes";
+import { NodeSelection, TextSelection, type EditorState, type Transaction } from "@tiptap/pm/state";
 import { closeHistory } from "@tiptap/pm/history";
 import type { Node as PMNode, Slice } from "@tiptap/pm/model";
 import type { EditorView } from "@tiptap/pm/view";
 import { TEXT_NODES, blockToNode } from "./convert";
-import { normalizeDepths } from "./commands";
+import { blockAt, normalizeDepths, subtreeRange } from "./commands";
 import { afterSubtree, deleteVisibleRange } from "./plugins";
-import { hiddenIndices } from "./blockSelectionState";
+import { blockSelectionKey, blockSelectionRange, hiddenIndices, type BlockSelectionMeta } from "./blockSelectionState";
 import { gridFromText, gridFromHtmlTable } from "./table/sheetPaste";
-import { readBlockClip } from "./blockClipboard";
+import { documentIdOf, readBlockClip } from "./blockClipboard";
 import { pasteAddress } from "./autolink";
 
+/** Tells the person what a paste could not do as asked (Toast.tsx shows these window events). */
+function say(message: string): void {
+  if (typeof window !== "undefined") window.dispatchEvent(new CustomEvent("folevi:error", { detail: message }));
+}
+
+/** What reading a paste left out, kept with the blocks it was read into and said once those are in the note. */
+const pasteNotes = new WeakMap<WireBlock[], string[]>();
+function noted(blocks: WireBlock[], notes: string[]): WireBlock[] {
+  if (notes.length) pasteNotes.set(blocks, notes);
+  return blocks;
+}
+
+const counted = (n: number) => n.toLocaleString("en-US");
+
 /**
- * Before any paste: a range through a collapsed toggle loses only its visible part (the hidden blocks stay),
- * and several whole blocks pasted at the end of a collapsed toggle go after its hidden blocks.
+ * Says that a paste of `blocks` blocks was not made: the note has room for `room` more. A note holds so many
+ * blocks; the server refuses more, and each refused block would vanish after the save.
  */
+function sayNoRoom(blocks: number, room: number): void {
+  if (room > 0) say(`That paste is too large for this note. It would add ${counted(blocks)} blocks, and the note has room for ${counted(room)} more.`);
+  else say(`This note is full, so nothing was pasted. A note holds up to ${counted(LIMITS.maxBlocksPerDocument)} blocks.`);
+}
+
+/** What is said when a pasted table had more rows or columns than a table holds. */
+export const TABLE_CUT_NOTICE = `That table was too large to paste whole. It was cut to ${LIMITS.maxTableRows} rows and ${LIMITS.maxTableColumns} columns.`;
+
+/** Whether a pasted HTML table has more rows or columns than a table holds (gridFromHtmlTable cuts it). */
+export function htmlTableIsCut(table: HTMLTableElement): boolean {
+  const rows = [...table.rows];
+  if (rows.length > LIMITS.maxTableRows) return true;
+  return rows.some((tr) => [...tr.cells].reduce((n, c) => n + Math.max(1, c.colSpan || 1), 0) > LIMITS.maxTableColumns);
+}
+
+/** Whether tab-separated text has more rows or columns than a table holds (gridFromText cuts it). */
+export function textTableIsCut(text: string): boolean {
+  const rows = text.replace(/\r\n?/g, "\n").split("\n").filter((row) => row.trim() !== "");
+  return rows.length > LIMITS.maxTableRows || (rows[0]?.split("\t").length ?? 0) > LIMITS.maxTableColumns;
+}
+
+/**
+ * A paste is an undo step of its own. The step before it is closed on the paste's transaction (closeHistory);
+ * this closes the paste itself, so what is typed right after it is the next step and not part of the paste.
+ */
+function endPaste(view: EditorView): void {
+  view.dispatch(closeHistory(view.state.tr));
+}
+
+/** Whether the selection is inside one code block. */
+function inCode(selection: EditorState["selection"]): boolean {
+  return selection.$from.parent.type.name === "codeBlock" && selection.$from.sameParent(selection.$to);
+}
+
+/**
+ * Text into the code block the selection of `tr` is in, as one undo step. Code over a block's length limit
+ * (a longer block would be refused on save, and the paste lost) continues in more code blocks after it.
+ */
+function insertIntoCode(view: EditorView, tr: Transaction, text: string): void {
+  const { $from, $to } = tr.selection;
+  const block = $from.parent;
+  const before = block.textBetween(0, $from.parentOffset);
+  const after = block.textBetween($to.parentOffset, block.content.size);
+  closeHistory(tr);
+  if (before.length + text.length + after.length <= LIMITS.maxCodeLength) tr.insertText(text);
+  else {
+    const [head, ...more] = splitCode(before + text + after, LIMITS.maxCodeLength);
+    const { schema } = view.state;
+    const start = $from.start();
+    tr.replaceWith(start, $from.end(), schema.text(head!));
+    const blocks = more.map((code) => block.type.create({ ...block.attrs, id: ulid() }, schema.text(code)));
+    const at = start + head!.length + 1;
+    tr.insert(at, blocks);
+    tr.setSelection(TextSelection.create(tr.doc, at + sizeOf(blocks) - 1));
+  }
+  view.dispatch(tr.scrollIntoView());
+  endPaste(view);
+}
+
 /** In a code block, any paste is its plain text (formatting and line structure from elsewhere would split it). */
 export function pasteIntoCode(view: EditorView, data: DataTransfer | null): boolean {
-  const { $from, $to } = view.state.selection;
-  if ($from.parent.type.name !== "codeBlock" || !$from.sameParent($to) || !data) return false;
+  if (!inCode(view.state.selection) || !data) return false;
   const text = data.getData("text/plain").replace(/\r\n?/g, "\n");
   if (!text) return false;
-  view.dispatch(view.state.tr.insertText(text).scrollIntoView());
+  insertIntoCode(view, view.state.tr, text);
   return true;
 }
 
-export function prepareForPaste(view: EditorView, slice: Slice | null): void {
-  const visible = deleteVisibleRange(view.state);
-  if (visible) view.dispatch(visible);
-  // Pasting while a whole block (an image, a divider, a table…) is selected goes on a new line after it,
-  // like typing does, instead of replacing it.
-  const picked = view.state.selection;
+/** Selected blocks (with what is nested under them) give way to one empty line, which the paste then fills. */
+function replaceSelectedBlocks(state: EditorState): Transaction | null {
+  const range = blockSelectionRange(state);
+  if (!range) return null;
+  let to = range.to;
+  for (let i = range.from; i <= range.to; i++) to = Math.max(to, i + subtreeRange(state, i).count - 1);
+  const start = blockAt(state, range.from)!;
+  const last = blockAt(state, to)!;
+  const line = state.schema.nodes.paragraph!.create({ id: null, depth: Number(start.node.attrs.depth ?? 0) });
+  const tr = state.tr.replaceWith(start.pos, last.pos + last.node.nodeSize, line);
+  tr.setSelection(TextSelection.create(tr.doc, start.pos + 1)).setMeta(blockSelectionKey, { clear: true } satisfies BlockSelectionMeta);
+  normalizeDepths(tr);
+  return tr;
+}
+
+/**
+ * What has to change before a paste goes in, as a transaction that is not dispatched here: the paste adds its
+ * own steps to it, so the two are one undo step (and when nothing is pasted after all, nothing was changed).
+ *
+ * - Selected blocks give way to an empty line (`blocks`: only when there is something to paste over them).
+ * - A range through a collapsed toggle loses only its visible part (the hidden blocks stay).
+ * - With a whole block selected (an image, a divider, a table…) the paste goes on a new line after it, like
+ *   typing does, instead of replacing it.
+ * - Several whole blocks pasted at the end of a collapsed toggle go after its hidden blocks.
+ *
+ * Null when the paste can go in as the note is.
+ */
+function preparedPaste(state: EditorState, slice: Slice | null, blocks: boolean): Transaction | null {
+  if (blockSelectionRange(state)) return blocks ? replaceSelectedBlocks(state) : null;
+  let tr = deleteVisibleRange(state);
+  // What the note is like after that step (the tabs and toggles that hide blocks are read from it).
+  const now = tr ? state.apply(tr) : state;
+  const picked = now.selection;
   if (picked instanceof NodeSelection && picked.node.isBlock && picked.$from.depth === 0) {
-    const at = afterSubtree(view.state, picked.$from.index(0));
-    const tr = view.state.tr.insert(at, view.state.schema.nodes.paragraph!.create({ id: null, depth: picked.node.attrs.depth }));
-    tr.setSelection(TextSelection.create(tr.doc, at + 1));
-    view.dispatch(tr);
+    const at = afterSubtree(now, picked.$from.index(0));
+    tr ??= state.tr;
+    tr.insert(at, state.schema.nodes.paragraph!.create({ id: null, depth: picked.node.attrs.depth }));
+    return tr.setSelection(TextSelection.create(tr.doc, at + 1));
   }
-  const { state } = view;
-  const { $from, empty } = state.selection;
-  if (!slice || !empty || $from.depth < 1 || slice.content.childCount < 2) return;
+  const { $from, empty } = picked;
+  if (!slice || !empty || $from.depth < 1 || slice.content.childCount < 2) return tr;
   const parent = $from.parent;
-  if (parent.type.name !== "toggle" || !parent.attrs.collapsed || $from.parentOffset !== parent.content.size) return;
+  if (parent.type.name !== "toggle" || !parent.attrs.collapsed || $from.parentOffset !== parent.content.size) return tr;
   const index = $from.index(0);
-  if (!hiddenIndices(state).has(index + 1)) return;
+  const hidden = hiddenIndices(now);
+  if (!hidden.has(index + 1)) return tr;
   let at = $from.after(1);
-  for (let i = index + 1; i < state.doc.childCount && hiddenIndices(state).has(i); i++) at += state.doc.child(i).nodeSize;
-  const tr = state.tr.insert(at, state.schema.nodes.paragraph!.create({ id: null, depth: parent.attrs.depth }));
-  tr.setSelection(TextSelection.create(tr.doc, at + 1));
-  view.dispatch(tr);
+  for (let i = index + 1; i < now.doc.childCount && hidden.has(i); i++) at += now.doc.child(i).nodeSize;
+  tr ??= state.tr;
+  tr.insert(at, state.schema.nodes.paragraph!.create({ id: null, depth: parent.attrs.depth }));
+  return tr.setSelection(TextSelection.create(tr.doc, at + 1));
+}
+
+/**
+ * Makes the note ready for a paste right away (see preparedPaste), for an editor that carries the paste out
+ * itself (the demo on the home page). handleEditorPaste keeps this and the paste in one undo step instead.
+ */
+export function prepareForPaste(view: EditorView, slice: Slice | null): void {
+  const tr = preparedPaste(view.state, slice, Boolean(slice?.size));
+  if (tr) view.dispatch(tr);
 }
 
 interface Draft {
@@ -69,7 +178,10 @@ function marksFor(e: HTMLElement, marks: Mark[]): Mark[] {
   const style = e.getAttribute("style") ?? "";
   if (e.tagName === "STRONG" || e.tagName === "B" || /font-weight:\s*(bold|[6-9]00)/.test(style)) next.push({ type: "bold" });
   if (e.tagName === "EM" || e.tagName === "I" || /font-style:\s*italic/.test(style)) next.push({ type: "italic" });
-  if (e.tagName === "U" || /text-decoration[^;]*underline/.test(style)) next.push({ type: "underline" });
+  // A link's own underline is how it is drawn, not formatting (Google Docs writes one on every link): only
+  // a real <u> underlines linked text, so the text is not left underlined once the link is removed.
+  const linked = e.tagName === "A" || marks.some((m) => m.type === "link");
+  if (e.tagName === "U" || (!linked && /text-decoration[^;]*underline/.test(style))) next.push({ type: "underline" });
   if (e.tagName === "S" || e.tagName === "DEL" || e.tagName === "STRIKE" || /line-through/.test(style)) next.push({ type: "strike" });
   if (e.tagName === "CODE" || e.tagName === "KBD" || e.tagName === "SAMP") next.push({ type: "code" });
   if (e.tagName === "MARK") next.push({ type: "highlight", value: "yellow" });
@@ -82,6 +194,28 @@ function marksFor(e: HTMLElement, marks: Mark[]): Mark[] {
   return next;
 }
 
+/** Whether each element shows the line breaks in its text (worked out once per element, from its style or its parent's). */
+const breaksKept = new WeakMap<Element, boolean>();
+
+/**
+ * Whether text in `e` keeps its line breaks: white-space pre, pre-wrap, pre-line or break-spaces, or (as
+ * newer Chrome writes it) white-space-collapse preserve or preserve-breaks, on it or the nearest element
+ * around it that says. Posts, chat messages and prompts are copied this way, with no <br> in them.
+ */
+function keepsLineBreaks(e: Element | null): boolean {
+  if (!e) return false;
+  const known = breaksKept.get(e);
+  if (known !== undefined) return known;
+  let keeps: boolean;
+  const collapse = e.hasAttribute("style") ? styleValue(e, "white-space-collapse") : "";
+  const space = e.hasAttribute("style") ? styleValue(e, "white-space") : "";
+  if (collapse) keeps = /^(preserve|preserve-breaks|break-spaces)$/.test(collapse);
+  else if (space) keeps = /^(pre|pre-wrap|pre-line|break-spaces|preserve)\b/.test(space);
+  else keeps = keepsLineBreaks(e.parentElement);
+  breaksKept.set(e, keeps);
+  return keeps;
+}
+
 /**
  * The text of some nodes with their formatting. Block elements inside are skipped, or with `flatten`
  * (a table cell) read too, separated by spaces.
@@ -90,7 +224,9 @@ function inlineOfNodes(nodes: Iterable<ChildNode>, marks: Mark[] = [], flatten =
   const out: InlineNode[] = [];
   for (const child of nodes) {
     if (child.nodeType === Node.TEXT_NODE) {
-      const text = (child.textContent ?? "").replace(/\s+/g, " ");
+      const raw = child.textContent ?? "";
+      // White space runs together as it does on a page; where the page keeps line breaks, so does the paste.
+      const text = /[\n\r]/.test(raw) && keepsLineBreaks(child.parentElement) ? raw.replace(/\r\n?/g, "\n").replace(/[^\S\n]+/g, " ") : raw.replace(/\s+/g, " ");
       if (text) out.push(marks.length ? { type: "text", text, marks: [...marks] } : { type: "text", text });
       continue;
     }
@@ -226,14 +362,25 @@ function walkNodes(nodes: ChildNode[], depth: number, out: Draft[], listType: "b
     imagesIn(run, depth, out);
     run = [];
   };
+  // Line breaks in a row: one is a line break in the paragraph, two or more end the paragraph (text typed
+  // into a mail or a form is copied as lines with <br><br> between its paragraphs).
+  let breaks = 0;
   for (const child of nodes) {
     if (child.nodeType === Node.TEXT_NODE) {
+      if (child.textContent?.trim()) breaks = 0;
       run.push(child);
       continue;
     }
     if (child.nodeType !== Node.ELEMENT_NODE) continue;
     const e = child as HTMLElement;
     if (SKIP.has(e.tagName)) continue;
+    if (e.tagName === "BR") {
+      if (breaks > 0) flush();
+      else run.push(child);
+      breaks++;
+      continue;
+    }
+    breaks = 0;
     const isBlock = BLOCK_TAGS.has(e.tagName) && e.tagName !== "IMG";
     if (!isBlock && e.tagName !== "IMG" && !containsBlock(e)) {
       run.push(child);
@@ -288,9 +435,12 @@ function block(e: HTMLElement, depth: number, out: Draft[], listType: "bulleted"
       return;
     case "LI": {
       const checkbox = e.querySelector(":scope > input[type=checkbox], :scope > p > input[type=checkbox], :scope > label > input[type=checkbox]") as HTMLInputElement | null;
+      // Google Docs writes a checklist item as role="checkbox", its mark a small picture.
+      const ticked = e.getAttribute("role") === "checkbox" ? e.getAttribute("aria-checked") === "true" : null;
       let inline = clean(inlineOf(e, marks));
       // Block children: the first one is the item's text when it has none of its own; the rest nest under it.
-      const kids = [...e.children].filter((c) => BLOCK_TAGS.has(c.tagName) && c.tagName !== "UL" && c.tagName !== "OL");
+      // (A picture is never the item's text: an item that starts with one keeps the text that follows it.)
+      const kids = [...e.children].filter((c) => BLOCK_TAGS.has(c.tagName) && c.tagName !== "UL" && c.tagName !== "OL" && c.tagName !== "IMG");
       let rest = kids;
       let firstKid: Element | null = null;
       if (!inline.length && kids.length) {
@@ -300,12 +450,22 @@ function block(e: HTMLElement, depth: number, out: Draft[], listType: "bulleted"
         if (!inline.length) inline = clean(inlineOf(firstKid, marks, true));
         rest = kids.slice(1);
       }
-      const type = checkbox || e.getAttribute("data-checked") !== null || /task-list-item|checklist|to-do/.test(e.className) ? "todo" : (listType ?? "bulleted");
-      const props = type === "todo" ? { checked: Boolean(checkbox?.checked) || e.getAttribute("data-checked") === "true" } : {};
-      // Google Docs keeps nested items in one flat list, with their level in aria-level.
+      const type = checkbox || ticked !== null || e.getAttribute("data-checked") !== null || /task-list-item|checklist|to-do/.test(e.className) ? "todo" : (listType ?? "bulleted");
+      const props = type === "todo" ? { checked: Boolean(checkbox?.checked) || Boolean(ticked) || e.getAttribute("data-checked") === "true" } : {};
+      // Google Docs gives each item its level in aria-level, in one flat list or in lists inside lists. The
+      // lists around the item have already given it their levels: only the ones still missing are added.
       const level = Number(e.getAttribute("aria-level"));
-      const itemDepth = level > 1 && !e.parentElement?.closest("li") ? depth + level - 1 : depth;
+      let itemDepth = depth;
+      if (level > 1) {
+        let lists = 0;
+        for (let up = e.parentElement; up; up = up.parentElement) if (up.tagName === "UL" || up.tagName === "OL") lists++;
+        itemDepth = depth + Math.max(0, level - 1 - Math.max(0, lists - 1));
+      }
       out.push({ type, depth: itemDepth, text: inline, props });
+      // Pictures in the item (its own, and those in its line of text) go under it.
+      const own = [...e.childNodes].filter((n) => n.nodeType === Node.ELEMENT_NODE && ((n as Element).tagName === "IMG" || (!BLOCK_TAGS.has((n as Element).tagName) && !containsBlock(n as Element))));
+      imagesIn(own, itemDepth + 1, out);
+      if (firstKid && !containsBlock(firstKid)) imagesIn(firstKid.childNodes, itemDepth + 1, out);
       // Lists and blocks inside the item's first wrapper (<li><div>Two<ul>…</ul></div>) nest under it.
       if (firstKid && clean(inlineOf(firstKid, marks)).length) {
         for (const n of [...firstKid.children]) {
@@ -330,9 +490,13 @@ function block(e: HTMLElement, depth: number, out: Draft[], listType: "bulleted"
       return;
     }
     case "PRE": {
-      const cls = e.querySelector("code")?.className ?? "";
-      const lang = normalizeLanguage(/language-([\w+#-]+)/.exec(cls)?.[1] ?? "plaintext");
-      out.push({ type: "code", depth, text: [], props: { language: lang, code: codeText(e) } });
+      // The code is the <code> inside, when there is one: chat sites put the language's name and a copy
+      // button in the <pre> beside it, which are not code.
+      const codes = e.querySelectorAll("code");
+      const source = codes.length === 1 ? codes[0]! : e;
+      const cls = `${source.className} ${e.className}`;
+      const lang = normalizeLanguage(/\blang(?:uage)?-([\w+#-]+)/.exec(cls)?.[1] ?? "plaintext");
+      out.push({ type: "code", depth, text: [], props: { language: lang, code: codeText(source) } });
       return;
     }
     case "HR":
@@ -353,6 +517,7 @@ function block(e: HTMLElement, depth: number, out: Draft[], listType: "bulleted"
       // formulas Google Sheets and Excel put on their cells (table/sheetPaste.ts).
       const grid = gridFromHtmlTable(e as HTMLTableElement, (c) => clean(inlineOf(c, marks, true)));
       if (grid.rows.length) out.push({ type: "table", depth, text: [], props: { headerRow: grid.headerRow, rows: grid.rows } });
+      if (htmlTableIsCut(e as HTMLTableElement)) cutTable = true;
       return;
     }
     default:
@@ -360,20 +525,29 @@ function block(e: HTMLElement, depth: number, out: Draft[], listType: "bulleted"
   }
 }
 
-/** Text over the schema's length limit continues in more blocks (a longer one would be rejected on save). */
+/**
+ * Text over the schema's length limit continues in more blocks, and code over its own in more code blocks
+ * (a longer one would be rejected on save).
+ */
 function withinTextLimit(d: Draft): Draft[] {
+  if (d.type === "code") return splitCode(String(d.props.code ?? ""), LIMITS.maxCodeLength).map((code) => ({ ...d, props: { ...d.props, code } }));
   return splitInline(d.text, LIMITS.maxTextLength).map((text, i) => (i === 0 ? { ...d, text } : { type: d.type === "quote" ? "quote" : "paragraph", depth: d.depth, text, props: {} }));
 }
+
+/** Whether the HTML being read held a table larger than a table can be (it was cut to size). */
+let cutTable = false;
 
 export function htmlToBlocks(html: string): WireBlock[] {
   const doc = new DOMParser().parseFromString(html, "text/html");
   const drafts: Draft[] = [];
   withBlocks = markBlockContainers(doc.body);
+  cutTable = false;
   try {
     walk(doc.body, 0, drafts);
   } finally {
     withBlocks = null;
   }
+  const notes = cutTable ? [TABLE_CUT_NOTICE] : [];
   // Convert depth annotations into parents/ranks.
   const blocks: WireBlock[] = [];
   const stack: { id: string; depth: number }[] = [];
@@ -394,16 +568,27 @@ export function htmlToBlocks(html: string): WireBlock[] {
     const rank = rankPools.get(a.parentId)!.shift()!;
     blocks.push({ id: a.id, type: a.draft.type, parentId: a.parentId, rank, schemaVersion: SCHEMA_VERSION, text: a.draft.text, props: a.draft.props });
   }
-  return blocks;
+  return noted(blocks, notes);
 }
 
-/** Plain text: one line per paragraph (blank lines kept, trailing ones dropped, a very long line cut in several). */
+/**
+ * Plain text: one line per paragraph (a very long line cut in several). One blank line between two lines only
+ * separates them, as it does in Markdown; two or more leave one empty line, the gap that was meant. Blank
+ * lines at the start and the end are dropped.
+ */
 function linesToBlocks(text: string): WireBlock[] {
-  const lines = text
-    .replace(/\r\n?/g, "\n")
-    .replace(/\n+$/, "")
-    .split("\n")
-    .flatMap((line) => splitInline(line ? [{ type: "text", text: line }] : [], LIMITS.maxTextLength));
+  const kept: string[] = [];
+  let blanks = 0;
+  for (const line of text.replace(/\r\n?/g, "\n").split("\n")) {
+    if (!line.trim()) {
+      blanks++;
+      continue;
+    }
+    if (blanks > 1 && kept.length) kept.push("");
+    blanks = 0;
+    kept.push(line);
+  }
+  const lines = kept.flatMap((line) => splitInline(line ? [{ type: "text", text: line }] : [], LIMITS.maxTextLength));
   const ranks = rankSequence(lines.length);
   return lines.map((line, i) => ({ id: ulid(), type: "paragraph", parentId: null, rank: ranks[i]!, schemaVersion: SCHEMA_VERSION, text: line, props: {} }));
 }
@@ -425,9 +610,17 @@ export function looksLikeMarkdown(text: string): boolean {
 /** A line that starts like a Markdown block ("# ", "- ", "1. ", "> ", a code fence, "[ ] "). */
 const BLOCK_MARKER = /^(#{1,3} |[-*+] |\d+[.)] |> |```|\[[ x]\] )/m;
 
+/**
+ * Lines that start with a bullet character ("• one", "◦ sub": how PDFs, Messages and Notes write a list as
+ * plain text) with Markdown's "- " in its place, so they are read as the list items they are.
+ */
+function bulletsAsMarkdown(text: string): string {
+  return text.replace(/^([ \t]*)[•◦▪▫‣⁃●○∙][ \t]*(?=\S)/gm, "$1- ");
+}
+
 /** Whether the caret (or the selection) is inside a line that keeps some of its text: part of a sentence. */
-function inSentence(view: EditorView): boolean {
-  const { $from, $to } = view.state.selection;
+function inSentence(state: EditorState): boolean {
+  const { $from, $to } = state.selection;
   const line = $from.parent;
   if ($from.depth < 1 || !TEXT_NODES.has(line.type.name) || line.content.size === 0) return false;
   return !($from.sameParent($to) && $from.parentOffset === 0 && $to.parentOffset === line.content.size);
@@ -439,7 +632,12 @@ function inSentence(view: EditorView): boolean {
  * line of text, anything inside a code block).
  */
 export function clipboardBlocks(view: EditorView, data: DataTransfer | null): WireBlock[] | null {
-  if (!data || view.state.selection.$from.parent.type.name === "codeBlock") return null;
+  return blocksFor(view.state, data);
+}
+
+/** clipboardBlocks for a note as `state` has it (the note as it will be once the way is clear for the paste). */
+function blocksFor(state: EditorState, data: DataTransfer | null): WireBlock[] | null {
+  if (!data || state.selection.$from.parent.type.name === "codeBlock") return null;
   // Blocks copied from a Folevi note: exactly as they were (blockClipboard.ts).
   const clip = readBlockClip(data);
   if (clip) return clip.blocks;
@@ -450,29 +648,37 @@ export function clipboardBlocks(view: EditorView, data: DataTransfer | null): Wi
   // other ProseMirror editors', is normalised.
   const ours = html.includes("data-pm-slice") && /data-block="/.test(html);
   if (html && !ours) blocks = htmlToBlocks(html);
-  else if (!html && text) blocks = textBlocks(view, text);
+  else if (!html && text) blocks = textBlocks(state, text);
   return blocks?.length ? blocks : null;
 }
 
 /** Plain text as blocks: a table, Markdown, or its lines. Null for one ordinary line (ProseMirror pastes it). */
-function textBlocks(view: EditorView, text: string): WireBlock[] | null {
+function textBlocks(state: EditorState, raw: string): WireBlock[] | null {
   // Rows of tab-separated cells (a spreadsheet's plain copy): a table.
-  const table = /\t/.test(text) && /\n./.test(text.trim()) ? tsvTable(text) : null;
+  const table = /\t/.test(raw) && /\n./.test(raw.trim()) ? tsvTable(raw) : null;
   if (table) return table;
+  const text = bulletsAsMarkdown(raw);
   const marked = BLOCK_MARKER.test(text);
-  if (!/\n/.test(text) && !marked) return null;
+  // One ordinary line is ProseMirror's to paste, unless it is longer than a block's text may be: then it is
+  // cut into several here (a longer block would be refused on save).
+  if (!/\n/.test(text) && !marked) return raw.length > LIMITS.maxTextLength ? linesToBlocks(raw) : null;
   // One line that only looks like a heading or a list item, pasted into a sentence: its characters as they
   // are ("see - 5 degrees"), never a new block in the middle of the sentence.
-  if (marked && !/\n/.test(text.replace(/\r\n?/g, "\n").replace(/\n+$/, "")) && inSentence(view)) return linesToBlocks(text);
-  // Pasted text keeps its lines: a line break inside a paragraph stays one (a letter's "Dear John," and the next line stay two lines).
-  return looksLikeMarkdown(text) ? markdownToBlocks(text, { titleFromHeading: false, lineBreaks: true }).blocks : linesToBlocks(text);
+  if (marked && !/\n/.test(text.replace(/\r\n?/g, "\n").replace(/\n+$/, "")) && inSentence(state)) return linesToBlocks(raw);
+  if (!looksLikeMarkdown(text)) return linesToBlocks(raw);
+  // Pasted text keeps its lines: a line break inside a paragraph stays one (a letter's "Dear John," and the
+  // next line stay two lines). And a "---" first line is a divider: pasted text has no front matter, and
+  // reading one would drop everything up to the next "---".
+  const read = markdownToBlocks(text, { titleFromHeading: false, lineBreaks: true, frontMatter: false });
+  return noted(read.blocks, read.warnings.some((w) => w.message === tableCutWarning()) ? [TABLE_CUT_NOTICE] : []);
 }
 
 /** Tab-separated rows as a table block, or null (see gridFromText for what counts as rows of cells). */
 function tsvTable(text: string): WireBlock[] | null {
   const grid = gridFromText(text);
   if (!grid || grid.rows.length < 2) return null;
-  return [{ id: ulid(), type: "table", parentId: null, rank: rankSequence(1)[0]!, schemaVersion: SCHEMA_VERSION, text: [], props: { headerRow: grid.headerRow, rows: grid.rows } }];
+  const table: WireBlock = { id: ulid(), type: "table", parentId: null, rank: rankSequence(1)[0]!, schemaVersion: SCHEMA_VERSION, text: [], props: { headerRow: grid.headerRow, rows: grid.rows } };
+  return noted([table], textTableIsCut(text) ? [TABLE_CUT_NOTICE] : []);
 }
 
 /**
@@ -512,55 +718,116 @@ export function pasteIsPlain(view: EditorView): boolean {
 }
 
 /**
- * Pastes text and nothing else: its lines, without formatting, links or blocks (in code, as it is). False
- * when there is no text to paste.
+ * Whether the note would take at least one of these files: the first ten, each within its size (the limits
+ * insertFiles in Editor.tsx applies, said there). When none would go in, the paste changes nothing.
+ */
+export function someFileFits(files: File[]): boolean {
+  return files.slice(0, 10).some((f) => f.size <= (/^image\/(png|jpe?g|gif|webp)$/i.test(f.type) ? MAX_IMAGE_BYTES : MAX_FILE_BYTES));
+}
+
+/**
+ * Pastes text and nothing else: its lines, without formatting, links or blocks (in code, as it is). Over
+ * selected blocks it takes their place. False when there is no text to paste.
  */
 export function pastePlainText(view: EditorView, text: string): boolean {
   if (!text.trim()) return false;
-  const { $from, $to } = view.state.selection;
-  if ($from.parent.type.name === "codeBlock" && $from.sameParent($to)) view.dispatch(view.state.tr.insertText(text.replace(/\r\n?/g, "\n")).scrollIntoView());
-  else insertPastedBlocks(view, linesToBlocks(text));
+  const prepared = preparedPaste(view.state, null, true);
+  const selection = prepared ? prepared.selection : view.state.selection;
+  if (inCode(selection)) insertIntoCode(view, prepared ?? view.state.tr, text.replace(/\r\n?/g, "\n"));
+  else insertPastedBlocks(view, linesToBlocks(text), { tr: prepared ?? undefined });
   return true;
 }
+
+/** True while ProseMirror pastes at handleEditorPaste's own request (it asks handleEditorPaste again). */
+let handingOver = false;
 
 /**
  * A paste into the note, in the order things are tried: code takes plain text; a plain-text paste takes the
  * clipboard's text only; blocks copied in Folevi come back as they were; files with nothing to read beside
- * them are inserted; one web address becomes a link; anything else with structure becomes blocks. False
- * leaves the paste to ProseMirror (one line of text, Folevi's own copied text).
+ * them are inserted; one web address becomes a link; anything else with structure becomes blocks; the rest
+ * (one line of text, Folevi's own copied text) is ProseMirror's own paste. False when nothing was pasted here.
+ *
+ * Whatever the route, the paste is one undo step of its own: what had to give way to it (selected blocks, a
+ * selected range) goes in the same step, the step typed before it is closed, and so is the paste after it.
+ * When nothing can be pasted (a file over the size limit, a paste too large for the note), nothing changes.
  */
 export function handleEditorPaste(view: EditorView, event: ClipboardEvent, slice: Slice | null, options: { editable: boolean; insertFiles: (files: File[]) => void }): boolean {
+  // ProseMirror asking again, in the middle of the paste handed to it below: it is its own to carry out.
+  if (handingOver) return false;
   const data = event.clipboardData;
-  prepareForPaste(view, slice);
-  if (pasteIntoCode(view, data)) {
+  const html = data?.getData("text/html") ?? "";
+  const text = data?.getData("text/plain") ?? "";
+  // Selected blocks give way only to something that can be pasted, and never in a note that can't be edited.
+  const usable = options.editable && Boolean(data && (text || html || data.files?.length));
+  const prepared = preparedPaste(view.state, slice, usable);
+  // The note as it will be once the way is clear: what the paste becomes is decided there.
+  const state = prepared ? view.state.apply(prepared) : view.state;
+  if (inCode(state.selection) && text) {
     event.preventDefault();
+    insertIntoCode(view, prepared ?? view.state.tr, text.replace(/\r\n?/g, "\n"));
     return true;
   }
-  if (options.editable && pasteIsPlain(view) && pastePlainText(view, data?.getData("text/plain") ?? "")) {
+  if (options.editable && pasteIsPlain(view) && text.trim()) {
     event.preventDefault();
+    insertPastedBlocks(view, linesToBlocks(text), { tr: prepared ?? undefined });
     return true;
   }
-  // Blocks copied in a Folevi note (they may come with a picture of themselves for other apps).
+  // Blocks copied in a Folevi note (they may come with a picture of themselves for other apps). Blocks cut
+  // from this note come back as themselves, ids included, so their comments move with them.
   const clip = readBlockClip(data);
   if (clip) {
     event.preventDefault();
-    if (options.editable) insertPastedBlocks(view, clip.blocks, { whole: true });
+    const moved = Boolean(clip.cut && clip.documentId && clip.documentId === documentIdOf(view));
+    if (options.editable) insertPastedBlocks(view, clip.blocks, { whole: true, keepIds: moved, tr: prepared ?? undefined });
     return true;
   }
   if (options.editable && pasteIsFiles(data)) {
     event.preventDefault();
-    options.insertFiles([...(data?.files ?? [])]);
+    const files = [...(data?.files ?? [])];
+    // The way is cleared only when a file will go in (one over the size limit is refused, with a message).
+    if (prepared && someFileFits(files)) view.dispatch(closeHistory(prepared));
+    options.insertFiles(files);
     return true;
   }
-  // A plain web address: a link (over the selected text, if any).
-  if (pasteAddress(view, data)) {
+  // A plain web address: a link (over the selected text, if any). Asked first on the note as it will be, so
+  // the way is only cleared for an address.
+  if (pasteAddress({ state, dispatch: () => undefined } as unknown as EditorView, data)) {
     event.preventDefault();
+    view.dispatch(closeHistory(prepared ?? view.state.tr));
+    pasteAddress(view, data);
+    endPaste(view);
     return true;
   }
-  const blocks = clipboardBlocks(view, data);
-  if (!blocks) return false;
+  const blocks = blocksFor(state, data);
+  if (blocks) {
+    event.preventDefault();
+    insertPastedBlocks(view, blocks, { tr: prepared ?? undefined });
+    return true;
+  }
+  // ProseMirror's own paste. Nothing it could read: nothing changes.
+  if (!slice?.size || (!html && !text)) return false;
+  // More blocks than the note has room for (a long note's text copied and pasted again): not pasted, and
+  // said. (The first of them continues the caret's line, so it is not one more block.)
+  const room = LIMITS.maxBlocksPerDocument - state.doc.childCount;
+  if (slice.content.childCount - 1 > room) {
+    event.preventDefault();
+    sayNoRoom(slice.content.childCount, room);
+    return true;
+  }
+  view.dispatch(closeHistory(prepared ?? view.state.tr));
+  // It read the clipboard before the way was cleared, for where the caret was then (among selected blocks,
+  // the end of one of them, whose formatting the text would take on). So it is asked to paste again, now.
+  handingOver = true;
+  let pasted: boolean;
+  try {
+    pasted = html && !(pasteIsPlain(view) && text) ? view.pasteHTML(html, event) : view.pasteText(text, event);
+  } finally {
+    handingOver = false;
+  }
+  // (Not pasted: ProseMirror goes on with what it read the first time.)
+  if (!pasted) return false;
+  endPaste(view);
   event.preventDefault();
-  insertPastedBlocks(view, blocks);
   return true;
 }
 
@@ -608,6 +875,9 @@ function filledLine(line: PMNode, first: PMNode, plain: boolean): PMNode {
  * - Around a block without text (an image, a table, a divider, code) the line is split as before: the block
  *   lands between its two halves.
  *
+ * - At the end of a line that has text, several blocks that begin with a heading, a list item or a quote
+ *   follow the line whole: the line is not what their first block was meant to continue.
+ *
  * One block of text therefore goes into the line itself, whatever kind it was. Pasted blocks get fresh ids
  * and nest under the caret's block depth, and the whole paste is one undo step of its own.
  *
@@ -615,18 +885,39 @@ function filledLine(line: PMNode, first: PMNode, plain: boolean): PMNode {
  * were, each a block of its own with its kind and details (a to-do's date, a heading's level): they never
  * join the line, which is split around them as around a block without text. Only a single plain paragraph
  * still goes into the line.
+ *
+ * `keepIds`: blocks cut from this same note. Each keeps its id unless a block in the note has it now (a
+ * second paste of the same cut), so comments and links that point at a moved block still find it.
+ *
+ * `tr`: what had to change first (preparedPaste), not yet dispatched: the paste goes on in it.
+ *
+ * Returns false, with a message and the note unchanged, when the note has no room for the paste.
  */
-export function insertPastedBlocks(view: EditorView, blocks: WireBlock[], options: { whole?: boolean } = {}): void {
+export function insertPastedBlocks(view: EditorView, blocks: WireBlock[], options: { whole?: boolean; keepIds?: boolean; tr?: Transaction } = {}): boolean {
   const { schema } = view.state;
-  const flat = flattenTree(blocks);
-  if (!flat.length) return;
+  const notes = [...(pasteNotes.get(blocks) ?? [])];
+  let flat = flattenTree(blocks);
+  if (!flat.length) return false;
   // Over a range through a collapsed toggle, only what's visible is replaced.
-  const visible = deleteVisibleRange(view.state);
+  const base = options.tr ?? deleteVisibleRange(view.state) ?? view.state.tr;
   // Marked as a paste, so files in pasted blocks are shared with this note (Editor.tsx).
-  const tr = closeHistory(visible ?? view.state.tr).setMeta("uiEvent", "paste").setMeta("paste", true);
+  const tr = closeHistory(base).setMeta("uiEvent", "paste").setMeta("paste", true);
   if (!tr.selection.empty) tr.deleteSelection();
   const $from = tr.selection.$from;
   const line = $from.depth >= 1 && $from.parent.isTextblock ? $from.parent : null;
+  // A note holds so many blocks (sayNoRoom): plain lines are kept, together in fewer paragraphs; anything
+  // else is not pasted, and said.
+  // (An empty line the caret is on makes way for the first pasted block.)
+  const room = LIMITS.maxBlocksPerDocument - tr.doc.childCount + (line && line.content.size === 0 ? 1 : 0);
+  if (flat.length > room) {
+    const folded = foldedLines(flat.map((entry) => entry.block), room);
+    if (!folded) {
+      sayNoRoom(flat.length, room);
+      return false;
+    }
+    notes.push(`That paste has more lines than this note has room for, so its lines were put together in ${counted(folded.length)} ${folded.length === 1 ? "paragraph" : "paragraphs"}.`);
+    flat = flattenTree(folded);
+  }
   const lineDepth = $from.depth >= 1 ? Number($from.node(1).attrs.depth ?? 0) : 0;
   let baseDepth = lineDepth;
   // At the end of a line with nested blocks: like Enter, the pasted blocks become its first nested lines,
@@ -643,12 +934,28 @@ export function insertPastedBlocks(view: EditorView, blocks: WireBlock[], option
       } else baseDepth += 1;
     }
   }
-  const nodeAt = (i: number, base: number) => schema.nodeFromJSON(blockToNode({ ...flat[i]!.block, id: ulid() }, base + flat[i]!.depth));
+  // Fresh ids, or (blocks moved by cut and paste) their own where the note no longer has them.
+  const taken = new Set<string>();
+  if (options.keepIds) tr.doc.forEach((n) => void (n.attrs.id && taken.add(String(n.attrs.id))));
+  const ids = flat.map(({ block }) => {
+    if (!options.keepIds || !isValidId(block.id) || taken.has(block.id)) return ulid();
+    taken.add(block.id);
+    return block.id;
+  });
+  const nodeAt = (i: number, base: number) => schema.nodeFromJSON(blockToNode({ ...flat[i]!.block, id: ids[i]! }, base + flat[i]!.depth));
   const nodes = flat.map((_entry, i) => nodeAt(i, baseDepth));
+  const atEnd = line !== null && line.content.size > 0 && $from.parentOffset === line.content.size;
+  // One plain paragraph goes into the line. But one that was moved here with its id stays the block it was
+  // (the id is what its comments hold on to) unless it lands inside a line's text.
+  const single = nodes.length === 1 && nodes[0]!.type.name === "paragraph";
+  const moved = ids[0] === flat[0]!.block.id && Boolean(options.keepIds);
+  const inText = line !== null && $from.parentOffset > 0 && !atEnd;
   // Text joins text: never code (it holds no formatting), and never past a collapsed toggle's hidden lines.
-  const asBlocks = options.whole && !(nodes.length === 1 && nodes[0]!.type.name === "paragraph");
+  const asBlocks = options.whole && !(single && (!moved || inText));
   const joins = line !== null && TEXT_NODES.has(line.type.name) && afterHidden === null && !asBlocks;
-  const joinFirst = joins && TEXT_NODES.has(nodes[0]!.type.name);
+  // A heading or a list pasted at the end of a line with text ("Shopping:" and then the list) follows it.
+  const follows = atEnd && nodes.length > 1 && nodes[0]!.type.name !== "paragraph";
+  const joinFirst = joins && TEXT_NODES.has(nodes[0]!.type.name) && !follows;
   const joinLast = joins && TEXT_NODES.has(nodes[nodes.length - 1]!.type.name);
   // What was nested under the first pasted block is nested under the caret's line, which takes its place.
   if (joinFirst && baseDepth !== lineDepth) for (let i = 1; i < flat.length && flat[i]!.depth > 0; i++) nodes[i] = nodeAt(i, lineDepth);
@@ -669,6 +976,9 @@ export function insertPastedBlocks(view: EditorView, blocks: WireBlock[], option
   const finish = () => {
     normalizeDepths(tr);
     view.dispatch(tr.scrollIntoView());
+    endPaste(view);
+    for (const note of notes) say(note);
+    return true;
   };
   if (!line) {
     const at = $from.depth >= 1 ? $from.after(1) : $from.pos;
@@ -723,5 +1033,35 @@ export function insertPastedBlocks(view: EditorView, blocks: WireBlock[], option
   tr.insert(at, below);
   if (tail.size && joinLast) tr.setSelection(TextSelection.create(tr.doc, at + sizeOf(below) - 1 - tail.size));
   else caretAfter(at + sizeOf(rest));
-  finish();
+  return finish();
+}
+
+/**
+ * Pasted lines for a note without room for each as a block: the same lines, kept together with line breaks
+ * in as few paragraphs as their length allows. Null when they are not all plain paragraphs (a list or a
+ * table has no such form) or still would not fit.
+ */
+function foldedLines(blocks: WireBlock[], room: number): WireBlock[] | null {
+  if (room < 1 || blocks.some((b) => b.type !== "paragraph" || b.parentId !== null || Object.keys(b.props).length > 0)) return null;
+  const paragraphs: InlineNode[][] = [];
+  let current: InlineNode[] | null = null;
+  let length = 0;
+  for (const b of blocks) {
+    const size = textLength(b.text);
+    if (current && length + 1 + size > LIMITS.maxTextLength) {
+      paragraphs.push(current);
+      current = null;
+    }
+    if (current) {
+      current.push({ type: "text", text: "\n" }, ...b.text);
+      length += 1 + size;
+    } else {
+      current = [...b.text];
+      length = size;
+    }
+  }
+  if (current) paragraphs.push(current);
+  if (paragraphs.length > room) return null;
+  const ranks = rankSequence(paragraphs.length);
+  return paragraphs.map((text, i) => ({ id: ulid(), type: "paragraph", parentId: null, rank: ranks[i]!, schemaVersion: SCHEMA_VERSION, text: normalizeInline(text), props: {} }));
 }

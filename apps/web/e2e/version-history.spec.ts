@@ -13,7 +13,7 @@ async function openHistory(page: Page) {
 test("version history: name a version, see what changed and who changed it, restore it and undo; show editors", async ({ browser }) => {
   test.setTimeout(150_000);
   const { context, page } = await newPerson(browser, "History Keeper");
-  await page.getByRole("button", { name: "New note", exact: true }).click();
+  await page.getByRole("button", { name: "New note", exact: true }).first().click();
   await page.waitForURL(/\/d\/[0-9A-Z]{26}\?new=1/);
   const titleField = page.getByRole("textbox", { name: "Title" });
   await expect(titleField).toBeFocused();

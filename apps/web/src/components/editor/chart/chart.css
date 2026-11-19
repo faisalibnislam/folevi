@@ -92,7 +92,10 @@ ul.fb-chart-takeaway li + li { margin-top: 2px; }
 .fb-chart-grid table { border-collapse: separate; border-spacing: 0; }
 .fb-chart-grid th, .fb-chart-grid td { padding: 0; border-bottom: 1px solid var(--color-line); border-right: 1px solid var(--color-line); vertical-align: middle; }
 .fb-chart-grid thead th { border-top: 1px solid var(--color-line); background: color-mix(in oklab, var(--color-surface-sunken) 55%, var(--color-surface)); }
-.fb-chart-grid tr > :nth-child(2) { border-left: 1px solid var(--color-line); }
+/* (Named cells, never a bare `> :nth-child(2)`: WebKit tries a rule that ends in no tag or class on every
+   element of the page, and trying :nth-child on a note's lines made it restyle every line after the caret on
+   each Enter, about 40 ms a key in a 2,000-line note. test/css-selector-cost.test.ts keeps it out.) */
+.fb-chart-grid tr > td:nth-child(2), .fb-chart-grid tr > th:nth-child(2) { border-left: 1px solid var(--color-line); }
 .fb-chart-grid-corner { border: 0 !important; background: transparent !important; width: 36px; }
 .fb-chart-grid-num { width: 36px; border-right: 0 !important; border-bottom: 0 !important; text-align: right; color: var(--color-ink-faint); font-weight: 500; font-size: var(--type-footnote); }
 .fb-chart-grid-num > span { padding-right: 8px; }

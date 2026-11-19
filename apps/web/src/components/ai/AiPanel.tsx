@@ -30,7 +30,7 @@ import { AiAnnouncer, useDoneAnnouncement } from "./announce";
 import { asksToChange } from "./editIntent";
 import { openFindTodos, scheduleResultTodos } from "./FindTodos";
 import { hasTodoLines } from "@/lib/ai/actionItems";
-import { AI_ASK_EVENT, takeNoteAiAsk } from "./chat/events";
+import { AI_ASK_EVENT, AI_FOCUS_EVENT, noteAiTakesKeyboard, takeNoteAiAsk } from "./chat/events";
 import { MARKETING_URL } from "@/lib/env";
 
 const NOTE_ACTIONS: { task: AiTask; label: string; icon: React.ReactNode }[] = [
@@ -159,8 +159,17 @@ export function AiPanel({
   // Ready to type as soon as the panel opens (unless it opened to run a rewrite). Not in the iPhone app,
   // where the keyboard would cover what the sheet offers.
   useEffect(() => {
-    if (!run && !isIphoneApp()) requestAnimationFrame(() => inputRef.current?.focus());
+    // (Not when the panel came up with the note, unasked: a new note's title has the caret then, and this
+    // took it, so what was typed went into this box. chat/events.ts.)
+    if (!run && !isIphoneApp() && noteAiTakesKeyboard(documentId)) requestAnimationFrame(() => inputRef.current?.focus());
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Asked for while it is already showing (⌘J, the editor's Foli AI command): the box takes the keyboard.
+  useEffect(() => {
+    const focus = () => inputRef.current?.focus();
+    window.addEventListener(AI_FOCUS_EVENT, focus);
+    return () => window.removeEventListener(AI_FOCUS_EVENT, focus);
+  }, []);
 
   // A rewrite requested from the editor's selection toolbar.
   useEffect(() => {
@@ -279,7 +288,7 @@ export function AiPanel({
       <div data-ai-fill className="flex min-h-0 flex-[1_1_min(70vh,640px)] flex-col text-subheadline [&>:first-child]:flex-none">
         {modes}
         <div className="flex min-h-0 flex-1 flex-col">
-          <ChatThread conversationId={chatConversation} onConversation={setChatConversation} initialContext={noteContext} variant="panel" autoFocus autoSend={handoff ?? undefined} onInsert={editor && !readOnly ? (md) => void insertAiMarkdown(editor, md, { kind: "cursor" }) : undefined} />
+          <ChatThread conversationId={chatConversation} onConversation={setChatConversation} initialContext={noteContext} variant="panel" autoFocus={noteAiTakesKeyboard(documentId)} autoSend={handoff ?? undefined} onInsert={editor && !readOnly ? (md) => void insertAiMarkdown(editor, md, { kind: "cursor" }) : undefined} />
         </div>
       </div>
     );

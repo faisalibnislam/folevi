@@ -5,6 +5,7 @@
 //   normalizeCollectionNumberFormat(format)     a number format as stored
 //   cleanCollectionFormula(text)                a formula's text as stored (then collectionFormulaProblem)
 //   normalizeCollectionOptions(options)         a select property's options as stored
+//   renamedCollectionOptions(existing, names)   the options after their names were edited: a rename keeps its id
 //   clampCollectionViewConfig(config)           a view's config as stored (at most 20 filters, 5 sorts...)
 import { ulid } from "./ids";
 import { TABLE_CURRENCIES } from "./tableFormulas";
@@ -98,6 +99,57 @@ export function normalizeCollectionOptions(options: readonly { id?: string; name
     name: o.name.trim().slice(0, 60) || "Option",
     color: o.color && colors.includes(o.color) ? o.color : colors[i % colors.length]!,
   }));
+}
+
+/**
+ * A select property's options after its names were edited as one list ("To do, Doing, Done"): each name with
+ * the id and colour of the option it was, so a rename keeps every row's value. Names used to be matched by
+ * their exact text only: changing "Todo" to "To do" made a new option with a new id, and every row that held
+ * "Todo" lost its value (and its card left the board).
+ *
+ * An option keeps its id when its name is in the new list as it was, or as it was but for capitals and
+ * spaces. Then the names still unmatched are renames of the options still unmatched when they stand in the
+ * same places: between the same kept neighbours, and as many of the one as of the other. Otherwise it can't
+ * be told which was renamed to which (or whether one was deleted and another added), and they are new options.
+ */
+export function renamedCollectionOptions(existing: readonly CollectionOption[], names: readonly string[], newId: () => string = ulid): CollectionOption[] {
+  const colors: readonly string[] = COLLECTION_OPTION_COLORS;
+  const loose = (s: string) => s.trim().replace(/\s+/g, " ").toLowerCase();
+  // For each name, the option it is (an index into `existing`), or -1.
+  const is: number[] = names.map(() => -1);
+  const used = new Set<number>();
+  const match = (same: (o: CollectionOption, name: string) => boolean) => {
+    names.forEach((name, i) => {
+      if (is[i]! >= 0) return;
+      const k = existing.findIndex((o, at) => !used.has(at) && same(o, name));
+      if (k < 0) return;
+      is[i] = k;
+      used.add(k);
+    });
+  };
+  match((o, name) => o.name === name);
+  match((o, name) => loose(o.name) === loose(name));
+  // Runs of unmatched names, each between two matched ones (or an end of the list).
+  for (let i = 0; i < names.length; i++) {
+    if (is[i]! >= 0) continue;
+    let end = i;
+    while (end + 1 < names.length && is[end + 1]! < 0) end++;
+    const before = i > 0 ? is[i - 1]! : -1;
+    const after = end + 1 < names.length ? is[end + 1]! : existing.length;
+    const free: number[] = [];
+    for (let k = before + 1; k < after; k++) if (!used.has(k)) free.push(k);
+    if (free.length === end - i + 1) {
+      free.forEach((k, n) => {
+        is[i + n] = k;
+        used.add(k);
+      });
+    }
+    i = end;
+  }
+  return names.map((name, i) => {
+    const kept = is[i]! >= 0 ? existing[is[i]!]! : null;
+    return kept ? { id: kept.id, name, color: kept.color } : { id: newId(), name, color: colors[i % colors.length]! };
+  });
 }
 
 /**

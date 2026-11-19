@@ -100,6 +100,7 @@ import {
   turnInto,
 } from "./commands";
 import { blockSelectionRange, clearBlockSelection, extendBlockSelectionTo, setBlockSelection } from "./blockSelection";
+import { blockCopyCount, blockedMessage } from "./blockClipboard";
 import { syncDomSelection } from "./blockSelectionState";
 import { insertTabs } from "./tabs/tabsExtension";
 import { blockElements, triggerRunsDry, type TriggerState } from "./plugins";
@@ -2078,9 +2079,15 @@ function BlockHandle({
       cancelAnimationFrame(frame);
       frame = requestAnimationFrame(() => {
         if (menu || isDragging()) return;
+        // No grip on a phone (editor-phone.css hides it): nothing to place, on any key or scroll frame.
+        if (document.documentElement.hasAttribute("data-iphone")) return setHover((had) => (had ? null : had));
         if (!editor.isFocused && !pressingHandle.current) return setHover(null);
-        const idx = editor.state.selection.$head.index(0);
-        const el = blockElements(dom)[idx];
+        const { doc, selection } = editor.state;
+        const idx = selection.$head.index(0);
+        // The caret's block, asked for directly. (Listing every block of the note to pick one, on each key and
+        // each frame of a scroll, was work that grew with the note.)
+        const found = idx < doc.childCount ? editor.view.nodeDOM(doc.resolve(0).posAtIndex(idx)) : null;
+        const el = found instanceof HTMLElement && found.parentElement === dom ? found : (blockElements(dom)[idx] ?? null);
         if (!el || el.classList.contains("fb-hidden")) return setHover(null);
         const line = handleLine(el);
         const next = { index: idx, top: line.top, left: blockIndentLeft(el), height: line.height };
@@ -2251,14 +2258,19 @@ function BlockHandle({
     if (!at) return closeMenu();
     editor.view.focus();
     setBlockSelection(editor.view, at.from, at.to);
+    const copies = blockCopyCount();
     let ok: boolean;
     try {
       ok = document.execCommand(command);
     } catch {
       ok = false;
     }
+    // WebKit (the Mac, iPhone and iPad apps, Safari) runs the copy and still answers "no" while only a caret
+    // is selected, as it is under selected blocks: whether the blocks reached the clipboard is what counts.
+    // (It used to say "blocked" after copying, and after a cut that had already taken the blocks away.)
+    ok = ok || blockCopyCount() !== copies;
     const n = at.to - at.from + 1;
-    if (!ok) toast.show(`Your browser blocked ${command === "cut" ? "cutting" : "copying"} from the menu. Press ${command === "cut" ? "⌘X" : "⌘C"} instead.`, { tone: "error" });
+    if (!ok) toast.show(blockedMessage(command), { tone: "error" });
     else announce(`${n === 1 ? "Block" : `${n} blocks`} ${command === "cut" ? "cut" : "copied"}`);
     if (command === "copy") clearBlockSelection(editor.view);
     closeMenu();

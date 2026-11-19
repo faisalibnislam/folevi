@@ -15,14 +15,16 @@ import { useAppState } from "@/lib/app/state";
 import { AiIcon } from "@/components/ai/AiIcon";
 import { AiCreditsNote, AiProblemNotice, aiProblem, type AiProblem } from "@/components/ai/AiCredits";
 import { columnName } from "./TableColumnMenu";
-import type { TableData } from "./tableModel";
+import type { TableChange, TableData } from "./tableModel";
 
 export type TableAiMode = "edit" | "clean" | "formula" | "explain";
 
-export interface TableAiResult {
-  table: TableData;
-  /** The cells (row:column of the new table) Foli AI changed. */
-  changed: Set<string>;
+/**
+ * Foli AI's version of the table: `table`, made from the table as it was when Foli AI was asked (`base`),
+ * with the cells it changed and the row of `base` each of its rows came from. Accepting it applies those
+ * changes to the table as it is by then (tableModel's applyChange), so nothing typed meanwhile is undone.
+ */
+export interface TableAiResult extends TableChange {
   summary: string;
 }
 
@@ -61,6 +63,8 @@ export function mergeAiRows(table: TableData, rows: string[][]): TableAiResult {
     return i;
   });
   const changed = new Set<string>();
+  // The row of the table each new row was made from (-1: none, a row Foli AI added).
+  const from: number[] = [...exact];
   const out: InlineNode[][][] = rows.map((row, r) => {
     if (exact[r]! >= 0) return table.rows[exact[r]!]!;
     // A changed row: the unused row it shares most cells with (else the one in its place) gives the rest.
@@ -76,6 +80,7 @@ export function mergeAiRows(table: TableData, rows: string[][]): TableAiResult {
     });
     if (best < 0 && !used.has(r) && r < texts.length) best = r;
     if (best >= 0) used.add(best);
+    from[r] = best;
     const like = best >= 0 ? table.rows[best] : undefined;
     return row.map((text, c) => {
       const old = like?.[c];
@@ -93,7 +98,7 @@ export function mergeAiRows(table: TableData, rows: string[][]): TableAiResult {
     columns: table.columns.slice(0, width),
     view: table.view,
   };
-  return { table: result, changed, summary: "" };
+  return { base: table, table: result, changed, from, summary: "" };
 }
 
 /** A table's cells as text (formulas as written), for Foli AI. */
@@ -165,7 +170,7 @@ export function TableAi({
       } else if (mode === "formula") {
         const reply = await formulaAction({ ...send, instruction: text.trim(), row: cell.r, column: cell.c });
         const rows = table.rows.map((row, r) => (r === cell.r ? row.map((old, c) => (c === cell.c ? textCell(reply.formula, old) : old)) : row));
-        onPreview({ table: { ...table, rows }, changed: new Set([`${cell.r}:${cell.c}`]), summary: `${reply.formula}${reply.explanation ? ` · ${reply.explanation}` : ""}` });
+        onPreview({ base: table, table: { ...table, rows }, changed: new Set([`${cell.r}:${cell.c}`]), from: table.rows.map((_, r) => r), summary: `${reply.formula}${reply.explanation ? ` · ${reply.explanation}` : ""}` });
       } else {
         setExplained(await explainAction(send));
       }

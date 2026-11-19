@@ -51,7 +51,7 @@ async function scrollStrip(page: Page, dir: "left" | "right") {
 }
 
 async function newNote(page: Page, title: string) {
-  await page.getByRole("button", { name: "New note", exact: true }).click();
+  await page.getByRole("button", { name: "New note", exact: true }).first().click();
   await page.waitForURL(/\/d\/[0-9A-Z]{26}\?new=1/);
   const field = page.getByRole("textbox", { name: "Title" });
   await expect(field).toBeFocused();
@@ -234,7 +234,7 @@ test("the iPad app's strip (a finger scrolls it, no arrows) keeps the open tab i
     await pad.goBack();
     await expectInView(pad, firstName, `Back (iPad, ${scheme})`);
     // A new note from the round + button: its tab shows at once, in view.
-    await pad.getByRole("button", { name: "New note", exact: true }).tap();
+    await pad.getByRole("button", { name: "New note", exact: true }).first().tap();
     await pad.waitForURL(/\/d\/[0-9A-Z]{26}\?new=1/);
     await expectInView(pad, "Untitled", `new note (iPad, ${scheme})`);
     await pad.getByRole("textbox", { name: "Title" }).pressSequentially(`From the iPad ${scheme}`, { delay: 10 });

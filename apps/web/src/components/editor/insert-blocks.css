@@ -259,8 +259,12 @@
   background-image: radial-gradient(circle, color-mix(in oklab, var(--color-line-strong) 70%, transparent) 1px, transparent 1.4px);
   background-size: 22px 22px;
 }
-.fb-whiteboard-canvas[data-tool] { touch-action: none; cursor: crosshair; }
-/* A pen has drawn here: fingers scroll the note (WhiteboardView.tsx), only the pen draws. */
+/* A finger scrolls the note over a sheet that is not being worked on, and draws (or picks) once the sheet has
+   been tapped and has the keyboard, or fills the window: WhiteboardView.tsx sets data-active for both. */
+.fb-whiteboard-canvas[data-tool] { touch-action: pan-y; cursor: crosshair; }
+.fb-whiteboard-canvas[data-tool][data-active] { touch-action: none; }
+/* A pen has drawn here: fingers scroll the note (WhiteboardView.tsx), only the pen draws. (The pen itself is
+   kept from scrolling by the sheet's own touchstart listener, which WebKit needs.) */
 .fb-whiteboard-canvas[data-tool][data-pen-only] { touch-action: pan-x pan-y; }
 .fb-whiteboard-canvas[data-tool="eraser"] { cursor: cell; }
 .fb-wb-resize {
@@ -271,8 +275,9 @@
 .fb-wb-resize > span { width: 36px; height: 4px; border-radius: var(--radius-tiny); background: var(--color-line-strong); }
 .fb-wb-resize:hover > span { background: var(--color-ink-faint); }
 /* Select: picked strokes get a soft halo and a box; a drag on the empty sheet draws a marquee. */
-.fb-whiteboard-canvas[data-tool="select"],
-.fb-whiteboard-canvas[data-tool="select"][data-pen-only] { touch-action: none; cursor: default; }
+.fb-whiteboard-canvas[data-tool="select"] { cursor: default; }
+.fb-whiteboard-canvas[data-tool="select"][data-active],
+.fb-whiteboard-canvas[data-tool="select"][data-pen-only][data-active] { touch-action: none; }
 .fb-whiteboard-canvas[data-tool="select"] [data-wb-stroke] { cursor: move; }
 .fb-whiteboard-canvas[data-tool] { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
 .fb-wb-halo { fill: none; stroke: var(--wb-select); stroke-opacity: 0.22; stroke-linecap: round; stroke-linejoin: round; }

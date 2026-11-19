@@ -106,6 +106,9 @@ export function useKeyboardFlow(ctrl: FlowController, { actions, finishEdit }: {
       if (!wrap) return;
       if (a instanceof HTMLElement && a !== wrap && wrap.contains(a) && !a.closest('input, textarea, [contenteditable="true"]') && a.closest(".fc-bar, .fc-ai, .fc-picker, [role='toolbar'], [role='dialog']")) wrap.focus({ preventScroll: true });
       if (e.shiftKey || e.metaKey || e.ctrlKey || e.button !== 0) return;
+      // (Not for a finger on a canvas that does not have the keyboard yet: that press may be a scroll of the
+      // note, and the canvas takes the keyboard only once it turns out to be a tap, canvas/pointers.ts.)
+      if (e.pointerType !== "mouse" && !ctrl.activeRef.current) return;
       const g = (e.target as Element).closest?.("[data-fc-node]");
       if (g instanceof SVGElement && wrap.contains(g) && document.activeElement !== g) g.focus({ preventScroll: true });
     },

@@ -24,13 +24,13 @@ const launcher = (page: Page) => page.getByRole("button", { name: "Ask Foli AI",
 /** No AI anywhere on Home or in a new note: no launcher, no Catch me up, no dock tab, toolbar, slash command, ⌘J or palette item. */
 async function expectNoAi(page: Page) {
   await page.goto(`${APP}/documents`);
-  await expect(page.getByRole("button", { name: "New note", exact: true })).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByRole("button", { name: "New note", exact: true }).first()).toBeVisible({ timeout: 30_000 });
   await expect(launcher(page)).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Catch me up" })).toHaveCount(0);
   await page.keyboard.press("Meta+j");
   await expect(page.getByRole("dialog", { name: "Foli AI" })).toHaveCount(0);
 
-  await page.getByRole("button", { name: "New note", exact: true }).click();
+  await page.getByRole("button", { name: "New note", exact: true }).first().click();
   await page.waitForURL(/\/d\/[0-9A-Z]{26}\?new=1/);
   await page.keyboard.press("Enter");
   await page.keyboard.type("Some words to select");

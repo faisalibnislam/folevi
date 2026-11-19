@@ -73,6 +73,9 @@ export function useFlowActions(ctrl: FlowController) {
     const pos = typeof getPos === "function" ? getPos() : null;
     if (typeof pos !== "number") return;
     setSel(NO_SELECTION);
+    // Saved first, so the selected block is the chart as shown (a copy or a delete right after takes that),
+    // and its step in the note's undo comes before whatever is typed next.
+    ctrl.flush();
     editor.view.dispatch(editor.state.tr.setSelection(NodeSelection.create(editor.state.doc, pos)));
     editor.view.focus();
   };

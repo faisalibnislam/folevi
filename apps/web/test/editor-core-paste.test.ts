@@ -171,10 +171,11 @@ describe("a paste joins the line the caret is in", () => {
   });
 
   test("what was nested under the first pasted block nests under the line", () => {
-    const e = make([p("Hello")]);
+    // (In the middle of the line: at its end a pasted list follows the line whole, editor-paste-insert.test.ts.)
+    const e = make([p("HelloWorld")]);
     e.commands.setTextSelection(6);
     insertPastedBlocks(e.view, md("- a\n  - a1\n- b"));
-    expect(texts(e)).toEqual(["paragraph:Helloa@0", "bulleted:a1@1", "bulleted:b@0"]);
+    expect(texts(e)).toEqual(["paragraph:Helloa@0", "bulleted:a1@1", "bulleted:bWorld@0"]);
     e.destroy();
   });
 

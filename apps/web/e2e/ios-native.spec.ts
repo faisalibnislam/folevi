@@ -141,7 +141,7 @@ test("Scan from photos in the iOS app puts the pages and their text in the note"
   const { context, page } = await newPerson(browser, "Scan Person");
   await context.addInitScript(fakeApp, { shares: [], pixel: PIXEL });
   await page.goto(`${APP}/documents`);
-  await page.getByRole("button", { name: "New note", exact: true }).click();
+  await page.getByRole("button", { name: "New note", exact: true }).first().click();
   await page.waitForURL(/\/d\/[0-9A-Z]{26}\?new=1/);
   await page.getByRole("textbox", { name: "Title" }).fill("Invoice");
   await page.keyboard.press("Enter");
@@ -200,7 +200,7 @@ test("pages scanned into a note made offline land with the note once back online
   await waitForSaved(page);
 
   await context.setOffline(true);
-  await page.getByRole("button", { name: "New note", exact: true }).click();
+  await page.getByRole("button", { name: "New note", exact: true }).first().click();
   await page.waitForURL(/\/d\/[0-9A-Z]{26}\?new=1/);
   await page.getByRole("textbox", { name: "Title" }).fill("Offline invoice");
   await page.keyboard.press("Enter");

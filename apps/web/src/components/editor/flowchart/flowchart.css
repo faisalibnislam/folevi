@@ -98,8 +98,12 @@
 .fc-card-static { padding: 8px 0; background: var(--color-surface); }
 /* Full canvas: the shared card rules (canvas/canvas.css, `.fb-canvas-card[data-full]`); the canvas is the
    card's body (`.fb-canvas-body`), which fills the window. */
-.fc-canvas { position: relative; overflow: hidden; outline: none; touch-action: pan-y; }
-.fc-card[data-active] .fc-canvas { touch-action: none; }
+/* `clip`, not just hidden: a text field coming into focus (the iPhone's keyboard shrinking the page under it)
+   must not scroll the canvas's box, which would shift the chart under its bars and the pointer's sums. */
+.fc-canvas { position: relative; overflow: hidden; overflow: clip; outline: none; touch-action: pan-y; }
+/* Every touch is the chart's own while it has the keyboard, and in full canvas, where there is no note to
+   scroll (a vertical drag there would otherwise go to the page behind). */
+.fc-card[data-active] .fc-canvas, .fb-canvas-card[data-full] .fc-canvas { touch-action: none; }
 /* No dark ring when the canvas has the keyboard: the card's own light ring (data-active) already marks it. */
 .fc-canvas:focus-visible { outline: none; }
 .fc-svg { display: block; cursor: default; user-select: none; -webkit-user-select: none; }

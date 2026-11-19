@@ -45,7 +45,7 @@ test("an audio block's Transcribe says plainly when the assistant isn't set up",
   test.setTimeout(120_000);
   const { page, context } = await newPerson(browser, "Transcribe Person");
   await context.grantPermissions(["microphone"]);
-  await page.getByRole("button", { name: "New note", exact: true }).click();
+  await page.getByRole("button", { name: "New note", exact: true }).first().click();
   await page.waitForURL(/\/d\/[0-9A-Z]{26}\?new=1/);
   await page.getByRole("textbox", { name: "Title" }).fill("Standup");
   await page.keyboard.press("Enter");

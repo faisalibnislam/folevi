@@ -6,6 +6,7 @@ import { closeHistory, undo } from "@tiptap/pm/history";
 import { Decoration, DecorationSet, type EditorView } from "@tiptap/pm/view";
 import { LIMITS, normalizeLanguage, ulid } from "@folevi/editor-schema";
 import { blocksInSelection, changeDepth, deleteBlocks, duplicateBlocks, endHistoryGroup, moveBlock, normalizeDepths, turnInto } from "./commands";
+import { foldToggle } from "./toggleFold";
 import { TEXT_NODES } from "./convert";
 import { hiddenIndices, neighbourIndex, syncDomSelection } from "./blockSelectionState";
 import { layoutOf, tabFloor, tabsKey, type TabLayout } from "./tabs/tabsState";
@@ -904,7 +905,8 @@ export const BlockKeymap = Extension.create({
         }
         if (cur.node.type.name === "toggle") {
           const collapsed = !cur.node.attrs.collapsed;
-          editor.view.dispatch(editor.state.tr.setNodeMarkup(cur.pos, undefined, { ...cur.node.attrs, collapsed }));
+          // (Not an undo step, as from the arrow and the menu: Cmd+Z after it takes back the typing before.)
+          editor.view.dispatch(foldToggle(editor.state, cur.pos, collapsed));
           announce(collapsed ? "Collapsed" : "Expanded");
           return true;
         }
@@ -959,12 +961,18 @@ export const BlockKeymap = Extension.create({
       }
       // The block above is hidden inside a collapsed toggle: join with the toggle's own line instead.
       if (hiddenAbove) {
+        // Hidden by a tabs block (the lines of a tab that isn't open), not by a toggle: this line is the one
+        // after the tabs and stays where it is. Joined "with the nearest line that shows", its words went into
+        // the open tab, or were deleted when that tab ended in code.
+        if (layoutOf(state).hidden.has(index - 1)) return true;
         const target = neighbourIndex(state, index, -1);
         if (target === null) return true;
         let tPos = 0;
         for (let i = 0; i < target; i++) tPos += state.doc.child(i).nodeSize;
         const tNode = state.doc.child(target);
         if (!tNode.isTextblock) return true;
+        // Never take a line away without putting its words somewhere.
+        if (cur.node.content.size && tNode.type.name === "codeBlock") return true;
         const end = tPos + tNode.nodeSize - 1;
         const tr = state.tr;
         // This line's own nested blocks would end up hidden in the toggle: open it.
@@ -1096,6 +1104,10 @@ function blockRule(find: RegExp, type: string, attrs: (m: RegExpMatchArray) => R
       const node = $start.parent;
       if ($start.depth !== 1) return null;
       if (!TEXT_NODES.has(node.type.name)) return null;
+      // The marker is what the person typed, key by key: all of it but the space just pressed is in the line.
+      // A phone's keyboard also writes ". " over a double space, which made a line that was only a number
+      // ("2", space, space) into an empty numbered line.
+      if (state.doc.textBetween(range.from, range.to, "\n", "\ufffc") !== match[0].slice(0, -1)) return null;
       const pos = $start.before(1);
       const schemaType = state.schema.nodes[type]!;
       const tr = state.tr.delete(range.from, range.to);
@@ -1229,7 +1241,9 @@ function triggerAt(state: EditorState): TriggerState | null {
   if (m) found = { kind: "slash", query: m[1]!.normalize("NFKC"), from: start + text.length - m[1]!.length - 1, to: sel.from };
   m = /\[\[([^\]\n]{0,60})$/.exec(text);
   if (m) found = { kind: "page", query: m[1]!, from: start + text.length - m[1]!.length - 2, to: sel.from };
-  m = /(?:^|\s)[@＠]([\p{L}\p{M}\p{N}' .-]{0,30})$/u.exec(text);
+  // (What follows "@" starts with a letter or a digit: "meet @ " is not a mention, and its menu, matching the
+  // space in every name, took the next Enter.)
+  m = /(?:^|\s)[@＠]((?:[\p{L}\p{M}\p{N}][\p{L}\p{M}\p{N}' .-]{0,29})?)$/u.exec(text);
   if (m && !found) found = { kind: "mention", query: m[1]!.normalize("NFKC"), from: start + text.length - m[1]!.length - 1, to: sel.from };
   return found;
 }

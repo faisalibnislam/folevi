@@ -74,6 +74,9 @@ struct RebuildNoteScreen: View {
         .background(FoleviTokens.Chrome.canvas.color)
         .onGeometryChange(for: EdgeInsets.self) { $0.safeAreaInsets } action: { safe = $0 }
         .onChange(of: insets) { _, i in sendInsets(i) }
+        // The page loaded again (iOS ended its process while the app was away) has forgotten the bars' room: said
+        // again once the note is back, or the title sat under the top bar until the keyboard was next raised.
+        .onChange(of: model.isReady(noteId)) { _, ready in if ready { sendInsets(insets) } }
         .onAppear {
             pageHost.adopt(by: NotePageRegistry.controller(for: noteId))
             model.show(noteId)
@@ -137,9 +140,14 @@ struct RebuildNoteScreen: View {
                 .textInputAutocapitalization(.never)
                 .keyboardType(.URL)
             Button("Cancel", role: .cancel) { model.editor(.focus) }
+            // The field opens empty (the page doesn't say the address): left empty, Update changes nothing. It
+            // used to take the link away. Taking it away is its own button.
+            if model.editorState?.link == true {
+                Button("Remove link", role: .destructive) { model.editor(.link(href: nil)) }
+            }
             Button(model.editorState?.link == true ? "Update" : "Link") {
                 let href = linkText.trimmingCharacters(in: .whitespacesAndNewlines)
-                model.editor(.link(href: href.isEmpty ? nil : href))
+                if href.isEmpty { model.editor(.focus) } else { model.editor(.link(href: href)) }
             }
         }
     }

@@ -185,14 +185,21 @@ export class SyncEngine {
         this.scheduleFlush(0);
       }, TAKEOVER_DELAY);
     };
+    // The iPhone and iPad app says when it stops being the app in front (bridge.js): a web view's own
+    // visibilitychange can come late there, or not before iOS suspends the app.
+    const onAppInactive = () => hide(false);
     window.addEventListener("pagehide", onPageHide, { capture: true });
     window.addEventListener("pageshow", onPageShow);
     window.addEventListener("storage", onStorage);
+    window.addEventListener("folevi:app-inactive", onAppInactive, { capture: true });
+    window.addEventListener("folevi:app-active", onPageShow);
     document.addEventListener("visibilitychange", onVisibility, { capture: true });
     this.unwatch = () => {
       window.removeEventListener("pagehide", onPageHide, { capture: true });
       window.removeEventListener("pageshow", onPageShow);
       window.removeEventListener("storage", onStorage);
+      window.removeEventListener("folevi:app-inactive", onAppInactive, { capture: true });
+      window.removeEventListener("folevi:app-active", onPageShow);
       document.removeEventListener("visibilitychange", onVisibility, { capture: true });
     };
   }
@@ -350,6 +357,9 @@ export class SyncEngine {
     if (!record) return;
     const next = { ...this.state, uploads: this.state.uploads.filter((u) => u.uploadId !== uploadId) };
     this.commit(sync.localDelete(next, { opId: ulid(), documentId: record.documentId, blockId: record.blockId }));
+    // The note's open editor takes the block out too (it used to keep a dead "unavailable" block until the
+    // note was opened again, and a caption written on it was refused on save).
+    this.emit({ type: "remote", documentId: record.documentId });
   }
 
   /** Notes someone else has open right now (from presence): their block edits are sent sooner. */
@@ -745,8 +755,14 @@ export class SyncEngine {
   async flush(): Promise<void> {
     if (this.flushing) return;
     this.flushing = true;
+    // Whether the rounds below ran out with more to send (a very long paste, a long time offline).
+    let more = false;
     try {
-      for (let rounds = 0; rounds < 20; rounds++) {
+      for (let rounds = 0; ; rounds++) {
+        if (rounds === 20) {
+          more = true;
+          break;
+        }
         // As many as the server takes in one request (MAX_BATCH): a big paste saves in fewer round trips.
         const held = this.heldOps();
         const from = held.size ? { ...this.state, pending: this.state.pending.filter((op) => !held.has(op)) } : this.state;
@@ -804,6 +820,8 @@ export class SyncEngine {
       }
     } finally {
       this.flushing = false;
+      // The rest goes in a turn of its own (it used to wait, showing "Saving", for the next edit or reconnect).
+      if (more) this.scheduleFlush(0);
     }
   }
 }

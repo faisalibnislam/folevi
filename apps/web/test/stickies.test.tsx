@@ -162,6 +162,87 @@ describe("the board's copy of its data", () => {
   });
 });
 
+describe("a board's work in progress (the 2026-11-19 canvas audit, V11 and V18)", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+    document.body.innerHTML = "";
+  });
+
+  type Doc = ReturnType<typeof useStickiesDoc>;
+  function mount(initial: string, me: string) {
+    (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
+    const writes: { data: string; kind: string }[] = [];
+    let api: Doc | null = null;
+    const root = createRoot(document.body.appendChild(document.createElement("div")));
+    function Host({ data }: { data: string }) {
+      const d = useStickiesDoc({ data, write: (s, how) => writes.push({ data: s, kind: how?.kind ?? "change" }), me, blockId: null, engine: null });
+      useEffect(() => {
+        api = d;
+      });
+      return null;
+    }
+    const render = (data: string) => act(() => root.render(<Host data={data} />));
+    render(initial);
+    return { writes, render, doc: () => api!, unmount: () => act(() => root.unmount()) };
+  }
+  const say = (b: StickiesData, id: string, text: string): StickiesData => ({ ...b, notes: b.notes.map((n) => (n.id === id ? { ...n, text } : n)) });
+  const textOf = (data: string, id: string) => parseStickies(data).notes.find((n) => n.id === id)?.text;
+
+  test("text being typed is written 800 ms after the last key, as part of the change being made", () => {
+    vi.useFakeTimers();
+    const h = mount(serializeStickies(board()), "alice");
+    const before = h.doc().docRef.current;
+    for (const text of ["A", "A long", "A long note"]) {
+      act(() => h.doc().setLive(say(h.doc().docRef.current, "s3", text)));
+      act(() => vi.advanceTimersByTime(300));
+    }
+    // Still typing: nothing yet.
+    expect(h.writes).toEqual([]);
+    act(() => vi.advanceTimersByTime(600));
+    expect(h.writes.map((w) => [textOf(w.data, "s3"), w.kind])).toEqual([["A long note", "live"]]);
+    h.render(h.writes.at(-1)!.data);
+    // More typing, then the edit ends: the finished change is written as such (and joins that same step).
+    act(() => h.doc().setLive(say(h.doc().docRef.current, "s3", "A long note, done")));
+    act(() => h.doc().commit(h.doc().docRef.current, { before }));
+    act(() => vi.advanceTimersByTime(500));
+    expect(h.writes.map((w) => [textOf(w.data, "s3"), w.kind])).toEqual([
+      ["A long note", "live"],
+      ["A long note, done", "change"],
+    ]);
+    h.unmount();
+  });
+
+  test("an edit finished with nothing typed since it was last written says the change is over", () => {
+    vi.useFakeTimers();
+    const h = mount(serializeStickies(board()), "alice");
+    const before = h.doc().docRef.current;
+    act(() => h.doc().setLive(say(before, "s3", "Typed")));
+    act(() => vi.advanceTimersByTime(900));
+    h.render(h.writes.at(-1)!.data);
+    act(() => h.doc().commit(h.doc().docRef.current, { before }));
+    act(() => vi.advanceTimersByTime(500));
+    expect(h.writes.map((w) => w.kind)).toEqual(["live", "end"]);
+    h.unmount();
+  });
+
+  test("a drag cancelled after someone else's change puts back only what the drag moved", () => {
+    vi.useFakeTimers();
+    const h = mount(serializeStickies(board()), "alice");
+    // The press: the view keeps the board as it was, to go back to.
+    const before = h.doc().docRef.current;
+    act(() => h.doc().setLive({ ...before, notes: before.notes.map((n) => (n.id === "s1" ? { ...n, x: 300 } : n)) }));
+    // Bob's note arrives during the drag.
+    h.render(serializeStickies({ ...board(), notes: [...board().notes, stickyFromIdea({ text: "Bob's idea" }, "s9", { x: 0, y: 400 }, "bob")] }));
+    expect(h.doc().docRef.current.notes.some((n) => n.id === "s9")).toBe(true);
+    // The browser takes the touch away: the view hands back the board it kept.
+    act(() => h.doc().setLive(before));
+    const now = h.doc().docRef.current;
+    expect(now.notes.find((n) => n.id === "s1")!.x).toBe(0);
+    expect(now.notes.some((n) => n.id === "s9")).toBe(true);
+    h.unmount();
+  });
+});
+
 describe("the timer's server clock", () => {
   afterEach(() => resetServerClock());
 

@@ -341,10 +341,17 @@ export function applyResults(prev: SyncState, results: OpResult[]): SyncState {
         if (!entity) break;
         const oldRevision = entity.serverRevision;
         if (result.revision !== undefined) entity.serverRevision = result.revision;
-        // Rebase queued ops that were written on top of this (now acknowledged) change.
-        state.pending = state.pending.map((p) =>
-          opBlockId(p) === blockId && (p.kind === "block.upsert" || p.kind === "block.delete") && p.baseRevision === oldRevision ? { ...p, baseRevision: entity.serverRevision } : p,
-        );
+        // Rebase queued ops that were written on top of this (now acknowledged) change. Not after a replay
+        // that answers with other text than the op wrote: its first answer was lost, and the block has been
+        // changed since by someone else, on top of it. What is queued here was written without their change,
+        // so it keeps its older base and the server asks, instead of taking it as an edit of their version
+        // (which replaced their change with no question).
+        const theirsSince = result.status === "duplicate" && op.kind === "block.upsert" && Boolean(result.block) && !result.deleted && !sameWrittenContent(result.block!, op.block);
+        if (!theirsSince) {
+          state.pending = state.pending.map((p) =>
+            opBlockId(p) === blockId && (p.kind === "block.upsert" || p.kind === "block.delete") && p.baseRevision === oldRevision ? { ...p, baseRevision: entity.serverRevision } : p,
+          );
+        }
         const stillOutstanding =
           state.pending.some((p) => opBlockId(p) === blockId) ||
           state.inflight.some((p) => p !== op && opBlockId(p) === blockId && !byId.has(p.opId));
@@ -619,7 +626,20 @@ export function remoteUpdates(prev: SyncState, inputs: readonly RemoteRow[]): Sy
     const existing = (state ?? prev).blocks[input.block.id];
     if (existing && existing.serverRevision !== null && existing.serverRevision >= rev) continue;
     outstanding ??= new Set([...prev.pending, ...prev.inflight].flatMap((op) => opBlockId(op) ?? []));
-    if (outstanding.has(input.block.id)) continue;
+    if (outstanding.has(input.block.id)) {
+      // What this device wrote is kept, but where the block is follows the server when nothing queued here
+      // moves it (only its text is being edited). The server re-spaces a list's ranks now and then: every
+      // sibling got its new rank and the line being typed in kept its old one, so it sorted somewhere else and
+      // jumped under the caret, and a line added then stayed in the wrong place for good.
+      if (existing && !input.deleted && !existing.deleted && (existing.block.parentId !== input.block.parentId || existing.block.rank !== input.block.rank)) {
+        const moves = [...prev.pending, ...prev.inflight].some((op) => opBlockId(op) === input.block.id && (op.kind !== "block.upsert" || op.fields.includes("position")));
+        if (!moves) {
+          state ??= { ...prev, blocks: { ...prev.blocks } };
+          state.blocks[input.block.id] = { ...existing, block: { ...existing.block, parentId: input.block.parentId, rank: input.block.rank } };
+        }
+      }
+      continue;
+    }
     state ??= { ...prev, blocks: { ...prev.blocks } };
     const b = clone(input.block);
     delete b.revision;

@@ -34,38 +34,74 @@ interface Found {
   to: number;
 }
 
+/** A word in a line of text, by where it starts in that line. */
+interface LineWord {
+  word: string;
+  at: number;
+}
+
+/** The words of each line seen, kept for as long as the line itself is (an unchanged line is the same node in every later version of the note). */
+const lineWords = new WeakMap<PMNode, LineWord[]>();
+/** The words of each version of the note looked at, so the two passes over one version (asking, then marking) read it once. */
+const noteWords = new WeakMap<PMNode, Found[]>();
+
+/** The words of one line of text that spelling applies to. */
+function wordsOfLine(node: PMNode): LineWord[] {
+  const hit = lineWords.get(node);
+  if (hit) return hit;
+  const out: LineWord[] = [];
+  const code = node.type.schema.marks.code;
+  const link = node.type.schema.marks.link;
+  // Where code and links are in the line, read from the line's own pieces. (Asking the whole note "is there
+  // a code mark between here and there" for every word walked the note from its top each time: a third of a
+  // second per pass on a 2,000 line note, twice after every pause in typing.)
+  const skipped: [number, number][] = [];
+  let offset = 0;
+  node.forEach((child) => {
+    const end = offset + child.nodeSize;
+    if ((code && code.isInSet(child.marks)) || (link && link.isInSet(child.marks))) skipped.push([offset, end]);
+    offset = end;
+  });
+  const text = node.textBetween(0, node.content.size, undefined, ATOM);
+  let s = 0;
+  for (const m of text.matchAll(WORD)) {
+    let word = m[0];
+    let at = m.index;
+    // (Quotes and hyphens at the edges aren't the word's.)
+    const lead = /^['\u2019-]+/.exec(word)?.[0].length ?? 0;
+    word = word.slice(lead).replace(/['\u2019-]+$/, "");
+    at += lead;
+    if (word.length < 2 || /\p{N}/u.test(word)) continue;
+    // iPhone, JavaScript, NASA: names and abbreviations, not slips.
+    if (/\p{Lu}/u.test(word.slice(1))) continue;
+    // Part of an address, a file name, a tag or a handle.
+    const before = text[at - 1] ?? " ";
+    const after = text[at + word.length] ?? " ";
+    const next = text[at + word.length + 1] ?? " ";
+    if (/[@#/\\_.:]/.test(before) || /[@/\\_:]/.test(after) || (after === "." && /[\p{L}\p{N}]/u.test(next))) continue;
+    // Any part of it in code or in a link: left alone. (Words and marked pieces both run left to right.)
+    const to = at + word.length;
+    while (s < skipped.length && skipped[s]![1] <= at) s++;
+    if (s < skipped.length && skipped[s]![0] < to) continue;
+    out.push({ word, at });
+  }
+  lineWords.set(node, out);
+  return out;
+}
+
 /** The words of the note that spelling applies to, with where they are. */
 export function spellableWords(doc: PMNode): Found[] {
+  const hit = noteWords.get(doc);
+  if (hit) return hit;
   const out: Found[] = [];
-  const code = doc.type.schema.marks.code;
-  const link = doc.type.schema.marks.link;
   doc.descendants((node, pos) => {
     if (!node.isTextblock) return true;
     if (node.type.name === "codeBlock" || node.type.spec.code) return false;
-    const text = node.textBetween(0, node.content.size, undefined, ATOM);
     const start = pos + 1;
-    for (const m of text.matchAll(WORD)) {
-      let word = m[0];
-      let at = m.index;
-      // (Quotes and hyphens at the edges aren't the word's.)
-      const lead = /^['\u2019-]+/.exec(word)?.[0].length ?? 0;
-      word = word.slice(lead).replace(/['\u2019-]+$/, "");
-      at += lead;
-      if (word.length < 2 || /\p{N}/u.test(word)) continue;
-      // iPhone, JavaScript, NASA: names and abbreviations, not slips.
-      if (/\p{Lu}/u.test(word.slice(1))) continue;
-      // Part of an address, a file name, a tag or a handle.
-      const before = text[at - 1] ?? " ";
-      const after = text[at + word.length] ?? " ";
-      const next = text[at + word.length + 1] ?? " ";
-      if (/[@#/\\_.:]/.test(before) || /[@/\\_:]/.test(after) || (after === "." && /[\p{L}\p{N}]/u.test(next))) continue;
-      const from = start + at;
-      const to = from + word.length;
-      if ((code && doc.rangeHasMark(from, to, code)) || (link && doc.rangeHasMark(from, to, link))) continue;
-      out.push({ word, from, to });
-    }
+    for (const w of wordsOfLine(node)) out.push({ word: w.word, from: start + w.at, to: start + w.at + w.word.length });
     return false;
   });
+  noteWords.set(doc, out);
   return out;
 }
 

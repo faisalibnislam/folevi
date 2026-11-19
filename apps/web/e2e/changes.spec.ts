@@ -32,7 +32,7 @@ test("someone edits your shared note: it shows in Changes with what changed, unt
   const guest = await newPerson(browser, "Jules Editor");
   await showFolders(guest.page);
 
-  await owner.page.getByRole("button", { name: "New note", exact: true }).click();
+  await owner.page.getByRole("button", { name: "New note", exact: true }).first().click();
   await owner.page.waitForURL(/\/d\/[0-9A-Z]{26}\?new=1/);
   await owner.page.getByRole("textbox", { name: "Title" }).fill("Changes plan");
   await owner.page.keyboard.press("Enter");
@@ -76,7 +76,7 @@ test("undo a change from Changes, then put it back", async ({ browser }) => {
   const guest = await newPerson(browser, "Casey Editor");
   await showFolders(guest.page);
 
-  await owner.page.getByRole("button", { name: "New note", exact: true }).click();
+  await owner.page.getByRole("button", { name: "New note", exact: true }).first().click();
   await owner.page.waitForURL(/\/d\/[0-9A-Z]{26}\?new=1/);
   const docUrl = owner.page.url().replace(/\?.*$/, "");
   await owner.page.getByRole("textbox", { name: "Title" }).fill("Undo plan");

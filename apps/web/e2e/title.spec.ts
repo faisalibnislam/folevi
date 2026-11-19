@@ -4,7 +4,7 @@ import { newPerson, waitForSaved } from "./helpers";
 test("typing the title of an existing note in bursts keeps every word", async ({ browser }) => {
   test.setTimeout(240_000);
   const { page, context } = await newPerson(browser, "Title Typist");
-  await page.getByRole("button", { name: "New note", exact: true }).click();
+  await page.getByRole("button", { name: "New note", exact: true }).first().click();
   await page.waitForURL(/\/d\/[0-9A-Z]{26}\?new=1/);
   const title = page.getByRole("textbox", { name: "Title" });
   await page.keyboard.type("Start");

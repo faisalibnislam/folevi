@@ -158,7 +158,10 @@ export function useNoteViewState(documentId: string, scrollEl: HTMLElement | nul
         // The note changed meanwhile so that place is gone: the caret stays where the editor put it.
       }
     }
-    if (saved.focused) editor.commands.focus(undefined, { scrollIntoView: false });
+    // Under a finger the place comes back but not the keyboard: a note opened again to be read raised it by
+    // itself (this was made for a tab switched back to on the Mac, where the caret should be waiting).
+    const touch = typeof window.matchMedia === "function" && window.matchMedia("(pointer: coarse)").matches;
+    if (saved.focused && !touch) editor.commands.focus(undefined, { scrollIntoView: false });
     now.current = { scrollTop: saved.scrollTop, anchor: saved.anchor, head: saved.head, focused: saved.focused };
     const scroll = () => {
       if (!moved.current) scrollEl.scrollTop = saved.scrollTop;

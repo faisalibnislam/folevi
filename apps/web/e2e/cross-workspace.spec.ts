@@ -69,7 +69,7 @@ test("an outsider with “Can edit” edits a page shared from a workspace they'
 
   // The owner writes a page in a team workspace and shares just that page.
   await createWorkspace(owner.page, "Harbor Studio");
-  await owner.page.getByRole("button", { name: "New note", exact: true }).click();
+  await owner.page.getByRole("button", { name: "New note", exact: true }).first().click();
   await owner.page.waitForURL(/\/d\/[0-9A-Z]{26}\?new=1/);
   await owner.page.getByRole("textbox", { name: "Title" }).fill("Harbor plan");
   await owner.page.keyboard.press("Enter");

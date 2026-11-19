@@ -31,9 +31,15 @@
 /* While a handle is dragged the pointer keeps its shape wherever it goes, and nothing gets selected on the way. */
 .fb-image-resizing, .fb-image-resizing * { cursor: ew-resize !important; user-select: none !important; -webkit-user-select: none !important; }
 
-/* Touch screens: a wider strip to catch a finger, and a bigger pill to see past it. */
+/* Touch screens: a wider strip to catch a finger, and a bigger pill to see past it. The strips are there to
+   touch only once the picture is selected (a tap selects it, and then they show): unseen over the edges of
+   every picture, they took the start of a scroll and turned a drifting thumb into a new width. Even then an
+   up-and-down swipe that begins on one scrolls the page (pan-y); only a sideways drag is the handle's
+   (ImageView's resizeIntent weighs it). */
 @media (pointer: coarse) {
-  .fb-image-grip { width: 32px; }
+  .fb-image-grip { width: 32px; touch-action: pan-y; pointer-events: none; }
+  .fb-image-box[data-selected] > .fb-image-grip,
+  .fb-image-grip[data-active] { pointer-events: auto; }
   .fb-image-grip::after { width: 8px; height: 56px; }
 }
 @media (prefers-reduced-motion: reduce) {

@@ -67,6 +67,37 @@ describe("spreadsheet paste", () => {
     // Formulas that can't give back what's shown are dropped.
     expect(placeExcelFormulas([["1", "9"]], [[null, "=A1*100"]])).toBeNull();
   });
+  it("a large block copied from deep in a sheet is placed in a few tries, not hundreds", () => {
+    // 200 rows by 20 columns copied from row 100 of a sheet: column M is K times L in each row.
+    const shown = Array.from({ length: 200 }, (_, r) => Array.from({ length: 20 }, (_, c) => (c === 12 ? String((r + 1) * (r + 2)) : c === 10 ? String(r + 1) : c === 11 ? String(r + 2) : `v${r}`)));
+    const formulas = shown.map((row, r) => row.map((_, c) => (c === 12 ? `=K${r + 100}*L${r + 100}` : null)));
+    const stats = { trials: 0 };
+    const placed = placeExcelFormulas(shown, formulas, stats)!;
+    // (It used to try 61 by 11 places, each working out all 4,000 cells, and then keep the values anyway:
+    // the block began 99 rows down, further than the 60 it looked.)
+    expect(placed[0]![12]).toBe("=K1*L1");
+    expect(placed[199]![12]).toBe("=K200*L200");
+    expect(stats.trials).toBeLessThanOrEqual(11);
+    // Formulas that give back nothing that was shown: given up within the work allowed, values kept.
+    const wrong = { trials: 0 };
+    expect(placeExcelFormulas(shown, shown.map((row, r) => row.map((_, c) => (c === 12 ? `=K${r + 100}+L${r + 100}+7` : null))), wrong)).toBeNull();
+    expect(wrong.trials * 200).toBeLessThanOrEqual(40_000);
+    // A small paste still tries every place, in the order it always did.
+    const small = { trials: 0 };
+    expect(placeExcelFormulas([["3", "2", "6"], ["4", "5", "20"]], [[null, null, "=C5*D5"], [null, null, "=C6*D6"]], small)).toEqual([[null, null, "=A1*B1"], [null, null, "=A2*B2"]]);
+    // (Five rows down by three columns across; the block began at the last of them.)
+    expect(small.trials).toBe(5 * 3);
+  });
+  it("says how much of what was copied is past what a table holds", () => {
+    const wide = Array.from({ length: 205 }, (_, r) => Array.from({ length: 23 }, (_, c) => `r${r}c${c}`).join("\t")).join("\n");
+    const grid = gridFromText(wide)!;
+    expect([grid.rows.length, grid.rows[0]!.length]).toEqual([200, 20]);
+    expect(grid.cut).toEqual({ rows: 5, columns: 3 });
+    expect(gridFromText("a\tb\nc\td")!.cut).toBeUndefined();
+    const html = `<table>${Array.from({ length: 203 }, () => `<tr>${"<td>x</td>".repeat(22)}</tr>`).join("")}</table>`;
+    const table = new DOMParser().parseFromString(html, "text/html").querySelector("table")!;
+    expect(gridFromHtmlTable(table, (el) => txt(el.textContent ?? "")).cut).toEqual({ rows: 3, columns: 2 });
+  });
   it("reads an HTML table with its header and formulas, and tab-separated text", () => {
     const doc = new DOMParser().parseFromString('<table><tr><td>Item</td><td>Total</td></tr><tr><td>Tea</td><td data-sheets-formula="=1+1">2</td></tr></table>', "text/html");
     const grid = gridFromHtmlTable(doc.querySelector("table")!, (el) => txt(el.textContent ?? ""));

@@ -1,11 +1,11 @@
 // Attachments of the device copy (lib/sync/deviceFiles.ts, docs/NATIVE_APP_PLAN.md §11.5): small files always,
 // large ones only on Wi-Fi and within the budget (least recently used go first), sealed ones never.
-import { afterEach, beforeEach, describe, expect, test } from "vitest";
+import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { getFunctionName, type FunctionReference } from "convex/server";
 import type { WireBlock } from "@folevi/editor-schema";
 import { api } from "@/lib/convex/api";
-import { localDb, copyFileKeys } from "@/lib/sync/db";
-import { DeviceFiles, evictionOrder, fileIdsOf, keptFileUrl, largeDownloadsAllowed, planDownload, SMALL_FILE, type KeptFile } from "@/lib/sync/deviceFiles";
+import { localDb, copyFileKeys, COPY_FILE_PREFIX } from "@/lib/sync/db";
+import { DeviceFiles, evictionOrder, fileIdsOf, forgetKeptFileUrl, keptFileUrl, KEPT_URLS_MAX, largeDownloadsAllowed, planDownload, SMALL_FILE, type KeptFile } from "@/lib/sync/deviceFiles";
 
 /** Cache Storage in memory (jsdom has none). */
 function fakeCaches() {
@@ -123,5 +123,44 @@ describe("downloading", () => {
     await files.clear();
     expect(await (await localDb(accountKey)).getAll("meta", copyFileKeys())).toEqual([]);
     expect(await keptFileUrl(accountKey, "FILE_small_1")).toBeNull();
+  });
+});
+
+// Editor audit M19: each kept attachment's address holds its file in memory, and none was ever let go.
+describe("the addresses of kept attachments are let go", () => {
+  async function keep(accountKey: string, fileId: string) {
+    const db = await localDb(accountKey);
+    const meta: KeptFile = { fileId, size: 10, mimeType: "image/png", filename: `${fileId}.png`, width: 4, height: 3, kind: "small", thumb: false, usedAt: 0, documentId: "DOC" };
+    await db.put("meta", meta, `${COPY_FILE_PREFIX}${fileId}`);
+    await (await caches.api.open(`folevi-files-${accountKey}`)).put(`https://folevi.files/${encodeURIComponent(fileId)}`, new Response(new Blob(["x"])));
+  }
+
+  test("past the limit the one asked for longest ago goes; asked for again, it gets a new address", async () => {
+    const revoked: string[] = [];
+    (URL as unknown as { revokeObjectURL: (u: string) => void }).revokeObjectURL = (u) => void revoked.push(u);
+    let n = 0;
+    (URL as unknown as { createObjectURL: (b: Blob) => string }).createObjectURL = () => `blob:kept-${++n}`;
+    const account = "acct-kept-urls";
+    const ids = Array.from({ length: KEPT_URLS_MAX + 1 }, (_, i) => `FILE_lru_${String(i).padStart(4, "0")}`);
+    for (const id of ids) await keep(account, id);
+    const first = (await keptFileUrl(account, ids[0]!))!.url;
+    const second = (await keptFileUrl(account, ids[1]!))!.url;
+    // The first is asked for again: the second is now the one asked for longest ago.
+    expect((await keptFileUrl(account, ids[0]!))!.url).toBe(first);
+    for (const id of ids.slice(2)) await keptFileUrl(account, id);
+    // (Addresses made by the tests above count too: they were asked for before these.)
+    expect(revoked).toContain(second);
+    expect(revoked).not.toContain(first);
+    expect(revoked.length).toBeLessThanOrEqual(2);
+    expect((await keptFileUrl(account, ids[1]!))!.url).not.toBe(second);
+
+    // One whose address stopped working is forgotten on request, and made again.
+    const lastId = ids[ids.length - 1]!;
+    const last = (await keptFileUrl(account, lastId))!.url;
+    const before = revoked.length;
+    forgetKeptFileUrl(account, lastId);
+    expect(revoked.slice(before)).toEqual([last]);
+    expect((await keptFileUrl(account, lastId))!.url).not.toBe(last);
+    vi.restoreAllMocks();
   });
 });

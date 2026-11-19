@@ -4,17 +4,17 @@ import { imeKey } from "./canvas/wheel";
 import { DateField } from "@/components/ui/DateField";
 import { useQuery } from "convex/react";
 import type { AnchorHTMLAttributes } from "react";
-import { createContext, useContext, useEffect, useId, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
+import { createContext, memo, useCallback, useContext, useEffect, useId, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import { ArrowDownUp, ArrowUpRight, CalendarDays, ChevronLeft, ChevronRight, Columns3, Filter, GalleryHorizontalEnd, MoreHorizontal, Plus, Search, Settings2, SquareFunction, Table2, Trash2, FileText } from "lucide-react";
 import { api } from "@/lib/convex/api";
-import { localDate, ulid, type WireScope } from "@folevi/editor-schema";
+import { localDate, renamedCollectionOptions, ulid, type WireScope } from "@folevi/editor-schema";
 import { AppLink } from "@/lib/app/router";
 import { documentScope } from "@/lib/app/scope";
 import { useAppState } from "@/lib/app/state";
 import { requireOutbox } from "@/lib/app/folders";
-import { useOfflineQuery, useOutboxEntries } from "@/lib/sync/queryCache";
-import { OPTION_COLORS, newView, overlayCollection, waitingRowPage, type OverlayCollection } from "@/lib/sync/overlays";
-import type { OutboxArgs, OutboxName } from "@/lib/sync/outbox";
+import { useOfflineQuery, useOutboxEntriesOf, useOutboxSelect } from "@/lib/sync/queryCache";
+import { newView, overlayCollection, waitingRowPage, type OverlayCollection } from "@/lib/sync/overlays";
+import type { OutboxArgs, OutboxEntry, OutboxName } from "@/lib/sync/outbox";
 import { useToast, errorMessage } from "@/components/ui/Toast";
 import { Dialog } from "@/components/ui/Dialog";
 import { Button, IconButton } from "@/components/ui/Button";
@@ -25,7 +25,8 @@ import { NO_VALUE_OPS, OPS, TITLE_ID, applyView, exportValue, filterTargets, for
 import { FormulaEditor, FormulaValue, NumberFormatFields } from "./collection/FormulaEditor";
 import { ExportMenu, SummaryRow, useExportItems } from "./collection/CollectionTools";
 import { boardDropAfter, cardBelowPointer } from "./collection/boardDrop";
-import { LiveInput } from "./collection/LiveInput";
+import { LiveInput, useCommitOnLeave } from "./collection/LiveInput";
+import { boardColumnOf, entriesOfCollection, numberFieldChange, sameEntries, shareStructure } from "./collection/collectionData";
 import { MenuButton, type MenuEntry } from "@/components/ui/Menu";
 import { useIphoneApp } from "@/lib/iphone";
 import { feel } from "@/lib/native/ui";
@@ -50,12 +51,18 @@ type Person = CollectionData["people"][number];
 function useCollection(collectionId: string | null) {
   const { outbox } = useAppState();
   const data = useOfflineQuery(api.collections.get, collectionId ? { collectionId } : "skip");
-  const entries = useOutboxEntries(outbox);
+  // Only this collection's waiting changes: a comment, a folder or another collection's value being queued or
+  // sent doesn't work this one out again.
+  const select = useCallback((entries: readonly OutboxEntry[]) => entriesOfCollection(entries, collectionId), [collectionId]);
+  const entries = useOutboxSelect(outbox, select, sameEntries);
+  // The collection as last worked out: what is the same in the next one keeps its objects (shareStructure),
+  // so a change to one row draws that row, not all of them.
+  const last = useRef<OverlayCollection | undefined>(undefined);
   return useMemo<OverlayCollection | undefined>(() => {
-    if (!data || !collectionId) return undefined;
+    if (!data || !collectionId) return (last.current = undefined);
     const out = overlayCollection(data, entries, collectionId);
     // Formula results, worked out on this device (the server keeps only the formulas).
-    return { ...out, rows: withFormulaValues(out.rows, out.properties, { people: out.people }) };
+    return (last.current = shareStructure(last.current, { ...out, rows: withFormulaValues(out.rows, out.properties, { people: out.people }) }));
   }, [data, entries, collectionId]);
 }
 
@@ -225,6 +232,11 @@ function NewRowTitle({ rowId, className }: { rowId: string; className?: string }
     ended.current = true;
     fresh?.finish(rowId, text.trim(), how);
   };
+  // A name typed and not yet saved is saved when the field goes away without a blur (the note or the page
+  // closing, the row leaving the view): the row used to stay "Untitled". An empty one is left to wait.
+  useCommitOnLeave(() => {
+    if (text.trim()) end("save");
+  });
   return (
     <input
       ref={ref}
@@ -296,12 +308,22 @@ export function CollectionEmbed({ collectionId, initialViewId, editable }: { col
   // Enter in its title starts the next one in the same column or day.
   const [fresh, setFresh] = useState<{ id: string; values?: Record<string, unknown> } | null>(null);
 
+  // The view's rows and properties, worked out again only when what they are made from changes (the filter
+  // and sort used to run over every row at each render, whatever caused it).
+  const allRows = data?.rows;
+  const properties = data?.properties;
+  const shownView = data ? (data.views.find((v) => v.id === viewId) ?? data.views.find((v) => v.id === initialViewId) ?? data.views[0]) : undefined;
+  const config = shownView?.config;
+  const viewRows = useMemo(() => (allRows && config && properties ? applyView(allRows, config, properties) : []), [allRows, config, properties]);
+  const shownIds = config?.visibleProperties;
+  const visibleProperties = useMemo(() => (properties && shownIds ? properties.filter((p) => shownIds.includes(p.id)) : []), [properties, shownIds]);
+
   if (data === undefined) return <div className="h-40 animate-pulse ui-card rounded-control motion-reduce:animate-none" aria-busy />;
   if (data === null) return <p className="rounded-chip border border-dashed border-line p-4 text-subheadline text-muted">This collection is unavailable.</p>;
-  const view = data.views.find((v) => v.id === viewId) ?? data.views.find((v) => v.id === initialViewId) ?? data.views[0]!;
+  const view = shownView!;
   const canEdit = editable && data.canEdit;
-  const rows = applyView(data.rows, view.config, data.properties);
-  const visible = data.properties.filter((p) => view.config.visibleProperties.includes(p.id));
+  const rows = viewRows;
+  const visible = visibleProperties;
   const editingProp = editingFormula ? data.properties.find((p) => p.id === editingFormula && p.type === "formula") : undefined;
   const setViewId = (id: string) => {
     setViewIdState(id);
@@ -530,6 +552,44 @@ function PhoneAgenda({ data, view, rows, visible }: { data: CollectionData; view
   );
 }
 
+/**
+ * A row of a table view in the iPhone layout: its title, with up to two of its properties under it. Drawn
+ * again only when the row or what is shown of it changed, not with every row whenever one of them changes.
+ */
+const PhoneListRow = memo(function PhoneListRow({ row, subtitle, people, fresh }: { row: Row; subtitle: Property[]; people: Person[]; fresh: boolean }) {
+  const shown = subtitle.filter((p) => !isEmptyValue(row.values[p.id]));
+  if (fresh)
+    return (
+      <li className="flex min-h-16 items-center gap-3 px-4 py-2.5">
+        <FileText size={20} strokeWidth={1.9} aria-hidden className="flex-none text-muted" />
+        <NewRowTitle rowId={row.id} className="h-9 flex-1 text-body text-ink" />
+      </li>
+    );
+  return (
+    <li>
+      <RowLink row={row} className="flex min-h-16 items-center gap-3 px-4 py-2.5 outline-none active:bg-[color-mix(in_oklab,var(--color-ink)_6%,transparent)]">
+        <FileText size={20} strokeWidth={1.9} aria-hidden className="flex-none text-muted" />
+        <span className="min-w-0 flex-1">
+          <span className="block truncate text-body leading-[22px] text-ink">{row.title || "Untitled"}</span>
+          {shown.length ? (
+            <span className="mt-0.5 flex min-w-0 items-center gap-1.5 overflow-hidden whitespace-nowrap text-subheadline leading-5 text-muted">
+              {shown.map((p, i) => (
+                <span key={p.id} className="flex min-w-0 items-center gap-1.5">
+                  {i ? <span aria-hidden>·</span> : null}
+                  <span className="min-w-0 truncate">
+                    <CellDisplay prop={p} value={row.values[p.id]} people={people} inLink />
+                  </span>
+                </span>
+              ))}
+            </span>
+          ) : null}
+        </span>
+        <ChevronRight size={15} strokeWidth={2.4} aria-hidden className="flex-none text-faint" />
+      </RowLink>
+    </li>
+  );
+});
+
 function PhoneCollection({
   data,
   view,
@@ -569,7 +629,7 @@ function PhoneCollection({
         ]
       : []),
   ];
-  const subtitle = visible.slice(0, 2);
+  const subtitle = useMemo(() => visible.slice(0, 2), [visible]);
   return (
     <section className="iphone-collection" aria-label={`Collection ${data.name}`}>
       <header className="flex min-h-11 items-center gap-2 pl-4 pr-1">
@@ -606,39 +666,9 @@ function PhoneCollection({
       {view.type === "table" ? (
         rows.length ? (
           <ul className="iphone-collection-list">
-            {rows.map((row) => {
-              const shown = subtitle.filter((p) => !isEmptyValue(row.values[p.id]));
-              if (row.id === freshId)
-                return (
-                  <li key={row.id} className="flex min-h-16 items-center gap-3 px-4 py-2.5">
-                    <FileText size={20} strokeWidth={1.9} aria-hidden className="flex-none text-muted" />
-                    <NewRowTitle rowId={row.id} className="h-9 flex-1 text-body text-ink" />
-                  </li>
-                );
-              return (
-                <li key={row.id}>
-                  <RowLink row={row} className="flex min-h-16 items-center gap-3 px-4 py-2.5 outline-none active:bg-[color-mix(in_oklab,var(--color-ink)_6%,transparent)]">
-                    <FileText size={20} strokeWidth={1.9} aria-hidden className="flex-none text-muted" />
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate text-body leading-[22px] text-ink">{row.title || "Untitled"}</span>
-                      {shown.length ? (
-                        <span className="mt-0.5 flex min-w-0 items-center gap-1.5 overflow-hidden whitespace-nowrap text-subheadline leading-5 text-muted">
-                          {shown.map((p, i) => (
-                            <span key={p.id} className="flex min-w-0 items-center gap-1.5">
-                              {i ? <span aria-hidden>·</span> : null}
-                              <span className="min-w-0 truncate">
-                                <CellDisplay prop={p} value={row.values[p.id]} people={data.people} inLink />
-                              </span>
-                            </span>
-                          ))}
-                        </span>
-                      ) : null}
-                    </span>
-                    <ChevronRight size={15} strokeWidth={2.4} aria-hidden className="flex-none text-faint" />
-                  </RowLink>
-                </li>
-              );
-            })}
+            {rows.map((row) => (
+              <PhoneListRow key={row.id} row={row} subtitle={subtitle} people={data.people} fresh={row.id === freshId} />
+            ))}
           </ul>
         ) : (
           <p className="px-4 pb-3 text-subheadline italic text-muted">No rows{data.rows.length ? " match this view" : " yet"}.</p>
@@ -720,9 +750,11 @@ function PropertyEditor({
           type="number"
           aria-label={label}
           value={typeof value === "number" ? String(value) : ""}
-          onCommit={(typed) => {
-            const next = typed === "" ? null : Number(typed);
-            if (next !== (typeof value === "number" ? value : null)) void save(next);
+          onCommit={(typed, field) => {
+            // (Text that isn't a number keeps the number there was: see numberFieldChange.)
+            const change = numberFieldChange(typed, value, field.badInput);
+            if (change === "unread") toast.show("That isn't a number, so the value wasn't changed.", { tone: "error" });
+            else if (change) void save(change.value);
           }}
           className="w-full bg-transparent outline-none"
         />
@@ -895,14 +927,17 @@ function PagePicker({ scope, exclude, onPick }: { scope: WireScope; exclude: str
 
 /** Read-only value. `inLink` renders URLs as text (never an <a> nested inside a card link). */
 function CellDisplay({ prop, value, people, inLink }: { prop: Property; value: unknown; people: Person[]; inLink?: boolean }) {
-  const titles = useQuery(api.documents.titles, prop.type === "relation" && Array.isArray(value) && value.length ? { documentIds: value as string[] } : "skip");
+  // (Only a relation asks the server for anything: the pages' titles. Every other cell, of every row, used to
+  // set that question up too, to skip it.)
+  if (prop.type === "relation" && Array.isArray(value) && value.length) return <RelationTitles ids={value as string[]} />;
   if (prop.type === "formula") return <FormulaValue result={formulaResult(value)} />;
   if (isEmptyValue(value)) return <span className="text-faint">-</span>;
   if (prop.type === "number" && typeof value === "number") return <span className="tabular-nums">{formatPropertyNumber(value, prop.numberFormat)}</span>;
   if (prop.type === "checkbox") return <span>{value ? "✓" : ""}</span>;
   if (prop.type === "select") {
     const o = prop.options.find((x) => x.id === value);
-    return o ? <span className="rounded-chip px-2 py-0.5 text-footnote" style={optionColor(o.color)}>{o.name}</span> : null;
+    // (An option that was deleted reads as no value, like the board's column for rows without one.)
+    return o ? <span className="rounded-chip px-2 py-0.5 text-footnote" style={optionColor(o.color)}>{o.name}</span> : <span className="text-faint">-</span>;
   }
   if (prop.type === "multiSelect" && Array.isArray(value)) {
     return (
@@ -919,9 +954,6 @@ function CellDisplay({ prop, value, people, inLink }: { prop: Property; value: u
     );
   }
   if (prop.type === "person") return <span>{people.find((p) => p.id === value)?.name ?? "Former member"}</span>;
-  if (prop.type === "relation" && Array.isArray(value)) {
-    return <span>{value.map((id) => titles?.[id as string]?.title || "Untitled").join(", ")}</span>;
-  }
   if (prop.type === "date" && typeof value === "string") {
     return <time dateTime={value}>{/^\d{4}-\d{2}-\d{2}$/.test(value) ? formatCalendarDate(value) : value}</time>;
   }
@@ -937,11 +969,74 @@ function CellDisplay({ prop, value, people, inLink }: { prop: Property; value: u
   return <span>{String(value)}</span>;
 }
 
+/** The titles of a relation's linked pages. */
+function RelationTitles({ ids }: { ids: string[] }) {
+  const titles = useQuery(api.documents.titles, { documentIds: ids });
+  return <span>{ids.map((id) => titles?.[id]?.title || "Untitled").join(", ")}</span>;
+}
+
+/** The collection as a row's cells need it. */
+type CollectionRef = Pick<CollectionData, "id" | "people" | "workspaceId" | "isMember">;
+
+/**
+ * A row of the table view. Drawn again only when the row itself, the properties shown or what may be done
+ * changed: a value saved in one row used to draw every cell of every row.
+ */
+const CollectionTableRow = memo(function CollectionTableRow({ collection, row, visible, canEdit, fresh, onDelete }: { collection: CollectionRef; row: Row; visible: Property[]; canEdit: boolean; fresh: boolean; onDelete: (row: Row) => void }) {
+  const { renameRow } = useCollectionMutations();
+  const toast = useToast();
+  return (
+    <tr className="group">
+      <td className="border-b border-line px-3 py-1.5">
+        <div className="flex items-center gap-1.5">
+          <FileText size={14} aria-hidden className="flex-none text-muted" />
+          {canEdit && fresh ? (
+            <NewRowTitle rowId={row.id} className="flex-1 font-medium" />
+          ) : canEdit ? (
+            <InlineText
+              value={row.title}
+              label="Row name"
+              placeholder="Untitled"
+              className="flex-1 font-medium"
+              onCommit={(title) => void renameRow({ collectionId: collection.id, rowId: row.id, title }).catch((e) => toast.show(errorMessage(e), { tone: "error" }))}
+            />
+          ) : (
+            <RowLink row={row} className="font-medium hover:underline">
+              {row.title || "Untitled"}
+            </RowLink>
+          )}
+          {canEdit && row.waiting !== "failed" ? (
+            // (On a touch screen the 24 px button answers to 44: the space around it is its too.)
+            <AppLink href={`/d/${row.documentId}`} aria-label={`Open ${row.title || "Untitled"}`} title="Open page" className="relative grid h-6 w-6 flex-none place-items-center rounded-chip text-faint hover:bg-sunken hover:text-ink pointer-coarse:after:absolute pointer-coarse:after:-inset-2.5 pointer-coarse:after:content-['']">
+              <ArrowUpRight size={13} aria-hidden />
+            </AppLink>
+          ) : null}
+          {row.waiting ? <span className="flex-none text-footnote text-faint">{row.waiting === "failed" ? "Not saved" : "Waiting to send"}</span> : null}
+        </div>
+      </td>
+      {visible.map((p) => (
+        <td key={p.id} className="border-b border-l border-line px-3 py-1.5">
+          <PropertyEditor collection={collection} row={row} prop={p} canEdit={canEdit} />
+        </td>
+      ))}
+      {canEdit ? (
+        <td className="border-b border-line text-center">
+          <button type="button" aria-label={`Delete ${row.title || "row"}`} onClick={() => onDelete(row)} className="text-faint opacity-0 hover:text-danger group-hover:opacity-100 focus:opacity-100 focus-visible:opacity-100 pointer-coarse:inline-grid pointer-coarse:h-11 pointer-coarse:w-11 pointer-coarse:place-items-center pointer-coarse:opacity-100">
+            <Trash2 size={13} aria-hidden />
+          </button>
+        </td>
+      ) : null}
+    </tr>
+  );
+});
+
 function TableCollection({ data, view, rows, visible, canEdit, onEditFormula }: { data: CollectionData; view: View; rows: Row[]; visible: Property[]; canEdit: boolean; onEditFormula: (propertyId: string) => void }) {
-  const { renameRow, deleteRow, updateView } = useCollectionMutations();
+  const { deleteRow, updateView } = useCollectionMutations();
   const toast = useToast();
   const [confirm, setConfirm] = useState<Row | null>(null);
   const freshId = useContext(FreshRow)?.id;
+  const { id, people, workspaceId, isMember } = data;
+  const collection = useMemo<CollectionRef>(() => ({ id, people, workspaceId, isMember }), [id, people, workspaceId, isMember]);
   return (
     <div className="overflow-x-auto">
       <table className="w-full border-collapse text-subheadline">
@@ -970,46 +1065,7 @@ function TableCollection({ data, view, rows, visible, canEdit, onEditFormula }: 
         </thead>
         <tbody>
           {rows.map((row) => (
-            <tr key={row.id} className="group">
-              <td className="border-b border-line px-3 py-1.5">
-                <div className="flex items-center gap-1.5">
-                  <FileText size={14} aria-hidden className="flex-none text-muted" />
-                  {canEdit && row.id === freshId ? (
-                    <NewRowTitle rowId={row.id} className="flex-1 font-medium" />
-                  ) : canEdit ? (
-                    <InlineText
-                      value={row.title}
-                      label="Row name"
-                      placeholder="Untitled"
-                      className="flex-1 font-medium"
-                      onCommit={(title) => void renameRow({ collectionId: data.id, rowId: row.id, title }).catch((e) => toast.show(errorMessage(e), { tone: "error" }))}
-                    />
-                  ) : (
-                    <RowLink row={row} className="font-medium hover:underline">
-                      {row.title || "Untitled"}
-                    </RowLink>
-                  )}
-                  {canEdit && row.waiting !== "failed" ? (
-                    <AppLink href={`/d/${row.documentId}`} aria-label={`Open ${row.title || "Untitled"}`} title="Open page" className="grid h-6 w-6 flex-none place-items-center rounded-chip text-faint hover:bg-sunken hover:text-ink">
-                      <ArrowUpRight size={13} aria-hidden />
-                    </AppLink>
-                  ) : null}
-                  {row.waiting ? <span className="flex-none text-footnote text-faint">{row.waiting === "failed" ? "Not saved" : "Waiting to send"}</span> : null}
-                </div>
-              </td>
-              {visible.map((p) => (
-                <td key={p.id} className="border-b border-l border-line px-3 py-1.5">
-                  <PropertyEditor collection={data} row={row} prop={p} canEdit={canEdit} />
-                </td>
-              ))}
-              {canEdit ? (
-                <td className="border-b border-line text-center">
-                  <button type="button" aria-label={`Delete ${row.title || "row"}`} onClick={() => setConfirm(row)} className="text-faint opacity-0 hover:text-danger group-hover:opacity-100 focus:opacity-100 focus-visible:opacity-100 pointer-coarse:inline-grid pointer-coarse:h-11 pointer-coarse:w-11 pointer-coarse:place-items-center pointer-coarse:opacity-100">
-                    <Trash2 size={13} aria-hidden />
-                  </button>
-                </td>
-              ) : null}
-            </tr>
+            <CollectionTableRow key={row.id} collection={collection} row={row} visible={visible} canEdit={canEdit} fresh={row.id === freshId} onDelete={setConfirm} />
           ))}
           {rows.length === 0 ? (
             <tr>
@@ -1076,7 +1132,8 @@ function BoardCollection({ data, view, rows, visible, canEdit, onAdd }: { data: 
   return (
     <div className="flex gap-3 overflow-x-auto p-3">
       {columns.map((col) => {
-        const items = rows.filter((r) => ((r.values[group.id] as string | undefined) ?? null) === col.id);
+        // (A row whose option was deleted goes with the rows that have none, not in no column at all.)
+        const items = rows.filter((r) => boardColumnOf(r.values[group.id], group.options) === col.id);
         const key = col.id ?? "";
         const target = drop?.column === key ? drop : null;
         // The card the drop line is drawn on: above the one it would go before, else under the column's last.
@@ -1337,7 +1394,7 @@ function CalendarCollection({ data, view, rows, visible, canEdit, onAdd }: { dat
                         aria-label={`New row on ${long}`}
                         title="New"
                         onClick={() => void onAdd({ [prop.id]: date })}
-                        className="grid h-5 w-5 place-items-center rounded-tiny text-faint opacity-0 hover:bg-sunken hover:text-ink focus-visible:opacity-100 group-hover/day:opacity-100 pointer-coarse:opacity-100"
+                        className="relative grid h-5 w-5 place-items-center rounded-tiny text-faint opacity-0 hover:bg-sunken hover:text-ink focus-visible:opacity-100 group-hover/day:opacity-100 pointer-coarse:opacity-100 pointer-coarse:after:absolute pointer-coarse:after:-inset-3 pointer-coarse:after:content-['']"
                       >
                         <Plus size={12} aria-hidden />
                       </button>
@@ -1681,11 +1738,9 @@ function ViewSettings({ open, onClose, data, view, onEditFormula }: { open: bool
                   onBlur={(e) => {
                     const names = e.target.value.split(",").map((s) => s.trim()).filter(Boolean);
                     if (names.join(",") === p.options.map((o) => o.name).join(",")) return;
-                    // A new option gets its id and colour here, so sending the list again changes nothing.
-                    const options = names.map((name, i) => {
-                      const kept = p.options.find((o) => o.name === name);
-                      return kept ? { id: kept.id, name, color: kept.color } : { id: ulid(), name, color: OPTION_COLORS[i % OPTION_COLORS.length] };
-                    });
+                    // An option that was renamed keeps its id (and so do the rows that hold it); a new one
+                    // gets its id and colour here, so sending the list again changes nothing.
+                    const options = renamedCollectionOptions(p.options, names);
                     void updateProperty({ collectionId: data.id, propertyId: p.id, options }).catch((err) => toast.show(errorMessage(err), { tone: "error" }));
                   }}
                   className="mt-1 block h-8 w-full ui-input rounded-chip px-3 text-callout"
@@ -1788,7 +1843,7 @@ export function CollectionRowProperties({ documentId, editable }: { documentId: 
   const { outbox } = useAppState();
   const info = useOfflineQuery(api.collections.rowForDocument, { documentId });
   // A row added on this device and not sent yet: the server doesn't know its page, the collection on this device does.
-  const entries = useOutboxEntries(outbox);
+  const entries = useOutboxEntriesOf(outbox, "collections.");
   const waiting = useMemo(() => (info ? undefined : waitingRowPage(entries, documentId)), [info, entries, documentId]);
   const data = useCollection(info ? info.collection.id : (waiting?.collectionId ?? null));
   if (!data || (!info && !waiting)) return null;

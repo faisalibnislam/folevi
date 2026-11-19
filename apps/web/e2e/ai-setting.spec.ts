@@ -32,7 +32,7 @@ test("turning the AI Assistant off hides every AI entry point; turning it on bri
   await expect(page.getByRole("button", { name: "Catch me up" })).toHaveCount(0);
 
   // A note: no AI in the floating bar, the selection toolbar or the slash menu; ⌘J does nothing.
-  await page.getByRole("button", { name: "New note", exact: true }).click();
+  await page.getByRole("button", { name: "New note", exact: true }).first().click();
   await page.waitForURL(/\/d\/[0-9A-Z]{26}\?new=1/);
   await page.keyboard.press("Enter");
   await page.keyboard.type("Some words to select");

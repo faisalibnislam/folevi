@@ -59,7 +59,9 @@
 
 /* ---------------------------------------------------------------- the editor */
 .mm-canvas { position: absolute; inset: 0; outline: none; touch-action: pan-y; }
-.mm-canvas[data-active] { touch-action: none; }
+/* Every touch is the map's own while it has the keyboard, and in full canvas, where there is no note to scroll
+   (it opens there without the keyboard, and a vertical drag would otherwise go to the page behind). */
+.mm-canvas[data-active], .fb-canvas-card[data-full] .mm-canvas { touch-action: none; }
 .mm-svg { display: block; cursor: default; }
 .mm-canvas[data-panning] .mm-svg { cursor: grabbing; }
 .mm-node[data-mm-node] { cursor: pointer; }

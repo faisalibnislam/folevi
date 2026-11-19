@@ -8,7 +8,7 @@ type Clip = Record<string, string>;
 
 async function newNote(page: Page, title: string): Promise<string> {
   const before = page.url();
-  await page.getByRole("button", { name: "New note", exact: true }).click();
+  await page.getByRole("button", { name: "New note", exact: true }).first().click();
   await page.waitForURL((url) => url.href !== before && /^\/d\/[0-9A-Z]{26}$/.test(url.pathname) && url.searchParams.get("new") === "1");
   await expect(page.getByRole("textbox", { name: "Title" })).toHaveValue("");
   await page.getByRole("textbox", { name: "Title" }).fill(title);

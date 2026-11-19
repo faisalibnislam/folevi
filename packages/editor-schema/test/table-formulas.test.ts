@@ -13,6 +13,7 @@ import {
   parseTableNumber,
   remapFormulaReferences,
   tableDisplayRows,
+  tableFormulaParses,
   tableRowOrder,
   totalsFormula,
   totalsFunctionOf,
@@ -180,6 +181,50 @@ describe("errors", () => {
     const out = evaluateTable(rows, { headerRow: true });
     expect(out.display[199]![0]).toMatch(/^(199|#CYCLE!)$/);
   });
+  it("works out a chain of any length: 600 formulas each reading the one before, across three columns", () => {
+    // Column A counts down its 200 rows, B carries on from the foot of A, C from the foot of B.
+    const rows = Array.from({ length: 200 }, (_, r) => [r === 0 ? "1" : `=A${r}+1`, r === 0 ? "=A200+1" : `=B${r}+1`, r === 0 ? "=B200+1" : `=C${r}+1`]);
+    const out = evaluateTable(rows, { headerRow: false });
+    expect(out.display[199]).toEqual(["200", "400", "600"]);
+    expect(out.cells.flat().some((c) => c.kind === "error")).toBe(false);
+    // The longest a table can hold: every cell of 200 rows by 20 columns reading the one before it.
+    const all = Array.from({ length: 200 }, (_, r) => Array.from({ length: 20 }, (_, c) => (r === 0 && c === 0 ? "1" : r === 0 ? `=${columnLetter(c - 1)}200+1` : `=${columnLetter(c)}${r}+1`)));
+    expect(evaluateTable(all, { headerRow: false }).display[199]![19]).toBe("4000");
+  });
+  it("shows the cycle error in every cell of a loop, whichever is worked out first and whatever IFERROR is in it", () => {
+    const first = (rows: string[][]) => evaluateTable(rows, { headerRow: false }).display[0];
+    expect(first([["=IFERROR(B1,0)", "=A1+1"]])).toEqual(["#CYCLE!", "#CYCLE!"]);
+    expect(first([["=B1+1", "=IFERROR(A1,0)"]])).toEqual(["#CYCLE!", "#CYCLE!"]);
+    expect(first([["=IFERROR(A1,0)"]])).toEqual(["#CYCLE!"]);
+    // A cell outside the loop that reads into it may still catch the error.
+    expect(first([["=B1+1", "=A1+1", "=IFERROR(A1,5)"]])).toEqual(["#CYCLE!", "#CYCLE!", "5"]);
+    expect(first([["=IFERROR(B1,5)", "=C1+1", "=B1+1"]])).toEqual(["5", "#CYCLE!", "#CYCLE!"]);
+    // A reference that is never read (the other side of an IF) is no loop.
+    expect(first([["=IF(1=1,7,A1)"]])).toEqual(["7"]);
+    // A loop longer than formulas may read inside one another still shows as a loop everywhere.
+    const ring = Array.from({ length: 200 }, (_, r) => [r === 0 ? "=C200+1" : `=A${r}+1`, r === 0 ? "=A200+1" : `=B${r}+1`, r === 0 ? "=B200+1" : `=C${r}+1`]);
+    expect(new Set(evaluateTable(ring, { headerRow: false }).display.flat())).toEqual(new Set(["#CYCLE!"]));
+  });
+  it("reads each distinct formula once, however many cells hold it and however often the table is worked out", () => {
+    const rows = [["Price", "Qty", "Total", "Doubled"], ...Array.from({ length: 50 }, (_, i) => [String(i), "2", "=Price * Qty + 0.125", "=Total*2+0.125"])];
+    const before = tableFormulaParses();
+    const one = evaluateTable(rows, { headerRow: true });
+    expect(tableFormulaParses() - before).toBe(2);
+    // A cell that isn't a formula changes (a key typed in it): nothing is read again.
+    const next = rows.map((r, i) => (i === 3 ? ["9", r[1]!, r[2]!, r[3]!] : r));
+    const two = evaluateTable(next, { headerRow: true });
+    expect(tableFormulaParses() - before).toBe(2);
+    expect(one.display[3]).toEqual(["2", "2", "4.125", "8.375"]);
+    expect(two.display[3]).toEqual(["9", "2", "18.125", "36.375"]);
+    // The same text under other column names means something else, and is read for them.
+    expect(evaluateTable([["Qty", "Price", "Total"], ["2", "5", "=Price * Qty + 0.125"]], { headerRow: true }).display[1]![2]).toBe("10.125");
+  });
+  it("gives every reader of a range the same cells, and a formula in the range its own result", () => {
+    // Twenty lookups over one range that itself holds formulas.
+    const rows = [["Key", "Value", "Find", "Found"], ...Array.from({ length: 20 }, (_, i) => [`k${i}`, `=${i}*10`, `k${19 - i}`, `=VLOOKUP(C${i + 2},A2:B21,2,FALSE)`])];
+    const out = evaluateTable(rows, { headerRow: true });
+    expect(out.display.slice(1).map((r) => r[3])).toEqual(Array.from({ length: 20 }, (_, i) => String((19 - i) * 10)));
+  });
 });
 
 describe("values and formats", () => {
@@ -251,12 +296,44 @@ describe("moving references", () => {
     expect(remapFormulaReferences("=A3", { rows: moveIndexMap(2, 1) })).toBe("=A2");
     expect(remapFormulaReferences("=$A$3+SUM(A:B)", { cols: moveIndexMap(0, 2) })).toBe("=$C$3+SUM(A:C)");
   });
+  it("a row or column moved out of the middle of a range leaves it one shorter, not stretched to where it went", () => {
+    // Row 3 dragged below row 9: the range was rows 2 to 5 and is the three that stayed.
+    expect(remapFormulaReferences("=SUM(B2:B5)", { rows: moveIndexMap(2, 8) })).toBe("=SUM(B2:B4)");
+    // Dragged up, above the range: the rows that stayed moved down by one.
+    expect(remapFormulaReferences("=SUM(B3:B6)", { rows: moveIndexMap(3, 0) })).toBe("=SUM(B4:B6)");
+    expect(remapFormulaReferences("=SUM(C1:E1)", { cols: moveIndexMap(3, 7) })).toBe("=SUM(C1:D1)");
+    expect(remapFormulaReferences("=SUM(B:E)", { cols: moveIndexMap(2, 6) })).toBe("=SUM(B:D)");
+    // To another place inside the range, to either end of it included: the same rows, the same range.
+    expect(remapFormulaReferences("=SUM(B2:B5)", { rows: moveIndexMap(2, 4) })).toBe("=SUM(B2:B5)");
+    expect(remapFormulaReferences("=SUM(B2:B5)", { rows: moveIndexMap(3, 1) })).toBe("=SUM(B2:B5)");
+    // A row from outside dropped into the range is in it; dropped next to it, it isn't.
+    expect(remapFormulaReferences("=SUM(B2:B5)", { rows: moveIndexMap(7, 2) })).toBe("=SUM(B2:B6)");
+    expect(remapFormulaReferences("=SUM(B2:B5)", { rows: moveIndexMap(7, 5) })).toBe("=SUM(B2:B5)");
+    // What the sum is worth: rows 2 to 5 hold 1, 2, 3, 4 and rows 6 and 7 hold 100 each.
+    const rows = [["n", "sum"], ["1", "=SUM(A2:A5)"], ["2", ""], ["3", ""], ["4", ""], ["100", ""], ["100", ""]];
+    const map = moveIndexMap(2, 6);
+    const order = [0, 1, 3, 4, 5, 6, 2];
+    const moved = order.map((r) => rows[r]!.map((t) => remapFormulaReferences(t, { rows: map })));
+    expect(moved[1]![1]).toBe("=SUM(A2:A4)");
+    expect(evaluateTable(moved, { headerRow: true }).display[1]![1]).toBe("8");
+  });
   it("turns deleted cells into #REF! and shrinks ranges", () => {
     expect(remapFormulaReferences("=A2+A3", { rows: deleteIndexMap(1) })).toBe("=#REF!+A2");
     expect(remapFormulaReferences("=SUM(A2:A5)", { rows: deleteIndexMap(4) })).toBe("=SUM(A2:A4)");
     expect(remapFormulaReferences("=SUM(A2:A2)", { rows: deleteIndexMap(1) })).toBe("=SUM(#REF!)");
     expect(remapFormulaReferences("=SUM(B:C)", { cols: deleteIndexMap(1) })).toBe("=SUM(B:B)");
     expect(evaluateTable([["a"], ["=#REF!+1"]], { headerRow: true }).cells[1]![0]!.error?.code).toBe("#REF!");
+  });
+  it("an apostrophe before = makes the cell text: it shows without the apostrophe and is never worked out", () => {
+    const out = evaluateTable([["Note", "n"], ["'=> see below", "'=1+1"], ["'90s", "=LEN(A2)"]], { headerRow: true });
+    expect(out.display[1]).toEqual(["=> see below", "=1+1"]);
+    expect(out.cells[1]![0]).toMatchObject({ kind: "text", formula: false, changed: true, raw: "'=> see below", value: "=> see below" });
+    // Any other apostrophe is just an apostrophe.
+    expect(out.cells[2]![0]).toMatchObject({ display: "'90s", changed: false });
+    expect(out.display[2]![1]).toBe("12");
+    // Moving rows leaves it alone, and exports read what it shows.
+    expect(remapFormulaReferences("'=A2", { rows: deleteIndexMap(1) })).toBe("'=A2");
+    expect(tableDisplayRows([[[{ type: "text", text: "'=A1" }]]], { headerRow: false })[0]![0]).toEqual([{ type: "text", text: "=A1" }]);
   });
   it("leaves strings, names, functions and plain text alone", () => {
     expect(remapFormulaReferences('="B2"&LOG10(B2)', { cols: deleteIndexMap(1) })).toBe('="B2"&LOG10(#REF!)');

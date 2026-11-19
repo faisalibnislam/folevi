@@ -18,7 +18,7 @@ async function shot(page: Page, name: string, target?: Locator) {
 const PNG = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==", "base64");
 
 async function newPage(page: Page, title: string) {
-  await page.getByRole("button", { name: "New note", exact: true }).click();
+  await page.getByRole("button", { name: "New note", exact: true }).first().click();
   await page.waitForURL(/\/d\/[0-9A-Z]{26}\?new=1/);
   await page.getByRole("textbox", { name: "Title" }).fill(title);
   await page.keyboard.press("Enter");
@@ -444,7 +444,7 @@ test.describe("Flowchart shapes and content", () => {
 
     // Pasted into another note: the shape shows a file of that note (a different id), and still draws.
     const fromPath = new URL(page.url()).pathname;
-    await page.getByRole("button", { name: "New note", exact: true }).click();
+    await page.getByRole("button", { name: "New note", exact: true }).first().click();
     await page.waitForURL((u) => /^\/d\/[0-9A-Z]{26}$/.test(u.pathname) && u.pathname !== fromPath);
     await page.getByRole("textbox", { name: "Title" }).fill("Paste into");
     await page.keyboard.press("Enter");

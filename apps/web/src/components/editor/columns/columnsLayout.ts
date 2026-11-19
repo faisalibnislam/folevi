@@ -3,8 +3,11 @@
 // their own. Instead the row's line reserves the row's height, and each column's lines are placed over it:
 // a stylesheet keyed by block id (never ProseMirror's DOM, so the editor doesn't re-read anything) gives
 // every line its column's left edge and width and its top, worked out from the heights the lines have at that
-// width. It runs after every update and whenever a line's size changes (an image loading, a chart drawing).
+// width. It runs after an update that changed a row's lines, or moved or resized what it measured (see `settled`:
+// a caret moving, or typing that changes nothing a row depends on, measures nothing), and whenever a line's
+// size changes (an image loading, a chart drawing).
 // Below a sensible width (a phone) nothing is placed: the columns' lines simply follow each other.
+import type { Node as PMNode } from "@tiptap/pm/model";
 import type { EditorView } from "@tiptap/pm/view";
 import { LIMITS } from "@folevi/editor-schema";
 import { baseDepth, columnsModel, rowOf, type ColumnRow } from "./columnsModel";
@@ -17,6 +20,8 @@ const MIN_COLUMN_PX = 110;
 const GAP_EM = 4;
 /** How wide the resize handle in a gap is. */
 const GUTTER = 12;
+/** Sent to a gap's handle just before the layout takes it away. */
+export const GUTTER_GONE = "folevi:columns-gutter-gone";
 
 export interface RowSnapshot {
   index: number;
@@ -34,6 +39,33 @@ export interface RowSnapshot {
 
 interface Snapshot {
   rows: RowSnapshot[];
+}
+
+/**
+ * What the last layout was worked out from: the rows' own lines (the row, its columns, their lines) and where
+ * the rows sat among the note's lines, and the sizes it read. While all of it still holds, laying out again
+ * would write what is already there.
+ */
+interface Settled {
+  editable: boolean;
+  width: number;
+  /** Each row's place among the note's lines. */
+  indices: number[];
+  /** Every line of every row, in order. An edited line is a new node; an untouched one is the very same. */
+  nodes: PMNode[];
+  markers: { el: HTMLElement; top: number; left: number; width: number; hidden: boolean }[];
+  items: { el: HTMLElement; height: number }[];
+}
+
+/** The lines of every row of a version of the note (read once per version). */
+const rowLines = new WeakMap<PMNode, PMNode[]>();
+function linesOfRows(doc: PMNode): PMNode[] {
+  const hit = rowLines.get(doc);
+  if (hit) return hit;
+  const out: PMNode[] = [];
+  for (const row of columnsModel(doc).rows) for (let i = row.index; i < row.end; i++) out.push(doc.child(i));
+  rowLines.set(doc, out);
+  return out;
 }
 
 const registry = new WeakMap<HTMLElement, Snapshot>();
@@ -62,6 +94,8 @@ export class ColumnsLayoutView {
   private text = "";
   /** Shares shown while a gap is being dragged (not saved yet). */
   private preview: { rowId: string; shares: number[] } | null = null;
+  /** What the last layout stood on (null: nothing to stand on, lay out). */
+  private settled: Settled | null = null;
 
   constructor(private view: EditorView) {
     this.scope = `c${++scopes}`;
@@ -77,8 +111,38 @@ export class ColumnsLayoutView {
 
   update(view: EditorView) {
     this.view = view;
+    // Nothing a row is drawn from has changed: a caret moved, or text was typed that neither is in a row nor
+    // moved one. (Laying out read every placed line's style and height and rewrote the gaps' handles, on
+    // every key and every move of the caret.)
+    if (this.stillSettled()) return;
     // Now, before the browser paints (a frame later every placed line would jump).
     this.layout();
+  }
+
+  /**
+   * Whether the last layout still holds: the same lines in the same rows at the same places in the note, the
+   * note as editable as it was, and every size the layout read still what it read. Only reads, and only of
+   * what is already known: with nothing changed on the page they cost next to nothing.
+   */
+  private stillSettled(): boolean {
+    const was = this.settled;
+    if (!was || this.preview) return false;
+    const view = this.view;
+    const dom = view.dom as HTMLElement;
+    if (!dom.isConnected || was.editable !== view.editable) return false;
+    const { doc } = view.state;
+    const rows = columnsModel(doc).rows;
+    if (rows.length !== was.indices.length) return false;
+    for (let k = 0; k < rows.length; k++) if (rows[k]!.index !== was.indices[k]) return false;
+    const nodes = linesOfRows(doc);
+    if (nodes.length !== was.nodes.length) return false;
+    for (let i = 0; i < nodes.length; i++) if (nodes[i] !== was.nodes[i]) return false;
+    if (dom.clientWidth !== was.width) return false;
+    for (const m of was.markers) {
+      if (!m.el.isConnected || (m.el.offsetParent === null) !== m.hidden || m.el.offsetTop !== m.top || m.el.offsetLeft !== m.left || m.el.offsetWidth !== m.width) return false;
+    }
+    for (const it of was.items) if (!it.el.isConnected || it.el.offsetHeight !== it.height) return false;
+    return true;
   }
 
   destroy() {
@@ -119,6 +183,7 @@ export class ColumnsLayoutView {
     if (!dom.isConnected) return;
     const { doc } = view.state;
     const model = columnsModel(doc);
+    this.settled = null;
     if (!model.rows.length) {
       this.write("");
       registry.delete(dom);
@@ -132,7 +197,9 @@ export class ColumnsLayoutView {
     const gap = GAP_EM * fontSize;
     const editorWidth = dom.clientWidth;
     type Item = { id: string; el: HTMLElement; column: number; rel: number; index: number };
-    const plans: { row: ColumnRow; marker: HTMLElement; snap: RowSnapshot; items: Item[] }[] = [];
+    const plans: { row: ColumnRow; marker: HTMLElement; snap: RowSnapshot; items: Item[]; hidden: boolean }[] = [];
+    /** The heights read below, for `settled`. */
+    const measured: Settled["items"] = [];
     const rules: string[] = [base];
     const watched: Element[] = [];
     for (const row of model.rows) {
@@ -172,7 +239,7 @@ export class ColumnsLayoutView {
         });
         marker.style.height = "";
         marker.dataset.stacked = "true";
-        plans.push({ row, marker, snap, items: [] });
+        plans.push({ row, marker, snap, items: [], hidden });
         continue;
       }
       delete marker.dataset.stacked;
@@ -195,7 +262,7 @@ export class ColumnsLayoutView {
         const col = snap.columns[k]!;
         rules.push(`${this.sel(id)}{position:absolute!important;left:${px(col.left)};width:${px(col.width)};top:${px(snap.top)};height:0;overflow:hidden;visibility:hidden}`);
       }
-      plans.push({ row, marker, snap, items });
+      plans.push({ row, marker, snap, items, hidden });
     }
     // Widths first (with the tops worked out last time), then each line's height at its width gives the tops.
     const topRule = (it: { id: string }, top: number) => `${this.sel(it.id)}{top:${px(top)}}`;
@@ -208,11 +275,16 @@ export class ColumnsLayoutView {
       const lastMargin = new Array(p.snap.columns.length).fill(0);
       for (const it of p.items) {
         const col = p.snap.columns[it.column]!;
-        if (it.el.classList.contains("fb-hidden") || it.el.offsetParent === null) continue;
+        if (it.el.classList.contains("fb-hidden") || it.el.offsetParent === null) {
+          // (A line that isn't shown has no height: one that is shown again will have, and that is seen.)
+          measured.push({ el: it.el, height: it.el.offsetHeight });
+          continue;
+        }
         const cs = getComputedStyle(it.el);
         const mt = parseFloat(cs.marginTop) || 0;
         const mb = parseFloat(cs.marginBottom) || 0;
         const h = it.el.offsetHeight;
+        measured.push({ el: it.el, height: h });
         // Margins between lines meet (the larger one counts), as they would one under another.
         const y = col.items.length ? heights[it.column]! + Math.max(lastMargin[it.column]!, mt) - mt : 0;
         tops.set(it.id, p.snap.top + y);
@@ -228,15 +300,21 @@ export class ColumnsLayoutView {
     this.tops = tops;
     this.write(withTops(tops));
     // The row's own line moved (its height above changed): the tops were measured from the old place.
-    for (const p of plans) {
-      if (!p.snap.stacked && p.marker.offsetTop !== p.snap.top) {
-        this.schedule();
-        break;
-      }
-    }
+    let moved = false;
+    const markers: Settled["markers"] = plans.map((p) => {
+      const top = p.marker.offsetTop;
+      if (!p.snap.stacked && top !== p.snap.top) moved = true;
+      return { el: p.marker, top, left: p.snap.left, width: p.snap.width, hidden: p.hidden };
+    });
+    if (moved) this.schedule();
     for (const p of plans) placeGutters(p.marker, p.snap, view.editable);
     registry.set(dom, { rows: plans.map((p) => p.snap) });
     this.observe(watched);
+    // Every row was found on the page and nothing is still settling: this layout can be stood on. (With a row
+    // whose line isn't drawn yet, or a second pass on its way, the next update lays out again as before.)
+    if (!moved && plans.length === model.rows.length) {
+      this.settled = { editable: view.editable, width: editorWidth, indices: model.rows.map((r) => r.index), nodes: linesOfRows(doc), markers, items: measured };
+    }
   }
 
   private observe(els: Element[]) {
@@ -262,23 +340,34 @@ function placeGutters(marker: HTMLElement, snap: RowSnapshot, editable: boolean)
     marker.appendChild(g);
     existing.push(g);
   }
+  // (Only what differs is written: a layout that changes nothing here touches nothing here.)
+  const style = (g: HTMLElement, name: "left" | "width" | "height", value: string) => {
+    if (g.style[name] !== value) g.style[name] = value;
+  };
+  const attr = (g: HTMLElement, name: string, value: string) => {
+    if (g.getAttribute(name) !== value) g.setAttribute(name, value);
+  };
   existing.forEach((g, k) => {
     if (k >= want) {
+      // A handle that goes while it is being dragged (the row stacked: an iPad turned, a narrower window; the
+      // note turned read-only) says so first, so its drag ends with it (columnsExtension.ts). Otherwise the
+      // page stayed in "resizing" for good, and no text could be selected anywhere.
+      g.dispatchEvent(new CustomEvent(GUTTER_GONE));
       g.remove();
       return;
     }
     const a = snap.columns[k]!;
     const center = a.left + a.width + snap.gap / 2 - snap.left;
-    g.dataset.gap = String(k);
+    if (g.dataset.gap !== String(k)) g.dataset.gap = String(k);
     // A narrow strip in the middle of the gap (the right of the gap is the next column's grip).
-    g.style.left = px(center - GUTTER / 2);
-    g.style.width = px(GUTTER);
-    g.style.height = px(snap.height);
+    style(g, "left", px(center - GUTTER / 2));
+    style(g, "width", px(GUTTER));
+    style(g, "height", px(snap.height));
     const share = Math.round((a.width / (snap.width - snap.gap * (snap.columns.length - 1))) * 100);
-    g.setAttribute("aria-valuenow", String(share));
-    g.setAttribute("aria-valuemin", "10");
-    g.setAttribute("aria-valuemax", "90");
-    g.setAttribute("aria-valuetext", `Column ${k + 1}: ${share}% of the row`);
+    attr(g, "aria-valuenow", String(share));
+    attr(g, "aria-valuemin", "10");
+    attr(g, "aria-valuemax", "90");
+    attr(g, "aria-valuetext", `Column ${k + 1}: ${share}% of the row`);
   });
 }
 

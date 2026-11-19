@@ -1,5 +1,6 @@
 // Folevi editor schema for Tiptap/ProseMirror. One node per canonical block type, all top-level and
 // flat, with `id` (stable block id) and `depth` (nesting) attributes. See convert.ts for the mapping.
+import { foldToggle } from "./toggleFold";
 import { Extension, Mark, Node, mergeAttributes, type Attributes, type Editor } from "@tiptap/core";
 import { Plugin, PluginKey, TextSelection } from "@tiptap/pm/state";
 import { Decoration, DecorationSet } from "@tiptap/pm/view";
@@ -306,13 +307,37 @@ export const Todo = Node.create({
           if (updated.type.name !== "todo") return false;
           current = updated;
           render();
+          onlyOwnParts(dom, [box, content, meta]);
           return true;
         },
-        ignoreMutation: (m) => !content.contains(m.target as globalThis.Node),
+        // Only this view's own drawing is ProseMirror's to ignore: the box, the date chip, and the attributes
+        // render() writes on the row. Anything else that changes in the row is the browser editing, above all
+        // WebKit's Return on an iPhone or iPad, which puts its new line beside the text holder (inside the
+        // row, outside the holder). Ignoring everything outside the holder hid that line from ProseMirror: the
+        // words after the caret left the note and Return came 200 ms late (test/editor-ios-return.test.ts).
+        ignoreMutation: (m) => ownDrawing(m, dom, [box, meta]),
       };
     };
   },
 });
+
+/**
+ * Whether a change in a block's element is the block view's own drawing (its controls, or an attribute on its
+ * row), which ProseMirror must not read back as an edit. See the to-do view for why this is not "anything
+ * outside the text".
+ */
+function ownDrawing(m: { type: string; target: globalThis.Node }, row: HTMLElement, controls: HTMLElement[]): boolean {
+  return controls.some((c) => c.contains(m.target)) || (m.type === "attributes" && m.target === row);
+}
+
+/**
+ * Takes out of a block's row whatever the browser put there (WebKit's line for Return, above): ProseMirror
+ * redraws what is inside the text holder, never what sits beside it.
+ */
+function onlyOwnParts(row: HTMLElement, parts: HTMLElement[]) {
+  if (row.childNodes.length === parts.length) return;
+  for (const child of [...row.childNodes]) if (!parts.includes(child as HTMLElement)) child.remove();
+}
 
 const REPEAT_SVG =
   '<svg class="fb-repeat-mark" aria-hidden="true" viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m17 2 4 4-4 4"/><path d="M3 11v-1a4 4 0 0 1 4-4h14"/><path d="m7 22-4-4 4-4"/><path d="M21 13v1a4 4 0 0 1-4 4H3"/></svg>';
@@ -376,7 +401,7 @@ export const Toggle = Node.create({
       btn.addEventListener("click", () => {
         const pos = typeof getPos === "function" ? getPos() : null;
         if (pos === null || pos === undefined) return;
-        editor.view.dispatch(editor.view.state.tr.setNodeMarkup(pos, undefined, { ...current.attrs, collapsed: !current.attrs.collapsed }).setMeta("addToHistory", false));
+        editor.view.dispatch(foldToggle(editor.view.state, pos, !current.attrs.collapsed));
       });
       return {
         dom,
@@ -385,9 +410,10 @@ export const Toggle = Node.create({
           if (updated.type.name !== "toggle") return false;
           current = updated;
           render();
+          onlyOwnParts(dom, [btn, content]);
           return true;
         },
-        ignoreMutation: (m) => !content.contains(m.target as globalThis.Node),
+        ignoreMutation: (m) => ownDrawing(m, dom, [btn]),
       };
     };
   },

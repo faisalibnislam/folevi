@@ -34,7 +34,7 @@ async function newAccountHere(page: Page, who: { email: string; name: string }, 
 
 async function makeNote(page: Page, title: string, body: string) {
   await page.goto(`${APP}/documents`);
-  await page.getByRole("button", { name: "New note", exact: true }).click();
+  await page.getByRole("button", { name: "New note", exact: true }).first().click();
   await page.getByRole("textbox", { name: "Title" }).fill(title);
   await page.keyboard.press("Enter");
   await page.keyboard.type(body);

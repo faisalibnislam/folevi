@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef } from "react";
 import type { Editor } from "@tiptap/core";
 import { closeHistory } from "@tiptap/pm/history";
 import type { Transaction } from "@tiptap/pm/state";
-import { asCanvasStep, travelCanvasStep } from "./noteUndo";
+import { asCanvasStep, endCanvasStep, travelCanvasStep } from "./noteUndo";
 
 /**
  * Asks every block that holds unsaved work of its own (a canvas, a drawing) to write it to the note now.
@@ -35,19 +35,20 @@ export function flushBlocks() {
  * Runs `flush` whenever this block's unsaved work could otherwise be lost or left behind: the page is being
  * hidden or closed, the window loses the keyboard, a press lands anywhere (the next gesture, or a click on
  * another note), and when the note asks (flushBlocks). The page's own last save listens for the same events
- * without `capture`, so these run first and their writes are in it.
+ * without `capture`, so these run first and their writes are in it. `flush` is handed the event, for a block
+ * that treats a press differently from a leave.
  */
-export function useLeaveFlush(flush: () => void) {
+export function useLeaveFlush(flush: (e?: Event) => void) {
   const ref = useRef(flush);
   ref.current = flush;
   useEffect(() => {
-    const run = () => ref.current();
-    const closing = () => {
+    const run = (e?: Event) => ref.current(e);
+    const closing = (e: Event) => {
       commitOpenField();
-      run();
+      run(e);
     };
-    const hidden = () => {
-      if (document.visibilityState === "hidden") run();
+    const hidden = (e: Event) => {
+      if (document.visibilityState === "hidden") run(e);
     };
     window.addEventListener("pagehide", closing, true);
     window.addEventListener("visibilitychange", hidden, true);
@@ -105,10 +106,22 @@ export function setBlockAttrs(editor: Editor, getPos: (() => number | undefined)
 
 /**
  * What a canvas says about a write: "live" is a change still being made (text being typed), "undo" and
- * "redo" are the canvas taking back or redoing its own change. Left out: a finished change.
+ * "redo" are the canvas taking back or redoing its own change, and "end" is no write at all: the change
+ * being made is finished and its last "live" save already holds all of it. Left out: a finished change.
+ * `me` on a shared board: the person whose change it is.
  */
 export interface CanvasWrite {
-  kind?: "live" | "undo" | "redo";
+  kind?: "live" | "undo" | "redo" | "end";
+  me?: string;
+}
+
+/**
+ * A block's own write of its `data` (and anything else in `attrs`) as one finished step of the note's undo,
+ * known to canvas/noteUndo.ts: the note's undo of it then takes back only what the step did, on the block as
+ * it is by then. For a block that saves through no document hook (the whiteboard).
+ */
+export function writeCanvasStep(editor: Editor, getPos: (() => number | undefined) | boolean | undefined, id: unknown, attrs: Record<string, unknown>): boolean {
+  return setBlockAttrs(editor, getPos, id, attrs, typeof id === "string" ? (tr) => asCanvasStep(editor, tr, id, true) : "step");
 }
 
 /**
@@ -126,6 +139,10 @@ export function useBlockDataWriter(props: { editor: Editor; getPos: (() => numbe
       const { editor, getPos, node } = ref.current;
       const id = node.attrs.id;
       const kind = how?.kind;
+      if (kind === "end") {
+        if (typeof id === "string") endCanvasStep(editor, id);
+        return;
+      }
       if (kind === "undo" || kind === "redo") {
         if (!shared && typeof id === "string" && travelCanvasStep(editor, id, data, kind === "undo")) return;
         setBlockAttrs(editor, getPos, id, { data }, "none");
@@ -136,7 +153,7 @@ export function useBlockDataWriter(props: { editor: Editor; getPos: (() => numbe
         return;
       }
       const last = kind !== "live";
-      const saved = setBlockAttrs(editor, getPos, id, { data }, (tr) => asCanvasStep(editor, tr, id, last));
+      const saved = setBlockAttrs(editor, getPos, id, { data }, (tr) => asCanvasStep(editor, tr, id, last, how?.me));
       // The change is finished: what is typed in the note right after is a step of its own.
       if (saved && last && !editor.isDestroyed) editor.view.dispatch(closeHistory(editor.state.tr).setMeta("addToHistory", false));
     },

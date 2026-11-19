@@ -930,6 +930,9 @@
    down under the app's bottom bar instead of stopping above it on the plain page colour. */
 :root[data-iphone] [data-iphone-scroll][data-native-chrome] { padding-bottom: 0; }
 :root[data-iphone] [data-iphone-scroll][data-native-chrome] > .fb-sheet { min-height: 100%; padding-bottom: calc(var(--native-inset-bottom, 0px) + 24px); }
+/* A field focused there (the title, a table's cell) scrolls clear of the app's bars and the keyboard, which lie
+   over the page (lib/native/bars.ts keeps the caret clear the same way). */
+:root[data-iphone] [data-iphone-scroll][data-native-chrome] { scroll-padding-top: calc(var(--native-inset-top, 0px) + 16px); scroll-padding-bottom: calc(var(--native-inset-bottom, 0px) + 16px); }
 :root[data-iphone][data-iphone-keyboard] [data-iphone-scroll][data-native-chrome] > .fb-sheet { padding-bottom: 66px; }
 /* A note without artwork fills the screen like a sheet of paper (no card on a grey backdrop). */
 :root[data-iphone] [data-iphone-plain] > .fb-sheet { max-width: none !important; min-height: 100%; border-radius: 0; box-shadow: none; padding-top: calc(env(safe-area-inset-top) + 40px); }
@@ -1450,7 +1453,12 @@
 }
 
 /* Plain, no page breaks: flat. (The page's own padding goes; the sheet keeps the room at its top and foot.) */
-.fb-page:not([data-backdrop]):not([data-iphone-scroll]):has(> .fb-sheet:not([data-pages])) { padding: 0; background: transparent !important; }
+/* The page says what it holds with attributes: [data-sheet-host] (it holds the note's sheet, set where it is
+   drawn) and [data-sheet-pages] (the sheet has page breaks, set by usePageBreakMask beside the sheet's own
+   [data-pages]). These rules used :has(> .fb-sheet ...) on the page: with it, every line added to or removed
+   from a long note made the browser work out the style of the whole note again (about 100 ms a key at 2,000
+   lines on a slow device; e2e/editor-long-note.spec.ts, test/css-selector-cost.test.ts). */
+.fb-page[data-sheet-host]:not([data-sheet-pages]):not([data-backdrop]):not([data-iphone-scroll]) { padding: 0; background: transparent !important; }
 .fb-page:not([data-backdrop]):not([data-iphone-scroll]) > .fb-sheet:not([data-pages]) {
   max-width: none !important;
   min-height: 100%;
@@ -1463,10 +1471,10 @@
   max-width: calc(var(--editor-width) + 8rem);
   margin-inline: auto;
 }
-.fb-page:not([data-backdrop]):not([data-iphone-scroll]):has(> .fb-sheet:not([data-pages])) > :not(.fb-sheet) { padding-inline: clamp(20px, 5.5cqi, 64px); }
+.fb-page[data-sheet-host]:not([data-sheet-pages]):not([data-backdrop]):not([data-iphone-scroll]) > :not(.fb-sheet) { padding-inline: clamp(20px, 5.5cqi, 64px); }
 
 /* Plain with page breaks: the pages as cards on the light grey backdrop (the Mac's card is otherwise white). */
-:root:is([data-mac-native], [data-ipad-native]) .fb-page:not([data-backdrop]):has(> .fb-sheet[data-pages]) { background: var(--color-surface-sunken) !important; }
+:root:is([data-mac-native], [data-ipad-native]) .fb-page[data-sheet-pages]:not([data-backdrop]) { background: var(--color-surface-sunken) !important; }
 
 /* The note's floating bar (Foli AI, Insert, Format, Style, Share): a larger, softer, lighter shadow than a
    popover's in light mode (the owner, 2026-11-18: it read as dark on white); dark mode keeps the popover's. */
@@ -1596,11 +1604,11 @@
    with the same very soft shadow, set in from the screen's edges by room that follows the width. The page's own
    room at its foot (under the app's bottom bar) moves outside the last card. Styled notes keep the iPhone's own
    look (the page edge to edge under its cover). */
-:root[data-iphone] [data-iphone-plain]:has(> .fb-sheet[data-pages]) { background: var(--color-surface-sunken) !important; }
+:root[data-iphone] [data-iphone-plain][data-sheet-pages] { background: var(--color-surface-sunken) !important; }
 /* In the dark the neutral sunken colour is a light wash, lighter than the page: on the iPhone and in the iPad app
    the backdrop is the app's darkest colour instead, so the cards still sit above it (as iOS's grouped screens). */
-:root[data-iphone][data-theme="dark"] [data-iphone-plain]:has(> .fb-sheet[data-pages]),
-:root[data-native="ios"][data-theme="dark"] .fb-page:not([data-backdrop]):not([data-iphone-scroll]):has(> .fb-sheet[data-pages]) { background: var(--color-canvas) !important; }
+:root[data-iphone][data-theme="dark"] [data-iphone-plain][data-sheet-pages],
+:root[data-native="ios"][data-theme="dark"] .fb-page[data-sheet-pages]:not([data-backdrop]):not([data-iphone-scroll]) { background: var(--color-canvas) !important; }
 :root[data-iphone] [data-iphone-plain] > .fb-sheet[data-pages] {
   min-height: 0;
   margin: 12px clamp(10px, 3.2cqi, 24px) calc(var(--native-inset-bottom, 0px) + 24px);

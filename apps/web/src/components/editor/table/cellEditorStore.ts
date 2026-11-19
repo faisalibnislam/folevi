@@ -39,3 +39,13 @@ export function useActiveCellEditor(note?: Editor | null): Editor | null {
   if (!cell || (note && cell.note !== note)) return null;
   return cell.editor;
 }
+
+/**
+ * Whether an input method is composing in the open table cell (its text is marked, not yet final). The note
+ * holds changes from other devices back while the note itself is composing; a cell's editor is a separate
+ * one, so the note asks here too.
+ */
+export function cellComposing(): boolean {
+  const cell = activeCell();
+  return Boolean(cell && cell.editor.view.composing);
+}

@@ -6,7 +6,7 @@ test("copy a Personal note to a workspace and open the copy there", async ({ bro
   await createWorkspace(page, "Acme Studio");
   await switchTo(page, "Personal");
 
-  await page.getByRole("button", { name: "New note", exact: true }).click();
+  await page.getByRole("button", { name: "New note", exact: true }).first().click();
   await page.waitForURL(/\/d\/[0-9A-Z]{26}\?new=1/);
   const original = page.url().match(/\/d\/([0-9A-Z]{26})/)![1]!;
   await page.getByRole("textbox", { name: "Title" }).fill("Trip plan");

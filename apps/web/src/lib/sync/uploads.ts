@@ -67,7 +67,90 @@ export function onFileUploaded(listener: (file: UploadedFile) => void): () => vo
   };
 }
 
+/** A file this device gave up uploading for good (the server won't ever take it), with its bytes. */
+export interface AbandonedUpload {
+  documentId: string;
+  blockId: string;
+  kind: "image" | "file" | "audio";
+  filename: string;
+  mimeType: string;
+  blob: Blob;
+  /** What is shown about it. */
+  message: string;
+}
+const abandonedListeners = new Set<(file: AbandonedUpload) => void>();
+
+/**
+ * Hears every file the uploader lets go for good, just before its saved copy is deleted: the last moment its
+ * bytes can be offered back (a recording saved to the downloads rather than lost). Returns the function that
+ * stops listening.
+ */
+export function onUploadAbandoned(listener: (file: AbandonedUpload) => void): () => void {
+  abandonedListeners.add(listener);
+  return () => {
+    abandonedListeners.delete(listener);
+  };
+}
+
+/** The files this device finished uploading in this session, by the block they belong to (newest last). */
+const completed = new Map<string, { documentId: string; fileId: string }>();
+const COMPLETED_KEPT = 500;
+
+/**
+ * The file a block's upload ended with, when it finished on this device in this session. For a block that was
+ * taken out (undo) while its file was still uploading: the upload carries on and finishes with no block to
+ * write its file's id into, and a redo brings the block back without one. Whoever restores the block asks here.
+ */
+export function completedUploadFor(documentId: string, blockId: string): string | null {
+  const hit = completed.get(blockId);
+  return hit && hit.documentId === documentId ? hit.fileId : null;
+}
+
+function rememberCompleted(documentId: string, blockId: string, fileId: string) {
+  completed.delete(blockId);
+  completed.set(blockId, { documentId, fileId });
+  for (const old of completed.keys()) {
+    if (completed.size <= COMPLETED_KEPT) break;
+    completed.delete(old);
+  }
+}
+
+/**
+ * A picture's own size in pixels, read from its bytes before anything is uploaded, so the block can say how tall
+ * it will be from the start (an image block's naturalWidth and naturalHeight: the page keeps its place while
+ * the picture loads). Null when it can't be read (not a picture this browser draws).
+ */
+export async function imageFileSize(file: Blob): Promise<{ width: number; height: number } | null> {
+  try {
+    if (typeof createImageBitmap === "function") {
+      const bitmap = await createImageBitmap(file);
+      const size = { width: bitmap.width, height: bitmap.height };
+      bitmap.close();
+      return size.width > 0 && size.height > 0 ? size : null;
+    }
+  } catch {
+    // Not decodable this way: the element below has the last word.
+  }
+  if (typeof Image === "undefined" || typeof URL.createObjectURL !== "function") return null;
+  const url = URL.createObjectURL(file);
+  try {
+    return await new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => resolve(img.naturalWidth > 0 && img.naturalHeight > 0 ? { width: img.naturalWidth, height: img.naturalHeight } : null);
+      img.onerror = () => resolve(null);
+      img.src = url;
+    });
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+
 const objectUrls = new Map<string, string>();
+/**
+ * How long an upload's preview stays after the upload is done: time for a view that shows it to change to
+ * the server's address (it lets go of it itself then). After that it goes whether a view is there or not.
+ */
+export const PREVIEW_RELEASE_MS = 60_000;
 
 /** A local preview URL for an upload that hasn't reached the server yet. */
 export async function localPreviewUrl(accountKey: string, uploadId: string): Promise<string | null> {
@@ -129,17 +212,40 @@ export async function enqueueUpload(
 /** How often an upload for a page still on its way looks again (a local check, nothing sent). */
 const PAGE_WAIT_MS = 1000;
 
+/** The uploaders at work (one per signed-in account), for retryUploads. */
+const uploaders = new Set<Uploader>();
+
+/**
+ * Tries every waiting upload again now, whatever wait its failed tries had earned ("Retry now" on a block
+ * whose upload was interrupted).
+ */
+export function retryUploads(): void {
+  for (const u of uploaders) u.retryNow();
+}
+
 export class Uploader {
   private running = false;
   /** A kick that arrived while a pass was running: run again right after it (new uploads aren't missed). */
   private rerun = false;
   private timer: ReturnType<typeof setTimeout> | null = null;
+  /**
+   * The next pass tries every upload, waited out or not. True at the start (the wait a failed try earned was
+   * for the connection of that moment: an app opened again starts fresh) and whenever the connection comes
+   * back or the person asks.
+   */
+  private eager = true;
+  private readonly onOnline = () => this.retryNow();
+
   constructor(
     private client: FoleviClient,
     private accountKey: string,
     private engine: SyncEngine,
     private onError: (message: string) => void,
-  ) {}
+  ) {
+    uploaders.add(this);
+    // Back in coverage: the uploads that failed while it was away go now, not when their wait runs out.
+    if (typeof window !== "undefined") window.addEventListener("online", this.onOnline);
+  }
 
   /** Set once the account's engine is torn down: a pass still running then must not schedule another. */
   private stopped = false;
@@ -150,10 +256,18 @@ export class Uploader {
     this.timer = setTimeout(() => void this.run(), delay);
   }
 
+  /** Tries every waiting upload now, setting aside the wait its failed tries had earned. */
+  retryNow() {
+    this.eager = true;
+    this.kick(0);
+  }
+
   stop() {
     this.stopped = true;
     if (this.timer) clearTimeout(this.timer);
     this.timer = null;
+    uploaders.delete(this);
+    if (typeof window !== "undefined") window.removeEventListener("online", this.onOnline);
   }
 
   /** Two-phase upload: an authorized short-lived address, the bytes, then the server's check of them. */
@@ -184,17 +298,21 @@ export class Uploader {
     }
     this.running = true;
     this.rerun = false;
+    const eager = this.eager;
+    this.eager = false;
     try {
       const db = await localDb(this.accountKey);
       // The engine (and its upload records) is account-wide: process every queued upload, whatever workspace is selected.
-      const all = await db.getAll("uploads");
+      // Smallest first: they go one at a time, and a long recording shouldn't hold up the photos behind it.
+      const all = (await db.getAll("uploads")).sort((a, b) => a.size - b.size);
       let soonest = Infinity;
       for (const u of all) {
         if (!this.engine.state.uploads.some((x) => x.uploadId === u.uploadId)) {
           await db.delete("uploads", u.uploadId);
+          releaseLocalPreview(u.uploadId);
           continue;
         }
-        if (u.nextAttemptAt > Date.now()) {
+        if (!eager && u.nextAttemptAt > Date.now()) {
           soonest = Math.min(soonest, u.nextAttemptAt);
           continue;
         }
@@ -207,9 +325,13 @@ export class Uploader {
           const result = local
             ? await local.putFile(u.blob, { name: u.filename, mimeType: u.mimeType, kind: u.kind, documentId: u.documentId })
             : await this.uploadToServer(u);
+          rememberCompleted(u.documentId, u.blockId, result.fileId);
           this.engine.uploadCompleted(u.uploadId, result.fileId);
           for (const listener of uploadedListeners) listener({ documentId: u.documentId, blockId: u.blockId, fileId: result.fileId, kind: u.kind, mimeType: result.mimeType, blob: u.blob });
           await db.delete("uploads", u.uploadId);
+          // Its preview (and the file it holds in memory) goes too, even when no view is left to let go of it.
+          const uploadId = u.uploadId;
+          setTimeout(() => releaseLocalPreview(uploadId), PREVIEW_RELEASE_MS);
         } catch (e) {
           const code = (e as { data?: { code?: string; message?: string } }).data;
           const attempts = u.attempts + 1;
@@ -219,9 +341,19 @@ export class Uploader {
           // knows: it was deleted, or access went. A network failure or the server having a moment never counts.
           const gone = (code?.code === "not_found" || code?.code === "forbidden") && attempts >= 8;
           if (permanent || gone) {
-            this.onError(code?.message ?? `“${u.filename}” couldn't be uploaded.`);
+            const message = code?.message ?? `“${u.filename}” couldn't be uploaded.`;
+            this.onError(message);
+            // The bytes are about to go: whoever can still keep them (a recording, to the downloads) hears first.
+            for (const listener of abandonedListeners) {
+              try {
+                listener({ documentId: u.documentId, blockId: u.blockId, kind: u.kind, filename: u.filename, mimeType: u.mimeType, blob: u.blob, message });
+              } catch {
+                // A listener's own trouble never keeps the queue from moving on.
+              }
+            }
             this.engine.abandonUpload(u.uploadId);
             await db.delete("uploads", u.uploadId);
+            releaseLocalPreview(u.uploadId);
           } else {
             const delay = Math.min(60_000 * 10, 2000 * 2 ** attempts);
             await db.put("uploads", { ...u, attempts, nextAttemptAt: Date.now() + delay });

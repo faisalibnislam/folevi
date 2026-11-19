@@ -36,7 +36,7 @@ async function paste(page: Page, clip: Clip) {
 }
 
 async function newNote(page: Page, title: string) {
-  await page.getByRole("button", { name: "New note", exact: true }).click();
+  await page.getByRole("button", { name: "New note", exact: true }).first().click();
   await page.waitForURL(/\/d\/[0-9A-Z]{26}\?new=1/);
   // The new note's own (empty, focused) title, not the previous note's still on screen.
   const field = page.getByRole("textbox", { name: "Title" });

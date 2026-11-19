@@ -7,8 +7,8 @@ import { join } from "node:path";
 import { describe, expect, test } from "vitest";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { normalizeChart, type ChartData } from "@folevi/editor-schema";
-import { categoryModel, colorTargets, orgModel, sliceModel, vennModel } from "@/components/editor/chart/model";
+import { LIMITS, normalizeChart, parseChart, serializeChart, type ChartData } from "@folevi/editor-schema";
+import { categoryModel, colorTargets, orgModel, sliceModel, storedChart, vennModel } from "@/components/editor/chart/model";
 import { distanceFor, drawChart, lensArea } from "@/components/editor/chart/draw";
 import { chartSvg, exportScene } from "@/components/editor/chart/svg";
 import { columnUnit, fitText, formatCompact, formatValue, niceTicks } from "@/components/editor/chart/format";
@@ -23,6 +23,31 @@ import { CHART_KINDS } from "@folevi/editor-schema";
 const chart = (o: Record<string, unknown>): ChartData => normalizeChart(o);
 const SALES = chart({ kind: "bar", title: "Sign ups", columns: ["Month", "Web", "iPhone"], rows: [["Jan", 120, 40], ["Feb", 150, 62], ["Mar", 310, 90]] });
 const text = (o: unknown[]) => o.map((c) => [{ type: "text", text: String(c) }]);
+
+describe("a chart with more data than it can hold (the 2026-11-19 canvas audit, V12)", () => {
+  // A text-heavy sheet pasted into the data grid: 400 rows of 6 cells of 90 characters.
+  const cell = "x".repeat(90);
+  const pasted = chart({ kind: "bar", columns: ["A", "B", "C", "D", "E", "F"], rows: Array.from({ length: 400 }, () => Array.from({ length: 6 }, () => cell)) });
+
+  test("is not stored: read back it would be an empty chart, which the next edit would save over the data", () => {
+    expect(serializeChart(pasted).length).toBeGreaterThan(LIMITS.maxChartDataLength);
+    expect(parseChart(serializeChart(pasted)).rows).toEqual([]);
+    expect(storedChart(pasted)).toBeNull();
+    // One that fits is stored as it always was.
+    expect(storedChart(SALES)).toBe(serializeChart(SALES));
+  });
+
+  test("the chart's one write goes through that check", () => {
+    const source = readFileSync(join(__dirname, "../src/components/editor/chart/ChartView.tsx"), "utf8");
+    const write = source.slice(source.indexOf("const write = useCallback("), source.indexOf("const update = useCallback("));
+    expect(write).toContain("storedChart(next)");
+    expect(write).toMatch(/if \(nextData === null\) \{[\s\S]*?return;/);
+    expect(write).not.toContain("serializeChart(");
+    // And nothing else in the chart writes its data to the block.
+    expect(source.match(/data: nextData/g)).toHaveLength(1);
+    expect(source.match(/setNodeMarkup\(/g)).toHaveLength(2);
+  });
+});
 
 describe("what each kind reads", () => {
   test("categories and series: number columns only, sorted on request, colours by name", () => {

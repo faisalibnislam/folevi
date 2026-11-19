@@ -9,7 +9,7 @@ const strip = (page: Page) => page.locator(".fb-editor").getByRole("tablist", { 
 const tab = (page: Page, name: string) => strip(page).getByRole("tab", { name, exact: true });
 
 async function newNoteWithTabs(page: Page, title: string) {
-  await page.getByRole("button", { name: "New note", exact: true }).click();
+  await page.getByRole("button", { name: "New note", exact: true }).first().click();
   await page.waitForURL(/\/d\/[0-9A-Z]{26}\?new=1/);
   await page.keyboard.type(title);
   await page.keyboard.press("Enter");

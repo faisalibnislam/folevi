@@ -24,7 +24,7 @@ test("Ask AI answers from your notes, with sources", async ({ browser }) => {
 
 test("rewrite a selection and write from a prompt in a note", async ({ browser }) => {
   const { page } = await newPerson(browser, "Writer Tester");
-  await page.getByRole("button", { name: "New note", exact: true }).click();
+  await page.getByRole("button", { name: "New note", exact: true }).first().click();
   await page.waitForURL(/\/d\/[0-9A-Z]{26}\?new=1/);
   await page.getByRole("textbox", { name: "Title" }).fill("AI test");
   await page.keyboard.press("Enter");
@@ -70,7 +70,7 @@ test("rewrite a selection and write from a prompt in a note", async ({ browser }
 
 test("AI text streams in word by word, and Stop keeps what's written so far", async ({ browser }) => {
   const { page } = await newPerson(browser, "Stream Tester");
-  await page.getByRole("button", { name: "New note", exact: true }).click();
+  await page.getByRole("button", { name: "New note", exact: true }).first().click();
   await page.waitForURL(/\/d\/[0-9A-Z]{26}\?new=1/);
   await page.getByRole("textbox", { name: "Title" }).fill("Streaming");
   await page.keyboard.press("Enter");

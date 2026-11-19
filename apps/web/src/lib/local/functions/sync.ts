@@ -72,6 +72,28 @@ class LocalSync {
     return (this.seq ??= await this.ctx.nextSeq());
   }
 
+  /**
+   * How many blocks each note holds that aren't deleted: counted once in a batch, then kept up as the batch
+   * adds, deletes and restores. (Every new block used to count them by reading a copy of each block of the
+   * note, so a paste of 2,000 lines made four million copies and kept the page busy for half a minute.)
+   */
+  private live = new Map<string, number>();
+
+  private async liveCount(documentId: string): Promise<number> {
+    let n = this.live.get(documentId);
+    if (n === undefined) {
+      n = (await liveBlocks(this.ctx.db, documentId)).length;
+      this.live.set(documentId, n);
+    }
+    return n;
+  }
+
+  /** A block of the note came (1) or went (-1); nothing to keep up when the note hasn't been counted yet. */
+  private counted(documentId: string, by: number) {
+    const n = this.live.get(documentId);
+    if (n !== undefined) this.live.set(documentId, n + by);
+  }
+
   async applyAll(ops: SyncOp[]): Promise<PushResult[]> {
     if (ops.length > MAX_BATCH) fail("limit_exceeded", `At most ${MAX_BATCH} operations per batch.`);
     const results: PushResult[] = [];
@@ -175,9 +197,10 @@ class LocalSync {
     const now = this.ctx.now();
 
     if (!existing) {
-      if ((await liveBlocks(this.ctx.db, doc.id)).length >= LIMITS.maxBlocksPerDocument) fail("limit_exceeded", "This document has too many blocks.");
+      if ((await this.liveCount(doc.id)) >= LIMITS.maxBlocksPerDocument) fail("limit_exceeded", "This document has too many blocks.");
       const row: LocalBlock = { ...incoming, documentId: doc.id, parentId, revision: 1, contentRev: 1, positionRev: 1, seq, deletedAt: null, createdAt: now, updatedAt: now, updatedByDevice: this.device };
       this.ctx.db.put("blocks", row.id, row, doc.id);
+      this.counted(doc.id, 1);
       this.touch(doc.id, row.id);
       return { opId: op.opId, status: "applied", revision: 1, block: toWireBlock(row), deleted: false, normalized: normalized || undefined };
     }
@@ -199,6 +222,7 @@ class LocalSync {
     }
     const revision = existing.revision + 1;
     const row: LocalBlock = { ...existing, revision, seq, updatedAt: now, deletedAt: null, updatedByDevice: this.device };
+    if (revived) this.counted(doc.id, 1);
     if (wantsContent) {
       row.type = incoming.type;
       row.schemaVersion = incoming.schemaVersion;
@@ -245,10 +269,12 @@ class LocalSync {
     const gone: LocalBlock = { ...row, deletedAt: now, revision, positionRev: revision, seq, updatedAt: now, updatedByDevice: this.device };
     this.ctx.db.put("blocks", gone.id, gone, doc.id);
     this.touch(doc.id, gone.id);
+    this.counted(doc.id, -1);
     for (const child of await this.subtree(doc.id, row.id)) {
       if (child.deletedAt !== null) continue;
       this.ctx.db.put("blocks", child.id, { ...child, deletedAt: now, revision: child.revision + 1, seq, updatedAt: now, updatedByDevice: this.device }, doc.id);
       this.touch(doc.id, child.id);
+      this.counted(doc.id, -1);
     }
     return { opId: op.opId, status: "applied", revision, block: toWireBlock(gone), deleted: true };
   }
@@ -270,10 +296,12 @@ class LocalSync {
     const back: LocalBlock = { ...row, deletedAt: null, parentId, revision, positionRev: revision, seq, updatedAt: now, updatedByDevice: this.device };
     this.ctx.db.put("blocks", back.id, back, doc.id);
     this.touch(doc.id, back.id);
+    this.counted(doc.id, 1);
     for (const child of await this.subtree(doc.id, row.id)) {
       if (child.deletedAt !== deletedAt) continue;
       this.ctx.db.put("blocks", child.id, { ...child, deletedAt: null, revision: child.revision + 1, seq, updatedAt: now, updatedByDevice: this.device }, doc.id);
       this.touch(doc.id, child.id);
+      this.counted(doc.id, 1);
     }
     return { opId: op.opId, status: "applied", revision, block: toWireBlock(back), deleted: false, normalized: parentId !== row.parentId || undefined };
   }

@@ -1,7 +1,7 @@
 // What a chart's table means for each kind of chart: categories and series (bar, line, area), points
 // (scatter, bubble), slices (pie, donut), people (org chart) and sets (Venn). Pure: the drawing (draw.ts),
 // the editor and the tests read the same model.
-import { chartCellText, chartNumber, type ChartCell, type ChartColor, type ChartData } from "@folevi/editor-schema";
+import { LIMITS, chartCellText, chartNumber, serializeChart, type ChartCell, type ChartColor, type ChartData } from "@folevi/editor-schema";
 import { columnUnit, type Unit } from "./format";
 import { seriesColor } from "./palette";
 
@@ -19,6 +19,16 @@ export interface CategoryModel {
   series: Series[];
   /** Each category's row in the table (after sorting). */
   rows: number[];
+}
+
+/**
+ * The chart as it is stored, or null when it is too large to store. Over the limit a chart reads back as an
+ * empty one (parseChart), and the next edit would then save that empty chart over the data: so a chart that
+ * large is never written (a big sheet pasted into the data grid).
+ */
+export function storedChart(chart: ChartData): string | null {
+  const data = serializeChart(chart);
+  return data.length > LIMITS.maxChartDataLength ? null : data;
 }
 
 const label = (c: ChartCell | undefined, i: number) => chartCellText(c ?? null).trim() || `Row ${i + 1}`;

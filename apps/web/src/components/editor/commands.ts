@@ -30,6 +30,11 @@ export function blocksInSelection(state: EditorState): BlockRef[] {
     // A range ending exactly where the next block starts (a selected image or divider) doesn't include it.
     if (end > from && (offset < to || (empty && offset <= to))) out.push({ node, pos: offset, index });
   });
+  // A text selection that only reaches the very start of its last line (Shift+Down from the start of a line,
+  // a selection handle dragged to the start of the next) has nothing of that line in it: Tab, Turn into,
+  // Duplicate, Delete and the formats changed a line that showed no selection. (A selection that starts at
+  // the very end of a line does hold that line's end, so the line counts, as in other editors.)
+  if (!empty && state.selection instanceof TextSelection && out.length > 1 && to <= out[out.length - 1]!.pos + 1) out.pop();
   if (!out.length) {
     const $from = state.selection.$from;
     const index = Math.min($from.index(0), state.doc.childCount - 1);
@@ -640,4 +645,24 @@ export function focusInsideBlock(editor: Editor, pos: number) {
     const dom = editor.view.nodeDOM(pos) as HTMLElement | null;
     dom?.querySelector?.<HTMLElement>("[data-enter-focus]")?.focus();
   });
+}
+
+/**
+ * The caret at the end of the note, for a click or a tap on the empty paper under it: at the end of its last
+ * line, or on a new line when the note ends in something that can't be written in (a picture, a table, a
+ * canvas) or in lines that are folded away. On a phone that was the only way, short of Insert, to start a
+ * line under such a block.
+ */
+export function focusEndOfNote(editor: Editor): boolean {
+  if (!editor.isEditable) return false;
+  const { doc, schema } = editor.state;
+  const last = doc.lastChild;
+  const lastIndex = doc.childCount - 1;
+  const writable = last && last.isTextblock && last.type.name !== "codeBlock" && !hiddenIndices(editor.state).has(lastIndex);
+  const tr = editor.state.tr;
+  if (!writable) tr.insert(doc.content.size, schema.nodes.paragraph!.create({ id: null, depth: 0 }));
+  tr.setSelection(TextSelection.create(tr.doc, tr.doc.content.size - 1));
+  editor.view.dispatch(tr.scrollIntoView());
+  editor.view.focus();
+  return true;
 }

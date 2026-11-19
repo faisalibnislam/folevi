@@ -30,7 +30,7 @@ import type { SideDrop } from "./columns/columnsLayout";
 import { closeHistory } from "@tiptap/pm/history";
 import { SYNCED_BODY_ATTR } from "./synced/nested";
 import { useAiEnabled } from "@/components/ai/useAi";
-import { flushBlocks } from "./canvas/leaveFlush";
+import { FLUSH_BLOCKS_EVENT, commitOpenField, flushBlocks } from "./canvas/leaveFlush";
 import { ownSpelling } from "@/lib/spelling/web";
 import { keepNoteHistory, restoreNoteHistory } from "./historyKeep";
 
@@ -405,16 +405,25 @@ export const Editor = forwardRef<EditorHandle, Props>(function Editor(
     // The iPhone and iPad app leaving the front (bridge.js says so; a web view's visibilitychange may come
     // late there, or never before iOS suspends the app): the note's canvases write what they hold, then the
     // note saves, as when it closes.
+    // (Asked to write, not to end the edit: the app is often back a moment later, a notification pulled down
+    // or Control Center, and a field being typed in should still have the keyboard.)
     const onAppInactive = () => {
-      flushBlocks();
+      window.dispatchEvent(new CustomEvent(FLUSH_BLOCKS_EVENT));
+      onHide();
+    };
+    // The page is going away (a tab closed, the Mac app quitting): a field still being typed in inside a block
+    // (a caption, a formula) ends its edit first, so its text is the block's before the note saves. That used
+    // to depend on the note having a canvas in it, whose own leave rules did it for every block.
+    const onPageHide = () => {
+      commitOpenField();
       onHide();
     };
     document.addEventListener("visibilitychange", onHide);
-    window.addEventListener("pagehide", onHide);
+    window.addEventListener("pagehide", onPageHide);
     window.addEventListener("folevi:app-inactive", onAppInactive);
     return () => {
       document.removeEventListener("visibilitychange", onHide);
-      window.removeEventListener("pagehide", onHide);
+      window.removeEventListener("pagehide", onPageHide);
       window.removeEventListener("folevi:app-inactive", onAppInactive);
       // The note is closing: its canvases write what they still hold (their views are already down, so
       // they write by block id), and the last save below takes it along.

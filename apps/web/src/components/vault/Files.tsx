@@ -242,6 +242,12 @@ function NoteDialog({ vaultId, entry, custodian, onClose }: { vaultId: string; e
   const [edited, setEdited] = useState<{ doc: unknown; text: string } | null>(null);
   const [revision, setRevision] = useState(entry.row.revision);
   const [canChange, setCanChange] = useState(false);
+  // Close, Escape and a click outside ask first while something typed has not been saved (they used to throw it
+  // away without a word).
+  const [discarding, setDiscarding] = useState(false);
+  const editedRef = useRef(edited);
+  editedRef.current = edited;
+  const close = () => (editedRef.current ? setDiscarding(true) : onClose());
   // The note's item key as opened, kept across saves so whoever it's shared with still opens it.
   const [wrap, setWrap] = useState<{ keyVersion: number; wrappedKey: ArrayBuffer } | null>(null);
   useEffect(() => {
@@ -257,7 +263,7 @@ function NoteDialog({ vaultId, entry, custodian, onClose }: { vaultId: string; e
   return (
     <Dialog
       open
-      onClose={onClose}
+      onClose={close}
       title={entry.title}
       size="lg"
       footer={
@@ -272,7 +278,7 @@ function NoteDialog({ vaultId, entry, custodian, onClose }: { vaultId: string; e
               Share
             </Button>
           ) : null}
-          <Button onClick={onClose}>Close</Button>
+          <Button onClick={close}>Close</Button>
           {canChange ? (
             <Button
               variant="primary"
@@ -280,10 +286,12 @@ function NoteDialog({ vaultId, entry, custodian, onClose }: { vaultId: string; e
               onClick={() =>
                 void (async () => {
                   if (!edited) return;
+                  const sent = edited;
                   const version = s.currentVersion(vaultId)!;
                   const r = await save({ vaultId, itemId: entry.id, baseRevision: revision, item: await sealNote(vaultId, entry.id, version, s.keys(vaultId), entry.title, edited.doc, edited.text.replace(/\s+/g, " ").trim().slice(0, 160), wrap ? { ...wrap, keys: s.keys(vaultId, wrap.keyVersion) } : undefined), client: s.info(vaultId) });
                   setRevision(r.revision);
-                  setEdited(null);
+                  // (What was typed while this was being saved is still to save.)
+                  setEdited((now) => (now === sent ? null : now));
                   toast.show("Saved");
                 })().catch((e) => toast.show(errorMessage(e), { tone: "error" }))
               }
@@ -311,6 +319,24 @@ function NoteDialog({ vaultId, entry, custodian, onClose }: { vaultId: string; e
           }}
           onClose={() => setSharing(false)}
         />
+      ) : null}
+      {discarding ? (
+        <Dialog
+          open
+          onClose={() => setDiscarding(false)}
+          title="Discard changes?"
+          size="sm"
+          footer={
+            <>
+              <Button onClick={() => setDiscarding(false)}>Keep writing</Button>
+              <Button variant="primary" onClick={onClose}>
+                Discard
+              </Button>
+            </>
+          }
+        >
+          <p className="text-callout text-muted">What you wrote in this note since it was last saved will be lost.</p>
+        </Dialog>
       ) : null}
       {movingOut ? (
         <Dialog

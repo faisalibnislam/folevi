@@ -228,7 +228,8 @@ export function DocumentView({ documentId }: { documentId: string }) {
     setInspectorOpen(true);
   }, [wantsRelated, canRelate, documentId, setInspectorTab, setInspectorOpen]);
   const [panelWidth, setPanelWidth] = useLocalStorage<number>("folevi:inspector-width", PANEL_DEFAULT);
-  const narrowWindow = useMediaQuery(narrowWindowQuery(macNativeFrame));
+  // (The iPad's wide layout is the Mac's: the page is only the card beside the native sidebar.)
+  const narrowWindow = useMediaQuery(narrowWindowQuery(macNativeFrame || ipadNativeWide));
   // The note and its tools panel side by side: the panel slides over the note when the note would get too
   // narrow to write in beside it (a joined note, a narrow window; QA audit F02).
   const [noteRow, setNoteRow] = useState<HTMLDivElement | null>(null);
@@ -241,6 +242,13 @@ export function DocumentView({ documentId }: { documentId: string }) {
   useLayoutEffect(() => {
     setNarrowHold(holdRef.current);
   }, [documentId]);
+  // The iPad's wide layout hands the page to the note's card only as the note shows, so its first size can be a
+  // passing one: it asks again once the card has laid it out.
+  useEffect(() => {
+    if (!ipadNativeWide) return;
+    const t = window.setTimeout(() => setNarrowHold(holdRef.current), 300);
+    return () => window.clearTimeout(t);
+  }, [documentId, ipadNativeWide]);
   // The comment thread floating under a block (threadId null: the block's latest open thread, or a new one).
   const [openThread, setOpenThread] = useState<{ blockId: string; threadId: string | null } | null>(null);
   // A thread to open inside the Comments panel (on the whole note or a deleted block).

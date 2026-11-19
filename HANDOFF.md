@@ -47,11 +47,14 @@ The owner moves secrets between Macs; never copy their values into files or chat
 ## 9. Current state (as of 2026-11-19)
 - `main` = Release 1.5.53, tag `v1.5.53`: the Foli AI tab on iPhone (branch `ios-ai-tab`), iPhone Duo support and the shorter first-launch copy (branch `claude/iphone-duo-18adb4`), and the marketing pages brought up to date (branch `claude/marketing-pages-091dac`), merged on `release-1.5.53`.
 - iPhone Duo: on the inner screen the tabs are a sidebar and the open note shows beside its list (half open, split on the fold); folding keeps the note open with Back to its list, and the caret, text and keyboard carry over; on iPhone Duo the note's buttons are iOS's side-bar items. Checked on the iPhone Duo simulator in every posture except Split View halves and tabletop. Owner's picks: `docs/claude-context/memory/iphone-duo-decisions.md`.
+- Branch `ios-sync-status` (not merged, not released): the sync status on iPhone Home, a cloud before the bell in the top right pill (signed in only), with its details in a sheet (`apps/ios/ios/App/Native/Rebuild/RebuildSync.swift`). Checked in the simulator with `FOLEVI_REBUILD_SYNC=1`; not yet seen signed in.
+- The tab bar's collapse on scroll is iOS 27's own (about 130 ms, checked frame by frame on the owner's recording, the simulator and a bare SwiftUI app; no 1.5.53 change affects it). Waiting on the owner: keep it, or draw Folevi's own bar with a slower glass morph.
 - The note editor session works in the main checkout on `editor/rock-solid` (pull request 40).
 - Known: one Mac test fails every time (`TabPreviewStateTests.enteringTheNextTabBeforeLeavingThisOneStillShowsIt`), in code no recent change touched. The Mac filter field hasn't been typed into in the real app. Nothing in 1.5.50 to 1.5.53 has been tried on a real iPhone Duo.
 - Many older worktrees under `.claude/worktrees/` hold merged or abandoned work; see `docs/HANDOFF.md` section 2 before removing any.
 
 ## 10. Next steps / open work
+- Merge and release `ios-sync-status` when the owner says so; the owner's pick on the tab bar collapse.
 - iPhone Duo follow-ups: Folevi's own menus (PhoneMenuLayer) don't avoid the fold yet; check Split View halves on a real device.
 - The failing Mac tab preview test.
 - The owner's open items: `docs/HANDOFF.md` section 7.
@@ -62,6 +65,7 @@ The owner moves secrets between Macs; never copy their values into files or chat
 - CI's first step runs `node scripts/icons-codegen.mjs --check`: regenerate `Icons.swift` after adding a web icon.
 
 ## 12. Change log
+- 2026-11-19: Sync status on iPhone Home (branch `ios-sync-status`); the tab bar collapse traced to iOS itself.
 - 2026-11-19: Released 1.5.53 (Foli AI tab, iPhone Duo, shorter first-launch copy, marketing pages).
 - 2026-11-19: Shorter first-launch copy (where notes live, where the library lives, the passphrase card) on web, Mac, iPhone and iPad, on branch `claude/iphone-duo-18adb4`.
 - 2026-11-19: iPhone Duo support on branch `claude/iphone-duo-18adb4` (PhoneColumns, PhoneSideBars, NotePageSlot).

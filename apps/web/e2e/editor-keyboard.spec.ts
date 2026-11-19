@@ -8,7 +8,7 @@ const blocks = (page: Page) => page.locator(".fb-editor > *");
 const texts = async (page: Page) => (await blocks(page).allTextContents()).map((t) => t.trim());
 
 async function newPage(page: Page, title: string, lines: string[] = []) {
-  await page.getByRole("button", { name: "New note", exact: true }).click();
+  await page.getByRole("button", { name: "New note", exact: true }).first().click();
   await page.waitForURL(/\/d\/[0-9A-Z]{26}\?new=1/);
   const t = page.getByRole("textbox", { name: "Title" });
   await expect(t).toBeFocused();

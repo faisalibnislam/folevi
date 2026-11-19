@@ -21,3 +21,24 @@ export function takeNoteAiAsk(): string | null {
   pendingAsk = null;
   return p;
 }
+
+// Every note opens with its tools panel on Foli AI. A panel that came up with the note was not asked for: its
+// composer leaves the keyboard where it is (a new note's title has the caret then, and it used to lose it to
+// the composer, so what was typed went into Foli AI's field). Asked for (its button, ⌘J, a tab chosen), the
+// composer takes the keyboard as before.
+let quietFor: string | null = null;
+
+/** The note page opened: its Foli AI panel, if it shows by default, does not take the keyboard. */
+export function noteAiOpensQuietly(documentId: string): void {
+  quietFor = documentId;
+}
+
+/** The person asked for the panel (or chose a tab in it). */
+export function noteAiAsked(): void {
+  quietFor = null;
+}
+
+/** Whether the note's Foli AI composer may take the keyboard as it appears. */
+export function noteAiTakesKeyboard(documentId: string): boolean {
+  return quietFor !== documentId;
+}

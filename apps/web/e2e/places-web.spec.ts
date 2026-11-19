@@ -15,7 +15,7 @@ async function openSwitcher(page: Page) {
 /** Makes a note with this title in the open place. */
 async function makeNote(page: Page, title: string) {
   await page.goto(`${APP}/documents`);
-  await page.getByRole("button", { name: "New note", exact: true }).click();
+  await page.getByRole("button", { name: "New note", exact: true }).first().click();
   const field = page.getByRole("textbox", { name: "Title" });
   await field.fill(title);
   await field.press("Enter");

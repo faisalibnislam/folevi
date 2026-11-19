@@ -198,7 +198,7 @@ test("the iPad app in a narrow window (Slide Over, a third of Split View) takes 
   await expect(page.locator("html")).toHaveAttribute("data-ipad", "");
   const strip = page.locator("[data-ipad-tabs]");
   await expect(strip).toBeVisible();
-  expect((await strip.getByRole("button", { name: "New note", exact: true }).boundingBox())!.height).toBeGreaterThanOrEqual(44);
+  expect((await strip.getByRole("button", { name: "New note", exact: true }).first().boundingBox())!.height).toBeGreaterThanOrEqual(44);
   await expect(page.locator(".ui-fab")).toHaveCount(0);
   await expect(page.getByRole("navigation", { name: "Folio" }).locator(".ui-kbd")).toBeHidden();
   // Settings: iPadOS Settings' two columns, every account section drawn as the iPhone's grouped lists.

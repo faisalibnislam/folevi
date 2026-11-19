@@ -4,7 +4,7 @@ import { newPerson, openTool, waitForSaved } from "./helpers";
 test("a page break cuts the sheet into pages, and Unbreak page joins them", async ({ browser }) => {
   test.setTimeout(120_000);
   const { page, context } = await newPerson(browser, "Page Breaker");
-  await page.getByRole("button", { name: "New note", exact: true }).click();
+  await page.getByRole("button", { name: "New note", exact: true }).first().click();
   await page.waitForURL(/\/d\/[0-9A-Z]{26}\?new=1/);
   await page.keyboard.type("Breaks");
   await page.keyboard.press("Enter");

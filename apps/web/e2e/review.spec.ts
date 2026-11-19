@@ -9,7 +9,7 @@ const mod = process.platform === "darwin" ? "Meta" : "Control";
 test("a toggle made a flashcard is reviewed: Space shows the answer, 3 rates it Good", async ({ browser }) => {
   test.setTimeout(120_000);
   const { page, context } = await newPerson(browser, "Card Reviewer");
-  await page.getByRole("button", { name: "New note", exact: true }).click();
+  await page.getByRole("button", { name: "New note", exact: true }).first().click();
   await page.waitForURL(/\/d\/[0-9A-Z]{26}\?new=1/);
   const noteUrl = page.url().split("?")[0]!;
   await page.getByRole("textbox", { name: "Title" }).fill("Cells");
@@ -90,7 +90,7 @@ test("on a touch screen a card flips with a tap and a swipe right rates it Good"
   test.skip(browserName !== "chromium", "Touch input is driven through Chromium's DevTools protocol.");
   test.setTimeout(150_000);
   const { page, context } = await newPerson(browser, "Swipe Reviewer");
-  await page.getByRole("button", { name: "New note", exact: true }).click();
+  await page.getByRole("button", { name: "New note", exact: true }).first().click();
   await page.waitForURL(/\/d\/[0-9A-Z]{26}\?new=1/);
   await page.getByRole("textbox", { name: "Title" }).fill("Planets");
   await page.keyboard.press("Enter");

@@ -6,7 +6,7 @@ import { APP, newPerson, waitForSaved, noteMenuItem } from "./helpers";
 // as text, and a note's Related panel lists its links (or says there's nothing yet).
 
 async function newPage(page: Page, title: string) {
-  await page.getByRole("button", { name: "New note", exact: true }).click();
+  await page.getByRole("button", { name: "New note", exact: true }).first().click();
   await page.waitForURL(/\/d\/[0-9A-Z]{26}\?new=1/);
   const t = page.getByRole("textbox", { name: "Title" });
   await expect(t).toBeFocused();

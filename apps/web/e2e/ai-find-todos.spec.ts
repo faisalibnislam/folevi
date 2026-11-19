@@ -9,7 +9,7 @@ import { newPerson } from "./helpers";
 test("Find to-dos opens from the slash menu and the composer; a refused request adds nothing", async ({ browser }) => {
   test.setTimeout(120_000);
   const { page, context } = await newPerson(browser, "Todo Finder");
-  await page.getByRole("button", { name: "New note", exact: true }).click();
+  await page.getByRole("button", { name: "New note", exact: true }).first().click();
   await page.waitForURL(/\/d\/[0-9A-Z]{26}\?new=1/);
   await page.getByRole("textbox", { name: "Title" }).fill("Weekly sync");
   await page.keyboard.press("Enter");

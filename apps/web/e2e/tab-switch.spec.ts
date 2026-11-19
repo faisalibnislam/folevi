@@ -39,7 +39,7 @@ test("a tab comes back where it was left: scroll and caret", async ({ browser })
   await page.goto(`${APP}/documents`);
   await page.getByRole("link", { name: "Welcome to Folevi" }).first().click();
   await expect(page.getByRole("textbox", { name: "Title" })).toHaveValue("Welcome to Folevi");
-  await page.getByRole("button", { name: "New note", exact: true }).click();
+  await page.getByRole("button", { name: "New note", exact: true }).first().click();
   await page.waitForURL(/\/d\/[0-9A-Z]{26}\?new=1/);
   await page.getByRole("textbox", { name: "Title" }).fill("A long note");
   await page.keyboard.press("Enter");

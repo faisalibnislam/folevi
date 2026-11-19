@@ -68,6 +68,7 @@ import { setBlockHighlight } from "@/components/editor/blockHighlight";
 import { usePageBreakMask } from "./usePageBreakMask";
 import { Editor, type EditorHandle } from "@/components/editor/Editor";
 import { focusEndOfNote } from "@/components/editor/commands";
+import { AI_FOCUS_EVENT, noteAiAsked, noteAiOpensQuietly } from "@/components/ai/chat/events";
 import type { DecorationInputs } from "@/components/editor/plugins";
 import { coverArtOf, coverArtThumbUrl, coverBackground, pageBackdrop, sheetProps, styleColorsOf } from "@/lib/cover";
 import { themeFontVars } from "@/lib/themes";
@@ -197,7 +198,11 @@ export function DocumentView({ documentId }: { documentId: string }) {
   const [narrowHold, setNarrowHold] = useState(false);
   const setInspectorOpen = useCallback(
     (open: boolean) => {
-      if (open) setNarrowHold(false);
+      if (open) {
+        setNarrowHold(false);
+        // Asked for: Foli AI's composer may take the keyboard (it doesn't when the panel came up with the note).
+        noteAiAsked();
+      }
       setInspectorWanted(open);
     },
     [setInspectorWanted],
@@ -241,6 +246,8 @@ export function DocumentView({ documentId }: { documentId: string }) {
   holdRef.current = panelOverlays || drawerMode;
   useLayoutEffect(() => {
     setNarrowHold(holdRef.current);
+    // (The panel that shows as this note opens leaves the keyboard alone: components/ai/chat/events.ts.)
+    noteAiOpensQuietly(documentId);
   }, [documentId]);
   // The comment thread floating under a block (threadId null: the block's latest open thread, or a new one).
   const [openThread, setOpenThread] = useState<{ blockId: string; threadId: string | null } | null>(null);
@@ -705,7 +712,17 @@ export function DocumentView({ documentId }: { documentId: string }) {
   const openAi = useCallback(() => {
     setInspectorTab("ai");
     setInspectorOpen(true);
+    // (A composer already on screen, as it is by default, takes the keyboard now that it was asked for.)
+    requestAnimationFrame(() => window.dispatchEvent(new Event(AI_FOCUS_EVENT)));
   }, [setInspectorTab, setInspectorOpen]);
+  // A tab chosen in the panel is asked for too.
+  const pickInspectorTab = useCallback(
+    (t: InspectorTab) => {
+      noteAiAsked();
+      setInspectorTab(t);
+    },
+    [setInspectorTab],
+  );
   // AI turned off while its tool is open: Insert instead (the default without Foli AI).
   useEffect(() => {
     if (!aiOn && inspectorTab === "ai") setInspectorTab("insert");
@@ -1348,7 +1365,7 @@ export function DocumentView({ documentId }: { documentId: string }) {
               editor={editor}
               meta={meta ?? null}
               tab={inspectorTab}
-              onTab={setInspectorTab}
+              onTab={pickInspectorTab}
               focusThreadId={focusThreadId}
               onOpenThread={(t) => {
                 if (!t.blockId) return;
@@ -1383,7 +1400,7 @@ export function DocumentView({ documentId }: { documentId: string }) {
               editor={editor}
               meta={meta ?? null}
               tab={inspectorTab}
-              onTab={setInspectorTab}
+              onTab={pickInspectorTab}
               focusThreadId={focusThreadId}
               onOpenThread={(t) => {
                 if (!t.blockId) return;
@@ -1425,7 +1442,7 @@ export function DocumentView({ documentId }: { documentId: string }) {
                 editor={editor}
                 meta={meta ?? null}
                 tab={inspectorTab}
-                onTab={setInspectorTab}
+                onTab={pickInspectorTab}
                 focusThreadId={focusThreadId}
                 onOpenThread={(t) => {
                   if (!t.blockId) return;

@@ -71,7 +71,7 @@ test("a nested page opens inside the note's tab; a new page opens its own tab; B
   await expect(page.getByRole("navigation", { name: "Page path" })).toHaveCount(0);
 
   // "+" starts a new page in a new tab.
-  await page.getByRole("button", { name: "New note", exact: true }).click();
+  await page.getByRole("button", { name: "New note", exact: true }).first().click();
   await page.waitForURL(/\?new=1/);
   await expect(tabs.getByRole("button", { name: /^Close / })).toHaveCount(before + 1);
 

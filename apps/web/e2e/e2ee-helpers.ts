@@ -128,7 +128,7 @@ export async function unlockWithPassphrase(page: Page, mode: "browser" | "public
 
 /** A new note with a title and one line of text; returns its address. */
 export async function newNote(page: Page, title: string, body: string): Promise<string> {
-  await page.getByRole("button", { name: "New note", exact: true }).click();
+  await page.getByRole("button", { name: "New note", exact: true }).first().click();
   await page.waitForURL(/\/d\/[0-9A-Z]{26}/);
   await expect(page.getByRole("textbox", { name: "Title" })).toBeFocused();
   await page.keyboard.type(title);

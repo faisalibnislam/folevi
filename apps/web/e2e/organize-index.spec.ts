@@ -48,7 +48,7 @@ test("the sidebar lists a few folders and tags; All folders / All tags pages sea
   await expect(folderHeader.getByRole("combobox", { name: "Sort" })).toBeVisible();
   await expect(folderHeader.getByRole("radiogroup", { name: "Layout" })).toBeVisible();
   await expect(folderHeader.getByRole("button", { name: /^Folder options for / })).toBeVisible();
-  await expect(folderHeader.getByRole("button", { name: "New note", exact: true })).toHaveCount(0);
+  await expect(folderHeader.getByRole("button", { name: "New note", exact: true }).first()).toHaveCount(0);
   await expect(page.getByRole("main").getByRole("combobox", { name: "Sort" })).toHaveCount(1);
 
   // Tags: the same, from "+N more".
@@ -75,7 +75,7 @@ test("a new note on a folder page lands in that folder with no page icon; folder
   // A new note made on a folder page starts in that folder (so Drafts doesn't grow); notes have no emoji icon.
   await nav.getByRole("link", { name: "Projects" }).click();
   // (The top bar's New note: on a folder's page it makes the note in that folder.)
-  await page.getByRole("button", { name: "New note", exact: true }).click();
+  await page.getByRole("button", { name: "New note", exact: true }).first().click();
   await page.waitForURL(/\/d\/[0-9A-Z]{26}/);
   await expect(page.getByRole("textbox", { name: "Title" })).toBeVisible();
   await expect(page.getByRole("button", { name: /Page icon|Add page icon/ })).toHaveCount(0);

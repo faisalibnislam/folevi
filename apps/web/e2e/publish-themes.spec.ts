@@ -7,7 +7,7 @@ import { newPerson, openShare, pick, waitForSaved } from "./helpers";
 test("publish a note with the Article look, then switch it to Docs and Minimal", async ({ browser }) => {
   test.setTimeout(120_000);
   const { page, context } = await newPerson(browser, "Page Publisher");
-  await page.getByRole("button", { name: "New note", exact: true }).click();
+  await page.getByRole("button", { name: "New note", exact: true }).first().click();
   await page.waitForURL(/\/d\/[0-9A-Z]{26}\?new=1/);
   await page.getByRole("textbox", { name: "Title" }).fill("Field guide");
   await page.keyboard.press("Enter");

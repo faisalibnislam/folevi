@@ -16,7 +16,7 @@ async function serverView(browser: Browser, context: BrowserContext, url: string
 /** New note, from wherever the page is; returns the note's address (without ?new=1) once its title has the caret. */
 async function openNewNote(page: Page): Promise<string> {
   const before = page.url();
-  await page.getByRole("button", { name: "New note", exact: true }).click();
+  await page.getByRole("button", { name: "New note", exact: true }).first().click();
   await page.waitForURL((u) => /\/d\/[0-9A-Z]{26}\?new=1/.test(u.toString()) && u.toString() !== before);
   await expect(page.getByRole("textbox", { name: "Title" })).toBeFocused();
   return page.url().replace(/\?.*$/, "");

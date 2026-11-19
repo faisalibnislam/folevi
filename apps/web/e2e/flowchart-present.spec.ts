@@ -29,7 +29,7 @@ const BRANCHING = {
 };
 
 async function newNote(page: Page, title: string) {
-  await page.getByRole("button", { name: "New note", exact: true }).click();
+  await page.getByRole("button", { name: "New note", exact: true }).first().click();
   await page.waitForURL(/\/d\/[0-9A-Z]{26}\?new=1/);
   await page.getByRole("textbox", { name: "Title" }).fill(title);
   await page.keyboard.press("Enter");

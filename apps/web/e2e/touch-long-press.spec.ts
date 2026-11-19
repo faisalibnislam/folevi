@@ -16,7 +16,7 @@ test("on an iPhone, pressing and holding a line opens the note's own menu (Safar
   test.skip(browserName !== "chromium", "Touch input is driven through Chromium's DevTools protocol.");
   test.setTimeout(120_000);
   const { context: desktop, page: setup } = await newPerson(browser, "Phone Person");
-  await setup.getByRole("button", { name: "New note", exact: true }).click();
+  await setup.getByRole("button", { name: "New note", exact: true }).first().click();
   await setup.waitForURL(/\/d\/[0-9A-Z]{26}\?new=1/);
   await setup.getByRole("textbox", { name: "Title" }).fill("On the go");
   await setup.keyboard.press("Enter");
@@ -67,7 +67,7 @@ test("on an iPhone, holding a line and moving on lifts the block and moves it", 
   test.skip(browserName !== "chromium", "Touch input is driven through Chromium's DevTools protocol.");
   test.setTimeout(120_000);
   const { context: desktop, page: setup } = await newPerson(browser, "Mover Person");
-  await setup.getByRole("button", { name: "New note", exact: true }).click();
+  await setup.getByRole("button", { name: "New note", exact: true }).first().click();
   await setup.waitForURL(/\/d\/[0-9A-Z]{26}\?new=1/);
   await setup.getByRole("textbox", { name: "Title" }).fill("Reorder me");
   await setup.keyboard.press("Enter");

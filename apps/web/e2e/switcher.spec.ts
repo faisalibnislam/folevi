@@ -53,7 +53,7 @@ test("a new account starts in Personal with no workspaces, and each context show
   await expect(page.getByRole("link", { name: /Welcome to Folevi/ })).toHaveCount(0);
 
   // A note written in the workspace lives there.
-  await page.getByRole("button", { name: "New note", exact: true }).click();
+  await page.getByRole("button", { name: "New note", exact: true }).first().click();
   await page.waitForURL(/\/d\/[0-9A-Z]{26}\?new=1/);
   await page.getByRole("textbox", { name: "Title" }).fill("Studio plans");
   await page.keyboard.press("Enter");

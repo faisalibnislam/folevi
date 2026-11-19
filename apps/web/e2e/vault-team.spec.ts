@@ -138,7 +138,7 @@ test("a team Vault: a member gets the key from the owner's device; an outsider o
 
   // A regular note moves into the Vault (the original is deleted for good) and back out again.
   await owner.page.goto(`${APP}/documents`);
-  await owner.page.getByRole("button", { name: "New note", exact: true }).click();
+  await owner.page.getByRole("button", { name: "New note", exact: true }).first().click();
   await owner.page.waitForURL(/\/d\/[0-9A-Z]{26}\?new=1/);
   await owner.page.getByRole("textbox", { name: "Title" }).fill("Root passwords");
   await owner.page.keyboard.press("Enter");

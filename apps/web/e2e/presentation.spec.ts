@@ -11,7 +11,7 @@ const counter = (page: Page) => deck(page).getByRole("toolbar", { name: "Present
 test("present a note: slides at dividers and page breaks, keys and clicks move, Esc leaves", async ({ browser }) => {
   test.setTimeout(150_000);
   const { page, context } = await newPerson(browser, "Slide Presenter");
-  await page.getByRole("button", { name: "New note", exact: true }).click();
+  await page.getByRole("button", { name: "New note", exact: true }).first().click();
   await page.waitForURL(/\/d\/[0-9A-Z]{26}\?new=1/);
   await page.keyboard.type("Team update");
   await page.keyboard.press("Enter");
@@ -79,7 +79,7 @@ test("present a note: slides at dividers and page breaks, keys and clicks move, 
 test("a note without breaks is cut at its headings; a shared page has a Present button that works on a phone", async ({ browser }) => {
   test.setTimeout(150_000);
   const { page, context } = await newPerson(browser, "Heading Presenter");
-  await page.getByRole("button", { name: "New note", exact: true }).click();
+  await page.getByRole("button", { name: "New note", exact: true }).first().click();
   await page.waitForURL(/\/d\/[0-9A-Z]{26}\?new=1/);
   await expect(page.getByRole("textbox", { name: "Title" })).toBeFocused();
   await page.keyboard.type("Lecture");

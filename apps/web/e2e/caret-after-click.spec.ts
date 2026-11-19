@@ -19,7 +19,7 @@ test("typing straight after clicking into a shared note that just opened lands a
   await showFolders(owner.page);
   const guest = await newPerson(browser, "Eli Guest");
   await showFolders(guest.page);
-  await owner.page.getByRole("button", { name: "New note", exact: true }).click();
+  await owner.page.getByRole("button", { name: "New note", exact: true }).first().click();
   await owner.page.waitForURL(/\/d\/[0-9A-Z]{26}\?new=1/);
   await owner.page.getByRole("textbox", { name: "Title" }).fill("Click then type");
   await owner.page.keyboard.press("Enter");

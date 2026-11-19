@@ -3,7 +3,7 @@ import { newPerson, waitForSaved, pick, pickDate } from "./helpers";
 
 test("collections: inline names, typed filters (option and date pickers), persistent view, confirmed deletes", async ({ browser }) => {
   const { page } = await newPerson(browser, "Collector");
-  await page.getByRole("button", { name: "New note", exact: true }).click();
+  await page.getByRole("button", { name: "New note", exact: true }).first().click();
   await page.waitForURL(/\/d\/[0-9A-Z]{26}\?new=1/);
   await page.getByRole("textbox", { name: "Title" }).fill("Library");
   await page.keyboard.press("Enter");
@@ -100,7 +100,7 @@ test("collections: a calendar view places rows by date; drag to move, New on a d
   const { page } = await newPerson(browser, "Calendar Collector");
   // Tall enough for the whole month and the tray: drags start and end on screen.
   await page.setViewportSize({ width: 1440, height: 1500 });
-  await page.getByRole("button", { name: "New note", exact: true }).click();
+  await page.getByRole("button", { name: "New note", exact: true }).first().click();
   await page.waitForURL(/\/d\/[0-9A-Z]{26}\?new=1/);
   await page.getByRole("textbox", { name: "Title" }).fill("Launch plan");
   await page.keyboard.press("Enter");

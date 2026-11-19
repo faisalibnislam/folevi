@@ -3,7 +3,7 @@ import { newPerson, waitForSaved } from "./helpers";
 
 test("same-block edits on two devices produce a visible conflict; Keep both loses nothing", async ({ browser }) => {
   const { page: web, context } = await newPerson(browser, "Two Devices");
-  await web.getByRole("button", { name: "New note", exact: true }).click();
+  await web.getByRole("button", { name: "New note", exact: true }).first().click();
   await web.waitForURL(/\/d\/[0-9A-Z]{26}\?new=1/);
   await expect(web.getByRole("textbox", { name: "Title" })).toHaveValue("");
   await expect(web.getByRole("textbox", { name: "Title" })).toBeFocused();

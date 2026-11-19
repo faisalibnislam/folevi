@@ -6,7 +6,7 @@ import { APP, completeOnboarding, createAccount, createWorkspace, newPerson, pic
 
 async function newNote(page: Page, title: string): Promise<string> {
   const before = page.url();
-  await page.getByRole("button", { name: "New note", exact: true }).click();
+  await page.getByRole("button", { name: "New note", exact: true }).first().click();
   // The previous new note's URL also ends in ?new=1: wait for this note's own URL and empty title.
   await page.waitForURL((url) => url.href !== before && /^\/d\/[0-9A-Z]{26}$/.test(url.pathname) && url.searchParams.get("new") === "1");
   await expect(page.getByRole("textbox", { name: "Title" })).toHaveValue("");

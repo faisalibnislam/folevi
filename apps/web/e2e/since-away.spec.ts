@@ -19,7 +19,7 @@ test("back in a note someone changed: who changed it, show the lines, dismiss", 
   const guest = await newPerson(browser, "Quinn Editor");
   await showFolders(guest.page);
 
-  await owner.page.getByRole("button", { name: "New note", exact: true }).click();
+  await owner.page.getByRole("button", { name: "New note", exact: true }).first().click();
   await owner.page.waitForURL(/\/d\/[0-9A-Z]{26}\?new=1/);
   const docUrl = owner.page.url().replace(/\?.*$/, "");
   await owner.page.getByRole("textbox", { name: "Title" }).fill("Away plan");

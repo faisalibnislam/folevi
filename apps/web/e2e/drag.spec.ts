@@ -5,7 +5,7 @@ const blocks = (page: Page) => page.locator(".fb-editor > .fb");
 const texts = async (page: Page) => (await blocks(page).allTextContents()).map((t) => t.trim()).filter(Boolean);
 
 async function newPage(page: Page, lines: string[]) {
-  await page.getByRole("button", { name: "New note", exact: true }).click();
+  await page.getByRole("button", { name: "New note", exact: true }).first().click();
   await page.waitForURL(/\/d\/[0-9A-Z]{26}\?new=1/);
   await expect(page.getByRole("textbox", { name: "Title" })).toBeFocused();
   await page.getByRole("textbox", { name: "Title" }).fill("Drag test");

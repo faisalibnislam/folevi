@@ -11,7 +11,7 @@ const TEXT = "We chose the harbour hall. Sam sends the deck by Friday.";
 test("the new actions in the '/' menu and the composer are refused without a model key, and the note is untouched", async ({ browser }) => {
   test.setTimeout(120_000);
   const { page, context } = await newPerson(browser, "Study Tester");
-  await page.getByRole("button", { name: "New note", exact: true }).click();
+  await page.getByRole("button", { name: "New note", exact: true }).first().click();
   await page.waitForURL(/\/d\/[0-9A-Z]{26}\?new=1/);
   await page.getByRole("textbox", { name: "Title" }).fill("Weekly sync");
   await page.keyboard.press("Enter");
@@ -60,7 +60,7 @@ test("the new actions in the '/' menu and the composer are refused without a mod
 test("the AI panel: study mode's empty state, the frameworks and translation, all refused without a model key", async ({ browser }) => {
   test.setTimeout(120_000);
   const { page, context } = await newPerson(browser, "Panel Studier");
-  await page.getByRole("button", { name: "New note", exact: true }).click();
+  await page.getByRole("button", { name: "New note", exact: true }).first().click();
   await page.waitForURL(/\/d\/[0-9A-Z]{26}\?new=1/);
   await page.getByRole("textbox", { name: "Title" }).fill("Cells");
   await page.keyboard.press("Enter");

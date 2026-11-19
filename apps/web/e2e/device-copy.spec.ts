@@ -64,7 +64,7 @@ async function copiedText(page: Page): Promise<Record<string, string>> {
 
 async function writeNote(page: Page, title: string, body: string): Promise<string> {
   const before = /\/d\/([0-9A-Z]{26})/.exec(page.url())?.[1];
-  await page.getByRole("button", { name: "New note", exact: true }).click();
+  await page.getByRole("button", { name: "New note", exact: true }).first().click();
   await page.waitForURL((u) => /\/d\/[0-9A-Z]{26}\?new=1/.test(u.href) && !u.pathname.includes(before ?? "-"));
   const id = /\/d\/([0-9A-Z]{26})/.exec(page.url())![1]!;
   await expect(page.getByRole("textbox", { name: "Title" })).toHaveValue("");

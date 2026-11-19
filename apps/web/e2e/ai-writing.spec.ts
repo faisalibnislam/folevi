@@ -9,7 +9,7 @@ import { APP, newPerson } from "./helpers";
 test("selection actions, tones and turn-into are offered, and a refused request changes nothing", async ({ browser }) => {
   test.setTimeout(120_000);
   const { page, context } = await newPerson(browser, "Writing Tester");
-  await page.getByRole("button", { name: "New note", exact: true }).click();
+  await page.getByRole("button", { name: "New note", exact: true }).first().click();
   await page.waitForURL(/\/d\/[0-9A-Z]{26}\?new=1/);
   await page.getByRole("textbox", { name: "Title" }).fill("Writing");
   await page.keyboard.press("Enter");
@@ -48,7 +48,7 @@ test("selection actions, tones and turn-into are offered, and a refused request 
 test("the slash menu's AI commands open the composer ready to write", async ({ browser }) => {
   test.setTimeout(120_000);
   const { page, context } = await newPerson(browser, "Slash Writer");
-  await page.getByRole("button", { name: "New note", exact: true }).click();
+  await page.getByRole("button", { name: "New note", exact: true }).first().click();
   await page.waitForURL(/\/d\/[0-9A-Z]{26}\?new=1/);
   await page.keyboard.press("Enter");
   await page.keyboard.type("/ai");

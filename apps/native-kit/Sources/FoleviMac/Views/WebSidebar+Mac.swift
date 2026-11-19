@@ -24,12 +24,17 @@ import FoleviScreens
 extension WebSidebar {
     var macBody: some View {
         VStack(alignment: .leading, spacing: 0) {
-            macAccount
-                .padding(.horizontal, MacLook.sidebarInset)
-                .padding(.top, MacLook.sidebarTop)
-                // (New note is the title bar's black pill, as the web's top bar has it: the owner, 2026-11-19, one
-                // New note on screen, not here as well.)
-                .padding(.bottom, MacLook.Space.s)
+            // (On an iPad with the sidebar beside the card, the account is up in the title bar's corner instead.)
+            if MacAccountButton.inBar(model) {
+                Color.clear.frame(height: MacLook.Space.s)
+            } else {
+                macAccount
+                    .padding(.horizontal, MacLook.sidebarInset)
+                    .padding(.top, MacLook.sidebarTop)
+                    // (New note is the title bar's black pill, as the web's top bar has it: the owner, 2026-11-19, one
+                    // New note on screen, not here as well.)
+                    .padding(.bottom, MacLook.Space.s)
+            }
             if let noteId = model.route.noteId, model.noteToolsShown {
                 // On a note, its own tools (WebNoteSidebar: its name and place, its pages, Table of contents, Comments,
                 // Tasks, Attachments, Find), as the web's sidebar shows them; the title bar's switch brings the
@@ -369,27 +374,86 @@ extension WebSidebar {
     /// The place and the account (WorkspaceMenu.tsx): the picture or logo, the place's name, a chevron; it opens the
     /// account menu (places, workspaces, the account).
     private var macAccount: some View {
+        MacAccountButton(model: model) { actions.account($0) }
+    }
+}
+
+/// The account, places and workspaces button: its picture, its name and a chevron, opening the account menu. In the
+/// sidebar's top row on the Mac; on an iPad with the sidebar beside the card, in the title bar's leading corner.
+struct MacAccountButton: View {
+    let model: FrameModel
+    /// Whether it fills its row (the sidebar's) or keeps to its words (the title bar's).
+    var fills = true
+    let action: (NSView?) -> Void
+    @State private var anchor: NSView?
+
+    /// The iPad with the sidebar beside the card: the account is in the title bar, not the sidebar.
+    static func inBar(_ model: FrameModel) -> Bool {
+        #if os(iOS)
+        !model.sidebarFloats && !model.sidebarHidden
+        #else
+        false
+        #endif
+    }
+
+    var body: some View {
         let name = model.accountName.isEmpty ? "You" : model.accountName
-        let foot = accountFoot(name)
-        return Button { actions.account(accountAnchor) } label: {
+        let foot = WebSidebar.accountFoot(model, name)
+        Button { action(anchor) } label: {
             HStack(spacing: MacLook.rowIconGap) {
                 WebAvatar(name: foot.markName, url: foot.markUrl, size: 20)
                     .frame(width: MacLook.rowIconSlot)
                 Text(foot.title).font(MacLook.Text.headline).foregroundStyle(MacLook.Colors.label).lineLimit(1)
                 MacSymbol("chevron.down", size: 10, weight: .semibold).foregroundStyle(MacLook.Colors.secondary)
-                Spacer(minLength: 0)
+                if fills { Spacer(minLength: 0) }
             }
             // (The picture sits in the rows' icon column, the name on their labels' edge.)
             .padding(.horizontal, MacLook.rowPadding)
             .frame(height: 36)
             .contentShape(Rectangle())
-            .background(MenuAnchor { accountAnchor = $0 })
+            .background(MenuAnchor { anchor = $0 })
         }
         .buttonStyle(SidebarRowButtonStyle(hoverFill: true))
         .foleviTooltip(foot.detail.isEmpty ? "Account, places and workspaces" : foot.detail)
         .accessibilityLabel("Account: \(foot.title)\(foot.detail.isEmpty ? "" : ", \(foot.detail)")")
     }
 }
+
+#if os(iOS)
+/// How much room iPadOS's own window buttons take at the leading edge (a resizable window shows them at its top
+/// left; full screen there are none): the safe area adapted to the window's corner, less the plain safe area.
+struct WindowControlsProbe: UIViewRepresentable {
+    @Binding var room: CGFloat
+
+    func makeUIView(context: Context) -> Probe {
+        let v = Probe()
+        v.report = { r in if abs(room - r) > 0.5 { room = r } }
+        return v
+    }
+    func updateUIView(_ v: Probe, context: Context) {
+        v.report = { r in if abs(room - r) > 0.5 { room = r } }
+    }
+
+    final class Probe: UIView {
+        var report: ((CGFloat) -> Void)?
+        override init(frame: CGRect) {
+            super.init(frame: frame)
+            isUserInteractionEnabled = false
+            backgroundColor = .clear
+        }
+        @available(*, unavailable) required init?(coder: NSCoder) { fatalError() }
+        override func layoutSubviews() { super.layoutSubviews(); measure() }
+        override func safeAreaInsetsDidChange() { super.safeAreaInsetsDidChange(); measure() }
+        private func measure() {
+            guard #available(iOS 26, *) else { return }
+            let adapted = directionalEdgeInsets(for: .safeArea(cornerAdaptation: .horizontal)).leading
+            let plain = safeAreaInsets.left
+            let r = max(0, adapted - plain)
+            DispatchQueue.main.async { [weak self] in self?.report?(r) }
+        }
+    }
+}
+#endif
 
 /// The sync state in the title bar, before the bell (the owner, 2026-11-18): a cloud with a dot in the state's
 /// status colour (green saved, orange while saving or syncing, red for a conflict or an error, quiet offline), as

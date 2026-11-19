@@ -676,6 +676,10 @@ public struct WebSidebar: View {
     /// you under it; in Personal your picture (or initial), you and "Personal"; in the library your picture and "On
     /// your devices". The picture is the profile's signed avatarUrl, so a new photo comes with the next session.
     func accountFoot(_ name: String) -> (markName: String, markUrl: String?, title: String, detail: String) {
+        Self.accountFoot(model, name)
+    }
+
+    static func accountFoot(_ model: FrameModel, _ name: String) -> (markName: String, markUrl: String?, title: String, detail: String) {
         guard let s = model.session.value else { return (name, nil, name, "") }
         if s.mode == .local { return (name, s.profile.avatarUrl, name, "On your devices") }
         if let space = s.spaces.first(where: { $0.id == s.space }), space.kind == .workspace {

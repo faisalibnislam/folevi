@@ -46,7 +46,20 @@ extension WebTopBar {
         // (A narrow iPad's sidebar floats over the card instead: the strip keeps its compact lead.)
         let hidden = model.sidebarHidden || model.sidebarFloats
         return HStack(spacing: 0) {
-            Color.clear.frame(width: MacLook.trafficLightsRoom)
+            Color.clear.frame(width: MacLook.trafficLightsRoom + windowControlsRoom)
+            #if os(iOS)
+            // The iPad: the account sits up here, in the corner the Mac keeps for its window buttons (the owner,
+            // 2026-11-19: the empty corner looked unfinished), after iPadOS's own window buttons when a resizable
+            // window shows them. The sidebar beside the card then starts with its page.
+            if MacAccountButton.inBar(model) {
+                MacAccountButton(model: model, fills: false) { anchor in
+                    guard let window = NSApp.keyWindow else { return }
+                    AccountMenuWindow.show(model: model, in: window, anchor: anchor)
+                }
+                .padding(.leading, MacLook.sidebarInset - MacLook.trafficLightsRoom)
+                .layoutPriority(-1)
+            }
+            #endif
             Spacer(minLength: 0)
             // On a note the sidebar shows the note's tools or the folders, as the web's (its sidebar mode): this
             // switches between them, beside the sidebar's own button (the owner, 2026-11-18).
@@ -67,7 +80,10 @@ extension WebTopBar {
             }
             .padding(.trailing, 8)
         }
-        .frame(width: hidden ? MacLook.trafficLightsRoom + (model.route.isNote ? 76 : 38) : MacLook.sidebarWidth)
+        .frame(width: hidden ? MacLook.trafficLightsRoom + windowControlsRoom + (model.route.isNote ? 76 : 38) : MacLook.sidebarWidth)
+        #if os(iOS)
+        .background(WindowControlsProbe(room: $windowControlsRoom))
+        #endif
     }
 
     /// Brings the sidebar back: beside the card, or over it on a narrow iPad.
@@ -448,6 +464,8 @@ struct MacOverviewButton: View {
 struct MacNewNotePill: View {
     let model: FrameModel
     @Environment(\.colorScheme) private var scheme
+    /// The pointer's over it (a Mac's, an iPad's trackpad): the pill lightens a touch, as the web's primary does.
+    @State private var hover = false
 
     var body: some View {
         let dark = scheme == .dark
@@ -467,14 +485,15 @@ struct MacNewNotePill: View {
         let fill = dark ? Color.white : Color.black
         Group {
             if #available(iOS 26, macOS 26, *) {
-                button.buttonStyle(.plain)
+                button.buttonStyle(.plain).onHover { hover = $0 }
                     .background(fill, in: Capsule())
                     .glassEffect(.regular.tint(fill).interactive(), in: Capsule())
             } else {
-                button.buttonStyle(.plain)
+                button.buttonStyle(.plain).onHover { hover = $0 }
                     .background(fill, in: Capsule())
             }
         }
+        .brightness(hover ? (dark ? -0.08 : 0.18) : 0)
         .fixedSize()
         // (The button says New note: its tooltip is the shortcut alone.)
         .foleviTooltip("(⌘N)")

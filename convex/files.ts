@@ -20,6 +20,7 @@ import {
 import { fail } from "./lib/errors";
 import { adjustStorageUsed, assertStorageFor, storageChargeFor } from "./lib/entitlements";
 import { chargeDownload as chargeFileDownload } from "./lib/downloads";
+import { scheduleR2Copy } from "./r2Files";
 import {
   insertScoped,
   personalScope,
@@ -219,6 +220,7 @@ export const commitFile = internalMutation({
     });
     await adjustStorageUsed(ctx, scope, args.size, chargedTo);
     await bump(ctx, "storage_bytes", args.size);
+    await scheduleR2Copy(ctx, args.storageId);
     return publicId;
   },
 });

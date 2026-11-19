@@ -27,6 +27,10 @@ crons.daily("tombstone retention", { hourUTC: 3, minuteUTC: 20 }, internal.maint
 crons.daily("housekeeping", { hourUTC: 3, minuteUTC: 40 }, internal.maintenance.housekeeping, {});
 crons.daily("snapshot retention", { hourUTC: 4, minuteUTC: 0 }, internal.documents.purgeSnapshots, {});
 crons.daily("comment digest", { hourUTC: 8, minuteUTC: 0 }, internal.digest.sendDailyDigests, {});
+// Files on R2 (r2Files.ts; nothing happens until R2 is set up): copy anything not yet copied, then delete
+// the R2 copies of blobs Convex no longer has.
+crons.daily("r2 copy catch-up", { hourUTC: 6, minuteUTC: 0 }, internal.r2Files.backfill, {});
+crons.daily("r2 orphan cleanup", { hourUTC: 6, minuteUTC: 30 }, internal.r2Files.sweep, {});
 crons.daily("orphaned upload cleanup", { hourUTC: 4, minuteUTC: 30 }, internal.files.sweepOrphanedStorage, {});
 crons.daily("export retention", { hourUTC: 4, minuteUTC: 45 }, internal.files.purgeExpiredExports, {});
 crons.daily("daily metrics", { hourUTC: 0, minuteUTC: 15 }, internal.maintenance.dailyMetrics, {});

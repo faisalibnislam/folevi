@@ -1,7 +1,7 @@
 # Pricing and storage proposal
 
-Status: approved 2026-11-19. The owner chose every proposed default (section 8). Nothing here is built yet; work
-follows the order in section 7. Today's plans are in docs/BILLING.md and `convex/lib/plans.ts`.
+Status: approved 2026-11-19. The owner chose every proposed default (section 8). Built on branch
+`pricing-decisions` (not merged or released yet); progress in section 9. Today's plans are in docs/BILLING.md and `convex/lib/plans.ts`.
 
 The goal: no plan can lose money, even for its heaviest user, with no outside funding to absorb a bad month.
 
@@ -149,3 +149,41 @@ Each step is released separately, with the owner's OK to push.
 4. Pro's monthly credits: 150 (down from 180).
 5. Download cap: 3 times the plan's storage, at least 2 GB a month.
 6. Order: as in section 7. The download cap and slower AI stream writes first, then the new plans, then R2.
+
+## 9. Progress (2026-11-19, branch `pricing-decisions`)
+
+Done, with tests (all Convex tests pass):
+
+1. **Download cap** (`convex/lib/downloads.ts`): counted per storage account per UTC month in
+   `downloadUsage`, by the `/files/` route (exports included) and Vault downloads; refused with a 429 and the
+   reset date past 3 times the storage (at least 2 GB). Terms, the pricing FAQ and docs/BILLING.md say so.
+   **Slower AI writes:** `FLUSH_MS` is 400 in `convex/ai.ts`, `convex/aiAttachments.ts` and the web's local AI.
+2. **New plans:** Pro $5 / $48, Pro AI $15 / $144, Pro credits 150. Core is retired (`RETIRED_TIERS`): not
+   shown or sold, checkout and plan changes refuse it, Billing setup makes only the 10 products on sale; an
+   existing Core plan keeps working and admins can still set it. The site, Settings, the device-limit screen
+   and admin follow.
+3. **R2, first stage** (`convex/lib/r2.ts`, `convex/r2Files.ts`): uploads still go to Convex; each blob is
+   then copied to R2 (verified by size, recorded in `r2Blobs`), and `/files/` redirects to a 5-minute signed
+   R2 link after its access check and the download count. Convex keeps its copy, so every server reader works
+   unchanged. Daily crons copy anything missed and delete R2 copies whose Convex blob is gone. Off until the
+   R2 settings exist.
+
+Owner steps before release (sandbox / dev first):
+
+- Polar: confirm in Admin that nobody subscribes to the old Pro, Pro AI or Core products; archive them in
+  Polar; Admin → Billing setup → Check Polar, then Create missing products (docs/BILLING.md, step 5).
+- R2: a bucket per deployment (separate from the backup and Mac update buckets), an API token limited to
+  that bucket, then `npx convex env set` R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_BUCKET
+  (with `--deployment` for production, never `--prod`). CORS on the bucket: GET and HEAD from the web
+  origins, so the app can read an image's pixels after the redirect. Then run `npx convex run
+  r2Files:backfill` once.
+- Usage alerts or a spending limit in the Convex dashboard, if offered.
+
+Not done yet (R2, later stages):
+
+- Uploads straight to R2 (presigned PUT) and lifting the 50 MB limit: changes the upload flow in the web,
+  Mac and iPhone apps.
+- One storage module for every `ctx.storage` reader, then deleting the Convex copies.
+- Vault files and theme images still come from Convex links (`storage.getUrl`), so Convex serves those bytes;
+  Vault downloads do count toward the cap.
+- A backup plan for the R2 bucket.

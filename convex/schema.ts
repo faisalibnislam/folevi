@@ -858,6 +858,14 @@ export default defineSchema({
    * member's quota in a paid workspace) or "w:<workspace>" (a workspace with a storage override). Rows
    * older than last month are removed by housekeeping.
    */
+  r2Blobs: defineTable({
+    /** The Convex blob this copies (r2Files.ts). Once that blob is deleted, the daily sweep removes the copy. */
+    storageId: v.id("_storage"),
+    key: v.string(),
+    size: v.number(),
+    copiedAt: v.number(),
+  }).index("by_storage", ["storageId"]),
+
   downloadUsage: defineTable({
     account: v.string(),
     month: v.string(),

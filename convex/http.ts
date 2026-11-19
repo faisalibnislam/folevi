@@ -22,6 +22,7 @@ import { AUDIO_MIMES } from "./lib/images";
 import { createAuth } from "./auth";
 import { withTrustedClientIp } from "./lib/clientIp";
 import { corsFor } from "./lib/cors";
+import { r2Config, r2DownloadUrl } from "./lib/r2";
 
 const http = httpRouter();
 
@@ -100,10 +101,18 @@ http.route({
         headers: { "content-type": "text/plain; charset=utf-8", "cache-control": "no-store", ...corsFor(request.headers.get("origin")) },
       });
     }
-    const blob = await ctx.storage.get(file.storageId);
-    if (!blob) return new Response("Not found", { status: 404 });
     const inline = SAFE_INLINE.has(file.mimeType);
     const disposition = contentDisposition(inline ? "inline" : "attachment", file.filename);
+    // Copied to R2 (r2Files.ts): a short-lived R2 link, so Convex doesn't serve the bytes. R2 answers byte
+    // ranges itself, and the type and disposition decided here are signed into the link.
+    const r2 = r2Config();
+    const r2Key = r2 ? await ctx.runQuery(internal.r2Files.keyFor, { storageId: file.storageId }) : null;
+    if (r2 && r2Key) {
+      const location = await r2DownloadUrl(r2, r2Key, { contentType: inline ? file.mimeType : "application/octet-stream", disposition });
+      return new Response(null, { status: 302, headers: { location, "cache-control": "no-store", "referrer-policy": "no-referrer", ...corsFor(request.headers.get("origin")) } });
+    }
+    const blob = await ctx.storage.get(file.storageId);
+    if (!blob) return new Response("Not found", { status: 404 });
     const headers: Record<string, string> = {
       "content-type": inline ? file.mimeType : "application/octet-stream",
       "content-disposition": disposition,

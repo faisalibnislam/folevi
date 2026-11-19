@@ -1,0 +1,7 @@
+# graphify: images here are app assets and test snapshots, not knowledge.
+# Skipping them avoids a per-image model pass on every build.
+*.png
+*.webp
+*.jpg
+*.jpeg
+*.svg

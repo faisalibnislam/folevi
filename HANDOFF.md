@@ -47,7 +47,7 @@ The owner moves secrets between Macs; never copy their values into files or chat
 ## 9. Current state (as of 2026-11-19)
 - `main` = Release 1.5.53, tag `v1.5.53`: the Foli AI tab on iPhone (branch `ios-ai-tab`), iPhone Duo support and the shorter first-launch copy (branch `claude/iphone-duo-18adb4`), and the marketing pages brought up to date (branch `claude/marketing-pages-091dac`), merged on `release-1.5.53`.
 - iPhone Duo: on the inner screen the tabs are a sidebar and the open note shows beside its list (half open, split on the fold); folding keeps the note open with Back to its list, and the caret, text and keyboard carry over; on iPhone Duo the note's buttons are iOS's side-bar items. Checked on the iPhone Duo simulator in every posture except Split View halves and tabletop. Owner's picks: `docs/claude-context/memory/iphone-duo-decisions.md`.
-- Branch `ios-sync-status` (not merged, not released): the sync status on iPhone Home, a cloud before the bell in the top right pill (signed in only), with its details in a sheet (`apps/ios/ios/App/Native/Rebuild/RebuildSync.swift`). Checked in the simulator with `FOLEVI_REBUILD_SYNC=1`; not yet seen signed in.
+- Branch `ios-sync-status` (not merged, not released): the sync status on iPhone Home, a cloud before the bell in the top right pill (signed in only), with its details in a sheet (`apps/ios/ios/App/Native/Rebuild/RebuildSync.swift`). The bell stays after it in the same pill and opens Notifications. Checked in the simulator with `FOLEVI_REBUILD_SYNC=1` (the signed-in pill on a local library); not yet seen signed in.
 - The tab bar's collapse on scroll is iOS 27's own (about 130 ms, checked frame by frame on the owner's recording, the simulator and a bare SwiftUI app; no 1.5.53 change affects it). The owner chose to keep iOS's (2026-11-19).
 - The note editor session works in the main checkout on `editor/rock-solid` (pull request 40).
 - Known: one Mac test fails every time (`TabPreviewStateTests.enteringTheNextTabBeforeLeavingThisOneStillShowsIt`), in code no recent change touched. The Mac filter field hasn't been typed into in the real app. Nothing in 1.5.50 to 1.5.53 has been tried on a real iPhone Duo.
@@ -65,6 +65,7 @@ The owner moves secrets between Macs; never copy their values into files or chat
 - CI's first step runs `node scripts/icons-codegen.mjs --check`: regenerate `Icons.swift` after adding a web icon.
 
 ## 12. Change log
+- 2026-11-19: Checked the bell beside the new sync status on iPhone Home.
 - 2026-11-19: The owner keeps iOS's tab bar collapse.
 - 2026-11-19: Sync status on iPhone Home (branch `ios-sync-status`); the tab bar collapse traced to iOS itself.
 - 2026-11-19: Released 1.5.53 (Foli AI tab, iPhone Duo, shorter first-launch copy, marketing pages).

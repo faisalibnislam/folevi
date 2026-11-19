@@ -109,8 +109,67 @@ extension View {
 }
 
 #if os(macOS)
+/// A search field. Searching: the system's (NSSearchField). With `filter`, a field that filters the list under it,
+/// Folevi's funnel in place of the magnifier (the owner, 2026-11-19): drawn as the system's field (macOS 26 keeps its
+/// magnifier over any image given to NSSearchField's button).
+struct NativeSearchField: View {
+    let placeholder: String
+    @Binding var text: String
+    var width: CGFloat = 220
+    var filter = false
+
+    var body: some View {
+        if filter {
+            MacFilterField(placeholder: placeholder, text: $text, width: width)
+        } else {
+            SystemSearchField(placeholder: placeholder, text: $text, width: width)
+        }
+    }
+}
+
+/// A field that filters a list: the system search field's capsule, edge and height, the funnel, a clear button,
+/// Escape clears.
+private struct MacFilterField: View {
+    let placeholder: String
+    @Binding var text: String
+    let width: CGFloat
+
+    var body: some View {
+        HStack(spacing: 5) {
+            WebIconView(.funnel, size: 13).foregroundStyle(MacLook.Colors.secondary)
+            TextField("", text: $text)
+                .textFieldStyle(.plain)
+                .font(MacLook.Text.body)
+                .onExitCommand { text = "" }
+                // (The placeholder in the system field's grey: a plain field's own is the text colour.)
+                .overlay(alignment: .leading) {
+                    if text.isEmpty {
+                        Text(placeholder).font(MacLook.Text.body).foregroundStyle(MacLook.Colors.tertiary)
+                            .lineLimit(1).allowsHitTesting(false).accessibilityHidden(true)
+                    }
+                }
+            if !text.isEmpty {
+                Button { text = "" } label: {
+                    Image(systemName: "xmark.circle.fill").foregroundStyle(MacLook.Colors.tertiary)
+                }
+                .buttonStyle(QuietHoverStyle(shape: AnyShape(Circle())))
+                .foleviTooltip("Clear filter")
+                .accessibilityLabel("Clear filter")
+            }
+        }
+        .padding(.leading, 9)
+        .padding(.trailing, 6)
+        .frame(height: MacLook.controlHeight)
+        .background(Capsule().fill(Color(nsColor: .controlBackgroundColor)))
+        .overlay(Capsule().strokeBorder(MacLook.Colors.separator, lineWidth: 1))
+        .frame(maxWidth: width)
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel(placeholder)
+    }
+}
+
 /// The system's search field (NSSearchField): magnifier, placeholder, clear button, Escape clears.
-struct NativeSearchField: NSViewRepresentable {
+private struct SystemSearchField: NSViewRepresentable {
     let placeholder: String
     @Binding var text: String
     var width: CGFloat = 220
@@ -153,9 +212,15 @@ struct NativeSearchField: View {
     let placeholder: String
     @Binding var text: String
     var width: CGFloat = 220
+    /// A field that filters the list under it: Folevi's funnel in place of the magnifier.
+    var filter = false
     var body: some View {
         HStack(spacing: 6) {
-            Image(systemName: "magnifyingglass").foregroundStyle(MacLook.Colors.secondary)
+            if filter {
+                WebIconView(.funnel, size: 15).foregroundStyle(MacLook.Colors.secondary)
+            } else {
+                Image(systemName: "magnifyingglass").foregroundStyle(MacLook.Colors.secondary)
+            }
             TextField(placeholder, text: $text)
                 .textFieldStyle(.plain)
                 .font(MacLook.Text.body)
@@ -163,7 +228,7 @@ struct NativeSearchField: View {
             if !text.isEmpty {
                 Button { text = "" } label: { Image(systemName: "xmark.circle.fill").foregroundStyle(MacLook.Colors.tertiary).padding(2) }
                     .buttonStyle(QuietHoverStyle(shape: AnyShape(Circle())))
-                    .accessibilityLabel("Clear search")
+                    .accessibilityLabel(filter ? "Clear filter" : "Clear search")
             }
         }
         .padding(.horizontal, 10)

@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useContext, useState, type ReactNode } from "react";
-import { ChevronRight, MoreHorizontal, Search, type LucideIcon } from "lucide-react";
+import { ChevronRight, Funnel, MoreHorizontal, Search, type LucideIcon } from "lucide-react";
 import { AppLink } from "@/lib/app/router";
 import { useLocalStorage } from "@/lib/hooks/useEngine";
 import { MenuButton, type MenuEntry } from "@/components/ui/Menu";
@@ -141,7 +141,10 @@ export function EmptyBox({ children }: { children: ReactNode }) {
 }
 
 /** The search field under a large title: a button that opens search (Home), or a field that filters a list. */
-export function SearchField({ placeholder, onOpen, value, onChange, trailing }: { placeholder: string; onOpen?: () => void; value?: string; onChange?: (v: string) => void; trailing?: ReactNode }) {
+/** A search pill, or with `filter` a field that filters the list under it ("Filter notes", the funnel in front: the
+ *  owner, 2026-11-19). */
+export function SearchField({ placeholder, onOpen, value, onChange, trailing, filter = false }: { placeholder: string; onOpen?: () => void; value?: string; onChange?: (v: string) => void; trailing?: ReactNode; filter?: boolean }) {
+  const Icon = filter ? Funnel : Search;
   const [focused, setFocused] = useState(false);
   const box = "flex h-11 items-center gap-2 rounded-panel bg-[color-mix(in_oklab,var(--color-ink)_6.5%,transparent)] px-3 text-body";
   if (onOpen)
@@ -157,7 +160,7 @@ export function SearchField({ placeholder, onOpen, value, onChange, trailing }: 
   return (
     <div className="flex items-center gap-2 px-4 pb-1 pt-2">
       <label className={`${box} min-w-0 flex-1 text-faint`}>
-        <Search size={19} strokeWidth={2.1} aria-hidden className="flex-none" />
+        <Icon size={19} strokeWidth={2.1} aria-hidden className="flex-none" />
         <span className="sr-only">{placeholder}</span>
         <input
           type="search"

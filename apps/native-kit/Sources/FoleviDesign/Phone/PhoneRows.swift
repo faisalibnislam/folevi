@@ -355,12 +355,15 @@ public struct PhoneEmptyBox: View {
 public struct PhoneSearchField: View {
     let placeholder: String
     @Binding var text: String
+    let icon: WebIcon
     @FocusState private var focused: Bool
     @Environment(\.colorScheme) private var scheme
 
-    public init(_ placeholder: String, text: Binding<String>) {
+    /// `icon`: the magnifier, or `.funnel` for a field that filters the list under it ("Filter notes").
+    public init(_ placeholder: String, text: Binding<String>, icon: WebIcon = .search) {
         self.placeholder = placeholder
         self._text = text
+        self.icon = icon
     }
 
     public var body: some View {
@@ -370,7 +373,7 @@ public struct PhoneSearchField: View {
         let icon = ps("phone.search.icon", scheme)
         HStack(spacing: wrap.gap) {
             HStack(spacing: box.gap) {
-                WebIconView(.search, size: icon.width, strokeWidth: 2.1).foregroundStyle(icon.color.color)
+                WebIconView(self.icon, size: icon.width, strokeWidth: 2.1).foregroundStyle(icon.color.color)
                 // (The placeholder in the web's letter spacing: a UIKit field's prompt has none.)
                 TextField("", text: $text)
                     .font(Font(input.text.ctFont))

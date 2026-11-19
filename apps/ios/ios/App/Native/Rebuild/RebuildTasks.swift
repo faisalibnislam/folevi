@@ -126,6 +126,7 @@ struct RebuildTasksScreen: View {
         if PhoneNotesListScreen.nativeSearch {
             o.search = Bindable(model).filter
             o.searchPrompt = "Filter by task or note"
+            o.searchIcon = .funnel
         }
         return o
     }

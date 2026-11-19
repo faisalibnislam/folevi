@@ -160,7 +160,7 @@ export function IphoneNoteList(props: IphoneNoteListProps) {
           <GlassTextButton onClick={() => (all ? selection.clear() : selection.selectAll())}>{all ? "Deselect All" : "Select All"}</GlassTextButton>
         ) : undefined,
         status: selecting ? (picked ? `${picked} selected` : "Select notes") : undefined,
-        header: docs.length || query ? <SearchField placeholder="Search" value={query} onChange={setQuery} /> : null,
+        header: docs.length || query ? <SearchField filter placeholder="Filter notes" value={query} onChange={setQuery} /> : null,
       }}
     >
       {selecting ? (

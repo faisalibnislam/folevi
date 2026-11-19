@@ -28,7 +28,11 @@ struct RebuildSearchScreen: View {
         }, openNote: { id in
             frame.back()
             phone.router?.openNote(id, source: nil, focus: false)
-        }, close: { frame.back() }, scopeMenu: { which, anchor in showScope(which, from: anchor) }, menus: menus)
+        }, close: {
+            // Only while search is on show: a tab tapped has already closed it, and Back then would leave that tab's
+            // screen too.
+            if frame.searching { frame.back() }
+        }, scopeMenu: { which, anchor in showScope(which, from: anchor) }, menus: menus)
     }
 
     /// The palette's actions (CommandPalette.tsx), in its order.

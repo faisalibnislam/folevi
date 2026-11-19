@@ -123,7 +123,6 @@ public struct PhoneFrameView<Screen: View>: View {
                 }
             }
         )
-        let hidden = barHidden(model.top)
         return TabView(selection: selection) {
             ForEach(PhoneTab.allCases) { tab in
                 Tab(value: Selection.tab(tab)) {
@@ -141,14 +140,14 @@ public struct PhoneFrameView<Screen: View>: View {
             }
         }
         .tabBarMinimizeBehavior(.onScrollDown)
-        .modifier(FrameAccessory(enabled: !hidden && !model.searching) { accessory })
         .overlay { PhoneMenuLayer(menus: menus) }
     }
 
-    /// Ask Foli AI and +, in the tab bar's accessory.
-    @available(iOS 26, *)
-    private var accessory: some View {
-        PhoneFrameAccessory(aiOn: aiOn, onTasks: model.current == .tasks, actions: actions)
+    /// + and Foli AI in a tab's first screen's bar (the owner, 2026-11-19: no bar of their own over the tab bar).
+    private func rootCreate(_ tab: PhoneTab) -> PhoneRootCreate? {
+        guard #available(iOS 26, *) else { return nil }
+        return PhoneRootCreate(aiOn: aiOn, quickTaskOnly: tab == .tasks, openAI: actions.openAI, newNote: actions.newNote,
+                               fromTemplate: actions.fromTemplate, quickTask: actions.quickTask)
     }
 
     /// Before iOS 26: the floating tab bar drawn as the web's, over the stacks.
@@ -194,6 +193,7 @@ public struct PhoneFrameView<Screen: View>: View {
         let first = model.stacks[tab]?.first?.route ?? PhoneFrameModel.root(of: tab)
         return NavigationStack(path: path) {
             screen(first)
+                .environment(\.phoneRootCreate, rootCreate(tab))
                 .toolbarVisibility(barHidden(first) ? .hidden : .automatic, for: .tabBar)
                 .navigationDestination(for: PhoneStackEntry.self) { entry in
                     destination(entry.route)
@@ -211,80 +211,6 @@ public struct PhoneFrameView<Screen: View>: View {
         } else {
             screen(route).toolbarVisibility(barHidden(route) ? .hidden : .automatic, for: .tabBar)
         }
-    }
-}
-
-/// The tab bar's accessory, shown only while the bar is (iOS 26.1 hides it on demand; on 26.0 it stays).
-@available(iOS 26, *)
-private struct FrameAccessory<A: View>: ViewModifier {
-    let enabled: Bool
-    @ViewBuilder let accessory: () -> A
-
-    func body(content: Content) -> some View {
-        if #available(iOS 26.1, *) {
-            content.tabViewBottomAccessory(isEnabled: enabled) { accessory() }
-        } else {
-            content.tabViewBottomAccessory { accessory() }
-        }
-    }
-}
-
-/// Ask Foli AI (the flower and its words, the sheet grows out of it) and + (the Create menu, a system menu with
-/// Folevi's icons; on Tasks a quick task straight away). Minimized with the tab bar while a list scrolls down, it
-/// keeps the flower and + only.
-@available(iOS 26, *)
-struct PhoneFrameAccessory: View {
-    let aiOn: Bool
-    let onTasks: Bool
-    let actions: PhoneFrameActions
-    @Environment(\.tabViewBottomAccessoryPlacement) private var placement
-
-    var body: some View {
-        HStack(spacing: 0) {
-            if aiOn {
-                Button(action: actions.openAI) {
-                    HStack(spacing: 10) {
-                        AiMarkGlyph(size: 22)
-                        if placement != .inline {
-                            Text("Ask Foli AI").font(.body).foregroundStyle(.secondary).lineLimit(1)
-                        }
-                        Spacer(minLength: 0)
-                    }
-                    .padding(.leading, 16)
-                    .frame(maxHeight: .infinity)
-                    .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                .sheetZoomSource("ai")
-                .accessibilityLabel("Foli AI")
-            } else {
-                Spacer(minLength: 0)
-            }
-            if onTasks {
-                Button(action: actions.quickTask) { plusGlyph }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel("Quick task")
-            } else {
-                Menu {
-                    Button(action: actions.newNote) { Label { Text("New note") } icon: { WebIcon.filePlusCorner.image() } }
-                    Button(action: actions.fromTemplate) { Label { Text("From template") } icon: { WebIcon.layoutTemplate.image() } }
-                    Button(action: actions.newFolder) { Label { Text("New folder") } icon: { WebIcon.folderPlus.image() } }
-                    Button(action: actions.quickTask) { Label { Text("Quick task") } icon: { WebIcon.listPlus.image() } }
-                } label: {
-                    plusGlyph
-                }
-                .accessibilityLabel("Create")
-            }
-        }
-    }
-
-    private var plusGlyph: some View {
-        Image(systemName: "plus")
-            .font(.system(size: 19, weight: .semibold))
-            .foregroundStyle(.primary)
-            .frame(width: 52)
-            .frame(maxHeight: .infinity)
-            .contentShape(Rectangle())
     }
 }
 

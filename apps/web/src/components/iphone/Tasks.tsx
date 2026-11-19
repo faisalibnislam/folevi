@@ -157,7 +157,7 @@ export function IphoneTasks({
                 );
               })}
             </nav>
-            <SearchField placeholder="Filter by task or note" value={filter} onChange={onFilter} />
+            <SearchField filter placeholder="Filter by task or note" value={filter} onChange={onFilter} />
           </>
         ),
       }}

@@ -20,13 +20,17 @@ struct RebuildHomeScreen: View {
     @State private var deletingTag: TagRow?
     @State private var tagName = ""
     @Environment(\.colorScheme) private var scheme
-    /// Foli DNA's saved views (`graph.views`, small: it doesn't load the map), watched once Foli DNA is on here.
-    @State private var dnaViews: ValueStore<GraphViewsValue>?
 
     private var signedIn: Bool { home.session.value?.mode == .account }
 
+    private var homeOptions: PhoneScreenOptions {
+        var o = PhoneScreenOptions(title: "Home", eyebrow: home.eyebrow)
+        o.trailingEmpty = !signedIn
+        return o
+    }
+
     var body: some View {
-        PhoneScreen(PhoneScreenOptions(title: "Home", eyebrow: home.eyebrow), root: true, scrollToTop: frame.scrollToTop) {
+        PhoneScreen(homeOptions, root: true, scrollToTop: frame.scrollToTop) {
             Button(action: openAccount) {
                 PhoneHereMark(you: (home.profileName.isEmpty ? "You" : home.profileName, home.session.value?.profile.avatarUrl.flatMap(URL.init(string:))), workspace: home.workspaceMark.map { ($0.name, $0.logoUrl) })
                     .frame(width: 44, height: 44)
@@ -34,15 +38,13 @@ struct RebuildHomeScreen: View {
             .buttonStyle(.plain)
             .accessibilityLabel("\(home.spaceName): account and places")
         } trailing: {
-            WebGlassPill {
-                if signedIn {
+            // The bell (signed in). No More: what it held, All folders and Foli DNA, are rows on Home, and Home
+            // makes no folders (the owner, 2026-11-19).
+            if signedIn {
+                WebGlassPill {
                     WebPillButton("Notifications", action: openNotifications) {
                         WebIconView(.bell, size: 21, strokeWidth: 1.9)
                     }
-                }
-                // iOS's own menu (the native look).
-                PhoneMenuButton("More", menus: menus, build: { showMore(from: .zero) }) {
-                    WebIconView(.ellipsis, size: 22, strokeWidth: 2.2)
                 }
             }
         } content: {
@@ -66,16 +68,12 @@ struct RebuildHomeScreen: View {
         .refreshable { await home.refresh() }
         .onAppear { home.setVisible(true) }
         .onDisappear { home.setVisible(false) }
-        .onChange(of: home.graphOn, initial: true) { _, on in
-            if on, dnaViews == nil { dnaViews = phone.client.watch(.graphViews()) }
-        }
     }
 
     private var homeActions: PhoneHomeActions {
         var a = PhoneHomeActions(
             open: { frame.open(FrameRoute(path: $0)) },
-            openNote: { phone.router?.openNote($0, source: nil, focus: false) },
-            foldersMenu: { showMore(from: $0, graph: false) }
+            openNote: { phone.router?.openNote($0, source: nil, focus: false) }
         )
         a.folderMenu = { card, anchor in
             let context = FolderMenuContext(session: home.session.value, places: home.places.value, links: home.folderLinks, locks: home.locks.error == nil ? home.locks.value : nil)
@@ -148,27 +146,5 @@ struct RebuildHomeScreen: View {
         case .unarchive: "Unarchive"
         default: "Move to Trash"
         }
-    }
-
-    /// The pill's More and the Folders section's "…": New folder, All folders (and Foli DNA with its saved views,
-    /// as the sidebar lists them under it, from the pill).
-    private func showMore(from anchor: CGRect, graph: Bool = true) {
-        var entries = [
-            PhoneMenuEntry(.item("New folder", icon: .folderPlus)) { newFolder(nil) },
-            PhoneMenuEntry(.item("All folders", icon: .files)) { frame.open(FrameRoute(path: "/folders")) },
-        ]
-        if graph && home.graphOn {
-            entries.append(PhoneMenuEntry(.item("Foli DNA", icon: .waypoints)) { frame.open(FrameRoute(path: "/graph")) })
-            for view in Self.dnaMenuViews(dnaViews?.value) {
-                let id = view.id.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? view.id
-                entries.append(PhoneMenuEntry(.item(view.name, icon: .waypoints, id: "dna-view:\(view.id)")) { frame.open(FrameRoute(path: "/graph?view=\(id)")) })
-            }
-        }
-        menus.show(entries, from: anchor, side: .bottom, align: .end)
-    }
-
-    /// The saved views the menu lists: the sidebar's first five (Sidebar.tsx SIDEBAR_LIMIT).
-    static func dnaMenuViews(_ value: GraphViewsValue?) -> [GraphSavedView] {
-        Array((value?.views ?? []).prefix(5))
     }
 }

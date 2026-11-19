@@ -488,7 +488,7 @@ struct PlannerFilterField: View {
 
     var body: some View {
         HStack(spacing: 8) {
-            WebIconView(.search, size: 14).foregroundStyle(Color.secondary)
+            WebIconView(.funnel, size: 14).foregroundStyle(Color.secondary)
             TextField(placeholder, text: $text)
                 .textFieldStyle(.plain)
                 .font(.system(size: NativeField.textSize))

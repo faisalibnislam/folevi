@@ -1,7 +1,8 @@
 // Home on the iPhone, as the web draws it (apps/web/src/components/iphone/IphoneHome.tsx): recent notes as cards
 // in a row, Catch me up as its own card, All notes, Drafts, Shared with Me, Changes and Reviews as tiles two by
 // two, Bookmarks (rows in a rounded card), Folders (their cards in a row) and Tags (folded at first), and
-// the Vault (for someone with one), Templates, Archive and Trash in a card at the end. Everything
+// All folders, Foli DNA (where it's on), the Vault (for someone with one), Templates, Archive and Trash in a card
+// at the end. Everything
 // comes from the engine's `home` view (HomeModel); the frame draws the bar, the large title and the search field.
 #if os(iOS)
 import SwiftUI
@@ -14,8 +15,9 @@ public struct PhoneHomeActions {
     /// A web route (`/notes`, `/folders/<id>`, `/starred`): the frame opens its screen.
     public var open: (String) -> Void
     public var openNote: (String) -> Void
-    /// The Folders section's "…" (New folder, All folders), from where it was tapped.
-    public var foldersMenu: (CGRect) -> Void
+    /// The Folders section's "…", from where it was tapped; nil: none (the native look: All folders is a row of its
+    /// own, and Home makes no folders, the owner, 2026-11-19).
+    public var foldersMenu: ((CGRect) -> Void)?
     /// A folder card's menu (its long press), from the card.
     public var folderMenu: (FolderCard, CGRect) -> Void = { _, _ in }
     /// A note's menu (its long press on a recent card or a Starred row), from where it was held.
@@ -24,7 +26,7 @@ public struct PhoneHomeActions {
     /// be changed.
     public var tagMenu: ((TagRow, CGRect) -> Void)?
 
-    public init(open: @escaping (String) -> Void, openNote: @escaping (String) -> Void, foldersMenu: @escaping (CGRect) -> Void) {
+    public init(open: @escaping (String) -> Void, openNote: @escaping (String) -> Void, foldersMenu: ((CGRect) -> Void)? = nil) {
         self.open = open
         self.openNote = openNote
         self.foldersMenu = foldersMenu
@@ -56,6 +58,11 @@ public struct PhoneHomeContent: View {
             folders
             if !model.tags.isEmpty { tags }
             PhoneRowGroup("More") {
+                // In sight, not in a menu (the owner, 2026-11-19).
+                PhoneListRow("All folders", action: { actions.open("/folders") }) { PhoneRowGlyph(.folder) }
+                if model.graphOn {
+                    PhoneListRow("Foli DNA", action: { actions.open("/graph") }) { PhoneRowGlyph(.waypoints) }
+                }
                 // Only for someone with a Vault, as the web's sidebar lists it (the phone has no sidebar).
                 if model.hasVault {
                     PhoneListRow("Vault", action: { actions.open("/vault") }) { PhoneRowGlyph(.lock) }

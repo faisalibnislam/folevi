@@ -33,7 +33,7 @@ public struct TasksScreen: View {
                         .padding(.horizontal, 20).padding(.top, 14)
                 }
                 TaskChipsRow(model: model).padding(.top, 2)
-                SearchField(text: $model.filter, prompt: "Filter by task or note").padding(.horizontal, 16)
+                SearchField(text: $model.filter, prompt: "Filter by task or note", systemImage: "line.3.horizontal.decrease").padding(.horizontal, 16)
                 if model.canEdit && model.view != .completed {
                     QuickAddTaskField(model: model, focused: $addFocused).padding(.horizontal, 16).padding(.top, 4)
                 }

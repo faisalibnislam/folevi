@@ -58,4 +58,77 @@ public extension EnvironmentValues {
     /// The frame's menus, set by the native look: long presses and bar buttons show iOS's own menus holding the
     /// rows their menu-building code gives (`PhoneMenus.entries`). Nil: Folevi's drawn menus, from where they sit.
     @Entry var phoneMenus: PhoneMenus? = nil
+    /// The colour of the screen behind the bar, set by PhoneScreen for its root bar's account button, whose badge
+    /// is ringed in it. Nil: the grouped grey.
+    @Entry var phoneScreenSurface: Color? = nil
+    /// The tab's first screen's Create and Foli AI buttons, set by the frame for that screen only (PhoneScreen draws
+    /// them in its bar). Nil: none.
+    @Entry var phoneRootCreate: PhoneRootCreate? = nil
 }
+
+/// What a tab's first screen offers in its bar besides the bell and More (the owner, 2026-11-19): + for the Create
+/// menu, New note, From template and Quick task, no New folder (on Tasks a quick task straight away), and Foli AI's flower when Foli AI is on. They were a bar of their own
+/// over the tab bar, Ask Foli AI as wide as the screen; up here Foli AI is there without being the screen's focus.
+public struct PhoneRootCreate {
+    public var aiOn: Bool
+    /// Tasks: + adds a quick task, with no menu.
+    public var quickTaskOnly: Bool
+    public var openAI: @MainActor () -> Void
+    public var newNote: @MainActor () -> Void
+    public var fromTemplate: @MainActor () -> Void
+    public var quickTask: @MainActor () -> Void
+
+    public init(aiOn: Bool, quickTaskOnly: Bool, openAI: @escaping @MainActor () -> Void, newNote: @escaping @MainActor () -> Void,
+                fromTemplate: @escaping @MainActor () -> Void, quickTask: @escaping @MainActor () -> Void) {
+        self.aiOn = aiOn
+        self.quickTaskOnly = quickTaskOnly
+        self.openAI = openAI
+        self.newNote = newNote
+        self.fromTemplate = fromTemplate
+        self.quickTask = quickTask
+    }
+}
+
+#if os(iOS)
+/// The flower and +, in one of the bar's glass capsules.
+public struct PhoneRootCreateButtons: View {
+    let create: PhoneRootCreate
+
+    public init(_ create: PhoneRootCreate) { self.create = create }
+
+    public var body: some View {
+        HStack(spacing: 6) {
+            if create.aiOn {
+                Button(action: create.openAI) { AiMarkGlyph(size: 21).frame(width: 30, height: 30) }
+                    .buttonStyle(.plain)
+                    .sheetZoomSource("ai")
+                    .accessibilityLabel("Foli AI")
+                    .accessibilityIdentifier("root-ai")
+            }
+            if create.quickTaskOnly {
+                Button(action: create.quickTask) { plus }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Quick task")
+                    .accessibilityIdentifier("root-create")
+            } else {
+                Menu {
+                    Button(action: create.newNote) { Label { Text("New note") } icon: { WebIcon.filePlusCorner.image() } }
+                    Button(action: create.fromTemplate) { Label { Text("From template") } icon: { WebIcon.layoutTemplate.image() } }
+                    Button(action: create.quickTask) { Label { Text("Quick task") } icon: { WebIcon.listPlus.image() } }
+                } label: {
+                    plus
+                }
+                .accessibilityLabel("Create")
+                .accessibilityIdentifier("root-create")
+            }
+        }
+    }
+
+    private var plus: some View {
+        WebIconView(.plus, size: 22, strokeWidth: 2.1)
+            .foregroundStyle(.primary)
+            .frame(width: 30, height: 30)
+            .contentShape(Rectangle())
+    }
+}
+#endif

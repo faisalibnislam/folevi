@@ -2,7 +2,7 @@
 
 import { useQuery } from "convex/react";
 import { useCallback, useId, useMemo, useState } from "react";
-import { Check, Hash, LayoutGrid, Rows3, Search, X, FolderOpen } from "lucide-react";
+import { Check, Funnel, Hash, LayoutGrid, Rows3, X, FolderOpen } from "lucide-react";
 import { folderAncestors } from "@folevi/editor-schema";
 import { FolderGlyph } from "@/components/ui/FolderGlyph";
 import { FolderCard, type FolderSummary } from "./FolderCard";
@@ -46,10 +46,10 @@ function SearchField({ value, onChange, label, inRow = false }: { value: string;
       <label htmlFor={id} className="sr-only">
         {label}
       </label>
-      <Search size={14} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-faint" aria-hidden />
+      <Funnel size={14} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-faint" aria-hidden />
       <input id={id} type="text" value={value} onChange={(e) => onChange(e.target.value)} placeholder={label} autoComplete="off" className={`ui-input ${inRow ? ROW_CONTROL : "h-9"} w-full rounded-chip pl-8 pr-8 text-callout`} />
       {value ? (
-        <button type="button" aria-label="Clear search" onClick={() => onChange("")} className="absolute right-2 top-1/2 grid h-6 w-6 -translate-y-1/2 place-items-center rounded-chip text-faint hover:text-ink">
+        <button type="button" aria-label="Clear filter" onClick={() => onChange("")} className="absolute right-2 top-1/2 grid h-6 w-6 -translate-y-1/2 place-items-center rounded-chip text-faint hover:text-ink">
           <X size={13} aria-hidden />
         </button>
       ) : null}
@@ -211,7 +211,7 @@ export function FoldersIndex() {
         <ListPageHeader
           title="Folders"
           count={data === undefined ? "Loading…" : q.trim() ? `${list.length} of ${data.folders.length} folders` : `${list.length} ${list.length === 1 ? "folder" : "folders"}`}
-          before={<SearchField value={q} onChange={setQ} label="Search folders" inRow />}
+          before={<SearchField value={q} onChange={setQ} label="Filter folders" inRow />}
           after={<NewFolderButton parentId={null} inPage />}
           controls={
             <>
@@ -330,7 +330,7 @@ export function TagsIndex() {
     >
       <div className="mx-auto max-w-[1180px] px-4 pb-[max(6rem,var(--fab-clearance))] pt-3 sm:px-8">
         <div className="flex flex-wrap items-center gap-3">
-          <SearchField value={q} onChange={setQ} label="Search tags" />
+          <SearchField value={q} onChange={setQ} label="Filter tags" />
           <p role="status" className="min-w-0 truncate text-subheadline text-muted">
             {data === undefined ? "Loading…" : q.trim() ? `${list.length} of ${data.tags.length} tags` : `${data.tags.length} ${data.tags.length === 1 ? "tag" : "tags"}`}
           </p>

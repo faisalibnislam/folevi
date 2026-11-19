@@ -24,7 +24,7 @@ struct PhoneHomeSnapshotTests {
         for scheme in [ColorScheme.light, .dark] {
             let view = ScrollView {
                 VStack(spacing: 0) {
-                    PhoneHomeContent(model: model, actions: PhoneHomeActions(open: { _ in }, openNote: { _ in }, foldersMenu: { _ in }))
+                    PhoneHomeContent(model: model, actions: PhoneHomeActions(open: { _ in }, openNote: { _ in }))
                 }
                 .padding(.bottom, 24)
             }
@@ -62,7 +62,7 @@ struct PhoneHomeSnapshotTests {
         let model = HomeModel(client: engine.client())
         for scheme in [ColorScheme.light, .dark] {
             let view = ScrollView {
-                PhoneHomeContent(model: model, actions: PhoneHomeActions(open: { _ in }, openNote: { _ in }, foldersMenu: { _ in }))
+                PhoneHomeContent(model: model, actions: PhoneHomeActions(open: { _ in }, openNote: { _ in }))
                     .padding(.bottom, 24)
             }
             .defaultScrollAnchor(.bottom)

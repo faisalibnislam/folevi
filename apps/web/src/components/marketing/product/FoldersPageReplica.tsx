@@ -1,5 +1,5 @@
 import type { DocumentCover } from "@folevi/editor-schema";
-import { ChevronDown, FolderPlus, LayoutGrid, Rows3, Search } from "lucide-react";
+import { ChevronDown, FolderPlus, Funnel, LayoutGrid, Rows3 } from "lucide-react";
 import { FOLDER_CARD_BOX, FOLDER_CARD_FRAME, FolderCardArt, type FolderPreview } from "@/components/views/FolderCardArt";
 import { COVER_ART } from "@/lib/cover";
 import { DEMO_FOLDERS, type DemoFolder, type DemoNote } from "../content/demoFolders";
@@ -64,8 +64,8 @@ export function FoldersPageReplica({ className }: { className?: string }) {
             </div>
             <div className="mt-3 flex items-center gap-2.5">
               <span className="relative flex h-8 min-w-0 flex-1 items-center rounded-chip bg-(--color-surface) pl-7 text-[13px] text-faint shadow-[inset_0_1px_2px_color-mix(in_oklab,var(--color-heading)_8%,transparent),0_0_0_1px_var(--color-line)] sm:max-w-[300px]">
-                <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2" />
-                <span className="truncate">Search folders</span>
+                <Funnel size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2" />
+                <span className="truncate">Filter folders</span>
               </span>
               <span className="hidden flex-none text-[12px] text-muted sm:inline">{folders.length} folders</span>
               <span className="hidden flex-1 sm:block" />

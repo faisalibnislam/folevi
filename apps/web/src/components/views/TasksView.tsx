@@ -3,7 +3,7 @@
 import { DateField, TimeField } from "@/components/ui/DateField";
 import { useMutation, useQuery } from "convex/react";
 import { useCallback, useDeferredValue, useMemo, useRef, useState, type ReactNode } from "react";
-import { ArrowRightLeft, CalendarDays, Check, FileText, Plus, Repeat, RotateCcw, Search, SlidersHorizontal, CheckSquare, X } from "lucide-react";
+import { ArrowRightLeft, CalendarDays, Check, FileText, Funnel, Plus, Repeat, RotateCcw, SlidersHorizontal, CheckSquare, X } from "lucide-react";
 import { DocumentPicker, type Target } from "@/components/app/QuickAddTask";
 import { api } from "@/lib/convex/api";
 import { useAppState } from "@/lib/app/state";
@@ -421,7 +421,7 @@ export function TasksView({ view }: { view: View }) {
         <div className="relative mt-4">
           <label>
             <span className="sr-only">Filter tasks</span>
-            <Search size={14} aria-hidden className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-faint" />
+            <Funnel size={14} aria-hidden className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-faint" />
             <input
               ref={filterRef}
               value={filter}

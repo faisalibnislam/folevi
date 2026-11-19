@@ -28,7 +28,11 @@ public struct PhoneTagsScreen: View {
     /// The title, and iOS's own search field under it (the native look).
     private var searchOptions: PhoneScreenOptions {
         var o = PhoneScreenOptions(title: "Tags")
-        if PhoneNotesListScreen.nativeSearch { o.search = $model.query }
+        if PhoneNotesListScreen.nativeSearch {
+            o.search = $model.query
+            o.searchPrompt = "Filter tags"
+            o.searchIcon = .funnel
+        }
         return o
     }
 
@@ -38,7 +42,7 @@ public struct PhoneTagsScreen: View {
         } trailing: {
             PhoneBarMenuButton("Tags options") { menu($0) }
         } header: {
-            if !PhoneNotesListScreen.nativeSearch { PhoneSearchField("Search", text: $model.query) }
+            if !PhoneNotesListScreen.nativeSearch { PhoneSearchField("Filter tags", text: $model.query, icon: .funnel) }
         } content: {
             let shown = model.shown
             if !model.isLoading && shown.isEmpty {

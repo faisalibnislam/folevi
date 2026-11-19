@@ -1849,14 +1849,14 @@ struct WebFoldersIndex: View {
                 if slot != nil {
                     // The Mac's native look: Sort, the view switch and New folder are in the card's glass controls;
                     // the page's own filter stays here.
-                    NativeSearchField(placeholder: "Search folders", text: $query, width: 260)
+                    NativeSearchField(placeholder: "Filter folders", text: $query, width: 260, filter: true)
                         .frame(maxWidth: 260)
                         .padding(.top, 12)
                         .padding(.bottom, 24)
                 } else {
                 WebListPageHeader(title: "Folders", count: allFolders.value == nil ? "Loading…" : searching ? "\(shown.count) of \(total) folders" : "\(shown.count) \(shown.count == 1 ? "folder" : "folders")") {
                     // (Its width follows the window's, up to 300: the web's clamp(10rem, 26vw, 300px).)
-                    WebIndexSearch(placeholder: "Search folders", text: $query, width: min(300, max(160, geo.size.width * 0.26)), height: WebListPageHeaderMetrics.controlHeight)
+                    WebIndexSearch(placeholder: "Filter folders", text: $query, width: min(300, max(160, geo.size.width * 0.26)), height: WebListPageHeaderMetrics.controlHeight)
                     WebRowTray {
                         WebRowSort(options: FoldersSort.options, value: Binding(get: { sort }, set: { sortRaw = $0.rawValue }))
                         WebRowTrayDivider()
@@ -2325,7 +2325,7 @@ struct WebIndexSearch: View {
     var body: some View {
         if chrome != nil {
             // The Mac's native look: the system's search field.
-            NativeSearchField(placeholder: placeholder, text: $text, width: min(width, 260))
+            NativeSearchField(placeholder: placeholder, text: $text, width: min(width, 260), filter: true)
                 .frame(maxWidth: min(width, 260))
         } else {
             web
@@ -2400,17 +2400,17 @@ struct WebTagsIndex: View {
             VStack(alignment: .leading, spacing: 0) {
                 if slot != nil {
                     // The Mac's native look: Sort is in the card's glass controls; the page's own filter stays here.
-                    NativeSearchField(placeholder: "Search tags", text: $query, width: 260)
+                    NativeSearchField(placeholder: "Filter tags", text: $query, width: 260, filter: true)
                         .frame(maxWidth: 260)
                         .padding(.top, 12)
                 } else if chrome != nil {
                     WebListPageHeader(title: "Tags", count: tags.value == nil ? "Loading…" : !needle.isEmpty ? "\(shown.count) of \(all.count) tags" : "\(all.count) \(all.count == 1 ? "tag" : "tags")") {
-                        WebIndexSearch(placeholder: "Search tags", text: $query, width: 220)
+                        WebIndexSearch(placeholder: "Filter tags", text: $query, width: 220)
                         WebRowSort(options: [("name", "Name"), ("count", "Most used"), ("created", "Newest")], value: $sort)
                     }
                 } else {
                 HStack(spacing: 12) {
-                    WebIndexSearch(placeholder: "Search tags", text: $query)
+                    WebIndexSearch(placeholder: "Filter tags", text: $query)
                     Text(tags.value == nil ? "Loading…" : !needle.isEmpty ? "\(shown.count) of \(all.count) tags" : "\(all.count) \(all.count == 1 ? "tag" : "tags")")
                         .webText(notesStyle("tags.status", scheme).text).lineLimit(1).foregroundStyle(notesStyle("tags.status", scheme).color.color)
                     Spacer(minLength: 0)

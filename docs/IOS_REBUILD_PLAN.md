@@ -595,8 +595,10 @@ Rebuild screens), so a narrow iPad window (the phone layout) gets it too.
   and Spectral (`noteContent()`, as on the Mac).
 - **Tab bar**: iOS 26's `TabView` in Liquid Glass (PhoneFrameView `nativeBody`): Home, Tasks and Calendar, each its
   own navigation stack, and Search as a tab of its own (`Tab(role: .search)`, its field `.searchable` on its stack).
-  Foli AI and + ride in the bar's accessory (`tabViewBottomAccessory`: Ask Foli AI, and + as the Create menu, or
-  Quick task on Tasks); the bar shrinks while a list scrolls down. It steps away for a note, the Foli AI page and
+  Nothing rides over the tab bar (the owner, 2026-11-19: an Ask Foli AI bar as wide as the screen made Foli AI the
+  screen's focus, and not everyone has it): a tab's first screen has + (the Create menu, or Quick task on Tasks) and,
+  when Foli AI is on, its flower in a glass capsule of their own before the bell and More (`PhoneRootCreate`). The
+  bar shrinks while a list scrolls down. It steps away for a note, the Foli AI page and
   Select. Before iOS 26 the drawn tab bar stays (`legacyBody`). Home's search field went: search is the tab.
 - **Navigation bars**: PhoneScreen is the system navigation bar now: the large title collapsing into the bar, the
   system Back and its edge swipe, the screen's controls as toolbar items (the glass buttons drop their own glass

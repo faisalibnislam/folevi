@@ -1,5 +1,5 @@
 // Notifications on the iPhone, the bell's medium sheet as the web draws it (apps/web/src/components/app/
-// NotificationsButton.tsx NotificationPanel, `phone`): All or Unread, Mark all read and Settings, then Today,
+// NotificationsButton.tsx NotificationPanel, `phone`): All or Unread and Mark all read, then Today,
 // Yesterday and Earlier; each row the person's avatar with what kind it is in a badge, the sentence (who did what
 // where), when, and any invitation's buttons. Rows swipe (Read or Unread, Remove) and hold their menu. From
 // FoleviScreens' NotificationsModel.
@@ -12,15 +12,13 @@ import FoleviScreens
 public struct PhoneNotificationsContent: View {
     @Bindable var model: NotificationsModel
     let open: (ScreenIntent) -> Void
-    let settings: () -> Void
     let rowMenu: (NotificationRow, CGRect) -> Void
     @State private var swipes = PhoneSwipeState()
     @Environment(\.colorScheme) private var scheme
 
-    public init(model: NotificationsModel, open: @escaping (ScreenIntent) -> Void, settings: @escaping () -> Void, rowMenu: @escaping (NotificationRow, CGRect) -> Void) {
+    public init(model: NotificationsModel, open: @escaping (ScreenIntent) -> Void, rowMenu: @escaping (NotificationRow, CGRect) -> Void) {
         self.model = model
         self.open = open
-        self.settings = settings
         self.rowMenu = rowMenu
     }
 
@@ -41,7 +39,8 @@ public struct PhoneNotificationsContent: View {
         VStack(spacing: 0) {
             HStack(spacing: 4) {
                 PhoneSegmented([("all", "All"), ("unread", unread > 0 ? "Unread · \(unread > 99 ? "99+" : String(unread))" : "Unread")], selection: Binding(get: { model.filter.rawValue }, set: { model.filter = NotificationsFilter(rawValue: $0) ?? .all }), accessibility: "Show")
-                    .frame(width: 164)
+                    // Wide enough for "Unread · 99+" now that the row has no settings button.
+                    .frame(width: 220)
                 Spacer(minLength: 0)
                 // Mark all read: a 44 pt text button, readable while there's something to mark.
                 Button { Task { await model.markAllRead() } } label: {
@@ -57,10 +56,11 @@ public struct PhoneNotificationsContent: View {
                 .buttonStyle(PhoneRowPressStyle())
                 .disabled(unread == 0)
                 .opacity(unread == 0 ? 0.5 : 1)
-                PhoneSheetButton("Notification settings", action: settings) { WebIconView(.settings, size: 20) }
+                // No settings button here (the owner, 2026-11-19): notification settings live in Settings. The
+                // words end at the sheet's margin, under its close button.
             }
             .padding(.leading, 16)
-            .padding(.trailing, 8)
+            .padding(.trailing, 2)
             .padding(.bottom, 8)
             FoleviTokens.Chrome.line.resolve(scheme).opacity(0.7).color.frame(height: 1)
             ScrollView {

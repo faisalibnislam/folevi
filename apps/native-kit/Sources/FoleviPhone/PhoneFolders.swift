@@ -54,7 +54,11 @@ public struct PhoneAllFoldersScreen: View {
     /// The title, and iOS's own search field under it (the native look).
     private var searchOptions: PhoneScreenOptions {
         var o = PhoneScreenOptions(title: "Folders")
-        if PhoneNotesListScreen.nativeSearch { o.search = $model.query }
+        if PhoneNotesListScreen.nativeSearch {
+            o.search = $model.query
+            o.searchPrompt = "Filter folders"
+            o.searchIcon = .funnel
+        }
         return o
     }
 
@@ -65,7 +69,7 @@ public struct PhoneAllFoldersScreen: View {
         } trailing: {
             PhoneBarMenuButton("Folders options") { menu($0) }
         } header: {
-            if !PhoneNotesListScreen.nativeSearch { PhoneSearchField("Search", text: $model.query) }
+            if !PhoneNotesListScreen.nativeSearch { PhoneSearchField("Filter folders", text: $model.query, icon: .funnel) }
         } content: {
             let shown = model.shown
             if !model.isLoading && shown.isEmpty {

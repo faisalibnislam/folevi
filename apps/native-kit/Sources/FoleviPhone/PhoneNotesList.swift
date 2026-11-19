@@ -108,7 +108,7 @@ public struct PhoneNotesListScreen: View {
             }
         } header: {
             if !Self.nativeSearch, model.total > 0 || model.isFiltering {
-                PhoneSearchField("Search", text: $model.filter)
+                PhoneSearchField("Filter notes", text: $model.filter, icon: .funnel)
             }
         } content: {
             VStack(alignment: .leading, spacing: 0) {
@@ -165,7 +165,11 @@ public struct PhoneNotesListScreen: View {
         var o = PhoneScreenOptions(title: model.title, status: model.selecting ? (picked > 0 ? "\(picked) selected" : "Select notes") : nil)
         if model.kind.view == .folder { o.tint = FolderColor.resolve(model.folder?.color).color }
         // iOS's own search field under the large title (the native look).
-        if Self.nativeSearch, model.total > 0 || model.isFiltering { o.search = $model.filter }
+        if Self.nativeSearch, model.total > 0 || model.isFiltering {
+            o.search = $model.filter
+            o.searchPrompt = "Filter notes"
+            o.searchIcon = .funnel
+        }
         return o
     }
 

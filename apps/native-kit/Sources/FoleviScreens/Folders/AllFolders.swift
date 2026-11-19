@@ -136,7 +136,7 @@ public struct AllFoldersScreen: View {
     public var body: some View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 0) {
-                SearchField(text: $model.query, prompt: "Search")
+                SearchField(text: $model.query, prompt: "Filter folders", systemImage: "line.3.horizontal.decrease")
                     .padding(.horizontal, gutter)
                     .padding(.vertical, 6)
                 if model.isLoading {

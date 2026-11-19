@@ -4,19 +4,22 @@ import SwiftUI
 public struct SearchField: View {
     @Binding var text: String
     let prompt: String
+    /// The SF Symbol in front: the magnifier, or the funnel for a field that filters a list.
+    var systemImage = "magnifyingglass"
     var onSubmit: () -> Void
     @FocusState private var focused: Bool
     @ScaledMetric(relativeTo: .body) private var glyph: CGFloat = 14
 
-    public init(text: Binding<String>, prompt: String = "Search", onSubmit: @escaping () -> Void = {}) {
+    public init(text: Binding<String>, prompt: String = "Search", systemImage: String = "magnifyingglass", onSubmit: @escaping () -> Void = {}) {
         _text = text
         self.prompt = prompt
+        self.systemImage = systemImage
         self.onSubmit = onSubmit
     }
 
     public var body: some View {
         HStack(spacing: 7) {
-            Image(systemName: "magnifyingglass")
+            Image(systemName: systemImage)
                 .font(.system(size: glyph, weight: .medium))
                 .foregroundStyle(Folevi.color.inkFaint)
                 .accessibilityHidden(true)

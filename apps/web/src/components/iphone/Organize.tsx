@@ -65,7 +65,7 @@ export function IphoneFolders<S extends string>({
             <MoreMenu items={menu} label="Folders options" />
           </GlassPill>
         ),
-        header: <SearchField placeholder="Search" value={query} onChange={onQuery} />,
+        header: <SearchField filter placeholder="Filter folders" value={query} onChange={onQuery} />,
       }}
     >
       <PullToRefresh onRefresh={refresh} />
@@ -113,7 +113,7 @@ export function IphoneTags<S extends string>({ tags, query, onQuery, sort, sorts
             <MoreMenu items={menu} label="Tags options" />
           </GlassPill>
         ),
-        header: <SearchField placeholder="Search" value={query} onChange={onQuery} />,
+        header: <SearchField filter placeholder="Filter tags" value={query} onChange={onQuery} />,
       }}
     >
       {tags && !tags.length ? (

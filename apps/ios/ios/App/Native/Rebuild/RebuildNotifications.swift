@@ -33,9 +33,6 @@ struct RebuildNotificationsSheet: View {
                 case .switchPlace(let id, _): (phone.router as? RebuildFrameController)?.switchPlace(id)
                 default: break
                 }
-            }, settings: {
-                close()
-                frame.open(.web("/settings/notifications"))
             }, rowMenu: { n, anchor in
                 let row = model.row(n)
                 menus.show([

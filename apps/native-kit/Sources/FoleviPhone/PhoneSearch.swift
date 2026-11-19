@@ -82,6 +82,9 @@ public struct PhoneSearchScreen: View {
             }
             .scrollDismissesKeyboard(.interactively)
             .background(FoleviTokens.Chrome.canvas.resolve(scheme).color.ignoresSafeArea())
+            // The field's own close button ends the search: back to the screen search was opened from (the
+            // owner, 2026-11-19), not the Search tab left empty.
+            .background(SearchEndWatcher(ended: close))
             .navigationTitle("Search")
             .navigationBarTitleDisplayMode(.large)
         }
@@ -416,6 +419,23 @@ private struct MarkRenderer: TextRenderer {
             flush()
         }
         for line in layout { ctx.draw(line) }
+    }
+}
+
+/// Calls `ended` when iOS's search field stops searching (its close button) after it has been searching. Read
+/// inside the stack `.searchable` is on, where `isSearching` is set.
+private struct SearchEndWatcher: View {
+    let ended: () -> Void
+    @Environment(\.isSearching) private var isSearching
+    @State private var searched = false
+
+    var body: some View {
+        Color.clear
+            .frame(width: 0, height: 0)
+            .accessibilityHidden(true)
+            .onChange(of: isSearching) { _, now in
+                if now { searched = true } else if searched { searched = false; ended() }
+            }
     }
 }
 #endif

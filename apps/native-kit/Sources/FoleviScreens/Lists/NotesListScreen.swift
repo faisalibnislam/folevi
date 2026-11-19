@@ -86,7 +86,7 @@ public struct NotesListScreen: View {
 
     @ViewBuilder private var header: some View {
         if model.total > 0 || !model.filter.isEmpty {
-            SearchField(text: $model.filter, prompt: "Search")
+            SearchField(text: $model.filter, prompt: "Filter notes", systemImage: "line.3.horizontal.decrease")
                 .padding(.horizontal, gutter)
                 .padding(.top, 6)
                 .padding(.bottom, 6)

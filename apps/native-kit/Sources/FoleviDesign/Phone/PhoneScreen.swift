@@ -28,6 +28,10 @@ public struct PhoneScreenOptions {
     public var search: Binding<String>?
     /// The search field's prompt.
     public var searchPrompt = "Search"
+    /// The field's icon: the magnifier, or `.funnel` for a field that filters the list ("Filter notes").
+    public var searchIcon: WebIcon = .search
+    /// The trailing items have nothing to show this time (Home's bell when not signed in): no empty glass for them.
+    public var trailingEmpty = false
 
     public init(title: String, large: Bool = true, eyebrow: String? = nil, subtitle: String? = nil, status: String? = nil, grouped: Bool = false, collapseAt: CGFloat? = nil) {
         self.title = title
@@ -64,6 +68,7 @@ public struct PhoneScreen<Leading: View, Trailing: View, Header: View, Content: 
     /// Bumped by the frame to scroll to the top (the tab on show tapped again).
     let scrollToTop: Int
     @Environment(\.colorScheme) private var scheme
+    @Environment(\.phoneRootCreate) private var rootCreate
     @State private var offset: CGFloat = 0
     @State private var titleFoot: CGFloat = 60
     @State private var titleHeight: CGFloat = 38
@@ -98,6 +103,11 @@ public struct PhoneScreen<Leading: View, Trailing: View, Header: View, Content: 
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
                     Color.clear.frame(height: 0).id("top")
+                    // The screen's field, always in sight at the top of the list rather than iOS's, which waits for a
+                    // pull (the owner, 2026-11-19), with the funnel when it filters the list.
+                    if let search = options.search {
+                        PhoneSearchField(options.searchPrompt, text: search, icon: options.searchIcon)
+                    }
                     if !options.pinsHeader { header }
                     content
                 }
@@ -118,23 +128,43 @@ public struct PhoneScreen<Leading: View, Trailing: View, Header: View, Content: 
         .navigationTitle(options.title)
         .navigationBarTitleDisplayMode(options.large && !options.pinsHeader ? .large : .inline)
         .modifier(PhoneScreenSubtitle(text: options.subtitle ?? options.eyebrow))
-        .modifier(PhoneScreenSearch(text: options.search, prompt: options.searchPrompt))
         .navigationBarBackButtonHidden(root)
         .toolbar {
             if root, Leading.self != EmptyView.self {
-                ToolbarItem(placement: .topBarLeading) { leading.environment(\.phoneInSystemBar, true) }
+                // The account button is its own picture: no system glass around it (the owner, 2026-11-19: the
+                // glass circle around the workspace's logo "looks weird"), and its badge's ring in this screen's
+                // colour.
+                if #available(iOS 26, *) {
+                    ToolbarItem(placement: .topBarLeading) { leadingItem }.sharedBackgroundVisibility(.hidden)
+                } else {
+                    ToolbarItem(placement: .topBarLeading) { leadingItem }
+                }
             }
             if let status = options.status {
                 ToolbarItem(placement: .principal) {
                     Text(status).font(.headline).lineLimit(1)
                 }
             }
-            if Trailing.self != EmptyView.self {
+            if root, let rootCreate {
+                ToolbarItem(placement: .topBarTrailing) { PhoneRootCreateButtons(rootCreate) }
+                if #available(iOS 26, *), hasTrailing {
+                    ToolbarSpacer(.fixed, placement: .topBarTrailing)
+                }
+            }
+            if hasTrailing {
                 ToolbarItem(placement: .topBarTrailing) { HStack(spacing: 6) { trailing }.environment(\.phoneInSystemBar, true) }
             }
         }
     }
     #endif
+
+    private var hasTrailing: Bool { Trailing.self != EmptyView.self && !options.trailingEmpty }
+
+    private var leadingItem: some View {
+        leading
+            .environment(\.phoneInSystemBar, true)
+            .environment(\.phoneScreenSurface, surface.color)
+    }
 
     private var webBody: some View {
         GeometryReader { geo in
@@ -311,21 +341,6 @@ private struct PhoneScreenSubtitle: ViewModifier {
     func body(content: Content) -> some View {
         if #available(iOS 26, *), let text, !text.isEmpty {
             content.navigationSubtitle(text)
-        } else {
-            content
-        }
-    }
-}
-
-/// iOS's own search field under the large title, filtering the screen: pulled down into view, as iOS keeps it
-/// (shown all the time it takes the large title's place).
-private struct PhoneScreenSearch: ViewModifier {
-    let text: Binding<String>?
-    let prompt: String
-
-    func body(content: Content) -> some View {
-        if let text {
-            content.searchable(text: text, placement: .navigationBarDrawer(displayMode: .automatic), prompt: Text(prompt))
         } else {
             content
         }

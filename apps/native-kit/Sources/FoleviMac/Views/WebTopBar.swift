@@ -41,6 +41,8 @@ public struct WebTopBar: View {
     #endif
     /// The title bar's bell, for the notifications popover's place.
     @State var bellAnchor: NSView?
+    /// The room iPadOS's own window buttons take at the strip's leading end (a resizable window's; none full screen).
+    @State var windowControlsRoom: CGFloat = 0
 
     public init(model: FrameModel) { self.model = model }
 

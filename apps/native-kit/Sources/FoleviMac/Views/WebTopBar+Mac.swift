@@ -1,7 +1,7 @@
 // The Mac's title bar in the native look (docs/MAC_NATIVE_LOOK.md; the owner's layout, 2026-11-18): the window's
 // top strip, with no toolbar inside the card:
 //
-//   ● ● ●  [note tools/folders] [sidebar]   ‹ ›  (⌂) (▦) [ Calendar | (× Kyoto in November) | Recipes ]  [sync] [bell]
+//   ● ● ●  [note tools/folders] [sidebar]   ‹ ›  (⌂) (▦) [ Calendar | (× Kyoto in November) | Recipes ]  (+ New note)  [sync] [bell]
 //
 // The traffic lights; the sidebar's button at the sidebar's trailing end; then, from the content card's leading
 // edge, Back and Forward and the tab bar drawn as Finder's (the owner, 2026-11-18): Home in a round button, the tabs in a grey capsule
@@ -46,7 +46,20 @@ extension WebTopBar {
         // (A narrow iPad's sidebar floats over the card instead: the strip keeps its compact lead.)
         let hidden = model.sidebarHidden || model.sidebarFloats
         return HStack(spacing: 0) {
-            Color.clear.frame(width: MacLook.trafficLightsRoom)
+            Color.clear.frame(width: MacLook.trafficLightsRoom + windowControlsRoom)
+            #if os(iOS)
+            // The iPad: the account sits up here, in the corner the Mac keeps for its window buttons (the owner,
+            // 2026-11-19: the empty corner looked unfinished), after iPadOS's own window buttons when a resizable
+            // window shows them. The sidebar beside the card then starts with its page.
+            if MacAccountButton.inBar(model) {
+                MacAccountButton(model: model, fills: false) { anchor in
+                    guard let window = NSApp.keyWindow else { return }
+                    AccountMenuWindow.show(model: model, in: window, anchor: anchor)
+                }
+                .padding(.leading, MacLook.sidebarInset - MacLook.trafficLightsRoom)
+                .layoutPriority(-1)
+            }
+            #endif
             Spacer(minLength: 0)
             // On a note the sidebar shows the note's tools or the folders, as the web's (its sidebar mode): this
             // switches between them, beside the sidebar's own button (the owner, 2026-11-18).
@@ -67,7 +80,10 @@ extension WebTopBar {
             }
             .padding(.trailing, 8)
         }
-        .frame(width: hidden ? MacLook.trafficLightsRoom + (model.route.isNote ? 76 : 38) : MacLook.sidebarWidth)
+        .frame(width: hidden ? MacLook.trafficLightsRoom + windowControlsRoom + (model.route.isNote ? 76 : 38) : MacLook.sidebarWidth)
+        #if os(iOS)
+        .background(WindowControlsProbe(room: $windowControlsRoom))
+        #endif
     }
 
     /// Brings the sidebar back: beside the card, or over it on a narrow iPad.
@@ -88,6 +104,10 @@ extension WebTopBar {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .layoutPriority(1)
                 .padding(.trailing, 2)
+            // New note, the web's top bar's black pill (the owner, 2026-11-19: the one New note on screen, moved
+            // from the sidebar), right after the tabs. It opens the note in a new tab, ready to type.
+            MacNewNotePill(model: model)
+                .padding(.horizontal, 2)
             // Whether everything is saved and synced, then the bell (the owner, 2026-11-18).
             MacSyncStatus(model: model) { model.showSync?($0) }
             stripButton("bell", label: "Notifications", help: "Notifications", anchored: true) { model.showNotifications?(bellAnchor) }
@@ -156,8 +176,6 @@ extension WebTopBar {
             #endif
             .accessibilityElement(children: .contain)
             .accessibilityLabel("Tabs")
-            // (No + here, the owner, 2026-11-18: the sidebar's New note is the one way to a new note on screen;
-            // ⌘T and File > New Tab still open a tab.)
         }
     }
 
@@ -438,6 +456,49 @@ struct MacOverviewButton: View {
         .foleviTooltip("Show All Tabs (⌘⇧\\)")
         .accessibilityLabel("Show all tabs")
         .accessibilityValue(on ? "Shown" : "Hidden")
+    }
+}
+
+/// New note, as the web's top bar has it: a capsule with + and its words, black in light mode and white in dark
+/// (the web's primary button), in the system's prominent Liquid Glass button.
+struct MacNewNotePill: View {
+    let model: FrameModel
+    @Environment(\.colorScheme) private var scheme
+    /// The pointer's over it (a Mac's, an iPad's trackpad): the pill lightens a touch, as the web's primary does.
+    @State private var hover = false
+
+    var body: some View {
+        let dark = scheme == .dark
+        let button = Button { model.newNote() } label: {
+            HStack(spacing: 5) {
+                MacSymbol("plus", size: 13, weight: .semibold)
+                Text("New note").font(.system(size: 13, weight: .semibold))
+            }
+            .foregroundStyle(dark ? Color.black : Color.white)
+            .padding(.horizontal, 14)
+            .frame(height: WebTopBar.trackHeight - 8)
+            .contentShape(Capsule())
+        }
+        // (A solid black or white under Liquid Glass, not the system's prominent button or a tint alone: those came out
+        // grey on the Mac's dark window, the dark words then unreadable on them. The glass gives its edge and its
+        // press.)
+        let fill = dark ? Color.white : Color.black
+        Group {
+            if #available(iOS 26, macOS 26, *) {
+                button.buttonStyle(.plain).onHover { hover = $0 }
+                    .background(fill, in: Capsule())
+                    .glassEffect(.regular.tint(fill).interactive(), in: Capsule())
+            } else {
+                button.buttonStyle(.plain).onHover { hover = $0 }
+                    .background(fill, in: Capsule())
+            }
+        }
+        .brightness(hover ? (dark ? -0.08 : 0.18) : 0)
+        .fixedSize()
+        // (The button says New note: its tooltip is the shortcut alone.)
+        .foleviTooltip("(⌘N)")
+        .accessibilityLabel("New note")
+        .accessibilityIdentifier("strip.newNote")
     }
 }
 

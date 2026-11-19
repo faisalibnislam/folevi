@@ -5,7 +5,7 @@ import { afterEach, describe, expect, test, vi } from "vitest";
 import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { noteFolderIdOf, shareIndicatorLabel, shareIndicatorOf, type SharingLike } from "@/components/doc/noteStatus";
-import { NOTE_MIN_WRITABLE, clampPanelWidth, toolsPanelOverlays } from "@/components/doc/panelLayout";
+import { NOTE_MIN_WRITABLE, clampPanelWidth, panelCoversAtOpen, toolsPanelOverlays } from "@/components/doc/panelLayout";
 import { DOCK_COMPACT_BELOW, dockCompact } from "@/components/doc/PageDock";
 import { SuggestionChips, groupSuggestions, type NoteSuggestion } from "@/components/doc/NoteSuggestions";
 import { TrashBanner } from "@/components/doc/TrashBanner";
@@ -80,6 +80,38 @@ describe("F02: the tools panel never squeezes a note below a writable width", ()
     expect(toolsPanelOverlays({ narrowWindow: true, rowWidth: 2000, panelWidth: 280 })).toBe(true);
     expect(clampPanelWidth(Number.NaN)).toBe(280);
     expect(clampPanelWidth(9999)).toBe(520);
+  });
+});
+
+describe("a note loaded straight into a narrow window keeps its tools panel shut", () => {
+  // The hooks that watch the window say "wide" on a note's first draw, so the note asks the window itself
+  // (found 2026-11-19: in a phone's browser Foli AI opened over the whole note, and a held finger reached
+  // the panel instead of the line under it).
+  const windowIs = (width: number) =>
+    vi.stubGlobal("matchMedia", (query: string) => {
+      const max = Number(/max-width: (\d+)px/.exec(query)?.[1] ?? 0);
+      return { matches: width <= max, addEventListener() {}, removeEventListener() {} };
+    });
+  const row = (width: number) => ({ getBoundingClientRect: () => ({ width }) }) as unknown as HTMLElement;
+  afterEach(() => vi.unstubAllGlobals());
+
+  test("a phone's width and a small laptop's hold it; a wide window doesn't", () => {
+    windowIs(390);
+    expect(panelCoversAtOpen({ macNativeFrame: false, row: null, panelWidth: 280 })).toBe(true);
+    windowIs(1100);
+    expect(panelCoversAtOpen({ macNativeFrame: false, row: null, panelWidth: 280 })).toBe(true);
+    windowIs(1440);
+    expect(panelCoversAtOpen({ macNativeFrame: false, row: null, panelWidth: 280 })).toBe(false);
+  });
+
+  test("the Mac app's page is only the card, so its window may be narrower; a narrow joined note holds it too", () => {
+    windowIs(1000);
+    expect(panelCoversAtOpen({ macNativeFrame: true, row: null, panelWidth: 280 })).toBe(false);
+    windowIs(900);
+    expect(panelCoversAtOpen({ macNativeFrame: true, row: null, panelWidth: 280 })).toBe(true);
+    windowIs(1600);
+    expect(panelCoversAtOpen({ macNativeFrame: false, row: row(600), panelWidth: 280 })).toBe(true);
+    expect(panelCoversAtOpen({ macNativeFrame: false, row: row(1300), panelWidth: 280 })).toBe(false);
   });
 });
 

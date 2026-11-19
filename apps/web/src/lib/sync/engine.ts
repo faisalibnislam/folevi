@@ -745,8 +745,14 @@ export class SyncEngine {
   async flush(): Promise<void> {
     if (this.flushing) return;
     this.flushing = true;
+    // Whether the rounds below ran out with more to send (a very long paste, a long time offline).
+    let more = false;
     try {
-      for (let rounds = 0; rounds < 20; rounds++) {
+      for (let rounds = 0; ; rounds++) {
+        if (rounds === 20) {
+          more = true;
+          break;
+        }
         // As many as the server takes in one request (MAX_BATCH): a big paste saves in fewer round trips.
         const held = this.heldOps();
         const from = held.size ? { ...this.state, pending: this.state.pending.filter((op) => !held.has(op)) } : this.state;
@@ -804,6 +810,8 @@ export class SyncEngine {
       }
     } finally {
       this.flushing = false;
+      // The rest goes in a turn of its own (it used to wait, showing "Saving", for the next edit or reconnect).
+      if (more) this.scheduleFlush(0);
     }
   }
 }

@@ -350,7 +350,9 @@ export function DocumentView({ documentId }: { documentId: string }) {
     if (!engine || !server) return;
     let revisions = 0;
     for (const b of server.blocks) revisions += b.revision ?? 0;
-    const at = `${server.revision}:${server.contentSeq}:${server.blocks.length}:${revisions}`;
+    // (`head` rises with every block change, deleted blocks included: a line cut and pasted elsewhere, both at
+    // revision 1, leaves the count and the sum of revisions as they were, and that change was skipped.)
+    const at = `${server.revision}:${server.contentSeq}:${server.head}:${server.blocks.length}:${revisions}`;
     if (reconciledAt.current?.engine === engine && reconciledAt.current.at === at) return;
     reconciledAt.current = { engine, at };
     editorRef.current?.flush();

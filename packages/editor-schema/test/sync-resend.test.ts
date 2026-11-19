@@ -29,6 +29,22 @@ describe("resending", () => {
     expect(textOf(s.blocks.b1!.block)).toBe("Hello world");
   });
 
+  it("typing queued behind a resent op keeps its base when someone else changed the block in between", () => {
+    // The block at revision 1. Op A is sent and lands (revision 2), but its answer is lost.
+    let s: SyncState = { ...sync.emptySyncState(), blocks: { b1: { documentId: DOC, block: block("b1", "One"), serverRevision: 1, deleted: false } } };
+    s = sync.localUpsert(s, { opId: "op-a-0000001", documentId: DOC, block: block("b1", "One two"), fields: ["content"] });
+    s = sync.batchFailed(sync.takeBatch(s), "server");
+    // More typing here: op B, written on revision 1, waits behind A.
+    s = sync.localUpsert(s, { opId: "op-b-0000001", documentId: DOC, block: block("b1", "One two three"), fields: ["content"] });
+    // Meanwhile another device edits the block on top of A: revision 3. A is resent and answered as a replay.
+    s = sync.takeBatch(s);
+    expect(s.inflight.map((op) => op.opId)).toEqual(["op-a-0000001"]);
+    s = sync.applyResults(s, [{ opId: "op-a-0000001", status: "duplicate", revision: 3, block: { ...block("b1", "One two, and theirs"), revision: 3 } }]);
+    // B was written without their change: it still says so, and the server will ask.
+    expect(upserts(s).map((op) => [op.opId, textOf(op.block), op.baseRevision])).toEqual([["op-b-0000001", "One two three", 1]]);
+    expect(textOf(s.blocks.b1!.block)).toBe("One two three");
+  });
+
   it("queues the local text again when a replay answers with something else", () => {
     // An op whose content changed after it was first sent (older builds merged typing into it).
     let s = sync.localUpsert(sync.emptySyncState(), { opId: "op-merged-001", documentId: DOC, block: block("b1", "Hello world"), fields: ["content", "position"] });

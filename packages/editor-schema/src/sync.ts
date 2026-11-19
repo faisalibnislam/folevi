@@ -341,10 +341,17 @@ export function applyResults(prev: SyncState, results: OpResult[]): SyncState {
         if (!entity) break;
         const oldRevision = entity.serverRevision;
         if (result.revision !== undefined) entity.serverRevision = result.revision;
-        // Rebase queued ops that were written on top of this (now acknowledged) change.
-        state.pending = state.pending.map((p) =>
-          opBlockId(p) === blockId && (p.kind === "block.upsert" || p.kind === "block.delete") && p.baseRevision === oldRevision ? { ...p, baseRevision: entity.serverRevision } : p,
-        );
+        // Rebase queued ops that were written on top of this (now acknowledged) change. Not after a replay
+        // that answers with other text than the op wrote: its first answer was lost, and the block has been
+        // changed since by someone else, on top of it. What is queued here was written without their change,
+        // so it keeps its older base and the server asks, instead of taking it as an edit of their version
+        // (which replaced their change with no question).
+        const theirsSince = result.status === "duplicate" && op.kind === "block.upsert" && Boolean(result.block) && !result.deleted && !sameWrittenContent(result.block!, op.block);
+        if (!theirsSince) {
+          state.pending = state.pending.map((p) =>
+            opBlockId(p) === blockId && (p.kind === "block.upsert" || p.kind === "block.delete") && p.baseRevision === oldRevision ? { ...p, baseRevision: entity.serverRevision } : p,
+          );
+        }
         const stillOutstanding =
           state.pending.some((p) => opBlockId(p) === blockId) ||
           state.inflight.some((p) => p !== op && opBlockId(p) === blockId && !byId.has(p.opId));

@@ -125,7 +125,7 @@ function MacWindow({ cover }: { cover: string | null }) {
     >
       <div style={{ display: "flex", alignItems: "center", gap: 7, height: 34, padding: "0 14px", borderBottom: `1px solid ${CHROME_LINE}` }}>
         {["#FF5F57", "#FEBC2E", "#28C840"].map((c) => (
-          <div key={c} style={{ display: "flex", width: 11, height: 11, borderRadius: 6, background: c }} />
+          <div key={c} style={{ display: "flex", width: 11, height: 11, borderRadius: R.chip, background: c }} />
         ))}
       </div>
       <div style={{ display: "flex", flexGrow: 1 }}>
@@ -163,15 +163,16 @@ function IPhone({ cover }: { cover: string | null }) {
         width: 172,
         height: 352,
         display: "flex",
-        padding: 7,
-        borderRadius: 34,
+        // The phone's corners from the scale, nested: float (40) less the 12 pt bezel is sheet (28).
+        padding: 12,
+        borderRadius: R.float,
         background: "#141414",
         boxShadow: "0 0 0 1.5px rgba(255,255,255,0.18), 0 36px 70px -18px rgba(0,0,0,0.65)",
       }}
     >
-      <div style={{ display: "flex", flexDirection: "column", flexGrow: 1, borderRadius: 27, overflow: "hidden", background: PAPER, position: "relative" }}>
+      <div style={{ display: "flex", flexDirection: "column", flexGrow: 1, borderRadius: R.sheet, overflow: "hidden", background: PAPER, position: "relative" }}>
         <Note cover={cover} scale={0.62} coverHeight={96} />
-        <div style={{ position: "absolute", left: 54, top: 8, width: 50, height: 15, borderRadius: 8, background: "#141414", display: "flex" }} />
+        <div style={{ position: "absolute", left: 54, top: 8, width: 50, height: 15, borderRadius: R.small, background: "#141414", display: "flex" }} />
       </div>
     </div>
   );

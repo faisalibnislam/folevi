@@ -327,7 +327,7 @@ struct ModeChoiceGate: View {
                     .accessibilityIdentifier("gate-action-\(a.id)")
                 }
             }
-            GateParagraph(model.message, id: "gates.footnote")
+            if !model.message.isEmpty { GateParagraph(model.message, id: "gates.footnote") }
             if let error = model.errorMessage {
                 GateParagraph(error, id: "gates.footnote", color: WebStyles.vars["color-danger"]?.resolve(scheme) ?? RGBA(179, 52, 44))
             }
@@ -344,7 +344,7 @@ struct ModeChoiceGate: View {
 
     static func detail(_ id: String) -> String {
         switch id {
-        case "account": "Your notes in your Folevi account, with sharing."
+        case "account": "Sync and share your notes."
         case "local": "Free forever. No account."
         default: ""
         }
@@ -369,7 +369,7 @@ struct LibrarySetupGate: View {
     // The places, then Back.
     @ViewBuilder private var places: some View {
         let actions = model.gate?.actions ?? []
-        GateHeader(title: model.title, message: [WebRun("Folevi keeps your notes as files in one folder. Pick where that folder goes. If the place already holds your Folevi library, Folevi opens it.")])
+        GateHeader(title: model.title, message: [WebRun("If your library is already there, Folevi opens it.")])
         VStack(spacing: gs("gates.lib.group", scheme).gap) {
             ForEach(actions.filter { $0.id.hasPrefix("place:") }, id: \.id) { a in
                 let kind = String(a.id.dropFirst("place:".count))
@@ -405,11 +405,11 @@ struct LibrarySetupGate: View {
         #if os(iOS)
         let here = UIDevice.current.userInterfaceIdiom == .pad ? "this iPad" : "this iPhone"
         switch kind {
-        case "icloud": return "The Folevi folder in iCloud Drive, on every iPhone, iPad and Mac signed in to your iCloud account."
-        case "dropbox": return "Sign in to Dropbox in the sign-in sheet. Folevi only uses its own folder, Apps \u{203A} Folevi."
-        case "gdrive": return "Sign in to Google in the sign-in sheet. Folevi only sees the files it makes."
-        case "folder": return "Any folder the Files app offers, such as one in Dropbox, Google Drive or OneDrive."
-        case "device": return "Your notes stay on \(here). You can turn on sync later in Settings."
+        case "icloud": return "On all your iPhones, iPads and Macs."
+        case "dropbox": return "Folevi uses only its own folder."
+        case "gdrive": return "Folevi sees only the files it makes."
+        case "folder": return "Dropbox, Google Drive, OneDrive or any folder in Files."
+        case "device": return "No sync. You can turn it on later."
         default: return ""
         }
         #else
@@ -419,11 +419,11 @@ struct LibrarySetupGate: View {
 
     static func macDetail(_ kind: String) -> String {
         switch kind {
-        case "icloud": "A Folevi folder in iCloud Drive, on every Mac signed in to your iCloud account."
-        case "dropbox": "Sign in to Dropbox in the sign-in sheet. Folevi only uses its own folder, Apps \u{203A} Folevi."
-        case "gdrive": "Sign in to Google in the sign-in sheet. Folevi only sees the files it makes."
-        case "folder": "Any folder on this Mac, such as one OneDrive or another app keeps in sync."
-        case "device": "Your notes stay on this Mac. You can turn on sync later in Settings."
+        case "icloud": "On all your Macs."
+        case "dropbox": "Folevi uses only its own folder."
+        case "gdrive": "Folevi sees only the files it makes."
+        case "folder": "Any folder, such as one OneDrive syncs."
+        case "device": "No sync. You can turn it on later."
         default: ""
         }
     }
@@ -474,7 +474,7 @@ struct ReadyForm: View {
                             .background(RoundedRectangle(cornerRadius: tile.radius, style: .continuous).fill(tile.background.color))
                         VStack(alignment: .leading, spacing: 2) {
                             GateLine(text: "Encrypt with a passphrase", id: "gates.ready.card.title")
-                            GateParagraph(model.message.contains("this Mac") || model.message.contains("On My iPhone") || model.message.contains("On My iPad") || model.message.hasSuffix("only.") ? "Optional. The library's files can't be read without it, by anyone, including Folevi." : "Optional. The synced copy can't be read without it, by anyone, including Folevi.", id: "gates.ready.card.detail", center: false)
+                            GateParagraph(model.message.contains("this Mac") || model.message.contains("On My iPhone") || model.message.contains("On My iPad") || model.message.hasSuffix("only.") ? "Optional. No one can read the files without it." : "Optional. No one can read the synced copy without it.", id: "gates.ready.card.detail", center: false)
                         }
                         .frame(width: gs("gates.ready.card.detail", scheme).width)
                         WebSwitch(on: $encrypt, label: "Encrypt with a passphrase")

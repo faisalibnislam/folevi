@@ -47,12 +47,14 @@ The owner moves secrets between Macs; never copy their values into files or chat
 ## 9. Current state (as of 2026-11-19)
 - `main` = `6099b01e` (Release 1.5.52), tag `v1.5.52`.
 - Branch `ios-ai-tab` (worktree `ios-native`): Foli AI as an iPhone tab-bar item, + alone at the top. Committed, tested, not released; the owner is deciding whether to ship it as 1.5.53 or with the iPhone Duo work.
-- Sessions at work: iPhone Duo optimization (worktree `iphone-duo-18adb4`), landing and marketing pages (worktree `marketing-pages-091dac`), and the note editor (main checkout, `editor/rock-solid`).
+- Branch `claude/iphone-duo-18adb4` (worktree `iphone-duo-18adb4`): iPhone Duo support. On the inner screen the tabs are a sidebar and the open note shows beside its list (half open, split on the fold); folding keeps the note open with Back to its list, and the caret, text and keyboard carry over; on iPhone Duo the note's buttons are iOS's side-bar items (the note beside its list keeps Folevi's bars). Checked on the iPhone Duo simulator in every posture except Split View halves and tabletop. Committed, not released. Owner's picks: `docs/claude-context/memory/iphone-duo-decisions.md`.
+- Sessions at work: landing and marketing pages (worktree `marketing-pages-091dac`), and the note editor (main checkout, `editor/rock-solid`).
 - Known: one Mac test fails every time (`TabPreviewStateTests.enteringTheNextTabBeforeLeavingThisOneStillShowsIt`), in code no recent change touched. The Mac filter field hasn't been typed into in the real app.
 - Many older worktrees under `.claude/worktrees/` hold merged or abandoned work; see `docs/HANDOFF.md` section 2 before removing any.
 
 ## 10. Next steps / open work
 - Release `ios-ai-tab` when the owner says.
+- iPhone Duo follow-ups: Folevi's own menus (PhoneMenuLayer) don't avoid the fold yet; check Split View halves on a real device; rebase `claude/iphone-duo-18adb4` onto `ios-ai-tab` once it lands (both touch `PhoneFrameView.swift`).
 - Merge the iPhone Duo and marketing branches when their sessions finish and the owner approves.
 - The owner's open items: `docs/HANDOFF.md` section 7.
 
@@ -62,4 +64,6 @@ The owner moves secrets between Macs; never copy their values into files or chat
 - CI's first step runs `node scripts/icons-codegen.mjs --check`: regenerate `Icons.swift` after adding a web icon.
 
 ## 12. Change log
+- 2026-11-19: Shorter first-launch copy (where notes live, where the library lives, the passphrase card) on web, Mac, iPhone and iPad, on branch `claude/iphone-duo-18adb4`.
+- 2026-11-19: iPhone Duo support on branch `claude/iphone-duo-18adb4` (PhoneColumns, PhoneSideBars, NotePageSlot).
 - 2026-11-19: HANDOFF.md written. 1.5.50, 1.5.51 and 1.5.52 released (iPhone and iPad native look, Home and filter fields, Filter notes on Mac and web); Foli AI tab on branch `ios-ai-tab`.

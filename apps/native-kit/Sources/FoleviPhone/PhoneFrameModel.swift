@@ -106,7 +106,33 @@ public final class PhoneFrameModel {
             }
         }
         guard top != route else { return }
+        var s = stacks[current] ?? []
+        let run = Self.noteRunStart(s)
+        if columns, run < s.count {
+            // The list beside the note (a wide window: iPhone Duo open): a note opened takes the open note's place in
+            // its column; anything else opens in the list's column, the note staying open beside it. The stack keeps
+            // the note last, so folding the phone shows it full screen with Back to that list.
+            if route.isNote {
+                s.replaceSubrange(run..., with: [PhoneStackEntry(route)])
+            } else {
+                s.insert(PhoneStackEntry(route), at: run)
+            }
+            stacks[current] = s
+            return
+        }
         stacks[current, default: []].append(PhoneStackEntry(route))
+    }
+
+    /// The list beside the open note: the window is wide enough (iPhone Duo open, an iPad window under the iPad's
+    /// own layout but over the phone's width). Set by the frame (PhoneColumns).
+    public var columns = false
+
+    /// Where the notes on top of a stack start (the stack's length when its top isn't a note): in two columns they
+    /// show in the note's column, the screens under them in the list's. A tab's first screen is never a note.
+    public static func noteRunStart(_ stack: [PhoneStackEntry]) -> Int {
+        var i = stack.count
+        while i > 1, stack[i - 1].route.isNote { i -= 1 }
+        return i
     }
 
     /// Back in this tab (the Back button, the edge swipe).
@@ -143,6 +169,22 @@ public final class PhoneFrameModel {
     public func setPath(_ path: [PhoneStackEntry], in tab: PhoneTab) {
         let first = stacks[tab]?.first ?? PhoneStackEntry(Self.root(of: tab))
         stacks[tab] = [first] + path
+    }
+
+    /// In two columns: the list column's path changed under the model (its Back, its edge swipe); the notes beside
+    /// it stay open.
+    public func setListPath(_ path: [PhoneStackEntry], in tab: PhoneTab) {
+        let s = stacks[tab] ?? []
+        let first = s.first ?? PhoneStackEntry(Self.root(of: tab))
+        stacks[tab] = [first] + path + s[Self.noteRunStart(s)...]
+    }
+
+    /// In two columns: the note column's path (the notes over its first) changed under the model.
+    public func setNotePath(_ path: [PhoneStackEntry], in tab: PhoneTab) {
+        let s = stacks[tab] ?? []
+        let run = Self.noteRunStart(s)
+        guard run < s.count else { return }
+        stacks[tab] = Array(s[...run]) + path
     }
 
     /// Keeps how far the screen on top was scrolled, so it comes back there.

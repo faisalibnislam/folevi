@@ -4,6 +4,20 @@ Every Folevi release, newest first, written by `node scripts/version.mjs` from `
 
 Versions are MAJOR.UPDATE.PATCH, PATCH at least two digits: a Major release (2.0.00), a Big update (1.1.05 after 1.0.05) or a Small update (1.0.06 after 1.0.05).
 
+## Version 1.4.48: Small update
+
+Released 2026-11-18 21:48:57+06:00 (build 62, tag v1.4.48)
+
+iPhone and iPad: plain notes with page breaks show each page as a card, as on the web and Mac.
+
+### Improved
+
+- iPhone: a plain note with page breaks shows its pages as cards on a light grey background with a soft shadow
+
+### Fixed
+
+- iPhone and iPad: in dark mode, page cards stand out from the background
+
 ## Version 1.4.47: Small update
 
 Released 2026-11-18 21:29:47+06:00 (build 61, tag v1.4.47)

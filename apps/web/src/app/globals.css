@@ -1572,3 +1572,26 @@
 :root[data-mac-native] [role="toolbar"][aria-label="Page tools"].ui-pop { box-shadow: var(--mac-glass-edge), var(--mac-shadow-floating); }
 /* A dialog over the note: the overlay level, with the glass's edge. */
 :root[data-mac-native] dialog.ui-pop { box-shadow: var(--mac-glass-edge), var(--mac-sheet-shadow); }
+
+/* The iPhone's note page follows the same rules (the owner, 2026-11-18): a plain note stays one flat page
+   ([data-iphone-plain], above) until it has a page break; then its pages are cards on the light grey backdrop,
+   with the same very soft shadow, set in from the screen's edges by room that follows the width. The page's own
+   room at its foot (under the app's bottom bar) moves outside the last card. Styled notes keep the iPhone's own
+   look (the page edge to edge under its cover). */
+:root[data-iphone] [data-iphone-plain]:has(> .fb-sheet[data-pages]) { background: var(--color-surface-sunken) !important; }
+/* In the dark the neutral sunken colour is a light wash, lighter than the page: on the iPhone and in the iPad app
+   the backdrop is the app's darkest colour instead, so the cards still sit above it (as iOS's grouped screens). */
+:root[data-iphone][data-theme="dark"] [data-iphone-plain]:has(> .fb-sheet[data-pages]),
+:root[data-native="ios"][data-theme="dark"] .fb-page:not([data-backdrop]):not([data-iphone-scroll]):has(> .fb-sheet[data-pages]) { background: var(--color-canvas) !important; }
+:root[data-iphone] [data-iphone-plain] > .fb-sheet[data-pages] {
+  min-height: 0;
+  margin: 12px clamp(10px, 3.2cqi, 24px) calc(var(--native-inset-bottom, 0px) + 24px);
+  padding-top: 8px; /* the header keeps its own 40 px above the title */
+  border-radius: var(--radius-container);
+  box-shadow:
+    0 0 0 1px color-mix(in oklab, var(--color-heading) 7%, transparent),
+    0 1px 2px rgb(0 0 0 / 0.04),
+    0 12px 32px -20px rgb(0 0 0 / 0.16);
+}
+:root[data-iphone] [data-iphone-scroll][data-native-chrome][data-iphone-plain] > .fb-sheet[data-pages],
+:root[data-iphone][data-iphone-keyboard] [data-iphone-scroll][data-native-chrome][data-iphone-plain] > .fb-sheet[data-pages] { padding-bottom: 3rem; }

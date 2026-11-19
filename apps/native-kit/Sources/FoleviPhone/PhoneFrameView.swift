@@ -100,8 +100,9 @@ public struct PhoneFrameView<Screen: View>: View {
         }
     }
 
-    /// What the tab bar's selection is: one of the three tabs, or search.
-    private enum Selection: Hashable { case tab(PhoneTab), search }
+    /// What the tab bar's selection is: one of the three tabs, or search. (Foli AI is never selected: it opens its
+    /// sheet over the tab you're on.)
+    private enum Selection: Hashable { case tab(PhoneTab), ai, search }
 
     /// The tab bar steps away for a note (which has its own bars), the Foli AI page, the keyboard and Select.
     private func barHidden(_ route: FrameRoute) -> Bool {
@@ -109,9 +110,9 @@ public struct PhoneFrameView<Screen: View>: View {
     }
 
     /// The native look (the owner, 2026-11-19): iOS 26's tab bar in Liquid Glass. Home, Tasks and Calendar, each
-    /// with its own navigation stack, and search as a tab of its own (`role: .search`, at the bar's trailing end).
-    /// Foli AI and + ride above the bar in its accessory (iOS's place for what belongs to the whole app, as a
-    /// player's controls do): Ask Foli AI, and the Create menu (Quick task on Tasks).
+    /// with its own navigation stack, then Foli AI (only for people who have it), and search as a tab of its own
+    /// (`role: .search`, at the bar's trailing end). Foli AI opens its sheet over the tab you're on (the owner,
+    /// 2026-11-19: Foli AI in the bottom bar, + at the top); + is in each tab's first screen's bar (rootCreate).
     @available(iOS 26, *)
     private var nativeBody: some View {
         let selection = Binding<Selection>(
@@ -119,6 +120,7 @@ public struct PhoneFrameView<Screen: View>: View {
             set: { s in
                 switch s {
                 case .search: if !model.searching { model.openSearch() }
+                case .ai: actions.openAI()
                 case .tab(let t): model.pick(t)
                 }
             }
@@ -129,6 +131,15 @@ public struct PhoneFrameView<Screen: View>: View {
                     stack(tab)
                 } label: {
                     Label { Text(tab.label) } icon: { tab.icon.image(size: 24, strokeWidth: 1.9) }
+                }
+            }
+            if aiOn {
+                Tab(value: Selection.ai) {
+                    // (Never shown: choosing the tab opens the sheet and the tab bar stays on the tab you're on.)
+                    Color.clear
+                } label: {
+                    // The flower in its own colours, at the other tabs' icon size.
+                    Label { Text("Foli AI") } icon: { Image(uiImage: AiMarkImage.uiImage(size: 22, canvas: 26)) }
                 }
             }
             Tab(value: Selection.search, role: .search) {
@@ -143,10 +154,10 @@ public struct PhoneFrameView<Screen: View>: View {
         .overlay { PhoneMenuLayer(menus: menus) }
     }
 
-    /// + and Foli AI in a tab's first screen's bar (the owner, 2026-11-19: no bar of their own over the tab bar).
+    /// + in a tab's first screen's bar (the owner, 2026-11-19: no bar of its own over the tab bar; Foli AI is a tab).
     private func rootCreate(_ tab: PhoneTab) -> PhoneRootCreate? {
         guard #available(iOS 26, *) else { return nil }
-        return PhoneRootCreate(aiOn: aiOn, quickTaskOnly: tab == .tasks, openAI: actions.openAI, newNote: actions.newNote,
+        return PhoneRootCreate(aiOn: false, quickTaskOnly: tab == .tasks, openAI: actions.openAI, newNote: actions.newNote,
                                fromTemplate: actions.fromTemplate, quickTask: actions.quickTask)
     }
 

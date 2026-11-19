@@ -86,7 +86,8 @@ label,
   text-transform: uppercase;
   color: var(--muted);
 }
-input[type="text"] {
+input[type="text"],
+textarea {
   width: 100%;
   padding: 7px 9px;
   border: 1px solid var(--line-strong);
@@ -95,7 +96,18 @@ input[type="text"] {
   color: var(--ink);
   font: inherit;
 }
+textarea {
+  resize: vertical;
+  min-height: 52px;
+  line-height: 1.4;
+}
+.quick {
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line-strong);
+}
 input[type="text"]:focus-visible,
+textarea:focus-visible,
 button:focus-visible,
 a:focus-visible {
   outline: 2px solid var(--focus);

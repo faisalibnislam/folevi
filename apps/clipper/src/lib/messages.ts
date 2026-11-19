@@ -33,7 +33,8 @@ export type Request =
   | { type: "signIn" }
   | { type: "signOut" }
   | { type: "places" }
-  | { type: "save"; clip: Clip; place?: string };
+  | { type: "save"; clip: Clip; place?: string }
+  | { type: "saveNote"; text: string; place?: string };
 
 export interface StateResponse {
   signedIn: boolean;

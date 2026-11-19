@@ -7,7 +7,7 @@ import { chromeStore } from "./lib/chromeStore";
 import { CantReadPage, extractFromTab } from "./lib/extract";
 import { FoleviMcp, McpError } from "./lib/mcp";
 import type { LastClip, Request, Response, StateResponse } from "./lib/messages";
-import { buildNote, type Clip } from "./lib/note";
+import { buildNote, buildQuickNote, type Clip } from "./lib/note";
 import { authorizeUrl, clientKnown, codeFromRedirect, exchangeCode, OAuthError, registerClient } from "./lib/oauth";
 import { newPkce } from "./lib/pkce";
 import { Session, SignedOutError } from "./lib/session";
@@ -16,6 +16,7 @@ const session = new Session({ origin: FOLEVI_ORIGIN, local: chromeStore(chrome.s
 const mcp = new FoleviMcp(session, FOLEVI_ORIGIN);
 
 const MENU_ID = "clip-to-folevi";
+const CLIP_COMMAND = "clip-page";
 
 // ---------------------------------------------------------------- signing in
 
@@ -66,7 +67,17 @@ async function remember(last: LastClip): Promise<void> {
 
 /** Saves a clip into the Inbox of `place` (or Personal). A place that's gone is forgotten and Personal used. */
 async function save(clip: Clip, place: string | undefined) {
-  const note = buildNote(clip, new Date());
+  return saveNote(buildNote(clip, new Date()), place);
+}
+
+/** Saves a quick note typed in the popup, as a clip is saved: into the Inbox of `place`. */
+async function saveQuick(text: string, place: string | undefined) {
+  const note = buildQuickNote(text);
+  if (!note) throw new McpError("Write something first.");
+  return saveNote(note, place);
+}
+
+async function saveNote(note: { title: string; markdown: string }, place: string | undefined) {
   try {
     let created;
     try {
@@ -145,6 +156,36 @@ async function clipFromMenu(info: chrome.contextMenus.OnClickData, tab: chrome.t
   }
 }
 
+// ---------------------------------------------------------------- keyboard shortcut
+
+// "Clip this page" (Alt+Shift+S, chrome://extensions/shortcuts to change it): the selection when there is
+// one, else the article, into the last place used, as the context menu does. (The toolbar shortcut,
+// Command+Shift+Y, opens the popup itself: the manifest's _execute_action.)
+chrome.commands.onCommand.addListener((command, tab) => {
+  if (command !== CLIP_COMMAND || tab?.id === undefined) return;
+  void clipTab(tab as chrome.tabs.Tab & { id: number });
+});
+
+async function clipTab(tab: chrome.tabs.Tab & { id: number }) {
+  try {
+    await badge("busy", "Clipping to Folevi");
+    if (!(await session.signedIn())) await signIn();
+    const page = await extractFromTab(tab.id, "article");
+    let clip: Clip;
+    if (page.hasSelection) {
+      const sel = await extractFromTab(tab.id, "selection");
+      clip = { kind: "selection", title: tab.title || page.title, pageUrl: page.url, markdown: sel.markdown };
+    } else {
+      clip = { kind: "article", title: page.title, pageUrl: page.url, markdown: page.markdown, byline: page.byline, siteName: page.siteName };
+    }
+    await save(clip, (await lastPlace()) ?? undefined);
+    await badge("ok", "Saved to your Folevi Inbox");
+  } catch (e) {
+    await remember({ ok: false, title: tab.title ?? "", error: messageOf(e), at: Date.now() });
+    await badge("error", messageOf(e));
+  }
+}
+
 // ---------------------------------------------------------------- popup messages
 
 async function handle(request: Request): Promise<unknown> {
@@ -167,6 +208,8 @@ async function handle(request: Request): Promise<unknown> {
       return await mcp.listPlaces();
     case "save":
       return await save(request.clip, request.place);
+    case "saveNote":
+      return await saveQuick(request.text, request.place);
   }
 }
 

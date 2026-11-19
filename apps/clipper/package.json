@@ -1,6 +1,6 @@
 {
   "name": "@folevi/clipper",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "private": true,
   "description": "Folevi Web Clipper for Chrome and Edge: saves the article you're reading, or the part you selected, as a clean note in your Folevi Inbox.",
   "type": "module",

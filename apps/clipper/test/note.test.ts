@@ -1,6 +1,6 @@
 // The note a clip becomes: title, source line, byline, content, and the cut for very long pages.
 import { describe, expect, test } from "vitest";
-import { buildNote, capMarkdown, cleanTitle, clipDate, sourceLine } from "../src/lib/note";
+import { buildNote, buildQuickNote, capMarkdown, cleanTitle, clipDate, sourceLine } from "../src/lib/note";
 
 const when = new Date(2026, 9, 14, 9, 30);
 
@@ -58,5 +58,40 @@ describe("capMarkdown", () => {
     expect(cut.cut).toBe(true);
     expect(cut.markdown.endsWith("\n```")).toBe(true);
     expect((cut.markdown.match(/^```/gm) ?? []).length % 2).toBe(0);
+  });
+});
+
+describe("your note on a clip", () => {
+  test("sits under the source line, above the clipped text", () => {
+    const note = buildNote({ kind: "selection", title: "Ship", pageUrl: "https://example.com/ship", markdown: "The quote.", comment: "  For the launch post.  " }, when);
+    expect(note.markdown).toBe("Clipped from [Ship](https://example.com/ship) on 14 October 2026\n\nFor the launch post.\n\n---\n\nThe quote.");
+  });
+
+  test("an empty one adds nothing", () => {
+    const note = buildNote({ kind: "selection", title: "Ship", pageUrl: "https://example.com/ship", markdown: "The quote.", comment: "   " }, when);
+    expect(note.markdown).not.toContain("\n\n\n");
+    expect(note.markdown.split("\n\n")).toHaveLength(3);
+  });
+});
+
+describe("quick note", () => {
+  test("the first line is the title, the rest the note", () => {
+    expect(buildQuickNote("# Groceries\nEggs\nMilk")).toEqual({ title: "Groceries", markdown: "Eggs\nMilk" });
+  });
+
+  test("one line is just a title", () => {
+    expect(buildQuickNote("  Call Sam about the venue  ")).toEqual({ title: "Call Sam about the venue", markdown: "" });
+  });
+
+  test("a long first line is cut for the title and kept whole in the note", () => {
+    const line = "word ".repeat(40).trim();
+    const note = buildQuickNote(line)!;
+    expect(note.title.length).toBeLessThanOrEqual(80);
+    expect(note.title.endsWith("…")).toBe(true);
+    expect(note.markdown).toBe(line);
+  });
+
+  test("nothing written is nothing to save", () => {
+    expect(buildQuickNote(" \n \n")).toBeNull();
   });
 });

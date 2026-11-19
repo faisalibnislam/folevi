@@ -138,6 +138,7 @@ function mainView(view: View, error?: string) {
   const page = view.page;
   const title = h("input", { type: "text", id: "title", maxlength: "200", spellcheck: "true" }) as HTMLInputElement;
   title.value = page?.title ?? "";
+  const comment = h("textarea", { id: "comment", rows: "2", maxlength: "2000", spellcheck: "true", placeholder: "Why you’re saving this" }) as HTMLTextAreaElement;
   const status = h("p", { class: `status small ${error || view.pageError ? "error" : "muted"}`, role: "status" }, error ?? view.pageError ?? "");
   const article = h("button", { class: "btn primary", type: "button" }, "Clip article");
   const selection = page?.hasSelection ? h("button", { class: "btn", type: "button" }, "Clip selection") : null;
@@ -163,7 +164,7 @@ function mainView(view: View, error?: string) {
       for (const b of [article, selection]) if (b) b.disabled = false;
       return;
     }
-    const payload: Clip = { kind, title: title.value.trim() || page.title, pageTitle: page.title, pageUrl: source.url, markdown: source.markdown, byline: kind === "article" ? page.byline : null, siteName: kind === "article" ? page.siteName : null };
+    const payload: Clip = { kind, title: title.value.trim() || page.title, pageTitle: page.title, pageUrl: source.url, markdown: source.markdown, byline: kind === "article" ? page.byline : null, siteName: kind === "article" ? page.siteName : null, ...(comment.value.trim() ? { comment: comment.value } : {}) };
     const res = await send<SaveResponse>({ type: "save", clip: payload, ...(view.place ? { place: view.place } : {}) });
     if (res.ok) return doneView(view, res.value);
     if (res.signedOut) return signedOutView(res.error);
@@ -176,12 +177,46 @@ function mainView(view: View, error?: string) {
 
   show(
     page ? h("div", { class: "field" }, h("label", { for: "title" }, "Title"), title) : null,
-    page ? placePicker(view) : null,
-    h("div", { class: "actions" }, article, selection),
+    page ? h("div", { class: "field" }, h("label", { for: "comment" }, "Your note (optional)"), comment) : null,
+    placePicker(view),
+    page ? h("div", { class: "actions" }, article, selection) : null,
     status,
     page && !page.readable ? h("p", { class: "small muted" }, "This page doesn’t look like an article, so its main text will be clipped.") : null,
+    quickNote(view),
     footer(),
   );
+}
+
+/** A quick note: a thought typed here, saved to the Inbox, no page needed (it works on any tab, a browser page too). */
+function quickNote(view: View): HTMLElement {
+  const text = h("textarea", { id: "quick", rows: "3", maxlength: "100000", spellcheck: "true", placeholder: "Write a note. The first line is its title." }) as HTMLTextAreaElement;
+  const save = h("button", { class: "btn", type: "button" }, "Save note");
+  const status = h("p", { class: "status small muted", role: "status" }, "");
+  const submit = async () => {
+    if (!text.value.trim()) {
+      status.className = "status small error";
+      status.textContent = "Write something first.";
+      return text.focus();
+    }
+    save.disabled = true;
+    status.className = "status small muted";
+    status.textContent = "Saving to Folevi…";
+    const res = await send<SaveResponse>({ type: "saveNote", text: text.value, ...(view.place ? { place: view.place } : {}) });
+    if (res.ok) return doneView(view, res.value);
+    if (res.signedOut) return signedOutView(res.error);
+    save.disabled = false;
+    status.className = "status small error";
+    status.textContent = res.error;
+  };
+  save.addEventListener("click", () => void submit());
+  // ⌘Return or Ctrl+Return saves, as in a chat box.
+  text.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+      e.preventDefault();
+      void submit();
+    }
+  });
+  return h("div", { class: "quick field" }, h("label", { for: "quick" }, "Quick note"), text, h("div", { class: "actions" }, save), status);
 }
 
 async function signedInView(state: StateResponse) {

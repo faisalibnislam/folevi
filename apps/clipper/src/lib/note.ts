@@ -18,7 +18,13 @@ export interface Clip {
   siteName?: string | null;
   /** For a link clip: where it points. */
   linkUrl?: string;
+  /** The person's own words about the clip ("why I saved this"), above the clipped text. */
+  comment?: string;
 }
+
+/** The longest comment on a clip, and the longest quick note's title. */
+const MAX_COMMENT_CHARS = 2_000;
+const MAX_TITLE_CHARS = 80;
 
 const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 
@@ -77,9 +83,25 @@ export function buildNote(clip: Clip, now: Date): { title: string; markdown: str
     const href = safeUrl(clip.linkUrl, clip.pageUrl);
     body = href ? `[${linkText(clip.title) || href}](${href})` : linkText(clip.title);
   }
+  const comment = (clip.comment ?? "").trim().slice(0, MAX_COMMENT_CHARS);
+  if (comment) header.push(comment);
   const head = header.join("\n\n");
   const room = MAX_CLIP_CHARS - head.length - CUT_NOTE.length - 16;
   const capped = capMarkdown(body, room);
   const parts = [head, ...(capped.markdown ? ["---", capped.markdown] : []), ...(capped.cut ? [CUT_NOTE] : [])];
   return { title: cleanTitle(clip.title, clip.linkUrl ?? clip.pageUrl), markdown: parts.join("\n\n") };
+}
+
+/**
+ * A quick note typed in the popup: its first line is the title (without a heading's #s, at most 80
+ * characters), the rest the note. One line alone is the title, with nothing under it.
+ */
+export function buildQuickNote(text: string): { title: string; markdown: string } | null {
+  const lines = text.replace(/\r\n?/g, "\n").trim().split("\n");
+  const first = (lines[0] ?? "").replace(/^#+\s*/, "").replace(/\s+/g, " ").trim();
+  if (!first) return null;
+  const title = first.length > MAX_TITLE_CHARS ? `${first.slice(0, MAX_TITLE_CHARS - 1).trimEnd()}…` : first;
+  const rest = lines.slice(1).join("\n").trim();
+  const markdown = (rest || (title === first ? "" : first)).slice(0, MAX_CLIP_CHARS);
+  return { title, markdown };
 }

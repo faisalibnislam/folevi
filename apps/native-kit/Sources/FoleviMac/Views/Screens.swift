@@ -192,11 +192,9 @@ final class ScreenModels {
         if !routes.contains(where: { if case .calendar = $0 { return true } else { return false } }) { calendar = nil }
         if !routes.contains(where: { if case .search = $0 { return true } else { return false } }) { search = nil }
         if !routes.contains(where: { $0.tabKey == "view:ai" }) { aiPage?.closed(); aiPage = nil }
-        #if os(macOS)
         // The card items of screens whose tabs closed.
         let keys = Set(routes.map(\.tabKey))
         frame.cardItems = frame.cardItems.filter { keys.contains($0.key) }
-        #endif
     }
 }
 
@@ -292,31 +290,22 @@ struct ScreenRoot: View {
     let models: ScreenModels
     let route: FrameRoute
     @Environment(\.colorScheme) private var scheme
-    #if os(macOS)
-    /// The Mac's native look (docs/MAC_NATIVE_LOOK.md): false only where this stands for the iPad's layout in tests.
+    /// The native look (docs/MAC_NATIVE_LOOK.md): the Mac's and the iPad's wide layout's; false where this stands
+    /// for the iPhone's screens (DeskScreen) or the web-matched layout in tests.
     @Environment(\.macNativeLook) private var native
-    #endif
 
     /// The room the card's top bar takes: the screen starts below it.
     private var barRoom: CGFloat {
-        #if os(macOS)
         native ? model.barHeight : ContentViewController.barHeight
-        #else
-        ContentViewController.barHeight
-        #endif
     }
 
     /// The screen's own fill, under the bar too. The native look: the card's opaque fill (controlBackgroundColor).
     @ViewBuilder private var fill: some View {
-        #if os(macOS)
         if native {
             MacLook.Colors.container
         } else {
             webFill
         }
-        #else
-        webFill
-        #endif
     }
 
     @ViewBuilder private var webFill: some View {
@@ -369,13 +358,11 @@ struct ScreenRoot: View {
         .environment(\.screenNavigator, FrameNavigation.navigator(model))
         .environment(\.screenIntents, FrameNavigation.intents(model))
         .environment(\.screenFeedback, models.feedback)
-        #if os(macOS)
         .environment(\.macBarRoom, barRoom)
         // The screen's own controls go up into the card's glass controls (CardItems.swift), on the native look only.
         .environment(\.cardSlot, native ? CardSlot(frame: model, owner: route.tabKey) : nil)
         // System chrome, Folevi content: the screens' interface parts draw natively (note cards opt out).
         .macNativeChrome()
-        #endif
     }
 }
 

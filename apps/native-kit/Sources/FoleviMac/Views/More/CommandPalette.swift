@@ -144,6 +144,14 @@ public enum CommandPalette {
         // What's typed from now on waits for the field's focus, never reaching the note underneath (F04).
         if let window = FrameSheets.sheetWindow(for: frame) ?? FrameSheets.window(for: frame) { model.early = EarlyKeys.start(in: window) }
         #else
+        if MacLook.padWide {
+            // The iPad's wide layout: the Mac's palette, in the system's form sheet.
+            FrameSheets.present(frame) { close in
+                MacCommandPaletteView(model: model, close: close)
+            }
+            if let window = FrameSheets.window(for: frame) { model.early = EarlyKeys.start(in: window) }
+            return
+        }
         // 12vh of the window, as `mt-[12vh]` puts it.
         let top = (FrameSheets.window(for: frame)?.contentView?.bounds.height ?? 820) * 0.12
         FrameSheets.present(frame, top: top, scrim: true) { close in
@@ -155,8 +163,7 @@ public enum CommandPalette {
     }
 }
 
-#if os(macOS)
-/// ⌘K on the Mac: a sheet with the search field, the filters as pop-up buttons, then the results as a list in the
+/// ⌘K on the Mac (and the iPad's wide layout): a sheet with the search field, the filters as pop-up buttons, then the results as a list in the
 /// system's type (13 pt rows, 11 pt section headings and details), the keyboard's row in the selection fill. Up and
 /// Down move, Return opens, Escape closes (the sheet's), a click opens.
 struct MacCommandPaletteView: View {
@@ -292,10 +299,17 @@ struct MacCommandPaletteView: View {
     }
 
     private func symbol(_ icon: WebIcon?, ai: Bool) -> Image? {
+        #if os(macOS)
         if ai, let image = NativeMenu.aiImage { return Image(nsImage: image).renderingMode(.template) }
         guard let icon else { return nil }
         if let name = NativeMenu.symbols[icon], MacSymbol.icon(name) == nil { return Image(systemName: name) }
         return Image(nsImage: icon.nsImage(size: 15)).renderingMode(.template)
+        #else
+        if ai { return AiMarkImage.image(size: MacLook.rowSymbolSize) }
+        guard let icon else { return nil }
+        if let name = WebIconSymbols.table[icon], MacSymbol.icon(name) == nil { return Image(systemName: name) }
+        return Image(uiImage: icon.uiImage(size: MacLook.rowSymbolSize)).renderingMode(.template)
+        #endif
     }
 
     private func row(_ item: PaletteModel.Item, selected: Bool) -> some View {
@@ -334,7 +348,6 @@ struct MacCommandPaletteView: View {
         model.run(item)
     }
 }
-#endif
 
 struct CommandPaletteView: View {
     @Bindable var model: PaletteModel

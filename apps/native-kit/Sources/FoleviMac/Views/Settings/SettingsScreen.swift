@@ -250,7 +250,8 @@ public struct SettingsScreen: View {
         // tab restored from before, a link) opens the window at its section and says so here.
         if windowed { page } else { SettingsInItsWindow(model: model, section: model.shown(section)) }
         #else
-        page
+        // (The iPad's wide layout has the Mac's: Settings in a sheet of its own, IPadSettings.)
+        if windowed || !MacLook.padWide { page } else { SettingsInItsWindow(model: model, section: model.shown(section)) }
         #endif
     }
 
@@ -290,8 +291,8 @@ public struct SettingsScreen: View {
     }
 }
 
-#if os(macOS)
-/// A main window's Settings route on the Mac: Settings opens in its window (at once, and from the button).
+/// A main window's Settings route on the Mac: Settings opens in its window (at once, and from the button); on the
+/// iPad's wide layout, in its sheet.
 struct SettingsInItsWindow: View {
     let model: MacSettingsModel
     let section: MacSettingsSection
@@ -299,7 +300,7 @@ struct SettingsInItsWindow: View {
     var body: some View {
         VStack(spacing: MacLook.Space.m) {
             MacSymbol("gearshape", size: 28, weight: .regular).foregroundStyle(MacLook.Colors.secondary)
-            Text("Settings are in their own window").font(MacLook.Text.title3Strong).foregroundStyle(MacLook.Colors.label)
+            Text(MacLook.pick("Settings are in their own window", "Settings open in a sheet of their own")).font(MacLook.Text.title3Strong).foregroundStyle(MacLook.Colors.label)
             Button("Open Settings") { open() }
                 .buttonStyle(.bordered)
                 .keyboardShortcut(.defaultAction)
@@ -312,7 +313,6 @@ struct SettingsInItsWindow: View {
 
     private func open() { model.frame.host?.frameOpenSettings(section: section.rawValue) }
 }
-#endif
 
 /// The list of sections (the web's `nav[aria-label="Settings sections"]`): You, the workspace's, Support.
 struct SettingsNav: View {

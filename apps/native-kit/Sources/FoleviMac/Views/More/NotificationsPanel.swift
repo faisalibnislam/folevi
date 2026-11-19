@@ -126,7 +126,11 @@ struct NotificationsPanel: View {
     #if os(macOS)
     private static let segHeight = MacLook.tabHeight, segInset = MacLook.capsuleInset, segRadius = MacLook.tabHeight / 2, segShadow = 0.12
     #else
-    private static let segHeight: CGFloat = 24, segInset: CGFloat = 2, segRadius: CGFloat = 6, segShadow = 0.0
+    // (The iPad's wide layout: the native look's pill, as the Mac's; the web's rounded segment elsewhere.)
+    private static var segHeight: CGFloat { MacLook.padWide ? MacLook.tabHeight : 24 }
+    private static var segInset: CGFloat { MacLook.padWide ? MacLook.capsuleInset : 2 }
+    private static var segRadius: CGFloat { MacLook.padWide ? MacLook.tabHeight / 2 : 6 }
+    private static var segShadow: Double { MacLook.padWide ? 0.12 : 0 }
     #endif
 
     /// Who did what, where (the note's name emphasised).

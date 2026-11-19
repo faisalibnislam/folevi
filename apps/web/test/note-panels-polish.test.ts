@@ -66,3 +66,16 @@ describe("the note's tool panels", () => {
     expect(inspector).not.toContain("ui-blur-bottom");
   });
 });
+
+describe("the iPad's wide layout has the Mac's note page (2026-11-19)", () => {
+  const css = readFileSync(join(__dirname, "../src/app/globals.css"), "utf8");
+  it("shares every Mac-native rule with the iPad's marker", () => {
+    // No rule is the Mac's alone: each one names both markers (the iPad's own numbers follow in their block).
+    expect(css).not.toMatch(/:root\[data-mac-native\]/);
+    expect(css.match(/:root:is\(\[data-mac-native\], \[data-ipad-native\]\)/g)?.length ?? 0).toBeGreaterThan(40);
+  });
+  it("puts the iPad's page on its frame's grey with its own card corners and panel width", () => {
+    expect(css).toMatch(/:root\[data-ipad-native\] \{ --ipad-frame: #ececec; --mac-card-radius: 18px; \}/);
+    expect(css).toMatch(/:root\[data-ipad-native\] aside\[aria-label="Page tools"\]:not\(\.ui-pop\) \{ width: 292px !important; \}/);
+  });
+});

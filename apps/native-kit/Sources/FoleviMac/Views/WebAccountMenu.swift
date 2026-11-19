@@ -364,12 +364,13 @@ public final class AccountMenuWindow {
         if !v.frame.insetBy(dx: Self.margin, dy: Self.margin).contains(g.location(in: layer)) { close() }
     }
 
-    /// Opens the menu for `model` in `window`, its bottom-left corner 8 pt above the account button.
+    /// Opens the menu for `model` in `window`, its bottom-left corner 8 pt above the account button; in the native
+    /// look (the account button atop the sidebar, `anchor`), its top-left corner 8 pt under the button.
     @discardableResult
-    public static func show(model: FrameModel, in window: UIWindow) -> AccountMenuWindow {
+    public static func show(model: FrameModel, in window: UIWindow, anchor: UIView? = nil) -> AccountMenuWindow {
         current?.close()
         let menu = AccountMenuWindow(rows: AccountMenuRows.build(model: model))
-        let h = UIHostingController(rootView: AnyView(AccountMenuPanel(state: menu.state) { [weak menu] r in menu?.pick(r) }.padding(EdgeInsets(top: margin, leading: leading, bottom: margin, trailing: margin))))
+        let h = UIHostingController(rootView: AnyView(AccountMenuPanel(state: menu.state) { [weak menu] r in menu?.pick(r) }.padding(EdgeInsets(top: margin, leading: leading, bottom: margin, trailing: margin)).presentedLook()))
         h.view.backgroundColor = .clear
         h.safeAreaRegions = []
         menu.host = h
@@ -378,7 +379,12 @@ public final class AccountMenuWindow {
         // (The foot of the sidebar is pinned to the bottom: the web's distance from a 820 pt window's bottom.)
         let bottomInset = 820 - (m.y + m.height)
         let bottom = window.bounds.maxY - window.safeAreaInsets.bottom - bottomInset
-        h.view.frame = CGRect(x: window.safeAreaInsets.left + m.x - leading, y: bottom - size.height + margin, width: size.width, height: size.height)
+        if let anchor, anchor.window === window {
+            let r = anchor.convert(anchor.bounds, to: window)
+            h.view.frame = CGRect(x: r.minX - leading, y: r.maxY + 8 - margin, width: size.width, height: size.height)
+        } else {
+            h.view.frame = CGRect(x: window.safeAreaInsets.left + m.x - leading, y: bottom - size.height + margin, width: size.width, height: size.height)
+        }
         menu.layer.frame = window.bounds
         menu.layer.autoresizingMask = [.flexibleWidth, .flexibleHeight]
         menu.layer.addGestureRecognizer(UITapGestureRecognizer(target: menu, action: #selector(tapped(_:))))

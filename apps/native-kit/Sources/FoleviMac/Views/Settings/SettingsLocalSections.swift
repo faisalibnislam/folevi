@@ -739,14 +739,9 @@ struct AppearanceSettingsView: View {
     @Environment(\.settingsNative) private var native
 
     var body: some View {
-        #if os(macOS)
         if native { nativeBody } else { webBody }
-        #else
-        webBody
-        #endif
     }
 
-    #if os(macOS)
     /// The native look: the theme as three pictures of the window to choose from, the text size on the system's slider with its value and a
     /// line of note text at that size (note text keeps Folevi's own type).
     @ViewBuilder private var nativeBody: some View {
@@ -776,7 +771,9 @@ struct AppearanceSettingsView: View {
                         .tint(MacLook.Colors.accent)
                         Text("\(Int((shownZoom * 100).rounded()))%").font(MacLook.Text.body).monospacedDigit()
                             .foregroundStyle(MacLook.Colors.label)
-                            .frame(width: 44, alignment: .trailing)
+                            .lineLimit(1)
+                            .fixedSize()
+                            .frame(minWidth: MacLook.pick(44, 56), alignment: .trailing)
                     }
                     .frame(maxWidth: 448, alignment: .leading)
                     Text("Notes read like this.")
@@ -790,7 +787,6 @@ struct AppearanceSettingsView: View {
         }
         .onChange(of: stored) { _, v in theme.stored(v) }
     }
-    #endif
 
     private func chooseTheme(_ value: String) {
         guard value != theme.shown(model.appearance.value?.appearance.rawValue ?? model.session?.appearance.rawValue ?? "system") else { return }
@@ -901,11 +897,7 @@ struct DesktopSettingsView: View {
         } else if let s = d?.settings {
             VStack(alignment: .leading, spacing: SettingsStyle.pair("card").light.margin.bottom) {
                 SettingsCard("Quick Add", description: "Add a task from any app without switching to Folevi. Write “tomorrow 9am”, “!high” or “#page” as you type; tasks without a page go to your Inbox.") {
-                    #if os(macOS)
                     if native { nativeShortcut(s) } else { shortcut(s) }
-                    #else
-                    shortcut(s)
-                    #endif
                 }
                 SettingsCard("On this Mac") {
                     SettingsDivided(rows(s), gap: 12, line: "row") { r in
@@ -942,7 +934,6 @@ struct DesktopSettingsView: View {
         return true
     }
 
-    #if os(macOS)
     /// The shortcut as a settings row (the native look): its name and what to do leading, the recorder and its
     /// buttons trailing, as every other row.
     private func nativeShortcut(_ s: DesktopData.Settings) -> some View {
@@ -972,7 +963,6 @@ struct DesktopSettingsView: View {
         .frame(minHeight: 36)
         .onDisappear { stop() }
     }
-    #endif
 
     private func shortcut(_ s: DesktopData.Settings) -> some View {
         let field = SettingsStyle.pair("shortcut")
@@ -981,7 +971,6 @@ struct DesktopSettingsView: View {
         return VStack(alignment: .leading, spacing: 0) {
             SText("Shortcut", "shortcut.label")
             HStack(spacing: SettingsStyle.pair("shortcut.row").light.gap) {
-                #if os(macOS)
                 if native {
                     // The shortcut as a push button that records the next keys pressed (the accent ring while it does).
                     Button { recording ? stop() : start() } label: {
@@ -995,9 +984,6 @@ struct DesktopSettingsView: View {
                 } else {
                     webShortcutField(s, field: field, f: f)
                 }
-                #else
-                webShortcutField(s, field: field, f: f)
-                #endif
                 if !s.quickAddShortcut.isEmpty { SButton("Turn off") { set("quickAddShortcut", .string("")) } }
                 if s.quickAddShortcut != s.defaultShortcut { SButton("Use \(s.defaultLabel)") { set("quickAddShortcut", .string(s.defaultShortcut)) } }
             }

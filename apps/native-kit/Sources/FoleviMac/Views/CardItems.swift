@@ -120,15 +120,13 @@ private struct CardItemsModifier<K: Equatable>: ViewModifier {
     }
 
     private func push() {
-        #if os(macOS)
         guard let slot, let frame = slot.frame else { return }
         frame.cardItems[slot.owner] = make()
-        #endif
     }
 }
 #endif
 
-#if os(macOS)
+#if os(macOS) || os(iOS)
 // MARK: - Drawing them (CardControls)
 
 /// How much room the card's controls have: everything as it is; segmented groups as pull-downs; or all of it in
@@ -248,7 +246,7 @@ struct CardSegmented: View {
         }
         .padding(.horizontal, MacLook.capsuleInset)
         .frame(height: MacLook.barControlHeight)
-        .glassEffect(.regular.interactive(), in: .capsule)
+        .nativeGlass(Capsule(), interactive: true)
         .fixedSize()
         .cardHitRegion()
         .accessibilityElement(children: .contain)
@@ -283,7 +281,7 @@ struct CardMenuButton: View {
         }
         .buttonStyle(QuietHoverStyle(shape: AnyShape(Capsule())))
         .foregroundStyle(MacLook.Colors.label)
-        .glassEffect(.regular.interactive(), in: .capsule)
+        .nativeGlass(Capsule(), interactive: true)
         .fixedSize()
         .cardHitRegion()
         .foleviTooltip(help)
@@ -313,7 +311,7 @@ struct CardActionButton: View {
         }
         .buttonStyle(QuietHoverStyle(shape: AnyShape(Circle())))
         .foregroundStyle(MacLook.Colors.label)
-        .glassEffect(.regular.interactive(), in: .circle)
+        .nativeGlass(Circle(), interactive: true)
         .cardHitRegion()
         .foleviTooltip(help)
         .accessibilityLabel(label)

@@ -38,9 +38,9 @@ public struct WebTopBar: View {
     #if os(macOS)
     /// Whether the window is active (the prominent New note follows the system's inactive look).
     @Environment(\.controlActiveState) var barActive
+    #endif
     /// The title bar's bell, for the notifications popover's place.
     @State var bellAnchor: NSView?
-    #endif
 
     public init(model: FrameModel) { self.model = model }
 
@@ -49,11 +49,14 @@ public struct WebTopBar: View {
 
     func style(_ id: String) -> WebComputedStyle { WebStyles.named(id).resolve(scheme) }
 
+    /// The native look (the Mac's, and the iPad's wide layout's since the owner's 2026-11-19 decision).
+    @Environment(\.macNativeLook) private var native
+
     public var body: some View {
         #if os(macOS)
         macBody
         #else
-        webBody
+        if native { macBody } else { webBody }
         #endif
     }
 

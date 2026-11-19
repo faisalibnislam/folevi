@@ -73,11 +73,14 @@ public struct WebSidebar: View {
 
     private func style(_ id: String) -> WebComputedStyle { WebStyles.named("frame.sidebar.\(id)").resolve(scheme) }
 
+    /// The native look (the Mac's, and the iPad's wide layout's since the owner's 2026-11-19 decision).
+    @Environment(\.macNativeLook) private var native
+
     public var body: some View {
         #if os(macOS)
         macBody
         #else
-        webBody
+        if native { macBody } else { webBody }
         #endif
     }
 

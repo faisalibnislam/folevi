@@ -22,7 +22,7 @@ Branch: `mac-native-look`. Not released: the owner approves the look first.
 | Accent | Folevi's black and white (`.ui-neutral-chrome`): #1F1F22 light, #F2F2F3 dark, ink #FFFFFF / #101011. Not the system accent, and not brown |
 | Sidebar | 240 pt. Hidden by its title bar button, ⌘\ and View > Hide Sidebar (the owner's layout, later on 2026-11-18); Focus mode hides it too |
 | Settings | Its own window (⌘,) with a left category list and a working search field, a compact leading page title, grouped native controls |
-| iPad | Unchanged for now: the owner decides after seeing the Mac. FoleviMac's SwiftUI views also build the iPad's wide layout, so every change here is `#if os(macOS)` or Mac-only files |
+| iPad | The same look in the iPad's wide layout (the owner, 2026-11-19; "The iPad's wide layout" below). FoleviMac's SwiftUI views build both, so a change here is the iPad's too unless it is AppKit or says `#if os(macOS)` |
 
 ## The window profile (the owner's Mac UI guide, then the owner's layout and polish pass of 2026-11-18)
 
@@ -137,6 +137,39 @@ its shadow inside the clip; a mask is the only way to keep scrolled content out 
 card's fill reads as a hole when used for a selection on the window's material in dark mode.
 
 What is native, what could be, and what can't: `docs/MAC_NATIVE_CHECKLIST.md`.
+
+## The iPad's wide layout (2026-11-19)
+
+The owner: the iPad gets the same layout as the Mac, with iPadOS 26 controls and touch sizes (44 pt targets, pointer
+hover kept for a trackpad), the system font for interface text and Folevi's fonts for note content only, and the
+black and white accent. The iPhone is unchanged (it never sets the native look).
+
+- **One source of numbers.** `MacLook` builds on iOS too: each metric is `pick(mac, iPad)` (rows 44 pt, the strip
+  56 pt with 44 pt round buttons and 36 pt tabs in a 44 pt track, card controls 44 pt, the sidebar and the note's
+  panel 300 pt, the card's corners 18 pt; text in iPadOS's sizes for the same roles: 13, 17, 20, 28). Colours are the
+  Mac's roles in the Mac's neutral values; the frame is a solid grey (`WindowMaterial` on iOS: an iPad window has
+  nothing behind it to blur). Liquid Glass through `nativeGlass` / `NativeGlassContainer` (the thin material before
+  iPadOS 26: the app runs on iOS 18 and later).
+- **Which look draws.** `macNativeLook` is true on the Mac and false on iOS but where `IPadFrameView` sets it, so the
+  iPhone's screens that borrow FoleviMac's (`DeskScreen`) keep the web's look. A layer presented in a hosting view of
+  its own reads `MacLook.padWide` (`presentedLook()`), set while the iPad's wide layout shows. The Mac-only
+  `#if os(macOS)` native branches became runtime `if native` / `chrome != nil` branches; the AppKit ones stay the Mac's.
+- **The frame** (`IPadFrameView`): the strip (`WebTopBar.macBody`) under the status bar, the sidebar
+  (`WebSidebar.macBody`, the note's tools on a note), the card with `CardControls`, the scroll edge, toasts and Ask Foli
+  AI; on a note the page draws its card and its panel itself (`data-ipad-native`, below). Under 1000 pt the sidebar
+  floats over the card (its button, a swipe in from the edge); under 700 pt the phone's layout, as before.
+- **Presentations are iPadOS's own**: a dialog or the command palette is a form sheet, the bell's notifications a
+  popover (`FrameSheets.presentPad`), Settings' dialogs form sheets, a confirmation the system's alert. Settings is
+  the Mac's Settings window's content (category list with search, compact title, grouped native controls, the theme
+  as pictures) in a large form sheet with Done (`IPadSettings`); `/settings` links, ⌘, and a restored Settings tab
+  open it.
+- **The note page**: `Shell.tsx` sets `data-ipad-native` while the iPad's layout is wide; every `data-mac-native`
+  rule in `globals.css` is `:root:is([data-mac-native], [data-ipad-native])`, and the iPad's own numbers follow in
+  one block (the frame's grey behind the page, 18 px card corners, a 292 px panel, 36 px segment pills).
+- **Performance**: `QuietScrollView` quiets a list's content while it scrolls (`onScrollPhaseChange`), and a memory
+  warning lets go of the covers' and line breaks' caches, as the Mac's.
+- Left as they were: Folevi's own drawn menus (iOS can't open a system menu from an arbitrary control in code), the
+  web-matched time zone select in Settings (the Mac's is an AppKit popover).
 
 ## Where the numbers live
 

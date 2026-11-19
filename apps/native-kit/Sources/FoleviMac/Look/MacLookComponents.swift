@@ -7,10 +7,55 @@
 //   SidePanel                                             a flat, rounded panel in the card (the inspector)
 //   FormGroup / FormRow                                   grouped native settings rows
 //   EdgeFade                                              a scroll view's overflow cue, only while content continues
+//   nativeGlass / NativeGlassContainer                    Liquid Glass (the material before iPadOS 26)
+//
+// The Mac's and the iPad's wide layout's (MacLook.swift picks each one's numbers).
+#if os(macOS) || os(iOS)
 #if os(macOS)
 import AppKit
+#endif
 import SwiftUI
 import FoleviDesign
+
+// MARK: - Liquid Glass
+
+extension View {
+    /// Liquid Glass in `shape` (macOS 26, iPadOS 26), interactive for a control; before iPadOS 26 (the iPad app runs
+    /// on iOS 18 and later), the thin material in the shape.
+    @ViewBuilder func nativeGlass<S: Shape>(_ shape: S, interactive: Bool = false) -> some View {
+        #if os(macOS)
+        glassEffect(interactive ? .regular.interactive() : .regular, in: shape)
+        #else
+        if #available(iOS 26, *) {
+            glassEffect(interactive ? .regular.interactive() : .regular, in: shape)
+        } else {
+            background(.ultraThinMaterial, in: shape)
+        }
+        #endif
+    }
+}
+
+/// Glass shapes that share one container (they merge and morph together); a plain group before iPadOS 26.
+struct NativeGlassContainer<Content: View>: View {
+    let spacing: CGFloat
+    let content: Content
+    init(spacing: CGFloat, @ViewBuilder content: () -> Content) {
+        self.spacing = spacing
+        self.content = content()
+    }
+
+    var body: some View {
+        #if os(macOS)
+        GlassEffectContainer(spacing: spacing) { content }
+        #else
+        if #available(iOS 26, *) {
+            GlassEffectContainer(spacing: spacing) { content }
+        } else {
+            content
+        }
+        #endif
+    }
+}
 
 // MARK: - Icons
 
@@ -53,7 +98,7 @@ public struct MacSymbol: View {
     static let flower: Set<String> = ["sparkles", "wand.and.sparkles"]
 
     /// Folevi's icon for an SF Symbol name: the ones the web app's own screens use for that meaning first, then the
-    /// menus' table (NativeMenu.symbols) read backwards.
+    /// menus' table (WebIconSymbols) read backwards.
     static func icon(_ name: String) -> WebIcon? { preferred[name] ?? fromMenus[name] }
 
     static let preferred: [String: WebIcon] = [
@@ -75,7 +120,7 @@ public struct MacSymbol: View {
     static let fromMenus: [String: WebIcon] = {
         var table: [String: WebIcon] = [:]
         // (In the icons' own order, so a symbol that stands for several of them always gets the same one.)
-        for (icon, symbol) in NativeMenu.symbols.sorted(by: { $0.key.rawValue < $1.key.rawValue }) where table[symbol] == nil {
+        for (icon, symbol) in WebIconSymbols.table.sorted(by: { $0.key.rawValue < $1.key.rawValue }) where table[symbol] == nil {
             table[symbol] = icon
         }
         return table
@@ -89,7 +134,7 @@ public struct TopBar<Content: View>: View {
     let content: Content
     public init(@ViewBuilder content: () -> Content) { self.content = content() }
     public var body: some View {
-        GlassEffectContainer(spacing: MacLook.barSpacing) {
+        NativeGlassContainer(spacing: MacLook.barSpacing) {
             HStack(spacing: MacLook.barSpacing) { content }
         }
         .padding(.horizontal, MacLook.barPaddingSides)
@@ -107,7 +152,7 @@ public struct BarGroup<Content: View>: View {
         HStack(spacing: 0) { content }
             .padding(.horizontal, MacLook.capsuleInset)
             .frame(height: MacLook.barControlHeight)
-            .glassEffect(.regular.interactive(), in: .capsule)
+            .nativeGlass(Capsule(), interactive: true)
     }
 }
 
@@ -196,7 +241,7 @@ public struct BarSearchField: View {
         .padding(.horizontal, 12)
         .frame(height: MacLook.barControlHeight)
         .frame(minWidth: 170, idealWidth: 240, maxWidth: 300)
-        .glassEffect(.regular, in: .capsule)
+        .nativeGlass(Capsule())
     }
 }
 
@@ -296,7 +341,9 @@ public struct SidebarRow<Trailing: View>: View {
     let level: Int
     let trailing: Trailing
     @State private var hovered = false
+    #if os(macOS)
     @Environment(\.controlActiveState) private var activeState
+    #endif
 
     public init(_ title: String, symbol: String?, selected: Bool = false, level: Int = 0,
                 @ViewBuilder trailing: () -> Trailing = { EmptyView() }) {
@@ -354,7 +401,11 @@ public struct SidebarRow<Trailing: View>: View {
     }
 
     private var background: Color {
+        #if os(macOS)
         if selected { return activeState == .inactive ? MacLook.Colors.hover.opacity(0.7) : MacLook.Colors.selection }
+        #else
+        if selected { return MacLook.Colors.selection }
+        #endif
         return hovered ? MacLook.Colors.hover.opacity(0.5) : .clear
     }
 }

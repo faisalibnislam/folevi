@@ -478,6 +478,10 @@ whiteboard. Settings > Desktop app (only in the Mac app) keeps its web cards if 
 
 ### iPad
 
+Since 2026-11-19 the wide layout has Folevi for Mac's native look (docs/MAC_NATIVE_LOOK.md, "The iPad's wide
+layout"): tabs in a strip along the top, the sidebar and the note's panel on the frame's grey, a rounded content card
+with its controls in Liquid Glass, iPadOS's sheets and popovers, Settings in a sheet of its own.
+
 The iPad app keeps the web app's sidebar layout, with tabs, in portrait and landscape and in any window wide
 enough for it. A window narrower than 700 px (Slide Over, a third of Split View, a small Stage Manager window)
 has no room for the sidebar and a note, so it takes the iPhone's compact interface (tab bar, large titles,

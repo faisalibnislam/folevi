@@ -33,3 +33,4 @@
 - [iOS rebuild decisions](ios-rebuild-decisions.md): 2026-10-30 iPhone+iPad native rebuild, Mac rule, pixel match with the web phone layout, iOS 18, one build at the end; plan docs/IOS_REBUILD_PLAN.md
 - [Hover everywhere](hover-everywhere.md): 2026-11-06 every button and clickable control shows a visible hover, web, Mac and iPad pointer; check on every UI change
 - [Website copy voice](website-copy-voice.md): all web, help, blog and marketing copy (new pages too) follows the humanizer rules: plain and calm, US English, sentence case, "we" for promises; since 2026-11-18
+- [iPhone Duo decisions](iphone-duo-decisions.md): 2026-11-19 tab sidebar + list beside note inside, note stays the focus on fold/unfold, note bars join iOS's side bars on iPhone Duo

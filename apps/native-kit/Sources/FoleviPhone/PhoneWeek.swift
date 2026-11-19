@@ -70,9 +70,12 @@ public struct PhoneWeekGrid: View {
         days.contains(today) ? max(0, min(16, nowMinutes() / 60 - 1)) : 7
     }
 
-    /// The height left for the hours: the screen less the bar, title, strip and tab bar.
+    /// The height left for the hours: the window less the bar, title, strip and tab bar. (The window's, not the
+    /// screen's: on iPhone Duo the app's window changes with each display, and in Split View it isn't the screen.)
     static var viewport: CGFloat {
-        let h = UIScreen.main.bounds.height
+        let scenes = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
+        let scene = scenes.first { $0.activationState == .foregroundActive } ?? scenes.first
+        let h = scene?.keyWindow?.bounds.height ?? scene?.screen.bounds.height ?? 700
         return h - 360
     }
 

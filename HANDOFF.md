@@ -47,15 +47,15 @@ The owner moves secrets between Macs; never copy their values into files or chat
 ## 9. Current state (as of 2026-11-19)
 - `main` = `6099b01e` (Release 1.5.52), tag `v1.5.52`.
 - Branch `ios-ai-tab` (worktree `ios-native`): Foli AI as an iPhone tab-bar item, + alone at the top. Committed, tested, not released; the owner is deciding whether to ship it as 1.5.53 or with the iPhone Duo work.
-- Branch `claude/iphone-duo-18adb4` (worktree `iphone-duo-18adb4`): iPhone Duo support, second pass after the owner's review (plan and Apple sources: `docs/IPHONE_DUO_PLAN.md`). Home is iOS's split view (list beside the note open, pushed over it closed; the last note opened fills the detail column when nothing is open); the tabs are iOS's tab bar, so they and the note's buttons sit in iOS's column at the side (closed, open across) and horizontal upright; the note's menu is in iOS's overflow menu. Checked on the iPhone Duo simulator closed, open across, upright and half open, folding and unfolding while typing. Also shorter first-launch copy on all platforms. Committed, not released.
+- Branch `claude/iphone-duo-18adb4` (worktree `iphone-duo-18adb4`): iPhone Duo support, second pass after the owner's review (plan and Apple sources: `docs/IPHONE_DUO_PLAN.md`). Home is iOS's split view (list beside the note open, pushed over it closed; the last note opened fills the detail column when nothing is open); the tabs are iOS's tab bar, so they and the note's buttons sit in iOS's column at the side (closed, open across) and horizontal upright; the note's menu is in iOS's overflow menu. Checked on the iPhone Duo simulator closed, open across, upright and half open, folding and unfolding while typing. Also shorter first-launch copy on all platforms. Committed, not released, not pushed. **Paused by the owner on 2026-11-19**: no more Duo work until they pick it up again.
 - Sessions at work: landing and marketing pages (worktree `marketing-pages-091dac`), and the note editor (main checkout, `editor/rock-solid`).
 - Known: one Mac test fails every time (`TabPreviewStateTests.enteringTheNextTabBeforeLeavingThisOneStillShowsIt`), in code no recent change touched. The Mac filter field hasn't been typed into in the real app.
 - Many older worktrees under `.claude/worktrees/` hold merged or abandoned work; see `docs/HANDOFF.md` section 2 before removing any.
 
 ## 10. Next steps / open work
 - Release `ios-ai-tab` when the owner says.
-- iPhone Duo follow-ups: Folevi's own menus (PhoneMenuLayer) don't avoid the fold yet; Split View halves and tabletop not checked (no simulator control for them); the iPad at narrow regular widths not checked; rebase `claude/iphone-duo-18adb4` onto `ios-ai-tab` once it lands (both touch `PhoneFrameView.swift`).
-- Merge the iPhone Duo and marketing branches when their sessions finish and the owner approves.
+- iPhone Duo (paused 2026-11-19; resume only when the owner asks). Follow-ups for then: Folevi's own menus (PhoneMenuLayer) don't avoid the fold yet; Split View halves and tabletop not checked (no simulator control for them); the iPad at narrow regular widths not checked; rebase `claude/iphone-duo-18adb4` onto `ios-ai-tab` once it lands (both touch `PhoneFrameView.swift`).
+- Merge the marketing branch when its session finishes and the owner approves. The iPhone Duo branch waits while Duo work is paused (it also carries the shorter first-launch copy, commit `710bf813`, which could be picked onto main by itself).
 - The owner's open items: `docs/HANDOFF.md` section 7.
 
 ## 11. Gotchas
@@ -64,6 +64,7 @@ The owner moves secrets between Macs; never copy their values into files or chat
 - CI's first step runs `node scripts/icons-codegen.mjs --check`: regenerate `Icons.swift` after adding a web icon.
 
 ## 12. Change log
+- 2026-11-19: iPhone Duo work paused by the owner; branch `claude/iphone-duo-18adb4` kept as is (`8850c330`).
 - 2026-11-19: iPhone Duo: Home's empty detail column shows the last note opened (owner's pick; kept between launches); balanced card titles never split a word (all platforms).
 - 2026-11-19: iPhone Duo: Home's card rail fades out at the list column's edge; no sidebar button on pushed list screens.
 - 2026-11-19: iPhone Duo redone after the owner's review: system split view for Home, side column for tabs and note tools, no custom sidebar (`docs/IPHONE_DUO_PLAN.md`).

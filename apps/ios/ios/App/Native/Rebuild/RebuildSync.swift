@@ -138,7 +138,7 @@ struct RebuildSyncSheet: View {
 /// The words, in the web's (SyncStatusTouch.tsx TITLES, describe, label).
 @MainActor
 enum RebuildSync {
-    /// FOLEVI_REBUILD_SYNC=1: the status on Home without an account (a local library has nothing to sync), for
+    /// FOLEVI_REBUILD_SYNC=1: Home's signed-in pill (the status and the bell) without an account, for
     /// checking it headlessly. Debug builds only.
     static var debugShown: Bool {
         #if DEBUG

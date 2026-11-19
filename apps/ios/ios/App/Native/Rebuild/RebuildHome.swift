@@ -45,7 +45,7 @@ struct RebuildHomeScreen: View {
             if signedIn || RebuildSync.debugShown {
                 WebGlassPill {
                     RebuildSyncButton(phone: phone, action: openSync)
-                    if signedIn {
+                    if signedIn || RebuildSync.debugShown {
                         WebPillButton("Notifications", action: openNotifications) {
                             WebIconView(.bell, size: 21, strokeWidth: 1.9)
                         }

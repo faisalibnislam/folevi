@@ -6,7 +6,7 @@
 // gesture's `move` at most once a frame, panning the view when a drag reaches the canvas's edge, and ending a
 // gesture whose pointer was lost.
 import { useRef, useState } from "react";
-import type { Pt } from "../schema";
+import { capturePointer, dropFocusIn, notePress, pinchPair, useTapFocus, type DownPointer } from "../../canvas/pointers";
 import { targetUnder } from "../../canvas/targetUnder";
 import { MAX_K, MIN_K, clamp } from "./useViewport";
 import type { CanvasHit, FlowController, Interaction } from "./types";
@@ -16,7 +16,10 @@ const CHROME = ".fc-bar, .fc-ai, .fc-panel";
 
 export function useInteractions(ctrl: FlowController, interactions: Interaction[]) {
   const { dragRef, toWorld, svgRef, viewRef, setView } = ctrl;
-  const pointers = useRef(new Map<number, { x: number; y: number; type: string }>());
+  const pointers = useRef(new Map<number, DownPointer>());
+  // A finger on a canvas that does not have the keyboard gives it the keyboard only when it turns out to be
+  // a tap, not a scroll of the note (canvas/pointers.ts).
+  const tapFocus = useTapFocus({ isActive: () => ctrl.activeRef.current, focus: () => ctrl.focusCanvas(), drop: () => dropFocusIn(ctrl.wrapRef.current) });
   const frame = useRef<number | null>(null);
   const lastMove = useRef<PointerEvent | null>(null);
   // Parts of the view (selection bars, handles) hide while a gesture runs: draw again when one ends.
@@ -88,15 +91,19 @@ export function useInteractions(ctrl: FlowController, interactions: Interaction[
     let keep = false;
     for (const i of interactions) if (i.beforePress?.(e) === "keep") keep = true;
     if (keep) return;
-    ctrl.focusCanvas();
     const pts = pointers.current;
-    pts.set(e.pointerId, { x: e.clientX, y: e.clientY, type: e.pointerType });
+    const what = notePress(pts, e);
+    // A palm resting beside the pen: no gesture of its own, and the pen's carries on.
+    if (what === "palm") return;
+    tapFocus.down(e);
+    // Captured before anything else, the second finger of a pinch too: what it came down on (a handle, a
+    // selection bar) may be hidden by the gesture, and its release would go there instead of here.
+    if (e.pointerType !== "mouse" || e.button === 0 || e.button === 1) capturePointer(e.currentTarget, e.pointerId);
     // Two fingers: pinch to zoom (and pan), whatever the first finger was doing.
-    if (pts.size === 2 && e.pointerType === "touch") {
+    if (what === "pinch") {
       const cur = dragRef.current;
       if (cur?.kind === "gesture") cur.gesture.cancel?.();
-      const [a, b] = [...pts.values()].slice(0, 2) as [Pt, Pt] | [];
-      if (!a || !b) return;
+      const [a, b] = pinchPair(pts)!;
       const r = svgRef.current!.getBoundingClientRect();
       dragRef.current = { kind: "pinch", dist: Math.max(10, Math.hypot(a.x - b.x, a.y - b.y)), view: viewRef.current, mid: { x: (a.x + b.x) / 2 - r.left, y: (a.y + b.y) / 2 - r.top } };
       redraw();
@@ -106,7 +113,6 @@ export function useInteractions(ctrl: FlowController, interactions: Interaction[
     // A gesture whose release never arrived (the window lost the pointer mid-drag): put back, not carried on.
     if (dragRef.current?.kind === "gesture") stopGesture("cancel");
     const press = hit(e, e.target as Element);
-    e.currentTarget.setPointerCapture(e.pointerId);
     for (const i of interactions) {
       const res = i.press?.(press);
       if (res === "handled") return;
@@ -122,9 +128,9 @@ export function useInteractions(ctrl: FlowController, interactions: Interaction[
     if (!dragRef.current) for (const i of interactions) i.hover?.(e);
     if (pts.has(e.pointerId)) pts.set(e.pointerId, { x: e.clientX, y: e.clientY, type: e.pointerType });
     const d = dragRef.current;
-    if (d?.kind === "pinch" && pts.size >= 2) {
-      const [a, b] = [...pts.values()].slice(0, 2) as [Pt, Pt] | [];
-      if (!a || !b) return;
+    const pair = d?.kind === "pinch" ? pinchPair(pts) : null;
+    if (d?.kind === "pinch" && pair) {
+      const [a, b] = pair;
       const dist = Math.hypot(a.x - b.x, a.y - b.y);
       const r = svgRef.current!.getBoundingClientRect();
       const mid = { x: (a.x + b.x) / 2 - r.left, y: (a.y + b.y) / 2 - r.top };
@@ -148,10 +154,11 @@ export function useInteractions(ctrl: FlowController, interactions: Interaction[
   };
 
   const onPointerUp = (e: React.PointerEvent<SVGSVGElement>) => {
+    tapFocus.up(e);
     pointers.current.delete(e.pointerId);
     const d = dragRef.current;
     if (d?.kind === "pinch") {
-      if (pointers.current.size < 2) dragRef.current = null;
+      if (!pinchPair(pointers.current)) dragRef.current = null;
       return;
     }
     if (!d || d.pointer !== e.pointerId) return;
@@ -240,6 +247,9 @@ export function useInteractions(ctrl: FlowController, interactions: Interaction[
         if (e.currentTarget.contains(e.relatedTarget as Node | null)) return;
         ctrl.setActive(false);
         for (const i of interactions) i.blur?.();
+        // Leaving the canvas saves what's pending, so the note's own commands (copy, duplicate, delete, what
+        // is typed next) see the chart as shown.
+        ctrl.flush();
       },
     },
   };

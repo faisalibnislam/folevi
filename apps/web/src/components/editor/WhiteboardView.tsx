@@ -1,13 +1,15 @@
 "use client";
 
-import { setBlockAttrs, useLeaveFlush } from "./canvas/leaveFlush";
+import { setBlockAttrs, useLeaveFlush, writeCanvasStep } from "./canvas/leaveFlush";
 import { NodeViewWrapper, type ReactNodeViewProps } from "@tiptap/react";
 import { NodeSelection } from "@tiptap/pm/state";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { forwardRef, memo, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
 import { Copy, Delete as DeleteIcon, Eraser, Expand, Highlighter, MousePointer2, PenLine, Shrink, Trash2, Undo2 } from "lucide-react";
 import {
   LIMITS,
+  WHITEBOARD_MAX_STROKES,
   WHITEBOARD_WIDTH,
+  inkPoints,
   parseWhiteboard,
   serializeWhiteboard,
   strokeD,
@@ -25,7 +27,7 @@ import { PhoneCanvasCover } from "./canvas/PhoneCanvasCover";
 import { BlockExportMenu } from "./canvas/BlockExport";
 import { useFullCanvas } from "./canvas/useFullCanvas";
 import { targetUnder } from "./canvas/targetUnder";
-import { clampMove, isHighlight, strokeAt, strokeInBox, strokeKey, strokesBounds, translateStroke, type Box, type Point } from "./whiteboard/ops";
+import { clampMove, isHighlight, strokeAt, strokeInBox, strokeKey, strokesBounds, stylusTouch, translateStroke, type Box, type Point } from "./whiteboard/ops";
 
 type Tool = "pen" | "highlighter" | "eraser" | "select";
 const PEN_COLORS = ["ink", "blue", "red", "green", "orange", "purple"] as const;
@@ -41,6 +43,42 @@ const HEIGHT_STEP = 40;
 const LONG_PRESS_MS = 450;
 /** How far a copy lands from the strokes it was made from (sheet units). */
 const DUPLICATE_OFFSET = 20;
+/** A stroke drawn without lifting carries on as a new stroke after this many points (one undo takes back all of it). */
+const STROKE_POINTS = 3000;
+const FULL_MESSAGE = "This whiteboard is full. Erase something to make room.";
+
+/** Whether a drawing can be stored: over either limit it would read back as an empty sheet. */
+const storable = (strokes: readonly WhiteboardStroke[]) => strokes.length <= WHITEBOARD_MAX_STROKES && (!strokes.length || serializeWhiteboard({ strokes: [...strokes] }).length <= LIMITS.maxWhiteboardDataLength);
+
+/**
+ * One stroke of the drawing. Drawn again only when the stroke itself, its pick or its drag changes, never for
+ * a point of the stroke being drawn (a pen sends a few hundred a second, and a full sheet is thousands of points).
+ */
+const StrokeLine = memo(function StrokeLine({ stroke, index, picked, shift }: { stroke: WhiteboardStroke; index: number; picked: boolean; shift?: string }) {
+  const d = strokeD(stroke);
+  const line = <path d={d} fill="none" stroke={strokeColor(stroke.color)} strokeWidth={stroke.width} strokeOpacity={stroke.opacity ?? 1} strokeLinecap="round" strokeLinejoin="round" />;
+  if (!picked) return <g data-wb-stroke={index}>{line}</g>;
+  return (
+    <g data-wb-stroke={index} data-picked="" transform={shift}>
+      <path className="fb-wb-halo" d={d} strokeWidth={stroke.width + 10} />
+      {line}
+    </g>
+  );
+});
+
+interface DraftHandle {
+  show: (stroke: WhiteboardStroke | null) => void;
+}
+
+/** The stroke being drawn, kept apart from the sheet: each new point redraws this one path and nothing else. */
+const DraftStroke = memo(
+  forwardRef<DraftHandle>(function DraftStroke(_props, ref) {
+    const [stroke, setStroke] = useState<WhiteboardStroke | null>(null);
+    useImperativeHandle(ref, () => ({ show: setStroke }), []);
+    if (!stroke?.points) return null;
+    return <path data-wb-draft="" d={strokePath(stroke.points)} fill="none" stroke={strokeColor(stroke.color)} strokeWidth={stroke.width} strokeOpacity={stroke.opacity ?? 1} strokeLinecap="round" strokeLinejoin="round" />;
+  }),
+);
 
 /**
  * A change to the drawing: strokes taken away (by content, since strokes carry no id) and strokes added.
@@ -75,8 +113,8 @@ function composeEdits(first: Edit | null, then: Edit): Edit {
 
 /** What the Select tool is doing with the pointer that's down. */
 type Gesture =
-  | { kind: "move"; pointerId: number; start: Point; sx: number; sy: number; moved: boolean }
-  | { kind: "marquee"; pointerId: number; start: Point; base: string[] };
+  | { kind: "move"; pointerId: number; type: string; start: Point; sx: number; sy: number; moved: boolean }
+  | { kind: "marquee"; pointerId: number; type: string; start: Point; base: string[] };
 
 /**
  * Whiteboard block: freehand drawing on an SVG canvas with pen, highlighter, a stroke eraser and Select (pick
@@ -119,8 +157,13 @@ export function WhiteboardView({ node, selected, updateAttributes, editor, getPo
   const cardRef = useRef<HTMLDivElement>(null);
   const bodyRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
-  const drawing = useRef<{ pointerId: number; points: [number, number][]; erased: WhiteboardStroke[] } | null>(null);
-  const [draft, setDraft] = useState<WhiteboardStroke | null>(null);
+  /**
+   * The stroke (or the eraser's sweep) under way: its pointer, the points so far, what the sweep erased, the
+   * parts of a very long stroke already kept (`pieces`), and the pen it is drawn with (null for the eraser).
+   */
+  const drawing = useRef<{ pointerId: number; type: string; points: [number, number][]; erased: WhiteboardStroke[]; pieces: WhiteboardStroke[]; style: Pick<WhiteboardStroke, "color" | "width" | "opacity"> | null; full: boolean } | null>(null);
+  const draftRef = useRef<DraftHandle>(null);
+  const draftFrame = useRef<number | null>(null);
   const saveTimer = useRef<number | null>(null);
   const latest = useRef<WhiteboardStroke[]>(strokes);
   latest.current = strokes;
@@ -205,15 +248,22 @@ export function WhiteboardView({ node, selected, updateAttributes, editor, getPo
     const bottom = box ? box.y + box.h : 0;
     const grown = bottom > savedHeight ? clampHeight(Math.ceil(bottom + 24)) : null;
     const text = next.length ? serializeWhiteboard({ strokes: next }) : "";
-    // Over the limit the drawing could not be saved or read back (it would come back empty, and the next
-    // stroke would replace all of it): this change is not made, and the board stays as it was.
-    if (text.length > LIMITS.maxWhiteboardDataLength) {
-      toast.show("This whiteboard is full. Erase something to make room.", { tone: "error" });
+    // Over a limit the drawing could not be saved or read back (it would come back empty, and the next
+    // stroke would replace all of it): this change is not made, and the board stays as it was. Its Undo
+    // entry goes too, or the next Undo would take back a stroke that was never kept and seem to do nothing.
+    if (text.length > LIMITS.maxWhiteboardDataLength || next.length > WHITEBOARD_MAX_STROKES) {
+      const added = new Set(edit.add.map(strokeKey));
+      undoStack.current = undoStack.current.filter((u) => !u.remove.some((k) => added.has(k)));
+      setCanUndo(undoStack.current.length > 0);
+      toast.show(FULL_MESSAGE, { tone: "error" });
       return;
     }
-    // One step of the note's undo for each save; none when it is the board taking back (or redoing) its own
-    // change, or the note's undo would first undo the undo (canvas/leaveFlush.ts, useBlockDataWriter).
-    setBlockAttrs(editor, getPos, node.attrs.id, { data: text, ...(grown ? { height: grown } : {}) }, undone ? "none" : "step");
+    const attrs = { data: text, ...(grown ? { height: grown } : {}) };
+    // One step of the note's undo for each save, known to canvas/noteUndo.ts (so the note's undo of it takes
+    // back these strokes and leaves a collaborator's later ones); none when it is the board taking back (or
+    // redoing) its own change, or the note's undo would first undo the undo.
+    if (undone) setBlockAttrs(editor, getPos, node.attrs.id, attrs, "none");
+    else writeCanvasStep(editor, getPos, node.attrs.id, attrs);
   };
   const writeRef = useRef(write);
   writeRef.current = write;
@@ -245,6 +295,7 @@ export function WhiteboardView({ node, selected, updateAttributes, editor, getPo
     () => () => {
       flushRef.current();
       if (pressTimer.current !== null) window.clearTimeout(pressTimer.current);
+      if (draftFrame.current !== null) cancelAnimationFrame(draftFrame.current);
     },
     [],
   );
@@ -320,8 +371,8 @@ export function WhiteboardView({ node, selected, updateAttributes, editor, getPo
     let [dx, dy] = clampMove(box, DUPLICATE_OFFSET, DUPLICATE_OFFSET, WHITEBOARD_WIDTH, height);
     if (!dx && !dy) [dx, dy] = clampMove(box, -DUPLICATE_OFFSET, -DUPLICATE_OFFSET, WHITEBOARD_WIDTH, height);
     const copies = from.map((s) => translateStroke(s, dx, dy));
-    if (serializeWhiteboard({ strokes: [...latest.current, ...copies] }).length > LIMITS.maxWhiteboardDataLength) {
-      toast.show("This whiteboard is full. Erase something to make room.", { tone: "error" });
+    if (!storable([...latest.current, ...copies])) {
+      toast.show(FULL_MESSAGE, { tone: "error" });
       return;
     }
     const copyKeys = copies.map(strokeKey);
@@ -352,8 +403,29 @@ export function WhiteboardView({ node, selected, updateAttributes, editor, getPo
   // ------------------------------------------------------------------------------ pointer
 
   // Apple Pencil (or any pen): once one has drawn here, a finger or a resting palm doesn't draw, and a
-  // finger scrolls the note instead, as in iPad drawing apps.
+  // finger scrolls the note instead, as in iPad drawing apps. Until the keyboard leaves the whiteboard: the
+  // next time it is come back to, a finger draws again.
   const [penOnly, setPenOnly] = useState(false);
+  // The sheet is being worked on: the keyboard is in the block (a press on the sheet, a tool chosen). Until
+  // then a finger over it scrolls the note and draws nothing (insert-blocks.css, data-active).
+  const [active, setActive] = useState(false);
+  const activeRef = useRef(active);
+  activeRef.current = active;
+  /** A finger that came down on a sheet not being worked on: if it ends as a tap, the sheet takes the keyboard. */
+  const wake = useRef<number | null>(null);
+
+  // WebKit lets the Apple Pencil scroll the page wherever a finger may, and the sheet lets fingers scroll (once
+  // a pen has drawn, and before it is being worked on). A stroke would then be cancelled as the note began to
+  // move. So a touch that starts from a pen is kept from scrolling, and only that one.
+  useEffect(() => {
+    const svg = svgRef.current;
+    if (!svg || !editable) return;
+    const guard = (e: TouchEvent) => {
+      if (stylusTouch(e)) e.preventDefault();
+    };
+    svg.addEventListener("touchstart", guard, { passive: false });
+    return () => svg.removeEventListener("touchstart", guard);
+  }, [editable]);
 
   const cancelPress = () => {
     if (pressTimer.current === null) return;
@@ -371,7 +443,7 @@ export function WhiteboardView({ node, selected, updateAttributes, editor, getPo
     const at = strokeUnder(e);
     const extend = e.shiftKey || e.metaKey;
     if (at < 0) {
-      gesture.current = { kind: "marquee", pointerId: e.pointerId, start: p, base: extend ? pickedRef.current : [] };
+      gesture.current = { kind: "marquee", pointerId: e.pointerId, type: e.pointerType, start: p, base: extend ? pickedRef.current : [] };
       if (!extend) setPicked([]);
       return;
     }
@@ -381,7 +453,7 @@ export function WhiteboardView({ node, selected, updateAttributes, editor, getPo
       return;
     }
     if (!pickedRef.current.includes(key)) setPicked([key]);
-    gesture.current = { kind: "move", pointerId: e.pointerId, start: p, sx: e.clientX, sy: e.clientY, moved: false };
+    gesture.current = { kind: "move", pointerId: e.pointerId, type: e.pointerType, start: p, sx: e.clientX, sy: e.clientY, moved: false };
     if (e.pointerType !== "mouse") {
       const spot = { x: e.clientX, y: e.clientY };
       pressTimer.current = window.setTimeout(() => {
@@ -395,11 +467,63 @@ export function WhiteboardView({ node, selected, updateAttributes, editor, getPo
     }
   };
 
+  /** Shows the stroke being drawn: at most once a frame, however many points the pen has sent since. */
+  const paintDraft = () => {
+    draftFrame.current = null;
+    const d = drawing.current;
+    draftRef.current?.show(d?.style ? { points: [...d.points], ...d.style } : null);
+  };
+
+  /** Ends the stroke (or the eraser's sweep) under way and keeps it; `cancelled` when the pointer was taken away. */
+  const endDrawing = (cancelled: boolean) => {
+    const d = drawing.current;
+    if (!d) return;
+    drawing.current = null;
+    if (draftFrame.current !== null) cancelAnimationFrame(draftFrame.current);
+    draftFrame.current = null;
+    if (!d.style) {
+      // One undo step brings back everything this sweep erased.
+      if (d.erased.length) pushUndo({ add: d.erased, remove: [] });
+      return;
+    }
+    draftRef.current?.show(null);
+    // (A press the browser took away at once, before it was a line, leaves nothing.)
+    const last = d.full || (cancelled && d.points.length < 2) ? null : { points: inkPoints(d.points), ...d.style };
+    if (last) {
+      if (storable([...latest.current, last])) {
+        d.pieces.push(last);
+        save({ add: [last], remove: [] });
+      } else toast.show(FULL_MESSAGE, { tone: "error" });
+    }
+    // One undo step takes back the whole stroke, however many parts it was kept as. (None for a stroke that
+    // did not fit: Undo would otherwise seem to do nothing the next time.)
+    if (d.pieces.length) pushUndo({ add: [], remove: d.pieces.map(strokeKey) });
+  };
+
   const onPointerDown = (e: React.PointerEvent<SVGSVGElement>) => {
     // The right button (and Control-click on a Mac) opens the stroke's menu instead (onContextMenu).
     if (!editable || (e.pointerType === "mouse" && (e.button !== 0 || e.ctrlKey))) return;
+    // Another pointer while a stroke or a move is under way: a second finger, or a palm beside the pen, draws
+    // nothing, and the stroke under way is neither dropped nor replaced. Any other new first pointer means
+    // the earlier one is gone (its release unheard) or is being taken over: what it drew is kept.
+    const d = drawing.current;
+    const g = gesture.current;
+    if ((d && d.pointerId !== e.pointerId) || (g && g.pointerId !== e.pointerId)) {
+      if (!e.isPrimary || ((d ?? g)!.type === "pen" && e.pointerType === "touch")) return;
+      endDrawing(true);
+      gesture.current = null;
+      cancelPress();
+      setMoving(null);
+      setMarquee(null);
+    }
     if (e.pointerType === "pen" && !penOnly) setPenOnly(true);
     if (tool !== "select" && penOnly && e.pointerType === "touch") return;
+    // A finger on a sheet that is not being worked on scrolls the note and draws nothing: a tap gives the
+    // sheet the keyboard, and from then on fingers draw. (A pen or a mouse draws at once.)
+    if (e.pointerType === "touch" && !activeRef.current && !full) {
+      wake.current = e.pointerId;
+      return;
+    }
     e.preventDefault();
     // A press here is outside any open menu (Export, a stroke's), but the mousedown menus close on is held
     // back by the preventDefault above: send them one.
@@ -411,9 +535,9 @@ export function WhiteboardView({ node, selected, updateAttributes, editor, getPo
     if (tool === "select") return onSelectDown(e);
     if (pickedRef.current.length) setPicked([]);
     const p = toPoint(e);
-    drawing.current = { pointerId: e.pointerId, points: [p], erased: [] };
+    drawing.current = { pointerId: e.pointerId, type: e.pointerType, points: [p], erased: [], pieces: [], style: tool === "eraser" ? null : currentStyle(), full: false };
     if (tool === "eraser") eraseAt(p);
-    else setDraft({ points: [p], ...currentStyle() });
+    else paintDraft();
   };
 
   const onSelectMove = (e: React.PointerEvent<SVGSVGElement>, g: Gesture) => {
@@ -443,19 +567,40 @@ export function WhiteboardView({ node, selected, updateAttributes, editor, getPo
     const samples = events.length ? events : [e.nativeEvent];
     for (const ev of samples) {
       const p = toPoint(ev);
-      if (tool === "eraser") {
+      if (!d.style) {
         eraseAt(p);
         continue;
       }
+      if (d.full) break;
       const last = d.points[d.points.length - 1]!;
       if (Math.hypot(p[0] - last[0], p[1] - last[1]) < 1.5) continue;
-      if (d.points.length >= 3000) break;
       d.points.push(p);
+      if (d.points.length < STROKE_POINTS) continue;
+      // A very long stroke (an area shaded without lifting): what is drawn so far is kept as a stroke and the
+      // line carries on from here as the next, instead of no longer following the pen.
+      const piece: WhiteboardStroke = { points: inkPoints(d.points), ...d.style };
+      if (storable([...latest.current, piece])) {
+        d.pieces.push(piece);
+        latest.current = [...latest.current, piece];
+        save({ add: [piece], remove: [] });
+        d.points = [p];
+      } else {
+        d.full = true;
+        d.points = [p];
+        toast.show(FULL_MESSAGE, { tone: "error" });
+      }
     }
-    if (tool !== "eraser") setDraft({ points: [...d.points], ...currentStyle() });
+    // (One redraw of the line a frame: a pen sends several points between two frames.)
+    if (d.style && draftFrame.current === null) draftFrame.current = requestAnimationFrame(paintDraft);
   };
 
   const onPointerUp = (e: React.PointerEvent<SVGSVGElement>) => {
+    if (wake.current === e.pointerId) {
+      wake.current = null;
+      // A tap (the browser did not take the touch to scroll the note): the sheet is now being worked on.
+      if (e.type !== "pointercancel") bodyRef.current?.focus({ preventScroll: true });
+      return;
+    }
     const g = gesture.current;
     if (g && g.pointerId === e.pointerId) {
       gesture.current = null;
@@ -468,18 +613,8 @@ export function WhiteboardView({ node, selected, updateAttributes, editor, getPo
     }
     const d = drawing.current;
     if (!d || d.pointerId !== e.pointerId) return;
-    drawing.current = null;
     if (e.currentTarget.hasPointerCapture(e.pointerId)) e.currentTarget.releasePointerCapture(e.pointerId);
-    if (tool === "eraser") {
-      // One undo step brings back everything this sweep erased.
-      if (d.erased.length) pushUndo({ add: d.erased, remove: [] });
-      return;
-    }
-    setDraft(null);
-    if (e.type === "pointercancel" && d.points.length < 2) return;
-    const stroke: WhiteboardStroke = { points: d.points, ...currentStyle() };
-    pushUndo({ add: [], remove: [strokeKey(stroke)] });
-    save({ add: [stroke], remove: [] });
+    endDrawing(e.type === "pointercancel");
   };
 
   const onContextMenu = (e: React.MouseEvent<SVGSVGElement>) => {
@@ -617,7 +752,21 @@ export function WhiteboardView({ node, selected, updateAttributes, editor, getPo
 
   return (
     <NodeViewWrapper className={`fb-atom fb-whiteboard ${selected ? "fb-atom-selected" : ""}`} aria-label="Whiteboard">
-      <div ref={cardRef} contentEditable={false} className="fb-whiteboard-box fb-canvas-card" data-blank={count ? undefined : true} {...cardProps} aria-label={full ? "Whiteboard, full canvas" : undefined} onKeyDown={onKeyDown}>
+      <div
+        ref={cardRef}
+        contentEditable={false}
+        className="fb-whiteboard-box fb-canvas-card"
+        data-blank={count ? undefined : true}
+        {...cardProps}
+        aria-label={full ? "Whiteboard, full canvas" : undefined}
+        onKeyDown={onKeyDown}
+        onFocus={() => setActive(true)}
+        onBlur={(e) => {
+          if (e.currentTarget.contains(e.relatedTarget as Node | null)) return;
+          setActive(false);
+          setPenOnly(false);
+        }}
+      >
         {/* Full canvas in the Mac app: the window's buttons sit in this corner (canvas.css). */}
         <span aria-hidden className="ui-traffic-space fb-full-traffic" />
         <div
@@ -719,6 +868,7 @@ export function WhiteboardView({ node, selected, updateAttributes, editor, getPo
             className="fb-whiteboard-canvas"
             data-tool={editable ? tool : undefined}
             data-pen-only={penOnly ? "" : undefined}
+            data-active={editable && (active || full) ? "" : undefined}
             viewBox={`0 0 ${WHITEBOARD_WIDTH} ${height}`}
             style={{ aspectRatio: `${WHITEBOARD_WIDTH} / ${height}`, ["--wb-ratio" as string]: WHITEBOARD_WIDTH / height }}
             role="img"
@@ -731,29 +881,12 @@ export function WhiteboardView({ node, selected, updateAttributes, editor, getPo
             onDoubleClick={onDoubleClick}
           >
             {strokes.map((s, i) => {
-              const d = strokeD(s);
-              const line = <path d={d} fill="none" stroke={strokeColor(s.color)} strokeWidth={s.width} strokeOpacity={s.opacity ?? 1} strokeLinecap="round" strokeLinejoin="round" />;
-              if (!pickedSet.has(keys[i]!)) return <g key={i} data-wb-stroke={i}>{line}</g>;
-              return (
-                <g key={i} data-wb-stroke={i} data-picked="" transform={shift}>
-                  <path className="fb-wb-halo" d={d} strokeWidth={s.width + 10} />
-                  {line}
-                </g>
-              );
+              const isPicked = pickedSet.has(keys[i]!);
+              return <StrokeLine key={i} stroke={s} index={i} picked={isPicked} shift={isPicked ? shift : undefined} />;
             })}
             {pickedBox ? <rect className="fb-wb-pick-box" x={pickedBox.x - 6} y={pickedBox.y - 6} width={pickedBox.w + 12} height={pickedBox.h + 12} transform={shift} /> : null}
             {marquee ? <rect className="fb-wb-marquee" x={marquee.x} y={marquee.y} width={marquee.w} height={marquee.h} /> : null}
-            {draft?.points ? (
-              <path
-                d={strokePath(draft.points)}
-                fill="none"
-                stroke={strokeColor(draft.color)}
-                strokeWidth={draft.width}
-                strokeOpacity={draft.opacity ?? 1}
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            ) : null}
+            <DraftStroke ref={draftRef} />
           </svg>
         </div>
         {editable ? (

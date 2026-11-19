@@ -52,7 +52,9 @@
   transition: box-shadow 140ms;
 }
 .fb-vcard[data-active]:not([data-full]) { box-shadow: 0 0 0 1px color-mix(in oklab, var(--color-ink) 28%, var(--color-line)); }
-.fb-vcard-body { position: relative; overflow: hidden; outline: none; }
+/* `clip`, not just hidden: a text field coming into focus (the iPhone's keyboard shrinking the page under it)
+   must not scroll the card's box, which would shift the canvas under its bars. */
+.fb-vcard-body { position: relative; overflow: hidden; overflow: clip; outline: none; }
 /* No dark ring when the canvas has the keyboard: the card's own light ring (data-active) already marks it. */
 .fb-vcard-body:focus-visible { outline: none; }
 

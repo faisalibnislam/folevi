@@ -41,7 +41,8 @@ export function useMove(ctrl: FlowController) {
       let moved = false;
       return {
         move: (m) => {
-          if (!moved && Math.hypot(m.clientX - sx, m.clientY - sy) < 3) return;
+          // (A finger wobbles more than a mouse: a tap that slides a little is still a tap, not a move.)
+          if (!moved && Math.hypot(m.clientX - sx, m.clientY - sy) < (m.pointerType === "mouse" ? 3 : 8)) return;
           moved = true;
           const p = toWorld(m.clientX, m.clientY);
           const dx = p.x - at.x;

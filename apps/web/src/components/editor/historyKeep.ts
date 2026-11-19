@@ -1,6 +1,6 @@
 import type { Editor } from "@tiptap/core";
 import { closeHistory, history, redo, undo, undoDepth } from "@tiptap/pm/history";
-import { Node as PMNode } from "@tiptap/pm/model";
+import { Node as PMNode, type Slice } from "@tiptap/pm/model";
 import { EditorState, type Plugin } from "@tiptap/pm/state";
 import { Step } from "@tiptap/pm/transform";
 
@@ -43,6 +43,21 @@ const historyPlugin = (state: EditorState): Plugin | null => state.plugins.find(
 const read = (state: EditorState) => (state as unknown as Record<string, unknown>)[HISTORY_FIELD];
 const text = (doc: PMNode) => JSON.stringify(doc.toJSON());
 
+/**
+ * About how large a step is written out, without writing it out: the text and the attributes of what it puts
+ * in. (A step that changes a canvas carries the block's whole drawing.)
+ */
+function roughSize(step: Step): number {
+  let size = 64;
+  const slice = (step as unknown as { slice?: Slice }).slice;
+  slice?.content.descendants((node) => {
+    size += 32 + (node.text?.length ?? 0);
+    for (const value of Object.values(node.attrs)) if (typeof value === "string") size += value.length;
+    return true;
+  });
+  return size;
+}
+
 /** Holds on to `state`'s undo history under `key` (the note being left). */
 export function keepNoteHistory(key: string, state: EditorState): void {
   kept.delete(key);
@@ -54,9 +69,22 @@ export function keepNoteHistory(key: string, state: EditorState): void {
     let bare = EditorState.create({ doc: state.doc, plugins: [plugin] });
     (bare as unknown as Record<string, unknown>)[HISTORY_FIELD] = read(state);
     let steps = 0;
-    while (undo(bare, (tr) => (bare = bare.apply(tr)))) if (++steps > 1000) return;
+    // A history too large to keep is given up as soon as that shows: on the way back already (each step
+    // undone is about as large as the step it takes back), before any of it is written out. This runs every
+    // time a note is left, and a note with a big drawing changed many times would otherwise be undone,
+    // redone and written out in full only to be thrown away.
+    let rough = 0;
+    while (
+      undo(bare, (tr) => {
+        for (const s of tr.steps) rough += roughSize(s);
+        bare = bare.apply(tr);
+      })
+    ) {
+      if (++steps > 1000 || rough > MAX_SIZE) return;
+    }
     const base = bare.doc.toJSON() as unknown;
     const events: unknown[][] = [];
+    let size = 0;
     for (let i = 0; i < steps; i++) {
       let event: unknown[] | null = null;
       redo(bare, (tr) => {
@@ -65,11 +93,13 @@ export function keepNoteHistory(key: string, state: EditorState): void {
       });
       if (!event) break;
       events.push(event);
+      size += JSON.stringify(event).length;
+      if (size > MAX_SIZE) return;
     }
     const final = text(bare.doc);
     // (Redone, it has to be the note that was left; anything else and the steps are not to be trusted.)
     if (events.length !== steps || final !== text(state.doc)) return;
-    if (JSON.stringify(events).length + final.length > MAX_SIZE) return;
+    if (size + final.length > MAX_SIZE) return;
     kept.set(key, { base, events, final, at: Date.now() });
     // (A Map keeps the order things were added in: the oldest go first.)
     for (const old of kept.keys()) {

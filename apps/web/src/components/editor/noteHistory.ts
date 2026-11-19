@@ -1,7 +1,8 @@
 import { UndoRedo } from "@tiptap/extensions";
 import { redo, undo } from "@tiptap/pm/history";
 import type { Editor } from "@tiptap/core";
-import type { EditorState, Transaction } from "@tiptap/pm/state";
+import { Plugin, PluginKey, type EditorState, type Transaction } from "@tiptap/pm/state";
+import { keepOthersCanvasWork } from "./canvas/noteUndo";
 
 /** How many steps that change nothing one press may pass over. */
 const MAX_EMPTY_STEPS = 50;
@@ -28,8 +29,14 @@ function travel(editor: Editor, state: EditorState, tr: Transaction, dispatch: (
   return did;
 }
 
-/** The note's undo history: Tiptap's, with undo and redo passing over steps that change nothing. */
+/**
+ * The note's undo history: Tiptap's, with undo and redo passing over steps that change nothing, and an undo
+ * or redo of a canvas step leaving in place what other people did to that canvas since (canvas/noteUndo.ts).
+ */
 export const NoteHistory = UndoRedo.extend({
+  addProseMirrorPlugins() {
+    return [...(this.parent?.() ?? []), new Plugin({ key: new PluginKey("foleviCanvasUndo"), appendTransaction: keepOthersCanvasWork })];
+  },
   addCommands() {
     return {
       undo:

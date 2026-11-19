@@ -9,6 +9,11 @@
 // - When the server refuses this person's save because someone else saved first (a sync conflict), the
 //   two versions are merged here and saved again, instead of asking which to keep.
 // - Undo and redo take back only this person's own change, on the board as it is now.
+// - A board from before someone else's change that comes back later (a drag or an edit being cancelled, the
+//   `before` of a finished change) is brought up to date first, so putting it back keeps their work.
+//
+// Like the other canvases, text being typed is also written while it is typed (800 ms after the last key), so
+// a long note is not lost if the app stops before the edit is finished.
 //
 // `base` is the last version known to be on the server, which every merge starts from.
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -18,6 +23,10 @@ import { StickyHistory } from "./ops";
 import { useLeaveFlush, type CanvasWrite } from "../canvas/leaveFlush";
 
 const SAVE_DELAY = 400;
+/** After the last keystroke or drag frame of a change still being made. */
+const LIVE_SAVE_DELAY = 800;
+/** How many changes from elsewhere are remembered, to bring a board from before them up to date (`fresh`). */
+const MAX_TAKEN = 64;
 
 export function useStickiesDoc({ data, write, me, blockId, engine }: { data: string; write: (data: string, how?: CanvasWrite) => void; me: string; blockId: string | null; engine: SyncEngine | null }) {
   const [doc, setDocState] = useState<StickiesData>(() => parseStickies(data));
@@ -31,6 +40,18 @@ export function useStickiesDoc({ data, write, me, blockId, engine }: { data: str
   const history = useRef(new StickyHistory());
   const [, setTick] = useState(0);
   const timer = useRef<number | null>(null);
+  const liveTimer = useRef<number | null>(null);
+  /** The last write was of a change still being made: the note's step for it is still open. */
+  const liveOpen = useRef(false);
+  /** The changes from elsewhere taken in so far, oldest first (the first `dropped` of them are forgotten). */
+  const taken = useRef<{ base: StickiesData; theirs: StickiesData }[]>([]);
+  const dropped = useRef(0);
+  /** For each board held here: how many changes from elsewhere it already had in it. */
+  const seen = useRef<WeakMap<object, number> | null>(null);
+  if (!seen.current) {
+    seen.current = new WeakMap();
+    seen.current.set(doc, 0);
+  }
   const [tooLarge, setTooLarge] = useState(false);
   const writeRef = useRef(write);
   writeRef.current = write;
@@ -39,9 +60,12 @@ export function useStickiesDoc({ data, write, me, blockId, engine }: { data: str
   /** A merge waiting for the server's version to show after a conflict was settled. */
   const pendingMerge = useRef<{ theirs: string; merged: StickiesData } | null>(null);
 
-  const flush = useCallback(() => {
+  /** Writes what is unsaved. `live` is the save of a change still being made (text being typed). */
+  const flush = useCallback((live = false) => {
     if (timer.current !== null) window.clearTimeout(timer.current);
+    if (liveTimer.current !== null) window.clearTimeout(liveTimer.current);
     timer.current = null;
+    liveTimer.current = null;
     const s = serializeStickies(docRef.current);
     if (s.length > LIMITS.maxStickiesDataLength) {
       setTooLarge(true);
@@ -51,19 +75,56 @@ export function useStickiesDoc({ data, write, me, blockId, engine }: { data: str
     dirty.current = false;
     const undo = undoing.current;
     undoing.current = false;
-    if (s === lastWritten.current) return;
+    if (s === lastWritten.current) {
+      // The change is finished and its last save while it was being made already holds all of it: the note
+      // is told that step is over (canvas/noteUndo.ts).
+      if (!live && liveOpen.current) {
+        liveOpen.current = false;
+        writeRef.current(s, { kind: "end" });
+      }
+      return;
+    }
     lastWritten.current = s;
-    writeRef.current(s, undo ? { kind: "undo" } : undefined);
+    liveOpen.current = live && !undo;
+    writeRef.current(s, undo ? { kind: "undo" } : live ? { kind: "live", me: meRef.current } : { me: meRef.current });
   }, []);
 
   const schedule = useCallback(() => {
     if (timer.current !== null) window.clearTimeout(timer.current);
-    timer.current = window.setTimeout(flush, SAVE_DELAY);
+    if (liveTimer.current !== null) window.clearTimeout(liveTimer.current);
+    liveTimer.current = null;
+    timer.current = window.setTimeout(() => flush(), SAVE_DELAY);
   }, [flush]);
 
   const show = useCallback((next: StickiesData) => {
+    if (!seen.current!.has(next)) seen.current!.set(next, dropped.current + taken.current.length);
     docRef.current = next;
     setDocState(next);
+  }, []);
+
+  /** Shows a board that came from elsewhere (or was merged with it): boards from before it are now out of date. */
+  const take = useCallback(
+    (next: StickiesData) => {
+      taken.current.push({ base: docRef.current, theirs: next });
+      if (taken.current.length > MAX_TAKEN) {
+        taken.current.shift();
+        dropped.current += 1;
+      }
+      show(next);
+    },
+    [show],
+  );
+
+  /** `b` with every change from elsewhere it has not seen: the board itself when it is current. */
+  const fresh = useCallback((b: StickiesData): StickiesData => {
+    const at = seen.current!.get(b);
+    const total = dropped.current + taken.current.length;
+    if (at === undefined) seen.current!.set(b, total);
+    if (at === undefined || at >= total) return b;
+    let out = b;
+    for (const t of taken.current.slice(Math.max(0, at - dropped.current))) out = mergeStickies(t.base, t.theirs, out, meRef.current);
+    seen.current!.set(out, total);
+    return out;
   }, []);
 
   // Changes from elsewhere (another person, another device, the note's own undo): merged with unsaved
@@ -81,14 +142,14 @@ export function useStickiesDoc({ data, write, me, blockId, engine }: { data: str
       next = mergeStickies(parseStickies(baseData.current), outside, docRef.current, meRef.current);
     }
     baseData.current = data;
-    show(next);
+    take(next);
     setTick((t) => t + 1);
     if (next !== outside && serializeStickies(next) !== data) {
       undoing.current = false;
       dirty.current = true;
       schedule();
     }
-  }, [data, schedule, show]);
+  }, [data, schedule, take]);
 
   // The server's side: once this block has nothing waiting to sync, what it shows is what the server has
   // (the base of the next merge). A conflict over this board is settled by merging both versions.
@@ -109,7 +170,7 @@ export function useStickiesDoc({ data, write, me, blockId, engine }: { data: str
           const waiting = pendingMerge.current;
           if (!waiting) return;
           pendingMerge.current = null;
-          show(waiting.merged);
+          take(waiting.merged);
           setTick((t) => t + 1);
           dirty.current = true;
           lastWritten.current = theirs;
@@ -126,13 +187,14 @@ export function useStickiesDoc({ data, write, me, blockId, engine }: { data: str
     };
     check();
     return engine.subscribe(check);
-  }, [engine, blockId, schedule, show]);
+  }, [engine, blockId, schedule, take]);
 
   // Write any pending change when the block goes away, and whenever the block, the page or the app is
   // being left (canvas/leaveFlush.ts).
   useLeaveFlush(() => {
     if (dirty.current || timer.current !== null) flush();
   });
+  const flushNow = useCallback(() => flush(), [flush]);
   useEffect(
     () => () => {
       if (dirty.current || timer.current !== null) flush();
@@ -145,30 +207,40 @@ export function useStickiesDoc({ data, write, me, blockId, engine }: { data: str
       if (next === docRef.current && !save) return;
       dirty.current = true;
       show(next);
-      if (save) schedule();
+      if (save) {
+        schedule();
+        return;
+      }
+      // A change still being made (text being typed, a note being dragged): written a moment after it
+      // pauses, unless a save is already on its way.
+      if (timer.current !== null) return;
+      if (liveTimer.current !== null) window.clearTimeout(liveTimer.current);
+      liveTimer.current = window.setTimeout(() => flush(true), LIVE_SAVE_DELAY);
     },
-    [schedule, show],
+    [schedule, show, flush],
   );
 
   /** Shows a state without recording it (live dragging and typing); `save` also schedules a write. */
   const setLive = useCallback(
-    (next: StickiesData, save = false) => {
+    (given: StickiesData, save = false) => {
+      const next = fresh(given);
       if (next !== docRef.current || save) undoing.current = false;
       apply(next, save);
     },
-    [apply],
+    [apply, fresh],
   );
 
   /** A finished change: recorded for undo (from `before`, default the current board) and saved. */
   const commit = useCallback(
-    (next: StickiesData, opts: { before?: StickiesData; key?: string } = {}) => {
-      const before = opts.before ?? docRef.current;
-      if (before === next) return;
+    (given: StickiesData, opts: { before?: StickiesData; key?: string } = {}) => {
+      if ((opts.before ?? docRef.current) === given) return;
+      const before = fresh(opts.before ?? docRef.current);
+      const next = fresh(given);
       history.current.push({ before, after: next }, opts.key);
       setLive(next, true);
       setTick((t) => t + 1);
     },
-    [setLive],
+    [setLive, fresh],
   );
 
   // Undo puts back what this change had, on the board as it is now (others' later edits and votes stay).
@@ -198,7 +270,7 @@ export function useStickiesDoc({ data, write, me, blockId, engine }: { data: str
     commit,
     undo,
     redo,
-    flush,
+    flush: flushNow,
     canUndo: history.current.canUndo,
     canRedo: history.current.canRedo,
     tooLarge,

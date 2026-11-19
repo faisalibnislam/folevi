@@ -86,6 +86,84 @@ export function serializeWhiteboard(wb: WhiteboardData): string {
   return JSON.stringify({ v: 1, strokes: wb.strokes });
 }
 
+/** How far (sheet units) a drawn point may sit from the line that stands in for it. A unit is about a pixel. */
+export const WHITEBOARD_INK_TOLERANCE = 0.75;
+/** How close to a sharp corner a point is kept on each side, so the corner is still drawn sharp. */
+const CORNER_GUARD = 4;
+
+/**
+ * The points of a freehand stroke as they are stored: the few that carry its shape, on whole units.
+ *
+ * A pen reports hundreds of points a second and nearly all of them lie on the line between their neighbours.
+ * Stored as drawn, with a decimal each, a paragraph of handwriting filled a whiteboard's size limit. Here the
+ * points within `tolerance` of the line through the ones kept are dropped (Ramer-Douglas-Peucker). Strokes
+ * are drawn as curves that only pass near their points (strokePath), which would round a sharp corner left
+ * with no neighbours, so a corner keeps a point close by on each side (while the stroke stays within the
+ * number of points one may have). Same stored format: fewer, rounder points.
+ */
+export function inkPoints(points: readonly (readonly [number, number])[], tolerance = WHITEBOARD_INK_TOLERANCE): [number, number][] {
+  const n = points.length;
+  if (n === 0) return [];
+  const keep = new Uint8Array(n);
+  keep[0] = 1;
+  keep[n - 1] = 1;
+  // (A list of spans still to look at, not a function calling itself: a long stroke is thousands of points.)
+  const spans: [number, number][] = [[0, n - 1]];
+  while (spans.length) {
+    const [from, to] = spans.pop()!;
+    let far = -1;
+    let most = tolerance;
+    for (let i = from + 1; i < to; i++) {
+      const d = distanceToSegment(points[i]!, points[from]!, points[to]!);
+      if (d > most) {
+        most = d;
+        far = i;
+      }
+    }
+    if (far < 0) continue;
+    keep[far] = 1;
+    spans.push([from, far], [far, to]);
+  }
+  const kept: (readonly [number, number])[] = [];
+  for (let i = 0; i < n; i++) if (keep[i]) kept.push(points[i]!);
+  // How far the drawn curve would pass from a kept point: a quarter of the way to the middle of its neighbours.
+  const sharp = (i: number) => {
+    if (i <= 0 || i >= kept.length - 1) return false;
+    const [ax, ay] = kept[i - 1]!;
+    const [bx, by] = kept[i]!;
+    const [cx, cy] = kept[i + 1]!;
+    return Math.hypot((ax + cx) / 2 - bx, (ay + cy) / 2 - by) / 4 > 1;
+  };
+  const build = (guards: boolean): [number, number][] => {
+    const out: [number, number][] = [];
+    const add = (x: number, y: number) => {
+      const p: [number, number] = [Math.round(x), Math.round(y)];
+      const last = out[out.length - 1];
+      if (!last || last[0] !== p[0] || last[1] !== p[1]) out.push(p);
+    };
+    for (let i = 0; i < kept.length; i++) {
+      const [ax, ay] = kept[i]!;
+      add(ax, ay);
+      const next = kept[i + 1];
+      if (!next || !guards) continue;
+      const from = sharp(i);
+      const to = sharp(i + 1);
+      if (!from && !to) continue;
+      const len = Math.hypot(next[0] - ax, next[1] - ay);
+      const at = (d: number) => add(ax + ((next[0] - ax) * d) / len, ay + ((next[1] - ay) * d) / len);
+      if (len > CORNER_GUARD * 2) {
+        if (from) at(CORNER_GUARD);
+        if (to) at(len - CORNER_GUARD);
+      } else if (len > CORNER_GUARD) at(len / 2);
+    }
+    return out;
+  };
+  const guarded = build(true);
+  if (guarded.length <= WHITEBOARD_MAX_POINTS) return guarded;
+  // (A stroke with more points than one may have would not be read back at all, and the drawing with it.)
+  return build(false).slice(0, WHITEBOARD_MAX_POINTS);
+}
+
 const r1 = (n: number) => Math.round(n * 10) / 10;
 
 /** A smooth SVG path through the points (quadratic curves between midpoints). */

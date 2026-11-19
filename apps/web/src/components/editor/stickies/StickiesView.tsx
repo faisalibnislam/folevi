@@ -89,6 +89,7 @@ import {
 } from "./ops";
 import { useStickiesDoc } from "./useStickiesDoc";
 import { targetUnder } from "../canvas/targetUnder";
+import { capturePointer, dropFocusIn, notePress, pinchPair, useTapFocus, type DownPointer } from "../canvas/pointers";
 import { coarsePointer } from "@/lib/hooks/useMediaQuery";
 
 const MIN_K = 0.15;
@@ -149,7 +150,7 @@ function StickiesEditor(props: ReactNodeViewProps & { me: string; people: People
   const blockId = typeof node.attrs.id === "string" ? node.attrs.id : null;
   const { engine } = useAppState();
   const write = useBlockDataWriter(props, true);
-  const { doc, docRef, setLive, commit, undo, redo, canUndo, canRedo, tooLarge } = useStickiesDoc({ data, write, me, blockId, engine: demo ? null : engine });
+  const { doc, docRef, setLive, commit, undo, redo, flush, canUndo, canRedo, tooLarge } = useStickiesDoc({ data, write, me, blockId, engine: demo ? null : engine });
   const aiOn = useAiEnabled() && !demo;
   // The workshop timer counts in server time: learn this device's offset from it once per session.
   useServerClock(!demo);
@@ -176,7 +177,7 @@ function StickiesEditor(props: ReactNodeViewProps & { me: string; people: People
   // The selection bar hides while a press is in progress (drag.current); its end draws the board again so the bar
   // comes back even when nothing else changed (a tap on the iPhone selected a note and showed no bar).
   const [, pressEnded] = useReducer((n: number) => n + 1, 0);
-  const pointers = useRef(new Map<number, { x: number; y: number; type: string }>());
+  const pointers = useRef(new Map<number, DownPointer>());
   const frame = useRef<number | null>(null);
   const lastMove = useRef<PointerEvent | null>(null);
   const lastTap = useRef<{ at: number; x: number; y: number; id: string | null } | null>(null);
@@ -533,13 +534,17 @@ function StickiesEditor(props: ReactNodeViewProps & { me: string; people: People
     [docRef, setLive, toWorld],
   );
 
+  // A finger on a board that does not have the keyboard gives it the keyboard only when it turns out to be a
+  // tap, not a scroll of the note (canvas/pointers.ts).
+  const tapFocus = useTapFocus({ isActive: () => active.current, focus: () => focusBoard(), drop: () => dropFocusIn(bodyEl()) });
+
   const onPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
     const pts = pointers.current;
     if (pts.has(e.pointerId)) pts.set(e.pointerId, { x: e.clientX, y: e.clientY, type: e.pointerType });
     const d = drag.current;
-    if (d?.kind === "pinch" && pts.size >= 2) {
-      const [a, b] = [...pts.values()].slice(0, 2) as [Pt, Pt] | [];
-      if (!a || !b) return;
+    const pair = d?.kind === "pinch" ? pinchPair(pts) : null;
+    if (d?.kind === "pinch" && pair) {
+      const [a, b] = pair;
       const r = wrapRef.current!.getBoundingClientRect();
       const mid = { x: (a.x + b.x) / 2 - r.left, y: (a.y + b.y) / 2 - r.top };
       const k = clamp(d.view.k * (Math.hypot(a.x - b.x, a.y - b.y) / d.dist), MIN_K, MAX_K);
@@ -562,19 +567,23 @@ function StickiesEditor(props: ReactNodeViewProps & { me: string; people: People
     lastPointer.current = e.pointerType;
     if (editingRef.current) finishEdit(false);
     if (panel === "tags") setPanel(null);
-    focusBoard();
     const pts = pointers.current;
-    pts.set(e.pointerId, { x: e.clientX, y: e.clientY, type: e.pointerType });
+    const what = notePress(pts, e);
+    // A palm resting beside the pen: no gesture of its own, and the pen's carries on.
+    if (what === "palm") return;
+    tapFocus.down(e);
+    // Captured before anything else, the second finger of a pinch too: what it came down on (a note's resize
+    // corner, the selection bar) may be hidden by the gesture, and its release would go there instead of here.
+    if (e.pointerType !== "mouse" || e.button === 0 || e.button === 1) capturePointer(e.currentTarget, e.pointerId);
     // Two fingers: pinch to zoom (and pan), whatever the first finger was doing.
-    if (pts.size === 2 && e.pointerType === "touch") {
+    if (what === "pinch") {
       const cur = drag.current;
       if (cur?.kind === "move") {
         if (cur.hold !== null) window.clearTimeout(cur.hold);
         if (cur.moved) setLive(cur.before);
       }
       if (cur?.kind === "resize") setLive(cur.before);
-      const [a, b] = [...pts.values()].slice(0, 2) as [Pt, Pt] | [];
-      if (!a || !b) return;
+      const [a, b] = pinchPair(pts)!;
       const r = wrapRef.current!.getBoundingClientRect();
       drag.current = { kind: "pinch", dist: Math.max(10, Math.hypot(a.x - b.x, a.y - b.y)), view: viewRef.current, mid: { x: (a.x + b.x) / 2 - r.left, y: (a.y + b.y) / 2 - r.top } };
       setMarquee(null);
@@ -582,7 +591,6 @@ function StickiesEditor(props: ReactNodeViewProps & { me: string; people: People
     }
     if (e.pointerType === "mouse" && e.button !== 0 && e.button !== 1) return;
     const p = toWorld(e.clientX, e.clientY);
-    e.currentTarget.setPointerCapture(e.pointerId);
     const b = docRef.current;
     const touch = e.pointerType !== "mouse";
 
@@ -651,10 +659,11 @@ function StickiesEditor(props: ReactNodeViewProps & { me: string; people: People
   };
 
   const onPointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
+    tapFocus.up(e);
     pointers.current.delete(e.pointerId);
     const d = drag.current;
     if (d?.kind === "pinch") {
-      if (pointers.current.size < 2) drag.current = null;
+      if (!pinchPair(pointers.current)) drag.current = null;
       return;
     }
     if (!d || d.pointer !== e.pointerId) return;
@@ -1052,6 +1061,7 @@ function StickiesEditor(props: ReactNodeViewProps & { me: string; people: People
       empty={empty && !editing}
       hint={`${coarsePointer() ? "Double-tap" : "Double-click"} anywhere to add a note, or add several at once.`}
       tools={tools}
+      onLeave={flush}
       onRefit={() => fitView()}
       onKey={onKey}
       onEscape={closePanel}

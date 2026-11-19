@@ -54,7 +54,7 @@ The owner moves secrets between Macs; never copy their values into files or chat
 
 ## 10. Next steps / open work
 - Release `ios-ai-tab` when the owner says.
-- iPhone Duo follow-ups: Folevi's own menus (PhoneMenuLayer) don't avoid the fold yet; Split View halves and tabletop not checked (no simulator control for them); the iPad at narrow regular widths not checked; rebase `claude/iphone-duo-18adb4` onto `ios-ai-tab` once it lands (both touch `PhoneFrameView.swift`).
+- iPhone Duo follow-ups: in All notes on the inner screen the two-column card grid breaks a long title mid-word ("Readin g Shelf"); Folevi's own menus (PhoneMenuLayer) don't avoid the fold yet; Split View halves and tabletop not checked (no simulator control for them); the iPad at narrow regular widths not checked; rebase `claude/iphone-duo-18adb4` onto `ios-ai-tab` once it lands (both touch `PhoneFrameView.swift`).
 - Merge the iPhone Duo and marketing branches when their sessions finish and the owner approves.
 - The owner's open items: `docs/HANDOFF.md` section 7.
 
@@ -64,6 +64,7 @@ The owner moves secrets between Macs; never copy their values into files or chat
 - CI's first step runs `node scripts/icons-codegen.mjs --check`: regenerate `Icons.swift` after adding a web icon.
 
 ## 12. Change log
+- 2026-11-19: iPhone Duo: Home's card rail fades out at the list column's edge; no sidebar button on pushed list screens.
 - 2026-11-19: iPhone Duo redone after the owner's review: system split view for Home, side column for tabs and note tools, no custom sidebar (`docs/IPHONE_DUO_PLAN.md`).
 - 2026-11-19: Shorter first-launch copy (where notes live, where the library lives, the passphrase card) on web, Mac, iPhone and iPad, on branch `claude/iphone-duo-18adb4`.
 - 2026-11-19: iPhone Duo support on branch `claude/iphone-duo-18adb4` (PhoneColumns, PhoneSideBars, NotePageSlot).

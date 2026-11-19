@@ -151,7 +151,16 @@ public struct PhoneHomeContent: View {
             // short of it rather than slide under it and the status bar.)
             .padding(.leading, -strip.padding.left)
             .padding(.trailing, sideBars ? 0 : -strip.padding.left)
-            .clipShape(Rectangle())
+            // (Where it stops short, the cards fade out at its end rather than being cut off.)
+            .mask {
+                HStack(spacing: 0) {
+                    Color.black
+                    if sideBars {
+                        LinearGradient(colors: [.black, .black.opacity(0)], startPoint: .leading, endPoint: .trailing)
+                            .frame(width: 36)
+                    }
+                }
+            }
             .accessibilityLabel("Recent notes")
         }
     }

@@ -245,7 +245,9 @@ public struct PhoneFrameView<Screen: View>: View {
             // (The note draws its own bars, as the page asks: PhoneNoteBars; iOS's where bars are at the side.)
             screen(route).phoneNoteBar().toolbarVisibility(.hidden, for: .tabBar).navigationTransition(.zoom(sourceID: id, in: zoom))
         } else {
+            // (In Home's split view the list stays beside the note: no button to hide it on the screens pushed there.)
             screen(route).toolbarVisibility(barHidden(route) ? .hidden : .automatic, for: .tabBar)
+                .toolbar(removing: .sidebarToggle)
         }
     }
 }

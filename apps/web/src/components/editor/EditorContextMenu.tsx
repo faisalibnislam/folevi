@@ -61,6 +61,7 @@ import { openInlineAi, useAiEnabled } from "@/components/ai/useAi";
 import { useToast } from "@/components/ui/Toast";
 import { useAppRouter } from "@/lib/app/router";
 import { emptyTableRows, focusInsideBlock, HIGHLIGHT_COLORS, TEXT_COLORS, blocksInSelection, clearFormatting, deleteBlocks, duplicateBlocks, insertBlockAt, removeLink, selectedSpan, setFlashcard, setHighlight, setTextColor, turnInto } from "./commands";
+import { foldToggle } from "./toggleFold";
 import { blockSelectionRange, clearBlockSelection } from "./blockSelection";
 import { syncDomSelection } from "./blockSelectionState";
 import { blockElements } from "./plugins";
@@ -631,7 +632,7 @@ function buildEntries({
         shortcut: "⌘↵",
         run: () => {
           const at = live();
-          if (at?.node.type.name === "toggle") editor.view.dispatch(editor.state.tr.setNodeMarkup(at.pos, undefined, { ...at.node.attrs, collapsed: !at.node.attrs.collapsed }).setMeta("addToHistory", false));
+          if (at?.node.type.name === "toggle") editor.view.dispatch(foldToggle(editor.state, at.pos, !at.node.attrs.collapsed));
         },
       });
       // A flashcard (or a quiz question Foli AI wrote) comes up in Reviews.

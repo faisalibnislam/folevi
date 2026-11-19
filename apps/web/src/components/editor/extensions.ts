@@ -1,5 +1,6 @@
 // Folevi editor schema for Tiptap/ProseMirror. One node per canonical block type, all top-level and
 // flat, with `id` (stable block id) and `depth` (nesting) attributes. See convert.ts for the mapping.
+import { foldToggle } from "./toggleFold";
 import { Extension, Mark, Node, mergeAttributes, type Attributes, type Editor } from "@tiptap/core";
 import { Plugin, PluginKey, TextSelection } from "@tiptap/pm/state";
 import { Decoration, DecorationSet } from "@tiptap/pm/view";
@@ -400,7 +401,7 @@ export const Toggle = Node.create({
       btn.addEventListener("click", () => {
         const pos = typeof getPos === "function" ? getPos() : null;
         if (pos === null || pos === undefined) return;
-        editor.view.dispatch(editor.view.state.tr.setNodeMarkup(pos, undefined, { ...current.attrs, collapsed: !current.attrs.collapsed }).setMeta("addToHistory", false));
+        editor.view.dispatch(foldToggle(editor.view.state, pos, !current.attrs.collapsed));
       });
       return {
         dom,

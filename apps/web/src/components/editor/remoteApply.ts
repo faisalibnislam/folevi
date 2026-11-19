@@ -127,14 +127,16 @@ export function remoteTransaction(state: EditorState, incoming: readonly WireBlo
   // 3. Walk the wanted order: patch blocks that stayed, insert the rest.
   let pos = 0;
   let index = 0;
+  // (A node is only built for a block that differs or is new: building one for every block of a long note on
+  // every answer from the server was most of what an answer with nothing new in it cost.)
   for (const { block, depth } of desired) {
-    const want = build(block, depth);
     const here = tr.doc.maybeChild(index);
     if (here && here.attrs.id === block.id) {
       const have = currentBlocks.get(block.id);
-      if (!have || contentKey(have) !== contentKey(block) || Number(here.attrs.depth ?? 0) !== depth) patchNode(tr, pos, here, want);
+      if (!have || contentKey(have) !== contentKey(block) || Number(here.attrs.depth ?? 0) !== depth) patchNode(tr, pos, here, build(block, depth));
       pos += tr.doc.child(index).nodeSize;
     } else {
+      const want = build(block, depth);
       tr.insert(pos, want);
       pos += want.nodeSize;
     }

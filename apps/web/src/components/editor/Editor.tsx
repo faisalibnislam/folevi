@@ -138,23 +138,44 @@ export const Editor = forwardRef<EditorHandle, Props>(function Editor(
     [engine, documentId],
   );
 
+  // What the editor opens with, worked out once: Tiptap compares its options after every render, and a new
+  // document (or a new editorProps object) each time made it set them again and update the whole view.
+  // With it, the engine's blocks it was made from (hydrate, below).
+  const [opened] = useState(() => {
+    const blocks = engine.documentBlocks(documentId);
+    return { blocks, content: blocksToDoc(blocks) };
+  });
+  const content = opened.content;
+
   // What the editor opened with (the engine's blocks as they were then): from here on, what differs from it is
   // the person's own and is saved. Only ever a document from before any local change, never one with typing
   // in it, or that typing would count as already saved and be lost.
+  //
+  // The editor is made a moment after its first render, and the engine may have taken in newer blocks in
+  // between (the note was open on this device before and has changed elsewhere: the server's answer, already
+  // at hand, is reconciled by the page before the editor exists to be told). The editor then shows the older
+  // blocks. `shown` says so, and the engine is not told its newer ones were shown, so an edit made before they
+  // are drawn goes out based on the older version and the server sees the conflict. (It used to go out as an
+  // edit of the newer version, replacing the other device's change to that line with no question asked, and
+  // the note kept showing the old text until something else changed.) Returns whether the editor is behind:
+  // the caller then draws the engine's blocks (applyTo).
   const hydrate = useCallback(
-    (doc: PMNode) => {
-      shown.current = new Map(docToBlocks(doc, new Map(engine.documentBlocks(documentId).map((b) => [b.id, b]))).map((b) => [b.id, b]));
-      engine.markShown(documentId);
+    (doc: PMNode): boolean => {
+      const now = engine.documentBlocks(documentId);
+      const behind = now !== opened.blocks;
+      shown.current = new Map(docToBlocks(doc, new Map((behind ? opened.blocks : now).map((b) => [b.id, b]))).map((b) => [b.id, b]));
+      if (!behind) engine.markShown(documentId);
       hydrated.current = true;
+      return behind;
     },
-    [engine, documentId],
+    [engine, documentId, opened],
   );
-
-  // What the editor opens with, worked out once: Tiptap compares its options after every render, and a new
-  // document (or a new editorProps object) each time made it set them again and update the whole view.
-  const [content] = useState(() => blocksToDoc(engine.documentBlocks(documentId)));
   // (Pasted and dropped files go through insertFiles, defined below with the editor it needs.)
   const insertFilesRef = useRef<(files: File[]) => Promise<void>>(async () => undefined);
+  // (Draws the engine's blocks in an editor: defined below, used by the editor's own callbacks.)
+  const applyToRef = useRef<(ed: TiptapEditor | null) => void>(() => undefined);
+  /** The engine's list of blocks last drawn (applyTo). */
+  const applied = useRef<readonly WireBlock[] | null>(null);
   const editorProps = useMemo<EditorOptions["editorProps"]>(
     () => ({
       attributes: {
@@ -221,7 +242,7 @@ export const Editor = forwardRef<EditorHandle, Props>(function Editor(
     content,
     editorProps,
     onCreate: ({ editor: ed }) => {
-      if (!hydrated.current) hydrate(ed.state.doc);
+      if (!hydrated.current && hydrate(ed.state.doc)) applyToRef.current(ed);
       // Back in a note that was left a moment ago and has not changed: Cmd+Z still works (historyKeep.ts).
       restoreNoteHistory(`${accountKey}:${documentId}`, ed);
       // A note that starts with an image (or any media) opens with nothing selected: ProseMirror would
@@ -235,7 +256,8 @@ export const Editor = forwardRef<EditorHandle, Props>(function Editor(
       if (!transaction.docChanged || transaction.getMeta("remote") || !ed.isEditable) return;
       // Typed before the editor said it was ready (a new note's first line, typed right after the title's
       // Enter): it opened with the document as it was before this change, and this change is the person's.
-      if (!hydrated.current) hydrate(transaction.before);
+      // (If the engine has newer blocks than the editor opened with, they are drawn once this change is in.)
+      if (!hydrated.current && hydrate(transaction.before)) queueMicrotask(() => applyToRef.current(ed));
       dirty.current = true;
       engine.setEditing(documentId, true);
       if (flushTimer.current) clearTimeout(flushTimer.current);
@@ -281,16 +303,19 @@ export const Editor = forwardRef<EditorHandle, Props>(function Editor(
     editor.view.dispatch(editor.state.tr.setMeta(decorationsKey, decorations).setMeta("addToHistory", false).setMeta("remote", true));
   }, [editor, decorations]);
 
-  const applyFromEngine = useCallback(() => {
-    const ed = editorRef.current;
+  const applyTo = useCallback((ed: TiptapEditor | null) => {
     if (!ed || ed.isDestroyed) return;
     // Never while an input method is composing text (it would break the composition): apply when it ends.
     if (ed.view.composing) {
-      ed.view.dom.addEventListener("compositionend", () => setTimeout(() => applyFromEngineRef.current(), 0), { once: true });
+      ed.view.dom.addEventListener("compositionend", () => setTimeout(() => applyToRef.current(ed), 0), { once: true });
       return;
     }
     flushLocal(ed);
-    const tr = remoteTransaction(ed.state, engine.documentBlocks(documentId), shown.current);
+    // The engine hands out the same list while nothing in the note changed: then there is nothing to draw
+    // (the page asks after every answer from the server, most of which only confirm a save).
+    const blocks = engine.documentBlocks(documentId);
+    if (blocks === applied.current) return;
+    const tr = remoteTransaction(ed.state, blocks, shown.current);
     if (tr) {
       // The note's content arriving (or changing elsewhere) never selects a media block by itself.
       if (!ed.view.hasFocus() && tr.selection instanceof NodeSelection && !(ed.state.selection instanceof NodeSelection)) {
@@ -300,7 +325,14 @@ export const Editor = forwardRef<EditorHandle, Props>(function Editor(
       ed.view.dispatch(tr.setMeta("remote", true).setMeta("addToHistory", false));
     }
     showEngine();
+    applied.current = blocks;
   }, [engine, documentId, flushLocal, showEngine]);
+  applyToRef.current = applyTo;
+  // Before the editor has said it is ready there is nothing to apply to: what it opens with is brought up to
+  // date when it is (hydrate), and applying here first would count typing not yet seen as already saved.
+  const applyFromEngine = useCallback(() => {
+    if (hydrated.current) applyTo(editorRef.current);
+  }, [applyTo]);
   const applyFromEngineRef = useRef(applyFromEngine);
   applyFromEngineRef.current = applyFromEngine;
 
@@ -445,7 +477,11 @@ export const Editor = forwardRef<EditorHandle, Props>(function Editor(
     () => ({
       flush: () => flushLocal(editorRef.current),
       applyFromEngine,
-      editor: editorRef.current,
+      // Read when asked: the editor is made after the first render, and a copy taken then stayed null for good
+      // (this handle is only made again when flush or applyFromEngine change, which is never).
+      get editor() {
+        return editorRef.current;
+      },
       // The caret in that block, in view: a block folded away in a toggle or a tab is shown first, and a
       // block without text (an image, a table) is selected (findReplace.ts).
       focusBlock: (blockId: string) => {

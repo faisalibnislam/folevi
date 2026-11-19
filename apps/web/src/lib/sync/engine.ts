@@ -185,14 +185,21 @@ export class SyncEngine {
         this.scheduleFlush(0);
       }, TAKEOVER_DELAY);
     };
+    // The iPhone and iPad app says when it stops being the app in front (bridge.js): a web view's own
+    // visibilitychange can come late there, or not before iOS suspends the app.
+    const onAppInactive = () => hide(false);
     window.addEventListener("pagehide", onPageHide, { capture: true });
     window.addEventListener("pageshow", onPageShow);
     window.addEventListener("storage", onStorage);
+    window.addEventListener("folevi:app-inactive", onAppInactive, { capture: true });
+    window.addEventListener("folevi:app-active", onPageShow);
     document.addEventListener("visibilitychange", onVisibility, { capture: true });
     this.unwatch = () => {
       window.removeEventListener("pagehide", onPageHide, { capture: true });
       window.removeEventListener("pageshow", onPageShow);
       window.removeEventListener("storage", onStorage);
+      window.removeEventListener("folevi:app-inactive", onAppInactive, { capture: true });
+      window.removeEventListener("folevi:app-active", onPageShow);
       document.removeEventListener("visibilitychange", onVisibility, { capture: true });
     };
   }

@@ -12,7 +12,8 @@ import { activeNote, isNoteReady, onNoteHost, resetNoteReady, setNativePanes, se
 import { setToastSink } from "./toasts";
 import { actOnGate, currentGate, onGate } from "./gates";
 import { routeWindowOpen } from "./navigation";
-import { BridgeError, argsOf, bool, id as idArg, ids as idsArg, invalid, oneOf, only } from "./validate";
+import { BridgeError, argsOf, bool, id as idArg, ids as idsArg, invalid, num, oneOf, only } from "./validate";
+import { setNativeBars } from "@/lib/native/bars";
 import {
   BIG_PAYLOAD_BYTES,
   COMMAND_NAMES,
@@ -586,6 +587,12 @@ export class BridgeHost {
         this.showMeta(null);
         return { ok: true };
       }
+      // The bars' room is the page's, whatever it shows: taken before a note is there (a page loaded again
+      // after iOS ended its process came back with no room for the bars until the keyboard was next raised).
+      case "insets":
+        only(args, ["top", "bottom"]);
+        setNativeBars(num(args, "top", { min: 0, max: 2000 }), num(args, "bottom", { min: 0, max: 2000 }));
+        return { ok: true };
       default: {
         const note = activeNote();
         if (!note) throw new BridgeError("no_note", "No note is open.");

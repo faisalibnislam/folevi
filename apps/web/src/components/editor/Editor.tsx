@@ -369,11 +369,20 @@ export const Editor = forwardRef<EditorHandle, Props>(function Editor(
   // Flush on tab hide / unload so nothing typed is lost.
   useEffect(() => {
     const onHide = () => flushLocal(editorRef.current);
+    // The iPhone and iPad app leaving the front (bridge.js says so; a web view's visibilitychange may come
+    // late there, or never before iOS suspends the app): the note's canvases write what they hold, then the
+    // note saves, as when it closes.
+    const onAppInactive = () => {
+      flushBlocks();
+      onHide();
+    };
     document.addEventListener("visibilitychange", onHide);
     window.addEventListener("pagehide", onHide);
+    window.addEventListener("folevi:app-inactive", onAppInactive);
     return () => {
       document.removeEventListener("visibilitychange", onHide);
       window.removeEventListener("pagehide", onHide);
+      window.removeEventListener("folevi:app-inactive", onAppInactive);
       // The note is closing: its canvases write what they still hold (their views are already down, so
       // they write by block id), and the last save below takes it along.
       flushBlocks();

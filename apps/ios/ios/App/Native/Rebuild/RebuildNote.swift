@@ -74,6 +74,9 @@ struct RebuildNoteScreen: View {
         .background(FoleviTokens.Chrome.canvas.color)
         .onGeometryChange(for: EdgeInsets.self) { $0.safeAreaInsets } action: { safe = $0 }
         .onChange(of: insets) { _, i in sendInsets(i) }
+        // The page loaded again (iOS ended its process while the app was away) has forgotten the bars' room: said
+        // again once the note is back, or the title sat under the top bar until the keyboard was next raised.
+        .onChange(of: model.isReady(noteId)) { _, ready in if ready { sendInsets(insets) } }
         .onAppear {
             pageHost.adopt(by: NotePageRegistry.controller(for: noteId))
             model.show(noteId)

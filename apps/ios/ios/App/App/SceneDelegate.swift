@@ -39,10 +39,28 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
     }
 
     func sceneDidEnterBackground(_ scene: UIScene) {
+        holdForPageSave()
         PhoneFrameController.current?.snapshot.flush()
         (window?.rootViewController as? RebuildFrameController)?.saveDesk()
         AppLock.shared.didEnterBackground()
         AppServices.enteredBackground()
+    }
+
+    /// The page was told the app is leaving as it resigned active (WebHost, "appStateChange"): it writes what was
+    /// typed in the last moment and sends it. A few seconds for that before iOS suspends the app.
+    private func holdForPageSave() {
+        final class Holder: @unchecked Sendable { var task = UIBackgroundTaskIdentifier.invalid }
+        let holder = Holder()
+        let end: @MainActor @Sendable () -> Void = {
+            guard holder.task != .invalid else { return }
+            UIApplication.shared.endBackgroundTask(holder.task)
+            holder.task = .invalid
+        }
+        holder.task = UIApplication.shared.beginBackgroundTask(withName: "Folevi save", expirationHandler: end)
+        Task { @MainActor in
+            try? await Task.sleep(for: .seconds(3))
+            end()
+        }
     }
 
     /// What iOS keeps for the scene: the new frame's tabs and screens, the phone layout's and the iPad's wide one's.

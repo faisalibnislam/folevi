@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { nativeBars } from "@/lib/native/bars";
 
 /**
  * Keeps `--kb-inset` on the root element at how much of the window the on-screen keyboard covers (iOS
@@ -26,7 +27,8 @@ export function useKeyboardInset() {
 /** The bottom edge of what's visible (above the on-screen keyboard), for clamping popovers. */
 export function visibleBottom(): number {
   const vv = window.visualViewport;
-  const bottom = vv ? vv.offsetTop + vv.height : window.innerHeight;
+  // (In the apps the page fills the screen under the keyboard: the native frame says how much it covers.)
+  const bottom = Math.min(vv ? vv.offsetTop + vv.height : window.innerHeight, window.innerHeight - nativeBars().bottom);
   // In the iPhone app, the bar of writing tools that sits on the keyboard covers what's under it too.
   const bar = document.querySelector<HTMLElement>("[data-iphone-keyboard-bar]")?.getBoundingClientRect();
   return bar && bar.height && bar.top < bottom ? Math.min(bottom, bar.top) : bottom;

@@ -1776,9 +1776,12 @@ function DocumentHeader({
     };
     const onVisibility = () => document.visibilityState === "hidden" && onHide();
     window.addEventListener("pagehide", onHide);
+    // (The iPhone and iPad app leaving the front: see Editor.tsx.)
+    window.addEventListener("folevi:app-inactive", onHide);
     document.addEventListener("visibilitychange", onVisibility);
     return () => {
       window.removeEventListener("pagehide", onHide);
+      window.removeEventListener("folevi:app-inactive", onHide);
       document.removeEventListener("visibilitychange", onVisibility);
       onHide();
     };

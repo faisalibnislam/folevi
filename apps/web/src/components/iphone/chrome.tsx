@@ -2,6 +2,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { nativeApp } from "@/lib/nativeApp";
+import { scrollerAround } from "@/lib/native/bars";
 
 /**
  * What the iPhone app's floating chrome needs to know: whether the on-screen keyboard is up, and which
@@ -59,13 +60,6 @@ function useKeyboardOpen(): boolean {
 }
 
 /** The scrolling view around a node (a note's page, a list), if any. */
-function scrollerAround(node: Node | null): HTMLElement | null {
-  for (let el = node instanceof HTMLElement ? node : (node?.parentElement ?? null); el; el = el.parentElement) {
-    const oy = getComputedStyle(el).overflowY;
-    if ((oy === "auto" || oy === "scroll") && el.scrollHeight > el.clientHeight) return el;
-  }
-  return null;
-}
 
 /** Where the caret is on screen in the text being written (the editor), or null. */
 function caretRect(): DOMRect | null {

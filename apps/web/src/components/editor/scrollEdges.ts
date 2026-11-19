@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, type RefObject } from "react";
+import { nativeBars } from "@/lib/native/bars";
 
 /**
  * A block wider than the note (a table, a long formula) scrolls sideways inside itself. This marks the
@@ -52,18 +53,24 @@ export function setDockClearance(px: number) {
  * as out of view and is scrolled up to just above them. Getters, so ProseMirror reads where the bar is now.
  */
 export const DOCK_SCROLL_MARGIN = {
-  top: CARET_MARGIN,
+  // In the apps the native bars lie over the page as well (lib/native/bars.ts): the top bar, and at the foot
+  // the keyboard with the bar on it. The caret counts as out of view under them too.
+  get top() {
+    return CARET_MARGIN + nativeBars().top;
+  },
   left: CARET_MARGIN,
   right: CARET_MARGIN,
   get bottom() {
-    return CARET_MARGIN + dockClearance;
+    return CARET_MARGIN + Math.max(dockClearance, nativeBars().bottom);
   },
 };
 export const DOCK_SCROLL_THRESHOLD = {
-  top: 0,
+  get top() {
+    return nativeBars().top;
+  },
   left: 0,
   right: 0,
   get bottom() {
-    return dockClearance;
+    return Math.max(dockClearance, nativeBars().bottom);
   },
 };

@@ -923,6 +923,9 @@
    down under the app's bottom bar instead of stopping above it on the plain page colour. */
 :root[data-iphone] [data-iphone-scroll][data-native-chrome] { padding-bottom: 0; }
 :root[data-iphone] [data-iphone-scroll][data-native-chrome] > .fb-sheet { min-height: 100%; padding-bottom: calc(var(--native-inset-bottom, 0px) + 24px); }
+/* A field focused there (the title, a table's cell) scrolls clear of the app's bars and the keyboard, which lie
+   over the page (lib/native/bars.ts keeps the caret clear the same way). */
+:root[data-iphone] [data-iphone-scroll][data-native-chrome] { scroll-padding-top: calc(var(--native-inset-top, 0px) + 16px); scroll-padding-bottom: calc(var(--native-inset-bottom, 0px) + 16px); }
 :root[data-iphone][data-iphone-keyboard] [data-iphone-scroll][data-native-chrome] > .fb-sheet { padding-bottom: 66px; }
 /* A note without artwork fills the screen like a sheet of paper (no card on a grey backdrop). */
 :root[data-iphone] [data-iphone-plain] > .fb-sheet { max-width: none !important; min-height: 100%; border-radius: 0; box-shadow: none; padding-top: calc(env(safe-area-inset-top) + 40px); }

@@ -14,6 +14,7 @@ import { EDIT_LINK_EVENT } from "@/components/editor/EditorContextMenu";
 import { findState, setFind } from "@/components/editor/findReplace";
 import { AI_FOCUS_EVENT, askNoteAi } from "@/components/ai/chat/events";
 import { nativeChrome } from "@/lib/nativeApp";
+import { setNativeBars } from "@/lib/native/bars";
 import { desktop } from "@/lib/desktop";
 import { blockFullScreen, bridgeListening, emitNoteEvent, focusMode, markNoteReady, onNoteHost, registerNote, setFocusMode, type NoteHandle } from "./noteHost";
 import { clearMatches, findMatches, MAX_MATCHES, paintMatches, revealMatch } from "@/components/doc/findInNote";
@@ -178,10 +179,15 @@ export function editorState(editor: Editor | null, noteId: string, readOnly: boo
   };
 }
 
-function setInsets(top: number, bottom: number) {
-  const root = document.documentElement;
-  root.style.setProperty("--native-inset-top", `${top}px`);
-  root.style.setProperty("--native-inset-bottom", `${bottom}px`);
+/**
+ * The editor command "insets": the room the app's bars take over the page (lib/native/bars.ts). The page's
+ * own, not a note's: it is taken with or without a note open (BridgeHost.editor), so a page that has just
+ * loaded again knows its bars before its note is back.
+ */
+export function applyInsets(args: Record<string, unknown>): { ok: true } {
+  only(args, ["top", "bottom"]);
+  setNativeBars(num(args, "top", { min: 0, max: 2000 }), num(args, "bottom", { min: 0, max: 2000 }));
+  return { ok: true };
 }
 
 function toggleMark(editor: Editor, mark: EditorMark) {
@@ -317,9 +323,7 @@ export function runEditorCommand(o: NativeNoteOptions, name: EditorCommandName, 
       o.scrollEl?.scrollTo({ top: 0, behavior: "smooth" });
       return ok;
     case "insets":
-      only(args, ["top", "bottom"]);
-      setInsets(num(args, "top", { min: 0, max: 2000 }), num(args, "bottom", { min: 0, max: 2000 }));
-      return ok;
+      return applyInsets(args);
     case "state":
       only(args, []);
       return editorState(editor, o.documentId, o.readOnly, { locked: o.locked, canLock: Boolean(o.lock) }, noteMenuState(o));

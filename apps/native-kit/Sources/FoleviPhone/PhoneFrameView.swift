@@ -62,9 +62,8 @@ private struct ZoomSource: ViewModifier {
 public struct PhoneFrameView<Screen: View>: View {
     @Bindable var model: PhoneFrameModel
     @Namespace private var zoom
-    /// The window's width class and width (for the list beside the note, PhoneColumns).
+    /// The window's width class (the split view's columns side by side, PhoneColumns).
     @Environment(\.horizontalSizeClass) private var sizeClass
-    @State private var windowWidth: CGFloat = 0
     let menus: PhoneMenus
     let aiOn: Bool
     /// Whether the tab bar steps out of the way (the keyboard, Select).
@@ -154,9 +153,12 @@ public struct PhoneFrameView<Screen: View>: View {
             }
         }
         .tabBarMinimizeBehavior(.onScrollDown)
-        .phoneTabSidebar()
         .phoneSideBarsReader()
-        .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { windowWidth = $0 }
+        // (The open note's place: beside its list on Home when the window is regular width, PhoneFrameModel.columns.)
+        .onChange(of: sizeClass == .regular && model.current == .home, initial: true) { _, on in
+            if model.columns != on { model.columns = on }
+        }
+        .environment(\.phoneWideWindow, sizeClass == .regular)
         .overlay { PhoneMenuLayer(menus: menus) }
     }
 
@@ -200,30 +202,51 @@ public struct PhoneFrameView<Screen: View>: View {
         return false
     }
 
-    /// A tab's stack: its first screen, then what was opened on top (bound to the model, so Back by the edge swipe
-    /// pops the model too).
-    /// In a wide window (iPhone Duo open) the open note shows beside its list (PhoneColumns).
+    /// A tab's screens: its first screen, then what was opened on top (bound to the model, so Back by the edge swipe
+    /// pops the model too). Home is iOS's split view: the open note beside its list on a wide window (iPhone Duo
+    /// open), pushed over it on a narrow one (PhoneColumns). Tasks and Calendar keep one stack, full width.
+    @ViewBuilder
     private func stack(_ tab: PhoneTab) -> some View {
         let first = model.stacks[tab]?.first?.route ?? PhoneFrameModel.root(of: tab)
-        return PhoneColumns(model: model, tab: tab, wide: PhoneWindow.wide(sizeClass, width: windowWidth), regular: sizeClass == .regular) { path in
-            NavigationStack(path: path) {
-                screen(first)
-                    .modifier(PhoneSidebarButton(regular: sizeClass == .regular))
-                    .environment(\.phoneRootCreate, rootCreate(tab))
-                    .toolbarVisibility(barHidden(first) ? .hidden : .automatic, for: .tabBar)
-                    .navigationDestination(for: PhoneStackEntry.self) { entry in
-                        destination(entry.route)
-                    }
+        let regular = sizeClass == .regular
+        if tab == .home {
+            PhoneColumns(model: model, tab: tab, regular: regular) { path in
+                NavigationStack(path: path) { root(tab, first) }
+            } note: { route, path in
+                NavigationStack(path: path) {
+                    noteScreen(route, regular: regular)
+                        .environment(\.phoneNoteFirst, true)
+                        .navigationDestination(for: PhoneStackEntry.self) { entry in
+                            noteScreen(entry.route, regular: regular)
+                        }
+                }
+            } empty: {
+                PhoneEmptyDetail(newNote: actions.newNote)
             }
-        } note: { route, path in
-            NavigationStack(path: path) {
-                screen(route).phoneNoteBar(inColumn: true)
-                    .navigationDestination(for: PhoneStackEntry.self) { entry in
-                        screen(entry.route).phoneNoteBar(inColumn: true)
-                    }
-            }
+            .environment(\.phoneZoom, zoom)
+        } else {
+            let path = Binding<[PhoneStackEntry]>(
+                get: { Array((model.stacks[tab] ?? []).dropFirst()) },
+                set: { model.setPath($0, in: tab) }
+            )
+            NavigationStack(path: path) { root(tab, first) }
+                .environment(\.phoneZoom, zoom)
         }
-        .environment(\.phoneZoom, zoom)
+    }
+
+    /// A tab's first screen, and the screens pushed over it.
+    private func root(_ tab: PhoneTab, _ first: FrameRoute) -> some View {
+        screen(first)
+            .environment(\.phoneRootCreate, rootCreate(tab))
+            .toolbarVisibility(barHidden(first) ? .hidden : .automatic, for: .tabBar)
+            .navigationDestination(for: PhoneStackEntry.self) { entry in
+                destination(entry.route)
+            }
+    }
+
+    /// A note in the detail column: the tab bar steps away for it on a narrow window, as for a pushed note.
+    private func noteScreen(_ route: FrameRoute, regular: Bool) -> some View {
+        screen(route).phoneNoteBar().toolbarVisibility(regular ? .automatic : .hidden, for: .tabBar)
     }
 
     /// A pushed screen; a note zooms out of the card it was opened from.
@@ -231,9 +254,11 @@ public struct PhoneFrameView<Screen: View>: View {
     private func destination(_ route: FrameRoute) -> some View {
         if case .note(let id) = route {
             // (The note draws its own bars, as the page asks: PhoneNoteBars; iOS's where bars are at the side.)
-            screen(route).phoneNoteBar(inColumn: false).toolbarVisibility(.hidden, for: .tabBar).navigationTransition(.zoom(sourceID: id, in: zoom))
+            screen(route).phoneNoteBar().toolbarVisibility(.hidden, for: .tabBar).navigationTransition(.zoom(sourceID: id, in: zoom))
         } else {
+            // (In Home's split view the list stays beside the note: no button to hide it on the screens pushed there.)
             screen(route).toolbarVisibility(barHidden(route) ? .hidden : .automatic, for: .tabBar)
+                .toolbar(removing: .sidebarToggle)
         }
     }
 }

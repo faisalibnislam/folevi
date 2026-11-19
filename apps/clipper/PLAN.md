@@ -1,5 +1,7 @@
 # Folevi for Chrome: plan and feature checklist
 
+**Paused by the owner, 2026-11-19.** Phase 1's first four items are done (1.1.0). Phase 2's search (popup and address bar, asking to read only when first used) is written but not tried in a browser and has no tests of its own yet.
+
 Folevi already has a Chrome and Edge extension in this folder, the **Folevi Web Clipper** (1.1.0 on branch `chrome-extension`, Manifest V3). It's built and tested but not yet in the Chrome Web Store. This plan grows it into "Folevi for Chrome": first the quick wins, then features that read your notes, then the bigger ideas.
 
 How it connects: through Folevi's own sign-in (OAuth 2.1 with PKCE) and the same connected-apps endpoint Claude and other apps use (`/mcp`). Folevi needs no new server API: the endpoint already offers 26 tools (search, recent notes, tasks, tags, folders, append to a note, and more). Today the clipper asks only to add new notes. Anything that reads your notes needs a wider permission, which Folevi's consent screen asks you to approve.
@@ -28,7 +30,7 @@ How it connects: through Folevi's own sign-in (OAuth 2.1 with PKCE) and the same
 
 ## Phase 2: reads your notes (asks for read permission once)
 
-- [ ] **Search Folevi** from the address bar: type `fo` then a space and your words
+- [ ] (written, untested) **Search Folevi** from the address bar: type `fo` then a space and your words
 - [ ] **Side panel**: recent notes and search beside any page, open a note in Folevi
 - [ ] **Add to an existing note** instead of a new one (append the clip to a note you pick)
 - [ ] **Choose the folder** and **add tags** when clipping

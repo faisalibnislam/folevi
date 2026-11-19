@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { APP, newPerson, waitForSaved } from "./helpers";
+import { APP, newPerson, waitForSaved, openFoliAi } from "./helpers";
 
 // Meet Foli AI and the empty states (docs/AI_ASSISTANT.md milestone 9). Was: a small card in
 // whichever AI surface someone opens first, with starters that fit the place; dismissing it (or using a
@@ -41,7 +41,7 @@ test("a note's Foli AI panel has no introduction card, just its empty states; th
   await page.keyboard.type("We meet on Monday. Ana books the room.");
   await waitForSaved(page);
 
-  await page.getByRole("toolbar", { name: "Page tools" }).getByRole("button", { name: "Foli AI" }).click();
+  await openFoliAi(page);
   const modes = page.getByRole("group", { name: "What Foli AI should do" });
   await expect(modes).toBeVisible({ timeout: 30_000 });
   await expect(page.getByRole("region", { name: "Meet Foli AI" })).toHaveCount(0);

@@ -30,12 +30,12 @@ test("the sidebar lists a few folders and tags; All folders / All tags pages sea
   // (The sidebar's Folders heading keeps its icon button.)
   await expect(page.getByRole("button", { name: "New folder", exact: true }).filter({ hasText: "New folder" })).toHaveCount(1);
   await expect(header.getByRole("button", { name: "New folder", exact: true })).toBeVisible();
-  await expect(header.getByLabel("Search folders")).toBeVisible();
+  await expect(header.getByLabel("Filter folders")).toBeVisible();
   await expect(header.getByRole("combobox", { name: "Sort" })).toBeVisible();
-  await page.getByLabel("Search folders").fill("garden");
+  await page.getByLabel("Filter folders").fill("garden");
   await expect(list.getByRole("listitem")).toHaveCount(1);
   await expect(page.getByRole("status").filter({ hasText: /^1 of \d+ folders$/ })).toBeVisible();
-  await page.getByLabel("Search folders").fill("");
+  await page.getByLabel("Filter folders").fill("");
   await pick(page.getByRole("combobox", { name: "Sort" }), "Name");
   await list.getByRole("link").first().click({ position: { x: 24, y: 24 } }); // the folder, not its centred "…" menu
   await expect(page).toHaveURL(/\/folders\/[0-9A-Z]{26}$/);
@@ -57,7 +57,7 @@ test("the sidebar lists a few folders and tags; All folders / All tags pages sea
   const tags = page.getByRole("list", { name: "Tags" });
   // 14 seeded + the 2 every new Personal starts with.
   await expect(tags.getByRole("listitem")).toHaveCount(16);
-  await page.getByLabel("Search tags").fill("#draft");
+  await page.getByLabel("Filter tags").fill("#draft");
   await expect(tags.getByRole("listitem")).toHaveCount(1);
   await tags.getByRole("link").first().click();
   await expect(page).toHaveURL(/\/tags\/[0-9A-Z]{26}$/);

@@ -190,7 +190,21 @@ test.describe("documents", () => {
     const dock = page.getByRole("toolbar", { name: "Page tools" });
     const sidebar = page.getByRole("complementary", { name: "Page tools" });
     for (const name of ["Foli AI", "Insert", "Format", "Style"]) await expect(dock.getByRole("button", { name, exact: true })).toBeVisible();
-    const noteWidth = (await page.locator("#doc-scroll").boundingBox())!.width;
+    // A note opens with its tools panel on Foli AI (since 18 November 2026). Closed, the note has the whole row.
+    const foli = dock.getByRole("button", { name: "Foli AI", exact: true });
+    await expect(foli).toHaveAttribute("aria-pressed", "true");
+    await expect(page.locator("#document-inspector")).toBeVisible();
+    await foli.click();
+    await expect(page.locator("#document-inspector")).toBeHidden();
+    const widthNow = async () => (await page.locator("#doc-scroll").boundingBox())!.width;
+    let noteWidth = await widthNow();
+    await expect
+      .poll(async () => {
+        const before = noteWidth;
+        noteWidth = await widthNow();
+        return noteWidth === before;
+      })
+      .toBe(true);
     // Style opens in the right sidebar (here from the keyboard), which shows the tool's name and a close button.
     await dock.getByRole("button", { name: "Style", exact: true }).focus();
     await page.keyboard.press("Enter");

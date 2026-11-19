@@ -296,7 +296,9 @@ test.describe("Flowchart frames and swimlanes", () => {
 
     // Phone width: the card is too narrow to work in, so it's a fitted picture with Open canvas; in the full
     // canvas its bars still fit.
-    await page.setViewportSize({ width: 390, height: 844 });
+    // (360 wide, a common phone: since notes went flat on 18 November 2026 a card at 390 is 338 wide, enough
+    // for its tools; at 360 it is 308, under the 320 where the picture takes over.)
+    await page.setViewportSize({ width: 360, height: 800 });
     await settle(page);
     await expect(tools).toBeHidden();
     await page.getByRole("button", { name: /^Open canvas/ }).click();

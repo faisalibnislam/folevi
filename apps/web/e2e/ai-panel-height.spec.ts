@@ -1,6 +1,6 @@
 import type { Browser, BrowserContextOptions, Page } from "@playwright/test";
 import { expect, test } from "@playwright/test";
-import { createAccount, completeOnboarding } from "./helpers";
+import { createAccount, completeOnboarding, openFoliAi } from "./helpers";
 
 // The note's Foli AI panel (the right sidebar, opened from the page tools): in Ask, the chat fills the
 // panel's height, its composer and footnote sit at the bottom with the usual small inset (no empty band under
@@ -31,7 +31,7 @@ async function openAsk(browser: Browser, options: BrowserContextOptions, init?: 
   if (init) await context.addInitScript(init);
   const { page } = await createAccount(context, { name: "Panel Person" });
   await completeOnboarding(page);
-  await page.getByRole("toolbar", { name: "Page tools" }).getByRole("button", { name: "Foli AI", exact: true }).click();
+  await openFoliAi(page);
   const panel = page.locator("#document-inspector");
   await panel.getByRole("group", { name: "What Foli AI should do" }).getByRole("button", { name: "Ask" }).click();
   await expect(panel.getByRole("textbox", { name: /Ask about your notes/ })).toBeVisible();

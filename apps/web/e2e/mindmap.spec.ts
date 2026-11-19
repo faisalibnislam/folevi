@@ -217,11 +217,16 @@ test.describe("Mind map", () => {
     const bar = card.getByRole("toolbar", { name: "Selected idea" });
 
     /** Selects each idea on screen in turn; the bar's box shares no area with any other idea or the + button. */
-    async function checkAll(label: string) {
+    async function checkAll(label: string, atLeast: number) {
       const view = (await card.locator(".fb-canvas-body").boundingBox())!;
       const boxes = await ideas(card).evaluateAll((els) => els.map((el) => { const r = el.getBoundingClientRect(); return { text: el.textContent ?? "", x: r.x, y: r.y, w: r.width, h: r.height }; }));
-      const inView = boxes.filter((b) => b.x >= view.x && b.y >= view.y + 56 && b.x + b.w <= view.x + view.width && b.y + b.h <= view.y + view.height);
-      expect(inView.length, `${label}: ideas in view`).toBeGreaterThan(8);
+      // (A map bigger than its card opens readable, on its centre, not shrunk to fit: an idea can then lie under
+      // the zoom buttons in the corner, as it can lie off the card. Beside the tools panel a note opens with,
+      // this map is such a map.)
+      const zoom = (await card.getByRole("toolbar", { name: "Zoom" }).boundingBox())!;
+      const underZoom = (b: { x: number; y: number; w: number; h: number }) => b.x < zoom.x + zoom.width && b.x + b.w > zoom.x && b.y < zoom.y + zoom.height && b.y + b.h > zoom.y;
+      const inView = boxes.filter((b) => b.x >= view.x && b.y >= view.y + 56 && b.x + b.w <= view.x + view.width && b.y + b.h <= view.y + view.height && !underZoom(b));
+      expect(inView.length, `${label}: ideas in view`).toBeGreaterThanOrEqual(atLeast);
       for (const target of inView) {
         await idea(card, target.text).click();
         await expect(bar).toBeVisible();
@@ -240,13 +245,13 @@ test.describe("Mind map", () => {
       }
     }
 
-    await checkAll("fitted");
+    await checkAll("fitted", 9);
     // Zoomed in: fewer ideas on screen, closer to the edges.
     await card.locator(".fb-canvas-body").focus();
     await page.keyboard.press("Escape");
     await card.getByRole("toolbar", { name: "Zoom" }).getByRole("button", { name: "Zoom in" }).click();
     await card.getByRole("toolbar", { name: "Zoom" }).getByRole("button", { name: "Zoom in" }).click();
-    await checkAll("zoomed in");
+    await checkAll("zoomed in", 3);
     await context.close();
   });
 
@@ -254,7 +259,9 @@ test.describe("Mind map", () => {
     const { context, page } = await newPerson(browser, "Mind Map Phone Tester");
     await newPage(page, "Phone map");
     const card = await insertMindmap(page);
-    await page.setViewportSize({ width: 390, height: 844 });
+    // (360 wide, a common phone: since notes went flat on 18 November 2026 a card at 375 is 323 wide, just
+    // enough for its tools; at 360 it is 308, under the 320 where the picture takes over.)
+    await page.setViewportSize({ width: 360, height: 800 });
     await card.scrollIntoViewIfNeeded();
     // The card is too narrow to work in at this width: a fitted picture with Open canvas, which opens the full
     // canvas to work in.
@@ -266,7 +273,7 @@ test.describe("Mind map", () => {
     await page.keyboard.press("Escape");
     const box = (await card.boundingBox())!;
     expect(box.x).toBeGreaterThanOrEqual(0);
-    expect(box.x + box.width).toBeLessThanOrEqual(390);
+    expect(box.x + box.width).toBeLessThanOrEqual(360);
     // The toolbar never scrolls sideways. The full canvas has the phone's whole width, where every tool fits
     // (the block's name steps aside): nothing folds into More, and the map's own menu stays in the bar.
     const tools = card.getByRole("toolbar", { name: "Mind map tools" });

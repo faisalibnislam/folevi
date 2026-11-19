@@ -136,7 +136,9 @@ test("columns from the slash menu: typing in each, resizing, after a reload, on 
   await expect(row.locator(".fb-column-static").nth(2).locator(".fb-bulleted")).toContainText("first");
   await shot(reader, "3-share");
   await reader.setViewportSize({ width: 390, height: 844 });
-  await expect.poll(async () => (await box(row.locator(".fb-column-static").nth(1))).y).toBeGreaterThan(cols[0]!.y + 10);
+  // (Against the first column where it is now: the page's top is shorter at a phone's width.)
+  await expect.poll(async () => (await box(row.locator(".fb-column-static").nth(1))).y - (await box(row.locator(".fb-column-static").nth(0))).y).toBeGreaterThan(10);
+  await expect.poll(async () => Math.abs((await box(row.locator(".fb-column-static").nth(1))).x - (await box(row.locator(".fb-column-static").nth(0))).x)).toBeLessThan(2);
   await shot(reader, "4-share-phone");
   await anon.close();
 

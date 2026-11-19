@@ -325,6 +325,38 @@ export async function openTool(page: Page, name: "Insert" | "Format" | "Style" |
   return panel;
 }
 
+/**
+ * The note's tools panel, closed (it stays closed from note to note). A note opens with it, on Foli AI, and a
+ * canvas block beside it gets the narrower, compact layout (colours and less used tools behind a button): for
+ * tests of a block at the note's full width. Call it before the keyboard goes to the note, since closing the
+ * panel hands focus to the floating bar.
+ */
+export async function closeToolsPanel(page: Page) {
+  const panel = page.locator("#document-inspector");
+  await expect(page.getByRole("toolbar", { name: "Page tools" })).toBeVisible({ timeout: 30_000 });
+  await panel.waitFor({ state: "visible", timeout: 5_000 }).catch(() => undefined);
+  if (await panel.isVisible()) await page.getByRole("toolbar", { name: "Page tools" }).locator('button[aria-pressed="true"]').first().click();
+  await expect(panel).toBeHidden();
+}
+
+/**
+ * The note's Foli AI panel, open: a note opens with it (since 18 November 2026), so the floating bar's Foli AI
+ * button is pressed only when the panel isn't showing already (pressing it again would close it). `byHand`
+ * closes a panel that came up with the note first, for a test of what opening it from the button does (the
+ * composer takes the keyboard, focus goes back to the button when it closes).
+ */
+export async function openFoliAi(page: Page, o: { byHand?: boolean } = {}) {
+  const button = page.getByRole("toolbar", { name: "Page tools" }).getByRole("button", { name: "Foli AI", exact: true });
+  await expect(button).toBeVisible({ timeout: 30_000 });
+  const showing = (await button.getAttribute("aria-pressed")) === "true";
+  if (showing && o.byHand) {
+    await button.click();
+    await expect(button).toHaveAttribute("aria-pressed", "false");
+  }
+  if (!showing || o.byHand) await button.click();
+  await expect(button).toHaveAttribute("aria-pressed", "true");
+}
+
 /** Opens a page's Share dialog (the Share or Shared button on the floating bar). */
 export async function openShare(page: Page) {
   await page.getByRole("group", { name: "Page" }).getByRole("button", { name: /^Share/ }).click();

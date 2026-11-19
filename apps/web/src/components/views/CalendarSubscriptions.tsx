@@ -118,11 +118,11 @@ function ColorPicker({ value, onChange, name }: { value: Color; onChange: (c: Co
           <label
             key={c.id}
             title={c.label}
-            className="grid size-7 cursor-pointer place-items-center rounded-full has-[:checked]:shadow-[0_0_0_1.5px_var(--color-heading)] has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-focus pointer-coarse:size-9"
+            className="grid size-7 cursor-pointer place-items-center rounded-container has-[:checked]:shadow-[0_0_0_1.5px_var(--color-heading)] has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-focus pointer-coarse:size-9"
           >
             <input type="radio" name={name} value={c.id} checked={value === c.id} onChange={() => onChange(c.id)} className="sr-only" />
             <span className="sr-only">{c.label}</span>
-            <span aria-hidden className="size-5 rounded-full shadow-[inset_0_0_0_1px_rgb(0_0_0/0.08)]" style={{ background: calendarColor(c.id) }} />
+            <span aria-hidden className="size-5 rounded-control shadow-[inset_0_0_0_1px_rgb(0_0_0/0.08)]" style={{ background: calendarColor(c.id) }} />
           </label>
         ))}
       </div>

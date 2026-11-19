@@ -87,7 +87,7 @@ export function AppearanceSection() {
               >
                 <ThemePicture theme={v} />
                 <span className="flex items-start gap-2 px-1.5">
-                  <span aria-hidden className={`mt-px grid size-4 flex-none place-items-center rounded-full ${chosen ? "bg-heading text-canvas" : "shadow-[inset_0_0_0_1.5px_var(--color-line-strong)]"}`}>
+                  <span aria-hidden className={`mt-px grid size-4 flex-none place-items-center rounded-small ${chosen ? "bg-heading text-canvas" : "shadow-[inset_0_0_0_1.5px_var(--color-line-strong)]"}`}>
                     {chosen ? <Check size={10} strokeWidth={3.5} /> : null}
                   </span>
                   <span className="min-w-0">
@@ -119,7 +119,7 @@ const PALETTES = {
 } as const;
 
 function Window({ p }: { p: (typeof PALETTES)[keyof typeof PALETTES] }) {
-  const bar = (w: string, c: string, h = 3) => <span className="block rounded-full" style={{ width: w, height: h, background: c }} />;
+  const bar = (w: string, c: string, h = 3) => <span className="block rounded-tiny" style={{ width: w, height: h, background: c }} />;
   return (
     <span className="absolute inset-0 flex" style={{ background: p.canvas }}>
       <span className="flex w-[30%] flex-col gap-[7%] px-[5%] py-[9%]" style={{ background: p.sidebar, boxShadow: `inset -1px 0 0 ${p.line}` }}>
@@ -131,16 +131,16 @@ function Window({ p }: { p: (typeof PALETTES)[keyof typeof PALETTES] }) {
       </span>
       <span className="flex flex-1 flex-col gap-[6%] px-[6%] py-[7%]">
         <span className="flex gap-[4%]">
-          <span className="block h-[7px] w-[30%] rounded-full" style={{ background: p.surface, boxShadow: `0 0 0 1px ${p.line}` }} />
+          <span className="block h-[7px] w-[30%] rounded-tiny" style={{ background: p.surface, boxShadow: `0 0 0 1px ${p.line}` }} />
           {bar("18%", p.faint, 7)}
         </span>
-        <span className="flex flex-1 flex-col gap-[7%] rounded-[3px] px-[7%] py-[8%]" style={{ background: p.surface, boxShadow: `0 0 0 1px ${p.line}` }}>
+        <span className="flex flex-1 flex-col gap-[7%] rounded-tiny px-[7%] py-[8%]" style={{ background: p.surface, boxShadow: `0 0 0 1px ${p.line}` }}>
           {bar("55%", p.heading, 5)}
           {bar("90%", p.faint)}
           {bar("75%", p.faint)}
           {[0, 1].map((i) => (
             <span key={i} className="flex items-center gap-[5%]">
-              <span className="block size-[5px] flex-none rounded-[1.5px]" style={{ boxShadow: `inset 0 0 0 1px ${p.ink}` }} />
+              <span className="block size-[5px] flex-none" style={{ boxShadow: `inset 0 0 0 1px ${p.ink}` }} />
               {bar(i ? "45%" : "60%", p.faint)}
             </span>
           ))}

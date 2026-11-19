@@ -326,7 +326,7 @@ const FIELD_LABEL = "mb-1.5 block text-caption-1 font-medium text-ink";
 const FIELD = "h-[34px] ui-input rounded-small px-3 pointer-coarse:h-11";
 const AREA = "block w-full ui-input rounded-small px-3 py-2";
 // The password's tools: small 24px pills (36px to a finger).
-const PILL = "ui-btn ui-btn-secondary h-6 gap-1 rounded-full px-2.5 text-caption-1 font-medium pointer-coarse:h-9";
+const PILL = "ui-btn ui-btn-secondary h-6 gap-1 rounded-container px-2.5 text-caption-1 font-medium pointer-coarse:h-9";
 
 const KIND_ICONS: Record<ItemKind, LucideIcon> = {
   login: KeyRound,
@@ -353,7 +353,7 @@ function StrengthMeter({ id, score, label }: { id: string; score: number; label:
     <span id={id} className="flex items-center gap-2 text-footnote text-muted">
       <span aria-hidden className="flex gap-1">
         {[0, 1, 2, 3].map((i) => (
-          <span key={i} className={`h-1 w-5 rounded-full ${i < filled ? tone : "bg-[color-mix(in_oklab,var(--color-ink)_12%,transparent)]"}`} />
+          <span key={i} className={`h-1 w-5 rounded-tiny ${i < filled ? tone : "bg-[color-mix(in_oklab,var(--color-ink)_12%,transparent)]"}`} />
         ))}
       </span>
       <span>

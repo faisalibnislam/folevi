@@ -1,6 +1,22 @@
 {
   "releases": [
     {
+      "version": "1.5.53",
+      "build": 68,
+      "released": "2026-11-19T19:37:45+06:00",
+      "type": "patch",
+      "summary": "Foli AI is in the iPhone's tab bar, Folevi works on iPhone Duo, and the first screens say less.",
+      "added": [
+        "iPhone Duo: open, the tabs become a sidebar and a note opens beside its list; closed, the note's buttons sit in iOS's side bars. Folding or unfolding keeps the note open, with your text and the keyboard where they were"
+      ],
+      "improved": [
+        "iPhone: Foli AI is a tab, after Calendar, for people who have it, and opens over the screen you're on. The + button sits on its own at the top",
+        "Every platform: the first-launch screens have much less small print",
+        "Website: the product pages show what changed in 1.5.50 to 1.5.52"
+      ],
+      "tag": "v1.5.53"
+    },
+    {
       "version": "1.5.52",
       "build": 67,
       "released": "2026-11-19T17:43:27+06:00",

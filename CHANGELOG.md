@@ -4,6 +4,22 @@ Every Folevi release, newest first, written by `node scripts/version.mjs` from `
 
 Versions are MAJOR.UPDATE.PATCH, PATCH at least two digits: a Major release (2.0.00), a Big update (1.1.05 after 1.0.05) or a Small update (1.0.06 after 1.0.05).
 
+## Version 1.5.53: Small update
+
+Released 2026-11-19 19:37:45+06:00 (build 68, tag v1.5.53)
+
+Foli AI is in the iPhone's tab bar, Folevi works on iPhone Duo, and the first screens say less.
+
+### Added
+
+- iPhone Duo: open, the tabs become a sidebar and a note opens beside its list; closed, the note's buttons sit in iOS's side bars. Folding or unfolding keeps the note open, with your text and the keyboard where they were
+
+### Improved
+
+- iPhone: Foli AI is a tab, after Calendar, for people who have it, and opens over the screen you're on. The + button sits on its own at the top
+- Every platform: the first-launch screens have much less small print
+- Website: the product pages show what changed in 1.5.50 to 1.5.52
+
 ## Version 1.5.52: Small update
 
 Released 2026-11-19 17:43:27+06:00 (build 67, tag v1.5.52)

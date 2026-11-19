@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { clampCollectionViewConfig, cleanCollectionFormula, normalizeCollectionNumberFormat, normalizeCollectionOptions, normalizeCollectionValue } from "../src";
+import { clampCollectionViewConfig, cleanCollectionFormula, normalizeCollectionNumberFormat, normalizeCollectionOptions, normalizeCollectionValue, renamedCollectionOptions } from "../src";
 
 const options = [{ id: "a" }, { id: "b" }];
 
@@ -39,5 +39,38 @@ describe("collection values (shared by the server and local mode)", () => {
     const config = clampCollectionViewConfig({ filters: Array(25).fill({}), sorts: Array(7).fill({}), summaries: [{ propertyId: "a", fn: "count" }, { propertyId: "a", fn: "sum" }] });
     expect([config.filters.length, config.sorts.length, config.summaries]).toEqual([20, 5, [{ propertyId: "a", fn: "sum" }]]);
     expect("summaries" in clampCollectionViewConfig({ filters: [], sorts: [] })).toBe(false);
+  });
+
+  it("a renamed option keeps its id, so the rows that hold it keep their value", () => {
+    const had = [
+      { id: "a", name: "Todo", color: "muted" },
+      { id: "b", name: "Doing", color: "marigold" },
+      { id: "c", name: "Done", color: "moss" },
+    ];
+    let n = 0;
+    const edit = (text: string) => renamedCollectionOptions(had, text.split(",").map((s) => s.trim()).filter(Boolean), () => `new${++n}`);
+    const ids = (text: string) => edit(text).map((o) => o.id);
+    // The audit's case: one name edited in place.
+    expect(edit("To do, Doing, Done")).toEqual([
+      { id: "a", name: "To do", color: "muted" },
+      { id: "b", name: "Doing", color: "marigold" },
+      { id: "c", name: "Done", color: "moss" },
+    ]);
+    // Typing the old name back is the same option again, not a third one.
+    expect(ids("Todo, Doing, Done")).toEqual(["a", "b", "c"]);
+    // Only capitals or spaces changed; every name changed at once; a new order.
+    expect(ids("todo, DOING, Done")).toEqual(["a", "b", "c"]);
+    expect(ids("Later, Now, Finished")).toEqual(["a", "b", "c"]);
+    expect(ids("Done, Todo, Doing")).toEqual(["c", "a", "b"]);
+    // A rename next to a new option, and next to a deleted one.
+    expect(ids("To do, Doing, Done, Blocked")).toEqual(["a", "b", "c", "new1"]);
+    expect(ids("Doing, Finished")).toEqual(["b", "c"]);
+    // Added and removed: a new option keeps the next colour round, the rest keep theirs.
+    expect(edit("Todo, Waiting, Doing, Done")[1]).toEqual({ id: "new2", name: "Waiting", color: "moss" });
+    expect(ids("Doing")).toEqual(["b"]);
+    // Not told apart (two options became one name): nothing is guessed, the name is a new option.
+    expect(ids("Either, Done")).toEqual(["new3", "c"]);
+    // The same name twice is two options, never one id twice.
+    expect(new Set(ids("Todo, Todo, Doing, Done")).size).toBe(4);
   });
 });

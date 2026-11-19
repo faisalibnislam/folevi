@@ -21,6 +21,63 @@ import { isColumnWidth } from "./columns";
  */
 export const MAX_ACCEPTED_RANK = LIMITS.maxRankLength * 8;
 
+/**
+ * The most a block may weigh: the UTF-8 bytes of its JSON. The backend stores a block as one document of at
+ * most 1 MiB (1,048,576 bytes); a block over that used to fail its whole batch with an error that had no code,
+ * so the batch was sent again for ever and every later change waited behind it. Under this limit with room for
+ * the row's own fields, a block that is too large is refused on its own, with a code. Nothing stored today
+ * can be over it.
+ */
+export const MAX_BLOCK_BYTES = 900_000;
+
+/**
+ * A table's size limits (its shape, 200 rows by 20 columns, is LIMITS.maxTableRows and maxTableColumns).
+ *
+ * Two levels. What the editor lets a table grow to (`cellLength`, `dataBytes`): a cell as long as a text block
+ * may be, and rows whose JSON is 400,000 bytes, like a flowchart. Typing or pasting past them is refused there,
+ * with a message. And what may be stored at all (`maxCellLength`, `maxDataBytes`), which is far above the first
+ * so that no table made before there were limits is refused: the longest a single piece of text could already
+ * be, and most of what a block may weigh.
+ */
+export const TABLE_LIMITS = {
+  cellLength: LIMITS.maxTextLength,
+  dataBytes: 400_000,
+  maxCellLength: LIMITS.maxCodeLength,
+  maxDataBytes: 800_000,
+} as const;
+
+/** How many bytes a string is as UTF-8 (what the backend counts), without making the bytes. */
+export function utf8Length(text: string): number {
+  let bytes = text.length;
+  for (let i = 0; i < text.length; i++) {
+    const code = text.charCodeAt(i);
+    if (code < 0x80) continue;
+    if (code < 0x800) bytes += 1;
+    else if (code >= 0xd800 && code <= 0xdbff && (text.charCodeAt(i + 1) & 0xfc00) === 0xdc00) {
+      // Two halves of one character: four bytes for the pair.
+      bytes += 2;
+      i++;
+    } else bytes += 2;
+  }
+  return bytes;
+}
+
+/** The UTF-8 bytes of a value's JSON. */
+export function jsonBytes(value: unknown): number {
+  const json = JSON.stringify(value);
+  return json === undefined ? 0 : utf8Length(json);
+}
+
+/** Whether a value's JSON is over `limit` bytes. (Three bytes a character at most: short JSON is never counted.) */
+function overBytes(json: string, limit: number): boolean {
+  return json.length * 3 > limit && utf8Length(json) > limit;
+}
+
+/** A table's rows as bytes of JSON: what TABLE_LIMITS.dataBytes and maxDataBytes are measured in. */
+export function tableDataBytes(rows: unknown): number {
+  return jsonBytes(rows);
+}
+
 export interface ValidationIssue {
   path: string;
   code: string;
@@ -193,11 +250,14 @@ export function validateWireBlock(block: unknown): ValidationIssue[] {
   }
   if (issues.length) return issues;
 
+  // One too large to store is refused whatever its type (a newer app's block included).
+  const json = JSON.stringify(b) ?? "";
+  const tooLarge: ValidationIssue[] = overBytes(json, MAX_BLOCK_BYTES) ? [{ path: "", code: "too_long", message: "block too large" }] : [];
   if (!knownTypes.has(b.type as string)) {
     if ((b.schemaVersion as number) <= SCHEMA_VERSION) {
       issues.push({ path: "type", code: "unknown_type", message: `unknown block type ${b.type}` });
     }
-    return issues;
+    return [...issues, ...tooLarge];
   }
   const def = (SPEC.blocks as Record<string, { text: boolean; props: Record<string, string> }>)[
     b.type as string
@@ -218,6 +278,8 @@ export function validateWireBlock(block: unknown): ValidationIssue[] {
   const stringLimits: Record<string, number> = visual ? { data: visual.maxData } : {};
   checkFields(b.props as Record<string, unknown>, def.props, "props", issues, [], stringLimits);
   if (issues.length) return issues;
+  // (After the block's own checks: a drawing over its limit says so before this does.)
+  const done = () => (issues.length ? issues : tooLarge);
 
   const p = b.props as Record<string, unknown>;
   switch (b.type) {
@@ -247,6 +309,8 @@ export function validateWireBlock(block: unknown): ValidationIssue[] {
       if (rows.some((r) => r.length !== width))
         issues.push({ path: "props.rows", code: "shape", message: "rows must have equal length" });
       issues.push(...tableSettingsIssues(p, rows.length, width));
+      // (Only a table of some size can be over its limits: a small one isn't measured.)
+      if (!issues.length && json.length * 3 > Math.min(TABLE_LIMITS.maxCellLength, TABLE_LIMITS.maxDataBytes)) issues.push(...tableSizeIssues(rows as unknown[][][]));
       break;
     }
     case "image":
@@ -342,7 +406,18 @@ export function validateWireBlock(block: unknown): ValidationIssue[] {
       }
     }
   }
-  return issues;
+  return done();
+}
+
+/** A table past what may be stored (TABLE_LIMITS): a cell's text too long, or all its rows too large. */
+function tableSizeIssues(rows: unknown[][][]): ValidationIssue[] {
+  for (let r = 0; r < rows.length; r++) {
+    for (let c = 0; c < rows[r]!.length; c++) {
+      if (plainText(rows[r]![c] as never).length > TABLE_LIMITS.maxCellLength) return [{ path: `props.rows[${r}][${c}]`, code: "too_long", message: "cell text too long" }];
+    }
+  }
+  if (overBytes(JSON.stringify(rows), TABLE_LIMITS.maxDataBytes)) return [{ path: "props.rows", code: "too_long", message: "table too large" }];
+  return [];
 }
 
 /** Most filters a table's view may have. */

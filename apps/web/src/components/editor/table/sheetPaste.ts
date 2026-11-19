@@ -5,7 +5,7 @@
 // in A1 (x:fmla) as they are in the sheet, which may not start at A1: the copied block's place in the sheet is
 // worked out from the values Excel shows next to them, and the formulas are kept only when they give those
 // values back. Anything else (or a formula that can't be placed) keeps the value it showed.
-import { LIMITS, columnLetter, evaluateTable, isFormula, normalizeInline, parseDelimited, parseTableNumber, plainText, remapFormulaReferences, sanitizeHref, validateInline, type InlineNode } from "@folevi/editor-schema";
+import { LIMITS, columnLetter, evaluateTableCells, isFormula, normalizeInline, parseDelimited, parseTableNumber, plainText, remapFormulaReferences, sanitizeHref, validateInline, type InlineNode } from "@folevi/editor-schema";
 import { OWN_CELL_ATTR, OWN_ORIGIN_ATTR } from "./tableClipboard";
 
 export interface SheetGrid {
@@ -17,7 +17,16 @@ export interface SheetGrid {
    * were written there, so whoever pastes them elsewhere moves the references by how far the cells moved.
    */
   origin?: { r: number; c: number };
+  /** Rows and columns of what was copied that are past what a table holds (200 by 20) and were left out. */
+  cut?: { rows: number; columns: number };
 }
+
+/** The most rows of a paste that are counted (past a table's own limit, to say how many were left out). */
+const COUNT_ROWS = 20_000;
+const cutOf = (rows: number, columns: number) => {
+  const cut = { rows: Math.max(0, rows - LIMITS.maxTableRows), columns: Math.max(0, columns - LIMITS.maxTableColumns) };
+  return cut.rows || cut.columns ? { cut } : {};
+};
 
 const text = (t: string): InlineNode[] => (t ? [{ type: "text", text: t }] : []);
 
@@ -70,28 +79,69 @@ const sameShown = (a: string, b: string) => {
 };
 
 /**
+ * How many formula cells may be worked out, over all the places tried, to find where a pasted block came
+ * from. A small paste is far under it and every place is tried, as before there was a limit. A block of
+ * hundreds of formulas tried in each of some 1,600 places froze the page for seconds (ten on an iPad).
+ */
+const PLACE_WORK = 40_000;
+
+/**
  * Excel's formulas (in the sheet's own A1 terms) placed in the pasted block: tries where the block could
  * have started and keeps the place where the formulas give back the most of the values shown, if that's
  * at least half of them. Returns the formulas moved there, or null to keep the values.
+ *
+ * The places tried: every start up to 60 rows down and 26 columns across, and the ones the formulas point
+ * at themselves (one that reads its own row, =B100*C100, says how far down the sheet the block began, however
+ * far that is). A large block tries those first and stops when the work allowed is spent (PLACE_WORK).
+ * `stats` counts the places tried, for tests.
  */
-export function placeExcelFormulas(shown: string[][], formulas: (string | null)[][]): (string | null)[][] | null {
+export function placeExcelFormulas(shown: string[][], formulas: (string | null)[][], stats?: { trials: number }): (string | null)[][] | null {
   const cells = formulas.flatMap((row, r) => row.flatMap((f, c) => (f ? [{ r, c, f }] : [])));
   if (!cells.length) return null;
-  const refs = cells.flatMap((x) => referencedCells(x.f));
+  const refsOf = cells.map((x) => referencedCells(x.f));
+  const refs = refsOf.flat();
   // The block can't start below or right of a cell its formulas use, or of a formula cell itself.
-  const maxDr = refs.length ? Math.min(60, ...refs.map((x) => x.r)) : 0;
+  const deepest = refs.length ? Math.min(...refs.map((x) => x.r)) : 0;
+  const maxDr = Math.min(60, deepest);
   const maxDc = refs.length ? Math.min(26, ...refs.map((x) => x.c)) : 0;
-  let best: { score: number; out: (string | null)[][] } | null = null;
-  for (let dr = 0; dr <= maxDr; dr++) {
-    for (let dc = 0; dc <= maxDc; dc++) {
-      const moved = formulas.map((row) => row.map((f) => (f ? remapFormulaReferences(f, { rows: (r) => r - dr, cols: (c) => c - dc }) : null)));
-      const grid = shown.map((row, r) => row.map((s, c) => moved[r]?.[c] ?? s));
-      const result = evaluateTable(grid, { headerRow: false });
-      let score = 0;
-      for (const x of cells) if (sameShown(result.display[x.r]?.[x.c] ?? "", shown[x.r]?.[x.c] ?? "")) score++;
-      if (!best || score > best.score) best = { score, out: moved };
-      if (score === cells.length) return moved;
+  // The row offsets the formulas themselves point at (a formula reading its own row), the likeliest first.
+  const votes = new Map<number, number>();
+  cells.forEach((x, i) => {
+    for (const ref of refsOf[i]!) {
+      const dr = ref.r - x.r;
+      if (dr >= 0 && dr <= deepest) votes.set(dr, (votes.get(dr) ?? 0) + 1);
     }
+  });
+  const pointed: { dr: number; dc: number }[] = [];
+  for (const [dr] of [...votes].sort((a, b) => b[1] - a[1] || a[0] - b[0]).slice(0, 4)) for (let dc = 0; dc <= maxDc; dc++) pointed.push({ dr, dc });
+  const every: { dr: number; dc: number }[] = [];
+  for (let dr = 0; dr <= maxDr; dr++) for (let dc = 0; dc <= maxDc; dc++) every.push({ dr, dc });
+  // Few enough to try them all: in the order they always were, then the pointed-at ones further down the
+  // sheet than that reaches. Too many: the pointed-at ones first, then as many of the rest as the work allows.
+  const all = every.length * cells.length <= PLACE_WORK;
+  const seen = new Set<string>();
+  const places = (all ? [...every, ...pointed] : [...pointed, ...every]).filter((x) => {
+    const key = `${x.dr}:${x.dc}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+  let best: { score: number; out: (string | null)[][] } | null = null;
+  let work = 0;
+  for (const { dr, dc } of places) {
+    // (Always the first place; after that, only while there is work left to spend.)
+    if (best && work + cells.length > PLACE_WORK) break;
+    work += cells.length;
+    if (stats) stats.trials++;
+    const moved = formulas.map((row) => row.map((f) => (f ? remapFormulaReferences(f, { rows: (r) => r - dr, cols: (c) => c - dc }) : null)));
+    const grid = shown.map((row, r) => row.map((s, c) => moved[r]?.[c] ?? s));
+    const result = evaluateTableCells(grid, { headerRow: false }, cells);
+    let score = 0;
+    cells.forEach((x, i) => {
+      if (sameShown(result[i]?.display ?? "", shown[x.r]?.[x.c] ?? "")) score++;
+    });
+    if (!best || score > best.score) best = { score, out: moved };
+    if (score === cells.length) return moved;
   }
   return best && best.score * 2 >= cells.length ? best.out : null;
 }
@@ -132,7 +182,8 @@ function ownCell(td: Element): InlineNode[] | null {
  */
 export function gridFromHtmlTable(table: HTMLTableElement, cellInline: (el: Element) => InlineNode[], own = false): SheetGrid {
   const trs = [...table.rows].slice(0, LIMITS.maxTableRows);
-  const width = Math.min(LIMITS.maxTableColumns, Math.max(1, ...trs.map((tr) => [...tr.cells].reduce((n, c) => n + Math.max(1, c.colSpan || 1), 0))));
+  const fullWidth = Math.max(1, ...trs.map((tr) => [...tr.cells].reduce((n, c) => n + Math.max(1, c.colSpan || 1), 0)));
+  const width = Math.min(LIMITS.maxTableColumns, fullWidth);
   const rows: InlineNode[][][] = [];
   const shown: string[][] = [];
   const excel: (string | null)[][] = [];
@@ -171,7 +222,7 @@ export function gridFromHtmlTable(table: HTMLTableElement, cellInline: (el: Elem
   }
   const th = trs[0]?.cells[0]?.tagName === "TH";
   const at = own ? /^(\d{1,4}):(\d{1,4})$/.exec(table.getAttribute(OWN_ORIGIN_ATTR) ?? "") : null;
-  return { rows, headerRow: th || looksLikeHeader(rows), ...(at ? { origin: { r: Number(at[1]), c: Number(at[2]) } } : {}) };
+  return { rows, headerRow: th || looksLikeHeader(rows), ...(at ? { origin: { r: Number(at[1]), c: Number(at[2]) } } : {}), ...cutOf(table.rows.length, fullWidth) };
 }
 
 /** Whether HTML came from a spreadsheet (Google Sheets, Excel, Numbers, LibreOffice). */
@@ -194,10 +245,13 @@ export function isTabSeparated(value: string): boolean {
 /** Rows and columns from pasted text: tab-separated (a spreadsheet's plain copy). Null when it isn't. */
 export function gridFromText(value: string): SheetGrid | null {
   if (!isTabSeparated(value)) return null;
-  const cells = parseDelimited(value, LIMITS.maxTableRows, LIMITS.maxTableColumns);
-  if (!cells.length) return null;
-  const rows = cells.map((r) => r.map(text));
-  return { rows, headerRow: looksLikeHeader(rows) };
+  // Rows are read past a table's limit (to count what is left out), then cut to it. Every row has as many
+  // cells as the first line has (isTabSeparated), which says how many columns were copied.
+  const all = parseDelimited(value, COUNT_ROWS, LIMITS.maxTableColumns);
+  if (!all.length) return null;
+  const rows = all.slice(0, LIMITS.maxTableRows).map((r) => r.map(text));
+  const copiedWidth = (value.replace(/\r\n?/g, "\n").split("\n").find((line) => line.trim() !== "") ?? "").split("\t").length;
+  return { rows, headerRow: looksLikeHeader(rows), ...cutOf(all.length, copiedWidth) };
 }
 
 /**

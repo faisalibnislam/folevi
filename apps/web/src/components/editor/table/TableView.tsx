@@ -12,26 +12,23 @@ import { closeHistory } from "@tiptap/pm/history";
 import { NodeSelection, Selection } from "@tiptap/pm/state";
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { flushSync } from "react-dom";
-import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, Check, ChevronDown, GripHorizontal, GripVertical, Minus, Plus, Sigma, X } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, ChevronDown, GripHorizontal, Plus, Sigma, X } from "lucide-react";
 import {
   LIMITS,
-  TOTALS_FUNCTIONS,
   cellReference,
   columnLetter,
-  evaluateTable,
+  deleteIndexMap,
   insertIndexMap,
   moveIndexMap,
   tableCellText,
   tableRowOrder,
   totalsFormula,
-  totalsFunctionOf,
   type InlineNode,
   type TableViewSettings,
   type TotalsFunction,
 } from "@folevi/editor-schema";
 import { announce } from "@/lib/a11y/announce";
 import { keyLabel } from "@/lib/shortcuts";
-import { MenuButton } from "@/components/ui/Menu";
 import { useAiEnabled } from "@/components/ai/useAi";
 import { AiIcon } from "@/components/ai/AiIcon";
 import { useIphoneApp } from "@/lib/iphone";
@@ -40,7 +37,8 @@ import { endHistoryGroup } from "../commands";
 import { useEditable } from "../useEditable";
 import { cellInline } from "../paste";
 import { CellEditor, type CaretStart, type CellEditorHandlers, type CellKeyEvent } from "./CellEditor";
-import { StaticCell, cellClass, localToday } from "./TableStatic";
+import { localToday } from "./TableStatic";
+import { TOOL_BUTTON, TableRow, roomForColumn, type RowActions } from "./TableRow";
 import { TableColumnMenu, columnName } from "./TableColumnMenu";
 import { clipboardGrid, type SheetGrid } from "./sheetPaste";
 import { rangeClipboard } from "./tableClipboard";
@@ -53,8 +51,6 @@ import "./table.css";
 const TableAi = lazy(() => import("./TableAi").then((m) => ({ default: m.TableAi })));
 
 
-const TOTAL_LABEL: Record<TotalsFunction, string> = { SUM: "Sum", AVERAGE: "Average", COUNT: "Count numbers", COUNTA: "Count filled", MIN: "Smallest", MAX: "Largest" };
-
 type Active = { r: number; c: number; caret: CaretStart };
 /** A cell by its stored row and its column. */
 type Cell = { r: number; c: number };
@@ -65,14 +61,29 @@ type Reorder = { kind: "row" | "col"; from: number; slot: number; line: { left: 
 
 /** How far the pointer moves before a press on a handle is a drag. */
 const DRAG_START = 4;
+/** How long a notice under the table stays ("This table is full", what a paste left out). */
+const NOTICE_MS = 7000;
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
 
 /** Plain text that isn't a spreadsheet's, pasted over a range: each line a row of one cell. */
 function linesGrid(value: string): SheetGrid | null {
-  const lines = value.replace(/\r\n?/g, "\n").replace(/\n+$/, "").split("\n").slice(0, LIMITS.maxTableRows);
+  const all = value.replace(/\r\n?/g, "\n").replace(/\n+$/, "").split("\n");
+  const lines = all.slice(0, LIMITS.maxTableRows);
   if (!lines.some((line) => line.trim())) return null;
-  return { rows: lines.map((line): InlineNode[][] => [line ? [{ type: "text", text: line.slice(0, LIMITS.maxTextLength) }] : []]), headerRow: false };
+  return {
+    rows: lines.map((line): InlineNode[][] => [line ? [{ type: "text", text: line.slice(0, LIMITS.maxTextLength) }] : []]),
+    headerRow: false,
+    ...(all.length > lines.length ? { cut: { rows: all.length - lines.length, columns: 0 } } : {}),
+  };
 }
+
+/** The last value given that is `same` as this one: an equal list made again at every render stays one object. */
+function useSame<T>(value: T, same: (a: T, b: T) => boolean): T {
+  const kept = useRef(value);
+  if (kept.current !== value && !same(kept.current, value)) kept.current = value;
+  return kept.current;
+}
+const sameWidths = (a: readonly (number | null)[], b: readonly (number | null)[]) => a.length === b.length && a.every((x, i) => x === b[i]);
 
 export function TableView({ node, selected, updateAttributes, editor, getPos }: ReactNodeViewProps) {
   const editable = useEditable(editor);
@@ -91,15 +102,32 @@ export function TableView({ node, selected, updateAttributes, editor, getPos }: 
   const width = model.width(t);
   const today = localToday();
   const [preview, setPreview] = useState<TableAiResult | null>(null);
+  // Foli AI's version is made from the table as it was when it was asked. What shows, and what Accept
+  // writes, is its changes on the table as it is now, so cells typed since (here or elsewhere) stay.
+  const previewNow = useMemo(() => (preview ? model.applyChange(t, preview) : null), [preview, t]);
   // What's shown: the table, or Foli AI's proposed version of it while it's being previewed.
-  const shownTable: TableData = preview?.table ?? t;
-  const evaluated = useMemo(() => evaluateTable(shownTable.rows, model.tableOptions(shownTable, today)), [shownTable, today]);
+  const shownTable: TableData = previewNow?.table ?? t;
+  // What the cells show. Worked out from the last time (tableModel's evaluateFrom): rows that show the same
+  // as before keep the same objects, so only the rows that changed are drawn again.
+  const lastEvaluation = useRef<model.Evaluation | null>(null);
+  const evaluated = useMemo(() => (lastEvaluation.current = model.evaluateFrom(lastEvaluation.current, shownTable, today)).evaluated, [shownTable, today]);
   const viewOrder = useMemo(() => tableRowOrder(evaluated, model.tableOptions(shownTable), shownTable.view), [evaluated, shownTable]);
+  // Something to tell the person, under the table, for a few seconds: the table is full, a paste was cut.
+  const [notice, setNotice] = useState<string | null>(null);
+  const say = useCallback((message: string) => setNotice(message), []);
+  useEffect(() => {
+    if (!notice) return;
+    const timer = window.setTimeout(() => setNotice(null), NOTICE_MS);
+    return () => window.clearTimeout(timer);
+  }, [notice]);
   const [active, setActive] = useState<Active | null>(null);
   // Cells selected as a rectangle (no cell is open then: the keyboard is on the table's hidden field below).
   const [range, setRange] = useState<Range | null>(null);
-  // A column's width while its edge is dragged (written to the note once, on release).
+  // A column's width while its edge is dragged (written to the note once, on release). The column itself
+  // takes it at once; its cells, in every row, take it at most once a frame (`cellSizing`).
   const [sizing, setSizing] = useState<{ c: number; width: number } | null>(null);
+  const [cellSizing, setCellSizing] = useState<{ c: number; width: number } | null>(null);
+  const sizeFrame = useRef(0);
   const [reorder, setReorder] = useState<Reorder | null>(null);
   // While a cell is being edited the rows stay where they are: the sort and the filters are applied again
   // once the table is left. Otherwise a row would jump (or vanish) under the caret the moment what is typed
@@ -121,6 +149,8 @@ export function TableView({ node, selected, updateAttributes, editor, getPos }: 
   } else held.current = null;
   const [focusWithin, setFocusWithin] = useState(false);
   const [menuColumn, setMenuColumn] = useState<number | null>(null);
+  const menuColumnRef = useRef<number | null>(null);
+  menuColumnRef.current = menuColumn;
   const [ai, setAi] = useState<TableAiMode | null>(null);
   const menuAnchor = useRef<HTMLButtonElement | null>(null);
   // The cell editor (CellEditor.tsx): made the first time a cell is edited, then moved from cell to cell.
@@ -220,6 +250,13 @@ export function TableView({ node, selected, updateAttributes, editor, getPos }: 
     const prev = seenRows.current;
     seenRows.current = t.rows;
     if (prev === t.rows) return;
+    // The open column menu follows its column too (or closes with it): its Narrower, Wider, format and
+    // Delete would otherwise act on whichever column now has the old number.
+    const menu = menuColumnRef.current;
+    if (menu !== null) {
+      const to = model.followAxes(prev, t.rows).col(menu);
+      if (to !== menu) setMenuColumn(to);
+    }
     const g = rangeRef.current;
     if (g) {
       const anchor = model.followCell(prev, t.rows, g.anchor.r, g.anchor.c);
@@ -308,6 +345,14 @@ export function TableView({ node, selected, updateAttributes, editor, getPos }: 
       const a = activeRef.current;
       return a ? onPaste(a.r, a.c)(data) : false;
     },
+    room: (next) => {
+      const a = activeRef.current;
+      const now = a ? live() : null;
+      if (!a || !now) return true;
+      const full = model.tableFull(now.data, model.setCell(now.data, a.r, a.c, next));
+      if (full) say(model.tableFullMessage(full));
+      return !full;
+    },
     onBlur: (to) => {
       // Focus moving to the Format panel (its link field) or the table's own tools keeps the cell open.
       const keep = (el: Element | null) => Boolean(el && (el.closest("[data-cell-tools]") || frameRef.current?.contains(el)));
@@ -328,6 +373,7 @@ export function TableView({ node, selected, updateAttributes, editor, getPos }: 
     () => () => {
       cellEd.current?.destroy();
       cellEd.current = null;
+      if (sizeFrame.current) cancelAnimationFrame(sizeFrame.current);
     },
     [],
   );
@@ -355,6 +401,9 @@ export function TableView({ node, selected, updateAttributes, editor, getPos }: 
   const open = (r: number, c: number, caret: CaretStart = "end", attempt = 0) => {
     if (!editor.isEditable || preview) return;
     const next = { r, c, caret };
+    // An input method still composing in the cell being left: its text is made final there first, while that
+    // is still the open cell (see CellEditor.endComposition).
+    if (attempt === 0 && (activeRef.current?.r !== r || activeRef.current?.c !== c)) cellEd.current?.endComposition();
     // Each cell's typing is its own undo step (typed fast, one cell after another, they would otherwise undo together).
     if (attempt === 0 && (activeRef.current?.r !== r || activeRef.current?.c !== c)) endHistoryGroup(editor);
     activeRef.current = next;
@@ -402,6 +451,8 @@ export function TableView({ node, selected, updateAttributes, editor, getPos }: 
   const addRowAndOpen = (c: number) => {
     const now = live();
     if (!now) return;
+    // (Enter or Tab in the last row of a full table did nothing, without a word.)
+    if (now.data.rows.length >= LIMITS.maxTableRows) return say(`A table holds up to ${LIMITS.maxTableRows} rows.`);
     const at = now.data.totalsRow ? now.data.rows.length - 1 : now.data.rows.length;
     if (tool((d) => model.addRow(d))) open(at, c, "start");
   };
@@ -469,6 +520,9 @@ export function TableView({ node, selected, updateAttributes, editor, getPos }: 
     if (a && (rows(a.r) !== a.r || cols(a.c) !== a.c)) follow(rows(a.r), cols(a.c));
     const g = rangeRef.current;
     if (g) setRange({ anchor: { r: rows(g.anchor.r), c: cols(g.anchor.c) }, head: { r: rows(g.head.r), c: cols(g.head.c) } });
+    // The open column menu stays on its column ("Insert left" used to leave it on the new, empty one).
+    const menu = menuColumnRef.current;
+    if (menu !== null && cols(menu) !== menu) setMenuColumn(cols(menu));
   };
   const same = (i: number) => i;
   /** Row `from` to index `to` (an arrow button, its key, or a drag): one undo step. */
@@ -507,6 +561,8 @@ export function TableView({ node, selected, updateAttributes, editor, getPos }: 
   const removeCol = (c: number) => {
     if (tool((d) => model.deleteColumn(d, c))) {
       setRange(null);
+      const menu = menuColumnRef.current;
+      if (menu !== null) setMenuColumn(deleteIndexMap(c)(menu));
       announce(`Column ${columnLetter(c)} deleted`);
       // (The open cell stays the same column: one to the left when a column before it went.)
       if (active) open(active.r, Math.max(0, Math.min(c < active.c ? active.c - 1 : active.c, width - 2)), "end");
@@ -589,7 +645,15 @@ export function TableView({ node, selected, updateAttributes, editor, getPos }: 
     const shown = orderRef.current.slice(Math.max(0, at));
     if (!shown.length) return;
     const rows = grid.origin ? model.shiftGridFormulas(grid.rows, shown[0]! - grid.origin.r, c0 - grid.origin.c) : grid.rows;
-    if (tool((d) => model.pasteGridShown(d, shown, c0, rows))) announce(`Pasted ${plural(grid.rows.length, "row")}`);
+    let done = null as model.Pasted | null;
+    const wrote = tool((d) => (done = model.pasteCells(d, shown, c0, rows)).table);
+    if (!done) return;
+    // Refused whole: the table can't hold that much text. Cut at 200 rows or 20 columns: said, with the counts
+    // (what was copied may itself have been longer than a table: grid.cut).
+    if (done.full) return say(model.tableFullMessage(done.full));
+    const cut = model.pasteCutMessage({ rows: done.rows, columns: done.columns, cutRows: done.cutRows + (grid.cut?.rows ?? 0), cutColumns: done.cutColumns + (grid.cut?.columns ?? 0) });
+    if (cut) say(cut);
+    else if (wrote) announce(`Pasted ${plural(grid.rows.length, "row")}`);
   };
 
   // Rows and columns pasted from a spreadsheet fill the table from this cell on.
@@ -719,7 +783,14 @@ export function TableView({ node, selected, updateAttributes, editor, getPos }: 
     // (A formula copied from a Folevi table is moved to each cell it fills, as a spreadsheet fills down.)
     const from = grid.origin;
     const cell = (r: number, c: number) => (from ? model.shiftGridFormulas([[one]], r - from.r, c - from.c)[0]![0]! : one);
-    if (tool((d) => model.fillCells(d, s.rows, s.c0, s.c1, cell))) announce(`Pasted into ${plural(s.rows.length * (s.c1 - s.c0 + 1), "cell")}`);
+    let full = null as model.TableFull | null;
+    const filled = tool((d) => {
+      const next = model.fillCells(d, s.rows, s.c0, s.c1, cell);
+      full = model.tableFull(d, next);
+      return full ? null : next;
+    });
+    if (full) say(model.tableFullMessage(full));
+    else if (filled) announce(`Pasted into ${plural(s.rows.length * (s.c1 - s.c0 + 1), "cell")}`);
   };
 
   // Formulas: while one is being written, clicking a cell puts its reference in (dragging makes a range).
@@ -793,6 +864,13 @@ export function TableView({ node, selected, updateAttributes, editor, getPos }: 
   const columnWidthNow = (c: number) => tableRef.current?.querySelector<HTMLElement>(`tbody [data-cell-at$=":${c}"]`)?.getBoundingClientRect().width ?? 0;
   const startResize = (c: number) => (e: React.PointerEvent<HTMLElement>) => {
     if (!editor.isEditable || preview || e.button !== 0) return;
+    // A finger on the part of the line that runs down over the cells is scrolling the table or tapping a
+    // cell, not sizing a column: by touch the line is dragged where it meets the tools row (table.css keeps
+    // it to that row where touch is the main way in; this covers a touch screen on a computer with a mouse).
+    if (e.pointerType === "touch") {
+      const head = tableRef.current?.tHead?.getBoundingClientRect();
+      if (head && e.clientY > head.bottom) return;
+    }
     e.preventDefault();
     e.currentTarget.setPointerCapture?.(e.pointerId);
     // From the width it has: the one set, or as wide as its content has made it.
@@ -806,11 +884,25 @@ export function TableView({ node, selected, updateAttributes, editor, getPos }: 
     d.moved = true;
     d.width = model.clampColumnWidth(d.start + e.clientX - d.x);
     setSizing({ c: d.c, width: d.width });
+    // Every cell of the column, in every row: once a frame, however often the pointer reports.
+    if (!sizeFrame.current) {
+      sizeFrame.current = requestAnimationFrame(() => {
+        sizeFrame.current = 0;
+        const now = sizeDrag.current;
+        if (now?.moved) setCellSizing({ c: now.c, width: now.width });
+      });
+    }
+  };
+  const stopSizing = () => {
+    if (sizeFrame.current) cancelAnimationFrame(sizeFrame.current);
+    sizeFrame.current = 0;
+    sizeDrag.current = null;
+    setSizing(null);
+    setCellSizing(null);
   };
   const endResize = (commit: boolean) => {
     const d = sizeDrag.current;
-    sizeDrag.current = null;
-    setSizing(null);
+    stopSizing();
     if (d && commit && d.moved && tool((data) => model.setColumnWidth(data, d.c, d.width))) announce(`Column ${columnLetter(d.c)} is ${d.width} pixels wide`);
   };
   const setWidth = (c: number, px: number | null) => {
@@ -884,9 +976,8 @@ export function TableView({ node, selected, updateAttributes, editor, getPos }: 
       if (e.key !== "Escape") return;
       e.preventDefault();
       e.stopPropagation();
-      sizeDrag.current = null;
+      stopSizing();
       moveDrag.current = null;
-      setSizing(null);
       setReorder(null);
     };
     window.addEventListener("keydown", onKey, true);
@@ -897,18 +988,74 @@ export function TableView({ node, selected, updateAttributes, editor, getPos }: 
     tool((d) => model.setCell(d, d.rows.length - 1, c, fn ? [{ type: "text", text: totalsFormula(fn, c) }] : []));
   };
 
-  const toolBtn = "grid h-6 w-6 place-items-center rounded-chip text-faint transition-colors hover:bg-accent-soft hover:text-heading disabled:opacity-30 disabled:hover:bg-transparent";
-  const changed = (r: number, c: number) => Boolean(preview?.changed.has(`${r}:${c}`));
+  const toolBtn = TOOL_BUTTON;
+  // The cells Foli AI changed, by row: each row is told its own columns ("1,3").
+  const changedRows = useMemo(() => {
+    const byRow = new Map<number, number[]>();
+    for (const key of previewNow?.changed ?? []) {
+      const [r, c] = key.split(":").map(Number) as [number, number];
+      byRow.set(r, [...(byRow.get(r) ?? []), c]);
+    }
+    return new Map([...byRow].map(([r, cols]) => [r, cols.sort((a, b) => a - b).join(",")]));
+  }, [previewNow]);
+  // While Foli AI's version shows, no cell is open and none is selected: the table is being looked at, not
+  // edited (the cell being typed in used to stay open under the preview, drawn twice).
+  const previewing = preview !== null;
+  useEffect(() => {
+    if (!previewing) return;
+    setActive(null);
+    setRange(null);
+  }, [previewing]);
+  // Foli AI's version no longer lines up with the table (its columns changed meanwhile): it can't be shown.
+  const stale = preview !== null && previewNow === null;
+  useEffect(() => {
+    if (!stale) return;
+    setPreview(null);
+    say("The table changed while Foli AI was working, so its changes weren't applied. Ask again.");
+  }, [stale, say]);
   const sortName = t.view?.sort ? columnName(evaluated.names[t.view.sort.column] ?? "", t.view.sort.column) : "";
   const filterCount = t.view?.filters?.length ?? 0;
   // A column's width: the one being dragged, else the one saved. Without one it is as wide as its content needs.
   const colWidth = (c: number) => (sizing?.c === c ? sizing.width : (shownTable.columns[c]?.width ?? null));
-  // A width is both the column's (<col>, which stops it growing with its content) and each of its cells'
-  // least width (which stops a table wider than the note squeezing it: the table scrolls sideways instead).
-  const sizedStyle = (c: number): React.CSSProperties | undefined => {
-    const w = colWidth(c);
-    return w === null ? undefined : ({ minWidth: w, "--fb-col-w": `${w}px` } as React.CSSProperties);
+  // The widths the cells take (TableRow), one list for every row: the saved ones, and the dragged one a
+  // frame behind the column itself. The same list object as long as no width changed, so rows aren't drawn again.
+  const cellWidths = useSame(
+    shownTable.rows[0]!.map((_, c) => (cellSizing?.c === c ? cellSizing.width : (shownTable.columns[c]?.width ?? null))),
+    sameWidths,
+  );
+  // What the rows ask for (see RowActions): the same object for the life of the table, reading what is current.
+  const gripRef = useRef(handle);
+  gripRef.current = handle;
+  const act = useRef<Omit<RowActions, "rowGrip">>(null as unknown as RowActions);
+  act.current = {
+    cellMouseDown: (r, c, e) => onCellMouseDown(r, c)(e),
+    cellMouseEnter: (r, c, e) => onCellMouseEnter(r, c)(e),
+    openCell: (r, c) => open(r, c, "end"),
+    setTotal,
+    addColumn: () => void tool((d) => model.addColumn(d)),
+    moveRow,
+    removeRow,
   };
+  const actions = useMemo<RowActions>(
+    () => ({
+      cellMouseDown: (r, c, e) => act.current.cellMouseDown(r, c, e),
+      cellMouseEnter: (r, c, e) => act.current.cellMouseEnter(r, c, e),
+      openCell: (r, c) => act.current.openCell(r, c),
+      setTotal: (c, fn) => act.current.setTotal(c, fn),
+      addColumn: () => act.current.addColumn(),
+      moveRow: (r, dir) => act.current.moveRow(r, dir),
+      removeRow: (r) => act.current.removeRow(r),
+      rowGrip: (r) => ({
+        "data-table-grip": "",
+        onPointerDown: (e: React.PointerEvent<HTMLElement>) => gripRef.current("row", r).onPointerDown(e),
+        onPointerMove: (e: React.PointerEvent<HTMLElement>) => gripRef.current("row", r).onPointerMove(e),
+        onPointerUp: () => gripRef.current("row", r).onPointerUp(),
+        onPointerCancel: () => gripRef.current("row", r).onPointerCancel(),
+        onLostPointerCapture: () => gripRef.current("row", r).onLostPointerCapture(),
+      }),
+    }),
+    [],
+  );
   // Every column given a width: the table is exactly as wide as they add up to (it would otherwise stretch
   // them to fill the note). With any left automatic it fills the note and those take up the room.
   const allSized = shownTable.rows[0]!.every((_, c) => colWidth(c) !== null);
@@ -1010,102 +1157,40 @@ export function TableView({ node, selected, updateAttributes, editor, getPos }: 
             ) : null}
             <tbody>
               {order.map((r, i) => {
-                const row = shownTable.rows[r]!;
-                const header = shownTable.headerRow && r === 0;
                 const total = shownTable.totalsRow && r === shownTable.rows.length - 1 && r > 0;
+                const picked = sel !== null && i >= sel.i0 && i <= sel.i1;
                 return (
-                  <tr key={r} className={`group/row ${total ? `fb-table-totals ${tools ? "with-tools" : ""}` : ""} ${reorder?.kind === "row" && reorder.from === r ? "fb-table-moving" : ""}`}>
-                    {row.map((cell, c) => {
-                      const Tag = header ? "th" : "td";
-                      const shown = evaluated.cells[r]?.[c];
-                      const isActive = active?.r === r && active.c === c && !preview;
-                      const label = `Row ${r + 1}, column ${c + 1}`;
-                      const fn = total ? totalsFunctionOf(tableCellText(cell), c) : null;
-                      // In the selected rectangle: tinted, with the rectangle's outline on the sides that are its edge.
-                      const picked = sel !== null && i >= sel.i0 && i <= sel.i1 && c >= sel.c0 && c <= sel.c1;
-                      const pickedClass = picked ? `fb-cell-selected ${i === sel.i0 ? "fb-sel-t" : ""} ${i === sel.i1 ? "fb-sel-b" : ""} ${c === sel.c0 ? "fb-sel-l" : ""} ${c === sel.c1 ? "fb-sel-r" : ""} ${range?.anchor.r === r && range.anchor.c === c ? "fb-sel-anchor" : ""}` : "";
-                      return (
-                        <Tag
-                          key={c}
-                          scope={header ? "col" : undefined}
-                          className={`relative border border-line p-0 text-left align-top ${isActive ? "fb-cell-active" : ""} ${pickedClass} ${colWidth(c) === null ? "" : "fb-col-sized"} ${reorder?.kind === "col" && reorder.from === c ? "fb-table-moving" : ""} ${changed(r, c) ? "fb-cell-changed" : ""} ${cellClass(isActive ? undefined : shown, header, total)} ${header ? "font-semibold" : ""}`}
-                          style={sizedStyle(c)}
-                          data-cell-at={`${r}:${c}`}
-                          onMouseDown={onCellMouseDown(r, c)}
-                          onMouseEnter={onCellMouseEnter(r, c)}
-                        >
-                          {isActive ? (
-                            // The cell editor is moved in here (see open).
-                            <div data-cell-slot="" className={header ? "font-semibold" : undefined} />
-                          ) : (
-                            <div
-                              className={`fb-cell block min-w-[6rem] px-2.5 py-1.5 ${shown?.numeric && shown.kind !== "date" && !header ? "text-right" : ""}`}
-                              data-cell={`${r}:${c}`}
-                              data-enter-focus={r === 0 && c === 0 && editable ? "" : undefined}
-                              role={editable ? "textbox" : undefined}
-                              aria-label={editable ? label : undefined}
-                              aria-readonly={editable ? undefined : true}
-                              tabIndex={editable && !preview ? -1 : undefined}
-                              onFocus={() => open(r, c, "end")}
-                            >
-                              <StaticCell cell={cell} shown={shown} />
-                              {!cell.length && !shown?.display ? "​" : null}
-                            </div>
-                          )}
-                          {total && tools ? (
-                            <MenuButton
-                              label={`Total for column ${columnLetter(c)}`}
-                              trigger={<Sigma size={11} aria-hidden />}
-                              className="fb-total-pick"
-                              triggerClassName="grid h-5 w-5 place-items-center rounded-tiny text-faint hover:bg-accent-soft hover:text-heading"
-                              align="start"
-                              items={[
-                                ...TOTALS_FUNCTIONS.map((f) => ({ label: TOTAL_LABEL[f], checked: fn === f, onSelect: () => setTotal(c, f) })),
-                                "separator" as const,
-                                { label: "None", checked: !tableCellText(cell).trim(), onSelect: () => setTotal(c, null) },
-                              ]}
-                            />
-                          ) : null}
-                        </Tag>
-                      );
-                    })}
-                    {phoneAdd && r === order[0] ? (
-                      <td rowSpan={order.length} className="fb-table-add-col border-0 p-0 pl-1.5 align-top">
-                        <button
-                          type="button"
-                          tabIndex={-1}
-                          onClick={() => tool((d) => model.addColumn(d))}
-                          disabled={width >= LIMITS.maxTableColumns}
-                          aria-label="Add a column"
-                          title="Add a column"
-                          className="fb-table-add grid h-full min-h-11 w-11 place-items-center enabled:hover:bg-[var(--glass-hover)]"
-                        >
-                          <Plus size={20} strokeWidth={2.2} aria-hidden />
-                        </button>
-                      </td>
-                    ) : null}
-                    {editable && !(phone && !tools) ? (
-                      <td className={`w-[7.25rem] border-0 pl-1 ${tools ? "" : "invisible"}`} aria-hidden={tools ? undefined : true}>
-                        <span className="flex items-center gap-0.5" role="group" aria-label={`Row ${r + 1}`}>
-                          <button type="button" className="fb-table-grip fb-table-grip-row" tabIndex={-1} disabled={viewOn || total || t.rows.length - (t.totalsRow ? 1 : 0) <= 1} {...handle("row", r)} aria-label={`Drag row ${r + 1} to move it`} title={moveRowsHint ?? "Drag to move the row"}>
-                            <GripVertical size={10} aria-hidden />
-                            <span className={`fb-table-label ${formulaMode ? "is-on" : ""}`} aria-hidden>
-                              {r + 1}
-                            </span>
-                          </button>
-                          <button type="button" className={toolBtn} tabIndex={-1} disabled={r === 0 || viewOn || total} onClick={() => moveRow(r, -1)} aria-label={`Move row ${r + 1} up`} title={moveRowsHint ?? `Move row up (${keyLabel("⌥⇧↑")})`}>
-                            <ArrowUp size={12} aria-hidden />
-                          </button>
-                          <button type="button" className={toolBtn} tabIndex={-1} disabled={r === t.rows.length - 1 || viewOn || total || (t.totalsRow && r === t.rows.length - 2)} onClick={() => moveRow(r, 1)} aria-label={`Move row ${r + 1} down`} title={moveRowsHint ?? `Move row down (${keyLabel("⌥⇧↓")})`}>
-                            <ArrowDown size={12} aria-hidden />
-                          </button>
-                          <button type="button" className={`${toolBtn} hover:!text-danger`} tabIndex={-1} disabled={t.rows.length <= 1} onClick={() => removeRow(r)} aria-label={`Delete row ${r + 1}`} title={`Delete row (${keyLabel("⌘⇧⌫")})`}>
-                            <Minus size={12} aria-hidden />
-                          </button>
-                        </span>
-                      </td>
-                    ) : null}
-                  </tr>
+                  <TableRow
+                    key={r}
+                    r={r}
+                    row={shownTable.rows[r]!}
+                    shown={evaluated.cells[r]}
+                    header={shownTable.headerRow && r === 0}
+                    total={total}
+                    editable={editable}
+                    previewing={preview !== null}
+                    tools={tools}
+                    activeC={active && !preview && active.r === r ? active.c : -1}
+                    selC0={picked ? sel.c0 : -1}
+                    selC1={picked ? sel.c1 : -1}
+                    selTop={picked && i === sel.i0}
+                    selBottom={picked && i === sel.i1}
+                    anchorC={picked && range?.anchor.r === r ? range.anchor.c : -1}
+                    widths={cellWidths}
+                    movingRow={reorder?.kind === "row" && reorder.from === r}
+                    movingCol={reorder?.kind === "col" ? reorder.from : -1}
+                    changed={changedRows.get(r) ?? ""}
+                    addColumnSpan={phoneAdd && r === order[0] ? order.length : 0}
+                    canAddColumn={roomForColumn(width)}
+                    rowTools={editable && !(phone && !tools)}
+                    canDrag={!(viewOn || total || t.rows.length - (t.totalsRow ? 1 : 0) <= 1)}
+                    canUp={!(r === 0 || viewOn || total)}
+                    canDown={!(r === t.rows.length - 1 || viewOn || total || (t.totalsRow && r === t.rows.length - 2))}
+                    canDelete={t.rows.length > 1}
+                    moveRowsHint={moveRowsHint}
+                    formulaMode={formulaMode}
+                    actions={actions}
+                  />
                 );
               })}
             </tbody>
@@ -1184,6 +1269,11 @@ export function TableView({ node, selected, updateAttributes, editor, getPos }: 
             Click a cell to use it, or drag across cells for a range. Column names work too, like =SUM({columnName(evaluated.names[1] ?? "", 1).replace(/\s+/g, "_")}).
           </p>
         ) : null}
+        {notice ? (
+          <p className="fb-table-hint" contentEditable={false} role="status" data-table-notice="">
+            {notice}
+          </p>
+        ) : null}
         {ai && editable ? (
           <Suspense fallback={null}>
             <TableAi
@@ -1196,7 +1286,17 @@ export function TableView({ node, selected, updateAttributes, editor, getPos }: 
               preview={preview}
               onPreview={setPreview}
               onAccept={(result) => {
-                tool(() => result.table);
+                // Onto the table as it is now, not the copy Foli AI was sent: what was typed since stays.
+                const now = live();
+                const merged = now ? model.applyChange(now.data, result) : null;
+                if (!now || !merged) {
+                  setPreview(null);
+                  say("The table changed while Foli AI was working, so its changes weren't applied. Ask again.");
+                  return;
+                }
+                const full = model.tableFull(now.data, merged.table);
+                if (full) return say(model.tableFullMessage(full));
+                tool(() => merged.table);
                 setPreview(null);
                 setAi(null);
                 announce("Foli AI's changes applied. Undo with ⌘Z.");

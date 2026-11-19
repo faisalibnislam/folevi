@@ -1,7 +1,7 @@
 // The Mac's title bar in the native look (docs/MAC_NATIVE_LOOK.md; the owner's layout, 2026-11-18): the window's
 // top strip, with no toolbar inside the card:
 //
-//   ● ● ●  [note tools/folders] [sidebar]   ‹ ›  (⌂) (▦) [ Calendar | (× Kyoto in November) | Recipes ]  [sync] [bell]
+//   ● ● ●  [note tools/folders] [sidebar]   ‹ ›  (⌂) (▦) [ Calendar | (× Kyoto in November) | Recipes ] (+)  [sync] [bell]
 //
 // The traffic lights; the sidebar's button at the sidebar's trailing end; then, from the content card's leading
 // edge, Back and Forward and the tab bar drawn as Finder's (the owner, 2026-11-18): Home in a round button, the tabs in a grey capsule
@@ -142,6 +142,9 @@ extension WebTopBar {
                         .clipShape(Capsule())
                         .layoutPriority(1)
                 }
+                // New note at the tabs' trailing end, as Safari's + (the owner, 2026-11-19: a quick way to a new note
+                // on the Mac and the iPad, in the tab bar's top right). It opens in a new tab, ready to type.
+                MacNewNoteButton(model: model)
             }
             .coordinateSpace(name: Self.strip)
             .animation(MacLook.animation(NSWorkspace.shared.accessibilityDisplayShouldReduceMotion), value: model.tabs.activeID)
@@ -156,8 +159,6 @@ extension WebTopBar {
             #endif
             .accessibilityElement(children: .contain)
             .accessibilityLabel("Tabs")
-            // (No + here, the owner, 2026-11-18: the sidebar's New note is the one way to a new note on screen;
-            // ⌘T and File > New Tab still open a tab.)
         }
     }
 
@@ -438,6 +439,25 @@ struct MacOverviewButton: View {
         .foleviTooltip("Show All Tabs (⌘⇧\\)")
         .accessibilityLabel("Show all tabs")
         .accessibilityValue(on ? "Shown" : "Hidden")
+    }
+}
+
+/// New note at the tabs' trailing end (Safari's +): a round button the size of Home's and Show All Tabs'.
+struct MacNewNoteButton: View {
+    let model: FrameModel
+
+    var body: some View {
+        Button { model.newNote() } label: {
+            MacSymbol("plus", size: 14, weight: .medium)
+                .frame(width: WebTopBar.trackHeight, height: WebTopBar.trackHeight)
+                .contentShape(Circle())
+        }
+        .buttonStyle(QuietHoverStyle(shape: AnyShape(Circle())))
+        .background(MacLook.Colors.track, in: Circle())
+        .foregroundStyle(MacLook.Colors.secondary)
+        .foleviTooltip("New Note (⌘N)")
+        .accessibilityLabel("New note")
+        .accessibilityIdentifier("strip.newNote")
     }
 }
 

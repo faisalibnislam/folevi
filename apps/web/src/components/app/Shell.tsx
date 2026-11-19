@@ -233,7 +233,12 @@ function NativeContentShell() {
   useLayoutEffect(() => {
     if (!ipadNative) return;
     document.documentElement.setAttribute("data-ipad-native", "");
-    return () => document.documentElement.removeAttribute("data-ipad-native");
+    // Focus rings only while a keyboard moves focus, never left behind by a tap (globals.css, data-input).
+    const stopModality = installInputModality();
+    return () => {
+      document.documentElement.removeAttribute("data-ipad-native");
+      stopModality();
+    };
   }, [ipadNative]);
   // An iPhone (marker platform "ios"): the phone page layout and its styles (globals.css, editor-phone.css).
   const iphone = useIphoneApp();

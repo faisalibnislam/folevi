@@ -128,10 +128,33 @@ struct WebCardMenuButton: View {
     let label: String
     let entries: @MainActor () -> [WebMenuEntry]
     @Environment(\.colorScheme) private var scheme
+    @Environment(\.macNativeLook) private var native
 
     static var size: CGFloat { WebStyles.named("notes.card.menu").light.height }
 
     var body: some View {
+        #if os(iOS)
+        // The iPad's native look: a finger can't hover, so the "…" is always on every card; the web's raised chip
+        // read as a heavy dark square there. A small Liquid Glass circle instead (a control floating over content).
+        if native, #available(iOS 26, *) {
+            WebMenuButton(width: 200, hover: nil, entries: entries) {
+                WebIconView(.ellipsis, size: 16)
+                    .foregroundStyle(MacLook.Colors.label)
+                    .frame(width: Self.size, height: Self.size)
+                    .glassEffect(.regular.interactive(), in: Circle())
+                    .contentShape(Circle())
+                    .fingerTarget(width: Self.size, height: Self.size)
+            }
+            .accessibilityLabel(label)
+        } else {
+            chip
+        }
+        #else
+        chip
+        #endif
+    }
+
+    @ViewBuilder private var chip: some View {
         let raised = WebStyles.named("notes.card.menu")
         let r = raised.resolve(scheme)
         let button = notesStyle("card.menu.button", scheme)

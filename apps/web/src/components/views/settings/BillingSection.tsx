@@ -9,7 +9,7 @@ import { api } from "@/lib/convex/api";
 import { Button } from "@/components/ui/Button";
 import { useToast, errorMessage } from "@/components/ui/Toast";
 import { formatDateTime } from "@/lib/format";
-import { DAY_MS, PACK_VALID_MONTHS, PLANS, PLAN_ORDER, TIER_NAMES, formatPrice, isPaidPlan, monthlyEquivalent, yearlySavingPercent, type BillingInterval, type PersonalTier } from "@/lib/plans";
+import { ALL_PLAN_TIERS, DAY_MS, PACK_VALID_MONTHS, PLANS, PLAN_ORDER, TIER_NAMES, isRetiredTier, formatPrice, isPaidPlan, monthlyEquivalent, yearlySavingPercent, type BillingInterval, type PersonalTier } from "@/lib/plans";
 import { creditCount, creditDate } from "@/components/ai/AiCredits";
 import { AppLink, useAppRouter } from "@/lib/app/router";
 import { useIphoneLook } from "@/lib/iphone";
@@ -37,7 +37,7 @@ type PaidTier = Exclude<PersonalTier, "free">;
 const isPaidTier = (t: PersonalTier): t is PaidTier => isPaidPlan(PLANS[t].monthly);
 /** The biggest saving from paying yearly, across the paid plans (for the Yearly toggle). */
 const BEST_YEARLY_SAVING = Math.max(...PLAN_ORDER.filter(isPaidTier).map(yearlySavingPercent));
-const rank = (t: PersonalTier) => PLAN_ORDER.indexOf(t);
+const rank = (t: PersonalTier) => ALL_PLAN_TIERS.indexOf(t);
 
 /** A used-of-total bar (storage, credits). */
 export function UsageMeter({ label, pct, invert = false }: { label: string; pct: number; invert?: boolean }) {
@@ -328,8 +328,10 @@ export function BillingSection() {
               </button>
             </div>
             <PlanRows>
-              {PLAN_ORDER.map((id) => {
+              {/* A retired plan (Core) is listed only for someone on it, and can't be chosen again. */}
+              {ALL_PLAN_TIERS.filter((t) => PLAN_ORDER.includes(t) || (e.paid && e.paidPlan === t)).map((id) => {
                 const plan = PLANS[id];
+                const retired = isRetiredTier(id);
                 const paid = isPaidTier(id);
                 const price = interval === "year" ? plan.yearlyCents : plan.monthlyCents;
                 // Your tier (any interval), and your exact plan.
@@ -351,7 +353,7 @@ export function BillingSection() {
                     highlight={highlight}
                     price={formatPrice(price)}
                     per={interval === "year" ? "year" : "month"}
-                    note={!paid ? "No card required" : interval === "year" ? `${monthlyEquivalent(plan.yearlyCents)}/month, billed yearly` : "Billed monthly"}
+                    note={retired ? "No longer offered. You can keep it, or choose another plan." : !paid ? "No card required" : interval === "year" ? `${monthlyEquivalent(plan.yearlyCents)}/month, billed yearly` : "Billed monthly"}
                     blurb={plan.blurb}
                     features={plan.features}
                     action={
@@ -367,7 +369,7 @@ export function BillingSection() {
                         ) : polarLive && !sub?.cancelAtPeriodEnd ? (
                           <p className="text-center text-subheadline text-muted">To switch to Free, cancel in Manage billing.</p>
                         ) : null
-                      ) : canChoose ? (
+                      ) : retired ? null : canChoose ? (
                         <Button variant={highlight ? "primary" : "secondary"} className="w-full" onClick={() => void choose(id)} aria-busy={busy === id || undefined} disabled={busy !== null && busy !== id}>
                           {busy === id ? (!data.checkoutAvailable ? "Switching…" : polarLive ? "Changing…" : "Opening checkout…") : `${label}${!data.checkoutAvailable ? " (test)" : ""}`}
                         </Button>

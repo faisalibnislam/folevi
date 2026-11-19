@@ -397,14 +397,14 @@ export const DOC_ARTICLES: DocArticle[] = [
     body: () => (
       <>
         <p>
-          Your <strong>Personal</strong> is yours alone and isn’t a workspace: nobody can join it, and your personal plan (Free, Core, Pro or Pro AI) covers its storage, your devices and your AI credits. A <strong>workspace</strong> is shared with a team and has its own plan, storage and billing.
+          Your <strong>Personal</strong> is yours alone and isn’t a workspace: nobody can join it, and your personal plan (Free, Pro or Pro AI) covers its storage, your devices and your AI credits. A <strong>workspace</strong> is shared with a team and has its own plan, storage and billing.
         </p>
         <ul>
           <li>
             <strong>Roles.</strong> Every workspace has one owner. Admins manage members, guests and settings; members work on the workspace’s pages (some members can only comment or view). Guests aren’t members: they see only the pages shared with them.
           </li>
           <li>
-            <strong>Plans.</strong> Free, Core, Pro and Pro AI, the same as personal plans. Paid plans are billed per member seat. The owner, admins and members each take one and get the plan’s storage and AI credits in the workspace; guests and pending invitations are free. On Core, nobody in the workspace can use AI. The owner, and admins the owner allows, manage the plan in Settings → Plan & billing. See <Link href="/pricing">Pricing</Link>.
+            <strong>Plans.</strong> Free, Pro and Pro AI, the same as personal plans. Paid plans are billed per member seat. The owner, admins and members each take one and get the plan’s storage and AI credits in the workspace; guests and pending invitations are free. The owner, and admins the owner allows, manage the plan in Settings → Plan & billing. See <Link href="/pricing">Pricing</Link>.
           </li>
           <li>
             <strong>Separate plans.</strong> A personal plan never upgrades a workspace, and a workspace plan never changes your Personal. On Free, your Personal and the free workspaces you own share {sizeLabel(STORAGE_BYTES.free)}, and in a free workspace each member uses their own personal AI credits. On paid plans, storage and AI credits are per person. If a space goes over its limit, nothing is deleted. New uploads wait until there’s room.
@@ -479,7 +479,7 @@ export const DOC_ARTICLES: DocArticle[] = [
     body: () => (
       <>
         <p>
-          Foli AI answers questions from the notes you can open, helps you write, and writes a short brief of your week. It runs on Google’s AI models. It’s part of every plan except Core. In a library kept on your devices with no account, Foli AI on the Mac runs on Apple Intelligence or on your own OpenAI, Anthropic or Google key instead, and uses no credits (see <Link href="/docs/apps-and-local-notes#ai">the apps</Link>).
+          Foli AI answers questions from the notes you can open, helps you write, and writes a short brief of your week. It runs on Google’s AI models. It comes with Pro and Pro AI, and with Free during the trial. In a library kept on your devices with no account, Foli AI on the Mac runs on Apple Intelligence or on your own OpenAI, Anthropic or Google key instead, and uses no credits (see <Link href="/docs/apps-and-local-notes#ai">the apps</Link>).
         </p>
         <h2 id="use">Where to find it</h2>
         <ul>
@@ -523,7 +523,6 @@ export const DOC_ARTICLES: DocArticle[] = [
           <li>
             {TIER_NAMES.free}: AI during the {TRIAL_DAYS}-day trial ({TRIAL_CREDITS} credits), then none.
           </li>
-          <li>{TIER_NAMES.core}: no AI.</li>
           <li>
             {TIER_NAMES.pro}: {MONTHLY_CREDITS.pro} credits a month.
           </li>
@@ -547,7 +546,7 @@ export const DOC_ARTICLES: DocArticle[] = [
         </p>
         <h2 id="off">Turning it off</h2>
         <p>
-          Turn Foli AI off in Settings at any time. While it’s off, none of your notes are sent to it. On Core, the server refuses every AI request and the app hides AI. See <Link href="/features/ai-notes">AI notes</Link> and the <Link href="/privacy#ai">Privacy</Link> page.
+          Turn Foli AI off in Settings at any time. While it’s off, none of your notes are sent to it. See <Link href="/features/ai-notes">AI notes</Link> and the <Link href="/privacy#ai">Privacy</Link> page.
         </p>
       </>
     ),

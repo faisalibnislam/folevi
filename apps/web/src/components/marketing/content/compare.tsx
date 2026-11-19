@@ -106,12 +106,12 @@ export const FOLEVI_ROWS: Record<FoleviRowKey, { label: string; value: string }>
     label: "Where notes are stored",
     value: "Without an account: a folder of files (one per note, plus a small index) in a place you pick: iCloud Drive, Dropbox, Google Drive, any folder or only this device. Folevi’s servers never see them. With a Folevi account: on your devices and Folevi’s servers.",
   },
-  monthly: { label: "Paid plans, monthly", value: `Core ${p(PRICES.core.month)}, Pro ${p(PRICES.pro.month)} and Pro AI ${p(PRICES.pro_ai.month)} a month` },
-  yearly: { label: "Paid plans, yearly", value: `Core ${p(PRICES.core.year)}, Pro ${p(PRICES.pro.year)} and Pro AI ${p(PRICES.pro_ai.year)} a year` },
-  teams: { label: "Teams", value: "Workspaces on the same four plans, priced per member. Guests are free." },
+  monthly: { label: "Paid plans, monthly", value: `Pro ${p(PRICES.pro.month)} and Pro AI ${p(PRICES.pro_ai.month)} a month` },
+  yearly: { label: "Paid plans, yearly", value: `Pro ${p(PRICES.pro.year)} and Pro AI ${p(PRICES.pro_ai.year)} a year` },
+  teams: { label: "Teams", value: "Workspaces on the same three plans, priced per member. Guests are free." },
   ai: {
     label: "AI",
-    value: `Without an account, Foli AI runs on Apple Intelligence on the Mac, or on your own OpenAI, Anthropic or Google key, sent straight from your device. With Folevi Cloud, it’s metered in credits: Pro ${MONTHLY_CREDITS.pro}, Pro AI ${MONTHLY_CREDITS.pro_ai} (fair use), Free only during the trial, Core none. Packs of ${credits(CREDIT_PACKS.credits_500.credits)} for ${p(CREDIT_PACKS.credits_500.priceCents)} or ${credits(CREDIT_PACKS.credits_1000.credits)} for ${p(CREDIT_PACKS.credits_1000.priceCents)}.`,
+    value: `Without an account, Foli AI runs on Apple Intelligence on the Mac, or on your own OpenAI, Anthropic or Google key, sent straight from your device. With Folevi Cloud, it’s metered in credits: Pro ${MONTHLY_CREDITS.pro}, Pro AI ${MONTHLY_CREDITS.pro_ai} (fair use), Free only during the trial. Packs of ${credits(CREDIT_PACKS.credits_500.credits)} for ${p(CREDIT_PACKS.credits_500.priceCents)} or ${credits(CREDIT_PACKS.credits_1000.credits)} for ${p(CREDIT_PACKS.credits_1000.priceCents)}.`,
   },
   offline: { label: "Offline", value: "Yes. The Mac, iPhone and iPad apps work fully offline. In the browser, every edit is saved on the device first and syncs when you reconnect." },
   platforms: { label: "Apps", value: `Mac (${MAC_REQUIREMENT}), iPhone and iPad (${IOS_REQUIREMENT}), and the web app in any modern browser, with a Folevi account. No Android or Windows app.` },
@@ -119,7 +119,7 @@ export const FOLEVI_ROWS: Record<FoleviRowKey, { label: string; value: string }>
   publish: { label: "Public sharing", value: "Public links with an optional password and expiry date, revocable at any time" },
   export: { label: "Export", value: "A page as Markdown, HTML or PDF (through print). Everything as a ZIP of Markdown files." },
   import: { label: "Import", value: "Markdown and text files, folders and ZIPs, with their images" },
-  storage: { label: "Storage", value: `${gb(STORAGE_BYTES.free)} on Free, ${gb(STORAGE_BYTES.core)} on Core and Pro, ${gb(STORAGE_BYTES.pro_ai)} on Pro AI. Files up to 50 MB.` },
+  storage: { label: "Storage", value: `${gb(STORAGE_BYTES.free)} on Free, ${gb(STORAGE_BYTES.pro)} on Pro, ${gb(STORAGE_BYTES.pro_ai)} on Pro AI. Files up to 50 MB.` },
   encryption: {
     label: "Encryption",
     value: "Encrypted in transit and at rest, and end-to-end encrypted when you turn it on in Settings → Privacy, on every plan. Without an account, you can encrypt the synced copy of your notes with a passphrase only you know.",
@@ -144,15 +144,6 @@ const diff = {
     body: (
       <p>
         Each page can take one of {STYLE_COUNT} artwork themes, or your own image, and the theme colors the cover, the paper and the text. The app around it stays plain white, or near-black in dark mode. See <Link href="/features/note-themes">note themes</Link>.
-      </p>
-    ),
-  } satisfies Section,
-  core: {
-    title: "A plan with no AI",
-    body: (
-      <p>
-        Core costs {p(PRICES.core.month)} a month or {p(PRICES.core.year)} a year and has no AI at all. The server refuses every AI request in a Core space, so nothing there is sent to an AI model. It’s for people and teams who want notes without AI and don’t want to pay for it. More in{" "}
-        <Link href="/blog/why-folevi-has-a-plan-with-no-ai">why Folevi has a plan with no AI</Link>.
       </p>
     ),
   } satisfies Section,
@@ -268,12 +259,11 @@ export const COMPETITORS: Competitor[] = [
         ),
       },
       apps.files,
-      diff.core,
       {
         title: "Lower prices",
         body: (
           <p>
-            The apps are free with no account. Folevi Cloud’s paid plans are {p(PRICES.core.month)}, {p(PRICES.pro.month)} and {p(PRICES.pro_ai.month)} a month, and a workspace pays the same per member. Guests are free on every plan. On September 30, 2026, Notion’s Plus plan was $12 per member a month, or $10 billed yearly.
+            The apps are free with no account. Folevi Cloud’s paid plans are {p(PRICES.pro.month)} and {p(PRICES.pro_ai.month)} a month, and a workspace pays the same per member. Guests are free on every plan. On September 30, 2026, Notion’s Plus plan was $12 per member a month, or $10 billed yearly.
           </p>
         ),
       },
@@ -299,7 +289,7 @@ export const COMPETITORS: Competitor[] = [
       { q: "Does Folevi work offline?", a: "Yes. The Mac, iPhone and iPad apps work fully offline. In the browser, every edit is saved on the device first and syncs when you reconnect." },
       { q: "Can I import my Notion pages?", a: "Yes, as Markdown. Export from Notion as Markdown, then import the ZIP in Settings → Import & export. Databases export as CSV, which Folevi doesn’t import." },
       { q: "Does Folevi have mobile apps?", a: `Yes, for iPhone and iPad (${IOS_REQUIREMENT}), on the App Store. There is no Android app.` },
-      { q: "How much does Folevi cost compared with Notion?", a: `The apps are free with no account. Folevi Cloud’s paid plans are ${p(PRICES.core.month)}, ${p(PRICES.pro.month)} and ${p(PRICES.pro_ai.month)} a month, per member in a workspace. On September 30, 2026, Notion’s website listed Plus at $12 and Business at $24 per member a month, or $10 and $20 billed yearly.` },
+      { q: "How much does Folevi cost compared with Notion?", a: `The apps are free with no account. Folevi Cloud’s paid plans are ${p(PRICES.pro.month)} and ${p(PRICES.pro_ai.month)} a month, per member in a workspace. On September 30, 2026, Notion’s website listed Plus at $12 and Business at $24 per member a month, or $10 and $20 billed yearly.` },
     ],
     sources: [
       src2("login", "Notion Help: Log in and out of Notion", "https://www.notion.com/help/log-in-and-out"),

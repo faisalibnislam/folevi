@@ -117,13 +117,13 @@ describe("personal plans (1–3)", () => {
     expect(await t.run(async (ctx) => (await ctx.db.query("aiCreditHolds").collect()).length)).toBe(0);
   });
 
-  test("Pro: 10 GB, 180 credits; Pro AI: 50 GB, 550 credits and the higher hourly limit", async () => {
+  test("Pro: 10 GB, 150 credits; Pro AI: 50 GB, 550 credits and the higher hourly limit", async () => {
     const t = setup();
     const a = await person(t, "pro@example.com");
     await a.as.mutation(api.billing.testPurchase, { plan: "pro", interval: "month" });
     let mine = await a.as.query(api.billing.mine, {});
-    expect(mine.entitlements).toMatchObject({ planId: "personal_pro_monthly", ai: true, aiSource: "plan", monthlyCredits: 180, creditPacks: true, storageBytes: 10 * GB, devices: null, aiFairUse: "standard" });
-    expect(mine.payments[0]).toMatchObject({ amountCents: 499, plan: "pro", interval: "month" });
+    expect(mine.entitlements).toMatchObject({ planId: "personal_pro_monthly", ai: true, aiSource: "plan", monthlyCredits: 150, creditPacks: true, storageBytes: 10 * GB, devices: null, aiFairUse: "standard" });
+    expect(mine.payments[0]).toMatchObject({ amountCents: 500, plan: "pro", interval: "month" });
     await a.as.mutation(api.billing.testPurchase, { plan: "pro_ai", interval: "year" });
     mine = await a.as.query(api.billing.mine, {});
     expect(mine.entitlements).toMatchObject({ planId: "personal_pro_ai_yearly", monthlyCredits: 550, storageBytes: 50 * GB, aiFairUse: "high" });
@@ -141,11 +141,11 @@ describe("a Personal plan never upgrades a workspace (4–6, 24)", () => {
     await pro.as.mutation(api.billing.testPurchase, { plan: "pro", interval: "year" });
     const teamId = await team(owner, "Studio", { p: pro, email: "ws-pro@example.com" });
     expect(await mineEntry(pro, teamId)).toMatchObject({ plan: { scope: "workspace", id: "workspace_free", name: "Workspace Free" }, aiIncluded: true, storageQuotaBytes: 500 * MB, storageRule: "shared_free" });
-    expect(await credits(pro, inWorkspace(teamId))).toMatchObject({ account: "personal", plan: "Pro", allowance: 180 });
+    expect(await credits(pro, inWorkspace(teamId))).toMatchObject({ account: "personal", plan: "Pro", allowance: 150 });
     const { holdId } = await beginAi(pro, inWorkspace(teamId));
     await t.mutation(internal.ai.settle, { holdId, calls: [{ model: "gemini-3.8-flash", promptTokens: 2000, outputTokens: 500, thoughtsTokens: 0 }] });
     // Charged to their Personal (1 credit), recorded against the workspace.
-    expect((await pro.as.query(api.billing.mine, {})).credits).toMatchObject({ used: 1, available: 179 });
+    expect((await pro.as.query(api.billing.mine, {})).credits).toMatchObject({ used: 1, available: 149 });
     const usage = await t.run(async (ctx) => ctx.db.query("aiUsage").collect());
     expect(usage).toHaveLength(1);
     expect(usage[0]).toMatchObject({ scope: "workspace", credits: 1, tokensIn: 2000, tokensOut: 500 });
@@ -193,7 +193,7 @@ describe("a Personal plan never upgrades a workspace (4–6, 24)", () => {
     await other.as.mutation(api.workspaceBilling.testPurchase, { workspaceId: teamId, planId: "workspace_pro_monthly" });
     // Trial: Pro AI in Personal; the team's own Pro seat inside it.
     expect(await credits(a, PERSONAL)).toMatchObject({ plan: "Pro AI trial", allowance: 100, trialing: true });
-    expect(await credits(a, inWorkspace(teamId))).toMatchObject({ plan: "Workspace Pro", allowance: 180 });
+    expect(await credits(a, inWorkspace(teamId))).toMatchObject({ plan: "Workspace Pro", allowance: 150 });
     expect((await a.as.query(api.billing.mine, {})).storageLimitBytes).toBe(50 * GB);
     expect((await mineEntry(a, teamId)).storageQuotaBytes).toBe(10 * GB);
     // A request about a Personal note made from the team (the note decides) uses Personal credits.

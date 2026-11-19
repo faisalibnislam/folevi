@@ -99,7 +99,7 @@ describe("metering real requests", () => {
     );
     await a.as.action(api.ai.write, { scope: a.scope, task: "longer", text: "Secret draft text" });
     let b = await balance(a);
-    expect(b).toMatchObject({ allowance: 180, used: 7, available: 173 });
+    expect(b).toMatchObject({ allowance: 150, used: 7, available: 143 });
     expect(urls[0]).toContain(`/${FLASH}:generateContent`);
     // Fixing spelling uses Flash-Lite: 1 credit.
     await a.as.action(api.ai.write, { scope: a.scope, task: "fix", text: "Secrit draft" });
@@ -185,18 +185,18 @@ describe("balances, periods and packs", () => {
     await a.as.mutation(api.billing.testBuyCredits, { pack: "credits_500", scope: PERSONAL });
     vi.setSystemTime(Date.UTC(2027, 0, 11));
     await a.as.mutation(api.billing.testBuyCredits, { pack: "credits_1000", scope: PERSONAL });
-    expect(await balance(a)).toMatchObject({ allowance: 180, packCredits: 1500, available: 1680, canBuy: true });
-    await spend(t, a, 1_300_000); // 195 credits: 180 monthly, then 15 from the older pack
+    expect(await balance(a)).toMatchObject({ allowance: 150, packCredits: 1500, available: 1650, canBuy: true });
+    await spend(t, a, 1_300_000); // 195 credits: 150 monthly, then 45 from the older pack
     const packs = await t.run(async (ctx) => (await ctx.db.query("aiCreditPacks").collect()).sort((x, y) => x.purchasedAt - y.purchasedAt));
-    expect(packs.map((p) => p.remaining)).toEqual([485, 1000]);
-    expect(await balance(a)).toMatchObject({ monthlyLeft: 0, packCredits: 1485 });
+    expect(packs.map((p) => p.remaining)).toEqual([455, 1000]);
+    expect(await balance(a)).toMatchObject({ monthlyLeft: 0, packCredits: 1455 });
     // Packs last 12 months from purchase.
     expect(packs.map((p) => p.expiresAt)).toEqual([Date.UTC(2028, 0, 10), Date.UTC(2028, 0, 11)]);
     // An expired pack no longer counts (and isn't used).
     await t.run(async (ctx) => ctx.db.patch(packs[0]!._id, { expiresAt: Date.now() - 1 }));
     expect((await balance(a)).packCredits).toBe(1000);
     await spend(t, a, 10_000); // 2 credits: from the second pack
-    expect(await t.run(async (ctx) => (await ctx.db.get(packs[0]!._id))!.remaining)).toBe(485);
+    expect(await t.run(async (ctx) => (await ctx.db.get(packs[0]!._id))!.remaining)).toBe(455);
     expect((await balance(a)).packCredits).toBe(998);
   });
 
@@ -250,9 +250,9 @@ describe("balances, periods and packs", () => {
     const { id } = await owner.as.mutation(api.workspaces.createTeamWorkspace, { name: "Seat credits" });
     await owner.as.mutation(api.workspaceBilling.testPurchase, { workspaceId: id, planId: "workspace_pro_monthly" });
     const ws = inWorkspace(id);
-    expect(await balance(owner, ws)).toMatchObject({ account: "seat", allowance: 180, canBuy: true });
+    expect(await balance(owner, ws)).toMatchObject({ account: "seat", allowance: 150, canBuy: true });
     await owner.as.mutation(api.billing.testBuyCredits, { pack: "credits_500", scope: ws });
-    expect(await balance(owner, ws)).toMatchObject({ packCredits: 500, available: 680 });
+    expect(await balance(owner, ws)).toMatchObject({ packCredits: 500, available: 650 });
     // Personal is separate: the pack isn't there.
     expect((await balance(owner, PERSONAL)).packCredits).toBe(0);
     await spend(t, owner, 4_600_000, 0, ws); // 690 credits

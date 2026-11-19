@@ -116,16 +116,17 @@ export default function TermsPage() {
         <h2 id="price">Plans and billing</h2>
         <ul>
           <li>
-            <strong>Personal plans</strong> are per person: Free, and the paid Core, Pro and Pro AI plans, billed monthly or
+            <strong>Personal plans</strong> are per person: Free, and the paid Pro and Pro AI plans, billed monthly or
             yearly in advance. A personal plan covers your own account and your Personal only.
           </li>
           <li>
-            <strong>Workspace plans</strong> belong to the workspace, not to any one person: Free, and the paid Core, Pro and
+            <strong>Workspace plans</strong> belong to the workspace, not to any one person: Free, and the paid Pro and
             Pro AI plans, billed monthly or yearly in advance, per member seat. The owner, admins and members each take a
             seat; guests and pending invitations are free. When members join or leave, the number of seats billed changes to
             match, and the difference is prorated. A workspace’s plan stays with it if ownership is
             transferred.
           </li>
+          <li>The Core plan is no longer offered, and anyone already on it keeps it, with no AI.</li>
           <li>
             Personal and workspace plans never affect each other: a personal plan doesn’t change what a workspace includes, and
             a workspace plan doesn’t change your personal plan. Prices and what each plan includes (storage, devices and AI
@@ -168,9 +169,9 @@ export default function TermsPage() {
 
         <h2 id="ai">Foli AI, the AI assistant</h2>
         <p>
-          On plans that include it, Foli AI, Folevi’s AI assistant, can answer questions about your notes and help you write. Every plan
-          except Core includes it, with a number of AI credits each month; in a free workspace, members use their own
-          personal credits, and in a paid workspace, each member gets the workspace plan’s credits. Core has no AI. A
+          On plans that include it, Foli AI, Folevi’s AI assistant, can answer questions about your notes and help you write. Pro and Pro
+          AI include it, with a number of AI credits each month, and Free includes it during the trial; in a free workspace, members use their own
+          personal credits, and in a paid workspace, each member gets the workspace plan’s credits. A
           personal plan never adds AI to a workspace. It’s subject to fair-use limits that keep it available to everyone. It uses Google’s Gemini API, as described in our{" "}
           <Link href="/privacy#ai">privacy policy</Link>, and you can turn it off in settings. AI can be wrong: check what it
           produces before relying on it. You’re responsible for how you use its output, and you keep the same rights to it as

@@ -27,7 +27,7 @@ import {
 import { freePool, personalEntitlements, storageUsage } from "./lib/entitlements";
 import { addCredits, aiAccountFor, creditBalance, creditSummary, periodRow, personalAccount, refundPackCredits, seatAccount, type CreditAccount } from "./lib/credits";
 import { usageBreakdown } from "./lib/ai/usage";
-import { CREDIT_PACKS, PLAN_CATALOG, isPaidPlan, personalPlanId, type PersonalTier } from "./lib/plans";
+import { CREDIT_PACKS, PLAN_CATALOG, isPaidPlan, isRetiredTier, personalPlanId, type PersonalTier } from "./lib/plans";
 import { listUserSessions } from "./lib/authStore";
 import { scopeOfRow, vScopeArg, type Scope } from "./lib/scope";
 import {
@@ -361,6 +361,7 @@ export const checkout = action({
   args: { plan: vPaidPersonalTier, interval: vInterval },
   handler: async (ctx, args): Promise<{ url: string | null }> => {
     await requireIdentity(ctx);
+    if (isRetiredTier(args.plan)) fail("invalid_argument", "That plan is no longer offered. Choose Pro or Pro AI.");
     const planId = personalPlanId(args.plan, args.interval) as PaidPersonalPlanId;
     const me: { profileId: string; email: string; live: boolean; polarSubscriptionId: string | null; planId: string } = await ctx.runQuery(internal.billing.checkoutContext, {});
     const ids: ProductIds = await ctx.runQuery(internal.billingSetup.productIds, {});

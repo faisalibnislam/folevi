@@ -371,10 +371,9 @@ export default function FoliPage() {
 
       <Card aria-labelledby="plans-title">
         <SectionHeading id="plans-title" eyebrow="Plans and credits" title="Pay for the AI you use." lede="One credit is one cent of what the AI costs." />
-        <dl className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <dl className="mt-10 grid gap-4 sm:grid-cols-3">
           {[
             ["Free", `${TRIAL_CREDITS} in the ${TRIAL_DAYS}-day trial`],
-            ["Core", "No AI at all"],
             ["Pro", `${MONTHLY_CREDITS.pro} credits a month`],
             ["Pro AI", `${MONTHLY_CREDITS.pro_ai} credits a month`],
           ].map(([plan, credits]) => (

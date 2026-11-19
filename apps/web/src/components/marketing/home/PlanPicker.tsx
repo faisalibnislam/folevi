@@ -87,8 +87,8 @@ function PlanCard({ card, audience, interval, headingLevel }: { card: PersonalPl
       note = `${monthlyEquivalent(card.yearlyCents)} ${perMember}a month, billed yearly (save ${saving}%)`;
     }
   }
-  // Core is the plan with no AI at all, Pro AI the one with as much AI as you need (as on Home).
-  const sticker = card.tier === "core" ? "No AI" : card.tier === "pro_ai" ? "Most AI" : null;
+  // Pro AI is the plan with as much AI as you need (as on Home).
+  const sticker = card.tier === "pro_ai" ? "Most AI" : null;
   const cta = free ? "Start free" : featured && !team ? `Try ${TRIAL_DAYS} days free` : `Start with ${card.name}`;
   return (
     <div
@@ -124,7 +124,7 @@ function PlanCard({ card, audience, interval, headingLevel }: { card: PersonalPl
 }
 
 /**
- * The four plans (marketing home and /pricing), for you or for a team, paid monthly or yearly. Prices,
+ * The three plans (marketing home and /pricing), for you or for a team, paid monthly or yearly. Prices,
  * limits and features all come from lib/plans. Team prices are per member.
  */
 export function PlanPicker({ headingLevel = "h3", align = "left" }: { headingLevel?: "h2" | "h3"; align?: "left" | "center" }) {
@@ -164,7 +164,7 @@ export function PlanPicker({ headingLevel = "h3", align = "left" }: { headingLev
           ? "For a workspace. Paid plans are billed per member, and every member gets the plan’s storage and AI credits there. Guests are free."
           : "For you: your Personal, your devices and your AI credits. A personal plan never changes a workspace’s plan."}
       </p>
-      <div className="mt-8 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+      <div className="mt-8 grid gap-4 lg:grid-cols-3">
         {PLAN_ORDER.map((tier) => (
           <PlanCard key={tier} card={team ? WORKSPACE_PLANS[tier] : PLANS[tier]} audience={audience} interval={interval} headingLevel={headingLevel} />
         ))}

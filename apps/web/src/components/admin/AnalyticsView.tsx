@@ -5,7 +5,7 @@ import { useQuery } from "convex/react";
 import { api } from "@/lib/convex/api";
 import { Select } from "@/components/ui/Select";
 import { formatBytes } from "@/lib/format";
-import { PLANS, PLAN_ORDER, formatPrice } from "@/lib/plans";
+import { ALL_PLAN_TIERS, PLANS, formatPrice } from "@/lib/plans";
 import { DailyChart } from "./DailyChart";
 import { DocTitle, Meter, PageHeader, Panel, StatTile, selectCls } from "./ui";
 
@@ -18,7 +18,7 @@ export function AnalyticsView() {
   const [days, setDays] = useState(30);
   const d = useQuery(api.adminAnalytics.users, { days });
   const loading = d === undefined;
-  const planTotal = d ? PLAN_ORDER.reduce((s, p) => s + d.plans[p], 0) : 0;
+  const planTotal = d ? ALL_PLAN_TIERS.reduce((s, p) => s + d.plans[p], 0) : 0;
 
   return (
     <>
@@ -78,7 +78,7 @@ export function AnalyticsView() {
       <div className="mt-4 grid gap-4 xl:grid-cols-3">
         <Panel title="Plans" description="What people pay for (trials count as their paid plan)">
           <ul className="space-y-3">
-            {PLAN_ORDER.map((p) => (
+            {ALL_PLAN_TIERS.map((p) => (
               <li key={p}>
                 <div className="mb-1 flex items-baseline justify-between text-subheadline">
                   <span>{PLANS[p].name}</span>

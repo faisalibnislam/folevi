@@ -10,6 +10,7 @@ import {
   PLANS,
   PLAN_CATALOG,
   PLAN_ORDER,
+  RETIRED_TIERS,
   TRIAL_CREDITS,
   TRIAL_DAYS,
   WORKSPACE_PLANS,
@@ -56,9 +57,9 @@ afterEach(() => {
 describe("the catalog", () => {
   test("exact prices, scopes and billing models", () => {
     const price = (id: keyof typeof PLAN_CATALOG) => PLAN_CATALOG[id].priceCents;
-    expect(["personal_free", "personal_core_monthly", "personal_core_yearly", "personal_pro_monthly", "personal_pro_yearly", "personal_pro_ai_monthly", "personal_pro_ai_yearly"].map((id) => price(id as keyof typeof PLAN_CATALOG))).toEqual([0, 199, 1900, 499, 4900, 1399, 15900]);
+    expect(["personal_free", "personal_core_monthly", "personal_core_yearly", "personal_pro_monthly", "personal_pro_yearly", "personal_pro_ai_monthly", "personal_pro_ai_yearly"].map((id) => price(id as keyof typeof PLAN_CATALOG))).toEqual([0, 199, 1900, 500, 4800, 1500, 14400]);
     // Team prices are the same, per member seat.
-    expect(["workspace_free", "workspace_core_monthly", "workspace_core_yearly", "workspace_pro_monthly", "workspace_pro_yearly", "workspace_pro_ai_monthly", "workspace_pro_ai_yearly"].map((id) => price(id as keyof typeof PLAN_CATALOG))).toEqual([0, 199, 1900, 499, 4900, 1399, 15900]);
+    expect(["workspace_free", "workspace_core_monthly", "workspace_core_yearly", "workspace_pro_monthly", "workspace_pro_yearly", "workspace_pro_ai_monthly", "workspace_pro_ai_yearly"].map((id) => price(id as keyof typeof PLAN_CATALOG))).toEqual([0, 199, 1900, 500, 4800, 1500, 14400]);
     expect(Object.keys(PLAN_CATALOG)).toHaveLength(14);
     for (const plan of Object.values(PLAN_CATALOG)) {
       expect(plan.id.startsWith(plan.scope)).toBe(true);
@@ -66,8 +67,10 @@ describe("the catalog", () => {
       if (plan.priceCents === 0) expect(plan.billingModel).toBe("free");
       else expect(plan.billingModel).toBe(plan.scope === "personal" ? "flat_user" : "per_seat");
     }
-    expect(PLAN_ORDER).toEqual(["free", "core", "pro", "pro_ai"]);
-    expect(WORKSPACE_PLAN_ORDER).toEqual(["free", "core", "pro", "pro_ai"]);
+    // Core is retired: not on sale, still in the catalog for plans already on it.
+    expect(PLAN_ORDER).toEqual(["free", "pro", "pro_ai"]);
+    expect(WORKSPACE_PLAN_ORDER).toEqual(["free", "pro", "pro_ai"]);
+    expect([...RETIRED_TIERS]).toEqual(["core"]);
     expect(CREDIT_PACKS).toEqual({ credits_500: { id: "credits_500", credits: 500, priceCents: 799 }, credits_1000: { id: "credits_1000", credits: 1000, priceCents: 1499 } });
   });
 
@@ -77,11 +80,11 @@ describe("the catalog", () => {
     // Free has no monthly AI credits: Foli AI only during the 7-day trial (TRIAL_CREDITS), then Pro or Pro AI.
     expect(row("personal_free")).toEqual([500 * MB, "shared_free", 0, false, true, 2]);
     expect(row("personal_core_yearly")).toEqual([10 * GB, "per_person", 0, false, false, null]);
-    expect(row("personal_pro_monthly")).toEqual([10 * GB, "per_person", 180, true, true, null]);
+    expect(row("personal_pro_monthly")).toEqual([10 * GB, "per_person", 150, true, true, null]);
     expect(row("personal_pro_ai_yearly")).toEqual([50 * GB, "per_person", 550, true, true, null]);
     expect(row("workspace_free")).toEqual([500 * MB, "shared_free", 0, false, true, null]);
     expect(row("workspace_core_monthly")).toEqual([10 * GB, "per_person", 0, false, false, null]);
-    expect(row("workspace_pro_yearly")).toEqual([10 * GB, "per_person", 180, true, true, null]);
+    expect(row("workspace_pro_yearly")).toEqual([10 * GB, "per_person", 150, true, true, null]);
     expect(row("workspace_pro_ai_monthly")).toEqual([50 * GB, "per_person", 550, true, true, null]);
     expect(e("personal_pro_ai_monthly").aiFairUse).toBe("high");
     expect(e("personal_pro_monthly").aiFairUse).toBe("standard");
@@ -90,18 +93,16 @@ describe("the catalog", () => {
     // Cards read the catalog.
     expect(PLAN_ORDER.map((t) => [PLANS[t].name, PLANS[t].monthlyCents, PLANS[t].yearlyCents, PLANS[t].monthlyCredits])).toEqual([
       ["Free", 0, 0, 0],
-      ["Core", 199, 1900, 0],
-      ["Pro", 499, 4900, 180],
-      ["Pro AI", 1399, 15900, 550],
+      ["Pro", 500, 4800, 150],
+      ["Pro AI", 1500, 14400, 550],
     ]);
     expect(WORKSPACE_PLAN_ORDER.map((t) => [WORKSPACE_PLANS[t].name, WORKSPACE_PLANS[t].perSeat])).toEqual([
       ["Free", false],
-      ["Core", true],
       ["Pro", true],
       ["Pro AI", true],
     ]);
-    expect([monthlyEquivalent(1900), monthlyEquivalent(4900), monthlyEquivalent(15900)]).toEqual(["$1.58", "$4.08", "$13.25"]);
-    expect([yearlySavingPercent("core"), yearlySavingPercent("pro"), yearlySavingPercent("pro_ai")]).toEqual([20, 18, 5]);
+    expect([monthlyEquivalent(1900), monthlyEquivalent(4800), monthlyEquivalent(14400)]).toEqual(["$1.58", "$4", "$12"]);
+    expect([yearlySavingPercent("core"), yearlySavingPercent("pro"), yearlySavingPercent("pro_ai")]).toEqual([20, 20, 20]);
     expect(PLANS.core.features.join(" ")).toMatch(/No AI/);
     expect(PLANS.free.features).toEqual(expect.arrayContaining(["500 MB storage, shared with the free workspaces you own", "Foli AI during your 7-day trial"]));
     expect(PLANS.free.features.join(" ")).not.toMatch(/credits/);
@@ -119,7 +120,7 @@ describe("the catalog", () => {
     expect(trial).toMatchObject({ planId: "personal_pro_ai_monthly", paidPlanId: "personal_free", plan: "pro_ai", paidPlan: "free", paid: false, trialing: true, ai: true, aiSource: "trial", monthlyCredits: TRIAL_CREDITS, storageBytes: 50 * GB, devices: null });
     expect(personalEntitlementsOf({ plan: "free", status: "active", trialEndsAt: now - 1 }, now)).toMatchObject({ plan: "free", trialing: false });
     expect(personalEntitlementsOf({ plan: "core", status: "active", currentPeriodEnd: now + DAY_MS }, now)).toMatchObject({ planId: "personal_core_monthly", ai: false, aiSource: null, storageBytes: 10 * GB });
-    expect(personalEntitlementsOf({ plan: "pro", catalogVersion: 2, interval: "year", status: "active" }, now)).toMatchObject({ planId: "personal_pro_yearly", monthlyCredits: 180 });
+    expect(personalEntitlementsOf({ plan: "pro", catalogVersion: 2, interval: "year", status: "active" }, now)).toMatchObject({ planId: "personal_pro_yearly", monthlyCredits: 150 });
     expect(personalEntitlementsOf({ plan: "pro", status: "active", currentPeriodEnd: now - 1 }, now)).toMatchObject({ plan: "free", paid: false });
     expect(personalEntitlementsOf({ plan: "pro_ai", status: "canceled", currentPeriodEnd: now + DAY_MS }, now)).toMatchObject({ plan: "pro_ai", paid: true });
     // A paying Core customer with a trial date left doesn't get the trial.
@@ -162,7 +163,7 @@ describe("personal plans", () => {
     await a.as.mutation(api.billing.testPurchase, { plan: "pro_ai", interval: "year" });
     let mine = await a.as.query(api.billing.mine, {});
     expect(mine.entitlements).toMatchObject({ plan: "pro_ai", paidPlan: "pro_ai", trialing: false });
-    expect(mine.payments[0]).toMatchObject({ amountCents: 15900, plan: "pro_ai", interval: "year", status: "paid" });
+    expect(mine.payments[0]).toMatchObject({ amountCents: 14400, plan: "pro_ai", interval: "year", status: "paid" });
     expect(mine.subscription).toMatchObject({ plan: "pro_ai", provider: "test" });
     await a.as.mutation(api.billing.cancelPlan, {});
     mine = await a.as.query(api.billing.mine, {});
@@ -359,7 +360,7 @@ describe("Polar webhooks", () => {
     // Redelivered under a new delivery id: still one pack.
     await postEvent(t, "order.paid", paid);
     let mine = await a.as.query(api.billing.mine, {});
-    expect(mine.credits).toMatchObject({ packCredits: 1000, available: 180 + 1000 });
+    expect(mine.credits).toMatchObject({ packCredits: 1000, available: 150 + 1000 });
     expect(mine.payments[0]).toMatchObject({ amountCents: 1499, plan: "credits", credits: 1000, status: "paid" });
     // A partial refund (about a quarter) takes back 250 unused credits; the payment stays paid.
     await postEvent(t, "order.refunded", { ...paid, status: "partially_refunded", refunded_amount: 374 });
@@ -431,7 +432,7 @@ describe("admin: billing, plans, credits and analytics", () => {
     await expect(admin.as.mutation(api.adminBilling.grantCredits, { profileId: user.profileId, credits: 100_000, reason: REASON })).rejects.toThrow(/between 1 and/);
     await admin.as.mutation(api.adminBilling.grantCredits, { profileId: user.profileId, credits: 300, months: 3, reason: REASON });
     const mine = await user.as.query(api.billing.mine, {});
-    expect(mine.credits).toMatchObject({ allowance: 180, packCredits: 300, available: 480 });
+    expect(mine.credits).toMatchObject({ allowance: 150, packCredits: 300, available: 450 });
     const pack = await t.run(async (ctx) => (await ctx.db.query("aiCreditPacks").collect())[0]!);
     expect(pack).toMatchObject({ source: "admin", credits: 300 });
     expect(pack.expiresAt - Date.now()).toBeGreaterThan(85 * DAY_MS);

@@ -14,10 +14,13 @@
 // - Core / Pro / Pro AI: 10 GB / 10 GB / 50 GB per person. In a paid workspace each member's own uploads count against
 //   their own quota there; a guest's uploads count against the page owner's.
 //
-// AI credits (lib/credits.ts): 1 credit = $0.01 of Gemini cost. Monthly credits per person (Pro 180, Pro AI
+// AI credits (lib/credits.ts): 1 credit = $0.01 of Gemini cost. Monthly credits per person (Pro 150, Pro AI
 // 550; Free has AI only during the trial, then none), plus one-time packs (Pro and Pro AI only) that last 12 months and are used after the
 // monthly credits. Core has no AI at all: the server refuses every AI request in a Core Personal or a Core
 // workspace, for everyone there.
+//
+// Core is retired (docs/PRICING_PROPOSAL.md, 2026-11-19): no longer sold or shown, and checkout refuses it.
+// It stays in the catalog so a Core subscription or an admin-set Core plan still works.
 
 export type PlanScope = "personal" | "workspace";
 export type BillingInterval = "month" | "year";
@@ -85,7 +88,7 @@ export const sizeLabel = (bytes: number) => (bytes >= GB ? `${bytes / GB} GB` : 
 
 /** AI credits per person per month, per tier. */
 // Free has AI only during the trial (2026-10-11): after it, Foli AI needs Pro or Pro AI.
-export const MONTHLY_CREDITS: Record<PlanTier, number> = { free: 0, core: 0, pro: 180, pro_ai: 550 };
+export const MONTHLY_CREDITS: Record<PlanTier, number> = { free: 0, core: 0, pro: 150, pro_ai: 550 };
 /** Storage per tier: Free is the shared pool; paid tiers are per person. */
 export const STORAGE_BYTES: Record<PlanTier, number> = { free: 500 * MB, core: 10 * GB, pro: 10 * GB, pro_ai: 50 * GB };
 /** Fair-use downloads a month (lib/downloads.ts): this many times the storage allowance, never under the floor. */
@@ -93,6 +96,9 @@ export const DOWNLOAD_STORAGE_MULTIPLE = 3;
 export const DOWNLOAD_FLOOR_BYTES = 2 * GB;
 /** The bytes an account may download in a month, given its storage limit. */
 export const downloadAllowance = (storageBytes: number) => Math.max(DOWNLOAD_FLOOR_BYTES, DOWNLOAD_STORAGE_MULTIPLE * storageBytes);
+/** Tiers no longer sold (checkout refuses them; existing plans on them keep working). */
+export const RETIRED_TIERS: ReadonlySet<PlanTier> = new Set<PlanTier>(["core"]);
+export const isRetiredTier = (tier: PlanTier) => RETIRED_TIERS.has(tier);
 /** Tiers without the AI Assistant (the server refuses AI in their scope). */
 export const tierHasAi = (tier: PlanTier) => tier !== "core";
 
@@ -135,8 +141,8 @@ const plan = (id: CatalogPlanId, scope: PlanScope, tier: PlanTier, interval: Bil
 /** Prices in US cents (Team prices are per member seat). */
 export const PRICES: Record<Exclude<PlanTier, "free">, Record<BillingInterval, number>> = {
   core: { month: 199, year: 1900 },
-  pro: { month: 499, year: 4900 },
-  pro_ai: { month: 1399, year: 15900 },
+  pro: { month: 500, year: 4800 },
+  pro_ai: { month: 1500, year: 14400 },
 };
 
 export const PLAN_CATALOG: Record<CatalogPlanId, CatalogPlan> = {
@@ -273,7 +279,7 @@ export const PLANS: Record<PersonalTier, PersonalPlanCard> = {
     `${MONTHLY_CREDITS.pro} AI credits a month`,
     "Unlimited devices",
     "Buy more AI credits when you need them",
-    "Everything in Core, with AI",
+    "Everything in Free, with AI",
   ]),
   pro_ai: personalCard("pro_ai", "AI as much as you need, with the most room.", [
     `${sizeLabel(STORAGE_BYTES.pro_ai)} storage`,
@@ -283,7 +289,9 @@ export const PLANS: Record<PersonalTier, PersonalPlanCard> = {
     "Everything in Pro",
   ]),
 };
-export const PLAN_ORDER: PersonalTier[] = ["free", "core", "pro", "pro_ai"];
+/** The Personal plans on sale, in order. ALL_PLAN_TIERS adds retired ones (admin, analytics). */
+export const PLAN_ORDER: PersonalTier[] = ["free", "pro", "pro_ai"];
+export const ALL_PLAN_TIERS: PersonalTier[] = ["free", "core", "pro", "pro_ai"];
 
 export interface WorkspacePlanCard {
   tier: WorkspaceTier;
@@ -339,7 +347,7 @@ export const WORKSPACE_PLANS: Record<WorkspaceTier, WorkspacePlanCard> = {
     `${sizeLabel(STORAGE_BYTES.pro)} per member`,
     `${MONTHLY_CREDITS.pro} AI credits per member a month`,
     "Unlimited members, each billed; guests are free",
-    "Everything in Core, with AI",
+    "Everything in Free, with AI",
   ]),
   pro_ai: workspaceCard("pro_ai", "AI as much as your team needs.", [
     `${sizeLabel(STORAGE_BYTES.pro_ai)} per member`,
@@ -348,7 +356,8 @@ export const WORKSPACE_PLANS: Record<WorkspaceTier, WorkspacePlanCard> = {
     "Everything in Pro",
   ]),
 };
-export const WORKSPACE_PLAN_ORDER: WorkspaceTier[] = ["free", "core", "pro", "pro_ai"];
+export const WORKSPACE_PLAN_ORDER: WorkspaceTier[] = ["free", "pro", "pro_ai"];
+export const ALL_WORKSPACE_TIERS: WorkspaceTier[] = ["free", "core", "pro", "pro_ai"];
 
 /** A plan's display name ("Pro AI", "Workspace Free"…). */
 export function planName(id: CatalogPlanId): string {

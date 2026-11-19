@@ -35,7 +35,7 @@ const ROWS: Row[] = [
   },
   {
     label: "Paid plans from",
-    folevi: { mark: "yes", text: `${formatPrice(PRICES.core.month)} a month` },
+    folevi: { mark: "yes", text: `${formatPrice(PRICES.pro.month)} a month` },
     them: { notion: { mark: "some", text: "$12 per member a month" }, obsidian: { mark: "some", text: "Sync from $5 a month" } },
   },
   {

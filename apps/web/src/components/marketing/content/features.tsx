@@ -57,7 +57,7 @@ export const FEATURES: Feature[] = [
     h1: "An AI notes app that answers from your own notes",
     intro:
       "Foli AI works with the notes you can already open. Ask it a question and it answers with links to the notes it used. Select a paragraph to rewrite, shorten or translate it, turn a meeting into to-dos, draw a flowchart from a sentence, or ask it to sum up the whole note.",
-    plans: `Free, Pro and Pro AI, and the ${TRIAL_DAYS}-day trial. Core has no AI.`,
+    plans: `Free, Pro and Pro AI, and the ${TRIAL_DAYS}-day trial.`,
     updated: "2026-10-01",
     art: "art-49",
     visual: "ai",
@@ -163,9 +163,6 @@ export const FEATURES: Feature[] = [
               <li>
                 {TIER_NAMES.pro_ai}: {credits(MONTHLY_CREDITS.pro_ai)} AI credits a month, for {formatPrice(PRICES.pro_ai.month)} a month.
               </li>
-              <li>
-                {TIER_NAMES.core}: no AI at all, for {formatPrice(PRICES.core.month)} a month.
-              </li>
             </ul>
             <p>
               New accounts get {TIER_NAMES.pro_ai} free for {TRIAL_DAYS} days with {TRIAL_CREDITS} credits. On {TIER_NAMES.pro} and {TIER_NAMES.pro_ai} you can buy a pack of {credits(CREDIT_PACKS.credits_500.credits)} or {credits(CREDIT_PACKS.credits_1000.credits)} credits that lasts {PACK_VALID_MONTHS} months. See <Link href="/pricing">pricing</Link>.
@@ -178,18 +175,18 @@ export const FEATURES: Feature[] = [
         title: "What happens to your notes",
         body: (
           <p>
-            When you use the AI, your request and the notes it needs go to Google. Google doesn’t use them to train its models, and neither does Folevi. You can turn Foli AI off in Settings; while it’s off, none of your notes are sent. On Core, the server refuses every AI request. More on the <Link href="/privacy#ai">Privacy</Link> page.
+            When you use the AI, your request and the notes it needs go to Google. Google doesn’t use them to train its models, and neither does Folevi. You can turn Foli AI off in Settings; while it’s off, none of your notes are sent. More on the <Link href="/privacy#ai">Privacy</Link> page.
           </p>
         ),
       },
     ],
     faq: [
-      { q: "Which Folevi plans include AI?", a: `Pro (${MONTHLY_CREDITS.pro} AI credits a month) and Pro AI (unlimited with fair use, ${credits(MONTHLY_CREDITS.pro_ai)} a month). Every new account gets a ${TRIAL_DAYS}-day trial with ${TRIAL_CREDITS} credits. Free has AI only during the trial, and Core has none.` },
+      { q: "Which Folevi plans include AI?", a: `Pro (${MONTHLY_CREDITS.pro} AI credits a month) and Pro AI (unlimited with fair use, ${credits(MONTHLY_CREDITS.pro_ai)} a month). Every new account gets a ${TRIAL_DAYS}-day trial with ${TRIAL_CREDITS} credits. Free has AI only during the trial.` },
       { q: "What is an AI credit?", a: "One cent of what the AI costs to run. Each request is charged for what it actually uses: a short rewrite is usually 1 credit, and a question to Foli AI or a new flowchart usually 3 to 5. A request needs a few credits free before it starts." },
       { q: "Can the AI see notes I don’t have access to?", a: "No. Foli AI answers from the open note or from notes it finds by searching the ones you can already read." },
       { q: "Can I turn the AI off?", a: "Yes. Turn Foli AI off in Settings at any time. While it’s off, none of your notes are sent to it." },
       { q: "Does Folevi use my notes to train AI?", a: "No. Folevi doesn’t use your notes to train AI models, and Google doesn’t use requests to its paid AI service for training either." },
-      { q: "How does AI work in a team workspace?", a: "In a paid workspace, each member has the plan’s AI credits there. In a free workspace, and as a guest, you use your own personal credits. In a Core workspace nobody can use AI." },
+      { q: "How does AI work in a team workspace?", a: "In a paid workspace, each member has the plan’s AI credits there. In a free workspace, and as a guest, you use your own personal credits." },
     ],
     related: ["flowcharts", "search", "tasks"],
   },
@@ -407,7 +404,7 @@ export const FEATURES: Feature[] = [
         title: "Find action items with AI",
         body: (
           <p>
-            After a meeting, ask Foli AI to <strong>find action items</strong>. It lists the follow-ups and decisions in the note as to-dos, which are tasks like any other. This uses AI credits and isn’t available on Core. See <Link href="/features/ai-notes">AI notes</Link>.
+            After a meeting, ask Foli AI to <strong>find action items</strong>. It lists the follow-ups and decisions in the note as to-dos, which are tasks like any other. This uses AI credits. See <Link href="/features/ai-notes">AI notes</Link>.
           </p>
         ),
       },
@@ -430,7 +427,7 @@ export const FEATURES: Feature[] = [
     h1: "Record a voice note right inside the page",
     intro:
       "Type /record on any line and Folevi starts recording from your microphone. Stop and save, and the recording sits in the note with a player, next to the text it belongs to.",
-    plans: "Every plan, including Free and Core. Recordings count toward your storage.",
+    plans: "Every plan, including Free. Recordings count toward your storage.",
     updated: "2026-11-18",
     art: "art-30",
     visual: "audio",
@@ -486,7 +483,7 @@ export const FEATURES: Feature[] = [
       { q: "How do I record audio in a Folevi note?", a: "Type /record on an empty line and press Return, or pick Audio recording in the Insert panel. Allow the microphone when your browser asks, then press Stop and save." },
       { q: "How long can a recording be?", a: "Up to three hours. The recorder stops by itself at three hours, and you can pause and resume as often as you like." },
       { q: "Does Folevi transcribe recordings?", a: "Yes, on plans with Foli AI. Press Transcribe on a recording and Foli AI writes it out word for word, with speakers marked. Anything up to 4 hours long can be transcribed: your recordings, which stop at three hours, and audio files you add to a note. Folevi shows what it will cost in AI credits before it starts." },
-      { q: "Which plans include audio recordings?", a: "Every plan, including Free and Core. Recordings count toward your storage." },
+      { q: "Which plans include audio recordings?", a: "Every plan, including Free. Recordings count toward your storage." },
       { q: "Which browsers can record?", a: "Recent versions of Chrome, Safari, Edge and Firefox. Chrome, Edge and Firefox record WebM audio and Safari records MP4 audio; recent browsers play both." },
     ],
     related: ["offline-notes", "import-and-export", "sharing"],
@@ -1118,7 +1115,7 @@ export const FEATURES: Feature[] = [
       },
     ],
     faq: [
-      { q: "Can AI make a flowchart for me?", a: "Yes. Describe the process in a sentence or step by step, and the AI draws the chart. It can also update a chart you already have. It uses 3 to 5 AI credits and isn’t available on Core." },
+      { q: "Can AI make a flowchart for me?", a: "Yes. Describe the process in a sentence or step by step, and the AI draws the chart. It can also update a chart you already have. It uses 3 to 5 AI credits." },
       { q: "Can I paste a Mermaid diagram?", a: "Yes. Add a Mermaid diagram block and paste the code. Mermaid flowcharts can be converted to a flowchart block you can edit by hand." },
       { q: "What happens to a flowchart when I export to Markdown?", a: "It’s written as a Mermaid flowchart in a code block." },
       { q: "Which shapes can I use?", a: "Process, decision, start or end, input or output, circle, sticky note and text." },
@@ -1315,11 +1312,11 @@ export const FEATURES: Feature[] = [
     name: "Team workspaces",
     summary: "A shared space with roles and free guests.",
     title: "Team workspaces for shared docs, wikis and tasks",
-    description: `A Folevi workspace for your team, with admins, members and free guests. Paid plans are per member from ${formatPrice(PRICES.core.month)} a month, separate from your Personal.`,
+    description: `A Folevi workspace for your team, with admins, members and free guests. Paid plans are per member from ${formatPrice(PRICES.pro.month)} a month, separate from your Personal.`,
     h1: "Team workspaces with roles and per-member plans",
     intro:
       "A workspace is a shared space for a team’s docs, wiki, tasks and databases. It has its own pages, plan, storage and billing, kept apart from each member’s Personal, which stays theirs alone.",
-    plans: "Free, Core, Pro and Pro AI, billed per member.",
+    plans: "Free, Pro and Pro AI, billed per member.",
     updated: "2026-11-18",
     art: "art-39",
     visual: "workspaces",
@@ -1365,10 +1362,10 @@ export const FEATURES: Feature[] = [
         body: (
           <>
             <p>
-              Workspaces have the same four plans as people. Paid plans are billed per member seat: {TIER_NAMES.core} is {formatPrice(PRICES.core.month)}, {TIER_NAMES.pro} {formatPrice(PRICES.pro.month)} and {TIER_NAMES.pro_ai} {formatPrice(PRICES.pro_ai.month)} per member a month. The owner, admins and members each take a seat and get the plan’s storage and AI credits in the workspace. Guests and pending invitations are free.
+              Workspaces have the same three plans as people. Paid plans are billed per member seat: {TIER_NAMES.pro} is {formatPrice(PRICES.pro.month)} and {TIER_NAMES.pro_ai} {formatPrice(PRICES.pro_ai.month)} per member a month. The owner, admins and members each take a seat and get the plan’s storage and AI credits in the workspace. Guests and pending invitations are free.
             </p>
             <p>
-              A new workspace starts on Free. On {TIER_NAMES.core}, nobody in the workspace can use AI. See <Link href="/pricing">pricing</Link>.
+              A new workspace starts on Free. See <Link href="/pricing">pricing</Link>.
             </p>
           </>
         ),
@@ -1385,11 +1382,11 @@ export const FEATURES: Feature[] = [
       },
     ],
     faq: [
-      { q: "How much does a team workspace cost?", a: `A workspace can stay on Free. Paid plans are per member a month: Core ${formatPrice(PRICES.core.month)}, Pro ${formatPrice(PRICES.pro.month)} and Pro AI ${formatPrice(PRICES.pro_ai.month)}, or less when paid yearly.` },
+      { q: "How much does a team workspace cost?", a: `A workspace can stay on Free. Paid plans are per member a month: Pro ${formatPrice(PRICES.pro.month)} and Pro AI ${formatPrice(PRICES.pro_ai.month)}, or less when paid yearly.` },
       { q: "Do guests take a seat?", a: "No. Guests and pending invitations are free on every plan." },
       { q: "Does my personal plan upgrade the workspace?", a: "No. A workspace has its own plan, separate from anyone’s personal plan." },
       { q: "What happens to pages when someone leaves?", a: "They stay. Content in a workspace belongs to the workspace." },
-      { q: "How much storage does a workspace get?", a: `On Free, a workspace shares its owner’s ${gb(STORAGE_BYTES.free)}. On paid plans each member gets their own: ${gb(STORAGE_BYTES.core)} on Core and Pro, ${gb(STORAGE_BYTES.pro_ai)} on Pro AI.` },
+      { q: "How much storage does a workspace get?", a: `On Free, a workspace shares its owner’s ${gb(STORAGE_BYTES.free)}. On paid plans each member gets their own: ${gb(STORAGE_BYTES.pro)} on Pro, ${gb(STORAGE_BYTES.pro_ai)} on Pro AI.` },
     ],
     related: ["comments", "sharing", "tasks"],
   },

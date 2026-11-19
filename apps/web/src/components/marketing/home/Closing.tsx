@@ -41,14 +41,13 @@ export const SECURITY_CONTROLS: Array<{ icon: IconName; title: string; body: str
   },
 ];
 
-/** The plans the home page singles out: Core for no AI at all, Pro AI for as much AI as you need. */
+/** The plan the home page singles out: Pro AI, for as much AI as you need. */
 const BADGES: Partial<Record<(typeof PLAN_ORDER)[number], string>> = {
-  core: "No AI",
   pro_ai: "Most AI",
 };
 
 /**
- * The four personal plans, kept short on the home page: name, monthly price and the plan's own one-line
+ * The three personal plans, kept short on the home page: name, monthly price and the plan's own one-line
  * blurb, all from lib/plans. Team plans, yearly prices and credit packs are on /pricing.
  */
 export function PricingSection() {
@@ -97,7 +96,7 @@ export function PricingSection() {
         <div className="mt-10 text-center">
           <p className="mk-eyebrow">Folevi Cloud</p>
         </div>
-        <ul className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <ul className="mt-5 grid gap-4 lg:grid-cols-3">
           {PLAN_ORDER.map((tier) => {
             const plan = PLANS[tier];
             const badge = BADGES[tier];

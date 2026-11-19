@@ -10,7 +10,7 @@ import type { Workspace } from "@/lib/app/state";
 import { Button } from "@/components/ui/Button";
 import { useToast, errorMessage } from "@/components/ui/Toast";
 import { formatDateTime } from "@/lib/format";
-import { TIER_NAMES, WORKSPACE_PLANS, WORKSPACE_PLAN_ORDER, billedQuantity, formatPrice, isPaidPlan, seatChargeCents, workspacePlanId, yearlySavingPercent, type BillingInterval, type PaidWorkspacePlanId, type WorkspaceTier } from "@/lib/plans";
+import { ALL_WORKSPACE_TIERS, TIER_NAMES, WORKSPACE_PLANS, WORKSPACE_PLAN_ORDER, isRetiredTier, billedQuantity, formatPrice, isPaidPlan, seatChargeCents, workspacePlanId, yearlySavingPercent, type BillingInterval, type PaidWorkspacePlanId, type WorkspaceTier } from "@/lib/plans";
 import { Card } from "./Card";
 import { CreditLines, Tile, UsageMeter, formatBytes, plural } from "./BillingSection";
 import { BuyCreditsDialog } from "./BuyCreditsDialog";
@@ -28,7 +28,7 @@ type PaidTier = Exclude<WorkspaceTier, "free">;
 const isPaidTier = (t: WorkspaceTier): t is PaidTier => isPaidPlan(workspacePlanId(t, "month"));
 /** The biggest saving from paying yearly across the paid workspace plans (for the Yearly toggle). */
 const BEST_YEARLY_SAVING = Math.max(...WORKSPACE_PLAN_ORDER.filter(isPaidTier).map(yearlySavingPercent));
-const rank = (t: WorkspaceTier) => WORKSPACE_PLAN_ORDER.indexOf(t);
+const rank = (t: WorkspaceTier) => ALL_WORKSPACE_TIERS.indexOf(t);
 
 /**
  * Settings → (workspace) Plan & billing: the workspace's own plan (Free, Core, Pro or Pro AI), billed per
@@ -239,8 +239,10 @@ export function WorkspaceBillingSection({ workspace }: { workspace: Workspace })
           </button>
         </div>
         <PlanRows>
-          {WORKSPACE_PLAN_ORDER.map((tier) => {
+          {/* A retired plan (Core) is listed only for a workspace on it, and can't be chosen again. */}
+          {ALL_WORKSPACE_TIERS.filter((t) => WORKSPACE_PLAN_ORDER.includes(t) || (e.paid && plan.tier === t)).map((tier) => {
             const card = WORKSPACE_PLANS[tier];
+            const retired = isRetiredTier(tier);
             const cardPlan = workspacePlanId(tier, interval);
             const paid = isPaidTier(tier);
             const price = interval === "year" ? card.yearlyCents : card.monthlyCents;
@@ -256,7 +258,7 @@ export function WorkspaceBillingSection({ workspace }: { workspace: Workspace })
                 highlight={highlight}
                 price={formatPrice(price)}
                 per={per(interval)}
-                note={!paid ? "Nobody is billed" : `Per member. ${plural(data.seats, "member")} × ${formatPrice(price)} = ${formatPrice(seatChargeCents(price, data.seats))}/${per(interval)}`}
+                note={retired ? "No longer offered. The workspace can keep it, or choose another plan." : !paid ? "Nobody is billed" : `Per member. ${plural(data.seats, "member")} × ${formatPrice(price)} = ${formatPrice(seatChargeCents(price, data.seats))}/${per(interval)}`}
                 blurb={card.blurb}
                 features={card.features}
                 action={
@@ -270,7 +272,7 @@ export function WorkspaceBillingSection({ workspace }: { workspace: Workspace })
                         Switch to Free
                       </Button>
                     ) : null
-                  ) : canChoose ? (
+                  ) : retired ? null : canChoose ? (
                     <Button variant={highlight ? "primary" : "secondary"} className="w-full" onClick={() => void choose(tier)} aria-busy={busy === tier || undefined} disabled={busy !== null && busy !== tier}>
                       {busy === tier ? (polarLive ? "Changing…" : data.checkoutAvailable ? "Opening checkout…" : "Switching…") : `${label}${test ? " (test)" : ""}`}
                     </Button>

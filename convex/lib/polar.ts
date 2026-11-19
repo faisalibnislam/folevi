@@ -10,7 +10,7 @@
 //                         below), used when the database (Admin → Billing setup) has none
 import { fail } from "./errors";
 import { timingSafeEqualHex } from "./crypto";
-import { CREDIT_PACKS, PLAN_CATALOG, type BillingInterval, type CreditPackId, type PaidWorkspacePlanId, type PersonalPlanId, type PersonalTier } from "./plans";
+import { CREDIT_PACKS, PLAN_CATALOG, isRetiredTier, type BillingInterval, type CreditPackId, type PaidWorkspacePlanId, type PersonalPlanId, type PersonalTier } from "./plans";
 import { appUrl } from "./notify";
 
 /** The API version every request is pinned to (Polar dates its versions; `Polar-Version` header). */
@@ -86,8 +86,12 @@ export const WORKSPACE_PRODUCT_KEYS: PaidWorkspacePlanId[] = ["workspace_core_mo
 
 /** Whether checkout can run for these products (the token and an id for every one of them). */
 export const polarReady = (ids: ProductIds, keys: ProductKey[]) => Boolean(polarToken() && keys.every((k) => productId(ids, k)));
-export const personalCheckoutReady = (ids: ProductIds) => polarReady(ids, PAID_PERSONAL_PLAN_IDS);
-export const workspaceCheckoutReady = (ids: ProductIds) => polarReady(ids, WORKSPACE_PRODUCT_KEYS);
+/** Whether a product is still sold: retired tiers (lib/plans.ts RETIRED_TIERS) keep their keys only to match old subscriptions. */
+export const isSoldProduct = (key: ProductKey) => key === "credits_500" || key === "credits_1000" || !isRetiredTier(PLAN_CATALOG[key].tier);
+/** The products Billing setup creates and checks, and checkout needs. */
+export const SOLD_PRODUCT_KEYS: ProductKey[] = PRODUCT_KEYS.filter(isSoldProduct);
+export const personalCheckoutReady = (ids: ProductIds) => polarReady(ids, PAID_PERSONAL_PLAN_IDS.filter(isSoldProduct));
+export const workspaceCheckoutReady = (ids: ProductIds) => polarReady(ids, WORKSPACE_PRODUCT_KEYS.filter(isSoldProduct));
 export const creditsCheckoutReady = (ids: ProductIds) => polarReady(ids, ["credits_500", "credits_1000"]);
 
 // ---------------------------------------------------------------------------------------------------

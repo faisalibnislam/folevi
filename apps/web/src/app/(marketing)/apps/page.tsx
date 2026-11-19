@@ -24,7 +24,7 @@ const CRUMBS = [
 
 /** The two ways to use the apps, from the first screen they show (docs/LOCAL_MODE_PLAN.md). */
 const MODES: Array<{ label: string; local: boolean | string; cloud: boolean | string }> = [
-  { label: "Price", local: "Free forever", cloud: `Free plan, or from ${formatPrice(PRICES.core.month)} a month` },
+  { label: "Price", local: "Free forever", cloud: `Free plan, or from ${formatPrice(PRICES.pro.month)} a month` },
   { label: "Account", local: "None", cloud: "A Folevi account" },
   { label: "Where notes live", local: "Files in a folder you pick", cloud: "Folevi Cloud, synced to every device" },
   { label: "Mac, iPhone and iPad apps", local: true, cloud: true },

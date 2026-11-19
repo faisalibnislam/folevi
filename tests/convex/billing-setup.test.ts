@@ -5,7 +5,7 @@ import { afterEach, describe, expect, test, vi } from "vitest";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
 import { expectedProduct, productCreateBody } from "../../convex/lib/billingProducts";
-import { PRODUCT_KEYS, productFor, resolveProductIds, type ProductKey } from "../../convex/lib/polar";
+import { PRODUCT_KEYS, SOLD_PRODUCT_KEYS, productFor, resolveProductIds, type ProductKey } from "../../convex/lib/polar";
 import { SCOPE_MESSAGE } from "../../convex/billingSetup";
 import { person, setup, type T } from "./helpers";
 import { fakePolar, product, withPolar, withoutPolar } from "./polar";
@@ -84,7 +84,7 @@ describe("who may use Billing setup", () => {
     const { calls } = polarOrg();
     const me = await owner(t);
     const view = await me.as.query(api.billingSetup.overview, {});
-    expect(view.products).toHaveLength(14);
+    expect(view.products).toHaveLength(10);
     for (const [email, role] of [
       ["ops@example.com", "ops_admin"],
       ["support@example.com", "support_admin"],
@@ -106,10 +106,12 @@ describe("who may use Billing setup", () => {
     const me = await owner(t);
     const view = await me.as.query(api.billingSetup.overview, {});
     expect(view).toMatchObject({ server: "sandbox", tokenSet: false, webhookSecretSet: false, lastCheckedAt: null });
-    expect(view.products.map((p) => p.status)).toEqual(Array(14).fill("not_created"));
-    expect(view.products.map((p) => p.key)).toEqual(PRODUCT_KEYS);
-    expect(byKey(view, "personal_core_monthly")).toMatchObject({ name: "Folevi Core (monthly)", type: "recurring", priceCents: 199, interval: "month", seatBased: false, envName: "POLAR_PRODUCT_PERSONAL_CORE_MONTHLY" });
-    expect(byKey(view, "workspace_pro_ai_yearly")).toMatchObject({ name: "Folevi Team Pro AI (yearly)", priceCents: 15900, interval: "year", seatBased: true, envName: "POLAR_PRODUCT_TEAM_PRO_AI_YEARLY" });
+    // Only the products on sale: Core is retired.
+    expect(view.products.map((p) => p.status)).toEqual(Array(10).fill("not_created"));
+    expect(view.products.map((p) => p.key)).toEqual(SOLD_PRODUCT_KEYS);
+    expect(SOLD_PRODUCT_KEYS.some((k) => k.includes("core"))).toBe(false);
+    expect(byKey(view, "personal_pro_monthly")).toMatchObject({ name: "Folevi Pro (monthly)", type: "recurring", priceCents: 500, interval: "month", seatBased: false, envName: "POLAR_PRODUCT_PERSONAL_PRO_MONTHLY" });
+    expect(byKey(view, "workspace_pro_ai_yearly")).toMatchObject({ name: "Folevi Team Pro AI (yearly)", priceCents: 14400, interval: "year", seatBased: true, envName: "POLAR_PRODUCT_TEAM_PRO_AI_YEARLY" });
     expect(byKey(view, "credits_1000")).toMatchObject({ name: "Folevi AI credits: 1,000", type: "one_time", priceCents: 1499, interval: null });
     await expect(me.as.action(api.billingSetup.checkPolar, { reason: REASON })).rejects.toThrow(/POLAR_ACCESS_TOKEN/);
     expect(calls).toHaveLength(0);
@@ -138,7 +140,7 @@ describe("Check Polar", () => {
     const t = setup();
     tokenOnly();
     polarOrg([
-      polarProduct("personal_core_monthly"),
+      polarProduct("personal_pro_yearly"),
       // No metadata: found by its exact name.
       polarProduct("personal_pro_monthly", {}, { metadata: false }),
       // Its metadata names it, but the price per seat and the name differ.
@@ -149,25 +151,25 @@ describe("Check Polar", () => {
       // A one-time product where a monthly subscription is expected, found by name.
       polarProduct("personal_pro_ai_monthly", { recurring_interval: null, is_recurring: false }, { metadata: false }),
       // Someone else's product with a similar name is ignored.
-      { id: "other", name: "Folevi Core (monthly) old", is_recurring: true, recurring_interval: "month", prices: [], metadata: {} },
+      { id: "other", name: "Folevi Pro (yearly) old", is_recurring: true, recurring_interval: "month", prices: [], metadata: {} },
     ]);
     const me = await owner(t);
     const r = await me.as.action(api.billingSetup.checkPolar, { reason: REASON });
     expect(r.found).toBe(4);
-    expect(r.recorded.sort()).toEqual(["personal_core_monthly", "personal_pro_monthly"]);
+    expect(r.recorded.sort()).toEqual(["personal_pro_monthly", "personal_pro_yearly"]);
     expect(r.mismatched.sort()).toEqual(["personal_pro_ai_monthly", "workspace_pro_yearly"]);
-    expect(r.missing).toHaveLength(10);
+    expect(r.missing).toHaveLength(6);
 
     const stored = await rows(t);
     expect(stored.map((s) => [s.key, s.polarProductId, s.source, s.server]).sort()).toEqual([
-      ["personal_core_monthly", "polar_personal_core_monthly", "matched", "sandbox"],
       ["personal_pro_monthly", "polar_personal_pro_monthly", "matched", "sandbox"],
+      ["personal_pro_yearly", "polar_personal_pro_yearly", "matched", "sandbox"],
     ]);
 
     const view = await me.as.query(api.billingSetup.overview, {});
-    expect(byKey(view, "personal_core_monthly")).toMatchObject({ status: "created", polarProductId: "polar_personal_core_monthly", source: "matched", dashboardUrl: "https://sandbox.polar.sh/dashboard/folevi/products/polar_personal_core_monthly" });
+    expect(byKey(view, "personal_pro_yearly")).toMatchObject({ status: "created", polarProductId: "polar_personal_pro_yearly", source: "matched", dashboardUrl: "https://sandbox.polar.sh/dashboard/folevi/products/polar_personal_pro_yearly" });
     expect(byKey(view, "workspace_pro_yearly")).toMatchObject({ status: "mismatch", polarProductId: "polar_workspace_pro_yearly", inUse: false });
-    expect(byKey(view, "workspace_pro_yearly").differences).toEqual(['Name is "Team Pro yearly", expected "Folevi Team Pro (yearly)".', "Price is $59 per seat, expected $49 per seat."]);
+    expect(byKey(view, "workspace_pro_yearly").differences).toEqual(['Name is "Team Pro yearly", expected "Folevi Team Pro (yearly)".', "Price is $59 per seat, expected $48 per seat."]);
     expect(byKey(view, "personal_pro_ai_monthly").differences).toEqual(["It's a one-time product, expected a subscription."]);
     expect(byKey(view, "credits_500")).toMatchObject({ status: "not_created", polarProductId: null });
     expect(view.lastCheckedAt).toBeGreaterThan(0);
@@ -175,7 +177,7 @@ describe("Check Polar", () => {
     // Mismatched products aren't sold until they're fixed in Polar or used anyway.
     const ids = await t.run(async (ctx) => (await import("../../convex/lib/billingProducts")).productIds(ctx));
     expect(ids.workspace_pro_yearly).toEqual([]);
-    expect(ids.personal_core_monthly).toEqual(["polar_personal_core_monthly"]);
+    expect(ids.personal_pro_yearly).toEqual(["polar_personal_pro_yearly"]);
   });
 
   test("a recorded product that differs shows as a mismatch; one Polar no longer lists is forgotten", async () => {
@@ -219,23 +221,23 @@ describe("Create missing products", () => {
     const org = polarOrg();
     const me = await owner(t);
     const r = await me.as.action(api.billingSetup.createMissing, { reason: REASON, requestId: "req_create" });
-    expect(r.created).toEqual(PRODUCT_KEYS);
+    expect(r.created).toEqual(SOLD_PRODUCT_KEYS);
     const posts = org.posts();
-    expect(posts).toHaveLength(14);
+    expect(posts).toHaveLength(10);
     const body = (key: string) => posts.find((c) => (c.body!.metadata as Json).folevi_key === key)!.body;
-    expect(body("personal_core_monthly")).toEqual({
-      name: "Folevi Core (monthly)",
-      description: "Folevi Core for your Personal space, billed monthly. 10 GB of storage. No AI.",
+    expect(body("personal_pro_monthly")).toEqual({
+      name: "Folevi Pro (monthly)",
+      description: "Folevi Pro for your Personal space, billed monthly. 10 GB of storage and 150 AI credits a month.",
       recurring_interval: "month",
-      prices: [{ amount_type: "fixed", price_currency: "usd", price_amount: 199 }],
-      metadata: { folevi_key: "personal_core_monthly" },
+      prices: [{ amount_type: "fixed", price_currency: "usd", price_amount: 500 }],
+      metadata: { folevi_key: "personal_pro_monthly" },
     });
-    expect(body("personal_pro_ai_yearly")).toMatchObject({ name: "Folevi Pro AI (yearly)", recurring_interval: "year", prices: [{ amount_type: "fixed", price_amount: 15900 }] });
+    expect(body("personal_pro_ai_yearly")).toMatchObject({ name: "Folevi Pro AI (yearly)", recurring_interval: "year", prices: [{ amount_type: "fixed", price_amount: 14400 }] });
     expect(body("workspace_pro_monthly")).toEqual({
       name: "Folevi Team Pro (monthly)",
-      description: "Folevi Pro for a team workspace, billed monthly per member. Each member gets 10 GB of storage and 180 AI credits a month.",
+      description: "Folevi Pro for a team workspace, billed monthly per member. Each member gets 10 GB of storage and 150 AI credits a month.",
       recurring_interval: "month",
-      prices: [{ amount_type: "seat_based", price_currency: "usd", seat_tiers: { seat_tier_type: "volume", tiers: [{ min_seats: 1, max_seats: null, price_per_seat: 499 }] } }],
+      prices: [{ amount_type: "seat_based", price_currency: "usd", seat_tiers: { seat_tier_type: "volume", tiers: [{ min_seats: 1, max_seats: null, price_per_seat: 500 }] } }],
       metadata: { folevi_key: "workspace_pro_monthly" },
     });
     expect(body("credits_1000")).toEqual({
@@ -252,36 +254,36 @@ describe("Create missing products", () => {
     }
 
     const stored = await rows(t);
-    expect(stored).toHaveLength(14);
+    expect(stored).toHaveLength(10);
     expect(stored.every((s) => s.source === "created" && s.server === "sandbox" && s.createdBy === me.profileId)).toBe(true);
-    expect(stored.find((s) => s.key === "workspace_core_yearly")).toMatchObject({ priceCents: 1900, interval: "year", seatBased: true, type: "recurring", currency: "usd" });
-    expect(await audit(t, "billing.product_create")).toHaveLength(14);
+    expect(stored.find((s) => s.key === "workspace_pro_yearly")).toMatchObject({ priceCents: 4800, interval: "year", seatBased: true, type: "recurring", currency: "usd" });
+    expect(await audit(t, "billing.product_create")).toHaveLength(10);
     expect((await audit(t, "billing.products_create"))[0]).toMatchObject({ reason: REASON, requestId: "req_create" });
     const view = await me.as.query(api.billingSetup.overview, {});
     expect(view.products.every((p) => p.status === "created" && p.source === "created")).toBe(true);
 
     const again = await me.as.action(api.billingSetup.createMissing, { reason: REASON });
     expect(again.created).toEqual([]);
-    expect(again.found).toBe(14);
-    expect(org.posts()).toHaveLength(14);
-    expect(await rows(t)).toHaveLength(14);
+    expect(again.found).toBe(10);
+    expect(org.posts()).toHaveLength(10);
+    expect(await rows(t)).toHaveLength(10);
   });
 
   test("only creates products with nothing found: a match is recorded, a mismatch is left alone, a recorded one is kept", async () => {
     const t = setup();
     tokenOnly();
     const org = polarOrg([
-      polarProduct("personal_core_monthly", { id: "existing_core" }),
+      polarProduct("personal_pro_monthly", { id: "existing_pro" }),
       polarProduct("credits_500", { prices: [{ amount_type: "fixed", price_amount: 999, price_currency: "usd", is_archived: false }] }, { metadata: false }),
     ]);
     const me = await owner(t);
     const r = await me.as.action(api.billingSetup.createMissing, { reason: REASON });
-    expect(r.created).toHaveLength(12);
-    expect(r.created).not.toContain("personal_core_monthly");
+    expect(r.created).toHaveLength(8);
+    expect(r.created).not.toContain("personal_pro_monthly");
     expect(r.created).not.toContain("credits_500");
     expect(r.mismatched).toEqual(["credits_500"]);
     expect(org.posts().map((c) => c.body!.name)).not.toContain("Folevi AI credits: 500");
-    expect((await rows(t)).find((s) => s.key === "personal_core_monthly")).toMatchObject({ polarProductId: "existing_core", source: "matched" });
+    expect((await rows(t)).find((s) => s.key === "personal_pro_monthly")).toMatchObject({ polarProductId: "existing_pro", source: "matched" });
     expect((await rows(t)).find((s) => s.key === "credits_500")).toBeUndefined();
   });
 
@@ -291,12 +293,12 @@ describe("Create missing products", () => {
     const refusal = new Response(JSON.stringify({ error: "PolarRequestValidationError", detail: [{ loc: ["body", "prices", 0, "amount_type"], msg: "Seat-based pricing is not enabled for this organization.", type: "value_error" }] }), { status: 422 });
     polarOrg([], { failCreateAfter: 6, createError: refusal });
     const me = await owner(t);
-    await expect(me.as.action(api.billingSetup.createMissing, { reason: REASON })).rejects.toThrow(/Polar refused to create .{0,4}Folevi Team Core \(monthly\).{0,4}: prices\.0\.amount_type: Seat-based pricing is not enabled/);
-    expect((await rows(t)).map((s) => s.key)).toEqual(PRODUCT_KEYS.slice(0, 6));
+    await expect(me.as.action(api.billingSetup.createMissing, { reason: REASON })).rejects.toThrow(/Polar refused to create .{0,4}Folevi Team Pro AI \(monthly\).{0,4}: prices\.0\.amount_type: Seat-based pricing is not enabled/);
+    expect((await rows(t)).map((s) => s.key)).toEqual(SOLD_PRODUCT_KEYS.slice(0, 6));
     const view = await me.as.query(api.billingSetup.overview, {});
     expect(view.lastError).toMatch(/Seat-based pricing is not enabled/);
     expect(byKey(view, "personal_pro_ai_yearly").status).toBe("created");
-    expect(byKey(view, "workspace_core_monthly").status).toBe("not_created");
+    expect(byKey(view, "workspace_pro_ai_monthly").status).toBe("not_created");
   });
 });
 

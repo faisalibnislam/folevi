@@ -2,6 +2,8 @@ import { PlanPicker } from "@/components/marketing/home/PlanPicker";
 import {
   CREDIT_PACKS,
   CREDIT_PACK_ORDER,
+  DOWNLOAD_FLOOR_BYTES,
+  DOWNLOAD_STORAGE_MULTIPLE,
   MONTHLY_CREDITS,
   PACK_VALID_MONTHS,
   PLANS,
@@ -12,6 +14,7 @@ import {
   TRIAL_CREDITS,
   TRIAL_DAYS,
   TRIAL_TIER,
+  downloadAllowance,
   formatPrice,
   yearlySavingPercent,
   sizeLabel,
@@ -32,8 +35,8 @@ const gb = sizeLabel;
 const credits = (n: number) => n.toLocaleString("en-US");
 
 export const metadata = pageMetadata({
-  title: `Pricing: a free workspace app, Folevi Cloud from ${formatPrice(PRICES.core.month)}/month`,
-  description: `Docs, tasks and databases on Mac, iPhone and iPad, free forever with no account. Folevi Cloud adds the web app, teams and Foli AI from ${formatPrice(PRICES.core.month)} a month.`,
+  title: `Pricing: a free workspace app, Folevi Cloud from ${formatPrice(PRICES.pro.month)}/month`,
+  description: `Docs, tasks and databases on Mac, iPhone and iPad, free forever with no account. Folevi Cloud adds the web app, teams and Foli AI from ${formatPrice(PRICES.pro.month)} a month.`,
   path: "/pricing",
 });
 
@@ -44,7 +47,7 @@ const CREDIT_EXAMPLES: Array<{ action: string; cost: string }> = [
   { action: "Make a flowchart", cost: "3 to 5 credits" },
 ];
 
-const saving = (tier: "core" | "pro" | "pro_ai") =>
+const saving = (tier: "pro" | "pro_ai") =>
   `${TIER_NAMES[tier]} is ${formatPrice(PRICES[tier].year)} a year instead of ${formatPrice(PRICES[tier].month * 12)} (save ${yearlySavingPercent(tier)}%)`;
 
 // Plain answers: the same text feeds the FAQPage structured data. They open on click.
@@ -59,7 +62,7 @@ const faqs: FaqItem[] = [
   },
   {
     q: "What do paid plans add?",
-    a: `A Folevi account (free to make) adds the web app, sharing and public pages, comments with others, workspaces, email-in, the web clipper and the API. Paid plans add room and AI credits: ${TIER_NAMES.core} has more storage and no device limit, ${TIER_NAMES.pro} and ${TIER_NAMES.pro_ai} add Foli AI credits every month.`,
+    a: `A Folevi account (free to make) adds the web app, sharing and public pages, comments with others, workspaces, email-in, the web clipper and the API. Paid plans add more storage, no device limit and Foli AI credits every month: ${credits(MONTHLY_CREDITS.pro)} on ${TIER_NAMES.pro} and ${credits(MONTHLY_CREDITS.pro_ai)} on ${TIER_NAMES.pro_ai}.`,
   },
   {
     q: "Can I move my notes between the two?",
@@ -72,10 +75,6 @@ const faqs: FaqItem[] = [
   {
     q: `How much AI does ${TIER_NAMES.pro_ai} include?`,
     a: `${TIER_NAMES.pro_ai} is for people who use AI every day: ${credits(MONTHLY_CREDITS.pro_ai)} credits a month for each person, which is about ${credits(Math.floor(MONTHLY_CREDITS.pro_ai / 2))} questions to Foli AI. If you reach it, buy a credit pack or wait for your credits to reset. There is also an hourly limit that stops automated use.`,
-  },
-  {
-    q: "Why does Core have no AI?",
-    a: "Some people want more room and no AI at all. On Core, nothing you write is sent to an AI model. Foli AI is off in your Personal, and in a Core workspace it’s off for everyone.",
   },
   {
     q: "When do AI credits reset?",
@@ -91,11 +90,15 @@ const faqs: FaqItem[] = [
   },
   {
     q: "How does storage work?",
-    a: `Free has ${gb(STORAGE_BYTES.free)} in total, shared by your Personal and every free workspace you own; uploads by anyone in those workspaces count toward it. Paid plans give each person their own room: ${gb(STORAGE_BYTES.core)} on ${TIER_NAMES.core} and ${TIER_NAMES.pro}, ${gb(STORAGE_BYTES.pro_ai)} on ${TIER_NAMES.pro_ai}. In a paid workspace, each member’s uploads count against their own storage there.`,
+    a: `Free has ${gb(STORAGE_BYTES.free)} in total, shared by your Personal and every free workspace you own; uploads by anyone in those workspaces count toward it. Paid plans give each person their own room: ${gb(STORAGE_BYTES.pro)} on ${TIER_NAMES.pro}, ${gb(STORAGE_BYTES.pro_ai)} on ${TIER_NAMES.pro_ai}. In a paid workspace, each member’s uploads count against their own storage there.`,
   },
   {
     q: "What happens if I run out of storage?",
     a: "Your notes and files stay put and you can keep writing. New uploads pause until you free up room or move to a plan with more storage. Nothing is deleted.",
+  },
+  {
+    q: "Is there a limit on downloads?",
+    a: `Yes, a fair-use one. Each month you can download files and exports up to ${DOWNLOAD_STORAGE_MULTIPLE} times your storage, and at least ${gb(DOWNLOAD_FLOOR_BYTES)}: ${gb(downloadAllowance(STORAGE_BYTES.free))} on Free, ${gb(downloadAllowance(STORAGE_BYTES.pro))} on ${TIER_NAMES.pro} and ${gb(downloadAllowance(STORAGE_BYTES.pro_ai))} on ${TIER_NAMES.pro_ai}. Past that, downloads pause until the 1st of the next month (UTC). Nothing is deleted, and your notes keep working.`,
   },
   {
     q: "How are team plans billed?",
@@ -111,7 +114,7 @@ const faqs: FaqItem[] = [
   },
   {
     q: "What counts as a device?",
-    a: `Each browser or app you’re signed in to. Free works on ${PLANS.free.devices} devices at a time; ${TIER_NAMES.core}, ${TIER_NAMES.pro} and ${TIER_NAMES.pro_ai} work on as many as you like. At the limit, a new device asks you to sign out of another one (from right there) or upgrade. Nothing is deleted.`,
+    a: `Each browser or app you’re signed in to. Free works on ${PLANS.free.devices} devices at a time; ${TIER_NAMES.pro} and ${TIER_NAMES.pro_ai} work on as many as you like. At the limit, a new device asks you to sign out of another one (from right there) or upgrade. Nothing is deleted.`,
   },
   {
     q: "Can I switch plans or cancel?",
@@ -119,7 +122,7 @@ const faqs: FaqItem[] = [
   },
   {
     q: "Is yearly cheaper?",
-    a: `Yes. ${saving("core")}, ${saving("pro")}, and ${saving("pro_ai")}.`,
+    a: `Yes. ${saving("pro")}, and ${saving("pro_ai")}.`,
   },
   {
     q: "How are taxes and payments handled?",

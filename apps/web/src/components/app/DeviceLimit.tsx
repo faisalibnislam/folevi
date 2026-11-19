@@ -43,7 +43,7 @@ export function DeviceLimitScreen({ limit }: { limit: number }) {
       setBusy(null);
     }
   };
-  const upgrade = (plan: "core" | "pro") =>
+  const upgrade = (plan: "pro" | "pro_ai") =>
     run(plan, async () => {
       if (billing?.checkoutAvailable) {
         // null: an existing subscription was switched instead; the server lifts the limit once it lands.
@@ -93,11 +93,11 @@ export function DeviceLimitScreen({ limit }: { limit: number }) {
       <div className="mt-6 flex flex-wrap items-center gap-2">
         {canBuy ? (
           <>
-            <Button variant="primary" onClick={() => void upgrade("core")} disabled={busy !== null}>
-              {busy === "core" ? "Upgrading…" : `Upgrade to ${PLANS.core.name} · ${formatPrice(PLANS.core.monthlyCents)}/mo`}
+            <Button variant="primary" onClick={() => void upgrade("pro")} disabled={busy !== null}>
+              {busy === "pro" ? "Upgrading…" : `Upgrade to ${PLANS.pro.name} · ${formatPrice(PLANS.pro.monthlyCents)}/mo`}
             </Button>
-            <Button onClick={() => void upgrade("pro")} disabled={busy !== null}>
-              {busy === "pro" ? "Upgrading…" : `${PLANS.pro.name} with AI · ${formatPrice(PLANS.pro.monthlyCents)}/mo`}
+            <Button onClick={() => void upgrade("pro_ai")} disabled={busy !== null}>
+              {busy === "pro_ai" ? "Upgrading…" : `${PLANS.pro_ai.name} · ${formatPrice(PLANS.pro_ai.monthlyCents)}/mo`}
             </Button>
           </>
         ) : null}

@@ -30,7 +30,7 @@ export const HOME_FAQS: FaqItem[] = [
   },
   {
     q: "What does a Folevi account add?",
-    a: `It adds Folevi Cloud: the web app, editing together in real time, public pages, workspaces for teams, email-in and the web clipper. The Free plan costs nothing. Paid plans from ${formatPrice(PRICES.core.month)} a month add more storage and Foli AI credits.`,
+    a: `It adds Folevi Cloud: the web app, editing together in real time, public pages, workspaces for teams, email-in and the web clipper. The Free plan costs nothing. Paid plans from ${formatPrice(PRICES.pro.month)} a month add more storage and Foli AI credits.`,
   },
   {
     q: "Is there an app for Windows or Android?",

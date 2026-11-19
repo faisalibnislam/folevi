@@ -27,7 +27,7 @@ import { ensureWorkspaceSubscription, insertPayment, isWorkspaceSubscription, pe
 import { freePool, memberStorageUsed, storageUsage, workspaceEntitlements } from "./lib/entitlements";
 import { creditBalance, seatAccount } from "./lib/credits";
 import { requireWorkspaceBilling } from "./lib/permissions";
-import { PLAN_CATALOG, TIER_NAMES, isPaidPlan, type PaidWorkspacePlanId, type WorkspacePlanId } from "./lib/plans";
+import { PLAN_CATALOG, TIER_NAMES, isPaidPlan, isRetiredTier, type PaidWorkspacePlanId, type WorkspacePlanId } from "./lib/plans";
 import { workspaceScope } from "./lib/scope";
 import { billableQuantity, seatChargeCents, seatSummary, seatsChanged } from "./lib/seats";
 import { createCheckout, customerPortal, ms, num, polarGet, polarPatch, polarToken, productId, str, testPurchasesAllowed, workspaceCheckoutReady, type ProductIds } from "./lib/polar";
@@ -222,6 +222,7 @@ export const checkout = action({
   args: { workspaceId: v.string(), planId: vPaidWorkspacePlanId },
   handler: async (ctx, args): Promise<{ url: string }> => {
     await requireIdentity(ctx);
+    if (isRetiredTier(PLAN_CATALOG[args.planId].tier)) fail("invalid_argument", "That plan is no longer offered. Choose Pro or Pro AI.");
     const c = await contextFor(ctx, args.workspaceId);
     const ids: ProductIds = await ctx.runQuery(internal.billingSetup.productIds, {});
     if (!workspaceCheckoutReady(ids)) fail("maintenance", "Workspace payments aren't set up on this server yet.");
@@ -251,11 +252,12 @@ export const portal = action({
   },
 });
 
-/** Core, Pro and Pro AI, monthly or yearly, on a Polar subscription (prorated by Polar). */
+/** Pro and Pro AI, monthly or yearly, on a Polar subscription (prorated by Polar). */
 export const changePlan = action({
   args: { workspaceId: v.string(), planId: vPaidWorkspacePlanId },
   handler: async (ctx, args): Promise<null> => {
     await requireIdentity(ctx);
+    if (isRetiredTier(PLAN_CATALOG[args.planId].tier)) fail("invalid_argument", "That plan is no longer offered. Choose Pro or Pro AI.");
     const c = await contextFor(ctx, args.workspaceId);
     if (!c.polarLive || !c.polarSubscriptionId) fail("invalid_argument", "There's no subscription to change. Choose a plan to start one.");
     if (c.planId === args.planId) fail("invalid_argument", "The workspace is already on that plan.");

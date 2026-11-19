@@ -8,9 +8,9 @@ import { Select } from "@/components/ui/Select";
 import { formatBytes } from "@/lib/format";
 import {
   PLAN_CATALOG,
-  PLAN_ORDER,
+  ALL_PLAN_TIERS,
   PLANS,
-  WORKSPACE_PLAN_ORDER,
+  ALL_WORKSPACE_TIERS,
   WORKSPACE_PLANS,
   formatPrice,
   planName,
@@ -66,7 +66,8 @@ interface TierInfo {
   devices?: number | null;
 }
 
-const PERSONAL_TIERS: TierInfo[] = PLAN_ORDER.map((t) => ({
+// Admins can still set a retired plan (Core), so every tier is listed here.
+const PERSONAL_TIERS: TierInfo[] = ALL_PLAN_TIERS.map((t) => ({
   tier: t,
   name: PLANS[t].name,
   fullName: () => PLANS[t].name,
@@ -79,7 +80,7 @@ const PERSONAL_TIERS: TierInfo[] = PLAN_ORDER.map((t) => ({
   devices: PLANS[t].devices,
 }));
 
-const WORKSPACE_TIERS: TierInfo[] = WORKSPACE_PLAN_ORDER.map((t) => {
+const WORKSPACE_TIERS: TierInfo[] = ALL_WORKSPACE_TIERS.map((t) => {
   const monthly = PLAN_CATALOG[workspacePlanId(t, "month")];
   return {
     tier: t,

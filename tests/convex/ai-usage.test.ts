@@ -133,7 +133,7 @@ describe("recording use by feature", () => {
     await t.mutation(internal.ai.settle, { holdId, calls: [{ model: FLASH, promptTokens: 200_000, outputTokens: 0, thoughtsTokens: 0 }] });
 
     const seat = await usage(member, ws);
-    expect(seat).toMatchObject({ account: "seat", place: "Usage Co", allowance: 180, used: 30 });
+    expect(seat).toMatchObject({ account: "seat", place: "Usage Co", allowance: 150, used: 30 });
     expect(creditsOf(seat, "research")).toBe(30);
     // Their Personal is untouched.
     const personal = await usage(member, PERSONAL);

@@ -9,16 +9,18 @@ Billing setup: the Polar products).
 
 ## Plans
 
-The same four plans exist for Personal and for Team (a workspace). Team prices are per member seat. A
+Free, Pro and Pro AI are sold for Personal and for Team (a workspace). Team prices are per member seat. Core
+is retired (2026-11-19, docs/PRICING_PROPOSAL.md): it's no longer shown or sold and checkout refuses it, but it
+stays in the catalog (`RETIRED_TIERS`) so a Core subscription or an admin-set Core plan keeps working. A
 personal plan covers the person's Personal only; a team plan covers that workspace only. Each has its own
 storage and its own AI credits, and neither ever changes the other.
 
 |                       | Free                  | Core                     | Pro                      | Pro AI                                   |
 | --------------------- | --------------------- | ------------------------ | ------------------------ | ---------------------------------------- |
-| Personal price        | $0                    | $1.99 a month or $19 a year | $4.99 a month or $49 a year | $13.99 a month or $159 a year        |
-| Team price, per member | $0                   | $1.99 a month or $19 a year | $4.99 a month or $49 a year | $13.99 a month or $159 a year        |
+| Personal price        | $0                    | retired (was $1.99 a month or $19 a year) | $5 a month or $48 a year | $15 a month or $144 a year |
+| Team price, per member | $0                   | retired (was $1.99 a month or $19 a year) | $5 a month or $48 a year | $15 a month or $144 a year |
 | Storage               | 500 MB in total, shared (below) | 10 GB per person | 10 GB per person       | 50 GB per person                         |
-| AI credits a month    | none: AI only during the trial | none: Core has no AI | 180 per person      | 550 per person ("Unlimited AI, fair use") |
+| AI credits a month    | none: AI only during the trial | none: Core has no AI | 150 per person      | 550 per person ("Unlimited AI, fair use") |
 | Credit packs          | no                    | no                       | 500 for $7.99, 1,000 for $14.99 | same                              |
 | Devices (Personal)    | 2                     | unlimited                | unlimited                | unlimited                                |
 | Members               | unlimited, nobody billed | unlimited, each billed | unlimited, each billed | unlimited, each billed                 |
@@ -32,7 +34,7 @@ storage and its own AI credits, and neither ever changes the other.
   `out_of_credits` and "Foli AI comes with Pro and Pro AI. Upgrade in Settings → Plan & billing." Nothing is
   sent to the model. That holds wherever the person's own credits would be used: their Personal, free
   workspaces and pages they're a guest on.
-- **Core** is the plan without AI, and says so plainly: nothing is sent to an AI model. The server refuses
+- **Core** (retired, kept for anyone on it) is the plan without AI, and says so plainly: nothing is sent to an AI model. The server refuses
   every AI request in a Core Personal or a Core workspace, for everyone there (the owner, members and
   guests), and never sends a Core scope's pages to AI from anywhere else either. A person on Core Personal
   has no personal credits, so they have no AI in free workspaces or as a guest either. The app hides every
@@ -162,10 +164,10 @@ then repeat in production.
    the token or webhook secret is missing or the server isn't production, and flags any leftover `STRIPE_*`
    variables and any Polar variable in the web app's environment. It doesn't check product ids (they live
    in the database); Admin → Billing setup shows which are missing.
-5. **Create the 14 products from Admin → Billing setup** (owners only; the page needs `POLAR_SERVER` and
+5. **Create the 10 products from Admin → Billing setup** (owners only; the page needs `POLAR_SERVER` and
    `POLAR_ACCESS_TOKEN` from step 4). **Check Polar** lists the organization's products and finds each one: by the id already recorded, then the `POLAR_PRODUCT_*` env
    var, then the `folevi_key` metadata Billing setup puts on every product it makes (for example
-   `{"folevi_key": "personal_core_monthly"}`), then the exact name. Products that match the catalog have
+   `{"folevi_key": "personal_pro_monthly"}`), then the exact name. Products that match the catalog have
    their ids recorded (the `billingProducts` table, per Polar server); products that differ are shown with
    what differs. **Create missing products** does the same check, then creates only the products with
    nothing found and records their ids, so running it twice never makes a duplicate. Names, prices and
@@ -173,20 +175,23 @@ then repeat in production.
 
    | Product key               | Env var (fallback)                      | Product name                  | Type      | Price                          | Interval |
    | ------------------------- | --------------------------------------- | ----------------------------- | --------- | ------------------------------ | -------- |
-   | `personal_core_monthly`   | `POLAR_PRODUCT_PERSONAL_CORE_MONTHLY`   | Folevi Core (monthly)         | Recurring | $1.99 fixed                    | Month    |
-   | `personal_core_yearly`    | `POLAR_PRODUCT_PERSONAL_CORE_YEARLY`    | Folevi Core (yearly)          | Recurring | $19 fixed                      | Year     |
-   | `personal_pro_monthly`    | `POLAR_PRODUCT_PERSONAL_PRO_MONTHLY`    | Folevi Pro (monthly)          | Recurring | $4.99 fixed                    | Month    |
-   | `personal_pro_yearly`     | `POLAR_PRODUCT_PERSONAL_PRO_YEARLY`     | Folevi Pro (yearly)           | Recurring | $49 fixed                      | Year     |
-   | `personal_pro_ai_monthly` | `POLAR_PRODUCT_PERSONAL_PRO_AI_MONTHLY` | Folevi Pro AI (monthly)       | Recurring | $13.99 fixed                   | Month    |
-   | `personal_pro_ai_yearly`  | `POLAR_PRODUCT_PERSONAL_PRO_AI_YEARLY`  | Folevi Pro AI (yearly)        | Recurring | $159 fixed                     | Year     |
-   | `workspace_core_monthly`  | `POLAR_PRODUCT_TEAM_CORE_MONTHLY`       | Folevi Team Core (monthly)    | Recurring | Seat-based, $1.99 per seat     | Month    |
-   | `workspace_core_yearly`   | `POLAR_PRODUCT_TEAM_CORE_YEARLY`        | Folevi Team Core (yearly)     | Recurring | Seat-based, $19 per seat       | Year     |
-   | `workspace_pro_monthly`   | `POLAR_PRODUCT_TEAM_PRO_MONTHLY`        | Folevi Team Pro (monthly)     | Recurring | Seat-based, $4.99 per seat     | Month    |
-   | `workspace_pro_yearly`    | `POLAR_PRODUCT_TEAM_PRO_YEARLY`         | Folevi Team Pro (yearly)      | Recurring | Seat-based, $49 per seat       | Year     |
-   | `workspace_pro_ai_monthly`| `POLAR_PRODUCT_TEAM_PRO_AI_MONTHLY`     | Folevi Team Pro AI (monthly)  | Recurring | Seat-based, $13.99 per seat    | Month    |
-   | `workspace_pro_ai_yearly` | `POLAR_PRODUCT_TEAM_PRO_AI_YEARLY`      | Folevi Team Pro AI (yearly)   | Recurring | Seat-based, $159 per seat      | Year     |
+   | `personal_pro_monthly`    | `POLAR_PRODUCT_PERSONAL_PRO_MONTHLY`    | Folevi Pro (monthly)          | Recurring | $5 fixed                       | Month    |
+   | `personal_pro_yearly`     | `POLAR_PRODUCT_PERSONAL_PRO_YEARLY`     | Folevi Pro (yearly)           | Recurring | $48 fixed                      | Year     |
+   | `personal_pro_ai_monthly` | `POLAR_PRODUCT_PERSONAL_PRO_AI_MONTHLY` | Folevi Pro AI (monthly)       | Recurring | $15 fixed                      | Month    |
+   | `personal_pro_ai_yearly`  | `POLAR_PRODUCT_PERSONAL_PRO_AI_YEARLY`  | Folevi Pro AI (yearly)        | Recurring | $144 fixed                     | Year     |
+   | `workspace_pro_monthly`   | `POLAR_PRODUCT_TEAM_PRO_MONTHLY`        | Folevi Team Pro (monthly)     | Recurring | Seat-based, $5 per seat        | Month    |
+   | `workspace_pro_yearly`    | `POLAR_PRODUCT_TEAM_PRO_YEARLY`         | Folevi Team Pro (yearly)      | Recurring | Seat-based, $48 per seat       | Year     |
+   | `workspace_pro_ai_monthly`| `POLAR_PRODUCT_TEAM_PRO_AI_MONTHLY`     | Folevi Team Pro AI (monthly)  | Recurring | Seat-based, $15 per seat       | Month    |
+   | `workspace_pro_ai_yearly` | `POLAR_PRODUCT_TEAM_PRO_AI_YEARLY`      | Folevi Team Pro AI (yearly)   | Recurring | Seat-based, $144 per seat      | Year     |
    | `credits_500`             | `POLAR_PRODUCT_CREDITS_500`             | Folevi AI credits: 500        | One-time  | $7.99 fixed                    |          |
    | `credits_1000`            | `POLAR_PRODUCT_CREDITS_1000`            | Folevi AI credits: 1,000      | One-time  | $14.99 fixed                   |          |
+
+   The four Core products (`personal_core_*`, `workspace_core_*`) are retired: Billing setup no longer creates
+   or checks them, but their recorded ids are kept so an old Core subscription's webhooks still match. After
+   the 2026-11-19 price change, the old Pro and Pro AI products show as mismatches (the price differs) and
+   checkout keeps using them until they're gone. To switch: check Admin that nobody subscribes to them (an
+   archived product is forgotten by Check Polar, and its subscriptions' webhooks would no longer match),
+   archive them in Polar, run **Check Polar**, then **Create missing products**. Sandbox first.
 
    All in USD, taxes on Polar's default, no trial on Polar's side (Folevi runs its own). Team products use
    seat-based pricing with one volume tier from 1 seat up (the per-seat price); Folevi sets the seat

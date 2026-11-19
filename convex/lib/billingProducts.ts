@@ -1,10 +1,10 @@
-// The 14 Polar products Folevi sells, as Polar should have them (names, prices, intervals, seat pricing,
+// The 10 Polar products Folevi sells (14 keys; Core's 4 are retired), as Polar should have them (names, prices, intervals, seat pricing,
 // all from convex/lib/plans.ts), how to create one through the Polar API, how to tell whether a product in
 // Polar is the one we expect, and where checkout finds each product's id (the database first, then the
 // POLAR_PRODUCT_* env var). Admin → Billing setup (convex/billingSetup.ts) uses this; docs/BILLING.md.
 import type { DatabaseReader } from "../_generated/server";
 import { CREDIT_PACKS, PACK_VALID_MONTHS, PLAN_CATALOG, STORAGE_BYTES, MONTHLY_CREDITS, TIER_NAMES, GB, formatPrice, type BillingInterval, type PlanTier } from "./plans";
-import { PRODUCT_KEYS, polarServer, resolveProductIds, type ProductIds, type ProductKey } from "./polar";
+import { PRODUCT_KEYS, SOLD_PRODUCT_KEYS, polarServer, resolveProductIds, type ProductIds, type ProductKey } from "./polar";
 
 /** The metadata key every product made by Billing setup carries (its value is the product key). */
 export const PRODUCT_METADATA_KEY = "folevi_key";
@@ -62,7 +62,8 @@ export function expectedProduct(key: ProductKey): ExpectedProduct {
   };
 }
 
-export const EXPECTED_PRODUCTS: ExpectedProduct[] = PRODUCT_KEYS.map(expectedProduct);
+/** The products on sale (retired tiers' products are left as they are in Polar; archive them there by hand). */
+export const EXPECTED_PRODUCTS: ExpectedProduct[] = SOLD_PRODUCT_KEYS.map(expectedProduct);
 
 /**
  * The body of POST /v1/products/ for a product (https://polar.sh/docs/api-reference/products/create).

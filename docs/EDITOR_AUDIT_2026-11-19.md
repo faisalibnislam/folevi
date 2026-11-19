@@ -2,8 +2,8 @@
 
 Scope: the note editor that the website, the Mac app and the iPhone and iPad apps all show (Tiptap 3 /
 ProseMirror, in a WKWebView in the apps), with the save and sync path under it and the native seam on iPhone
-and iPad. Branch `editor/rock-solid`, 16 commits on top of `origin/main` at `a4def99d`. Nothing is pushed,
-deployed or released.
+and iPad. Branch `editor/rock-solid`: 16 commits, then `origin/main` merged in at `244c02e2` (1.5.50, which was released
+while this was under way; one small conflict). Nothing is pushed, deployed or released.
 
 What the owner asked for (2026-11-19): a full audit and "rock solid". It bothers them most on iPhone and iPad;
 speed, caret and keys, paste and undo, and rich blocks all still do. A note of about 2,000 blocks must stay
@@ -192,7 +192,8 @@ Need the device first:
   screen reader text, so it needs a VoiceOver check.
 
 Native frame work (belongs with the iPad pass, N15):
-- I8: on an iPad whose page is 656 to 699 pt wide the note has no tools at all (the frame decides "wide" by the
+- I8 (look again after 1.5.50, which gave the iPad's wide layout a marker of its own, `data-ipad-native`): on
+  an iPad whose page is 656 to 699 pt wide the note has no tools at all (the frame decides "wide" by the
   window, the page by its own width). Native has to tell the page its layout.
 - I9: a new note can open with no caret (the focus request is lost between three messages).
 - I13: colour buttons in the native Format sheet raise the keyboard over it.
@@ -221,7 +222,8 @@ Larger pieces of work, each its own change:
   came with `main` (section 9).
 - `e2e/editor-long-note.spec.ts` passes in Chromium and WebKit (the numbers in section 2).
 - iOS app: Debug build for the Simulator compiles with the Swift changes (`RebuildNote.swift`,
-  `SceneDelegate.swift`) and `bridge.js`.
+  `SceneDelegate.swift`) and `bridge.js`, before and after the merge of 1.5.50. After the merge the web unit
+  tests (2,115) and the typecheck were run again and pass; the end-to-end specs were not run again.
 - Not done: nothing was run in the Mac app, the Simulator or on a device; the dev backend does not have the
   new size limits (no Convex command was run).
 

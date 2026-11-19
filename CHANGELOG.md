@@ -4,6 +4,27 @@ Every Folevi release, newest first, written by `node scripts/version.mjs` from `
 
 Versions are MAJOR.UPDATE.PATCH, PATCH at least two digits: a Major release (2.0.00), a Big update (1.1.05 after 1.0.05) or a Small update (1.0.06 after 1.0.05).
 
+## Version 1.4.50: Small update
+
+Released 2026-11-19 11:15:21+06:00 (build 64, tag v1.4.50)
+
+Mac: smoother scrolling in lists, cleaner lists with no lines between rows, and a tab's close button always at the tab's left edge.
+
+### Improved
+
+- Mac: lists scroll more smoothly with the pointer over them (Home, notes, folders, tasks); rows show no hover while a list is moving
+- Mac: no lines between the rows of a list (tasks, notes and folders in list view, the Vault's passwords, calendars, Help's shortcuts), with the same spacing
+- Mac: a tab's close button is always at the tab's left edge, whatever the tab's width
+- Mac: no blur at the bottom of the Foli AI panel
+- Mac: Folevi lets go of more memory when the Mac runs low
+- Web: the Vault, the theme picker, text fields, Tasks and Calendar take the polish the Mac got in 1.4.49
+
+### Fixed
+
+- Mac: the date picker, the list of times and the time zone list stayed in memory after they closed
+- Mac: with more than one window, note covers and card text could stop loading after the first window was closed
+- Mac: the title bar's tabs were drawn again at every move of the caret in a note
+
 ## Version 1.4.49: Small update
 
 Released 2026-11-19 08:03:11+06:00 (build 63, tag v1.4.49)

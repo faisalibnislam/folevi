@@ -1,10 +1,12 @@
 "use client";
 
 import { NodeViewWrapper, ReactNodeViewRenderer, type ReactNodeViewProps } from "@tiptap/react";
-import { NodeSelection } from "@tiptap/pm/state";
+import type { Editor } from "@tiptap/core";
+import type { Node as PMNode } from "@tiptap/pm/model";
+import { NodeSelection, type EditorState, type Transaction } from "@tiptap/pm/state";
 import { useAction, useQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
-import { Component, lazy, Suspense, useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import { Component, lazy, Suspense, useCallback, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore, type ComponentType, type ReactNode } from "react";
 import {
   Download,
   ExternalLink,
@@ -13,6 +15,7 @@ import {
   ImageOff,
   Link2,
   Pencil,
+  RotateCw,
   Trash2,
 } from "lucide-react";
 import { CHART_DEFAULT_HEIGHT, MINDMAP_DEFAULT_HEIGHT, STICKIES_DEFAULT_HEIGHT, WIREFRAME_DEFAULT_HEIGHT, imageDescription, looksLikeFileName, sanitizeHref, type SyncState } from "@folevi/editor-schema";
@@ -20,10 +23,10 @@ import { webAddressIn } from "./autolink";
 import { api } from "@/lib/convex/api";
 import { canCallHere } from "@/lib/mode";
 import { useAppState } from "@/lib/app/state";
-import { keptFileUrl } from "@/lib/sync/deviceFiles";
+import { forgetKeptFileUrl, keptFileUrl } from "@/lib/sync/deviceFiles";
 import { AppLink } from "@/lib/app/router";
 import { useEngineSelector } from "@/lib/hooks/useEngine";
-import { localPreviewUrl, releaseLocalPreview } from "@/lib/sync/uploads";
+import { completedUploadFor, localPreviewUrl, releaseLocalPreview, retryUploads } from "@/lib/sync/uploads";
 import { formatBytes } from "@/lib/format";
 import { macDesktop } from "@/lib/desktop/capabilities";
 import {
@@ -57,26 +60,57 @@ import { TranscribeButton, useCanTranscribe, useTranscription } from "@/componen
 import { SyncedBlock } from "./extensions";
 import "./image.css";
 
+/**
+ * A part of the app that didn't arrive: the website was left open across a new version (the old part is gone
+ * from the server), or the connection dropped while it loaded. The one kind of failure asking again can fix.
+ */
+export function isChunkLoadError(error: unknown): boolean {
+  const e = error as { name?: unknown; message?: unknown } | null;
+  if (!e || typeof e !== "object") return false;
+  return e.name === "ChunkLoadError" || /Loading chunk|Failed to load chunk|dynamically imported module|Importing a module script failed/i.test(String(e.message ?? ""));
+}
+
+type Reloadable<P> = ComponentType<P> & { reload: () => void };
+
+/**
+ * A view loaded the first time it's shown, that can be asked for again. React.lazy keeps a failed load for
+ * good, so after one a new lazy view takes its place when the block's card asks (`reload`). A view that did
+ * load is never replaced: every block of its kind would be drawn again from nothing.
+ */
+export function lazyView<P extends object>(load: () => Promise<{ default: ComponentType<P> }>): Reloadable<P> {
+  let failed = false;
+  const make = () =>
+    lazy(() =>
+      load().catch((error: unknown) => {
+        failed = true;
+        throw error;
+      }),
+    ) as unknown as ComponentType<P>;
+  let View = make();
+  function LazyView(props: P) {
+    return <View {...props} />;
+  }
+  return Object.assign(LazyView, {
+    reload: () => {
+      if (!failed) return;
+      failed = false;
+      View = make();
+    },
+  });
+}
+
 // The whiteboard, flowchart, the other visual blocks and collections are large and most notes have none: each
 // loads the first time a note shows one, in a placeholder of the block's own height so nothing moves when it
 // arrives.
-const WhiteboardView = lazy(() => import("./WhiteboardView").then((m) => ({ default: m.WhiteboardView })));
-const FlowchartView = lazy(() => import("./flowchart/FlowchartView").then((m) => ({ default: m.FlowchartView })));
-const MindmapView = lazy(() => import("./mindmap/MindmapView").then((m) => ({ default: m.MindmapView })));
-const StickiesView = lazy(() => import("./stickies/StickiesView").then((m) => ({ default: m.StickiesView })));
-const ChartView = lazy(() => import("./chart/ChartView").then((m) => ({ default: m.ChartView })));
-const WireframeView = lazy(() => import("./wireframe/WireframeView").then((m) => ({ default: m.WireframeView })));
-const CollectionEmbed = lazy(() => import("./CollectionEmbed").then((m) => ({ default: m.CollectionEmbed })));
+const WhiteboardView = lazyView<ReactNodeViewProps>(() => import("./WhiteboardView").then((m) => ({ default: m.WhiteboardView })));
+const FlowchartView = lazyView<ReactNodeViewProps>(() => import("./flowchart/FlowchartView").then((m) => ({ default: m.FlowchartView })));
+const MindmapView = lazyView<ReactNodeViewProps>(() => import("./mindmap/MindmapView").then((m) => ({ default: m.MindmapView })));
+const StickiesView = lazyView<ReactNodeViewProps>(() => import("./stickies/StickiesView").then((m) => ({ default: m.StickiesView })));
+const ChartView = lazyView<ReactNodeViewProps>(() => import("./chart/ChartView").then((m) => ({ default: m.ChartView })));
+const WireframeView = lazyView<ReactNodeViewProps>(() => import("./wireframe/WireframeView").then((m) => ({ default: m.WireframeView })));
+const CollectionEmbed = lazyView<{ collectionId: string; initialViewId: string | null; editable: boolean }>(() => import("./CollectionEmbed").then((m) => ({ default: m.CollectionEmbed })));
 // A synced block runs an editor of its own for its content (synced/SyncedView.tsx).
-const SyncedView = lazy(() => import("./synced/SyncedView").then((m) => ({ default: m.SyncedView })));
-
-function LazySynced(props: ReactNodeViewProps) {
-  return (
-    <Suspense fallback={<LoadingBlock height={72} />}>
-      <SyncedView {...props} />
-    </Suspense>
-  );
-}
+const SyncedView = lazyView<ReactNodeViewProps>(() => import("./synced/SyncedView").then((m) => ({ default: m.SyncedView })));
 
 /** Everything inside a synced block's own editor, and its frame's controls, is theirs (not the note's). */
 function syncedOwnsEvent(event: Event): boolean {
@@ -91,77 +125,385 @@ function LoadingBlock({ height }: { height: number }) {
   );
 }
 
-function LazyWhiteboard(props: ReactNodeViewProps) {
-  return (
-    <Suspense fallback={<LoadingBlock height={Number(props.node.attrs.height) || 420} />}>
-      <WhiteboardView {...props} />
-    </Suspense>
-  );
-}
-
-function LazyFlowchart(props: ReactNodeViewProps) {
-  return (
-    <Suspense fallback={<LoadingBlock height={Number(props.node.attrs.height) || 440} />}>
-      <FlowchartView {...props} />
-    </Suspense>
-  );
-}
-
-/** A lazily loaded visual block, with a placeholder of its own height (and the card's height handle) meanwhile. */
-function lazyVisual(View: React.ComponentType<ReactNodeViewProps>, fallbackHeight: number) {
-  return function LazyVisual(props: ReactNodeViewProps) {
+/** A lazily loaded block, with a placeholder of its own height meanwhile (`reload` asks for it again after a failed load). */
+function lazyBlock(View: Reloadable<ReactNodeViewProps>, height: (props: ReactNodeViewProps) => number) {
+  function LazyBlock(props: ReactNodeViewProps) {
     return (
-      <Suspense fallback={<LoadingBlock height={(Number(props.node.attrs.height) || fallbackHeight) + 14} />}>
+      <Suspense fallback={<LoadingBlock height={height(props)} />}>
         <View {...props} />
       </Suspense>
     );
-  };
+  }
+  return Object.assign(LazyBlock, { reload: View.reload });
 }
+const LazySynced = lazyBlock(SyncedView, () => 72);
+const LazyWhiteboard = lazyBlock(WhiteboardView, (props) => Number(props.node.attrs.height) || 420);
+const LazyFlowchart = lazyBlock(FlowchartView, (props) => Number(props.node.attrs.height) || 440);
+/** A visual block's placeholder is its own height plus the card's height handle. */
+const lazyVisual = (View: Reloadable<ReactNodeViewProps>, fallbackHeight: number) => lazyBlock(View, (props) => (Number(props.node.attrs.height) || fallbackHeight) + 14);
 const LazyMindmap = lazyVisual(MindmapView, MINDMAP_DEFAULT_HEIGHT);
 const LazyStickies = lazyVisual(StickiesView, STICKIES_DEFAULT_HEIGHT);
 const LazyChart = lazyVisual(ChartView, CHART_DEFAULT_HEIGHT);
 const LazyWireframe = lazyVisual(WireframeView, WIREFRAME_DEFAULT_HEIGHT);
 
-function useNow(bucketMs: number): number {
-  const [now, setNow] = useState(() => Math.floor(Date.now() / bucketMs) * bucketMs);
-  useEffect(() => {
-    const id = setInterval(() => setNow(Math.floor(Date.now() / bucketMs) * bucketMs), bucketMs);
-    return () => clearInterval(id);
-  }, [bucketMs]);
-  return now;
+interface BlockBoundaryProps {
+  /** The block drawn inside: when it changes, what couldn't be drawn is tried again. */
+  node: PMNode;
+  selected?: boolean;
+  /** Asks again for a view whose own code didn't load (lazyView). */
+  reload?: () => void;
+  /** Loads the whole app again (the page's own reload, unless a test says otherwise). */
+  reloadApp?: () => void;
+  children: ReactNode;
+}
+
+/**
+ * Keeps one block's trouble to that block. A view that throws while it draws (its part of the app didn't
+ * load, the server refused what it asked, its stored content is something it can't read) used to take the
+ * whole app down with it, and a note holding such a block could never be opened on that device. Here the
+ * block becomes a plain card instead, the rest of the note stays as it is, and nothing about the block is
+ * changed: it is still there to select, move, delete or see on another device. Reload tries the view again
+ * (a part of the app that still won't come after that was replaced by a newer version: the app is loaded again).
+ */
+export class BlockBoundary extends Component<BlockBoundaryProps, { failed: boolean; error: unknown; tries: number }> {
+  override state = { failed: false, error: null as unknown, tries: 0 };
+
+  static getDerivedStateFromError(error: unknown) {
+    return { failed: true, error };
+  }
+
+  override componentDidUpdate(prev: BlockBoundaryProps) {
+    // The block changed (an edit here, or a repair arriving from another device): it may draw now.
+    if (this.state.failed && prev.node !== this.props.node) this.setState({ failed: false, error: null });
+  }
+
+  private retry = () => {
+    const chunk = isChunkLoadError(this.state.error);
+    if (chunk && this.state.tries > 0 && (typeof navigator === "undefined" || navigator.onLine !== false)) {
+      (this.props.reloadApp ?? (() => window.location.reload()))();
+      return;
+    }
+    this.props.reload?.();
+    this.setState((s) => ({ failed: false, error: null, tries: s.tries + (chunk ? 1 : 0) }));
+  };
+
+  override render() {
+    if (!this.state.failed) return this.props.children;
+    return (
+      <NodeViewWrapper className={`fb-atom ${this.props.selected ? "fb-atom-selected" : ""}`} data-drag-handle="" data-block-error="" role="group" aria-label="Block that couldn’t be shown">
+        <div contentEditable={false} role="status" className="my-2 flex items-center gap-3 rounded-chip border border-dashed border-line-strong bg-sunken px-4 py-3 text-subheadline text-muted">
+          <span className="flex-1">This block couldn’t be shown.</span>
+          <button type="button" onClick={this.retry} className="inline-flex h-8 flex-none items-center gap-1.5 rounded-chip border border-line px-2.5 text-footnote hover:bg-surface hover:text-heading">
+            <RotateCw size={14} aria-hidden /> Reload
+          </button>
+        </div>
+      </NodeViewWrapper>
+    );
+  }
+}
+
+/** A block's view inside its own boundary (one per block: each view is its block's alone). */
+function guarded(View: ComponentType<ReactNodeViewProps> & { reload?: () => void }) {
+  return function GuardedBlock(props: ReactNodeViewProps) {
+    return (
+      <BlockBoundary node={props.node} selected={props.selected} reload={View.reload}>
+        <View {...props} />
+      </BlockBoundary>
+    );
+  };
+}
+
+/**
+ * A press on the card a block that couldn't be shown becomes: its Reload button's is the button's own; anywhere
+ * else it is the note's (it selects the block, so the block can still be moved or deleted). Null: not that card.
+ */
+function onErrorCard(event: Event): boolean | null {
+  if (!(event.target instanceof Element) || !event.target.closest("[data-block-error]")) return null;
+  return Boolean(event.target.closest("button"));
+}
+
+/** The app's one clock for file addresses: every view reads it, one timer keeps it. */
+const CLOCK_STEP_MS = 5 * 60_000;
+/** A file's address is asked for again every half hour (the server's answer changes on the hour). */
+const ADDRESS_STEP_MS = 30 * 60_000;
+/** An address that works is kept until this close to its end. */
+const RENEW_BEFORE_MS = 10 * 60_000;
+/** Online, how long the device's own copy of a file waits for the server's answer before it is read. */
+const KEPT_LOOKUP_DELAY_MS = 600;
+
+const clock = { now: 0, timer: null as ReturnType<typeof setInterval> | null, listeners: new Set<() => void>() };
+const readClock = () => Math.floor(Date.now() / CLOCK_STEP_MS) * CLOCK_STEP_MS;
+
+function tickClock() {
+  const now = readClock();
+  if (now === clock.now) return;
+  clock.now = now;
+  for (const listener of [...clock.listeners]) listener();
+}
+
+/** The time in five-minute steps (so nothing redraws more often than that for it). */
+function clockNow(): number {
+  // With no one listening no timer runs: read afresh.
+  if (!clock.timer) clock.now = readClock();
+  return clock.now;
+}
+
+function subscribeClock(listener: () => void): () => void {
+  clock.listeners.add(listener);
+  if (!clock.timer) {
+    clock.now = readClock();
+    clock.timer = setInterval(tickClock, 60_000);
+    // Back from the background (where timers sleep, on a phone for hours): looked at right away.
+    document.addEventListener("visibilitychange", tickClock);
+  }
+  return () => {
+    clock.listeners.delete(listener);
+    if (clock.listeners.size || !clock.timer) return;
+    clearInterval(clock.timer);
+    clock.timer = null;
+    document.removeEventListener("visibilitychange", tickClock);
+  };
 }
 
 type FileInfo = FunctionReturnType<typeof api.files.urls>[string];
 
+/** When a signed file address stops working (the `exp` it carries), or null when it doesn't say. */
+export function fileAddressExpiry(url: string): number | null {
+  const m = /[?&]exp=(\d{10,})(?:&|$)/.exec(url);
+  return m ? Number(m[1]) : null;
+}
+
 /**
- * A file's signed address, renewed every half hour. `missing` once the server has answered without it
- * (deleted, or no longer visible to this person).
+ * The address to show for a file: the one already on screen for as long as it works, the server's new one once
+ * the old is about to end. The server signs a new address every hour, and taking each as it came made every
+ * picture and recording in an open note download again hourly, under a new name the browser's cache had never
+ * seen. (An address that says nothing of its end is replaced as before.)
  */
-function useFileUrl(fileId: string | null): { file: FileInfo | undefined; missing: boolean } {
-  const now = useNow(30 * 60_000);
-  const urls = useQuery(api.files.urls, fileId ? { fileIds: [fileId], now } : "skip");
-  // Each renewal is a new query that starts out unanswered: until it answers, the last address for this file
-  // stays, so images don't flash back to loading and playing audio doesn't stop.
-  const fresh = fileId && urls ? urls[fileId] : undefined;
+export function keepLoadedAddress<T extends { url: string }>(shown: T | null | undefined, fresh: T, now: number): T {
+  if (!shown || shown.url === fresh.url) return shown ?? fresh;
+  const ends = fileAddressExpiry(shown.url);
+  return ends !== null && now < ends - RENEW_BEFORE_MS ? shown : fresh;
+}
+
+/**
+ * What one note's editor knows of its files' addresses. With a NoteFileUrls next to the editor, every view's
+ * file is asked for in one question to the server (not one live question per picture, file and recording),
+ * and each view reads its own answer here.
+ */
+class NoteFiles {
+  /** Someone is asking for this note's files in one question. */
+  hosted = false;
+  /** That question failed (signed out, the server refusing): nothing more is coming for now. */
+  failed = false;
+  /** The server's word on each file asked for: its details, or null when it answered without it. */
+  readonly answers = new Map<string, FileInfo | null>();
+  private readonly wanted = new Map<string, number>();
+  private key = "";
+  private queued = false;
+  private readonly listeners = new Set<() => void>();
+
+  readonly subscribe = (listener: () => void) => {
+    this.listeners.add(listener);
+    return () => void this.listeners.delete(listener);
+  };
+  readonly isHosted = () => this.hosted;
+  readonly hasFailed = () => this.failed;
+  /** The files the mounted views show, as one sorted string (the same string until the set changes). */
+  readonly wantedKey = () => this.key;
+
+  private notify() {
+    for (const listener of [...this.listeners]) listener();
+  }
+
+  /** A view shows this file; returns the function that says it no longer does. */
+  want(fileId: string): () => void {
+    this.wanted.set(fileId, (this.wanted.get(fileId) ?? 0) + 1);
+    this.rekey();
+    return () => {
+      const left = (this.wanted.get(fileId) ?? 1) - 1;
+      if (left > 0) this.wanted.set(fileId, left);
+      else this.wanted.delete(fileId);
+      this.rekey();
+    };
+  }
+
+  /**
+   * Views come and go together (a note opening, a block moved), though not always in the same breath: the set
+   * is read a moment later, once they all have, so the question is asked once for all of them.
+   */
+  private rekey() {
+    if (this.queued) return;
+    this.queued = true;
+    setTimeout(() => {
+      this.queued = false;
+      const key = [...this.wanted.keys()].sort().join(",");
+      if (key === this.key) return;
+      this.key = key;
+      for (const id of [...this.answers.keys()]) if (!this.wanted.has(id)) this.answers.delete(id);
+      this.notify();
+    }, 0);
+  }
+
+  host(on: boolean) {
+    if (this.hosted === on) return;
+    this.hosted = on;
+    this.failed = false;
+    this.notify();
+  }
+
+  fail(on: boolean) {
+    if (this.failed === on) return;
+    this.failed = on;
+    this.notify();
+  }
+
+  /** The server's answer for some of the files: views redraw only when their own file's address changed. */
+  answer(ids: readonly string[], urls: Record<string, FileInfo>) {
+    let changed = this.failed;
+    this.failed = false;
+    for (const id of ids) {
+      const next = urls[id] ?? null;
+      const had = this.answers.get(id);
+      if (had !== undefined && (had === null ? next === null : next !== null && had.url === next.url)) continue;
+      this.answers.set(id, next);
+      changed = true;
+    }
+    if (changed) this.notify();
+  }
+}
+
+const noteFiles = new WeakMap<Editor, NoteFiles>();
+function noteFilesOf(editor: Editor): NoteFiles {
+  let store = noteFiles.get(editor);
+  if (!store) noteFiles.set(editor, (store = new NoteFiles()));
+  return store;
+}
+
+/** The server takes this many files in one question. */
+const FILES_PER_QUESTION = 200;
+
+function FileUrlsQuestion({ store, ids, now }: { store: NoteFiles; ids: string[]; now: number }) {
+  const urls = useQuery(api.files.urls, { fileIds: ids, now });
+  useEffect(() => {
+    if (urls) store.answer(ids, urls);
+  }, [store, ids, urls]);
+  return null;
+}
+
+/** A question the server refused throws while it draws: kept here, away from the editor and the app around it. */
+class FileUrlsGuard extends Component<{ onFailed: () => void; children: ReactNode }, { failed: boolean }> {
+  override state = { failed: false };
+  static getDerivedStateFromError() {
+    return { failed: true };
+  }
+  override componentDidCatch() {
+    this.props.onFailed();
+  }
+  override render() {
+    return this.state.failed ? null : this.props.children;
+  }
+}
+
+/**
+ * Asks the server for the addresses of all of a note's files in one live question (in groups of 200), for the
+ * views of the editor it is given. It draws nothing; it sits next to the editor (not around it). Without one,
+ * each view asks for its own file, as they all once did.
+ */
+export function NoteFileUrls({ editor }: { editor: Editor }) {
+  const store = noteFilesOf(editor);
+  // Before the views draw for the first time (they are drawn after this commit), so none asks for itself.
+  useLayoutEffect(() => {
+    store.host(true);
+    return () => store.host(false);
+  }, [store]);
+  const key = useSyncExternalStore(store.subscribe, store.wantedKey, store.wantedKey);
+  const now = Math.floor(useSyncExternalStore(subscribeClock, clockNow, clockNow) / ADDRESS_STEP_MS) * ADDRESS_STEP_MS;
+  const groups: string[][] = [];
+  if (key) {
+    const ids = key.split(",");
+    for (let i = 0; i < ids.length; i += FILES_PER_QUESTION) groups.push(ids.slice(i, i + FILES_PER_QUESTION));
+  }
+  return (
+    // (A new set of files, or a new half hour, asks again after a failure.)
+    <FileUrlsGuard key={`${now}:${key}`} onFailed={() => store.fail(true)}>
+      {groups.map((ids) => (
+        <FileUrlsQuestion key={ids[0]} store={store} ids={ids} now={now} />
+      ))}
+    </FileUrlsGuard>
+  );
+}
+
+/**
+ * A file's signed address, renewed every half hour and kept on screen until it is about to end. `missing` once
+ * the server has answered without it (deleted, or no longer visible to this person). `renew` is told of an
+ * address that stopped working (the picture didn't load).
+ */
+function useFileUrl(editor: Editor, fileId: string | null): { file: FileInfo | undefined; missing: boolean; renew: (url: string) => void } {
+  const store = noteFilesOf(editor);
+  const hosted = useSyncExternalStore(store.subscribe, store.isHosted, store.isHosted);
+  const failed = useSyncExternalStore(store.subscribe, store.hasFailed, store.hasFailed);
+  const shared = useSyncExternalStore(
+    store.subscribe,
+    () => (fileId ? store.answers.get(fileId) : undefined),
+    () => undefined,
+  );
+  useEffect(() => (fileId ? store.want(fileId) : undefined), [store, fileId]);
+  const now = useSyncExternalStore(subscribeClock, clockNow, clockNow);
+  const own = useQuery(api.files.urls, fileId && !hosted ? { fileIds: [fileId], now: Math.floor(now / ADDRESS_STEP_MS) * ADDRESS_STEP_MS } : "skip");
+  const answered = hosted ? shared !== undefined : Boolean(own);
+  const fresh = !fileId ? undefined : hosted ? (shared ?? undefined) : own?.[fileId];
+  // Each renewal is a new question that starts out unanswered: until it answers, the last address for this file
+  // stays, so images don't flash back to loading and playing audio doesn't stop. And an address that still
+  // works stays when a new one arrives (keepLoadedAddress), unless it was reported broken.
   const [last, setLast] = useState<{ fileId: string; file: FileInfo } | null>(null);
-  if (fileId && fresh && (last?.fileId !== fileId || last.file.url !== fresh.url)) setLast({ fileId, file: fresh });
+  const [broken, setBroken] = useState<string | null>(null);
+  const had = last?.fileId === fileId && last.file.url !== broken ? last.file : null;
+  const shown = fresh ? keepLoadedAddress(had, fresh, now) : had;
+  if (fileId && shown && (last?.fileId !== fileId || last.file.url !== shown.url)) setLast({ fileId, file: shown });
   // No answer from the server (offline, or not yet): the copy this device keeps (lib/sync/deviceFiles.ts), if any.
   const { profile } = useAppState();
   const [kept, setKept] = useState<{ fileId: string; file: FileInfo } | null>(null);
-  const waiting = Boolean(fileId) && !urls && last?.fileId !== fileId;
+  const [keptRead, setKeptRead] = useState(0);
+  const waiting = Boolean(fileId) && !answered && last?.fileId !== fileId;
   useEffect(() => {
     if (!waiting || !fileId) return;
     let live = true;
-    void keptFileUrl(profile.id, fileId).then((k) => {
-      if (live && k) setKept({ fileId, file: { ...k, palette: null } as FileInfo });
-    });
+    const read = () =>
+      void keptFileUrl(profile.id, fileId).then((k) => {
+        if (live && k) setKept({ fileId, file: { ...k, palette: null } as FileInfo });
+      });
+    // Online, the server's answer is a moment away and this read (the device's database, its file cache, the
+    // file's bytes) would be thrown away for every file of every note opened: it waits to see. Offline, or
+    // with the server's question failed, it is all there is.
+    const offline = typeof navigator !== "undefined" && navigator.onLine === false;
+    const timer = offline || failed ? null : setTimeout(read, KEPT_LOOKUP_DELAY_MS);
+    if (!timer) read();
     return () => {
       live = false;
+      if (timer) clearTimeout(timer);
     };
-  }, [waiting, fileId, profile.id]);
-  if (!fileId) return { file: undefined, missing: false };
-  if (urls) return { file: fresh, missing: !fresh };
-  return { file: last?.fileId === fileId ? last.file : kept?.fileId === fileId ? kept.file : undefined, missing: false };
+  }, [waiting, fileId, profile.id, failed, keptRead]);
+  const keptFile = kept?.fileId === fileId ? kept.file : undefined;
+  const renew = useCallback(
+    (url: string) => {
+      if (!fileId) return;
+      if (url.startsWith("blob:")) {
+        // The device's own copy, let go while it waited to load: asked for again.
+        forgetKeptFileUrl(profile.id, fileId);
+        setKept(null);
+        setKeptRead((n) => n + 1);
+        return;
+      }
+      setBroken(url);
+      tickClock();
+    },
+    [fileId, profile.id],
+  );
+  if (!fileId) return { file: undefined, missing: false, renew };
+  if (answered) return { file: shown ?? undefined, missing: !fresh, renew };
+  const file = had ?? keptFile;
+  // The one question for the note's files failed: with nothing kept to show, the file can't be reached.
+  return { file, missing: hosted && failed && !file, renew };
 }
 
 /**
@@ -238,6 +580,80 @@ export function imageWidthAttr(share: number): number | null {
   return w >= 1 ? null : w;
 }
 
+/** On a touch screen a drag on a handle has to travel this far before it means anything. */
+const TOUCH_RESIZE_SLOP = 8;
+
+/**
+ * What a drag that began on a resize handle means so far, from how far it has travelled. With a mouse or
+ * trackpad two pixels sideways is a resize, as it always was. A finger is less sure of itself: nothing is
+ * decided inside eight pixels, and past them only a mostly sideways move resizes; anything else was the
+ * start of a scroll, and the handle lets it go.
+ */
+export function resizeIntent(dx: number, dy: number, touch: boolean): "resize" | "scroll" | "wait" {
+  const ax = Math.abs(dx);
+  if (!touch) return ax >= 2 ? "resize" : "wait";
+  const ay = Math.abs(dy);
+  if (ax < TOUCH_RESIZE_SLOP && ay < TOUCH_RESIZE_SLOP) return "wait";
+  return ax >= TOUCH_RESIZE_SLOP && ax > ay * 1.5 ? "resize" : "scroll";
+}
+
+/**
+ * A picture's size in pixels, when it's known before the picture has loaded: the block's own record of it
+ * (naturalWidth and naturalHeight), else the stored file's. The box is given this shape from the start, so
+ * the note below doesn't jump when the picture arrives.
+ */
+export function imageBoxSize(
+  attrs: { naturalWidth?: unknown; naturalHeight?: unknown },
+  file?: { width?: number | null; height?: number | null } | null,
+): { width: number; height: number } | null {
+  const sized = (w: unknown, h: unknown) => (typeof w === "number" && typeof h === "number" && Number.isFinite(w) && Number.isFinite(h) && w > 0 && h > 0 ? { width: w, height: h } : null);
+  return sized(attrs.naturalWidth, attrs.naturalHeight) ?? sized(file?.width, file?.height);
+}
+
+/** Sets a block's attributes without a step of their own to undo (what arrives a moment after the block did). */
+function setAttrsQuietly(editor: Editor, getPos: ReactNodeViewProps["getPos"], type: string, attrs: Record<string, unknown>) {
+  const pos = typeof getPos === "function" ? getPos() : undefined;
+  const live = typeof pos === "number" ? editor.state.doc.nodeAt(pos) : null;
+  if (typeof pos !== "number" || !live || live.type.name !== type) return;
+  editor.view.dispatch(editor.state.tr.setNodeMarkup(pos, undefined, { ...live.attrs, ...attrs }).setMeta("addToHistory", false));
+}
+
+/**
+ * Gives their files back to blocks that returned without them: an image, attachment or recording taken out by
+ * an undo while it was still uploading, whose upload then finished with no block to write the file's id into,
+ * and which a redo has brought back. Returns the change to make (no step of its own to undo; it is this
+ * person's edit, so it is saved like one), or null when no block is waiting for a file this device uploaded.
+ * The editor calls it after its own changes (components/editor/Editor.tsx).
+ */
+export function restoreUploadedFiles(state: EditorState, documentId: string): Transaction | null {
+  let tr: Transaction | null = null;
+  state.doc.forEach((node, pos) => {
+    if (node.attrs.fileId || !node.attrs.id || !["image", "file", "audio"].includes(node.type.name)) return;
+    // (An image that shows a picture from the web has no file to wait for.)
+    if (node.type.name === "image" && node.attrs.url) return;
+    const fileId = completedUploadFor(documentId, String(node.attrs.id));
+    if (!fileId) return;
+    tr = (tr ?? state.tr).setNodeMarkup(pos, undefined, { ...node.attrs, fileId, uploadId: null });
+  });
+  return tr ? (tr as Transaction).setMeta("addToHistory", false) : null;
+}
+
+/** "Retry now" beside an interrupted upload: every waiting upload is tried again at once (lib/sync/uploads.ts). */
+function RetryUpload({ className = "" }: { className?: string }) {
+  return (
+    <button type="button" contentEditable={false} onClick={() => retryUploads()} className={`rounded-tiny underline underline-offset-2 hover:text-heading ${className}`}>
+      Retry now
+    </button>
+  );
+}
+
+// Printing draws the whole note at once: pictures still waiting to be scrolled to are asked for now.
+if (typeof window !== "undefined") {
+  window.addEventListener("beforeprint", () => {
+    for (const img of document.querySelectorAll<HTMLImageElement>('.fb-image-box img[loading="lazy"]')) img.loading = "eager";
+  });
+}
+
 /**
  * Where the part of the page an element scrolls in starts, in the window's coordinates: the top of the nearest
  * thing that scrolls or clips it, past what that keeps clear at its top (the page's own bar).
@@ -258,12 +674,18 @@ function ImageView({ node, selected, updateAttributes, editor, getPos }: ReactNo
     alt: string;
     caption: string;
     width: number | null;
+    naturalWidth: number | null;
+    naturalHeight: number | null;
     uploadId: string | null;
   };
-  const { file, missing } = useFileUrl(a.fileId);
+  const { file, missing, renew } = useFileUrl(editor, a.fileId);
   const upload = useUploadState(a.id);
   const preview = useLocalPreview(a.fileId, upload?.uploadId, file?.url);
   const src = file?.url ?? (a.url ? sanitizeHref(a.url) : null) ?? preview;
+  // The picture's shape, known before it loads (from the block, or the stored file), then as it really is.
+  const [drawn, setDrawn] = useState<{ src: string; width: number; height: number } | null>(null);
+  const size = (drawn && drawn.src === src ? drawn : null) ?? imageBoxSize(a, file);
+  const shape = size ? `${size.width} / ${size.height}` : undefined;
   // Nothing to show yet, and a picture is on its way: its address is being asked for, or it's being uploaded
   // from this device (the copy kept here is read a moment after the block appears, and the file's id only
   // arrives once the upload is done). "Unavailable" is for a picture that is really gone.
@@ -314,6 +736,9 @@ function ImageView({ node, selected, updateAttributes, editor, getPos }: ReactNo
     const grip = e.currentTarget;
     const pointer = e.pointerId;
     const startX = e.clientX;
+    const startY = e.clientY;
+    // A finger's drag is weighed before it resizes anything (resizeIntent): one going up or down is a scroll.
+    const touch = e.pointerType === "touch";
     const from = a.width;
     // A small picture is never stretched: it's drawn narrower than its share of the column, the drag starts from
     // what is drawn, and past its own size there's nothing wider to drag to.
@@ -325,8 +750,13 @@ function ImageView({ node, selected, updateAttributes, editor, getPos }: ReactNo
     const move = (m: PointerEvent) => {
       if (m.pointerId !== pointer) return;
       const dx = (m.clientX - startX) * (side === "right" ? 1 : -1);
-      if (!moved && Math.abs(dx) < 2) return;
-      moved = true;
+      if (!moved) {
+        const intent = resizeIntent(dx, m.clientY - startY, touch);
+        if (intent === "wait") return;
+        // The start of a scroll: the handle lets go, the width stays, and the block isn't selected for it.
+        if (intent === "scroll") return end(false);
+        moved = true;
+      }
       next = Math.max(Math.min(MIN_IMAGE_WIDTH, most), Math.min(most, start + dx / column));
       setLive(next);
     };
@@ -435,7 +865,34 @@ function ImageView({ node, selected, updateAttributes, editor, getPos }: ReactNo
           // hug the picture as it is drawn.
           <div ref={boxRef} className="fb-image-box relative mx-auto w-fit max-w-full" data-selected={selected ? "" : undefined} onPointerEnter={checkTiny}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={src} alt={description} className="ui-img-outline block h-auto max-w-full rounded-chip bg-sunken" draggable={false} onLoad={checkTiny} />
+            <img
+              src={src}
+              alt={description}
+              // Pictures further down (or in a tab that isn't open) load when they come near the screen, and
+              // are decoded off the main thread: a note of sixty photos no longer fetches and holds them all
+              // at once. Their place is kept meanwhile by the size below.
+              loading="lazy"
+              decoding="async"
+              width={size?.width}
+              height={size?.height}
+              style={shape ? { aspectRatio: shape } : undefined}
+              className="ui-img-outline block h-auto max-w-full rounded-chip bg-sunken"
+              draggable={false}
+              onLoad={(e) => {
+                const img = e.currentTarget;
+                checkTiny();
+                if (!(img.naturalWidth > 0 && img.naturalHeight > 0)) return;
+                setDrawn({ src, width: img.naturalWidth, height: img.naturalHeight });
+                // A picture just added from this device (still uploading) with no size on record: written with
+                // it, once, so its place is kept wherever the note is opened next. Never for a picture that is
+                // only being looked at: opening a note doesn't edit it.
+                if (upload && editor.isEditable && !imageBoxSize(a)) setAttrsQuietly(editor, getPos, "image", { naturalWidth: img.naturalWidth, naturalHeight: img.naturalHeight });
+              }}
+              onError={() => {
+                // The server's address stopped working (it ended while the app slept), or the device's copy was let go.
+                if (src === file?.url) renew(src);
+              }}
+            />
             {editable && !tiny ? (
               <>
                 {grip("left")}
@@ -476,7 +933,12 @@ function ImageView({ node, selected, updateAttributes, editor, getPos }: ReactNo
             ) : null}
           </div>
         ) : (
-          <div className="grid h-40 place-items-center rounded-chip border border-dashed border-line-strong text-subheadline text-muted" aria-busy={loading || undefined}>
+          <div
+            // A picture on its way keeps the place it will take, when its size is known; otherwise a fixed box.
+            className={`grid place-items-center rounded-chip border border-dashed border-line-strong text-subheadline text-muted ${loading && size ? "mx-auto max-w-full" : "h-40"}`}
+            style={loading && size ? { width: size.width, aspectRatio: shape } : undefined}
+            aria-busy={loading || undefined}
+          >
             {loading ? (
               "Loading image…"
             ) : (
@@ -493,6 +955,7 @@ function ImageView({ node, selected, updateAttributes, editor, getPos }: ReactNo
               : navigator.onLine
                 ? "Uploading…"
                 : "Waiting to upload (offline)"}
+            {upload.state === "failed" && navigator.onLine ? <RetryUpload className="ml-2" /> : null}
           </p>
         ) : null}
         <figcaption className="mt-1.5">
@@ -525,7 +988,7 @@ async function quickLookFile(url: string, name: string) {
   }
 }
 
-function FileView({ node, selected }: ReactNodeViewProps) {
+function FileView({ node, selected, editor }: ReactNodeViewProps) {
   const a = node.attrs as {
     id: string;
     fileId: string | null;
@@ -533,7 +996,7 @@ function FileView({ node, selected }: ReactNodeViewProps) {
     size: number | null;
     mimeType: string | null;
   };
-  const { file, missing } = useFileUrl(a.fileId);
+  const { file, missing } = useFileUrl(editor, a.fileId);
   const upload = useUploadState(a.id);
   return (
     <Frame selected={selected} label={`Attachment ${a.name ?? ""}`}>
@@ -550,6 +1013,7 @@ function FileView({ node, selected }: ReactNodeViewProps) {
               : missing
                 ? " · This file was deleted or you no longer have access"
                 : ""}
+            {upload?.state === "failed" && navigator.onLine ? <RetryUpload className="ml-2" /> : null}
           </p>
         </div>
         {file && macDesktop()?.quickLook ? (
@@ -590,7 +1054,7 @@ function AudioView({ node, selected, editor, getPos }: ReactNodeViewProps) {
     size: number | null;
     duration: number | null;
   };
-  const { file, missing } = useFileUrl(a.fileId);
+  const { file, missing } = useFileUrl(editor, a.fileId);
   const upload = useUploadState(a.id);
   const preview = useLocalPreview(a.fileId, upload?.uploadId, file?.url);
   const editable = useEditable(editor);
@@ -618,7 +1082,21 @@ function AudioView({ node, selected, editor, getPos }: ReactNodeViewProps) {
         size={a.size}
         duration={a.duration}
         status={status}
-        actions={canTranscribe ? <TranscribeButton onClick={transcription.start} busy={transcription.busy} title={transcription.title} /> : null}
+        actions={
+          upload?.state === "failed" && navigator.onLine ? (
+            <button
+              type="button"
+              onClick={() => retryUploads()}
+              aria-label="Retry the upload now"
+              title="Retry the upload now"
+              className="grid size-8 flex-none place-items-center rounded-chip text-muted hover:bg-[var(--glass-hover)] hover:text-heading"
+            >
+              <RotateCw size={15} aria-hidden />
+            </button>
+          ) : canTranscribe ? (
+            <TranscribeButton onClick={transcription.start} busy={transcription.busy} title={transcription.title} />
+          ) : null
+        }
         className="my-1.5"
       />
       {transcription.preview}
@@ -691,8 +1169,41 @@ function PageView({ node, selected }: ReactNodeViewProps) {
 /** Asks a bookmark to open its editing fields (the right-click menu's "Edit bookmark…"). */
 export const EDIT_BOOKMARK_EVENT = "folevi:edit-bookmark";
 
-/** Bookmarks whose preview this session already asked for (each address once). */
+/** Bookmarks whose preview this session already asked for (each address once, unless the asking failed). */
 const previewed = new Set<string>();
+
+// Pages that turned out to have nothing to preview (no image, no icon, no description): remembered on this
+// device, not in the note, so every bookmark to one isn't read again each time the app is opened.
+const NO_PREVIEW_KEY = "folevi:bookmarks-without-preview";
+const NO_PREVIEW_KEPT = 300;
+const NO_PREVIEW_FOR_MS = 30 * 24 * 3_600_000;
+
+function pagesWithoutPreview(): Record<string, number> {
+  try {
+    const stored = JSON.parse(localStorage.getItem(NO_PREVIEW_KEY) ?? "{}") as unknown;
+    return stored && typeof stored === "object" && !Array.isArray(stored) ? (stored as Record<string, number>) : {};
+  } catch {
+    return {};
+  }
+}
+
+/** Whether this address was read on this device lately and had nothing to show. */
+function knownWithoutPreview(url: string): boolean {
+  const at = pagesWithoutPreview()[url];
+  return typeof at === "number" && Date.now() - at < NO_PREVIEW_FOR_MS;
+}
+
+function rememberWithoutPreview(url: string) {
+  try {
+    const all = Object.entries({ ...pagesWithoutPreview(), [url]: Date.now() })
+      .filter(([, at]) => typeof at === "number")
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, NO_PREVIEW_KEPT);
+    localStorage.setItem(NO_PREVIEW_KEY, JSON.stringify(Object.fromEntries(all)));
+  } catch {
+    // No storage (private mode, or full): it's read again next time, as before.
+  }
+}
 
 function BookmarkView({ node, selected, updateAttributes, editor, getPos }: ReactNodeViewProps) {
   const a = node.attrs as {
@@ -727,15 +1238,7 @@ function BookmarkView({ node, selected, updateAttributes, editor, getPos }: Reac
   // arrives: pastedFiles.ts). What a page says about itself comes a moment after its link is pasted; as a step,
   // the first ⌘Z after pasting would only take the preview off again and leave the bookmark standing. It is
   // still this person's note changing, so it's saved like any edit (it isn't marked "remote").
-  const setQuietly = useCallback(
-    (attrs: Record<string, unknown>) => {
-      const pos = typeof getPos === "function" ? getPos() : undefined;
-      const live = typeof pos === "number" ? editor.state.doc.nodeAt(pos) : null;
-      if (typeof pos !== "number" || !live || live.type.name !== "bookmark") return;
-      editor.view.dispatch(editor.state.tr.setNodeMarkup(pos, undefined, { ...live.attrs, ...attrs }).setMeta("addToHistory", false));
-    },
-    [editor, getPos],
-  );
+  const setQuietly = useCallback((attrs: Record<string, unknown>) => setAttrsQuietly(editor, getPos, "bookmark", attrs), [editor, getPos]);
 
   // The page's own title, description, image and icon, read once per address (on the server). Fields the
   // person wrote themselves are kept; a title that is just the address is replaced. Read by itself (a new
@@ -747,6 +1250,8 @@ function BookmarkView({ node, selected, updateAttributes, editor, getPos }: Reac
       previewed.add(url);
       try {
         const p = await fetchPreview({ url });
+        // Nothing to show for this page: not asked again by itself on this device for a while.
+        if (!p.image && !p.icon && !p.description) rememberWithoutPreview(url);
         // The note may have turned read-only while the page was read.
         if (!editor.isEditable) return;
         const pos = typeof getPos === "function" ? getPos() : undefined;
@@ -764,7 +1269,9 @@ function BookmarkView({ node, selected, updateAttributes, editor, getPos }: Reac
         if (undoable) updateAttributes(patch);
         else setQuietly(patch);
       } catch {
-        // No preview (offline, the site didn't answer): the bookmark keeps what it has.
+        // No preview (offline, the site didn't answer): the bookmark keeps what it has, and the page is asked
+        // again the next time the bookmark is shown (it used to count as asked for the rest of the session).
+        previewed.delete(url);
       }
     },
     [env.demo, fetchPreview, getPos, editor, updateAttributes, setQuietly],
@@ -783,6 +1290,7 @@ function BookmarkView({ node, selected, updateAttributes, editor, getPos }: Reac
     if (!editable || !a.url || previewed.has(a.url)) return;
     // A new bookmark, or one saved before previews (or their images and icons) existed.
     if (a.image || a.icon || (a.description && a.title && a.title !== host && a.title !== a.url)) return;
+    if (knownWithoutPreview(a.url)) return;
     void loadPreview(a.url, false);
   }, [editable, a.url, a.image, a.icon, a.description, a.title, host, loadPreview]);
 
@@ -942,12 +1450,15 @@ function BookmarkView({ node, selected, updateAttributes, editor, getPos }: Reac
  * A collection the server won't give (deleted, in another workspace, no longer shared): its card says so, rather
  * than the error taking the whole note down with it.
  */
-class CollectionGone extends Component<{ children: ReactNode }, { failed: boolean }> {
-  override state = { failed: false };
-  static getDerivedStateFromError() {
-    return { failed: true };
+class CollectionGone extends Component<{ children: ReactNode }, { failed: boolean; unloaded: unknown }> {
+  override state = { failed: false, unloaded: null as unknown };
+  static getDerivedStateFromError(error: unknown) {
+    return { failed: true, unloaded: isChunkLoadError(error) ? error : null };
   }
   override render() {
+    // The collection's own part of the app didn't load: that isn't a collection that's gone. Passed on to the
+    // block's card, which offers to load it again.
+    if (this.state.unloaded) throw this.state.unloaded;
     return this.state.failed ? <p className="rounded-chip border border-dashed border-line p-4 text-subheadline text-muted">This collection is unavailable.</p> : this.props.children;
   }
 }
@@ -968,6 +1479,8 @@ function CollectionView({ node, selected, editor }: ReactNodeViewProps) {
   );
 }
 
+const CollectionBlockView = Object.assign(CollectionView, { reload: CollectionEmbed.reload });
+
 function UnknownView({ node, selected, deleteNode, editor }: ReactNodeViewProps) {
   const wire = node.attrs.wire as { type?: string } | null;
   const editable = useEditable(editor);
@@ -986,6 +1499,7 @@ function UnknownView({ node, selected, deleteNode, editor }: ReactNodeViewProps)
             type="button"
             onClick={() => editor.isEditable && deleteNode()}
             aria-label="Remove block"
+            title="Remove block"
             className="text-faint hover:text-danger"
           >
             <Trash2 size={14} aria-hidden />
@@ -1019,10 +1533,11 @@ function onImageGrip(event: Event): boolean {
  * A React block view whose outer element carries the block's id and depth like every other block, so it
  * indents, hides inside a collapsed toggle and lines up with the block handle.
  */
-function blockView(component: React.ComponentType<ReactNodeViewProps>, stopEvent?: StopEvent) {
-  return ReactNodeViewRenderer(component, {
+function blockView(component: ComponentType<ReactNodeViewProps> & { reload?: () => void }, stopEvent?: StopEvent) {
+  // Every view draws inside its own boundary (BlockBoundary): one block that can't be shown is one card.
+  return ReactNodeViewRenderer(guarded(component), {
     attrs: ({ node }) => ({ "data-block-id": String(node.attrs.id ?? ""), "data-depth": String(node.attrs.depth ?? 0), style: `--depth:${Number(node.attrs.depth ?? 0)}` }),
-    ...(stopEvent ? { stopEvent: (props: { event: Event }) => !isHistoryKey(props.event) && stopEvent(props) } : {}),
+    ...(stopEvent ? { stopEvent: (props: { event: Event }) => onErrorCard(props.event) ?? (!isHistoryKey(props.event) && stopEvent(props)) } : {}),
   });
 }
 
@@ -1093,7 +1608,7 @@ export const NODE_VIEW_EXTENSIONS = [
     addNodeView: () => blockView(BookmarkView, ({ event }) => event.target instanceof Element && Boolean(event.target.closest("a, button, input, form"))),
   }),
   CollectionBlock.extend({
-    addNodeView: () => blockView(CollectionView, () => true),
+    addNodeView: () => blockView(CollectionBlockView, () => true),
   }),
   // The frame and the Open link handle their own input; a click on the bar selects the block.
   EmbedBlock.extend({
@@ -1103,9 +1618,9 @@ export const NODE_VIEW_EXTENSIONS = [
   // Its own editor's keys (undo included) and pointer stay with it: no blockView history pass-through.
   SyncedBlock.extend({
     addNodeView: () =>
-      ReactNodeViewRenderer(LazySynced, {
+      ReactNodeViewRenderer(guarded(LazySynced), {
         attrs: ({ node }) => ({ "data-block-id": String(node.attrs.id ?? ""), "data-depth": String(node.attrs.depth ?? 0), style: `--depth:${Number(node.attrs.depth ?? 0)}` }),
-        stopEvent: ({ event }) => syncedOwnsEvent(event),
+        stopEvent: ({ event }) => onErrorCard(event) ?? syncedOwnsEvent(event),
       }),
   }),
   FormulaBlock.extend({

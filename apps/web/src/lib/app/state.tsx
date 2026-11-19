@@ -308,7 +308,8 @@ export function AppStateProvider({ profile, offlineWorkspaces, children }: { pro
   useEffect(() => {
     engine?.setOnline(effectivelyOnline);
     outbox?.setOnline(effectivelyOnline);
-    if (effectivelyOnline) uploader?.kick(0);
+    // (Back online: uploads that were waiting out a retry delay go now, not minutes later.)
+    if (effectivelyOnline) uploader?.retryNow();
   }, [engine, outbox, uploader, effectivelyOnline]);
 
   // A change refused for want of a sign-in (sent in the moment before the backend had the token again, or as

@@ -357,6 +357,9 @@ export class SyncEngine {
     if (!record) return;
     const next = { ...this.state, uploads: this.state.uploads.filter((u) => u.uploadId !== uploadId) };
     this.commit(sync.localDelete(next, { opId: ulid(), documentId: record.documentId, blockId: record.blockId }));
+    // The note's open editor takes the block out too (it used to keep a dead "unavailable" block until the
+    // note was opened again, and a caption written on it was refused on save).
+    this.emit({ type: "remote", documentId: record.documentId });
   }
 
   /** Notes someone else has open right now (from presence): their block edits are sent sooner. */

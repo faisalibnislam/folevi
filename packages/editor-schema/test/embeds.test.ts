@@ -32,6 +32,17 @@ describe("embed addresses", () => {
     expect(embedProblem("https://maps.app.goo.gl/abc")).toMatch(/Short map links/);
   });
 
+  it("Google Maps: a place with a broken percent escape is no map, not a thrown error", () => {
+    const broken = "https://www.google.com/maps/place/100%/";
+    expect(() => embedFor(broken)).not.toThrow();
+    expect(embedFor(broken)).toBeNull();
+    expect(embedProblem(broken)).toMatch(/can't be embedded/);
+    // The coordinates after it still say where.
+    expect(src("https://www.google.com/maps/place/100%/@56.41,-5.47,15z")).toBe("https://maps.google.com/maps?q=56.41%2C-5.47&output=embed&z=15");
+    const block: WireBlock = { id: "01JAEMBED0000000000000000B", type: "embed", parentId: null, rank: "V", schemaVersion: 1, text: [], props: { url: broken, provider: "googleMaps" } };
+    expect(validateWireBlock(block).map((i) => i.path)).toContain("props.url");
+  });
+
   it("anything else isn't embedded", () => {
     for (const url of ["https://example.com/video", "javascript:alert(1)", "https://evil.com/youtube.com/watch?v=dQw4w9WgXcQ", "https://youtube.com.evil.com/watch?v=dQw4w9WgXcQ", ""]) expect(embedFor(url)).toBeNull();
     expect(embedProblem("https://example.com")).toMatch(/YouTube, Vimeo, Loom, Figma or Google Maps/);

@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Mic, Pause, Play, PhoneCall, Square, X } from "lucide-react";
+import { Download, Mic, Pause, Play, PhoneCall, Square, X } from "lucide-react";
+import { MAX_FILE_BYTES } from "@folevi/editor-schema/fileBytes";
 import { errorMessage, useToast } from "@/components/ui/Toast";
 import { desktop } from "@/lib/desktop";
 import { inIosApp } from "@/lib/nativeApp";
@@ -26,12 +27,59 @@ export const MAX_RECORDING_BYTES = 48 * 1024 * 1024;
 const RECORDING_BITS_PER_SECOND = 32_000;
 const BARS = 36;
 
-/** The first container this browser records, most compatible first (Chrome/Firefox: WebM, Safari: MP4). */
-function recordingType(): string | undefined {
-  if (typeof MediaRecorder === "undefined") return undefined;
-  return ["audio/webm;codecs=opus", "audio/webm", "audio/mp4", "audio/ogg;codecs=opus"].find((t) =>
-    MediaRecorder.isTypeSupported(t),
-  );
+/**
+ * How long a microphone may stay interrupted (a call answered from its banner, Siri, another app taking the
+ * sound) before the recording stops with what it has. Until then it is paused, and goes on by itself when the
+ * microphone is back.
+ */
+export const MIC_INTERRUPT_GRACE_MS = 60_000;
+
+/** Safari and every browser on iPhone and iPad (all WebKit there), and the apps' own web view. */
+function onWebKit(): boolean {
+  const ua = typeof navigator === "undefined" ? "" : navigator.userAgent;
+  return /AppleWebKit/.test(ua) && !/Chrome|Chromium|Edg\//.test(ua);
+}
+
+/**
+ * The first container this browser records, most compatible first: WebM in Chrome and Firefox, MP4 in Safari.
+ * WebKit now says it records WebM too, but a WebM from MediaRecorder carries no length and no index to seek
+ * by, and older Safari can't play one: there MP4 is asked for first.
+ */
+export function recordingType(
+  supports: (type: string) => boolean = (t) => typeof MediaRecorder !== "undefined" && MediaRecorder.isTypeSupported(t),
+  webkit: boolean = onWebKit(),
+): string | undefined {
+  const webm = ["audio/webm;codecs=opus", "audio/webm"];
+  const order = webkit ? ["audio/mp4", ...webm, "audio/ogg;codecs=opus"] : [...webm, "audio/mp4", "audio/ogg;codecs=opus"];
+  return order.find((t) => supports(t));
+}
+
+/**
+ * Why a finished recording can't be added to a note, as a sentence to show: only its size (the server takes
+ * recordings up to MAX_FILE_BYTES, and one it refuses is thrown away after the upload). Null when it can. The
+ * recorder checks before it saves; the editor's insertAudio checks again before it queues the upload.
+ */
+export function recordingProblem(file: { size: number }): string | null {
+  return file.size > MAX_FILE_BYTES ? `This recording is too large to add to a note. Recordings can be up to ${Math.round(MAX_FILE_BYTES / 1024 / 1024)} MB.` : null;
+}
+
+/** Whether a recording has reached its longest (in time, or in bytes): the moment to stop and save it. */
+export function recordingFull(elapsedMs: number, bytes: number): boolean {
+  return elapsedMs >= MAX_RECORDING_MS || bytes >= MAX_RECORDING_BYTES;
+}
+
+/** Hands a recording to the browser's downloads: the way to keep one that can't go into a note. */
+function downloadRecording(file: File) {
+  const url = URL.createObjectURL(file);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = file.name;
+  link.style.display = "none";
+  document.body.append(link);
+  link.click();
+  link.remove();
+  // The download reads the address after the click: let go of it (and the bytes it holds) a while later.
+  setTimeout(() => URL.revokeObjectURL(url), 60_000);
 }
 
 export function canRecordAudio(): boolean {
@@ -74,10 +122,12 @@ type Phase =
   | { kind: "choose" }
   | { kind: "asking" }
   | { kind: "recording" }
-  | { kind: "paused" }
+  // `interrupted`: the microphone went quiet by itself (not the Pause button); it resumes when it's back.
+  | { kind: "paused"; interrupted?: boolean }
   | { kind: "saving" }
   // Recording ended without Save (the microphone went away) or saving failed: the audio waits for Save.
-  | { kind: "stopped"; file: File; seconds: number; message: string }
+  // `tooLarge`: it can't go into a note at all, only to the device's downloads.
+  | { kind: "stopped"; file: File; seconds: number; message: string; tooLarge?: boolean }
   // `retry`: the source Try again starts over with (the microphone couldn't be used).
   | { kind: "error"; message: string; settings?: boolean; retry?: RecordingSource };
 
@@ -146,12 +196,16 @@ export function AudioRecorder({
   const now = () =>
     clock.current.total + (clock.current.since ? performance.now() - clock.current.since : 0);
 
+  /** A microphone interruption being waited out (the timer that gives up on it). */
+  const interruption = useRef<{ timer: ReturnType<typeof setTimeout> | null; wait?: () => void }>({ timer: null });
   /** The panel is gone (see the unmount below): a recording still running is stored, not dropped. */
   const left = useRef(false);
   /** A recording that stopped by itself and waits for Save. */
   const kept = useRef<{ file: File; seconds: number } | null>(null);
   const release = useCallback(() => {
     cancelAnimationFrame(frame.current);
+    if (interruption.current.timer) clearTimeout(interruption.current.timer);
+    interruption.current = { timer: null };
     streams.current.forEach((s) => s.getTracks().forEach((t) => t.stop()));
     streams.current = [];
     void audioCtx.current?.close().catch(() => undefined);
@@ -160,6 +214,19 @@ export function AudioRecorder({
 
   // The panel closes only once the recording is in the note; if that fails it stays open to try again.
   const store = useCallback(async (file: File, seconds: number) => {
+    // Too large for the server: it's never queued (the upload would be refused and the recording deleted with
+    // its block). It stays here to download instead; with the panel gone, it goes to the downloads at once.
+    const problem = recordingProblem(file);
+    if (problem) {
+      if (left.current) {
+        downloadRecording(file);
+        handlers.current.toast.show("Your recording was too large to add to the note. It was saved to your downloads instead.", { tone: "error" });
+        return;
+      }
+      kept.current = { file, seconds };
+      setPhase({ kind: "stopped", file, seconds, tooLarge: true, message: `${problem} Download it to keep it.` });
+      return;
+    }
     setPhase({ kind: "saving" });
     kept.current = null;
     try {
@@ -208,6 +275,28 @@ export function AudioRecorder({
       }
     };
 
+    /**
+     * Stops and saves a recording that has reached its longest. Asked each time a piece of it arrives (about
+     * once a second, whether the page shows or not) as well as by the clock below: the clock runs on animation
+     * frames, and a page in the background gets none, so by itself it let a recording left running in a hidden
+     * tab grow past what the server takes.
+     */
+    const stopIfFull = (rec: { state: string; stop(): void }): boolean => {
+      if (!recordingFull(now(), bytes.current) || rec.state === "inactive" || requested.current || discard.current) return false;
+      requested.current = true;
+      setPhase({ kind: "saving" });
+      rec.stop();
+      return true;
+    };
+    /** A piece of the recording: kept, counted, and the limits looked at. */
+    const take = (rec: { state: string; stop(): void }, data: Blob) => {
+      if (data.size) {
+        chunks.current.push(data);
+        bytes.current += data.size;
+      }
+      stopIfFull(rec);
+    };
+
     /** Recording now: the clock, the meter (from `level`, 0 to 1) and the length limits. */
     const running = (rec: { state: string; stop(): void }, level: () => number) => {
       clock.current = { total: 0, since: performance.now() };
@@ -218,12 +307,7 @@ export function AudioRecorder({
         if (t - last < 80) return;
         last = t;
         setElapsed(now());
-        if ((now() >= MAX_RECORDING_MS || bytes.current >= MAX_RECORDING_BYTES) && rec.state !== "inactive") {
-          requested.current = true;
-          setPhase({ kind: "saving" });
-          rec.stop();
-          return;
-        }
+        if (stopIfFull(rec)) return;
         if (rec.state !== "recording") return;
         setLevels((prev) => [...prev.slice(1), Math.min(1, level())]);
       };
@@ -233,12 +317,7 @@ export function AudioRecorder({
     const native = from === "call" ? nativeCallRecorder() : null;
     if (native) {
       const rec = new NativeCallRecording(native);
-      rec.ondataavailable = (e) => {
-        if (e.data.size) {
-          chunks.current.push(e.data);
-          bytes.current += e.data.size;
-        }
-      };
+      rec.ondataavailable = (e) => take(rec, e.data);
       rec.onstop = () => ended(rec.mimeType, true);
       try {
         await rec.start();
@@ -305,19 +384,54 @@ export function AudioRecorder({
         recorded,
         type ? { mimeType: type, audioBitsPerSecond: RECORDING_BITS_PER_SECOND } : undefined,
       );
-      rec.ondataavailable = (e) => {
-        if (e.data.size) {
-          chunks.current.push(e.data);
-          bytes.current += e.data.size;
-        }
+      rec.ondataavailable = (e) => take(rec, e.data);
+      rec.onstop = () => {
+        if (interruption.current.timer) clearTimeout(interruption.current.timer);
+        interruption.current = { timer: null };
+        ended((rec.mimeType || type || "audio/webm").split(";")[0]!, Boolean(system));
       };
-      rec.onstop = () => ended((rec.mimeType || type || "audio/webm").split(";")[0]!, Boolean(system));
       // Most browsers stop the recorder when its microphone goes away; this makes sure of it (and for a
       // call, when this Mac's sound stops coming).
       for (const track of [...media.getAudioTracks(), ...(system?.getAudioTracks() ?? [])])
         track.addEventListener("ended", () => {
           if (rec.state !== "inactive") rec.stop();
         });
+      // The microphone taken away for a while without the page leaving the screen (a call answered from its
+      // banner, Siri, another app's sound): the track goes mute, and the recorder would write silence with the
+      // clock running. It pauses instead and goes on when the microphone is back; one that stays away is
+      // stopped with what it has, kept for Save.
+      for (const track of media.getAudioTracks()) {
+        track.addEventListener("mute", () => {
+          if (rec.state !== "recording" || interruption.current.timer) return;
+          rec.pause();
+          clock.current = { total: now(), since: 0 };
+          setElapsed(now());
+          setPhase({ kind: "paused", interrupted: true });
+          // The wait counts only while the page shows: timers held back while the app was in the background
+          // all come due the moment it returns, before the microphone has had its chance to.
+          const wait = () => {
+            if (interruption.current.timer) clearTimeout(interruption.current.timer);
+            interruption.current = {
+              wait,
+              timer: setTimeout(() => {
+                if (document.hidden) return wait();
+                interruption.current = { timer: null };
+                if (rec.state !== "inactive") rec.stop();
+              }, MIC_INTERRUPT_GRACE_MS),
+            };
+          };
+          wait();
+        });
+        track.addEventListener("unmute", () => {
+          if (!interruption.current.timer) return;
+          clearTimeout(interruption.current.timer);
+          interruption.current = { timer: null };
+          if (rec.state !== "paused") return;
+          rec.resume();
+          clock.current = { total: clock.current.total, since: performance.now() };
+          setPhase({ kind: "recording" });
+        });
+      }
       recorder.current = rec;
       rec.start(1000);
       const data = new Uint8Array(analyser.fftSize);
@@ -370,6 +484,9 @@ export function AudioRecorder({
   const resume = () => {
     const rec = recorder.current;
     if (!rec || rec.state !== "paused") return;
+    // Resumed by hand while the microphone was being waited for: the wait is over.
+    if (interruption.current.timer) clearTimeout(interruption.current.timer);
+    interruption.current = { timer: null };
     rec.resume();
     clock.current = { ...clock.current, since: performance.now() };
     setPhase({ kind: "recording" });
@@ -398,6 +515,14 @@ export function AudioRecorder({
     document.addEventListener("visibilitychange", onVisibility);
     return () => document.removeEventListener("visibilitychange", onVisibility);
   }, [toast]);
+  // Back on screen with the microphone still being waited for: the wait starts over (see where it's set).
+  useEffect(() => {
+    const onVisible = () => {
+      if (!document.hidden && interruption.current.timer) interruption.current.wait?.();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
+  }, []);
   const save = () => {
     const rec = recorder.current;
     if (!rec || rec.state === "inactive") return;
@@ -454,7 +579,9 @@ export function AudioRecorder({
                   ? "Allow microphone access when asked"
                   : "Allow microphone access in your browser’s prompt"
               : phase.kind === "paused"
-                ? "Paused"
+                ? phase.interrupted
+                  ? "Microphone interrupted"
+                  : "Paused"
                 : phase.kind === "saving"
                   ? "Saving…"
                   : phase.kind === "stopped"
@@ -599,19 +726,27 @@ export function AudioRecorder({
           <button type="button" onClick={cancel} className="ui-btn ui-btn-secondary h-9 px-3 text-callout">
             Discard
           </button>
-          <button
-            type="button"
-            onClick={() => void store(stopped.file, stopped.seconds)}
-            className="ui-btn ui-btn-primary ml-auto h-9 px-3.5 text-callout"
-          >
-            Save recording
-          </button>
+          {stopped.tooLarge ? (
+            <button type="button" onClick={() => downloadRecording(stopped.file)} className="ui-btn ui-btn-primary ml-auto h-9 px-3.5 text-callout">
+              <Download size={14} aria-hidden /> Download
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => void store(stopped.file, stopped.seconds)}
+              className="ui-btn ui-btn-primary ml-auto h-9 px-3.5 text-callout"
+            >
+              Save recording
+            </button>
+          )}
         </div>
       ) : null}
       {live ? (
         <p className="text-footnote text-muted">
           {source === "call" ? "Let everyone on the call know you’re recording. " : ""}
-          The recording is added to this note when you save. It counts towards your storage.
+          {phase.kind === "paused" && phase.interrupted
+            ? "Something else is using the microphone. The recording goes on when it’s back."
+            : "The recording is added to this note when you save. It counts towards your storage."}
         </p>
       ) : null}
     </div>

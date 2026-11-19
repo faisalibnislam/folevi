@@ -244,8 +244,38 @@ export async function keptFilesUsage(accountKey: string): Promise<{ count: numbe
   return { count: all.length, bytes: all.reduce((s, f) => s + (f.kind === "thumb" ? 60_000 : f.size), 0) };
 }
 
+/**
+ * How many kept attachments have an address at once: the most a note shows together, with room to spare. Each
+ * address holds its file in memory until it is let go, so past this the one asked for longest ago goes (a
+ * picture already drawn stays drawn; one asked for again gets a new address).
+ */
+export const KEPT_URLS_MAX = 200;
+/** Addresses by "account|file", least recently asked for first. */
 const urls = new Map<string, string>();
 const touched = new Map<string, number>();
+
+/** Remembers an address as the most recently asked for, and lets go of the oldest ones past the limit. */
+function rememberUrl(memo: string, url: string) {
+  urls.delete(memo);
+  urls.set(memo, url);
+  for (const [old, oldUrl] of urls) {
+    if (urls.size <= KEPT_URLS_MAX) break;
+    urls.delete(old);
+    URL.revokeObjectURL(oldUrl);
+  }
+}
+
+/**
+ * Lets go of a kept attachment's address, so the next keptFileUrl makes a new one (a picture whose address
+ * stopped working: let go while it was still waiting to load).
+ */
+export function forgetKeptFileUrl(accountKey: string, fileId: string): void {
+  const memo = `${accountKey}|${fileId}`;
+  const url = urls.get(memo);
+  if (!url) return;
+  urls.delete(memo);
+  URL.revokeObjectURL(url);
+}
 
 /**
  * A kept attachment as the editor shows it when the server's signed link isn't there (offline, or not answered
@@ -264,8 +294,8 @@ export async function keptFileUrl(accountKey: string, fileId: string): Promise<{
       const hit = (meta.kind !== "thumb" ? await cache.match(fullKey(fileId)) : undefined) ?? (meta.thumb ? await cache.match(thumbKey(fileId)) : undefined);
       if (!hit) return null;
       url = URL.createObjectURL(await hit.blob());
-      urls.set(memo, url);
     }
+    rememberUrl(memo, url);
     // Opened: it's recently used (written at most once an hour per file).
     const now = Date.now();
     if (now - (touched.get(memo) ?? 0) > 3_600_000) {

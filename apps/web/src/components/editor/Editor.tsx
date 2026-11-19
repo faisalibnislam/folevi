@@ -9,7 +9,8 @@ import { LIMITS, SCHEMA_VERSION, rankBetween, ulid, type WireBlock } from "@fole
 import { useMutation } from "convex/react";
 import { api } from "@/lib/convex/api";
 import type { SyncEngine } from "@/lib/sync/engine";
-import { enqueueUpload } from "@/lib/sync/uploads";
+import { enqueueUpload, imageFileSize } from "@/lib/sync/uploads";
+import { restoreUploadedFiles } from "./NodeViews";
 import { MAX_FILE_BYTES, MAX_IMAGE_BYTES } from "@folevi/editor-schema/fileBytes";
 import { decorationsKey, type DecorationInputs, type TriggerState } from "./plugins";
 import { editorExtensions } from "./editorExtensions";
@@ -254,6 +255,14 @@ export const Editor = forwardRef<EditorHandle, Props>(function Editor(
       // Only genuine local document changes count (setEditable and meta-only transactions emit updates too).
       // Someone who can only read may still open and close toggles: that's theirs alone, never saved.
       if (!transaction.docChanged || transaction.getMeta("remote") || !ed.isEditable) return;
+      // A picture, file or recording that came back (redo, after its block was undone mid-upload) without the
+      // file its upload finished with meanwhile: it gets it back. (That change comes through here again and
+      // is saved as the person's own.)
+      const refile = restoreUploadedFiles(ed.state, documentId);
+      if (refile) {
+        ed.view.dispatch(refile);
+        return;
+      }
       // Typed before the editor said it was ready (a new note's first line, typed right after the title's
       // Enter): it opened with the document as it was before this change, and this change is the person's.
       // (If the engine has newer blocks than the editor opened with, they are drawn once this change is in.)
@@ -419,9 +428,12 @@ export const Editor = forwardRef<EditorHandle, Props>(function Editor(
           continue;
         }
         const blockId = ulid();
+        // A picture's size is known before its address is, so its place in the note is held from the start
+        // (nothing below it jumps when it arrives).
+        const size = isImage ? await imageFileSize(file).catch(() => null) : null;
         const node = isImage
           ? // No alt from the file's name ("IMG_2041" describes nothing): the person adds a description in the image's tools.
-            ed.schema.nodes.image!.create({ id: blockId, depth, alt: "", caption: "" })
+            ed.schema.nodes.image!.create({ id: blockId, depth, alt: "", caption: "", naturalWidth: size?.width ?? null, naturalHeight: size?.height ?? null })
           : ed.schema.nodes.file!.create({ id: blockId, depth, name: file.name, size: file.size, mimeType: file.type || "application/octet-stream" });
         // Register the upload before the block exists so its sync op is held until the upload finishes.
         await enqueueUpload(accountKey, engine, { documentId, blockId, file, kind: isImage ? "image" : "file" });

@@ -102,7 +102,15 @@ function googleMaps(url: URL): Embed | null {
   const at = /@(-?\d{1,3}(?:\.\d+)?),(-?\d{1,3}(?:\.\d+)?)(?:,(\d{1,2}(?:\.\d+)?)z)?/.exec(url.pathname);
   if (at) zoom = at[3] ? Math.round(Number(at[3])) : null;
   const place = /\/maps\/(?:place|search)\/([^/@]+)/.exec(url.pathname)?.[1];
-  if (!query && place) query = decodeURIComponent(place.replace(/\+/g, " "));
+  if (!query && place) {
+    // A broken percent escape ("/maps/place/100%/") is a place that can't be read, not an error to throw at
+    // whoever asked (the embed prompt, the validator, the block's own view): the coordinates, or no map.
+    try {
+      query = decodeURIComponent(place.replace(/\+/g, " "));
+    } catch {
+      query = null;
+    }
+  }
   if (!query && at) query = `${at[1]},${at[2]}`;
   if (!query) return null;
   query = query.trim().slice(0, 300);

@@ -9,7 +9,7 @@ import { ConvexError } from "convex/values";
 import type { SyncOp, WireScope } from "@folevi/editor-schema";
 import { SyncEngine } from "@/lib/sync/engine";
 import { localDb } from "@/lib/sync/db";
-import { enqueueUpload, Uploader } from "@/lib/sync/uploads";
+import { completedUploadFor, enqueueUpload, imageFileSize, localPreviewUrl, onUploadAbandoned, PREVIEW_RELEASE_MS, retryUploads, Uploader } from "@/lib/sync/uploads";
 
 const PERSONAL: WireScope = { kind: "personal" };
 /** Node's File (jsdom's doesn't survive fake-indexeddb's structured clone; a browser's does). */
@@ -118,5 +118,156 @@ describe("uploads for pages made on this device", () => {
     expect(await db.get("uploads", uploadId)).toBeUndefined();
     expect(errors).toEqual(["Document not found."]);
     uploader.stop();
+  });
+});
+
+// The editor audit's upload findings (M15, M19, M3, M7, M1): an interrupted upload goes again as soon as it can,
+// a preview is let go even when no view is left to do it, a finished upload can be found again by its block,
+// a picture's size is read before it's uploaded, and a file let go for good is offered back first.
+describe("an interrupted upload doesn't sit out its wait when it could go", () => {
+  /** An upload that failed a few times: its next try is minutes away. */
+  async function waiting(account: string, block: string) {
+    const made = await setUp(account);
+    made.engine.setOnline(true);
+    made.server.pages.add("doc-there");
+    const uploadId = await enqueueUpload(account, made.engine, { documentId: "doc-there", blockId: block, file: file("jpg", "photo.jpg", "image/jpeg"), kind: "image" });
+    const db = await localDb(account);
+    // (The uploader's first pass of a session tries everything: that one is spent here.)
+    await db.put("uploads", { ...(await db.get("uploads", uploadId))!, attempts: 4, nextAttemptAt: Date.now() + 9 * 60_000 });
+    (made.uploader as unknown as { eager: boolean }).eager = false;
+    return { ...made, uploadId, db };
+  }
+
+  test("an ordinary pass leaves it waiting", async () => {
+    const { server, uploader, uploadId, db } = await waiting("acct-upload-4", "img-4");
+    await pass(uploader);
+    expect(server.asked).toEqual([]);
+    expect(await db.get("uploads", uploadId)).toBeDefined();
+    uploader.stop();
+  });
+
+  test("the connection coming back tries it at once", async () => {
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+    try {
+      const { server, uploader, uploadId, db } = await waiting("acct-upload-5", "img-5");
+      window.dispatchEvent(new Event("online"));
+      await vi.advanceTimersByTimeAsync(1);
+      await vi.waitFor(async () => expect(await db.get("uploads", uploadId)).toBeUndefined());
+      expect(server.asked).toEqual(["doc-there"]);
+      uploader.stop();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  test("so does Retry now (retryUploads), and a new session's first pass", async () => {
+    const { server, uploader, uploadId, db } = await waiting("acct-upload-6", "img-6");
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+    try {
+      retryUploads();
+      await vi.advanceTimersByTimeAsync(1);
+      await vi.waitFor(async () => expect(await db.get("uploads", uploadId)).toBeUndefined());
+    } finally {
+      vi.useRealTimers();
+    }
+    expect(server.asked).toEqual(["doc-there"]);
+    uploader.stop();
+
+    // Opened again (a new uploader): what waited goes on its first pass.
+    const again = await waiting("acct-upload-7", "img-7");
+    const fresh = new Uploader(again.server.client, "acct-upload-7", again.engine, () => undefined);
+    await pass(fresh);
+    expect(again.server.asked).toEqual(["doc-there"]);
+    fresh.stop();
+    again.uploader.stop();
+  });
+
+  test("a stopped uploader no longer hears the connection or Retry now", async () => {
+    const { server, uploader } = await waiting("acct-upload-8", "img-8");
+    uploader.stop();
+    retryUploads();
+    window.dispatchEvent(new Event("online"));
+    await new Promise((r) => setTimeout(r, 5));
+    expect(server.asked).toEqual([]);
+  });
+
+  test("small files go before large ones", async () => {
+    const { server, engine, uploader } = await setUp("acct-upload-9");
+    engine.setOnline(true);
+    server.pages.add("doc-a");
+    server.pages.add("doc-b");
+    await enqueueUpload("acct-upload-9", engine, { documentId: "doc-a", blockId: "big", file: file("x".repeat(5000), "talk.m4a", "audio/mp4"), kind: "audio" });
+    await enqueueUpload("acct-upload-9", engine, { documentId: "doc-b", blockId: "small", file: file("x", "photo.jpg", "image/jpeg"), kind: "image" });
+    await pass(uploader);
+    expect(server.asked).toEqual(["doc-b", "doc-a"]);
+    uploader.stop();
+  });
+});
+
+describe("what a finished or abandoned upload leaves behind", () => {
+  test("its preview is let go even when no view is there to do it, and its file can be found by its block", async () => {
+    const made = vi.fn(() => "blob:preview-1");
+    const revoked = vi.fn();
+    Object.assign(URL, { createObjectURL: made, revokeObjectURL: revoked });
+    const { server, engine, uploader } = await setUp("acct-upload-10");
+    engine.setOnline(true);
+    server.pages.add("doc-there");
+    const uploadId = await enqueueUpload("acct-upload-10", engine, { documentId: "doc-there", blockId: "img-10", file: file("png", "a.png", "image/png"), kind: "image" });
+    expect(await localPreviewUrl("acct-upload-10", uploadId)).toBe("blob:preview-1");
+    expect(completedUploadFor("doc-there", "img-10")).toBeNull();
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+    try {
+      await pass(uploader);
+      expect(revoked).not.toHaveBeenCalled();
+      await vi.advanceTimersByTimeAsync(PREVIEW_RELEASE_MS + 1);
+    } finally {
+      vi.useRealTimers();
+    }
+    expect(revoked).toHaveBeenCalledWith("blob:preview-1");
+    // Nothing is kept for it any more: no saved copy, no address.
+    expect(await localPreviewUrl("acct-upload-10", uploadId)).toBeNull();
+    // The block it was for (taken out by an undo meanwhile, say) can still be given its file.
+    expect(completedUploadFor("doc-there", "img-10")).toBe("file-1");
+    expect(completedUploadFor("another-doc", "img-10")).toBeNull();
+    uploader.stop();
+  });
+
+  test("a file let go for good is offered back, with its bytes, before its saved copy is deleted", async () => {
+    const { server, engine, uploader, errors } = await setUp("acct-upload-11");
+    engine.setOnline(true);
+    server.pages.add("doc-there");
+    await enqueueUpload("acct-upload-11", engine, { documentId: "doc-there", blockId: "rec-11", file: file("sound", "Recording.m4a", "audio/mp4"), kind: "audio" });
+    const offered: { filename: string; size: number; kind: string }[] = [];
+    const stop = onUploadAbandoned((f) => offered.push({ filename: f.filename, size: f.blob.size, kind: f.kind }));
+    server.failWith(new ConvexError({ code: "quota_exceeded", message: "Your storage is full." }));
+    await pass(uploader);
+    stop();
+    expect(offered).toEqual([{ filename: "Recording.m4a", size: 5, kind: "audio" }]);
+    expect(errors).toEqual(["Your storage is full."]);
+    uploader.stop();
+  });
+});
+
+describe("a picture's size, read before it's uploaded", () => {
+  test("from the decoded bitmap", async () => {
+    const close = vi.fn();
+    vi.stubGlobal("createImageBitmap", vi.fn(async () => ({ width: 4000, height: 3000, close })));
+    expect(await imageFileSize(new Blob(["x"]))).toEqual({ width: 4000, height: 3000 });
+    expect(close).toHaveBeenCalled();
+  });
+
+  test("null for bytes that aren't a picture", async () => {
+    vi.stubGlobal("createImageBitmap", vi.fn(async () => Promise.reject(new Error("not an image"))));
+    vi.stubGlobal(
+      "Image",
+      class {
+        onerror: (() => void) | null = null;
+        set src(_v: string) {
+          queueMicrotask(() => this.onerror?.());
+        }
+      },
+    );
+    Object.assign(URL, { createObjectURL: () => "blob:x", revokeObjectURL: () => undefined });
+    expect(await imageFileSize(new Blob(["x"]))).toBeNull();
   });
 });

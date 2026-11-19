@@ -12,7 +12,7 @@ import { MIN_COLUMN_WIDTH } from "@folevi/editor-schema";
 import { blocksInSelection, turnInto } from "../commands";
 import { neighbourIndex } from "../blockSelectionState";
 import { COLUMN, ROW, baseDepth, columnsModel, rowOf } from "./columnsModel";
-import { ColumnsLayoutView, columnSpaceAt, columnsLayoutOf, columnsSnapshot } from "./columnsLayout";
+import { ColumnsLayoutView, GUTTER_GONE, columnSpaceAt, columnsLayoutOf, columnsSnapshot } from "./columnsLayout";
 import { caretBelowRow, columnEndSelection, repairColumns, setColumnShares } from "./columnsCommands";
 import { haptic } from "@/lib/nativeApp";
 
@@ -66,6 +66,8 @@ export const ColumnBlock = Node.create({
 class RowView implements NodeView {
   dom: HTMLElement;
   private drag: { pointer: number; gap: number; startX: number; start: number[]; avail: number; rowId: string; row: number; shares: number[] } | null = null;
+  /** Ends the drag under way without saving it (null: none). */
+  private endDrag: (() => void) | null = null;
 
   constructor(
     private node: PMNode,
@@ -106,8 +108,12 @@ class RowView implements NodeView {
   }
 
   destroy() {
+    // A drag still under way goes with the row (a change from another device took the row away mid-drag).
+    this.endDrag?.();
     this.dom.removeEventListener("pointerdown", this.onDown);
     this.dom.removeEventListener("mousedown", this.onPress);
+    this.dom.removeEventListener("dblclick", this.onDouble);
+    this.dom.removeEventListener("keydown", this.onKey);
   }
 
   /**
@@ -149,9 +155,14 @@ class RowView implements NodeView {
     if (!g || e.button !== 0 || !this.editor.isEditable) return;
     const now = this.rowNow();
     const gap = Number(g.dataset.gap);
-    if (!now || !Number.isInteger(gap)) return;
+    if (!now || !Number.isInteger(gap) || this.drag) return;
     e.preventDefault();
-    g.setPointerCapture(e.pointerId);
+    // The handle keeps the pointer where it can (the drag carries on outside the window too).
+    try {
+      g.setPointerCapture(e.pointerId);
+    } catch {
+      // Not kept: the window's own events below still follow it.
+    }
     g.dataset.active = "true";
     document.documentElement.classList.add("fb-columns-resizing");
     this.drag = { pointer: e.pointerId, gap, startX: e.clientX, start: now.shares, avail: now.avail, rowId: now.snap.id, row: now.index, shares: now.shares };
@@ -161,22 +172,42 @@ class RowView implements NodeView {
       d.shares = resized(d.start, d.gap, (m.clientX - d.startX) / d.avail, d.avail);
       columnsLayoutOf(this.editor.view.dom as HTMLElement)?.setPreview({ rowId: d.rowId, shares: d.shares });
     };
-    const up = (u: PointerEvent) => {
+    /**
+     * The drag is over, however it ended: nothing of it stays on the page. `save` writes the new shares.
+     * `midUpdate`: it ended because the page is changing under it (the layout taking the handle away, the
+     * editor taking the row away), so the row is drawn without the drag's shares once that change is done,
+     * not in the middle of it.
+     */
+    const end = (save: boolean, midUpdate = false) => {
       const d = this.drag;
-      if (!d || u.pointerId !== d.pointer) return;
-      g.removeEventListener("pointermove", move);
-      g.removeEventListener("pointerup", up);
-      g.removeEventListener("pointercancel", up);
+      if (!d) return;
+      window.removeEventListener("pointermove", move, true);
+      window.removeEventListener("pointerup", up, true);
+      window.removeEventListener("pointercancel", up, true);
+      g.removeEventListener(GUTTER_GONE, gone);
       delete g.dataset.active;
       document.documentElement.classList.remove("fb-columns-resizing");
       this.drag = null;
+      this.endDrag = null;
       const moved = d.shares.some((s, k) => Math.abs(s - d.start[k]!) > 0.002);
-      if (moved && u.type === "pointerup") setColumnShares(this.editor, d.row, d.shares);
-      columnsLayoutOf(this.editor.view.dom as HTMLElement)?.setPreview(null);
+      if (save && moved && !this.editor.isDestroyed) setColumnShares(this.editor, d.row, d.shares);
+      const settle = () => {
+        if (!this.editor.isDestroyed) columnsLayoutOf(this.editor.view.dom as HTMLElement)?.setPreview(null);
+      };
+      if (midUpdate) queueMicrotask(settle);
+      else settle();
     };
-    g.addEventListener("pointermove", move);
-    g.addEventListener("pointerup", up);
-    g.addEventListener("pointercancel", up);
+    const up = (u: PointerEvent) => {
+      if (this.drag && u.pointerId === this.drag.pointer) end(u.type === "pointerup");
+    };
+    const gone = () => end(false, true);
+    // The window is listened to, as an image's resize is (NodeViews.tsx): the handle itself can be taken away
+    // mid-drag (the row stacking as an iPad turns, a change from another device), and its own listeners with it.
+    window.addEventListener("pointermove", move, true);
+    window.addEventListener("pointerup", up, true);
+    window.addEventListener("pointercancel", up, true);
+    g.addEventListener(GUTTER_GONE, gone);
+    this.endDrag = () => end(false, true);
   };
 
   /** A double click on a gap: every column the same width again. */

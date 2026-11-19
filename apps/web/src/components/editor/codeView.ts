@@ -5,7 +5,7 @@
 // block has a Copy button in its corner (always there on a touch screen, on hover or focus with a mouse).
 import type { NodeViewRenderer } from "@tiptap/core";
 import type { Node as PMNode } from "@tiptap/pm/model";
-import { NodeSelection, Plugin, PluginKey, TextSelection } from "@tiptap/pm/state";
+import { NodeSelection, Plugin, PluginKey, TextSelection, type EditorState } from "@tiptap/pm/state";
 import { Decoration, DecorationSet, type EditorView } from "@tiptap/pm/view";
 import { LIMITS, flowchartBounds, mermaidToFlowchart, serializeFlowchart, ulid } from "@folevi/editor-schema";
 import { onThemeChange, renderMermaid, svgDataUrl } from "./richRender";
@@ -14,10 +14,102 @@ import { haptic } from "@/lib/nativeApp";
 
 const PREVIEW_DELAY = 350;
 
-/** Marks the Mermaid block holding the caret, so its node view shows the source. */
+/**
+ * Code is written as typed: no spelling marks, no autocorrect, no capital after a full stop and no curly
+ * quotes from the system (set on a code block's element, here and in extensions.ts, and on inline code; and,
+ * while the caret is in code, on the editor itself: see codeTyping below).
+ */
+export const CODE_TEXT_ATTRS = { spellcheck: "false", autocorrect: "off", autocapitalize: "off", autocomplete: "off" } as const;
+
+/** Whether the caret, or the whole selection, is in code: a code block's text, or text marked as code. */
+export function selectionInCode(state: EditorState): boolean {
+  const sel = state.selection;
+  if (sel instanceof NodeSelection) return false;
+  const { $from, $to } = sel;
+  if ($from.parent.type.spec.code) return $from.sameParent($to);
+  const code = state.schema.marks.code;
+  if (!code || !$from.parent.isTextblock) return false;
+  const marks = sel.empty ? (state.storedMarks ?? $from.marks()) : ($from.marksAcross($to) ?? []);
+  return Boolean(code.isInSet(marks));
+}
+
+/** What the system's "smart punctuation" turns typed characters into, and what was typed. */
+const TYPED: Record<string, string> = { "\u201C": '"', "\u201D": '"', "\u201E": '"', "\u2018": "'", "\u2019": "'", "\u201A": "'", "\u2014": "--", "\u2026": "..." };
+const SMART = /[\u201C\u201D\u201E\u2018\u2019\u201A\u2014\u2026]/g;
+
+/** Text as it was typed, before smart punctuation: straight quotes, two hyphens, three full stops. */
+export function plainCodeText(text: string): string {
+  return text.replace(SMART, (ch) => TYPED[ch] ?? ch);
+}
+
+/**
+ * Whether curly quotes and long dashes arriving as typed text are likely the system's doing: on Apple's
+ * keyboards (iPhone, iPad, Mac), and not one of the languages whose own keyboards type those quotes on purpose.
+ */
+function smartPunctuationLikely(): boolean {
+  if (typeof navigator === "undefined") return false;
+  return /Mac|iPhone|iPad|iPod/.test(navigator.userAgent) && !/^(zh|ja|ko)\b/i.test(navigator.language ?? "");
+}
+
+/**
+ * Typing in code (ProseMirror's handleTextInput): curly quotes, a long dash or an ellipsis that the system put
+ * in place of what was typed go in as typed. iPhone and iPad decide autocorrect and smart punctuation from the
+ * element being edited, which is the whole note, not the code block inside it, so the attributes on the block
+ * alone don't stop them; this is the part that holds whatever the keyboard does. False (not handled) outside
+ * code, while a word is being composed, and for text with nothing to put back.
+ */
+export function codeTextInput(view: EditorView, from: number, to: number, text: string, smart: boolean = smartPunctuationLikely()): boolean {
+  if (!smart || view.composing || !selectionInCode(view.state)) return false;
+  const plain = plainCodeText(text);
+  if (plain === text) return false;
+  view.dispatch(view.state.tr.insertText(plain, from, to).scrollIntoView());
+  return true;
+}
+
+/**
+ * While the caret is in code, the editor's own element says "as typed" too (CODE_TEXT_ATTRS), and says what it
+ * said before once the caret leaves. ProseMirror takes no notice of these attributes changing.
+ */
+function codeTyping(view: EditorView) {
+  let before: Record<string, string | null> | null = null;
+  const sync = (v: EditorView) => {
+    const dom = v.dom as HTMLElement;
+    const on = v.editable && selectionInCode(v.state);
+    if (on) {
+      before ??= Object.fromEntries(Object.keys(CODE_TEXT_ATTRS).map((name) => [name, dom.getAttribute(name)]));
+      for (const [name, value] of Object.entries(CODE_TEXT_ATTRS)) if (dom.getAttribute(name) !== value) dom.setAttribute(name, value);
+    } else if (before) {
+      for (const [name, value] of Object.entries(before)) {
+        if (value === null) dom.removeAttribute(name);
+        else dom.setAttribute(name, value);
+      }
+      before = null;
+    }
+  };
+  sync(view);
+  return {
+    update: sync,
+    destroy() {
+      if (!before) return;
+      const dom = view.dom as HTMLElement;
+      for (const [name, value] of Object.entries(before)) {
+        if (value === null) dom.removeAttribute(name);
+        else dom.setAttribute(name, value);
+      }
+      before = null;
+    },
+  };
+}
+
+/**
+ * The code block's plugin: marks the Mermaid block holding the caret, so its node view shows the source, and
+ * keeps code as typed while the caret is in it (codeTyping, codeTextInput).
+ */
 export const mermaidFocusPlugin = new Plugin({
   key: new PluginKey("mermaidFocus"),
+  view: codeTyping,
   props: {
+    handleTextInput: (view, from, to, text) => codeTextInput(view, from, to, text),
     // Its source is folded away, so the caret can't move through a Mermaid block line by line: ↑/↓ from the
     // block next to it select the whole block instead.
     handleKeyDown(view, event) {
@@ -60,12 +152,6 @@ export const mermaidFocusPlugin = new Plugin({
 });
 
 const isFlowchartSource = (s: string) => /^\s*(?:%%[^\n]*\n\s*)*(flowchart|graph)\b/i.test(s);
-
-/**
- * Code is written as typed: no spelling marks, no autocorrect, no capital after a full stop and no curly
- * quotes from the system (set on a code block's element, here and in extensions.ts, and on inline code).
- */
-export const CODE_TEXT_ATTRS = { spellcheck: "false", autocorrect: "off", autocapitalize: "off", autocomplete: "off" } as const;
 
 export const codeBlockNodeView: NodeViewRenderer = ({ node, getPos, editor, decorations }) => {
   let current: PMNode = node;
@@ -242,7 +328,13 @@ export const codeBlockNodeView: NodeViewRenderer = ({ node, getPos, editor, deco
     dom.dataset.language = a.language ?? "plaintext";
     const mermaid = a.language === "mermaid";
     dom.classList.toggle("fb-code-mermaid", mermaid);
-    copyBtn.hidden = mermaid || !current.textContent.trim();
+    // An empty block has nothing to copy, but the button keeps its place (unseen, and out of reach): on a
+    // touch screen the block leaves room for the button above its first line, and with the button gone from
+    // an empty block that room appeared with the first character typed and the block jumped taller.
+    const empty = !current.textContent.trim();
+    copyBtn.hidden = mermaid;
+    copyBtn.style.visibility = empty ? "hidden" : "";
+    copyBtn.tabIndex = empty ? -1 : 0;
     if (mermaid && !preview) buildCard();
     else if (!mermaid && preview) dropCard();
     if (!preview) return;

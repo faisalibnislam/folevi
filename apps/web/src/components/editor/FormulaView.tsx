@@ -2,13 +2,21 @@
 
 import { NodeViewWrapper, type ReactNodeViewProps } from "@tiptap/react";
 import { NodeSelection } from "@tiptap/pm/state";
-import { useCallback, useEffect, useId, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import { LIMITS, ulid } from "@folevi/editor-schema";
 import { FormulaRender } from "./RichBlocks";
 import { useDraft } from "./useDraft";
 import { useEditable } from "./useEditable";
 import { coarsePointer } from "@/lib/hooks/useMediaQuery";
 import { inBlockControls } from "./blockField";
+
+/**
+ * LaTeX as it was typed: the curly quotes a phone or a Mac puts in place of straight ones are put back
+ * (f’(x) is an error to KaTeX; f'(x) is a derivative). One character for one, so the caret keeps its place.
+ */
+export function plainFormulaText(text: string): string {
+  return text.replace(/[\u2018\u2019\u201A]/g, "'").replace(/[\u201C\u201D\u201E]/g, '"');
+}
 
 /** Formula blocks inserted by this person open straight into editing. */
 const OPEN_ON_MOUNT = new Set<string>();
@@ -41,6 +49,14 @@ export function FormulaView({ node, selected, updateAttributes, editor, getPos }
   const editing = editingState && editable;
   const field = useRef<HTMLTextAreaElement>(null);
   const hintId = useId();
+  // Where the caret was when a typed quote was straightened (the field is redrawn with other text than it had,
+  // which would send the caret to the end).
+  const caret = useRef<{ start: number; end: number } | null>(null);
+  useLayoutEffect(() => {
+    const at = caret.current;
+    caret.current = null;
+    if (at && field.current) field.current.setSelectionRange(at.start, at.end);
+  }, [draftLatex]);
 
   useEffect(() => {
     if (!OPEN_ON_MOUNT.delete(id) || !editing) return;
@@ -96,11 +112,21 @@ export function FormulaView({ node, selected, updateAttributes, editor, getPos }
               data-draft=""
               value={draftLatex}
               maxLength={LIMITS.maxFormulaLength}
+              // LaTeX is written as typed: no spelling marks, no autocorrect ("frac" is not a slip), no capital
+              // after a full stop, no suggestions.
               spellCheck={false}
+              autoCapitalize="off"
+              autoCorrect="off"
+              autoComplete="off"
               rows={Math.min(8, Math.max(2, draftLatex.split("\n").length))}
               placeholder="e.g. E = mc^2"
               aria-describedby={hintId}
-              onChange={(e) => setDraftLatex(e.target.value)}
+              onChange={(e) => {
+                const typed = e.target.value;
+                const plain = plainFormulaText(typed);
+                if (plain !== typed) caret.current = { start: e.target.selectionStart, end: e.target.selectionEnd };
+                setDraftLatex(plain);
+              }}
               onKeyDown={(e) => {
                 // Tab finishes too (and returns to the note) rather than jumping to the page around it.
                 if (e.key === "Escape" || e.key === "Tab" || (e.key === "Enter" && (e.metaKey || e.ctrlKey))) {

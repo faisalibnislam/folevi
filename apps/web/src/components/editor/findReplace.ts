@@ -17,10 +17,22 @@ const MAX_MATCHES = 1000;
 const MAX_REPLACED = 200_000;
 
 /**
- * Where a match is when it isn't in a line's text but in a block's own fields: an image's caption, or a
- * run of text in a table's cell. `at` and `length` are in that caption or run.
+ * Where a match is when it isn't in a line's text but in a block's own fields: an image's caption, a run of
+ * text in a table's cell, or one of a block's plain text attributes (a bookmark's title and description, an
+ * attachment's or a recording's name, a formula's LaTeX). `at` and `length` are in that caption, run or attribute.
  */
-export type MatchField = { field: "caption"; at: number; length: number } | { field: "cell"; row: number; cell: number; run: number; at: number; length: number };
+export type MatchField =
+  | { field: "caption"; at: number; length: number }
+  | { field: "cell"; row: number; cell: number; run: number; at: number; length: number }
+  | { field: "attr"; name: string; at: number; length: number };
+
+/** The plain text attributes find looks in, by kind of block. */
+const TEXT_ATTRS: Record<string, readonly string[]> = {
+  bookmark: ["title", "description"],
+  file: ["name"],
+  audio: ["name"],
+  formula: ["latex"],
+};
 
 export interface FindMatch {
   from: number;
@@ -82,6 +94,13 @@ function fieldsOf(node: PMNode): { text: string; where: (at: number, length: num
     const caption = typeof node.attrs.caption === "string" ? node.attrs.caption : "";
     return caption ? [{ text: caption, where: (at, length) => ({ field: "caption", at, length }) }] : [];
   }
+  const named = TEXT_ATTRS[node.type.name];
+  if (named) {
+    return named.flatMap((name) => {
+      const text = node.attrs[name] as unknown;
+      return typeof text === "string" && text ? [{ text, where: (at: number, length: number): MatchField => ({ field: "attr", name, at, length }) }] : [];
+    });
+  }
   if (node.type.name !== "table" || !Array.isArray(node.attrs.rows)) return [];
   const out: { text: string; where: (at: number, length: number) => MatchField }[] = [];
   (node.attrs.rows as InlineNode[][][]).forEach((cells, row) => {
@@ -98,8 +117,8 @@ function fieldsOf(node: PMNode): { text: string; where: (at: number, length: num
 
 /**
  * Every occurrence of `query` in the note (or in the blocks between `from` and `to`), in document order, at
- * most `limit`: in the text of lines, in image captions and in table cells (a cell is searched a run of
- * formatting at a time).
+ * most `limit`: in the text of lines, in image captions, in table cells (a cell is searched a run of
+ * formatting at a time), and in bookmark titles and descriptions, attachment and recording names and formulas.
  */
 export function findMatches(doc: PMNode, query: string, caseSensitive: boolean, from = 0, to = doc.content.size, limit = MAX_MATCHES): FindMatch[] {
   if (!query) return [];
@@ -131,6 +150,10 @@ function replacedFields(node: PMNode, fields: MatchField[], replacement: string)
   for (const f of [...fields].sort((x, y) => y.at - x.at)) {
     if (f.field === "caption") {
       attrs.caption = swap(String(attrs.caption ?? ""), f.at, f.length);
+      continue;
+    }
+    if (f.field === "attr") {
+      attrs[f.name] = swap(String(attrs[f.name] ?? ""), f.at, f.length);
       continue;
     }
     rows ??= (attrs.rows as InlineNode[][][]).map((cells) => cells.map((runs) => runs.map((n) => ({ ...n }))));

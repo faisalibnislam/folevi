@@ -104,3 +104,56 @@ describe("find & replace", () => {
     editor.destroy();
   });
 });
+
+// Editor audit M21: find saw the text of lines, image captions and table cells only. A word that was only in a
+// bookmark's title, an attachment's name or a formula found nothing.
+describe("find in a block's own text", () => {
+  const note = () =>
+    new Editor({
+      extensions: [...ALL_NODES, ...ALL_MARKS, UndoRedo, BlockIdentity, FindReplace],
+      content: {
+        type: "doc",
+        content: [
+          { type: "paragraph", attrs: { id: "p", depth: 0 }, content: [{ type: "text", text: "the budget is below" }] },
+          { type: "bookmark", attrs: { id: "bm", depth: 0, url: "https://example.com", title: "Budget planner", description: "Plan a budget in an hour" } },
+          { type: "file", attrs: { id: "f", depth: 0, fileId: "FILE00000001", name: "budget-2026.pdf", size: 10, mimeType: "application/pdf" } },
+          { type: "audio", attrs: { id: "a", depth: 0, fileId: "FILE00000002", name: "Budget call.m4a", size: 10, mimeType: "audio/mp4", duration: 3 } },
+          { type: "formula", attrs: { id: "x", depth: 0, latex: "budget = income - costs" } },
+        ],
+      },
+    });
+
+  test("a bookmark's title and description, an attachment's and a recording's name and a formula are found", () => {
+    const editor = note();
+    const found = findMatches(editor.state.doc, "budget", false);
+    expect(found.map((m) => (m.inside ? `${m.inside.field}:${"name" in m.inside ? m.inside.name : ""}@${m.inside.at}` : "text"))).toEqual(["text", "attr:title@0", "attr:description@7", "attr:name@0", "attr:name@0", "attr:latex@0"]);
+    // A match in a block's own text is the whole block (it is marked, and scrolled to, as one).
+    const bookmark = found[1]!;
+    expect(editor.state.doc.nodeAt(bookmark.from)?.type.name).toBe("bookmark");
+    expect(bookmark.to - bookmark.from).toBe(editor.state.doc.nodeAt(bookmark.from)!.nodeSize);
+    expect(findMatches(editor.state.doc, "Budget", true)).toHaveLength(2);
+    editor.destroy();
+  });
+
+  test("replace changes them where they are, all at once as one step", () => {
+    const editor = note();
+    setFind(editor, { query: "budget" }, false);
+    expect(findState(editor).matches).toHaveLength(6);
+    expect(replaceAll(editor, "plan")).toBe(6);
+    const attrs = (id: string) => {
+      let out: Record<string, unknown> = {};
+      editor.state.doc.forEach((n) => {
+        if (n.attrs.id === id) out = n.attrs;
+      });
+      return out;
+    };
+    expect(attrs("bm")).toMatchObject({ title: "plan planner", description: "Plan a plan in an hour", url: "https://example.com" });
+    expect(attrs("f")).toMatchObject({ name: "plan-2026.pdf", fileId: "FILE00000001" });
+    expect(attrs("a")).toMatchObject({ name: "plan call.m4a" });
+    expect(attrs("x")).toMatchObject({ latex: "plan = income - costs" });
+    editor.commands.undo();
+    expect(attrs("bm")).toMatchObject({ title: "Budget planner" });
+    expect(attrs("x")).toMatchObject({ latex: "budget = income - costs" });
+    editor.destroy();
+  });
+});

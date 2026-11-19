@@ -97,7 +97,8 @@ export function SyncedView({ node, editor, getPos, selected, deleteNode }: React
     if (!engine || !server) return;
     let revisions = 0;
     for (const b of server.blocks) revisions += b.revision ?? 0;
-    const at = `${server.revision}:${server.contentSeq}:${server.blocks.length}:${revisions}`;
+    // (`head` too: see DocumentView, a cut and paste elsewhere can leave the count and the sum as they were.)
+    const at = `${server.revision}:${server.contentSeq}:${server.head}:${server.blocks.length}:${revisions}`;
     if (reconciledAt.current === at) return;
     reconciledAt.current = at;
     innerRef.current?.flush();

@@ -254,18 +254,18 @@ Released and known (from the release session, 1.5.53):
 - Known: one Mac test fails every time (`TabPreviewStateTests.enteringTheNextTabBeforeLeavingThisOneStillShowsIt`), in code no recent change touched. The Mac filter field hasn't been typed into in the real app. Nothing in 1.5.50 to 1.5.53 has been tried on a real iPhone Duo.
 
 Git (this Mac, main checkout), updated 2026-11-19 19:00:
-- Branch `editor/rock-solid`, now pushed and tracking `origin/editor/rock-solid`: `main` 1.5.53 plus the editor
-  audit follow-up commits, open as pull request 40 (https://github.com/faisalibnislam/folevi/pull/40), not merged.
-  The web fixes and the 22 updated end-to-end specs that were uncommitted earlier today are in that branch now.
-  Merging it pushes `main`, which deploys the website and production Convex: ask the owner first.
-- Branch `claude/reverent-leakey-c9bd25` (worktree of that name, pushed, open as a pull request into
-  `editor/rock-solid`): `editor/rock-solid` (c1bdd5ff) plus the fixes for what PR 40's own CI run (44538632686) and 1.5.52's still failed: onboarding's sideways
-  overflow (app), closing the tools panel no longer moves the caret to a dock button (app: the next Enter
-  reopened Foli AI and typing went into its box; the flowchart specs hit it), tab-switch also waiting for a
-  warm tab (a test-build-only hook in `Shell.tsx` `WarmNote`), and a 4 second query
-  limit for CI's local backend (`ci.yml`). Merging that pull request only moves `editor/rock-solid` (no deploy).
-- `docs/HANDOFF.md` section 0 holds that session's detailed notes on the audit and PR 40; this root file is the
-  project-wide handoff. Keep both in step, or fold section 0 in here when PR 40 merges.
+- Pull request 40 (`editor/rock-solid`, the editor audit's follow-up fixes and the end-to-end specs brought up to
+  date) is merged: `main` = `ce420649` (16:08 UTC, 19 November, with the owner's OK to merge on green). Vercel deployed
+  it and CI on `main` is green on every job, the first fully green `main` since 17 November. No version was bumped.
+  The local checkout is still on `editor/rock-solid`, which now holds only handoff notes ahead of `main`.
+- `docs/HANDOFF.md` section 0 holds that session's detailed notes on the audit and pull request 40; this root
+  file is the project-wide handoff.
+- Pull request 41 (https://github.com/faisalibnislam/folevi/pull/41, branch `claude/reverent-leakey-c9bd25`, into
+  `main`, not merged): what still failed after pull request 40 on a Mac, two of them app bugs. Onboarding scrolled
+  sideways at phone width while a step slid in; closing the tools panel moved the caret to a dock button, so the
+  next Enter reopened Foli AI and the typing went into its box (the flowchart specs failed that way 4 times in 5
+  locally). Also tab-switch waiting for a warm tab (a test-build-only hook in `Shell.tsx` `WarmNote`) and a 4 second
+  query limit for CI's local backend (`ci.yml`). Merging it pushes `main` and deploys: ask the owner first.
 - Still uncommitted on this Mac only: `.serena/` (tool state), leftover Capacitor files in `apps/ios/ios/App/App/`,
   6 `phone-home*` `*.failed.png` snapshot diffs in `apps/native-kit/Tests/FoleviScreensTests/__Snapshots__`.
 - Stashes (local only): `stash@{0}` "main folder edits before consolidating (AGENTS.md, next-env.d.ts)"
@@ -297,41 +297,40 @@ the e2e suite was not re-run after the Foli AI panel change; the dev backend lac
 
 ## 10. Next steps / open work
 
-1. Pull request 40 (`editor/rock-solid`): its CI run 44538632686 still failed ai-attachments and the mind map
-   phone spec, with tab-switch and native-lift flaky. Branch `claude/reverent-leakey-c9bd25` fixes all four (see
-   Current state): bring it into `editor/rock-solid`, then read the new CI run. With CI green, ask the owner before
-   merging PR 40: the merge pushes `main` and deploys. Details in `docs/HANDOFF.md` section 0 and
-   `docs/EDITOR_AUDIT_2026-11-19.md` section 10.
+1. Pull request 41 (see Current state): read its CI run; with it green, ask the owner before merging (it deploys).
 2. Any one query that fails (a time-out, a server error) takes the whole page to "Something went wrong": `useQuery`
    throws to `app/global-error.tsx`. CI hit it through time-outs; production can too. Worth a design: treat a
    failed non-essential query (a badge, a count) as still loading and retry it.
-3. Re-record or fix the 6 failing `phone-home*` snapshots in `apps/native-kit` (only those).
-4. `pricing-decisions` (local only, 4 commits): the owner approved the pricing proposal (`docs/PRICING_PROPOSAL.md`
+3. After pull request 40: the web fixes reach the Mac, iPhone and iPad apps only with the next release build (bundled
+   web copy); none of them has been tried in the Mac app, the Simulator or on a device. Details in
+   `docs/HANDOFF.md` section 0 and `docs/EDITOR_AUDIT_2026-11-19.md` section 10.
+4. Re-record or fix the 6 failing `phone-home*` snapshots in `apps/native-kit` (only those).
+5. `pricing-decisions` (local only, 4 commits): the owner approved the pricing proposal (`docs/PRICING_PROPOSAL.md`
    on that branch). It needs review, tests and the owner's OK before merging; push it to GitHub first so it is not
    only on this Mac. R2 file storage stays off until its R2 settings exist.
-5. Device checks from `docs/EDITOR_AUDIT_2026-11-19.md` section 5 (to-do Return, keyboard caret, background save,
+6. Device checks from `docs/EDITOR_AUDIT_2026-11-19.md` section 5 (to-do Return, keyboard caret, background save,
    canvases) and the owner decisions in section 6 (Vault autosave, locale numbers, refused-change display).
-6. Larger editor/sync work listed in that audit: per-note block map (save cost), lazy heavy blocks, offline note in a
+7. Larger editor/sync work listed in that audit: per-note block map (save cost), lazy heavy blocks, offline note in a
    deleted folder, shared queue across windows, table cell merge (G7).
-7. Native: iPad pass (I8 layout width, I9 caret, I13, I15), native background sync (R2 in `docs/NATIVE_APP_PLAN.md`,
+8. Native: iPad pass (I8 layout width, I9 caret, I13, I15), native background sync (R2 in `docs/NATIVE_APP_PLAN.md`,
    APNs key 5PG87M528M), performance budgets. See `docs/IOS_REBUILD_PLAN.md`, `docs/MAC_REBUILD_PLAN.md`,
    `docs/IOS_POLISH_PLAN.md`, `docs/MAC_POLISH_PLAN.md`, `docs/MAC_PERFORMANCE_2026-11-19.md`.
-8. Owner items carried from the 2026-10-24 handoff (status unverified): SPF TXT record for Sign in with Apple
+9. Owner items carried from the 2026-10-24 handoff (status unverified): SPF TXT record for Sign in with Apple
    email relay; export compliance answer and whether to submit iOS to App Review; Dropbox app and Google iOS
    client; Sparkle key backup in the password manager.
-9. Account conventions (global CLAUDE.md): the bundle IDs are still `com.folevi.ios(.share/.widgets)` and
+10. Account conventions (global CLAUDE.md): the bundle IDs are still `com.folevi.ios(.share/.widgets)` and
    `com.folevi.mac`, App Group `group.com.folevi`, iCloud `iCloud.com.folevi`; the convention is
    `app.folevi.Folevi`, `group.app.folevi`, `iCloud.app.folevi`. A rename resets saved settings, keychain items and
    macOS privacy permissions, breaks the Sparkle update path for existing Mac installs, and makes a new App Store
    Connect app (current id 6825699028). Ask the owner before doing it.
-10. Mac distribution convention wants both a Mac App Store build (sandboxed, no Sparkle) and the Developer ID build;
+11. Mac distribution convention wants both a Mac App Store build (sandboxed, no Sparkle) and the Developer ID build;
    only the Developer ID build exists (guess: an App Store configuration is not set up).
-11. Clean up: ~30 merged local branches and 19 worktrees under `.claude/worktrees/` (owner's call; nothing is lost
+12. Clean up: ~30 merged local branches and 19 worktrees under `.claude/worktrees/` (owner's call; nothing is lost
     for those at or behind `origin/main`).
-12. iPhone Duo follow-ups: Folevi's own menus (PhoneMenuLayer) don't avoid the fold yet; check Split View halves on a
+13. iPhone Duo follow-ups: Folevi's own menus (PhoneMenuLayer) don't avoid the fold yet; check Split View halves on a
     real device.
-13. The Mac test that fails every time (`TabPreviewStateTests.enteringTheNextTabBeforeLeavingThisOneStillShowsIt`).
-14. The owner's open items: `docs/HANDOFF.md` section 7 (see item 8 above for the ones carried over).
+14. The Mac test that fails every time (`TabPreviewStateTests.enteringTheNextTabBeforeLeavingThisOneStillShowsIt`).
+15. The owner's open items: `docs/HANDOFF.md` section 7 (see item 9 above for the ones carried over).
 
 ## 11. Gotchas
 
@@ -344,7 +343,7 @@ the e2e suite was not re-run after the Foli AI panel change; the dev backend lac
 - `--prod` with the Convex CLI does not mean production here; always `--deployment fastidious-clownfish-123`.
 - Port 3000 is often taken by another project; use 3002/3003 for e2e.
 - Notes open with the Foli AI panel since 2026-11-18 (`a989411b`); e2e locators that assumed a closed panel or a
-  single "New note" button break. Use `openFoliAi()` and `closeToolsPanel()` from `apps/web/e2e/helpers.ts` (on `main` once pull request 40 merges).
+  single "New note" button break. Use `openFoliAi()` and `closeToolsPanel()` from `apps/web/e2e/helpers.ts`.
 - `pnpm typecheck` in parallel with lint has given false failures; run it alone. About 9 known lint errors existed
   in untouched files (2026-10-24 note; may have changed).
 - Known Swift test issues: Mac `RouterTests.testDebugIdentity` expects a version from a stale build; a full
@@ -378,12 +377,12 @@ the e2e suite was not re-run after the Foli AI panel change; the dev backend lac
 
 ## 12. Change log
 
-- 2026-11-19: e2e: what PR 40's CI and 1.5.52 still failed fixed on `claude/reverent-leakey-c9bd25`, with
-  `editor/rock-solid` (c1bdd5ff) merged in: onboarding no longer scrolls sideways at phone width while a step
-  slides in (app), closing the tools panel leaves the caret where it is (app, `DocumentView.tsx`
-  `closeInspector`), tab-switch also waits for the tab it switches to to be warm, CI's local backend gets a 4
-  second query limit. The mind map spec is `editor/rock-solid`'s (390 for the full canvas). Local CI-like run and
-  two gotchas added.
+- 2026-11-19: pull request 41 (`claude/reverent-leakey-c9bd25`, into `main`): onboarding no longer scrolls sideways
+  at phone width while a step slides in (app), closing the tools panel leaves the caret where it is (app,
+  `DocumentView.tsx` `closeInspector`), tab-switch also waits for the tab it switches to to be warm, CI's local
+  backend gets a 4 second query limit. Local CI-like run and two gotchas added.
+- 2026-11-19: pull request 40 merged into `main` as `ce420649` on a fully green CI run (44556502512); production deploy
+  completed and CI on `main` green (44562664255). These notes are on `editor/rock-solid`, not yet on `main`.
 - 2026-11-19: pull request 40, CI run 44547866717: 7 of 8 browser shards green. `e2e/tab-switch.spec.ts` watched for
   a loading placeholder while the note opened just before was still loading its own lines; it waits for them now.
 - 2026-11-19: pull request 40, CI run 44538632686: 6 of 8 browser shards green. Fixed the mind map phone spec (its

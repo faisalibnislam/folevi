@@ -220,9 +220,10 @@ extension WebTopBar {
         t.id == model.tabs.activeID || t.id == hoveredTab || t.id == dragging?.id
     }
 
-    /// One tab: a capsule in the track, its icon (the × in its place on the open tab and under the pointer) and its
-    /// title, centred; the open one in Liquid Glass. Pinned tabs are their icon alone; Home is its icon in a round
-    /// button before the track. `separator`: a hairline in the gap before it.
+    /// One tab: a capsule in the track, its icon and its title, centred; the open one in Liquid Glass. The × (on the
+    /// open tab and under the pointer) is always at the tab's leading edge, whatever the tab's width (TabCloseSpot).
+    /// Pinned tabs are their icon alone; Home is its icon in a round button before the track. `separator`: a
+    /// hairline in the gap before it.
     func macTab(_ t: FrameTab, separator: Bool = false) -> some View {
         // (Read once: FrameTab.route parses the tab's path every time.)
         let route = t.route
@@ -232,40 +233,42 @@ extension WebTopBar {
         let hovered = hoveredTab == t.id
         let compact = t.isHome || t.pinned
         let closes = !compact && (active || hovered)
-        return HStack(spacing: 5) {
+        return Group {
             if compact {
-                if t.isJoined, let panes = t.panes {
-                    ForEach(panes, id: \.self) { _ in MacSymbol("doc.text", size: 11) }
-                } else if flower {
-                    AiMarkGlyph(size: 13)
-                } else {
-                    WebIconView(Self.icon(for: route), size: 15, strokeWidth: active ? 2.3 : 2)
-                }
-            } else {
-                ZStack {
-                    if closes {
-                        macCloseButton(t, label: label, visible: true)
+                HStack(spacing: 5) {
+                    if t.isJoined, let panes = t.panes {
+                        ForEach(panes, id: \.self) { _ in MacSymbol("doc.text", size: 11) }
                     } else if flower {
-                        AiMarkGlyph(size: 12)
+                        AiMarkGlyph(size: 13)
                     } else {
-                        WebIconView(Self.icon(for: route), size: 14)
+                        WebIconView(Self.icon(for: route), size: 15, strokeWidth: active ? 2.3 : 2)
                     }
                 }
-                .frame(width: 16, height: 16)
-                if t.isJoined, let panes = t.panes {
-                    macJoinedSections(t, panes, active: active)
-                } else {
-                    MacTruncatingText(text: label, font: active ? MacLook.Text.body.weight(.medium) : MacLook.Text.body)
+            } else if t.isJoined {
+                // (Joined notes fill their tab: the × is always over the icon's place.)
+                macTabContent(t, route: route, label: label, active: active, flower: flower, icon: !closes)
+                    .padding(.horizontal, TabCloseSpot.padding)
+            } else {
+                // Where the icon and title, centred, stay clear of the ×'s place, the icon stays beside the title
+                // and nothing moves when the × shows; in a narrower tab the × shows in the icon's stead.
+                ViewThatFits(in: .horizontal) {
+                    macTabContent(t, route: route, label: label, active: active, flower: flower, icon: true)
+                        .padding(.horizontal, TabCloseSpot.clear)
+                    macTabContent(t, route: route, label: label, active: active, flower: flower, icon: !closes)
+                        .padding(.horizontal, TabCloseSpot.padding)
                 }
-                if !t.isJoined, let id = route.noteId, model.floatingNotes.contains(id) { macFloatingBadge(id, label: label) }
             }
         }
-        .padding(.horizontal, compact ? 0 : 10)
         .foregroundStyle(active ? MacLook.Colors.label : MacLook.Colors.secondary)
         // (A tab wider than its title keeps the title in its middle, so the strip's rhythm stays even.)
         // (Home is a circle as tall as the track; every other tab a capsule inside it.)
         .frame(width: compact ? (t.isJoined ? 52 : Self.trackHeight) : nil, height: t.isHome ? Self.trackHeight : MacLook.tabHeight, alignment: .center)
         .frame(maxWidth: compact ? nil : .infinity, alignment: .center)
+        // The ×: at the tab's leading edge in every tab, wide or narrow (the owner, 2026-11-19: it sat beside the
+        // title, so it moved with the tab's width and the title's length).
+        .overlay(alignment: .leading) {
+            if !compact { macCloseButton(t, label: label, visible: closes).padding(.leading, TabCloseSpot.leading) }
+        }
         .background {
             if t.isHome, !active {
                 // Home's own round button, on the track's fill.
@@ -312,6 +315,28 @@ extension WebTopBar {
         .webContextMenu { tabMenu(t) }
     }
 
+    /// A tab's icon and title (or its joined notes), and its floating badge. `icon` false keeps the icon's room and
+    /// hides it: the × is over it.
+    private func macTabContent(_ t: FrameTab, route: FrameRoute, label: String, active: Bool, flower: Bool, icon: Bool) -> some View {
+        HStack(spacing: 5) {
+            ZStack {
+                if flower {
+                    AiMarkGlyph(size: 12)
+                } else {
+                    WebIconView(Self.icon(for: route), size: 14)
+                }
+            }
+            .frame(width: TabCloseSpot.icon, height: TabCloseSpot.icon)
+            .opacity(icon ? 1 : 0)
+            if t.isJoined, let panes = t.panes {
+                macJoinedSections(t, panes, active: active)
+            } else {
+                MacTruncatingText(text: label, font: active ? MacLook.Text.body.weight(.medium) : MacLook.Text.body)
+            }
+            if !t.isJoined, let id = route.noteId, model.floatingNotes.contains(id) { macFloatingBadge(id, label: label) }
+        }
+    }
+
     /// Joined notes: one tab, a section per note (each opens the group with that note in focus), divided by a hairline.
     /// Pinned, just their icons.
     private func macJoinedSections(_ t: FrameTab, _ panes: [String], active: Bool) -> some View {
@@ -351,7 +376,7 @@ extension WebTopBar {
     private func macCloseButton(_ t: FrameTab, label: String, visible: Bool) -> some View {
         Button { model.closeTab(t.id) } label: {
             MacSymbol("xmark", size: 10, weight: .semibold)
-                .frame(width: 18, height: 18)
+                .frame(width: TabCloseSpot.button, height: TabCloseSpot.button)
                 // (It takes clicks 3 points round it: a near miss no longer selects the tab instead, MAC-34.)
                 .padding(3)
                 .contentShape(Rectangle())
@@ -433,6 +458,23 @@ struct InsetRect: Shape {
     var dx: CGFloat
     var dy: CGFloat
     func path(in rect: CGRect) -> Path { Path(rect.insetBy(dx: dx, dy: dy)) }
+}
+
+/// Where a tab's × sits: at the tab's leading edge, its centre where a narrow tab's icon is, so it is in the same
+/// place in every tab whatever the tab's width and its title's length (the owner, 2026-11-19).
+enum TabCloseSpot {
+    /// A tab's room either side of its icon and title.
+    static let padding: CGFloat = 10
+    /// The icon's place, and the ×'s round button.
+    static let icon: CGFloat = 16
+    static let button: CGFloat = 18
+    /// The button's leading edge from the tab's.
+    static var leading: CGFloat { padding + icon / 2 - button / 2 }
+    /// The room a tab's centred icon and title keep either side to stay clear of the ×.
+    static var clear: CGFloat { leading + button + 4 }
+    /// Whether a tab this wide shows its icon beside the × (its icon and title `content` wide, centred), or the × in
+    /// the icon's stead.
+    static func iconStays(tab: CGFloat, content: CGFloat) -> Bool { content + clear * 2 <= tab }
 }
 
 /// A one-line label cut off at its end when it doesn't fit, with the whole of it as a tooltip only then (tooltips

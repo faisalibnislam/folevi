@@ -38,6 +38,11 @@ Branch: `mac-native-look`. Not released: the owner approves the look first.
   in a round button right after Home. A tab narrower than 90 pt keeps its own width (the same padding as every tab). No + (the sidebar's New note; ⌘T opens a tab). With only Home open there is
   no track. The track clips its tabs, the list fades out before the scroll
   arrows (`EdgeFade(trailingInset:)`), and hovering a tab's × hides the tab's picture so the × keeps its tooltip.
+  **A tab's × is at the tab's leading edge in every tab** (the owner, 2026-11-19: "always align to the left,
+  whatever the size of the tab is"; it sat in the icon's place beside the centred title, so it floated in the
+  middle of a wide tab). `TabCloseSpot`: its centre is where a narrow tab's icon is. Where the centred icon and
+  title stay clear of it, the icon stays beside the title and nothing moves when the × shows; in a narrower tab
+  the × shows in the icon's stead and the title stays where it was.
   The sync status, the bell and (on a note) the inspector's button are at the strip's end.
 - **The card's controls** float in Liquid Glass at a screen's top (`CardControls`), 36 pt, 12 pt in, 8 pt apart, in
   one `GlassEffectContainer`: the screen's title, the screen's own controls (`CardItems`), search. Screens leave
@@ -154,6 +159,8 @@ uneven"):
   section is the same distance from the next heading.
 - **One look for the chosen tile** in the Format panel (`CHOSEN_TILE`): Text, Groups and Decorations alike, the icon
   before the words.
+- **No blur at a panel's foot** (the owner, 2026-11-19: "it looks out of place"). The web's sidebar blurs its last
+  rows into the bottom edge (`.ui-blur-bottom`); in Folevi for Mac every panel runs clear to the window's edge.
 - **The panel sits beside the note** whenever the note keeps a writable width. The page's own width decides
   (`narrowWindowQuery` in `panelLayout.ts`: the Mac's page is the card, without the web's sidebar), so a 1280 pt
   window docks it; only a small window lays it over the note.
@@ -217,6 +224,7 @@ Real pictures and two automatic checks (2026-11-18):
   words or icon sit against the edge of their own hover fill. It must answer `[]` with each panel of a note open.
 - `node apps/mac/scripts/mac.mjs eval @apps/mac/scripts/font-lint.js`: interface text of the page that isn't in the
   system font. It must answer `[]` too (the note's own text and theme previews aren't counted).
+- `TabCloseSpotTests` holds the ×'s place on a tab.
 - `apps/web/test/note-panels-polish.test.ts` and `TabStripTests.theOpenTabClearsTheArrowsWhenTheyFirstAppear` hold
   the same rules in CI; `PlannerPolishTests` holds the task dialogs' sheet, the done box's fill and the month's rows.
 - A click inside a dialog or a popover it opened: `mac.mjs cmd menus '{"do":"click","sheet":true,"x":..,"y":..}'`

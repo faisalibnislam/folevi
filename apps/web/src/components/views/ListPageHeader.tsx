@@ -1,7 +1,7 @@
 "use client";
 
-import type { ReactNode } from "react";
-import { ArrowDownUp, ChevronDown, FolderTree, LayoutGrid } from "lucide-react";
+import { useId, type ReactNode } from "react";
+import { ArrowDownUp, ChevronDown, FolderTree, Funnel, LayoutGrid, X } from "lucide-react";
 import { useAppRouter } from "@/lib/app/router";
 import { Select } from "@/components/ui/Select";
 import { MenuButton, type MenuItem } from "@/components/ui/Menu";
@@ -160,3 +160,40 @@ export function RowSort<T extends string>({ value, onChange, options }: { value:
 
 /** The small caps heading over a section of a list page (Built-in templates, a folder's Folders). */
 export const SECTION_LABEL = "mb-3 text-footnote font-semibold uppercase tracking-[0.06em] text-faint";
+
+/**
+ * The field that narrows the list on show ("Filter notes", "Filter folders", "Filter tags"), with the funnel: always
+ * there, on every platform (the owner, 19 November 2026). Escape clears it. In a title row it's the row's height, its
+ * width following the window's up to 300 px; elsewhere it takes up to 24 rem of its row.
+ */
+export function FilterField({ value, onChange, label, inRow = false }: { value: string; onChange: (v: string) => void; label: string; inRow?: boolean }) {
+  const id = useId();
+  return (
+    <div className={inRow ? "relative w-[clamp(10rem,26vw,300px)] min-w-0 flex-none" : "relative min-w-0 flex-1 max-sm:basis-full sm:max-w-sm"}>
+      <label htmlFor={id} className="sr-only">
+        {label}
+      </label>
+      <Funnel size={14} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-faint" aria-hidden />
+      <input
+        id={id}
+        type="text"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Escape" && value) {
+            e.stopPropagation();
+            onChange("");
+          }
+        }}
+        placeholder={label}
+        autoComplete="off"
+        className={`ui-input ${inRow ? ROW_CONTROL : "h-9"} w-full rounded-chip pl-8 pr-8 text-callout`}
+      />
+      {value ? (
+        <button type="button" aria-label="Clear filter" title="Clear filter" onClick={() => onChange("")} className="absolute right-2 top-1/2 grid h-6 w-6 -translate-y-1/2 place-items-center rounded-chip text-faint hover:text-ink">
+          <X size={13} aria-hidden />
+        </button>
+      ) : null}
+    </div>
+  );
+}

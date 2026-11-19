@@ -14,6 +14,87 @@ export type Release = {
 
 export const RELEASES: Release[] = [
   {
+    version: "1.5.52",
+    name: "Filter notes on the Mac and the web",
+    date: "2026-11-19",
+    label: "November 19, 2026",
+    intro: "Every list of notes on the Mac and the web now has a Filter notes field at the top.",
+    groups: [
+      {
+        title: "Mac and web",
+        items: [
+          "All notes, Bookmarks, Drafts, Archive, Trash, Templates, a folder and a tag show Filter notes, always in sight",
+          "It narrows the list by title or text as you type, and the count says how many match, such as “2 of 19 notes”",
+          "On the web, Escape clears it",
+          "The iPad’s lists have it too",
+        ],
+      },
+    ],
+  },
+  {
+    version: "1.5.51",
+    name: "A calmer iPhone, and a steadier editor",
+    date: "2026-11-19",
+    label: "November 19, 2026",
+    intro: "Fixes from the first day with the new iPhone look, and a long pass over the note editor on every platform.",
+    groups: [
+      {
+        title: "iPhone",
+        items: [
+          "Each tab’s first screen has + in its top bar, beside Foli AI when it’s on, and nothing sits over the tab bar",
+          "All folders and Foli DNA are rows on Home",
+          "Search’s close button takes you back to where you opened it",
+          "The account button has no glass around it",
+        ],
+      },
+      {
+        title: "Every platform",
+        items: [
+          "Fields that narrow a list read Filter notes, Filter folders or Filter tags, and on the iPhone they stay in sight at the top of the list",
+        ],
+      },
+      {
+        title: "The editor",
+        items: [
+          "Enter, Backspace and Tab stay fast in long notes, and a long paste saves at once",
+          "A note changed on another device opens with the newer text, and an edit never replaces it unseen",
+          "On iPhone and iPad, the line you’re writing stays above the keyboard, and typing is saved when you leave the app",
+          "On iPhone and iPad, Return in a to-do or a toggle keeps the words after the caret",
+          "Fixes for paste, copy and cut, tables, pictures, recordings, code and columns",
+        ],
+      },
+    ],
+  },
+  {
+    version: "1.5.50",
+    name: "Folevi for iPhone and iPad, native to iOS 26",
+    date: "2026-11-19",
+    label: "November 19, 2026",
+    intro: "The iPhone app takes on iOS 26’s own look, and the iPad’s wide layout becomes the Mac app’s. Notes and note cards keep Folevi’s fonts.",
+    groups: [
+      {
+        title: "iPhone",
+        items: [
+          "iOS 26’s tab bar in Liquid Glass, with Home, Tasks and Calendar, and Search as a tab of its own",
+          "Large titles, Back with the edge swipe, and iOS’s own menus, context menus and sheets",
+          "Interface text in the system font, following your text size",
+          "On iOS 18, the tab bar stays as it was",
+        ],
+      },
+      {
+        title: "iPad",
+        items: [
+          "The wide layout is the Mac app’s: tabs along the top, the sidebar, and the list or note in its card with glass controls",
+          "Settings opens as the Mac’s Settings, in a sheet",
+        ],
+      },
+      {
+        title: "Everywhere",
+        items: ["In dark mode, a switch that’s on is graphite, so its white knob shows", "No lines between the rows of a list"],
+      },
+    ],
+  },
+  {
     version: "0.4",
     name: "Folevi for Mac runs the web app",
     date: "2026-10-09",

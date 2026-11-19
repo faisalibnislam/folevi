@@ -40,7 +40,23 @@ function rewriteAll(): void {
   for (const n of document.querySelectorAll<HTMLLinkElement | HTMLStyleElement>('link[rel="stylesheet"], style:not([data-showcase-insets])')) void rewrite(n);
 }
 
+/**
+ * Folevi for iPhone's native look (1.5.50): the tab bar is iOS 26's own, so the showcase draws it over the frame
+ * (DeviceShowcase, NativeTabBar) and the web's floating one stays in the page unseen, where its state (the tab
+ * you're on, hidden for a note) can still be read. Interface text and screen titles are the system font, as the
+ * app's are; notes keep their own fonts (--editor-font, which never reads --font-sans).
+ */
+const NATIVE_LOOK = `
+div:has(> nav[aria-label="Tabs"]) { visibility: hidden !important; }
+html:root { --font-sans: -apple-system, "SF Pro Text", system-ui, sans-serif !important; }
+.ui-large-title { font-family: -apple-system, "SF Pro Display", system-ui, sans-serif; font-weight: 700; letter-spacing: -0.015em; }
+`;
+
 export function fakePhone(): void {
+  const style = document.createElement("style");
+  style.dataset.showcaseInsets = "native";
+  style.textContent = NATIVE_LOOK;
+  document.head.appendChild(style);
   try {
     Object.defineProperty(navigator, "userAgent", { value: PHONE_UA, configurable: true });
     Object.defineProperty(navigator, "maxTouchPoints", { value: 5, configurable: true });

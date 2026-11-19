@@ -1,7 +1,8 @@
 import { Check, Minus } from "lucide-react";
 import { Card, HeaderCard, PageFrame } from "@/components/marketing/cards";
 import { Float, Mark, Sticker } from "@/components/marketing/fun";
-import { DevicePicture, MacPicture } from "@/components/marketing/home/GetApps";
+import { MacPicture } from "@/components/marketing/home/GetApps";
+import { TouchDevicesPicture } from "@/components/marketing/product/TouchDevices";
 import { YourFiles } from "@/components/marketing/home/YourFiles";
 import { FaqSection } from "@/components/marketing/parts";
 import { SyncPiece } from "@/components/marketing/pieces";
@@ -45,7 +46,7 @@ const MAC_POINTS = [
   "Updates itself",
 ];
 const IOS_POINTS = [
-  "A layout made for iPhone and one for iPad",
+  "Made for iOS 26 on iPhone, with the Mac’s layout on iPad",
   "Home Screen widgets: Today, Recent notes and Quick add",
   "Share to Folevi from any app",
   "Your library in iCloud Drive and the Files app",
@@ -86,13 +87,15 @@ function Cell({ value }: { value: boolean | string }) {
   return <span>{value}</span>;
 }
 
-function AppCard({ id, eyebrow, title, lede, points, picture, actions, requirement }: {
+function AppCard({ id, eyebrow, title, lede, points, picture, pictureLabel, actions, requirement }: {
   id: string;
   eyebrow: string;
   title: React.ReactNode;
   lede: string;
   points: string[];
   picture: React.ReactNode;
+  /** Describes the picture for assistive tech. */
+  pictureLabel: string;
   actions: React.ReactNode;
   requirement: string;
 }) {
@@ -112,7 +115,7 @@ function AppCard({ id, eyebrow, title, lede, points, picture, actions, requireme
           <div className="mt-8 flex flex-wrap gap-2.5">{actions}</div>
           <p className="mt-4 text-[13px] text-muted">{requirement}</p>
         </div>
-        <div role="img" aria-label={`Folevi ${eyebrow.replace(/^For /, "for ")} with a note open`} className="mk-mini-stage flex items-center justify-center" style={{ height: 300 }}>
+        <div role="img" aria-label={pictureLabel} className="mk-mini-stage flex items-center justify-center" style={{ height: 300 }}>
           <div aria-hidden="true" className="contents">
             {picture}
           </div>
@@ -209,6 +212,7 @@ export default function AppsPage() {
           lede="Docs, tasks and databases in windows of their own, with the keyboard, the menu bar and Finder close at hand."
           points={MAC_POINTS}
           picture={<MacPicture />}
+          pictureLabel="Folevi for Mac with a note open"
           actions={
             <>
               <ButtonLink href={MAC_DOWNLOAD_URL} lead="mac">
@@ -232,12 +236,8 @@ export default function AppsPage() {
           }
           lede="New on the App Store: the same workspace on your iPhone and iPad, with widgets and the Share sheet."
           points={IOS_POINTS}
-          picture={
-            <div className="flex items-end gap-5">
-              <DevicePicture kind="iphone" />
-              <DevicePicture kind="ipad" />
-            </div>
-          }
+          picture={<TouchDevicesPicture />}
+          pictureLabel="Folevi on an iPad, with the sidebar, tabs along the top and All notes with Filter notes, and on an iPhone, with All notes, Filter notes and the tab bar"
           actions={
             <ButtonLink href={APP_STORE_URL} lead="app-store">
               Get it on the App Store

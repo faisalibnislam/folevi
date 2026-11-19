@@ -165,6 +165,14 @@ causes (section 3 item 4).
 
 ## 7. Waiting on the owner
 
+- **Pricing (branch `pricing-decisions`, worktree `.claude/worktrees/pricing`, 2026-11-19):** the owner chose
+  every default in docs/PRICING_PROPOSAL.md. Built and committed, not merged or pushed: the fair-use download
+  cap and 400 ms AI writes (`b690e4a6`), the new plans with Core retired (`b5761a18`), and files on R2,
+  first stage, off until configured (`34f225f1`). All Convex tests pass. Before release the owner does the
+  Polar product switch and the R2 bucket setup (PRICING_PROPOSAL.md section 9, which also lists what's left
+  on R2: direct uploads and the 50 MB limit, one storage module, Vault and theme files, R2 backups). Merging
+  to `main` needs the owner's OK.
+
 - Add a TXT record `v=spf1 include:amazonses.com ~all` at `@` for folevi.com (Namecheap) so Apple's Sign in
   with Apple email relay check passes; then press verify in Apple's portal.
 - Export compliance answer for App Store submission; whether to submit to App Review.

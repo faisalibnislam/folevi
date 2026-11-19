@@ -8,6 +8,13 @@ import SwiftUI
 public extension EnvironmentValues {
     /// iOS puts bars in a column at the side here (iPhone Duo closed, or open across): the note uses iOS's bars.
     @Entry var phoneSideBars = false
+    /// The window is regular width (iPhone Duo open): the note sits beside its list, with no Back of its own.
+    @Entry var phoneWideWindow = false
+    /// The note's buttons are iOS's toolbar items (PhoneSideBars' NoteBar): at the side where `phoneSideBars`, in the
+    /// top bar otherwise (the open inner screen upright, where the tab bar has the bottom).
+    @Entry var phoneSystemNoteBars = false
+    /// The note is the first in the split view's detail column: collapsed, iOS draws no Back for it.
+    @Entry var phoneNoteFirst = false
 }
 
 public extension View {
@@ -17,9 +24,9 @@ public extension View {
     }
 
     /// A note's screen: its own bars on other iPhones (`phoneOwnBar`), iOS's navigation bar where bars are at the
-    /// side (the note puts its buttons in it). The note beside its list (`inColumn`) keeps its own bars.
-    func phoneNoteBar(inColumn: Bool) -> some View {
-        modifier(NoteBar(inColumn: inColumn))
+    /// side (the note puts its buttons in it).
+    func phoneNoteBar() -> some View {
+        modifier(NoteBar())
     }
 }
 
@@ -59,15 +66,15 @@ private struct SideBarsReader271: ViewModifier {
 }
 
 private struct NoteBar: ViewModifier {
-    let inColumn: Bool
     @Environment(\.phoneSideBars) private var side
+    @Environment(\.phoneWideWindow) private var wide
 
     func body(content: Content) -> some View {
-        // The note beside its list keeps its own bars: iOS 27 leaves a column's side-bar items behind as empty glass
-        // when the phone folds and the column goes (and on the open screen the sidebar has the tabs' place, so
-        // there is no side column to join).
-        if side, !inColumn {
+        // iOS's bars where they sit at the side, and on the open inner screen upright too (the note beside its list,
+        // its tools in iOS's bottom bar, laid out with the tab bar rather than floating over it).
+        if side || wide {
             content
+                .environment(\.phoneSystemNoteBars, true)
                 .toolbar(.visible, for: .navigationBar)
                 .navigationBarTitleDisplayMode(.inline)
         } else {

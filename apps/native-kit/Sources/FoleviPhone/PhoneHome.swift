@@ -38,6 +38,8 @@ public struct PhoneHomeContent: View {
     let actions: PhoneHomeActions
     @AppStorage("folevi:iphone-home:tags") private var tagsOpen = false
     @Environment(\.colorScheme) private var scheme
+    /// iOS puts bars in a column at the side (iPhone Duo): the card rail stops short of it.
+    @Environment(\.phoneSideBars) private var sideBars
 
     public init(model: HomeModel, actions: PhoneHomeActions) {
         self.model = model
@@ -145,7 +147,11 @@ public struct PhoneHomeContent: View {
             .scrollIndicators(.hidden)
             .scrollTargetBehavior(.viewAligned)
             .contentMargins(.horizontal, strip.padding.left, for: .scrollContent)
-            .padding(.horizontal, -strip.padding.left)
+            // (To the screen's edges, except where iOS's column of bars sits at the side, iPhone Duo: the cards stop
+            // short of it rather than slide under it and the status bar.)
+            .padding(.leading, -strip.padding.left)
+            .padding(.trailing, sideBars ? 0 : -strip.padding.left)
+            .clipShape(Rectangle())
             .accessibilityLabel("Recent notes")
         }
     }

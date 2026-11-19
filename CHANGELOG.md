@@ -4,6 +4,31 @@ Every Folevi release, newest first, written by `node scripts/version.mjs` from `
 
 Versions are MAJOR.UPDATE.PATCH, PATCH at least two digits: a Major release (2.0.00), a Big update (1.1.05 after 1.0.05) or a Small update (1.0.06 after 1.0.05).
 
+## Version 1.5.54: Small update
+
+Released 2026-11-19 22:59:23+06:00 (build 69, tag v1.5.54)
+
+New note moves to the top bar on Mac and iPad, the iPhone shows whether your notes are synced, and the iPad gets a round of fixes.
+
+### Added
+
+- iPhone: a cloud beside the bell on Home shows whether everything is synced. Tap it for the details and Retry
+
+### Improved
+
+- Mac and iPad: New note is a black button in the top bar, right after your tabs, and no longer in the sidebar
+- iPad: your account sits in the top left corner, and the sidebar starts with the page you're on
+- iPad: the menu button on note and folder cards is lighter
+- iPad: smoother on big libraries: card pictures load in the background, and the window redraws less
+- iPhone Duo: with the phone open, the note beside the list is the last one you opened, and card titles no longer break mid-word
+
+### Fixed
+
+- iPad: tapping the cloud now shows the sync details, and no longer blocks your next tap
+- iPad: closing a note's Style or Format panel no longer leaves a ring or a tooltip behind
+- Phones: the first-launch screens no longer slide sideways
+- Notes: closing the tools panel keeps your cursor where you were typing
+
 ## Version 1.5.53: Small update
 
 Released 2026-11-19 19:37:45+06:00 (build 68, tag v1.5.53)

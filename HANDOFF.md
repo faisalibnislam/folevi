@@ -247,6 +247,7 @@ The ones most likely to be broken:
 - Give before/after screenshots for UI work and ask the owner with clear options when a decision is theirs.
 
 ## 9. Current state (as of 2026-11-19)
+- Release 1.5.54 (2026-11-19, the owner's "release everything"): `main` takes `ipad-polish` (iPad fixes; New note as a black pill in the Mac and iPad title bars, gone from the sidebar; the iPad account in the title bar's corner; iPhone sync status on Home), pull request 41's end-to-end and app fixes (`claude/reverent-leakey-c9bd25`), the iPhone Duo follow-ups (`claude/iphone-duo-18adb4`, the Duo work is otherwise paused) and `editor/rock-solid`'s last note, merged on `release-1.5.54`. Left out: `chrome-extension` (paused), `pricing-decisions` (the owner's decisions pending), October's old branches and Dependabot's.
 
 Released and known (from the release session, 1.5.53):
 - `main` = Release 1.5.53, tag `v1.5.53`: the Foli AI tab on iPhone (branch `ios-ai-tab`), iPhone Duo support and the shorter first-launch copy (branch `claude/iphone-duo-18adb4`), and the marketing pages brought up to date (branch `claude/marketing-pages-091dac`), merged on `release-1.5.53`.
@@ -376,6 +377,7 @@ the e2e suite was not re-run after the Foli AI panel change; the dev backend lac
   `DATABASE_UDF_USER_TIMEOUT_SECONDS=4` for that backend. Bursts show in `convex.log` as "took a long time".
 
 ## 12. Change log
+- 2026-11-19: Released 1.5.54 (web, Mac, iPhone and iPad).
 
 - 2026-11-19: pull request 41 (`claude/reverent-leakey-c9bd25`, into `main`): onboarding no longer scrolls sideways
   at phone width while a step slides in (app), closing the tools panel leaves the caret where it is (app,

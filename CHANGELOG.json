@@ -1,6 +1,30 @@
 {
   "releases": [
     {
+      "version": "1.5.54",
+      "build": 69,
+      "released": "2026-11-19T22:59:23+06:00",
+      "type": "patch",
+      "summary": "New note moves to the top bar on Mac and iPad, the iPhone shows whether your notes are synced, and the iPad gets a round of fixes.",
+      "added": [
+        "iPhone: a cloud beside the bell on Home shows whether everything is synced. Tap it for the details and Retry"
+      ],
+      "improved": [
+        "Mac and iPad: New note is a black button in the top bar, right after your tabs, and no longer in the sidebar",
+        "iPad: your account sits in the top left corner, and the sidebar starts with the page you're on",
+        "iPad: the menu button on note and folder cards is lighter",
+        "iPad: smoother on big libraries: card pictures load in the background, and the window redraws less",
+        "iPhone Duo: with the phone open, the note beside the list is the last one you opened, and card titles no longer break mid-word"
+      ],
+      "fixed": [
+        "iPad: tapping the cloud now shows the sync details, and no longer blocks your next tap",
+        "iPad: closing a note's Style or Format panel no longer leaves a ring or a tooltip behind",
+        "Phones: the first-launch screens no longer slide sideways",
+        "Notes: closing the tools panel keeps your cursor where you were typing"
+      ],
+      "tag": "v1.5.54"
+    },
+    {
       "version": "1.5.53",
       "build": 68,
       "released": "2026-11-19T19:37:45+06:00",

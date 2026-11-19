@@ -11,7 +11,7 @@ export const MAC_DOWNLOAD_URL = "https://folevi.com/download/mac/Folevi.dmg";
  */
 export const APP_STORE_URL = "https://apps.apple.com/us/search?term=Folevi";
 /** The apps' minimum systems (apps/native-kit/Package.swift, apps/mac/project.yml). */
-export const MAC_REQUIREMENT = "macOS 15 or later";
+export const MAC_REQUIREMENT = "macOS 26 or later";
 export const IOS_REQUIREMENT = "iOS 18 or iPadOS 18 or later";
 export const SECURITY_EMAIL = "security@folevi.com";
 export const SUPPORT_EMAIL = "support@folevi.com";
@@ -27,16 +27,16 @@ export function signUpWithTemplate(key: string): string {
  * dates next to their content (content/features.tsx, content/templates.ts, content/docs.tsx).
  */
 export const MARKETING_ROUTES = [
-  { path: "/", priority: 1, changeFrequency: "weekly", updated: "2026-11-06" },
-  { path: "/apps", priority: 0.9, changeFrequency: "monthly", updated: "2026-11-06" },
+  { path: "/", priority: 1, changeFrequency: "weekly", updated: "2026-11-19" },
+  { path: "/apps", priority: 0.9, changeFrequency: "monthly", updated: "2026-11-19" },
   { path: "/features", priority: 0.9, changeFrequency: "monthly", updated: "2026-11-06" },
-  { path: "/mac", priority: 0.8, changeFrequency: "monthly", updated: "2026-11-06" },
+  { path: "/mac", priority: 0.8, changeFrequency: "monthly", updated: "2026-11-19" },
   { path: "/security", priority: 0.8, changeFrequency: "monthly", updated: "2026-11-06" },
-  { path: "/pricing", priority: 0.8, changeFrequency: "monthly", updated: "2026-11-06" },
+  { path: "/pricing", priority: 0.8, changeFrequency: "monthly", updated: "2026-11-19" },
   { path: "/template-gallery", priority: 0.7, changeFrequency: "monthly", updated: "2026-09-30" },
   { path: "/docs", priority: 0.7, changeFrequency: "weekly", updated: "2026-09-30" },
   { path: "/support", priority: 0.6, changeFrequency: "monthly", updated: "2026-11-06" },
-  { path: "/changelog", priority: 0.6, changeFrequency: "weekly", updated: "2026-09-30" },
+  { path: "/changelog", priority: 0.6, changeFrequency: "weekly", updated: "2026-11-19" },
   { path: "/status", priority: 0.3, changeFrequency: "monthly", updated: "2026-09-29" },
   { path: "/privacy", priority: 0.3, changeFrequency: "yearly", updated: "2026-09-30" },
   { path: "/terms", priority: 0.3, changeFrequency: "yearly", updated: "2026-10-27" },

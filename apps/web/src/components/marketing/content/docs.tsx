@@ -142,7 +142,7 @@ export const DOC_ARTICLES: DocArticle[] = [
     nav: "Apps and no-account notes",
     description: "Folevi for Mac, iPhone and iPad: where to get them, keeping notes on your devices with no account, where a library can live, and moving to an account.",
     published: "2026-11-06",
-    updated: "2026-11-06",
+    updated: "2026-11-19",
     body: () => (
       <>
         <h2 id="apps">The apps</h2>

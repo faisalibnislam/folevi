@@ -250,7 +250,7 @@ export function FoldersIndex() {
             )}
           </ul>
         ) : (
-          <ul className="ui-card divide-y divide-line overflow-hidden rounded-chip" aria-label="Folders">
+          <ul className="ui-card divide-y divide-transparent overflow-hidden rounded-chip" aria-label="Folders">
             {list.map((f) => {
               const on = selection.selected.has(f.id);
               return (

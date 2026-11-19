@@ -694,7 +694,7 @@ function DocumentList({ view, folderId, tagId, org, titleOverride }: { view: Vie
             }
           />
         ) : layout === "list" ? (
-          <ul className="divide-y divide-line overflow-hidden ui-card rounded-control">
+          <ul className="divide-y divide-transparent overflow-hidden ui-card rounded-control">
             {docs.map((d) => {
               const on = selection.selected.has(d.id);
               return (

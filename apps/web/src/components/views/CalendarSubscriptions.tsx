@@ -331,7 +331,7 @@ function CalendarsBody() {
         <p className="mt-0.5 text-footnote text-muted">Calendars you subscribe to by link show beside your tasks. They’re read-only here. Turn one off to hide its events.</p>
       </div>
       {cals?.length ? (
-        <ul className="divide-y divide-line border-b border-line" aria-label="Subscribed calendars">
+        <ul className="divide-y divide-transparent border-b border-line" aria-label="Subscribed calendars">
           {cals.map((c) => (
             <SubscriptionRow key={c.id} cal={c} />
           ))}

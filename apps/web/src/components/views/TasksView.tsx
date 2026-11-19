@@ -361,7 +361,7 @@ export function TasksView({ view }: { view: View }) {
       groups.map((g) => (
         <section key={g.key} className="mt-6" aria-label={g.label ?? meta.label}>
           {g.label ? <h3 className="mb-2 text-footnote font-semibold uppercase tracking-[0.06em] text-faint">{g.label}</h3> : null}
-          <ul className="divide-y divide-line overflow-hidden ui-card rounded-control">
+          <ul className="divide-y divide-transparent overflow-hidden ui-card rounded-control">
             {g.items.map((t) => (
               <TaskItem key={t.blockId} task={t} today={today} onToggle={onToggle} onEdit={setEditing} />
             ))}

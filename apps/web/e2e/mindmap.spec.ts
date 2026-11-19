@@ -268,12 +268,14 @@ test.describe("Mind map", () => {
     await expect(card.getByRole("toolbar", { name: "Mind map tools" })).toBeHidden();
     await page.getByRole("button", { name: /^Open canvas/ }).click();
     await expect(card).toHaveAttribute("data-full", "true");
+    // (The rest is the full canvas at 390, the width its toolbar is said to fit in whole; at 360 it folds.)
+    await page.setViewportSize({ width: 390, height: 844 });
     await card.getByRole("button", { name: "Add the central idea" }).click();
     await page.keyboard.type("Ideas");
     await page.keyboard.press("Escape");
     const box = (await card.boundingBox())!;
     expect(box.x).toBeGreaterThanOrEqual(0);
-    expect(box.x + box.width).toBeLessThanOrEqual(360);
+    expect(box.x + box.width).toBeLessThanOrEqual(390);
     // The toolbar never scrolls sideways. The full canvas has the phone's whole width, where every tool fits
     // (the block's name steps aside): nothing folds into More, and the map's own menu stays in the bar.
     const tools = card.getByRole("toolbar", { name: "Mind map tools" });

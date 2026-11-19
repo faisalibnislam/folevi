@@ -58,9 +58,11 @@ describe("the note's tool panels", () => {
     expect(groups).toMatch(/<PanelTop[^>]*\/> Card/);
   });
 
-  it("has no blur at the panel's foot in Folevi for Mac", () => {
+  it("has no blur at the panel's foot, on the web or the Mac", () => {
     // The owner, 2026-11-19: the progressive blur over the last rows of Foli AI's panel looked out of place.
     const css = readFileSync(join(__dirname, "../src/app/globals.css"), "utf8");
-    expect(css).toMatch(/:root\[data-mac-native\] \.ui-blur-bottom \{ display: none; \}/);
+    const inspector = readFileSync(join(__dirname, "../src/components/doc/Inspector.tsx"), "utf8");
+    expect(css).not.toContain("ui-blur-bottom");
+    expect(inspector).not.toContain("ui-blur-bottom");
   });
 });

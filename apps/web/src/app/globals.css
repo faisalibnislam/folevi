@@ -445,23 +445,6 @@
   dialog.ui-modal.ui-modal-light::backdrop { background: color-mix(in oklab, var(--color-scrim) 50%, transparent); }
   /* A disabled primary button reads as off (a sunken well, faint text), not as a broken grey primary. */
   .ui-btn-primary:disabled { opacity: 1; color: var(--color-ink-faint); background: var(--color-surface-sunken); box-shadow: inset 0 0 0 1px var(--color-line); }
-  /* Progressive blur at a panel's bottom edge (clear above, strongest at the edge), like iOS's bars:
-     stacked layers, each blurrier and masked to a lower band. */
-  .ui-blur-bottom { position: absolute; inset-inline: 0; bottom: 0; height: 72px; pointer-events: none; z-index: 1; }
-  .ui-blur-bottom, .ui-blur-bottom::before, .ui-blur-bottom::after { border-bottom-left-radius: inherit; border-bottom-right-radius: inherit; }
-  .ui-blur-bottom {
-    -webkit-backdrop-filter: blur(1px); backdrop-filter: blur(1px);
-    -webkit-mask-image: linear-gradient(to bottom, transparent 0%, #000 30%, #000 100%); mask-image: linear-gradient(to bottom, transparent 0%, #000 30%, #000 100%);
-  }
-  .ui-blur-bottom::before, .ui-blur-bottom::after { content: ""; position: absolute; inset: 0; }
-  .ui-blur-bottom::before {
-    -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px);
-    -webkit-mask-image: linear-gradient(to bottom, transparent 30%, #000 65%, #000 100%); mask-image: linear-gradient(to bottom, transparent 30%, #000 65%, #000 100%);
-  }
-  .ui-blur-bottom::after {
-    -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
-    -webkit-mask-image: linear-gradient(to bottom, transparent 60%, #000 100%); mask-image: linear-gradient(to bottom, transparent 60%, #000 100%);
-  }
   .ui-raised { background: var(--color-surface-raised); box-shadow: var(--shadow-control); }
   /* Panels (sidebar, tab bar, dock): frosted glass with a fine light edge. */
   .ui-glass {
@@ -1489,9 +1472,6 @@
    the same width): MacLook.sidebarWidth (288 pt) is this 8px gap and the 280px panel. Its width doesn't drag here. */
 :root[data-mac-native] aside[aria-label="Page tools"]:not(.ui-pop) { width: 280px !important; }
 :root[data-mac-native] aside[aria-label="Page tools"]:not(.ui-pop) > [role="separator"] { display: none; }
-/* Folevi for Mac: the panel's content runs clear to the window's edge in every tab, as Insert, Format and Style do
-   everywhere (the owner, 2026-11-19: the blur at the foot of Foli AI's panel "looks out of place"). */
-:root[data-mac-native] .ui-blur-bottom { display: none; }
 
 /* Folevi for Mac's native look: Liquid Glass for everything that floats over a note (the owner, 2026-11-18: the
    note's menu "doesn't feel native ... it is pure white"). Menus, the floating bar and popovers were white at 82%:

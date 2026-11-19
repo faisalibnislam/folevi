@@ -296,7 +296,8 @@ title; in a narrower one the × shows in the icon's stead and the title doesn't 
 ![panel-foot](panel-foot.jpg)
 
 The web's sidebar blurs its last rows into the bottom edge. In Folevi for Mac the panel now runs clear to the
-window's edge in every tab, as Insert, Format and Style already did. The web keeps its blur.
+window's edge in every tab, as Insert, Format and Style already did. The owner had the web drop its blur the same
+day, so the panel runs clear to the edge there too.
 
 Tests: `TabCloseSpotTests` (4) and one more in `note-panels-polish.test.ts`. Not pictured: the × under the pointer
 on a tab that isn't open (the pointer can't be moved for the test app alone); it is the same button in the same

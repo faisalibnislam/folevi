@@ -122,7 +122,6 @@ export function Inspector({
   useEffect(() => {
     if (tab !== "comments" && tab !== "ai" && tab !== "related") setLastTab(tab);
   }, [tab]);
-  const toEdge = tab === "insert" || tab === "format" || tab === "style";
   return (
     <div className="flex h-full flex-col">
       <div className={`flex-none px-3 ${bare || sheet ? "pt-0" : "pt-2.5"} ${sheet ? "sr-only" : ""}`}>
@@ -187,11 +186,10 @@ export function Inspector({
         </div>
         )}
       </div>
-      {/* In the right sidebar, content blurs progressively into the bottom edge (clear at the top), like iOS.
-          Insert, Format and Style are grids of controls: they run clear to the edge instead. */}
-      {/* Foli AI's chat (data-ai-fill) fills the panel instead, its composer at the bottom with the usual inset. */}
-      <div className={`relative min-h-0 flex-1 [&:has([data-ai-fill])>.ui-blur-bottom]:hidden ${tab === "ai" && aiOn ? "flex flex-col" : ""}`}>
-      <div id={`${baseId}-panel`} role={tab === "comments" || hideTabs ? "region" : "tabpanel"} aria-labelledby={`${baseId}-tab-${tab}`} className={`relative h-full ${tab === "ai" && aiOn ? "flex min-h-0 flex-1 flex-col has-[>[data-ai-fill]]:!pb-[calc(var(--sheet-safe-b,0px)+12px)]" : ""} ${sheet && tab === "insert" ? "" : "overflow-y-auto"} ${sheet ? "px-4 pt-1" : "px-3 pt-3"} ${sheet ? "pb-[calc(var(--sheet-safe-b,0px)+16px)]" : bare && !toEdge ? "pb-16" : "pb-4"}`}>
+      {/* Every tab runs clear to the panel's bottom edge, with no blur over its last rows (the owner, 2026-11-19:
+          it "looks out of place"). Foli AI's chat (data-ai-fill) fills the panel, its composer at the bottom. */}
+      <div className={`relative min-h-0 flex-1 ${tab === "ai" && aiOn ? "flex flex-col" : ""}`}>
+      <div id={`${baseId}-panel`} role={tab === "comments" || hideTabs ? "region" : "tabpanel"} aria-labelledby={`${baseId}-tab-${tab}`} className={`relative h-full ${tab === "ai" && aiOn ? "flex min-h-0 flex-1 flex-col has-[>[data-ai-fill]]:!pb-[calc(var(--sheet-safe-b,0px)+12px)]" : ""} ${sheet && tab === "insert" ? "" : "overflow-y-auto"} ${sheet ? "px-4 pt-1" : "px-3 pt-3"} ${sheet ? "pb-[calc(var(--sheet-safe-b,0px)+16px)]" : "pb-4"}`}>
         {/* AI in a note is about this note (the chat with all notes is the floating one, elsewhere). */}
         {tab === "ai" && aiOn ? (
           <Suspense fallback={null}>
@@ -216,7 +214,6 @@ export function Inspector({
         ) : null}
         {tab === "related" ? <RelatedPanel documentId={documentId} canEdit={!readOnly} /> : null}
       </div>
-      {bare && !toEdge ? <div aria-hidden className="ui-blur-bottom" /> : null}
       </div>
     </div>
   );

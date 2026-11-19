@@ -169,8 +169,8 @@ uneven"):
   calendar's grid, a menu's separators, the line over a dialog's buttons, the lines in the command palette and
   Quick Add, the marks between tabs. Still the owner's to decide: the lines inside Settings' cards, under the
   Vault's tabs, under Notifications' switch, and under the Calendar's weekday names. `ListLinesTests`.
-- **No blur at a panel's foot** (the owner, 2026-11-19: "it looks out of place"). The web's sidebar blurs its last
-  rows into the bottom edge (`.ui-blur-bottom`); in Folevi for Mac every panel runs clear to the window's edge.
+- **No blur at a panel's foot** (the owner, 2026-11-19: "it looks out of place"). Every panel runs clear to the
+  window's edge, on the Mac and, since the same day, on the web too (the `.ui-blur-bottom` strip is gone).
 - **The panel sits beside the note** whenever the note keeps a writable width. The page's own width decides
   (`narrowWindowQuery` in `panelLayout.ts`: the Mac's page is the card, without the web's sidebar), so a 1280 pt
   window docks it; only a small window lays it over the note.

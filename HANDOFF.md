@@ -235,7 +235,7 @@ The ones most likely to be broken:
 - Give before/after screenshots for UI work and ask the owner with clear options when a decision is theirs.
 
 ## 9. Current state (as of 2026-11-19)
-- Chrome and Edge extension: Folevi Web Clipper in `apps/clipper` (OAuth plus the MCP endpoint, `notes:write` only). 1.1.0 on branch `chrome-extension` adds a quick note, an optional note on a clip and keyboard shortcuts; 44 unit tests pass, `pnpm build` works; not yet loaded in a real Chrome or published. Plan and checklist: `apps/clipper/PLAN.md`.
+- Chrome extension work is **paused** (the owner, 2026-11-19). Chrome and Edge extension: Folevi Web Clipper in `apps/clipper` (OAuth plus the MCP endpoint, `notes:write` only). 1.1.0 on branch `chrome-extension` adds a quick note, an optional note on a clip and keyboard shortcuts; 44 unit tests pass, `pnpm build` works; not yet loaded in a real Chrome or published. Plan and checklist: `apps/clipper/PLAN.md`.
 
 Released and known (from the release session, 1.5.53):
 - `main` = Release 1.5.53, tag `v1.5.53`: the Foli AI tab on iPhone (branch `ios-ai-tab`), iPhone Duo support and the shorter first-launch copy (branch `claude/iphone-duo-18adb4`), and the marketing pages brought up to date (branch `claude/marketing-pages-091dac`), merged on `release-1.5.53`.
@@ -279,7 +279,7 @@ Not verified: the 2026-11-19 editor fixes were not run in the Mac app, the Simul
 the e2e suite was not re-run after the Foli AI panel change; the dev backend lacks the new size limits.
 
 ## 10. Next steps / open work
-- Chrome extension (`apps/clipper`, branch `chrome-extension`, not merged): the rest of `apps/clipper/PLAN.md` Phase 1 (YouTube time, PDFs, offline queue), then Phase 2 (search, side panel, append, folders and tags, tasks: needs a read scope). Not yet in the Chrome Web Store: the owner's developer accounts and privacy policy section come first (`apps/clipper/STORE.md`).
+- Chrome extension (paused; `apps/clipper`, branch `chrome-extension`, not merged; search written but untested): the rest of `apps/clipper/PLAN.md` Phase 1 (YouTube time, PDFs, offline queue), then Phase 2 (search, side panel, append, folders and tags, tasks: needs a read scope). Not yet in the Chrome Web Store: the owner's developer accounts and privacy policy section come first (`apps/clipper/STORE.md`).
 
 1. Pull request 40 (`editor/rock-solid`): read its CI result and fix what it still shows (the browser tests were
    hidden on `main` from 18 to 19 November by a stale generated icons file). With CI green, ask the owner before
@@ -350,6 +350,7 @@ the e2e suite was not re-run after the Foli AI panel change; the dev backend lac
 - CI's first step runs `node scripts/icons-codegen.mjs --check`: regenerate `Icons.swift` after adding a web icon.
 
 ## 12. Change log
+- 2026-11-19: Chrome extension paused; its search (asks to read when first used) committed unfinished on `chrome-extension`.
 - 2026-11-19: Web Clipper 1.1.0 on branch `chrome-extension` (quick note, your note on a clip, keyboard shortcuts) and its plan, `apps/clipper/PLAN.md`.
 
 - 2026-11-19: pull request 40, CI run 44547866717: 7 of 8 browser shards green. `e2e/tab-switch.spec.ts` watched for

@@ -338,6 +338,10 @@ the e2e suite was not re-run after the Foli AI panel change; the dev backend lac
   `@convex-dev/better-auth` together when supported, then drop the ignores.
 - zsh doesn't word-split a variable of file names: use `git diff --name-only -z | xargs -0 git commit ...`.
 - Snapshot tests re-record with `FOLEVI_RECORD_SNAPSHOTS=1` (Mac) or `TEST_RUNNER_FOLEVI_RECORD_SNAPSHOTS=1` (iOS); recording rewrites every image, so restore the ones that didn't really change.
+- CI's local Convex backend stops a query after 1 second, and a timed-out query takes the page to its error screen
+  ("Something went wrong"). On a cold backend the first chat message of a shard can trip it: that is
+  `e2e/ai-attachments.spec.ts` in shard 8, flaky on `main` and failing twice in a row once. A failure whose
+  screenshot is that error screen is this, not the feature; `convex.log` in the shard's artifact shows the timeouts.
 - Rate limits (`convex/lib/rateLimit.ts`) count within fixed clock windows. A test that calls up to a limit must
   hold the clock (`vi.useFakeTimers({ toFake: ["Date"] })` and `vi.setSystemTime`), or it fails when it runs across
   a window's edge. Other per-minute limit tests have not been checked for this.
@@ -345,6 +349,8 @@ the e2e suite was not re-run after the Foli AI panel change; the dev backend lac
 
 ## 12. Change log
 
+- 2026-11-19: pull request 40, CI run 44538632686: 6 of 8 browser shards green. Fixed the mind map phone spec (its
+  full canvas is checked at 390 again); `e2e/ai-attachments.spec.ts` gets 3 retries on CI (see Gotchas).
 - 2026-11-19: `tests/convex/organize.test.ts` holds the clock in its rate limit test: the limit counts per clock
   minute and a CI run that straddled the turn of a minute failed it (pull request 40, run 44537137363).
 - 2026-11-19: the two root handoff files (the handoff session's on `editor/rock-solid`, the release session's on

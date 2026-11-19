@@ -11,9 +11,9 @@ read this section and `docs/EDITOR_AUDIT_2026-11-19.md` (the full report, sectio
 
 ### Current state
 
-- `main` is at 1.5.52. The audit's first 18 commits are on `main` (pushed 19 November with the owner's OK, as
+- `main` is at 1.5.53. The audit's first 18 commits are on `main` (pushed 19 November with the owner's OK, as
   `e734cb9b`) and live on the website and production Convex.
-- Branch `editor/rock-solid` = `main` 1.5.52 + 2 commits, open as
+- Branch `editor/rock-solid` = `main` 1.5.53 + the commits below (and handoff notes), open as
   https://github.com/faisalibnislam/folevi/pull/40 (not merged, nothing deployed from it):
   - `12e7c419` web fixes: the tools panel no longer covers a note in a narrow window (on load or after a
     resize), a tool picked during load stays, Foli AI's panel failing to load offline no longer takes the page
@@ -226,3 +226,13 @@ causes (section 3 item 4).
 - Every iPhone feedback also applies to iPad. Every web change ships to the Mac app.
 - No buying in the iOS app (no prices, buy buttons or upgrade links).
 - Ask the owner with clear options when a decision is theirs; give before/after screenshots for UI work.
+
+## 9. Marketing pages branch `claude/marketing-pages-091dac` (2026-11-19)
+
+Commit c39116e6 on top of the 1.5.52 release (6099b01e), not pushed or deployed. The owner picked an accuracy pass:
+the Mac requirement is macOS 26 (`site.ts`); the home showcase's iPhone draws iOS 26's tab bar over the frame
+(`home/DeviceShowcase.tsx` NativeTabBar, `showcase/phone.ts` NATIVE_LOOK); the Apps page has a new iPad and iPhone
+picture (`product/TouchDevices.tsx`); the Search feature page has "Filter a list"; the changelog has 1.5.50 to 1.5.52.
+Next: the owner reviews, then merges and releases the site. The App Store link in `site.ts` is still a search link.
+
+Change log: 2026-11-19 marketing accuracy pass for 1.5.50 to 1.5.52 (branch above).

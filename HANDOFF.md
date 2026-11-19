@@ -1,6 +1,6 @@
 # Folevi: handoff
 
-> Read this first if you are a Claude (or any agent) picking this project up, on this Mac or another one. Then read CLAUDE.md / AGENTS.md. Keep this file current: after every change to the project, update "Current state", "Next steps" and "Change log", and commit it.
+> Read this first if you are a Claude (or any agent) picking this project up, on this Mac or another one. Then read `CLAUDE.md`, `docs/HANDOFF.md` (the long handoff: unfinished branches, release detail, what the owner is waiting on) and `docs/claude-context/memory/MEMORY.md` (the owner's standing rules). Keep this file current: after every change to the project, update "Current state", "Next steps" and "Change log", and commit it.
 
 Last updated: 2026-11-19 · Written on: Faisal's MacBook Pro M5
 
@@ -236,8 +236,13 @@ The ones most likely to be broken:
 
 ## 9. Current state (as of 2026-11-19)
 
+Released and known (from the release session, 1.5.53):
+- `main` = Release 1.5.53, tag `v1.5.53`: the Foli AI tab on iPhone (branch `ios-ai-tab`), iPhone Duo support and the shorter first-launch copy (branch `claude/iphone-duo-18adb4`), and the marketing pages brought up to date (branch `claude/marketing-pages-091dac`), merged on `release-1.5.53`.
+- iPhone Duo: on the inner screen the tabs are a sidebar and the open note shows beside its list (half open, split on the fold); folding keeps the note open with Back to its list, and the caret, text and keyboard carry over; on iPhone Duo the note's buttons are iOS's side-bar items. Checked on the iPhone Duo simulator in every posture except Split View halves and tabletop. Owner's picks: `docs/claude-context/memory/iphone-duo-decisions.md`.
+- Known: one Mac test fails every time (`TabPreviewStateTests.enteringTheNextTabBeforeLeavingThisOneStillShowsIt`), in code no recent change touched. The Mac filter field hasn't been typed into in the real app. Nothing in 1.5.50 to 1.5.53 has been tried on a real iPhone Duo.
+
 Git (this Mac, main checkout), updated 2026-11-19 19:00:
-- Branch `editor/rock-solid`, now pushed and tracking `origin/editor/rock-solid`: `main` 1.5.52 plus the editor
+- Branch `editor/rock-solid`, now pushed and tracking `origin/editor/rock-solid`: `main` 1.5.53 plus the editor
   audit follow-up commits, open as pull request 40 (https://github.com/faisalibnislam/folevi/pull/40), not merged.
   The web fixes and the 22 updated end-to-end specs that were uncommitted earlier today are in that branch now.
   Merging it pushes `main`, which deploys the website and production Convex: ask the owner first.
@@ -264,7 +269,8 @@ Recent activity (last ~15 commits, all 2026-11-19): release 1.5.50 (Big update: 
 look, system tab bar/sheets/menus, iPad wide layout like the Mac), a note editor audit and fix pass
 (`docs/EDITOR_AUDIT_2026-11-19.md`: long-note performance, paste, tables, canvases, sync rank fixes, Vault
 discard prompt), new note title keeps the caret when the Foli AI panel opens, release 1.5.51 (calmer iPhone Home,
-always-visible list filter), then 1.5.52 (filter field on Mac and web desktop).
+always-visible list filter), 1.5.52 (filter field on Mac and web desktop), then 1.5.53 (Foli AI tab on iPhone,
+iPhone Duo, shorter first-launch copy, marketing pages).
 
 What works: web, Convex, Mac (Sparkle) and iOS TestFlight builds through 1.5.5x. Verified in the editor audit:
 2,113+ web unit tests, 508 schema tests, 1,131 Convex tests, typecheck clean; editor e2e specs pass.
@@ -300,11 +306,16 @@ the e2e suite was not re-run after the Foli AI panel change; the dev backend lac
    only the Developer ID build exists (guess: an App Store configuration is not set up).
 10. Clean up: ~30 merged local branches and 19 worktrees under `.claude/worktrees/` (owner's call; nothing is lost
     for those at or behind `origin/main`).
+11. iPhone Duo follow-ups: Folevi's own menus (PhoneMenuLayer) don't avoid the fold yet; check Split View halves on a
+    real device.
+12. The Mac test that fails every time (`TabPreviewStateTests.enteringTheNextTabBeforeLeavingThisOneStillShowsIt`).
+13. The owner's open items: `docs/HANDOFF.md` section 7 (see item 7 above for the ones carried over).
 
 ## 11. Gotchas
 
-- `docs/HANDOFF.md` (2026-10-24) is stale: it describes 1.0.04, the `native-app-snapshot` branch and Capacitor-era
-  work. The native rebuild has since shipped on `main`. Use this file for state, that one only for history.
+- `docs/HANDOFF.md` sections 1 to 8 are from 24 October (1.0.04, the `native-app-snapshot` branch, Capacitor-era
+  work; the native rebuild has since shipped on `main`): use them for history, the owner's open items and release
+  detail. Its section 0 is current for the editor audit and pull request 40. State lives in this file.
 - The repo sits on an external drive (`/Volumes/Corsair/...`). A test host launched by xcodebuild could not open
   files under `~/Documents` until macOS privacy allowed it ("test runner hung before establishing connection");
   run tests with derived data outside `~/Documents` (`docs/MAC_RELEASE.md` section 6).
@@ -325,11 +336,20 @@ the e2e suite was not re-run after the Foli AI panel change; the dev backend lac
 - Notary profile name differs from the global convention (`folevi-notary`, not `airly-notary`).
 - `pnpm audit` ignores four better-auth GHSAs on purpose (`pnpm-workspace.yaml`); upgrade better-auth and
   `@convex-dev/better-auth` together when supported, then drop the ignores.
+- zsh doesn't word-split a variable of file names: use `git diff --name-only -z | xargs -0 git commit ...`.
+- Snapshot tests re-record with `FOLEVI_RECORD_SNAPSHOTS=1` (Mac) or `TEST_RUNNER_FOLEVI_RECORD_SNAPSHOTS=1` (iOS); recording rewrites every image, so restore the ones that didn't really change.
+- CI's first step runs `node scripts/icons-codegen.mjs --check`: regenerate `Icons.swift` after adding a web icon.
 
 ## 12. Change log
 
+- 2026-11-19: the two root handoff files (the handoff session's on `editor/rock-solid`, the release session's on
+  `main`) merged into this one while bringing 1.5.53 into pull request 40.
+- 2026-11-19: Released 1.5.53 (Foli AI tab, iPhone Duo, shorter first-launch copy, marketing pages).
+- 2026-11-19: Shorter first-launch copy (where notes live, where the library lives, the passphrase card) on web, Mac, iPhone and iPad, on branch `claude/iphone-duo-18adb4`.
+- 2026-11-19: iPhone Duo support on branch `claude/iphone-duo-18adb4` (PhoneColumns, PhoneSideBars, NotePageSlot).
 - 2026-11-19: `CLAUDE.md` says to read this file first and keep it current (the owner's OK in chat).
 - 2026-11-19: committed on `editor/rock-solid` with pull request 40; next step 1 and the e2e gotcha brought up to
   date (the edits they called uncommitted are in the pull request).
 - 2026-11-19: Git state updated: editor/rock-solid pushed as pull request 40; docs/HANDOFF.md section 0 noted.
-- 2026-11-19: Handoff created.
+- 2026-11-19: Handoff created. 1.5.50, 1.5.51 and 1.5.52 released (iPhone and iPad native look, Home and filter fields,
+  Filter notes on Mac and web); Foli AI tab on branch `ios-ai-tab`.

@@ -7,8 +7,8 @@ import { Mark } from "../fun";
 
 /*
  * The apps, right under the hero: the Mac, iPhone and iPad apps (free forever with no account) and the web app
- * (with an account). Each device is drawn from the site's own note pieces, not a screenshot, so it follows the
- * theme like everything else on the page.
+ * (with an account). The Mac picture is drawn from the site's own note pieces, not a screenshot, so it follows the
+ * theme like everything else on the page (the iPad and iPhone: product/TouchDevices.tsx).
  */
 
 type MiniNote = { art: string; title: string; lines: string[]; todos?: Array<{ text: string; done?: boolean }> };
@@ -18,13 +18,6 @@ const MAC_NOTE: MiniNote = {
   title: "Seed library",
   lines: ["Swap day is the first Saturday in April."],
   todos: [{ text: "Print seed labels", done: true }, { text: "Ask Ines about the tables" }],
-};
-const PHONE_NOTE: MiniNote = { art: "art-30", title: "Trip sketch", lines: ["A long weekend on the coast."], todos: [{ text: "Book the ferry" }] };
-const PAD_NOTE: MiniNote = {
-  art: "art-39",
-  title: "Studio move",
-  lines: ["Boxes for the plan chest and the lamp."],
-  todos: [{ text: "Keys from Ines", done: true }, { text: "Measure the window" }],
 };
 
 /** A note as the apps draw it: the cover with its title, then a line or two and a few to-dos. */
@@ -63,23 +56,6 @@ export function MacPicture() {
       </div>
       <div className="min-h-0 flex-1 px-2 pb-2">
         <Note note={MAC_NOTE} size="md" />
-      </div>
-    </div>
-  );
-}
-
-/** A phone or a tablet: a rounded frame around a note. */
-export function DevicePicture({ kind }: { kind: "iphone" | "ipad" }) {
-  const phone = kind === "iphone";
-  return (
-    <div
-      className={cx(
-        "mk-card mx-auto overflow-hidden p-[6px] shadow-[var(--shadow-card),inset_0_0_0_1px_color-mix(in_oklab,var(--color-heading)_12%,transparent)]",
-        phone ? "h-[196px] w-[104px] rounded-container" : "h-[196px] w-[150px] rounded-container",
-      )}
-    >
-      <div className={"h-full overflow-hidden rounded-panel"}>
-        <Note note={phone ? PHONE_NOTE : PAD_NOTE} size="sm" />
       </div>
     </div>
   );

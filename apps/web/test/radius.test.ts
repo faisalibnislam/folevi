@@ -73,7 +73,16 @@ describe("corners", () => {
   // (Shared components that draw their iPhone look in their own iPhone branch: Foli AI's composer, the
   // iPhone stand-in sheet for the chat, and the notifications sheet's first-load rows.)
   // (The style samples, a dev page, copy the iPhone's components so the native apps can measure them.)
-  const IPHONE_BRANCHES = ["components/ai/chat/ChatThread.tsx", "components/ai/AskAiChat.tsx", "components/app/NotificationsButton.tsx", "app/dev/match/samples.tsx"];
+  // (The website's drawings of the iPhone and iPad apps draw their interface: the showcase iPhone's tab bar and
+  // the apps page's iPad and iPhone.)
+  const IPHONE_BRANCHES = [
+    "components/ai/chat/ChatThread.tsx",
+    "components/ai/AskAiChat.tsx",
+    "components/app/NotificationsButton.tsx",
+    "app/dev/match/samples.tsx",
+    "components/marketing/home/DeviceShowcase.tsx",
+    "components/marketing/product/TouchDevices.tsx",
+  ];
   test("sheet, float and capsule corners are only used by the iPhone app's interface", () => {
     const outside = files(SRC)
       .filter((path) => !relative(SRC, path).startsWith("components/iphone/") && !path.endsWith("globals.css") && !IPHONE_BRANCHES.includes(relative(SRC, path)))

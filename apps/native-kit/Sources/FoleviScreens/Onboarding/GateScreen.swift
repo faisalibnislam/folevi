@@ -59,7 +59,7 @@ public struct GateScreen: View {
 
     static func choiceDetail(_ id: String) -> String {
         switch id {
-        case "account": "Your notes in your Folevi account, with sharing."
+        case "account": "Sync and share your notes."
         case "local": "Free forever. No account."
         default: ""
         }

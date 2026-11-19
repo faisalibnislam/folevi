@@ -26,6 +26,8 @@ struct RebuildNoteScreen: View {
     @State private var nativeTool: PhoneNoteTool?
     /// The note's flashcards (`reviews { noteId }`), for the menu's "Review 3 cards in this note".
     @State private var reviews: ValueStore<ReviewsValue>?
+    /// iPhone Duo's side bars (PhoneSideBars): the note's buttons are iOS's toolbar items, in that column.
+    @Environment(\.phoneSideBars) private var sideBars
 
     var body: some View {
         let meta = model.noteMeta[noteId]
@@ -36,9 +38,11 @@ struct RebuildNoteScreen: View {
         // Focus Mode, or a block open full screen on the page (a mind map, a chart): the page alone, no bars.
         let immersive = model.editorState?.focus == true
         ZStack(alignment: .bottom) {
+            // Under the status bar and the home indicator; not under what sits at its sides (iPhone Duo's sidebar
+            // and side bars), so the text never runs under them.
             NotePage(noteId: noteId, model: model, pageHost: pageHost, scrolled: $scrolled, titleFoot: $titleFoot)
-                .ignoresSafeArea()
-            if !immersive {
+                .ignoresSafeArea(edges: .vertical)
+            if !immersive, !sideBars {
             PhoneNoteTopBar(
                 title: meta?.title ?? "",
                 place: place(meta),
@@ -62,7 +66,7 @@ struct RebuildNoteScreen: View {
                 PhoneKeyboardBar(state: PhoneKeyboardBarState(block: model.editorState?.block, link: model.editorState?.link ?? false, undo: model.editorState?.undo ?? false, redo: model.editorState?.redo ?? false), aiOn: model.aiOn, run: run)
                     .notePageAppearance(NotePageTones.shared.pages[noteId])
                     .transition(.opacity)
-            } else if !model.keyboardVisible, panel == nil {
+            } else if !model.keyboardVisible, panel == nil, !sideBars {
                 PhoneNoteToolBars(open: nativeTool ?? panel.flatMap { PhoneNoteTool(rawValue: $0.rawValue) }, canEdit: canEdit, aiOn: model.aiOn) { toggle($0) }
                     .notePageAppearance(NotePageTones.shared.pages[noteId])
                     .padding(.bottom, max(10, safe.bottom - 10))
@@ -71,9 +75,16 @@ struct RebuildNoteScreen: View {
             }
         }
         .animation(.easeOut(duration: 0.12), value: editing)
+        .toolbar {
+            if sideBars, !immersive {
+                sideBarItems(meta: meta, canEdit: canEdit, editing: editing, panel: panel)
+            }
+        }
         .background(FoleviTokens.Chrome.canvas.color)
         .onGeometryChange(for: EdgeInsets.self) { $0.safeAreaInsets } action: { safe = $0 }
         .onChange(of: insets) { _, i in sendInsets(i) }
+        // (For taking the keyboard back after iPhone Duo folds or unfolds mid-sentence: NotePageSlot.)
+        .onChange(of: editing, initial: true) { _, e in NotePageRegistry.controller(for: noteId).writing = e }
         // The page loaded again (iOS ended its process while the app was away) has forgotten the bars' room: said
         // again once the note is back, or the title sat under the top bar until the keyboard was next raised.
         .onChange(of: model.isReady(noteId)) { _, ready in if ready { sendInsets(insets) } }
@@ -157,9 +168,10 @@ struct RebuildNoteScreen: View {
     /// status bar and the home indicator: a full canvas's tools sit right under the status bar, not a bar lower.
     private var insets: [Double] {
         let immersive = model.editorState?.focus == true
-        // (The bar's buttons end 48 under the status bar; the note starts 16 below them, not right against them.)
-        let top = immersive ? safe.top : safe.top + 64
-        let bottom: CGFloat = model.keyboardVisible ? model.keyboardOverlap + 48 + 8 : immersive ? safe.bottom : max(10, safe.bottom - 10) + 60 + 8
+        // (The bar's buttons end 48 under the status bar; the note starts 16 below them, not right against them.
+        // With iOS's bars at the side nothing sits over the note but the status bar and the home indicator.)
+        let top = immersive ? safe.top : sideBars ? safe.top + 16 : safe.top + 64
+        let bottom: CGFloat = model.keyboardVisible ? model.keyboardOverlap + 48 + 8 : immersive ? safe.bottom : sideBars ? safe.bottom + 16 : max(10, safe.bottom - 10) + 60 + 8
         return [Double(top.rounded()), Double(bottom.rounded())]
     }
 
@@ -350,6 +362,94 @@ struct RebuildNoteScreen: View {
         menus.show(entries, from: anchor, side: .bottom, align: .end)
     }
 
+    /// The note's buttons as iOS's toolbar items, where iOS puts bars in a column at the side (iPhone Duo; the
+    /// owner, 2026-11-19): Back (iOS's own), Done while writing, the note's place, Share
+    /// and "…" at the top; the tools at the bottom. Each has a title and an icon, so it takes its place in the
+    /// column and shows both if it overflows into iOS's menu.
+    @ToolbarContentBuilder
+    private func sideBarItems(meta: NoteMeta?, canEdit: Bool, editing: Bool, panel: EditorPanel?) -> some ToolbarContent {
+        if editing {
+            ToolbarItem(placement: .confirmationAction) {
+                Button(action: done) { Label { Text("Done") } icon: { WebIcon.check.image(size: 20, strokeWidth: 2.4) } }
+            }
+        }
+        ToolbarItemGroup(placement: .primaryAction) {
+            if let place = place(meta) {
+                Button(action: openPlace) { Label { Text(Self.label(place)) } icon: { Self.icon(place).image(size: 20) } }
+            }
+            if meta.map({ $0.found && $0.access != "read" }) ?? true {
+                Button { model.router?.share(noteId: noteId) } label: { Label { Text("Share") } icon: { WebIcon.share.image(size: 20, strokeWidth: 1.9) } }
+            }
+            moreMenu(meta: meta)
+        }
+        ToolbarItemGroup(placement: .bottomBar) {
+            Button { toggle(.comments) } label: { Label { Text("Comments") } icon: { WebIcon.messageCircle.image(size: 21) } }
+            if canEdit {
+                Button { toggle(.style) } label: { Label { Text("Style") } icon: { WebIcon.paintbrush.image(size: 20, strokeWidth: 1.85) } }
+                Button { toggle(.format) } label: { Label { Text("Format") } icon: { WebIcon.type.image(size: 21) } }
+            }
+            if model.aiOn {
+                Button { toggle(.ai) } label: { Label { Text("Foli AI") } icon: { AiMarkImage.image(size: 22) } }
+            }
+            if canEdit {
+                Button { toggle(.insert) } label: { Label { Text("Insert") } icon: { WebIcon.plus.image(size: 21, strokeWidth: 2.4) } }
+            }
+        }
+    }
+
+    /// "…" as iOS's own menu (the same rows as the note's menu, NoteMenuPlan), for the bars at the side.
+    private func moreMenu(meta: NoteMeta?) -> some View {
+        let state = model.editorState?.noteId == noteId ? model.editorState?.menu : nil
+        let reviewCards: Int? = reviews?.value.flatMap { $0.found && $0.total > 0 ? $0.due + $0.new : nil }
+        let input = NoteMenuPlan.Input(meta: meta, menu: state, reviewCards: reviewCards, graph: model.session.value?.capabilities.graph == true)
+        let sections = NoteMenuPlan.sections(input)
+        return Menu {
+            ForEach(sections.indices, id: \.self) { i in
+                Section {
+                    ForEach(sections[i].indices, id: \.self) { j in
+                        switch sections[i][j] {
+                        case .item(let item): menuButton(item)
+                        case .submenu(let group, let items):
+                            Menu {
+                                ForEach(items.indices, id: \.self) { k in menuButton(items[k]) }
+                            } label: {
+                                Label { Text(group.rawValue) } icon: { Self.icon(group).image() }
+                            }
+                        }
+                    }
+                }
+            }
+        } label: {
+            Label { Text("More") } icon: { WebIcon.ellipsis.image(size: 22, strokeWidth: 2.2) }
+        }
+    }
+
+    private func menuButton(_ item: NoteMenuItem) -> some View {
+        Button(role: item.danger ? .destructive : nil) { run(item) } label: {
+            Label { Text(item.title) } icon: { Self.icon(item).image() }
+        }
+        .disabled(item.disabled)
+    }
+
+    /// The place's name, as its chip says it.
+    private static func label(_ place: PhoneNotePlace) -> String {
+        switch place {
+        case .parent(let t): t.isEmpty ? "Untitled" : t
+        case .folder(let n, _): n
+        case .drafts: "Drafts"
+        case .shared: "Shared with Me"
+        }
+    }
+
+    private static func icon(_ place: PhoneNotePlace) -> WebIcon {
+        switch place {
+        case .parent: .fileText
+        case .folder: .folder
+        case .drafts: .inbox
+        case .shared: .users
+        }
+    }
+
     private func entry(_ item: NoteMenuItem) -> PhoneMenuEntry {
         var row = WebMenuItem.item(item.title, icon: Self.icon(item), danger: item.danger, description: item.description, id: "note:\(item.title)")
         row.disabled = item.disabled
@@ -452,6 +552,17 @@ final class NotePageController: UIViewController, PageViewOwner {
     let noteId: String
     /// How far the note has scrolled and where its title ends (points, in the note's scroller).
     var onScroll: ((CGFloat, CGFloat) -> Void)?
+    /// Puts the caret back in the note (NotePageSlot, after a move while writing).
+    var onResume: (() -> Void)?
+    /// The keyboard is up for this note (its screen says so), and when it last went away.
+    var writing = false {
+        didSet { if oldValue, !writing { stoppedWriting = Date() } }
+    }
+    private var stoppedWriting: Date?
+    /// Writing now, or until a moment ago: the keyboard goes as the window changes size, just before the move.
+    var wasWriting: Bool {
+        writing || stoppedWriting.map { Date().timeIntervalSince($0) < 0.8 } == true
+    }
     private var holder: PageViewHolder!
     private let cover = UIView()
     private var still: UIView?
@@ -482,7 +593,26 @@ final class NotePageController: UIViewController, PageViewOwner {
         holder?.match(view.safeAreaInsets)
     }
 
+    override func viewDidLayoutSubviews() {
+        super.viewDidLayoutSubviews()
+        settleSideways()
+    }
+
+    /// The page back to its left edge when the note fits across: WebKit pans the page sideways to keep the caret in
+    /// sight while the window changes size under the keyboard (iPhone Duo unfolding mid-sentence), and stays there.
+    func settleSideways() {
+        guard let v = pageView else { return }
+        let s = v.scrollView
+        if s.contentOffset.x != 0, s.contentSize.width <= s.bounds.width + 1 {
+            s.setContentOffset(CGPoint(x: 0, y: s.contentOffset.y), animated: false)
+        }
+        v.evaluateJavaScript("(() => { const s = document.getElementById('doc-scroll'); if (s && s.scrollWidth <= s.clientWidth + 1) s.scrollLeft = 0; if (document.scrollingElement) document.scrollingElement.scrollLeft = 0; })(); 0", in: nil, in: .page)
+    }
+
+    private weak var pageView: WKWebView?
+
     func adopted(_ pageView: WKWebView) {
+        self.pageView = pageView
         guard PageScroll.shared.owner !== self else { return }
         PageScroll.shared.install(on: pageView)
         PageScroll.shared.owner = self
@@ -526,6 +656,58 @@ final class NotePageController: UIViewController, PageViewOwner {
     }
 }
 
+/// Where a note's controller sits in SwiftUI. The same note can be on screen in two places for a moment (iPhone Duo
+/// folding: the note column going, the note pushed in the one column coming), and one controller can't have two
+/// parents: each place gets a slot, and the slot that appears last takes the controller. A slot going away leaves
+/// it where it is.
+final class NotePageSlot: UIViewController {
+    let page: NotePageController
+
+    init(page: NotePageController) {
+        self.page = page
+        super.init(nibName: nil, bundle: nil)
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) { fatalError("init(coder:) is not used") }
+
+    override func loadView() {
+        view = UIView()
+        view.backgroundColor = .clear
+    }
+
+    override func viewIsAppearing(_ animated: Bool) {
+        super.viewIsAppearing(animated)
+        take()
+    }
+
+    /// The controller in this slot (from wherever it was). Moved while the person was writing (the keyboard goes
+    /// as the phone folds or unfolds, or as the page leaves its place), the note takes the keyboard back.
+    func take() {
+        guard page.parent !== self else { return }
+        let moving = page.parent != nil
+        let resume = moving && page.wasWriting
+        if moving {
+            page.willMove(toParent: nil)
+            page.view.removeFromSuperview()
+            page.removeFromParent()
+        }
+        addChild(page)
+        page.view.frame = view.bounds
+        page.view.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+        view.addSubview(page.view)
+        page.didMove(toParent: self)
+        if resume {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) { [page] in page.onResume?() }
+        }
+        if moving {
+            for delay in [0.2, 0.6, 1.2] {
+                DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [page] in page.settleSideways() }
+            }
+        }
+    }
+}
+
 /// The note's page in SwiftUI: its controller, adopting the page view, reporting how far it has scrolled and
 /// lifting its cover once the page has drawn the note.
 private struct NotePage: UIViewControllerRepresentable {
@@ -535,8 +717,14 @@ private struct NotePage: UIViewControllerRepresentable {
     @Binding var scrolled: CGFloat
     @Binding var titleFoot: CGFloat
 
-    func makeUIViewController(context: Context) -> NotePageController {
+    func makeUIViewController(context: Context) -> NotePageSlot {
         let c = NotePageRegistry.controller(for: noteId)
+        c.onResume = { [model, noteId, pageHost] in
+            guard model.shownNote == noteId, !model.keyboardVisible else { return }
+            // (The page view lost first responder in the move: the editor's focus alone brings no keyboard.)
+            pageHost.pageView.becomeFirstResponder()
+            model.editor(.focus)
+        }
         c.onScroll = { y, foot in
             // The bars only change until the note's title has gone under them (its small title fully in, the
             // backing on after 4 pt): further down the offset stays put, so a scroll doesn't redraw them each frame.
@@ -548,10 +736,11 @@ private struct NotePage: UIViewControllerRepresentable {
         if !model.isReady(noteId) { c.showCover() }
         // The page has nothing to say after a second and a half (a note it can't load): show it as it is.
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { c.setReady(true) }
-        return c
+        return NotePageSlot(page: c)
     }
 
-    func updateUIViewController(_ c: NotePageController, context: Context) {
+    func updateUIViewController(_ slot: NotePageSlot, context: Context) {
+        let c = slot.page
         if pageHost.isOwned(by: c) { c.adopted(pageHost.pageView) }
         c.setReady(model.isReady(noteId) && model.shownNote == noteId)
     }

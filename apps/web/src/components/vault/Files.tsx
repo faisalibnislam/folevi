@@ -70,6 +70,8 @@ export function Files({ vaultId, role }: { vaultId: string; role: string }) {
   }, [items, vaultId]);
 
   const here = (folders ?? []).filter((f) => f.parentId === folderId);
+  // Folders and items at this level, once both have loaded.
+  const count = folders && items ? here.length + items.items.length : undefined;
   const parent = folderId ? ((folders ?? []).find((f) => f.id === folderId)?.parentId ?? null) : null;
   const s = vaultSessions();
 
@@ -112,7 +114,12 @@ export function Files({ vaultId, role }: { vaultId: string; role: string }) {
             <ChevronLeft size={14} aria-hidden /> {parent ? names[parent] : "Files & Notes"}
           </Button>
         ) : null}
-        <h3 className="mr-auto truncate text-headline font-semibold text-heading">{folderId ? names[folderId] : "Files & Notes"}</h3>
+        {/* Inside a folder, its name; at the top, how much is here (the tab above already says "Files & Notes"). */}
+        {folderId ? (
+          <h3 className="mr-auto truncate text-headline font-semibold text-heading">{names[folderId]}</h3>
+        ) : (
+          <p className="mr-auto text-subheadline font-medium text-muted tabular-nums">{count === undefined ? "" : count === 0 ? "No items" : `${count} ${count === 1 ? "item" : "items"}`}</p>
+        )}
         <div className="ui-seg ui-well" role="group" aria-label="Layout">
           <button type="button" aria-pressed={layout === "grid"} aria-label="Grid" title="Grid" onClick={() => setLayout("grid")}>
             <LayoutGrid size={15} aria-hidden />

@@ -62,35 +62,42 @@ export function AppearanceSection() {
   return (
     <>
       <Card title="Theme" description="Dark mode is designed, not inverted: document colors are softened and code stays readable.">
-        <div role="radiogroup" aria-label="Theme" className="grid max-w-md grid-cols-3 gap-3">
+        <div role="radiogroup" aria-label="Theme" className="grid grid-cols-3 gap-3">
           {(
             [
-              ["light", "Light", <Sun key="s" size={18} />],
-              ["dark", "Dark", <Moon key="m" size={18} />],
-              ["system", "System", <Monitor key="d" size={18} />],
+              ["light", "Light", "Always light"],
+              ["dark", "Dark", "Always dark"],
+              ["system", "System", "Matches your device"],
             ] as const
-          ).map(([v, label, icon]) => (
-            <button
-              key={v}
-              type="button"
-              role="radio"
-              aria-checked={appearance === v}
-              onClick={() => {
-                setAppearance(v);
-                void update({ appearance: v });
-              }}
-              // Hover tints the card; the chosen one has a firm ring and a check (not only a brighter border).
-              className={`relative flex flex-col items-center gap-2 rounded-control border p-4 text-subheadline outline-none transition-[background-color,box-shadow] duration-150 focus-visible:ring-2 focus-visible:ring-focus ${appearance === v ? "border-transparent bg-accent-soft font-semibold text-heading shadow-[inset_0_0_0_2px_var(--color-heading)]" : "border-line bg-surface hover:bg-[var(--glass-hover)] hover:text-heading"}`}
-            >
-              {appearance === v ? (
-                <span aria-hidden className="absolute right-2 top-2 grid h-4 w-4 place-items-center rounded-tiny bg-heading text-canvas">
-                  <Check size={11} strokeWidth={3} />
+          ).map(([v, label, caption]) => {
+            const chosen = appearance === v;
+            return (
+              <button
+                key={v}
+                type="button"
+                role="radio"
+                aria-checked={chosen}
+                onClick={() => {
+                  setAppearance(v);
+                  void update({ appearance: v });
+                }}
+                // Panel corners: the picture's 8px corners sit 6px in (8 + 6 = 14). The chosen tile is ringed in ink,
+                // hover only tints, and a checked mark by the name says which one is on (not the ring alone).
+                className={`group flex flex-col gap-2.5 rounded-panel p-1.5 pb-3 text-left outline-none transition-[background-color,box-shadow] duration-150 focus-visible:ring-2 focus-visible:ring-focus ${chosen ? "bg-surface shadow-[inset_0_0_0_2px_var(--color-heading)]" : "hover:bg-[var(--glass-hover)]"}`}
+              >
+                <ThemePicture theme={v} />
+                <span className="flex items-start gap-2 px-1.5">
+                  <span aria-hidden className={`mt-px grid size-4 flex-none place-items-center rounded-full ${chosen ? "bg-heading text-canvas" : "shadow-[inset_0_0_0_1.5px_var(--color-line-strong)]"}`}>
+                    {chosen ? <Check size={10} strokeWidth={3.5} /> : null}
+                  </span>
+                  <span className="min-w-0">
+                    <span className={`block text-subheadline leading-4 ${chosen ? "font-semibold text-heading" : "font-medium text-ink"}`}>{label}</span>
+                    <span className="mt-0.5 block text-footnote text-muted">{caption}</span>
+                  </span>
                 </span>
-              ) : null}
-              {icon}
-              {label}
-            </button>
-          ))}
+              </button>
+            );
+          })}
         </div>
       </Card>
       <Card title="Editor text size">
@@ -101,5 +108,58 @@ export function AppearanceSection() {
         </label>
       </Card>
     </>
+  );
+}
+
+// The theme pictures draw Folevi in each theme's own colors (design tokens' light and dark palettes), whatever the
+// theme is now: a sidebar, a tab, and a note with a title, lines and two to-dos.
+const PALETTES = {
+  light: { canvas: "#FAF6F3", sidebar: "#F5EEEA", surface: "#FFFFFF", ink: "#1D1814", heading: "#4A2F2C", faint: "#D8C8C3", line: "#EDE3DF" },
+  dark: { canvas: "#15110F", sidebar: "#1B1513", surface: "#211A18", ink: "#F6F0EC", heading: "#F7DDD1", faint: "#4D403C", line: "#352B28" },
+} as const;
+
+function Window({ p }: { p: (typeof PALETTES)[keyof typeof PALETTES] }) {
+  const bar = (w: string, c: string, h = 3) => <span className="block rounded-full" style={{ width: w, height: h, background: c }} />;
+  return (
+    <span className="absolute inset-0 flex" style={{ background: p.canvas }}>
+      <span className="flex w-[30%] flex-col gap-[7%] px-[5%] py-[9%]" style={{ background: p.sidebar, boxShadow: `inset -1px 0 0 ${p.line}` }}>
+        {bar("70%", p.heading)}
+        {bar("85%", p.faint)}
+        {bar("60%", p.faint)}
+        {bar("75%", p.faint)}
+        {bar("55%", p.faint)}
+      </span>
+      <span className="flex flex-1 flex-col gap-[6%] px-[6%] py-[7%]">
+        <span className="flex gap-[4%]">
+          <span className="block h-[7px] w-[30%] rounded-full" style={{ background: p.surface, boxShadow: `0 0 0 1px ${p.line}` }} />
+          {bar("18%", p.faint, 7)}
+        </span>
+        <span className="flex flex-1 flex-col gap-[7%] rounded-[3px] px-[7%] py-[8%]" style={{ background: p.surface, boxShadow: `0 0 0 1px ${p.line}` }}>
+          {bar("55%", p.heading, 5)}
+          {bar("90%", p.faint)}
+          {bar("75%", p.faint)}
+          {[0, 1].map((i) => (
+            <span key={i} className="flex items-center gap-[5%]">
+              <span className="block size-[5px] flex-none rounded-[1.5px]" style={{ boxShadow: `inset 0 0 0 1px ${p.ink}` }} />
+              {bar(i ? "45%" : "60%", p.faint)}
+            </span>
+          ))}
+        </span>
+      </span>
+    </span>
+  );
+}
+
+function ThemePicture({ theme }: { theme: "light" | "dark" | "system" }) {
+  return (
+    <span aria-hidden className="ui-img-outline relative block aspect-[16/10] w-full overflow-hidden rounded-small">
+      {theme === "dark" ? <Window p={PALETTES.dark} /> : <Window p={PALETTES.light} />}
+      {/* System: light on the left half, dark on the right. */}
+      {theme === "system" ? (
+        <span className="absolute inset-0 [clip-path:inset(0_0_0_50%)]">
+          <Window p={PALETTES.dark} />
+        </span>
+      ) : null}
+    </span>
   );
 }

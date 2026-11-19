@@ -105,16 +105,24 @@ export function EventPopover({ event, anchor, timeZone, onClose }: { event: Exte
   );
 }
 
+// Six round dots in one row (the Mac's, 2026-11-19): the chosen one ringed, its name beside "Color".
 function ColorPicker({ value, onChange, name }: { value: Color; onChange: (c: Color) => void; name: string }) {
+  const chosen = COLORS.find((c) => c.id === value)?.label;
   return (
     <fieldset>
-      <legend className="text-footnote font-medium text-muted">Color</legend>
-      <div className="mt-1 flex flex-wrap gap-1">
+      <legend className="text-footnote font-medium text-muted">
+        Color{chosen ? <span className="ml-1 font-normal text-faint">· {chosen}</span> : null}
+      </legend>
+      <div className="mt-1 flex items-center gap-1">
         {COLORS.map((c) => (
-          <label key={c.id} className="flex cursor-pointer items-center gap-1.5 rounded-chip px-1.5 py-0.5 text-footnote has-[:checked]:bg-accent-soft has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-focus">
+          <label
+            key={c.id}
+            title={c.label}
+            className="grid size-7 cursor-pointer place-items-center rounded-full has-[:checked]:shadow-[0_0_0_1.5px_var(--color-heading)] has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-focus pointer-coarse:size-9"
+          >
             <input type="radio" name={name} value={c.id} checked={value === c.id} onChange={() => onChange(c.id)} className="sr-only" />
-            <span aria-hidden className="inline-block h-3 w-3 rounded-chip" style={{ background: calendarColor(c.id) }} />
-            {c.label}
+            <span className="sr-only">{c.label}</span>
+            <span aria-hidden className="size-5 rounded-full shadow-[inset_0_0_0_1px_rgb(0_0_0/0.08)]" style={{ background: calendarColor(c.id) }} />
           </label>
         ))}
       </div>

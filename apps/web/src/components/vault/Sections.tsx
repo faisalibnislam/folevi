@@ -2,7 +2,7 @@
 // The Vault's Activity (its log), People (team Vault) and Settings (docs/VAULT_PLAN.md §7, §9).
 import { useMutation, useQuery } from "convex/react";
 import { useId, useState } from "react";
-import { CheckCircle2, Download, Search, ShieldAlert, UserPlus, X } from "lucide-react";
+import { CheckCircle2, Download, KeyRound, LifeBuoy, Lock, Search, ShieldAlert, ShieldCheck, Timer, UserPlus, Users, X } from "lucide-react";
 import { Avatar } from "@/components/ui/Avatar";
 import { api } from "@/lib/convex/api";
 import { useAppState } from "@/lib/app/state";
@@ -16,6 +16,7 @@ import { vaultSessions } from "@/lib/vault/keys";
 import { eventLabel } from "./events";
 import { ImportExport } from "./ImportExport";
 import { NewPasscode, PasscodeField } from "./PasscodeFields";
+import { ROW_TILE, SettingsGroup, SettingsRow } from "./SettingsRows";
 
 type Info = { id: string; personal: boolean; role: string; autoLockMinutes: number; custodiansNameCustodians: boolean };
 
@@ -286,43 +287,58 @@ export function VaultSettings({ info }: { info: Info }) {
   const manage = info.role !== "member";
   const [changing, setChanging] = useState(false);
   return (
-    <section aria-label="Vault settings" className="space-y-5 text-subheadline">
-      {manage ? (
-        <label className="flex items-center justify-between gap-3">
-          <span>
-            <span className="block font-medium text-ink">Lock after</span>
-            <span className="block text-footnote text-muted">Idle minutes before the Vault locks itself on a device.</span>
+    <section aria-label="Vault settings" className="max-w-3xl space-y-6 text-subheadline">
+      {/* Where the Vault stands, and the one thing you might want right now: lock it. */}
+      <div className="flex items-center gap-3 ui-card rounded-panel px-4 py-3.5">
+        <span aria-hidden className={ROW_TILE}>
+          <ShieldCheck size={16} />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="flex items-center gap-2 text-subheadline font-semibold text-heading">
+            <span aria-hidden className="size-2 flex-none rounded-full bg-success" />
+            Open on this device
           </span>
-          <Select aria-label="Lock after" value={String(info.autoLockMinutes)} onChange={(e) => run(update({ vaultId: info.id, autoLockMinutes: Number(e.target.value), client: vaultSessions().info(info.id) }), "Saved")} className="h-9 ui-input rounded-chip px-3">
-            {[1, 2, 5, 10, 15, 30].map((m) => (
-              <option key={m} value={m}>
-                {m} {m === 1 ? "minute" : "minutes"}
-              </option>
-            ))}
-          </Select>
-        </label>
-      ) : null}
-      {info.role === "owner" && !info.personal ? (
-        <div className="flex items-center justify-between gap-3">
-          <span>
-            <span className="block font-medium text-ink">Custodians can name custodians</span>
-            <span className="block text-footnote text-muted">Otherwise only you do. Custodians always add and remove members.</span>
+          <span className="block text-footnote text-muted text-pretty">
+            It locks itself after {info.autoLockMinutes} idle {info.autoLockMinutes === 1 ? "minute" : "minutes"}. Everything in it is encrypted on this device before it leaves it.
           </span>
-          <Switch checked={info.custodiansNameCustodians} label="Custodians can name custodians" onChange={(on) => run(update({ vaultId: info.id, custodiansNameCustodians: on, client: vaultSessions().info(info.id) }), "Saved")} />
-        </div>
-      ) : null}
-      <ImportExport vaultId={info.id} canExport={info.role !== "member"} />
-      <div className="flex flex-wrap gap-2">
-        <Button variant="secondary" onClick={() => setChanging(true)}>
-          Change passcode
-        </Button>
-        <Button variant="secondary" onClick={() => void vaultSessions().newRecoveryKey(info.id).catch((e) => toast.show(errorMessage(e), { tone: "error" }))}>
-          Make a new recovery key
-        </Button>
-        <Button variant="secondary" onClick={() => void vaultSessions().lock(info.id, "manual")}>
-          Lock now
+        </span>
+        <Button variant="primary" size="sm" className="flex-none" onClick={() => void vaultSessions().lock(info.id, "manual")}>
+          <Lock size={13} aria-hidden /> Lock now
         </Button>
       </div>
+      {manage ? (
+        <SettingsGroup title="Locking">
+          <SettingsRow icon={Timer} name="Lock after" hint="How long the Vault stays open on a device when nobody is using it.">
+            <Select aria-label="Lock after" value={String(info.autoLockMinutes)} onChange={(e) => run(update({ vaultId: info.id, autoLockMinutes: Number(e.target.value), client: vaultSessions().info(info.id) }), "Saved")} className="h-8 ui-input rounded-small px-3">
+              {[1, 2, 5, 10, 15, 30].map((m) => (
+                <option key={m} value={m}>
+                  {m} {m === 1 ? "minute" : "minutes"}
+                </option>
+              ))}
+            </Select>
+          </SettingsRow>
+        </SettingsGroup>
+      ) : null}
+      <SettingsGroup title="Passcode and recovery">
+        <SettingsRow icon={KeyRound} name="Passcode" hint="What you type to open the Vault.">
+          <Button size="sm" onClick={() => setChanging(true)}>
+            Change passcode…
+          </Button>
+        </SettingsRow>
+        <SettingsRow icon={LifeBuoy} name="Recovery key" hint="Opens the Vault if you forget the passcode. A new key replaces the old one.">
+          <Button size="sm" onClick={() => void vaultSessions().newRecoveryKey(info.id).catch((e) => toast.show(errorMessage(e), { tone: "error" }))}>
+            Make a new key
+          </Button>
+        </SettingsRow>
+      </SettingsGroup>
+      {info.role === "owner" && !info.personal ? (
+        <SettingsGroup title="People">
+          <SettingsRow icon={Users} name="Custodians can name custodians" hint="Otherwise only you do. Custodians always add and remove members.">
+            <Switch checked={info.custodiansNameCustodians} label="Custodians can name custodians" onChange={(on) => run(update({ vaultId: info.id, custodiansNameCustodians: on, client: vaultSessions().info(info.id) }), "Saved")} />
+          </SettingsRow>
+        </SettingsGroup>
+      ) : null}
+      <ImportExport vaultId={info.id} canExport={info.role !== "member"} />
       {changing ? <ChangePasscodeDialog vaultId={info.id} onClose={() => setChanging(false)} /> : null}
     </section>
   );

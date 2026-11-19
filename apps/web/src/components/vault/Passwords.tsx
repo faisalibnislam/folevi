@@ -4,7 +4,7 @@
 // hidden fields shown only on reveal; copying logged and the clipboard cleared after 30 seconds; live 2FA codes).
 import { useAction, useMutation, useQuery } from "convex/react";
 import { useEffect, useId, useMemo, useState } from "react";
-import { Copy, CopyPlus, Eye, EyeOff, History, KeyRound, Plus, RefreshCw, Search, Share2, Trash2 } from "lucide-react";
+import { BadgeCheck, CodeXml, Copy, CopyPlus, CreditCard, Eye, EyeOff, History, IdCard, KeyRound, Landmark, Plus, RefreshCw, Search, Share2, SquareTerminal, StickyNote, Trash2, WandSparkles, Wifi, type LucideIcon } from "lucide-react";
 import { api } from "@/lib/convex/api";
 import { Button, IconButton } from "@/components/ui/Button";
 import { Dialog } from "@/components/ui/Dialog";
@@ -320,6 +320,50 @@ function ItemPanel({ vaultId, opened, editOnOpen = false, onClosed }: { vaultId:
   );
 }
 
+// The item dialog's fields (the Mac's Add to the Vault, 2026-11-19): 34px tall with 12px before the words, a 12px
+// label 6px above each one, 16px between them. Touch gets the 44px it needs.
+const FIELD_LABEL = "mb-1.5 block text-caption-1 font-medium text-ink";
+const FIELD = "h-[34px] ui-input rounded-small px-3 pointer-coarse:h-11";
+const AREA = "block w-full ui-input rounded-small px-3 py-2";
+// The password's tools: small 24px pills (36px to a finger).
+const PILL = "ui-btn ui-btn-secondary h-6 gap-1 rounded-full px-2.5 text-caption-1 font-medium pointer-coarse:h-9";
+
+const KIND_ICONS: Record<ItemKind, LucideIcon> = {
+  login: KeyRound,
+  apiKey: CodeXml,
+  card: CreditCard,
+  bankAccount: Landmark,
+  secureNote: StickyNote,
+  sshKey: SquareTerminal,
+  wifi: Wifi,
+  licence: BadgeCheck,
+  identity: IdCard,
+};
+
+function KindIcon({ kind }: { kind: ItemKind }) {
+  const Icon = KIND_ICONS[kind];
+  return <Icon size={14} aria-hidden className="flex-none text-muted" />;
+}
+
+/** Four short bars filled to the score (red, amber, green), then the word. */
+function StrengthMeter({ id, score, label }: { id: string; score: number; label: string }) {
+  const filled = Math.max(score, 1);
+  const tone = score >= 3 ? "bg-success" : score === 2 ? "bg-warning" : "bg-danger";
+  return (
+    <span id={id} className="flex items-center gap-2 text-footnote text-muted">
+      <span aria-hidden className="flex gap-1">
+        {[0, 1, 2, 3].map((i) => (
+          <span key={i} className={`h-1 w-5 rounded-full ${i < filled ? tone : "bg-[color-mix(in_oklab,var(--color-ink)_12%,transparent)]"}`} />
+        ))}
+      </span>
+      <span>
+        <span className="sr-only">Strength: </span>
+        {label}
+      </span>
+    </span>
+  );
+}
+
 function ItemDialog({ vaultId, existing, onClose, onSaved }: { vaultId: string; existing?: { row: Row; revision: number; content: ItemContent }; onClose: () => void; onSaved: (id: string) => void }) {
   const create = useMutation(api.vaultItems.create);
   const update = useMutation(api.vaultItems.update);
@@ -367,6 +411,7 @@ function ItemDialog({ vaultId, existing, onClose, onSaved }: { vaultId: string; 
       open
       onClose={onClose}
       title={existing ? `Edit ${existing.content.summary.title}` : "Add to the Vault"}
+      description="Encrypted on this device before it is saved."
       size="md"
       footer={
         <>
@@ -377,52 +422,69 @@ function ItemDialog({ vaultId, existing, onClose, onSaved }: { vaultId: string; 
         </>
       }
     >
-      <div className="space-y-3 pb-2 text-subheadline">
+      <div className="space-y-4 pb-1 text-subheadline">
         {!existing ? (
-          <label className="block">
-            <span className="mb-1 block text-footnote font-medium text-ink">Kind</span>
-            <Select aria-label="Kind" value={kind} onChange={(e) => setKind(e.target.value as ItemKind)} className="h-9 w-full ui-input rounded-chip px-3">
+          <div>
+            <span id={`${uid}-kind`} className={FIELD_LABEL}>
+              Kind
+            </span>
+            <Select aria-labelledby={`${uid}-kind`} value={kind} onChange={(e) => setKind(e.target.value as ItemKind)} leading={<KindIcon kind={kind} />} className={`${FIELD} w-full`}>
               {Object.entries(ITEM_KINDS).map(([k, v]) => (
                 <option key={k} value={k}>
                   {v.label}
                 </option>
               ))}
             </Select>
-          </label>
+          </div>
         ) : null}
-        <label className="block" htmlFor={`${uid}-title`}>
-          <span className="mb-1 block text-footnote font-medium text-ink">Title</span>
-          <input id={`${uid}-title`} autoFocus value={title} onChange={(e) => setTitle(e.target.value)} className="h-9 w-full ui-input rounded-chip px-3" />
-        </label>
+        <div>
+          <label htmlFor={`${uid}-title`} className={FIELD_LABEL}>
+            Title
+          </label>
+          <input id={`${uid}-title`} autoFocus value={title} onChange={(e) => setTitle(e.target.value)} placeholder="A name to find it by" className={`${FIELD} w-full`} />
+        </div>
         {ITEM_KINDS[kind].fields.map((f) => (
           <div key={f.key}>
-            <div className="mb-1 flex items-center justify-between">
-              <label htmlFor={`${uid}-${f.key}`} className="text-footnote font-medium text-ink">
-                {f.label}
-              </label>
-              {f.key === "password" ? (
-                <span className="flex gap-1">
-                  <Button type="button" size="sm" variant="quiet" onClick={() => setValues({ ...values, password: randomPassword() })}>
-                    <RefreshCw size={12} aria-hidden /> Generate
-                  </Button>
-                  <Button type="button" size="sm" variant="quiet" onClick={() => setValues({ ...values, password: passphrase() })}>
-                    Memorable
-                  </Button>
-                </span>
-              ) : null}
-            </div>
+            <label htmlFor={`${uid}-${f.key}`} className={FIELD_LABEL}>
+              {f.label}
+            </label>
             {f.type === "multiline" ? (
-              <textarea id={`${uid}-${f.key}`} value={values[f.key] ?? ""} onChange={(e) => setValues({ ...values, [f.key]: e.target.value })} rows={4} className="w-full ui-input rounded-chip px-3 py-2 font-mono" />
+              <textarea id={`${uid}-${f.key}`} value={values[f.key] ?? ""} onChange={(e) => setValues({ ...values, [f.key]: e.target.value })} rows={4} className={`${AREA} font-mono`} />
             ) : (
-              <input id={`${uid}-${f.key}`} type={f.type === "date" ? "date" : "text"} autoComplete="off" spellCheck={false} value={values[f.key] ?? ""} onChange={(e) => setValues({ ...values, [f.key]: e.target.value })} className={`h-9 w-full ui-input rounded-chip px-3 ${f.type === "secret" || f.type === "totp" ? "font-mono" : ""}`} />
+              <input
+                id={`${uid}-${f.key}`}
+                type={f.type === "date" ? "date" : "text"}
+                autoComplete="off"
+                spellCheck={false}
+                placeholder={f.type === "url" ? "example.com" : undefined}
+                value={values[f.key] ?? ""}
+                onChange={(e) => setValues({ ...values, [f.key]: e.target.value })}
+                aria-describedby={f.key === "password" && strength ? `${uid}-strength` : undefined}
+                className={`${FIELD} w-full ${f.type === "secret" || f.type === "totp" ? "font-mono" : ""}`}
+              />
             )}
-            {f.key === "password" && strength ? <span className={`mt-1 block text-footnote ${strength.score >= 3 ? "text-success" : strength.score === 2 ? "text-muted" : "text-warning"}`}>{strength.label}</span> : null}
+            {/* The password's strength on the left and its tools on the right, on one line under the field. */}
+            {f.key === "password" ? (
+              <div className="mt-2 flex min-h-6 items-center gap-2">
+                {strength ? <StrengthMeter id={`${uid}-strength`} score={strength.score} label={strength.label} /> : null}
+                <span className="ml-auto flex gap-1.5">
+                  <button type="button" className={PILL} onClick={() => setValues({ ...values, password: randomPassword() })}>
+                    <RefreshCw size={12} aria-hidden /> Generate
+                  </button>
+                  <button type="button" className={PILL} onClick={() => setValues({ ...values, password: passphrase() })}>
+                    <WandSparkles size={12} aria-hidden /> Memorable
+                  </button>
+                </span>
+              </div>
+            ) : null}
           </div>
         ))}
-        <label className="block">
-          <span className="mb-1 block text-footnote font-medium text-ink">Notes</span>
-          <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} className="w-full ui-input rounded-chip px-3 py-2" />
-        </label>
+        <div>
+          <label htmlFor={`${uid}-notes`} className={FIELD_LABEL}>
+            Notes
+          </label>
+          <textarea id={`${uid}-notes`} value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} className={AREA} />
+        </div>
       </div>
     </Dialog>
   );

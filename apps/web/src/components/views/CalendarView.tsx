@@ -260,7 +260,7 @@ export function CalendarView({ month }: { month: string | null }) {
             <Unscheduled tasks={unscheduled} today={today} target={weekDays.includes(selected) ? selected : today} onSchedule={reschedule} onToggle={toggle} onEdit={setEditing} />
           </>
         ) : mode === "month" ? (
-          <div className="grid gap-6 lg:grid-cols-[1fr_300px]">
+          <div className="grid items-start gap-6 lg:grid-cols-[1fr_300px]">
             <div ref={gridRef} role="grid" aria-label={monthLabel} className="overflow-hidden ui-card rounded-control">
               <div role="row" className="grid grid-cols-7 border-b border-line bg-surface text-center text-footnote font-medium text-muted">
                 {weekdays.map((w, i) => (

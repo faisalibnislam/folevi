@@ -242,12 +242,12 @@ Released and known (from the release session, 1.5.53):
 - Known: one Mac test fails every time (`TabPreviewStateTests.enteringTheNextTabBeforeLeavingThisOneStillShowsIt`), in code no recent change touched. The Mac filter field hasn't been typed into in the real app. Nothing in 1.5.50 to 1.5.53 has been tried on a real iPhone Duo.
 
 Git (this Mac, main checkout), updated 2026-11-19 19:00:
-- Branch `editor/rock-solid`, now pushed and tracking `origin/editor/rock-solid`: `main` 1.5.53 plus the editor
-  audit follow-up commits, open as pull request 40 (https://github.com/faisalibnislam/folevi/pull/40), not merged.
-  The web fixes and the 22 updated end-to-end specs that were uncommitted earlier today are in that branch now.
-  Merging it pushes `main`, which deploys the website and production Convex: ask the owner first.
-- `docs/HANDOFF.md` section 0 holds that session's detailed notes on the audit and PR 40; this root file is the
-  project-wide handoff. Keep both in step, or fold section 0 in here when PR 40 merges.
+- Pull request 40 (`editor/rock-solid`, the editor audit's follow-up fixes and the end-to-end specs brought up to
+  date) is merged: `main` = `ce420649` (16:08 UTC, 19 November, with the owner's OK to merge on green). Vercel deployed
+  it and CI on `main` is green on every job, the first fully green `main` since 17 November. No version was bumped.
+  The local checkout is still on `editor/rock-solid`, which now holds only handoff notes ahead of `main`.
+- `docs/HANDOFF.md` section 0 holds that session's detailed notes on the audit and pull request 40; this root
+  file is the project-wide handoff.
 - Still uncommitted on this Mac only: `.serena/` (tool state), leftover Capacitor files in `apps/ios/ios/App/App/`,
   6 `phone-home*` `*.failed.png` snapshot diffs in `apps/native-kit/Tests/FoleviScreensTests/__Snapshots__`.
 - Stashes (local only): `stash@{0}` "main folder edits before consolidating (AGENTS.md, next-env.d.ts)"
@@ -279,10 +279,9 @@ the e2e suite was not re-run after the Foli AI panel change; the dev backend lac
 
 ## 10. Next steps / open work
 
-1. Pull request 40 (`editor/rock-solid`): read its CI result and fix what it still shows (the browser tests were
-   hidden on `main` from 18 to 19 November by a stale generated icons file). With CI green, ask the owner before
-   merging: the merge pushes `main` and deploys. Details in `docs/HANDOFF.md` section 0 and
-   `docs/EDITOR_AUDIT_2026-11-19.md` section 10.
+1. After pull request 40: the web fixes reach the Mac, iPhone and iPad apps only with the next release build (bundled
+   web copy); none of them has been tried in the Mac app, the Simulator or on a device. Details in
+   `docs/HANDOFF.md` section 0 and `docs/EDITOR_AUDIT_2026-11-19.md` section 10.
 2. Re-record or fix the 6 failing `phone-home*` snapshots in `apps/native-kit` (only those).
 3. `pricing-decisions` (local only, 4 commits): the owner approved the pricing proposal (`docs/PRICING_PROPOSAL.md`
    on that branch). It needs review, tests and the owner's OK before merging; push it to GitHub first so it is not
@@ -322,7 +321,7 @@ the e2e suite was not re-run after the Foli AI panel change; the dev backend lac
 - `--prod` with the Convex CLI does not mean production here; always `--deployment fastidious-clownfish-123`.
 - Port 3000 is often taken by another project; use 3002/3003 for e2e.
 - Notes open with the Foli AI panel since 2026-11-18 (`a989411b`); e2e locators that assumed a closed panel or a
-  single "New note" button break. Use `openFoliAi()` and `closeToolsPanel()` from `apps/web/e2e/helpers.ts` (on `main` once pull request 40 merges).
+  single "New note" button break. Use `openFoliAi()` and `closeToolsPanel()` from `apps/web/e2e/helpers.ts`.
 - `pnpm typecheck` in parallel with lint has given false failures; run it alone. About 9 known lint errors existed
   in untouched files (2026-10-24 note; may have changed).
 - Known Swift test issues: Mac `RouterTests.testDebugIdentity` expects a version from a stale build; a full
@@ -349,6 +348,8 @@ the e2e suite was not re-run after the Foli AI panel change; the dev backend lac
 
 ## 12. Change log
 
+- 2026-11-19: pull request 40 merged into `main` as `ce420649` on a fully green CI run (44556502512); production deploy
+  completed and CI on `main` green (44562664255). These notes are on `editor/rock-solid`, not yet on `main`.
 - 2026-11-19: pull request 40, CI run 44547866717: 7 of 8 browser shards green. `e2e/tab-switch.spec.ts` watched for
   a loading placeholder while the note opened just before was still loading its own lines; it waits for them now.
 - 2026-11-19: pull request 40, CI run 44538632686: 6 of 8 browser shards green. Fixed the mind map phone spec (its

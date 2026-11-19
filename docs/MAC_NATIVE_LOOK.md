@@ -162,6 +162,13 @@ uneven"):
 - **A list takes no pointer while it scrolls** (`QuietScrollView`, the 2026-11-19 performance pass): its rows show
   no hover while they move and for 120 ms after, and a press is passed on, so a click still lands. A new screen's
   main list uses `QuietScrollView` in place of `ScrollView`. Why: docs/MAC_PERFORMANCE_2026-11-19.md.
+- **No line between the rows of a list** (the owner, 2026-11-19: "keep the spacing but remove the horizontal lines
+  ... it will look much cleaner"): tasks, notes and folders in list view, the account lists, the Vault's lists,
+  the calendars in the Calendars popover and Help's shortcuts. The line's point of room stays (`NativeRowGap`,
+  `TaskCardLook.nativeLine`), so no row moved; spacing and the rounded hover tell rows apart. Lines that stay: a
+  calendar's grid, a menu's separators, the line over a dialog's buttons, the lines in the command palette and
+  Quick Add, the marks between tabs. Still the owner's to decide: the lines inside Settings' cards, under the
+  Vault's tabs, under Notifications' switch, and under the Calendar's weekday names. `ListLinesTests`.
 - **No blur at a panel's foot** (the owner, 2026-11-19: "it looks out of place"). The web's sidebar blurs its last
   rows into the bottom edge (`.ui-blur-bottom`); in Folevi for Mac every panel runs clear to the window's edge.
 - **The panel sits beside the note** whenever the note keeps a writable width. The page's own width decides

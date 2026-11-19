@@ -52,11 +52,10 @@ struct WebListCard<Row: View, Item>: View {
 
     var body: some View {
         if chrome != nil {
-            // The Mac's native look: rows on the page, separators inset to their text (the rows' rounded hover
-            // keeps clear of them).
+            // The Mac's native look: rows on the page with no line between them.
             VStack(spacing: 0) {
                 ForEach(Array(items.enumerated()), id: \.offset) { i, item in
-                    if i > 0 { NativeRowSeparator(hidden: false) }
+                    if i > 0 { NativeRowGap() }
                     row(item)
                 }
             }

@@ -309,6 +309,17 @@ of tasks (Tasks' views, the Calendar's day list and Agenda); the rows are where 
 
 ![tasks-no-lines](tasks-no-lines.jpg)
 
+Then the owner agreed to the same in the other lists of one kind of row: notes and folders in list view, the
+account lists (Shared with Me, Changes), the Vault's lists, the calendars in the Calendars popover and Help's
+shortcuts.
+
+![lists-no-lines](lists-no-lines.jpg)
+
+Not pictured: folders in list view (the same gap as the notes list), the account lists and the Calendars popover's
+rows (both need a signed-in account; the scratch library has none). With no line to hide beside a highlighted
+row, the notes list's page no longer tracks which row the pointer is on, which had made every built row again at
+each crossing.
+
 The same day's performance pass is in `docs/MAC_PERFORMANCE_2026-11-19.md`.
 
 ## Not covered, and why

@@ -117,8 +117,10 @@ pointer, so the change was reverted.
 
 ## Checks
 
-`MacPerformanceTests` (7): a closed popover is released, dates share formatters and read the same, Quick Add's
+`MacPerformanceTests` (6): a closed popover is released, dates share formatters and read the same, Quick Add's
 words are unchanged, covers stop at their cap and are let go, line breaks can be let go, a moving list is quiet
-until it rests or is pressed (and a press is sent on), tasks have no line between them. The whole Swift package
-passes (232 Mac frame tests, 257 + 16 + 28 + 28 in the others; iPad and iPhone pictures unchanged). Scripts for the
+until it rests or is pressed (and a press is sent on). The whole Swift package passes (232 Mac frame tests then,
+257 + 16 + 28 + 28 in the others; iPad and iPhone pictures unchanged), but for
+`TabPreviewStateTests.enteringTheNextTabBeforeLeavingThisOneStillShowsIt`, a timing test that fails in some full
+runs on a loaded Mac and passes alone. Scripts for the
 measurements are in `apps/mac/scripts/` (`perf*.mjs`, `stress.mjs`).

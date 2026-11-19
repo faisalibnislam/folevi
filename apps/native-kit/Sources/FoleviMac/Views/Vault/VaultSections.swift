@@ -38,10 +38,12 @@ struct VaultList<Content: View>: View {
     var card = true
     @ViewBuilder let content: Content
     @Environment(\.colorScheme) private var scheme
+    @Environment(\.nativeChrome) private var chrome
 
     var body: some View {
         let list = VS.style("vault.list", scheme)
-        let rows = _VariadicView.Tree(VaultDividedLayout(line: VS.color("line", scheme))) { content }
+        // (The Mac's native look: no line between rows, the line's point of room kept. The owner, 2026-11-19.)
+        let rows = _VariadicView.Tree(VaultDividedLayout(line: chrome != nil ? .clear : VS.color("line", scheme))) { content }
         if card {
             rows
                 .clipShape(RoundedRectangle(cornerRadius: list.radius, style: .circular))

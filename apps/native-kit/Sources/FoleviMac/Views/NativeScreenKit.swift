@@ -62,9 +62,7 @@ struct NativeHeading: View {
     }
 }
 
-/// A list row's rounded highlight: the selection (a neutral fill, gray in an inactive window too) or the hover. The
-/// separators above and below a highlighted row are hidden by the list (`NativeRowSeparator`), so no line cuts the
-/// rounded corners.
+/// A list row's rounded highlight: the selection (a neutral fill, gray in an inactive window too) or the hover.
 struct NativeRowHighlight: View {
     let selected: Bool
     let hovered: Bool
@@ -86,24 +84,13 @@ struct NativeRowHighlight: View {
     }
 }
 
-/// The separator between two list rows, inset to the rows' text and hidden while either row is highlighted (one
-/// shared boundary: the list decides from both neighbours). Its 1 pt is kept either way, so nothing moves.
-struct NativeRowSeparator: View {
-    let hidden: Bool
-    var inset: CGFloat = 12
+/// The point of room between two list rows. It was a separator line, hidden beside a highlighted row; the owner had
+/// the lines between rows removed (2026-11-19: "keep the spacing but remove the horizontal lines") and the room
+/// kept, so no row moved. A row's spacing and its rounded hover tell the rows apart.
+struct NativeRowGap: View {
     var body: some View {
-        Rectangle().fill(hidden ? .clear : NativeLook.separator).frame(height: 1).padding(.horizontal, inset)
-            .accessibilityHidden(true)
+        Color.clear.frame(height: 1).accessibilityHidden(true)
     }
-}
-
-/// Which rows of a list are highlighted (selected or under the pointer), for the separators between them.
-struct NativeRowHighlights {
-    var hovered: String?
-    var selected: Set<String> = []
-    func lit(_ id: String?) -> Bool { id.map { $0 == hovered || selected.contains($0) } ?? false }
-    /// The separator above row `id`, whose neighbour above is `above`.
-    func separatorHidden(above: String?, id: String?) -> Bool { lit(above) || lit(id) }
 }
 
 /// The grid and list switch as the system's segmented control (icons, each with its name for VoiceOver and a

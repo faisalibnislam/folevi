@@ -101,10 +101,5 @@ struct MacPerformanceTests {
         #expect(watch.pressed(press) { sent.append($0) } === press)
         window.close()
     }
-
-    /// Tasks have no line between them in the native look (the owner, 2026-11-19).
-    @Test func tasksHaveNoLineBetweenThem() {
-        #expect(TaskCardLook.nativeLine == Color.clear)
-    }
 }
 #endif

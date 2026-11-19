@@ -24,6 +24,7 @@ func moreVar(_ name: String, _ scheme: ColorScheme) -> Color {
 
 struct HelpScreen: View {
     let model: FrameModel
+    @Environment(\.nativeChrome) private var chrome
     @Environment(\.colorScheme) private var scheme
 
     static let shortcuts: [(String, String)] = [
@@ -173,7 +174,8 @@ struct HelpScreen: View {
                     }
                     .frame(height: row.height)
                     if i < Self.shortcuts.count - 1 {
-                        Rectangle().fill(moreVar("color-line", scheme)).frame(height: hairline)
+                        // (The Mac's native look: no line between shortcuts, the line's room kept. The owner, 2026-11-19.)
+                        Rectangle().fill(chrome != nil ? .clear : moreVar("color-line", scheme)).frame(height: hairline)
                     }
                 }
             }

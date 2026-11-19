@@ -7,8 +7,13 @@
 // The app (apps/mac SettingsWindow) owns the NSWindow, gives it this look (MacSettingsWindowStyle) and hosts
 // MacSettingsShell with the page: MacSettingsNativePane (the sections, on the front main window's engine), or the
 // web page while no main window has the native frame.
+//
+// The iPad's wide layout shows the same shell in a large form sheet (IPadSettings.swift, the owner, 2026-11-19: "on
+// iPad a sheet or full-screen settings with a category list"), its search field a SwiftUI one.
+#if os(macOS) || os(iOS)
 #if os(macOS)
 import AppKit
+#endif
 import SwiftUI
 import FoleviDesign
 import FoleviEngine
@@ -220,6 +225,7 @@ public final class MacSettingsState {
 
 // MARK: - The window
 
+#if os(macOS)
 public enum MacSettingsWindowStyle {
     /// The window's first size and its smallest.
     public static var defaultSize: CGSize { MacSettingsLook.defaultSize }
@@ -245,6 +251,7 @@ public enum MacSettingsWindowStyle {
         window.collectionBehavior.insert(.fullScreenNone)
     }
 }
+#endif
 
 /// The window's content: the category list and the page, each scrolling on its own.
 public struct MacSettingsShell<Pane: View>: View {
@@ -413,6 +420,42 @@ struct MacSettingsSidebar: View {
     }
 }
 
+#if os(iOS)
+/// The iPad's search field (the system's search look in SwiftUI): a clear button, Return opens the active result, the
+/// arrow keys of a hardware keyboard move it, Escape clears it, ⌘F (MacSettingsState.focusSearch) puts the cursor in it.
+struct SettingsSearchField: View {
+    @Bindable var state: MacSettingsState
+    @FocusState private var focused: Bool
+
+    var body: some View {
+        HStack(spacing: 6) {
+            Image(systemName: "magnifyingglass").foregroundStyle(MacLook.Colors.secondary)
+            TextField("Search", text: $state.query)
+                .textFieldStyle(.plain)
+                .font(MacLook.Text.body)
+                .submitLabel(.search)
+                .autocorrectionDisabled()
+                .textInputAutocapitalization(.never)
+                .focused($focused)
+                .onSubmit { state.openActive() }
+                .onKeyPress(.downArrow) { guard !state.query.isEmpty else { return .ignored }; state.moveActive(1); return .handled }
+                .onKeyPress(.upArrow) { guard !state.query.isEmpty else { return .ignored }; state.moveActive(-1); return .handled }
+                .onKeyPress(.escape) { guard !state.query.isEmpty else { return .ignored }; state.query = ""; return .handled }
+                .accessibilityLabel("Search Settings")
+                .accessibilityIdentifier("settings.search")
+            if !state.query.isEmpty {
+                Button { state.query = "" } label: { Image(systemName: "xmark.circle.fill").foregroundStyle(MacLook.Colors.tertiary).padding(2) }
+                    .buttonStyle(QuietHoverStyle(shape: AnyShape(Circle())))
+                    .accessibilityLabel("Clear search")
+            }
+        }
+        .padding(.horizontal, 12)
+        .frame(height: MacLook.compactControlHeight + 6)
+        .background(MacLook.Colors.hover, in: Capsule())
+        .onChange(of: state.focusSearchSerial) { focused = true }
+    }
+}
+#else
 /// The system's search field: a clear button, Escape clears it, Return opens the active result, the arrow keys
 /// move it, ⌘F (MacSettingsState.focusSearch) puts the cursor in it.
 struct SettingsSearchField: NSViewRepresentable {
@@ -492,6 +535,7 @@ struct SettingsSearchField: NSViewRepresentable {
         }
     }
 }
+#endif
 
 // MARK: - The native page
 

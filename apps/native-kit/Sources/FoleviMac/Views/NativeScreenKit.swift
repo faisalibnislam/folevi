@@ -1,8 +1,8 @@
-// The pieces the card's screens share under the Mac's native look (docs/MAC_NATIVE_LOOK.md): the page title rule,
+// The pieces the card's screens share under the native look (docs/MAC_NATIVE_LOOK.md): the page title rule,
 // section headings, a list row's rounded highlight and the separators beside it, the layout switch as a segmented
 // control, and the system's search field. A screen draws these only while it has a NativeChrome (ScreenRoot sets
-// one on the Mac): the iPad's wide layout, which builds these screens too, never has one and keeps the web's look.
-// The numbers and colours are MacLook's; on iOS (where nothing draws these) the same roles' system values stand in.
+// one on the Mac and in the iPad's wide layout); the iPhone's screens that borrow these never have one. The numbers
+// and colours are MacLook's (the iPad's own on iOS).
 #if os(macOS) || os(iOS)
 import SwiftUI
 import FoleviDesign
@@ -12,12 +12,11 @@ import AppKit
 
 /// The native look's interface type and colours, from MacLook.
 enum NativeLook {
-    #if os(macOS)
-    /// Every screen's page title ("Work", "Folders", "Tasks"): 22 pt semibold, leading.
+    /// Every screen's page title ("Work", "Folders", "Tasks"): 22 pt semibold (iPad 28), leading.
     static let pageTitle = MacLook.Text.titleStrong
-    /// A section's title inside a page ("Recent notes", "Today"): 15 pt semibold.
+    /// A section's title inside a page ("Recent notes", "Today"): 15 pt semibold (iPad 20).
     static let sectionTitle = MacLook.Text.title3Strong
-    /// A small heading over a group ("Folders", "Built-in templates"): 11 pt semibold, secondary.
+    /// A small heading over a group ("Folders", "Built-in templates"): 11 pt semibold (iPad 13), secondary.
     static let heading = MacLook.Text.smallStrong
     static let body = MacLook.Text.body
     static let small = MacLook.Text.small
@@ -32,24 +31,6 @@ enum NativeLook {
     static let onAccent = MacLook.Colors.onAccent
     static let rowRadius = MacLook.rowRadius
     static let space = (xs: MacLook.Space.xs, s: MacLook.Space.s, m: MacLook.Space.m, l: MacLook.Space.l, xl: MacLook.Space.xl)
-    #else
-    static let pageTitle = Font.title.weight(.semibold)
-    static let sectionTitle = Font.title3.weight(.semibold)
-    static let heading = Font.subheadline.weight(.semibold)
-    static let body = Font.body
-    static let small = Font.subheadline
-    static let label = Color.primary
-    static let secondary = Color.secondary
-    static let tertiary = Color.secondary.opacity(0.7)
-    static let separator = Color.secondary.opacity(0.3)
-    static let hover = Color.secondary.opacity(0.15)
-    static let selection = Color.secondary.opacity(0.2)
-    static let container = Color(uiColor: .systemBackground)
-    static let accent = Color.primary
-    static let onAccent = Color(uiColor: .systemBackground)
-    static let rowRadius: CGFloat = 8
-    static let space = (xs: CGFloat(4), s: CGFloat(8), m: CGFloat(12), l: CGFloat(16), xl: CGFloat(24))
-    #endif
 }
 
 /// A heading over a group in a page (`Folders`, `Built-in templates`): 11 pt semibold, secondary, not capitals.
@@ -122,11 +103,8 @@ extension View {
     /// A dialog's or panel's content in the Mac's native look (system type, native buttons and fields). Its frame
     /// (the sheet's panel, title and Close) stays its presenter's.
     @ViewBuilder func nativeDialogContent() -> some View {
-        #if os(macOS)
+        // (On iOS only where the iPad's wide layout set `macNativeLook`: the iPhone's dialogs keep the web's look.)
         macNativeChrome()
-        #else
-        self
-        #endif
     }
 }
 
@@ -169,12 +147,31 @@ struct NativeSearchField: NSViewRepresentable {
     }
 }
 #else
-/// (Never drawn on iOS: only the Mac's native look uses it. A plain field keeps the shared screens compiling.)
+/// The iPad's search field: the system's search look (a magnifier, the placeholder, a clear button) in a field of the
+/// control height.
 struct NativeSearchField: View {
     let placeholder: String
     @Binding var text: String
     var width: CGFloat = 220
-    var body: some View { TextField(placeholder, text: $text).frame(maxWidth: width) }
+    var body: some View {
+        HStack(spacing: 6) {
+            Image(systemName: "magnifyingglass").foregroundStyle(MacLook.Colors.secondary)
+            TextField(placeholder, text: $text)
+                .textFieldStyle(.plain)
+                .font(MacLook.Text.body)
+                .submitLabel(.search)
+            if !text.isEmpty {
+                Button { text = "" } label: { Image(systemName: "xmark.circle.fill").foregroundStyle(MacLook.Colors.tertiary).padding(2) }
+                    .buttonStyle(QuietHoverStyle(shape: AnyShape(Circle())))
+                    .accessibilityLabel("Clear search")
+            }
+        }
+        .padding(.horizontal, 10)
+        .frame(height: MacLook.compactControlHeight + 4)
+        .background(MacLook.Colors.hover, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+        .frame(maxWidth: width)
+        .accessibilityLabel(placeholder)
+    }
 }
 #endif
 #endif

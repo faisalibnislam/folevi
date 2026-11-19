@@ -12,8 +12,10 @@
 // button), the folder tree's drag and drop (notes into a folder, folders above, below or inside one, onto the Folders
 // heading for the top level), the rows' menus, the counts. The title bar's button, ⌘\ and View > Hide Sidebar hide
 // it (so does Focus mode on a note); the bell is in the title bar, search in the card's controls.
+#if os(macOS) || os(iOS)
 #if os(macOS)
 import AppKit
+#endif
 import SwiftUI
 import FoleviDesign
 import FoleviEngine
@@ -413,7 +415,7 @@ struct MacSyncStatus: View {
                 Circle().fill(SyncPopover.tone(state)).frame(width: 6, height: 6).offset(x: 1, y: 1)
             }
             // (The title bar's buttons' size and hover: 32 by 28, a capsule.)
-            .frame(width: 32, height: MacLook.iconButton)
+            .frame(width: MacLook.stripButtonWidth, height: MacLook.iconButton)
             .contentShape(Rectangle())
             .background(MenuAnchor { anchor = $0 })
         }

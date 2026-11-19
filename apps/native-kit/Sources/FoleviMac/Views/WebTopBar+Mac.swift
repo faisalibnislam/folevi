@@ -14,8 +14,10 @@
 // middle click, dragging to reorder, sideways scrolling, a picture on hover, the Tab Overview, the tab's menu); only
 // its drawing is the Mac's. The card's own controls (Back, New note, the title, search or Share) float in the card
 // (CardControls, below).
+#if os(macOS) || os(iOS)
 #if os(macOS)
 import AppKit
+#endif
 import SwiftUI
 import FoleviDesign
 import FoleviEngine
@@ -41,7 +43,8 @@ extension WebTopBar {
     /// The traffic lights' room, then the sidebar's button at the sidebar's trailing end (right after the lights
     /// while the sidebar is hidden): the tabs start where the card does.
     private var lead: some View {
-        let hidden = model.sidebarHidden
+        // (A narrow iPad's sidebar floats over the card instead: the strip keeps its compact lead.)
+        let hidden = model.sidebarHidden || model.sidebarFloats
         return HStack(spacing: 0) {
             Color.clear.frame(width: MacLook.trafficLightsRoom)
             Spacer(minLength: 0)
@@ -53,18 +56,23 @@ extension WebTopBar {
                             help: tools ? "Show Folders in the Sidebar" : "Show Note Tools in the Sidebar") {
                     withAnimation(MacLook.animation(NSWorkspace.shared.accessibilityDisplayShouldReduceMotion)) {
                         // (Hidden, the sidebar comes back with what was asked for.)
-                        if model.sidebarHidden { model.sidebarCollapsed = false; WebSidebarController.setNoteTools(model, shown: true) }
+                        if hidden { showSidebar(); WebSidebarController.setNoteTools(model, shown: true) }
                         else { WebSidebarController.setNoteTools(model, shown: !tools) }
                     }
                 }
                 .accessibilityValue(tools ? "Note tools" : "Folders")
             }
             stripButton("sidebar.left", label: hidden ? "Show sidebar" : "Hide sidebar", help: hidden ? "Show Sidebar (⌘\\)" : "Hide Sidebar (⌘\\)") {
-                withAnimation(MacLook.animation(NSWorkspace.shared.accessibilityDisplayShouldReduceMotion)) { model.sidebarCollapsed.toggle() }
+                withAnimation(MacLook.animation(NSWorkspace.shared.accessibilityDisplayShouldReduceMotion)) { model.toggleSidebar() }
             }
             .padding(.trailing, 8)
         }
         .frame(width: hidden ? MacLook.trafficLightsRoom + (model.route.isNote ? 76 : 38) : MacLook.sidebarWidth)
+    }
+
+    /// Brings the sidebar back: beside the card, or over it on a narrow iPad.
+    private func showSidebar() {
+        if model.sidebarFloats { model.sidebarOverlayShown = true } else { model.sidebarCollapsed = false }
     }
 
     /// Back and Forward, the tabs, and the strip's trailing buttons, after its leading part.
@@ -91,7 +99,7 @@ extension WebTopBar {
     func stripButton(_ symbol: String, label: String, help: String, anchored: Bool = false, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             MacSymbol(symbol, size: MacLook.iconButtonSymbol)
-                .frame(width: 32, height: MacLook.iconButton)
+                .frame(width: MacLook.stripButtonWidth, height: MacLook.iconButton)
                 .contentShape(Rectangle())
                 .background { if anchored { MenuAnchor { bellAnchor = $0 } } }
         }
@@ -294,7 +302,7 @@ extension WebTopBar {
             if active {
                 Capsule()
                     .fill(.clear)
-                    .glassEffect(.regular, in: .capsule)
+                    .nativeGlass(Capsule())
                     .matchedGeometryEffect(id: "open-tab", in: tabPill)
             }
         }
@@ -443,7 +451,7 @@ struct MacStripButton: View {
     var body: some View {
         Button(action: action) {
             MacSymbol(symbol, size: MacLook.iconButtonSymbol)
-                .frame(width: 32, height: MacLook.iconButton)
+                .frame(width: MacLook.stripButtonWidth, height: MacLook.iconButton)
                 .contentShape(Rectangle())
         }
         .buttonStyle(QuietHoverStyle(shape: AnyShape(Capsule())))

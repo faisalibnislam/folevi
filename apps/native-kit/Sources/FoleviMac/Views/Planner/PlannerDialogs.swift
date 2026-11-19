@@ -71,10 +71,8 @@ struct TaskEditDialog: View {
     @State private var error: String?
     @State private var overLink = false
     @Environment(\.colorScheme) private var scheme
-    #if os(macOS)
-    /// The Mac's native look: the task's settings as a grouped form of native controls.
+    /// The native look (the Mac's, the iPad's wide layout's): the task's settings as a grouped form of native controls.
     @Environment(\.macNativeLook) private var native
-    #endif
 
     init(tasks: PlannerTasks, task: TaskRow, close: @escaping () -> Void) {
         self.tasks = tasks
@@ -96,20 +94,15 @@ struct TaskEditDialog: View {
                 Text(task.title.isEmpty ? "Untitled task" : task.title).webText(t.text).foregroundStyle(t.color.color)
                     .fixedSize(horizontal: false, vertical: true)
                     .padding(.top, t.margin.top).padding(.bottom, t.margin.bottom)
-                #if os(macOS)
                 if native {
                     nativeForm
                 } else {
                     webForm(form: form, row: row)
                 }
-                #else
-                webForm(form: form, row: row)
-                #endif
             }
         }
     }
 
-    #if os(macOS)
     /// Status, due date and time, priority and assignee as FormRows in one FormGroup, then the buttons.
     private var nativeForm: some View {
         VStack(alignment: .leading, spacing: MacLook.Space.l) {
@@ -161,12 +154,15 @@ struct TaskEditDialog: View {
                     tasks.openNote(task)
                     close()
                 }
+                #if os(macOS)
                 .buttonStyle(.link)
+                #else
+                .buttonStyle(.borderless)
+                #endif
                 .lineLimit(1)
             }
         }
     }
-    #endif
 
     @ViewBuilder private func webForm(form: WebComputedStyle, row: WebComputedStyle) -> some View {
                 VStack(alignment: .leading, spacing: form.gap) {

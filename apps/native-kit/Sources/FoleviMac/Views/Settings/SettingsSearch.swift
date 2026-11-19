@@ -5,7 +5,7 @@
 //
 // Kept beside the sections it describes: a card renamed there is renamed here (SettingsSearchTests checks that every
 // category the window lists has entries, and that the matching is right).
-#if os(macOS)
+#if os(macOS) || os(iOS)
 import Foundation
 
 /// One thing Settings' search can find.

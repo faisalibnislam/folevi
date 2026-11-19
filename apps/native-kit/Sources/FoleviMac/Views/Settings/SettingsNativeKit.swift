@@ -60,15 +60,11 @@ struct SButton: View {
     }
 
     var body: some View {
-        #if os(macOS)
         if native {
             NativeSettingsButton(title: title, symbol: icon.flatMap(SIcon.symbol), variant: variant, small: size == .sm, action: action)
         } else {
             WebButton(title, icon: icon, iconSize: iconSize, variant: variant, size: size, action: action)
         }
-        #else
-        WebButton(title, icon: icon, iconSize: iconSize, variant: variant, size: size, action: action)
-        #endif
     }
 }
 
@@ -86,7 +82,6 @@ struct SIconButton: View {
     }
 
     var body: some View {
-        #if os(macOS)
         if native {
             Button(action: action) {
                 // (Folevi's own icon, as the web's Settings: the owner, 2026-11-18.)
@@ -101,9 +96,6 @@ struct SIconButton: View {
         } else {
             WebIconButton(icon, label: label, action: action)
         }
-        #else
-        WebIconButton(icon, label: label, action: action)
-        #endif
     }
 }
 
@@ -113,11 +105,7 @@ struct SSpinner: View {
     @Environment(\.settingsNative) private var native
 
     var body: some View {
-        #if os(macOS)
         if native { ProgressView().controlSize(.small) } else { WebSpinner(size: size) }
-        #else
-        WebSpinner(size: size)
-        #endif
     }
 }
 
@@ -133,16 +121,12 @@ struct SIcon: View {
     }
 
     var body: some View {
-        #if os(macOS)
         if native {
             // (Folevi's own icon in the rows' icon column: the Mac's icons are the web's.)
             WebIconView(icon, size: 17).frame(width: MacLook.rowIconSlot)
         } else {
             WebIconView(icon, size: size)
         }
-        #else
-        WebIconView(icon, size: size)
-        #endif
     }
 
     /// The SF Symbol standing for a Folevi icon Settings draws.
@@ -202,15 +186,11 @@ struct SCheckbox: View {
     }
 
     var body: some View {
-        #if os(macOS)
         if native {
-            Toggle(label, isOn: $isOn).toggleStyle(.checkbox).font(MacLook.Text.body).tint(MacLook.Colors.accent)
+            Toggle(label, isOn: $isOn).checkboxStyle().font(MacLook.Text.body).tint(MacLook.Colors.accent)
         } else {
             Toggle(label, isOn: $isOn).toggleStyle(WebCheckboxStyle()).webText(.role(.body))
         }
-        #else
-        Toggle(label, isOn: $isOn).toggleStyle(WebCheckboxStyle()).webText(.role(.body))
-        #endif
     }
 }
 
@@ -220,30 +200,26 @@ private struct SettingsFont: ViewModifier {
     @Environment(\.settingsNative) private var native
 
     func body(content: Content) -> some View {
-        #if os(macOS)
         if native { content.font(mac) } else { content.webText(web) }
-        #else
-        content.webText(web)
-        #endif
     }
 }
 
-#if os(macOS)
-/// The Settings window's metrics on top of MacLook's (the window, its category list, the readable column).
+/// The Settings window's metrics on top of MacLook's (the window, its category list, the readable column); on the
+/// iPad, Settings' sheet's.
 enum MacSettingsLook {
     /// The category list's width: the longest category name, its symbol and the row insets, with room to spare.
-    static let sidebarWidth: CGFloat = 220
+    static let sidebarWidth: CGFloat = MacLook.pick(220, 280)
     /// The settings column's widest (it centres in a wider window; the title aligns with it).
-    static let contentMaxWidth: CGFloat = 640
+    static let contentMaxWidth: CGFloat = MacLook.pick(640, 680)
     /// The column's least margin from the pane's edges.
     static let contentMargin: CGFloat = MacLook.Space.xl
     /// The gap between groups on a page.
     static let groupGap: CGFloat = MacLook.Space.xl + MacLook.Space.xs
     /// The window's first size, and the smallest it can be (the column and the list both still read whole).
-    static let defaultSize = CGSize(width: 880, height: 640)
-    static let minSize = CGSize(width: 660, height: 460)
+    static let defaultSize = MacLook.pick(CGSize(width: 880, height: 640), CGSize(width: 1000, height: 760))
+    static let minSize = MacLook.pick(CGSize(width: 660, height: 460), CGSize(width: 640, height: 480))
     /// A term's column in a list of terms and values.
-    static let termWidth: CGFloat = 132
+    static let termWidth: CGFloat = MacLook.pick(132, 160)
     /// The least room over the content for the traffic lights (a plain title bar's).
     static let minChromeTop: CGFloat = 28
     /// How long a found card or row stays highlighted.
@@ -404,5 +380,4 @@ struct NativeSettingsSwitch: View {
             .accessibilityLabel(label)
     }
 }
-#endif
 #endif

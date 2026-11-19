@@ -23,7 +23,6 @@ struct AboutSettingsView: View {
         SettingsCard(model.version, anchor: "about") {
             VStack(alignment: .leading, spacing: native ? 8 : 4) {
                 ForEach(Self.links, id: \.path) { link in
-                    #if os(macOS)
                     if native {
                         // The Settings window: links in the system's link style, each saying it leaves for the website.
                         Button {
@@ -31,7 +30,11 @@ struct AboutSettingsView: View {
                         } label: {
                             Label(link.label, systemImage: "arrow.up.right")
                         }
+                        #if os(macOS)
                         .buttonStyle(.link)
+                        #else
+                        .buttonStyle(.borderless)
+                        #endif
                         .foleviTooltip("folevi.com\(link.path)")
                     } else {
                         SButton(link.label, icon: .externalLink, variant: .ghost, size: .sm) {
@@ -39,12 +42,6 @@ struct AboutSettingsView: View {
                         }
                         .fixedSize()
                     }
-                    #else
-                    SButton(link.label, icon: .externalLink, variant: .ghost, size: .sm) {
-                        if let url = URL(string: "https://folevi.com\(link.path)") { model.frame.host?.frameOpenExternal(url) }
-                    }
-                    .fixedSize()
-                    #endif
                 }
             }
         }

@@ -6,14 +6,17 @@
 //
 // On a screen: its title, then trailing its own controls and the search control (it opens into the field on a click
 // or ⌘K, and closes again on Escape while empty; typing opens the palette with the query). ContentViewController
-// hosts them over the card, letting every click outside them through.
+// hosts them over the card, letting every click outside them through. The iPad's wide layout lays the same view over
+// its card (IPadFrameView): SwiftUI lets every touch outside the controls through by itself.
 //
 // Nothing here repeats a control that is already on screen (the owner, 2026-11-18: no unnecessary buttons), and
 // nothing floats over a note: Back and Forward are in the title bar strip, New note is the sidebar's row (and ⌘N,
 // and File > New Note), a note's Share is in the note's own bar at the page's foot. So a note needs no empty band
 // at its top for controls (the owner, 2026-11-18: "weird empty space on the note page").
+#if os(macOS) || os(iOS)
 #if os(macOS)
 import AppKit
+#endif
 import SwiftUI
 import FoleviDesign
 import FoleviEngine
@@ -35,7 +38,7 @@ struct CardControls: View {
         let note = model.route.isNote
         // The screen's own controls (CardItems.swift), when it handed any.
         let items = note ? nil : model.cardItems[model.route.tabKey]
-        GlassEffectContainer(spacing: MacLook.barSpacing) {
+        NativeGlassContainer(spacing: MacLook.barSpacing) {
             if let items {
                 // As much as fits beside the title: everything; segmented groups as pull-downs; all in "…".
                 ViewThatFits(in: .horizontal) {
@@ -127,7 +130,7 @@ struct CardControls: View {
             }
             .buttonStyle(QuietHoverStyle(shape: AnyShape(Capsule())))
             .foregroundStyle(MacLook.Colors.label)
-            .glassEffect(.regular.interactive(), in: .capsule)
+            .nativeGlass(Capsule(), interactive: true)
             .cardHitRegion()
             .foleviTooltip("Search or jump to… (⌘K)")
             .accessibilityLabel("Search")
@@ -144,7 +147,9 @@ struct CardControls: View {
     private func openPalette(_ query: String) {
         text = ""
         close()
+        #if os(macOS)
         FrameSheets.window(for: model)?.makeFirstResponder(nil)
+        #endif
         CommandPalette.show(model, query: query)
     }
 
@@ -189,6 +194,7 @@ extension View {
     func cardHitRegion() -> some View { modifier(CardHitRegion()) }
 }
 
+#if os(macOS)
 /// A hosting view that takes only the clicks on its controls (cardHitRegion): everything else goes through to what's
 /// under it (the card's controls over a screen or a note). SwiftUI draws its buttons in the hosting view itself, with
 /// no view of their own, so a hit test alone can't tell a button from the empty room around it: it was taken as room,
@@ -202,4 +208,5 @@ final class PassThroughControlsHostingView<Content: View>: ClickThroughHostingVi
         return super.hitTest(point) ?? self
     }
 }
+#endif
 #endif

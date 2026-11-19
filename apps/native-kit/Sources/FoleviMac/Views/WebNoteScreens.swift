@@ -522,15 +522,11 @@ struct WebSelectionBar: View {
         @Environment(\.colorScheme) private var scheme
         @Environment(\.nativeChrome) private var chrome
         func body(content: Content) -> some View {
-            #if os(macOS)
             if chrome != nil {
-                content.padding(.horizontal, 6).glassEffect(.regular, in: .capsule)
+                content.padding(.horizontal, 6).nativeGlass(Capsule())
             } else {
                 web(content)
             }
-            #else
-            web(content)
-            #endif
         }
 
         private func web(_ content: Content) -> some View {
@@ -2327,7 +2323,6 @@ struct WebIndexSearch: View {
     @Environment(\.nativeChrome) private var chrome
 
     var body: some View {
-        #if os(macOS)
         if chrome != nil {
             // The Mac's native look: the system's search field.
             NativeSearchField(placeholder: placeholder, text: $text, width: min(width, 260))
@@ -2335,9 +2330,6 @@ struct WebIndexSearch: View {
         } else {
             web
         }
-        #else
-        web
-        #endif
     }
 
     private var web: some View {

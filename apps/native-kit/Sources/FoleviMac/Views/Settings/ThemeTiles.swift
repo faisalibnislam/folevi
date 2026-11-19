@@ -3,7 +3,7 @@
 // window's material, a tab, the card with a note in it), as System Settings shows its own appearances. System is
 // the two halves side by side. The chosen tile wears a ring in the accent and a checked mark by its name; the
 // others show a quiet ring under the pointer.
-#if os(macOS)
+#if os(macOS) || os(iOS)
 import SwiftUI
 import FoleviDesign
 
@@ -16,7 +16,7 @@ struct ThemeChoice: Identifiable, Equatable {
     static let all = [
         ThemeChoice(id: "light", name: "Light", caption: "Always light"),
         ThemeChoice(id: "dark", name: "Dark", caption: "Always dark"),
-        ThemeChoice(id: "system", name: "System", caption: "Matches macOS"),
+        ThemeChoice(id: "system", name: "System", caption: MacLook.pick("Matches macOS", "Matches iPadOS")),
     ]
 }
 
@@ -145,8 +145,9 @@ struct ThemeThumbnail: View {
             c.fill(Path(roundedRect: CGRect(x: x, y: y, width: w, height: h), cornerRadius: r ?? h / 2, style: .continuous), with: .color(color))
         }
         c.fill(Path(CGRect(origin: .zero, size: design)), with: .color(p.window))
-        // The traffic lights.
-        for (i, light) in [Color(red: 1, green: 0.373, blue: 0.341), Color(red: 0.996, green: 0.737, blue: 0.18), Color(red: 0.157, green: 0.784, blue: 0.251)].enumerated() {
+        // The traffic lights (the Mac's window; an iPad's has none).
+        let lights: [Color] = MacLook.pick([Color(red: 1, green: 0.373, blue: 0.341), Color(red: 0.996, green: 0.737, blue: 0.18), Color(red: 0.157, green: 0.784, blue: 0.251)], [])
+        for (i, light) in lights.enumerated() {
             c.fill(Path(ellipseIn: CGRect(x: 7 + CGFloat(i) * 7, y: 6.5, width: 4.4, height: 4.4)), with: .color(light))
         }
         // The sidebar: the account, then rows, the second one chosen.

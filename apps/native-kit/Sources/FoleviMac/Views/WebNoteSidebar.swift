@@ -104,6 +104,8 @@ struct WebNoteSidebar: View {
     /// The Find field has the keyboard (its well shows the focus ring).
     @State private var findFocused = false
     @Environment(\.colorScheme) private var scheme
+    /// The native look (the Mac's, and the iPad's wide layout's).
+    @Environment(\.macNativeLook) private var native
 
     private var tab: NoteToolTab { NoteToolTab(rawValue: tabRaw) ?? .contents }
     private var tools: NoteToolsEvent? { model.noteTools[noteId] }
@@ -112,10 +114,8 @@ struct WebNoteSidebar: View {
     private func pair(_ id: String) -> WebStylePair { WebStyles.named("notetools.\(id)") }
     /// A CSS colour variable of the web app, in this appearance.
     private func v(_ name: String, _ fallback: Color = .clear) -> Color {
-        #if os(macOS)
         // The native look: the system's semantic colours for the web's palette.
-        if let c = NoteToolsLook.color(name) { return c }
-        #endif
+        if native, let c = NoteToolsLook.color(name) { return c }
         return WebStyles.vars[name]?.resolve(scheme).color ?? fallback
     }
     /// An unchecked task's outline, as the web draws it (muted ink mixed into the strong line; QA audit F10).
@@ -143,11 +143,7 @@ struct WebNoteSidebar: View {
     }
 
     private var panelPadding: EdgeInsets {
-        #if os(macOS)
-        EdgeInsets(top: MacLook.Space.s, leading: MacLook.Space.m, bottom: MacLook.Space.l, trailing: MacLook.Space.m)
-        #else
-        style("panel").padding.edgeInsets
-        #endif
+        native ? EdgeInsets(top: MacLook.Space.s, leading: MacLook.Space.m, bottom: MacLook.Space.l, trailing: MacLook.Space.m) : style("panel").padding.edgeInsets
     }
 
     private func refind() {
@@ -156,14 +152,17 @@ struct WebNoteSidebar: View {
 
     // MARK: the note's card
 
-    private var card: some View {
-        let wrap = style("card.wrap")
-        let c = pair("card")
-        let title = style("card.title")
-        let name = (tools?.title).flatMap { $0.isEmpty ? nil : $0 } ?? model.activeNote.map { $0.title.isEmpty ? "Untitled" : $0.title } ?? "Untitled"
-        #if os(macOS)
-        // The inspector's heading: the note's name and where it lives.
-        _ = (wrap, c, title)
+    private var noteName: String {
+        (tools?.title).flatMap { $0.isEmpty ? nil : $0 } ?? model.activeNote.map { $0.title.isEmpty ? "Untitled" : $0.title } ?? "Untitled"
+    }
+
+    @ViewBuilder private var card: some View {
+        if native { nativeCard } else { webCard }
+    }
+
+    /// The inspector's heading in the native look: the note's name and where it lives.
+    private var nativeCard: some View {
+        let name = noteName
         return VStack(alignment: .leading, spacing: 2) {
             MacTruncatingText(text: name, font: MacLook.Text.headline)
                 .foregroundStyle(MacLook.Colors.label)
@@ -174,7 +173,13 @@ struct WebNoteSidebar: View {
         .padding(.top, MacLook.Space.m)
         .padding(.bottom, MacLook.Space.s)
         .frame(maxWidth: .infinity, alignment: .leading)
-        #else
+    }
+
+    private var webCard: some View {
+        let wrap = style("card.wrap")
+        let c = pair("card")
+        let title = style("card.title")
+        let name = noteName
         return VStack(alignment: .leading, spacing: 0) {
             // The whole name in a tooltip only when it's cut off.
             TruncatingLabel(text: name, style: title.text).foregroundStyle(title.color.color)
@@ -185,7 +190,6 @@ struct WebNoteSidebar: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .webBox(c)
         .padding(wrap.padding.edgeInsets)
-        #endif
     }
 
     private var trail: [NoteToolsCrumb] { Self.trail(tools: tools?.trail, meta: model.activeNote) }
@@ -269,9 +273,12 @@ struct WebNoteSidebar: View {
 
     // MARK: the tabs
 
-    #if os(macOS)
+    @ViewBuilder private var tabs: some View {
+        if native { nativeTabs } else { webTabs }
+    }
+
     /// The sections in a capsule track at the panel's top (the owner's inspector profile).
-    private var tabs: some View {
+    private var nativeTabs: some View {
         let unread = tools?.comments.threads.contains { $0.unread && $0.status == .open } ?? false
         return CapsuleTrack(NoteToolTab.allCases, selection: Binding(get: { tab }, set: { choose($0) })) { t, _ in
             ZStack(alignment: .topTrailing) {
@@ -286,8 +293,8 @@ struct WebNoteSidebar: View {
         .padding(.horizontal, MacLook.Space.m)
         .padding(.bottom, MacLook.Space.xs)
     }
-    #else
-    private var tabs: some View {
+
+    private var webTabs: some View {
         let wrap = style("tabs.wrap")
         let bar = pair("tabs")
         let b = bar.resolve(scheme)
@@ -319,7 +326,6 @@ struct WebNoteSidebar: View {
         .webBox(bar)
         .padding(wrap.padding.edgeInsets)
     }
-    #endif
 
     private func choose(_ t: NoteToolTab) {
         if tab == .find, t != .find, !find.query.isEmpty { find.clear(model) }
@@ -356,7 +362,7 @@ struct WebNoteSidebar: View {
     private func emptyText(_ text: String, _ id: String, centered: Bool = false) -> some View {
         let s = style(id)
         let room = s.width - s.padding.left - s.padding.right
-        return Text(Self.shownText(text, s.text, room)).toolText(s.text).foregroundStyle(s.color.color)
+        return Text(Self.shownText(text, s.text, room, native: native)).toolText(s.text).foregroundStyle(s.color.color)
             .multilineTextAlignment(centered ? .center : .leading)
             .frame(maxWidth: .infinity, alignment: centered ? .center : .leading)
             .padding(s.padding.edgeInsets)
@@ -366,12 +372,8 @@ struct WebNoteSidebar: View {
 
     /// A short paragraph as shown: broken as the web breaks it on the iPad (`pretty`); the Mac's system text wraps
     /// as the system does.
-    static func shownText(_ text: String, _ style: WebTextStyle, _ room: CGFloat) -> String {
-        #if os(macOS)
-        text
-        #else
-        pretty(text, style, room)
-        #endif
+    static func shownText(_ text: String, _ style: WebTextStyle, _ room: CGFloat, native: Bool) -> String {
+        native ? text : pretty(text, style, room)
     }
 
     /// `text` with its lines broken as WebKit breaks a short paragraph (`text-wrap: pretty` and `balance`): as many
@@ -511,9 +513,9 @@ struct WebNoteSidebar: View {
                 .frame(width: icon.width, height: icon.height)
                 .background(RoundedRectangle(cornerRadius: icon.radius, style: .circular).fill(icon.background.color))
                 .padding(.bottom, icon.margin.bottom)
-            Text(Self.shownText(Self.signInTitle, title.text, title.width)).toolText(title.text).multilineTextAlignment(.center).foregroundStyle(title.color.color)
+            Text(Self.shownText(Self.signInTitle, title.text, title.width, native: native)).toolText(title.text).multilineTextAlignment(.center).foregroundStyle(title.color.color)
                 .fixedSize(horizontal: false, vertical: true)
-            Text(Self.shownText(Self.signInWhy, body.text, body.width))
+            Text(Self.shownText(Self.signInWhy, body.text, body.width, native: native))
                 .toolText(body.text).multilineTextAlignment(.center).foregroundStyle(body.color.color)
                 .fixedSize(horizontal: false, vertical: true)
                 .padding(.top, body.margin.top)
@@ -1002,10 +1004,11 @@ private struct FindField: View {
     let onEscape: () -> Void
     var onFocus: (Bool) -> Void = { _ in }
     @FocusState private var focused: Bool
+    @Environment(\.macNativeLook) private var native
 
     var body: some View {
         TextField("", text: $text, prompt: Text("Text in document").foregroundStyle(placeholderColor))
-            .font(Font(style.ctFont))
+            .font(native ? MacLook.Text.body : Font(style.ctFont))
             .foregroundStyle(color)
             .textFieldStyle(.plain)
             .submitLabel(.search)
@@ -1026,22 +1029,29 @@ extension View {
     /// Text in the note's tools: the web's text style on the iPad; on the Mac the system font at the native look's
     /// sizes (11, 13, 15 pt), the web's weight kept.
     func toolText(_ s: WebTextStyle) -> some View {
+        modifier(ToolText(style: s))
+    }
+}
+
+/// toolText's: the system font in the native look (the Mac's, the iPad's wide layout's), the web's style elsewhere.
+private struct ToolText: ViewModifier {
+    let style: WebTextStyle
+    @Environment(\.macNativeLook) private var native
+
+    func body(content: Content) -> some View {
         #if os(macOS)
-        font(NoteToolsLook.font(s))
+        content.font(NoteToolsLook.font(style))
         #else
-        webText(s)
+        if native { content.font(NoteToolsLook.font(style)) } else { content.webText(style) }
         #endif
     }
 }
 
 /// A comment author's initial: Caption 2 (11), the smallest desktop size (MAC-53); the system's on the Mac.
 private struct AvatarInitialFont: ViewModifier {
+    @Environment(\.macNativeLook) private var native
     func body(content: Content) -> some View {
-        #if os(macOS)
-        content.font(MacLook.Text.smallStrong)
-        #else
-        content.font(WebFont.font(.sans, size: 11, weight: 600))
-        #endif
+        content.font(native ? MacLook.Text.smallStrong : WebFont.font(.sans, size: 11, weight: 600))
     }
 }
 
@@ -1051,22 +1061,22 @@ private struct NoteToolsBox: ViewModifier {
     let style: WebStylePair
     var field = false
     var focused = false
+    @Environment(\.macNativeLook) private var native
 
     func body(content: Content) -> some View {
-        #if os(macOS)
-        let shape = RoundedRectangle(cornerRadius: MacLook.rowRadius, style: .continuous)
-        content
-            .background(field ? MacLook.Colors.container.opacity(0.9) : MacLook.Colors.hover.opacity(0.35), in: shape)
-            .overlay {
-                if field { shape.strokeBorder(focused ? MacLook.Colors.accent : MacLook.Colors.separator, lineWidth: focused ? 2 : 1) }
-            }
-        #else
-        content.webBox(style)
-        #endif
+        if native {
+            let shape = RoundedRectangle(cornerRadius: MacLook.rowRadius, style: .continuous)
+            content
+                .background(field ? MacLook.Colors.container.opacity(0.9) : MacLook.Colors.hover.opacity(0.35), in: shape)
+                .overlay {
+                    if field { shape.strokeBorder(focused ? MacLook.Colors.accent : MacLook.Colors.separator, lineWidth: focused ? 2 : 1) }
+                }
+        } else {
+            content.webBox(style)
+        }
     }
 }
 
-#if os(macOS)
 /// The note tools' type and colours in the native look.
 enum NoteToolsLook {
     static func font(_ s: WebTextStyle) -> Font {
@@ -1089,5 +1099,4 @@ enum NoteToolsLook {
         }
     }
 }
-#endif
 #endif

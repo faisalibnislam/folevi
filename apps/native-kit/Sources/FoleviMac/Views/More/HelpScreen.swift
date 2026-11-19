@@ -147,12 +147,18 @@ struct HelpScreen: View {
             WebButton(account ? "Contact support" : "Email support", variant: .primary) { open("mailto:support@folevi.com") }
                 .padding(.top, b.margin.top)
             #else
+            if MacLook.padWide {
+                // (The iPad's wide layout: the Mac's.)
+                WebButton(account ? "Contact support" : "Email support", variant: .primary) { open("mailto:support@folevi.com") }
+                    .padding(.top, b.margin.top)
+            } else {
             Button { open("mailto:support@folevi.com") } label: {
                 Text(account ? "Contact support" : "Email support").webText(b.text).lineLimit(1).fixedSize()
                     .webElement(button)
             }
             .buttonStyle(.webHover(radius: b.radius))
             .padding(.top, b.margin.top)
+            }
             #endif
         }
     }

@@ -12,11 +12,16 @@ import SwiftUI
 import AppKit
 #endif
 
-/// A `ScrollView` whose content takes no pointer while it scrolls (macOS; a plain `ScrollView` on the iPad, where a
-/// touch on a moving list already only stops it).
+/// A `ScrollView` whose content takes no pointer while it scrolls: on the Mac, and in the iPad's wide layout (a
+/// trackpad's pointer over a moving list asks the same question of every row there; the scroll view's own phase says
+/// when it moves, and a touch on a moving list only stops it, as before). The iPhone's screens keep a plain one.
 struct QuietScrollView<Content: View>: View {
     private let axes: Axis.Set
     private let content: Content
+    #if os(iOS)
+    @Environment(\.macNativeLook) private var native
+    @State private var scrolling = false
+    #endif
 
     init(_ axes: Axis.Set = .vertical, @ViewBuilder content: () -> Content) {
         self.axes = axes
@@ -24,7 +29,15 @@ struct QuietScrollView<Content: View>: View {
     }
 
     var body: some View {
+        #if os(iOS)
+        ScrollView(axes) { content.allowsHitTesting(!(native && scrolling)) }
+            .onScrollPhaseChange { _, phase in
+                let moving = phase.isScrolling
+                if native, moving != scrolling { scrolling = moving }
+            }
+        #else
         ScrollView(axes) { content.modifier(QuietWhileScrolling()) }
+        #endif
     }
 }
 

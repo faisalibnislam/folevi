@@ -177,7 +177,10 @@ private struct IPadNotePage: UIViewControllerRepresentable {
 
 /// What the iPad frame asks of the app (FrameHost): the phone's account flows and the system's own sheets.
 extension RebuildFrameController: FrameHost {
+    /// Settings in their own sheet in the wide layout (the Mac's Settings window's content, IPadSettings), as the Mac
+    /// opens its Settings window; in the phone's layout, the phone's own Settings screen.
     func frameOpenSettings(section: String?) {
+        if wide { return IPadSettings.present(desk, section: section) }
         desk.open(FrameRoute(path: section.map { "/settings/\($0)" } ?? "/settings"))
     }
 

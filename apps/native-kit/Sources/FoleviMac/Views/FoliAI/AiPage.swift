@@ -274,7 +274,6 @@ struct AiConversationList: View {
         let scroll = look.s("ai.list.scroll")
         VStack(spacing: 0) {
             VStack(spacing: new.margin.bottom) {
-                #if os(macOS)
                 if chrome != nil {
                     Button { frame.open(.web("/ai")); model.newChat() } label: {
                         Label("New chat", systemImage: "plus").frame(maxWidth: .infinity)
@@ -285,9 +284,6 @@ struct AiConversationList: View {
                 } else {
                     webTop(look: look, new: new, well: well)
                 }
-                #else
-                webTop(look: look, new: new, well: well)
-                #endif
             }
             .padding(top.padding.edgeInsets)
             ScrollView {

@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { APP, newPerson } from "./helpers";
+import { APP, newPerson, openFoliAi } from "./helpers";
 
 // The AI agent in the chat. Without a model key on the server (CI, local dev) the agent can't plan, so
 // this covers what works without one: a request to change notes, sent in Chat (no separate Agent mode),
@@ -26,7 +26,7 @@ test("a request to change notes in Chat goes to the agent, which says plainly wh
 test("asking Foli AI to fix the note hands it to the agent, not a draft at the cursor", async ({ browser }) => {
   test.setTimeout(120_000);
   const { page, context } = await newPerson(browser, "Fix Person");
-  await page.getByRole("toolbar", { name: "Page tools" }).getByRole("button", { name: "Foli AI", exact: true }).click();
+  await openFoliAi(page);
   const panel = page.locator("#document-inspector");
   const modes = panel.getByRole("group", { name: "What Foli AI should do" });
   await expect(modes.getByRole("button", { name: "Write" })).toHaveAttribute("aria-pressed", "true");

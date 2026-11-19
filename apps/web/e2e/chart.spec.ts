@@ -201,7 +201,9 @@ test.describe("Chart", () => {
     // At phone width the toolbar never scrolls sideways: what doesn't fit folds into More, and a panel opened
     // from More floats by it, inside the window.
     await expect(tools.getByRole("button", { name: "More chart tools" })).toHaveCount(0);
-    await page.setViewportSize({ width: 375, height: 812 });
+    // (360 wide, a common phone: since notes went flat on 18 November 2026 a card at 375 is 323 wide, just
+    // enough for its tools; at 360 it is 308, under the 320 where the picture takes over.)
+    await page.setViewportSize({ width: 360, height: 800 });
     await card.scrollIntoViewIfNeeded();
     const fits = () => tools.evaluate((el) => el.scrollWidth <= el.clientWidth + 1 && [...el.querySelectorAll("button")].filter((b) => b.offsetParent).every((b) => b.getBoundingClientRect().right <= el.getBoundingClientRect().right + 1));
     await expect.poll(fits).toBe(true);

@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { newPerson, waitForSaved } from "./helpers";
+import { newPerson, waitForSaved, openFoliAi } from "./helpers";
 
 // Foli AI on the flowchart (docs/FLOWCHART_V2_PLAN.md, Intelligence) with a scripted model: development
 // builds let `window.__foleviTestFlowchartAi` answer instead of the server (flowchart/aiClient.ts), so the
@@ -277,7 +277,7 @@ test.describe("Flowchart Foli AI", () => {
     await page.locator(".fb-editor > .fb-bulleted").last().click();
     await page.keyboard.press("End");
     await expect(page.getByRole("application", { name: "Flowchart, 4 shapes" })).toBeVisible();
-    await page.getByRole("toolbar", { name: "Page tools" }).getByRole("button", { name: "Foli AI" }).click();
+    await openFoliAi(page);
     await expect(page.getByRole("application", { name: "Flowchart, 4 shapes" })).toBeVisible();
     await page.getByRole("button", { name: "Flowchart", exact: true }).click();
     await expect(page.getByRole("application", { name: /Flowchart/ })).toHaveCount(2);

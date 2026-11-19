@@ -108,7 +108,7 @@ test("Calendars: private links are refused, a load error is said plainly, rename
 
   await row.getByRole("button", { name: "Edit Example" }).click();
   await row.getByLabel("Name").fill("Example feed");
-  await row.getByText("Coral").click();
+  await row.getByTitle("Coral").click();
   await row.getByRole("button", { name: "Save" }).click();
   const renamed = panel.getByRole("listitem", { name: "Example feed" });
   await expect(renamed).toBeVisible();

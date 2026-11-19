@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { newPerson } from "./helpers";
+import { newPerson, openFoliAi } from "./helpers";
 
 // Milestone 8's study, meeting, translation and framework tools (docs/AI_ASSISTANT.md) without calling
 // Gemini: the new actions are offered in the "/" menu, the inline composer and the note's AI panel, and
@@ -68,7 +68,7 @@ test("the AI panel: study mode's empty state, the frameworks and translation, al
   const body = page.getByRole("textbox", { name: "Document body" });
   const first = body.locator("p.fb-paragraph").first();
 
-  await page.getByRole("toolbar", { name: "Page tools" }).getByRole("button", { name: "Foli AI" }).click();
+  await openFoliAi(page);
   const modes = page.getByRole("group", { name: "What Foli AI should do" });
   await modes.getByRole("button", { name: "Study", exact: true }).click();
   const studyArea = page.getByRole("region", { name: "Study", exact: true });

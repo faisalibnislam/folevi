@@ -95,7 +95,8 @@ test("mouse: reorder, nest, un-nest, refuse, open while resting, and +N more", a
   // All of it is still so after a reload.
   await page.reload();
   await expect(nav(page).getByRole("group", { name: "In Alpha" }).getByRole("link", { name: "Charlie" })).toBeVisible();
-  expect(await roots(page)).toEqual(["Bravo", "Echo", "Foxtrot"]);
+  // (Asked until it settles: the sidebar first draws this device's copy of the folders, then the server's.)
+  await expect.poll(() => roots(page)).toEqual(["Bravo", "Echo", "Foxtrot"]);
   await expect.poll(echoKids).toEqual(["Alpha", "Delta"]);
 });
 

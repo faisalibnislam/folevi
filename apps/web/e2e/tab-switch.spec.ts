@@ -10,6 +10,11 @@ test("switching tabs shows the note at once, without a loading placeholder", asy
   await page.goto(`${APP}/documents`);
   await page.getByRole("link", { name: /Trip Sketch/ }).first().click();
   await expect(page.getByRole("textbox", { name: "Title" })).toHaveValue(/Trip Sketch/);
+  // This note is opening for the first time: its title is known before its lines are, and its own placeholder
+  // shows meanwhile. The watch below starts once it has gone, or it was counted against the switch that follows
+  // (the test failed that way whenever the lines took a moment longer than the title).
+  await expect(page.locator(".ProseMirror > *").first()).toBeVisible();
+  await expect(page.locator('[aria-label="Loading document"]')).toHaveCount(0);
 
   for (const [name, title] of [["Welcome to Folevi", "Welcome to Folevi"], [/Trip Sketch/, /Trip Sketch/], ["Welcome to Folevi", "Welcome to Folevi"]] as const) {
     // Every frame from the click until the note shows: none may be the empty placeholder.

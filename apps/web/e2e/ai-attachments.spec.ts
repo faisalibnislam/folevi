@@ -9,6 +9,13 @@ import { APP, newPerson } from "./helpers";
 // Chromium's fake microphone (a steady tone) with the permission prompt answered.
 test.use({ launchOptions: { args: ["--use-fake-ui-for-media-stream", "--use-fake-device-for-media-stream"] } });
 
+// On CI these run first in their shard, against a local backend that has just started. Sending the first chat
+// message there has twice pushed several open queries past the backend's 1-second limit at once, and a query that
+// times out takes the page to its error screen (the limit and what it does to a page are described in
+// .github/workflows/ci.yml; seen on main on 19 November 2026 in runs 44497359828 and 44538632686). It is the
+// runner, not the chat: each try starts with a new person, and by the third the backend is warm.
+test.describe.configure({ retries: process.env.CI ? 3 : 0 });
+
 test("a file attached in the chat shows as a chip and stays on the message; an Excel file is refused first", async ({ browser }) => {
   test.setTimeout(120_000);
   const { page, context } = await newPerson(browser, "Attach Person");

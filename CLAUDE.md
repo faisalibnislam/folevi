@@ -1,5 +1,7 @@
 # Folevi
 
+> **Handoff:** read [HANDOFF.md](HANDOFF.md) first. After every change, update its Current state, Next steps and Change log, and commit it.
+
 Notes app: web (Next.js 16, `apps/web`), Convex backend (`convex/`), native Mac app (`apps/mac`), iPhone/iPad
 app (`apps/ios`), Android paused (`apps/android`), shared packages in `packages/`.
 

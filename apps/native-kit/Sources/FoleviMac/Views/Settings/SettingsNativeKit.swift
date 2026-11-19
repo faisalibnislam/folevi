@@ -367,7 +367,7 @@ struct NativeAccentButtonStyle: ButtonStyle {
     }
 }
 
-/// A native switch for Settings: the small system switch in Folevi's accent.
+/// A native switch for Settings: the small system switch, in the switch's own colour (FoleviSwitchTint).
 struct NativeSettingsSwitch: View {
     let isOn: Binding<Bool>
     let label: String
@@ -376,7 +376,7 @@ struct NativeSettingsSwitch: View {
             .toggleStyle(.switch)
             .controlSize(.small)
             .labelsHidden()
-            .tint(MacLook.Colors.accent)
+            .tint(FoleviSwitchTint.on)
             .accessibilityLabel(label)
     }
 }

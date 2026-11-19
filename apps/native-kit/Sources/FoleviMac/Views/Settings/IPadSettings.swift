@@ -83,6 +83,7 @@ struct IPadSettingsSheet: View {
         .environment(\.macNativeLook, true)
         .macNativeChrome()
         .tint(MacLook.Colors.accent)
+        .toggleStyle(NativeSwitchStyle())
         .background(MacLook.Colors.window)
     }
 }

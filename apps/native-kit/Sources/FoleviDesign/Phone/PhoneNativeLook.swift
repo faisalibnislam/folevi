@@ -46,6 +46,8 @@ public extension View {
             .environment(\.phoneMenus, menus)
             .environment(\.nativeShadowScale, PhoneNativeLook.webShadowScale)
             .tint(PhoneNativeLook.accent)
+            // Every plain switch in the switch's own colour: the accent can't fill it in dark mode (FoleviSwitchTint).
+            .toggleStyle(NativeSwitchStyle())
     }
 }
 

@@ -110,6 +110,8 @@ public struct IPadFrameView<Page: View>: View {
         // Folevi's black and white accent for what iOS tints (switches, a borderless button's words), never blue.
         .environment(\.macNativeLook, true)
         .tint(MacLook.Colors.accent)
+        // Switches in their own colour: the accent can't fill one in dark mode (FoleviSwitchTint).
+        .toggleStyle(NativeSwitchStyle())
         .onAppear { MacLook.padWide = true }
         .onDisappear { MacLook.padWide = false }
         .animation(MacLook.animation(reduceMotion), value: model.sidebarHidden)

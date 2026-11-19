@@ -138,7 +138,7 @@ public struct SignInFlow: View {
                 Text("You won't be asked for a code here again until then. Don't use this on shared computers.").foleviFont(.footnote).foregroundStyle(Folevi.color.inkMuted)
             }
         }
-        .toggleStyle(.switch)
+        .toggleStyle(NativeSwitchStyle())
         .padding(12)
         .background(RoundedRectangle(cornerRadius: Folevi.radius.control, style: .continuous).fill(Folevi.color.surfaceSunken))
         .accessibilityIdentifier("sign-in-trust")

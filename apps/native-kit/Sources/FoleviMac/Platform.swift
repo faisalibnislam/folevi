@@ -402,12 +402,12 @@ extension String {
 }
 
 extension View {
-    /// A checkbox on the Mac; the iPad's switch.
+    /// A checkbox on the Mac; the iPad's switch, in the switch's own colour (FoleviSwitchTint).
     func checkboxStyle() -> some View {
         #if os(macOS)
         toggleStyle(.checkbox)
         #else
-        self
+        toggleStyle(NativeSwitchStyle())
         #endif
     }
 }

@@ -1125,6 +1125,7 @@ export function DocumentView({ documentId }: { documentId: string }) {
         <div
           id="doc-scroll"
           ref={setScrollEl}
+          data-sheet-host=""
           data-iphone-scroll={iphone ? "" : undefined}
           data-iphone-plain={iphone && !pageBackdrop(style, look?.cover ?? DEFAULT_COVER, coverImageUrl) ? "" : undefined}
           data-native-chrome={iphone && nativeChromeMode ? "" : undefined}

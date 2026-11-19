@@ -224,7 +224,7 @@ function HistoryView({ onClose, documentId, title, style, cover, initialVersion 
         </header>
 
         <div className="flex min-h-0 flex-1 flex-col md:flex-row">
-          <main className="fb-page min-h-0 min-w-0 flex-1 overflow-y-auto bg-[var(--color-surface-sunken)] px-3 py-6 sm:px-8" data-font={(shown?.style ?? style).font} data-width={(shown?.style ?? style).width} style={themeFontVars(coverArtOf(cover)?.fonts)}>
+          <main className="fb-page min-h-0 min-w-0 flex-1 overflow-y-auto bg-[var(--color-surface-sunken)] px-3 py-6 sm:px-8" data-sheet-host="" data-font={(shown?.style ?? style).font} data-width={(shown?.style ?? style).width} style={themeFontVars(coverArtOf(cover)?.fonts)}>
             {diff && diff.authors.length ? (
               <div role="group" className="mx-auto mb-3 flex max-w-[calc(var(--editor-width)+8rem)] flex-wrap items-center gap-x-3 gap-y-1 text-footnote text-muted" aria-label="Changes in this version by">
                 <span>Changes by</span>

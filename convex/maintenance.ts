@@ -21,6 +21,7 @@ import { purgeOldReceipts } from "./lib/emailNotes";
 import { removeMirrors } from "./e2ee/mirrors";
 import { dropPublishedCopies } from "./e2ee/links";
 import { writeTombstone } from "./lib/e2ee/sealedWrites";
+import { monthOf } from "./lib/downloads";
 
 const BUDGET = 400;
 /** End-to-end encryption's scoped tables (docs/E2EE_DESIGN.md §5.1), purged with their workspace. */
@@ -751,6 +752,13 @@ export const housekeeping = internalMutation({
       .take(500);
     for (const n of notes) await ctx.db.delete(n._id);
     backlog ||= notes.length === 500;
+    const lastMonth = monthOf(Date.UTC(new Date(now).getUTCFullYear(), new Date(now).getUTCMonth() - 1, 1));
+    const downloads = await ctx.db
+      .query("downloadUsage")
+      .withIndex("by_month", (q) => q.lt("month", lastMonth))
+      .take(500);
+    for (const d of downloads) await ctx.db.delete(d._id);
+    backlog ||= downloads.length === 500;
     backlog ||= await purgeOldReceipts(ctx, now);
     if (backlog) await ctx.scheduler.runAfter(0, internal.maintenance.housekeeping, {});
   },

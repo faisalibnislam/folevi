@@ -853,6 +853,20 @@ export default defineSchema({
   }).index("by_workspace_profile", ["workspaceId", "profileId"]),
 
   /**
+   * Bytes downloaded per storage account per UTC month, for the fair-use download allowance
+   * (lib/downloads.ts). `account` is "p:<profile>" (a Personal or a free pool), "w:<workspace>:<profile>" (a
+   * member's quota in a paid workspace) or "w:<workspace>" (a workspace with a storage override). Rows
+   * older than last month are removed by housekeeping.
+   */
+  downloadUsage: defineTable({
+    account: v.string(),
+    month: v.string(),
+    bytes: v.number(),
+  })
+    .index("by_account_month", ["account", "month"])
+    .index("by_month", ["month"]),
+
+  /**
    * Live AI output while it's being written (convex/ai.ts, and chat answers in aiChat.ts), so the app can
    * show it word by word. Holds only the AI's reply (never the prompt or the notes sent), readable only by
    * its owner, and deleted shortly after it finishes (plus an hourly sweep for anything left behind).

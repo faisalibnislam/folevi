@@ -19,6 +19,7 @@ import {
 } from "./lib/auth";
 import { fail } from "./lib/errors";
 import { adjustStorageUsed, assertStorageFor, storageChargeFor } from "./lib/entitlements";
+import { chargeDownload as chargeFileDownload } from "./lib/downloads";
 import {
   insertScoped,
   personalScope,
@@ -493,6 +494,21 @@ export const byPublicId = internalQuery({
       .query("files")
       .withIndex("by_public_id", (q) => q.eq("publicId", args.fileId))
       .unique(),
+});
+
+/**
+ * Counts a download from the /files/ route against the file's storage account, or refuses it past the
+ * month's fair-use allowance (lib/downloads.ts). Returns the message to show when refused.
+ */
+export const chargeDownload = internalMutation({
+  args: { fileId: v.id("files"), bytes: v.number() },
+  handler: async (ctx, args): Promise<string | null> => {
+    const file = await ctx.db.get(args.fileId);
+    if (!file) return null;
+    const scope = scopeOfRow(file);
+    const result = await chargeFileDownload(ctx, scope, args.bytes, scope.kind === "workspace" ? (file.chargedTo ?? file.uploadedBy) : undefined);
+    return result.ok ? null : result.message;
+  },
 });
 
 // ---------------------------------------------------------------- pasted blocks

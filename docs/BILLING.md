@@ -57,6 +57,10 @@ storage and its own AI credits, and neither ever changes the other.
 - **Admin overrides:** a workspace with a storage override has that one total limit (no pool, no
   per-member quota). A person's override replaces their Personal limit (on Free, the pool's).
 - Over a limit, only growth is refused: everything stored stays readable, and deleting frees room.
+- **Fair-use downloads** (`convex/lib/downloads.ts`, Terms): each storage account above may download 3 times
+  its storage limit a UTC month, at least 2 GB (Free 2 GB, Pro 30 GB, Pro AI 150 GB). Counted in
+  `downloadUsage` by the `/files/` route (exports included) and Vault downloads; past it the route answers
+  429 with the date it resets. Rows older than last month are removed by housekeeping.
 
 ## AI credits
 

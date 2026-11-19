@@ -19,7 +19,7 @@ const NOTE_CHARS = 6_000;
 const SOURCES_TOKENS = 12_000;
 const FOCUS_CHARS = 30_000;
 /** How often the text so far is written while it streams (convex/ai.ts FLUSH_MS). */
-const FLUSH_MS = 90;
+const FLUSH_MS = 400;
 
 /** Where a streamed answer goes (convex/ai.ts AnswerSink). */
 export interface AnswerSink {
@@ -52,7 +52,7 @@ export interface LocalAnswerOutput {
   stopped: boolean;
 }
 
-/** Runs a request into a sink, the text so far written at most every 90 ms, then settled (streamInto). */
+/** Runs a request into a sink, the text so far written at most every 400 ms, then settled (streamInto). */
 export async function streamInto(sink: AnswerSink | undefined, req: Parameters<typeof localAi.generate>[0], memory: string | null): Promise<{ text: string; stopped: boolean }> {
   if (!sink) {
     const out = await localAi.generate(req, { memory });

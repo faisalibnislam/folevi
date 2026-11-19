@@ -76,7 +76,7 @@ const GONE = "That conversation isn't there anymore.";
 const MAX_SHEET_STEPS = 5;
 /** `calculate` calls one answer may make. */
 const MAX_CALCULATIONS = 24;
-const FLUSH_MS = 90;
+const FLUSH_MS = 400;
 /** Windows of a long recording transcribed at once (each is a call of its own). */
 const WINDOW_CONCURRENCY = 3;
 

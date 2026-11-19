@@ -90,6 +90,16 @@ http.route({
     }
     const file = await ctx.runQuery(internal.files.byPublicId, { fileId });
     if (!file || file.status !== "ready") return new Response("Not found", { status: 404 });
+    // Fair use (lib/downloads.ts): count what this request serves before reading the bytes.
+    const asked = byteRange(request.headers.get("range"), file.size);
+    const serving = asked && asked !== "invalid" ? asked.end - asked.start + 1 : asked === "invalid" ? 0 : file.size;
+    const refused = serving > 0 ? await ctx.runMutation(internal.files.chargeDownload, { fileId: file._id, bytes: serving }) : null;
+    if (refused) {
+      return new Response(refused, {
+        status: 429,
+        headers: { "content-type": "text/plain; charset=utf-8", "cache-control": "no-store", ...corsFor(request.headers.get("origin")) },
+      });
+    }
     const blob = await ctx.storage.get(file.storageId);
     if (!blob) return new Response("Not found", { status: 404 });
     const inline = SAFE_INLINE.has(file.mimeType);

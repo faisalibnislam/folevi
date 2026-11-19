@@ -2,7 +2,7 @@ import Link from "next/link";
 import { DocShell } from "@/components/marketing/DocShell";
 import { pageMetadata } from "@/components/marketing/seo";
 import { SECURITY_EMAIL } from "@/components/marketing/site";
-import { PACK_VALID_MONTHS, TIER_NAMES, TRIAL_CREDITS, TRIAL_DAYS, TRIAL_TIER } from "@/lib/plans";
+import { DOWNLOAD_FLOOR_BYTES, DOWNLOAD_STORAGE_MULTIPLE, PACK_VALID_MONTHS, STORAGE_BYTES, TIER_NAMES, TRIAL_CREDITS, TRIAL_DAYS, TRIAL_TIER, downloadAllowance, sizeLabel } from "@/lib/plans";
 import { DraftNotice, PageHeader } from "@/components/marketing/ui";
 import { PageFrame } from "@/components/marketing/cards";
 
@@ -32,7 +32,7 @@ export default function TermsPage() {
   return (
     <PageFrame>
       <PageHeader eyebrow="Legal" title="Terms of use" lede="The ground rules for using Folevi, in plain language.">
-        <DraftNotice updated="November 18, 2026" />
+        <DraftNotice updated="November 19, 2026" />
       </PageHeader>
       <DocShell toc={toc}>
         <h2 id="agreement">The agreement</h2>
@@ -154,6 +154,11 @@ export default function TermsPage() {
             signed in at once, which being in a workspace doesn’t change. Going over a limit, for example after moving to a
             smaller plan, pauses new uploads or holds a new device until you make room or upgrade. Nothing already stored is
             deleted, and you can still open, edit, organize, export and delete it.
+          </li>
+          <li>
+            <strong>Fair use of downloads.</strong> Each month, files and exports can be downloaded up to {DOWNLOAD_STORAGE_MULTIPLE} times
+            your storage allowance (at least {sizeLabel(DOWNLOAD_FLOOR_BYTES)}): on Pro, {sizeLabel(downloadAllowance(STORAGE_BYTES.pro))}. Past
+            that, downloads pause until the 1st of the next month (UTC). Nothing is deleted, and your notes keep working.
           </li>
           <li>
             If we change prices, we’ll tell you by email at least 30 days before the change applies to your plan.

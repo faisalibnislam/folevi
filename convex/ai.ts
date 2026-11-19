@@ -89,7 +89,7 @@ export async function gemini(req: GeminiRequest, meter: CallUsage[], onDelta?: O
 // ---------------------------------------------------------------------------------------------------
 
 const STREAM_TTL_MS = 5 * 60_000;
-const FLUSH_MS = 90;
+const FLUSH_MS = 400;
 
 /** Creates an empty stream for the signed-in person; the client subscribes, then starts the AI call with it. */
 export const startStream = mutation({

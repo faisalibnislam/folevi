@@ -88,6 +88,11 @@ export const sizeLabel = (bytes: number) => (bytes >= GB ? `${bytes / GB} GB` : 
 export const MONTHLY_CREDITS: Record<PlanTier, number> = { free: 0, core: 0, pro: 180, pro_ai: 550 };
 /** Storage per tier: Free is the shared pool; paid tiers are per person. */
 export const STORAGE_BYTES: Record<PlanTier, number> = { free: 500 * MB, core: 10 * GB, pro: 10 * GB, pro_ai: 50 * GB };
+/** Fair-use downloads a month (lib/downloads.ts): this many times the storage allowance, never under the floor. */
+export const DOWNLOAD_STORAGE_MULTIPLE = 3;
+export const DOWNLOAD_FLOOR_BYTES = 2 * GB;
+/** The bytes an account may download in a month, given its storage limit. */
+export const downloadAllowance = (storageBytes: number) => Math.max(DOWNLOAD_FLOOR_BYTES, DOWNLOAD_STORAGE_MULTIPLE * storageBytes);
 /** Tiers without the AI Assistant (the server refuses AI in their scope). */
 export const tierHasAi = (tier: PlanTier) => tier !== "core";
 

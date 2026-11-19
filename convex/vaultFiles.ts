@@ -11,6 +11,7 @@ import { fail } from "./lib/errors";
 import { consume } from "./lib/rateLimit";
 import { insertScoped, scopeOfRow } from "./lib/scope";
 import { adjustStorageUsed, assertStorageFor } from "./lib/entitlements";
+import { chargeDownload } from "./lib/downloads";
 import { requireVault, vaultRoleAtLeast } from "./lib/vault/access";
 import { appendLog } from "./lib/vault/log";
 import { notifyVaultChange } from "./lib/vault/notify";
@@ -287,6 +288,9 @@ export const fileUrl = mutation({
     const { vault, role } = await requireVault(ctx, profile, args.vaultId);
     const item = await itemOf(ctx, vault, args.itemId);
     if (item.kind !== "file" || !item.storageId) fail("not_found", "File not found.");
+    const scope = scopeOfRow(vault);
+    const allowed = await chargeDownload(ctx, scope, item.size ?? 0, scope.kind === "workspace" ? item.createdBy : undefined);
+    if (!allowed.ok) fail("rate_limited", allowed.message);
     const url = await ctx.storage.getUrl(item.storageId);
     if (!url) fail("not_found", "File not found.");
     await appendLog(ctx, vault, { event: args.purpose === "preview" ? "file.preview" : "file.download", actor: { profile, role }, item: { publicId: item.publicId, kind: "file" }, detail: { size: item.size ?? 0 }, client: args.client });

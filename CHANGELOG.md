@@ -4,6 +4,35 @@ Every Folevi release, newest first, written by `node scripts/version.mjs` from `
 
 Versions are MAJOR.UPDATE.PATCH, PATCH at least two digits: a Major release (2.0.00), a Big update (1.1.05 after 1.0.05) or a Small update (1.0.06 after 1.0.05).
 
+## Version 1.4.49: Small update
+
+Released 2026-11-19 08:03:11+06:00 (build 63, tag v1.4.49)
+
+Mac: a calmer, more consistent look across menus, fields, shadows, the Vault, Tasks and Calendar, and task dialogs that show their panel again.
+
+### Improved
+
+- Mac: menus, popovers and the bar over a note are glass, and every menu has taller rows with icons
+- Mac: one text field everywhere, taller, with a visible edge and a clear active state
+- Mac: one segmented control, the pill, at one size
+- Mac: lighter shadows, the same everywhere
+- Mac: Settings shows the theme as three pictures of the window
+- Mac: the Vault's Add dialog and its settings are redesigned, with named groups and one control per row
+- Mac: the month in Calendar fits the window, and its side list scrolls on its own
+- Mac: Tasks has a magnifier in its filter, even spacing between a task's details and matching day headings
+- Mac: the task dialogs use one kind of control, and calendar colors are a row of dots
+
+### Fixed
+
+- Mac: Edit task, Move task, Quick add and Subscribe opened with no panel behind their fields
+- Mac: a done task's checkbox was invisible in Completed, the Calendar's day list and Agenda
+- Mac: the list of times in a task dialog was see-through
+- Mac: a note's panel covered the note's words in windows narrower than about 1490 points
+- Mac: the open tab could end up under the arrows when the tabs first overflowed
+- Mac: Notes was cut off in the Vault's Add dialog
+- Mac: words in the Style panel sat against the edge of their highlight
+- Mac: every day heading in Agenda was red; now only Overdue is
+
 ## Version 1.4.48: Small update
 
 Released 2026-11-18 21:48:57+06:00 (build 62, tag v1.4.48)

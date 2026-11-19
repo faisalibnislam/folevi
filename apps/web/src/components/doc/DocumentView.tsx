@@ -67,6 +67,7 @@ import { ViewChrome, useShell } from "@/components/app/Shell";
 import { setBlockHighlight } from "@/components/editor/blockHighlight";
 import { usePageBreakMask } from "./usePageBreakMask";
 import { Editor, type EditorHandle } from "@/components/editor/Editor";
+import { focusEndOfNote } from "@/components/editor/commands";
 import type { DecorationInputs } from "@/components/editor/plugins";
 import { coverArtOf, coverArtThumbUrl, coverBackground, pageBackdrop, sheetProps, styleColorsOf } from "@/lib/cover";
 import { themeFontVars } from "@/lib/themes";
@@ -1158,6 +1159,12 @@ export function DocumentView({ documentId }: { documentId: string }) {
           {meta?.breadcrumbs.length && !iphone ? <NestedPath crumbs={meta.breadcrumbs} title={pageTitle} /> : null}
           <article
             ref={setSheetEl}
+            // A click or a tap on the empty paper under the note writes there (the paper itself, nothing on it).
+            onClick={(e) => {
+              const ed = editorRef.current?.editor;
+              if (readOnly || !ed || ed.isDestroyed || e.target !== e.currentTarget || e.clientY <= ed.view.dom.getBoundingClientRect().bottom) return;
+              focusEndOfNote(ed);
+            }}
             className="fb-sheet ui-sheet relative mx-auto animate-[folio-settle_240ms_var(--ease-folio)]"
             data-background={style.background}
             {...sheetAttrs}

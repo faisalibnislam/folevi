@@ -8,9 +8,9 @@ import { TextSelection } from "@tiptap/pm/state";
 import { undoDepth } from "@tiptap/pm/history";
 import { ALL_MARKS, ALL_NODES } from "@/components/editor/extensions";
 import { BlockIdentity, BlockKeymap, MarkdownShortcuts, Triggers, type TriggerState } from "@/components/editor/plugins";
-import { BlockSelectionExtension } from "@/components/editor/blockSelection";
+import { BlockSelectionExtension, blockSelectionRange } from "@/components/editor/blockSelection";
 import { TabsExtension } from "@/components/editor/tabs/tabsExtension";
-import { blocksInSelection, changeDepth } from "@/components/editor/commands";
+import { blocksInSelection, changeDepth, focusEndOfNote } from "@/components/editor/commands";
 import { foldToggle } from "@/components/editor/toggleFold";
 
 let nextId = 0;
@@ -90,6 +90,31 @@ describe("the lines a text selection covers", () => {
   });
 });
 
+describe("Shift with the up and down arrows", () => {
+  const four = () => make([p("One"), p("Two"), p("Three"), p("Four")]);
+
+  test("taking a line back off a selection shrinks it, and never makes it whole blocks", () => {
+    const e = four();
+    // From the start of "One", Shift+Down twice: the head rests at the start of "Three". Then Shift+Up.
+    select(e, posOf(e, 0) + 1, posOf(e, 2) + 1);
+    expect(key(e, "ArrowUp", { shiftKey: true })).toBe(false);
+    expect(blockSelectionRange(e.state)).toBeNull();
+    // From the middle of "Three" up to the end of the shorter "Two" above, then Shift+Down.
+    select(e, posOf(e, 2) + 4, posOf(e, 2) - 1);
+    expect(key(e, "ArrowDown", { shiftKey: true })).toBe(false);
+    expect(blockSelectionRange(e.state)).toBeNull();
+    e.destroy();
+  });
+
+  test("growing a selection past a line's end still takes whole blocks", () => {
+    const e = four();
+    select(e, posOf(e, 0) + 2, posOf(e, 2) - 1);
+    expect(key(e, "ArrowDown", { shiftKey: true })).toBe(true);
+    expect(blockSelectionRange(e.state)).toEqual({ from: 0, to: 2 });
+    e.destroy();
+  });
+});
+
 describe("Backspace at the start of the line after a tabs block", () => {
   const tabs = (lastOfOpenTab: JSONContent) =>
     make([
@@ -165,6 +190,39 @@ describe("folding a toggle", () => {
     expect(key(e, "Enter", { ctrlKey: true }) || key(e, "Enter", { metaKey: true })).toBe(true);
     expect(e.state.doc.firstChild!.attrs.collapsed).toBe(true);
     expect(undoDepth(e.state)).toBe(steps);
+    e.destroy();
+  });
+});
+
+describe("a click on the empty paper under the note", () => {
+  test("puts the caret at the end of the last line", () => {
+    const e = make([p("One"), p("Two")]);
+    expect(focusEndOfNote(e)).toBe(true);
+    expect(texts(e)).toEqual(["paragraph:One@0", "paragraph:Two@0"]);
+    expect(e.state.selection.from).toBe(e.state.doc.content.size - 1);
+    e.destroy();
+  });
+
+  test("starts a new line when the note ends in something that can't be written in", () => {
+    const e = make([p("One"), { type: "divider", attrs: { id: "D", depth: 0 } }]);
+    focusEndOfNote(e);
+    expect(texts(e)).toEqual(["paragraph:One@0", "divider:@0", "paragraph:@0"]);
+    expect(e.state.selection.$from.index(0)).toBe(2);
+    e.destroy();
+  });
+
+  test("starts a new line after a folded toggle, never inside what it hides", () => {
+    const e = make([line("toggle", "Toggle", { collapsed: true }), p("hidden", { depth: 1 })]);
+    focusEndOfNote(e);
+    expect(texts(e)).toEqual(["toggle:Toggle@0", "paragraph:hidden@1", "paragraph:@0"]);
+    expect(e.state.selection.$from.index(0)).toBe(2);
+    e.destroy();
+  });
+
+  test("does nothing in a note that can only be read", () => {
+    const e = make([p("One")]);
+    e.setEditable(false);
+    expect(focusEndOfNote(e)).toBe(false);
     e.destroy();
   });
 });

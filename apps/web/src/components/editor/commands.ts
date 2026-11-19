@@ -646,3 +646,23 @@ export function focusInsideBlock(editor: Editor, pos: number) {
     dom?.querySelector?.<HTMLElement>("[data-enter-focus]")?.focus();
   });
 }
+
+/**
+ * The caret at the end of the note, for a click or a tap on the empty paper under it: at the end of its last
+ * line, or on a new line when the note ends in something that can't be written in (a picture, a table, a
+ * canvas) or in lines that are folded away. On a phone that was the only way, short of Insert, to start a
+ * line under such a block.
+ */
+export function focusEndOfNote(editor: Editor): boolean {
+  if (!editor.isEditable) return false;
+  const { doc, schema } = editor.state;
+  const last = doc.lastChild;
+  const lastIndex = doc.childCount - 1;
+  const writable = last && last.isTextblock && last.type.name !== "codeBlock" && !hiddenIndices(editor.state).has(lastIndex);
+  const tr = editor.state.tr;
+  if (!writable) tr.insert(doc.content.size, schema.nodes.paragraph!.create({ id: null, depth: 0 }));
+  tr.setSelection(TextSelection.create(tr.doc, tr.doc.content.size - 1));
+  editor.view.dispatch(tr.scrollIntoView());
+  editor.view.focus();
+  return true;
+}

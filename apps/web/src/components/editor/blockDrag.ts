@@ -45,6 +45,8 @@ const EDGE = 64;
 const HOLD_MS = 280;
 
 let active = false;
+/** Calls off the finger drag that is running, if one is (see beginPointerDrag). */
+let callOffTouch: (() => void) | null = null;
 /** True while a drag is running (hover affordances hide themselves). */
 export function isDragging(): boolean {
   return active;
@@ -111,7 +113,13 @@ export function glowBlocks(editor: Editor, index: number, count: number) {
 }
 
 export function beginPointerDrag({ editor, payload, event, onDrop, onStart, onEnd, holdToLift, liftAt }: Options): void {
-  if (event.button !== 0 || active) return;
+  if (event.button !== 0) return;
+  if (active) {
+    // A new press while a finger drag is still "running": that finger is long gone (its last events never
+    // came). Called off, so the page is not left with a floating block and no grip for good.
+    callOffTouch?.();
+    return;
+  }
   // A finger: felt when the block lifts and when it lands, and followed by its touches too (iOS can stop
   // sending pointer events for a touch that has been still for a while).
   const touch = event.pointerType === "touch";
@@ -325,7 +333,11 @@ export function beginPointerDrag({ editor, payload, event, onDrop, onStart, onEn
     window.removeEventListener("keydown", onKey, true);
     window.removeEventListener("touchmove", onTouchMove, true);
     window.removeEventListener("touchend", onTouchEnd, true);
-    window.removeEventListener("touchcancel", onTouchEnd, true);
+    window.removeEventListener("touchcancel", onTouchCancel, true);
+    pressed?.removeEventListener("touchmove", onTouchMove);
+    pressed?.removeEventListener("touchend", onTouchEnd);
+    pressed?.removeEventListener("touchcancel", onTouchCancel);
+    if (callOffTouch === cancel) callOffTouch = null;
     window.removeEventListener("scroll", forgetLayout, true);
     window.removeEventListener("resize", forgetLayout);
     sizeWatch?.disconnect();
@@ -409,9 +421,8 @@ export function beginPointerDrag({ editor, payload, event, onDrop, onStart, onEn
     }
   }
 
-  function onCancel() {
-    // A touch carries on through its touch events (the pointer can be called off once it has rested).
-    if (touch && started) return;
+  /** Calls the drag off: the block goes back where it was. */
+  function cancel() {
     if (finished) return;
     const was = started;
     cleanup();
@@ -419,11 +430,25 @@ export function beginPointerDrag({ editor, payload, event, onDrop, onStart, onEn
     onEnd?.(false);
   }
 
+  function onCancel() {
+    // A touch carries on through its touch events (the pointer can be called off once it has rested).
+    if (touch && started) return;
+    cancel();
+  }
+
+  /**
+   * The system took the touch (a notification pulled down, a call, the app switcher): the block goes home.
+   * This used to drop it wherever the finger happened to be.
+   */
+  function onTouchCancel() {
+    cancel();
+  }
+
   function onKey(e: KeyboardEvent) {
     if (e.key === "Escape" && started) {
       e.preventDefault();
       e.stopPropagation();
-      onCancel();
+      cancel();
     }
   }
 
@@ -431,10 +456,18 @@ export function beginPointerDrag({ editor, payload, event, onDrop, onStart, onEn
   window.addEventListener("pointerup", onUp, true);
   window.addEventListener("pointercancel", onCancel, true);
   window.addEventListener("keydown", onKey, true);
+  // What was pressed. A touch's events go to the element it began on for as long as it lasts, and never reach
+  // the window once that element has left the page (the grip is taken away while a block is dragged): heard
+  // there too, or the drag could never end.
+  const pressed = touch && event.target instanceof Element ? event.target : null;
   if (touch) {
     window.addEventListener("touchmove", onTouchMove, { capture: true, passive: true });
     window.addEventListener("touchend", onTouchEnd, true);
-    window.addEventListener("touchcancel", onTouchEnd, true);
+    window.addEventListener("touchcancel", onTouchCancel, true);
+    pressed?.addEventListener("touchmove", onTouchMove, { passive: true });
+    pressed?.addEventListener("touchend", onTouchEnd);
+    pressed?.addEventListener("touchcancel", onTouchCancel);
+    callOffTouch = cancel;
   }
   if (liftAt) {
     px = liftAt.x;

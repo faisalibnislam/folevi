@@ -80,8 +80,9 @@ describe("Markdown inline shortcuts", () => {
 describe("multi-block actions", () => {
   test("move and duplicate act on every block of a text selection, not just the first", () => {
     const e = makeEditor(doc(para("a", "A"), para("b", "B"), para("c", "C"), para("d", "D")));
-    // Select from inside B to inside C.
-    e.view.dispatch(e.state.tr.setSelection(TextSelection.create(e.state.doc, 4, 7)));
+    // Select from inside B to inside C. (To the end of C's letter: a selection that only reaches the very
+    // start of C has nothing of C in it and leaves it alone, test/editor-core-edges.test.ts.)
+    e.view.dispatch(e.state.tr.setSelection(TextSelection.create(e.state.doc, 4, 8)));
     expect(blocksInSelection(e.state).map((b) => b.node.textContent)).toEqual(["B", "C"]);
     moveBlock(e, -1);
     expect(texts(e)).toEqual(["B:0", "C:0", "A:0", "D:0"]);

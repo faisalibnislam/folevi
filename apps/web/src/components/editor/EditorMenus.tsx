@@ -2079,9 +2079,15 @@ function BlockHandle({
       cancelAnimationFrame(frame);
       frame = requestAnimationFrame(() => {
         if (menu || isDragging()) return;
+        // No grip on a phone (editor-phone.css hides it): nothing to place, on any key or scroll frame.
+        if (document.documentElement.hasAttribute("data-iphone")) return setHover((had) => (had ? null : had));
         if (!editor.isFocused && !pressingHandle.current) return setHover(null);
-        const idx = editor.state.selection.$head.index(0);
-        const el = blockElements(dom)[idx];
+        const { doc, selection } = editor.state;
+        const idx = selection.$head.index(0);
+        // The caret's block, asked for directly. (Listing every block of the note to pick one, on each key and
+        // each frame of a scroll, was work that grew with the note.)
+        const found = idx < doc.childCount ? editor.view.nodeDOM(doc.resolve(0).posAtIndex(idx)) : null;
+        const el = found instanceof HTMLElement && found.parentElement === dom ? found : (blockElements(dom)[idx] ?? null);
         if (!el || el.classList.contains("fb-hidden")) return setHover(null);
         const line = handleLine(el);
         const next = { index: idx, top: line.top, left: blockIndentLeft(el), height: line.height };

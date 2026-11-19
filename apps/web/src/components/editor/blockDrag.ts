@@ -459,7 +459,10 @@ export function beginPointerDrag({ editor, payload, event, onDrop, onStart, onEn
   // What was pressed. A touch's events go to the element it began on for as long as it lasts, and never reach
   // the window once that element has left the page (the grip is taken away while a block is dragged): heard
   // there too, or the drag could never end.
-  const pressed = touch && event.target instanceof Element ? event.target : null;
+  // (The nearest HTML element: a press on the grip's icon is on an SVG node inside the button, and the events
+  // of a touch bubble up inside what was taken off the page.)
+  const pressedOn = touch && event.target instanceof Element ? event.target : null;
+  const pressed: HTMLElement | null = pressedOn instanceof HTMLElement ? pressedOn : (pressedOn?.closest<HTMLElement>("button, a, div, span") ?? null);
   if (touch) {
     window.addEventListener("touchmove", onTouchMove, { capture: true, passive: true });
     window.addEventListener("touchend", onTouchEnd, true);

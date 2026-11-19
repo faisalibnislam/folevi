@@ -267,7 +267,6 @@ export function DocumentView({ documentId }: { documentId: string }) {
   const [scrollEl, setScrollEl] = useState<HTMLDivElement | null>(null);
   // Coming back to the note's tab shows it where it was left (scroll, caret, keyboard): its page went meanwhile.
   useNoteViewState(documentId, scrollEl, editor, reconciled || cacheLoaded);
-  const [focusedBlock, setFocusedBlock] = useState<string | null>(null);
   const [shareOpen, setShareOpen] = useState(false);
   const shareButton = useRef<HTMLButtonElement>(null);
   const [historyOpen, setHistoryOpen] = useState(false);
@@ -397,25 +396,44 @@ export function DocumentView({ documentId }: { documentId: string }) {
   }, [meta?.document.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Presence heartbeat with the focused block (never leaves the authorization boundary: server-checked).
-  const focusedRef = useRef(focusedBlock);
-  focusedRef.current = focusedBlock;
+  // The block the caret is in is kept in a ref, never in state: as state it drew the whole note page again
+  // (this component, the editor's menus, every panel) each time the caret entered another line, on every Enter
+  // and arrow key, only to restart the timer below.
+  const focusedRef = useRef<string | null>(null);
   const sentFocus = useRef<string | null | undefined>(undefined);
   const beat = () => {
     sentFocus.current = focusedRef.current;
     void heartbeat({ documentId, sessionId, focusedBlockId: focusedRef.current }).catch(() => undefined);
   };
+  const beatRef = useRef(beat);
+  beatRef.current = beat;
+  const presenceOn = useRef(false);
+  presenceOn.current = Boolean(meta && online && caps.presence);
+  const beatLater = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Moving through the note tells others where the caret is once it rests, not at every block it passes.
+  const onFocusBlock = useCallback((id: string | null) => {
+    if (id === focusedRef.current) return;
+    focusedRef.current = id;
+    if (beatLater.current) clearTimeout(beatLater.current);
+    beatLater.current = null;
+    if (!presenceOn.current || id === sentFocus.current) return;
+    beatLater.current = setTimeout(() => {
+      beatLater.current = null;
+      if (presenceOn.current) beatRef.current();
+    }, 1500);
+  }, []);
+  useEffect(
+    () => () => {
+      if (beatLater.current) clearTimeout(beatLater.current);
+    },
+    [],
+  );
   useEffect(() => {
     if (!meta || !online || !caps.presence) return;
     beat();
     const id = setInterval(beat, 20_000);
     return () => clearInterval(id);
   }, [meta?.document.id, online]); // eslint-disable-line react-hooks/exhaustive-deps
-  // Moving through the note tells others where the caret is once it rests, not at every block it passes.
-  useEffect(() => {
-    if (!meta || !online || !caps.presence || focusedBlock === sentFocus.current) return;
-    const t = setTimeout(beat, 1500);
-    return () => clearTimeout(t);
-  }, [meta?.document.id, online, focusedBlock]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => () => void (caps.presence ? leave({ documentId, sessionId }).catch(() => undefined) : undefined), []); // eslint-disable-line react-hooks/exhaustive-deps
   const presenceNow = Math.floor(Date.now() / 15_000) * 15_000;
   const livePresence = useQuery(api.presence.list, meta && caps.presence ? { documentId, now: presenceNow } : "skip");
@@ -1229,7 +1247,7 @@ export function DocumentView({ documentId }: { documentId: string }) {
                       editable={!readOnly}
                       label={meta?.inTrash ? "Document body, in Trash: restore the note to edit it" : undefined}
                       decorations={decorations}
-                      onFocusBlock={setFocusedBlock}
+                      onFocusBlock={onFocusBlock}
                       onCommentBlock={caps.comments ? (id) => openComments(id) : undefined}
                       onEditorReady={setEditor}
                       onExitTop={() => {

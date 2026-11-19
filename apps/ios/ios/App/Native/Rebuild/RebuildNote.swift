@@ -140,9 +140,14 @@ struct RebuildNoteScreen: View {
                 .textInputAutocapitalization(.never)
                 .keyboardType(.URL)
             Button("Cancel", role: .cancel) { model.editor(.focus) }
+            // The field opens empty (the page doesn't say the address): left empty, Update changes nothing. It
+            // used to take the link away. Taking it away is its own button.
+            if model.editorState?.link == true {
+                Button("Remove link", role: .destructive) { model.editor(.link(href: nil)) }
+            }
             Button(model.editorState?.link == true ? "Update" : "Link") {
                 let href = linkText.trimmingCharacters(in: .whitespacesAndNewlines)
-                model.editor(.link(href: href.isEmpty ? nil : href))
+                if href.isEmpty { model.editor(.focus) } else { model.editor(.link(href: href)) }
             }
         }
     }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { useAiFeature } from "@/lib/mode";
 import type { FunctionReturnType } from "convex/server";
@@ -8,13 +8,17 @@ import type { Editor } from "@tiptap/core";
 import type { Node as PMNode } from "@tiptap/pm/model";
 import { closeHistory } from "@tiptap/pm/history";
 import { Copy, HelpCircle, Link2, ListChecks, ListTodo, X } from "lucide-react";
-import { ulid } from "@folevi/editor-schema";
+import { ulid, type WireBlock } from "@folevi/editor-schema";
 import { api } from "@/lib/convex/api";
 import { useAppRouter } from "@/lib/app/router";
 import { useToast, errorMessage } from "@/components/ui/Toast";
 import { useAppState } from "@/lib/app/state";
 import { useEngineSelector } from "@/lib/hooks/useEngine";
 import { patternItems, patternSuggestions, suggestionLines, type PatternHit } from "@/lib/suggestions";
+
+/** How long writing rests before the note is read again for questions and action items. */
+const SUGGESTIONS_REST_MS = 1200;
+const NO_BLOCKS: WireBlock[] = [];
 
 type Data = FunctionReturnType<typeof api.aiSuggestions.forNote>;
 export type NoteSuggestion = Data["items"][number];
@@ -253,11 +257,23 @@ export function NoteSuggestions({
   const suggestions = useAiFeature("suggestions");
   const data = useQuery(api.aiSuggestions.forNote, suggestions ? { documentId, lines: false } : "skip");
   const { engine } = useAppState();
-  const hits = useEngineSelector(
+  // The note is read for them once writing rests, not inside the selector: there it ran on every change of the
+  // sync state (each save is several), walking every line of a long note each time while typing.
+  const blocks = useEngineSelector(
     engine,
-    useCallback(() => (engine ? patternSuggestions(suggestionLines(engine.documentBlocks(documentId))) : []), [engine, documentId]),
-    sameHits,
+    useCallback(() => (engine ? engine.documentBlocks(documentId) : NO_BLOCKS), [engine, documentId]),
   );
+  const [hits, setHits] = useState(() => patternSuggestions(suggestionLines(blocks)));
+  const read = useRef(blocks);
+  useEffect(() => {
+    if (read.current === blocks) return;
+    const t = setTimeout(() => {
+      read.current = blocks;
+      const next = patternSuggestions(suggestionLines(blocks));
+      setHits((had) => (sameHits(had, next) ? had : next));
+    }, SUGGESTIONS_REST_MS);
+    return () => clearTimeout(t);
+  }, [blocks]);
   // A note already listed under the note (Linked from, Mentioned in) isn't suggested again (the same subscription
   // as Backlinks', so no second read).
   const links = useQuery(api.documents.backlinks, { documentId });

@@ -80,4 +80,20 @@ struct PhoneColumnsTests {
         #expect(m.current == .calendar)
         #expect(m.stacks[.home]?.map(\.route) == [.home, .note("a")])
     }
+
+    @Test func theEmptyDetailColumnShowsTheLastNoteOpened() {
+        UserDefaults.standard.removeObject(forKey: PhoneFrameModel.lastNoteKey)
+        let m = PhoneFrameModel()
+        // Nothing opened yet: the most recent note.
+        #expect(m.noteToShow(recents: ["a", "b", "c"]) == "a")
+        m.open(.note("b"))
+        m.back()
+        #expect(m.noteToShow(recents: ["a", "b", "c"]) == "b")
+        // Kept between launches.
+        #expect(PhoneFrameModel().noteToShow(recents: ["a", "b", "c"]) == "b")
+        // Gone from the recent notes (deleted, another place): the most recent again.
+        #expect(m.noteToShow(recents: ["a", "c"]) == "a")
+        #expect(m.noteToShow(recents: []) == nil)
+        UserDefaults.standard.removeObject(forKey: PhoneFrameModel.lastNoteKey)
+    }
 }

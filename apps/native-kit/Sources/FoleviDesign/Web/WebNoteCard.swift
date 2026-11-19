@@ -1129,7 +1129,9 @@ public struct WebClampedText: View {
     static func balanced(_ text: String, style: WebTextStyle, width: CGFloat, max: Int) -> [String] {
         let plain = lines(text, style: style, width: width, max: .max)
         guard plain.count > 1, plain.count <= max else { return lines(text, style: style, width: width, max: max) }
-        var lo: CGFloat = 1, hi = width
+        // (Never narrower than the widest word: Core Text breaks inside a word that doesn't fit, so the search would
+        // keep the line count by splitting one, "Readin / g Shelf" in a narrow card.)
+        var lo: CGFloat = Swift.min(width, widestWord(text, style: style)), hi = width
         while hi - lo > 0.5 {
             let mid = (lo + hi) / 2
             if lines(text, style: style, width: mid, max: .max).count <= plain.count { hi = mid } else { lo = mid }
@@ -1145,6 +1147,15 @@ public struct WebClampedText: View {
         var shown = Array(all.prefix(max))
         shown[max - 1] += "…"
         return shown
+    }
+
+    /// The width of the text's widest word, as set in `style`.
+    static func widestWord(_ text: String, style: WebTextStyle) -> CGFloat {
+        let attributes: [NSAttributedString.Key: Any] = [.font: style.ctFont, .kern: style.letterSpacing]
+        return text.split(whereSeparator: \.isWhitespace).map { word in
+            let line = CTLineCreateWithAttributedString(NSAttributedString(string: String(word), attributes: attributes))
+            return CGFloat(CTLineGetTypographicBounds(line, nil, nil, nil))
+        }.max() ?? 1
     }
 
     /// The lines CSS would show: up to `max`, the last holding the rest of the text (cut with "…" when drawn).

@@ -12,6 +12,7 @@ On 2026-11-19 the owner asked for a good iPhone Duo experience in every posture 
 - **Note bars:** on iPhone Duo the note's top bar and tool buttons become iOS bars, so they join iOS's side column like every other screen. The bar on the keyboard stays on the keyboard. Other iPhones keep today's note bars.
 
 - **Second pass, same day:** the owner called the first build a mess (empty space, crowded bars, sidebar squeezing the list) and asked for controls on the right side, vertically, after deep research. Redone per Apple's HIG and tech talks: iOS's split view for Home, iOS's tab bar and toolbar items in the side column, no custom sidebar (docs/IPHONE_DUO_PLAN.md). This replaces the sidebar pick above.
+- **Right column with nothing open (2026-11-19):** the owner picked "Last note I opened" (as Notes does), not an empty page or the newest edited note.
 
 **Why:** Apple's iPhone Duo guidance (keep the hierarchy identical inside and out, use system bars so they move to the side and avoid the fold).
 

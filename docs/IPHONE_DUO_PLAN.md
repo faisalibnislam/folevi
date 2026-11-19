@@ -32,7 +32,7 @@ controls should sit on the right side, vertically. This plan follows Apple's gui
 - **Home tab: a system split view.** The list (Home and what opens from it) is in the leading column, at about a
   phone's width, with its own controls above it. The open note is in the detail column.
   - Closed, the split view collapses: the note is pushed over its list, with Back.
-  - Open with no note on show, the detail column shows the most recently edited note (as Notes does). Folding
+  - Open with no note on show, the detail column shows the last note the person opened, kept between launches (as Notes does; the owner's pick). Folding
     closes it again if it was never written in, so the outer screen shows Home.
 - **Tasks and Calendar:** one full-width stack. Their screens use the inner screen's width; a note opened there
   is pushed full width.

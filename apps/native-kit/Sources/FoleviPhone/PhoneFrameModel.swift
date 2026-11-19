@@ -85,6 +85,7 @@ public final class PhoneFrameModel {
     /// Opens a screen: on top of this tab's stack, or, for a tab's first screen, in that tab from its start.
     public func open(_ route: FrameRoute) {
         autoNote = nil
+        if let id = route.noteId { lastNote = id }
         if case .search(let text) = route {
             openSearch(text)
             return
@@ -128,7 +129,22 @@ public final class PhoneFrameModel {
     /// until the person writes in it or opens something: folding closes it again, so the outer screen shows Home.
     public private(set) var autoNote: String?
 
-    /// The most recent note in Home's empty detail column (see `autoNote`).
+    /// The note the person last opened (kept between launches): what Home's detail column shows when nothing is
+    /// open (the owner, 2026-11-19: "Last note I opened", as Notes does).
+    public private(set) var lastNote: String? = UserDefaults.standard.string(forKey: PhoneFrameModel.lastNoteKey) {
+        didSet { if lastNote != oldValue { UserDefaults.standard.set(lastNote, forKey: Self.lastNoteKey) } }
+    }
+
+    static let lastNoteKey = "folevi:iphone:last-note"
+
+    /// The note Home's empty detail column shows: the last one opened while it's still in the recent notes (not
+    /// deleted, still in this place), else the most recent.
+    public func noteToShow(recents: [String]) -> String? {
+        if let lastNote, recents.contains(lastNote) { return lastNote }
+        return recents.first
+    }
+
+    /// A note in Home's empty detail column (see `autoNote`).
     public func openRecent(_ id: String) {
         open(.note(id))
         autoNote = id

@@ -366,7 +366,7 @@ private struct RebuildRoot: View {
     @State private var newWorkspace = false
     /// What sheets grow out of (phoneZoomSource / phoneSheet(zoomFrom:)).
     @Namespace private var zoom
-    /// Regular width (iPhone Duo open): Home's detail column shows the most recent note when nothing is open.
+    /// Regular width (iPhone Duo open): Home's detail column shows the last note opened when nothing is open.
     @Environment(\.horizontalSizeClass) private var sizeClass
 
     /// What decides whether Home's empty detail column should show the most recent note.
@@ -382,10 +382,10 @@ private struct RebuildRoot: View {
         return RecentKey(regular: sizeClass == .regular && UIDevice.current.userInterfaceIdiom == .phone,
                          onHome: model.current == .home && !model.searching,
                          noteOpen: PhoneFrameModel.noteRunStart(s) < s.count,
-                         recent: home.recents.first?.id)
+                         recent: model.noteToShow(recents: home.recents.map(\.id)))
     }
 
-    /// The open inner screen with no note beside Home: the most recent one shows there, as Notes does.
+    /// The open inner screen with no note beside Home: the last one opened shows there, as Notes does.
     private func showRecent(_ k: RecentKey) {
         guard k.regular, k.onHome, !k.noteOpen, let id = k.recent else { return }
         model.openRecent(id)

@@ -3,7 +3,7 @@
 import { DateField, TimeField } from "@/components/ui/DateField";
 import { useMutation, useQuery } from "convex/react";
 import { useCallback, useDeferredValue, useMemo, useRef, useState, type ReactNode } from "react";
-import { ArrowRightLeft, CalendarDays, Check, FileText, Plus, Repeat, RotateCcw, SlidersHorizontal, CheckSquare } from "lucide-react";
+import { ArrowRightLeft, CalendarDays, Check, FileText, Plus, Repeat, RotateCcw, Search, SlidersHorizontal, CheckSquare, X } from "lucide-react";
 import { DocumentPicker, type Target } from "@/components/app/QuickAddTask";
 import { api } from "@/lib/convex/api";
 import { useAppState } from "@/lib/app/state";
@@ -136,9 +136,19 @@ export function TaskItem({ task, today, onToggle, onEdit, draggable = true, acti
             <FileText size={12} aria-hidden className="flex-none" />
             <span className="truncate">{task.documentTitle || "Untitled"}</span>
           </AppLink>
-          {task.assigneeName ? <span>· {task.assigneeName}</span> : null}
+          {task.assigneeName ? (
+            <>
+              <span aria-hidden>·</span>
+              <span>{task.assigneeName}</span>
+            </>
+          ) : null}
           {task.status === "canceled" ? <span className="rounded-chip bg-sunken px-1.5 text-caption-2 font-medium text-muted">Canceled</span> : null}
-          {task.completedAt && task.status === "done" ? <span>· done {formatRelative(task.completedAt)}</span> : null}
+          {task.completedAt && task.status === "done" ? (
+            <>
+              <span aria-hidden>·</span>
+              <span>done {formatRelative(task.completedAt)}</span>
+            </>
+          ) : null}
         </p>
         {action ? <div className="mt-1.5">{action}</div> : null}
       </div>
@@ -336,6 +346,7 @@ export function TasksView({ view }: { view: View }) {
   const onToggle = useCallback((t: TaskRow, opts?: { felt?: boolean }) => toggleRef.current(t, opts), []);
   const meta = VIEWS.find((v) => v.id === view)!;
   const [filter, setFilter] = useState("");
+  const filterRef = useRef<HTMLInputElement>(null);
   // Typing in the filter stays immediate; the list (up to a thousand rows) catches up when React has time.
   const query = useDeferredValue(filter);
   const [editing, setEditing] = useState<TaskRow | null>(null);
@@ -406,10 +417,40 @@ export function TasksView({ view }: { view: View }) {
             );
           })}
         </nav>
-        <label className="mt-4 block">
-          <span className="sr-only">Filter tasks</span>
-          <input value={filter} onChange={(e) => setFilter(e.target.value)} placeholder="Filter by task or page" className="h-9 w-full ui-input rounded-chip px-3 text-callout" />
-        </label>
+        {/* A search field (the Mac's, 2026-11-19): a magnifier in front, and a clear button once there's text. */}
+        <div className="relative mt-4">
+          <label>
+            <span className="sr-only">Filter tasks</span>
+            <Search size={14} aria-hidden className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-faint" />
+            <input
+              ref={filterRef}
+              value={filter}
+              onChange={(e) => setFilter(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Escape" && filter) {
+                  e.preventDefault();
+                  setFilter("");
+                }
+              }}
+              placeholder="Filter by task or page"
+              className="h-9 w-full ui-input rounded-chip pl-8 pr-9 text-callout pointer-coarse:h-11"
+            />
+          </label>
+          {filter ? (
+            <button
+              type="button"
+              aria-label="Clear filter"
+              title="Clear filter"
+              onClick={() => {
+                setFilter("");
+                filterRef.current?.focus();
+              }}
+              className="absolute right-1.5 top-1/2 grid size-6 -translate-y-1/2 place-items-center rounded-full text-faint transition-colors hover:bg-[color-mix(in_oklab,var(--color-ink)_8%,transparent)] hover:text-ink pointer-coarse:size-8"
+            >
+              <X size={13} aria-hidden />
+            </button>
+          ) : null}
+        </div>
         {tasks === undefined ? (
           <div className="mt-6 space-y-2" aria-busy>
             {[0, 1, 2].map((i) => (

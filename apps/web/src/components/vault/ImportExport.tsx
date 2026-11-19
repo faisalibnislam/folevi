@@ -5,7 +5,7 @@
 // warning. Both are logged, and custodians are told about an export.
 import { useMutation } from "convex/react";
 import { useRef, useState } from "react";
-import { Download, Upload } from "lucide-react";
+import { Archive, FileText, Upload } from "lucide-react";
 import { api } from "@/lib/convex/api";
 import { Button } from "@/components/ui/Button";
 import { Dialog } from "@/components/ui/Dialog";
@@ -14,6 +14,7 @@ import { vaultSessions } from "@/lib/vault/keys";
 import { newItemId, openSecrets, openSummary, sealItem, type ItemContent } from "@/lib/vault/items";
 import { encryptedExport, itemsFromCsv, itemsToCsv, openEncryptedExport } from "@/lib/vault/importExport";
 import { passwordStrength } from "@/lib/vault/generator";
+import { SettingsGroup, SettingsRow } from "./SettingsRows";
 
 const BATCH = 100;
 
@@ -117,36 +118,40 @@ export function ImportExport({ vaultId, canExport }: { vaultId: string; canExpor
 
   const needsPassphrase = ask?.kind === "backupPassphrase" || ask?.kind === "exportEncrypted";
   return (
-    <div className="space-y-2">
-      <span className="block font-medium text-ink">Import and export</span>
-      <span className="block text-footnote text-muted">Import a CSV from 1Password, Bitwarden, LastPass, Chrome, Safari or Firefox, or a Folevi Vault backup. Items are encrypted on this device before they're sent.</span>
-      <div className="flex flex-wrap gap-2">
-        <input
-          ref={input}
-          type="file"
-          accept=".csv,.json,text/csv,application/json"
-          className="hidden"
-          aria-label="Choose a file to import"
-          onChange={(e) => {
-            const f = e.target.files?.[0];
-            e.target.value = "";
-            if (f) void importFile(f);
-          }}
-        />
-        <Button variant="secondary" disabled={busy !== null} onClick={() => input.current?.click()}>
-          <Upload size={14} aria-hidden /> {busy ?? "Import…"}
-        </Button>
+    <>
+      <input
+        ref={input}
+        type="file"
+        accept=".csv,.json,text/csv,application/json"
+        className="hidden"
+        aria-label="Choose a file to import"
+        onChange={(e) => {
+          const f = e.target.files?.[0];
+          e.target.value = "";
+          if (f) void importFile(f);
+        }}
+      />
+      <SettingsGroup title="Import and export">
+        <SettingsRow icon={Upload} name="Import" hint="A CSV from 1Password, Bitwarden, LastPass, Chrome, Safari or Firefox, or a Folevi Vault backup. Items are encrypted on this device before they're sent.">
+          <Button size="sm" disabled={busy !== null} onClick={() => input.current?.click()}>
+            <span className="tabular-nums">{busy ?? "Import…"}</span>
+          </Button>
+        </SettingsRow>
         {canExport ? (
           <>
-            <Button variant="secondary" disabled={busy !== null} onClick={() => setAsk({ kind: "exportEncrypted" })}>
-              <Download size={14} aria-hidden /> Encrypted backup…
-            </Button>
-            <Button variant="secondary" disabled={busy !== null} onClick={() => setAsk({ kind: "exportCsv" })}>
-              <Download size={14} aria-hidden /> Readable CSV…
-            </Button>
+            <SettingsRow icon={Archive} name="Encrypted backup" hint="The whole Vault in one encrypted file.">
+              <Button size="sm" disabled={busy !== null} onClick={() => setAsk({ kind: "exportEncrypted" })}>
+                Export…
+              </Button>
+            </SettingsRow>
+            <SettingsRow icon={FileText} name="Readable CSV" hint="Not encrypted: anyone who has the file can read it.">
+              <Button size="sm" disabled={busy !== null} onClick={() => setAsk({ kind: "exportCsv" })}>
+                Export…
+              </Button>
+            </SettingsRow>
           </>
         ) : null}
-      </div>
+      </SettingsGroup>
       {ask ? (
         <Dialog
           open
@@ -174,6 +179,6 @@ export function ImportExport({ vaultId, canExport }: { vaultId: string; canExpor
           </div>
         </Dialog>
       ) : null}
-    </div>
+    </>
   );
 }

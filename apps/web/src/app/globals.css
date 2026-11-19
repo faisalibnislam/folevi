@@ -397,6 +397,16 @@
   /* Focused or open: the same soft outline as the active tab (16.5% ink), never a dark ring. */
   button.ui-input:hover:not(:disabled):not([aria-expanded="true"]) { box-shadow: inset 0 1px 2px color-mix(in oklab, var(--color-heading) 8%, transparent), 0 0 0 1px var(--color-line-strong); background: color-mix(in oklab, var(--color-surface), var(--color-ink) 3%); }
   .ui-input:focus, .ui-input:focus-within, .ui-input[aria-expanded="true"] { outline: none; box-shadow: 0 1px 3px rgb(0 0 0 / 0.08), 0 0 0 1.5px color-mix(in oklab, var(--color-heading) 16.5%, transparent); }
+  /* With a mouse or keyboard (2026-11-19, from the Mac's fields): a firmer edge on hover, and the field being typed in
+     is unmistakable: a lifted fill, a crisp 1.5px ink edge and a soft halo outside it, so it never changes size. Touch
+     keeps the soft outline above (the owner's iPhone note: no dark ring on tap). */
+  @media (pointer: fine) {
+    :is(input, textarea).ui-input:hover:not(:disabled):not(:focus) { box-shadow: inset 0 1px 2px color-mix(in oklab, var(--color-heading) 8%, transparent), 0 0 0 1px var(--color-line-strong); }
+    :is(input, textarea).ui-input:focus, .ui-input:has(> :is(input, textarea):focus), button.ui-input:focus-visible:not([aria-expanded="true"]) {
+      background: var(--color-surface-raised);
+      box-shadow: 0 0 0 1.5px color-mix(in oklab, var(--color-heading) 85%, transparent), 0 0 0 5px color-mix(in oklab, var(--color-heading) 10%, transparent);
+    }
+  }
 
   /* Surfaces */
   .ui-card { background: var(--color-surface); border-radius: var(--radius-container); box-shadow: var(--shadow-card); }
@@ -588,6 +598,7 @@
   background: var(--glass-hover); box-shadow: none; color: var(--color-heading);
 }
 .row-tray .ui-input:focus-visible, .row-tray .ui-btn-secondary:focus-visible { box-shadow: 0 0 0 1.5px color-mix(in oklab, var(--color-heading) 16.5%, transparent); }
+.row-tray :is(input, textarea).ui-input:focus { background: transparent; }
 @media (pointer: fine) {
   .row-tray .ui-input, .row-tray .ui-btn-secondary { height: 28px; }
   .row-tray .ui-btn-secondary:not(.row-tray-path) { width: 28px; }

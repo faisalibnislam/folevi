@@ -4,6 +4,35 @@ Every Folevi release, newest first, written by `node scripts/version.mjs` from `
 
 Versions are MAJOR.UPDATE.PATCH, PATCH at least two digits: a Major release (2.0.00), a Big update (1.1.05 after 1.0.05) or a Small update (1.0.06 after 1.0.05).
 
+## Version 1.5.51: Small update
+
+Released 2026-11-19 15:26:19+06:00 (build 66, tag v1.5.51)
+
+A calmer iPhone Home and top bar, a list filter you can always see, and a long round of note editor fixes on every platform.
+
+### Improved
+
+- iPhone: no bar over the tab bar. Foli AI and + sit together in the top bar, and the flower shows only where Foli AI is on
+- iPhone: the account button has no glass circle, and a workspace's logo shows your picture small on its corner
+- iPhone: All folders and Foli DNA are on Home instead of in a menu
+- iPhone: Notifications has no settings button, and Unread shows its count in full
+- Every platform: the field that filters a list says Filter notes, Filter folders or Filter tags, with a filter icon. On iPhone it's always at the top of the list, with no pull needed
+- Editor: Enter, Backspace and Tab stay fast in a long note, moving between lines no longer redraws the page, and long notes save with less work
+- Editor: paste, copy and cut, pictures, recordings, code, columns, tables and databases, from the audit of 19 November
+- Canvases: undo keeps what others drew, nothing is lost at the size limit, and touch behaves
+- iPhone and iPad: the line you're writing stays above the keyboard
+
+### Fixed
+
+- iPhone: closing Search takes you back to where you opened it
+- iPhone and iPad: Return in a to-do or a toggle keeps the words after the caret
+- iPhone and iPad: typing is saved as the app goes to the background
+- Editor: a note changed on another device opens with the newer text, and an edit never replaces it unseen
+- Sync: a resent edit never replaces another device's change, and a long queue of edits drains
+- Editor: a field being typed in inside a block is saved as you go, and a Vault note asks before discarding
+- Editor: a new note's title keeps the caret when the tools panel opens
+- Touch: a block dragged with a finger always lands or goes back, and a long press while writing is iOS's own
+
 ## Version 1.5.50: Big update
 
 Released 2026-11-19 14:17:51+06:00 (build 65, tag v1.5.50)

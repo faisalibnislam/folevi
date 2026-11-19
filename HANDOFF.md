@@ -258,13 +258,12 @@ Git (this Mac, main checkout), updated 2026-11-19 19:00:
   audit follow-up commits, open as pull request 40 (https://github.com/faisalibnislam/folevi/pull/40), not merged.
   The web fixes and the 22 updated end-to-end specs that were uncommitted earlier today are in that branch now.
   Merging it pushes `main`, which deploys the website and production Convex: ask the owner first.
-- Branch `claude/reverent-leakey-c9bd25` (worktree of that name, local only, not pushed): PR 40's tip `001f03cf`
-  plus the fixes for what PR 40's own CI run (44538632686) and 1.5.52's still failed: onboarding's sideways
+- Branch `claude/reverent-leakey-c9bd25` (worktree of that name, pushed, open as a pull request into
+  `editor/rock-solid`): `editor/rock-solid` (c1bdd5ff) plus the fixes for what PR 40's own CI run (44538632686) and 1.5.52's still failed: onboarding's sideways
   overflow (app), closing the tools panel no longer moves the caret to a dock button (app: the next Enter
-  reopened Foli AI and typing went into its box; the flowchart specs hit it), the mind map phone spec,
-  tab-switch's wait for a warm tab (a test-build-only hook in `Shell.tsx` `WarmNote`), and a 4 second query
-  limit for CI's local backend (`ci.yml`). Meant to be merged into
-  `editor/rock-solid` (or opened as a pull request into it so CI runs).
+  reopened Foli AI and typing went into its box; the flowchart specs hit it), tab-switch also waiting for a
+  warm tab (a test-build-only hook in `Shell.tsx` `WarmNote`), and a 4 second query
+  limit for CI's local backend (`ci.yml`). Merging that pull request only moves `editor/rock-solid` (no deploy).
 - `docs/HANDOFF.md` section 0 holds that session's detailed notes on the audit and PR 40; this root file is the
   project-wide handoff. Keep both in step, or fold section 0 in here when PR 40 merges.
 - Still uncommitted on this Mac only: `.serena/` (tool state), leftover Capacitor files in `apps/ios/ios/App/App/`,
@@ -361,6 +360,10 @@ the e2e suite was not re-run after the Foli AI panel change; the dev backend lac
   `@convex-dev/better-auth` together when supported, then drop the ignores.
 - zsh doesn't word-split a variable of file names: use `git diff --name-only -z | xargs -0 git commit ...`.
 - Snapshot tests re-record with `FOLEVI_RECORD_SNAPSHOTS=1` (Mac) or `TEST_RUNNER_FOLEVI_RECORD_SNAPSHOTS=1` (iOS); recording rewrites every image, so restore the ones that didn't really change.
+- CI's local Convex backend stops a query after 1 second, and a timed-out query takes the page to its error screen
+  ("Something went wrong"). On a cold backend the first chat message of a shard can trip it: that is
+  `e2e/ai-attachments.spec.ts` in shard 8, flaky on `main` and failing twice in a row once. A failure whose
+  screenshot is that error screen is this, not the feature; `convex.log` in the shard's artifact shows the timeouts.
 - Rate limits (`convex/lib/rateLimit.ts`) count within fixed clock windows. A test that calls up to a limit must
   hold the clock (`vi.useFakeTimers({ toFake: ["Date"] })` and `vi.setSystemTime`), or it fails when it runs across
   a window's edge. Other per-minute limit tests have not been checked for this.
@@ -369,16 +372,22 @@ the e2e suite was not re-run after the Foli AI panel change; the dev backend lac
   no output: its Node executor's socket lives under `$TMPDIR`, and the app's long TMPDIR makes the path too long
   (`listen EINVAL ... .executor.sock`, a 500 on `start_push`, retried forever). Export a short `TMPDIR` first.
 - CI's e2e runners have 2 CPUs. Just after a sign-in a page opens 20 or more queries at once, and on CI each one's
-  wall-clock time nears the local backend's 1 second limit; one past it fails the page (next step 2). `ci.yml` sets
+  wall-clock time nears the local backend's 1 second limit; one past it fails the page (next step 2). It is not
+  only the first chat message (above): native-lift and others hit it too. `ci.yml` now sets
   `DATABASE_UDF_USER_TIMEOUT_SECONDS=4` for that backend. Bursts show in `convex.log` as "took a long time".
 
 ## 12. Change log
 
-- 2026-11-19: e2e: what PR 40's CI and 1.5.52 still failed fixed on `claude/reverent-leakey-c9bd25`: onboarding no
-  longer scrolls sideways at phone width while a step slides in (app), closing the tools panel leaves the caret
-  where it is (app, `DocumentView.tsx` `closeInspector`), the mind map phone spec, tab-switch waits
-  for a warm tab, CI's local backend gets a 4 second query limit. Local CI-like run and two gotchas added.
-
+- 2026-11-19: e2e: what PR 40's CI and 1.5.52 still failed fixed on `claude/reverent-leakey-c9bd25`, with
+  `editor/rock-solid` (c1bdd5ff) merged in: onboarding no longer scrolls sideways at phone width while a step
+  slides in (app), closing the tools panel leaves the caret where it is (app, `DocumentView.tsx`
+  `closeInspector`), tab-switch also waits for the tab it switches to to be warm, CI's local backend gets a 4
+  second query limit. The mind map spec is `editor/rock-solid`'s (390 for the full canvas). Local CI-like run and
+  two gotchas added.
+- 2026-11-19: pull request 40, CI run 44547866717: 7 of 8 browser shards green. `e2e/tab-switch.spec.ts` watched for
+  a loading placeholder while the note opened just before was still loading its own lines; it waits for them now.
+- 2026-11-19: pull request 40, CI run 44538632686: 6 of 8 browser shards green. Fixed the mind map phone spec (its
+  full canvas is checked at 390 again); `e2e/ai-attachments.spec.ts` gets 3 retries on CI (see Gotchas).
 - 2026-11-19: `tests/convex/organize.test.ts` holds the clock in its rate limit test: the limit counts per clock
   minute and a CI run that straddled the turn of a minute failed it (pull request 40, run 44537137363).
 - 2026-11-19: the two root handoff files (the handoff session's on `editor/rock-solid`, the release session's on

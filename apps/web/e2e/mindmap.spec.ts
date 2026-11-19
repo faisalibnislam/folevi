@@ -268,25 +268,25 @@ test.describe("Mind map", () => {
     await expect(card.getByRole("toolbar", { name: "Mind map tools" })).toBeHidden();
     await page.getByRole("button", { name: /^Open canvas/ }).click();
     await expect(card).toHaveAttribute("data-full", "true");
+    // (The rest is the full canvas at 390, the width its toolbar is said to fit in whole; at 360 it folds.)
+    await page.setViewportSize({ width: 390, height: 844 });
     await card.getByRole("button", { name: "Add the central idea" }).click();
     await page.keyboard.type("Ideas");
     await page.keyboard.press("Escape");
     const box = (await card.boundingBox())!;
     expect(box.x).toBeGreaterThanOrEqual(0);
-    expect(box.x + box.width).toBeLessThanOrEqual(360);
-    // The toolbar never scrolls sideways. The full canvas has the phone's whole width (the block's name steps
-    // aside). At 360 that is a tool short: the least used, Tidy up, folds into one More with the map's own menu
-    // (canvas/ToolFold.tsx), so there is only ever one More. (At 390 everything fits and nothing folds.)
+    expect(box.x + box.width).toBeLessThanOrEqual(390);
+    // The toolbar never scrolls sideways. The full canvas has the phone's whole width, where every tool fits
+    // (the block's name steps aside): nothing folds into More, and the map's own menu stays in the bar.
     const tools = card.getByRole("toolbar", { name: "Mind map tools" });
     const fits = () => tools.evaluate((el) => el.scrollWidth <= el.clientWidth + 1 && [...el.querySelectorAll("button")].filter((b) => b.offsetParent).every((b) => b.getBoundingClientRect().right <= el.getBoundingClientRect().right + 1));
     await expect.poll(fits).toBe(true);
-    await expect(tools.getByRole("button", { name: "More mind map actions" })).toBeHidden();
-    const moreTools = tools.getByRole("button", { name: "More mind map tools" });
+    await expect(tools.getByRole("button", { name: "More mind map tools" })).toBeHidden();
+    const moreTools = tools.getByRole("button", { name: "More mind map actions" });
     await expect(moreTools).toBeVisible();
     await expect(tools.getByRole("button", { name: "Undo" })).toBeVisible();
     await moreTools.click();
-    const moreMenu = page.getByRole("menu", { name: "More mind map tools" });
-    await expect(moreMenu.getByRole("menuitem", { name: "Tidy up" })).toBeVisible();
+    const moreMenu = page.getByRole("menu", { name: "More mind map actions" });
     await expect(moreMenu.getByRole("menuitem", { name: "Expand all" })).toBeVisible();
     await moreMenu.getByRole("menuitem", { name: "Fit to view" }).click();
     await expect(moreMenu).toHaveCount(0);

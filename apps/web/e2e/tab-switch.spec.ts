@@ -10,11 +10,16 @@ test("switching tabs shows the note at once, without a loading placeholder", asy
   await page.goto(`${APP}/documents`);
   await page.getByRole("link", { name: /Trip Sketch/ }).first().click();
   await expect(page.getByRole("textbox", { name: "Title" })).toHaveValue(/Trip Sketch/);
+  // This note is opening for the first time: its title is known before its lines are, and its own placeholder
+  // shows meanwhile. The watch below starts once it has gone, or it was counted against the switch that follows
+  // (the test failed that way whenever the lines took a moment longer than the title).
+  await expect(page.locator(".ProseMirror > *").first()).toBeVisible();
+  await expect(page.locator('[aria-label="Loading document"]')).toHaveCount(0);
 
   for (const [name, title] of [["Welcome to Folevi", "Welcome to Folevi"], [/Trip Sketch/, /Trip Sketch/], ["Welcome to Folevi", "Welcome to Folevi"]] as const) {
-    // The page was just loaded (goto above), so the recent tab's details and device copy are still arriving
+    // The page was just loaded (goto above), so the recent tab's details and device copy may still be arriving
     // (WarmNote in Shell.tsx). The promise is for a tab kept warm: wait for that, as a person would take a
-    // moment. (On CI's slow runner a switch 0.6s after the reload once beat it.)
+    // moment, so a slow runner can't count a still-cold tab against the switch.
     const href = (await tabs.getByRole("link", { name }).getAttribute("href")) ?? "";
     const id = /\/d\/([^/?#]+)/.exec(href)?.[1] ?? "";
     expect(id, `tab link for ${String(name)}`).not.toBe("");

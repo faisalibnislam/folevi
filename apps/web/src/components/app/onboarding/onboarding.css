@@ -14,6 +14,10 @@
     background: var(--color-canvas);
     color: var(--color-ink);
     transition: background-color 320ms var(--ob-ease), color 320ms var(--ob-ease);
+    /* Each step slides in from 18px to the right (ob-step-in). Without this, on a phone the page is that much
+       wider than the screen while it slides, and can be pulled sideways. `clip`, not `hidden`: it makes no
+       scroll container, so the sticky footer and the sticky preview keep working. */
+    overflow-x: clip;
   }
 
   /* Progress --------------------------------------------------------------------------------------- */

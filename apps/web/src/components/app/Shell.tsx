@@ -11,6 +11,7 @@ import { NativeTabsProvider, TabsProvider, useViewTab, useWarmTabs } from "@/lib
 import { NotePanes } from "./NotePanes";
 import { useLocalStorage } from "@/lib/hooks/useEngine";
 import { localDb } from "@/lib/sync/db";
+import { TEST_HOOKS } from "@/lib/testHooks";
 import { useDocumentTitle } from "@/lib/hooks/useTitle";
 import { useMediaQuery } from "@/lib/hooks/useMediaQuery";
 import { IconButton } from "@/components/ui/Button";
@@ -833,9 +834,22 @@ function WarmNotes() {
 }
 
 function WarmNote({ documentId }: { documentId: string }) {
-  useQuery(api.documents.get, { documentId });
+  const details = useQuery(api.documents.get, { documentId });
   useQuery(api.documents.pageTree, { documentId });
   const { engine, profile } = useAppState();
+  // The e2e suite asks whether a recent tab is warm before it switches to it (tab-switch.spec.ts): straight
+  // after a reload the details and the device copy are still on their way, and a switch then may show the
+  // placeholder. Only in builds with the test hooks on.
+  const detailsHere = details !== undefined;
+  useEffect(() => {
+    if (!TEST_HOOKS || !engine) return;
+    const w = window as unknown as { __foleviTestWarm?: Record<string, () => boolean> };
+    const warm = (w.__foleviTestWarm ??= {});
+    warm[documentId] = () => detailsHere && engine.documentBlocks(documentId).length > 0;
+    return () => {
+      delete warm[documentId];
+    };
+  }, [engine, documentId, detailsHere]);
   // After a reload the engine holds only the note on screen: the device copy of a recent tab's lines goes in
   // now (as DocumentView does when the note opens), so its first switch draws the note, not the placeholder.
   useEffect(() => {

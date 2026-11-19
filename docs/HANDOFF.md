@@ -11,32 +11,26 @@ read this section and `docs/EDITOR_AUDIT_2026-11-19.md` (the full report, sectio
 
 ### Current state
 
-- `main` is at 1.5.53. The audit's first 18 commits are on `main` (pushed 19 November with the owner's OK, as
-  `e734cb9b`) and live on the website and production Convex.
-- Branch `editor/rock-solid` = `main` 1.5.53 + the commits below (and handoff notes), open as
-  https://github.com/faisalibnislam/folevi/pull/40 (not merged, nothing deployed from it):
-  - `12e7c419` web fixes: the tools panel no longer covers a note in a narrow window (on load or after a
-    resize), a tool picked during load stays, Foli AI's panel failing to load offline no longer takes the page
-    down (`doc/PanelBoundary.tsx`), a nested page's path strip is visible again, no grey band at a note's
-    foot, a canvas saves on losing focus only when something is pending.
-  - `88f22d83` 22 end-to-end specs brought up to date (helpers `openFoliAi` and `closeToolsPanel` in
-    `apps/web/e2e/helpers.ts`), and section 10 of the audit doc.
-- Checked on that branch: web unit tests 2,120 passed, typecheck and lint clean; every test that failed in CI
-  run 44497359828 and both shards that timed out there pass on a Mac against the dev backend.
-- Not checked: the specs that expect a backend with no AI key (ai-study, ai-agent, ai-find-todos, ai-page,
-  ai-panel-height, ai-research) and admin's revenue table, which only CI's own backend can run; the Mac app,
-  the Simulator, a device.
+- Everything from the audit is on `main` and live: the first 18 commits since 19 November (`e734cb9b`), and pull
+  request 40 (https://github.com/faisalibnislam/folevi/pull/40), merged as `ce420649` on a fully green CI run with
+  the owner's OK. Vercel deployed it; CI on `main` is green on every job, browser tests included, for the first
+  time since 17 November. No version was bumped.
+- Pull request 40 held: the web fixes of section 10 of the audit doc (`12e7c419`), 22 end-to-end specs brought up
+  to date with helpers `openFoliAi` and `closeToolsPanel` (`88f22d83`), and what its own CI runs turned up: a rate
+  limit test that failed across the turn of a clock minute, the mind map phone spec, extra CI retries for
+  `e2e/ai-attachments.spec.ts` (cold backend), and a tab switch spec that counted the wrong note's placeholder.
+- Not checked: the Mac app, the Simulator, a device.
 
 ### Next steps
 
-1. Read pull request 40's CI result. The browser tests had been red or hidden on `main` since 18 November (a
-   stale generated icons file stopped CI before them), so expect to fix whatever it still shows.
-2. With CI green, ask the owner before merging: merging pushes `main`, which deploys the website and
-   production Convex.
-3. The web fixes reach the Mac, iPhone and iPad apps only with a rebuilt bundled web copy, in the next release
-   (releases are run by the session that owns them; this branch bumps no version).
-4. Still open from the audit, with reasons: section 6 of the audit doc (owner decisions, device checks, native
-   frame items, larger work). The iPhone and iPad fixes have not been tried on a device.
+1. The web fixes reach the Mac, iPhone and iPad apps only with a rebuilt bundled web copy, in the next release
+   (releases are run by the session that owns them).
+2. Try the iPhone and iPad editor fixes on a device (audit doc, section 5).
+3. Still open from the audit, with reasons: section 6 of the audit doc (owner decisions, device checks, native
+   frame items, larger work).
+4. `e2e/tab-switch.spec.ts` passed on `main` at 1.5.53 and failed on the pull request's runs until its watch was
+   fixed; no change of the pull request was found to cause that. Worth a look if a first-opened note seems slower
+   to show its lines.
 
 ### Change log
 
@@ -44,6 +38,7 @@ read this section and `docs/EDITOR_AUDIT_2026-11-19.md` (the full report, sectio
   2,000-block note, lost-text cases in sync, paste, canvases, tables, media, touch. 18 commits, on `main`.
 - 2026-11-19: after the push, the first full end-to-end run since 18 November: 7 bugs fixed (6 from the
   18 November tools panel and flat note changes, 1 from this branch) and 22 specs updated. Pull request 40.
+- 2026-11-19: pull request 40 merged (`ce420649`) after five CI runs; production deploy completed, `main` green.
 
 ## 1. Where things stand
 

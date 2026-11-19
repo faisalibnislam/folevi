@@ -49,7 +49,7 @@ export function FoliDna() {
                   See how your ideas <Mark kind="squiggle">connect</Mark>.
                 </>
               }
-              lede="Foli DNA draws your notes and the links between them as a living map, so the patterns in your thinking show up on their own."
+              lede="Foli DNA draws your notes and the links between them as a map that shows which notes belong together."
             />
             <Points
               items={[

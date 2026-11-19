@@ -203,7 +203,7 @@ export const FEATURES: Feature[] = [
     intro:
       "Folevi writes every change to your device before it sends it anywhere. With no connection you keep writing, and your edits wait on the device until you’re back online. The status on each page tells you which of those is happening.",
     plans: "Every plan, including Free.",
-    updated: "2026-11-06",
+    updated: "2026-11-18",
     art: "art-13",
     visual: "offline",
     docs: { label: "Sync and offline", href: "/docs/sync-and-offline" },
@@ -228,7 +228,7 @@ export const FEATURES: Feature[] = [
       },
       {
         id: "status",
-        title: "A status that means what it says",
+        title: "What the status tells you",
         body: (
           <>
             <p>
@@ -430,8 +430,8 @@ export const FEATURES: Feature[] = [
     h1: "Record a voice note right inside the page",
     intro:
       "Type /record on any line and Folevi starts recording from your microphone. Stop and save, and the recording sits in the note with a player, next to the text it belongs to.",
-    plans: "Every plan, including Free and Core. Recordings count towards your storage.",
-    updated: "2026-10-23",
+    plans: "Every plan, including Free and Core. Recordings count toward your storage.",
+    updated: "2026-11-18",
     art: "art-30",
     visual: "audio",
     docs: { label: "Blocks and slash commands", href: "/docs/blocks-and-slash-commands" },
@@ -449,7 +449,7 @@ export const FEATURES: Feature[] = [
               <li>
                 <strong>Stop and save</strong> adds the recording to the note. Cancel throws it away, and pressing Escape never does, so a stray key can’t lose a recording.
               </li>
-              <li>A recording can be up to three hours long. It stops by itself at three hours.</li>
+              <li>A recording can be up to three hours long, and the recorder stops by itself when it gets there.</li>
             </ul>
           </>
         ),
@@ -468,7 +468,7 @@ export const FEATURES: Feature[] = [
         title: "Saved on your device first",
         body: (
           <p>
-            Like everything in Folevi, a recording is saved on your device as soon as you stop. It plays from there straight away, and uploads in the background when you’re online, so you can record on a train with no signal. Recordings count towards your storage, the same as images and files.
+            Like everything in Folevi, a recording is saved on your device as soon as you stop. It plays from there straight away, and uploads in the background when you’re online, so you can record on a train with no signal. Recordings count toward your storage, the same as images and files.
           </p>
         ),
       },
@@ -485,8 +485,8 @@ export const FEATURES: Feature[] = [
     faq: [
       { q: "How do I record audio in a Folevi note?", a: "Type /record on an empty line and press Return, or pick Audio recording in the Insert panel. Allow the microphone when your browser asks, then press Stop and save." },
       { q: "How long can a recording be?", a: "Up to three hours. The recorder stops by itself at three hours, and you can pause and resume as often as you like." },
-      { q: "Does Folevi transcribe recordings?", a: "Yes, on plans with Foli AI. Press Transcribe on a recording and Foli AI writes it out word for word, with speakers marked. Recordings of any length up to 4 hours can be transcribed, and Folevi shows what it will cost in AI credits before it starts." },
-      { q: "Which plans include audio recordings?", a: "Every plan, including Free and Core. Recordings count towards your storage." },
+      { q: "Does Folevi transcribe recordings?", a: "Yes, on plans with Foli AI. Press Transcribe on a recording and Foli AI writes it out word for word, with speakers marked. Anything up to 4 hours long can be transcribed: your recordings, which stop at three hours, and audio files you add to a note. Folevi shows what it will cost in AI credits before it starts." },
+      { q: "Which plans include audio recordings?", a: "Every plan, including Free and Core. Recordings count toward your storage." },
       { q: "Which browsers can record?", a: "Recent versions of Chrome, Safari, Edge and Firefox. Chrome, Edge and Firefox record WebM audio and Safari records MP4 audio; recent browsers play both." },
     ],
     related: ["offline-notes", "import-and-export", "sharing"],
@@ -501,7 +501,7 @@ export const FEATURES: Feature[] = [
     intro:
       "Every line in a Folevi note is a block. Type / on any line to turn it into a heading, a to-do, a table, a flowchart or a voice note. Keep typing to filter the menu, then press Return.",
     plans: "Every plan, including Free.",
-    updated: "2026-10-01",
+    updated: "2026-11-18",
     art: "art-30",
     visual: "slash",
     docs: { label: "Blocks and slash commands", href: "/docs/blocks-and-slash-commands" },
@@ -513,7 +513,7 @@ export const FEATURES: Feature[] = [
           <ul>
             <li>Write: text, headings, quotes, callouts, toggles, code and dividers.</li>
             <li>Plan: to-dos, bulleted and numbered lists, today’s date or any date.</li>
-            <li>Organise: tables, collections as a table, gallery or kanban, sub-pages and links to pages.</li>
+            <li>Organize: tables, collections as a table, gallery or kanban, sub-pages and links to pages.</li>
             <li>Draw and explain: flowcharts, whiteboards, Mermaid diagrams and TeX formulas.</li>
             <li>Add media: audio recordings, images (yours or from Unsplash), files and bookmarks.</li>
             <li>Ask Foli AI: continue writing, summarize the note, find action items, make an outline or brainstorm.</li>
@@ -901,21 +901,21 @@ export const FEATURES: Feature[] = [
     // convex/graphViews.ts; the Mac and iPad draw it natively (FoleviMac GraphScreen.swift).
     slug: "foli-dna",
     name: "Foli DNA",
-    summary: "A living map of your notes and how they connect.",
+    summary: "A map of your notes and how they connect.",
     title: "Foli DNA, a map of your notes",
-    description: "Foli DNA draws your notes and the links between them as a map, with clusters, suggested links, filters by folder, tag and date, a view around any note, and a time-lapse of how it grew.",
+    description: "Foli DNA maps your notes and their links, with clusters, suggested links, filters by folder, tag and date, a view around one note, and a time-lapse of how it grew.",
     h1: "Foli DNA: see how your notes connect",
     intro:
       "Every [[link]] you write becomes a line on the map. Foli DNA shows the notes you write about most, the groups they fall into, and the notes that should probably be linked but aren’t yet.",
     plans: "Every plan, including Free. People, projects, topics, clusters named by what they share, and suggested links come with Pro, Pro AI and paid teams.",
-    updated: "2026-11-05",
+    updated: "2026-11-18",
     art: "art-42",
     visual: "dna",
     sections: [
       {
         id: "map",
         title: "The map of your notes",
-        body: <p>Notes are dots, links are lines, and the best-connected notes are labelled. Drag to move around, pinch or scroll to zoom, and click a note to open it. Hold ⌘ to open it in a new tab. The List view shows the same map as text.</p>,
+        body: <p>Notes are dots, links are lines, and the best-connected notes are labeled. Drag to move around, pinch or scroll to zoom, and click a note to open it. Hold ⌘ to open it in a new tab. The List view shows the same map as text.</p>,
       },
       {
         id: "around",
@@ -924,8 +924,8 @@ export const FEATURES: Feature[] = [
       },
       {
         id: "filters",
-        title: "Filters, colours and clusters",
-        body: <p>Show one folder or tag, or only notes edited this week or month. Colour notes by folder or tag, hide notes with no links, and let clusters shade the groups your notes fall into. Notes that join two clusters get a dashed ring.</p>,
+        title: "Filters, colors and clusters",
+        body: <p>Show one folder or tag, or only notes edited this week or month. Color notes by folder or tag, hide notes with no links, and let clusters shade the groups your notes fall into. Notes that join two clusters get a dashed ring.</p>,
       },
       {
         id: "act",
@@ -940,7 +940,7 @@ export const FEATURES: Feature[] = [
       {
         id: "keep",
         title: "Saved views, export and sharing",
-        body: <p>Save a view with its filters and colours and it shows in the sidebar under Foli DNA. Save the map as a PNG or SVG, or copy it as a Markdown list. A published page can show a small Foli DNA of the pages it links to, and only ones its readers can open.</p>,
+        body: <p>Save a view with its filters and colors and it shows in the sidebar under Foli DNA. Save the map as a PNG or SVG, or copy it as a Markdown list. A published page can show a small Foli DNA of the pages it links to, and only ones its readers can open.</p>,
       },
     ],
     faq: [
@@ -956,14 +956,14 @@ export const FEATURES: Feature[] = [
     // MoveToFolderDialog.tsx, HomeDashboard.tsx and convex/organization.ts.
     slug: "folders",
     name: "Folders",
-    summary: "Coloured folders, and Drafts for unfiled notes.",
-    title: "Note folders: organize notes in coloured folders",
-    description: "Organize Folevi notes in coloured folders. New notes wait in Drafts until you file them, and you can drag a note onto a folder or move it from its menu.",
-    h1: "Organize your notes in coloured folders",
+    summary: "Colored folders, and Drafts for unfiled notes.",
+    title: "Note folders: organize notes in colored folders",
+    description: "Organize Folevi notes in colored folders. New notes wait in Drafts until you file them, and you can drag a note onto a folder or move it from its menu.",
+    h1: "Organize your notes in colored folders",
     intro:
-      "Make a folder for each project, client or trip and file your notes in it. Every folder has a colour and a page that shows the notes inside. Notes you haven’t filed yet wait in Drafts.",
+      "Make a folder for each project, client or trip and file your notes in it. Every folder has a color and a page that shows the notes inside. Notes you haven’t filed yet wait in Drafts.",
     plans: "Every plan, including Free.",
-    updated: "2026-10-14",
+    updated: "2026-11-18",
     art: "art-30",
     visual: "folders",
     docs: { label: "Getting started", href: "/docs/getting-started" },
@@ -988,10 +988,10 @@ export const FEATURES: Feature[] = [
       },
       {
         id: "colours",
-        title: "A colour for each folder",
+        title: "A color for each folder",
         body: (
           <p>
-            Every new folder gets a colour. To pick another, open the folder’s menu and choose <strong>Change color</strong>. The {FOLDER_COLOR_COUNT} colours are the page colours of the note themes, and the folder shows its colour in the sidebar, on note cards and on Home.
+            Every new folder gets a color. To pick another, open the folder’s menu and choose <strong>Change color</strong>. The {FOLDER_COLOR_COUNT} colors are the page colors of the note themes, and the folder shows its color in the sidebar, on note cards and on Home.
           </p>
         ),
       },
@@ -1056,7 +1056,7 @@ export const FEATURES: Feature[] = [
       { q: "Can a note be in more than one folder?", a: "No. A note is in one folder or in Drafts. Tags group notes across folders." },
       { q: "What happens to the notes when I delete a folder?", a: "They stay. The folder is removed and its notes move to Drafts. Folders inside it move up a level, with their notes." },
       { q: "Can folders go inside other folders?", a: "Yes, up to five levels deep. Use New folder inside from a folder’s menu, or drag one folder onto another." },
-      { q: "Can I change a folder’s colour?", a: `Yes. Open the folder’s menu and choose Change color. There are ${FOLDER_COLOR_COUNT} colours to pick from.` },
+      { q: "Can I change a folder’s color?", a: `Yes. Open the folder’s menu and choose Change color. There are ${FOLDER_COLOR_COUNT} colors to pick from.` },
       { q: "Are folders on the Free plan?", a: "Yes. Folders work the same way on every plan." },
     ],
     related: ["search", "linked-notes", "note-themes"],
@@ -1071,7 +1071,7 @@ export const FEATURES: Feature[] = [
     intro:
       "A flowchart in Folevi is a block in your note, next to the text that explains it. Add shapes and connectors by hand, describe the process and let the AI draw it, or write a Mermaid diagram.",
     plans: "Flowcharts and Mermaid on every plan. Drawing with AI needs Free, Pro or Pro AI.",
-    updated: "2026-10-23",
+    updated: "2026-11-18",
     art: "art-50",
     visual: "flowchart",
     docs: { label: "Blocks and slash commands", href: "/docs/blocks-and-slash-commands" },
@@ -1082,7 +1082,7 @@ export const FEATURES: Feature[] = [
         body: (
           <>
             <p>
-              Type <Kbd>/flowchart</Kbd> to add one. There are seven shapes: process, decision, start or end, input or output, circle, sticky note and text. Shapes can be coloured, duplicated and changed from one kind to another.
+              Type <Kbd>/flowchart</Kbd> to add one. There are seven shapes: process, decision, start or end, input or output, circle, sticky note and text. Shapes can be colored, duplicated and changed from one kind to another.
             </p>
             <p>Connectors can be solid or dashed, with an arrow at the end, at both ends or none, and each can have a label. You can zoom, fit the chart to the view, undo and redo, and drag the block taller.</p>
           </>
@@ -1130,12 +1130,12 @@ export const FEATURES: Feature[] = [
     name: "Whiteboard",
     summary: "Sketch with a pen inside the note.",
     title: "Whiteboard inside your notes",
-    description: "Add a whiteboard to any Folevi note and sketch with a pen in six colours, a highlighter and an eraser. The drawing syncs with the note.",
+    description: "Add a whiteboard to any Folevi note and sketch with a pen in six colors, a highlighter and an eraser. The drawing syncs with the note.",
     h1: "A whiteboard inside your notes for quick sketches",
     intro:
       "Some ideas are easier to draw. A whiteboard block gives you a canvas in the middle of a note, so the sketch sits with the text it belongs to.",
     plans: "Every plan, including Free.",
-    updated: "2026-09-30",
+    updated: "2026-11-18",
     art: "art-30",
     visual: "whiteboard",
     docs: { label: "Blocks and slash commands", href: "/docs/blocks-and-slash-commands" },
@@ -1187,12 +1187,12 @@ export const FEATURES: Feature[] = [
     slug: "note-themes",
     name: "Note themes",
     summary: `${STYLE_COUNT} themes, or your own image.`,
-    title: "Note themes: artwork, colours and fonts for your notes",
-    description: `Pick one of ${STYLE_COUNT} themes for a Folevi note, or your own image. It colours the cover, paper, text, highlights and checkboxes.`,
-    h1: "Note themes that give each page its own colours",
-    intro: `Folevi’s app stays white, or near-black when you switch it to dark mode. The colour comes from your notes: pick one of ${STYLE_COUNT} note themes, or your own picture, and the page takes its colours from it.`,
+    title: "Note themes: artwork, colors and fonts for your notes",
+    description: `Pick one of ${STYLE_COUNT} themes for a Folevi note, or your own image. It colors the cover, paper, text, highlights and checkboxes.`,
+    h1: "Note themes that give each page its own colors",
+    intro: `Folevi’s app stays white, or near-black when you switch it to dark mode. The color comes from your notes: pick one of ${STYLE_COUNT} note themes, or your own picture, and the page takes its colors from it.`,
     plans: "Every plan, including Free.",
-    updated: "2026-10-10",
+    updated: "2026-11-18",
     art: "art-03",
     visual: "styles",
     docs: { label: "Blocks and slash commands", href: "/docs/blocks-and-slash-commands" },
@@ -1202,14 +1202,14 @@ export const FEATURES: Feature[] = [
         title: `${STYLE_COUNT} themes, or Plain`,
         body: (
           <p>
-            Each theme is an artwork with the colours, separator and fonts a note starts with. It sets the cover, the paper colour and the text colour. On Auto, highlights, callouts and checkboxes take their colours from it too. Plain has no artwork, and new notes start Plain.
+            Each theme is an artwork with the colors, separator and fonts a note starts with. It sets the cover, the paper color and the text color. On Auto, highlights, callouts and checkboxes take their colors from it too. Plain has no artwork, and new notes start Plain.
           </p>
         ),
       },
       {
         id: "own-image",
         title: "Your own image",
-        body: <p>Upload a picture as a note’s theme and Folevi picks the page and text colours from it. PNG, JPEG, WebP and GIF work, up to 20 MB; 2400 × 1500 pixels fits best.</p>,
+        body: <p>Upload a picture as a note’s theme and Folevi picks the page and text colors from it. PNG, JPEG, WebP and GIF work, up to 20 MB; 2400 × 1500 pixels fits best.</p>,
       },
       {
         id: "blur",
@@ -1218,11 +1218,11 @@ export const FEATURES: Feature[] = [
       },
       {
         id: "fine-tune",
-        title: "Colours, font and width",
+        title: "Colors, font and width",
         body: (
           <ul>
-            <li>Document colour: Auto, or white, paper, ivory, mist, sage, blush or night.</li>
-            <li>Text colour: Auto, or ink, slate, navy, forest, plum, brown or white.</li>
+            <li>Document color: Auto, or white, paper, ivory, mist, sage, blush or night.</li>
+            <li>Text color: Auto, or ink, slate, navy, forest, plum, brown or white.</li>
             <li>Font: Modern, Serif, Mono or Soft.</li>
             <li>Page width: Narrow or Wide. Separators: line, dots or doodle.</li>
           </ul>
@@ -1231,14 +1231,14 @@ export const FEATURES: Feature[] = [
       {
         id: "dark",
         title: "Light and dark",
-        body: <p>Every theme has a set of dark colours, so a note keeps its look at night.</p>,
+        body: <p>Every theme has a set of dark colors, so a note keeps its look at night.</p>,
       },
     ],
     faq: [
       { q: "How many note themes are there?", a: `${STYLE_COUNT}, plus Plain and your own image.` },
-      { q: "Can I use my own picture?", a: "Yes. Upload a PNG, JPEG, WebP or GIF up to 20 MB and Folevi picks the page and text colours from it." },
-      { q: "Do note themes work in dark mode?", a: "Yes. Every theme has dark colours as well as light ones." },
-      { q: "Does a note theme change the whole app?", a: "No. The app stays white, or near-black in dark mode. Only the note takes the theme’s colours." },
+      { q: "Can I use my own picture?", a: "Yes. Upload a PNG, JPEG, WebP or GIF up to 20 MB and Folevi picks the page and text colors from it." },
+      { q: "Do note themes work in dark mode?", a: "Yes. Every theme has dark colors as well as light ones." },
+      { q: "Does a note theme change the whole app?", a: "No. The app stays white, or near-black in dark mode. Only the note takes the theme’s colors." },
     ],
     related: ["whiteboard", "templates", "sharing"],
   },
@@ -1318,9 +1318,9 @@ export const FEATURES: Feature[] = [
     description: `A Folevi workspace for your team, with admins, members and free guests. Paid plans are per member from ${formatPrice(PRICES.core.month)} a month, separate from your Personal.`,
     h1: "Team workspaces with roles and per-member plans",
     intro:
-      "A workspace is a shared space for a team: its docs, its wiki, its tasks and its databases. It has its own pages, plan, storage and billing, and it never mixes with anyone’s Personal, which stays theirs alone.",
+      "A workspace is a shared space for a team’s docs, wiki, tasks and databases. It has its own pages, plan, storage and billing, kept apart from each member’s Personal, which stays theirs alone.",
     plans: "Free, Core, Pro and Pro AI, billed per member.",
-    updated: "2026-11-06",
+    updated: "2026-11-18",
     art: "art-39",
     visual: "workspaces",
     docs: { label: "Workspaces and plans", href: "/docs/workspaces-and-plans" },
@@ -1354,7 +1354,7 @@ export const FEATURES: Feature[] = [
               <strong>Members</strong> work on the workspace’s pages. A member can also be limited to comment or view only.
             </li>
             <li>
-              <strong>Guests</strong> aren’t members. They see only the pages shared with them, and an admin can turn a guest into a member or the other way round.
+              <strong>Guests</strong> aren’t members. They see only the pages shared with them, and an admin can turn a guest into a member or the other way around.
             </li>
           </ul>
         ),
@@ -1503,11 +1503,11 @@ export const FEATURES: Feature[] = [
     name: "Security and privacy",
     summary: "Passkeys, two-step verification, private pages, no trackers.",
     title: "Security and privacy for your notes and workspace",
-    description: "Folevi needs a verified email, offers two-step verification, encrypts data in transit and at rest, offers end-to-end encryption, and loads no trackers.",
-    h1: "Private by default, with plain answers about security",
-    intro: "Here is what protects your account and your notes in Folevi today, and one thing it doesn’t do. The full details, with every subprocessor, are on the Security page. If you’d rather your notes never reach our servers, the Mac, iPhone and iPad apps can keep them on your devices with no account.",
+    description: "Folevi requires a verified email, offers two-step verification, encrypts data in transit and at rest, has optional end-to-end encryption and loads no trackers.",
+    h1: "Private by default: how Folevi protects your notes",
+    intro: "Here is what protects your account and your notes in Folevi today. The Security page has the full details, including every subprocessor. If you’d rather your notes never reach our servers, the Mac, iPhone and iPad apps can keep them on your devices with no account.",
     plans: "Every plan, including Free.",
-    updated: "2026-11-06",
+    updated: "2026-11-18",
     art: "art-01",
     visual: "security",
     docs: { label: "Account security", href: "/docs/account-security" },
@@ -1526,7 +1526,7 @@ export const FEATURES: Feature[] = [
       },
       {
         id: "encryption",
-        title: "Encryption, and what it doesn’t cover",
+        title: "Encryption",
         body: (
           <p>
             Connections use TLS with HSTS, and stored data is encrypted at rest by our hosting providers. End-to-end encryption is yours to turn on in Settings → Privacy, on every plan: your notes are encrypted on your devices before they’re sent, and you choose which features may still read them. See <Link href="/security#e2ee">how it works</Link>.

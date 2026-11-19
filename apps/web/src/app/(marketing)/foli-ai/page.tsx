@@ -111,7 +111,7 @@ export default function FoliPage() {
               Ask a question, or ask for a <Mark>change</Mark>.
             </>
           }
-          lede="One chat for both."
+          lede="Both happen in the same chat."
         />
         <div className="mt-12 space-y-10 sm:space-y-12">
           <Feature
@@ -130,7 +130,7 @@ export default function FoliPage() {
             reverse
             tint
             eyebrow="Make changes"
-            title="Ask it to fix the note. It changes the note."
+            title="Ask for a fix, and Foli AI makes it in the note."
             art="art-27"
             picture={
               <Play>
@@ -138,7 +138,7 @@ export default function FoliPage() {
               </Play>
             }
             points={[
-              <>Fix, tidy or reorganise a page</>,
+              <>Fix, tidy or reorganize a page</>,
               <>Approve each change first</>,
               <>One <b>Undo</b> puts it all back</>,
             ]}
@@ -183,7 +183,7 @@ export default function FoliPage() {
           <Feature
             stacked
             eyebrow="Flowcharts"
-            title="Describe a process. Get a flowchart."
+            title="Describe a process and get a flowchart."
             art="art-42"
             picture={<FlowchartDemo />}
             points={[
@@ -287,7 +287,7 @@ export default function FoliPage() {
           eyebrow="Around your notes"
           title={
             <>
-              And the <Mark kind="squiggle">quieter</Mark> things.
+              And a few <Mark kind="squiggle">smaller</Mark> things.
             </>
           }
         />

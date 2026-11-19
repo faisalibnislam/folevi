@@ -33,7 +33,7 @@ const QAS: Qa[] = [
     answer: [
       { t: "Three are open. " },
       { t: "Print seed labels", b: true },
-      { t: " is overdue since Monday " },
+      { t: " has been overdue since Monday " },
       { t: "", cite: 1 },
       { t: ". Pick up keys from Ines and order glassine envelopes are due today " },
       { t: "", cite: 2 },

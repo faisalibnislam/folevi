@@ -279,6 +279,49 @@ Not checked in this pass: Subscribe (it needs an account; it uses the same sheet
 test app is never the active app, so Save is drawn in the inactive colour in these pictures), dragging a task onto
 a day, and events from a subscribed calendar.
 
+## The tab's close button and the panel's foot (tenth pass, 2026-11-19, after 1.4.49)
+
+Two notes from the owner on 1.4.49.
+
+### A tab's close button: it sat beside the title, so it moved with the tab's width. Now it is at the tab's left edge in every tab
+
+![tabs-close](tabs-close.jpg)
+
+The × took the icon's place, and the icon and title are centred in the tab, so in a wide tab the × floated in the
+middle. It is now an overlay at the tab's leading edge (`TabCloseSpot`). In a wide tab the icon stays beside the
+title; in a narrower one the × shows in the icon's stead and the title doesn't move.
+
+### Foli AI's panel: the blur over its last rows is gone, in light and dark
+
+![panel-foot](panel-foot.jpg)
+
+The web's sidebar blurs its last rows into the bottom edge. In Folevi for Mac the panel now runs clear to the
+window's edge in every tab, as Insert, Format and Style already did. The web keeps its blur.
+
+Tests: `TabCloseSpotTests` (4) and one more in `note-panels-polish.test.ts`. Not pictured: the × under the pointer
+on a tab that isn't open (the pointer can't be moved for the test app alone); it is the same button in the same
+place.
+
+## Tasks without lines (2026-11-19)
+
+The owner: "Keep the spacing but remove the horizontal lines here." The lines between tasks are gone in every list
+of tasks (Tasks' views, the Calendar's day list and Agenda); the rows are where they were.
+
+![tasks-no-lines](tasks-no-lines.jpg)
+
+Then the owner agreed to the same in the other lists of one kind of row: notes and folders in list view, the
+account lists (Shared with Me, Changes), the Vault's lists, the calendars in the Calendars popover and Help's
+shortcuts.
+
+![lists-no-lines](lists-no-lines.jpg)
+
+Not pictured: folders in list view (the same gap as the notes list), the account lists and the Calendars popover's
+rows (both need a signed-in account; the scratch library has none). With no line to hide beside a highlighted
+row, the notes list's page no longer tracks which row the pointer is on, which had made every built row again at
+each crossing.
+
+The same day's performance pass is in `docs/MAC_PERFORMANCE_2026-11-19.md`.
+
 ## Not covered, and why
 
 - **Hover states of the native parts** (sidebar rows, cards, tabs) could not be pictured: moving the pointer for

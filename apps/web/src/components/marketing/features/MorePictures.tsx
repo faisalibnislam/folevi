@@ -96,7 +96,7 @@ export function CalendarPicture() {
   return (
     <div
       role="img"
-      aria-label="The calendar in month layout for October 2026. Tasks with dates sit in their days, today is the 1st, and the panel beside it lists the tasks due on Wednesday 7 October: Movers at 10:30, Label boxes and Return keys."
+      aria-label="The calendar in month layout for October 2026. Tasks with dates sit in their days, today is the 1st, and the panel beside it lists the tasks due on Wednesday, October 7: Movers at 10:30, Label boxes and Return keys."
       className="mk-app-pop mx-auto max-w-[900px] overflow-hidden rounded-panel text-[12px]"
     >
       <div aria-hidden="true">
@@ -146,7 +146,7 @@ export function CalendarPicture() {
             </div>
           </div>
           <div className="hidden border-l border-(--color-line) p-4 sm:block">
-            <p className="font-semibold text-(--color-heading)">Wednesday, 7 October</p>
+            <p className="font-semibold text-(--color-heading)">Wednesday, October 7</p>
             <div className="mt-2 space-y-2">
               {[
                 ["10:30", "Movers", "Studio move"],

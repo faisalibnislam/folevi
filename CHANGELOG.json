@@ -1,6 +1,27 @@
 {
   "releases": [
     {
+      "version": "1.4.50",
+      "build": 64,
+      "released": "2026-11-19T11:15:21+06:00",
+      "type": "patch",
+      "summary": "Mac: smoother scrolling in lists, cleaner lists with no lines between rows, and a tab's close button always at the tab's left edge.",
+      "improved": [
+        "Mac: lists scroll more smoothly with the pointer over them (Home, notes, folders, tasks); rows show no hover while a list is moving",
+        "Mac: no lines between the rows of a list (tasks, notes and folders in list view, the Vault's passwords, calendars, Help's shortcuts), with the same spacing",
+        "Mac: a tab's close button is always at the tab's left edge, whatever the tab's width",
+        "Mac: no blur at the bottom of the Foli AI panel",
+        "Mac: Folevi lets go of more memory when the Mac runs low",
+        "Web: the Vault, the theme picker, text fields, Tasks and Calendar take the polish the Mac got in 1.4.49"
+      ],
+      "fixed": [
+        "Mac: the date picker, the list of times and the time zone list stayed in memory after they closed",
+        "Mac: with more than one window, note covers and card text could stop loading after the first window was closed",
+        "Mac: the title bar's tabs were drawn again at every move of the caret in a note"
+      ],
+      "tag": "v1.4.50"
+    },
+    {
       "version": "1.4.49",
       "build": 63,
       "released": "2026-11-19T08:03:11+06:00",

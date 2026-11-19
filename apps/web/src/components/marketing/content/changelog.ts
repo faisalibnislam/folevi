@@ -17,7 +17,7 @@ export const RELEASES: Release[] = [
     version: "0.4",
     name: "Folevi for Mac runs the web app",
     date: "2026-10-09",
-    label: "9 October 2026",
+    label: "October 9, 2026",
     intro: "Folevi for Mac now runs the same app as the web, so every feature reaches the Mac the day it ships. It isn't available to download yet.",
     groups: [
       {
@@ -36,7 +36,7 @@ export const RELEASES: Release[] = [
     version: "0.3",
     name: "New plans and AI credits",
     date: "2026-09-30",
-    label: "30 September 2026",
+    label: "September 30, 2026",
     intro: "Four plans, the same for you and for your team, and AI counted in credits so every plan can say exactly what it includes.",
     groups: [
       {
@@ -65,7 +65,7 @@ export const RELEASES: Release[] = [
     version: "0.2",
     name: "Plans, AI and a new look",
     date: "2026-09-28",
-    label: "28 September 2026",
+    label: "September 28, 2026",
     intro: "Folevi gets plans, an AI Assistant and a lighter, glassier look. They're on the web now, and the Mac app will follow.",
     groups: [
       {
@@ -90,8 +90,8 @@ export const RELEASES: Release[] = [
         title: "Look and feel",
         items: [
           "A new logo and app icon",
-          "Translucent, glassy chrome with a calmer, neutral palette so your notes carry the colour",
-          "57 note styles, each colouring text, highlights and blocks from its image, or upload your own",
+          "Translucent, glassy chrome with a calmer, neutral palette so your notes carry the color",
+          "57 note styles, each coloring text, highlights and blocks from its image, or upload your own",
           "26 built-in templates with their own icons",
           "Folders that show the notes inside them",
         ],
@@ -106,7 +106,7 @@ export const RELEASES: Release[] = [
     version: "0.1",
     name: "Preview",
     date: "2026-09-25",
-    label: "25 September 2026",
+    label: "September 25, 2026",
     intro: "The first public preview of Folevi, on the web and (for preview accounts) on the Mac.",
     groups: [
       {
@@ -115,12 +115,12 @@ export const RELEASES: Release[] = [
           "Block documents: text, headings (three levels), bulleted and numbered lists, checklists, toggles, quotes, callouts, dividers, code, tables, images, files and bookmarks",
           "Slash menu to insert or turn a block into any type, plus keyboard shortcuts for headings and checklists",
           "Drag or use ⌥⇧↑ / ⌥⇧↓ to move blocks; nest blocks to build outlines",
-          "Inline formatting, text colours and highlights, links, dates and mentions",
-          "Page style: sans, serif or mono type; narrow, default or wide width; paper, plain, tinted or grid backgrounds; five accent colours; colour, gradient and 20 artwork covers; icons",
+          "Inline formatting, text colors and highlights, links, dates and mentions",
+          "Page style: sans, serif or mono type; narrow, default or wide width; paper, plain, tinted or grid backgrounds; five accent colors; color, gradient and 20 artwork covers; icons",
         ],
       },
       {
-        title: "Organising",
+        title: "Organizing",
         items: [
           "Nested pages, shown as links or cards",
           "Links between pages with [[, and backlinks on the linked page",

@@ -15,7 +15,7 @@ import { SearchPiece, TaskPiece } from "@/components/marketing/pieces";
 export const metadata = pageMetadata({
   title: "Workspace features: docs, tasks, databases, notes",
   description:
-    "Folevi is a workspace for docs, wikis, tasks and databases, with team sharing and Foli AI. Free notes apps for Mac, iPhone and iPad, no account.",
+    "Folevi is a workspace for docs, wikis, tasks and databases, with team sharing and Foli AI. The notes apps for Mac, iPhone and iPad are free and need no account.",
   path: "/features",
   ogImage: "segment",
 });
@@ -103,7 +103,7 @@ const GROUPS: Group[] = [
   {
     id: "apps-and-offline",
     name: "Free apps, offline and private",
-    lede: "Free forever, no account. Everything saves on your device first.",
+    lede: "Free forever, with no account. Everything saves to your device first.",
     cards: [
       { slug: "notes-on-your-devices", size: "twoThirds" },
       { slug: "mac", size: "third" },
@@ -114,8 +114,8 @@ const GROUPS: Group[] = [
   },
   {
     id: "draw-and-organise",
-    name: "Draw, record and organise",
-    lede: "Flowcharts, sketches and voice notes in the page, and folders and search to find it all.",
+    name: "Draw, record and organize",
+    lede: "Flowcharts, sketches and voice notes inside the page, with folders and search to find everything.",
     cards: [
       { slug: "flowcharts", size: "third" },
       { slug: "whiteboard", size: "third" },
@@ -183,7 +183,7 @@ export default function FeaturesPage() {
             One workspace for your <Mark>docs, tasks</Mark> and team.
           </h1>
           <p className="mk-lede mt-6 max-w-[60ch]">
-            Write docs and wikis, plan your week, keep databases and work with your team, with Foli AI when you want it. On the web, Mac, iPhone and iPad, and it works offline.
+            Write docs and wikis, plan your week, keep databases and work with your team, with Foli AI when you want it. Folevi runs on the web, Mac, iPhone and iPad, and it works offline.
           </p>
           <nav aria-label="Feature groups" className="mt-8">
             <ul className="flex flex-wrap gap-2">
@@ -223,7 +223,7 @@ export default function FeaturesPage() {
                       <LinkCard
                         href="/mac"
                         title="Mac app"
-                        body="Free with no account. Quick Add and a menu bar icon. Also on iPhone and iPad."
+                        body="Free, with no account. It has Quick Add and a menu bar icon, and there are apps for iPhone and iPad too."
                         cover={<FeatureCover picture={{ width: 1000, node: <MacCover /> }} className={COVER[size]} />}
                         layout={layout}
                       />

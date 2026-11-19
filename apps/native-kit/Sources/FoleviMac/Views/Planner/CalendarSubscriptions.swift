@@ -49,6 +49,7 @@ struct CalendarsPopover: View {
     let state: WebCalendarState
     let frame: FrameModel
     @Environment(\.colorScheme) private var scheme
+    @Environment(\.nativeChrome) private var chrome
 
     var body: some View {
         let pop = PS("cals.pop")
@@ -66,9 +67,10 @@ struct CalendarsPopover: View {
             .padding(head.padding.edgeInsets)
             Rectangle().fill(line).frame(height: 1)
             if !cals.isEmpty {
-                ForEach(cals, id: \.id) { c in
+                // (The Mac's native look: no line between two calendars, only the one that ends the list.)
+                ForEach(Array(cals.enumerated()), id: \.element.id) { i, c in
                     SubscriptionRow(cal: c, client: frame.client, frame: frame)
-                    Rectangle().fill(line).frame(height: 1)
+                    Rectangle().fill(chrome != nil && i < cals.count - 1 ? .clear : line).frame(height: 1)
                 }
             }
             AddCalendarForm(count: cals.count, client: frame.client, frame: frame)

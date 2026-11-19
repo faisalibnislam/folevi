@@ -107,7 +107,7 @@ export function HeroApps() {
               <Mark kind="circle">Free,</Mark> with no account.
             </h2>
             <p className="mk-lede mt-4 max-w-[54ch]">
-              The whole workspace in native apps that open in a moment and work offline. Choose Keep notes on my devices and start: no sign-up, no trial, no limit.
+              The whole workspace in native apps that open in a moment and work offline. Choose Keep notes on my devices and start writing without signing up. There’s no trial and no limit.
             </p>
             <ul className="mt-5 flex flex-wrap gap-2">
               {PROMISES.map((p) => (

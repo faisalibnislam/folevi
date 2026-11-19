@@ -114,7 +114,7 @@ private struct VaultBody: View {
             view.background.color
                 .padding(.top, -barRoom)
                 .allowsHitTesting(false)
-            ScrollView(.vertical) {
+            QuietScrollView(.vertical) {
                 VStack(alignment: .leading, spacing: 0) {
                     VaultHeader(model: model)
                     VStack(alignment: .leading, spacing: 0) {

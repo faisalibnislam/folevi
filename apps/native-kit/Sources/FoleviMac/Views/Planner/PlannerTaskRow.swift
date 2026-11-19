@@ -327,6 +327,11 @@ struct EditTaskButton: View {
 }
 
 /// A list of task rows in a card with hairlines between them (`divide-y divide-line ui-card rounded-control`).
+/// The line between two tasks in the Mac's native look: none.
+enum TaskCardLook {
+    static let nativeLine = Color.clear
+}
+
 struct TaskCard<Content: View>: View {
     @ViewBuilder let content: () -> Content
     @Environment(\.colorScheme) private var scheme
@@ -334,10 +339,9 @@ struct TaskCard<Content: View>: View {
 
     var body: some View {
         if chrome != nil {
-            // The Mac's native look: the rows straight on the page, separators from where the rows' words start
-            // (past the box, as a Mac list's) to 12 pt short of the row's end.
-            let row = PS("tasks.row").resolve(scheme)
-            _VariadicView.Tree(DividedLayout(line: NativeLook.separator, inset: 12, leading: row.padding.left + PS("tasks.check").resolve(scheme).width + row.gap)) { content() }
+            // The Mac's native look: the rows straight on the page with no line between them (the owner, 2026-11-19:
+            // "keep the spacing but remove the horizontal lines"). The line's point of room stays, so nothing moves.
+            _VariadicView.Tree(DividedLayout(line: TaskCardLook.nativeLine)) { content() }
                 .frame(maxWidth: .infinity)
         } else {
             web

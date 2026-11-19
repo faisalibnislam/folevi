@@ -38,6 +38,11 @@ Branch: `mac-native-look`. Not released: the owner approves the look first.
   in a round button right after Home. A tab narrower than 90 pt keeps its own width (the same padding as every tab). No + (the sidebar's New note; ⌘T opens a tab). With only Home open there is
   no track. The track clips its tabs, the list fades out before the scroll
   arrows (`EdgeFade(trailingInset:)`), and hovering a tab's × hides the tab's picture so the × keeps its tooltip.
+  **A tab's × is at the tab's leading edge in every tab** (the owner, 2026-11-19: "always align to the left,
+  whatever the size of the tab is"; it sat in the icon's place beside the centred title, so it floated in the
+  middle of a wide tab). `TabCloseSpot`: its centre is where a narrow tab's icon is. Where the centred icon and
+  title stay clear of it, the icon stays beside the title and nothing moves when the × shows; in a narrower tab
+  the × shows in the icon's stead and the title stays where it was.
   The sync status, the bell and (on a note) the inspector's button are at the strip's end.
 - **The card's controls** float in Liquid Glass at a screen's top (`CardControls`), 36 pt, 12 pt in, 8 pt apart, in
   one `GlassEffectContainer`: the screen's title, the screen's own controls (`CardItems`), search. Screens leave
@@ -154,6 +159,18 @@ uneven"):
   section is the same distance from the next heading.
 - **One look for the chosen tile** in the Format panel (`CHOSEN_TILE`): Text, Groups and Decorations alike, the icon
   before the words.
+- **A list takes no pointer while it scrolls** (`QuietScrollView`, the 2026-11-19 performance pass): its rows show
+  no hover while they move and for 120 ms after, and a press is passed on, so a click still lands. A new screen's
+  main list uses `QuietScrollView` in place of `ScrollView`. Why: docs/MAC_PERFORMANCE_2026-11-19.md.
+- **No line between the rows of a list** (the owner, 2026-11-19: "keep the spacing but remove the horizontal lines
+  ... it will look much cleaner"): tasks, notes and folders in list view, the account lists, the Vault's lists,
+  the calendars in the Calendars popover and Help's shortcuts. The line's point of room stays (`NativeRowGap`,
+  `TaskCardLook.nativeLine`), so no row moved; spacing and the rounded hover tell rows apart. Lines that stay: a
+  calendar's grid, a menu's separators, the line over a dialog's buttons, the lines in the command palette and
+  Quick Add, the marks between tabs. Still the owner's to decide: the lines inside Settings' cards, under the
+  Vault's tabs, under Notifications' switch, and under the Calendar's weekday names. `ListLinesTests`.
+- **No blur at a panel's foot** (the owner, 2026-11-19: "it looks out of place"). The web's sidebar blurs its last
+  rows into the bottom edge (`.ui-blur-bottom`); in Folevi for Mac every panel runs clear to the window's edge.
 - **The panel sits beside the note** whenever the note keeps a writable width. The page's own width decides
   (`narrowWindowQuery` in `panelLayout.ts`: the Mac's page is the card, without the web's sidebar), so a 1280 pt
   window docks it; only a small window lays it over the note.
@@ -189,10 +206,11 @@ Rules from the 2026-11-19 pass (the owner: "polish Tasks and Calendar next"):
   fades to clear is a fade, not a fill, and still goes.
 - **A floating list has the panel's material under its fill** (`WebMaterial`, as the date's calendar): the fill
   alone is see-through, and the dialog's controls showed between the times.
-- **A list of tasks**: a separator starts where the rows' words start (past the box) and ends 12 pt short of the
-  row; the facts under a title each follow a dot with the same room on both sides; a group's heading is
-  `NativeHeading` on the boxes' own edge, in Tasks' Upcoming and the Calendar's Agenda alike; only Overdue is in
-  the warning colour.
+- **A list of tasks** has no line between its tasks (the owner, 2026-11-19: "keep the spacing but remove the
+  horizontal lines"): the line's point of room stays (`TaskCardLook.nativeLine`), so nothing moved. A row's hover
+  and its spacing tell the tasks apart. The facts under a title each follow a dot with the same room on both sides;
+  a group's heading is `NativeHeading` on the boxes' own edge, in Tasks' Upcoming and the Calendar's Agenda alike;
+  only Overdue is in the warning colour.
 - **A filter is a field with a magnifier** (`PlannerFilterField`: `NativeFieldBox`, Clear once there are words).
 - **The month fits the window** (`MonthFit`): the six weeks share the height under the weekday header, never
   shorter than the web's row (a short window scrolls) nor taller than 172 pt, and a taller week shows more of its
@@ -217,6 +235,7 @@ Real pictures and two automatic checks (2026-11-18):
   words or icon sit against the edge of their own hover fill. It must answer `[]` with each panel of a note open.
 - `node apps/mac/scripts/mac.mjs eval @apps/mac/scripts/font-lint.js`: interface text of the page that isn't in the
   system font. It must answer `[]` too (the note's own text and theme previews aren't counted).
+- `TabCloseSpotTests` holds the ×'s place on a tab.
 - `apps/web/test/note-panels-polish.test.ts` and `TabStripTests.theOpenTabClearsTheArrowsWhenTheyFirstAppear` hold
   the same rules in CI; `PlannerPolishTests` holds the task dialogs' sheet, the done box's fill and the month's rows.
 - A click inside a dialog or a popover it opened: `mac.mjs cmd menus '{"do":"click","sheet":true,"x":..,"y":..}'`

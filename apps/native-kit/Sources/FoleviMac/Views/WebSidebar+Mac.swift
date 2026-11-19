@@ -55,7 +55,7 @@ extension WebSidebar {
 
     /// The places, folders and tags.
     private var macList: some View {
-            ScrollView(.vertical) {
+            QuietScrollView(.vertical) {
                 VStack(alignment: .leading, spacing: 0) {
                     macDestinations
                     macFolders

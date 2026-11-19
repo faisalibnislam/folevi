@@ -18,7 +18,7 @@ export const metadata = pageMetadata({
   title: "Folevi: a digital workspace for Mac, iPhone, iPad and web",
   absoluteTitle: true,
   description:
-    "Folevi is a calm digital workspace for notes, docs, tasks and databases, with a Vault and Foli DNA. Free Mac, iPhone and iPad apps, no account.",
+    "Folevi is a digital workspace for notes, docs, tasks and databases, with a Vault and Foli DNA. The Mac, iPhone and iPad apps are free, with no account.",
   path: "/",
 });
 

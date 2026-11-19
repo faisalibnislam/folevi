@@ -69,7 +69,7 @@ struct WebTasksScreen: View {
         let shown = rows
         let loading = model.list.value?.view != model.view
         let content = PS("tasks.content").resolve(scheme)
-        ScrollView {
+        QuietScrollView {
             VStack(spacing: 0) {
                 VStack(alignment: .leading, spacing: 0) {
                     // The count and the actions on the list's own column (QA F15), lined up with the views, the

@@ -619,7 +619,7 @@ struct WebHomeScreen: View {
         let content = notesStyle("home.content", scheme)
         GeometryReader { geo in
             let inner = min(1400, geo.size.width) - content.padding.left - content.padding.right
-            ScrollView(.vertical) {
+            QuietScrollView(.vertical) {
                 VStack(alignment: .leading, spacing: 0) {
                     if chrome != nil {
                         // The Mac's native look: the page's title is the toolbar's (HIG toolbars), not repeated here.
@@ -1015,7 +1015,6 @@ struct WebNoteBrowser: View {
     /// The Mac's native look (NativeChrome).
     @Environment(\.nativeChrome) private var chrome
     /// The List layout's row under the pointer (its separators hide beside it).
-    @State private var hoveredRow: String?
     /// The card's glass controls take this page's controls (the Mac's native look): no header row here.
     @Environment(\.cardSlot) private var slot
 
@@ -1038,7 +1037,7 @@ struct WebNoteBrowser: View {
             // the scroll view's own width, which a wide grid can't feed back into.)
             let inner = columnWidth > 0 && slot == nil ? columnWidth : min(1180, geo.size.width) - content.padding.left - content.padding.right
             ZStack(alignment: .bottom) {
-                ScrollView(.vertical) {
+                QuietScrollView(.vertical) {
                     VStack(alignment: .leading, spacing: 0) {
                         // A folder's page: one compact title row with Sort and the view switch, no toolbar under it.
                         Group {
@@ -1496,23 +1495,19 @@ struct WebNoteBrowser: View {
         if chrome != nil { nativeListLayout } else { webListLayout }
     }
 
-    /// The Mac's native look: rows straight on the page with rounded highlights, separators inset to the text and
-    /// hidden beside a highlighted row (one shared boundary decided from both neighbours).
+    /// The Mac's native look: rows straight on the page with rounded highlights and no line between them.
     private var nativeListLayout: some View {
         let count = model.isFiltering ? model.slots.count : model.total
-        let lit = NativeRowHighlights(hovered: hoveredRow, selected: model.selection)
+        // (No line between rows, so the page no longer needs to know which row the pointer is on: it kept that to
+        // hide the lines beside it, and every row the list had built was made again each time the pointer crossed
+        // into another.)
         return LazyVStack(spacing: 0) {
             ForEach(0..<count, id: \.self) { i in
                 let slot = model.isFiltering ? model.slots[i] : model.slot(at: i)
                 VStack(spacing: 0) {
-                    if i > 0 {
-                        let above = model.isFiltering ? model.slots[i - 1].row?.id : model.slot(at: i - 1).row?.id
-                        NativeRowSeparator(hidden: lit.separatorHidden(above: above, id: slot.row?.id))
-                    }
+                    if i > 0 { NativeRowGap() }
                     if let row = slot.row {
-                        WebNoteListRow(row: row, model: model, frame: frame, menu: menu(for: row.id) { noteMenuEntries(row, list: model, frame: frame) }, onHover: { on in
-                            if on { hoveredRow = row.id } else if hoveredRow == row.id { hoveredRow = nil }
-                        })
+                        WebNoteListRow(row: row, model: model, frame: frame, menu: menu(for: row.id) { noteMenuEntries(row, list: model, frame: frame) })
                     } else {
                         Color.clear.frame(height: notesStyle("list.row", scheme).height)
                     }
@@ -1851,7 +1846,7 @@ struct WebFoldersIndex: View {
         GeometryReader { geo in
         let inner = min(1180, geo.size.width) - 64
         ZStack(alignment: .bottom) {
-        ScrollView(.vertical) {
+        QuietScrollView(.vertical) {
             VStack(alignment: .leading, spacing: 0) {
                 // One compact title row (the owner, 6 November 2026): Folders and its count, then the search, Sort, the
                 // view switch and New folder (the top bar keeps only New note here).
@@ -2008,12 +2003,11 @@ struct WebFoldersIndex: View {
         if chrome != nil { nativeFolderList(rows) } else { webFolderList(rows) }
     }
 
-    /// The Mac's native look: rows on the page with rounded highlights and inset separators hidden beside them.
+    /// The Mac's native look: rows on the page with rounded highlights and no line between them.
     private func nativeFolderList(_ rows: [FolderCard]) -> some View {
-        let lit = NativeRowHighlights(hovered: hoveredRow, selected: Set(rows.map(\.id).filter { selection.contains($0) }))
         return VStack(spacing: 0) {
             ForEach(Array(rows.enumerated()), id: \.element.id) { i, f in
-                if i > 0 { NativeRowSeparator(hidden: lit.separatorHidden(above: rows[i - 1].id, id: f.id)) }
+                if i > 0 { NativeRowGap() }
                 let on = selection.contains(f.id)
                 Button {
                     let flags = NSEvent.modifierFlags
@@ -2410,7 +2404,7 @@ struct WebTagsIndex: View {
         }
         let needle = query.trimmingCharacters(in: .whitespaces).replacingOccurrences(of: "#", with: "").lowercased()
         let shown = all.filter { needle.isEmpty || $0.name.lowercased().contains(needle) }
-        ScrollView(.vertical) {
+        QuietScrollView(.vertical) {
             VStack(alignment: .leading, spacing: 0) {
                 if slot != nil {
                     // The Mac's native look: Sort is in the card's glass controls; the page's own filter stays here.

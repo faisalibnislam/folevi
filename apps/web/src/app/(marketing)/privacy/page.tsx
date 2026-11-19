@@ -30,7 +30,7 @@ export default function PrivacyPage() {
   return (
     <PageFrame>
       <PageHeader eyebrow="Legal" title="Privacy policy" lede="How Folevi handles your information, written to be read.">
-        <DraftNotice updated="30 September 2026" />
+        <DraftNotice updated="September 30, 2026" />
       </PageHeader>
       <DocShell toc={toc}>
         <h2 id="short">The short version</h2>
@@ -131,7 +131,7 @@ export default function PrivacyPage() {
         <h2 id="share">Who we share it with</h2>
         <p>
           We use a small number of service providers to run Folevi. They cover our database and backend, web hosting, email, the AI
-          Assistant (Google’s Gemini API) and payments (Polar). Each processes data only to provide its service to us. They are listed, with what each handles, on the{" "}
+          assistant (Google’s Gemini API) and payments (Polar). Each processes data only to provide its service to us. They are listed, with what each handles, on the{" "}
           <Link href="/security#subprocessors">Security</Link> page.
         </p>
         <p>

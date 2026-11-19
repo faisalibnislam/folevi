@@ -641,38 +641,53 @@ public struct WebQuickAddPanel: View {
     /// else "Nov 3", in the language WebKit uses (the Mac's first preferred one).
     static func dayLabel(_ ymd: String, today: String?) -> String {
         if ymd == today { return "Today" }
-        let f = DateFormatter()
-        f.calendar = Calendar(identifier: .gregorian)
-        f.timeZone = TimeZone(identifier: "UTC")
-        f.locale = Locale(identifier: "en_US_POSIX")
-        f.dateFormat = "yyyy-MM-dd"
+        // (Formatters are kept: this runs on every key typed into Quick Add, and made three each time.)
+        let f = PlannerDates.Formatters.shared.cached("quickadd.ymd") {
+            let f = DateFormatter()
+            f.calendar = Calendar(identifier: .gregorian)
+            f.timeZone = TimeZone(identifier: "UTC")
+            f.locale = Locale(identifier: "en_US_POSIX")
+            f.dateFormat = "yyyy-MM-dd"
+            return f
+        }
         guard let d = f.date(from: ymd) else { return ymd }
-        let out = DateFormatter()
-        out.timeZone = TimeZone(identifier: "UTC")
-        out.locale = Locale(identifier: Locale.preferredLanguages.first ?? "en-US")
+        let language = Locale.preferredLanguages.first ?? "en-US"
+        func out(_ template: String) -> DateFormatter {
+            PlannerDates.Formatters.shared.cached("quickadd.out.\(template).\(language)") {
+                let out = DateFormatter()
+                out.timeZone = TimeZone(identifier: "UTC")
+                out.locale = Locale(identifier: language)
+                out.setLocalizedDateFormatFromTemplate(template)
+                return out
+            }
+        }
         if let today, let t = f.date(from: today) {
             let days = Int((d.timeIntervalSince(t) / 86_400).rounded())
             if days == 1 { return "Tomorrow" }
             if days == -1 { return "Yesterday" }
-            if days > 1, days < 7 {
-                out.setLocalizedDateFormatFromTemplate("EEEE")
-                return out.string(from: d)
-            }
+            if days > 1, days < 7 { return out("EEEE").string(from: d) }
         }
-        out.setLocalizedDateFormatFromTemplate("MMM d")
-        return out.string(from: d)
+        return out("MMM d").string(from: d)
     }
 
     /// "09:00" or "9:00 AM", as the page writes a time (toLocaleTimeString with `hour: "numeric", minute:
     /// "2-digit"`), in the language WebKit uses: the Mac's first preferred one.
     static func clock(_ hhmm: String) -> String {
-        let f = DateFormatter()
-        f.locale = Locale(identifier: "en_US_POSIX")
-        f.dateFormat = "HH:mm"
+        // (Kept: the list of times asks for all 96 quarter hours at once, which made 192 formatters a click.)
+        let f = PlannerDates.Formatters.shared.cached("quickadd.hhmm") {
+            let f = DateFormatter()
+            f.locale = Locale(identifier: "en_US_POSIX")
+            f.dateFormat = "HH:mm"
+            return f
+        }
         guard let d = f.date(from: hhmm) else { return hhmm }
-        let out = DateFormatter()
-        out.locale = Locale(identifier: Locale.preferredLanguages.first ?? "en-US")
-        out.setLocalizedDateFormatFromTemplate("jmm")
+        let language = Locale.preferredLanguages.first ?? "en-US"
+        let out = PlannerDates.Formatters.shared.cached("quickadd.clock.\(language)") {
+            let out = DateFormatter()
+            out.locale = Locale(identifier: language)
+            out.setLocalizedDateFormatFromTemplate("jmm")
+            return out
+        }
         return out.string(from: d)
     }
 }

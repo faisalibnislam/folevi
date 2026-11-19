@@ -164,7 +164,7 @@ struct WebCalendarScreen: View {
         let content = PS("cal.content").resolve(scheme)
         let byDate = state.byDate
         let events = state.base.eventsByDay
-        ScrollView {
+        QuietScrollView {
             VStack(alignment: .leading, spacing: 0) {
                 // (The Mac's native look: the range, ‹ Today ›, the views, Calendars and Subscribe are all in the card's
                 // glass controls, as the owner's reference has them; the calendar starts at the top.)

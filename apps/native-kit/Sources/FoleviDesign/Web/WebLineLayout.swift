@@ -56,6 +56,17 @@ public final class WebLineLayout {
 
     public init() {}
 
+    /// The most answers kept (a card's preview is a few short lines: a few MB at most).
+    public static let cap = 6000
+    /// How many answers are kept now (tests, and the Debug memory report).
+    public var count: Int { answered.count }
+
+    /// Lets go of every answer (memory is short, or the cap was reached); what shows asks again.
+    public func relieve() {
+        answered.removeAll()
+        asked.removeAll()
+    }
+
     /// The text's lines as WebKit breaks them, or nil until they've come (asked for now if not yet).
     public func lines(_ text: String, style: Style) -> [String]? {
         let key = Key(text: text, style: style)
@@ -79,7 +90,14 @@ public final class WebLineLayout {
         for (style, texts) in batches {
             for chunk in stride(from: 0, to: texts.count, by: 64).map({ Array(texts[$0..<min($0 + 64, texts.count)]) }) {
                 Task { @MainActor in
-                    guard let lines = try? await requester(style, chunk), lines.count == chunk.count else { return }
+                    guard let lines = try? await requester(style, chunk), lines.count == chunk.count else {
+                        // (Asked again the next time a card wants it: it used to keep its rough breaks for good.)
+                        for text in chunk { asked.remove(Key(text: text, style: style)) }
+                        return
+                    }
+                    // (A width is part of the key, so a window dragged through many widths adds a set of lines
+                    // for each: past the cap everything goes, and what is on screen asks again.)
+                    if answered.count + chunk.count > Self.cap { relieve() }
                     for (text, l) in zip(chunk, lines) { answered[Key(text: text, style: style)] = l }
                 }
             }

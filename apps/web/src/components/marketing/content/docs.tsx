@@ -26,14 +26,14 @@ export type DocArticle = {
 };
 
 const blocks: Array<[string, string]> = [
-  ["Text", "A plain paragraph. Where most writing happens."],
+  ["Text", "A plain paragraph, where most writing happens."],
   ["Heading 1, 2, 3", "Section titles. They also build the page outline in the inspector."],
-  ["Bulleted and numbered list", "Lists that can be nested to any sensible depth."],
+  ["Bulleted and numbered list", "Lists you can nest as deeply as you need."],
   ["Checklist", "A task with a checkbox. Can have a due date, time and priority."],
   ["Toggle", "A line that folds its nested blocks away."],
   ["Quote", "Set a passage apart."],
   ["Callout", "A tinted note with an icon: note, info, success, warning or danger."],
-  ["Divider", "A quiet horizontal rule."],
+  ["Divider", "A plain horizontal line."],
   ["Code", "Monospaced code with a language label."],
   ["Table", "Rows and columns, with an optional header row."],
   ["Image and file", "Upload from your device or drag in from Finder."],
@@ -44,7 +44,7 @@ const blocks: Array<[string, string]> = [
   ["Flowchart", "Shapes and connectors on a canvas, with Tidy up and AI. See Flowcharts and diagrams."],
   ["Mermaid diagram", "A code block in Mermaid syntax, drawn as a diagram. Flowchart diagrams can be converted to a flowchart block."],
   ["Whiteboard", "A canvas for sketches with a pen, a highlighter and an eraser."],
-  ["TeX formula", "A maths formula written in TeX."],
+  ["TeX formula", "A math formula written in TeX."],
   ["Collection, Gallery, Kanban, Calendar", "A set of pages with properties, shown as a table, as cards, as a board or on a month calendar."],
 ];
 
@@ -53,7 +53,7 @@ const statuses: Array<[string, ReactNode]> = [
   ["Saving", "You’re online and recent edits are on their way."],
   ["Offline", "No connection. Edits are stored on this device, with a count of how many are waiting."],
   ["Syncing", "You’ve reconnected; Folevi is fetching changes from other devices and sending yours."],
-  ["Conflict", "The same block was changed in two places. Folevi keeps both versions, throws nothing away and shows you the conflict so you can decide."],
+  ["Conflict", "The same block was changed in two places. Folevi keeps both versions and shows you the conflict so you can decide."],
   ["Not saved", "A change couldn’t be applied, or syncing failed repeatedly. Open the status for details and a retry button."],
 ];
 
@@ -212,17 +212,17 @@ export const DOC_ARTICLES: DocArticle[] = [
     description: "Every paragraph in Folevi is a block. Use the / menu for headings, checklists, tables, flowcharts and audio, move blocks from the keyboard and style a page.",
     legacyAnchor: "blocks",
     published: "2026-09-25",
-    updated: "2026-10-01",
+    updated: "2026-11-18",
     body: () => (
       <>
         <p>
           Every paragraph in Folevi is a block. Type <code>/</code> at the start of a line to open the block menu, keep typing to filter it (for example <code>/check</code>, or <code>/record</code> for a voice note), then press Return. Use the handle beside a block to drag it, or <code>⌥⇧↑</code> and <code>⌥⇧↓</code> to move it. Nested blocks move with their parent.
         </p>
         <Table label="Block types table" head={["Block", "What it’s for"]} rows={blocks} />
-        <p>Inside a block you can use bold, italic, underline, strikethrough, inline code, links, text colours and highlights, and insert dates, mentions and links to other pages. See <Link href="/features/blocks">Blocks and the / menu</Link> for a tour.</p>
+        <p>Inside a block you can use bold, italic, underline, strikethrough, inline code, links, text colors and highlights, and insert dates, mentions and links to other pages. See <Link href="/features/blocks">Blocks and the / menu</Link> for a tour.</p>
         <h2 id="page-style">Page style</h2>
         <p>
-          Each page has a note theme: one of 57 artworks, Plain, or your own image. The theme colours the cover, the paper and the text. In the Style panel you can also blur the theme image behind the page, pick the document and text colours, the separator style, the font (Modern, Serif, Mono or Soft) and the page width (Narrow or Wide). See <Link href="/features/note-themes">Note themes</Link>.
+          Each page has a note theme: one of 57 artworks, Plain, or your own image. The theme colors the cover, the paper and the text. In the Style panel you can also blur the theme image behind the page, pick the document and text colors, the separator style, the font (Modern, Serif, Mono or Soft) and the page width (Narrow or Wide). See <Link href="/features/note-themes">Note themes</Link>.
         </p>
       </>
     ),
@@ -234,14 +234,14 @@ export const DOC_ARTICLES: DocArticle[] = [
     description: "Any checklist item in Folevi is a task. Give it a date, time and priority, find it in Today, Tasks and the Calendar, and add tasks with Quick Add.",
     legacyAnchor: "tasks",
     published: "2026-09-25",
-    updated: "2026-10-14",
+    updated: "2026-11-18",
     body: () => (
       <>
         <p>
-          Any checklist item is a task. Give it a due date (and optionally a time and a priority) and it appears in <strong>Today</strong> on that day, and in <strong>Tasks</strong> alongside every other open task in your Personal (or the workspace you’re in). Overdue tasks show up there too, so nothing slips quietly past.
+          Any checklist item is a task. Give it a due date (and optionally a time and a priority) and it appears in <strong>Today</strong> on that day, and in <strong>Tasks</strong> alongside every other open task in your Personal (or the workspace you’re in). Overdue tasks show up there too.
         </p>
         <p>
-          The <Link href="/features/calendar">Calendar</Link> shows dated tasks by day. <strong>Quick Add</strong> (⇧⌘A) saves a task straight into your <strong>Inbox</strong> page, so it always lives somewhere you can find it.
+          The <Link href="/features/calendar">Calendar</Link> shows dated tasks by day. <strong>Quick Add</strong> (⇧⌘A) saves a task straight into your <strong>Inbox</strong> page.
         </p>
         <h2 id="views">Task views</h2>
         <ul>
@@ -266,7 +266,7 @@ export const DOC_ARTICLES: DocArticle[] = [
         </ul>
         <p>A task can also have an assignee (in a workspace) and a reminder. At the reminder time, Folevi adds a notification.</p>
         <h2 id="calendar">Calendar</h2>
-        <p>The Calendar has three layouts, and remembers the one you last used on each device.</p>
+        <p>The Calendar has three layouts and remembers the one you last used on each device.</p>
         <ul>
           <li>
             <strong>Month</strong>: every dated task on a month grid. Drag a task to another day to move it; its time stays the same.
@@ -301,7 +301,7 @@ export const DOC_ARTICLES: DocArticle[] = [
     description: "How offline editing works in Folevi, what the Saved, Saving, Offline, Syncing, Conflict and Not saved statuses mean, and how version snapshots work.",
     legacyAnchor: "sync",
     published: "2026-09-25",
-    updated: "2026-11-06",
+    updated: "2026-11-18",
     body: () => (
       <>
         <p>
@@ -346,10 +346,10 @@ export const DOC_ARTICLES: DocArticle[] = [
     description: "Who can open a Folevi page, how to restrict one, share it by email to view, comment or edit, and make a public link with an expiry, a password and a look.",
     legacyAnchor: "sharing",
     published: "2026-09-25",
-    updated: "2026-10-14",
+    updated: "2026-11-18",
     body: () => (
       <>
-        <p>Pages in your Personal are private to you, and pages in a workspace are open to its members, by default. From a page’s Share menu you can:</p>
+        <p>By default, pages in your Personal are private to you, and pages in a workspace are open to its members. From a page’s Share menu you can:</p>
         <ul>
           <li>
             <strong>Restrict a page</strong> so only the people you add can open it (in a workspace, its owner and admins still can).
@@ -358,7 +358,7 @@ export const DOC_ARTICLES: DocArticle[] = [
             <strong>Share with people by email</strong>: they can view, comment or edit. People without a Folevi account get an invitation to accept first; people outside a workspace join that page as guests, who aren’t billed. They get an email and find the page under Shared.
           </li>
           <li>
-            <strong>Create a public link</strong> for anyone with the URL. You can set an expiry date, require a password of at least 5 characters, and revoke the link at any time. It stops working immediately.
+            <strong>Create a public link</strong> for anyone with the URL. You can set an expiry date, require a password of at least 5 characters, and revoke the link at any time, which stops it working immediately.
           </li>
           <li>
             <strong>Choose how the public page looks</strong>: Note keeps the note’s own style, Article sets it in a narrow serif column for reading, Docs makes it wide with the headings listed beside it on wide screens (on narrower ones, a Contents list you can open sits above the note), and Minimal shows plain paper without the cover. Change it later from the link’s Look menu in Share. Every look follows the reader’s light or dark setting.
@@ -369,7 +369,7 @@ export const DOC_ARTICLES: DocArticle[] = [
         </p>
         <h2 id="together">Working on a note together</h2>
         <p>
-          When someone else has the same note open, their picture shows at the top of the page and edits reach each other within a moment. You also see their caret in the note, in their colour, with their first name over it for a few seconds after it moves. Text they select is lightly highlighted. Only the caret’s place in the note is shared this way, never any text, and nobody sees carets on a public link.
+          When someone else has the same note open, their picture shows at the top of the page and your edits reach each other within a moment. You also see their caret in the note, in their color, with their first name over it for a few seconds after it moves. Text they select is lightly highlighted. Only the caret’s place in the note is shared this way, never any text, and nobody sees carets on a public link.
         </p>
         <h2 id="changes">Changes</h2>
         <p>
@@ -381,7 +381,7 @@ export const DOC_ARTICLES: DocArticle[] = [
         </p>
         <h2 id="since-you-were-away">Since you were last here</h2>
         <p>
-          When you come back to a note that someone else changed since your last visit, a slim line at the top says who changed it and when you were last there. <strong>Show changes</strong> marks the lines they added or edited, each in the colour of the person who changed it, and says how many lines were removed. <strong>Dismiss</strong> puts the line away until the next time the note changes while you’re away. It doesn’t show on your first visit, or for your own edits.
+          When you come back to a note that someone else changed since your last visit, a slim line at the top says who changed it and when you were last there. <strong>Show changes</strong> marks the lines they added or edited, each in the color of the person who changed it, and says how many lines were removed. <strong>Dismiss</strong> puts the line away until the next time the note changes while you’re away. It doesn’t show on your first visit, or for your own edits.
         </p>
       </>
     ),
@@ -393,11 +393,11 @@ export const DOC_ARTICLES: DocArticle[] = [
     description: "Your Personal and a Folevi workspace compared: roles, per-member plans, separate storage and AI credits, and what happens when someone leaves.",
     legacyAnchor: "workspaces",
     published: "2026-09-25",
-    updated: "2026-10-14",
+    updated: "2026-11-18",
     body: () => (
       <>
         <p>
-          Your <strong>Personal</strong> is yours alone and isn’t a workspace: nobody can join it, and your personal plan (Free, Core, Pro or Pro AI) covers it: its storage, your devices and your AI credits. A <strong>workspace</strong> is shared with a team and has its own plan, storage and billing.
+          Your <strong>Personal</strong> is yours alone and isn’t a workspace: nobody can join it, and your personal plan (Free, Core, Pro or Pro AI) covers its storage, your devices and your AI credits. A <strong>workspace</strong> is shared with a team and has its own plan, storage and billing.
         </p>
         <ul>
           <li>
@@ -426,11 +426,11 @@ export const DOC_ARTICLES: DocArticle[] = [
     description: "Import from Notion, Evernote, Word, HTML, CSV, Markdown and text into Folevi, and export any page as Markdown, HTML or PDF, or everything as a ZIP.",
     legacyAnchor: "import-export",
     published: "2026-09-25",
-    updated: "2026-10-14",
+    updated: "2026-11-18",
     body: () => (
       <>
         <h2 id="import">Import</h2>
-        <p>Bring your notes in and Folevi turns them into blocks: headings, lists, checklists, tables and all.</p>
+        <p>Folevi turns imported notes into blocks: headings, lists, checklists, tables and the rest.</p>
         <p>In Settings → Import & export, choose files or a whole folder:</p>
         <ul>
           <li>
@@ -465,7 +465,7 @@ export const DOC_ARTICLES: DocArticle[] = [
           A single page exports from its ••• menu. PDF uses your browser’s print dialog (Save as PDF). The ZIP holds every document as Markdown, in folders that match your sidebar, the attachments in an <code>assets</code> folder, and a <code>manifest.json</code> that describes the folders, documents and files.
         </p>
         <p>In the Mac app, the Export window also shows the page as a Markdown file you can drag straight to Finder or another app.</p>
-        <p>Exports are yours to keep. Nothing in Folevi is locked to Folevi.</p>
+        <p>Exports are yours to keep, so nothing you write is locked to Folevi.</p>
       </>
     ),
   },
@@ -473,9 +473,9 @@ export const DOC_ARTICLES: DocArticle[] = [
     slug: "ai-assistant",
     title: "Foli AI and AI credits",
     nav: "Foli AI and credits",
-    description: "How Foli AI, Folevi’s AI assistant, works: Ask Foli AI, editing and writing with ⌘J, titles, Catch me up, flowcharts, flashcards and reviews, AI credits per plan, and turning AI off.",
+    description: "Foli AI, Folevi’s AI assistant: Ask Foli AI, writing and editing with ⌘J, titles, Catch me up, flowcharts, flashcards, AI credits per plan and turning AI off.",
     published: "2026-09-30",
-    updated: "2026-11-06",
+    updated: "2026-11-18",
     body: () => (
       <>
         <p>
@@ -556,9 +556,9 @@ export const DOC_ARTICLES: DocArticle[] = [
     slug: "connected-apps",
     title: "Connect Folevi to Claude, ChatGPT and other AI apps",
     nav: "Connected apps (MCP)",
-    description: "Let Claude, ChatGPT, Cursor or any app that speaks MCP search and read your Folevi notes, add to them and manage your tasks, with your permission and revocable at any time.",
+    description: "Let Claude, ChatGPT, Cursor or any MCP app search and read your Folevi notes, add to them and manage your tasks, with your permission. Revoke access at any time.",
     published: "2026-10-14",
-    updated: "2026-10-14",
+    updated: "2026-11-18",
     body: () => (
       <>
         <p>
@@ -601,7 +601,7 @@ export const DOC_ARTICLES: DocArticle[] = [
         </p>
         <h2 id="review">Review changes before they happen</h2>
         <p>
-          Turn on <strong>Ask me before changes are made to existing notes</strong> in Settings → Connected apps, and an app that adds to a note you already have doesn’t change it: the addition waits in <Link href="/docs/sharing-and-permissions#changes">Changes</Link> until you accept or reject it, and the app is told it was proposed for review, so it can tell you. It’s off at first. It covers every connected app and API token. New notes and tasks are still made at once, and so are checking off a task or changing its date, priority or repeat, since those never touch what you wrote (a version is saved first, and Changes can undo them). Foli AI already asks before it changes anything: its changes wait in the chat until you approve them.
+          Turn on <strong>Ask me before changes are made to existing notes</strong> in Settings → Connected apps, and an app that adds to a note you already have doesn’t change it: the addition waits in <Link href="/docs/sharing-and-permissions#changes">Changes</Link> until you accept or reject it, and the app is told it was proposed for review, so it can tell you. It’s off by default and covers every connected app and API token. New notes and tasks are still made at once, and so are checking off a task or changing its date, priority or repeat, since those never touch what you wrote (a version is saved first, and Changes can undo them). Foli AI already asks before it changes anything: its changes wait in the chat until you approve them.
         </p>
         <h2 id="manage">See and remove connected apps</h2>
         <p>
@@ -740,7 +740,7 @@ curl -X PATCH https://app.folevi.com/api/v1/tasks/TASK_ID \\
     nav: "Webhooks",
     description: "Have Folevi tell your server when notes, tasks and comments change, with signed requests you can verify.",
     published: "2026-10-14",
-    updated: "2026-10-14",
+    updated: "2026-11-18",
     body: () => (
       <>
         <p>
@@ -792,7 +792,7 @@ curl -X PATCH https://app.folevi.com/api/v1/tasks/TASK_ID \\
         </p>
         <h2 id="verify">Check the signature</h2>
         <p>
-          Every request has a <code>Folevi-Signature</code> header like <code>t=1792234364,v1=5257a8…</code>. <code>t</code> is when it was sent (Unix seconds) and <code>v1</code> is the HMAC-SHA256, in hex, of <code>t</code>, a full stop and the raw request body, keyed with your signing secret. Compute it yourself and compare, and turn away requests whose <code>t</code> is more than five minutes old. In Node:
+          Every request has a <code>Folevi-Signature</code> header like <code>t=1792234364,v1=5257a8…</code>. <code>t</code> is when it was sent (Unix seconds) and <code>v1</code> is the HMAC-SHA256, in hex, of <code>t</code>, a period and the raw request body, keyed with your signing secret. Compute it yourself and compare, and turn away requests whose <code>t</code> is more than five minutes old. In Node:
         </p>
         <pre>
           <code>{`import crypto from "node:crypto";

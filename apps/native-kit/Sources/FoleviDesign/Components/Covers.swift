@@ -210,11 +210,37 @@ public final class CoverFiles {
                     guard let url = link.url else { continue }
                     Task { @MainActor in
                         guard let (data, _) = try? await URLSession.shared.data(from: url), let image = Self.decode(data) else { return }
-                        images[id] = image
+                        keep(id, image)
                     }
                 }
             }
         }
+    }
+
+    /// The most style images kept decoded (each is a whole picture; they were kept for the run, however many notes
+    /// with a style image of their own were seen).
+    public static let cap = 60
+    @ObservationIgnored private var order: [String] = []
+    /// How many are kept now (tests, and the Debug memory report).
+    public var count: Int { images.count }
+
+    func keep(_ id: String, _ image: Image) {
+        if images[id] == nil { order.append(id) }
+        images[id] = image
+        // (The oldest go first; a card that still shows one asks for it again.)
+        while order.count > Self.cap {
+            let old = order.removeFirst()
+            images[old] = nil
+            asked.remove(old)
+        }
+    }
+
+    /// Lets go of every picture (memory is short); a card that shows one asks again.
+    public func relieve() {
+        for id in order { asked.remove(id) }
+        order.removeAll()
+        images.removeAll()
+        CoverArtCache.shared.clear()
     }
 
     private nonisolated static func decode(_ data: Data) -> Image? {

@@ -5,7 +5,7 @@ import { PageHeader, container, cx } from "@/components/marketing/ui";
 
 export const metadata = pageMetadata({
   title: "Changelog",
-  description: "What’s new in Folevi. Version 0.3 brings four plans (Free, Core, Pro and Pro AI) for you or your team, and AI credits with credit packs.",
+  description: "What’s new in Folevi, release by release: the Mac app, the four plans (Free, Core, Pro and Pro AI), AI credits and credit packs, and what came before.",
   path: "/changelog",
 });
 

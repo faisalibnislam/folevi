@@ -64,21 +64,53 @@ enum PlannerDates {
     /// Intl.DateTimeFormat in UTC with a template ("EEEE MMMM d" is { weekday: "long", month: "long", day: "numeric" }).
     static func format(_ day: String, _ template: String) -> String {
         guard let d = dateUTC(day) else { return day }
-        let f = DateFormatter()
-        f.locale = Locale(identifier: "en_US")
-        f.timeZone = utc
-        f.setLocalizedDateFormatFromTemplate(template)
-        return f.string(from: d)
+        return Formatters.shared.formatter(template, zone: utc).string(from: d)
     }
+
+    /// One formatter for each template and zone, made once. A month's page asked for about sixty a pass (a name for
+    /// every day, the weekdays twice) and every task row for one or two, each a new `DateFormatter`, which costs far
+    /// more to make than to use.
+    final class Formatters: @unchecked Sendable {
+        static let shared = Formatters()
+        private let lock = NSLock()
+        private var made: [String: DateFormatter] = [:]
+        /// How many have been made (tests).
+        var count: Int { lock.withLock { made.count } }
+
+        func formatter(_ template: String, zone: TimeZone?) -> DateFormatter {
+            cached("\(template)|\(zone?.identifier ?? "")") {
+                let f = DateFormatter()
+                f.locale = Locale(identifier: "en_US")
+                if let zone { f.timeZone = zone }
+                f.setLocalizedDateFormatFromTemplate(template)
+                return f
+            }
+        }
+
+        /// The formatter kept under `key`, made by `build` the first time. (A formatter is safe to use from any
+        /// thread once it is set up; nothing changes one after it is kept.)
+        func cached(_ key: String, _ build: () -> DateFormatter) -> DateFormatter {
+            lock.withLock {
+                if let f = made[key] { return f }
+                let f = build()
+                made[key] = f
+                return f
+            }
+        }
+    }
+
+    private static let utcCalendar: Calendar = {
+        var cal = Calendar(identifier: .gregorian)
+        cal.timeZone = utc
+        return cal
+    }()
 
     static func dateUTC(_ day: String) -> Date? {
         let p = day.split(separator: "-").compactMap { Int($0) }
         guard p.count == 3 else { return nil }
         var c = DateComponents()
         c.year = p[0]; c.month = p[1]; c.day = p[2]
-        var cal = Calendar(identifier: .gregorian)
-        cal.timeZone = utc
-        return cal.date(from: c)
+        return utcCalendar.date(from: c)
     }
 
     /// lib/format.ts dueLabel: Today, Tomorrow, Yesterday, the weekday within a week, else "Oct 30".
@@ -112,10 +144,7 @@ enum PlannerDates {
         if days < 7 { return unit(days, "day") }
         let d = Date(timeIntervalSince1970: ms / 1000)
         let same = Calendar.current.component(.year, from: d) == Calendar.current.component(.year, from: now)
-        let f = DateFormatter()
-        f.locale = Locale(identifier: "en_US")
-        f.setLocalizedDateFormatFromTemplate(same ? "MMMd" : "MMMdyyyy")
-        return f.string(from: d)
+        return Formatters.shared.formatter(same ? "MMMd" : "MMMdyyyy", zone: nil).string(from: d)
     }
 
     /// ui/DateField.tsx dateLabel: "Tue, Oct 27" (with the year when it isn't this year).
@@ -502,13 +531,18 @@ final class PlannerPanel: NSPanel {
 
     override var canBecomeKey: Bool { true }
 
+    /// The panel a content's `close` closes, held weakly: the content is the panel's own view, and the window it
+    /// is a child of is what keeps the panel while it shows.
+    @MainActor private final class Held { weak var panel: PlannerPanel? }
+
     /// A dialog: the whole window, the dialog in its middle as the frame's dialogs are (FrameSheets, the owner, 5
     /// November 2026), on the same frosted backdrop (the window behind, blurred) with the same Close button (MAC-10).
     /// `top`: attached that far from the window's top instead.
     @discardableResult
     static func dialog<V: View>(in window: NSWindow, top: CGFloat? = nil, @ViewBuilder _ content: (_ close: @escaping @MainActor () -> Void) -> V) -> PlannerPanel {
-        var panel: PlannerPanel?
-        let close: @MainActor () -> Void = { panel?.close() }
+        // (Held weakly: the panel owns this view, so a strong hold here kept every closed panel and its view alive.)
+        let held = Held()
+        let close: @MainActor () -> Void = { held.panel?.close() }
         let view = ZStack(alignment: top == nil ? .center : .top) {
             Color.black.opacity(0.001).onTapGesture { close() } // (no hover: the scrim)
             content(close).webSheetIn().padding(.top, top ?? 0)
@@ -517,7 +551,7 @@ final class PlannerPanel: NSPanel {
         .environment(\.sheetBackdrop, SheetBackdropImage(image: window.contentView.flatMap { FrameSheets.blurredSnapshot(of: $0) }))
         .environment(\.colorScheme, window.effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua ? .dark : .light)
         let p = PlannerPanel(content: AnyView(view), frame: window.frame)
-        panel = p
+        held.panel = p
         p.present(in: window)
         return p
     }
@@ -526,8 +560,8 @@ final class PlannerPanel: NSPanel {
     @discardableResult
     static func popover<V: View>(below anchor: NSView, gap: CGFloat = 4, alignEnd: Bool = false, @ViewBuilder _ content: (_ close: @escaping @MainActor () -> Void) -> V) -> PlannerPanel? {
         guard let window = anchor.window else { return nil }
-        var panel: PlannerPanel?
-        let close: @MainActor () -> Void = { panel?.close() }
+        let held = Held()
+        let close: @MainActor () -> Void = { held.panel?.close() }
         let scheme: ColorScheme = window.effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua ? .dark : .light
         // (System type and controls in the popover, as the screen it opens from.)
         let view = content(close).nativeDialogContent().webPopIn().padding(margin).environment(\.colorScheme, scheme)
@@ -540,7 +574,7 @@ final class PlannerPanel: NSPanel {
             if origin.y + margin < visible.minY { origin.y = r.maxY + gap - margin }
         }
         let p = PlannerPanel(content: AnyView(view), frame: NSRect(origin: origin, size: size))
-        panel = p
+        held.panel = p
         p.present(in: window)
         return p
     }

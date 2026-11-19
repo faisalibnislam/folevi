@@ -112,7 +112,7 @@ function AppCard({ id, eyebrow, title, lede, points, picture, actions, requireme
           <div className="mt-8 flex flex-wrap gap-2.5">{actions}</div>
           <p className="mt-4 text-[13px] text-muted">{requirement}</p>
         </div>
-        <div role="img" aria-label={`Folevi ${eyebrow.toLowerCase()} with a note open`} className="mk-mini-stage flex items-center justify-center" style={{ height: 300 }}>
+        <div role="img" aria-label={`Folevi ${eyebrow.replace(/^For /, "for ")} with a note open`} className="mk-mini-stage flex items-center justify-center" style={{ height: 300 }}>
           <div aria-hidden="true" className="contents">
             {picture}
           </div>
@@ -141,8 +141,8 @@ export default function AppsPage() {
             Folevi on your Mac, iPhone and <Mark>iPad.</Mark>
           </h1>
           <p className="mk-lede mt-6 max-w-[56ch]">
-            The full Folevi workspace in native apps: docs, tasks, databases and themes. Free forever with no account.
-            Your pages are files in a folder you pick, and they work offline.
+            The full Folevi workspace in native apps: docs, tasks, databases and themes. It’s free forever and needs no
+            account. Your pages are files in a folder you pick, and they work offline.
           </p>
           <div className="mt-8 flex flex-wrap gap-2.5">
             <ButtonLink href={MAC_DOWNLOAD_URL} lead="mac" size="lg">

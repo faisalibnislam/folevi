@@ -159,6 +159,9 @@ uneven"):
   section is the same distance from the next heading.
 - **One look for the chosen tile** in the Format panel (`CHOSEN_TILE`): Text, Groups and Decorations alike, the icon
   before the words.
+- **A list takes no pointer while it scrolls** (`QuietScrollView`, the 2026-11-19 performance pass): its rows show
+  no hover while they move and for 120 ms after, and a press is passed on, so a click still lands. A new screen's
+  main list uses `QuietScrollView` in place of `ScrollView`. Why: docs/MAC_PERFORMANCE_2026-11-19.md.
 - **No blur at a panel's foot** (the owner, 2026-11-19: "it looks out of place"). The web's sidebar blurs its last
   rows into the bottom edge (`.ui-blur-bottom`); in Folevi for Mac every panel runs clear to the window's edge.
 - **The panel sits beside the note** whenever the note keeps a writable width. The page's own width decides
@@ -196,10 +199,11 @@ Rules from the 2026-11-19 pass (the owner: "polish Tasks and Calendar next"):
   fades to clear is a fade, not a fill, and still goes.
 - **A floating list has the panel's material under its fill** (`WebMaterial`, as the date's calendar): the fill
   alone is see-through, and the dialog's controls showed between the times.
-- **A list of tasks**: a separator starts where the rows' words start (past the box) and ends 12 pt short of the
-  row; the facts under a title each follow a dot with the same room on both sides; a group's heading is
-  `NativeHeading` on the boxes' own edge, in Tasks' Upcoming and the Calendar's Agenda alike; only Overdue is in
-  the warning colour.
+- **A list of tasks** has no line between its tasks (the owner, 2026-11-19: "keep the spacing but remove the
+  horizontal lines"): the line's point of room stays (`TaskCardLook.nativeLine`), so nothing moved. A row's hover
+  and its spacing tell the tasks apart. The facts under a title each follow a dot with the same room on both sides;
+  a group's heading is `NativeHeading` on the boxes' own edge, in Tasks' Upcoming and the Calendar's Agenda alike;
+  only Overdue is in the warning colour.
 - **A filter is a field with a magnifier** (`PlannerFilterField`: `NativeFieldBox`, Clear once there are words).
 - **The month fits the window** (`MonthFit`): the six weeks share the height under the weekday header, never
   shorter than the web's row (a short window scrolls) nor taller than 172 pt, and a taller week shows more of its

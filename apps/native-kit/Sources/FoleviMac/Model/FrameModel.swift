@@ -128,6 +128,31 @@ public struct RouteHistory: Equatable, Sendable {
     }
 }
 
+/// The engine clients of the windows that are open, oldest first, held weakly: what the app-wide helpers (card
+/// covers, card line breaks) ask, so none of them keeps one window's engine or asks one that has stopped.
+@MainActor
+enum LiveEngines {
+    private final class Entry { weak var client: EngineClient?; init(_ c: EngineClient) { client = c } }
+    private static var entries: [Entry] = []
+
+    static func add(_ client: EngineClient) {
+        entries.removeAll { $0.client == nil || $0.client === client }
+        entries.append(Entry(client))
+    }
+
+    static func remove(_ client: EngineClient) {
+        entries.removeAll { $0.client == nil || $0.client === client }
+    }
+
+    /// The first that is ready, else the first still open.
+    static var first: EngineClient? {
+        let live = entries.compactMap(\.client)
+        return live.first { $0.state == .ready } ?? live.first
+    }
+
+    static var count: Int { entries.compactMap(\.client).count }
+}
+
 @MainActor
 @Observable
 public final class FrameModel {
@@ -264,8 +289,13 @@ public final class FrameModel {
         #endif
         // Small web text drawn natively (a card's preview) takes the page's own line breaks (`text.layout`), as
         // WebKit sets the card's clamped, `text-wrap: pretty` paragraph. (The iPhone's frame sets its own.)
+        // (These two are shared by every window, so whichever window's engine is up answers. They held the first
+        // window's client: it outlived its window, and once that window closed every other window's cards asked a
+        // stopped engine, so their covers and line breaks never came.)
+        LiveEngines.add(client)
         if WebLineLayout.shared.requester == nil {
-            WebLineLayout.shared.requester = { [client] style, texts in
+            WebLineLayout.shared.requester = { style, texts in
+                guard let client = LiveEngines.first else { throw CancellationError() }
                 let r = try await client.command(.textLayout(
                     texts: texts,
                     family: style.family == .display ? .display : .sans,
@@ -277,7 +307,12 @@ public final class FrameModel {
             }
         }
         // Note cards with the person's own style image fetch it, and its colours, through `files.urls`.
-        if CoverFiles.shared.loader == nil { CoverFiles.shared.loader = CoverFiles.engineLoader(client) }
+        if CoverFiles.shared.loader == nil {
+            CoverFiles.shared.loader = { ids in
+                guard let client = LiveEngines.first else { throw CancellationError() }
+                return try await CoverFiles.engineLoader(client)(ids)
+            }
+        }
     }
 
     /// Foli DNA's saved views for the sidebar, watched from the first time the sidebar shows them.
@@ -302,6 +337,7 @@ public final class FrameModel {
         sync.cancel()
         places.cancel()
         dnaViewsStore?.cancel()
+        LiveEngines.remove(client)
         client.stop()
     }
 
@@ -568,6 +604,7 @@ public final class FrameModel {
         let ids = Array(tabs.tabs.flatMap { $0.panes ?? [$0.route.noteId].compactMap { $0 } }.prefix(200))
         guard ids != tabMetaIds else { return }
         tabMetaIds = ids
+        forgetNotes(keeping: Set(tabs.tabs.flatMap { $0.panes ?? [$0.route.noteId].compactMap { $0 } }))
         tabMeta?.cancel()
         tabMetaObserver?.cancel()
         guard !ids.isEmpty else { tabMeta = nil; return }
@@ -580,6 +617,18 @@ public final class FrameModel {
                 await nextChange { _ = store.value }
             }
         }
+    }
+
+    /// What the page said of notes no tab shows any more goes (a note's outline, tasks, attachments, links and
+    /// comments: these two grew with every note visited for as long as the window stayed open). A note opened again
+    /// says it again.
+    func forgetNotes(keeping open: Set<String>) {
+        var keep = open
+        if let id = route.noteId { keep.insert(id) }
+        let meta = noteMeta.keys.filter { !keep.contains($0) }
+        if !meta.isEmpty { for id in meta { noteMeta[id] = nil } }
+        let tools = noteTools.keys.filter { !keep.contains($0) }
+        if !tools.isEmpty { for id in tools { noteTools[id] = nil } }
     }
 
     func applyTabMeta(_ value: NotesMetaValue?) {
@@ -617,6 +666,7 @@ public final class FrameModel {
             if !e.title.isEmpty { tabs.setTitle(e.title, icon: noteMeta[e.id]?.icon, for: e.id) }
         case .editorState(let e):
             if editorState != e { editorState = e }
+            if focusMode != e.focus { focusMode = e.focus }
         case .editorPanel(let e):
             if editorPanel != e.panel { editorPanel = e.panel }
         case .noteTools(let e):
@@ -870,7 +920,10 @@ public final class FrameModel {
         open(.web("/help"))
     }
 
-    public var focusMode: Bool { editorState?.focus ?? false }
+    /// Focus mode, kept on its own: the title bar's tabs and the window's layout read it, and read through
+    /// `editorState` they were all drawn again at every move of the caret (the state carries the block, the marks
+    /// and the selection too).
+    public private(set) var focusMode = false
     public var noteLocked: Bool { editorState?.locked ?? false }
     public var canLockNote: Bool { editorState?.canLock ?? false }
 

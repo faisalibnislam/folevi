@@ -9,6 +9,7 @@
 // go. WebKit's own processes get the same warnings from macOS and drop their caches by themselves (decoded images,
 // fonts, compiled code, a garbage collection); this adds what only the app knows.
 import AppKit
+import FoleviDesign
 import WebKit
 
 @MainActor
@@ -46,6 +47,9 @@ enum Memory {
             if view.responds(to: clear) { view.perform(clear) }
         }
         Paths.dataStore.removeData(ofTypes: [WKWebsiteDataTypeMemoryCache], modifiedSince: .distantPast) {}
+        // The native side's own caches (card covers decoded, card line breaks): what shows asks again.
+        CoverFiles.shared.relieve()
+        WebLineLayout.shared.relieve()
         lastRelief = ["level": level, "why": why, "at": Date().timeIntervalSince1970, "pages": pages, "runnersReleased": runners]
     }
 }

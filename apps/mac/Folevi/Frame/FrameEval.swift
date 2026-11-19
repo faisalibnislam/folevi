@@ -343,6 +343,9 @@ final class ScrollBench: NSObject {
         objc_setAssociatedObject(scroll, "scrollBench", nil, .OBJC_ASSOCIATION_RETAIN)
         let missed = gaps.reduce(0) { $0 + Swift.max(0, Int(($1 / period).rounded()) - 1) }
         let sorted = gaps.sorted()
+        // (The pointer over the window costs a hover check on every frame: runs with and without differ.)
+        var pointerInside = false
+        if let w = scroll.window, let content = w.contentView { pointerInside = content.frame.contains(w.mouseLocationOutsideOfEventStream) }
         done(["value": [
             "refreshHz": (1 / period).rounded(),
             "frames": gaps.count,
@@ -351,6 +354,7 @@ final class ScrollBench: NSObject {
             "worstMs": ((sorted.last ?? 0) * 1000).rounded(),
             "p95Ms": ((sorted.isEmpty ? 0 : sorted[Swift.min(sorted.count - 1, Int(Double(sorted.count) * 0.95))]) * 1000 * 10).rounded() / 10,
             "scrolled": Swift.min(max, distance),
+            "pointerInside": pointerInside,
         ]])
     }
 }

@@ -302,6 +302,15 @@ Tests: `TabCloseSpotTests` (4) and one more in `note-panels-polish.test.ts`. Not
 on a tab that isn't open (the pointer can't be moved for the test app alone); it is the same button in the same
 place.
 
+## Tasks without lines (2026-11-19)
+
+The owner: "Keep the spacing but remove the horizontal lines here." The lines between tasks are gone in every list
+of tasks (Tasks' views, the Calendar's day list and Agenda); the rows are where they were.
+
+![tasks-no-lines](tasks-no-lines.jpg)
+
+The same day's performance pass is in `docs/MAC_PERFORMANCE_2026-11-19.md`.
+
 ## Not covered, and why
 
 - **Hover states of the native parts** (sidebar rows, cards, tabs) could not be pictured: moving the pointer for

@@ -619,7 +619,7 @@ struct WebHomeScreen: View {
         let content = notesStyle("home.content", scheme)
         GeometryReader { geo in
             let inner = min(1400, geo.size.width) - content.padding.left - content.padding.right
-            ScrollView(.vertical) {
+            QuietScrollView(.vertical) {
                 VStack(alignment: .leading, spacing: 0) {
                     if chrome != nil {
                         // The Mac's native look: the page's title is the toolbar's (HIG toolbars), not repeated here.
@@ -1038,7 +1038,7 @@ struct WebNoteBrowser: View {
             // the scroll view's own width, which a wide grid can't feed back into.)
             let inner = columnWidth > 0 && slot == nil ? columnWidth : min(1180, geo.size.width) - content.padding.left - content.padding.right
             ZStack(alignment: .bottom) {
-                ScrollView(.vertical) {
+                QuietScrollView(.vertical) {
                     VStack(alignment: .leading, spacing: 0) {
                         // A folder's page: one compact title row with Sort and the view switch, no toolbar under it.
                         Group {
@@ -1851,7 +1851,7 @@ struct WebFoldersIndex: View {
         GeometryReader { geo in
         let inner = min(1180, geo.size.width) - 64
         ZStack(alignment: .bottom) {
-        ScrollView(.vertical) {
+        QuietScrollView(.vertical) {
             VStack(alignment: .leading, spacing: 0) {
                 // One compact title row (the owner, 6 November 2026): Folders and its count, then the search, Sort, the
                 // view switch and New folder (the top bar keeps only New note here).
@@ -2410,7 +2410,7 @@ struct WebTagsIndex: View {
         }
         let needle = query.trimmingCharacters(in: .whitespaces).replacingOccurrences(of: "#", with: "").lowercased()
         let shown = all.filter { needle.isEmpty || $0.name.lowercased().contains(needle) }
-        ScrollView(.vertical) {
+        QuietScrollView(.vertical) {
             VStack(alignment: .leading, spacing: 0) {
                 if slot != nil {
                     // The Mac's native look: Sort is in the card's glass controls; the page's own filter stays here.

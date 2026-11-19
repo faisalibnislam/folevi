@@ -28,7 +28,7 @@ private func jrows(_ list: [JV], key: String = "id") -> [JRow] { list.enumerated
 private func bytes(_ n: Double?) -> String { n.map { ByteCountFormatter.string(fromByteCount: Int64($0), countStyle: .file) } ?? "…" }
 private func ago(_ ms: Double?) -> String {
     guard let ms else { return "" }
-    return RelativeDateTimeFormatter().localizedString(for: Date(timeIntervalSince1970: ms / 1000), relativeTo: ScreenClock.now())
+    return PhoneFormat.relativeShort(ms)
 }
 private func tier(_ t: String) -> String {
     switch t {

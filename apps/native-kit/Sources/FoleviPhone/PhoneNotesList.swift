@@ -67,6 +67,8 @@ public struct PhoneNotesListScreen: View {
     }
 
     private static let grid = "phone.notes.grid"
+    /// The native look's search: iOS's own field (iOS 26 and later).
+    public static var nativeSearch: Bool { if #available(iOS 26, *) { true } else { false } }
 
     public init(model: NotesListModel, actions: PhoneNotesListActions, scrollToTop: Int = 0) {
         self.model = model
@@ -101,16 +103,11 @@ public struct PhoneNotesListScreen: View {
                             }
                         }
                     }
-                    WebGlassPill {
-                        WebPillButton("\(model.title) options", action: { actions.menu(moreFrame) }) {
-                            WebIconView(.ellipsis, size: 24, strokeWidth: 2.2)
-                        }
-                        .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { moreFrame = $0 }
-                    }
+                    PhoneBarMenuButton("\(model.title) options") { actions.menu($0) }
                 }
             }
         } header: {
-            if model.total > 0 || model.isFiltering {
+            if !Self.nativeSearch, model.total > 0 || model.isFiltering {
                 PhoneSearchField("Search", text: $model.filter)
             }
         } content: {
@@ -167,6 +164,8 @@ public struct PhoneNotesListScreen: View {
         let picked = model.selection.count
         var o = PhoneScreenOptions(title: model.title, status: model.selecting ? (picked > 0 ? "\(picked) selected" : "Select notes") : nil)
         if model.kind.view == .folder { o.tint = FolderColor.resolve(model.folder?.color).color }
+        // iOS's own search field under the large title (the native look).
+        if Self.nativeSearch, model.total > 0 || model.isFiltering { o.search = $model.filter }
         return o
     }
 
@@ -486,8 +485,21 @@ struct PhonePressable<Content: View>: View {
     /// frame of a scroll for something only a press reads.
     @State private var place = PhonePressPlace()
     @Environment(\.colorScheme) private var scheme
+    @Environment(\.phoneMenus) private var menus
 
     var body: some View {
+        if let menus, let onLongPress {
+            // The native look: a tap opens, a long press lifts the card into iOS's own context menu.
+            Button(action: onTap) { content() }
+                .buttonStyle(PhonePressableStyle(scale: scale, highlight: highlight))
+                .hoverEffect(highlight ? .highlight : .lift)
+                .phoneContextMenu(menus) { onLongPress(.zero) }
+        } else {
+            drawnBody
+        }
+    }
+
+    private var drawnBody: some View {
         content()
             .background {
                 if highlight && pressed { WebStyles.vars["liquid-press"]?.resolve(scheme).color ?? Color.black.opacity(0.06) }
@@ -518,6 +530,23 @@ struct PhonePressable<Content: View>: View {
             }
             .accessibilityAddTraits(.isButton)
             .accessibilityAction(named: "More actions") { onLongPress?(place.frame) }
+    }
+}
+
+/// A card's or row's press in the native look: the card shrinks a little, a row takes the press fill.
+struct PhonePressableStyle: ButtonStyle {
+    let scale: CGFloat
+    let highlight: Bool
+    @Environment(\.colorScheme) private var scheme
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .background {
+                if highlight && configuration.isPressed { WebStyles.vars["liquid-press"]?.resolve(scheme).color ?? Color.black.opacity(0.06) }
+            }
+            .scaleEffect(configuration.isPressed && !WebMotion.reduced ? scale : 1)
+            .animation(.easeOut(duration: configuration.isPressed ? 0.1 : 0.15), value: configuration.isPressed)
+            .contentShape(Rectangle())
     }
 }
 

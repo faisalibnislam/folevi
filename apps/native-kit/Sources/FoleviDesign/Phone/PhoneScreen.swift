@@ -24,6 +24,10 @@ public struct PhoneScreenOptions {
     public var startOffset: CGFloat?
     /// The header stays under the bar once the large title has scrolled away (`sticky`: the Calendar's week strip).
     public var pinsHeader = false
+    /// A search field for the screen (iOS's own, under the large title, `.searchable`), filtering what's loaded.
+    public var search: Binding<String>?
+    /// The search field's prompt.
+    public var searchPrompt = "Search"
 
     public init(title: String, large: Bool = true, eyebrow: String? = nil, subtitle: String? = nil, status: String? = nil, grouped: Bool = false, collapseAt: CGFloat? = nil) {
         self.title = title
@@ -78,6 +82,61 @@ public struct PhoneScreen<Leading: View, Trailing: View, Header: View, Content: 
     }
 
     public var body: some View {
+        #if os(iOS)
+        nativeBody
+        #else
+        webBody
+        #endif
+    }
+
+    #if os(iOS)
+    /// The native look (the owner, 2026-11-19): the screen in the tab's navigation stack under iOS's own navigation
+    /// bar: the large title collapsing into the bar as it scrolls, the system's Back (and its edge swipe), the
+    /// screen's controls as toolbar items in Liquid Glass, iOS's search field, the scroll edge effect under the bar.
+    private var nativeBody: some View {
+        ScrollViewReader { proxy in
+            ScrollView {
+                VStack(alignment: .leading, spacing: 0) {
+                    Color.clear.frame(height: 0).id("top")
+                    if !options.pinsHeader { header }
+                    content
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.bottom, 24)
+            }
+            .scrollContentBackground(.hidden)
+            .scrollPosition($position)
+            .task {
+                guard let y = options.startOffset else { return }
+                try? await Task.sleep(for: .seconds(2.5))
+                position.scrollTo(y: y)
+            }
+            .onChange(of: scrollToTop) { withAnimation(WebMotion.reduced ? nil : .easeInOut(duration: 0.35)) { proxy.scrollTo("top", anchor: .top) } }
+        }
+        .modifier(PinnedHeader(pinned: options.pinsHeader, header: header))
+        .background(surface.color.ignoresSafeArea())
+        .navigationTitle(options.title)
+        .navigationBarTitleDisplayMode(options.large && !options.pinsHeader ? .large : .inline)
+        .modifier(PhoneScreenSubtitle(text: options.subtitle ?? options.eyebrow))
+        .modifier(PhoneScreenSearch(text: options.search, prompt: options.searchPrompt))
+        .navigationBarBackButtonHidden(root)
+        .toolbar {
+            if root, Leading.self != EmptyView.self {
+                ToolbarItem(placement: .topBarLeading) { leading.environment(\.phoneInSystemBar, true) }
+            }
+            if let status = options.status {
+                ToolbarItem(placement: .principal) {
+                    Text(status).font(.headline).lineLimit(1)
+                }
+            }
+            if Trailing.self != EmptyView.self {
+                ToolbarItem(placement: .topBarTrailing) { HStack(spacing: 6) { trailing }.environment(\.phoneInSystemBar, true) }
+            }
+        }
+    }
+    #endif
+
+    private var webBody: some View {
         GeometryReader { geo in
             let safe = geo.safeAreaInsets
             let at = max(8, options.collapseAt ?? titleFoot)
@@ -224,6 +283,55 @@ public struct PhoneScreen<Leading: View, Trailing: View, Header: View, Content: 
         .padding(.top, top + 4)
     }
 }
+
+#if os(iOS)
+/// A header that stays under the bar (the Calendar's week strip): in a bar of its own over the scroll view, which
+/// iOS 26 carries the scroll edge effect under.
+private struct PinnedHeader<H: View>: ViewModifier {
+    let pinned: Bool
+    let header: H
+
+    func body(content: Content) -> some View {
+        if pinned {
+            if #available(iOS 26, *) {
+                content.safeAreaBar(edge: .top, spacing: 0) { header }
+            } else {
+                content.safeAreaInset(edge: .top, spacing: 0) { header.background(.bar) }
+            }
+        } else {
+            content
+        }
+    }
+}
+
+/// The line under the large title (iOS 26's navigation subtitle).
+private struct PhoneScreenSubtitle: ViewModifier {
+    let text: String?
+
+    func body(content: Content) -> some View {
+        if #available(iOS 26, *), let text, !text.isEmpty {
+            content.navigationSubtitle(text)
+        } else {
+            content
+        }
+    }
+}
+
+/// iOS's own search field under the large title, filtering the screen: pulled down into view, as iOS keeps it
+/// (shown all the time it takes the large title's place).
+private struct PhoneScreenSearch: ViewModifier {
+    let text: Binding<String>?
+    let prompt: String
+
+    func body(content: Content) -> some View {
+        if let text {
+            content.searchable(text: text, placement: .navigationBarDrawer(displayMode: .automatic), prompt: Text(prompt))
+        } else {
+            content
+        }
+    }
+}
+#endif
 
 public extension PhoneScreen where Header == EmptyView {
     init(_ options: PhoneScreenOptions, root: Bool = false, scrollToTop: Int = 0, back: @escaping () -> Void = {}, @ViewBuilder leading: () -> Leading, @ViewBuilder trailing: () -> Trailing, @ViewBuilder content: () -> Content) {

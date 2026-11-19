@@ -177,6 +177,8 @@ struct PhoneSettingsRow<Icon: View, Trailing: View>: View {
     let trailing: Trailing
     @State private var rowWidth: CGFloat = 370
     @Environment(\.colorScheme) private var scheme
+    /// At the accessibility text sizes a label wraps rather than being cut short, as iOS's Settings does.
+    @Environment(\.dynamicTypeSize) private var typeSize
 
     init(_ label: String, description: String? = nil, value: String? = nil, checked: Bool? = nil, chevron: Bool = false, danger: Bool = false, disabled: Bool = false, action: (() -> Void)? = nil, @ViewBuilder icon: () -> Icon, @ViewBuilder trailing: () -> Trailing) {
         self.label = label
@@ -200,7 +202,7 @@ struct PhoneSettingsRow<Icon: View, Trailing: View>: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(label)
                     .webText(PhoneType.body(weight: actionOnly && !danger ? FoleviTokens.FontWeight.medium : nil))
-                    .lineLimit(1)
+                    .lineLimit(typeSize.isAccessibilitySize ? 3 : 1)
                     .foregroundStyle(C(danger ? FoleviTokens.Chrome.destructive : actionOnly ? FoleviTokens.Chrome.heading : FoleviTokens.Chrome.ink, scheme))
                 if let description {
                     WebFittedLines(description, style: PhoneType.subheadline(leading: 20), maxLines: 6)

@@ -174,6 +174,7 @@ private struct PhoneNoteTopBarContent: View {
     let bar: PhoneNoteTopBar
     let pageColor: RGBA
     @Environment(\.colorScheme) private var scheme
+    @Environment(\.phoneMenus) private var menus
     @State private var moreFrame: CGRect = .zero
 
     var body: some View {
@@ -224,10 +225,20 @@ private struct PhoneNoteTopBarContent: View {
                                                 }
                                         }
                                     }
-                                    WebPillButton("Document actions", action: { bar.more(moreFrame) }) {
-                                        WebIconView(.ellipsis, size: 24, strokeWidth: 2.2)
+                                    if let menus {
+                                        // The native look: iOS's own menu.
+                                        PhoneMenuButton("Document actions", menus: menus, build: { bar.more(.zero) }) {
+                                            WebIconView(.ellipsis, size: 24, strokeWidth: 2.2)
+                                                .foregroundStyle(FoleviTokens.Chrome.heading.resolve(scheme).color)
+                                                .frame(width: 44, height: 44)
+                                                .contentShape(Rectangle())
+                                        }
+                                    } else {
+                                        WebPillButton("Document actions", action: { bar.more(moreFrame) }) {
+                                            WebIconView(.ellipsis, size: 24, strokeWidth: 2.2)
+                                        }
+                                        .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { moreFrame = $0 }
                                     }
-                                    .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { moreFrame = $0 }
                                 }
                             }
                         }

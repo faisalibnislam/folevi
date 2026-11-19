@@ -147,9 +147,25 @@ struct PhoneVaultSelect: View {
     /// select while it reads "All kinds" (its label when measured; as the Mac's VaultSelect does).
     private var fixedWidth: Bool { style == "settings.select" || (style == "pw.kind" && label == "All kinds") }
 
+    @Environment(\.nativeChrome) private var chrome
+
     var body: some View {
+        if chrome != nil {
+            // The native look: iOS's own pop-up menu, a check by the choice.
+            Picker(label, selection: Binding(get: { selected }, set: { onSelect($0) })) {
+                ForEach(options, id: \.0) { o in Text(o.1).tag(o.0) }
+            }
+            .pickerStyle(.menu)
+            .tint(.primary)
+            .accessibilityValue(label)
+        } else {
+            drawn
+        }
+    }
+
+    private var drawn: some View {
         let s = PV.style(style, scheme)
-        Button {
+        return Button {
             menus.show(options.map { o in PhoneMenuEntry(.item(o.1, checked: o.0 == selected)) { onSelect(o.0) } }, from: frame, side: .bottom, align: .end, minWidth: max(s.width, 200))
         } label: {
             HStack(spacing: s.gap) {
@@ -181,6 +197,7 @@ struct PhoneVaultFiles: View {
     @Environment(\.colorScheme) private var scheme
     @State private var busy = false
     @State private var uploadFrame: CGRect = .zero
+    @Environment(\.nativeChrome) private var chrome
     @State private var importing = false
     @State private var photo: PhotosPickerItem?
     @State private var pickingPhoto = false
@@ -199,14 +216,31 @@ struct PhoneVaultFiles: View {
                     let parent = all.first { $0.id == current }?.parentId
                     WebButton(parent.flatMap { name($0) } ?? "Files & Notes", icon: .chevronLeft, iconSize: 14, styleName: "phone.vault.files.button", variant: .quiet) { model.folderId = parent }
                 }
-                Text(name(model.folderId) ?? "Files & Notes").webText(title.text).lineLimit(1).foregroundStyle(title.color.color)
-                    .accessibilityAddTraits(.isHeader)
+                // (The native look never repeats the tab's name as a heading, as the Mac's Vault: a folder's name only.)
+                if chrome == nil || model.folderId != nil {
+                    Text(name(model.folderId) ?? "Files & Notes").webText(title.text).lineLimit(1).foregroundStyle(title.color.color)
+                        .accessibilityAddTraits(.isHeader)
+                }
                 layoutSwitch
                 WebButton("Folder", icon: .folderPlus, iconSize: 14, styleName: "phone.vault.files.button") { model.dialog = .newFolder }
                 WebButton("Note", icon: .filePlusCorner, iconSize: 14, styleName: "phone.vault.files.button") { model.dialog = .newNote }
-                WebButton(busy ? "Encrypting…" : "Upload", icon: .upload, iconSize: 14, styleName: "phone.vault.files.upload", variant: .primary) { chooseUpload() }
+                if chrome != nil {
+                    // The native look: iOS's own menu (Photo Library or Choose File).
+                    Menu {
+                        Button { pickingPhoto = true } label: { Label { Text("Photo Library") } icon: { WebIcon.image.image() } }
+                        Button { importing = true } label: { Label { Text("Choose File") } icon: { WebIcon.folder.image() } }
+                    } label: {
+                        Label(busy ? "Encrypting…" : "Upload", systemImage: "arrow.up")
+                            .foregroundStyle(PhoneNativeLook.onAccent)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .buttonBorderShape(.capsule)
                     .disabled(busy)
-                    .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { uploadFrame = $0 }
+                } else {
+                    WebButton(busy ? "Encrypting…" : "Upload", icon: .upload, iconSize: 14, styleName: "phone.vault.files.upload", variant: .primary) { chooseUpload() }
+                        .disabled(busy)
+                        .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { uploadFrame = $0 }
+                }
             }
             .padding(.bottom, bar.margin.bottom)
             if !here.isEmpty { folderList(here) }
@@ -1025,8 +1059,18 @@ struct PhoneVaultHoldMenu: ViewModifier {
     let entries: () -> [PhoneMenuEntry]
     /// Where it is on screen (a box, so writing it doesn't redraw).
     @State private var place = PhonePressPlace()
+    @Environment(\.nativeChrome) private var chrome
 
     func body(content: Content) -> some View {
+        if chrome != nil {
+            // The native look: iOS's own context menu, lifting the row.
+            content.contextMenu { PhoneMenuItems(entries()) }
+        } else {
+            drawn(content)
+        }
+    }
+
+    private func drawn(_ content: Content) -> some View {
         content
             .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { place.frame = $0 }
             .simultaneousGesture(LongPressGesture(minimumDuration: 0.45).onEnded { _ in

@@ -13,11 +13,20 @@ import Observation
 public struct PhoneMenuEntry: Identifiable {
     public var item: WebMenuItem
     public var action: @MainActor () -> Void
+    /// A submenu (the native menu's nested menu: a folder's colours).
+    public var children: [PhoneMenuEntry]?
     public var id: String { item.id }
 
     public init(_ item: WebMenuItem, action: @escaping @MainActor () -> Void = {}) {
         self.item = item
         self.action = action
+    }
+
+    /// A row that opens a submenu of `children`.
+    public init(_ item: WebMenuItem, children: [PhoneMenuEntry]) {
+        self.item = item
+        self.action = {}
+        self.children = children
     }
 }
 
@@ -37,11 +46,29 @@ public final class PhoneMenus {
     }
 
     public private(set) var open: Open?
+    /// While a native menu asks what it holds (`entries(_:)`): `show` hands its rows here instead of showing them.
+    @ObservationIgnored private var capturing: [PhoneMenuEntry]?
 
     public init() {}
 
     public func show(_ entries: [PhoneMenuEntry], from anchor: CGRect, side: PhoneMenuSide = .bottom, align: PhoneMenuAlign = .start, minWidth: CGFloat = 224) {
+        if capturing != nil {
+            capturing = entries
+            return
+        }
         open = Open(entries: entries, anchor: anchor, side: side, align: align, minWidth: minWidth)
+    }
+
+    /// The rows a menu-building function would show (it calls `show`), for iOS's own menu to hold: the native
+    /// look's menus (the owner, 2026-11-19: native menus and context menus with icons) are built by the same code
+    /// that built Folevi's drawn ones.
+    public func entries(_ build: () -> Void) -> [PhoneMenuEntry] {
+        let outer = capturing
+        capturing = []
+        build()
+        let got = capturing ?? []
+        capturing = outer
+        return got
     }
 
     public func close() { open = nil }
@@ -153,6 +180,201 @@ public struct PhoneMenuLayer: View {
                         leaving = false
                     }
                 }
+            }
+        }
+    }
+}
+
+// MARK: - The native look's menus
+
+/// A Folevi menu's rows as iOS's own menu: sections between separators (a heading names its section), each row its
+/// icon (Folevi's own, as the Mac's menus), label and the quieter line under it, destructive rows in red, a row that
+/// can be on with its checkmark, a submenu nested. For `Menu { }` and `.contextMenu { }`.
+public struct PhoneMenuItems: View {
+    let entries: [PhoneMenuEntry]
+
+    public init(_ entries: [PhoneMenuEntry]) { self.entries = entries }
+
+    /// The rows split into sections at separators and headings.
+    private var sections: [(id: Int, title: String?, rows: [PhoneMenuEntry])] {
+        var out: [(id: Int, title: String?, rows: [PhoneMenuEntry])] = []
+        var title: String?
+        var rows: [PhoneMenuEntry] = []
+        func flush() {
+            if !rows.isEmpty || title != nil { out.append((out.count, title, rows)) }
+            title = nil
+            rows = []
+        }
+        for e in entries {
+            switch e.item.kind {
+            case .separator: flush()
+            case .heading:
+                flush()
+                title = e.item.title
+            case .item: rows.append(e)
+            }
+        }
+        flush()
+        return out
+    }
+
+    public var body: some View {
+        let parts = sections
+        if parts.count == 1 && parts[0].title == nil {
+            ForEach(parts[0].rows) { PhoneMenuRow(entry: $0) }
+        } else {
+            ForEach(parts, id: \.id) { part in
+                if let title = part.title {
+                    Section(title) { ForEach(part.rows) { PhoneMenuRow(entry: $0) } }
+                } else {
+                    Section { ForEach(part.rows) { PhoneMenuRow(entry: $0) } }
+                }
+            }
+        }
+    }
+}
+
+/// One row of a native menu.
+struct PhoneMenuRow: View {
+    let entry: PhoneMenuEntry
+
+    var body: some View {
+        let item = entry.item
+        if let children = entry.children {
+            Menu { PhoneMenuItems(children) } label: { label(item) }
+                .disabled(item.disabled)
+        } else if item.checkable {
+            Toggle(isOn: Binding(get: { item.checked }, set: { _ in entry.action() })) { label(item) }
+                .disabled(item.disabled)
+        } else {
+            Button(role: item.danger ? .destructive : nil) { entry.action() } label: { label(item) }
+                .disabled(item.disabled)
+        }
+    }
+
+    @ViewBuilder
+    private func label(_ item: WebMenuItem) -> some View {
+        Label {
+            Text(item.title)
+            if let d = item.description ?? item.detail { Text(d) }
+        } icon: {
+            icon(item)
+        }
+    }
+
+    @ViewBuilder
+    private func icon(_ item: WebMenuItem) -> some View {
+        #if canImport(UIKit)
+        if item.aiMark {
+            Image(uiImage: AiMarkImage.uiImage(size: 18))
+        } else if let swatch = item.swatch {
+            Image(uiImage: PhoneMenuSwatch.image(UIColor(swatch)))
+        } else if let icon = item.icon {
+            icon.image(size: 18)
+        }
+        #else
+        if let icon = item.icon { icon.image(size: 18) }
+        #endif
+    }
+}
+
+#if canImport(UIKit)
+/// A colour's dot for a menu row (a tag's or a folder's colour).
+enum PhoneMenuSwatch {
+    static func image(_ color: UIColor) -> UIImage {
+        UIGraphicsImageRenderer(size: CGSize(width: 18, height: 18)).image { r in
+            color.setFill()
+            r.cgContext.fillEllipse(in: CGRect(x: 2, y: 2, width: 14, height: 14))
+        }.withRenderingMode(.alwaysOriginal)
+    }
+}
+#endif
+
+public extension View {
+    /// iOS's own context menu (a long press lifts what was pressed and shows the menu) holding the rows `build`
+    /// shows through `menus` (a menu-building function written for Folevi's drawn menus).
+    func phoneContextMenu(_ menus: PhoneMenus, enabled: Bool = true, _ build: @escaping () -> Void) -> some View {
+        modifier(PhoneContextMenu(menus: menus, enabled: enabled, build: build))
+    }
+}
+
+private struct PhoneContextMenu: ViewModifier {
+    let menus: PhoneMenus
+    let enabled: Bool
+    let build: () -> Void
+
+    func body(content: Content) -> some View {
+        if enabled {
+            content.contextMenu { PhoneCapturedMenu(menus: menus, build: build) }
+        } else {
+            content
+        }
+    }
+}
+
+/// The rows of a menu-building function, asked for when iOS shows the menu (not each time the screen draws).
+public struct PhoneCapturedMenu: View {
+    let menus: PhoneMenus
+    let build: () -> Void
+
+    public init(menus: PhoneMenus, build: @escaping () -> Void) {
+        self.menus = menus
+        self.build = build
+    }
+
+    public var body: some View {
+        PhoneMenuItems(menus.entries(build))
+    }
+}
+
+/// A button that opens iOS's own menu (a screen's "…", a scope chip): its rows from a menu-building function.
+public struct PhoneMenuButton<Label: View>: View {
+    let menus: PhoneMenus
+    let accessibility: String
+    let build: () -> Void
+    let label: Label
+
+    public init(_ accessibility: String, menus: PhoneMenus, build: @escaping () -> Void, @ViewBuilder label: () -> Label) {
+        self.accessibility = accessibility
+        self.menus = menus
+        self.build = build
+        self.label = label()
+    }
+
+    public var body: some View {
+        Menu { PhoneCapturedMenu(menus: menus, build: build) } label: { label }
+            .accessibilityLabel(accessibility)
+    }
+}
+
+/// A screen's "…" (or any icon button that opens a menu) in its bar: iOS's own menu when the screen has `menus`
+/// (the native look), else the glass pill button showing Folevi's menu from where it sits.
+public struct PhoneBarMenuButton: View {
+    let label: String
+    let icon: WebIcon
+    let menus: PhoneMenus?
+    let show: (CGRect) -> Void
+    @State private var frame: CGRect = .zero
+    @Environment(\.phoneMenus) private var frameMenus
+
+    public init(_ label: String, icon: WebIcon = .ellipsis, menus: PhoneMenus? = nil, show: @escaping (CGRect) -> Void) {
+        self.label = label
+        self.icon = icon
+        self.menus = menus
+        self.show = show
+    }
+
+    public var body: some View {
+        if let menus = menus ?? frameMenus {
+            PhoneMenuButton(label, menus: menus, build: { show(.zero) }) {
+                WebIconView(icon, size: 22, strokeWidth: 2.2)
+            }
+        } else {
+            WebGlassPill {
+                WebPillButton(label, action: { show(frame) }) {
+                    WebIconView(icon, size: 24, strokeWidth: 2.2)
+                }
+                .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { frame = $0 }
             }
         }
     }

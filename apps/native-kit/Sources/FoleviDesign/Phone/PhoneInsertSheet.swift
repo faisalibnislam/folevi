@@ -313,7 +313,25 @@ public struct WebFittedLines: View {
         self.alignment = alignment
     }
 
+    @Environment(\.nativeChrome) private var chrome
+
     public var body: some View {
+        if chrome != nil, style.family == .sans || style.family == .display {
+            // The native look: the system font laid out by the system (and following Dynamic Type), never set on
+            // the web's line boxes.
+            Text(text)
+                .webText(style)
+                .lineLimit(maxLines)
+                .truncationMode(.tail)
+                .multilineTextAlignment(alignment == .center ? .center : alignment == .trailing ? .trailing : .leading)
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: .infinity, alignment: alignment == .center ? .center : alignment == .trailing ? .trailing : .leading)
+        } else {
+            canvasBody
+        }
+    }
+
+    private var canvasBody: some View {
         // One pass: the layout takes the width it's offered and is as tall as the lines that makes; the canvas
         // breaks the same lines at that width and sets each in its CSS line box.
         FittedLinesLayout(text: text, style: style, maxLines: maxLines) {

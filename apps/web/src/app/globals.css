@@ -876,6 +876,12 @@
   background: color-mix(in srgb, var(--color-ink) 10%, transparent); color: var(--color-heading);
 }
 :root[data-iphone] body { background: var(--color-canvas); overscroll-behavior: none; }
+/* Folevi for iPhone's native look (the owner, 2026-11-19; Shell sets data-iphone-native in the iPhone's native
+   frame): as on the Mac, interface text in the note page (its menus, popovers, dialogs and pickers) is the system
+   font, SF Pro; the note's own text keeps the note's fonts (--editor-font, --note-*). Push buttons are capsules,
+   as iOS 26 draws them. */
+:root[data-iphone-native] { --font-sans: -apple-system, system-ui, sans-serif; }
+:root[data-iphone-native] :is(.ui-btn-primary, .ui-btn-secondary, .ui-btn-danger) { border-radius: var(--radius-capsule); }
 /* With the keyboard up, a sheet runs down behind it rather than stopping above it with round corners: it
    meets the screen's edges, solid, and the colour behind the keyboard (chrome.tsx) carries it on. */
 :root[data-iphone-keyboard] [data-iphone-sheet="sheet"] {

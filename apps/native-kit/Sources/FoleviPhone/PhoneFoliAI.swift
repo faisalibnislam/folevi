@@ -468,6 +468,7 @@ struct PhoneAiDock: View {
 /// What Foli AI reads, inside the composer (ContextChips.tsx, every control a capsule): the notes, the folder, or
 /// everything here; Add offers recent notes and everything here.
 struct PhoneAiChips: View {
+    @Environment(\.phoneMenus) private var nativeMenus
     let model: FoliChatModel
     let host: PhoneAiHost
     let menus: PhoneMenus
@@ -504,7 +505,31 @@ struct PhoneAiChips: View {
         .accessibilityLabel("What Foli AI reads")
     }
 
+    @ViewBuilder
     private func add(look: AiLook) -> some View {
+        if nativeMenus != nil {
+            // The native look: iOS's own menu.
+            Menu { PhoneMenuItems(entries()) } label: { addLabel(look: look) }
+                .buttonStyle(PhonePressFade())
+                .accessibilityLabel("Add")
+        } else {
+            drawnAdd(look: look)
+        }
+    }
+
+    private func addLabel(look: AiLook) -> some View {
+        let s = look.s("ai.chip.add")
+        return HStack(spacing: s.gap) {
+            WebIconView(.plus, size: 13)
+            Text("Add").webText(s.text).lineLimit(1)
+        }
+        .padding(.horizontal, s.padding.left)
+        .frame(height: s.height)
+        .foregroundStyle(s.color.color)
+        .padding(.vertical, max(0, (44 - s.height) / 2)).contentShape(Rectangle()).padding(.vertical, -max(0, (44 - s.height) / 2))
+    }
+
+    private func drawnAdd(look: AiLook) -> some View {
         let s = look.s("ai.chip.add")
         return Button { menus.show(entries(), from: addFrame, side: .top, align: .start) } label: {
             HStack(spacing: s.gap) {
@@ -580,6 +605,7 @@ struct PhoneAiChips: View {
 /// The tab bar's Foli AI (AskAiPanel.tsx, `iphone`): a medium sheet, pulled up to the whole screen. Conversations
 /// opens the page (on this conversation, once there is one); New chat starts afresh.
 public struct PhoneAiSheet: View {
+    @Environment(\.phoneMenus) private var nativeMenus
     let model: FoliChatModel
     let host: PhoneAiHost
     let close: () -> Void
@@ -601,12 +627,22 @@ public struct PhoneAiSheet: View {
                 WebIconView(.rotateCcwClock, size: 15, strokeWidth: 2.4)
             }
             if let id = model.conversationId, model.info != nil {
-                PhoneSheetButton("Conversation options", action: {
-                    menus.show(PhoneAiMenus.conversation(model: model, id: id, title: model.title, local: host.local), from: moreFrame, side: .bottom, align: .start)
-                }) {
-                    WebIconView(.ellipsis, size: 15, strokeWidth: 2.4)
+                if nativeMenus != nil {
+                    // The native look: iOS's own menu, from the sheet's round glass button.
+                    Menu { PhoneMenuItems(PhoneAiMenus.conversation(model: model, id: id, title: model.title, local: host.local)) } label: {
+                        Image(systemName: "ellipsis").font(.system(size: 17, weight: .medium)).foregroundStyle(Color.primary)
+                            .frame(width: 44, height: 44)
+                            .modifier(PhoneGlassCircle())
+                    }
+                    .accessibilityLabel("Conversation options")
+                } else {
+                    PhoneSheetButton("Conversation options", action: {
+                        menus.show(PhoneAiMenus.conversation(model: model, id: id, title: model.title, local: host.local), from: moreFrame, side: .bottom, align: .start)
+                    }) {
+                        WebIconView(.ellipsis, size: 15, strokeWidth: 2.4)
+                    }
+                    .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { moreFrame = $0 }
                 }
-                .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { moreFrame = $0 }
             }
         } trailing: {
             if model.conversationId != nil {
@@ -673,12 +709,21 @@ struct PhoneAiExportButton: View {
     let saves: Bool
     @State private var frame: CGRect = .zero
 
+    @Environment(\.phoneMenus) private var nativeMenus
+
     var body: some View {
-        AiRowButton(icon: .ellipsis, title: "Export") {
-            menus.show(PhoneAiMenus.export(model: model, messageId: messageId, saves: saves), from: frame, side: .top, align: .start)
+        if nativeMenus != nil {
+            Menu { PhoneMenuItems(PhoneAiMenus.export(model: model, messageId: messageId, saves: saves)) } label: {
+                AiRowButton(icon: .ellipsis, title: "Export") {}.allowsHitTesting(false)
+            }
+            .accessibilityLabel("Export this answer")
+        } else {
+            AiRowButton(icon: .ellipsis, title: "Export") {
+                menus.show(PhoneAiMenus.export(model: model, messageId: messageId, saves: saves), from: frame, side: .top, align: .start)
+            }
+            .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { frame = $0 }
+            .accessibilityLabel("Export this answer")
         }
-        .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { frame = $0 }
-        .accessibilityLabel("Export this answer")
     }
 }
 
@@ -688,6 +733,7 @@ struct PhoneAiExportButton: View {
 /// conversation's), then Conversations, the title and its options in a row, the chat filling the rest. When Foli AI
 /// can't be used here it says why (AiUnavailable.tsx).
 public struct PhoneAiPage: View {
+    @Environment(\.phoneMenus) private var nativeMenus
     let model: FoliChatModel
     let history: FoliHistoryModel
     let host: PhoneAiHost
@@ -809,7 +855,13 @@ public struct PhoneAiPage: View {
             .buttonStyle(PhonePressFade())
             Text(title).webText(t.text).lineLimit(1).truncationMode(.tail).foregroundStyle(t.color.color)
                 .frame(maxWidth: .infinity, alignment: .leading)
-            if let id = model.conversationId, model.info != nil {
+            if let id = model.conversationId, model.info != nil, nativeMenus != nil {
+                Menu { PhoneMenuItems(PhoneAiMenus.conversation(model: model, id: id, title: title, local: host.local)) } label: {
+                    WebIconView(.ellipsis, size: 16).frame(width: 32, height: 32).foregroundStyle(look.muted)
+                        .contentShape(Rectangle().inset(by: -6))
+                }
+                .accessibilityLabel("Conversation options")
+            } else if let id = model.conversationId, model.info != nil {
                 Button {
                     menus.show(PhoneAiMenus.conversation(model: model, id: id, title: title, local: host.local), from: moreFrame, side: .bottom, align: .end)
                 } label: {
@@ -830,6 +882,7 @@ public struct PhoneAiPage: View {
 /// The conversations, as a drawer from the left (AiView.tsx ListDrawer with ConversationList.tsx): New chat, search,
 /// pinned then recent; each row opens its conversation, and holds its menu (Rename, Pin, Copy, Save as note, Delete).
 struct PhoneAiDrawer: View {
+    @Environment(\.phoneMenus) private var nativeMenus
     let model: FoliChatModel
     @Bindable var history: FoliHistoryModel
     let host: PhoneAiHost
@@ -954,7 +1007,7 @@ struct PhoneAiDrawer: View {
         .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { rowFrames[r.id] = $0 }
         // Held: Folevi's own menu with its icons, as every other menu in the app (IPHONE-09: the system's context
         // menu with SF Symbols).
-        .simultaneousGesture(LongPressGesture(minimumDuration: 0.45).onEnded { _ in
+        .modifier(PhoneAiRowMenu(native: nativeMenus != nil, entries: { rowMenu(r) }) {
             heldRow = r.id
             UIImpactFeedbackGenerator(style: .medium).impactOccurred()
             menus.show(rowMenu(r), from: rowFrames[r.id] ?? .zero, side: .bottom, align: .start)
@@ -1040,6 +1093,32 @@ struct PhonePressFade: ButtonStyle {
 struct PhonePressScale: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label.scaleEffect(configuration.isPressed && !WebMotion.reduced ? 0.96 : 1).animation(.easeOut(duration: 0.15), value: configuration.isPressed)
+    }
+}
+
+/// A conversation row's long press: iOS's own context menu in the native look; Folevi's menu otherwise.
+private struct PhoneAiRowMenu: ViewModifier {
+    let native: Bool
+    let entries: () -> [PhoneMenuEntry]
+    let held: () -> Void
+
+    func body(content: Content) -> some View {
+        if native {
+            content.contextMenu { PhoneMenuItems(entries()) }
+        } else {
+            content.simultaneousGesture(LongPressGesture(minimumDuration: 0.45).onEnded { _ in held() })
+        }
+    }
+}
+
+/// The round glass behind a sheet's bar button (iOS 26), as PhoneSheetButton draws it in the native look.
+struct PhoneGlassCircle: ViewModifier {
+    func body(content: Content) -> some View {
+        if #available(iOS 26, *) {
+            content.glassEffect(.regular.interactive(), in: .circle)
+        } else {
+            content.background(Circle().fill(Color.primary.opacity(0.09)).frame(width: 32, height: 32))
+        }
     }
 }
 #endif

@@ -14,6 +14,7 @@ public struct FoleviSwitch: View {
     @Environment(\.colorScheme) private var scheme
     @Environment(\.isEnabled) private var enabled
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.nativeChrome) private var chrome
 
     public init(_ label: String, on: Bool, disabled: Bool = false, change: @escaping (Bool) -> Void) {
         self.label = label
@@ -23,8 +24,24 @@ public struct FoleviSwitch: View {
     }
 
     public var body: some View {
+        #if os(iOS)
+        if let chrome, chrome.dynamicType {
+            // The iPhone's native look: iOS's own switch, on in Folevi's accent.
+            Toggle(label, isOn: Binding(get: { on }, set: { change($0) }))
+                .labelsHidden()
+                .tint(chrome.accent)
+                .disabled(disabled)
+        } else {
+            drawn
+        }
+        #else
+        drawn
+        #endif
+    }
+
+    private var drawn: some View {
         let ink = FoleviTokens.Chrome.ink.resolve(scheme)
-        Button {
+        return Button {
             #if canImport(UIKit)
             UIImpactFeedbackGenerator(style: .light).impactOccurred()
             #endif

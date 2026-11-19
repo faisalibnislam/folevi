@@ -22,6 +22,7 @@ public struct PhoneGroupedSection<Content: View>: View {
     let footer: String?
     let content: Content
     @Environment(\.colorScheme) private var scheme
+    @Environment(\.nativeChrome) private var chrome
 
     public init(_ title: String? = nil, footer: String? = nil, @ViewBuilder content: () -> Content) {
         self.title = title
@@ -54,7 +55,8 @@ public struct PhoneGroupedSection<Content: View>: View {
                 }
             }
             .background(PhoneSurface.row.resolve(scheme).color)
-            .clipShape(RoundedRectangle(cornerRadius: FoleviTokens.Radius.container, style: .circular))
+            // (The native look: iOS 26's inset grouped corners, wide and continuous.)
+            .clipShape(RoundedRectangle(cornerRadius: chrome != nil ? 26 : FoleviTokens.Radius.container, style: chrome != nil ? .continuous : .circular))
             if let footer {
                 // (On exact CSS line boxes: a paragraph laid out by Text drifted a little each line.)
                 WebFittedLines(footer, style: WebTextStyle(size: WebTypeRole.footnote.metrics.size, leading: 18), maxLines: 40)

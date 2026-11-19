@@ -12,6 +12,13 @@ test("switching tabs shows the note at once, without a loading placeholder", asy
   await expect(page.getByRole("textbox", { name: "Title" })).toHaveValue(/Trip Sketch/);
 
   for (const [name, title] of [["Welcome to Folevi", "Welcome to Folevi"], [/Trip Sketch/, /Trip Sketch/], ["Welcome to Folevi", "Welcome to Folevi"]] as const) {
+    // The page was just loaded (goto above), so the recent tab's details and device copy are still arriving
+    // (WarmNote in Shell.tsx). The promise is for a tab kept warm: wait for that, as a person would take a
+    // moment. (On CI's slow runner a switch 0.6s after the reload once beat it.)
+    const href = (await tabs.getByRole("link", { name }).getAttribute("href")) ?? "";
+    const id = /\/d\/([^/?#]+)/.exec(href)?.[1] ?? "";
+    expect(id, `tab link for ${String(name)}`).not.toBe("");
+    await page.waitForFunction((docId) => (window as unknown as { __foleviTestWarm?: Record<string, () => boolean> }).__foleviTestWarm?.[docId]?.() === true, id);
     // Every frame from the click until the note shows: none may be the empty placeholder.
     await page.evaluate(() => {
       const w = window as unknown as { __placeholder: boolean; __watch: boolean };

@@ -274,17 +274,19 @@ test.describe("Mind map", () => {
     const box = (await card.boundingBox())!;
     expect(box.x).toBeGreaterThanOrEqual(0);
     expect(box.x + box.width).toBeLessThanOrEqual(360);
-    // The toolbar never scrolls sideways. The full canvas has the phone's whole width, where every tool fits
-    // (the block's name steps aside): nothing folds into More, and the map's own menu stays in the bar.
+    // The toolbar never scrolls sideways. The full canvas has the phone's whole width (the block's name steps
+    // aside). At 360 that is a tool short: the least used, Tidy up, folds into one More with the map's own menu
+    // (canvas/ToolFold.tsx), so there is only ever one More. (At 390 everything fits and nothing folds.)
     const tools = card.getByRole("toolbar", { name: "Mind map tools" });
     const fits = () => tools.evaluate((el) => el.scrollWidth <= el.clientWidth + 1 && [...el.querySelectorAll("button")].filter((b) => b.offsetParent).every((b) => b.getBoundingClientRect().right <= el.getBoundingClientRect().right + 1));
     await expect.poll(fits).toBe(true);
-    await expect(tools.getByRole("button", { name: "More mind map tools" })).toBeHidden();
-    const moreTools = tools.getByRole("button", { name: "More mind map actions" });
+    await expect(tools.getByRole("button", { name: "More mind map actions" })).toBeHidden();
+    const moreTools = tools.getByRole("button", { name: "More mind map tools" });
     await expect(moreTools).toBeVisible();
     await expect(tools.getByRole("button", { name: "Undo" })).toBeVisible();
     await moreTools.click();
-    const moreMenu = page.getByRole("menu", { name: "More mind map actions" });
+    const moreMenu = page.getByRole("menu", { name: "More mind map tools" });
+    await expect(moreMenu.getByRole("menuitem", { name: "Tidy up" })).toBeVisible();
     await expect(moreMenu.getByRole("menuitem", { name: "Expand all" })).toBeVisible();
     await moreMenu.getByRole("menuitem", { name: "Fit to view" }).click();
     await expect(moreMenu).toHaveCount(0);

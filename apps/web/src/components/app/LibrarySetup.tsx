@@ -50,23 +50,22 @@ interface Place {
 
 /** The places a library can be kept, as words (Settings > Library's Move library on the Mac draws them natively). */
 export function placeOptions(available: CloudProvider[] | null): { kind: LibraryKind; title: string; detail: string }[] {
-  const device = thisDevice();
   // Android: Dropbox, Google Drive or this phone only (docs/ANDROID_PLAN.md: no iCloud, no folder picker), and
   // the provider's sign-in opens over the app rather than in a separate browser.
   if (shell()?.platform === "android") {
     const out: { kind: LibraryKind; title: string; detail: string }[] = [];
-    if (available?.includes("dropbox")) out.push({ kind: "dropbox", title: "Sync with Dropbox", detail: "Sign in to Dropbox. Folevi only uses its own folder, Apps › Folevi." });
-    if (available?.includes("googleDrive")) out.push({ kind: "gdrive", title: "Sync with Google Drive", detail: "Sign in to Google. Folevi only sees the files it makes." });
-    out.push({ kind: "device", title: `${deviceWords().Here} only`, detail: `Your notes stay on ${deviceWords().here}. You can turn on sync later in Settings.` });
+    if (available?.includes("dropbox")) out.push({ kind: "dropbox", title: "Sync with Dropbox", detail: "Folevi uses only its own folder." });
+    if (available?.includes("googleDrive")) out.push({ kind: "gdrive", title: "Sync with Google Drive", detail: "Folevi sees only the files it makes." });
+    out.push({ kind: "device", title: `${deviceWords().Here} only`, detail: "No sync. You can turn it on later." });
     return out;
   }
-  const icloud = shell()?.platform === "ios" ? "The Folevi folder in iCloud Drive, on every iPhone, iPad and Mac signed in to your iCloud account." : "A Folevi folder in iCloud Drive, on every Mac signed in to your iCloud account.";
+  const icloud = shell()?.platform === "ios" ? "On all your iPhones, iPads and Macs." : "On all your Macs.";
   const out: { kind: LibraryKind; title: string; detail: string }[] = [{ kind: "icloud", title: "Sync with iCloud", detail: icloud }];
-  if (available?.includes("dropbox")) out.push({ kind: "dropbox", title: "Sync with Dropbox", detail: `Sign in to Dropbox in ${deviceWords().signInPlace}. Folevi only uses its own folder, Apps › Folevi.` });
-  if (available?.includes("googleDrive")) out.push({ kind: "gdrive", title: "Sync with Google Drive", detail: `Sign in to Google in ${deviceWords().signInPlace}. Folevi only sees the files it makes.` });
+  if (available?.includes("dropbox")) out.push({ kind: "dropbox", title: "Sync with Dropbox", detail: "Folevi uses only its own folder." });
+  if (available?.includes("googleDrive")) out.push({ kind: "gdrive", title: "Sync with Google Drive", detail: "Folevi sees only the files it makes." });
   out.push(
-    { kind: "folder", title: "Choose a folder", detail: shell()?.platform === "ios" ? "Any folder the Files app offers, such as one in Dropbox, Google Drive or OneDrive." : `Any folder on ${device}, such as one OneDrive or another app keeps in sync.` },
-    { kind: "device", title: "This device only", detail: `Your notes stay on ${device}. You can turn on sync later in Settings.` },
+    { kind: "folder", title: "Choose a folder", detail: shell()?.platform === "ios" ? "Dropbox, Google Drive, OneDrive or any folder in Files." : "Any folder, such as one OneDrive syncs." },
+    { kind: "device", title: "This device only", detail: "No sync. You can turn it on later." },
   );
   return out;
 }
@@ -357,7 +356,7 @@ export function LibrarySetup({ onDone, onBack }: { onDone: (result: { joining: b
           ) : (
             <>
               <h1 className={preAppTitle()}>Where should your library live?</h1>
-              <p className={mobileApp() ? "text-subheadline leading-[20px] text-muted" : "text-body leading-relaxed text-muted"}>Folevi keeps your notes as files in one folder. Pick where that folder goes. If the place already holds your Folevi library, Folevi opens it.</p>
+              <p className={mobileApp() ? "text-subheadline leading-[20px] text-muted" : "text-body leading-relaxed text-muted"}>If your library is already there, Folevi opens it.</p>
             </>
           )}
         </div>
@@ -437,7 +436,7 @@ function NewLibrary({ info, onOpen, onElsewhere, failed }: { info: LibraryInfo; 
               Encrypt with a passphrase
             </p>
             <p id={descId} className={`mt-0.5 text-muted ${mobileApp() ? "text-subheadline leading-[20px]" : "text-subheadline leading-snug"}`}>
-              {synced ? "Optional. The synced copy can't be read without it, by anyone, including Folevi." : "Optional. The library's files can't be read without it, by anyone, including Folevi."}
+              {synced ? "Optional. No one can read the synced copy without it." : "Optional. No one can read the files without it."}
             </p>
           </div>
           {mobileApp() ? <IosSwitch checked={encrypt} onChange={setEncrypt} label="Encrypt with a passphrase" describedBy={descId} /> : <Switch checked={encrypt} onChange={setEncrypt} label="Encrypt with a passphrase" describedBy={descId} />}

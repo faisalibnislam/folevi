@@ -81,10 +81,12 @@ struct PhoneColumnsTests {
         #expect(m.stacks[.home]?.map(\.route) == [.home, .note("a")])
     }
 
+    #if os(iOS)
     @Test func theInnerScreenAcrossIsWideEnoughUprightIsNot() {
         #expect(PhoneWindow.wide(.regular, width: 951))
         #expect(!PhoneWindow.wide(.regular, width: 669))
         #expect(!PhoneWindow.wide(.compact, width: 951))
         #expect(!PhoneWindow.wide(nil, width: 951))
     }
+    #endif
 }

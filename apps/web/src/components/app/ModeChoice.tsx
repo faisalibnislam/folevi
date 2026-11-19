@@ -6,8 +6,7 @@
 import { useEffect, useState } from "react";
 import { ChevronRight, HardDrive, Loader2 } from "lucide-react";
 import { FoleviLogo, FoleviMark } from "@/components/brand/FoleviMark";
-import { shell, type Backend } from "@/lib/shell";
-import { deviceWords } from "@/lib/shell/words";
+import type { Backend } from "@/lib/shell";
 import { inAndroidApp, inIosApp } from "@/lib/nativeApp";
 
 /**
@@ -72,7 +71,7 @@ export function ModeChoice({ onChoose }: { onChoose: (mode: Backend) => Promise<
           <ChoiceButton
             icon={<FoleviMark size={24} inverse={!mobileApp()} />}
             title="Sign in to Folevi"
-            detail="Your notes in your Folevi account, with sharing."
+            detail="Sync and share your notes."
             emphasis
             busy={busy === "account"}
             disabled={busy !== null}
@@ -87,11 +86,6 @@ export function ModeChoice({ onChoose }: { onChoose: (mode: Backend) => Promise<
             onClick={() => void choose("local")}
           />
         </div>
-        <p className={`text-center text-subheadline text-muted ${mobileApp() ? "px-4 leading-[18px]" : "leading-relaxed"}`}>
-          {shell()?.platform === "android"
-            ? `Notes on your devices stay on ${deviceWords().here}, or in Dropbox or Google Drive if you choose. Folevi's servers never see them.`
-            : "Notes on your devices stay in a folder you pick, such as iCloud Drive or Dropbox. Folevi's servers never see them."}
-        </p>
         {failed ? (
           <p role="alert" className="text-center text-body text-danger">
             That didn't save. Try again.

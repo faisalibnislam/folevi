@@ -41,6 +41,30 @@ public enum PhoneSettingsSection: String, CaseIterable, Sendable {
         }
     }
 
+    /// What's in the section, for Settings' search.
+    var keywords: String {
+        switch self {
+        case .account: "name email password profile picture sign out delete account"
+        case .ai: "foli ai model provider key on-device apple intelligence history memory credits"
+        case .billing, .workspaceBilling: "plan subscription usage storage"
+        case .security: "two-step verification passkeys password sessions encryption"
+        case .privacy, .workspacePrivacy: "analytics sharing public links data"
+        case .devices: "sessions iphone mac signed in"
+        case .connectedApps: "integrations api tokens webhooks mcp"
+        case .appearance: "theme dark light system mode editor text size zoom"
+        case .notifications: "push email digest reminders"
+        case .sync: "offline device copy storage sync"
+        case .library: "folder icloud location passphrase encryption lock health move"
+        case .data, .workspaceData: "import export markdown backup files"
+        case .desktop: "mac app"
+        case .thisDevice: "face id lock passcode storage cache"
+        case .about: "version licenses privacy policy terms"
+        case .workspace: "name logo workspace"
+        case .members: "people invite roles"
+        case .workspaceGuests: "guests access"
+        }
+    }
+
     /// The section's large title (the workspace's General and Privacy say so).
     public var heading: String {
         switch self {
@@ -125,11 +149,20 @@ public struct PhoneSettingsHost {
 public struct PhoneSettingsList: View {
     let model: PhoneSettingsModel
     let host: PhoneSettingsHost
+    /// What's typed in Settings' search: the sections it matches, by name or by what's in them.
+    let query: String
     @Environment(\.colorScheme) private var scheme
 
-    public init(model: PhoneSettingsModel, host: PhoneSettingsHost) {
+    public init(model: PhoneSettingsModel, host: PhoneSettingsHost, query: String = "") {
         self.model = model
         self.host = host
+        self.query = query
+    }
+
+    /// The sections matching `q`: by name, or by what they hold (the rows and choices in them).
+    static func matches(_ s: PhoneSettingsSection, _ q: String) -> Bool {
+        let words = s.label + " " + s.heading + " " + s.keywords
+        return q.split(separator: " ").allSatisfy { words.localizedCaseInsensitiveContains($0) }
     }
 
     /// The sections in their groups, as SettingsView.tsx lists them on the iPhone for this mode and role.
@@ -149,6 +182,26 @@ public struct PhoneSettingsList: View {
     }
 
     public var body: some View {
+        let q = query.trimmingCharacters(in: .whitespaces)
+        if q.isEmpty {
+            list
+        } else {
+            let found = Self.groups(model).flatMap { g in g.items.filter { Self.matches($0, q) } } + (Self.matches(.about, q) ? [.about] : [])
+            PhoneSettingsPage {
+                if found.isEmpty {
+                    PhoneScreenEmpty(icon: .search, title: "No settings match “\(q)”", message: nil)
+                } else {
+                    PhoneSettingsGroup("Results") {
+                        ForEach(found, id: \.self) { s in
+                            PhoneSettingsRow(s.label, chevron: true, action: { model.open("/settings/\(s.rawValue)") }) { s.rowIcon }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private var list: some View {
         PhoneSettingsPage {
             ForEach(Self.groups(model), id: \.label) { g in
                 PhoneSettingsGroup(g.label) {
@@ -613,15 +666,109 @@ struct PhoneAppearanceSettings: View {
                 Task { await model.perform(.settingsUpdate(editorZoom: Double(v))) }
             }
         default:
-            PhoneSettingsGroup(footer: "Dark mode is designed, not inverted: note colours are softened and code stays readable.") {
-                PhoneSettingsRow("Theme", value: themes.first { $0.value == theme }?.label ?? "System", chevron: true, action: { model.open("/settings/appearance?screen=theme") }) {
-                    PhoneRowIcon(theme == "dark" ? .moon : theme == "light" ? .sun : .monitor)
+            if PhoneNotesListScreen.nativeSearch {
+                // The native look (the owner, 2026-11-19): a choice of look is shown, not named, as iOS's Display &
+                // Brightness shows Light and Dark: three pictures of the iPhone, the chosen one checked.
+                PhoneSettingsGroup("Theme", footer: "Dark mode is designed, not inverted: note colours are softened and code stays readable.") {
+                    PhoneThemeTiles(selected: theme) { v in
+                        guard v != theme else { return }
+                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                        Task { await model.perform(.settingsUpdate(appearance: SettingsUpdateArgs.Appearance(rawValue: v))) }
+                    }
+                }
+            } else {
+                PhoneSettingsGroup(footer: "Dark mode is designed, not inverted: note colours are softened and code stays readable.") {
+                    PhoneSettingsRow("Theme", value: themes.first { $0.value == theme }?.label ?? "System", chevron: true, action: { model.open("/settings/appearance?screen=theme") }) {
+                        PhoneRowIcon(theme == "dark" ? .moon : theme == "light" ? .sun : .monitor)
+                    }
                 }
             }
             PhoneSettingsGroup(footer: "The size of a note's text in the editor, on this device. iOS's own text size changes everything else.") {
                 PhoneSettingsRow("Editor text size", value: Self.pct(closest), chevron: true, action: { model.open("/settings/appearance?screen=editor-text-size") }) { PhoneRowIcon(.type) }
             }
         }
+    }
+}
+
+/// Settings > Appearance's theme as pictures (the Mac's ThemeTiles, the iPhone's way): Light, Dark and System, each
+/// a small iPhone showing Folevi in that look (System half and half), its name and a round check under it.
+struct PhoneThemeTiles: View {
+    let selected: String
+    let choose: (String) -> Void
+
+    private static let choices: [(id: String, name: String)] = [("light", "Light"), ("dark", "Dark"), ("system", "System")]
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 0) {
+            ForEach(Self.choices, id: \.id) { c in
+                let on = c.id == selected
+                Button { choose(c.id) } label: {
+                    VStack(spacing: 10) {
+                        PhoneThemePicture(theme: c.id)
+                            .frame(width: 64, height: 124)
+                            .overlay {
+                                RoundedRectangle(cornerRadius: 13, style: .continuous)
+                                    .strokeBorder(on ? PhoneNativeLook.accent : Color.clear, lineWidth: 2.5)
+                                    .padding(-4)
+                            }
+                        Text(c.name).font(.subheadline.weight(on ? .semibold : .regular)).foregroundStyle(.primary)
+                        Image(systemName: on ? "checkmark.circle.fill" : "circle")
+                            .font(.title3)
+                            .foregroundStyle(on ? PhoneNativeLook.accent : Color.secondary.opacity(0.6))
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 16)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(c.name)
+                .accessibilityAddTraits(on ? [.isButton, .isSelected] : .isButton)
+            }
+        }
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("Theme")
+    }
+}
+
+/// A small iPhone in a theme: the screen's canvas, a large title, two note cards and the tab bar; System is light
+/// on its left half and dark on its right.
+private struct PhoneThemePicture: View {
+    let theme: String
+
+    var body: some View {
+        Canvas { ctx, size in
+            func draw(_ c: GraphicsContext, dark: Bool) {
+                let canvas = dark ? Color(white: 0.07) : Color(white: 0.98)
+                let ink = dark ? Color.white.opacity(0.85) : Color.black.opacity(0.8)
+                let card = dark ? Color(white: 0.17) : Color.white
+                let edge = dark ? Color.white.opacity(0.12) : Color.black.opacity(0.1)
+                let r = CGRect(origin: .zero, size: size)
+                c.fill(Path(roundedRect: r, cornerRadius: 11, style: .continuous), with: .color(canvas))
+                c.fill(Path(roundedRect: CGRect(x: 7, y: 16, width: 26, height: 6), cornerRadius: 2), with: .color(ink))
+                for (i, x) in [7.0, 34.0].enumerated() {
+                    let cardRect = CGRect(x: x, y: 30, width: 23, height: 30)
+                    c.fill(Path(roundedRect: cardRect, cornerRadius: 3), with: .color(card))
+                    c.stroke(Path(roundedRect: cardRect, cornerRadius: 3), with: .color(edge), lineWidth: 0.5)
+                    c.fill(Path(CGRect(x: x + 3, y: 34, width: i == 0 ? 14 : 11, height: 2.5)), with: .color(ink.opacity(0.7)))
+                }
+                for y in [68.0, 78.0, 88.0] {
+                    c.fill(Path(roundedRect: CGRect(x: 7, y: y, width: 50, height: 6), cornerRadius: 2), with: .color(card))
+                }
+                let bar = CGRect(x: 8, y: size.height - 18, width: size.width - 16, height: 11)
+                c.fill(Path(roundedRect: bar, cornerRadius: 5.5), with: .color(dark ? Color.white.opacity(0.14) : Color.black.opacity(0.07)))
+            }
+            switch theme {
+            case "dark": draw(ctx, dark: true)
+            case "system":
+                draw(ctx, dark: false)
+                var right = ctx
+                right.clip(to: Path(CGRect(x: size.width / 2, y: 0, width: size.width / 2, height: size.height)))
+                draw(right, dark: true)
+            default: draw(ctx, dark: false)
+            }
+        }
+        .overlay(RoundedRectangle(cornerRadius: 11, style: .continuous).strokeBorder(Color.primary.opacity(0.18), lineWidth: 1))
+        .accessibilityHidden(true)
     }
 }
 

@@ -386,7 +386,10 @@ public struct PhoneTasksHeader: View {
                 model.feedback.haptic(.selection)
                 actions.select(v)
             }
-            PhoneSearchField("Filter by task or note", text: $model.filter)
+            // (The native look puts the filter in iOS's own search field, under the large title.)
+            if !PhoneNotesListScreen.nativeSearch {
+                PhoneSearchField("Filter by task or note", text: $model.filter)
+            }
         }
     }
 }

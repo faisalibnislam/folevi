@@ -61,8 +61,22 @@ public struct PhoneSheetButton<Label: View>: View {
 
 private struct SheetButtonStyle: ButtonStyle {
     @Environment(\.colorScheme) private var scheme
+    @Environment(\.nativeChrome) private var chrome
 
     func makeBody(configuration: Configuration) -> some View {
+        if chrome != nil, #available(iOS 26, macOS 26, *) {
+            // The native look: iOS 26's round glass button in a sheet's bar (as a sheet's Close is drawn by iOS).
+            configuration.label
+                .foregroundStyle(Color.primary)
+                .frame(width: 44, height: 44)
+                .glassEffect(.regular.interactive(), in: .circle)
+                .contentShape(Circle())
+        } else {
+            drawn(configuration)
+        }
+    }
+
+    private func drawn(_ configuration: Configuration) -> some View {
         configuration.label
             .foregroundStyle(FoleviTokens.Chrome.inkMuted.resolve(scheme).color)
             .frame(width: 44, height: 44)
@@ -83,9 +97,15 @@ public struct PhoneSheetClose: View {
 
     public init(action: @escaping () -> Void) { self.action = action }
 
+    @Environment(\.nativeChrome) private var chrome
+
     public var body: some View {
         PhoneSheetButton("Close", action: action) {
-            WebIconView(.x, size: 15, strokeWidth: 2.6)
+            if chrome != nil {
+                Image(systemName: "xmark").font(.system(size: 17, weight: .medium))
+            } else {
+                WebIconView(.x, size: 15, strokeWidth: 2.6)
+            }
         }
     }
 }
@@ -226,13 +246,19 @@ public struct PhoneSheetPanel<Leading: View, Trailing: View, Content: View, Foot
         title != nil || close != nil || Leading.self != EmptyView.self || Trailing.self != EmptyView.self
     }
 
+    @Environment(\.nativeChrome) private var chrome
+
     public var body: some View {
         VStack(spacing: 0) {
             if hasHeader {
+                // (The native look leaves the grabber to iOS: PhoneSheetHost's drag indicator.)
                 PhoneSheetHeader(title: title, close: close, leading: { leading }, trailing: { trailing })
-                    .overlay(alignment: .top) { PhoneSheetGrabber() }
-            } else {
+                    .overlay(alignment: .top) { if chrome == nil { PhoneSheetGrabber() } }
+                    .padding(.top, chrome == nil ? 0 : 6)
+            } else if chrome == nil {
                 PhoneSheetGrabber().frame(height: 20, alignment: .top)
+            } else {
+                Color.clear.frame(height: 20)
             }
             if let description {
                 Text(description)
@@ -357,6 +383,7 @@ private struct PhoneSheetHost<Body: View>: View {
     let snapToBlocks: Bool
     let content: () -> Body
     @Environment(\.colorScheme) private var scheme
+    @Environment(\.nativeChrome) private var chrome
     @State private var fitted: CGFloat = 0
     @State private var blocks: [CGFloat] = []
     @State private var screen = PhoneSheetHost.measureScreen()
@@ -377,16 +404,32 @@ private struct PhoneSheetHost<Body: View>: View {
             .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)) { _ in
                 if size == .medium, !snapToBlocks { detent = .large }
             }
-            .presentationDragIndicator(.hidden)
+            // The native look: iOS's own drag indicator on a sheet that can change height.
+            .presentationDragIndicator(chrome != nil && size == .medium ? .visible : .hidden)
             // iOS gives a sheet one radius for all four corners (it draws the edge and shadow on it, so a second
             // radius drawn underneath leaves a sliver): on the iPhone its own, which follows the screen's corners.
             .presentationCornerRadius(PhoneSheetCorner.radius)
-            .presentationBackground(PhoneSurface.solid.resolve(scheme).color)
+            .modifier(SheetSurface(native: chrome != nil, solid: PhoneSurface.solid.resolve(scheme).color))
             .presentationContentInteraction(.resizes)
             .onPreferenceChange(PhoneSheetBlocks.self) { ys in
                 // Taken as it first lays out, at its top (scrolling moves the blocks, not the detent).
                 if snapToBlocks, blocks.isEmpty, !ys.isEmpty { blocks = ys }
             }
+    }
+
+    /// The sheet's surface: iOS 26's own Liquid Glass in the native look (translucent at a partial height, solid at
+    /// the full one); the web's solid raised neutral otherwise.
+    private struct SheetSurface: ViewModifier {
+        let native: Bool
+        let solid: Color
+
+        func body(content: Content) -> some View {
+            if native, #available(iOS 26, *) {
+                content
+            } else {
+                content.presentationBackground(solid)
+            }
+        }
     }
 
     /// A medium sheet's heights: medium (or fitted to its blocks) and the web's large.

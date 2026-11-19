@@ -40,6 +40,16 @@ public enum PhoneFolderMenu {
             for item in group {
                 // (Ask Foli AI wears the flower, as the web's AI items.)
                 let row: WebMenuItem = item == .askAI ? .ai(item.title) : .item(item.title, icon: icon(item), danger: item == .delete, checked: item == .lock && context.isLocked(folder.id))
+                if item == .color, PhoneNotesListScreen.nativeSearch {
+                    // The native look: the colours as iOS's nested menu, each its dot.
+                    let current = FolderColor.resolve(folder.color).id
+                    entries.append(PhoneMenuEntry(row, children: FoleviTokens.folderColors.map { c in
+                        PhoneMenuEntry(.item(c.name, checked: c.id == current, swatch: c.color.color, id: "color:\(c.id)")) {
+                            Task { await actions.setFolderColor(folder.id, c.id == FolderColor.defaultId ? nil : c.id) }
+                        }
+                    }))
+                    continue
+                }
                 entries.append(PhoneMenuEntry(row) {
                     run(item, folder: folder, anchor: anchor, context: context, actions: actions, dialogs: dialogs, menus: menus, hooks: hooks)
                 })

@@ -21,6 +21,7 @@ public struct PhoneTaskSheet: View {
     @State private var menus = PhoneMenus()
     @State private var rowFrames: [String: CGRect] = [:]
     @Environment(\.colorScheme) private var scheme
+    @Environment(\.nativeChrome) private var chrome
 
     enum Picking { case date, time }
 
@@ -212,7 +213,7 @@ public struct PhoneTaskSheet: View {
     /// they were the system's pop-up menus), and show the same ">" as Date and Time.
     private func priorityRow(_ t: TaskRow) -> some View {
         let current = TaskUpdateArgs.Priority(rawValue: t.priority ?? "none") ?? .none
-        return PhoneSheetRow(icon: .flag, label: "Priority", value: Self.priorities.first { $0.0 == current }?.1 ?? "None", chevron: false) {
+        return nativeMenuRow { PhoneSheetRow(icon: .flag, label: "Priority", value: Self.priorities.first { $0.0 == current }?.1 ?? "None", chevron: false) {
             menus.show(Self.priorities.map { p in
                 PhoneMenuEntry(.item(p.1, checked: p.0 == current, id: "priority:\(p.0.rawValue)")) {
                     guard p.0 != current else { return }
@@ -220,14 +221,35 @@ public struct PhoneTaskSheet: View {
                     save(TaskPatchArgs(id: t.id, priority: p.0))
                 }
             }, from: rowFrames["priority"] ?? .zero, side: .bottom, align: .end)
-        }
+        } }
         .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { rowFrames["priority"] = $0 }
+    }
+
+    /// A row whose tap shows a menu: in the native look iOS's own menu, holding the rows its action shows through
+    /// `menus` (Folevi's drawn menu otherwise).
+    @ViewBuilder
+    private func nativeMenuRow<R: View>(@ViewBuilder _ row: @escaping () -> R) -> some View {
+        if chrome != nil {
+            Menu {
+                PhoneCapturedMenu(menus: menus) { Self.tap(row()) }
+            } label: {
+                row().allowsHitTesting(false)
+            }
+            .buttonStyle(.plain)
+        } else {
+            row()
+        }
+    }
+
+    /// Runs a sheet row's action (what it would do when tapped), so its menu's rows can be captured.
+    private static func tap<R: View>(_ row: R) {
+        (row as? PhoneSheetRow)?.action?()
     }
 
     private func assigneeRow(_ t: TaskRow) -> some View {
         let people = host.assignees
         let name = t.assigneeId.map { id in people.first { $0.id == id }?.name ?? t.assigneeName ?? "Someone" } ?? "Nobody"
-        return PhoneSheetRow(icon: .userRound, label: "Assignee", value: name, chevron: false) {
+        return nativeMenuRow { PhoneSheetRow(icon: .userRound, label: "Assignee", value: name, chevron: false) {
             let pick = { (id: String) in
                 guard id != (t.assigneeId ?? "") else { return }
                 host.edits.feedback.haptic(.selection)
@@ -239,7 +261,7 @@ public struct PhoneTaskSheet: View {
                 entries.append(PhoneMenuEntry(.item(m.isYou ? "\(m.name) (you)" : m.name, checked: m.id == t.assigneeId, id: "assignee:\(m.id)")) { pick(m.id) })
             }
             menus.show(entries, from: rowFrames["assignee"] ?? .zero, side: .bottom, align: .end)
-        }
+        } }
         .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { rowFrames["assignee"] = $0 }
     }
 
@@ -377,6 +399,7 @@ public struct PhoneCapsuleSegmented: View {
     let change: (String) -> Void
     @Environment(\.colorScheme) private var scheme
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.nativeChrome) private var chrome
 
     public init(label: String, value: String, options: [(String, String)], change: @escaping (String) -> Void) {
         self.label = label
@@ -386,8 +409,22 @@ public struct PhoneCapsuleSegmented: View {
     }
 
     public var body: some View {
+        if chrome != nil {
+            // The native look: iOS's own segmented control (one segmented design, as the Mac's).
+            Picker(label, selection: Binding(get: { value }, set: { if $0 != value { change($0) } })) {
+                ForEach(options, id: \.0) { id, title in Text(title).tag(id) }
+            }
+            .pickerStyle(.segmented)
+            .labelsHidden()
+            .controlSize(.large)
+        } else {
+            drawn
+        }
+    }
+
+    private var drawn: some View {
         let index = max(0, options.firstIndex { $0.0 == value } ?? 0)
-        GeometryReader { g in
+        return GeometryReader { g in
             let w = (g.size.width - 4) / CGFloat(max(1, options.count))
             ZStack(alignment: .leading) {
                 Capsule().fill(inkMix(0.07, scheme))

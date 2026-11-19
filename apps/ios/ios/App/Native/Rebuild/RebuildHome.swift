@@ -15,7 +15,6 @@ struct RebuildHomeScreen: View {
     let openAccount: () -> Void
     let openNotifications: () -> Void
     let newFolder: (String?) -> Void
-    @State private var moreFrame: CGRect = .zero
     /// A tag's Edit tag… and Delete tag… (its long-press menu).
     @State private var editingTag: TagRow?
     @State private var deletingTag: TagRow?
@@ -41,14 +40,11 @@ struct RebuildHomeScreen: View {
                         WebIconView(.bell, size: 21, strokeWidth: 1.9)
                     }
                 }
-                // (A moment after the press: opened in the same update as the pill's own press, the menu was lost.)
-                WebPillButton("More", action: { DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { showMore(from: moreFrame) } }) {
-                    WebIconView(.ellipsis, size: 24, strokeWidth: 2.2)
+                // iOS's own menu (the native look).
+                PhoneMenuButton("More", menus: menus, build: { showMore(from: .zero) }) {
+                    WebIconView(.ellipsis, size: 22, strokeWidth: 2.2)
                 }
-                .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { moreFrame = $0 }
             }
-        } header: {
-            PhoneSearchButton(home.searchPrompt) { frame.open(.search("")) }
         } content: {
             PhoneHomeContent(model: home, actions: homeActions)
             .padding(.bottom, 24)

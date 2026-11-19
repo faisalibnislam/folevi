@@ -233,10 +233,14 @@ function NativeContentShell() {
     if (!iphone) return;
     const root = document.documentElement;
     root.dataset.iphone = "";
+    // Folevi for iPhone's native look (the owner, 2026-11-19): the native frame draws system chrome, and the note
+    // page's own interface (its menus, popovers, dialogs) follows in the system font (globals.css).
+    root.dataset.iphoneNative = "";
     const corner = displayCornerRadius();
     if (corner) root.style.setProperty("--iphone-sheet-bottom", `${Math.max(28, corner - 8)}px`);
     return () => {
       delete root.dataset.iphone;
+      delete root.dataset.iphoneNative;
       root.style.removeProperty("--iphone-sheet-bottom");
     };
   }, [iphone]);

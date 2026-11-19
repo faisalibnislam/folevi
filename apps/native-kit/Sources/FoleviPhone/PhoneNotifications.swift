@@ -116,8 +116,21 @@ struct PhoneRowTap: ViewModifier {
     @State private var pressed = false
     @State private var pressGeneration = 0
     @Environment(\.colorScheme) private var scheme
+    @Environment(\.phoneMenus) private var menus
 
     func body(content: Content) -> some View {
+        if let menus {
+            // The native look: a tap opens, a long press lifts the row into iOS's own context menu.
+            content
+                .contentShape(Rectangle())
+                .onTapGesture(perform: onTap)
+                .phoneContextMenu(menus) { onLongPress(.zero) }
+        } else {
+            drawn(content)
+        }
+    }
+
+    private func drawn(_ content: Content) -> some View {
         content
             .overlay { if pressed { (WebStyles.vars["liquid-press"]?.resolve(scheme).color ?? Color.black.opacity(0.06)).allowsHitTesting(false) } }
             .animation(.easeOut(duration: pressed ? 0 : 0.15), value: pressed)
@@ -225,9 +238,7 @@ struct PhoneNotificationRow: View {
     }
 
     static func relative(_ ms: Double) -> String {
-        let f = RelativeDateTimeFormatter()
-        f.unitsStyle = .full
-        return f.localizedString(for: Date(timeIntervalSince1970: ms / 1000), relativeTo: ScreenClock.now())
+        PhoneFormat.relative(ms)
     }
 }
 #endif

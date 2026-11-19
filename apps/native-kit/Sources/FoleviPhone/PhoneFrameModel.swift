@@ -25,6 +25,12 @@ public final class PhoneFrameModel {
     public private(set) var stacks: [PhoneTab: [PhoneStackEntry]] = [:]
     /// Bumped when the tab on screen should scroll to its top (its own tab tapped at its first screen).
     public private(set) var scrollToTop = 0
+    /// The search tab is on show (iOS 26's tab bar: search is a tab of its own, `Tab(role: .search)`), over the tab
+    /// it was opened from, which stays `current`: closing search goes back to it.
+    public private(set) var searching = false
+    /// What search opens with (a link's or a caller's words); bumped `searchID` when asked again.
+    public private(set) var searchText = ""
+    public private(set) var searchID = 0
 
     public init() {
         for tab in PhoneTab.allCases { stacks[tab] = [PhoneStackEntry(Self.root(of: tab))] }
@@ -56,13 +62,34 @@ public final class PhoneFrameModel {
     public var stack: [PhoneStackEntry] { stacks[current] ?? [] }
 
     /// The screen on show.
-    public var top: FrameRoute { stack.last?.route ?? Self.root(of: current) }
+    public var top: FrameRoute { searching ? .search(searchText) : (stack.last?.route ?? Self.root(of: current)) }
+
+    /// The screen on top of the current tab's stack (under search while it's open).
+    public var tabTop: FrameRoute { stack.last?.route ?? Self.root(of: current) }
+
+    /// The search tab, with `text` in its field.
+    public func openSearch(_ text: String = "") {
+        searchText = text
+        searchID += 1
+        searching = true
+    }
+
+    /// Search's tab tapped (true) or another tab tapped while it's open (false).
+    public func setSearching(_ on: Bool) {
+        searching = on
+    }
 
     /// Whether Back has somewhere to go in this tab.
     public var canGoBack: Bool { stack.count > 1 }
 
     /// Opens a screen: on top of this tab's stack, or, for a tab's first screen, in that tab from its start.
     public func open(_ route: FrameRoute) {
+        if case .search(let text) = route {
+            openSearch(text)
+            return
+        }
+        // Anything opened from search shows in the tab search was opened over.
+        searching = false
         if Self.isTabRoot(route) {
             let tab = Self.tab(of: route)
             // Tasks' other views (Completed) are pushed on purpose; Home and Calendar again go back to the start.
@@ -84,6 +111,10 @@ public final class PhoneFrameModel {
 
     /// Back in this tab (the Back button, the edge swipe).
     public func back() {
+        if searching {
+            searching = false
+            return
+        }
         guard canGoBack else { return }
         stacks[current]?.removeLast()
     }
@@ -91,6 +122,11 @@ public final class PhoneFrameModel {
     /// The tab bar: another tab shows where it was left; the tab on show goes back to its first screen, or, there
     /// already, to the top.
     public func pick(_ tab: PhoneTab) {
+        if searching {
+            searching = false
+            current = tab
+            return
+        }
         if tab != current {
             current = tab
             return

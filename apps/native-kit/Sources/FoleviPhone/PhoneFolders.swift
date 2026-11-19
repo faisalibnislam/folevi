@@ -51,19 +51,21 @@ public struct PhoneAllFoldersScreen: View {
         self.scrollToTop = scrollToTop
     }
 
+    /// The title, and iOS's own search field under it (the native look).
+    private var searchOptions: PhoneScreenOptions {
+        var o = PhoneScreenOptions(title: "Folders")
+        if PhoneNotesListScreen.nativeSearch { o.search = $model.query }
+        return o
+    }
+
     public var body: some View {
         let grid = WebStyles.named("phone.grid").resolve(scheme)
-        PhoneScreen(PhoneScreenOptions(title: "Folders"), root: false, scrollToTop: scrollToTop, back: back) {
+        PhoneScreen(searchOptions, root: false, scrollToTop: scrollToTop, back: back) {
             EmptyView()
         } trailing: {
-            WebGlassPill {
-                WebPillButton("Folders options", action: { menu(moreFrame) }) {
-                    WebIconView(.ellipsis, size: 24, strokeWidth: 2.2)
-                }
-                .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { moreFrame = $0 }
-            }
+            PhoneBarMenuButton("Folders options") { menu($0) }
         } header: {
-            PhoneSearchField("Search", text: $model.query)
+            if !PhoneNotesListScreen.nativeSearch { PhoneSearchField("Search", text: $model.query) }
         } content: {
             let shown = model.shown
             if !model.isLoading && shown.isEmpty {

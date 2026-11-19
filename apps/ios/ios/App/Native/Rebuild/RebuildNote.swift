@@ -326,6 +326,9 @@ struct RebuildNoteScreen: View {
                 switch row {
                 case .item(let item):
                     entries.append(entry(item))
+                case .submenu(let group, let items) where PhoneNotesListScreen.nativeSearch:
+                    // The native look: iOS's own nested menu.
+                    entries.append(PhoneMenuEntry(.item(group.rawValue, icon: Self.icon(group), id: "group:\(group.rawValue)"), children: items.map(entry)))
                 case .submenu(let group, let items):
                     entries.append(PhoneMenuEntry(.item(group.rawValue, icon: Self.icon(group), id: "group:\(group.rawValue)")) { [menus] in
                         // (After this menu has gone: the group's own grows out of the same place.)

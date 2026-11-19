@@ -28,7 +28,7 @@ struct RebuildSearchScreen: View {
         }, openNote: { id in
             frame.back()
             phone.router?.openNote(id, source: nil, focus: false)
-        }, close: { frame.back() }, scopeMenu: { which, anchor in showScope(which, from: anchor) })
+        }, close: { frame.back() }, scopeMenu: { which, anchor in showScope(which, from: anchor) }, menus: menus)
     }
 
     /// The palette's actions (CommandPalette.tsx), in its order.

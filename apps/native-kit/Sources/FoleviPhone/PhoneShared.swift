@@ -26,10 +26,7 @@ private struct PhoneCardBox: ViewModifier {
 }
 
 private func relative(_ ms: Double) -> String {
-    let date = Date(timeIntervalSince1970: ms / 1000)
-    let f = RelativeDateTimeFormatter()
-    f.unitsStyle = .full
-    return f.localizedString(for: date, relativeTo: ScreenClock.now())
+    PhoneFormat.relative(ms)
 }
 
 public struct PhoneSharedScreen: View {

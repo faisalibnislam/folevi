@@ -76,11 +76,27 @@ struct LiquidGlassModifier: ViewModifier {
     let shape: WebCornersShape
     @Environment(\.colorScheme) private var scheme
     @Environment(\.webSnapshot) private var snapshot
+    @Environment(\.nativeChrome) private var chrome
 
+    @ViewBuilder
     func body(content: Content) -> some View {
+        #if os(iOS)
+        if chrome != nil, !snapshot, #available(iOS 26, *) {
+            // The native look (the owner, 2026-11-19): iOS 26's own Liquid Glass, not the web's copy of it. It lenses
+            // what's behind, reacts to a touch and adapts to light or dark content under it.
+            content.glassEffect(.regular.interactive(), in: shape)
+        } else {
+            drawn(content)
+        }
+        #else
+        drawn(content)
+        #endif
+    }
+
+    private func drawn(_ content: Content) -> some View {
         let edge = LiquidGlassLook.edge(scheme)
         let fillColor = (fill ?? (kind == .strong ? LiquidGlassLook.fillStrong : LiquidGlassLook.fill)).resolve(scheme)
-        content
+        return content
             .background {
                 ZStack {
                     WebShapeBox(shape: shape, fill: nil, shadows: LiquidGlassLook.shadow(scheme) + edge.filter { !$0.inset })

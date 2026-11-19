@@ -174,6 +174,14 @@ final class RebuildFrameController: UIViewController, PhoneRouting {
             center.addObserver(forName: UIResponder.keyboardWillHideNotification, object: nil, queue: .main) { [weak self] _ in
                 MainActor.assumeIsolated { self?.keyboardMoved(to: .zero, hiding: true) }
             },
+            // Low on memory: the native side's own caches go (decoded card covers, cards' line breaks; what shows
+            // asks again), as the Mac lets them go (its 2026-11-19 performance pass). WebKit drops its own.
+            center.addObserver(forName: UIApplication.didReceiveMemoryWarningNotification, object: nil, queue: .main) { _ in
+                MainActor.assumeIsolated {
+                    CoverFiles.shared.relieve()
+                    WebLineLayout.shared.relieve()
+                }
+            },
         ]
         model.start()
         Self.current = self
@@ -368,7 +376,9 @@ private struct RebuildRoot: View {
                 if wide {
                     RebuildIPadRoot(desk: desk, phone: phone, pageHost: pageHost, gate: gate)
                 } else {
-                    phoneBody
+                    // The iPhone's native look (the owner, 2026-11-19): system chrome in the system font with
+                    // Dynamic Type, Folevi's accent; notes and their cards keep Folevi's fonts.
+                    phoneBody.phoneNativeChrome(menus: menus)
                 }
             }
             .onChange(of: wide) { _, isWide in
@@ -379,12 +389,17 @@ private struct RebuildRoot: View {
         .ignoresSafeArea(.keyboard)
         .environment(\.sheetZoom, zoom)
         .phoneSheet(isPresented: Bindable(phone).quickAddShown, size: .fit) {
-            RebuildQuickAddSheet(phone: phone)
+            // (The iPhone's native look; the iPad keeps its own.)
+            if UIDevice.current.userInterfaceIdiom == .phone {
+                RebuildQuickAddSheet(phone: phone).phoneNativeChrome(menus: RebuildFrame.menus)
+            } else {
+                RebuildQuickAddSheet(phone: phone)
+            }
         }
     }
 
     private var phoneBody: some View {
-        PhoneFrameView(model: model, menus: menus, aiOn: phone.aiOn, tabBarHidden: selecting || model.top.isSearch, actions: PhoneFrameActions(openAI: { ai.ask() }, newNote: { phone.newNote() }, fromTemplate: { model.open(FrameRoute(path: "/templates")) }, newFolder: {
+        PhoneFrameView(model: model, menus: menus, aiOn: phone.aiOn, tabBarHidden: selecting, actions: PhoneFrameActions(openAI: { ai.ask() }, newNote: { phone.newNote() }, fromTemplate: { model.open(FrameRoute(path: "/templates")) }, newFolder: {
             let parent: String? = if case .folder(let id) = model.top { id } else { nil }
             newFolder = NewFolderRequest(parent: parent)
         }, quickTask: { phone.quickAddShown = true })) { route in
@@ -407,7 +422,7 @@ private struct RebuildRoot: View {
             } else if route == .web("/tags") {
                 RebuildTagsScreen(frame: model, menus: menus, phone: phone)
             } else if case .web(let path) = route, path == "/ai" || path.hasPrefix("/ai/") || path.hasPrefix("/ai?") {
-                RebuildAiPage(ai: ai, frame: model, path: path)
+                RebuildAiPage(ai: ai, frame: model, path: path).phoneOwnBar()
             } else if case .web(let p) = route, p == "/vault" || p.hasPrefix("/vault/") {
                 RebuildVaultScreen(path: p, frame: model, menus: menus, phone: phone)
             } else if case .search(let text) = route {
@@ -415,7 +430,7 @@ private struct RebuildRoot: View {
             } else if let kind = NotesListKind(route: route) {
                 RebuildNotesScreen(kind: kind, frame: model, menus: menus, phone: phone, newFolder: { newFolder = NewFolderRequest(parent: $0) }) { selecting = $0 }
             } else {
-                PlaceholderScreen(model: model, route: route, desk: desk)
+                PlaceholderScreen(model: model, route: route, desk: desk).phoneOwnBar()
             }
         }
         // The keyboard covers the tab bar and the screens (the web's page doesn't move for it); a field that needs
@@ -557,3 +572,4 @@ enum RebuildDeskBridge {
         if desk.route != route { desk.open(route, .replace) }
     }
 }
+

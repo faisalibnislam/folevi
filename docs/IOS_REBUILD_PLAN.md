@@ -579,3 +579,48 @@ account-mode sign-out and place switching want a run with a scratch test account
   scroll view) was tried: it draws over the note, but tinted for the phone's appearance (a grey haze over a light note
   in dark mode), so it isn't used. The web's phone layout does the same over a note (Screen.tsx's `page` edge,
   `pagePaint`, globals.css `.iphone-bar[data-surface="page"]` and `[data-page-tone]` on the header and NoteBars.tsx's bars).
+
+### The iPhone's native look (2026-11-19)
+
+The owner, 2026-11-19: the iPhone goes native iOS 26 with Folevi content, as the Mac did (docs/MAC_NATIVE_LOOK.md):
+system chrome, Folevi's notes. Branch `ios-native-iphone`. The iPad's wide layout is another builder's
+(`ios-native-ipad`); everything here is the phone frame (FoleviPhone, the phone parts of FoleviDesign, the app's
+Rebuild screens), so a narrow iPad window (the phone layout) gets it too.
+
+- **One switch for the look**: `phoneNativeChrome(menus:)` (FoleviDesign/Phone/PhoneNativeLook.swift) on the phone
+  frame sets a `NativeChrome` with `dynamicType` on, the accent as the tint (#1F1F22 light, #F2F2F3 dark), half the
+  web's drawn shadows and the frame's menus. Interface text drawn by the shared web components (webText,
+  foleviFont, WebParagraph, WebFont.interface) becomes SF Pro at the nearest of Apple's text styles (34, 28, 22, 20,
+  17, 16, 15, 13, 12, 11) and follows Dynamic Type; note cards, folder cards and the editor keep Instrument Sans
+  and Spectral (`noteContent()`, as on the Mac).
+- **Tab bar**: iOS 26's `TabView` in Liquid Glass (PhoneFrameView `nativeBody`): Home, Tasks and Calendar, each its
+  own navigation stack, and Search as a tab of its own (`Tab(role: .search)`, its field `.searchable` on its stack).
+  Foli AI and + ride in the bar's accessory (`tabViewBottomAccessory`: Ask Foli AI, and + as the Create menu, or
+  Quick task on Tasks); the bar shrinks while a list scrolls down. It steps away for a note, the Foli AI page and
+  Select. Before iOS 26 the drawn tab bar stays (`legacyBody`). Home's search field went: search is the tab.
+- **Navigation bars**: PhoneScreen is the system navigation bar now: the large title collapsing into the bar, the
+  system Back and its edge swipe, the screen's controls as toolbar items (the glass buttons drop their own glass
+  in the bar, `phoneInSystemBar`), the subtitle as `navigationSubtitle`, a pinned header (the Calendar's week) in
+  a `safeAreaBar` under an inline title, list filters in iOS's search field (`options.search`, pulled down into
+  view as iOS keeps it). Screens that draw their own bar (a note, the Foli AI page, a screen borrowed from the
+  iPad) use `phoneOwnBar()`.
+- **Menus**: every menu is iOS's own (`Menu`, `.contextMenu`) with Folevi's icons, built by the same code that
+  built the drawn ones: `PhoneMenus.entries { ... }` runs a menu-building function and keeps the rows it would
+  have shown (`PhoneMenuItems`, `PhoneMenuButton`, `PhoneBarMenuButton`, `.phoneContextMenu`). Long presses on
+  cards and rows lift them into a context menu; groups (a note's Turn into, a folder's colours) are nested menus.
+  The drawn menu layer stays for what has no button to hang a menu on.
+- **Sheets**: iOS 26's own Liquid Glass sheet (no drawn surface), its drag indicator on medium sheets, round glass
+  buttons in the header.
+- **Controls**: iOS's switch, segmented pickers (a task's status, the Vault's sections), pop-up pickers (the Vault's
+  selects), and Liquid Glass (`glassEffect`) wherever the web's glass copy was (a note's bars, the place chip,
+  the keyboard bar).
+- **Settings**: the theme is three pictures of the iPhone (Light, Dark, System); Settings has a search field
+  (sections by name and by what's in them); grouped cards take iOS 26's corners.
+- **Lists**: no line between a list's rows, the spacing kept (as the Mac and the web); grouped lists (Settings) keep
+  theirs.
+- **Vault**: its state under the title, Lock and ⋯ in the bar, its sections one segmented control.
+- **Performance** (the Mac's 2026-11-19 pass, what applies to the phone): card covers and line breaks let go on a
+  memory warning; one relative-date formatter for every row.
+- **The note page** (web): `data-iphone-native` (Shell) sets the page's interface font to the system's and push
+  buttons to capsules (globals.css); the note's text keeps its fonts. Flat plain notes and page cards were already
+  the iPhone's (1.4.48); notes don't open with a panel on the phone (it would cover the note, the Mac's own rule).

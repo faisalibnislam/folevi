@@ -24,6 +24,13 @@ export function waitingCount(deps: EngineDeps): number {
  */
 const measure = (accountKey: string): Promise<DeviceUsage> => measureDeviceUsage(accountKey);
 
+/**
+ * A count or a size as the apps read it: a whole number, or null. The apps decode these as integers, and one
+ * fraction (10% of the free space) made them drop the whole reading, so Notes kept and Space used stayed "…"
+ * on iPhone, iPad and Mac (QA 2026-11-20).
+ */
+const whole = (n: number | null | undefined): number | null => (typeof n === "number" && Number.isFinite(n) ? Math.max(0, Math.round(n)) : null);
+
 /** The copy's handle for this account and its changes, as a signal (the copy starts and stops with the app). */
 function copySignal(accountKey: string): Signal {
   return new Emitter((emit) => {
@@ -91,19 +98,19 @@ const deviceStorage: ValueViewDef = {
         const spaces: SpaceCopyInfo[] = d.app.spaces.map((sp) => {
           const st = status.find((x) => x.scopeKey === scopeIdKey(sp.scope));
           if (d.spaceStatus(sp.scope).encrypted) return { space: sp.id, name: sp.name, phase: "encrypted", have: 0, total: null };
-          return { space: sp.id, name: sp.name, phase: st?.phase ?? "listing", have: st?.have ?? 0, total: st?.total ?? null };
+          return { space: sp.id, name: sp.name, phase: st?.phase ?? "listing", have: whole(st?.have) ?? 0, total: whole(st?.total) };
         });
         const value: DeviceStorageValue = {
           place: d.app.place,
           keepAll: keepAllNotes(accountKey),
           available: Boolean(handle),
           spaces,
-          notesKept: usage?.notes ?? null,
-          attachmentsKept: usage?.files?.count ?? null,
-          attachmentsBytes: usage?.files?.bytes ?? null,
-          usedBytes: usage?.used ?? null,
-          freeBytes: usage?.free ?? null,
-          attachmentLimitBytes: usage?.budget ?? null,
+          notesKept: whole(usage?.notes),
+          attachmentsKept: whole(usage?.files?.count),
+          attachmentsBytes: whole(usage?.files?.bytes),
+          usedBytes: whole(usage?.used),
+          freeBytes: whole(usage?.free),
+          attachmentLimitBytes: whole(usage?.budget),
           waiting: waitingCount(d),
         };
         return { value, stale: !measuredOnce, error: null };

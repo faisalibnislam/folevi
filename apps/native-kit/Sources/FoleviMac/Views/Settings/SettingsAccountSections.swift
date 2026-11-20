@@ -371,31 +371,43 @@ struct SyncSettingsView: View {
         let store = model.storage
         let s = store.value
         VStack(alignment: .leading, spacing: 20) {
-            SettingsCard("This device", description: "Folevi keeps your recent documents and every unsent change on this \(ThisDevice.noun), so you can keep writing offline and nothing is lost if a window closes.") {
+            SettingsCard("This \(ThisDevice.noun)", description: "Folevi keeps your recent documents and every unsent change on this \(ThisDevice.noun), so you can keep writing offline and nothing is lost if a window closes.") {
                 VStack(alignment: .leading, spacing: 16) {
+                    // While the copy fills (Keep all on, or Download everything now): how far each space has got.
+                    let filling = (s?.spaces ?? []).filter { $0.phase == "listing" || $0.phase == "filling" }
+                    let downloading: [(String, String, Color?)] = (s?.available == true && s?.keepAll == true) ? filling.map { sp in
+                        (filling.count > 1 ? "Downloading \(sp.name)" : "Downloading notes",
+                         sp.total.map { "\(sp.have.formatted()) of \($0.formatted())" } ?? (sp.phase == "listing" ? "Getting the list…" : sp.have.formatted()), nil)
+                    } : []
                     SettingsTerms(rows: [
                         ("Connection", model.session?.online == false ? "Offline" : "Online", nil),
                         ("Changes waiting to sync", "\(s?.waiting ?? 0)", nil),
                         ("Notes kept", store.notesKeptText, nil),
                         ("Space used", store.spaceUsedText, nil),
-                    ])
+                    ] + downloading)
                     if store.canRetryReadings {
                         HStack(spacing: 12) {
                             SText("This \(ThisDevice.noun) didn't give every reading.", "row.hint")
                             SButton("Retry", icon: .refreshCw, iconSize: 14, size: .sm) { model.remeasureStorage() }
                         }
                     }
+                    if s?.available == false {
+                        // A library on this device: nothing to download or remove (the owner, 2026-11-20).
+                        SText("This library is kept on this \(ThisDevice.noun), so every note already opens offline.", "row.hint")
+                    } else {
                     SettingsSwitchRow(label: "Keep all notes on this \(ThisDevice.noun)", hint: "Every note and its attachments stay on this \(ThisDevice.noun), so all of them open offline.", isOn: s?.keepAll ?? false, disabled: s?.available == false) { on in
                         await model.perform(.deviceKeepAll(on: on)) != nil
                     }
                     .settingsRowWidth(576, alignment: .center)
                     SettingsButtons {
-                        SButton("Download everything now") { Task { await model.perform(.deviceDownload) } }
+                        // (Says what it started: before, nothing showed it had done anything, the owner 2026-11-20.)
+                        SButton("Download everything now") { Task { await model.perform(.deviceDownload, done: "Downloading every note to this \(ThisDevice.noun)") } }
                         SButton("Remove this \(ThisDevice.noun)'s copy…", variant: .danger) {
                             settingsConfirm("Remove this \(ThisDevice.noun)'s copy?", message: "Notes stay in your account. They download again when you open them.", confirm: "Remove", in: NSApp.keyWindow) {
                                 Task { await model.perform(.deviceRemoveCopy(force: true), done: "Removed") }
                             }
                         }
+                    }
                     }
                 }
             }

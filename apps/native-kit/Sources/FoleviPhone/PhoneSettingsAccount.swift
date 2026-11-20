@@ -337,14 +337,30 @@ struct PhoneAccountSettings: View {
                 PhoneSettingsRow("Retry reading storage", action: { model.remeasureStorage() })
             }
         }
+        // While the copy fills (Keep all on, or Download everything now): how far each space has got.
+        let filling = (s.value?.spaces ?? []).filter { $0.phase == "listing" || $0.phase == "filling" }
+        if s.value?.available == true, s.value?.keepAll == true, !filling.isEmpty {
+            PhoneSettingsGroup("Downloading") {
+                ForEach(filling, id: \.space) { sp in
+                    PhoneSettingsRow(filling.count > 1 ? sp.name : "Notes", value: sp.total.map { "\(sp.have.formatted()) of \($0.formatted())" } ?? (sp.phase == "listing" ? "Getting the list…" : "\(sp.have.formatted())"))
+                }
+            }
+        }
+        if s.value?.available == false {
+            // A library on this iPhone, or a place with no copy here: nothing to download or remove (the buttons
+            // only answered with an error, the owner 2026-11-20).
+            PhoneSettingsGroup(footer: "This library is kept on this iPhone, so every note already opens offline.") { EmptyView() }
+        } else {
         PhoneSettingsGroup(footer: "Every note and its attachments stay on this iPhone, so all of them open offline.") {
             PhoneSettingsSwitchRow("Keep all notes on this iPhone", on: s.value?.keepAll ?? false, disabled: s.value?.available == false, change: { on in
                 Task { await model.perform(.deviceKeepAll(on: on), done: "Saved") }
             }) { PhoneRowIcon(.download) }
-            PhoneSettingsRow("Download everything now", action: { Task { await model.perform(.deviceDownload) } })
+            // (Says what it started: before, nothing showed it had done anything, the owner 2026-11-20.)
+            PhoneSettingsRow("Download everything now", action: { Task { await model.perform(.deviceDownload, done: "Downloading every note to this iPhone") } })
             PhoneSettingsDestructiveRow(label: "Remove this iPhone's copy", confirm: "Remove", message: "Notes stay in your account. They download again when you open them.") {
                 Task { await model.perform(.deviceRemoveCopy(force: true), done: "Removed") }
             }
+        }
         }
     }
 

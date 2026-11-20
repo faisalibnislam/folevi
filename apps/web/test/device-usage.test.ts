@@ -3,6 +3,7 @@
 // unavailable, with Retry.
 import { afterEach, describe, expect, test } from "vitest";
 import { measureDeviceUsage, settleWithin, usageIncomplete } from "@/lib/sync/deviceUsage";
+import { storageBudget } from "@/lib/sync/deviceFiles";
 import { storageSummary } from "@/components/views/settings/DeviceCopySettings";
 
 const original = Object.getOwnPropertyDescriptor(navigator, "storage");
@@ -53,5 +54,14 @@ describe("the storage line", () => {
       unavailable: false,
     });
     expect(storageSummary({ notes: null, files: null, used: null, free: null, budget: 1 })).toEqual({ text: "Notes kept: unavailable. Space used: unavailable.", unavailable: true });
+  });
+
+  // QA 2026-11-20: the apps read the budget as an integer; 10% of an odd free space was a fraction, and the whole
+  // reading was dropped, so Notes kept and Space used stayed "…" on iPhone, iPad and Mac.
+  test("the attachment budget is whole bytes", async () => {
+    setEstimate(async () => ({ quota: 10307921511, usage: 1325247 }));
+    const b = await storageBudget();
+    expect(Number.isInteger(b)).toBe(true);
+    expect(b).toBe(1030659626);
   });
 });

@@ -98,7 +98,8 @@ export function largeDownloadsAllowed(nav: { connection?: Connection; userAgent?
 export async function storageBudget(): Promise<number> {
   try {
     const est = await navigator.storage?.estimate?.();
-    if (est?.quota) return Math.min(BUDGET_MAX, Math.max(0, (est.quota - (est.usage ?? 0)) * 0.1));
+    // (Whole bytes: the apps read it as an integer, and a fraction made them drop the whole reading, QA 2026-11-20.)
+    if (est?.quota) return Math.floor(Math.min(BUDGET_MAX, Math.max(0, (est.quota - (est.usage ?? 0)) * 0.1)));
   } catch {
     /* unknown */
   }

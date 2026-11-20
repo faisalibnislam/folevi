@@ -1,6 +1,18 @@
 {
   "releases": [
     {
+      "version": "1.5.56",
+      "build": 71,
+      "released": "2026-11-20T08:47:32+06:00",
+      "type": "patch",
+      "summary": "On iPhone, a note's own bars are back, and they now trade places smoothly with the tab bar.",
+      "improved": [
+        "iPhone: a note's bars are Folevi's again (the place at the top, the tools, Foli AI and + at the bottom)",
+        "iPhone: opening or closing a note swaps the tab bar and the note's bars in place, instead of the bars sliding in and out with the page"
+      ],
+      "tag": "v1.5.56"
+    },
+    {
       "version": "1.5.55",
       "build": 70,
       "released": "2026-11-20T08:01:46+06:00",

@@ -247,7 +247,7 @@ The ones most likely to be broken:
 - Give before/after screenshots for UI work and ask the owner with clear options when a decision is theirs.
 
 ## 9. Current state (as of 2026-11-19)
-- 1.5.55 is live (web, Mac, TestFlight build 70) with iOS's own note bars, but the owner rejected that design (2026-11-20): commit 01c8a907 on branch `ios-note-system-bars` (not pushed) reverts to Folevi's own note bars, and the next commit makes the frame draw them where the tab bar is (`PhoneNoteBarsSlot`), so the two trade places in place as a note opens or closes instead of the bars riding the page. Checked frame by frame in the iPhone simulator; 390 iOS tests pass. Not released: it reaches phones with 1.5.56.
+- 1.5.55 is live (web, Mac, TestFlight build 70) with iOS's own note bars, but the owner rejected that design (2026-11-20): commit 01c8a907 on branch `ios-note-system-bars` (not pushed) reverts to Folevi's own note bars, and the next commit makes the frame draw them where the tab bar is (`PhoneNoteBarsSlot`), so the two trade places in place as a note opens or closes instead of the bars riding the page. Checked frame by frame in the iPhone simulator; 390 iOS tests pass. Released as 1.5.56 (2026-11-20).
 - Release 1.5.55 (2026-11-20): on every iPhone a note uses iOS's own navigation bar and bottom toolbar (the owner's pick 2026-11-20), so the tab bar and the note's toolbar swap in place instead of the note's own bars sliding with the page. Checked on the iPhone simulator (iOS 27.2); the iOS 26 to 27.0 fallback is untested; iOS package tests 390 passed.
 - 1.5.54 is live: the website (Vercel success on b4add9c6), Folevi for Mac (appcast 1.5.54, DMG), iPhone and iPad on TestFlight (build 69); tag `v1.5.54`. Pull request 41 shows merged.
 - Branches archived 2026-11-19 (the owner's ask): every merged or old branch is an `archive/<name>` tag on GitHub (27 tags; `git checkout -b <name> archive/<name>` brings one back), then deleted locally and on GitHub. GitHub keeps `main`, Dependabot's, and `chrome-extension` and `pricing-decisions` (backed up 2026-11-20 at the owner's word). On this Mac also the branches still checked out in worktrees under `.claude/worktrees/` (most merged; removing a worktree frees its branch).
@@ -381,7 +381,7 @@ the e2e suite was not re-run after the Foli AI panel change; the dev backend lac
   `DATABASE_UDF_USER_TIMEOUT_SECONDS=4` for that backend. Bursts show in `convex.log` as "took a long time".
 
 ## 12. Change log
-- 2026-11-20: iPhone note bars trade places with the tab bar in place (not released).
+- 2026-11-20: Released 1.5.56: Folevi's own iPhone note bars, trading places with the tab bar in place.
 - 2026-11-20: Reverted iPhone notes to Folevi's own bars (owner's call); not yet released.
 - 2026-11-20: Released 1.5.55: iPhone notes use iOS's own bars.
 - 2026-11-20: `chrome-extension` and `pricing-decisions` brought up to date with `main` (tests pass on both) and pushed; every other branch is already in `main`.

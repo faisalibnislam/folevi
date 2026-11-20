@@ -403,9 +403,7 @@ struct RebuildNoteScreen: View {
                     Button { model.router?.share(noteId: noteId) } label: { Label { Text("Share") } icon: { WebIcon.share.image(size: 20, strokeWidth: 1.9) } }
                 }
             }
-            // (The tools in iOS's bottom bar: on every iPhone, and in the side column on iPhone Duo; at the top only
-            // beside the list on the open inner screen.)
-            ToolbarItemGroup(placement: sideColumn || !wideWindow ? .bottomBar : .primaryAction) {
+            ToolbarItemGroup(placement: sideColumn ? .bottomBar : .primaryAction) {
                 Button { toggle(.comments) } label: { Label { Text("Comments") } icon: { WebIcon.messageCircle.image(size: 21) } }
                 if canEdit {
                     Button { toggle(.style) } label: { Label { Text("Style") } icon: { WebIcon.paintbrush.image(size: 20, strokeWidth: 1.85) } }
@@ -420,37 +418,6 @@ struct RebuildNoteScreen: View {
             }
             .visibilityPriority(.high)
             ToolbarOverflowMenu { menuItems(meta: meta) }
-        } else {
-            // iOS 26 to 27.0: the same items with that iOS's placements (no pinned Done or overflow menu yet): Done
-            // as the confirming action, the place, Share and the note's menu at the top, the tools in the bottom bar.
-            if editing {
-                ToolbarItem(placement: .confirmationAction) {
-                    Button(action: done) { Label { Text("Done") } icon: { WebIcon.check.image(size: 20, strokeWidth: 2.4) } }
-                }
-            }
-            ToolbarItemGroup(placement: .primaryAction) {
-                if let place = place(meta) {
-                    Button(action: openPlace) { Label { Text(Self.label(place)) } icon: { Self.icon(place).image(size: 20) } }
-                }
-                if meta.map({ $0.found && $0.access != "read" }) ?? true {
-                    Button { model.router?.share(noteId: noteId) } label: { Label { Text("Share") } icon: { WebIcon.share.image(size: 20, strokeWidth: 1.9) } }
-                }
-                Menu { menuItems(meta: meta) } label: { Label { Text("More") } icon: { WebIcon.ellipsis.image(size: 20) } }
-            }
-            ToolbarItemGroup(placement: .bottomBar) {
-                Button { toggle(.comments) } label: { Label { Text("Comments") } icon: { WebIcon.messageCircle.image(size: 21) } }
-                if canEdit {
-                    Button { toggle(.style) } label: { Label { Text("Style") } icon: { WebIcon.paintbrush.image(size: 20, strokeWidth: 1.85) } }
-                    Button { toggle(.format) } label: { Label { Text("Format") } icon: { WebIcon.type.image(size: 21) } }
-                }
-                Spacer()
-                if model.aiOn {
-                    Button { toggle(.ai) } label: { Label { Text("Foli AI") } icon: { AiMarkImage.image(size: 22) } }
-                }
-                if canEdit {
-                    Button { toggle(.insert) } label: { Label { Text("Insert") } icon: { WebIcon.plus.image(size: 21, strokeWidth: 2.4) } }
-                }
-            }
         }
     }
 

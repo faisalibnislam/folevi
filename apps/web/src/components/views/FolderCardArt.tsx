@@ -106,7 +106,7 @@ function FolderNote({ note, depth, top }: { note: FolderPreview; depth: number; 
           {note.title || "Untitled"}
         </p>
         {note.createdAt ? (
-          <p className="mt-[0.8cqw] truncate text-[3.2cqw] leading-[1.3]" style={{ color: `color-mix(in oklab, ${ink} 50%, ${paper})` }}>
+          <p className="mt-[0.8cqw] truncate text-[3.2cqw] leading-[1.3]" style={{ color: `color-mix(in oklab, ${ink} 68%, ${paper})` }}>
             {createdText(note.createdAt)}
           </p>
         ) : null}
@@ -180,21 +180,19 @@ export function FolderCardArt({
         <FolderNote key={i} note={p} depth={shown.length - 1 - i} top={noteTop} />
       ))}
       {/* the frosted front, with the name, the counts and the last change */}
-      <div data-fc="front" className="absolute inset-x-0 bottom-0 overflow-hidden rounded-panel" style={{ top: `${FOLDER_FRONT_TOP}%` }}>
+      <div data-fc="front" className="absolute inset-x-0 bottom-0 flex flex-col overflow-hidden rounded-panel px-[7cqw] pb-[5.6cqw] pt-[6.4cqw]" style={{ top: `${FOLDER_FRONT_TOP}%` }}>
         <span aria-hidden className="pointer-events-none absolute inset-0 opacity-[0.14] mix-blend-soft-light" style={{ backgroundImage: GRAIN }} />
-        <div className="absolute inset-0 flex flex-col px-[7cqw] pb-[5.6cqw] pt-[6.4cqw]">
-          <span data-fc="name" className={`${menuRoom ? "pr-[max(0px,calc(46px-7cqw))]" : ""} line-clamp-2 text-ellipsis wrap-normal break-normal font-serif text-[clamp(14px,calc(8cqw*var(--fc-text,1)),30px)] font-semibold leading-[1.15]`}>
-            {name}
+        <span data-fc="name" className={`relative ${menuRoom ? "pr-[max(0px,calc(46px-7cqw))]" : ""} line-clamp-2 text-ellipsis wrap-normal break-normal font-serif text-[clamp(14px,calc(8cqw*var(--fc-text,1)),30px)] font-semibold leading-[1.15]`}>
+          {name}
+        </span>
+        <span data-fc="age" className="relative flex min-h-0 flex-1 flex-col tabular-nums">
+          <span data-fc="count" className="mt-[1cqw] truncate text-[clamp(11px,calc(4.9cqw*var(--fc-text,1)),18px)] font-medium leading-[1.3] opacity-90">
+            {folderCountText(count, subfolders)}
           </span>
-          <span data-fc="age" className="flex min-h-0 flex-1 flex-col tabular-nums">
-            <span data-fc="count" className="mt-[1cqw] truncate text-[clamp(11px,calc(4.9cqw*var(--fc-text,1)),18px)] font-medium leading-[1.3] opacity-90">
-              {folderCountText(count, subfolders)}
-            </span>
-            <span data-fc="edited" className="mt-auto truncate text-[clamp(10.5px,calc(4.3cqw*var(--fc-text,1)),16px)] leading-[1.3] opacity-85">
-              Edited {age}
-            </span>
+          <span data-fc="edited" className="mt-auto truncate text-[clamp(10.5px,calc(4.3cqw*var(--fc-text,1)),16px)] leading-[1.3] opacity-85">
+            Edited {age}
           </span>
-        </div>
+        </span>
       </div>
     </div>
   );

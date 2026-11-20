@@ -953,7 +953,7 @@ struct WebFolderNote: View {
                             Text(note.createdText)
                                 .webText(WebTextStyle(size: 3.2 * cq, leading: 3.2 * cq * 1.3))
                                 .lineLimit(1)
-                                .foregroundStyle(ink.oklabMix(paper, 0.5).color)
+                                .foregroundStyle(ink.oklabMix(paper, 0.68).color)
                                 .padding(.top, 0.8 * cq)
                         }
                         Text(WebNoteCard.preLine(note.excerpt))

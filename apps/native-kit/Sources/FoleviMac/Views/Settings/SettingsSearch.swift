@@ -98,7 +98,7 @@ public enum SettingsSearch {
         card("notifications", "Notifications on this Mac", ["mac notifications", "desktop"], anchor: "notifications-device"),
         card("notifications", "Email delivery", ["digest", "daily", "comment emails"]),
         // Offline & sync
-        card("sync", "This device", ["offline", "storage", "download", "keep all notes", "cache", "space used", "remove copy"]),
+        card("sync", "This \(ThisDevice.noun)", ["offline", "storage", "download", "keep all notes", "cache", "space used", "remove copy"]),
         row("sync", "Keep all notes on this Mac", ["offline", "download"]),
         // Library (a library's)
         card("library", "Where your library is", ["location", "folder", "sync now", "move library", "icloud", "dropbox", "google drive", "onedrive"]),

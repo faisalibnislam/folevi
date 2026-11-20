@@ -92,7 +92,13 @@ struct IPadWideLayoutTests {
         let ipad = LockHost(hasLock: true)
         frame.host = ipad
         let settings = MacSettingsModel(frame: frame)
-        #expect(settings.groups.first?.items.last == .thisDevice)
+        // App lock sits right after Security (the owner, 2026-11-20); a local library has its lock in Library.
+        let you = settings.groups.first?.items ?? []
+        if let security = you.firstIndex(of: .security) {
+            #expect(you[security + 1] == .thisDevice)
+        } else {
+            #expect(!you.contains(.thisDevice))
+        }
         #expect(settings.shown(.thisDevice) == .thisDevice)
         #expect(MacSettingsSection(path: "/settings/this-device?screen=lock-after") == .thisDevice)
 

@@ -24,13 +24,14 @@ public enum MacSettingsSection: String, CaseIterable, Sendable {
 
     var label: String {
         switch self {
-        case .thisDevice: "This device"
+        // (It holds Face ID or the passcode for opening Folevi: "This device" read as storage, the owner 2026-11-20.)
+        case .thisDevice: "App lock"
         case .account: "Account"
         case .ai: "Foli AI"
         case .billing: "Plan & billing"
         case .security: "Security"
         case .privacy: "Privacy"
-        case .devices: "Devices"
+        case .devices: "Signed-in devices"
         case .connectedApps: "Connected apps"
         case .appearance: "Appearance"
         case .notifications: "Notifications"
@@ -61,11 +62,11 @@ public enum MacSettingsSection: String, CaseIterable, Sendable {
     var icon: WebIcon? {
         switch self {
         case .account: .userRound
-        case .thisDevice: .tablet
+        case .thisDevice: .lockKeyhole
         case .ai: nil
         case .billing, .workspaceBilling: .creditCard
         case .security: .shieldCheck
-        case .privacy, .workspacePrivacy: .lockKeyhole
+        case .privacy, .workspacePrivacy: .eyeOff
         case .devices: .monitorSmartphone
         case .connectedApps: .plug
         case .appearance: .palette
@@ -199,8 +200,10 @@ public final class MacSettingsModel {
         #if os(iOS)
         you.removeAll { $0 == .desktop }
         #endif
-        // The device's own lock, last, as the iPhone lists it.
-        if frame.host?.frameDeviceLock != nil { you.append(.thisDevice) }
+        // The device's own lock, with Security (as the iPhone lists it); a library's lock is in Library already.
+        if frame.host?.frameDeviceLock != nil, !isLocal {
+            you.insert(.thisDevice, at: (you.firstIndex(of: .security) ?? you.count - 1) + 1)
+        }
         var out: [(String, [MacSettingsSection])] = [("You", you)]
         if let w = workspace, !isLocal {
             var items: [MacSettingsSection] = [.workspace, .members, .workspacePrivacy]

@@ -25,7 +25,7 @@ public enum PhoneSettingsSection: String, CaseIterable, Sendable {
         case .billing, .workspaceBilling: "Plan & billing"
         case .security: "Security"
         case .privacy, .workspacePrivacy: "Privacy"
-        case .devices: "Devices"
+        case .devices: "Signed-in devices"
         case .connectedApps: "Connected apps"
         case .appearance: "Appearance"
         case .notifications: "Notifications"
@@ -33,7 +33,9 @@ public enum PhoneSettingsSection: String, CaseIterable, Sendable {
         case .library: "Library"
         case .data, .workspaceData: "Import & export"
         case .desktop: "Desktop app"
-        case .thisDevice: "This device"
+        // (What it holds: Face ID or the passcode for opening Folevi. "This device" read as storage, the owner
+        // 2026-11-20.)
+        case .thisDevice: "App lock"
         case .about: "About"
         case .workspace: "General"
         case .members: "Members"
@@ -54,10 +56,10 @@ public enum PhoneSettingsSection: String, CaseIterable, Sendable {
         case .appearance: "theme dark light system mode editor text size zoom"
         case .notifications: "push email digest reminders"
         case .sync: "offline device copy storage sync"
-        case .library: "folder icloud location passphrase encryption lock health move"
+        case .library: "folder icloud location passphrase encryption lock app lock face id touch id passcode health move"
         case .data, .workspaceData: "import export markdown backup files"
         case .desktop: "mac app"
-        case .thisDevice: "face id lock passcode storage cache"
+        case .thisDevice: "face id touch id passcode lock this device privacy"
         case .about: "version licenses privacy policy terms"
         case .workspace: "name logo workspace"
         case .members: "people invite roles"
@@ -84,7 +86,7 @@ public enum PhoneSettingsSection: String, CaseIterable, Sendable {
         case .ai: nil
         case .billing, .workspaceBilling: .creditCard
         case .security: .shieldCheck
-        case .privacy, .workspacePrivacy: .lockKeyhole
+        case .privacy, .workspacePrivacy: .eyeOff
         case .devices: .monitorSmartphone
         case .connectedApps: .plug
         case .appearance: .palette
@@ -93,7 +95,7 @@ public enum PhoneSettingsSection: String, CaseIterable, Sendable {
         case .library: .libraryBig
         case .data, .workspaceData: .arrowDownUp
         case .desktop: .appWindowMac
-        case .thisDevice: .smartphone
+        case .thisDevice: .lockKeyhole
         case .about: .info
         case .workspace: .buildingComplex
         case .members: .users
@@ -167,9 +169,11 @@ public struct PhoneSettingsList: View {
 
     /// The sections in their groups, as SettingsView.tsx lists them on the iPhone for this mode and role.
     public static func groups(_ model: PhoneSettingsModel) -> [(label: String, items: [PhoneSettingsSection])] {
+        // (The owner, 2026-11-20: named for what they hold, and kept together. App lock sits with Security; a library
+        // on this iPhone has its lock in Library already, so it isn't listed twice.)
         let you: [PhoneSettingsSection] = model.isLocal
-            ? [.library, .ai, .appearance, .data, .thisDevice]
-            : [.account, .ai, .billing, .security, .privacy, .devices, .connectedApps, .appearance, .notifications, .sync, .data, .thisDevice]
+            ? [.library, .ai, .appearance, .data]
+            : [.account, .ai, .billing, .security, .thisDevice, .privacy, .devices, .connectedApps, .appearance, .notifications, .sync, .data]
         var out: [(String, [PhoneSettingsSection])] = [("You", you)]
         if let w = model.workspace, !model.isLocal {
             var items: [PhoneSettingsSection] = [.workspace, .members, .workspacePrivacy]

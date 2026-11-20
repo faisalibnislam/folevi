@@ -34,3 +34,17 @@
 - [Hover everywhere](hover-everywhere.md): 2026-11-06 every button and clickable control shows a visible hover, web, Mac and iPad pointer; check on every UI change
 - [Website copy voice](website-copy-voice.md): all web, help, blog and marketing copy (new pages too) follows the humanizer rules: plain and calm, US English, sentence case, "we" for promises; since 2026-11-18
 - [iPhone Duo decisions](iphone-duo-decisions.md): PAUSED by the owner 2026-11-19. Earlier picks: tab sidebar + list beside note inside, note stays the focus on fold/unfold, note bars join iOS's side bars on iPhone Duo
+
+## From the 2026-11-17 to 11-20 native look and release sessions
+- [Folevi keeps com.folevi bundle IDs](folevi-keeps-com-bundle-ids.md) — owner chose 2026-11-16 not to rename to app.folevi
+- [Backup setup half done](backup-setup-half-done.md) — 3 GitHub secrets still missing; key on Desktop
+- [Mac native look decisions](mac-native-look-decisions.md) — 2026-11-18 picks: stock macOS chrome, title bar tabs, macOS 26; released as 1.4.44
+- [Mac polish rules 2026-11-18](mac-polish-rules-2026-11-18.md) — owner's rules from the native look review: sidebar spacing, glass, one button size, system font, web icons, no duplicate buttons
+- [Website copy voice](folevi-web-copy-voice.md): all web/help/marketing copy, new pages too: humanizer rules, plain calm, US English, sentence case
+- [Note page and tabs rules 2026-11-18](note-page-and-tabs-rules-2026-11-18.md) — flat plain notes, page cards, Safari tabs, note tools left; shipped 1.4.46
+- [Forward Mac UI improvements to the web session](forward-mac-ui-improvements-to-web-session.md) — owner's 2026-11-19 ask: send web-applicable Mac polish to the web session
+- [iOS native look decisions](ios-native-look-decisions.md) — 2026-11-19: iPad = Mac layout, iPhone native iOS 26; owner's iPhone review rules (no tab-bar bar, Filter fields, no avatar glass); shipped 1.5.51
+- [Other sessions share this repo](other-sessions-share-this-repo.md) — sibling worktrees can move main, push it and fast-forward my branch mid-release; verify HEAD and the remote
+- [Verify e2e through a PR](e2e-verify-through-a-pr.md) — CI runs on pull requests without deploying; local runs differ (AI key on dev backend)
+- [Editor quality bar 2026-11-19](editor-quality-bar-2026-11-19.md) — hurts most on iPhone/iPad, 2,000-block target, deep fixes OK but saved format stays
+- [Frosted folders decision](frosted-folders-decision-2026-11-20.md) — 2026-11-20: Frosted folders all platforms, 25% smaller on Mac+web, new sidebar icon; shipped 1.5.58

@@ -14,8 +14,8 @@ Personal space; teams share workspaces with their own plans, seats and billing.
 
 Audience: individuals and small teams who want a quiet Notion/Craft-style notes app.
 
-Platforms and status (as of 2026-11-19): **shipped and actively developed**, version **1.5.52** (build 67,
-tag `v1.5.52`) on `origin/main`.
+Platforms and status (as of 2026-11-20): **shipped and actively developed**, version **1.5.58** (tag `v1.5.58`)
+on `origin/main`.
 
 | Surface | Where it runs | Status |
 | --- | --- | --- |
@@ -246,106 +246,82 @@ The ones most likely to be broken:
 - Snapshot tests: re-record only your own snapshots; never clear `__Snapshots__` wholesale.
 - Give before/after screenshots for UI work and ask the owner with clear options when a decision is theirs.
 
-## 9. Current state (as of 2026-11-20)
-- Release 1.5.58 (2026-11-20): PR 42, the Frosted folder cards, 25% smaller desktop and Mac cards and the new folder glyph, on top of 1.5.57. Out everywhere: web and Convex deployed (Vercel green), Mac published (notarized, feed shows 1.5.58; released from the `frosted-folders` worktree, its Mac ZIP also copied into `ios-native`'s `apps/mac/release-archive` for the next release's deltas), iPhone and iPad uploaded to TestFlight (internal group).
-- Release 1.5.57 (2026-11-20): `catch-up-redesign` (Quick add polish, Catch me up page, iPhone sync details, Foli AI composer card, sheet button spacing, Home count badges, the Offline & sync fix and the settings names) on top of 1.5.56.
-- Settings names (on `catch-up-redesign`, committed 2ff83e74, not released): "This device" (it only held the Face ID / passcode lock) is now "App lock" with a lock icon, listed after Security, on iPhone, iPad and Mac; "Devices" is "Signed-in devices"; Privacy has an eye-off icon; a local library no longer lists a second App lock (its Library page has one); Offline & sync's card on Mac and iPad is "This Mac" / "This iPad".
-- Offline & sync fix (on `catch-up-redesign`, committed 2c46ff92, not released): Notes kept and Space used stayed "…" on iPhone, iPad and Mac because the engine sent `attachmentLimitBytes` as a fraction (10% of free space) and the apps, which decode it as an integer, dropped the whole `device.storage` update. The engine now sends whole numbers (`viewsDevice.ts` `whole`, `storageBudget` floors); a regression test is in `test/device-usage.test.ts`. Download everything now says what it started and the screen shows each space's download progress; a library kept only on this device shows a line instead of the copy controls. Checked on the iPhone simulator with a local library; the download progress with a signed-in account is not yet seen.
-- Also on `catch-up-redesign`: the iPhone Foli AI composer is a raised card (`PhoneComposerSurface`, light and dark) set apart from the replies, and its Send shows only once there's text. Checked in the simulator in both modes; 390 iOS tests pass.
-- Also on `catch-up-redesign`: the iPhone sync details sheet redesigned for every state (`RebuildSync.swift`): a tinted state mark, name and one centred sentence, a grouped label/value list, a button only when there's something to do. Checked synced, offline and error in the simulator (`FOLEVI_REBUILD_SYNC=1 FOLEVI_REBUILD_SYNC_STATE=…`); 390 iOS tests pass.
-- Branch `catch-up-redesign` (on top of `ios-quick-add-polish`; not merged, not released): the Catch me up page (`CatchUpScreen`, iPhone, iPad and Mac) redesigned: one title, the Foli AI flower, what it does, three rows on what the brief holds, "Write my brief". The web has no such page (Catch me up is a card on its Home, already with the flower and a line). Checked on the iPhone simulator, before and after a brief; Mac and iPad not looked at. Tests: iOS 390 passed, Mac only the known failure.
-- Branch `ios-quick-add-polish` (not merged, not released): Quick add on iPhone and iPad gets a full-width large Task/Note switch, and its add button appears only once there's text. Checked in the iPhone simulator; 390 iOS tests pass (its snapshots re-recorded).
-- 1.5.55 is live (web, Mac, TestFlight build 70) with iOS's own note bars, but the owner rejected that design (2026-11-20): commit 01c8a907 on branch `ios-note-system-bars` (not pushed) reverts to Folevi's own note bars, and the next commit makes the frame draw them where the tab bar is (`PhoneNoteBarsSlot`), so the two trade places in place as a note opens or closes instead of the bars riding the page. Checked frame by frame in the iPhone simulator; 390 iOS tests pass. Released as 1.5.56 (2026-11-20).
-- Release 1.5.55 (2026-11-20): on every iPhone a note uses iOS's own navigation bar and bottom toolbar (the owner's pick 2026-11-20), so the tab bar and the note's toolbar swap in place instead of the note's own bars sliding with the page. Checked on the iPhone simulator (iOS 27.2); the iOS 26 to 27.0 fallback is untested; iOS package tests 390 passed.
-- 1.5.54 is live: the website (Vercel success on b4add9c6), Folevi for Mac (appcast 1.5.54, DMG), iPhone and iPad on TestFlight (build 69); tag `v1.5.54`. Pull request 41 shows merged.
-- Branches archived 2026-11-19 (the owner's ask): every merged or old branch is an `archive/<name>` tag on GitHub (27 tags; `git checkout -b <name> archive/<name>` brings one back), then deleted locally and on GitHub. GitHub keeps `main`, Dependabot's, and `chrome-extension` and `pricing-decisions` (backed up 2026-11-20 at the owner's word). On this Mac also the branches still checked out in worktrees under `.claude/worktrees/` (most merged; removing a worktree frees its branch).
-- Release 1.5.54 (2026-11-19, the owner's "release everything"): `main` takes `ipad-polish` (iPad fixes; New note as a black pill in the Mac and iPad title bars, gone from the sidebar; the iPad account in the title bar's corner; iPhone sync status on Home), pull request 41's end-to-end and app fixes (`claude/reverent-leakey-c9bd25`), the iPhone Duo follow-ups (`claude/iphone-duo-18adb4`, the Duo work is otherwise paused) and `editor/rock-solid`'s last note, merged on `release-1.5.54`. Left out: `chrome-extension` (paused), `pricing-decisions` (the owner's decisions pending), October's old branches and Dependabot's.
+## 9. Current state (as of 2026-11-20, written for handing the project to another Claude)
 
-Released and known (from the release session, 1.5.53):
-- `main` = Release 1.5.53, tag `v1.5.53`: the Foli AI tab on iPhone (branch `ios-ai-tab`), iPhone Duo support and the shorter first-launch copy (branch `claude/iphone-duo-18adb4`), and the marketing pages brought up to date (branch `claude/marketing-pages-091dac`), merged on `release-1.5.53`.
-- iPhone Duo: on the inner screen the tabs are a sidebar and the open note shows beside its list (half open, split on the fold); folding keeps the note open with Back to its list, and the caret, text and keyboard carry over; on iPhone Duo the note's buttons are iOS's side-bar items. Checked on the iPhone Duo simulator in every posture except Split View halves and tabletop. Owner's picks: `docs/claude-context/memory/iphone-duo-decisions.md`.
-- Known: one Mac test fails every time (`TabPreviewStateTests.enteringTheNextTabBeforeLeavingThisOneStillShowsIt`), in code no recent change touched. The Mac filter field hasn't been typed into in the real app. Nothing in 1.5.50 to 1.5.53 has been tried on a real iPhone Duo.
+**Live everywhere: Folevi 1.5.58** (tag `v1.5.58`, `main` = `eec82bd3`). Web and Convex deployed by Vercel, Mac
+published (Sparkle feed and DMG at folevi.com/download/mac), iPhone and iPad on TestFlight (internal group). Nothing on
+`main` is unreleased.
 
-Git (this Mac, main checkout), updated 2026-11-19 19:00:
-- Pull request 40 (`editor/rock-solid`, the editor audit's follow-up fixes and the end-to-end specs brought up to
-  date) is merged: `main` = `ce420649` (16:08 UTC, 19 November, with the owner's OK to merge on green). Vercel deployed
-  it and CI on `main` is green on every job, the first fully green `main` since 17 November. No version was bumped.
-  The local checkout is still on `editor/rock-solid`, which now holds only handoff notes ahead of `main`.
-- `docs/HANDOFF.md` section 0 holds that session's detailed notes on the audit and pull request 40; this root
-  file is the project-wide handoff.
-- Pull request 41 (https://github.com/faisalibnislam/folevi/pull/41, branch `claude/reverent-leakey-c9bd25`, into
-  `main`, not merged): what still failed after pull request 40 on a Mac, two of them app bugs. Onboarding scrolled
-  sideways at phone width while a step slid in; closing the tools panel moved the caret to a dock button, so the
-  next Enter reopened Foli AI and the typing went into its box (the flowchart specs failed that way 4 times in 5
-  locally). Also tab-switch waiting for a warm tab (a test-build-only hook in `Shell.tsx` `WarmNote`) and a 4 second
-  query limit for CI's local backend (`ci.yml`). Merging it pushes `main` and deploys: ask the owner first.
-- Still uncommitted on this Mac only: `.serena/` (tool state), leftover Capacitor files in `apps/ios/ios/App/App/`,
-  6 `phone-home*` `*.failed.png` snapshot diffs in `apps/native-kit/Tests/FoleviScreensTests/__Snapshots__`.
-- Stashes (local only): `stash@{0}` "main folder edits before consolidating (AGENTS.md, next-env.d.ts)"
-  (2026-11-01), `stash@{1}` "Mac WIP (unverified): web heading line height 1.22 + 1.6em min height" (2026-10-03).
-- Worktrees under `.claude/worktrees/` (gitignored, local only): 19 extra worktrees. All are at or behind
-  `origin/main` except `pricing` (branch `pricing-decisions`, **4 unpushed commits**, see Next steps).
-  `ios-native` (`ios-ai-tab`) and `mac-native` (`mac-native-look`) each have 2 uncommitted files (graphify-out
-  folders, `PhoneFrameView.swift`, `docs/IOS_REBUILD_PLAN.md`); `iphone-duo-18adb4` has the same 2 Capacitor
-  leftovers.
-- Local-only branches with commits not on GitHub: `pricing-decisions` (4 commits, 2026-11-19: new plans Pro
-  $5/$48 and Pro AI $15/$144, Core retired, fair-use download cap, files on R2 first stage),
-  `claude/great-dhawan-c44f36` (1 commit, 2026-10-23, iOS encrypted-library attachment reads),
-  `claude/nice-williams-c79852` (1 commit, 2026-10-20, Mac e2e export drag). `wip/handoff-2026-10-24` is 47
-  commits ahead of its remote copy. About 30 other local branches are fully merged.
-- Remote branches still holding unmerged work: `native-app-snapshot`, `native-mac-wip`,
-  `wip/handoff-2026-10-24` (all from October; largely superseded by the native rebuild now on `main`).
+What shipped in the last week, newest first (detail in `CHANGELOG.md`):
+- 1.5.58: Frosted folder cards, desktop and Mac cards 25% smaller, a new folder glyph (PR 42, branch
+  `design/frosted-folders`, from the card design session). Design pages the owner reviewed (private artifacts):
+  https://claude.ai/artifact/SaZdm3uekCoRpGPkwcDCBn (27 note and folder ideas) and
+  https://claude.ai/artifact/LxPzWN9JNK4FKuiqWDQgUD (folder states, Frosted / Paper). Decision:
+  `docs/claude-context/memory/frosted-folders-decision-2026-11-20.md`.
+- 1.5.57: Offline & sync fixed on iPhone, iPad and Mac (Notes kept and Space used stayed "…": the engine sent
+  `attachmentLimitBytes` as a fraction and the apps, decoding an integer, dropped the whole `device.storage` update;
+  `apps/web/src/lib/engine/viewsDevice.ts` `whole`, test in `apps/web/test/device-usage.test.ts`); Download everything
+  now confirms and shows progress; Settings renamed ("This device" -> "App lock", next to Security; "Devices" ->
+  "Signed-in devices"); Catch me up page redesigned (`CatchUpScreen` in `FoleviMac/Views/Screens.swift`, used on
+  iPhone, iPad and Mac); iPhone sync details sheet (`apps/ios/ios/App/Native/Rebuild/RebuildSync.swift`); Foli AI
+  composer as a raised card (`PhoneComposerSurface`); Quick add's full-width Task/Note switch; Send buttons hidden
+  until there's text; 8 pt between a sheet bar's round buttons; quieter Home count badges.
+- 1.5.56: iPhone notes keep Folevi's own bars, drawn by the frame where the tab bar is (`PhoneNoteBarsSlot.swift`), so
+  the tab bar and the note's bars swap in place instead of the bars riding the page. (1.5.55 tried iOS's own bars; the
+  owner rejected that look the same day: never switch notes to system bars.)
+- 1.5.54: iPad fixes and speed, New note as a black pill in the Mac and iPad title bars (gone from the sidebar), the
+  iPad account in the title bar's top left, iPhone sync status on Home, PR 41's e2e and app fixes.
 
-Recent activity (last ~15 commits, all 2026-11-19): release 1.5.50 (Big update: iPhone and iPad native iOS 26
-look, system tab bar/sheets/menus, iPad wide layout like the Mac), a note editor audit and fix pass
-(`docs/EDITOR_AUDIT_2026-11-19.md`: long-note performance, paste, tables, canvases, sync rank fixes, Vault
-discard prompt), new note title keeps the caret when the Foli AI panel opens, release 1.5.51 (calmer iPhone Home,
-always-visible list filter), 1.5.52 (filter field on Mac and web desktop), then 1.5.53 (Foli AI tab on iPhone,
-iPhone Duo, shorter first-launch copy, marketing pages).
+**Branches** (GitHub): `main`; Dependabot's; `chrome-extension` and `pricing-decisions` (both pushed, both a little
+behind `main`, both merge cleanly as of 2026-11-20). Every older branch was archived on 2026-11-19 as an
+`archive/<name>` tag (27 tags; `git checkout -b <name> archive/<name>` restores one). Local worktrees under
+`.claude/worktrees/` (gitignored) are mostly merged leftovers; `mac-native` is one of them (a Stop hook asks for its
+own HANDOFF.md every turn: it needs none).
 
-What works: web, Convex, Mac (Sparkle) and iOS TestFlight builds through 1.5.5x. Verified in the editor audit:
-2,113+ web unit tests, 508 schema tests, 1,131 Convex tests, typecheck clean; editor e2e specs pass.
-Not verified: the 2026-11-19 editor fixes were not run in the Mac app, the Simulator or on a device; the rest of
-the e2e suite was not re-run after the Foli AI panel change; the dev backend lacks the new size limits.
+**Paused by the owner** (don't resume without being asked):
+- Chrome extension, `apps/clipper` on `chrome-extension`: 1.1.0 (quick note, a note on a clip, keyboard shortcuts) and
+  an unfinished, untested search that asks to read notes only when first used. Plan and checklist:
+  `apps/clipper/PLAN.md`; store listing: `apps/clipper/STORE.md`.
+- iPhone Duo beyond what shipped: `docs/claude-context/memory/iphone-duo-decisions.md`.
+
+**Waiting on the owner:** `pricing-decisions` (new plans, fair-use downloads, files on R2: `docs/PRICING_PROPOSAL.md`
+there; tests pass; the owner's decisions are still open). Backup secrets (`backup-setup-half-done.md`). Items in
+`docs/HANDOFF.md` section 7.
+
+**The owner's design rules** are in `docs/claude-context/memory/` (index `MEMORY.md`); read these before any UI work:
+`ios-native-look-decisions.md`, `mac-native-look-decisions.md`, `mac-polish-rules-2026-11-18.md`,
+`note-page-and-tabs-rules-2026-11-18.md`, `iphone-duo-decisions.md`, `frosted-folders-decision-2026-11-20.md`,
+`folevi-web-copy-voice.md`. Short version: native iOS 26 / macOS 26 look with Liquid Glass on controls (never on
+content); the tab bar's scroll collapse stays iOS's own; a disabled Send or Add button is hidden until there's text,
+not faded; one New note on Mac and iPad (the black pill after the tabs); settings named for what they hold.
+
+**Tests** (2026-11-20, on 1.5.57's code): web 2,121 passed; Mac 234 passed (the old
+`TabPreviewStateTests.enteringTheNextTabBeforeLeavingThisOneStillShowsIt` failure is intermittent: it passed twice
+today); iOS package 390 passed. Every UI change this week was checked in the iPhone or iPad simulator, not on a device.
+
+**Not verified on a real device:** the 1.5.56 note bar swap, 1.5.57's Download everything now progress with a
+signed-in account, 1.5.58's frosted folders with a large library, and the iPad changes in a resizable window (the
+account button should move past iPadOS's window buttons).
 
 ## 10. Next steps / open work
-- 1.5.58's Frosted folders: try them on a real iPhone, iPad and the Mac with a real library (the native frosted blur is a blurred copy of the notes; check scrolling stays smooth in long folder grids).
-- Try Offline & sync's Download everything now with a signed-in account on a real device (progress rows, the toast).
-
-1. Pull request 41 (see Current state): read its CI run; with it green, ask the owner before merging (it deploys).
-2. Any one query that fails (a time-out, a server error) takes the whole page to "Something went wrong": `useQuery`
-   throws to `app/global-error.tsx`. CI hit it through time-outs; production can too. Worth a design: treat a
-   failed non-essential query (a badge, a count) as still loading and retry it.
-3. After pull request 40: the web fixes reach the Mac, iPhone and iPad apps only with the next release build (bundled
-   web copy); none of them has been tried in the Mac app, the Simulator or on a device. Details in
-   `docs/HANDOFF.md` section 0 and `docs/EDITOR_AUDIT_2026-11-19.md` section 10.
-4. Re-record or fix the 6 failing `phone-home*` snapshots in `apps/native-kit` (only those).
-5. `pricing-decisions` (local only, 4 commits): the owner approved the pricing proposal (`docs/PRICING_PROPOSAL.md`
-   on that branch). It needs review, tests and the owner's OK before merging; push it to GitHub first so it is not
-   only on this Mac. R2 file storage stays off until its R2 settings exist.
-6. Device checks from `docs/EDITOR_AUDIT_2026-11-19.md` section 5 (to-do Return, keyboard caret, background save,
-   canvases) and the owner decisions in section 6 (Vault autosave, locale numbers, refused-change display).
-7. Larger editor/sync work listed in that audit: per-note block map (save cost), lazy heavy blocks, offline note in a
-   deleted folder, shared queue across windows, table cell merge (G7).
-8. Native: iPad pass (I8 layout width, I9 caret, I13, I15), native background sync (R2 in `docs/NATIVE_APP_PLAN.md`,
-   APNs key 5PG87M528M), performance budgets. See `docs/IOS_REBUILD_PLAN.md`, `docs/MAC_REBUILD_PLAN.md`,
-   `docs/IOS_POLISH_PLAN.md`, `docs/MAC_POLISH_PLAN.md`, `docs/MAC_PERFORMANCE_2026-11-19.md`.
-9. Owner items carried from the 2026-10-24 handoff (status unverified): SPF TXT record for Sign in with Apple
-   email relay; export compliance answer and whether to submit iOS to App Review; Dropbox app and Google iOS
-   client; Sparkle key backup in the password manager.
-10. Account conventions (global CLAUDE.md): the bundle IDs are still `com.folevi.ios(.share/.widgets)` and
-   `com.folevi.mac`, App Group `group.com.folevi`, iCloud `iCloud.com.folevi`; the convention is
-   `app.folevi.Folevi`, `group.app.folevi`, `iCloud.app.folevi`. A rename resets saved settings, keychain items and
-   macOS privacy permissions, breaks the Sparkle update path for existing Mac installs, and makes a new App Store
-   Connect app (current id 6825699028). Ask the owner before doing it.
-11. Mac distribution convention wants both a Mac App Store build (sandboxed, no Sparkle) and the Developer ID build;
-   only the Developer ID build exists (guess: an App Store configuration is not set up).
-12. Clean up: ~30 merged local branches and 19 worktrees under `.claude/worktrees/` (owner's call; nothing is lost
-    for those at or behind `origin/main`).
-13. iPhone Duo follow-ups: Folevi's own menus (PhoneMenuLayer) don't avoid the fold yet; check Split View halves on a
-    real device.
-14. The Mac test that fails every time (`TabPreviewStateTests.enteringTheNextTabBeforeLeavingThisOneStillShowsIt`).
-15. The owner's open items: `docs/HANDOFF.md` section 7 (see item 9 above for the ones carried over).
+1. On a real iPhone, iPad and Mac with the owner's library: the note bar swap (1.5.56), Offline & sync's Download
+   everything now with an account (1.5.57), frosted folders' scrolling in long grids (1.5.58).
+2. iPad audit leftovers (found 2026-11-19, not fixed): the tab strip leaves a cut-off empty slot at its start once
+   the tabs overflow; database table rows are far too tall on iPad (cause not found: inspect the note page); note
+   text cuts off hard at the card's top on scroll. Unprofiled speed ideas: card line layout re-measured at every
+   width, the route parsed on every read, the Debug tab-frame mirror.
+3. The Foli AI chat's "Working on it…" row with Stop (the owner circled it on 2026-11-20 with the composer): not
+   restyled yet.
+4. Any one failed query takes a whole web page to "Something went wrong" (`useQuery` throws to
+   `app/global-error.tsx`); treat a failed non-essential query as still loading and retry.
+5. Paused work (Chrome extension, iPhone Duo) and `pricing-decisions`: only when the owner asks.
+6. Mac App Store build (sandboxed, no Sparkle) doesn't exist; only Developer ID. Folevi keeps its `com.folevi.*`
+   bundle IDs (the owner's choice, `folevi-keeps-com-bundle-ids.md`): don't rename.
+7. Owner items carried from October (status unverified): SPF record for Sign in with Apple's email relay, export
+   compliance and App Review, Dropbox app and Google iOS client, Sparkle key backup. Developer ID certificates expire
+   2027-02-01: remind the owner in January 2027.
+8. Clean up the leftover worktrees under `.claude/worktrees/` (owner's call) and the stale `phone-home*.failed.png`
+   files in `apps/native-kit/Tests/FoleviScreensTests/__Snapshots__` (the tests pass; those are old diffs).
 
 ## 11. Gotchas
 
@@ -391,6 +367,7 @@ the e2e suite was not re-run after the Foli AI panel change; the dev backend lac
   `DATABASE_UDF_USER_TIMEOUT_SECONDS=4` for that backend. Bursts show in `convex.log` as "took a long time".
 
 ## 12. Change log
+- 2026-11-20: Handoff rewritten for another Claude: sections 9 and 10 as a clean snapshot; the owner's design decisions copied into `docs/claude-context/memory/`.
 - 2026-11-20: Frosted folder cards, 25% smaller desktop cards and the new folder glyph built on `design/frosted-folders` (not released).
 - 2026-11-20: PR 42 e2e fixes (Created date contrast, the folder name back directly in the front); CI green.
 - 2026-11-20: Released 1.5.58 (PR 42 merged).

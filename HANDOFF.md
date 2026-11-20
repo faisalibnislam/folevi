@@ -247,6 +247,7 @@ The ones most likely to be broken:
 - Give before/after screenshots for UI work and ask the owner with clear options when a decision is theirs.
 
 ## 9. Current state (as of 2026-11-19)
+- Offline & sync fix (on `catch-up-redesign`, being tested, not yet committed when this line was written): Notes kept and Space used stayed "…" on iPhone, iPad and Mac because the engine sent `attachmentLimitBytes` as a fraction (10% of free space) and the apps, which decode it as an integer, dropped the whole `device.storage` update. The engine now sends whole numbers (`viewsDevice.ts` `whole`, `storageBudget` floors); a regression test is in `test/device-usage.test.ts`. Download everything now says what it started and the screen shows each space's download progress; a library kept only on this device shows a line instead of the copy controls. Checked on the iPhone simulator with a local library; the download progress with a signed-in account is not yet seen.
 - Also on `catch-up-redesign`: the iPhone Foli AI composer is a raised card (`PhoneComposerSurface`, light and dark) set apart from the replies, and its Send shows only once there's text. Checked in the simulator in both modes; 390 iOS tests pass.
 - Also on `catch-up-redesign`: the iPhone sync details sheet redesigned for every state (`RebuildSync.swift`): a tinted state mark, name and one centred sentence, a grouped label/value list, a button only when there's something to do. Checked synced, offline and error in the simulator (`FOLEVI_REBUILD_SYNC=1 FOLEVI_REBUILD_SYNC_STATE=…`); 390 iOS tests pass.
 - Branch `catch-up-redesign` (on top of `ios-quick-add-polish`; not merged, not released): the Catch me up page (`CatchUpScreen`, iPhone, iPad and Mac) redesigned: one title, the Foli AI flower, what it does, three rows on what the brief holds, "Write my brief". The web has no such page (Catch me up is a card on its Home, already with the flower and a line). Checked on the iPhone simulator, before and after a brief; Mac and iPad not looked at. Tests: iOS 390 passed, Mac only the known failure.
@@ -305,6 +306,7 @@ Not verified: the 2026-11-19 editor fixes were not run in the Mac app, the Simul
 the e2e suite was not re-run after the Foli AI panel change; the dev backend lacks the new size limits.
 
 ## 10. Next steps / open work
+- Try Offline & sync's Download everything now with a signed-in account on a real device (progress rows, the toast).
 
 1. Pull request 41 (see Current state): read its CI run; with it green, ask the owner before merging (it deploys).
 2. Any one query that fails (a time-out, a server error) takes the whole page to "Something went wrong": `useQuery`
@@ -385,6 +387,7 @@ the e2e suite was not re-run after the Foli AI panel change; the dev backend lac
   `DATABASE_UDF_USER_TIMEOUT_SECONDS=4` for that backend. Bursts show in `convex.log` as "took a long time".
 
 ## 12. Change log
+- 2026-11-20: Offline & sync readings fixed on iPhone, iPad and Mac (whole numbers from the engine); Download gives feedback.
 - 2026-11-20: iPhone Home tile counts as quiet badges (branch `catch-up-redesign`).
 - 2026-11-20: iPhone sheet bars keep 8 pt between round buttons (branch `catch-up-redesign`).
 - 2026-11-20: iPhone Foli AI composer on its own card (branch `catch-up-redesign`).

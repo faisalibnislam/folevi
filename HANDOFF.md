@@ -379,6 +379,7 @@ the e2e suite was not re-run after the Foli AI panel change; the dev backend lac
   `DATABASE_UDF_USER_TIMEOUT_SECONDS=4` for that backend. Bursts show in `convex.log` as "took a long time".
 
 ## 12. Change log
+- 2026-11-20: `chrome-extension` and `pricing-decisions` brought up to date with `main` (tests pass on both) and pushed; every other branch is already in `main`.
 - 2026-11-20: Pushed `chrome-extension` and `pricing-decisions` to GitHub as a backup.
 - 2026-11-19: Archived the merged and old branches as `archive/*` tags.
 - 2026-11-19: Released 1.5.54 (web, Mac, iPhone and iPad).

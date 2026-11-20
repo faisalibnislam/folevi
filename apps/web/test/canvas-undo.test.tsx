@@ -248,6 +248,22 @@ describe("a canvas's own document while someone else changes the block", () => {
     unmount();
   });
 
+  test("saving with nothing changed writes nothing, even when the stored text is spelled another way", () => {
+    // (Found 2026-11-19: a flowchart saves as it loses focus, and one stored with a default this reader leaves
+    // out was rewritten every time it was only looked at or presented: e2e/flowchart-present.spec.ts.)
+    const { result, written, render, unmount } = openBare(nodes(["n0", "a"]));
+    const spelled = '{ "nodes": [ { "id": "n0", "text": "a" }, { "id": "n1", "text": "b" } ] }';
+    render(spelled);
+    expect(said(serialize(result.current.docRef.current))).toEqual(["n0:a", "n1:b"]);
+    act(() => result.current.flush());
+    expect(written).toEqual([]);
+    // A change made here is saved as before, in this reader's spelling.
+    act(() => result.current.commit(nodes(["n0", "a"], ["n1", "b"], ["n2", "c"])));
+    act(() => result.current.flush());
+    expect(written.map((w) => said(w.data))).toEqual([["n0:a", "n1:b", "n2:c"]]);
+    unmount();
+  });
+
   test("a merge too large to store is not made, and nothing is written (V3)", () => {
     const big = (n: number) => "x".repeat(n);
     const limit = 400;

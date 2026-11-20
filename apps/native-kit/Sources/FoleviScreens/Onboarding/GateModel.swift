@@ -322,8 +322,7 @@ public final class GateModel {
             device == .mac
                 ? "This version of Folevi for Mac is too old to sync with your account. Choose Check for Updates in the Folevi menu, then open Folevi again. Your notes on this Mac are safe."
                 : "This version of Folevi is too old to sync with your account. Update it from the App Store, then open it again. Your notes on this device are safe."
-        case .modeChoice: "Notes on your devices stay in a folder you pick, such as iCloud Drive or Dropbox. Folevi's servers never see them."
-        case .offline: "Folevi needs a connection the first time it opens. Connect, and it carries on by itself."
+                case .offline: "Folevi needs a connection the first time it opens. Connect, and it carries on by itself."
         case .emailUnverified: "Open the confirmation link we emailed you to continue. It expires in 24 hours and works once."
         default: ""
         }

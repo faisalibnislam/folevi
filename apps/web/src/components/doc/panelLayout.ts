@@ -38,3 +38,15 @@ export function toolsPanelOverlays(o: { narrowWindow: boolean; rowWidth: number;
 export function narrowWindowQuery(macNativeFrame: boolean): string {
   return `(max-width: ${macNativeFrame ? 939 : 1199}px)`;
 }
+
+/**
+ * Whether the panel would lie over a note that is opening now, asked of the window itself. The hooks that watch
+ * the window (useMediaQuery, useElementWidth) answer only after the first draw and say "wide" until then, so a
+ * note loaded straight into a narrow window opened its panel over itself: in a phone's browser Foli AI covered
+ * the whole note. `row` is the note's row when it is already laid out.
+ */
+export function panelCoversAtOpen(o: { macNativeFrame: boolean; row: HTMLElement | null; panelWidth: number }): boolean {
+  if (typeof window === "undefined") return false;
+  const narrowWindow = typeof window.matchMedia === "function" && window.matchMedia(narrowWindowQuery(o.macNativeFrame)).matches;
+  return toolsPanelOverlays({ narrowWindow, rowWidth: o.row?.getBoundingClientRect().width ?? 0, panelWidth: o.panelWidth });
+}

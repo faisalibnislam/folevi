@@ -62,6 +62,8 @@ private struct ZoomSource: ViewModifier {
 public struct PhoneFrameView<Screen: View>: View {
     @Bindable var model: PhoneFrameModel
     @Namespace private var zoom
+    /// The window's width class (the split view's columns side by side, PhoneColumns).
+    @Environment(\.horizontalSizeClass) private var sizeClass
     let menus: PhoneMenus
     let aiOn: Bool
     /// Whether the tab bar steps out of the way (the keyboard, Select).
@@ -100,8 +102,9 @@ public struct PhoneFrameView<Screen: View>: View {
         }
     }
 
-    /// What the tab bar's selection is: one of the three tabs, or search.
-    private enum Selection: Hashable { case tab(PhoneTab), search }
+    /// What the tab bar's selection is: one of the three tabs, or search. (Foli AI is never selected: it opens its
+    /// sheet over the tab you're on.)
+    private enum Selection: Hashable { case tab(PhoneTab), ai, search }
 
     /// The tab bar steps away for a note (which has its own bars), the Foli AI page, the keyboard and Select.
     private func barHidden(_ route: FrameRoute) -> Bool {
@@ -109,9 +112,9 @@ public struct PhoneFrameView<Screen: View>: View {
     }
 
     /// The native look (the owner, 2026-11-19): iOS 26's tab bar in Liquid Glass. Home, Tasks and Calendar, each
-    /// with its own navigation stack, and search as a tab of its own (`role: .search`, at the bar's trailing end).
-    /// Foli AI and + ride above the bar in its accessory (iOS's place for what belongs to the whole app, as a
-    /// player's controls do): Ask Foli AI, and the Create menu (Quick task on Tasks).
+    /// with its own navigation stack, then Foli AI (only for people who have it), and search as a tab of its own
+    /// (`role: .search`, at the bar's trailing end). Foli AI opens its sheet over the tab you're on (the owner,
+    /// 2026-11-19: Foli AI in the bottom bar, + at the top); + is in each tab's first screen's bar (rootCreate).
     @available(iOS 26, *)
     private var nativeBody: some View {
         let selection = Binding<Selection>(
@@ -119,6 +122,7 @@ public struct PhoneFrameView<Screen: View>: View {
             set: { s in
                 switch s {
                 case .search: if !model.searching { model.openSearch() }
+                case .ai: actions.openAI()
                 case .tab(let t): model.pick(t)
                 }
             }
@@ -131,6 +135,15 @@ public struct PhoneFrameView<Screen: View>: View {
                     Label { Text(tab.label) } icon: { tab.icon.image(size: 24, strokeWidth: 1.9) }
                 }
             }
+            if aiOn {
+                Tab(value: Selection.ai) {
+                    // (Never shown: choosing the tab opens the sheet and the tab bar stays on the tab you're on.)
+                    Color.clear
+                } label: {
+                    // The flower in its own colours, at the other tabs' icon size.
+                    Label { Text("Foli AI") } icon: { Image(uiImage: AiMarkImage.uiImage(size: 22, canvas: 26)) }
+                }
+            }
             Tab(value: Selection.search, role: .search) {
                 // (Search brings its own navigation stack with iOS's search field on it, PhoneSearchScreen: the
                 // field takes the tab bar's place only when `.searchable` is on the tab's stack itself.)
@@ -140,13 +153,19 @@ public struct PhoneFrameView<Screen: View>: View {
             }
         }
         .tabBarMinimizeBehavior(.onScrollDown)
+        .phoneSideBarsReader()
+        // (The open note's place: beside its list on Home when the window is regular width, PhoneFrameModel.columns.)
+        .onChange(of: sizeClass == .regular && model.current == .home, initial: true) { _, on in
+            if model.columns != on { model.columns = on }
+        }
+        .environment(\.phoneWideWindow, sizeClass == .regular)
         .overlay { PhoneMenuLayer(menus: menus) }
     }
 
-    /// + and Foli AI in a tab's first screen's bar (the owner, 2026-11-19: no bar of their own over the tab bar).
+    /// + in a tab's first screen's bar (the owner, 2026-11-19: no bar of its own over the tab bar; Foli AI is a tab).
     private func rootCreate(_ tab: PhoneTab) -> PhoneRootCreate? {
         guard #available(iOS 26, *) else { return nil }
-        return PhoneRootCreate(aiOn: aiOn, quickTaskOnly: tab == .tasks, openAI: actions.openAI, newNote: actions.newNote,
+        return PhoneRootCreate(aiOn: false, quickTaskOnly: tab == .tasks, openAI: actions.openAI, newNote: actions.newNote,
                                fromTemplate: actions.fromTemplate, quickTask: actions.quickTask)
     }
 
@@ -183,33 +202,63 @@ public struct PhoneFrameView<Screen: View>: View {
         return false
     }
 
-    /// A tab's stack: its first screen, then what was opened on top (bound to the model, so Back by the edge swipe
-    /// pops the model too).
+    /// A tab's screens: its first screen, then what was opened on top (bound to the model, so Back by the edge swipe
+    /// pops the model too). Home is iOS's split view: the open note beside its list on a wide window (iPhone Duo
+    /// open), pushed over it on a narrow one (PhoneColumns). Tasks and Calendar keep one stack, full width.
+    @ViewBuilder
     private func stack(_ tab: PhoneTab) -> some View {
-        let path = Binding<[PhoneStackEntry]>(
-            get: { Array((model.stacks[tab] ?? []).dropFirst()) },
-            set: { model.setPath($0, in: tab) }
-        )
         let first = model.stacks[tab]?.first?.route ?? PhoneFrameModel.root(of: tab)
-        return NavigationStack(path: path) {
-            screen(first)
-                .environment(\.phoneRootCreate, rootCreate(tab))
-                .toolbarVisibility(barHidden(first) ? .hidden : .automatic, for: .tabBar)
-                .navigationDestination(for: PhoneStackEntry.self) { entry in
-                    destination(entry.route)
+        let regular = sizeClass == .regular
+        if tab == .home {
+            PhoneColumns(model: model, tab: tab, regular: regular) { path in
+                NavigationStack(path: path) { root(tab, first) }
+            } note: { route, path in
+                NavigationStack(path: path) {
+                    noteScreen(route, regular: regular)
+                        .environment(\.phoneNoteFirst, true)
+                        .navigationDestination(for: PhoneStackEntry.self) { entry in
+                            noteScreen(entry.route, regular: regular)
+                        }
                 }
+            } empty: {
+                PhoneEmptyDetail(newNote: actions.newNote)
+            }
+            .environment(\.phoneZoom, zoom)
+        } else {
+            let path = Binding<[PhoneStackEntry]>(
+                get: { Array((model.stacks[tab] ?? []).dropFirst()) },
+                set: { model.setPath($0, in: tab) }
+            )
+            NavigationStack(path: path) { root(tab, first) }
+                .environment(\.phoneZoom, zoom)
         }
-        .environment(\.phoneZoom, zoom)
+    }
+
+    /// A tab's first screen, and the screens pushed over it.
+    private func root(_ tab: PhoneTab, _ first: FrameRoute) -> some View {
+        screen(first)
+            .environment(\.phoneRootCreate, rootCreate(tab))
+            .toolbarVisibility(barHidden(first) ? .hidden : .automatic, for: .tabBar)
+            .navigationDestination(for: PhoneStackEntry.self) { entry in
+                destination(entry.route)
+            }
+    }
+
+    /// A note in the detail column: the tab bar steps away for it on a narrow window, as for a pushed note.
+    private func noteScreen(_ route: FrameRoute, regular: Bool) -> some View {
+        screen(route).phoneNoteBar().toolbarVisibility(regular ? .automatic : .hidden, for: .tabBar)
     }
 
     /// A pushed screen; a note zooms out of the card it was opened from.
     @ViewBuilder
     private func destination(_ route: FrameRoute) -> some View {
         if case .note(let id) = route {
-            // (The note draws its own bars, as the page asks: PhoneNoteBars.)
-            screen(route).phoneOwnBar().toolbarVisibility(.hidden, for: .tabBar).navigationTransition(.zoom(sourceID: id, in: zoom))
+            // (The note draws its own bars, as the page asks: PhoneNoteBars; iOS's where bars are at the side.)
+            screen(route).phoneNoteBar().toolbarVisibility(.hidden, for: .tabBar).navigationTransition(.zoom(sourceID: id, in: zoom))
         } else {
+            // (In Home's split view the list stays beside the note: no button to hide it on the screens pushed there.)
             screen(route).toolbarVisibility(barHidden(route) ? .hidden : .automatic, for: .tabBar)
+                .toolbar(removing: .sidebarToggle)
         }
     }
 }

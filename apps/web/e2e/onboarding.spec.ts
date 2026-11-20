@@ -12,6 +12,25 @@ async function scan(page: Page, label: string) {
 
 const heading = (page: Page, name: string) => page.getByRole("heading", { name, level: 1 });
 
+/** The page's widest scroll width over every frame while `act` runs and the next step slides in (460ms). */
+async function widestDuring(page: Page, act: () => Promise<void>) {
+  await page.evaluate(() => {
+    const w = window as unknown as { __widest: number; __sampling: boolean };
+    w.__widest = document.documentElement.scrollWidth;
+    w.__sampling = true;
+    const t0 = performance.now();
+    const frame = () => {
+      w.__widest = Math.max(w.__widest, document.documentElement.scrollWidth);
+      if (performance.now() - t0 < 1200) requestAnimationFrame(frame);
+      else w.__sampling = false;
+    };
+    requestAnimationFrame(frame);
+  });
+  await act();
+  await page.waitForFunction(() => !(window as unknown as { __sampling: boolean }).__sampling);
+  return page.evaluate(() => (window as unknown as { __widest: number }).__widest);
+}
+
 test("onboarding: choices are saved, a reload resumes, and the Welcome page opens in its new theme", async ({ browser }) => {
   test.setTimeout(180_000);
   const context = await browser.newContext();
@@ -130,9 +149,9 @@ test("onboarding: phone width, with the preview above the choices", async ({ bro
   const context = await browser.newContext({ viewport: { width: 360, height: 740 } });
   const { page } = await createAccount(context, { name: "Phone Tester" });
   await expect(heading(page, "Welcome, Phone.")).toBeVisible({ timeout: 30_000 });
-  // Nothing scrolls sideways.
+  // Nothing scrolls sideways, not even in the frames while a step slides in from 18px to the right.
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(360);
-  await page.getByRole("button", { name: "Get started" }).click();
+  expect(await widestDuring(page, () => page.getByRole("button", { name: "Get started" }).click())).toBeLessThanOrEqual(360);
   await page.getByRole("checkbox", { name: /Journaling/ }).check();
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(360);
   await page.getByRole("button", { name: "Continue" }).click();

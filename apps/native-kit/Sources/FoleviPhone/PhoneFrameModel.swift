@@ -84,6 +84,8 @@ public final class PhoneFrameModel {
 
     /// Opens a screen: on top of this tab's stack, or, for a tab's first screen, in that tab from its start.
     public func open(_ route: FrameRoute) {
+        autoNote = nil
+        if let id = route.noteId { lastNote = id }
         if case .search(let text) = route {
             openSearch(text)
             return
@@ -106,7 +108,63 @@ public final class PhoneFrameModel {
             }
         }
         guard top != route else { return }
+        var s = stacks[current] ?? []
+        let run = Self.noteRunStart(s)
+        if columns, run < s.count {
+            // The list beside the note (a wide window: iPhone Duo open): a note opened takes the open note's place in
+            // its column; anything else opens in the list's column, the note staying open beside it. The stack keeps
+            // the note last, so folding the phone shows it full screen with Back to that list.
+            if route.isNote {
+                s.replaceSubrange(run..., with: [PhoneStackEntry(route)])
+            } else {
+                s.insert(PhoneStackEntry(route), at: run)
+            }
+            stacks[current] = s
+            return
+        }
         stacks[current, default: []].append(PhoneStackEntry(route))
+    }
+
+    /// The note the detail column showed by itself (the most recent, on the open inner screen with nothing open),
+    /// until the person writes in it or opens something: folding closes it again, so the outer screen shows Home.
+    public private(set) var autoNote: String?
+
+    /// The note the person last opened (kept between launches): what Home's detail column shows when nothing is
+    /// open (the owner, 2026-11-19: "Last note I opened", as Notes does).
+    public private(set) var lastNote: String? = UserDefaults.standard.string(forKey: PhoneFrameModel.lastNoteKey) {
+        didSet { if lastNote != oldValue { UserDefaults.standard.set(lastNote, forKey: Self.lastNoteKey) } }
+    }
+
+    static let lastNoteKey = "folevi:iphone:last-note"
+
+    /// The note Home's empty detail column shows: the last one opened while it's still in the recent notes (not
+    /// deleted, still in this place), else the most recent.
+    public func noteToShow(recents: [String]) -> String? {
+        if let lastNote, recents.contains(lastNote) { return lastNote }
+        return recents.first
+    }
+
+    /// A note in Home's empty detail column (see `autoNote`).
+    public func openRecent(_ id: String) {
+        open(.note(id))
+        autoNote = id
+    }
+
+    /// The person wrote in the note the detail column showed by itself: it's theirs now, and stays when folding.
+    public func keepNote() {
+        autoNote = nil
+    }
+
+    /// The list beside the open note: the window is wide enough (iPhone Duo open, an iPad window under the iPad's
+    /// own layout but over the phone's width). Set by the frame (PhoneColumns).
+    public var columns = false
+
+    /// Where the notes on top of a stack start (the stack's length when its top isn't a note): in two columns they
+    /// show in the note's column, the screens under them in the list's. A tab's first screen is never a note.
+    public static func noteRunStart(_ stack: [PhoneStackEntry]) -> Int {
+        var i = stack.count
+        while i > 1, stack[i - 1].route.isNote { i -= 1 }
+        return i
     }
 
     /// Back in this tab (the Back button, the edge swipe).
@@ -143,6 +201,30 @@ public final class PhoneFrameModel {
     public func setPath(_ path: [PhoneStackEntry], in tab: PhoneTab) {
         let first = stacks[tab]?.first ?? PhoneStackEntry(Self.root(of: tab))
         stacks[tab] = [first] + path
+    }
+
+    /// In two columns: the list column's path changed under the model (its Back, its edge swipe); the notes beside
+    /// it stay open.
+    public func setListPath(_ path: [PhoneStackEntry], in tab: PhoneTab) {
+        let s = stacks[tab] ?? []
+        let first = s.first ?? PhoneStackEntry(Self.root(of: tab))
+        stacks[tab] = [first] + path + s[Self.noteRunStart(s)...]
+    }
+
+    /// The open notes closed (Back from the first of them, collapsed): the tab shows the screen under them.
+    public func closeNotes(in tab: PhoneTab) {
+        guard let s = stacks[tab] else { return }
+        let run = Self.noteRunStart(s)
+        if run < s.count { stacks[tab] = Array(s[..<run]) }
+        autoNote = nil
+    }
+
+    /// In two columns: the note column's path (the notes over its first) changed under the model.
+    public func setNotePath(_ path: [PhoneStackEntry], in tab: PhoneTab) {
+        let s = stacks[tab] ?? []
+        let run = Self.noteRunStart(s)
+        guard run < s.count else { return }
+        stacks[tab] = Array(s[...run]) + path
     }
 
     /// Keeps how far the screen on top was scrolled, so it comes back there.

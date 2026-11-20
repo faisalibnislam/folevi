@@ -1,6 +1,6 @@
 "use client";
 
-import { CalendarCheck, Kanban, LockKeyhole, SquareSlash, Users } from "lucide-react";
+import { CalendarCheck, CalendarDays, House, Kanban, LockKeyhole, Search, SquareCheckBig, SquareSlash, Users } from "lucide-react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { AiIcon } from "@/components/ai/AiIcon";
 import type { ChapterId, ShowcaseFrame } from "../showcase/script";
@@ -38,12 +38,13 @@ const MAC_W = 1280;
 const MAC_H = 800;
 const PHONE_W = 402;
 const PHONE_H = 874;
+const IOS_FONT = "-apple-system, 'SF Pro Text', system-ui, sans-serif";
 
 /** The iPhone's status bar (the app leaves its 62 points free): the time, the Dynamic Island, signal, Wi-Fi, battery. */
 function StatusBar() {
   return (
     <div className="absolute inset-x-0 top-0 h-[62px] text-black">
-      <span className="absolute text-[17px] font-semibold tracking-[-0.01em]" style={{ left: 50, top: 21, fontFamily: "-apple-system, 'SF Pro Text', system-ui, sans-serif" }}>
+      <span className="absolute text-[17px] font-semibold tracking-[-0.01em]" style={{ left: 50, top: 21, fontFamily: IOS_FONT }}>
         9:41
       </span>
       <span className="absolute h-[37px] w-[126px] rounded-chip bg-black" style={{ left: 138, top: 11 }} />
@@ -59,6 +60,60 @@ function StatusBar() {
       </svg>
     </div>
   );
+}
+
+type PhoneTab = "Home" | "Tasks" | "Calendar";
+type PhoneBar = { tab: PhoneTab | null; hidden: boolean };
+const PHONE_TABS: Array<{ id: PhoneTab; icon: ReactNode }> = [
+  { id: "Home", icon: <House size={24} strokeWidth={1.9} aria-hidden="true" /> },
+  { id: "Tasks", icon: <SquareCheckBig size={23} strokeWidth={1.9} aria-hidden="true" /> },
+  { id: "Calendar", icon: <CalendarDays size={23} strokeWidth={1.9} aria-hidden="true" /> },
+];
+
+/**
+ * Folevi for iPhone's tab bar (native since 1.5.50, PhoneFrameView.swift): iOS 26's Liquid Glass capsule with Home,
+ * Tasks and Calendar, the tab you're on in a lens, and Search in a circle of its own at the trailing end. It follows
+ * the frame's app (the tab it's on, and stepping away for a note, as the app's does).
+ */
+function NativeTabBar({ bar }: { bar: PhoneBar }) {
+  const lens = PHONE_TABS.findIndex((t) => t.id === bar.tab);
+  return (
+    <div
+      className={cx(
+        "mk-ios-tabbar absolute inset-x-5 bottom-5 flex h-[62px] items-stretch gap-[10px] transition-[transform,opacity] duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] motion-reduce:transition-none",
+        bar.hidden && "translate-y-[140%] opacity-0",
+      )}
+    >
+      <div className="mk-ios-glass rounded-capsule relative flex flex-1 items-stretch p-[4px]">
+        {lens >= 0 ? (
+          <span
+            className="absolute inset-y-[4px] left-[4px] w-[calc((100%-8px)/3)] rounded-capsule bg-[rgb(0_0_0/0.07)] transition-transform duration-500 ease-[cubic-bezier(0.34,1.36,0.64,1)] motion-reduce:transition-none"
+            style={{ transform: `translateX(${lens * 100}%)` }}
+          />
+        ) : null}
+        {PHONE_TABS.map((t) => (
+          <span key={t.id} className={cx("relative flex flex-1 flex-col items-center justify-center gap-[1px]", t.id === bar.tab ? "text-black" : "text-[#3c3c43]/80")}>
+            {t.icon}
+            <span className="text-[11px] font-semibold leading-[13px]" style={{ fontFamily: IOS_FONT }}>
+              {t.id}
+            </span>
+          </span>
+        ))}
+      </div>
+      <span className="mk-ios-glass rounded-capsule grid w-[62px] flex-none place-items-center text-black">
+        <Search size={23} strokeWidth={2} aria-hidden="true" />
+      </span>
+    </div>
+  );
+}
+
+/** Which tab the frame's app is on, and whether its bar is hidden: read from the app's own (unseen) tab bar. */
+function readPhoneBar(iframe: HTMLIFrameElement | null): PhoneBar {
+  const nav = iframe?.contentDocument?.querySelector('nav[aria-label="Tabs"]');
+  if (!nav) return { tab: null, hidden: true };
+  const label = nav.querySelector('a[aria-current="page"]')?.getAttribute("aria-label");
+  const tab = PHONE_TABS.some((t) => t.id === label) ? (label as PhoneTab) : null;
+  return { tab, hidden: nav.parentElement?.getAttribute("aria-hidden") === "true" };
 }
 
 /** A frame's showcase side, once its app has started. */
@@ -95,6 +150,7 @@ export function DeviceShowcase() {
   const [onScreen, setOnScreen] = useState(false);
   const [ready, setReady] = useState(false);
   const [phoneOn, setPhoneOn] = useState(false);
+  const [phoneBar, setPhoneBar] = useState<PhoneBar>({ tab: "Home", hidden: false });
   // A new library each visit: the Mac and the iPhone find each other by it.
   const [session] = useState(() => Math.random().toString(36).slice(2, 10));
   // Development: ?showcase=manual plays nothing by itself (chapters are played from the console).
@@ -172,6 +228,19 @@ export function DeviceShowcase() {
     return () => clearTimeout(t);
   }, [played, still, paused, onScreen]);
 
+  // The iPhone's native tab bar follows the frame's app while the scene is on screen.
+  useEffect(() => {
+    if (!ready || !onScreen) return;
+    const read = () =>
+      setPhoneBar((was) => {
+        const next = readPhoneBar(phoneFrame.current);
+        return next.tab === was.tab && next.hidden === was.hidden ? was : next;
+      });
+    read();
+    const t = setInterval(read, 200);
+    return () => clearInterval(t);
+  }, [ready, onScreen]);
+
   useEffect(() => () => playing.current?.stop.abort(), []);
 
   const go = (i: number) => {
@@ -215,6 +284,7 @@ export function DeviceShowcase() {
                       style={{ width: PHONE_W, height: PHONE_H }}
                     />
                   ) : null}
+                  {ready ? <NativeTabBar bar={phoneBar} /> : null}
                   <StatusBar />
                   <span className="absolute bottom-2 left-1/2 h-[5px] w-[140px] -translate-x-1/2 rounded-chip bg-black" />
                 </div>

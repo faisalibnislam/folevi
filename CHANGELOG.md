@@ -4,6 +4,47 @@ Every Folevi release, newest first, written by `node scripts/version.mjs` from `
 
 Versions are MAJOR.UPDATE.PATCH, PATCH at least two digits: a Major release (2.0.00), a Big update (1.1.05 after 1.0.05) or a Small update (1.0.06 after 1.0.05).
 
+## Version 1.5.54: Small update
+
+Released 2026-11-19 22:59:23+06:00 (build 69, tag v1.5.54)
+
+New note moves to the top bar on Mac and iPad, the iPhone shows whether your notes are synced, and the iPad gets a round of fixes.
+
+### Added
+
+- iPhone: a cloud beside the bell on Home shows whether everything is synced. Tap it for the details and Retry
+
+### Improved
+
+- Mac and iPad: New note is a black button in the top bar, right after your tabs, and no longer in the sidebar
+- iPad: your account sits in the top left corner, and the sidebar starts with the page you're on
+- iPad: the menu button on note and folder cards is lighter
+- iPad: smoother on big libraries: card pictures load in the background, and the window redraws less
+- iPhone Duo: with the phone open, the note beside the list is the last one you opened, and card titles no longer break mid-word
+
+### Fixed
+
+- iPad: tapping the cloud now shows the sync details, and no longer blocks your next tap
+- iPad: closing a note's Style or Format panel no longer leaves a ring or a tooltip behind
+- Phones: the first-launch screens no longer slide sideways
+- Notes: closing the tools panel keeps your cursor where you were typing
+
+## Version 1.5.53: Small update
+
+Released 2026-11-19 19:37:45+06:00 (build 68, tag v1.5.53)
+
+Foli AI is in the iPhone's tab bar, Folevi works on iPhone Duo, and the first screens say less.
+
+### Added
+
+- iPhone Duo: open, the tabs become a sidebar and a note opens beside its list; closed, the note's buttons sit in iOS's side bars. Folding or unfolding keeps the note open, with your text and the keyboard where they were
+
+### Improved
+
+- iPhone: Foli AI is a tab, after Calendar, for people who have it, and opens over the screen you're on. The + button sits on its own at the top
+- Every platform: the first-launch screens have much less small print
+- Website: the product pages show what changed in 1.5.50 to 1.5.52
+
 ## Version 1.5.52: Small update
 
 Released 2026-11-19 17:43:27+06:00 (build 67, tag v1.5.52)

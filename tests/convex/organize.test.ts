@@ -144,8 +144,20 @@ describe("bulk actions", () => {
     const ids = Array.from({ length: 51 }, () => ulid());
     await expect(a.as.mutation(api.documents.bulkUpdate, { documentIds: ids, action: { kind: "trash" } })).rejects.toThrow(/At most 50/);
     const [n] = await newDocs(a, ["Spam"]);
-    for (let i = 0; i < 60; i++) await a.as.mutation(api.documents.bulkUpdate, { documentIds: [n!], action: { kind: "star", starred: i % 2 === 0 } });
-    await expect(a.as.mutation(api.documents.bulkUpdate, { documentIds: [n!], action: { kind: "star", starred: true } })).rejects.toThrow(/rate_limited|Too many/);
+    // The limit counts within a clock minute (lib/rateLimit.ts). The clock is held mid-minute: a run that began
+    // just before the turn of a minute started a new count on the way and nothing was refused (it failed CI
+    // once that way, at 13:52:59.9 on 19 November 2026).
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-06-01T12:00:30Z"));
+    try {
+      for (let i = 0; i < 60; i++) await a.as.mutation(api.documents.bulkUpdate, { documentIds: [n!], action: { kind: "star", starred: i % 2 === 0 } });
+      await expect(a.as.mutation(api.documents.bulkUpdate, { documentIds: [n!], action: { kind: "star", starred: true } })).rejects.toThrow(/rate_limited|Too many/);
+      // The next minute starts a new count.
+      vi.setSystemTime(new Date("2026-06-01T12:01:00Z"));
+      await a.as.mutation(api.documents.bulkUpdate, { documentIds: [n!], action: { kind: "star", starred: true } });
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
 

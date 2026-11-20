@@ -5,7 +5,7 @@
 import { readFileSync, mkdirSync } from "node:fs";
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Locator, type Page } from "@playwright/test";
-import { newPerson, waitForSaved } from "./helpers";
+import { newPerson, waitForSaved, closeToolsPanel } from "./helpers";
 
 const SHOTS = process.env.FLOWCHART_SHOTS;
 async function shot(page: Page, name: string, target?: Locator) {
@@ -20,6 +20,8 @@ const PNG = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR
 async function newPage(page: Page, title: string) {
   await page.getByRole("button", { name: "New note", exact: true }).first().click();
   await page.waitForURL(/\/d\/[0-9A-Z]{26}\?new=1/);
+  // (The chart at the note's full width: beside the tools panel its bars are the compact ones.)
+  await closeToolsPanel(page);
   await page.getByRole("textbox", { name: "Title" }).fill(title);
   await page.keyboard.press("Enter");
   await page.keyboard.type("Intro");

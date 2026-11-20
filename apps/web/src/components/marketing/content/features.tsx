@@ -635,7 +635,7 @@ export const FEATURES: Feature[] = [
     intro:
       "Press ⌘K anywhere. Folevi searches the titles and text of your notes in the space you’re in, highlights the words it found, and opens the note you pick in a new tab.",
     plans: "Every plan, including Free.",
-    updated: "2026-10-01",
+    updated: "2026-11-19",
     art: "art-41",
     visual: "search",
     sections: [
@@ -652,6 +652,15 @@ export const FEATURES: Feature[] = [
         id: "filters",
         title: "Filters",
         body: <p>Under the search field you can narrow the results to one folder, one tag or a time: the past week, month or year. In a workspace you can also pick whose notes to search.</p>,
+      },
+      {
+        id: "filter-a-list",
+        title: "Filter a list",
+        body: (
+          <p>
+            Every list of notes has a Filter notes field at the top: All notes, Bookmarks, Drafts, a folder, a tag, Archive, Trash and Templates. Type a few letters and the list narrows to the notes whose title or text match. The Folders and Tags pages have Filter folders and Filter tags. The fields are always in sight, on the web and in the apps for Mac, iPhone and iPad.
+          </p>
+        ),
       },
       {
         id: "commands",

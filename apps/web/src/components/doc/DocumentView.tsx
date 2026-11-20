@@ -129,7 +129,7 @@ import { useLockMenuItem } from "@/components/e2ee/LockDialog";
 import { usePrimaryPane } from "@/lib/app/panes";
 import { noteFolderIdOf, shareIndicatorLabel, shareIndicatorOf } from "./noteStatus";
 import { TrashBanner } from "./TrashBanner";
-import { PANEL_DEFAULT, PANEL_MAX, PANEL_MIN, clampPanelWidth, narrowWindowQuery, toolsPanelOverlays } from "./panelLayout";
+import { PANEL_DEFAULT, PANEL_MAX, PANEL_MIN, clampPanelWidth, narrowWindowQuery, panelCoversAtOpen, toolsPanelOverlays } from "./panelLayout";
 import { useElementWidth } from "@/lib/hooks/useElementWidth";
 
 // Only a collection's row pages have properties; the collection code loads for those alone.
@@ -196,9 +196,12 @@ export function DocumentView({ documentId }: { documentId: string }) {
   // remembered (the owner, 2026-11-18). Where the panel would lie over the note (a narrow window), a note doesn't
   // open it by itself: `narrowHold` keeps it shut until it's asked for.
   const [narrowHold, setNarrowHold] = useState(false);
+  // Whether the panel that shows was asked for on this note (a button, a shortcut), not just come up with it.
+  const panelAsked = useRef(false);
   const setInspectorOpen = useCallback(
     (open: boolean) => {
       if (open) {
+        panelAsked.current = true;
         setNarrowHold(false);
         // Asked for: Foli AI's composer may take the keyboard (it doesn't when the panel came up with the note).
         noteAiAsked();
@@ -239,22 +242,35 @@ export function DocumentView({ documentId }: { documentId: string }) {
   // The note and its tools panel side by side: the panel slides over the note when the note would get too
   // narrow to write in beside it (a joined note, a narrow window; QA audit F02).
   const [noteRow, setNoteRow] = useState<HTMLDivElement | null>(null);
+  const noteRowEl = useRef<HTMLDivElement | null>(null);
+  const attachNoteRow = useCallback((el: HTMLDivElement | null) => {
+    noteRowEl.current = el;
+    setNoteRow(el);
+  }, []);
   const noteRowWidth = useElementWidth(noteRow);
   const panelOverlays = toolsPanelOverlays({ narrowWindow, rowWidth: noteRowWidth, panelWidth });
   const inspectorOpen = inspectorWanted && !narrowHold;
   // Each note asks again whether there's room (before it draws, so the panel never flashes over the note).
-  const holdRef = useRef(false);
-  holdRef.current = panelOverlays || drawerMode;
+  // (What the hooks above know, or what the window says right now: on a note's first draw they know nothing yet.)
+  const holdRef = useRef<() => boolean>(() => false);
+  holdRef.current = () => panelOverlays || drawerMode || panelCoversAtOpen({ macNativeFrame: macNativeFrame || ipadNativeWide, row: noteRowEl.current, panelWidth });
   useLayoutEffect(() => {
-    setNarrowHold(holdRef.current);
+    panelAsked.current = false;
+    setNarrowHold(holdRef.current());
     // (The panel that shows as this note opens leaves the keyboard alone: components/ai/chat/events.ts.)
     noteAiOpensQuietly(documentId);
   }, [documentId]);
+  // A panel that only came up with the note gives way when the window gets too narrow for both (a browser
+  // window dragged narrower, an iPad turned or split), and comes back when there's room again: it used to stay
+  // and cover the whole note. One that was asked for stays where it was put.
+  useEffect(() => {
+    if (!panelAsked.current) setNarrowHold(holdRef.current());
+  }, [panelOverlays, drawerMode]);
   // The iPad's wide layout hands the page to the note's card only as the note shows, so its first size can be a
   // passing one: it asks again once the card has laid it out.
   useEffect(() => {
     if (!ipadNativeWide) return;
-    const t = window.setTimeout(() => setNarrowHold(holdRef.current), 300);
+    const t = window.setTimeout(() => !panelAsked.current && setNarrowHold(holdRef.current()), 300);
     return () => window.clearTimeout(t);
   }, [documentId, ipadNativeWide]);
   // The comment thread floating under a block (threadId null: the block's latest open thread, or a new one).
@@ -694,9 +710,13 @@ export function DocumentView({ documentId }: { documentId: string }) {
   }, [inspectorOpen]);
   const closeInspector = useCallback(() => {
     setInspectorOpen(false);
-    // Back to whatever had focus when it opened (the editor after a click, the dock button from the
-    // keyboard), or the dock button for this tab.
+    // Focus that was in the panel goes back to whatever had focus when it opened (the editor after a click,
+    // the dock button from the keyboard), or the dock button for this tab. Focus that is somewhere else stays:
+    // a click on the dock keeps the caret in the title or the note, and moving it to the dock button sent the
+    // next Enter to that button, which opened Foli AI again and the typing went into its box.
     requestAnimationFrame(() => {
+      const now = document.activeElement;
+      if (now && now !== document.body && !inspectorRef.current?.contains(now)) return;
       const opener = inspectorOpener.current;
       (opener?.isConnected && opener !== document.body && !inspectorRef.current?.contains(opener) ? opener : (dockButtons.current[inspectorTab] ?? dockButtons.current.format))?.focus();
     });
@@ -726,6 +746,7 @@ export function DocumentView({ documentId }: { documentId: string }) {
   // A tab chosen in the panel is asked for too.
   const pickInspectorTab = useCallback(
     (t: InspectorTab) => {
+      panelAsked.current = true;
       noteAiAsked();
       setInspectorTab(t);
     },
@@ -741,7 +762,9 @@ export function DocumentView({ documentId }: { documentId: string }) {
   useEffect(() => {
     if (!meta || defaultedFor.current === documentId) return;
     defaultedFor.current = documentId;
-    if (wantsRelated) return;
+    // (A tool picked while the note's details were still loading stays: the panel used to flip from Style back
+    // to Foli AI a moment after a click made straight after a reload.)
+    if (wantsRelated || panelAsked.current) return;
     setInspectorTab(aiOn ? "ai" : "insert");
   }, [meta, documentId, aiOn, wantsRelated, setInspectorTab]);
   useEffect(() => {
@@ -1162,7 +1185,7 @@ export function DocumentView({ documentId }: { documentId: string }) {
       {/* The note floats on its backdrop in a rounded panel; the chrome (sidebars, inspector) sits flat behind.
           Inset like the tab strip above it (inset-x-1), so the page lines up with it. The iPad app's glass bar
           sits 8 points in from the card, so there the page does too, and its shadow keeps room inside the card. */}
-      <div ref={setNoteRow} className={`relative flex h-full min-h-0 ${iphone ? "" : isIpadApp() ? "px-2 pb-2" : "sm:px-1 sm:pb-1"}`}>
+      <div ref={attachNoteRow} className={`relative flex h-full min-h-0 ${iphone ? "" : isIpadApp() ? "px-2 pb-2" : "sm:px-1 sm:pb-1"}`}>
         <div ref={noteRef} data-note-panel="" className={`relative min-w-0 flex-1 ${iphone ? "" : "px-1.5 pb-2 sm:px-0 sm:pb-0"}`}>
         {findBar && editor ? <FindBar editor={editor} withReplace={findBar.replace} focusKey={findBar.key} readOnly={readOnly} onClose={() => setFindBar(null)} /> : null}
 
@@ -1626,7 +1649,7 @@ function BarAvatars({ me, others }: { me: { name: string; avatarUrl: string | nu
 function NestedPath({ crumbs, title }: { crumbs: { id: string; title: string }[]; title: string }) {
   const parent = crumbs[crumbs.length - 1]!;
   return (
-    <nav aria-label="Page path" className="relative mx-auto -mt-5 mb-2.5" style={{ maxWidth: "calc(var(--editor-width) + 8rem)" }}>
+    <nav aria-label="Page path" className="fb-page-path relative mx-auto -mt-5 mb-2.5" style={{ maxWidth: "calc(var(--editor-width) + 8rem)" }}>
       <ol className="ui-glass inline-flex max-w-full min-w-0 items-center gap-0.5 rounded-control p-0.5 text-subheadline">
         <li className="flex-none">
           <AppLink href={`/d/${parent.id}`} aria-label={`Back to ${parent.title || "Untitled"}`} title={`Back to ${parent.title || "Untitled"}`} className="grid h-6 w-6 place-items-center rounded-chip text-muted transition-colors hover:bg-[var(--glass-hover)] hover:text-heading">

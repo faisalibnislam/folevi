@@ -361,7 +361,15 @@ export function useCanvasDoc<T extends object>({ data, write, parse, serialize, 
     return true;
   }, [show, flush, fresh]);
 
-  const flushNow = useCallback(() => flush(), [flush]);
+  /**
+   * Saves what is pending, when something is. With nothing changed here it writes nothing: a canvas stored in
+   * another spelling than this reader writes (older data, a chart made elsewhere, a default it leaves out) was
+   * rewritten as soon as it lost focus, which made a note step, an undo entry and a sync out of looking at it.
+   */
+  const flushNow = useCallback(() => {
+    if (docRef.current === synced.current && outside.current === null && !liveOpen.current && !undoing.current) return;
+    flush();
+  }, [flush]);
 
   /** Changes from elsewhere wait from here until `release` (for a gesture that no pointer on the page shows). */
   const hold = useCallback(() => {

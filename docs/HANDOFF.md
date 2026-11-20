@@ -4,6 +4,42 @@ Written at the end of a long Claude Code session on the owner's Mac, so work can
 computer and another Claude Code account. Read this first, then `docs/claude-context/` (the owner's saved
 decisions and rules), then the plan docs named below.
 
+## 0. Latest: 2026-11-19, the note editor audit (branch `editor/rock-solid`, pull request 40)
+
+The sections below this one are from 24 October and are not kept up to date by every session: for this work,
+read this section and `docs/EDITOR_AUDIT_2026-11-19.md` (the full report, sections 1 to 10).
+
+### Current state
+
+- Everything from the audit is on `main` and live: the first 18 commits since 19 November (`e734cb9b`), and pull
+  request 40 (https://github.com/faisalibnislam/folevi/pull/40), merged as `ce420649` on a fully green CI run with
+  the owner's OK. Vercel deployed it; CI on `main` is green on every job, browser tests included, for the first
+  time since 17 November. No version was bumped.
+- Pull request 40 held: the web fixes of section 10 of the audit doc (`12e7c419`), 22 end-to-end specs brought up
+  to date with helpers `openFoliAi` and `closeToolsPanel` (`88f22d83`), and what its own CI runs turned up: a rate
+  limit test that failed across the turn of a clock minute, the mind map phone spec, extra CI retries for
+  `e2e/ai-attachments.spec.ts` (cold backend), and a tab switch spec that counted the wrong note's placeholder.
+- Not checked: the Mac app, the Simulator, a device.
+
+### Next steps
+
+1. The web fixes reach the Mac, iPhone and iPad apps only with a rebuilt bundled web copy, in the next release
+   (releases are run by the session that owns them).
+2. Try the iPhone and iPad editor fixes on a device (audit doc, section 5).
+3. Still open from the audit, with reasons: section 6 of the audit doc (owner decisions, device checks, native
+   frame items, larger work).
+4. `e2e/tab-switch.spec.ts` passed on `main` at 1.5.53 and failed on the pull request's runs until its watch was
+   fixed; no change of the pull request was found to cause that. Worth a look if a first-opened note seems slower
+   to show its lines.
+
+### Change log
+
+- 2026-11-19: audit of the note editor (8 read-only audit passes, then fixes with a test each): speed in a
+  2,000-block note, lost-text cases in sync, paste, canvases, tables, media, touch. 18 commits, on `main`.
+- 2026-11-19: after the push, the first full end-to-end run since 18 November: 7 bugs fixed (6 from the
+  18 November tools panel and flat note changes, 1 from this branch) and 22 specs updated. Pull request 40.
+- 2026-11-19: pull request 40 merged (`ce420649`) after five CI runs; production deploy completed, `main` green.
+
 ## 1. Where things stand
 
 **Released and live (version 1.0.04, build 8, origin/main `f5f00a26`):**
@@ -193,3 +229,13 @@ causes (section 3 item 4).
 - Every iPhone feedback also applies to iPad. Every web change ships to the Mac app.
 - No buying in the iOS app (no prices, buy buttons or upgrade links).
 - Ask the owner with clear options when a decision is theirs; give before/after screenshots for UI work.
+
+## 9. Marketing pages branch `claude/marketing-pages-091dac` (2026-11-19)
+
+Commit c39116e6 on top of the 1.5.52 release (6099b01e), not pushed or deployed. The owner picked an accuracy pass:
+the Mac requirement is macOS 26 (`site.ts`); the home showcase's iPhone draws iOS 26's tab bar over the frame
+(`home/DeviceShowcase.tsx` NativeTabBar, `showcase/phone.ts` NATIVE_LOOK); the Apps page has a new iPad and iPhone
+picture (`product/TouchDevices.tsx`); the Search feature page has "Filter a list"; the changelog has 1.5.50 to 1.5.52.
+Next: the owner reviews, then merges and releases the site. The App Store link in `site.ts` is still a search link.
+
+Change log: 2026-11-19 marketing accuracy pass for 1.5.50 to 1.5.52 (branch above).

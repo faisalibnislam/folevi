@@ -30,6 +30,12 @@ public struct IPadFrameView<Page: View>: View {
     @State private var regions = CardHitRegions()
     @MadeOnce private var notifications: NotificationsModel
     @MadeOnce private var tasks: ValueStore<TaskCounts>
+    /// The sidebar's actions, made once: built in the body, new closures every time made the whole sidebar draw again
+    /// with every change the frame saw.
+    @State private var sidebarActions: WebSidebarActions
+    /// The window's width (all the frame lays out by): read on its own, so a change of height (the keyboard coming
+    /// up, a sheet) doesn't run the whole frame again as the GeometryReader round it did.
+    @State private var width: CGFloat = 0
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.colorScheme) private var scheme
 
@@ -39,19 +45,20 @@ public struct IPadFrameView<Page: View>: View {
         let models = ScreenModels(frame: model)
         _models = State(initialValue: models)
         _askAi = State(initialValue: AiAskState(frame: model, feedback: models.feedback))
-        _notifications = MadeOnce(wrappedValue: NotificationsModel(client: model.client, feedback: models.feedback))
+        let notifications = NotificationsModel(client: model.client, feedback: models.feedback)
+        _notifications = MadeOnce(wrappedValue: notifications)
+        _sidebarActions = State(initialValue: Self.sidebarActions(model, notifications: notifications))
         _tasks = MadeOnce(wrappedValue: model.client.watch(.tasksCounts(), snapshotKey: "tasks.counts"))
     }
 
     public var body: some View {
         let m = MacLook.containerMargin
-        return GeometryReader { g in
-            // The sidebar beside the card (the Mac's), unless it's hidden or the window is too narrow for it.
-            let inline = !model.sidebarFloats && !model.sidebarHidden
-            // A note's own panel (Style, Format, Insert, Foli AI) beside the note: the page takes the card's room to
-            // the window's trailing and bottom edges and draws its card and the panel itself (the Mac's layout).
-            let panel = Self.panelBeside(model, width: g.size.width - (inline ? MacLook.sidebarWidth : m))
-            ZStack(alignment: .topLeading) {
+        // The sidebar beside the card (the Mac's), unless it's hidden or the window is too narrow for it.
+        let inline = !model.sidebarFloats && !model.sidebarHidden
+        // A note's own panel (Style, Format, Insert, Foli AI) beside the note: the page takes the card's room to
+        // the window's trailing and bottom edges and draws its card and the panel itself (the Mac's layout).
+        let panel = Self.panelBeside(model, width: width - (inline ? MacLook.sidebarWidth : m))
+        return ZStack(alignment: .topLeading) {
                 WindowMaterial().ignoresSafeArea()
                 VStack(spacing: 0) {
                     WebTopBar(model: model)
@@ -98,12 +105,13 @@ public struct IPadFrameView<Page: View>: View {
             .gesture(SidebarEdgePan { if model.sidebarFloats && !model.sidebarOverlayShown { model.sidebarOverlayShown = true } })
             // A secondary click where nothing has a menu of its own: New note, Search, Ask Foli AI, Back, Forward.
             .appContextMenu(model)
-            .onChange(of: g.size.width, initial: true) { _, width in
-                let floats = width < IPadFrameMetrics.floatingSidebarBelow
-                if floats != model.sidebarFloats {
-                    model.sidebarFloats = floats
-                    model.sidebarOverlayShown = false
-                }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { w in
+            if abs(width - w) > 0.5 { width = w }
+            let floats = w < IPadFrameMetrics.floatingSidebarBelow
+            if floats != model.sidebarFloats {
+                model.sidebarFloats = floats
+                model.sidebarOverlayShown = false
             }
         }
         // The native look for everything the frame draws (and, through MacLook.padWide, for what it presents), with
@@ -128,9 +136,12 @@ public struct IPadFrameView<Page: View>: View {
                 FrameSheets.attach(model, popoverAnchor: anchor)
                 FrameDialogs.notifications(model, model: notifications)
             }
+            // (The system's popover from the cloud, as the bell's: the drawn panel had no surface of its own, so the
+            // popover's words vanished over a light page and only the cloud showed.)
             model.showSync = { [model] anchor in
-                guard let anchor else { return }
-                PlannerPanel.popover(below: anchor) { _ in SyncPopover(model: model).presentedLook() }
+                if FrameSheets.isShowing(model) { return FrameSheets.dismiss(model) }
+                FrameSheets.attach(model, popoverAnchor: anchor)
+                FrameSheets.present(model, top: 52, leading: 12) { _ in SyncPopover(model: model) }
             }
         }
         // A memory warning lets go of the native side's own caches (card covers decoded, card line breaks), as the
@@ -228,7 +239,7 @@ public struct IPadFrameView<Page: View>: View {
         }
     }
 
-    private var sidebarActions: WebSidebarActions {
+    private static func sidebarActions(_ model: FrameModel, notifications: NotificationsModel) -> WebSidebarActions {
         var a = WebSidebarActions()
         a.notifications = { [model, notifications] _ in
             if FrameSheets.isShowing(model) { return FrameSheets.dismiss(model) }
@@ -238,10 +249,8 @@ public struct IPadFrameView<Page: View>: View {
             guard let window = NSApp.keyWindow else { return }
             AccountMenuWindow.show(model: model, in: window, anchor: anchor)
         }
-        a.sync = { [model] anchor in
-            guard let anchor else { return }
-            PlannerPanel.popover(below: anchor) { _ in SyncPopover(model: model).presentedLook() }
-        }
+        // (The same system popover as the strip's cloud: IPadFrameView's showSync.)
+        a.sync = { [model] anchor in model.showSync?(anchor) }
         return a
     }
 }

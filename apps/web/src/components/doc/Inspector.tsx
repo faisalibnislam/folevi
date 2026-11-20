@@ -48,13 +48,17 @@ import { useRadioGroup } from "@/lib/a11y/radioGroup";
 import { useAiAccess, type AiRunDetail } from "@/components/ai/useAi";
 import { AiUnavailable } from "@/components/ai/AiUnavailable";
 import { RelatedPanel } from "./RelatedPanel";
+import { PanelBoundary } from "./PanelBoundary";
 // Foli DNA's small map loads with the Related tab, never with the note.
 const DnaMini = lazy(() => import("@/components/views/GraphView").then((m) => ({ default: m.DnaMini })));
 import { useIphoneApp } from "@/lib/iphone";
 import { feel } from "@/lib/native/ui";
 
 // Foli AI's panel loads the first time its tab opens (docs/MAC_WEBKIT_PLAN.md "Memory", step 4).
-const AiPanel = lazy(() => import("@/components/ai/AiPanel").then((m) => ({ default: m.AiPanel })));
+// (One per try: a load that failed, offline say, is asked for again from PanelBoundary's "Try again".)
+const loadAiPanel = () => import("@/components/ai/AiPanel").then((m) => ({ default: m.AiPanel }));
+const aiPanels = [lazy(loadAiPanel)];
+const aiPanelFor = (attempt: number) => (aiPanels[attempt] ??= lazy(loadAiPanel));
 
 // The page outline lives in the document sidebar (Table of contents); comments open from the top bar.
 export type InspectorTab = "ai" | "insert" | "format" | "style" | "info" | "comments" | "related";
@@ -192,9 +196,16 @@ export function Inspector({
       <div id={`${baseId}-panel`} role={tab === "comments" || hideTabs ? "region" : "tabpanel"} aria-labelledby={`${baseId}-tab-${tab}`} className={`relative h-full ${tab === "ai" && aiOn ? "flex min-h-0 flex-1 flex-col has-[>[data-ai-fill]]:!pb-[calc(var(--sheet-safe-b,0px)+12px)]" : ""} ${sheet && tab === "insert" ? "" : "overflow-y-auto"} ${sheet ? "px-4 pt-1" : "px-3 pt-3"} ${sheet ? "pb-[calc(var(--sheet-safe-b,0px)+16px)]" : "pb-4"}`}>
         {/* AI in a note is about this note (the chat with all notes is the floating one, elsewhere). */}
         {tab === "ai" && aiOn ? (
-          <Suspense fallback={null}>
-            <AiPanel documentId={documentId} editor={editor} readOnly={readOnly} run={aiRun} onTitle={(t) => onAiTitle?.(t)} />
-          </Suspense>
+          <PanelBoundary name="Foli AI">
+            {(attempt) => {
+              const AiPanel = aiPanelFor(attempt);
+              return (
+                <Suspense fallback={null}>
+                  <AiPanel documentId={documentId} editor={editor} readOnly={readOnly} run={aiRun} onTitle={(t) => onAiTitle?.(t)} />
+                </Suspense>
+              );
+            }}
+          </PanelBoundary>
         ) : null}
         {/* AI off, or not on the plan where this note lives: how to turn it on, or what a plan with AI includes. */}
         {tab === "ai" && !aiOn ? <AiUnavailable ai={aiAccess} compact headingLevel={3} /> : null}

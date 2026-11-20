@@ -46,14 +46,23 @@ test("on an iPhone, pressing and holding a line opens the note's own menu (Safar
   await expect(line).toBeVisible({ timeout: 30_000 });
   const box = (await line.boundingBox())!;
 
-  // A short touch is a tap: no menu.
-  await hold(page, box.x + 20, box.y + box.height / 2, 150);
-  await expect(page.getByRole("menu", { name: "Note actions" })).toHaveCount(0);
-
-  // Held: the line's menu, without raising the keyboard.
-  await hold(page, box.x + 20, box.y + box.height / 2);
   const menu = page.getByRole("menu", { name: "Note actions" });
+  // A short touch is a tap: no menu, and the caret is in the note.
+  await hold(page, box.x + 20, box.y + box.height / 2, 150);
+  await expect(menu).toHaveCount(0);
+  await expect(body).toBeFocused();
+
+  // Writing (the caret's in the note), a held finger is the phone's own: its loupe and text selection, no menu.
+  await hold(page, box.x + 20, box.y + box.height / 2);
+  await page.waitForTimeout(300);
+  await expect(menu).toHaveCount(0);
+  await expect(page.getByRole("menu")).toHaveCount(0);
+
+  // The keyboard put away (Done): held, the line's menu, without raising the keyboard again.
+  await body.blur();
+  await hold(page, box.x + 20, box.y + box.height / 2);
   await expect(menu).toBeVisible();
+  await expect(body).not.toBeFocused();
   await expect(menu.getByRole("menuitem").first()).toBeVisible();
   // The lift that ended the hold picked nothing: the menu stays open until a choice or a tap outside.
   await page.waitForTimeout(300);

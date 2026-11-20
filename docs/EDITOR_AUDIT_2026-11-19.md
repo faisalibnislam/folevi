@@ -248,3 +248,35 @@ Fixed here: a panel that comes up with the note leaves the keyboard alone (`comp
 as before. The specs pick the header's button. Only the editor specs were run again; the rest of the
 end-to-end suite has not been run since that change on `main`.
 
+
+## 10. After the push: what the whole end-to-end suite showed
+
+Once `main` had the icons file again (1.5.51) CI ran the browser tests for the first time since 18 November.
+Sixteen failed in the six shards that finished; two shards ran out of time. All of it was run again on a Mac
+against the dev backend (the two timed-out shards whole, the rest by test), and each failure traced.
+
+Bugs fixed (web code):
+
+| What a person saw | Cause | From |
+| --- | --- | --- |
+| A note loaded straight into a narrow window (a phone's browser, a small laptop) had Foli AI's panel over the whole note; a held finger reached the panel, not the line | The check that keeps the panel shut in a narrow window ran before the window's width was known (`doc/panelLayout.ts` `panelCoversAtOpen`) | `a989411b`, 18 November |
+| The same after dragging a window narrower or turning an iPad with the panel open | A panel that only came up with the note never gave way; it does now, and comes back when there is room. One that was asked for stays | `a989411b` |
+| Style or Insert clicked just after a reload flipped back to Foli AI a moment later | The per-note default was applied when the note's details arrived, over the choice just made | `a989411b` |
+| A note opened with no connection could show the page's error screen instead of the note | Foli AI's panel loads on first use; offline that load fails and nothing caught it (`doc/PanelBoundary.tsx`: the panel says so, with Try again) | `a989411b` |
+| On a nested page the strip back to the parent page was cut off under the tab bar and could not be clicked | It sat in padding a flat note no longer has (`globals.css`, `.fb-page-path`) | flat notes, 1.4.46 |
+| A grey band under the paper when a note was scrolled to its end; a three-line note scrolled | The floating bar's spacer was laid after the sheet instead of being its foot | flat notes, 1.4.46 |
+| A flowchart stored in an older spelling was rewritten (a note step, an undo entry, a sync) each time it lost focus, untouched | The save on losing focus wrote even with nothing pending (`canvas/useCanvasDoc.ts` `flushNow`) | this branch, `b8c6bb62` |
+
+Only the last one came from the audit's own changes. Unit tests: `test/qa-audit-editor-status.test.tsx`,
+`test/panel-boundary.test.tsx`, `test/canvas-undo.test.tsx`.
+
+Tests brought up to date (no product change): the specs that pressed the Foli AI button to open a panel that
+is now open already (`openFoliAi` in `e2e/helpers.ts`); the flowchart specs written for a chart at the note's
+full width (`closeToolsPanel`); the canvas specs' "phone" (360 wide now: a flat note's card at 375 is 323 wide,
+past the 320 where the fitted picture takes over); the press-and-hold spec (while the caret is in the note a
+held finger is iOS's, as section 4 says); renamed fields (Filter folders, Filter tags), the calendar's color
+swatches, the share page's columns, the folder order after a reload.
+
+Not verifiable on this Mac: the dev backend has an AI key, so the specs that expect "isn't set up" (ai-study,
+ai-agent, ai-find-todos, ai-page, ai-panel-height, ai-research) and admin's revenue table need CI's own
+backend. They passed there before 18 November; ai-study now gets past the step it failed on.

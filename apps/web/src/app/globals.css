@@ -1172,6 +1172,9 @@
 /* No focus ring after a tap: only while a keyboard moves focus (data-input="key", components/iphone/chrome.tsx). */
 :root[data-ipad]:not([data-input="key"]) :focus-visible { outline: none !important; --tw-ring-shadow: 0 0 #0000 !important; --tw-ring-offset-shadow: 0 0 #0000 !important; }
 :root[data-ipad][data-input="key"] :focus-visible { --tw-ring-color: var(--color-focus); }
+/* The iPad's native wide layout (Shell.tsx data-ipad-native) too: a panel that hands its close button focus as it
+   opens left a black ring after a tap. */
+:root[data-ipad-native]:not([data-input="key"]) :focus-visible { outline: none !important; --tw-ring-shadow: 0 0 #0000 !important; --tw-ring-offset-shadow: 0 0 #0000 !important; }
 /* A note card's "…" on Home and in lists (HomeDashboard, DocumentBrowser), and a folder card's (FolderCard), stays out of sight on touch: a long
    press opens the same menu (and the lifted picture of the card has no "…" either). A trackpad's pointer
    hovering the card (data-input="pointer": a finger counts as hovering too), or keyboard focus, shows it (not the focus a closing menu hands back after a touch: only a keyboard's,
@@ -1472,6 +1475,26 @@
   margin-inline: auto;
 }
 .fb-page[data-sheet-host]:not([data-sheet-pages]):not([data-backdrop]):not([data-iphone-scroll]) > :not(.fb-sheet) { padding-inline: clamp(20px, 5.5cqi, 64px); }
+/* The floating bar's room under the page (page-dock.css, ::after) is the sheet's own foot in a flat note: laid
+   after the sheet it drew a grey band under the paper once the note was scrolled to its end, and made a
+   three-line note scroll (found 2026-11-19). It stays when something follows the sheet (backlinks, suggestions). */
+.fb-page[data-sheet-host]:not([data-sheet-pages]):not([data-backdrop]):not([data-iphone-scroll]) > .fb-sheet:last-child {
+  margin-bottom: calc(-1 * var(--page-dock-room, 0px));
+}
+/* A nested page's path (back to the page it's in) sat in the page's top padding, above the sheet's card. A flat
+   note has neither: the strip was pulled above the page's top edge, under the tab bar, where it could be
+   neither read nor clicked (found 2026-11-19, e2e/page-layout.spec.ts). It lies on the sheet's top margin
+   instead, which is kept tall enough for it. */
+.fb-page[data-sheet-host]:not([data-sheet-pages]):not([data-backdrop]):not([data-iphone-scroll]) > .fb-page-path {
+  position: absolute;
+  /* (Under the Mac's and the iPad's own top bar, where there is one over the page.) */
+  inset: calc(var(--native-inset-top, 0px) + 12px) 0 auto;
+  z-index: 1;
+  margin-block: 0;
+}
+.fb-page[data-sheet-host]:not([data-sheet-pages]):not([data-backdrop]):not([data-iphone-scroll]) > .fb-page-path + .fb-sheet {
+  padding-top: max(calc(var(--native-inset-top, 0px) + 52px), clamp(56px, 6cqi, 80px));
+}
 
 /* Plain with page breaks: the pages as cards on the light grey backdrop (the Mac's card is otherwise white). */
 :root:is([data-mac-native], [data-ipad-native]) .fb-page[data-sheet-pages]:not([data-backdrop]) { background: var(--color-surface-sunken) !important; }

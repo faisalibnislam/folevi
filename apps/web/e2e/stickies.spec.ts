@@ -186,7 +186,9 @@ test.describe("Sticky notes", () => {
 
     // A phone's width: the card is too narrow to work in, so it's a fitted picture with Open canvas; in the full
     // canvas the toolbar fits (no sideways scrolling), and what doesn't fit is in More.
-    await page.setViewportSize({ width: 375, height: 812 });
+    // (360 wide, a common phone: since notes went flat on 18 November 2026 a card at 375 is 323 wide, just
+    // enough for its tools; at 360 it is 308, under the 320 where the picture takes over.)
+    await page.setViewportSize({ width: 360, height: 800 });
     await expect(tools).toBeHidden();
     await page.getByRole("button", { name: /^Open canvas/ }).click();
     const fullCard = page.locator(".fb-stickies .fb-canvas-card[data-full]");

@@ -1,6 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
-import { APP, newPerson, openTool, settle, waitForSaved, noteMenuItem } from "./helpers";
+import { APP, newPerson, openTool, settle, waitForSaved, noteMenuItem, openFoliAi } from "./helpers";
 
 // Accessibility of every Foli AI surface (docs/AI_ASSISTANT.md milestone 9): axe over the AI page, the
 // floating chat, the note's AI sidebar (Write, Ask, Agent, Study), the inline composer (on a light page and
@@ -59,7 +59,7 @@ test("every Foli AI surface has no serious accessibility violations, light and d
     // The note's AI sidebar, each mode.
     await page.goto(note);
     await expect(page.getByRole("textbox", { name: "Title" })).toHaveValue("Harbour plans", { timeout: 30_000 });
-    await page.getByRole("toolbar", { name: "Page tools" }).getByRole("button", { name: "Foli AI" }).click();
+    await openFoliAi(page);
     const modes = page.getByRole("group", { name: "What Foli AI should do" });
     for (const mode of ["Write", "Ask", "Study"]) {
       await modes.getByRole("button", { name: mode, exact: true }).click();
@@ -194,7 +194,7 @@ test("keyboard: focus comes back when panels close, the graph moves node to node
 
   // The note's AI sidebar: its controls are reachable with Tab, and closing the panel doesn't strand focus.
   await expect(page.getByRole("textbox", { name: "Title" })).toBeVisible({ timeout: 30_000 });
-  await page.getByRole("toolbar", { name: "Page tools" }).getByRole("button", { name: "Foli AI" }).click();
+  await openFoliAi(page, { byHand: true });
   const modes = page.getByRole("group", { name: "What Foli AI should do" });
   await modes.getByRole("button", { name: "Ask", exact: true }).focus();
   await page.keyboard.press("Enter");

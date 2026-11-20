@@ -1,6 +1,7 @@
 "use client";
 
 import { useMutation, usePaginatedQuery, useQuery } from "convex/react";
+import { useCardSizes } from "@/lib/cardSize";
 import { lazy, Suspense, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Archive, ArchiveRestore, ArrowDown, ArrowUp, Check, CheckSquare, Copy, CopyPlus, EyeOff, FilePlus2, ExternalLink, FolderInput, LayoutGrid, List, MoreHorizontal, Plus, Rows3, Trash2, Undo2, FileText, Files, FolderOpen, Hash, Inbox, LayoutTemplate, Share2, type LucideIcon } from "lucide-react";
 import { Bookmark, BookmarkOff } from "lucide-react";
@@ -182,6 +183,7 @@ function cachedViewFilter(view: View, sort: Sort, online: boolean): ((d: KeptRow
 }
 
 function DocumentList({ view, folderId, tagId, org, titleOverride }: { view: View; folderId?: string; tagId?: string; org: Org; titleOverride?: string }) {
+  const { scale: cardScale } = useCardSizes();
   const { scope, scopeKey, profile, online, engine, outbox } = useAppState();
   const [layout, setLayout] = useLocalStorage<Layout>(`folevi:layout:${view}`, view === "trash" || view === "archive" ? "list" : "grid");
   const [sort, setSort] = useLocalStorage<Sort>(`folevi:sort:${view}`, "updated");
@@ -651,7 +653,7 @@ function DocumentList({ view, folderId, tagId, org, titleOverride }: { view: Vie
             <h2 id="subfolders-title" data-section-label="" className={SECTION_LABEL}>
               Folders
             </h2>
-            <ul aria-label="Folders inside" className="mb-10 grid grid-cols-[repeat(auto-fill,152px)] gap-x-6 gap-y-8">
+            <ul aria-label="Folders inside" className="mb-10 grid grid-cols-[repeat(auto-fill,var(--subfolder-card))] gap-x-[var(--subfolder-gap-x)] gap-y-[var(--subfolder-gap-y)]">
               {subfolderCards.map((f) => {
                 const on = selection.selected.has(f.id);
                 return (
@@ -746,7 +748,7 @@ function DocumentList({ view, folderId, tagId, org, titleOverride }: { view: Vie
             })}
           </ul>
         ) : (
-          <ul className={`grid gap-x-8 gap-y-10 ${layout === "compact" ? "grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5" : "grid-cols-[repeat(auto-fill,minmax(230px,1fr))]"}`}>
+          <ul className={`grid gap-x-[var(--card-gap)] gap-y-[var(--card-row-gap)] ${layout === "compact" ? (cardScale < 1 ? "grid-cols-3 sm:grid-cols-4 lg:grid-cols-5 xl:grid-cols-7" : "grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5") : "grid-cols-[repeat(auto-fill,minmax(var(--note-card-min),1fr))]"}`}>
             {shown.map((d) => {
               const on = selection.selected.has(d.id);
               return (

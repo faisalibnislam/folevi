@@ -800,11 +800,14 @@ public struct FolderPreview: Codable, Hashable, Sendable {
     public var title: String
     public var excerpt: String
     public var cover: CardCover
+    /// Revision 33: when the note was created ("Created Nov 3" on the page peeking out of the card); 0 when unknown.
+    public var createdAt: Double
 
-    public init(title: String, excerpt: String, cover: CardCover) {
+    public init(title: String, excerpt: String, cover: CardCover, createdAt: Double = 0) {
         self.title = title
         self.excerpt = excerpt
         self.cover = cover
+        self.createdAt = createdAt
     }
 }
 
@@ -818,8 +821,11 @@ public struct FolderCard: Codable, Hashable, Sendable {
     public var noteCount: Int
     /// Direct subfolders.
     public var childCount: Int
+    /// Revision 33: the colours of its two most recently changed direct subfolders (null: the default colour),
+    /// drawn as folders stacked behind the card.
+    public var childColors: [String?]
     public var updatedAt: Double
-    /// Up to three of its most recently edited notes, peeking out of the card.
+    /// Up to five of its most recently edited notes, peeking out of the card (Revision 33; three before).
     public var previews: [FolderPreview]
     public var encrypted: Bool
     public var sync: SyncMark
@@ -830,13 +836,14 @@ public struct FolderCard: Codable, Hashable, Sendable {
     /// Revision 11 (R9.3): for All folders' "Newest" sort (0 when unknown).
     public var createdAt: Double
 
-    public init(id: String, name: String, color: String? = nil, parentId: String? = nil, noteCount: Int, childCount: Int, updatedAt: Double, previews: [FolderPreview], encrypted: Bool, sync: SyncMark, locked: Bool = false, path: String? = nil, createdAt: Double = 0) {
+    public init(id: String, name: String, color: String? = nil, parentId: String? = nil, noteCount: Int, childCount: Int, childColors: [String?] = [], updatedAt: Double, previews: [FolderPreview], encrypted: Bool, sync: SyncMark, locked: Bool = false, path: String? = nil, createdAt: Double = 0) {
         self.id = id
         self.name = name
         self.color = color
         self.parentId = parentId
         self.noteCount = noteCount
         self.childCount = childCount
+        self.childColors = childColors
         self.updatedAt = updatedAt
         self.previews = previews
         self.encrypted = encrypted
@@ -854,6 +861,7 @@ public struct FolderCard: Codable, Hashable, Sendable {
         try container.encode(self.parentId, forKey: .parentId)
         try container.encode(self.noteCount, forKey: .noteCount)
         try container.encode(self.childCount, forKey: .childCount)
+        try container.encode(self.childColors, forKey: .childColors)
         try container.encode(self.updatedAt, forKey: .updatedAt)
         try container.encode(self.previews, forKey: .previews)
         try container.encode(self.encrypted, forKey: .encrypted)

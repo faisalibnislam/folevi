@@ -21,7 +21,10 @@ export interface FolderSummary {
   parentFolderId: string | null;
   updatedAt: number;
   documentCount: number;
-  /** Up to three of the notes inside (most recently edited first), drawn faintly through the cover. */
+  /** Folders directly inside, and the colours of the two most recently changed (drawn stacked behind the card). */
+  childCount?: number;
+  childColors?: (string | null)[];
+  /** Up to five of the notes inside (most recently edited first), standing in the folder behind its frosted front. */
   previews?: FolderPreview[];
 }
 
@@ -67,7 +70,7 @@ export function FolderCard({
         title={parentName ? `${f.name} (in ${parentName})` : f.name}
         className={`${FOLDER_CARD_FRAME} focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-4 focus-visible:ring-offset-canvas`}
       >
-        <FolderCardArt name={f.name} color={f.color} count={f.documentCount} age={ageText(f.updatedAt)} previews={f.previews} menuRoom />
+        <FolderCardArt name={f.name} color={f.color} count={f.documentCount} age={ageText(f.updatedAt)} previews={f.previews} subfolders={f.childCount ?? 0} subfolderColors={f.childColors} menuRoom />
       </AppLink>
       <FolderMenu
         folder={f}

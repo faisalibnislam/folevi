@@ -20,9 +20,8 @@ import { useOfflineQuery } from "@/lib/sync/queryCache";
 import { useNotesWithLocal } from "@/lib/hooks/useLocalNotes";
 import { WaitingToSync, waitingOf } from "@/components/sync/WaitingToSync";
 import { cardCount, useReviewWindow } from "@/components/study/review";
+import { useCardSizes } from "@/lib/cardSize";
 
-const CARD_WIDTH = 250;
-const FOLDER_MIN = 210;
 const GAP = 32;
 
 /** How many grid columns fit (auto-fill with a minimum width), so a section can show whole rows only. */
@@ -121,6 +120,7 @@ const RECENT_FOLDERS = 12;
  * more to see that way). Cards are real list items, so Tab moves through them and scrolls them into view.
  */
 function NoteCarousel({ docs, label, recent }: { docs: Summary[] | undefined; label: string; recent?: boolean }) {
+  const { noteCard: CARD_WIDTH, gap: CARD_GAP } = useCardSizes();
   const [el, setEl] = useState<HTMLUListElement | null>(null);
   const [edges, setEdges] = useState({ start: true, end: true });
   useEffect(() => {
@@ -138,11 +138,11 @@ function NoteCarousel({ docs, label, recent }: { docs: Summary[] | undefined; la
   const scroll = (dir: 1 | -1) => {
     if (!el) return;
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    el.scrollBy({ left: dir * Math.max(CARD_WIDTH + GAP, el.clientWidth - CARD_WIDTH / 2), behavior: reduce ? "auto" : "smooth" });
+    el.scrollBy({ left: dir * Math.max(CARD_WIDTH + CARD_GAP, el.clientWidth - CARD_WIDTH / 2), behavior: reduce ? "auto" : "smooth" });
   };
   if (docs === undefined) {
     return (
-      <div className="flex gap-8 overflow-hidden pb-7 pt-2" role="status" aria-busy aria-label="Loading">
+      <div className="flex overflow-hidden pb-7 pt-2" style={{ gap: CARD_GAP }} role="status" aria-busy aria-label="Loading">
         {Array.from({ length: 6 }, (_, i) => (
           <div key={i} style={{ width: CARD_WIDTH }} className={`${NOTE_CARD_ASPECT} flex-none animate-pulse rounded-l-tiny rounded-r-small bg-sunken motion-reduce:animate-none`} />
         ))}
@@ -159,8 +159,8 @@ function NoteCarousel({ docs, label, recent }: { docs: Summary[] | undefined; la
       <ul
         ref={setEl}
         aria-label={label}
-        style={{ maskImage: fadeMask, WebkitMaskImage: fadeMask }}
-        className="-mx-4 -mb-5 flex snap-x snap-mandatory scroll-px-4 gap-8 overflow-x-auto px-4 pb-12 pt-2 [scrollbar-width:none] sm:-mx-6 sm:scroll-px-6 sm:px-6 [&::-webkit-scrollbar]:hidden"
+        style={{ maskImage: fadeMask, WebkitMaskImage: fadeMask, gap: CARD_GAP }}
+        className="-mx-4 -mb-5 flex snap-x snap-mandatory scroll-px-4 overflow-x-auto px-4 pb-12 pt-2 [scrollbar-width:none] sm:-mx-6 sm:scroll-px-6 sm:px-6 [&::-webkit-scrollbar]:hidden"
       >
         {docs.slice(0, CAROUSEL_COUNT).map((d) => (
           <li key={d.id} style={{ width: CARD_WIDTH }} className="flex-none snap-start">
@@ -226,7 +226,8 @@ export function HomeDashboard() {
   const starredList = useOfflineQuery(api.documents.list, { scope, view: "starred", sort: "updated", paginationOpts: { numItems: CAROUSEL_COUNT, cursor: null } });
   const starredPage = useNotesWithLocal(starredList?.page, { include: "none" });
   const starred = starredList && starredPage ? { ...starredList, page: starredPage } : starredList;
-  const folders = useColumns(FOLDER_MIN);
+  const sizes = useCardSizes();
+  const folders = useColumns(sizes.folderMin, sizes.gap);
   // Only the most recently changed folders are counted (a fixed minimum, so resizing rarely refetches).
   const org = useOfflineQuery(api.organization.recentFolders, { scope, limit: Math.max(RECENT_FOLDERS, folders.cols * 2) });
   const recentFolders = (org?.folders ?? []).slice(0, folders.cols * 2);
@@ -255,7 +256,7 @@ export function HomeDashboard() {
           empty={org && !org.total ? <EmptyState size="inline" title="No folders yet" body="Create one from the sidebar to group related notes." /> : undefined}
         >
           <div ref={folders.ref}>
-            <ul className="grid gap-x-8 gap-y-10" style={{ gridTemplateColumns: `repeat(${folders.cols}, minmax(0, 1fr))` }}>
+            <ul className="grid" style={{ gridTemplateColumns: `repeat(${folders.cols}, minmax(0, 1fr))`, columnGap: sizes.gap, rowGap: sizes.rowGap }}>
               {recentFolders.map((f) => (
                 <li key={f.id}>
                   <FolderCard folder={f} parentName={f.parentName ?? undefined} />

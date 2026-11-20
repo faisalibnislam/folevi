@@ -542,7 +542,7 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
             <span className="w-5 flex-none" />
           )}
           <div className="min-w-0 flex-1">
-            <NavItem href={`/folders/${f.id}`} icon={<FolderGlyph color={f.color} size={18} />} label={f.name} onNavigate={onNavigate} dragFolderId={canEdit ? f.id : undefined} locked={isLockedFolder(f)} tabFolder={f} />
+            <NavItem href={`/folders/${f.id}`} icon={<FolderGlyph color={f.color} size={15} kind={children.length ? "stack" : "notes"} />} label={f.name} onNavigate={onNavigate} dragFolderId={canEdit ? f.id : undefined} locked={isLockedFolder(f)} tabFolder={f} />
           </div>
           <FolderMenu folder={f} className={FOLDER_MENU_REVEAL} />
         </FolderRow>

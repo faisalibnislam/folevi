@@ -99,7 +99,21 @@ function folderPages(ctx: QueryCtx, folderId: Id<"folders">) {
  * One folder of the All folders view / Home: its page count, last change and previews, counting only the
  * pages this person can open (a restricted page they can't open is neither counted nor previewed).
  */
-async function folderRow(ctx: QueryCtx, reader: PageReader, f: Doc<"folders">, idToPublic: Map<Id<"folders">, string>) {
+/** Each folder's direct subfolders, most recently changed first (a folder card draws up to two behind it). */
+function childrenByParent(folders: Doc<"folders">[]) {
+  const kids = new Map<string, Doc<"folders">[]>();
+  for (const f of folders) {
+    if (!f.parentFolderId) continue;
+    const list = kids.get(f.parentFolderId) ?? [];
+    list.push(f);
+    kids.set(f.parentFolderId, list);
+  }
+  for (const list of kids.values()) list.sort((a, b) => b.updatedAt - a.updatedAt);
+  return kids;
+}
+
+async function folderRow(ctx: QueryCtx, reader: PageReader, f: Doc<"folders">, idToPublic: Map<Id<"folders">, string>, kids: Map<string, Doc<"folders">[]>) {
+  const children = kids.get(f._id) ?? [];
   const docs = await reader.filter((await folderPages(ctx, f._id).take(2000)).filter((d) => d.kind !== "template"));
   return {
     id: f.publicId,
@@ -111,14 +125,17 @@ async function folderRow(ctx: QueryCtx, reader: PageReader, f: Doc<"folders">, i
     createdAt: f.createdAt,
     updatedAt: Math.max(f.updatedAt, ...docs.map((d) => d.updatedAt)),
     documentCount: docs.length,
+    // Direct subfolders: how many, and the colours of the two most recently changed (drawn stacked behind the card).
+    childCount: children.length,
+    childColors: children.slice(0, 2).map((c) => c.color ?? null),
     // The most recently edited notes inside that this person can read: style, title and opening text,
     // shown as small pages peeking out of the folder.
     previews: [...docs]
       .sort((a, b) => b.updatedAt - a.updatedAt || a._creationTime - b._creationTime)
-      .slice(0, 3)
+      .slice(0, 5)
       .map((d) => {
         const sealed = sealedFieldsOf(d);
-        return { cover: d.cover, title: d.title, excerpt: d.excerpt.slice(0, 280), ...(sealed ? { sealed } : {}) };
+        return { cover: d.cover, title: d.title, createdAt: d.createdAt, excerpt: d.excerpt.slice(0, 280), ...(sealed ? { sealed } : {}) };
       }),
   };
 }
@@ -140,7 +157,8 @@ export const index = query({
     if (args.only !== "tags") {
       const folders = (await scopeFolders(ctx, scope)).filter((f) => !f.deletedAt);
       const idToPublic = new Map(folders.map((f) => [f._id, f.publicId]));
-      for (const f of folders) folderRows.push(await folderRow(ctx, reader, f, idToPublic));
+      const kids = childrenByParent(folders);
+      for (const f of folders) folderRows.push(await folderRow(ctx, reader, f, idToPublic, kids));
     }
     const tagRows = [];
     if (args.only !== "folders") {
@@ -189,11 +207,12 @@ export const recentFolders = query({
       latest.set(f._id, at);
     }
     const limit = Math.max(0, Math.min(Math.floor(args.limit), 100));
+    const kids = childrenByParent(folders);
     const recent = [...folders].sort((a, b) => latest.get(b._id)! - latest.get(a._id)!).slice(0, limit);
     const rows = [];
     for (const f of recent) {
       const parent = f.parentFolderId ? byId.get(f.parentFolderId) : undefined;
-      rows.push({ ...(await folderRow(ctx, reader, f, idToPublic)), parentName: parent?.name ?? null, ...(parent?.sealedName ? { parentSealedName: parent.sealedName } : {}) });
+      rows.push({ ...(await folderRow(ctx, reader, f, idToPublic, kids)), parentName: parent?.name ?? null, ...(parent?.sealedName ? { parentSealedName: parent.sealedName } : {}) });
     }
     return { total: folders.length, folders: rows };
   },

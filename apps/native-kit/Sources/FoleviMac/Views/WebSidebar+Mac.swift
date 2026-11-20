@@ -276,7 +276,7 @@ extension WebSidebar {
             HoverReveal { hovered in
                 macItem(.folder(f.id), title: f.name, level: f.depth + 1) {
                     // (The web's folder glyph, in the folder's colour.)
-                    FolderGlyph(colorId: f.color, size: 18)
+                    FolderGlyph(colorId: f.color, size: 15, kind: f.childCount > 0 ? .stack : .notes)
                 }
                 .onMiddleClick { model.openInBackground(.folder(f.id), title: f.name) }
                 .overlay(alignment: .leading) {

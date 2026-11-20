@@ -1,20 +1,37 @@
 import { folderHex } from "@/lib/folderColors";
 
-/**
- * A folder in the folder's colour, drawn upright like the big folder cards: a lighter back cover offset
- * to the right and a filled front cover with the stepped tab at its top-right. `size` is the height.
+/*
+ * A folder in the folder's muted colour, the folder card in miniature (the owner, 20 November 2026): a back with a
+ * curved tab, a white page standing in it when it holds notes, and a plain front. A folder with subfolders shows a
+ * small stack of folders behind it; an empty one shows no page. `size` is the height; the colours (light and
+ * dark) are in globals.css (.fg-*).
  */
-export function FolderGlyph({ color, size = 18, className = "" }: { color: string | null | undefined; size?: number; className?: string }) {
+const BACK = "M0 22Q0 0 22 0H72C86 0 90 14 104 14H218Q240 14 240 36V198Q240 220 218 220H22Q0 220 0 198Z";
+
+export type FolderGlyphKind = "notes" | "stack" | "empty";
+
+export function FolderGlyph({ color, size = 18, kind = "notes", className = "" }: { color: string | null | undefined; size?: number; kind?: FolderGlyphKind; className?: string }) {
   const base = folderHex(color);
+  const stack = kind === "stack";
+  const vb = stack ? { y: -44, h: 264 } : { y: 0, h: 220 };
   return (
-    <svg width={size * (80 / 112)} height={size} viewBox="0 0 80 112" aria-hidden className={`flex-none ${className}`}>
-      <rect x="9" y="4" width="69" height="106" rx="7" fill={`color-mix(in oklab, ${base} 70%, #eef0f3)`} stroke="rgb(0 0 0 / 0.16)" strokeWidth="2.5" />
-      <path
-        d="M9 2 H68 Q76 2 76 10 V23 Q76 27 72.5 29 L70.5 30.2 Q67 32.2 67 36.2 V102 Q67 110 59 110 H9 Q2 110 2 103 V9 Q2 2 9 2 Z"
-        fill={base}
-        stroke="rgb(0 0 0 / 0.16)"
-        strokeWidth="2.5"
-      />
+    <svg
+      width={(size * 240) / vb.h}
+      height={size}
+      viewBox={`0 ${vb.y} 240 ${vb.h}`}
+      aria-hidden
+      className={`fg flex-none overflow-visible ${className}`}
+      style={{ ["--fg-tone" as string]: `color-mix(in oklab, ${base} 84%, #9a9fab)` }}
+    >
+      {stack ? (
+        <>
+          <path className="fg-sub" opacity="0.7" d={BACK} transform="translate(30 -44) scale(0.75 0.8)" />
+          <path className="fg-sub" d={BACK} transform="translate(15 -22) scale(0.875 0.9)" />
+        </>
+      ) : null}
+      <path className="fg-back" d={BACK} />
+      {kind === "notes" ? <rect className="fg-page" x="40" y="32" width="160" height="120" rx="12" /> : null}
+      <rect className="fg-front" x="0" y="96" width="240" height="124" rx="24" />
     </svg>
   );
 }

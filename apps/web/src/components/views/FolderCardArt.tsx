@@ -2,49 +2,57 @@ import type { DocumentCover } from "@folevi/editor-schema";
 import { MoreHorizontal } from "lucide-react";
 import { folderHex } from "@/lib/folderColors";
 import { coverArtOf, coverArtThumbUrl, styleColorsOf } from "@/lib/cover";
+import { createdText } from "@/lib/format";
 
 /*
- * How a folder card looks, shared by the app's FolderCard (the Folders page and Home's Recent folders, in
- * OrganizeIndex.tsx) and the site's replica of the Folders page, so both draw and move the same way. No
- * hooks, no data: the app wraps it in its link and menu, the site in plain decorative elements.
+ * How a folder card looks, shared by the app's FolderCard (the Folders page, Home's Recent folders and a folder
+ * page's subfolders) and the site's replica of the Folders page, so both draw and move the same way. No hooks,
+ * no data: the app wraps it in its link and menu, the site in plain decorative elements.
  *
- * Hover: the card lifts 4 px (FOLDER_CARD_FRAME, 200 ms) and the notes inside rise a little out of the
- * folder, the front one most (FolderNote, 300 ms), both on the app's easing. The global
- * prefers-reduced-motion rule in globals.css makes both instant.
+ * The "Frosted" folder (the owner, 20 November 2026): a back with a soft S-curved tab in the folder's muted
+ * colour, 85% opaque; up to five of the notes inside, drawn as today's note cards and fanned a little to both
+ * sides, standing well above the back; up to two subfolders as whole folders stacked straight up behind it,
+ * each a step higher and narrower, with no names; and a see-through frosted front over the notes' lower half
+ * with the name, the counts and the last change.
+ *
+ * Hover: the card lifts 4 px (FOLDER_CARD_FRAME, 200 ms) and the notes rise a little, the front one most
+ * (300 ms), both on the app's easing. The global prefers-reduced-motion rule in globals.css makes both instant.
  */
 
-export type FolderPreview = { cover: DocumentCover; title?: string; excerpt?: string };
+export type FolderPreview = { cover: DocumentCover; title?: string; excerpt?: string; createdAt?: number };
 
 /**
- * The card's box: portrait, and the container its cqw sizes are measured against (`--fc-text` scales the
- * cover's labels on their own: a small card keeps a full-size card's count, age and name). `group` drives the hover; it isn't text to select (a held finger opens its menu). */
-export const FOLDER_CARD_BOX = "group relative aspect-[820/912] select-none [container-type:inline-size]";
-/** What lifts on hover: the whole drawing (its soft shadow is the back's own, FolderCardArt). */
+ * The card's box: square (the notes stand above the folder, which makes the whole drawing about square), and the
+ * container its cqw sizes are measured against (`--fc-text` scales the front's words on their own: a small card
+ * keeps a bigger card's name and counts). `group` drives the hover; it isn't text to select (a held finger opens
+ * its menu).
+ */
+export const FOLDER_CARD_BOX = "group relative aspect-square select-none [container-type:inline-size]";
+/** What lifts on hover: the whole drawing. */
 export const FOLDER_CARD_FRAME =
   "absolute inset-0 block rounded-panel outline-none transition-transform duration-200 ease-[var(--ease-folio)] hover:-translate-y-1";
 
+/** Where the back starts, as a share of the card's height: the notes stand in the space above it. */
+const BACK_TOP = 17;
+/** Where the front starts: the front covers the card's lower 55%. */
+export const FOLDER_FRONT_TOP = 45;
 /**
- * The folder's soft shadow, cast by its back (the tab and the body, each its own rounded box): the same two
- * shadows the whole drawing used to cast as a `drop-shadow` filter, which made WebKit draw every tile off screen
- * and blur it again on every new screen (docs/IOS_PERFORMANCE.md). The body is drawn after the tab, so the tab's
- * shadow never falls on it; the front cover sits inside the back, so the outline is the same.
- */
-const BACK_SHADOW = "0 4px 8px rgb(20 20 30 / 0.05), 0 1px 2px rgb(20 20 30 / 0.04)";
-/**
- * The back's outline: a tab on the left whose shoulder slopes down into the top edge, one piece with the body
- * (the owner, 7 November 2026, after a classic folder icon). Drawn as a mask over a 100 × 100 box stretched to
- * the card, so the back can be a plain CSS gradient (and dark mode can restyle it).
+ * The back's outline: a tab on the left that curves down into the top edge (an S-curve), one piece with the
+ * body, drawn as a mask over a 100 × 100 box stretched to the back so it can be a plain CSS gradient. Subfolders
+ * stacked behind use the same outline.
  */
 const BACK_PATH =
-  "M0 7C0 2.5 2 0 6.5 0H31C35 0 36.5 1 38.5 3.2C40.5 5.4 42 6 45 6H93.5C98 6 100 8.5 100 13V93C100 97.5 98 100 93.5 100H6.5C2 100 0 97.5 0 93Z";
+  "M0 9.6Q0 0 8 0H43.3C50 0 52 3.2 54 8C56 13.2 58.7 16 65.3 16H92Q100 16 100 25.6V90.4Q100 100 92 100H8Q0 100 0 90.4Z";
 const BACK_MASK = `url("data:image/svg+xml,${encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'><path d='${BACK_PATH}'/></svg>`)}") 0 0 / 100% 100% no-repeat`;
+/** The front's fine grain, so the frost reads as a material and not a flat tint. */
+const GRAIN = `url("data:image/svg+xml,${encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' width='140' height='140'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.95' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%' height='100%' filter='url(#n)'/></svg>`)}")`;
+
 /**
- * Where the folder's "…" menu appears on hover: the front pocket's top-right corner (the pocket starts halfway down
- * the card), in from its top and right edges by the name's left margin, 8% of the card's width (the owner, 16
- * November 2026). The same raised chip as a note card's "…".
+ * Where the folder's "…" menu appears on hover: the frosted front's top-right corner, 8 px in, the same raised
+ * chip as a note card's "…" (shown on hover or focus, always on touch).
  */
 export const FOLDER_CARD_MENU =
-  "ui-raised absolute top-[calc(50%+8cqw)] right-[8cqw] z-10 rounded-chip opacity-0 transition-opacity group-hover:opacity-100 pointer-coarse:opacity-100";
+  "ui-raised absolute top-[calc(45%+8px)] right-2 z-10 rounded-chip opacity-0 transition-opacity group-hover:opacity-100 pointer-coarse:opacity-100";
 
 /** The "…" button's look inside FOLDER_CARD_MENU, for pictures of the card (the app uses its MenuButton). */
 export function FolderCardMenuLook() {
@@ -55,28 +63,54 @@ export function FolderCardMenuLook() {
   );
 }
 
-/** One note inside a folder, drawn small: its page colour, theme image down the spine, title and opening text. */
-function FolderNote({ note, index }: { note: FolderPreview; index: number }) {
+/** The palette colour a little greyed, so a page of folders stays calm (the app's muted folder colours). */
+const toneOf = (hex: string) => `color-mix(in oklab, ${hex} 84%, #9a9fab)`;
+
+/** Up to two subfolders, stacked straight up behind the folder: where each starts and how far in its sides are. */
+function stackOf(subfolders: number) {
+  if (subfolders >= 2) return { tops: [5, 13.5], insets: [8, 4], back: 22 };
+  if (subfolders === 1) return { tops: [9], insets: [4.5], back: 18 };
+  return { tops: [] as number[], insets: [] as number[], back: BACK_TOP };
+}
+
+/* Each note's tilt and sideways step, front note first: fanned a little to both sides, as in today's cards. */
+const TILT = [-1.6, 3, -3.4, 2.4, -2.6];
+const STEP = [0, 3, -2.5, 2, -1.5];
+
+/** One note inside a folder, drawn as today's note card, small: its page colour, its art down the spine (or a plain note's punched holes), title, created date and opening text. */
+function FolderNote({ note, depth, top }: { note: FolderPreview; depth: number; top: number }) {
   const colors = styleColorsOf(note.cover);
   const art = coverArtOf(note.cover);
-  const place = [
-    "left-[9%] top-[8%] -rotate-[4deg] group-hover:-translate-y-[5%]",
-    "left-[14%] top-[10%] rotate-[3deg] group-hover:-translate-y-[3.5%]",
-    "left-[11%] top-[12.5%] -rotate-[1deg] group-hover:-translate-y-[2%]",
-  ][index]!;
-  const ink = colors?.ink ?? "#1c1c1f";
+  const ink = colors?.ink ?? "var(--fc-ink-note, #1f1f23)";
+  const paper = colors?.paper ?? "var(--fc-paper, #ffffff)";
+  const rise = ["group-hover:-translate-y-[5%]", "group-hover:-translate-y-[3.5%]", "group-hover:-translate-y-[2.5%]", "group-hover:-translate-y-[1.5%]", "group-hover:-translate-y-[1%]"][depth];
+  const at = top + depth * 1.4;
   return (
     <div
       aria-hidden
-      className={`absolute h-[70%] w-[78%] overflow-hidden rounded-chip shadow-[0_1px_2px_rgb(0_0_0/0.12),0_6px_14px_-6px_rgb(0_0_0/0.25)] transition-transform duration-300 ease-[var(--ease-folio)] ${place}`}
-      style={{ background: colors?.paper ?? "#ffffff" }}
+      data-fc="note"
+      className={`absolute w-[70%] origin-bottom overflow-hidden rounded-l-tiny rounded-r-small shadow-[0_0_0_0.5px_rgb(40_40_60/0.16),0_1cqw_2cqw_-1cqw_rgb(0_0_0/0.25)] transition-transform duration-300 ease-[var(--ease-folio)] ${rise}`}
+      style={{ left: `${15 + STEP[depth]!}%`, top: `${at}%`, height: `${Math.min(top > 3 ? 76 : 70, 95 - at)}%`, rotate: `${TILT[depth]}deg`, background: paper }}
     >
-      {art ? <div className="absolute inset-y-0 left-0 w-[7%]" style={{ background: `url(${coverArtThumbUrl(art.id)}) center / cover no-repeat` }} /> : null}
-      <div className="absolute inset-0 left-[13%] right-[7%] top-[7%] overflow-hidden">
-        <p className="line-clamp-2 text-ellipsis wrap-normal break-normal font-serif text-[5.4cqw] font-medium leading-[1.2]" style={{ color: ink }}>
+      {art ? (
+        <div className="absolute inset-y-0 left-0 w-[6%]" style={{ background: `url(${coverArtThumbUrl(art.id)}) center / cover no-repeat` }} />
+      ) : (
+        <div className="absolute inset-y-[7%] left-[3.3%] flex flex-col justify-between">
+          {Array.from({ length: 8 }, (_, i) => (
+            <span key={i} className="block size-[1.8cqw]" style={{ background: `radial-gradient(circle closest-side, color-mix(in oklab, ${ink} 80%, transparent) 92%, transparent)` }} />
+          ))}
+        </div>
+      )}
+      <div className={`absolute inset-0 overflow-hidden pr-[7.7%] pt-[7.7%] ${art ? "pl-[13.4%]" : "pl-[12.6%]"}`}>
+        <p className="line-clamp-2 text-ellipsis wrap-normal break-normal font-serif text-[5.1cqw] font-medium leading-[1.2]" style={{ color: ink }}>
           {note.title || "Untitled"}
         </p>
-        <p className="mt-[2cqw] whitespace-pre-line break-words text-[3.2cqw] leading-[1.45]" style={{ color: `color-mix(in oklab, ${ink} 82%, ${colors?.paper ?? "#ffffff"})` }}>
+        {note.createdAt ? (
+          <p className="mt-[0.8cqw] truncate text-[3.2cqw] leading-[1.3]" style={{ color: `color-mix(in oklab, ${ink} 68%, ${paper})` }}>
+            {createdText(note.createdAt)}
+          </p>
+        ) : null}
+        <p className="mt-[2.6cqw] whitespace-pre-line break-words text-[2.9cqw] leading-[4.2cqw]" style={{ color: `color-mix(in oklab, ${ink} 72%, ${paper})` }}>
           {note.excerpt || ""}
         </p>
       </div>
@@ -84,11 +118,17 @@ function FolderNote({ note, index }: { note: FolderPreview; index: number }) {
   );
 }
 
+/** The counts on the front: "3 notes", "1 folder · 2 notes", "3 folders", or "No notes yet". */
+export function folderCountText(notes: number, subfolders = 0) {
+  const parts: string[] = [];
+  if (subfolders > 0) parts.push(`${subfolders.toLocaleString()} ${subfolders === 1 ? "folder" : "folders"}`);
+  if (notes > 0) parts.push(`${notes.toLocaleString()} ${notes === 1 ? "note" : "notes"}`);
+  return parts.length ? parts.join(" · ") : "No notes yet";
+}
+
 /**
- * The drawing, after a classic folder icon but in the folder's softened colour (the owner, 7 November 2026): a
- * back with a sloped tab, lighter at the top; up to three of the notes inside, fanned; and a front pocket in the
- * folder's colour over their lower half, with the name and, under it, the count and last update. Goes inside an
- * element with FOLDER_CARD_FRAME, inside one with FOLDER_CARD_BOX.
+ * The drawing. Goes inside an element with FOLDER_CARD_FRAME, inside one with FOLDER_CARD_BOX. `age` is the last
+ * change as the app writes it ("Nov 18", "2 days ago"); the front says "Edited <age>".
  */
 export function FolderCardArt({
   name,
@@ -96,6 +136,8 @@ export function FolderCardArt({
   count,
   age,
   previews = [],
+  subfolders = 0,
+  subfolderColors = [],
   menuRoom = false,
 }: {
   name: string;
@@ -103,50 +145,55 @@ export function FolderCardArt({
   count: number;
   age: string;
   previews?: FolderPreview[];
-  /** The card has its "…" in the pocket's top-right corner (FOLDER_CARD_MENU): the name stops 8 px short of the 32 px chip (the same as 18% on cards 400 px wide or more; globals.css keeps 18% on the iPhone, which has no "…"). */
+  /** How many folders are directly inside (up to two are drawn behind). */
+  subfolders?: number;
+  /** The colours of the two most recently changed subfolders (null: the default colour). */
+  subfolderColors?: (string | null)[];
+  /** The card has its "…" in the front's top-right corner (FOLDER_CARD_MENU): the name stops short of the 32 px chip. */
   menuRoom?: boolean;
 }) {
   const base = folderHex(color);
-  // The palette colour a little greyed, so a page of folders stays calm, then lightened (the owner, 7 November 2026: "lighter color overall"); the back is a lighter tint still.
-  const tone = `color-mix(in oklab, ${base} 84%, #9a9fab)`;
-  const shown = previews.slice(0, 3);
+  const tone = toneOf(base);
+  const shown = previews.slice(0, Math.min(5, Math.max(previews.length, 0)));
+  const stack = stackOf(subfolders);
+  // Notes in a folder with subfolders start a little lower, so the stacked tabs stay in sight.
+  const noteTop = subfolders > 0 ? 7 : 3;
+  // The two most recent subfolders, the farther one first (it is drawn first, so it sits behind).
+  const kids = stack.tops.map((_, i) => folderHex(subfolderColors[stack.tops.length - 1 - i] ?? color)).reverse();
   return (
-    <>
-      {/* the back's soft shadow (the mask below would clip a box-shadow), then the back with its tab */}
-      <div aria-hidden className="absolute inset-x-0 bottom-0 top-[6%] rounded-panel" style={{ boxShadow: BACK_SHADOW }} />
-      <div
-        aria-hidden
-        data-fc="back"
-        className="absolute inset-0"
-        style={{ background: `linear-gradient(to bottom, color-mix(in oklab, ${tone} 24%, #ffffff), color-mix(in oklab, ${tone} 38%, #ffffff))`, mask: BACK_MASK, WebkitMask: BACK_MASK, ["--fc" as string]: base }}
-      />
-      {/* the notes inside */}
-      <div aria-hidden className="absolute inset-0">
-        {shown.length ? (
-          [...shown].reverse().map((p, i) => <FolderNote key={i} note={p} index={shown.length - 1 - i} />)
-        ) : (
-          <div className="absolute left-[12%] top-[14%] h-[60%] w-[76%] rounded-chip bg-white/70" />
-        )}
-      </div>
-      {/* the front pocket, with the name and, under it, the count and last update */}
-      <div
-        aria-hidden
-        data-fc="front"
-        className="absolute inset-x-0 bottom-0 top-[50%] rounded-panel"
-        style={{
-          background: `linear-gradient(to bottom, color-mix(in oklab, ${tone} 58%, #ffffff), color-mix(in oklab, ${tone} 70%, #ffffff))`,
-          boxShadow: "inset 0 1px 0 rgb(255 255 255 / 0.35), inset 0 0 0 1px rgb(0 0 0 / 0.05), 0 -4px 10px -6px rgb(0 0 0 / 0.18)",
-          ["--fc" as string]: base,
-        }}
-      >
-        <span data-fc="name" className={`absolute bottom-[30%] left-[8%] ${menuRoom ? "right-[max(18%,calc(8cqw+40px))]" : "right-[18%]"} line-clamp-2 text-ellipsis wrap-normal break-normal text-[clamp(16px,calc(8.4cqw*var(--fc-text,1)),34px)] font-serif font-medium leading-[1.15] text-[#121318]`}>
+    <div aria-hidden className="absolute inset-0" style={{ ["--fc" as string]: base, ["--fc-tone" as string]: tone }}>
+      {/* the folder's soft shadow, under its back */}
+      <div className="absolute inset-x-0 bottom-0 rounded-panel shadow-[0_1px_2px_rgb(0_0_0/0.06),0_14px_26px_-14px_rgb(30_30_50/0.42)]" data-fc="shadow" style={{ top: `${stack.back + 4}%` }} />
+      {/* subfolders, stacked behind */}
+      {kids.map((hex, i) => (
+        <div
+          key={i}
+          data-fc="sub"
+          className="absolute bottom-0 opacity-85"
+          style={{ top: `${stack.tops[i]}%`, left: `${stack.insets[i]}%`, right: `${stack.insets[i]}%`, mask: BACK_MASK, WebkitMask: BACK_MASK, ["--fs" as string]: toneOf(hex) }}
+        />
+      ))}
+      {/* the back with its tab */}
+      <div data-fc="back" className="absolute inset-x-0 bottom-0 opacity-85" style={{ top: `${stack.back}%`, mask: BACK_MASK, WebkitMask: BACK_MASK }} />
+      {/* the notes inside, the newest in front */}
+      {[...shown].reverse().map((p, i) => (
+        <FolderNote key={i} note={p} depth={shown.length - 1 - i} top={noteTop} />
+      ))}
+      {/* the frosted front, with the name, the counts and the last change */}
+      <div data-fc="front" className="absolute inset-x-0 bottom-0 flex flex-col overflow-hidden rounded-panel px-[7cqw] pb-[5.6cqw] pt-[6.4cqw]" style={{ top: `${FOLDER_FRONT_TOP}%` }}>
+        <span aria-hidden className="pointer-events-none absolute inset-0 opacity-[0.14] mix-blend-soft-light" style={{ backgroundImage: GRAIN }} />
+        <span data-fc="name" className={`relative ${menuRoom ? "pr-[max(0px,calc(46px-7cqw))]" : ""} line-clamp-2 text-ellipsis wrap-normal break-normal font-serif text-[clamp(14px,calc(8cqw*var(--fc-text,1)),30px)] font-semibold leading-[1.15]`}>
           {name}
         </span>
-        {/* count and last update (dark enough for 4.5:1 on every folder colour) */}
-        <span data-fc="age" className="absolute bottom-[13%] left-[8%] right-[18%] truncate text-[clamp(12px,calc(5cqw*var(--fc-text,1)),20px)] font-medium leading-[1.25] tabular-nums" style={{ color: `color-mix(in oklab, ${base} 14%, #2a2c33)` }}>
-          <span data-fc="count">{count.toLocaleString()} {count === 1 ? "note" : "notes"}</span> · {age}
+        <span data-fc="age" className="relative flex min-h-0 flex-1 flex-col tabular-nums">
+          <span data-fc="count" className="mt-[1cqw] truncate text-[clamp(11px,calc(4.9cqw*var(--fc-text,1)),18px)] font-medium leading-[1.3] opacity-90">
+            {folderCountText(count, subfolders)}
+          </span>
+          <span data-fc="edited" className="mt-auto truncate text-[clamp(10.5px,calc(4.3cqw*var(--fc-text,1)),16px)] leading-[1.3] opacity-85">
+            Edited {age}
+          </span>
         </span>
       </div>
-    </>
+    </div>
   );
 }

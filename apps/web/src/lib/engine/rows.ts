@@ -199,7 +199,7 @@ export function tagRows(tags: readonly { id: string; name: string; color: string
 
 /** A folder of organization.index as a folder card. */
 export function folderCardOf(
-  f: { id: string; name: string; color: string | null; parentFolderId: string | null; updatedAt: number; createdAt?: number; documentCount: number; previews?: { cover: CardCover; title: string; excerpt: string; sealed?: unknown }[]; sealedName?: unknown; locked?: boolean },
+  f: { id: string; name: string; color: string | null; parentFolderId: string | null; updatedAt: number; createdAt?: number; documentCount: number; childColors?: (string | null)[]; previews?: { cover: CardCover; title: string; excerpt: string; createdAt?: number; sealed?: unknown }[]; sealedName?: unknown; locked?: boolean },
   childCount: number,
   marks: SyncMarks = NO_MARKS,
   path: string | null = null,
@@ -211,8 +211,9 @@ export function folderCardOf(
     parentId: f.parentFolderId ?? null,
     noteCount: f.documentCount,
     childCount,
+    childColors: (f.childColors ?? []).slice(0, 2),
     updatedAt: f.updatedAt,
-    previews: (f.previews ?? []).slice(0, 3).map((p) => ({ title: p.title ?? "", excerpt: p.excerpt ?? "", cover: coverOf(p.cover) })),
+    previews: (f.previews ?? []).slice(0, 5).map((p) => ({ title: p.title ?? "", excerpt: p.excerpt ?? "", cover: coverOf(p.cover), createdAt: p.createdAt ?? 0 })),
     encrypted: Boolean(f.sealedName),
     sync: markOf(f.id, marks),
     locked: f.locked === true,

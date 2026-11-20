@@ -213,7 +213,7 @@ export function FoldersIndex() {
         {data && !list.length ? (
           <EmptyState icon={FolderOpen} title={q.trim() ? `No folders match “${q.trim()}”` : "No folders yet"} body={q.trim() ? undefined : "Create one to group related pages."} />
         ) : layout === "grid" ? (
-          <ul {...reorder.listProps} className="relative grid grid-cols-[repeat(auto-fill,minmax(210px,1fr))] gap-x-8 gap-y-10" aria-label="Folders">
+          <ul {...reorder.listProps} className="relative grid grid-cols-[repeat(auto-fill,minmax(var(--folder-card-min),1fr))] gap-x-[var(--card-gap)] gap-y-[var(--card-row-gap)]" aria-label="Folders">
             {reorderedCards(list, reorder).map((f) =>
               typeof f === "string" ? (
                 <ReorderGap key={f} id={f} />

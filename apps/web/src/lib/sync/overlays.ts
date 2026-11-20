@@ -35,7 +35,7 @@ export type FolderIndexData = FunctionReturnType<typeof api.organization.index>;
 
 /** The All folders view's rows with the waiting folder changes of `scope` applied (a new one is empty). */
 export function overlayFolderIndex(data: FolderIndexData, entries: readonly OutboxEntry[], scope: WireScope): FolderIndexData {
-  const folders = overlayFolders(data.folders, entries, scope, (f, at) => ({ ...f, createdAt: at, updatedAt: at, documentCount: 0, previews: [] }));
+  const folders = overlayFolders(data.folders, entries, scope, (f, at) => ({ ...f, createdAt: at, updatedAt: at, documentCount: 0, childCount: 0, childColors: [], previews: [] }));
   return folders === data.folders ? data : { ...data, folders };
 }
 

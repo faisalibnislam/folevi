@@ -77,8 +77,10 @@ const listedIn = (folderId: string) => (d: LocalDocument) => d.folderId === fold
 const shownParent = (f: LocalFolder, live: Set<string>) => (f.parentFolderId && live.has(f.parentFolderId) ? f.parentFolderId : null);
 
 /** One folder of the All folders view / Home (organization.ts folderRow). */
-function folderRow(f: LocalFolder, docs: LocalDocument[], live: Set<string>) {
+function folderRow(f: LocalFolder, docs: LocalDocument[], live: Set<string>, all: LocalFolder[]) {
   const inside = docs.filter(listedIn(f.id));
+  // Direct subfolders, most recently changed first (the card draws up to two behind it), as the server's row.
+  const children = all.filter((c) => shownParent(c, live) === f.id).sort((a, b) => b.updatedAt - a.updatedAt);
   return {
     id: f.id,
     name: f.name,
@@ -88,10 +90,12 @@ function folderRow(f: LocalFolder, docs: LocalDocument[], live: Set<string>) {
     createdAt: f.createdAt,
     updatedAt: Math.max(f.updatedAt, ...inside.map((d) => d.updatedAt)),
     documentCount: inside.length,
+    childCount: children.length,
+    childColors: children.slice(0, 2).map((c) => c.color ?? null),
     previews: [...inside]
       .sort((a, b) => b.updatedAt - a.updatedAt || a.createdAt - b.createdAt || a.ordinal - b.ordinal)
-      .slice(0, 3)
-      .map((d) => ({ cover: d.cover, title: d.title, excerpt: d.excerpt.slice(0, 280) })),
+      .slice(0, 5)
+      .map((d) => ({ cover: d.cover, title: d.title, createdAt: d.createdAt, excerpt: d.excerpt.slice(0, 280) })),
   };
 }
 
@@ -116,7 +120,7 @@ defineLocal(api.organization.index, "query", async (ctx, args) => {
   if (args.only !== "tags") {
     const folders = (await liveFolders(ctx.db)).sort(byCreation);
     const live = new Set(folders.map((f) => f.id));
-    for (const f of folders) folderRows.push(folderRow(f, docs, live));
+    for (const f of folders) folderRows.push(folderRow(f, docs, live, folders));
   }
   const tagRows = [];
   if (args.only !== "folders") {
@@ -143,7 +147,7 @@ defineLocal(api.organization.recentFolders, "query", async (ctx, args) => {
     total: folders.length,
     folders: recent.map((f) => {
       const parent = f.parentFolderId ? byId.get(f.parentFolderId) : undefined;
-      return { ...folderRow(f, docs, live), parentName: parent?.name ?? null };
+      return { ...folderRow(f, docs, live, folders), parentName: parent?.name ?? null };
     }),
   };
 });

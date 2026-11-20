@@ -79,7 +79,7 @@ public struct PhoneAllFoldersScreen: View {
                 LazyVStack(spacing: 0) {
                     ForEach(shown, id: \.id) { f in
                         PhoneListRow(f.name, detail: f.noteCount.map(String.init), action: { open("/folders/\(f.id)") }) {
-                            FolderGlyph(colorId: f.color, size: 22)
+                            FolderGlyph(colorId: f.color, size: 22, kind: f.childCount > 0 ? .stack : (f.noteCount == 0 ? .empty : .notes))
                         }
                     }
                 }

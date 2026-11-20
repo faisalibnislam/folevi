@@ -35,7 +35,7 @@
 export const PROTOCOL_VERSION = 1 as const;
 
 /** Bumps with every added view, command, editor command, event or field. */
-export const CONTRACT_REVISION = 32;
+export const CONTRACT_REVISION = 33;
 
 /** The `WKScriptMessageHandler` name the engine posts to. */
 export const MESSAGE_HANDLER = "foleviEngine";
@@ -548,6 +548,11 @@ export interface FolderPreview {
   title: string;
   excerpt: string;
   cover: CardCover;
+  /**
+   * Revision 33: when the note was created ("Created Nov 3" on the page peeking out of the card); 0 when unknown.
+   * @default 0
+   */
+  createdAt: number;
 }
 
 /** A folder as Home's and a folder screen's folder cards show it. */
@@ -560,8 +565,14 @@ export interface FolderCard {
   noteCount: number;
   /** Direct subfolders. */
   childCount: number;
+  /**
+   * Revision 33: the colours of its two most recently changed direct subfolders (null: the default colour),
+   * drawn as folders stacked behind the card.
+   * @default []
+   */
+  childColors: (string | null)[];
   updatedAt: number;
-  /** Up to three of its most recently edited notes, peeking out of the card. */
+  /** Up to five of its most recently edited notes, peeking out of the card (Revision 33; three before). */
   previews: FolderPreview[];
   encrypted: boolean;
   sync: SyncMark;

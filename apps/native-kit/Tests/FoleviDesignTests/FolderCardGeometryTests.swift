@@ -4,8 +4,8 @@ import UIKit
 import XCTest
 @testable import FoleviDesign
 
-/// The phone's folder card drawn alone at 178 pt: where its front cover starts and ends (the web's: 50% down,
-/// 50% of the card's 820/912 height), read off a column of pixels.
+/// The phone's folder card drawn alone at 178 pt: where its frosted front starts and ends (the web's: 45% down, to
+/// the foot of the square card), read off a column of pixels.
 @MainActor
 final class FolderCardGeometryTests: XCTestCase {
     func testFrontCoverPlacement() throws {
@@ -28,12 +28,12 @@ final class FolderCardGeometryTests: XCTestCase {
             if let q = prev, abs(q.0 - v.0) + abs(q.1 - v.1) + abs(q.2 - v.2) > 30 { edges.append(Double(y) / 3 - 20) }
             prev = v
         }
-        let h = Double(w) * 912 / 820
+        let h = Double(w)
         XCTAssertEqual(Double(img.height) / 3 - 40, h, accuracy: 0.5)
-        // The cover starts at 50% (its 1 pt highlight) and ends with the card (its 1 pt edge).
-        // (The back's edges come first: the cover's top is the edge nearest 50%.)
-        let top = edges.min { abs($0 - h * 0.5) < abs($1 - h * 0.5) } ?? 0
-        XCTAssertEqual(top, h * 0.5, accuracy: 1.5, "cover top, edges \(edges)")
+        // The front starts at 45% (its 1 pt rim) and ends with the card (its rim).
+        // (The back's and the notes' edges come first: the front's top is the edge nearest 45%.)
+        let top = edges.min { abs($0 - h * 0.45) < abs($1 - h * 0.45) } ?? 0
+        XCTAssertEqual(top, h * 0.45, accuracy: 1.5, "front top, edges \(edges)")
         XCTAssertEqual(edges.last ?? 0, h, accuracy: 1, "cover foot, edges \(edges)")
     }
 }

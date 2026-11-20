@@ -689,21 +689,29 @@ public struct WebFolderBadge: View {
 
 // MARK: the folder card
 
+/// The folder card (web views/FolderCardArt.tsx), "Frosted" (the owner, 20 November 2026), on a square card: a back
+/// with a curved tab in the folder's muted colour, 85% opaque; up to five notes inside, drawn as today's note cards
+/// and fanned a little to both sides, standing well above the back; up to two subfolders as whole folders stacked
+/// straight up behind, each a step higher and narrower; and a see-through frosted front over the cards' lower half
+/// (the notes behind it blurred a little) with the name, the counts and the last change. Every size is a share of
+/// the card's width, as the web's `cqw`.
 public struct WebFolderCard: View {
     let model: FolderCardModel
-    /// `--fc-text`: the cover's labels at a bigger card's size (a folder page's 152 pt subfolders).
+    /// `--fc-text`: the front's words at a bigger card's size (a folder page's small subfolders).
     let labelScale: CGFloat
     let hovered: Bool
-    /// The card has a "…" in the front pocket's top-right corner (WebFolderCell): the name stops 8 pt short of it.
+    /// The card has a "…" in the front's top-right corner (WebFolderCell): the name stops short of it.
     let menuRoom: Bool
     @Environment(\.colorScheme) private var scheme
     @Environment(\.webPhoneCards) private var phone
-    /// The native chrome round the card: its count line is set in the system font then (the name keeps Spectral).
+    /// The native chrome round the card: its counts are set in the system font then (the name keeps Spectral).
     @Environment(\.nativeChrome) private var chrome
 
-    public static let aspect: CGFloat = 820.0 / 912.0
-    /// Where the front pocket starts, as a share of the card's height.
-    public static let frontTop: CGFloat = 0.5
+    public static let aspect: CGFloat = 1
+    /// Where the frosted front starts, as a share of the card's height.
+    public static let frontTop: CGFloat = 0.45
+    /// Where the back starts with no subfolders: the notes stand in the space above it.
+    static let backTop: CGFloat = 0.17
 
     public init(_ model: FolderCardModel, labelScale: CGFloat = 1, hovered: Bool = false, menuRoom: Bool = false) {
         self.model = model
@@ -712,13 +720,11 @@ public struct WebFolderCard: View {
         self.menuRoom = menuRoom
     }
 
-    /// How wide the name may be on a card `w` wide: 74% (8% in from the left, 18% from the right), and with a "…" in
-    /// the corner no further right than 8 pt left of it (the chip is 8% in from the right edge; FolderCardArt.tsx
-    /// `max(18%, 8cqw + 40px)`). The same as 74% on cards 400 pt wide or more.
+    /// How wide the name may be on a card `w` wide: the front's width less its 7% sides, and with a "…" in the corner
+    /// short of the 32 pt chip (FolderCardArt.tsx `max(0px, 46px - 7cqw)`).
     static func nameWidth(_ w: CGFloat, menuRoom: Bool) -> CGFloat {
-        guard menuRoom else { return w * 0.74 }
-        let chip = WebStyles.named("notes.card.menu").light.width
-        return max(0, min(w * 0.74, w * 0.84 - chip - 8))
+        let inner = w * 0.86
+        return menuRoom ? max(0, inner - max(0, 46 - w * 0.07)) : inner
     }
 
     public var body: some View {
@@ -738,224 +744,227 @@ public struct WebFolderCard: View {
 
     /// The grey the folder's colour is softened with (FolderCardArt's `tone`: the colour 84% into #9a9fab).
     static let grey = RGBA(154, 159, 171)
-
-    /// The palette colour a little greyed, so a page of folders stays calm (FolderCardArt's `tone`).
     static func tone(_ base: RGBA) -> RGBA { base.oklabMix(grey, 0.84) }
 
-    /// Dark, on every platform: the folder's darker tone with light words on it (globals.css `[data-fc]`, 4.5:1 on
-    /// every colour).
-    private var dark: Bool { scheme == .dark }
-
-    private func drawing(w: CGFloat, h: CGFloat) -> some View {
-        let cq = w / 100
-        let base = FolderColor.resolve(model.colorId).color
-        let tone = Self.tone(base)
-        let white = RGBA(255, 255, 255)
-        // The back, lighter at the top (globals.css `[data-fc="back"]` in dark: the colour into a dark grey).
-        let backColors = dark
-            ? [base.oklabMix(RGBA(44, 46, 53), 0.44), base.oklabMix(RGBA(32, 34, 40), 0.34)]
-            : [tone.oklabMix(white, 0.24), tone.oklabMix(white, 0.38)]
-        let panel = WebCornersShape(topLeft: FoleviTokens.Radius.panel, topRight: FoleviTokens.Radius.panel, bottomRight: FoleviTokens.Radius.panel, bottomLeft: FoleviTokens.Radius.panel)
-        let backLayer = ZStack(alignment: .topLeading) {
-            // The back's soft shadow, cast by a panel from 6% down (the sloped outline below can't cast one).
-            WebShapeBox(shape: panel, fill: nil, shadows: Self.folderBackShadows)
-                .frame(width: w, height: h * 0.94)
-                .offset(y: h * 0.06)
-            FolderBackShape()
-                .fill(LinearGradient(colors: backColors.map(\.color), startPoint: .top, endPoint: .bottom))
-                .frame(width: w, height: h)
-        }
-        .frame(width: w, height: h, alignment: .topLeading)
-        // The back and the papers flattened (their shadows are the costly part), and the whole card again below:
-        // the card's picture is drawn again as it moves while a list scrolls, and these keep that cheap (taking them
-        // out made Home's p95 frame 8 ms to 24 ms).
-        .flattened()
-        let notes = notesLayer(w: w, h: h, cq: cq).flattened()
-        return ZStack(alignment: .topLeading) {
-            backLayer
-            notes
-            front(w: w, h: h * (1 - Self.frontTop), cq: cq, base: base, tone: tone)
-                .offset(y: h * Self.frontTop)
-        }
-        .frame(width: w, height: h, alignment: .topLeading)
-        // The whole card in one picture too: its shadows were blurred again on every frame while Home or Folders
-        // scrolled (2026-10-31: Folders' p95 frame 33 to 19 ms, Home's 30 to 8 ms).
-        .flattened()
-        .offset(y: hovered ? -4 : 0)
-        .animation(.timingCurve(0.2, 0.8, 0.2, 1, duration: 0.2), value: hovered)
-    }
-
-    private func notesLayer(w: CGFloat, h: CGFloat, cq: CGFloat) -> some View {
-        let shown = Array(model.notes.prefix(3))
-        let places: [(x: CGFloat, y: CGFloat, rot: Double, lift: CGFloat)] = [(0.09, 0.08, -4, 0.05), (0.14, 0.10, 3, 0.035), (0.11, 0.125, -1, 0.02)]
-        return ZStack(alignment: .topLeading) {
-            if shown.isEmpty {
-                RoundedRectangle(cornerRadius: FoleviTokens.Radius.chip, style: .circular)
-                    .fill(Color.white.opacity(0.7))
-                    .frame(width: w * 0.76, height: h * 0.6)
-                    .offset(x: w * 0.12, y: h * 0.14)
-            } else {
-                ForEach(Array(shown.enumerated().reversed()), id: \.offset) { i, note in
-                    let p = places[i]
-                    WebFolderNote(note: note, cq: cq, labelScale: 1)
-                        .frame(width: w * 0.78, height: h * 0.7)
-                        .rotationEffect(.degrees(p.rot))
-                        .offset(x: w * p.x, y: h * p.y - (hovered ? h * 0.7 * p.lift : 0))
-                        .animation(.timingCurve(0.2, 0.8, 0.2, 1, duration: 0.3), value: hovered)
-                }
-            }
-        }
-        .frame(width: w, height: h, alignment: .topLeading)
-    }
-
-    /// The back's soft shadow (FolderCardArt's BACK_SHADOW).
-    static let folderBackShadows: [ShadowLayer] = [
-        ShadowLayer(x: 0, y: 4, blur: 8, spread: 0, color: RGBA(20, 20, 30, 0.05)),
-        ShadowLayer(x: 0, y: 1, blur: 2, spread: 0, color: RGBA(20, 20, 30, 0.04)),
-    ]
-
-    /// "2 notes · 1 min ago" (FolderCardArt's count and age; "1 note").
+    /// "2 notes · 1 min ago" (the older count line; the front now says counts and "Edited …" on two lines).
     static func countLine(_ count: Int, age: String) -> String {
         let notes = "\(count.formatted()) \(count == 1 ? "note" : "notes")"
         return age.isEmpty ? notes : "\(notes) · \(age)"
     }
 
-    /// The front pocket over the notes' lower half (FolderCardArt's data-fc="front"), in the folder's colour, lighter
-    /// at the top; the name in the serif and, under it, the count and last update.
-    private func front(w: CGFloat, h frontH: CGFloat, cq: CGFloat, base: RGBA, tone: RGBA) -> some View {
-        let r = FoleviTokens.Radius.panel
-        let shape = WebCornersShape(topLeft: r, topRight: r, bottomRight: r, bottomLeft: r)
-        let white = RGBA(255, 255, 255)
-        let colors = dark
-            ? [base.oklabMix(RGBA(26, 27, 33), 0.5), base.oklabMix(RGBA(18, 19, 24), 0.42)]
-            : [tone.oklabMix(white, 0.58), tone.oklabMix(white, 0.7)]
-        let outer = dark
-            ? [ShadowLayer(x: 0, y: -4, blur: 10, spread: -6, color: RGBA(0, 0, 0, 0.4))]
-            : [ShadowLayer(x: 0, y: -4, blur: 10, spread: -6, color: RGBA(0, 0, 0, 0.18))]
-        let inset = dark
-            ? [ShadowLayer(x: 0, y: 1, blur: 0, spread: 0, color: RGBA(255, 255, 255, 0.1), inset: true), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0.5, color: RGBA(255, 255, 255, 0.08), inset: true)]
-            : [ShadowLayer(x: 0, y: 1, blur: 0, spread: 0, color: RGBA(255, 255, 255, 0.35), inset: true), ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(0, 0, 0, 0.05), inset: true)]
-        let k = labelScale
-        // The name: clamp(16px, 8.4cqw, 34px), 1.15; the phone's at Headline, 17/22 (globals.css).
-        let nameSize = min(34, max(16, 8.4 * cq * k))
-        let nameStyle = phone ? WebTextStyle(family: .display, size: 17, leading: 22, weight: 500) : WebTextStyle(family: .display, size: nameSize, leading: nameSize * 1.15, weight: 500)
-        // The count and age: clamp(12px, 5cqw, 20px), medium, 1.25, figures all one width.
-        let ageSize = min(20, max(12, 5 * cq * k))
-        let ageStyle = WebTextStyle(size: ageSize, leading: ageSize * 1.25, weight: 500).cardInterface(chrome != nil)
-        let ageInk = dark ? base.oklabMix(RGBA(220, 222, 229), 0.22) : base.oklabMix(RGBA(42, 44, 51), 0.14)
+    /// Up to two subfolders stacked behind: where each starts and how far in its sides are, and where the back starts.
+    static func stack(_ subfolders: Int) -> (tops: [CGFloat], insets: [CGFloat], back: CGFloat) {
+        if subfolders >= 2 { return ([0.05, 0.135], [0.08, 0.04], 0.22) }
+        if subfolders == 1 { return ([0.09], [0.045], 0.18) }
+        return ([], [], backTop)
+    }
+
+    /// Each note's tilt (degrees) and sideways step (share of the width), the front note first.
+    static let tilt: [Double] = [-1.6, 3, -3.4, 2.4, -2.6]
+    static let step: [CGFloat] = [0, 0.03, -0.025, 0.02, -0.015]
+    static let rise: [CGFloat] = [0.05, 0.035, 0.025, 0.015, 0.01]
+
+    private var dark: Bool { scheme == .dark }
+
+    private func backColors(_ tone: RGBA, sub: Bool) -> [Color] {
+        let c = dark
+            ? [tone.oklabMix(RGBA(26, 26, 30), sub ? 0.4 : 0.44), tone.oklabMix(RGBA(42, 42, 47), sub ? 0.52 : 0.56)]
+            : [tone.oklabMix(RGBA(44, 44, 58), sub ? 0.8 : 0.84), tone.oklabMix(RGBA(255, 255, 255), sub ? 0.8 : 0.86)]
+        return c.map(\.color)
+    }
+
+    /// The back, the subfolders stacked behind it and the notes standing in it.
+    private func inside(w: CGFloat, h: CGFloat, cq: CGFloat, tone: RGBA) -> some View {
+        let st = Self.stack(model.subfolders)
+        let shown = Array(model.notes.prefix(5))
+        let noteTop: CGFloat = model.subfolders > 0 ? 0.07 : 0.03
+        // The farther subfolder first (drawn first, so it sits behind): the second most recent, then the most recent.
+        let kids: [RGBA] = st.tops.indices.map { i in
+            let j = st.tops.count - 1 - i
+            let id = model.subfolderColorIds.indices.contains(j) ? model.subfolderColorIds[j] : nil
+            return Self.tone(FolderColor.resolve(id ?? model.colorId).color)
+        }
+        let back = FrostBackShape()
         return ZStack(alignment: .topLeading) {
-            WebShapeBox(shape: shape, fill: nil, shadows: outer)
-            shape.fill(LinearGradient(colors: colors.map(\.color), startPoint: .top, endPoint: .bottom))
-            WebShapeBox(shape: shape, fill: nil, shadows: inset)
-            // The words in a box of the pocket's own size: a line taller or wider than its place mustn't grow it.
-            ZStack(alignment: .topLeading) {
-                let nameW = Self.nameWidth(w, menuRoom: menuRoom)
+            ForEach(Array(kids.enumerated()), id: \.offset) { i, kid in
+                back.fill(LinearGradient(colors: backColors(kid, sub: true), startPoint: .topLeading, endPoint: .bottomTrailing))
+                    .opacity(0.85)
+                    .frame(width: w * (1 - 2 * st.insets[i]), height: h * (1 - st.tops[i]))
+                    .offset(x: w * st.insets[i], y: h * st.tops[i])
+            }
+            back.fill(LinearGradient(colors: backColors(tone, sub: false), startPoint: .topLeading, endPoint: .bottomTrailing))
+                .opacity(0.85)
+                .frame(width: w, height: h * (1 - st.back))
+                .offset(y: h * st.back)
+            ForEach(Array(shown.enumerated().reversed()), id: \.offset) { depth, note in
+                let at = noteTop + CGFloat(depth) * 0.014
+                let nh = min(model.subfolders > 0 ? 0.76 : 0.70, 0.95 - at)
+                WebFolderNote(note: note, cq: cq)
+                    .frame(width: w * 0.7, height: h * nh)
+                    .rotationEffect(.degrees(Self.tilt[depth]), anchor: .bottom)
+                    .offset(x: w * (0.15 + Self.step[depth]), y: h * at - (hovered ? h * nh * Self.rise[depth] : 0))
+                    .animation(.timingCurve(0.2, 0.8, 0.2, 1, duration: 0.3), value: hovered)
+            }
+        }
+        .frame(width: w, height: h, alignment: .topLeading)
+    }
+
+    private func drawing(w: CGFloat, h: CGFloat) -> some View {
+        let cq = w / 100
+        let tone = Self.tone(FolderColor.resolve(model.colorId).color)
+        let st = Self.stack(model.subfolders)
+        let frontH = h * (1 - Self.frontTop)
+        let frontShape = RoundedRectangle(cornerRadius: FoleviTokens.Radius.panel, style: .circular)
+        let r = FoleviTokens.Radius.panel
+        let shadow = WebCornersShape(topLeft: r, topRight: r, bottomRight: r, bottomLeft: r)
+        let shadows = dark
+            ? [ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(255, 255, 255, 0.04)), ShadowLayer(x: 0, y: 14, blur: 26, spread: -14, color: RGBA(0, 0, 0, 0.9))]
+            : [ShadowLayer(x: 0, y: 1, blur: 2, spread: 0, color: RGBA(0, 0, 0, 0.06)), ShadowLayer(x: 0, y: 14, blur: 26, spread: -14, color: RGBA(30, 30, 50, 0.42))]
+        return ZStack(alignment: .topLeading) {
+            WebShapeBox(shape: shadow, fill: nil, shadows: shadows)
+                .frame(width: w, height: h * (1 - st.back - 0.04))
+                .offset(y: h * (st.back + 0.04))
+            inside(w: w, h: h, cq: cq, tone: tone).flattened()
+            // The frosted front: what's behind it, blurred a little (3.5 px on the web's 232 px card), under the tint.
+            inside(w: w, h: h, cq: cq, tone: tone)
+                .blur(radius: 3.5 * w / 232, opaque: false)
+                .mask(alignment: .topLeading) {
+                    frontShape.frame(width: w, height: frontH).offset(y: h * Self.frontTop)
+                }
+                .flattened()
+                .allowsHitTesting(false)
+            front(w: w, h: frontH, cq: cq, tone: tone, shape: frontShape)
+                .offset(y: h * Self.frontTop)
+        }
+        .frame(width: w, height: h, alignment: .topLeading)
+        .offset(y: hovered ? -4 : 0)
+        .animation(.timingCurve(0.2, 0.8, 0.2, 1, duration: 0.2), value: hovered)
+    }
+
+    /// The frosted front's tint, light and words (FolderCardArt's data-fc="front").
+    private func front(w: CGFloat, h frontH: CGFloat, cq: CGFloat, tone: RGBA, shape: RoundedRectangle) -> some View {
+        let white = RGBA(255, 255, 255)
+        let f1 = dark ? tone.oklabMix(RGBA(74, 74, 82), 0.52).color.opacity(0.62) : tone.oklabMix(white, 0.5).color.opacity(0.6)
+        let f2 = dark ? tone.oklabMix(RGBA(31, 31, 36), 0.4).color.opacity(0.8) : tone.oklabMix(RGBA(58, 58, 72), 0.92).color.opacity(0.74)
+        let ink = dark ? RGBA(246, 246, 248) : tone.oklabMix(RGBA(27, 27, 31), 0.24)
+        let k = labelScale
+        // The name: clamp(14px, 8cqw, 30px), semibold, 1.15; the phone's at Headline, 17/22 (globals.css).
+        let nameSize = min(30, max(14, 8 * cq * k))
+        let nameStyle = phone ? WebTextStyle(family: .display, size: 17, leading: 22, weight: 600) : WebTextStyle(family: .display, size: nameSize, leading: nameSize * 1.15, weight: 600)
+        let countSize = min(18, max(11, 4.9 * cq * k))
+        let editedSize = min(16, max(10.5, 4.3 * cq * k))
+        let countStyle = WebTextStyle(size: countSize, leading: countSize * 1.3, weight: 500).cardInterface(chrome != nil)
+        let editedStyle = WebTextStyle(size: editedSize, leading: editedSize * 1.3).cardInterface(chrome != nil)
+        let nameW = Self.nameWidth(w, menuRoom: menuRoom && !phone)
+        return ZStack(alignment: .topLeading) {
+            shape.fill(LinearGradient(colors: [f1, f2], startPoint: .top, endPoint: .bottom))
+            shape.fill(RadialGradient(colors: [Color.white.opacity(0.22), .clear], center: .topLeading, startRadius: 0, endRadius: w * 0.9))
+            shape.strokeBorder((dark ? RGBA(255, 255, 255, 0.08) : RGBA(255, 255, 255, 0.275)).color, lineWidth: 1)
+            VStack(alignment: .leading, spacing: 0) {
                 WebClampedText(model.name, style: nameStyle, maxLines: 2, width: nameW)
-                    .foregroundStyle((dark ? RGBA(246, 246, 248) : RGBA(18, 19, 24)).color)
-                    .frame(width: nameW, height: frontH * 0.7, alignment: .bottomLeading)
-                    // (webText's own top guide would otherwise place this box by its text's baseline.)
-                    .alignmentGuide(.top) { _ in 0 }
-                    .offset(x: w * 0.08)
-                Text(Self.countLine(model.count, age: model.ageText))
-                    .webText(ageStyle)
+                Text(model.countText)
+                    .webText(countStyle)
                     .lineLimit(1)
                     .truncationMode(.tail)
                     .monospacedDigit()
-                    .foregroundStyle(ageInk.color)
-                    .frame(width: w * 0.74, height: frontH * 0.87, alignment: .bottomLeading)
-                    .alignmentGuide(.top) { _ in 0 }
-                    .offset(x: w * 0.08)
+                    .opacity(0.9)
+                    .padding(.top, 1 * cq)
+                Spacer(minLength: 0)
+                if !model.editedText.isEmpty {
+                    Text(model.editedText)
+                        .webText(editedStyle)
+                        .lineLimit(1)
+                        .truncationMode(.tail)
+                        .monospacedDigit()
+                        .opacity(0.85)
+                }
             }
-            .frame(width: w, height: frontH, alignment: .topLeading)
-            .clipped()
+            .foregroundStyle(ink.color)
+            .frame(width: w * 0.86, height: max(0, frontH - 12 * cq), alignment: .topLeading)
+            .offset(x: 7 * cq, y: 6.4 * cq)
         }
         .frame(width: w, height: frontH, alignment: .topLeading)
+        .clipShape(shape)
     }
 }
 
-/// The folder's back (FolderCardArt's BACK_PATH): a tab on the left whose shoulder slopes down into the top edge,
-/// one piece with the body, on a 100 by 100 grid stretched to the card.
-struct FolderBackShape: Shape {
+/// The folder's back (FolderCardArt's BACK_PATH): a tab on the left that curves down into the top edge (an S-curve),
+/// one piece with the body, on a 100 by 100 grid stretched to the back. Subfolders behind use the same outline.
+struct FrostBackShape: Shape {
     func path(in rect: CGRect) -> Path {
         let sx = rect.width / 100, sy = rect.height / 100
         func p(_ x: CGFloat, _ y: CGFloat) -> CGPoint { CGPoint(x: rect.minX + x * sx, y: rect.minY + y * sy) }
         var path = Path()
-        path.move(to: p(0, 7))
-        path.addCurve(to: p(6.5, 0), control1: p(0, 2.5), control2: p(2, 0))
-        path.addLine(to: p(31, 0))
-        path.addCurve(to: p(38.5, 3.2), control1: p(35, 0), control2: p(36.5, 1))
-        path.addCurve(to: p(45, 6), control1: p(40.5, 5.4), control2: p(42, 6))
-        path.addLine(to: p(93.5, 6))
-        path.addCurve(to: p(100, 13), control1: p(98, 6), control2: p(100, 8.5))
-        path.addLine(to: p(100, 93))
-        path.addCurve(to: p(93.5, 100), control1: p(100, 97.5), control2: p(98, 100))
-        path.addLine(to: p(6.5, 100))
-        path.addCurve(to: p(0, 93), control1: p(2, 100), control2: p(0, 97.5))
+        path.move(to: p(0, 9.6))
+        path.addQuadCurve(to: p(8, 0), control: p(0, 0))
+        path.addLine(to: p(43.3, 0))
+        path.addCurve(to: p(54, 8), control1: p(50, 0), control2: p(52, 3.2))
+        path.addCurve(to: p(65.3, 16), control1: p(56, 13.2), control2: p(58.7, 16))
+        path.addLine(to: p(92, 16))
+        path.addQuadCurve(to: p(100, 25.6), control: p(100, 16))
+        path.addLine(to: p(100, 90.4))
+        path.addQuadCurve(to: p(92, 100), control: p(100, 100))
+        path.addLine(to: p(8, 100))
+        path.addQuadCurve(to: p(0, 90.4), control: p(0, 100))
         path.closeSubpath()
         return path
     }
 }
 
-/// One note inside a folder card, drawn small (FolderNote): its paper, its theme down the spine, title and text.
+/// One note inside a folder card, drawn as today's note card, small (FolderCardArt's FolderNote): its page colour,
+/// its art down the spine (or a plain note's punched holes), title, created date and opening text.
 struct WebFolderNote: View {
     let note: FolderCardModel.Note
+    /// 1% of the folder card's width (the note's sizes are shares of the card, as the web's `cqw`).
     let cq: CGFloat
-    let labelScale: CGFloat
     @Environment(\.colorScheme) private var scheme
-    @Environment(\.webPhoneCards) private var phone
-
-    /// The paper's lines: WebKit's own once they've come (`text.layout`), the pretty model's until then.
-    @MainActor
-    static func paperLines(_ text: String, style: WebTextStyle, width: CGFloat) -> [String] {
-        let s = WebLineLayout.Style(family: .sans, size: style.size, lineHeight: style.leading, weight: style.weight, letterSpacing: style.letterSpacing, width: width, wrap: .pretty, pre: true)
-        guard let got = WebLineLayout.shared.lines(text, style: s) else { return WebNoteCard.prettyLines(text, style: style, width: width, max: 12) }
-        return got.prefix(12).map { $0.isEmpty ? " " : $0.webKitShaped }
-    }
 
     var body: some View {
-        let style = WebStyles.named("notes.folder.note").resolve(scheme)
         let theme = note.cover.theme
-        let paper = theme?.paper ?? RGBA(255, 255, 255)
-        let ink = theme?.ink ?? RGBA(28, 28, 31)
-        let shape = WebCornersShape(topLeft: style.radius, topRight: style.radius, bottomRight: style.radius, bottomLeft: style.radius)
+        let dark = scheme == .dark
+        let paper = theme?.paper ?? (dark ? RGBA(45, 45, 50) : RGBA(255, 255, 255))
+        let ink = theme?.ink ?? (dark ? RGBA(239, 239, 242) : RGBA(31, 31, 35))
+        let shape = WebCornersShape(topLeft: FoleviTokens.Radius.tiny, topRight: FoleviTokens.Radius.small, bottomRight: FoleviTokens.Radius.small, bottomLeft: FoleviTokens.Radius.tiny)
+        let shadows = [ShadowLayer(x: 0, y: 0, blur: 0, spread: 0.5, color: RGBA(40, 40, 60, 0.16)), ShadowLayer(x: 0, y: cq, blur: 2 * cq, spread: -cq, color: RGBA(0, 0, 0, 0.25))]
         GeometryReader { geo in
             let w = geo.size.width, h = geo.size.height
+            let lead = w * (theme != nil ? 0.134 : 0.126)
+            let textW = max(0, w - lead - w * 0.077)
             ZStack(alignment: .topLeading) {
-                WebShapeBox(shape: shape, fill: paper.color, shadows: style.visibleShadows)
+                WebShapeBox(shape: shape, fill: paper.color, shadows: shadows)
                 ZStack(alignment: .topLeading) {
                     if theme != nil {
-                        CoverFill(note.cover).frame(width: w * 0.07, height: h).clipped()
-                    }
-                    VStack(alignment: .leading, spacing: 0) {
-                        // (iOS WebKit: the iPad's papers balance their titles and break their text the pretty way,
-                        // as the phone's do.)
-                        let ios = phone || WebStyles.isPad
-                        WebClampedText(note.title.isEmpty ? "Untitled" : note.title, style: WebTextStyle(family: .display, size: 5.4 * cq, leading: 5.4 * cq * 1.2, weight: 500), maxLines: 2, width: w * 0.8, balance: WebStyles.isPad && !phone)
-                            .foregroundStyle(ink.color)
-                        let body = WebTextStyle(size: 3.2 * cq, leading: 3.2 * cq * 1.45)
-                        Group {
-                            if ios {
-                                // The phone and the iPad: the paper's whole text box (80% of it), a `<p>` broken the iPhone's
-                                // pretty way; what runs past the paper is clipped.
-                                VStack(alignment: .leading, spacing: 0) {
-                                    ForEach(Array(Self.paperLines(note.excerpt, style: body, width: w * 0.8).enumerated()), id: \.offset) { _, line in
-                                        Text(line).webText(body).lineLimit(1)
-                                    }
-                                }
-                                .frame(width: w * 0.8, alignment: .leading)
-                            } else {
-                                // The paper's text box: 13% in from the spine side, 7% from the other (80%).
-                                Text(WebNoteCard.preLine(note.excerpt))
-                                    .webText(body)
-                                    .frame(width: w * 0.8, alignment: .leading)
+                        CoverFill(note.cover).frame(width: w * 0.06, height: h).clipped()
+                    } else {
+                        // A plain note's punched holes down the spine (today's card's spiral).
+                        VStack(spacing: 0) {
+                            ForEach(0..<8, id: \.self) { i in
+                                if i > 0 { Spacer(minLength: 0) }
+                                Circle().fill(ink.color.opacity(0.8)).frame(width: 1.8 * cq, height: 1.8 * cq)
                             }
                         }
-                        .foregroundStyle(ink.oklabMix(paper, 0.82).color)
-                        .padding(.top, 2 * cq)
+                        .frame(height: h * 0.86)
+                        .offset(x: w * 0.033, y: h * 0.07)
                     }
-                    .frame(width: w * 0.8, alignment: .topLeading)
-                    .padding(.top, h * 0.07)
-                    .offset(x: w * 0.13)
+                    VStack(alignment: .leading, spacing: 0) {
+                        WebClampedText(note.title.isEmpty ? "Untitled" : note.title, style: WebTextStyle(family: .display, size: 5.1 * cq, leading: 5.1 * cq * 1.2, weight: 500), maxLines: 2, width: textW)
+                            .foregroundStyle(ink.color)
+                        if !note.createdText.isEmpty {
+                            Text(note.createdText)
+                                .webText(WebTextStyle(size: 3.2 * cq, leading: 3.2 * cq * 1.3))
+                                .lineLimit(1)
+                                .foregroundStyle(ink.oklabMix(paper, 0.68).color)
+                                .padding(.top, 0.8 * cq)
+                        }
+                        Text(WebNoteCard.preLine(note.excerpt))
+                            .webText(WebTextStyle(size: 2.9 * cq, leading: 4.2 * cq))
+                            .foregroundStyle(ink.oklabMix(paper, 0.72).color)
+                            .frame(width: textW, alignment: .leading)
+                            .padding(.top, 2.6 * cq)
+                    }
+                    .frame(width: textW, alignment: .topLeading)
+                    .padding(.top, w * 0.077)
+                    .offset(x: lead)
                     .frame(width: w, height: h, alignment: .topLeading)
                     .clipped()
                 }

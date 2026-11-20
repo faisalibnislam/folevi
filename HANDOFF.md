@@ -248,7 +248,7 @@ The ones most likely to be broken:
 
 ## 9. Current state (as of 2026-11-19)
 - 1.5.54 is live: the website (Vercel success on b4add9c6), Folevi for Mac (appcast 1.5.54, DMG), iPhone and iPad on TestFlight (build 69); tag `v1.5.54`. Pull request 41 shows merged.
-- Branches archived 2026-11-19 (the owner's ask): every merged or old branch is an `archive/<name>` tag on GitHub (27 tags; `git checkout -b <name> archive/<name>` brings one back), then deleted locally and on GitHub. GitHub keeps `main` and Dependabot's. On this Mac: `chrome-extension` and `pricing-decisions` (not on GitHub yet), and the branches still checked out in worktrees under `.claude/worktrees/` (most merged; removing a worktree frees its branch).
+- Branches archived 2026-11-19 (the owner's ask): every merged or old branch is an `archive/<name>` tag on GitHub (27 tags; `git checkout -b <name> archive/<name>` brings one back), then deleted locally and on GitHub. GitHub keeps `main`, Dependabot's, and `chrome-extension` and `pricing-decisions` (backed up 2026-11-20 at the owner's word). On this Mac also the branches still checked out in worktrees under `.claude/worktrees/` (most merged; removing a worktree frees its branch).
 - Release 1.5.54 (2026-11-19, the owner's "release everything"): `main` takes `ipad-polish` (iPad fixes; New note as a black pill in the Mac and iPad title bars, gone from the sidebar; the iPad account in the title bar's corner; iPhone sync status on Home), pull request 41's end-to-end and app fixes (`claude/reverent-leakey-c9bd25`), the iPhone Duo follow-ups (`claude/iphone-duo-18adb4`, the Duo work is otherwise paused) and `editor/rock-solid`'s last note, merged on `release-1.5.54`. Left out: `chrome-extension` (paused), `pricing-decisions` (the owner's decisions pending), October's old branches and Dependabot's.
 
 Released and known (from the release session, 1.5.53):
@@ -379,6 +379,7 @@ the e2e suite was not re-run after the Foli AI panel change; the dev backend lac
   `DATABASE_UDF_USER_TIMEOUT_SECONDS=4` for that backend. Bursts show in `convex.log` as "took a long time".
 
 ## 12. Change log
+- 2026-11-20: Pushed `chrome-extension` and `pricing-decisions` to GitHub as a backup.
 - 2026-11-19: Archived the merged and old branches as `archive/*` tags.
 - 2026-11-19: Released 1.5.54 (web, Mac, iPhone and iPad).
 

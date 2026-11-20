@@ -69,10 +69,16 @@ private struct NoteBar: ViewModifier {
     @Environment(\.phoneSideBars) private var side
     @Environment(\.phoneWideWindow) private var wide
 
+    /// iOS 26's toolbars (Liquid Glass) for a note on every iPhone.
+    static var systemBarsEverywhere: Bool {
+        if #available(iOS 26, *) { true } else { false }
+    }
+
     func body(content: Content) -> some View {
-        // iOS's bars where they sit at the side, and on the open inner screen upright too (the note beside its list,
-        // its tools in iOS's bottom bar, laid out with the tab bar rather than floating over it).
-        if side || wide {
+        // iOS's bars on every iPhone since iOS 26 (the owner, 2026-11-20: the note's own bars slid in with the page
+        // while the tab bar snapped away; iOS's bars stay put and iOS moves between the tab bar and them itself):
+        // at the side where iOS puts them there (iPhone Duo), the tools in its bottom bar elsewhere.
+        if side || wide || Self.systemBarsEverywhere {
             content
                 .environment(\.phoneSystemNoteBars, true)
                 .toolbar(.visible, for: .navigationBar)

@@ -1,6 +1,19 @@
 {
   "releases": [
     {
+      "version": "1.5.58",
+      "build": 73,
+      "released": "2026-11-20T17:43:36+06:00",
+      "type": "patch",
+      "summary": "Folders get a new look: frosted fronts with the notes inside, subfolders stacked behind, and smaller cards on the web and the Mac.",
+      "improved": [
+        "Folder cards on the web, Mac, iPad and iPhone: up to five notes inside drawn as note cards, up to two subfolders stacked behind, and a see-through front with the name, counts and last change.",
+        "Folder and note cards are 25% smaller on the web and the Mac, so more fit in a row.",
+        "The folder icon in the sidebar shows a page inside, or a stack when the folder has subfolders."
+      ],
+      "tag": "v1.5.58"
+    },
+    {
       "version": "1.5.57",
       "build": 72,
       "released": "2026-11-20T11:04:41+06:00",

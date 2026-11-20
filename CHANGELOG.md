@@ -4,6 +4,18 @@ Every Folevi release, newest first, written by `node scripts/version.mjs` from `
 
 Versions are MAJOR.UPDATE.PATCH, PATCH at least two digits: a Major release (2.0.00), a Big update (1.1.05 after 1.0.05) or a Small update (1.0.06 after 1.0.05).
 
+## Version 1.5.58: Small update
+
+Released 2026-11-20 17:43:36+06:00 (build 73, tag v1.5.58)
+
+Folders get a new look: frosted fronts with the notes inside, subfolders stacked behind, and smaller cards on the web and the Mac.
+
+### Improved
+
+- Folder cards on the web, Mac, iPad and iPhone: up to five notes inside drawn as note cards, up to two subfolders stacked behind, and a see-through front with the name, counts and last change.
+- Folder and note cards are 25% smaller on the web and the Mac, so more fit in a row.
+- The folder icon in the sidebar shows a page inside, or a stack when the folder has subfolders.
+
 ## Version 1.5.57: Small update
 
 Released 2026-11-20 11:04:41+06:00 (build 72, tag v1.5.57)

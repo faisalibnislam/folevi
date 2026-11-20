@@ -2,7 +2,7 @@
 
 > Read this first if you are a Claude (or any agent) picking this project up, on this Mac or another one. Then read `CLAUDE.md`, `docs/HANDOFF.md` (the long handoff: unfinished branches, release detail, what the owner is waiting on) and `docs/claude-context/memory/MEMORY.md` (the owner's standing rules). Keep this file current: after every change to the project, update "Current state", "Next steps" and "Change log", and commit it.
 
-Last updated: 2026-11-19 · Written on: Faisal's MacBook Pro M5
+Last updated: 2026-11-20 · Written on: Faisal's MacBook Pro M5
 
 ## 1. What this is
 
@@ -246,7 +246,8 @@ The ones most likely to be broken:
 - Snapshot tests: re-record only your own snapshots; never clear `__Snapshots__` wholesale.
 - Give before/after screenshots for UI work and ask the owner with clear options when a decision is theirs.
 
-## 9. Current state (as of 2026-11-19)
+## 9. Current state (as of 2026-11-20)
+- Release 1.5.58 (2026-11-20): PR 42, the Frosted folder cards, 25% smaller desktop and Mac cards and the new folder glyph, on top of 1.5.57.
 - Branch `design/frosted-folders` (worktree `.claude/worktrees/frosted-folders`, from `origin/main` 1.5.57; not merged, not released): the owner's "Frosted" folder cards on web, Mac, iPad and iPhone (`FolderCardArt.tsx`, `WebFolderCard` in `WebNoteCard.swift`): square card, curved-tab back at 85%, up to five notes in today's note style fanned both ways, up to two subfolders stacked behind, a see-through frosted front with name, counts and "Edited …", the app's "…" chip on hover. Folders now carry `childCount`, `childColors` and five previews with `createdAt` (Convex `organization.ts`, local mode, engine contract revision 33). Folder and note cards are 25% smaller on desktop web and the Mac (`lib/cardSize.ts`, globals.css `--folder-card-min` etc., `MacCards` in `WebNoteScreens.swift`); the iPad and iPhone keep their sizes. The folder glyph is the card in miniature (a stack with subfolders). Dev page `/dev/folder-states`. Pull request 42 (https://github.com/faisalibnislam/folevi/pull/42). Web unit, Convex, Mac Swift (but the known TabPreviewStateTests failure) and iOS FoleviScreens/FoleviDesign tests pass locally; the first CI run failed 3 e2e shards (axe contrast on the small Created date inside folder cards; iphone-long-press expects the name's parent to be data-fc="front"), both fixed in c90eb7e1 and CI rerunning. The owner approved releasing it as 1.5.58 once CI is green. Design artifacts: "Folevi folder states" and "Folevi note and folder card ideas".
 - Release 1.5.57 (2026-11-20): `catch-up-redesign` (Quick add polish, Catch me up page, iPhone sync details, Foli AI composer card, sheet button spacing, Home count badges, the Offline & sync fix and the settings names) on top of 1.5.56.
 - Settings names (on `catch-up-redesign`, committed 2ff83e74, not released): "This device" (it only held the Face ID / passcode lock) is now "App lock" with a lock icon, listed after Security, on iPhone, iPad and Mac; "Devices" is "Signed-in devices"; Privacy has an eye-off icon; a local library no longer lists a second App lock (its Library page has one); Offline & sync's card on Mac and iPad is "This Mac" / "This iPad".
@@ -392,7 +393,8 @@ the e2e suite was not re-run after the Foli AI panel change; the dev backend lac
 
 ## 12. Change log
 - 2026-11-20: Frosted folder cards, 25% smaller desktop cards and the new folder glyph built on `design/frosted-folders` (not released).
-- 2026-11-20: PR 42 e2e fixes (Created date contrast, the folder name back directly in the front); CI rerunning.
+- 2026-11-20: PR 42 e2e fixes (Created date contrast, the folder name back directly in the front); CI green.
+- 2026-11-20: Released 1.5.58 (PR 42 merged).
 - 2026-11-20: Released 1.5.57.
 - 2026-11-20: Settings sections renamed and reordered (App lock, Signed-in devices).
 - 2026-11-20: Offline & sync readings fixed on iPhone, iPad and Mac (whole numbers from the engine); Download gives feedback.

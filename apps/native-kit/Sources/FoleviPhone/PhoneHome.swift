@@ -264,10 +264,15 @@ struct PhoneHomeTile: View {
                     WebIconView(icon, size: 22).foregroundStyle(ink(FoleviTokens.Chrome.inkMuted)).frame(width: 24, height: 24)
                     Spacer(minLength: 0)
                     if let count {
-                        Text(String(count))
-                            .webText(WebTextStyle(size: WebTypeRole.title3.metrics.size, leading: 24, weight: 600))
+                        // A quiet count badge, as Mail's and Files' (the owner, 2026-11-20: the big dark number
+                        // looked out of place): the muted ink, a touch of weight, in a soft capsule.
+                        Text(count > 999 ? "999+" : String(count))
+                            .webText(WebTextStyle(size: WebTypeRole.subheadline.metrics.size, leading: 18, weight: 500))
                             .monospacedDigit()
-                            .foregroundStyle(ink(FoleviTokens.Chrome.heading))
+                            .foregroundStyle(ink(FoleviTokens.Chrome.inkMuted))
+                            .padding(.horizontal, 8)
+                            .frame(minWidth: 26, minHeight: 22)
+                            .background(Capsule().fill(ink(FoleviTokens.Chrome.ink).opacity(scheme == .dark ? 0.12 : 0.07)))
                     }
                 }
                 Text(title)

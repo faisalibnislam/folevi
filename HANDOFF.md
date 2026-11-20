@@ -385,6 +385,7 @@ the e2e suite was not re-run after the Foli AI panel change; the dev backend lac
   `DATABASE_UDF_USER_TIMEOUT_SECONDS=4` for that backend. Bursts show in `convex.log` as "took a long time".
 
 ## 12. Change log
+- 2026-11-20: iPhone Home tile counts as quiet badges (branch `catch-up-redesign`).
 - 2026-11-20: iPhone sheet bars keep 8 pt between round buttons (branch `catch-up-redesign`).
 - 2026-11-20: iPhone Foli AI composer on its own card (branch `catch-up-redesign`).
 - 2026-11-20: iPhone sync details sheet redesigned (branch `catch-up-redesign`).

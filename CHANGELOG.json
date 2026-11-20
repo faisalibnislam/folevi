@@ -1,6 +1,18 @@
 {
   "releases": [
     {
+      "version": "1.5.55",
+      "build": 70,
+      "released": "2026-11-20T08:01:46+06:00",
+      "type": "patch",
+      "summary": "On iPhone, a note now uses iOS's own bars, so moving between your lists and a note feels smooth.",
+      "improved": [
+        "iPhone: opening or closing a note turns the tab bar into the note's toolbar in place, instead of the note's buttons sliding in and out with the page",
+        "iPhone: a note's Back, place, Share and menu sit in iOS's own top bar, and its tools in iOS's own bottom bar"
+      ],
+      "tag": "v1.5.55"
+    },
+    {
       "version": "1.5.54",
       "build": 69,
       "released": "2026-11-19T22:59:23+06:00",

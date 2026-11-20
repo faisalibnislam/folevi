@@ -4,6 +4,17 @@ Every Folevi release, newest first, written by `node scripts/version.mjs` from `
 
 Versions are MAJOR.UPDATE.PATCH, PATCH at least two digits: a Major release (2.0.00), a Big update (1.1.05 after 1.0.05) or a Small update (1.0.06 after 1.0.05).
 
+## Version 1.5.55: Small update
+
+Released 2026-11-20 08:01:46+06:00 (build 70, tag v1.5.55)
+
+On iPhone, a note now uses iOS's own bars, so moving between your lists and a note feels smooth.
+
+### Improved
+
+- iPhone: opening or closing a note turns the tab bar into the note's toolbar in place, instead of the note's buttons sliding in and out with the page
+- iPhone: a note's Back, place, Share and menu sit in iOS's own top bar, and its tools in iOS's own bottom bar
+
 ## Version 1.5.54: Small update
 
 Released 2026-11-19 22:59:23+06:00 (build 69, tag v1.5.54)

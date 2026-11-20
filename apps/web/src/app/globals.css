@@ -1139,7 +1139,7 @@
 /* Card sizes in the grids (lib/cardSize.ts has the same for Home): on the web and the Mac folder and note cards are
    25% smaller than they were, so more fit in a row (the owner, 20 November 2026); the iPad and the iPhone keep the
    full size. */
-:root { --folder-card-min: 158px; --note-card-min: 172px; --subfolder-card: 114px; --card-gap: 24px; --card-row-gap: 30px; --subfolder-gap-x: 18px; --subfolder-gap-y: 24px; }
+:root { --folder-card-min: 158px; --note-card-min: 172px; --subfolder-card: 114px; --card-gap: 24px; --card-row-gap: 28px; --subfolder-gap-x: 16px; --subfolder-gap-y: 24px; }
 :root:is([data-ipad], [data-iphone]) { --folder-card-min: 210px; --note-card-min: 230px; --subfolder-card: 152px; --card-gap: 32px; --card-row-gap: 40px; --subfolder-gap-x: 24px; --subfolder-gap-y: 32px; }
 /* Folder cards (FolderCardArt.tsx), "Frosted" (the owner, 20 November 2026): the back and the subfolders stacked
    behind in the folder's muted colour, a little darker at the top-left; a see-through frosted front (a light blur,

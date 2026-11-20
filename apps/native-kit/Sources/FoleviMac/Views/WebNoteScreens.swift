@@ -228,14 +228,13 @@ struct WebFolderCell: View {
                 }
             }
             if selected { WebSelectedCheck().offset(x: -8, y: -8) }
-            // The "…" in the front pocket's top-right corner (the pocket starts halfway down the card), in from its top
-            // and right edges by the name's left margin, 8% of the card's width (FolderCardArt.tsx FOLDER_CARD_MENU;
-            // the owner, 16 November 2026). It rises with the card on hover.
+            // The "…" in the frosted front's top-right corner, 8 pt in from its top and right edges, as a note card's
+            // (FolderCardArt.tsx FOLDER_CARD_MENU; the owner, 20 November 2026). It rises with the card on hover.
             GeometryReader { geo in
-                let inset = geo.size.width * 0.08
+                let inset: CGFloat = 8
                 let half = WebCardMenuButton.size / 2
                 WebCardMenuButton(label: "Folder options for \(card.name)", entries: menu)
-                    .position(x: geo.size.width - inset - half, y: geo.size.height * 0.5 + inset + half + (hovered ? -4 : 0))
+                    .position(x: geo.size.width - inset - half, y: geo.size.height * WebFolderCard.frontTop + inset + half + (hovered ? -4 : 0))
                     .opacity(hovered || TouchReveal.always ? 1 : 0)
                     .allowsHitTesting(hovered || TouchReveal.always)
             }
@@ -875,8 +874,8 @@ struct WebHomeScreen: View {
     /// Recent folders (organization.recentFolders): every folder, the most recently changed first, two whole
     /// rows at the width there is; nested ones say where they are.
     private func foldersSection(width: CGFloat) -> some View {
-        let gap: CGFloat = 32
-        let cols = max(1, Int((width + gap) / (210 + gap)))
+        let gap = MacCards.g(32)
+        let cols = max(1, Int((width + gap) / (MacCards.s(210) + gap)))
         let all = allFolders.value?.folders ?? home.folders
         let recent = all.sorted { $0.updatedAt != $1.updatedAt ? $0.updatedAt > $1.updatedAt : $0.createdAt < $1.createdAt }
         let shown = Array(recent.prefix(cols * 2))
@@ -885,7 +884,7 @@ struct WebHomeScreen: View {
             if (allFolders.value != nil || home.value != nil) && all.isEmpty {
                 WebEmptyState(icon: nil, title: "No folders yet", message: "Create one from the sidebar to group related notes.", page: false)
             } else {
-                LazyVGrid(columns: Array(repeating: GridItem(.fixed(colW), spacing: gap, alignment: .top), count: cols), alignment: .leading, spacing: 40) {
+                LazyVGrid(columns: Array(repeating: GridItem(.fixed(colW), spacing: gap, alignment: .top), count: cols), alignment: .leading, spacing: MacCards.g(40)) {
                     ForEach(shown, id: \.id) { f in
                         let model = CardMapping.folderCard(f, parentName: f.path)
                         WebFolderCell(card: model, menu: {
@@ -919,8 +918,8 @@ struct WebNoteCarousel: View {
     @State private var position = ScrollPosition(edge: .leading)
     @Environment(\.colorScheme) private var scheme
 
-    static let cardWidth: CGFloat = 250
-    static let gap: CGFloat = 32
+    static let cardWidth: CGFloat = MacCards.s(250)
+    static let gap: CGFloat = MacCards.g(32)
 
     final class Offset { var x: CGFloat = 0 }
     struct Ends: Equatable { var start: Bool; var end: Bool }
@@ -1379,7 +1378,7 @@ struct WebNoteBrowser: View {
         // A section of its own, under a small heading as Built-in templates has.
         return VStack(alignment: .leading, spacing: 0) {
             caps("Folders").accessibilityAddTraits(.isHeader)
-            LazyVGrid(columns: [GridItem(.adaptive(minimum: 152, maximum: 152), spacing: grid.gap, alignment: .top)], alignment: .leading, spacing: 32) {
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: MacCards.s(152), maximum: MacCards.s(152)), spacing: MacCards.g(grid.gap), alignment: .top)], alignment: .leading, spacing: MacCards.g(32)) {
                 ForEach(model.subfolders, id: \.id) { card in
                     WebFolderCell(card: card, labelScale: 234.0 / 152.0, menu: menu(for: card.id) {
                         guard let f = model.menuFolder(card.id) else { return [] }
@@ -1390,7 +1389,7 @@ struct WebNoteBrowser: View {
                        select: model.selectable ? { range in model.select(card.id, range: range) } : nil,
                        selectionDrag: model.selectionDragItem(forFolder: card.id))
                     .onMiddleClick { frame.openInBackground(.folder(card.id), title: card.name) }
-                    .frame(width: 152)
+                    .frame(width: MacCards.s(152))
                 }
             }
         }
@@ -1489,13 +1488,15 @@ struct WebNoteBrowser: View {
     // MARK: grid
 
     private func gridLayout(width: CGFloat) -> some View {
-        let gap: CGFloat = 32
+        let gap = MacCards.g(32)
         let compact = layout == .compact
         let viewport = width + 64 + 272
-        let cols: Int = compact ? (viewport >= 1280 ? 5 : viewport >= 1024 ? 4 : viewport >= 640 ? 3 : 2) : max(1, Int((width + gap) / (230 + gap)))
+        // (Compact: the web's 2/3/4/5 columns, or 3/4/5/7 where cards are 25% smaller.)
+        let compactCols = MacCards.scale < 1 ? (viewport >= 1280 ? 7 : viewport >= 1024 ? 5 : viewport >= 640 ? 4 : 3) : (viewport >= 1280 ? 5 : viewport >= 1024 ? 4 : viewport >= 640 ? 3 : 2)
+        let cols: Int = compact ? compactCols : max(1, Int((width + gap) / (MacCards.s(230) + gap)))
         let colW = (width - gap * CGFloat(cols - 1)) / CGFloat(cols)
         let count = model.isFiltering ? model.slots.count : model.total
-        return LazyVGrid(columns: Array(repeating: GridItem(.fixed(colW), spacing: gap, alignment: .top), count: cols), alignment: .leading, spacing: 40) {
+        return LazyVGrid(columns: Array(repeating: GridItem(.fixed(colW), spacing: gap, alignment: .top), count: cols), alignment: .leading, spacing: MacCards.g(40)) {
             ForEach(0..<count, id: \.self) { i in
                 let slot = model.isFiltering ? model.slots[i] : model.slot(at: i)
                 Group {
@@ -1919,7 +1920,7 @@ struct WebFoldersIndex: View {
                     folderList(shown)
                         .transition(.opacity)
                 } else {
-                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 210), spacing: 32, alignment: .top)], alignment: .leading, spacing: 40) {
+                    LazyVGrid(columns: [GridItem(.adaptive(minimum: MacCards.s(210)), spacing: MacCards.g(32), alignment: .top)], alignment: .leading, spacing: MacCards.g(40)) {
                         ForEach(Array(cells(shown).enumerated()), id: \.element?.id) { _, cell in
                             if let f = cell {
                                 VStack(alignment: .leading, spacing: 8) {
@@ -2653,3 +2654,14 @@ struct WebCatchUpCard: View {
     }
 }
 #endif
+
+/// Card sizes on the Mac: folder and note cards are 25% smaller than the web's old sizes, so more fit in a row (the
+/// owner, 20 November 2026; web lib/cardSize.ts and globals.css --folder-card-min and friends). The iPad, which
+/// shares these screens, keeps the full size.
+enum MacCards {
+    static var scale: CGFloat { WebStyles.isPad ? 1 : 0.75 }
+    /// A card size, scaled.
+    static func s(_ v: CGFloat) -> CGFloat { (v * scale).rounded() }
+    /// A gap, scaled down to the 4 pt grid (32 to 24, 40 to 28, 24 to 16).
+    static func g(_ v: CGFloat) -> CGFloat { (v * scale / 4).rounded(.down) * 4 }
+}

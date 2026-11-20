@@ -89,7 +89,7 @@ function FolderNote({ note, depth, top }: { note: FolderPreview; depth: number; 
     <div
       aria-hidden
       data-fc="note"
-      className={`absolute w-[70%] origin-bottom overflow-hidden rounded-l-[1cqw] rounded-r-[2.4cqw] shadow-[0_0_0_0.5px_rgb(40_40_60/0.16),0_1cqw_2cqw_-1cqw_rgb(0_0_0/0.25)] transition-transform duration-300 ease-[var(--ease-folio)] ${rise}`}
+      className={`absolute w-[70%] origin-bottom overflow-hidden rounded-l-tiny rounded-r-small shadow-[0_0_0_0.5px_rgb(40_40_60/0.16),0_1cqw_2cqw_-1cqw_rgb(0_0_0/0.25)] transition-transform duration-300 ease-[var(--ease-folio)] ${rise}`}
       style={{ left: `${15 + STEP[depth]!}%`, top: `${at}%`, height: `${Math.min(top > 3 ? 76 : 70, 95 - at)}%`, rotate: `${TILT[depth]}deg`, background: paper }}
     >
       {art ? (
@@ -97,7 +97,7 @@ function FolderNote({ note, depth, top }: { note: FolderPreview; depth: number; 
       ) : (
         <div className="absolute inset-y-[7%] left-[3.3%] flex flex-col justify-between">
           {Array.from({ length: 8 }, (_, i) => (
-            <span key={i} className="block size-[1.8cqw] rounded-full" style={{ background: `color-mix(in oklab, ${ink} 80%, transparent)` }} />
+            <span key={i} className="block size-[1.8cqw]" style={{ background: `radial-gradient(circle closest-side, color-mix(in oklab, ${ink} 80%, transparent) 92%, transparent)` }} />
           ))}
         </div>
       )}
@@ -163,7 +163,7 @@ export function FolderCardArt({
   return (
     <div aria-hidden className="absolute inset-0" style={{ ["--fc" as string]: base, ["--fc-tone" as string]: tone }}>
       {/* the folder's soft shadow, under its back */}
-      <div className="absolute inset-x-0 bottom-0 rounded-[7cqw] shadow-[0_1px_2px_rgb(0_0_0/0.06),0_14px_26px_-14px_rgb(30_30_50/0.42)]" data-fc="shadow" style={{ top: `${stack.back + 4}%` }} />
+      <div className="absolute inset-x-0 bottom-0 rounded-panel shadow-[0_1px_2px_rgb(0_0_0/0.06),0_14px_26px_-14px_rgb(30_30_50/0.42)]" data-fc="shadow" style={{ top: `${stack.back + 4}%` }} />
       {/* subfolders, stacked behind */}
       {kids.map((hex, i) => (
         <div
@@ -180,7 +180,7 @@ export function FolderCardArt({
         <FolderNote key={i} note={p} depth={shown.length - 1 - i} top={noteTop} />
       ))}
       {/* the frosted front, with the name, the counts and the last change */}
-      <div data-fc="front" className="absolute inset-x-0 bottom-0 overflow-hidden rounded-[6.4cqw]" style={{ top: `${FOLDER_FRONT_TOP}%` }}>
+      <div data-fc="front" className="absolute inset-x-0 bottom-0 overflow-hidden rounded-panel" style={{ top: `${FOLDER_FRONT_TOP}%` }}>
         <span aria-hidden className="pointer-events-none absolute inset-0 opacity-[0.14] mix-blend-soft-light" style={{ backgroundImage: GRAIN }} />
         <div className="absolute inset-0 flex flex-col px-[7cqw] pb-[5.6cqw] pt-[6.4cqw]">
           <span data-fc="name" className={`${menuRoom ? "pr-[max(0px,calc(46px-7cqw))]" : ""} line-clamp-2 text-ellipsis wrap-normal break-normal font-serif text-[clamp(14px,calc(8cqw*var(--fc-text,1)),30px)] font-semibold leading-[1.15]`}>

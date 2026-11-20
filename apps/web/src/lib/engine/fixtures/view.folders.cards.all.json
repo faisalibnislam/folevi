@@ -14,6 +14,10 @@
         "parentId": null,
         "noteCount": 12,
         "childCount": 1,
+        "childColors": [
+          null,
+          "plum"
+        ],
         "updatedAt": 1792832400000,
         "previews": [
           {
@@ -22,14 +26,16 @@
             "cover": {
               "kind": "theme",
               "value": "art-03"
-            }
+            },
+            "createdAt": 1792573200000
           },
           {
             "title": "Q4 planning",
             "excerpt": "Q4 planning. First lines of the note.",
             "cover": {
               "kind": "none"
-            }
+            },
+            "createdAt": 1792573200000
           },
           {
             "title": "Reading list",
@@ -37,7 +43,8 @@
             "cover": {
               "kind": "theme",
               "value": "art-27"
-            }
+            },
+            "createdAt": 1792573200000
           }
         ],
         "encrypted": false,
@@ -53,6 +60,7 @@
         "parentId": "fld_trips",
         "noteCount": 5,
         "childCount": 0,
+        "childColors": [],
         "updatedAt": 1792746000000,
         "previews": [
           {
@@ -60,7 +68,8 @@
             "excerpt": "Sourdough notes. First lines of the note.",
             "cover": {
               "kind": "none"
-            }
+            },
+            "createdAt": 1792486800000
           },
           {
             "title": "Interview loop",
@@ -68,14 +77,16 @@
             "cover": {
               "kind": "theme",
               "value": "art-55"
-            }
+            },
+            "createdAt": 1792486800000
           },
           {
             "title": "Garden plan",
             "excerpt": "Garden plan. First lines of the note.",
             "cover": {
               "kind": "none"
-            }
+            },
+            "createdAt": 1792486800000
           }
         ],
         "encrypted": false,
@@ -91,6 +102,7 @@
         "parentId": null,
         "noteCount": 31,
         "childCount": 0,
+        "childColors": [],
         "updatedAt": 1792659600000,
         "previews": [
           {
@@ -99,14 +111,16 @@
             "cover": {
               "kind": "theme",
               "value": "art-12"
-            }
+            },
+            "createdAt": 1792400400000
           },
           {
             "title": "Book club: The Overstory",
             "excerpt": "Book club: The Overstory. First lines of the note.",
             "cover": {
               "kind": "none"
-            }
+            },
+            "createdAt": 1792400400000
           },
           {
             "title": "Note 9",
@@ -114,7 +128,8 @@
             "cover": {
               "kind": "theme",
               "value": "art-41"
-            }
+            },
+            "createdAt": 1792400400000
           }
         ],
         "encrypted": false,

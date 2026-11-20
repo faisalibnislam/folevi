@@ -12,5 +12,5 @@ export function useCardSizes() {
   const ipad = useIpadLayout();
   const phone = useIphoneApp();
   const s = ipad || phone ? 1 : DESKTOP_CARD_SCALE;
-  return { scale: s, noteCard: Math.round(250 * s), folderMin: Math.round(210 * s), gap: Math.round(32 * s), rowGap: Math.round(40 * s) };
+  return { scale: s, noteCard: Math.round(250 * s), folderMin: Math.round(210 * s), gap: Math.floor((32 * s) / 4) * 4, rowGap: Math.floor((40 * s) / 4) * 4 };
 }

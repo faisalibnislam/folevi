@@ -320,6 +320,10 @@
         "parentId": null,
         "noteCount": 12,
         "childCount": 2,
+        "childColors": [
+          null,
+          "plum"
+        ],
         "updatedAt": 1792832400000,
         "previews": [
           {
@@ -328,14 +332,16 @@
             "cover": {
               "kind": "theme",
               "value": "art-03"
-            }
+            },
+            "createdAt": 1792573200000
           },
           {
             "title": "Q4 planning",
             "excerpt": "Q4 planning. First lines of the note.",
             "cover": {
               "kind": "none"
-            }
+            },
+            "createdAt": 1792573200000
           },
           {
             "title": "Reading list",
@@ -343,7 +349,8 @@
             "cover": {
               "kind": "theme",
               "value": "art-27"
-            }
+            },
+            "createdAt": 1792573200000
           }
         ],
         "encrypted": false,

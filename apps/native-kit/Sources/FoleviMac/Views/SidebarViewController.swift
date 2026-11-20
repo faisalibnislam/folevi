@@ -602,13 +602,13 @@ final class SidebarCell: NSTableCellView {
         if node.kind == .folder {
             icon.image = nil
             if glyph == nil {
-                let g = NSHostingView(rootView: FolderGlyph(colorId: node.colorId, size: 15))
+                let g = NSHostingView(rootView: FolderGlyph(colorId: node.colorId, size: 15, kind: node.children.isEmpty ? .notes : .stack))
                 g.translatesAutoresizingMaskIntoConstraints = false
                 addSubview(g)
                 NSLayoutConstraint.activate([g.centerXAnchor.constraint(equalTo: icon.centerXAnchor), g.centerYAnchor.constraint(equalTo: centerYAnchor)])
                 glyph = g
             } else {
-                glyph?.rootView = FolderGlyph(colorId: node.colorId, size: 15)
+                glyph?.rootView = FolderGlyph(colorId: node.colorId, size: 15, kind: node.children.isEmpty ? .notes : .stack)
             }
             glyph?.isHidden = false
         } else {

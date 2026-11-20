@@ -5,7 +5,7 @@ import { FOLDER_CARD_BOX, FOLDER_CARD_FRAME, FOLDER_CARD_MENU, FolderCardArt, ty
 import { FolderMenu } from "@/components/app/FolderMenu";
 import { AppLink } from "@/lib/app/router";
 import { useFolderTabClicks } from "@/lib/app/tabs";
-import { ageText, formatRelative } from "@/lib/format";
+import { formatRelative } from "@/lib/format";
 import { useAppState } from "@/lib/app/state";
 import { useDropHint } from "@/lib/app/dragSession";
 import { endFolderDrag, startFolderDrag } from "@/lib/app/folders";
@@ -70,7 +70,7 @@ export function FolderCard({
         title={parentName ? `${f.name} (in ${parentName})` : f.name}
         className={`${FOLDER_CARD_FRAME} focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-4 focus-visible:ring-offset-canvas`}
       >
-        <FolderCardArt name={f.name} color={f.color} count={f.documentCount} age={ageText(f.updatedAt)} previews={f.previews} subfolders={f.childCount ?? 0} subfolderColors={f.childColors} menuRoom />
+        <FolderCardArt name={f.name} color={f.color} count={f.documentCount} age={formatRelative(f.updatedAt)} previews={f.previews} subfolders={f.childCount ?? 0} subfolderColors={f.childColors} menuRoom />
       </AppLink>
       <FolderMenu
         folder={f}

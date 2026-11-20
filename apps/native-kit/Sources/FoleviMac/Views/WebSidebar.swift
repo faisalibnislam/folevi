@@ -399,7 +399,7 @@ public struct WebSidebar: View {
                     }
                     .buttonStyle(.webHover(radius: FoleviTokens.Radius.chip))
                 }
-                item(.folder(f.id), icon: .folder, title: f.name, glyph: AnyView(FolderGlyph(colorId: f.color, size: 18)), inRow: true)
+                item(.folder(f.id), icon: .folder, title: f.name, glyph: AnyView(FolderGlyph(colorId: f.color, size: 15, kind: f.childCount > 0 ? .stack : .notes)), inRow: true)
                     .onMiddleClick { model.openInBackground(.folder(f.id), title: f.name) }
                 RowMoreButton(label: "Folder options for \(f.name)", shown: hovered) { folderMenu(f) }
             }

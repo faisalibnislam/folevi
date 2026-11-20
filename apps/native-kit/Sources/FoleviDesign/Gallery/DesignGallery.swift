@@ -208,10 +208,10 @@ public enum GallerySamples {
 
     public static let folders: [FolderCardModel] = [
         FolderCardModel(id: "f1", name: "Trips", colorId: "teal", count: 12, ageText: "2 hours ago", notes: [
-            .init(title: "Kyoto in November", excerpt: "Arashiyama early, before the crowds.", cover: .theme("art-01")),
-            .init(title: "Lisbon", excerpt: "Tram 28, the miradouros.", cover: .theme("art-12")),
-            .init(title: "Packing list", excerpt: "Adapter, rain jacket."),
-        ]),
+            .init(title: "Kyoto in November", excerpt: "Arashiyama early, before the crowds.", cover: .theme("art-01"), createdText: "Created 3 days ago"),
+            .init(title: "Lisbon", excerpt: "Tram 28, the miradouros.", cover: .theme("art-12"), createdText: "Created Nov 8"),
+            .init(title: "Packing list", excerpt: "Adapter, rain jacket.", createdText: "Created Nov 2"),
+        ], subfolders: 2, subfolderColorIds: ["sky", "sage"]),
         FolderCardModel(id: "f2", name: "Extraordinarily long folder names wrap", colorId: "amber", count: 1, ageText: "Sep 2"),
         FolderCardModel(id: "f3", name: "Supercalifragilisticexpialidocious", colorId: "rose", count: 1_204, ageText: "Just now", notes: [
             .init(title: "One note", excerpt: "Peeking out.", cover: .theme("art-20")),

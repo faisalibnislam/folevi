@@ -326,6 +326,23 @@ struct PhoneAiPageIntro: View {
 // MARK: the composer
 
 /// The composer's box in the sheet: the web's fill, edge and shadow, rounded at `top` and `bottom`.
+/// The composer's card: white with a hairline edge and a soft lifted shadow in light mode; a lighter grey than the
+/// page with a faint edge in dark mode.
+private struct PhoneComposerSurface: View {
+    let radius: CGFloat
+    @Environment(\.colorScheme) private var scheme
+
+    var body: some View {
+        let shape = RoundedRectangle(cornerRadius: radius, style: .continuous)
+        let dark = scheme == .dark
+        shape
+            .fill(dark ? Color(white: 0.17) : Color.white)
+            .shadow(color: .black.opacity(dark ? 0.35 : 0.08), radius: 14, y: 4)
+            .shadow(color: .black.opacity(dark ? 0.2 : 0.04), radius: 2, y: 1)
+            .overlay { shape.strokeBorder(dark ? Color.white.opacity(0.1) : Color.black.opacity(0.1), lineWidth: 1) }
+    }
+}
+
 private struct PhoneComposerBox: View {
     let style: WebComputedStyle
     let top: CGFloat
@@ -372,11 +389,9 @@ struct PhoneAiDock: View {
             // Concentric with what's inside: the controls sit 9 pt in and round at 12, so the box rounds at 21, its
             // foot too (Chat or Research and Send sit in those corners).
             .background {
-                if variant == .page {
-                    Color.clear.webBox(look.pair("ai.composer").radius(21))
-                } else {
-                    PhoneComposerBox(style: look.s("ai.composer"), top: 21, bottom: 21)
-                }
+                // Its own surface, set apart from the replies (the owner, 2026-11-20: the box and the answers ran
+                // together): a raised card with a hairline edge and a soft shadow, a shade off the page in dark mode.
+                PhoneComposerSurface(radius: 21)
             }
             .contentShape(Rectangle())
             .onTapGesture { focused.wrappedValue = true }
@@ -427,13 +442,18 @@ struct PhoneAiDock: View {
                     // (Rounded at 12 like the composer's other controls, following the corner it sits in.)
                     .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(disc.background.color))
                     .compositingGroup()
-                    .opacity(canSend ? 1 : 0.3)
+                    // (Shown only once there's something to send, as Quick add's: the owner, 2026-11-20, a faded
+                    // button looked broken. Its place is kept.)
+                    .scaleEffect(canSend || WebMotion.reduced ? 1 : 0.4)
+                    .opacity(canSend ? 1 : 0)
+                    .animation(WebMotion.reduced ? nil : .spring(response: 0.3, dampingFraction: 0.72), value: canSend)
                     .frame(width: 44, height: 44)
                     .contentShape(Rectangle())
             }
             .buttonStyle(PhonePressScale())
             .padding(-5)
             .allowsHitTesting(canSend)
+            .accessibilityHidden(!canSend)
             .accessibilityLabel(model.effectiveMode == .research ? "Start research" : "Ask")
         }
         .padding(bar.padding.edgeInsets)

@@ -159,6 +159,8 @@ public struct PhoneFrameView<Screen: View>: View {
             if model.columns != on { model.columns = on }
         }
         .environment(\.phoneWideWindow, sizeClass == .regular)
+        // A note's bottom bars, where the tab bar is (PhoneNoteBarsSlot): they trade places with it, not ride the page.
+        .overlay { PhoneNoteBarsLayer(model: model) }
         .overlay { PhoneMenuLayer(menus: menus) }
     }
 
@@ -254,7 +256,12 @@ public struct PhoneFrameView<Screen: View>: View {
     private func destination(_ route: FrameRoute) -> some View {
         if case .note(let id) = route {
             // (The note draws its own bars, as the page asks: PhoneNoteBars; iOS's where bars are at the side.)
-            screen(route).phoneNoteBar().toolbarVisibility(.hidden, for: .tabBar).navigationTransition(.zoom(sourceID: id, in: zoom))
+            // (The tab bar goes as the model opens a note and comes back as Back is pressed, not when the page has
+            // finished leaving: it follows the model's top, so it and the note's bars trade places together.)
+            screen(route).phoneNoteBar()
+                .environment(\.phoneNoteBarsInFrame, true)
+                .toolbarVisibility(model.top.isNote ? .hidden : .automatic, for: .tabBar)
+                .navigationTransition(.zoom(sourceID: id, in: zoom))
         } else {
             // (In Home's split view the list stays beside the note: no button to hide it on the screens pushed there.)
             screen(route).toolbarVisibility(barHidden(route) ? .hidden : .automatic, for: .tabBar)

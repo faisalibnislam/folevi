@@ -30,6 +30,8 @@ struct RebuildNoteScreen: View {
     @Environment(\.phoneSideBars) private var sideColumn
     /// The note's buttons are iOS's toolbar items (iPhone Duo; PhoneSideBars).
     @Environment(\.phoneSystemNoteBars) private var sideBars
+    /// The frame draws this note's bottom bars (PhoneNoteBarsSlot), not the page.
+    @Environment(\.phoneNoteBarsInFrame) private var barsInFrame
     /// The window is regular width: the note sits beside its list, with no Back of its own.
     @Environment(\.phoneWideWindow) private var wideWindow
     /// The note is the first in the split view's detail column.
@@ -72,7 +74,7 @@ struct RebuildNoteScreen: View {
                 PhoneKeyboardBar(state: PhoneKeyboardBarState(block: model.editorState?.block, link: model.editorState?.link ?? false, undo: model.editorState?.undo ?? false, redo: model.editorState?.redo ?? false), aiOn: model.aiOn, run: run)
                     .notePageAppearance(NotePageTones.shared.pages[noteId])
                     .transition(.opacity)
-            } else if !model.keyboardVisible, panel == nil, !sideBars {
+            } else if !model.keyboardVisible, panel == nil, !sideBars, !barsInFrame {
                 PhoneNoteToolBars(open: nativeTool ?? panel.flatMap { PhoneNoteTool(rawValue: $0.rawValue) }, canEdit: canEdit, aiOn: model.aiOn) { toggle($0) }
                     .notePageAppearance(NotePageTones.shared.pages[noteId])
                     .padding(.bottom, max(10, safe.bottom - 10))
@@ -81,6 +83,16 @@ struct RebuildNoteScreen: View {
             }
         }
         .animation(.easeOut(duration: 0.12), value: editing)
+        // The bars the frame draws for this note (PhoneNoteBarsSlot): what they show, and a tool's tap.
+        .onChange(of: frameBars(meta: meta, canEdit: canEdit, editing: editing, panel: panel, immersive: immersive), initial: true) { _, bars in
+            if let bars { PhoneNoteBarsSlot.shared.set(bars) { toggle($0) } }
+        }
+        .onAppear {
+            if let bars = frameBars(meta: meta, canEdit: canEdit, editing: editing, panel: panel, immersive: immersive) {
+                PhoneNoteBarsSlot.shared.set(bars) { toggle($0) }
+            }
+        }
+        .onDisappear { PhoneNoteBarsSlot.shared.clear(noteId) }
         .toolbar {
             if sideBars, !immersive {
                 sideBarItems(meta: meta, canEdit: canEdit, editing: editing, panel: panel)
@@ -375,6 +387,14 @@ struct RebuildNoteScreen: View {
             }
         }
         menus.show(entries, from: anchor, side: .bottom, align: .end)
+    }
+
+    /// What the frame's bars for this note show (nil where the page draws its own, or iOS's bars are used): hidden
+    /// while the keyboard's bar, a panel or Focus Mode takes their place.
+    private func frameBars(meta: NoteMeta?, canEdit: Bool, editing: Bool, panel: EditorPanel?, immersive: Bool) -> PhoneNoteBarsSlot.Bars? {
+        guard barsInFrame, !sideBars else { return nil }
+        let shown = !immersive && !(editing && panel == nil && canEdit) && !model.keyboardVisible && panel == nil
+        return PhoneNoteBarsSlot.Bars(noteId: noteId, open: nativeTool ?? panel.flatMap { PhoneNoteTool(rawValue: $0.rawValue) }, canEdit: canEdit, aiOn: model.aiOn, page: NotePageTones.shared.pages[noteId], shown: shown)
     }
 
     /// The note's buttons as iOS's toolbar items, where iOS puts bars in a column at the side (iPhone Duo; the

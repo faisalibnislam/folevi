@@ -4,6 +4,25 @@ Every Folevi release, newest first, written by `node scripts/version.mjs` from `
 
 Versions are MAJOR.UPDATE.PATCH, PATCH at least two digits: a Major release (2.0.00), a Big update (1.1.05 after 1.0.05) or a Small update (1.0.06 after 1.0.05).
 
+## Version 1.5.57: Small update
+
+Released 2026-11-20 11:04:41+06:00 (build 72, tag v1.5.57)
+
+Offline & sync works properly again, Catch me up explains itself, and the iPhone gets a round of polish.
+
+### Improved
+
+- Catch me up: one clear page with Foli AI's flower, what it reads and what the brief holds, and a Write my brief button
+- iPhone: the sync details show each state with its own mark and a tidy list, and a button only when there's something to do
+- iPhone: Foli AI's message box sits on its own card, apart from the replies, and Send shows once you've typed
+- iPhone and iPad: Quick add has a full-width Task / Note switch, and its add button shows once you've typed
+- iPhone: a sheet's round buttons have room between them, and Home's counts are quieter badges
+- Settings: App lock (Face ID or passcode) is named for what it is and sits with Security; Devices is Signed-in devices
+
+### Fixed
+
+- Offline & sync: Notes kept and Space used show again on iPhone, iPad and Mac, and Download everything now shows its progress
+
 ## Version 1.5.56: Small update
 
 Released 2026-11-20 08:47:32+06:00 (build 71, tag v1.5.56)

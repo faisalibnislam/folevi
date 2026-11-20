@@ -247,6 +247,7 @@ The ones most likely to be broken:
 - Give before/after screenshots for UI work and ask the owner with clear options when a decision is theirs.
 
 ## 9. Current state (as of 2026-11-19)
+- Release 1.5.57 (2026-11-20): `catch-up-redesign` (Quick add polish, Catch me up page, iPhone sync details, Foli AI composer card, sheet button spacing, Home count badges, the Offline & sync fix and the settings names) on top of 1.5.56.
 - Settings names (on `catch-up-redesign`, committed 2ff83e74, not released): "This device" (it only held the Face ID / passcode lock) is now "App lock" with a lock icon, listed after Security, on iPhone, iPad and Mac; "Devices" is "Signed-in devices"; Privacy has an eye-off icon; a local library no longer lists a second App lock (its Library page has one); Offline & sync's card on Mac and iPad is "This Mac" / "This iPad".
 - Offline & sync fix (on `catch-up-redesign`, committed 2c46ff92, not released): Notes kept and Space used stayed "…" on iPhone, iPad and Mac because the engine sent `attachmentLimitBytes` as a fraction (10% of free space) and the apps, which decode it as an integer, dropped the whole `device.storage` update. The engine now sends whole numbers (`viewsDevice.ts` `whole`, `storageBudget` floors); a regression test is in `test/device-usage.test.ts`. Download everything now says what it started and the screen shows each space's download progress; a library kept only on this device shows a line instead of the copy controls. Checked on the iPhone simulator with a local library; the download progress with a signed-in account is not yet seen.
 - Also on `catch-up-redesign`: the iPhone Foli AI composer is a raised card (`PhoneComposerSurface`, light and dark) set apart from the replies, and its Send shows only once there's text. Checked in the simulator in both modes; 390 iOS tests pass.
@@ -388,6 +389,7 @@ the e2e suite was not re-run after the Foli AI panel change; the dev backend lac
   `DATABASE_UDF_USER_TIMEOUT_SECONDS=4` for that backend. Bursts show in `convex.log` as "took a long time".
 
 ## 12. Change log
+- 2026-11-20: Released 1.5.57.
 - 2026-11-20: Settings sections renamed and reordered (App lock, Signed-in devices).
 - 2026-11-20: Offline & sync readings fixed on iPhone, iPad and Mac (whole numbers from the engine); Download gives feedback.
 - 2026-11-20: iPhone Home tile counts as quiet badges (branch `catch-up-redesign`).

@@ -43,27 +43,43 @@ public struct QuickAddView: View {
 
     private var sheet: some View {
         VStack(alignment: .leading, spacing: 10) {
-            SegmentedControl(selection: $model.mode, options: [(QuickAddModel.Mode.task, "Task"), (.note, "Note")])
-                .frame(maxWidth: 260)
-                .accessibilityIdentifier("quick-add-mode")
+            // Task or Note: iOS's own segmented control, large and across the sheet (the owner, 2026-11-20: the small
+            // one looked unfinished).
+            Picker("Add", selection: $model.mode) {
+                Text("Task").tag(QuickAddModel.Mode.task)
+                Text("Note").tag(QuickAddModel.Mode.note)
+            }
+            .pickerStyle(.segmented)
+            .controlSize(.large)
+            .frame(maxWidth: .infinity)
+            .accessibilityIdentifier("quick-add-mode")
+            .padding(.bottom, 4)
             HStack(alignment: .top, spacing: 8) {
                 field
                     .font(FoleviFonts.font(.ui, size: 17, relativeTo: .body))
                     .frame(minHeight: 44)
-                Button { Task { await model.save() } } label: {
-                    Image(systemName: "arrow.up")
-                        .font(.system(size: 18, weight: .bold))
-                        .foregroundStyle(Folevi.color.canvas)
-                        .frame(width: 34, height: 34)
-                        .background(Circle().fill(Folevi.color.heading))
-                        .opacity(model.canSave ? 1 : 0.3)
-                        .frame(width: 44, height: 44)
+                // The add button shows only once there's something to add (the owner, 2026-11-20: a faded one looked
+                // broken); its place is kept, so the words never move when it comes.
+                ZStack {
+                    if model.canSave {
+                        Button { Task { await model.save() } } label: {
+                            Image(systemName: "arrow.up")
+                                .font(.system(size: 18, weight: .bold))
+                                .foregroundStyle(Folevi.color.canvas)
+                                .frame(width: 34, height: 34)
+                                .background(Circle().fill(Folevi.color.heading))
+                                .frame(width: 44, height: 44)
+                                .contentShape(Circle())
+                        }
+                        .buttonStyle(.plain)
+                        .webBrightHover()
+                        .accessibilityLabel(model.mode == .task ? "Add task" : "Add note")
+                        .accessibilityIdentifier("quick-add-save")
+                        .transition(WebMotion.reduced ? .opacity : .scale(scale: 0.4).combined(with: .opacity))
+                    }
                 }
-                .buttonStyle(.plain)
-                .webBrightHover()
-                .disabled(!model.canSave)
-                .accessibilityLabel(model.mode == .task ? "Add task" : "Add note")
-                .accessibilityIdentifier("quick-add-save")
+                .frame(width: 44, height: 44)
+                .animation(WebMotion.reduced ? nil : .spring(response: 0.3, dampingFraction: 0.72), value: model.canSave)
             }
             readLines
             chips

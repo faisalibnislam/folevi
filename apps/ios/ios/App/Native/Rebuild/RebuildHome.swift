@@ -1,6 +1,6 @@
 // Home in the rebuild frame (docs/IOS_REBUILD_PLAN.md, I3): the web's iPhone Home drawn natively (FoleviPhone's
 // PhoneHomeContent) under the root bar: the place's avatar (account and places), the pill (notifications when
-// signed in, and More), the large title with the workspace above it, and the search field.
+// signed in, with the sync status before it), the large title with the workspace above it, and the search field.
 import SwiftUI
 import FoleviDesign
 import FoleviEngine
@@ -14,6 +14,8 @@ struct RebuildHomeScreen: View {
     let phone: PhoneModel
     let openAccount: () -> Void
     let openNotifications: () -> Void
+    /// The sync status's details (the cloud beside the bell).
+    let openSync: () -> Void
     let newFolder: (String?) -> Void
     /// A tag's Edit tag… and Delete tag… (its long-press menu).
     @State private var editingTag: TagRow?
@@ -25,7 +27,7 @@ struct RebuildHomeScreen: View {
 
     private var homeOptions: PhoneScreenOptions {
         var o = PhoneScreenOptions(title: "Home", eyebrow: home.eyebrow)
-        o.trailingEmpty = !signedIn
+        o.trailingEmpty = !signedIn && !RebuildSync.debugShown
         return o
     }
 
@@ -38,12 +40,15 @@ struct RebuildHomeScreen: View {
             .buttonStyle(.plain)
             .accessibilityLabel("\(home.spaceName): account and places")
         } trailing: {
-            // The bell (signed in). No More: what it held, All folders and Foli DNA, are rows on Home, and Home
-            // makes no folders (the owner, 2026-11-19).
-            if signedIn {
+            // The sync status and the bell (signed in: a library in the cloud). No More: what it held, All folders
+            // and Foli DNA, are rows on Home, and Home makes no folders (the owner, 2026-11-19).
+            if signedIn || RebuildSync.debugShown {
                 WebGlassPill {
-                    WebPillButton("Notifications", action: openNotifications) {
-                        WebIconView(.bell, size: 21, strokeWidth: 1.9)
+                    RebuildSyncButton(phone: phone, action: openSync)
+                    if signedIn || RebuildSync.debugShown {
+                        WebPillButton("Notifications", action: openNotifications) {
+                            WebIconView(.bell, size: 21, strokeWidth: 1.9)
+                        }
                     }
                 }
             }

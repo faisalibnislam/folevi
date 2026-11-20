@@ -155,6 +155,18 @@ cd apps/web && E2E_BASE_URL=http://app.localhost:3002 E2E_LOCAL_BASE_URL=http://
 ```
 Generated files CI checks: `pnpm tokens`, `pnpm schema:gen`, `pnpm engine:gen`, `pnpm icons:gen`, `pnpm styles:gen`.
 
+The e2e suite exactly as CI runs it (a local, account-free Convex backend with no AI key, so the "isn't set up"
+specs pass too; its data stays in the worktree's `.convex/local/`; needs ports 3000, 3210 and 3211 free):
+```bash
+export TMPDIR=/private/tmp/claude-501/fvx/      # any short folder: see Gotchas
+CONVEX_AGENT_MODE=anonymous npx convex dev --once --typecheck=disable </dev/null
+(CONVEX_AGENT_MODE=anonymous npx convex dev --typecheck=disable </dev/null > convex.log 2>&1 &)
+node scripts/setup-local.mjs
+for flag in e2ee vault; do CONVEX_AGENT_MODE=anonymous npx convex run testSupport:setFeatureFlag "{\"key\":\"$flag\",\"enabled\":true}"; done
+NEXT_PUBLIC_FOLEVI_TEST_HOOKS=1 pnpm --filter @folevi/web build && (cd apps/web && npx next start --port 3000 &)
+cd apps/web && CI=1 E2E_NO_SERVER=1 npx playwright test <spec> --project account --workers 1
+```
+
 Mac app (Debug "Folevi Dev", own data, `folevi-dev://` links, never installed):
 ```bash
 node apps/web/scripts/build-shell.mjs && node apps/mac/scripts/build.mjs && node apps/mac/scripts/mac.mjs launch
@@ -235,7 +247,10 @@ The ones most likely to be broken:
 - Give before/after screenshots for UI work and ask the owner with clear options when a decision is theirs.
 
 ## 9. Current state (as of 2026-11-19)
-- Chrome extension work is **paused** (the owner, 2026-11-19). Chrome and Edge extension: Folevi Web Clipper in `apps/clipper` (OAuth plus the MCP endpoint, `notes:write` only). 1.1.0 on branch `chrome-extension` adds a quick note, an optional note on a clip and keyboard shortcuts; 44 unit tests pass, `pnpm build` works; not yet loaded in a real Chrome or published. Plan and checklist: `apps/clipper/PLAN.md`.
+- Chrome extension work is **paused** (the owner, 2026-11-19): Folevi Web Clipper in `apps/clipper` (OAuth plus the MCP endpoint). Branch `chrome-extension` has 1.1.0 (quick note, an optional note on a clip, keyboard shortcuts; 45 unit tests pass) and an unfinished search (popup and the address bar's "fo", asking to read notes only when first used), not tried in a browser. Not in the Chrome Web Store. Plan and checklist: `apps/clipper/PLAN.md`.
+- 1.5.54 is live: the website (Vercel success on b4add9c6), Folevi for Mac (appcast 1.5.54, DMG), iPhone and iPad on TestFlight (build 69); tag `v1.5.54`. Pull request 41 shows merged.
+- Branches archived 2026-11-19 (the owner's ask): every merged or old branch is an `archive/<name>` tag on GitHub (27 tags; `git checkout -b <name> archive/<name>` brings one back), then deleted locally and on GitHub. GitHub keeps `main`, Dependabot's, and `chrome-extension` and `pricing-decisions` (backed up 2026-11-20 at the owner's word). On this Mac also the branches still checked out in worktrees under `.claude/worktrees/` (most merged; removing a worktree frees its branch).
+- Release 1.5.54 (2026-11-19, the owner's "release everything"): `main` takes `ipad-polish` (iPad fixes; New note as a black pill in the Mac and iPad title bars, gone from the sidebar; the iPad account in the title bar's corner; iPhone sync status on Home), pull request 41's end-to-end and app fixes (`claude/reverent-leakey-c9bd25`), the iPhone Duo follow-ups (`claude/iphone-duo-18adb4`, the Duo work is otherwise paused) and `editor/rock-solid`'s last note, merged on `release-1.5.54`. Left out: `chrome-extension` (paused), `pricing-decisions` (the owner's decisions pending), October's old branches and Dependabot's.
 
 Released and known (from the release session, 1.5.53):
 - `main` = Release 1.5.53, tag `v1.5.53`: the Foli AI tab on iPhone (branch `ios-ai-tab`), iPhone Duo support and the shorter first-launch copy (branch `claude/iphone-duo-18adb4`), and the marketing pages brought up to date (branch `claude/marketing-pages-091dac`), merged on `release-1.5.53`.
@@ -243,12 +258,18 @@ Released and known (from the release session, 1.5.53):
 - Known: one Mac test fails every time (`TabPreviewStateTests.enteringTheNextTabBeforeLeavingThisOneStillShowsIt`), in code no recent change touched. The Mac filter field hasn't been typed into in the real app. Nothing in 1.5.50 to 1.5.53 has been tried on a real iPhone Duo.
 
 Git (this Mac, main checkout), updated 2026-11-19 19:00:
-- Branch `editor/rock-solid`, now pushed and tracking `origin/editor/rock-solid`: `main` 1.5.53 plus the editor
-  audit follow-up commits, open as pull request 40 (https://github.com/faisalibnislam/folevi/pull/40), not merged.
-  The web fixes and the 22 updated end-to-end specs that were uncommitted earlier today are in that branch now.
-  Merging it pushes `main`, which deploys the website and production Convex: ask the owner first.
-- `docs/HANDOFF.md` section 0 holds that session's detailed notes on the audit and PR 40; this root file is the
-  project-wide handoff. Keep both in step, or fold section 0 in here when PR 40 merges.
+- Pull request 40 (`editor/rock-solid`, the editor audit's follow-up fixes and the end-to-end specs brought up to
+  date) is merged: `main` = `ce420649` (16:08 UTC, 19 November, with the owner's OK to merge on green). Vercel deployed
+  it and CI on `main` is green on every job, the first fully green `main` since 17 November. No version was bumped.
+  The local checkout is still on `editor/rock-solid`, which now holds only handoff notes ahead of `main`.
+- `docs/HANDOFF.md` section 0 holds that session's detailed notes on the audit and pull request 40; this root
+  file is the project-wide handoff.
+- Pull request 41 (https://github.com/faisalibnislam/folevi/pull/41, branch `claude/reverent-leakey-c9bd25`, into
+  `main`, not merged): what still failed after pull request 40 on a Mac, two of them app bugs. Onboarding scrolled
+  sideways at phone width while a step slid in; closing the tools panel moved the caret to a dock button, so the
+  next Enter reopened Foli AI and the typing went into its box (the flowchart specs failed that way 4 times in 5
+  locally). Also tab-switch waiting for a warm tab (a test-build-only hook in `Shell.tsx` `WarmNote`) and a 4 second
+  query limit for CI's local backend (`ci.yml`). Merging it pushes `main` and deploys: ask the owner first.
 - Still uncommitted on this Mac only: `.serena/` (tool state), leftover Capacitor files in `apps/ios/ios/App/App/`,
   6 `phone-home*` `*.failed.png` snapshot diffs in `apps/native-kit/Tests/FoleviScreensTests/__Snapshots__`.
 - Stashes (local only): `stash@{0}` "main folder edits before consolidating (AGENTS.md, next-env.d.ts)"
@@ -279,39 +300,42 @@ Not verified: the 2026-11-19 editor fixes were not run in the Mac app, the Simul
 the e2e suite was not re-run after the Foli AI panel change; the dev backend lacks the new size limits.
 
 ## 10. Next steps / open work
-- Chrome extension (paused; `apps/clipper`, branch `chrome-extension`, not merged; search written but untested): the rest of `apps/clipper/PLAN.md` Phase 1 (YouTube time, PDFs, offline queue), then Phase 2 (search, side panel, append, folders and tags, tasks: needs a read scope). Not yet in the Chrome Web Store: the owner's developer accounts and privacy policy section come first (`apps/clipper/STORE.md`).
+- Chrome extension (paused; branch `chrome-extension`): finish and test search, then the rest of `apps/clipper/PLAN.md`. The store needs the owner's developer accounts and a privacy policy section first (`apps/clipper/STORE.md`).
 
-1. Pull request 40 (`editor/rock-solid`): read its CI result and fix what it still shows (the browser tests were
-   hidden on `main` from 18 to 19 November by a stale generated icons file). With CI green, ask the owner before
-   merging: the merge pushes `main` and deploys. Details in `docs/HANDOFF.md` section 0 and
-   `docs/EDITOR_AUDIT_2026-11-19.md` section 10.
-2. Re-record or fix the 6 failing `phone-home*` snapshots in `apps/native-kit` (only those).
-3. `pricing-decisions` (local only, 4 commits): the owner approved the pricing proposal (`docs/PRICING_PROPOSAL.md`
+1. Pull request 41 (see Current state): read its CI run; with it green, ask the owner before merging (it deploys).
+2. Any one query that fails (a time-out, a server error) takes the whole page to "Something went wrong": `useQuery`
+   throws to `app/global-error.tsx`. CI hit it through time-outs; production can too. Worth a design: treat a
+   failed non-essential query (a badge, a count) as still loading and retry it.
+3. After pull request 40: the web fixes reach the Mac, iPhone and iPad apps only with the next release build (bundled
+   web copy); none of them has been tried in the Mac app, the Simulator or on a device. Details in
+   `docs/HANDOFF.md` section 0 and `docs/EDITOR_AUDIT_2026-11-19.md` section 10.
+4. Re-record or fix the 6 failing `phone-home*` snapshots in `apps/native-kit` (only those).
+5. `pricing-decisions` (local only, 4 commits): the owner approved the pricing proposal (`docs/PRICING_PROPOSAL.md`
    on that branch). It needs review, tests and the owner's OK before merging; push it to GitHub first so it is not
    only on this Mac. R2 file storage stays off until its R2 settings exist.
-4. Device checks from `docs/EDITOR_AUDIT_2026-11-19.md` section 5 (to-do Return, keyboard caret, background save,
+6. Device checks from `docs/EDITOR_AUDIT_2026-11-19.md` section 5 (to-do Return, keyboard caret, background save,
    canvases) and the owner decisions in section 6 (Vault autosave, locale numbers, refused-change display).
-5. Larger editor/sync work listed in that audit: per-note block map (save cost), lazy heavy blocks, offline note in a
+7. Larger editor/sync work listed in that audit: per-note block map (save cost), lazy heavy blocks, offline note in a
    deleted folder, shared queue across windows, table cell merge (G7).
-6. Native: iPad pass (I8 layout width, I9 caret, I13, I15), native background sync (R2 in `docs/NATIVE_APP_PLAN.md`,
+8. Native: iPad pass (I8 layout width, I9 caret, I13, I15), native background sync (R2 in `docs/NATIVE_APP_PLAN.md`,
    APNs key 5PG87M528M), performance budgets. See `docs/IOS_REBUILD_PLAN.md`, `docs/MAC_REBUILD_PLAN.md`,
    `docs/IOS_POLISH_PLAN.md`, `docs/MAC_POLISH_PLAN.md`, `docs/MAC_PERFORMANCE_2026-11-19.md`.
-7. Owner items carried from the 2026-10-24 handoff (status unverified): SPF TXT record for Sign in with Apple
+9. Owner items carried from the 2026-10-24 handoff (status unverified): SPF TXT record for Sign in with Apple
    email relay; export compliance answer and whether to submit iOS to App Review; Dropbox app and Google iOS
    client; Sparkle key backup in the password manager.
-8. Account conventions (global CLAUDE.md): the bundle IDs are still `com.folevi.ios(.share/.widgets)` and
+10. Account conventions (global CLAUDE.md): the bundle IDs are still `com.folevi.ios(.share/.widgets)` and
    `com.folevi.mac`, App Group `group.com.folevi`, iCloud `iCloud.com.folevi`; the convention is
    `app.folevi.Folevi`, `group.app.folevi`, `iCloud.app.folevi`. A rename resets saved settings, keychain items and
    macOS privacy permissions, breaks the Sparkle update path for existing Mac installs, and makes a new App Store
    Connect app (current id 6825699028). Ask the owner before doing it.
-9. Mac distribution convention wants both a Mac App Store build (sandboxed, no Sparkle) and the Developer ID build;
+11. Mac distribution convention wants both a Mac App Store build (sandboxed, no Sparkle) and the Developer ID build;
    only the Developer ID build exists (guess: an App Store configuration is not set up).
-10. Clean up: ~30 merged local branches and 19 worktrees under `.claude/worktrees/` (owner's call; nothing is lost
+12. Clean up: ~30 merged local branches and 19 worktrees under `.claude/worktrees/` (owner's call; nothing is lost
     for those at or behind `origin/main`).
-11. iPhone Duo follow-ups: Folevi's own menus (PhoneMenuLayer) don't avoid the fold yet; check Split View halves on a
+13. iPhone Duo follow-ups: Folevi's own menus (PhoneMenuLayer) don't avoid the fold yet; check Split View halves on a
     real device.
-12. The Mac test that fails every time (`TabPreviewStateTests.enteringTheNextTabBeforeLeavingThisOneStillShowsIt`).
-13. The owner's open items: `docs/HANDOFF.md` section 7 (see item 7 above for the ones carried over).
+14. The Mac test that fails every time (`TabPreviewStateTests.enteringTheNextTabBeforeLeavingThisOneStillShowsIt`).
+15. The owner's open items: `docs/HANDOFF.md` section 7 (see item 9 above for the ones carried over).
 
 ## 11. Gotchas
 
@@ -324,7 +348,7 @@ the e2e suite was not re-run after the Foli AI panel change; the dev backend lac
 - `--prod` with the Convex CLI does not mean production here; always `--deployment fastidious-clownfish-123`.
 - Port 3000 is often taken by another project; use 3002/3003 for e2e.
 - Notes open with the Foli AI panel since 2026-11-18 (`a989411b`); e2e locators that assumed a closed panel or a
-  single "New note" button break. Use `openFoliAi()` and `closeToolsPanel()` from `apps/web/e2e/helpers.ts` (on `main` once pull request 40 merges).
+  single "New note" button break. Use `openFoliAi()` and `closeToolsPanel()` from `apps/web/e2e/helpers.ts`.
 - `pnpm typecheck` in parallel with lint has given false failures; run it alone. About 9 known lint errors existed
   in untouched files (2026-10-24 note; may have changed).
 - Known Swift test issues: Mac `RouterTests.testDebugIdentity` expects a version from a stale build; a full
@@ -348,11 +372,25 @@ the e2e suite was not re-run after the Foli AI panel change; the dev backend lac
   hold the clock (`vi.useFakeTimers({ toFake: ["Date"] })` and `vi.setSystemTime`), or it fails when it runs across
   a window's edge. Other per-minute limit tests have not been checked for this.
 - CI's first step runs `node scripts/icons-codegen.mjs --check`: regenerate `Icons.swift` after adding a web icon.
+- A local Convex backend (`CONVEX_AGENT_MODE=anonymous`) started from a Claude session hangs on its first push with
+  no output: its Node executor's socket lives under `$TMPDIR`, and the app's long TMPDIR makes the path too long
+  (`listen EINVAL ... .executor.sock`, a 500 on `start_push`, retried forever). Export a short `TMPDIR` first.
+- CI's e2e runners have 2 CPUs. Just after a sign-in a page opens 20 or more queries at once, and on CI each one's
+  wall-clock time nears the local backend's 1 second limit; one past it fails the page (next step 2). It is not
+  only the first chat message (above): native-lift and others hit it too. `ci.yml` now sets
+  `DATABASE_UDF_USER_TIMEOUT_SECONDS=4` for that backend. Bursts show in `convex.log` as "took a long time".
 
 ## 12. Change log
-- 2026-11-19: Chrome extension paused; its search (asks to read when first used) committed unfinished on `chrome-extension`.
-- 2026-11-19: Web Clipper 1.1.0 on branch `chrome-extension` (quick note, your note on a clip, keyboard shortcuts) and its plan, `apps/clipper/PLAN.md`.
+- 2026-11-20: Pushed `chrome-extension` and `pricing-decisions` to GitHub as a backup.
+- 2026-11-19: Archived the merged and old branches as `archive/*` tags.
+- 2026-11-19: Released 1.5.54 (web, Mac, iPhone and iPad).
 
+- 2026-11-19: pull request 41 (`claude/reverent-leakey-c9bd25`, into `main`): onboarding no longer scrolls sideways
+  at phone width while a step slides in (app), closing the tools panel leaves the caret where it is (app,
+  `DocumentView.tsx` `closeInspector`), tab-switch also waits for the tab it switches to to be warm, CI's local
+  backend gets a 4 second query limit. Local CI-like run and two gotchas added.
+- 2026-11-19: pull request 40 merged into `main` as `ce420649` on a fully green CI run (44556502512); production deploy
+  completed and CI on `main` green (44562664255). These notes are on `editor/rock-solid`, not yet on `main`.
 - 2026-11-19: pull request 40, CI run 44547866717: 7 of 8 browser shards green. `e2e/tab-switch.spec.ts` watched for
   a loading placeholder while the note opened just before was still loading its own lines; it waits for them now.
 - 2026-11-19: pull request 40, CI run 44538632686: 6 of 8 browser shards green. Fixed the mind map phone spec (its

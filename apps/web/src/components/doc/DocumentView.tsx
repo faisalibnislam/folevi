@@ -710,9 +710,13 @@ export function DocumentView({ documentId }: { documentId: string }) {
   }, [inspectorOpen]);
   const closeInspector = useCallback(() => {
     setInspectorOpen(false);
-    // Back to whatever had focus when it opened (the editor after a click, the dock button from the
-    // keyboard), or the dock button for this tab.
+    // Focus that was in the panel goes back to whatever had focus when it opened (the editor after a click,
+    // the dock button from the keyboard), or the dock button for this tab. Focus that is somewhere else stays:
+    // a click on the dock keeps the caret in the title or the note, and moving it to the dock button sent the
+    // next Enter to that button, which opened Foli AI again and the typing went into its box.
     requestAnimationFrame(() => {
+      const now = document.activeElement;
+      if (now && now !== document.body && !inspectorRef.current?.contains(now)) return;
       const opener = inspectorOpener.current;
       (opener?.isConnected && opener !== document.body && !inspectorRef.current?.contains(opener) ? opener : (dockButtons.current[inspectorTab] ?? dockButtons.current.format))?.focus();
     });

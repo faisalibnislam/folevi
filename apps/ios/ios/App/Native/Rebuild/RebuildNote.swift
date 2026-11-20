@@ -27,7 +27,13 @@ struct RebuildNoteScreen: View {
     /// The note's flashcards (`reviews { noteId }`), for the menu's "Review 3 cards in this note".
     @State private var reviews: ValueStore<ReviewsValue>?
     /// iPhone Duo's side bars (PhoneSideBars): the note's buttons are iOS's toolbar items, in that column.
-    @Environment(\.phoneSideBars) private var sideBars
+    @Environment(\.phoneSideBars) private var sideColumn
+    /// The note's buttons are iOS's toolbar items (iPhone Duo; PhoneSideBars).
+    @Environment(\.phoneSystemNoteBars) private var sideBars
+    /// The window is regular width: the note sits beside its list, with no Back of its own.
+    @Environment(\.phoneWideWindow) private var wideWindow
+    /// The note is the first in the split view's detail column.
+    @Environment(\.phoneNoteFirst) private var first
 
     var body: some View {
         let meta = model.noteMeta[noteId]
@@ -80,11 +86,20 @@ struct RebuildNoteScreen: View {
                 sideBarItems(meta: meta, canEdit: canEdit, editing: editing, panel: panel)
             }
         }
+        // Writing is the task here: the tab bar minimizes before the note's tools go into the overflow menu.
+        .modifier(PrefersToolbarItems())
+        // (Collapsed, iOS draws a Back over the note column's first note only when the note was opened there, not
+        // when it came over as the phone folded: the note draws its own either way, and iOS's steps aside.)
+        .navigationBarBackButtonHidden(sideBars && first)
         .background(FoleviTokens.Chrome.canvas.color)
         .onGeometryChange(for: EdgeInsets.self) { $0.safeAreaInsets } action: { safe = $0 }
         .onChange(of: insets) { _, i in sendInsets(i) }
         // (For taking the keyboard back after iPhone Duo folds or unfolds mid-sentence: NotePageSlot.)
-        .onChange(of: editing, initial: true) { _, e in NotePageRegistry.controller(for: noteId).writing = e }
+        .onChange(of: editing, initial: true) { _, e in
+            NotePageRegistry.controller(for: noteId).writing = e
+            // (Written in: a note the detail column showed by itself is the person's now, and stays on folding.)
+            if e { frame.keepNote() }
+        }
         // The page loaded again (iOS ended its process while the app was away) has forgotten the bars' room: said
         // again once the note is back, or the title sat under the top bar until the keyboard was next raised.
         .onChange(of: model.isReady(noteId)) { _, ready in if ready { sendInsets(insets) } }
@@ -363,64 +378,70 @@ struct RebuildNoteScreen: View {
     }
 
     /// The note's buttons as iOS's toolbar items, where iOS puts bars in a column at the side (iPhone Duo; the
-    /// owner, 2026-11-19): Back (iOS's own), Done while writing, the note's place, Share
-    /// and "…" at the top; the tools at the bottom. Each has a title and an icon, so it takes its place in the
-    /// column and shows both if it overflows into iOS's menu.
+    /// owner, 2026-11-19, and Apple's order for that column): Back, Done while writing (pinned), the note's place
+    /// and Share; then the tools, kept in sight longest; the note's menu in iOS's own overflow menu. Each has a
+    /// title and an icon, so it takes its place in the column and shows both in the overflow menu.
     @ToolbarContentBuilder
     private func sideBarItems(meta: NoteMeta?, canEdit: Bool, editing: Bool, panel: EditorPanel?) -> some ToolbarContent {
-        if editing {
-            ToolbarItem(placement: .confirmationAction) {
-                Button(action: done) { Label { Text("Done") } icon: { WebIcon.check.image(size: 20, strokeWidth: 2.4) } }
+        if #available(iOS 27.1, *) {
+            // (Collapsed, the note column's first note: its Back, in place of iOS's, see navigationBarBackButtonHidden.)
+            if first, !wideWindow {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button(action: back) { Label { Text("Back") } icon: { WebIcon.chevronLeft.image(size: 22, strokeWidth: 2.2) } }
+                }
             }
-        }
-        ToolbarItemGroup(placement: .primaryAction) {
-            if let place = place(meta) {
-                Button(action: openPlace) { Label { Text(Self.label(place)) } icon: { Self.icon(place).image(size: 20) } }
+            if editing {
+                ToolbarItem(placement: .topBarPinnedTrailing) {
+                    Button(action: done) { Label { Text("Done") } icon: { WebIcon.check.image(size: 20, strokeWidth: 2.4) } }
+                }
             }
-            if meta.map({ $0.found && $0.access != "read" }) ?? true {
-                Button { model.router?.share(noteId: noteId) } label: { Label { Text("Share") } icon: { WebIcon.share.image(size: 20, strokeWidth: 1.9) } }
+            ToolbarItemGroup(placement: .primaryAction) {
+                if let place = place(meta) {
+                    Button(action: openPlace) { Label { Text(Self.label(place)) } icon: { Self.icon(place).image(size: 20) } }
+                }
+                if meta.map({ $0.found && $0.access != "read" }) ?? true {
+                    Button { model.router?.share(noteId: noteId) } label: { Label { Text("Share") } icon: { WebIcon.share.image(size: 20, strokeWidth: 1.9) } }
+                }
             }
-            moreMenu(meta: meta)
-        }
-        ToolbarItemGroup(placement: .bottomBar) {
-            Button { toggle(.comments) } label: { Label { Text("Comments") } icon: { WebIcon.messageCircle.image(size: 21) } }
-            if canEdit {
-                Button { toggle(.style) } label: { Label { Text("Style") } icon: { WebIcon.paintbrush.image(size: 20, strokeWidth: 1.85) } }
-                Button { toggle(.format) } label: { Label { Text("Format") } icon: { WebIcon.type.image(size: 21) } }
+            ToolbarItemGroup(placement: sideColumn ? .bottomBar : .primaryAction) {
+                Button { toggle(.comments) } label: { Label { Text("Comments") } icon: { WebIcon.messageCircle.image(size: 21) } }
+                if canEdit {
+                    Button { toggle(.style) } label: { Label { Text("Style") } icon: { WebIcon.paintbrush.image(size: 20, strokeWidth: 1.85) } }
+                    Button { toggle(.format) } label: { Label { Text("Format") } icon: { WebIcon.type.image(size: 21) } }
+                }
+                if model.aiOn {
+                    Button { toggle(.ai) } label: { Label { Text("Foli AI") } icon: { AiMarkImage.image(size: 22) } }
+                }
+                if canEdit {
+                    Button { toggle(.insert) } label: { Label { Text("Insert") } icon: { WebIcon.plus.image(size: 21, strokeWidth: 2.4) } }
+                }
             }
-            if model.aiOn {
-                Button { toggle(.ai) } label: { Label { Text("Foli AI") } icon: { AiMarkImage.image(size: 22) } }
-            }
-            if canEdit {
-                Button { toggle(.insert) } label: { Label { Text("Insert") } icon: { WebIcon.plus.image(size: 21, strokeWidth: 2.4) } }
-            }
+            .visibilityPriority(.high)
+            ToolbarOverflowMenu { menuItems(meta: meta) }
         }
     }
 
-    /// "…" as iOS's own menu (the same rows as the note's menu, NoteMenuPlan), for the bars at the side.
-    private func moreMenu(meta: NoteMeta?) -> some View {
+    /// The note's menu (NoteMenuPlan, the same rows as its "…" elsewhere) as iOS menu items, for the overflow menu.
+    @ViewBuilder
+    private func menuItems(meta: NoteMeta?) -> some View {
         let state = model.editorState?.noteId == noteId ? model.editorState?.menu : nil
         let reviewCards: Int? = reviews?.value.flatMap { $0.found && $0.total > 0 ? $0.due + $0.new : nil }
         let input = NoteMenuPlan.Input(meta: meta, menu: state, reviewCards: reviewCards, graph: model.session.value?.capabilities.graph == true)
         let sections = NoteMenuPlan.sections(input)
-        return Menu {
-            ForEach(sections.indices, id: \.self) { i in
-                Section {
-                    ForEach(sections[i].indices, id: \.self) { j in
-                        switch sections[i][j] {
-                        case .item(let item): menuButton(item)
-                        case .submenu(let group, let items):
-                            Menu {
-                                ForEach(items.indices, id: \.self) { k in menuButton(items[k]) }
-                            } label: {
-                                Label { Text(group.rawValue) } icon: { Self.icon(group).image() }
-                            }
+        ForEach(sections.indices, id: \.self) { i in
+            Section {
+                ForEach(sections[i].indices, id: \.self) { j in
+                    switch sections[i][j] {
+                    case .item(let item): menuButton(item)
+                    case .submenu(let group, let items):
+                        Menu {
+                            ForEach(items.indices, id: \.self) { k in menuButton(items[k]) }
+                        } label: {
+                            Label { Text(group.rawValue) } icon: { Self.icon(group).image() }
                         }
                     }
                 }
             }
-        } label: {
-            Label { Text("More") } icon: { WebIcon.ellipsis.image(size: 22, strokeWidth: 2.2) }
         }
     }
 
@@ -653,6 +674,17 @@ final class NotePageController: UIViewController, PageViewOwner {
         s.autoresizingMask = [.flexibleWidth, .flexibleHeight]
         holder.view.addSubview(s)
         still = s
+    }
+}
+
+/// iOS 27.1: in a column of bars at the side, the tab bar minimizes before the note's tools overflow.
+private struct PrefersToolbarItems: ViewModifier {
+    func body(content: Content) -> some View {
+        if #available(iOS 27.1, *) {
+            content.toolbarVerticalCompressionBehavior(.prefersToolbarItems)
+        } else {
+            content
+        }
     }
 }
 

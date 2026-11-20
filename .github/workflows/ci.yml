@@ -86,6 +86,14 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - name: Start a local, account-free Convex backend
+        # A page opens 20 or more queries at once just after signing in. On this 2-CPU runner, next to the browser
+        # and Next.js, those small queries share the CPU and each one's wall-clock time nears the backend's 1 second
+        # limit; one that passes it fails, and the page shows its error screen (ai-attachments, native-lift and
+        # others failed that way at random, 18 and 19 November 2026). The local backend reads this knob for the
+        # limit on queries and mutations (production keeps 1 second). It is wall-clock time, so a query that is
+        # really slow still fails here at 4 seconds, and the backend still warns in convex.log at 80% of it.
+        env:
+          DATABASE_UDF_USER_TIMEOUT_SECONDS: "4"
         run: |
           CONVEX_AGENT_MODE=anonymous npx convex dev --once --typecheck=disable
           (CONVEX_AGENT_MODE=anonymous npx convex dev --typecheck=disable > convex.log 2>&1 &)

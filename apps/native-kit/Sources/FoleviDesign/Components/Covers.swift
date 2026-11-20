@@ -209,7 +209,10 @@ public final class CoverFiles {
                     if let paper = link.paper, let ink = link.ink { colors[id] = (paper, ink) }
                     guard let url = link.url else { continue }
                     Task { @MainActor in
-                        guard let (data, _) = try? await URLSession.shared.data(from: url), let image = Self.decode(data) else { return }
+                        guard let (data, _) = try? await URLSession.shared.data(from: url) else { return }
+                        // (Decoded away from the main thread, and on iOS made card-sized: a whole photo decoded as
+                        // it was first drawn held up scrolling on the iPad.)
+                        guard let image = await Task.detached(priority: .utility, operation: { Self.decode(data) }).value else { return }
                         keep(id, image)
                     }
                 }
@@ -243,10 +246,18 @@ public final class CoverFiles {
         CoverArtCache.shared.clear()
     }
 
+    /// The longest side, in pixels, a style image is kept at on iOS (a card is at most a few hundred points wide).
+    nonisolated static let longestSide: CGFloat = 1200
+
     private nonisolated static func decode(_ data: Data) -> Image? {
         #if canImport(UIKit)
         guard let ui = UIImage(data: data) else { return nil }
-        return Image(uiImage: ui)
+        let w = ui.size.width * ui.scale, h = ui.size.height * ui.scale
+        let longest = max(w, h)
+        if longest > longestSide, let small = ui.preparingThumbnail(of: CGSize(width: (w * longestSide / longest).rounded(), height: (h * longestSide / longest).rounded())) {
+            return Image(uiImage: small)
+        }
+        return Image(uiImage: ui.preparingForDisplay() ?? ui)
         #else
         guard let ns = NSImage(data: data) else { return nil }
         return Image(nsImage: ns)

@@ -58,6 +58,8 @@ function install(): () => void {
   let timer = 0;
   let lastHidden = 0;
   let pressed = false;
+  /** The last press was a finger or a pen (no key since): focus that follows isn't the keyboard's. */
+  let touched = false;
 
   const restore = () => {
     if (owner && owner.hasAttribute("data-mac-title")) {
@@ -139,6 +141,9 @@ function install(): () => void {
   // Keyboard focus shows it too (icon-only buttons have no visible name otherwise), after a short rest; it goes
   // with the focus. Only a control's own title, and only for the keyboard (:focus-visible), never a click.
   const focusIn = (e: FocusEvent) => {
+    // After a touch, focus a panel hands its close button isn't the keyboard's, though WebKit calls it
+    // :focus-visible: no tooltip then (it stayed on screen, the iPad's Style panel), until a key is pressed.
+    if (touched) return;
     const target = e.target instanceof HTMLElement ? e.target : null;
     if (!target || target === owner || !target.matches(FOCUS_TIP) || !target.hasAttribute("title")) return;
     let keyboard = false;
@@ -163,8 +168,13 @@ function install(): () => void {
     if (to && owner.contains(to)) return;
     hide();
   };
-  const down = () => {
+  const down = (e: PointerEvent) => {
     pressed = true;
+    touched = e.pointerType !== "mouse";
+    hide();
+  };
+  const keyDown = () => {
+    touched = false;
     hide();
   };
   const up = () => {
@@ -175,7 +185,7 @@ function install(): () => void {
   document.addEventListener("pointerout", out, true);
   document.addEventListener("pointerdown", down, true);
   document.addEventListener("pointerup", up, true);
-  document.addEventListener("keydown", hide, true);
+  document.addEventListener("keydown", keyDown, true);
   document.addEventListener("focusin", focusIn, true);
   document.addEventListener("focusout", focusOut, true);
   document.addEventListener("wheel", hide, { capture: true, passive: true });
@@ -186,7 +196,7 @@ function install(): () => void {
     document.removeEventListener("pointerout", out, true);
     document.removeEventListener("pointerdown", down, true);
     document.removeEventListener("pointerup", up, true);
-    document.removeEventListener("keydown", hide, true);
+    document.removeEventListener("keydown", keyDown, true);
     document.removeEventListener("focusin", focusIn, true);
     document.removeEventListener("focusout", focusOut, true);
     document.removeEventListener("wheel", hide, true);

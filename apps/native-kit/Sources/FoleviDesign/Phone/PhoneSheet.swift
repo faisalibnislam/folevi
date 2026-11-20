@@ -145,7 +145,8 @@ public struct PhoneSheetHeader<Leading: View, Trailing: View>: View {
 
     public var body: some View {
         HStack(spacing: 0) {
-            HStack(spacing: 0) { leading }
+            // (8 pt between round buttons, iOS 26's: the owner, 2026-11-20, side by side they touched.)
+            HStack(spacing: 8) { leading }
                 .fixedSize()
                 .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { side = max(side, $0) }
                 .frame(minWidth: side, alignment: .leading)
@@ -164,7 +165,7 @@ public struct PhoneSheetHeader<Leading: View, Trailing: View>: View {
             }
             .padding(.horizontal, 4)
             .frame(maxWidth: .infinity)
-            HStack(spacing: 0) {
+            HStack(spacing: 8) {
                 trailing
                 if let close { PhoneSheetClose(action: close) }
             }

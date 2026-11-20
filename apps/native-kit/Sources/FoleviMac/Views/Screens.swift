@@ -371,33 +371,116 @@ struct ScreenRoot: View {
 struct CatchUpScreen: View {
     let model: FrameModel
     @Environment(\.nativeChrome) private var chrome
+    @Environment(\.colorScheme) private var scheme
+
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
-                Text("Catch me up").webText(.display(.title1)).foregroundStyle(Folevi.color.heading)
+                // (No title of its own: the bar above already says "Catch me up", the owner, 2026-11-20.)
                 let card = model.home.value?.catchUp
                 if card?.state == .running {
                     CatchUpCardView(phase: .running, onRefresh: {}, onClose: {}, onSource: { _ in })
                 } else if let brief = card?.brief {
                     CatchUpCardView(phase: .ready(brief), onRefresh: { model.runCatchUp() }, onClose: { model.open(.home) }, onSource: { id in model.open(.note(id)) })
                 } else {
-                    Text(card?.error?.message ?? "Foli AI reads what changed this week and sums it up.").foleviFont(.callout).foregroundStyle(Folevi.color.inkMuted)
-                    if let chrome {
-                        // The Mac's native look: the page's one prominent action.
-                        Button { model.runCatchUp() } label: { Text("Catch me up").modifier(NativeAccentInk(chrome)) }
-                            .buttonStyle(.borderedProminent)
-                            .tint(chrome.accent)
-                            .accessibilityIdentifier("catchup.run")
-                    } else {
-                        Button("Catch me up") { model.runCatchUp() }.buttonStyle(.folevi(.primary, size: .medium))
-                            .accessibilityIdentifier("catchup.run")
-                    }
+                    intro(error: card?.error?.message)
                 }
             }
-            .padding(32)
-            .frame(maxWidth: 760, alignment: .leading)
+            .padding(.horizontal, 24)
+            .padding(.vertical, 28)
+            .frame(maxWidth: 560, alignment: .leading)
+            .frame(maxWidth: .infinity)
         }
         .accessibilityIdentifier("screen.catchUp")
+    }
+
+    /// Before a brief: what Foli AI does here, what the brief holds, and the one button (the owner, 2026-11-20: the
+    /// page said "Catch me up" three times and nothing about what it does).
+    private func intro(error: String?) -> some View {
+        VStack(alignment: .leading, spacing: 22) {
+            VStack(alignment: .leading, spacing: 14) {
+                // Foli AI's flower on a soft tile in its own colours.
+                AiMarkGlyph(size: 34)
+                    .frame(width: 64, height: 64)
+                    .background(
+                        RoundedRectangle(cornerRadius: 18, style: .continuous)
+                            .fill(LinearGradient(colors: [Color(red: 0.55, green: 0.42, blue: 0.95).opacity(scheme == .dark ? 0.22 : 0.12),
+                                                          Color(red: 0.98, green: 0.42, blue: 0.55).opacity(scheme == .dark ? 0.18 : 0.10)],
+                                                 startPoint: .topLeading, endPoint: .bottomTrailing))
+                    )
+                    .accessibilityHidden(true)
+                Text("Your week in one short read")
+                    .font(.system(.title2, weight: .semibold))
+                    .foregroundStyle(Folevi.color.heading)
+                    .accessibilityAddTraits(.isHeader)
+                Text("Foli AI reads the notes you wrote or changed this week and the tasks that are due, then writes you a short brief.")
+                    .font(.system(.body))
+                    .foregroundStyle(Folevi.color.inkMuted)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            VStack(alignment: .leading, spacing: 14) {
+                row(.pencilLine, "What changed", "The notes you wrote or edited, a few lines each.")
+                row(.calendarClock, "What’s due", "Tasks that are due soon or overdue.")
+                row(.link, "Where it came from", "Every point links to its note.")
+            }
+            .padding(16)
+            .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Folevi.color.ink.opacity(scheme == .dark ? 0.06 : 0.035)))
+            if let error {
+                Label { Text(error).fixedSize(horizontal: false, vertical: true) } icon: { WebIconView(.triangleAlert, size: 16, strokeWidth: 2) }
+                    .font(.system(.callout))
+                    .foregroundStyle(Color.red)
+                    .accessibilityIdentifier("catchup.error")
+            }
+            VStack(alignment: .leading, spacing: 10) {
+                runButton(error == nil ? "Write my brief" : "Try again")
+                Text("Foli AI writes it only when you ask.")
+                    .font(.system(.footnote))
+                    .foregroundStyle(Folevi.color.inkFaint)
+            }
+        }
+    }
+
+    private func row(_ icon: WebIcon, _ title: String, _ detail: String) -> some View {
+        HStack(alignment: .top, spacing: 12) {
+            WebIconView(icon, size: 18, strokeWidth: 1.9)
+                .foregroundStyle(Folevi.color.heading)
+                .frame(width: 22, height: 22)
+                .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title).font(.system(.callout, weight: .semibold)).foregroundStyle(Folevi.color.heading)
+                Text(detail).font(.system(.callout)).foregroundStyle(Folevi.color.inkMuted).fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .accessibilityElement(children: .combine)
+    }
+
+    @ViewBuilder
+    private func runButton(_ title: String) -> some View {
+        let label = HStack(spacing: 8) {
+            AiMarkGlyph(size: 18).accessibilityHidden(true)
+            Text(title).font(.system(.body, weight: .semibold))
+        }
+        if let chrome {
+            // The Mac's native look: the page's one prominent action.
+            Button { model.runCatchUp() } label: { label.modifier(NativeAccentInk(chrome)) }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.large)
+                .tint(chrome.accent)
+                .accessibilityIdentifier("catchup.run")
+        } else {
+            Button { model.runCatchUp() } label: {
+                label
+                    .foregroundStyle(Folevi.color.canvas)
+                    .padding(.horizontal, 22)
+                    .frame(height: 48)
+                    .frame(maxWidth: 360)
+                    .background(Capsule().fill(Folevi.color.heading))
+                    .contentShape(Capsule())
+            }
+            .buttonStyle(.plain)
+            .webBrightHover()
+            .accessibilityIdentifier("catchup.run")
+        }
     }
 }
 

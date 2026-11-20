@@ -98,41 +98,99 @@ private struct RebuildSyncSpinner: View {
 struct RebuildSyncSheet: View {
     let phone: PhoneModel
     let close: () -> Void
+    @Environment(\.colorScheme) private var scheme
 
+    /// The details (the owner, 2026-11-20: the title, the words and the last sync didn't line up): the state's
+    /// mark in its colour with its name and one sentence, centred; then the facts as a grouped list, label left and
+    /// value right; then the one button there is, only when there's something to do.
     var body: some View {
         let s = phone.sync.value
-        PhoneSheetPanel(title: RebuildSync.title(s?.state ?? .saved), description: RebuildSync.describe(s), close: close, scrolls: false) {
-            VStack(alignment: .leading, spacing: 20) {
-                if let last = RebuildSync.lastSynced(phone) {
-                    Text("Last synced \(last.formatted(.relative(presentation: .named))).")
-                        .foleviFont(.callout).foregroundStyle(DS.color.inkMuted)
-                } else if s?.online == false {
-                    Text("Not synced yet on this iPhone.")
-                        .foleviFont(.callout).foregroundStyle(DS.color.inkMuted)
+        let state = RebuildSync.debugState ?? s?.state ?? .saved
+        let pending = RebuildSync.debugState == nil ? (s?.pending ?? 0) : 3
+        PhoneSheetPanel(close: close, scrolls: false) {
+            VStack(spacing: 22) {
+                VStack(spacing: 12) {
+                    RebuildSyncIcon(state: state, size: 28)
+                        .foregroundStyle(RebuildSync.tone(state))
+                        .frame(width: 64, height: 64)
+                        .background(Circle().fill(RebuildSync.tone(state).opacity(scheme == .dark ? 0.2 : 0.12)))
+                        .accessibilityHidden(true)
+                    Text(RebuildSync.title(state))
+                        .font(.system(.title2, weight: .semibold))
+                        .foregroundStyle(DS.color.heading)
+                        .accessibilityIdentifier("sync-state")
+                    Text(RebuildSync.describe(s, state: state, pending: pending))
+                        .font(.system(.body))
+                        .foregroundStyle(DS.color.inkMuted)
+                        .multilineTextAlignment(.center)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
-                ForEach(s?.spaces.filter { $0.state != .ready } ?? [], id: \.space) { space in
-                    HStack {
-                        Text(space.state == .downloading ? "Downloading notes" : space.state == .locked ? "Locked on this iPhone" : "Opening")
-                        Spacer()
-                        if let total = space.total { Text("\(space.have) of \(total)").monospacedDigit() }
+                .frame(maxWidth: .infinity)
+                let rows = facts(s, state: state, pending: pending)
+                if !rows.isEmpty {
+                    VStack(spacing: 0) {
+                        ForEach(rows.indices, id: \.self) { i in
+                            if i > 0 { Divider().padding(.leading, 16) }
+                            HStack {
+                                Text(rows[i].label).foregroundStyle(DS.color.ink)
+                                Spacer(minLength: 12)
+                                Text(rows[i].value).foregroundStyle(DS.color.inkMuted).monospacedDigit().multilineTextAlignment(.trailing)
+                            }
+                            .font(.system(.callout))
+                            .padding(.horizontal, 16)
+                            .frame(minHeight: 46)
+                        }
                     }
-                    .foleviFont(.callout).foregroundStyle(DS.color.inkMuted)
+                    .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(DS.color.ink.opacity(scheme == .dark ? 0.07 : 0.04)))
                 }
-                if let s, s.state != .saved {
-                    WebButton(s.state == .offline ? "Sync when online" : "Retry now", icon: .refreshCw, iconSize: 17, variant: .primary) {
-                        phone.retrySync()
+                if state != .saved {
+                    let offline = state == .offline
+                    Button { phone.retrySync() } label: {
+                        Label { Text(offline ? "Sync when online" : "Retry now") } icon: { WebIconView(.refreshCw, size: 17, strokeWidth: 2) }
+                            .font(.system(.body, weight: .semibold))
+                            .foregroundStyle(DS.color.canvas)
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 50)
+                            .background(Capsule().fill(DS.color.heading))
+                            .contentShape(Capsule())
                     }
-                    .frame(maxWidth: .infinity)
-                    .disabled(s.state == .offline && !s.online)
+                    .buttonStyle(.plain)
+                    .disabled(offline && s?.online != true)
+                    .opacity(offline && s?.online != true ? 0.4 : 1)
                     .accessibilityIdentifier("sync-retry")
                 }
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.horizontal, 20)
+            .padding(.top, 4)
             .padding(.bottom, 24)
         }
         .accessibilityIdentifier("sync-sheet")
     }
+
+    /// What's known, as label and value: when it last synced, what's waiting, what's still downloading.
+    private func facts(_ s: SyncStatusValue?, state: SyncState, pending: Int) -> [(label: String, value: String)] {
+        var rows: [(label: String, value: String)] = []
+        if let last = RebuildSync.lastSynced(phone) {
+            rows.append(("Last synced", last.formatted(.relative(presentation: .named)).capitalizedFirst))
+        } else if state == .offline {
+            rows.append(("Last synced", "Not yet on this iPhone"))
+        }
+        if pending > 0 { rows.append(("Waiting to sync", pending == 1 ? "1 change" : "\(pending) changes")) }
+        if state == .conflict, let c = s?.conflicts, c > 0 { rows.append(("Edited in two places", c == 1 ? "1 note" : "\(c) notes")) }
+        for space in s?.spaces ?? [] where space.state != .ready {
+            switch space.state {
+            case .downloading: rows.append(("Downloading notes", space.total.map { "\(space.have) of \($0)" } ?? "\(space.have)"))
+            case .locked: rows.append(("Library", "Locked on this iPhone"))
+            default: rows.append(("Library", "Opening"))
+            }
+        }
+        return rows
+    }
+}
+
+private extension String {
+    /// "3 seconds ago" as "3 seconds ago", "yesterday" as "Yesterday".
+    var capitalizedFirst: String { prefix(1).uppercased() + dropFirst() }
 }
 
 /// The words, in the web's (SyncStatusTouch.tsx TITLES, describe, label).
@@ -165,9 +223,12 @@ enum RebuildSync {
     }
 
     static func describe(_ s: SyncStatusValue?) -> String {
-        guard let s else { return "Starting…" }
-        let n = s.pending
-        switch s.state {
+        describe(s, state: s?.state ?? .saved, pending: s?.pending ?? 0)
+    }
+
+    static func describe(_ s: SyncStatusValue?, state: SyncState, pending n: Int) -> String {
+        guard s != nil || debugState != nil else { return "Starting…" }
+        switch state {
         case .saved: return "Every change is saved to Folevi."
         case .saving, .syncing: return n == 1 ? "Sending 1 change." : "Sending \(n) changes."
         case .offline:
@@ -175,14 +236,42 @@ enum RebuildSync {
                 ? "\(n == 1 ? "1 change is" : "\(n) changes are") saved on this iPhone. \(n == 1 ? "It syncs" : "They sync") when you’re back online."
                 : "You’re offline. What you write is saved on this iPhone and syncs when you’re back online."
         case .conflict:
-            return s.conflicts == 1
+            let conflicts = s?.conflicts ?? 1
+            return conflicts == 1
                 ? "A change was also edited somewhere else. Open the note to choose which to keep."
-                : "\(s.conflicts) changes were also edited somewhere else. Open the notes to choose which to keep."
+                : "\(conflicts) changes were also edited somewhere else. Open the notes to choose which to keep."
         case .error:
-            return s.authRequired
+            return s?.authRequired == true
                 ? "Folevi needs you signed in again to send your changes. They’re kept on this iPhone."
                 : "Some changes weren’t accepted by the server. They’re kept on this iPhone: try again, or open the note."
         }
+    }
+
+    /// The state's colour: green synced, blue sending, grey offline, orange edited in two places, red not saved.
+    static func tone(_ state: SyncState) -> Color {
+        switch state {
+        case .saved: .green
+        case .saving, .syncing: .blue
+        case .offline: .secondary
+        case .conflict: .orange
+        case .error: .red
+        }
+    }
+
+    /// FOLEVI_REBUILD_SYNC_STATE=offline|syncing|conflict|error: the details as in that state, for checking each one
+    /// headlessly. Debug builds only.
+    static var debugState: SyncState? {
+        #if DEBUG
+        switch ProcessInfo.processInfo.environment["FOLEVI_REBUILD_SYNC_STATE"] {
+        case "offline": .offline
+        case "syncing": .syncing
+        case "conflict": .conflict
+        case "error": .error
+        default: nil
+        }
+        #else
+        nil
+        #endif
     }
 
     /// When everything last reached the server, kept per account on this iPhone.

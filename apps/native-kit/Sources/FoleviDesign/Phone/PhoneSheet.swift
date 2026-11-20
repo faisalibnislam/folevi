@@ -157,6 +157,9 @@ public struct PhoneSheetHeader<Leading: View, Trailing: View>: View {
                         .truncationMode(.tail)
                         .foregroundStyle(FoleviTokens.Chrome.heading.resolve(scheme).color)
                         .accessibilityAddTraits(.isHeader)
+                } else {
+                    // (No title: the middle still takes the room, so Close stays at the trailing edge.)
+                    Color.clear.frame(height: 1)
                 }
             }
             .padding(.horizontal, 4)

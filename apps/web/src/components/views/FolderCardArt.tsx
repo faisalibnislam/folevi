@@ -13,7 +13,7 @@ import { createdText } from "@/lib/format";
  * colour, 85% opaque; up to five of the notes inside, drawn as today's note cards and fanned a little to both
  * sides, standing well above the back; up to two subfolders as whole folders stacked straight up behind it,
  * each a step higher and narrower, with no names; and a see-through front over the notes' lower half with the
- * name, the counts and the last change, frosted only behind those words and clear between them (21 November).
+ * name, the counts and the last change, fully frosted so the name reads cleanly (21 November).
  *
  * Hover: the card lifts 4 px (FOLDER_CARD_FRAME, 200 ms) and the notes rise a little, the front one most
  * (300 ms), both on the app's easing. The global prefers-reduced-motion rule in globals.css makes both instant.
@@ -183,7 +183,7 @@ export function FolderCardArt({
       {[...shown].reverse().map((p, i) => (
         <FolderNote key={i} note={p} depth={shown.length - 1 - i} top={noteTop} />
       ))}
-      {/* the frost: the notes blurred behind the front's words, clear between them (globals.css) */}
+      {/* the frost: the notes blurred behind the whole front (globals.css) */}
       <div data-fc="frost" className="pointer-events-none absolute inset-x-0 bottom-0 rounded-panel" style={{ top: `${FOLDER_FRONT_TOP}%` }} />
       {/* the front, with the name, the counts and the last change */}
       <div data-fc="front" className="absolute inset-x-0 bottom-0 flex flex-col overflow-hidden rounded-panel px-[7cqw] pb-[5.6cqw] pt-[6.4cqw]" style={{ top: `${FOLDER_FRONT_TOP}%` }}>

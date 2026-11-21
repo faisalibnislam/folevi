@@ -829,14 +829,11 @@ public struct WebFolderCard: View {
                 .frame(width: w, height: h * (1 - st.back - 0.04))
                 .offset(y: h * (st.back + 0.04))
             inside(w: w, h: h, cq: cq, tone: tone).flattened()
-            // The frost (globals.css data-fc="frost"): what's behind the front blurred (7 px on the web's 232 px card)
-            // only behind its words, the name and counts and the Edited date, and clear between them.
+            // The frost (globals.css data-fc="frost"): what's behind the whole front, blurred (7 px on the web's 232 px card).
             inside(w: w, h: h, cq: cq, tone: tone)
                 .blur(radius: 7 * w / 232, opaque: false)
                 .mask(alignment: .topLeading) {
-                    frontShape
-                        .fill(LinearGradient(stops: Self.frostBands { $0 ? .black : .clear }, startPoint: .top, endPoint: .bottom))
-                        .frame(width: w, height: frontH).offset(y: h * Self.frontTop)
+                    frontShape.frame(width: w, height: frontH).offset(y: h * Self.frontTop)
                 }
                 .flattened()
                 .allowsHitTesting(false)
@@ -848,24 +845,12 @@ public struct WebFolderCard: View {
         .animation(.timingCurve(0.2, 0.8, 0.2, 1, duration: 0.2), value: hovered)
     }
 
-    /// Where the front is frosted, as gradient stops down its height (globals.css): solid behind the name and counts
-    /// (the top 40%) and the Edited date (the bottom 20%), clear from 54% to 66%. `pick(true)` is the frosted value.
-    static func frostBands(_ pick: (Bool) -> Color) -> [Gradient.Stop] {
-        [.init(color: pick(true), location: 0), .init(color: pick(true), location: 0.40),
-         .init(color: pick(false), location: 0.54), .init(color: pick(false), location: 0.66),
-         .init(color: pick(true), location: 0.80), .init(color: pick(true), location: 1)]
-    }
-
-    /// The front's tint, light and words (FolderCardArt's data-fc="front"): a strong tint behind the words and a
-    /// faint one between them, so the folder's name reads cleanly and the notes show through (the owner, 21 November
-    /// 2026).
+    /// The front's tint, light and words (FolderCardArt's data-fc="front"): fully frosted, a strong tint from top to
+    /// bottom, so the folder's name reads cleanly over the notes (the owner, 21 November 2026).
     private func front(w: CGFloat, h frontH: CGFloat, cq: CGFloat, tone: RGBA, shape: RoundedRectangle) -> some View {
         let white = RGBA(255, 255, 255)
         let f1 = dark ? tone.oklabMix(RGBA(58, 58, 66), 0.48).color.opacity(0.82) : tone.oklabMix(white, 0.5).color.opacity(0.62)
-        let mid = dark ? tone.oklabMix(RGBA(52, 52, 58), 0.46).color.opacity(0.16) : tone.oklabMix(RGBA(244, 244, 246), 0.7).color.opacity(0.14)
         let f2 = dark ? tone.oklabMix(RGBA(31, 31, 36), 0.4).color.opacity(0.78) : tone.oklabMix(RGBA(58, 58, 72), 0.92).color.opacity(0.66)
-        let tint: [Gradient.Stop] = [.init(color: f1, location: 0), .init(color: f1, location: 0.40), .init(color: mid, location: 0.54),
-                                     .init(color: mid, location: 0.66), .init(color: f2, location: 0.80), .init(color: f2, location: 1)]
         let ink = dark ? RGBA(246, 246, 248) : tone.oklabMix(RGBA(27, 27, 31), 0.24)
         let k = labelScale
         // The name: clamp(14px, 8cqw, 30px), semibold, 1.15; the phone's at Headline, 17/22 (globals.css).
@@ -877,7 +862,7 @@ public struct WebFolderCard: View {
         let editedStyle = WebTextStyle(size: editedSize, leading: editedSize * 1.3).cardInterface(chrome != nil)
         let nameW = Self.nameWidth(w, menuRoom: menuRoom && !phone)
         return ZStack(alignment: .topLeading) {
-            shape.fill(LinearGradient(stops: tint, startPoint: .top, endPoint: .bottom))
+            shape.fill(LinearGradient(colors: [f1, f2], startPoint: .top, endPoint: .bottom))
             shape.fill(RadialGradient(colors: [Color.white.opacity(0.154), .clear], center: .topLeading, startRadius: 0, endRadius: w * 0.9))
             shape.strokeBorder((dark ? RGBA(255, 255, 255, 0.08) : RGBA(255, 255, 255, 0.275)).color, lineWidth: 1)
             VStack(alignment: .leading, spacing: 0) {

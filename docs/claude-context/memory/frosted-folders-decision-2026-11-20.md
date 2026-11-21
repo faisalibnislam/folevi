@@ -24,6 +24,8 @@ Owner chose (AskUserQuestion, 2026-11-20) after the "Folevi folder states" artif
 - 2026-11-21, later: the owner wants the folder's name to read clearly, so the frost sits **behind the words only**:
   strong tint and blur behind the name and counts (front's top 40%) and the Edited date (bottom 20%), clear glass
   between (54% to 66%). Same on web, Mac, iPhone and iPad.
+- 2026-11-21, final: the owner then asked for the **whole front fully frosted**, not just the text area: strong
+  tint (light 62% to 66%, dark 82% to 78%) and a 7 px blur across the entire front.
 
 **Why:** owner reviewed many concepts in artifacts and converged on this.
 **How to apply:** build on its own branch/worktree (other sessions release from the main checkout); see

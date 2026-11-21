@@ -258,10 +258,9 @@ the folder's back now has true circular corners of the front's 14 pt radius (its
 the front's bottom corners), the back and stacked subfolders are one 85% layer, the frost is 30% lighter (blur
 3.5 to 2.45 px, tint opacity and sheen x0.7, grain 0.14 to 0.1), the Mac Home carousel is sized to its 25% smaller
 cards (it was centred in the web's 326 pt row, leaving a gap above and below), and Home sections sit 8 px closer
-(Mac `top` 36/48 to 28/40, web `mt-9`/`mt-12` to `mt-7`/`mt-10`). Then the frost moved behind the words: a strong
-tint and 7 px blur behind the name and counts (the front's top 40%) and the Edited date (bottom 20%), clear and
-unblurred glass from 54% to 66% (web: a masked `data-fc="frost"` layer; native: `WebFolderCard.frostBands`). Web
-checked on `/dev/folder-states` in light and dark; Home not seen signed in on the web.
+(Mac `top` 36/48 to 28/40, web `mt-9`/`mt-12` to `mt-7`/`mt-10`). Then the whole front became fully frosted (a
+strong tint and a 7 px blur top to bottom, the blur its own `data-fc="frost"` layer on the web) so the name reads
+cleanly; a short-lived version frosted only behind the words with a clear band between. Web checked on `/dev/folder-states` in light and dark; Home not seen signed in on the web.
 
 What shipped in the last week, newest first (detail in `CHANGELOG.md`):
 - 1.5.58: Frosted folder cards, desktop and Mac cards 25% smaller, a new folder glyph (PR 42, branch
@@ -380,6 +379,7 @@ account button should move past iPadOS's window buttons).
   `DATABASE_UDF_USER_TIMEOUT_SECONDS=4` for that backend. Bursts show in `convex.log` as "took a long time".
 
 ## 12. Change log
+- 2026-11-21: Folder fronts fully frosted (strong tint and 7 px blur across the whole front), on all platforms.
 - 2026-11-21: Folder fronts frosted only behind their words (name, counts, Edited), clear between, on all platforms.
 - 2026-11-21: Folder corners match the front, frost 30% lighter, Mac Home carousel gaps and section spacing tightened, on `claude/folder-design-refinements-cd77e4`.
 - 2026-11-20: Handoff rewritten for another Claude: sections 9 and 10 as a clean snapshot; the owner's design decisions copied into `docs/claude-context/memory/`.

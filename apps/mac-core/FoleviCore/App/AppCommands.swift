@@ -22,6 +22,8 @@ struct AppCommands: SwiftUI.Commands {
                 .keyboardShortcut("n", modifiers: [.command, .shift])
             Button("Quick Add…") { QuickAdd.shared.show() }
                 .keyboardShortcut("a", modifiers: [.command, .option, .control])
+            Button("Reopen Closed Tab") { app.reopenClosedTab() }
+                .keyboardShortcut("t", modifiers: [.command, .shift])
         }
         CommandGroup(after: .newItem) {
             Divider()
@@ -107,8 +109,8 @@ struct AppCommands: SwiftUI.Commands {
 
         // View
         CommandGroup(before: .sidebar) {
-            Button("as List") { window?.listStyle = .list }.keyboardShortcut("1")
-            Button("as Cards") { window?.listStyle = .cards }.keyboardShortcut("2")
+            Button("as List") { window?.listStyle = .list }.keyboardShortcut("1", modifiers: [.command, .control])
+            Button("as Cards") { window?.listStyle = .cards }.keyboardShortcut("2", modifiers: [.command, .control])
             Divider()
             Button(window?.inspectorShown == true ? "Hide Inspector" : "Show Inspector") { window?.inspectorShown.toggle() }
                 .keyboardShortcut("i", modifiers: [.command, .option])
@@ -117,6 +119,14 @@ struct AppCommands: SwiftUI.Commands {
                 .disabled(window?.current.isNote != true)
             Button("Note Info") { window?.inspectorTab = .info; window?.inspectorShown = true }
                 .disabled(window?.current.isNote != true)
+            Divider()
+        }
+        // Window > Show Tab 1…9 (⌘1 to ⌘9; ⌘9 the last), as Safari.
+        CommandGroup(before: .windowList) {
+            ForEach(1..<10) { n in
+                Button(n == 9 ? "Show Last Tab" : "Show Tab \(n)") { TabNumbers.show(n) }
+                    .keyboardShortcut(KeyEquivalent(Character("\(n)")), modifiers: .command)
+            }
             Divider()
         }
         SidebarCommands()
@@ -133,7 +143,7 @@ struct AppCommands: SwiftUI.Commands {
             Button("Foli AI") { window?.select(.foliAI(nil)) }.keyboardShortcut("j", modifiers: [.command, .shift])
             Button("Notifications") { window?.select(.notifications) }.keyboardShortcut("y", modifiers: [.command, .shift])
             Button("Inbox") { window?.select(.inbox) }
-            Button("Tasks") { window?.select(.tasks(.today)) }.keyboardShortcut("t", modifiers: [.command, .shift])
+            Button("Tasks") { window?.select(.tasks(.today)) }.keyboardShortcut("t", modifiers: [.command, .control])
             Button("Calendar") { window?.select(.calendar(nil)) }.keyboardShortcut("k", modifiers: [.command, .control])
             Button("Today's Note") { window?.select(.daily(nil)) }.keyboardShortcut("d", modifiers: [.command, .shift])
             Divider()
@@ -188,5 +198,15 @@ struct AppCommands: SwiftUI.Commands {
             Button(Updater.shared.menuTitle ?? "Check for Updates…") { Updater.shared.menuAction() }
                 .disabled(!Updater.enabled)
         }
+    }
+}
+
+/// The front window's tabs by number.
+@MainActor
+enum TabNumbers {
+    static func show(_ n: Int) {
+        guard let key = NSApp.keyWindow, let tabs = key.tabbedWindows ?? [key] as [NSWindow]?, !tabs.isEmpty else { return }
+        let target = n == 9 ? tabs.last : (n <= tabs.count ? tabs[n - 1] : nil)
+        target?.makeKeyAndOrderFront(nil)
     }
 }

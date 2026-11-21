@@ -98,7 +98,7 @@ struct CommandPalette: View {
         .init(id: "c-home", kind: .place(.home), title: "Home", subtitle: "Go", symbol: "house", shortcut: "⇧⌘H"),
         .init(id: "c-all", kind: .place(.allNotes), title: "All Notes", subtitle: "Go", symbol: "doc.text", shortcut: nil),
         .init(id: "c-recent", kind: .place(.recent), title: "Recent", subtitle: "Go", symbol: "clock", shortcut: nil),
-        .init(id: "c-tasks", kind: .place(.tasks(.today)), title: "Tasks", subtitle: "Go", symbol: "checklist", shortcut: "⇧⌘T"),
+        .init(id: "c-tasks", kind: .place(.tasks(.today)), title: "Tasks", subtitle: "Go", symbol: "checklist", shortcut: "⌃⌘T"),
         .init(id: "c-cal", kind: .place(.calendar(nil)), title: "Calendar", subtitle: "Go", symbol: "calendar", shortcut: nil),
         .init(id: "c-starred", kind: .place(.starred), title: "Starred", subtitle: "Go", symbol: "star", shortcut: nil),
         .init(id: "c-drafts", kind: .place(.drafts), title: "Drafts", subtitle: "Go", symbol: "tray", shortcut: nil),

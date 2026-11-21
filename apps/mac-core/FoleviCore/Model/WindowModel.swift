@@ -45,6 +45,8 @@ final class WindowModel: Identifiable {
     var inspectorChat: String?
     /// The folder whose sharing sheet is up.
     var sharingFolder: String?
+    /// The folder picker on screen (Move To, Copy To, Move Folder).
+    var folderPick: FolderPickTarget?
     /// The note whose sharing popover is up.
     var sharingNote: String?
     /// Lists as cards (gallery) or rows, per window (View > as Cards / as List).

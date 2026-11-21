@@ -177,6 +177,8 @@ struct NoteListScreen: View {
             } else {
                 Button("Star") { app.perform { _ = try await $0.command(Commands.NoteStar(NoteStarArgs(ids: notes, starred: true))) } }
                 Menu("Move To") { MoveTargets(ids: notes) }
+                Button("Move To Folder…") { window.pickFolder(.moveNotes, notes) }
+                Button("Copy To…") { window.pickFolder(.copyNotes, notes) }
                 Button(kind == .archive ? "Unarchive" : "Archive") {
                     app.perform { _ = try await $0.command(Commands.NoteArchive(NoteArchiveArgs(ids: notes, archived: kind != .archive))) }
                 }

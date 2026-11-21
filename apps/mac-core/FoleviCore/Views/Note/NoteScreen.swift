@@ -161,8 +161,8 @@ struct NoteMoreMenu: View {
     private var offered: Set<NoteMenuAction> { Set(window.editorState?.menu?.actions ?? NoteMenuAction.allCases) }
 
     var body: some View {
-        if offered.contains(.move) { Button("Move To…") { window.noteMenu(.move) } }
-        if offered.contains(.copyTo) { Button("Copy To…") { window.noteMenu(.copyTo) } }
+        if offered.contains(.move), let id = window.current.noteId { Button("Move To…") { window.pickFolder(.moveNotes, [id]) } }
+        if offered.contains(.copyTo), let id = window.current.noteId { Button("Copy To…") { window.pickFolder(.copyNotes, [id]) } }
         if offered.contains(.duplicate) { Button("Duplicate") { window.noteMenu(.duplicate) } }
         Divider()
         if let id = window.current.noteId {

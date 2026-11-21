@@ -41,6 +41,8 @@ struct NoteMenu: View {
                 app.perform { _ = try await $0.command(Commands.NoteStar(NoteStarArgs(ids: [row.id], starred: !row.starred))) }
             }
             Menu("Move To") { MoveTargets(ids: [row.id]) }
+            Button("Move To Folder…") { window.pickFolder(.moveNotes, [row.id]) }
+            Button("Copy To…") { window.pickFolder(.copyNotes, [row.id]) }
             Button("Duplicate") { app.perform { _ = try await $0.command(Commands.NoteDuplicate(NoteIdArgs(id: row.id))) } }
             Divider()
             Button("Copy Link") { NoteActions.copyLink(row.id, title: row.title) }
@@ -103,6 +105,7 @@ struct FolderMenu: View {
         Button("Open in New Tab") { app.open(.folder(folder.id), newTab: true) }
         Button("New Note in Folder") { NoteActions.newNote(app: app, window: window, folder: folder.id) }
         Button("New Subfolder…") { newSubfolder(folder) }
+        Button("Move Folder…") { window.pickFolder(.moveFolder, [folder.id]) }
         Divider()
         Button("Rename…") { rename(folder) }
         Menu("Colour") {

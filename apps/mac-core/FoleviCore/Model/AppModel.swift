@@ -204,7 +204,17 @@ final class AppModel {
         windows = windows.filter { $0.value.model != nil }
     }
 
+    /// Where closed windows and tabs were (File > Reopen Closed Tab), newest last.
+    @ObservationIgnored private(set) var closedTabs: [Destination] = []
+
+    func reopenClosedTab() {
+        guard let d = closedTabs.popLast() else { return }
+        openWindow?(d, true)
+    }
+
     func unregister(_ window: WindowModel) {
+        closedTabs.append(window.current)
+        if closedTabs.count > 20 { closedTabs.removeFirst() }
         windows[window.id] = nil
         if frontWindow == window.id { frontWindow = nil }
         pool.giveBack(from: window.id)
@@ -247,6 +257,12 @@ final class AppModel {
     @ObservationIgnored weak var pendingOpener: NSWindow?
 
     func open(_ dest: Destination, newTab: Bool = false) {
+        // A note already open in a window or tab comes forward instead of opening twice.
+        if newTab, dest.isNote, let open = windows.values.compactMap(\.model).first(where: { $0.current == dest }), let w = open.window {
+            w.makeKeyAndOrderFront(nil)
+            NSApp.activate()
+            return
+        }
         if newTab || front == nil {
             pendingOpener = front?.window
             openWindow?(dest, newTab)

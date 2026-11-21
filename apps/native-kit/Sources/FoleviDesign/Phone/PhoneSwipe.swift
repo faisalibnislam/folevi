@@ -47,7 +47,8 @@ public struct PhoneSwipeRow<Content: View>: View {
     @Environment(\.colorScheme) private var scheme
 
     static var actionWidth: CGFloat { 76 }
-    static var spring: Animation { .spring(response: 0.3, dampingFraction: 0.86) }
+    /// The actions widening or narrowing as the row crosses the full-swipe point (no finger speed to carry).
+    static var spring: Animation { FoleviSpring.settle() }
 
     public init(id: String, leading: [PhoneSwipeAction], trailing: [PhoneSwipeAction], state: PhoneSwipeState, @ViewBuilder content: () -> Content) {
         self.id = id
@@ -122,7 +123,7 @@ public struct PhoneSwipeRow<Content: View>: View {
                 }
                 dragged(g.translation.width)
             }
-            .onEnded { _ in dragEnded() }
+            .onEnded { g in dragEnded(g.velocity.width) }
     }
 
     private func dragged(_ dx: CGFloat) {
@@ -142,7 +143,10 @@ public struct PhoneSwipeRow<Content: View>: View {
         }
     }
 
-    private func dragEnded() {
+    /// `velocity`: the finger's sideways speed as it lifted (points a second). Where the row would coast to decides
+    /// open or shut, as iOS's own lists do, so a quick flick opens it even when it moved less than 40 points, and a
+    /// flick back shuts an open row; the spring then carries the flick's speed on instead of starting from rest.
+    private func dragEnded(_ velocity: CGFloat = 0) {
         defer { horizontal = nil }
         guard horizontal == true else { return }
         let x = offset
@@ -151,9 +155,11 @@ public struct PhoneSwipeRow<Content: View>: View {
             if x > 0, let a = leading.first { return run(a) }
             if x < 0, let a = trailing.first { return run(a) }
         }
-        let open = x > 40 && !leading.isEmpty ? CGFloat(leading.count) * Self.actionWidth
-            : x < -40 && !trailing.isEmpty ? -CGFloat(trailing.count) * Self.actionWidth : 0
-        settle(open)
+        // (A slower deceleration than a scroll's: a row's travel is short, and only a real flick should carry it.)
+        let coast = FoleviSpring.projected(x, velocity: velocity, decelerationRate: 0.99)
+        let open = coast > 40 && !leading.isEmpty ? CGFloat(leading.count) * Self.actionWidth
+            : coast < -40 && !trailing.isEmpty ? -CGFloat(trailing.count) * Self.actionWidth : 0
+        settle(open, velocity: velocity)
         if open != 0 { state.open = id }
     }
 
@@ -170,8 +176,8 @@ public struct PhoneSwipeRow<Content: View>: View {
         a.action()
     }
 
-    private func settle(_ to: CGFloat) {
-        withAnimation(Self.spring) { offset = to }
+    private func settle(_ to: CGFloat, velocity: CGFloat = 0) {
+        withAnimation(FoleviSpring.settle(velocity: velocity, distance: to - offset)) { offset = to }
         if to == 0, state.open == id { state.open = nil }
     }
 
@@ -189,7 +195,8 @@ public struct PhoneSwipeRow<Content: View>: View {
 /// and the sheet around it.
 private struct PhoneSideways: UIGestureRecognizerRepresentable {
     let changed: (CGFloat) -> Void
-    let ended: () -> Void
+    /// The finger's sideways speed as it lifted, points a second.
+    let ended: (CGFloat) -> Void
     let cancelled: () -> Void
 
     func makeUIGestureRecognizer(context: Context) -> UIPanGestureRecognizer {
@@ -204,7 +211,7 @@ private struct PhoneSideways: UIGestureRecognizerRepresentable {
     func handleUIGestureRecognizerAction(_ pan: UIPanGestureRecognizer, context: Context) {
         switch pan.state {
         case .began, .changed: changed(pan.translation(in: pan.view).x)
-        case .ended: ended()
+        case .ended: ended(pan.velocity(in: pan.view).x)
         case .cancelled, .failed: cancelled()
         default: break
         }

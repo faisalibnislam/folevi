@@ -1153,7 +1153,7 @@ struct ChoicePress: ButtonStyle {
         #if os(macOS)
         configuration.label.pressDip(configuration.isPressed)
         #else
-        configuration.label.scaleEffect(configuration.isPressed ? 0.985 : 1).animation(.easeOut(duration: 0.15), value: configuration.isPressed)
+        configuration.label.pressDip(configuration.isPressed, scale: 0.985)
         #endif
     }
 }

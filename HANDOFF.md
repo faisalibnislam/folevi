@@ -2,7 +2,7 @@
 
 > Read this first if you are a Claude (or any agent) picking this project up, on this Mac or another one. Then read `CLAUDE.md`, `docs/HANDOFF.md` (the long handoff: unfinished branches, release detail, what the owner is waiting on) and `docs/claude-context/memory/MEMORY.md` (the owner's standing rules). Keep this file current: after every change to the project, update "Current state", "Next steps" and "Change log", and commit it.
 
-Last updated: 2026-11-21 · Written on: Faisal's MacBook Pro M5
+Last updated: 2026-11-21 (Folevi Core) · Written on: Faisal's MacBook Pro M5
 
 ## 1. What this is
 
@@ -259,6 +259,23 @@ This session's wrangler login lives in the app's own `XDG_CONFIG_HOME` (not `~/.
 there shows the account that owns `folevi-updates`. Decisions: `docs/claude-context/memory/tab-back-and-overview-2026-11-21.md`
 and `frosted-folders-decision-2026-11-20.md`.
 
+**Folevi Core (new app, in progress):** branch `claude/folevi-core-529dbe` (worktree
+`.claude/worktrees/folevi-core-529dbe`), `apps/mac-core`. A new, fully native macOS 26 app beside today's Folevi
+(owner's decisions of 2026-11-21: its own name, bundle id `app.folevicore.FoleviCore`, data folder, Keychain
+names `app.folevicore.*`, URL scheme `folevi-core://`; same accounts; today's app keeps shipping). SwiftUI with
+AppKit where it matters; the web editor stays for note pages in a pool of warm web views (one hidden engine page
+per place, which is also the first window's editor, plus up to three editors for other windows). The data layer
+is reused by path, never copied: the web export in native chrome mode through FoleviEngine, the iOS shell
+services, and the Mac host's UI-free files (app:// scheme, routers, Places, background sync, Updater, printing,
+OCR, call recorder). The owner asked mid-build (2026-11-21) to keep the main app's coloured icon, its icon set and
+its black and white buttons: done (shared AppIcon.icon, web icons, Folevi ink whatever the Mac's accent).
+Read `apps/mac-core/README.md`; parity item by item in `apps/mac-core/PARITY.md`. Checked: Debug build runs on
+the demo engine and on the real engine with a scratch "on this Mac" library (gates, Home, lists, a note in the
+editor, Tasks, Calendar, Foli AI screens), 21 Core test suites pass, FoleviMac's 243 tests still pass, today's Mac
+app still builds; `scripts/release.mjs` makes a Developer ID signed, checked DMG (not notarized). Core has its own
+Sparkle key (login Keychain, account `folevi-core`; the owner should back it up). Not checked: signing in to a
+real account in Core, iCloud/folder libraries, every parity item (see PARITY.md's gaps).
+
 **Also in progress:** branch `claude/liquid-glass-animations-b1d70e` (worktree
 `.claude/worktrees/liquid-glass-animations-b1d70e`, off `main` at `d752bb0d`, PR 45, not released): a Liquid Glass
 motion pass on the Mac, iPhone and iPad apps, keeping the owner's playful springs (FoleviSpring, 2026-11-01). Shared
@@ -331,6 +348,14 @@ signed-in account, 1.5.58's frosted folders with a large library, and the iPad c
 account button should move past iPadOS's window buttons).
 
 ## 10. Next steps / open work
+- Folevi Core (`apps/mac-core`, branch `claude/folevi-core-529dbe`): close the remaining gaps in
+  `apps/mac-core/PARITY.md` (672 of 1,343 there, 301 partly, 160 missing; "Gaps in priority order" lists what's
+  left: tabs, Home details, notes lists and folders pages, tasks views, calendar, notifications, Settings search,
+  time zone picker, Foli AI memory), then the owner tries it with a real account. Publishing
+  (`apps/mac-core/scripts/publish.mjs`, R2 `folevi-updates` under `core/`) only with the owner's OK. The release
+  build already carries iCloud (`iCloud.com.folevi`) on its Developer ID profile. Known issue: launched with
+  `core.mjs launch --demo` (FOLEVI_DEMO=1) the windows get no values (Home spins); the real engine with the
+  scratch library works.
 - Liquid Glass motion branch (`claude/liquid-glass-animations-b1d70e`): the owner's look on a real Mac and iPhone, then
   merge with the next release. Known left: the Mac's Foli AI chat closes at once, with no exit animation (its host
   view shrinks before SwiftUI can animate the chat out; older than this branch).
@@ -399,6 +424,9 @@ account button should move past iPadOS's window buttons).
   `DATABASE_UDF_USER_TIMEOUT_SECONDS=4` for that backend. Bursts show in `convex.log` as "took a long time".
 
 ## 12. Change log
+- 2026-11-21: Folevi Core: the Vault complete, Quick Add parity, Foli AI chat details and a floating Ask Foli AI panel (⌘J), search and palette, Settings in today's order with a Library pane, About and Support, sidebar details; ready follows the engine client (no more stuck starting screen); PARITY.md recounted: 672 there, 301 partly, 160 missing, 210 n/a.
+- 2026-11-21: Folevi Core: draft PR 51; parity checklist (595 of 1,343 present, 343 partial, 195 missing, 210 n/a at first grading) and the first work packages closed (bugs, sharing, folder picker, tabs, task editor, calendar views); Developer ID release with iCloud verified (not notarized).
+- 2026-11-21: Folevi Core started in `apps/mac-core` (branch `claude/folevi-core-529dbe`): native app, release and publish scripts, tests, parity checklist. FoleviKit's demo engine is its own target `FoleviEngineDemo` (files unmoved, re-exported by FoleviMac).
 - 2026-11-21: 1.5.63 released on Mac and TestFlight (PR 46 + 47 + PR 45's motion pass); the web build was skipped (native-only).
 - 2026-11-21: iPhone Home's folder strip no longer cuts its cards' shadow off in a straight line (`scrollClipDisabled`), on `claude/phone-strip-shadows`.
 - 2026-11-21: iPhone search's field and close button at the foot above the keyboard (iOS 26), chips just above it; Quick add's Task/Note switch matches Foli AI's Chat/Research, full width; on `claude/phone-search-bottom`.

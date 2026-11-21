@@ -1,0 +1,994 @@
+// Recent, Search, Shared with Me, a shared folder, Changes, Templates, Folders, Tags, an invitation, the daily
+// note and the screens that stay on the page (Reviews, the Foli DNA graph).
+import FoleviDesign
+import FoleviEngine
+import SwiftUI
+
+// MARK: Recent
+
+struct RecentScreen: View {
+    let window: WindowModel
+    private var app: AppModel { .shared }
+    @State private var recent = Live<Views.Recent>()
+    @AppStorage("core.recent.everywhere") private var everywhere = false
+
+    var body: some View {
+        Group {
+            if let rows = recent.value?.rows {
+                if rows.isEmpty {
+                    EmptyScreen(symbol: "clock", title: "Nothing Recent", message: "Notes you open show up here.")
+                } else if window.listStyle == .cards {
+                    ScrollView {
+                        LazyVGrid(columns: [GridItem(.adaptive(minimum: 190, maximum: 250), spacing: 20)], spacing: 22) {
+                            ForEach(rows, id: \.row.id) { r in NoteCardButton(row: r.row, window: window) }
+                        }
+                        .padding(24)
+                    }
+                } else {
+                    List {
+                        ForEach(rows, id: \.row.id) { r in
+                            NoteListRow(row: r.row)
+                                .contentShape(Rectangle())
+                                .onTapGesture(count: 2) { window.go(.note(r.row.id)) }
+                                .contextMenu {
+                                    NoteMenu(row: r.row, window: window)
+                                    Divider()
+                                    Button("Hide from Recent") { app.perform { _ = try await $0.command(Commands.NoteHideFromRecent(NoteIdsArgs(ids: [r.row.id]))) } }
+                                }
+                                .draggable(NoteDrag(id: r.row.id, title: r.row.title))
+                        }
+                    }
+                    .listStyle(.inset)
+                }
+            } else {
+                LoadingScreen()
+            }
+        }
+        .toolbar {
+            ToolbarItemGroup(placement: .secondaryAction) {
+                ListStylePicker(window: window)
+                if (app.places.value?.places.count ?? 0) > 1 {
+                    Toggle(isOn: $everywhere) { Label("Every Place", systemImage: "square.stack.3d.up") }
+                        .help("Show recent notes from every place on this Mac")
+                }
+            }
+        }
+        .task(id: everywhere) { recent.bind(app.client, Views.Recent(RecentArgs(scope: everywhere ? .everywhere : .place, limit: 100))) }
+    }
+}
+
+// MARK: Search
+
+/// Search: one field ("Search in <space>"), filters (folder, tag, when it was edited, archived, by meaning, every
+/// place) with Clear, and before typing the recent searches and the notes opened last. Results come in sections:
+/// Notes, By Meaning, Folders (matched here, 6 at most) and open Tasks (8 at most). ↑ and ↓ move through them,
+/// Return opens the one picked, Esc clears the field.
+struct SearchScreen: View {
+    let window: WindowModel
+    let initial: String
+    private var app: AppModel { .shared }
+    @State private var text = ""
+    @State private var result: SearchValue?
+    @State private var searching = false
+    @State private var folder: String?
+    @State private var tag: String?
+    @State private var updated: Updated = .any
+    @State private var archived = false
+    @State private var meaning = false
+    @State private var everywhere = false
+    @State private var picked: String?
+    @State private var recentNotes = Live<Views.RecentViewed>()
+    @State private var openTasks: [TaskRow]?
+    @State private var recents: [String] = []
+    @FocusState private var focused: Bool
+
+    enum Updated: String, CaseIterable, Identifiable {
+        case any, week, month, year
+        var id: String { rawValue }
+        var title: String {
+            switch self {
+            case .any: "Any Time"
+            case .week: "Past Week"
+            case .month: "Past Month"
+            case .year: "Past Year"
+            }
+        }
+        /// Milliseconds since 1970.
+        var after: Int? {
+            let days: Double
+            switch self {
+            case .any: return nil
+            case .week: days = 7
+            case .month: days = 30
+            case .year: days = 365
+            }
+            return Int((Date().timeIntervalSince1970 - days * 86_400) * 1000)
+        }
+    }
+
+    /// Everything the list shows, in order, so the keys can move through it.
+    enum Item: Identifiable, Hashable {
+        case query(String)
+        case recent(RecentViewedRow)
+        case note(SearchHit)
+        case folder(FolderNode, path: String)
+        case task(TaskRow)
+
+        var id: String {
+            switch self {
+            case .query(let q): "q:" + q
+            case .recent(let r): "r:" + r.id
+            case .note(let h): "n:" + h.id + (h.blockId ?? "") + h.matchIn
+            case .folder(let f, _): "f:" + f.id
+            case .task(let t): "t:" + t.id
+            }
+        }
+    }
+
+    private var query: String { text.trimmingCharacters(in: .whitespaces) }
+    private var filtered: Bool { folder != nil || tag != nil || updated != .any || archived || meaning || everywhere }
+
+    private var noteHits: [SearchHit] { (result?.hits ?? []).filter { $0.matchIn != "meaning" } }
+    private var meaningHits: [SearchHit] { (result?.hits ?? []).filter { $0.matchIn == "meaning" } }
+
+    private var folderHits: [Item] {
+        guard !query.isEmpty, !everywhere else { return [] }
+        let all = app.tree.value?.folders ?? []
+        let byId = Dictionary(all.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
+        func path(_ f: FolderNode) -> String {
+            var names: [String] = []
+            var p = f.parentId
+            while let id = p, let parent = byId[id] { names.insert(parent.name, at: 0); p = parent.parentId }
+            return names.joined(separator: " › ")
+        }
+        return all.filter { $0.name.localizedCaseInsensitiveContains(query) }.prefix(6).map { .folder($0, path: path($0)) }
+    }
+
+    private var taskHits: [Item] {
+        guard !query.isEmpty, !everywhere, let openTasks else { return [] }
+        return openTasks.filter { $0.title.localizedCaseInsensitiveContains(query) }.prefix(8).map { .task($0) }
+    }
+
+    private var items: [Item] {
+        if query.isEmpty {
+            return recents.map { .query($0) } + (recentNotes.value?.rows ?? []).prefix(8).map { .recent($0) }
+        }
+        return noteHits.map { .note($0) } + meaningHits.map { .note($0) } + folderHits + taskHits
+    }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            field
+            filters
+            Divider()
+            if app.sync.value?.online == false {
+                Label("Showing what's on this Mac. Folevi searches everything when it's back online.", systemImage: "wifi.slash")
+                    .font(.callout).foregroundStyle(.secondary).frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 24).padding(.vertical, 8).background(.fill.quinary)
+            }
+            content
+        }
+        .onAppear {
+            text = initial
+            recents = RecentSearches.list()
+            focused = true
+            if !initial.isEmpty { run() }
+        }
+        .task { recentNotes.bind(app.client, Views.RecentViewed(RecentViewedArgs(space: nil, limit: 8))) }
+        .onChange(of: initial) { text = initial; focused = true }
+        .onChange(of: text) { schedule() }
+        .onChange(of: folder) { run() }
+        .onChange(of: tag) { run() }
+        .onChange(of: updated) { run() }
+        .onChange(of: archived) { run() }
+        .onChange(of: meaning) { run() }
+        .onChange(of: everywhere) { run() }
+    }
+
+    private var field: some View {
+        HStack(spacing: 10) {
+            Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
+            TextField(everywhere ? "Search Everywhere" : "Search in \(app.spaceName)", text: $text)
+                .textFieldStyle(.plain)
+                .font(.title3)
+                .focused($focused)
+                .onSubmit { openPicked() }
+                .onKeyPress(.downArrow) { move(1); return .handled }
+                .onKeyPress(.upArrow) { move(-1); return .handled }
+                .onKeyPress(.escape) {
+                    if text.isEmpty { return .ignored }
+                    text = ""
+                    return .handled
+                }
+            if searching { ProgressView().controlSize(.small) }
+            if !text.isEmpty {
+                Button { text = ""; focused = true } label: { Image(systemName: "xmark.circle.fill") }
+                    .buttonStyle(.plain).foregroundStyle(.secondary).help("Clear")
+            }
+        }
+        .padding(12)
+        .background(.fill.quinary, in: .rect(cornerRadius: 10))
+        .padding(.horizontal, 24)
+        .padding(.top, 16)
+    }
+
+    private var filters: some View {
+        HStack(spacing: 12) {
+            Picker("Folder", selection: $folder) {
+                Text("Any Folder").tag(String?.none)
+                ForEach(FolderOrder.nested(app.tree.value?.folders ?? []), id: \.id) { f in
+                    Text(String(repeating: "    ", count: f.depth) + f.name).tag(Optional(f.id))
+                }
+            }
+            .labelsHidden().fixedSize()
+            Picker("Tag", selection: $tag) {
+                Text("Any Tag").tag(String?.none)
+                ForEach(app.tree.value?.tags ?? [], id: \.id) { Text("#" + $0.name).tag(Optional($0.id)) }
+            }
+            .labelsHidden().fixedSize()
+            Picker("Updated", selection: $updated) {
+                ForEach(Updated.allCases) { Text($0.title).tag($0) }
+            }
+            .labelsHidden().fixedSize()
+            Toggle("Archived", isOn: $archived).toggleStyle(.checkbox).help("Include archived notes")
+            if result?.meaningAvailable == true { Toggle("By Meaning", isOn: $meaning).toggleStyle(.checkbox).help("Find notes about the same thing, even in other words") }
+            if (app.session.value?.spaces.count ?? 0) > 1 { Toggle("Every Space", isOn: $everywhere).toggleStyle(.checkbox) }
+            Spacer()
+            if filtered {
+                Button("Clear", action: clearFilters).help("Clear the filters")
+            }
+        }
+        .controlSize(.small)
+        .padding(.horizontal, 24)
+        .padding(.vertical, 10)
+    }
+
+    @ViewBuilder private var content: some View {
+        if query.isEmpty {
+            if items.isEmpty {
+                EmptyScreen(symbol: "magnifyingglass", title: "Search Your Notes", message: "Type a word or phrase. Press ⌘K anywhere to jump to a note or run a command.")
+            } else {
+                list {
+                    if !recents.isEmpty {
+                        HStack {
+                            header("Recent Searches")
+                            Spacer()
+                            Button("Clear") { RecentSearches.clear(); recents = [] }.buttonStyle(.borderless).font(.caption).padding(.top, 12)
+                        }
+                        ForEach(recents, id: \.self) { q in
+                            row(.query(q)) { Label(q, systemImage: "clock.arrow.circlepath") }
+                        }
+                    }
+                    if let rows = recentNotes.value?.rows, !rows.isEmpty {
+                        header("Recent Notes")
+                        ForEach(rows.prefix(8), id: \.id) { r in
+                            row(.recent(r)) {
+                                HStack(spacing: 10) {
+                                    NoteMark(icon: r.icon, size: 15).frame(width: 18)
+                                    Text(r.title.nonEmpty ?? "Untitled").font(CoreType.noteTitle(15)).lineLimit(1)
+                                    Spacer()
+                                    Text(CoreDates.short(r.updatedAt)).font(.caption).foregroundStyle(.tertiary)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        } else if let r = result, r.hits.isEmpty, folderHits.isEmpty, taskHits.isEmpty, !searching {
+            EmptyScreen(symbol: "magnifyingglass", title: "No Results", message: filtered ? "Nothing matches “\(r.text)” with these filters." : "Nothing matches “\(r.text)”.", actionTitle: filtered ? "Clear Filters" : nil) {
+                clearFilters()
+            }
+        } else {
+            list {
+                if !noteHits.isEmpty {
+                    header("Notes")
+                    ForEach(noteHits, id: \.self) { h in row(.note(h)) { SearchHitRow(hit: h, query: query) } }
+                }
+                if !meaningHits.isEmpty {
+                    header("By Meaning")
+                    ForEach(meaningHits, id: \.self) { h in row(.note(h)) { SearchHitRow(hit: h, query: query) } }
+                }
+                if !folderHits.isEmpty {
+                    header("Folders")
+                    ForEach(folderHits) { item in
+                        if case .folder(let f, let path) = item {
+                            row(item) {
+                                HStack(spacing: 10) {
+                                    FolderMark(colorId: f.color, size: 15).frame(width: 18)
+                                    Text(f.name)
+                                    if !path.isEmpty { Text("in \(path)").font(.caption).foregroundStyle(.secondary) }
+                                }
+                            }
+                        }
+                    }
+                }
+                if !taskHits.isEmpty {
+                    header("Tasks")
+                    ForEach(taskHits) { item in
+                        if case .task(let t) = item {
+                            row(item) {
+                                HStack(spacing: 10) {
+                                    Image(systemName: "circle").foregroundStyle(.secondary).frame(width: 18)
+                                    Text(t.title).lineLimit(1)
+                                    Text(t.noteTitle.nonEmpty ?? "Untitled").font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                                    Spacer()
+                                    if let d = t.dueDate { Text(d).font(.caption).foregroundStyle(.tertiary) }
+                                }
+                            }
+                        }
+                    }
+                }
+                if searching && (result?.hits.isEmpty ?? true) {
+                    HStack { ProgressView().controlSize(.small); Text("Searching…").foregroundStyle(.secondary) }.padding(10)
+                }
+            }
+        }
+    }
+
+    private func clearFilters() {
+        folder = nil; tag = nil; updated = .any; archived = false; meaning = false; everywhere = false
+    }
+
+    private func list<C: View>(@ViewBuilder _ rows: () -> C) -> some View {
+        let content = rows()
+        return ScrollViewReader { proxy in
+            ScrollView {
+                LazyVStack(alignment: .leading, spacing: 2) { content }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 10)
+            }
+            .onChange(of: picked) { if let picked { withAnimation(.snappy) { proxy.scrollTo(picked) } } }
+        }
+    }
+
+    /// A result: picked by a click or the arrow keys, opened by a double click or Return.
+    private func row<C: View>(_ item: Item, @ViewBuilder _ label: () -> C) -> some View {
+        label()
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, 10).padding(.vertical, 6)
+            .background(picked == item.id ? AnyShapeStyle(.selection) : AnyShapeStyle(.clear), in: .rect(cornerRadius: 8))
+            .contentShape(.rect)
+            .onTapGesture(count: 2) { open(item) }
+            .onTapGesture { picked = item.id }
+            .contextMenu {
+                Button("Open") { open(item) }
+                if case .note(let h) = item { Button("Open in New Tab") { AppModel.shared.open(.note(h.id), newTab: true) } }
+                if case .recent(let r) = item { Button("Open in New Tab") { AppModel.shared.open(.note(r.id), newTab: true) } }
+                if case .query(let q) = item { Button("Remove") { RecentSearches.remove(q); recents = RecentSearches.list() } }
+            }
+            .id(item.id)
+    }
+
+    private func header(_ title: String) -> some View {
+        Text(title).font(.subheadline.weight(.semibold)).foregroundStyle(.secondary).padding(.horizontal, 10).padding(.top, 12).padding(.bottom, 2)
+    }
+
+    private func move(_ by: Int) {
+        let ids = items.map(\.id)
+        guard !ids.isEmpty else { return }
+        let i = picked.flatMap { ids.firstIndex(of: $0) }
+        let next = i.map { min(max($0 + by, 0), ids.count - 1) } ?? (by > 0 ? 0 : ids.count - 1)
+        picked = ids[next]
+    }
+
+    private func openPicked() {
+        let all = items
+        if let picked, let item = all.first(where: { $0.id == picked }) { open(item) } else if let first = all.first, !query.isEmpty { open(first) }
+    }
+
+    private func open(_ item: Item) {
+        if !query.isEmpty { RecentSearches.add(query); recents = RecentSearches.list() }
+        switch item {
+        case .query(let q):
+            text = q
+            run()
+        case .recent(let r):
+            window.go(.note(r.id))
+        case .note(let h):
+            window.go(.note(h.id))
+            if let block = h.blockId { jump(block) }
+        case .folder(let f, _):
+            window.go(.folder(f.id))
+        case .task(let t):
+            window.go(.note(t.noteId))
+            jump(t.id)
+        }
+    }
+
+    private func jump(_ block: String) {
+        Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(400))
+            window.editor(EditorCommands.BlockJump(BlockJumpArgs(blockId: block)))
+        }
+    }
+
+    @State private var pending: Task<Void, Never>?
+
+    private func schedule() {
+        pending?.cancel()
+        pending = Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(180))
+            guard !Task.isCancelled else { return }
+            run()
+        }
+    }
+
+    private func run() {
+        let q = query
+        picked = nil
+        guard !q.isEmpty, let client = app.client else { result = nil; return }
+        searching = true
+        let args = SearchArgs(text: q, scope: everywhere ? .everywhere : .place, space: nil, folderId: folder, tagId: tag, updatedAfter: updated.after, includeArchived: archived, creatorId: nil, meaning: meaning, limit: 40)
+        Task { @MainActor in
+            let r = try? await client.query(Views.Search(args))
+            if q == query { result = r }
+            searching = false
+        }
+        // Open tasks load once, the first time a search runs.
+        if openTasks == nil {
+            openTasks = []
+            Task { @MainActor in
+                let v = try? await client.query(Views.TasksList(TasksListArgs(space: nil, view: .all)))
+                openTasks = (v?.groups ?? []).flatMap(\.tasks).filter { $0.status != "done" && $0.completedAt == nil }
+            }
+        }
+    }
+}
+
+/// The searches made here last (8 at most), per space, newest first.
+@MainActor
+enum RecentSearches {
+    private static var key: String { "recentSearches." + AppModel.shared.spaceName }
+
+    static func list() -> [String] { UserDefaults.standard.stringArray(forKey: key) ?? [] }
+
+    static func add(_ q: String) {
+        var all = list().filter { $0.caseInsensitiveCompare(q) != .orderedSame }
+        all.insert(q, at: 0)
+        UserDefaults.standard.set(Array(all.prefix(8)), forKey: key)
+    }
+
+    static func remove(_ q: String) { UserDefaults.standard.set(list().filter { $0 != q }, forKey: key) }
+
+    static func clear() { UserDefaults.standard.removeObject(forKey: key) }
+}
+
+/// Folders in tree order (parents before their children, siblings by rank), for indented pickers.
+enum FolderOrder {
+    static func nested(_ all: [FolderNode]) -> [FolderNode] {
+        var out: [FolderNode] = []
+        func walk(_ parent: String?) {
+            for f in all.filter({ $0.parentId == parent }).sorted(by: { $0.rank < $1.rank }) {
+                out.append(f)
+                walk(f.id)
+            }
+        }
+        walk(nil)
+        return out
+    }
+}
+
+struct SearchHitRow: View {
+    let hit: SearchHit
+    let query: String
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 10) {
+            NoteMark(icon: hit.icon, size: 15).frame(width: 18).padding(.top, 2)
+            VStack(alignment: .leading, spacing: 3) {
+                Text(hit.title.nonEmpty ?? "Untitled").font(CoreType.noteTitle(15)).lineLimit(1)
+                if !hit.snippet.isEmpty { Text(highlighted(hit.snippet)).font(CoreType.noteText(13)).foregroundStyle(.secondary).lineLimit(2) }
+                HStack(spacing: 8) {
+                    Text(CoreDates.short(hit.updatedAt))
+                    if let f = hit.folder { Label { Text(f.name) } icon: { FolderMark(colorId: f.color, size: 10) } }
+                    if let s = hit.spaceName { Text(s) }
+                    if hit.archived { Text("Archived") }
+                }
+                .font(.caption).foregroundStyle(.tertiary)
+            }
+        }
+        .padding(.vertical, 3)
+    }
+
+    private func highlighted(_ s: String) -> AttributedString {
+        var a = AttributedString(s)
+        for word in query.split(separator: " ") where word.count > 1 {
+            var search = a.startIndex..<a.endIndex
+            while let r = a[search].range(of: String(word), options: .caseInsensitive) {
+                a[r].foregroundColor = .primary
+                a[r].inlinePresentationIntent = .stronglyEmphasized
+                search = r.upperBound..<a.endIndex
+            }
+        }
+        return a
+    }
+}
+
+// MARK: Shared with me
+
+struct SharedScreen: View {
+    let window: WindowModel
+    private var app: AppModel { .shared }
+    @State private var notes = Live<Views.SharedList>()
+    @State private var folders = Live<Views.SharedFolders>()
+
+    var body: some View {
+        Group {
+            if notes.value == nil && folders.value == nil {
+                LoadingScreen()
+            } else if (notes.value?.rows ?? []).isEmpty && (folders.value?.rows ?? []).isEmpty {
+                EmptyScreen(symbol: "person.2", title: "Nothing Shared Yet", message: "Notes and folders people share with you show up here.")
+            } else {
+                List {
+                    if let f = folders.value?.rows, !f.isEmpty {
+                        Section("Folders") {
+                            ForEach(f, id: \.id) { row in
+                                HStack(spacing: 10) {
+                                    FolderMark(colorId: row.color, size: 18)
+                                    VStack(alignment: .leading) {
+                                        Text(row.name).font(CoreType.noteTitle(15))
+                                        Text("\(row.sharedBy) · \(row.role.capitalized)").font(.caption).foregroundStyle(.secondary)
+                                    }
+                                    Spacer()
+                                    Text("\(row.noteCount) notes").font(.caption).foregroundStyle(.secondary)
+                                }
+                                .contentShape(Rectangle())
+                                .onTapGesture(count: 2) { window.go(.sharedFolder(row.id)) }
+                            }
+                        }
+                    }
+                    if let n = notes.value?.rows, !n.isEmpty {
+                        Section("Notes") {
+                            ForEach(n, id: \.id) { row in
+                                HStack(alignment: .top, spacing: 10) {
+                                    NoteMark(icon: row.icon, size: 15).frame(width: 18)
+                                    VStack(alignment: .leading, spacing: 3) {
+                                        Text(row.title.nonEmpty ?? "Untitled").font(CoreType.noteTitle(15))
+                                        if !row.excerpt.isEmpty { Text(row.excerpt).font(CoreType.noteText(13)).foregroundStyle(.secondary).lineLimit(2) }
+                                        Text("Shared by \(row.sharedBy) · \(row.role.capitalized) · \(CoreDates.short(row.sharedAt))").font(.caption).foregroundStyle(.tertiary)
+                                    }
+                                }
+                                .contentShape(Rectangle())
+                                .onTapGesture(count: 2) { window.go(.note(row.id)) }
+                                .contextMenu {
+                                    Button("Open") { window.go(.note(row.id)) }
+                                    Button("Open in New Tab") { app.open(.note(row.id), newTab: true) }
+                                }
+                            }
+                        }
+                    }
+                }
+                .listStyle(.inset)
+            }
+        }
+        .task(id: app.client.map(ObjectIdentifier.init)) {
+            notes.bind(app.client, Views.SharedList())
+            folders.bind(app.client, Views.SharedFolders())
+        }
+    }
+}
+
+struct SharedFolderScreen: View {
+    let window: WindowModel
+    let id: String
+    private var app: AppModel { .shared }
+    @State private var folder = Live<Views.SharedFolderOpen>()
+
+    var body: some View {
+        Group {
+            if let f = folder.value {
+                if !f.found {
+                    EmptyScreen(symbol: "folder.badge.questionmark", title: "Folder Not Available", message: "It may have been unshared or deleted.")
+                } else {
+                    List {
+                        Section {
+                            HStack(spacing: 12) {
+                                FolderMark(colorId: f.color, size: 30)
+                                VStack(alignment: .leading) {
+                                    Text(f.name).font(CoreType.screenTitle(22))
+                                    Text([f.sharedBy.map { "Shared by \($0)" }, f.roleLabel].compactMap { $0 }.joined(separator: " · ")).foregroundStyle(.secondary)
+                                }
+                            }
+                            .padding(.vertical, 6)
+                        }
+                        if !f.subfolders.isEmpty {
+                            Section("Folders") {
+                                ForEach(f.subfolders, id: \.id) { s in
+                                    Label { Text(s.name) } icon: { FolderMark(colorId: s.color, size: 15) }
+                                        .contentShape(Rectangle())
+                                        .onTapGesture(count: 2) { window.go(.sharedFolder(s.id)) }
+                                }
+                            }
+                        }
+                        Section("Notes") {
+                            ForEach(f.notes, id: \.id) { n in
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(n.title.nonEmpty ?? "Untitled").font(CoreType.noteTitle(15))
+                                    if !n.excerpt.isEmpty { Text(n.excerpt).font(CoreType.noteText(13)).foregroundStyle(.secondary).lineLimit(2) }
+                                }
+                                .contentShape(Rectangle())
+                                .onTapGesture(count: 2) { window.go(.note(n.id)) }
+                            }
+                        }
+                    }
+                    .listStyle(.inset)
+                }
+            } else {
+                LoadingScreen()
+            }
+        }
+        .task(id: id) { folder.bind(app.client, Views.SharedFolderOpen(NoteIdArgs(id: id))) }
+    }
+}
+
+// MARK: Changes
+
+/// What others changed in your notes since you last looked, and suggestions waiting for your answer.
+struct ChangesScreen: View {
+    let window: WindowModel
+    private var app: AppModel { .shared }
+    @State private var diffNote: String?
+
+    var body: some View {
+        Group {
+            if let c = app.changes.value {
+                if c.notes.isEmpty && c.proposals.isEmpty {
+                    EmptyScreen(symbol: "checkmark.circle", title: "You're Up to Date", message: "When people change notes you share, the changes show up here.")
+                } else {
+                    List {
+                        if !c.proposals.isEmpty {
+                            Section("Suggestions") {
+                                ForEach(c.proposals, id: \.id) { p in
+                                    VStack(alignment: .leading, spacing: 6) {
+                                        Text(p.title.nonEmpty ?? "Untitled").font(CoreType.noteTitle(15))
+                                        Text("\(p.sourceName) · \(p.summary)").font(.callout).foregroundStyle(.secondary)
+                                        if let problem = p.problem { Label(problem, systemImage: "exclamationmark.triangle").font(.caption).foregroundStyle(.orange) }
+                                        HStack {
+                                            Button("Accept") { app.perform { _ = try await $0.command(Commands.ProposalAccept(ProposalIdArgs(id: p.id))) } }
+                                            Button("Decline") { app.perform { _ = try await $0.command(Commands.ProposalReject(ProposalIdArgs(id: p.id))) } }
+                                            if let note = p.noteId { Button("Open Note") { window.go(.note(note)) }.buttonStyle(InkLinkStyle()) }
+                                        }
+                                        .controlSize(.small)
+                                    }
+                                    .padding(.vertical, 4)
+                                }
+                            }
+                        }
+                        if !c.notes.isEmpty {
+                            Section("Changed Notes") {
+                                ForEach(c.notes, id: \.id) { n in
+                                    HStack(alignment: .top) {
+                                        NoteMark(icon: n.icon, size: 15).frame(width: 18)
+                                        VStack(alignment: .leading, spacing: 2) {
+                                            Text(n.title.nonEmpty ?? "Untitled").font(CoreType.noteTitle(15))
+                                            Text("\(n.who) · \(n.counts)").font(.callout).foregroundStyle(.secondary)
+                                        }
+                                        Spacer()
+                                        Text(CoreDates.short(n.changedAt)).font(.caption).foregroundStyle(.tertiary)
+                                    }
+                                    .contentShape(Rectangle())
+                                    .onTapGesture(count: 2) {
+                                        window.go(.note(n.id))
+                                        app.perform { _ = try await $0.command(Commands.ChangesMarkSeen(NoteIdsArgs(ids: [n.id]))) }
+                                    }
+                                    .contextMenu {
+                                        Button("Open") { window.go(.note(n.id)) }
+                                        Button("Show What Changed…") { diffNote = n.id }
+                                        Button("Mark as Seen") { app.perform { _ = try await $0.command(Commands.ChangesMarkSeen(NoteIdsArgs(ids: [n.id]))) } }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    .listStyle(.inset)
+                    .sheet(isPresented: Binding(get: { diffNote != nil }, set: { if !$0 { diffNote = nil } })) {
+                        if let id = diffNote { ChangeDiffSheet(noteId: id, window: window) }
+                    }
+                    .toolbar {
+                        ToolbarItem(placement: .secondaryAction) {
+                            Button("Mark All as Seen") {
+                                let ids = c.notes.map(\.id)
+                                app.perform { _ = try await $0.command(Commands.ChangesMarkSeen(NoteIdsArgs(ids: ids))) }
+                            }
+                            .disabled(c.notes.isEmpty)
+                        }
+                    }
+                }
+            } else {
+                LoadingScreen()
+            }
+        }
+    }
+}
+
+// MARK: Templates
+
+struct TemplatesScreen: View {
+    let window: WindowModel
+    private var app: AppModel { .shared }
+    @State private var builtIn = Live<Views.TemplatesBuiltIn>()
+
+    var body: some View {
+        VStack(spacing: 0) {
+            if let t = builtIn.value?.templates, !t.isEmpty {
+                ScrollView(.horizontal) {
+                    HStack(spacing: 12) {
+                        ForEach(t, id: \.key) { tmpl in
+                            Button {
+                                NoteActions.newNote(app: app, window: window, template: tmpl.key)
+                            } label: {
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text(tmpl.icon).font(.title2)
+                                    Text(tmpl.name).font(CoreType.noteTitle(14))
+                                    Text(tmpl.description).font(.caption).foregroundStyle(.secondary).lineLimit(2)
+                                }
+                                .frame(width: 170, alignment: .leading)
+                                .padding(12)
+                                .background(.fill.quinary, in: .rect(cornerRadius: 12))
+                            }
+                            .buttonStyle(.plain)
+                            .hoverEffectCompat()
+                        }
+                    }
+                    .padding(.horizontal, 24)
+                    .padding(.vertical, 14)
+                }
+                .scrollIndicators(.never)
+                Divider()
+            }
+            NoteListScreen(window: window, kind: .templates)
+        }
+        .toolbar {
+            ToolbarItem(placement: .secondaryAction) {
+                Button {
+                    app.perform { client in
+                        let r = try await client.command(Commands.TemplateCreate(TemplateCreateArgs(space: nil, title: nil, open: false)))
+                        window.go(.note(r.id))
+                    }
+                } label: { Label("New Template", systemImage: "plus.square.on.square") }
+            }
+        }
+        .task(id: app.client.map(ObjectIdentifier.init)) { builtIn.bind(app.client, Views.TemplatesBuiltIn()) }
+    }
+}
+
+// MARK: Folders and tags
+
+struct FoldersScreen: View {
+    let window: WindowModel
+    let parent: String?
+    private var app: AppModel { .shared }
+    @State private var cards = Live<Views.FoldersCards>()
+    @State private var newFolder = false
+
+    var body: some View {
+        Group {
+            if let f = cards.value?.folders {
+                if f.isEmpty {
+                    EmptyScreen(symbol: "folder", title: "No Folders", message: "Folders keep related notes together.", actionTitle: "New Folder") { newFolder = true }
+                } else {
+                    ScrollView {
+                        LazyVGrid(columns: [GridItem(.adaptive(minimum: 180, maximum: 240), spacing: 22)], spacing: 22) {
+                            ForEach(f, id: \.id) { folder in
+                                Button { window.go(.folder(folder.id)) } label: { WebFolderCard(Cards.folder(folder)) }
+                                    .buttonStyle(CardPressStyle())
+                                    .dropDestination(for: NoteDrag.self) { items, _ in
+                                        let ids = items.map(\.id)
+                                        app.perform { _ = try await $0.command(Commands.NoteMove(NoteMoveArgs(ids: ids, folderId: folder.id))) }
+                                        return true
+                                    }
+                            }
+                        }
+                        .padding(24)
+                    }
+                }
+            } else {
+                LoadingScreen()
+            }
+        }
+        .toolbar {
+            ToolbarItem(placement: .secondaryAction) {
+                Button { newFolder = true } label: { Label("New Folder", systemImage: "folder.badge.plus") }
+            }
+        }
+        .sheet(isPresented: $newFolder) {
+            NameSheet(title: "New Folder", initial: "", action: "Create") { name in
+                app.perform { _ = try await $0.command(Commands.FolderCreate(FolderCreateArgs(space: nil, name: name, parentId: parent, color: nil))) }
+            }
+        }
+        .task(id: parent) { cards.bind(app.client, Views.FoldersCards(FolderCardsArgs(space: nil, parentId: parent, all: parent == nil ? true : nil))) }
+    }
+}
+
+struct TagsScreen: View {
+    let window: WindowModel
+    private var app: AppModel { .shared }
+    @State private var tags = Live<Views.TagsIndex>()
+    @State private var renaming: TagIndexRow?
+
+    var body: some View {
+        Group {
+            if let rows = tags.value?.tags {
+                if rows.isEmpty {
+                    EmptyScreen(symbol: "number", title: "No Tags", message: "Type # in a note to tag it.")
+                } else {
+                    Table(rows) {
+                        TableColumn("Tag") { t in
+                            Label { Text(t.name) } icon: { Image(systemName: "number").foregroundStyle(Color.folevi(t.color)) }
+                        }
+                        TableColumn("Notes") { t in Text(t.documentCount.formatted()).monospacedDigit() }.width(80)
+                        TableColumn("Created") { t in Text(CoreDates.short(t.createdAt)) }.width(120)
+                    }
+                    .contextMenu(forSelectionType: TagIndexRow.ID.self) { ids in
+                        if let id = ids.first, let t = rows.first(where: { $0.id == id }) {
+                            Button("Open") { window.go(.tag(t.id)) }
+                            Button("Rename…") { renaming = t }
+                            Menu("Colour") {
+                                ForEach(TagColors.all, id: \.id) { c in
+                                    Button(c.name) { app.perform { _ = try await $0.command(Commands.TagUpdate(TagUpdateArgs(id: t.id, name: nil, color: c.id))) } }
+                                }
+                            }
+                            Divider()
+                            Button("Delete Tag", role: .destructive) { app.perform { _ = try await $0.command(Commands.TagDelete(TagIdArgs(id: t.id))) } }
+                        }
+                    } primaryAction: { ids in
+                        if let id = ids.first { window.go(.tag(id)) }
+                    }
+                }
+            } else {
+                LoadingScreen()
+            }
+        }
+        .sheet(item: $renaming) { t in
+            NameSheet(title: "Rename Tag", initial: t.name, action: "Rename") { name in
+                app.perform { _ = try await $0.command(Commands.TagUpdate(TagUpdateArgs(id: t.id, name: name, color: nil))) }
+            }
+        }
+        .task(id: app.client.map(ObjectIdentifier.init)) { tags.bind(app.client, Views.TagsIndex(TagsIndexArgs(space: nil))) }
+    }
+}
+
+extension TagIndexRow: Identifiable {}
+extension FolderNode: Identifiable {}
+
+// MARK: Pages that stay on the page
+
+/// Reviews (flashcards) and the Foli DNA graph are drawn by the page (canvas content), in Core's window with
+/// native bars, as a note is.
+struct WebScreen: View {
+    let window: WindowModel
+    let page: WebPage
+    private var app: AppModel { .shared }
+    @State private var host: Page?
+
+    var body: some View {
+        PageHostView(page: host)
+            .task(id: page) {
+                guard let p = app.pool.editor(for: window.id) else { return }
+                host = p
+                await p.show(web: page)
+            }
+            .onDisappear {
+                host = nil
+                app.pool.giveBack(from: window.id)
+            }
+    }
+}
+
+// MARK: The daily note
+
+struct DailyNoteScreen: View {
+    let window: WindowModel
+    let date: String?
+    private var app: AppModel { .shared }
+
+    var body: some View {
+        LoadingScreen()
+            .task(id: date) {
+                // The page knows the daily note of a date (or makes it): it navigates to it.
+                guard let p = app.pool.engine else { return }
+                Events.command(["type": "navigate", "path": Destination.daily(date).path], to: p.view)
+            }
+    }
+}
+
+// MARK: Invitations
+
+struct InviteScreen: View {
+    let window: WindowModel
+    let kind: Destination.InviteKind
+    let token: String
+    private var app: AppModel { .shared }
+    @State private var preview: InvitePreview?
+    @State private var loaded = false
+
+    var body: some View {
+        VStack(spacing: 18) {
+            if !loaded {
+                ProgressView()
+            } else if let p = preview, p.valid {
+                Image(systemName: kind == .folder ? "folder.badge.person.crop" : kind == .page ? "doc.badge.ellipsis" : "person.3")
+                    .font(.system(size: 44)).foregroundStyle(.secondary)
+                Text(p.inviterName.map { "\($0) invited you" } ?? "You're invited").font(CoreType.screenTitle(26))
+                if let name = p.name { Text(name).font(.title3) }
+                if let role = p.roleLabel { Text(role).foregroundStyle(.secondary) }
+                if !p.emailMatches { Label("This invitation was sent to a different email address.", systemImage: "exclamationmark.triangle").foregroundStyle(.orange) }
+                HStack {
+                    Button("Decline") { app.perform { _ = try await $0.command(Commands.InviteDecline(InviteDeclineArgs(kind: .init(rawValue: kind.rawValue) ?? .workspace, inviteId: nil, token: token))); window.go(.home) } }
+                    Button("Accept") { accept() }.buttonStyle(.borderedProminent).keyboardShortcut(.defaultAction)
+                }
+                .controlSize(.large)
+            } else {
+                EmptyScreen(symbol: "envelope.badge.shield.half.filled", title: "Invitation Not Valid", message: "It may have expired or been used already.")
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .task(id: token) {
+            preview = try? await app.client?.query(Views.InvitePreview(InviteTokenArgs(kind: .init(rawValue: kind.rawValue) ?? .workspace, token: token)))
+            loaded = true
+        }
+    }
+
+    private func accept() {
+        app.perform { client in
+            switch kind {
+            case .workspace: _ = try await client.command(Commands.InviteAcceptLink(InviteTokenArgs(kind: .workspace, token: token)))
+            case .page: _ = try await client.command(Commands.InviteAcceptLink(InviteTokenArgs(kind: .page, token: token)))
+            case .folder: _ = try await client.command(Commands.InviteAcceptLink(InviteTokenArgs(kind: .folder, token: token)))
+            }
+            window.go(.home)
+        }
+    }
+}
+
+/// What changed in a note since you last looked: added, changed and removed lines, with who and when.
+struct ChangeDiffSheet: View {
+    let noteId: String
+    let window: WindowModel
+    private var app: AppModel { .shared }
+    @Environment(\.dismiss) private var dismiss
+    @State private var diff: ChangeDiffValue?
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            HStack {
+                Text(diff?.title.nonEmpty ?? "Changes").font(CoreType.screenTitle(20))
+                Spacer()
+                Button("Open Note") { dismiss(); window.go(.note(noteId)) }.buttonStyle(InkPillStyle())
+            }
+            .padding(16)
+            Divider()
+            ScrollView {
+                VStack(alignment: .leading, spacing: 10) {
+                    if let d = diff {
+                        if d.encrypted { Text("This note is end to end encrypted: open it to see what changed.").foregroundStyle(.secondary) }
+                        ForEach(d.blocks, id: \.id) { b in
+                            HStack(alignment: .top, spacing: 8) {
+                                Rectangle().fill(b.change == "added" ? Color.green : b.change == "removed" ? Color.red : Color.orange).frame(width: 3)
+                                VStack(alignment: .leading, spacing: 3) {
+                                    if let parts = b.parts, !parts.isEmpty {
+                                        parts.reduce(Text("")) { acc, p in
+                                            acc + Text(p.text)
+                                                .foregroundStyle(p.kind == "added" ? Color.green : p.kind == "removed" ? Color.red : Color.primary)
+                                                .strikethrough(p.kind == "removed")
+                                        }
+                                        .font(CoreType.noteText(14))
+                                    } else {
+                                        Text(b.x).font(CoreType.noteText(14)).strikethrough(b.change == "removed")
+                                    }
+                                    if let who = b.who { Text("\(who)\(b.at.map { " · " + CoreDates.relative($0) } ?? "")").font(.caption).foregroundStyle(.secondary) }
+                                }
+                            }
+                        }
+                        if d.truncated { Text("More changes in the note.").font(.caption).foregroundStyle(.secondary) }
+                    } else {
+                        ProgressView()
+                    }
+                }
+                .padding(16)
+            }
+        }
+        .frame(width: 560, height: 520)
+        .task { diff = try? await app.client?.query(Views.ChangesDiff(ChangeDiffArgs(id: noteId))) }
+    }
+}

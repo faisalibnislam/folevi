@@ -4,7 +4,9 @@
 // dates and the person's subscribed calendars (iCal feeds), and Folevi's own feed to subscribe to elsewhere.
 import FoleviDesign
 import FoleviEngine
+import CoreTransferable
 import SwiftUI
+import UniformTypeIdentifiers
 
 struct TasksScreen: View {
     let window: WindowModel
@@ -249,6 +251,7 @@ struct CalendarScreen: View {
     @State private var selected = Date()
     @State private var adding = false
     @State private var feedShown = false
+    @AppStorage("core.calendar.layout") private var layout = "month"
 
     private var cal: Calendar { Calendar.current }
 
@@ -264,12 +267,17 @@ struct CalendarScreen: View {
         HSplitView {
             VStack(spacing: 0) {
                 header
-                weekdays
-                LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 0), count: 7), spacing: 0) {
-                    ForEach(days, id: \.self) { day in dayCell(day) }
+                switch layout {
+                case "week": week
+                case "agenda": agenda
+                default:
+                    weekdays
+                    LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 0), count: 7), spacing: 0) {
+                        ForEach(days, id: \.self) { day in dayCell(day) }
+                    }
+                    .padding(.horizontal, 12)
+                    Spacer(minLength: 0)
                 }
-                .padding(.horizontal, 12)
-                Spacer(minLength: 0)
             }
             .frame(minWidth: 520)
             dayDetail.frame(minWidth: 240, idealWidth: 300, maxWidth: 380)
@@ -312,11 +320,16 @@ struct CalendarScreen: View {
     private var header: some View {
         HStack {
             Text(anchor.formatted(.dateTime.month(.wide).year())).font(CoreType.screenTitle(24))
+                .lineLimit(1).fixedSize()
             Spacer()
+            Picker("Layout", selection: $layout) {
+                Text("Month").tag("month"); Text("Week").tag("week"); Text("Agenda").tag("agenda")
+            }
+            .pickerStyle(.segmented).labelsHidden().fixedSize()
             ControlGroup {
-                Button { anchor = cal.date(byAdding: .month, value: -1, to: anchor)! } label: { Image(systemName: "chevron.left") }.help("Previous Month")
+                Button { anchor = cal.date(byAdding: layout == "month" ? .month : .weekOfYear, value: -1, to: anchor)! } label: { Image(systemName: "chevron.left") }.help("Previous")
                 Button("Today") { anchor = Date(); selected = Date() }
-                Button { anchor = cal.date(byAdding: .month, value: 1, to: anchor)! } label: { Image(systemName: "chevron.right") }.help("Next Month")
+                Button { anchor = cal.date(byAdding: layout == "month" ? .month : .weekOfYear, value: 1, to: anchor)! } label: { Image(systemName: "chevron.right") }.help("Next")
             }
             .frame(width: 160)
         }
@@ -358,6 +371,7 @@ struct CalendarScreen: View {
             }
             ForEach(it.tasks.prefix(2), id: \.id) { t in
                 Label(t.title, systemImage: t.completedAt != nil ? "checkmark.circle.fill" : "circle").font(.caption2).lineLimit(1).foregroundStyle(.secondary)
+                    .draggable(TaskDrag(id: t.id, due: t.dueDate))
             }
             if it.events.count + it.tasks.count > 4 { Text("+\(it.events.count + it.tasks.count - 4)").font(.caption2).foregroundStyle(.tertiary) }
             Spacer(minLength: 0)
@@ -369,8 +383,92 @@ struct CalendarScreen: View {
         .opacity(inMonth ? 1 : 0.55)
         .contentShape(Rectangle())
         .onTapGesture { selected = day }
+        .dropDestination(for: TaskDrag.self) { items, _ in reschedule(items, to: day) }
         .accessibilityElement(children: .combine)
         .accessibilityAddTraits(picked ? .isSelected : [])
+    }
+
+    /// Tasks dropped on a day are due that day (Undo puts them back).
+    private func reschedule(_ items: [TaskDrag], to day: Date) -> Bool {
+        let key = iso(day)
+        for t in items {
+            var a = TaskUpdateArgs(id: t.id)
+            a.dueDate = .set(key)
+            let args = a
+            let before = t.due
+            app.perform { client in
+                _ = try await client.command(Commands.TaskUpdate(args))
+                app.toast("Moved to \(day.formatted(.dateTime.weekday(.wide).day().month()))", action: "Undo") {
+                    var undo = TaskUpdateArgs(id: t.id)
+                    undo.dueDate = before.map { .set($0) } ?? .clear
+                    let u = undo
+                    app.perform { _ = try await $0.command(Commands.TaskUpdate(u)) }
+                }
+            }
+        }
+        return true
+    }
+
+    /// The anchor's week, a column a day: events with their times, then that day's tasks.
+    private var week: some View {
+        let start = cal.dateInterval(of: .weekOfYear, for: anchor)?.start ?? anchor
+        let weekDays = (0..<7).map { cal.date(byAdding: .day, value: $0, to: start)! }
+        return HStack(alignment: .top, spacing: 0) {
+            ForEach(weekDays, id: \.self) { day in
+                let it = items(on: day)
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(day.formatted(.dateTime.weekday(.abbreviated).day()))
+                        .font(.callout.weight(cal.isDateInToday(day) ? .bold : .medium))
+                        .foregroundStyle(cal.isDateInToday(day) ? Color.foleviInk : .secondary)
+                    ForEach(it.events, id: \.id) { e in
+                        VStack(alignment: .leading, spacing: 1) {
+                            Text(e.allDay ? "All day" : Date(timeIntervalSince1970: Double(e.start) / 1000).formatted(date: .omitted, time: .shortened)).font(.caption2).foregroundStyle(.secondary)
+                            Text(e.title).font(.caption).lineLimit(3)
+                        }
+                        .padding(6).frame(maxWidth: .infinity, alignment: .leading)
+                        .background(Color(hex: e.color).opacity(0.18), in: .rect(cornerRadius: 6))
+                    }
+                    ForEach(it.tasks, id: \.id) { t in
+                        Label(t.title, systemImage: t.completedAt != nil ? "checkmark.circle.fill" : "circle").font(.caption).lineLimit(2)
+                            .draggable(TaskDrag(id: t.id, due: t.dueDate))
+                    }
+                    Spacer(minLength: 0)
+                }
+                .padding(8)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                .background(cal.isDate(day, inSameDayAs: selected) ? Color.foleviInk.opacity(0.06) : .clear)
+                .overlay(alignment: .leading) { Divider() }
+                .contentShape(Rectangle())
+                .onTapGesture { selected = day }
+                .dropDestination(for: TaskDrag.self) { items, _ in reschedule(items, to: day) }
+            }
+        }
+        .padding(.horizontal, 12)
+    }
+
+    /// The next weeks as a list: each day with something on it.
+    private var agenda: some View {
+        let from = cal.startOfDay(for: anchor)
+        let span = (0..<42).map { cal.date(byAdding: .day, value: $0, to: from)! }
+        return List {
+            ForEach(span, id: \.self) { day in
+                let it = items(on: day)
+                if !it.events.isEmpty || !it.tasks.isEmpty {
+                    Section(day.formatted(.dateTime.weekday(.wide).day().month(.wide))) {
+                        ForEach(it.events, id: \.id) { e in
+                            HStack {
+                                Circle().fill(Color(hex: e.color)).frame(width: 8, height: 8)
+                                Text(e.title)
+                                Spacer()
+                                Text(e.allDay ? "All day" : Date(timeIntervalSince1970: Double(e.start) / 1000).formatted(date: .omitted, time: .shortened)).foregroundStyle(.secondary)
+                            }
+                        }
+                        ForEach(it.tasks, id: \.id) { t in TaskLine(task: t, window: window) }
+                    }
+                }
+            }
+        }
+        .listStyle(.inset)
     }
 
     private var dayDetail: some View {
@@ -611,5 +709,15 @@ struct NotePickerSheet: View {
                 hits = r?.hits ?? []
             }
         }
+    }
+}
+
+/// A task dragged onto a day (its old due date, for Undo).
+struct TaskDrag: Codable, Transferable {
+    var id: String
+    var due: String?
+
+    static var transferRepresentation: some TransferRepresentation {
+        CodableRepresentation(contentType: UTType(exportedAs: "app.folevicore.task-drag"))
     }
 }

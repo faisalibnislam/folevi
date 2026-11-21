@@ -105,7 +105,38 @@
 	<key>SUVerifyUpdateBeforeExtraction</key>
 	<true/>
 	<key>UTExportedTypeDeclarations</key>
-	<array/>
+	<array>
+		<dict>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<string>public.data</string>
+			</array>
+			<key>UTTypeDescription</key>
+			<string>Folevi Core note</string>
+			<key>UTTypeIdentifier</key>
+			<string>app.folevicore.note-drag</string>
+		</dict>
+		<dict>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<string>public.data</string>
+			</array>
+			<key>UTTypeDescription</key>
+			<string>Folevi Core folder</string>
+			<key>UTTypeIdentifier</key>
+			<string>app.folevicore.folder-drag</string>
+		</dict>
+		<dict>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<string>public.data</string>
+			</array>
+			<key>UTTypeDescription</key>
+			<string>Folevi Core task</string>
+			<key>UTTypeIdentifier</key>
+			<string>app.folevicore.task-drag</string>
+		</dict>
+	</array>
 	<key>UTImportedTypeDeclarations</key>
 	<array>
 		<dict>

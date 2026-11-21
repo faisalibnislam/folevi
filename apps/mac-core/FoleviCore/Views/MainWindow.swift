@@ -11,6 +11,7 @@ struct MainWindow: View {
     private var app: AppModel { .shared }
     @State private var window: WindowModel
     @Environment(\.openWindow) private var openWindow
+    @Environment(\.openSettings) private var openSettings
     /// Where this window was, kept by macOS with the window (state restoration).
     @SceneStorage("core.path") private var restoredPath = ""
     @SceneStorage("core.listStyle") private var restoredStyle = ""
@@ -64,6 +65,7 @@ struct MainWindow: View {
         .environment(window)
         .onAppear {
             app.openWindow = { dest, asTab in openWindow(id: "main", value: WindowSeed(start: dest ?? .home, asTab: asTab)) }
+            SettingsRouter.shared.openSettings = { openSettings() }
             // A restored window goes back where it was (a fresh window opens where its seed says).
             if seed?.start == .home, !restoredPath.isEmpty, let d = Destination(path: restoredPath), d != .home { window.replace(with: d) }
             if let s = WindowModel.ListStyleChoice(rawValue: restoredStyle) { window.listStyle = s }

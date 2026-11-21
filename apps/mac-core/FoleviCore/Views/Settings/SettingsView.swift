@@ -54,6 +54,28 @@ enum SettingsSection: String, CaseIterable, Identifiable, Hashable {
         }
     }
 
+    /// The main app's icon for the section.
+    var webIcon: WebIcon {
+        switch self {
+        case .account: .userRound
+        case .general: .settings
+        case .appearance: .palette
+        case .notifications: .bell
+        case .ai: .sparkles
+        case .security: .lockKeyhole
+        case .privacy: .shield
+        case .appLock: .lock
+        case .offline: .refreshCw
+        case .devices: .monitorSmartphone
+        case .workspace: .users
+        case .connectedApps: .plug
+        case .data: .fileUp
+        case .billing: .creditCard
+        case .mac: .laptop
+        case .updates: .download
+        }
+    }
+
     /// A settings path's section ("/settings/ai" -> .ai).
     init?(path: String) {
         switch path {
@@ -110,7 +132,12 @@ struct SettingsView: View {
     var body: some View {
         NavigationSplitView {
             List(sections, selection: Binding(get: { router.section }, set: { if let s = $0 { router.section = s } })) { s in
-                Label(s.title, systemImage: s.symbol).tag(s)
+                Label {
+                    Text(s.title)
+                } icon: {
+                    if s == .ai { AiMarkGlyph(size: 16) } else { s.webIcon.image(size: 16) }
+                }
+                .tag(s)
             }
             .navigationSplitViewColumnWidth(200)
         } detail: {
@@ -120,7 +147,7 @@ struct SettingsView: View {
                 case .general: GeneralSettingsPane()
                 case .appearance: AppearanceSettingsPane()
                 case .notifications: NotificationSettingsPane()
-                case .ai: AISettingsPane()
+                case .ai: if app.session.value?.mode == .local { LocalAISettingsPane() } else { AISettingsPane() }
                 case .security: SecuritySettingsPane()
                 case .privacy: WebSettingsPane(page: .settingsPrivacy)
                 case .appLock: AppLockPane()
@@ -666,5 +693,80 @@ final class SettingsWebWindow: NSObject, NSWindowDelegate {
     func windowWillClose(_ notification: Notification) {
         PagePool.shared.giveBack(from: id)
         Self.open.removeAll { $0 === self }
+    }
+}
+
+/// Foli AI in a library on this Mac: the on-device model, your own keys (OpenAI, Anthropic, Google; kept in this
+/// Mac's Keychain, never sent to Folevi), and which model it uses. From the engine's `localAi` settings.
+struct LocalAISettingsPane: View {
+    private var app: AppModel { .shared }
+    @State private var value: [String: JSONValue] = [:]
+    @State private var keyDrafts: [String: String] = [:]
+    @State private var testResult: [String: String] = [:]
+
+    var body: some View {
+        Form {
+            if value.isEmpty {
+                ProgressView()
+            } else {
+                Section {
+                    Text(value["onText"]?.string ?? "").foregroundStyle(.secondary)
+                }
+                if case .object(let od)? = value["onDevice"] {
+                    Section(od["title"]?.string ?? "On This Mac") {
+                        LabeledContent(od["name"]?.string ?? "", value: od["status"]?.string?.capitalized ?? "")
+                        if let t = od["text"]?.string { Text(t).font(.caption).foregroundStyle(.secondary) }
+                        if let m = od["more"]?.string { Text(m).font(.caption).foregroundStyle(.secondary) }
+                    }
+                }
+                Section {
+                    if let d = value["keysDescription"]?.string { Text(d).font(.caption).foregroundStyle(.secondary) }
+                    if case .array(let keys)? = value["keys"] {
+                        ForEach(Array(keys.enumerated()), id: \.offset) { _, k in
+                            if case .object(let key) = k, let provider = key["provider"]?.string {
+                                VStack(alignment: .leading, spacing: 6) {
+                                    Text(key["label"]?.string ?? provider).font(.headline)
+                                    Text(key["status"]?.string ?? "").font(.caption).foregroundStyle(.secondary)
+                                    HStack {
+                                        if key["stored"]?.bool == true {
+                                            if key["canTest"]?.bool == true { Button("Test Key") { test(provider) } }
+                                            Button("Remove Key", role: .destructive) { run(.localAiRemoveKey, ["provider": .string(provider)]) }
+                                        } else if key["canAdd"]?.bool == true {
+                                            SecureField("Paste your key", text: Binding(get: { keyDrafts[provider] ?? "" }, set: { keyDrafts[provider] = $0 }))
+                                            if !(keyDrafts[provider] ?? "").isEmpty {
+                                                Button("Add") { run(.localAiSetKey, ["provider": .string(provider), "key": .string(keyDrafts[provider] ?? "")]); keyDrafts[provider] = "" }
+                                            }
+                                        }
+                                    }
+                                    if let r = testResult[provider] { Text(r).font(.caption) }
+                                }
+                                .padding(.vertical, 4)
+                            }
+                        }
+                    }
+                } header: { Text("Your Own Keys") }
+            }
+        }
+        .formStyle(.grouped)
+        .task { await load() }
+    }
+
+    private func load() async {
+        if let v = try? await app.client?.query(Views.SettingsQuery(SettingsQueryArgs(key: .localAi, args: nil))), case .object(let o) = v.data { value = o }
+    }
+
+    private func run(_ key: SettingsRunKey, _ args: [String: JSONValue]) {
+        app.perform { client in
+            _ = try await client.command(Commands.SettingsRun(SettingsRunArgs(key: key, args: args)))
+            await load()
+        }
+    }
+
+    private func test(_ provider: String) {
+        Task { @MainActor in
+            guard let client = app.client else { return }
+            let r = try? await client.command(Commands.SettingsRun(SettingsRunArgs(key: .localAiTestKey, args: ["provider": .string(provider)])))
+            if case .object(let o)? = r?.data { testResult[provider] = o["text"]?.string } else { testResult[provider] = "Couldn't test the key." }
+        }
     }
 }

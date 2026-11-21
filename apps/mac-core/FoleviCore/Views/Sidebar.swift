@@ -44,6 +44,12 @@ struct Sidebar: View {
                 ForEach(rootFolders, id: \.id) { folder in
                     FolderRow(folder: folder, all: folders, expanded: $expanded, window: window, rename: { renaming = $0 }, newSubfolder: { newFolderParent = .some($0.id) })
                 }
+                .onMove { from, to in
+                    // The sidebar's own order of top-level folders (folder.setSidebarOrder).
+                    var ids = rootFolders.map(\.id)
+                    ids.move(fromOffsets: from, toOffset: to)
+                    app.perform { _ = try await $0.command(Commands.FolderSetSidebarOrder(FolderSidebarOrderArgs(ids: ids))) }
+                }
                 if folders.isEmpty, app.tree.value != nil {
                     Text("No folders yet").foregroundStyle(.secondary).font(.callout)
                 }

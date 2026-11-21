@@ -84,6 +84,7 @@ struct NoteListScreen: View {
 
     private var subtitle: String {
         let n = list.total
+        if kind == .templates { return n == 1 ? "1 custom template" : "\(n.formatted()) custom templates" }
         return n == 1 ? "1 note" : "\(n.formatted()) notes"
     }
 
@@ -103,6 +104,12 @@ struct NoteListScreen: View {
             Section {
                 ForEach(Array(list.rows.enumerated()), id: \.element.id) { i, row in
                     NoteListRow(row: row, showFolder: kind != .folder)
+                        .overlay(alignment: .trailing) {
+                            if kind == .templates {
+                                Button("Use") { NoteActions.newNote(app: app, window: window, template: row.id) }
+                                    .controlSize(.small).help("New note from this template")
+                            }
+                        }
                         .tag(row.id)
                         .draggable(NoteDrag(id: row.id, title: row.title))
                         .contextMenu {
@@ -224,6 +231,8 @@ struct NoteListScreen: View {
     private func loadPrefs() {
         let d = UserDefaults.standard
         sortRaw = d.string(forKey: "core.list.sort.\(kind.rawValue)") ?? NotesSort.updated.rawValue
+        // Trash, Archive and the like have no manual order: a saved one becomes Date Edited.
+        if sortRaw == NotesSort.manual.rawValue, !(kind == .folder || kind == .unsorted || kind == .templates) { sortRaw = NotesSort.updated.rawValue }
         if let raw = d.string(forKey: "core.list.style.\(kind.rawValue)"), let style = WindowModel.ListStyleChoice(rawValue: raw) {
             window.listStyle = style
         } else if kind == .trash || kind == .archive {
@@ -283,7 +292,7 @@ struct NoteListScreen: View {
                     Text("Date Edited").tag(NotesSort.updated.rawValue)
                     Text("Date Created").tag(NotesSort.created.rawValue)
                     Text("Title").tag(NotesSort.title.rawValue)
-                    if kind == .folder || kind == .unsorted { Text("Manual").tag(NotesSort.manual.rawValue) }
+                    if kind == .folder || kind == .unsorted || kind == .templates { Text("Manual").tag(NotesSort.manual.rawValue) }
                 }
                 .pickerStyle(.inline)
             } label: {
@@ -340,6 +349,8 @@ struct NoteListScreen: View {
             EmptyScreen(symbol: "folder", title: "This Folder Is Empty", message: "Start a note here, or move one in with Move To Folder.", actionTitle: "New Note") {
                 NoteActions.newNote(app: app, window: window, folder: folderId)
             }
+        case .unsorted where filter.isEmpty:
+            EmptyScreen(symbol: "tray", title: "No Drafts", message: "Everything has a folder. Nicely done.")
         case .tag where filter.isEmpty:
             EmptyScreen(symbol: "number", title: "No Notes Have This Tag Yet", message: "Add tags to a note from its Info panel (⌥⌘I).")
         default:

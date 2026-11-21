@@ -39,7 +39,7 @@ struct Sidebar: View {
                 row(.starred)
                 row(.shared)
                 row(.drafts)
-                if app.session.value?.capabilities.changes != false, app.session.value?.mode != .local {
+                if app.session.value?.capabilities.changes != false || app.session.value?.mode == .local {
                     row(.changes, badge: app.changes.value?.notes.count ?? 0)
                 }
                 row(.templates)

@@ -3,6 +3,7 @@
 // (AppCommands.swift).
 import CoreSpotlight
 import FoleviDesign
+import FoleviEngine
 import SwiftUI
 import UserNotifications
 
@@ -39,6 +40,18 @@ struct FoleviCoreApp: App {
         .defaultSize(width: 460, height: 600)
         .commandsRemoved()
 
+        Window("Folevi Core Help", id: "help") {
+            HelpView()
+        }
+        .defaultSize(width: 640, height: 640)
+        .commandsRemoved()
+
+        Window("Keyboard Shortcuts", id: "shortcuts") {
+            HelpView(section: "shortcuts")
+        }
+        .defaultSize(width: 640, height: 640)
+        .commandsRemoved()
+
         Settings {
             SettingsView()
                 .environment(app)
@@ -54,6 +67,10 @@ enum CoreSetup {
     static func install() {
         Capabilities.install()
         UNUserNotificationCenter.current().delegate = NotificationDelegate.shared
+        // Mac notifications offer Mark as Read beside opening them.
+        UNUserNotificationCenter.current().setNotificationCategories([
+            UNNotificationCategory(identifier: "folevi.notification", actions: [UNNotificationAction(identifier: "markRead", title: "Mark as Read")], intentIdentifiers: [])
+        ])
         AppDelegate.onContinue = { activity in
             MainActor.assumeIsolated {
                 if activity.activityType == CSSearchableItemActionType, let id = activity.userInfo?[CSSearchableItemActivityIdentifier] as? String, let hit = Spotlight.parse(id) {
@@ -205,6 +222,11 @@ final class NotificationDelegate: NSObject, UNUserNotificationCenterDelegate {
 
     func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse) async {
         let info = response.notification.request.content.userInfo
+        if response.actionIdentifier == "markRead" {
+            let id = response.notification.request.identifier
+            await MainActor.run { AppModel.shared.perform { _ = try await $0.command(Commands.NotificationMarkRead(NotificationMarkArgs(ids: [id], read: true))) } }
+            return
+        }
         let path = info["path"] as? String ?? "/notifications"
         let place = info["place"] as? String ?? ""
         await MainActor.run {

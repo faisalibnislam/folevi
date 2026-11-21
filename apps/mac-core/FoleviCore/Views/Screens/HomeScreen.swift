@@ -284,7 +284,8 @@ struct CatchUpCardView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack {
-                Label { Text("Catch Me Up") } icon: { AiMarkGlyph(size: 16) }.font(.headline)
+                Button { window.go(.catchUp) } label: { Label { Text("Catch Me Up") } icon: { AiMarkGlyph(size: 16) }.font(.headline) }
+                    .buttonStyle(.plain).help("About Catch Me Up")
                 Spacer()
                 switch card.state {
                 case .running: EmptyView()
@@ -318,6 +319,48 @@ struct CatchUpCardView: View {
     }
 
     private func run() { app.perform { _ = try await $0.command(Commands.CatchUpRun(SpaceArgs())) } }
+}
+
+/// Catch me up (/catch-up): what the brief is, then the brief itself.
+struct CatchUpScreen: View {
+    let window: WindowModel
+    private var app: AppModel { .shared }
+    @State private var home = Live<Views.Home>()
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 20) {
+                HStack(spacing: 14) {
+                    AiMarkGlyph(size: 34)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Catch Me Up").font(CoreType.screenTitle(28))
+                        Text("Your week in one short read").foregroundStyle(.secondary)
+                    }
+                }
+                Text("Foli AI reads what changed in your notes since you last looked and writes a short brief, with the notes it came from.")
+                    .foregroundStyle(.secondary)
+                VStack(alignment: .leading, spacing: 10) {
+                    Label("What changed: notes you and others edited, added or finished.", systemImage: "pencil.line")
+                    Label("What's due: tasks coming up and overdue.", systemImage: "checklist")
+                    Label("Where it came from: every line points to its note.", systemImage: "quote.bubble")
+                }
+                if let card = home.value?.catchUp {
+                    if card.available {
+                        CatchUpCardView(card: card, window: window)
+                    } else {
+                        Text("Catch Me Up needs Foli AI. Turn it on in Settings.").foregroundStyle(.secondary)
+                        Button("Open Foli AI Settings") { SettingsRouter.shared.open("ai") }
+                    }
+                } else {
+                    ShimmerLines(caption: "Loading…")
+                }
+            }
+            .padding(32)
+            .frame(maxWidth: 720, alignment: .leading)
+            .frame(maxWidth: .infinity)
+        }
+        .task(id: app.client.map(ObjectIdentifier.init)) { home.bind(app.client, Views.Home(SpaceArgs())) }
+    }
 }
 
 /// Four soft lines that shimmer while Foli AI writes (still with Reduce Motion).

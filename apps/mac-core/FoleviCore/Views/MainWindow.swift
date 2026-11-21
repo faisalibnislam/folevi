@@ -110,6 +110,7 @@ struct ScreenView: View {
         case .trash: NoteListScreen(window: window, kind: .trash)
         case .vault: VaultScreen(window: window)
         case .reviews: WebScreen(window: window, page: .reviews)
+        case .catchUp: CatchUpScreen(window: window)
         case .graph: WebScreen(window: window, page: .graph)
         case .note(let id): NoteScreen(window: window, id: id)
         case .invite(let kind, let token): InviteScreen(window: window, kind: kind, token: token)

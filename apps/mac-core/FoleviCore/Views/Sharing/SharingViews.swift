@@ -18,12 +18,23 @@ struct NoteSharingSheet: View {
     @State private var email = ""
     @State private var role: ShareRole = .editor
     @State private var newLink: String?
+    @State private var expires = false
+    @State private var expiry = Calendar.current.date(byAdding: .day, value: 30, to: Date())!
+    @State private var password = ""
+    @State private var look: PublicLinkCreateArgs.Theme = .note
+    @State private var indexing = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             Text("Share").font(.title2.weight(.semibold)).padding([.horizontal, .top], 20)
             Form {
-                if let s = sharing.value {
+                if app.session.value?.mode == .local {
+                    Section {
+                        Text("Sign in to Folevi to share and collaborate").font(.headline)
+                        Text("This library lives on this Mac. Move a note to a Folevi account to invite people or make a public link.").foregroundStyle(.secondary)
+                        Button("Sign In to Folevi…") { dismiss(); AccountActions.addAccount() }
+                    }
+                } else if let s = sharing.value {
                     if s.canShare {
                         Section("Invite") {
                             HStack {
@@ -52,8 +63,19 @@ struct NoteSharingSheet: View {
                                 } else {
                                     Text(ShareRole(rawValue: p.role)?.title ?? p.role).foregroundStyle(.secondary)
                                 }
+                                if p.isYou && !s.canManage {
+                                    Button("Leave") {
+                                        app.perform { client in
+                                            _ = try await client.command(Commands.SharingRevoke(ShareRevokeArgs(noteId: noteId, profileId: p.profileId)))
+                                            app.toast("You left the note")
+                                        }
+                                        dismiss()
+                                    }
+                                    .buttonStyle(.borderless)
+                                }
                             }
                         }
+                        if s.people.isEmpty && s.invites.isEmpty { Text("No one added directly.").foregroundStyle(.secondary) }
                         ForEach(s.invites, id: \.id) { inv in
                             HStack {
                                 Text(inv.email)
@@ -83,7 +105,17 @@ struct NoteSharingSheet: View {
                                         Text("\(l.viewCount) views\(l.expiresAt.map { " · ends " + CoreDates.short($0) } ?? "")").font(.caption).foregroundStyle(.secondary)
                                     }
                                     Spacer()
+                                    Picker("Look", selection: Binding(get: { PublicLinkThemeArgs.Theme(rawValue: l.theme) ?? .note }, set: { t in
+                                        app.perform { _ = try await $0.command(Commands.PublicLinkSetTheme(PublicLinkThemeArgs(linkId: l.id, theme: t))) }
+                                    })) {
+                                        ForEach(PublicLinkThemeArgs.Theme.allCases, id: \.self) { Text($0.rawValue.capitalized).tag($0) }
+                                    }
+                                    .labelsHidden().fixedSize().help("Look")
                                     Button("Stop Sharing") { app.perform { _ = try await $0.command(Commands.PublicLinkRevoke(PublicLinkIdArgs(linkId: l.id))) } }.buttonStyle(.borderless)
+                                }
+                                if l.expiresAt != nil || l.hasPassword || l.allowIndexing {
+                                    Text("Link settings: " + [l.expiresAt.map { "ends " + CoreDates.short($0) }, l.hasPassword ? "password" : nil, l.allowIndexing ? "search engines can find it" : nil].compactMap { $0 }.joined(separator: ", ") + ". Set when the link was made.")
+                                        .font(.caption).foregroundStyle(.secondary)
                                 }
                             }
                             if let newLink {
@@ -92,10 +124,24 @@ struct NoteSharingSheet: View {
                                     Button("Copy") { NSPasteboard.general.clearContents(); NSPasteboard.general.setString(newLink, forType: .string) }
                                 }
                             }
+                            DisclosureGroup("New Link Settings") {
+                                Toggle("Expires", isOn: $expires)
+                                if expires { DatePicker("On", selection: $expiry, in: Date()..., displayedComponents: .date) }
+                                SecureField("Password (optional)", text: $password)
+                                Picker("Look", selection: $look) {
+                                    Text("Note: the note's own style").tag(PublicLinkCreateArgs.Theme.note)
+                                    Text("Article: serif, narrow").tag(PublicLinkCreateArgs.Theme.article)
+                                    Text("Docs: wide, contents beside").tag(PublicLinkCreateArgs.Theme.docs)
+                                    Text("Minimal: plain paper").tag(PublicLinkCreateArgs.Theme.minimal)
+                                }
+                                Toggle("Let search engines find it", isOn: $indexing).disabled(!password.isEmpty)
+                            }
                             Button("Create Public Link") {
+                                let args = PublicLinkCreateArgs(noteId: noteId, expiresAt: expires ? expiry.timeIntervalSince1970 * 1000 : nil, password: password.isEmpty ? nil : password, allowIndexing: indexing && password.isEmpty, theme: look, plainCopy: nil)
                                 app.perform { client in
-                                    let r = try await client.command(Commands.PublicLinkCreate(PublicLinkCreateArgs(noteId: noteId, expiresAt: nil, password: nil, allowIndexing: false, theme: .note, plainCopy: nil)))
+                                    let r = try await client.command(Commands.PublicLinkCreate(args))
                                     newLink = r.url
+                                    password = ""
                                 }
                             }
                         }
@@ -171,6 +217,16 @@ struct FolderSharingSheet: View {
                                 } else {
                                     Text(ShareRole(rawValue: p.role)?.title ?? p.role).foregroundStyle(.secondary)
                                 }
+                                if p.isYou && !s.canManage {
+                                    Button("Leave") {
+                                        app.perform { client in
+                                            _ = try await client.command(Commands.FolderSharingRevoke(FolderShareRevokeArgs(folderId: folderId, profileId: p.profileId)))
+                                            app.toast("You left the folder")
+                                        }
+                                        dismiss()
+                                    }
+                                    .buttonStyle(.borderless)
+                                }
                             }
                         }
                         ForEach(s.invites, id: \.id) { inv in
@@ -191,7 +247,17 @@ struct FolderSharingSheet: View {
                 }
             }
             .formStyle(.grouped)
-            HStack { Spacer(); Button("Done") { dismiss() }.keyboardShortcut(.defaultAction) }.padding(16)
+            Text("Public links are for single notes: share a note to make one.").font(.caption).foregroundStyle(.secondary).padding(.horizontal, 20)
+            HStack {
+                Button("Copy Link") {
+                    NSPasteboard.general.clearContents()
+                    NSPasteboard.general.setString(FolderActions.webURL(folderId).absoluteString, forType: .string)
+                    app.toast("Link copied")
+                }
+                Spacer()
+                Button("Done") { dismiss() }.keyboardShortcut(.defaultAction)
+            }
+            .padding(16)
         }
         .frame(width: 500, height: 520)
         .task { sharing.bind(app.client, Views.FolderSharingGet(NoteIdArgs(id: folderId))) }

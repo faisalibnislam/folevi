@@ -58,7 +58,7 @@ Closed or improved after the grading below; the per-item marks haven't been redo
   folder newest first in two rows with its path, menu and drops; Remove from Recent; the sidebar's Reviews count.
 
 The items closed in this session's later work packages are marked [x] with "closed after the grading", and the
-summary table below is recounted from the marks (826 there, 214 partly, 92 missing, 211 not applicable).
+summary table below is recounted from the marks (871 there, 189 partly, 72 missing, 211 not applicable).
 
 ## Summary
 
@@ -69,7 +69,7 @@ summary table below is recounted from the marks (826 there, 214 partly, 92 missi
 | Sign-in, onboarding, accounts, spaces & local mode | `AUTH` | 39 | 26 | 4 | 11 | 80 |
 | Sidebar & navigation | `NAV` | 22 | 7 | 1 | 7 | 37 |
 | Tabs | `TAB` | 11 | 4 | 3 | 25 | 43 |
-| Home | `HOME` | 15 | 4 | 1 | 10 | 30 |
+| Home | `HOME` | 16 | 4 | 0 | 10 | 30 |
 | Notes lists | `LIST` | 52 | 6 | 3 | 11 | 72 |
 | Folders | `FOLD` | 28 | 3 | 3 | 3 | 37 |
 | Tags | `TAG` | 7 | 0 | 0 | 2 | 9 |
@@ -80,13 +80,13 @@ summary table below is recounted from the marks (826 there, 214 partly, 92 missi
 | Foli AI | `AI` | 42 | 1 | 2 | 4 | 49 |
 | Foli DNA | `DNA` | 34 | 2 | 0 | 0 | 36 |
 | Vault | `VAULT` | 40 | 0 | 0 | 1 | 41 |
-| Sharing, public links & invites | `SHARE` | 6 | 10 | 5 | 1 | 22 |
-| Templates | `TPL` | 5 | 2 | 5 | 0 | 12 |
-| Changes & proposals | `CHG` | 3 | 7 | 1 | 2 | 13 |
-| Drafts | `DRAFT` | 3 | 2 | 0 | 0 | 5 |
+| Sharing, public links & invites | `SHARE` | 21 | 0 | 0 | 1 | 22 |
+| Templates | `TPL` | 12 | 0 | 0 | 0 | 12 |
+| Changes & proposals | `CHG` | 10 | 1 | 0 | 2 | 13 |
+| Drafts | `DRAFT` | 5 | 0 | 0 | 0 | 5 |
 | Archive | `ARCV` | 6 | 0 | 0 | 0 | 6 |
-| Trash | `TRASH` | 10 | 2 | 0 | 0 | 12 |
-| Notifications / Inbox, Help & support | `NOTIF` | 5 | 3 | 8 | 2 | 18 |
+| Trash | `TRASH` | 12 | 0 | 0 | 0 | 12 |
+| Notifications / Inbox, Help & support | `NOTIF` | 16 | 0 | 0 | 2 | 18 |
 | Settings | `SET` | 110 | 15 | 21 | 19 | 165 |
 | Quick Add | `QADD` | 14 | 0 | 0 | 2 | 16 |
 | System integrations | `SYS` | 30 | 23 | 4 | 3 | 60 |
@@ -102,7 +102,7 @@ summary table below is recounted from the marks (826 there, 214 partly, 92 missi
 | Binding UX rules from owner memory | `RULE` | 18 | 13 | 0 | 13 | 44 |
 | iPhone and iPad only (skip) | `IOS` | 0 | 0 | 0 | 5 | 5 |
 | Gaps, bugs and contradictions | `GAP` | 14 | 10 | 8 | 11 | 43 |
-| **Total** | | **826** | **214** | **92** | **211** | **1343** |
+| **Total** | | **871** | **189** | **72** | **211** | **1343** |
 
 Notable findings (all in the first work package at the end):
 
@@ -403,7 +403,7 @@ Notable findings (all in the first work package at the end):
 - [x] `HOME-004` **Catch me up error line**: the engine's or the command's error, in danger colour, under the button. Core: CatchUpCardView shows the error.
 - [x] `HOME-005` **Your week card, running**: "Reading this week's notes…" over 4 shimmering gradient lines; respects Reduce Motion. Core: closed after the grading (see "Since this grading").
 - [x] `HOME-006` **Your week card, ready**: Markdown brief whose citation numbers open notes, numbered source chips that open notes, Refresh button (tooltip "Refresh") and… Core: closed after the grading (see "Since this grading").
-- [ ] `HOME-007` **Catch me up page (route `/catch-up`)**: intro with the AI tile, "Your week in one short read", explainer, three rows (What changed, What's due, Where it came from)… Core: no /catch-up page.
+- [x] `HOME-007` **Catch me up page (route `/catch-up`)**: intro with the AI tile, "Your week in one short read", explainer, three rows (What changed, What's due, Where it came from)… Core: closed after the grading (see "Since this grading").
 - [x] `HOME-008` **Today's reviews card**: shown when Home's rows include Reviews. Shows "N cards to review." with a Start review button (opens `/review`), or "All caught… Core: closed after the grading (see "Since this grading").
 - [x] `HOME-009` **Recent notes section**: clock icon header; "See all" opens All notes in a new tab; carousel of up to 10 notes. Core: `Views/Screens/HomeScreen.swift` Recent strip, See All.
 - [x] `HOME-010` **Recent notes empty and loading**: "No notes yet / Press New to write your first one."; carousel skeleton while loading. Core: closed after the grading (see "Since this grading").
@@ -872,26 +872,26 @@ Notable findings (all in the first work package at the end):
 
 ## Sharing, public links & invites
 
-- [~] `SHARE-001` **Local mode gate**: "Sign in to Folevi to share and collaborate" dialog. Core: folder sharing is hidden in local mode; no sign-in dialog.
-- [~] `SHARE-002` **Page Share dialog**: title "Share <note>", 480 pt, body scrolls when short, Loading… Core: `Views/Sharing/SharingViews.swift` NoteSharingSheet (sharing.get), but nothing opens it; File > Share only sends note.menu share to the page.
-- [~] `SHARE-003` **Invite by email**: email field, role select (Can view, Can comment, Can edit), Share (enabled with "@"). Core: in NoteSharingSheet (unreachable).
-- [~] `SHARE-004` **People with access**: avatar, name, Guest marker, role select, Remove (trash) for managers, Leave for yourself, "No one added directly."; toasts… Core: in NoteSharingSheet (unreachable); no Leave or avatars.
-- [~] `SHARE-005` **Invited by email (page)**: pending rows with Revoke ("Invitation revoked"). Core: in NoteSharingSheet (unreachable).
-- [~] `SHARE-006` **Access mode**: Workspace ("Everyone in this workspace, by their role") or Only invited people ("Owners, admins, the creator and people added… Core: in NoteSharingSheet (unreachable).
-- [~] `SHARE-007` **Public link switch**: on makes a link, off revokes all; disabled when public links are off for Folevi ("Public links are temporarily turned off for… Core: Create Public Link and Stop Sharing in NoteSharingSheet (unreachable); no switch or turned-off notice.
-- [ ] `SHARE-008` **New link settings**: Expires (date field, "Never"), Password (optional, "None"), Look, "Let search engines find it" (off with a password or for… Core: no expiry, password, look or indexing settings.
-- [ ] `SHARE-009` **Link themes ("Look")**: Note (the note's own style), Article (serif, narrow), Docs (wide, contents beside), Minimal (plain paper, no cover); change on an… Core: no link themes (publicLink.setTheme).
-- [~] `SHARE-010` **Existing links**: token hint "…/s/xxxx" when several, folded "Link settings (summary)", expiry and password shown read-only with tip "Set when the… Core: links listed with hint, views and Stop Sharing in NoteSharingSheet (unreachable).
-- [~] `SHARE-011` **Footer**: Copy link (the note's or folder's app link), Done. Core: Copy Link and Done in NoteSharingSheet (unreachable); the folder sheet has Done only.
+- [x] `SHARE-001` **Local mode gate**: "Sign in to Folevi to share and collaborate" dialog. Core: closed after the grading (see "Since this grading").
+- [x] `SHARE-002` **Page Share dialog**: title "Share <note>", 480 pt, body scrolls when short, Loading… Core: closed after the grading (see "Since this grading").
+- [x] `SHARE-003` **Invite by email**: email field, role select (Can view, Can comment, Can edit), Share (enabled with "@"). Core: closed after the grading (see "Since this grading").
+- [x] `SHARE-004` **People with access**: avatar, name, Guest marker, role select, Remove (trash) for managers, Leave for yourself, "No one added directly."; toasts… Core: closed after the grading (see "Since this grading").
+- [x] `SHARE-005` **Invited by email (page)**: pending rows with Revoke ("Invitation revoked"). Core: closed after the grading (see "Since this grading").
+- [x] `SHARE-006` **Access mode**: Workspace ("Everyone in this workspace, by their role") or Only invited people ("Owners, admins, the creator and people added… Core: closed after the grading (see "Since this grading").
+- [x] `SHARE-007` **Public link switch**: on makes a link, off revokes all; disabled when public links are off for Folevi ("Public links are temporarily turned off for… Core: closed after the grading (see "Since this grading").
+- [x] `SHARE-008` **New link settings**: Expires (date field, "Never"), Password (optional, "None"), Look, "Let search engines find it" (off with a password or for… Core: closed after the grading (see "Since this grading").
+- [x] `SHARE-009` **Link themes ("Look")**: Note (the note's own style), Article (serif, narrow), Docs (wide, contents beside), Minimal (plain paper, no cover); change on an… Core: closed after the grading (see "Since this grading").
+- [x] `SHARE-010` **Existing links**: token hint "…/s/xxxx" when several, folded "Link settings (summary)", expiry and password shown read-only with tip "Set when the… Core: closed after the grading (see "Since this grading").
+- [x] `SHARE-011` **Footer**: Copy link (the note's or folder's app link), Done. Core: closed after the grading (see "Since this grading").
 - [x] `SHARE-012` **Folder Share dialog**: opened from the folder "…" menu "Share…", the folder page's Share button, People on a shared folder; what sharing reaches. Core: `Views/Sharing/SharingViews.swift` FolderSharingSheet from the folder menu and the folder page.
-- [~] `SHARE-013` **Folder people**: role select, Remove, Leave ("You left the folder"); only folder owner and workspace owners/admins can share (else a note). Core: role and remove; no Leave.
+- [x] `SHARE-013` **Folder people**: role select, Remove, Leave ("You left the folder"); only folder owner and workspace owners/admins can share (else a note). Core: closed after the grading (see "Since this grading").
 - [x] `SHARE-014` **Folder invite**: email and role. Core: FolderSharingSheet invite.
 - [x] `SHARE-015` **From folders above**: read-only grants from parent folders ("From folder X"). Core: FolderSharingSheet inherited sections.
 - [x] `SHARE-016` **Invited by email (folder)**: Revoke. Core: FolderSharingSheet Cancel invite.
-- [ ] `SHARE-017` **Open the shared folder**: link and "Public links are for single notes: share a note to make one.". Core: no shared-folder link or the public-links note.
+- [x] `SHARE-017` **Open the shared folder**: link and "Public links are for single notes: share a note to make one.". Core: closed after the grading (see "Since this grading").
 - [x] `SHARE-018` **Accept / decline invitations**: in the notifications panel (workspace, page, folder); see Notifications section. Core: `Views/Screens/PeopleScreens.swift` Accept and Decline (through notification.act).
-- [ ] `SHARE-019` **AI conversation sharing**: see Foli AI "Share with workspace…". Core: no chat sharing (ai.share).
-- [ ] `SHARE-020` **Vault item sharing**: see Vault "Share an item or note". Core: no Vault sharing.
+- [x] `SHARE-019` **AI conversation sharing**: see Foli AI "Share with workspace…". Core: closed after the grading (see "Since this grading").
+- [x] `SHARE-020` **Vault item sharing**: see Vault "Share an item or note". Core: closed after the grading (see "Since this grading").
 - [x] `SHARE-021` **Gap on Mac: invite link landing**: no Mac screen for `/share-invite/<token>` (invite.preview, invite.acceptLink); only the iPhone InviteScreen ("Accept invitation"… Core: fixed in Core: `Views/Screens/LibraryScreens.swift` InviteScreen (invite.preview, invite.acceptLink, invite.decline).
 - [n/a] `SHARE-022` **iPhone only: ShareScreen**: Who has access, Invite with role, People, Invited by email with Revoke, Public link (Expires, Look, search engines), view counts… Why: iPhone only.
 
@@ -899,38 +899,38 @@ Notable findings (all in the first work package at the end):
 
 - [x] `TPL-001` **Templates list**: route `/templates`. File > "New Note from Template…" (⌥⇧⌘N) opens it. Core: `Views/Screens/LibraryScreens.swift` TemplatesScreen; File > New Note from Template (no ⌥⇧⌘N).
 - [x] `TPL-002` **Built-in gallery**: "Built-in templates" in 1 to 3 columns, each with a pastel icon tile, name and description; a click creates and opens a note… Core: TemplatesScreen built-in strip (note.create with templateId).
-- [~] `TPL-003` **Template icons**: 26 icon names with 10 tints. Core: the icon name is drawn as text; no tinted tile.
-- [ ] `TPL-004` **"Your templates" heading**. Core: no "Your templates" heading.
-- [ ] `TPL-005` **Count text**: "N built-in · N custom templates". Core: no count text.
+- [x] `TPL-003` **Template icons**: 26 icon names with 10 tints. Core: closed after the grading (see "Since this grading").
+- [x] `TPL-004` **"Your templates" heading**. Core: closed after the grading (see "Since this grading").
+- [x] `TPL-005` **Count text**: "N built-in · N custom templates". Core: closed after the grading (see "Since this grading").
 - [x] `TPL-006` **New template**: primary button (and a card control in the native look); creates and opens. Core: TemplatesScreen New Template (template.create) opens it.
-- [ ] `TPL-007` **Generate with Foli AI**: offered when the person can edit, AI is on and the device is online; button, or card "…" "Generate with Foli AI…". Core: no Generate with Foli AI.
-- [ ] `TPL-008` **Generate sheet**: "Generate a template", "What's the template for?", examples (Weekly team meeting, Project kickoff, Book notes, Trip planner)… Core: no generate sheet.
-- [ ] `TPL-009` **Template card and row "Use" button**: hidden in Trash. Core: no Use button.
-- [~] `TPL-010` **Template menu**: New page from template, Edit template, Bookmark, Duplicate, Copy to…, Archive, Move to Trash. No Move to folder; no Select… Core: generic NoteMenu; no New Page from Template.
+- [x] `TPL-007` **Generate with Foli AI**: offered when the person can edit, AI is on and the device is online; button, or card "…" "Generate with Foli AI…". Core: closed after the grading (see "Since this grading").
+- [x] `TPL-008` **Generate sheet**: "Generate a template", "What's the template for?", examples (Weekly team meeting, Project kickoff, Book notes, Trip planner)… Core: closed after the grading (see "Since this grading").
+- [x] `TPL-009` **Template card and row "Use" button**: hidden in Trash. Core: closed after the grading (see "Since this grading").
+- [x] `TPL-010` **Template menu**: New page from template, Edit template, Bookmark, Duplicate, Copy to…, Archive, Move to Trash. No Move to folder; no Select… Core: closed after the grading (see "Since this grading").
 - [x] `TPL-011` **Templates empty**: "No templates of your own yet / Save any note as a template from its menu, or start from a built-in one above.". Core: empty state.
 - [x] `TPL-012` **Save as template**: item in the note's own menu (iPhone note menu plan). Core: NoteMoreMenu Save as Template.
 
 ## Changes & proposals
 
-- [~] `CHG-001` **Changes screen (Mac)**: header "Changes" with "N proposed · N notes changed since you last looked" or "Nothing new". Core: `Views/Screens/LibraryScreens.swift` ChangesScreen; no facts header.
-- [~] `CHG-002` **Local mode page**: the sign-in-to-collaborate page. Core: the row is hidden in local mode; no sign-in page.
-- [~] `CHG-003` **Proposed section**: heading plus "Changes connected apps want to make to your notes. Nothing changes until you accept.". Core: "Suggestions" heading, no explainer.
-- [~] `CHG-004` **Proposal card**: title link (opens the note), "<source> proposed this <time>", summary, Accept (primary, hidden when there's a problem), Reject… Core: Accept, Decline, Open Note; Accept shows even with a problem, no busy state.
-- [~] `CHG-005` **Proposal body**: the problem text (danger), or "You can't open this note, so its proposal isn't shown.", or the summary with a moss bar. Core: problem text shown; no can't-open message.
-- [~] `CHG-006` **Proposal toasts**: "Added to "title"" and "Proposal rejected". Core: only if the engine sends them.
+- [x] `CHG-001` **Changes screen (Mac)**: header "Changes" with "N proposed · N notes changed since you last looked" or "Nothing new". Core: closed after the grading (see "Since this grading").
+- [x] `CHG-002` **Local mode page**: the sign-in-to-collaborate page. Core: closed after the grading (see "Since this grading").
+- [x] `CHG-003` **Proposed section**: heading plus "Changes connected apps want to make to your notes. Nothing changes until you accept.". Core: closed after the grading (see "Since this grading").
+- [x] `CHG-004` **Proposal card**: title link (opens the note), "<source> proposed this <time>", summary, Accept (primary, hidden when there's a problem), Reject… Core: closed after the grading (see "Since this grading").
+- [x] `CHG-005` **Proposal body**: the problem text (danger), or "You can't open this note, so its proposal isn't shown.", or the summary with a moss bar. Core: closed after the grading (see "Since this grading").
+- [x] `CHG-006` **Proposal toasts**: "Added to "title"" and "Proposal rejected". Core: closed after the grading (see "Since this grading").
 - [x] `CHG-007` **Mark all as seen**: shown when more than one note changed. Core: toolbar Mark All as Seen (changes.markSeen).
 - [x] `CHG-008` **Changed note card**: title link, "who · time", counts, Open note, Mark as seen. Core: changed note rows (who, counts, open, Mark as Seen).
-- [ ] `CHG-009` **Inline diff (auto-loaded per note)**: up to 40 blocks; added text moss and underlined; removed text coral with strikethrough; word-level parts; headings sized; "Only… Core: no inline diff (changes.diff).
+- [~] `CHG-009` **Inline diff (auto-loaded per note)**: up to 40 blocks; added text moss and underlined; removed text coral with strikethrough; word-level parts; headings sized; "Only… Core: the diff (changes.diff) opens per note in a sheet (Show What Changed…), not inline under each note.
 - [x] `CHG-010` **Empty states**: "You're all caught up / When someone else changes a note you've opened…"; "Nothing else changed since you last looked." when only… Core: empty state.
-- [~] `CHG-011` **Palette and sidebar entry**: "Go to Changes"; sidebar count. Core: sidebar count; not in the palette.
+- [x] `CHG-011` **Palette and sidebar entry**: "Go to Changes"; sidebar count. Core: closed after the grading (see "Since this grading").
 - [n/a] `CHG-012` **iOS only: Show / Hide changes**: per-note toggle with a lazy diff query, spinner and error; swipe "Seen"; context menu Open / Mark as seen; optimistic removal… Why: iPhone/iPad only.
 - [n/a] `CHG-013` **iOS only: ChangeDiffView**: +/−/~ marks, struck "before" text for changed blocks, who changed it, todo/bullet/number prefixes, "More changes are in the… Why: iPhone/iPad only.
 
 ## Drafts
 
 - [x] `DRAFT-001` **Drafts list (`unsorted`)**: route `/drafts`; title "Drafts"; sidebar row with count. Core: `Views/Screens/NoteListScreen.swift` kind unsorted, route /drafts.
-- [~] `DRAFT-002` **Drafts empty**: "No drafts / Everything has a folder. Nicely done." No New document button. Core: generic "No Notes" with a New Note button.
-- [~] `DRAFT-003` **Manual order allowed**: Move up / Move down (and the iOS drag). Core: drag rows in Manual order; no Move up / Move down.
+- [x] `DRAFT-002` **Drafts empty**: "No drafts / Everything has a folder. Nicely done." No New document button. Core: closed after the grading (see "Since this grading").
+- [x] `DRAFT-003` **Manual order allowed**: Move up / Move down (and the iOS drag). Core: closed after the grading (see "Since this grading").
 - [x] `DRAFT-004` **Leaves the list when moved into a folder**: `leavesList`. Core: the live list drops it.
 - [x] `DRAFT-005` **Drafts as a move target**: shown first in every move picker; notes of a deleted folder go to Drafts. Core: `Views/Common/Menus.swift` MoveTargets lists Drafts first.
 
@@ -946,7 +946,7 @@ Notable findings (all in the first work package at the end):
 ## Trash
 
 - [x] `TRASH-001` **Trash list**: route `/trash`; List layout by default; sidebar row; palette "Open Trash". Core: NoteListScreen kind trash; palette Trash.
-- [~] `TRASH-002` **Sort without Manual**: a saved Manual order becomes Last edited. Core: a saved Manual sort is still sent in Trash.
+- [x] `TRASH-002` **Sort without Manual**: a saved Manual order becomes Last edited. Core: closed after the grading (see "Since this grading").
 - [x] `TRASH-003` **Row time**: "Deleted <time ago>". Core: "Deleted …" on cards; the deletion date on rows.
 - [x] `TRASH-004` **Trash row menu**: Restore, Select / Deselect, Delete permanently… Core: NoteMenu in Trash: Restore, Delete Immediately.
 - [x] `TRASH-005` **Restore**: Undo puts the note back in Trash. Core: note.restore with the engine's Undo.
@@ -956,33 +956,33 @@ Notable findings (all in the first work package at the end):
 - [x] `TRASH-009` **Empty Trash confirmation**: "Empty Trash? / N notes will be deleted for everyone…" with "Delete permanently". Core: `Views/Screens/NoteListScreen.swift` emptyTrash alert (trash.empty).
 - [x] `TRASH-010` **Empty Trash toasts**: deleted; skipped ("couldn't be deleted. You may not have permission."); continuing ("being emptied in the background"). Core: engine toasts.
 - [x] `TRASH-011` **Bulk in Trash**: Restore and Delete permanently… only. Core: selection menu in Trash: Restore, Delete.
-- [~] `TRASH-012` **Trash empty state, and Move to Trash everywhere**: empty "Trash is empty / Deleted notes stay here for 30 days." Move to Trash shows "Moved to Trash" with Undo (`note.restore`)… Core: empty state and engine Undo; no ⌘⌫.
+- [x] `TRASH-012` **Trash empty state, and Move to Trash everywhere**: empty "Trash is empty / Deleted notes stay here for 30 days." Move to Trash shows "Moved to Trash" with Undo (`note.restore`)… Core: closed after the grading (see "Since this grading").
 
 ## Notifications / Inbox, Help & support
 
 ### Notifications / Inbox
 
 - [n/a] `NOTIF-001` **Bell button**: "Notifications" in the tab strip (after the sync status), anchored panel; sidebar variant as a popover; badge from the live list. Why: replaced by the Notifications sidebar row with its badge.
-- [~] `NOTIF-002` **Header**: "Notifications", Mark all read (dimmed when nothing unread), Notification settings (opens Settings > Notifications). Core: Mark All as Read in the toolbar; no Notification settings link.
-- [ ] `NOTIF-003` **Filter All / Unread**. Core: no All / Unread filter.
-- [ ] `NOTIF-004` **Groups Today / Earlier**. Core: no Today / Earlier groups.
+- [x] `NOTIF-002` **Header**: "Notifications", Mark all read (dimmed when nothing unread), Notification settings (opens Settings > Notifications). Core: closed after the grading (see "Since this grading").
+- [x] `NOTIF-003` **Filter All / Unread**. Core: closed after the grading (see "Since this grading").
+- [x] `NOTIF-004` **Groups Today / Earlier**. Core: closed after the grading (see "Since this grading").
 - [x] `NOTIF-005` **Empty states**: "You're all caught up" / "No unread notifications", "Comments, replies, @mentions and pages shared with you show up here.". Core: empty state.
 - [x] `NOTIF-006` **Row**: avatar initial, sentence by kind (comment / N comments, reply / N replies, mention, share, invite, share_change, else title)… Core: `Views/Screens/PeopleScreens.swift` NotificationLine (avatar, title, body, time, dot, icon); opening marks read.
 - [x] `NOTIF-007` **Row "…" menu (hover)**: Mark as read / Mark as unread, Remove. Core: context menu Mark as Read / Unread, Remove.
 - [x] `NOTIF-008` **Invitations in place**: Accept (workspace, page) or Accept and open (folder), Decline. Core: Accept and Decline (notification.act).
-- [ ] `NOTIF-009` **File-ready rows**: Download button in the shared content (sidebar popover). Core: no file-ready Download.
-- [ ] `NOTIF-010` **System notification actions**: reply / act from macOS notifications routed to the engine. Core: Mac notifications have no actions.
+- [x] `NOTIF-009` **File-ready rows**: Download button in the shared content (sidebar popover). Core: closed after the grading (see "Since this grading").
+- [x] `NOTIF-010` **System notification actions**: reply / act from macOS notifications routed to the engine. Core: closed after the grading (see "Since this grading").
 - [n/a] `NOTIF-011` **iPhone/sidebar content: swipe**: leading Read / Unread, trailing Remove, context menu. Why: iPhone/iPad only.
 
 ### Help & support
 
-- [~] `NOTIF-012` **Help page**: Help > Folevi Help; card bar says "Help". Core: Help > Folevi Core Help opens the website; no in-app help page.
-- [ ] `NOTIF-013` **Intro with links**: "folevi.com/docs" opens the guide (only the link words), support@ and security@ open mail. Core: no help intro.
+- [x] `NOTIF-012` **Help page**: Help > Folevi Help; card bar says "Help". Core: closed after the grading (see "Since this grading").
+- [x] `NOTIF-013` **Intro with links**: "folevi.com/docs" opens the guide (only the link words), support@ and security@ open mail. Core: closed after the grading (see "Since this grading").
 - [x] `NOTIF-014` **Support block**: account: "Your support requests" + "A person on the Folevi team reads every request…", button Contact support; local: "Support"… Core: `Views/Common/MoreSheets.swift` SupportSheet (support.topics, support.send) from Help > Contact Support.
-- [ ] `NOTIF-015` **Keyboard shortcuts table**: ⌘K search, ⌘N new note (Mac), ⌘⇧A quick add task, ⌘\ sidebar, ⌘⌥I inspector, ⌘⌥T Today, ⌘B/I/U, ⌘⇧X / ⌘E, ⌘⇧H, ⌘⌥0 to 3, ⌘⇧7/8/9… Core: no shortcuts table.
-- [ ] `NOTIF-016` **Help > Keyboard Shortcuts (⌘/)**: opens Help scrolled to the table. Core: no Help > Keyboard Shortcuts (⌘/ is Insert).
-- [ ] `NOTIF-017` **Save status meanings**: account (Saved, Saving…, Syncing…, Offline, Conflict, Not saved) and local library variants. Core: no save-status help.
-- [~] `NOTIF-018` **Help menu extras**: What's New, Send Feedback… Core: What's New; no Send Feedback.
+- [x] `NOTIF-015` **Keyboard shortcuts table**: ⌘K search, ⌘N new note (Mac), ⌘⇧A quick add task, ⌘\ sidebar, ⌘⌥I inspector, ⌘⌥T Today, ⌘B/I/U, ⌘⇧X / ⌘E, ⌘⇧H, ⌘⌥0 to 3, ⌘⇧7/8/9… Core: closed after the grading (see "Since this grading").
+- [x] `NOTIF-016` **Help > Keyboard Shortcuts (⌘/)**: opens Help scrolled to the table. Core: closed after the grading (see "Since this grading").
+- [x] `NOTIF-017` **Save status meanings**: account (Saved, Saving…, Syncing…, Offline, Conflict, Not saved) and local library variants. Core: closed after the grading (see "Since this grading").
+- [x] `NOTIF-018` **Help menu extras**: What's New, Send Feedback… Core: closed after the grading (see "Since this grading").
 
 ## Settings
 

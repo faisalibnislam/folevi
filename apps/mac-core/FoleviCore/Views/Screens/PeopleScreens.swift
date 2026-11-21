@@ -9,18 +9,22 @@ struct NotificationsScreen: View {
     private var app: AppModel { .shared }
     @State private var selection: Set<String> = []
     @State private var replying: NotificationRow?
+    @State private var unreadOnly = false
 
     var body: some View {
         Group {
             if let v = app.notifications.value {
+                let rows = v.rows.filter { !unreadOnly || !$0.read }
+                let today = rows.filter { Calendar.current.isDateInToday(Date(timeIntervalSince1970: $0.at / 1000)) }
+                let earlier = rows.filter { !Calendar.current.isDateInToday(Date(timeIntervalSince1970: $0.at / 1000)) }
                 if v.rows.isEmpty {
                     EmptyScreen(symbol: "bell", title: "No Notifications", message: "Comments, mentions and invitations show up here.")
+                } else if rows.isEmpty {
+                    EmptyScreen(symbol: "checkmark.circle", title: "All Read", message: "Nothing unread. Show All to see earlier ones.", actionTitle: "Show All") { unreadOnly = false }
                 } else {
                     List(selection: $selection) {
-                        ForEach(v.rows, id: \.id) { n in
-                            NotificationLine(row: n, window: window, reply: { replying = n })
-                                .tag(n.id)
-                        }
+                        if !today.isEmpty { Section("Today") { ForEach(today, id: \.id, content: line) } }
+                        if !earlier.isEmpty { Section("Earlier") { ForEach(earlier, id: \.id, content: line) } }
                     }
                     .listStyle(.inset)
                     .contextMenu(forSelectionType: String.self) { ids in
@@ -33,16 +37,43 @@ struct NotificationsScreen: View {
                     }
                 }
             } else {
-                LoadingScreen()
+                SkeletonRows()
             }
         }
+        .navigationSubtitle(app.unread == 0 ? "Nothing unread" : "\(app.unread) unread")
         .toolbar {
-            ToolbarItem(placement: .secondaryAction) {
+            ToolbarItemGroup(placement: .secondaryAction) {
+                Picker("Show", selection: $unreadOnly) {
+                    Text("All").tag(false)
+                    Text("Unread").tag(true)
+                }
+                .pickerStyle(.segmented).labelsHidden().fixedSize()
                 Button("Mark All as Read") { app.perform { _ = try await $0.command(Commands.NotificationMarkAllRead()) } }
                     .disabled(app.unread == 0)
+                Button { SettingsRouter.shared.open("notifications") } label: { Label("Notification Settings", systemImage: "gearshape") }
+                    .help("Notification Settings")
             }
         }
         .sheet(item: $replying) { n in ReplySheet(row: n) }
+    }
+
+    private func line(_ n: NotificationRow) -> some View {
+        NotificationLine(row: n, window: window, reply: { replying = n })
+            .overlay(alignment: .trailing) {
+                if let file = n.fileId {
+                    Button("Download") { download(file) }.controlSize(.small)
+                }
+            }
+            .tag(n.id)
+    }
+
+    private func download(_ fileId: String) {
+        app.perform { client in
+            let v = try await client.query(Views.FilesUrls(FileUrlsArgs(ids: [fileId])))
+            guard let link = v.urls[fileId], let s = link.url, let url = URL(string: s) else { app.toast("The file isn't ready yet.", tone: .error); return }
+            let (data, _) = try await URLSession.shared.data(from: url)
+            _ = await ShellFiles.shared.save(name: link.filename ?? "Download", bytes: data, from: NSApp.keyWindow)
+        }
     }
 
     private func mark(_ ids: Set<String>, read: Bool) {

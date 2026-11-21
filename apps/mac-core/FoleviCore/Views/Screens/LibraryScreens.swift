@@ -664,26 +664,58 @@ struct ChangesScreen: View {
 
     var body: some View {
         Group {
-            if let c = app.changes.value {
+            if app.session.value?.mode == .local {
+                EmptyScreen(symbol: "person.2", title: "Sign In to Folevi to Share and Collaborate", message: "Changes other people make to notes you share show up here. This library lives on this Mac.", actionTitle: "Sign In to Folevi…") { AccountActions.addAccount() }
+            } else if let c = app.changes.value {
                 if c.notes.isEmpty && c.proposals.isEmpty {
                     EmptyScreen(symbol: "checkmark.circle", title: "You're Up to Date", message: "When people change notes you share, the changes show up here.")
                 } else {
                     List {
                         if !c.proposals.isEmpty {
-                            Section("Suggestions") {
+                            Section {
                                 ForEach(c.proposals, id: \.id) { p in
                                     VStack(alignment: .leading, spacing: 6) {
-                                        Text(p.title.nonEmpty ?? "Untitled").font(CoreType.noteTitle(15))
-                                        Text("\(p.sourceName) · \(p.summary)").font(.callout).foregroundStyle(.secondary)
-                                        if let problem = p.problem { Label(problem, systemImage: "exclamationmark.triangle").font(.caption).foregroundStyle(.orange) }
+                                        if let note = p.noteId {
+                                            Button(p.title.nonEmpty ?? "Untitled") { window.go(.note(note)) }.buttonStyle(.plain).font(CoreType.noteTitle(15))
+                                        } else {
+                                            Text(p.title.nonEmpty ?? "Untitled").font(CoreType.noteTitle(15))
+                                        }
+                                        Text("\(p.sourceName) proposed this \(CoreDates.short(p.createdAt))").font(.caption).foregroundStyle(.secondary)
+                                        if let problem = p.problem {
+                                            Label(problem, systemImage: "exclamationmark.triangle").font(.callout).foregroundStyle(.red)
+                                        } else if p.noteId == nil {
+                                            Text("You can't open this note, so its proposal isn't shown.").font(.callout).foregroundStyle(.secondary)
+                                        } else {
+                                            Text(p.summary).font(.callout)
+                                                .padding(.leading, 8)
+                                                .overlay(alignment: .leading) { Rectangle().fill(Color.folevi("moss")).frame(width: 3) }
+                                        }
                                         HStack {
-                                            Button("Accept") { app.perform { _ = try await $0.command(Commands.ProposalAccept(ProposalIdArgs(id: p.id))) } }
-                                            Button("Decline") { app.perform { _ = try await $0.command(Commands.ProposalReject(ProposalIdArgs(id: p.id))) } }
+                                            if p.problem == nil {
+                                                Button("Accept") {
+                                                    app.perform { client in
+                                                        _ = try await client.command(Commands.ProposalAccept(ProposalIdArgs(id: p.id)))
+                                                        app.toast("Added to “\(p.title.nonEmpty ?? "Untitled")”")
+                                                    }
+                                                }
+                                                .buttonStyle(InkPillStyle())
+                                            }
+                                            Button("Reject") {
+                                                app.perform { client in
+                                                    _ = try await client.command(Commands.ProposalReject(ProposalIdArgs(id: p.id)))
+                                                    app.toast("Proposal rejected")
+                                                }
+                                            }
                                             if let note = p.noteId { Button("Open Note") { window.go(.note(note)) }.buttonStyle(InkLinkStyle()) }
                                         }
                                         .controlSize(.small)
                                     }
                                     .padding(.vertical, 4)
+                                }
+                            } header: {
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text("Proposed")
+                                    Text("Changes connected apps want to make to your notes. Nothing changes until you accept.").font(.caption).foregroundStyle(.secondary).textCase(nil)
                                 }
                             }
                         }
@@ -717,6 +749,7 @@ struct ChangesScreen: View {
                     .sheet(isPresented: Binding(get: { diffNote != nil }, set: { if !$0 { diffNote = nil } })) {
                         if let id = diffNote { ChangeDiffSheet(noteId: id, window: window) }
                     }
+                    .navigationSubtitle(c.proposals.isEmpty && c.notes.isEmpty ? "Nothing new" : "\(c.proposals.count) proposed · \(c.notes.count) \(c.notes.count == 1 ? "note" : "notes") changed since you last looked")
                     .toolbar {
                         ToolbarItem(placement: .secondaryAction) {
                             Button("Mark All as Seen") {
@@ -740,18 +773,30 @@ struct TemplatesScreen: View {
     let window: WindowModel
     private var app: AppModel { .shared }
     @State private var builtIn = Live<Views.TemplatesBuiltIn>()
+    @State private var generating = false
+
+    /// The ten soft tints of the template tiles.
+    static let tints = ["cocoa", "moss", "marigold", "plum", "coral", "gray", "sky", "teal", "rose", "olive"]
+
+    private var canGenerate: Bool { app.session.value?.capabilities.ai != false && app.sync.value?.online != false }
 
     var body: some View {
-        VStack(spacing: 0) {
+        VStack(alignment: .leading, spacing: 0) {
             if let t = builtIn.value?.templates, !t.isEmpty {
+                Text("Built In · \(t.count)").font(.subheadline.weight(.semibold)).foregroundStyle(.secondary).padding([.horizontal, .top], 24)
                 ScrollView(.horizontal) {
                     HStack(spacing: 12) {
-                        ForEach(t, id: \.key) { tmpl in
+                        ForEach(Array(t.enumerated()), id: \.element.key) { i, tmpl in
                             Button {
                                 NoteActions.newNote(app: app, window: window, template: tmpl.key)
                             } label: {
-                                VStack(alignment: .leading, spacing: 4) {
-                                    Text(tmpl.icon).font(.title2)
+                                VStack(alignment: .leading, spacing: 6) {
+                                    Group {
+                                        if let icon = WebIcon(rawValue: tmpl.icon) { icon.image(size: 16) } else { Image(systemName: "doc.text") }
+                                    }
+                                    .foregroundStyle(Color.folevi(Self.tints[i % Self.tints.count]))
+                                    .frame(width: 30, height: 30)
+                                    .background(Color.folevi(Self.tints[i % Self.tints.count]).opacity(0.15), in: .rect(cornerRadius: 8))
                                     Text(tmpl.name).font(CoreType.noteTitle(14))
                                     Text(tmpl.description).font(.caption).foregroundStyle(.secondary).lineLimit(2)
                                 }
@@ -761,18 +806,24 @@ struct TemplatesScreen: View {
                             }
                             .buttonStyle(.plain)
                             .hoverEffectCompat()
+                            .help("New note from \(tmpl.name)")
                         }
                     }
                     .padding(.horizontal, 24)
-                    .padding(.vertical, 14)
+                    .padding(.vertical, 10)
                 }
                 .scrollIndicators(.never)
                 Divider()
             }
+            Text("Your Templates").font(.subheadline.weight(.semibold)).foregroundStyle(.secondary).padding([.horizontal, .top], 24).padding(.bottom, 4)
             NoteListScreen(window: window, kind: .templates)
         }
         .toolbar {
-            ToolbarItem(placement: .secondaryAction) {
+            ToolbarItemGroup(placement: .secondaryAction) {
+                if canGenerate {
+                    Button { generating = true } label: { Label { Text("Generate with Foli AI…") } icon: { AiMarkGlyph(size: 15) } }
+                        .help("Generate a template with Foli AI")
+                }
                 Button {
                     app.perform { client in
                         let r = try await client.command(Commands.TemplateCreate(TemplateCreateArgs(space: nil, title: nil, open: false)))
@@ -781,7 +832,76 @@ struct TemplatesScreen: View {
                 } label: { Label("New Template", systemImage: "plus.square.on.square") }
             }
         }
+        .sheet(isPresented: $generating) { GenerateTemplateSheet(window: window) }
         .task(id: app.client.map(ObjectIdentifier.init)) { builtIn.bind(app.client, Views.TemplatesBuiltIn()) }
+    }
+}
+
+/// Generate a template with Foli AI: what it's for, a draft to look at, then save it as a template.
+struct GenerateTemplateSheet: View {
+    let window: WindowModel
+    private var app: AppModel { .shared }
+    @Environment(\.dismiss) private var dismiss
+    @State private var instruction = ""
+    @State private var draft: AiGenerateResult?
+    @State private var working = false
+    @State private var problem: String?
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Generate a Template").font(.headline)
+            TextField("What's the template for?", text: $instruction, axis: .vertical).lineLimit(2...4).textFieldStyle(.roundedBorder)
+            HStack {
+                ForEach(["Weekly team meeting", "Project kickoff", "Book notes", "Trip planner"], id: \.self) { e in
+                    Button(e) { instruction = e }.buttonStyle(.bordered).controlSize(.small)
+                }
+            }
+            if let d = draft {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(d.title).font(CoreType.noteTitle(16))
+                    ScrollView { Text(d.text).font(CoreType.noteText(13)).textSelection(.enabled).frame(maxWidth: .infinity, alignment: .leading) }.frame(height: 200)
+                }
+                .padding(10).background(.fill.quinary, in: .rect(cornerRadius: 8))
+            }
+            if working { HStack { ProgressView().controlSize(.small); Text("Writing it…").foregroundStyle(.secondary) } }
+            if let problem { Text(problem).font(.caption).foregroundStyle(.red) }
+            HStack {
+                Text("Foli AI can make mistakes. Look it over before you use it.").font(.caption).foregroundStyle(.tertiary)
+                Spacer()
+                Button("Cancel", role: .cancel) { dismiss() }.keyboardShortcut(.cancelAction)
+                if let d = draft {
+                    Button("Try Again", action: generate).disabled(working)
+                    Button("Save Template") { save(d) }.buttonStyle(InkPillStyle()).keyboardShortcut(.defaultAction)
+                } else {
+                    Button("Generate", action: generate).buttonStyle(InkPillStyle()).keyboardShortcut(.defaultAction)
+                        .disabled(instruction.trimmingCharacters(in: .whitespaces).isEmpty || working)
+                }
+            }
+        }
+        .padding(20)
+        .frame(width: 520)
+    }
+
+    private func generate() {
+        let text = instruction.trimmingCharacters(in: .whitespaces)
+        guard !text.isEmpty else { return }
+        working = true
+        problem = nil
+        Task { @MainActor in
+            defer { working = false }
+            do {
+                guard let client = app.client else { return }
+                draft = try await client.command(Commands.AiGenerate(AiGenerateArgs(kind: .template, instruction: text, space: nil)))
+            } catch let f as EngineFailure { problem = f.message } catch { problem = "Foli AI couldn't write it. Try again." }
+        }
+    }
+
+    private func save(_ d: AiGenerateResult) {
+        app.perform { client in
+            let r = try await client.command(Commands.AiSaveDraft(AiSaveDraftArgs(kind: .template, title: d.title, text: d.text, space: nil, folderId: nil)))
+            app.toast("Template saved", tone: .success, action: "Open") { window.go(.note(r.id)) }
+        }
+        dismiss()
     }
 }
 

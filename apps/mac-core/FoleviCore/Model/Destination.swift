@@ -56,6 +56,7 @@ enum Destination: Hashable, Codable {
     case trash
     case vault
     case reviews
+    case catchUp
     case graph
     case note(String)
     case invite(kind: InviteKind, token: String)
@@ -95,6 +96,7 @@ enum Destination: Hashable, Codable {
         case .trash: "/trash"
         case .vault: "/vault"
         case .reviews: "/review"
+        case .catchUp: "/catch-up"
         case .graph: "/graph"
         case .note(let id): "/d/\(id)"
         case .invite(let kind, let token):
@@ -131,6 +133,7 @@ enum Destination: Hashable, Codable {
         case "shared": if let f = id(a) { self = .sharedFolder(f) } else { self = .shared }
         case "vault": self = .vault
         case "review": self = .reviews
+        case "catch-up": self = .catchUp
         case "graph": self = .graph
         case "changes": self = .changes
         case "templates": self = .templates
@@ -182,6 +185,7 @@ enum Destination: Hashable, Codable {
         case .trash: "Trash"
         case .vault: "Vault"
         case .reviews: "Reviews"
+        case .catchUp: "Catch Me Up"
         case .graph: "Foli DNA"
         case .note: "Note"
         case .invite: "Invitation"
@@ -212,6 +216,7 @@ enum Destination: Hashable, Codable {
         case .trash: .trash
         case .vault: .shieldCheck
         case .reviews: .layers
+        case .catchUp: .sparkles
         case .graph: .waypoints
         case .note: .fileText
         case .invite: .mail
@@ -241,6 +246,7 @@ enum Destination: Hashable, Codable {
         case .trash: "trash"
         case .vault: "lock.shield"
         case .reviews: "rectangle.stack"
+        case .catchUp: "sparkles"
         case .graph: "point.3.connected.trianglepath.dotted"
         case .note: "doc.text"
         case .invite: "envelope.open"

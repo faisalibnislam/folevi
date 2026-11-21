@@ -205,10 +205,13 @@ struct AppCommands: SwiftUI.Commands {
         }
 
         CommandGroup(replacing: .help) {
-            Button("Folevi Core Help") { NSWorkspace.shared.open(URL(string: "https://folevi.com/help")!) }
+            Button("Folevi Core Help") { openWindow(id: "help") }.keyboardShortcut("?", modifiers: .command)
+            Button("Keyboard Shortcuts") { openWindow(id: "shortcuts") }.keyboardShortcut("/", modifiers: [.command, .option])
+            Button("Online Guide") { NSWorkspace.shared.open(URL(string: "https://folevi.com/docs")!) }
             Button("What's New") { NSWorkspace.shared.open(URL(string: "https://folevi.com/changelog")!) }
             Divider()
-            Button("Contact Support…") { SupportWindow.show() }
+            Button("Send Feedback…") { SupportWindow.show() }
+            Button("Contact Support…") { SettingsActions.contactSupport() }
         }
         CommandGroup(after: .appSettings) {
             Button(Updater.shared.menuTitle ?? "Check for Updates…") { Updater.shared.menuAction() }

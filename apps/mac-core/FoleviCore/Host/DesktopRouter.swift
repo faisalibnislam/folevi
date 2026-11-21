@@ -220,6 +220,7 @@ enum CoreNotifications {
         content.sound = .default
         if !thread.isEmpty { content.threadIdentifier = thread }
         content.userInfo = ["path": path ?? "/inbox", "place": place ?? ""]
+        content.categoryIdentifier = "folevi.notification"
         let request = UNNotificationRequest(identifier: id.isEmpty ? UUID().uuidString : id, content: content, trigger: nil)
         try? await UNUserNotificationCenter.current().add(request)
     }

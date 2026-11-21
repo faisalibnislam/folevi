@@ -252,6 +252,15 @@ The ones most likely to be broken:
 published (Sparkle feed and DMG at folevi.com/download/mac), iPhone and iPad on TestFlight (internal group). Nothing on
 `main` is unreleased.
 
+**In progress (not released, not pushed):** branch `claude/folder-design-refinements-cd77e4` (worktree
+`.claude/worktrees/folder-design-refinements-cd77e4`), the owner's 2026-11-21 polish of the Frosted folders and Home:
+the folder's back now has true circular corners of the front's 14 pt radius (its stretched outline peeked out past
+the front's bottom corners), the back and stacked subfolders are one 85% layer, the frost is 30% lighter (blur
+3.5 to 2.45 px, tint opacity and sheen x0.7, grain 0.14 to 0.1), the Mac Home carousel is sized to its 25% smaller
+cards (it was centred in the web's 326 pt row, leaving a gap above and below), and Home sections sit 8 px closer
+(Mac `top` 36/48 to 28/40, web `mt-9`/`mt-12` to `mt-7`/`mt-10`). Web checked on `/dev/folder-states`; Home not seen
+signed in on the web.
+
 What shipped in the last week, newest first (detail in `CHANGELOG.md`):
 - 1.5.58: Frosted folder cards, desktop and Mac cards 25% smaller, a new folder glyph (PR 42, branch
   `design/frosted-folders`, from the card design session). Design pages the owner reviewed (private artifacts):
@@ -304,6 +313,8 @@ signed-in account, 1.5.58's frosted folders with a large library, and the iPad c
 account button should move past iPadOS's window buttons).
 
 ## 10. Next steps / open work
+0. Owner to review the folder and Home polish on `claude/folder-design-refinements-cd77e4` in the Mac app, then a
+   PR and release.
 1. On a real iPhone, iPad and Mac with the owner's library: the note bar swap (1.5.56), Offline & sync's Download
    everything now with an account (1.5.57), frosted folders' scrolling in long grids (1.5.58).
 2. iPad audit leftovers (found 2026-11-19, not fixed): the tab strip leaves a cut-off empty slot at its start once
@@ -367,6 +378,7 @@ account button should move past iPadOS's window buttons).
   `DATABASE_UDF_USER_TIMEOUT_SECONDS=4` for that backend. Bursts show in `convex.log` as "took a long time".
 
 ## 12. Change log
+- 2026-11-21: Folder corners match the front, frost 30% lighter, Mac Home carousel gaps and section spacing tightened, on `claude/folder-design-refinements-cd77e4`.
 - 2026-11-20: Handoff rewritten for another Claude: sections 9 and 10 as a clean snapshot; the owner's design decisions copied into `docs/claude-context/memory/`.
 - 2026-11-20: Frosted folder cards, 25% smaller desktop cards and the new folder glyph built on `design/frosted-folders` (not released).
 - 2026-11-20: PR 42 e2e fixes (Created date contrast, the folder name back directly in the front); CI green.

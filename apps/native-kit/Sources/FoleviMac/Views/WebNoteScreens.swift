@@ -645,7 +645,7 @@ struct WebHomeScreen: View {
                     }
                     catchUp
                     reviews
-                    section("Recent notes", icon: .clock3, route: .notes(.all), top: 36, count: nil) {
+                    section("Recent notes", icon: .clock3, route: .notes(.all), top: 28, count: nil) {
                         if home.recentsLoaded && home.recents.isEmpty {
                             WebEmptyState(icon: nil, title: "No notes yet", message: "Press New to write your first one.", page: false)
                         } else if !home.recentsLoaded && home.recents.isEmpty {
@@ -654,7 +654,7 @@ struct WebHomeScreen: View {
                             WebNoteCarousel(label: "Recent notes", rows: Array(home.recents.prefix(10)), width: inner, list: list, frame: frame, recent: true)
                         }
                     }
-                    section("Bookmarks", icon: .bookmark, route: .notes(.starred), top: 36, count: nil) {
+                    section("Bookmarks", icon: .bookmark, route: .notes(.starred), top: 28, count: nil) {
                         if home.value != nil && home.starred.isEmpty {
                             WebEmptyState(icon: nil, title: "No bookmarks yet", message: "Bookmark notes you come back to often and they’ll appear here.", page: false)
                         } else {
@@ -880,7 +880,7 @@ struct WebHomeScreen: View {
         let recent = all.sorted { $0.updatedAt != $1.updatedAt ? $0.updatedAt > $1.updatedAt : $0.createdAt < $1.createdAt }
         let shown = Array(recent.prefix(cols * 2))
         let colW = (width - gap * CGFloat(cols - 1)) / CGFloat(cols)
-        return section("Recent folders", icon: .folder, route: .web("/folders"), top: 48, count: allFolders.value != nil || home.value != nil ? "\(all.count)" : nil) {
+        return section("Recent folders", icon: .folder, route: .web("/folders"), top: 40, count: allFolders.value != nil || home.value != nil ? "\(all.count)" : nil) {
             if (allFolders.value != nil || home.value != nil) && all.isEmpty {
                 WebEmptyState(icon: nil, title: "No folders yet", message: "Create one from the sidebar to group related notes.", page: false)
             } else {
@@ -921,12 +921,20 @@ struct WebNoteCarousel: View {
     static let cardWidth: CGFloat = MacCards.s(250)
     static let gap: CGFloat = MacCards.g(32)
 
+    /// The row's height: its 8 pt top, one card and its 48 pt of room for the shadow and the hover lift. The web's
+    /// measured height (326) is for full-size cards; the Mac's are 25% smaller, and the shorter row centred in the
+    /// web's height left a gap above and below it (the owner, 21 November 2026). The iPad still comes to 326.
+    static func height(_ ul: WebComputedStyle) -> CGFloat {
+        ul.padding.top + (cardWidth / WebNoteCard.aspect).rounded(.up) + ul.padding.bottom
+    }
+
     final class Offset { var x: CGFloat = 0 }
     struct Ends: Equatable { var start: Bool; var end: Bool }
 
     var body: some View {
         let ul = notesStyle("carousel", scheme)
         let visible = width - ul.margin.left - ul.margin.right
+        let rowHeight = Self.height(ul)
         let atStart = ends?.start ?? true
         let atEnd = ends?.end ?? (visible >= contentWidth - 2)
         ZStack(alignment: .topLeading) {
@@ -957,11 +965,11 @@ struct WebNoteCarousel: View {
                     LinearGradient(colors: [.black, atEnd ? .black : .clear], startPoint: .leading, endPoint: .trailing).frame(width: 64)
                 }
             }
-            .frame(width: visible, height: ul.height)
+            .frame(width: visible, height: rowHeight)
             .padding(.leading, ul.margin.left)
-            arrows(visible: visible, atStart: atStart, atEnd: atEnd, height: ul.height)
+            arrows(visible: visible, atStart: atStart, atEnd: atEnd, height: rowHeight)
         }
-        .frame(width: width, height: ul.height + ul.margin.bottom, alignment: .topLeading)
+        .frame(width: width, height: rowHeight + ul.margin.bottom, alignment: .topLeading)
         .onHover { hovered = $0 }
         .accessibilityElement(children: .contain)
         .accessibilityLabel(label)

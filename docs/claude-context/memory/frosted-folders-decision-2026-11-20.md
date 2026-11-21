@@ -18,6 +18,9 @@ Owner chose (AskUserQuestion, 2026-11-20) after the "Folevi folder states" artif
 - **25% smaller** folder cards and note cards in grids on **Mac and web only**; iPad and iPhone keep sizes.
 - Sidebar uses the new folder icon everywhere (page inside / stack for subfolders / outline when empty).
 - Shipped as 1.5.58 on 2026-11-20 (PR 42): web, Mac (notarized) and TestFlight.
+- 2026-11-21 follow-up: the back's bottom corners must match the front's exactly (true 14 pt circles), and the
+  frost is **30% lighter** (blur 2.45 px on a 232 px card, tint opacity and sheen x0.7). Home sections sit 8 px
+  closer and the Mac carousel hugs its smaller cards.
 
 **Why:** owner reviewed many concepts in artifacts and converged on this.
 **How to apply:** build on its own branch/worktree (other sessions release from the main checkout); see

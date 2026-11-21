@@ -46,7 +46,7 @@ function Section({ title, icon, href, count, children, empty, shelf }: { title: 
     <section
       aria-labelledby={`home-${id}`}
       className={
-        shelf ? "mt-9 first:mt-6" : "mt-12 first:mt-6"
+        shelf ? "mt-7 first:mt-6" : "mt-10 first:mt-6"
       }
     >
       <div className="mb-4 flex items-center justify-between gap-3">

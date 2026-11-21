@@ -43,17 +43,13 @@ public struct QuickAddView: View {
 
     private var sheet: some View {
         VStack(alignment: .leading, spacing: 10) {
-            // Task or Note: iOS's own segmented control, large and across the sheet (the owner, 2026-11-20: the small
-            // one looked unfinished).
-            Picker("Add", selection: $model.mode) {
-                Text("Task").tag(QuickAddModel.Mode.task)
-                Text("Note").tag(QuickAddModel.Mode.note)
-            }
-            .pickerStyle(.segmented)
-            .controlSize(.large)
-            .frame(maxWidth: .infinity)
-            .accessibilityIdentifier("quick-add-mode")
-            .padding(.bottom, 4)
+            // Task or Note: the same switch as Foli AI's Chat and Research (a 6% ink well, the chosen one raised on the
+            // glass, 12 pt corners), across the sheet (the owner, 21 November 2026: iOS's segmented control looked out of
+            // place next to it).
+            PhoneSegmented([("task", "Task"), ("note", "Note")], selection: Binding(get: { model.mode == .note ? "note" : "task" }, set: { model.mode = $0 == "note" ? .note : .task }), accessibility: "Add", radius: 12)
+                .frame(maxWidth: .infinity)
+                .accessibilityIdentifier("quick-add-mode")
+                .padding(.bottom, 4)
             HStack(alignment: .top, spacing: 8) {
                 field
                     .font(FoleviFonts.font(.ui, size: 17, relativeTo: .body))

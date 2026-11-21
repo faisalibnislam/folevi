@@ -64,15 +64,15 @@ Closed or improved after the grading below; the per-item marks haven't been redo
   menus, page zoom, Appearance); move between places; the first-launch and sign-in screens; links with #block
   and before launch; App Lock on screen lock with keys swallowed; the sidebar without a hide button (owner's
   rule) with Starred's first five and a Drafts count; the note inspector; a floating note pin.
-- Left on purpose or for the owner: the owner's Mac UI guide's main-window profile (hidden title bar, custom top
-  bar) would remove native window tabs; Open at login starts off; ⌘T opens Search, not Home.
+- Left on purpose or for the owner: the owner chose native window tabs over the Mac UI guide's main-window
+  profile (hidden title bar, custom top bar); Open at login starts off; ⌘T opens Search, not Home.
 - Still missing (17): launch snapshots, native card text layout, per-space tabs, folder drag reorder and drop
   zones, optimistic list updates, middle-click, mixed note-and-folder moves, Foli DNA of a note (the graph page
   takes no parameters), file drag-out as files, an anywhere menu, accent and font options, Vault import and export,
   app-level file drop, an Add Tag bulk action.
 
 The items closed in this session's later work packages are marked [x] with "closed after the grading", and the
-summary table below is recounted from the marks (1027 there, 83 partly, 17 missing, 216 not applicable).
+summary table below is recounted from the marks (1028 there, 82 partly, 17 missing, 216 not applicable).
 
 ## Summary
 
@@ -113,10 +113,10 @@ summary table below is recounted from the marks (1027 there, 83 partly, 17 missi
 | Debug & eval harness | `DBG` | 0 | 0 | 0 | 8 | 8 |
 | Capabilities | `CAP` | 19 | 1 | 0 | 0 | 20 |
 | Stays web, WebPage values and the parity list | `WEB` | 2 | 0 | 0 | 2 | 4 |
-| Binding UX rules from owner memory | `RULE` | 21 | 10 | 0 | 13 | 44 |
+| Binding UX rules from owner memory | `RULE` | 22 | 9 | 0 | 13 | 44 |
 | iPhone and iPad only (skip) | `IOS` | 0 | 0 | 0 | 5 | 5 |
 | Gaps, bugs and contradictions | `GAP` | 21 | 7 | 4 | 11 | 43 |
-| **Total** | | **1027** | **83** | **17** | **216** | **1343** |
+| **Total** | | **1028** | **82** | **17** | **216** | **1343** |
 
 Notable findings (all in the first work package at the end):
 
@@ -1669,7 +1669,7 @@ Notable findings (all in the first work package at the end):
 - [x] `RULE-021` **Accent is black and white**: #1F1F22 light, #F2F2F3 dark. Core: `Views/Common/Style.swift` foleviInk (#1F1F22, #F2F2F3) as the tint.
 - [x] `RULE-022` **Settings in its own window**: with a category list and working search. Core: closed after the grading (see "Since this grading").
 - [x] `RULE-023` **Sidebar always visible with no hide button; Focus mode still hides it.**: Note: this conflicts with the current hide button and ⌘\. Core: closed after the grading (see "Since this grading").
-- [~] `RULE-024` **Owner's Mac UI guide**: applies to the window profile. Core: the guide (macloving-mac-ui.md) is applied to the sidebar scale, Settings (categories, search, compact title) and empty/loading states; its main-window profile (hidden title bar, custom top bar) is not, because it would remove native window tabs: the owner decides.
+- [x] `RULE-024` **Owner's Mac UI guide**: applies to the window profile. Core: the guide applies to the sidebar scale, Settings and empty/loading states; the owner chose (21 November 2026) to keep native window tabs, so its main-window profile is not used.
 - [n/a] `RULE-025` **Web-parity screenshot diffs**: cover note content only, not chrome. Why: a testing process, not a feature.
 - [n/a] `RULE-026` **iPad uses the same layout as the Mac**. Why: iPad only.
 - [~] `RULE-027` **Sidebar rows**: need more breathing space. Core: system sidebar rows, not tuned.

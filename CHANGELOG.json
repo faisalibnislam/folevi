@@ -1,6 +1,20 @@
 {
   "releases": [
     {
+      "version": "1.5.60",
+      "build": 75,
+      "released": "2026-11-21T10:02:53+06:00",
+      "type": "patch",
+      "summary": "Back always takes you back, and Show All Tabs pictures Home properly.",
+      "improved": [
+        "Show All Tabs on the Mac and iPad: Home is drawn as your latest notes and folders, whole, and other tabs' pictures fit without being cut off."
+      ],
+      "fixed": [
+        "Back now works in a tab you opened from a page, like Home's See all, a folder or a note in a list: it closes that tab and takes you back to where you were, on the web, Mac and iPad."
+      ],
+      "tag": "v1.5.60"
+    },
+    {
       "version": "1.5.59",
       "build": 74,
       "released": "2026-11-21T09:35:05+06:00",

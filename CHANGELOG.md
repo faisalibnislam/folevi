@@ -4,6 +4,20 @@ Every Folevi release, newest first, written by `node scripts/version.mjs` from `
 
 Versions are MAJOR.UPDATE.PATCH, PATCH at least two digits: a Major release (2.0.00), a Big update (1.1.05 after 1.0.05) or a Small update (1.0.06 after 1.0.05).
 
+## Version 1.5.60: Small update
+
+Released 2026-11-21 10:02:53+06:00 (build 75, tag v1.5.60)
+
+Back always takes you back, and Show All Tabs pictures Home properly.
+
+### Improved
+
+- Show All Tabs on the Mac and iPad: Home is drawn as your latest notes and folders, whole, and other tabs' pictures fit without being cut off.
+
+### Fixed
+
+- Back now works in a tab you opened from a page, like Home's See all, a folder or a note in a list: it closes that tab and takes you back to where you were, on the web, Mac and iPad.
+
 ## Version 1.5.59: Small update
 
 Released 2026-11-21 09:35:05+06:00 (build 74, tag v1.5.59)

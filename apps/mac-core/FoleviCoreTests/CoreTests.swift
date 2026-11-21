@@ -264,3 +264,20 @@ struct AnswerPartsTests {
         #expect(AnswerText.parts("```\nprint(1)") == [.code("", "print(1)")])
     }
 }
+
+@Suite("Settings search and time zones")
+struct SettingsSearchTests {
+    @Test func findsRowsAndHidesOtherModes() {
+        let account = SettingsIndex.search("passkey", local: false, sections: SettingsSection.allCases)
+        #expect(account.first?.0 == .security)
+        let library = SettingsIndex.search("passphrase", local: true, sections: SettingsSection.allCases)
+        #expect(library.contains { $0.0 == .library })
+        #expect(SettingsIndex.search("passphrase", local: false, sections: SettingsSection.allCases).isEmpty)
+    }
+
+    @Test func timeZoneNamesAndOffsets() {
+        #expect(TimeZonePicker.name("America/Argentina/Rio_Gallegos") == "Rio Gallegos, America")
+        #expect(TimeZonePicker.offset("Asia/Kolkata") == "UTC+5:30")
+        #expect(TimeZonePicker.offset("UTC") == "UTC+0")
+    }
+}

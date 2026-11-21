@@ -16,8 +16,7 @@ struct AppCommands: SwiftUI.Commands {
                 if let window, case .tasks = window.current { window.quickAddShown = true } else { NoteActions.newNote(app: app, window: window, newTab: window == nil) }
             }
                 .keyboardShortcut("n")
-            Button("New Note from Template…") { window?.go(.templates) }
-            Button("New Folder…") { window?.go(.folders) }
+            Button("New Note from Template…") { window?.go(.templates) }.keyboardShortcut("n", modifiers: [.command, .option, .shift])
             Divider()
             // A new tab starts at Search, its field focused, with recent searches and notes (today's New Tab
             // opens Home with search focused).
@@ -50,7 +49,15 @@ struct AppCommands: SwiftUI.Commands {
             Button("Import Notes…") { SettingsRouter.shared.open("data") }
         }
         CommandGroup(after: .saveItem) {
-            Button("Share…") { window?.sharingNote = window?.current.noteId }
+            Menu("Share") {
+                Button("Share with People…") { window?.sharingNote = window?.current.noteId }
+                if let id = window?.current.noteId {
+                    Divider()
+                    ForEach(NSSharingService.sharingServices(forItems: [NoteActions.webURL(id)]), id: \.title) { service in
+                        Button { service.perform(withItems: [NoteActions.webURL(id)]) } label: { Label { Text(service.title) } icon: { Image(nsImage: service.image) } }
+                    }
+                }
+            }
                 .disabled(window?.current.isNote != true)
             Button("Copy Link") { if let id = window?.current.noteId { NoteActions.copyLink(id, title: window?.title ?? "") } }
                 .keyboardShortcut("c", modifiers: [.command, .option])
@@ -60,7 +67,8 @@ struct AppCommands: SwiftUI.Commands {
         // Edit: Find drives the note's own find when a note is on screen.
         CommandGroup(after: .textEditing) {
             Divider()
-            Button("Find in Note…") { window?.findShown = true }
+            // Off a note, Find goes to Search with its field ready.
+            Button(window?.current.isNote == true ? "Find in Note…" : "Find…") { if window?.current.isNote == true { window?.findShown = true } else { window?.go(.search("")) } }
                 .keyboardShortcut("f")
                 .disabled(window?.current.isNote != true)
             Button("Find Next") { NotificationCenter.default.post(name: .coreFindNext, object: window) }
@@ -127,6 +135,15 @@ struct AppCommands: SwiftUI.Commands {
                 .keyboardShortcut("f", modifiers: [.command, .control, .shift])
                 .disabled(window?.current.isNote != true)
             Button("Note Info") { window?.inspectorTab = .info; window?.inspectorShown = true }
+            Divider()
+            Menu("Appearance") {
+                ForEach([("light", "Light"), ("dark", "Dark"), ("system", "Match System")], id: \.0) { v in
+                    Button(v.1) { app.perform { _ = try await $0.command(Commands.SettingsUpdate(SettingsUpdateArgs(name: nil, appearance: .init(rawValue: v.0), timeZone: nil, reviewAppEdits: nil, aiEnabled: nil, editorZoom: nil))) } }
+                }
+            }
+            Button("Actual Size") { PageZoom.set(1) }.keyboardShortcut("0")
+            Button("Zoom In") { PageZoom.step(1) }.keyboardShortcut("+")
+            Button("Zoom Out") { PageZoom.step(-1) }.keyboardShortcut("-")
                 .disabled(window?.current.isNote != true)
             Divider()
         }
@@ -155,6 +172,7 @@ struct AppCommands: SwiftUI.Commands {
                 if window.current.isNote { window.editor(EditorCommands.Ai(AiArgs(action: .open, prompt: nil))) } else { withAnimation(.snappy) { window.askShown.toggle() } }
             }
             .keyboardShortcut("j")
+            .disabled(app.session.value?.capabilities.ai == false)
             Button("Notifications") { window?.select(.notifications) }.keyboardShortcut("y", modifiers: [.command, .shift])
             Button("Inbox") { window?.select(.inbox) }
             Button("Tasks") { window?.select(.tasks(.today)) }.keyboardShortcut("t", modifiers: [.command, .control])
@@ -163,7 +181,7 @@ struct AppCommands: SwiftUI.Commands {
             Button("Calendar") { window?.select(.calendar(nil)) }.keyboardShortcut("k", modifiers: [.command, .control])
             Button("Today's Note") { window?.select(.daily(nil)) }.keyboardShortcut("d", modifiers: [.command, .shift])
             Divider()
-            Button("All Notes") { window?.select(.allNotes) }.keyboardShortcut("a", modifiers: [.command, .shift])
+            Button("All Notes") { window?.select(.allNotes) }
             Button("Recent") { window?.select(.recent) }.keyboardShortcut("r", modifiers: [.command, .shift])
             Button("Starred") { window?.select(.starred) }
             Button("Shared with Me") { window?.select(.shared) }
@@ -173,7 +191,7 @@ struct AppCommands: SwiftUI.Commands {
             Button("Folders") { window?.select(.folders) }
             Button("Tags") { window?.select(.tags) }
             Divider()
-            Button("Foli DNA") { window?.select(.graph) }
+            if app.session.value?.capabilities.graph != false { Button("Foli DNA") { window?.select(.graph) } }
             Button("Reviews") { window?.select(.reviews) }
             Button("Vault") { window?.select(.vault) }
             Button("Archive") { window?.select(.archive) }
@@ -227,5 +245,26 @@ enum TabNumbers {
         guard let key = NSApp.keyWindow, let tabs = key.tabbedWindows ?? [key] as [NSWindow]?, !tabs.isEmpty else { return }
         let target = n == 9 ? tabs.last : (n <= tabs.count ? tabs[n - 1] : nil)
         target?.makeKeyAndOrderFront(nil)
+    }
+}
+
+
+/// Page zoom for note pages (View > Actual Size, Zoom In, Zoom Out): every editor page, kept on this Mac.
+@MainActor
+enum PageZoom {
+    static let steps: [Double] = [0.75, 0.85, 0.9, 1, 1.1, 1.25, 1.5, 1.75, 2]
+    static var value: Double {
+        get { let v = UserDefaults.standard.double(forKey: "core.pageZoom"); return v == 0 ? 1 : v }
+        set { UserDefaults.standard.set(newValue, forKey: "core.pageZoom") }
+    }
+
+    static func set(_ z: Double) {
+        value = z
+        for p in AppModel.shared.pool.all { p.view.pageZoom = z }
+    }
+
+    static func step(_ d: Int) {
+        let i = steps.firstIndex { $0 >= value - 0.001 } ?? 3
+        set(steps[min(max(i + d, 0), steps.count - 1)])
     }
 }

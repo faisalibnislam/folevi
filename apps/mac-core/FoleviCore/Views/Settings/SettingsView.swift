@@ -151,9 +151,24 @@ struct SettingsView: View {
         return local ? .library : sections[0]
     }
 
+    @State private var query = ""
+    @FocusState private var searching: Bool
+
     var body: some View {
         NavigationSplitView {
             List(selection: Binding(get: { shown }, set: { if let s = $0 { router.section = s } })) {
+                if !query.trimmingCharacters(in: .whitespaces).isEmpty {
+                    let hits = SettingsIndex.search(query, local: local, sections: sections + (workspaceName == nil ? [] : [.workspace]) + [.about])
+                    if hits.isEmpty { Text("No settings match “\(query)”.").foregroundStyle(.secondary) }
+                    ForEach(hits, id: \.0) { section, entries in
+                        Section {
+                            label(section)
+                            ForEach(entries) { e in
+                                Text(e.label).padding(.leading, 26).foregroundStyle(.secondary).tag(section)
+                            }
+                        }
+                    }
+                } else {
                 Section { ForEach(sections) { label($0) } }
                 if let workspaceName {
                     Section(workspaceName) { label(.workspace) }
@@ -165,7 +180,23 @@ struct SettingsView: View {
                         .buttonStyle(.plain)
                     label(.about)
                 }
+                }
             }
+            .safeAreaInset(edge: .top, spacing: 0) {
+                HStack(spacing: 6) {
+                    Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
+                    TextField("Search", text: $query).textFieldStyle(.plain).focused($searching)
+                        .onSubmit {
+                            if let first = SettingsIndex.search(query, local: local, sections: sections + [.about]).first { router.section = first.0 }
+                        }
+                        .onKeyPress(.escape) { if query.isEmpty { return .ignored }; query = ""; return .handled }
+                    if !query.isEmpty { Button { query = "" } label: { Image(systemName: "xmark.circle.fill") }.buttonStyle(.plain).foregroundStyle(.tertiary).help("Clear") }
+                }
+                .padding(.horizontal, 8).padding(.vertical, 5)
+                .background(.fill.tertiary, in: .rect(cornerRadius: 7))
+                .padding(.horizontal, 10).padding(.bottom, 6)
+            }
+            .toolbar(removing: .sidebarToggle)
             .navigationSplitViewColumnWidth(210)
         } detail: {
             Group {
@@ -194,13 +225,14 @@ struct SettingsView: View {
         }
         .frame(minWidth: 720, minHeight: 500)
         .tint(.foleviInk)
+        .background { Button("") { searching = true }.keyboardShortcut("f").hidden() }
     }
 
     private func label(_ s: SettingsSection) -> some View {
         Label {
             Text(s.title)
         } icon: {
-            if s == .ai { AiMarkGlyph(size: 16) } else { s.webIcon.image(size: 16) }
+            Group { if s == .ai { AiMarkGlyph(size: 14) } else { s.webIcon.image(size: 14) } }.frame(width: 18)
         }
         .tag(s)
     }
@@ -230,13 +262,27 @@ struct AccountSettingsPane: View {
                     }
                 }
                 Section("Profile") {
-                    TextField("Name", text: $name).onSubmit { save() }
+                    HStack {
+                        TextField("Name", text: $name).onSubmit { save() }
+                        if name.trimmingCharacters(in: .whitespaces) != a.name, !name.trimmingCharacters(in: .whitespaces).isEmpty {
+                            Button("Save", action: save).buttonStyle(InkPillStyle())
+                        }
+                    }
                     LabeledContent("Email", value: a.email)
-                    LabeledContent("Time Zone", value: a.timeZone)
+                    LabeledContent("Time Zone") {
+                        TimeZonePicker(value: a.timeZone) { tz in app.perform { _ = try await $0.command(Commands.SettingsUpdate(SettingsUpdateArgs(name: nil, appearance: nil, timeZone: tz, reviewAppEdits: nil, aiEnabled: nil, editorZoom: nil))) } }
+                    }
                 }
+                AccountAICard()
             }
             if let d = details.value {
-                if let plan = d.plan { Section("Plan") { LabeledContent("Plan", value: plan.tier.capitalized + (plan.trialing ? " (trial)" : "")) } }
+                if let plan = d.plan {
+                    Section("Your Plan") {
+                        LabeledContent("Plan", value: (plan.trialing ? "Free trial of " : "") + Self.tierName(plan.tier))
+                        if let active = d.devicesActive { LabeledContent("Devices", value: d.deviceLimit.map { "\(active) of \($0)" } ?? "\(active)") }
+                        if plan.paid { Button("Manage Billing…") { BillingActions.openPortal() } }
+                    }
+                }
                 if let s = d.storage {
                     Section("Storage") {
                         LabeledContent("Used", value: ByteCountFormatter.string(fromByteCount: Int64(s.usedBytes), countStyle: .file) + (s.limitBytes.map { " of " + ByteCountFormatter.string(fromByteCount: Int64($0), countStyle: .file) } ?? ""))
@@ -258,6 +304,15 @@ struct AccountSettingsPane: View {
             details.bind(app.client, Views.AccountDetails())
         }
         .onChange(of: account.value?.name) { name = account.value?.name ?? "" }
+    }
+
+    static func tierName(_ t: String) -> String {
+        switch t.lowercased() {
+        case "core", "free": "Core"
+        case "pro": "Pro"
+        case "pro_ai", "proai", "pro-ai": "Pro AI"
+        default: t.capitalized
+        }
     }
 
     private func save() {
@@ -293,8 +348,8 @@ struct GeneralSettingsPane: View {
         Form {
             if let g = general.value {
                 Section {
-                    Picker("Time Zone", selection: Binding(get: { g.timeZone }, set: { tz in app.perform { _ = try await $0.command(Commands.SettingsUpdate(SettingsUpdateArgs(name: nil, appearance: nil, timeZone: tz, reviewAppEdits: nil, aiEnabled: nil, editorZoom: nil))) } })) {
-                        ForEach(TimeZone.knownTimeZoneIdentifiers, id: \.self) { Text($0.replacingOccurrences(of: "_", with: " ")).tag($0) }
+                    LabeledContent("Time Zone") {
+                        TimeZonePicker(value: g.timeZone) { tz in app.perform { _ = try await $0.command(Commands.SettingsUpdate(SettingsUpdateArgs(name: nil, appearance: nil, timeZone: tz, reviewAppEdits: nil, aiEnabled: nil, editorZoom: nil))) } }
                     }
                     Toggle("Review edits from connected apps before they're saved", isOn: Binding(get: { g.reviewAppEdits }, set: { v in app.perform { _ = try await $0.command(Commands.SettingsUpdate(SettingsUpdateArgs(name: nil, appearance: nil, timeZone: nil, reviewAppEdits: v, aiEnabled: nil, editorZoom: nil))) } }))
                 }
@@ -315,12 +370,10 @@ struct AppearanceSettingsPane: View {
         Form {
             if let a = appearance.value {
                 Section {
-                    Picker("Appearance", selection: Binding(get: { a.appearance.rawValue }, set: { v in
+                    ThemeTiles(value: a.appearance.rawValue) { v in
                         app.perform { _ = try await $0.command(Commands.SettingsUpdate(SettingsUpdateArgs(name: nil, appearance: .init(rawValue: v), timeZone: nil, reviewAppEdits: nil, aiEnabled: nil, editorZoom: nil))) }
-                    })) {
-                        Text("System").tag("system"); Text("Light").tag("light"); Text("Dark").tag("dark")
                     }
-                    .pickerStyle(.segmented)
+                    .frame(maxWidth: .infinity)
                     Picker("Note Text Size", selection: Binding(get: { a.editorZoom }, set: { z in
                         app.perform { _ = try await $0.command(Commands.SettingsUpdate(SettingsUpdateArgs(name: nil, appearance: nil, timeZone: nil, reviewAppEdits: nil, aiEnabled: nil, editorZoom: z))) }
                     })) {
@@ -356,11 +409,14 @@ struct NotificationSettingsPane: View {
                         }
                     }
                 }
+                Section("Notifications on This Mac") {
+                    Button("Open General Settings for This Mac") { SettingsRouter.shared.section = .mac }
+                }
                 Section("Email") {
-                    Picker("Summary Email", selection: Binding(get: { s.digest }, set: { d in
+                    Picker("Send comment emails", selection: Binding(get: { s.digest }, set: { d in
                         app.perform { _ = try await $0.command(Commands.SettingsSetNotificationEmails(NotificationEmailsArgs(digest: .init(rawValue: d), productEmail: nil))) }
                     })) {
-                        Text("Never").tag("off"); Text("Daily").tag("daily")
+                        Text("As they happen").tag("off"); Text("In a daily digest").tag("daily")
                     }
                     Toggle("News about Folevi", isOn: Binding(get: { s.productEmail }, set: { v in
                         app.perform { _ = try await $0.command(Commands.SettingsSetNotificationEmails(NotificationEmailsArgs(digest: nil, productEmail: v))) }
@@ -398,9 +454,13 @@ struct AISettingsPane: View {
                     Toggle("Research the web", isOn: pref(.webResearch, a.webResearch))
                     Toggle("Weekly digests", isOn: pref(.digests, a.digests))
                     Toggle("Read text in images", isOn: pref(.readImages, a.readImages))
-                    Toggle("Use on-device text recognition", isOn: pref(.deviceText, a.deviceText))
                 }
                 .disabled(!a.enabled)
+                Section("Search in Images") {
+                    // On-device text recognition works without Foli AI and whatever the plan.
+                    Toggle("Read text on your devices", isOn: pref(.deviceText, a.deviceText))
+                }
+                if a.enabled { MemoryCard() }
                 Section { Button("Export Foli AI Data…") { SettingsWeb.open(.settingsAiExport) } }
             } else {
                 ProgressView()
@@ -423,11 +483,19 @@ struct SecuritySettingsPane: View {
         Form {
             if let s = security.value {
                 Section("Signing In") {
+                    LabeledContent("Sign-in methods", value: s.methods.isEmpty ? "None" : s.methods.map { $0.capitalized }.joined(separator: ", "))
                     LabeledContent("Two-factor authentication", value: s.twoFactor == true ? "On" : "Off")
-                    LabeledContent("Passkeys", value: s.passkeys.isEmpty ? "None" : "\(s.passkeys.count)")
+                    if s.passkeys.isEmpty {
+                        LabeledContent("Passkeys", value: "No passkeys yet.")
+                    } else {
+                        ForEach(s.passkeys, id: \.id) { k in
+                            LabeledContent(k.name, value: k.lastUsedAt.map { "Used " + CoreDates.short($0) } ?? k.createdAt.map { "Added " + CoreDates.short($0) } ?? "")
+                        }
+                    }
                     Button("Manage Password, Two-Factor and Passkeys…") { SettingsWeb.open(.settingsSecurity) }
                 }
                 Section("End-to-End Encryption") {
+                    LabeledContent("Level", value: app.currentSpace?.encrypted == true ? "End-to-end encrypted" : "Standard")
                     E2eeRow()
                 }
             } else {
@@ -459,9 +527,13 @@ struct E2eeRow: View {
 struct DevicesPane: View {
     private var app: AppModel { .shared }
     @State private var security = Live<Views.SettingsSecurity>()
+    @State private var details = Live<Views.AccountDetails>()
 
     var body: some View {
         Form {
+            if let active = details.value?.devicesActive {
+                Section { LabeledContent("Devices connected", value: details.value?.deviceLimit.map { "\(active) of \($0)" } ?? "\(active)") }
+            }
             Section {
                 ForEach(security.value?.sessions ?? [], id: \.id) { s in
                     HStack {
@@ -479,7 +551,27 @@ struct DevicesPane: View {
             }
         }
         .formStyle(.grouped)
-        .task(id: app.client.map(ObjectIdentifier.init)) { security.bind(app.client, Views.SettingsSecurity()) }
+        .task(id: app.client.map(ObjectIdentifier.init)) {
+            security.bind(app.client, Views.SettingsSecurity())
+            details.bind(app.client, Views.AccountDetails())
+        }
+    }
+}
+
+/// The Foli AI switch in Account (off and explained when the plan doesn't include it).
+struct AccountAICard: View {
+    private var app: AppModel { .shared }
+    @State private var ai = Live<Views.SettingsAi>()
+
+    var body: some View {
+        Section("Foli AI") {
+            if let a = ai.value {
+                Toggle("Foli AI", isOn: Binding(get: { a.enabled }, set: { v in app.perform { _ = try await $0.command(Commands.SettingsUpdate(SettingsUpdateArgs(name: nil, appearance: nil, timeZone: nil, reviewAppEdits: nil, aiEnabled: v, editorZoom: nil))) } }))
+                    .disabled(!a.included)
+                if !a.included { Text("Foli AI isn't part of the Core plan. It comes with Pro AI, or as a trial.").font(.caption).foregroundStyle(.secondary) }
+            }
+        }
+        .task(id: app.client.map(ObjectIdentifier.init)) { ai.bind(app.client, Views.SettingsAi()) }
     }
 }
 
@@ -520,6 +612,7 @@ struct OfflinePane: View {
                     } else {
                         Text("Every note in this library is on this Mac, so it opens offline.").foregroundStyle(.secondary)
                     }
+                    LabeledContent("Connection", value: app.sync.value?.online == false ? "Offline" : "Online")
                     LabeledContent("Notes kept", value: s.notesKept.map { $0.formatted() } ?? "…")
                     LabeledContent("Files kept", value: s.attachmentsKept.map { $0.formatted() } ?? "…")
                     LabeledContent("Space used", value: s.usedBytes.map { ByteCountFormatter.string(fromByteCount: Int64($0), countStyle: .file) } ?? "…")
@@ -548,6 +641,11 @@ struct OfflinePane: View {
                         guard alert.runModal() == .alertFirstButtonReturn else { return }
                         app.perform { _ = try await $0.command(Commands.DeviceRemoveCopy(DeviceRemoveCopyArgs(force: true))) }
                     }
+                }
+            } else if storage.error != nil {
+                Section {
+                    LabeledContent("This Mac", value: "Unavailable")
+                    Button("Retry") { storage = Live<Views.DeviceStorage>(); storage.bind(app.client, Views.DeviceStorage()) }
                 }
             } else {
                 ProgressView()

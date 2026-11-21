@@ -29,7 +29,10 @@ struct FoleviCoreApp: App {
         }
         .windowToolbarStyle(.unified)
         .defaultSize(width: 1180, height: 780)
-        .commands { AppCommands(app: app) }
+        .commands {
+            AppCommands(app: app)
+            TextEditingCommands()
+        }
 
         // A note floating above other windows (Note > Float on Top): just the note, always in front.
         WindowGroup("Note", id: "float", for: String.self) { $id in
@@ -100,14 +103,26 @@ enum CoreSetup {
         AppDelegate.dockMenu = {
             let menu = NSMenu()
             menu.addItem(withTitle: "New Note", action: #selector(CoreMenuActions.newNote(_:)), keyEquivalent: "").target = CoreMenuActions.shared
-            menu.addItem(withTitle: "Quick Add", action: #selector(CoreMenuActions.quickAdd(_:)), keyEquivalent: "").target = CoreMenuActions.shared
+            menu.addItem(withTitle: "Quick Add Task", action: #selector(CoreMenuActions.quickAdd(_:)), keyEquivalent: "").target = CoreMenuActions.shared
+            menu.addItem(withTitle: "New Window", action: #selector(CoreMenuActions.newWindow(_:)), keyEquivalent: "").target = CoreMenuActions.shared
             if !DesktopHooks.recent.isEmpty {
                 menu.addItem(.separator())
-                for note in DesktopHooks.recent {
+                for note in DesktopHooks.recent.prefix(5) {
                     let item = menu.addItem(withTitle: note.title.isEmpty ? "Untitled" : note.title, action: #selector(CoreMenuActions.openNote(_:)), keyEquivalent: "")
                     item.representedObject = note.id
                     item.target = CoreMenuActions.shared
                 }
+            }
+            if let places = AppModel.shared.places.value, places.places.count > 1 {
+                menu.addItem(.separator())
+                let sub = NSMenu()
+                for p in places.places {
+                    let item = sub.addItem(withTitle: p.kind == .library ? "On This Mac" : p.name, action: #selector(CoreMenuActions.switchPlace(_:)), keyEquivalent: "")
+                    item.representedObject = p.id
+                    item.state = p.id == places.current ? .on : .off
+                    item.target = CoreMenuActions.shared
+                }
+                menu.addItem(withTitle: "Places", action: nil, keyEquivalent: "").submenu = sub
             }
             return menu
         }
@@ -137,6 +152,7 @@ final class CoreMenuActions: NSObject {
     }
     @objc func openApp(_ sender: Any?) { AppModel.shared.showAnyWindow() }
     @objc func settings(_ sender: Any?) { SettingsRouter.shared.open(nil) }
+    @objc func newWindow(_ sender: Any?) { AppModel.shared.openWindow?(.home, false, false); NSApp.activate() }
     @objc func switchPlace(_ sender: NSMenuItem) {
         guard let id = sender.representedObject as? String else { return }
         Places.shared.switchTo(id)

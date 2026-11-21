@@ -180,7 +180,7 @@ struct Sidebar: View {
         Label {
             Text(title ?? dest.title)
         } icon: {
-            PlaceIcon(dest: dest)
+            PlaceIcon(dest: dest, size: 14).frame(width: 18)
         }
         .badge(badge)
         .tag(dest)

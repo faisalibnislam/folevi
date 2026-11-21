@@ -58,7 +58,7 @@ Closed or improved after the grading below; the per-item marks haven't been redo
   folder newest first in two rows with its path, menu and drops; Remove from Recent; the sidebar's Reviews count.
 
 The items closed in this session's later work packages are marked [x] with "closed after the grading", and the
-summary table below is recounted from the marks (871 there, 189 partly, 72 missing, 211 not applicable).
+summary table below is recounted from the marks (939 there, 155 partly, 38 missing, 211 not applicable).
 
 ## Summary
 
@@ -87,11 +87,11 @@ summary table below is recounted from the marks (871 there, 189 partly, 72 missi
 | Archive | `ARCV` | 6 | 0 | 0 | 0 | 6 |
 | Trash | `TRASH` | 12 | 0 | 0 | 0 | 12 |
 | Notifications / Inbox, Help & support | `NOTIF` | 16 | 0 | 0 | 2 | 18 |
-| Settings | `SET` | 110 | 15 | 21 | 19 | 165 |
+| Settings | `SET` | 143 | 3 | 0 | 19 | 165 |
 | Quick Add | `QADD` | 14 | 0 | 0 | 2 | 16 |
 | System integrations | `SYS` | 30 | 23 | 4 | 3 | 60 |
-| Context menus | `CTX` | 2 | 6 | 3 | 6 | 17 |
-| Menus & keyboard shortcuts | `MENU` | 48 | 20 | 12 | 2 | 82 |
+| Context menus | `CTX` | 8 | 2 | 1 | 6 | 17 |
+| Menus & keyboard shortcuts | `MENU` | 77 | 2 | 1 | 2 | 82 |
 | Updates (Sparkle) | `UPD` | 6 | 1 | 0 | 0 | 7 |
 | Offline, sync & device storage | `SYNC` | 13 | 1 | 0 | 0 | 14 |
 | Migration | `MIG` | 0 | 0 | 0 | 11 | 11 |
@@ -102,7 +102,7 @@ summary table below is recounted from the marks (871 there, 189 partly, 72 missi
 | Binding UX rules from owner memory | `RULE` | 18 | 13 | 0 | 13 | 44 |
 | iPhone and iPad only (skip) | `IOS` | 0 | 0 | 0 | 5 | 5 |
 | Gaps, bugs and contradictions | `GAP` | 14 | 10 | 8 | 11 | 43 |
-| **Total** | | **871** | **189** | **72** | **211** | **1343** |
+| **Total** | | **939** | **155** | **38** | **211** | **1343** |
 
 Notable findings (all in the first work package at the end):
 
@@ -1012,9 +1012,9 @@ Notable findings (all in the first work package at the end):
 
 ### Settings search
 
-- [ ] `SET-019` **Search field**: an NSSearchField with placeholder "Search", placed under the traffic lights. ⌘F focuses it. Return opens the active result, the… Core: no Settings search.
-- [ ] `SET-020` **Results**: shown as a tree. Each category with matches is listed, with its matching cards and rows indented under it. When nothing matches… Core: no Settings search.
-- [ ] `SET-021` **Index**: entries are tagged account-only (local false) or library-only (local true).. Searchable labels per section. Core: no Settings search.
+- [x] `SET-019` **Search field**: an NSSearchField with placeholder "Search", placed under the traffic lights. ⌘F focuses it. Return opens the active result, the… Core: closed after the grading (see "Since this grading").
+- [x] `SET-020` **Results**: shown as a tree. Each category with matches is listed, with its matching cards and rows indented under it. When nothing matches… Core: closed after the grading (see "Since this grading").
+- [x] `SET-021` **Index**: entries are tagged account-only (local false) or library-only (local true).. Searchable labels per section. Core: closed after the grading (see "Since this grading").
 - [n/a] `SET-022` **Paragraph line breaks**: the web layout path (not the native look) asks the engine where the web wraps paragraphs. engine: run `text.lines` with args… Why: web layout path only.
 
 ### General (Mac app's own settings, id "desktop"; Mac only, both modes)
@@ -1023,7 +1023,7 @@ Notable findings (all in the first work package at the end):
 - [x] `SET-024` **Quick Add > Shortcut (recorder)**: click the pill, then press keys. While recording it shows "Press keys…" with an accent ring. Esc cancels. A key without ⌘, ⌥ or ⌃… Core: `Views/Settings/SettingsView.swift` ShortcutRecorder (Esc cancels; no hint for a bare key).
 - [x] `SET-025` **Quick Add > Turn off**: shown when a shortcut is set. Clears it.. engine: run `desktop.set {quickAddShortcut: ""}`. Core: ShortcutRecorder Clear.
 - [x] `SET-026` **Quick Add > Use <default>**: shown when the shortcut is not the default. Restores the default.. engine: run `desktop.set {quickAddShortcut: defaultShortcut}`. Core: closed after the grading (see "Since this grading").
-- [~] `SET-027` **On this Mac > Open at login**: (switch, default on):. engine: run `desktop.set {openAtLogin: Bool}`. Core: MacPane Open at login (LoginItem); default off, today's is on.
+- [~] `SET-027` **On this Mac > Open at login**: (switch, default on):. engine: run `desktop.set {openAtLogin: Bool}`. Core: This Mac > Open at login (LoginItem), off until you turn it on; today it starts on (left for the owner to decide for Core).
 - [x] `SET-028` **On this Mac > Menu bar icon**: (switch, default on):. engine: run `desktop.set {menuBarIcon: Bool}`. Core: MacPane menu bar icon.
 - [x] `SET-029` **On this Mac > Mac notifications**: (switch, default on): shows comments, mentions and reminders as notifications and puts a badge on the Dock icon.. engine: run… Core: MacPane Mac notifications.
 - [x] `SET-030` **On this Mac > Show notes in Spotlight**: (switch, default on): only shown when the bridge reports spotlight. Locked and encrypted notes are never added.. engine: run… Core: MacPane toggle; `Host/Capabilities.swift` keeps Spotlight current.
@@ -1035,14 +1035,14 @@ Notable findings (all in the first work package at the end):
 - [x] `SET-033` **Profile picture: Remove**: shown only when there is an avatar.. engine: command `settings.removeAvatar`. Core: AccountSettingsPane Remove (settings.removeAvatar).
 - [x] `SET-034` **Name**: (text field; Return or Save submits):. engine: command `settings.update(name:)`. Core: AccountSettingsPane name, Return saves (settings.update).
 - [x] `SET-035` **Email**: (read-only, selectable): "Contact support to change it.". engine: view `settings.account`. Core: AccountSettingsPane email (no "contact support" hint).
-- [~] `SET-036` **Time zone**: (searchable picker, saves at once): see the Time zone picker subsection.. engine: command `settings.update(timeZone:)`. Core: read-only in Account; a plain picker in General.
-- [~] `SET-037` **Save**: (primary button): saves the name. Core: Return saves; no Save button.
-- [~] `SET-038` **Foli AI card**: (switch): disabled with a Core-plan message when AI is not included in the plan.. engine: view `settings.ai`, command… Core: the Foli AI switch is in the Foli AI pane only.
+- [x] `SET-036` **Time zone**: (searchable picker, saves at once): see the Time zone picker subsection.. engine: command `settings.update(timeZone:)`. Core: closed after the grading (see "Since this grading").
+- [x] `SET-037` **Save**: (primary button): saves the name. Core: closed after the grading (see "Since this grading").
+- [x] `SET-038` **Foli AI card**: (switch): disabled with a Core-plan message when AI is not included in the plan.. engine: view `settings.ai`, command… Core: closed after the grading (see "Since this grading").
 
 ### Time zone picker (Mac, Account > Time zone)
 
-- [~] `SET-039` **Field**: a bordered pop-up-style button showing the zone's name and UTC offset (for example "Rio Gallegos, Argentina UTC−3"). It opens a… Core: a plain pop-up of zone ids, no offsets.
-- [ ] `SET-040` **Popover**: a "Search time zones" field filters by city, area, region, offset (for example "+5:30") or id. The arrow keys move, Return picks… Core: no searchable time zone popover.
+- [x] `SET-039` **Field**: a bordered pop-up-style button showing the zone's name and UTC offset (for example "Rio Gallegos, Argentina UTC−3"). It opens a… Core: closed after the grading (see "Since this grading").
+- [x] `SET-040` **Popover**: a "Search time zones" field filters by city, area, region, offset (for example "+5:30") or id. The arrow keys move, Return picks… Core: closed after the grading (see "Since this grading").
 - [n/a] `SET-041` **iPad and iPhone variant**: a plain select of identifiers. Why: iPhone/iPad only.
 
 ### Foli AI (account mode, signed-in)
@@ -1054,9 +1054,9 @@ Notable findings (all in the first work package at the end):
 - [x] `SET-046` **Read attachments**: . engine: `settings.setAiPref(key: attachments)`. Core: AISettingsPane attachments.
 - [x] `SET-047` **Web research**: (also turns on Research):. engine: `settings.setAiPref(key: webResearch)`. Core: AISettingsPane web research.
 - [x] `SET-048` **Digests**: . engine: `settings.setAiPref(key: digests)`. Core: AISettingsPane digests.
-- [~] `SET-049` **Search in images > Read text on your devices**: (on-device OCR, never disabled by plan):. engine: `settings.setAiPref(key: deviceText)`. Core: deviceText is disabled whenever Foli AI is off.
+- [x] `SET-049` **Search in images > Read text on your devices**: (on-device OCR, never disabled by plan):. engine: `settings.setAiPref(key: deviceText)`. Core: closed after the grading (see "Since this grading").
 - [x] `SET-050` **Search in images > Read images with Foli AI**: (browser OCR, uses credits):. engine: `settings.setAiPref(key: readImages)`. Core: AISettingsPane read images.
-- [ ] `SET-051` **Memory card**: see the Memory card subsection. Core: no memory card.
+- [x] `SET-051` **Memory card**: see the Memory card subsection. Core: closed after the grading (see "Since this grading").
 - [x] `SET-052` **All AI pref keys**: (AiPrefKey): history, memory, suggestions, attachments, webResearch, digests, readImages, deviceText. EngineModels.swift:3867. Core: every AiPrefKey has a toggle.
 
 ### Foli AI (library mode)
@@ -1071,40 +1071,40 @@ Notable findings (all in the first work package at the end):
 - [x] `SET-060` **Model > Provider**: (select): options are "Let Folevi pick" (auto) plus the usable providers among on-device, OpenAI, Anthropic and Google.. engine… Core: closed after the grading (see "Since this grading").
 - [x] `SET-061` **Model > <Provider> model**: (select, with a note and an "Answering now: …" line):. engine: run `localAi.setChoice {provider, model}`. Models. Core: closed after the grading (see "Since this grading").
 - [x] `SET-062` **Conversations > Keep conversations**: (switch):. engine: convex.mutation `users.updateProfile {aiPrefs:{history}}`. Core: closed after the grading (see "Since this grading").
-- [ ] `SET-063` **Memory card**: shown when the data's `memory` flag is true. Core: no memory card.
+- [x] `SET-063` **Memory card**: shown when the data's `memory` flag is true. Core: closed after the grading (see "Since this grading").
 
 ### Memory card (account and library Foli AI)
 
-- [ ] `SET-064` **Memory-off notice**: shown when memory is off. Core: no memory card.
-- [ ] `SET-065` **Add memory**: a kind select (Tone, Language, Length, Term, Instruction; default Instruction), a text field with a kind-specific placeholder and… Core: no memory card.
-- [ ] `SET-066` **Edit (pencil) and save (check)**: . engine: convex.mutation `aiMemory.update {id, kind, text}`. Core: no memory card.
-- [ ] `SET-067` **Delete (trash)**: . engine: convex.mutation `aiMemory.remove {id}`. Core: no memory card.
-- [ ] `SET-068` **Clear all**: (destructive confirm "Clear memory?"):. engine: convex.mutation `aiMemory.clear`. Core: no memory card.
-- [ ] `SET-069` **Item row**: shows "Only in <workspace>" when the memory is scoped to a workspace. Core: no memory card.
+- [x] `SET-064` **Memory-off notice**: shown when memory is off. Core: closed after the grading (see "Since this grading").
+- [x] `SET-065` **Add memory**: a kind select (Tone, Language, Length, Term, Instruction; default Instruction), a text field with a kind-specific placeholder and… Core: closed after the grading (see "Since this grading").
+- [x] `SET-066` **Edit (pencil) and save (check)**: . engine: convex.mutation `aiMemory.update {id, kind, text}`. Core: closed after the grading (see "Since this grading").
+- [x] `SET-067` **Delete (trash)**: . engine: convex.mutation `aiMemory.remove {id}`. Core: closed after the grading (see "Since this grading").
+- [x] `SET-068` **Clear all**: (destructive confirm "Clear memory?"):. engine: convex.mutation `aiMemory.clear`. Core: closed after the grading (see "Since this grading").
+- [x] `SET-069` **Item row**: shows "Only in <workspace>" when the memory is scoped to a workspace. Core: closed after the grading (see "Since this grading").
 
 ### Plan & billing (signed-in)
 
-- [~] `SET-070` **Your plan > Plan, Storage, Devices**: (read-only terms). Tier names: Core, Pro, Pro AI, or "Free trial of …". Core: Account pane shows plan and storage; no devices line.
-- [ ] `SET-071` **Manage billing…**: only on paid plans, Mac only.. engine: convex.action `billing.portal`, then opens the returned URL. Core: no Manage billing (billing.portal).
+- [x] `SET-070` **Your plan > Plan, Storage, Devices**: (read-only terms). Tier names: Core, Pro, Pro AI, or "Free trial of …". Core: closed after the grading (see "Since this grading").
+- [x] `SET-071` **Manage billing…**: only on paid plans, Mac only.. engine: convex.action `billing.portal`, then opens the returned URL. Core: closed after the grading (see "Since this grading").
 - [x] `SET-072` **See plans…**: opens https://folevi.com/settings/billing in the browser. Mac only. Core: BillingPane opens settings/billing on the website.
 - [n/a] `SET-073` **iPad**: shows "Plans are changed on the web, at folevi.com." in place of the buttons. Why: iPad only.
-- [ ] `SET-074` **Billing history**: (list of payments with dates): hidden in the iOS app. Core: no billing history.
+- [~] `SET-074` **Billing history**: (list of payments with dates): hidden in the iOS app. Core: Manage Billing opens the billing portal, where invoices are; no history list in Settings.
 
 ### Security (signed-in)
 
-- [ ] `SET-075` **Sign-in methods**: (read-only): Password, Google, Apple, Passkey. Core: no sign-in methods list.
+- [x] `SET-075` **Sign-in methods**: (read-only): Password, Google, Apple, Passkey. Core: closed after the grading (see "Since this grading").
 - [x] `SET-076` **Two-step verification > Status**: (On or Off), plus **Turn on / Manage two-step verification…**: shows a toast and opens https://folevi.com/settings/security.… Core: SecuritySettingsPane status and a button to the page's security screen.
-- [~] `SET-077` **Passkeys**: (read-only list, or "No passkeys yet."). Core: passkey count only.
+- [x] `SET-077` **Passkeys**: (read-only list, or "No passkeys yet."). Core: closed after the grading (see "Since this grading").
 - [x] `SET-078` **Delete account…**: (destructive). Confirm "Delete your account?" with the button "Schedule deletion" (7-day grace period).. engine: convex.mutation… Core: Delete Account… opens the page's delete screen in a window.
 
 ### Privacy (signed-in, Personal space)
 
-- [~] `SET-079` **End-to-end encryption > Level**: (Standard or End-to-end encrypted) and **Status** (Locked or Open on this Mac), read from the session's spaces. Core: E2eeRow shows this Mac's state; no level.
+- [x] `SET-079` **End-to-end encryption > Level**: (Standard or End-to-end encrypted) and **Status** (Locked or Open on this Mac), read from the session's spaces. Core: closed after the grading (see "Since this grading").
 - [x] `SET-080` **Turn on end-to-end encryption… / Lock a folder…**: only navigates to /settings/privacy and shows a toast. It does not call any e2ee.* command. Core: Privacy is the page's own pane (web.show settings.privacy).
 
 ### Signed-in devices (signed-in)
 
-- [ ] `SET-081` **Connected devices > Devices connected**: ("n of limit"): read-only. Core: no "n of limit" line.
+- [x] `SET-081` **Connected devices > Devices connected**: ("n of limit"): read-only. Core: closed after the grading (see "Since this grading").
 - [x] `SET-082` **Signed in > per session row**: label (" · This device" for the current one), client and last active time. Core: DevicesPane session rows.
 - [x] `SET-083` **Signed in > Sign out**: (on sessions other than this one; no confirm):. engine: command `session.revoke(id:)`. Core: DevicesPane Sign Out (session.revoke).
 
@@ -1120,20 +1120,20 @@ Notable findings (all in the first work package at the end):
 
 ### Appearance (both modes)
 
-- [~] `SET-091` **Theme tiles**: Light ("Always light"), Dark ("Always dark"), System ("Matches macOS"; "Matches iPadOS" on iPad). Each tile is a thumbnail of the… Core: segmented System / Light / Dark sets the engine's appearance; Core's own chrome stays on the system appearance (pageTheme is ignored).
+- [x] `SET-091` **Theme tiles**: Light ("Always light"), Dark ("Always dark"), System ("Matches macOS"; "Matches iPadOS" on iPad). Each tile is a thumbnail of the… Core: closed after the grading (see "Since this grading").
 - [x] `SET-092` **Editor text size**: (slider): 0.85 to 1.35 in 0.05 steps (85% to 135%), labelled Smaller and Larger. Shows the % value and a "Notes read like this."… Core: AppearanceSettingsPane Note Text Size picker (editorZoom), no preview.
 
 ### Notifications (signed-in)
 
 - [x] `SET-093` **Topic grid**: columns In app and Email, one switch each, per topic. engine: command settings.setNotificationTopic(topic, inApp:) or (topic… Core: NotificationSettingsPane topic toggles.
-- [ ] `SET-094` **Notifications on this Mac > Open General settings**: opens the General (desktop) section. Core: no link to This Mac.
-- [~] `SET-095` **Email delivery > Send comment emails**: (select): "As they happen" (off) or "In a daily digest" (daily).. engine: command settings.setNotificationEmails(digest… Core: digest picker labels "off" as Never; today's says As they happen.
+- [x] `SET-094` **Notifications on this Mac > Open General settings**: opens the General (desktop) section. Core: closed after the grading (see "Since this grading").
+- [x] `SET-095` **Email delivery > Send comment emails**: (select): "As they happen" (off) or "In a daily digest" (daily).. engine: command settings.setNotificationEmails(digest… Core: closed after the grading (see "Since this grading").
 - [n/a] `SET-096` **iPhone only**: a "News about Folevi" toggle. engine: `settings.setNotificationEmails(productEmail:)`.. The Mac has no such row. Why: iPhone only (Core shows it on the Mac too).
 
 ### Offline & sync (signed-in)
 
-- [~] `SET-097` **This Mac > Connection, Changes waiting to sync, Notes kept, Space used, Downloading progress**: (read-only). Readings show "…" while measuring and "Unavailable" when they fail. Core: OfflinePane notes, files, space, waiting; no connection or download progress.
-- [ ] `SET-098` **Retry**: (shown when a reading is unavailable): re-watches `device.storage`. Core: no Retry.
+- [x] `SET-097` **This Mac > Connection, Changes waiting to sync, Notes kept, Space used, Downloading progress**: (read-only). Readings show "…" while measuring and "Unavailable" when they fail. Core: closed after the grading (see "Since this grading").
+- [x] `SET-098` **Retry**: (shown when a reading is unavailable): re-watches `device.storage`. Core: closed after the grading (see "Since this grading").
 - [x] `SET-099` **Keep all notes on this Mac**: (switch): hidden for an on-device library (available false), where a message says every note already opens offline.. engine… Core: closed after the grading (see "Since this grading").
 - [x] `SET-100` **Download everything now**: . engine: command `device.download`. Core: OfflinePane Download Everything Now (device.download).
 - [x] `SET-101` **Remove this Mac's copy…**: (destructive confirm, "Remove"):. engine: command `device.removeCopy(force: true)`. Core: closed after the grading (see "Since this grading").
@@ -1218,14 +1218,14 @@ Notable findings (all in the first work package at the end):
 - [x] `SET-147` **Leave workspace**: workspaces.removeMember on yourself. Core: the page's own Workspace pane (web.show settings.workspace).
 - [x] `SET-148` **Remove member**: workspaces.removeMember. Core: the page's own Workspace pane (web.show settings.workspace).
 - [x] `SET-149` **Remove guest**: workspaces.removeGuest. Core: the page's own Workspace pane (web.show settings.workspace).
-- [~] `SET-150` **Remove this Mac's copy**: device.removeCopy(force: true). Core: no confirmation, force not set.
+- [x] `SET-150` **Remove this Mac's copy**: device.removeCopy(force: true). Core: closed after the grading (see "Since this grading").
 - [x] `SET-151` **Remove library (forget)**: library.forget. Core: PlaceMenu forget (shared Places.forgetLibrary).
-- [ ] `SET-152` **Remove passphrase**: library.removePassphrase. Core: no remove passphrase.
-- [ ] `SET-153` **Clear memory**: aiMemory.clear. Core: no memory card.
+- [x] `SET-152` **Remove passphrase**: library.removePassphrase. Core: closed after the grading (see "Since this grading").
+- [x] `SET-153` **Clear memory**: aiMemory.clear. Core: closed after the grading (see "Since this grading").
 - [x] `SET-154` **Revoke API token**: apiTokens.revoke. Core: the page's own Connected Apps pane.
 - [x] `SET-155` **Sign out other session**: session.revoke. Core: DevicesPane Sign Out.
-- [ ] `SET-156` **Sign out of cloud provider**: library.cloudSignOut. Core: no cloud sign out.
-- [~] `SET-157` **Confirm alert behaviour**: confirms are an NSAlert sheet. For destructive actions Cancel is the default. Core: NSAlert, but the destructive button is the default (Return) and Settings alerts are app-modal, not sheets.
+- [x] `SET-156` **Sign out of cloud provider**: library.cloudSignOut. Core: closed after the grading (see "Since this grading").
+- [x] `SET-157` **Confirm alert behaviour**: confirms are an NSAlert sheet. For destructive actions Cancel is the default. Core: closed after the grading (see "Since this grading").
 - [x] `SET-158` **Sign out of this account**: not present in the Mac Settings window. The iPhone Account section has a "Sign out" button through host.signOut. The… Core: Core adds Sign Out of This Account (account.signOut) in Account.
 
 ### iPhone and iPad-only native settings (FoleviScreens, not the Mac window)
@@ -1332,17 +1332,17 @@ Notable findings (all in the first work package at the end):
 
 - [n/a] `CTX-001` **Tab right-click**: (; none on Home): Pin tab / Unpin tab; Unjoin notes (2) or Unjoin all notes (3); Float note / Show floating note (Mac, single… Why: macOS tab menu.
 - [n/a] `CTX-002` **Legacy tab strip menu**: (legacy, ): Close Tab, Close Other Tabs, Close Tabs to the Right, separator, Open in New Window. Why: legacy.
-- [~] `CTX-003` **Folder menu**: ("…" and right-click in sidebar rows, folder cards, Folders page, folder page. Core: `Views/Common/Menus.swift` FolderMenu (see HOME-018).
-- [~] `CTX-004` **Tag menu**: : Edit tag…; Color: Cocoa / Moss / Marigold / Plum / Coral / Gray (excluding the current one); separator; Delete tag… (danger). Core: Tags screen only, with folder colours.
-- [ ] `CTX-005` **Sidebar folder sort menu**: : heading "Sort folders"; Manual; Name; Recent (checked). Core: no folder sort menu.
+- [x] `CTX-003` **Folder menu**: ("…" and right-click in sidebar rows, folder cards, Folders page, folder page. Core: closed after the grading (see "Since this grading").
+- [x] `CTX-004` **Tag menu**: : Edit tag…; Color: Cocoa / Moss / Marigold / Plum / Coral / Gray (excluding the current one); separator; Delete tag… (danger). Core: closed after the grading (see "Since this grading").
+- [~] `CTX-005` **Sidebar folder sort menu**: : heading "Sort folders"; Manual; Name; Recent (checked). Core: the Folders heading menu sorts Manually or By Name; no Recent.
 - [n/a] `CTX-006` **Sidebar menu**: : Hide sidebar / Show sidebar (⌘\); Focus mode / Exit focus mode; on a note: separator, Show folders, Show document (checked). Why: native sidebar toggle.
 - [~] `CTX-007` **Account menu**: (, system NSMenu ): # Places; the open account; its workspaces (indented, plan badge, check); New workspace…; other accounts… Core: PlaceMenu (see AUTH-059).
 - [ ] `CTX-008` **Anywhere menu**: (right-click with no owner, not over the note page. Core: no menu for empty space.
 - [x] `CTX-009` **Text field menu**: : spelling guesses (up to 5) or "No guesses found"; Learn spelling; Ignore spelling; separator; Look up "word"; separator; Cut… Core: system menus on native fields; the page's menu gets spelling from DesktopRouter.
-- [~] `CTX-010` **Note card menu**: ("…" and right-click. Core: NoteMenu; no Copy to or Remove from Recent on cards.
-- [~] `CTX-011` **Selection menu / bar**: (several selected. Core: selection context menu; no bar.
-- [~] `CTX-012` **List screen "…" (card controls)**: : Templates: Generate with Foli AI…, New template button; Trash: Empty Trash… (danger); Folder page: the folder menu. Engine… Core: New Template and Empty Trash are toolbar buttons; no Generate or folder menu.
-- [ ] `CTX-013` **Folder page path pull-down**: : current folder (checked, swatch); each ancestor (swatch); All folders. Core: no path pull-down.
+- [x] `CTX-010` **Note card menu**: ("…" and right-click. Core: closed after the grading (see "Since this grading").
+- [x] `CTX-011` **Selection menu / bar**: (several selected. Core: closed after the grading (see "Since this grading").
+- [x] `CTX-012` **List screen "…" (card controls)**: : Templates: Generate with Foli AI…, New template button; Trash: Empty Trash… (danger); Folder page: the folder menu. Engine… Core: closed after the grading (see "Since this grading").
+- [x] `CTX-013` **Folder page path pull-down**: : current folder (checked, swatch); each ancestor (swatch); All folders. Core: closed after the grading (see "Since this grading").
 - [x] `CTX-014` **Card controls Sort pull-down**: : heading "Sort by"; options (current ticked). Layout segments become a pull-down when space is short. Core: toolbar Sort menu.
 - [n/a] `CTX-015` **Legacy sidebar row menus**: (legacy, ). Folder: Open in New Tab, Open in New Window, separator, New Note Here, New Folder Inside, Move to Top Level. Folders… Why: legacy.
 - [n/a] `CTX-016` **Legacy note "..." menu**: (legacy, ): Bookmark/Remove bookmark; Move to…; Copy to…; Duplicate; separator; Export…; Version History…; Present; Print…; Find… Why: legacy.
@@ -1361,33 +1361,33 @@ Notable findings (all in the first work package at the end):
 ### File
 
 - [x] `MENU-006` **New Note**: ⌘N `file.new-note`: `FrameModel.newNote`: creates in the folder on screen, else Drafts, opens in a new tab; engine `note.create`. Core: `App/AppCommands.swift` New Note (⌘N), in the folder on screen (same window).
-- [~] `MENU-007` **New Note from Template…**: ⌥⇧⌘N `file.new-from-template`: opens the Templates list (`/templates`). Core: New Note from Template… without ⌥⇧⌘N.
-- [~] `MENU-008` **New Folder**: ⌃⌘N `file.new-folder`: `FrameModel.newFolder`: new folder dialog; engine `folder.create`. Core: New Folder… opens Folders; no dialog, no ⌃⌘N.
-- [~] `MENU-009` **Quick Add Task…**: ⇧⌘A `file.quick-add-task`: in-window Quick Add dialog over this window (`showQuickAdd(in:)`); engine `task.parse`, `task.create`. Core: Quick Add… (⌃⌥⌘A) opens the global panel; no in-window dialog.
+- [x] `MENU-007` **New Note from Template…**: ⌥⇧⌘N `file.new-from-template`: opens the Templates list (`/templates`). Core: closed after the grading (see "Since this grading").
+- [x] `MENU-008` **New Folder**: ⌃⌘N `file.new-folder`: `FrameModel.newFolder`: new folder dialog; engine `folder.create`. Core: closed after the grading (see "Since this grading").
+- [x] `MENU-009` **Quick Add Task…**: ⇧⌘A `file.quick-add-task`: in-window Quick Add dialog over this window (`showQuickAdd(in:)`); engine `task.parse`, `task.create`. Core: closed after the grading (see "Since this grading").
 - [~] `MENU-010` **Quick Add from Any App**: `file.quick-add-anywhere`: shows the global floating Quick Add panel; its key equivalent is the user's global shortcut from… Core: the key is fixed at ⌃⌥⌘A, not the user's shortcut.
-- [~] `MENU-011` **New Tab**: ⌘T `file.new-tab`: opens Home in a tab and focuses the sidebar search. Core: New Tab (⌘T) opens Home; search isn't focused.
+- [x] `MENU-011` **New Tab**: ⌘T `file.new-tab`: opens Home in a tab and focuses the sidebar search. Core: closed after the grading (see "Since this grading").
 - [x] `MENU-012` **New Window**: ⇧⌘N `file.new-window`: a new main window (MainMenu.swift:209). Core: New Window (⇧⌘N).
 - [x] `MENU-013` **Open Quickly…**: ⌘K `file.open-quickly`: focuses the sidebar search / command palette (same as Search All Notes and Go > Search…). Core: Edit > Command Palette… (⌘K).
 - [x] `MENU-014` **Close Tab**: ⌘W `file.close-tab`: closes the active tab; on the Home tab it closes the window. Core: macOS Close Tab (⌘W).
 - [x] `MENU-015` **Close Window**: ⇧⌘W `file.close-window`: `performClose:`. Core: macOS Close Window.
-- [ ] `MENU-016` **Reopen Closed Tab**: ⇧⌘T `file.reopen-closed-tab`: enabled only when the closed-tab stack is not empty. Core: no Reopen Closed Tab.
+- [x] `MENU-016` **Reopen Closed Tab**: ⇧⌘T `file.reopen-closed-tab`: enabled only when the closed-tab stack is not empty. Core: closed after the grading (see "Since this grading").
 - [n/a] `MENU-017` **Show All Tabs**: ⇧⌘\ `file.tab-overview`: toggles Tab Overview (needs window). Why: macOS Window > Show All Tabs (⇧⌘\).
-- [ ] `MENU-018` **Import…**: `file.import`: opens Settings > Import & export for the space open in this window. Core: no File > Import.
+- [x] `MENU-018` **Import…**: `file.import`: opens Settings > Import & export for the space open in this window. Core: closed after the grading (see "Since this grading").
 - [x] `MENU-019` **Export…**: ⇧⌘E `file.export`: note open only: the note menu's export (`noteMenu(.export)`, web page export panel). Core: File > Export… (⇧⌘E).
-- [~] `MENU-020` **Share**: submenu: system share menu (NSSharingServicePicker items for the open note; see Services). Core: File > Share… sends to the page; no submenu.
+- [x] `MENU-020` **Share**: submenu: system share menu (NSSharingServicePicker items for the open note; see Services). Core: closed after the grading (see "Since this grading").
 - [x] `MENU-021` **Print…**: ⌘P `file.print`: prints the open note (enabled only when a note is shown, MainMenu.swift:212,:286). Core: File > Print… (⌘P).
 
 ### Edit
 
 - [x] `MENU-022` **Undo**: ⌘Z, **Redo** ⇧⌘Z, **Cut** ⌘X, **Copy** ⌘C, **Paste** ⌘V, **Paste and Match Style** ⌥⇧⌘V, **Delete**, **Select All** ⌘A: standard… Core: standard Edit items.
-- [~] `MENU-023` **Find > Find…**: ⌘F `edit.find`: note open: note find bar (`noteMenu(.find)`); elsewhere: focuses the sidebar search. Core: Find in Note on a note; nothing off a note.
+- [x] `MENU-023` **Find > Find…**: ⌘F `edit.find`: note open: note find bar (`noteMenu(.find)`); elsewhere: focuses the sidebar search. Core: closed after the grading (see "Since this grading").
 - [x] `MENU-024` **Find > Find Next**: ⌘G `edit.find-next` / **Find Previous** ⇧⌘G `edit.find-previous`: note only; steps the sidebar Find tab results if a search is… Core: Find Next / Previous (⌘G, ⇧⌘G).
 - [ ] `MENU-025` **Find > Use Selection for Find**: `edit.find-selection` (no key; ⌘E is inline code): note only. Core: no Use Selection for Find.
 - [x] `MENU-026` **Search All Notes**: ⇧⌘F `edit.search-all`: focuses the sidebar search / palette. Core: Search All Notes… (⇧⌘F).
-- [ ] `MENU-027` **Spelling and Grammar**: submenu: Show Spelling and Grammar ⌘:, Check Document Now ⌘;, Check Spelling While Typing, Check Grammar With Spelling, Correct… Core: TextEditingCommands isn't added (check in the running app).
-- [ ] `MENU-028` **Substitutions**: submenu: Show Substitutions, Smart Copy/Paste, Smart Quotes, Smart Dashes, Smart Links, Text Replacement (standard). Core: TextEditingCommands isn't added (check in the running app).
-- [ ] `MENU-029` **Transformations**: submenu: Make Upper Case, Make Lower Case, Capitalize (standard). Core: TextEditingCommands isn't added (check in the running app).
-- [ ] `MENU-030` **Speech**: submenu: Start Speaking, Stop Speaking (standard). Core: TextEditingCommands isn't added (check in the running app).
+- [x] `MENU-027` **Spelling and Grammar**: submenu: Show Spelling and Grammar ⌘:, Check Document Now ⌘;, Check Spelling While Typing, Check Grammar With Spelling, Correct… Core: closed after the grading (see "Since this grading").
+- [x] `MENU-028` **Substitutions**: submenu: Show Substitutions, Smart Copy/Paste, Smart Quotes, Smart Dashes, Smart Links, Text Replacement (standard). Core: closed after the grading (see "Since this grading").
+- [x] `MENU-029` **Transformations**: submenu: Make Upper Case, Make Lower Case, Capitalize (standard). Core: closed after the grading (see "Since this grading").
+- [x] `MENU-030` **Speech**: submenu: Start Speaking, Stop Speaking (standard). Core: closed after the grading (see "Since this grading").
 
 ### Format (all need a window; disabled when the keyboard is in a native field, so ⌘B etc. reach that field)
 
@@ -1396,12 +1396,12 @@ Notable findings (all in the first work package at the end):
 - [x] `MENU-033` **Underline**: ⌘U `format.underline`: editor `format {mark: underline}`. Core: Format > Underline.
 - [x] `MENU-034` **Strikethrough**: ⇧⌘X `format.strikethrough`: editor `format {mark: strike}`. Core: Format > Strikethrough.
 - [x] `MENU-035` **Inline Code**: ⌘E `format.code`: editor `format {mark: code}`. Core: Format > Code (⌘E).
-- [~] `MENU-036` **Highlight**: ⇧⌘H `format.highlight`: editor `format {mark: highlight}`. Core: Format > Highlight (⇧⌘H), which clashes with Go > Home (⇧⌘H).
+- [x] `MENU-036` **Highlight**: ⇧⌘H `format.highlight`: editor `format {mark: highlight}`. Core: closed after the grading (see "Since this grading").
 - [x] `MENU-037` **Link…**: ⌥⌘K `format.link`: sent to the page (the web's link dialog). Core: Format > Link… (⇧⌘K, not ⌥⌘K).
 - [x] `MENU-038` **Heading 1/2/3**: ⌥⌘1 / ⌥⌘2 / ⌥⌘3 `format.heading-1..3`: editor `format {block: heading1..3}`. Core: Format > Text Style headings (⌥⌘1 to ⌥⌘3).
-- [~] `MENU-039` **Body Text**: ⌥⌘0 `format.body`: editor `format {block: paragraph}`. Core: Body (⌥⌘0) clashes with View > Show Inspector (⌥⌘0).
+- [x] `MENU-039` **Body Text**: ⌥⌘0 `format.body`: editor `format {block: paragraph}`. Core: closed after the grading (see "Since this grading").
 - [x] `MENU-040` **Bulleted List**: ⇧⌘8 format.bulleted-list, **Numbered List** ⇧⌘7 format.numbered-list, **Checklist** ⇧⌘9 format.checklist: editor format… Core: Bulleted (⇧⌘8), Numbered (⇧⌘7), To-Do (⇧⌘L, not ⇧⌘9).
-- [~] `MENU-041` **Indent**: `format.indent` / **Outdent** `format.outdent` (no menu keys; Tab and ⇧Tab stay the editor's): editor `indent` / `outdent`. Core: Indent ⌘] and Outdent ⌘[ clash with Go > Back and Forward.
+- [x] `MENU-041` **Indent**: `format.indent` / **Outdent** `format.outdent` (no menu keys; Tab and ⇧Tab stay the editor's): editor `indent` / `outdent`. Core: closed after the grading (see "Since this grading").
 - [x] `MENU-042` **Move Block Up**: ⌥⇧↑ `format.move-up` / **Move Block Down** ⌥⇧↓ `format.move-down`: editor `block.move {dir}`. Core: Move Block Up/Down (⌥⌘↑, ⌥⌘↓).
 - [x] `MENU-043` **Duplicate Block**: ⌘D `format.duplicate`: editor `block.duplicate`. Core: Duplicate Block (⌘D).
 - [x] `MENU-044` **Style…**: `format.style`: editor `panel.open {panel: style}` (note style and theme panel). Core: Style and Theme….
@@ -1409,13 +1409,13 @@ Notable findings (all in the first work package at the end):
 ### Note (all need a window and an open note)
 
 - [x] `MENU-045` **Bookmark**: `note.star`: toggles the star; engine `note.star`. Core: Note > Star (⌥⌘S).
-- [ ] `MENU-046` **Archive**: `note.archive`: toggles archive; engine `note.archive`. Core: no Archive in the Note menu.
+- [x] `MENU-046` **Archive**: `note.archive`: toggles archive; engine `note.archive`. Core: closed after the grading (see "Since this grading").
 - [x] `MENU-047` **Move to…**: ⇧⌘M `note.move`: note menu move dialog; engine `note.move` (and `places.move` across places). Core: Note > Move To… (no ⇧⌘M).
 - [x] `MENU-048` **Duplicate**: `note.duplicate`: engine `note.duplicate`. Core: Note > Duplicate.
 - [x] `MENU-049` **Copy Link**: ⌃⌘C `note.copy-link`: copies `https://app.folevi.com/d/<id>`; toast "Link copied" (native, no engine call). Core: File > Copy Link (⌥⌘C).
 - [x] `MENU-050` **Version History…**: `note.history`: note menu history panel (web page). Core: Note > Version History….
 - [x] `MENU-051` **Lock**: `note.lock`: editor `note.lock`; enabled only when the note can be locked (`canLockNote`). Core: Note > Lock Note.
-- [~] `MENU-052` **Move to Trash**: ⌘⌫ `note.trash`: engine `note.trash` with Undo toast; as a key press it only fires when nothing is being edited… Core: Note > Move to Trash without ⌘⌫.
+- [x] `MENU-052` **Move to Trash**: ⌘⌫ `note.trash`: engine `note.trash` with Undo toast; as a key press it only fires when nothing is being edited… Core: closed after the grading (see "Since this grading").
 
 ### View
 
@@ -1423,22 +1423,22 @@ Notable findings (all in the first work package at the end):
 - [x] `MENU-054` **Show Inspector**: ⌥⌘I `view.inspector`: note only: editor `panel.open {panel: info}` or `panel.close` if open. Core: View > Show Inspector (⌥⌘0) and Note Info (⌥⌘I).
 - [x] `MENU-055` **Focus Mode**: ⌥⌘\ `view.focus`: editor `focus.toggle`. Core: View > Focus Mode (⌃⇧⌘F).
 - [x] `MENU-056` **As Cards**: `view.cards` / **As List** `view.list`: list layout switch (known bug: writes a layout the Mac list never reads, see Gaps). Core: View > as List / as Cards (works in Core).
-- [ ] `MENU-057` **Appearance > Light / Dark / Match System**: `view.appearance-light|dark|system`: engine `settings.update {appearance}`; checked per the page's theme. Core: no View > Appearance.
-- [ ] `MENU-058` **Actual Size**: ⌘0 `view.actual-size`, **Zoom In** ⌘+ (alternate ⌘=) `view.zoom-in`, **Zoom Out** ⌘- `view.zoom-out`: app-wide page zoom… Core: no page zoom.
+- [x] `MENU-057` **Appearance > Light / Dark / Match System**: `view.appearance-light|dark|system`: engine `settings.update {appearance}`; checked per the page's theme. Core: closed after the grading (see "Since this grading").
+- [x] `MENU-058` **Actual Size**: ⌘0 `view.actual-size`, **Zoom In** ⌘+ (alternate ⌘=) `view.zoom-in`, **Zoom Out** ⌘- `view.zoom-out`: app-wide page zoom… Core: closed after the grading (see "Since this grading").
 - [x] `MENU-059` **Enter Full Screen**: ⌃⌘F `view.full-screen`: `toggleFullScreen:`. Core: system Enter Full Screen.
 
 ### Go
 
-- [~] `MENU-060` **Back**: ⌘[ `go.back` / **Forward** ⌘] `go.forward`: per-tab history; enabled per `history.canGoBack/canGoForward`. Core: Go > Back (⌘[) and Forward (⌘]) clash with Indent and Outdent.
-- [~] `MENU-061` **Home**: `go.home` (no key; ⇧⌘H is Highlight). Core: Go > Home (⇧⌘H) clashes with Highlight.
+- [x] `MENU-060` **Back**: ⌘[ `go.back` / **Forward** ⌘] `go.forward`: per-tab history; enabled per `history.canGoBack/canGoForward`. Core: closed after the grading (see "Since this grading").
+- [x] `MENU-061` **Home**: `go.home` (no key; ⇧⌘H is Highlight). Core: closed after the grading (see "Since this grading").
 - [x] `MENU-062` **Today's Tasks**: ⌥⌘T `go.today`: `/tasks` Today view. Core: Go > Tasks (⇧⌘T, not ⌥⌘T).
 - [x] `MENU-063` **Calendar**: ⌥⌘C `go.calendar`. Core: Go > Calendar (⌃⌘K).
-- [~] `MENU-064` **Inbox**: `go.inbox`: the Tasks Inbox view (not notifications). Core: Go > Inbox opens the Inbox note, not the Tasks Inbox.
-- [~] `MENU-065` **Foli DNA**: `go.dna`: opens `/graph` as a web page; hidden/disabled when `capabilities.graph` is false. Core: Go > Foli DNA is never hidden.
+- [x] `MENU-064` **Inbox**: `go.inbox`: the Tasks Inbox view (not notifications). Core: closed after the grading (see "Since this grading").
+- [x] `MENU-065` **Foli DNA**: `go.dna`: opens `/graph` as a web page; hidden/disabled when `capabilities.graph` is false. Core: closed after the grading (see "Since this grading").
 - [x] `MENU-066` **Search…**: `go.search`: focuses the sidebar search / palette. Core: Go > Search.
-- [~] `MENU-067` **Ask Foli AI**: ⌘J `go.ask-ai`: `FrameModel.askAI` (Foli AI page or note AI panel); disabled when `capabilities.ai` is false. Core: Go > Foli AI (⇧⌘J) and Note > Ask Foli AI (⌥⌘J); no ⌘J, not gated on capabilities.ai.
+- [x] `MENU-067` **Ask Foli AI**: ⌘J `go.ask-ai`: `FrameModel.askAI` (Foli AI page or note AI panel); disabled when `capabilities.ai` is false. Core: closed after the grading (see "Since this grading").
 - [x] `MENU-068` **Next Tab**: ⌃Tab (alternate ⇧⌘]) `go.next-tab` / **Previous Tab** ⌃⇧Tab (alternate ⇧⌘[) `go.previous-tab`. Core: macOS window tab keys (⌃Tab, ⌃⇧Tab).
-- [ ] `MENU-069` **Go to Tab > Tab 1…Tab 9**: ⌘1…⌘9 `go.tab-1..9`: selects tab N (known clash: the Tasks screen also binds ⌘1 to ⌘6 for its views). Core: no Go to Tab 1 to 9.
+- [x] `MENU-069` **Go to Tab > Tab 1…Tab 9**: ⌘1…⌘9 `go.tab-1..9`: selects tab N (known clash: the Tasks screen also binds ⌘1 to ⌘6 for its views). Core: closed after the grading (see "Since this grading").
 
 ### Window
 
@@ -1447,8 +1447,8 @@ Notable findings (all in the first work package at the end):
 
 ### Help
 
-- [~] `MENU-072` **Folevi Help**: `help.help`: opens Help (`frameOpenHelp`, /help). Core: Help > Folevi Core Help opens the website.
-- [ ] `MENU-073` **Keyboard Shortcuts**: ⌘/ `help.shortcuts`: /help scrolled to the shortcuts list. Core: no Keyboard Shortcuts.
+- [x] `MENU-072` **Folevi Help**: `help.help`: opens Help (`frameOpenHelp`, /help). Core: closed after the grading (see "Since this grading").
+- [x] `MENU-073` **Keyboard Shortcuts**: ⌘/ `help.shortcuts`: /help scrolled to the shortcuts list. Core: closed after the grading (see "Since this grading").
 - [x] `MENU-074` **What's New**: `help.whats-new`: opens https://folevi.com/changelog in the browser. Core: Help > What's New.
 - [x] `MENU-075` **Send Feedback…**: `help.feedback`: mailto:support@folevi.com?subject=Folevi for Mac. Core: Help > Contact Support… (support.send) stands in for feedback.
 
@@ -1458,12 +1458,12 @@ Notable findings (all in the first work package at the end):
 
 ### Other menus and global keys (details in the sections named)
 
-- [~] `MENU-077` **Dock menu**: New Note, Quick Add Task, New Window, up to 5 recent notes, Places submenu (see App & windows, ). Core: Dock menu (see APP-068).
+- [x] `MENU-077` **Dock menu**: New Note, Quick Add Task, New Window, up to 5 recent notes, Places submenu (see App & windows, ). Core: closed after the grading (see "Since this grading").
 - [x] `MENU-078` **Status item (menu bar icon) menu**: see App & windows, includes "Search Folevi…" and "Settings…". Core: closed after the grading (see "Since this grading").
 - [x] `MENU-079` **Global Quick Add hotkey**: Carbon hotkey, default ⌥Space, user-recordable in Settings > General. Core: Quick Add hotkey (see QADD-006).
 - [x] `MENU-080` **Text context menu additions**: : see Context menus. Core: see CTX-009.
 - [~] `MENU-081` **Screen-level keys**: lists (Esc clears selection, ⌘A select all), palette (↑/↓, Return, Esc), Settings (⌘F, ↑/↓, Return, Esc, ⌘W), Tasks (⌘1 to ⌘6… Core: lists, palette and find keys; no Settings or Tasks keys.
-- [~] `MENU-082` **Shortcut conflicts to resolve in Folevi Core**: palette hints ⌥⌘N for New document while the menu uses ⌘N (⇧⌘N is New Window); AppContextMenu also says ⌥⌘N; Tasks ⌘1 to ⌘6 vs Go… Core: today's clashes are gone, but Core has new ones: ⇧⌘H (Highlight, Home), ⌥⌘0 (Body, Show Inspector), ⌘[ and ⌘] (Outdent, Indent, Back, Forward).
+- [x] `MENU-082` **Shortcut conflicts to resolve in Folevi Core**: palette hints ⌥⌘N for New document while the menu uses ⌘N (⇧⌘N is New Window); AppContextMenu also says ⌥⌘N; Tasks ⌘1 to ⌘6 vs Go… Core: closed after the grading (see "Since this grading").
 
 ## Updates (Sparkle)
 

@@ -228,6 +228,9 @@ enum WebViewFactory {
         #endif
         Navigation.shared.attach(view)
         WindowManager.shared.register(view)
+        // View > Zoom In / Out, kept on this Mac.
+        let zoom = UserDefaults.standard.double(forKey: "core.pageZoom")
+        if zoom > 0 { view.pageZoom = zoom }
         return view
     }
 

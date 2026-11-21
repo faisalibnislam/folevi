@@ -45,6 +45,8 @@ final class WindowModel: Identifiable {
     var inspectorChat: String?
     /// The folder whose sharing sheet is up.
     var sharingFolder: String?
+    /// New Folder (⌃⌘N) asked for from the menu; the sidebar opens its sheet.
+    var newFolderRequested = false
     /// The floating Ask Foli AI panel (⌘J) over this window.
     var askShown = false
     /// Quick Add in this window (⇧⌘A).

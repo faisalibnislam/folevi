@@ -39,6 +39,9 @@ struct AppCommands: SwiftUI.Commands {
             Button("Export…") { window?.noteMenu(.export) }
                 .keyboardShortcut("e", modifiers: [.command, .shift])
                 .disabled(window?.current.isNote != true)
+            Button("New Folder…") { window?.newFolderRequested = true }
+                .keyboardShortcut("n", modifiers: [.command, .control])
+                .disabled(window == nil)
             Button("Import Notes…") { SettingsRouter.shared.open("data") }
         }
         CommandGroup(after: .saveItem) {

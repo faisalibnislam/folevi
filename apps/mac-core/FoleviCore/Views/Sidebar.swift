@@ -16,13 +16,17 @@ struct Sidebar: View {
     @State private var newFolderParent: String?? = nil
     @State private var foldersOpen = true
     @State private var tagsOpen = true
+    /// Manual (the sidebar's own order) or by name, kept on this Mac.
+    @AppStorage("sidebar.folderSort") private var folderSort = "manual"
+    /// The folders left open, kept on this Mac.
+    @AppStorage("sidebar.openFolders") private var openFolders = ""
 
     var body: some View {
         List(selection: $window.sidebarSelection) {
             Section {
                 row(.home)
                 row(.search(""), title: "Search")
-                row(.foliAI(nil))
+                if app.session.value?.capabilities.ai != false { row(.foliAI(nil)) }
                 row(.notifications, badge: app.unread)
                 row(.inbox)
                 row(.tasks(.today), badge: app.taskCounts.value?.today ?? 0)
@@ -43,47 +47,64 @@ struct Sidebar: View {
 
             Section(isExpanded: $foldersOpen) {
                 ForEach(rootFolders, id: \.id) { folder in
-                    FolderRow(folder: folder, all: folders, expanded: $expanded, window: window, rename: { renaming = $0 }, newSubfolder: { newFolderParent = .some($0.id) })
+                    FolderRow(folder: folder, all: folders, expanded: $expanded, window: window, byName: folderSort == "name", rename: { renaming = $0 }, newSubfolder: { newFolderParent = .some($0.id) })
                 }
-                .onMove { from, to in
+                .onMove(perform: folderSort == "name" ? nil : { from, to in
                     // The sidebar's own order of top-level folders (folder.setSidebarOrder).
                     var ids = rootFolders.map(\.id)
                     ids.move(fromOffsets: from, toOffset: to)
                     app.perform { _ = try await $0.command(Commands.FolderSetSidebarOrder(FolderSidebarOrderArgs(ids: ids))) }
-                }
+                })
                 if folders.isEmpty, app.tree.value != nil {
                     Text("No folders yet").foregroundStyle(.secondary).font(.callout)
                 }
             } header: {
-                SectionHeaderWithAdd(title: "Folders", help: "New Folder") { newFolderParent = .some(nil) }
+                SectionHeaderWithAdd(title: "Folders", help: "New Folder (⌃⌘N)", open: { window.go(.folders) }) {
+                    newFolderParent = .some(nil)
+                } menu: {
+                    Picker("Sort Folders", selection: $folderSort) {
+                        Text("Manually").tag("manual")
+                        Text("By Name").tag("name")
+                    }
+                    .pickerStyle(.inline)
+                }
                     .dropDestination(for: FolderDrag.self) { items, _ in
                         for f in items { app.perform { _ = try await $0.command(Commands.FolderMove(FolderMoveArgs(id: f.id, parentId: nil))) } }
                         return true
                     }
             }
 
-            if !(app.tree.value?.tags ?? []).isEmpty {
-                Section("Tags", isExpanded: $tagsOpen) {
-                    ForEach(app.tree.value?.tags ?? [], id: \.id) { tag in
-                        Label {
-                            Text(tag.name)
-                        } icon: {
-                            WebIcon.hash.image(size: 16).foregroundStyle(Color.folevi(tag.color))
-                        }
-                        .tag(Destination.tag(tag.id))
-                        .contextMenu {
-                            Button("Open in New Tab") { app.open(.tag(tag.id), newTab: true) }
-                            Button("Rename…") { renamingTag = tag }
-                            Menu("Colour") {
-                                ForEach(TagColors.all, id: \.id) { c in
-                                    Button(c.name) { app.perform { _ = try await $0.command(Commands.TagUpdate(TagUpdateArgs(id: tag.id, color: c.id))) } }
-                                }
+            Section(isExpanded: $tagsOpen) {
+                let tags = app.tree.value?.tags ?? []
+                ForEach(tags.prefix(5), id: \.id) { tag in
+                    Label {
+                        Text(tag.name)
+                    } icon: {
+                        WebIcon.hash.image(size: 16).foregroundStyle(Color.folevi(tag.color))
+                    }
+                    .tag(Destination.tag(tag.id))
+                    .contextMenu {
+                        Button("Open in New Tab") { app.open(.tag(tag.id), newTab: true) }
+                        Button("Rename…") { renamingTag = tag }
+                        Menu("Colour") {
+                            ForEach(TagColors.all, id: \.id) { c in
+                                Button(c.name) { app.perform { _ = try await $0.command(Commands.TagUpdate(TagUpdateArgs(id: tag.id, color: c.id))) } }
                             }
-                            Divider()
-                            Button("Delete Tag", role: .destructive) { app.perform { _ = try await $0.command(Commands.TagDelete(TagIdArgs(id: tag.id))) } }
                         }
+                        Divider()
+                        Button("Delete Tag", role: .destructive) { app.perform { _ = try await $0.command(Commands.TagDelete(TagIdArgs(id: tag.id))) } }
                     }
                 }
+                if tags.count > 5 {
+                    Label { Text("\(tags.count - 5) More") } icon: { WebIcon.ellipsis.image(size: 16) }
+                        .foregroundStyle(.secondary)
+                        .tag(Destination.tags)
+                }
+                if tags.isEmpty, app.tree.value != nil {
+                    Text("Tag notes from the inspector (⌥⌘I).").foregroundStyle(.secondary).font(.callout)
+                }
+            } header: {
+                SectionHeaderWithAdd(title: "Tags", help: nil, open: { window.go(.tags) })
             }
 
             Section("More") {
@@ -104,6 +125,17 @@ struct Sidebar: View {
             SyncFooter()
         }
         .navigationSplitViewColumnWidth(min: 200, ideal: 236, max: 340)
+        .onAppear {
+            expanded = Set(openFolders.split(separator: ",").map(String.init))
+            revealCurrent()
+        }
+        .onChange(of: expanded) { openFolders = expanded.sorted().joined(separator: ",") }
+        .onChange(of: window.current) { revealCurrent() }
+        .onChange(of: window.newFolderRequested) {
+            guard window.newFolderRequested else { return }
+            window.newFolderRequested = false
+            newFolderParent = .some(nil)
+        }
         .sheet(item: $renamingTag) { tag in
             NameSheet(title: "Rename Tag", initial: tag.name, action: "Rename") { name in
                 app.perform { _ = try await $0.command(Commands.TagUpdate(TagUpdateArgs(id: tag.id, name: name))) }
@@ -124,10 +156,24 @@ struct Sidebar: View {
 
     private var folders: [FolderNode] { app.tree.value?.folders ?? [] }
 
+    /// Opens the folders above the one on screen, so it shows in the sidebar.
+    private func revealCurrent() {
+        guard case .folder(let id) = window.current else { return }
+        let byId = Dictionary(folders.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
+        var p = byId[id]?.parentId
+        while let parent = p, let f = byId[parent] {
+            expanded.insert(parent)
+            p = f.parentId
+        }
+    }
+
     private var rootFolders: [FolderNode] {
         let all = folders
         let order = app.tree.value?.sidebarOrder ?? []
-        let roots = all.filter { $0.parentId == nil }
+        let ids = Set(all.map(\.id))
+        // A subfolder whose parent isn't here (moved, or not synced yet) shows at the top level.
+        let roots = all.filter { $0.parentId == nil || !ids.contains($0.parentId!) }
+        if folderSort == "name" { return roots.sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending } }
         guard !order.isEmpty else { return roots.sorted { $0.rank < $1.rank } }
         let at = Dictionary(uniqueKeysWithValues: order.enumerated().map { ($1, $0) })
         return roots.sorted { (at[$0.id] ?? Int.max, $0.rank) < (at[$1.id] ?? Int.max, $1.rank) }
@@ -164,12 +210,16 @@ struct FolderRow: View {
     let all: [FolderNode]
     @Binding var expanded: Set<String>
     let window: WindowModel
+    var byName = false
     let rename: (FolderNode) -> Void
     let newSubfolder: (FolderNode) -> Void
     private var app: AppModel { .shared }
     @State private var targeted = false
 
-    private var children: [FolderNode] { all.filter { $0.parentId == folder.id }.sorted { $0.rank < $1.rank } }
+    private var children: [FolderNode] {
+        let c = all.filter { $0.parentId == folder.id }
+        return byName ? c.sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending } : c.sorted { $0.rank < $1.rank }
+    }
 
     var body: some View {
         if children.isEmpty {
@@ -177,7 +227,7 @@ struct FolderRow: View {
         } else {
             DisclosureGroup(isExpanded: Binding(get: { expanded.contains(folder.id) }, set: { if $0 { expanded.insert(folder.id) } else { expanded.remove(folder.id) } })) {
                 ForEach(children, id: \.id) { child in
-                    FolderRow(folder: child, all: all, expanded: $expanded, window: window, rename: rename, newSubfolder: newSubfolder)
+                    FolderRow(folder: child, all: all, expanded: $expanded, window: window, byName: byName, rename: rename, newSubfolder: newSubfolder)
                 }
             } label: {
                 label
@@ -216,20 +266,39 @@ struct FolderRow: View {
 }
 
 /// A section title with a + at its end (Folders).
-struct SectionHeaderWithAdd: View {
+struct SectionHeaderWithAdd<M: View>: View {
     var title: String
-    var help: String
-    var add: () -> Void
+    var help: String?
+    /// The heading opens its page (Folders, Tags).
+    var open: (() -> Void)?
+    var add: (() -> Void)?
+    @ViewBuilder var menu: () -> M
 
     var body: some View {
         HStack {
-            Text(title)
+            if let open {
+                Button(title, action: open).buttonStyle(.plain).help("Show All \(title)")
+            } else {
+                Text(title)
+            }
             Spacer()
-            Button(action: add) { Image(systemName: "plus") }
-                .buttonStyle(.borderless)
-                .help(help)
-                .accessibilityLabel(help)
+            if M.self != EmptyView.self {
+                Menu { menu() } label: { Image(systemName: "ellipsis") }
+                    .menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize().help("\(title) Options")
+            }
+            if let add, let help {
+                Button(action: add) { Image(systemName: "plus") }
+                    .buttonStyle(.borderless)
+                    .help(help)
+                    .accessibilityLabel(help)
+            }
         }
+    }
+}
+
+extension SectionHeaderWithAdd where M == EmptyView {
+    init(title: String, help: String?, open: (() -> Void)? = nil, add: (() -> Void)? = nil) {
+        self.init(title: title, help: help, open: open, add: add, menu: { EmptyView() })
     }
 }
 

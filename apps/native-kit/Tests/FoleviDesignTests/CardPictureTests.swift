@@ -106,5 +106,61 @@ struct CardPictureTests {
             #expect(Double(off) / Double(live.count / 4) < 0.005, "\(scheme): \(off) pixels differ")
         }
     }
+
+    /// Note cards in a window (so they draw their shadows' pictures), then drawn again: the same pixels as the cards
+    /// drawn live (the plain cards' shadow picture shared, the stack's its own).
+    @Test func aNoteCardsShadowPictureLooksLikeTheCard() async throws {
+        #expect(FoleviFonts.register())
+        CardPictures.shared.relieve()
+        defer { CardPictures.shared.relieve() }
+        func card(_ i: Int, shape: String) -> NoteCardModel {
+            var card = GallerySamples.notes[i]
+            card.starred = false
+            card.template = false
+            card.shape = shape
+            return card
+        }
+        let plain = card(0, shape: ""), other = card(1, shape: ""), stack = card(0, shape: "pages")
+        for scheme in [ColorScheme.light, .dark] {
+            let cards = HStack(spacing: 60) {
+                WebNoteCard(plain).frame(width: 200)
+                WebNoteCard(other).frame(width: 200)
+                WebNoteCard(stack).frame(width: 200)
+            }
+            .padding(60)
+            .environment(\.colorScheme, scheme)
+            .environment(\.coverArt, .none)
+            .environment(\.displayScale, 2)
+            func render() -> [UInt8]? {
+                let renderer = ImageRenderer(content: cards.background(Folevi.color.canvas).environment(\.colorScheme, scheme))
+                renderer.scale = 2
+                return renderer.cgImage.map(pixels)
+            }
+            // (No exact counts of pictures drawn here: other suites draw note cards at the same time, into the same
+            // shared pictures.)
+            let before = CardPictures.shared.drawn
+            let live = try #require(render())
+
+            let window = NSWindow(contentRect: CGRect(x: 0, y: 0, width: 840, height: 340), styleMask: [.borderless], backing: .buffered, defer: false)
+            window.isReleasedWhenClosed = false
+            window.contentView = NSHostingView(rootView: cards)
+            window.contentView?.layoutSubtreeIfNeeded()
+            for _ in 0..<100 where CardPictures.shared.drawn < before + 2 {
+                try await Task.sleep(for: .milliseconds(20))
+                window.contentView?.layoutSubtreeIfNeeded()
+            }
+            // Two pictures for three cards: the two plain cards share theirs, the stack has its own.
+            #expect(CardPictures.shared.drawn >= before + 2)
+            try await Task.sleep(for: .milliseconds(500))
+            window.close()
+
+            // Drawn again: the shadows from their pictures, the faces live.
+            let pictured = try #require(render())
+            #expect(live.count == pictured.count)
+            var off = 0
+            for i in stride(from: 0, to: min(live.count, pictured.count), by: 4) where (0..<4).contains(where: { abs(Int(live[i + $0]) - Int(pictured[i + $0])) > 8 }) { off += 1 }
+            #expect(Double(off) / Double(live.count / 4) < 0.005, "\(scheme): \(off) pixels differ")
+        }
+    }
     #endif
 }

@@ -104,11 +104,16 @@ public final class CardPictures {
 struct CardPicture<Content: View>: View {
     let key: String
     let margin: EdgeInsets
+    /// Drawn again where it comes to rest, so it lands on whole pixels (below). Off for what is only soft (a note
+    /// card's shadow): it's drawn once, between no pixels, and its place isn't followed at all, which costs a long
+    /// grid's scroll a geometry report a card every frame.
+    let snaps: Bool
     let content: (CGSize) -> Content
 
-    init(key: String, margin: EdgeInsets = EdgeInsets(), @ViewBuilder content: @escaping (CGSize) -> Content) {
+    init(key: String, margin: EdgeInsets = EdgeInsets(), snaps: Bool = true, @ViewBuilder content: @escaping (CGSize) -> Content) {
         self.key = key
         self.margin = margin
+        self.snaps = snaps
         self.content = content
     }
 
@@ -136,9 +141,30 @@ struct CardPicture<Content: View>: View {
     private func pictureKey(_ size: CGSize) -> String { "\(key)|\(size.width)x\(size.height)|\(scale)|\(scheme)" }
 
     var body: some View {
+        if snaps { snapping } else { fixed }
+    }
+
+    /// Placed between no pixels, the next moment (so a single pass, as in `snapping`, draws it live).
+    private var fixed: some View {
+        let _ = CardPictures.shared.changes.count
+        return GeometryReader { geo in
+            let size = geo.size
+            let name = pictureKey(size)
+            if size.width > 0, size.height > 0, let at = drawnAt ?? CardPictures.shared.kept(name)?.phase,
+               let picture = CardPictures.shared.picture(name, at: at, draw: { draw(size, shift: .zero) }) {
+                Image(decorative: picture.image, scale: scale)
+                    .offset(x: -margin.leading, y: -margin.top)
+            } else {
+                content(size).frame(width: size.width, height: size.height)
+            }
+        }
+        .task { drawnAt = .zero }
+    }
+
+    private var snapping: some View {
         // (Read so the view draws again when a picture is forgotten.)
         let _ = CardPictures.shared.changes.count
-        GeometryReader { geo in
+        return GeometryReader { geo in
             let size = geo.size
             let name = pictureKey(size)
             if size.width > 0, size.height > 0, let at = drawnAt ?? CardPictures.shared.kept(name)?.phase,

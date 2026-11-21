@@ -51,9 +51,14 @@ Closed or improved after the grading below; the per-item marks haven't been redo
 - Sidebar: Foli AI gated, heading links, folder sort, open folders kept with ancestors opened, orphans at the top,
   five tags and "N More", ⌃⌘N New Folder.
 - A missed `engine.ready` event no longer leaves a window on the starting screen (ready follows the client).
+- Tabs: trashed notes leave every window's history, Open in Background Tab, ⌘T opens a tab at Search, New Folder
+  on a folder's page goes inside it, restored windows from earlier builds no longer crash on launch.
+- Home: Catch me up with Markdown, linked [n] marks, numbered sources, Refresh and a shimmer while it writes;
+  Today's Reviews with Start Review; skeleton and empty texts; carousels with edge fades and hover arrows; every
+  folder newest first in two rows with its path, menu and drops; Remove from Recent; the sidebar's Reviews count.
 
 The items closed in this session's later work packages are marked [x] with "closed after the grading", and the
-summary table below is recounted from the marks (672 there, 301 partly, 160 missing, 210 not applicable).
+summary table below is recounted from the marks (688 there, 290 partly, 155 missing, 210 not applicable).
 
 ## Summary
 
@@ -62,9 +67,9 @@ summary table below is recounted from the marks (672 there, 301 partly, 160 miss
 | Architecture today | `ARCH` | 15 | 0 | 1 | 1 | 17 |
 | App & windows | `APP` | 28 | 19 | 3 | 23 | 73 |
 | Sign-in, onboarding, accounts, spaces & local mode | `AUTH` | 39 | 26 | 4 | 11 | 80 |
-| Sidebar & navigation | `NAV` | 21 | 8 | 1 | 7 | 37 |
-| Tabs | `TAB` | 6 | 4 | 8 | 25 | 43 |
-| Home | `HOME` | 5 | 14 | 1 | 10 | 30 |
+| Sidebar & navigation | `NAV` | 22 | 7 | 1 | 7 | 37 |
+| Tabs | `TAB` | 11 | 4 | 3 | 25 | 43 |
+| Home | `HOME` | 15 | 4 | 1 | 10 | 30 |
 | Notes lists | `LIST` | 29 | 22 | 10 | 11 | 72 |
 | Folders | `FOLD` | 7 | 17 | 10 | 3 | 37 |
 | Tags | `TAG` | 2 | 4 | 1 | 2 | 9 |
@@ -97,7 +102,7 @@ summary table below is recounted from the marks (672 there, 301 partly, 160 miss
 | Binding UX rules from owner memory | `RULE` | 18 | 13 | 0 | 13 | 44 |
 | iPhone and iPad only (skip) | `IOS` | 0 | 0 | 0 | 5 | 5 |
 | Gaps, bugs and contradictions | `GAP` | 14 | 10 | 8 | 11 | 43 |
-| **Total** | | **672** | **301** | **160** | **210** | **1343** |
+| **Total** | | **688** | **290** | **155** | **210** | **1343** |
 
 Notable findings (all in the first work package at the end):
 
@@ -317,7 +322,7 @@ Notable findings (all in the first work package at the end):
 - [x] `NAV-009` **All notes row**. Core: `Views/Sidebar.swift`.
 - [x] `NAV-010` **Tasks row with today count**. Core: `Views/Sidebar.swift` (tasks.counts today).
 - [x] `NAV-011` **Calendar row**. Core: `Views/Sidebar.swift`.
-- [~] `NAV-012` **Reviews row**: (only when reviews are due or the tab is open). Core: always shown, no due count.
+- [x] `NAV-012` **Reviews row**: (only when reviews are due or the tab is open). Core: closed after the grading (see "Since this grading").
 - [x] `NAV-013` **Shared with Me row**: (with the `sharing` capability). Core: `Views/Sidebar.swift` (hidden in local mode).
 - [x] `NAV-014` **Vault row**: (VaultSidebarRow). Core: `Views/Sidebar.swift` (hidden in local mode).
 - [x] `NAV-015` **Changes row with count**: (with the `changes` capability). Core: `Views/Sidebar.swift` (changes capability, count).
@@ -347,20 +352,20 @@ Notable findings (all in the first work package at the end):
 ## Tabs
 
 - [n/a] `TAB-001` **Tab model rules**: Home pinned first; one tab per page; at most 12 tabs besides Home (the oldest is dropped). Why: native window tabs: no tab cap or pinned Home tab.
-- [ ] `TAB-002` **Show route**: an existing tab comes forward, and a view's tab follows you inside the view. Core: an open note or place isn't brought forward from another tab.
+- [~] `TAB-002` **Show route**: an existing tab comes forward, and a view's tab follows you inside the view. Core: an open note's tab comes forward (⌘-opening it again); a place that is open in another tab isn't brought forward.
 - [x] `TAB-003` **Replace in a note**: a link inside a note replaces the note tab (a joined pane is replaced in place). Core: `Model/WindowModel.swift` navigate.request replaces in the window, newTab opens a tab.
 - [n/a] `TAB-004` **Folder tabs (Finder style)**: `folders:` id; shows in the folder tab on screen or the last-used one, else a new one. Why: native window tabs; folders open in the front window.
 - [x] `TAB-005` **Per-tab history**: (Back/Forward, limit 100). Core: `Model/WindowModel.swift` (200 steps).
 - [x] `TAB-006` **Opener back rule**: Back with no history left closes the tab and shows its opener; sidebar and "+" tabs are fresh. Core: `Model/WindowModel.swift` opener: Back on a new note tab's first page closes it and shows its opener.
-- [ ] `TAB-007` **Forget trashed note in history**. Core: trashed notes stay in history.
-- [ ] `TAB-008` **Open in background tab**. Core: new tabs always come to the front.
+- [x] `TAB-007` **Forget trashed note in history**. Core: closed after the grading (see "Since this grading").
+- [x] `TAB-008` **Open in background tab**. Core: closed after the grading (see "Since this grading").
 - [n/a] `TAB-009` **Close tab**: shows the right neighbour, else the left, else Home. Why: macOS picks the next tab.
 - [n/a] `TAB-010` **Close others / to the right / to the left / all**: (pinned and Home stay). Why: macOS tab menu (Close Other Tabs).
-- [ ] `TAB-011` **Reopen closed tab**: (⇧⌘T) with its history. Core: no Reopen Closed Tab (⇧⌘T is Go > Tasks).
+- [x] `TAB-011` **Reopen closed tab**: (⇧⌘T) with its history. Core: closed after the grading (see "Since this grading").
 - [n/a] `TAB-012` **Move tab**: (drag); Home fixed; pinned stay among pinned. Why: macOS tab drag.
 - [ ] `TAB-013` **Pinned tabs**: at the start, icon only, no ×, survive close-others. Core: no pinned tabs.
 - [x] `TAB-014` **Joined notes**: 2 or 3 panes in one `join:` tab, labelled "A + B"; join, unjoin at a gap, unjoin all, move pane, detach pane, sizes. Core: `Model/WindowModel.swift` panes (join, unjoin, move, detach, sizes) through note.show.
-- [ ] `TAB-015` **Select tab by number**: (⌘1 to ⌘9) and next/previous (wrapping). Core: ⌘1 to ⌘9 not mapped to tabs (⌘1, ⌘2 are list or cards).
+- [x] `TAB-015` **Select tab by number**: (⌘1 to ⌘9) and next/previous (wrapping). Core: closed after the grading (see "Since this grading").
 - [x] `TAB-016` **Tab titles and icons**: from `notes.meta` (one watch for up to 200 ids), `note.meta`, `note.ready`, folder and tag names; trashed notes leave the strip. Core: window title from note.meta (`Model/WindowModel.swift`).
 - [ ] `TAB-017` **Per-space tabs**: switching space puts the strip away and brings back that space's tabs (up to 50 spaces). Core: no per-space tabs.
 - [~] `TAB-018` **Saved tabs**: (Codable, validated on restore). Core: macOS restores the tabs, each at its saved path.
@@ -373,7 +378,7 @@ Notable findings (all in the first work package at the end):
 - [x] `TAB-025` **New note pill**: (black, white in dark mode, prominent glass) right after the tabs; opens a fresh tab ready to type. Core: `Views/MainWindow.swift` New Note pill (InkPillStyle), note opens ready to type.
 - [n/a] `TAB-026` **Sync status and bell at the strip end**. Why: sync in the sidebar footer, notifications as a sidebar row with a badge.
 - [n/a] `TAB-027` **iPad web-look bar**: (iPad): Back/Forward, Foli AI pill, New folder (in this folder) pill, New note button. Why: iPad only.
-- [~] `TAB-028` **Top-bar New folder rule**: on a folder page it creates inside the folder (if nesting allows and the person can edit). Core: File > New Folder opens Folders; no "new folder here" on a folder page's toolbar.
+- [x] `TAB-028` **Top-bar New folder rule**: on a folder page it creates inside the folder (if nesting allows and the person can edit). Core: closed after the grading (see "Since this grading").
 - [n/a] `TAB-029` **Tab preview on hover**: after 300 ms, then instant between tabs; hidden on leave, press, drag or the open tab. Why: macOS Show All Tabs.
 - [n/a] `TAB-030` **Tab pictures**: the note page drawn small from `note.picture` in a script-less WKWebView; joined notes side by side; views as their icon and… Why: macOS Show All Tabs.
 - [n/a] `TAB-031` **Tab screenshots**: captured when leaving a tab and shortly after it settles; never the Vault; fitted whole. Why: macOS Show All Tabs.
@@ -385,7 +390,7 @@ Notable findings (all in the first work package at the end):
 - [n/a] `TAB-037` **Tab context menu**: (see Context menus). Why: macOS tab menu.
 - [n/a] `TAB-038` **Desk tabs persistence**: (iPad). Why: iPad only.
 - [n/a] `TAB-039` **Legacy AppKit tab strip**: (legacy): Close, Close Other Tabs, Close Tabs to the Right, Open in New Window. Why: legacy.
-- [~] `TAB-040` **New Tab command**: opens Home and focuses search. Core: ⌘T opens Home in a tab; search isn't focused.
+- [~] `TAB-040` **New Tab command**: opens Home and focuses search. Core: ⌘T opens a tab at Search with the field focused (recent searches and notes), not Home.
 - [n/a] `TAB-041` **Close Tab on Home closes the window**. Why: macOS tab and window closing.
 - [~] `TAB-042` **Float note from tab**: (Mac only, `frameCanFloatNotes`). Core: Note > Float on Top (not from the tab).
 - [n/a] `TAB-043` **Debug tab frames and strip metrics**: for scripts. Why: Debug harness.
@@ -396,22 +401,22 @@ Notable findings (all in the first work package at the end):
 - [n/a] `HOME-002` **Home has no own card controls (Mac)**: the card's glass bar shows only the title and the search capsule. Why: native toolbar.
 - [x] `HOME-003` **Catch me up button**: shown only when `home.catchUp.available`. Foli AI mark plus "Catch me up", with the hint "A quick AI brief of this week's notes… Core: `Views/Screens/HomeScreen.swift` CatchUpCardView (catchUp.run).
 - [x] `HOME-004` **Catch me up error line**: the engine's or the command's error, in danger colour, under the button. Core: CatchUpCardView shows the error.
-- [~] `HOME-005` **Your week card, running**: "Reading this week's notes…" over 4 shimmering gradient lines; respects Reduce Motion. Core: a spinner, no shimmering lines.
-- [~] `HOME-006` **Your week card, ready**: Markdown brief whose citation numbers open notes, numbered source chips that open notes, Refresh button (tooltip "Refresh") and… Core: plain text brief with source links and Clear; no Markdown, numbered citations or Refresh.
+- [x] `HOME-005` **Your week card, running**: "Reading this week's notes…" over 4 shimmering gradient lines; respects Reduce Motion. Core: closed after the grading (see "Since this grading").
+- [x] `HOME-006` **Your week card, ready**: Markdown brief whose citation numbers open notes, numbered source chips that open notes, Refresh button (tooltip "Refresh") and… Core: closed after the grading (see "Since this grading").
 - [ ] `HOME-007` **Catch me up page (route `/catch-up`)**: intro with the AI tile, "Your week in one short read", explainer, three rows (What changed, What's due, Where it came from)… Core: no /catch-up page.
-- [~] `HOME-008` **Today's reviews card**: shown when Home's rows include Reviews. Shows "N cards to review." with a Start review button (opens `/review`), or "All caught… Core: a Reviews count tile if the engine sends the row; no Start review card.
+- [x] `HOME-008` **Today's reviews card**: shown when Home's rows include Reviews. Shows "N cards to review." with a Start review button (opens `/review`), or "All caught… Core: closed after the grading (see "Since this grading").
 - [x] `HOME-009` **Recent notes section**: clock icon header; "See all" opens All notes in a new tab; carousel of up to 10 notes. Core: `Views/Screens/HomeScreen.swift` Recent strip, See All.
-- [~] `HOME-010` **Recent notes empty and loading**: "No notes yet / Press New to write your first one."; carousel skeleton while loading. Core: empty text, no skeleton.
-- [~] `HOME-011` **Bookmarks section**: up to 6 starred notes; "See all" opens the Bookmarks list; empty text "No bookmarks yet / Bookmark notes you come back to often… Core: Starred strip only when there are some; no empty text.
-- [~] `HOME-012` **Note carousel**: horizontal snapping row with fade masks at the ends and back/forward arrow buttons on hover ("Scroll recent notes back/forward")… Core: horizontal scroll; no fade masks or arrows.
+- [x] `HOME-010` **Recent notes empty and loading**: "No notes yet / Press New to write your first one."; carousel skeleton while loading. Core: closed after the grading (see "Since this grading").
+- [x] `HOME-011` **Bookmarks section**: up to 6 starred notes; "See all" opens the Bookmarks list; empty text "No bookmarks yet / Bookmark notes you come back to often… Core: closed after the grading (see "Since this grading").
+- [x] `HOME-012` **Note carousel**: horizontal snapping row with fade masks at the ends and back/forward arrow buttons on hover ("Scroll recent notes back/forward")… Core: closed after the grading (see "Since this grading").
 - [x] `HOME-013` **Note card cell**: click opens; hover lifts the card and shows the "…" button; press dips; right-click menu; drag carries the note; bookmark ribbon… Core: `Views/Screens/NoteListScreen.swift` NoteCardButton (WebNoteCard, hover, press, menu, drag, unsynced).
-- [~] `HOME-014` **Home card menu**: Open, Bookmark / Remove bookmark, Duplicate, Move to folder…, Copy to… (when other spaces exist), Archive / Unarchive, Remove… Core: `Views/Common/Menus.swift` NoteMenu; no Copy to or Remove from Recent on Home.
-- [~] `HOME-015` **Recent folders section**: every folder, most recently changed first, two full rows at the current width; header shows the total count; "See all" opens… Core: home.folders in one strip; not folders.cards all, no path for nested folders.
-- [~] `HOME-016` **Recent folders empty**: "No folders yet / Create one from the sidebar to group related notes.". Core: hidden when empty.
-- [~] `HOME-017` **Folder card**: hover lift; "…" in the frosted front; right-click menu; notes or folders dropped on it go inside; spring-loads after 0.6 s… Core: takes note drops; no menu, "…", spring-loading or folder drops.
+- [x] `HOME-014` **Home card menu**: Open, Bookmark / Remove bookmark, Duplicate, Move to folder…, Copy to… (when other spaces exist), Archive / Unarchive, Remove… Core: closed after the grading (see "Since this grading").
+- [x] `HOME-015` **Recent folders section**: every folder, most recently changed first, two full rows at the current width; header shows the total count; "See all" opens… Core: closed after the grading (see "Since this grading").
+- [x] `HOME-016` **Recent folders empty**: "No folders yet / Create one from the sidebar to group related notes.". Core: closed after the grading (see "Since this grading").
+- [~] `HOME-017` **Folder card**: hover lift; "…" in the frosted front; right-click menu; notes or folders dropped on it go inside; spring-loads after 0.6 s… Core: lifts while something is dragged over it; folder menu on right-click; notes and folders dropped go inside; no "…" button or spring-loading.
 - [~] `HOME-018` **Folder menu (Mac)**: Open in new tab, New note in folder, New folder inside…, Rename…, Change color…, Move folder…, Move to another place…, Move to… Core: `Views/Common/Menus.swift` FolderMenu: new tab, new note, subfolder, rename, colour, lock, share, delete; no move folder, top level, other place or Ask Foli AI.
-- [~] `HOME-019` **Drop on Home folders**: notes, multi-selections or folders dropped inside. A refused drop gives an error haptic and a toast; toasts read "Moved", "Moved… Core: notes drop on folder cards; folders can't be dropped.
-- [~] `HOME-020` **Where Home's rows live on the Mac**: the sidebar has Home, Bookmarks, Drafts (count), All notes, Reviews (count), Shared with Me, Changes (count, `caps.changes`)… Core: sidebar has these rows; Drafts and Reviews without counts.
+- [x] `HOME-019` **Drop on Home folders**: notes, multi-selections or folders dropped inside. A refused drop gives an error haptic and a toast; toasts read "Moved", "Moved… Core: closed after the grading (see "Since this grading").
+- [~] `HOME-020` **Where Home's rows live on the Mac**: the sidebar has Home, Bookmarks, Drafts (count), All notes, Reviews (count), Shared with Me, Changes (count, `caps.changes`)… Core: Reviews shows its count (and only with cards); Drafts has no count.
 - [~] `HOME-021` **Views pause when Home is off screen**: `setVisible`. Core: watches end only when the screen's state is released.
 - [n/a] `HOME-022` **iOS only: search entry**: "Search in <space>" field that opens Search, ⌘F. Why: iPhone/iPad only.
 - [n/a] `HOME-023` **iOS only: avatar button**: account and places switcher. Why: iPhone/iPad only.

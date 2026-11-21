@@ -349,8 +349,8 @@ account button should move past iPadOS's window buttons).
 
 ## 10. Next steps / open work
 - Folevi Core (`apps/mac-core`, branch `claude/folevi-core-529dbe`): close the remaining gaps in
-  `apps/mac-core/PARITY.md` (672 of 1,343 there, 301 partly, 160 missing; "Gaps in priority order" lists what's
-  left: tabs, Home details, notes lists and folders pages, tasks views, calendar, notifications, Settings search,
+  `apps/mac-core/PARITY.md` (688 of 1,343 there, 290 partly, 155 missing; "Gaps in priority order" lists what's
+  left: notes lists and folders pages, tasks views, calendar, notifications, Settings search,
   time zone picker, Foli AI memory), then the owner tries it with a real account. Publishing
   (`apps/mac-core/scripts/publish.mjs`, R2 `folevi-updates` under `core/`) only with the owner's OK. The release
   build already carries iCloud (`iCloud.com.folevi`) on its Developer ID profile. Known issue: launched with
@@ -424,6 +424,7 @@ account button should move past iPadOS's window buttons).
   `DATABASE_UDF_USER_TIMEOUT_SECONDS=4` for that backend. Bursts show in `convex.log` as "took a long time".
 
 ## 12. Change log
+- 2026-11-21: Folevi Core: tabs (trashed notes leave history, background tabs, ⌘T at Search) and Home (catch-up Markdown and sources, reviews card, carousels, all folders with menus and drops); fixed a launch crash restoring windows saved by earlier builds; PARITY.md: 688 there, 290 partly, 155 missing.
 - 2026-11-21: Folevi Core: the Vault complete, Quick Add parity, Foli AI chat details and a floating Ask Foli AI panel (⌘J), search and palette, Settings in today's order with a Library pane, About and Support, sidebar details; ready follows the engine client (no more stuck starting screen); PARITY.md recounted: 672 there, 301 partly, 160 missing, 210 n/a.
 - 2026-11-21: Folevi Core: draft PR 51; parity checklist (595 of 1,343 present, 343 partial, 195 missing, 210 n/a at first grading) and the first work packages closed (bugs, sharing, folder picker, tabs, task editor, calendar views); Developer ID release with iCloud verified (not notarized).
 - 2026-11-21: Folevi Core started in `apps/mac-core` (branch `claude/folevi-core-529dbe`): native app, release and publish scripts, tests, parity checklist. FoleviKit's demo engine is its own target `FoleviEngineDemo` (files unmoved, re-exported by FoleviMac).

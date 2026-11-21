@@ -27,6 +27,11 @@ Closed or improved after the grading below; the per-item marks haven't been redo
 - Changes: a "what changed" diff per note.
 - Settings: local-mode Foli AI (on-device model, own keys), folder order in the sidebar, tag menus.
 - Release: Developer ID export with iCloud (`iCloud.com.folevi`), its profile embedded and checked.
+- Work package 3 (part): a folder picker sheet for Move To, Copy To (other spaces too) and Move Folder.
+- Work package 4 (part): a selection bar for several notes (star, move, archive, trash; restore, delete).
+- Work package 6 (part): Reopen Closed Tab (⇧⌘T), Show Tab 1 to 9 (⌘1 to ⌘9), an open note's tab comes forward.
+- Work package 8 (part): Calendar Week and Agenda, drag a task onto a day with Undo.
+- Work package 9 (part): Edit Task (done, date and time, repeat, reminder, priority, assignee, move to a note).
 
 ## Summary
 

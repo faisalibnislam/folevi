@@ -58,7 +58,7 @@ Closed or improved after the grading below; the per-item marks haven't been redo
   folder newest first in two rows with its path, menu and drops; Remove from Recent; the sidebar's Reviews count.
 
 The items closed in this session's later work packages are marked [x] with "closed after the grading", and the
-summary table below is recounted from the marks (787 there, 230 partly, 116 missing, 210 not applicable).
+summary table below is recounted from the marks (826 there, 214 partly, 92 missing, 211 not applicable).
 
 ## Summary
 
@@ -75,8 +75,8 @@ summary table below is recounted from the marks (787 there, 230 partly, 116 miss
 | Tags | `TAG` | 7 | 0 | 0 | 2 | 9 |
 | Note page & editor integration | `NOTE` | 30 | 11 | 2 | 3 | 46 |
 | Search & command palette | `SRCH` | 31 | 4 | 0 | 2 | 37 |
-| Tasks | `TASK` | 6 | 9 | 11 | 9 | 35 |
-| Calendar | `CAL` | 8 | 10 | 13 | 6 | 37 |
+| Tasks | `TASK` | 23 | 2 | 0 | 10 | 35 |
+| Calendar | `CAL` | 30 | 1 | 0 | 6 | 37 |
 | Foli AI | `AI` | 42 | 1 | 2 | 4 | 49 |
 | Foli DNA | `DNA` | 34 | 2 | 0 | 0 | 36 |
 | Vault | `VAULT` | 40 | 0 | 0 | 1 | 41 |
@@ -102,7 +102,7 @@ summary table below is recounted from the marks (787 there, 230 partly, 116 miss
 | Binding UX rules from owner memory | `RULE` | 18 | 13 | 0 | 13 | 44 |
 | iPhone and iPad only (skip) | `IOS` | 0 | 0 | 0 | 5 | 5 |
 | Gaps, bugs and contradictions | `GAP` | 14 | 10 | 8 | 11 | 43 |
-| **Total** | | **787** | **230** | **116** | **210** | **1343** |
+| **Total** | | **826** | **214** | **92** | **211** | **1343** |
 
 Notable findings (all in the first work package at the end):
 
@@ -662,31 +662,31 @@ Notable findings (all in the first work package at the end):
 - [x] `TASK-001` **Six views**: Inbox (undated), Today, Upcoming, All, Completed, My Tasks, in the web's order with live counts. Core: `Views/Screens/PlannerScreens.swift` TasksScreen (tasks.list, tasks.counts).
 - [n/a] `TASK-002` **View switcher, web look**: segmented control with count badges, tooltip "Every task lives in a note. Open its page to see the context it was written in.". Why: web look only.
 - [x] `TASK-003` **View switcher, native look**: card glass segmented "Tasks views" with counts and the same help; selecting replaces the route `.tasks(view)`. Core: segmented view picker with counts.
-- [ ] `TASK-004` **Facts subtitle**: "<View> · N open" (Completed: "N done"), hidden count while loading, announced as updates-frequently. Core: no facts subtitle.
+- [x] `TASK-004` **Facts subtitle**: "<View> · N open" (Completed: "N done"), hidden count while loading, announced as updates-frequently. Core: closed after the grading (see "Since this grading").
 - [n/a] `TASK-005` **Header buttons (web look)**: Calendar (opens `.calendar(nil)`) and Add task (tooltip "(⌘N)"). Why: web look only.
-- [~] `TASK-006` **Add task button (native look)**: card glass "plus" button, help "Add task (⌘N)"; owner decision: no Calendar button in native look (sidebar row already there). Core: an inline quick-add field instead of a + button; ⌘N makes a note.
-- [ ] `TASK-007` **Filter field**: "Filter by task or page", matches task title or page title, case-insensitive, native look has a clear (x) button. Core: no task filter.
+- [x] `TASK-006` **Add task button (native look)**: card glass "plus" button, help "Add task (⌘N)"; owner decision: no Calendar button in native look (sidebar row already there). Core: closed after the grading (see "Since this grading").
+- [x] `TASK-007` **Filter field**: "Filter by task or page", matches task title or page title, case-insensitive, native look has a clear (x) button. Core: closed after the grading (see "Since this grading").
 - [x] `TASK-008` **Sort order**: by due date, then due time, then newest change; Completed kept in the engine's order; rows edited away (`edits.isGone`) drop out… Core: the engine's groups and order.
 - [x] `TASK-009` **Upcoming grouped by day**: day headings (long date, "No date" for undated), each group its own card. Core: engine groups shown as sections.
-- [~] `TASK-010` **Loading state**: three placeholder rows until the list for the current view arrives. Core: a spinner, no placeholder rows.
-- [~] `TASK-011` **Empty states per view**: Inbox "No undated tasks / Tasks without a due date land here."; Today "Nothing due today / Enjoy the quiet."; Upcoming "Nothing… Core: two generic empty texts.
-- [ ] `TASK-012` **Filtered empty state**: "No tasks match that filter". Core: no filter.
-- [ ] `TASK-013` **Keyboard: ⌘N**: opens Quick add task dialog. Core: ⌘N makes a note.
-- [ ] `TASK-014` **Keyboard: ⌘F**: focuses the filter. Core: no filter.
-- [ ] `TASK-015` **Keyboard: ⌘1 to ⌘6**: pick a view (note: collides with Go > Go to Tab ⌘1 to ⌘9 in ). Core: no ⌘1 to ⌘6 for views.
-- [~] `TASK-016` **Menu: Go > Today's Tasks ⌥⌘T, Go > Inbox**: open `.tasks(.today)` / `.tasks(.inbox)`. Core: Go > Tasks (⇧⌘T, Today); Go > Inbox opens the Inbox note, not the Inbox tasks view.
-- [~] `TASK-017` **Task row**: checkbox, title (struck and muted when done or canceled, "Untitled task"), page link with doc icon (hover underline, opens note)… Core: `Views/Screens/PlannerScreens.swift` TaskLine; no canceled marker or "Untitled task".
+- [x] `TASK-010` **Loading state**: three placeholder rows until the list for the current view arrives. Core: closed after the grading (see "Since this grading").
+- [x] `TASK-011` **Empty states per view**: Inbox "No undated tasks / Tasks without a due date land here."; Today "Nothing due today / Enjoy the quiet."; Upcoming "Nothing… Core: closed after the grading (see "Since this grading").
+- [x] `TASK-012` **Filtered empty state**: "No tasks match that filter". Core: closed after the grading (see "Since this grading").
+- [x] `TASK-013` **Keyboard: ⌘N**: opens Quick add task dialog. Core: closed after the grading (see "Since this grading").
+- [~] `TASK-014` **Keyboard: ⌘F**: focuses the filter. Core: the filter is the toolbar search field (click or Tab to it); ⌘F is Find in a note.
+- [n/a] `TASK-015` **Keyboard: ⌘1 to ⌘6**: pick a view (note: collides with Go > Go to Tab ⌘1 to ⌘9 in ). Why: ⌘1 to ⌘9 pick a window tab in Core (native tabs), as the inventory notes the clash; views are one click in the segmented control.
+- [x] `TASK-016` **Menu: Go > Today's Tasks ⌥⌘T, Go > Inbox**: open `.tasks(.today)` / `.tasks(.inbox)`. Core: closed after the grading (see "Since this grading").
+- [x] `TASK-017` **Task row**: checkbox, title (struck and muted when done or canceled, "Untitled task"), page link with doc icon (hover underline, opens note)… Core: closed after the grading (see "Since this grading").
 - [x] `TASK-018` **Row trailing facts**: priority badge (not "none"), repeat icon with the rule as tooltip, due label ("Overdue · " prefix in danger colour when past)… Core: TaskLine due (overdue red), repeat, reminder, priority colour.
-- [~] `TASK-019` **Checkbox toggle with Undo**: open to done ("Task completed"), done to open ("Task reopened"), canceled to reopened; each toast has Undo. Core: toggles (task.update); no toast with Undo.
-- [ ] `TASK-020` **Edit button on hover**: pencil button visible on row hover, opens Edit task. Core: no Edit button.
-- [~] `TASK-021` **Right-click task menu**: Mark as done / Mark as not done / Reopen, Edit task…, Move to…, separator, Open note. Core: context menu: Open Note, due presets, Choose Date, Priority, Repeat, Cancel; no Mark done, Edit or Move to.
-- [ ] `TASK-022` **Drag a task**: row drags its id as text (to Calendar days and hour slots). Core: no task drag.
-- [~] `TASK-023` **Edit task dialog**: read-only title; Status (Open, Done, Canceled); Due date (popover month calendar); Clear / Clear date; Time (optional, "All day"… Core: due, priority, repeat and cancel from the menu; no time, assignee, reminder or status dialog.
-- [ ] `TASK-024` **Move task dialog**: "Move <title> to the end of another page", page picker excludes the current page, clearing means Inbox; toast "Task moved to… Core: no Move task (task.moveToNote).
-- [ ] `TASK-025` **Page picker (DocumentPicker)**: chosen page chip with x ("Add to Inbox instead"), field "Inbox, or search a page…" / "Search another page…", recent 6 pages when… Core: no page picker.
+- [x] `TASK-019` **Checkbox toggle with Undo**: open to done ("Task completed"), done to open ("Task reopened"), canceled to reopened; each toast has Undo. Core: closed after the grading (see "Since this grading").
+- [x] `TASK-020` **Edit button on hover**: pencil button visible on row hover, opens Edit task. Core: closed after the grading (see "Since this grading").
+- [x] `TASK-021` **Right-click task menu**: Mark as done / Mark as not done / Reopen, Edit task…, Move to…, separator, Open note. Core: closed after the grading (see "Since this grading").
+- [x] `TASK-022` **Drag a task**: row drags its id as text (to Calendar days and hour slots). Core: closed after the grading (see "Since this grading").
+- [x] `TASK-023` **Edit task dialog**: read-only title; Status (Open, Done, Canceled); Due date (popover month calendar); Clear / Clear date; Time (optional, "All day"… Core: closed after the grading (see "Since this grading").
+- [x] `TASK-024` **Move task dialog**: "Move <title> to the end of another page", page picker excludes the current page, clearing means Inbox; toast "Task moved to… Core: closed after the grading (see "Since this grading").
+- [~] `TASK-025` **Page picker (DocumentPicker)**: chosen page chip with x ("Add to Inbox instead"), field "Inbox, or search a page…" / "Search another page…", recent 6 pages when… Core: a search sheet for pages (NotePickerSheet); no chip with x or recent pages before typing.
 - [x] `TASK-026` **Date field + month popover**: field with clear (x), popover month grid, Previous/Next month, arrow keys move days, Clear button. Core: graphical date popover, Remove Due Date.
-- [ ] `TASK-027` **Time field + option list**: "All day" plus half-hour times, popover list with arrow keys. Core: no time field.
-- [~] `TASK-028` **Assignees only in workspaces**: members watched lazily when the place is a workspace. Core: assignee shown, not editable.
+- [x] `TASK-027` **Time field + option list**: "All day" plus half-hour times, popover list with arrow keys. Core: closed after the grading (see "Since this grading").
+- [x] `TASK-028` **Assignees only in workspaces**: members watched lazily when the place is a workspace. Core: closed after the grading (see "Since this grading").
 - [n/a] `TASK-029` **Floating dialogs, not sheets**: PlannerPanel / PlannerDialog over the window, Escape closes the top one, click outside closes popovers. Why: native menus and popovers.
 - [n/a] `TASK-030` **Debug hook**: notification `folevi.planner.show` opens quick/edit/move/menu on the first task (scripts). Why: Debug harness.
 - [n/a] `TASK-031` **iPhone only: TasksScreen**: list with pull to refresh, hidden ⌘N "New task", More menu (Calendar, Completed tasks, Refresh). Why: iPhone only.
@@ -697,39 +697,39 @@ Notable findings (all in the first work package at the end):
 
 ## Calendar
 
-- [~] `CAL-001` **Layouts: Month, Week, Agenda**: remembered on this Mac (`folevi.mac.calendar.layout`), crossfade between them. Core: month only.
-- [ ] `CAL-002` **Layout switch**: web look segmented in the toolbar, native look card segmented "Calendar view". Core: no layout switch.
-- [~] `CAL-003` **Period heading**: "MMMM yyyy", "MMM d to MMM d yyyy", "Next 30 days"; short form for narrow windows ("Nov 2 to 8", "Nov 30 to Dec 6", "Dec 28 to… Core: month heading only.
+- [x] `CAL-001` **Layouts: Month, Week, Agenda**: remembered on this Mac (`folevi.mac.calendar.layout`), crossfade between them. Core: closed after the grading (see "Since this grading").
+- [x] `CAL-002` **Layout switch**: web look segmented in the toolbar, native look card segmented "Calendar view". Core: closed after the grading (see "Since this grading").
+- [x] `CAL-003` **Period heading**: "MMMM yyyy", "MMM d to MMM d yyyy", "Next 30 days"; short form for narrow windows ("Nov 2 to 8", "Nov 30 to Dec 6", "Dec 28 to… Core: closed after the grading (see "Since this grading").
 - [x] `CAL-004` **Previous / Today / Next**: pages a month or week (hidden in Agenda); native look "Go to" actions after the title. Core: `Views/Screens/PlannerScreens.swift` CalendarScreen Previous, Today, Next.
 - [n/a] `CAL-005` **Responsive toolbar**: one row, then compact (icons for Calendars and Subscribe), then two rows. Why: native toolbar.
-- [~] `CAL-006` **Calendars button**: opens the subscriptions popover; red dot / badge and help "Calendars (one isn't loading)" when any subscription has an error. Core: Calendars menu (calendars.list); no error mark.
+- [x] `CAL-006` **Calendars button**: opens the subscriptions popover; red dot / badge and help "Calendars (one isn't loading)" when any subscription has an error. Core: closed after the grading (see "Since this grading").
 - [x] `CAL-007` **Subscribe (tasks feed)**: "Subscribe" button (web look) or "Subscribe in Another Calendar…" in the "…" menu (native look); account mode only. Core: Calendars menu > Folevi Calendar Feed… (CalendarFeedSheet).
 - [x] `CAL-008` **Month grid**: weekday header (VoiceOver full names), 6 weeks by 7, day numbers (today style, other-month dim), selected cell style, task chips… Core: CalendarScreen month grid (6x7, today, dimmed days, chips, +N).
 - [x] `CAL-009` **Select a day**: click a cell; VoiceOver names full date, today, task and event counts. Core: click selects; VoiceOver reads the cell.
-- [ ] `CAL-010` **Drop a task on a day**: reschedules (keeps time) with highlight while targeted; finds the task in range, unscheduled or overdue lists. Core: no task drop.
-- [~] `CAL-011` **Month task chip**: accent-soft when open, struck when done; click edits; draggable. Core: task chips shown; no click to edit or drag.
-- [~] `CAL-012` **Event chip / row / block**: click opens the read-only event popover. Core: events listed in the day aside; no popover.
-- [~] `CAL-013` **Event popover**: calendar colour and name, title ("Untitled event"), when, location with pin, scrolling selectable description, footnote "From a… Core: aside shows title, time, location, calendar; no description or footnote.
-- [ ] `CAL-014` **Arrow keys**: Left/Right one day, Up/Down one week; month or week follows the selection. Core: no arrow keys.
+- [x] `CAL-010` **Drop a task on a day**: reschedules (keeps time) with highlight while targeted; finds the task in range, unscheduled or overdue lists. Core: closed after the grading (see "Since this grading").
+- [x] `CAL-011` **Month task chip**: accent-soft when open, struck when done; click edits; draggable. Core: closed after the grading (see "Since this grading").
+- [x] `CAL-012` **Event chip / row / block**: click opens the read-only event popover. Core: closed after the grading (see "Since this grading").
+- [x] `CAL-013` **Event popover**: calendar colour and name, title ("Untitled event"), when, location with pin, scrolling selectable description, footnote "From a… Core: closed after the grading (see "Since this grading").
+- [x] `CAL-014` **Arrow keys**: Left/Right one day, Up/Down one week; month or week follows the selection. Core: closed after the grading (see "Since this grading").
 - [x] `CAL-015` **Day aside (Month)**: selected day's long date, its tasks (empty "No tasks due / Drag a task onto this day to schedule it."), Events list, hint "Drag… Core: CalendarScreen day aside (tasks and events).
-- [ ] `CAL-016` **Unscheduled tasks**: open undated tasks (first 8), each with "Schedule for today" / "Schedule for MMM d"; empty "Nothing unscheduled / Every open task… Core: no unscheduled tasks (tasks.unscheduled).
-- [ ] `CAL-017` **Week header**: day name and number per column, today number in a pill. Core: no week layout.
-- [ ] `CAL-018` **All-day row**: untimed tasks and all-day events per day; dropping here keeps the date and clears the time. Core: no week layout.
-- [ ] `CAL-019` **Hour grid**: 52 pt hours, 12/24-hour labels per locale, today column tint, current-time line and clock label (updates every 60 s), opens an… Core: no week layout.
-- [ ] `CAL-020` **Timed blocks with overlap layout**: tasks as 30-minute blocks, events by their span, side by side when overlapping; click task edits, click event shows popover… Core: no week layout.
-- [ ] `CAL-021` **Drop to a half-hour slot**: dashed accent preview under the pointer, sets date and time. Core: no week layout.
-- [ ] `CAL-022` **Week hint**: "Drag a task to a time to set it, or to the all-day row to keep just the date. Select a task to edit it."; Unscheduled under the… Core: no week layout.
-- [ ] `CAL-023` **Agenda**: Overdue section (danger heading), next 31 days that have items plus today ("Today" label), "Nothing due.", tasks and events per… Core: no agenda layout.
-- [ ] `CAL-024` **Reschedule toast with Undo**: "Moved to Oct 30[, 09:00]", Undo restores date and time. Core: no reschedule by drag or its Undo toast.
+- [x] `CAL-016` **Unscheduled tasks**: open undated tasks (first 8), each with "Schedule for today" / "Schedule for MMM d"; empty "Nothing unscheduled / Every open task… Core: closed after the grading (see "Since this grading").
+- [x] `CAL-017` **Week header**: day name and number per column, today number in a pill. Core: closed after the grading (see "Since this grading").
+- [x] `CAL-018` **All-day row**: untimed tasks and all-day events per day; dropping here keeps the date and clears the time. Core: closed after the grading (see "Since this grading").
+- [x] `CAL-019` **Hour grid**: 52 pt hours, 12/24-hour labels per locale, today column tint, current-time line and clock label (updates every 60 s), opens an… Core: closed after the grading (see "Since this grading").
+- [x] `CAL-020` **Timed blocks with overlap layout**: tasks as 30-minute blocks, events by their span, side by side when overlapping; click task edits, click event shows popover… Core: closed after the grading (see "Since this grading").
+- [x] `CAL-021` **Drop to a half-hour slot**: dashed accent preview under the pointer, sets date and time. Core: closed after the grading (see "Since this grading").
+- [x] `CAL-022` **Week hint**: "Drag a task to a time to set it, or to the all-day row to keep just the date. Select a task to edit it."; Unscheduled under the… Core: closed after the grading (see "Since this grading").
+- [x] `CAL-023` **Agenda**: Overdue section (danger heading), next 31 days that have items plus today ("Today" label), "Nothing due.", tasks and events per… Core: closed after the grading (see "Since this grading").
+- [x] `CAL-024` **Reschedule toast with Undo**: "Moved to Oct 30[, 09:00]", Undo restores date and time. Core: closed after the grading (see "Since this grading").
 - [x] `CAL-025` **Data range follows layout**: tasks re-watched when the shown days change; completed included; events kept on the same days by CalendarModel. Core: CalendarScreen re-binds tasks.range and calendars.events on paging.
-- [~] `CAL-026` **Calendars popover**: "Calendars you subscribe to by link show beside your tasks. They're read-only here. Turn one off to hide its events.", the list… Core: Calendars menu and Subscribe sheet; no explainer.
-- [~] `CAL-027` **Subscription row**: colour dot, name (muted when hidden), host and "Loading…" / "Updated <relative>", error banner, Show switch (flips at once… Core: Show/Hide per calendar; no host, updated time or error banner.
-- [~] `CAL-028` **Edit a subscription**: Edit / Close, name field, colour picker (Cocoa, Moss, Marigold, Plum, Coral, Gray), Save, Refresh, Remove then confirm "Remove… Core: Refresh and Remove (no confirm); no rename or colour.
+- [x] `CAL-026` **Calendars popover**: "Calendars you subscribe to by link show beside your tasks. They're read-only here. Turn one off to hide its events.", the list… Core: closed after the grading (see "Since this grading").
+- [x] `CAL-027` **Subscription row**: colour dot, name (muted when hidden), host and "Loading…" / "Updated <relative>", error banner, Show switch (flips at once… Core: closed after the grading (see "Since this grading").
+- [x] `CAL-028` **Edit a subscription**: Edit / Close, name field, colour picker (Cocoa, Moss, Marigold, Plum, Coral, Gray), Save, Refresh, Remove then confirm "Remove… Core: closed after the grading (see "Since this grading").
 - [x] `CAL-029` **Add calendar**: URL ("https://… or webcal://…"), optional name, colour (cycles by count), Add on Return; cap message at 20 calendars. Core: `Views/Screens/PlannerScreens.swift` AddCalendarSheet (calendar.add).
 - [~] `CAL-030` **Tasks feed dialog "Your tasks in your calendar"**: switch "Workspace tasks assigned to you" (Personal always in), Make a link / Make a new link, the link shown once with Copy and… Core: `Views/Screens/PlannerScreens.swift` CalendarFeedSheet (calendar.feed, feedCreate, feedRevoke); no workspace choice, setup words or feedWorkspaces.
 - [x] `CAL-031` **Menu: Go > Calendar ⌥⌘C**. Core: Go > Calendar (⌃⌘K, not ⌥⌘C).
 - [n/a] `CAL-032` **Debug hook**: notification `folevi.calendar.layout` switches layout. Why: Debug harness.
-- [ ] `CAL-033` **Gap on Mac**: no ⌘T / ⌘Left / ⌘Right, no "new task on this day" (Quick Add's `due:` parameter exists but nothing passes it). Core: the same gap: no new task on a day, no calendar keys.
+- [x] `CAL-033` **Gap on Mac**: no ⌘T / ⌘Left / ⌘Right, no "new task on this day" (Quick Add's `due:` parameter exists but nothing passes it). Core: closed after the grading (see "Since this grading").
 - [n/a] `CAL-034` **iPhone only: CalendarScreen**: Agenda / Three days / Month picker, Previous / Today / Next, ⌘T, ⌘Left, ⌘Right, ⌘N new task on the selected day, pull to refresh… Why: iPhone only.
 - [n/a] `CAL-035` **iPhone only: swipe actions**: Done / Reopen, Date, Next day. Why: iPhone only.
 - [n/a] `CAL-036` **iPhone only: CalendarsSheet**: rename alert, Colour menu, Refresh now, Remove (confirm and swipe). Why: iPhone only.

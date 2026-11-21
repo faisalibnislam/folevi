@@ -15,7 +15,37 @@ struct TasksScreen: View {
     @State private var tasks = Live<Views.TasksList>()
     @State private var draft = ""
     @State private var parsed: TaskParseValue?
+    @State private var filter = ""
     @FocusState private var adding: Bool
+
+    /// The groups with only the tasks whose title or page matches the filter.
+    private func filtered(_ v: TasksValue) -> [TaskGroup] {
+        let q = filter.trimmingCharacters(in: .whitespaces)
+        guard !q.isEmpty else { return v.groups }
+        return v.groups.compactMap { g in
+            let t = g.tasks.filter { $0.title.localizedCaseInsensitiveContains(q) || $0.noteTitle.localizedCaseInsensitiveContains(q) }
+            return t.isEmpty ? nil : TaskGroup(id: g.id, kind: g.kind, title: g.title, icon: g.icon, tasks: t)
+        }
+    }
+
+    private var openCount: Int { (tasks.value?.groups ?? []).flatMap(\.tasks).filter { $0.status != "done" && $0.status != "canceled" && $0.completedAt == nil }.count }
+
+    private var facts: String {
+        guard let v = tasks.value else { return "" }
+        if view == .completed { let n = v.groups.flatMap(\.tasks).count; return "\(view.title) · \(n) done" }
+        return "\(view.title) · \(openCount) open"
+    }
+
+    private var emptyText: (String, String) {
+        switch view {
+        case .inbox: ("No Undated Tasks", "Tasks without a due date land here.")
+        case .today: ("Nothing Due Today", "Enjoy the quiet.")
+        case .upcoming: ("Nothing Coming Up", "Tasks with a date in the next weeks show up here.")
+        case .all: ("No Tasks", "Type a task above, or add a to-do line in any note.")
+        case .completed: ("Nothing Completed Yet", "Tasks you finish show up here.")
+        case .mine: ("Nothing Assigned to You", "Tasks someone gives you in a workspace show up here.")
+        }
+    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -33,10 +63,12 @@ struct TasksScreen: View {
 
             if let value = tasks.value {
                 if value.groups.allSatisfy(\.tasks.isEmpty) {
-                    EmptyScreen(symbol: view == .completed ? "checkmark.circle" : "checklist", title: view == .completed ? "Nothing Completed Yet" : "No Tasks", message: view == .today ? "Tasks due today and overdue show up here." : "Type a task above, or add a to-do line in any note.")
+                    EmptyScreen(symbol: view == .completed ? "checkmark.circle" : "checklist", title: emptyText.0, message: emptyText.1)
+                } else if filtered(value).isEmpty {
+                    EmptyScreen(symbol: "magnifyingglass", title: "No Tasks Match That Filter", message: "Nothing here matches “\(filter)”.")
                 } else {
                     List {
-                        ForEach(value.groups, id: \.id) { group in
+                        ForEach(filtered(value), id: \.id) { group in
                             Section {
                                 ForEach(group.tasks, id: \.id) { task in
                                     TaskLine(task: task, window: window, showNote: group.kind != .note)
@@ -52,7 +84,14 @@ struct TasksScreen: View {
                     .listStyle(.inset)
                 }
             } else {
-                LoadingScreen()
+                SkeletonRows()
+            }
+        }
+        .searchable(text: $filter, placement: .toolbar, prompt: "Filter by Task or Page")
+        .navigationSubtitle(facts)
+        .toolbar {
+            ToolbarItem(placement: .secondaryAction) {
+                Button { window.quickAddShown = true } label: { Label("Add Task", systemImage: "plus") }.help("Add Task (⌘N)")
             }
         }
         .task(id: view) { tasks.bind(app.client, Views.TasksList(TasksListArgs(space: nil, view: TaskViewName(rawValue: view.rawValue) ?? .today))) }
@@ -134,14 +173,15 @@ struct TaskLine: View {
     @State private var editingDue = false
     @State private var editing = false
     @State private var due = Date()
+    @State private var hovering = false
+    @State private var moving = false
 
     private var done: Bool { task.status == "done" || task.completedAt != nil }
+    private var canceled: Bool { task.status == "canceled" }
 
     var body: some View {
         HStack(alignment: .firstTextBaseline, spacing: 10) {
-            Button {
-                app.perform { _ = try await $0.command(Commands.TaskUpdate(update(checked: !done))) }
-            } label: {
+            Button { toggle() } label: {
                 Image(systemName: done ? "checkmark.circle.fill" : "circle")
                     .font(.title3)
                     .foregroundStyle(done ? Color.foleviInk : priorityColor)
@@ -150,9 +190,12 @@ struct TaskLine: View {
             .accessibilityLabel(done ? "Mark as not done" : "Mark as done")
 
             VStack(alignment: .leading, spacing: 2) {
-                Text(task.title)
-                    .strikethrough(done)
-                    .foregroundStyle(done ? .secondary : .primary)
+                HStack(spacing: 6) {
+                    Text(task.title.nonEmpty ?? "Untitled task")
+                        .strikethrough(done || canceled)
+                        .foregroundStyle(done || canceled ? .secondary : .primary)
+                    if canceled { Text("Canceled").font(.caption).foregroundStyle(.secondary) }
+                }
                 HStack(spacing: 10) {
                     if let d = task.dueDate {
                         Label(dueText(d), systemImage: "calendar").foregroundStyle(task.overdue ? .red : .secondary)
@@ -170,10 +213,20 @@ struct TaskLine: View {
                 .font(.caption)
             }
             Spacer()
+            if hovering {
+                Button { editing = true } label: { Image(systemName: "pencil") }
+                    .buttonStyle(.borderless).help("Edit Task").accessibilityLabel("Edit Task")
+            }
         }
         .padding(.vertical, 2)
+        .contentShape(Rectangle())
+        .onHover { hovering = $0 }
+        .draggable(TaskDrag(id: task.id, due: task.dueDate, time: task.dueTime))
         .contextMenu {
+            Button(canceled ? "Reopen" : done ? "Mark as Not Done" : "Mark as Done") { toggle() }
             Button("Edit Task…") { editing = true }
+            Button("Move To…") { moving = true }
+            Divider()
             Button("Open Note") { window.go(.note(task.noteId)) }
             Divider()
             Button("Due Today") { setDue(Date()) }
@@ -196,6 +249,15 @@ struct TaskLine: View {
             Button("Cancel Task") { send { $0.canceled = true } }
         }
         .sheet(isPresented: $editing) { TaskEditSheet(task: task) }
+        .sheet(isPresented: $moving) {
+            NotePickerSheet(title: "Move “\(task.title)” to the end of another page") { id in
+                guard id != task.noteId else { return }
+                app.perform { client in
+                    _ = try await client.command(Commands.TaskMoveToNote(TaskMoveArgs(id: task.id, noteId: id)))
+                    app.toast("Task moved")
+                }
+            }
+        }
         .onTapGesture(count: 2) { editing = true }
         .popover(isPresented: $editingDue) {
             VStack {
@@ -203,6 +265,24 @@ struct TaskLine: View {
                 HStack { Spacer(); Button("Set") { setDue(due); editingDue = false }.keyboardShortcut(.defaultAction) }
             }
             .padding()
+        }
+    }
+
+    /// Done, not done, or reopened, with Undo.
+    private func toggle() {
+        let reopen = done || canceled
+        var a = update(checked: !reopen)
+        if canceled { a.canceled = false }
+        let args = a
+        app.perform { client in
+            _ = try await client.command(Commands.TaskUpdate(args))
+            app.toast(reopen ? "Task reopened" : "Task completed", action: "Undo") {
+                var undo = TaskUpdateArgs(id: task.id)
+                undo.checked = reopen
+                if canceled { undo.canceled = true }
+                let u = undo
+                app.perform { _ = try await $0.command(Commands.TaskUpdate(u)) }
+            }
         }
     }
 
@@ -240,6 +320,10 @@ struct TaskLine: View {
 
 // MARK: Calendar
 
+/// The calendar: Month, Week (an all-day row over an hour grid) and Agenda (overdue, then the next 31 days), tasks
+/// beside events from calendars you subscribe to. Drag a task to a day, a half hour or the all-day row (Undo puts
+/// it back); the arrow keys move a day or a week; the aside shows the day, a field for a new task on it, and the
+/// open tasks with no date.
 struct CalendarScreen: View {
     let window: WindowModel
     let month: String?
@@ -247,12 +331,19 @@ struct CalendarScreen: View {
     @State private var anchor = Date()
     @State private var events = Live<Views.CalendarsEvents>()
     @State private var tasks = Live<Views.TasksRange>()
+    @State private var unscheduled = Live<Views.TasksUnscheduled>()
     @State private var calendars = Live<Views.CalendarsList>()
     @State private var selected = Date()
     @State private var adding = false
     @State private var feedShown = false
+    @State private var calendarsShown = false
+    @State private var editingTask: TaskRow?
+    @State private var newTask = ""
+    @State private var now = Date()
     @AppStorage("core.calendar.layout") private var layout = "month"
+    @FocusState private var focused: Bool
 
+    static let hourHeight: CGFloat = 52
     private var cal: Calendar { Calendar.current }
 
     private var monthStart: Date { cal.date(from: cal.dateComponents([.year, .month], from: anchor))! }
@@ -262,96 +353,169 @@ struct CalendarScreen: View {
         return cal.date(byAdding: .day, value: -back, to: monthStart)!
     }
     private var days: [Date] { (0..<42).map { cal.date(byAdding: .day, value: $0, to: gridStart)! } }
+    private var weekStart: Date { cal.dateInterval(of: .weekOfYear, for: anchor)?.start ?? cal.startOfDay(for: anchor) }
+    private var weekDays: [Date] { (0..<7).map { cal.date(byAdding: .day, value: $0, to: weekStart)! } }
+
+    /// The span the views watch for the layout shown.
+    private var range: (Date, Date) {
+        switch layout {
+        case "week": return (weekStart, cal.date(byAdding: .day, value: 7, to: weekStart)!)
+        case "agenda":
+            let today = cal.startOfDay(for: Date())
+            return (cal.date(byAdding: .day, value: -120, to: today)!, cal.date(byAdding: .day, value: 32, to: today)!)
+        default: return (gridStart, cal.date(byAdding: .day, value: 42, to: gridStart)!)
+        }
+    }
 
     var body: some View {
         HSplitView {
             VStack(spacing: 0) {
                 header
-                switch layout {
-                case "week": week
-                case "agenda": agenda
-                default:
-                    weekdays
-                    LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 0), count: 7), spacing: 0) {
-                        ForEach(days, id: \.self) { day in dayCell(day) }
+                Group {
+                    switch layout {
+                    case "week": week
+                    case "agenda": agenda
+                    default: monthGrid
                     }
-                    .padding(.horizontal, 12)
-                    Spacer(minLength: 0)
                 }
+                .transition(.opacity)
             }
-            .frame(minWidth: 520)
-            dayDetail.frame(minWidth: 240, idealWidth: 300, maxWidth: 380)
+            .frame(minWidth: 560)
+            .focusable()
+            .focusEffectDisabled()
+            .focused($focused)
+            .onKeyPress(.leftArrow) { step(days: -1); return .handled }
+            .onKeyPress(.rightArrow) { step(days: 1); return .handled }
+            .onKeyPress(.upArrow) { step(days: -7); return .handled }
+            .onKeyPress(.downArrow) { step(days: 7); return .handled }
+            dayDetail.frame(minWidth: 250, idealWidth: 300, maxWidth: 380)
         }
+        .animation(.easeOut(duration: 0.18), value: layout)
         .onAppear {
-            if let month, let d = try? Date(month + "-01", strategy: CoreDates.dayFormat) { anchor = d }
+            if let month, let d = try? Date(month + "-01", strategy: CoreDates.dayFormat) { anchor = d; selected = d }
             bind()
+            focused = true
         }
         .onChange(of: anchor) { bind() }
+        .onChange(of: layout) { bind() }
+        .task {
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(60))
+                now = Date()
+            }
+        }
         .sheet(isPresented: $adding) { AddCalendarSheet() }
         .sheet(isPresented: $feedShown) { CalendarFeedSheet() }
+        .sheet(item: $editingTask) { TaskEditSheet(task: $0) }
         .toolbar {
-            ToolbarItemGroup(placement: .secondaryAction) {
-                Menu {
-                    ForEach(calendars.value?.calendars ?? [], id: \.id) { c in
-                        Menu(c.name) {
-                            Button("Refresh") { app.perform { _ = try await $0.command(Commands.CalendarRefresh(CalendarIdArgs(id: c.id))) } }
-                            Button(c.visible ? "Hide" : "Show") { app.perform { _ = try await $0.command(Commands.CalendarUpdate(CalendarUpdateArgs(id: c.id, name: nil, color: nil, visible: !c.visible))) } }
-                            Button("Remove", role: .destructive) { app.perform { _ = try await $0.command(Commands.CalendarRemove(CalendarIdArgs(id: c.id))) } }
-                        }
-                    }
-                    Divider()
-                    Button("Subscribe to Calendar…") { adding = true }
-                    Divider()
-                    Button("Folevi Calendar Feed…") { feedShown = true }
-                } label: { Label("Calendars", systemImage: "calendar.badge.plus") }
+            ToolbarItem(placement: .secondaryAction) {
+                Button { calendarsShown = true } label: {
+                    Label("Calendars", systemImage: "calendar.badge.plus")
+                        .overlay(alignment: .topTrailing) { if hasError { Circle().fill(.red).frame(width: 7, height: 7).offset(x: 3, y: -2) } }
+                }
+                .help(hasError ? "Calendars (one isn't loading)" : "Calendars")
+                .popover(isPresented: $calendarsShown, arrowEdge: .bottom) {
+                    CalendarsPopover(calendars: calendars.value?.calendars ?? []) { adding = true } feed: { feedShown = true }
+                }
             }
         }
     }
 
+    private var hasError: Bool { (calendars.value?.calendars ?? []).contains { $0.lastError != nil } }
+
     private func bind() {
-        let from = gridStart, to = cal.date(byAdding: .day, value: 42, to: gridStart)!
-        events.bind(app.client, Views.CalendarsEvents(CalendarEventsArgs(from: Int(from.timeIntervalSince1970 * 1000), to: Int(to.timeIntervalSince1970 * 1000))))
+        let (from, to) = range
+        events.bind(app.client, Views.CalendarsEvents(CalendarEventsArgs(from: ms(from), to: ms(to))))
         tasks.bind(app.client, Views.TasksRange(TasksRangeArgs(space: nil, from: iso(from), to: iso(to), includeCompleted: true)))
+        unscheduled.bind(app.client, Views.TasksUnscheduled(SpaceArgs()))
         calendars.bind(app.client, Views.CalendarsList())
     }
 
+    private func ms(_ d: Date) -> Int { Int(d.timeIntervalSince1970 * 1000) }
     private func iso(_ d: Date) -> String { d.formatted(CoreDates.dayFormat) }
+
+    private func step(days n: Int) {
+        selected = cal.date(byAdding: .day, value: n, to: selected)!
+        switch layout {
+        case "week": if !weekDays.contains(where: { cal.isDate($0, inSameDayAs: selected) }) { anchor = selected }
+        case "month": if !cal.isDate(selected, equalTo: anchor, toGranularity: .month) { anchor = selected }
+        default: break
+        }
+    }
+
+    private func page(_ direction: Int) {
+        switch layout {
+        case "week": anchor = cal.date(byAdding: .weekOfYear, value: direction, to: anchor)!
+        case "agenda": break
+        default: anchor = cal.date(byAdding: .month, value: direction, to: anchor)!
+        }
+        selected = anchor
+    }
+
+    private var heading: String {
+        switch layout {
+        case "week":
+            let end = weekDays.last!
+            let sameYear = cal.isDate(weekStart, equalTo: end, toGranularity: .year)
+            let first = weekStart.formatted(.dateTime.month(.abbreviated).day())
+            let last = cal.isDate(weekStart, equalTo: end, toGranularity: .month) ? end.formatted(.dateTime.day()) : end.formatted(.dateTime.month(.abbreviated).day())
+            return "\(first) to \(last)" + (sameYear ? " " + end.formatted(.dateTime.year()) : ", " + end.formatted(.dateTime.year()))
+        case "agenda": return "Next 30 Days"
+        default: return anchor.formatted(.dateTime.month(.wide).year())
+        }
+    }
 
     private var header: some View {
         HStack {
-            Text(anchor.formatted(.dateTime.month(.wide).year())).font(CoreType.screenTitle(24))
-                .lineLimit(1).fixedSize()
+            Text(heading).font(CoreType.screenTitle(24)).lineLimit(1).minimumScaleFactor(0.8)
             Spacer()
-            Picker("Layout", selection: $layout) {
+            Picker("Calendar View", selection: $layout) {
                 Text("Month").tag("month"); Text("Week").tag("week"); Text("Agenda").tag("agenda")
             }
             .pickerStyle(.segmented).labelsHidden().fixedSize()
-            ControlGroup {
-                Button { anchor = cal.date(byAdding: layout == "month" ? .month : .weekOfYear, value: -1, to: anchor)! } label: { Image(systemName: "chevron.left") }.help("Previous")
-                Button("Today") { anchor = Date(); selected = Date() }
-                Button { anchor = cal.date(byAdding: layout == "month" ? .month : .weekOfYear, value: 1, to: anchor)! } label: { Image(systemName: "chevron.right") }.help("Next")
+            if layout != "agenda" {
+                ControlGroup {
+                    Button { page(-1) } label: { Image(systemName: "chevron.left") }.help(layout == "week" ? "Previous Week (⌘←)" : "Previous Month (⌘←)").keyboardShortcut(.leftArrow, modifiers: .command)
+                    Button("Today") { anchor = Date(); selected = Date() }
+                    Button { page(1) } label: { Image(systemName: "chevron.right") }.help(layout == "week" ? "Next Week (⌘→)" : "Next Month (⌘→)").keyboardShortcut(.rightArrow, modifiers: .command)
+                }
+                .fixedSize()
             }
-            .frame(width: 160)
         }
         .padding(.horizontal, 20)
         .padding(.vertical, 12)
     }
 
-    private var weekdays: some View {
-        HStack(spacing: 0) {
-            ForEach(0..<7, id: \.self) { i in
-                Text(cal.shortWeekdaySymbols[(i + cal.firstWeekday - 1) % 7]).font(.caption.weight(.medium)).foregroundStyle(.secondary).frame(maxWidth: .infinity)
-            }
-        }
-        .padding(.horizontal, 12)
-        .padding(.bottom, 4)
-    }
+    // MARK: items
+
+    private var allTasks: [TaskRow] { tasks.value?.tasks ?? [] }
 
     private func items(on day: Date) -> (events: [CalendarEvent], tasks: [TaskRow]) {
         let key = iso(day)
         let start = cal.startOfDay(for: day), end = cal.date(byAdding: .day, value: 1, to: start)!
-        let s = Int(start.timeIntervalSince1970 * 1000), e = Int(end.timeIntervalSince1970 * 1000)
-        return ((events.value?.events ?? []).filter { $0.start < e && $0.end > s }, (tasks.value?.tasks ?? []).filter { $0.dueDate == key })
+        let s = ms(start), e = ms(end)
+        return ((events.value?.events ?? []).filter { $0.start < e && $0.end > s }, allTasks.filter { $0.dueDate == key })
+    }
+
+    private func isDone(_ t: TaskRow) -> Bool { t.status == "done" || t.completedAt != nil }
+
+    // MARK: month
+
+    private var monthGrid: some View {
+        VStack(spacing: 0) {
+            HStack(spacing: 0) {
+                ForEach(0..<7, id: \.self) { i in
+                    Text(cal.shortWeekdaySymbols[(i + cal.firstWeekday - 1) % 7]).font(.caption.weight(.medium)).foregroundStyle(.secondary).frame(maxWidth: .infinity)
+                }
+            }
+            .padding(.horizontal, 12)
+            .padding(.bottom, 4)
+            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 0), count: 7), spacing: 0) {
+                ForEach(days, id: \.self) { day in dayCell(day) }
+            }
+            .padding(.horizontal, 12)
+            Spacer(minLength: 0)
+        }
     }
 
     private func dayCell(_ day: Date) -> some View {
@@ -365,14 +529,8 @@ struct CalendarScreen: View {
                 .foregroundStyle(today ? Color.foleviOnInk : inMonth ? Color.primary : Color.secondary)
                 .frame(width: 24, height: 24)
                 .background { if today { Circle().fill(Color.foleviInk) } }
-            ForEach(it.events.prefix(2), id: \.id) { e in
-                Text(e.title).font(.caption2).lineLimit(1).padding(.horizontal, 4).frame(maxWidth: .infinity, alignment: .leading)
-                    .background(Color(hex: e.color).opacity(0.2), in: .rect(cornerRadius: 3))
-            }
-            ForEach(it.tasks.prefix(2), id: \.id) { t in
-                Label(t.title, systemImage: t.completedAt != nil ? "checkmark.circle.fill" : "circle").font(.caption2).lineLimit(1).foregroundStyle(.secondary)
-                    .draggable(TaskDrag(id: t.id, due: t.dueDate))
-            }
+            ForEach(it.events.prefix(2), id: \.id) { e in EventChip(event: e) }
+            ForEach(it.tasks.prefix(2), id: \.id) { t in taskChip(t) }
             if it.events.count + it.tasks.count > 4 { Text("+\(it.events.count + it.tasks.count - 4)").font(.caption2).foregroundStyle(.tertiary) }
             Spacer(minLength: 0)
         }
@@ -382,25 +540,279 @@ struct CalendarScreen: View {
         .overlay(alignment: .top) { Divider() }
         .opacity(inMonth ? 1 : 0.55)
         .contentShape(Rectangle())
-        .onTapGesture { selected = day }
-        .dropDestination(for: TaskDrag.self) { items, _ in reschedule(items, to: day) }
+        .onTapGesture { selected = day; focused = true }
+        .dropDestination(for: TaskDrag.self) { items, _ in reschedule(items, to: day, time: .keep) } isTargeted: { _ in }
         .accessibilityElement(children: .combine)
         .accessibilityAddTraits(picked ? .isSelected : [])
     }
 
-    /// Tasks dropped on a day are due that day (Undo puts them back).
-    private func reschedule(_ items: [TaskDrag], to day: Date) -> Bool {
+    private func taskChip(_ t: TaskRow) -> some View {
+        Button { editingTask = t } label: {
+            Label(t.title, systemImage: isDone(t) ? "checkmark.circle.fill" : "circle")
+                .font(.caption2).lineLimit(1).strikethrough(isDone(t))
+                .padding(.horizontal, 4)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(isDone(t) ? Color.clear : Color.foleviInk.opacity(0.08), in: .rect(cornerRadius: 3))
+        }
+        .buttonStyle(.plain)
+        .foregroundStyle(isDone(t) ? .secondary : .primary)
+        .draggable(TaskDrag(id: t.id, due: t.dueDate, time: t.dueTime))
+        .help("Edit \(t.title)")
+    }
+
+    // MARK: week
+
+    private var week: some View {
+        VStack(spacing: 0) {
+            HStack(spacing: 0) {
+                Color.clear.frame(width: 52, height: 1)
+                ForEach(weekDays, id: \.self) { day in
+                    VStack(spacing: 2) {
+                        Text(day.formatted(.dateTime.weekday(.abbreviated))).font(.caption).foregroundStyle(.secondary)
+                        Text(day.formatted(.dateTime.day()))
+                            .font(.callout.weight(.semibold))
+                            .foregroundStyle(cal.isDateInToday(day) ? Color.foleviOnInk : .primary)
+                            .padding(.horizontal, 7).padding(.vertical, 1)
+                            .background { if cal.isDateInToday(day) { Capsule().fill(Color.foleviInk) } }
+                    }
+                    .frame(maxWidth: .infinity)
+                    .contentShape(Rectangle())
+                    .onTapGesture { selected = day }
+                }
+            }
+            .padding(.bottom, 6)
+            // All-day: untimed tasks and all-day events; a task dropped here keeps its date and loses its time.
+            HStack(alignment: .top, spacing: 0) {
+                Text("all-day").font(.caption2).foregroundStyle(.secondary).frame(width: 52, alignment: .trailing).padding(.trailing, 6)
+                ForEach(weekDays, id: \.self) { day in
+                    let it = items(on: day)
+                    VStack(alignment: .leading, spacing: 2) {
+                        ForEach(it.events.filter(\.allDay), id: \.id) { e in EventChip(event: e) }
+                        ForEach(it.tasks.filter { $0.dueTime == nil }, id: \.id) { t in taskChip(t) }
+                    }
+                    .frame(maxWidth: .infinity, minHeight: 28, alignment: .topLeading)
+                    .padding(2)
+                    .overlay(alignment: .leading) { Divider() }
+                    .contentShape(Rectangle())
+                    .dropDestination(for: TaskDrag.self) { items, _ in reschedule(items, to: day, time: .clear) }
+                }
+            }
+            Divider()
+            ScrollViewReader { proxy in
+                ScrollView {
+                    HStack(alignment: .top, spacing: 0) {
+                        VStack(spacing: 0) {
+                            ForEach(0..<24, id: \.self) { h in
+                                Text(hourLabel(h)).font(.caption2).foregroundStyle(.secondary)
+                                    .frame(width: 46, height: Self.hourHeight, alignment: .topTrailing)
+                                    .padding(.trailing, 6)
+                                    .id("h\(h)")
+                            }
+                        }
+                        ForEach(weekDays, id: \.self) { day in hourColumn(day) }
+                    }
+                }
+                .task {
+                    // After the first layout: the working day in view.
+                    try? await Task.sleep(for: .milliseconds(60))
+                    proxy.scrollTo("h8", anchor: .top)
+                }
+            }
+            Text("Drag a task to a time to set it, or to the all-day row to keep just the date. Click a task to edit it.")
+                .font(.caption).foregroundStyle(.secondary).padding(8)
+        }
+        .padding(.horizontal, 12)
+    }
+
+    private func hourLabel(_ h: Int) -> String {
+        cal.date(bySettingHour: h, minute: 0, second: 0, of: Date())!.formatted(.dateTime.hour())
+    }
+
+    private struct Block: Identifiable { let id: String; let start: Double; let end: Double; let task: TaskRow?; let event: CalendarEvent?; var column = 0; var columns = 1 }
+
+    /// Timed tasks (half an hour each) and events by their span, side by side where they overlap.
+    private func blocks(_ day: Date) -> [Block] {
+        let it = items(on: day)
+        let dayStart = cal.startOfDay(for: day).timeIntervalSince1970
+        var out: [Block] = []
+        for e in it.events where !e.allDay {
+            let s = max(0, Double(e.start) / 1000 - dayStart) / 3600, en = min(24, Double(e.end) / 1000 - dayStart) / 3600
+            out.append(Block(id: "e" + e.id, start: s, end: max(en, s + 0.25), task: nil, event: e))
+        }
+        for t in it.tasks {
+            guard let time = t.dueTime, let m = minutes(time) else { continue }
+            let s = Double(m) / 60
+            out.append(Block(id: "t" + t.id, start: s, end: s + 0.5, task: t, event: nil))
+        }
+        out.sort { $0.start < $1.start }
+        // Greedy columns within each cluster of overlapping blocks.
+        var i = 0
+        while i < out.count {
+            var j = i, clusterEnd = out[i].end
+            while j + 1 < out.count, out[j + 1].start < clusterEnd { j += 1; clusterEnd = max(clusterEnd, out[j].end) }
+            var colEnds: [Double] = []
+            for k in i...j {
+                if let c = colEnds.firstIndex(where: { $0 <= out[k].start }) { out[k].column = c; colEnds[c] = out[k].end } else { out[k].column = colEnds.count; colEnds.append(out[k].end) }
+            }
+            for k in i...j { out[k].columns = colEnds.count }
+            i = j + 1
+        }
+        return out
+    }
+
+    private func minutes(_ hhmm: String) -> Int? {
+        let p = hhmm.split(separator: ":").compactMap { Int($0) }
+        guard p.count >= 2 else { return nil }
+        return p[0] * 60 + p[1]
+    }
+
+    private func hourColumn(_ day: Date) -> some View {
+        let today = cal.isDateInToday(day)
+        return GeometryReader { g in
+            ZStack(alignment: .topLeading) {
+                VStack(spacing: 0) {
+                    ForEach(0..<48, id: \.self) { slot in
+                        Rectangle().fill(Color.clear)
+                            .frame(height: Self.hourHeight / 2)
+                            .overlay(alignment: .top) { if slot % 2 == 0 { Divider() } }
+                            .contentShape(Rectangle())
+                            .dropDestination(for: TaskDrag.self) { items, _ in
+                                reschedule(items, to: day, time: .set(String(format: "%02d:%02d", slot / 2, (slot % 2) * 30)))
+                            } isTargeted: { _ in }
+                    }
+                }
+                ForEach(blocks(day)) { b in
+                    let w = (g.size.width - 4) / CGFloat(b.columns)
+                    blockView(b)
+                        .frame(width: w - 2, height: max(18, CGFloat(b.end - b.start) * Self.hourHeight - 2))
+                        .offset(x: 2 + CGFloat(b.column) * w, y: CGFloat(b.start) * Self.hourHeight + 1)
+                }
+                if today {
+                    let comps = cal.dateComponents([.hour, .minute], from: now)
+                    let y = (CGFloat(comps.hour ?? 0) + CGFloat(comps.minute ?? 0) / 60) * Self.hourHeight
+                    Rectangle().fill(Color.red).frame(height: 1.5).offset(y: y)
+                    Text(now.formatted(date: .omitted, time: .shortened)).font(.system(size: 9, weight: .semibold)).foregroundStyle(.red)
+                        .padding(.horizontal, 3).background(.background, in: .capsule).offset(x: 2, y: y - 6)
+                }
+            }
+        }
+        .frame(height: Self.hourHeight * 24)
+        .frame(maxWidth: .infinity)
+        .background(today ? Color.foleviInk.opacity(0.03) : .clear)
+        .overlay(alignment: .leading) { Divider() }
+    }
+
+    @ViewBuilder private func blockView(_ b: Block) -> some View {
+        if let t = b.task {
+            Button { editingTask = t } label: {
+                Text(t.title).font(.caption2).strikethrough(isDone(t)).lineLimit(2)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                    .padding(3)
+                    .background(Color.foleviInk.opacity(isDone(t) ? 0.05 : 0.12), in: .rect(cornerRadius: 4))
+            }
+            .buttonStyle(.plain)
+            .draggable(TaskDrag(id: t.id, due: t.dueDate, time: t.dueTime))
+        } else if let e = b.event {
+            EventChip(event: e, block: true)
+        }
+    }
+
+    // MARK: agenda
+
+    private var agenda: some View {
+        let today = cal.startOfDay(for: Date())
+        let overdue = allTasks.filter { t in !isDone(t) && (t.dueDate.flatMap { try? Date($0, strategy: CoreDates.dayFormat) }.map { $0 < today } ?? false) }
+        let span = (0..<31).map { cal.date(byAdding: .day, value: $0, to: today)! }
+        return List {
+            if !overdue.isEmpty {
+                Section {
+                    ForEach(overdue, id: \.id) { t in TaskLine(task: t, window: window) }
+                } header: {
+                    Text("Overdue").foregroundStyle(.red)
+                }
+            }
+            ForEach(span, id: \.self) { day in
+                let it = items(on: day)
+                let isToday = cal.isDateInToday(day)
+                if isToday || !it.events.isEmpty || !it.tasks.isEmpty {
+                    Section(isToday ? "Today · " + day.formatted(.dateTime.weekday(.wide).day().month(.wide)) : day.formatted(.dateTime.weekday(.wide).day().month(.wide))) {
+                        if it.events.isEmpty && it.tasks.isEmpty { Text("Nothing due.").foregroundStyle(.secondary) }
+                        ForEach(it.events, id: \.id) { e in EventChip(event: e, row: true) }
+                        ForEach(it.tasks, id: \.id) { t in TaskLine(task: t, window: window) }
+                    }
+                    .dropDestination(for: TaskDrag.self) { items, _ in reschedule(items, to: day, time: .keep) }
+                }
+            }
+        }
+        .listStyle(.inset)
+    }
+
+    // MARK: the day
+
+    private var dayDetail: some View {
+        let it = items(on: selected)
+        let open = (unscheduled.value?.tasks ?? []).filter { !isDone($0) }
+        return List {
+            Section(selected.formatted(.dateTime.weekday(.wide).day().month(.wide))) {
+                HStack {
+                    Image(systemName: "plus.circle").foregroundStyle(.secondary)
+                    TextField("New task on \(selected.formatted(.dateTime.weekday(.abbreviated).day()))", text: $newTask)
+                        .textFieldStyle(.plain)
+                        .onSubmit(addTask)
+                }
+                if it.events.isEmpty && it.tasks.isEmpty { Text("Nothing on this day").foregroundStyle(.secondary) }
+                ForEach(it.events, id: \.id) { e in EventChip(event: e, row: true) }
+                ForEach(it.tasks, id: \.id) { t in TaskLine(task: t, window: window).draggable(TaskDrag(id: t.id, due: t.dueDate, time: t.dueTime)) }
+            }
+            Section("Unscheduled") {
+                if open.isEmpty { Text("Nothing unscheduled. Every open task has a date.").foregroundStyle(.secondary) }
+                ForEach(open.prefix(8), id: \.id) { t in
+                    VStack(alignment: .leading, spacing: 2) {
+                        TaskLine(task: t, window: window).draggable(TaskDrag(id: t.id, due: nil, time: nil))
+                        Button(cal.isDateInToday(selected) ? "Schedule for Today" : "Schedule for \(selected.formatted(.dateTime.month(.abbreviated).day()))") {
+                            _ = reschedule([TaskDrag(id: t.id, due: nil, time: nil)], to: selected, time: .keep)
+                        }
+                        .buttonStyle(.link).font(.caption).padding(.leading, 30)
+                    }
+                }
+            }
+        }
+        .listStyle(.sidebar)
+    }
+
+    private func addTask() {
+        let text = newTask.trimmingCharacters(in: .whitespaces)
+        guard !text.isEmpty else { return }
+        newTask = ""
+        let due = iso(selected)
+        app.perform { client in
+            let r = try await client.command(Commands.TaskCreate(TaskCreateArgs(text: text, space: nil, noteId: nil, dueDate: due, dueTime: nil, priority: nil, keepText: nil)))
+            app.toast("Task added to \(r.where)")
+        }
+    }
+
+    enum TimeChange { case keep, clear, set(String) }
+
+    /// Tasks dropped on a day (and maybe a time) are due then; Undo puts them back.
+    private func reschedule(_ items: [TaskDrag], to day: Date, time: TimeChange) -> Bool {
         let key = iso(day)
         for t in items {
             var a = TaskUpdateArgs(id: t.id)
             a.dueDate = .set(key)
+            var label = day.formatted(.dateTime.month(.abbreviated).day())
+            switch time {
+            case .keep: break
+            case .clear: a.dueTime = .clear
+            case .set(let hhmm): a.dueTime = .set(hhmm); label += ", " + hhmm
+            }
             let args = a
-            let before = t.due
+            let before = (t.due, t.time)
             app.perform { client in
                 _ = try await client.command(Commands.TaskUpdate(args))
-                app.toast("Moved to \(day.formatted(.dateTime.weekday(.wide).day().month()))", action: "Undo") {
+                app.toast("Moved to \(label)", action: "Undo") {
                     var undo = TaskUpdateArgs(id: t.id)
-                    undo.dueDate = before.map { .set($0) } ?? .clear
+                    undo.dueDate = before.0.map { .set($0) } ?? .clear
+                    undo.dueTime = before.1.map { .set($0) } ?? .clear
                     let u = undo
                     app.perform { _ = try await $0.command(Commands.TaskUpdate(u)) }
                 }
@@ -408,86 +820,145 @@ struct CalendarScreen: View {
         }
         return true
     }
+}
 
-    /// The anchor's week, a column a day: events with their times, then that day's tasks.
-    private var week: some View {
-        let start = cal.dateInterval(of: .weekOfYear, for: anchor)?.start ?? anchor
-        let weekDays = (0..<7).map { cal.date(byAdding: .day, value: $0, to: start)! }
-        return HStack(alignment: .top, spacing: 0) {
-            ForEach(weekDays, id: \.self) { day in
-                let it = items(on: day)
-                VStack(alignment: .leading, spacing: 6) {
-                    Text(day.formatted(.dateTime.weekday(.abbreviated).day()))
-                        .font(.callout.weight(cal.isDateInToday(day) ? .bold : .medium))
-                        .foregroundStyle(cal.isDateInToday(day) ? Color.foleviInk : .secondary)
-                    ForEach(it.events, id: \.id) { e in
-                        VStack(alignment: .leading, spacing: 1) {
-                            Text(e.allDay ? "All day" : Date(timeIntervalSince1970: Double(e.start) / 1000).formatted(date: .omitted, time: .shortened)).font(.caption2).foregroundStyle(.secondary)
-                            Text(e.title).font(.caption).lineLimit(3)
-                        }
-                        .padding(6).frame(maxWidth: .infinity, alignment: .leading)
-                        .background(Color(hex: e.color).opacity(0.18), in: .rect(cornerRadius: 6))
-                    }
-                    ForEach(it.tasks, id: \.id) { t in
-                        Label(t.title, systemImage: t.completedAt != nil ? "checkmark.circle.fill" : "circle").font(.caption).lineLimit(2)
-                            .draggable(TaskDrag(id: t.id, due: t.dueDate))
-                    }
-                    Spacer(minLength: 0)
+/// An event from a subscribed calendar: a chip, a block in the hour grid, or a row; click shows its details.
+struct EventChip: View {
+    let event: CalendarEvent
+    var block = false
+    var row = false
+    @State private var shown = false
+
+    var body: some View {
+        Button { shown = true } label: {
+            if row {
+                HStack {
+                    Circle().fill(Color(hex: event.color)).frame(width: 8, height: 8)
+                    Text(event.title.nonEmpty ?? "Untitled event")
+                    Spacer()
+                    Text(event.allDay ? "All day" : start.formatted(date: .omitted, time: .shortened)).foregroundStyle(.secondary)
                 }
-                .padding(8)
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-                .background(cal.isDate(day, inSameDayAs: selected) ? Color.foleviInk.opacity(0.06) : .clear)
-                .overlay(alignment: .leading) { Divider() }
                 .contentShape(Rectangle())
-                .onTapGesture { selected = day }
-                .dropDestination(for: TaskDrag.self) { items, _ in reschedule(items, to: day) }
+            } else {
+                Text(event.title.nonEmpty ?? "Untitled event").font(.caption2).lineLimit(block ? 3 : 1)
+                    .padding(.horizontal, 4).padding(.vertical, block ? 3 : 0)
+                    .frame(maxWidth: .infinity, maxHeight: block ? .infinity : nil, alignment: .topLeading)
+                    .background(Color(hex: event.color).opacity(0.22), in: .rect(cornerRadius: block ? 4 : 3))
             }
         }
-        .padding(.horizontal, 12)
+        .buttonStyle(.plain)
+        .popover(isPresented: $shown, arrowEdge: .trailing) { details }
     }
 
-    /// The next weeks as a list: each day with something on it.
-    private var agenda: some View {
-        let from = cal.startOfDay(for: anchor)
-        let span = (0..<42).map { cal.date(byAdding: .day, value: $0, to: from)! }
-        return List {
-            ForEach(span, id: \.self) { day in
-                let it = items(on: day)
-                if !it.events.isEmpty || !it.tasks.isEmpty {
-                    Section(day.formatted(.dateTime.weekday(.wide).day().month(.wide))) {
-                        ForEach(it.events, id: \.id) { e in
-                            HStack {
-                                Circle().fill(Color(hex: e.color)).frame(width: 8, height: 8)
-                                Text(e.title)
-                                Spacer()
-                                Text(e.allDay ? "All day" : Date(timeIntervalSince1970: Double(e.start) / 1000).formatted(date: .omitted, time: .shortened)).foregroundStyle(.secondary)
+    private var start: Date { Date(timeIntervalSince1970: Double(event.start) / 1000) }
+    private var end: Date { Date(timeIntervalSince1970: Double(event.end) / 1000) }
+
+    private var details: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 6) {
+                Circle().fill(Color(hex: event.color)).frame(width: 8, height: 8)
+                Text(event.calendarName).font(.caption).foregroundStyle(.secondary)
+            }
+            Text(event.title.nonEmpty ?? "Untitled event").font(.headline).textSelection(.enabled)
+            Text(event.allDay ? start.formatted(.dateTime.weekday(.wide).day().month(.wide)) + ", all day" : "\(start.formatted(date: .abbreviated, time: .shortened)) to \(end.formatted(date: .omitted, time: .shortened))")
+                .font(.callout)
+            if !event.location.isEmpty { Label(event.location, systemImage: "mappin.and.ellipse").font(.callout).textSelection(.enabled) }
+            if !event.description.isEmpty {
+                ScrollView { Text(event.description).font(.callout).textSelection(.enabled).frame(maxWidth: .infinity, alignment: .leading) }
+                    .frame(maxHeight: 180)
+            }
+            Text("From a calendar you subscribe to. Change it where it lives.").font(.caption).foregroundStyle(.tertiary)
+        }
+        .padding(14)
+        .frame(width: 300)
+    }
+}
+
+/// Calendars you subscribe to: show or hide each, rename, recolour, refresh, remove; subscribe to another; the
+/// Folevi feed.
+struct CalendarsPopover: View {
+    let calendars: [CalendarSubscription]
+    let subscribe: () -> Void
+    let feed: () -> Void
+    private var app: AppModel { .shared }
+    @State private var editing: String?
+    @State private var name = ""
+    @State private var color = ""
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Calendars you subscribe to by link show beside your tasks. They're read-only here. Turn one off to hide its events.")
+                .font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+            if calendars.isEmpty { Text("No calendars yet.").foregroundStyle(.secondary) }
+            ForEach(calendars, id: \.id) { c in
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack(spacing: 8) {
+                        Circle().fill(Color(hex: c.color)).frame(width: 10, height: 10)
+                        VStack(alignment: .leading, spacing: 1) {
+                            Text(c.name).foregroundStyle(c.visible ? .primary : .secondary)
+                            Text([URL(string: c.url)?.host, c.loading ? "Loading…" : c.lastFetchedAt.map { "Updated " + CoreDates.short($0) }].compactMap { $0 }.joined(separator: " · "))
+                                .font(.caption).foregroundStyle(.secondary)
+                        }
+                        Spacer()
+                        Toggle("Show", isOn: Binding(get: { c.visible }, set: { v in app.perform { _ = try await $0.command(Commands.CalendarUpdate(CalendarUpdateArgs(id: c.id, name: nil, color: nil, visible: v))) } }))
+                            .toggleStyle(.switch).labelsHidden().controlSize(.small)
+                        Button(editing == c.id ? "Close" : "Edit") {
+                            if editing == c.id { editing = nil } else { editing = c.id; name = c.name; color = c.color }
+                        }
+                        .buttonStyle(.borderless)
+                    }
+                    if let e = c.lastError {
+                        Label(e, systemImage: "exclamationmark.triangle").font(.caption).foregroundStyle(.orange)
+                    }
+                    if editing == c.id {
+                        TextField("Name", text: $name).textFieldStyle(.roundedBorder)
+                        HStack(spacing: 8) {
+                            ForEach(TagColors.all, id: \.id) { t in
+                                Button { color = t.id } label: {
+                                    Circle().fill(Color.folevi(t.id)).frame(width: 16, height: 16)
+                                        .overlay { if color == t.id { Circle().strokeBorder(Color.primary, lineWidth: 2).padding(-3) } }
+                                }
+                                .buttonStyle(.plain).help(t.name)
                             }
                         }
-                        ForEach(it.tasks, id: \.id) { t in TaskLine(task: t, window: window) }
+                        HStack {
+                            Button("Remove…", role: .destructive) { remove(c) }
+                            Spacer()
+                            Button("Refresh") { app.perform { _ = try await $0.command(Commands.CalendarRefresh(CalendarIdArgs(id: c.id))) } }
+                            Button("Save") {
+                                let n = name, col = color
+                                app.perform { _ = try await $0.command(Commands.CalendarUpdate(CalendarUpdateArgs(id: c.id, name: n, color: col, visible: nil))) }
+                                editing = nil
+                            }
+                            .buttonStyle(InkPillStyle())
+                        }
+                        .controlSize(.small)
                     }
                 }
+                Divider()
+            }
+            HStack {
+                Button("Subscribe to a Calendar…", action: subscribe)
+                Spacer()
+                Button("Folevi Calendar Feed…", action: feed)
             }
         }
-        .listStyle(.inset)
+        .padding(14)
+        .frame(width: 360)
     }
 
-    private var dayDetail: some View {
-        let it = items(on: selected)
-        return List {
-            Section(selected.formatted(.dateTime.weekday(.wide).day().month(.wide))) {
-                if it.events.isEmpty && it.tasks.isEmpty { Text("Nothing on this day").foregroundStyle(.secondary) }
-                ForEach(it.events, id: \.id) { e in
-                    VStack(alignment: .leading, spacing: 2) {
-                        HStack { Circle().fill(Color(hex: e.color)).frame(width: 8, height: 8); Text(e.title).font(.body.weight(.medium)) }
-                        Text(e.allDay ? "All day" : "\(Date(timeIntervalSince1970: Double(e.start) / 1000).formatted(date: .omitted, time: .shortened)) – \(Date(timeIntervalSince1970: Double(e.end) / 1000).formatted(date: .omitted, time: .shortened))").font(.caption).foregroundStyle(.secondary)
-                        if !e.location.isEmpty { Text(e.location).font(.caption).foregroundStyle(.secondary) }
-                        Text(e.calendarName).font(.caption2).foregroundStyle(.tertiary)
-                    }
-                }
-                ForEach(it.tasks, id: \.id) { t in TaskLine(task: t, window: window) }
-            }
-        }
-        .listStyle(.sidebar)
+    private func remove(_ c: CalendarSubscription) {
+        let alert = NSAlert()
+        alert.messageText = "Remove “\(c.name)”?"
+        alert.informativeText = "Its events stop showing in Folevi. The calendar itself isn't changed."
+        alert.alertStyle = .warning
+        alert.addButton(withTitle: "Remove")
+        alert.addButton(withTitle: "Cancel")
+        alert.buttons.first?.hasDestructiveAction = true
+        CoreAlerts.cancelIsDefault(alert)
+        guard alert.runModal() == .alertFirstButtonReturn else { return }
+        app.perform { _ = try await $0.command(Commands.CalendarRemove(CalendarIdArgs(id: c.id))) }
+        editing = nil
     }
 }
 
@@ -716,8 +1187,12 @@ struct NotePickerSheet: View {
 struct TaskDrag: Codable, Transferable {
     var id: String
     var due: String?
+    /// The time it had, for Undo.
+    var time: String? = nil
 
     static var transferRepresentation: some TransferRepresentation {
         CodableRepresentation(contentType: UTType(exportedAs: "app.folevicore.task-drag"))
     }
 }
+
+extension TaskRow: @retroactive Identifiable {}

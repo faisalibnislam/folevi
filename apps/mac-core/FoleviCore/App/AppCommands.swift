@@ -11,7 +11,10 @@ struct AppCommands: SwiftUI.Commands {
     var body: some SwiftUI.Commands {
         // File
         CommandGroup(replacing: .newItem) {
-            Button("New Note") { NoteActions.newNote(app: app, window: window, newTab: window == nil) }
+            Button("New Note") {
+                // On Tasks, ⌘N adds a task (Quick Add in the window), as today's app does.
+                if let window, case .tasks = window.current { window.quickAddShown = true } else { NoteActions.newNote(app: app, window: window, newTab: window == nil) }
+            }
                 .keyboardShortcut("n")
             Button("New Note from Template…") { window?.go(.templates) }
             Button("New Folder…") { window?.go(.folders) }
@@ -155,6 +158,8 @@ struct AppCommands: SwiftUI.Commands {
             Button("Notifications") { window?.select(.notifications) }.keyboardShortcut("y", modifiers: [.command, .shift])
             Button("Inbox") { window?.select(.inbox) }
             Button("Tasks") { window?.select(.tasks(.today)) }.keyboardShortcut("t", modifiers: [.command, .control])
+            Button("Today's Tasks") { window?.select(.tasks(.today)) }.keyboardShortcut("t", modifiers: [.command, .option])
+            Button("Task Inbox") { window?.select(.tasks(.inbox)) }
             Button("Calendar") { window?.select(.calendar(nil)) }.keyboardShortcut("k", modifiers: [.command, .control])
             Button("Today's Note") { window?.select(.daily(nil)) }.keyboardShortcut("d", modifiers: [.command, .shift])
             Divider()

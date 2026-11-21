@@ -267,6 +267,15 @@ missed 321 to 347 of about 360 frames in a 3 s scroll, now 13 to 37; Home 52 to 
 match the live cards. Note cards are unchanged (pictures thrashed the cache on All notes); iPhone numbers need the
 owner's phone (the Simulator shows no difference).
 
+**Also in progress:** branch `claude/note-card-shadow-pictures` (off `claude/native-perf-pass`, so it carries PR 48;
+rebase onto `main` once PR 48 merges; not released): a note card's shadow (and a stack's sheets, a divider's tabs) is
+one shared picture per card size and look, and the card's face is drawn live and no longer flattened (the
+`drawingGroup` RenderBox redrew on every frame of a scroll was the real cost, more than the blurs). Mac All notes, 3 s
+scroll: 175 to 232 missed frames down to 67 to 135 in quiet alternating pairs (median of every run 296 to 197; the
+slowest 5% of frames 151 to 60 ms). Shadows match pixel for pixel in window captures; cards at fractional places
+round their words half a point differently (0.5 to 0.6% of pixels). Hover lifts the shadow as before. Report in
+`docs/NATIVE_PERFORMANCE_2026-11-21.md`.
+
 **Also in progress:** branch `claude/liquid-glass-animations-b1d70e` (worktree
 `.claude/worktrees/liquid-glass-animations-b1d70e`, off `main` at `d752bb0d`, PR 45, not released): a Liquid Glass
 motion pass on the Mac, iPhone and iPad apps, keeping the owner's playful springs (FoleviSpring, 2026-11-01). Shared
@@ -346,7 +355,8 @@ account button should move past iPadOS's window buttons).
    and note strips (1.5.62).
 1. On a real iPhone, iPad and Mac with the owner's library: the note bar swap (1.5.56), Offline & sync's Download
    everything now with an account (1.5.57), frosted folders' scrolling in long grids (1.5.58; on
-   `claude/native-perf-pass` folder cards scroll from pictures: compare with `FOLEVI_CARD_PICTURES=0` on the phone).
+   `claude/native-perf-pass` folder cards scroll from pictures, and on `claude/note-card-shadow-pictures` note cards'
+   shadows: compare with `FOLEVI_CARD_PICTURES=0` on the phone).
 2. iPad audit leftovers (found 2026-11-19, not fixed): the tab strip leaves a cut-off empty slot at its start once
    the tabs overflow; database table rows are far too tall on iPad (cause not found: inspect the note page); note
    text cuts off hard at the card's top on scroll. Unprofiled speed ideas: card line layout re-measured at every
@@ -408,6 +418,7 @@ account button should move past iPadOS's window buttons).
   `DATABASE_UDF_USER_TIMEOUT_SECONDS=4` for that backend. Bursts show in `convex.log` as "took a long time".
 
 ## 12. Change log
+- 2026-11-21: Note cards' shadows as shared pictures, faces live and unflattened, on `claude/note-card-shadow-pictures` (Mac All notes 175-232 missed frames to 67-135); not released.
 - 2026-11-21: Native performance pass on `claude/native-perf-pass`: folder cards scroll from a picture (Mac Folders 321-347 missed frames to 13-37); report in `docs/NATIVE_PERFORMANCE_2026-11-21.md`; not released.
 - 2026-11-21: 1.5.63 released on Mac and TestFlight (PR 46 + 47 + PR 45's motion pass); the web build was skipped (native-only).
 - 2026-11-21: iPhone Home's folder strip no longer cuts its cards' shadow off in a straight line (`scrollClipDisabled`), on `claude/phone-strip-shadows`.

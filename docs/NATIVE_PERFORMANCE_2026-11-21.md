@@ -101,3 +101,61 @@ get the same pictures.
   `list-header-folders-ipad-light`: their hosts wait long enough for the pictures, and a 2x picture drawn into a 1x
   capture differs from live shapes drawn at 1x by 1 to 3% of pixels (the same on screen; looked at side by side).
 - iOS Simulator: the package's tests fail the same 18 screen snapshots on main and on this branch, and nothing else.
+
+## Note cards: the shadow as a picture, the face live (branch `claude/note-card-shadow-pictures`, off PR 48)
+
+All notes still missed 105 to 160 of about 360 frames after the folder cards. Pictures of whole note cards had
+thrashed the cache, so this tried only what lies under a note card's cover as a picture: its shadow, a stack's two
+sheets and a divider's tabs (all in the app's colours, never the note's). One picture is shared by every card of a
+size, look (plain, stack or tabs), scheme and scale, so All notes keeps two or three, about 1.5 MB each.
+
+**What it showed: the blurs were not the main cost; the card's `drawingGroup` was.** Each note card was flattened
+(`flattened()`, a `drawingGroup` with room for its shadows), and RenderBox drew that group again on every frame the
+card moved (`-[RBLayer display]`, about 1,400 to 1,700 of 4,000 main-thread samples in a scroll). With the shadow a
+picture but the face still flattened, nothing changed (median 268 missed against 296). With nothing blurred left in
+the face, it no longer needs flattening: its layers move as they are, and RBLayer display fell to about 10 samples.
+So the change is two parts that only work together:
+
+- `WebNoteCard`: at rest, `CardPicture` draws what's under the cover (`behind`), and the face is drawn live over it,
+  not flattened. A plain card's shadow is only soft, so its picture isn't kept on whole pixels (`CardPicture(snaps:
+  false)`: drawn once, its place not followed, no geometry report a frame); a stack's sheets and a divider's tabs
+  have edges, so theirs is.
+- While the pointer is over a card, and 400 ms after, the under-layer is drawn live (flattened, as before) and lifts
+  to the hover shadow with WebNoteCell's curve; the face stays the same live layers, so only the shadow changes.
+- `FOLEVI_CARD_PICTURES=0` draws every card as before (the whole card flattened).
+
+| Mac, All notes, 3 s scroll (`perf-scroll.mjs --folders 60`) | pictures off | pictures on |
+| --- | --- | --- |
+| Three alternating pairs at load 16 to 24 (missed frames) | 175 to 232 | 67 to 135 |
+| Slowest 5% of frames, the same runs | 54 to 94 ms | 32 to 49 ms |
+| Every run of the day (63 and 87 scrolls, load 9 to 880): median missed | 296 (quartiles 222 to 321) | 197 (152 to 268) |
+| The same, median slowest 5% | 151 ms | 60 ms |
+
+Other sessions built and ran simulators the whole time (load 9 to 880, free memory 26 to 33%), so single runs swing
+by 200 frames; the medians and the quiet pairs agree. Home and Folders didn't scroll in this library's later runs
+(28 and 0 points), so they say nothing here; folder cards are untouched by this change.
+
+Looks, real window captures (`screencapture -l`) of All notes, pictures off against on: 0.60% of pixels differ by
+more than 8 levels in light, 0.50% in dark. The shadows are the same pixels. Every difference is on cards that sit
+at a fractional place in the grid: a flattened card and live layers round that place to device pixels differently,
+so a card's words land one device pixel (half a point) to one side and its spine's edge a pixel wider. Side by side
+at 3x they are equally sharp. Inside the app the face is always the live layers now, at rest and hovered, so nothing
+jumps when a card goes from picture to live and back.
+
+Hover, real window captures of a card in a window with `hovered` turned on and off (the scripts' pointer moves
+don't reach SwiftUI's hover, so the card's own switch was used): the card lifts with the deeper hover shadow (the
+band under it from 5.66 to 7.29 average darkness), a frame caught on the way back sits between the two (5.72), and
+400 ms after, back on its picture, it is the same pixels as before the hover (0 differ).
+
+Checks: `CardPictureTests.aNoteCardsShadowPictureLooksLikeTheCard` (two plain cards and a stack in a window, light
+and dark, drawn again from their shadow pictures: under 0.5% of pixels off by more than 8 levels). One snapshot was
+re-recorded, `home-picture-dark` (Mac, 1x offscreen): its note cards' faces are live layers now, 1.48% of pixels
+moved, the same side by side; it passes with the original card. `swift test` (macOS): all pass but `TabPreviewStateTests.enteringTheNextTabBeforeLeavingThisOneStillShowsIt`, a
+450 ms timer test of the tab strip's hover card (no cards in it) that fails only in the full parallel run on this
+loaded Mac and passes on its own; the Foli AI streaming speed check failed once at load 600 and passed after.
+
+## Left after the note cards
+
+- All notes still misses frames under load: what's left is SwiftUI's own work per frame (the lazy grid's placement,
+  the cards' GeometryReaders, the display list of each card's live layers), not drawing.
+- The iPhone and iPad note cards get the same change (shared `WebNoteCard`); not measured on a device.

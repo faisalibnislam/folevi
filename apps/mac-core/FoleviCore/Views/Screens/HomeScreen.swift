@@ -225,6 +225,7 @@ struct HomeFolderCard: View {
     let window: WindowModel
     private var app: AppModel { .shared }
     @State private var targeted = false
+    @State private var hoveringCard = false
     @State private var renaming: FolderNode?
     @State private var newSubfolderOf: FolderNode?
 
@@ -238,6 +239,18 @@ struct HomeFolderCard: View {
             }
         }
         .buttonStyle(CardPressStyle())
+        .overlay(alignment: .topTrailing) {
+            if hoveringCard, let node {
+                Menu { FolderMenu(folder: node, window: window, rename: { renaming = $0 }, newSubfolder: { newSubfolderOf = $0 }) } label: {
+                    Image(systemName: "ellipsis").frame(width: 24, height: 24)
+                }
+                .menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize()
+                .glassEffect(.regular.interactive(), in: .circle)
+                .help("Folder Options")
+                .padding(.top, 54).padding(.trailing, 8)
+            }
+        }
+        .onHover { hoveringCard = $0 }
         .scaleEffect(targeted ? 1.04 : 1)
         .animation(.snappy, value: targeted)
         .draggable(FolderDrag(id: folder.id, name: folder.name))

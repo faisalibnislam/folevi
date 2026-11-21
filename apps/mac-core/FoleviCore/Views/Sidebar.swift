@@ -243,6 +243,7 @@ struct FolderRow: View {
     let newSubfolder: (FolderNode) -> Void
     private var app: AppModel { .shared }
     @State private var targeted = false
+    @State private var hovering = false
 
     private var children: [FolderNode] {
         let c = all.filter { $0.parentId == folder.id }
@@ -268,7 +269,13 @@ struct FolderRow: View {
             HStack {
                 Text(folder.name)
                 if folder.locked { Image(systemName: "lock.fill").font(.caption2).foregroundStyle(.secondary) }
+                if hovering {
+                    Spacer(minLength: 0)
+                    Menu { FolderMenu(folder: folder, window: window, rename: rename, newSubfolder: newSubfolder) } label: { Image(systemName: "ellipsis") }
+                        .menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize().help("Folder Options")
+                }
             }
+            .onHover { hovering = $0 }
         } icon: {
             FolderMark(colorId: folder.color, size: 14, kind: folder.childCount > 0 ? .stack : ((folder.noteCount ?? 0) > 0 ? .notes : .empty))
         }

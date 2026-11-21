@@ -280,6 +280,8 @@ extension WindowModel {
 struct FloatingNote: View {
     let id: String
     @State private var window: WindowModel
+    /// Keep on top (floating, on every Space) or a normal window.
+    @State private var onTop = true
 
     init(id: String) {
         self.id = id
@@ -293,5 +295,19 @@ struct FloatingNote: View {
             .focusedSceneValue(\.window, window)
             .onAppear { window.start() }
             .frame(minWidth: 320, minHeight: 300)
+            .toolbar {
+                ToolbarItem(placement: .primaryAction) {
+                    Button { onTop.toggle(); apply() } label: { Image(systemName: onTop ? "pin.fill" : "pin") }
+                        .help(onTop ? "Stop Keeping on Top" : "Keep on Top")
+                        .accessibilityLabel(onTop ? "Stop Keeping on Top" : "Keep on Top")
+                }
+            }
+            .task { try? await Task.sleep(for: .milliseconds(100)); apply() }
+    }
+
+    private func apply() {
+        guard let w = window.window else { return }
+        w.level = onTop ? .floating : .normal
+        w.collectionBehavior = onTop ? [.canJoinAllSpaces, .fullScreenAuxiliary] : [.managed]
     }
 }

@@ -58,22 +58,22 @@ Closed or improved after the grading below; the per-item marks haven't been redo
   folder newest first in two rows with its path, menu and drops; Remove from Recent; the sidebar's Reviews count.
 
 The items closed in this session's later work packages are marked [x] with "closed after the grading", and the
-summary table below is recounted from the marks (1024 there, 87 partly, 17 missing, 215 not applicable).
+summary table below is recounted from the marks (1027 there, 83 partly, 17 missing, 216 not applicable).
 
 ## Summary
 
 | Area | Id prefix | [x] | [~] | [ ] | [n/a] | Items |
 |---|---|---|---|---|---|---|
 | Architecture today | `ARCH` | 15 | 0 | 1 | 1 | 17 |
-| App & windows | `APP` | 37 | 12 | 1 | 23 | 73 |
+| App & windows | `APP` | 38 | 11 | 1 | 23 | 73 |
 | Sign-in, onboarding, accounts, spaces & local mode | `AUTH` | 63 | 5 | 1 | 11 | 80 |
-| Sidebar & navigation | `NAV` | 25 | 5 | 0 | 7 | 37 |
-| Tabs | `TAB` | 11 | 4 | 1 | 27 | 43 |
+| Sidebar & navigation | `NAV` | 26 | 4 | 0 | 7 | 37 |
+| Tabs | `TAB` | 11 | 3 | 1 | 28 | 43 |
 | Home | `HOME` | 18 | 2 | 0 | 10 | 30 |
 | Notes lists | `LIST` | 53 | 5 | 3 | 11 | 72 |
 | Folders | `FOLD` | 28 | 3 | 3 | 3 | 37 |
 | Tags | `TAG` | 7 | 0 | 0 | 2 | 9 |
-| Note page & editor integration | `NOTE` | 39 | 3 | 1 | 3 | 46 |
+| Note page & editor integration | `NOTE` | 40 | 2 | 1 | 3 | 46 |
 | Search & command palette | `SRCH` | 33 | 2 | 0 | 2 | 37 |
 | Tasks | `TASK` | 23 | 2 | 0 | 10 | 35 |
 | Calendar | `CAL` | 30 | 1 | 0 | 6 | 37 |
@@ -102,7 +102,7 @@ summary table below is recounted from the marks (1024 there, 87 partly, 17 missi
 | Binding UX rules from owner memory | `RULE` | 21 | 10 | 0 | 13 | 44 |
 | iPhone and iPad only (skip) | `IOS` | 0 | 0 | 0 | 5 | 5 |
 | Gaps, bugs and contradictions | `GAP` | 21 | 7 | 4 | 11 | 43 |
-| **Total** | | **1024** | **87** | **17** | **215** | **1343** |
+| **Total** | | **1027** | **83** | **17** | **216** | **1343** |
 
 Notable findings (all in the first work package at the end):
 
@@ -175,8 +175,8 @@ Notable findings (all in the first work package at the end):
 - [x] `APP-035` **Search routes to the command palette**: on the Mac (folevi://search, /search?q=). Core: closed after the grading (see "Since this grading").
 - [x] `APP-036` **Sync popover**: headline, detail, waiting count, download progress, Retry. Core: `Views/Sidebar.swift` SyncDetails popover (headline, waiting, conflicts, per-space progress, Sync Now, Sign In Again).
 - [n/a] `APP-037` **Notifications popover (bell)**: list, mark read, mark all read, open. Why: replaced by the Notifications screen (`Views/Screens/PeopleScreens.swift`) and its sidebar badge.
-- [~] `APP-038` **Floating notes window (Float Note)**: one NSPanel per note with its own Page View and EngineClient. Keep-on-top pin (floating level, all Spaces); cascade placement… Core: `App/FoleviCoreApp.swift` "float" window and `Views/Note/NoteScreen.swift` FloatingNote, always on top; no pin toggle, own saved frame or way back to its tab.
-- [~] `APP-039` **Floating note bar**: room for window buttons, emoji and title, pin "Keep on top" / "Stop keeping on top"; dragging the bar moves the window… Core: native compact title bar with the note's title; no pin button.
+- [~] `APP-038` **Floating notes window (Float Note)**: one NSPanel per note with its own Page View and EngineClient. Keep-on-top pin (floating level, all Spaces); cascade placement… Core: a floating window per note with its own window model and a pool page, a Keep on Top pin (floating, every Space); not an NSPanel with its own engine client.
+- [x] `APP-039` **Floating note bar**: room for window buttons, emoji and title, pin "Keep on top" / "Stop keeping on top"; dragging the bar moves the window… Core: closed after the grading (see "Since this grading").
 - [x] `APP-040` **Page text menu services**: spelling guesses by context, Learn and Ignore Spelling (clears WebKit underline), Look Up. Core: `Host/DesktopRouter.swift` spelling, learnWord, ignoreWord, lookUp.
 - [n/a] `APP-041` **Quiet scroll**: no pointer hit-testing while a list scrolls (performance). Why: native SwiftUI List scrolling.
 - [n/a] `APP-042` **List hover tints**: for small controls (segments, Sort, chips, carousel arrows, "…" chips). Why: native control hovers.
@@ -333,7 +333,7 @@ Notable findings (all in the first work package at the end):
 - [x] `NAV-020` **Folders section**: tree, first 5 top-level folders plus the active root, Show more / Show less; "No folders yet". Core: `Views/Sidebar.swift` every folder (no Show more); "No folders yet".
 - [x] `NAV-021` **Folder sort menu**: (Manual, Name, Recent) kept on the device; Recent watches `folders.cards(all:true)`. Core: closed after the grading (see "Since this grading").
 - [x] `NAV-022` **New Folder button**: in the Folders heading (⌃⌘N). Core: closed after the grading (see "Since this grading").
-- [~] `NAV-023` **Folder row**: indent per level, disclosure, icon by state (page, stack, outline), count, sync mark, "…" on hover (RowMoreButton), right-click… Core: `Views/Sidebar.swift` FolderRow: disclosure, glyph by state, count, menu; no sync mark or hover "…".
+- [x] `NAV-023` **Folder row**: indent per level, disclosure, icon by state (page, stack, outline), count, sync mark, "…" on hover (RowMoreButton), right-click… Core: closed after the grading (see "Since this grading").
 - [x] `NAV-024` **Folders open/closed state**: kept (`folevi:sidebar-folders-closed`); ancestors of the open folder are auto-expanded. Core: closed after the grading (see "Since this grading").
 - [x] `NAV-025` **Tags section**: first 5 with colour, "…" menu, "N more" link to /tags; "Tag documents from the inspector" when empty. Core: closed after the grading (see "Since this grading").
 - [n/a] `NAV-026` **Sidebar menu button (SidebarMenu)**: Hide or Show sidebar (⌘\), Focus mode or Exit focus mode; on a note, Show folders / Show document. Why: native sidebar toggle (toolbar, View menu) and View > Focus Mode.
@@ -392,7 +392,7 @@ Notable findings (all in the first work package at the end):
 - [n/a] `TAB-039` **Legacy AppKit tab strip**: (legacy): Close, Close Other Tabs, Close Tabs to the Right, Open in New Window. Why: legacy.
 - [~] `TAB-040` **New Tab command**: opens Home and focuses search. Core: ⌘T opens a tab at Search with the field focused (recent searches and notes), not Home.
 - [n/a] `TAB-041` **Close Tab on Home closes the window**. Why: macOS tab and window closing.
-- [~] `TAB-042` **Float note from tab**: (Mac only, `frameCanFloatNotes`). Core: Note > Float on Top (not from the tab).
+- [n/a] `TAB-042` **Float note from tab**: (Mac only, `frameCanFloatNotes`). Why: native window tabs have no per-tab menu to add Float to; Note > Float on Top does it.
 - [n/a] `TAB-043` **Debug tab frames and strip metrics**: for scripts. Why: Debug harness.
 
 ## Home
@@ -413,7 +413,7 @@ Notable findings (all in the first work package at the end):
 - [x] `HOME-014` **Home card menu**: Open, Bookmark / Remove bookmark, Duplicate, Move to folder…, Copy to… (when other spaces exist), Archive / Unarchive, Remove… Core: closed after the grading (see "Since this grading").
 - [x] `HOME-015` **Recent folders section**: every folder, most recently changed first, two full rows at the current width; header shows the total count; "See all" opens… Core: closed after the grading (see "Since this grading").
 - [x] `HOME-016` **Recent folders empty**: "No folders yet / Create one from the sidebar to group related notes.". Core: closed after the grading (see "Since this grading").
-- [~] `HOME-017` **Folder card**: hover lift; "…" in the frosted front; right-click menu; notes or folders dropped on it go inside; spring-loads after 0.6 s… Core: lifts while something is dragged over it; folder menu on right-click; notes and folders dropped go inside; no "…" button or spring-loading.
+- [~] `HOME-017` **Folder card**: hover lift; "…" in the frosted front; right-click menu; notes or folders dropped on it go inside; spring-loads after 0.6 s… Core: lifts while something is dragged over it, "…" on hover, folder menu on right-click, notes and folders dropped go inside; no spring-loading.
 - [x] `HOME-018` **Folder menu (Mac)**: Open in new tab, New note in folder, New folder inside…, Rename…, Change color…, Move folder…, Move to another place…, Move to… Core: closed after the grading (see "Since this grading").
 - [x] `HOME-019` **Drop on Home folders**: notes, multi-selections or folders dropped inside. A refused drop gives an error haptic and a toast; toasts read "Moved", "Moved… Core: closed after the grading (see "Since this grading").
 - [x] `HOME-020` **Where Home's rows live on the Mac**: the sidebar has Home, Bookmarks, Drafts (count), All notes, Reviews (count), Shared with Me, Changes (count, `caps.changes`)… Core: closed after the grading (see "Since this grading").
@@ -603,7 +603,7 @@ Notable findings (all in the first work package at the end):
 - [ ] `NOTE-036` **Foli DNA of this note**: (/graph?note=<id>). Core: no Foli DNA of This Note.
 - [x] `NOTE-037` **Present / Move to the Vault / Save as template / Show-Hide editors / Make text in images searchable**: (page via `note.menu`; listed in NoteMenuPlan). Core: NoteMoreMenu (present, moveToVault, saveAsTemplate, showEditors, readImages).
 - [~] `NOTE-038` **Note picture / cover**: card covers via `files.urls`; tab pictures via `note.picture`. Core: covers passed as file ids, no files.urls loader; no note.picture (native tabs).
-- [~] `NOTE-039` **Floating notes bar**: (Mac Float Note). Core: the floating window has no bar of its own (no pin).
+- [x] `NOTE-039` **Floating notes bar**: (Mac Float Note). Core: closed after the grading (see "Since this grading").
 - [x] `NOTE-040` **Text context menu in native fields**: spelling guesses, Learn, Ignore, Look up, Cut, Copy, Paste, Select all, Share. Core: system menus on SwiftUI text fields.
 - [x] `NOTE-041` **Undo / Redo**: (system menu to the web view). Core: `Host/PageView.swift` Edit > Undo and Redo run the editor's undo and redo on a note.
 - [x] `NOTE-042` **Insert**: (Insert panel via the page; `insert {kind}` with tile ids, quick-table-RxC). Core: Format > Insert… (⌘/, panel.open insert).

@@ -156,6 +156,13 @@ struct PlaceMenu: View {
             }
             Divider()
             Button("Add Account…") { AccountActions.addAccount() }
+            if let current = app.places.value?.current {
+                if current == "library" {
+                    Button("Stop Keeping a Library on This Mac…") { AccountActions.forgetLibrary() }
+                } else {
+                    Button("Sign Out of This Account…") { AccountActions.signOut(current) }
+                }
+            }
             if app.session.value?.mode == .account {
                 Button("New Workspace…") { app.toast("Create a workspace in Settings > Workspace.") ; SettingsRouter.shared.open("workspace") }
             }
@@ -210,7 +217,7 @@ struct PlaceAvatar: View {
             .font(.system(size: size * 0.45, weight: .semibold))
             .foregroundStyle(.white)
             .frame(width: size, height: size)
-            .background(Circle().fill(Color.accentColor.gradient))
+            .background(Circle().fill(Color.foleviInk.gradient))
     }
 }
 
@@ -304,6 +311,26 @@ enum NoteActions {
 /// Adding an account: Folevi's sign-in in the system's sheet; the account becomes one of this Mac's places.
 @MainActor
 enum AccountActions {
+    static func signOut(_ place: String) {
+        let alert = NSAlert()
+        alert.messageText = "Sign out of this account on this Mac?"
+        alert.informativeText = "Changes that haven't synced yet are kept until you sign in again. Your notes stay in your account."
+        alert.addButton(withTitle: "Sign Out")
+        alert.addButton(withTitle: "Cancel")
+        guard alert.runModal() == .alertFirstButtonReturn else { return }
+        Task { await Places.shared.signOut(place, next: nil) }
+    }
+
+    static func forgetLibrary() {
+        let alert = NSAlert()
+        alert.messageText = "Stop keeping a library on this Mac?"
+        alert.informativeText = "Folevi Core forgets the library. Its folder and notes stay where they are, and you can open it again later."
+        alert.addButton(withTitle: "Forget Library")
+        alert.addButton(withTitle: "Cancel")
+        guard alert.runModal() == .alertFirstButtonReturn else { return }
+        Task { await Places.shared.forgetLibrary() }
+    }
+
     static func addAccount(provider: String? = nil) {
         Task { @MainActor in
             guard let u = await ShellAuth.shared.signInAccount(window: NSApp.keyWindow, provider: provider), let a = Places.shared.addAccount(u) else { return }

@@ -2,8 +2,10 @@
 // SF Symbols tinted by the person's accent colour, and Folevi's folder glyph for folders. Two levels at most
 // (folders nest by disclosure). The space and account menu sits at the top (nothing critical at the bottom).
 import FoleviDesign
+import CoreTransferable
 import FoleviEngine
 import SwiftUI
+import UniformTypeIdentifiers
 
 struct Sidebar: View {
     @Bindable var window: WindowModel
@@ -47,6 +49,10 @@ struct Sidebar: View {
                 }
             } header: {
                 SectionHeaderWithAdd(title: "Folders", help: "New Folder") { newFolderParent = .some(nil) }
+                    .dropDestination(for: FolderDrag.self) { items, _ in
+                        for f in items { app.perform { _ = try await $0.command(Commands.FolderMove(FolderMoveArgs(id: f.id, parentId: nil))) } }
+                        return true
+                    }
             }
 
             if !(app.tree.value?.tags ?? []).isEmpty {
@@ -167,9 +173,19 @@ struct FolderRow: View {
         }
         .badge(folder.noteCount ?? 0)
         .tag(Destination.folder(folder.id))
-        .dropDestination(for: NoteDrag.self) { items, _ in
-            let ids = items.map(\.id)
-            app.perform { _ = try await $0.command(Commands.NoteMove(NoteMoveArgs(ids: ids, folderId: folder.id))) }
+        .draggable(FolderDrag(id: folder.id, name: folder.name))
+        .dropDestination(for: SidebarDrop.self) { items, _ in
+            for item in items {
+                switch item {
+                case .note(let n):
+                    app.perform { _ = try await $0.command(Commands.NoteMove(NoteMoveArgs(ids: [n.id], folderId: folder.id))) }
+                case .folder(let f) where f.id != folder.id:
+                    // A folder dropped on a folder goes inside it.
+                    app.perform { _ = try await $0.command(Commands.FolderMove(FolderMoveArgs(id: f.id, parentId: folder.id))) }
+                default:
+                    break
+                }
+            }
             return true
         } isTargeted: { targeted = $0 }
         .contextMenu { FolderMenu(folder: folder, window: window, rename: rename, newSubfolder: newSubfolder) }
@@ -197,9 +213,18 @@ struct SectionHeaderWithAdd: View {
 /// The sync state at the foot of the sidebar: quiet when saved, a word when not.
 struct SyncFooter: View {
     private var app: AppModel { .shared }
+    @State private var details = false
 
     var body: some View {
         if let s = app.sync.value, s.state != .saved || s.pending > 0 {
+            Button { details.toggle() } label: { footer(s) }
+                .buttonStyle(.plain)
+                .popover(isPresented: $details, arrowEdge: .top) { SyncDetails(status: s) }
+                .help("Sync details")
+        }
+    }
+
+    private func footer(_ s: SyncStatusValue) -> some View {
             HStack(spacing: 6) {
                 switch s.state {
                 case .saving, .syncing: ProgressView().controlSize(.mini)
@@ -214,7 +239,60 @@ struct SyncFooter: View {
             .foregroundStyle(.secondary)
             .padding(.horizontal, 16)
             .padding(.vertical, 8)
+            .contentShape(Rectangle())
             .accessibilityElement(children: .combine)
+    }
+}
+
+/// What sync is doing: the headline, what's waiting, download progress per space, conflicts, and Retry.
+struct SyncDetails: View {
+    let status: SyncStatusValue
+    private var app: AppModel { .shared }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text(status.label.nonEmpty ?? status.state.rawValue.capitalized).font(.headline)
+            if !status.online { Label("You're offline. Changes are kept on this Mac and sync when you're back.", systemImage: "wifi.slash").font(.callout) }
+            if status.pending > 0 { Text(status.pending == 1 ? "1 change waiting to sync" : "\(status.pending) changes waiting to sync").foregroundStyle(.secondary) }
+            if status.conflicts > 0 { Label("\(status.conflicts) notes changed in two places", systemImage: "exclamationmark.triangle").foregroundStyle(.orange) }
+            ForEach(status.spaces, id: \.space) { sp in
+                if let total = sp.total, total > 0 {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(AppModel.shared.session.value?.spaces.first { $0.id == sp.space }?.name ?? "Downloading").font(.caption)
+                        ProgressView(value: Double(sp.have), total: Double(total))
+                    }
+                }
+            }
+            if status.authRequired { Button("Sign In Again…") { AccountActions.addAccount() } }
+            HStack {
+                Spacer()
+                Button("Sync Now") { app.perform { _ = try await $0.command(Commands.EngineRefresh()) } }.buttonStyle(InkPillStyle())
+            }
         }
+        .padding(16)
+        .frame(width: 300)
+    }
+}
+
+/// A folder dragged in the sidebar (onto another folder to nest it, onto Folders to bring it to the top level).
+struct FolderDrag: Codable, Transferable {
+    var id: String
+    var name: String
+
+    static let type = UTType(exportedAs: "app.folevicore.folder-drag")
+
+    static var transferRepresentation: some TransferRepresentation {
+        CodableRepresentation(contentType: type)
+    }
+}
+
+/// What the sidebar's folders take: notes and folders.
+enum SidebarDrop: Transferable {
+    case note(NoteDrag)
+    case folder(FolderDrag)
+
+    static var transferRepresentation: some TransferRepresentation {
+        ProxyRepresentation { (n: NoteDrag) in SidebarDrop.note(n) }
+        ProxyRepresentation { (f: FolderDrag) in SidebarDrop.folder(f) }
     }
 }

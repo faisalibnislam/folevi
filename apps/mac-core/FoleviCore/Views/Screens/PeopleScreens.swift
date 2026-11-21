@@ -65,7 +65,7 @@ struct NotificationLine: View {
 
     var body: some View {
         HStack(alignment: .top, spacing: 10) {
-            Circle().fill(row.read ? Color.clear : Color.accentColor).frame(width: 8, height: 8).padding(.top, 6)
+            Circle().fill(row.read ? Color.clear : Color.foleviInk).frame(width: 8, height: 8).padding(.top, 6)
                 .accessibilityLabel(row.read ? "" : "Unread")
             avatar
             VStack(alignment: .leading, spacing: 3) {

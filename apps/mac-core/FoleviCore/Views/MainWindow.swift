@@ -11,6 +11,9 @@ struct MainWindow: View {
     private var app: AppModel { .shared }
     @State private var window: WindowModel
     @Environment(\.openWindow) private var openWindow
+    /// Where this window was, kept by macOS with the window (state restoration).
+    @SceneStorage("core.path") private var restoredPath = ""
+    @SceneStorage("core.listStyle") private var restoredStyle = ""
 
     init(seed: WindowSeed?) {
         self.seed = seed
@@ -19,36 +22,54 @@ struct MainWindow: View {
 
     var body: some View {
         @Bindable var window = window
-        ZStack {
-            NavigationSplitView(columnVisibility: $window.columnVisibility) {
-                Sidebar(window: window)
-            } detail: {
-                ScreenView(window: window)
-                    .navigationTitle(window.title)
-                    .toolbar { WindowToolbar(window: window) }
-            }
-            .inspector(isPresented: $window.inspectorShown) {
-                Inspector(window: window)
-                    .inspectorColumnWidth(min: 280, ideal: 340, max: 520)
-            }
-            .overlay(alignment: .bottom) { ToastStack() }
-            .overlay { if window.paletteShown { CommandPalette(window: window) } }
-
+        Group {
             if let gate = app.gate, gate.gate != "loading" {
+                // A gate is the whole window: no sidebar, no toolbar items until the engine is ready.
                 GateScreen(gate: gate)
+                    .toolbar(removing: .sidebarToggle)
+                    .navigationTitle("Folevi Core")
                     .transition(.opacity)
             } else if app.gate?.gate == "loading" || (!app.ready && app.session.value == nil) {
                 StartingScreen()
+                    .navigationTitle("Folevi Core")
+            } else {
+                NavigationSplitView(columnVisibility: $window.columnVisibility) {
+                    Sidebar(window: window)
+                } detail: {
+                    ScreenView(window: window)
+                        .navigationTitle(window.title)
+                        .toolbar { WindowToolbar(window: window) }
+                        .userActivity("app.folevicore.note", isActive: window.current.isNote) { activity in
+                            // Handoff and the system's "continue" on another Mac running Core: the note.
+                            guard let id = window.current.noteId else { return }
+                            activity.title = window.title
+                            activity.userInfo = ["id": id]
+                            activity.webpageURL = NoteActions.webURL(id)
+                            activity.isEligibleForHandoff = true
+                        }
+                }
+                .inspector(isPresented: $window.inspectorShown) {
+                    Inspector(window: window)
+                        .inspectorColumnWidth(min: 280, ideal: 340, max: 520)
+                }
+                .overlay(alignment: .bottom) { ToastStack().padding(.bottom, window.current.isNote ? 78 : 0) }
+                .overlay { if window.paletteShown { CommandPalette(window: window) } }
             }
-            if MacAppLock.shared.isCovered { LockCover() }
         }
+        .overlay { if MacAppLock.shared.isCovered { LockCover() } }
+        .animation(.easeOut(duration: 0.2), value: app.gate?.gate)
         .tint(.foleviInk)
         .focusedSceneValue(\.window, window)
-        .background(WindowAccessor(model: window, asTab: seed?.asTab == true))
+        .background(WindowAccessor(model: window, asTab: seed?.asTab == true, keepsOpener: seed?.asTab == true && seed?.start.isNote == true))
         .environment(window)
         .onAppear {
             app.openWindow = { dest, asTab in openWindow(id: "main", value: WindowSeed(start: dest ?? .home, asTab: asTab)) }
+            // A restored window goes back where it was (a fresh window opens where its seed says).
+            if seed?.start == .home, !restoredPath.isEmpty, let d = Destination(path: restoredPath), d != .home { window.replace(with: d) }
+            if let s = WindowModel.ListStyleChoice(rawValue: restoredStyle) { window.listStyle = s }
         }
+        .onChange(of: window.current) { restoredPath = window.current.path }
+        .onChange(of: window.listStyle) { restoredStyle = window.listStyle.rawValue }
         .frame(minWidth: 720, minHeight: 460)
     }
 }
@@ -192,11 +213,14 @@ struct ToastStack: View {
 struct WindowAccessor: NSViewRepresentable {
     let model: WindowModel
     let asTab: Bool
+    /// A note opened in a new tab from another: Back on its first page returns there (a fresh ⌘T tab doesn't).
+    var keepsOpener = false
 
     func makeNSView(context: Context) -> NSView {
         let view = AccessorView()
         view.model = model
         view.asTab = asTab
+        view.keepsOpener = keepsOpener
         return view
     }
 
@@ -205,6 +229,7 @@ struct WindowAccessor: NSViewRepresentable {
     final class AccessorView: NSView {
         weak var model: WindowModel?
         var asTab = false
+        var keepsOpener = false
         private var observers: [NSObjectProtocol] = []
 
         override func viewDidMoveToWindow() {
@@ -216,6 +241,7 @@ struct WindowAccessor: NSViewRepresentable {
             window.title = model.title
             if asTab, let front = NSApp.windows.first(where: { $0 !== window && $0.isVisible && $0.tabbingIdentifier == window.tabbingIdentifier && $0.isMainWindow }) ?? NSApp.windows.first(where: { $0 !== window && $0.isVisible && $0.tabbingIdentifier == window.tabbingIdentifier }) {
                 front.addTabbedWindow(window, ordered: .above)
+                if keepsOpener { model.opener = front }
                 window.makeKeyAndOrderFront(nil)
             }
             let center = NotificationCenter.default

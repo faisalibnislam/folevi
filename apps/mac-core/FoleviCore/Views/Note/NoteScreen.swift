@@ -156,6 +156,7 @@ struct NoteToolbar: ToolbarContent {
 struct NoteMoreMenu: View {
     let window: WindowModel
     private var app: AppModel { .shared }
+    @Environment(\.openWindow) private var openWindow
 
     private var offered: Set<NoteMenuAction> { Set(window.editorState?.menu?.actions ?? NoteMenuAction.allCases) }
 
@@ -183,7 +184,8 @@ struct NoteMoreMenu: View {
         Divider()
         if let id = window.current.noteId {
             Button("Copy Link") { NoteActions.copyLink(id, title: window.title) }
-            Button("Open in New Window") { app.open(.note(id), newTab: true) }
+            Button("Open in New Tab") { app.open(.note(id), newTab: true) }
+            Button("Float on Top") { openWindow(id: "float", value: id) }
         }
         Divider()
         if offered.contains(.delete) { Button("Move to Trash", role: .destructive) { window.noteMenu(.delete) } }
@@ -260,5 +262,24 @@ extension WindowModel {
         guard var meta = noteMeta else { return }
         meta.starred.toggle()
         setNoteMeta(meta)
+    }
+}
+
+/// A floating note's window: the note page alone, with its title, above every other window.
+struct FloatingNote: View {
+    let id: String
+    @State private var window: WindowModel
+
+    init(id: String) {
+        self.id = id
+        _window = State(initialValue: WindowModel(start: .note(id)))
+    }
+
+    var body: some View {
+        NoteScreen(window: window, id: id)
+            .navigationTitle(window.title)
+            .background(WindowAccessor(model: window, asTab: false))
+            .focusedSceneValue(\.window, window)
+            .frame(minWidth: 320, minHeight: 300)
     }
 }

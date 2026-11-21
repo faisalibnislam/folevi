@@ -67,17 +67,17 @@ struct CommandPalette: View {
 
     private func row(_ item: PaletteItem, selected: Bool) -> some View {
         HStack(spacing: 10) {
-            Image(systemName: item.symbol).frame(width: 20).foregroundStyle(selected ? .white : .secondary)
+            Image(systemName: item.symbol).frame(width: 20).foregroundStyle(selected ? Color.foleviOnInk : .secondary)
             VStack(alignment: .leading, spacing: 1) {
                 Text(item.title).font(item.kind.isNote ? CoreType.noteTitle(14) : .body).lineLimit(1)
-                if let s = item.subtitle { Text(s).font(.caption).foregroundStyle(selected ? .white.opacity(0.8) : .secondary).lineLimit(1) }
+                if let s = item.subtitle { Text(s).font(.caption).foregroundStyle(selected ? Color.foleviOnInk.opacity(0.8) : .secondary).lineLimit(1) }
             }
             Spacer()
-            if let k = item.shortcut { Text(k).font(.caption).foregroundStyle(selected ? .white.opacity(0.8) : .secondary) }
+            if let k = item.shortcut { Text(k).font(.caption).foregroundStyle(selected ? Color.foleviOnInk.opacity(0.8) : .secondary) }
         }
         .padding(.horizontal, 10).padding(.vertical, 7)
-        .foregroundStyle(selected ? .white : .primary)
-        .background(selected ? Color.accentColor : .clear, in: .rect(cornerRadius: 8))
+        .foregroundStyle(selected ? Color.foleviOnInk : .primary)
+        .background(selected ? Color.foleviInk : .clear, in: .rect(cornerRadius: 8))
         .contentShape(Rectangle())
     }
 

@@ -15,7 +15,7 @@ const config = args.has("--release") ? "Release" : "Debug";
 const project = join(CORE, "FoleviCore.xcodeproj");
 
 const spec = join(CORE, "project.yml");
-if (args.has("--generate") || !existsSync(project) || statSync(spec).mtimeMs > statSync(join(project, "project.pbxproj")).mtimeMs) {
+if (!args.has("--no-generate")) {
   const xcodegen = ["/opt/homebrew/bin/xcodegen", "/usr/local/bin/xcodegen"].find((p) => existsSync(p)) ?? "xcodegen";
   execFileSync(xcodegen, ["generate", "--spec", spec, "--project", CORE, "--quiet"], { cwd: CORE, stdio: "inherit" });
 }

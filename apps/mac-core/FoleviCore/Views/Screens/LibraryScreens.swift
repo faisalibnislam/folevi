@@ -352,7 +352,7 @@ struct ChangesScreen: View {
                                         HStack {
                                             Button("Accept") { app.perform { _ = try await $0.command(Commands.ProposalAccept(ProposalIdArgs(id: p.id))) } }
                                             Button("Decline") { app.perform { _ = try await $0.command(Commands.ProposalReject(ProposalIdArgs(id: p.id))) } }
-                                            if let note = p.noteId { Button("Open Note") { window.go(.note(note)) }.buttonStyle(.link) }
+                                            if let note = p.noteId { Button("Open Note") { window.go(.note(note)) }.buttonStyle(InkLinkStyle()) }
                                         }
                                         .controlSize(.small)
                                     }

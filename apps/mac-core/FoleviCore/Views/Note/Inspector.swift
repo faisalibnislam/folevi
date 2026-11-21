@@ -48,7 +48,7 @@ struct NoteInfo: View {
                 if !t.trail.isEmpty {
                     Section("Location") {
                         ForEach(t.trail, id: \.href) { c in
-                            Button(c.label) { AppModel.shared.open(path: c.href) }.buttonStyle(.link)
+                            Button(c.label) { AppModel.shared.open(path: c.href) }.buttonStyle(InkLinkStyle())
                         }
                     }
                 }

@@ -158,7 +158,7 @@ struct ChatView: View {
                     // Send shows only once there's something to send (the owner's rule: hidden, not faded).
                     Button { send(draft) } label: { Image(systemName: "arrow.up.circle.fill").font(.title2) }
                         .buttonStyle(.plain)
-                        .foregroundStyle(Color.accentColor)
+                        .foregroundStyle(Color.foleviInk)
                         .help("Send (Return)")
                         .disabled(sending)
                 }
@@ -237,7 +237,7 @@ struct MessageView: View {
                 Text(message.text)
                     .textSelection(.enabled)
                     .padding(.horizontal, 14).padding(.vertical, 9)
-                    .background(Color.accentColor.opacity(0.14), in: .rect(cornerRadius: 14))
+                    .background(Color.foleviInk.opacity(0.14), in: .rect(cornerRadius: 14))
             }
         } else {
             VStack(alignment: .leading, spacing: 10) {

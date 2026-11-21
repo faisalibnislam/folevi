@@ -1,8 +1,10 @@
 // Folevi Core: the app's scenes. Main windows (each a native window tab when the person or ⌘T asks), the
 // Settings window, and the menu bar extra (Quick Add and recent notes). Every command is in the menu bar
 // (AppCommands.swift).
+import CoreSpotlight
 import FoleviDesign
 import SwiftUI
+import UserNotifications
 
 @main
 struct FoleviCoreApp: App {
@@ -28,6 +30,15 @@ struct FoleviCoreApp: App {
         .defaultSize(width: 1180, height: 780)
         .commands { AppCommands(app: app) }
 
+        // A note floating above other windows (Note > Float on Top): just the note, always in front.
+        WindowGroup("Note", id: "float", for: String.self) { $id in
+            if let id { FloatingNote(id: id).environment(app) }
+        }
+        .windowLevel(.floating)
+        .windowToolbarStyle(.unifiedCompact)
+        .defaultSize(width: 460, height: 600)
+        .commandsRemoved()
+
         Settings {
             SettingsView()
                 .environment(app)
@@ -41,6 +52,22 @@ struct FoleviCoreApp: App {
 @MainActor
 enum CoreSetup {
     static func install() {
+        Capabilities.install()
+        UNUserNotificationCenter.current().delegate = NotificationDelegate.shared
+        AppDelegate.onContinue = { activity in
+            MainActor.assumeIsolated {
+                if activity.activityType == CSSearchableItemActionType, let id = activity.userInfo?[CSSearchableItemActivityIdentifier] as? String, let hit = Spotlight.parse(id) {
+                    if hit.place != ShellPlaces.state.current, ShellPlaces.has(hit.place) { Places.shared.switchTo(hit.place, path: "/d/\(hit.note)") } else { AppModel.shared.open(.note(hit.note)) }
+                    return true
+                }
+                if activity.activityType == "app.folevicore.note", let id = activity.userInfo?["id"] as? String {
+                    AppModel.shared.open(.note(id))
+                    return true
+                }
+                if let url = activity.webpageURL { AppModel.shared.openLink(url); return true }
+                return false
+            }
+        }
         // Places' switch: every window starts over in the new place.
         NotificationCenter.default.addObserver(forName: Places.switched, object: nil, queue: .main) { _ in
             MainActor.assumeIsolated { AppModel.shared.placeSwitched() }
@@ -128,5 +155,28 @@ final class StatusItem: NSObject, NSMenuDelegate {
         menu.addItem(.separator())
         menu.addItem(withTitle: "Open Folevi Core", action: #selector(CoreMenuActions.openApp(_:)), keyEquivalent: "").target = a
         menu.addItem(withTitle: "Quit Folevi Core", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
+    }
+}
+
+/// Clicking a Mac notification opens what it's about in Core.
+final class NotificationDelegate: NSObject, UNUserNotificationCenterDelegate {
+    static let shared = NotificationDelegate()
+
+    func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse) async {
+        let info = response.notification.request.content.userInfo
+        let path = info["path"] as? String ?? "/notifications"
+        let place = info["place"] as? String ?? ""
+        await MainActor.run {
+            if !place.isEmpty, place != ShellPlaces.state.current, ShellPlaces.has(place) {
+                Places.shared.switchTo(place, path: path)
+            } else {
+                AppModel.shared.open(path: path)
+            }
+            NSApp.activate()
+        }
+    }
+
+    func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification) async -> UNNotificationPresentationOptions {
+        [.banner, .sound]
     }
 }

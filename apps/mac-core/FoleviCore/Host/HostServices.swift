@@ -82,6 +82,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationDockMenu(_ sender: NSApplication) -> NSMenu? { Self.dockMenu?() }
 
+    /// A Spotlight result or a Handoff of a note: the note opens in Core (in its place).
+    static var onContinue: ((NSUserActivity) -> Bool)?
+
+    func application(_ application: NSApplication, continue userActivity: NSUserActivity, restorationHandler: @escaping ([any NSUserActivityRestoring]) -> Void) -> Bool {
+        Self.onContinue?(userActivity) ?? false
+    }
+
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
         // Every page saves what was typed last before the app goes.
         let views = WindowManager.shared.allViews.filter(\.loaded)
@@ -226,6 +233,11 @@ final class Spotlight {
             return entry
         }
         try? await index.indexSearchableItems(entries)
+    }
+
+    /// Notes of `place` that went away (deleted, encrypted, moved out).
+    func remove(_ ids: [String], place: String) async {
+        try? await index.deleteSearchableItems(withIdentifiers: ids.map { "\(place)|\($0)" })
     }
 
     /// A place's notes leave Spotlight (signed out, the library forgotten).

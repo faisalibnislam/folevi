@@ -148,7 +148,7 @@ struct CatchUpCardView: View {
                 if !brief.sources.isEmpty {
                     HStack {
                         ForEach(brief.sources.prefix(4), id: \.id) { s in
-                            Button(s.title.nonEmpty ?? "Untitled") { window.go(.note(s.id)) }.buttonStyle(.link).font(.callout)
+                            Button(s.title.nonEmpty ?? "Untitled") { window.go(.note(s.id)) }.buttonStyle(InkLinkStyle()).font(.callout)
                         }
                     }
                 }

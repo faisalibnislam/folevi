@@ -25,6 +25,9 @@ enum CoreType {
 
 /// Dates as the Mac says them in lists ("Today 9:41", "Yesterday", "12 Nov").
 enum CoreDates {
+    /// A day as the engine writes it ("2026-11-21"), in this Mac's time zone (not UTC).
+    static let dayFormat = Date.ISO8601FormatStyle(timeZone: .current).year().month().day()
+
     static func short(_ ms: Double) -> String {
         guard ms > 0 else { return "" }
         let d = Date(timeIntervalSince1970: ms / 1000)
@@ -122,11 +125,8 @@ struct NoteMark: View {
     var size: CGFloat = 14
 
     var body: some View {
-        if let icon, !icon.isEmpty, icon.unicodeScalars.first?.properties.isEmoji == true {
-            Text(icon).font(.system(size: size))
-        } else {
-            WebIcon.fileText.image(size: size).foregroundStyle(.secondary)
-        }
+        // Notes show no emoji (the owner's rule): Folevi's note glyph for every note.
+        WebIcon.fileText.image(size: size).foregroundStyle(.secondary)
     }
 }
 
@@ -192,5 +192,17 @@ struct InkPillStyle: ButtonStyle {
             .animation(.spring(duration: 0.2, bounce: 0.3), value: configuration.isPressed)
             .onHover { hovered = $0 }
             .contentShape(Capsule())
+    }
+}
+
+/// A text link in Folevi's ink, underlined on hover (instead of the system's blue).
+struct InkLinkStyle: ButtonStyle {
+    @State private var hovered = false
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .foregroundStyle(Color.foleviInk.opacity(configuration.isPressed ? 0.6 : 1))
+            .underline(hovered)
+            .onHover { hovered = $0 }
     }
 }

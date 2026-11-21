@@ -115,7 +115,7 @@ struct TasksScreen: View {
         guard !text.isEmpty else { return }
         draft = ""
         parsed = nil
-        let due: String? = view == .today ? Date().formatted(.iso8601.year().month().day()) : nil
+        let due: String? = view == .today ? Date().formatted(CoreDates.dayFormat) : nil
         app.perform { client in
             let r = try await client.command(Commands.TaskCreate(TaskCreateArgs(text: text, space: nil, noteId: nil, dueDate: due, dueTime: nil, priority: nil, keepText: nil)))
             app.toast("Task added to \(r.where)")
@@ -141,7 +141,7 @@ struct TaskLine: View {
             } label: {
                 Image(systemName: done ? "checkmark.circle.fill" : "circle")
                     .font(.title3)
-                    .foregroundStyle(done ? Color.accentColor : priorityColor)
+                    .foregroundStyle(done ? Color.foleviInk : priorityColor)
             }
             .buttonStyle(.plain)
             .accessibilityLabel(done ? "Mark as not done" : "Mark as done")
@@ -161,7 +161,7 @@ struct TaskLine: View {
                         Button { window.go(.note(task.noteId)) } label: {
                             Text(task.noteTitle.nonEmpty ?? "Untitled")
                         }
-                        .buttonStyle(.link)
+                        .buttonStyle(InkLinkStyle())
                     }
                 }
                 .font(.caption)
@@ -210,7 +210,7 @@ struct TaskLine: View {
     }
 
     private func dueText(_ d: String) -> String {
-        guard let date = try? Date(d, strategy: .iso8601.year().month().day()) else { return d }
+        guard let date = try? Date(d, strategy: CoreDates.dayFormat) else { return d }
         let cal = Calendar.current
         var s = cal.isDateInToday(date) ? "Today" : cal.isDateInTomorrow(date) ? "Tomorrow" : cal.isDateInYesterday(date) ? "Yesterday" : date.formatted(.dateTime.weekday(.abbreviated).day().month(.abbreviated))
         if let t = task.dueTime { s += " \(t)" }
@@ -228,7 +228,7 @@ struct TaskLine: View {
     }
 
     private func setDue(_ d: Date) {
-        send { $0.dueDate = .set(d.formatted(.iso8601.year().month().day())) }
+        send { $0.dueDate = .set(d.formatted(CoreDates.dayFormat)) }
     }
 }
 
@@ -244,6 +244,7 @@ struct CalendarScreen: View {
     @State private var calendars = Live<Views.CalendarsList>()
     @State private var selected = Date()
     @State private var adding = false
+    @State private var feedShown = false
 
     private var cal: Calendar { Calendar.current }
 
@@ -270,11 +271,12 @@ struct CalendarScreen: View {
             dayDetail.frame(minWidth: 240, idealWidth: 300, maxWidth: 380)
         }
         .onAppear {
-            if let month, let d = try? Date(month + "-01", strategy: .iso8601.year().month().day()) { anchor = d }
+            if let month, let d = try? Date(month + "-01", strategy: CoreDates.dayFormat) { anchor = d }
             bind()
         }
         .onChange(of: anchor) { bind() }
         .sheet(isPresented: $adding) { AddCalendarSheet() }
+        .sheet(isPresented: $feedShown) { CalendarFeedSheet() }
         .toolbar {
             ToolbarItemGroup(placement: .secondaryAction) {
                 Menu {
@@ -287,6 +289,8 @@ struct CalendarScreen: View {
                     }
                     Divider()
                     Button("Subscribe to Calendar…") { adding = true }
+                    Divider()
+                    Button("Folevi Calendar Feed…") { feedShown = true }
                 } label: { Label("Calendars", systemImage: "calendar.badge.plus") }
             }
         }
@@ -299,7 +303,7 @@ struct CalendarScreen: View {
         calendars.bind(app.client, Views.CalendarsList())
     }
 
-    private func iso(_ d: Date) -> String { d.formatted(.iso8601.year().month().day()) }
+    private func iso(_ d: Date) -> String { d.formatted(CoreDates.dayFormat) }
 
     private var header: some View {
         HStack {
@@ -341,9 +345,9 @@ struct CalendarScreen: View {
         return VStack(alignment: .leading, spacing: 2) {
             Text(day.formatted(.dateTime.day()))
                 .font(.callout.weight(today ? .bold : .regular))
-                .foregroundStyle(today ? Color.white : inMonth ? Color.primary : Color.secondary)
+                .foregroundStyle(today ? Color.foleviOnInk : inMonth ? Color.primary : Color.secondary)
                 .frame(width: 24, height: 24)
-                .background { if today { Circle().fill(Color.accentColor) } }
+                .background { if today { Circle().fill(Color.foleviInk) } }
             ForEach(it.events.prefix(2), id: \.id) { e in
                 Text(e.title).font(.caption2).lineLimit(1).padding(.horizontal, 4).frame(maxWidth: .infinity, alignment: .leading)
                     .background(Color(hex: e.color).opacity(0.2), in: .rect(cornerRadius: 3))
@@ -356,7 +360,7 @@ struct CalendarScreen: View {
         }
         .padding(4)
         .frame(maxWidth: .infinity, minHeight: 78, alignment: .topLeading)
-        .background(picked ? Color.accentColor.opacity(0.1) : .clear, in: .rect(cornerRadius: 6))
+        .background(picked ? Color.foleviInk.opacity(0.1) : .clear, in: .rect(cornerRadius: 6))
         .overlay(alignment: .top) { Divider() }
         .opacity(inMonth ? 1 : 0.55)
         .contentShape(Rectangle())
@@ -418,5 +422,41 @@ extension Color {
     /// "#rrggbb" (a calendar's colour) as a colour; grey when it isn't one.
     init(hex: String) {
         if let c = RGBA(hex: hex) { self = c.color } else { self = .gray }
+    }
+}
+
+/// Folevi's own calendar feed (tasks with due dates), to subscribe to in Calendar or another app.
+struct CalendarFeedSheet: View {
+    private var app: AppModel { .shared }
+    @Environment(\.dismiss) private var dismiss
+    @State private var feed = Live<Views.CalendarFeed>()
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Text("Folevi Calendar Feed").font(.headline)
+            Text("Subscribe to your tasks' due dates in Calendar or any app that reads calendar feeds.").foregroundStyle(.secondary)
+            if let f = feed.value {
+                if f.active, let url = f.url {
+                    HStack {
+                        Text(url).font(.caption.monospaced()).textSelection(.enabled).lineLimit(1)
+                        Button("Copy") { NSPasteboard.general.clearContents(); NSPasteboard.general.setString(url, forType: .string) }
+                    }
+                    if let u = URL(string: url.replacingOccurrences(of: "https://", with: "webcal://")) {
+                        Button("Subscribe in Calendar") { NSWorkspace.shared.open(u) }
+                    }
+                    Button("Turn Off Feed", role: .destructive) { app.perform { _ = try await $0.command(Commands.CalendarFeedRevoke()) } }
+                } else {
+                    Toggle("Include workspaces", isOn: .constant(f.includeWorkspaces)).disabled(true)
+                    Button("Make a Feed") { app.perform { _ = try await $0.command(Commands.CalendarFeedCreate(CalendarFeedCreateArgs(includeWorkspaces: true))) } }
+                        .buttonStyle(InkPillStyle())
+                }
+            } else {
+                ProgressView()
+            }
+            HStack { Spacer(); Button("Done") { dismiss() }.keyboardShortcut(.defaultAction) }
+        }
+        .padding(20)
+        .frame(width: 460)
+        .task { feed.bind(app.client, Views.CalendarFeed()) }
     }
 }

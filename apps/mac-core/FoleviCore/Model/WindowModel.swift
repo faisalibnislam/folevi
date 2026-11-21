@@ -70,7 +70,6 @@ final class WindowModel: Identifiable {
 
     // MARK: navigation
 
-    var canGoBack: Bool { !backStack.isEmpty }
     var canGoForward: Bool { !forwardStack.isEmpty }
 
     /// Goes to `dest`, keeping the way back.
@@ -95,8 +94,20 @@ final class WindowModel: Identifiable {
         move(to: dest)
     }
 
+    /// The window this tab was opened from (a note opened in a new tab): Back on its first page closes this tab
+    /// and goes back there, as Safari does (the owner's rule, 21 November 2026).
+    @ObservationIgnored weak var opener: NSWindow?
+
+    var canGoBack: Bool { !backStack.isEmpty || opener != nil }
+
     func back() {
-        guard let prev = backStack.popLast() else { return }
+        guard let prev = backStack.popLast() else {
+            if let opener, let window {
+                opener.makeKeyAndOrderFront(nil)
+                window.performClose(nil)
+            }
+            return
+        }
         forwardStack.append(current)
         move(to: prev)
     }

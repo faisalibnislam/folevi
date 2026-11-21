@@ -154,6 +154,7 @@ struct VaultItemDetail: View {
     private var app: AppModel { .shared }
     @State private var item: VaultItemValue?
     @State private var shown: Set<String> = []
+    @State private var history = false
 
     var body: some View {
         Form {
@@ -187,6 +188,11 @@ struct VaultItemDetail: View {
         }
         .formStyle(.grouped)
         .toolbar {
+            if item != nil {
+                ToolbarItem {
+                    Button("History") { history = true }
+                }
+            }
             if let item, item.canChange {
                 ToolbarItem {
                     Button("Edit") {
@@ -196,6 +202,7 @@ struct VaultItemDetail: View {
                 }
             }
         }
+        .sheet(isPresented: $history) { VaultHistorySheet(vaultId: vaultId, itemId: itemId) }
         .task(id: itemId) {
             shown = []
             item = try? await app.client?.command(Commands.VaultItemOpen(VaultItemIdArgs(vaultId: vaultId, itemId: itemId)))

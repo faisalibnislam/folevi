@@ -92,6 +92,7 @@ struct NoteListScreen: View {
                         .contextMenu { NoteMenu(row: row, window: window) }
                         .onAppear { if row.id == list.rows.last?.id { more() } }
                 }
+                .onMove(perform: sort == .manual ? reorder : nil)
             } header: {
                 if kind == .folder, !(subfolders.value?.folders ?? []).isEmpty { Text("Notes") }
             }
@@ -144,6 +145,16 @@ struct NoteListScreen: View {
         let notes = ids.filter { !$0.hasPrefix("folder:") }
         if let folder = ids.first(where: { $0.hasPrefix("folder:") }) { return window.go(.folder(String(folder.dropFirst(7)))) }
         if notes.count == 1, let id = notes.first { window.go(.note(id)) } else { notes.forEach { app.open(.note($0), newTab: true) } }
+    }
+
+    /// Manual order: the moved note goes after the row it lands under.
+    private func reorder(_ from: IndexSet, _ to: Int) {
+        let rows = list.rows
+        guard let i = from.first, rows.indices.contains(i) else { return }
+        let id = rows[i].id
+        let after = to == 0 ? nil : rows[min(to, rows.count) - 1].id
+        guard after != id else { return }
+        app.perform { _ = try await $0.command(Commands.NoteReorder(NoteReorderArgs(id: id, afterId: after, view: kind, folderId: folderId))) }
     }
 
     private func trashSelection() {

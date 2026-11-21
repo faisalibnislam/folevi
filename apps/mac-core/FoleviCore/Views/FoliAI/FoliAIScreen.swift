@@ -115,6 +115,7 @@ struct ChatView: View {
                         MessageView(message: m, conversationId: conversationId ?? "", window: window)
                             .id(m.id)
                     }
+                    if let id = conversationId { ResearchJobsView(conversationId: id, window: window) }
                 }
                 .padding(24)
                 .frame(maxWidth: 760, alignment: .leading)

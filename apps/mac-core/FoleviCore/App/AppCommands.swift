@@ -183,7 +183,7 @@ struct AppCommands: SwiftUI.Commands {
             Button("Folevi Core Help") { NSWorkspace.shared.open(URL(string: "https://folevi.com/help")!) }
             Button("What's New") { NSWorkspace.shared.open(URL(string: "https://folevi.com/changelog")!) }
             Divider()
-            Button("Contact Support…") { NSWorkspace.shared.open(URL(string: "https://folevi.com/support")!) }
+            Button("Contact Support…") { SupportWindow.show() }
         }
         CommandGroup(after: .appSettings) {
             Button(Updater.shared.menuTitle ?? "Check for Updates…") { Updater.shared.menuAction() }

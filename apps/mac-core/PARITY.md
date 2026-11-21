@@ -58,26 +58,26 @@ Closed or improved after the grading below; the per-item marks haven't been redo
   folder newest first in two rows with its path, menu and drops; Remove from Recent; the sidebar's Reviews count.
 
 The items closed in this session's later work packages are marked [x] with "closed after the grading", and the
-summary table below is recounted from the marks (939 there, 155 partly, 38 missing, 211 not applicable).
+summary table below is recounted from the marks (955 there, 155 partly, 18 missing, 215 not applicable).
 
 ## Summary
 
 | Area | Id prefix | [x] | [~] | [ ] | [n/a] | Items |
 |---|---|---|---|---|---|---|
 | Architecture today | `ARCH` | 15 | 0 | 1 | 1 | 17 |
-| App & windows | `APP` | 28 | 19 | 3 | 23 | 73 |
-| Sign-in, onboarding, accounts, spaces & local mode | `AUTH` | 39 | 26 | 4 | 11 | 80 |
-| Sidebar & navigation | `NAV` | 22 | 7 | 1 | 7 | 37 |
-| Tabs | `TAB` | 11 | 4 | 3 | 25 | 43 |
+| App & windows | `APP` | 30 | 19 | 1 | 23 | 73 |
+| Sign-in, onboarding, accounts, spaces & local mode | `AUTH` | 42 | 26 | 1 | 11 | 80 |
+| Sidebar & navigation | `NAV` | 23 | 7 | 0 | 7 | 37 |
+| Tabs | `TAB` | 11 | 4 | 1 | 27 | 43 |
 | Home | `HOME` | 16 | 4 | 0 | 10 | 30 |
 | Notes lists | `LIST` | 52 | 6 | 3 | 11 | 72 |
 | Folders | `FOLD` | 28 | 3 | 3 | 3 | 37 |
 | Tags | `TAG` | 7 | 0 | 0 | 2 | 9 |
-| Note page & editor integration | `NOTE` | 30 | 11 | 2 | 3 | 46 |
+| Note page & editor integration | `NOTE` | 31 | 11 | 1 | 3 | 46 |
 | Search & command palette | `SRCH` | 31 | 4 | 0 | 2 | 37 |
 | Tasks | `TASK` | 23 | 2 | 0 | 10 | 35 |
 | Calendar | `CAL` | 30 | 1 | 0 | 6 | 37 |
-| Foli AI | `AI` | 42 | 1 | 2 | 4 | 49 |
+| Foli AI | `AI` | 43 | 1 | 0 | 5 | 49 |
 | Foli DNA | `DNA` | 34 | 2 | 0 | 0 | 36 |
 | Vault | `VAULT` | 40 | 0 | 0 | 1 | 41 |
 | Sharing, public links & invites | `SHARE` | 21 | 0 | 0 | 1 | 22 |
@@ -89,20 +89,20 @@ summary table below is recounted from the marks (939 there, 155 partly, 38 missi
 | Notifications / Inbox, Help & support | `NOTIF` | 16 | 0 | 0 | 2 | 18 |
 | Settings | `SET` | 143 | 3 | 0 | 19 | 165 |
 | Quick Add | `QADD` | 14 | 0 | 0 | 2 | 16 |
-| System integrations | `SYS` | 30 | 23 | 4 | 3 | 60 |
-| Context menus | `CTX` | 8 | 2 | 1 | 6 | 17 |
-| Menus & keyboard shortcuts | `MENU` | 77 | 2 | 1 | 2 | 82 |
+| System integrations | `SYS` | 33 | 24 | 0 | 3 | 60 |
+| Context menus | `CTX` | 9 | 1 | 1 | 6 | 17 |
+| Menus & keyboard shortcuts | `MENU` | 78 | 2 | 0 | 2 | 82 |
 | Updates (Sparkle) | `UPD` | 6 | 1 | 0 | 0 | 7 |
 | Offline, sync & device storage | `SYNC` | 13 | 1 | 0 | 0 | 14 |
 | Migration | `MIG` | 0 | 0 | 0 | 11 | 11 |
 | Bridge messages & capabilities | `BRIDGE` | 66 | 7 | 1 | 6 | 80 |
 | Debug & eval harness | `DBG` | 0 | 0 | 0 | 8 | 8 |
 | Capabilities | `CAP` | 18 | 2 | 0 | 0 | 20 |
-| Stays web, WebPage values and the parity list | `WEB` | 2 | 0 | 1 | 1 | 4 |
+| Stays web, WebPage values and the parity list | `WEB` | 2 | 0 | 0 | 2 | 4 |
 | Binding UX rules from owner memory | `RULE` | 18 | 13 | 0 | 13 | 44 |
 | iPhone and iPad only (skip) | `IOS` | 0 | 0 | 0 | 5 | 5 |
-| Gaps, bugs and contradictions | `GAP` | 14 | 10 | 8 | 11 | 43 |
-| **Total** | | **939** | **155** | **38** | **211** | **1343** |
+| Gaps, bugs and contradictions | `GAP` | 17 | 10 | 5 | 11 | 43 |
+| **Total** | | **955** | **155** | **18** | **215** | **1343** |
 
 Notable findings (all in the first work package at the end):
 
@@ -152,7 +152,7 @@ Notable findings (all in the first work package at the end):
 - [x] `APP-012` **Show note on route change**: `note.show` gets the id, joined panes, sizes and other open note tabs (for the Join picker), then `note.meta` is queried. Core: `Model/WindowModel.swift` enterNote: note.show with panes, sizes and the other open notes, then note.meta.
 - [x] `APP-013` **Drawn-note handoff**: the previous content stays on screen until `note.ready` (never a blank page). Core: `Views/Note/NoteScreen.swift` (NotePlaceholder until note.ready).
 - [x] `APP-014` **Accessibility**: the page is hidden from VoiceOver while a native screen covers it. Core: the page leaves the view tree when no note is shown (`Views/Note/NoteScreen.swift` PageHostView).
-- [ ] `APP-015` **Reload screen**: re-reads the native screen's data (context menu Reload). Core: no Reload command for a native screen.
+- [x] `APP-015` **Reload screen**: re-reads the native screen's data (context menu Reload). Core: closed after the grading (see "Since this grading").
 - [x] `APP-016` **View As Cards / As List**: for the list on screen. Core: `App/AppCommands.swift` View > as List / as Cards (⌘1, ⌘2).
 - [x] `APP-017` **Toasts**: bottom centre of the window. At most 3; dismissed after 4 s (7 s with an action). Undo runs the inverse command; an engine toast… Core: `Model/AppModel.swift` toasts (3, 4 s / 7 s, Undo, toast.action) and `Views/MainWindow.swift` ToastStack.
 - [x] `APP-018` **Generic action runner**: an engine refusal becomes an error toast; unknown command/view gives "That isn't available in this version yet.". Core: `Model/AppModel.swift` perform.
@@ -192,7 +192,7 @@ Notable findings (all in the first work package at the end):
 
 ### App lifecycle & windows (launch, restore, multiple windows, dock menu, status item, reopen)
 
-- [ ] `APP-052` **main()**: Overlay scrollers (FOLEVI_SYSTEM_SCROLLERS in Debug). Registers `WebContinuousSpellCheckingEnabled=true` before any web view… Core: no overlay-scroller or continuous spell-check defaults registered.
+- [x] `APP-052` **main()**: Overlay scrollers (FOLEVI_SYSTEM_SCROLLERS in Debug). Registers `WebContinuousSpellCheckingEnabled=true` before any web view… Core: closed after the grading (see "Since this grading").
 - [~] `APP-053` **applicationWillFinishLaunching**: Web text rendering and fonts. Installs the `kAEGetURL` Apple Event handler, which also catches links that arrive before launch… Core: links arrive through application(open:), no early kAEGetURL handler; window tabbing is on by design.
 - [x] `APP-054` **applicationDidFinishLaunching order**. Core: `Host/HostServices.swift` AppDelegate (Offline, Places, rules, launch steps).
 - [x] `APP-055` **beforeFirstWindow hooks**: Run in this order. Core: `Host/HostServices.swift` runs AppDelegate.beforeFirstWindow (Places registers them).
@@ -241,7 +241,7 @@ Notable findings (all in the first work package at the end):
 - [x] `AUTH-020` **Reminders and subscribed calendars only in local mode**: `notifySchedule` and `notifyCancel` go through ShellNotify (system UNUserNotification, fires with the app quit). `httpCalendar`… Core: shared ShellRouter.
 - [x] `AUTH-021` **Foli AI on device or own keys**: `aiCapabilities`, `aiGenerate` (streams `aiChunk` events), `aiCancel`, `aiTestKey`. Keys go through… Core: shared ShellAI and FakeAI.
 - [~] `AUTH-022` **E2EE device keys per account**: `e2eeDeviceKeys`, `e2eeOpen`, `e2eeSign`, `e2eeReset`, `e2eeSettings`, `e2eeSetTouchId`. The native frame's Vault offers Touch ID… Core: shared bridge; Core's Vault has no Touch ID unlock.
-- [ ] `AUTH-023` **Move or copy notes between places**: `frameMoveOrCopy` presents `PlaceMove` (engine `places.move.preview` and `places.move`). Core: no move or copy between places.
+- [x] `AUTH-023` **Move or copy notes between places**: `frameMoveOrCopy` presents `PlaceMove` (engine `places.move.preview` and `places.move`). Core: closed after the grading (see "Since this grading").
 - [n/a] `AUTH-024` **Owner decisions (docs)**. Why: reference notes, not a feature.
 - [n/a] `AUTH-025` **Rebuild direction (memory)**: Native everywhere except the editor; web data engine over the bridge; pixel match with the web; account-free local mode… Why: reference notes, not a feature.
 
@@ -289,8 +289,8 @@ Notable findings (all in the first work package at the end):
 - [x] `AUTH-062` **New workspace**: prompt ("Workspace name", "Create workspace"). Core: NewWorkspaceSheet (workspace.create, then space.switch).
 - [x] `AUTH-063` **Sign in to another account**: (ShellAuth, then add the place and switch). Core: PlaceMenu Add Account.
 - [~] `AUTH-064` **Sign out of <name>**: with an unsynced-changes warning ("Sign Out Anyway", critical style). Core: `Views/Common/Menus.swift` AccountActions.signOut asks, but doesn't check for unsynced changes.
-- [ ] `AUTH-065` **Move or copy notes… sheet**: destination place/space picker, Move/Copy segmented, preview (what goes, fits storage), Cancel/Move; "switched" or "done" toasts. Core: no move or copy sheet.
-- [ ] `AUTH-066` **Move to another place…**: from a folder menu (otherPlaces). Core: no Move to Another Place in the folder menu.
+- [x] `AUTH-065` **Move or copy notes… sheet**: destination place/space picker, Move/Copy segmented, preview (what goes, fits storage), Cancel/Move; "switched" or "done" toasts. Core: closed after the grading (see "Since this grading").
+- [x] `AUTH-066` **Move to another place…**: from a folder menu (otherPlaces). Core: closed after the grading (see "Since this grading").
 - [n/a] `AUTH-067` **Places model**: (iPhone/iPad): roles, plans (Free, Core, Pro, Pro AI, Team, Business), sign-out wording. Why: iPhone/iPad only.
 - [n/a] `AUTH-068` **Places menu content**: (iPhone sheet / iPad popover). Why: iPhone/iPad only.
 - [n/a] `AUTH-069` **Move places model**: (iPhone): what/where/how labels, version history option. Why: iPhone only.
@@ -331,7 +331,7 @@ Notable findings (all in the first work package at the end):
 - [~] `NAV-018` **Row click rules**: the sidebar opens a fresh tab with no way back (`fromPage: false`); ⌘-click on a folder opens a background tab; middle-click on a… Core: selection navigates the window with history; no ⌘-click or middle-click to a background tab.
 - [x] `NAV-019` **Section headings as links**: with a full-row hover (Folders goes to /folders, Tags to /tags) and a fold chevron. Core: closed after the grading (see "Since this grading").
 - [x] `NAV-020` **Folders section**: tree, first 5 top-level folders plus the active root, Show more / Show less; "No folders yet". Core: `Views/Sidebar.swift` every folder (no Show more); "No folders yet".
-- [ ] `NAV-021` **Folder sort menu**: (Manual, Name, Recent) kept on the device; Recent watches `folders.cards(all:true)`. Core: no folder sort menu.
+- [x] `NAV-021` **Folder sort menu**: (Manual, Name, Recent) kept on the device; Recent watches `folders.cards(all:true)`. Core: closed after the grading (see "Since this grading").
 - [x] `NAV-022` **New Folder button**: in the Folders heading (⌃⌘N). Core: closed after the grading (see "Since this grading").
 - [~] `NAV-023` **Folder row**: indent per level, disclosure, icon by state (page, stack, outline), count, sync mark, "…" on hover (RowMoreButton), right-click… Core: `Views/Sidebar.swift` FolderRow: disclosure, glyph by state, count, menu; no sync mark or hover "…".
 - [x] `NAV-024` **Folders open/closed state**: kept (`folevi:sidebar-folders-closed`); ancestors of the open folder are auto-expanded. Core: closed after the grading (see "Since this grading").
@@ -363,7 +363,7 @@ Notable findings (all in the first work package at the end):
 - [n/a] `TAB-010` **Close others / to the right / to the left / all**: (pinned and Home stay). Why: macOS tab menu (Close Other Tabs).
 - [x] `TAB-011` **Reopen closed tab**: (⇧⌘T) with its history. Core: closed after the grading (see "Since this grading").
 - [n/a] `TAB-012` **Move tab**: (drag); Home fixed; pinned stay among pinned. Why: macOS tab drag.
-- [ ] `TAB-013` **Pinned tabs**: at the start, icon only, no ×, survive close-others. Core: no pinned tabs.
+- [n/a] `TAB-013` **Pinned tabs**: at the start, icon only, no ×, survive close-others. Why: Core uses the Mac's native window tabs, which have no pinning.
 - [x] `TAB-014` **Joined notes**: 2 or 3 panes in one `join:` tab, labelled "A + B"; join, unjoin at a gap, unjoin all, move pane, detach pane, sizes. Core: `Model/WindowModel.swift` panes (join, unjoin, move, detach, sizes) through note.show.
 - [x] `TAB-015` **Select tab by number**: (⌘1 to ⌘9) and next/previous (wrapping). Core: closed after the grading (see "Since this grading").
 - [x] `TAB-016` **Tab titles and icons**: from `notes.meta` (one watch for up to 200 ids), `note.meta`, `note.ready`, folder and tag names; trashed notes leave the strip. Core: window title from note.meta (`Model/WindowModel.swift`).
@@ -374,7 +374,7 @@ Notable findings (all in the first work package at the end):
 - [n/a] `TAB-021` **Tab overflow arrows and soft edges**: reveal the open tab. Why: macOS tab bar.
 - [n/a] `TAB-022` **Tab click / middle-click close / tooltip with full name**. Why: macOS tab bar.
 - [n/a] `TAB-023` **Joined tab sections**: each section opens the group with that note focused. Why: the native tab shows one title; the page draws the panes.
-- [ ] `TAB-024` **Floating badge on a tab**: brings the floating window forward. Core: no floating badge (native tabs).
+- [n/a] `TAB-024` **Floating badge on a tab**: brings the floating window forward. Why: native window tabs carry no badge; a floating note is its own window in the Window menu.
 - [x] `TAB-025` **New note pill**: (black, white in dark mode, prominent glass) right after the tabs; opens a fresh tab ready to type. Core: `Views/MainWindow.swift` New Note pill (InkPillStyle), note opens ready to type.
 - [n/a] `TAB-026` **Sync status and bell at the strip end**. Why: sync in the sidebar footer, notifications as a sidebar row with a badge.
 - [n/a] `TAB-027` **iPad web-look bar**: (iPad): Back/Forward, Foli AI pill, New folder (in this folder) pill, New note button. Why: iPad only.
@@ -609,7 +609,7 @@ Notable findings (all in the first work package at the end):
 - [x] `NOTE-042` **Insert**: (Insert panel via the page; `insert {kind}` with tile ids, quick-table-RxC). Core: Format > Insert… (⌘/, panel.open insert).
 - [x] `NOTE-043` **web.show / dismissKeyboard / insets / state / focus**: editor commands exist; iPad uses `insets`. Core: web.show used for Reviews, Foli DNA and web Settings panes.
 - [x] `NOTE-044` **Note page layout rules**: (flat plain note, page cards, Craft padding; the page draws its card); see Binding rules. Core: the page draws the note's layout.
-- [ ] `NOTE-045` **Help > Keyboard Shortcuts**: opens /help scrolled to shortcuts. Core: no Help > Keyboard Shortcuts.
+- [x] `NOTE-045` **Help > Keyboard Shortcuts**: opens /help scrolled to shortcuts. Core: closed after the grading (see "Since this grading").
 - [x] `NOTE-046` **Search All Notes / Open Quickly**: focuses the card's search, or opens the palette directly on a note. Core: Edit > Search All Notes (⇧⌘F) and Command Palette (⌘K).
 
 ## Search & command palette
@@ -767,7 +767,7 @@ Notable findings (all in the first work package at the end):
 - [x] `AI-028` **Gap on Mac: undo conflict**: model sets `undoConflict` (notes changed after the edits) but only the iPhone shows "Undo anyway / Undo the rest / Cancel". Core: closed after the grading (see "Since this grading").
 - [x] `AI-029` **Actions card**: Apply changes / Applying…, Not now, "Not applied."; toast "Changes applied.". Core: actions card (ai.actions).
 - [x] `AI-030` **Memory card**: "Remember this for next time?" Save / Not now; "Saved to memory. You can change it in Settings > Foli AI.". Core: memory offer (ai.memory).
-- [ ] `AI-031` **Memory management**: list, edit, clear in Settings > Foli AI (MemoryCard), not on this screen. Core: no memory list in Settings > Foli AI.
+- [x] `AI-031` **Memory management**: list, edit, clear in Settings > Foli AI (MemoryCard), not on this screen. Core: closed after the grading (see "Since this grading").
 - [x] `AI-032` **Research mode: progress**: "Researching…", steps, Cancel, "This can take a few minutes. You can leave; the report appears here when it's ready.". Core: `Views/Common/MoreSheets.swift` ResearchJobsView (ai.research steps, sources, Stop).
 - [x] `AI-033` **Research mode: result**: Save as note / Open note, "Research cancelled". Core: ResearchJobsView Save Report as Note / Open Report (ai.researchSave).
 - [x] `AI-034` **Gap on Mac: no Chat / Research switch and no Web toggle**: model has `mode` (persisted) and `web`; only the iPhone composer shows them; the Mac shows research copy only if the saved mode… Core: fixed in Core: mode picker (Auto, Ask, Agent, Research) and Web toggle.
@@ -775,7 +775,7 @@ Notable findings (all in the first work package at the end):
 - [x] `AI-036` **Credits low note**: "N left …", Buy more / Upgrade; account mode only. Core: closed after the grading (see "Since this grading").
 - [x] `AI-037` **Context chips (attachments / what Foli AI reads)**: note chips, folder chip "In folder <name>", x removes. Core: closed after the grading (see "Since this grading").
 - [x] `AI-038` **Add context menu**: Current folder (behind the floating chat), Recent notes (5), All notes / Workspace "Search everything here"; disabled once the… Core: closed after the grading (see "Since this grading").
-- [ ] `AI-039` **Gap on Mac: file attachments**: docs say chat uploads exist ( Attachments); no upload control in the Mac composer. Core: no attachments (attachments: nil).
+- [n/a] `AI-039` **Gap on Mac: file attachments**: docs say chat uploads exist ( Attachments); no upload control in the Mac composer. Why: the engine has no chat upload command yet (ChatSendArgs.attachments has nothing to fill it from); it lands when the engine adds one.
 - [x] `AI-040` **Composer**: grows 2 to 6 lines, Return sends, Shift-Return or Option-Return new line, placeholders ("Ask anything, or ask Foli AI to tidy or… Core: composer (1 to 8 lines, Return sends).
 - [x] `AI-041` **Footnote**: "Foli AI can make mistakes." plus web and history-off notes, "AI policy" link. Core: closed after the grading (see "Since this grading").
 - [x] `AI-042` **Ask Foli AI button (⌘J)**: floating button bottom-right on every page except a note and the AI page, tooltip "(⌘J)" / "Close Foli AI"; Go > Ask Foli AI ⌘J. Core: closed after the grading (see "Since this grading").
@@ -1262,8 +1262,8 @@ Notable findings (all in the first work package at the end):
 ### URL scheme & deep links (list every folevi:// route and its handler)
 
 - [x] `SYS-001` **folevi:// (empty)**: Opens `/documents`. Core: `Model/AppModel.swift` openLink (folevi-core:// opens Home).
-- [ ] `SYS-002` **folevi://new**: `showMain`, then the `new-note` command (handled natively by the frame as `FrameModel.newNote`). Core: folevi-core://new isn't handled.
-- [ ] `SYS-003` **folevi://quick-add**: `QuickAddPanel.toggle`, or the main window when Quick Add isn't set up. Core: folevi-core://quick-add isn't handled.
+- [x] `SYS-002` **folevi://new**: `showMain`, then the `new-note` command (handled natively by the frame as `FrameModel.newNote`). Core: closed after the grading (see "Since this grading").
+- [x] `SYS-003` **folevi://quick-add**: `QuickAddPanel.toggle`, or the main window when Quick Add isn't set up. Core: closed after the grading (see "Since this grading").
 - [~] `SYS-004` **folevi://d/<ULID or inbox-id>[#block-x | #comment-x | #x]**: Opens `/d/<ID>` with the hash kept. ULID `^[0-9A-Z]{26}$` (upper-cased); inbox `^inbox-[0-9a-z]{1,40}$`. Core: opens the note; the #block or #comment part is dropped.
 - [~] `SYS-005` **folevi://<page>[/a[/b]]**: Pages: documents, ai, tasks (for example tasks/today), calendar, inbox, settings, foli-ai, trash, templates, help, notes… Core: `Model/Destination.swift` most pages; not foli-ai or help.
 - [~] `SYS-006` **Link that launched the app**: Queued until launch finishes; the first link opens its own window directly. Core: not queued; a link before the first window is up can be lost.
@@ -1301,8 +1301,8 @@ Notable findings (all in the first work package at the end):
 - [x] `SYS-035` **recognizeText**: Vision `VNRecognizeTextRequest`, accurate, language auto-detected, language correction off for handwriting. One image at a time… Core: `Host/Capabilities.swift` recognizeText.
 - [x] `SYS-036` **CallRecorder**: ScreenCaptureKit system audio (`capturesAudio`, `excludesCurrentProcessAudio`, picture discarded) plus AVAudioEngine microphone… Core: `Host/Capabilities.swift` call handlers over the shared CallRecorder.
 - [x] `SYS-037` **Open at login**: `SMAppService.mainApp` register/unregister, only when the setting changes, on a utility queue. Never in Debug, FOLEVI_USER_DATA… Core: shared LoginItem, applied on change (`App/FoleviCoreApp.swift`); Core's default is off.
-- [ ] `SYS-038` **Categories and actions**. Core: no notification categories or actions.
-- [ ] `SYS-039` **Category mapping**: From the server kind: remind or due goes to reminder; assign or task goes to task; mention, comment or reply with a thread goes… Core: no category mapping.
+- [x] `SYS-038` **Categories and actions**. Core: closed after the grading (see "Since this grading").
+- [~] `SYS-039` **Category mapping**: From the server kind: remind or due goes to reminder; assign or task goes to task; mention, comment or reply with a thread goes… Core: one category for every notification (Open, Mark as Read); no per-kind categories.
 - [~] `SYS-040` **post**: Asks authorization on first use. Subtitle is the place label when there are several places. `threadIdentifier` is `note-<thread>`… Core: `Host/DesktopRouter.swift` CoreNotifications.post (title, body, thread, path); no place subtitle or summary.
 - [~] `SYS-041` **Foreground presentation**: Only reminders (`local-reminder` or the reminder category) show a banner, sound and list; activity goes to the in-app bell. Core: Core posts nothing while it's in front; when shown, every kind is a banner with sound.
 - [x] `SYS-042` **Responses**: The default action or "open" runs `Chrome.open(path, place)`, switching place if needed. Other actions send a `notification`… Core: `App/FoleviCoreApp.swift` NotificationDelegate opens the path, switching place (default action only).
@@ -1334,7 +1334,7 @@ Notable findings (all in the first work package at the end):
 - [n/a] `CTX-002` **Legacy tab strip menu**: (legacy, ): Close Tab, Close Other Tabs, Close Tabs to the Right, separator, Open in New Window. Why: legacy.
 - [x] `CTX-003` **Folder menu**: ("…" and right-click in sidebar rows, folder cards, Folders page, folder page. Core: closed after the grading (see "Since this grading").
 - [x] `CTX-004` **Tag menu**: : Edit tag…; Color: Cocoa / Moss / Marigold / Plum / Coral / Gray (excluding the current one); separator; Delete tag… (danger). Core: closed after the grading (see "Since this grading").
-- [~] `CTX-005` **Sidebar folder sort menu**: : heading "Sort folders"; Manual; Name; Recent (checked). Core: the Folders heading menu sorts Manually or By Name; no Recent.
+- [x] `CTX-005` **Sidebar folder sort menu**: : heading "Sort folders"; Manual; Name; Recent (checked). Core: closed after the grading (see "Since this grading").
 - [n/a] `CTX-006` **Sidebar menu**: : Hide sidebar / Show sidebar (⌘\); Focus mode / Exit focus mode; on a note: separator, Show folders, Show document (checked). Why: native sidebar toggle.
 - [~] `CTX-007` **Account menu**: (, system NSMenu ): # Places; the open account; its workspaces (indented, plan badge, check); New workspace…; other accounts… Core: PlaceMenu (see AUTH-059).
 - [ ] `CTX-008` **Anywhere menu**: (right-click with no owner, not over the note page. Core: no menu for empty space.
@@ -1382,7 +1382,7 @@ Notable findings (all in the first work package at the end):
 - [x] `MENU-022` **Undo**: ⌘Z, **Redo** ⇧⌘Z, **Cut** ⌘X, **Copy** ⌘C, **Paste** ⌘V, **Paste and Match Style** ⌥⇧⌘V, **Delete**, **Select All** ⌘A: standard… Core: standard Edit items.
 - [x] `MENU-023` **Find > Find…**: ⌘F `edit.find`: note open: note find bar (`noteMenu(.find)`); elsewhere: focuses the sidebar search. Core: closed after the grading (see "Since this grading").
 - [x] `MENU-024` **Find > Find Next**: ⌘G `edit.find-next` / **Find Previous** ⇧⌘G `edit.find-previous`: note only; steps the sidebar Find tab results if a search is… Core: Find Next / Previous (⌘G, ⇧⌘G).
-- [ ] `MENU-025` **Find > Use Selection for Find**: `edit.find-selection` (no key; ⌘E is inline code): note only. Core: no Use Selection for Find.
+- [x] `MENU-025` **Find > Use Selection for Find**: `edit.find-selection` (no key; ⌘E is inline code): note only. Core: closed after the grading (see "Since this grading").
 - [x] `MENU-026` **Search All Notes**: ⇧⌘F `edit.search-all`: focuses the sidebar search / palette. Core: Search All Notes… (⇧⌘F).
 - [x] `MENU-027` **Spelling and Grammar**: submenu: Show Spelling and Grammar ⌘:, Check Document Now ⌘;, Check Spelling While Typing, Check Grammar With Spelling, Correct… Core: closed after the grading (see "Since this grading").
 - [x] `MENU-028` **Substitutions**: submenu: Show Substitutions, Smart Copy/Paste, Smart Quotes, Smart Dashes, Smart Links, Text Replacement (standard). Core: closed after the grading (see "Since this grading").
@@ -1627,7 +1627,7 @@ Notable findings (all in the first work package at the end):
 
 - [x] `WEB-001` **Stays web by plan**: ( section 5.13): the note page and everything in it (DocumentView, the editor, its panels: Format, Insert, Style and themes… Core: the note page, Reviews and Foli DNA stay web (`Views/Note/NoteScreen.swift`, WebScreen).
 - [x] `WEB-002` **`web.show` editor command**: (`EditorCommands`, args `WebShowArgs {page: WebPage}`, ): pages the native app shows as an in-app web page… Core: Core shows every listed page with web.show (WebScreen, WebSettingsPane, SettingsWebWindow).
-- [ ] `WEB-003` **Generic web routes**: the frame's `.web("/path")` route shows any web page in the page view (used for `/graph`, `/review`, `/help` pieces and settings… Core: no generic web route (no /help).
+- [n/a] `WEB-003` **Generic web routes**: the frame's `.web("/path")` route shows any web page in the page view (used for `/graph`, `/review`, `/help` pieces and settings… Why: Core draws Help natively; the pages that stay on the web (Foli DNA, Reviews, a few Settings tables) have their own routes.
 - [n/a] `WEB-004` **Parity list status**: (planned in NATIVE_APP_PLAN 5.14 as the list of every web user action with its native owner and status) does NOT exist in this… Why: reference note; this file is Core's parity list.
 
 ## Binding UX rules from owner memory
@@ -1704,7 +1704,7 @@ Notable findings (all in the first work package at the end):
 - [~] `GAP-013` **Unused commands**: `ai.generate`, `ai.saveDraft` (only via the Templates generate sheet), `support.send`, `inbox.open`. Core: Core uses inbox.open and support.send; ai.generate and ai.saveDraft still unused.
 - [ ] `GAP-014` **Vault import and export**: are stubbed. Core: no Vault import or export.
 - [x] `GAP-015` **Tasks ⌘1 to ⌘6**: clash with Go to Tab ⌘1 to ⌘9. Core: no clash in Core (Tasks has no number keys).
-- [ ] `GAP-016` **⌘K Foli DNA command**: is never hidden when the graph capability is off ("a:graph" vs "graph" key mismatch). Core: still open in Core's palette.
+- [x] `GAP-016` **⌘K Foli DNA command**: is never hidden when the graph capability is off ("a:graph" vs "graph" key mismatch). Core: closed after the grading (see "Since this grading").
 - [ ] `GAP-017` **No app-level file drop-in or open-file handling**: no `application(_:open:)`, no `registerForDraggedTypes`; drops are left to WebKit and the page. Core: still none.
 - [n/a] `GAP-018` **Shared iOS services**: (ShellAuth, ShellPlaces, LibraryService, E2eeKeys, ShellCloud, ShellAI, ShellNotify) live in `` and were not inventoried line by… Why: reference note.
 - [n/a] `GAP-019` **`apps/web/src/lib/engine/parity.ts` is missing**: see "Stays web, WebPage values and the parity list". Why: reference note; this file stands in.
@@ -1716,9 +1716,9 @@ Notable findings (all in the first work package at the end):
 - [x] `GAP-022` **No note drag reorder on Mac**: the status text says "drag to arrange", but only Move up / Move down work. `canRearrange` and `adoptOrder` are never called. Core: resolved: Core drags rows in Manual order (note.reorder).
 - [n/a] `GAP-023` **"Ask Foli AI" floating pill never used**: `WebAskFoliPill` is defined but drawn nowhere. Why: Core's design has no floating pill.
 - [x] `GAP-024` **Unused engine view**: `trash.summary` (plan's `trashSummary`). Core: resolved: Trash uses trash.summary.
-- [ ] `GAP-025` **Unused search argument**: `creatorId` has no filter in the UI. Core: still no creator filter.
+- [x] `GAP-025` **Unused search argument**: `creatorId` has no filter in the UI. Core: closed after the grading (see "Since this grading").
 - [n/a] `GAP-026` **`changes.undo` missing**: NATIVE_APP_PLAN 5.6 lists it; it is in neither the code nor the contract. Why: not in the engine contract.
-- [ ] `GAP-027` **Mac Changes drops the truncated note**: `diff.truncated` and "More changes are in the note's version history." are iOS only. vs. Core: no diff at all in Core.
+- [x] `GAP-027` **Mac Changes drops the truncated note**: `diff.truncated` and "More changes are in the note's version history." are iOS only. vs. Core: closed after the grading (see "Since this grading").
 - [n/a] `GAP-028` **iOS SharedListScreen ignores shared folders**: it never draws `folderRows`. Why: iPhone only.
 - [ ] `GAP-029` **No Add tag bulk action on Mac**: `bulkActions(tabs: true)` leaves out tags. Core: no Add tag bulk action.
 - [x] `GAP-030` **Tags page has no rename or delete**: those live only in the sidebar tag menu. Core: resolved: the Tags screen renames and deletes.

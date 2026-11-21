@@ -52,6 +52,7 @@ struct NoteMenu: View {
             Menu("Move To") { MoveTargets(ids: [row.id]) }
             Button("Move To Folder…") { window.pickFolder(.moveNotes, [row.id]) }
             Button("Copy To…") { window.pickFolder(.copyNotes, [row.id]) }
+            if (app.places.value?.places.count ?? 0) > 1 { Button("Move to Another Place…") { window.placeMove = PlaceMoveTarget(notes: [row.id]) } }
             Button("Duplicate") { app.perform { _ = try await $0.command(Commands.NoteDuplicate(NoteIdArgs(id: row.id))) } }
             if moveUp != nil || moveDown != nil {
                 Button("Move Up") { moveUp?() }.disabled(moveUp == nil)
@@ -120,6 +121,7 @@ struct FolderMenu: View {
         // Folders nest five levels at most.
         if folder.depth < 4 { Button("New Subfolder…") { newSubfolder(folder) } }
         Button("Move Folder…") { window.pickFolder(.moveFolder, [folder.id]) }
+        if (app.places.value?.places.count ?? 0) > 1 { Button("Move to Another Place…") { window.placeMove = PlaceMoveTarget(folders: [folder.id]) } }
         if folder.parentId != nil {
             Button("Move to Top Level") {
                 app.perform { client in

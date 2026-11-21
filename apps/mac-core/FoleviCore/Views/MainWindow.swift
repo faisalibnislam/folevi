@@ -57,6 +57,7 @@ struct MainWindow: View {
                 .overlay(alignment: .bottomTrailing) { AskOverlay(window: window) }
                 .overlay { if window.paletteShown { CommandPalette(window: window) } }
                 .sheet(item: $window.folderPick) { FolderPickerSheet(target: $0) }
+                .sheet(item: $window.placeMove) { PlaceMoveSheet(notes: $0.notes, folders: $0.folders) }
                 .sheet(isPresented: $window.quickAddShown) { QuickAddView(close: { window.quickAddShown = false }, inWindow: true) }
             }
         }

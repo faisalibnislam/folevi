@@ -45,6 +45,10 @@ final class WindowModel: Identifiable {
     var inspectorChat: String?
     /// The folder whose sharing sheet is up.
     var sharingFolder: String?
+    /// Move or copy to another place (notes, folders).
+    var placeMove: PlaceMoveTarget?
+    /// Edit > Find > Use Selection for Find: the words the find bar starts with.
+    var findSeed: String?
     /// New Folder (⌃⌘N) asked for from the menu; the sidebar opens its sheet.
     var newFolderRequested = false
     /// The floating Ask Foli AI panel (⌘J) over this window.
@@ -347,4 +351,11 @@ struct WindowSeed: Codable, Hashable {
         background = try c.decodeIfPresent(Bool.self, forKey: .background) ?? false
         token = try c.decodeIfPresent(UUID.self, forKey: .token) ?? UUID()
     }
+}
+
+
+struct PlaceMoveTarget: Identifiable {
+    let id = UUID()
+    var notes: [String] = []
+    var folders: [String] = []
 }

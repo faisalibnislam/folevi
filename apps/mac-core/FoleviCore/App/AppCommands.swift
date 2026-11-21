@@ -72,6 +72,17 @@ struct AppCommands: SwiftUI.Commands {
             Button("Find Next") { NotificationCenter.default.post(name: .coreFindNext, object: window) }
                 .keyboardShortcut("g")
                 .disabled(window?.findShown != true)
+            Button("Use Selection for Find") {
+                guard let window, let page = window.page else { return }
+                page.view.evaluateJavaScript("String(window.getSelection() || '')") { r, _ in
+                    MainActor.assumeIsolated {
+                        guard let s = r as? String, !s.isEmpty else { return }
+                        window.findSeed = s
+                        window.findShown = true
+                    }
+                }
+            }
+            .disabled(window?.current.isNote != true)
             Button("Find Previous") { NotificationCenter.default.post(name: .coreFindNext, object: window, userInfo: ["back": true]) }
                 .keyboardShortcut("g", modifiers: [.command, .shift])
                 .disabled(window?.findShown != true)
@@ -161,6 +172,7 @@ struct AppCommands: SwiftUI.Commands {
                 .keyboardShortcut("f", modifiers: [.command, .control, .shift])
                 .disabled(window?.current.isNote != true)
             Button("Note Info") { window?.inspectorTab = .info; window?.inspectorShown = true }
+            Button("Reload") { app.perform { _ = try await $0.command(Commands.EngineRefresh()) } }.keyboardShortcut("r")
             Divider()
             Menu("Appearance") {
                 ForEach([("light", "Light"), ("dark", "Dark"), ("system", "Match System")], id: \.0) { v in

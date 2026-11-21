@@ -123,3 +123,77 @@ extension WindowModel {
         folderPick = FolderPickTarget(action: action, ids: ids)
     }
 }
+
+/// Move or copy notes or folders to another place or space (an account, a workspace, the library on this Mac):
+/// where to, Move or Copy, what goes and whether it fits, then places.move.
+struct PlaceMoveSheet: View {
+    let notes: [String]
+    let folders: [String]
+    private var app: AppModel { .shared }
+    @Environment(\.dismiss) private var dismiss
+    @State private var preview: PlaceMovePreview?
+    @State private var to: String?
+    @State private var copy = false
+    @State private var working = false
+    @State private var problem: String?
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Text(copy ? "Copy to Another Place" : "Move to Another Place").font(.headline)
+            if let p = preview {
+                Picker("To", selection: Binding(get: { to ?? p.to?.value ?? "" }, set: { to = $0; load() })) {
+                    ForEach(p.destinations, id: \.value) { d in Text(d.label).tag(d.value) }
+                }
+                Picker("", selection: $copy) { Text("Move").tag(false); Text("Copy").tag(true) }
+                    .pickerStyle(.segmented).labelsHidden().fixedSize()
+                Text(summary(p)).foregroundStyle(.secondary)
+                if p.fits == false { Label("It doesn't fit in the storage left there.", systemImage: "exclamationmark.triangle").foregroundStyle(.orange) }
+                if p.to?.switches == true { Text("Folevi switches to that place when it's done.").font(.caption).foregroundStyle(.secondary) }
+            } else if let problem {
+                Text(problem).foregroundStyle(.red)
+            } else {
+                ProgressView()
+            }
+            HStack {
+                Spacer()
+                Button("Cancel", role: .cancel) { dismiss() }.keyboardShortcut(.cancelAction)
+                Button(copy ? "Copy" : "Move", action: run)
+                    .buttonStyle(InkPillStyle())
+                    .keyboardShortcut(.defaultAction)
+                    .disabled(working || preview == nil || (to ?? preview?.to?.value) == nil || preview?.fits == false)
+            }
+        }
+        .padding(20)
+        .frame(width: 420)
+        .task { load() }
+    }
+
+    private func summary(_ p: PlaceMovePreview) -> String {
+        var parts: [String] = []
+        if p.folders > 0 { parts.append(p.folders == 1 ? "1 folder" : "\(p.folders) folders") }
+        if p.notes > 0 { parts.append(p.notes == 1 ? "1 note" : "\(p.notes) notes") }
+        let what = parts.isEmpty ? "Nothing" : parts.joined(separator: " and ")
+        return "\(what) \(copy ? "will be copied" : "will move") from \(p.from)."
+    }
+
+    private func load() {
+        let args = PlaceMovePreviewArgs(to: to, folders: folders.isEmpty ? nil : folders, notes: notes.isEmpty ? nil : notes)
+        Task { @MainActor in
+            do {
+                guard let client = app.client else { return }
+                preview = try await client.query(Views.PlacesMovePreview(args))
+            } catch let f as EngineFailure { problem = f.message } catch {}
+        }
+    }
+
+    private func run() {
+        guard let dest = to ?? preview?.to?.value else { return }
+        working = true
+        let args = PlaceMoveArgs(to: dest, folders: folders.isEmpty ? nil : folders, notes: notes.isEmpty ? nil : notes, copy: copy, versions: nil)
+        app.perform { client in
+            let r = try await client.command(Commands.PlacesMove(args))
+            app.toast(r.status == "switched" ? "Moved. Here it is." : (copy ? "Copied \(r.notes) notes" : "Moved \(r.notes) notes") + (r.problems > 0 ? ", \(r.problems) couldn't go" : ""))
+        }
+        dismiss()
+    }
+}

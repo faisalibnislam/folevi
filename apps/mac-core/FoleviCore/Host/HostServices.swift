@@ -49,6 +49,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     static var services: NSObject?
 
     func applicationWillFinishLaunching(_ notification: Notification) {
+        // Before any web view: spelling is checked while typing in notes, as in today's app.
+        UserDefaults.standard.register(defaults: ["WebContinuousSpellCheckingEnabled": true])
         CoreLog.debug("willFinishLaunching")
         Offline.installIfAsked()
         Places.install()

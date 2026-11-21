@@ -20,6 +20,8 @@ struct Sidebar: View {
     @AppStorage("sidebar.folderSort") private var folderSort = "manual"
     /// The folders left open, kept on this Mac.
     @AppStorage("sidebar.openFolders") private var openFolders = ""
+    /// When each folder last changed (the Recent sort).
+    @State private var cards = Live<Views.FoldersCards>()
 
     var body: some View {
         List(selection: $window.sidebarSelection) {
@@ -49,7 +51,7 @@ struct Sidebar: View {
                 ForEach(rootFolders, id: \.id) { folder in
                     FolderRow(folder: folder, all: folders, expanded: $expanded, window: window, byName: folderSort == "name", rename: { renaming = $0 }, newSubfolder: { newFolderParent = .some($0.id) })
                 }
-                .onMove(perform: folderSort == "name" ? nil : { from, to in
+                .onMove(perform: folderSort != "manual" ? nil : { from, to in
                     // The sidebar's own order of top-level folders (folder.setSidebarOrder).
                     var ids = rootFolders.map(\.id)
                     ids.move(fromOffsets: from, toOffset: to)
@@ -65,6 +67,7 @@ struct Sidebar: View {
                     Picker("Sort Folders", selection: $folderSort) {
                         Text("Manually").tag("manual")
                         Text("By Name").tag("name")
+                        Text("Recently Changed").tag("recent")
                     }
                     .pickerStyle(.inline)
                 }
@@ -130,6 +133,9 @@ struct Sidebar: View {
             revealCurrent()
         }
         .onChange(of: expanded) { openFolders = expanded.sorted().joined(separator: ",") }
+        .task(id: "\(folderSort)\(app.client.map { ObjectIdentifier($0).hashValue } ?? 0)") {
+            if folderSort == "recent" { cards.bind(app.client, Views.FoldersCards(FolderCardsArgs(space: nil, parentId: nil, all: true))) }
+        }
         .onChange(of: window.current) { revealCurrent() }
         .onChange(of: window.newFolderRequested) {
             guard window.newFolderRequested else { return }
@@ -171,6 +177,10 @@ struct Sidebar: View {
         // A subfolder whose parent isn't here (moved, or not synced yet) shows at the top level.
         let roots = all.filter { $0.parentId == nil || !ids.contains($0.parentId!) }
         if folderSort == "name" { return roots.sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending } }
+        if folderSort == "recent" {
+            let at = Dictionary((cards.value?.folders ?? []).map { ($0.id, $0.updatedAt) }, uniquingKeysWith: { a, _ in a })
+            return roots.sorted { (at[$0.id] ?? 0) > (at[$1.id] ?? 0) }
+        }
         guard !order.isEmpty else { return roots.sorted { $0.rank < $1.rank } }
         let at = Dictionary(uniqueKeysWithValues: order.enumerated().map { ($1, $0) })
         return roots.sorted { (at[$0.id] ?? Int.max, $0.rank) < (at[$1.id] ?? Int.max, $1.rank) }

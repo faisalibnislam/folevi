@@ -216,6 +216,8 @@ struct FindBar: View {
             TextField("Find in Note", text: $query)
                 .textFieldStyle(.plain)
                 .focused($focused)
+                .onAppear { if let seed = window.findSeed { query = seed; window.findSeed = nil } }
+                .onChange(of: window.findSeed) { if let seed = window.findSeed { query = seed; window.findSeed = nil } }
                 .onSubmit { step(1) }
                 .onChange(of: query) { _, q in find(q, index: 0) }
             if let r = result, !query.isEmpty {

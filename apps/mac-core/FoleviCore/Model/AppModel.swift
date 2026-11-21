@@ -293,6 +293,12 @@ final class AppModel {
     /// folevi-core:// links, Spotlight results and app.folevi.com links.
     func openLink(_ url: URL) {
         if url.scheme == Paths.urlScheme {
+            // folevi-core://new (a new note) and folevi-core://quick-add (the Quick Add panel).
+            switch url.host {
+            case "new": NoteActions.newNote(app: self, window: front, newTab: front == nil); return
+            case "quick-add": QuickAdd.shared.show(); return
+            default: break
+            }
             var path = "/" + [url.host, url.path].compactMap { $0 }.joined().trimmingCharacters(in: CharacterSet(charactersIn: "/"))
             if let q = url.query { path += "?" + q }
             open(path: path)

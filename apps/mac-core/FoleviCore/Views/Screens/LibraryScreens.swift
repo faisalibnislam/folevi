@@ -76,6 +76,7 @@ struct SearchScreen: View {
     @State private var archived = false
     @State private var meaning = false
     @State private var everywhere = false
+    @State private var mine = false
     @State private var picked: String?
     @State private var recentNotes = Live<Views.RecentViewed>()
     @State private var openTasks: [TaskRow]?
@@ -126,7 +127,7 @@ struct SearchScreen: View {
     }
 
     private var query: String { text.trimmingCharacters(in: .whitespaces) }
-    private var filtered: Bool { folder != nil || tag != nil || updated != .any || archived || meaning || everywhere }
+    private var filtered: Bool { folder != nil || tag != nil || updated != .any || archived || meaning || everywhere || mine }
 
     private var noteHits: [SearchHit] { (result?.hits ?? []).filter { $0.matchIn != "meaning" } }
     private var meaningHits: [SearchHit] { (result?.hits ?? []).filter { $0.matchIn == "meaning" } }
@@ -183,6 +184,7 @@ struct SearchScreen: View {
         .onChange(of: archived) { run() }
         .onChange(of: meaning) { run() }
         .onChange(of: everywhere) { run() }
+        .onChange(of: mine) { run() }
     }
 
     private var field: some View {
@@ -231,6 +233,9 @@ struct SearchScreen: View {
             }
             .labelsHidden().fixedSize()
             Toggle("Archived", isOn: $archived).toggleStyle(.checkbox).help("Include archived notes")
+            if app.session.value?.mode != .local, app.currentSpace?.kind == .workspace {
+                Toggle("Created by Me", isOn: $mine).toggleStyle(.checkbox).help("Only notes you created")
+            }
             if result?.meaningAvailable == true { Toggle("By Meaning", isOn: $meaning).toggleStyle(.checkbox).help("Find notes about the same thing, even in other words") }
             if (app.session.value?.spaces.count ?? 0) > 1 { Toggle("Every Space", isOn: $everywhere).toggleStyle(.checkbox) }
             Spacer()
@@ -326,7 +331,7 @@ struct SearchScreen: View {
     }
 
     private func clearFilters() {
-        folder = nil; tag = nil; updated = .any; archived = false; meaning = false; everywhere = false
+        folder = nil; tag = nil; updated = .any; archived = false; meaning = false; everywhere = false; mine = false
     }
 
     private func list<C: View>(@ViewBuilder _ rows: () -> C) -> some View {
@@ -418,7 +423,7 @@ struct SearchScreen: View {
         picked = nil
         guard !q.isEmpty, let client = app.client else { result = nil; return }
         searching = true
-        let args = SearchArgs(text: q, scope: everywhere ? .everywhere : .place, space: nil, folderId: folder, tagId: tag, updatedAfter: updated.after, includeArchived: archived, creatorId: nil, meaning: meaning, limit: 40)
+        let args = SearchArgs(text: q, scope: everywhere ? .everywhere : .place, space: nil, folderId: folder, tagId: tag, updatedAfter: updated.after, includeArchived: archived, creatorId: mine && !everywhere ? app.session.value?.profile.id : nil, meaning: meaning, limit: 40)
         Task { @MainActor in
             let r = try? await client.query(Views.Search(args))
             if q == query { result = r }
@@ -1322,7 +1327,7 @@ struct ChangeDiffSheet: View {
                                 }
                             }
                         }
-                        if d.truncated { Text("More changes in the note.").font(.caption).foregroundStyle(.secondary) }
+                        if d.truncated { Text("More changes are in the note's version history.").font(.caption).foregroundStyle(.secondary) }
                     } else {
                         ProgressView()
                     }

@@ -6,7 +6,7 @@ import SwiftUI
 
 struct NotificationsScreen: View {
     let window: WindowModel
-    @Environment(AppModel.self) private var app
+    private var app: AppModel { .shared }
     @State private var selection: Set<String> = []
     @State private var replying: NotificationRow?
 
@@ -61,7 +61,7 @@ struct NotificationLine: View {
     let row: NotificationRow
     let window: WindowModel
     let reply: () -> Void
-    @Environment(AppModel.self) private var app
+    private var app: AppModel { .shared }
 
     var body: some View {
         HStack(alignment: .top, spacing: 10) {
@@ -129,7 +129,7 @@ struct NotificationLine: View {
 /// Replying to a comment from its notification.
 struct ReplySheet: View {
     let row: NotificationRow
-    @Environment(AppModel.self) private var app
+    private var app: AppModel { .shared }
     @Environment(\.dismiss) private var dismiss
     @State private var text = ""
 
@@ -158,7 +158,7 @@ struct ReplySheet: View {
 /// The Inbox: a note of its own (Save to Folevi and Quick Add put things there). Opens it.
 struct InboxNoteScreen: View {
     let window: WindowModel
-    @Environment(AppModel.self) private var app
+    private var app: AppModel { .shared }
 
     var body: some View {
         LoadingScreen()

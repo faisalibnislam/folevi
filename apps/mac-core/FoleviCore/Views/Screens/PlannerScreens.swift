@@ -9,7 +9,7 @@ import SwiftUI
 struct TasksScreen: View {
     let window: WindowModel
     let view: TasksView
-    @Environment(AppModel.self) private var app
+    private var app: AppModel { .shared }
     @State private var tasks = Live<Views.TasksList>()
     @State private var draft = ""
     @State private var parsed: TaskParseValue?
@@ -128,7 +128,7 @@ struct TaskLine: View {
     let task: TaskRow
     let window: WindowModel
     var showNote = true
-    @Environment(AppModel.self) private var app
+    private var app: AppModel { .shared }
     @State private var editingDue = false
     @State private var due = Date()
 
@@ -237,7 +237,7 @@ struct TaskLine: View {
 struct CalendarScreen: View {
     let window: WindowModel
     let month: String?
-    @Environment(AppModel.self) private var app
+    private var app: AppModel { .shared }
     @State private var anchor = Date()
     @State private var events = Live<Views.CalendarsEvents>()
     @State private var tasks = Live<Views.TasksRange>()
@@ -387,7 +387,7 @@ struct CalendarScreen: View {
 
 /// Subscribing to a calendar by its address (an .ics feed).
 struct AddCalendarSheet: View {
-    @Environment(AppModel.self) private var app
+    private var app: AppModel { .shared }
     @Environment(\.dismiss) private var dismiss
     @State private var url = ""
     @State private var name = ""

@@ -11,7 +11,7 @@ import SwiftUI
 struct FoliAIScreen: View {
     let window: WindowModel
     let conversation: String?
-    @Environment(AppModel.self) private var app
+    private var app: AppModel { .shared }
     @State private var list = Live<Views.AiConversations>()
     @State private var search = ""
 
@@ -74,7 +74,7 @@ struct ChatView: View {
     let conversationId: String?
     let context: ChatContextArgs?
     var onStarted: (String) -> Void = { _ in }
-    @Environment(AppModel.self) private var app
+    private var app: AppModel { .shared }
     @State private var conversation = Live<Views.AiConversation>()
     @State private var caps = Live<Views.AiCapabilities>()
     @State private var draft = ""
@@ -222,7 +222,7 @@ struct MessageView: View {
     let message: ChatMessage
     let conversationId: String
     let window: WindowModel
-    @Environment(AppModel.self) private var app
+    private var app: AppModel { .shared }
     @State private var stream = Live<Views.AiStream>()
 
     private var text: String {
@@ -323,7 +323,7 @@ struct MessageView: View {
 /// An agent run: the changes Foli AI wants to make to notes, to approve one by one or all, and undo after.
 struct AgentRunView: View {
     let run: ChatAgentRun
-    @Environment(AppModel.self) private var app
+    private var app: AppModel { .shared }
     @State private var picked: Set<String> = []
 
     var body: some View {

@@ -9,6 +9,16 @@ struct Inspector: View {
 
     var body: some View {
         VStack(spacing: 0) {
+            if window.current.isNote {
+                NoteInfo(window: window)
+            } else {
+                content
+            }
+        }
+    }
+
+    @ViewBuilder private var content: some View {
+        VStack(spacing: 0) {
             Picker("Inspector", selection: $window.inspectorTab) {
                 ForEach(WindowModel.InspectorTab.allCases) { Text($0.title).tag($0) }
             }

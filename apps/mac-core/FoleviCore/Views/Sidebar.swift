@@ -7,7 +7,7 @@ import SwiftUI
 
 struct Sidebar: View {
     @Bindable var window: WindowModel
-    @Environment(AppModel.self) private var app
+    private var app: AppModel { .shared }
     @State private var expanded: Set<String> = []
     @State private var renaming: FolderNode?
     @State private var newFolderParent: String?? = nil
@@ -55,7 +55,7 @@ struct Sidebar: View {
                         Label {
                             Text(tag.name)
                         } icon: {
-                            Image(systemName: "number").foregroundStyle(Color.folevi(tag.color))
+                            WebIcon.hash.image(size: 16).foregroundStyle(Color.folevi(tag.color))
                         }
                         .tag(Destination.tag(tag.id))
                     }
@@ -105,9 +105,27 @@ struct Sidebar: View {
     }
 
     private func row(_ dest: Destination, title: String? = nil, badge: Int = 0) -> some View {
-        Label(title ?? dest.title, systemImage: dest.symbol)
-            .badge(badge)
-            .tag(dest)
+        Label {
+            Text(title ?? dest.title)
+        } icon: {
+            PlaceIcon(dest: dest)
+        }
+        .badge(badge)
+        .tag(dest)
+    }
+}
+
+/// A place's icon: the main app's icon in the sidebar's tint; Foli AI keeps its coloured mark.
+struct PlaceIcon: View {
+    let dest: Destination
+    var size: CGFloat = 16
+
+    var body: some View {
+        if case .foliAI = dest {
+            AiMarkGlyph(size: size)
+        } else {
+            dest.webIcon.image(size: size)
+        }
     }
 }
 
@@ -119,7 +137,7 @@ struct FolderRow: View {
     let window: WindowModel
     let rename: (FolderNode) -> Void
     let newSubfolder: (FolderNode) -> Void
-    @Environment(AppModel.self) private var app
+    private var app: AppModel { .shared }
     @State private var targeted = false
 
     private var children: [FolderNode] { all.filter { $0.parentId == folder.id }.sorted { $0.rank < $1.rank } }
@@ -178,7 +196,7 @@ struct SectionHeaderWithAdd: View {
 
 /// The sync state at the foot of the sidebar: quiet when saved, a word when not.
 struct SyncFooter: View {
-    @Environment(AppModel.self) private var app
+    private var app: AppModel { .shared }
 
     var body: some View {
         if let s = app.sync.value, s.state != .saved || s.pending > 0 {

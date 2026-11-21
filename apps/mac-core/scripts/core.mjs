@@ -42,9 +42,17 @@ function alive(p) {
   }
 }
 
+/** Every running copy of this build (a crashed run can leave its pid file behind). */
+function running() {
+  try {
+    return execFileSync("pgrep", ["-f", BIN], { encoding: "utf8" }).split("\n").map(Number).filter(Boolean);
+  } catch {
+    return [];
+  }
+}
+
 async function quit() {
-  const p = pid();
-  if (p && alive(p)) {
+  for (const p of running()) {
     process.kill(p, "SIGTERM");
     for (let i = 0; i < 50 && alive(p); i++) await sleep(100);
     if (alive(p)) process.kill(p, "SIGKILL");
@@ -95,7 +103,12 @@ if (verb === "launch") {
 } else if (verb === "shot") {
   const file = resolve(rest[0] || join(CORE, "screens/shot.png"));
   mkdirSync(dirname(file), { recursive: true });
-  const ws = windows(pid()).filter((w) => w.layer === 0 && w.width > 200 && w.height > 120);
+  const p = running()[0] ?? pid();
+  try {
+    execFileSync("osascript", ["-e", `tell application "System Events" to set frontmost of (first process whose unix id is ${p}) to true`]);
+  } catch {}
+  await sleep(400);
+  const ws = windows(p).filter((w) => w.layer === 0 && w.width > 200 && w.height > 120);
   if (!ws.length) throw new Error("no window on screen");
   const target = ws.sort((a, b) => b.width * b.height - a.width * a.height)[0];
   execFileSync("screencapture", ["-x", "-o", "-l", String(target.id), file]);

@@ -7,7 +7,7 @@ import SwiftUI
 
 struct VaultScreen: View {
     let window: WindowModel
-    @Environment(AppModel.self) private var app
+    private var app: AppModel { .shared }
     @State private var summary = Live<Views.VaultSummary>()
     @State private var passcode = ""
     @State private var section: VaultItemsArgs.Section = .passwords
@@ -151,7 +151,7 @@ struct VaultItemDetail: View {
     let vaultId: String
     let itemId: String
     let edit: (VaultEditTarget) -> Void
-    @Environment(AppModel.self) private var app
+    private var app: AppModel { .shared }
     @State private var item: VaultItemValue?
     @State private var shown: Set<String> = []
 
@@ -214,7 +214,7 @@ struct VaultItemDetail: View {
 /// A one-time code from its secret, with the seconds it has left.
 struct TotpCode: View {
     let secret: String
-    @Environment(AppModel.self) private var app
+    private var app: AppModel { .shared }
     @State private var code: VaultTotpResult?
 
     var body: some View {
@@ -234,7 +234,7 @@ struct TotpCode: View {
 /// Adding or changing an item: its title, each field of its kind (with a generator for passwords), notes.
 struct VaultItemEditor: View {
     @State private var target: VaultEditTarget
-    @Environment(AppModel.self) private var app
+    private var app: AppModel { .shared }
     @Environment(\.dismiss) private var dismiss
 
     init(target: VaultEditTarget) { _target = State(initialValue: target) }

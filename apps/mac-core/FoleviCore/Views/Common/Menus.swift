@@ -23,7 +23,7 @@ struct NoteDrag: Codable, Transferable {
 struct NoteMenu: View {
     let row: NoteRow
     let window: WindowModel
-    @Environment(AppModel.self) private var app
+    private var app: AppModel { .shared }
     @Environment(\.openWindow) private var openWindow
     var inTrash: Bool { row.inTrash }
 
@@ -59,7 +59,7 @@ struct NoteMenu: View {
 /// The folders a note can move to (Drafts, then every folder by its path).
 struct MoveTargets: View {
     let ids: [String]
-    @Environment(AppModel.self) private var app
+    private var app: AppModel { .shared }
 
     var body: some View {
         Button("Drafts") { move(to: nil) }
@@ -97,7 +97,7 @@ struct FolderMenu: View {
     let window: WindowModel
     let rename: (FolderNode) -> Void
     let newSubfolder: (FolderNode) -> Void
-    @Environment(AppModel.self) private var app
+    private var app: AppModel { .shared }
 
     var body: some View {
         Button("Open in New Tab") { app.open(.folder(folder.id), newTab: true) }
@@ -130,7 +130,7 @@ enum FolderColors {
 /// The place and space menu at the top of the sidebar: the account or library, its spaces, the other places on
 /// this Mac, adding an account, and Settings.
 struct PlaceMenu: View {
-    @Environment(AppModel.self) private var app
+    private var app: AppModel { .shared }
     @Environment(\.openSettings) private var openSettings
 
     var body: some View {
@@ -186,7 +186,7 @@ struct PlaceMenu: View {
 
 /// The open place's picture: the profile's photo, or its initial on the accent colour.
 struct PlaceAvatar: View {
-    @Environment(AppModel.self) private var app
+    private var app: AppModel { .shared }
     var size: CGFloat = 26
 
     var body: some View {

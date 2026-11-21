@@ -2,6 +2,7 @@
 // page. Parsed from and written to Folevi's app paths (lib/app/router.tsx's parseRoute), so links inside notes,
 // folevi-core:// links, notifications and Spotlight all land on the same places.
 import Foundation
+import FoleviDesign
 
 enum TasksView: String, Codable, Hashable, CaseIterable, Identifiable {
     case inbox, today, upcoming, all, completed, mine
@@ -177,9 +178,39 @@ enum Destination: Hashable, Codable {
         case .trash: "Trash"
         case .vault: "Vault"
         case .reviews: "Reviews"
-        case .graph: "Graph"
+        case .graph: "Foli DNA"
         case .note: "Note"
         case .invite: "Invitation"
+        }
+    }
+
+    /// The main app's own icon for the place (the web's icon set, as today's Folevi draws its sidebar).
+    var webIcon: WebIcon {
+        switch self {
+        case .home: .house
+        case .search: .search
+        case .foliAI: .sparkles
+        case .inbox: .inbox
+        case .notifications: .bell
+        case .tasks: .listTodo
+        case .calendar: .calendar
+        case .daily: .sunMedium
+        case .allNotes: .notebookText
+        case .recent: .clock
+        case .starred: .bookmark
+        case .shared, .sharedFolder: .users
+        case .drafts: .penLine
+        case .changes: .rotateCcwClock
+        case .templates: .layoutTemplate
+        case .folders, .folder: .folder
+        case .tags, .tag: .hash
+        case .archive: .archive
+        case .trash: .trash
+        case .vault: .shieldCheck
+        case .reviews: .layers
+        case .graph: .waypoints
+        case .note: .fileText
+        case .invite: .mail
         }
     }
 

@@ -45,6 +45,10 @@ targets:
         excludes:
           - "Resources/Info.plist"
           - "Resources/*.entitlements"
+      # The app icon: Folevi's own (the owner, 21 November 2026: keep the main app's coloured icon), the same Icon
+      # Composer file the iPhone, iPad and today's Mac app use.
+      - path: ../ios/ios/App/App/AppIcon.icon
+        group: Shared
       # The Mac host's UI-free plumbing (apps/mac/Folevi), by path: the app:// scheme that serves the export and
       # carries big bridge bodies, the "folevi" message handler and the foleviShell router, places and their
       # hidden runners, background sync, links, the offline switch and a few system services.
@@ -149,6 +153,7 @@ targets:
         PRODUCT_MODULE_NAME: FoleviCore
         INFOPLIST_FILE: FoleviCore/Resources/Info.plist
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
         LD_RUNPATH_SEARCH_PATHS: "$(inherited) @executable_path/../Frameworks"
         COMBINE_HIDPI_IMAGES: YES
         ENABLE_APP_SANDBOX: NO

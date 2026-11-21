@@ -8,7 +8,7 @@ import SwiftUI
 
 struct MainWindow: View {
     let seed: WindowSeed?
-    @Environment(AppModel.self) private var app
+    private var app: AppModel { .shared }
     @State private var window: WindowModel
     @Environment(\.openWindow) private var openWindow
 
@@ -42,6 +42,7 @@ struct MainWindow: View {
             }
             if MacAppLock.shared.isCovered { LockCover() }
         }
+        .tint(.foleviInk)
         .focusedSceneValue(\.window, window)
         .background(WindowAccessor(model: window, asTab: seed?.asTab == true))
         .environment(window)
@@ -92,15 +93,15 @@ struct ScreenView: View {
 /// The window's toolbar: Back and Forward at the leading edge, then the screen's items; New Note at the end.
 struct WindowToolbar: ToolbarContent {
     let window: WindowModel
-    @Environment(AppModel.self) private var app
+    private var app: AppModel { .shared }
 
     var body: some ToolbarContent {
         ToolbarItemGroup(placement: .navigation) {
             ControlGroup {
-                Button { window.back() } label: { Label("Back", systemImage: "chevron.backward") }
+                Button { window.back() } label: { Label { Text("Back") } icon: { WebIcon.chevronLeft.image(size: 16) } }
                     .disabled(!window.canGoBack)
                     .help("Back")
-                Button { window.forward() } label: { Label("Forward", systemImage: "chevron.forward") }
+                Button { window.forward() } label: { Label { Text("Forward") } icon: { WebIcon.chevronRight.image(size: 16) } }
                     .disabled(!window.canGoForward)
                     .help("Forward")
             }
@@ -110,11 +111,14 @@ struct WindowToolbar: ToolbarContent {
             NoteToolbar(window: window)
         }
         ToolbarItem(placement: .primaryAction) {
+            // New Note: the main app's black pill (white in dark mode), the one New Note in the window.
             Button {
                 NoteActions.newNote(app: app, window: window)
             } label: {
-                Label("New Note", systemImage: "square.and.pencil")
+                Label { Text("New Note") } icon: { WebIcon.plus.image(size: 14) }
+                    .labelStyle(.titleAndIcon)
             }
+            .buttonStyle(InkPillStyle())
             .help("New Note (⌘N)")
         }
     }
@@ -150,7 +154,7 @@ struct LockCover: View {
 
 /// The window's toasts, newest at the bottom, in a glass capsule (a floating control layer).
 struct ToastStack: View {
-    @Environment(AppModel.self) private var app
+    private var app: AppModel { .shared }
 
     var body: some View {
         VStack(spacing: 8) {

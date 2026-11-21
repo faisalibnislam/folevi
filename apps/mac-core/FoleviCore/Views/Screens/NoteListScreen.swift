@@ -11,7 +11,7 @@ struct NoteListScreen: View {
     let kind: NotesListView
     var folderId: String?
     var tagId: String?
-    @Environment(AppModel.self) private var app
+    private var app: AppModel { .shared }
     @State private var list = LiveList<ListViews.NotesList>()
     @State private var selection: Set<String> = []
     @AppStorage("core.list.sort") private var sortRaw = NotesSort.updated.rawValue

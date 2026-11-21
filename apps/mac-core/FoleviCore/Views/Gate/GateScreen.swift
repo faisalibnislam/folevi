@@ -8,7 +8,7 @@ import SwiftUI
 
 struct GateScreen: View {
     let gate: GateChangedEvent
-    @Environment(AppModel.self) private var app
+    private var app: AppModel { .shared }
     @State private var values: [String: String] = [:]
     @FocusState private var focus: String?
 

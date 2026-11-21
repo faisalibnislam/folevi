@@ -3,6 +3,7 @@
 // around them (sidebar, toolbar, menus, Settings). Colours are the system's semantic ones; notes carry colour.
 import FoleviDesign
 import FoleviEngine
+import AppKit
 import SwiftUI
 
 enum CoreType {
@@ -159,5 +160,37 @@ extension Color {
     /// A folder or tag colour id ("blue", "#4f7cff") as a colour.
     static func folevi(_ id: String?) -> Color {
         FolderColor.resolve(id).color.color
+    }
+}
+
+extension Color {
+    /// Folevi's ink: the main app's black buttons (white in dark mode), the same in every Mac whatever its accent
+    /// colour (the owner, 21 November 2026: match the web app's black and white buttons).
+    static let foleviInk = Color(nsColor: NSColor(name: "foleviInk") { a in
+        a.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua ? NSColor(srgbRed: 0xF2 / 255, green: 0xF2 / 255, blue: 0xF3 / 255, alpha: 1) : NSColor(srgbRed: 0x1F / 255, green: 0x1F / 255, blue: 0x22 / 255, alpha: 1)
+    })
+
+    /// What sits on the ink (white on black, black on white).
+    static let foleviOnInk = Color(nsColor: NSColor(name: "foleviOnInk") { a in
+        a.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua ? NSColor(srgbRed: 0x1F / 255, green: 0x1F / 255, blue: 0x22 / 255, alpha: 1) : .white
+    })
+}
+
+/// The main app's black pill (New Note, a sheet's main action): ink fill, the inverse for its text, a press dip
+/// and a hover.
+struct InkPillStyle: ButtonStyle {
+    @State private var hovered = false
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(.body.weight(.semibold))
+            .foregroundStyle(Color.foleviOnInk)
+            .padding(.horizontal, 14)
+            .padding(.vertical, 6)
+            .background(Capsule().fill(Color.foleviInk.opacity(configuration.isPressed ? 0.8 : hovered ? 0.9 : 1)))
+            .scaleEffect(configuration.isPressed ? 0.97 : 1)
+            .animation(.spring(duration: 0.2, bounce: 0.3), value: configuration.isPressed)
+            .onHover { hovered = $0 }
+            .contentShape(Capsule())
     }
 }

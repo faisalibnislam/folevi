@@ -7,7 +7,7 @@ import SwiftUI
 
 struct HomeScreen: View {
     let window: WindowModel
-    @Environment(AppModel.self) private var app
+    private var app: AppModel { .shared }
     @State private var home = Live<Views.Home>()
 
     var body: some View {
@@ -100,7 +100,10 @@ struct HomeScreen: View {
                 Text(title).font(.title3.weight(.semibold)).accessibilityAddTraits(.isHeader)
                 Spacer()
                 if let action, let dest {
-                    Button(action) { window.go(dest) }.buttonStyle(.link)
+                    Button(action) { window.go(dest) }
+                        .buttonStyle(.plain)
+                        .foregroundStyle(.secondary)
+                        .hoverEffectCompat()
                 }
             }
             content()
@@ -125,7 +128,7 @@ struct HomeScreen: View {
 struct CatchUpCardView: View {
     let card: CatchUpCard
     let window: WindowModel
-    @Environment(AppModel.self) private var app
+    private var app: AppModel { .shared }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {

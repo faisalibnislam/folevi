@@ -22,10 +22,21 @@ enum DebugCommands {
                     "engine": String(describing: app.client?.state ?? .idle),
                     "ready": app.ready,
                     "gate": app.gate?.gate ?? NSNull(),
+                    "gateActions": app.gate?.actions.map { "\($0.id): \($0.label)" } ?? [],
+                    "gateFields": app.gate?.fields.map(\.id) ?? [],
+                    "gateTitle": app.gate?.title ?? "",
                     "place": ShellPlaces.state.current ?? NSNull(),
                     "front": app.front?.current.path ?? NSNull(),
                     "pages": PagePool.shared.all.map { ["kind": $0.kind == .engine ? "engine" : "editor", "note": $0.shownNote ?? "", "lent": $0.lentTo != nil] },
                 ] as [String: Any]])
+            }
+        }
+        MacEval.commands["notes"] = { _, done in
+            MainActor.assumeIsolated {
+                Task { @MainActor in
+                    guard let h = try? await AppModel.shared.client?.query(Views.Home(SpaceArgs())) else { return done(["error": "no home"]) }
+                    done(["value": h.recents.map { ["id": $0.id, "title": $0.title] }])
+                }
             }
         }
         MacEval.commands["go"] = { req, done in

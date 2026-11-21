@@ -94,7 +94,7 @@ final class SettingsRouter {
 }
 
 struct SettingsView: View {
-    @Environment(AppModel.self) private var app
+    private var app: AppModel { .shared }
     @Bindable private var router = SettingsRouter.shared
 
     private var sections: [SettingsSection] {
@@ -137,13 +137,14 @@ struct SettingsView: View {
             .navigationTitle(router.section.title)
         }
         .frame(minWidth: 720, minHeight: 500)
+        .tint(.foleviInk)
     }
 }
 
 // MARK: panes
 
 struct AccountSettingsPane: View {
-    @Environment(AppModel.self) private var app
+    private var app: AppModel { .shared }
     @State private var account = Live<Views.SettingsAccount>()
     @State private var details = Live<Views.AccountDetails>()
     @State private var name = ""
@@ -220,7 +221,7 @@ struct AccountSettingsPane: View {
 }
 
 struct GeneralSettingsPane: View {
-    @Environment(AppModel.self) private var app
+    private var app: AppModel { .shared }
     @State private var general = Live<Views.SettingsGeneral>()
 
     var body: some View {
@@ -242,7 +243,7 @@ struct GeneralSettingsPane: View {
 }
 
 struct AppearanceSettingsPane: View {
-    @Environment(AppModel.self) private var app
+    private var app: AppModel { .shared }
     @State private var appearance = Live<Views.SettingsAppearance>()
 
     var body: some View {
@@ -271,7 +272,7 @@ struct AppearanceSettingsPane: View {
 }
 
 struct NotificationSettingsPane: View {
-    @Environment(AppModel.self) private var app
+    private var app: AppModel { .shared }
     @State private var settings = Live<Views.SettingsNotifications>()
 
     var body: some View {
@@ -314,7 +315,7 @@ struct NotificationSettingsPane: View {
 }
 
 struct AISettingsPane: View {
-    @Environment(AppModel.self) private var app
+    private var app: AppModel { .shared }
     @State private var ai = Live<Views.SettingsAi>()
 
     var body: some View {
@@ -350,7 +351,7 @@ struct AISettingsPane: View {
 }
 
 struct SecuritySettingsPane: View {
-    @Environment(AppModel.self) private var app
+    private var app: AppModel { .shared }
     @State private var security = Live<Views.SettingsSecurity>()
 
     var body: some View {
@@ -374,7 +375,7 @@ struct SecuritySettingsPane: View {
 }
 
 struct E2eeRow: View {
-    @Environment(AppModel.self) private var app
+    private var app: AppModel { .shared }
     @State private var state = Live<Views.E2eeState>()
 
     var body: some View {
@@ -391,7 +392,7 @@ struct E2eeRow: View {
 }
 
 struct DevicesPane: View {
-    @Environment(AppModel.self) private var app
+    private var app: AppModel { .shared }
     @State private var security = Live<Views.SettingsSecurity>()
 
     var body: some View {
@@ -442,7 +443,7 @@ struct AppLockPane: View {
 }
 
 struct OfflinePane: View {
-    @Environment(AppModel.self) private var app
+    private var app: AppModel { .shared }
     @State private var storage = Live<Views.DeviceStorage>()
 
     var body: some View {
@@ -480,7 +481,7 @@ struct OfflinePane: View {
 
 /// The library "on this Mac": where it lives (iCloud, a folder, this Mac), its passphrase, syncing it now.
 struct LibrarySection: View {
-    @Environment(AppModel.self) private var app
+    private var app: AppModel { .shared }
     @State private var info: [String: JSONValue] = [:]
 
     var body: some View {

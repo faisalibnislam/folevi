@@ -8,7 +8,7 @@ import SwiftUI
 
 struct RecentScreen: View {
     let window: WindowModel
-    @Environment(AppModel.self) private var app
+    private var app: AppModel { .shared }
     @State private var recent = Live<Views.Recent>()
     @AppStorage("core.recent.everywhere") private var everywhere = false
 
@@ -64,7 +64,7 @@ struct RecentScreen: View {
 struct SearchScreen: View {
     let window: WindowModel
     let initial: String
-    @Environment(AppModel.self) private var app
+    private var app: AppModel { .shared }
     @State private var text = ""
     @State private var result: SearchValue?
     @State private var searching = false
@@ -215,7 +215,7 @@ struct SearchHitRow: View {
 
 struct SharedScreen: View {
     let window: WindowModel
-    @Environment(AppModel.self) private var app
+    private var app: AppModel { .shared }
     @State private var notes = Live<Views.SharedList>()
     @State private var folders = Live<Views.SharedFolders>()
 
@@ -278,7 +278,7 @@ struct SharedScreen: View {
 struct SharedFolderScreen: View {
     let window: WindowModel
     let id: String
-    @Environment(AppModel.self) private var app
+    private var app: AppModel { .shared }
     @State private var folder = Live<Views.SharedFolderOpen>()
 
     var body: some View {
@@ -333,7 +333,7 @@ struct SharedFolderScreen: View {
 /// What others changed in your notes since you last looked, and suggestions waiting for your answer.
 struct ChangesScreen: View {
     let window: WindowModel
-    @Environment(AppModel.self) private var app
+    private var app: AppModel { .shared }
 
     var body: some View {
         Group {
@@ -407,7 +407,7 @@ struct ChangesScreen: View {
 
 struct TemplatesScreen: View {
     let window: WindowModel
-    @Environment(AppModel.self) private var app
+    private var app: AppModel { .shared }
     @State private var builtIn = Live<Views.TemplatesBuiltIn>()
 
     var body: some View {
@@ -459,7 +459,7 @@ struct TemplatesScreen: View {
 struct FoldersScreen: View {
     let window: WindowModel
     let parent: String?
-    @Environment(AppModel.self) private var app
+    private var app: AppModel { .shared }
     @State private var cards = Live<Views.FoldersCards>()
     @State private var newFolder = false
 
@@ -504,7 +504,7 @@ struct FoldersScreen: View {
 
 struct TagsScreen: View {
     let window: WindowModel
-    @Environment(AppModel.self) private var app
+    private var app: AppModel { .shared }
     @State private var tags = Live<Views.TagsIndex>()
     @State private var renaming: TagIndexRow?
 
@@ -560,7 +560,7 @@ extension FolderNode: Identifiable {}
 struct WebScreen: View {
     let window: WindowModel
     let page: WebPage
-    @Environment(AppModel.self) private var app
+    private var app: AppModel { .shared }
     @State private var host: Page?
 
     var body: some View {
@@ -582,7 +582,7 @@ struct WebScreen: View {
 struct DailyNoteScreen: View {
     let window: WindowModel
     let date: String?
-    @Environment(AppModel.self) private var app
+    private var app: AppModel { .shared }
 
     var body: some View {
         LoadingScreen()
@@ -600,7 +600,7 @@ struct InviteScreen: View {
     let window: WindowModel
     let kind: Destination.InviteKind
     let token: String
-    @Environment(AppModel.self) private var app
+    private var app: AppModel { .shared }
     @State private var preview: InvitePreview?
     @State private var loaded = false
 

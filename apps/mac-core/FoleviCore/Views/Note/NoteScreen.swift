@@ -11,7 +11,7 @@ import WebKit
 struct NoteScreen: View {
     let window: WindowModel
     let id: String
-    @Environment(AppModel.self) private var app
+    private var app: AppModel { .shared }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -104,7 +104,7 @@ struct PageHostView: NSViewRepresentable {
 /// note's menu.
 struct NoteToolbar: ToolbarContent {
     let window: WindowModel
-    @Environment(AppModel.self) private var app
+    private var app: AppModel { .shared }
 
     var body: some ToolbarContent {
         ToolbarItem(placement: .navigation) {
@@ -126,28 +126,28 @@ struct NoteToolbar: ToolbarContent {
                     app.perform { _ = try await $0.command(Commands.NoteStar(NoteStarArgs(ids: [id], starred: !starred))) }
                     window.toggleStarLocally()
                 } label: {
-                    Label(starred ? "Remove Star" : "Star", systemImage: starred ? "star.fill" : "star")
+                    Label { Text(starred ? "Remove Bookmark" : "Bookmark") } icon: { (starred ? WebIcon.bookmarkOff : WebIcon.bookmark).image(size: 16) }
                 }
-                .help(starred ? "Remove Star" : "Star")
-
-                Button { window.sharingNote = id } label: { Label("Share", systemImage: "square.and.arrow.up") }
-                    .help("Share")
+                .help(starred ? "Remove Bookmark" : "Bookmark")
 
                 Menu {
                     NoteMoreMenu(window: window)
                 } label: {
-                    Label("More", systemImage: "ellipsis")
+                    Label { Text("More") } icon: { WebIcon.ellipsis.image(size: 16) }
                 }
                 .help("More")
             }
         }
         ToolbarItem(placement: .primaryAction) {
             Button {
-                withAnimation(.snappy) { window.inspectorShown.toggle() }
+                withAnimation(.snappy) {
+                    window.inspectorTab = .info
+                    window.inspectorShown.toggle()
+                }
             } label: {
-                Label("Inspector", systemImage: "sidebar.trailing")
+                Label { Text("Note Info") } icon: { WebIcon.info.image(size: 16) }
             }
-            .help(window.inspectorShown ? "Hide Inspector" : "Show Inspector")
+            .help(window.inspectorShown ? "Hide Note Info" : "Show Note Info")
         }
     }
 }
@@ -155,7 +155,7 @@ struct NoteToolbar: ToolbarContent {
 /// The note's menu (the toolbar's More, the menu bar's Note menu): what the page says it offers now.
 struct NoteMoreMenu: View {
     let window: WindowModel
-    @Environment(AppModel.self) private var app
+    private var app: AppModel { .shared }
 
     private var offered: Set<NoteMenuAction> { Set(window.editorState?.menu?.actions ?? NoteMenuAction.allCases) }
 

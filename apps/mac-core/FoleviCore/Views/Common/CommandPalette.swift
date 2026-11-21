@@ -17,7 +17,7 @@ struct PaletteItem: Identifiable, Hashable {
 
 struct CommandPalette: View {
     let window: WindowModel
-    @Environment(AppModel.self) private var app
+    private var app: AppModel { .shared }
     @State private var query = ""
     @State private var hits: [SearchHit] = []
     @State private var index = 0

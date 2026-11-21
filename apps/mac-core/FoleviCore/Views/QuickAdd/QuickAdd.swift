@@ -78,7 +78,7 @@ final class QuickAddPanel: NSPanel {
 
 struct QuickAddView: View {
     let close: () -> Void
-    @Environment(AppModel.self) private var app
+    private var app: AppModel { .shared }
     @State private var text = ""
     @State private var kind: Kind = .task
     @State private var parsed: TaskParseValue?

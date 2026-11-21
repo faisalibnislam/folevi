@@ -12,7 +12,7 @@ enum ShareRole: String, CaseIterable, Identifiable {
 
 struct NoteSharingSheet: View {
     let noteId: String
-    @Environment(AppModel.self) private var app
+    private var app: AppModel { .shared }
     @Environment(\.dismiss) private var dismiss
     @State private var sharing = Live<Views.SharingGet>()
     @State private var email = ""
@@ -132,7 +132,7 @@ struct NoteSharingSheet: View {
 
 struct FolderSharingSheet: View {
     let folderId: String
-    @Environment(AppModel.self) private var app
+    private var app: AppModel { .shared }
     @Environment(\.dismiss) private var dismiss
     @State private var sharing = Live<Views.FolderSharingGet>()
     @State private var email = ""

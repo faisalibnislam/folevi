@@ -66,9 +66,7 @@ struct AppCommands: SwiftUI.Commands {
 
         // Edit: Find drives the note's own find when a note is on screen.
         CommandGroup(after: .textEditing) {
-            Divider()
-            // Off a note, Find goes to Search with its field ready.
-            Button(window?.current.isNote == true ? "Find in Note…" : "Find…") { if window?.current.isNote == true { window?.findShown = true } else { window?.go(.search("")) } }
+            Button("Find in Note…") { window?.findShown = true }
                 .keyboardShortcut("f")
                 .disabled(window?.current.isNote != true)
             Button("Find Next") { NotificationCenter.default.post(name: .coreFindNext, object: window) }
@@ -81,6 +79,34 @@ struct AppCommands: SwiftUI.Commands {
                 .keyboardShortcut("f", modifiers: [.command, .shift])
             Button("Command Palette…") { window?.paletteShown = true }
                 .keyboardShortcut("k")
+            Divider()
+            // The standard text menus, sent along the responder chain (the note's web view answers them).
+            Menu("Spelling and Grammar") {
+                TextAction("Show Spelling and Grammar", #selector(NSText.showGuessPanel(_:)), key: ":")
+                TextAction("Check Document Now", #selector(NSText.checkSpelling(_:)), key: ";")
+                Divider()
+                TextAction("Check Spelling While Typing", #selector(NSTextView.toggleContinuousSpellChecking(_:)))
+                TextAction("Check Grammar With Spelling", #selector(NSTextView.toggleGrammarChecking(_:)))
+                TextAction("Correct Spelling Automatically", #selector(NSTextView.toggleAutomaticSpellingCorrection(_:)))
+            }
+            Menu("Substitutions") {
+                TextAction("Show Substitutions", #selector(NSTextView.orderFrontSubstitutionsPanel(_:)))
+                Divider()
+                TextAction("Smart Copy/Paste", #selector(NSTextView.toggleSmartInsertDelete(_:)))
+                TextAction("Smart Quotes", #selector(NSTextView.toggleAutomaticQuoteSubstitution(_:)))
+                TextAction("Smart Dashes", #selector(NSTextView.toggleAutomaticDashSubstitution(_:)))
+                TextAction("Smart Links", #selector(NSTextView.toggleAutomaticLinkDetection(_:)))
+                TextAction("Text Replacement", #selector(NSTextView.toggleAutomaticTextReplacement(_:)))
+            }
+            Menu("Transformations") {
+                TextAction("Make Upper Case", #selector(NSResponder.uppercaseWord(_:)))
+                TextAction("Make Lower Case", #selector(NSResponder.lowercaseWord(_:)))
+                TextAction("Capitalize", #selector(NSResponder.capitalizeWord(_:)))
+            }
+            Menu("Speech") {
+                TextAction("Start Speaking", #selector(NSTextView.startSpeaking(_:)))
+                TextAction("Stop Speaking", #selector(NSTextView.stopSpeaking(_:)))
+            }
         }
 
         // Format: the editor's marks and blocks on the note on screen.
@@ -266,5 +292,27 @@ enum PageZoom {
     static func step(_ d: Int) {
         let i = steps.firstIndex { $0 >= value - 0.001 } ?? 3
         set(steps[min(max(i + d, 0), steps.count - 1)])
+    }
+}
+
+
+/// A menu item that sends a standard text action to whatever has focus.
+struct TextAction: View {
+    let title: String
+    let action: Selector
+    var key: Character?
+
+    init(_ title: String, _ action: Selector, key: Character? = nil) {
+        self.title = title
+        self.action = action
+        self.key = key
+    }
+
+    var body: some View {
+        if let key {
+            Button(title) { NSApp.sendAction(action, to: nil, from: nil) }.keyboardShortcut(KeyEquivalent(key), modifiers: .command)
+        } else {
+            Button(title) { NSApp.sendAction(action, to: nil, from: nil) }
+        }
     }
 }

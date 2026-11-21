@@ -23,6 +23,7 @@ final class FoleviWebView: WKWebView {
     let events = ViewEvents()
     /// Set once the first page finished loading.
     var loaded = false
+
     /// A page in native chrome mode (engine and editor pages): its reloads and ended processes go to its engine
     /// client.
     let nativeFrame: Bool

@@ -29,10 +29,7 @@ struct FoleviCoreApp: App {
         }
         .windowToolbarStyle(.unified)
         .defaultSize(width: 1180, height: 780)
-        .commands {
-            AppCommands(app: app)
-            TextEditingCommands()
-        }
+        .commands { AppCommands(app: app) }
 
         // A note floating above other windows (Note > Float on Top): just the note, always in front.
         WindowGroup("Note", id: "float", for: String.self) { $id in

@@ -142,7 +142,7 @@ extension WebSidebar {
     func macItem<Icon: View>(_ route: FrameRoute, title: String, level: Int = 0, count: Int? = nil, newTab: Bool = false, @ViewBuilder icon: () -> Icon) -> some View {
         let selected = isSelected(route)
         return Button {
-            if case .folder = route, FolderTabClicks.commandHeld { model.openInBackground(route, title: title) } else { model.open(route, newTab ? .newTab : .replace) }
+            if case .folder = route, FolderTabClicks.commandHeld { model.openInBackground(route, title: title, fromPage: false) } else { model.open(route, newTab ? .newTab : .replace, fromPage: false) }
         } label: {
             SidebarRow(title, selected: selected, level: level, icon: icon) {
                 if let count, count > 0 { Text("\(count)").monospacedDigit() }
@@ -174,7 +174,7 @@ extension WebSidebar {
                                                        @ViewBuilder actions: () -> Actions, @ViewBuilder rows: () -> Rows) -> some View {
         let here = model.route.tabKey == route.tabKey
         return VStack(alignment: .leading, spacing: 0) {
-            SidebarHeading(title, selected: here, action: { model.open(route, .replace) }) {
+            SidebarHeading(title, selected: here, action: { model.open(route, .replace, fromPage: false) }) {
                 HStack(spacing: 2) {
                     actions()
                     disclosure(open: open.wrappedValue, label: title) {
@@ -364,7 +364,7 @@ extension WebSidebar {
                 }
             }
             if tags.count > Self.limit {
-                linkRow("\(tags.count - Self.limit) more") { model.open(.web("/tags"), .replace) }
+                linkRow("\(tags.count - Self.limit) more") { model.open(.web("/tags"), .replace, fromPage: false) }
             }
         }
     }

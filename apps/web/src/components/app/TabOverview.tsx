@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import { Pin, Plus, Search, X } from "lucide-react";
 import type { DocTab } from "@/lib/app/tabs";
 import { TabPicture } from "./TabPreview";
+import { HomePicture } from "./HomePicture";
 
 export interface OverviewEntry {
   /** The tab, or null for Home. */
@@ -146,9 +147,8 @@ export function TabOverview({
                 {e.tab ? (
                   <TabPicture tab={e.tab} titles={titles} viewIcon={e.icon} className="h-full w-full" />
                 ) : (
-                  <div className="grid h-full w-full place-items-center bg-[var(--color-canvas)]">
-                    <span className="grid h-12 w-12 place-items-center rounded-container bg-[var(--glass-hover)] text-muted [&>svg]:h-6 [&>svg]:w-6">{e.icon}</span>
-                  </div>
+                  // Home, drawn from its latest notes and folders (as the Mac's overview draws it).
+                  <HomePicture className="h-full w-full" />
                 )}
               </button>
             </div>

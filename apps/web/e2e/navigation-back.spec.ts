@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { newPerson } from "./helpers";
 
-test("Back and Forward: each tab keeps its own, and they are greyed out with nowhere to go", async ({ browser }) => {
+test("Back and Forward: each tab keeps its own, Back goes to the tab a page came from, greyed out with nowhere to go", async ({ browser }) => {
   const { page, context } = await newPerson(browser, "Back Walker");
   await page.goto("/documents");
   const history = page.getByRole("group", { name: "History" });
@@ -10,18 +10,23 @@ test("Back and Forward: each tab keeps its own, and they are greyed out with now
   await expect(back).toBeDisabled();
   await expect(forward).toBeDisabled();
 
-  // A note, then Graph: each opens in a tab of its own, and each tab keeps its own Back and Forward (Finder
-  // style), so a page just opened in a new tab has nowhere to go back to.
+  // A note opened from Home gets a tab of its own, which remembers it came from Home: Back closes it and shows Home
+  // again, as Safari does (the owner, 21 November 2026).
   await page.getByRole("link", { name: /Trip Sketch: Coastal Weekend/ }).first().click();
   await expect(page).toHaveURL(/\/d\//);
+  const strip = page.getByRole("navigation", { name: "Open pages" });
+  await expect(strip.getByRole("link", { name: /Trip Sketch/ })).toBeVisible();
+  await expect(back).toBeEnabled();
+  await back.click();
+  await expect(page).toHaveURL(/\/documents$/);
+  await expect(strip.getByRole("link", { name: /Trip Sketch/ })).toHaveCount(0);
   await expect(back).toBeDisabled();
-  await page.getByRole("link", { name: "Home", exact: true }).first().click();
+
+  // A view opened from the sidebar starts a fresh tab, with nowhere to go back to.
   const nav = page.getByRole("navigation", { name: "Folio" });
   await nav.getByRole("link", { name: "Foli DNA", exact: true }).click();
   await expect(page).toHaveURL(/\/graph$/);
-  const strip = page.getByRole("navigation", { name: "Open pages" });
   await expect(strip.getByRole("link", { name: "Foli DNA" })).toBeVisible();
-  await expect(strip.getByRole("link", { name: /Trip Sketch/ })).toBeVisible();
   await expect(back).toBeDisabled();
   await expect(forward).toBeDisabled();
 

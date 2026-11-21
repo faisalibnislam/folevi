@@ -155,7 +155,7 @@ public struct WebSidebar: View {
         return HStack(spacing: bar.gap) {
             if WebStyles.isPad {
                 // The iPad: the wordmark, to Home (the Mac has its window's buttons there).
-                Button { model.open(.home, .replace) } label: {
+                Button { model.open(.home, .replace, fromPage: false) } label: {
                     WebFoleviLogo(height: 26, color: Folevi.color.heading).padding(4)
                 }
                 .buttonStyle(.webHover(radius: 8))
@@ -262,7 +262,7 @@ public struct WebSidebar: View {
         let countStyle = style("item.count")
         return Button {
             // A folder ⌘-clicked opens in a tab behind this one (FolderTabClicks).
-            if case .folder = route, FolderTabClicks.commandHeld { model.openInBackground(route, title: title) } else { model.open(route, newTab ? .newTab : .replace) }
+            if case .folder = route, FolderTabClicks.commandHeld { model.openInBackground(route, title: title, fromPage: false) } else { model.open(route, newTab ? .newTab : .replace, fromPage: false) }
         } label: {
             HStack(spacing: s.gap) {
                 Group {
@@ -585,7 +585,7 @@ public struct WebSidebar: View {
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(.webHover(radius: FoleviTokens.Radius.chip))
-                Button { model.open(route, .replace) } label: {
+                Button { model.open(route, .replace, fromPage: false) } label: {
                     Text(title.uppercased())
                         .webText(titleStyle.text)
                         .lineLimit(1)
@@ -635,7 +635,7 @@ public struct WebSidebar: View {
     }
 
     private func moreLink(_ text: String, route: FrameRoute) -> some View {
-        Button { model.open(route, .replace) } label: {
+        Button { model.open(route, .replace, fromPage: false) } label: {
             Text(text).webText(.role(.subheadline)).lineLimit(1).foregroundStyle(Folevi.color.inkMuted)
                 .padding(.leading, 32).padding(.trailing, 10)
                 .frame(maxWidth: .infinity, minHeight: 32, alignment: .leading)

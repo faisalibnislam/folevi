@@ -1,6 +1,51 @@
 {
   "releases": [
     {
+      "version": "1.5.62",
+      "build": 77,
+      "released": "2026-11-21T10:46:15+06:00",
+      "type": "patch",
+      "summary": "Folder cards fit their words on iPhone, Back always takes you back, and Home's picture in Show All Tabs is drawn properly with room to breathe.",
+      "improved": [
+        "iPhone Home: bigger note and folder cards, evenly spaced, with the next one peeking in.",
+        "Show All Tabs on the web, Mac and iPad: Home is drawn as your latest notes and folders, with room between the rows, and other tabs' pictures fit without being cut off."
+      ],
+      "fixed": [
+        "iPhone and iPad folder cards: a long folder name no longer pushes the last-edited date off the card.",
+        "Back now works in a tab you opened from a page, like Home's See all, a folder or a note in a list: it closes that tab and takes you back to where you were, on the web, Mac and iPad."
+      ],
+      "tag": "v1.5.62"
+    },
+    {
+      "version": "1.5.61",
+      "build": 76,
+      "released": "2026-11-21T10:25:19+06:00",
+      "type": "patch",
+      "summary": "Folder cards fit their words on iPhone, and Home's picture in Show All Tabs has room to breathe.",
+      "improved": [
+        "iPhone Home: bigger note and folder cards, evenly spaced, with the next one peeking in.",
+        "Show All Tabs: Home is drawn with its latest notes and folders on the web too, with more room between the rows."
+      ],
+      "fixed": [
+        "iPhone and iPad folder cards: a long folder name no longer pushes the last-edited date off the card."
+      ],
+      "tag": "v1.5.61"
+    },
+    {
+      "version": "1.5.60",
+      "build": 75,
+      "released": "2026-11-21T10:02:53+06:00",
+      "type": "patch",
+      "summary": "Back always takes you back, and Show All Tabs pictures Home properly.",
+      "improved": [
+        "Show All Tabs on the Mac and iPad: Home is drawn as your latest notes and folders, whole, and other tabs' pictures fit without being cut off."
+      ],
+      "fixed": [
+        "Back now works in a tab you opened from a page, like Home's See all, a folder or a note in a list: it closes that tab and takes you back to where you were, on the web, Mac and iPad."
+      ],
+      "tag": "v1.5.60"
+    },
+    {
       "version": "1.5.59",
       "build": 74,
       "released": "2026-11-21T09:35:05+06:00",

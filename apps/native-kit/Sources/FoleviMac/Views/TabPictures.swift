@@ -249,19 +249,27 @@ struct TabPicture: View {
     @Environment(\.colorScheme) private var scheme
 
     var body: some View {
-        if let tab, let notes = tab.panes ?? tab.route.noteId.map({ [$0] }) {
+        if tab == nil || tab?.isHome == true {
+            // Home is drawn from its own data, its latest notes and folders as cards, whole at any size (a picture
+            // of the window cropped it: the owner, 21 November 2026).
+            HomePicture(model: model)
+        } else if let tab, let notes = tab.panes ?? tab.route.noteId.map({ [$0] }) {
             // A note's thumbnail is its card, as the folder grid draws it (the owner, 2026-11-18): its colors and
             // cover, title, a preview and its folder, whole, for every tab at once.
             NoteCardPicture(ids: notes, title: { id in model.tabs.paneTitles[id] ?? (tab.panes == nil ? model.tabs.label(tab) : "Untitled") }, store: model.pictures)
         } else if let shot = model.pictures.shots[tab?.id ?? FrameTab.homeID] {
-            // The tab as it was last on screen (Safari's way): its page's own colours, its folder's notes.
+            // The tab as it was last on screen (Safari's way): its page's own colours, its folder's notes. Whole,
+            // fitted inside the box on the canvas (filling it cut off a window wider than 16:10).
             GeometryReader { g in
-                Image(decorative: shot, scale: 1)
-                    .resizable()
-                    .interpolation(.high)
-                    .scaledToFill()
-                    .frame(width: g.size.width, height: g.size.height, alignment: .top)
-                    .clipped()
+                ZStack {
+                    (WebStyles.vars["color-canvas"]?.resolve(scheme).color ?? .clear)
+                    Image(decorative: shot, scale: 1)
+                        .resizable()
+                        .interpolation(.high)
+                        .scaledToFit()
+                        .frame(width: g.size.width, height: g.size.height)
+                }
+                .clipped()
             }
             .accessibilityHidden(true)
         } else if let tab, let list = FolderPicture.list(for: tab.route) {
@@ -391,6 +399,85 @@ struct FolderPicture: View {
         }
         .accessibilityHidden(true)
     }
+}
+
+/// Home's tab, drawn small (the owner, 21 November 2026): a "Recent notes" row of note cards and a "Recent folders"
+/// row of folder cards, as Home shows them, laid out at 960 by 600 pt (16:10, with 32 pt of breathing room between
+/// the rows: the owner, 21 November 2026) and scaled to the picture so every card is whole.
+struct HomePicture: View {
+    let model: FrameModel
+    @Environment(\.colorScheme) private var scheme
+    @State private var notes: ListStore<NoteRow>?
+    @State private var folders: ValueStore<FolderCardsValue>?
+
+    private static let width: CGFloat = 960
+    private static let columns = 4
+    private static let pad: CGFloat = 24
+    private static let gap: CGFloat = 16
+    /// Between the notes' row and the folders' heading.
+    private static let rowGap: CGFloat = 32
+
+    var body: some View {
+        GeometryReader { g in
+            let rows = Array((notes?.rows ?? []).prefix(Self.columns))
+            let recent = (folders?.value?.folders ?? [])
+                .sorted { $0.updatedAt != $1.updatedAt ? $0.updatedAt > $1.updatedAt : $0.createdAt < $1.createdAt }
+                .prefix(Self.columns)
+            ZStack(alignment: .topLeading) {
+                color("color-canvas")
+                if rows.isEmpty && recent.isEmpty {
+                    VStack(spacing: 8) {
+                        WebIconView(.house, size: 24).foregroundStyle(color("color-ink-muted"))
+                        Text("Home").webText(WebTextStyle(size: 13, leading: 18, weight: 600)).foregroundStyle(color("color-heading"))
+                    }
+                    .frame(width: g.size.width, height: g.size.height)
+                } else {
+                    let w = (Self.width - Self.pad * 2 - Self.gap * CGFloat(Self.columns - 1)) / CGFloat(Self.columns)
+                    VStack(alignment: .leading, spacing: 0) {
+                        if !rows.isEmpty {
+                            heading("Recent notes", icon: .clock3)
+                            HStack(alignment: .top, spacing: Self.gap) {
+                                ForEach(rows, id: \.id) { row in WebNoteCard(CardMapping.noteCard(row)).frame(width: w) }
+                            }
+                            .padding(.bottom, Self.rowGap)
+                        }
+                        if !recent.isEmpty {
+                            heading("Recent folders", icon: .folder)
+                            HStack(alignment: .top, spacing: Self.gap) {
+                                ForEach(Array(recent), id: \.id) { f in WebFolderCard(CardMapping.folderCard(f, parentName: f.path)).frame(width: w) }
+                            }
+                        }
+                    }
+                    .padding(Self.pad)
+                    // Its own 16:10 box at the layout's width: offered only the picture's height, the cards shrank.
+                    .frame(width: Self.width, height: Self.width / 1.6, alignment: .topLeading)
+                    .scaleEffect(g.size.width / Self.width, anchor: .topLeading)
+                    .allowsHitTesting(false)
+                }
+            }
+            .clipped()
+        }
+        .onAppear {
+            if notes == nil { notes = model.client.watchList(.notesList(view: .all, sort: .updated), window: ListWindow(start: 0, count: Self.columns)) }
+            if folders == nil { folders = model.client.watch(.foldersCards(all: true)) }
+        }
+        .onDisappear {
+            notes?.cancel()
+            notes = nil
+            folders = nil
+        }
+        .accessibilityHidden(true)
+    }
+
+    private func heading(_ title: String, icon: WebIcon) -> some View {
+        HStack(spacing: 6) {
+            WebIconView(icon, size: 18).foregroundStyle(color("color-ink-muted"))
+            Text(title).webText(WebTextStyle(size: 20, leading: 26, weight: 600)) // the web's Title 2.foregroundStyle(color("color-heading"))
+        }
+        .padding(.bottom, 12)
+    }
+
+    private func color(_ name: String) -> Color { WebStyles.vars[name]?.resolve(scheme).color ?? .clear }
 }
 
 /// The hover card's surface: the web's raised card on the iPad; on the Mac the system's control background with a

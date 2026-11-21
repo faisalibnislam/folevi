@@ -4,7 +4,7 @@ import { useCallback } from "react";
 import { ulid, DEFAULT_DOCUMENT_STYLE, DEFAULT_COVER } from "@folevi/editor-schema";
 import { useAppState } from "@/lib/app/state";
 import { useAppRouter } from "@/lib/app/router";
-import { openNextInNewTab } from "@/lib/app/tabs";
+import { openNextFresh, openNextInNewTab } from "@/lib/app/tabs";
 import { loadDocumentView } from "@/lib/app/noteView";
 import { haptic } from "@/lib/nativeApp";
 
@@ -44,6 +44,8 @@ export function useCreateDocument() {
         await loadDocumentView().catch(() => undefined);
         // A new top-level page opens in its own tab; a nested one stays in the note's tab.
         if (!opts.parentDocumentId) openNextInNewTab();
+        // The tab bar's New note ("+", ⌘⌥N, the palette) starts a fresh tab with no Back; a folder page's keeps one.
+        if (!opts.parentDocumentId && opts.folderId === undefined) openNextFresh();
         navigate(`/d/${id}?new=1`);
       }
       return id;

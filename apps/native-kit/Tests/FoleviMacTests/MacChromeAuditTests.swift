@@ -73,7 +73,9 @@ struct MacChromeAuditTests {
         frame.open(.notes(.all), .replace)
         frame.open(.tasks(.today), .replace)
         let after = AppContextMenu.anywhereEntries(frame, window: window)
-        #expect(after.first { $0.item.title == "Back" }?.disabled == !frame.history.canGoBack)
+        // (Back also goes to the tab this one was opened from, TabBackTests.)
+        #expect(frame.canGoBack)
+        #expect(after.first { $0.item.title == "Back" }?.disabled == !frame.canGoBack)
         #expect(after.first { $0.item.title == "Forward" }?.disabled == !frame.history.canGoForward)
     }
 

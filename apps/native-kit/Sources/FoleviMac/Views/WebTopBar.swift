@@ -77,7 +77,7 @@ public struct WebTopBar: View {
                 SyncDot(model: model)
                 divider
             }
-            historyButton(.arrowLeft, "Back", enabled: model.history.canGoBack, style: "frame.topbar.back") { model.goBack() }
+            historyButton(.arrowLeft, "Back", enabled: model.canGoBack, style: "frame.topbar.back") { model.goBack() }
                 .padding(.trailing, -bar.gap)
             historyButton(.arrowRight, "Forward", enabled: model.history.canGoForward, style: "frame.topbar.forward") { model.goForward() }
             // The Mac's strip on the iPad too (the owner, 2026-11-01: the iPad follows the Mac's tab rules): Tab Overview

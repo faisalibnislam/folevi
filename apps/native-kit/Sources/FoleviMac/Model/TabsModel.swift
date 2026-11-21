@@ -13,6 +13,9 @@
 // - Each tab keeps its own Back and Forward (Finder style): Back in a folder tab goes to the folder it showed
 //   before, in the same tab; in a note's tab to the note a link replaced. Closing a tab drops it (⇧⌘T brings it
 //   back with the tab). A page that is in another tab by then switches to that tab instead.
+// - A tab opened from a page (Home's See all and cards, a folder card, a note from a list, search, a link)
+//   remembers the tab it came from. Back with nowhere left to go in it closes it and shows that tab again, as
+//   Safari does (the owner, 21 November 2026). The sidebar and "+" open fresh tabs, with no way back.
 // - Opening a page from inside a note (a page link, a nested page) replaces the current note's tab.
 // - At most 12 tabs besides Home: opening one more drops the oldest other tab.
 // - Closing the tab on screen shows its right neighbour, else its left one, else Home.
@@ -47,6 +50,9 @@ public struct FrameTab: Hashable, Sendable, Identifiable, Codable {
     public var sizes: [Double]?
     /// The tab's own Back and Forward (kept while the app runs, not saved; a closed tab keeps it for ⇧⌘T).
     public var history: RouteHistory
+    /// The tab this one was opened from (a page's link, card or See all; not the sidebar or "+"): Back with nothing
+    /// left in `history` closes this tab and shows that one (Safari's rule). Kept while the app runs, not saved.
+    public var opener: String?
 
     public init(route: FrameRoute, title: String? = nil, icon: String? = nil) {
         id = route.isFolderBrowsing ? Self.newFolderID() : route.tabKey
@@ -171,9 +177,11 @@ public final class TabsModel {
     }
 
     /// Shows a route, following the web's tab rules. Returns the route now on screen.
+    /// `fromPage`: opened from the page on screen (it becomes a new tab's opener); false from the sidebar or "+".
     @discardableResult
-    public func show(_ route: FrameRoute, _ opening: Opening = .newTab) -> FrameRoute {
-        if route.isFolderBrowsing { return showFolder(route) }
+    public func show(_ route: FrameRoute, _ opening: Opening = .newTab, fromPage: Bool = true) -> FrameRoute {
+        let from = fromPage ? activeID : nil
+        if route.isFolderBrowsing { return showFolder(route, from: from) }
         let key = route.tabKey
         if let i = tabs.firstIndex(where: { $0.holds(key) }) {
             // A view's tab follows you inside the view (a search with new words, Tasks' lists); a joined tab's focus
@@ -195,13 +203,16 @@ public final class TabsModel {
                 var t = FrameTab(route: route)
                 t.pinned = tabs[i].pinned
                 t.history = tabs[i].history
+                t.opener = tabs[i].opener
                 t.history.push(route)
                 tabs[i] = t
                 activeID = key
             }
             return route
         }
-        tabs.append(FrameTab(route: route))
+        var t = FrameTab(route: route)
+        t.opener = from
+        tabs.append(t)
         activeID = key
         trim(keeping: key)
         return route
@@ -209,7 +220,7 @@ public final class TabsModel {
 
     /// A folder or the Folders page (Finder style, see the top): the tab that already shows it comes forward;
     /// otherwise the folder tab on screen goes there, else the folder tab used last does, else a new one opens.
-    private func showFolder(_ route: FrameRoute) -> FrameRoute {
+    private func showFolder(_ route: FrameRoute, from: String?) -> FrameRoute {
         if let i = tabs.firstIndex(where: { $0.holds(route.tabKey) }) {
             activeID = tabs[i].id
             return route
@@ -220,7 +231,8 @@ public final class TabsModel {
             activeID = tabs[i].id
             return route
         }
-        let t = FrameTab(route: route)
+        var t = FrameTab(route: route)
+        t.opener = from
         tabs.append(t)
         activeID = t.id
         trim(keeping: t.id)
@@ -252,14 +264,25 @@ public final class TabsModel {
             var n = FrameTab(route: route)
             n.pinned = t.pinned
             n.history = t.history
+            n.opener = t.opener
             t = n
         }
         tabs[i] = t
     }
 
-    /// Back in the tab on screen (its own history). Returns the route now on screen, or nil when there's nowhere to go.
+    /// Back in the tab on screen (its own history; then, in a tab opened from a page, the tab it came from).
+    /// Returns the route now on screen, or nil when there's nowhere to go.
     @discardableResult
     public func goBack() -> FrameRoute? { travel(back: true) }
+
+    /// Whether Back goes anywhere: back in the tab's own history, or to the tab it was opened from.
+    public var canGoBack: Bool { active.history.canGoBack || openerTab(of: active) != nil }
+
+    /// The open tab `t` came from, if it's still open (Home always is).
+    private func openerTab(of t: FrameTab) -> FrameTab? {
+        guard let o = t.opener, o != t.id else { return nil }
+        return tabs.first { $0.id == o }
+    }
 
     /// Forward in the tab on screen.
     @discardableResult
@@ -268,7 +291,14 @@ public final class TabsModel {
     private func travel(back: Bool) -> FrameRoute? {
         let i = activeIndex
         var h = tabs[i].history
-        guard let r = back ? h.back() : h.forward() else { return nil }
+        guard let r = back ? h.back() : h.forward() else {
+            // Nothing left in this tab: one opened from a page closes and its opener comes back (Safari's rule).
+            guard back, let o = openerTab(of: tabs[i]) else { return nil }
+            closed.append(tabs.remove(at: i))
+            if closed.count > 20 { closed.removeFirst(closed.count - 20) }
+            activeID = o.id
+            return o.route
+        }
         // A page that's in another tab by now (a page is in one tab at a time): that tab comes forward instead, and
         // this tab stays where it was.
         if let j = tabs.firstIndex(where: { $0.id != tabs[i].id && $0.holds(r.tabKey) }) {
@@ -291,9 +321,10 @@ public final class TabsModel {
     /// a selection's Open in new tabs), as a browser opens a background tab; the tab on screen stays. A page that has a tab already keeps it (a page is
     /// in one tab at a time; a plain click then switches to it). The new tab's id, or nil when none was added.
     @discardableResult
-    public func addInBackground(_ route: FrameRoute) -> String? {
+    public func addInBackground(_ route: FrameRoute, fromPage: Bool = true) -> String? {
         guard !tabs.contains(where: { $0.holds(route.tabKey) }) else { return nil }
-        let t = FrameTab(route: route)
+        var t = FrameTab(route: route)
+        if fromPage { t.opener = activeID }
         tabs.append(t)
         trim(keeping: t.id, alsoKeeping: activeID)
         return t.id

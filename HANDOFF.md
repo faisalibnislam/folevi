@@ -246,23 +246,28 @@ The ones most likely to be broken:
 - Snapshot tests: re-record only your own snapshots; never clear `__Snapshots__` wholesale.
 - Give before/after screenshots for UI work and ask the owner with clear options when a decision is theirs.
 
-## 9. Current state (as of 2026-11-20, written for handing the project to another Claude)
+## 9. Current state (as of 2026-11-21)
 
-**Live everywhere: Folevi 1.5.58** (tag `v1.5.58`, `main` = `eec82bd3`). Web and Convex deployed by Vercel, Mac
-published (Sparkle feed and DMG at folevi.com/download/mac), iPhone and iPad on TestFlight (internal group). Nothing on
-`main` is unreleased.
+**Folevi 1.5.59** (tag `v1.5.59`, PR 43 merged, `main` = `90c4ba78`): live on web and Convex, Mac (uploaded by hand
+after `npx wrangler login`, since this session's `XDG_CONFIG_HOME` points into the app's own data and had no login;
+the feed and DMG at folevi.com show 1.5.59) and TestFlight (delivery `285a127c`).
 
-**In progress (not released, not pushed):** branch `claude/folder-design-refinements-cd77e4` (worktree
-`.claude/worktrees/folder-design-refinements-cd77e4`), the owner's 2026-11-21 polish of the Frosted folders and Home:
-the folder's back now has true circular corners of the front's 14 pt radius (its stretched outline peeked out past
-the front's bottom corners), the back and stacked subfolders are one 85% layer, the frost is 30% lighter (blur
-3.5 to 2.45 px, tint opacity and sheen x0.7, grain 0.14 to 0.1), the Mac Home carousel is sized to its 25% smaller
-cards (it was centred in the web's 326 pt row, leaving a gap above and below), and Home sections sit 8 px closer
-(Mac `top` 36/48 to 28/40, web `mt-9`/`mt-12` to `mt-7`/`mt-10`). Then the whole front became fully frosted (a
-strong tint and a 7 px blur top to bottom, the blur its own `data-fc="frost"` layer on the web) so the name reads
-cleanly; a short-lived version frosted only behind the words with a clear band between. Web checked on `/dev/folder-states` in light and dark; Home not seen signed in on the web.
+**In progress:** branch `claude/tab-back-and-overview` (same worktree), for 1.5.60: Back returns to the tab a page
+was opened from and closes the new tab (Safari's rule) on Mac, iPad and web; the sidebar and "+" open fresh tabs;
+Show All Tabs draws Home from data (Recent notes and Recent folders rows, `HomePicture`) and fits screenshot
+pictures whole instead of cropping. Then (1.5.61, same branch, PR 44): the iPhone's folder cards no longer cut
+their Edited date off (Home's strip cards 176 pt for notes and folders, 10 pt apart, the gap before Tags evened out;
+every folder card drops a long name to one line when it can't fit two), and the web's Show All Tabs draws Home the
+same way (`HomePicture.tsx`), with 32 pt between its rows on every platform. 1.5.60's tag exists but was never
+shipped on its own (the fix came after it was tagged; tags never move). Decisions:
+`docs/claude-context/memory/tab-back-and-overview-2026-11-21.md`. The iOS screen run's Foli AI streaming tests
+crashed once (signal kill), unrelated; they passed in the two runs before. CI then caught a hand-written
+`text-[19px]` in the web `HomePicture` (test/type-scale.test.ts: font sizes must come from the type roles); fixed
+with `text-title-2` (native 20/26 to match) and cut as **1.5.62**, since 1.5.61's tag predates the fix. 1.5.60 and
+1.5.61 are tags only; 1.5.62 is what ships.
 
 What shipped in the last week, newest first (detail in `CHANGELOG.md`):
+- 1.5.59: Folder cards' corners line up, the front fully frosted, tighter Home rows (PR 43).
 - 1.5.58: Frosted folder cards, desktop and Mac cards 25% smaller, a new folder glyph (PR 42, branch
   `design/frosted-folders`, from the card design session). Design pages the owner reviewed (private artifacts):
   https://claude.ai/artifact/SaZdm3uekCoRpGPkwcDCBn (27 note and folder ideas) and
@@ -314,8 +319,8 @@ signed-in account, 1.5.58's frosted folders with a large library, and the iPad c
 account button should move past iPadOS's window buttons).
 
 ## 10. Next steps / open work
-0. Owner to review the folder and Home polish on `claude/folder-design-refinements-cd77e4` in the Mac app, then a
-   PR and release.
+0. Upload Mac 1.5.59 (or publish 1.5.60) once wrangler is signed in (section 9). The web's Show All Tabs still
+   shows Home as its icon; the Mac's draws it (ask the owner whether the web should match).
 1. On a real iPhone, iPad and Mac with the owner's library: the note bar swap (1.5.56), Offline & sync's Download
    everything now with an account (1.5.57), frosted folders' scrolling in long grids (1.5.58).
 2. iPad audit leftovers (found 2026-11-19, not fixed): the tab strip leaves a cut-off empty slot at its start once
@@ -379,6 +384,9 @@ account button should move past iPadOS's window buttons).
   `DATABASE_UDF_USER_TIMEOUT_SECONDS=4` for that backend. Bursts show in `convex.log` as "took a long time".
 
 ## 12. Change log
+- 2026-11-21: Mac 1.5.59 uploaded (wrangler signed in). CI's type-scale test fixed (Home picture headings use Title 2); 1.5.62 cut on PR 44.
+- 2026-11-21: iPhone folder cards fixed (176 pt strips, one-line name fallback), web Show All Tabs draws Home; 1.5.61 cut on PR 44.
+- 2026-11-21: 1.5.59 released (web, TestFlight; Mac waiting on the R2 upload). Back-to-opener and the drawn Home picture built on `claude/tab-back-and-overview`.
 - 2026-11-21: Folder fronts fully frosted (strong tint and 7 px blur across the whole front), on all platforms.
 - 2026-11-21: Folder fronts frosted only behind their words (name, counts, Edited), clear between, on all platforms.
 - 2026-11-21: Folder corners match the front, frost 30% lighter, Mac Home carousel gaps and section spacing tightened, on `claude/folder-design-refinements-cd77e4`.

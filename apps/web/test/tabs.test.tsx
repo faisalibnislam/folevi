@@ -9,7 +9,7 @@ vi.mock("next/navigation", () => ({
 }));
 
 const { AppRouterProvider } = await import("@/lib/app/router");
-const { NativeTabsProvider, TabsProvider, tabsStorageKeys, useDocTab, useTabs, useWarmTabs } = await import("@/lib/app/tabs");
+const { NativeTabsProvider, TabsProvider, openNextFresh, tabsStorageKeys, useDocTab, useTabs, useWarmTabs } = await import("@/lib/app/tabs");
 const { setNativePanes } = await import("@/lib/engine/noteHost");
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
@@ -285,6 +285,8 @@ describe("folders open like Finder", () => {
   test("each tab has its own Back and Forward, in place; Home has none", () => {
     render("/documents", null);
     expect(api.tabHistory).toMatchObject({ canBack: false, canForward: false });
+    // From the sidebar: a fresh tab, so Back stops at its first folder (from a page it goes back there, below).
+    openNextFresh();
     render("/folders/brainstorming", null);
     const tab = seen[0]!;
     expect(api.tabHistory?.canBack).toBe(false);
@@ -298,9 +300,9 @@ describe("folders open like Finder", () => {
     act(() => api.tabHistory!.forward!());
     expect(pathOf(tab)).toBe("/folders/space-cherries");
     expect(api.tabHistory).toMatchObject({ canBack: true, canForward: false });
-    // A note opened from here has its own tab, with nowhere to go back to.
+    // A note opened from here has its own tab, whose Back goes to the folder's tab.
     render(`/d/${A}`, null);
-    expect(api.tabHistory?.canBack).toBe(false);
+    expect(api.tabHistory).toMatchObject({ canBack: true, canForward: false });
   });
 
   test("Back to a folder that's in another tab by now shows that tab", () => {
@@ -335,5 +337,43 @@ describe("folders open like Finder", () => {
     render("/folders/f2", null);
     expect(seen).toHaveLength(3);
     expect(api.tabs[1]!.view?.path).toBe("/folders/f2");
+  });
+});
+
+describe("Back goes to the tab you came from", () => {
+  test("a view opened from Home: Back closes its tab and shows Home", () => {
+    render("/documents", null);
+    render("/drafts", null);
+    expect(seen).toHaveLength(1);
+    expect(api.tabHistory?.canBack).toBe(true);
+    act(() => api.tabHistory!.back());
+    expect(window.location.pathname).toBe("/documents");
+    expect(seen).toEqual([]);
+  });
+
+  test("a note opened from a list goes back to the list's tab, which stays", () => {
+    render("/drafts", null);
+    const list = seen[0]!;
+    render(`/d/${A}`, null);
+    expect(seen).toEqual([list, A]);
+    act(() => api.tabHistory!.back());
+    expect(window.location.pathname).toBe("/drafts");
+    expect(seen).toEqual([list]);
+  });
+
+  test("the sidebar and New note open fresh tabs, with no way back", () => {
+    render("/documents", null);
+    openNextFresh();
+    render("/drafts", null);
+    expect(api.tabHistory?.canBack).toBe(false);
+  });
+
+  test("once the tab it came from is closed, there's no way back", () => {
+    render("/drafts", null);
+    const list = seen[0]!;
+    render(`/d/${A}`, null);
+    act(() => api.close(list));
+    render(`/d/${A}`, null);
+    expect(api.tabHistory?.canBack).toBe(false);
   });
 });

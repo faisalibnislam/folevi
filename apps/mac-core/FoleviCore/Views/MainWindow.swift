@@ -82,7 +82,15 @@ struct MainWindow: View {
         }
         .onChange(of: window.current) { restoredPath = window.current.path }
         .onChange(of: window.listStyle) { restoredStyle = window.listStyle.rawValue }
-        .frame(minWidth: 720, minHeight: 460)
+        .frame(minWidth: 800, minHeight: 480)
+        .onChange(of: app.session.value?.appearance, initial: true) {
+            // Folevi's own Light / Dark / System setting decides the windows' look, as on the web.
+            switch app.session.value?.appearance.rawValue {
+            case "light": NSApp.appearance = NSAppearance(named: .aqua)
+            case "dark": NSApp.appearance = NSAppearance(named: .darkAqua)
+            default: NSApp.appearance = nil
+            }
+        }
     }
 }
 

@@ -128,6 +128,7 @@ final class AppModel {
         CoreLog.debug("app: starting pages")
         pool.start()
         rebind()
+        watchMemoryPressure()
         #if DEBUG
         DebugCommands.install()
         MacEval.start()
@@ -258,6 +259,15 @@ final class AppModel {
     }
 
     /// Opens one of Folevi's paths: in the front window, or a new tab when asked.
+    /// Under memory pressure the warm editor pages that aren't showing are let go.
+    @ObservationIgnored private lazy var memoryPressure: DispatchSourceMemoryPressure = {
+        let source = DispatchSource.makeMemoryPressureSource(eventMask: [.warning, .critical], queue: .main)
+        source.setEventHandler { MainActor.assumeIsolated { AppModel.shared.pool.relieve() } }
+        return source
+    }()
+
+    func watchMemoryPressure() { memoryPressure.resume() }
+
     /// Links that came before the app was ready (a link that launched it, Spotlight, Shortcuts): opened then.
     @ObservationIgnored private var waitingPaths: [(String, Bool)] = []
     /// Opens Help (set by the window, which can open scenes).

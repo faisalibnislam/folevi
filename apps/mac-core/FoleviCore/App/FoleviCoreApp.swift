@@ -28,7 +28,7 @@ struct FoleviCoreApp: App {
             WindowSeed(start: .home, asTab: false)
         }
         .windowToolbarStyle(.unified)
-        .defaultSize(width: 1180, height: 780)
+        .defaultSize(width: 1280, height: 820)
         .commands { AppCommands(app: app) }
 
         // A note floating above other windows (Note > Float on Top): just the note, always in front.

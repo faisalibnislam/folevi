@@ -22,6 +22,10 @@ struct Sidebar: View {
     @AppStorage("sidebar.openFolders") private var openFolders = ""
     /// When each folder last changed (the Recent sort).
     @State private var cards = Live<Views.FoldersCards>()
+    /// The first starred notes (under Starred) and the Drafts count.
+    @State private var starred = LiveList<ListViews.NotesList>()
+    @State private var drafts = LiveList<ListViews.NotesList>()
+    @State private var starredOpen = false
 
     var body: some View {
         List(selection: $window.sidebarSelection) {
@@ -38,9 +42,22 @@ struct Sidebar: View {
             Section("Notes") {
                 row(.allNotes)
                 row(.recent)
-                row(.starred)
+                if starred.rows.isEmpty {
+                    row(.starred)
+                } else {
+                DisclosureGroup(isExpanded: $starredOpen) {
+                    ForEach(starred.rows.prefix(5)) { n in
+                        Label { Text(n.title.nonEmpty ?? "Untitled").lineLimit(1) } icon: { NoteMark(icon: n.icon, size: 13).frame(width: 18) }
+                            .contentShape(Rectangle())
+                            .onTapGesture { app.open(.note(n.id), newTab: true) }
+                            .help("Open in a new tab")
+                    }
+                } label: {
+                    row(.starred)
+                }
+                }
                 row(.shared)
-                row(.drafts)
+                row(.drafts, badge: drafts.total)
                 if app.session.value?.capabilities.changes != false || app.session.value?.mode == .local {
                     row(.changes, badge: app.changes.value?.notes.count ?? 0)
                 }
@@ -133,6 +150,10 @@ struct Sidebar: View {
             revealCurrent()
         }
         .onChange(of: expanded) { openFolders = expanded.sorted().joined(separator: ",") }
+        .task(id: app.client.map(ObjectIdentifier.init)) {
+            starred.bind(app.client, ListViews.NotesList(NotesListArgs(space: nil, view: .starred, folderId: nil, tagId: nil, sort: .updated, filter: nil)))
+            drafts.bind(app.client, ListViews.NotesList(NotesListArgs(space: nil, view: .unsorted, folderId: nil, tagId: nil, sort: .updated, filter: nil)))
+        }
         .task(id: "\(folderSort)\(app.client.map { ObjectIdentifier($0).hashValue } ?? 0)") {
             if folderSort == "recent" { cards.bind(app.client, Views.FoldersCards(FolderCardsArgs(space: nil, parentId: nil, all: true))) }
         }

@@ -26,6 +26,7 @@ struct AppCommands: SwiftUI.Commands {
                 .keyboardShortcut("n", modifiers: [.command, .shift])
             Button("Quick Add Task…") { if let window { window.quickAddShown = true } else { QuickAdd.shared.show() } }
                 .keyboardShortcut("a", modifiers: [.command, .shift])
+            QuickAddAnywhereItem()
             Button("Reopen Closed Tab") { app.reopenClosedTab() }
                 .keyboardShortcut("t", modifiers: [.command, .shift])
         }
@@ -66,9 +67,12 @@ struct AppCommands: SwiftUI.Commands {
 
         // Edit: Find drives the note's own find when a note is on screen.
         CommandGroup(after: .textEditing) {
-            Button("Find in Note…") { window?.findShown = true }
-                .keyboardShortcut("f")
-                .disabled(window?.current.isNote != true)
+            // On a note: its find bar. Elsewhere: Search, its field ready.
+            Button(window?.current.isNote == true ? "Find in Note…" : "Find…") {
+                if window?.current.isNote == true { window?.findShown = true } else { window?.go(.search("")) }
+            }
+            .keyboardShortcut("f")
+            .disabled(window == nil)
             Button("Find Next") { NotificationCenter.default.post(name: .coreFindNext, object: window) }
                 .keyboardShortcut("g")
                 .disabled(window?.findShown != true)
@@ -334,5 +338,49 @@ struct TextAction: View {
         } else {
             Button(title) { NSApp.sendAction(action, to: nil, from: nil) }
         }
+    }
+}
+
+
+/// File > Quick Add from Any App: the floating panel, with the person's own global shortcut beside it.
+struct QuickAddAnywhereItem: View {
+    var body: some View {
+        let accel = DesktopSettings.current.quickAddShortcut
+        if let (key, mods) = Self.parse(accel) {
+            Button("Quick Add from Any App") { QuickAdd.shared.show() }.keyboardShortcut(key, modifiers: mods)
+        } else {
+            Button("Quick Add from Any App") { QuickAdd.shared.show() }
+        }
+    }
+
+    /// "Alt+Space" as a key equivalent.
+    static func parse(_ accel: String) -> (KeyEquivalent, EventModifiers)? {
+        var parts = accel.components(separatedBy: "+")
+        guard let key = parts.popLast(), !parts.isEmpty else { return nil }
+        var mods: EventModifiers = []
+        for p in parts {
+            switch p {
+            case "Command", "Cmd", "CommandOrControl", "CmdOrCtrl", "Super", "Meta": mods.insert(.command)
+            case "Control", "Ctrl": mods.insert(.control)
+            case "Alt", "Option": mods.insert(.option)
+            case "Shift": mods.insert(.shift)
+            default: return nil
+            }
+        }
+        let k: KeyEquivalent
+        switch key {
+        case "Space": k = .space
+        case "Return", "Enter": k = .return
+        case "Tab": k = .tab
+        case "Escape": k = .escape
+        case "Up": k = .upArrow
+        case "Down": k = .downArrow
+        case "Left": k = .leftArrow
+        case "Right": k = .rightArrow
+        default:
+            guard key.count == 1, let c = key.lowercased().first else { return nil }
+            k = KeyEquivalent(c)
+        }
+        return (k, mods)
     }
 }

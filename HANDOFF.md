@@ -259,6 +259,14 @@ This session's wrangler login lives in the app's own `XDG_CONFIG_HOME` (not `~/.
 there shows the account that owns `folevi-updates`. Decisions: `docs/claude-context/memory/tab-back-and-overview-2026-11-21.md`
 and `frosted-folders-decision-2026-11-20.md`.
 
+**Also in progress:** branch `claude/phone-all-folders-route` (not released): on the iPhone, Home's Folders "…" >
+All folders opened All notes. That Home and menu belong to the older UIKit phone frame (`PhoneFrameController`,
+`Native/Phone/`), which Debug builds run unless `FOLEVI_REBUILD=1` or the `folevi.rebuild` default is set; Release
+builds run the rebuild (`RebuildFrame`), where All folders is a row in More and already opened the grid. The old
+frame now pushes `AllFoldersScreenController` (the shared `AllFoldersScreen` with its "…": New folder, View as, Sort
+by). The Mac's `FrameNavigation` also sent `.allFolders` to Home; it now opens `/folders` (nothing on the Mac calls
+it today). Checked in the Simulator (iPhone 17 Pro, Debug, a fresh local library).
+
 **Also in progress:** branch `claude/liquid-glass-animations-b1d70e` (worktree
 `.claude/worktrees/liquid-glass-animations-b1d70e`, off `main` at `d752bb0d`, PR 45, not released): a Liquid Glass
 motion pass on the Mac, iPhone and iPad apps, keeping the owner's playful springs (FoleviSpring, 2026-11-01). Shared
@@ -331,6 +339,8 @@ signed-in account, 1.5.58's frosted folders with a large library, and the iPad c
 account button should move past iPadOS's window buttons).
 
 ## 10. Next steps / open work
+- `claude/phone-all-folders-route`: review and merge with the next release (Debug-only bug; no user-visible change in
+  Release builds).
 - Liquid Glass motion branch (`claude/liquid-glass-animations-b1d70e`): the owner's look on a real Mac and iPhone, then
   merge with the next release. Known left: the Mac's Foli AI chat closes at once, with no exit animation (its host
   view shrinks before SwiftUI can animate the chat out; older than this branch).
@@ -399,6 +409,7 @@ account button should move past iPadOS's window buttons).
   `DATABASE_UDF_USER_TIMEOUT_SECONDS=4` for that backend. Bursts show in `convex.log` as "took a long time".
 
 ## 12. Change log
+- 2026-11-21: iPhone (old UIKit frame, Debug builds): Home's Folders "…" > All folders opens the folders grid, not All notes; the Mac's `.allFolders` route opens `/folders` instead of Home; on `claude/phone-all-folders-route`.
 - 2026-11-21: 1.5.63 released on Mac and TestFlight (PR 46 + 47 + PR 45's motion pass); the web build was skipped (native-only).
 - 2026-11-21: iPhone Home's folder strip no longer cuts its cards' shadow off in a straight line (`scrollClipDisabled`), on `claude/phone-strip-shadows`.
 - 2026-11-21: iPhone search's field and close button at the foot above the keyboard (iOS 26), chips just above it; Quick add's Task/Note switch matches Foli AI's Chat/Research, full width; on `claude/phone-search-bottom`.

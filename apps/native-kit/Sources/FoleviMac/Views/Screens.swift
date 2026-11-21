@@ -207,7 +207,7 @@ enum FrameNavigation {
         case .notes(let v): return .notes(v)
         case .folder(let id): return .folder(id)
         case .tag(let id): return .tag(id)
-        case .allFolders: return .home
+        case .allFolders: return .web("/folders")
         case .shared: return .shared
         case .changes: return .changes
         case .reviews: return .web("/review")

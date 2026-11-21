@@ -72,7 +72,7 @@ enum Destination: Hashable, Codable {
     var path: String {
         switch self {
         case .home: "/documents"
-        case .search(let q): q.isEmpty ? "/documents" : "/documents?q=\(q.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? "")"
+        case .search(let q): q.isEmpty ? "/search" : "/documents?q=\(q.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? "")"
         case .foliAI(let id): id.map { "/ai/\($0)" } ?? "/ai"
         case .inbox: "/inbox"
         case .notifications: "/notifications"
@@ -118,6 +118,8 @@ enum Destination: Hashable, Codable {
         switch head {
         case "documents", "":
             if let q = query.first(where: { $0.name == "q" })?.value, !q.isEmpty { self = .search(q) } else { self = .home }
+        case "search":
+            self = .search(query.first(where: { $0.name == "q" })?.value ?? "")
         case "notes": self = .allNotes
         case "d": guard let n = id(a) else { return nil }; self = .note(n)
         case "ai": self = .foliAI(id(a))

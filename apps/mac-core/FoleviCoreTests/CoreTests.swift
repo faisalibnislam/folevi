@@ -9,7 +9,7 @@ import Testing
 
 struct DestinationTests {
     @Test(arguments: [
-        "/documents", "/notes", "/d/01M7Z5KSV1H3KAXB1272J3SNED", "/ai", "/ai/abc123", "/inbox", "/notifications",
+        "/documents", "/search", "/notes", "/d/01M7Z5KSV1H3KAXB1272J3SNED", "/ai", "/ai/abc123", "/inbox", "/notifications",
         "/tasks/today", "/tasks/upcoming", "/calendar", "/calendar/2026-11", "/daily/2026-11-21", "/shared", "/shared/F1",
         "/vault", "/review", "/graph", "/changes", "/templates", "/starred", "/archive", "/trash", "/unsorted",
         "/folders", "/folders/F2", "/tags", "/tags/T1", "/invite/tok", "/share-invite/tok", "/share-invite/folder/tok",

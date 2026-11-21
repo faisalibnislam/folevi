@@ -59,8 +59,10 @@ struct RecentScreen: View {
 
 // MARK: Search
 
-/// Search across the space: titles and text, with filters (folder, tag, edited since, archived) and, where the
-/// account has it, search by meaning.
+/// Search: one field ("Search in <space>"), filters (folder, tag, when it was edited, archived, by meaning, every
+/// place) with Clear, and before typing the recent searches and the notes opened last. Results come in sections:
+/// Notes, By Meaning, Folders (matched here, 6 at most) and open Tasks (8 at most). ↑ and ↓ move through them,
+/// Return opens the one picked, Esc clears the field.
 struct SearchScreen: View {
     let window: WindowModel
     let initial: String
@@ -70,75 +72,334 @@ struct SearchScreen: View {
     @State private var searching = false
     @State private var folder: String?
     @State private var tag: String?
+    @State private var updated: Updated = .any
     @State private var archived = false
     @State private var meaning = false
     @State private var everywhere = false
+    @State private var picked: String?
+    @State private var recentNotes = Live<Views.RecentViewed>()
+    @State private var openTasks: [TaskRow]?
+    @State private var recents: [String] = []
     @FocusState private var focused: Bool
+
+    enum Updated: String, CaseIterable, Identifiable {
+        case any, week, month, year
+        var id: String { rawValue }
+        var title: String {
+            switch self {
+            case .any: "Any Time"
+            case .week: "Past Week"
+            case .month: "Past Month"
+            case .year: "Past Year"
+            }
+        }
+        /// Milliseconds since 1970.
+        var after: Int? {
+            let days: Double
+            switch self {
+            case .any: return nil
+            case .week: days = 7
+            case .month: days = 30
+            case .year: days = 365
+            }
+            return Int((Date().timeIntervalSince1970 - days * 86_400) * 1000)
+        }
+    }
+
+    /// Everything the list shows, in order, so the keys can move through it.
+    enum Item: Identifiable, Hashable {
+        case query(String)
+        case recent(RecentViewedRow)
+        case note(SearchHit)
+        case folder(FolderNode, path: String)
+        case task(TaskRow)
+
+        var id: String {
+            switch self {
+            case .query(let q): "q:" + q
+            case .recent(let r): "r:" + r.id
+            case .note(let h): "n:" + h.id + (h.blockId ?? "") + h.matchIn
+            case .folder(let f, _): "f:" + f.id
+            case .task(let t): "t:" + t.id
+            }
+        }
+    }
+
+    private var query: String { text.trimmingCharacters(in: .whitespaces) }
+    private var filtered: Bool { folder != nil || tag != nil || updated != .any || archived || meaning || everywhere }
+
+    private var noteHits: [SearchHit] { (result?.hits ?? []).filter { $0.matchIn != "meaning" } }
+    private var meaningHits: [SearchHit] { (result?.hits ?? []).filter { $0.matchIn == "meaning" } }
+
+    private var folderHits: [Item] {
+        guard !query.isEmpty, !everywhere else { return [] }
+        let all = app.tree.value?.folders ?? []
+        let byId = Dictionary(all.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
+        func path(_ f: FolderNode) -> String {
+            var names: [String] = []
+            var p = f.parentId
+            while let id = p, let parent = byId[id] { names.insert(parent.name, at: 0); p = parent.parentId }
+            return names.joined(separator: " › ")
+        }
+        return all.filter { $0.name.localizedCaseInsensitiveContains(query) }.prefix(6).map { .folder($0, path: path($0)) }
+    }
+
+    private var taskHits: [Item] {
+        guard !query.isEmpty, !everywhere, let openTasks else { return [] }
+        return openTasks.filter { $0.title.localizedCaseInsensitiveContains(query) }.prefix(8).map { .task($0) }
+    }
+
+    private var items: [Item] {
+        if query.isEmpty {
+            return recents.map { .query($0) } + (recentNotes.value?.rows ?? []).prefix(8).map { .recent($0) }
+        }
+        return noteHits.map { .note($0) } + meaningHits.map { .note($0) } + folderHits + taskHits
+    }
 
     var body: some View {
         VStack(spacing: 0) {
-            HStack(spacing: 10) {
-                Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
-                TextField("Search notes", text: $text)
-                    .textFieldStyle(.plain)
-                    .font(.title3)
-                    .focused($focused)
-                    .onSubmit { run() }
-                if searching { ProgressView().controlSize(.small) }
-            }
-            .padding(12)
-            .background(.fill.quinary, in: .rect(cornerRadius: 10))
-            .padding(.horizontal, 24)
-            .padding(.top, 16)
-
-            HStack(spacing: 12) {
-                Picker("Folder", selection: $folder) {
-                    Text("Any Folder").tag(String?.none)
-                    ForEach(app.tree.value?.folders ?? [], id: \.id) { Text($0.name).tag(Optional($0.id)) }
-                }
-                .frame(maxWidth: 200)
-                Picker("Tag", selection: $tag) {
-                    Text("Any Tag").tag(String?.none)
-                    ForEach(app.tree.value?.tags ?? [], id: \.id) { Text("#" + $0.name).tag(Optional($0.id)) }
-                }
-                .frame(maxWidth: 180)
-                Toggle("Archived", isOn: $archived).toggleStyle(.checkbox)
-                if result?.meaningAvailable == true { Toggle("By Meaning", isOn: $meaning).toggleStyle(.checkbox).help("Find notes about the same thing, even in other words") }
-                if (app.places.value?.places.count ?? 0) > 1 { Toggle("Every Place", isOn: $everywhere).toggleStyle(.checkbox) }
-                Spacer()
-            }
-            .labelsHidden()
-            .controlSize(.small)
-            .padding(.horizontal, 24)
-            .padding(.vertical, 10)
-
+            field
+            filters
             Divider()
-            if let r = result, !r.text.isEmpty {
-                if r.hits.isEmpty {
-                    EmptyScreen(symbol: "magnifyingglass", title: "No Results", message: "Nothing matches “\(r.text)”.")
-                } else {
-                    List(r.hits, id: \.id) { hit in
-                        SearchHitRow(hit: hit, query: r.text)
-                            .contentShape(Rectangle())
-                            .onTapGesture { open(hit) }
-                    }
-                    .listStyle(.inset)
-                }
-            } else {
-                EmptyScreen(symbol: "magnifyingglass", title: "Search Your Notes", message: "Type a word or phrase. Press ⌘K anywhere for the command palette.")
+            if app.sync.value?.online == false {
+                Label("Showing what's on this Mac. Folevi searches everything when it's back online.", systemImage: "wifi.slash")
+                    .font(.callout).foregroundStyle(.secondary).frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 24).padding(.vertical, 8).background(.fill.quinary)
             }
+            content
         }
         .onAppear {
             text = initial
+            recents = RecentSearches.list()
             focused = true
             if !initial.isEmpty { run() }
         }
+        .task { recentNotes.bind(app.client, Views.RecentViewed(RecentViewedArgs(space: nil, limit: 8))) }
+        .onChange(of: initial) { text = initial; focused = true }
         .onChange(of: text) { schedule() }
         .onChange(of: folder) { run() }
         .onChange(of: tag) { run() }
+        .onChange(of: updated) { run() }
         .onChange(of: archived) { run() }
         .onChange(of: meaning) { run() }
         .onChange(of: everywhere) { run() }
+    }
+
+    private var field: some View {
+        HStack(spacing: 10) {
+            Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
+            TextField(everywhere ? "Search Everywhere" : "Search in \(app.spaceName)", text: $text)
+                .textFieldStyle(.plain)
+                .font(.title3)
+                .focused($focused)
+                .onSubmit { openPicked() }
+                .onKeyPress(.downArrow) { move(1); return .handled }
+                .onKeyPress(.upArrow) { move(-1); return .handled }
+                .onKeyPress(.escape) {
+                    if text.isEmpty { return .ignored }
+                    text = ""
+                    return .handled
+                }
+            if searching { ProgressView().controlSize(.small) }
+            if !text.isEmpty {
+                Button { text = ""; focused = true } label: { Image(systemName: "xmark.circle.fill") }
+                    .buttonStyle(.plain).foregroundStyle(.secondary).help("Clear")
+            }
+        }
+        .padding(12)
+        .background(.fill.quinary, in: .rect(cornerRadius: 10))
+        .padding(.horizontal, 24)
+        .padding(.top, 16)
+    }
+
+    private var filters: some View {
+        HStack(spacing: 12) {
+            Picker("Folder", selection: $folder) {
+                Text("Any Folder").tag(String?.none)
+                ForEach(FolderOrder.nested(app.tree.value?.folders ?? []), id: \.id) { f in
+                    Text(String(repeating: "    ", count: f.depth) + f.name).tag(Optional(f.id))
+                }
+            }
+            .labelsHidden().fixedSize()
+            Picker("Tag", selection: $tag) {
+                Text("Any Tag").tag(String?.none)
+                ForEach(app.tree.value?.tags ?? [], id: \.id) { Text("#" + $0.name).tag(Optional($0.id)) }
+            }
+            .labelsHidden().fixedSize()
+            Picker("Updated", selection: $updated) {
+                ForEach(Updated.allCases) { Text($0.title).tag($0) }
+            }
+            .labelsHidden().fixedSize()
+            Toggle("Archived", isOn: $archived).toggleStyle(.checkbox).help("Include archived notes")
+            if result?.meaningAvailable == true { Toggle("By Meaning", isOn: $meaning).toggleStyle(.checkbox).help("Find notes about the same thing, even in other words") }
+            if (app.session.value?.spaces.count ?? 0) > 1 { Toggle("Every Space", isOn: $everywhere).toggleStyle(.checkbox) }
+            Spacer()
+            if filtered {
+                Button("Clear", action: clearFilters).help("Clear the filters")
+            }
+        }
+        .controlSize(.small)
+        .padding(.horizontal, 24)
+        .padding(.vertical, 10)
+    }
+
+    @ViewBuilder private var content: some View {
+        if query.isEmpty {
+            if items.isEmpty {
+                EmptyScreen(symbol: "magnifyingglass", title: "Search Your Notes", message: "Type a word or phrase. Press ⌘K anywhere to jump to a note or run a command.")
+            } else {
+                list {
+                    if !recents.isEmpty {
+                        HStack {
+                            header("Recent Searches")
+                            Spacer()
+                            Button("Clear") { RecentSearches.clear(); recents = [] }.buttonStyle(.borderless).font(.caption).padding(.top, 12)
+                        }
+                        ForEach(recents, id: \.self) { q in
+                            row(.query(q)) { Label(q, systemImage: "clock.arrow.circlepath") }
+                        }
+                    }
+                    if let rows = recentNotes.value?.rows, !rows.isEmpty {
+                        header("Recent Notes")
+                        ForEach(rows.prefix(8), id: \.id) { r in
+                            row(.recent(r)) {
+                                HStack(spacing: 10) {
+                                    NoteMark(icon: r.icon, size: 15).frame(width: 18)
+                                    Text(r.title.nonEmpty ?? "Untitled").font(CoreType.noteTitle(15)).lineLimit(1)
+                                    Spacer()
+                                    Text(CoreDates.short(r.updatedAt)).font(.caption).foregroundStyle(.tertiary)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        } else if let r = result, r.hits.isEmpty, folderHits.isEmpty, taskHits.isEmpty, !searching {
+            EmptyScreen(symbol: "magnifyingglass", title: "No Results", message: filtered ? "Nothing matches “\(r.text)” with these filters." : "Nothing matches “\(r.text)”.", actionTitle: filtered ? "Clear Filters" : nil) {
+                clearFilters()
+            }
+        } else {
+            list {
+                if !noteHits.isEmpty {
+                    header("Notes")
+                    ForEach(noteHits, id: \.self) { h in row(.note(h)) { SearchHitRow(hit: h, query: query) } }
+                }
+                if !meaningHits.isEmpty {
+                    header("By Meaning")
+                    ForEach(meaningHits, id: \.self) { h in row(.note(h)) { SearchHitRow(hit: h, query: query) } }
+                }
+                if !folderHits.isEmpty {
+                    header("Folders")
+                    ForEach(folderHits) { item in
+                        if case .folder(let f, let path) = item {
+                            row(item) {
+                                HStack(spacing: 10) {
+                                    FolderMark(colorId: f.color, size: 15).frame(width: 18)
+                                    Text(f.name)
+                                    if !path.isEmpty { Text("in \(path)").font(.caption).foregroundStyle(.secondary) }
+                                }
+                            }
+                        }
+                    }
+                }
+                if !taskHits.isEmpty {
+                    header("Tasks")
+                    ForEach(taskHits) { item in
+                        if case .task(let t) = item {
+                            row(item) {
+                                HStack(spacing: 10) {
+                                    Image(systemName: "circle").foregroundStyle(.secondary).frame(width: 18)
+                                    Text(t.title).lineLimit(1)
+                                    Text(t.noteTitle.nonEmpty ?? "Untitled").font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                                    Spacer()
+                                    if let d = t.dueDate { Text(d).font(.caption).foregroundStyle(.tertiary) }
+                                }
+                            }
+                        }
+                    }
+                }
+                if searching && (result?.hits.isEmpty ?? true) {
+                    HStack { ProgressView().controlSize(.small); Text("Searching…").foregroundStyle(.secondary) }.padding(10)
+                }
+            }
+        }
+    }
+
+    private func clearFilters() {
+        folder = nil; tag = nil; updated = .any; archived = false; meaning = false; everywhere = false
+    }
+
+    private func list<C: View>(@ViewBuilder _ rows: () -> C) -> some View {
+        let content = rows()
+        return ScrollViewReader { proxy in
+            ScrollView {
+                LazyVStack(alignment: .leading, spacing: 2) { content }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 10)
+            }
+            .onChange(of: picked) { if let picked { withAnimation(.snappy) { proxy.scrollTo(picked) } } }
+        }
+    }
+
+    /// A result: picked by a click or the arrow keys, opened by a double click or Return.
+    private func row<C: View>(_ item: Item, @ViewBuilder _ label: () -> C) -> some View {
+        label()
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, 10).padding(.vertical, 6)
+            .background(picked == item.id ? AnyShapeStyle(.selection) : AnyShapeStyle(.clear), in: .rect(cornerRadius: 8))
+            .contentShape(.rect)
+            .onTapGesture(count: 2) { open(item) }
+            .onTapGesture { picked = item.id }
+            .contextMenu {
+                Button("Open") { open(item) }
+                if case .note(let h) = item { Button("Open in New Tab") { AppModel.shared.open(.note(h.id), newTab: true) } }
+                if case .recent(let r) = item { Button("Open in New Tab") { AppModel.shared.open(.note(r.id), newTab: true) } }
+                if case .query(let q) = item { Button("Remove") { RecentSearches.remove(q); recents = RecentSearches.list() } }
+            }
+            .id(item.id)
+    }
+
+    private func header(_ title: String) -> some View {
+        Text(title).font(.subheadline.weight(.semibold)).foregroundStyle(.secondary).padding(.horizontal, 10).padding(.top, 12).padding(.bottom, 2)
+    }
+
+    private func move(_ by: Int) {
+        let ids = items.map(\.id)
+        guard !ids.isEmpty else { return }
+        let i = picked.flatMap { ids.firstIndex(of: $0) }
+        let next = i.map { min(max($0 + by, 0), ids.count - 1) } ?? (by > 0 ? 0 : ids.count - 1)
+        picked = ids[next]
+    }
+
+    private func openPicked() {
+        let all = items
+        if let picked, let item = all.first(where: { $0.id == picked }) { open(item) } else if let first = all.first, !query.isEmpty { open(first) }
+    }
+
+    private func open(_ item: Item) {
+        if !query.isEmpty { RecentSearches.add(query); recents = RecentSearches.list() }
+        switch item {
+        case .query(let q):
+            text = q
+            run()
+        case .recent(let r):
+            window.go(.note(r.id))
+        case .note(let h):
+            window.go(.note(h.id))
+            if let block = h.blockId { jump(block) }
+        case .folder(let f, _):
+            window.go(.folder(f.id))
+        case .task(let t):
+            window.go(.note(t.noteId))
+            jump(t.id)
+        }
+    }
+
+    private func jump(_ block: String) {
+        Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(400))
+            window.editor(EditorCommands.BlockJump(BlockJumpArgs(blockId: block)))
+        }
     }
 
     @State private var pending: Task<Void, Never>?
@@ -153,25 +414,57 @@ struct SearchScreen: View {
     }
 
     private func run() {
-        let q = text.trimmingCharacters(in: .whitespaces)
+        let q = query
+        picked = nil
         guard !q.isEmpty, let client = app.client else { result = nil; return }
         searching = true
-        let args = SearchArgs(text: q, scope: everywhere ? .everywhere : .place, space: nil, folderId: folder, tagId: tag, updatedAfter: nil, includeArchived: archived, creatorId: nil, meaning: meaning, limit: 100)
+        let args = SearchArgs(text: q, scope: everywhere ? .everywhere : .place, space: nil, folderId: folder, tagId: tag, updatedAfter: updated.after, includeArchived: archived, creatorId: nil, meaning: meaning, limit: 40)
         Task { @MainActor in
             let r = try? await client.query(Views.Search(args))
-            if q == text.trimmingCharacters(in: .whitespaces) { result = r }
+            if q == query { result = r }
             searching = false
         }
-    }
-
-    private func open(_ hit: SearchHit) {
-        window.go(.note(hit.id))
-        if let block = hit.blockId, let page = window.page {
-            Task {
-                try? await Task.sleep(for: .milliseconds(350))
-                _ = try? await page.client.editor(EditorCommands.BlockJump(BlockJumpArgs(blockId: block)))
+        // Open tasks load once, the first time a search runs.
+        if openTasks == nil {
+            openTasks = []
+            Task { @MainActor in
+                let v = try? await client.query(Views.TasksList(TasksListArgs(space: nil, view: .all)))
+                openTasks = (v?.groups ?? []).flatMap(\.tasks).filter { $0.status != "done" && $0.completedAt == nil }
             }
         }
+    }
+}
+
+/// The searches made here last (8 at most), per space, newest first.
+@MainActor
+enum RecentSearches {
+    private static var key: String { "recentSearches." + AppModel.shared.spaceName }
+
+    static func list() -> [String] { UserDefaults.standard.stringArray(forKey: key) ?? [] }
+
+    static func add(_ q: String) {
+        var all = list().filter { $0.caseInsensitiveCompare(q) != .orderedSame }
+        all.insert(q, at: 0)
+        UserDefaults.standard.set(Array(all.prefix(8)), forKey: key)
+    }
+
+    static func remove(_ q: String) { UserDefaults.standard.set(list().filter { $0 != q }, forKey: key) }
+
+    static func clear() { UserDefaults.standard.removeObject(forKey: key) }
+}
+
+/// Folders in tree order (parents before their children, siblings by rank), for indented pickers.
+enum FolderOrder {
+    static func nested(_ all: [FolderNode]) -> [FolderNode] {
+        var out: [FolderNode] = []
+        func walk(_ parent: String?) {
+            for f in all.filter({ $0.parentId == parent }).sorted(by: { $0.rank < $1.rank }) {
+                out.append(f)
+                walk(f.id)
+            }
+        }
+        walk(nil)
+        return out
     }
 }
 

@@ -4,6 +4,22 @@ Every Folevi release, newest first, written by `node scripts/version.mjs` from `
 
 Versions are MAJOR.UPDATE.PATCH, PATCH at least two digits: a Major release (2.0.00), a Big update (1.1.05 after 1.0.05) or a Small update (1.0.06 after 1.0.05).
 
+## Version 1.5.62: Small update
+
+Released 2026-11-21 10:46:15+06:00 (build 77, tag v1.5.62)
+
+Folder cards fit their words on iPhone, Back always takes you back, and Home's picture in Show All Tabs is drawn properly with room to breathe.
+
+### Improved
+
+- iPhone Home: bigger note and folder cards, evenly spaced, with the next one peeking in.
+- Show All Tabs on the web, Mac and iPad: Home is drawn as your latest notes and folders, with room between the rows, and other tabs' pictures fit without being cut off.
+
+### Fixed
+
+- iPhone and iPad folder cards: a long folder name no longer pushes the last-edited date off the card.
+- Back now works in a tab you opened from a page, like Home's See all, a folder or a note in a list: it closes that tab and takes you back to where you were, on the web, Mac and iPad.
+
 ## Version 1.5.61: Small update
 
 Released 2026-11-21 10:25:19+06:00 (build 76, tag v1.5.61)

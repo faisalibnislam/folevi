@@ -268,7 +268,7 @@ final class PhoneFrameController: UIViewController, PhoneRouting, PhoneNavigatio
         case .notes(let v): nav.pushViewController(listScreen(NotesListKind(v)), animated: true)
         case .folder(let id): nav.pushViewController(listScreen(.folder(id)), animated: true)
         case .tag(let id): nav.pushViewController(listScreen(.tag(id)), animated: true)
-        case .allFolders: nav.pushViewController(listScreen(NotesListKind(.all)), animated: true)
+        case .allFolders: nav.pushViewController(AllFoldersScreenController(model: AllFoldersModel(client: model.client, feedback: feedback), navigator: navigator, feedback: feedback), animated: true)
         case .shared: nav.pushViewController(SharedScreenController(model: SharedListModel(client: model.client, feedback: feedback), navigator: navigator, feedback: feedback), animated: true)
         case .changes: nav.pushViewController(ChangesScreenController(model: ChangesModel(client: model.client, feedback: feedback), navigator: navigator, feedback: feedback), animated: true)
         case .reviews: nav.pushViewController(PageScreenController(page: .reviews, title: "Reviews", model: model, pageHost: pageHost), animated: true)

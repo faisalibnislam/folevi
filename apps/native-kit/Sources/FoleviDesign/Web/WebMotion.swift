@@ -42,6 +42,12 @@ public enum WebMotion {
     @MainActor public static func animate(_ duration: TimeInterval = disclosure, _ body: () -> Void) {
         withAnimation(change(duration), body)
     }
+
+    /// A looping animation (a loading shimmer, a pulse), or none under Reduce Motion: the view then holds still at
+    /// its resting look, which still says "working" without the movement.
+    @MainActor public static func loop(_ animation: Animation) -> Animation? {
+        reduced ? nil : animation
+    }
 }
 
 /// Grows in from what opened it when it first appears (a dialog from above, a popover from below): from 90% and
@@ -84,6 +90,104 @@ public enum FoleviSpring {
     @MainActor public static var slide: Animation { WebMotion.reduced ? .easeInOut(duration: 0.15) : .spring(response: 0.38, dampingFraction: 0.7) }
     /// A press: in quickly, back with a small bounce.
     @MainActor public static var press: Animation { WebMotion.reduced ? .linear(duration: 0.08) : .spring(response: 0.24, dampingFraction: 0.52) }
+    /// The way into a press: quick and without overshoot, so what's held under the finger settles instead of
+    /// wobbling. The release (`press`) keeps the bounce: the finger lifting is what throws it back.
+    @MainActor public static var pressIn: Animation { WebMotion.reduced ? .linear(duration: 0.08) : .spring(duration: 0.14, bounce: 0) }
+    /// The press for a pressed state: `pressIn` going down, `press` coming back.
+    @MainActor public static func press(_ pressed: Bool) -> Animation { pressed ? pressIn : press }
+    /// A glass control swelling under the finger springs back (`.ui-glass-press`'s release, 380 ms with an
+    /// overshoot): a spring rather than the web's overshooting curve, so a press let go mid-swell turns back from
+    /// where it is, at the speed it had.
+    @MainActor public static var glassRelease: Animation { WebMotion.reduced ? .linear(duration: 0.08) : .spring(duration: 0.38, bounce: 0.3) }
+
+    /// Rows or cards making room for one being dragged, and settling when it's dropped: brisk, no visible bounce
+    /// (nothing was thrown).
+    @MainActor public static var reorder: Animation? { WebMotion.reduced ? nil : .spring(response: 0.3, dampingFraction: 0.82) }
+    /// A small control popping in or out as it becomes useful (a send button, a save button): a light overshoot.
+    @MainActor public static var appear: Animation? { WebMotion.reduced ? nil : .spring(response: 0.3, dampingFraction: 0.72) }
+    /// A menu growing from what opened it.
+    @MainActor public static var menu: Animation { WebMotion.reduced ? .linear(duration: 0.15) : .spring(response: 0.32, dampingFraction: 0.82) }
+    /// A bar sliding in or out at the bottom of the screen (the selection bar, a toast).
+    @MainActor public static var bar: Animation { WebMotion.reduced ? .easeOut(duration: 0.15) : .spring(response: 0.35, dampingFraction: 0.9) }
+
+    /// A swiped row settling open or shut: the finger's own speed carried on (`velocity` in points a second along
+    /// the move, `distance` the points left to go), so a flick doesn't stall when the spring takes over.
+    @MainActor public static func settle(velocity: CGFloat = 0, distance: CGFloat = 0) -> Animation {
+        guard !WebMotion.reduced else { return .easeOut(duration: 0.15) }
+        // SwiftUI's initial velocity is in units of the change a second (1 = the whole distance in a second).
+        let relative = abs(distance) > 0.5 ? Double(velocity / distance) : 0
+        return .interpolatingSpring(duration: 0.32, bounce: 0.12, initialVelocity: max(-20, min(20, relative)))
+    }
+
+    /// Where a flick at `velocity` (points a second) would coast to, from where it was let go: UIScrollView's normal
+    /// deceleration, for deciding which way a released row or panel goes.
+    public static func projected(_ position: CGFloat, velocity: CGFloat, decelerationRate: CGFloat = 0.998) -> CGFloat {
+        position + (velocity / 1000) * decelerationRate / (1 - decelerationRate)
+    }
+}
+
+// MARK: - Liquid Glass coming and going
+
+public extension View {
+    /// A floating piece of Liquid Glass (a toast, a selection bar, a panel) arriving and leaving. On the native look's
+    /// glass (macOS 26, iOS 26) the glass materializes: its lensing ramps up from the backdrop as the system's own
+    /// glass does, instead of the whole surface fading as a flat picture (an opacity on glass, or on anything round
+    /// it, draws the material flat until the fade ends and then pops). It still comes `distance` points from `edge`,
+    /// so it reads as coming from where it lives. Under Reduce Motion it only materializes, in place. Elsewhere (the
+    /// drawn glass, before iOS 26) the old slide and fade. Put it on the view that's inserted and removed, inside a
+    /// NativeGlassContainer / GlassEffectContainer.
+    /// `native` nil: the native look's chrome (`nativeChrome`) decides, as the glass surfaces themselves do.
+    /// `scale`: it grows from that size toward `edge` instead of sliding (glass rising where the tab bar was).
+    func glassArrival(native: Bool? = nil, edge: Edge = .bottom, distance: CGFloat = 8, scale: CGFloat? = nil) -> some View {
+        modifier(GlassArrival(native: native, edge: edge, distance: distance, scale: scale))
+    }
+}
+
+struct GlassArrival: ViewModifier {
+    let native: Bool?
+    let edge: Edge
+    let distance: CGFloat
+    let scale: CGFloat?
+    @Environment(\.nativeChrome) private var chrome
+
+    @ViewBuilder
+    func body(content: Content) -> some View {
+        let reduced = WebMotion.reduced
+        if native ?? (chrome != nil), #available(iOS 26, macOS 26, *) {
+            content
+                .glassEffectTransition(.materialize)
+                .transition(reduced ? .identity : movement)
+        } else if let scale {
+            content.transition(reduced ? .opacity : .opacity.combined(with: .scale(scale: scale, anchor: anchor)))
+        } else {
+            content.transition(reduced ? .opacity : .asymmetric(
+                insertion: .move(edge: edge).combined(with: .opacity),
+                removal: .offset(offset).combined(with: .opacity)))
+        }
+    }
+
+    private var movement: AnyTransition {
+        if let scale { return .scale(scale: scale, anchor: anchor) }
+        return .offset(offset)
+    }
+
+    private var anchor: UnitPoint {
+        switch edge {
+        case .top: .top
+        case .bottom: .bottom
+        case .leading: .leading
+        case .trailing: .trailing
+        }
+    }
+
+    private var offset: CGSize {
+        switch edge {
+        case .top: CGSize(width: 0, height: -distance)
+        case .bottom: CGSize(width: 0, height: distance)
+        case .leading: CGSize(width: -distance, height: 0)
+        case .trailing: CGSize(width: distance, height: 0)
+        }
+    }
 }
 
 /// What's pressed dips a little and springs back (cards, buttons, rows): never under Reduce Motion.
@@ -108,7 +212,7 @@ public struct PressDip: ViewModifier {
         #else
         content
             .scaleEffect(pressed && !WebMotion.reduced ? scale : 1)
-            .animation(FoleviSpring.press, value: pressed)
+            .animation(FoleviSpring.press(pressed), value: pressed)
         #endif
     }
 

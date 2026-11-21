@@ -1119,11 +1119,13 @@ struct WebNoteBrowser: View {
                     .contentShape(Rectangle())
                     .onTapGesture { if !model.selection.isEmpty { model.selection.removeAll() } } // (no hover: a click on the empty list clears the selection)
                 }
-                if !model.selection.isEmpty {
-                    WebSelectionBar(count: model.selection.count, total: model.selectableOrder.count, actions: model.bulkActions(tabs: true), label: selectionLabel, run: runBulk, selectAll: { model.selectAll() }, clear: { model.selection.removeAll() })
-                        .padding(.bottom, 20)
-                        .transition(.asymmetric(insertion: .move(edge: .bottom).combined(with: .opacity), removal: .offset(y: 8).combined(with: .opacity)))
+                NativeGlassContainer(spacing: 0) {
+                    if !model.selection.isEmpty {
+                        WebSelectionBar(count: model.selection.count, total: model.selectableOrder.count, actions: model.bulkActions(tabs: true), label: selectionLabel, run: runBulk, selectAll: { model.selectAll() }, clear: { model.selection.removeAll() })
+                            .glassArrival()
+                    }
                 }
+                .padding(.bottom, 20)
             }
         }
         .background(tint)
@@ -1781,7 +1783,7 @@ struct WebFoldersIndex: View {
         return out
     }
 
-    private var slide: Animation? { WebMotion.reduced ? nil : .spring(response: 0.3, dampingFraction: 0.82) }
+    private var slide: Animation? { FoleviSpring.reorder }
 
     /// A folder held at place `at` among the cards (nil: it left): the gap opens there; leaving, it closes a moment
     /// later unless the folder is held over another card or the gap by then.
@@ -1973,11 +1975,13 @@ struct WebFoldersIndex: View {
             .contentShape(Rectangle())
             .onTapGesture { if !selection.isEmpty { selection.clear() } } // (no hover: a click on the empty list clears the selection)
         }
-        if !picked(shown).isEmpty {
-            WebSelectionBar(count: picked(shown).count, total: shown.count, actions: actions(shown), label: "Selected folders", run: { run($0, shown: shown) }, selectAll: { selection.selectAll(shown.map(\.id)) }, clear: { selection.clear() })
-                .padding(.bottom, 20)
-                .transition(.asymmetric(insertion: .move(edge: .bottom).combined(with: .opacity), removal: .offset(y: 8).combined(with: .opacity)))
+        NativeGlassContainer(spacing: 0) {
+            if !picked(shown).isEmpty {
+                WebSelectionBar(count: picked(shown).count, total: shown.count, actions: actions(shown), label: "Selected folders", run: { run($0, shown: shown) }, selectAll: { selection.selectAll(shown.map(\.id)) }, clear: { selection.clear() })
+                    .glassArrival()
+            }
         }
+        .padding(.bottom, 20)
         }
         }
         .animation(.easeOut(duration: 0.16), value: selection.isEmpty)

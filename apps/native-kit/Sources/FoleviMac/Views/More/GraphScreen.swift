@@ -1659,7 +1659,8 @@ struct GraphCanvasView: View {
         guard let p = at(id), size.width > 0 else { return }
         moved = true
         let k = max(t.k, 1.4)
-        withAnimation(.easeOut(duration: 0.32)) { t = GraphMath.Transform(x: size.width / 2 - p.x * k, y: size.height / 2 - p.y * k, k: k) }
+        // (A camera move: under Reduce Motion it cuts to the place instead of flying there.)
+        withAnimation(WebMotion.reduced ? nil : .smooth(duration: 0.32)) { t = GraphMath.Transform(x: size.width / 2 - p.x * k, y: size.height / 2 - p.y * k, k: k) }
         focusedNode = id
     }
 

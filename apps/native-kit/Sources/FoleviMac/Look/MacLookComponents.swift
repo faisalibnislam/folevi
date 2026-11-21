@@ -222,6 +222,21 @@ public struct BarSearchField: View {
     }
 
     public var body: some View {
+        BarSearchFieldBody(text: $text, prompt: prompt, focus: focus, onSubmit: onSubmit)
+            .frame(minWidth: 170, idealWidth: 240, maxWidth: 300)
+            .nativeGlass(Capsule())
+    }
+}
+
+/// BarSearchField's insides without its glass: for a control whose one glass capsule opens into the field (the
+/// card's search), so the capsule grows rather than one piece of glass being swapped for another.
+struct BarSearchFieldBody: View {
+    @Binding var text: String
+    let prompt: String
+    let focus: FocusState<Bool>.Binding
+    let onSubmit: () -> Void
+
+    var body: some View {
         HStack(spacing: 8) {
             MacSymbol("magnifyingglass", size: 13).foregroundStyle(MacLook.Colors.secondary)
             TextField(prompt, text: $text)
@@ -240,8 +255,6 @@ public struct BarSearchField: View {
         }
         .padding(.horizontal, 12)
         .frame(height: MacLook.barControlHeight)
-        .frame(minWidth: 170, idealWidth: 240, maxWidth: 300)
-        .nativeGlass(Capsule())
     }
 }
 

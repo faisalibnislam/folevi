@@ -99,6 +99,8 @@ extension NativeFrame {
             case "back": m.goBack()
             case "forward": m.goForward()
             case "newNote": m.newNote()
+            // A toast (the Liquid Glass motion checks: its glass materializing in and out, several at once).
+            case "toast": m.toast(req["message"] as? String ?? "Moved to Trash", tone: .success, actionTitle: req["action"] as? String, action: {})
             case "moveOrCopy": frame.frameMoveOrCopy()
             case "sidebar": frame.root.split.toggleSidebar(nil)
             case "noteTools": WebSidebarController.setNoteTools(m, shown: !m.noteToolsShown)

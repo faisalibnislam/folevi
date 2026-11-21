@@ -348,10 +348,14 @@ signed-in account, 1.5.58's frosted folders with a large library, and the iPad c
 account button should move past iPadOS's window buttons).
 
 ## 10. Next steps / open work
-- Folevi Core (`apps/mac-core`, branch `claude/folevi-core-529dbe`): close the gaps in `apps/mac-core/PARITY.md`
-  (in its priority order), then the owner tries it with a real account. Publishing (`apps/mac-core/scripts/publish.mjs`,
-  R2 `folevi-updates` under `core/`) only with the owner's OK. iCloud libraries need Core's iCloud entitlement
-  (container `iCloud.com.folevi`, shared with today's app) on a Developer ID profile: not set up yet.
+- Folevi Core (`apps/mac-core`, branch `claude/folevi-core-529dbe`): close the remaining gaps in
+  `apps/mac-core/PARITY.md` (672 of 1,343 there, 301 partly, 160 missing; "Gaps in priority order" lists what's
+  left: tabs, Home details, notes lists and folders pages, tasks views, calendar, notifications, Settings search,
+  time zone picker, Foli AI memory), then the owner tries it with a real account. Publishing
+  (`apps/mac-core/scripts/publish.mjs`, R2 `folevi-updates` under `core/`) only with the owner's OK. The release
+  build already carries iCloud (`iCloud.com.folevi`) on its Developer ID profile. Known issue: launched with
+  `core.mjs launch --demo` (FOLEVI_DEMO=1) the windows get no values (Home spins); the real engine with the
+  scratch library works.
 - Liquid Glass motion branch (`claude/liquid-glass-animations-b1d70e`): the owner's look on a real Mac and iPhone, then
   merge with the next release. Known left: the Mac's Foli AI chat closes at once, with no exit animation (its host
   view shrinks before SwiftUI can animate the chat out; older than this branch).
@@ -420,6 +424,7 @@ account button should move past iPadOS's window buttons).
   `DATABASE_UDF_USER_TIMEOUT_SECONDS=4` for that backend. Bursts show in `convex.log` as "took a long time".
 
 ## 12. Change log
+- 2026-11-21: Folevi Core: the Vault complete, Quick Add parity, Foli AI chat details and a floating Ask Foli AI panel (⌘J), search and palette, Settings in today's order with a Library pane, About and Support, sidebar details; ready follows the engine client (no more stuck starting screen); PARITY.md recounted: 672 there, 301 partly, 160 missing, 210 n/a.
 - 2026-11-21: Folevi Core: draft PR 51; parity checklist (595 of 1,343 present, 343 partial, 195 missing, 210 n/a at first grading) and the first work packages closed (bugs, sharing, folder picker, tabs, task editor, calendar views); Developer ID release with iCloud verified (not notarized).
 - 2026-11-21: Folevi Core started in `apps/mac-core` (branch `claude/folevi-core-529dbe`): native app, release and publish scripts, tests, parity checklist. FoleviKit's demo engine is its own target `FoleviEngineDemo` (files unmoved, re-exported by FoleviMac).
 - 2026-11-21: 1.5.63 released on Mac and TestFlight (PR 46 + 47 + PR 45's motion pass); the web build was skipped (native-only).

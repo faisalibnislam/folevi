@@ -32,6 +32,28 @@ Closed or improved after the grading below; the per-item marks haven't been redo
 - Work package 6 (part): Reopen Closed Tab (⇧⌘T), Show Tab 1 to 9 (⌘1 to ⌘9), an open note's tab comes forward.
 - Work package 8 (part): Calendar Week and Agenda, drag a task onto a day with Undo.
 - Work package 9 (part): Edit Task (done, date and time, repeat, reminder, priority, assignee, move to a note).
+- The Vault, complete: set up, unlock, upgrade, change, reset and recovery; files, notes, passwords (generate,
+  strength, one-time codes), sharing with people and one-time links, trash, settings, people and custodians.
+- Quick Add: date, repeat, priority and page chips, the destination, Return / ⇧Return / ⌘Return, an in-panel
+  confirmation, the first-use hint, and an offline queue that sends when the engine is back.
+- Foli AI chat: edit the last question, share with the workspace, Copy as Markdown, delete with a confirmation, a
+  conversation menu, loading and missing states, Jump to Latest, Thinking, code blocks with Copy, linked [n]
+  citations, Stopped, Try Again, agent Continue, undo with a choice when notes changed, Buy More, context chips, a
+  footnote, the history-off banner, and a floating Ask Foli AI panel (⌘J) on every screen but a note.
+- Search: recent searches and recent notes before typing, Updated filter, Clear, Notes, By Meaning, Folders and
+  Tasks sections, keys through results, an offline notice, `/search` routes. The palette: recent notes before
+  typing, Folder, Tag and Updated filters, scope, archived and by meaning, sections, gated Foli AI and Foli DNA
+  rows, Go to Changes, ⌘Return for a new tab.
+- Settings: today's order, a workspace group, a Support group (Help, Contact Support, About), the last section
+  remembered with a fallback, a Library pane (place, status, move, cloud, devices, health, passphrase, account),
+  local Foli AI on/off, model and Keep conversations, Remove This Mac's Copy confirms, Use Default for Quick Add,
+  menu bar Settings…, File > Import Notes….
+- Sidebar: Foli AI gated, heading links, folder sort, open folders kept with ancestors opened, orphans at the top,
+  five tags and "N More", ⌃⌘N New Folder.
+- A missed `engine.ready` event no longer leaves a window on the starting screen (ready follows the client).
+
+The items closed in this session's later work packages are marked [x] with "closed after the grading", and the
+summary table below is recounted from the marks (672 there, 301 partly, 160 missing, 210 not applicable).
 
 ## Summary
 
@@ -40,17 +62,17 @@ Closed or improved after the grading below; the per-item marks haven't been redo
 | Architecture today | `ARCH` | 15 | 0 | 1 | 1 | 17 |
 | App & windows | `APP` | 28 | 19 | 3 | 23 | 73 |
 | Sign-in, onboarding, accounts, spaces & local mode | `AUTH` | 39 | 26 | 4 | 11 | 80 |
-| Sidebar & navigation | `NAV` | 15 | 13 | 2 | 7 | 37 |
+| Sidebar & navigation | `NAV` | 21 | 8 | 1 | 7 | 37 |
 | Tabs | `TAB` | 6 | 4 | 8 | 25 | 43 |
 | Home | `HOME` | 5 | 14 | 1 | 10 | 30 |
 | Notes lists | `LIST` | 29 | 22 | 10 | 11 | 72 |
 | Folders | `FOLD` | 7 | 17 | 10 | 3 | 37 |
 | Tags | `TAG` | 2 | 4 | 1 | 2 | 9 |
 | Note page & editor integration | `NOTE` | 30 | 11 | 2 | 3 | 46 |
-| Search & command palette | `SRCH` | 12 | 15 | 8 | 2 | 37 |
+| Search & command palette | `SRCH` | 31 | 4 | 0 | 2 | 37 |
 | Tasks | `TASK` | 6 | 9 | 11 | 9 | 35 |
 | Calendar | `CAL` | 8 | 10 | 13 | 6 | 37 |
-| Foli AI | `AI` | 19 | 13 | 13 | 4 | 49 |
+| Foli AI | `AI` | 42 | 1 | 2 | 4 | 49 |
 | Foli DNA | `DNA` | 34 | 2 | 0 | 0 | 36 |
 | Vault | `VAULT` | 4 | 16 | 20 | 1 | 41 |
 | Sharing, public links & invites | `SHARE` | 6 | 10 | 5 | 1 | 22 |
@@ -60,7 +82,7 @@ Closed or improved after the grading below; the per-item marks haven't been redo
 | Archive | `ARCV` | 6 | 0 | 0 | 0 | 6 |
 | Trash | `TRASH` | 10 | 2 | 0 | 0 | 12 |
 | Notifications / Inbox, Help & support | `NOTIF` | 5 | 3 | 8 | 2 | 18 |
-| Settings | `SET` | 81 | 29 | 36 | 19 | 165 |
+| Settings | `SET` | 110 | 15 | 21 | 19 | 165 |
 | Quick Add | `QADD` | 1 | 9 | 4 | 2 | 16 |
 | System integrations | `SYS` | 30 | 23 | 4 | 3 | 60 |
 | Context menus | `CTX` | 2 | 6 | 3 | 6 | 17 |
@@ -75,7 +97,7 @@ Closed or improved after the grading below; the per-item marks haven't been redo
 | Binding UX rules from owner memory | `RULE` | 18 | 13 | 0 | 13 | 44 |
 | iPhone and iPad only (skip) | `IOS` | 0 | 0 | 0 | 5 | 5 |
 | Gaps, bugs and contradictions | `GAP` | 14 | 10 | 8 | 11 | 43 |
-| **Total** | | **595** | **343** | **195** | **210** | **1343** |
+| **Total** | | **672** | **301** | **160** | **210** | **1343** |
 
 Notable findings (all in the first work package at the end):
 
@@ -288,7 +310,7 @@ Notable findings (all in the first work package at the end):
 - [x] `NAV-002` **Account / place / workspace button**: at the sidebar top (on iPad wide, in the strip corner): avatar or logo, name, chevron; opens the account menu. Core: `Views/Common/Menus.swift` PlaceMenu at the sidebar top.
 - [n/a] `NAV-003` **Note mode of the sidebar**: on a note with tools shown, the sidebar shows WebNoteSidebar instead of the list. Why: replaced by the inspector's Note Info (outline, pages) in `Views/Note/Inspector.swift`.
 - [x] `NAV-004` **Home row**. Core: `Views/Sidebar.swift`.
-- [~] `NAV-005` **Work with Foli AI row**: (only with the `ai` capability);; route /ai. Core: always shown, not gated on the ai capability.
+- [x] `NAV-005` **Work with Foli AI row**: (only with the `ai` capability);; route /ai. Core: closed after the grading (see "Since this grading").
 - [~] `NAV-006` **Foli DNA row and its saved views**: (only with `graph`). Core: gated on graph; no saved views (graph.views).
 - [~] `NAV-007` **Bookmarks row**: with a disclosure for the first 5 bookmarked notes (they open in a new tab). Core: Starred row, no disclosure of the first 5.
 - [~] `NAV-008` **Drafts row with count**. Core: no count.
@@ -302,20 +324,20 @@ Notable findings (all in the first work package at the end):
 - [x] `NAV-016` **Templates row**. Core: `Views/Sidebar.swift`.
 - [x] `NAV-017` **Archive and Trash rows**: at the end. Core: `Views/Sidebar.swift` More section.
 - [~] `NAV-018` **Row click rules**: the sidebar opens a fresh tab with no way back (`fromPage: false`); ⌘-click on a folder opens a background tab; middle-click on a… Core: selection navigates the window with history; no ⌘-click or middle-click to a background tab.
-- [~] `NAV-019` **Section headings as links**: with a full-row hover (Folders goes to /folders, Tags to /tags) and a fold chevron. Core: collapsible sections; headings are not links to /folders and /tags.
+- [x] `NAV-019` **Section headings as links**: with a full-row hover (Folders goes to /folders, Tags to /tags) and a fold chevron. Core: closed after the grading (see "Since this grading").
 - [x] `NAV-020` **Folders section**: tree, first 5 top-level folders plus the active root, Show more / Show less; "No folders yet". Core: `Views/Sidebar.swift` every folder (no Show more); "No folders yet".
 - [ ] `NAV-021` **Folder sort menu**: (Manual, Name, Recent) kept on the device; Recent watches `folders.cards(all:true)`. Core: no folder sort menu.
-- [~] `NAV-022` **New Folder button**: in the Folders heading (⌃⌘N). Core: + in the Folders heading; no ⌃⌘N.
+- [x] `NAV-022` **New Folder button**: in the Folders heading (⌃⌘N). Core: closed after the grading (see "Since this grading").
 - [~] `NAV-023` **Folder row**: indent per level, disclosure, icon by state (page, stack, outline), count, sync mark, "…" on hover (RowMoreButton), right-click… Core: `Views/Sidebar.swift` FolderRow: disclosure, glyph by state, count, menu; no sync mark or hover "…".
-- [ ] `NAV-024` **Folders open/closed state**: kept (`folevi:sidebar-folders-closed`); ancestors of the open folder are auto-expanded. Core: open folders aren't kept; ancestors of the open folder don't expand.
-- [~] `NAV-025` **Tags section**: first 5 with colour, "…" menu, "N more" link to /tags; "Tag documents from the inspector" when empty. Core: every tag with its colour; no menu, "N more" link or empty hint.
+- [x] `NAV-024` **Folders open/closed state**: kept (`folevi:sidebar-folders-closed`); ancestors of the open folder are auto-expanded. Core: closed after the grading (see "Since this grading").
+- [x] `NAV-025` **Tags section**: first 5 with colour, "…" menu, "N more" link to /tags; "Tag documents from the inspector" when empty. Core: closed after the grading (see "Since this grading").
 - [n/a] `NAV-026` **Sidebar menu button (SidebarMenu)**: Hide or Show sidebar (⌘\), Focus mode or Exit focus mode; on a note, Show folders / Show document. Why: native sidebar toggle (toolbar, View menu) and View > Focus Mode.
 - [n/a] `NAV-027` **Note tools / Folders switch**: in the strip beside the sidebar button (note only); the choice is kept. Why: note tools live in the inspector.
 - [x] `NAV-028` **Sidebar toggle button**: in the strip ("Hide Sidebar (⌘\)"). Core: native NavigationSplitView sidebar button.
 - [x] `NAV-029` **Focus mode hides the sidebar**: on a note. Core: `Views/Note/NoteScreen.swift` (editor.state.focus hides the sidebar).
 - [n/a] `NAV-030` **Narrow iPad floating sidebar**: (iPad): slides over the content, dismissed on pick. Why: iPad only.
 - [n/a] `NAV-031` **iPad web-look sidebar**: (iPad, non-native look): "Search or jump to…" well, bell, Home button, the web's items. Why: iPad only.
-- [~] `NAV-032` **Sidebar model**: sections from session, home and folders.tree; orphans at the top level; selection id per route. Core: built from session and folders.tree; orphaned subfolders don't show.
+- [x] `NAV-032` **Sidebar model**: sections from session, home and folders.tree; orphans at the top level; selection id per route. Core: closed after the grading (see "Since this grading").
 - [x] `NAV-033` **Back / Forward per tab**: (strip buttons, dimmed when unavailable, own view). Core: `Model/WindowModel.swift` back and forward stacks, toolbar buttons.
 - [~] `NAV-034` **Route model**: web paths in both directions (/documents, /d/<id>, /folders/<id>, /tags/<id>, /tasks/<v>, /calendar?date=, /search?q=… Core: `Model/Destination.swift` parses most paths; not /search, graph or review parameters, or calendar ?date=.
 - [~] `NAV-035` **Screen routes and intents to the frame**. Core: routes open in the window; intents like newWorkspace and switchPlace only partly.
@@ -591,44 +613,44 @@ Notable findings (all in the first work package at the end):
 
 - [x] `SRCH-001` **Search route (Mac)**: `.search(q)` shows the shared `SearchScreen` without Cancel; `prepare` fills in the query. Core: `Views/Screens/LibraryScreens.swift` SearchScreen.
 - [~] `SRCH-002` **⌘K palette entry points**: Open Quickly ⌘K, Search All Notes ⇧⌘F, Go > Search…, the card search capsule "Search or jump to… (⌘K)", status item "Search… Core: ⌘K palette, ⇧⌘F, Go > Search; no status item entry or search capsule.
-- [~] `SRCH-003` **Search field**: "Search in <space>" / "Search everywhere"; focused on open; spinner while searching; clear button; Return opens the selected or… Core: focused field with spinner; no ↑/↓ through results, Return-opens-first or Esc.
+- [x] `SRCH-003` **Search field**: "Search in <space>" / "Search everywhere"; focused on open; spinner while searching; clear button; Return opens the selected or… Core: closed after the grading (see "Since this grading").
 - [x] `SRCH-004` **Debounced query**: 120 ms debounce, 40 results at most. Core: 180 ms debounce, 100 results (search).
 - [x] `SRCH-005` **Scopes**: this space; Everywhere (when there are several spaces); By meaning (when `meaningAvailable` or AI is on). Core: place, Every Place and By Meaning toggles.
 - [x] `SRCH-006` **Folder filter**: "Any folder" plus the folders, indented by depth; turned off for Everywhere. Core: Any Folder picker (not indented, not turned off for Every Place).
 - [x] `SRCH-007` **Tag filter**: "Any tag" plus #tags. Core: Any Tag picker.
-- [ ] `SRCH-008` **Updated filter**: Any time, Past week, Past month, Past year. Core: no Updated filter.
-- [~] `SRCH-009` **Archived toggle and Clear**: "Include archived notes"; Clear filters. Core: Archived toggle; no Clear filters.
-- [ ] `SRCH-010` **Before typing**: Recent searches (8 at most, with Clear and swipe Remove) and Recent notes (8). Core: no recent searches or recent notes before typing.
-- [~] `SRCH-011` **Result sections**: Notes, By meaning, Folders (6 at most, matched on the device), Tasks (8 at most, open tasks loaded lazily). Core: note hits only; no Folders or Tasks sections.
+- [x] `SRCH-008` **Updated filter**: Any time, Past week, Past month, Past year. Core: closed after the grading (see "Since this grading").
+- [x] `SRCH-009` **Archived toggle and Clear**: "Include archived notes"; Clear filters. Core: closed after the grading (see "Since this grading").
+- [x] `SRCH-010` **Before typing**: Recent searches (8 at most, with Clear and swipe Remove) and Recent notes (8). Core: closed after the grading (see "Since this grading").
+- [x] `SRCH-011` **Result sections**: Notes, By meaning, Folders (6 at most, matched on the device), Tasks (8 at most, open tasks loaded lazily). Core: closed after the grading (see "Since this grading").
 - [x] `SRCH-012` **Result rows**: glyph by type (file match, meaning sparkle, folder glyph, task box); highlighted title and snippet; meta line (space, folder, "In… Core: SearchHitRow (glyph, highlighted snippet, meta line).
-- [~] `SRCH-013` **Opening a result**: a note opens, or opens at its block (`openNote` intent); a folder opens; a task opens its note at the block; a recent search… Core: opens the note at its block; queries aren't remembered.
-- [ ] `SRCH-014` **Offline fallback**: "Showing what's on this device. Folevi will search everything when it's back."; matches come from earlier answers and recent notes. Core: no offline notice.
+- [x] `SRCH-013` **Opening a result**: a note opens, or opens at its block (`openNote` intent); a folder opens; a task opens its note at the block; a recent search… Core: closed after the grading (see "Since this grading").
+- [x] `SRCH-014` **Offline fallback**: "Showing what's on this device. Folevi will search everything when it's back."; matches come from earlier answers and recent notes. Core: closed after the grading (see "Since this grading").
 - [x] `SRCH-015` **Empty states**: "Search your notes / Titles, words in notes, files and drawings."; "No results for "x"" with "Try without the filters." or "Try… Core: SearchScreen empty states.
-- [~] `SRCH-016` **Palette field**: "Search documents or type a command…", with Folder, Tag and Updated pop-ups and the space name. Core: `Views/Common/CommandPalette.swift` field only; no Folder, Tag or Updated pop-ups.
-- [~] `SRCH-017` **Palette before typing**: Recent (the notes opened last) plus the first 4 actions. Core: commands before typing; no recent notes (recent.viewed).
-- [~] `SRCH-018` **Palette results**: Documents, By meaning, "Searching…", "No documents match "x"."; notes open in a new tab. Core: up to 8 note hits; no By meaning or Searching… rows; opens in the same window.
+- [x] `SRCH-016` **Palette field**: "Search documents or type a command…", with Folder, Tag and Updated pop-ups and the space name. Core: closed after the grading (see "Since this grading").
+- [x] `SRCH-017` **Palette before typing**: Recent (the notes opened last) plus the first 4 actions. Core: closed after the grading (see "Since this grading").
+- [x] `SRCH-018` **Palette results**: Documents, By meaning, "Searching…", "No documents match "x"."; notes open in a new tab. Core: closed after the grading (see "Since this grading").
 - [x] `SRCH-019` **Palette Ask Foli AI item**: "Ask Foli AI about your notes" or "Ask Foli AI: "x"" (⌘J); opens `/ai`. Core: palette "Ask Foli AI" (opens /ai, the text isn't passed).
-- [~] `SRCH-020` **Palette actions**: New document (⌘⌥N hint), Go to Tasks · Today, Go to Calendar, Go to Reviews, Go to Changes, Go to Foli DNA (graph capability), Go… Core: palette commands; no Changes or light/dark switch; Foli DNA not gated.
+- [x] `SRCH-020` **Palette actions**: New document (⌘⌥N hint), Go to Tasks · Today, Go to Calendar, Go to Reviews, Go to Changes, Go to Foli DNA (graph capability), Go… Core: closed after the grading (see "Since this grading").
 - [x] `SRCH-021` **Palette keys**: ↑/↓ move, Return opens, Esc closes; pointer hover tracked. Core: palette ↑/↓, Return, Esc.
 - [~] `SRCH-022` **Early keys**: keys typed after ⌘K are held until the field has focus, then replayed in order (an input method still composes, ⌘V pastes); 2 s… Core: ⌘K is caught before the page; keys typed next aren't held for the field.
 - [n/a] `SRCH-023` **iOS early keys**: a hidden key catcher takes the typing. Why: iPhone/iPad only.
 - [n/a] `SRCH-024` **iOS only: full-screen search**: Cancel button; Home's search entry with ⌘F. Why: iPhone/iPad only.
 - [~] `SRCH-025` **Edit > Find…**: off a note, ⌘F focuses the sidebar search. Core: Find in Note is off away from a note; lists have the toolbar search field.
-- [ ] `SRCH-026` **Palette gaps**: no scope choice (Everywhere, By meaning) and no Archived toggle; it shows only the space name. Core: the same gap: no scope or Archived in the palette.
+- [x] `SRCH-026` **Palette gaps**: no scope choice (Everywhere, By meaning) and no Archived toggle; it shows only the space name. Core: closed after the grading (see "Since this grading").
 
 ### Command palette
 
 - [x] `SRCH-027` **Open**: ⌘K (File > Open Quickly…), sidebar "Search or jump to…", top bar search, search links prefill the query; Mac shows it as a system… Core: ⌘K overlay (`Views/Common/CommandPalette.swift`).
 - [~] `SRCH-028` **Early keys**: typing before the field has focus is held for it, never reaching the note. Core: ⌘K is caught before the page; keys typed next aren't held for the field.
 - [x] `SRCH-029` **Field**: "Search documents or type a command…". Core: palette field.
-- [ ] `SRCH-030` **Filters**: Folder (nested, indented, "Any folder"), Tag ("Any tag"), Updated ("Any time" + ranges), and the space. Core: no palette filters.
-- [ ] `SRCH-031` **Recent before typing**: notes opened last. Core: no recent notes in the palette.
-- [~] `SRCH-032` **Search results**: title, snippet, "Edited <relative>", "By meaning" section for semantic hits, "Searching…", "No documents match …"; opens in a new… Core: title and folder or snippet; no By meaning section or block jump.
-- [~] `SRCH-033` **Ask Foli AI row**: "Ask Foli AI about your notes" / "Ask Foli AI: …", hint ⌘J, only with AI capability (opens /ai; the typed text is not passed). Core: always shown, not gated on the AI capability.
-- [~] `SRCH-034` **Actions**: New document (⌘⌥N), Go to Tasks · Today, Go to Calendar, Go to Reviews, Go to Changes, Go to Foli DNA, Go to Home, Open Trash… Core: see SRCH-020.
-- [ ] `SRCH-035` **Bug: Foli DNA action never hidden**: removal checks id "a:graph" but the action's id is "graph". Core: still not gated: Foli DNA shows in the palette without the graph capability.
+- [x] `SRCH-030` **Filters**: Folder (nested, indented, "Any folder"), Tag ("Any tag"), Updated ("Any time" + ranges), and the space. Core: closed after the grading (see "Since this grading").
+- [x] `SRCH-031` **Recent before typing**: notes opened last. Core: closed after the grading (see "Since this grading").
+- [x] `SRCH-032` **Search results**: title, snippet, "Edited <relative>", "By meaning" section for semantic hits, "Searching…", "No documents match …"; opens in a new… Core: closed after the grading (see "Since this grading").
+- [x] `SRCH-033` **Ask Foli AI row**: "Ask Foli AI about your notes" / "Ask Foli AI: …", hint ⌘J, only with AI capability (opens /ai; the typed text is not passed). Core: closed after the grading (see "Since this grading").
+- [x] `SRCH-034` **Actions**: New document (⌘⌥N), Go to Tasks · Today, Go to Calendar, Go to Reviews, Go to Changes, Go to Foli DNA, Go to Home, Open Trash… Core: closed after the grading (see "Since this grading").
+- [x] `SRCH-035` **Bug: Foli DNA action never hidden**: removal checks id "a:graph" but the action's id is "graph". Core: closed after the grading (see "Since this grading").
 - [x] `SRCH-036` **Keys**: Up/Down move, Return opens, Escape closes, click opens. Core: palette keys and click.
-- [ ] `SRCH-037` **Menu bar Search Folevi…**: from the status item. Core: status item has no Search.
+- [x] `SRCH-037` **Menu bar Search Folevi…**: from the status item. Core: closed after the grading (see "Since this grading").
 
 ## Tasks
 
@@ -713,46 +735,46 @@ Notable findings (all in the first work package at the end):
 - [x] `AI-001` **Availability gate**: when ai.capabilities says unavailable: "Foli AI is turned off" / "Set up Foli AI on this Mac" (Apple Intelligence or own OpenAI… Core: `Views/FoliAI/FoliAIScreen.swift` ChatView unavailable state (ai.capabilities).
 - [x] `AI-002` **Routes**: `/ai` new chat, `/ai/<id>` a conversation; first question gives the chat its address in the same tab; tab title follows ("New… Core: `Model/Destination.swift` /ai and /ai/<id>; a new chat takes its id in place (window title stays "Foli AI").
 - [x] `AI-003` **Threads list**: 264 pt column: New chat button, "Search conversations" field (native: system search field), Pinned then Recent headings (hidden… Core: FoliAIScreen conversations list (search, Pinned, Recent, empty).
-- [ ] `AI-004` **History off banner**: "History is off, so new conversations are deleted when you close them.". Core: no history-off banner.
+- [x] `AI-004` **History off banner**: "History is off, so new conversations are deleted when you close them.". Core: closed after the grading (see "Since this grading").
 - [x] `AI-005` **Thread row**: title ("New chat"), shared-with-workspace icon with tooltip, relative age that swaps to a "…" button on hover, active selection… Core: conversation row (title, shared icon, age, menu).
 - [x] `AI-006` **Rename**: inline field, Return or blur saves, Escape cancels. Core: ChatActions.rename (ai.rename).
 - [x] `AI-007` **Pin / Unpin**. Core: Pin / Unpin (ai.pin).
-- [ ] `AI-008` **Share with workspace…**: confirm dialog ("Members of this workspace can read … Files you uploaded stay private."), Stop sharing; disabled with reason in… Core: no Share with workspace (ai.share).
-- [ ] `AI-009` **Copy as Markdown**. Core: no Copy as Markdown.
+- [x] `AI-008` **Share with workspace…**: confirm dialog ("Members of this workspace can read … Files you uploaded stay private."), Stop sharing; disabled with reason in… Core: closed after the grading (see "Since this grading").
+- [x] `AI-009` **Copy as Markdown**. Core: closed after the grading (see "Since this grading").
 - [x] `AI-010` **Download Markdown**: NSSavePanel with the server's file name,.md. Core: Export as Markdown… (ai.exportMarkdown, save panel).
 - [x] `AI-011` **Save as note**: (conversation or one answer). Core: Save as Note (ai.saveAsNote) for a chat or an answer.
-- [~] `AI-012` **Delete…**: "Delete this conversation?" dialog, Cancel is the default (Return), Delete danger; deleting the open one returns to `/ai`; toast… Core: Delete Chat without confirmation or toast.
-- [ ] `AI-013` **Conversation options (header "…")**: same menu without Rename, Pin, Delete; native look puts it in the card's "…". Core: no conversation options menu in the header.
-- [~] `AI-014` **Loading and missing states**: "Loading the conversation…", "This conversation isn't here anymore. Ask something to start a new one.". Core: no loading or "isn't here anymore" states.
-- [~] `AI-015` **Intro "Meet Foli AI"**: lead text by context (folder, workspace, Personal), bullets (never changes a note without showing you; where data goes, local vs… Core: a short intro; no context lead, bullets, suggestions or settings link.
-- [~] `AI-016` **Follow streaming, Jump to latest**: follows the answer unless you scroll up; "Jump to latest" button. Core: always scrolls to the newest; no Jump to latest.
-- [ ] `AI-017` **Edit last question**: "Edit" on your last message, inline field, Cancel / Send, Escape cancels; re-asks. Core: no Edit last question (ai.edit).
-- [~] `AI-018` **Pending question**: your text plus "Thinking…" until the message exists. Core: the live message shows its phase; your question shows only once the engine has it.
-- [~] `AI-019` **Streaming answer**: phase status line with Stop (⌘.), progressive markdown, code blocks with Copy. Core: phase, Stop (⌘.), streamed text (ai.stream); inline Markdown only, no code blocks with Copy.
-- [~] `AI-020` **Citations and sources**: [n] markers open the cited note or web page; Sources list (notes, web). Core: source chips for notes and web; [n] markers aren't links.
-- [~] `AI-021` **Answer footer**: Copy / Copied (plain text), Regenerate (last answer), Export menu (Copy as Markdown, Download Markdown, Save as note for that… Core: Copy, Save as Note, Try Again; no export menu or "Stopped".
-- [~] `AI-022` **Failed answer**: "Try again" on the last one; "Stopped before it said anything.". Core: Try Again only when the answer has text.
+- [x] `AI-012` **Delete…**: "Delete this conversation?" dialog, Cancel is the default (Return), Delete danger; deleting the open one returns to `/ai`; toast… Core: closed after the grading (see "Since this grading").
+- [x] `AI-013` **Conversation options (header "…")**: same menu without Rename, Pin, Delete; native look puts it in the card's "…". Core: closed after the grading (see "Since this grading").
+- [x] `AI-014` **Loading and missing states**: "Loading the conversation…", "This conversation isn't here anymore. Ask something to start a new one.". Core: closed after the grading (see "Since this grading").
+- [x] `AI-015` **Intro "Meet Foli AI"**: lead text by context (folder, workspace, Personal), bullets (never changes a note without showing you; where data goes, local vs… Core: closed after the grading (see "Since this grading").
+- [x] `AI-016` **Follow streaming, Jump to latest**: follows the answer unless you scroll up; "Jump to latest" button. Core: closed after the grading (see "Since this grading").
+- [x] `AI-017` **Edit last question**: "Edit" on your last message, inline field, Cancel / Send, Escape cancels; re-asks. Core: closed after the grading (see "Since this grading").
+- [x] `AI-018` **Pending question**: your text plus "Thinking…" until the message exists. Core: closed after the grading (see "Since this grading").
+- [x] `AI-019` **Streaming answer**: phase status line with Stop (⌘.), progressive markdown, code blocks with Copy. Core: closed after the grading (see "Since this grading").
+- [x] `AI-020` **Citations and sources**: [n] markers open the cited note or web page; Sources list (notes, web). Core: closed after the grading (see "Since this grading").
+- [x] `AI-021` **Answer footer**: Copy / Copied (plain text), Regenerate (last answer), Export menu (Copy as Markdown, Download Markdown, Save as note for that… Core: closed after the grading (see "Since this grading").
+- [x] `AI-022` **Failed answer**: "Try again" on the last one; "Stopped before it said anything.". Core: closed after the grading (see "Since this grading").
 - [x] `AI-023` **Suggested follow-ups**: chips under the last answer. Core: suggestion chips.
 - [x] `AI-024` **Agent mode: steps**: the run's step lines. Core: agent steps line.
 - [x] `AI-025` **Agent mode: proposed changes card**: list of operations with tick boxes and a select-all toggle, "Nothing changes until you approve. A version of each note is saved… Core: `Views/FoliAI/FoliAIScreen.swift` AgentRunView (approve all or picked, discard).
 - [x] `AI-026` **Agent mode: Undo**: Undo / Undoing… on applied runs. Core: AgentRunView Undo Changes (ai.agentUndo).
-- [ ] `AI-027` **Agent mode: Continue**: "Continue" when a run stopped, "Carries on from where it stopped.". Core: no Continue.
-- [ ] `AI-028` **Gap on Mac: undo conflict**: model sets `undoConflict` (notes changed after the edits) but only the iPhone shows "Undo anyway / Undo the rest / Cancel". Core: the same gap: no undo-conflict choice.
+- [x] `AI-027` **Agent mode: Continue**: "Continue" when a run stopped, "Carries on from where it stopped.". Core: closed after the grading (see "Since this grading").
+- [x] `AI-028` **Gap on Mac: undo conflict**: model sets `undoConflict` (notes changed after the edits) but only the iPhone shows "Undo anyway / Undo the rest / Cancel". Core: closed after the grading (see "Since this grading").
 - [x] `AI-029` **Actions card**: Apply changes / Applying…, Not now, "Not applied."; toast "Changes applied.". Core: actions card (ai.actions).
 - [x] `AI-030` **Memory card**: "Remember this for next time?" Save / Not now; "Saved to memory. You can change it in Settings > Foli AI.". Core: memory offer (ai.memory).
 - [ ] `AI-031` **Memory management**: list, edit, clear in Settings > Foli AI (MemoryCard), not on this screen. Core: no memory list in Settings > Foli AI.
 - [x] `AI-032` **Research mode: progress**: "Researching…", steps, Cancel, "This can take a few minutes. You can leave; the report appears here when it's ready.". Core: `Views/Common/MoreSheets.swift` ResearchJobsView (ai.research steps, sources, Stop).
 - [x] `AI-033` **Research mode: result**: Save as note / Open note, "Research cancelled". Core: ResearchJobsView Save Report as Note / Open Report (ai.researchSave).
 - [x] `AI-034` **Gap on Mac: no Chat / Research switch and no Web toggle**: model has `mode` (persisted) and `web`; only the iPhone composer shows them; the Mac shows research copy only if the saved mode… Core: fixed in Core: mode picker (Auto, Ask, Agent, Research) and Web toggle.
-- [ ] `AI-035` **Problem notice**: error text, Buy more / Upgrade to billing. Core: no problem notice with Buy more or Upgrade.
-- [~] `AI-036` **Credits low note**: "N left …", Buy more / Upgrade; account mode only. Core: credits count turns orange when low; no Buy more.
-- [ ] `AI-037` **Context chips (attachments / what Foli AI reads)**: note chips, folder chip "In folder <name>", x removes. Core: no context chips.
-- [ ] `AI-038` **Add context menu**: Current folder (behind the floating chat), Recent notes (5), All notes / Workspace "Search everything here"; disabled once the… Core: no add-context menu.
+- [x] `AI-035` **Problem notice**: error text, Buy more / Upgrade to billing. Core: closed after the grading (see "Since this grading").
+- [x] `AI-036` **Credits low note**: "N left …", Buy more / Upgrade; account mode only. Core: closed after the grading (see "Since this grading").
+- [x] `AI-037` **Context chips (attachments / what Foli AI reads)**: note chips, folder chip "In folder <name>", x removes. Core: closed after the grading (see "Since this grading").
+- [x] `AI-038` **Add context menu**: Current folder (behind the floating chat), Recent notes (5), All notes / Workspace "Search everything here"; disabled once the… Core: closed after the grading (see "Since this grading").
 - [ ] `AI-039` **Gap on Mac: file attachments**: docs say chat uploads exist ( Attachments); no upload control in the Mac composer. Core: no attachments (attachments: nil).
 - [x] `AI-040` **Composer**: grows 2 to 6 lines, Return sends, Shift-Return or Option-Return new line, placeholders ("Ask anything, or ask Foli AI to tidy or… Core: composer (1 to 8 lines, Return sends).
-- [ ] `AI-041` **Footnote**: "Foli AI can make mistakes." plus web and history-off notes, "AI policy" link. Core: no footnote.
-- [~] `AI-042` **Ask Foli AI button (⌘J)**: floating button bottom-right on every page except a note and the AI page, tooltip "(⌘J)" / "Close Foli AI"; Go > Ask Foli AI ⌘J. Core: Go > Foli AI (⇧⌘J) instead; no floating button.
-- [~] `AI-043` **Ask panel**: non-modal floating chat (max 640 pt), header "Foli AI", Conversation options, New chat, Open in full view (to `/ai/<id>`), Close… Core: the inspector's chat (off a note) stands in; no floating panel.
+- [x] `AI-041` **Footnote**: "Foli AI can make mistakes." plus web and history-off notes, "AI policy" link. Core: closed after the grading (see "Since this grading").
+- [x] `AI-042` **Ask Foli AI button (⌘J)**: floating button bottom-right on every page except a note and the AI page, tooltip "(⌘J)" / "Close Foli AI"; Go > Ask Foli AI ⌘J. Core: closed after the grading (see "Since this grading").
+- [x] `AI-043` **Ask panel**: non-modal floating chat (max 640 pt), header "Foli AI", Conversation options, New chat, Open in full view (to `/ai/<id>`), Close… Core: closed after the grading (see "Since this grading").
 - [~] `AI-044` **Model choice**: not on the chat; Settings > Foli AI provider select and own keys (local mode). Core: own keys in Settings (library mode); no provider or model choice.
 - [x] `AI-045` **Keep conversations switch**: Settings > Foli AI. Core: Settings > Foli AI "Keep chat history".
 - [n/a] `AI-046` **Generate / drafts**: ai.generate and ai.saveDraft are used only by the iPhone/iPad templates "Generate with Foli AI" sheet (describe, Generate, Try… Why: iPhone/iPad only.
@@ -963,23 +985,23 @@ Notable findings (all in the first work package at the end):
 
 - [x] `SET-001` **Window chrome**: its own NSWindow (SettingsNSWindow) with a transparent title bar, real traffic lights and an empty unified toolbar. Resizable… Core: SwiftUI Settings window (`Views/Settings/SettingsView.swift`).
 - [x] `SET-002` **Layout**: a 220pt translucent sidebar holds the search field and the categories. Next to it is the page: a compact title in line with the… Core: sidebar of sections beside grouped forms (no search).
-- [ ] `SET-003` **Last category remembered**: stored in the defaults key `folevi.settings.section`. The default is "desktop" (General). Core: the last section isn't remembered.
+- [x] `SET-003` **Last category remembered**: stored in the defaults key `folevi.settings.section`. The default is "desktop" (General). Core: closed after the grading (see "Since this grading").
 - [x] `SET-004` **Native page vs web fallback**: when the front main window has the native frame, the page is native: `MacSettingsShell` plus `MacSettingsNativePane` on that… Core: native panes; a few are the page's own (privacy, workspace, connected apps).
-- [~] `SET-005` **Sidebar, account mode**: (and ). First group, no heading: General (desktop, moved to the top), Account, Foli AI, Plan & billing, Security, Privacy… Core: different order and names (Account first; today's General is "This Mac").
-- [~] `SET-006` **Sidebar, local (library) mode**: General, Library, Foli AI, Appearance, Import & export. Core: local mode lists General, Appearance, Foli AI, App Lock, Offline (with Library inside), Import & Export, This Mac, Updates; no Library section.
+- [x] `SET-005` **Sidebar, account mode**: (and ). First group, no heading: General (desktop, moved to the top), Account, Foli AI, Plan & billing, Security, Privacy… Core: closed after the grading (see "Since this grading").
+- [x] `SET-006` **Sidebar, local (library) mode**: General, Library, Foli AI, Appearance, Import & export. Core: closed after the grading (see "Since this grading").
 - [~] `SET-007` **Workspace group**: (account mode, open space is a team workspace), headed by the workspace's name: General (page title "Workspace"), Members… Core: one web-drawn Workspace pane, not a group.
-- [~] `SET-008` **Support group**: Help (an action, opens help), Contact support… (an action: in local mode it opens mailto:support@folevi.com, otherwise the help… Core: Help and Contact Support are in the Help menu; no About page.
+- [x] `SET-008` **Support group**: Help (an action, opens help), Contact support… (an action: in local mode it opens mailto:support@folevi.com, otherwise the help… Core: closed after the grading (see "Since this grading").
 - [n/a] `SET-009` **App lock (this-device)**: iPad only. Inserted after Security when `frame.host.frameDeviceLock` exists. The Mac never lists it. Why: iPad only (Core has its own App Lock pane).
 - [n/a] `SET-010` **Web-fallback sidebar**: (no native frame). Account mode: General, Account, Appearance, Notifications, Foli AI, Security, Privacy, Devices, Offline &… Why: Core never falls back to the web Settings sidebar.
-- [ ] `SET-011` **Section fallback**: asking for a section the current mode lacks shows Library in local mode, or the first section in account mode. A workspace's… Core: a section the mode lacks still shows when asked for.
+- [x] `SET-011` **Section fallback**: asking for a section the current mode lacks shows Library in local mode, or the first section in account mode. A workspace's… Core: closed after the grading (see "Since this grading").
 - [x] `SET-012` **Category SF Symbols**: desktop gearshape, account person.crop.circle, ai sparkles, billing creditcard, security checkmark.shield, privacy lock, devices… Core: Folevi's web icons per section (Foli AI keeps its mark).
 
 ### How the Settings window opens
 
 - [x] `SET-013` **Folevi > Settings… (⌘,)**: menu command "app.settings". Core: SwiftUI Settings (⌘,).
-- [ ] `SET-014` **Menu bar icon > Settings…**. Core: the status item has no Settings.
+- [x] `SET-014` **Menu bar icon > Settings…**. Core: closed after the grading (see "Since this grading").
 - [x] `SET-015` **Any /settings route or link in a main window, plus the account menu and command palette**: these go through `frame.host.frameOpenSettings(section:)`. The main window shows "Settings are in their own window" with an "Open… Core: `Model/AppModel.swift` open(path:) sends /settings links to SettingsRouter.
-- [ ] `SET-016` **File > Import**: opens Import & export, or the workspace's Import & export when a workspace is open. Core: no File > Import.
+- [x] `SET-016` **File > Import**: opens Import & export, or the workspace's Import & export when a workspace is open. Core: closed after the grading (see "Since this grading").
 - [x] `SET-017` **Floating note window**. Core: ⌘, works from any window.
 - [n/a] `SET-018` **iPad only**: a large form sheet with Done at the top (Escape or ⌘. also close it). Why: iPad only.
 
@@ -995,7 +1017,7 @@ Notable findings (all in the first work package at the end):
 - [n/a] `SET-023` **Browser placeholder card "Folevi for Mac"**: shown when bridge is false. It says "You're using Folevi in a browser.". Why: browser only.
 - [x] `SET-024` **Quick Add > Shortcut (recorder)**: click the pill, then press keys. While recording it shows "Press keys…" with an accent ring. Esc cancels. A key without ⌘, ⌥ or ⌃… Core: `Views/Settings/SettingsView.swift` ShortcutRecorder (Esc cancels; no hint for a bare key).
 - [x] `SET-025` **Quick Add > Turn off**: shown when a shortcut is set. Clears it.. engine: run `desktop.set {quickAddShortcut: ""}`. Core: ShortcutRecorder Clear.
-- [ ] `SET-026` **Quick Add > Use <default>**: shown when the shortcut is not the default. Restores the default.. engine: run `desktop.set {quickAddShortcut: defaultShortcut}`. Core: no Use default.
+- [x] `SET-026` **Quick Add > Use <default>**: shown when the shortcut is not the default. Restores the default.. engine: run `desktop.set {quickAddShortcut: defaultShortcut}`. Core: closed after the grading (see "Since this grading").
 - [~] `SET-027` **On this Mac > Open at login**: (switch, default on):. engine: run `desktop.set {openAtLogin: Bool}`. Core: MacPane Open at login (LoginItem); default off, today's is on.
 - [x] `SET-028` **On this Mac > Menu bar icon**: (switch, default on):. engine: run `desktop.set {menuBarIcon: Bool}`. Core: MacPane menu bar icon.
 - [x] `SET-029` **On this Mac > Mac notifications**: (switch, default on): shows comments, mentions and reminders as notifications and puts a badge on the Dock icon.. engine: run… Core: MacPane Mac notifications.
@@ -1034,16 +1056,16 @@ Notable findings (all in the first work package at the end):
 
 ### Foli AI (library mode)
 
-- [~] `SET-053` **Foli AI**: (switch):. engine: convex.mutation `users.updateProfile {aiEnabled}`. Core: `Views/Settings/SettingsView.swift` LocalAISettingsPane has no Foli AI switch.
+- [x] `SET-053` **Foli AI**: (switch):. engine: convex.mutation `users.updateProfile {aiEnabled}`. Core: closed after the grading (see "Since this grading").
 - [n/a] `SET-054` **On this device (not hosted)**: a message that the feature needs Folevi for Mac. Why: browser only.
 - [x] `SET-055` **Checking spinner**: shown while not loaded. Core: ProgressView while loading.
 - [x] `SET-056` **On <device> card**: Apple Intelligence on-device model status, read-only. Core: LocalAISettingsPane on-device card (settings.query localAi).
 - [x] `SET-057` **Your own keys > per provider (OpenAI, Anthropic, Google) > Add key…**: shows a secure field "Paste your <provider> key" with Save, Cancel and a "Get a key from <provider>" link.. engine: run… Core: LocalAISettingsPane Add key (localAi.setKey).
 - [x] `SET-058` **Your own keys > Test**: shown when a key is stored and can be tested. Shows "Your <provider> key works." or an error.. engine: run localAi.testKey… Core: LocalAISettingsPane Test Key (localAi.testKey).
 - [x] `SET-059` **Your own keys > Remove**: . engine: run `localAi.removeKey {provider}`. Core: LocalAISettingsPane Remove Key (localAi.removeKey).
-- [ ] `SET-060` **Model > Provider**: (select): options are "Let Folevi pick" (auto) plus the usable providers among on-device, OpenAI, Anthropic and Google.. engine… Core: no provider choice (localAi.setChoice).
-- [ ] `SET-061` **Model > <Provider> model**: (select, with a note and an "Answering now: …" line):. engine: run `localAi.setChoice {provider, model}`. Models. Core: no model choice.
-- [ ] `SET-062` **Conversations > Keep conversations**: (switch):. engine: convex.mutation `users.updateProfile {aiPrefs:{history}}`. Core: LocalAISettingsPane has no Keep conversations switch.
+- [x] `SET-060` **Model > Provider**: (select): options are "Let Folevi pick" (auto) plus the usable providers among on-device, OpenAI, Anthropic and Google.. engine… Core: closed after the grading (see "Since this grading").
+- [x] `SET-061` **Model > <Provider> model**: (select, with a note and an "Answering now: …" line):. engine: run `localAi.setChoice {provider, model}`. Models. Core: closed after the grading (see "Since this grading").
+- [x] `SET-062` **Conversations > Keep conversations**: (switch):. engine: convex.mutation `users.updateProfile {aiPrefs:{history}}`. Core: closed after the grading (see "Since this grading").
 - [ ] `SET-063` **Memory card**: shown when the data's `memory` flag is true. Core: no memory card.
 
 ### Memory card (account and library Foli AI)
@@ -1107,28 +1129,28 @@ Notable findings (all in the first work package at the end):
 
 - [~] `SET-097` **This Mac > Connection, Changes waiting to sync, Notes kept, Space used, Downloading progress**: (read-only). Readings show "…" while measuring and "Unavailable" when they fail. Core: OfflinePane notes, files, space, waiting; no connection or download progress.
 - [ ] `SET-098` **Retry**: (shown when a reading is unavailable): re-watches `device.storage`. Core: no Retry.
-- [~] `SET-099` **Keep all notes on this Mac**: (switch): hidden for an on-device library (available false), where a message says every note already opens offline.. engine… Core: always shown, also for an on-device library.
+- [x] `SET-099` **Keep all notes on this Mac**: (switch): hidden for an on-device library (available false), where a message says every note already opens offline.. engine… Core: closed after the grading (see "Since this grading").
 - [x] `SET-100` **Download everything now**: . engine: command `device.download`. Core: OfflinePane Download Everything Now (device.download).
-- [~] `SET-101` **Remove this Mac's copy…**: (destructive confirm, "Remove"):. engine: command `device.removeCopy(force: true)`. Core: no confirmation, force not set.
+- [x] `SET-101` **Remove this Mac's copy…**: (destructive confirm, "Remove"):. engine: command `device.removeCopy(force: true)`. Core: closed after the grading (see "Since this grading").
 
 ### Library (local mode only)
 
-- [~] `SET-102` **Where your library is > Syncs with, Location, Status, Last problem**: (read-only). Core: LibrarySection "Kept in" only.
+- [x] `SET-102` **Where your library is > Syncs with, Location, Status, Last problem**: (read-only). Core: closed after the grading (see "Since this grading").
 - [x] `SET-103` **Sync now**: . engine: run `library.syncNow`. Core: LibrarySection Sync Library Now (library.syncNow).
-- [~] `SET-104` **Move library…**: a dialog of places. Options are Sync with iCloud, Sync with Dropbox, Sync with Google Drive (when available), Choose a folder and… Core: iCloud, a folder, this Mac; no Dropbox or Google Drive.
-- [ ] `SET-105` **Cloud connection > Connect**: (Dropbox or Google Drive), with a waiting spinner: engine: run `library.cloudConnect {provider}`. Core: no cloud connect.
-- [ ] `SET-106` **Cloud connection > Cancel**: (during sign-in): engine: run `library.cloudCancel`. Core: no cloud cancel.
-- [ ] `SET-107` **Cloud connection > Sign out of <provider>…**: (confirm): engine: run `library.cloudSignOut`. Core: no cloud sign out.
-- [ ] `SET-108` **Devices**: (read-only list of devices that open this library). Core: no library devices.
-- [ ] `SET-109` **Library health**: (read-only groups: Can't be read, Still downloading, Waiting for another device). Core: no library health.
-- [~] `SET-110` **Passphrase > Encrypt with a passphrase…**: dialog with Passphrase, Type it again and an "I understand" checkbox. The minimum length comes from the server. engine: run… Core: Set a Passphrase runs library.setPassphrase with no passphrase dialog.
-- [ ] `SET-111` **Passphrase > Change passphrase…**: engine: run `library.changePassphrase {current, passphrase}`. Core: no change passphrase.
-- [ ] `SET-112` **Passphrase > Remove passphrase…**: (destructive): engine: run `library.removePassphrase {current}`. Core: no remove passphrase.
+- [x] `SET-104` **Move library…**: a dialog of places. Options are Sync with iCloud, Sync with Dropbox, Sync with Google Drive (when available), Choose a folder and… Core: closed after the grading (see "Since this grading").
+- [x] `SET-105` **Cloud connection > Connect**: (Dropbox or Google Drive), with a waiting spinner: engine: run `library.cloudConnect {provider}`. Core: closed after the grading (see "Since this grading").
+- [x] `SET-106` **Cloud connection > Cancel**: (during sign-in): engine: run `library.cloudCancel`. Core: closed after the grading (see "Since this grading").
+- [x] `SET-107` **Cloud connection > Sign out of <provider>…**: (confirm): engine: run `library.cloudSignOut`. Core: closed after the grading (see "Since this grading").
+- [x] `SET-108` **Devices**: (read-only list of devices that open this library). Core: closed after the grading (see "Since this grading").
+- [x] `SET-109` **Library health**: (read-only groups: Can't be read, Still downloading, Waiting for another device). Core: closed after the grading (see "Since this grading").
+- [x] `SET-110` **Passphrase > Encrypt with a passphrase…**: dialog with Passphrase, Type it again and an "I understand" checkbox. The minimum length comes from the server. engine: run… Core: closed after the grading (see "Since this grading").
+- [x] `SET-111` **Passphrase > Change passphrase…**: engine: run `library.changePassphrase {current, passphrase}`. Core: closed after the grading (see "Since this grading").
+- [x] `SET-112` **Passphrase > Remove passphrase…**: (destructive): engine: run `library.removePassphrase {current}`. Core: closed after the grading (see "Since this grading").
 - [x] `SET-113` **App lock > Lock with Touch ID**: (switch): disabled when unavailable. Turning it on or off prompts for Touch ID. engine: run `library.lock {lock: Bool}`. Core: `Views/Settings/SettingsView.swift` AppLockPane (MacAppLock in `Host/HostServices.swift`, started by shared Places).
 - [x] `SET-114` **App lock > Ask again when you come back**: (select, shown when the lock is on): Right away, After 1 minute, After 5 minutes, After 15 minutes, After 1 hour (0, 60, 300… Core: AppLockPane Ask Again After (0, 60, 300, 900, 3600 s).
 - [x] `SET-115` **Foli AI**: (link "Settings, under Foli AI"): opens /settings/ai. Core: Core has a Foli AI section in every mode.
-- [~] `SET-116` **Folevi account > Sign in to Folevi…**: calls frameSignInAnotherAccount. Core: Add Account is in the place menu, not Settings.
-- [~] `SET-117` **Remove from this Mac (forget)**: (destructive confirm, "Remove"): engine: run `library.forget`. Core: forget is in the place menu, not Settings.
+- [x] `SET-116` **Folevi account > Sign in to Folevi…**: calls frameSignInAnotherAccount. Core: closed after the grading (see "Since this grading").
+- [x] `SET-117` **Remove from this Mac (forget)**: (destructive confirm, "Remove"): engine: run `library.forget`. Core: closed after the grading (see "Since this grading").
 
 ### Import & export (both modes; Personal or workspace)
 
@@ -1142,13 +1164,13 @@ Notable findings (all in the first work package at the end):
 ### About (both modes)
 
 - [x] `SET-124` **Version card title**: "Folevi <CFBundleShortVersionString>", with no build number. Core: UpdatesPane Version.
-- [~] `SET-125` **Links**: (each opens folevi.com in the browser): What's new (/changelog), Privacy policy (/privacy), Terms of service (/terms), AI policy… Core: What's New in the Help menu; no privacy, terms, AI policy, security or status links.
+- [x] `SET-125` **Links**: (each opens folevi.com in the browser): What's new (/changelog), Privacy policy (/privacy), Terms of service (/terms), AI policy… Core: closed after the grading (see "Since this grading").
 - [x] `SET-126` **Updates**: there is no update or "check for updates" row in Settings. Core: Core adds an Updates pane (Check for Updates).
 
 ### Support actions (both modes)
 
-- [~] `SET-127` **Help**: frameOpenHelp, or /help in a main window. Core: Help menu, not Settings.
-- [~] `SET-128` **Contact support…**: mailto:support@folevi.com in local mode, otherwise the help or support form. No `support.send` call in these files. Core: Help > Contact Support sends through support.send; not in Settings, no mailto in local mode.
+- [x] `SET-127` **Help**: frameOpenHelp, or /help in a main window. Core: closed after the grading (see "Since this grading").
+- [x] `SET-128` **Contact support…**: mailto:support@folevi.com in local mode, otherwise the help or support form. No `support.send` call in these files. Core: closed after the grading (see "Since this grading").
 
 ### Workspace > General (workspace open)
 

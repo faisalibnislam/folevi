@@ -4,6 +4,23 @@ Every Folevi release, newest first, written by `node scripts/version.mjs` from `
 
 Versions are MAJOR.UPDATE.PATCH, PATCH at least two digits: a Major release (2.0.00), a Big update (1.1.05 after 1.0.05) or a Small update (1.0.06 after 1.0.05).
 
+## Version 1.5.63: Small update
+
+Released 2026-11-21 15:28:49+06:00 (build 78, tag v1.5.63)
+
+Search moves to the bottom of the iPhone above the keyboard, motion feels smoother across the apps, and card shadows are never cut off.
+
+### Improved
+
+- iPhone search: the search field and its close button sit at the bottom of the screen and rise with the keyboard, with the filters just above, as iOS 26 does.
+- Smoother motion on the Mac, iPhone and iPad: glass appears and leaves with a soft materialize, presses spring back without wobble, swipe rows follow a quick flick, and the Mac's card search grows into the field.
+- Quick add on iPhone and iPad: the Task and Note switch matches the one in Foli AI and runs across the sheet.
+
+### Fixed
+
+- Card shadows on the iPhone, iPad and Mac Home rows fade out naturally instead of being cut off in a straight line.
+- The iPhone's toast and the graph's camera move now respect Reduce Motion.
+
 ## Version 1.5.62: Small update
 
 Released 2026-11-21 10:46:15+06:00 (build 77, tag v1.5.62)

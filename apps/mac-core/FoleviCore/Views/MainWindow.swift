@@ -54,6 +54,7 @@ struct MainWindow: View {
                         .inspectorColumnWidth(min: 280, ideal: 340, max: 520)
                 }
                 .overlay(alignment: .bottom) { ToastStack().padding(.bottom, window.current.isNote ? 78 : 0) }
+                .overlay(alignment: .bottomTrailing) { AskOverlay(window: window) }
                 .overlay { if window.paletteShown { CommandPalette(window: window) } }
                 .sheet(item: $window.folderPick) { FolderPickerSheet(target: $0) }
                 .sheet(isPresented: $window.quickAddShown) { QuickAddView(close: { window.quickAddShown = false }, inWindow: true) }
@@ -280,4 +281,22 @@ struct WindowAccessor: NSViewRepresentable {
 
 extension FocusedValues {
     @Entry var window: WindowModel?
+}
+
+/// Ask Foli AI: a floating button on every screen but a note and the Foli AI page, and the panel it opens (⌘J).
+struct AskOverlay: View {
+    let window: WindowModel
+
+    var body: some View {
+        if window.askShown {
+            AskPanel(window: window).transition(.scale(scale: 0.9, anchor: .bottomTrailing).combined(with: .opacity))
+        } else if !window.current.isNote, !window.current.isFoliAI {
+            Button { withAnimation(.snappy) { window.askShown = true } } label: { AiMarkGlyph(size: 22).padding(12) }
+                .buttonStyle(.plain)
+                .glassEffect(.regular.interactive(), in: .circle)
+                .help("Ask Foli AI (⌘J)")
+                .accessibilityLabel("Ask Foli AI")
+                .padding(20)
+        }
+    }
 }

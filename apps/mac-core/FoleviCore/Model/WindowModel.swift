@@ -45,6 +45,8 @@ final class WindowModel: Identifiable {
     var inspectorChat: String?
     /// The folder whose sharing sheet is up.
     var sharingFolder: String?
+    /// The floating Ask Foli AI panel (⌘J) over this window.
+    var askShown = false
     /// Quick Add in this window (⇧⌘A).
     var quickAddShown = false
     /// The folder picker on screen (Move To, Copy To, Move Folder).

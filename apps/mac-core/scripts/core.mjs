@@ -8,7 +8,7 @@
 //   node apps/mac-core/scripts/core.mjs quit
 //
 // Debug commands Core knows: state, go {path, tab}, gate {action, values}, palette, inspector {value, tab}, style
-// {value}, quickadd, settings {section}, eval {script}, appearance {value}; and the shared Places': places, switch,
+// {value}, ask, quickadd, settings {section}, eval {script}, appearance {value}; and the shared Places': places, switch,
 // add-account, wake, hide.
 import { execFileSync, spawn } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";

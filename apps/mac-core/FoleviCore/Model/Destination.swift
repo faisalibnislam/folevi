@@ -64,6 +64,8 @@ enum Destination: Hashable, Codable {
 
     var isNote: Bool { if case .note = self { true } else { false } }
 
+    var isFoliAI: Bool { if case .foliAI = self { true } else { false } }
+
     var noteId: String? { if case .note(let id) = self { id } else { nil } }
 
     /// Folevi's app path for this place (what links and the engine use).

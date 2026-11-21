@@ -97,7 +97,10 @@ final class AppModel {
     /// What the engine shows while it isn't ready (nil: ready).
     private(set) var gate: GateChangedEvent?
     /// The engine has said it's ready at least once for this page.
-    private(set) var ready = false
+    private var readySeen = false
+    /// The engine is up with no gate. Also true when the client turned ready before this model started listening
+    /// (the `engine.ready` event isn't replayed), so a window never waits on a missed event.
+    var ready: Bool { readySeen || (client?.state == .ready && gate == nil) }
     private(set) var toasts: [Toast] = []
     /// The windows, by id, and the one in front.
     @ObservationIgnored private var windows: [UUID: WeakWindow] = [:]
@@ -132,7 +135,7 @@ final class AppModel {
         guard let client else { return }
         if boundClient != ObjectIdentifier(client) {
             boundClient = ObjectIdentifier(client)
-            ready = client.state == .ready
+            readySeen = client.state == .ready
             gate = nil
             listen(client)
             for w in windows.values.compactMap(\.model) { w.engineChanged() }
@@ -159,13 +162,13 @@ final class AppModel {
     private func handle(_ event: EngineEvent) {
         switch event {
         case .engineReady:
-            ready = true
+            readySeen = true
             gate = nil
             rebind()
             QuickAddQueue.shared.flush()
         case .gateChanged(let g):
             gate = g.gate == nil ? nil : g
-            if g.gate == nil { ready = true }
+            if g.gate == nil { readySeen = true }
         case .toast(let t):
             toast(t)
         case .navigateRequest(let n):

@@ -227,3 +227,16 @@ struct PoolTests {
         #expect(pool.page(of: w) == nil)
     }
 }
+
+@MainActor
+@Suite("Foli AI answers")
+struct AnswerPartsTests {
+    @Test func splitsCodeBlocksFromProse() {
+        let parts = AnswerText.parts("Here it is:\n```swift\nlet a = 1\n```\nDone.")
+        #expect(parts == [.prose("Here it is:"), .code("swift", "let a = 1"), .prose("Done.")])
+    }
+
+    @Test func keepsAnUnclosedBlockWhileItStreams() {
+        #expect(AnswerText.parts("```\nprint(1)") == [.code("", "print(1)")])
+    }
+}

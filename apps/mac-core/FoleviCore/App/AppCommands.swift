@@ -141,6 +141,11 @@ struct AppCommands: SwiftUI.Commands {
             Button("Home") { window?.select(.home) }.keyboardShortcut("h", modifiers: [.command, .shift])
             Button("Search") { window?.select(.search("")) }
             Button("Foli AI") { window?.select(.foliAI(nil)) }.keyboardShortcut("j", modifiers: [.command, .shift])
+            Button("Ask Foli AI") {
+                guard let window else { return }
+                if window.current.isNote { window.editor(EditorCommands.Ai(AiArgs(action: .open, prompt: nil))) } else { withAnimation(.snappy) { window.askShown.toggle() } }
+            }
+            .keyboardShortcut("j")
             Button("Notifications") { window?.select(.notifications) }.keyboardShortcut("y", modifiers: [.command, .shift])
             Button("Inbox") { window?.select(.inbox) }
             Button("Tasks") { window?.select(.tasks(.today)) }.keyboardShortcut("t", modifiers: [.command, .control])

@@ -72,6 +72,12 @@ enum DebugCommands {
                 done(["value": true])
             }
         }
+        MacEval.commands["ask"] = { _, done in
+            MainActor.assumeIsolated {
+                AppModel.shared.front?.askShown.toggle()
+                done(["value": AppModel.shared.front?.askShown ?? false])
+            }
+        }
         MacEval.commands["quickadd"] = { _, done in
             MainActor.assumeIsolated {
                 QuickAdd.shared.show()

@@ -99,7 +99,7 @@
 	<key>SUFeedURL</key>
 	<string>https://folevi.com/download/core/appcast.xml</string>
 	<key>SUPublicEDKey</key>
-	<string>$(FOLEVI_CORE_ED_KEY)</string>
+	<string>YTKgLs3Y+HxUChfMGrkrKZzyKr19l5ybu5DydZeBEzI=</string>
 	<key>SUScheduledCheckInterval</key>
 	<integer>21600</integer>
 	<key>SUVerifyUpdateBeforeExtraction</key>

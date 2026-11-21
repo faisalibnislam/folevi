@@ -111,9 +111,13 @@ enum DebugHooks {
                 let mine = (v as? UIScrollView).map { [$0] } ?? []
                 return mine + v.subviews.flatMap(lists)
             }
-            let scroll = windows.flatMap { lists($0) }
-                .filter { !$0.isHidden && $0.window != nil && $0.contentSize.height > $0.bounds.height + 1 && $0.bounds.width > 200 }
-                .max { $0.contentSize.height < $1.contentSize.height }
+            var scroll: UIScrollView?
+            for candidate in windows.flatMap({ lists($0) }) {
+                let shown = !candidate.isHidden && candidate.window != nil && candidate.bounds.width > 200
+                let tall: Bool = candidate.contentSize.height > candidate.bounds.height + 1
+                guard shown, tall else { continue }
+                if candidate.contentSize.height > scroll?.contentSize.height ?? 0 { scroll = candidate }
+            }
             guard let scroll else { return ["error": "no scrolling list on screen"] }
             return await withCheckedContinuation { done in
                 IOSScrollBench(scroll: scroll, distance: distance, seconds: seconds) { done.resume(returning: $0) }.start()

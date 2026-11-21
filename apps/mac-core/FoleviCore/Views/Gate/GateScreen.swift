@@ -19,33 +19,37 @@ struct GateScreen: View {
                 if let p = gate.progress { progress(p) }
                 if let m = gate.migration { MigrationSummaryView(summary: m) }
                 if let d = gate.deviceLimit { deviceLimit(d) }
-                if let e2ee = gate.e2ee, let code = e2ee.approvalCode {
-                    VStack(spacing: 6) {
-                        Text("Approve on your other device with this code").foregroundStyle(.secondary)
-                        Text(code).font(.system(size: 30, weight: .semibold, design: .monospaced)).textSelection(.enabled)
-                    }
-                }
+                if let e2ee = gate.e2ee { E2eeGateExtras(info: e2ee) }
                 if let o = gate.onboarding { OnboardingStep(info: o, values: $values) }
                 fields
                 if let error = gate.error {
                     Label(error.message, systemImage: "exclamationmark.circle").foregroundStyle(.red)
                 }
-                actions
+                if gate.gate == "modeChoice" { modeChoice } else { actions }
             }
             .frame(maxWidth: 440)
             .padding(40)
             .frame(maxWidth: .infinity, minHeight: 520)
         }
         .background(.background)
-        .disabled(gate.busy)
         .overlay(alignment: .top) { if gate.busy { ProgressView().controlSize(.small).padding(.top, 18) } }
         .onAppear { focus = gate.fields.first?.id }
         .onChange(of: gate.gate) { values = [:]; focus = gate.fields.first?.id }
+        .onChange(of: gate.error?.message) {
+            // A wrong passphrase or key: clear the secrets so the next try starts clean.
+            guard gate.error != nil else { return }
+            for f in gate.fields where f.kind == .secret || f.kind == .recoveryKey { values[f.id] = nil }
+            focus = gate.fields.first { $0.kind == .secret || $0.kind == .recoveryKey }?.id
+        }
     }
 
     private var header: some View {
         VStack(spacing: 12) {
-            Image(nsImage: NSApp.applicationIconImage).resizable().frame(width: 88, height: 88).accessibilityHidden(true)
+            if let symbol = kindSymbol {
+                Image(systemName: symbol).font(.system(size: 44, weight: .light)).foregroundStyle(.secondary).frame(height: 88).accessibilityHidden(true)
+            } else {
+                Image(nsImage: NSApp.applicationIconImage).resizable().frame(width: 88, height: 88).accessibilityHidden(true)
+            }
             Text(title).font(CoreType.screenTitle(28)).multilineTextAlignment(.center).accessibilityAddTraits(.isHeader)
             if !message.isEmpty {
                 Text(message).font(.body).foregroundStyle(.secondary).multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true)
@@ -53,13 +57,33 @@ struct GateScreen: View {
         }
     }
 
+    /// A symbol for the screens that are about a problem or a wait, instead of the app icon.
+    private var kindSymbol: String? {
+        switch gate.gate {
+        case "emailUnverified": "envelope.badge"
+        case "suspended": "exclamationmark.octagon"
+        case "setupFailed": "wrench.and.screwdriver"
+        case "offline": "wifi.slash"
+        case "error": "exclamationmark.triangle"
+        case "updateRequired": "arrow.down.circle"
+        default: nil
+        }
+    }
+
     /// The web's words when it sends them; Core's own for the screens it knows.
     private var title: String {
         if !gate.title.isEmpty { return gate.title }
         switch gate.gate {
-        case "welcome", "choose", "first-launch": return "Welcome to Folevi Core"
-        case "signin", "sign-in", "session-ended": return "Sign In to Folevi"
+        case "modeChoice", "welcome", "choose", "first-launch": return "Where should your notes live?"
+        case "signedOut", "signin", "sign-in", "session-ended": return "Sign In to Folevi"
         case "loading": return "Opening your notes"
+        case "emailUnverified": return "Check your inbox"
+        case "suspended": return "This account is paused"
+        case "setupFailed": return "Folevi couldn't finish setting up"
+        case "offline": return "You're offline"
+        case "updateRequired": return "Folevi Core needs an update"
+        case "error": return "Something went wrong"
+        case "librarySetup": return "Where should the library live?"
         default: return "Folevi Core"
         }
     }
@@ -67,8 +91,60 @@ struct GateScreen: View {
     private var message: String {
         if !gate.message.isEmpty { return gate.message }
         switch gate.gate {
-        case "welcome", "choose", "first-launch": return "A quieter place for ideas that keep growing. Sign in to your Folevi account, or keep notes on this Mac."
+        case "modeChoice", "welcome", "choose", "first-launch": return "Sync and share them with a Folevi account, or keep them on your devices."
+        case "emailUnverified": return "We sent you a link to confirm your email. It expires in 24 hours and works once."
+        case "offline": return "Folevi needs a connection the first time it opens. Your notes open offline after that."
+        case "updateRequired": return "This version can't open your notes any more. Choose Check for Updates in the Folevi Core menu."
         default: return ""
+        }
+    }
+
+    /// Where your notes live: two big choices, an account or your devices.
+    private var modeChoice: some View {
+        VStack(spacing: 12) {
+            ForEach(gate.actions, id: \.id) { a in
+                let account = a.id == "account" || a.id.contains("sign")
+                let local = a.id == "local"
+                if account || local {
+                    Button { act(a) } label: {
+                        HStack(spacing: 14) {
+                            if account { Image(nsImage: NSApp.applicationIconImage).resizable().frame(width: 40, height: 40) } else { Image(systemName: "laptopcomputer").font(.title).frame(width: 40, height: 40) }
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(a.label).font(.headline)
+                                Text(account ? "Sync and share your notes." : "Free forever. No account. Your notes stay on your devices.").font(.callout).foregroundStyle(.secondary)
+                            }
+                            Spacer()
+                            Image(systemName: "chevron.right").foregroundStyle(.tertiary)
+                        }
+                        .padding(14)
+                        .frame(maxWidth: .infinity)
+                        .background(account ? Color.foleviInk.opacity(0.06) : Color.clear, in: .rect(cornerRadius: 12))
+                        .overlay { RoundedRectangle(cornerRadius: 12).strokeBorder(account ? Color.foleviInk.opacity(0.5) : Color.secondary.opacity(0.3)) }
+                        .contentShape(.rect(cornerRadius: 12))
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(!a.enabled || gate.busy)
+                } else {
+                    Button(a.label) { act(a) }.buttonStyle(.borderless).disabled(!a.enabled || gate.busy)
+                }
+            }
+        }
+    }
+
+    /// While busy only the ways out stay pressable.
+    private func canPress(_ a: GateAction) -> Bool {
+        a.enabled && (!gate.busy || ["stop", "cancel", "cancelApproval", "back"].contains(a.id))
+    }
+
+    /// Library places' Mac detail lines.
+    private func detail(_ a: GateAction) -> String? {
+        switch a.id {
+        case "place:icloud": "On all your Macs, through iCloud Drive."
+        case "place:dropbox": "Folevi uses only its own folder."
+        case "place:gdrive": "Folevi sees only the files it makes."
+        case "place:folder": "A folder you pick; any sync app can carry it."
+        case "place:device": "No sync. You can turn it on later."
+        default: nil
         }
     }
 
@@ -88,6 +164,7 @@ struct GateScreen: View {
                         }
                         .textFieldStyle(.roundedBorder)
                         .controlSize(.large)
+                        .disabled(gate.busy)
                         .focused($focus, equals: f.id)
                         .onSubmit { if let primary = gate.actions.first(where: { $0.style == .primary && $0.enabled }) { act(primary) } }
                     }
@@ -99,14 +176,34 @@ struct GateScreen: View {
     private var actions: some View {
         VStack(spacing: 10) {
             ForEach(gate.actions, id: \.id) { a in
-                Button { act(a) } label: {
-                    Text(a.label).frame(maxWidth: a.style == .quiet ? nil : .infinity)
+                let lower = a.id.lowercased() + a.label.lowercased()
+                if lower.contains("apple") {
+                    // Apple's own look for Sign in with Apple: black, white text, the Apple logo.
+                    Button { act(a) } label: {
+                        Label(a.label, systemImage: "applelogo").frame(maxWidth: .infinity).padding(.vertical, 6)
+                            .foregroundStyle(.white).background(.black, in: .rect(cornerRadius: 8))
+                    }
+                    .buttonStyle(.plain).disabled(!canPress(a))
+                } else if lower.contains("google") {
+                    Button { act(a) } label: {
+                        HStack { Text("G").font(.headline).foregroundStyle(.blue); Text(a.label) }.frame(maxWidth: .infinity).padding(.vertical, 6)
+                            .background(.background, in: .rect(cornerRadius: 8))
+                            .overlay { RoundedRectangle(cornerRadius: 8).strokeBorder(.separator) }
+                    }
+                    .buttonStyle(.plain).disabled(!canPress(a))
+                } else {
+                    VStack(spacing: 2) {
+                        Button { act(a) } label: {
+                            Text(a.label).frame(maxWidth: a.style == .quiet ? nil : .infinity)
+                        }
+                        .controlSize(.large)
+                        .buttonStyle(style(a.style))
+                        .tint(a.style == .destructive ? .red : nil)
+                        .disabled(!canPress(a))
+                        .keyboardShortcut(a.style == .primary ? .defaultAction : nil)
+                        if let d = detail(a) { Text(d).font(.caption).foregroundStyle(.secondary) }
+                    }
                 }
-                .controlSize(.large)
-                .buttonStyle(style(a.style))
-                .tint(a.style == .destructive ? .red : nil)
-                .disabled(!a.enabled)
-                .keyboardShortcut(a.style == .primary ? .defaultAction : nil)
             }
         }
     }
@@ -223,5 +320,62 @@ struct OnboardingStep: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
+
+/// Encryption steps: approving from another device (waiting, the code to compare, failed), and the new recovery
+/// key as its own block with Copy, Save and Print.
+struct E2eeGateExtras: View {
+    let info: E2eeGateInfo
+
+    var body: some View {
+        VStack(spacing: 10) {
+            if let name = info.spaceName { Text(name).font(.caption.weight(.medium)).padding(.horizontal, 8).padding(.vertical, 2).background(.fill.tertiary, in: .capsule) }
+            switch info.approval {
+            case "waiting":
+                HStack(spacing: 8) { ProgressView().controlSize(.small); Text("Waiting for your other device…").foregroundStyle(.secondary) }
+            case "failed":
+                Label("The approval was cancelled or ran out of time. Try again.", systemImage: "exclamationmark.circle").foregroundStyle(.orange)
+            default:
+                EmptyView()
+            }
+            if let code = info.approvalCode {
+                Text("Check that your other device shows the same code").foregroundStyle(.secondary)
+                Text(code).font(.system(size: 30, weight: .semibold, design: .monospaced)).textSelection(.enabled)
+            }
+            if info.setupStep == "recovery", let key = info.recoveryKey {
+                VStack(spacing: 8) {
+                    Text("Your recovery key").font(.headline)
+                    Text(key).font(.system(.title3, design: .monospaced)).textSelection(.enabled).multilineTextAlignment(.center)
+                        .padding(12).frame(maxWidth: .infinity).background(.fill.quinary, in: .rect(cornerRadius: 10))
+                    Text("Keep it somewhere safe. It's the only way back in if you lose your devices, and it's shown only now.").font(.caption).foregroundStyle(.secondary).multilineTextAlignment(.center)
+                    HStack {
+                        Button("Copy") { NSPasteboard.general.clearContents(); NSPasteboard.general.setString(key, forType: .string) }
+                        Button("Save as a File…") { save(key) }
+                        Button("Print…") { print(key) }
+                    }
+                    .controlSize(.small)
+                }
+            }
+            if !info.methodsAdded.isEmpty {
+                Text("Added: " + info.methodsAdded.map { m in ["recoveryKey": "Recovery key", "passphrase": "Passphrase", "passkey": "Passkey", "device": "Another device"][m] ?? m }.joined(separator: ", ") + ". Two ways are needed.")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+        }
+    }
+
+    private func save(_ key: String) {
+        let panel = NSSavePanel()
+        panel.nameFieldStringValue = "Folevi recovery key.txt"
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        try? ("Folevi recovery key\n\n" + key + "\n").write(to: url, atomically: true, encoding: .utf8)
+    }
+
+    private func print(_ key: String) {
+        let view = NSTextView(frame: NSRect(x: 0, y: 0, width: 468, height: 200))
+        view.string = "Folevi recovery key\n\n" + key
+        view.font = .monospacedSystemFont(ofSize: 16, weight: .regular)
+        NSPrintOperation(view: view).run()
     }
 }

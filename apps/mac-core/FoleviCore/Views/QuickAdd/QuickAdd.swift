@@ -17,6 +17,11 @@ final class QuickAdd {
     var paused = false
 
     func show() {
+        // Before the first choice (an account or this Mac), Quick Add has nowhere to add to: show the window.
+        if AppModel.shared.gate != nil || !AppModel.shared.ready {
+            AppModel.shared.showAnyWindow()
+            return
+        }
         if panel == nil {
             let p = QuickAddPanel()
             p.contentView = NSHostingView(rootView: QuickAddView(close: { [weak self] in self?.hide() }).environment(AppModel.shared))

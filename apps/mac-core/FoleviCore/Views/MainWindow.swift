@@ -27,6 +27,7 @@ struct MainWindow: View {
             if let gate = app.gate, gate.gate != "loading" {
                 // A gate is the whole window: no sidebar, no toolbar items until the engine is ready.
                 GateScreen(gate: gate)
+                    .onAppear { window.window?.title = "Folevi Core" }
                     .toolbar(removing: .sidebarToggle)
                     .navigationTitle("Folevi Core")
                     .transition(.opacity)

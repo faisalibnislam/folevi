@@ -269,6 +269,13 @@ struct AppCommands: SwiftUI.Commands {
             Button("Send Feedback…") { SupportWindow.show() }
             Button("Contact Support…") { SettingsActions.contactSupport() }
         }
+        CommandGroup(replacing: .appInfo) {
+            // The version alone, never a build number.
+            Button("About Folevi Core") {
+                let v = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? ""
+                NSApp.orderFrontStandardAboutPanel(options: [.applicationVersion: "Version \(v)", .version: ""])
+            }
+        }
         CommandGroup(after: .appSettings) {
             Button(Updater.shared.menuTitle ?? "Check for Updates…") { Updater.shared.menuAction() }
                 .disabled(!Updater.enabled)

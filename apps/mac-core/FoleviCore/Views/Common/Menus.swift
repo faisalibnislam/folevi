@@ -493,9 +493,17 @@ enum NoteActions {
 enum AccountActions {
     static func signOut(_ place: String) {
         let alert = NSAlert()
+        let waiting = AppModel.shared.places.value?.current == place ? (AppModel.shared.sync.value?.pending ?? 0) : 0
         alert.messageText = "Sign out of this account on this Mac?"
-        alert.informativeText = "Changes that haven't synced yet are kept until you sign in again. Your notes stay in your account."
-        alert.addButton(withTitle: "Sign Out")
+        if waiting > 0 {
+            // Unsynced changes: say so plainly, and make signing out the deliberate choice.
+            alert.alertStyle = .critical
+            alert.informativeText = "\(waiting) \(waiting == 1 ? "change hasn't" : "changes haven't") synced yet. If you sign out now they stay on this Mac until you sign in again, and other devices won't see them."
+            alert.addButton(withTitle: "Sign Out Anyway")
+        } else {
+            alert.informativeText = "Your notes stay in your account."
+            alert.addButton(withTitle: "Sign Out")
+        }
         alert.addButton(withTitle: "Cancel")
         guard alert.runModal() == .alertFirstButtonReturn else { return }
         Task { await Places.shared.signOut(place, next: nil) }

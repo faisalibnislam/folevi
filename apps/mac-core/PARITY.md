@@ -58,15 +58,15 @@ Closed or improved after the grading below; the per-item marks haven't been redo
   folder newest first in two rows with its path, menu and drops; Remove from Recent; the sidebar's Reviews count.
 
 The items closed in this session's later work packages are marked [x] with "closed after the grading", and the
-summary table below is recounted from the marks (955 there, 155 partly, 18 missing, 215 not applicable).
+summary table below is recounted from the marks (981 there, 130 partly, 17 missing, 215 not applicable).
 
 ## Summary
 
 | Area | Id prefix | [x] | [~] | [ ] | [n/a] | Items |
 |---|---|---|---|---|---|---|
 | Architecture today | `ARCH` | 15 | 0 | 1 | 1 | 17 |
-| App & windows | `APP` | 30 | 19 | 1 | 23 | 73 |
-| Sign-in, onboarding, accounts, spaces & local mode | `AUTH` | 42 | 26 | 1 | 11 | 80 |
+| App & windows | `APP` | 34 | 15 | 1 | 23 | 73 |
+| Sign-in, onboarding, accounts, spaces & local mode | `AUTH` | 63 | 5 | 1 | 11 | 80 |
 | Sidebar & navigation | `NAV` | 23 | 7 | 0 | 7 | 37 |
 | Tabs | `TAB` | 11 | 4 | 1 | 27 | 43 |
 | Home | `HOME` | 16 | 4 | 0 | 10 | 30 |
@@ -101,8 +101,8 @@ summary table below is recounted from the marks (955 there, 155 partly, 18 missi
 | Stays web, WebPage values and the parity list | `WEB` | 2 | 0 | 0 | 2 | 4 |
 | Binding UX rules from owner memory | `RULE` | 18 | 13 | 0 | 13 | 44 |
 | iPhone and iPad only (skip) | `IOS` | 0 | 0 | 0 | 5 | 5 |
-| Gaps, bugs and contradictions | `GAP` | 17 | 10 | 5 | 11 | 43 |
-| **Total** | | **955** | **155** | **18** | **215** | **1343** |
+| Gaps, bugs and contradictions | `GAP` | 18 | 10 | 4 | 11 | 43 |
+| **Total** | | **981** | **130** | **17** | **215** | **1343** |
 
 Notable findings (all in the first work package at the end):
 
@@ -156,7 +156,7 @@ Notable findings (all in the first work package at the end):
 - [x] `APP-016` **View As Cards / As List**: for the list on screen. Core: `App/AppCommands.swift` View > as List / as Cards (⌘1, ⌘2).
 - [x] `APP-017` **Toasts**: bottom centre of the window. At most 3; dismissed after 4 s (7 s with an action). Undo runs the inverse command; an engine toast… Core: `Model/AppModel.swift` toasts (3, 4 s / 7 s, Undo, toast.action) and `Views/MainWindow.swift` ToastStack.
 - [x] `APP-018` **Generic action runner**: an engine refusal becomes an error toast; unknown command/view gives "That isn't available in this version yet.". Core: `Model/AppModel.swift` perform.
-- [~] `APP-019` **Ask Foli AI floating chat**: over everything except a note. ⌘J on a note toggles the note's AI panel; on the AI page it focuses that page's box. Core: no floating chat; Foli AI is a screen (⇧⌘J) and an inspector tab (⌥⌘J); ⌘J unbound.
+- [x] `APP-019` **Ask Foli AI floating chat**: over everything except a note. ⌘J on a note toggles the note's AI panel; on the AI page it focuses that page's box. Core: closed after the grading (see "Since this grading").
 - [x] `APP-020` **First click acts on an inactive window**: (ClickThroughHostingView, MAC-05). Core: `Host/PageView.swift` acceptsFirstMouse.
 - [n/a] `APP-021` **Card controls (glass at the card top)**: screen title, the screen's controls, a search capsule that opens into a field (⌘K, Esc closes while empty, typing opens the… Why: native toolbar items and `.searchable`; ⌘K palette (`Views/Common/CommandPalette.swift`).
 - [n/a] `APP-022` **Card item groups**: segmented, pull-down (Sort with "Sort by" heading), action button, "…" more, clusters. They fold to pull-downs, then into one "…"… Why: native toolbar overflow.
@@ -172,7 +172,7 @@ Notable findings (all in the first work package at the end):
 - [ ] `APP-032` **Native text line layout for card previews**. Core: cards draw previews without the engine's `text.layout`.
 - [~] `APP-033` **Cover image loader for note cards**. Core: image covers are passed to FoleviDesign as file ids; no `files.urls` loader in Core.
 - [x] `APP-034` **Settings opens apart**: its own window on the Mac, a sheet on the wide iPad. A /settings link opens it at its section. Core: SwiftUI Settings scene and `Views/Settings/SettingsView.swift` SettingsRouter (/settings links).
-- [~] `APP-035` **Search routes to the command palette**: on the Mac (folevi://search, /search?q=). Core: `/documents?q=` opens Search; `/search?q=` and `folevi-core://search` are not parsed.
+- [x] `APP-035` **Search routes to the command palette**: on the Mac (folevi://search, /search?q=). Core: closed after the grading (see "Since this grading").
 - [x] `APP-036` **Sync popover**: headline, detail, waiting count, download progress, Retry. Core: `Views/Sidebar.swift` SyncDetails popover (headline, waiting, conflicts, per-space progress, Sync Now, Sign In Again).
 - [n/a] `APP-037` **Notifications popover (bell)**: list, mark read, mark all read, open. Why: replaced by the Notifications screen (`Views/Screens/PeopleScreens.swift`) and its sidebar badge.
 - [~] `APP-038` **Floating notes window (Float Note)**: one NSPanel per note with its own Page View and EngineClient. Keep-on-top pin (floating level, all Spaces); cascade placement… Core: `App/FoleviCoreApp.swift` "float" window and `Views/Note/NoteScreen.swift` FloatingNote, always on top; no pin toggle, own saved frame or way back to its tab.
@@ -201,14 +201,14 @@ Notable findings (all in the first work package at the end):
 - [x] `APP-058` **Never quits on last window**: `applicationShouldTerminateAfterLastWindowClosed` returns false. Core: SwiftUI default (the app stays open with no window).
 - [x] `APP-059` **Quit flush**: Each loaded page gets `pagehide` plus a 250 ms wait (`PageClosing.script`). The app replies `.terminateLater` with a 2 s cap… Core: `Host/HostServices.swift` applicationShouldTerminate with PageClosing.flush.
 - [x] `APP-060` **PageClosing.flush**: When a window closes or a place switches, the old view gets `pagehide` and is kept up to 1 s, then loads about:blank. Core: `Host/PageView.swift` PageClosing.
-- [~] `APP-061` **About panel**: Shows the version only, not the build number. Core: standard About panel (shows the build number too).
+- [x] `APP-061` **About panel**: Shows the version only, not the build number. Core: closed after the grading (see "Since this grading").
 - [n/a] `APP-062` **StarterMenu**: The fallback menu until MainMenu is set. Why: SwiftUI builds the menu bar.
 - [x] `APP-063` **WindowManager**: Holds the main window controllers and a weak set of every view. Provides `frontMain`, `openMain(path:tabs:)`, `showMain(path:)`… Core: `Host/WindowManager.swift`.
 - [n/a] `APP-064` **MainWindowController**. Why: SwiftUI WindowGroup and WindowModel.
 - [x] `APP-065` **Navigation policy**. Core: `Host/PageView.swift` Navigation.
 - [~] `APP-066` **Window restore**: in the support folder `{ v: 1, windows: [{ frame, path, hidden?, tabs? }] }`. Saved front to back (debounced 0.6 s) on move… Core: macOS restores windows and tabs, each at its SceneStorage path; no windows.json, no history.
 - [n/a] `APP-067` **Last window hides instead of closing**: Keeps syncing and Quick Add working. Why: the engine page lives apart from windows, so sync and Quick Add go on with none open.
-- [~] `APP-068` **Dock menu**: New Note (menu `file.new-note`), Quick Add Task, New Window (`/documents`), up to 5 recent notes, and a Places submenu with a… Core: `App/FoleviCoreApp.swift` Dock menu: New Note, Quick Add, 8 recent notes; no New Window or Places submenu.
+- [x] `APP-068` **Dock menu**: New Note (menu `file.new-note`), Quick Add Task, New Window (`/documents`), up to 5 recent notes, and a Places submenu with a… Core: closed after the grading (see "Since this grading").
 - [~] `APP-069` **Dock badge**: Sum of each place's `setBadge` count plus the last-known unread of account places that report nothing; shows "99+". Core: `Host/DesktopRouter.swift` sums setBadge; no last-known unread for silent account places.
 - [x] `APP-070` **Status item (menu bar icon)**: Template "F" image, rebuilt each time the menu opens. Core: `App/FoleviCoreApp.swift` StatusItem (Quick Add, New Note, Recent, Open, Quit; SF Symbol, not the "F" template).
 - [n/a] `APP-071` **Chrome per-view state**: `PageState`: disabled and checked ids, ai, sidebar, inspector, focus, find, locked, route. Also badges, recent notes and status.… Why: replaced by per-window WindowModel editor state (`Model/WindowModel.swift`).
@@ -223,7 +223,7 @@ Notable findings (all in the first work package at the end):
 - [x] `AUTH-002` **Places.start at launch**: Wires library changes, cloudWant and cloudStatus events to library pages; opens LibraryService; migrates places; sets `modeOf`… Core: shared Places.swift, installed in `Host/HostServices.swift`.
 - [x] `AUTH-003` **configureServices**: `ShellAuth.service = Paths.serviceURLMAC/App/Places.swift:102`. Core: shared Places.swift.
 - [x] `AUTH-004` **startPlaces (first-run and legacy)**: Builds places from `ShellMode.current` ("unset", "local" or "account"). Account mode with no open account opens the first account… Core: shared Places.swift.
-- [~] `AUTH-005` **First-launch choice ("unset" mode)**: The window is bound to no place (`switchTo(nil)`); Quick Add redirects to the main window until a mode is picked. Core: the gate shows; Quick Add does not redirect to the window before a mode is picked.
+- [x] `AUTH-005` **First-launch choice ("unset" mode)**: The window is bound to no place (`switchTo(nil)`); Quick Add redirects to the main window until a mode is picked. Core: closed after the grading (see "Since this grading").
 - [x] `AUTH-006` **setMode**: "local" turns on the library and switches to it. "account" goes to lastAdded, else the first account, else the pending sign-in… Core: shared ShellRouter.
 - [x] `AUTH-007` **switchTo / applySwitch**: Sets current, rebuilds every main window in the new place at a path (default `/documents`), ensures runners, posts… Core: shared Places plus `Model/AppModel.swift` placeSwitched and `Engine/Pages.swift` rebuild.
 - [x] `AUTH-008` **Sign-in (PKCE sheet)**: `ShellAuth.signInAccount(window:provider:)` (shared iOS service) and then `addAccount`. Entry points: bridge `placesSignIn` and… Core: shared ShellAuth and DesktopRouter+SignIn; `Views/Common/Menus.swift` AccountActions.
@@ -232,7 +232,7 @@ Notable findings (all in the first work package at the end):
 - [x] `AUTH-011` **Forget library**: `LibraryService.forget` (the folder stays), `ShellNotify.cancelAll`, closes the runner, forgets Spotlight, switches to the first… Core: `Views/Common/Menus.swift` PlaceMenu "Stop Keeping a Library on This Mac…" (Places.forgetLibrary).
 - [x] `AUTH-012` **Place binding by host**: Every ShellRouter call runs under `ShellPlaces.$acting` set to the sender view's place, never one the page passes. Exception… Core: shared ShellRouter.
 - [x] `AUTH-013` **places list and describe**: `placesList` returns `ShellPlaces.list` plus the library's reminders and waiting counts (stored in defaults… Core: shared ShellRouter.
-- [~] `AUTH-014` **Quick Add place**: The last picked place, else the current one. Bridge: `placesQuickAdd`, `placesSetQuickAdd`. Posts `Places.quickAddChanged`. Core: Core's Quick Add always adds to the open place; no place picker.
+- [x] `AUTH-014` **Quick Add place**: The last picked place, else the current one. Bridge: `placesQuickAdd`, `placesSetQuickAdd`. Posts `Places.quickAddChanged`. Core: closed after the grading (see "Since this grading").
 - [x] `AUTH-015` **Local mode network isolation**: A per-view WKContentRuleList "folevi-library" blocks folevi.com, *.folevi.com, *.convex.cloud, *.convex.site and the service host… Core: shared Places rules through WebViewFactory.rulesFor.
 - [x] `AUTH-016` **Local mode scheduling**: Runners and library windows get `inactiveSchedulingPolicy =.none`, with hidden-page timer throttling and process suppression… Core: `Host/PageView.swift` keepAwake plus Places' configure hooks.
 - [x] `AUTH-017` **Library setup and move**: Kinds: icloud, folder, device. "folder" uses FolderPicker (FOLEVI_TEST_FOLDER in Debug). Bridge: `libSetup`, `libMove`… Core: shared bridge; `Views/Settings/SettingsView.swift` LibrarySection (Move Library To).
@@ -248,26 +248,26 @@ Notable findings (all in the first work package at the end):
 ### Sign-in, onboarding & gates
 
 - [x] `AUTH-026` **Mac gate host**: `WebGateScreen` over the frame (`GateModel`, device `.mac`); the page's own screen stays mounted behind it; every button is… Core: `Views/Gate/GateScreen.swift` (gate.changed, gate.act).
-- [~] `AUTH-027` **Gate kinds**: loading, modeChoice, signedOut, emailUnverified, suspended, setupFailed, offline, error, deviceLimit, onboarding, librarySetup… Core: one data-driven card for every kind; own layouts only for device limit, onboarding, migration and the approval code.
-- [~] `AUTH-028` **Fallback titles and messages**: native words for each kind; update-required text differs per device; offline and email-unverified have fallback text. Core: fallback words only for welcome, sign-in and loading.
+- [x] `AUTH-027` **Gate kinds**: loading, modeChoice, signedOut, emailUnverified, suspended, setupFailed, offline, error, deviceLimit, onboarding, librarySetup… Core: closed after the grading (see "Since this grading").
+- [x] `AUTH-028` **Fallback titles and messages**: native words for each kind; update-required text differs per device; offline and email-unverified have fallback text. Core: closed after the grading (see "Since this grading").
 - [x] `AUTH-029` **Loading**: page background only. Core: `Views/MainWindow.swift` StartingScreen.
-- [~] `AUTH-030` **Mode choice**: "Where should your notes live?"; account ("Sync and share your notes.", Folevi mark, emphasis) and local ("Free forever. No… Core: the engine's words and buttons in the generic card; no two-choice layout.
-- [~] `AUTH-031` **Signed out (Mac)**: card with Continue with Apple (Apple's black button), Continue with Google, Sign in with email, Keep notes on my devices; while… Core: generic card; no Apple-style button, waiting or "open the browser again" states.
+- [x] `AUTH-030` **Mode choice**: "Where should your notes live?"; account ("Sync and share your notes.", Folevi mark, emphasis) and local ("Free forever. No… Core: closed after the grading (see "Since this grading").
+- [x] `AUTH-031` **Signed out (Mac)**: card with Continue with Apple (Apple's black button), Continue with Google, Sign in with email, Keep notes on my devices; while… Core: closed after the grading (see "Since this grading").
 - [x] `AUTH-032` **Generic message card**: title, text, busy bar, progress bar, fields (secret or text), button row (primary, secondary, quiet, danger), "Use passphrase… Core: `Views/Gate/GateScreen.swift` (fields, progress, styled actions, error).
-- [~] `AUTH-033` **Busy rules**: only stop, cancel, cancelApproval and back can be pressed while busy; a button waits for its own field. Core: the whole card is disabled while busy (stop, cancel and back too).
-- [~] `AUTH-034` **Wrong secret**: clears the secret and recovery fields; the engine's error replaces the press's. Core: fields clear only when the gate changes.
-- [~] `AUTH-035` **Email unverified**: "Check your inbox" with an envelope icon; "…expires in 24 hours and works once.". Core: engine's words in the generic card, no envelope icon.
-- [~] `AUTH-036` **Suspended, setup failed, error**: icon plus the engine's words. Core: engine's words in the generic card, no kind icon.
-- [~] `AUTH-037` **Offline**: "You're offline / Folevi needs a connection the first time it opens…". Core: no offline fallback text.
-- [~] `AUTH-038` **Update required**: Mac text "…Choose Check for Updates in the Folevi menu…". Core: no Mac update-required text.
-- [~] `AUTH-039` **Device limit**: device rows with "Last seen …" and a Sign out button (`signOut:<id>`). Core: `Views/Gate/GateScreen.swift` draws the devices, but Sign Out sends `revoke` instead of `signOut:<id>`.
-- [~] `AUTH-040` **Library setup places**: iCloud, Dropbox, Google Drive, a folder, this Mac only, each with a Mac detail line; Back. Core: places come as generic actions; no Mac detail lines.
-- [~] `AUTH-041` **Library ready**: "Folevi keeps your notes as files in <path>"; "Encrypt with a passphrase" switch; passphrase and confirm fields; warning; "I… Core: secret fields only; no encrypt switch, checkbox or live checks.
+- [x] `AUTH-033` **Busy rules**: only stop, cancel, cancelApproval and back can be pressed while busy; a button waits for its own field. Core: closed after the grading (see "Since this grading").
+- [x] `AUTH-034` **Wrong secret**: clears the secret and recovery fields; the engine's error replaces the press's. Core: closed after the grading (see "Since this grading").
+- [x] `AUTH-035` **Email unverified**: "Check your inbox" with an envelope icon; "…expires in 24 hours and works once.". Core: closed after the grading (see "Since this grading").
+- [x] `AUTH-036` **Suspended, setup failed, error**: icon plus the engine's words. Core: closed after the grading (see "Since this grading").
+- [x] `AUTH-037` **Offline**: "You're offline / Folevi needs a connection the first time it opens…". Core: closed after the grading (see "Since this grading").
+- [x] `AUTH-038` **Update required**: Mac text "…Choose Check for Updates in the Folevi menu…". Core: closed after the grading (see "Since this grading").
+- [x] `AUTH-039` **Device limit**: device rows with "Last seen …" and a Sign out button (`signOut:<id>`). Core: closed after the grading (see "Since this grading").
+- [x] `AUTH-040` **Library setup places**: iCloud, Dropbox, Google Drive, a folder, this Mac only, each with a Mac detail line; Back. Core: closed after the grading (see "Since this grading").
+- [~] `AUTH-041` **Library ready**: "Folevi keeps your notes as files in <path>"; "Encrypt with a passphrase" switch; passphrase and confirm fields; warning; "I… Core: the library-ready step shows the engine's fields and actions; the encrypt switch and checks are the engine's, drawn generically.
 - [x] `AUTH-042` **Library locked**: "Enter your library's passphrase", the passphrase field, Unlock, "Forgot the passphrase?" with help text. Core: generic fields and actions.
 - [~] `AUTH-043` **Migration and place move**: progress label with "N of M"; iOS migration summary (notes, folders, tags, files and their size, existing notes, "There isn't… Core: `Views/Gate/GateScreen.swift` progress and MigrationSummaryView; no existing-notes or no-room lines.
-- [~] `AUTH-044` **E2EE unlock**: choose passphrase or recovery key (one field at a time; "Use recovery key" / "Use passphrase instead"); the recovery key is… Core: fields as data; no passphrase/key switch or key formatting.
-- [~] `AUTH-045` **E2EE approval (iOS block)**: approve from another device: waiting spinner, compare-code display, failed notice; space name chip. Core: code shown; no waiting or failed states of its own.
-- [~] `AUTH-046` **E2EE setup**: methods added (Recovery key, Passphrase, Passkey, Another device); recovery key shown once; confirm groups 3 and 7… Core: generic fields; the recovery key is not shown as its own selectable block.
+- [~] `AUTH-044` **E2EE unlock**: choose passphrase or recovery key (one field at a time; "Use recovery key" / "Use passphrase instead"); the recovery key is… Core: the engine sends one field per view (passphrase or recovery key), each with its words; no recovery-key formatting as you type.
+- [x] `AUTH-045` **E2EE approval (iOS block)**: approve from another device: waiting spinner, compare-code display, failed notice; space name chip. Core: closed after the grading (see "Since this grading").
+- [x] `AUTH-046` **E2EE setup**: methods added (Recovery key, Passphrase, Passkey, Another device); recovery key shown once; confirm groups 3 and 7… Core: closed after the grading (see "Since this grading").
 - [x] `AUTH-047` **E2EE waiting and trust**: "Waiting for your encryption key" and "Trust this device?". Core: generic card.
 - [x] `AUTH-048` **Onboarding**: the Mac shows the generic card; iOS has the 6-step block (Welcome, Your pages, Note theme, Appearance, Foli AI, Ready), progress… Core: `Views/Gate/GateScreen.swift` OnboardingStep (use cases, note style, appearance, Foli AI).
 - [x] `AUTH-049` **Unknown gate kind**: falls back to the generic card. Core: generic card.
@@ -288,7 +288,7 @@ Notable findings (all in the first work package at the end):
 - [x] `AUTH-061` **Switch place**: every main window reloads in the new place at /documents. Core: PlaceMenu (Places.switchTo); windows start over at Home.
 - [x] `AUTH-062` **New workspace**: prompt ("Workspace name", "Create workspace"). Core: NewWorkspaceSheet (workspace.create, then space.switch).
 - [x] `AUTH-063` **Sign in to another account**: (ShellAuth, then add the place and switch). Core: PlaceMenu Add Account.
-- [~] `AUTH-064` **Sign out of <name>**: with an unsynced-changes warning ("Sign Out Anyway", critical style). Core: `Views/Common/Menus.swift` AccountActions.signOut asks, but doesn't check for unsynced changes.
+- [x] `AUTH-064` **Sign out of <name>**: with an unsynced-changes warning ("Sign Out Anyway", critical style). Core: closed after the grading (see "Since this grading").
 - [x] `AUTH-065` **Move or copy notes… sheet**: destination place/space picker, Move/Copy segmented, preview (what goes, fits storage), Cancel/Move; "switched" or "done" toasts. Core: closed after the grading (see "Since this grading").
 - [x] `AUTH-066` **Move to another place…**: from a folder menu (otherPlaces). Core: closed after the grading (see "Since this grading").
 - [n/a] `AUTH-067` **Places model**: (iPhone/iPad): roles, plans (Free, Core, Pro, Pro AI, Team, Business), sign-out wording. Why: iPhone/iPad only.
@@ -297,17 +297,17 @@ Notable findings (all in the first work package at the end):
 - [ ] `AUTH-070` **Per-space tabs swap**: (see Tabs). Core: no per-space tabs; windows start over at Home on a place switch.
 - [x] `AUTH-071` **Place runners**: (background sync web views per non-open place). Core: shared Places runners.
 - [x] `AUTH-072` **Library lifecycle**: (set up, moved, forgotten; forget library). Core: shared lifecycle; set up and move in Settings, forget in the place menu.
-- [~] `AUTH-073` **Quick Add place**. Core: always the open place.
+- [x] `AUTH-073` **Quick Add place**. Core: closed after the grading (see "Since this grading").
 - [x] `AUTH-074` **Mode switch**: (local vs account). Core: shared setMode, chosen at the gate.
 - [x] `AUTH-075` **Space and account names**: for the UI (spaceName, accountName). Core: `Model/AppModel.swift` spaceName.
 - [x] `AUTH-076` **Unread count across places**. Core: PlaceMenu unread per place; Dock badge sum.
 
 ### Account screens
 
-- [~] `AUTH-077` **Sign in to collaborate page**: local mode stand-in for account-only pages. Core: account-only rows are hidden in local mode; no stand-in page for links to them.
+- [x] `AUTH-077` **Sign in to collaborate page**: local mode stand-in for account-only pages. Core: closed after the grading (see "Since this grading").
 - [x] `AUTH-078` **Shared with Me**: facts "N · from anyone"; shared folders above shared pages; rows "Shared by X · place · role · N notes / updated …"; empty… Core: `Views/Screens/LibraryScreens.swift` SharedScreen (no facts line).
-- [~] `AUTH-079` **Shared folder page**: `/shared/<id>`, "Shared with you by X (role)…", subfolders and notes, People button (folder Share dialog), empty "No notes here… Core: `Views/Screens/LibraryScreens.swift` SharedFolderScreen; no People button or Shared with Me link.
-- [~] `AUTH-080` **Changes page**: facts subtitle; Proposed (connected apps' changes: Accept / Reject, "You can't open this note, so its proposal isn't shown.")… Core: `Views/Screens/LibraryScreens.swift` ChangesScreen (accept, decline, mark seen); no diff (changes.diff).
+- [x] `AUTH-079` **Shared folder page**: `/shared/<id>`, "Shared with you by X (role)…", subfolders and notes, People button (folder Share dialog), empty "No notes here… Core: closed after the grading (see "Since this grading").
+- [x] `AUTH-080` **Changes page**: facts subtitle; Proposed (connected apps' changes: Accept / Reject, "You can't open this note, so its proposal isn't shown.")… Core: closed after the grading (see "Since this grading").
 
 ## Sidebar & navigation
 
@@ -1722,7 +1722,7 @@ Notable findings (all in the first work package at the end):
 - [n/a] `GAP-028` **iOS SharedListScreen ignores shared folders**: it never draws `folderRows`. Why: iPhone only.
 - [ ] `GAP-029` **No Add tag bulk action on Mac**: `bulkActions(tabs: true)` leaves out tags. Core: no Add tag bulk action.
 - [x] `GAP-030` **Tags page has no rename or delete**: those live only in the sidebar tag menu. Core: resolved: the Tags screen renames and deletes.
-- [ ] `GAP-031` **Mac E2EE setup**: no Copy, Save or Print for the recovery key. Core: no Copy, Save or Print for the E2EE recovery key.
+- [x] `GAP-031` **Mac E2EE setup**: no Copy, Save or Print for the recovery key. Core: closed after the grading (see "Since this grading").
 - [x] `GAP-032` **Mac onboarding, migration and approval**: drawn as the generic card (no stepper, summary or compare-code block). Core: resolved: onboarding steps, migration summary and approval code are drawn.
 - [n/a] `GAP-033` **Docs say no passkeys and no social sign-in**: PRODUCT.md (lines 113-121, 149) says so, but the code offers Continue with Apple / Google and "Sign in with a passkey". Why: documentation.
 - [x] `GAP-034` **New note shortcut mismatch**: the palette hints ⌘⌥N, but the menu's New Note is ⌘N (⌥⇧⌘N is New from template). Core: resolved.

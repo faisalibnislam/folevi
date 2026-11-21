@@ -280,6 +280,7 @@ struct FloatingNote: View {
             .navigationTitle(window.title)
             .background(WindowAccessor(model: window, asTab: false))
             .focusedSceneValue(\.window, window)
+            .onAppear { window.start() }
             .frame(minWidth: 320, minHeight: 300)
     }
 }

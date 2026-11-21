@@ -117,6 +117,7 @@ struct PathsAndCardsTests {
 struct WindowHistoryTests {
     @Test func backAndForward() {
         let w = WindowModel(app: .shared, start: .home)
+        w.start()
         w.go(.allNotes)
         w.go(.starred)
         #expect(w.current == .starred)
@@ -133,6 +134,7 @@ struct WindowHistoryTests {
 
     @Test func replaceKeepsHistory() {
         let w = WindowModel(app: .shared, start: .home)
+        w.start()
         w.go(.foliAI(nil))
         w.replace(with: .foliAI("c1"))
         #expect(w.current == .foliAI("c1"))
@@ -143,6 +145,7 @@ struct WindowHistoryTests {
 
     @Test func sidebarFollowsPlacesButNotNotes() {
         let w = WindowModel(app: .shared, start: .home)
+        w.start()
         w.select(.allNotes)
         #expect(w.sidebarSelection == .allNotes)
         w.reset()

@@ -67,8 +67,17 @@ final class WindowModel: Identifiable {
         self.app = app
         current = start
         sidebarSelection = start.isNote ? nil : start
+    }
+
+    @ObservationIgnored private var started = false
+
+    /// The window is on screen: it joins the app's windows and opens its note (once). SwiftUI may make a window's
+    /// view, and so a model, more than once; only the one that appears starts.
+    func start() {
+        guard !started else { return }
+        started = true
         app.register(self)
-        if start.isNote { Task { await self.enterNote() } }
+        if current.isNote { Task { await self.enterNote() } }
     }
 
     // MARK: navigation

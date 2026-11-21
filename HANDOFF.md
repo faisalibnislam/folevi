@@ -248,23 +248,14 @@ The ones most likely to be broken:
 
 ## 9. Current state (as of 2026-11-21)
 
-**Folevi 1.5.59** (tag `v1.5.59`, PR 43 merged, `main` = `90c4ba78`): live on web and Convex, Mac (uploaded by hand
-after `npx wrangler login`, since this session's `XDG_CONFIG_HOME` points into the app's own data and had no login;
-the feed and DMG at folevi.com show 1.5.59) and TestFlight (delivery `285a127c`).
+**Live everywhere: Folevi 1.5.62** (tag `v1.5.62`, PR 44 merged, `main` = `d752bb0d`): web and Convex deployed by
+Vercel, Mac published (feed and DMG at folevi.com/download/mac show 1.5.62), iPhone and iPad uploaded to TestFlight
+(internal group). 1.5.60 and 1.5.61 are tags only (each was superseded before shipping; tags never move). 1.5.59
+(PR 43) shipped earlier the same day on all three.
 
-**In progress:** branch `claude/tab-back-and-overview` (same worktree), for 1.5.60: Back returns to the tab a page
-was opened from and closes the new tab (Safari's rule) on Mac, iPad and web; the sidebar and "+" open fresh tabs;
-Show All Tabs draws Home from data (Recent notes and Recent folders rows, `HomePicture`) and fits screenshot
-pictures whole instead of cropping. Then (1.5.61, same branch, PR 44): the iPhone's folder cards no longer cut
-their Edited date off (Home's strip cards 176 pt for notes and folders, 10 pt apart, the gap before Tags evened out;
-every folder card drops a long name to one line when it can't fit two), and the web's Show All Tabs draws Home the
-same way (`HomePicture.tsx`), with 32 pt between its rows on every platform. 1.5.60's tag exists but was never
-shipped on its own (the fix came after it was tagged; tags never move). Decisions:
-`docs/claude-context/memory/tab-back-and-overview-2026-11-21.md`. The iOS screen run's Foli AI streaming tests
-crashed once (signal kill), unrelated; they passed in the two runs before. CI then caught a hand-written
-`text-[19px]` in the web `HomePicture` (test/type-scale.test.ts: font sizes must come from the type roles); fixed
-with `text-title-2` (native 20/26 to match) and cut as **1.5.62**, since 1.5.61's tag predates the fix. 1.5.60 and
-1.5.61 are tags only; 1.5.62 is what ships.
+This session's wrangler login lives in the app's own `XDG_CONFIG_HOME` (not `~/.wrangler`); `npx wrangler whoami`
+there shows the account that owns `folevi-updates`. Decisions: `docs/claude-context/memory/tab-back-and-overview-2026-11-21.md`
+and `frosted-folders-decision-2026-11-20.md`.
 
 **Also in progress:** branch `claude/liquid-glass-animations-b1d70e` (worktree
 `.claude/worktrees/liquid-glass-animations-b1d70e`, off `main` at `d752bb0d`, PR 45, not released): a Liquid Glass
@@ -284,6 +275,8 @@ simulator (Home, All notes, Select, a note's bars). Not checked: Reduce Motion o
 the iPad live.
 
 What shipped in the last week, newest first (detail in `CHANGELOG.md`):
+- 1.5.62: Back goes to the tab a page came from (closing it, Safari's rule); Show All Tabs draws Home on web, Mac
+  and iPad; iPhone Home cards 176 pt and folder cards never cut their date off (PR 44).
 - 1.5.59: Folder cards' corners line up, the front fully frosted, tighter Home rows (PR 43).
 - 1.5.58: Frosted folder cards, desktop and Mac cards 25% smaller, a new folder glyph (PR 42, branch
   `design/frosted-folders`, from the card design session). Design pages the owner reviewed (private artifacts):
@@ -339,8 +332,8 @@ account button should move past iPadOS's window buttons).
 - Liquid Glass motion branch (`claude/liquid-glass-animations-b1d70e`): the owner's look on a real Mac and iPhone, then
   merge with the next release. Known left: the Mac's Foli AI chat closes at once, with no exit animation (its host
   view shrinks before SwiftUI can animate the chat out; older than this branch).
-0. Upload Mac 1.5.59 (or publish 1.5.60) once wrangler is signed in (section 9). The web's Show All Tabs still
-   shows Home as its icon; the Mac's draws it (ask the owner whether the web should match).
+0. On real devices: Back after Home's See all (Mac, iPad, web), Show All Tabs' Home picture, iPhone Home's folder
+   and note strips (1.5.62).
 1. On a real iPhone, iPad and Mac with the owner's library: the note bar swap (1.5.56), Offline & sync's Download
    everything now with an account (1.5.57), frosted folders' scrolling in long grids (1.5.58).
 2. iPad audit leftovers (found 2026-11-19, not fixed): the tab strip leaves a cut-off empty slot at its start once
@@ -406,6 +399,7 @@ account button should move past iPadOS's window buttons).
 ## 12. Change log
 - 2026-11-21: PR 45 opened for the Liquid Glass motion pass.
 - 2026-11-21: Liquid Glass motion pass on `claude/liquid-glass-animations-b1d70e` (shared springs, glass materializing, Mac search morph, swipe velocity, Reduce Motion gaps); not released.
+- 2026-11-21: 1.5.62 released on web, Mac and TestFlight (PR 44).
 - 2026-11-21: Mac 1.5.59 uploaded (wrangler signed in). CI's type-scale test fixed (Home picture headings use Title 2); 1.5.62 cut on PR 44.
 - 2026-11-21: iPhone folder cards fixed (176 pt strips, one-line name fallback), web Show All Tabs draws Home; 1.5.61 cut on PR 44.
 - 2026-11-21: 1.5.59 released (web, TestFlight; Mac waiting on the R2 upload). Back-to-opener and the drawn Home picture built on `claude/tab-back-and-overview`.

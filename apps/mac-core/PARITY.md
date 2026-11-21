@@ -58,7 +58,7 @@ Closed or improved after the grading below; the per-item marks haven't been redo
   folder newest first in two rows with its path, menu and drops; Remove from Recent; the sidebar's Reviews count.
 
 The items closed in this session's later work packages are marked [x] with "closed after the grading", and the
-summary table below is recounted from the marks (688 there, 290 partly, 155 missing, 210 not applicable).
+summary table below is recounted from the marks (738 there, 264 partly, 131 missing, 210 not applicable).
 
 ## Summary
 
@@ -79,7 +79,7 @@ summary table below is recounted from the marks (688 there, 290 partly, 155 miss
 | Calendar | `CAL` | 8 | 10 | 13 | 6 | 37 |
 | Foli AI | `AI` | 42 | 1 | 2 | 4 | 49 |
 | Foli DNA | `DNA` | 34 | 2 | 0 | 0 | 36 |
-| Vault | `VAULT` | 4 | 16 | 20 | 1 | 41 |
+| Vault | `VAULT` | 40 | 0 | 0 | 1 | 41 |
 | Sharing, public links & invites | `SHARE` | 6 | 10 | 5 | 1 | 22 |
 | Templates | `TPL` | 5 | 2 | 5 | 0 | 12 |
 | Changes & proposals | `CHG` | 3 | 7 | 1 | 2 | 13 |
@@ -88,10 +88,10 @@ summary table below is recounted from the marks (688 there, 290 partly, 155 miss
 | Trash | `TRASH` | 10 | 2 | 0 | 0 | 12 |
 | Notifications / Inbox, Help & support | `NOTIF` | 5 | 3 | 8 | 2 | 18 |
 | Settings | `SET` | 110 | 15 | 21 | 19 | 165 |
-| Quick Add | `QADD` | 1 | 9 | 4 | 2 | 16 |
+| Quick Add | `QADD` | 14 | 0 | 0 | 2 | 16 |
 | System integrations | `SYS` | 30 | 23 | 4 | 3 | 60 |
 | Context menus | `CTX` | 2 | 6 | 3 | 6 | 17 |
-| Menus & keyboard shortcuts | `MENU` | 47 | 21 | 12 | 2 | 82 |
+| Menus & keyboard shortcuts | `MENU` | 48 | 20 | 12 | 2 | 82 |
 | Updates (Sparkle) | `UPD` | 6 | 1 | 0 | 0 | 7 |
 | Offline, sync & device storage | `SYNC` | 13 | 1 | 0 | 0 | 14 |
 | Migration | `MIG` | 0 | 0 | 0 | 11 | 11 |
@@ -102,7 +102,7 @@ summary table below is recounted from the marks (688 there, 290 partly, 155 miss
 | Binding UX rules from owner memory | `RULE` | 18 | 13 | 0 | 13 | 44 |
 | iPhone and iPad only (skip) | `IOS` | 0 | 0 | 0 | 5 | 5 |
 | Gaps, bugs and contradictions | `GAP` | 14 | 10 | 8 | 11 | 43 |
-| **Total** | | **688** | **290** | **155** | **210** | **1343** |
+| **Total** | | **738** | **264** | **131** | **210** | **1343** |
 
 Notable findings (all in the first work package at the end):
 
@@ -828,46 +828,46 @@ Notable findings (all in the first work package at the end):
 
 ## Vault
 
-- [~] `VAULT-001` **Sidebar row**: shown only while vault.summary says a Vault exists here. Core: shown whenever signed in, not only when a Vault exists.
-- [~] `VAULT-002` **Sections**: Files & Notes, Passwords & Credentials, Health, Activity, People, Trash, Settings (icons per section); `/vault/<section>` links… Core: `Views/Vault/VaultScreen.swift` Passwords, Files, Trash; no Health, Activity, People or Settings.
+- [x] `VAULT-001` **Sidebar row**: shown only while vault.summary says a Vault exists here. Core: closed after the grading (see "Since this grading").
+- [x] `VAULT-002` **Sections**: Files & Notes, Passwords & Credentials, Health, Activity, People, Trash, Settings (icons per section); `/vault/<section>` links… Core: closed after the grading (see "Since this grading").
 - [x] `VAULT-003` **Tabs**: two main tabs as a capsule track, a section opened from "…" appears as a third pill with its close. Core: segmented section picker.
-- [~] `VAULT-004` **Header**: "Locked" or "Open on this device · locks after N idle minutes", Lock button (tooltip "Lock the Vault"), "More in the Vault" menu… Core: Lock Vault toolbar button; no status line or "More in the Vault" menu.
-- [~] `VAULT-005` **No Vault here**: "This workspace's Vault is only for the people its owner or custodians add.". Core: state none shows Set Up instead of "only for the people its owner adds".
-- [~] `VAULT-006` **Set up**: choose a passcode (PIN of 6, 8 or 12 digits; "Passcode length" choice, "Type it again", "The two don't match."). Core: one secure field of 4+ characters; no PIN length, confirm or mismatch check.
-- [~] `VAULT-007` **Passcode input**: digit boxes, autofocus, Return submits. Core: a plain secure field, no digit boxes.
+- [x] `VAULT-004` **Header**: "Locked" or "Open on this device · locks after N idle minutes", Lock button (tooltip "Lock the Vault"), "More in the Vault" menu… Core: closed after the grading (see "Since this grading").
+- [x] `VAULT-005` **No Vault here**: "This workspace's Vault is only for the people its owner or custodians add.". Core: closed after the grading (see "Since this grading").
+- [x] `VAULT-006` **Set up**: choose a passcode (PIN of 6, 8 or 12 digits; "Passcode length" choice, "Type it again", "The two don't match."). Core: closed after the grading (see "Since this grading").
+- [x] `VAULT-007` **Passcode input**: digit boxes, autofocus, Return submits. Core: closed after the grading (see "Since this grading").
 - [x] `VAULT-008` **Unlock**: passcode field; errors inline. Core: VaultScreen unlock (vault.unlock), errors inline.
-- [ ] `VAULT-009` **Forgot passcode: recovery key reset**: "Vault recovery key" field plus a new passcode. Core: no recovery-key reset (vault.reset).
-- [ ] `VAULT-010` **Ask a custodian**: "No recovery key? Ask a custodian". Core: no Ask a custodian (vault.requestReset).
-- [~] `VAULT-011` **Waiting for the key**: "You were added to this Vault. Its key reaches you when a custodian next opens the Vault…". Core: waitingForKey shows the encrypted-notes message, not the custodian wording.
-- [ ] `VAULT-012` **Finish passcode after a grant**: "A custodian shared the Vault's key with you. Choose the passcode…". Core: no finish-passcode step (vault.finishPasscode).
-- [ ] `VAULT-013` **Passcode upgrade to PIN**: "Vault passcodes are now a PIN of 6, 8 or 12 digits…", old then new, Back. Core: no passcode upgrade (vault.changePasscode).
-- [ ] `VAULT-014` **Account encryption step (E2EE unlock)**: "Approve from another device", "Enter passphrase", "Enter recovery key", passkey note (use the browser), "Waiting for approval"… Core: no E2EE unlock step inside the Vault.
-- [ ] `VAULT-015` **Touch ID offer**: "Use Touch ID next time?" Use Touch ID / Not now. Core: no Touch ID offer.
-- [~] `VAULT-016` **Recovery key card**: shown until saved: the key, "Save as a file…", "I've saved it". Core: `Views/Vault/VaultScreen.swift` VaultRecovery alert once with Copy; no Save as a file, not shown again until saved.
-- [~] `VAULT-017` **Files & Notes: browse folders**: folder list/cards, back button to the parent ("Files & Notes" at the top), item count in native look. Core: Files section lists items; no folders (vault.folders).
-- [ ] `VAULT-018` **Files & Notes: Grid / Lines**: layout switch (remembered in the model). Core: no grid or lines switch.
-- [ ] `VAULT-019` **New folder**: prompt "Folder name", Cancel / Create. Core: no new Vault folder.
-- [ ] `VAULT-020` **New note**: prompt "Title". Core: no new Vault note.
-- [ ] `VAULT-021` **Upload**: NSOpenPanel, "Encrypting…" while busy; also drag and drop files onto the section. Core: no upload (vault.file.upload).
-- [ ] `VAULT-022` **Files empty state**: "Nothing here yet / Upload files of any kind, or write a note. They're encrypted on this device before they leave it.". Core: no files empty state.
-- [ ] `VAULT-023` **Vault note dialog**: open, edit text, Save (only when changed), Share, Close. Core: no Vault note dialog (vault.note.open, vault.note.save).
-- [ ] `VAULT-024` **File preview**: decrypted in memory: image, PDF (PDFKit), audio/video (AVKit), CSV table, text/code, else "This kind of file can't be shown… Core: no file preview or download (vault.file.open).
-- [~] `VAULT-025` **Passwords list**: search field ("Search" title or detail), kind filter ("All kinds" plus kinds present), Add, rows with relative time, selection… Core: list with Add and the item beside it; no search, kind filter or times.
-- [ ] `VAULT-026` **Passwords empty state**: "No passwords yet / Add logins, API keys, cards and other credentials…" or "Nothing matches". Core: no passwords empty state.
+- [x] `VAULT-009` **Forgot passcode: recovery key reset**: "Vault recovery key" field plus a new passcode. Core: closed after the grading (see "Since this grading").
+- [x] `VAULT-010` **Ask a custodian**: "No recovery key? Ask a custodian". Core: closed after the grading (see "Since this grading").
+- [x] `VAULT-011` **Waiting for the key**: "You were added to this Vault. Its key reaches you when a custodian next opens the Vault…". Core: closed after the grading (see "Since this grading").
+- [x] `VAULT-012` **Finish passcode after a grant**: "A custodian shared the Vault's key with you. Choose the passcode…". Core: closed after the grading (see "Since this grading").
+- [x] `VAULT-013` **Passcode upgrade to PIN**: "Vault passcodes are now a PIN of 6, 8 or 12 digits…", old then new, Back. Core: closed after the grading (see "Since this grading").
+- [x] `VAULT-014` **Account encryption step (E2EE unlock)**: "Approve from another device", "Enter passphrase", "Enter recovery key", passkey note (use the browser), "Waiting for approval"… Core: closed after the grading (see "Since this grading").
+- [x] `VAULT-015` **Touch ID offer**: "Use Touch ID next time?" Use Touch ID / Not now. Core: closed after the grading (see "Since this grading").
+- [x] `VAULT-016` **Recovery key card**: shown until saved: the key, "Save as a file…", "I've saved it". Core: closed after the grading (see "Since this grading").
+- [x] `VAULT-017` **Files & Notes: browse folders**: folder list/cards, back button to the parent ("Files & Notes" at the top), item count in native look. Core: closed after the grading (see "Since this grading").
+- [x] `VAULT-018` **Files & Notes: Grid / Lines**: layout switch (remembered in the model). Core: closed after the grading (see "Since this grading").
+- [x] `VAULT-019` **New folder**: prompt "Folder name", Cancel / Create. Core: closed after the grading (see "Since this grading").
+- [x] `VAULT-020` **New note**: prompt "Title". Core: closed after the grading (see "Since this grading").
+- [x] `VAULT-021` **Upload**: NSOpenPanel, "Encrypting…" while busy; also drag and drop files onto the section. Core: closed after the grading (see "Since this grading").
+- [x] `VAULT-022` **Files empty state**: "Nothing here yet / Upload files of any kind, or write a note. They're encrypted on this device before they leave it.". Core: closed after the grading (see "Since this grading").
+- [x] `VAULT-023` **Vault note dialog**: open, edit text, Save (only when changed), Share, Close. Core: closed after the grading (see "Since this grading").
+- [x] `VAULT-024` **File preview**: decrypted in memory: image, PDF (PDFKit), audio/video (AVKit), CSV table, text/code, else "This kind of file can't be shown… Core: closed after the grading (see "Since this grading").
+- [x] `VAULT-025` **Passwords list**: search field ("Search" title or detail), kind filter ("All kinds" plus kinds present), Add, rows with relative time, selection… Core: closed after the grading (see "Since this grading").
+- [x] `VAULT-026` **Passwords empty state**: "No passwords yet / Add logins, API keys, cards and other credentials…" or "Nothing matches". Core: closed after the grading (see "Since this grading").
 - [x] `VAULT-027` **Row right-click**: Open, Duplicate. Core: row menu Duplicate, Move to Trash (vault.item.duplicate, vault.item.remove).
-- [~] `VAULT-028` **Item panel**: title, "<kind> · added by X, changed by Y", Earlier versions, Edit, Share, Move to the Vault's Trash; fields with label, secret… Core: `Views/Vault/VaultScreen.swift` VaultItemDetail: fields, Show/Hide, Copy, notes, Edit, History; no Share, Trash button or vault.record.
-- [~] `VAULT-029` **TOTP (2FA code)**: code "123 456" refreshed each second with seconds left, Copy the code (logged "totp.copy"), "Not a 2FA secret Folevi can read.". Core: TotpCode counts down (vault.totp), but its Copy button copies the secret, not the code.
-- [~] `VAULT-030` **Add / Edit item dialog**: kind picker (Login, API key, Card, Bank account, Secure note, SSH key, Wi-Fi, Licence, Identity), Title "A name to find it by"… Core: VaultItemEditor works for new items; editing an existing item shows no fields (its kind has none), secrets aren't masked.
-- [~] `VAULT-031` **Password generator**: Generate (random) and Memorable (passphrase) actions on password fields. Core: Generate only; no Memorable.
-- [ ] `VAULT-032` **Strength meter**: live strength under the password. Core: no strength meter (vault.strength).
+- [x] `VAULT-028` **Item panel**: title, "<kind> · added by X, changed by Y", Earlier versions, Edit, Share, Move to the Vault's Trash; fields with label, secret… Core: closed after the grading (see "Since this grading").
+- [x] `VAULT-029` **TOTP (2FA code)**: code "123 456" refreshed each second with seconds left, Copy the code (logged "totp.copy"), "Not a 2FA secret Folevi can read.". Core: closed after the grading (see "Since this grading").
+- [x] `VAULT-030` **Add / Edit item dialog**: kind picker (Login, API key, Card, Bank account, Secure note, SSH key, Wi-Fi, Licence, Identity), Title "A name to find it by"… Core: closed after the grading (see "Since this grading").
+- [x] `VAULT-031` **Password generator**: Generate (random) and Memorable (passphrase) actions on password fields. Core: closed after the grading (see "Since this grading").
+- [x] `VAULT-032` **Strength meter**: live strength under the password. Core: closed after the grading (see "Since this grading").
 - [x] `VAULT-033` **History / versions**: "Version N · editor · date", Bring back; empty "No earlier versions". Core: `Views/Common/MoreSheets.swift` VaultHistorySheet (vault.item.history, vault.item.restoreVersion).
-- [ ] `VAULT-034` **Share an item or note: with a person**: Email, duration for outsiders (1 day, 7, 30, 90 days, 1 year), Can view / Can edit, Share; list with Stop; local mode shows "Sign… Core: no sharing with a person.
-- [ ] `VAULT-035` **One-time link**: optional password (5+ chars), Works once / 2 / 3 / 5 / 10 times, for 1 hour / 1 day / 7 days / 30 days, Make link, Copy, list… Core: no one-time links.
-- [ ] `VAULT-036` **Health**: groups by issue (weak, reused, breached, expiring) with tone, count, body, items; "All healthy". Core: no Health.
-- [ ] `VAULT-037` **Activity**: filter Everything / Unlocking and locking / Items / Files / Notes / People / Links / Sharing, "Failures only" toggle, rows actor… Core: no Activity.
-- [ ] `VAULT-038` **People**: single-manager warning, Add (workspace member picker), "Everyone here should have access" (reviewed), rows with Owner label, role… Core: no People.
-- [~] `VAULT-039` **Trash**: rows with Restore, Empty Trash dialog "Everything in the Trash goes for good, for everyone in the Vault…" Cancel / Delete for… Core: Restore per item; no Empty Trash (vault.trash.empty).
-- [~] `VAULT-040` **Settings**: Lock after 1, 2, 5, 10, 15, 30 minutes; Custodians can name custodians switch (owner); Change passcode… dialog (current then… Core: Lock only; no auto-lock time, custodians, change passcode, new recovery key or import.
+- [x] `VAULT-034` **Share an item or note: with a person**: Email, duration for outsiders (1 day, 7, 30, 90 days, 1 year), Can view / Can edit, Share; list with Stop; local mode shows "Sign… Core: closed after the grading (see "Since this grading").
+- [x] `VAULT-035` **One-time link**: optional password (5+ chars), Works once / 2 / 3 / 5 / 10 times, for 1 hour / 1 day / 7 days / 30 days, Make link, Copy, list… Core: closed after the grading (see "Since this grading").
+- [x] `VAULT-036` **Health**: groups by issue (weak, reused, breached, expiring) with tone, count, body, items; "All healthy". Core: closed after the grading (see "Since this grading").
+- [x] `VAULT-037` **Activity**: filter Everything / Unlocking and locking / Items / Files / Notes / People / Links / Sharing, "Failures only" toggle, rows actor… Core: closed after the grading (see "Since this grading").
+- [x] `VAULT-038` **People**: single-manager warning, Add (workspace member picker), "Everyone here should have access" (reviewed), rows with Owner label, role… Core: closed after the grading (see "Since this grading").
+- [x] `VAULT-039` **Trash**: rows with Restore, Empty Trash dialog "Everything in the Trash goes for good, for everyone in the Vault…" Cancel / Delete for… Core: closed after the grading (see "Since this grading").
+- [x] `VAULT-040` **Settings**: Lock after 1, 2, 5, 10, 15, 30 minutes; Custodians can name custodians switch (owner); Change passcode… dialog (current then… Core: closed after the grading (see "Since this grading").
 - [n/a] `VAULT-041` **Dialogs belong to a section**: switching section or leaving closes the open dialog. Why: native sheets close with their screen.
 
 ## Sharing, public links & invites
@@ -1240,21 +1240,21 @@ Notable findings (all in the first work package at the end):
 
 ## Quick Add
 
-- [~] `QADD-001` **In-app Quick add task dialog**: File > Quick Add Task… ⌘⇧A, Tasks ⌘N / Add task; "Press Enter to add. Tasks without a page go to your Inbox page.". Core: Tasks screen's inline field and the global panel; no in-window dialog or ⇧⌘A.
-- [~] `QADD-002` **In-app: title field**: "What needs doing?", empty submit says "Write the task first." (focus stays, VoiceOver announcement). Core: an empty field just doesn't add; no message.
-- [~] `QADD-003` **In-app: parsed date and repeat chips**: debounced 150 ms after 3+ chars; "Due tomorrow 9:00 from …", repeat label; x keeps the words as text. Core: `Views/QuickAdd/QuickAdd.swift` shows the parsed date and repeat (task.parse); no x to keep the words.
-- [ ] `QADD-004` **In-app: fields**: Due date, Time (optional, only with a date), Priority, page picker (defaults to the current note when given). Core: no due, time, priority or page fields.
-- [~] `QADD-005` **In-app: Add task**: toast "Task added to <page or Inbox>" with Open. Core: toast "Task added to …" without Open.
+- [x] `QADD-001` **In-app Quick add task dialog**: File > Quick Add Task… ⌘⇧A, Tasks ⌘N / Add task; "Press Enter to add. Tasks without a page go to your Inbox page.". Core: closed after the grading (see "Since this grading").
+- [x] `QADD-002` **In-app: title field**: "What needs doing?", empty submit says "Write the task first." (focus stays, VoiceOver announcement). Core: closed after the grading (see "Since this grading").
+- [x] `QADD-003` **In-app: parsed date and repeat chips**: debounced 150 ms after 3+ chars; "Due tomorrow 9:00 from …", repeat label; x keeps the words as text. Core: closed after the grading (see "Since this grading").
+- [x] `QADD-004` **In-app: fields**: Due date, Time (optional, only with a date), Priority, page picker (defaults to the current note when given). Core: closed after the grading (see "Since this grading").
+- [x] `QADD-005` **In-app: Add task**: toast "Task added to <page or Inbox>" with Open. Core: closed after the grading (see "Since this grading").
 - [x] `QADD-006` **Global floating panel**: File > Quick Add from Any App, menu bar "Quick Add Task…", global hotkey (default ⌥Space, configurable, Carbon… Core: `Views/QuickAdd/QuickAdd.swift` QuickAdd (Carbon hotkey, paused while recording; opens on the main screen, not the pointer's).
-- [~] `QADD-007` **Panel field**: one growing field "New task", empty checkbox, destination at the end ("Inbox" or a page); first-use hint "Return adds it, ⌘Return… Core: Task/Note picker, field and the space name; no destination or first-use hint.
-- [~] `QADD-008` **Tokens as chips**: day/time, repeat, priority ("!high", "!!!", "!med", "!low", "!"), page ("#Atlas", `#"Two words"`); each chip has x to keep the… Core: date and repeat only; no priority or page chips.
-- [ ] `QADD-009` **Chip editors**: date (date and time fields), priority (segmented control), page (picker "Inbox, or search a page…"); Escape puts an editor away. Core: no chip editors.
-- [ ] `QADD-010` **Place picker "Add to"**: pop-up of places (On this Mac library, accounts); choosing another reopens in that place. Core: no place picker.
-- [~] `QADD-011` **Keys**: Return adds and closes, ⇧Return adds and stays for another, ⌘Return adds and opens its page in the main window, Escape closes. Core: Return adds and closes, Esc closes; no ⇧Return or ⌘Return.
-- [~] `QADD-012` **Added confirmation**: "Added to <Inbox / page>" with Open for a moment. Core: the confirmation is a toast in the main window, not in the panel.
-- [ ] `QADD-013` **Offline queue**: items that can't reach an engine wait in QuickAddQueue (JSON in Application Support, never from encrypted notes) and flush later… Core: no offline queue.
+- [x] `QADD-007` **Panel field**: one growing field "New task", empty checkbox, destination at the end ("Inbox" or a page); first-use hint "Return adds it, ⌘Return… Core: closed after the grading (see "Since this grading").
+- [x] `QADD-008` **Tokens as chips**: day/time, repeat, priority ("!high", "!!!", "!med", "!low", "!"), page ("#Atlas", `#"Two words"`); each chip has x to keep the… Core: closed after the grading (see "Since this grading").
+- [x] `QADD-009` **Chip editors**: date (date and time fields), priority (segmented control), page (picker "Inbox, or search a page…"); Escape puts an editor away. Core: closed after the grading (see "Since this grading").
+- [x] `QADD-010` **Place picker "Add to"**: pop-up of places (On this Mac library, accounts); choosing another reopens in that place. Core: closed after the grading (see "Since this grading").
+- [x] `QADD-011` **Keys**: Return adds and closes, ⇧Return adds and stays for another, ⌘Return adds and opens its page in the main window, Escape closes. Core: closed after the grading (see "Since this grading").
+- [x] `QADD-012` **Added confirmation**: "Added to <Inbox / page>" with Open for a moment. Core: closed after the grading (see "Since this grading").
+- [x] `QADD-013` **Offline queue**: items that can't reach an engine wait in QuickAddQueue (JSON in Application Support, never from encrypted notes) and flush later… Core: closed after the grading (see "Since this grading").
 - [n/a] `QADD-014` **Memory release**: panel page released 60 s after closing unless text or offline. Why: Core's panel is native, no page to release.
-- [~] `QADD-015` **Menu bar status item**: Quick Add Task… (with the global shortcut), New Note, Search Folevi…, Recent Notes (⌘1 to ⌘8 while open, place subtitle), save… Core: `App/FoleviCoreApp.swift` StatusItem: Quick Add, New Note, Recent, Open, Quit; no shortcut, Search, status, Places or Settings.
+- [x] `QADD-015` **Menu bar status item**: Quick Add Task… (with the global shortcut), New Note, Search Folevi…, Recent Notes (⌘1 to ⌘8 while open, place subtitle), save… Core: closed after the grading (see "Since this grading").
 - [n/a] `QADD-016` **iPhone only: QuickAddView**: Task / Note mode (⌘1 / ⌘2), ⌘Return open, ⇧Return keep open, Escape; graphical date picker, No date, time list, No time; priority… Why: iPhone only.
 
 ## System integrations
@@ -1459,7 +1459,7 @@ Notable findings (all in the first work package at the end):
 ### Other menus and global keys (details in the sections named)
 
 - [~] `MENU-077` **Dock menu**: New Note, Quick Add Task, New Window, up to 5 recent notes, Places submenu (see App & windows, ). Core: Dock menu (see APP-068).
-- [~] `MENU-078` **Status item (menu bar icon) menu**: see App & windows, includes "Search Folevi…" and "Settings…". Core: status item (see QADD-015).
+- [x] `MENU-078` **Status item (menu bar icon) menu**: see App & windows, includes "Search Folevi…" and "Settings…". Core: closed after the grading (see "Since this grading").
 - [x] `MENU-079` **Global Quick Add hotkey**: Carbon hotkey, default ⌥Space, user-recordable in Settings > General. Core: Quick Add hotkey (see QADD-006).
 - [x] `MENU-080` **Text context menu additions**: : see Context menus. Core: see CTX-009.
 - [~] `MENU-081` **Screen-level keys**: lists (Esc clears selection, ⌘A select all), palette (↑/↓, Return, Esc), Settings (⌘F, ↑/↓, Return, Esc, ⌘W), Tasks (⌘1 to ⌘6… Core: lists, palette and find keys; no Settings or Tasks keys.

@@ -108,7 +108,7 @@ struct Sidebar: View {
             }
 
             Section("More") {
-                if app.session.value?.mode != .local { row(.vault) }
+                if app.session.value?.mode != .local, app.vault.value?.state != VaultState.none { row(.vault) }
                 if app.reviews.value?.hasCards == true || window.current == .reviews {
                     row(.reviews, badge: (app.reviews.value?.due ?? 0) + (app.reviews.value?.new ?? 0))
                 }

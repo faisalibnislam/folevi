@@ -35,7 +35,23 @@ struct QuickAddView: View {
                 Picker("Kind", selection: $kind) { ForEach(Kind.allCases, id: \.self) { Text($0.rawValue).tag($0) } }
                     .pickerStyle(.segmented).labelsHidden().fixedSize()
                 Spacer()
-                Text(destination).font(.caption).foregroundStyle(.secondary)
+                if let places = AppModel.shared.places.value, places.places.count > 1 {
+                    // Add to: another place (an account, the library on this Mac) switches to it first.
+                    Menu {
+                        ForEach(places.places, id: \.id) { p in
+                            Button {
+                                if p.id != places.current { Places.shared.switchTo(p.id) }
+                            } label: {
+                                if p.id == places.current { Label(p.kind == .library ? "On This Mac" : p.name, systemImage: "checkmark") } else { Text(p.kind == .library ? "On This Mac" : p.name) }
+                            }
+                        }
+                    } label: {
+                        Text("Add to \(destination)").font(.caption)
+                    }
+                    .menuStyle(.borderlessButton).fixedSize().help("Add to another place")
+                } else {
+                    Text(destination).font(.caption).foregroundStyle(.secondary)
+                }
             }
             HStack(alignment: .top, spacing: 8) {
                 if kind == .task { Image(systemName: "circle").foregroundStyle(.secondary).padding(.top, 4) }

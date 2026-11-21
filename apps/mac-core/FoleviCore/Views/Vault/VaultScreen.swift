@@ -74,6 +74,14 @@ struct VaultScreen: View {
         }
         .toolbar {
             ToolbarItem(placement: .secondaryAction) {
+                Menu {
+                    ForEach(panes) { p in Button(p.rawValue) { pane = p } }
+                } label: {
+                    Label("More in the Vault", systemImage: "ellipsis.circle")
+                }
+                .help("More in the Vault")
+            }
+            ToolbarItem(placement: .secondaryAction) {
                 Button { app.perform { _ = try await $0.command(Commands.VaultLock(VaultIdArgs(vaultId: vault))) } } label: {
                     Label { Text("Lock the Vault") } icon: { WebIcon.lock.image(size: 15) }
                 }

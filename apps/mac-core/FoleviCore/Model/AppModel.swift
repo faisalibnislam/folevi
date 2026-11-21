@@ -95,6 +95,8 @@ final class AppModel {
     let changes = Live<Views.Changes>()
     /// Review cards (the sidebar's count, shown when there are some).
     let reviews = Live<Views.Reviews>()
+    /// Whether a Vault is here (the sidebar shows its row only then, or when one can be set up).
+    let vault = Live<Views.VaultSummary>()
 
     /// What the engine shows while it isn't ready (nil: ready).
     private(set) var gate: GateChangedEvent?
@@ -150,6 +152,7 @@ final class AppModel {
         notifications.bind(client, Views.NotificationsList())
         changes.bind(client, Views.Changes())
         reviews.bind(client, Views.Reviews(ReviewsArgs(noteId: nil, space: nil)))
+        vault.bind(client, Views.VaultSummary(SpaceArgs()))
     }
 
     private func listen(_ client: EngineClient) {

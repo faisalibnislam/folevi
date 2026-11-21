@@ -34,10 +34,21 @@ struct VaultActivityView: View {
     private var app: AppModel { .shared }
     @State private var activity = Live<Views.VaultActivity>()
     @State private var failedOnly = false
+    @State private var event = ""
+
+    private static let events: [(String, String)] = [("", "Everything"), ("vault.", "Unlocking and Locking"), ("item.", "Items"), ("file.", "Files"), ("note.", "Notes"), ("person.", "People"), ("link.", "Links"), ("share.", "Sharing")]
 
     var body: some View {
         List {
-            Toggle("Only failed attempts", isOn: $failedOnly).toggleStyle(.checkbox)
+            HStack {
+                Picker("What", selection: $event) { ForEach(Self.events, id: \.0) { Text($0.1).tag($0.0) } }
+                    .labelsHidden().fixedSize()
+                Toggle("Failures only", isOn: $failedOnly).toggleStyle(.checkbox)
+                Spacer()
+            }
+            if (activity.value?.entries ?? []).isEmpty, activity.value != nil {
+                Text(failedOnly || !event.isEmpty ? "Nothing matches." : "Nothing has happened in the Vault yet.").foregroundStyle(.secondary)
+            }
             ForEach(activity.value?.entries ?? [], id: \.seq) { e in
                 HStack(alignment: .top) {
                     Image(systemName: e.failed ? "xmark.octagon" : "checkmark.circle").foregroundStyle(e.failed ? .red : .secondary)
@@ -51,7 +62,7 @@ struct VaultActivityView: View {
                 }
             }
         }
-        .task(id: failedOnly) { activity.bind(app.client, Views.VaultActivity(VaultActivityArgs(vaultId: vaultId, event: nil, failedOnly: failedOnly ? true : nil, personId: nil))) }
+        .task(id: "\(failedOnly)\(event)") { activity.bind(app.client, Views.VaultActivity(VaultActivityArgs(vaultId: vaultId, event: event.isEmpty ? nil : event, failedOnly: failedOnly ? true : nil, personId: nil))) }
     }
 }
 

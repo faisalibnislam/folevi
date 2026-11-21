@@ -120,6 +120,11 @@ final class CoreMenuActions: NSObject {
     }
     @objc func openApp(_ sender: Any?) { AppModel.shared.showAnyWindow() }
     @objc func settings(_ sender: Any?) { SettingsRouter.shared.open(nil) }
+    @objc func switchPlace(_ sender: NSMenuItem) {
+        guard let id = sender.representedObject as? String else { return }
+        Places.shared.switchTo(id)
+        AppModel.shared.showAnyWindow()
+    }
     @objc func openNote(_ sender: NSMenuItem) {
         guard let id = sender.representedObject as? String else { return }
         AppModel.shared.open(.note(id))
@@ -161,10 +166,30 @@ final class StatusItem: NSObject, NSMenuDelegate {
         if !DesktopHooks.recent.isEmpty {
             menu.addItem(.separator())
             menu.addItem(NSMenuItem.sectionHeader(title: "Recent"))
-            for note in DesktopHooks.recent {
-                let item = menu.addItem(withTitle: note.title.isEmpty ? "Untitled" : note.title, action: #selector(CoreMenuActions.openNote(_:)), keyEquivalent: "")
+            for (i, note) in DesktopHooks.recent.prefix(8).enumerated() {
+                let item = menu.addItem(withTitle: note.title.isEmpty ? "Untitled" : note.title, action: #selector(CoreMenuActions.openNote(_:)), keyEquivalent: "\(i + 1)")
                 item.representedObject = note.id
                 item.target = a
+            }
+        }
+        MainActor.assumeIsolated {
+            let app = AppModel.shared
+            if let places = app.places.value, places.places.count > 1 {
+                menu.addItem(.separator())
+                let sub = NSMenu()
+                for p in places.places {
+                    let item = sub.addItem(withTitle: p.kind == .library ? "On This Mac" : p.name, action: #selector(CoreMenuActions.switchPlace(_:)), keyEquivalent: "")
+                    item.representedObject = p.id
+                    item.state = p.id == places.current ? .on : .off
+                    item.target = a
+                }
+                let placesItem = menu.addItem(withTitle: "Places", action: nil, keyEquivalent: "")
+                placesItem.submenu = sub
+            }
+            if let sync = app.sync.value {
+                menu.addItem(.separator())
+                let status = menu.addItem(withTitle: sync.label, action: nil, keyEquivalent: "")
+                status.isEnabled = false
             }
         }
         menu.addItem(.separator())

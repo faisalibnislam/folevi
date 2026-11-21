@@ -96,6 +96,9 @@ struct PinField: View {
         ZStack {
             SecureField("", text: $text)
                 .focused($focused)
+                .focusEffectDisabled()
+                .textFieldStyle(.plain)
+                .frame(width: 1, height: 1)
                 .opacity(0.02)
                 .onSubmit(onComplete)
                 .onChange(of: text) { _, t in

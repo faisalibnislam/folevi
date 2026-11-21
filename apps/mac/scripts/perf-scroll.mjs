@@ -3,7 +3,8 @@
 // perf.mjs's scratch library (run `node apps/mac/scripts/perf.mjs --fresh --runs 1` once first), with a dozen
 // folders of notes added once. Nothing here touches the installed app, its folder or the owner's library.
 //
-//   node apps/mac/scripts/perf-scroll.mjs [--label before] [--rounds 3] [--appearance dark]
+//   node apps/mac/scripts/perf-scroll.mjs [--label before] [--rounds 3] [--appearance dark] [--folders 12]
+//                                         [--screens home,folders,notes]
 //
 // Each screen is scrolled down and back by the Debug app's `scrollBench` (a step on every display frame, as a
 // trackpad's momentum does); the frames the main thread missed meanwhile, per screen. Results in
@@ -25,6 +26,10 @@ const arg = (name, fallback) => {
 const LABEL = arg("--label", "run");
 const ROUNDS = Number(arg("--rounds", "3"));
 const APPEARANCE = arg("--appearance", "dark");
+// --folders 60: a long Folders grid (frosted folder cards, each drawing its notes twice).
+const FOLDERS = Number(arg("--folders", "12"));
+// --screens folders,notes: only those.
+const SCREENS = arg("--screens", "home,folders,notes").split(",");
 
 const ENGINE = `
   const engine = window.__foleviEngine;
@@ -57,9 +62,11 @@ await evaluate(
   `${ENGINE}
    const tree = await run("folders.tree", {}, "query").catch(() => null);
    const names = JSON.stringify(tree || "");
-   if (!names.includes("Scroll folder 12")) {
+   const has = (f) => new RegExp("Scroll folder " + f + "(?![0-9])").test(names);
+   if (!has(${FOLDERS})) {
      const colors = ["red", "orange", "yellow", "green", "blue", "purple", "pink", "gray"];
-     for (let f = 1; f <= 12; f++) {
+     for (let f = 1; f <= ${FOLDERS}; f++) {
+       if (has(f)) continue;
        const { id } = await run("folder.create", { name: "Scroll folder " + f, color: colors[f % colors.length] });
        for (let k = 1; k <= 4; k++) await run("note.create", { folderId: id, title: "Folder " + f + " note " + k, open: false });
      }
@@ -69,7 +76,7 @@ await evaluate(
 await sleep(2000);
 
 const results = { at: new Date().toISOString(), label: LABEL, appearance: APPEARANCE, screens: {} };
-for (const [name, path] of [["home", "/documents"], ["folders", "/folders"], ["notes", "/notes"]]) {
+for (const [name, path] of [["home", "/documents"], ["folders", "/folders"], ["notes", "/notes"]].filter(([n]) => SCREENS.includes(n))) {
   await command(dir, { cmd: "frame", do: "open", path });
   await sleep(2500);
   const runs = [];

@@ -13,6 +13,8 @@
 //   widgets       every widget drawn to PNGs in tmp/widgets (WidgetSnapshots): { font? (Spectral's path) }
 //   push          notifications here: the status, and what's in Notification Center from Folevi
 //   respond       a notification's button pressed (or the notification tapped): { action?, userInfo }
+//   scrollBench   the tallest scrolling list on screen scrolled down and back in step with the display, and the
+//                 frames missed meanwhile, as the Mac's (FrameEval.swift): { distance?, seconds? }
 #if DEBUG && targetEnvironment(simulator)
 import CoreSpotlight
 import Security
@@ -100,6 +102,21 @@ enum DebugHooks {
                     "installed": IPadMenuBar.installed,
                     "items": items.map { ["id": $0.id, "title": $0.title, "key": $0.key?.label ?? "", "enabled": IPadMenuBar.isEnabled($0.id, sender: nil)] },
                 ]
+            }
+        case "scrollBench":
+            let distance = input["distance"] as? Double ?? 3000
+            let seconds = input["seconds"] as? Double ?? 3
+            let windows = UIApplication.shared.connectedScenes.compactMap { ($0 as? UIWindowScene)?.keyWindow }
+            func lists(_ v: UIView) -> [UIScrollView] {
+                let mine = (v as? UIScrollView).map { [$0] } ?? []
+                return mine + v.subviews.flatMap(lists)
+            }
+            let scroll = windows.flatMap { lists($0) }
+                .filter { !$0.isHidden && $0.window != nil && $0.contentSize.height > $0.bounds.height + 1 && $0.bounds.width > 200 }
+                .max { $0.contentSize.height < $1.contentSize.height }
+            guard let scroll else { return ["error": "no scrolling list on screen"] }
+            return await withCheckedContinuation { done in
+                IOSScrollBench(scroll: scroll, distance: distance, seconds: seconds) { done.resume(returning: $0) }.start()
             }
         case "frame":
             // The native frame's state (Native/Phone): what the bars are drawn from.
@@ -282,6 +299,62 @@ enum DebugHooks {
             UIColor.systemGray5.setFill()
             ctx.fill(CGRect(x: 0, y: 0, width: 64, height: 64))
         }
+    }
+}
+/// Scrolls a list along a smooth path in step with the display and counts the frames it missed (the Mac's
+/// ScrollBench, FrameEval.swift).
+@MainActor
+final class IOSScrollBench: NSObject {
+    private let scroll: UIScrollView
+    private let distance: Double
+    private let seconds: Double
+    private let done: ([String: Any]) -> Void
+    private var link: CADisplayLink?
+    private var began: CFTimeInterval = 0
+    private var last: CFTimeInterval = 0
+    private var gaps: [Double] = []
+    private var period: Double = 1.0 / 60
+    private var top: CGFloat = 0
+    private static var running: IOSScrollBench?
+
+    init(scroll: UIScrollView, distance: Double, seconds: Double, done: @escaping ([String: Any]) -> Void) {
+        self.scroll = scroll
+        self.distance = distance
+        self.seconds = seconds
+        self.done = done
+    }
+
+    func start() {
+        top = -scroll.adjustedContentInset.top
+        let link = CADisplayLink(target: self, selector: #selector(step(_:)))
+        link.preferredFrameRateRange = CAFrameRateRange(minimum: 60, maximum: 120, preferred: 120)
+        link.add(to: .main, forMode: .common)
+        self.link = link
+        Self.running = self
+    }
+
+    @objc private func step(_ link: CADisplayLink) {
+        let now = link.timestamp
+        if link.targetTimestamp > now { period = link.targetTimestamp - now }
+        if began == 0 { began = now; last = now } else { gaps.append(now - last); last = now }
+        let p = min(1, (now - began) / seconds)
+        let max = Swift.max(0, scroll.contentSize.height + scroll.adjustedContentInset.bottom - scroll.bounds.height - top)
+        let reach = Swift.min(max, distance)
+        scroll.contentOffset.y = top + reach * (1 - cos(2 * .pi * p)) / 2
+        guard p >= 1 else { return }
+        link.invalidate()
+        self.link = nil
+        Self.running = nil
+        let missed = gaps.reduce(0) { $0 + Swift.max(0, Int(($1 / period).rounded()) - 1) }
+        let sorted = gaps.sorted()
+        done(["value": [
+            "refreshHz": (1 / period).rounded(),
+            "frames": gaps.count,
+            "missedFrames": missed,
+            "worstMs": ((sorted.last ?? 0) * 1000).rounded(),
+            "p95Ms": ((sorted.isEmpty ? 0 : sorted[Swift.min(sorted.count - 1, Int(Double(sorted.count) * 0.95))]) * 1000 * 10).rounded() / 10,
+            "scrolled": reach,
+        ]])
     }
 }
 #endif

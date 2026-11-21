@@ -217,6 +217,9 @@ public struct PhoneHomeContent: View {
                 }
                 .scrollIndicators(.hidden)
                 .scrollTargetBehavior(.viewAligned)
+                // The cards' shadow fades out past the strip's edge instead of being cut off in a straight line under
+                // them (the owner, 21 November 2026); the strip spans the screen, so nothing else shows past it.
+                .scrollClipDisabled()
                 // The next section starts as close as the others do; the cards' shadow keeps its room under it.
                 .padding(.bottom, -10)
                 .accessibilityLabel("Folders")

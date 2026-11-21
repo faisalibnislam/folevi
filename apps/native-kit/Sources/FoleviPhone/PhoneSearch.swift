@@ -1,5 +1,6 @@
 // Search on the iPhone, as the web draws it (apps/web/src/components/app/CommandPalette.tsx, `iphone`): the whole
-// screen, the field at the top with Cancel, the scope chips (Folder, Tag, Edited, and where when there are several
+// screen; on iOS 26 the field and its close button at the foot above the keyboard (before iOS 26, at the top with
+// Cancel), the scope chips (Folder, Tag, Edited, and where when there are several
 // places), then Recent and Actions; with something typed, the notes found (the words marked), those found by
 // meaning, and the actions that match. Results come from FoleviScreens' SearchModel (`search`).
 #if os(iOS)
@@ -69,18 +70,20 @@ public struct PhoneSearchScreen: View {
         }
     }
 
-    /// The native look (the owner, 2026-11-19): search is the tab bar's own search tab, its field iOS's at the
-    /// screen's foot (`.searchable`, where the tab bar was), the scope chips and the results above it.
+    /// The native look (the owner, 2026-11-19): search is the tab bar's own search tab. iOS 26's direction (the
+    /// owner, 21 November 2026): the field and its close button sit at the screen's foot, where the tab bar was, and
+    /// ride up with the keyboard (`.searchable` with its default placement in a `Tab(role: .search)`); the scope
+    /// chips sit just above the field (`safeAreaBar`, so results fade under them), and the results fill the screen
+    /// from the top.
+    @available(iOS 26, *)
     private var nativeBody: some View {
         NavigationStack {
             ScrollView {
-                VStack(alignment: .leading, spacing: 0) {
-                    scopes.padding(.top, 4)
-                    LazyVStack(alignment: .leading, spacing: 0) { results }
-                        .padding(.bottom, 16)
-                }
+                LazyVStack(alignment: .leading, spacing: 0) { results }
+                    .padding(.bottom, 16)
             }
             .scrollDismissesKeyboard(.interactively)
+            .safeAreaBar(edge: .bottom) { scopes.padding(.top, 8).padding(.bottom, 4) }
             .background(FoleviTokens.Chrome.canvas.resolve(scheme).color.ignoresSafeArea())
             // The field's own close button ends the search: back to the screen search was opened from (the
             // owner, 2026-11-19), not the Search tab left empty.
@@ -88,7 +91,7 @@ public struct PhoneSearchScreen: View {
             .navigationTitle("Search")
             .navigationBarTitleDisplayMode(.large)
         }
-        .searchable(text: $model.text, placement: .navigationBarDrawer(displayMode: .always), prompt: Text("Search notes and commands"))
+        .searchable(text: $model.text, prompt: Text("Search notes and commands"))
         .searchFocused($focused)
         .autocorrectionDisabled()
         .textInputAutocapitalization(.never)

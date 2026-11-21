@@ -24,6 +24,7 @@ let package = Package(
         .library(name: "FoleviScreens", targets: ["FoleviScreens"]),
         .library(name: "FoleviMac", targets: ["FoleviMac"]),
         .library(name: "FoleviPhone", targets: ["FoleviPhone"]),
+        .library(name: "FoleviEngineDemo", targets: ["FoleviEngineDemo"]),
     ],
     targets: [
         .target(
@@ -45,7 +46,17 @@ let package = Package(
         // controllers (FrameViews, SidebarViewController, TabStripView, Menus) stay Mac only.
         .target(
             name: "FoleviMac",
-            dependencies: ["FoleviEngine", "FoleviDesign", "FoleviScreens"],
+            dependencies: ["FoleviEngine", "FoleviDesign", "FoleviScreens", "FoleviEngineDemo"],
+            exclude: ["Demo"],
+            swiftSettings: strict
+        ),
+        // The scripted demo engine (sample notes, folders, tags, tasks; no account, no web export) for tests,
+        // previews and screenshots. Its files stay in FoleviMac/Demo; FoleviMac re-exports it. Folevi Core
+        // (apps/mac-core) uses it for its demo mode and tests.
+        .target(
+            name: "FoleviEngineDemo",
+            dependencies: ["FoleviEngine"],
+            path: "Sources/FoleviMac/Demo",
             swiftSettings: strict
         ),
         // The iPhone and iPad frame (docs/IOS_REBUILD_PLAN.md, I0 and I1): the web's phone layout drawn natively.

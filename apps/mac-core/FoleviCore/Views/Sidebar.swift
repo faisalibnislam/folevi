@@ -1,0 +1,202 @@
+// The window's sidebar: a source list in the system's sidebar material (Liquid Glass on macOS 26), SF Pro,
+// SF Symbols tinted by the person's accent colour, and Folevi's folder glyph for folders. Two levels at most
+// (folders nest by disclosure). The space and account menu sits at the top (nothing critical at the bottom).
+import FoleviDesign
+import FoleviEngine
+import SwiftUI
+
+struct Sidebar: View {
+    @Bindable var window: WindowModel
+    @Environment(AppModel.self) private var app
+    @State private var expanded: Set<String> = []
+    @State private var renaming: FolderNode?
+    @State private var newFolderParent: String?? = nil
+    @State private var foldersOpen = true
+    @State private var tagsOpen = true
+
+    var body: some View {
+        List(selection: $window.sidebarSelection) {
+            Section {
+                row(.home)
+                row(.search(""), title: "Search")
+                row(.foliAI(nil))
+                row(.notifications, badge: app.unread)
+                row(.inbox)
+                row(.tasks(.today), badge: app.taskCounts.value?.today ?? 0)
+                row(.calendar(nil))
+            }
+
+            Section("Notes") {
+                row(.allNotes)
+                row(.recent)
+                row(.starred)
+                if app.session.value?.mode != .local { row(.shared) }
+                row(.drafts)
+                if app.session.value?.capabilities.changes != false, app.session.value?.mode != .local {
+                    row(.changes, badge: app.changes.value?.notes.count ?? 0)
+                }
+                row(.templates)
+            }
+
+            Section(isExpanded: $foldersOpen) {
+                ForEach(rootFolders, id: \.id) { folder in
+                    FolderRow(folder: folder, all: folders, expanded: $expanded, window: window, rename: { renaming = $0 }, newSubfolder: { newFolderParent = .some($0.id) })
+                }
+                if folders.isEmpty, app.tree.value != nil {
+                    Text("No folders yet").foregroundStyle(.secondary).font(.callout)
+                }
+            } header: {
+                SectionHeaderWithAdd(title: "Folders", help: "New Folder") { newFolderParent = .some(nil) }
+            }
+
+            if !(app.tree.value?.tags ?? []).isEmpty {
+                Section("Tags", isExpanded: $tagsOpen) {
+                    ForEach(app.tree.value?.tags ?? [], id: \.id) { tag in
+                        Label {
+                            Text(tag.name)
+                        } icon: {
+                            Image(systemName: "number").foregroundStyle(Color.folevi(tag.color))
+                        }
+                        .tag(Destination.tag(tag.id))
+                    }
+                }
+            }
+
+            Section("More") {
+                if app.session.value?.mode != .local { row(.vault) }
+                row(.reviews)
+                if app.session.value?.capabilities.graph != false { row(.graph) }
+                row(.archive)
+                row(.trash)
+            }
+        }
+        .listStyle(.sidebar)
+        .safeAreaInset(edge: .top, spacing: 0) {
+            PlaceMenu()
+                .padding(.horizontal, 10)
+                .padding(.bottom, 6)
+        }
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            SyncFooter()
+        }
+        .navigationSplitViewColumnWidth(min: 200, ideal: 236, max: 340)
+        .sheet(item: $renaming) { folder in
+            NameSheet(title: "Rename Folder", initial: folder.name, action: "Rename") { name in
+                app.perform { _ = try await $0.command(Commands.FolderRename(FolderRenameArgs(id: folder.id, name: name))) }
+            }
+        }
+        .sheet(isPresented: Binding(get: { newFolderParent != nil }, set: { if !$0 { newFolderParent = nil } })) {
+            NameSheet(title: "New Folder", initial: "", action: "Create") { name in
+                let parent = newFolderParent ?? nil
+                app.perform { _ = try await $0.command(Commands.FolderCreate(FolderCreateArgs(space: nil, name: name, parentId: parent, color: nil))) }
+            }
+        }
+    }
+
+    private var folders: [FolderNode] { app.tree.value?.folders ?? [] }
+
+    private var rootFolders: [FolderNode] {
+        let all = folders
+        let order = app.tree.value?.sidebarOrder ?? []
+        let roots = all.filter { $0.parentId == nil }
+        guard !order.isEmpty else { return roots.sorted { $0.rank < $1.rank } }
+        let at = Dictionary(uniqueKeysWithValues: order.enumerated().map { ($1, $0) })
+        return roots.sorted { (at[$0.id] ?? Int.max, $0.rank) < (at[$1.id] ?? Int.max, $1.rank) }
+    }
+
+    private func row(_ dest: Destination, title: String? = nil, badge: Int = 0) -> some View {
+        Label(title ?? dest.title, systemImage: dest.symbol)
+            .badge(badge)
+            .tag(dest)
+    }
+}
+
+/// A folder in the sidebar, with its subfolders by disclosure and a drop target for notes.
+struct FolderRow: View {
+    let folder: FolderNode
+    let all: [FolderNode]
+    @Binding var expanded: Set<String>
+    let window: WindowModel
+    let rename: (FolderNode) -> Void
+    let newSubfolder: (FolderNode) -> Void
+    @Environment(AppModel.self) private var app
+    @State private var targeted = false
+
+    private var children: [FolderNode] { all.filter { $0.parentId == folder.id }.sorted { $0.rank < $1.rank } }
+
+    var body: some View {
+        if children.isEmpty {
+            label
+        } else {
+            DisclosureGroup(isExpanded: Binding(get: { expanded.contains(folder.id) }, set: { if $0 { expanded.insert(folder.id) } else { expanded.remove(folder.id) } })) {
+                ForEach(children, id: \.id) { child in
+                    FolderRow(folder: child, all: all, expanded: $expanded, window: window, rename: rename, newSubfolder: newSubfolder)
+                }
+            } label: {
+                label
+            }
+        }
+    }
+
+    private var label: some View {
+        Label {
+            HStack {
+                Text(folder.name)
+                if folder.locked { Image(systemName: "lock.fill").font(.caption2).foregroundStyle(.secondary) }
+            }
+        } icon: {
+            FolderMark(colorId: folder.color, size: 14, kind: folder.childCount > 0 ? .stack : ((folder.noteCount ?? 0) > 0 ? .notes : .empty))
+        }
+        .badge(folder.noteCount ?? 0)
+        .tag(Destination.folder(folder.id))
+        .dropDestination(for: NoteDrag.self) { items, _ in
+            let ids = items.map(\.id)
+            app.perform { _ = try await $0.command(Commands.NoteMove(NoteMoveArgs(ids: ids, folderId: folder.id))) }
+            return true
+        } isTargeted: { targeted = $0 }
+        .contextMenu { FolderMenu(folder: folder, window: window, rename: rename, newSubfolder: newSubfolder) }
+    }
+}
+
+/// A section title with a + at its end (Folders).
+struct SectionHeaderWithAdd: View {
+    var title: String
+    var help: String
+    var add: () -> Void
+
+    var body: some View {
+        HStack {
+            Text(title)
+            Spacer()
+            Button(action: add) { Image(systemName: "plus") }
+                .buttonStyle(.borderless)
+                .help(help)
+                .accessibilityLabel(help)
+        }
+    }
+}
+
+/// The sync state at the foot of the sidebar: quiet when saved, a word when not.
+struct SyncFooter: View {
+    @Environment(AppModel.self) private var app
+
+    var body: some View {
+        if let s = app.sync.value, s.state != .saved || s.pending > 0 {
+            HStack(spacing: 6) {
+                switch s.state {
+                case .saving, .syncing: ProgressView().controlSize(.mini)
+                case .offline: Image(systemName: "icloud.slash")
+                case .conflict, .error: Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(.orange)
+                case .saved: Image(systemName: "checkmark.icloud")
+                }
+                Text(s.label.isEmpty ? s.state.rawValue.capitalized : s.label).lineLimit(1)
+                Spacer()
+            }
+            .font(.caption)
+            .foregroundStyle(.secondary)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 8)
+            .accessibilityElement(children: .combine)
+        }
+    }
+}

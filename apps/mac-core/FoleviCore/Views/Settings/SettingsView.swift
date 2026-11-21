@@ -1,0 +1,669 @@
+// Settings (⌘,): a macOS 26 settings window with its sections in a sidebar, as System Settings. Every row is
+// native (SF Pro, grouped forms) and writes through the engine; the few sections that are mostly web tables
+// (connected apps, workspace data, exports, deleting the account) open in the window's page. Sections are named
+// for what they hold (the owner's rule).
+import FoleviDesign
+import FoleviEngine
+import ServiceManagement
+import Sparkle
+import SwiftUI
+
+enum SettingsSection: String, CaseIterable, Identifiable, Hashable {
+    case account, general, appearance, notifications, ai, security, privacy, appLock, offline, devices, workspace, connectedApps, data, billing, mac, updates
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .account: "Account"
+        case .general: "General"
+        case .appearance: "Appearance"
+        case .notifications: "Notifications"
+        case .ai: "Foli AI"
+        case .security: "Security"
+        case .privacy: "Privacy"
+        case .appLock: "App Lock"
+        case .offline: "Offline & Sync"
+        case .devices: "Signed-in Devices"
+        case .workspace: "Workspace"
+        case .connectedApps: "Connected Apps"
+        case .data: "Import & Export"
+        case .billing: "Plan & Billing"
+        case .mac: "This Mac"
+        case .updates: "Updates"
+        }
+    }
+
+    var symbol: String {
+        switch self {
+        case .account: "person.crop.circle"
+        case .general: "gearshape"
+        case .appearance: "paintpalette"
+        case .notifications: "bell.badge"
+        case .ai: "sparkles"
+        case .security: "lock"
+        case .privacy: "hand.raised"
+        case .appLock: "touchid"
+        case .offline: "arrow.triangle.2.circlepath"
+        case .devices: "laptopcomputer.and.iphone"
+        case .workspace: "person.3"
+        case .connectedApps: "app.connected.to.app.below.fill"
+        case .data: "square.and.arrow.up.on.square"
+        case .billing: "creditcard"
+        case .mac: "desktopcomputer"
+        case .updates: "arrow.down.circle"
+        }
+    }
+
+    /// A settings path's section ("/settings/ai" -> .ai).
+    init?(path: String) {
+        switch path {
+        case "account", "profile": self = .account
+        case "general": self = .general
+        case "appearance": self = .appearance
+        case "notifications": self = .notifications
+        case "ai": self = .ai
+        case "security": self = .security
+        case "privacy": self = .privacy
+        case "devices": self = .devices
+        case "workspace", "members", "workspace-guests": self = .workspace
+        case "connected-apps": self = .connectedApps
+        case "data", "export", "import": self = .data
+        case "billing": self = .billing
+        case "offline", "sync": self = .offline
+        case "lock", "app-lock": self = .appLock
+        case "desktop", "mac": self = .mac
+        case "updates": self = .updates
+        default: return nil
+        }
+    }
+}
+
+/// Opens Settings at a section (links to /settings/..., Foli AI's "turn this on", menus).
+@MainActor
+@Observable
+final class SettingsRouter {
+    static let shared = SettingsRouter()
+    var section: SettingsSection = .account
+    @ObservationIgnored var openSettings: (() -> Void)?
+
+    func open(_ path: String?) {
+        if let path, let s = SettingsSection(path: path) { section = s }
+        if let openSettings { openSettings() } else { NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil) }
+        NSApp.activate()
+    }
+}
+
+struct SettingsView: View {
+    @Environment(AppModel.self) private var app
+    @Bindable private var router = SettingsRouter.shared
+
+    private var sections: [SettingsSection] {
+        let local = app.session.value?.mode == .local
+        return SettingsSection.allCases.filter { s in
+            switch s {
+            case .account, .security, .privacy, .devices, .workspace, .connectedApps, .billing, .notifications: !local
+            default: true
+            }
+        }
+    }
+
+    var body: some View {
+        NavigationSplitView {
+            List(sections, selection: Binding(get: { router.section }, set: { if let s = $0 { router.section = s } })) { s in
+                Label(s.title, systemImage: s.symbol).tag(s)
+            }
+            .navigationSplitViewColumnWidth(200)
+        } detail: {
+            Group {
+                switch router.section {
+                case .account: AccountSettingsPane()
+                case .general: GeneralSettingsPane()
+                case .appearance: AppearanceSettingsPane()
+                case .notifications: NotificationSettingsPane()
+                case .ai: AISettingsPane()
+                case .security: SecuritySettingsPane()
+                case .privacy: WebSettingsPane(page: .settingsPrivacy)
+                case .appLock: AppLockPane()
+                case .offline: OfflinePane()
+                case .devices: DevicesPane()
+                case .workspace: WebSettingsPane(page: .settingsWorkspace)
+                case .connectedApps: WebSettingsPane(page: .settingsConnectedApps)
+                case .data: DataPane()
+                case .billing: BillingPane()
+                case .mac: MacPane()
+                case .updates: UpdatesPane()
+                }
+            }
+            .navigationTitle(router.section.title)
+        }
+        .frame(minWidth: 720, minHeight: 500)
+    }
+}
+
+// MARK: panes
+
+struct AccountSettingsPane: View {
+    @Environment(AppModel.self) private var app
+    @State private var account = Live<Views.SettingsAccount>()
+    @State private var details = Live<Views.AccountDetails>()
+    @State private var name = ""
+
+    var body: some View {
+        Form {
+            if let a = account.value {
+                Section {
+                    HStack(spacing: 14) {
+                        PlaceAvatar(size: 56)
+                        VStack(alignment: .leading) {
+                            Text(a.name).font(.title3.weight(.semibold))
+                            Text(a.email).foregroundStyle(.secondary)
+                        }
+                        Spacer()
+                        Button("Change Picture…") { pickAvatar() }
+                        if a.avatarUrl != nil { Button("Remove") { app.perform { _ = try await $0.command(Commands.SettingsRemoveAvatar()) } } }
+                    }
+                }
+                Section("Profile") {
+                    TextField("Name", text: $name).onSubmit { save() }
+                    LabeledContent("Email", value: a.email)
+                    LabeledContent("Time Zone", value: a.timeZone)
+                }
+            }
+            if let d = details.value {
+                if let plan = d.plan { Section("Plan") { LabeledContent("Plan", value: plan.tier.capitalized + (plan.trialing ? " (trial)" : "")) } }
+                if let s = d.storage {
+                    Section("Storage") {
+                        LabeledContent("Used", value: ByteCountFormatter.string(fromByteCount: Int64(s.usedBytes), countStyle: .file) + (s.limitBytes.map { " of " + ByteCountFormatter.string(fromByteCount: Int64($0), countStyle: .file) } ?? ""))
+                        if let limit = s.limitBytes, limit > 0 { ProgressView(value: Double(s.usedBytes), total: Double(limit)) }
+                    }
+                }
+                Section("Spaces") {
+                    ForEach(d.spaces, id: \.id) { s in LabeledContent(s.name, value: s.role.capitalized) }
+                }
+            }
+            Section {
+                Button("Sign Out of This Account…", role: .destructive) { signOut() }
+                Button("Delete Account…", role: .destructive) { SettingsWeb.open(.settingsDeleteAccount) }
+            }
+        }
+        .formStyle(.grouped)
+        .task(id: app.client.map(ObjectIdentifier.init)) {
+            account.bind(app.client, Views.SettingsAccount())
+            details.bind(app.client, Views.AccountDetails())
+        }
+        .onChange(of: account.value?.name) { name = account.value?.name ?? "" }
+    }
+
+    private func save() {
+        let n = name.trimmingCharacters(in: .whitespaces)
+        guard !n.isEmpty, n != account.value?.name else { return }
+        app.perform { _ = try await $0.command(Commands.SettingsUpdate(SettingsUpdateArgs(name: n, appearance: nil, timeZone: nil, reviewAppEdits: nil, aiEnabled: nil, editorZoom: nil))) }
+    }
+
+    private func pickAvatar() {
+        let panel = NSOpenPanel()
+        panel.allowedContentTypes = [.image]
+        guard panel.runModal() == .OK, let url = panel.url, let data = try? Data(contentsOf: url), data.count < 8_000_000 else { return }
+        let mime = url.pathExtension.lowercased() == "png" ? "image/png" : "image/jpeg"
+        app.perform { _ = try await $0.command(Commands.SettingsSetAvatar(AvatarArgs(data: data.base64EncodedString(), mimeType: mime, name: url.lastPathComponent))) }
+    }
+
+    private func signOut() {
+        let alert = NSAlert()
+        alert.messageText = "Sign out of \(account.value?.email ?? "this account")?"
+        alert.informativeText = "Notes waiting to sync stay on this Mac until you sign in again."
+        alert.addButton(withTitle: "Sign Out")
+        alert.addButton(withTitle: "Cancel")
+        guard alert.runModal() == .alertFirstButtonReturn else { return }
+        app.perform { _ = try await $0.command(Commands.AccountSignOut()) }
+    }
+}
+
+struct GeneralSettingsPane: View {
+    @Environment(AppModel.self) private var app
+    @State private var general = Live<Views.SettingsGeneral>()
+
+    var body: some View {
+        Form {
+            if let g = general.value {
+                Section {
+                    Picker("Time Zone", selection: Binding(get: { g.timeZone }, set: { tz in app.perform { _ = try await $0.command(Commands.SettingsUpdate(SettingsUpdateArgs(name: nil, appearance: nil, timeZone: tz, reviewAppEdits: nil, aiEnabled: nil, editorZoom: nil))) } })) {
+                        ForEach(TimeZone.knownTimeZoneIdentifiers, id: \.self) { Text($0.replacingOccurrences(of: "_", with: " ")).tag($0) }
+                    }
+                    Toggle("Review edits from connected apps before they're saved", isOn: Binding(get: { g.reviewAppEdits }, set: { v in app.perform { _ = try await $0.command(Commands.SettingsUpdate(SettingsUpdateArgs(name: nil, appearance: nil, timeZone: nil, reviewAppEdits: v, aiEnabled: nil, editorZoom: nil))) } }))
+                }
+            } else {
+                ProgressView()
+            }
+        }
+        .formStyle(.grouped)
+        .task(id: app.client.map(ObjectIdentifier.init)) { general.bind(app.client, Views.SettingsGeneral()) }
+    }
+}
+
+struct AppearanceSettingsPane: View {
+    @Environment(AppModel.self) private var app
+    @State private var appearance = Live<Views.SettingsAppearance>()
+
+    var body: some View {
+        Form {
+            if let a = appearance.value {
+                Section {
+                    Picker("Appearance", selection: Binding(get: { a.appearance.rawValue }, set: { v in
+                        app.perform { _ = try await $0.command(Commands.SettingsUpdate(SettingsUpdateArgs(name: nil, appearance: .init(rawValue: v), timeZone: nil, reviewAppEdits: nil, aiEnabled: nil, editorZoom: nil))) }
+                    })) {
+                        Text("System").tag("system"); Text("Light").tag("light"); Text("Dark").tag("dark")
+                    }
+                    .pickerStyle(.segmented)
+                    Picker("Note Text Size", selection: Binding(get: { a.editorZoom }, set: { z in
+                        app.perform { _ = try await $0.command(Commands.SettingsUpdate(SettingsUpdateArgs(name: nil, appearance: nil, timeZone: nil, reviewAppEdits: nil, aiEnabled: nil, editorZoom: z))) }
+                    })) {
+                        ForEach(a.editorZooms, id: \.self) { Text("\(Int($0 * 100))%").tag($0) }
+                    }
+                }
+            } else {
+                ProgressView()
+            }
+        }
+        .formStyle(.grouped)
+        .task(id: app.client.map(ObjectIdentifier.init)) { appearance.bind(app.client, Views.SettingsAppearance()) }
+    }
+}
+
+struct NotificationSettingsPane: View {
+    @Environment(AppModel.self) private var app
+    @State private var settings = Live<Views.SettingsNotifications>()
+
+    var body: some View {
+        Form {
+            if let s = settings.value {
+                Section("What You Hear About") {
+                    ForEach(s.topics, id: \.id) { t in
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(t.label)
+                            if !t.hint.isEmpty { Text(t.hint).font(.caption).foregroundStyle(.secondary) }
+                            HStack {
+                                Toggle("In Folevi", isOn: Binding(get: { t.inApp }, set: { v in set(t.id, inApp: v, email: nil) }))
+                                Toggle("Email", isOn: Binding(get: { t.email }, set: { v in set(t.id, inApp: nil, email: v) }))
+                            }
+                            .toggleStyle(.checkbox)
+                        }
+                    }
+                }
+                Section("Email") {
+                    Picker("Summary Email", selection: Binding(get: { s.digest }, set: { d in
+                        app.perform { _ = try await $0.command(Commands.SettingsSetNotificationEmails(NotificationEmailsArgs(digest: .init(rawValue: d), productEmail: nil))) }
+                    })) {
+                        Text("Never").tag("off"); Text("Daily").tag("daily")
+                    }
+                    Toggle("News about Folevi", isOn: Binding(get: { s.productEmail }, set: { v in
+                        app.perform { _ = try await $0.command(Commands.SettingsSetNotificationEmails(NotificationEmailsArgs(digest: nil, productEmail: v))) }
+                    }))
+                }
+            } else {
+                ProgressView()
+            }
+        }
+        .formStyle(.grouped)
+        .task(id: app.client.map(ObjectIdentifier.init)) { settings.bind(app.client, Views.SettingsNotifications()) }
+    }
+
+    private func set(_ topic: String, inApp: Bool?, email: Bool?) {
+        app.perform { _ = try await $0.command(Commands.SettingsSetNotificationTopic(NotificationTopicArgs(topic: topic, inApp: inApp, email: email))) }
+    }
+}
+
+struct AISettingsPane: View {
+    @Environment(AppModel.self) private var app
+    @State private var ai = Live<Views.SettingsAi>()
+
+    var body: some View {
+        Form {
+            if let a = ai.value {
+                Section {
+                    Toggle("Foli AI", isOn: Binding(get: { a.enabled }, set: { v in app.perform { _ = try await $0.command(Commands.SettingsUpdate(SettingsUpdateArgs(name: nil, appearance: nil, timeZone: nil, reviewAppEdits: nil, aiEnabled: v, editorZoom: nil))) } }))
+                    if !a.included { Text("Foli AI comes with Pro AI, or as a trial.").font(.caption).foregroundStyle(.secondary) }
+                }
+                Section("What Foli AI May Do") {
+                    Toggle("Keep chat history", isOn: pref(.history, a.history))
+                    Toggle("Remember things you ask it to", isOn: pref(.memory, a.memory))
+                    Toggle("Suggest follow-ups", isOn: pref(.suggestions, a.suggestions))
+                    Toggle("Read attachments", isOn: pref(.attachments, a.attachments))
+                    Toggle("Research the web", isOn: pref(.webResearch, a.webResearch))
+                    Toggle("Weekly digests", isOn: pref(.digests, a.digests))
+                    Toggle("Read text in images", isOn: pref(.readImages, a.readImages))
+                    Toggle("Use on-device text recognition", isOn: pref(.deviceText, a.deviceText))
+                }
+                .disabled(!a.enabled)
+                Section { Button("Export Foli AI Data…") { SettingsWeb.open(.settingsAiExport) } }
+            } else {
+                ProgressView()
+            }
+        }
+        .formStyle(.grouped)
+        .task(id: app.client.map(ObjectIdentifier.init)) { ai.bind(app.client, Views.SettingsAi()) }
+    }
+
+    private func pref(_ key: AiPrefKey, _ value: Bool) -> Binding<Bool> {
+        Binding(get: { value }, set: { v in app.perform { _ = try await $0.command(Commands.SettingsSetAiPref(AiPrefArgs(key: key, on: v))) } })
+    }
+}
+
+struct SecuritySettingsPane: View {
+    @Environment(AppModel.self) private var app
+    @State private var security = Live<Views.SettingsSecurity>()
+
+    var body: some View {
+        Form {
+            if let s = security.value {
+                Section("Signing In") {
+                    LabeledContent("Two-factor authentication", value: s.twoFactor == true ? "On" : "Off")
+                    LabeledContent("Passkeys", value: s.passkeys.isEmpty ? "None" : "\(s.passkeys.count)")
+                    Button("Manage Password, Two-Factor and Passkeys…") { SettingsWeb.open(.settingsSecurity) }
+                }
+                Section("End-to-End Encryption") {
+                    E2eeRow()
+                }
+            } else {
+                ProgressView()
+            }
+        }
+        .formStyle(.grouped)
+        .task(id: app.client.map(ObjectIdentifier.init)) { security.bind(app.client, Views.SettingsSecurity()) }
+    }
+}
+
+struct E2eeRow: View {
+    @Environment(AppModel.self) private var app
+    @State private var state = Live<Views.E2eeState>()
+
+    var body: some View {
+        Group {
+            if let s = state.value {
+                LabeledContent("Encryption on this Mac", value: s.state == .none ? "Off" : s.state.rawValue.capitalized)
+                if s.state == .locked { Text("Open a note in an encrypted space to unlock it with your passphrase or recovery key.").font(.caption).foregroundStyle(.secondary) }
+            } else {
+                ProgressView().controlSize(.small)
+            }
+        }
+        .task(id: app.client.map(ObjectIdentifier.init)) { state.bind(app.client, Views.E2eeState()) }
+    }
+}
+
+struct DevicesPane: View {
+    @Environment(AppModel.self) private var app
+    @State private var security = Live<Views.SettingsSecurity>()
+
+    var body: some View {
+        Form {
+            Section {
+                ForEach(security.value?.sessions ?? [], id: \.id) { s in
+                    HStack {
+                        Image(systemName: s.client.lowercased().contains("iphone") ? "iphone" : s.client.lowercased().contains("ipad") ? "ipad" : "laptopcomputer")
+                        VStack(alignment: .leading) {
+                            Text(s.label + (s.current ? " (this Mac)" : ""))
+                            Text("\(s.client) · \(CoreDates.relative(s.lastSeenAt))").font(.caption).foregroundStyle(.secondary)
+                        }
+                        Spacer()
+                        if !s.current {
+                            Button("Sign Out") { app.perform { _ = try await $0.command(Commands.SessionRevoke(SessionIdArgs(id: s.id))) } }
+                        }
+                    }
+                }
+            }
+        }
+        .formStyle(.grouped)
+        .task(id: app.client.map(ObjectIdentifier.init)) { security.bind(app.client, Views.SettingsSecurity()) }
+    }
+}
+
+struct AppLockPane: View {
+    private var lock = MacAppLock.shared
+
+    var body: some View {
+        Form {
+            Section {
+                Toggle("Lock Folevi Core with Touch ID", isOn: Binding(get: { lock.lock }, set: { v in Task { await lock.set(lock: v) } }))
+                    .disabled(!MacAppLock.available)
+                Picker("Ask Again After", selection: Binding(get: { lock.lockAfter }, set: { v in Task { await lock.set(after: v) } })) {
+                    Text("Immediately").tag(0)
+                    Text("1 minute").tag(60)
+                    Text("5 minutes").tag(300)
+                    Text("15 minutes").tag(900)
+                    Text("1 hour").tag(3600)
+                }
+                .disabled(!lock.lock)
+            } footer: {
+                Text(MacAppLock.available ? "Your notes are hidden until you unlock with Touch ID or your Mac's password." : "This Mac has no Touch ID or password to ask for.")
+            }
+        }
+        .formStyle(.grouped)
+    }
+}
+
+struct OfflinePane: View {
+    @Environment(AppModel.self) private var app
+    @State private var storage = Live<Views.DeviceStorage>()
+
+    var body: some View {
+        Form {
+            if let s = storage.value {
+                Section {
+                    Toggle("Keep every note on this Mac", isOn: Binding(get: { s.keepAll }, set: { v in app.perform { _ = try await $0.command(Commands.DeviceKeepAll(DeviceKeepAllArgs(on: v))) } }))
+                    LabeledContent("Notes kept", value: s.notesKept.map { $0.formatted() } ?? "…")
+                    LabeledContent("Files kept", value: s.attachmentsKept.map { $0.formatted() } ?? "…")
+                    LabeledContent("Space used", value: s.usedBytes.map { ByteCountFormatter.string(fromByteCount: Int64($0), countStyle: .file) } ?? "…")
+                    if s.waiting > 0 { LabeledContent("Waiting to sync", value: s.waiting.formatted()) }
+                }
+                if !s.spaces.isEmpty {
+                    Section("Spaces") {
+                        ForEach(s.spaces, id: \.space) { sp in
+                            LabeledContent(sp.name, value: sp.total.map { "\(sp.have.formatted()) of \($0.formatted())" } ?? sp.phase.capitalized)
+                        }
+                    }
+                }
+                Section {
+                    Button("Download Everything Now") { app.perform { _ = try await $0.command(Commands.DeviceDownload()); app.toast("Downloading every note and file") } }
+                    Button("Sync Now") { app.perform { _ = try await $0.command(Commands.EngineRefresh()) } }
+                    Button("Remove Downloaded Files…", role: .destructive) { app.perform { _ = try await $0.command(Commands.DeviceRemoveFiles()) } }
+                    Button("Remove This Mac's Copy…", role: .destructive) { app.perform { _ = try await $0.command(Commands.DeviceRemoveCopy(DeviceRemoveCopyArgs(force: nil))) } }
+                }
+            } else {
+                ProgressView()
+            }
+            if app.session.value?.mode == .local { LibrarySection() }
+        }
+        .formStyle(.grouped)
+        .task(id: app.client.map(ObjectIdentifier.init)) { storage.bind(app.client, Views.DeviceStorage()) }
+    }
+}
+
+/// The library "on this Mac": where it lives (iCloud, a folder, this Mac), its passphrase, syncing it now.
+struct LibrarySection: View {
+    @Environment(AppModel.self) private var app
+    @State private var info: [String: JSONValue] = [:]
+
+    var body: some View {
+        Section("Library") {
+            LabeledContent("Kept in", value: info["displayPath"]?.string ?? info["kind"]?.string ?? "…")
+            Button("Sync Library Now") { run(.librarySyncNow) }
+            Menu("Move Library To") {
+                Button("iCloud Drive") { run(.libraryMove, ["kind": .string("icloud")]) }
+                Button("A Folder…") { run(.libraryMove, ["kind": .string("folder")]) }
+                Button("This Mac") { run(.libraryMove, ["kind": .string("device")]) }
+            }
+            Button("Set a Passphrase…") { run(.librarySetPassphrase) }
+            Button("Lock Library") { run(.libraryLock) }
+        }
+        .task {
+            if let v = try? await app.client?.query(Views.SettingsQuery(SettingsQueryArgs(key: .library, args: nil))), case .object(let o) = v.data { info = o }
+        }
+    }
+
+    private func run(_ key: SettingsRunKey, _ args: [String: JSONValue]? = nil) {
+        app.perform { _ = try await $0.command(Commands.SettingsRun(SettingsRunArgs(key: key, args: args))) }
+    }
+}
+
+struct DataPane: View {
+    var body: some View {
+        Form {
+            Section("Import") {
+                Button("Import Notes…") { SettingsWeb.open(.settingsData) }
+                Text("From Markdown, Notion, Evernote, Apple Notes exports and more.").font(.caption).foregroundStyle(.secondary)
+            }
+            Section("Export") {
+                Button("Export Everything…") { SettingsWeb.open(.settingsData) }
+                Button("Workspace Data…") { SettingsWeb.open(.settingsWorkspaceData) }
+            }
+        }
+        .formStyle(.grouped)
+    }
+}
+
+struct BillingPane: View {
+    var body: some View {
+        Form {
+            Section {
+                Text("Plans and billing are managed on folevi.com.").foregroundStyle(.secondary)
+                Link("Open Plan & Billing", destination: Paths.serviceURL.appendingPathComponent("settings/billing"))
+            }
+        }
+        .formStyle(.grouped)
+    }
+}
+
+/// This Mac's own: Quick Add's shortcut, the menu bar icon, opening at login, Mac notifications, Spotlight.
+struct MacPane: View {
+    @State private var settings = DesktopSettings.current
+
+    var body: some View {
+        Form {
+            Section("Quick Add") {
+                ShortcutRecorder(value: $settings.quickAddShortcut)
+                Toggle("Show Folevi Core in the menu bar", isOn: $settings.menuBarIcon)
+            }
+            Section {
+                Toggle("Open at login", isOn: $settings.openAtLogin)
+                Toggle("Mac notifications for comments, mentions and reminders", isOn: $settings.notifications)
+                Toggle("Show notes in Spotlight", isOn: $settings.spotlight)
+            }
+        }
+        .formStyle(.grouped)
+        .onChange(of: settings) { old, new in
+            DesktopSettings.current = new
+            DesktopHooks.onSettings?(new, old)
+        }
+    }
+}
+
+/// A field that records a key combination ("Option+Space").
+struct ShortcutRecorder: View {
+    @Binding var value: String
+    @State private var recording = false
+    @State private var monitor: Any?
+
+    var body: some View {
+        LabeledContent("Shortcut") {
+            HStack {
+                Button(recording ? "Type a shortcut…" : (value.isEmpty ? "None" : HotKey.display(value))) { recording ? stop() : start() }
+                    .frame(minWidth: 140)
+                if !value.isEmpty { Button("Clear") { value = "" }.buttonStyle(.borderless) }
+            }
+        }
+    }
+
+    private func start() {
+        recording = true
+        DesktopHooks.pauseShortcut?(true)
+        monitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { e in
+            if e.keyCode == 53 { stop(); return nil }
+            if let s = HotKey.accelerator(e), HotKey.isValidShortcut(s) { value = s; stop() }
+            return nil
+        }
+    }
+
+    private func stop() {
+        recording = false
+        DesktopHooks.pauseShortcut?(false)
+        if let monitor { NSEvent.removeMonitor(monitor) }
+        monitor = nil
+    }
+}
+
+struct UpdatesPane: View {
+    var body: some View {
+        Form {
+            Section {
+                LabeledContent("Version", value: Paths.version)
+                Button(Updater.shared.menuTitle ?? "Check for Updates…") { Updater.shared.menuAction() }
+                    .disabled(!Updater.enabled)
+                if !Updater.enabled { Text("Updates are off in development builds.").font(.caption).foregroundStyle(.secondary) }
+            }
+        }
+        .formStyle(.grouped)
+    }
+}
+
+/// A section the page draws (connected apps, workspace, privacy, exports), in the Settings window.
+struct WebSettingsPane: View {
+    let page: WebPage
+    @State private var host: Page?
+    private let id = UUID()
+
+    var body: some View {
+        PageHostView(page: host)
+            .task(id: page) {
+                guard let p = PagePool.shared.editor(for: id) else { return }
+                host = p
+                await p.show(web: page)
+            }
+            .onDisappear { PagePool.shared.giveBack(from: id); host = nil }
+    }
+}
+
+@MainActor
+enum SettingsWeb {
+    /// Opens a web-drawn section (from a button inside another section).
+    static func open(_ page: FoleviEngine.WebPage) {
+        switch page {
+        case .settingsConnectedApps: SettingsRouter.shared.section = .connectedApps
+        case .settingsWorkspace: SettingsRouter.shared.section = .workspace
+        case .settingsPrivacy: SettingsRouter.shared.section = .privacy
+        default:
+            let w = SettingsWebWindow(page: page)
+            w.show()
+        }
+    }
+}
+
+/// A web-drawn screen in a window of its own (deleting the account, an export, two-factor).
+@MainActor
+final class SettingsWebWindow: NSObject, NSWindowDelegate {
+    private static var open: [SettingsWebWindow] = []
+    let page: WebPage
+    private var window: NSWindow?
+    private let id = UUID()
+
+    init(page: FoleviEngine.WebPage) { self.page = page }
+
+    func show() {
+        guard let p = PagePool.shared.editor(for: id) else { return }
+        let w = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 720, height: 620), styleMask: [.titled, .closable, .resizable, .miniaturizable], backing: .buffered, defer: false)
+        w.title = "Folevi Core"
+        w.isReleasedWhenClosed = false
+        w.delegate = self
+        p.view.frame = w.contentView?.bounds ?? .zero
+        w.contentView?.addSubview(p.view)
+        w.center()
+        w.makeKeyAndOrderFront(nil)
+        window = w
+        Self.open.append(self)
+        Task { await p.show(web: page) }
+    }
+
+    func windowWillClose(_ notification: Notification) {
+        PagePool.shared.giveBack(from: id)
+        Self.open.removeAll { $0 === self }
+    }
+}

@@ -958,12 +958,16 @@ struct WebNoteCarousel: View {
             .onScrollGeometryChange(for: Ends.self) { g in
                 Ends(start: g.contentOffset.x <= 2, end: g.contentOffset.x + g.containerSize.width >= g.contentSize.width - 2)
             } action: { _, e in ends = e }
+            // The cards' shadows and the hover lift never stop at the row's edge (the owner, 21 November 2026): the
+            // row doesn't clip, and its fade masks reach well above and below it, so they only fade the two ends.
+            .scrollClipDisabled()
             .mask {
                 HStack(spacing: 0) {
                     LinearGradient(colors: [atStart ? .black : .clear, .black], startPoint: .leading, endPoint: .trailing).frame(width: 64)
                     Color.black
                     LinearGradient(colors: [.black, atEnd ? .black : .clear], startPoint: .leading, endPoint: .trailing).frame(width: 64)
                 }
+                .padding(.vertical, -60)
             }
             .frame(width: visible, height: rowHeight)
             .padding(.leading, ul.margin.left)

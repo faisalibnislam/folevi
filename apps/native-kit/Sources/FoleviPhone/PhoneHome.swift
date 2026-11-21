@@ -149,12 +149,15 @@ public struct PhoneHomeContent: View {
             }
             .scrollIndicators(.hidden)
             .scrollTargetBehavior(.viewAligned)
+            // The cards' shadows fade out past the strip instead of being cut off (the owner, 21 November 2026).
+            .scrollClipDisabled()
             .contentMargins(.horizontal, strip.padding.left, for: .scrollContent)
             // (To the screen's edges, except where iOS's column of bars sits at the side, iPhone Duo: the cards stop
             // short of it rather than slide under it and the status bar.)
             .padding(.leading, -strip.padding.left)
             .padding(.trailing, sideBars ? 0 : -strip.padding.left)
-            // (Where it stops short, the cards fade out at its end rather than being cut off.)
+            // (Where it stops short, the cards fade out at its end rather than being cut off. The mask reaches well
+            // above and below the strip, so it only ever fades that side, never the cards' shadows.)
             .mask {
                 HStack(spacing: 0) {
                     Color.black
@@ -163,6 +166,7 @@ public struct PhoneHomeContent: View {
                             .frame(width: 36)
                     }
                 }
+                .padding(.vertical, -60)
             }
             .accessibilityLabel("Recent notes")
         }

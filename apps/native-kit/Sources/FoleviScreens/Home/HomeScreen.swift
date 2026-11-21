@@ -110,6 +110,8 @@ public struct HomeScreen: View {
                 .padding(.bottom, 22)
             }
             .scrollTargetBehavior(.viewAligned)
+            // The cards' shadows fade out past the strip instead of being cut off.
+            .scrollClipDisabled()
             .accessibilityLabel("Recent notes")
         } else {
             LazyVGrid(columns: [GridItem(.adaptive(minimum: typeSize.isAccessibilitySize ? 260 : 168, maximum: typeSize.isAccessibilitySize ? 600 : 230), spacing: 18, alignment: .top)], spacing: 22) {
@@ -255,6 +257,8 @@ public struct HomeScreen: View {
                     .padding(.bottom, 24)
                 }
                 .scrollTargetBehavior(.viewAligned)
+                // The cards' shadows fade out past the strip instead of being cut off.
+                .scrollClipDisabled()
                 .accessibilityLabel("Folders")
             } else {
                 LazyVGrid(columns: [GridItem(.adaptive(minimum: typeSize.isAccessibilitySize ? 240 : 150, maximum: 210), spacing: 16, alignment: .top)], spacing: 20) {

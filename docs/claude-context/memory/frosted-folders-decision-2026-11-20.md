@@ -21,6 +21,9 @@ Owner chose (AskUserQuestion, 2026-11-20) after the "Folevi folder states" artif
 - 2026-11-21 follow-up: the back's bottom corners must match the front's exactly (true 14 pt circles), and the
   frost is **30% lighter** (blur 2.45 px on a 232 px card, tint opacity and sheen x0.7). Home sections sit 8 px
   closer and the Mac carousel hugs its smaller cards.
+- 2026-11-21, later: the owner wants the folder's name to read clearly, so the frost sits **behind the words only**:
+  strong tint and blur behind the name and counts (front's top 40%) and the Edited date (bottom 20%), clear glass
+  between (54% to 66%). Same on web, Mac, iPhone and iPad.
 
 **Why:** owner reviewed many concepts in artifacts and converged on this.
 **How to apply:** build on its own branch/worktree (other sessions release from the main checkout); see

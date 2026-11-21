@@ -12,8 +12,8 @@ import { createdText } from "@/lib/format";
  * The "Frosted" folder (the owner, 20 November 2026): a back with a soft S-curved tab in the folder's muted
  * colour, 85% opaque; up to five of the notes inside, drawn as today's note cards and fanned a little to both
  * sides, standing well above the back; up to two subfolders as whole folders stacked straight up behind it,
- * each a step higher and narrower, with no names; and a see-through frosted front over the notes' lower half
- * with the name, the counts and the last change.
+ * each a step higher and narrower, with no names; and a see-through front over the notes' lower half with the
+ * name, the counts and the last change, frosted only behind those words and clear between them (21 November).
  *
  * Hover: the card lifts 4 px (FOLDER_CARD_FRAME, 200 ms) and the notes rise a little, the front one most
  * (300 ms), both on the app's easing. The global prefers-reduced-motion rule in globals.css makes both instant.
@@ -183,7 +183,9 @@ export function FolderCardArt({
       {[...shown].reverse().map((p, i) => (
         <FolderNote key={i} note={p} depth={shown.length - 1 - i} top={noteTop} />
       ))}
-      {/* the frosted front, with the name, the counts and the last change */}
+      {/* the frost: the notes blurred behind the front's words, clear between them (globals.css) */}
+      <div data-fc="frost" className="pointer-events-none absolute inset-x-0 bottom-0 rounded-panel" style={{ top: `${FOLDER_FRONT_TOP}%` }} />
+      {/* the front, with the name, the counts and the last change */}
       <div data-fc="front" className="absolute inset-x-0 bottom-0 flex flex-col overflow-hidden rounded-panel px-[7cqw] pb-[5.6cqw] pt-[6.4cqw]" style={{ top: `${FOLDER_FRONT_TOP}%` }}>
         <span aria-hidden className="pointer-events-none absolute inset-0 opacity-[0.1] mix-blend-soft-light" style={{ backgroundImage: GRAIN }} />
         <span data-fc="name" className={`relative ${menuRoom ? "pr-[max(0px,calc(46px-7cqw))]" : ""} line-clamp-2 text-ellipsis wrap-normal break-normal font-serif text-[clamp(14px,calc(8cqw*var(--fc-text,1)),30px)] font-semibold leading-[1.15]`}>

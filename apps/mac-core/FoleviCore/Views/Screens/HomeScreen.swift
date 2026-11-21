@@ -248,9 +248,8 @@ struct HomeFolderCard: View {
                 case .note(let n):
                     moved += 1
                     app.perform { _ = try await $0.command(Commands.NoteMove(NoteMoveArgs(ids: [n.id], folderId: folder.id))) }
-                case .folder(let f) where f.id != folder.id:
-                    moved += 1
-                    app.perform { _ = try await $0.command(Commands.FolderMove(FolderMoveArgs(id: f.id, parentId: folder.id))) }
+                case .folder(let f):
+                    if FolderActions.move(f.id, into: folder.id) { moved += 1 }
                 default:
                     break
                 }

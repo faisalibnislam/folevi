@@ -37,7 +37,7 @@ struct Sidebar: View {
                 row(.allNotes)
                 row(.recent)
                 row(.starred)
-                if app.session.value?.mode != .local { row(.shared) }
+                row(.shared)
                 row(.drafts)
                 if app.session.value?.capabilities.changes != false, app.session.value?.mode != .local {
                     row(.changes, badge: app.changes.value?.notes.count ?? 0)
@@ -85,14 +85,12 @@ struct Sidebar: View {
                     .tag(Destination.tag(tag.id))
                     .contextMenu {
                         Button("Open in New Tab") { app.open(.tag(tag.id), newTab: true) }
-                        Button("Rename…") { renamingTag = tag }
-                        Menu("Colour") {
-                            ForEach(TagColors.all, id: \.id) { c in
-                                Button(c.name) { app.perform { _ = try await $0.command(Commands.TagUpdate(TagUpdateArgs(id: tag.id, color: c.id))) } }
-                            }
+                        Button("Edit Tag…") { renamingTag = tag }
+                        ForEach(TagColors.all.filter { $0.id != tag.color }, id: \.id) { c in
+                            Button("Colour: \(c.name)") { app.perform { _ = try await $0.command(Commands.TagUpdate(TagUpdateArgs(id: tag.id, color: c.id))) } }
                         }
                         Divider()
-                        Button("Delete Tag", role: .destructive) { app.perform { _ = try await $0.command(Commands.TagDelete(TagIdArgs(id: tag.id))) } }
+                        Button("Delete Tag…", role: .destructive) { TagActions.delete(id: tag.id, name: tag.name, window: window) }
                     }
                 }
                 if tags.count > 5 {
@@ -139,11 +137,7 @@ struct Sidebar: View {
             // On a folder's page the new folder goes inside it.
             if case .folder(let id) = window.current { newFolderParent = .some(id) } else { newFolderParent = .some(nil) }
         }
-        .sheet(item: $renamingTag) { tag in
-            NameSheet(title: "Rename Tag", initial: tag.name, action: "Rename") { name in
-                app.perform { _ = try await $0.command(Commands.TagUpdate(TagUpdateArgs(id: tag.id, name: name))) }
-            }
-        }
+        .sheet(item: $renamingTag) { tag in TagEditSheet(id: tag.id, initialName: tag.name, initialColor: tag.color) }
         .sheet(item: $renaming) { folder in
             NameSheet(title: "Rename Folder", initial: folder.name, action: "Rename") { name in
                 app.perform { _ = try await $0.command(Commands.FolderRename(FolderRenameArgs(id: folder.id, name: name))) }
@@ -255,9 +249,9 @@ struct FolderRow: View {
                 switch item {
                 case .note(let n):
                     app.perform { _ = try await $0.command(Commands.NoteMove(NoteMoveArgs(ids: [n.id], folderId: folder.id))) }
-                case .folder(let f) where f.id != folder.id:
-                    // A folder dropped on a folder goes inside it.
-                    app.perform { _ = try await $0.command(Commands.FolderMove(FolderMoveArgs(id: f.id, parentId: folder.id))) }
+                case .folder(let f):
+                    // A folder dropped on a folder goes inside it (if the nesting rules allow).
+                    _ = FolderActions.move(f.id, into: folder.id)
                 default:
                     break
                 }

@@ -23,6 +23,9 @@ struct NoteDrag: Codable, Transferable {
 struct NoteMenu: View {
     let row: NoteRow
     let window: WindowModel
+    /// Manual order: move the note up or down one place (nil where it can't move).
+    var moveUp: (() -> Void)? = nil
+    var moveDown: (() -> Void)? = nil
     private var app: AppModel { .shared }
     @Environment(\.openWindow) private var openWindow
     var inTrash: Bool { row.inTrash }
@@ -33,6 +36,11 @@ struct NoteMenu: View {
             Divider()
             Button("Delete Immediately…", role: .destructive) { NoteActions.deleteForever([row.id], app: app) }
         } else {
+            if row.kind == "template" {
+                Button("New Note from Template") { NoteActions.newNote(app: app, window: window, template: row.id) }
+                Button("Edit Template") { window.go(.note(row.id)) }
+                Divider()
+            }
             Button("Open") { window.go(.note(row.id)) }
             Button("Open in New Tab") { app.open(.note(row.id), newTab: true) }
             Button("Open in Background Tab") { app.open(.note(row.id), newTab: true, background: true) }
@@ -45,6 +53,10 @@ struct NoteMenu: View {
             Button("Move To Folder…") { window.pickFolder(.moveNotes, [row.id]) }
             Button("Copy To…") { window.pickFolder(.copyNotes, [row.id]) }
             Button("Duplicate") { app.perform { _ = try await $0.command(Commands.NoteDuplicate(NoteIdArgs(id: row.id))) } }
+            if moveUp != nil || moveDown != nil {
+                Button("Move Up") { moveUp?() }.disabled(moveUp == nil)
+                Button("Move Down") { moveDown?() }.disabled(moveDown == nil)
+            }
             Divider()
             Button("Copy Link") { NoteActions.copyLink(row.id, title: row.title) }
             ShareLink(item: NoteActions.webURL(row.id)) { Text("Share…") }
@@ -105,8 +117,17 @@ struct FolderMenu: View {
     var body: some View {
         Button("Open in New Tab") { app.open(.folder(folder.id), newTab: true) }
         Button("New Note in Folder") { NoteActions.newNote(app: app, window: window, folder: folder.id) }
-        Button("New Subfolder…") { newSubfolder(folder) }
+        // Folders nest five levels at most.
+        if folder.depth < 4 { Button("New Subfolder…") { newSubfolder(folder) } }
         Button("Move Folder…") { window.pickFolder(.moveFolder, [folder.id]) }
+        if folder.parentId != nil {
+            Button("Move to Top Level") {
+                app.perform { client in
+                    _ = try await client.command(Commands.FolderMove(FolderMoveArgs(id: folder.id, parentId: nil)))
+                    app.toast("“\(folder.name)” moved to the top level")
+                }
+            }
+        }
         Divider()
         Button("Rename…") { rename(folder) }
         Menu("Colour") {
@@ -115,15 +136,157 @@ struct FolderMenu: View {
             }
         }
         if app.session.value?.mode != .local, app.currentSpace?.encrypted == true || app.currentSpace?.canLock == true {
-            Button(folder.locked ? "Unlock Folder" : "Lock Folder…") {
-                app.perform { _ = try await $0.command(Commands.FolderLock(FolderLockArgs(id: folder.id, locked: !folder.locked))) }
-            }
+            Button(folder.locked ? "Stop Fully Encrypting…" : "Always Fully Encrypt…") { FolderActions.lock(folder, app: app) }
         }
         if app.session.value?.mode != .local {
             Button("Share Folder…") { window.go(.folder(folder.id)); window.sharingFolder = folder.id }
         }
         Divider()
+        Button("Copy Folder Link") { FolderActions.copyLink(folder) }
+        if app.session.value?.capabilities.ai != false {
+            Button("Ask Foli AI About This Folder") {
+                window.go(.folder(folder.id))
+                withAnimation(.snappy) { window.askShown = true }
+            }
+        }
+        Divider()
         Button("Delete Folder…", role: .destructive) { NoteActions.deleteFolder(folder, app: app) }
+    }
+}
+
+@MainActor
+enum FolderActions {
+    /// Why a folder can't go into another (itself, one of its own subfolders, or deeper than five levels), or nil.
+    static func refusal(moving id: String, into target: String) -> String? {
+        let all = AppModel.shared.tree.value?.folders ?? []
+        let byId = Dictionary(all.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
+        if id == target { return "A folder can't go inside itself." }
+        var p: String? = target
+        while let x = p { if x == id { return "A folder can't go inside one of its own folders." }; p = byId[x]?.parentId }
+        func height(_ f: String) -> Int { 1 + (all.filter { $0.parentId == f }.map { height($0.id) }.max() ?? 0) }
+        if (byId[target]?.depth ?? 0) + 1 + height(id) > 5 { return "Folders nest up to 5 levels." }
+        return nil
+    }
+
+    /// Moves a folder into another, or says why it can't.
+    static func move(_ id: String, into target: String) -> Bool {
+        if let why = refusal(moving: id, into: target) { AppModel.shared.toast(why, tone: .error); return false }
+        AppModel.shared.perform { _ = try await $0.command(Commands.FolderMove(FolderMoveArgs(id: id, parentId: target))) }
+        return true
+    }
+
+    static func webURL(_ id: String) -> URL { Paths.serviceURL.appendingPathComponent("folders").appendingPathComponent(id) }
+
+    static func copyLink(_ folder: FolderNode) {
+        let pb = NSPasteboard.general
+        pb.clearContents()
+        pb.setString(webURL(folder.id).absoluteString, forType: .string)
+        AppModel.shared.toast("Link copied")
+    }
+
+    /// Always fully encrypted: explains what changes before turning it on or off.
+    static func lock(_ folder: FolderNode, app: AppModel) {
+        let alert = NSAlert()
+        if folder.locked {
+            alert.messageText = "Stop fully encrypting “\(folder.name)”?"
+            alert.informativeText = "Its notes go back to the space's own encryption. Search, previews and Foli AI can read them again."
+            alert.addButton(withTitle: "Stop Encrypting")
+        } else {
+            alert.messageText = "Always fully encrypt “\(folder.name)”?"
+            alert.informativeText = "Its notes are encrypted on your devices before they sync. Only people with the key can read them, so search, previews and Foli AI skip them."
+            alert.addButton(withTitle: "Encrypt")
+        }
+        alert.addButton(withTitle: "Cancel")
+        guard alert.runModal() == .alertFirstButtonReturn else { return }
+        app.perform { _ = try await $0.command(Commands.FolderLock(FolderLockArgs(id: folder.id, locked: !folder.locked))) }
+    }
+
+    /// Several folders: delete them all (notes go to Drafts, subfolders up a level).
+    static func delete(_ ids: [String], app: AppModel) {
+        let alert = NSAlert()
+        alert.messageText = ids.count == 1 ? "Delete this folder?" : "Delete \(ids.count) folders?"
+        alert.informativeText = "Their notes move to Drafts, and their subfolders move up a level."
+        alert.alertStyle = .warning
+        alert.addButton(withTitle: "Delete")
+        alert.addButton(withTitle: "Cancel")
+        alert.buttons.first?.hasDestructiveAction = true
+        CoreAlerts.cancelIsDefault(alert)
+        guard alert.runModal() == .alertFirstButtonReturn else { return }
+        app.perform { client in
+            for id in ids { _ = try await client.command(Commands.FolderDelete(FolderIdArgs(id: id))) }
+            app.toast(ids.count == 1 ? "Folder deleted" : "\(ids.count) folders deleted")
+        }
+    }
+}
+
+/// Edit a tag: its name (40 characters at most) and one of the six tag colours.
+struct TagEditSheet: View {
+    let id: String
+    let initialName: String
+    let initialColor: String?
+    @Environment(\.dismiss) private var dismiss
+    @State private var name = ""
+    @State private var color: String?
+    @State private var saving = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Text("Edit Tag").font(.headline)
+            TextField("Name", text: $name).textFieldStyle(.roundedBorder)
+                .onChange(of: name) { if name.count > 40 { name = String(name.prefix(40)) } }
+            HStack(spacing: 10) {
+                ForEach(TagColors.all, id: \.id) { c in
+                    Button { color = c.id } label: {
+                        Circle().fill(Color.folevi(c.id)).frame(width: 20, height: 20)
+                            .overlay { if color == c.id { Circle().strokeBorder(Color.primary, lineWidth: 2).padding(-3) } }
+                    }
+                    .buttonStyle(.plain)
+                    .help(c.name)
+                    .accessibilityLabel(c.name)
+                    .accessibilityAddTraits(color == c.id ? .isSelected : [])
+                }
+            }
+            HStack {
+                Spacer()
+                Button("Cancel", role: .cancel) { dismiss() }.keyboardShortcut(.cancelAction)
+                Button(saving ? "Saving…" : "Save") {
+                    saving = true
+                    let n = name.trimmingCharacters(in: .whitespaces)
+                    AppModel.shared.perform { client in
+                        _ = try await client.command(Commands.TagUpdate(TagUpdateArgs(id: id, name: n == initialName ? nil : n, color: color == initialColor ? nil : color)))
+                        AppModel.shared.toast("Tag updated")
+                    }
+                    dismiss()
+                }
+                .buttonStyle(InkPillStyle())
+                .keyboardShortcut(.defaultAction)
+                .disabled(name.trimmingCharacters(in: .whitespaces).isEmpty || saving)
+            }
+        }
+        .padding(20)
+        .frame(width: 340)
+        .onAppear { name = initialName; color = initialColor }
+    }
+}
+
+@MainActor
+enum TagActions {
+    /// Asks first; leaves the tag's page if it's on screen.
+    static func delete(id: String, name: String, window: WindowModel?) {
+        let alert = NSAlert()
+        alert.messageText = "Delete #\(name)?"
+        alert.informativeText = "The tag is removed from every note that has it. The notes stay."
+        alert.alertStyle = .warning
+        alert.addButton(withTitle: "Delete")
+        alert.addButton(withTitle: "Cancel")
+        alert.buttons.first?.hasDestructiveAction = true
+        CoreAlerts.cancelIsDefault(alert)
+        guard alert.runModal() == .alertFirstButtonReturn else { return }
+        if window?.current == .tag(id) { window?.go(.home) }
+        AppModel.shared.perform { client in
+            _ = try await client.command(Commands.TagDelete(TagIdArgs(id: id)))
+            AppModel.shared.toast("Deleted #\(name)")
+        }
     }
 }
 

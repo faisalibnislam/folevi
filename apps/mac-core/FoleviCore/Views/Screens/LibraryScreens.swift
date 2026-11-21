@@ -514,8 +514,10 @@ struct SharedScreen: View {
 
     var body: some View {
         Group {
-            if notes.value == nil && folders.value == nil {
-                LoadingScreen()
+            if app.session.value?.mode == .local {
+                EmptyScreen(symbol: "person.2", title: "Sign In to Folevi to Share and Collaborate", message: "This library lives on this Mac. With a Folevi account, people can share notes and folders with you, and they show up here.", actionTitle: "Sign In to Folevi…") { AccountActions.addAccount() }
+            } else if notes.value == nil && folders.value == nil {
+                SkeletonRows()
             } else if (notes.value?.rows ?? []).isEmpty && (folders.value?.rows ?? []).isEmpty {
                 EmptyScreen(symbol: "person.2", title: "Nothing Shared Yet", message: "Notes and folders people share with you show up here.")
             } else {
@@ -561,10 +563,20 @@ struct SharedScreen: View {
                 .listStyle(.inset)
             }
         }
+        .navigationSubtitle(facts)
         .task(id: app.client.map(ObjectIdentifier.init)) {
             notes.bind(app.client, Views.SharedList())
             folders.bind(app.client, Views.SharedFolders())
         }
+    }
+}
+
+extension SharedScreen {
+    /// "2 folders · 5 notes · from anyone".
+    var facts: String {
+        let f = folders.value?.rows.count ?? 0, n = notes.value?.rows.count ?? 0
+        guard f + n > 0 else { return "" }
+        return "\(f == 1 ? "1 folder" : "\(f) folders") · \(n == 1 ? "1 note" : "\(n) notes") · from anyone"
     }
 }
 
@@ -586,10 +598,28 @@ struct SharedFolderScreen: View {
                                 FolderMark(colorId: f.color, size: 30)
                                 VStack(alignment: .leading) {
                                     Text(f.name).font(CoreType.screenTitle(22))
-                                    Text([f.sharedBy.map { "Shared by \($0)" }, f.roleLabel].compactMap { $0 }.joined(separator: " · ")).foregroundStyle(.secondary)
+                                    Text([f.workspaceName ?? f.ownerName, f.roleLabel].compactMap { $0 }.joined(separator: " · ")).foregroundStyle(.secondary)
                                 }
+                                Spacer()
+                                Button { window.sharingFolder = f.sharedFolderId ?? f.id } label: { Label("People", systemImage: "person.2") }
+                                    .help("Who has this folder")
                             }
                             .padding(.vertical, 6)
+                            // Shared with Me › path › name
+                            HStack(spacing: 4) {
+                                Button("Shared with Me") { window.go(.shared) }.buttonStyle(.link)
+                                ForEach(f.path, id: \.id) { p in
+                                    Image(systemName: "chevron.right").font(.caption2).foregroundStyle(.tertiary)
+                                    Button(p.name) { window.go(.sharedFolder(p.id)) }.buttonStyle(.link)
+                                }
+                                Image(systemName: "chevron.right").font(.caption2).foregroundStyle(.tertiary)
+                                Text(f.name).foregroundStyle(.secondary)
+                            }
+                            .font(.caption)
+                            if let by = f.sharedBy {
+                                Text("Shared with you by \(by)\(f.roleLabel.map { " (\($0.lowercased()))" } ?? ""). Notes added to this folder later show up here too.")
+                                    .font(.callout).foregroundStyle(.secondary)
+                            }
                         }
                         if !f.subfolders.isEmpty {
                             Section("Folders") {
@@ -618,6 +648,9 @@ struct SharedFolderScreen: View {
             }
         }
         .task(id: id) { folder.bind(app.client, Views.SharedFolderOpen(NoteIdArgs(id: id))) }
+        .sheet(isPresented: Binding(get: { window.sharingFolder != nil }, set: { if !$0 { window.sharingFolder = nil } })) {
+            if let s = window.sharingFolder { FolderSharingSheet(folderId: s) }
+        }
     }
 }
 
@@ -754,43 +787,68 @@ struct TemplatesScreen: View {
 
 // MARK: Folders and tags
 
+/// Folders: every folder of the space (nested ones too, with their path), as cards or rows; filter, sort
+/// (manually, by name, by recent change), several selected for Open in New Tabs, Colour or Delete.
 struct FoldersScreen: View {
     let window: WindowModel
     let parent: String?
     private var app: AppModel { .shared }
     @State private var cards = Live<Views.FoldersCards>()
     @State private var newFolder = false
+    @State private var filter = ""
+    @State private var selection: Set<String> = []
+    @AppStorage("core.folders.sort") private var sort = "manual"
+    @AppStorage("core.folders.layout") private var layout = "grid"
+
+    private var shown: [FolderCard] {
+        var all = cards.value?.folders ?? []
+        let q = filter.trimmingCharacters(in: .whitespaces)
+        if !q.isEmpty { all = all.filter { $0.name.localizedCaseInsensitiveContains(q) } }
+        switch sort {
+        case "name": return all.sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
+        case "recent": return all.sorted { $0.updatedAt > $1.updatedAt }
+        default: return all
+        }
+    }
 
     var body: some View {
         Group {
-            if let f = cards.value?.folders {
-                if f.isEmpty {
+            if let all = cards.value?.folders {
+                if all.isEmpty {
                     EmptyScreen(symbol: "folder", title: "No Folders", message: "Folders keep related notes together.", actionTitle: "New Folder") { newFolder = true }
+                } else if shown.isEmpty {
+                    EmptyScreen(symbol: "magnifyingglass", title: "No Results", message: "No folder matches “\(filter)”.")
+                } else if layout == "list" {
+                    list
                 } else {
-                    ScrollView {
-                        LazyVGrid(columns: [GridItem(.adaptive(minimum: 180, maximum: 240), spacing: 22)], spacing: 22) {
-                            ForEach(f, id: \.id) { folder in
-                                Button { window.go(.folder(folder.id)) } label: { WebFolderCard(Cards.folder(folder)) }
-                                    .buttonStyle(CardPressStyle())
-                                    .dropDestination(for: NoteDrag.self) { items, _ in
-                                        let ids = items.map(\.id)
-                                        app.perform { _ = try await $0.command(Commands.NoteMove(NoteMoveArgs(ids: ids, folderId: folder.id))) }
-                                        return true
-                                    }
-                            }
-                        }
-                        .padding(24)
-                    }
+                    grid
                 }
             } else {
-                LoadingScreen()
+                SkeletonGrid()
             }
         }
+        .searchable(text: $filter, placement: .toolbar, prompt: "Filter Folders")
+        .navigationSubtitle(subtitle)
         .toolbar {
-            ToolbarItem(placement: .secondaryAction) {
-                Button { newFolder = true } label: { Label("New Folder", systemImage: "folder.badge.plus") }
+            ToolbarItemGroup(placement: .secondaryAction) {
+                Picker("View", selection: $layout) {
+                    Label("Cards", systemImage: "square.grid.2x2").tag("grid")
+                    Label("List", systemImage: "list.bullet").tag("list")
+                }
+                .pickerStyle(.segmented).labelsHidden().help("View as Cards or List")
+                Menu {
+                    Picker("Sort By", selection: $sort) {
+                        Text("Manually").tag("manual")
+                        Text("Name").tag("name")
+                        Text("Recently Changed").tag("recent")
+                    }
+                    .pickerStyle(.inline)
+                } label: { Label("Sort", systemImage: "arrow.up.arrow.down") }
+                .help("Sort Folders")
+                Button { newFolder = true } label: { Label("New Folder", systemImage: "folder.badge.plus") }.help("New Folder (⌃⌘N)")
             }
         }
+        .overlay(alignment: .bottom) { selectionBar }
         .sheet(isPresented: $newFolder) {
             NameSheet(title: "New Folder", initial: "", action: "Create") { name in
                 app.perform { _ = try await $0.command(Commands.FolderCreate(FolderCreateArgs(space: nil, name: name, parentId: parent, color: nil))) }
@@ -798,38 +856,150 @@ struct FoldersScreen: View {
         }
         .task(id: parent) { cards.bind(app.client, Views.FoldersCards(FolderCardsArgs(space: nil, parentId: parent, all: parent == nil ? true : nil))) }
     }
+
+    private var subtitle: String {
+        let total = cards.value?.folders.count ?? 0
+        let n = shown.count
+        return filter.isEmpty ? (total == 1 ? "1 folder" : "\(total) folders") : "\(n) of \(total) folders"
+    }
+
+    private var grid: some View {
+        ScrollView {
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: 180, maximum: 240), spacing: 22)], spacing: 22) {
+                ForEach(shown, id: \.id) { folder in
+                    HomeFolderCard(folder: folder, window: window)
+                        .overlay(alignment: .topTrailing) {
+                            if selection.contains(folder.id) {
+                                Image(systemName: "checkmark.circle.fill").font(.title3).foregroundStyle(Color.foleviInk).padding(6)
+                            }
+                        }
+                        .simultaneousGesture(TapGesture().modifiers(.command).onEnded { toggle(folder.id) })
+                }
+            }
+            .padding(24)
+        }
+    }
+
+    private var list: some View {
+        List(selection: $selection) {
+            ForEach(shown, id: \.id) { f in
+                HStack(spacing: 10) {
+                    FolderMark(colorId: f.color, size: 18, kind: f.childCount > 0 ? .stack : (f.noteCount > 0 ? .notes : .empty))
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text(f.name)
+                        if let path = f.path, !path.isEmpty { Text("in \(path)").font(.caption).foregroundStyle(.secondary) }
+                    }
+                    Spacer()
+                    Text(f.noteCount == 1 ? "1 note" : "\(f.noteCount) notes").font(.caption).foregroundStyle(.secondary)
+                    Text(CoreDates.short(f.updatedAt)).font(.caption).foregroundStyle(.tertiary).frame(width: 90, alignment: .trailing)
+                }
+                .padding(.vertical, 3)
+                .tag(f.id)
+            }
+        }
+        .listStyle(.inset)
+        .contextMenu(forSelectionType: String.self) { ids in
+            if ids.count == 1, let id = ids.first, let node = app.tree.value?.folders.first(where: { $0.id == id }) {
+                FolderMenu(folder: node, window: window, rename: { _ in }, newSubfolder: { _ in })
+            } else if ids.count > 1 {
+                bulkItems(Array(ids))
+            }
+        } primaryAction: { ids in
+            if let id = ids.first { window.go(.folder(id)) }
+        }
+    }
+
+    @ViewBuilder private func bulkItems(_ ids: [String]) -> some View {
+        Button("Open \(ids.count) Folders in New Tabs") { openInTabs(ids) }
+        Menu("Colour") {
+            ForEach(FolderColors.all, id: \.id) { c in
+                Button(c.name) { for id in ids { app.perform { _ = try await $0.command(Commands.FolderSetColor(FolderSetColorArgs(id: id, color: c.id))) } } }
+            }
+        }
+        Divider()
+        Button("Delete \(ids.count) Folders…", role: .destructive) { FolderActions.delete(ids, app: app); selection.removeAll() }
+    }
+
+    @ViewBuilder private var selectionBar: some View {
+        if selection.count > 1 {
+            let ids = Array(selection)
+            HStack(spacing: 14) {
+                Text("\(ids.count) selected").font(.callout.weight(.medium))
+                if ids.count < shown.count { Button("Select All") { selection = Set(shown.map(\.id)) } }
+                Divider().frame(height: 16)
+                Button { openInTabs(ids) } label: { Label("Open in Tabs", systemImage: "plus.square.on.square") }
+                Menu {
+                    ForEach(FolderColors.all, id: \.id) { c in
+                        Button(c.name) { for id in ids { app.perform { _ = try await $0.command(Commands.FolderSetColor(FolderSetColorArgs(id: id, color: c.id))) } } }
+                    }
+                } label: { Label("Colour", systemImage: "paintpalette") }
+                .fixedSize()
+                Button(role: .destructive) { FolderActions.delete(ids, app: app); selection.removeAll() } label: { Label("Delete", systemImage: "trash") }
+                Button { selection.removeAll() } label: { Image(systemName: "xmark") }.help("Clear Selection (Esc)").keyboardShortcut(.cancelAction)
+            }
+            .labelStyle(.titleAndIcon)
+            .buttonStyle(.borderless)
+            .padding(.horizontal, 18).padding(.vertical, 10)
+            .glassEffect(.regular, in: .capsule)
+            .padding(.bottom, 16)
+        }
+    }
+
+    private func toggle(_ id: String) { if selection.contains(id) { selection.remove(id) } else { selection.insert(id) } }
+
+    private func openInTabs(_ ids: [String]) {
+        for id in ids { app.open(.folder(id), newTab: true, background: true) }
+        app.toast(ids.count == 1 ? "Opened 1 new tab" : "Opened \(ids.count) new tabs")
+        selection.removeAll()
+    }
 }
 
+/// Tags: filter (a leading # is ignored), sort by name, use or age, edit and delete.
 struct TagsScreen: View {
     let window: WindowModel
     private var app: AppModel { .shared }
     @State private var tags = Live<Views.TagsIndex>()
-    @State private var renaming: TagIndexRow?
+    @State private var editing: TagIndexRow?
+    @State private var filter = ""
+    @AppStorage("core.tags.sort") private var sort = "name"
+
+    private func shown(_ rows: [TagIndexRow]) -> [TagIndexRow] {
+        var q = filter.trimmingCharacters(in: .whitespaces)
+        if q.hasPrefix("#") { q.removeFirst() }
+        let f = q.isEmpty ? rows : rows.filter { $0.name.localizedCaseInsensitiveContains(q) }
+        switch sort {
+        case "used": return f.sorted { $0.documentCount > $1.documentCount }
+        case "newest": return f.sorted { $0.createdAt > $1.createdAt }
+        default: return f.sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
+        }
+    }
 
     var body: some View {
         Group {
-            if let rows = tags.value?.tags {
-                if rows.isEmpty {
-                    EmptyScreen(symbol: "number", title: "No Tags", message: "Type # in a note to tag it.")
+            if let all = tags.value?.tags {
+                let rows = shown(all)
+                if all.isEmpty {
+                    EmptyScreen(symbol: "number", title: "No Tags", message: "Type # in a note, or add tags from its Info panel (⌥⌘I).")
+                } else if rows.isEmpty {
+                    EmptyScreen(symbol: "magnifyingglass", title: "No Results", message: "No tag matches “\(filter)”.")
                 } else {
                     Table(rows) {
                         TableColumn("Tag") { t in
-                            Label { Text(t.name) } icon: { Image(systemName: "number").foregroundStyle(Color.folevi(t.color)) }
+                            Label { Text(t.name) } icon: { WebIcon.hash.image(size: 14).foregroundStyle(Color.folevi(t.color)) }
                         }
                         TableColumn("Notes") { t in Text(t.documentCount.formatted()).monospacedDigit() }.width(80)
                         TableColumn("Created") { t in Text(CoreDates.short(t.createdAt)) }.width(120)
                     }
                     .contextMenu(forSelectionType: TagIndexRow.ID.self) { ids in
-                        if let id = ids.first, let t = rows.first(where: { $0.id == id }) {
+                        if let id = ids.first, let t = all.first(where: { $0.id == id }) {
                             Button("Open") { window.go(.tag(t.id)) }
-                            Button("Rename…") { renaming = t }
-                            Menu("Colour") {
-                                ForEach(TagColors.all, id: \.id) { c in
-                                    Button(c.name) { app.perform { _ = try await $0.command(Commands.TagUpdate(TagUpdateArgs(id: t.id, name: nil, color: c.id))) } }
-                                }
+                            Button("Open in New Tab") { app.open(.tag(t.id), newTab: true) }
+                            Button("Edit Tag…") { editing = t }
+                            ForEach(TagColors.all.filter { $0.id != t.color }, id: \.id) { c in
+                                Button("Colour: \(c.name)") { app.perform { _ = try await $0.command(Commands.TagUpdate(TagUpdateArgs(id: t.id, name: nil, color: c.id))) } }
                             }
                             Divider()
-                            Button("Delete Tag", role: .destructive) { app.perform { _ = try await $0.command(Commands.TagDelete(TagIdArgs(id: t.id))) } }
+                            Button("Delete Tag…", role: .destructive) { TagActions.delete(id: t.id, name: t.name, window: window) }
                         }
                     } primaryAction: { ids in
                         if let id = ids.first { window.go(.tag(id)) }
@@ -839,12 +1009,64 @@ struct TagsScreen: View {
                 LoadingScreen()
             }
         }
-        .sheet(item: $renaming) { t in
-            NameSheet(title: "Rename Tag", initial: t.name, action: "Rename") { name in
-                app.perform { _ = try await $0.command(Commands.TagUpdate(TagUpdateArgs(id: t.id, name: name, color: nil))) }
+        .searchable(text: $filter, placement: .toolbar, prompt: "Filter Tags")
+        .navigationSubtitle(subtitle)
+        .toolbar {
+            ToolbarItem(placement: .secondaryAction) {
+                Menu {
+                    Picker("Sort By", selection: $sort) {
+                        Text("Name").tag("name")
+                        Text("Most Used").tag("used")
+                        Text("Newest").tag("newest")
+                    }
+                    .pickerStyle(.inline)
+                } label: { Label("Sort", systemImage: "arrow.up.arrow.down") }
+                .help("Sort Tags")
             }
         }
+        .sheet(item: $editing) { t in TagEditSheet(id: t.id, initialName: t.name, initialColor: t.color) }
         .task(id: app.client.map(ObjectIdentifier.init)) { tags.bind(app.client, Views.TagsIndex(TagsIndexArgs(space: nil))) }
+    }
+
+    private var subtitle: String {
+        let all = tags.value?.tags ?? []
+        let n = shown(all).count
+        if filter.isEmpty { return all.count == 1 ? "1 tag" : "\(all.count) tags" }
+        return "\(n) of \(all.count) tags"
+    }
+}
+
+/// Card shapes while a grid loads.
+struct SkeletonGrid: View {
+    var body: some View {
+        ScrollView {
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: 180, maximum: 240), spacing: 22)], spacing: 22) {
+                ForEach(0..<8, id: \.self) { _ in RoundedRectangle(cornerRadius: 10).fill(.fill.tertiary).frame(height: 170) }
+            }
+            .padding(24)
+        }
+        .accessibilityLabel("Loading")
+    }
+}
+
+/// Row shapes while a list loads.
+struct SkeletonRows: View {
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            ForEach(0..<9, id: \.self) { i in
+                HStack(spacing: 10) {
+                    RoundedRectangle(cornerRadius: 3).fill(.fill.tertiary).frame(width: 16, height: 16)
+                    VStack(alignment: .leading, spacing: 6) {
+                        RoundedRectangle(cornerRadius: 3).fill(.fill.tertiary).frame(width: CGFloat(160 + (i * 37) % 140), height: 12)
+                        RoundedRectangle(cornerRadius: 3).fill(.fill.quaternary).frame(width: CGFloat(260 + (i * 53) % 200), height: 9)
+                    }
+                }
+            }
+            Spacer()
+        }
+        .padding(24)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .accessibilityLabel("Loading")
     }
 }
 

@@ -58,7 +58,7 @@ Closed or improved after the grading below; the per-item marks haven't been redo
   folder newest first in two rows with its path, menu and drops; Remove from Recent; the sidebar's Reviews count.
 
 The items closed in this session's later work packages are marked [x] with "closed after the grading", and the
-summary table below is recounted from the marks (738 there, 264 partly, 131 missing, 210 not applicable).
+summary table below is recounted from the marks (787 there, 230 partly, 116 missing, 210 not applicable).
 
 ## Summary
 
@@ -70,9 +70,9 @@ summary table below is recounted from the marks (738 there, 264 partly, 131 miss
 | Sidebar & navigation | `NAV` | 22 | 7 | 1 | 7 | 37 |
 | Tabs | `TAB` | 11 | 4 | 3 | 25 | 43 |
 | Home | `HOME` | 15 | 4 | 1 | 10 | 30 |
-| Notes lists | `LIST` | 29 | 22 | 10 | 11 | 72 |
-| Folders | `FOLD` | 7 | 17 | 10 | 3 | 37 |
-| Tags | `TAG` | 2 | 4 | 1 | 2 | 9 |
+| Notes lists | `LIST` | 52 | 6 | 3 | 11 | 72 |
+| Folders | `FOLD` | 28 | 3 | 3 | 3 | 37 |
+| Tags | `TAG` | 7 | 0 | 0 | 2 | 9 |
 | Note page & editor integration | `NOTE` | 30 | 11 | 2 | 3 | 46 |
 | Search & command palette | `SRCH` | 31 | 4 | 0 | 2 | 37 |
 | Tasks | `TASK` | 6 | 9 | 11 | 9 | 35 |
@@ -102,7 +102,7 @@ summary table below is recounted from the marks (738 there, 264 partly, 131 miss
 | Binding UX rules from owner memory | `RULE` | 18 | 13 | 0 | 13 | 44 |
 | iPhone and iPad only (skip) | `IOS` | 0 | 0 | 0 | 5 | 5 |
 | Gaps, bugs and contradictions | `GAP` | 14 | 10 | 8 | 11 | 43 |
-| **Total** | | **738** | **264** | **131** | **210** | **1343** |
+| **Total** | | **787** | **230** | **116** | **210** | **1343** |
 
 Notable findings (all in the first work package at the end):
 
@@ -438,23 +438,23 @@ Notable findings (all in the first work package at the end):
 - [x] `LIST-004` **Count / status text**: "N notes", plus " · drag to arrange" in manual order; in the native look it is the card subtitle. Core: navigation subtitle "N notes" (no "drag to arrange").
 - [x] `LIST-005` **Filter notes field**: shown when there are notes or while filtering; narrows loaded rows (title, excerpt) at once and re-queries the engine after 250… Core: `.searchable` in the toolbar sends the engine filter.
 - [x] `LIST-006` **Filter empty state**: "No notes match "x"". Core: "No Results" empty state.
-- [~] `LIST-007` **Windowed loading**: placeholder slots, skeleton cards or rows while loading, snapshot of the list top per sort. Core: a spinner, no skeleton rows; windowed with setVisibleRange.
+- [x] `LIST-007` **Windowed loading**: placeholder slots, skeleton cards or rows while loading, snapshot of the list top per sort. Core: closed after the grading (see "Since this grading").
 - [x] `LIST-008` **Grid layout**: fixed columns from the width, cards 25% smaller on Mac. Core: LazyVGrid of WebNoteCard.
 - [~] `LIST-009` **List layout row**: grip "⋮⋮" (web look only), file icon or selection check, title, "Waiting to sync", folder badge, #tags, time, Use (templates)… Core: `Views/Screens/NoteListScreen.swift` NoteListRow; no Use button for templates or "…" button.
 - [x] `LIST-010` **List row interactions**: click opens; ⌘-click toggles; ⇧-click selects a range; ⌥-click opens; draggable; right-click menu; accessibility "Open" action. Core: native List selection (⌘-click, ⇧-click), double-click opens, drag, menu.
-- [~] `LIST-011` **Note row menu**: (template) New page from template; Open or Edit template; Bookmark / Remove bookmark; Duplicate; Move to folder…; Copy to…… Core: NoteMenu has no template items, Copy to, or Move up/down.
+- [x] `LIST-011` **Note row menu**: (template) New page from template; Open or Edit template; Bookmark / Remove bookmark; Duplicate; Move to folder…; Copy to…… Core: closed after the grading (see "Since this grading").
 - [x] `LIST-012` **Right-click on a multi-selection**: bulk actions, then Clear selection. Core: `Views/Screens/NoteListScreen.swift` selectionMenu.
 - [x] `LIST-013` **All notes empty**: "Nothing here yet / Starting a document takes one keystroke." with a "New document" button. Core: empty state with New Note.
 - [x] `LIST-014` **Bookmarks (starred) list**: empty "No bookmarks yet / Bookmark a note to keep it close at hand.". Core: empty state.
 - [x] `LIST-015` **Recent**: there is no Recent list view (`NotesListView` has no recent case). Recent lives only in the Home carousel and the palette's… Core: `Views/Screens/LibraryScreens.swift` RecentScreen (Views.Recent).
 - [n/a] `LIST-016` **Folder title row (web look)**: glyph; name; count; filter; tray with the path menu, Sort, the view switch, Share (sharing capability) and "…" folder options. Why: web look only.
-- [ ] `LIST-017` **Folder path menu "Enclosing folders"**: this folder (ticked), each folder above it, All folders. Core: no enclosing-folders menu on a folder page.
-- [~] `LIST-018` **Folder card controls (native look)**: count subtitle; sort; layout segmented; path pull-down; Share button; "…" folder options. Core: subtitle, sort, layout and Share; no path pull-down or folder options "…".
+- [x] `LIST-017` **Folder path menu "Enclosing folders"**: this folder (ticked), each folder above it, All folders. Core: closed after the grading (see "Since this grading").
+- [x] `LIST-018` **Folder card controls (native look)**: count subtitle; sort; layout segmented; path pull-down; Share button; "…" folder options. Core: closed after the grading (see "Since this grading").
 - [n/a] `LIST-019` **Folder page tint**: a faint wash of the folder's colour, web look only. Why: web look only.
 - [x] `LIST-020` **Subfolders section "Folders"**: cards above the notes, selectable, multi-drag, middle-click; hidden while filtering. Core: Folders section above the notes.
-- [~] `LIST-021` **Folder empty states**: "This folder is empty / Start a document here, or move one in with Move to folder." or "No notes directly in this folder yet /… Core: generic "No Notes" text.
+- [x] `LIST-021` **Folder empty states**: "This folder is empty / Start a document here, or move one in with Move to folder." or "No notes directly in this folder yet /… Core: closed after the grading (see "Since this grading").
 - [x] `LIST-022` **New note in the open folder**: the top bar or ⌘N creates the note in the folder on screen, else Drafts, and opens it in a new tab. Core: `Views/Common/Menus.swift` NoteActions.newNote (folder on screen).
-- [~] `LIST-023` **Tag note list**: empty "No documents carry this tag yet / Add tags to a document from its Info panel.". Core: generic empty text.
+- [x] `LIST-023` **Tag note list**: empty "No documents carry this tag yet / Add tags to a document from its Info panel.". Core: closed after the grading (see "Since this grading").
 - [x] `LIST-024` **Keyboard**: Esc clears the selection; ⌘A selects all; a click on empty space clears. Core: native List (⌘A, click on empty space).
 - [x] `LIST-025` **Mac View menu "As Cards" / "As List" (bug)**: sets `NotesListModel.layout`, but `WebNoteBrowser` reads its own `folevi.web.layout.<view>`, so the menu never changes the Mac… Core: fixed in Core: View > as Cards / as List drives the list (WindowModel.listStyle).
 - [n/a] `LIST-026` **iOS only: list screen**: Select / Done, Select All / Deselect All, "…" menu with View as (Cards, List), Sort by, and the screen actions (New note here… Why: iPhone/iPad only.
@@ -465,48 +465,48 @@ Notable findings (all in the first work package at the end):
 
 ### List features (sort, views, selection, bulk, drag)
 
-- [~] `LIST-031` **Note sort options**: Last edited, Created, Title, Manual order; saved per view (`folevi.sort.<view>`); changing the sort restarts the list. Core: one sort for every list (core.list.sort), not per view.
+- [x] `LIST-031` **Note sort options**: Last edited, Created, Title, Manual order; saved per view (`folevi.sort.<view>`); changing the sort restarts the list. Core: closed after the grading (see "Since this grading").
 - [x] `LIST-032` **Sort controls**: web "Sort [x ⌄]" select; title-row sort (icon, value, chevron, tooltip "Sort"); card `.sort` group. Core: toolbar Sort menu.
-- [~] `LIST-033` **Mac view modes**: Grid, Compact cards, List (`WebNotesLayout`); saved in `folevi.web.layout.<view>`; List by default for Trash and Archive… Core: list or cards per window, not saved per view; no compact cards.
+- [~] `LIST-033` **Mac view modes**: Grid, Compact cards, List (`WebNotesLayout`); saved in `folevi.web.layout.<view>`; List by default for Trash and Archive… Core: list or cards, saved per list (Trash and Archive default to list); no compact cards.
 - [x] `LIST-034` **View switch control**: web segmented control or the system segmented picker in the native look; tooltips Grid / Compact cards / List. Core: `Views/Screens/NoteListScreen.swift` ListStylePicker.
 - [n/a] `LIST-035` **iOS view modes**: Cards and List (`NotesLayout`, `folevi.layout.<view>`). Why: iPhone/iPad only.
-- [ ] `LIST-036` **Folders page sort**: Manual, Name, Recent (`folevi.web.folders-sort`; old saved values migrated). Core: Folders screen has no sort.
-- [~] `LIST-037` **Folders page layout**: Grid or List; List rows show glyph, name, "in path", pages, age. Core: grid only (`Views/Screens/LibraryScreens.swift` FoldersScreen).
-- [~] `LIST-038` **Folders page title row**: "Folders" with count, "Filter folders", sort and layout tray, New folder button (canEdit); in the native look, card controls. Core: New Folder button only; no count, filter, sort or layout.
+- [x] `LIST-036` **Folders page sort**: Manual, Name, Recent (`folevi.web.folders-sort`; old saved values migrated). Core: closed after the grading (see "Since this grading").
+- [x] `LIST-037` **Folders page layout**: Grid or List; List rows show glyph, name, "in path", pages, age. Core: closed after the grading (see "Since this grading").
+- [x] `LIST-038` **Folders page title row**: "Folders" with count, "Filter folders", sort and layout tray, New folder button (canEdit); in the native look, card controls. Core: closed after the grading (see "Since this grading").
 - [x] `LIST-039` **Folders page empty**: "No folders yet / Create one to group related pages." or "No folders match "x"". Core: FoldersScreen empty state with New Folder.
-- [ ] `LIST-040` **Folders page search**: looks through every level; a match shows "in <path>". Core: no folder search.
+- [x] `LIST-040` **Folders page search**: looks through every level; a match shows "in <path>". Core: closed after the grading (see "Since this grading").
 - [n/a] `LIST-041` **Card glass controls (native look)**: count subtitle; segmented, pull-down, button, more and actions groups; they fold to compact, then into one menu, when narrow. Why: native toolbar items.
-- [~] `LIST-042` **Finder-style selection rules**: ⌘-click toggles, ⇧-click selects a range from the anchor, ⌥-click opens, ⌘A selects everything shown, Esc clears. Core: native List selection in rows (⌘-click, ⇧-click, ⌘A); cards have no selection, no ⌥-click open.
+- [~] `LIST-042` **Finder-style selection rules**: ⌘-click toggles, ⇧-click selects a range from the anchor, ⌥-click opens, ⌘A selects everything shown, Esc clears. Core: rows: ⌘-click, ⇧-click, ⌘A, Esc; Folders cards: ⌘-click; note cards have no selection.
 - [x] `LIST-043` **What can be selected**: subfolders first, then the loaded notes; templates can't be selected. Core: subfolder rows and notes are selectable in the list.
-- [ ] `LIST-044` **Selection bar**: "N selected", Select all (while not everything is), the actions, × "Clear selection (Esc)"; glass capsule in the native look… Core: no selection bar (bulk actions are in the context menu).
-- [~] `LIST-045` **Bulk actions offered**: only what every selected item can take. Notes: Bookmark/unbookmark, Archive/unarchive, Trash, Copy to. Folders: Change color… Core: notes: star, move, archive, trash, open in tabs, restore, delete; no unstar, Copy to or folder bulk actions.
-- [~] `LIST-046` **Bulk labels and icons**: Open in new tabs, Move to folder…, Copy to…, Change color…, Move to Trash, Delete permanently…, Delete folders… Core: some labels ("Open N Notes in Tabs", "Move N Notes to Trash"); no Copy to, Change color, Delete folders.
-- [~] `LIST-047` **Open in new tabs**: notes and folders open in background tabs; toast "Opened N new tabs". Core: opens each in a tab that comes to the front; no toast.
+- [x] `LIST-044` **Selection bar**: "N selected", Select all (while not everything is), the actions, × "Clear selection (Esc)"; glass capsule in the native look… Core: closed after the grading (see "Since this grading").
+- [x] `LIST-045` **Bulk actions offered**: only what every selected item can take. Notes: Bookmark/unbookmark, Archive/unarchive, Trash, Copy to. Folders: Change color… Core: closed after the grading (see "Since this grading").
+- [x] `LIST-046` **Bulk labels and icons**: Open in new tabs, Move to folder…, Copy to…, Change color…, Move to Trash, Delete permanently…, Delete folders… Core: closed after the grading (see "Since this grading").
+- [x] `LIST-047` **Open in new tabs**: notes and folders open in background tabs; toast "Opened N new tabs". Core: closed after the grading (see "Since this grading").
 - [~] `LIST-048` **Move dialog (Mac)**: notes and folders together, one toast with one Undo. Core: Move To submenu for notes; folders can't be moved.
-- [ ] `LIST-049` **Copy to dialog**: lists other editable, unlocked spaces; toast "Copied to Space / Folder" (Mac dialog; iOS `CopyToSheet` with space picker, Drafts… Core: no Copy to.
-- [ ] `LIST-050` **Change color and Delete folders (bulk)**: delete confirmation "Delete N folders? / … notes move to Drafts". Core: no bulk folder colour or delete.
+- [x] `LIST-049` **Copy to dialog**: lists other editable, unlocked spaces; toast "Copied to Space / Folder" (Mac dialog; iOS `CopyToSheet` with space picker, Drafts… Core: closed after the grading (see "Since this grading").
+- [x] `LIST-050` **Change color and Delete folders (bulk)**: delete confirmation "Delete N folders? / … notes move to Drafts". Core: closed after the grading (see "Since this grading").
 - [~] `LIST-051` **Drag payloads**: `NoteDragItem` (one note or the whole selection, folders included) and `FolderDragItem`; UTTypes `com.folevi.note-ref` and… Core: `Views/Common/Menus.swift` NoteDrag (own type, one note per drag, not the selection, no folders); type not declared in Info.plist.
 - [~] `LIST-052` **Drop on folders**: notes go inside; a folder goes before, inside or after depending on the zone; spring-loading after 0.6 s; nesting rules… Core: notes drop into folders (sidebar, cards); no folder zones or spring-loading.
 - [ ] `LIST-053` **Folders page drag reorder**: a gap opens, a dashed placeholder marks it, the dragged card dims; the commit may switch the sort to Manual; off while searching. Core: no folder reorder.
-- [~] `LIST-054` **Manual note order**: Move up / Move down in the menu (`note.reorder`); drag reorder exists only in the iOS List (`onMove`). The Mac has no drag… Core: `Views/Screens/NoteListScreen.swift` drag rows in Manual order (note.reorder); no Move up / Move down.
+- [x] `LIST-054` **Manual note order**: Move up / Move down in the menu (`note.reorder`); drag reorder exists only in the iOS List (`onMove`). The Mac has no drag… Core: closed after the grading (see "Since this grading").
 - [x] `LIST-055` **Hide from recent**: "Remove from recent" (Home cards); toast "Removed from Recent notes" with Undo. Core: `Views/Screens/LibraryScreens.swift` RecentScreen "Hide from Recent" (list rows only).
 - [x] `LIST-056` **Card pictures**: cover (built-in art, own image file, colour or plain), preview lines, font, shape, created and edited times; folder cards show up… Core: `Views/Common/Style.swift` Cards (cover, preview lines, font, shape, times, folder previews).
 - [n/a] `LIST-057` **Tab pictures**: page thumbnails for the tab hover card and Tab Overview; not used in lists. Why: native window tabs have no pictures.
 - [ ] `LIST-058` **Optimistic UI**: hidden ids and star overrides settle after 3 s; skipped toast "N notes couldn't be changed. You may not have permission."; no… Core: no optimistic hiding or rollback (only the open note's star).
 - [x] `LIST-059` **Duplicate**: toast "Duplicated". Core: NoteMenu Duplicate (note.duplicate).
 - [ ] `LIST-060` **Middle-click on folder cards and rows**: opens in a background tab. Core: no middle-click.
-- [ ] `LIST-061` **Skeletons**: carousel, cards, rows, chips (`ListSkeleton`). Core: spinners, no skeletons.
+- [x] `LIST-061` **Skeletons**: carousel, cards, rows, chips (`ListSkeleton`). Core: closed after the grading (see "Since this grading").
 - [x] `LIST-062` **Accessibility**: rows grouped as "<title>, <time>"; "More actions for <title>" labels and tooltips; selected trait. Core: rows combined for VoiceOver, cards labelled.
 
 ### Shared with me
 
-- [~] `LIST-063` **Shared with Me screen (Mac)**: header "Shared with Me" with "N folders · N pages · from anyone". Core: `Views/Screens/LibraryScreens.swift` SharedScreen; no facts line.
-- [~] `LIST-064` **Local mode page**: "Sign in to Folevi to share and collaborate" with an explainer. Core: the row is hidden in local mode; no sign-in explainer page.
+- [x] `LIST-063` **Shared with Me screen (Mac)**: header "Shared with Me" with "N folders · N pages · from anyone". Core: closed after the grading (see "Since this grading").
+- [x] `LIST-064` **Local mode page**: "Sign in to Folevi to share and collaborate" with an explainer. Core: closed after the grading (see "Since this grading").
 - [x] `LIST-065` **Loading and empty**: a placeholder while loading; empty "Nothing has been shared with you yet / Folders and pages people share with you…". Core: SharedScreen loading and empty.
 - [x] `LIST-066` **Folders section rows**: glyph, name, "Shared by X · place · role · N notes · updated …"; opens `/shared/<id>`. Core: SharedScreen folder rows (no place or updated time).
 - [x] `LIST-067` **Pages section rows**: icon, title, excerpt, "Shared by X · place · role · updated …"; opens the note. Core: SharedScreen note rows.
-- [~] `LIST-068` **Shared folder page header**: name; subtitle "place · role"; People button and card control (folder share dialog). Core: SharedFolderScreen header; no People button.
-- [~] `LIST-069` **Shared folder page body**: breadcrumb (Shared with Me › path › name); "Shared with you by X (role). Notes added to this folder later show up here too."… Core: subfolders and notes; no breadcrumb or explainer.
+- [x] `LIST-068` **Shared folder page header**: name; subtitle "place · role"; People button and card control (folder share dialog). Core: closed after the grading (see "Since this grading").
+- [x] `LIST-069` **Shared folder page body**: breadcrumb (Shared with Me › path › name); "Shared with you by X (role). Notes added to this folder later show up here too."… Core: closed after the grading (see "Since this grading").
 - [x] `LIST-070` **Shared folder not found**: "You can't open this folder / It may have been unshared, moved or deleted…". Core: SharedFolderScreen not found state.
 - [x] `LIST-071` **Sidebar row**: shown with the `caps.sharing` capability. Core: `Views/Sidebar.swift` (hidden in local mode).
 - [n/a] `LIST-072` **iOS only: SharedListScreen**: pages only (it never draws `folderRows`), emoji icon, lock for encrypted pages, context menu Open, pull to refresh. Why: iPhone/iPad only.
@@ -514,52 +514,52 @@ Notable findings (all in the first work package at the end):
 ## Folders
 
 - [x] `FOLD-001` **New folder (name prompt)**: "New folder" or "New folder in "X""; "Folder name"; "Create folder"; optionally opens it. Core: `Views/Common/Menus.swift` NameSheet from the sidebar + and Folders screen (folder.create).
-- [~] `FOLD-002` **Quick new folder**: (File > New Folder, no prompt, "New folder"). Core: File > New Folder only opens the Folders screen.
+- [x] `FOLD-002` **Quick new folder**: (File > New Folder, no prompt, "New folder"). Core: closed after the grading (see "Since this grading").
 - [x] `FOLD-003` **Rename folder**: toast "Renamed". Core: FolderMenu Rename (folder.rename).
 - [~] `FOLD-004` **Change color**: (25 colours, 5x5, current ringed). Core: ten named colours in a menu, not the 25-colour grid.
-- [ ] `FOLD-005` **Change color for several**. Core: no colour for several folders.
-- [~] `FOLD-006` **Move folder**: (picker with Top level first; notes and subfolders go with it). Core: only by dragging in the sidebar (folder.move); no Move Folder picker.
+- [x] `FOLD-005` **Change color for several**. Core: closed after the grading (see "Since this grading").
+- [x] `FOLD-006` **Move folder**: (picker with Top level first; notes and subfolders go with it). Core: closed after the grading (see "Since this grading").
 - [ ] `FOLD-007` **Move items (notes and/or folders)**: no Drafts or top level when mixed. Core: no mixed move.
-- [~] `FOLD-008` **Move notes to folder**: Drafts, a folder, or New folder "name" made in place. Core: Move To submenu (Drafts, folders); no new folder in place.
-- [ ] `FOLD-009` **Copy notes to another space**: (space select then folder). Core: no Copy to another space.
-- [~] `FOLD-010` **Folder picker**: search, tree, "Current" tag, blocked self/descendants, keyboard ↑/↓/Return, "Back to folders", inline new-folder naming. Core: a plain submenu of folders; no search, keys or inline new folder.
-- [~] `FOLD-011` **Delete folder (confirm)**: notes go to Drafts, subfolders up a level; toast "Folder deleted". Core: `Views/Common/Menus.swift` deleteFolder asks, but says notes go to Trash and subfolders are deleted (today: Drafts, up a level).
-- [ ] `FOLD-012` **Delete several folders**. Core: no deleting several folders.
-- [~] `FOLD-013` **Always fully encrypted (lock) dialog**: on and off wording by level standard/encrypted. Core: Lock Folder sends folder.lock with no explaining dialog.
-- [~] `FOLD-014` **Move to top level**: toast. Core: drag a folder onto the Folders heading; no menu item.
-- [ ] `FOLD-015` **Copy folder link**: (FoleviLinks.folder). Core: no Copy Folder Link.
+- [x] `FOLD-008` **Move notes to folder**: Drafts, a folder, or New folder "name" made in place. Core: closed after the grading (see "Since this grading").
+- [x] `FOLD-009` **Copy notes to another space**: (space select then folder). Core: closed after the grading (see "Since this grading").
+- [x] `FOLD-010` **Folder picker**: search, tree, "Current" tag, blocked self/descendants, keyboard ↑/↓/Return, "Back to folders", inline new-folder naming. Core: closed after the grading (see "Since this grading").
+- [x] `FOLD-011` **Delete folder (confirm)**: notes go to Drafts, subfolders up a level; toast "Folder deleted". Core: closed after the grading (see "Since this grading").
+- [x] `FOLD-012` **Delete several folders**. Core: closed after the grading (see "Since this grading").
+- [x] `FOLD-013` **Always fully encrypted (lock) dialog**: on and off wording by level standard/encrypted. Core: closed after the grading (see "Since this grading").
+- [x] `FOLD-014` **Move to top level**: toast. Core: closed after the grading (see "Since this grading").
+- [x] `FOLD-015` **Copy folder link**: (FoleviLinks.folder). Core: closed after the grading (see "Since this grading").
 - [x] `FOLD-016` **Folder Share dialog**. Core: `Views/Sharing/SharingViews.swift` FolderSharingSheet.
 - [x] `FOLD-017` **Invite people**: (Settings members). Core: Settings > Workspace (the page's own pane).
-- [ ] `FOLD-018` **Ask Foli AI about this folder**. Core: no Ask Foli AI about a folder.
-- [~] `FOLD-019` **Edit tag sheet**: Name (max 40), 6 colours, Save ("Saving…"). Core: `Views/Screens/LibraryScreens.swift` TagsScreen rename sheet; colours offered are folder colours, not the six tag colours.
-- [~] `FOLD-020` **Delete tag confirm**: (goes Home if the tag is on screen). Core: Delete Tag runs with no confirmation.
-- [~] `FOLD-021` **Tag colour quick change**: (Cocoa, Moss, Marigold, Plum, Coral, Gray). Core: colour menu uses folder colour ids, not Cocoa, Moss, Marigold, Plum, Coral, Gray.
-- [~] `FOLD-022` **Folder nesting rules**: max 5 levels; never into itself or a descendant; messages. Core: left to the engine's refusal; New Subfolder offered at any depth.
+- [x] `FOLD-018` **Ask Foli AI about this folder**. Core: closed after the grading (see "Since this grading").
+- [x] `FOLD-019` **Edit tag sheet**: Name (max 40), 6 colours, Save ("Saving…"). Core: closed after the grading (see "Since this grading").
+- [x] `FOLD-020` **Delete tag confirm**: (goes Home if the tag is on screen). Core: closed after the grading (see "Since this grading").
+- [x] `FOLD-021` **Tag colour quick change**: (Cocoa, Moss, Marigold, Plum, Coral, Gray). Core: closed after the grading (see "Since this grading").
+- [x] `FOLD-022` **Folder nesting rules**: max 5 levels; never into itself or a descendant; messages. Core: closed after the grading (see "Since this grading").
 - [ ] `FOLD-023` **Drop zones**: leading quarter before, middle inside, trailing quarter after (cards horizontal, rows vertical). Core: no drop zones.
 - [~] `FOLD-024` **Sidebar folder drag and drop**: notes into a folder; a folder above, inside or below (accent line or ring); onto the Folders heading for the top level; a… Core: notes and folders drop on sidebar folders, folders on the Folders heading go to the top; no before/after zones or spring-loading.
 - [x] `FOLD-025` **Sidebar own order**: (Manual) synced, independent of rank; dropping between rows of the same level reorders only; a drop while sorted by Name/Recent… Core: `Views/Sidebar.swift` drag top-level folders to order them (folder.setSidebarOrder); top level only, no Undo.
 - [ ] `FOLD-026` **Multi-item move with refusals**: ("couldn't move" toast) and a summary toast. Core: no multi-item move.
-- [~] `FOLD-027` **Folder move refusal toasts**: ("A folder can't go inside itself.", "Folders nest up to 5 levels."). Core: only the engine's refusals, if it sends them.
-- [~] `FOLD-028` **Folders page (WebFoldersIndex)**: cards, rows or tree; search; sort Manual/Name/Recent; card drag into gaps; multi-select (Open in new tabs, Move, Change color… Core: FoldersScreen cards only; no search, sort, tree, multi-select or drag.
-- [ ] `FOLD-029` **Folder page path menu ("Enclosing folders")**: current folder checked, ancestors, All folders. Core: no enclosing-folders menu.
+- [x] `FOLD-027` **Folder move refusal toasts**: ("A folder can't go inside itself.", "Folders nest up to 5 levels."). Core: closed after the grading (see "Since this grading").
+- [~] `FOLD-028` **Folders page (WebFoldersIndex)**: cards, rows or tree; search; sort Manual/Name/Recent; card drag into gaps; multi-select (Open in new tabs, Move, Change color… Core: cards or rows, filter, sort, multi-select (open in tabs, colour, delete); no tree view or drag into gaps.
+- [x] `FOLD-029` **Folder page path menu ("Enclosing folders")**: current folder checked, ancestors, All folders. Core: closed after the grading (see "Since this grading").
 - [x] `FOLD-030` **Folder page Share button**. Core: `Views/Screens/NoteListScreen.swift` Share Folder toolbar button.
-- [ ] `FOLD-031` **Folder page "…" = folder menu**. Core: no folder "…" menu on the folder page.
+- [x] `FOLD-031` **Folder page "…" = folder menu**. Core: closed after the grading (see "Since this grading").
 - [x] `FOLD-032` **Frosted folder cards**: (Mac/web 25% smaller) with "…" chip on hover. Core: WebFolderCard (FoleviDesign) on Home and Folders; no hover "…" chip.
 - [n/a] `FOLD-033` **All Folders screen**: (iPhone): Filter folders, View as / Sort by menus, New folder. Why: iPhone only.
 - [n/a] `FOLD-034` **New folder sheet with colour and parent**: (iPhone). Why: iPhone only.
 - [n/a] `FOLD-035` **Folder tree rows**: with lock and not-synced marks, "+N more", "Show less" (iPhone/iPad shared). Why: iPhone/iPad only.
-- [~] `FOLD-036` **NoteActions folder ops**: (create, rename, color, move, moveFolders with undo, lock, delete). Core: create, rename, colour, lock, delete, move by drag; no move dialog or Undo.
-- [~] `FOLD-037` **Folder menu context**: (canEdit, otherPlaces, aiOn, canLock, level, inviteSpace, subfolderCount). Core: checks mode and canLock only; no canEdit, otherPlaces, aiOn or level.
+- [x] `FOLD-036` **NoteActions folder ops**: (create, rename, color, move, moveFolders with undo, lock, delete). Core: closed after the grading (see "Since this grading").
+- [x] `FOLD-037` **Folder menu context**: (canEdit, otherPlaces, aiOn, canLock, level, inviteSpace, subfolderCount). Core: closed after the grading (see "Since this grading").
 
 ## Tags
 
-- [~] `TAG-001` **Tags page (Mac)**: route `/tags`; "Filter tags" field (a leading # is ignored); count "N tags" / "N of M tags". Core: `Views/Screens/LibraryScreens.swift` TagsScreen table (tags.index); no filter or count.
-- [ ] `TAG-002` **Tag sort**: Name, Most used, Newest; kept in `folevi.tags-sort`; a card sort control in the native look. Core: no tag sort.
+- [x] `TAG-001` **Tags page (Mac)**: route `/tags`; "Filter tags" field (a leading # is ignored); count "N tags" / "N of M tags". Core: closed after the grading (see "Since this grading").
+- [x] `TAG-002` **Tag sort**: Name, Most used, Newest; kept in `folevi.tags-sort`; a card sort control in the native look. Core: closed after the grading (see "Since this grading").
 - [x] `TAG-003` **Tag chips**: coloured #, name, "N pages"; a click opens the tag's notes. Core: TagsScreen rows (colour, name, count), double-click opens.
 - [x] `TAG-004` **Tags empty and loading**: "No tags yet / Add tags to a page from its Info panel." or "No tags match "x""; chip skeleton. Core: TagsScreen empty state.
-- [~] `TAG-005` **Tag menu (sidebar)**: Edit tag…, "Color: <name>" for each other colour (Cocoa, Moss, Marigold, Plum, Coral, Gray), Delete tag… Core: Rename, Colour, Delete on the Tags screen; sidebar tags have no menu.
-- [~] `TAG-006` **Edit tag sheet (rename)**: name (40 characters at most) and colour chips, Cancel, Save ("Saving…"), toast "Tag updated". Core: name sheet only; colour is a separate menu.
-- [~] `TAG-007` **Delete tag**: confirmation "Delete #name? / The tag is removed from every document…", toast "Deleted #name"; goes Home if that tag's page is… Core: no confirmation, doesn't leave the tag's page.
+- [x] `TAG-005` **Tag menu (sidebar)**: Edit tag…, "Color: <name>" for each other colour (Cocoa, Moss, Marigold, Plum, Coral, Gray), Delete tag… Core: closed after the grading (see "Since this grading").
+- [x] `TAG-006` **Edit tag sheet (rename)**: name (40 characters at most) and colour chips, Cancel, Save ("Saving…"), toast "Tag updated". Core: closed after the grading (see "Since this grading").
+- [x] `TAG-007` **Delete tag**: confirmation "Delete #name? / The tag is removed from every document…", toast "Deleted #name"; goes Home if that tag's page is… Core: closed after the grading (see "Since this grading").
 - [n/a] `TAG-008` **iOS only: TagsIndexModel**: the same arrange logic as a model; the Mac copies it inline. Why: iPhone/iPad only.
 - [n/a] `TAG-009` **iPhone only: Add tag bulk action**: one toast, "Tagged N notes #x" or "Already tagged #x". Why: iPhone only.
 

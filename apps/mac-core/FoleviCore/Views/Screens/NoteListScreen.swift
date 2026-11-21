@@ -14,7 +14,10 @@ struct NoteListScreen: View {
     private var app: AppModel { .shared }
     @State private var list = LiveList<ListViews.NotesList>()
     @State private var selection: Set<String> = []
-    @AppStorage("core.list.sort") private var sortRaw = NotesSort.updated.rawValue
+    /// The sort, kept per list (core.list.sort.<list>).
+    @State private var sortRaw = NotesSort.updated.rawValue
+    @State private var renamingFolder: FolderNode?
+    @State private var newSubfolderOf: FolderNode?
     @State private var filter = ""
     @State private var subfolders = Live<Views.FoldersCards>()
     @State private var trash = Live<Views.TrashSummary>()
@@ -35,6 +38,19 @@ struct NoteListScreen: View {
                 if kind == .trash { trash.bind(app.client, Views.TrashSummary(SpaceArgs())) }
             }
             .onChange(of: app.client.map(ObjectIdentifier.init)) { list.bind(app.client, spec) }
+            .task(id: kind) { loadPrefs() }
+            .onChange(of: sortRaw) { UserDefaults.standard.set(sortRaw, forKey: "core.list.sort.\(kind.rawValue)") }
+            .onChange(of: window.listStyle) { UserDefaults.standard.set(window.listStyle.rawValue, forKey: "core.list.style.\(kind.rawValue)") }
+            .sheet(item: $renamingFolder) { f in
+                NameSheet(title: "Rename Folder", initial: f.name, action: "Rename") { name in
+                    app.perform { _ = try await $0.command(Commands.FolderRename(FolderRenameArgs(id: f.id, name: name))) }
+                }
+            }
+            .sheet(item: $newSubfolderOf) { f in
+                NameSheet(title: "New Folder in \(f.name)", initial: "", action: "Create") { name in
+                    app.perform { _ = try await $0.command(Commands.FolderCreate(FolderCreateArgs(space: nil, name: name, parentId: f.id, color: nil))) }
+                }
+            }
             .navigationSubtitle(subtitle)
             .sheet(isPresented: Binding(get: { window.sharingFolder != nil && window.sharingFolder == folderId }, set: { if !$0 { window.sharingFolder = nil } })) {
                 if let folderId { FolderSharingSheet(folderId: folderId) }
@@ -43,7 +59,7 @@ struct NoteListScreen: View {
 
     @ViewBuilder private var content: some View {
         if list.isLoading && list.rows.isEmpty {
-            LoadingScreen()
+            if window.listStyle == .cards { SkeletonGrid() } else { SkeletonRows() }
         } else if list.rows.isEmpty && (subfolders.value?.folders ?? []).isEmpty {
             empty
         } else if window.listStyle == .cards {
@@ -85,11 +101,15 @@ struct NoteListScreen: View {
                 }
             }
             Section {
-                ForEach(list.rows) { row in
+                ForEach(Array(list.rows.enumerated()), id: \.element.id) { i, row in
                     NoteListRow(row: row, showFolder: kind != .folder)
                         .tag(row.id)
                         .draggable(NoteDrag(id: row.id, title: row.title))
-                        .contextMenu { NoteMenu(row: row, window: window) }
+                        .contextMenu {
+                            NoteMenu(row: row, window: window,
+                                     moveUp: sort == .manual && i > 0 ? { move(row.id, after: i >= 2 ? list.rows[i - 2].id : nil) } : nil,
+                                     moveDown: sort == .manual && i < list.rows.count - 1 ? { move(row.id, after: list.rows[i + 1].id) } : nil)
+                        }
                         .onAppear { if row.id == list.rows.last?.id { more() } }
                 }
                 .onMove(perform: sort == .manual ? reorder : nil)
@@ -118,20 +138,23 @@ struct NoteListScreen: View {
         if notes.count > 1 {
             HStack(spacing: 14) {
                 Text("\(notes.count) selected").font(.callout.weight(.medium))
+                if notes.count < list.rows.count { Button("Select All") { selection = Set(list.rows.map(\.id)) } }
                 Divider().frame(height: 16)
                 if kind == .trash {
                     Button("Restore") { app.perform { _ = try await $0.command(Commands.NoteRestore(NoteIdsArgs(ids: notes))) }; selection.removeAll() }
                     Button("Delete…", role: .destructive) { NoteActions.deleteForever(notes, app: app); selection.removeAll() }
                 } else {
-                    Button { app.perform { _ = try await $0.command(Commands.NoteStar(NoteStarArgs(ids: notes, starred: true))) } } label: { Label("Star", systemImage: "bookmark") }
+                    let allStarred = notes.allSatisfy { id in list.rows.first { $0.id == id }?.starred == true }
+                    Button { app.perform { _ = try await $0.command(Commands.NoteStar(NoteStarArgs(ids: notes, starred: !allStarred))) } } label: { Label(allStarred ? "Unstar" : "Star", systemImage: allStarred ? "bookmark.slash" : "bookmark") }
                     Button { window.pickFolder(.moveNotes, notes) } label: { Label("Move", systemImage: "folder") }
+                    Button { window.pickFolder(.copyNotes, notes) } label: { Label("Copy To", systemImage: "doc.on.doc") }
                     Button {
                         app.perform { _ = try await $0.command(Commands.NoteArchive(NoteArchiveArgs(ids: notes, archived: kind != .archive))) }
                         selection.removeAll()
                     } label: { Label(kind == .archive ? "Unarchive" : "Archive", systemImage: "archivebox") }
                     Button(role: .destructive) { trashSelection() } label: { Label("Trash", systemImage: "trash") }
                 }
-                Button("Done") { selection.removeAll() }.keyboardShortcut(.cancelAction)
+                Button { selection.removeAll() } label: { Image(systemName: "xmark") }.help("Clear Selection (Esc)").keyboardShortcut(.cancelAction)
             }
             .labelStyle(.titleAndIcon)
             .buttonStyle(.borderless)
@@ -176,7 +199,7 @@ struct NoteListScreen: View {
     private func open(_ ids: Set<String>) {
         let notes = ids.filter { !$0.hasPrefix("folder:") }
         if let folder = ids.first(where: { $0.hasPrefix("folder:") }) { return window.go(.folder(String(folder.dropFirst(7)))) }
-        if notes.count == 1, let id = notes.first { window.go(.note(id)) } else { notes.forEach { app.open(.note($0), newTab: true) } }
+        if notes.count == 1, let id = notes.first { window.go(.note(id)) } else { openInTabs(Array(notes)) }
     }
 
     /// Manual order: the moved note goes after the row it lands under.
@@ -187,6 +210,36 @@ struct NoteListScreen: View {
         let after = to == 0 ? nil : rows[min(to, rows.count) - 1].id
         guard after != id else { return }
         app.perform { _ = try await $0.command(Commands.NoteReorder(NoteReorderArgs(id: id, afterId: after, view: kind, folderId: folderId))) }
+    }
+
+    private func openInTabs(_ ids: [String]) {
+        for id in ids { app.open(.note(id), newTab: true, background: true) }
+        app.toast(ids.count == 1 ? "Opened 1 new tab" : "Opened \(ids.count) new tabs")
+    }
+
+    private func move(_ id: String, after: String?) {
+        app.perform { _ = try await $0.command(Commands.NoteReorder(NoteReorderArgs(id: id, afterId: after, view: kind, folderId: folderId))) }
+    }
+
+    private func loadPrefs() {
+        let d = UserDefaults.standard
+        sortRaw = d.string(forKey: "core.list.sort.\(kind.rawValue)") ?? NotesSort.updated.rawValue
+        if let raw = d.string(forKey: "core.list.style.\(kind.rawValue)"), let style = WindowModel.ListStyleChoice(rawValue: raw) {
+            window.listStyle = style
+        } else if kind == .trash || kind == .archive {
+            window.listStyle = .list
+        }
+    }
+
+    private var folderNode: FolderNode? { app.tree.value?.folders.first { $0.id == folderId } }
+
+    /// The folder and the folders above it, nearest first, then All Folders.
+    private var enclosing: [FolderNode] {
+        let all = app.tree.value?.folders ?? []
+        var out: [FolderNode] = []
+        var f = folderNode
+        while let x = f { out.append(x); f = all.first { $0.id == x.parentId } }
+        return out
     }
 
     private func trashSelection() {
@@ -201,13 +254,14 @@ struct NoteListScreen: View {
     @ViewBuilder private func selectionMenu(_ ids: Set<String>) -> some View {
         let notes = Array(ids.filter { !$0.hasPrefix("folder:") })
         if notes.count > 1 {
-            Button("Open \(notes.count) Notes in Tabs") { notes.forEach { app.open(.note($0), newTab: true) } }
+            Button("Open \(notes.count) Notes in New Tabs") { openInTabs(notes) }
             Divider()
             if kind == .trash {
                 Button("Restore \(notes.count) Notes") { app.perform { _ = try await $0.command(Commands.NoteRestore(NoteIdsArgs(ids: notes))) } }
                 Button("Delete \(notes.count) Notes Immediately…", role: .destructive) { NoteActions.deleteForever(notes, app: app) }
             } else {
                 Button("Star") { app.perform { _ = try await $0.command(Commands.NoteStar(NoteStarArgs(ids: notes, starred: true))) } }
+                Button("Remove Star") { app.perform { _ = try await $0.command(Commands.NoteStar(NoteStarArgs(ids: notes, starred: false))) } }
                 Menu("Move To") { MoveTargets(ids: notes) }
                 Button("Move To Folder…") { window.pickFolder(.moveNotes, notes) }
                 Button("Copy To…") { window.pickFolder(.copyNotes, notes) }
@@ -240,6 +294,22 @@ struct NoteListScreen: View {
                 Button("Empty Trash…") { emptyTrash() }
                     .disabled((trash.value?.deletable ?? list.total) == 0)
             }
+            if kind == .folder, let node = folderNode {
+                Menu {
+                    ForEach(enclosing, id: \.id) { f in
+                        Button { window.go(.folder(f.id)) } label: {
+                            if f.id == node.id { Label(f.name, systemImage: "checkmark") } else { Text(f.name) }
+                        }
+                    }
+                    Divider()
+                    Button("All Folders") { window.go(.folders) }
+                } label: { Label("Enclosing Folders", systemImage: "folder.badge.gearshape") }
+                .help("Enclosing Folders")
+                Menu {
+                    FolderMenu(folder: node, window: window, rename: { renamingFolder = $0 }, newSubfolder: { newSubfolderOf = $0 })
+                } label: { Label("Folder Options", systemImage: "ellipsis.circle") }
+                .help("Folder Options")
+            }
             if kind == .folder, app.session.value?.mode != .local {
                 Button { window.sharingFolder = folderId } label: { Label("Share Folder", systemImage: "person.crop.circle.badge.plus") }
                     .help("Share Folder")
@@ -266,6 +336,12 @@ struct NoteListScreen: View {
         case .archive: EmptyScreen(symbol: "archivebox", title: "Nothing Archived", message: "Archive notes you're done with to keep them out of the way.")
         case .starred: EmptyScreen(symbol: "star", title: "No Starred Notes", message: "Star a note to keep it close.")
         case .templates: EmptyScreen(symbol: "square.on.square", title: "No Templates", message: "Save a note as a template from its menu.")
+        case .folder where filter.isEmpty:
+            EmptyScreen(symbol: "folder", title: "This Folder Is Empty", message: "Start a note here, or move one in with Move To Folder.", actionTitle: "New Note") {
+                NoteActions.newNote(app: app, window: window, folder: folderId)
+            }
+        case .tag where filter.isEmpty:
+            EmptyScreen(symbol: "number", title: "No Notes Have This Tag Yet", message: "Add tags to a note from its Info panel (⌥⌘I).")
         default:
             EmptyScreen(symbol: "square.and.pencil", title: filter.isEmpty ? "No Notes" : "No Results", message: filter.isEmpty ? "Notes you write show up here." : "No note here matches “\(filter)”.", actionTitle: filter.isEmpty ? "New Note" : nil) {
                 NoteActions.newNote(app: app, window: window, folder: folderId)

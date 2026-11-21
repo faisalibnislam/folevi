@@ -41,7 +41,7 @@ public struct PhoneAllFoldersScreen: View {
     }
 
     private static let grid = "phone.folders.grid"
-    private var slide: Animation? { WebMotion.reduced ? nil : .spring(response: 0.32, dampingFraction: 0.82) }
+    private var slide: Animation? { FoleviSpring.reorder }
 
     public init(model: AllFoldersModel, open: @escaping (String) -> Void, back: @escaping () -> Void, menu: @escaping (CGRect) -> Void, scrollToTop: Int = 0) {
         self.model = model
@@ -416,7 +416,7 @@ public struct PhoneNewFolderForm: View {
 /// A swatch pressed: it shrinks to 90%.
 struct PhoneSwatchPressStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
-        configuration.label.scaleEffect(configuration.isPressed && !WebMotion.reduced ? 0.96 : 1).animation(.easeOut(duration: 0.12), value: configuration.isPressed)
+        configuration.label.pressDip(configuration.isPressed, scale: 0.96)
     }
 }
 #endif

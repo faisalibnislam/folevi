@@ -77,7 +77,7 @@ public struct PhoneNotePlaceChip: View {
 
 private struct ChipPressStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
-        configuration.label.scaleEffect(configuration.isPressed && !WebMotion.reduced ? 0.97 : 1).animation(.easeOut(duration: 0.15), value: configuration.isPressed)
+        configuration.label.pressDip(configuration.isPressed, scale: 0.97)
     }
 }
 

@@ -136,7 +136,7 @@ public struct PhoneNotesListScreen: View {
                 .transition(WebMotion.reduced ? .opacity : .move(edge: .bottom))
             }
         }
-        .animation(WebMotion.reduced ? .easeOut(duration: 0.15) : .spring(response: 0.35, dampingFraction: 0.9), value: model.selecting)
+        .animation(FoleviSpring.bar, value: model.selecting)
         // (The finger moves the card, not the list, while one is held.)
         .scrollDisabled(drag != nil)
         .onChange(of: model.slotIdentity) { _, _ in if drag == nil, !(arranging && model.sort != .manual) { order = nil } }
@@ -209,7 +209,7 @@ public struct PhoneNotesListScreen: View {
     /// A card's long-press menu, with Arrange notes when the cards can be arranged.
     private func cardMenu(_ row: NoteRow, _ frame: CGRect) {
         if canArrange, let arrangeMenu = actions.arrangeMenu {
-            arrangeMenu(row, frame) { withAnimation(WebMotion.reduced ? nil : .spring(response: 0.3, dampingFraction: 0.8)) { arranging = true } }
+            arrangeMenu(row, frame) { withAnimation(FoleviSpring.reorder) { arranging = true } }
         } else {
             actions.rowMenu(row, frame)
         }
@@ -226,7 +226,7 @@ public struct PhoneNotesListScreen: View {
             UIImpactFeedbackGenerator(style: .medium).impactOccurred()
             #endif
             order = order ?? model.slots.map(\.id)
-            withAnimation(WebMotion.reduced ? nil : .spring(response: 0.3, dampingFraction: 0.75)) {
+            withAnimation(FoleviSpring.reorder) {
                 arranging = true
                 drag = CardDrag(id: row.id, grab: CGSize(width: start.x - f.minX, height: start.y - f.minY), location: now)
             }
@@ -247,13 +247,13 @@ public struct PhoneNotesListScreen: View {
         #if canImport(UIKit)
         UISelectionFeedbackGenerator().selectionChanged()
         #endif
-        withAnimation(WebMotion.reduced ? nil : .spring(response: 0.32, dampingFraction: 0.82)) { order = next }
+        withAnimation(FoleviSpring.reorder) { order = next }
     }
 
     /// Let go: the card settles in its place, and the list keeps the order.
     private func drop() {
         guard let held = drag else { return }
-        withAnimation(WebMotion.reduced ? nil : .spring(response: 0.3, dampingFraction: 0.8)) { drag = nil }
+        withAnimation(FoleviSpring.reorder) { drag = nil }
         // (In another sort the order is kept on show and saved at Done, as the manual order.)
         guard model.sort == .manual else { return }
         let ids = model.slots.map(\.id)
@@ -548,8 +548,7 @@ struct PhonePressableStyle: ButtonStyle {
             .background {
                 if highlight && configuration.isPressed { WebStyles.vars["liquid-press"]?.resolve(scheme).color ?? Color.black.opacity(0.06) }
             }
-            .scaleEffect(configuration.isPressed && !WebMotion.reduced ? scale : 1)
-            .animation(.easeOut(duration: configuration.isPressed ? 0.1 : 0.15), value: configuration.isPressed)
+            .pressDip(configuration.isPressed, scale: scale)
             .contentShape(Rectangle())
     }
 }

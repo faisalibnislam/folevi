@@ -446,7 +446,7 @@ struct PhoneAiDock: View {
                     // button looked broken. Its place is kept.)
                     .scaleEffect(canSend || WebMotion.reduced ? 1 : 0.4)
                     .opacity(canSend ? 1 : 0)
-                    .animation(WebMotion.reduced ? nil : .spring(response: 0.3, dampingFraction: 0.72), value: canSend)
+                    .animation(FoleviSpring.appear, value: canSend)
                     .frame(width: 44, height: 44)
                     .contentShape(Rectangle())
             }
@@ -1112,7 +1112,7 @@ struct PhonePressFade: ButtonStyle {
 /// `group-active:scale-[0.96]` (Send).
 struct PhonePressScale: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
-        configuration.label.scaleEffect(configuration.isPressed && !WebMotion.reduced ? 0.96 : 1).animation(.easeOut(duration: 0.15), value: configuration.isPressed)
+        configuration.label.pressDip(configuration.isPressed, scale: 0.96)
     }
 }
 

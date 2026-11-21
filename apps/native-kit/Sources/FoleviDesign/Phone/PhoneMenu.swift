@@ -165,11 +165,7 @@ public struct PhoneMenuLayer: View {
                 grown = false
                 // (The spring grows it once its size is known, the next frame.)
                 DispatchQueue.main.async {
-                    if reduceMotion {
-                        withAnimation(.linear(duration: 0.15)) { grown = true }
-                    } else {
-                        withAnimation(.spring(response: 0.32, dampingFraction: 0.82)) { grown = true }
-                    }
+                    withAnimation(reduceMotion ? .linear(duration: 0.15) : FoleviSpring.menu) { grown = true }
                 }
             } else if shown != nil {
                 let gone = shown?.id

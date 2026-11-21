@@ -52,6 +52,18 @@ public extension EnvironmentValues {
 }
 
 /// The frame's layer for the note's bars: over the tab bar's place, while the note on show is the tab's top.
+/// A GlassEffectContainer on iOS 26 (spacing 0: the bars' pieces stay apart), nothing before it.
+private struct NativeGlassBars<Content: View>: View {
+    @ViewBuilder let content: Content
+    var body: some View {
+        if #available(iOS 26, *) {
+            GlassEffectContainer(spacing: 0) { content }
+        } else {
+            content
+        }
+    }
+}
+
 struct PhoneNoteBarsLayer: View {
     let model: PhoneFrameModel
     let slot = PhoneNoteBarsSlot.shared
@@ -60,6 +72,8 @@ struct PhoneNoteBarsLayer: View {
         let bars = slot.bars
         let shown = bars.map { $0.shown && model.top == .note($0.noteId) && !model.searching } ?? false
         GeometryReader { geo in
+            // (One glass container round the bars, so their glass can materialize as it comes and goes.)
+            NativeGlassBars {
             VStack {
                 Spacer(minLength: 0)
                 if shown, let bars {
@@ -68,9 +82,11 @@ struct PhoneNoteBarsLayer: View {
                         .padding(.leading, geo.safeAreaInsets.leading)
                         .padding(.trailing, geo.safeAreaInsets.trailing)
                         .padding(.bottom, max(10, geo.safeAreaInsets.bottom - 10))
-                        // (Liquid Glass coming and going where the tab bar was: a fade with a touch of scale.)
-                        .transition(WebMotion.reduced ? .opacity : .opacity.combined(with: .scale(scale: 0.94, anchor: .bottom)))
+                        // (Liquid Glass coming and going where the tab bar was: on iOS 26's glass it materializes as it
+                        // rises from 94%; the drawn glass fades with the same touch of scale.)
+                        .glassArrival(scale: 0.94)
                 }
+            }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .ignoresSafeArea(.container, edges: .bottom)

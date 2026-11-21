@@ -172,6 +172,24 @@ struct SnapshotTests {
         }.padding(), named: "folder-cards", width: 380)
     }
 
+    /// The iPhone's folder cards (name at 17/22): Home's strip at 176 pt holds a two-line name with its counts and date;
+    /// a smaller card (the Folders grid on a small iPhone) keeps the name to one line rather than cut the date off.
+    @Test func phoneFolderCards() {
+        assertSnapshot(HStack(alignment: .top, spacing: 14) {
+            WebFolderCard(GallerySamples.folders[1]).frame(width: 176)
+            WebFolderCard(GallerySamples.folders[1]).frame(width: 142)
+        }.padding().environment(\.webPhoneCards, true), named: "phone-folder-cards", width: 380)
+    }
+
+    @Test func nameKeepsTheDateOnTheFront() {
+        // The iPhone's 17/22 name, 11 pt counts and 10.5 pt date: two lines from 171 pt, one below.
+        let lines = { (w: CGFloat) in WebFolderCard.nameLines(front: w * (1 - WebFolderCard.frontTop), cq: w / 100, name: 22, count: 14.3, edited: 13.65) }
+        #expect(lines(176) == 2)
+        #expect(lines(142) == 1)
+        // A card with no Edited line has room for two sooner.
+        #expect(WebFolderCard.nameLines(front: 142 * 0.55, cq: 1.42, name: 22, count: 14.3, edited: 0) == 2)
+    }
+
     @Test func rowsAndHeaders() {
         assertSnapshot(VStack(spacing: 8) {
             SectionHeader("Recent notes", actionTitle: "See all") {}

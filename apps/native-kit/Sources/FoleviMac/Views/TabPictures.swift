@@ -402,18 +402,20 @@ struct FolderPicture: View {
 }
 
 /// Home's tab, drawn small (the owner, 21 November 2026): a "Recent notes" row of note cards and a "Recent folders"
-/// row of folder cards, as Home shows them, laid out at 800 pt (about 16:10 tall, the Mac's card size) and scaled
-/// to the picture so every card is whole.
+/// row of folder cards, as Home shows them, laid out at 960 by 600 pt (16:10, with 32 pt of breathing room between
+/// the rows: the owner, 21 November 2026) and scaled to the picture so every card is whole.
 struct HomePicture: View {
     let model: FrameModel
     @Environment(\.colorScheme) private var scheme
     @State private var notes: ListStore<NoteRow>?
     @State private var folders: ValueStore<FolderCardsValue>?
 
-    private static let width: CGFloat = 800
+    private static let width: CGFloat = 960
     private static let columns = 4
-    private static let pad: CGFloat = 28
+    private static let pad: CGFloat = 24
     private static let gap: CGFloat = 16
+    /// Between the notes' row and the folders' heading.
+    private static let rowGap: CGFloat = 32
 
     var body: some View {
         GeometryReader { g in
@@ -437,7 +439,7 @@ struct HomePicture: View {
                             HStack(alignment: .top, spacing: Self.gap) {
                                 ForEach(rows, id: \.id) { row in WebNoteCard(CardMapping.noteCard(row)).frame(width: w) }
                             }
-                            .padding(.bottom, 20)
+                            .padding(.bottom, Self.rowGap)
                         }
                         if !recent.isEmpty {
                             heading("Recent folders", icon: .folder)
@@ -469,10 +471,10 @@ struct HomePicture: View {
 
     private func heading(_ title: String, icon: WebIcon) -> some View {
         HStack(spacing: 6) {
-            WebIconView(icon, size: 16).foregroundStyle(color("color-ink-muted"))
-            Text(title).webText(WebTextStyle(size: 17, leading: 22, weight: 600)).foregroundStyle(color("color-heading"))
+            WebIconView(icon, size: 18).foregroundStyle(color("color-ink-muted"))
+            Text(title).webText(WebTextStyle(size: 19, leading: 24, weight: 600)).foregroundStyle(color("color-heading"))
         }
-        .padding(.bottom, 10)
+        .padding(.bottom, 12)
     }
 
     private func color(_ name: String) -> Color { WebStyles.vars[name]?.resolve(scheme).color ?? .clear }

@@ -742,6 +742,14 @@ public struct WebFolderCard: View {
         .accessibilityAddTraits(.isLink)
     }
 
+    /// How many lines the name may take on the front: two when two lines, the counts and the Edited date all fit inside
+    /// its padding (6.4% above, 5.6% below), else one, so a long name on a small card never pushes the date out of
+    /// the card (the iPhone's 17/22 name on a 142 pt card did: the owner, 21 November 2026).
+    static func nameLines(front: CGFloat, cq: CGFloat, name: CGFloat, count: CGFloat, edited: CGFloat) -> Int {
+        let room = front - 12 * cq
+        return name * 2 + count + cq + edited <= room + 0.5 ? 2 : 1
+    }
+
     /// The grey the folder's colour is softened with (FolderCardArt's `tone`: the colour 84% into #9a9fab).
     static let grey = RGBA(154, 159, 171)
     static func tone(_ base: RGBA) -> RGBA { base.oklabMix(grey, 0.84) }
@@ -861,12 +869,13 @@ public struct WebFolderCard: View {
         let countStyle = WebTextStyle(size: countSize, leading: countSize * 1.3, weight: 500).cardInterface(chrome != nil)
         let editedStyle = WebTextStyle(size: editedSize, leading: editedSize * 1.3).cardInterface(chrome != nil)
         let nameW = Self.nameWidth(w, menuRoom: menuRoom && !phone)
+        let nameLines = Self.nameLines(front: frontH, cq: cq, name: nameStyle.leading, count: countStyle.leading, edited: model.editedText.isEmpty ? 0 : editedStyle.leading)
         return ZStack(alignment: .topLeading) {
             shape.fill(LinearGradient(colors: [f1, f2], startPoint: .top, endPoint: .bottom))
             shape.fill(RadialGradient(colors: [Color.white.opacity(0.154), .clear], center: .topLeading, startRadius: 0, endRadius: w * 0.9))
             shape.strokeBorder((dark ? RGBA(255, 255, 255, 0.08) : RGBA(255, 255, 255, 0.275)).color, lineWidth: 1)
             VStack(alignment: .leading, spacing: 0) {
-                WebClampedText(model.name, style: nameStyle, maxLines: 2, width: nameW)
+                WebClampedText(model.name, style: nameStyle, maxLines: nameLines, width: nameW)
                 Text(model.countText)
                     .webText(countStyle)
                     .lineLimit(1)

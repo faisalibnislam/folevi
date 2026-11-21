@@ -112,16 +112,19 @@ public struct PhoneHomeContent: View {
 
     // MARK: Recent notes
 
+    /// Home's two strips share one rhythm (the owner, 21 November 2026): cards 176 pt wide, notes and folders alike
+    /// (two in sight and the next one peeking), 10 pt apart.
+    static let stripGap: CGFloat = 10
+
     @ViewBuilder private var recents: some View {
         let strip = ps("phone.recents")
-        let card = ps("phone.recents.card")
         if !model.recentsLoaded {
             // Three placeholders while the first answer comes (the web's pulse boxes).
-            HStack(spacing: strip.gap) {
+            HStack(spacing: Self.stripGap) {
                 ForEach(0..<3, id: \.self) { _ in
                     RoundedRectangle(cornerRadius: FoleviTokens.Radius.container, style: .continuous)
                         .fill(FoleviTokens.Chrome.surfaceSunken.resolve(scheme).color)
-                        .frame(width: card.width)
+                        .frame(width: Self.cardWidth)
                         .aspectRatio(WebNoteCard.aspect, contentMode: .fit)
                 }
             }
@@ -133,10 +136,10 @@ public struct PhoneHomeContent: View {
             PhoneEmptyBox("Notes you open show up here").padding(.top, 12)
         } else {
             ScrollView(.horizontal) {
-                LazyHStack(spacing: strip.gap) {
+                LazyHStack(spacing: Self.stripGap) {
                     ForEach(Array(zip(model.recents, model.recentCards)), id: \.0.id) { row, card_ in
                         PhonePressable(scale: 0.97, onTap: { actions.openNote(row.id) }, onLongPress: { actions.noteMenu(row, $0) }) {
-                            WebNoteCard(card_).frame(width: card.width)
+                            WebNoteCard(card_).frame(width: Self.cardWidth)
                         }
                         .phoneZoomSource(row.id)
                     }
@@ -188,26 +191,34 @@ public struct PhoneHomeContent: View {
 
     // MARK: Folders
 
+    /// A card's width in Home's strips, notes and folders alike: 176 pt, the least at which the Frosted front holds a two-line name at the
+    /// iPhone's 17/22 with its counts and Edited date (the old card's 142 pt cut the date off: the owner, 21 November
+    /// 2026). About two and a bit show at once.
+    static let cardWidth: CGFloat = 176
+
     private var folders: some View {
         let strip = ps("phone.folders")
-        let card = ps("phone.folders.card")
         return PhoneHomeSection("Folders", open: { actions.open("/folders") }, more: actions.foldersMenu) {
             if model.folders.isEmpty {
                 PhoneEmptyBox("Folders keep related notes together")
             } else {
                 ScrollView(.horizontal) {
-                    LazyHStack(spacing: strip.gap) {
+                    LazyHStack(spacing: Self.stripGap) {
                         ForEach(Array(zip(model.folders, model.folderCards)), id: \.0.id) { folder, model_ in
                             PhonePressable(scale: 0.97, onTap: { actions.open("/folders/\(folder.id)") }, onLongPress: { actions.folderMenu(folder, $0) }) {
-                                WebFolderCard(model_).frame(width: card.width)
+                                WebFolderCard(model_).frame(width: Self.cardWidth)
                             }
                         }
                     }
                     .scrollTargetLayout()
-                    .padding(strip.padding.edgeInsets)
+                    // 12 pt under the cards, room for their shadow: the web's 28 on top of the next section's 28 left
+                    // a blank band before Tags (the owner, 21 November 2026).
+                    .padding(EdgeInsets(top: strip.padding.top, leading: strip.padding.left, bottom: 12, trailing: strip.padding.right))
                 }
                 .scrollIndicators(.hidden)
                 .scrollTargetBehavior(.viewAligned)
+                // The next section starts as close as the others do; the cards' shadow keeps its room under it.
+                .padding(.bottom, -10)
                 .accessibilityLabel("Folders")
             }
         }

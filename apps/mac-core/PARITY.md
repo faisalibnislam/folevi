@@ -56,6 +56,20 @@ Closed or improved after the grading below; the per-item marks haven't been redo
 - Home: Catch me up with Markdown, linked [n] marks, numbered sources, Refresh and a shimmer while it writes;
   Today's Reviews with Start Review; skeleton and empty texts; carousels with edge fades and hover arrows; every
   folder newest first in two rows with its path, menu and drops; Remove from Recent; the sidebar's Reviews count.
+- Finishing round (21 November 2026): the Vault and Quick Add marks; notes lists, the Folders and Tags pages,
+  folder and tag menus; tasks and a full calendar week (hour grid, timed blocks, half-hour drops), agenda and
+  unscheduled tasks; sharing link settings and Leave; templates with Generate with Foli AI; changes; notifications
+  with Today/Earlier and Mark as Read from macOS; a Help window with the shortcuts; a Catch Me Up page; Settings
+  search, time zones, Foli AI memory, billing, sign-in methods, theme tiles; the menus (Share submenu, text
+  menus, page zoom, Appearance); move between places; the first-launch and sign-in screens; links with #block
+  and before launch; App Lock on screen lock with keys swallowed; the sidebar without a hide button (owner's
+  rule) with Starred's first five and a Drafts count; the note inspector; a floating note pin.
+- Left on purpose or for the owner: the owner's Mac UI guide's main-window profile (hidden title bar, custom top
+  bar) would remove native window tabs; Open at login starts off; ⌘T opens Search, not Home.
+- Still missing (17): launch snapshots, native card text layout, per-space tabs, folder drag reorder and drop
+  zones, optimistic list updates, middle-click, mixed note-and-folder moves, Foli DNA of a note (the graph page
+  takes no parameters), file drag-out as files, an anywhere menu, accent and font options, Vault import and export,
+  app-level file drop, an Add Tag bulk action.
 
 The items closed in this session's later work packages are marked [x] with "closed after the grading", and the
 summary table below is recounted from the marks (1027 there, 83 partly, 17 missing, 216 not applicable).

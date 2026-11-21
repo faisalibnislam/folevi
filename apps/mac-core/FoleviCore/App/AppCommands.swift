@@ -162,6 +162,7 @@ struct AppCommands: SwiftUI.Commands {
         }
 
         // View
+        CommandGroup(replacing: .sidebar) {}
         CommandGroup(before: .sidebar) {
             Button("as List") { window?.listStyle = .list }.keyboardShortcut("1", modifiers: [.command, .control])
             Button("as Cards") { window?.listStyle = .cards }.keyboardShortcut("2", modifiers: [.command, .control])

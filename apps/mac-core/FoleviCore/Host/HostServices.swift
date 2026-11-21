@@ -110,11 +110,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
 /// Asks for Touch ID (or the Mac's password) before something sensitive (the shared E2eeKeys calls it).
 enum AppLock {
-    static func confirm(reason: String) async -> Bool {
+    /// When the last yes was given: one yes covers 30 s of encrypted notes opening.
+    nonisolated(unsafe) private static var lastYes: Date?
+
+    /// `fresh`: always ask (unlocking the cover, changing the lock); otherwise a yes in the last 30 s counts.
+    static func confirm(reason: String, fresh: Bool = false) async -> Bool {
+        if !fresh, let last = lastYes, Date().timeIntervalSince(last) < 30 { return true }
         let context = LAContext()
         var error: NSError?
         guard context.canEvaluatePolicy(.deviceOwnerAuthentication, error: &error) else { return true }
-        return (try? await context.evaluatePolicy(.deviceOwnerAuthentication, localizedReason: reason)) == true
+        let ok = (try? await context.evaluatePolicy(.deviceOwnerAuthentication, localizedReason: reason)) == true
+        if ok { lastYes = Date() }
+        return ok
     }
 }
 
@@ -146,9 +153,15 @@ final class MacAppLock {
         center.addObserver(forName: NSApplication.didBecomeActiveNotification, object: nil, queue: .main) { _ in
             MainActor.assumeIsolated { MacAppLock.shared.cameBack() }
         }
-        NSWorkspace.shared.notificationCenter.addObserver(forName: NSWorkspace.screensDidSleepNotification, object: nil, queue: .main) { _ in
+        let cover: @Sendable (Notification) -> Void = { _ in
             MainActor.assumeIsolated { if MacAppLock.shared.lock { MacAppLock.shared.isCovered = true } }
         }
+        // Sleep, the screen locking and switching to another user all cover the windows.
+        for name in [NSWorkspace.screensDidSleepNotification, NSWorkspace.willSleepNotification, NSWorkspace.sessionDidResignActiveNotification] {
+            NSWorkspace.shared.notificationCenter.addObserver(forName: name, object: nil, queue: .main, using: cover)
+        }
+        DistributedNotificationCenter.default().addObserver(forName: Notification.Name("com.apple.screenIsLocked"), object: nil, queue: .main, using: cover)
+        watchKeys()
     }
 
     private func cameBack() {
@@ -180,17 +193,33 @@ final class MacAppLock {
         }
         if let n = newLock as? NSNumber, CFGetTypeID(n) == CFBooleanGetTypeID(), n.boolValue != lock {
             let on = n.boolValue
-            guard await AppLock.confirm(reason: on ? "Lock Folevi Core with Touch ID" : "Stop locking Folevi Core") else { return settings() }
+            guard await AppLock.confirm(reason: on ? "Lock Folevi Core with Touch ID" : "Stop locking Folevi Core", fresh: true) else { return settings() }
             lock = on
         }
         Paths.defaults.set(["lock": lock, "lockAfter": lockAfter], forKey: Self.key)
         return settings()
     }
 
-    /// Touch ID to take the cover down.
+    private var prompting = false
+
+    /// Touch ID to take the cover down: one prompt at a time, however many windows are covered.
     func unlock() async {
-        guard isCovered else { return }
-        if await AppLock.confirm(reason: "Unlock Folevi Core") { isCovered = false }
+        guard isCovered, !prompting else { return }
+        prompting = true
+        defer { prompting = false }
+        if await AppLock.confirm(reason: "Unlock Folevi Core", fresh: true) { isCovered = false }
+    }
+
+    /// While covered, keys and menu shortcuts go nowhere; Return or Space asks to unlock.
+    private var keyMonitor: Any?
+    private func watchKeys() {
+        keyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { e in
+            MainActor.assumeIsolated {
+                guard MacAppLock.shared.isCovered else { return e }
+                if e.keyCode == 36 || e.keyCode == 49 { Task { await MacAppLock.shared.unlock() } }
+                return nil
+            }
+        }
     }
 
     func debugCover(_ on: Bool) { isCovered = on }

@@ -41,6 +41,7 @@ struct Inspector: View {
 
 struct NoteInfo: View {
     let window: WindowModel
+    @State private var resolved = false
 
     var body: some View {
         if let t = window.noteTools {
@@ -54,6 +55,11 @@ struct NoteInfo: View {
                 }
                 if !t.outline.isEmpty {
                     Section("Outline") {
+                        Button { window.editor(EditorCommands.ScrollToTop()) } label: {
+                            Text(window.title).fontWeight(.semibold).frame(maxWidth: .infinity, alignment: .leading)
+                        }
+                        .buttonStyle(.plain)
+                        .help("Back to the top")
                         ForEach(t.outline, id: \.id) { item in
                             Button {
                                 if let doc = item.documentId, item.kind == .page { window.go(.note(doc)) } else { window.editor(EditorCommands.BlockJump(BlockJumpArgs(blockId: item.id))) }
@@ -77,12 +83,16 @@ struct NoteInfo: View {
                     }
                 }
                 if !t.tasks.isEmpty {
-                    Section("Tasks") {
+                    Section("Tasks · \(t.tasks.filter(\.checked).count) of \(t.tasks.count) done") {
                         ForEach(t.tasks, id: \.id) { task in
-                            Toggle(isOn: Binding(get: { task.checked }, set: { _ in window.editor(EditorCommands.TaskToggle(TaskToggleArgs(blockId: task.id))) })) {
-                                Text(task.text)
+                            HStack {
+                                Toggle(isOn: Binding(get: { task.checked }, set: { _ in window.editor(EditorCommands.TaskToggle(TaskToggleArgs(blockId: task.id))) })) { EmptyView() }
+                                    .toggleStyle(.checkbox).labelsHidden()
+                                Button { window.editor(EditorCommands.BlockJump(BlockJumpArgs(blockId: task.id))) } label: {
+                                    Text(task.text).strikethrough(task.checked).frame(maxWidth: .infinity, alignment: .leading)
+                                }
+                                .buttonStyle(.plain).help("Show in the note")
                             }
-                            .toggleStyle(.checkbox)
                         }
                     }
                 }
@@ -101,22 +111,39 @@ struct NoteInfo: View {
                 if !t.attachments.isEmpty {
                     Section("Attachments") {
                         ForEach(t.attachments, id: \.id) { a in
-                            Label(a.name, systemImage: a.kind == "image" ? "photo" : a.kind == "audio" ? "waveform" : "paperclip")
-                                .foregroundStyle(a.uploading ? .secondary : .primary)
+                            Button { window.editor(EditorCommands.BlockJump(BlockJumpArgs(blockId: a.id))) } label: {
+                                Label(a.name + (a.uploading ? " (uploading)" : ""), systemImage: a.kind == "image" ? "photo" : a.kind == "audio" ? "waveform" : "paperclip")
+                                    .foregroundStyle(a.uploading ? .secondary : .primary)
+                            }
+                            .buttonStyle(.plain).help("Show in the note")
                         }
                     }
                 }
                 if t.comments.available {
                     Section("Comments") {
-                        if t.comments.threads.isEmpty { Text("No comments").foregroundStyle(.secondary) }
-                        ForEach(t.comments.threads, id: \.id) { th in
+                        let open = t.comments.threads.filter { $0.status != .resolved }
+                        let done = t.comments.threads.filter { $0.status == .resolved }
+                        Picker("", selection: $resolved) {
+                            Text("Open · \(open.count)").tag(false)
+                            Text("Resolved · \(done.count)").tag(true)
+                        }
+                        .pickerStyle(.segmented).labelsHidden()
+                        let shown = resolved ? done : open
+                        if shown.isEmpty { Text(resolved ? "No resolved comments" : "No open comments").foregroundStyle(.secondary) }
+                        ForEach(shown, id: \.id) { th in
                             Button {
                                 window.editor(EditorCommands.ThreadOpen(ThreadOpenArgs(threadId: th.id)))
                             } label: {
                                 VStack(alignment: .leading, spacing: 2) {
-                                    Text(th.author).font(.caption.weight(.semibold))
-                                    Text(th.text).lineLimit(3)
-                                    if th.replies > 0 { Text("\(th.replies) replies").font(.caption).foregroundStyle(.secondary) }
+                                    HStack(spacing: 4) {
+                                        if th.unread { Circle().fill(Color.foleviInk).frame(width: 6, height: 6).accessibilityLabel("Unread") }
+                                        Text(th.author).font(.caption.weight(.semibold))
+                                        Text(CoreDates.short(th.lastActivityAt)).font(.caption2).foregroundStyle(.tertiary)
+                                    }
+                                    Text(th.deleted ? "Deleted" : th.text).lineLimit(3).foregroundStyle(th.deleted ? .secondary : .primary)
+                                    if th.replies > 0 { Text("\(th.replies) \(th.replies == 1 ? "reply" : "replies")").font(.caption).foregroundStyle(.secondary) }
+                                    if let by = th.resolvedBy { Text("Resolved by \(by)").font(.caption).foregroundStyle(.secondary) }
+                                    if let w = th.waiting { Text(w == "failed" ? "Not sent" : "Waiting to send").font(.caption).foregroundStyle(.orange) }
                                 }
                             }
                             .buttonStyle(.plain)

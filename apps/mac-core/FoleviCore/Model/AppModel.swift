@@ -169,6 +169,7 @@ final class AppModel {
         switch event {
         case .engineReady:
             readySeen = true
+            Task { @MainActor in try? await Task.sleep(for: .milliseconds(300)); self.flushWaitingPaths() }
             gate = nil
             rebind()
             QuickAddQueue.shared.flush()
@@ -230,7 +231,10 @@ final class AppModel {
         pool.giveBack(from: window.id)
     }
 
-    func becameFront(_ window: WindowModel) { frontWindow = window.id }
+    func becameFront(_ window: WindowModel) {
+        frontWindow = window.id
+        flushWaitingPaths()
+    }
 
     /// The notes open in other windows and tabs (the page's Join picker lists them first).
     func openNoteTabs(except id: UUID) -> [PaneTab] {
@@ -254,13 +258,41 @@ final class AppModel {
     }
 
     /// Opens one of Folevi's paths: in the front window, or a new tab when asked.
+    /// Links that came before the app was ready (a link that launched it, Spotlight, Shortcuts): opened then.
+    @ObservationIgnored private var waitingPaths: [(String, Bool)] = []
+    /// Opens Help (set by the window, which can open scenes).
+    @ObservationIgnored var openHelp: (() -> Void)?
+
     func open(path: String, newTab: Bool = false) {
+        guard ready, front != nil else { waitingPaths.append((path, newTab)); return }
         if let section = Destination.settingsSection(path: path) {
             SettingsRouter.shared.open(section)
             return
         }
-        guard let dest = Destination(path: path) else { return }
+        // "/d/<id>#block-x" keeps the block: the note opens there.
+        var route = path, block: String?
+        if let hash = path.firstIndex(of: "#") {
+            route = String(path[..<hash])
+            let frag = String(path[path.index(after: hash)...])
+            block = frag.hasPrefix("block-") ? String(frag.dropFirst(6)) : frag.hasPrefix("comment-") ? nil : frag
+        }
+        if route == "/help" || route.hasPrefix("/help/") { openHelp?(); return }
+        guard let dest = Destination(path: route) else { return }
         open(dest, newTab: newTab)
+        if let block, !block.isEmpty, dest.isNote {
+            Task { @MainActor in
+                try? await Task.sleep(for: .milliseconds(500))
+                self.front?.editor(EditorCommands.BlockJump(BlockJumpArgs(blockId: block)))
+            }
+        }
+    }
+
+    /// Opens what waited for launch.
+    func flushWaitingPaths() {
+        guard ready, front != nil, !waitingPaths.isEmpty else { return }
+        let all = waitingPaths
+        waitingPaths = []
+        for (p, t) in all { open(path: p, newTab: t) }
     }
 
     /// The window a new tab was opened from (its Back returns there).

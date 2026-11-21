@@ -58,14 +58,14 @@ Closed or improved after the grading below; the per-item marks haven't been redo
   folder newest first in two rows with its path, menu and drops; Remove from Recent; the sidebar's Reviews count.
 
 The items closed in this session's later work packages are marked [x] with "closed after the grading", and the
-summary table below is recounted from the marks (981 there, 130 partly, 17 missing, 215 not applicable).
+summary table below is recounted from the marks (1007 there, 104 partly, 17 missing, 215 not applicable).
 
 ## Summary
 
 | Area | Id prefix | [x] | [~] | [ ] | [n/a] | Items |
 |---|---|---|---|---|---|---|
 | Architecture today | `ARCH` | 15 | 0 | 1 | 1 | 17 |
-| App & windows | `APP` | 34 | 15 | 1 | 23 | 73 |
+| App & windows | `APP` | 36 | 13 | 1 | 23 | 73 |
 | Sign-in, onboarding, accounts, spaces & local mode | `AUTH` | 63 | 5 | 1 | 11 | 80 |
 | Sidebar & navigation | `NAV` | 23 | 7 | 0 | 7 | 37 |
 | Tabs | `TAB` | 11 | 4 | 1 | 27 | 43 |
@@ -73,7 +73,7 @@ summary table below is recounted from the marks (981 there, 130 partly, 17 missi
 | Notes lists | `LIST` | 52 | 6 | 3 | 11 | 72 |
 | Folders | `FOLD` | 28 | 3 | 3 | 3 | 37 |
 | Tags | `TAG` | 7 | 0 | 0 | 2 | 9 |
-| Note page & editor integration | `NOTE` | 31 | 11 | 1 | 3 | 46 |
+| Note page & editor integration | `NOTE` | 39 | 3 | 1 | 3 | 46 |
 | Search & command palette | `SRCH` | 31 | 4 | 0 | 2 | 37 |
 | Tasks | `TASK` | 23 | 2 | 0 | 10 | 35 |
 | Calendar | `CAL` | 30 | 1 | 0 | 6 | 37 |
@@ -89,7 +89,7 @@ summary table below is recounted from the marks (981 there, 130 partly, 17 missi
 | Notifications / Inbox, Help & support | `NOTIF` | 16 | 0 | 0 | 2 | 18 |
 | Settings | `SET` | 143 | 3 | 0 | 19 | 165 |
 | Quick Add | `QADD` | 14 | 0 | 0 | 2 | 16 |
-| System integrations | `SYS` | 33 | 24 | 0 | 3 | 60 |
+| System integrations | `SYS` | 46 | 11 | 0 | 3 | 60 |
 | Context menus | `CTX` | 9 | 1 | 1 | 6 | 17 |
 | Menus & keyboard shortcuts | `MENU` | 78 | 2 | 0 | 2 | 82 |
 | Updates (Sparkle) | `UPD` | 6 | 1 | 0 | 0 | 7 |
@@ -99,10 +99,10 @@ summary table below is recounted from the marks (981 there, 130 partly, 17 missi
 | Debug & eval harness | `DBG` | 0 | 0 | 0 | 8 | 8 |
 | Capabilities | `CAP` | 18 | 2 | 0 | 0 | 20 |
 | Stays web, WebPage values and the parity list | `WEB` | 2 | 0 | 0 | 2 | 4 |
-| Binding UX rules from owner memory | `RULE` | 18 | 13 | 0 | 13 | 44 |
+| Binding UX rules from owner memory | `RULE` | 21 | 10 | 0 | 13 | 44 |
 | iPhone and iPad only (skip) | `IOS` | 0 | 0 | 0 | 5 | 5 |
 | Gaps, bugs and contradictions | `GAP` | 18 | 10 | 4 | 11 | 43 |
-| **Total** | | **981** | **130** | **17** | **215** | **1343** |
+| **Total** | | **1007** | **104** | **17** | **215** | **1343** |
 
 Notable findings (all in the first work package at the end):
 
@@ -184,7 +184,7 @@ Notable findings (all in the first work package at the end):
 - [n/a] `APP-044` **Dialog pieces**: WebSheetDialog (384 pt, md 480 pt), WebSheetFooter, WebSheetButton (Return = primary, Esc = cancel, destructive never Return). Why: SwiftUI forms and sheets.
 - [n/a] `APP-045` **Platform shims**: (iPad): AppKit names on UIKit, so the shared views build for iOS. Why: iPad only.
 - [n/a] `APP-046` **HardwareKeyboard**: (iPad): key hints and auto-focus only with a hardware keyboard. Why: iPad only.
-- [~] `APP-047` **Native More routes**: /help, /graph, /review, /shared/<id>, /shared, /changes drawn natively; unknown paths show an empty state with a way back (MAC-65). Core: /graph, /review, /shared, /shared/<id>, /changes open; no /help route, unknown paths are ignored (no empty state).
+- [x] `APP-047` **Native More routes**: /help, /graph, /review, /shared/<id>, /shared, /changes drawn natively; unknown paths show an empty state with a way back (MAC-65). Core: closed after the grading (see "Since this grading").
 - [n/a] `APP-048` **iPad wide layout (IPadFrame)**: (iPad): same views as the Mac (strip, sidebar, card). Account in the strip corner; floating sidebar when narrow (`sidebarFloats`… Why: iPad only.
 - [x] `APP-049` **Main menu**. Core: `App/AppCommands.swift`.
 - [~] `APP-050` **Format keys gating**: a format key runs only while the note's text has the keyboard; ⌘⌫ only when nothing is being edited. Core: Format items are disabled off a note, but not gated on where the keyboard is.
@@ -196,7 +196,7 @@ Notable findings (all in the first work package at the end):
 - [~] `APP-053` **applicationWillFinishLaunching**: Web text rendering and fonts. Installs the `kAEGetURL` Apple Event handler, which also catches links that arrive before launch… Core: links arrive through application(open:), no early kAEGetURL handler; window tabbing is on by design.
 - [x] `APP-054` **applicationDidFinishLaunching order**. Core: `Host/HostServices.swift` AppDelegate (Offline, Places, rules, launch steps).
 - [x] `APP-055` **beforeFirstWindow hooks**: Run in this order. Core: `Host/HostServices.swift` runs AppDelegate.beforeFirstWindow (Places registers them).
-- [~] `APP-056` **whenLaunched queue**: Spotlight results and Shortcuts that open the app wait until places, migration and lock are done. Core: the app model waits for launch; links and Spotlight results arriving earlier are not queued.
+- [x] `APP-056` **whenLaunched queue**: Spotlight results and Shortcuts that open the app wait until places, migration and lock are done. Core: closed after the grading (see "Since this grading").
 - [x] `APP-057` **Reopen (Dock click)**: Shows a main window when none is visible. Core: `Host/HostServices.swift` applicationShouldHandleReopen.
 - [x] `APP-058` **Never quits on last window**: `applicationShouldTerminateAfterLastWindowClosed` returns false. Core: SwiftUI default (the app stays open with no window).
 - [x] `APP-059` **Quit flush**: Each loaded page gets `pagehide` plus a 250 ms wait (`PageClosing.script`). The app replies `.terminateLater` with a 2 s cap… Core: `Host/HostServices.swift` applicationShouldTerminate with PageClosing.flush.
@@ -572,16 +572,16 @@ Notable findings (all in the first work package at the end):
 - [x] `NOTE-005` **Note tools sidebar (WebNoteSidebar)**: heading with the note name and "In Folder > Sub" crumbs (no "In Drafts" flash). Core: `Views/Note/Inspector.swift` Location section, plus the toolbar's folder menu.
 - [x] `NOTE-006` **Nested pages list**: ("PAGES"; overflow message). Core: Inspector Pages section.
 - [x] `NOTE-007` **Tool tabs**: Table of contents, Comments (unread dot), Tasks in this page, Attachments and links, Find in page; kept in… Core: Inspector sections (Outline, Pages, Tasks, Links, Attachments, Comments); Find is the native bar.
-- [~] `NOTE-008` **Table of contents (outline)**: title row scrolls to top; heading rows jump; nested page rows open the page; empty text. Core: Inspector Outline jumps (block.jump) and opens pages; no scroll-to-top title row.
-- [~] `NOTE-009` **Comments list**: Open / Resolved segments with counts, author, time, unread dot, replies, resolved-by, deleted, "Not sent" / "Waiting to send"; a… Core: Inspector Comments: author, text, replies, open thread; no open/resolved segments, unread dots or send states.
-- [~] `NOTE-010` **Tasks in this page**: "x of y done"; toggle a check (if editable); jump. Core: Inspector Tasks toggle (task.toggle); no "x of y done" or jump.
-- [~] `NOTE-011` **Attachments and Links**: an attachment jumps to its block; an internal link opens in place; an external link opens in the browser. Core: links open in place or the browser; attachments are labels only (no jump).
+- [x] `NOTE-008` **Table of contents (outline)**: title row scrolls to top; heading rows jump; nested page rows open the page; empty text. Core: closed after the grading (see "Since this grading").
+- [x] `NOTE-009` **Comments list**: Open / Resolved segments with counts, author, time, unread dot, replies, resolved-by, deleted, "Not sent" / "Waiting to send"; a… Core: closed after the grading (see "Since this grading").
+- [x] `NOTE-010` **Tasks in this page**: "x of y done"; toggle a check (if editable); jump. Core: closed after the grading (see "Since this grading").
+- [x] `NOTE-011` **Attachments and Links**: an attachment jumps to its block; an internal link opens in place; an external link opens in the browser. Core: closed after the grading (see "Since this grading").
 - [x] `NOTE-012` **Find in page (sidebar)**: field, "n of m(+)", "No results in this page", Clear, Previous/Next; ⌘G and ⇧⌘G step it. Core: `Views/Note/NoteScreen.swift` FindBar (find, find.clear, n of m, ⌘G, ⇧⌘G).
 - [x] `NOTE-013` **Find in note (page bar)**: ⌘F on a note; Find Next/Previous go to the page's bar when no sidebar search. Core: FindBar on ⌘F.
 - [x] `NOTE-014` **Side panels**: format, insert, style, comments, ai, info, related (opened by the page or by native). Core: `Model/WindowModel.swift` panel() (insert, style, comments, related).
 - [x] `NOTE-015` **Inspector (Info panel) toggle**: ⌥⌘I. Core: View > Note Info (⌥⌘I) opens Core's inspector.
 - [x] `NOTE-016` **Style panel**: (Format > Style…). Core: Format > Style and Theme… (panel.open style).
-- [~] `NOTE-017` **Foli AI on a note**: (⌘J toggle). Core: Note > Ask Foli AI About This Note (⌥⌘J) opens the inspector, but on a note the inspector shows only Note Info, so the chat never shows (`Views/Note/Inspector.swift`).
+- [x] `NOTE-017` **Foli AI on a note**: (⌘J toggle). Core: closed after the grading (see "Since this grading").
 - [x] `NOTE-018` **Format marks**: bold, italic, underline, strike, code, highlight. Core: `App/AppCommands.swift` Format menu.
 - [x] `NOTE-019` **Link**: (Format > Link… goes straight to the page). Core: Format > Link… (link editor command).
 - [x] `NOTE-020` **Block types**: H1/H2/H3, body, bulleted, numbered, checklist. Core: Format > Text Style (also toggle, quote, callout, code block).
@@ -590,12 +590,12 @@ Notable findings (all in the first work package at the end):
 - [x] `NOTE-023` **Focus mode toggle**: (⌥⌘\). Core: View > Focus Mode (⌃⇧⌘F, not ⌥⌘\).
 - [x] `NOTE-024` **Lock note**: (always fully encrypted; enabled when canLock). Core: `Views/Note/NoteScreen.swift` NoteMoreMenu Lock Note (when canLock).
 - [x] `NOTE-025` **Bookmark (star)**. Core: toolbar Bookmark and Note > Star (note.star).
-- [~] `NOTE-026` **Archive / Unarchive**. Core: Archive from lists only; not on the open note.
-- [~] `NOTE-027` **Move to Trash**: (⌘⌫ gated); the tab closes and leaves history. Core: Move to Trash in the note's menu (the page's delete); no ⌘⌫.
+- [x] `NOTE-026` **Archive / Unarchive**. Core: closed after the grading (see "Since this grading").
+- [x] `NOTE-027` **Move to Trash**: (⌘⌫ gated); the tab closes and leaves history. Core: closed after the grading (see "Since this grading").
 - [x] `NOTE-028` **Move to… / Duplicate / Version History… / Export… (⇧⌘E)**: via the page's dialogs. Core: NoteMoreMenu (note.menu move, duplicate, history, export ⇧⌘E).
 - [x] `NOTE-029` **Copy Link**: (⌃⌘C, `https://app.folevi.com/d/<id>`, "Link copied"). Core: Copy Link (⌥⌘C, not ⌃⌘C).
 - [x] `NOTE-030` **Print**: (app command, asks the frame whether a note shows). Core: File > Print sends note.menu print; `Host/Capabilities.swift` print and the shared print() hook.
-- [~] `NOTE-031` **Share**: (the note's own bar at the page foot; File > Share submenu from MainMenu). Core: File > Share sends note.menu share to the page; Core's own NoteSharingSheet is never opened (window.sharingNote is never set).
+- [x] `NOTE-031` **Share**: (the note's own bar at the page foot; File > Share submenu from MainMenu). Core: closed after the grading (see "Since this grading").
 - [x] `NOTE-032` **Note "..." menu actions contract**: share, move, copyTo, duplicate, export, history, present, print, find, delete, moveToVault, saveAsTemplate, showEditors… Core: NoteMoreMenu follows editor.state.menu actions.
 - [n/a] `NOTE-033` **Note menu plan**: (iPhone): sections and submenus (Connections, History, Move and copy, Share and export); trash-only menu; permissions (canEdit… Why: iPhone only.
 - [n/a] `NOTE-034` **Legacy native note menu**: (legacy, Mac). Why: legacy.
@@ -1264,9 +1264,9 @@ Notable findings (all in the first work package at the end):
 - [x] `SYS-001` **folevi:// (empty)**: Opens `/documents`. Core: `Model/AppModel.swift` openLink (folevi-core:// opens Home).
 - [x] `SYS-002` **folevi://new**: `showMain`, then the `new-note` command (handled natively by the frame as `FrameModel.newNote`). Core: closed after the grading (see "Since this grading").
 - [x] `SYS-003` **folevi://quick-add**: `QuickAddPanel.toggle`, or the main window when Quick Add isn't set up. Core: closed after the grading (see "Since this grading").
-- [~] `SYS-004` **folevi://d/<ULID or inbox-id>[#block-x | #comment-x | #x]**: Opens `/d/<ID>` with the hash kept. ULID `^[0-9A-Z]{26}$` (upper-cased); inbox `^inbox-[0-9a-z]{1,40}$`. Core: opens the note; the #block or #comment part is dropped.
-- [~] `SYS-005` **folevi://<page>[/a[/b]]**: Pages: documents, ai, tasks (for example tasks/today), calendar, inbox, settings, foli-ai, trash, templates, help, notes… Core: `Model/Destination.swift` most pages; not foli-ai or help.
-- [~] `SYS-006` **Link that launched the app**: Queued until launch finishes; the first link opens its own window directly. Core: not queued; a link before the first window is up can be lost.
+- [x] `SYS-004` **folevi://d/<ULID or inbox-id>[#block-x | #comment-x | #x]**: Opens `/d/<ID>` with the hash kept. ULID `^[0-9A-Z]{26}$` (upper-cased); inbox `^inbox-[0-9a-z]{1,40}$`. Core: closed after the grading (see "Since this grading").
+- [x] `SYS-005` **folevi://<page>[/a[/b]]**: Pages: documents, ai, tasks (for example tasks/today), calendar, inbox, settings, foli-ai, trash, templates, help, notes… Core: closed after the grading (see "Since this grading").
+- [x] `SYS-006` **Link that launched the app**: Queued until launch finishes; the first link opens its own window directly. Core: closed after the grading (see "Since this grading").
 - [x] `SYS-007` **folevi://auth/google**: The sign-in callback, consumed by the ASWebAuthenticationSession callback scheme `folevi` (not the Apple Event path). Core: shared ShellAuth (ASWebAuthenticationSession).
 - [x] `SYS-008` **Website links (https://app.folevi.com/<app route head>)**: Open in the app. Heads: documents, notes, d, ai, graph, tasks, inbox, calendar, review, changes, daily, shared, vault, templates… Core: `Host/PageView.swift` Navigation and AppModel.openLink (Links.target).
 - [x] `SYS-009` **app:// paths used internally**: `/native` (Page View), `/place-sync?place=<id>` (runner), `/quick-add?place=<id>` (web Quick Add)… Core: /native pages and shared runners; no /quick-add page (native panel).
@@ -1287,7 +1287,7 @@ Notable findings (all in the first work package at the end):
 - [x] `SYS-021` **Opening a result**: `application(_:continue:)` for CSSearchableItemActionType goes to `open(identifier:)`, which waits for launch. Same place… Core: `App/FoleviCoreApp.swift` onContinue opens the note, switching place when needed.
 - [x] `SYS-022` **quickLook**: Writes the page's file bytes (up to 20 files, 200 MB each) to tmp "Folevi Quick Look/<uuid>" and opens QLPreviewPanel. The web… Core: `Host/Capabilities.swift` quickLook.
 - [x] `SYS-023` **share from the page**: NSSharingServicePicker next to a page rect, a point or the pointer. Objects: a URL, else the text as a file (`fileName`), else… Core: `Host/Capabilities.swift` share.
-- [~] `SYS-024` **File > Share submenu**: Lists the services that take the key window's note. `setShareTarget` holds the per-view target. Asks the page for the `share`… Core: File > Share… sends note.menu share; no submenu of services; setShareTarget is a no-op.
+- [x] `SYS-024` **File > Share submenu**: Lists the services that take the key window's note. `setShareTarget` holds the per-view target. Asks the page for the `share`… Core: closed after the grading (see "Since this grading").
 - [n/a] `SYS-025` **Fallback File menu**: Share and Print (⌘P) before MainMenu exists. Why: SwiftUI builds the menu bar.
 - [x] `SYS-026` **dragFile (Export dialog)**: An NSFilePromiseProvider for one Markdown file, started from the last mouse event. Core: `Host/Capabilities.swift` dragFile.
 - [~] `SYS-027` **dragNotes (web cards and rows)**: The page declares which notes a drag carries. When WebKit starts the drag, the items become file promises that also keep WebKit's… Core: `Host/Capabilities.swift` dragNotes gives links, not Markdown file promises with attachments.
@@ -1307,13 +1307,13 @@ Notable findings (all in the first work package at the end):
 - [~] `SYS-041` **Foreground presentation**: Only reminders (`local-reminder` or the reminder category) show a banner, sound and list; activity goes to the in-app bell. Core: Core posts nothing while it's in front; when shown, every kind is a banner with sound.
 - [x] `SYS-042` **Responses**: The default action or "open" runs `Chrome.open(path, place)`, switching place if needed. Other actions send a `notification`… Core: `App/FoleviCoreApp.swift` NotificationDelegate opens the path, switching place (default action only).
 - [x] `SYS-043` **MacAppLock**: `{ lock, lockAfter }` in the support folder. "Ask again" choices: 0, 60, 300, 900, 3600 s. Method: touchID, or none on a Mac… Core: `Host/HostServices.swift` MacAppLock (in defaults, not the support folder).
-- [~] `SYS-044` **Triggers**: Windows open covered at launch. It locks on `NSWorkspace.willSleep`, `sessionDidResignActive` and the `com.apple.screenIsLocked`… Core: covered at launch, on screen sleep and after time away; not on session resign or screen lock.
-- [~] `SYS-045` **Cover**: LockCoverView (SwiftUI WebLockCover) over each window's content. It swallows hit tests and key equivalents; Return or Space… Core: `Views/MainWindow.swift` LockCover over each window; keys and menu shortcuts still go through.
-- [~] `SYS-046` **AppLock.confirm(reason:)**: Called by E2eeKeys before encrypted notes open; a yes covers 30 s. Core: `Host/HostServices.swift` AppLock.confirm; no 30 s grace.
+- [x] `SYS-044` **Triggers**: Windows open covered at launch. It locks on `NSWorkspace.willSleep`, `sessionDidResignActive` and the `com.apple.screenIsLocked`… Core: closed after the grading (see "Since this grading").
+- [x] `SYS-045` **Cover**: LockCoverView (SwiftUI WebLockCover) over each window's content. It swallows hit tests and key equivalents; Return or Space… Core: closed after the grading (see "Since this grading").
+- [x] `SYS-046` **AppLock.confirm(reason:)**: Called by E2eeKeys before encrypted notes open; a yes covers 30 s. Core: closed after the grading (see "Since this grading").
 - [x] `SYS-047` **HotKey**: Carbon `RegisterEventHotKey` (no Accessibility permission), signature "FOLV". Electron accelerator syntax; default "Alt+Space"… Core: `Views/QuickAdd/QuickAdd.swift` Carbon hotkey "FOLV"; no "already in use" error.
 - [x] `SYS-048` **QuickAddPanel**. Core: `Views/QuickAdd/QuickAdd.swift` QuickAddPanel.
-- [~] `SYS-049` **Quick Add place and page**: The page loads `/quick-add?place=<id>`, or with the native frame a hidden `/native` Page View with its own EngineClient plus a… Core: a native field on the open place's engine; no queue for captures.
-- [~] `SYS-050` **Entry points**: The hotkey, the status item, the Dock menu, `folevi://quick-add`, and menu `file.quick-add-task`. Core: hotkey, status item, Dock menu, File menu; no URL.
+- [x] `SYS-049` **Quick Add place and page**: The page loads `/quick-add?place=<id>`, or with the native frame a hidden `/native` Page View with its own EngineClient plus a… Core: closed after the grading (see "Since this grading").
+- [x] `SYS-050` **Entry points**: The hotkey, the status item, the Dock menu, `folevi://quick-add`, and menu `file.quick-add-task`. Core: closed after the grading (see "Since this grading").
 - [~] `SYS-051` **Float Note**: A note in its own NSPanel (380x480), its own Page View in native chrome mode and its own EngineClient (MacEngineTransport). The… Core: a floating SwiftUI window with its own WindowModel and a pool page; always on top, no pin toggle or saved frame.
 - [~] `SYS-052` **Spelling, Learn, Ignore, Look Up**: NSSpellChecker with a per-view document tag; the page's context paragraph is used to pick the language; up to 8 guesses. Learn… Core: `Host/DesktopRouter.swift` spelling with 6 guesses; no context language; Learn and Ignore don't clear WebKit's underline.
 - [x] `SYS-053` **DesktopSettings**: Defaults key `folevi.desktop.settings`. Fields: quickAddShortcut "Alt+Space", openAtLogin true, menuBarIcon true, notifications… Core: `Host/DesktopRouter.swift` DesktopSettings (same key; openAtLogin defaults to off).
@@ -1321,11 +1321,11 @@ Notable findings (all in the first work package at the end):
 ### App lock screen
 
 - [x] `SYS-054` **Lock cover**: logo, lock tile, "Folevi is locked", "Your notes stay covered until Touch ID says it's you.", "Unlock with Touch ID"., used at. Core: `Views/MainWindow.swift` LockCover (no logo or subtitle).
-- [~] `SYS-055` **When it locks**: at launch when on; on sleep, screen lock and session resign; after being away longer than "Ask again" (0, 60, 300, 900, 3600 s)… Core: launch, screen sleep, time away; not session resign or screen lock.
-- [~] `SYS-056` **Unlock**: Touch ID with a "Use Password" fallback; one prompt at a time; uncovers by itself if Touch ID goes away. Core: each window's cover asks at once, so prompts can stack with several windows.
+- [x] `SYS-055` **When it locks**: at launch when on; on sleep, screen lock and session resign; after being away longer than "Ask again" (0, 60, 300, 900, 3600 s)… Core: closed after the grading (see "Since this grading").
+- [x] `SYS-056` **Unlock**: Touch ID with a "Use Password" fallback; one prompt at a time; uncovers by itself if Touch ID goes away. Core: closed after the grading (see "Since this grading").
 - [x] `SYS-057` **Changing the lock**: turning it on or off asks for Touch ID; errors "unavailable" / "cancelled"; saved in. Core: MacAppLock.setSettings asks Touch ID.
-- [~] `SYS-058` **Cover behaviour**: takes the keyboard (keys and shortcuts swallowed), can move the window, restores the keyboard owner afterwards. Core: doesn't take the keyboard.
-- [~] `SYS-059` **Encrypted notes confirmation**: `AppLock.confirm(reason:)`; one yes covers 30 s. Core: no 30 s grace.
+- [x] `SYS-058` **Cover behaviour**: takes the keyboard (keys and shortcuts swallowed), can move the window, restores the keyboard owner afterwards. Core: closed after the grading (see "Since this grading").
+- [x] `SYS-059` **Encrypted notes confirmation**: `AppLock.confirm(reason:)`; one yes covers 30 s. Core: closed after the grading (see "Since this grading").
 - [n/a] `SYS-060` **Settings protocol and words**: `AppLockSettings` (method, enabled, after); `AppLockWords` (Face ID, Touch ID, Optic ID, Passcode; "Lock with …"; Right away /… Why: iPhone/iPad words.
 
 ## Context menus
@@ -1653,9 +1653,9 @@ Notable findings (all in the first work package at the end):
 - [n/a] `RULE-019` **Folevi tab model kept**: (joined, pinned, per-place, folder tabs) as a capsule track in the glass top bar; native window tabs rejected. Why: Core deliberately uses native window tabs instead.
 - [x] `RULE-020` **macOS 26 minimum**. Core: macOS 26.
 - [x] `RULE-021` **Accent is black and white**: #1F1F22 light, #F2F2F3 dark. Core: `Views/Common/Style.swift` foleviInk (#1F1F22, #F2F2F3) as the tint.
-- [~] `RULE-022` **Settings in its own window**: with a category list and working search. Core: own window with categories; no search.
-- [~] `RULE-023` **Sidebar always visible with no hide button; Focus mode still hides it.**: Note: this conflicts with the current hide button and ⌘\. Core: the native split view keeps its hide button.
-- [~] `RULE-024` **Owner's Mac UI guide**: applies to the window profile. Core: not reviewed against the guide yet.
+- [x] `RULE-022` **Settings in its own window**: with a category list and working search. Core: closed after the grading (see "Since this grading").
+- [x] `RULE-023` **Sidebar always visible with no hide button; Focus mode still hides it.**: Note: this conflicts with the current hide button and ⌘\. Core: closed after the grading (see "Since this grading").
+- [~] `RULE-024` **Owner's Mac UI guide**: applies to the window profile. Core: the guide (macloving-mac-ui.md) is applied to the sidebar scale, Settings (categories, search, compact title) and empty/loading states; its main-window profile (hidden title bar, custom top bar) is not, because it would remove native window tabs: the owner decides.
 - [n/a] `RULE-025` **Web-parity screenshot diffs**: cover note content only, not chrome. Why: a testing process, not a feature.
 - [n/a] `RULE-026` **iPad uses the same layout as the Mac**. Why: iPad only.
 - [~] `RULE-027` **Sidebar rows**: need more breathing space. Core: system sidebar rows, not tuned.
@@ -1663,7 +1663,7 @@ Notable findings (all in the first work package at the end):
 - [~] `RULE-029` **Consistent button size, thickness and font sizes**: (one control size via `macNativeChrome`). Core: mixed control sizes (small, regular, large).
 - [x] `RULE-030` **System font everywhere**: except notes, folders and the editor. A note card keeps its Spectral title and the note-font preview, with system dates and chip.… Core: CoreType on cards and titles, system font elsewhere.
 - [x] `RULE-031` **One New note**: a black "+ New note" pill in the title bar right after the tabs, before sync and bell (white in dark mode), native Liquid Glass.… Core: `Views/MainWindow.swift` the one New Note pill in the toolbar.
-- [~] `RULE-032` **Section headings that open a page**: get a full-row hover. Core: headings don't open pages (see NAV-019).
+- [x] `RULE-032` **Section headings that open a page**: get a full-row hover. Core: closed after the grading (see "Since this grading").
 - [x] `RULE-033` **No unnecessary or repeated buttons**: (no circle + on Home or a note, no extra floating Share on a note). Core: one New Note, no repeated buttons.
 - [~] `RULE-034` **Icons**: Folevi's web icons wherever the web has one, and the Foli AI icon for Foli AI; this overrides SF Symbols in the chrome (MacSymbol). Core: web icons in the sidebar and note toolbar; SF Symbols in menus, palette and list toolbars.
 - [n/a] `RULE-035` **Checklist**: of native, Liquid Glass and macOS UI use lives in. Why: reference document.

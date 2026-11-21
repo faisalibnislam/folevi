@@ -124,7 +124,7 @@ enum Destination: Hashable, Codable {
             self = .search(query.first(where: { $0.name == "q" })?.value ?? "")
         case "notes": self = .allNotes
         case "d": guard let n = id(a) else { return nil }; self = .note(n)
-        case "ai": self = .foliAI(id(a))
+        case "ai", "foli-ai": self = .foliAI(id(a))
         case "inbox": self = .inbox
         case "notifications": self = .notifications
         case "tasks": self = .tasks(a.flatMap(TasksView.init(rawValue:)) ?? .today)

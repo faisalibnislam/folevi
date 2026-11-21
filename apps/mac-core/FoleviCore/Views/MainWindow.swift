@@ -36,7 +36,10 @@ struct MainWindow: View {
                     .navigationTitle("Folevi Core")
             } else {
                 NavigationSplitView(columnVisibility: $window.columnVisibility) {
+                    // The owner's rule: the sidebar is always there, with no hide button (Focus Mode on a note
+                    // still gives the page the whole width).
                     Sidebar(window: window)
+                        .toolbar(removing: .sidebarToggle)
                 } detail: {
                     ScreenView(window: window)
                         .navigationTitle(window.title)
@@ -70,6 +73,7 @@ struct MainWindow: View {
         .environment(window)
         .onAppear {
             window.start()
+            app.openHelp = { openWindow(id: "help") }
             app.openWindow = { dest, asTab, background in openWindow(id: "main", value: WindowSeed(start: dest ?? .home, asTab: asTab, background: background)) }
             SettingsRouter.shared.openSettings = { openSettings() }
             // A restored window goes back where it was (a fresh window opens where its seed says).

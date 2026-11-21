@@ -38,6 +38,9 @@ final class WindowModel: Identifiable {
     var filterText = ""
     /// A new note opened: its title takes the caret once it shows.
     var focusNoteSoon = false
+    /// Notes joined side by side in this tab (left to right, the current note among them) and their widths.
+    private(set) var panes: [String]?
+    private(set) var paneSizes: [Double]?
     /// The inspector's Foli AI chat (about the note on screen).
     var inspectorChat: String?
     /// The folder whose sharing sheet is up.
@@ -165,7 +168,8 @@ final class WindowModel: Identifiable {
         noteMeta = nil
         let focus = focusNoteSoon
         focusNoteSoon = false
-        await page.show(note: id, focus: focus)
+        if let p = panes, !p.contains(id) { panes = nil; paneSizes = nil }
+        await page.show(note: id, focus: focus, panes: panes, sizes: paneSizes, tabs: app.openNoteTabs(except: self.id))
         noteReady = true
         if let meta = try? await app.client?.query(Views.NoteMeta(NoteIdArgs(id: id))), current.noteId == id {
             noteMeta = meta
@@ -200,6 +204,7 @@ final class WindowModel: Identifiable {
                     self.window?.title = self.title
                 case .noteReady(let r) where r.id == self.current.noteId: self.noteReady = true
                 case .editorPanel(let p): self.editorPanel = p.panel
+                case .panesChange(let c): self.panesChanged(c)
                 case .navigateRequest(let n) where !isEngine:
                     if n.external, let url = URL(string: n.route) { NSWorkspace.shared.open(url) } else { self.app.open(path: n.route, newTab: n.newTab) }
                 case .toast(let t) where !isEngine: self.app.toast(t)
@@ -207,6 +212,40 @@ final class WindowModel: Identifiable {
                 }
             }
         }
+    }
+
+    /// The page's panes changed (Join, Unjoin, a pane moved or detached, widths): the tab follows and shows again.
+    private func panesChanged(_ c: PanesChangeEvent) {
+        guard let current = current.noteId else { return }
+        var list = panes ?? [current]
+        switch c.action {
+        case .join:
+            if let n = c.note, !list.contains(n) { list.append(n) }
+            paneSizes = nil
+        case .unjoin:
+            if let gap = c.gap, gap + 1 < list.count {
+                let rest = Array(list[(gap + 1)...])
+                list = Array(list[...gap])
+                if let first = rest.first { app.open(.note(first), newTab: true) }
+            }
+            paneSizes = nil
+        case .move:
+            if let from = c.from, let to = c.to, list.indices.contains(from), to >= 0, to < list.count {
+                list.insert(list.remove(at: from), at: to)
+            }
+        case .detach:
+            if let n = c.note, let i = list.firstIndex(of: n), list.count > 1 {
+                list.remove(at: i)
+                app.open(.note(n), newTab: true)
+            }
+            paneSizes = nil
+        case .sizes:
+            if case .set(let s) = c.sizes { paneSizes = s } else { paneSizes = nil }
+        }
+        panes = list.count > 1 ? list : nil
+        if panes == nil { paneSizes = nil }
+        let focusNote = list.contains(current) ? current : list.first ?? current
+        if focusNote != current { replace(with: .note(focusNote)) } else if let page { Task { await page.show(note: focusNote, panes: panes, sizes: paneSizes, tabs: app.openNoteTabs(except: id)) } }
     }
 
     /// The window hid (a background tab, minimized, closed): its page goes back after a moment.

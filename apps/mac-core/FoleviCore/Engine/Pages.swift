@@ -146,12 +146,12 @@ final class Page: PageHost {
     // MARK: the note
 
     /// Shows `id` in this page (prepared first so its first frame is ready).
-    func show(note id: String, focus: Bool = false, panes: [String]? = nil, sizes: [Double]? = nil) async {
+    func show(note id: String, focus: Bool = false, panes: [String]? = nil, sizes: [Double]? = nil, tabs: [PaneTab]? = nil) async {
         if shownNote != id {
             _ = try? await client.editor(EditorCommands.NotePrepare(NotePrepareArgs(id: id)))
         }
         shownNote = id
-        _ = try? await client.editor(EditorCommands.NoteShow(NoteShowArgs(id: id, focus: focus, panes: panes, sizes: sizes, tabs: nil)))
+        _ = try? await client.editor(EditorCommands.NoteShow(NoteShowArgs(id: id, focus: focus, panes: panes, sizes: sizes, tabs: tabs)))
     }
 
     /// One of the screens that stay on the page (Reviews, Graph, some Settings sections).

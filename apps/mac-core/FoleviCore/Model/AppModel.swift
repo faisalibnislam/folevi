@@ -212,6 +212,13 @@ final class AppModel {
 
     func becameFront(_ window: WindowModel) { frontWindow = window.id }
 
+    /// The notes open in other windows and tabs (the page's Join picker lists them first).
+    func openNoteTabs(except id: UUID) -> [PaneTab] {
+        windows.values.compactMap(\.model).filter { $0.id != id }.compactMap { w in
+            w.current.noteId.map { PaneTab(id: $0, title: w.title) }
+        }
+    }
+
     var front: WindowModel? { frontWindow.flatMap { windows[$0]?.model } ?? windows.values.compactMap(\.model).first }
 
     /// Asked by the shared host (a link with no window): opens one.

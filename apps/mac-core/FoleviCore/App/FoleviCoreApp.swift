@@ -114,6 +114,10 @@ final class CoreMenuActions: NSObject {
 
     @objc func newNote(_ sender: Any?) { NoteActions.newNote(app: .shared, window: AppModel.shared.front, newTab: AppModel.shared.front == nil) }
     @objc func quickAdd(_ sender: Any?) { QuickAdd.shared.show() }
+    @objc func search(_ sender: Any?) {
+        AppModel.shared.showAnyWindow()
+        AppModel.shared.front?.paletteShown = true
+    }
     @objc func openApp(_ sender: Any?) { AppModel.shared.showAnyWindow() }
     @objc func openNote(_ sender: NSMenuItem) {
         guard let id = sender.representedObject as? String else { return }
@@ -147,7 +151,11 @@ final class StatusItem: NSObject, NSMenuDelegate {
     func menuNeedsUpdate(_ menu: NSMenu) {
         menu.removeAllItems()
         let a = CoreMenuActions.shared
-        menu.addItem(withTitle: "Quick Add…", action: #selector(CoreMenuActions.quickAdd(_:)), keyEquivalent: "").target = a
+        let qa = menu.addItem(withTitle: "Quick Add Task…", action: #selector(CoreMenuActions.quickAdd(_:)), keyEquivalent: "")
+        qa.target = a
+        let shortcut = DesktopSettings.current.quickAddShortcut
+        if !shortcut.isEmpty { qa.toolTip = HotKey.display(shortcut) }
+        menu.addItem(withTitle: "Search Folevi Core…", action: #selector(CoreMenuActions.search(_:)), keyEquivalent: "").target = a
         menu.addItem(withTitle: "New Note", action: #selector(CoreMenuActions.newNote(_:)), keyEquivalent: "").target = a
         if !DesktopHooks.recent.isEmpty {
             menu.addItem(.separator())

@@ -56,6 +56,7 @@ struct MainWindow: View {
                 .overlay(alignment: .bottom) { ToastStack().padding(.bottom, window.current.isNote ? 78 : 0) }
                 .overlay { if window.paletteShown { CommandPalette(window: window) } }
                 .sheet(item: $window.folderPick) { FolderPickerSheet(target: $0) }
+                .sheet(isPresented: $window.quickAddShown) { QuickAddView(close: { window.quickAddShown = false }, inWindow: true) }
             }
         }
         .overlay { if MacAppLock.shared.isCovered { LockCover() } }

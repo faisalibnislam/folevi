@@ -162,6 +162,7 @@ final class AppModel {
             ready = true
             gate = nil
             rebind()
+            QuickAddQueue.shared.flush()
         case .gateChanged(let g):
             gate = g.gate == nil ? nil : g
             if g.gate == nil { ready = true }

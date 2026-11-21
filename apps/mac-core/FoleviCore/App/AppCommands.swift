@@ -20,8 +20,8 @@ struct AppCommands: SwiftUI.Commands {
                 .keyboardShortcut("t")
             Button("New Window") { openWindow(id: "main", value: WindowSeed(start: .home, asTab: false)) }
                 .keyboardShortcut("n", modifiers: [.command, .shift])
-            Button("Quick Add…") { QuickAdd.shared.show() }
-                .keyboardShortcut("a", modifiers: [.command, .option, .control])
+            Button("Quick Add Task…") { if let window { window.quickAddShown = true } else { QuickAdd.shared.show() } }
+                .keyboardShortcut("a", modifiers: [.command, .shift])
             Button("Reopen Closed Tab") { app.reopenClosedTab() }
                 .keyboardShortcut("t", modifiers: [.command, .shift])
         }

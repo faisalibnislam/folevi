@@ -45,6 +45,8 @@ final class WindowModel: Identifiable {
     var inspectorChat: String?
     /// The folder whose sharing sheet is up.
     var sharingFolder: String?
+    /// Quick Add in this window (⇧⌘A).
+    var quickAddShown = false
     /// The folder picker on screen (Move To, Copy To, Move Folder).
     var folderPick: FolderPickTarget?
     /// The note whose sharing popover is up.

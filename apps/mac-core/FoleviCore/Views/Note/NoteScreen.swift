@@ -165,6 +165,15 @@ struct NoteMoreMenu: View {
         if offered.contains(.copyTo) { Button("Copy To…") { window.noteMenu(.copyTo) } }
         if offered.contains(.duplicate) { Button("Duplicate") { window.noteMenu(.duplicate) } }
         Divider()
+        if let id = window.current.noteId {
+            Button("Share…") { window.sharingNote = id }
+            Button(window.noteMeta?.archived == true ? "Unarchive" : "Archive") {
+                let archived = window.noteMeta?.archived == true
+                app.perform { _ = try await $0.command(Commands.NoteArchive(NoteArchiveArgs(ids: [id], archived: !archived))) }
+            }
+            Button("Foli DNA of This Note") { window.go(.graph) }
+        }
+        Divider()
         Button("Find in Note") { window.findShown = true }
         Button(window.editorState?.focus == true ? "Leave Focus Mode" : "Focus Mode") { window.editor(EditorCommands.FocusToggle()) }
         if window.editorState?.canLock == true {
@@ -188,7 +197,7 @@ struct NoteMoreMenu: View {
             Button("Float on Top") { openWindow(id: "float", value: id) }
         }
         Divider()
-        if offered.contains(.delete) { Button("Move to Trash", role: .destructive) { window.noteMenu(.delete) } }
+        if offered.contains(.delete) { Button("Move to Trash", role: .destructive) { window.noteMenu(.delete) }.keyboardShortcut(.delete, modifiers: .command) }
     }
 }
 

@@ -106,8 +106,8 @@ struct FolderMenu: View {
         Divider()
         Button("Rename…") { rename(folder) }
         Menu("Colour") {
-            ForEach(FolderColors.all, id: \.self) { id in
-                Button(id.capitalized) { app.perform { _ = try await $0.command(Commands.FolderSetColor(FolderSetColorArgs(id: folder.id, color: id))) } }
+            ForEach(FolderColors.all, id: \.id) { c in
+                Button(c.name) { app.perform { _ = try await $0.command(Commands.FolderSetColor(FolderSetColorArgs(id: folder.id, color: c.id))) } }
             }
         }
         if app.session.value?.mode != .local, app.currentSpace?.encrypted == true || app.currentSpace?.canLock == true {
@@ -123,8 +123,13 @@ struct FolderMenu: View {
     }
 }
 
+/// Folevi's folder colours (the design tokens) and tag colours (the web's six), by id and name.
 enum FolderColors {
-    static let all = ["gray", "red", "orange", "yellow", "green", "teal", "blue", "purple", "pink", "brown"]
+    static var all: [(id: String, name: String)] { FoleviTokens.folderColors.map { ($0.id, $0.name) } }
+}
+
+enum TagColors {
+    static let all: [(id: String, name: String)] = [("accent", "Cocoa"), ("moss", "Moss"), ("marigold", "Marigold"), ("plum", "Plum"), ("coral", "Coral"), ("muted", "Muted")]
 }
 
 /// The place and space menu at the top of the sidebar: the account or library, its spaces, the other places on
@@ -280,6 +285,7 @@ enum NoteActions {
         alert.addButton(withTitle: "Delete")
         alert.addButton(withTitle: "Cancel")
         alert.buttons.first?.hasDestructiveAction = true
+        CoreAlerts.cancelIsDefault(alert)
         let run = { app.perform { _ = try await $0.command(Commands.NoteDeleteForever(NoteIdsArgs(ids: ids))) } }
         if let w = NSApp.keyWindow { alert.beginSheetModal(for: w) { if $0 == .alertFirstButtonReturn { run() } } } else if alert.runModal() == .alertFirstButtonReturn { run() }
     }
@@ -287,11 +293,14 @@ enum NoteActions {
     static func deleteFolder(_ folder: FolderNode, app: AppModel) {
         let alert = NSAlert()
         alert.messageText = "Delete “\(folder.name)”?"
-        alert.informativeText = "Its notes move to Trash. Subfolders are deleted too."
+        alert.informativeText = folder.childCount > 0
+            ? "The folder is removed. Its notes are kept and move to Drafts. Its \(folder.childCount == 1 ? "subfolder moves" : "subfolders move") up a level, with everything inside."
+            : "The folder is removed. Its notes are kept and move to Drafts."
         alert.alertStyle = .warning
         alert.addButton(withTitle: "Delete")
         alert.addButton(withTitle: "Cancel")
         alert.buttons.first?.hasDestructiveAction = true
+        CoreAlerts.cancelIsDefault(alert)
         let run = { app.perform { _ = try await $0.command(Commands.FolderDelete(FolderIdArgs(id: folder.id))) } }
         if let w = NSApp.keyWindow { alert.beginSheetModal(for: w) { if $0 == .alertFirstButtonReturn { run() } } } else if alert.runModal() == .alertFirstButtonReturn { run() }
     }
@@ -338,5 +347,14 @@ enum AccountActions {
             guard let u = await ShellAuth.shared.signInAccount(window: NSApp.keyWindow, provider: provider), let a = Places.shared.addAccount(u) else { return }
             Places.shared.switchTo(a.id, path: "/documents")
         }
+    }
+}
+
+enum CoreAlerts {
+    /// A destructive alert's Return key cancels; the destructive button needs a click (HIG).
+    static func cancelIsDefault(_ alert: NSAlert) {
+        guard alert.buttons.count >= 2 else { return }
+        alert.buttons[0].keyEquivalent = ""
+        alert.buttons[1].keyEquivalent = "\r"
     }
 }

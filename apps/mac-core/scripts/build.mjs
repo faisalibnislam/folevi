@@ -20,7 +20,7 @@ if (!args.has("--no-generate")) {
   execFileSync(xcodegen, ["generate", "--spec", spec, "--project", CORE, "--quiet"], { cwd: CORE, stdio: "inherit" });
 }
 
-const r = spawnSync("xcodebuild", ["-project", project, "-scheme", "FoleviCore", "-configuration", config, "-derivedDataPath", join(CORE, "build/dd"), "-destination", "platform=macOS", "build"], { cwd: CORE, encoding: "utf8", maxBuffer: 1 << 28 });
+const r = spawnSync("xcodebuild", ["-project", project, "-scheme", "FoleviCore", "-configuration", config, "-derivedDataPath", join(CORE, "build/dd"), "-destination", "platform=macOS", "-allowProvisioningUpdates", "build"], { cwd: CORE, encoding: "utf8", maxBuffer: 1 << 28 });
 const lines = (r.stdout + r.stderr).split("\n");
 const seen = new Set();
 const show = (l) => {

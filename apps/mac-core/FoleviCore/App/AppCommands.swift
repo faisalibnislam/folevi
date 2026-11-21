@@ -39,7 +39,7 @@ struct AppCommands: SwiftUI.Commands {
                 .disabled(window?.current.isNote != true)
         }
         CommandGroup(after: .saveItem) {
-            Button("Share…") { window?.noteMenu(.share) }
+            Button("Share…") { window?.sharingNote = window?.current.noteId }
                 .disabled(window?.current.isNote != true)
             Button("Copy Link") { if let id = window?.current.noteId { NoteActions.copyLink(id, title: window?.title ?? "") } }
                 .keyboardShortcut("c", modifiers: [.command, .option])
@@ -74,7 +74,7 @@ struct AppCommands: SwiftUI.Commands {
                 Button("Underline") { window?.format(.underline) }.keyboardShortcut("u")
                 Button("Strikethrough") { window?.format(.strike) }.keyboardShortcut("x", modifiers: [.command, .shift])
                 Button("Code") { window?.format(.code) }.keyboardShortcut("e")
-                Button("Highlight") { window?.format(.highlight) }.keyboardShortcut("h", modifiers: [.command, .shift])
+                Button("Highlight") { window?.format(.highlight) }
                 Button("Link…") { window?.editor(EditorCommands.Link(LinkArgs(href: nil))) }.keyboardShortcut("k", modifiers: [.command, .shift])
             }
             .disabled(!canEdit)
@@ -94,8 +94,8 @@ struct AppCommands: SwiftUI.Commands {
                 Button("Code Block") { window?.block(.code) }
             }
             .disabled(!canEdit)
-            Button("Indent") { window?.editor(EditorCommands.Indent()) }.keyboardShortcut("]").disabled(!canEdit)
-            Button("Outdent") { window?.editor(EditorCommands.Outdent()) }.keyboardShortcut("[").disabled(!canEdit)
+            Button("Indent") { window?.editor(EditorCommands.Indent()) }.keyboardShortcut("]", modifiers: [.command, .option]).disabled(!canEdit)
+            Button("Outdent") { window?.editor(EditorCommands.Outdent()) }.keyboardShortcut("[", modifiers: [.command, .option]).disabled(!canEdit)
             Divider()
             Button("Move Block Up") { window?.editor(EditorCommands.BlockMove(BlockMoveArgs(dir: .up))) }.keyboardShortcut(.upArrow, modifiers: [.command, .option]).disabled(!canEdit)
             Button("Move Block Down") { window?.editor(EditorCommands.BlockMove(BlockMoveArgs(dir: .down))) }.keyboardShortcut(.downArrow, modifiers: [.command, .option]).disabled(!canEdit)
@@ -111,12 +111,11 @@ struct AppCommands: SwiftUI.Commands {
             Button("as Cards") { window?.listStyle = .cards }.keyboardShortcut("2")
             Divider()
             Button(window?.inspectorShown == true ? "Hide Inspector" : "Show Inspector") { window?.inspectorShown.toggle() }
-                .keyboardShortcut("0", modifiers: [.command, .option])
+                .keyboardShortcut("i", modifiers: [.command, .option])
             Button("Focus Mode") { window?.editor(EditorCommands.FocusToggle()) }
                 .keyboardShortcut("f", modifiers: [.command, .control, .shift])
                 .disabled(window?.current.isNote != true)
             Button("Note Info") { window?.inspectorTab = .info; window?.inspectorShown = true }
-                .keyboardShortcut("i", modifiers: [.command, .option])
                 .disabled(window?.current.isNote != true)
             Divider()
         }
@@ -170,7 +169,7 @@ struct AppCommands: SwiftUI.Commands {
                 Divider()
                 NoteMoreMenu(window: window)
                 Divider()
-                Button("Ask Foli AI About This Note") { window.inspectorTab = .foliAI; window.inspectorShown = true }
+                Button("Ask Foli AI About This Note") { window.editor(EditorCommands.Ai(AiArgs(action: .open, prompt: nil))) }
                     .keyboardShortcut("j", modifiers: [.command, .option])
                 Button("Comments") { window.panel(.comments) }.keyboardShortcut("m", modifiers: [.command, .option])
                 Button("Related Notes") { window.panel(.related) }

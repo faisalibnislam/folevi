@@ -139,7 +139,7 @@ struct GateScreen: View {
                     Text(dev.label)
                     Text(CoreDates.relative(dev.lastSeenAt)).font(.caption).foregroundStyle(.secondary)
                     Spacer()
-                    Button("Sign Out") { send("revoke", ["device": dev.id]) }
+                    Button("Sign Out") { send("signOut:\(dev.id)", [:]) }
                 }
             }
         }

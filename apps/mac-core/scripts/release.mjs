@@ -58,12 +58,28 @@ export function buildRelease({ out, universal = false, version, build, web: give
   run(xcodegen, ["generate", "--spec", join(CORE, "project.yml"), "--project", CORE, "--quiet"], { cwd: CORE });
   const archive = join(out, "FoleviCore.xcarchive");
   rmSync(archive, { recursive: true, force: true });
-  const key = join(process.env.HOME, ".appstoreconnect/private_keys/AuthKey_HS88CK5RQF.p8");
-  const auth = existsSync(key) ? ["-allowProvisioningUpdates", "-authenticationKeyPath", key, "-authenticationKeyID", "HS88CK5RQF", "-authenticationKeyIssuerID", "9479ebb4-e44a-45b4-bfef-e625408057ae"] : ["-allowProvisioningUpdates"];
+  // Provisioning through Xcode's signed-in account (the team's Admin): the App Store Connect API key's Developer
+  // role can't register the iCloud capability or make Developer ID profiles.
+  const auth = ["-allowProvisioningUpdates"];
   run("xcodebuild", ["-project", join(CORE, "FoleviCore.xcodeproj"), "-scheme", "FoleviCore", "-configuration", "Release", "-destination", "generic/platform=macOS", "-derivedDataPath", DERIVED,
     "-archivePath", archive, `ARCHS=${universal ? "arm64 x86_64" : "arm64"}`, "ONLY_ACTIVE_ARCH=NO", `MARKETING_VERSION=${version}`, `CURRENT_PROJECT_VERSION=${build}`, ...auth, "archive"], { cwd: CORE });
-  const archived = join(archive, "Products/Applications/Folevi Core.app");
-  if (!existsSync(archived)) throw new Error(`The archive has no ${archived}`);
+  if (!existsSync(join(archive, "Products/Applications/Folevi Core.app"))) throw new Error("The archive has no Folevi Core.app");
+
+  console.log("\n== the Developer ID export (Xcode makes the Developer ID profile, with iCloud)");
+  const exportDir = join(out, "export");
+  rmSync(exportDir, { recursive: true, force: true });
+  const options = join(out, "ExportOptions.plist");
+  writeFileSync(options, `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict>
+<key>method</key><string>developer-id</string>
+<key>signingStyle</key><string>automatic</string>
+<key>teamID</key><string>${TEAM}</string>
+<key>destination</key><string>export</string>
+</dict></plist>`);
+  run("xcodebuild", ["-exportArchive", "-archivePath", archive, "-exportPath", exportDir, "-exportOptionsPlist", options, ...auth], { cwd: CORE });
+  const archived = join(exportDir, "Folevi Core.app");
+  if (!existsSync(archived)) throw new Error(`The export has no ${archived}`);
 
   console.log("\n== Resources/web, and the Developer ID signature");
   const app = join(out, "Folevi Core.app");
@@ -108,6 +124,8 @@ export function verify(app, { version, build, universal = false } = {}) {
   const ent = read("codesign", ["-d", "--entitlements", "-", "--xml", app]).out;
   if (ent.includes("com.apple.security.cs.allow-jit")) problems.push("JIT entitlement present");
   if (ent.includes("get-task-allow")) problems.push("get-task-allow present (a development signature)");
+  if (!ent.includes("iCloud.com.folevi")) problems.push("no iCloud container (iCloud.com.folevi) in the entitlements");
+  if (!existsSync(join(app, "Contents/embedded.provisionprofile"))) problems.push("no embedded Developer ID profile");
   try {
     const info = JSON.parse(readFileSync(join(app, "Contents/Resources/web/shell/build.json"), "utf8"));
     if (info.target !== "production") problems.push(`Resources/web is a ${info.target} build`);

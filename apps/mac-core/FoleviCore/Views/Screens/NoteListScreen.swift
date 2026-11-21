@@ -221,6 +221,7 @@ struct NoteListScreen: View {
         alert.addButton(withTitle: "Empty Trash")
         alert.addButton(withTitle: "Cancel")
         alert.buttons.first?.hasDestructiveAction = true
+        CoreAlerts.cancelIsDefault(alert)
         let run = { app.perform { _ = try await $0.command(Commands.TrashEmpty(SpaceArgs())) } }
         if let w = window.window { alert.beginSheetModal(for: w) { if $0 == .alertFirstButtonReturn { run() } } } else if alert.runModal() == .alertFirstButtonReturn { run() }
     }

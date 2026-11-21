@@ -195,3 +195,35 @@ struct DemoEngineTests {
         #expect(demo.commandLog.contains("note.create"))
     }
 }
+
+@MainActor
+struct SpotlightAndLinksTests {
+    @Test func spotlightIdentifiersCarryPlaceAndNote() throws {
+        let hit = try #require(Spotlight.parse("acct:u1|01M7Z5KSV1H3KAXB1272J3SNED"))
+        #expect(hit.place == "acct:u1")
+        #expect(hit.note == "01M7Z5KSV1H3KAXB1272J3SNED")
+        #expect(Spotlight.parse("nonote") == nil)
+        #expect(Spotlight.parse("library|") == nil)
+    }
+
+    @Test func everyPlaceHasATitleAndAnIcon() {
+        let all: [Destination] = [.home, .search(""), .foliAI(nil), .inbox, .notifications, .tasks(.today), .calendar(nil), .daily(nil), .allNotes, .recent, .starred, .shared, .drafts, .changes, .templates, .folders, .tags, .archive, .trash, .vault, .reviews, .graph]
+        for d in all {
+            #expect(!d.title.isEmpty)
+            #expect(!d.symbol.isEmpty)
+        }
+        #expect(Destination.graph.title == "Foli DNA")
+    }
+}
+
+@MainActor
+struct PoolTests {
+    @Test func aWindowKeepsItsPageAndGivesItBack() {
+        // Without a started engine page the pool lends nothing (launch hasn't finished): no crash, no page.
+        let pool = PagePool()
+        let w = UUID()
+        #expect(pool.editor(for: w) == nil)
+        pool.giveBack(from: w)
+        #expect(pool.page(of: w) == nil)
+    }
+}

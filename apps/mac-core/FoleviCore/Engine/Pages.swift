@@ -173,6 +173,8 @@ final class Page: PageHost {
 final class PagePool {
     static let shared = PagePool()
 
+    init() {}
+
     /// The open place's engine page; nil before launch finished.
     private(set) var engine: Page?
     @ObservationIgnored private var editors: [Page] = []

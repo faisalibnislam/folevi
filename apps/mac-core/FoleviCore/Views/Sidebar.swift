@@ -12,6 +12,7 @@ struct Sidebar: View {
     private var app: AppModel { .shared }
     @State private var expanded: Set<String> = []
     @State private var renaming: FolderNode?
+    @State private var renamingTag: TagRow?
     @State private var newFolderParent: String?? = nil
     @State private var foldersOpen = true
     @State private var tagsOpen = true
@@ -70,6 +71,17 @@ struct Sidebar: View {
                             WebIcon.hash.image(size: 16).foregroundStyle(Color.folevi(tag.color))
                         }
                         .tag(Destination.tag(tag.id))
+                        .contextMenu {
+                            Button("Open in New Tab") { app.open(.tag(tag.id), newTab: true) }
+                            Button("Rename…") { renamingTag = tag }
+                            Menu("Colour") {
+                                ForEach(TagColors.all, id: \.id) { c in
+                                    Button(c.name) { app.perform { _ = try await $0.command(Commands.TagUpdate(TagUpdateArgs(id: tag.id, color: c.id))) } }
+                                }
+                            }
+                            Divider()
+                            Button("Delete Tag", role: .destructive) { app.perform { _ = try await $0.command(Commands.TagDelete(TagIdArgs(id: tag.id))) } }
+                        }
                     }
                 }
             }
@@ -92,6 +104,11 @@ struct Sidebar: View {
             SyncFooter()
         }
         .navigationSplitViewColumnWidth(min: 200, ideal: 236, max: 340)
+        .sheet(item: $renamingTag) { tag in
+            NameSheet(title: "Rename Tag", initial: tag.name, action: "Rename") { name in
+                app.perform { _ = try await $0.command(Commands.TagUpdate(TagUpdateArgs(id: tag.id, name: name))) }
+            }
+        }
         .sheet(item: $renaming) { folder in
             NameSheet(title: "Rename Folder", initial: folder.name, action: "Rename") { name in
                 app.perform { _ = try await $0.command(Commands.FolderRename(FolderRenameArgs(id: folder.id, name: name))) }
@@ -302,3 +319,5 @@ enum SidebarDrop: Transferable {
         ProxyRepresentation { (f: FolderDrag) in SidebarDrop.folder(f) }
     }
 }
+
+extension TagRow: Identifiable {}

@@ -334,6 +334,7 @@ struct SharedFolderScreen: View {
 struct ChangesScreen: View {
     let window: WindowModel
     private var app: AppModel { .shared }
+    @State private var diffNote: String?
 
     var body: some View {
         Group {
@@ -379,6 +380,7 @@ struct ChangesScreen: View {
                                     }
                                     .contextMenu {
                                         Button("Open") { window.go(.note(n.id)) }
+                                        Button("Show What Changed…") { diffNote = n.id }
                                         Button("Mark as Seen") { app.perform { _ = try await $0.command(Commands.ChangesMarkSeen(NoteIdsArgs(ids: [n.id]))) } }
                                     }
                                 }
@@ -386,6 +388,9 @@ struct ChangesScreen: View {
                         }
                     }
                     .listStyle(.inset)
+                    .sheet(isPresented: Binding(get: { diffNote != nil }, set: { if !$0 { diffNote = nil } })) {
+                        if let id = diffNote { ChangeDiffSheet(noteId: id, window: window) }
+                    }
                     .toolbar {
                         ToolbarItem(placement: .secondaryAction) {
                             Button("Mark All as Seen") {
@@ -526,8 +531,8 @@ struct TagsScreen: View {
                             Button("Open") { window.go(.tag(t.id)) }
                             Button("Rename…") { renaming = t }
                             Menu("Colour") {
-                                ForEach(FolderColors.all, id: \.self) { c in
-                                    Button(c.capitalized) { app.perform { _ = try await $0.command(Commands.TagUpdate(TagUpdateArgs(id: t.id, name: nil, color: c))) } }
+                                ForEach(TagColors.all, id: \.id) { c in
+                                    Button(c.name) { app.perform { _ = try await $0.command(Commands.TagUpdate(TagUpdateArgs(id: t.id, name: nil, color: c.id))) } }
                                 }
                             }
                             Divider()
@@ -640,5 +645,57 @@ struct InviteScreen: View {
             }
             window.go(.home)
         }
+    }
+}
+
+/// What changed in a note since you last looked: added, changed and removed lines, with who and when.
+struct ChangeDiffSheet: View {
+    let noteId: String
+    let window: WindowModel
+    private var app: AppModel { .shared }
+    @Environment(\.dismiss) private var dismiss
+    @State private var diff: ChangeDiffValue?
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            HStack {
+                Text(diff?.title.nonEmpty ?? "Changes").font(CoreType.screenTitle(20))
+                Spacer()
+                Button("Open Note") { dismiss(); window.go(.note(noteId)) }.buttonStyle(InkPillStyle())
+            }
+            .padding(16)
+            Divider()
+            ScrollView {
+                VStack(alignment: .leading, spacing: 10) {
+                    if let d = diff {
+                        if d.encrypted { Text("This note is end to end encrypted: open it to see what changed.").foregroundStyle(.secondary) }
+                        ForEach(d.blocks, id: \.id) { b in
+                            HStack(alignment: .top, spacing: 8) {
+                                Rectangle().fill(b.change == "added" ? Color.green : b.change == "removed" ? Color.red : Color.orange).frame(width: 3)
+                                VStack(alignment: .leading, spacing: 3) {
+                                    if let parts = b.parts, !parts.isEmpty {
+                                        parts.reduce(Text("")) { acc, p in
+                                            acc + Text(p.text)
+                                                .foregroundStyle(p.kind == "added" ? Color.green : p.kind == "removed" ? Color.red : Color.primary)
+                                                .strikethrough(p.kind == "removed")
+                                        }
+                                        .font(CoreType.noteText(14))
+                                    } else {
+                                        Text(b.x).font(CoreType.noteText(14)).strikethrough(b.change == "removed")
+                                    }
+                                    if let who = b.who { Text("\(who)\(b.at.map { " · " + CoreDates.relative($0) } ?? "")").font(.caption).foregroundStyle(.secondary) }
+                                }
+                            }
+                        }
+                        if d.truncated { Text("More changes in the note.").font(.caption).foregroundStyle(.secondary) }
+                    } else {
+                        ProgressView()
+                    }
+                }
+                .padding(16)
+            }
+        }
+        .frame(width: 560, height: 520)
+        .task { diff = try? await app.client?.query(Views.ChangesDiff(ChangeDiffArgs(id: noteId))) }
     }
 }

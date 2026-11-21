@@ -109,6 +109,38 @@ struct NoteListScreen: View {
             return .handled
         }
         .onDeleteCommand { trashSelection() }
+        .overlay(alignment: .bottom) { selectionBar }
+    }
+
+    /// With more than one note selected: what every one of them can take, in a glass bar at the foot.
+    @ViewBuilder private var selectionBar: some View {
+        let notes = Array(selection.filter { !$0.hasPrefix("folder:") })
+        if notes.count > 1 {
+            HStack(spacing: 14) {
+                Text("\(notes.count) selected").font(.callout.weight(.medium))
+                Divider().frame(height: 16)
+                if kind == .trash {
+                    Button("Restore") { app.perform { _ = try await $0.command(Commands.NoteRestore(NoteIdsArgs(ids: notes))) }; selection.removeAll() }
+                    Button("Delete…", role: .destructive) { NoteActions.deleteForever(notes, app: app); selection.removeAll() }
+                } else {
+                    Button { app.perform { _ = try await $0.command(Commands.NoteStar(NoteStarArgs(ids: notes, starred: true))) } } label: { Label("Star", systemImage: "bookmark") }
+                    Button { window.pickFolder(.moveNotes, notes) } label: { Label("Move", systemImage: "folder") }
+                    Button {
+                        app.perform { _ = try await $0.command(Commands.NoteArchive(NoteArchiveArgs(ids: notes, archived: kind != .archive))) }
+                        selection.removeAll()
+                    } label: { Label(kind == .archive ? "Unarchive" : "Archive", systemImage: "archivebox") }
+                    Button(role: .destructive) { trashSelection() } label: { Label("Trash", systemImage: "trash") }
+                }
+                Button("Done") { selection.removeAll() }.keyboardShortcut(.cancelAction)
+            }
+            .labelStyle(.titleAndIcon)
+            .buttonStyle(.borderless)
+            .padding(.horizontal, 18)
+            .padding(.vertical, 10)
+            .glassEffect(.regular, in: .capsule)
+            .padding(.bottom, 16)
+            .transition(.move(edge: .bottom).combined(with: .opacity))
+        }
     }
 
     // MARK: cards

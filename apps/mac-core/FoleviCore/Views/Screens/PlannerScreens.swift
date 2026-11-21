@@ -130,6 +130,7 @@ struct TaskLine: View {
     var showNote = true
     private var app: AppModel { .shared }
     @State private var editingDue = false
+    @State private var editing = false
     @State private var due = Date()
 
     private var done: Bool { task.status == "done" || task.completedAt != nil }
@@ -170,6 +171,7 @@ struct TaskLine: View {
         }
         .padding(.vertical, 2)
         .contextMenu {
+            Button("Edit Task…") { editing = true }
             Button("Open Note") { window.go(.note(task.noteId)) }
             Divider()
             Button("Due Today") { setDue(Date()) }
@@ -191,6 +193,8 @@ struct TaskLine: View {
             Divider()
             Button("Cancel Task") { send { $0.canceled = true } }
         }
+        .sheet(isPresented: $editing) { TaskEditSheet(task: task) }
+        .onTapGesture(count: 2) { editing = true }
         .popover(isPresented: $editingDue) {
             VStack {
                 DatePicker("Due", selection: $due, displayedComponents: [.date]).datePickerStyle(.graphical).labelsHidden()
@@ -458,5 +462,154 @@ struct CalendarFeedSheet: View {
         .padding(20)
         .frame(width: 460)
         .task { feed.bind(app.client, Views.CalendarFeed()) }
+    }
+}
+
+/// Editing a task: done or not, due date and time, priority, who it's for, a reminder, how it repeats, and which
+/// note it lives in.
+struct TaskEditSheet: View {
+    let task: TaskRow
+    private var app: AppModel { .shared }
+    @Environment(\.dismiss) private var dismiss
+    @State private var done = false
+    @State private var hasDue = false
+    @State private var due = Date()
+    @State private var hasTime = false
+    @State private var time = Date()
+    @State private var priority: TaskUpdateArgs.Priority = .none
+    @State private var assignee: String?
+    @State private var hasReminder = false
+    @State private var reminder = Date()
+    @State private var repeatRule = ""
+    @State private var members = Live<Views.Members>()
+    @State private var moving = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Form {
+                Section {
+                    Text(task.title).font(.headline)
+                    Toggle("Done", isOn: $done)
+                }
+                Section("When") {
+                    Toggle("Due date", isOn: $hasDue)
+                    if hasDue {
+                        DatePicker("Date", selection: $due, displayedComponents: .date)
+                        Toggle("Time", isOn: $hasTime)
+                        if hasTime { DatePicker("At", selection: $time, displayedComponents: .hourAndMinute) }
+                    }
+                    Picker("Repeat", selection: $repeatRule) {
+                        Text("Never").tag("")
+                        Text("Every day").tag("daily")
+                        Text("Weekdays").tag("weekdays")
+                        Text("Every week").tag("weekly")
+                        Text("Every month").tag("monthly")
+                        Text("Every year").tag("yearly")
+                    }
+                    Toggle("Remind me", isOn: $hasReminder)
+                    if hasReminder { DatePicker("At", selection: $reminder) }
+                }
+                Section {
+                    Picker("Priority", selection: $priority) {
+                        Text("None").tag(TaskUpdateArgs.Priority.none)
+                        Text("Low").tag(TaskUpdateArgs.Priority.low)
+                        Text("Medium").tag(TaskUpdateArgs.Priority.medium)
+                        Text("High").tag(TaskUpdateArgs.Priority.high)
+                    }
+                    if let m = members.value?.members, m.count > 1 {
+                        Picker("Assigned to", selection: $assignee) {
+                            Text("Nobody").tag(String?.none)
+                            ForEach(m, id: \.id) { Text($0.isYou ? "\($0.name) (you)" : $0.name).tag(Optional($0.id)) }
+                        }
+                    }
+                    LabeledContent("In", value: task.noteTitle.nonEmpty ?? "Untitled")
+                    Button("Move to Another Note…") { moving = true }
+                }
+            }
+            .formStyle(.grouped)
+            HStack {
+                Spacer()
+                Button("Cancel", role: .cancel) { dismiss() }.keyboardShortcut(.cancelAction)
+                Button("Save", action: save).buttonStyle(InkPillStyle()).keyboardShortcut(.defaultAction)
+            }
+            .padding(16)
+        }
+        .frame(width: 440, height: 560)
+        .onAppear(perform: load)
+        .task { members.bind(app.client, Views.Members(SpaceArgs())) }
+        .sheet(isPresented: $moving) { NotePickerSheet(title: "Move Task To") { id in
+            app.perform { _ = try await $0.command(Commands.TaskMoveToNote(TaskMoveArgs(id: task.id, noteId: id))) }
+            dismiss()
+        } }
+    }
+
+    private func load() {
+        done = task.status == "done" || task.completedAt != nil
+        if let d = task.dueDate, let date = try? Date(d, strategy: CoreDates.dayFormat) { hasDue = true; due = date }
+        if let t = task.dueTime, let date = Self.timeFormatter.date(from: t) { hasTime = true; time = date }
+        priority = TaskUpdateArgs.Priority(rawValue: task.priority ?? "none") ?? .none
+        assignee = task.assigneeId
+        if let r = task.reminderAt { hasReminder = true; reminder = Date(timeIntervalSince1970: r / 1000) }
+        repeatRule = task.repeat ?? ""
+    }
+
+    private static let timeFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "HH:mm"
+        f.locale = Locale(identifier: "en_US_POSIX")
+        return f
+    }()
+
+    private func save() {
+        var a = TaskUpdateArgs(id: task.id, checked: done, priority: priority)
+        a.dueDate = hasDue ? .set(due.formatted(CoreDates.dayFormat)) : .clear
+        a.dueTime = hasDue && hasTime ? .set(Self.timeFormatter.string(from: time)) : .clear
+        a.assigneeId = assignee.map { .set($0) } ?? .clear
+        a.reminderAt = hasReminder ? .set(reminder.timeIntervalSince1970 * 1000) : .clear
+        a.repeat = repeatRule.isEmpty ? .clear : .set(repeatRule)
+        let args = a
+        app.perform { _ = try await $0.command(Commands.TaskUpdate(args)) }
+        dismiss()
+    }
+}
+
+/// Picking a note by searching (moving a task, linking).
+struct NotePickerSheet: View {
+    let title: String
+    let picked: (String) -> Void
+    private var app: AppModel { .shared }
+    @Environment(\.dismiss) private var dismiss
+    @State private var query = ""
+    @State private var hits: [SearchHit] = []
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text(title).font(.headline)
+            TextField("Search notes", text: $query).textFieldStyle(.roundedBorder)
+            List(hits, id: \.id) { h in
+                Button { picked(h.id); dismiss() } label: {
+                    VStack(alignment: .leading) {
+                        Text(h.title.nonEmpty ?? "Untitled").font(CoreType.noteTitle(14))
+                        if let f = h.folder { Text(f.name).font(.caption).foregroundStyle(.secondary) }
+                    }
+                }
+                .buttonStyle(.plain)
+            }
+            .frame(height: 260)
+            HStack { Spacer(); Button("Cancel", role: .cancel) { dismiss() }.keyboardShortcut(.cancelAction) }
+        }
+        .padding(16)
+        .frame(width: 400)
+        .task(id: query) {
+            let q = query.trimmingCharacters(in: .whitespaces)
+            if q.isEmpty {
+                let r = try? await app.client?.query(Views.Recent(RecentArgs(scope: .place, limit: 20)))
+                hits = (r?.rows ?? []).map { SearchHit(id: $0.row.id, title: $0.row.title, icon: nil, snippet: "", folder: $0.row.folder, updatedAt: $0.row.updatedAt, archived: false, kind: $0.row.kind, space: nil, spaceName: nil, matchIn: "title", blockId: nil, page: nil) }
+            } else {
+                try? await Task.sleep(for: .milliseconds(150))
+                let r = try? await app.client?.query(Views.Search(SearchArgs(text: q, limit: 30)))
+                hits = r?.hits ?? []
+            }
+        }
     }
 }

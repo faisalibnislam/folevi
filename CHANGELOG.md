@@ -4,6 +4,21 @@ Every Folevi release, newest first, written by `node scripts/version.mjs` from `
 
 Versions are MAJOR.UPDATE.PATCH, PATCH at least two digits: a Major release (2.0.00), a Big update (1.1.05 after 1.0.05) or a Small update (1.0.06 after 1.0.05).
 
+## Version 1.5.61: Small update
+
+Released 2026-11-21 10:25:19+06:00 (build 76, tag v1.5.61)
+
+Folder cards fit their words on iPhone, and Home's picture in Show All Tabs has room to breathe.
+
+### Improved
+
+- iPhone Home: bigger note and folder cards, evenly spaced, with the next one peeking in.
+- Show All Tabs: Home is drawn with its latest notes and folders on the web too, with more room between the rows.
+
+### Fixed
+
+- iPhone and iPad folder cards: a long folder name no longer pushes the last-edited date off the card.
+
 ## Version 1.5.60: Small update
 
 Released 2026-11-21 10:02:53+06:00 (build 75, tag v1.5.60)

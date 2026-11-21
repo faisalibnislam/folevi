@@ -1,6 +1,21 @@
 {
   "releases": [
     {
+      "version": "1.5.61",
+      "build": 76,
+      "released": "2026-11-21T10:25:19+06:00",
+      "type": "patch",
+      "summary": "Folder cards fit their words on iPhone, and Home's picture in Show All Tabs has room to breathe.",
+      "improved": [
+        "iPhone Home: bigger note and folder cards, evenly spaced, with the next one peeking in.",
+        "Show All Tabs: Home is drawn with its latest notes and folders on the web too, with more room between the rows."
+      ],
+      "fixed": [
+        "iPhone and iPad folder cards: a long folder name no longer pushes the last-edited date off the card."
+      ],
+      "tag": "v1.5.61"
+    },
+    {
       "version": "1.5.60",
       "build": 75,
       "released": "2026-11-21T10:02:53+06:00",

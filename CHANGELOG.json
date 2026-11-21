@@ -1,6 +1,23 @@
 {
   "releases": [
     {
+      "version": "1.5.63",
+      "build": 78,
+      "released": "2026-11-21T15:28:49+06:00",
+      "type": "patch",
+      "summary": "Search moves to the bottom of the iPhone above the keyboard, motion feels smoother across the apps, and card shadows are never cut off.",
+      "improved": [
+        "iPhone search: the search field and its close button sit at the bottom of the screen and rise with the keyboard, with the filters just above, as iOS 26 does.",
+        "Smoother motion on the Mac, iPhone and iPad: glass appears and leaves with a soft materialize, presses spring back without wobble, swipe rows follow a quick flick, and the Mac's card search grows into the field.",
+        "Quick add on iPhone and iPad: the Task and Note switch matches the one in Foli AI and runs across the sheet."
+      ],
+      "fixed": [
+        "Card shadows on the iPhone, iPad and Mac Home rows fade out naturally instead of being cut off in a straight line.",
+        "The iPhone's toast and the graph's camera move now respect Reduce Motion."
+      ],
+      "tag": "v1.5.63"
+    },
+    {
       "version": "1.5.62",
       "build": 77,
       "released": "2026-11-21T10:46:15+06:00",

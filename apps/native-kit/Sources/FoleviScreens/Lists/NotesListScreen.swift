@@ -129,6 +129,8 @@ public struct NotesListScreen: View {
                         .padding(.horizontal, gutter)
                         .padding(.vertical, 8)
                     }
+                    // The cards' shadows fade out past the strip instead of being cut off.
+                    .scrollClipDisabled()
                     .accessibilityLabel("Folders inside")
                 }
             }

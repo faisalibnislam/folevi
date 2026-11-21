@@ -727,19 +727,78 @@ public struct WebFolderCard: View {
         return menuRoom ? max(0, inner - max(0, 46 - w * 0.07)) : inner
     }
 
-    public var body: some View {
-        // What a note draws: Folevi's own fonts and look under the Mac's native chrome (NativeChrome).
-        cardBody.noteContent()
-    }
+    /// At rest the card is a picture (CardPictures); while the pointer is over it, and while its notes settle back
+    /// after, it's drawn live, so its notes rise.
+    @State private var live = false
+    /// The notes stand risen (while live; nil at rest).
+    @State private var lift: Bool?
+    @State private var hoverTurn = 0
+    @Environment(\.nativeShadowScale) private var shadowScale
 
-    @ViewBuilder private var cardBody: some View {
-        GeometryReader { geo in
-            drawing(w: geo.size.width, h: geo.size.height)
+    /// The notes risen and the card lifted: the pointer is over it.
+    private var risen: Bool { CardPictures.enabled ? (lift ?? false) : hovered }
+
+    public var body: some View {
+        Group {
+            if CardPictures.enabled && !hovered && !live {
+                pictureBody
+            } else {
+                GeometryReader { geo in drawing(w: geo.size.width, h: geo.size.height) }
+            }
         }
+        // What a note draws: Folevi's own fonts and look under the Mac's native chrome (NativeChrome).
+        .noteContent()
         .aspectRatio(Self.aspect, contentMode: .fit)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(model.accessibilityText)
         .accessibilityAddTraits(.isLink)
+        .onChange(of: hovered) { _, now in
+            guard CardPictures.enabled else { return }
+            // Live first (at rest, as the picture), then risen, so the notes rise as they always did; back at rest,
+            // the picture once they have settled.
+            hoverTurn += 1
+            let turn = hoverTurn
+            if now {
+                live = true
+                Task { @MainActor in if hoverTurn == turn { lift = true } }
+            } else {
+                lift = false
+                Task { @MainActor in
+                    try? await Task.sleep(for: .milliseconds(400))
+                    if hoverTurn == turn {
+                        live = false
+                        lift = nil
+                    }
+                }
+            }
+        }
+    }
+
+    /// Room round the card for its shadow (a 26 px blur 14 px down; WebShapeBox's frame reaches further, but this is
+    /// where it fades out), and round the art for its edges.
+    static let shadowRoom = EdgeInsets(top: 0, leading: 48, bottom: 64, trailing: 48)
+    static let artRoom = EdgeInsets(top: 8, leading: 8, bottom: 8, trailing: 8)
+
+    /// The card at rest: its shadow (one picture for every card of its size and stack) and the rest (its own).
+    private var pictureBody: some View {
+        ZStack(alignment: .topLeading) {
+            CardPicture(key: "folder-shadow|\(min(2, model.subfolders))|\(shadowScale)", margin: Self.shadowRoom) { size in
+                shadowLayer(w: size.width, h: size.height)
+            }
+            CardPicture(key: "folder|\(pictureKey)", margin: Self.artRoom) { size in
+                art(w: size.width, h: size.height)
+            }
+        }
+    }
+
+    /// Everything the card's picture shows but its size, the scale and the colour scheme.
+    private var pictureKey: String {
+        // A note's own style image comes later (CoverFiles): read here, so the card is drawn again when it has.
+        let files = model.notes.prefix(5).map { note -> String in
+            if case .file(let id) = note.cover { return CoverFiles.shared.image(id) == nil ? "0" : "1" }
+            return "-"
+        }.joined()
+        return "\(model.id)|\(model.hashValue)|\(labelScale)|\(menuRoom)|\(phone)|\(chrome != nil)|\(files)"
     }
 
     /// How many lines the name may take on the front: two when two lines, the counts and the Edited date all fit inside
@@ -814,28 +873,34 @@ public struct WebFolderCard: View {
                 WebFolderNote(note: note, cq: cq)
                     .frame(width: w * 0.7, height: h * nh)
                     .rotationEffect(.degrees(Self.tilt[depth]), anchor: .bottom)
-                    .offset(x: w * (0.15 + Self.step[depth]), y: h * at - (hovered ? h * nh * Self.rise[depth] : 0))
-                    .animation(.timingCurve(0.2, 0.8, 0.2, 1, duration: 0.3), value: hovered)
+                    .offset(x: w * (0.15 + Self.step[depth]), y: h * at - (risen ? h * nh * Self.rise[depth] : 0))
+                    .animation(.timingCurve(0.2, 0.8, 0.2, 1, duration: 0.3), value: risen)
             }
         }
         .frame(width: w, height: h, alignment: .topLeading)
     }
 
-    private func drawing(w: CGFloat, h: CGFloat) -> some View {
-        let cq = w / 100
-        let tone = Self.tone(FolderColor.resolve(model.colorId).color)
+    /// The card's shadow, under the back (a box from just below the back's top to the bottom).
+    private func shadowLayer(w: CGFloat, h: CGFloat) -> some View {
         let st = Self.stack(model.subfolders)
-        let frontH = h * (1 - Self.frontTop)
-        let frontShape = RoundedRectangle(cornerRadius: FoleviTokens.Radius.panel, style: .circular)
         let r = FoleviTokens.Radius.panel
         let shadow = WebCornersShape(topLeft: r, topRight: r, bottomRight: r, bottomLeft: r)
         let shadows = dark
             ? [ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(255, 255, 255, 0.04)), ShadowLayer(x: 0, y: 14, blur: 26, spread: -14, color: RGBA(0, 0, 0, 0.9))]
             : [ShadowLayer(x: 0, y: 1, blur: 2, spread: 0, color: RGBA(0, 0, 0, 0.06)), ShadowLayer(x: 0, y: 14, blur: 26, spread: -14, color: RGBA(30, 30, 50, 0.42))]
+        return WebShapeBox(shape: shadow, fill: nil, shadows: shadows)
+            .frame(width: w, height: h * (1 - st.back - 0.04))
+            .offset(y: h * (st.back + 0.04))
+            .frame(width: w, height: h, alignment: .topLeading)
+    }
+
+    /// The card but its shadow: the back and notes, the frost and the front.
+    private func art(w: CGFloat, h: CGFloat) -> some View {
+        let cq = w / 100
+        let tone = Self.tone(FolderColor.resolve(model.colorId).color)
+        let frontH = h * (1 - Self.frontTop)
+        let frontShape = RoundedRectangle(cornerRadius: FoleviTokens.Radius.panel, style: .circular)
         return ZStack(alignment: .topLeading) {
-            WebShapeBox(shape: shadow, fill: nil, shadows: shadows)
-                .frame(width: w, height: h * (1 - st.back - 0.04))
-                .offset(y: h * (st.back + 0.04))
             inside(w: w, h: h, cq: cq, tone: tone).flattened()
             // The frost (globals.css data-fc="frost"): what's behind the whole front, blurred (7 px on the web's 232 px card).
             inside(w: w, h: h, cq: cq, tone: tone)
@@ -849,8 +914,17 @@ public struct WebFolderCard: View {
                 .offset(y: h * Self.frontTop)
         }
         .frame(width: w, height: h, alignment: .topLeading)
-        .offset(y: hovered ? -4 : 0)
-        .animation(.timingCurve(0.2, 0.8, 0.2, 1, duration: 0.2), value: hovered)
+    }
+
+    /// The card drawn live (the pointer over it, or pictures off).
+    private func drawing(w: CGFloat, h: CGFloat) -> some View {
+        ZStack(alignment: .topLeading) {
+            shadowLayer(w: w, h: h)
+            art(w: w, h: h)
+        }
+        .frame(width: w, height: h, alignment: .topLeading)
+        .offset(y: risen ? -4 : 0)
+        .animation(.timingCurve(0.2, 0.8, 0.2, 1, duration: 0.2), value: risen)
     }
 
     /// The front's tint, light and words (FolderCardArt's data-fc="front"): fully frosted, a strong tint from top to

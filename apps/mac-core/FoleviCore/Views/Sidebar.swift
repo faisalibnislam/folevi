@@ -109,7 +109,9 @@ struct Sidebar: View {
 
             Section("More") {
                 if app.session.value?.mode != .local { row(.vault) }
-                row(.reviews)
+                if app.reviews.value?.hasCards == true || window.current == .reviews {
+                    row(.reviews, badge: (app.reviews.value?.due ?? 0) + (app.reviews.value?.new ?? 0))
+                }
                 if app.session.value?.capabilities.graph != false { row(.graph) }
                 row(.archive)
                 row(.trash)
@@ -134,7 +136,8 @@ struct Sidebar: View {
         .onChange(of: window.newFolderRequested) {
             guard window.newFolderRequested else { return }
             window.newFolderRequested = false
-            newFolderParent = .some(nil)
+            // On a folder's page the new folder goes inside it.
+            if case .folder(let id) = window.current { newFolderParent = .some(id) } else { newFolderParent = .some(nil) }
         }
         .sheet(item: $renamingTag) { tag in
             NameSheet(title: "Rename Tag", initial: tag.name, action: "Rename") { name in

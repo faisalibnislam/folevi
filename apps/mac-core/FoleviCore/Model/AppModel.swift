@@ -93,6 +93,8 @@ final class AppModel {
     let taskCounts = Live<Views.TasksCounts>()
     let notifications = Live<Views.NotificationsList>()
     let changes = Live<Views.Changes>()
+    /// Review cards (the sidebar's count, shown when there are some).
+    let reviews = Live<Views.Reviews>()
 
     /// What the engine shows while it isn't ready (nil: ready).
     private(set) var gate: GateChangedEvent?
@@ -147,6 +149,7 @@ final class AppModel {
         taskCounts.bind(client, Views.TasksCounts(SpaceArgs()))
         notifications.bind(client, Views.NotificationsList())
         changes.bind(client, Views.Changes())
+        reviews.bind(client, Views.Reviews(ReviewsArgs(noteId: nil, space: nil)))
     }
 
     private func listen(_ client: EngineClient) {
@@ -213,7 +216,7 @@ final class AppModel {
 
     func reopenClosedTab() {
         guard let d = closedTabs.popLast() else { return }
-        openWindow?(d, true)
+        openWindow?(d, true, false)
     }
 
     func unregister(_ window: WindowModel) {
@@ -236,13 +239,13 @@ final class AppModel {
     var front: WindowModel? { frontWindow.flatMap { windows[$0]?.model } ?? windows.values.compactMap(\.model).first }
 
     /// Asked by the shared host (a link with no window): opens one.
-    var openWindow: ((Destination?, Bool) -> Void)?
+    var openWindow: ((Destination?, Bool, Bool) -> Void)?
 
     func showAnyWindow() {
         if let front, let w = front.window {
             w.makeKeyAndOrderFront(nil)
         } else {
-            openWindow?(nil, false)
+            openWindow?(nil, false, false)
         }
         NSApp.activate()
     }
@@ -260,7 +263,15 @@ final class AppModel {
     /// The window a new tab was opened from (its Back returns there).
     @ObservationIgnored weak var pendingOpener: NSWindow?
 
-    func open(_ dest: Destination, newTab: Bool = false) {
+    /// Moves notes to the Trash, and takes them out of every window's history (a tab showing one goes back).
+    func trash(_ ids: [String]) {
+        perform { client in
+            _ = try await client.command(Commands.NoteTrash(NoteIdsArgs(ids: ids)))
+            for w in self.windows.values.compactMap(\.model) { w.forget(notes: Set(ids)) }
+        }
+    }
+
+    func open(_ dest: Destination, newTab: Bool = false, background: Bool = false) {
         // A note already open in a window or tab comes forward instead of opening twice.
         if newTab, dest.isNote, let open = windows.values.compactMap(\.model).first(where: { $0.current == dest }), let w = open.window {
             w.makeKeyAndOrderFront(nil)
@@ -269,11 +280,11 @@ final class AppModel {
         }
         if newTab || front == nil {
             pendingOpener = front?.window
-            openWindow?(dest, newTab)
+            openWindow?(dest, newTab, background && newTab)
         } else {
             front?.go(dest)
         }
-        NSApp.activate()
+        if !background { NSApp.activate() }
     }
 
     /// folevi-core:// links, Spotlight results and app.folevi.com links.
@@ -327,7 +338,7 @@ final class AppModel {
         case .noteStar: if let a = decode(NoteStarArgs.self) { perform { _ = try await $0.command(Commands.NoteStar(a)) } }
         case .noteArchive: if let a = decode(NoteArchiveArgs.self) { perform { _ = try await $0.command(Commands.NoteArchive(a)) } }
         case .noteMove: if let a = decode(NoteMoveArgs.self) { perform { _ = try await $0.command(Commands.NoteMove(a)) } }
-        case .noteTrash: if let a = decode(NoteIdsArgs.self) { perform { _ = try await $0.command(Commands.NoteTrash(a)) } }
+        case .noteTrash: if let a = decode(NoteIdsArgs.self) { trash(a.ids) }
         case .noteRestore: if let a = decode(NoteIdsArgs.self) { perform { _ = try await $0.command(Commands.NoteRestore(a)) } }
         default: toast("That can't be undone from here.", tone: .error)
         }

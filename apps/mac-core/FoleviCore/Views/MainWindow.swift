@@ -64,11 +64,11 @@ struct MainWindow: View {
         .animation(.easeOut(duration: 0.2), value: app.gate?.gate)
         .tint(.foleviInk)
         .focusedSceneValue(\.window, window)
-        .background(WindowAccessor(model: window, asTab: seed?.asTab == true, keepsOpener: seed?.asTab == true && seed?.start.isNote == true))
+        .background(WindowAccessor(model: window, asTab: seed?.asTab == true, keepsOpener: seed?.asTab == true && seed?.start.isNote == true, background: seed?.background == true))
         .environment(window)
         .onAppear {
             window.start()
-            app.openWindow = { dest, asTab in openWindow(id: "main", value: WindowSeed(start: dest ?? .home, asTab: asTab)) }
+            app.openWindow = { dest, asTab, background in openWindow(id: "main", value: WindowSeed(start: dest ?? .home, asTab: asTab, background: background)) }
             SettingsRouter.shared.openSettings = { openSettings() }
             // A restored window goes back where it was (a fresh window opens where its seed says).
             if seed?.start == .home, !restoredPath.isEmpty, let d = Destination(path: restoredPath), d != .home { window.replace(with: d) }
@@ -221,12 +221,14 @@ struct WindowAccessor: NSViewRepresentable {
     let asTab: Bool
     /// A note opened in a new tab from another: Back on its first page returns there (a fresh ⌘T tab doesn't).
     var keepsOpener = false
+    var background = false
 
     func makeNSView(context: Context) -> NSView {
         let view = AccessorView()
         view.model = model
         view.asTab = asTab
         view.keepsOpener = keepsOpener
+        view.background = background
         return view
     }
 
@@ -236,6 +238,7 @@ struct WindowAccessor: NSViewRepresentable {
         weak var model: WindowModel?
         var asTab = false
         var keepsOpener = false
+        var background = false
         private var observers: [NSObjectProtocol] = []
 
         override func viewDidMoveToWindow() {
@@ -252,7 +255,13 @@ struct WindowAccessor: NSViewRepresentable {
             if asTab, window.tabbedWindows?.count ?? 1 <= 1, let front = NSApp.windows.first(where: { $0 !== window && $0.isVisible && $0.tabbingIdentifier == window.tabbingIdentifier && $0.isMainWindow }) ?? NSApp.windows.first(where: { $0 !== window && $0.isVisible && $0.tabbingIdentifier == window.tabbingIdentifier }) {
                 front.addTabbedWindow(window, ordered: .above)
                 if keepsOpener, model.opener == nil { model.opener = front }
-                window.makeKeyAndOrderFront(nil)
+                if background {
+                    // Behind the tab in front: the tab group keeps showing the one you were in.
+                    front.tabGroup?.selectedWindow = front
+                    front.makeKeyAndOrderFront(nil)
+                } else {
+                    window.makeKeyAndOrderFront(nil)
+                }
             }
             let center = NotificationCenter.default
             observers.forEach(center.removeObserver)

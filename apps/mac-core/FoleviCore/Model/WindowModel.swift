@@ -153,6 +153,15 @@ final class WindowModel: Identifiable {
         window?.title = title
     }
 
+    /// Notes moved to the Trash leave the history; if one is on screen, the window goes back (or Home).
+    func forget(notes ids: Set<String>) {
+        let gone = { (d: Destination) in d.noteId.map(ids.contains) ?? false }
+        backStack.removeAll(where: gone)
+        forwardStack.removeAll(where: gone)
+        guard gone(current) else { return }
+        if let prev = backStack.popLast() { move(to: prev) } else { move(to: .home) }
+    }
+
     /// The place's pages were made again (a switch): back to Home with no history.
     func reset() {
         leaveNote()
@@ -320,5 +329,22 @@ extension String {
 struct WindowSeed: Codable, Hashable {
     var start: Destination
     var asTab: Bool
+    /// A tab opened behind the one in front (Open in Background Tab).
+    var background = false
     var token = UUID()
+
+    init(start: Destination, asTab: Bool, background: Bool = false) {
+        self.start = start
+        self.asTab = asTab
+        self.background = background
+    }
+
+    /// Seeds saved by earlier builds (state restoration) lack the newer fields.
+    init(from decoder: any Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        start = try c.decode(Destination.self, forKey: .start)
+        asTab = try c.decodeIfPresent(Bool.self, forKey: .asTab) ?? false
+        background = try c.decodeIfPresent(Bool.self, forKey: .background) ?? false
+        token = try c.decodeIfPresent(UUID.self, forKey: .token) ?? UUID()
+    }
 }

@@ -193,7 +193,7 @@ struct NoteListScreen: View {
         let ids = selection.filter { !$0.hasPrefix("folder:") }
         guard !ids.isEmpty else { return }
         if kind == .trash { NoteActions.deleteForever(Array(ids), app: app) } else {
-            app.perform { _ = try await $0.command(Commands.NoteTrash(NoteIdsArgs(ids: Array(ids)))) }
+            app.trash(Array(ids))
         }
         selection.removeAll()
     }
@@ -214,7 +214,7 @@ struct NoteListScreen: View {
                 Button(kind == .archive ? "Unarchive" : "Archive") {
                     app.perform { _ = try await $0.command(Commands.NoteArchive(NoteArchiveArgs(ids: notes, archived: kind != .archive))) }
                 }
-                Button("Move \(notes.count) Notes to Trash", role: .destructive) { app.perform { _ = try await $0.command(Commands.NoteTrash(NoteIdsArgs(ids: notes))) } }
+                Button("Move \(notes.count) Notes to Trash", role: .destructive) { app.trash(notes) }
             }
         } else if let id = notes.first, let row = list.rows.first(where: { $0.id == id }) {
             NoteMenu(row: row, window: window)
@@ -347,6 +347,8 @@ struct NoteCardButton: View {
     let row: NoteRow
     let window: WindowModel
     var inTrash = false
+    /// On Home's Recent: the menu can take it off Recent.
+    var fromRecent = false
     @State private var hovered = false
 
     var body: some View {
@@ -356,7 +358,13 @@ struct NoteCardButton: View {
         .buttonStyle(CardPressStyle())
         .onHover { hovered = $0 }
         .draggable(NoteDrag(id: row.id, title: row.title))
-        .contextMenu { NoteMenu(row: row, window: window) }
+        .contextMenu {
+            NoteMenu(row: row, window: window)
+            if fromRecent {
+                Divider()
+                Button("Remove from Recent") { AppModel.shared.perform { _ = try await $0.command(Commands.NoteHideFromRecent(NoteIdsArgs(ids: [row.id]))) } }
+            }
+        }
         .accessibilityLabel(row.title.nonEmpty ?? "Untitled")
     }
 }

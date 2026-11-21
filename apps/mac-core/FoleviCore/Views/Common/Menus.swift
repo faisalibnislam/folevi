@@ -35,6 +35,7 @@ struct NoteMenu: View {
         } else {
             Button("Open") { window.go(.note(row.id)) }
             Button("Open in New Tab") { app.open(.note(row.id), newTab: true) }
+            Button("Open in Background Tab") { app.open(.note(row.id), newTab: true, background: true) }
             Button("Open in New Window") { openWindow(id: "main", value: WindowSeed(start: .note(row.id), asTab: false)) }
             Divider()
             Button(row.starred ? "Remove Star" : "Star") {
@@ -53,7 +54,7 @@ struct NoteMenu: View {
             } else {
                 Button("Archive") { app.perform { _ = try await $0.command(Commands.NoteArchive(NoteArchiveArgs(ids: [row.id], archived: true))) } }
             }
-            Button("Move to Trash", role: .destructive) { app.perform { _ = try await $0.command(Commands.NoteTrash(NoteIdsArgs(ids: [row.id]))) } }
+            Button("Move to Trash", role: .destructive) { app.trash([row.id]) }
         }
     }
 }

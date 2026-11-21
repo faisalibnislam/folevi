@@ -16,7 +16,9 @@ struct AppCommands: SwiftUI.Commands {
             Button("New Note from Template…") { window?.go(.templates) }
             Button("New Folder…") { window?.go(.folders) }
             Divider()
-            Button("New Tab") { openWindow(id: "main", value: WindowSeed(start: .home, asTab: true)) }
+            // A new tab starts at Search, its field focused, with recent searches and notes (today's New Tab
+            // opens Home with search focused).
+            Button("New Tab") { openWindow(id: "main", value: WindowSeed(start: .search(""), asTab: true)) }
                 .keyboardShortcut("t")
             Button("New Window") { openWindow(id: "main", value: WindowSeed(start: .home, asTab: false)) }
                 .keyboardShortcut("n", modifiers: [.command, .shift])

@@ -132,6 +132,30 @@ struct WindowHistoryTests {
         w.closed()
     }
 
+    @Test func trashedNotesLeaveHistory() {
+        let w = WindowModel(app: .shared, start: .home)
+        w.start()
+        w.go(.allNotes)
+        w.go(.note("n1"))
+        w.go(.starred)
+        w.go(.note("n2"))
+        w.forget(notes: ["n1", "n2"])
+        #expect(w.current == .starred)
+        w.back()
+        #expect(w.current == .allNotes)
+        w.closed()
+    }
+
+    @Test func oldWindowSeedsStillDecode() throws {
+        let fresh = WindowSeed(start: .recent, asTab: true)
+        var json = try JSONSerialization.jsonObject(with: JSONEncoder().encode(fresh)) as! [String: Any]
+        json.removeValue(forKey: "background")
+        let seed = try JSONDecoder().decode(WindowSeed.self, from: JSONSerialization.data(withJSONObject: json))
+        #expect(seed.start == .recent)
+        #expect(seed.asTab)
+        #expect(!seed.background)
+    }
+
     @Test func replaceKeepsHistory() {
         let w = WindowModel(app: .shared, start: .home)
         w.start()

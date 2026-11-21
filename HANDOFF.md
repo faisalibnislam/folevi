@@ -248,9 +248,11 @@ The ones most likely to be broken:
 
 ## 9. Current state (as of 2026-11-21)
 
-**Live everywhere: Folevi 1.5.62** (tag `v1.5.62`, PR 44 merged, `main` = `d752bb0d`): web and Convex deployed by
-Vercel, Mac published (feed and DMG at folevi.com/download/mac show 1.5.62), iPhone and iPad uploaded to TestFlight
-(internal group). 1.5.60 and 1.5.61 are tags only (each was superseded before shipping; tags never move). 1.5.59
+**Live: Folevi 1.5.63** (tag `v1.5.63`, PR 46 merged with PR 47 in it, `main` = `3258f12b`): Mac published (feed and
+DMG at folevi.com/download/mac show 1.5.63), iPhone and iPad uploaded to TestFlight. Vercel skipped the web build
+(Ignored Build Step: only native code changed), so the web is still 1.5.62's build. 1.5.63 carries PR 45's Liquid
+Glass motion pass, card strips that no longer clip their shadows, iPhone search at the foot above the keyboard, and
+Quick add's Task/Note in Foli AI's switch style. 1.5.62 (PR 44) shipped on all three before it. 1.5.60 and 1.5.61 are tags only (each was superseded before shipping; tags never move). 1.5.59
 (PR 43) shipped earlier the same day on all three.
 
 This session's wrangler login lives in the app's own `XDG_CONFIG_HOME` (not `~/.wrangler`); `npx wrangler whoami`
@@ -397,6 +399,7 @@ account button should move past iPadOS's window buttons).
   `DATABASE_UDF_USER_TIMEOUT_SECONDS=4` for that backend. Bursts show in `convex.log` as "took a long time".
 
 ## 12. Change log
+- 2026-11-21: 1.5.63 released on Mac and TestFlight (PR 46 + 47 + PR 45's motion pass); the web build was skipped (native-only).
 - 2026-11-21: iPhone Home's folder strip no longer cuts its cards' shadow off in a straight line (`scrollClipDisabled`), on `claude/phone-strip-shadows`.
 - 2026-11-21: iPhone search's field and close button at the foot above the keyboard (iOS 26), chips just above it; Quick add's Task/Note switch matches Foli AI's Chat/Research, full width; on `claude/phone-search-bottom`.
 - 2026-11-21: PR 45 opened for the Liquid Glass motion pass.

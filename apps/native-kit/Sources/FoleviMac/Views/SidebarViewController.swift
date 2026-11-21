@@ -298,7 +298,7 @@ public final class SidebarViewController: NSViewController {
     @objc private func searched() {
         let text = search.stringValue.trimmingCharacters(in: .whitespaces)
         guard !text.isEmpty else { return }
-        model.open(.search(text))
+        model.open(.search(text), fromPage: false)
     }
 
     /// ⌘K / Open Quickly / Search All Notes: the sidebar's field.
@@ -310,7 +310,7 @@ public final class SidebarViewController: NSViewController {
     @objc private func clicked() {
         let row = outline.clickedRow >= 0 ? outline.clickedRow : outline.selectedRow
         guard row >= 0, let item = outline.item(atRow: row) as? SidebarItem, let route = item.node.route else { return }
-        model.open(route, title: item.node.kind == .tag ? "#" + item.node.title : item.node.title)
+        model.open(route, title: item.node.kind == .tag ? "#" + item.node.title : item.node.title, fromPage: false)
     }
 
     @objc private func spaceMenu(_ sender: NSButton) {

@@ -123,7 +123,9 @@ struct TabFolderTests {
 
     @Test func eachTabHasItsOwnBackAndForward() {
         let m = TabsModel()
-        m.show(.folder("brainstorming"))
+        // From the sidebar: a fresh tab, so Back stops at its first folder (from a page it would go back to Home,
+        // TabBackTests).
+        m.show(.folder("brainstorming"), fromPage: false)
         let tab = m.activeID
         m.show(.folder("space-cherries"))
         m.show(.note("n"))

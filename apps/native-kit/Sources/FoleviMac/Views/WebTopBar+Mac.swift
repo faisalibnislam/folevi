@@ -428,8 +428,8 @@ struct MacHistoryButtons: View {
     var body: some View {
         HStack(spacing: 0) {
             MacStripButton(symbol: "chevron.left", label: "Back", help: "Back (⌘[)") { model.goBack() }
-                .disabled(!model.history.canGoBack)
-                .opacity(model.history.canGoBack ? 1 : 0.35)
+                .disabled(!model.canGoBack)
+                .opacity(model.canGoBack ? 1 : 0.35)
             MacStripButton(symbol: "chevron.right", label: "Forward", help: "Forward (⌘])") { model.goForward() }
                 .disabled(!model.history.canGoForward)
                 .opacity(model.history.canGoForward ? 1 : 0.35)

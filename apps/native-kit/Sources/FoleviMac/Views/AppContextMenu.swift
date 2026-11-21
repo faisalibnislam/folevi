@@ -253,7 +253,7 @@ enum AppContextMenu {
         out += [
             .separator(1),
             // (Offered only where there's somewhere to go, as the top bar's arrows: MAC-42.)
-            WebMenuEntry(.item("Back", icon: .arrowLeft), disabled: !model.history.canGoBack) { model.goBack() },
+            WebMenuEntry(.item("Back", icon: .arrowLeft), disabled: !model.canGoBack) { model.goBack() },
             WebMenuEntry(.item("Forward", icon: .arrowRight), disabled: !model.history.canGoForward) { model.goForward() },
             WebMenuEntry(.item("Reload", icon: .rotateCw)) { model.reloadScreen() },
         ]

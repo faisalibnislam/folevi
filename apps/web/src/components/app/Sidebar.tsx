@@ -22,7 +22,7 @@ import { NotificationsButton } from "./NotificationsButton";
 import { SidebarMenu } from "./SidebarMenu";
 import { SyncStatus } from "./SyncStatus";
 import { WorkspaceMenu } from "./WorkspaceMenu";
-import { openNextInNewTab, useFolderTabClicks } from "@/lib/app/tabs";
+import { openNextFresh, openNextInNewTab, useFolderTabClicks } from "@/lib/app/tabs";
 import { FolderGlyph } from "@/components/ui/FolderGlyph";
 import { useMinute } from "@/lib/hooks/useMinute";
 import { startNoteDrag } from "@/lib/app/noteDrag";
@@ -560,7 +560,8 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   const shownTags = allTags.filter((t, i) => i < SIDEBAR_LIMIT || (route.name === "tag" && route.id === t.id));
 
   return (
-    <nav aria-label="Folio" className="flex h-full flex-col">
+    // A page opened from the sidebar starts a fresh tab, with no Back to the page you were on (lib/app/tabs.tsx).
+    <nav aria-label="Folio" className="flex h-full flex-col" onClickCapture={(e) => (e.target as Element).closest("a[href]") && openNextFresh()}>
       <SidebarTopBar onNavigate={onNavigate} />
 
       <div className="flex-none space-y-2 px-2.5 pt-1">

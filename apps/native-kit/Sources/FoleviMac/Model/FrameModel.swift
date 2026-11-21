@@ -381,7 +381,8 @@ public final class FrameModel {
     /// Shows a route in this window (its own tab, or the one it has; a folder in a folder tab, TabsModel.show).
     /// Every caller gets the tab rules here: the sidebar, folder cards, the Folders page, a folder page's path,
     /// links from the page (`navigate.request`).
-    public func open(_ route: FrameRoute, _ opening: TabsModel.Opening = .newTab, title: String? = nil, icon: String? = nil) {
+    /// `fromPage: false` for the sidebar and "+": a fresh tab with no way back (TabsModel.show).
+    public func open(_ route: FrameRoute, _ opening: TabsModel.Opening = .newTab, title: String? = nil, icon: String? = nil, fromPage: Bool = true) {
         // The Mac searches in its command palette, the query filled in (a folevi://search link, /search?q=): not the
         // iPhone's search screen in a tab (MAC-61).
         if case .search(let q) = route, let searchInPalette { return searchInPalette(q) }
@@ -390,7 +391,7 @@ public final class FrameModel {
         if Self.settingsApart, case .web(let p) = route, p == "/settings" || p.hasPrefix("/settings/") || p.hasPrefix("/settings?"), let host {
             return host.frameOpenSettings(section: MacSettingsSection(path: p)?.rawValue)
         }
-        let shown = tabs.show(route, opening)
+        let shown = tabs.show(route, opening, fromPage: fromPage)
         // (A folder tab's id is its own; a joined note's name goes to its pane.)
         if let title { tabs.setTitle(title, icon: icon, for: shown.isFolderBrowsing ? tabs.activeID : shown.tabKey) }
         routeChanged()
@@ -406,14 +407,17 @@ public final class FrameModel {
     }
 
     /// Adds a route's tab without going there (TabsModel.addInBackground), named `title` until the engine names it.
-    public func openInBackground(_ route: FrameRoute, title: String? = nil) {
-        guard let id = tabs.addInBackground(route) else { return }
+    public func openInBackground(_ route: FrameRoute, title: String? = nil, fromPage: Bool = true) {
+        guard let id = tabs.addInBackground(route, fromPage: fromPage) else { return }
         if let title { tabs.setTitle(title, for: id) }
         updateViewTitles()
         host?.frameStateChanged()
     }
 
-    /// Back in the tab on screen (its own history, Finder style).
+    /// Whether Back goes anywhere (the tab's own history, or the tab it was opened from).
+    public var canGoBack: Bool { tabs.canGoBack }
+
+    /// Back in the tab on screen (its own history, Finder style; then the tab it was opened from).
     public func goBack() {
         guard tabs.goBack() != nil else { return }
         routeChanged()
@@ -782,7 +786,8 @@ public final class FrameModel {
         let folder = folderId ?? { if case .folder(let id) = route { return id } else { return nil } }()
         perform {
             let r = try await self.client.command(.noteCreate(folderId: folder, templateId: template))
-            self.open(.note(r.id), title: "Untitled")
+            // The toolbar's New note ("+", the menu, the palette) opens a fresh tab; a folder page's keeps the way back.
+            self.open(.note(r.id), title: "Untitled", fromPage: folderId != nil)
             _ = try? await self.client.editor(.noteShow(id: r.id, focus: true))
         }
     }

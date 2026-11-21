@@ -39,6 +39,11 @@ export interface DocTab {
    */
   trail?: string[];
   trailAt?: number;
+  /**
+   * The tab this one was opened from (`home` for Home): a page's link, card or See all, not the sidebar or "+". Back
+   * with nothing left in `trail` closes this tab and shows that one, as Safari does (the owner, 21 November 2026).
+   */
+  opener?: string;
 }
 
 /** The page a tab is showing (a note's id; a view's path; a joined tab's pane with focus). */
@@ -171,6 +176,18 @@ let nextInNewTab = false;
 export function openNextInNewTab() {
   nextInNewTab = true;
 }
+// The sidebar and "+" open fresh tabs, with no way back to the page you were on; anything opened from a page
+// remembers the tab it came from (DocTab.opener). Callers mark a fresh one here right before navigating.
+// (A click that doesn't navigate, such as the page already on screen, mustn't mark a later one: it lasts a moment.)
+let freshAt = 0;
+export function openNextFresh() {
+  freshAt = Date.now();
+}
+function takeFresh(): boolean {
+  const fresh = Date.now() - freshAt < 1500;
+  freshAt = 0;
+  return fresh;
+}
 const TabsContext = createContext<TabsValue | null>(null);
 
 /**
@@ -223,6 +240,8 @@ export function TabsProvider({ accountKey, workspaceId, children }: { accountKey
   // The address on screen before this one, and a Back or Forward in a tab on its way (the tab, where in its trail,
   // and the address it goes to).
   const shownPath = useRef<string | null>(null);
+  // The route on screen before this one (Home has no tab, so a tab opened from it names `home` as its opener).
+  const shownRoute = useRef<string | null>(null);
   const travel = useRef<{ id: string; at: number; href: string } | null>(null);
   // When each tab was last on screen: a folder opened from Home or a note goes to the folder tab used last.
   const used = useRef(new Map<string, number>());
@@ -261,6 +280,13 @@ export function TabsProvider({ accountKey, workspaceId, children }: { accountKey
     previousDoc.current = docId;
     const fromPath = shownPath.current;
     shownPath.current = pathname;
+    const fromRoute = shownRoute.current;
+    shownRoute.current = route.name;
+    // The tab a new tab is opened from: the page that was on screen, unless the sidebar or "+" asked for a fresh tab,
+    // or the browser's own Back or Forward got here.
+    const fresh = pathname !== fromPath && takeFresh();
+    const openerId = fresh || !fromPath || cameFromHistory() ? undefined : fromRoute === "documents" ? "home" : tabs.find((t) => tabShows(t, fromPath))?.id;
+    const withOpener = (id: string) => (openerId && openerId !== id ? { opener: openerId } : {});
     // "Open in a new tab" is for the next move to another page, not any update of this one (the address
     // losing "?new=1" used to take it, and the following new note then replaced the current tab).
     const moved = docId !== from;
@@ -279,7 +305,7 @@ export function TabsProvider({ accountKey, workspaceId, children }: { accountKey
           if (t.view) return { ...t, view: { kind, path: pathname }, trailAt: trip.at, ...(isFolderTab(t) ? { title } : {}) };
           const page = trip.href.slice(3);
           if (t.panes) return { ...t, panes: t.panes.includes(page) ? t.panes : t.panes.map((p) => (p === tabPage(t) ? page : p)), at: page, trailAt: trip.at };
-          return { id: page, at: page, title: "", trail: t.trail, trailAt: trip.at, ...(t.pinned ? { pinned: true } : {}) };
+          return { id: page, at: page, title: "", trail: t.trail, trailAt: trip.at, ...(t.pinned ? { pinned: true } : {}), ...(t.opener ? { opener: t.opener } : {}) };
         }),
       );
       return;
@@ -296,12 +322,12 @@ export function TabsProvider({ accountKey, workspaceId, children }: { accountKey
         // joined tab, the pane with focus follows it. Its Back goes to where it was.
         const replaced = tabs[at]!;
         if (replaced.panes) setTabs((cur) => cur.map((t) => (t.id === replaced.id ? withTrail(t, { ...t, panes: t.panes!.map((p) => (p === from ? docId : p)), at: docId }, `/d/${docId}`) : t)));
-        else setTabs((cur) => cur.map((t) => (t.id === replaced.id ? withTrail(t, { id: docId, at: docId, title: "", ...(t.pinned ? { pinned: true } : {}) }, `/d/${docId}`) : t)));
+        else setTabs((cur) => cur.map((t) => (t.id === replaced.id ? withTrail(t, { id: docId, at: docId, title: "", ...(t.pinned ? { pinned: true } : {}), ...(t.opener ? { opener: t.opener } : {}) }, `/d/${docId}`) : t)));
         return;
       }
       setTabs((cur) => {
         if (cur.some((t) => tabHolds(t, docId))) return cur;
-        let next: DocTab[] = [...cur, { id: docId, at: docId, title: "" }];
+        let next: DocTab[] = [...cur, { id: docId, at: docId, title: "", ...withOpener(docId) }];
         // Keep the strip bounded: drop the oldest tabs other than this one (never a pinned one).
         while (next.length > MAX_TABS && next.some((x) => x.id !== docId && !x.pinned)) next = next.filter((t, i) => i !== next.findIndex((x) => x.id !== docId && !x.pinned));
         return next;
@@ -328,7 +354,7 @@ export function TabsProvider({ accountKey, workspaceId, children }: { accountKey
           const target = here ?? folderTabs.reduce<DocTab | undefined>((best, t) => (!best || score(t) >= score(best) ? t : best), undefined);
           if (target) return cur.map((t) => (t.id === target.id ? withTrail(t, { ...t, title, view: { kind, path: pathname } }, pathname) : t));
           const id = newFolderTabId();
-          let next: DocTab[] = [...cur, { id, title, view: { kind, path: pathname } }];
+          let next: DocTab[] = [...cur, { id, title, view: { kind, path: pathname }, ...withOpener(id) }];
           while (next.length > MAX_TABS && next.some((x) => x.id !== id && !x.pinned)) next = next.filter((t, j) => j !== next.findIndex((x) => x.id !== id && !x.pinned));
           return next;
         });
@@ -341,7 +367,7 @@ export function TabsProvider({ accountKey, workspaceId, children }: { accountKey
           const i = cur.findIndex((t) => t.id === key);
           if (i !== -1) return cur[i]!.view?.path === pathname ? cur : cur.map((t) => (t.id === key ? withTrail(t, { ...t, view: { kind, path: pathname } }, pathname) : t));
           const title = viewTitle.current?.path === pathname ? viewTitle.current.title : "";
-          let next: DocTab[] = [...cur, { id: key, title, view: { kind, path: pathname } }];
+          let next: DocTab[] = [...cur, { id: key, title, view: { kind, path: pathname }, ...withOpener(key) }];
           while (next.length > MAX_TABS && next.some((x) => x.id !== key && !x.pinned)) next = next.filter((t, j) => j !== next.findIndex((x) => x.id !== key && !x.pinned));
           return next;
         });
@@ -372,8 +398,15 @@ export function TabsProvider({ accountKey, workspaceId, children }: { accountKey
       travel.current = { id: shown.id, at: to, href };
       navigate(href);
     };
-    return { back: () => go(at - 1), forward: () => go(at + 1), canBack: at > 0, canForward: at < trail.length - 1 };
-  }, [shown, onHome, tabs, navigate]);
+    // With nothing left in the tab, Back closes it and shows the tab it was opened from (Safari's rule).
+    const opener = shown.opener === "home" ? "home" : tabs.find((t) => t.id === shown.opener && t.id !== shown.id);
+    const toOpener = () => {
+      if (!opener) return;
+      setTabs((cur) => cur.filter((t) => t.id !== shown.id));
+      navigate(opener === "home" ? "/documents" : tabHref(opener));
+    };
+    return { back: () => (at > 0 ? go(at - 1) : toOpener()), forward: () => go(at + 1), canBack: at > 0 || Boolean(opener), canForward: at < trail.length - 1 };
+  }, [shown, onHome, tabs, navigate, setTabs]);
 
   const close = useCallback(
     (id: string) => {
@@ -556,6 +589,10 @@ export function TabsProvider({ accountKey, workspaceId, children }: { accountKey
   const warm = useMemo(() => (warmKey ? warmKey.split(",") : []), [warmKey]);
   const openManyInBackground = useCallback(
     (items: BackgroundTabItem[]) => {
+      // Behind the page on screen, which they go back to (not from the sidebar, which marks them fresh).
+      const fresh = takeFresh();
+      const from = fresh ? undefined : route.name === "documents" ? "home" : shownId ?? undefined;
+      const opened = from ? { opener: from } : {};
       setTabs((cur) => {
         // At most a strip's worth: more would only push each other out. A folder or note that has a tab keeps it
         // (a folder is in one tab at a time).
@@ -564,9 +601,9 @@ export function TabsProvider({ accountKey, workspaceId, children }: { accountKey
           if (it.kind === "folder") {
             const path = `/folders/${it.id}`;
             if (cur.some((t) => t.view?.path === path) || adding.some((t) => t.view?.path === path)) continue;
-            adding.push({ id: newFolderTabId(), title: it.name, view: { kind: "folder", path } });
+            adding.push({ id: newFolderTabId(), title: it.name, view: { kind: "folder", path }, ...opened });
           } else if (!cur.some((t) => tabHolds(t, it.id)) && !adding.some((t) => t.id === it.id)) {
-            adding.push({ id: it.id, at: it.id, title: it.name });
+            adding.push({ id: it.id, at: it.id, title: it.name, ...opened });
           }
         }
         if (!adding.length) return cur;
@@ -578,7 +615,7 @@ export function TabsProvider({ accountKey, workspaceId, children }: { accountKey
         return next;
       });
     },
-    [setTabs, isShown],
+    [setTabs, isShown, route.name, shownId],
   );
   const openInBackground = useCallback((folder: { id: string; name: string }) => openManyInBackground([{ kind: "folder", ...folder }]), [openManyInBackground]);
   const value = useMemo(

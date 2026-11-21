@@ -61,6 +61,8 @@ final class Page: PageHost {
     private(set) var generation = 0
     /// The note the page shows now (its editor), nil when none.
     var shownNote: String?
+    /// The note's editor state as the page last said it (undo and redo for the Edit menu).
+    @ObservationIgnored var editorState: EditorStateEvent?
     /// The window the page is lent to, nil when it's in the pool (or the engine page between windows).
     @ObservationIgnored var lentTo: UUID?
     @ObservationIgnored var lentAt = Date()
@@ -94,6 +96,16 @@ final class Page: PageHost {
 
     private func hook() {
         view.onLifecycle = { [weak self] event in self?.transport.pageEvent(event) }
+        view.editorHistory = (
+            run: { [weak self] undo in
+                guard let self else { return }
+                Task { _ = try? await undo ? self.client.editor(EditorCommands.Undo()) : self.client.editor(EditorCommands.Redo()) }
+            },
+            state: { [weak self] in
+                guard let self, self.shownNote != nil, let s = self.editorState else { return nil }
+                return (s.undo, s.redo)
+            }
+        )
     }
 
     /// PageHost: the page again in `place` (a switch), from a fresh bootstrap.

@@ -94,6 +94,12 @@ enum CoreSetup {
             }
             return menu
         }
+        NSEvent.addLocalMonitorForEvents(matching: .keyDown) { e in
+            guard e.modifierFlags.intersection(.deviceIndependentFlagsMask) == .command, e.charactersIgnoringModifiers == "k",
+                  let w = AppModel.shared.front, w.window?.isKeyWindow == true else { return e }
+            w.paletteShown.toggle()
+            return nil
+        }
         QuickAdd.shared.register(DesktopSettings.current.quickAddShortcut)
         StatusItem.shared.show(DesktopSettings.current.menuBarIcon)
         Updater.shared.start()

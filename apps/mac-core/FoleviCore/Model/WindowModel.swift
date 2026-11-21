@@ -191,7 +191,9 @@ final class WindowModel: Identifiable {
             for await event in page.client.events() {
                 guard let self, !Task.isCancelled else { return }
                 switch event {
-                case .editorState(let s): self.editorState = s
+                case .editorState(let s):
+                    self.editorState = s
+                    page.editorState = s
                 case .noteTools(let t): self.noteTools = t
                 case .noteMeta(let m) where m.id == self.current.noteId:
                     self.noteMeta = m

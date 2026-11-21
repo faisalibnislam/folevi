@@ -45,6 +45,36 @@ final class FoleviWebView: WKWebView {
     /// A click on a window that isn't key acts at once (places the caret, presses a button), as in other Mac apps.
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool { role != .runner }
 
+    // MARK: Edit > Undo and Redo
+
+    /// The note's own history (the editor's), when this page shows a note: `run(undo)` performs a step, `state`
+    /// says whether there is one each way. Set by the page's owner (Engine/Pages.swift).
+    var editorHistory: (run: (Bool) -> Void, state: () -> (undo: Bool, redo: Bool)?)?
+
+    /// Edit > Undo on a note runs the editor's undo (WebKit's own undo stack isn't the editor's history). A plain
+    /// field of the page (the title, a caption) and a page without a note keep WebKit's.
+    @objc func undo(_ sender: Any?) { history(undo: true) }
+
+    @objc func redo(_ sender: Any?) { history(undo: false) }
+
+    private func history(undo: Bool) {
+        if let h = editorHistory, h.state() != nil {
+            h.run(undo)
+        } else if let m = undoManager {
+            if undo { if m.canUndo { m.undo() } } else if m.canRedo { m.redo() }
+        }
+    }
+
+    override func validateUserInterfaceItem(_ item: any NSValidatedUserInterfaceItem) -> Bool {
+        let isUndo = item.action == #selector(undo(_:))
+        guard isUndo || item.action == #selector(redo(_:)) else { return super.validateUserInterfaceItem(item) }
+        if let s = editorHistory?.state() {
+            (item as? NSMenuItem)?.title = isUndo ? "Undo" : "Redo"
+            return isUndo ? s.undo : s.redo
+        }
+        return (isUndo ? undoManager?.canUndo : undoManager?.canRedo) ?? false
+    }
+
     // MARK: WebKit's own menu
 
     private static let leavingItems: Set<String> = [

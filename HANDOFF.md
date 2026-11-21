@@ -248,13 +248,9 @@ The ones most likely to be broken:
 
 ## 9. Current state (as of 2026-11-21)
 
-**Folevi 1.5.59** (tag `v1.5.59`, PR 43 merged, `main` = `90c4ba78`): web and Convex live (Vercel); iPhone and iPad
-uploaded to TestFlight (delivery `285a127c`); **Mac built, notarized, stapled and signed but NOT uploaded**: R2 upload
-failed because wrangler isn't signed in for this session's config folder (`XDG_CONFIG_HOME` points into the app's
-own data). Files wait in `.claude/worktrees/folder-design-refinements-cd77e4/apps/mac/release-dist/1.5.59/` (ZIP,
-3 deltas, DMG, appcast). After `npx wrangler login`, upload them in publish.mjs's order (ZIP, deltas, versioned DMG,
-`Folevi.dmg`, then `appcast.xml`; `--remote`, immutable cache except `Folevi.dmg` and the appcast, `no-cache`),
-unless 1.5.60's Mac publish supersedes it.
+**Folevi 1.5.59** (tag `v1.5.59`, PR 43 merged, `main` = `90c4ba78`): live on web and Convex, Mac (uploaded by hand
+after `npx wrangler login`, since this session's `XDG_CONFIG_HOME` points into the app's own data and had no login;
+the feed and DMG at folevi.com show 1.5.59) and TestFlight (delivery `285a127c`).
 
 **In progress:** branch `claude/tab-back-and-overview` (same worktree), for 1.5.60: Back returns to the tab a page
 was opened from and closes the new tab (Safari's rule) on Mac, iPad and web; the sidebar and "+" open fresh tabs;
@@ -265,7 +261,10 @@ every folder card drops a long name to one line when it can't fit two), and the 
 same way (`HomePicture.tsx`), with 32 pt between its rows on every platform. 1.5.60's tag exists but was never
 shipped on its own (the fix came after it was tagged; tags never move). Decisions:
 `docs/claude-context/memory/tab-back-and-overview-2026-11-21.md`. The iOS screen run's Foli AI streaming tests
-crashed once (signal kill), unrelated; they passed in the two runs before.
+crashed once (signal kill), unrelated; they passed in the two runs before. CI then caught a hand-written
+`text-[19px]` in the web `HomePicture` (test/type-scale.test.ts: font sizes must come from the type roles); fixed
+with `text-title-2` (native 20/26 to match) and cut as **1.5.62**, since 1.5.61's tag predates the fix. 1.5.60 and
+1.5.61 are tags only; 1.5.62 is what ships.
 
 What shipped in the last week, newest first (detail in `CHANGELOG.md`):
 - 1.5.59: Folder cards' corners line up, the front fully frosted, tighter Home rows (PR 43).
@@ -385,6 +384,7 @@ account button should move past iPadOS's window buttons).
   `DATABASE_UDF_USER_TIMEOUT_SECONDS=4` for that backend. Bursts show in `convex.log` as "took a long time".
 
 ## 12. Change log
+- 2026-11-21: Mac 1.5.59 uploaded (wrangler signed in). CI's type-scale test fixed (Home picture headings use Title 2); 1.5.62 cut on PR 44.
 - 2026-11-21: iPhone folder cards fixed (176 pt strips, one-line name fallback), web Show All Tabs draws Home; 1.5.61 cut on PR 44.
 - 2026-11-21: 1.5.59 released (web, TestFlight; Mac waiting on the R2 upload). Back-to-opener and the drawn Home picture built on `claude/tab-back-and-overview`.
 - 2026-11-21: Folder fronts fully frosted (strong tint and 7 px blur across the whole front), on all platforms.

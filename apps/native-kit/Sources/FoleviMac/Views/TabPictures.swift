@@ -472,7 +472,7 @@ struct HomePicture: View {
     private func heading(_ title: String, icon: WebIcon) -> some View {
         HStack(spacing: 6) {
             WebIconView(icon, size: 18).foregroundStyle(color("color-ink-muted"))
-            Text(title).webText(WebTextStyle(size: 19, leading: 24, weight: 600)).foregroundStyle(color("color-heading"))
+            Text(title).webText(WebTextStyle(size: 20, leading: 26, weight: 600)) // the web's Title 2.foregroundStyle(color("color-heading"))
         }
         .padding(.bottom, 12)
     }

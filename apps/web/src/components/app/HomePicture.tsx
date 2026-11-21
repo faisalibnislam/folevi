@@ -97,7 +97,7 @@ function Heading({ icon, title }: { icon: React.ReactNode; title: string }) {
   return (
     <div className="mb-3 flex items-center gap-1.5">
       <span className="text-muted">{icon}</span>
-      <span className="text-[19px] font-semibold leading-6 text-heading">{title}</span>
+      <span className="text-title-2 font-semibold text-heading">{title}</span>
     </div>
   );
 }

@@ -84,8 +84,7 @@ private struct SheetButtonStyle: ButtonStyle {
                 Circle()
                     .fill(FoleviTokens.Chrome.ink.resolve(scheme).color.opacity(0.09))
                     .frame(width: 32, height: 32)
-                    .scaleEffect(configuration.isPressed && !WebMotion.reduced ? 0.96 : 1)
-                    .animation(.easeOut(duration: 0.2), value: configuration.isPressed)
+                    .pressDip(configuration.isPressed, scale: 0.96)
             }
             .contentShape(Rectangle())
     }

@@ -2,7 +2,7 @@
 
 > Read this first if you are a Claude (or any agent) picking this project up, on this Mac or another one. Then read `CLAUDE.md`, `docs/HANDOFF.md` (the long handoff: unfinished branches, release detail, what the owner is waiting on) and `docs/claude-context/memory/MEMORY.md` (the owner's standing rules). Keep this file current: after every change to the project, update "Current state", "Next steps" and "Change log", and commit it.
 
-Last updated: 2026-11-20 · Written on: Faisal's MacBook Pro M5
+Last updated: 2026-11-21 · Written on: Faisal's MacBook Pro M5
 
 ## 1. What this is
 
@@ -257,6 +257,23 @@ This session's wrangler login lives in the app's own `XDG_CONFIG_HOME` (not `~/.
 there shows the account that owns `folevi-updates`. Decisions: `docs/claude-context/memory/tab-back-and-overview-2026-11-21.md`
 and `frosted-folders-decision-2026-11-20.md`.
 
+**Also in progress:** branch `claude/liquid-glass-animations-b1d70e` (worktree
+`.claude/worktrees/liquid-glass-animations-b1d70e`, off `main` at `d752bb0d`, PR 45, not released): a Liquid Glass
+motion pass on the Mac, iPhone and iPad apps, keeping the owner's playful springs (FoleviSpring, 2026-11-01). Shared
+motion in `apps/native-kit/Sources/FoleviDesign/Web/WebMotion.swift`: named springs for every repeated interaction
+(`pressIn`/`press(_:)`, `glassRelease`, `reorder`, `appear`, `menu`, `bar`, `settle(velocity:distance:)`), `projected`
+(a flick's coast) and `glassArrival` (floating glass materializes instead of fading flat). Changes: the Mac card's
+search is one glass capsule that grows into the field (it swapped two capsules, a cut); toasts, the selection bars,
+the Foli AI chat and the iPhone note bars materialize their glass; the Foli AI chat no longer drags its button in
+from the corner while it opens (the overlay's host resizes at once; the button's move is now unanimated); presses go
+down without wobble and spring back; the iPhone's glass circles no longer double the system glass's own swell; seven
+iOS button styles use the one `pressDip`; swipe rows open on a quick flick and carry its speed; the iPhone toast and
+the graph's camera move respect Reduce Motion. A Debug-only `frame` eval action `toast` drives toasts from scripts.
+Checked: native-kit `swift test` (all pass), Mac and iOS builds, the Mac dev app driven on a scratch library (search
+opening and closing, rapid toggles, toasts in and out, the chat open and close and rapid toggles), the iPhone
+simulator (Home, All notes, Select, a note's bars). Not checked: Reduce Motion on (a system setting), real devices,
+the iPad live.
+
 What shipped in the last week, newest first (detail in `CHANGELOG.md`):
 - 1.5.62: Back goes to the tab a page came from (closing it, Safari's rule); Show All Tabs draws Home on web, Mac
   and iPad; iPhone Home cards 176 pt and folder cards never cut their date off (PR 44).
@@ -312,6 +329,9 @@ signed-in account, 1.5.58's frosted folders with a large library, and the iPad c
 account button should move past iPadOS's window buttons).
 
 ## 10. Next steps / open work
+- Liquid Glass motion branch (`claude/liquid-glass-animations-b1d70e`): the owner's look on a real Mac and iPhone, then
+  merge with the next release. Known left: the Mac's Foli AI chat closes at once, with no exit animation (its host
+  view shrinks before SwiftUI can animate the chat out; older than this branch).
 0. On real devices: Back after Home's See all (Mac, iPad, web), Show All Tabs' Home picture, iPhone Home's folder
    and note strips (1.5.62).
 1. On a real iPhone, iPad and Mac with the owner's library: the note bar swap (1.5.56), Offline & sync's Download
@@ -378,6 +398,8 @@ account button should move past iPadOS's window buttons).
 
 ## 12. Change log
 - 2026-11-21: iPhone Home's folder strip no longer cuts its cards' shadow off in a straight line (`scrollClipDisabled`), on `claude/phone-strip-shadows`.
+- 2026-11-21: PR 45 opened for the Liquid Glass motion pass.
+- 2026-11-21: Liquid Glass motion pass on `claude/liquid-glass-animations-b1d70e` (shared springs, glass materializing, Mac search morph, swipe velocity, Reduce Motion gaps); not released.
 - 2026-11-21: 1.5.62 released on web, Mac and TestFlight (PR 44).
 - 2026-11-21: Mac 1.5.59 uploaded (wrangler signed in). CI's type-scale test fixed (Home picture headings use Title 2); 1.5.62 cut on PR 44.
 - 2026-11-21: iPhone folder cards fixed (176 pt strips, one-line name fallback), web Show All Tabs draws Home; 1.5.61 cut on PR 44.

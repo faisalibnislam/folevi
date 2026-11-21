@@ -51,6 +51,7 @@ struct AiAskOverlay: View {
     /// The floating button (the iPad has none: Shell.tsx `hideLauncher` there; ⌘J and the menus open the chat).
     var launcher = true
     @Environment(\.colorScheme) private var scheme
+    @Environment(\.macNativeLook) private var native
 
     /// The web places them on the window (`bottom-9 right-9`, the chat `bottom-[104px]`); this view sits in the
     /// content card, which is inset from the window.
@@ -99,14 +100,22 @@ struct AiAskOverlay: View {
         let look = AiLook(scheme: scheme)
         let fab = look.s("ai.fab")
         let panel = look.s("ai.panel")
-        VStack(alignment: .trailing, spacing: fab.y - (panel.y + panel.height)) {
-            if shows, frame.askAiOpen {
-                AiAskPanelView(frame: frame, model: state.model, height: min(panel.height, state.maxHeight))
-                    .transition(.asymmetric(insertion: .scale(scale: 0.96, anchor: .bottomTrailing).combined(with: .opacity), removal: .opacity))
-            }
-            if shows, launcher {
-                AiLauncher(open: frame.askAiOpen, thinking: frame.askAiOpen ? false : (state.isWorking)) {
-                    if frame.askAiOpen { close() } else { frame.askAiOpen = true }
+        // (One glass container for the chat and its button, so the chat's glass can materialize; spacing 0 keeps the
+        // two from melting together.)
+        NativeGlassContainer(spacing: 0) {
+            VStack(alignment: .trailing, spacing: fab.y - (panel.y + panel.height)) {
+                if shows, frame.askAiOpen {
+                    AiAskPanelView(frame: frame, model: state.model, height: min(panel.height, state.maxHeight))
+                        .modifier(AskPanelArrival(native: native))
+                }
+                if shows, launcher {
+                    AiLauncher(open: frame.askAiOpen, thinking: frame.askAiOpen ? false : (state.isWorking)) {
+                        if frame.askAiOpen { close() } else { frame.askAiOpen = true }
+                    }
+                    // (The Mac hosts this overlay in a view sized to its content, which AppKit resizes at once when the
+                    // chat comes or goes. The button's move inside it is therefore made at once too, so it stays put in
+                    // its corner instead of sliding in from the host's old corner while the chat grows.)
+                    .transaction(value: frame.askAiOpen) { $0.animation = nil }
                 }
             }
         }
@@ -116,7 +125,7 @@ struct AiAskOverlay: View {
         .nativeShadow(launcher ? nil : .overlay)
         .padding(.trailing, launcher ? Self.launcherInset.trailing : 16)
         .padding(.bottom, launcher ? Self.launcherInset.bottom : 16)
-        .animation(.easeOut(duration: 0.18), value: frame.askAiOpen)
+        .animation(WebMotion.reduced ? .linear(duration: 0.12) : FoleviSpring.menu, value: frame.askAiOpen)
         .onChange(of: frame.askAiOpen) { _, open in if !open { state.model.closed() } }
         .onChange(of: frame.askAbout, initial: true) { _, about in
             guard let about else { return }
@@ -302,3 +311,21 @@ struct AiAskPanelView: View {
     }
 }
 #endif
+
+/// The chat coming out of its button and going back: from 96% toward the button's corner. On the native look's glass
+/// the glass materializes rather than fading as a flat picture (glassArrival); under Reduce Motion it only appears.
+private struct AskPanelArrival: ViewModifier {
+    let native: Bool
+
+    @ViewBuilder
+    func body(content: Content) -> some View {
+        let reduced = WebMotion.reduced
+        if native, #available(iOS 26, macOS 26, *) {
+            content
+                .glassEffectTransition(.materialize)
+                .transition(reduced ? .identity : .scale(scale: 0.96, anchor: .bottomTrailing))
+        } else {
+            content.transition(.asymmetric(insertion: reduced ? .opacity : .scale(scale: 0.96, anchor: .bottomTrailing).combined(with: .opacity), removal: .opacity))
+        }
+    }
+}

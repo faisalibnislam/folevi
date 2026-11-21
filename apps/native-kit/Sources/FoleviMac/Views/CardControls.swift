@@ -100,41 +100,47 @@ struct CardControls: View {
         }
     }
 
-    /// The search control: a glass capsule with the magnifier that opens into the field.
-    @ViewBuilder private var search: some View {
-        if searching {
-            BarSearchField(text: $text, prompt: "Search", focus: $focused) { openPalette(text) }
-                .frame(minWidth: 170, idealWidth: 240, maxWidth: 240)
-                .foleviTooltip("Search or jump to… (⌘K)")
-                .cardHitRegion()
-                .onChange(of: text) { _, q in if !q.isEmpty { openPalette(q) } }
-                .onKeyPress(.escape) {
-                    guard text.isEmpty else { return .ignored }
-                    close()
-                    return .handled
+    /// The search control: a glass capsule with the magnifier that opens into the field. One capsule throughout, its
+    /// width springing between the button's and the field's while the two insides cross-fade in it: two capsules
+    /// swapped (the button's for the field's) had no frame where both were there, so the glass couldn't morph and
+    /// only cut from one to the other.
+    private var search: some View {
+        ZStack(alignment: .leading) {
+            if searching {
+                BarSearchFieldBody(text: $text, prompt: "Search", focus: $focused) { openPalette(text) }
+                    .frame(minWidth: 170, idealWidth: 240, maxWidth: 240)
+                    .onChange(of: text) { _, q in if !q.isEmpty { openPalette(q) } }
+                    .onKeyPress(.escape) {
+                        guard text.isEmpty else { return .ignored }
+                        close()
+                        return .handled
+                    }
+                    .transition(.opacity)
+            } else {
+                Button {
+                    searching = true
+                    DispatchQueue.main.async { focused = true }
+                } label: {
+                    HStack(spacing: 4) {
+                        MacSymbol("magnifyingglass", size: 14, weight: .medium)
+                        MacSymbol("chevron.down", size: 9, weight: .semibold).foregroundStyle(MacLook.Colors.secondary)
+                    }
+                    .padding(.horizontal, 13)
+                    .frame(height: MacLook.barControlHeight)
+                    .contentShape(Capsule())
                 }
-                .onChange(of: focused) { _, has in if !has && text.isEmpty { searching = false } }
+                .buttonStyle(QuietHoverStyle(shape: AnyShape(Capsule())))
+                .foregroundStyle(MacLook.Colors.label)
+                .accessibilityLabel("Search")
                 .transition(.opacity)
-        } else {
-            Button {
-                searching = true
-                DispatchQueue.main.async { focused = true }
-            } label: {
-                HStack(spacing: 4) {
-                    MacSymbol("magnifyingglass", size: 14, weight: .medium)
-                    MacSymbol("chevron.down", size: 9, weight: .semibold).foregroundStyle(MacLook.Colors.secondary)
-                }
-                .padding(.horizontal, 13)
-                .frame(height: MacLook.barControlHeight)
-                .contentShape(Capsule())
             }
-            .buttonStyle(QuietHoverStyle(shape: AnyShape(Capsule())))
-            .foregroundStyle(MacLook.Colors.label)
-            .nativeGlass(Capsule(), interactive: true)
-            .cardHitRegion()
-            .foleviTooltip("Search or jump to… (⌘K)")
-            .accessibilityLabel("Search")
         }
+        // (The insides, not the glass, are clipped while the capsule is narrower than the field.)
+        .clipShape(Capsule())
+        .nativeGlass(Capsule(), interactive: !searching)
+        .cardHitRegion()
+        .foleviTooltip("Search or jump to… (⌘K)")
+        .onChange(of: focused) { _, has in if !has && text.isEmpty { searching = false } }
     }
 
     private func close() {

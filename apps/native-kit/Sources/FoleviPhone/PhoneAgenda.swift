@@ -177,9 +177,7 @@ public struct PhoneWeekStrip: View {
 /// `group-active:scale-90` on the day's circle.
 private struct PhoneDayPressStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .scaleEffect(configuration.isPressed && !WebMotion.reduced ? 0.96 : 1)
-            .animation(.easeOut(duration: 0.2), value: configuration.isPressed)
+        configuration.label.pressDip(configuration.isPressed, scale: 0.96)
     }
 }
 

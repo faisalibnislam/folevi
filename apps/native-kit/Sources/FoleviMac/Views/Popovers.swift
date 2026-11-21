@@ -106,8 +106,12 @@ struct ToastStack: View {
 
     var body: some View {
         let region = moreStyle("more.toast.region", scheme)
-        VStack(spacing: region.gap) {
-            ForEach(model.toasts.suffix(4)) { t in toast(t) }
+        // (One glass container for the stack, so each toast's glass can materialize; spacing 0 keeps two toasts from
+        // melting into one.)
+        NativeGlassContainer(spacing: 0) {
+            VStack(spacing: region.gap) {
+                ForEach(model.toasts.suffix(4)) { t in toast(t) }
+            }
         }
         .frame(maxWidth: 448)
         // 16 pt from the window's bottom (bottom-4), the content card ending its own margin above it; on a note,
@@ -158,7 +162,8 @@ struct ToastStack: View {
         .fixedSize(horizontal: false, vertical: true)
         .padding(.leading, MacLook.Space.l).padding(.trailing, MacLook.Space.s + 2).padding(.vertical, MacLook.Space.s + 2)
         .nativeGlass(Capsule())
-        .transition(.asymmetric(insertion: .move(edge: .bottom).combined(with: .opacity), removal: .offset(y: 8).combined(with: .opacity)))
+        // (Its glass materializes, rather than fading flat: glassArrival.)
+        .glassArrival(native: true)
         .accessibilityElement(children: .combine)
     }
 

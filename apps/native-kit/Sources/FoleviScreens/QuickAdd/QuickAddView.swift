@@ -79,7 +79,7 @@ public struct QuickAddView: View {
                     }
                 }
                 .frame(width: 44, height: 44)
-                .animation(WebMotion.reduced ? nil : .spring(response: 0.3, dampingFraction: 0.72), value: model.canSave)
+                .animation(FoleviSpring.appear, value: model.canSave)
             }
             readLines
             chips

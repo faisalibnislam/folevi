@@ -78,6 +78,15 @@ struct LiquidGlassModifier: ViewModifier {
     @Environment(\.webSnapshot) private var snapshot
     @Environment(\.nativeChrome) private var chrome
 
+    /// Whether `liquidGlass` draws iOS 26's own glass here (the native look, live, on iOS 26) rather than the web's
+    /// drawn copy: the system glass is interactive and swells under a touch itself.
+    static func isSystemGlass(chrome: Bool, snapshot: Bool) -> Bool {
+        #if os(iOS)
+        if chrome, !snapshot, #available(iOS 26, *) { return true }
+        #endif
+        return false
+    }
+
     @ViewBuilder
     func body(content: Content) -> some View {
         #if os(iOS)

@@ -39,12 +39,13 @@ struct ToastStack: View {
                 .shadow(color: .black.opacity(0.12), radius: 12, y: 4)
                 .padding(.horizontal, 16)
                 .onTapGesture { model.dismissToast(t.id) }
-                .transition(.move(edge: .bottom).combined(with: .opacity))
+                .transition(WebMotion.reduced ? .opacity : .move(edge: .bottom).combined(with: .opacity))
                 .accessibilityIdentifier("toast")
                 .onAppear { UIAccessibility.post(notification: .announcement, argument: t.message) }
             }
         }
         .padding(.bottom, lift)
-        .animation(.spring(duration: 0.3), value: model.toasts)
+        // (Under Reduce Motion a toast only fades: FoleviSpring.bar is then a short ease.)
+        .animation(FoleviSpring.bar, value: model.toasts)
     }
 }

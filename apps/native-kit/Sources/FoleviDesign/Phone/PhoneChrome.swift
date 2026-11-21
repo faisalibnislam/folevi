@@ -3,17 +3,20 @@
 // ("Select", "Done") and the floating tab bar. 44 pt targets; glass swells a little under the finger.
 import SwiftUI
 
-/// `.ui-glass-press`: pressed, it swells to 1.07 and brightens 6% (160 ms), springs back on release (380 ms,
-/// cubic-bezier(0.34, 1.56, 0.64, 1)).
+/// `.ui-glass-press`: pressed, it swells to 1.07 and brightens 6% (160 ms), springs back on release (380 ms with an
+/// overshoot, FoleviSpring.glassRelease). `swells` false: the label is iOS 26's own interactive glass, which swells
+/// and lights under the touch itself, so the style adds nothing (two swells at once read as a jolt).
 public struct GlassPressStyle: ButtonStyle {
-    public init() {}
+    let swells: Bool
+    public init(swells: Bool = true) { self.swells = swells }
 
     public func makeBody(configuration: Configuration) -> some View {
+        let on = configuration.isPressed && swells
         configuration.label
             .contentShape(Rectangle())
-            .scaleEffect(configuration.isPressed && !WebMotion.reduced ? 1.07 : 1)
-            .brightness(configuration.isPressed ? 0.06 : 0)
-            .animation(WebMotion.reduced ? .linear(duration: 0.08) : configuration.isPressed ? .easeOut(duration: 0.16) : .timingCurve(0.34, 1.56, 0.64, 1, duration: 0.38), value: configuration.isPressed)
+            .scaleEffect(on && !WebMotion.reduced ? 1.07 : 1)
+            .brightness(on ? 0.06 : 0)
+            .animation(WebMotion.reduced ? .linear(duration: 0.08) : on ? .easeOut(duration: 0.16) : FoleviSpring.glassRelease, value: on)
     }
 }
 
@@ -32,6 +35,8 @@ public struct WebGlassCircle<Label: View>: View {
     }
 
     @Environment(\.phoneInSystemBar) private var inBar
+    @Environment(\.nativeChrome) private var chrome
+    @Environment(\.webSnapshot) private var snapshot
 
     public var body: some View {
         if inBar {
@@ -45,7 +50,8 @@ public struct WebGlassCircle<Label: View>: View {
                     .foregroundStyle(Folevi.color.heading)
                     .liquidGlass()
             }
-            .buttonStyle(GlassPressStyle())
+            // (The system's interactive glass answers the touch on its own.)
+            .buttonStyle(GlassPressStyle(swells: !LiquidGlassModifier.isSystemGlass(chrome: chrome != nil, snapshot: snapshot)))
             .accessibilityLabel(label)
         }
     }

@@ -242,9 +242,13 @@ struct WindowAccessor: NSViewRepresentable {
             window.tabbingMode = .preferred
             window.tabbingIdentifier = "app.folevicore.main"
             window.title = model.title
-            if asTab, let front = NSApp.windows.first(where: { $0 !== window && $0.isVisible && $0.tabbingIdentifier == window.tabbingIdentifier && $0.isMainWindow }) ?? NSApp.windows.first(where: { $0 !== window && $0.isVisible && $0.tabbingIdentifier == window.tabbingIdentifier }) {
+            if keepsOpener, model.opener == nil, let from = AppModel.shared.pendingOpener, from !== window {
+                model.opener = from
+                AppModel.shared.pendingOpener = nil
+            }
+            if asTab, window.tabbedWindows?.count ?? 1 <= 1, let front = NSApp.windows.first(where: { $0 !== window && $0.isVisible && $0.tabbingIdentifier == window.tabbingIdentifier && $0.isMainWindow }) ?? NSApp.windows.first(where: { $0 !== window && $0.isVisible && $0.tabbingIdentifier == window.tabbingIdentifier }) {
                 front.addTabbedWindow(window, ordered: .above)
-                if keepsOpener { model.opener = front }
+                if keepsOpener, model.opener == nil { model.opener = front }
                 window.makeKeyAndOrderFront(nil)
             }
             let center = NotificationCenter.default

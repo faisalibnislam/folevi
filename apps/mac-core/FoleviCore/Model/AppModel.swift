@@ -243,8 +243,12 @@ final class AppModel {
         open(dest, newTab: newTab)
     }
 
+    /// The window a new tab was opened from (its Back returns there).
+    @ObservationIgnored weak var pendingOpener: NSWindow?
+
     func open(_ dest: Destination, newTab: Bool = false) {
         if newTab || front == nil {
+            pendingOpener = front?.window
             openWindow?(dest, newTab)
         } else {
             front?.go(dest)

@@ -108,9 +108,12 @@ final class WindowModel: Identifiable {
 
     /// The window this tab was opened from (a note opened in a new tab): Back on its first page closes this tab
     /// and goes back there, as Safari does (the owner's rule, 21 November 2026).
-    @ObservationIgnored weak var opener: NSWindow?
+    @ObservationIgnored weak var opener: NSWindow? {
+        didSet { hasOpener = opener != nil }
+    }
+    private(set) var hasOpener = false
 
-    var canGoBack: Bool { !backStack.isEmpty || opener != nil }
+    var canGoBack: Bool { !backStack.isEmpty || hasOpener }
 
     func back() {
         guard let prev = backStack.popLast() else {

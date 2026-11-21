@@ -786,16 +786,20 @@ public struct WebFolderCard: View {
         }
         let back = FrostBackShape()
         return ZStack(alignment: .topLeading) {
-            ForEach(Array(kids.enumerated()), id: \.offset) { i, kid in
-                back.fill(LinearGradient(colors: backColors(kid, sub: true), startPoint: .topLeading, endPoint: .bottomTrailing))
-                    .opacity(0.85)
-                    .frame(width: w * (1 - 2 * st.insets[i]), height: h * (1 - st.tops[i]))
-                    .offset(x: w * st.insets[i], y: h * st.tops[i])
+            // The subfolders and the back as one 85% layer, so a subfolder's outline doesn't show through the back.
+            ZStack(alignment: .topLeading) {
+                ForEach(Array(kids.enumerated()), id: \.offset) { i, kid in
+                    back.fill(LinearGradient(colors: backColors(kid, sub: true), startPoint: .topLeading, endPoint: .bottomTrailing))
+                        .frame(width: w * (1 - 2 * st.insets[i]), height: h * (1 - st.tops[i]))
+                        .offset(x: w * st.insets[i], y: h * st.tops[i])
+                }
+                back.fill(LinearGradient(colors: backColors(tone, sub: false), startPoint: .topLeading, endPoint: .bottomTrailing))
+                    .frame(width: w, height: h * (1 - st.back))
+                    .offset(y: h * st.back)
             }
-            back.fill(LinearGradient(colors: backColors(tone, sub: false), startPoint: .topLeading, endPoint: .bottomTrailing))
-                .opacity(0.85)
-                .frame(width: w, height: h * (1 - st.back))
-                .offset(y: h * st.back)
+            .frame(width: w, height: h, alignment: .topLeading)
+            .compositingGroup()
+            .opacity(0.85)
             ForEach(Array(shown.enumerated().reversed()), id: \.offset) { depth, note in
                 let at = noteTop + CGFloat(depth) * 0.014
                 let nh = min(model.subfolders > 0 ? 0.76 : 0.70, 0.95 - at)
@@ -825,9 +829,9 @@ public struct WebFolderCard: View {
                 .frame(width: w, height: h * (1 - st.back - 0.04))
                 .offset(y: h * (st.back + 0.04))
             inside(w: w, h: h, cq: cq, tone: tone).flattened()
-            // The frosted front: what's behind it, blurred a little (3.5 px on the web's 232 px card), under the tint.
+            // The frost (globals.css data-fc="frost"): what's behind the whole front, blurred (7 px on the web's 232 px card).
             inside(w: w, h: h, cq: cq, tone: tone)
-                .blur(radius: 3.5 * w / 232, opaque: false)
+                .blur(radius: 7 * w / 232, opaque: false)
                 .mask(alignment: .topLeading) {
                     frontShape.frame(width: w, height: frontH).offset(y: h * Self.frontTop)
                 }
@@ -841,11 +845,12 @@ public struct WebFolderCard: View {
         .animation(.timingCurve(0.2, 0.8, 0.2, 1, duration: 0.2), value: hovered)
     }
 
-    /// The frosted front's tint, light and words (FolderCardArt's data-fc="front").
+    /// The front's tint, light and words (FolderCardArt's data-fc="front"): fully frosted, a strong tint from top to
+    /// bottom, so the folder's name reads cleanly over the notes (the owner, 21 November 2026).
     private func front(w: CGFloat, h frontH: CGFloat, cq: CGFloat, tone: RGBA, shape: RoundedRectangle) -> some View {
         let white = RGBA(255, 255, 255)
-        let f1 = dark ? tone.oklabMix(RGBA(74, 74, 82), 0.52).color.opacity(0.62) : tone.oklabMix(white, 0.5).color.opacity(0.6)
-        let f2 = dark ? tone.oklabMix(RGBA(31, 31, 36), 0.4).color.opacity(0.8) : tone.oklabMix(RGBA(58, 58, 72), 0.92).color.opacity(0.74)
+        let f1 = dark ? tone.oklabMix(RGBA(58, 58, 66), 0.48).color.opacity(0.82) : tone.oklabMix(white, 0.5).color.opacity(0.62)
+        let f2 = dark ? tone.oklabMix(RGBA(31, 31, 36), 0.4).color.opacity(0.78) : tone.oklabMix(RGBA(58, 58, 72), 0.92).color.opacity(0.66)
         let ink = dark ? RGBA(246, 246, 248) : tone.oklabMix(RGBA(27, 27, 31), 0.24)
         let k = labelScale
         // The name: clamp(14px, 8cqw, 30px), semibold, 1.15; the phone's at Headline, 17/22 (globals.css).
@@ -858,7 +863,7 @@ public struct WebFolderCard: View {
         let nameW = Self.nameWidth(w, menuRoom: menuRoom && !phone)
         return ZStack(alignment: .topLeading) {
             shape.fill(LinearGradient(colors: [f1, f2], startPoint: .top, endPoint: .bottom))
-            shape.fill(RadialGradient(colors: [Color.white.opacity(0.22), .clear], center: .topLeading, startRadius: 0, endRadius: w * 0.9))
+            shape.fill(RadialGradient(colors: [Color.white.opacity(0.154), .clear], center: .topLeading, startRadius: 0, endRadius: w * 0.9))
             shape.strokeBorder((dark ? RGBA(255, 255, 255, 0.08) : RGBA(255, 255, 255, 0.275)).color, lineWidth: 1)
             VStack(alignment: .leading, spacing: 0) {
                 WebClampedText(model.name, style: nameStyle, maxLines: 2, width: nameW)
@@ -889,23 +894,25 @@ public struct WebFolderCard: View {
 }
 
 /// The folder's back (FolderCardArt's BACK_PATH): a tab on the left that curves down into the top edge (an S-curve),
-/// one piece with the body, on a 100 by 100 grid stretched to the back. Subfolders behind use the same outline.
+/// one piece with the body. The tab and its curve sit on a 100 by 100 grid stretched to the back; the four corners
+/// are true circular arcs of `radius` points, the frosted front's own radius, so the back's bottom corners lie
+/// exactly under the front's and never peek out. Subfolders behind use the same outline.
 struct FrostBackShape: Shape {
+    var radius: CGFloat = FoleviTokens.Radius.panel
+
     func path(in rect: CGRect) -> Path {
         let sx = rect.width / 100, sy = rect.height / 100
         func p(_ x: CGFloat, _ y: CGFloat) -> CGPoint { CGPoint(x: rect.minX + x * sx, y: rect.minY + y * sy) }
+        let r = min(radius, rect.width * 0.2, rect.height * 0.2)
         var path = Path()
-        path.move(to: p(0, 9.6))
-        path.addQuadCurve(to: p(8, 0), control: p(0, 0))
+        path.move(to: CGPoint(x: rect.minX, y: rect.minY + r))
+        path.addArc(tangent1End: p(0, 0), tangent2End: p(43.3, 0), radius: r)
         path.addLine(to: p(43.3, 0))
         path.addCurve(to: p(54, 8), control1: p(50, 0), control2: p(52, 3.2))
         path.addCurve(to: p(65.3, 16), control1: p(56, 13.2), control2: p(58.7, 16))
-        path.addLine(to: p(92, 16))
-        path.addQuadCurve(to: p(100, 25.6), control: p(100, 16))
-        path.addLine(to: p(100, 90.4))
-        path.addQuadCurve(to: p(92, 100), control: p(100, 100))
-        path.addLine(to: p(8, 100))
-        path.addQuadCurve(to: p(0, 90.4), control: p(0, 100))
+        path.addArc(tangent1End: p(100, 16), tangent2End: p(100, 100), radius: r)
+        path.addArc(tangent1End: p(100, 100), tangent2End: p(0, 100), radius: r)
+        path.addArc(tangent1End: p(0, 100), tangent2End: p(0, 0), radius: r)
         path.closeSubpath()
         return path
     }

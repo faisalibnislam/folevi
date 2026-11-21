@@ -12,8 +12,8 @@ import { createdText } from "@/lib/format";
  * The "Frosted" folder (the owner, 20 November 2026): a back with a soft S-curved tab in the folder's muted
  * colour, 85% opaque; up to five of the notes inside, drawn as today's note cards and fanned a little to both
  * sides, standing well above the back; up to two subfolders as whole folders stacked straight up behind it,
- * each a step higher and narrower, with no names; and a see-through frosted front over the notes' lower half
- * with the name, the counts and the last change.
+ * each a step higher and narrower, with no names; and a see-through front over the notes' lower half with the
+ * name, the counts and the last change, fully frosted so the name reads cleanly (21 November).
  *
  * Hover: the card lifts 4 px (FOLDER_CARD_FRAME, 200 ms) and the notes rise a little, the front one most
  * (300 ms), both on the app's easing. The global prefers-reduced-motion rule in globals.css makes both instant.
@@ -38,11 +38,14 @@ const BACK_TOP = 17;
 export const FOLDER_FRONT_TOP = 45;
 /**
  * The back's outline: a tab on the left that curves down into the top edge (an S-curve), one piece with the
- * body, drawn as a mask over a 100 × 100 box stretched to the back so it can be a plain CSS gradient. Subfolders
- * stacked behind use the same outline.
+ * body, drawn as a mask over a 100 × 100 box stretched to the back so it can be a plain CSS gradient. The tab's
+ * top-left and the bottom corners are square here: the element's own rounded-panel rounds them, so they are true
+ * circles of the front's radius and the back's bottom corners lie exactly under the front's (a stretched curve
+ * peeked out past them). Subfolders stacked behind use the same outline.
  */
-const BACK_PATH =
-  "M0 9.6Q0 0 8 0H43.3C50 0 52 3.2 54 8C56 13.2 58.7 16 65.3 16H92Q100 16 100 25.6V90.4Q100 100 92 100H8Q0 100 0 90.4Z";
+const BACK_PATH = "M0 0H43.3C50 0 52 3.2 54 8C56 13.2 58.7 16 65.3 16H92Q100 16 100 25.6V100H0Z";
+/** The back's and the subfolders' box: rounded like the front, masked to BACK_PATH. */
+const BACK_BOX = "absolute bottom-0 rounded-panel";
 const BACK_MASK = `url("data:image/svg+xml,${encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'><path d='${BACK_PATH}'/></svg>`)}") 0 0 / 100% 100% no-repeat`;
 /** The front's fine grain, so the frost reads as a material and not a flat tint. */
 const GRAIN = `url("data:image/svg+xml,${encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' width='140' height='140'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.95' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%' height='100%' filter='url(#n)'/></svg>`)}")`;
@@ -164,24 +167,27 @@ export function FolderCardArt({
     <div aria-hidden className="absolute inset-0" style={{ ["--fc" as string]: base, ["--fc-tone" as string]: tone }}>
       {/* the folder's soft shadow, under its back */}
       <div className="absolute inset-x-0 bottom-0 rounded-panel shadow-[0_1px_2px_rgb(0_0_0/0.06),0_14px_26px_-14px_rgb(30_30_50/0.42)]" data-fc="shadow" style={{ top: `${stack.back + 4}%` }} />
-      {/* subfolders, stacked behind */}
-      {kids.map((hex, i) => (
-        <div
-          key={i}
-          data-fc="sub"
-          className="absolute bottom-0 opacity-85"
-          style={{ top: `${stack.tops[i]}%`, left: `${stack.insets[i]}%`, right: `${stack.insets[i]}%`, mask: BACK_MASK, WebkitMask: BACK_MASK, ["--fs" as string]: toneOf(hex) }}
-        />
-      ))}
-      {/* the back with its tab */}
-      <div data-fc="back" className="absolute inset-x-0 bottom-0 opacity-85" style={{ top: `${stack.back}%`, mask: BACK_MASK, WebkitMask: BACK_MASK }} />
+      {/* subfolders stacked behind, and the back with its tab: one 85% layer, so a subfolder's outline doesn't show through the back */}
+      <div className="absolute inset-0 opacity-85">
+        {kids.map((hex, i) => (
+          <div
+            key={i}
+            data-fc="sub"
+            className={BACK_BOX}
+            style={{ top: `${stack.tops[i]}%`, left: `${stack.insets[i]}%`, right: `${stack.insets[i]}%`, mask: BACK_MASK, WebkitMask: BACK_MASK, ["--fs" as string]: toneOf(hex) }}
+          />
+        ))}
+        <div data-fc="back" className={`${BACK_BOX} inset-x-0`} style={{ top: `${stack.back}%`, mask: BACK_MASK, WebkitMask: BACK_MASK }} />
+      </div>
       {/* the notes inside, the newest in front */}
       {[...shown].reverse().map((p, i) => (
         <FolderNote key={i} note={p} depth={shown.length - 1 - i} top={noteTop} />
       ))}
-      {/* the frosted front, with the name, the counts and the last change */}
+      {/* the frost: the notes blurred behind the whole front (globals.css) */}
+      <div data-fc="frost" className="pointer-events-none absolute inset-x-0 bottom-0 rounded-panel" style={{ top: `${FOLDER_FRONT_TOP}%` }} />
+      {/* the front, with the name, the counts and the last change */}
       <div data-fc="front" className="absolute inset-x-0 bottom-0 flex flex-col overflow-hidden rounded-panel px-[7cqw] pb-[5.6cqw] pt-[6.4cqw]" style={{ top: `${FOLDER_FRONT_TOP}%` }}>
-        <span aria-hidden className="pointer-events-none absolute inset-0 opacity-[0.14] mix-blend-soft-light" style={{ backgroundImage: GRAIN }} />
+        <span aria-hidden className="pointer-events-none absolute inset-0 opacity-[0.1] mix-blend-soft-light" style={{ backgroundImage: GRAIN }} />
         <span data-fc="name" className={`relative ${menuRoom ? "pr-[max(0px,calc(46px-7cqw))]" : ""} line-clamp-2 text-ellipsis wrap-normal break-normal font-serif text-[clamp(14px,calc(8cqw*var(--fc-text,1)),30px)] font-semibold leading-[1.15]`}>
           {name}
         </span>

@@ -4,6 +4,21 @@ Every Folevi release, newest first, written by `node scripts/version.mjs` from `
 
 Versions are MAJOR.UPDATE.PATCH, PATCH at least two digits: a Major release (2.0.00), a Big update (1.1.05 after 1.0.05) or a Small update (1.0.06 after 1.0.05).
 
+## Version 1.5.59: Small update
+
+Released 2026-11-21 09:35:05+06:00 (build 74, tag v1.5.59)
+
+Folder cards look cleaner: corners that line up, a fully frosted front so names read clearly, and tighter rows on Home.
+
+### Improved
+
+- Folder cards on the web, Mac, iPad and iPhone: the front is fully frosted, so a folder's name, counts and last change read clearly over the notes inside.
+- Home on the Mac and the web: less space between a section's title and its cards, and between sections.
+
+### Fixed
+
+- Folder cards: the folder's back no longer peeks out past the front's bottom corners, and a subfolder's outline no longer shows through the folder.
+
 ## Version 1.5.58: Small update
 
 Released 2026-11-20 17:43:36+06:00 (build 73, tag v1.5.58)

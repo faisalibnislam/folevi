@@ -39,6 +39,7 @@ struct AppCommands: SwiftUI.Commands {
             Button("Export…") { window?.noteMenu(.export) }
                 .keyboardShortcut("e", modifiers: [.command, .shift])
                 .disabled(window?.current.isNote != true)
+            Button("Import Notes…") { SettingsRouter.shared.open("data") }
         }
         CommandGroup(after: .saveItem) {
             Button("Share…") { window?.sharingNote = window?.current.noteId }

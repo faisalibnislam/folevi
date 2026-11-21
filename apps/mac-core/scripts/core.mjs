@@ -4,7 +4,7 @@
 //
 //   node apps/mac-core/scripts/core.mjs launch [--demo] [--data <dir>] [--fresh]   start (quits a running one first)
 //   node apps/mac-core/scripts/core.mjs cmd <name> [json]                           a Debug command (MacEval.swift)
-//   node apps/mac-core/scripts/core.mjs shot <file.png> [--all]                     a picture of the front window
+//   node apps/mac-core/scripts/core.mjs shot <file.png> [--front]                   a picture of the main (or frontmost) window
 //   node apps/mac-core/scripts/core.mjs quit
 //
 // Debug commands Core knows: state, go {path, tab}, gate {action, values}, palette, inspector {value, tab}, style
@@ -110,7 +110,8 @@ if (verb === "launch") {
   await sleep(400);
   const ws = windows(p).filter((w) => w.layer === 0 && w.width > 200 && w.height > 120);
   if (!ws.length) throw new Error("no window on screen");
-  const target = ws.sort((a, b) => b.width * b.height - a.width * a.height)[0];
+  // --front: the frontmost window (Settings, a sheet's window); otherwise the biggest (the main window).
+  const target = flag("--front") ? ws[0] : ws.sort((a, b) => b.width * b.height - a.width * a.height)[0];
   execFileSync("screencapture", ["-x", "-o", "-l", String(target.id), file]);
   console.log(file);
 } else if (verb === "quit") {

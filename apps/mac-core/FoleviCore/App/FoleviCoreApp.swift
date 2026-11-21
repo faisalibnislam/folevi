@@ -119,6 +119,7 @@ final class CoreMenuActions: NSObject {
         AppModel.shared.front?.paletteShown = true
     }
     @objc func openApp(_ sender: Any?) { AppModel.shared.showAnyWindow() }
+    @objc func settings(_ sender: Any?) { SettingsRouter.shared.open(nil) }
     @objc func openNote(_ sender: NSMenuItem) {
         guard let id = sender.representedObject as? String else { return }
         AppModel.shared.open(.note(id))
@@ -168,6 +169,7 @@ final class StatusItem: NSObject, NSMenuDelegate {
         }
         menu.addItem(.separator())
         menu.addItem(withTitle: "Open Folevi Core", action: #selector(CoreMenuActions.openApp(_:)), keyEquivalent: "").target = a
+        menu.addItem(withTitle: "Settings…", action: #selector(CoreMenuActions.settings(_:)), keyEquivalent: ",").target = a
         menu.addItem(withTitle: "Quit Folevi Core", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
     }
 }

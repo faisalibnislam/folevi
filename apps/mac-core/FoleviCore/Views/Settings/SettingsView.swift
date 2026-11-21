@@ -9,7 +9,7 @@ import Sparkle
 import SwiftUI
 
 enum SettingsSection: String, CaseIterable, Identifiable, Hashable {
-    case account, general, appearance, notifications, ai, security, privacy, appLock, offline, devices, workspace, connectedApps, data, billing, mac, updates
+    case account, general, appearance, notifications, ai, security, privacy, appLock, offline, devices, workspace, connectedApps, data, billing, mac, updates, library, about
     var id: String { rawValue }
 
     var title: String {
@@ -30,6 +30,8 @@ enum SettingsSection: String, CaseIterable, Identifiable, Hashable {
         case .billing: "Plan & Billing"
         case .mac: "This Mac"
         case .updates: "Updates"
+        case .library: "Library"
+        case .about: "About"
         }
     }
 
@@ -51,6 +53,8 @@ enum SettingsSection: String, CaseIterable, Identifiable, Hashable {
         case .billing: "creditcard"
         case .mac: "desktopcomputer"
         case .updates: "arrow.down.circle"
+        case .library: "externaldrive"
+        case .about: "info.circle"
         }
     }
 
@@ -73,6 +77,8 @@ enum SettingsSection: String, CaseIterable, Identifiable, Hashable {
         case .billing: .creditCard
         case .mac: .laptop
         case .updates: .download
+        case .library: .hardDrive
+        case .about: .info
         }
     }
 
@@ -95,6 +101,8 @@ enum SettingsSection: String, CaseIterable, Identifiable, Hashable {
         case "lock", "app-lock": self = .appLock
         case "desktop", "mac": self = .mac
         case "updates": self = .updates
+        case "library": self = .library
+        case "about": self = .about
         default: return nil
         }
     }
@@ -105,7 +113,10 @@ enum SettingsSection: String, CaseIterable, Identifiable, Hashable {
 @Observable
 final class SettingsRouter {
     static let shared = SettingsRouter()
-    var section: SettingsSection = .account
+    /// The section shown, remembered between launches (General the first time).
+    var section: SettingsSection = SettingsSection(rawValue: UserDefaults.standard.string(forKey: "settings.section") ?? "") ?? .general {
+        didSet { UserDefaults.standard.set(section.rawValue, forKey: "settings.section") }
+    }
     @ObservationIgnored var openSettings: (() -> Void)?
 
     func open(_ path: String?) {
@@ -119,35 +130,51 @@ struct SettingsView: View {
     private var app: AppModel { .shared }
     @Bindable private var router = SettingsRouter.shared
 
+    private var local: Bool { app.session.value?.mode == .local }
+
+    /// Today's order: General first, then the account's sections; a library on this Mac has fewer.
     private var sections: [SettingsSection] {
-        let local = app.session.value?.mode == .local
-        return SettingsSection.allCases.filter { s in
-            switch s {
-            case .account, .security, .privacy, .devices, .workspace, .connectedApps, .billing, .notifications: !local
-            default: true
-            }
-        }
+        local
+            ? [.general, .library, .ai, .appearance, .data, .appLock, .mac, .updates]
+            : [.general, .mac, .account, .ai, .billing, .security, .privacy, .notifications, .appearance, .appLock, .offline, .devices, .connectedApps, .data, .updates]
+    }
+
+    private var workspaceName: String? {
+        guard !local, let s = app.currentSpace, s.kind == .workspace else { return nil }
+        return s.name
+    }
+
+    /// The section asked for, or Library (a library on this Mac) or the first one when this mode lacks it.
+    private var shown: SettingsSection {
+        let all = sections + (workspaceName == nil ? [] : [.workspace]) + [.about]
+        if all.contains(router.section) { return router.section }
+        return local ? .library : sections[0]
     }
 
     var body: some View {
         NavigationSplitView {
-            List(sections, selection: Binding(get: { router.section }, set: { if let s = $0 { router.section = s } })) { s in
-                Label {
-                    Text(s.title)
-                } icon: {
-                    if s == .ai { AiMarkGlyph(size: 16) } else { s.webIcon.image(size: 16) }
+            List(selection: Binding(get: { shown }, set: { if let s = $0 { router.section = s } })) {
+                Section { ForEach(sections) { label($0) } }
+                if let workspaceName {
+                    Section(workspaceName) { label(.workspace) }
                 }
-                .tag(s)
+                Section("Support") {
+                    Button { SettingsActions.openHelp() } label: { Label { Text("Help") } icon: { WebIcon.circleQuestionMark.image(size: 16) } }
+                        .buttonStyle(.plain)
+                    Button { SettingsActions.contactSupport() } label: { Label { Text("Contact Support…") } icon: { WebIcon.lifeBuoy.image(size: 16) } }
+                        .buttonStyle(.plain)
+                    label(.about)
+                }
             }
-            .navigationSplitViewColumnWidth(200)
+            .navigationSplitViewColumnWidth(210)
         } detail: {
             Group {
-                switch router.section {
+                switch shown {
                 case .account: AccountSettingsPane()
                 case .general: GeneralSettingsPane()
                 case .appearance: AppearanceSettingsPane()
                 case .notifications: NotificationSettingsPane()
-                case .ai: if app.session.value?.mode == .local { LocalAISettingsPane() } else { AISettingsPane() }
+                case .ai: if local { LocalAISettingsPane() } else { AISettingsPane() }
                 case .security: SecuritySettingsPane()
                 case .privacy: WebSettingsPane(page: .settingsPrivacy)
                 case .appLock: AppLockPane()
@@ -159,12 +186,23 @@ struct SettingsView: View {
                 case .billing: BillingPane()
                 case .mac: MacPane()
                 case .updates: UpdatesPane()
+                case .library: LibraryPane()
+                case .about: AboutPane()
                 }
             }
-            .navigationTitle(router.section.title)
+            .navigationTitle(shown == .workspace ? "Workspace" : shown.title)
         }
         .frame(minWidth: 720, minHeight: 500)
         .tint(.foleviInk)
+    }
+
+    private func label(_ s: SettingsSection) -> some View {
+        Label {
+            Text(s.title)
+        } icon: {
+            if s == .ai { AiMarkGlyph(size: 16) } else { s.webIcon.image(size: 16) }
+        }
+        .tag(s)
     }
 }
 
@@ -477,7 +515,11 @@ struct OfflinePane: View {
         Form {
             if let s = storage.value {
                 Section {
-                    Toggle("Keep every note on this Mac", isOn: Binding(get: { s.keepAll }, set: { v in app.perform { _ = try await $0.command(Commands.DeviceKeepAll(DeviceKeepAllArgs(on: v))) } }))
+                    if s.available {
+                        Toggle("Keep every note on this Mac", isOn: Binding(get: { s.keepAll }, set: { v in app.perform { _ = try await $0.command(Commands.DeviceKeepAll(DeviceKeepAllArgs(on: v))) } }))
+                    } else {
+                        Text("Every note in this library is on this Mac, so it opens offline.").foregroundStyle(.secondary)
+                    }
                     LabeledContent("Notes kept", value: s.notesKept.map { $0.formatted() } ?? "…")
                     LabeledContent("Files kept", value: s.attachmentsKept.map { $0.formatted() } ?? "…")
                     LabeledContent("Space used", value: s.usedBytes.map { ByteCountFormatter.string(fromByteCount: Int64($0), countStyle: .file) } ?? "…")
@@ -494,42 +536,25 @@ struct OfflinePane: View {
                     Button("Download Everything Now") { app.perform { _ = try await $0.command(Commands.DeviceDownload()); app.toast("Downloading every note and file") } }
                     Button("Sync Now") { app.perform { _ = try await $0.command(Commands.EngineRefresh()) } }
                     Button("Remove Downloaded Files…", role: .destructive) { app.perform { _ = try await $0.command(Commands.DeviceRemoveFiles()) } }
-                    Button("Remove This Mac's Copy…", role: .destructive) { app.perform { _ = try await $0.command(Commands.DeviceRemoveCopy(DeviceRemoveCopyArgs(force: nil))) } }
+                    Button("Remove This Mac's Copy…", role: .destructive) {
+                        let alert = NSAlert()
+                        alert.messageText = "Remove this Mac's copy of your notes?"
+                        alert.informativeText = "Notes are downloaded again when you open them. Changes that haven't synced yet are kept until they do."
+                        alert.alertStyle = .warning
+                        alert.addButton(withTitle: "Remove")
+                        alert.addButton(withTitle: "Cancel")
+                        alert.buttons.first?.hasDestructiveAction = true
+                        CoreAlerts.cancelIsDefault(alert)
+                        guard alert.runModal() == .alertFirstButtonReturn else { return }
+                        app.perform { _ = try await $0.command(Commands.DeviceRemoveCopy(DeviceRemoveCopyArgs(force: true))) }
+                    }
                 }
             } else {
                 ProgressView()
             }
-            if app.session.value?.mode == .local { LibrarySection() }
         }
         .formStyle(.grouped)
         .task(id: app.client.map(ObjectIdentifier.init)) { storage.bind(app.client, Views.DeviceStorage()) }
-    }
-}
-
-/// The library "on this Mac": where it lives (iCloud, a folder, this Mac), its passphrase, syncing it now.
-struct LibrarySection: View {
-    private var app: AppModel { .shared }
-    @State private var info: [String: JSONValue] = [:]
-
-    var body: some View {
-        Section("Library") {
-            LabeledContent("Kept in", value: info["displayPath"]?.string ?? info["kind"]?.string ?? "…")
-            Button("Sync Library Now") { run(.librarySyncNow) }
-            Menu("Move Library To") {
-                Button("iCloud Drive") { run(.libraryMove, ["kind": .string("icloud")]) }
-                Button("A Folder…") { run(.libraryMove, ["kind": .string("folder")]) }
-                Button("This Mac") { run(.libraryMove, ["kind": .string("device")]) }
-            }
-            Button("Set a Passphrase…") { run(.librarySetPassphrase) }
-            Button("Lock Library") { run(.libraryLock) }
-        }
-        .task {
-            if let v = try? await app.client?.query(Views.SettingsQuery(SettingsQueryArgs(key: .library, args: nil))), case .object(let o) = v.data { info = o }
-        }
-    }
-
-    private func run(_ key: SettingsRunKey, _ args: [String: JSONValue]? = nil) {
-        app.perform { _ = try await $0.command(Commands.SettingsRun(SettingsRunArgs(key: key, args: args))) }
     }
 }
 
@@ -569,6 +594,9 @@ struct MacPane: View {
         Form {
             Section("Quick Add") {
                 ShortcutRecorder(value: $settings.quickAddShortcut)
+                if settings.quickAddShortcut != DesktopSettings().quickAddShortcut {
+                    Button("Use \(HotKey.display(DesktopSettings().quickAddShortcut))") { settings.quickAddShortcut = DesktopSettings().quickAddShortcut }
+                }
                 Toggle("Show Folevi Core in the menu bar", isOn: $settings.menuBarIcon)
             }
             Section {
@@ -709,9 +737,7 @@ struct LocalAISettingsPane: View {
             if value.isEmpty {
                 ProgressView()
             } else {
-                Section {
-                    Text(value["onText"]?.string ?? "").foregroundStyle(.secondary)
-                }
+                LocalAITopSections(value: SettingsJSON(.object(value))) { await load() }
                 if case .object(let od)? = value["onDevice"] {
                     Section(od["title"]?.string ?? "On This Mac") {
                         LabeledContent(od["name"]?.string ?? "", value: od["status"]?.string?.capitalized ?? "")

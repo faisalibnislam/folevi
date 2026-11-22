@@ -174,12 +174,13 @@ final class RebuildFrameController: UIViewController, PhoneRouting {
             center.addObserver(forName: UIResponder.keyboardWillHideNotification, object: nil, queue: .main) { [weak self] _ in
                 MainActor.assumeIsolated { self?.keyboardMoved(to: .zero, hiding: true) }
             },
-            // Low on memory: the native side's own caches go (decoded card covers, cards' line breaks; what shows
-            // asks again), as the Mac lets them go (its 2026-11-19 performance pass). WebKit drops its own.
+            // Low on memory: the native side's own caches go (decoded card covers, cards' line breaks and pictures;
+            // what shows asks again), as the Mac lets them go (its 2026-11-19 performance pass). WebKit drops its own.
             center.addObserver(forName: UIApplication.didReceiveMemoryWarningNotification, object: nil, queue: .main) { _ in
                 MainActor.assumeIsolated {
                     CoverFiles.shared.relieve()
                     WebLineLayout.shared.relieve()
+                    CardPictures.shared.relieve()
                 }
             },
         ]

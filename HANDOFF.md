@@ -259,6 +259,14 @@ This session's wrangler login lives in the app's own `XDG_CONFIG_HOME` (not `~/.
 there shows the account that owns `folevi-updates`. Decisions: `docs/claude-context/memory/tab-back-and-overview-2026-11-21.md`
 and `frosted-folders-decision-2026-11-20.md`.
 
+**Also in progress:** branch `claude/native-perf-pass` (worktree `.claude/worktrees/recursing-dijkstra-48aa7c`, off
+`main` at `d617d60b`, not released): a native performance pass, report in `docs/NATIVE_PERFORMANCE_2026-11-21.md`.
+Folder cards at rest are drawn once into a picture (`FoleviDesign/Web/CardPicture.swift`; live while hovered, on whole
+pixels, a capped cache let go on memory warnings, `FOLEVI_CARD_PICTURES=0` draws them live): a 60-folder Mac grid
+missed 321 to 347 of about 360 frames in a 3 s scroll, now 13 to 37; Home 52 to 166, now 0 to 11. Window captures
+match the live cards. Note cards are unchanged (pictures thrashed the cache on All notes); iPhone numbers need the
+owner's phone (the Simulator shows no difference).
+
 **Also in progress:** branch `claude/liquid-glass-animations-b1d70e` (worktree
 `.claude/worktrees/liquid-glass-animations-b1d70e`, off `main` at `d752bb0d`, PR 45, not released): a Liquid Glass
 motion pass on the Mac, iPhone and iPad apps, keeping the owner's playful springs (FoleviSpring, 2026-11-01). Shared
@@ -337,7 +345,8 @@ account button should move past iPadOS's window buttons).
 0. On real devices: Back after Home's See all (Mac, iPad, web), Show All Tabs' Home picture, iPhone Home's folder
    and note strips (1.5.62).
 1. On a real iPhone, iPad and Mac with the owner's library: the note bar swap (1.5.56), Offline & sync's Download
-   everything now with an account (1.5.57), frosted folders' scrolling in long grids (1.5.58).
+   everything now with an account (1.5.57), frosted folders' scrolling in long grids (1.5.58; on
+   `claude/native-perf-pass` folder cards scroll from pictures: compare with `FOLEVI_CARD_PICTURES=0` on the phone).
 2. iPad audit leftovers (found 2026-11-19, not fixed): the tab strip leaves a cut-off empty slot at its start once
    the tabs overflow; database table rows are far too tall on iPad (cause not found: inspect the note page); note
    text cuts off hard at the card's top on scroll. Unprofiled speed ideas: card line layout re-measured at every
@@ -399,6 +408,7 @@ account button should move past iPadOS's window buttons).
   `DATABASE_UDF_USER_TIMEOUT_SECONDS=4` for that backend. Bursts show in `convex.log` as "took a long time".
 
 ## 12. Change log
+- 2026-11-21: Native performance pass on `claude/native-perf-pass`: folder cards scroll from a picture (Mac Folders 321-347 missed frames to 13-37); report in `docs/NATIVE_PERFORMANCE_2026-11-21.md`; not released.
 - 2026-11-21: 1.5.63 released on Mac and TestFlight (PR 46 + 47 + PR 45's motion pass); the web build was skipped (native-only).
 - 2026-11-21: iPhone Home's folder strip no longer cuts its cards' shadow off in a straight line (`scrollClipDisabled`), on `claude/phone-strip-shadows`.
 - 2026-11-21: iPhone search's field and close button at the foot above the keyboard (iOS 26), chips just above it; Quick add's Task/Note switch matches Foli AI's Chat/Research, full width; on `claude/phone-search-bottom`.

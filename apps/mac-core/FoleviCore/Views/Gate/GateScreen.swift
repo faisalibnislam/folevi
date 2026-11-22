@@ -4,6 +4,7 @@
 // title, text, fields and actions); Core draws it natively and sends the person's choice back (`gate.act`).
 import FoleviDesign
 import FoleviEngine
+import AuthenticationServices
 import SwiftUI
 
 struct GateScreen: View {
@@ -11,6 +12,11 @@ struct GateScreen: View {
     private var app: AppModel { .shared }
     @State private var values: [String: String] = [:]
     @FocusState private var focus: String?
+    /// A new library's optional passphrase (the web's LibrarySetup): off, or on with a confirmation and a promise.
+    @State private var encrypt = false
+    @State private var confirm = ""
+    @State private var understood = false
+    @State private var problem: String?
 
     var body: some View {
         ScrollView {
@@ -21,7 +27,7 @@ struct GateScreen: View {
                 if let d = gate.deviceLimit { deviceLimit(d) }
                 if let e2ee = gate.e2ee { E2eeGateExtras(info: e2ee) }
                 if let o = gate.onboarding { OnboardingStep(info: o, values: $values) }
-                fields
+                if isLibrarySetup { libraryPassphrase } else { fields }
                 if let error = gate.error {
                     Label(error.message, coreSymbol: "exclamationmark.circle").foregroundStyle(.red)
                 }
@@ -182,12 +188,12 @@ struct GateScreen: View {
             ForEach(gate.actions, id: \.id) { a in
                 let lower = a.id.lowercased() + a.label.lowercased()
                 if lower.contains("apple") {
-                    // Apple's own look for Sign in with Apple: black, white text, the Apple logo.
-                    Button { act(a) } label: {
-                        Label(a.label, systemImage: "applelogo").frame(maxWidth: .infinity).padding(.vertical, 6)
-                            .foregroundStyle(.white).background(.black, in: .rect(cornerRadius: 8))
-                    }
-                    .buttonStyle(.plain).disabled(!canPress(a))
+                    // The system's own Sign in with Apple button (ASAuthorizationAppleIDButton); Folevi's sign-in flow.
+                    AppleIDButton(continues: a.label.lowercased().contains("continue")) { act(a) }
+                        .frame(maxWidth: .infinity, minHeight: 32, maxHeight: 32)
+                        .disabled(!canPress(a))
+                        .opacity(canPress(a) ? 1 : 0.5)
+                        .accessibilityLabel(a.label)
                 } else if lower.contains("google") {
                     Button { act(a) } label: {
                         HStack { Text("G").font(.headline).foregroundStyle(.blue); Text(a.label) }.frame(maxWidth: .infinity).padding(.vertical, 6)
@@ -197,6 +203,14 @@ struct GateScreen: View {
                     .buttonStyle(.plain).disabled(!canPress(a))
                 } else {
                     VStack(spacing: 2) {
+                        if a.style == .primary {
+                            // Folevi's ink, not the system accent (the owner's black and white buttons).
+                            Button { act(a) } label: { Text(a.label).frame(maxWidth: .infinity).padding(.vertical, 2) }
+                                .buttonStyle(InkPillStyle())
+                                .opacity(canPress(a) ? 1 : 0.45)
+                                .disabled(!canPress(a))
+                                .keyboardShortcut(.defaultAction)
+                        } else {
                         Button { act(a) } label: {
                             Text(a.label).frame(maxWidth: a.style == .quiet ? nil : .infinity)
                         }
@@ -205,6 +219,7 @@ struct GateScreen: View {
                         .tint(a.style == .destructive ? .red : nil)
                         .disabled(!canPress(a))
                         .keyboardShortcut(a.style == .primary ? .defaultAction : nil)
+                        }
                         if let d = detail(a) { Text(d).font(.caption).foregroundStyle(.secondary) }
                     }
                 }
@@ -260,7 +275,73 @@ struct GateScreen: View {
 
     /// The page runs the choice (signing in opens the system's sign-in sheet through the shared shell; choosing a
     /// folder opens the Mac's folder panel).
-    private func act(_ a: GateAction) { send(a.id, values) }
+    private func act(_ a: GateAction) {
+        guard isLibrarySetup else { return send(a.id, values) }
+        var v = values
+        if a.style == .primary, encrypt {
+            if let p = Self.passphraseProblem(values["passphrase"] ?? "", confirm, understood) { problem = p; return }
+        } else {
+            v["passphrase"] = nil
+        }
+        send(a.id, v)
+    }
+
+    /// A brand-new library with its optional passphrase field.
+    private var isLibrarySetup: Bool { gate.gate == "librarySetup" && gate.fields.contains { $0.id == "passphrase" } }
+
+    static let minPassphrase = 8
+
+    static func passphraseProblem(_ passphrase: String, _ confirm: String, _ understood: Bool) -> String? {
+        if passphrase.count < minPassphrase { return "Use at least \(minPassphrase) characters." }
+        if passphrase != confirm { return "The two passphrases don't match." }
+        if !understood { return "Tick the box to say you understand a lost passphrase can't be recovered." }
+        return nil
+    }
+
+    /// "Encrypt with a passphrase": a switch, then the warning, the passphrase twice and the promise.
+    private var libraryPassphrase: some View {
+        GroupBox {
+            VStack(alignment: .leading, spacing: 12) {
+                Toggle(isOn: $encrypt.animation(.snappy)) {
+                    Label {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Encrypt with a passphrase").font(.headline)
+                            Text(gate.message.contains("this Mac") ? "Optional. No one can read the files without it." : "Optional. No one can read the synced copy without it.")
+                                .font(.callout).foregroundStyle(.secondary)
+                        }
+                    } icon: { CoreIcon.image("lock", size: 17) }
+                }
+                .toggleStyle(.switch)
+                .disabled(gate.busy)
+                if encrypt {
+                    Label {
+                        Text("**If you lose this passphrase, nobody can open your notes' files.** Folevi can't reset it or recover it. Write it down and keep it somewhere safe.")
+                            .fixedSize(horizontal: false, vertical: true)
+                    } icon: { Image(systemName: "exclamationmark.shield.fill").foregroundStyle(.red) }
+                    .padding(10)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(Color.red.opacity(0.09), in: .rect(cornerRadius: 8))
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Passphrase").font(.callout.weight(.medium))
+                        SecureField("", text: binding("passphrase")).textFieldStyle(.roundedBorder).focused($focus, equals: "passphrase")
+                    }
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Type it again").font(.callout.weight(.medium))
+                        SecureField("", text: $confirm).textFieldStyle(.roundedBorder)
+                    }
+                    Text("Use at least \(Self.minPassphrase) characters. A few unrelated words are easy to remember and hard to guess.")
+                        .font(.caption).foregroundStyle(.secondary)
+                    Toggle("I understand a lost passphrase can't be recovered", isOn: $understood).toggleStyle(.checkbox)
+                    if let problem { Text(problem).font(.callout).foregroundStyle(.red) }
+                }
+            }
+            .padding(6)
+        }
+        .disabled(gate.busy)
+        .onChange(of: encrypt) { problem = nil; if encrypt { focus = "passphrase" } }
+        .onChange(of: confirm) { problem = nil }
+        .onChange(of: understood) { problem = nil }
+    }
 
     private func send(_ action: String, _ extra: [String: String]) {
         app.perform { _ = try await $0.command(Commands.GateAct(GateActArgs(action: action, values: extra.isEmpty ? nil : extra))) }
@@ -398,5 +479,41 @@ struct E2eeGateExtras: View {
         view.string = "Folevi recovery key\n\n" + key
         view.font = .monospacedSystemFont(ofSize: 16, weight: .regular)
         NSPrintOperation(view: view).run()
+    }
+}
+
+
+/// The system's Sign in with Apple button, black in light mode and white in dark (Apple's rule), sending the press
+/// to Folevi's own sign-in.
+struct AppleIDButton: NSViewRepresentable {
+    let continues: Bool
+    let action: () -> Void
+    @Environment(\.colorScheme) private var scheme
+
+    func makeCoordinator() -> Coordinator { Coordinator(action: action) }
+
+    func makeNSView(context: Context) -> ASAuthorizationAppleIDButton {
+        let b = ASAuthorizationAppleIDButton(authorizationButtonType: continues ? .continue : .signIn, authorizationButtonStyle: scheme == .dark ? .white : .black)
+        b.cornerRadius = 8
+        b.setContentHuggingPriority(.defaultLow, for: .horizontal)
+        b.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+        b.target = context.coordinator
+        b.action = #selector(Coordinator.press)
+        return b
+    }
+
+    func updateNSView(_ view: ASAuthorizationAppleIDButton, context: Context) {
+        context.coordinator.action = action
+    }
+
+    /// As wide as the other sign-in buttons (the system button would keep its own width).
+    func sizeThatFits(_ proposal: ProposedViewSize, nsView: ASAuthorizationAppleIDButton, context: Context) -> CGSize? {
+        CGSize(width: proposal.width ?? 280, height: 32)
+    }
+
+    final class Coordinator: NSObject {
+        var action: () -> Void
+        init(action: @escaping () -> Void) { self.action = action }
+        @objc func press() { action() }
     }
 }

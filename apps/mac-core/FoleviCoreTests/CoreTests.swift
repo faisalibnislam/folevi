@@ -357,3 +357,14 @@ struct BillingHistoryTests {
         #expect(BillingPane.status(credits) == " · Refunded")
     }
 }
+
+@MainActor
+@Suite("New library passphrase")
+struct LibraryPassphraseTests {
+    @Test func checksLikeTheWeb() {
+        #expect(GateScreen.passphraseProblem("short", "short", true) == "Use at least 8 characters.")
+        #expect(GateScreen.passphraseProblem("long enough", "long enougj", true) == "The two passphrases don't match.")
+        #expect(GateScreen.passphraseProblem("long enough", "long enough", false)?.hasPrefix("Tick the box") == true)
+        #expect(GateScreen.passphraseProblem("long enough", "long enough", true) == nil)
+    }
+}

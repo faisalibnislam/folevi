@@ -91,9 +91,17 @@ Closed or improved after the grading below; the per-item marks haven't been redo
   off screen; a note card's press and a list row's selection prepare the note before the click ends (in a page
   the window already holds); Settings > Plan & Billing lists the payments (billing.mine); the system's large
   control size in the main window and Settings.
+- Web screens made native where it was safe (22 November 2026): the new library's "Encrypt with a passphrase"
+  step (switch, warning, passphrase twice, the promise, the web's checks), the system Sign in with Apple button
+  (ASAuthorizationAppleIDButton, Folevi's own sign-in flow), Touch ID for the encryption keys in Settings >
+  Security, the update test channel's own folder (core/ for Core, mac/ for today's app), primary gate buttons in
+  Folevi's ink. Kept on the web on purpose: two-step verification (Better Auth's browser endpoints), the
+  workspace settings group, e2ee on/off (it rewrites every note's keys, next to the editor), OAuth consent. The
+  owner kept ⌘T at Search, Open at login off and native tabs (now n/a). Saved windows and tabs are kept per data
+  folder.
 
 The items closed in this session's later work packages are marked [x] with "closed after the grading", and the
-summary table below is recounted from the marks (1108 there, 15 partly, 0 missing, 220 not applicable).
+summary table below is recounted from the marks (1112 there, 6 partly, 0 missing, 225 not applicable).
 
 ## Summary
 
@@ -101,9 +109,9 @@ summary table below is recounted from the marks (1108 there, 15 partly, 0 missin
 |---|---|---|---|---|---|---|
 | Architecture today | `ARCH` | 16 | 0 | 0 | 1 | 17 |
 | App & windows | `APP` | 50 | 0 | 0 | 23 | 73 |
-| Sign-in, onboarding, accounts, spaces & local mode | `AUTH` | 67 | 2 | 0 | 11 | 80 |
+| Sign-in, onboarding, accounts, spaces & local mode | `AUTH` | 69 | 0 | 0 | 11 | 80 |
 | Sidebar & navigation | `NAV` | 30 | 0 | 0 | 7 | 37 |
-| Tabs | `TAB` | 14 | 1 | 0 | 28 | 43 |
+| Tabs | `TAB` | 14 | 0 | 0 | 29 | 43 |
 | Home | `HOME` | 20 | 0 | 0 | 10 | 30 |
 | Notes lists | `LIST` | 60 | 1 | 0 | 11 | 72 |
 | Folders | `FOLD` | 34 | 0 | 0 | 3 | 37 |
@@ -122,22 +130,22 @@ summary table below is recounted from the marks (1108 there, 15 partly, 0 missin
 | Archive | `ARCV` | 6 | 0 | 0 | 0 | 6 |
 | Trash | `TRASH` | 12 | 0 | 0 | 0 | 12 |
 | Notifications / Inbox, Help & support | `NOTIF` | 16 | 0 | 0 | 2 | 18 |
-| Settings | `SET` | 144 | 2 | 0 | 19 | 165 |
+| Settings | `SET` | 144 | 1 | 0 | 20 | 165 |
 | Quick Add | `QADD` | 14 | 0 | 0 | 2 | 16 |
-| System integrations | `SYS` | 55 | 1 | 0 | 4 | 60 |
+| System integrations | `SYS` | 55 | 0 | 0 | 5 | 60 |
 | Context menus | `CTX` | 11 | 0 | 0 | 6 | 17 |
 | Menus & keyboard shortcuts | `MENU` | 80 | 0 | 0 | 2 | 82 |
-| Updates (Sparkle) | `UPD` | 6 | 1 | 0 | 0 | 7 |
+| Updates (Sparkle) | `UPD` | 7 | 0 | 0 | 0 | 7 |
 | Offline, sync & device storage | `SYNC` | 14 | 0 | 0 | 0 | 14 |
 | Migration | `MIG` | 0 | 0 | 0 | 11 | 11 |
-| Bridge messages & capabilities | `BRIDGE` | 72 | 1 | 0 | 7 | 80 |
+| Bridge messages & capabilities | `BRIDGE` | 72 | 0 | 0 | 8 | 80 |
 | Debug & eval harness | `DBG` | 0 | 0 | 0 | 8 | 8 |
 | Capabilities | `CAP` | 20 | 0 | 0 | 0 | 20 |
 | Stays web, WebPage values and the parity list | `WEB` | 2 | 0 | 0 | 2 | 4 |
-| Binding UX rules from owner memory | `RULE` | 30 | 1 | 0 | 13 | 44 |
+| Binding UX rules from owner memory | `RULE` | 30 | 0 | 0 | 14 | 44 |
 | iPhone and iPad only (skip) | `IOS` | 0 | 0 | 0 | 5 | 5 |
-| Gaps, bugs and contradictions | `GAP` | 26 | 4 | 0 | 13 | 43 |
-| **Total** | | **1108** | **15** | **0** | **220** | **1343** |
+| Gaps, bugs and contradictions | `GAP` | 27 | 3 | 0 | 13 | 43 |
+| **Total** | | **1112** | **6** | **0** | **225** | **1343** |
 
 Notable findings (all in the first work package at the end):
 
@@ -275,7 +283,7 @@ Notable findings (all in the first work package at the end):
 - [x] `AUTH-019` **Dropbox and Google Drive sync (local mode)**: The provider code runs in the bridge JS (folevi-cloud.js). Native handles OAuth, tokens and HTTP: `cloudStatus`, `cloudConnect`… Core: shared ShellCloud and folevi-cloud.js.
 - [x] `AUTH-020` **Reminders and subscribed calendars only in local mode**: `notifySchedule` and `notifyCancel` go through ShellNotify (system UNUserNotification, fires with the app quit). `httpCalendar`… Core: shared ShellRouter.
 - [x] `AUTH-021` **Foli AI on device or own keys**: `aiCapabilities`, `aiGenerate` (streams `aiChunk` events), `aiCancel`, `aiTestKey`. Keys go through… Core: shared ShellAI and FakeAI.
-- [~] `AUTH-022` **E2EE device keys per account**: `e2eeDeviceKeys`, `e2eeOpen`, `e2eeSign`, `e2eeReset`, `e2eeSettings`, `e2eeSetTouchId`. The native frame's Vault offers Touch ID… Core: shared bridge; Core's Vault has no Touch ID unlock.
+- [x] `AUTH-022` **E2EE device keys per account**: `e2eeDeviceKeys`, `e2eeOpen`, `e2eeSign`, `e2eeReset`, `e2eeSettings`, `e2eeSetTouchId`. The native frame's Vault offers Touch ID… Core: closed after the grading (see "Since this grading").
 - [x] `AUTH-023` **Move or copy notes between places**: `frameMoveOrCopy` presents `PlaceMove` (engine `places.move.preview` and `places.move`). Core: closed after the grading (see "Since this grading").
 - [n/a] `AUTH-024` **Owner decisions (docs)**. Why: reference notes, not a feature.
 - [n/a] `AUTH-025` **Rebuild direction (memory)**: Native everywhere except the editor; web data engine over the bridge; pixel match with the web; account-free local mode… Why: reference notes, not a feature.
@@ -297,7 +305,7 @@ Notable findings (all in the first work package at the end):
 - [x] `AUTH-038` **Update required**: Mac text "…Choose Check for Updates in the Folevi menu…". Core: closed after the grading (see "Since this grading").
 - [x] `AUTH-039` **Device limit**: device rows with "Last seen …" and a Sign out button (`signOut:<id>`). Core: closed after the grading (see "Since this grading").
 - [x] `AUTH-040` **Library setup places**: iCloud, Dropbox, Google Drive, a folder, this Mac only, each with a Mac detail line; Back. Core: closed after the grading (see "Since this grading").
-- [~] `AUTH-041` **Library ready**: "Folevi keeps your notes as files in <path>"; "Encrypt with a passphrase" switch; passphrase and confirm fields; warning; "I… Core: the library-ready step shows the engine's fields and actions; the encrypt switch and checks are the engine's, drawn generically.
+- [x] `AUTH-041` **Library ready**: "Folevi keeps your notes as files in <path>"; "Encrypt with a passphrase" switch; passphrase and confirm fields; warning; "I… Core: closed after the grading (see "Since this grading").
 - [x] `AUTH-042` **Library locked**: "Enter your library's passphrase", the passphrase field, Unlock, "Forgot the passphrase?" with help text. Core: generic fields and actions.
 - [x] `AUTH-043` **Migration and place move**: progress label with "N of M"; iOS migration summary (notes, folders, tags, files and their size, existing notes, "There isn't… Core: closed after the grading (see "Since this grading").
 - [x] `AUTH-044` **E2EE unlock**: choose passphrase or recovery key (one field at a time; "Use recovery key" / "Use passphrase instead"); the recovery key is… Core: closed after the grading (see "Since this grading").
@@ -425,7 +433,7 @@ Notable findings (all in the first work package at the end):
 - [n/a] `TAB-037` **Tab context menu**: (see Context menus). Why: macOS tab menu.
 - [n/a] `TAB-038` **Desk tabs persistence**: (iPad). Why: iPad only.
 - [n/a] `TAB-039` **Legacy AppKit tab strip**: (legacy): Close, Close Other Tabs, Close Tabs to the Right, Open in New Window. Why: legacy.
-- [~] `TAB-040` **New Tab command**: opens Home and focuses search. Core: ⌘T opens a tab at Search with the field focused (recent searches and notes), not Home.
+- [n/a] `TAB-040` **New Tab command**: opens Home and focuses search. Why: the owner's decision of 22 November 2026: Core keeps ⌘T opening a tab at Search.
 - [n/a] `TAB-041` **Close Tab on Home closes the window**. Why: macOS tab and window closing.
 - [n/a] `TAB-042` **Float note from tab**: (Mac only, `frameCanFloatNotes`). Why: native window tabs have no per-tab menu to add Float to; Note > Float on Top does it.
 - [n/a] `TAB-043` **Debug tab frames and strip metrics**: for scripts. Why: Debug harness.
@@ -1029,7 +1037,7 @@ Notable findings (all in the first work package at the end):
 - [x] `SET-004` **Native page vs web fallback**: when the front main window has the native frame, the page is native: `MacSettingsShell` plus `MacSettingsNativePane` on that… Core: native panes; a few are the page's own (privacy, workspace, connected apps).
 - [x] `SET-005` **Sidebar, account mode**: (and ). First group, no heading: General (desktop, moved to the top), Account, Foli AI, Plan & billing, Security, Privacy… Core: closed after the grading (see "Since this grading").
 - [x] `SET-006` **Sidebar, local (library) mode**: General, Library, Foli AI, Appearance, Import & export. Core: closed after the grading (see "Since this grading").
-- [~] `SET-007` **Workspace group**: (account mode, open space is a team workspace), headed by the workspace's name: General (page title "Workspace"), Members… Core: one web-drawn Workspace pane, not a group.
+- [~] `SET-007` **Workspace group**: (account mode, open space is a team workspace), headed by the workspace's name: General (page title "Workspace"), Members… Core: kept as the web's Workspace pane on purpose: members, roles, billing and the workspace's encryption are account screens with more to them than a small native port.
 - [x] `SET-008` **Support group**: Help (an action, opens help), Contact support… (an action: in local mode it opens mailto:support@folevi.com, otherwise the help… Core: closed after the grading (see "Since this grading").
 - [n/a] `SET-009` **App lock (this-device)**: iPad only. Inserted after Security when `frame.host.frameDeviceLock` exists. The Mac never lists it. Why: iPad only (Core has its own App Lock pane).
 - [n/a] `SET-010` **Web-fallback sidebar**: (no native frame). Account mode: General, Account, Appearance, Notifications, Foli AI, Security, Privacy, Devices, Offline &… Why: Core never falls back to the web Settings sidebar.
@@ -1058,7 +1066,7 @@ Notable findings (all in the first work package at the end):
 - [x] `SET-024` **Quick Add > Shortcut (recorder)**: click the pill, then press keys. While recording it shows "Press keys…" with an accent ring. Esc cancels. A key without ⌘, ⌥ or ⌃… Core: `Views/Settings/SettingsView.swift` ShortcutRecorder (Esc cancels; no hint for a bare key).
 - [x] `SET-025` **Quick Add > Turn off**: shown when a shortcut is set. Clears it.. engine: run `desktop.set {quickAddShortcut: ""}`. Core: ShortcutRecorder Clear.
 - [x] `SET-026` **Quick Add > Use <default>**: shown when the shortcut is not the default. Restores the default.. engine: run `desktop.set {quickAddShortcut: defaultShortcut}`. Core: closed after the grading (see "Since this grading").
-- [~] `SET-027` **On this Mac > Open at login**: (switch, default on):. engine: run `desktop.set {openAtLogin: Bool}`. Core: This Mac > Open at login (LoginItem), off until you turn it on; today it starts on (left for the owner to decide for Core).
+- [n/a] `SET-027` **On this Mac > Open at login**: (switch, default on):. engine: run `desktop.set {openAtLogin: Bool}`. Why: the owner's decision of 22 November 2026: Open at login starts off in Core.
 - [x] `SET-028` **On this Mac > Menu bar icon**: (switch, default on):. engine: run `desktop.set {menuBarIcon: Bool}`. Core: MacPane menu bar icon.
 - [x] `SET-029` **On this Mac > Mac notifications**: (switch, default on): shows comments, mentions and reminders as notifications and puts a badge on the Dock icon.. engine: run… Core: MacPane Mac notifications.
 - [x] `SET-030` **On this Mac > Show notes in Spotlight**: (switch, default on): only shown when the bridge reports spotlight. Locked and encrypted notes are never added.. engine: run… Core: MacPane toggle; `Host/Capabilities.swift` keeps Spotlight current.
@@ -1314,7 +1322,7 @@ Notable findings (all in the first work package at the end):
 - [x] `SYS-013` **OpenNoteIntent "Open Note"**: Parameter `note: NoteEntity`; openAppWhenRun. Opens through `Spotlight.open(identifier:)`. Core: `App/Intents.swift` OpenNoteIntent.
 - [x] `SYS-014` **NoteEntity and NoteQuery**: Entity `{ id, title, location }`. The query is an EntityStringQuery over the current place's Spotlight notes (title contains)… Core: `App/Intents.swift` NoteEntity and NoteQuery (search and recent of the open place).
 - [x] `SYS-015` **FoleviMacShortcuts (AppShortcutsProvider)**: Phrases. Core: `App/Intents.swift` FoleviCoreShortcuts (plus Search Notes).
-- [~] `SYS-016` **Capabilities.ask / answer**: Sends a command with a UUID id to the front main page (opening one if needed, waiting up to 30 s for load) and waits for… Core: `Host/Capabilities.swift` answers commandDone; there is no native ask yet.
+- [n/a] `SYS-016` **Capabilities.ask / answer**: Sends a command with a UUID id to the front main page (opening one if needed, waiting up to 30 s for load) and waits for… Why: Core's Shortcuts, Services and Quick Add call the engine directly (note.create, task.create), so nothing needs the page's ask round trip.
 - [x] `SYS-017` **What is indexed**: Every note of every place, archived included. Locked and E2EE notes are never indexed. CSSearchableItem with contentType text. Core: `Host/Capabilities.swift` indexSpotlight (the page leaves locked and encrypted notes out).
 - [x] `SYS-018` **Domains and ids**: Domain `com.folevi.notes.[runTag.]<place>`. Identifier `<place>\u{1F}<noteId>`. indexVersion 2 (a change forces a full reindex).… Core: closed after the grading (see "Since this grading").
 - [x] `SYS-019` **Sync protocol with the page**: `spotlightState` returns stamps. `indexSpotlight` takes at most 50 changed items, then `keep` (every id) for pruning, plus… Core: closed after the grading (see "Since this grading").
@@ -1505,7 +1513,7 @@ Notable findings (all in the first work package at the end):
 - [x] `UPD-001` **Sparkle 2 controller**: `SPUStandardUpdaterController(startingUpdater: true)`, started after the first windows. Core: shared Updater started in `App/FoleviCoreApp.swift` CoreSetup.
 - [x] `UPD-002` **Feed and keys (Info.plist)**: SUFeedURL `https://folevi.com/download/mac/appcast.xml`. SUPublicEDKey `F+N/necf9zCMzOTldJSKppxPoWCYn8rTANGly0mLbtA=` (the… Core: `Resources/Info.plist` Core's own feed (download/core/appcast.xml) and EdDSA key.
 - [x] `UPD-003` **Enablement**: Release only. Debug, FOLEVI_USER_DATA and test runs are off. FOLEVI_UPDATES=on/off overrides. Core: shared Updater (release only).
-- [~] `UPD-004` **Test channel**: FOLEVI_UPDATE_URL (https or localhost) + `/mac/appcast.xml` through `feedURLString(for:)`. No other channels. Core: shared code; the test channel appends today's /mac/appcast.xml path.
+- [x] `UPD-004` **Test channel**: FOLEVI_UPDATE_URL (https or localhost) + `/mac/appcast.xml` through `feedURLString(for:)`. No other channels. Core: closed after the grading (see "Since this grading").
 - [x] `UPD-005` **Install on quit and "Restart to Update"**: `willInstallUpdateOnQuit` keeps the immediate-install handler; the menu title becomes "Restart to Update to <version>", else… Core: menu title from Updater.menuTitle.
 - [x] `UPD-006` **Version shown vs compared**: CFBundleShortVersionString is shown; CFBundleVersion is the hidden number Sparkle compares. Core: `Host/CorePaths.swift` version and build.
 - [x] `UPD-007` **Signing and notarization (docs)**: Developer ID, hardened runtime, notarytool and stapler, EdDSA appcast, deltas. Core: `scripts/release.mjs` (Developer ID, hardened runtime, DMG) and `scripts/publish.mjs` (notarize, staple, appcast; the owner runs it).
@@ -1616,7 +1624,7 @@ Notable findings (all in the first work package at the end):
 - [x] `BRIDGE-071` **spotlightState**. Core: closed after the grading (see "Since this grading").
 - [x] `BRIDGE-072` **clipboardRead**: **clipboardWrite**, **clipboardPaste**. Core: `Host/Capabilities.swift` clipboardRead, clipboardWrite, clipboardPaste (shared Clipboard).
 - [x] `BRIDGE-073` **quickLook**: `{ files: [{ name, data }] }`. Core: `Host/Capabilities.swift` quickLook (temporary copies, QLPreviewPanel).
-- [~] `BRIDGE-074` **commandDone**: `{ id, value }`, answers a native `ask`. Core: `Host/Capabilities.swift` answers commandDone, but nothing native asks yet.
+- [n/a] `BRIDGE-074` **commandDone**: `{ id, value }`, answers a native `ask`. Why: answered by the page but never needed in Core (see SYS-016).
 - [x] `BRIDGE-075` **FoleviShell libraryChanges / cloudWant / cloudStatus**: Sent to library pages only. Core: shared Places events to library pages.
 - [x] `BRIDGE-076` **FoleviShell placesChanged**: Sent to every view. Core: shared Places events.
 - [x] `BRIDGE-077` **FoleviShell aiChunk**: `{ id, text }`. Core: shared ShellAI.
@@ -1703,7 +1711,7 @@ Notable findings (all in the first work package at the end):
 - [x] `RULE-034` **Icons**: Folevi's web icons wherever the web has one, and the Foli AI icon for Foli AI; this overrides SF Symbols in the chrome (MacSymbol). Core: closed after the grading (see "Since this grading").
 - [n/a] `RULE-035` **Checklist**: of native, Liquid Glass and macOS UI use lives in. Why: reference document.
 - [n/a] `RULE-036` **Verify with real window captures**: (`screencapture -l`), not the app's own windowShot. Why: a testing process, not a feature.
-- [~] `RULE-037` **Follow `docs/MAC_NATIVE_LOOK.md`**: (row sizes, `macNativeChrome`, MacSymbol, no control twice). Core: reviewed on 22 November 2026: icons, hovers, row rhythm, no lines between rows, card sizes and Home spacing follow it; the window profile (custom title bar strip, one card, drawn sidebar) is not used, by the owner's choice of native tabs.
+- [n/a] `RULE-037` **Follow `docs/MAC_NATIVE_LOOK.md`**: (row sizes, `macNativeChrome`, MacSymbol, no control twice). Why: the owner's decision of 22 November 2026: native window tabs instead of the custom window profile; the rest of MAC_NATIVE_LOOK.md is followed (icons, hovers, rows, cards, Home spacing, one control size).
 - [x] `RULE-038` **New note shortcut**: MenuModel binds ⌘N to New Note and ⇧⌘N to New Window, but AppContextMenu says ⌘⌥N on the Mac "(⌘N is a new window there)" and the… Core: resolved: ⌘N New Note, ⇧⌘N New Window, the palette says ⌘N.
 - [n/a] `RULE-039` **Stale header comment**: CardControls says "New note is the sidebar's row", which contradicts the owner's pill rule. Why: today's code.
 - [n/a] `RULE-040` **Dead code**: SidebarViewController, TabStripView and NoteMenu.build are compiled but never instantiated. Why: today's code.
@@ -1730,8 +1738,8 @@ Notable findings (all in the first work package at the end):
 - [x] `GAP-004` **Lock contract split**: two folder.lock specs; folders.locks and changes.diff are still pending contracts; the sidebar folder menu passes locks… Core: closed after the grading (see "Since this grading").
 - [x] `GAP-005` **Sidebar rule vs code**: an owner rule says the sidebar is always visible with no hide button, but the code has a hide button and ⌘\ (View > Hide Sidebar). Core: closed after the grading (see "Since this grading").
 - [n/a] `GAP-006` **frameDownloadFile**: only shows a toast. Why: today's code.
-- [~] `GAP-007` **Two-step verification**: no native flow; the row opens folevi.com/settings/security. Core: still the web screen (in a window of its own).
-- [~] `GAP-008` **Unused in Mac Settings**: `e2ee.*`, `support.send`, `workspace.create`, `account.signOut`, `device.removeFiles` are never called from the Mac Settings… Core: Core uses account.signOut, device.removeFiles, workspace.create and support.send; still no e2ee.*.
+- [~] `GAP-007` **Two-step verification**: no native flow; the row opens folevi.com/settings/security. Core: kept on the web on purpose: two-step verification runs through Better Auth's browser endpoints.
+- [~] `GAP-008` **Unused in Mac Settings**: `e2ee.*`, `support.send`, `workspace.create`, `account.signOut`, `device.removeFiles` are never called from the Mac Settings… Core: e2ee.* stay in the page's privacy screen on purpose: turning encryption on or off rewrites every note's keys, so it stays next to the editor's own code; Touch ID for the keys is native (Settings > Security).
 - [x] `GAP-009` **No "Check for Updates" row**: in Settings (only the Folevi menu item). Core: resolved: Settings > Updates.
 - [n/a] `GAP-010` **No accent colour or font family options**: theme is Light, Dark, System only. Why: today's app has no accent or font choice either (a gap in both); not part of parity.
 - [x] `GAP-011` **No "Sign out of this account" in Mac Settings**: (it lives in the sidebar account menu). Core: resolved: Account > Sign Out.
@@ -1762,11 +1770,11 @@ Notable findings (all in the first work package at the end):
 - [n/a] `GAP-033` **Docs say no passkeys and no social sign-in**: PRODUCT.md (lines 113-121, 149) says so, but the code offers Continue with Apple / Google and "Sign in with a passkey". Why: documentation.
 - [x] `GAP-034` **New note shortcut mismatch**: the palette hints ⌘⌥N, but the menu's New Note is ⌘N (⌥⇧⌘N is New from template). Core: resolved.
 - [n/a] `GAP-035` **Parity checklist file missing**: NATIVE_APP_PLAN 5.14 names, which does not exist. Why: reference note; this file stands in.
-- [~] `GAP-036` **Invite-accept and OAuth consent screens**: NATIVE_APP_PLAN 5.1 lists them; they are not in these modules. Core: invitation screen yes; no OAuth consent screen.
+- [~] `GAP-036` **Invite-accept and OAuth consent screens**: NATIVE_APP_PLAN 5.1 lists them; they are not in these modules. Core: the OAuth consent screen stays on the web on purpose (rare, account level); the invitation screen is native.
 - [n/a] `GAP-037` **Swipes (plan 5.4)**: star, archive, long-swipe delete exist on iOS only; the Mac has no equivalent beyond menus. Why: touch gestures.
 - [x] `GAP-038` **MAC_NATIVE_CHECKLIST 4, open**: empty states (about 32) as `ContentUnavailableView`. Core: EmptyScreen is ContentUnavailableView (`Views/Common/Style.swift`).
 - [x] `GAP-039` **MAC_NATIVE_CHECKLIST 4, open**: list layouts (All notes, Folders, Shared, Changes) as `Table` with sortable columns. Core: closed after the grading (see "Since this grading").
-- [~] `GAP-040` **MAC_NATIVE_CHECKLIST 6, open**: `WebGateScreen` still uses drawn buttons, fields and switch; wants `Form`, `SecureField` and the system Sign in with Apple button. Core: native fields and buttons; no system Sign in with Apple button.
+- [x] `GAP-040` **MAC_NATIVE_CHECKLIST 6, open**: `WebGateScreen` still uses drawn buttons, fields and switch; wants `Form`, `SecureField` and the system Sign in with Apple button. Core: closed after the grading (see "Since this grading").
 - [x] `GAP-041` **MAC_NATIVE_CHECKLIST 1 and 3, open**: the card's search as an `NSSearchField`; the folder picker (Move folder) as `NSSearchField` plus `List` or `OutlineGroup`. Core: closed after the grading (see "Since this grading").
 - [x] `GAP-042` **Mac Home has no counted rows, Tags, Templates, Archive or Trash**: they are in the sidebar instead, by design, unlike plan 5.3's Home. Core: Core's Home has counted rows and Tags.
 - [n/a] `GAP-043` **HomeModel move flow unused on Mac**: `noteMenu`, `run`, `movingNotes` and `homeNoteSheets` serve iOS only; the Mac Home menu goes through `NotesListModel` (All notes)… Why: today's code.

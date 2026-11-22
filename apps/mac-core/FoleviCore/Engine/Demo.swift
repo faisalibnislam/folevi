@@ -46,6 +46,15 @@ enum DebugCommands {
                 done(["value": true])
             }
         }
+        MacEval.commands["fakegate"] = { req, done in
+            MainActor.assumeIsolated {
+                guard let json = req["json"] as? String, let data = json.data(using: .utf8) else { AppModel.shared.showGate(nil); return done(["value": "cleared"]) }
+                do {
+                    AppModel.shared.showGate(try JSONDecoder().decode(GateChangedEvent.self, from: data))
+                    done(["value": true])
+                } catch { done(["error": "\(error)"]) }
+            }
+        }
         MacEval.commands["gate"] = { req, done in
             MainActor.assumeIsolated {
                 guard let action = req["action"] as? String else { return done(["error": "no action"]) }

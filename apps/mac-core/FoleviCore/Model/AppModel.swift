@@ -109,6 +109,15 @@ final class AppModel {
 
     /// What the engine shows while it isn't ready (nil: ready).
     private(set) var gate: GateChangedEvent?
+
+    /// A saved-window key of this data folder: a run with its own FOLEVI_USER_DATA keeps its own windows and tabs
+    /// (they named notes of another library otherwise); the normal folder keeps the plain key.
+    nonisolated static func dataKey(_ key: String) -> String { Paths.runTag.map { "\(key).\($0)" } ?? key }
+
+    #if DEBUG
+    /// The Debug channel's stand-in gate (`core.mjs cmd fakegate`), to look at a gate screen without its engine state.
+    func showGate(_ g: GateChangedEvent?) { gate = g }
+    #endif
     /// The engine has said it's ready at least once for this page.
     private var readySeen = false
     /// The engine is up with no gate. Also true when the client turned ready before this model started listening
@@ -384,7 +393,7 @@ final class AppModel {
             out.append(SavedWindow(frame: NSStringFromRect(w.frame), tabs: tabs.isEmpty ? [SavedTab(path: lead.current.path, back: lead.backPaths, forward: lead.forwardPaths)] : tabs))
         }
         guard !out.isEmpty, let data = try? JSONEncoder().encode(out) else { return }
-        UserDefaults.standard.set(data, forKey: "core.windows")
+        UserDefaults.standard.set(data, forKey: AppModel.dataKey("core.windows"))
     }
 
     /// At launch, once: the first window takes the first saved window's first tab; the rest open as they were.
@@ -394,7 +403,7 @@ final class AppModel {
         NotificationCenter.default.addObserver(forName: NSApplication.willTerminateNotification, object: nil, queue: .main) { _ in
             MainActor.assumeIsolated { AppModel.shared.saveWindows() }
         }
-        guard let data = UserDefaults.standard.data(forKey: "core.windows"), let saved = try? JSONDecoder().decode([SavedWindow].self, from: data), !saved.isEmpty else { return }
+        guard let data = UserDefaults.standard.data(forKey: AppModel.dataKey("core.windows")), let saved = try? JSONDecoder().decode([SavedWindow].self, from: data), !saved.isEmpty else { return }
         // macOS brought windows back itself: leave them.
         guard windows.count <= 1, first.current == .home, first.backPaths.isEmpty else { return }
         for (i, win) in saved.prefix(8).enumerated() {
@@ -422,8 +431,8 @@ final class AppModel {
     /// The space shown ("<place>|<space>"), and each space's tabs (the front window's, as paths, up to 50 spaces).
     @ObservationIgnored private var spaceKey: String?
     @ObservationIgnored private var tabsPutAway = false
-    @ObservationIgnored private var tabsBySpace: [String: [String]] = (UserDefaults.standard.dictionary(forKey: "core.spaceTabs") as? [String: [String]]) ?? [:]
-    @ObservationIgnored private var spaceOrder: [String] = UserDefaults.standard.stringArray(forKey: "core.spaceTabsOrder") ?? []
+    @ObservationIgnored private var tabsBySpace: [String: [String]] = (UserDefaults.standard.dictionary(forKey: AppModel.dataKey("core.spaceTabs")) as? [String: [String]]) ?? [:]
+    @ObservationIgnored private var spaceOrder: [String] = UserDefaults.standard.stringArray(forKey: AppModel.dataKey("core.spaceTabsOrder")) ?? []
 
     var currentSpaceKey: String? { session.value.map { "\($0.place ?? "")|\($0.space)" } }
 
@@ -444,8 +453,8 @@ final class AppModel {
         spaceOrder.removeAll { $0 == key }
         spaceOrder.append(key)
         while spaceOrder.count > 50 { tabsBySpace[spaceOrder.removeFirst()] = nil }
-        UserDefaults.standard.set(tabsBySpace, forKey: "core.spaceTabs")
-        UserDefaults.standard.set(spaceOrder, forKey: "core.spaceTabsOrder")
+        UserDefaults.standard.set(tabsBySpace, forKey: AppModel.dataKey("core.spaceTabs"))
+        UserDefaults.standard.set(spaceOrder, forKey: AppModel.dataKey("core.spaceTabsOrder"))
         tabsPutAway = true
     }
 

@@ -32,7 +32,10 @@ final class Updater: NSObject, SPUUpdaterDelegate {
     /// The feed: SUFeedURL, or FOLEVI_UPDATE_URL's (a test bucket).
     static var feedURL: String? {
         guard let raw = ProcessInfo.processInfo.environment["FOLEVI_UPDATE_URL"], let base = URL(string: raw), base.scheme == "https" || base.host == "localhost" else { return nil }
-        return base.absoluteString.replacingOccurrences(of: #"/+$"#, with: "", options: .regularExpression) + "/mac/appcast.xml"
+        // The app's own folder from its SUFeedURL (".../download/mac/appcast.xml" → "mac"; Folevi Core's "core"), so a
+        // test bucket holds both apps' feeds side by side.
+        let folder = (Bundle.main.object(forInfoDictionaryKey: "SUFeedURL") as? String).flatMap { URL(string: $0)?.deletingLastPathComponent().lastPathComponent } ?? "mac"
+        return base.absoluteString.replacingOccurrences(of: #"/+$"#, with: "", options: .regularExpression) + "/\(folder)/appcast.xml"
     }
 
     /// Starts Sparkle (after the first window is up).

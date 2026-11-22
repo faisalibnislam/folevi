@@ -510,17 +510,30 @@ struct SecuritySettingsPane: View {
 struct E2eeRow: View {
     private var app: AppModel { .shared }
     @State private var state = Live<Views.E2eeState>()
+    @State private var touch = (on: false, available: false)
 
     var body: some View {
         Group {
             if let s = state.value {
                 LabeledContent("Encryption on this Mac", value: s.state == .none ? "Off" : s.state.rawValue.capitalized)
                 if s.state == .locked { Text("Open a note in an encrypted space to unlock it with your passphrase or recovery key.").font(.caption).foregroundStyle(.secondary) }
+                if s.state != .none, touch.available {
+                    Toggle(isOn: Binding(get: { touch.on }, set: { on in
+                        Task { @MainActor in if let k = try? await E2eeKeys.shared.setFaceId(on) { touch = (k.touchId, k.available) } }
+                    })) {
+                        Text("Unlock with Touch ID")
+                        Text("This Mac asks for Touch ID instead of your passphrase before it opens your encrypted notes and the Vault's keys.")
+                    }
+                }
             } else {
                 ProgressView().controlSize(.small)
             }
         }
-        .task(id: app.client.map(ObjectIdentifier.init)) { state.bind(app.client, Views.E2eeState()) }
+        .task(id: app.client.map(ObjectIdentifier.init)) {
+            state.bind(app.client, Views.E2eeState())
+            let k = E2eeKeys.shared.settings()
+            touch = (k.touchId, k.available)
+        }
     }
 }
 

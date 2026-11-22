@@ -88,6 +88,10 @@ struct MainWindow: View {
         .onChange(of: window.current) { restoredPath = window.current.path }
         .onChange(of: window.listStyle) { restoredStyle = window.listStyle.rawValue }
         .frame(minWidth: 800, minHeight: 480)
+        .onChange(of: app.currentSpaceKey, initial: true) {
+            // Each space keeps its own tabs (only the front window acts, once).
+            if app.front == nil || app.front === window { app.spaceMaybeChanged() }
+        }
         .onChange(of: app.session.value?.appearance, initial: true) {
             // Folevi's own Light / Dark / System setting decides the windows' look, as on the web.
             switch app.session.value?.appearance.rawValue {

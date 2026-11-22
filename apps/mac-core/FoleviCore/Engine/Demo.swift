@@ -84,6 +84,19 @@ enum DebugCommands {
                 }
             }
         }
+        MacEval.commands["space"] = { req, done in
+            MainActor.assumeIsolated {
+                let spaces = AppModel.shared.session.value?.spaces.map(\.id) ?? []
+                guard let id = (req["id"] as? String) ?? spaces.first(where: { $0 != AppModel.shared.session.value?.space }) else { done(["value": spaces]); return }
+                AppModel.shared.perform { _ = try await $0.command(Commands.SpaceSwitch(SpaceSwitchArgs(space: id))) }
+                done(["value": id])
+            }
+        }
+        MacEval.commands["tabs"] = { _, done in
+            MainActor.assumeIsolated {
+                done(["value": AppModel.shared.debugTabs()])
+            }
+        }
         MacEval.commands["ask"] = { _, done in
             MainActor.assumeIsolated {
                 AppModel.shared.front?.askShown.toggle()

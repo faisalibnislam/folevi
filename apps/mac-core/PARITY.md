@@ -72,7 +72,7 @@ Closed or improved after the grading below; the per-item marks haven't been redo
   app-level file drop, an Add Tag bulk action.
 
 The items closed in this session's later work packages are marked [x] with "closed after the grading", and the
-summary table below is recounted from the marks (1034 there, 83 partly, 8 missing, 218 not applicable).
+summary table below is recounted from the marks (1037 there, 82 partly, 6 missing, 218 not applicable).
 
 ## Summary
 
@@ -80,9 +80,9 @@ summary table below is recounted from the marks (1034 there, 83 partly, 8 missin
 |---|---|---|---|---|---|---|
 | Architecture today | `ARCH` | 15 | 0 | 1 | 1 | 17 |
 | App & windows | `APP` | 38 | 11 | 1 | 23 | 73 |
-| Sign-in, onboarding, accounts, spaces & local mode | `AUTH` | 63 | 5 | 1 | 11 | 80 |
+| Sign-in, onboarding, accounts, spaces & local mode | `AUTH` | 64 | 5 | 0 | 11 | 80 |
 | Sidebar & navigation | `NAV` | 26 | 4 | 0 | 7 | 37 |
-| Tabs | `TAB` | 11 | 3 | 1 | 28 | 43 |
+| Tabs | `TAB` | 13 | 2 | 0 | 28 | 43 |
 | Home | `HOME` | 18 | 2 | 0 | 10 | 30 |
 | Notes lists | `LIST` | 54 | 5 | 2 | 11 | 72 |
 | Folders | `FOLD` | 30 | 3 | 1 | 3 | 37 |
@@ -116,7 +116,7 @@ summary table below is recounted from the marks (1034 there, 83 partly, 8 missin
 | Binding UX rules from owner memory | `RULE` | 22 | 9 | 0 | 13 | 44 |
 | iPhone and iPad only (skip) | `IOS` | 0 | 0 | 0 | 5 | 5 |
 | Gaps, bugs and contradictions | `GAP` | 23 | 7 | 0 | 13 | 43 |
-| **Total** | | **1034** | **83** | **8** | **218** | **1343** |
+| **Total** | | **1037** | **82** | **6** | **218** | **1343** |
 
 Notable findings (all in the first work package at the end):
 
@@ -308,7 +308,7 @@ Notable findings (all in the first work package at the end):
 - [n/a] `AUTH-067` **Places model**: (iPhone/iPad): roles, plans (Free, Core, Pro, Pro AI, Team, Business), sign-out wording. Why: iPhone/iPad only.
 - [n/a] `AUTH-068` **Places menu content**: (iPhone sheet / iPad popover). Why: iPhone/iPad only.
 - [n/a] `AUTH-069` **Move places model**: (iPhone): what/where/how labels, version history option. Why: iPhone only.
-- [ ] `AUTH-070` **Per-space tabs swap**: (see Tabs). Core: no per-space tabs; windows start over at Home on a place switch.
+- [x] `AUTH-070` **Per-space tabs swap**: (see Tabs). Core: closed after the grading (see "Since this grading").
 - [x] `AUTH-071` **Place runners**: (background sync web views per non-open place). Core: shared Places runners.
 - [x] `AUTH-072` **Library lifecycle**: (set up, moved, forgotten; forget library). Core: shared lifecycle; set up and move in Settings, forget in the place menu.
 - [x] `AUTH-073` **Quick Add place**. Core: closed after the grading (see "Since this grading").
@@ -381,8 +381,8 @@ Notable findings (all in the first work package at the end):
 - [x] `TAB-014` **Joined notes**: 2 or 3 panes in one `join:` tab, labelled "A + B"; join, unjoin at a gap, unjoin all, move pane, detach pane, sizes. Core: `Model/WindowModel.swift` panes (join, unjoin, move, detach, sizes) through note.show.
 - [x] `TAB-015` **Select tab by number**: (⌘1 to ⌘9) and next/previous (wrapping). Core: closed after the grading (see "Since this grading").
 - [x] `TAB-016` **Tab titles and icons**: from `notes.meta` (one watch for up to 200 ids), `note.meta`, `note.ready`, folder and tag names; trashed notes leave the strip. Core: window title from note.meta (`Model/WindowModel.swift`).
-- [ ] `TAB-017` **Per-space tabs**: switching space puts the strip away and brings back that space's tabs (up to 50 spaces). Core: no per-space tabs.
-- [~] `TAB-018` **Saved tabs**: (Codable, validated on restore). Core: macOS restores the tabs, each at its saved path.
+- [x] `TAB-017` **Per-space tabs**: switching space puts the strip away and brings back that space's tabs (up to 50 spaces). Core: closed after the grading (see "Since this grading").
+- [x] `TAB-018` **Saved tabs**: (Codable, validated on restore). Core: closed after the grading (see "Since this grading").
 - [n/a] `TAB-019` **Mac tab strip drawing**: Home round button, Show All Tabs round button, capsule track with hairlines, open tab in Liquid Glass, × at the leading edge on… Why: macOS draws the tab bar.
 - [n/a] `TAB-020` **Equal-width tabs (Safari rule)**: every tab the same width filling the bar; a joined tab counts as two; minimum 96 pt on the Mac (172 web); scrolls when below the… Why: macOS tab bar.
 - [n/a] `TAB-021` **Tab overflow arrows and soft edges**: reveal the open tab. Why: macOS tab bar.

@@ -208,10 +208,67 @@ final class AppModel {
         }
     }
 
-    /// Every window starts over at Home in the new place (its pages were made again).
+    /// Every window starts over at Home in the new place (its pages were made again); the front window's tabs are
+    /// put away for the place it came from first.
     func placeSwitched() {
+        CoreLog.debug("space: place switched, tabs \(frontTabs().map(\.current.path))")
+        putAwayTabs()
         rebind()
         for w in windows.values.compactMap(\.model) { w.reset() }
+    }
+
+    // MARK: tabs per space
+
+    /// The space shown ("<place>|<space>"), and each space's tabs (the front window's, as paths, up to 50 spaces).
+    @ObservationIgnored private var spaceKey: String?
+    @ObservationIgnored private var tabsPutAway = false
+    @ObservationIgnored private var tabsBySpace: [String: [String]] = (UserDefaults.standard.dictionary(forKey: "core.spaceTabs") as? [String: [String]]) ?? [:]
+    @ObservationIgnored private var spaceOrder: [String] = UserDefaults.standard.stringArray(forKey: "core.spaceTabsOrder") ?? []
+
+    var currentSpaceKey: String? { session.value.map { "\($0.place ?? "")|\($0.space)" } }
+
+    /// The front window's tabs, in tab order.
+    private func frontTabs() -> [WindowModel] {
+        guard let w = front?.window else { return front.map { [$0] } ?? [] }
+        let models = windows.values.compactMap(\.model)
+        return (w.tabbedWindows ?? [w]).compactMap { nw in models.first { $0.window === nw } }
+    }
+
+    func debugTabs() -> [String] { frontTabs().map(\.current.path) }
+
+    private func putAwayTabs() {
+        guard let key = spaceKey, !tabsPutAway else { return }
+        let paths = frontTabs().map(\.current.path)
+        guard !paths.isEmpty else { return }
+        tabsBySpace[key] = paths
+        spaceOrder.removeAll { $0 == key }
+        spaceOrder.append(key)
+        while spaceOrder.count > 50 { tabsBySpace[spaceOrder.removeFirst()] = nil }
+        UserDefaults.standard.set(tabsBySpace, forKey: "core.spaceTabs")
+        UserDefaults.standard.set(spaceOrder, forKey: "core.spaceTabsOrder")
+        tabsPutAway = true
+    }
+
+    /// The space changed (a switch of place or of space): put the old space's tabs away, bring this one's back.
+    func spaceMaybeChanged() {
+        guard let key = currentSpaceKey, key != spaceKey else { return }
+        CoreLog.debug("space: \(spaceKey ?? "nil") -> \(key), saved \(tabsBySpace[key] ?? []), tabs \(frontTabs().map(\.current.path))")
+        let first = spaceKey == nil
+        putAwayTabs()
+        spaceKey = key
+        tabsPutAway = false
+        guard !first else { return }
+        let tabs = frontTabs()
+        guard let lead = tabs.first else { return }
+        for t in tabs.dropFirst() {
+            windows[t.id] = nil
+            t.window?.close()
+        }
+        closedTabs.removeAll()
+        let saved = (tabsBySpace[key] ?? []).compactMap { Destination(path: $0) }
+        lead.reset()
+        if let start = saved.first, start != .home { lead.go(start) }
+        for d in saved.dropFirst() { open(d, newTab: true, background: true) }
     }
 
     // MARK: windows

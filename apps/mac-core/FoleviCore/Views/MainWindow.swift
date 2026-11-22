@@ -264,7 +264,7 @@ struct ToastStack: View {
         }
         }
         .padding(.bottom, 18)
-        .coreAnimation(Motion.panel, value: app.toasts)
+        .coreAnimation(Motion.bar, value: app.toasts)
     }
 }
 

@@ -980,7 +980,7 @@ struct FoldersScreen: View {
                 Button { newFolder = true } label: { Label("New Folder", coreSymbol: "folder.badge.plus") }.help("New Folder (⌃⌘N)")
             }
         }
-        .overlay(alignment: .bottom) { GlassEffectContainer { ZStack { selectionBar } }.coreAnimation(Motion.panel, value: selection.isEmpty) }
+        .overlay(alignment: .bottom) { GlassEffectContainer { ZStack { selectionBar } }.coreAnimation(Motion.bar, value: selection.isEmpty) }
         .sheet(isPresented: $newFolder) {
             NameSheet(title: "New Folder", initial: "", action: "Create") { name in
                 app.perform { _ = try await $0.command(Commands.FolderCreate(FolderCreateArgs(space: nil, name: name, parentId: parent, color: nil))) }

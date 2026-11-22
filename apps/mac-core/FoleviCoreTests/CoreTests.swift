@@ -374,7 +374,7 @@ struct LibraryPassphraseTests {
 struct MotionTests {
     @Test func reduceMotionSubstitutes() {
         #expect(Motion.pick(Motion.panel, reduce: true) == Motion.reduced)
-        #expect(Motion.pick(Motion.press, reduce: true) == Motion.reduced)
+        #expect(Motion.pick(Motion.bar, reduce: true) == Motion.reduced)
         #expect(Motion.pick(Motion.panel, reduce: false) == Motion.panel)
     }
 }

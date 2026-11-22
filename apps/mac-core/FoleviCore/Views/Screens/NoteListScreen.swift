@@ -172,7 +172,7 @@ struct NoteListScreen: View {
             return .handled
         }
         .onDeleteCommand { trashSelection() }
-        .overlay(alignment: .bottom) { GlassEffectContainer { ZStack { selectionBar } }.coreAnimation(Motion.panel, value: selection.isEmpty) }
+        .overlay(alignment: .bottom) { GlassEffectContainer { ZStack { selectionBar } }.coreAnimation(Motion.bar, value: selection.isEmpty) }
     }
 
     /// With more than one note selected: what every one of them can take, in a glass bar at the foot.
@@ -269,7 +269,7 @@ struct NoteListScreen: View {
         }
         .overlay(alignment: .bottom) {
             // (The animation lives on a view that stays, so the bar's leaving animates too.)
-            GlassEffectContainer { ZStack { selectionBar } }.coreAnimation(Motion.panel, value: selection.isEmpty)
+            GlassEffectContainer { ZStack { selectionBar } }.coreAnimation(Motion.bar, value: selection.isEmpty)
         }
         .onKeyPress(.escape) { if selection.isEmpty { return .ignored }; selection.removeAll(); return .handled }
         }

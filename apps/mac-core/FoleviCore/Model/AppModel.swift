@@ -689,7 +689,7 @@ final class AppModel {
     }
 
     func dismiss(_ id: UUID) {
-        Motion.run(Motion.panel) { toasts.removeAll { $0.id == id } }
+        Motion.run(Motion.bar) { toasts.removeAll { $0.id == id } }
     }
 
     private func undo(_ u: ToastUndo) {

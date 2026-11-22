@@ -116,34 +116,34 @@ extension View {
     }
 }
 
-/// Core's motion, named once (the owner: consistent timing everywhere). Bounce is earned by momentum: what a tap
-/// opens arrives critically damped; only a drag release may overshoot. Reduce Motion swaps each for a short
-/// fade-speed ease (the system tones down its own motion, never the app's).
+/// Core's motion, named once and taken from the family's own (FoleviSpring and WebMotion in FoleviDesign, the
+/// owner's decision of 2026-11-01): what opens grows from what opened it with a visible, playful overshoot, a
+/// selection slides, a bar arrives firmly, and on the Mac a press darkens rather than moving (MAC-07). With Reduce
+/// Motion every one is a short fade-speed ease and nothing scales or moves.
+@MainActor
 enum Motion {
-    /// Panels, popovers drawn by Core, the Ask panel, toasts, selection bars, the inspector, Focus Mode.
-    static let panel: Animation = .smooth(duration: 0.36)
-    /// Toggles, selection, a drop zone lighting up: small state changes from a click.
-    static let tap: Animation = .smooth(duration: 0.28)
-    /// A press dipping and coming back (no bounce: nothing was thrown).
-    static let press: Animation = .spring(duration: 0.18, bounce: 0)
-    /// A drag released with momentum: the one place a little overshoot belongs.
-    static let release: Animation = .spring(duration: 0.34, bounce: 0.15)
-    /// Hover fills and hover-revealed controls.
-    static let hover: Animation = .easeOut(duration: 0.12)
+    /// Panels Core draws over a screen (the Ask panel, the palette), the inspector, Focus Mode.
+    static var panel: Animation { FoleviSpring.pop }
+    /// Toggles, selection, a drop zone lighting up.
+    static var tap: Animation { FoleviSpring.slide }
+    /// Floating bars and toasts arriving and leaving.
+    static var bar: Animation { FoleviSpring.bar }
+    /// Hover fills and hover-revealed controls (the web's hover answers at once; this is only the fade).
+    static let hover: Animation = .easeOut(duration: WebMotion.fadeOut)
     /// Programmatic scrolling (Jump to Latest, carousel arrows, the keyboard's card).
     static let scroll: Animation = .smooth(duration: 0.32)
-    /// A content swap inside a view that stays (a placeholder giving way, a layout switch).
-    static let fade: Animation = .easeOut(duration: 0.18)
+    /// A content swap inside a view that stays (a placeholder giving way, Grid and List).
+    static let fade: Animation = .easeInOut(duration: WebMotion.viewSwitch)
     /// What every animation becomes with Reduce Motion on.
     static let reduced: Animation = .easeOut(duration: 0.12)
 
     /// Reduce Motion, for code outside a view (models, menu commands).
-    @MainActor static var reduce: Bool { NSWorkspace.shared.accessibilityDisplayShouldReduceMotion }
+    static var reduce: Bool { WebMotion.reduced }
 
     static func pick(_ a: Animation, reduce: Bool) -> Animation { reduce ? reduced : a }
 
     /// `withAnimation` with Core's named motion and its Reduce Motion substitute.
-    @MainActor @discardableResult
+    @discardableResult
     static func run<R>(_ a: Animation, _ body: () throws -> R) rethrows -> R {
         try withAnimation(pick(a, reduce: reduce), body)
     }
@@ -157,17 +157,12 @@ private struct CoreAnimation<V: Equatable>: ViewModifier {
     func body(content: Content) -> some View { content.animation(Motion.pick(animation, reduce: reduce), value: value) }
 }
 
-/// A press: a small dip in scale, or with Reduce Motion a dim instead (the feedback stays, the movement goes).
+/// A press, the family's way (PressDip): on the Mac it darkens at once and fades back (a Mac control doesn't move,
+/// and a scale pulled a card's edge out from under the pointer); never a scale.
 private struct PressFeedback: ViewModifier {
     let pressed: Bool
     var scale: CGFloat = 0.97
-    @Environment(\.accessibilityReduceMotion) private var reduce
-    func body(content: Content) -> some View {
-        content
-            .scaleEffect(pressed && !reduce ? scale : 1)
-            .opacity(pressed && reduce ? 0.8 : 1)
-            .animation(Motion.pick(Motion.press, reduce: reduce), value: pressed)
-    }
+    func body(content: Content) -> some View { content.pressDip(pressed, scale: scale) }
 }
 
 /// A transition that moves with the motion setting: `motion` normally, a plain fade with Reduce Motion.

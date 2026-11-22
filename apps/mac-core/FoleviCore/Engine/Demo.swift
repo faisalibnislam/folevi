@@ -97,6 +97,18 @@ enum DebugCommands {
                 done(["value": AppModel.shared.debugTabs()])
             }
         }
+        MacEval.commands["notefile"] = { _, done in
+            MainActor.assumeIsolated {
+                Task { @MainActor in
+                    guard let r = try? await AppModel.shared.client?.query(Views.RecentViewed(RecentViewedArgs(space: nil, limit: 1))), let n = r.rows.first else { return done(["error": "no note"]) }
+                    do {
+                        let url = try await NoteFiles.shared.file(id: n.id, title: n.title)
+                        let text = (try? String(contentsOf: url, encoding: .utf8)) ?? ""
+                        done(["value": ["path": url.lastPathComponent, "start": String(text.prefix(120))]])
+                    } catch { done(["error": "\(error)"]) }
+                }
+            }
+        }
         MacEval.commands["ask"] = { _, done in
             MainActor.assumeIsolated {
                 AppModel.shared.front?.askShown.toggle()

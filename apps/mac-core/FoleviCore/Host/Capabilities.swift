@@ -48,7 +48,7 @@ enum Capabilities {
                 CoreDragOut.dragLinks(Array(notes), from: try view(router))
                 return [:]
             },
-            "dragNoteReply": { _, _ in [:] },
+            "dragNoteReply": { _, o in NoteFiles.shared.reply(o); return [:] },
             "print": { router, _ in Printing.printPage(try view(router)); return [:] },
             "share": share,
             "setShareTarget": { _, _ in [:] },

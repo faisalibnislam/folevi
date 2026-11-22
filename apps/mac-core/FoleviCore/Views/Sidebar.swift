@@ -242,8 +242,24 @@ struct FolderRow: View {
     let rename: (FolderNode) -> Void
     let newSubfolder: (FolderNode) -> Void
     private var app: AppModel { .shared }
-    @State private var targeted = false
     @State private var hovering = false
+    @State private var zone: FolderDropZone?
+    @State private var rowHeight: CGFloat = 24
+
+    /// A folder dropped on this row: before it, inside it, or after it among its siblings.
+    private func place(_ moving: String, _ z: FolderDropZone) {
+        guard moving != folder.id else { return }
+        if z == .inside { _ = FolderActions.move(moving, into: folder.id); return }
+        let parent = folder.parentId
+        if let parent, let why = FolderActions.refusal(moving: moving, into: parent) { app.toast(why, tone: .error); return }
+        let siblings = all.filter { $0.parentId == parent && $0.id != moving }.sorted { $0.rank < $1.rank }
+        let after: String? = {
+            if z == .after { return folder.id }
+            guard let i = siblings.firstIndex(where: { $0.id == folder.id }) else { return nil }
+            return i > 0 ? siblings[i - 1].id : nil
+        }()
+        app.perform { _ = try await $0.command(Commands.FolderMove(FolderMoveArgs(id: moving, parentId: parent, afterId: after))) }
+    }
 
     private var children: [FolderNode] {
         let c = all.filter { $0.parentId == folder.id }
@@ -282,20 +298,25 @@ struct FolderRow: View {
         .badge(folder.noteCount ?? 0)
         .tag(Destination.folder(folder.id))
         .draggable(FolderDrag(id: folder.id, name: folder.name))
-        .dropDestination(for: SidebarDrop.self) { items, _ in
-            for item in items {
-                switch item {
-                case .note(let n):
-                    app.perform { _ = try await $0.command(Commands.NoteMove(NoteMoveArgs(ids: [n.id], folderId: folder.id))) }
-                case .folder(let f):
-                    // A folder dropped on a folder goes inside it (if the nesting rules allow).
-                    _ = FolderActions.move(f.id, into: folder.id)
-                default:
-                    break
+        .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { rowHeight = $0 }
+        .onDrop(of: [FolderDrag.type, NoteDrag.type], delegate: FolderCardDrop(width: rowHeight, zones: true, vertical: true, zone: $zone) { z, providers in
+            for p in providers {
+                if p.hasItemConformingToTypeIdentifier(FolderDrag.type.identifier) {
+                    _ = p.loadTransferable(type: FolderDrag.self) { r in
+                        guard case .success(let f) = r else { return }
+                        Task { @MainActor in place(f.id, z) }
+                    }
+                } else {
+                    _ = p.loadTransferable(type: NoteDrag.self) { r in
+                        guard case .success(let n) = r else { return }
+                        Task { @MainActor in app.perform { _ = try await $0.command(Commands.NoteMove(NoteMoveArgs(ids: [n.id], folderId: folder.id))) } }
+                    }
                 }
             }
-            return true
-        } isTargeted: { targeted = $0 }
+        })
+        .overlay(alignment: .top) { if zone == .before { Capsule().fill(Color.foleviInk).frame(height: 2).offset(y: -2) } }
+        .overlay(alignment: .bottom) { if zone == .after { Capsule().fill(Color.foleviInk).frame(height: 2).offset(y: 2) } }
+        .background { if zone == .inside { RoundedRectangle(cornerRadius: 6).strokeBorder(Color.foleviInk, lineWidth: 1.5) } }
         .contextMenu { FolderMenu(folder: folder, window: window, rename: rename, newSubfolder: newSubfolder) }
     }
 }

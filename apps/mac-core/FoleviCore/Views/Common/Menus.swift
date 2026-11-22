@@ -15,6 +15,10 @@ struct NoteDrag: Codable, Transferable {
 
     static var transferRepresentation: some TransferRepresentation {
         CodableRepresentation(contentType: type)
+        // Out of Core (Finder, Mail): the note as a Markdown file, written when it's dropped.
+        FileRepresentation(exportedContentType: NoteFiles.markdown) { d in
+            SentTransferredFile(try await NoteFiles.shared.file(id: d.id, title: d.title), allowAccessingOriginalFile: false)
+        }
         ProxyRepresentation { (d: NoteDrag) in d.title.isEmpty ? "Untitled" : d.title }
     }
 }

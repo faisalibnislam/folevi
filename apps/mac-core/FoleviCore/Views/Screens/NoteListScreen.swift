@@ -123,6 +123,7 @@ struct NoteListScreen: View {
             Section {
                 ForEach(Array(shownRows.enumerated()), id: \.element.id) { i, row in
                     NoteListRow(row: row, showFolder: kind != .folder)
+                        .draggable(containerItemID: row.id)
                         .overlay(alignment: .trailing) {
                             if kind == .templates {
                                 Button("Use") { NoteActions.newNote(app: app, window: window, template: row.id) }
@@ -130,7 +131,6 @@ struct NoteListScreen: View {
                             }
                         }
                         .tag(row.id)
-                        .draggable(NoteDrag(id: row.id, title: row.title))
                         .contextMenu {
                             NoteMenu(row: row, window: window,
                                      moveUp: sort == .manual && i > 0 ? { move(row.id, after: i >= 2 ? list.rows[i - 2].id : nil) } : nil,
@@ -145,6 +145,11 @@ struct NoteListScreen: View {
         }
         .listStyle(.inset)
         .alternatingRowBackgrounds(.disabled)
+        // Dragging a selected note drags every selected note (to a folder, the sidebar, Finder as files).
+        .dragContainer(for: NoteDrag.self, itemID: \.id) { ids in
+            ids.compactMap { id in list.rows.first { $0.id == id }.map { NoteDrag(id: $0.id, title: $0.title) } }
+        }
+        .dragContainerSelection(Array(selection.filter { !$0.hasPrefix("folder:") }))
         .contextMenu(forSelectionType: String.self) { ids in
             selectionMenu(ids)
         } primaryAction: { ids in

@@ -506,12 +506,14 @@ enum FolderDropZone: Equatable { case before, inside, after }
 struct FolderCardDrop: DropDelegate {
     let width: CGFloat
     let zones: Bool
+    /// Rows (the sidebar): the zones run top to bottom, measured against `width` as the row's height.
+    var vertical = false
     @Binding var zone: FolderDropZone?
     let perform: (FolderDropZone, [NSItemProvider]) -> Void
 
     private func zone(for info: DropInfo) -> FolderDropZone {
         guard zones, info.hasItemsConforming(to: [FolderDrag.type]) else { return .inside }
-        let x = info.location.x
+        let x = vertical ? info.location.y : info.location.x
         if x < width * 0.25 { return .before }
         if x > width * 0.75 { return .after }
         return .inside

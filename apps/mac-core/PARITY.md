@@ -75,7 +75,7 @@ Closed or improved after the grading below; the per-item marks haven't been redo
   previews, and notes dragged out as files (file promises for the page's noteFile requests).
 
 The items closed in this session's later work packages are marked [x] with "closed after the grading", and the
-summary table below is recounted from the marks (1041 there, 81 partly, 3 missing, 218 not applicable).
+summary table below is recounted from the marks (1051 there, 70 partly, 2 missing, 220 not applicable).
 
 ## Summary
 
@@ -84,18 +84,18 @@ summary table below is recounted from the marks (1041 there, 81 partly, 3 missin
 | Architecture today | `ARCH` | 15 | 0 | 1 | 1 | 17 |
 | App & windows | `APP` | 38 | 11 | 1 | 23 | 73 |
 | Sign-in, onboarding, accounts, spaces & local mode | `AUTH` | 64 | 5 | 0 | 11 | 80 |
-| Sidebar & navigation | `NAV` | 26 | 4 | 0 | 7 | 37 |
+| Sidebar & navigation | `NAV` | 27 | 3 | 0 | 7 | 37 |
 | Tabs | `TAB` | 13 | 2 | 0 | 28 | 43 |
 | Home | `HOME` | 19 | 1 | 0 | 10 | 30 |
-| Notes lists | `LIST` | 56 | 5 | 0 | 11 | 72 |
-| Folders | `FOLD` | 31 | 3 | 0 | 3 | 37 |
+| Notes lists | `LIST` | 58 | 3 | 0 | 11 | 72 |
+| Folders | `FOLD` | 32 | 2 | 0 | 3 | 37 |
 | Tags | `TAG` | 7 | 0 | 0 | 2 | 9 |
 | Note page & editor integration | `NOTE` | 40 | 3 | 0 | 3 | 46 |
 | Search & command palette | `SRCH` | 33 | 2 | 0 | 2 | 37 |
 | Tasks | `TASK` | 23 | 2 | 0 | 10 | 35 |
 | Calendar | `CAL` | 30 | 1 | 0 | 6 | 37 |
 | Foli AI | `AI` | 44 | 0 | 0 | 5 | 49 |
-| Foli DNA | `DNA` | 34 | 2 | 0 | 0 | 36 |
+| Foli DNA | `DNA` | 35 | 1 | 0 | 0 | 36 |
 | Vault | `VAULT` | 40 | 0 | 0 | 1 | 41 |
 | Sharing, public links & invites | `SHARE` | 21 | 0 | 0 | 1 | 22 |
 | Templates | `TPL` | 12 | 0 | 0 | 0 | 12 |
@@ -106,20 +106,20 @@ summary table below is recounted from the marks (1041 there, 81 partly, 3 missin
 | Notifications / Inbox, Help & support | `NOTIF` | 16 | 0 | 0 | 2 | 18 |
 | Settings | `SET` | 143 | 3 | 0 | 19 | 165 |
 | Quick Add | `QADD` | 14 | 0 | 0 | 2 | 16 |
-| System integrations | `SYS` | 46 | 11 | 0 | 3 | 60 |
+| System integrations | `SYS` | 48 | 8 | 0 | 4 | 60 |
 | Context menus | `CTX` | 10 | 1 | 0 | 6 | 17 |
 | Menus & keyboard shortcuts | `MENU` | 80 | 0 | 0 | 2 | 82 |
 | Updates (Sparkle) | `UPD` | 6 | 1 | 0 | 0 | 7 |
 | Offline, sync & device storage | `SYNC` | 14 | 0 | 0 | 0 | 14 |
 | Migration | `MIG` | 0 | 0 | 0 | 11 | 11 |
-| Bridge messages & capabilities | `BRIDGE` | 67 | 6 | 1 | 6 | 80 |
+| Bridge messages & capabilities | `BRIDGE` | 69 | 4 | 0 | 7 | 80 |
 | Debug & eval harness | `DBG` | 0 | 0 | 0 | 8 | 8 |
-| Capabilities | `CAP` | 19 | 1 | 0 | 0 | 20 |
+| Capabilities | `CAP` | 20 | 0 | 0 | 0 | 20 |
 | Stays web, WebPage values and the parity list | `WEB` | 2 | 0 | 0 | 2 | 4 |
 | Binding UX rules from owner memory | `RULE` | 22 | 9 | 0 | 13 | 44 |
 | iPhone and iPad only (skip) | `IOS` | 0 | 0 | 0 | 5 | 5 |
 | Gaps, bugs and contradictions | `GAP` | 23 | 7 | 0 | 13 | 43 |
-| **Total** | | **1041** | **81** | **3** | **218** | **1343** |
+| **Total** | | **1051** | **70** | **2** | **220** | **1343** |
 
 Notable findings (all in the first work package at the end):
 
@@ -361,7 +361,7 @@ Notable findings (all in the first work package at the end):
 - [n/a] `NAV-031` **iPad web-look sidebar**: (iPad, non-native look): "Search or jump to…" well, bell, Home button, the web's items. Why: iPad only.
 - [x] `NAV-032` **Sidebar model**: sections from session, home and folders.tree; orphans at the top level; selection id per route. Core: closed after the grading (see "Since this grading").
 - [x] `NAV-033` **Back / Forward per tab**: (strip buttons, dimmed when unavailable, own view). Core: `Model/WindowModel.swift` back and forward stacks, toolbar buttons.
-- [~] `NAV-034` **Route model**: web paths in both directions (/documents, /d/<id>, /folders/<id>, /tags/<id>, /tasks/<v>, /calendar?date=, /search?q=… Core: `Model/Destination.swift` parses most paths; not /search, graph or review parameters, or calendar ?date=.
+- [x] `NAV-034` **Route model**: web paths in both directions (/documents, /d/<id>, /folders/<id>, /tags/<id>, /tasks/<v>, /calendar?date=, /search?q=… Core: closed after the grading (see "Since this grading").
 - [~] `NAV-035` **Screen routes and intents to the frame**. Core: routes open in the window; intents like newWorkspace and switchPlace only partly.
 - [n/a] `NAV-036` **Legacy AppKit outline sidebar**: (legacy): NSOutlineView with search, space menu, account foot, sync, bell, drag and drop and row menus. Why: legacy.
 - [n/a] `NAV-037` **Mouse location helper**: for popover anchoring. Why: native popovers anchor themselves.
@@ -499,10 +499,10 @@ Notable findings (all in the first work package at the end):
 - [x] `LIST-045` **Bulk actions offered**: only what every selected item can take. Notes: Bookmark/unbookmark, Archive/unarchive, Trash, Copy to. Folders: Change color… Core: closed after the grading (see "Since this grading").
 - [x] `LIST-046` **Bulk labels and icons**: Open in new tabs, Move to folder…, Copy to…, Change color…, Move to Trash, Delete permanently…, Delete folders… Core: closed after the grading (see "Since this grading").
 - [x] `LIST-047` **Open in new tabs**: notes and folders open in background tabs; toast "Opened N new tabs". Core: closed after the grading (see "Since this grading").
-- [~] `LIST-048` **Move dialog (Mac)**: notes and folders together, one toast with one Undo. Core: Move To submenu for notes; folders can't be moved.
+- [x] `LIST-048` **Move dialog (Mac)**: notes and folders together, one toast with one Undo. Core: closed after the grading (see "Since this grading").
 - [x] `LIST-049` **Copy to dialog**: lists other editable, unlocked spaces; toast "Copied to Space / Folder" (Mac dialog; iOS `CopyToSheet` with space picker, Drafts… Core: closed after the grading (see "Since this grading").
 - [x] `LIST-050` **Change color and Delete folders (bulk)**: delete confirmation "Delete N folders? / … notes move to Drafts". Core: closed after the grading (see "Since this grading").
-- [~] `LIST-051` **Drag payloads**: `NoteDragItem` (one note or the whole selection, folders included) and `FolderDragItem`; UTTypes `com.folevi.note-ref` and… Core: `Views/Common/Menus.swift` NoteDrag (own type, one note per drag, not the selection, no folders); type not declared in Info.plist.
+- [x] `LIST-051` **Drag payloads**: `NoteDragItem` (one note or the whole selection, folders included) and `FolderDragItem`; UTTypes `com.folevi.note-ref` and… Core: closed after the grading (see "Since this grading").
 - [x] `LIST-052` **Drop on folders**: notes go inside; a folder goes before, inside or after depending on the zone; spring-loading after 0.6 s; nesting rules… Core: closed after the grading (see "Since this grading").
 - [~] `LIST-053` **Folders page drag reorder**: a gap opens, a dashed placeholder marks it, the dragged card dims; the commit may switch the sort to Manual; off while searching. Core: drop a folder on the leading or trailing quarter of another card on the Folders page to put it before or after (folder.move afterId; the sort turns Manual); an accent bar marks the spot; no dashed gap or dimmed card; not yet tried with a real drag.
 - [x] `LIST-054` **Manual note order**: Move up / Move down in the menu (`note.reorder`); drag reorder exists only in the iOS List (`onMove`). The Mac has no drag… Core: closed after the grading (see "Since this grading").
@@ -553,7 +553,7 @@ Notable findings (all in the first work package at the end):
 - [x] `FOLD-021` **Tag colour quick change**: (Cocoa, Moss, Marigold, Plum, Coral, Gray). Core: closed after the grading (see "Since this grading").
 - [x] `FOLD-022` **Folder nesting rules**: max 5 levels; never into itself or a descendant; messages. Core: closed after the grading (see "Since this grading").
 - [x] `FOLD-023` **Drop zones**: leading quarter before, middle inside, trailing quarter after (cards horizontal, rows vertical). Core: closed after the grading (see "Since this grading").
-- [~] `FOLD-024` **Sidebar folder drag and drop**: notes into a folder; a folder above, inside or below (accent line or ring); onto the Folders heading for the top level; a… Core: notes and folders drop on sidebar folders, folders on the Folders heading go to the top; no before/after zones or spring-loading.
+- [x] `FOLD-024` **Sidebar folder drag and drop**: notes into a folder; a folder above, inside or below (accent line or ring); onto the Folders heading for the top level; a… Core: closed after the grading (see "Since this grading").
 - [x] `FOLD-025` **Sidebar own order**: (Manual) synced, independent of rank; dropping between rows of the same level reorders only; a drop while sorted by Name/Recent… Core: `Views/Sidebar.swift` drag top-level folders to order them (folder.setSidebarOrder); top level only, no Undo.
 - [x] `FOLD-026` **Multi-item move with refusals**: ("couldn't move" toast) and a summary toast. Core: closed after the grading (see "Since this grading").
 - [x] `FOLD-027` **Folder move refusal toasts**: ("A folder can't go inside itself.", "Folders nest up to 5 levels."). Core: closed after the grading (see "Since this grading").
@@ -806,7 +806,7 @@ Notable findings (all in the first work package at the end):
 
 ## Foli DNA
 
-- [~] `DNA-001` **Entry points**: sidebar row "Foli DNA" with saved views nested under it (`/graph?view=<id>`), Go > Foli DNA, ⌘K "Go to Foli DNA", note menu "Foli… Core: sidebar row, Go menu and palette open it; no saved views in the sidebar or "Foli DNA of This Note".
+- [x] `DNA-001` **Entry points**: sidebar row "Foli DNA" with saved views nested under it (`/graph?view=<id>`), Go > Foli DNA, ⌘K "Go to Foli DNA", note menu "Foli… Core: closed after the grading (see "Since this grading").
 - [x] `DNA-002` **Not available state**: "Foli DNA isn't available here yet" (library on your devices). Core: drawn by the page's GraphView (web.show graph in `Views/Screens/LibraryScreens.swift` WebScreen).
 - [~] `DNA-003` **Route parameters**: `?note=` centre, `?depth=` 1 to 3, `?view=` applies a saved view. Core: Core drops ?note, ?depth and ?view (web.show graph has no parameters).
 - [x] `DNA-004` **Map / List switch**: remembered (`folevi.graph.view`); List shows NOTES and PEOPLE, PROJECTS AND TOPICS as rows, opens notes, "Nothing matches". Core: drawn by the page's GraphView (web.show graph in `Views/Screens/LibraryScreens.swift` WebScreen).
@@ -1307,8 +1307,8 @@ Notable findings (all in the first work package at the end):
 - [x] `SYS-024` **File > Share submenu**: Lists the services that take the key window's note. `setShareTarget` holds the per-view target. Asks the page for the `share`… Core: closed after the grading (see "Since this grading").
 - [n/a] `SYS-025` **Fallback File menu**: Share and Print (⌘P) before MainMenu exists. Why: SwiftUI builds the menu bar.
 - [x] `SYS-026` **dragFile (Export dialog)**: An NSFilePromiseProvider for one Markdown file, started from the last mouse event. Core: `Host/Capabilities.swift` dragFile.
-- [~] `SYS-027` **dragNotes (web cards and rows)**: The page declares which notes a drag carries. When WebKit starts the drag, the items become file promises that also keep WebKit's… Core: `Host/Capabilities.swift` dragNotes gives links, not Markdown file promises with attachments.
-- [~] `SYS-028` **Native list drags**: SwiftUI `NoteDragItem` (UTType `foleviNoteRef`). The drag pasteboard is watched while the mouse is down; outside Folevi's windows… Core: `Views/Common/Menus.swift` NoteDrag; outside Core it's only the title text, not a file promise.
+- [n/a] `SYS-027` **dragNotes (web cards and rows)**: The page declares which notes a drag carries. When WebKit starts the drag, the items become file promises that also keep WebKit's… Why: Core draws note cards and rows natively (their drags carry Markdown files through NoteFiles); the page has no card or row drags of its own in Core.
+- [x] `SYS-028` **Native list drags**: SwiftUI `NoteDragItem` (UTType `foleviNoteRef`). The drag pasteboard is watched while the mouse is down; outside Folevi's windows… Core: closed after the grading (see "Since this grading").
 - [n/a] `SYS-029` **Drag image hook**: Swizzles `dragImage:at:offset:...` and `beginDraggingSession`. Why: a detail of today's drag path; Core starts its own drag sessions.
 - [x] `SYS-030` **Drag and drop in**: No native drop handling; the page and WebKit take drops. The open panel is used for file inputs. Core: the page takes drops; `Host/PageView.swift` runOpenPanel for file inputs.
 - [x] `SYS-031` **clipboardRead / clipboardWrite**: `{ text, html, image (PNG b64) }`, 20 MB each, for Folevi's own context menus (avoids WebKit's "Paste" bubble).… Core: `Host/Capabilities.swift` clipboard handlers.
@@ -1331,7 +1331,7 @@ Notable findings (all in the first work package at the end):
 - [x] `SYS-048` **QuickAddPanel**. Core: `Views/QuickAdd/QuickAdd.swift` QuickAddPanel.
 - [x] `SYS-049` **Quick Add place and page**: The page loads `/quick-add?place=<id>`, or with the native frame a hidden `/native` Page View with its own EngineClient plus a… Core: closed after the grading (see "Since this grading").
 - [x] `SYS-050` **Entry points**: The hotkey, the status item, the Dock menu, `folevi://quick-add`, and menu `file.quick-add-task`. Core: closed after the grading (see "Since this grading").
-- [~] `SYS-051` **Float Note**: A note in its own NSPanel (380x480), its own Page View in native chrome mode and its own EngineClient (MacEngineTransport). The… Core: a floating SwiftUI window with its own WindowModel and a pool page; always on top, no pin toggle or saved frame.
+- [x] `SYS-051` **Float Note**: A note in its own NSPanel (380x480), its own Page View in native chrome mode and its own EngineClient (MacEngineTransport). The… Core: closed after the grading (see "Since this grading").
 - [~] `SYS-052` **Spelling, Learn, Ignore, Look Up**: NSSpellChecker with a per-view document tag; the page's context paragraph is used to pick the language; up to 8 guesses. Learn… Core: `Host/DesktopRouter.swift` spelling with 6 guesses; no context language; Learn and Ignore don't clear WebKit's underline.
 - [x] `SYS-053` **DesktopSettings**: Defaults key `folevi.desktop.settings`. Fields: quickAddShortcut "Alt+Space", openAtLogin true, menuBarIcon true, notifications… Core: `Host/DesktopRouter.swift` DesktopSettings (same key; openAtLogin defaults to off).
 
@@ -1589,8 +1589,8 @@ Notable findings (all in the first work package at the end):
 - [x] `BRIDGE-062` **openSystemSettings**: `{ pane: "screen-recording" }` only. Core: `Host/Capabilities.swift` openSystemSettings (screen recording only).
 - [x] `BRIDGE-063` **callStart**: **callPause**, **callResume**, **callStop**, **callCancel**. Core: `Host/Capabilities.swift` callStart, callPause, callResume, callStop, callCancel (shared CallRecorder).
 - [x] `BRIDGE-064` **dragFile**: `{ name, text }`. Core: `Host/Capabilities.swift` dragFile (a Markdown file promise).
-- [~] `BRIDGE-065` **dragNotes**: `{ notes, token }`. Core: `Host/Capabilities.swift` dragNotes drags links; no token or file promises.
-- [~] `BRIDGE-066` **dragNoteReply**. Core: `Host/Capabilities.swift` accepts it and does nothing.
+- [n/a] `BRIDGE-065` **dragNotes**: `{ notes, token }`. Why: the page's dragNotes is for its own card and row drags, which Core draws natively; Core's native drags carry the files (BRIDGE-079).
+- [x] `BRIDGE-066` **dragNoteReply**. Core: closed after the grading (see "Since this grading").
 - [x] `BRIDGE-067` **print**. Core: `Host/Capabilities.swift` print (shared Printing).
 - [x] `BRIDGE-068` **share**: `{ title, text, url, fileName, rect | x,y }`, returns `{ shared }`. Core: `Host/Capabilities.swift` share (NSSharingServicePicker at the page's rect or point; text and https URLs, no file).
 - [~] `BRIDGE-069` **setShareTarget**: `{ target: { title, url } }`. Core: `Host/Capabilities.swift` accepts it and does nothing.
@@ -1603,7 +1603,7 @@ Notable findings (all in the first work package at the end):
 - [x] `BRIDGE-076` **FoleviShell placesChanged**: Sent to every view. Core: shared Places events.
 - [x] `BRIDGE-077` **FoleviShell aiChunk**: `{ id, text }`. Core: shared ShellAI.
 - [x] `BRIDGE-078` **FoleviDesktop callLevel / callEnded**. Core: sent by the shared CallRecorder (handlers in `Host/Capabilities.swift`).
-- [ ] `BRIDGE-079` **FoleviDesktop noteFile**: `{ request, token, id, folder }` (drag out). Core: no noteFile requests (drag out gives links).
+- [x] `BRIDGE-079` **FoleviDesktop noteFile**: `{ request, token, id, folder }` (drag out). Core: closed after the grading (see "Since this grading").
 - [x] `BRIDGE-080` **FoleviDesktop command**: Taken by the native frame first (`NativeFrame.handle`) when the view is a Page View. Core: `Host/PageView.swift` Events.command (Core has no frame to take it first).
 
 ## Debug & eval harness
@@ -1626,7 +1626,7 @@ Notable findings (all in the first work package at the end):
 - [x] `CAP-005` **URL scheme**: `CFBundleURLTypes` with scheme `$(FOLEVI_URL_SCHEME)`: `folevi` in Release, `folevi-dev` in Debug; also exposed as Info key… Core: Info.plist folevi-core / folevi-core-dev.
 - [x] `CAP-006` **Dev shell dir**: Info key `FoleviDevShellDir` = `$(SRCROOT)/web` in Debug (serves the built-in web export from disk), empty in Release (bundled… Core: Info.plist FoleviDevShellDir.
 - [x] `CAP-007` **NSServices**: one service, menu title "New Folevi Note with Selection", message `newNoteWithSelection`, port "Folevi", send types… Core: Info.plist NSServices.
-- [~] `CAP-008` **Exported UTIs**: (in-app drag payloads): `com.folevi.note-ref` ("Folevi note") and `com.folevi.folder-ref` ("Folevi folder"), both conform to… Core: imports com.folevi.note-ref and folder-ref; Core's own app.folevicore.note-drag isn't declared.
+- [x] `CAP-008` **Exported UTIs**: (in-app drag payloads): `com.folevi.note-ref` ("Folevi note") and `com.folevi.folder-ref` ("Folevi folder"), both conform to… Core: closed after the grading (see "Since this grading").
 - [x] `CAP-009` **Document types**: none declared (no CFBundleDocumentTypes; the app does not open files from Finder; no `application(_:open:)`). Core: none, as today.
 - [x] `CAP-010` **Privacy strings**: `NSMicrophoneUsageDescription` "Folevi records audio into your notes when you ask it to." (audio recording, call recorder). No… Core: NSMicrophoneUsageDescription.
 - [x] `CAP-011` **App Transport Security**: `NSAllowsLocalNetworking` true and an insecure-HTTP exception for `localhost` (and subdomains) for development servers. Core: Info.plist ATS.

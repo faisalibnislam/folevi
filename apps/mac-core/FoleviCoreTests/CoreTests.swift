@@ -1,5 +1,6 @@
 // Folevi Core's unit tests: routing (Folevi's paths), window history, the Quick Add shortcut, desktop settings,
 // card mapping, Core's own data names, and the screens' live values against the scripted demo engine.
+import AppKit
 import FoleviDesign
 import FoleviEngine
 import FoleviEngineDemo
@@ -312,5 +313,21 @@ struct RecoveryKeyTests {
         #expect(GateScreen.formatKey("abcd efgh-1234") == "ABCD-EFGH-1234")
         #expect(GateScreen.formatKey("ab") == "AB")
         #expect(GateScreen.formatKey("") == "")
+    }
+}
+
+@MainActor
+@Suite("Spelling for the page's menu")
+struct SpellingTests {
+    @Test func guessesForAWord() {
+        let alone = DesktopRouter.spelling("recieve", context: "", view: nil)
+        #expect(alone["misspelled"] as? Bool == true)
+        #expect((alone["guesses"] as? [String])?.contains("receive") == true)
+        let inside = DesktopRouter.spelling("recieve", context: "I will recieve the parcel tomorrow.", view: nil)
+        #expect((inside["guesses"] as? [String])?.contains("receive") == true)
+        #expect(DesktopRouter.spelling("hello", context: "", view: nil)["misspelled"] as? Bool == false)
+        // With a page's own spell document.
+        let page = NSView()
+        #expect((DesktopRouter.spelling("recieve", context: "", view: page)["guesses"] as? [String])?.contains("receive") == true)
     }
 }

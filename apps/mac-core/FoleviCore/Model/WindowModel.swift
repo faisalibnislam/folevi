@@ -49,6 +49,9 @@ final class WindowModel: Identifiable {
     /// Foli DNA of this note: the note the map opens around; or a link's query ("note=…&depth=…&view=…").
     var graphCenter: String?
     var graphQuery: String?
+    /// What was typed after ⌘K before the palette's field had the keyboard.
+    var paletteSeed = ""
+    @ObservationIgnored var paletteFieldReady = false
     /// The folder colour grid, for one folder or several.
     var colorPick: ColorPickTarget?
     /// ⌘F off a note on a screen with a filter: the filter takes the keyboard (screens watch this count).

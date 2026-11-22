@@ -32,14 +32,15 @@ final class Live<V: EngineViewSpec> {
 
     init() {}
 
-    /// Watches `spec` on `client` (no-op when it already does).
-    func bind(_ client: EngineClient?, _ spec: V) {
+    /// Watches `spec` on `client` (no-op when it already does). `snapshot` keeps its last value in the place's
+    /// launch snapshot, so the next launch draws it before the engine answers.
+    func bind(_ client: EngineClient?, _ spec: V, snapshot: String? = nil) {
         guard let client else { return }
         let k = (ObjectIdentifier(client), spec.args)
         if let key, key.0 == k.0, key.1 == k.1 { return }
         store?.cancel()
         key = k
-        store = client.watch(spec)
+        store = client.watch(spec, snapshotKey: snapshot)
     }
 
     func cancel() {
@@ -159,15 +160,45 @@ final class AppModel {
                 return CoverFiles.Link(url: link.sealed ? nil : link.url.flatMap(URL.init(string:)), paper: palette.flatMap { pair($0.paper, $0.paperDark) }, ink: palette.flatMap { pair($0.ink, $0.inkDark) })
             }
         }
-        session.bind(client, Views.Session())
+        // Card previews take the page's own line breaks (`text.layout`), as WebKit sets the card's clamped,
+        // `text-wrap: pretty` paragraph; asked of whichever engine is open now.
+        WebLineLayout.shared.requester = { style, texts in
+            guard let client = await AppModel.shared.client else { throw CancellationError() }
+            let r = try await client.command(.textLayout(
+                texts: texts,
+                family: style.family == .display ? .display : .sans,
+                pxSize: Double(style.size), pxLineHeight: Double(style.lineHeight), weight: Int(style.weight),
+                pxLetterSpacing: Double(style.letterSpacing), pxWidth: Double(style.width),
+                wrap: style.wrap == .balance ? .balance : style.wrap == .wrap ? .wrap : .pretty,
+                pre: style.pre, clamp: style.clamp))
+            return r.lines
+        }
+        session.bind(client, Views.Session(), snapshot: "session")
         sync.bind(client, Views.SyncStatus())
-        tree.bind(client, Views.FoldersTree(SpaceArgs()))
-        places.bind(client, Views.PlacesList())
-        taskCounts.bind(client, Views.TasksCounts(SpaceArgs()))
+        tree.bind(client, Views.FoldersTree(SpaceArgs()), snapshot: "folders.tree")
+        places.bind(client, Views.PlacesList(), snapshot: "places.list")
+        watchPlacesForBadge()
+        taskCounts.bind(client, Views.TasksCounts(SpaceArgs()), snapshot: "tasks.counts")
+        guardSnapshot(client)
         notifications.bind(client, Views.NotificationsList())
         changes.bind(client, Views.Changes())
         reviews.bind(client, Views.Reviews(ReviewsArgs(noteId: nil, space: nil)))
         vault.bind(client, Views.VaultSummary(SpaceArgs()))
+    }
+
+    /// Encrypted spaces keep nothing on disk in the launch snapshot (as on iPhone): it's cleared and stays off.
+    @ObservationIgnored private var snapshotGuard: Task<Void, Never>?
+    private func guardSnapshot(_ client: EngineClient) {
+        snapshotGuard?.cancel()
+        snapshotGuard = Task { @MainActor [weak self] in
+            for _ in 0..<120 {
+                if let spaces = self?.session.value?.spaces {
+                    if spaces.contains(where: { $0.encrypted }) { client.snapshot?.clear(lock: true) }
+                    return
+                }
+                try? await Task.sleep(for: .milliseconds(500))
+            }
+        }
     }
 
     private func listen(_ client: EngineClient) {
@@ -229,6 +260,21 @@ final class AppModel {
         putAwayTabs()
         rebind()
         for w in windows.values.compactMap(\.model) { w.reset() }
+    }
+
+    /// The Dock badge counts places that aren't open with their last-known unread.
+    @ObservationIgnored private var badgeWatch: Task<Void, Never>?
+    private func watchPlacesForBadge() {
+        badgeWatch?.cancel()
+        badgeWatch = Task { @MainActor [weak self] in
+            while !Task.isCancelled {
+                if let list = self?.places.value {
+                    DesktopHooks.silentUnread = Dictionary(list.places.filter { $0.id != list.current }.map { ($0.id, $0.unread) }, uniquingKeysWith: { a, _ in a })
+                    DesktopHooks.updateBadge()
+                }
+                try? await Task.sleep(for: .seconds(30))
+            }
+        }
     }
 
     // MARK: windows across relaunches

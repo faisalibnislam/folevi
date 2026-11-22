@@ -122,8 +122,15 @@ enum CoreSetup {
             return menu
         }
         NSEvent.addLocalMonitorForEvents(matching: .keyDown) { e in
+            let w = AppModel.shared.front
+            // Keys typed right after ⌘K, before the palette's field has the keyboard, go to it (never to the note).
+            if let w, w.paletteShown, !w.paletteFieldReady, e.modifierFlags.intersection([.command, .control]).isEmpty, let chars = e.characters, !chars.isEmpty, chars.unicodeScalars.allSatisfy({ !CharacterSet.controlCharacters.contains($0) }) {
+                w.paletteSeed += chars
+                return nil
+            }
             guard e.modifierFlags.intersection(.deviceIndependentFlagsMask) == .command, e.charactersIgnoringModifiers == "k",
-                  let w = AppModel.shared.front, w.window?.isKeyWindow == true else { return e }
+                  let w, w.window?.isKeyWindow == true else { return e }
+            if !w.paletteShown { w.paletteSeed = ""; w.paletteFieldReady = false }
             w.paletteShown.toggle()
             return nil
         }

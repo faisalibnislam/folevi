@@ -91,6 +91,10 @@ final class Page: PageHost {
             client = demoClient
         } else {
             client = EngineClient(transport: transport, place: place ?? "", app: AppInfo(platform: .macos, version: Paths.version, build: Paths.build, protocol: EngineContract.protocolVersion, schemaHash: EngineContract.schemaHash))
+            // The launch snapshot: the last sidebar, Home and counts, drawn at once on the next launch (written at most
+            // every 2 s, per place).
+            let safe = (place ?? "none").replacingOccurrences(of: "/", with: "_").replacingOccurrences(of: ":", with: "_")
+            client.snapshot = LaunchSnapshotStore(url: Paths.supportFolder.appendingPathComponent("Places/\(safe)/launch.json"))
         }
         view.load(URLRequest(url: Links.appURL("/native")))
         client.start()

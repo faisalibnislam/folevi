@@ -51,7 +51,12 @@ enum Capabilities {
             "dragNoteReply": { _, o in NoteFiles.shared.reply(o); return [:] },
             "print": { router, _ in Printing.printPage(try view(router)); return [:] },
             "share": share,
-            "setShareTarget": { _, _ in [:] },
+            "setShareTarget": { _, o in
+                // What a page off a note shares (its title and link): File > Share uses it.
+                let t = o["target"] as? [String: Any]
+                ShareTarget.current = (t?["url"] as? String).flatMap(URL.init(string:)).map { (title: t?["title"] as? String ?? "", url: $0) }
+                return [:]
+            },
             "indexSpotlight": indexSpotlight,
             "spotlightState": { router, _ in Spotlight.shared.state(place: router.context.place() ?? "default") },
             "clipboardRead": { _, _ in Clipboard.read() },
@@ -226,4 +231,11 @@ final class CoreQuickLook: NSObject, QLPreviewPanelDataSource, QLPreviewPanelDel
         folder = nil
         urls = []
     }
+}
+
+
+/// The page's own share target (a page that isn't a note: Foli DNA, Reviews).
+@MainActor
+enum ShareTarget {
+    static var current: (title: String, url: URL)?
 }

@@ -736,6 +736,7 @@ struct ChangesScreen: View {
                                         Spacer()
                                         Text(CoreDates.short(n.changedAt)).font(.caption).foregroundStyle(.tertiary)
                                     }
+                                    InlineDiff(noteId: n.id)
                                     .contentShape(Rectangle())
                                     .onTapGesture(count: 2) {
                                         window.go(.note(n.id))
@@ -946,6 +947,8 @@ struct FoldersScreen: View {
                     EmptyScreen(symbol: "magnifyingglass", title: "No Results", message: "No folder matches “\(filter)”.")
                 } else if layout == "list" {
                     list
+                } else if layout == "tree" {
+                    tree
                 } else {
                     grid
                 }
@@ -962,6 +965,7 @@ struct FoldersScreen: View {
                 Picker("View", selection: $layout) {
                     Label("Cards", systemImage: "square.grid.2x2").tag("grid")
                     Label("List", systemImage: "list.bullet").tag("list")
+                    Label("Tree", systemImage: "list.bullet.indent").tag("tree")
                 }
                 .pickerStyle(.segmented).labelsHidden().help("View as Cards or List")
                 Menu {
@@ -1077,6 +1081,24 @@ struct FoldersScreen: View {
         }()
         sort = "manual"
         app.perform { _ = try await $0.command(Commands.FolderMove(FolderMoveArgs(id: moving, parentId: parent, afterId: after))) }
+    }
+
+    /// Every folder in its place in the tree, opened and closed by disclosure.
+    private var tree: some View {
+        let all = cards.value?.folders ?? []
+        func kids(_ parent: String?) -> [FolderCard] {
+            let ids = Set(all.map(\.id))
+            return all.filter { parent == nil ? ($0.parentId == nil || !ids.contains($0.parentId!)) : $0.parentId == parent }
+        }
+        return List(selection: $selection) {
+            ForEach(kids(nil), id: \.id) { f in FolderTreeRow(folder: f, children: kids, window: window) }
+        }
+        .listStyle(.inset)
+        .contextMenu(forSelectionType: String.self) { ids in
+            if ids.count == 1, let id = ids.first, let node = app.tree.value?.folders.first(where: { $0.id == id }) {
+                FolderMenu(folder: node, window: window, rename: { _ in }, newSubfolder: { _ in })
+            } else if ids.count > 1 { bulkItems(Array(ids)) }
+        } primaryAction: { ids in if let id = ids.first { window.go(.folder(id)) } }
     }
 
     private func toggle(_ id: String) { if selection.contains(id) { selection.remove(id) } else { selection.insert(id) } }
@@ -1365,5 +1387,77 @@ struct ChangeDiffSheet: View {
         }
         .frame(width: 560, height: 520)
         .task { diff = try? await app.client?.query(Views.ChangesDiff(ChangeDiffArgs(id: noteId))) }
+    }
+}
+
+
+/// What changed in a note, under its row on Changes: loaded when it appears, the first 40 blocks, added words in
+/// moss and underlined, removed ones in coral and struck through.
+struct InlineDiff: View {
+    let noteId: String
+    private var app: AppModel { .shared }
+    @State private var diff: ChangeDiffValue?
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            if let d = diff {
+                if d.encrypted {
+                    Text("Encrypted: open the note to see what changed.").font(.caption).foregroundStyle(.secondary)
+                } else {
+                    ForEach(d.blocks.prefix(40), id: \.id) { b in
+                        Group {
+                            if let parts = b.parts, !parts.isEmpty {
+                                parts.reduce(Text("")) { acc, p in
+                                    acc + Text(p.text)
+                                        .foregroundStyle(p.kind == "added" ? Color.folevi("moss") : p.kind == "removed" ? Color.folevi("coral") : Color.secondary)
+                                        .strikethrough(p.kind == "removed")
+                                        .underline(p.kind == "added")
+                                }
+                            } else {
+                                Text(b.x)
+                                    .foregroundStyle(b.change == "added" ? Color.folevi("moss") : b.change == "removed" ? Color.folevi("coral") : Color.secondary)
+                                    .strikethrough(b.change == "removed")
+                                    .underline(b.change == "added")
+                            }
+                        }
+                        .font(CoreType.noteText(13))
+                        .lineLimit(3)
+                    }
+                    if d.truncated || d.blocks.count > 40 { Text("More changes are in the note's version history.").font(.caption).foregroundStyle(.secondary) }
+                }
+            }
+        }
+        .padding(.leading, 28)
+        .task { diff = try? await app.client?.query(Views.ChangesDiff(ChangeDiffArgs(id: noteId))) }
+    }
+}
+
+
+struct FolderTreeRow: View {
+    let folder: FolderCard
+    let children: (String?) -> [FolderCard]
+    let window: WindowModel
+    @State private var open = false
+
+    var body: some View {
+        let kids = children(folder.id)
+        if kids.isEmpty {
+            label
+        } else {
+            DisclosureGroup(isExpanded: $open) {
+                ForEach(kids, id: \.id) { FolderTreeRow(folder: $0, children: children, window: window) }
+            } label: { label }
+        }
+    }
+
+    private var label: some View {
+        HStack(spacing: 8) {
+            FolderMark(colorId: folder.color, size: 15, kind: folder.childCount > 0 ? .stack : (folder.noteCount > 0 ? .notes : .empty))
+            Text(folder.name)
+            Spacer()
+            Text(folder.noteCount == 1 ? "1 note" : "\(folder.noteCount) notes").font(.caption).foregroundStyle(.secondary)
+        }
+        .tag(folder.id)
+        .onMiddleClick { AppModel.shared.open(.folder(folder.id), newTab: true, background: true) }
     }
 }

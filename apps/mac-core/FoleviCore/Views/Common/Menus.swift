@@ -324,7 +324,14 @@ struct PlaceMenu: View {
                     ForEach(places.places, id: \.id) { p in
                         Toggle(isOn: Binding(get: { p.id == places.current }, set: { if $0 { Places.shared.switchTo(p.id) } })) {
                             Text(p.kind == .library ? "On This Mac" : p.name)
-                            if p.unread > 0 { Text("\(p.unread) unread") }
+                            Text([p.email, p.unread > 0 ? "\(p.unread) unread" : nil, p.reminders > 0 ? "● reminder due" : nil].compactMap { $0 }.joined(separator: " · "))
+                        }
+                        // Its workspaces, with their plan.
+                        ForEach(p.workspaces, id: \.id) { w in
+                            Button { Places.shared.switchTo(p.id) } label: {
+                                Text("    " + w.name + (w.planName.map { "  ·  " + $0 } ?? ""))
+                            }
+                            .disabled(p.id == places.current)
                         }
                     }
                 }

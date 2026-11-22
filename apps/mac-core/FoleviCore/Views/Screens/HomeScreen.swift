@@ -68,7 +68,7 @@ struct HomeScreen: View {
             }
         }
         .task(id: app.client.map(ObjectIdentifier.init)) {
-            home.bind(app.client, Views.Home(SpaceArgs()))
+            home.bind(app.client, Views.Home(SpaceArgs()), snapshot: "home")
             folders.bind(app.client, Views.FoldersCards(FolderCardsArgs(space: nil, parentId: nil, all: true)))
             reviews.bind(app.client, Views.Reviews(ReviewsArgs(noteId: nil, space: nil)))
         }

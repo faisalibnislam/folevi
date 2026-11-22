@@ -52,10 +52,10 @@ struct AppCommands: SwiftUI.Commands {
         CommandGroup(after: .saveItem) {
             Menu("Share") {
                 Button("Share with People…") { window?.sharingNote = window?.current.noteId }
-                if let id = window?.current.noteId {
+                if let url = window?.current.noteId.map(NoteActions.webURL) ?? ShareTarget.current?.url {
                     Divider()
-                    ForEach(NSSharingService.sharingServices(forItems: [NoteActions.webURL(id)]), id: \.title) { service in
-                        Button { service.perform(withItems: [NoteActions.webURL(id)]) } label: { Label { Text(service.title) } icon: { Image(nsImage: service.image) } }
+                    ForEach(NSSharingService.sharingServices(forItems: [url]), id: \.title) { service in
+                        Button { service.perform(withItems: [url]) } label: { Label { Text(service.title) } icon: { Image(nsImage: service.image) } }
                     }
                 }
             }
@@ -171,6 +171,7 @@ struct AppCommands: SwiftUI.Commands {
         CommandGroup(before: .sidebar) {
             Button("as List") { window?.listStyle = .list }.keyboardShortcut("1", modifiers: [.command, .control])
             Button("as Cards") { window?.listStyle = .cards }.keyboardShortcut("2", modifiers: [.command, .control])
+            Button("as Compact Cards") { window?.listStyle = .compact }.keyboardShortcut("3", modifiers: [.command, .control])
             Divider()
             Button(window?.inspectorShown == true ? "Hide Inspector" : "Show Inspector") { window?.inspectorShown.toggle() }
                 .keyboardShortcut("i", modifiers: [.command, .option])

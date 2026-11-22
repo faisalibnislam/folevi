@@ -3,6 +3,7 @@
 // the calls today's app answers for a page-drawn title bar (drag areas, window buttons, the page's theme) are
 // accepted and do nothing. Every argument is checked: the page is Folevi's own, but it's still a page.
 import AppKit
+import WebKit
 import UserNotifications
 
 /// The desktop settings (Settings > General): Quick Add's shortcut, open at login, the menu bar icon, Mac
@@ -51,8 +52,11 @@ enum DesktopHooks {
     /// Pause the global Quick Add shortcut (while a shortcut field records keys).
     static var pauseShortcut: ((Bool) -> Void)?
 
+    /// Account places that send no count of their own (not open now) count with their last-known unread.
+    nonisolated(unsafe) static var silentUnread: [String: Int] = [:]
+
     static func updateBadge() {
-        let total = badges.values.reduce(0, +)
+        let total = badges.values.reduce(0, +) + silentUnread.filter { badges[$0.key] == nil }.values.reduce(0, +)
         NSApp.dockTile.badgeLabel = total > 0 ? (total > 99 ? "99+" : String(total)) : nil
     }
 }
@@ -133,16 +137,16 @@ final class DesktopRouter {
             return [:]
 
         case "spelling":
-            return Self.spelling(Self.text(options["word"], 100), context: Self.text(options["context"], 700))
+            return Self.spelling(Self.text(options["word"], 100), context: Self.text(options["context"], 700), view: view)
 
         case "learnWord":
             let word = Self.text(options["word"], 100)
-            if !word.isEmpty { NSSpellChecker.shared.learnWord(word) }
+            if !word.isEmpty { NSSpellChecker.shared.learnWord(word); Self.clearUnderline(word, view: view) }
             return [:]
 
         case "ignoreWord":
             let word = Self.text(options["word"], 100)
-            if !word.isEmpty, let view { NSSpellChecker.shared.ignoreWord(word, inSpellDocumentWithTag: Self.spellTag(view)) }
+            if !word.isEmpty, let view { NSSpellChecker.shared.ignoreWord(word, inSpellDocumentWithTag: Self.spellTag(view)); Self.clearUnderline(word, view: view) }
             return [:]
 
         case "lookUp":
@@ -172,15 +176,44 @@ final class DesktopRouter {
         return tag
     }
 
-    /// { misspelled, guesses } for the word under the page's menu.
+    /// { misspelled, guesses } for the word under the page's menu. The paragraph around it (the page's context)
+    /// picks the language and the guesses, so a French note gets French ones; up to 8.
     @MainActor
-    static func spelling(_ word: String, context: String) -> [String: Any] {
-        guard !word.isEmpty else { return ["misspelled": false, "guesses": []] }
+    static func spelling(_ raw: String, context: String, view: NSView?) -> [String: Any] {
+        let none: [String: Any] = ["misspelled": false, "guesses": [String]()]
+        let w = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !w.isEmpty else { return none }
         let checker = NSSpellChecker.shared
-        let miss = checker.checkSpelling(of: word, startingAt: 0)
-        guard miss.location != NSNotFound else { return ["misspelled": false, "guesses": []] }
-        let guesses = checker.guesses(forWordRange: NSRange(location: 0, length: (word as NSString).length), in: word, language: nil, inSpellDocumentWithTag: 0) ?? []
-        return ["misspelled": true, "guesses": Array(guesses.prefix(6))]
+        let t = view.map(spellTag) ?? 0
+        if context.contains(w) {
+            let text = context as NSString
+            var orthography: NSOrthography?
+            let found = checker.check(context, range: NSRange(location: 0, length: text.length), types: NSTextCheckingResult.CheckingType.spelling.rawValue, options: nil, inSpellDocumentWithTag: t, orthography: &orthography, wordCount: nil)
+            if let hit = found.first(where: { $0.resultType == .spelling && text.substring(with: $0.range) == w }) {
+                let language = checker.language(forWordRange: hit.range, in: context, orthography: orthography)
+                let guesses = checker.guesses(forWordRange: hit.range, in: context, language: language, inSpellDocumentWithTag: t) ?? []
+                return ["misspelled": true, "guesses": Array(guesses.prefix(8))]
+            }
+        }
+        // No text around it: the word alone, in the Spelling settings' language.
+        let range = checker.checkSpelling(of: w, startingAt: 0, language: nil, wrap: false, inSpellDocumentWithTag: t, wordCount: nil)
+        guard range.location != NSNotFound else { return none }
+        let guesses = checker.guesses(forWordRange: NSRange(location: 0, length: (w as NSString).length), in: w, language: nil, inSpellDocumentWithTag: t) ?? []
+        return ["misspelled": true, "guesses": Array(guesses.prefix(8))]
+    }
+
+    /// Takes WebKit's red underline off a learned or ignored word: WebKit's own Ignore Spelling acts on the
+    /// selected word, so the page selects it first (where the right-click landed) and says whether it could.
+    @MainActor
+    static func clearUnderline(_ w: String, view: NSView?) {
+        guard let view = view as? WKWebView else { return }
+        let action = #selector(NSIgnoreMisspelledWords.ignoreSpelling(_:))
+        guard view.responds(to: action) else { return }
+        let script = "return typeof window.__foleviSelectWord === 'function' && window.__foleviSelectWord(word) === true;"
+        view.callAsyncJavaScript(script, arguments: ["word": w], in: nil, in: .page) { [weak view] result in
+            guard case .success(let value) = result, (value as? Bool) == true else { return }
+            view?.perform(action, with: nil)
+        }
     }
 
     // MARK: arguments

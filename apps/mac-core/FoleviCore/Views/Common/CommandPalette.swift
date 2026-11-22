@@ -67,7 +67,15 @@ struct CommandPalette: View {
             .shadow(color: .black.opacity(0.18), radius: 30, y: 12)
             .padding(.top, 80)
         }
-        .onAppear { focused = true }
+        .onAppear {
+            focused = true
+            Task { @MainActor in
+                try? await Task.sleep(for: .milliseconds(30))
+                if !window.paletteSeed.isEmpty { query += window.paletteSeed; window.paletteSeed = "" }
+                window.paletteFieldReady = true
+            }
+        }
+        .onDisappear { window.paletteFieldReady = false; window.paletteSeed = "" }
         .task { recent.bind(app.client, Views.RecentViewed(RecentViewedArgs(space: nil, limit: 6))) }
         .onChange(of: query) { index = 0; search() }
         .onChange(of: folder) { search() }

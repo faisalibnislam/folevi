@@ -48,7 +48,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     static var dockMenu: (() -> NSMenu?)?
     static var services: NSObject?
 
+    /// Links that arrive while launching (a folevi-core:// link that opened the app) are caught before the app is
+    /// up and handed on like any other (they wait for the windows).
+    @objc func handleGetURL(_ event: NSAppleEventDescriptor, withReplyEvent reply: NSAppleEventDescriptor) {
+        guard let s = event.paramDescriptor(forKeyword: keyDirectObject)?.stringValue, let url = URL(string: s) else { return }
+        Self.onOpenURLs?([url])
+    }
+
     func applicationWillFinishLaunching(_ notification: Notification) {
+        NSAppleEventManager.shared().setEventHandler(self, andSelector: #selector(handleGetURL(_:withReplyEvent:)), forEventClass: AEEventClass(kInternetEventClass), andEventID: AEEventID(kAEGetURL))
         // Before any web view: spelling is checked while typing in notes, as in today's app.
         UserDefaults.standard.register(defaults: ["WebContinuousSpellCheckingEnabled": true])
         CoreLog.debug("willFinishLaunching")
@@ -92,6 +100,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
+        PagePool.shared.client?.snapshot?.flush()
         // Every page saves what was typed last before the app goes.
         let views = WindowManager.shared.allViews.filter(\.loaded)
         guard !views.isEmpty else { return .terminateNow }

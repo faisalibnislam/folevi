@@ -269,7 +269,7 @@ enum WebViewFactory {
         return template
             .replacingOccurrences(of: "/*__FOLEVI_CLOUD_KIT__*/", with: kit)
             .replacingOccurrences(of: "/*__FOLEVI_SHELL_BRIDGE__*/", with: shell)
-            .replacingOccurrences(of: "/*__FOLEVI_EXTRAS__*/", with: resource("capabilities") ?? "")
+            .replacingOccurrences(of: "/*__FOLEVI_EXTRAS__*/", with: (resource("capabilities") ?? "") + "\n" + (resource("core-page") ?? ""))
             .replacingOccurrences(of: "\"__FOLEVI_BOOT__\"", with: boot)
     }
 

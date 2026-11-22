@@ -72,7 +72,7 @@ Closed or improved after the grading below; the per-item marks haven't been redo
   app-level file drop, an Add Tag bulk action.
 
 The items closed in this session's later work packages are marked [x] with "closed after the grading", and the
-summary table below is recounted from the marks (1040 there, 81 partly, 4 missing, 218 not applicable).
+summary table below is recounted from the marks (1041 there, 81 partly, 3 missing, 218 not applicable).
 
 ## Summary
 
@@ -84,7 +84,7 @@ summary table below is recounted from the marks (1040 there, 81 partly, 4 missin
 | Sidebar & navigation | `NAV` | 26 | 4 | 0 | 7 | 37 |
 | Tabs | `TAB` | 13 | 2 | 0 | 28 | 43 |
 | Home | `HOME` | 19 | 1 | 0 | 10 | 30 |
-| Notes lists | `LIST` | 55 | 5 | 1 | 11 | 72 |
+| Notes lists | `LIST` | 56 | 5 | 0 | 11 | 72 |
 | Folders | `FOLD` | 31 | 3 | 0 | 3 | 37 |
 | Tags | `TAG` | 7 | 0 | 0 | 2 | 9 |
 | Note page & editor integration | `NOTE` | 40 | 3 | 0 | 3 | 46 |
@@ -116,7 +116,7 @@ summary table below is recounted from the marks (1040 there, 81 partly, 4 missin
 | Binding UX rules from owner memory | `RULE` | 22 | 9 | 0 | 13 | 44 |
 | iPhone and iPad only (skip) | `IOS` | 0 | 0 | 0 | 5 | 5 |
 | Gaps, bugs and contradictions | `GAP` | 23 | 7 | 0 | 13 | 43 |
-| **Total** | | **1040** | **81** | **4** | **218** | **1343** |
+| **Total** | | **1041** | **81** | **3** | **218** | **1343** |
 
 Notable findings (all in the first work package at the end):
 
@@ -506,7 +506,7 @@ Notable findings (all in the first work package at the end):
 - [x] `LIST-055` **Hide from recent**: "Remove from recent" (Home cards); toast "Removed from Recent notes" with Undo. Core: `Views/Screens/LibraryScreens.swift` RecentScreen "Hide from Recent" (list rows only).
 - [x] `LIST-056` **Card pictures**: cover (built-in art, own image file, colour or plain), preview lines, font, shape, created and edited times; folder cards show up… Core: `Views/Common/Style.swift` Cards (cover, preview lines, font, shape, times, folder previews).
 - [n/a] `LIST-057` **Tab pictures**: page thumbnails for the tab hover card and Tab Overview; not used in lists. Why: native window tabs have no pictures.
-- [ ] `LIST-058` **Optimistic UI**: hidden ids and star overrides settle after 3 s; skipped toast "N notes couldn't be changed. You may not have permission."; no… Core: no optimistic hiding or rollback (only the open note's star).
+- [x] `LIST-058` **Optimistic UI**: hidden ids and star overrides settle after 3 s; skipped toast "N notes couldn't be changed. You may not have permission."; no… Core: closed after the grading (see "Since this grading").
 - [x] `LIST-059` **Duplicate**: toast "Duplicated". Core: NoteMenu Duplicate (note.duplicate).
 - [x] `LIST-060` **Middle-click on folder cards and rows**: opens in a background tab. Core: closed after the grading (see "Since this grading").
 - [x] `LIST-061` **Skeletons**: carousel, cards, rows, chips (`ListSkeleton`). Core: closed after the grading (see "Since this grading").

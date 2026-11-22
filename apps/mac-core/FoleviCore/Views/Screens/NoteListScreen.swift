@@ -24,6 +24,25 @@ struct NoteListScreen: View {
 
     private var sort: NotesSort { NotesSort(rawValue: sortRaw) ?? .updated }
 
+    /// The rows as shown: without notes leaving the list, with stars changed but not confirmed yet.
+    private var shownRows: [NoteRow] {
+        list.rows.compactMap { r in
+            guard !app.hiddenNotes.contains(r.id) else { return nil }
+            guard let star = app.starOverrides[r.id] else { return r }
+            var copy = r
+            copy.starred = star
+            return copy
+        }
+    }
+
+    private func archive(_ ids: [String], _ on: Bool) {
+        app.optimistic(ids, hide: true) { try await $0.command(Commands.NoteArchive(NoteArchiveArgs(ids: ids, archived: on))) }
+    }
+
+    private func star(_ ids: [String], _ on: Bool) {
+        app.optimistic(ids, star: on) { try await $0.command(Commands.NoteStar(NoteStarArgs(ids: ids, starred: on))) }
+    }
+
     private var spec: ListViews.NotesList {
         ListViews.NotesList(NotesListArgs(space: nil, view: kind, folderId: folderId, tagId: tagId, sort: sort, filter: filter.isEmpty ? nil : filter))
     }
@@ -102,7 +121,7 @@ struct NoteListScreen: View {
                 }
             }
             Section {
-                ForEach(Array(list.rows.enumerated()), id: \.element.id) { i, row in
+                ForEach(Array(shownRows.enumerated()), id: \.element.id) { i, row in
                     NoteListRow(row: row, showFolder: kind != .folder)
                         .overlay(alignment: .trailing) {
                             if kind == .templates {
@@ -148,11 +167,11 @@ struct NoteListScreen: View {
                 if notes.count < list.rows.count { Button("Select All") { selection = Set(list.rows.map(\.id)) } }
                 Divider().frame(height: 16)
                 if kind == .trash {
-                    Button("Restore") { app.perform { _ = try await $0.command(Commands.NoteRestore(NoteIdsArgs(ids: notes))) }; selection.removeAll() }
+                    Button("Restore") { app.optimistic(notes, hide: true) { try await $0.command(Commands.NoteRestore(NoteIdsArgs(ids: notes))) }; selection.removeAll() }
                     Button("Delete…", role: .destructive) { NoteActions.deleteForever(notes, app: app); selection.removeAll() }
                 } else {
                     let allStarred = notes.allSatisfy { id in list.rows.first { $0.id == id }?.starred == true }
-                    Button { app.perform { _ = try await $0.command(Commands.NoteStar(NoteStarArgs(ids: notes, starred: !allStarred))) } } label: { Label(allStarred ? "Unstar" : "Star", systemImage: allStarred ? "bookmark.slash" : "bookmark") }
+                    Button { star(notes, !allStarred) } label: { Label(allStarred ? "Unstar" : "Star", systemImage: allStarred ? "bookmark.slash" : "bookmark") }
                     Button { window.pickFolder(.moveNotes, notes) } label: { Label("Move", systemImage: "folder") }
                     Button { window.pickFolder(.copyNotes, notes) } label: { Label("Copy To", systemImage: "doc.on.doc") }
                     if let tags = app.tree.value?.tags, !tags.isEmpty {
@@ -162,7 +181,7 @@ struct NoteListScreen: View {
                         .fixedSize()
                     }
                     Button {
-                        app.perform { _ = try await $0.command(Commands.NoteArchive(NoteArchiveArgs(ids: notes, archived: kind != .archive))) }
+                        archive(notes, kind != .archive)
                         selection.removeAll()
                     } label: { Label(kind == .archive ? "Unarchive" : "Archive", systemImage: "archivebox") }
                     Button(role: .destructive) { trashSelection() } label: { Label("Trash", systemImage: "trash") }
@@ -193,7 +212,7 @@ struct NoteListScreen: View {
                 .padding([.horizontal, .top], 24)
             }
             LazyVGrid(columns: [GridItem(.adaptive(minimum: 190, maximum: 250), spacing: 20)], spacing: 22) {
-                ForEach(list.rows) { row in
+                ForEach(shownRows) { row in
                     NoteCardButton(row: row, window: window, inTrash: kind == .trash)
                         .onAppear { if row.id == list.rows.last?.id { more() } }
                 }
@@ -298,15 +317,13 @@ struct NoteListScreen: View {
                 Button("Restore \(notes.count) Notes") { app.perform { _ = try await $0.command(Commands.NoteRestore(NoteIdsArgs(ids: notes))) } }
                 Button("Delete \(notes.count) Notes Immediately…", role: .destructive) { NoteActions.deleteForever(notes, app: app) }
             } else {
-                Button("Star") { app.perform { _ = try await $0.command(Commands.NoteStar(NoteStarArgs(ids: notes, starred: true))) } }
-                Button("Remove Star") { app.perform { _ = try await $0.command(Commands.NoteStar(NoteStarArgs(ids: notes, starred: false))) } }
+                Button("Star") { star(notes, true) }
+                Button("Remove Star") { star(notes, false) }
                 Menu("Move To") { MoveTargets(ids: notes) }
                 Button("Move To Folder…") { window.pickFolder(.moveNotes, notes) }
                 Button("Copy To…") { window.pickFolder(.copyNotes, notes) }
                 addTagMenu(notes)
-                Button(kind == .archive ? "Unarchive" : "Archive") {
-                    app.perform { _ = try await $0.command(Commands.NoteArchive(NoteArchiveArgs(ids: notes, archived: kind != .archive))) }
-                }
+                Button(kind == .archive ? "Unarchive" : "Archive") { archive(notes, kind != .archive) }
                 Button("Move \(notes.count) Notes to Trash", role: .destructive) { app.trash(notes) }
             }
         } else if let id = notes.first, let row = list.rows.first(where: { $0.id == id }) {

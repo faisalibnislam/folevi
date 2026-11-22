@@ -370,11 +370,44 @@ final class AppModel {
     /// The window a new tab was opened from (its Back returns there).
     @ObservationIgnored weak var pendingOpener: NSWindow?
 
+    // MARK: optimistic list changes
+
+    /// Notes lists leave out at once while a Trash, Archive or Move settles, and stars shown before the engine
+    /// confirms; both settle after 3 s, or roll back at once when the change fails.
+    var hiddenNotes: Set<String> = []
+    var starOverrides: [String: Bool] = [:]
+
+    func optimistic(_ ids: [String], hide: Bool = false, star: Bool? = nil, _ run: @escaping (EngineClient) async throws -> BulkResult) {
+        if hide { hiddenNotes.formUnion(ids) }
+        if let star { for id in ids { starOverrides[id] = star } }
+        let settle = { [weak self] (keep: Set<String>) in
+            guard let self else { return }
+            for id in ids where !keep.contains(id) { self.hiddenNotes.remove(id); self.starOverrides[id] = nil }
+        }
+        Task { @MainActor in
+            do {
+                guard let client else { settle([]); return }
+                let r = try await run(client)
+                if r.skipped > 0 { toast(r.skipped == 1 ? "1 note couldn't be changed. You may not have permission." : "\(r.skipped) notes couldn't be changed. You may not have permission.", tone: .error) }
+                let done = r.queued ? Set(ids) : Set(r.done)
+                settle(done)
+                try? await Task.sleep(for: .seconds(3))
+                settle([])
+            } catch let f as EngineFailure {
+                settle([])
+                toast(f.message, tone: .error)
+            } catch {
+                settle([])
+            }
+        }
+    }
+
     /// Moves notes to the Trash, and takes them out of every window's history (a tab showing one goes back).
     func trash(_ ids: [String]) {
-        perform { client in
-            _ = try await client.command(Commands.NoteTrash(NoteIdsArgs(ids: ids)))
+        optimistic(ids, hide: true) { client in
+            let r = try await client.command(Commands.NoteTrash(NoteIdsArgs(ids: ids)))
             for w in self.windows.values.compactMap(\.model) { w.forget(notes: Set(ids)) }
+            return r
         }
     }
 

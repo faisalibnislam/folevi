@@ -992,7 +992,7 @@ struct FoldersScreen: View {
         ScrollView {
             LazyVGrid(columns: [GridItem(.adaptive(minimum: 180, maximum: 240), spacing: 22)], spacing: 22) {
                 ForEach(shown, id: \.id) { folder in
-                    HomeFolderCard(folder: folder, window: window)
+                    HomeFolderCard(folder: folder, window: window, reorder: filter.isEmpty ? { zone, moving in reorder(moving, zone, around: folder) } : nil)
                         .overlay(alignment: .topTrailing) {
                             if selection.contains(folder.id) {
                                 Image(systemName: "checkmark.circle.fill").font(.title3).foregroundStyle(Color.foleviInk).padding(6)
@@ -1068,6 +1068,21 @@ struct FoldersScreen: View {
             .glassEffect(.regular, in: .capsule)
             .padding(.bottom, 16)
         }
+    }
+
+    /// A folder dropped before or after another: it joins that folder's siblings at that place (the sort turns
+    /// Manual so the new order shows).
+    private func reorder(_ moving: String, _ zone: FolderDropZone, around target: FolderCard) {
+        let parent = target.parentId
+        if let parent, let why = FolderActions.refusal(moving: moving, into: parent) { app.toast(why, tone: .error); return }
+        let siblings = shown.filter { $0.parentId == parent && $0.id != moving }
+        let after: String? = {
+            if zone == .after { return target.id }
+            guard let i = siblings.firstIndex(where: { $0.id == target.id }) else { return nil }
+            return i > 0 ? siblings[i - 1].id : nil
+        }()
+        sort = "manual"
+        app.perform { _ = try await $0.command(Commands.FolderMove(FolderMoveArgs(id: moving, parentId: parent, afterId: after))) }
     }
 
     private func toggle(_ id: String) { if selection.contains(id) { selection.remove(id) } else { selection.insert(id) } }

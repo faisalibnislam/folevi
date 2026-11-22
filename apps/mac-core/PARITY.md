@@ -72,7 +72,7 @@ Closed or improved after the grading below; the per-item marks haven't been redo
   app-level file drop, an Add Tag bulk action.
 
 The items closed in this session's later work packages are marked [x] with "closed after the grading", and the
-summary table below is recounted from the marks (1037 there, 82 partly, 6 missing, 218 not applicable).
+summary table below is recounted from the marks (1040 there, 81 partly, 4 missing, 218 not applicable).
 
 ## Summary
 
@@ -83,9 +83,9 @@ summary table below is recounted from the marks (1037 there, 82 partly, 6 missin
 | Sign-in, onboarding, accounts, spaces & local mode | `AUTH` | 64 | 5 | 0 | 11 | 80 |
 | Sidebar & navigation | `NAV` | 26 | 4 | 0 | 7 | 37 |
 | Tabs | `TAB` | 13 | 2 | 0 | 28 | 43 |
-| Home | `HOME` | 18 | 2 | 0 | 10 | 30 |
-| Notes lists | `LIST` | 54 | 5 | 2 | 11 | 72 |
-| Folders | `FOLD` | 30 | 3 | 1 | 3 | 37 |
+| Home | `HOME` | 19 | 1 | 0 | 10 | 30 |
+| Notes lists | `LIST` | 55 | 5 | 1 | 11 | 72 |
+| Folders | `FOLD` | 31 | 3 | 0 | 3 | 37 |
 | Tags | `TAG` | 7 | 0 | 0 | 2 | 9 |
 | Note page & editor integration | `NOTE` | 40 | 3 | 0 | 3 | 46 |
 | Search & command palette | `SRCH` | 33 | 2 | 0 | 2 | 37 |
@@ -116,7 +116,7 @@ summary table below is recounted from the marks (1037 there, 82 partly, 6 missin
 | Binding UX rules from owner memory | `RULE` | 22 | 9 | 0 | 13 | 44 |
 | iPhone and iPad only (skip) | `IOS` | 0 | 0 | 0 | 5 | 5 |
 | Gaps, bugs and contradictions | `GAP` | 23 | 7 | 0 | 13 | 43 |
-| **Total** | | **1037** | **82** | **6** | **218** | **1343** |
+| **Total** | | **1040** | **81** | **4** | **218** | **1343** |
 
 Notable findings (all in the first work package at the end):
 
@@ -427,7 +427,7 @@ Notable findings (all in the first work package at the end):
 - [x] `HOME-014` **Home card menu**: Open, Bookmark / Remove bookmark, Duplicate, Move to folder…, Copy to… (when other spaces exist), Archive / Unarchive, Remove… Core: closed after the grading (see "Since this grading").
 - [x] `HOME-015` **Recent folders section**: every folder, most recently changed first, two full rows at the current width; header shows the total count; "See all" opens… Core: closed after the grading (see "Since this grading").
 - [x] `HOME-016` **Recent folders empty**: "No folders yet / Create one from the sidebar to group related notes.". Core: closed after the grading (see "Since this grading").
-- [~] `HOME-017` **Folder card**: hover lift; "…" in the frosted front; right-click menu; notes or folders dropped on it go inside; spring-loads after 0.6 s… Core: lifts while something is dragged over it, "…" on hover, folder menu on right-click, notes and folders dropped go inside; no spring-loading.
+- [x] `HOME-017` **Folder card**: hover lift; "…" in the frosted front; right-click menu; notes or folders dropped on it go inside; spring-loads after 0.6 s… Core: closed after the grading (see "Since this grading").
 - [x] `HOME-018` **Folder menu (Mac)**: Open in new tab, New note in folder, New folder inside…, Rename…, Change color…, Move folder…, Move to another place…, Move to… Core: closed after the grading (see "Since this grading").
 - [x] `HOME-019` **Drop on Home folders**: notes, multi-selections or folders dropped inside. A refused drop gives an error haptic and a toast; toasts read "Moved", "Moved… Core: closed after the grading (see "Since this grading").
 - [x] `HOME-020` **Where Home's rows live on the Mac**: the sidebar has Home, Bookmarks, Drafts (count), All notes, Reviews (count), Shared with Me, Changes (count, `caps.changes`)… Core: closed after the grading (see "Since this grading").
@@ -500,8 +500,8 @@ Notable findings (all in the first work package at the end):
 - [x] `LIST-049` **Copy to dialog**: lists other editable, unlocked spaces; toast "Copied to Space / Folder" (Mac dialog; iOS `CopyToSheet` with space picker, Drafts… Core: closed after the grading (see "Since this grading").
 - [x] `LIST-050` **Change color and Delete folders (bulk)**: delete confirmation "Delete N folders? / … notes move to Drafts". Core: closed after the grading (see "Since this grading").
 - [~] `LIST-051` **Drag payloads**: `NoteDragItem` (one note or the whole selection, folders included) and `FolderDragItem`; UTTypes `com.folevi.note-ref` and… Core: `Views/Common/Menus.swift` NoteDrag (own type, one note per drag, not the selection, no folders); type not declared in Info.plist.
-- [~] `LIST-052` **Drop on folders**: notes go inside; a folder goes before, inside or after depending on the zone; spring-loading after 0.6 s; nesting rules… Core: notes drop into folders (sidebar, cards); no folder zones or spring-loading.
-- [ ] `LIST-053` **Folders page drag reorder**: a gap opens, a dashed placeholder marks it, the dragged card dims; the commit may switch the sort to Manual; off while searching. Core: no folder reorder.
+- [x] `LIST-052` **Drop on folders**: notes go inside; a folder goes before, inside or after depending on the zone; spring-loading after 0.6 s; nesting rules… Core: closed after the grading (see "Since this grading").
+- [~] `LIST-053` **Folders page drag reorder**: a gap opens, a dashed placeholder marks it, the dragged card dims; the commit may switch the sort to Manual; off while searching. Core: drop a folder on the leading or trailing quarter of another card on the Folders page to put it before or after (folder.move afterId; the sort turns Manual); an accent bar marks the spot; no dashed gap or dimmed card; not yet tried with a real drag.
 - [x] `LIST-054` **Manual note order**: Move up / Move down in the menu (`note.reorder`); drag reorder exists only in the iOS List (`onMove`). The Mac has no drag… Core: closed after the grading (see "Since this grading").
 - [x] `LIST-055` **Hide from recent**: "Remove from recent" (Home cards); toast "Removed from Recent notes" with Undo. Core: `Views/Screens/LibraryScreens.swift` RecentScreen "Hide from Recent" (list rows only).
 - [x] `LIST-056` **Card pictures**: cover (built-in art, own image file, colour or plain), preview lines, font, shape, created and edited times; folder cards show up… Core: `Views/Common/Style.swift` Cards (cover, preview lines, font, shape, times, folder previews).
@@ -549,7 +549,7 @@ Notable findings (all in the first work package at the end):
 - [x] `FOLD-020` **Delete tag confirm**: (goes Home if the tag is on screen). Core: closed after the grading (see "Since this grading").
 - [x] `FOLD-021` **Tag colour quick change**: (Cocoa, Moss, Marigold, Plum, Coral, Gray). Core: closed after the grading (see "Since this grading").
 - [x] `FOLD-022` **Folder nesting rules**: max 5 levels; never into itself or a descendant; messages. Core: closed after the grading (see "Since this grading").
-- [ ] `FOLD-023` **Drop zones**: leading quarter before, middle inside, trailing quarter after (cards horizontal, rows vertical). Core: no drop zones.
+- [x] `FOLD-023` **Drop zones**: leading quarter before, middle inside, trailing quarter after (cards horizontal, rows vertical). Core: closed after the grading (see "Since this grading").
 - [~] `FOLD-024` **Sidebar folder drag and drop**: notes into a folder; a folder above, inside or below (accent line or ring); onto the Folders heading for the top level; a… Core: notes and folders drop on sidebar folders, folders on the Folders heading go to the top; no before/after zones or spring-loading.
 - [x] `FOLD-025` **Sidebar own order**: (Manual) synced, independent of rank; dropping between rows of the same level reorders only; a drop while sorted by Name/Recent… Core: `Views/Sidebar.swift` drag top-level folders to order them (folder.setSidebarOrder); top level only, no Undo.
 - [x] `FOLD-026` **Multi-item move with refusals**: ("couldn't move" toast) and a summary toast. Core: closed after the grading (see "Since this grading").

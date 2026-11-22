@@ -26,6 +26,9 @@ struct Sidebar: View {
     @State private var starred = LiveList<ListViews.NotesList>()
     @State private var drafts = LiveList<ListViews.NotesList>()
     @State private var starredOpen = false
+    /// Foli DNA's saved views, under its row.
+    @State private var graphViews = Live<Views.GraphViews>()
+    @State private var graphOpen = false
 
     var body: some View {
         List(selection: $window.sidebarSelection) {
@@ -130,7 +133,19 @@ struct Sidebar: View {
                 if app.reviews.value?.hasCards == true || window.current == .reviews {
                     row(.reviews, badge: (app.reviews.value?.due ?? 0) + (app.reviews.value?.new ?? 0))
                 }
-                if app.session.value?.capabilities.graph != false { row(.graph) }
+                if app.session.value?.capabilities.graph != false {
+                    if graphViews.value?.views.isEmpty ?? true {
+                        row(.graph)
+                    } else {
+                        DisclosureGroup(isExpanded: $graphOpen) {
+                            ForEach(graphViews.value?.views ?? [], id: \.id) { v in
+                                Label { Text(v.name).lineLimit(1) } icon: { WebIcon.bookmark.image(size: 13).frame(width: 18) }
+                                    .contentShape(Rectangle())
+                                    .onTapGesture { window.graphQuery = "view=\(v.id)"; window.go(.graph) }
+                            }
+                        } label: { row(.graph) }
+                    }
+                }
                 row(.archive)
                 row(.trash)
             }
@@ -153,6 +168,7 @@ struct Sidebar: View {
         .task(id: app.client.map(ObjectIdentifier.init)) {
             starred.bind(app.client, ListViews.NotesList(NotesListArgs(space: nil, view: .starred, folderId: nil, tagId: nil, sort: .updated, filter: nil)))
             drafts.bind(app.client, ListViews.NotesList(NotesListArgs(space: nil, view: .unsorted, folderId: nil, tagId: nil, sort: .updated, filter: nil)))
+            graphViews.bind(app.client, Views.GraphViews(SpaceArgs()))
         }
         .task(id: "\(folderSort)\(app.client.map { ObjectIdentifier($0).hashValue } ?? 0)") {
             if folderSort == "recent" { cards.bind(app.client, Views.FoldersCards(FolderCardsArgs(space: nil, parentId: nil, all: true))) }

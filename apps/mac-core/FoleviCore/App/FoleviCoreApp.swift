@@ -68,9 +68,7 @@ enum CoreSetup {
         Capabilities.install()
         UNUserNotificationCenter.current().delegate = NotificationDelegate.shared
         // Mac notifications offer Mark as Read beside opening them.
-        UNUserNotificationCenter.current().setNotificationCategories([
-            UNNotificationCategory(identifier: "folevi.notification", actions: [UNNotificationAction(identifier: "markRead", title: "Mark as Read")], intentIdentifiers: [])
-        ])
+        UNUserNotificationCenter.current().setNotificationCategories(CoreNotifications.categories)
         AppDelegate.onContinue = { activity in
             MainActor.assumeIsolated {
                 if activity.activityType == CSSearchableItemActionType, let id = activity.userInfo?[CSSearchableItemActivityIdentifier] as? String, let hit = Spotlight.parse(id) {
@@ -235,11 +233,20 @@ final class NotificationDelegate: NSObject, UNUserNotificationCenterDelegate {
 
     func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse) async {
         let info = response.notification.request.content.userInfo
-        if response.actionIdentifier == "markRead" {
-            let id = response.notification.request.identifier
-            await MainActor.run { AppModel.shared.perform { _ = try await $0.command(Commands.NotificationMarkRead(NotificationMarkArgs(ids: [id], read: true))) } }
+        let action = response.actionIdentifier
+        if action != UNNotificationDefaultActionIdentifier, action != UNNotificationDismissActionIdentifier, action != "open" {
+            // Reply, mark as read, complete, snooze: the page does them (the command today's app sends).
+            var command: [String: Any] = ["type": "notification", "action": action, "id": info["id"] as? String ?? "", "kind": info["kind"] as? String ?? ""]
+            if let path = info["path"] as? String { command["path"] = path }
+            if let text = (response as? UNTextInputNotificationResponse)?.userText, !text.isEmpty { command["text"] = String(text.prefix(4000)) }
+            if let thread = info["commentThread"] as? String, !thread.isEmpty { command["thread"] = thread }
+            let sendable = command.mapValues { "\($0)" }
+            await MainActor.run {
+                if let view = PagePool.shared.engine?.view { Events.command(sendable, to: view) }
+            }
             return
         }
+        if action == UNNotificationDismissActionIdentifier { return }
         let path = info["path"] as? String ?? "/notifications"
         let place = info["place"] as? String ?? ""
         await MainActor.run {
@@ -253,6 +260,8 @@ final class NotificationDelegate: NSObject, UNUserNotificationCenterDelegate {
     }
 
     func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification) async -> UNNotificationPresentationOptions {
-        [.banner, .sound]
+        // In front: reminders still show; activity is in Notifications.
+        let kind = notification.request.content.userInfo["kind"] as? String ?? ""
+        return kind == "local-reminder" || notification.request.content.categoryIdentifier == "folevi.reminder" ? [.banner, .sound, .list] : []
     }
 }

@@ -75,16 +75,16 @@ Closed or improved after the grading below; the per-item marks haven't been redo
   previews, and notes dragged out as files (file promises for the page's noteFile requests).
 
 The items closed in this session's later work packages are marked [x] with "closed after the grading", and the
-summary table below is recounted from the marks (1051 there, 70 partly, 2 missing, 220 not applicable).
+summary table below is recounted from the marks (1062 there, 59 partly, 2 missing, 220 not applicable).
 
 ## Summary
 
 | Area | Id prefix | [x] | [~] | [ ] | [n/a] | Items |
 |---|---|---|---|---|---|---|
 | Architecture today | `ARCH` | 15 | 0 | 1 | 1 | 17 |
-| App & windows | `APP` | 38 | 11 | 1 | 23 | 73 |
+| App & windows | `APP` | 39 | 10 | 1 | 23 | 73 |
 | Sign-in, onboarding, accounts, spaces & local mode | `AUTH` | 64 | 5 | 0 | 11 | 80 |
-| Sidebar & navigation | `NAV` | 27 | 3 | 0 | 7 | 37 |
+| Sidebar & navigation | `NAV` | 28 | 2 | 0 | 7 | 37 |
 | Tabs | `TAB` | 13 | 2 | 0 | 28 | 43 |
 | Home | `HOME` | 19 | 1 | 0 | 10 | 30 |
 | Notes lists | `LIST` | 58 | 3 | 0 | 11 | 72 |
@@ -95,7 +95,7 @@ summary table below is recounted from the marks (1051 there, 70 partly, 2 missin
 | Tasks | `TASK` | 23 | 2 | 0 | 10 | 35 |
 | Calendar | `CAL` | 30 | 1 | 0 | 6 | 37 |
 | Foli AI | `AI` | 44 | 0 | 0 | 5 | 49 |
-| Foli DNA | `DNA` | 35 | 1 | 0 | 0 | 36 |
+| Foli DNA | `DNA` | 36 | 0 | 0 | 0 | 36 |
 | Vault | `VAULT` | 40 | 0 | 0 | 1 | 41 |
 | Sharing, public links & invites | `SHARE` | 21 | 0 | 0 | 1 | 22 |
 | Templates | `TPL` | 12 | 0 | 0 | 0 | 12 |
@@ -106,20 +106,20 @@ summary table below is recounted from the marks (1051 there, 70 partly, 2 missin
 | Notifications / Inbox, Help & support | `NOTIF` | 16 | 0 | 0 | 2 | 18 |
 | Settings | `SET` | 143 | 3 | 0 | 19 | 165 |
 | Quick Add | `QADD` | 14 | 0 | 0 | 2 | 16 |
-| System integrations | `SYS` | 48 | 8 | 0 | 4 | 60 |
+| System integrations | `SYS` | 54 | 2 | 0 | 4 | 60 |
 | Context menus | `CTX` | 10 | 1 | 0 | 6 | 17 |
 | Menus & keyboard shortcuts | `MENU` | 80 | 0 | 0 | 2 | 82 |
 | Updates (Sparkle) | `UPD` | 6 | 1 | 0 | 0 | 7 |
 | Offline, sync & device storage | `SYNC` | 14 | 0 | 0 | 0 | 14 |
 | Migration | `MIG` | 0 | 0 | 0 | 11 | 11 |
-| Bridge messages & capabilities | `BRIDGE` | 69 | 4 | 0 | 7 | 80 |
+| Bridge messages & capabilities | `BRIDGE` | 71 | 2 | 0 | 7 | 80 |
 | Debug & eval harness | `DBG` | 0 | 0 | 0 | 8 | 8 |
 | Capabilities | `CAP` | 20 | 0 | 0 | 0 | 20 |
 | Stays web, WebPage values and the parity list | `WEB` | 2 | 0 | 0 | 2 | 4 |
 | Binding UX rules from owner memory | `RULE` | 22 | 9 | 0 | 13 | 44 |
 | iPhone and iPad only (skip) | `IOS` | 0 | 0 | 0 | 5 | 5 |
 | Gaps, bugs and contradictions | `GAP` | 23 | 7 | 0 | 13 | 43 |
-| **Total** | | **1051** | **70** | **2** | **220** | **1343** |
+| **Total** | | **1062** | **59** | **2** | **220** | **1343** |
 
 Notable findings (all in the first work package at the end):
 
@@ -183,7 +183,7 @@ Notable findings (all in the first work package at the end):
 - [x] `APP-026` **Title bar (native frame)**: traffic lights centred on the strip at `MacLook.trafficLightsX`. Window title = note title (without "· Folevi"). Full-screen, key… Core: native title bar; title is the note's title (`Model/WindowModel.swift`).
 - [x] `APP-027` **Multiple windows**: new window, Open in New Window (folder, destination, note), bring to front. Core: New Window, Open in New Window, Open Note in New Window (`App/AppCommands.swift`, `Views/Common/Menus.swift`).
 - [x] `APP-028` **Navigation policy**: Folevi links open in the app; http/https/mailto go to the browser; window.open to Folevi paths opens a new window; mic only… Core: `Host/PageView.swift` Navigation (window.open to Folevi paths opens in the front window, not a new one).
-- [~] `APP-029` **App commands into the frame**: navigate, new-note, menu id, notification actions (reply, read, done, snooze), new-note-with-text (Services/Shortcuts), add-task. Core: navigate, new note, Services text and Quick Add tasks work; no reply, done or snooze from Mac notifications.
+- [x] `APP-029` **App commands into the frame**: navigate, new-note, menu id, notification actions (reply, read, done, snooze), new-note-with-text (Services/Shortcuts), add-task. Core: closed after the grading (see "Since this grading").
 - [x] `APP-030` **⌘K early keys**: a local monitor opens search before the web view eats the keys (QA F04). Core: `App/FoleviCoreApp.swift` a local key monitor opens the palette before the page sees ⌘K.
 - [x] `APP-031` **Live engine views at launch**: session, home, folders.tree, sync.status, places.list, all with snapshot keys. Core: `Model/AppModel.swift` rebind (session, sync, folders.tree, places, counts); no snapshot keys.
 - [ ] `APP-032` **Native text line layout for card previews**. Core: cards draw previews without the engine's `text.layout`.
@@ -333,7 +333,7 @@ Notable findings (all in the first work package at the end):
 - [n/a] `NAV-003` **Note mode of the sidebar**: on a note with tools shown, the sidebar shows WebNoteSidebar instead of the list. Why: replaced by the inspector's Note Info (outline, pages) in `Views/Note/Inspector.swift`.
 - [x] `NAV-004` **Home row**. Core: `Views/Sidebar.swift`.
 - [x] `NAV-005` **Work with Foli AI row**: (only with the `ai` capability);; route /ai. Core: closed after the grading (see "Since this grading").
-- [~] `NAV-006` **Foli DNA row and its saved views**: (only with `graph`). Core: gated on graph; no saved views (graph.views).
+- [x] `NAV-006` **Foli DNA row and its saved views**: (only with `graph`). Core: closed after the grading (see "Since this grading").
 - [x] `NAV-007` **Bookmarks row**: with a disclosure for the first 5 bookmarked notes (they open in a new tab). Core: closed after the grading (see "Since this grading").
 - [x] `NAV-008` **Drafts row with count**. Core: closed after the grading (see "Since this grading").
 - [x] `NAV-009` **All notes row**. Core: `Views/Sidebar.swift`.
@@ -808,7 +808,7 @@ Notable findings (all in the first work package at the end):
 
 - [x] `DNA-001` **Entry points**: sidebar row "Foli DNA" with saved views nested under it (`/graph?view=<id>`), Go > Foli DNA, ⌘K "Go to Foli DNA", note menu "Foli… Core: closed after the grading (see "Since this grading").
 - [x] `DNA-002` **Not available state**: "Foli DNA isn't available here yet" (library on your devices). Core: drawn by the page's GraphView (web.show graph in `Views/Screens/LibraryScreens.swift` WebScreen).
-- [~] `DNA-003` **Route parameters**: `?note=` centre, `?depth=` 1 to 3, `?view=` applies a saved view. Core: Core drops ?note, ?depth and ?view (web.show graph has no parameters).
+- [x] `DNA-003` **Route parameters**: `?note=` centre, `?depth=` 1 to 3, `?view=` applies a saved view. Core: closed after the grading (see "Since this grading").
 - [x] `DNA-004` **Map / List switch**: remembered (`folevi.graph.view`); List shows NOTES and PEOPLE, PROJECTS AND TOPICS as rows, opens notes, "Nothing matches". Core: drawn by the page's GraphView (web.show graph in `Views/Screens/LibraryScreens.swift` WebScreen).
 - [x] `DNA-005` **Find in Foli DNA**: search field, "· N found" in the count, Return glides to the first match. Core: drawn by the page's GraphView (web.show graph in `Views/Screens/LibraryScreens.swift` WebScreen).
 - [x] `DNA-006` **Count line**: "N notes, M more", plus found count. Core: drawn by the page's GraphView (web.show graph in `Views/Screens/LibraryScreens.swift` WebScreen).
@@ -1298,9 +1298,9 @@ Notable findings (all in the first work package at the end):
 - [x] `SYS-015` **FoleviMacShortcuts (AppShortcutsProvider)**: Phrases. Core: `App/Intents.swift` FoleviCoreShortcuts (plus Search Notes).
 - [~] `SYS-016` **Capabilities.ask / answer**: Sends a command with a UUID id to the front main page (opening one if needed, waiting up to 30 s for load) and waits for… Core: `Host/Capabilities.swift` answers commandDone; there is no native ask yet.
 - [x] `SYS-017` **What is indexed**: Every note of every place, archived included. Locked and E2EE notes are never indexed. CSSearchableItem with contentType text. Core: `Host/Capabilities.swift` indexSpotlight (the page leaves locked and encrypted notes out).
-- [~] `SYS-018` **Domains and ids**: Domain `com.folevi.notes.[runTag.]<place>`. Identifier `<place>\u{1F}<noteId>`. indexVersion 2 (a change forces a full reindex).… Core: own index, domain "place:" and "place|note" ids; no stamps or index version.
-- [~] `SYS-019` **Sync protocol with the page**: `spotlightState` returns stamps. `indexSpotlight` takes at most 50 changed items, then `keep` (every id) for pruning, plus… Core: `Host/Capabilities.swift`: items and remove; no stamps or keep pruning.
-- [~] `SYS-020` **Forgetting**: On sign-out or forget-library (`forget(place:)`). Settings "Show notes in Spotlight" off runs `forgetAll`. `prune` runs on switch… Core: shared Places calls Spotlight.forget on sign-out and forget; turning it off clears all; no prune.
+- [x] `SYS-018` **Domains and ids**: Domain `com.folevi.notes.[runTag.]<place>`. Identifier `<place>\u{1F}<noteId>`. indexVersion 2 (a change forces a full reindex).… Core: closed after the grading (see "Since this grading").
+- [x] `SYS-019` **Sync protocol with the page**: `spotlightState` returns stamps. `indexSpotlight` takes at most 50 changed items, then `keep` (every id) for pruning, plus… Core: closed after the grading (see "Since this grading").
+- [x] `SYS-020` **Forgetting**: On sign-out or forget-library (`forget(place:)`). Settings "Show notes in Spotlight" off runs `forgetAll`. `prune` runs on switch… Core: closed after the grading (see "Since this grading").
 - [x] `SYS-021` **Opening a result**: `application(_:continue:)` for CSSearchableItemActionType goes to `open(identifier:)`, which waits for launch. Same place… Core: `App/FoleviCoreApp.swift` onContinue opens the note, switching place when needed.
 - [x] `SYS-022` **quickLook**: Writes the page's file bytes (up to 20 files, 200 MB each) to tmp "Folevi Quick Look/<uuid>" and opens QLPreviewPanel. The web… Core: `Host/Capabilities.swift` quickLook.
 - [x] `SYS-023` **share from the page**: NSSharingServicePicker next to a page rect, a point or the pointer. Objects: a URL, else the text as a file (`fileName`), else… Core: `Host/Capabilities.swift` share.
@@ -1319,9 +1319,9 @@ Notable findings (all in the first work package at the end):
 - [x] `SYS-036` **CallRecorder**: ScreenCaptureKit system audio (`capturesAudio`, `excludesCurrentProcessAudio`, picture discarded) plus AVAudioEngine microphone… Core: `Host/Capabilities.swift` call handlers over the shared CallRecorder.
 - [x] `SYS-037` **Open at login**: `SMAppService.mainApp` register/unregister, only when the setting changes, on a utility queue. Never in Debug, FOLEVI_USER_DATA… Core: shared LoginItem, applied on change (`App/FoleviCoreApp.swift`); Core's default is off.
 - [x] `SYS-038` **Categories and actions**. Core: closed after the grading (see "Since this grading").
-- [~] `SYS-039` **Category mapping**: From the server kind: remind or due goes to reminder; assign or task goes to task; mention, comment or reply with a thread goes… Core: one category for every notification (Open, Mark as Read); no per-kind categories.
-- [~] `SYS-040` **post**: Asks authorization on first use. Subtitle is the place label when there are several places. `threadIdentifier` is `note-<thread>`… Core: `Host/DesktopRouter.swift` CoreNotifications.post (title, body, thread, path); no place subtitle or summary.
-- [~] `SYS-041` **Foreground presentation**: Only reminders (`local-reminder` or the reminder category) show a banner, sound and list; activity goes to the in-app bell. Core: Core posts nothing while it's in front; when shown, every kind is a banner with sound.
+- [x] `SYS-039` **Category mapping**: From the server kind: remind or due goes to reminder; assign or task goes to task; mention, comment or reply with a thread goes… Core: closed after the grading (see "Since this grading").
+- [x] `SYS-040` **post**: Asks authorization on first use. Subtitle is the place label when there are several places. `threadIdentifier` is `note-<thread>`… Core: closed after the grading (see "Since this grading").
+- [x] `SYS-041` **Foreground presentation**: Only reminders (`local-reminder` or the reminder category) show a banner, sound and list; activity goes to the in-app bell. Core: closed after the grading (see "Since this grading").
 - [x] `SYS-042` **Responses**: The default action or "open" runs `Chrome.open(path, place)`, switching place if needed. Other actions send a `notification`… Core: `App/FoleviCoreApp.swift` NotificationDelegate opens the path, switching place (default action only).
 - [x] `SYS-043` **MacAppLock**: `{ lock, lockAfter }` in the support folder. "Ask again" choices: 0, 60, 300, 900, 3600 s. Method: touchID, or none on a Mac… Core: `Host/HostServices.swift` MacAppLock (in defaults, not the support folder).
 - [x] `SYS-044` **Triggers**: Windows open covered at launch. It locks on `NSWorkspace.willSleep`, `sessionDidResignActive` and the `com.apple.screenIsLocked`… Core: closed after the grading (see "Since this grading").
@@ -1594,8 +1594,8 @@ Notable findings (all in the first work package at the end):
 - [x] `BRIDGE-067` **print**. Core: `Host/Capabilities.swift` print (shared Printing).
 - [x] `BRIDGE-068` **share**: `{ title, text, url, fileName, rect | x,y }`, returns `{ shared }`. Core: `Host/Capabilities.swift` share (NSSharingServicePicker at the page's rect or point; text and https URLs, no file).
 - [~] `BRIDGE-069` **setShareTarget**: `{ target: { title, url } }`. Core: `Host/Capabilities.swift` accepts it and does nothing.
-- [~] `BRIDGE-070` **indexSpotlight**: `{ items, keep, remove }`. Core: `Host/Capabilities.swift` indexSpotlight takes items and remove; keep is ignored.
-- [~] `BRIDGE-071` **spotlightState**. Core: `Host/Capabilities.swift` spotlightState returns enabled and place, no stamps.
+- [x] `BRIDGE-070` **indexSpotlight**: `{ items, keep, remove }`. Core: closed after the grading (see "Since this grading").
+- [x] `BRIDGE-071` **spotlightState**. Core: closed after the grading (see "Since this grading").
 - [x] `BRIDGE-072` **clipboardRead**: **clipboardWrite**, **clipboardPaste**. Core: `Host/Capabilities.swift` clipboardRead, clipboardWrite, clipboardPaste (shared Clipboard).
 - [x] `BRIDGE-073` **quickLook**: `{ files: [{ name, data }] }`. Core: `Host/Capabilities.swift` quickLook (temporary copies, QLPreviewPanel).
 - [~] `BRIDGE-074` **commandDone**: `{ id, value }`, answers a native `ask`. Core: `Host/Capabilities.swift` answers commandDone, but nothing native asks yet.

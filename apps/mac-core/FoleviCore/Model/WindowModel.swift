@@ -45,8 +45,9 @@ final class WindowModel: Identifiable {
     var inspectorChat: String?
     /// The folder whose sharing sheet is up.
     var sharingFolder: String?
-    /// Foli DNA of this note: the note the map opens around.
+    /// Foli DNA of this note: the note the map opens around; or a link's query ("note=…&depth=…&view=…").
     var graphCenter: String?
+    var graphQuery: String?
     /// Move or copy to another place (notes, folders).
     var placeMove: PlaceMoveTarget?
     /// Edit > Find > Use Selection for Find: the words the find bar starts with.

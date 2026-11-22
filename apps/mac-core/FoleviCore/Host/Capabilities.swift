@@ -53,7 +53,7 @@ enum Capabilities {
             "share": share,
             "setShareTarget": { _, _ in [:] },
             "indexSpotlight": indexSpotlight,
-            "spotlightState": { router, _ in ["enabled": Spotlight.shared.enabled, "place": router.context.place() ?? ""] },
+            "spotlightState": { router, _ in Spotlight.shared.state(place: router.context.place() ?? "default") },
             "clipboardRead": { _, _ in Clipboard.read() },
             "clipboardWrite": { _, o in try Clipboard.write(o); return [:] },
             "clipboardPaste": { router, _ in ["value": Clipboard.paste(into: try view(router))] },
@@ -110,11 +110,11 @@ enum Capabilities {
         let items = (o["items"] as? [[String: Any]] ?? []).prefix(50).compactMap { d -> Spotlight.Item? in
             guard let id = d["id"] as? String, id.range(of: "^[A-Za-z0-9_-]{1,64}$", options: .regularExpression) != nil else { return nil }
             let text = (d["text"] as? String ?? d["excerpt"] as? String ?? "")
-            return Spotlight.Item(id: id, title: String((d["title"] as? String ?? "").prefix(300)), text: String(text.prefix(4000)), edited: number(d["updatedAt"]).map { Date(timeIntervalSince1970: $0 / 1000) })
+            return Spotlight.Item(id: id, title: String((d["title"] as? String ?? "").prefix(300)), text: String(text.prefix(4000)), edited: number(d["updatedAt"]).map { Date(timeIntervalSince1970: $0 / 1000) }, stamp: String((d["stamp"] as? String ?? "").prefix(600)))
         }
-        await Spotlight.shared.index(Array(items), place: place)
-        let remove = (o["remove"] as? [Any] ?? []).prefix(50_000).compactMap { $0 as? String }
-        if !remove.isEmpty { await Spotlight.shared.remove(remove, place: place) }
+        let remove = Set((o["remove"] as? [Any] ?? []).prefix(50_000).compactMap { $0 as? String })
+        let keep = (o["keep"] as? [Any]).map { Set($0.prefix(200_000).compactMap { $0 as? String }) }
+        await Spotlight.shared.update(Array(items), place: place, keep: keep, remove: remove)
         return [:]
     }
 

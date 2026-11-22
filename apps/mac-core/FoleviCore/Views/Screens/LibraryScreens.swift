@@ -1230,10 +1230,11 @@ struct WebScreen: View {
                 host = p
                 await p.show(web: page)
                 // Foli DNA of this note: the map opens around it (/graph?note=<id>, the engine's `center`).
-                if page == .graph, let center = window.graphCenter {
+                if page == .graph, let query = window.graphQuery ?? window.graphCenter.map({ "note=\($0)" }) {
                     window.graphCenter = nil
+                    window.graphQuery = nil
                     try? await Task.sleep(for: .milliseconds(250))
-                    Events.command(["type": "navigate", "path": "/graph?note=\(center)"], to: p.view)
+                    Events.command(["type": "navigate", "path": "/graph?\(query)"], to: p.view)
                 }
             }
             .onDisappear {

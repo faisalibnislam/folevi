@@ -349,6 +349,11 @@ final class AppModel {
             block = frag.hasPrefix("block-") ? String(frag.dropFirst(6)) : frag.hasPrefix("comment-") ? nil : frag
         }
         if route == "/help" || route.hasPrefix("/help/") { openHelp?(); return }
+        // Foli DNA links keep their settings: ?note= (the map's centre), ?depth=, ?view= (a saved view).
+        if route.hasPrefix("/graph"), let q = route.split(separator: "?", maxSplits: 1).dropFirst().first {
+            let keep = String(q).split(separator: "&").filter { ["note", "depth", "view"].contains($0.split(separator: "=").first.map(String.init) ?? "") }
+            if !keep.isEmpty, let w = newTab ? nil : front { w.graphQuery = keep.joined(separator: "&") }
+        }
         guard let dest = Destination(path: route) else { return }
         open(dest, newTab: newTab)
         if let block, !block.isEmpty, dest.isNote {

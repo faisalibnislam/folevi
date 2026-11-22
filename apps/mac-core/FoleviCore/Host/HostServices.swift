@@ -241,13 +241,59 @@ final class Spotlight {
         let title: String
         let text: String
         let edited: Date?
+        /// What the page made it from: a note whose stamp changed is sent again.
+        var stamp: String = ""
+    }
+
+    /// When what an entry holds changes, every place is indexed again from scratch.
+    static let indexVersion = 2
+    private static let versionKey = "spotlight.indexVersion"
+
+    private func recordsKey(_ place: String) -> String { "spotlight.stamps.\(place)" }
+    private func records(_ place: String) -> [String: String] { Paths.defaults.dictionary(forKey: recordsKey(place)) as? [String: String] ?? [:] }
+
+    /// A new index version: everything comes out, and the pages hand every note over again.
+    func checkVersion() {
+        guard Paths.defaults.integer(forKey: Self.versionKey) != Self.indexVersion else { return }
+        Task { try? await index.deleteAllSearchableItems() }
+        for key in Paths.defaults.dictionaryRepresentation().keys where key.hasPrefix("spotlight.stamps.") { Paths.defaults.removeObject(forKey: key) }
+        Paths.defaults.set(Self.indexVersion, forKey: Self.versionKey)
+    }
+
+    /// For the page (spotlightState): whether it's on, and the stamp of each note held for the place.
+    func state(place: String) -> [String: Any] {
+        checkVersion()
+        guard enabled else { return ["enabled": false, "known": [String: String](), "place": place] }
+        return ["enabled": true, "known": records(place), "place": place]
+    }
+
+    /// The notes leaving: those held that `keep` (every note of the place) doesn't name, and those in `remove`,
+    /// unless they're going in now.
+    nonisolated static func leaving(held: Set<String>, adding: Set<String>, keep: Set<String>?, remove: Set<String>) -> Set<String> {
+        let unkept = keep.map { held.subtracting($0) } ?? []
+        return unkept.union(remove).subtracting(adding)
+    }
+
+    /// These notes go in; with `keep`, the place's others come out; those in `remove` come out too.
+    func update(_ items: [Item], place: String, keep: Set<String>?, remove: Set<String>) async {
+        guard enabled else { return }
+        await index(items, place: place)
+        let gone = Self.leaving(held: Set(records(place).keys), adding: Set(items.map(\.id)), keep: keep, remove: remove)
+        if !gone.isEmpty { await self.remove(Array(gone), place: place) }
+        var held = records(place)
+        for i in items { held[i.id] = i.stamp }
+        for id in gone { held[id] = nil }
+        Paths.defaults.set(held, forKey: recordsKey(place))
     }
 
     var enabled: Bool {
         get { Paths.defaults.object(forKey: "folevi.spotlight") as? Bool ?? true }
         set {
             Paths.defaults.set(newValue, forKey: "folevi.spotlight")
-            if !newValue { Task { try? await index.deleteAllSearchableItems() } }
+            if !newValue {
+                Task { try? await index.deleteAllSearchableItems() }
+                for key in Paths.defaults.dictionaryRepresentation().keys where key.hasPrefix("spotlight.stamps.") { Paths.defaults.removeObject(forKey: key) }
+            }
         }
     }
 
@@ -274,6 +320,7 @@ final class Spotlight {
     /// A place's notes leave Spotlight (signed out, the library forgotten).
     func forget(place: String) async {
         try? await index.deleteSearchableItems(withDomainIdentifiers: [Self.domainPrefix + place])
+        Paths.defaults.removeObject(forKey: recordsKey(place))
     }
 
     /// The place and note of a Spotlight result's identifier.

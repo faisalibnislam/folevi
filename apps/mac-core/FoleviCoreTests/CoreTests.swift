@@ -281,3 +281,23 @@ struct SettingsSearchTests {
         #expect(TimeZonePicker.offset("UTC") == "UTC+0")
     }
 }
+
+@Suite("Spotlight pruning")
+struct SpotlightPruneTests {
+    @Test func keepAndRemove() {
+        let gone = Spotlight.leaving(held: ["a", "b", "c"], adding: ["c"], keep: ["a", "c"], remove: ["a"])
+        #expect(gone == ["a", "b"])
+        #expect(Spotlight.leaving(held: ["a"], adding: [], keep: nil, remove: []).isEmpty)
+    }
+}
+
+@Suite("Notification categories")
+struct NotificationCategoryTests {
+    @Test func kindsPickActions() {
+        #expect(CoreNotifications.category(for: "reminder", hasThread: false) == "folevi.reminder")
+        #expect(CoreNotifications.category(for: "task_assigned", hasThread: false) == "folevi.reminder" || CoreNotifications.category(for: "task_assigned", hasThread: false) == "folevi.task")
+        #expect(CoreNotifications.category(for: "mention", hasThread: true) == "folevi.comment")
+        #expect(CoreNotifications.category(for: "mention", hasThread: false) == "folevi.plain")
+        #expect(CoreNotifications.category(for: "share", hasThread: false) == "folevi.plain")
+    }
+}

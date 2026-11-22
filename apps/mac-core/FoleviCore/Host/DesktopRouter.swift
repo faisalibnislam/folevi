@@ -83,11 +83,12 @@ final class DesktopRouter {
             return [:]
 
         case "notify":
-            // While Core is in front, its Inbox shows it.
-            guard DesktopSettings.current.notifications, !NSApp.isActive else { return [:] }
+            // While Core is in front only reminders show (willPresent); activity is in Notifications.
+            guard DesktopSettings.current.notifications else { return [:] }
             let title = Self.text(options["title"], 200)
             guard !title.isEmpty else { return [:] }
-            await CoreNotifications.post(id: Self.text(options["id"], 120), title: title, body: Self.text(options["body"], 400), path: Self.path(options["path"]), thread: Self.text(options["thread"], 80), place: context.place())
+            await CoreNotifications.post(id: Self.text(options["id"], 120), title: title, body: Self.text(options["body"], 400), path: Self.path(options["path"]), thread: Self.text(options["thread"], 80), place: context.place(),
+                                         kind: Self.text(options["kind"], 40), threadTitle: Self.text(options["threadTitle"], 120), commentThread: Self.text(options["commentThread"], 80))
             return [:]
 
         case "setRecent":
@@ -213,14 +214,48 @@ enum CoreNotifications {
         _ = try? await UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge])
     }
 
-    static func post(id: String, title: String, body: String, path: String?, thread: String, place: String?) async {
+    /// Which actions a server kind gets: reminders (complete, snooze), tasks (open, complete), comments with a
+    /// thread (reply, mark as read), the rest (mark as read).
+    static func category(for kind: String, hasThread: Bool) -> String {
+        let k = kind.lowercased()
+        if k.contains("remind") || k.contains("due") { return "folevi.reminder" }
+        if k.contains("assign") || k.contains("task") { return "folevi.task" }
+        if (k.contains("mention") || k.contains("comment") || k.contains("reply")) && hasThread { return "folevi.comment" }
+        return "folevi.plain"
+    }
+
+    static var categories: Set<UNNotificationCategory> {
+        let reply = UNTextInputNotificationAction(identifier: "reply", title: "Reply", options: [], textInputButtonTitle: "Reply", textInputPlaceholder: "Reply")
+        let read = UNNotificationAction(identifier: "read", title: "Mark as Read", options: [])
+        let open = UNNotificationAction(identifier: "open", title: "Open", options: [.foreground])
+        let complete = UNNotificationAction(identifier: "complete", title: "Complete", options: [])
+        let hour = UNNotificationAction(identifier: "snooze-hour", title: "Snooze 1 Hour", options: [])
+        let evening = UNNotificationAction(identifier: "snooze-evening", title: "Snooze Until This Evening", options: [])
+        let tomorrow = UNNotificationAction(identifier: "snooze-tomorrow", title: "Snooze Until Tomorrow", options: [])
+        return [
+            UNNotificationCategory(identifier: "folevi.comment", actions: [reply, read], intentIdentifiers: []),
+            UNNotificationCategory(identifier: "folevi.task", actions: [open, complete], intentIdentifiers: []),
+            UNNotificationCategory(identifier: "folevi.reminder", actions: [complete, hour, evening, tomorrow], intentIdentifiers: []),
+            UNNotificationCategory(identifier: "folevi.plain", actions: [read], intentIdentifiers: []),
+        ]
+    }
+
+    @MainActor
+    static func post(id: String, title: String, body: String, path: String?, thread: String, place: String?, kind: String = "", threadTitle: String = "", commentThread: String = "") async {
         let content = UNMutableNotificationContent()
         content.title = title
         content.body = body
         content.sound = .default
-        if !thread.isEmpty { content.threadIdentifier = thread }
-        content.userInfo = ["path": path ?? "/inbox", "place": place ?? ""]
-        content.categoryIdentifier = "folevi.notification"
+        content.threadIdentifier = thread.isEmpty ? "folevi" : "note-\(thread)"
+        if !threadTitle.isEmpty { content.summaryArgument = threadTitle }
+        // Several places: which one it's from.
+        if let places = AppModel.shared.places.value?.places, places.count > 1, let p = places.first(where: { $0.id == place }) {
+            content.subtitle = p.kind == .library ? "On This Mac" : p.name
+        }
+        var info: [String: Any] = ["path": path ?? "/inbox", "place": place ?? "", "kind": kind, "id": id]
+        if !commentThread.isEmpty { info["commentThread"] = commentThread }
+        content.userInfo = info
+        content.categoryIdentifier = category(for: kind, hasThread: !commentThread.isEmpty)
         let request = UNNotificationRequest(identifier: id.isEmpty ? UUID().uuidString : id, content: content, trigger: nil)
         try? await UNUserNotificationCenter.current().add(request)
     }

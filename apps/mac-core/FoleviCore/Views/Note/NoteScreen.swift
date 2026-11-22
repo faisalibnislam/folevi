@@ -25,13 +25,13 @@ struct NoteScreen: View {
                         .allowsHitTesting(false)
                 }
             }
-            .animation(.easeOut(duration: 0.15), value: window.noteReady)
+            .coreAnimation(Motion.fade, value: window.noteReady)
         }
         .background(Color(nsColor: .textBackgroundColor))
         .sheet(isPresented: Binding(get: { window.sharingNote == id }, set: { if !$0 { window.sharingNote = nil } })) { NoteSharingSheet(noteId: id) }
         .onChange(of: window.editorState?.focus) { _, on in
             // Focus Mode: the page hides its own chrome; Core hides the sidebar and the inspector with it.
-            withAnimation(.snappy) {
+            Motion.run(Motion.panel) {
                 window.columnVisibility = on == true ? .detailOnly : .all
                 if on == true { window.inspectorShown = false }
             }
@@ -140,7 +140,7 @@ struct NoteToolbar: ToolbarContent {
         }
         ToolbarItem(placement: .primaryAction) {
             Button {
-                withAnimation(.snappy) {
+                Motion.run(Motion.panel) {
                     window.inspectorTab = .info
                     window.inspectorShown.toggle()
                 }

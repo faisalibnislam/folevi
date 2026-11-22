@@ -186,21 +186,21 @@ struct Carousel<Content: View>: View {
         }
         .overlay(alignment: .leading) { if hovering && offset > 4 { arrow("chevron.left", "Scroll \(label) back", by: -1) } }
         .overlay(alignment: .trailing) { if hovering && offset < maxOffset - 4 { arrow("chevron.right", "Scroll \(label) forward", by: 1) } }
-        .onHover { h in withAnimation(.easeOut(duration: 0.15)) { hovering = h } }
+        .onHover { h in Motion.run(Motion.hover) { hovering = h } }
     }
 
     private func arrow(_ symbol: String, _ help: String, by direction: CGFloat) -> some View {
         Button {
-            withAnimation(.smooth) { position.scrollTo(x: min(max(0, offset + direction * width * 0.8), maxOffset)) }
+            Motion.run(Motion.scroll) { position.scrollTo(x: min(max(0, offset + direction * width * 0.8), maxOffset)) }
         } label: {
             Image(systemName: symbol).font(.body.weight(.semibold)).frame(width: 30, height: 30)
         }
         .buttonStyle(.hoverIcon)
         .glassEffect(.regular.interactive(), in: .circle)
+        .glassArrival()
         .help(help)
         .accessibilityLabel(help)
         .padding(.horizontal, 4)
-        .transition(.opacity)
     }
 }
 
@@ -256,14 +256,15 @@ struct HomeFolderCard: View {
                 }
                 .menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize()
                 .glassEffect(.regular.interactive(), in: .circle)
+                .glassArrival()
                 .help("Folder Options")
                 .padding(.top, 54).padding(.trailing, 8)
             }
         }
-        .onHover { hoveringCard = $0 }
+        .onHover { h in Motion.run(Motion.hover) { hoveringCard = h } }
         .onMiddleClick { app.open(.folder(folder.id), newTab: true, background: true) }
         .scaleEffect(zone == .inside ? 1.04 : 1)
-        .animation(.snappy, value: zone)
+        .coreAnimation(Motion.tap, value: zone)
         .task(id: zone) {
             // Spring-loading: a drag that rests on the folder for 0.6 s opens it.
             guard zone == .inside else { return }
@@ -499,7 +500,7 @@ struct HoverHighlight: ViewModifier {
         content
             .brightness(hovered ? -0.03 : 0)
             .onHover { hovered = $0 }
-            .animation(.easeOut(duration: 0.12), value: hovered)
+            .coreAnimation(Motion.hover, value: hovered)
     }
 }
 

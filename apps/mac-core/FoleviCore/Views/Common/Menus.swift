@@ -148,7 +148,7 @@ struct FolderMenu: View {
         if app.session.value?.capabilities.ai != false {
             Button("Ask Foli AI About This Folder") {
                 window.go(.folder(folder.id))
-                withAnimation(.snappy) { window.askShown = true }
+                Motion.run(Motion.panel) { window.askShown = true }
             }
         }
         Divider()

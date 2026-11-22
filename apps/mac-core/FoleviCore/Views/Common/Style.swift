@@ -188,8 +188,7 @@ struct InkPillStyle: ButtonStyle {
             .padding(.horizontal, 14)
             .padding(.vertical, 6)
             .background(Capsule().fill(Color.foleviInk.opacity(configuration.isPressed ? 0.8 : hovered ? 0.9 : 1)))
-            .scaleEffect(configuration.isPressed ? 0.97 : 1)
-            .animation(.spring(duration: 0.2, bounce: 0.3), value: configuration.isPressed)
+            .pressFeedback(configuration.isPressed)
             .onHover { hovered = $0 }
             .contentShape(Capsule())
     }

@@ -65,8 +65,16 @@ struct MainWindow: View {
                         .inspectorColumnWidth(min: 280, ideal: 340, max: 520)
                 }
                 .overlay(alignment: .bottom) { ToastStack().padding(.bottom, window.current.isNote ? 78 : 0) }
-                .overlay(alignment: .bottomTrailing) { AskOverlay(window: window) }
-                .overlay { if window.paletteShown { CommandPalette(window: window) } }
+                .overlay(alignment: .bottomTrailing) {
+                    // A view that stays carries the animation, so every way of opening or closing it (⌘J, Esc, the
+                    // button, a menu) animates alike.
+                    GlassEffectContainer { ZStack(alignment: .bottomTrailing) { AskOverlay(window: window) } }
+                        .coreAnimation(Motion.panel, value: window.askShown)
+                }
+                .overlay {
+                    ZStack { if window.paletteShown { CommandPalette(window: window) } }
+                        .coreAnimation(Motion.panel, value: window.paletteShown)
+                }
                 .sheet(item: $window.folderPick) { FolderPickerSheet(target: $0) }
                 .sheet(item: $window.placeMove) { PlaceMoveSheet(notes: $0.notes, folders: $0.folders) }
                 .sheet(item: $window.colorPick) { FolderColorSheet(target: $0) }
@@ -77,7 +85,7 @@ struct MainWindow: View {
             }
         }
         .overlay { if MacAppLock.shared.isCovered { LockCover() } }
-        .animation(.easeOut(duration: 0.2), value: app.gate?.gate)
+        .coreAnimation(Motion.fade, value: app.gate?.gate)
         .tint(.foleviInk)
         .focusedSceneValue(\.window, window)
         .background(WindowAccessor(model: window, asTab: seed?.asTab == true, keepsOpener: seed?.asTab == true && seed?.start.isNote == true, background: seed?.background == true))
@@ -227,6 +235,8 @@ struct ToastStack: View {
     private var app: AppModel { .shared }
 
     var body: some View {
+        // One glass container (so each toast materializes), with no merge distance: stacked toasts stay apart.
+        GlassEffectContainer(spacing: 0) {
         VStack(spacing: 8) {
             ForEach(app.toasts) { toast in
                 HStack(spacing: 12) {
@@ -249,11 +259,12 @@ struct ToastStack: View {
                 .padding(.horizontal, 16)
                 .padding(.vertical, 10)
                 .glassEffect(.regular, in: .capsule)
-                .transition(.move(edge: .bottom).combined(with: .opacity))
+                .glassArrival(from: .bottom)
             }
         }
+        }
         .padding(.bottom, 18)
-        .animation(.snappy, value: app.toasts)
+        .coreAnimation(Motion.panel, value: app.toasts)
     }
 }
 
@@ -341,11 +352,12 @@ struct AskOverlay: View {
 
     var body: some View {
         if window.askShown {
-            AskPanel(window: window).transition(.scale(scale: 0.9, anchor: .bottomTrailing).combined(with: .opacity))
+            AskPanel(window: window).motionTransition(.scale(scale: 0.92, anchor: .bottomTrailing).combined(with: .opacity))
         } else if !window.current.isNote, !window.current.isFoliAI {
-            Button { withAnimation(.snappy) { window.askShown = true } } label: { AiMarkGlyph(size: 22).padding(12) }
+            Button { Motion.run(Motion.panel) { window.askShown = true } } label: { AiMarkGlyph(size: 22).padding(12) }
                 .buttonStyle(.plain)
                 .glassEffect(.regular.interactive(), in: .circle)
+                .glassArrival()
                 .help("Ask Foli AI (⌘J)")
                 .accessibilityLabel("Ask Foli AI")
                 .padding(20)

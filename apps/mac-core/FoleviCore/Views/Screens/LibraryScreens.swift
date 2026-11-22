@@ -342,7 +342,7 @@ struct SearchScreen: View {
                     .padding(.horizontal, 16)
                     .padding(.vertical, 10)
             }
-            .onChange(of: picked) { if let picked { withAnimation(.snappy) { proxy.scrollTo(picked) } } }
+            .onChange(of: picked) { if let picked { Motion.run(Motion.scroll) { proxy.scrollTo(picked) } } }
         }
     }
 
@@ -980,7 +980,7 @@ struct FoldersScreen: View {
                 Button { newFolder = true } label: { Label("New Folder", coreSymbol: "folder.badge.plus") }.help("New Folder (⌃⌘N)")
             }
         }
-        .overlay(alignment: .bottom) { selectionBar }
+        .overlay(alignment: .bottom) { GlassEffectContainer { ZStack { selectionBar } }.coreAnimation(Motion.panel, value: selection.isEmpty) }
         .sheet(isPresented: $newFolder) {
             NameSheet(title: "New Folder", initial: "", action: "Create") { name in
                 app.perform { _ = try await $0.command(Commands.FolderCreate(FolderCreateArgs(space: nil, name: name, parentId: parent, color: nil))) }
@@ -1072,6 +1072,7 @@ struct FoldersScreen: View {
             .buttonStyle(.borderless)
             .padding(.horizontal, 18).padding(.vertical, 10)
             .glassEffect(.regular, in: .capsule)
+            .glassArrival(from: .bottom)
             .padding(.bottom, 16)
         }
     }

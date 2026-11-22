@@ -72,7 +72,7 @@ struct HoverPlainButtonStyle: ButtonStyle {
                 }
                 .opacity(configuration.isPressed ? 0.6 : 1)
                 .onHover { hovering = $0 }
-                .animation(.easeOut(duration: 0.12), value: hovering)
+                .coreAnimation(Motion.hover, value: hovering)
         }
     }
 }
@@ -114,4 +114,92 @@ extension View {
     func onScreen(_ window: WindowModel, _ changed: @escaping (Bool) -> Void) -> some View {
         modifier(OnScreen(window: window, changed: changed))
     }
+}
+
+/// Core's motion, named once (the owner: consistent timing everywhere). Bounce is earned by momentum: what a tap
+/// opens arrives critically damped; only a drag release may overshoot. Reduce Motion swaps each for a short
+/// fade-speed ease (the system tones down its own motion, never the app's).
+enum Motion {
+    /// Panels, popovers drawn by Core, the Ask panel, toasts, selection bars, the inspector, Focus Mode.
+    static let panel: Animation = .smooth(duration: 0.36)
+    /// Toggles, selection, a drop zone lighting up: small state changes from a click.
+    static let tap: Animation = .smooth(duration: 0.28)
+    /// A press dipping and coming back (no bounce: nothing was thrown).
+    static let press: Animation = .spring(duration: 0.18, bounce: 0)
+    /// A drag released with momentum: the one place a little overshoot belongs.
+    static let release: Animation = .spring(duration: 0.34, bounce: 0.15)
+    /// Hover fills and hover-revealed controls.
+    static let hover: Animation = .easeOut(duration: 0.12)
+    /// Programmatic scrolling (Jump to Latest, carousel arrows, the keyboard's card).
+    static let scroll: Animation = .smooth(duration: 0.32)
+    /// A content swap inside a view that stays (a placeholder giving way, a layout switch).
+    static let fade: Animation = .easeOut(duration: 0.18)
+    /// What every animation becomes with Reduce Motion on.
+    static let reduced: Animation = .easeOut(duration: 0.12)
+
+    /// Reduce Motion, for code outside a view (models, menu commands).
+    @MainActor static var reduce: Bool { NSWorkspace.shared.accessibilityDisplayShouldReduceMotion }
+
+    static func pick(_ a: Animation, reduce: Bool) -> Animation { reduce ? reduced : a }
+
+    /// `withAnimation` with Core's named motion and its Reduce Motion substitute.
+    @MainActor @discardableResult
+    static func run<R>(_ a: Animation, _ body: () throws -> R) rethrows -> R {
+        try withAnimation(pick(a, reduce: reduce), body)
+    }
+}
+
+/// `.animation(_:value:)` with the Reduce Motion substitute.
+private struct CoreAnimation<V: Equatable>: ViewModifier {
+    let animation: Animation
+    let value: V
+    @Environment(\.accessibilityReduceMotion) private var reduce
+    func body(content: Content) -> some View { content.animation(Motion.pick(animation, reduce: reduce), value: value) }
+}
+
+/// A press: a small dip in scale, or with Reduce Motion a dim instead (the feedback stays, the movement goes).
+private struct PressFeedback: ViewModifier {
+    let pressed: Bool
+    var scale: CGFloat = 0.97
+    @Environment(\.accessibilityReduceMotion) private var reduce
+    func body(content: Content) -> some View {
+        content
+            .scaleEffect(pressed && !reduce ? scale : 1)
+            .opacity(pressed && reduce ? 0.8 : 1)
+            .animation(Motion.pick(Motion.press, reduce: reduce), value: pressed)
+    }
+}
+
+/// A transition that moves with the motion setting: `motion` normally, a plain fade with Reduce Motion.
+private struct MotionTransition: ViewModifier {
+    let motion: AnyTransition
+    @Environment(\.accessibilityReduceMotion) private var reduce
+    func body(content: Content) -> some View { content.transition(reduce ? .opacity : motion) }
+}
+
+/// A floating glass surface (a toast, a selection bar, a hover-revealed control) arriving and leaving: the glass
+/// materializes rather than fading (Liquid Glass never animates its opacity), and the surface slides from
+/// `edge` unless Reduce Motion is on.
+private struct GlassArrival: ViewModifier {
+    let edge: Edge?
+    @Environment(\.accessibilityReduceMotion) private var reduce
+    func body(content: Content) -> some View {
+        content
+            .glassEffectTransition(.materialize)
+            .transition(edge.map { reduce ? AnyTransition.identity : .move(edge: $0) } ?? .identity)
+    }
+}
+
+extension View {
+    func coreAnimation<V: Equatable>(_ animation: Animation, value: V) -> some View {
+        modifier(CoreAnimation(animation: animation, value: value))
+    }
+
+    func pressFeedback(_ pressed: Bool, scale: CGFloat = 0.97) -> some View {
+        modifier(PressFeedback(pressed: pressed, scale: scale))
+    }
+
+    func motionTransition(_ t: AnyTransition) -> some View { modifier(MotionTransition(motion: t)) }
+
+    func glassArrival(from edge: Edge? = nil) -> some View { modifier(GlassArrival(edge: edge)) }
 }

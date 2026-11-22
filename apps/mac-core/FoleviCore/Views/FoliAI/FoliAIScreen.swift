@@ -187,7 +187,7 @@ struct ChatView: View {
             }
             .overlay(alignment: .bottom) {
                 if !atBottom && !messageList.isEmpty {
-                    Button { withAnimation(.snappy) { proxy.scrollTo("bottom", anchor: .bottom) } } label: { Label("Jump to Latest", coreSymbol: "arrow.down") }
+                    Button { Motion.run(Motion.scroll) { proxy.scrollTo("bottom", anchor: .bottom) } } label: { Label("Jump to Latest", coreSymbol: "arrow.down") }
                         .buttonStyle(.hoverPlain)
                         .padding(.horizontal, 12).padding(.vertical, 6)
                         .glassEffect(.regular.interactive(), in: .capsule)
@@ -823,7 +823,7 @@ struct AskPanel: View {
                     window.askShown = false
                     window.go(.foliAI(id))
                 } label: { Image(systemName: "arrow.up.left.and.arrow.down.right") }.help("Open in Full View")
-                Button { withAnimation(.snappy) { window.askShown = false } } label: { Image(systemName: "xmark") }
+                Button { Motion.run(Motion.panel) { window.askShown = false } } label: { Image(systemName: "xmark") }
                     .help("Close").keyboardShortcut(.cancelAction)
             }
             .buttonStyle(.borderless)

@@ -214,7 +214,7 @@ struct AppCommands: SwiftUI.Commands {
             Button("Foli AI") { window?.select(.foliAI(nil)) }.keyboardShortcut("j", modifiers: [.command, .shift])
             Button("Ask Foli AI") {
                 guard let window else { return }
-                if window.current.isNote { window.editor(EditorCommands.Ai(AiArgs(action: .open, prompt: nil))) } else { withAnimation(.snappy) { window.askShown.toggle() } }
+                if window.current.isNote { window.editor(EditorCommands.Ai(AiArgs(action: .open, prompt: nil))) } else { Motion.run(Motion.panel) { window.askShown.toggle() } }
             }
             .keyboardShortcut("j")
             .disabled(app.session.value?.capabilities.ai == false)

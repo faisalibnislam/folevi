@@ -394,7 +394,7 @@ struct CalendarScreen: View {
             .onKeyPress(.downArrow) { step(days: 7); return .handled }
             dayDetail.frame(minWidth: 250, idealWidth: 300, maxWidth: 380)
         }
-        .animation(.easeOut(duration: 0.18), value: layout)
+        .coreAnimation(Motion.fade, value: layout)
         .onAppear {
             if let month, let d = try? Date(month + "-01", strategy: CoreDates.dayFormat) { anchor = d; selected = d }
             bind()

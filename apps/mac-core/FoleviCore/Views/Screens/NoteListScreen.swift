@@ -172,7 +172,7 @@ struct NoteListScreen: View {
             return .handled
         }
         .onDeleteCommand { trashSelection() }
-        .overlay(alignment: .bottom) { selectionBar }
+        .overlay(alignment: .bottom) { GlassEffectContainer { ZStack { selectionBar } }.coreAnimation(Motion.panel, value: selection.isEmpty) }
     }
 
     /// With more than one note selected: what every one of them can take, in a glass bar at the foot.
@@ -210,8 +210,8 @@ struct NoteListScreen: View {
             .padding(.horizontal, 18)
             .padding(.vertical, 10)
             .glassEffect(.regular, in: .capsule)
+            .glassArrival(from: .bottom)
             .padding(.bottom, 16)
-            .transition(.move(edge: .bottom).combined(with: .opacity))
         }
     }
 
@@ -267,7 +267,10 @@ struct NoteListScreen: View {
             selection = Set(shownRows.map(\.id))
             return .handled
         }
-        .overlay(alignment: .bottom) { selectionBar }
+        .overlay(alignment: .bottom) {
+            // (The animation lives on a view that stays, so the bar's leaving animates too.)
+            GlassEffectContainer { ZStack { selectionBar } }.coreAnimation(Motion.panel, value: selection.isEmpty)
+        }
         .onKeyPress(.escape) { if selection.isEmpty { return .ignored }; selection.removeAll(); return .handled }
         }
     }
@@ -295,7 +298,7 @@ struct NoteListScreen: View {
         }
         keyCard = rows[next].id
         window.prepare(rows[next].id)
-        withAnimation(.easeOut(duration: 0.15)) { proxy.scrollTo(rows[next].id) }
+        Motion.run(Motion.scroll) { proxy.scrollTo(rows[next].id) }
         return .handled
     }
 
@@ -594,8 +597,7 @@ struct CardPressStyle: ButtonStyle {
 
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .scaleEffect(configuration.isPressed ? 0.97 : 1)
-            .animation(.spring(duration: 0.25, bounce: 0.3), value: configuration.isPressed)
+            .pressFeedback(configuration.isPressed)
             .onChange(of: configuration.isPressed) { _, down in if down { onPress?() } }
     }
 }

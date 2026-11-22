@@ -64,6 +64,7 @@ struct CommandPalette: View {
             }
             .frame(width: 640)
             .glassEffect(.regular, in: .rect(cornerRadius: 18))
+            .glassArrival()
             .shadow(color: .black.opacity(0.18), radius: 30, y: 12)
             .padding(.top, 80)
         }
@@ -258,7 +259,7 @@ struct CommandPalette: View {
         case .place(let d):
             if newTab { app.open(d, newTab: true) } else { window.go(d) }
         case .ask:
-            withAnimation(.snappy) { window.askShown = true }
+            Motion.run(Motion.panel) { window.askShown = true }
         case .command(let c):
             switch c {
             case "newNote": NoteActions.newNote(app: app, window: window)

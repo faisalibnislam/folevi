@@ -302,7 +302,7 @@ struct GateScreen: View {
     private var libraryPassphrase: some View {
         GroupBox {
             VStack(alignment: .leading, spacing: 12) {
-                Toggle(isOn: $encrypt.animation(.snappy)) {
+                Toggle(isOn: $encrypt.animation(Motion.pick(Motion.tap, reduce: Motion.reduce))) {
                     Label {
                         VStack(alignment: .leading, spacing: 2) {
                             Text("Encrypt with a passphrase").font(.headline)

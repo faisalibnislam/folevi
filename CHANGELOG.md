@@ -4,6 +4,21 @@ Every Folevi release, newest first, written by `node scripts/version.mjs` from `
 
 Versions are MAJOR.UPDATE.PATCH, PATCH at least two digits: a Major release (2.0.00), a Big update (1.1.05 after 1.0.05) or a Small update (1.0.06 after 1.0.05).
 
+## Version 1.5.64: Small update
+
+Released 2026-11-22 08:28:24+06:00 (build 79, tag v1.5.64)
+
+Smoother scrolling through folders and notes on the Mac, and All folders on the iPhone opens the right screen.
+
+### Improved
+
+- Folder cards scroll from a picture, so a large folder grid and Home scroll with far fewer dropped frames on the Mac.
+- Note card shadows are drawn once and shared, so All Notes on the Mac drops about half as many frames while scrolling.
+
+### Fixed
+
+- On the iPhone, Home's Folders menu > All Folders opens the folders grid instead of All Notes.
+
 ## Version 1.5.63: Small update
 
 Released 2026-11-21 15:28:49+06:00 (build 78, tag v1.5.63)

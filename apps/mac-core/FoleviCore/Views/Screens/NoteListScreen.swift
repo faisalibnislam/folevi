@@ -155,6 +155,12 @@ struct NoteListScreen: View {
                     Button { app.perform { _ = try await $0.command(Commands.NoteStar(NoteStarArgs(ids: notes, starred: !allStarred))) } } label: { Label(allStarred ? "Unstar" : "Star", systemImage: allStarred ? "bookmark.slash" : "bookmark") }
                     Button { window.pickFolder(.moveNotes, notes) } label: { Label("Move", systemImage: "folder") }
                     Button { window.pickFolder(.copyNotes, notes) } label: { Label("Copy To", systemImage: "doc.on.doc") }
+                    if let tags = app.tree.value?.tags, !tags.isEmpty {
+                        Menu {
+                            ForEach(tags, id: \.id) { t in Button("#" + t.name) { addTag(t.id, to: notes) } }
+                        } label: { Label("Add Tag", systemImage: "number") }
+                        .fixedSize()
+                    }
                     Button {
                         app.perform { _ = try await $0.command(Commands.NoteArchive(NoteArchiveArgs(ids: notes, archived: kind != .archive))) }
                         selection.removeAll()
@@ -260,9 +266,32 @@ struct NoteListScreen: View {
         selection.removeAll()
     }
 
+    /// Adds a tag to several notes at once (graph.tag keeps each note's other tags).
+    private func addTag(_ tag: String, to notes: [String]) {
+        let rows = list.rows.filter { notes.contains($0.id) }
+        let args = GraphTagArgs(notes: rows.map { GraphTagNote(id: $0.id, tagIds: $0.tags.map(\.id)) }, tagId: tag)
+        app.perform { client in
+            let r = try await client.command(Commands.GraphTag(args))
+            app.toast(r.tagged == 1 ? "Tagged 1 note" : "Tagged \(r.tagged) notes")
+        }
+    }
+
+    @ViewBuilder private func addTagMenu(_ notes: [String]) -> some View {
+        if let tags = app.tree.value?.tags, !tags.isEmpty {
+            Menu("Add Tag") { ForEach(tags, id: \.id) { t in Button("#" + t.name) { addTag(t.id, to: notes) } } }
+        }
+    }
+
     @ViewBuilder private func selectionMenu(_ ids: Set<String>) -> some View {
         let notes = Array(ids.filter { !$0.hasPrefix("folder:") })
-        if notes.count > 1 {
+        let folders = ids.filter { $0.hasPrefix("folder:") }.map { String($0.dropFirst(7)) }
+        if !notes.isEmpty && !folders.isEmpty && kind != .trash {
+            Button("Move \(notes.count + folders.count) Items To…") { window.pickFolder(.moveNotes, notes, folders: folders) }
+            Button("Open \(notes.count + folders.count) in New Tabs") {
+                for f in folders { app.open(.folder(f), newTab: true, background: true) }
+                openInTabs(notes)
+            }
+        } else if notes.count > 1 {
             Button("Open \(notes.count) Notes in New Tabs") { openInTabs(notes) }
             Divider()
             if kind == .trash {
@@ -274,6 +303,7 @@ struct NoteListScreen: View {
                 Menu("Move To") { MoveTargets(ids: notes) }
                 Button("Move To Folder…") { window.pickFolder(.moveNotes, notes) }
                 Button("Copy To…") { window.pickFolder(.copyNotes, notes) }
+                addTagMenu(notes)
                 Button(kind == .archive ? "Unarchive" : "Archive") {
                     app.perform { _ = try await $0.command(Commands.NoteArchive(NoteArchiveArgs(ids: notes, archived: kind != .archive))) }
                 }
@@ -281,6 +311,8 @@ struct NoteListScreen: View {
             }
         } else if let id = notes.first, let row = list.rows.first(where: { $0.id == id }) {
             NoteMenu(row: row, window: window)
+        } else if ids.isEmpty {
+            AnywhereMenu(window: window)
         }
     }
 
@@ -445,6 +477,7 @@ struct NoteCardButton: View {
         .buttonStyle(CardPressStyle())
         .onHover { hovered = $0 }
         .draggable(NoteDrag(id: row.id, title: row.title))
+        .onMiddleClick { AppModel.shared.open(.note(row.id), newTab: true, background: true) }
         .contextMenu {
             NoteMenu(row: row, window: window)
             if fromRecent {

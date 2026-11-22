@@ -171,7 +171,7 @@ struct NoteMoreMenu: View {
                 let archived = window.noteMeta?.archived == true
                 app.perform { _ = try await $0.command(Commands.NoteArchive(NoteArchiveArgs(ids: [id], archived: !archived))) }
             }
-            Button("Foli DNA of This Note") { window.go(.graph) }
+            Button("Foli DNA of This Note") { window.graphCenter = id; window.go(.graph) }
         }
         Divider()
         Button("Find in Note") { window.findShown = true }

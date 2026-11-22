@@ -72,6 +72,18 @@ enum DebugCommands {
                 done(["value": true])
             }
         }
+        MacEval.commands["dna"] = { req, done in
+            MainActor.assumeIsolated {
+                guard let w = AppModel.shared.front else { done(["value": false]); return }
+                Task { @MainActor in
+                    var note = req["note"] as? String ?? ""
+                    if note.isEmpty, let r = try? await AppModel.shared.client?.query(Views.RecentViewed(RecentViewedArgs(space: nil, limit: 1))) { note = r.rows.first?.id ?? "" }
+                    w.graphCenter = note
+                    w.go(.graph)
+                    done(["value": note])
+                }
+            }
+        }
         MacEval.commands["ask"] = { _, done in
             MainActor.assumeIsolated {
                 AppModel.shared.front?.askShown.toggle()

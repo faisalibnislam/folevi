@@ -62,6 +62,7 @@ struct HomeScreen: View {
                 .padding(.bottom, 40)
                 .frame(maxWidth: 1100, alignment: .leading)
                 .frame(maxWidth: .infinity)
+                .background { Color.clear.contentShape(Rectangle()).contextMenu { AnywhereMenu(window: window) } }
             } else {
                 LoadingScreen().frame(height: 300)
             }
@@ -251,6 +252,7 @@ struct HomeFolderCard: View {
             }
         }
         .onHover { hoveringCard = $0 }
+        .onMiddleClick { app.open(.folder(folder.id), newTab: true, background: true) }
         .scaleEffect(targeted ? 1.04 : 1)
         .animation(.snappy, value: targeted)
         .draggable(FolderDrag(id: folder.id, name: folder.name))

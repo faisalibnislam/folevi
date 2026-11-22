@@ -200,7 +200,12 @@ final class AppModel {
         }
         WindowManager.shared.showWindow = { [weak self] in self?.showAnyWindow() }
         AppDelegate.onReopen = { [weak self] in self?.showAnyWindow() }
-        AppDelegate.onOpenURLs = { [weak self] urls in urls.forEach { self?.openLink($0) } }
+        AppDelegate.onOpenURLs = { [weak self] urls in
+            // Markdown and text files opened with Core become notes; everything else is a link.
+            let files = urls.filter { $0.isFileURL && FileImport.accepts($0) }
+            if !files.isEmpty { FileImport.importFiles(files, window: self?.front) }
+            urls.filter { !($0.isFileURL && FileImport.accepts($0)) }.forEach { self?.openLink($0) }
+        }
     }
 
     /// Every window starts over at Home in the new place (its pages were made again).

@@ -42,6 +42,11 @@ struct MainWindow: View {
                         .toolbar(removing: .sidebarToggle)
                 } detail: {
                     ScreenView(window: window)
+                        .dropDestination(for: URL.self) { urls, _ in
+                            guard !window.current.isNote, urls.contains(where: FileImport.accepts) else { return false }
+                            FileImport.importFiles(urls, window: window)
+                            return true
+                        }
                         .navigationTitle(window.title)
                         .toolbar { WindowToolbar(window: window) }
                         .userActivity("app.folevicore.note", isActive: window.current.isNote) { activity in

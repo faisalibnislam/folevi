@@ -72,7 +72,7 @@ Closed or improved after the grading below; the per-item marks haven't been redo
   app-level file drop, an Add Tag bulk action.
 
 The items closed in this session's later work packages are marked [x] with "closed after the grading", and the
-summary table below is recounted from the marks (1028 there, 82 partly, 17 missing, 216 not applicable).
+summary table below is recounted from the marks (1034 there, 83 partly, 8 missing, 218 not applicable).
 
 ## Summary
 
@@ -84,10 +84,10 @@ summary table below is recounted from the marks (1028 there, 82 partly, 17 missi
 | Sidebar & navigation | `NAV` | 26 | 4 | 0 | 7 | 37 |
 | Tabs | `TAB` | 11 | 3 | 1 | 28 | 43 |
 | Home | `HOME` | 18 | 2 | 0 | 10 | 30 |
-| Notes lists | `LIST` | 53 | 5 | 3 | 11 | 72 |
-| Folders | `FOLD` | 28 | 3 | 3 | 3 | 37 |
+| Notes lists | `LIST` | 54 | 5 | 2 | 11 | 72 |
+| Folders | `FOLD` | 30 | 3 | 1 | 3 | 37 |
 | Tags | `TAG` | 7 | 0 | 0 | 2 | 9 |
-| Note page & editor integration | `NOTE` | 40 | 2 | 1 | 3 | 46 |
+| Note page & editor integration | `NOTE` | 40 | 3 | 0 | 3 | 46 |
 | Search & command palette | `SRCH` | 33 | 2 | 0 | 2 | 37 |
 | Tasks | `TASK` | 23 | 2 | 0 | 10 | 35 |
 | Calendar | `CAL` | 30 | 1 | 0 | 6 | 37 |
@@ -104,7 +104,7 @@ summary table below is recounted from the marks (1028 there, 82 partly, 17 missi
 | Settings | `SET` | 143 | 3 | 0 | 19 | 165 |
 | Quick Add | `QADD` | 14 | 0 | 0 | 2 | 16 |
 | System integrations | `SYS` | 46 | 11 | 0 | 3 | 60 |
-| Context menus | `CTX` | 9 | 1 | 1 | 6 | 17 |
+| Context menus | `CTX` | 10 | 1 | 0 | 6 | 17 |
 | Menus & keyboard shortcuts | `MENU` | 80 | 0 | 0 | 2 | 82 |
 | Updates (Sparkle) | `UPD` | 6 | 1 | 0 | 0 | 7 |
 | Offline, sync & device storage | `SYNC` | 14 | 0 | 0 | 0 | 14 |
@@ -115,8 +115,8 @@ summary table below is recounted from the marks (1028 there, 82 partly, 17 missi
 | Stays web, WebPage values and the parity list | `WEB` | 2 | 0 | 0 | 2 | 4 |
 | Binding UX rules from owner memory | `RULE` | 22 | 9 | 0 | 13 | 44 |
 | iPhone and iPad only (skip) | `IOS` | 0 | 0 | 0 | 5 | 5 |
-| Gaps, bugs and contradictions | `GAP` | 21 | 7 | 4 | 11 | 43 |
-| **Total** | | **1028** | **82** | **17** | **216** | **1343** |
+| Gaps, bugs and contradictions | `GAP` | 23 | 7 | 0 | 13 | 43 |
+| **Total** | | **1034** | **83** | **8** | **218** | **1343** |
 
 Notable findings (all in the first work package at the end):
 
@@ -508,7 +508,7 @@ Notable findings (all in the first work package at the end):
 - [n/a] `LIST-057` **Tab pictures**: page thumbnails for the tab hover card and Tab Overview; not used in lists. Why: native window tabs have no pictures.
 - [ ] `LIST-058` **Optimistic UI**: hidden ids and star overrides settle after 3 s; skipped toast "N notes couldn't be changed. You may not have permission."; no… Core: no optimistic hiding or rollback (only the open note's star).
 - [x] `LIST-059` **Duplicate**: toast "Duplicated". Core: NoteMenu Duplicate (note.duplicate).
-- [ ] `LIST-060` **Middle-click on folder cards and rows**: opens in a background tab. Core: no middle-click.
+- [x] `LIST-060` **Middle-click on folder cards and rows**: opens in a background tab. Core: closed after the grading (see "Since this grading").
 - [x] `LIST-061` **Skeletons**: carousel, cards, rows, chips (`ListSkeleton`). Core: closed after the grading (see "Since this grading").
 - [x] `LIST-062` **Accessibility**: rows grouped as "<title>, <time>"; "More actions for <title>" labels and tooltips; selected trait. Core: rows combined for VoiceOver, cards labelled.
 
@@ -533,7 +533,7 @@ Notable findings (all in the first work package at the end):
 - [~] `FOLD-004` **Change color**: (25 colours, 5x5, current ringed). Core: ten named colours in a menu, not the 25-colour grid.
 - [x] `FOLD-005` **Change color for several**. Core: closed after the grading (see "Since this grading").
 - [x] `FOLD-006` **Move folder**: (picker with Top level first; notes and subfolders go with it). Core: closed after the grading (see "Since this grading").
-- [ ] `FOLD-007` **Move items (notes and/or folders)**: no Drafts or top level when mixed. Core: no mixed move.
+- [x] `FOLD-007` **Move items (notes and/or folders)**: no Drafts or top level when mixed. Core: closed after the grading (see "Since this grading").
 - [x] `FOLD-008` **Move notes to folder**: Drafts, a folder, or New folder "name" made in place. Core: closed after the grading (see "Since this grading").
 - [x] `FOLD-009` **Copy notes to another space**: (space select then folder). Core: closed after the grading (see "Since this grading").
 - [x] `FOLD-010` **Folder picker**: search, tree, "Current" tag, blocked self/descendants, keyboard ↑/↓/Return, "Back to folders", inline new-folder naming. Core: closed after the grading (see "Since this grading").
@@ -552,7 +552,7 @@ Notable findings (all in the first work package at the end):
 - [ ] `FOLD-023` **Drop zones**: leading quarter before, middle inside, trailing quarter after (cards horizontal, rows vertical). Core: no drop zones.
 - [~] `FOLD-024` **Sidebar folder drag and drop**: notes into a folder; a folder above, inside or below (accent line or ring); onto the Folders heading for the top level; a… Core: notes and folders drop on sidebar folders, folders on the Folders heading go to the top; no before/after zones or spring-loading.
 - [x] `FOLD-025` **Sidebar own order**: (Manual) synced, independent of rank; dropping between rows of the same level reorders only; a drop while sorted by Name/Recent… Core: `Views/Sidebar.swift` drag top-level folders to order them (folder.setSidebarOrder); top level only, no Undo.
-- [ ] `FOLD-026` **Multi-item move with refusals**: ("couldn't move" toast) and a summary toast. Core: no multi-item move.
+- [x] `FOLD-026` **Multi-item move with refusals**: ("couldn't move" toast) and a summary toast. Core: closed after the grading (see "Since this grading").
 - [x] `FOLD-027` **Folder move refusal toasts**: ("A folder can't go inside itself.", "Folders nest up to 5 levels."). Core: closed after the grading (see "Since this grading").
 - [~] `FOLD-028` **Folders page (WebFoldersIndex)**: cards, rows or tree; search; sort Manual/Name/Recent; card drag into gaps; multi-select (Open in new tabs, Move, Change color… Core: cards or rows, filter, sort, multi-select (open in tabs, colour, delete); no tree view or drag into gaps.
 - [x] `FOLD-029` **Folder page path menu ("Enclosing folders")**: current folder checked, ancestors, All folders. Core: closed after the grading (see "Since this grading").
@@ -614,7 +614,7 @@ Notable findings (all in the first work package at the end):
 - [n/a] `NOTE-033` **Note menu plan**: (iPhone): sections and submenus (Connections, History, Move and copy, Share and export); trash-only menu; permissions (canEdit… Why: iPhone only.
 - [n/a] `NOTE-034` **Legacy native note menu**: (legacy, Mac). Why: legacy.
 - [n/a] `NOTE-035` **Review this note's cards**: (iPhone menu item; route /review?note=). Why: iPhone menu item.
-- [ ] `NOTE-036` **Foli DNA of this note**: (/graph?note=<id>). Core: no Foli DNA of This Note.
+- [~] `NOTE-036` **Foli DNA of this note**: (/graph?note=<id>). Core: Foli DNA of This Note opens Foli DNA and sends /graph?note=<id> to the page (the engine's center); not yet seen on a library with linked notes.
 - [x] `NOTE-037` **Present / Move to the Vault / Save as template / Show-Hide editors / Make text in images searchable**: (page via `note.menu`; listed in NoteMenuPlan). Core: NoteMoreMenu (present, moveToVault, saveAsTemplate, showEditors, readImages).
 - [~] `NOTE-038` **Note picture / cover**: card covers via `files.urls`; tab pictures via `note.picture`. Core: covers passed as file ids, no files.urls loader; no note.picture (native tabs).
 - [x] `NOTE-039` **Floating notes bar**: (Mac Float Note). Core: closed after the grading (see "Since this grading").
@@ -1351,7 +1351,7 @@ Notable findings (all in the first work package at the end):
 - [x] `CTX-005` **Sidebar folder sort menu**: : heading "Sort folders"; Manual; Name; Recent (checked). Core: closed after the grading (see "Since this grading").
 - [n/a] `CTX-006` **Sidebar menu**: : Hide sidebar / Show sidebar (⌘\); Focus mode / Exit focus mode; on a note: separator, Show folders, Show document (checked). Why: native sidebar toggle.
 - [~] `CTX-007` **Account menu**: (, system NSMenu ): # Places; the open account; its workspaces (indented, plan badge, check); New workspace…; other accounts… Core: PlaceMenu (see AUTH-059).
-- [ ] `CTX-008` **Anywhere menu**: (right-click with no owner, not over the note page. Core: no menu for empty space.
+- [x] `CTX-008` **Anywhere menu**: (right-click with no owner, not over the note page. Core: closed after the grading (see "Since this grading").
 - [x] `CTX-009` **Text field menu**: : spelling guesses (up to 5) or "No guesses found"; Learn spelling; Ignore spelling; separator; Look up "word"; separator; Cut… Core: system menus on native fields; the page's menu gets spelling from DesktopRouter.
 - [x] `CTX-010` **Note card menu**: ("…" and right-click. Core: closed after the grading (see "Since this grading").
 - [x] `CTX-011` **Selection menu / bar**: (several selected. Core: closed after the grading (see "Since this grading").
@@ -1712,14 +1712,14 @@ Notable findings (all in the first work package at the end):
 - [~] `GAP-007` **Two-step verification**: no native flow; the row opens folevi.com/settings/security. Core: still the web screen (in a window of its own).
 - [~] `GAP-008` **Unused in Mac Settings**: `e2ee.*`, `support.send`, `workspace.create`, `account.signOut`, `device.removeFiles` are never called from the Mac Settings… Core: Core uses account.signOut, device.removeFiles, workspace.create and support.send; still no e2ee.*.
 - [x] `GAP-009` **No "Check for Updates" row**: in Settings (only the Folevi menu item). Core: resolved: Settings > Updates.
-- [ ] `GAP-010` **No accent colour or font family options**: theme is Light, Dark, System only. Core: still none.
+- [n/a] `GAP-010` **No accent colour or font family options**: theme is Light, Dark, System only. Why: today's app has no accent or font choice either (a gap in both); not part of parity.
 - [x] `GAP-011` **No "Sign out of this account" in Mac Settings**: (it lives in the sidebar account menu). Core: resolved: Account > Sign Out.
 - [x] `GAP-012` **Foli AI on Mac lacks**: a Chat/Research switch, the Web toggle, the undo-conflict dialog, AI file attachments, an invite-link screen. Core: closed after the grading (see "Since this grading").
 - [x] `GAP-013` **Unused commands**: `ai.generate`, `ai.saveDraft` (only via the Templates generate sheet), `support.send`, `inbox.open`. Core: closed after the grading (see "Since this grading").
-- [ ] `GAP-014` **Vault import and export**: are stubbed. Core: no Vault import or export.
+- [n/a] `GAP-014` **Vault import and export**: are stubbed. Why: Vault import and export are stubbed in the engine for every app; nothing to call yet.
 - [x] `GAP-015` **Tasks ⌘1 to ⌘6**: clash with Go to Tab ⌘1 to ⌘9. Core: no clash in Core (Tasks has no number keys).
 - [x] `GAP-016` **⌘K Foli DNA command**: is never hidden when the graph capability is off ("a:graph" vs "graph" key mismatch). Core: closed after the grading (see "Since this grading").
-- [ ] `GAP-017` **No app-level file drop-in or open-file handling**: no `application(_:open:)`, no `registerForDraggedTypes`; drops are left to WebKit and the page. Core: still none.
+- [x] `GAP-017` **No app-level file drop-in or open-file handling**: no `application(_:open:)`, no `registerForDraggedTypes`; drops are left to WebKit and the page. Core: closed after the grading (see "Since this grading").
 - [n/a] `GAP-018` **Shared iOS services**: (ShellAuth, ShellPlaces, LibraryService, E2eeKeys, ShellCloud, ShellAI, ShellNotify) live in `` and were not inventoried line by… Why: reference note.
 - [n/a] `GAP-019` **`apps/web/src/lib/engine/parity.ts` is missing**: see "Stays web, WebPage values and the parity list". Why: reference note; this file stands in.
 
@@ -1734,7 +1734,7 @@ Notable findings (all in the first work package at the end):
 - [n/a] `GAP-026` **`changes.undo` missing**: NATIVE_APP_PLAN 5.6 lists it; it is in neither the code nor the contract. Why: not in the engine contract.
 - [x] `GAP-027` **Mac Changes drops the truncated note**: `diff.truncated` and "More changes are in the note's version history." are iOS only. vs. Core: closed after the grading (see "Since this grading").
 - [n/a] `GAP-028` **iOS SharedListScreen ignores shared folders**: it never draws `folderRows`. Why: iPhone only.
-- [ ] `GAP-029` **No Add tag bulk action on Mac**: `bulkActions(tabs: true)` leaves out tags. Core: no Add tag bulk action.
+- [x] `GAP-029` **No Add tag bulk action on Mac**: `bulkActions(tabs: true)` leaves out tags. Core: closed after the grading (see "Since this grading").
 - [x] `GAP-030` **Tags page has no rename or delete**: those live only in the sidebar tag menu. Core: resolved: the Tags screen renames and deletes.
 - [x] `GAP-031` **Mac E2EE setup**: no Copy, Save or Print for the recovery key. Core: closed after the grading (see "Since this grading").
 - [x] `GAP-032` **Mac onboarding, migration and approval**: drawn as the generic card (no stepper, summary or compare-code block). Core: resolved: onboarding steps, migration summary and approval code are drawn.

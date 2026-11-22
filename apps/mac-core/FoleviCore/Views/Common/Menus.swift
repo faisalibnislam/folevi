@@ -306,7 +306,6 @@ enum TagColors {
 struct PlaceMenu: View {
     private var app: AppModel { .shared }
     @Environment(\.openSettings) private var openSettings
-    @State private var newWorkspace = false
 
     var body: some View {
         Menu {
@@ -346,7 +345,7 @@ struct PlaceMenu: View {
                 }
             }
             if app.session.value?.mode == .account {
-                Button("New Workspace…") { newWorkspace = true }
+                Button("New Workspace…") { AppModel.shared.perform(.newWorkspace) }
             }
             Divider()
             Button("Settings…") { openSettings() }
@@ -365,7 +364,6 @@ struct PlaceMenu: View {
         .buttonStyle(.plain)
         .menuIndicator(.visible)
         .help("Spaces and accounts")
-        .sheet(isPresented: $newWorkspace) { NewWorkspaceSheet() }
         .accessibilityLabel("Spaces and accounts, \(app.spaceName)")
     }
 

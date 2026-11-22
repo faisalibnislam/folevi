@@ -67,6 +67,11 @@ struct HomeScreen: View {
                 LoadingScreen().frame(height: 300)
             }
         }
+        .onScreen(window) { on in
+            home.setVisible(on)
+            folders.setVisible(on)
+            reviews.setVisible(on)
+        }
         .task(id: app.client.map(ObjectIdentifier.init)) {
             home.bind(app.client, Views.Home(SpaceArgs()), snapshot: "home")
             folders.bind(app.client, Views.FoldersCards(FolderCardsArgs(space: nil, parentId: nil, all: true)))

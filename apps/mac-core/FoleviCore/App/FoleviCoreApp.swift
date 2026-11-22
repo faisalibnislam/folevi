@@ -55,6 +55,7 @@ struct FoleviCoreApp: App {
         Settings {
             SettingsView()
                 .environment(app)
+                .controlSize(.large)
                 .task { await app.start() }
         }
 

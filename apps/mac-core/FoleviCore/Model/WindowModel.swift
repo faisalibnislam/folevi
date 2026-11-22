@@ -52,6 +52,8 @@ final class WindowModel: Identifiable {
     /// What was typed after ⌘K before the palette's field had the keyboard.
     var paletteSeed = ""
     @ObservationIgnored var paletteFieldReady = false
+    /// The New Workspace sheet (an intent from a screen or the account menu).
+    var newWorkspaceShown = false
     /// The folder colour grid, for one folder or several.
     var colorPick: ColorPickTarget?
     /// ⌘F off a note on a screen with a filter: the filter takes the keyboard (screens watch this count).
@@ -121,6 +123,13 @@ final class WindowModel: Identifiable {
         guard let dest else { return }
         sidebarSelection = dest
         go(dest)
+    }
+
+    /// A note pressed (a card's touch-down, a row selected): its page starts drawing it before the click ends.
+    /// Only a page this window already holds, so a press that comes to nothing takes no page from another window.
+    func prepare(_ noteId: String) {
+        guard !noteId.hasPrefix("folder:"), current.noteId != noteId, let page = app.pool.page(of: id) else { return }
+        page.prepare(note: noteId)
     }
 
     /// A row picked in the sidebar: the place opens fresh, with no way back (the owner's rule of 21 November 2026:

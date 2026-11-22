@@ -14,6 +14,10 @@ struct NoteListScreen: View {
     private var app: AppModel { .shared }
     @State private var list = LiveList<ListViews.NotesList>()
     @State private var selection: Set<String> = []
+    /// The card the keyboard is on in the grid, and the grid's width (for its columns).
+    @State private var keyCard: String?
+    @State private var gridWidth: CGFloat = 800
+    @FocusState private var gridFocused: Bool
     /// The sort, kept per list (core.list.sort.<list>).
     @State private var sortRaw = NotesSort.updated.rawValue
     @State private var renamingFolder: FolderNode?
@@ -151,6 +155,8 @@ struct NoteListScreen: View {
         }
         .listStyle(.inset)
         .alternatingRowBackgrounds(.disabled)
+        .onChange(of: selection) { if selection.count == 1, let id = selection.first { window.prepare(id) } }
+        .onScreen(window) { list.setVisible($0) }
         // Dragging a selected note drags every selected note (to a folder, the sidebar, Finder as files).
         .dragContainer(for: NoteDrag.self, itemID: \.id) { ids in
             ids.compactMap { id in list.rows.first { $0.id == id }.map { NoteDrag(id: $0.id, title: $0.title) } }
@@ -212,6 +218,7 @@ struct NoteListScreen: View {
     // MARK: cards
 
     private var cards: some View {
+        ScrollViewReader { proxy in
         ScrollView {
             if kind == .folder, let folders = subfolders.value?.folders, !folders.isEmpty {
                 LazyVGrid(columns: [GridItem(.adaptive(minimum: CoreCards.folderWidth - 16, maximum: CoreCards.folderWidth), spacing: CoreCards.gap)], spacing: CoreCards.gap) {
@@ -236,13 +243,60 @@ struct NoteListScreen: View {
                         .simultaneousGesture(TapGesture().modifiers(.command).onEnded {
                             if selection.contains(row.id) { selection.remove(row.id) } else { selection.insert(row.id) }
                         })
+                        .overlay {
+                            // The keyboard's card (arrow keys move it, Return opens it).
+                            if gridFocused, keyCard == row.id {
+                                RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(Color.foleviInk, lineWidth: 2).padding(-4)
+                            }
+                        }
+                        .id(row.id)
                         .onAppear { if row.id == list.rows.last?.id { more() } }
                 }
             }
             .padding(24)
         }
+        .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { gridWidth = $0 }
+        .focusable()
+        .focused($gridFocused)
+        .focusEffectDisabled()
+        .onKeyPress(keys: [.leftArrow, .rightArrow, .upArrow, .downArrow, .return, .space]) { press in
+            gridKey(press.key, proxy: proxy)
+        }
+        .onKeyPress(characters: ["a"], phases: .down) { press in
+            guard press.modifiers.contains(.command) else { return .ignored }
+            selection = Set(shownRows.map(\.id))
+            return .handled
+        }
         .overlay(alignment: .bottom) { selectionBar }
         .onKeyPress(.escape) { if selection.isEmpty { return .ignored }; selection.removeAll(); return .handled }
+        }
+    }
+
+    /// Arrow keys move the keyboard's card across and down the grid; Return or Space opens it.
+    private func gridKey(_ key: KeyEquivalent, proxy: ScrollViewProxy) -> KeyPress.Result {
+        let rows = shownRows
+        guard !rows.isEmpty else { return .ignored }
+        let minWidth: CGFloat = compact ? 150 : CoreCards.noteWidth - 16
+        let gap: CGFloat = compact ? 14 : CoreCards.gap
+        let columns = max(1, Int((gridWidth - 48 + gap) / (minWidth + gap)))
+        let at = keyCard.flatMap { id in rows.firstIndex { $0.id == id } }
+        if key == .return || key == .space {
+            guard let at else { return .ignored }
+            window.go(.note(rows[at].id))
+            return .handled
+        }
+        var next = at ?? -1
+        switch key {
+        case .leftArrow: next = max(0, next - 1)
+        case .rightArrow: next = min(rows.count - 1, next + 1)
+        case .upArrow: next = at == nil ? 0 : max(0, next - columns)
+        case .downArrow: next = at == nil ? 0 : min(rows.count - 1, next + columns)
+        default: return .ignored
+        }
+        keyCard = rows[next].id
+        window.prepare(rows[next].id)
+        withAnimation(.easeOut(duration: 0.15)) { proxy.scrollTo(rows[next].id) }
+        return .handled
     }
 
     private var compact: Bool { window.listStyle == .compact }
@@ -518,7 +572,7 @@ struct NoteCardButton: View {
         Button { window.go(.note(row.id)) } label: {
             WebNoteCard(Cards.note(row, inTrash: inTrash), unsynced: row.sync != .saved, hovered: hovered)
         }
-        .buttonStyle(CardPressStyle())
+        .buttonStyle(CardPressStyle { window.prepare(row.id) })
         .onHover { hovered = $0 }
         .draggable(NoteDrag(id: row.id, title: row.title))
         .onMiddleClick { AppModel.shared.open(.note(row.id), newTab: true, background: true) }
@@ -535,9 +589,13 @@ struct NoteCardButton: View {
 
 /// A card's press: it dips a little and springs back.
 struct CardPressStyle: ButtonStyle {
+    /// Runs on touch-down (a note card prepares its note).
+    var onPress: (() -> Void)? = nil
+
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .scaleEffect(configuration.isPressed ? 0.97 : 1)
             .animation(.spring(duration: 0.25, bounce: 0.3), value: configuration.isPressed)
+            .onChange(of: configuration.isPressed) { _, down in if down { onPress?() } }
     }
 }

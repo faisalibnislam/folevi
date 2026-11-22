@@ -152,11 +152,21 @@ final class Page: PageHost {
 
     // MARK: the note
 
+    /// The note asked for on a press, before the click ends (its first frame starts drawing then).
+    private(set) var preparedNote: String?
+
+    func prepare(note id: String) {
+        guard shownNote != id, preparedNote != id else { return }
+        preparedNote = id
+        Task { _ = try? await client.editor(EditorCommands.NotePrepare(NotePrepareArgs(id: id))) }
+    }
+
     /// Shows `id` in this page (prepared first so its first frame is ready).
     func show(note id: String, focus: Bool = false, panes: [String]? = nil, sizes: [Double]? = nil, tabs: [PaneTab]? = nil) async {
-        if shownNote != id {
+        if shownNote != id, preparedNote != id {
             _ = try? await client.editor(EditorCommands.NotePrepare(NotePrepareArgs(id: id)))
         }
+        preparedNote = nil
         shownNote = id
         _ = try? await client.editor(EditorCommands.NoteShow(NoteShowArgs(id: id, focus: focus, panes: panes, sizes: sizes, tabs: tabs)))
     }

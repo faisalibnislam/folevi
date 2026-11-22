@@ -997,7 +997,7 @@ struct FoldersScreen: View {
 
     private var grid: some View {
         ScrollView {
-            LazyVGrid(columns: [GridItem(.adaptive(minimum: 180, maximum: 240), spacing: 22)], spacing: 22) {
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: CoreCards.folderWidth - 16, maximum: CoreCards.folderWidth), spacing: CoreCards.gap)], spacing: CoreCards.gap + 2) {
                 ForEach(shown, id: \.id) { folder in
                     HomeFolderCard(folder: folder, window: window, reorder: filter.isEmpty ? { zone, moving in reorder(moving, zone, around: folder) } : nil)
                         .overlay(alignment: .topTrailing) {
@@ -1010,6 +1010,14 @@ struct FoldersScreen: View {
             }
             .padding(24)
         }
+        .focusable()
+        .focusEffectDisabled()
+        .onKeyPress(characters: ["a"], phases: .down) { press in
+            guard press.modifiers.contains(.command) else { return .ignored }
+            selection = Set(shown.map(\.id))
+            return .handled
+        }
+        .onKeyPress(.escape) { if selection.isEmpty { return .ignored }; selection.removeAll(); return .handled }
     }
 
     private var list: some View {

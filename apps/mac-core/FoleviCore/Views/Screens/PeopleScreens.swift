@@ -67,14 +67,7 @@ struct NotificationsScreen: View {
             .tag(n.id)
     }
 
-    private func download(_ fileId: String) {
-        app.perform { client in
-            let v = try await client.query(Views.FilesUrls(FileUrlsArgs(ids: [fileId])))
-            guard let link = v.urls[fileId], let s = link.url, let url = URL(string: s) else { app.toast("The file isn't ready yet.", tone: .error); return }
-            let (data, _) = try await URLSession.shared.data(from: url)
-            _ = await ShellFiles.shared.save(name: link.filename ?? "Download", bytes: data, from: NSApp.keyWindow)
-        }
-    }
+    private func download(_ fileId: String) { app.perform(.downloadFile(id: fileId)) }
 
     private func mark(_ ids: Set<String>, read: Bool) {
         app.perform { _ = try await $0.command(Commands.NotificationMarkRead(NotificationMarkArgs(ids: Array(ids), read: read))) }

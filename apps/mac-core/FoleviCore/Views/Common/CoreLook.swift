@@ -89,3 +89,29 @@ enum CoreCards {
     static let folderWidth: CGFloat = 180
     static let gap: CGFloat = 16
 }
+
+
+/// Whether a screen is on screen: its window shows (not a hidden tab, not covered or minimised) and the screen is
+/// up. Screens pass it to their live values, which pause after a minute off screen (today's `setVisible`).
+struct OnScreen: ViewModifier {
+    let window: WindowModel
+    let changed: (Bool) -> Void
+
+    func body(content: Content) -> some View {
+        content
+            .onAppear { changed(visible) }
+            .onDisappear { changed(false) }
+            .onReceive(NotificationCenter.default.publisher(for: NSWindow.didChangeOcclusionStateNotification)) { note in
+                guard let w = note.object as? NSWindow, w === window.window else { return }
+                changed(visible)
+            }
+    }
+
+    private var visible: Bool { window.window?.occlusionState.contains(.visible) ?? true }
+}
+
+extension View {
+    func onScreen(_ window: WindowModel, _ changed: @escaping (Bool) -> Void) -> some View {
+        modifier(OnScreen(window: window, changed: changed))
+    }
+}

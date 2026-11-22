@@ -84,24 +84,31 @@ Closed or improved after the grading below; the per-item marks haven't been redo
   no lines between list rows; cards 25% smaller (188 pt notes, 180 pt folders, 16 pt gaps); Home's sections 8 pt
   closer. Sidebar picks now navigate (they only highlighted before) and start fresh with no way back, as the
   owner's Back rule says.
+- Last native items (22 November 2026): the card grid takes arrow keys, Return and Space, ⌘A selects every card
+  or folder and Esc clears; one dispatcher for every intent today's screens send (tasks, calendar, a note at a
+  block, a route, a Settings section, Help, a place or workspace, New Workspace, another account, move or copy,
+  sign out, a file to download); Home and notes lists pause their views a minute after their window or tab goes
+  off screen; a note card's press and a list row's selection prepare the note before the click ends (in a page
+  the window already holds); Settings > Plan & Billing lists the payments (billing.mine); the system's large
+  control size in the main window and Settings.
 
 The items closed in this session's later work packages are marked [x] with "closed after the grading", and the
-summary table below is recounted from the marks (1102 there, 21 partly, 0 missing, 220 not applicable).
+summary table below is recounted from the marks (1108 there, 15 partly, 0 missing, 220 not applicable).
 
 ## Summary
 
 | Area | Id prefix | [x] | [~] | [ ] | [n/a] | Items |
 |---|---|---|---|---|---|---|
 | Architecture today | `ARCH` | 16 | 0 | 0 | 1 | 17 |
-| App & windows | `APP` | 49 | 1 | 0 | 23 | 73 |
+| App & windows | `APP` | 50 | 0 | 0 | 23 | 73 |
 | Sign-in, onboarding, accounts, spaces & local mode | `AUTH` | 67 | 2 | 0 | 11 | 80 |
-| Sidebar & navigation | `NAV` | 29 | 1 | 0 | 7 | 37 |
+| Sidebar & navigation | `NAV` | 30 | 0 | 0 | 7 | 37 |
 | Tabs | `TAB` | 14 | 1 | 0 | 28 | 43 |
-| Home | `HOME` | 19 | 1 | 0 | 10 | 30 |
+| Home | `HOME` | 20 | 0 | 0 | 10 | 30 |
 | Notes lists | `LIST` | 60 | 1 | 0 | 11 | 72 |
 | Folders | `FOLD` | 34 | 0 | 0 | 3 | 37 |
 | Tags | `TAG` | 7 | 0 | 0 | 2 | 9 |
-| Note page & editor integration | `NOTE` | 41 | 2 | 0 | 3 | 46 |
+| Note page & editor integration | `NOTE` | 42 | 1 | 0 | 3 | 46 |
 | Search & command palette | `SRCH` | 35 | 0 | 0 | 2 | 37 |
 | Tasks | `TASK` | 25 | 0 | 0 | 10 | 35 |
 | Calendar | `CAL` | 31 | 0 | 0 | 6 | 37 |
@@ -115,7 +122,7 @@ summary table below is recounted from the marks (1102 there, 21 partly, 0 missin
 | Archive | `ARCV` | 6 | 0 | 0 | 0 | 6 |
 | Trash | `TRASH` | 12 | 0 | 0 | 0 | 12 |
 | Notifications / Inbox, Help & support | `NOTIF` | 16 | 0 | 0 | 2 | 18 |
-| Settings | `SET` | 143 | 3 | 0 | 19 | 165 |
+| Settings | `SET` | 144 | 2 | 0 | 19 | 165 |
 | Quick Add | `QADD` | 14 | 0 | 0 | 2 | 16 |
 | System integrations | `SYS` | 55 | 1 | 0 | 4 | 60 |
 | Context menus | `CTX` | 11 | 0 | 0 | 6 | 17 |
@@ -127,10 +134,10 @@ summary table below is recounted from the marks (1102 there, 21 partly, 0 missin
 | Debug & eval harness | `DBG` | 0 | 0 | 0 | 8 | 8 |
 | Capabilities | `CAP` | 20 | 0 | 0 | 0 | 20 |
 | Stays web, WebPage values and the parity list | `WEB` | 2 | 0 | 0 | 2 | 4 |
-| Binding UX rules from owner memory | `RULE` | 29 | 2 | 0 | 13 | 44 |
+| Binding UX rules from owner memory | `RULE` | 30 | 1 | 0 | 13 | 44 |
 | iPhone and iPad only (skip) | `IOS` | 0 | 0 | 0 | 5 | 5 |
 | Gaps, bugs and contradictions | `GAP` | 26 | 4 | 0 | 13 | 43 |
-| **Total** | | **1102** | **21** | **0** | **220** | **1343** |
+| **Total** | | **1108** | **15** | **0** | **220** | **1343** |
 
 Notable findings (all in the first work package at the end):
 
@@ -216,7 +223,7 @@ Notable findings (all in the first work package at the end):
 - [n/a] `APP-048` **iPad wide layout (IPadFrame)**: (iPad): same views as the Mac (strip, sidebar, card). Account in the strip corner; floating sidebar when narrow (`sidebarFloats`… Why: iPad only.
 - [x] `APP-049` **Main menu**. Core: `App/AppCommands.swift`.
 - [x] `APP-050` **Format keys gating**: a format key runs only while the note's text has the keyboard; ⌘⌫ only when nothing is being edited. Core: closed after the grading (see "Since this grading").
-- [~] `APP-051` **View-level keys**. Core: lists take Return and Delete, sheets Esc and Return; the rest of today's view keys are not mapped.
+- [x] `APP-051` **View-level keys**. Core: closed after the grading (see "Since this grading").
 
 ### App lifecycle & windows (launch, restore, multiple windows, dock menu, status item, reopen)
 
@@ -373,7 +380,7 @@ Notable findings (all in the first work package at the end):
 - [x] `NAV-032` **Sidebar model**: sections from session, home and folders.tree; orphans at the top level; selection id per route. Core: closed after the grading (see "Since this grading").
 - [x] `NAV-033` **Back / Forward per tab**: (strip buttons, dimmed when unavailable, own view). Core: `Model/WindowModel.swift` back and forward stacks, toolbar buttons.
 - [x] `NAV-034` **Route model**: web paths in both directions (/documents, /d/<id>, /folders/<id>, /tags/<id>, /tasks/<v>, /calendar?date=, /search?q=… Core: closed after the grading (see "Since this grading").
-- [~] `NAV-035` **Screen routes and intents to the frame**. Core: routes open in the window; intents like newWorkspace and switchPlace only partly.
+- [x] `NAV-035` **Screen routes and intents to the frame**. Core: closed after the grading (see "Since this grading").
 - [n/a] `NAV-036` **Legacy AppKit outline sidebar**: (legacy): NSOutlineView with search, space menu, account foot, sync, bell, drag and drop and row menus. Why: legacy.
 - [n/a] `NAV-037` **Mouse location helper**: for popover anchoring. Why: native popovers anchor themselves.
 
@@ -445,7 +452,7 @@ Notable findings (all in the first work package at the end):
 - [x] `HOME-018` **Folder menu (Mac)**: Open in new tab, New note in folder, New folder inside…, Rename…, Change color…, Move folder…, Move to another place…, Move to… Core: closed after the grading (see "Since this grading").
 - [x] `HOME-019` **Drop on Home folders**: notes, multi-selections or folders dropped inside. A refused drop gives an error haptic and a toast; toasts read "Moved", "Moved… Core: closed after the grading (see "Since this grading").
 - [x] `HOME-020` **Where Home's rows live on the Mac**: the sidebar has Home, Bookmarks, Drafts (count), All notes, Reviews (count), Shared with Me, Changes (count, `caps.changes`)… Core: closed after the grading (see "Since this grading").
-- [~] `HOME-021` **Views pause when Home is off screen**: `setVisible`. Core: watches end only when the screen's state is released.
+- [x] `HOME-021` **Views pause when Home is off screen**: `setVisible`. Core: closed after the grading (see "Since this grading").
 - [n/a] `HOME-022` **iOS only: search entry**: "Search in <space>" field that opens Search, ⌘F. Why: iPhone/iPad only.
 - [n/a] `HOME-023` **iOS only: avatar button**: account and places switcher. Why: iPhone/iPad only.
 - [n/a] `HOME-024` **iOS only: bell and "…" pill**: bell with unread badge, plus a menu with New folder, All folders, Foli DNA (graph capability), and Refresh ⌘R in a macOS build. Why: iPhone/iPad only.
@@ -594,7 +601,7 @@ Notable findings (all in the first work package at the end):
 ## Note page & editor integration
 
 - [x] `NOTE-001` **Web editor in the Page View**: native sends editor commands only while a note is on screen (`editor` guard). Core: `Model/WindowModel.swift` editor() needs the lent page.
-- [~] `NOTE-002` **Prepare on touch-down**: the note starts drawing before the click ends. Core: note.prepare runs when the note opens, not on touch-down.
+- [x] `NOTE-002` **Prepare on touch-down**: the note starts drawing before the click ends. Core: closed after the grading (see "Since this grading").
 - [x] `NOTE-003` **Show / close note**. Core: `Engine/Pages.swift` show(note:) and closeNote.
 - [x] `NOTE-004` **Editor state tracking**: (block, marks, link, undo/redo, focus, locked, canLock, format, menu, panel). Core: `Model/WindowModel.swift` listen (editor.state, note.tools, note.meta, editor.panel).
 - [x] `NOTE-005` **Note tools sidebar (WebNoteSidebar)**: heading with the note name and "In Folder > Sub" crumbs (no "In Drafts" flash). Core: `Views/Note/Inspector.swift` Location section, plus the toolbar's folder menu.
@@ -1116,7 +1123,7 @@ Notable findings (all in the first work package at the end):
 - [x] `SET-071` **Manage billing…**: only on paid plans, Mac only.. engine: convex.action `billing.portal`, then opens the returned URL. Core: closed after the grading (see "Since this grading").
 - [x] `SET-072` **See plans…**: opens https://folevi.com/settings/billing in the browser. Mac only. Core: BillingPane opens settings/billing on the website.
 - [n/a] `SET-073` **iPad**: shows "Plans are changed on the web, at folevi.com." in place of the buttons. Why: iPad only.
-- [~] `SET-074` **Billing history**: (list of payments with dates): hidden in the iOS app. Core: Manage Billing opens the billing portal, where invoices are; no history list in Settings.
+- [x] `SET-074` **Billing history**: (list of payments with dates): hidden in the iOS app. Core: closed after the grading (see "Since this grading").
 
 ### Security (signed-in)
 
@@ -1688,7 +1695,7 @@ Notable findings (all in the first work package at the end):
 - [n/a] `RULE-026` **iPad uses the same layout as the Mac**. Why: iPad only.
 - [x] `RULE-027` **Sidebar rows**: need more breathing space. Core: closed after the grading (see "Since this grading").
 - [x] `RULE-028` **Liquid Glass**: wherever there is scope: on floating controls and the navigation layer, never on content. Core: glass on toasts, the palette and Quick Add only.
-- [~] `RULE-029` **Consistent button size, thickness and font sizes**: (one control size via `macNativeChrome`). Core: no small or mini controls left (spinners aside); buttons are the system regular size in rows and toolbars, not one large size everywhere.
+- [x] `RULE-029` **Consistent button size, thickness and font sizes**: (one control size via `macNativeChrome`). Core: closed after the grading (see "Since this grading").
 - [x] `RULE-030` **System font everywhere**: except notes, folders and the editor. A note card keeps its Spectral title and the note-font preview, with system dates and chip.… Core: CoreType on cards and titles, system font elsewhere.
 - [x] `RULE-031` **One New note**: a black "+ New note" pill in the title bar right after the tabs, before sync and bell (white in dark mode), native Liquid Glass.… Core: `Views/MainWindow.swift` the one New Note pill in the toolbar.
 - [x] `RULE-032` **Section headings that open a page**: get a full-row hover. Core: closed after the grading (see "Since this grading").

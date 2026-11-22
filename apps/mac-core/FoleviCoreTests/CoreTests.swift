@@ -343,3 +343,17 @@ struct SpellingTests {
         #expect((DesktopRouter.spelling("recieve", context: "", view: page)["guesses"] as? [String])?.contains("receive") == true)
     }
 }
+
+@MainActor
+@Suite("Billing history rows")
+struct BillingHistoryTests {
+    @Test func rowsReadLikeReceipts() {
+        let plan = SettingsJSON(.object(["plan": .string("pro"), "interval": .string("year"), "amountCents": .number(9600), "currency": .string("usd"), "status": .string("paid"), "createdAt": .number(1_763_000_000_000)]))
+        #expect(BillingPane.label(plan) == "Pro, yearly")
+        #expect(BillingPane.amount(plan).contains("96"))
+        #expect(BillingPane.status(plan) == "")
+        let credits = SettingsJSON(.object(["credits": .number(500), "amountCents": .number(500), "currency": .string("eur"), "status": .string("refunded")]))
+        #expect(BillingPane.label(credits) == "500 Foli AI credits")
+        #expect(BillingPane.status(credits) == " · Refunded")
+    }
+}

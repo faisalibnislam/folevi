@@ -48,6 +48,10 @@ final class Live<V: EngineViewSpec> {
         store = nil
         key = nil
     }
+
+    /// Off screen (a hidden tab, a covered or minimised window) for a minute pauses the subscription; back on
+    /// screen resumes it (the engine's `setVisible`, as today's Home).
+    func setVisible(_ visible: Bool) { store?.setVisible(visible) }
 }
 
 /// A live windowed list (All Notes, a folder, a tag...).
@@ -60,6 +64,9 @@ final class LiveList<L: EngineListSpec> {
     var rows: [L.Row] { store?.rows ?? [] }
     var total: Int { store?.total ?? 0 }
     var isLoading: Bool { store == nil || (store?.rows.isEmpty == true && store?.isComplete == false) }
+
+    /// Off screen for a minute pauses the list's subscription; back on screen resumes it.
+    func setVisible(_ visible: Bool) { store?.setVisible(visible) }
 
     func bind(_ client: EngineClient?, _ spec: L) {
         guard let client else { return }
@@ -201,6 +208,67 @@ final class AppModel {
         }
     }
 
+    // MARK: intents
+
+    /// What a screen asks of the app beyond a route (today's ScreenIntent, one case each).
+    enum Intent: Equatable {
+        case openTasks(TasksView)
+        case openCalendar(date: String?)
+        case openNote(id: String, blockId: String?)
+        case openRoute(String)
+        case openSettings(section: String?)
+        case help
+        case switchPlace(id: String, workspaceId: String?)
+        case newWorkspace
+        case signInAnotherAccount
+        case moveOrCopy(notes: [String], folders: [String])
+        case signOut(place: String?)
+        case downloadFile(id: String)
+    }
+
+    /// A workspace to open once the place being switched to is ready.
+    @ObservationIgnored private var pendingWorkspace: String?
+
+    func perform(_ intent: Intent) {
+        switch intent {
+        case .openTasks(let v): open(.tasks(v))
+        case .openCalendar(let d): open(path: d.map { "/calendar?date=\($0)" } ?? "/calendar")
+        case .openNote(let id, let block): open(path: block.map { "/d/\(id)#block-\($0)" } ?? "/d/\(id)")
+        case .openRoute(let r): open(path: r)
+        case .openSettings(let s): open(path: s.map { "/settings/\($0)" } ?? "/settings")
+        case .help: openHelp?()
+        case .switchPlace(let id, let ws):
+            if id == ShellPlaces.state.current {
+                if let ws { perform { _ = try await $0.command(Commands.SpaceSwitch(SpaceSwitchArgs(space: ws))) } }
+            } else {
+                pendingWorkspace = ws
+                Places.shared.switchTo(id)
+            }
+        case .newWorkspace: front?.newWorkspaceShown = true
+        case .signInAnotherAccount: AccountActions.addAccount()
+        case .moveOrCopy(let notes, let folders): front?.placeMove = PlaceMoveTarget(notes: notes, folders: folders)
+        case .signOut(let place):
+            if let p = place ?? ShellPlaces.state.current { AccountActions.signOut(p) }
+        case .downloadFile(let id): download(file: id)
+        }
+    }
+
+    /// A file a notification delivers (an export): its signed link from the engine, saved where the person picks.
+    func download(file id: String) {
+        perform { client in
+            let v = try await client.query(Views.FilesUrls(FileUrlsArgs(ids: [id])))
+            guard let link = v.urls[id], let s = link.url, let url = URL(string: s) else { AppModel.shared.toast("The file isn't ready yet.", tone: .error); return }
+            let (data, _) = try await URLSession.shared.data(from: url)
+            _ = await ShellFiles.shared.save(name: link.filename ?? "Download", bytes: data, from: NSApp.keyWindow)
+        }
+    }
+
+    private func openPendingWorkspace() {
+        guard let ws = pendingWorkspace else { return }
+        pendingWorkspace = nil
+        perform { _ = try await $0.command(Commands.SpaceSwitch(SpaceSwitchArgs(space: ws))) }
+    }
+
     private func listen(_ client: EngineClient) {
         eventTask?.cancel()
         eventTask = Task { @MainActor [weak self] in
@@ -219,6 +287,7 @@ final class AppModel {
             gate = nil
             rebind()
             QuickAddQueue.shared.flush()
+            openPendingWorkspace()
         case .gateChanged(let g):
             gate = g.gate == nil ? nil : g
             if g.gate == nil { readySeen = true }

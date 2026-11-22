@@ -673,14 +673,92 @@ struct DataPane: View {
 }
 
 struct BillingPane: View {
+    private var app: AppModel { .shared }
+    @State private var data = SettingsJSON(nil)
+    @State private var state = Load.loading
+
+    enum Load { case loading, loaded, unavailable }
+
     var body: some View {
         Form {
+            let sub = data["subscription"]
+            if sub.exists {
+                Section("Your Plan") {
+                    LabeledContent("Plan", value: (sub["plan"].string ?? "").capitalized + (sub["interval"].string.map { $0 == "year" ? ", yearly" : ", monthly" } ?? ""))
+                    if let end = sub["currentPeriodEnd"].number {
+                        LabeledContent(sub["cancelAtPeriodEnd"].bool == true ? "Ends" : "Renews", value: Date(timeIntervalSince1970: end / 1000).formatted(date: .long, time: .omitted))
+                    }
+                    Button("Manage Billing…") { BillingActions.openPortal() }
+                }
+            }
+            // The payments (hidden in the iPhone app, shown on the Mac as today).
+            Section("Billing History") {
+                switch state {
+                case .loading:
+                    ProgressView().controlSize(.small)
+                case .unavailable:
+                    Text("Sign in to a Folevi account to see its payments.").foregroundStyle(.secondary)
+                case .loaded:
+                    let payments = data["payments"].array
+                    if payments.isEmpty {
+                        Text("No payments yet.").foregroundStyle(.secondary)
+                    } else {
+                        ForEach(Array(payments.enumerated()), id: \.offset) { _, p in
+                            LabeledContent {
+                                Text(Self.amount(p)).monospacedDigit()
+                            } label: {
+                                Text(Self.label(p))
+                                Text(Self.date(p) + Self.status(p))
+                            }
+                        }
+                    }
+                }
+            }
             Section {
-                Text("Plans and billing are managed on folevi.com.").foregroundStyle(.secondary)
-                Link("Open Plan & Billing", destination: Paths.serviceURL.appendingPathComponent("settings/billing"))
+                Link("Open Plan & Billing on folevi.com", destination: Paths.serviceURL.appendingPathComponent("settings/billing"))
             }
         }
         .formStyle(.grouped)
+        .task(id: app.client.map(ObjectIdentifier.init)) { await load() }
+    }
+
+    private func load() async {
+        guard let client = app.client else { state = .unavailable; return }
+        do {
+            let v = try await client.query(Views.SettingsQuery(SettingsQueryArgs(key: .convex, args: ["fn": .string("billing.mine"), "args": .object([:])])))
+            data = SettingsJSON(v.data)
+            state = .loaded
+        } catch {
+            state = .unavailable
+        }
+    }
+
+    static func label(_ p: SettingsJSON) -> String {
+        if let credits = p["credits"].number { return "\(Int(credits).formatted()) Foli AI credits" }
+        let plan = (p["plan"].string ?? "Plan").capitalized
+        switch p["interval"].string {
+        case "year": return plan + ", yearly"
+        case "month": return plan + ", monthly"
+        default: return plan
+        }
+    }
+
+    static func amount(_ p: SettingsJSON) -> String {
+        let cents = p["amountCents"].number ?? 0
+        return (cents / 100).formatted(.currency(code: (p["currency"].string ?? "usd").uppercased()))
+    }
+
+    static func date(_ p: SettingsJSON) -> String {
+        guard let at = p["createdAt"].number else { return "" }
+        return Date(timeIntervalSince1970: at / 1000).formatted(date: .abbreviated, time: .omitted)
+    }
+
+    static func status(_ p: SettingsJSON) -> String {
+        switch p["status"].string {
+        case nil, "paid", "succeeded", "confirmed": return ""
+        case "refunded": return " · Refunded"
+        case let s?: return " · " + s.capitalized
+        }
     }
 }
 

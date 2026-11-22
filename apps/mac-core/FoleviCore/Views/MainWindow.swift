@@ -70,6 +70,9 @@ struct MainWindow: View {
                 .sheet(item: $window.folderPick) { FolderPickerSheet(target: $0) }
                 .sheet(item: $window.placeMove) { PlaceMoveSheet(notes: $0.notes, folders: $0.folders) }
                 .sheet(item: $window.colorPick) { FolderColorSheet(target: $0) }
+                .sheet(isPresented: $window.newWorkspaceShown) { NewWorkspaceSheet() }
+                // One control size (the owner's polish pass: the system's large, none small).
+                .controlSize(.large)
                 .sheet(isPresented: $window.quickAddShown) { QuickAddView(close: { window.quickAddShown = false }, inWindow: true) }
             }
         }

@@ -66,10 +66,13 @@ Closed or improved after the grading below; the per-item marks haven't been redo
   rule) with Starred's first five and a Drafts count; the note inspector; a floating note pin.
 - Left on purpose or for the owner: the owner chose native window tabs over the Mac UI guide's main-window
   profile (hidden title bar, custom top bar); Open at login starts off; ⌘T opens Search, not Home.
-- Still missing (17): launch snapshots, native card text layout, per-space tabs, folder drag reorder and drop
-  zones, optimistic list updates, middle-click, mixed note-and-folder moves, Foli DNA of a note (the graph page
-  takes no parameters), file drag-out as files, an anywhere menu, accent and font options, Vault import and export,
-  app-level file drop, an Add Tag bulk action.
+- Second finishing round (22 November 2026): demo mode shows data again; tabs kept per space; Markdown and text
+  files opened or dropped become notes; a menu for empty space; middle-click for background tabs; notes and
+  folders moved together; Add Tag for several notes; Foli DNA of a note (sent to the page, not yet seen on a
+  library with links); folder drop zones, reorder and spring-loading (not yet tried with a real drag);
+  optimistic list changes.
+- Still missing (3): launch snapshots (a render cache for cold starts), the engine's native text layout for card
+  previews, and notes dragged out as files (file promises for the page's noteFile requests).
 
 The items closed in this session's later work packages are marked [x] with "closed after the grading", and the
 summary table below is recounted from the marks (1041 there, 81 partly, 3 missing, 218 not applicable).

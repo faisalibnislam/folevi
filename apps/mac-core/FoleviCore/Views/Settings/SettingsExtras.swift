@@ -265,7 +265,7 @@ struct ThemeTiles: View {
                 Text(caption).font(.caption).foregroundStyle(.secondary)
             }
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.hoverPlain)
         .accessibilityLabel("\(title), \(caption)")
         .accessibilityAddTraits(value == id ? .isSelected : [])
     }

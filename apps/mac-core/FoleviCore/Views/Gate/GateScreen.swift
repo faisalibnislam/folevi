@@ -23,7 +23,7 @@ struct GateScreen: View {
                 if let o = gate.onboarding { OnboardingStep(info: o, values: $values) }
                 fields
                 if let error = gate.error {
-                    Label(error.message, systemImage: "exclamationmark.circle").foregroundStyle(.red)
+                    Label(error.message, coreSymbol: "exclamationmark.circle").foregroundStyle(.red)
                 }
                 if gate.gate == "modeChoice" { modeChoice } else { actions }
             }
@@ -293,7 +293,7 @@ struct MigrationSummaryView: View {
             }
         }
         if !summary.fits {
-            Label("There isn't room for everything there.", systemImage: "exclamationmark.triangle").foregroundStyle(.orange).padding(.top, 4)
+            Label("There isn't room for everything there.", coreSymbol: "exclamationmark.triangle").foregroundStyle(.orange).padding(.top, 4)
         }
         }
         .padding(14)
@@ -357,7 +357,7 @@ struct E2eeGateExtras: View {
             case "waiting":
                 HStack(spacing: 8) { ProgressView().controlSize(.small); Text("Waiting for your other device…").foregroundStyle(.secondary) }
             case "failed":
-                Label("The approval was cancelled or ran out of time. Try again.", systemImage: "exclamationmark.circle").foregroundStyle(.orange)
+                Label("The approval was cancelled or ran out of time. Try again.", coreSymbol: "exclamationmark.circle").foregroundStyle(.orange)
             default:
                 EmptyView()
             }
@@ -376,7 +376,7 @@ struct E2eeGateExtras: View {
                         Button("Save as a File…") { save(key) }
                         Button("Print…") { print(key) }
                     }
-                    .controlSize(.small)
+                    .controlSize(.regular)
                 }
             }
             if !info.methodsAdded.isEmpty {

@@ -175,9 +175,9 @@ struct SettingsView: View {
                 }
                 Section("Support") {
                     Button { SettingsActions.openHelp() } label: { Label { Text("Help") } icon: { WebIcon.circleQuestionMark.image(size: 16) } }
-                        .buttonStyle(.plain)
+                        .buttonStyle(.hoverPlain)
                     Button { SettingsActions.contactSupport() } label: { Label { Text("Contact Support…") } icon: { WebIcon.lifeBuoy.image(size: 16) } }
-                        .buttonStyle(.plain)
+                        .buttonStyle(.hoverPlain)
                     label(.about)
                 }
                 }

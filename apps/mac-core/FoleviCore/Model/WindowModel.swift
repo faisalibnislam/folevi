@@ -123,6 +123,18 @@ final class WindowModel: Identifiable {
         go(dest)
     }
 
+    /// A row picked in the sidebar: the place opens fresh, with no way back (the owner's rule of 21 November 2026:
+    /// the sidebar, "+" and New note start fresh; Back is for pages opened from a page). A note on screen leaves.
+    func pickInSidebar(_ dest: Destination?) {
+        guard let dest else { return }
+        sidebarSelection = dest
+        guard dest != current else { return }
+        backStack.removeAll()
+        forwardStack.removeAll()
+        opener = nil
+        move(to: dest)
+    }
+
     /// Where the window is, without a history step.
     func replace(with dest: Destination) {
         guard dest != current else { return }

@@ -228,10 +228,10 @@ struct FindBar: View {
                 Button { step(-1) } label: { Image(systemName: "chevron.up") }.help("Previous (⇧⌘G)")
                 Button { step(1) } label: { Image(systemName: "chevron.down") }.help("Next (⌘G)")
             }
-            .controlSize(.small)
+            .controlSize(.regular)
             .frame(width: 64)
             .disabled((result?.count ?? 0) == 0)
-            Button("Done") { close() }.controlSize(.small).keyboardShortcut(.cancelAction)
+            Button("Done") { close() }.controlSize(.regular).keyboardShortcut(.cancelAction)
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 7)

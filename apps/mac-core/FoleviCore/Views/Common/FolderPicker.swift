@@ -166,7 +166,7 @@ struct PlaceMoveSheet: View {
                 Picker("", selection: $copy) { Text("Move").tag(false); Text("Copy").tag(true) }
                     .pickerStyle(.segmented).labelsHidden().fixedSize()
                 Text(summary(p)).foregroundStyle(.secondary)
-                if p.fits == false { Label("It doesn't fit in the storage left there.", systemImage: "exclamationmark.triangle").foregroundStyle(.orange) }
+                if p.fits == false { Label("It doesn't fit in the storage left there.", coreSymbol: "exclamationmark.triangle").foregroundStyle(.orange) }
                 if p.to?.switches == true { Text("Folevi switches to that place when it's done.").font(.caption).foregroundStyle(.secondary) }
             } else if let problem {
                 Text(problem).foregroundStyle(.red)

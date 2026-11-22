@@ -28,7 +28,7 @@ struct FoliAIScreen: View {
         .task(id: search) { list.bind(app.client, Views.AiConversations(ChatConversationsArgs(space: nil, search: search.isEmpty ? nil : search))) }
         .toolbar {
             ToolbarItem(placement: .secondaryAction) {
-                Button { window.go(.foliAI(nil)) } label: { Label("New Chat", systemImage: "plus.bubble") }.help("New Chat")
+                Button { window.go(.foliAI(nil)) } label: { Label("New Chat", coreSymbol: "plus.bubble") }.help("New Chat")
             }
         }
     }
@@ -119,7 +119,7 @@ struct ChatView: View {
                 EmptyScreen(symbol: "sparkles", title: "Foli AI Isn't Available", message: c.unavailable ?? "Foli AI isn't set up for this account.", actionTitle: "Open Settings") { SettingsRouter.shared.open("ai") }
             } else {
                 if settings.value?.history == false {
-                    Label("Chat history is off, so this conversation isn't kept after you leave it.", systemImage: "clock.badge.xmark")
+                    Label("Chat history is off, so this conversation isn't kept after you leave it.", coreSymbol: "clock.badge.xmark")
                         .font(.callout).frame(maxWidth: .infinity, alignment: .leading).padding(10).background(.fill.quinary)
                 }
                 messages
@@ -131,7 +131,7 @@ struct ChatView: View {
                 ToolbarItem(placement: .secondaryAction) {
                     Menu {
                         ConversationMenu(id: id, title: info.title, pinned: info.pinned, shared: info.shared, canShare: info.canShare, window: window, deleted: deleted)
-                    } label: { Label("Conversation Options", systemImage: "ellipsis.circle") }
+                    } label: { Label("Conversation Options", coreSymbol: "ellipsis.circle") }
                     .help("Conversation Options")
                 }
             }
@@ -187,8 +187,8 @@ struct ChatView: View {
             }
             .overlay(alignment: .bottom) {
                 if !atBottom && !messageList.isEmpty {
-                    Button { withAnimation(.snappy) { proxy.scrollTo("bottom", anchor: .bottom) } } label: { Label("Jump to Latest", systemImage: "arrow.down") }
-                        .buttonStyle(.plain)
+                    Button { withAnimation(.snappy) { proxy.scrollTo("bottom", anchor: .bottom) } } label: { Label("Jump to Latest", coreSymbol: "arrow.down") }
+                        .buttonStyle(.hoverPlain)
                         .padding(.horizontal, 12).padding(.vertical, 6)
                         .glassEffect(.regular.interactive(), in: .capsule)
                         .padding(10)
@@ -205,15 +205,15 @@ struct ChatView: View {
             Text("Foli AI").font(CoreType.screenTitle(26))
             Text(introLead).foregroundStyle(.secondary)
             VStack(alignment: .leading, spacing: 6) {
-                Label("Answers from your notes and shows where each answer comes from.", systemImage: "quote.bubble")
-                Label("Asks before it changes a note, and you can undo what it did.", systemImage: "arrow.uturn.backward")
-                Label(app.session.value?.mode == .local ? "In a library on this Mac it runs here or on your own key." : "Your notes aren't used to train any model.", systemImage: "lock")
+                Label("Answers from your notes and shows where each answer comes from.", coreSymbol: "quote.bubble")
+                Label("Asks before it changes a note, and you can undo what it did.", coreSymbol: "arrow.uturn.backward")
+                Label(app.session.value?.mode == .local ? "In a library on this Mac it runs here or on your own key." : "Your notes aren't used to train any model.", coreSymbol: "lock")
             }
             .font(.callout)
             .foregroundStyle(.secondary)
             FlowLayout(spacing: 6) {
                 ForEach(starters, id: \.self) { s in
-                    Button(s) { send(s) }.buttonStyle(.bordered).controlSize(.small)
+                    Button(s) { send(s) }.buttonStyle(.bordered).controlSize(.regular)
                 }
             }
             .padding(.top, 4)
@@ -240,7 +240,7 @@ struct ChatView: View {
         VStack(spacing: 8) {
             if let suggestions = messageList.last?.suggestions, !suggestions.isEmpty, live == nil {
                 ScrollView(.horizontal) {
-                    HStack { ForEach(suggestions, id: \.self) { s in Button(s) { send(s) }.buttonStyle(.bordered).controlSize(.small) } }
+                    HStack { ForEach(suggestions, id: \.self) { s in Button(s) { send(s) }.buttonStyle(.bordered).controlSize(.regular) } }
                 }
                 .scrollIndicators(.never)
             }
@@ -251,7 +251,7 @@ struct ChatView: View {
                             Image(systemName: c.kind == .folder ? "folder" : c.kind == .workspace ? "square.stack.3d.up" : "doc.text")
                             Text(c.label).lineLimit(1)
                             Button { chips.removeAll { $0.id == c.id } } label: { Image(systemName: "xmark") }
-                                .buttonStyle(.plain).help("Remove \(c.label)")
+                                .buttonStyle(.hoverIcon).help("Remove \(c.label)")
                         }
                         .font(.caption).padding(.horizontal, 8).padding(.vertical, 3).background(.fill.tertiary, in: .capsule)
                     }
@@ -287,7 +287,7 @@ struct ChatView: View {
                 }
                 .pickerStyle(.segmented).labelsHidden().fixedSize()
                 if caps.value?.webResearch == true {
-                    Toggle(isOn: $web) { Label("Web", systemImage: "globe") }.toggleStyle(.button).help("Search the web too")
+                    Toggle(isOn: $web) { Label("Web", coreSymbol: "globe") }.toggleStyle(.button).help("Search the web too")
                 }
                 Spacer()
                 if let credits = caps.value?.credits, !credits.included {
@@ -297,7 +297,7 @@ struct ChatView: View {
                     }
                 }
             }
-            .controlSize(.small)
+            .controlSize(.regular)
             Text(footnote).font(.caption2).foregroundStyle(.tertiary).frame(maxWidth: .infinity, alignment: .leading)
         }
         .padding(12)
@@ -421,7 +421,7 @@ struct MessageView: View {
                     Button("Cancel") { editing = false }.keyboardShortcut(.cancelAction)
                     Button("Send", action: resend).buttonStyle(InkPillStyle())
                 }
-                .controlSize(.small)
+                .controlSize(.regular)
             }
         } else {
             VStack(alignment: .trailing, spacing: 2) {
@@ -445,11 +445,11 @@ struct MessageView: View {
             }
             if let e = message.error {
                 HStack {
-                    Label(e.message, systemImage: "exclamationmark.triangle").foregroundStyle(.orange)
+                    Label(e.message, coreSymbol: "exclamationmark.triangle").foregroundStyle(.orange)
                     if e.code.contains("credit") || e.code.contains("plan") {
-                        Button(e.code.contains("plan") ? "Upgrade" : "Buy More") { ChatActions.openBilling() }.controlSize(.small)
+                        Button(e.code.contains("plan") ? "Upgrade" : "Buy More") { ChatActions.openBilling() }.controlSize(.regular)
                     } else if isLast {
-                        Button("Try Again") { regenerate() }.controlSize(.small)
+                        Button("Try Again") { regenerate() }.controlSize(.regular)
                     }
                 }
             }
@@ -460,16 +460,16 @@ struct MessageView: View {
             actions
             if let run = message.agentRun { AgentRunView(run: run) }
             if message.agentMore, isLast, !message.live {
-                Button("Continue") { continueAgent() }.controlSize(.small).help("Carry on from where Foli AI stopped")
+                Button("Continue") { continueAgent() }.controlSize(.regular).help("Carry on from where Foli AI stopped")
             }
             if let memory = message.memory, memory.status == "offered" {
                 HStack {
-                    Label("Remember: \(memory.text)", systemImage: "brain").font(.callout)
+                    Label("Remember: \(memory.text)", coreSymbol: "brain").font(.callout)
                     Spacer()
                     Button("Remember") { app.perform { _ = try await $0.command(Commands.AiMemory(ChatMemoryArgs(messageId: message.id, save: true))) } }
                     Button("Not Now") { app.perform { _ = try await $0.command(Commands.AiMemory(ChatMemoryArgs(messageId: message.id, save: false))) } }
                 }
-                .controlSize(.small).padding(10).background(.fill.quinary, in: .rect(cornerRadius: 10))
+                .controlSize(.regular).padding(10).background(.fill.quinary, in: .rect(cornerRadius: 10))
             }
             if !message.live { toolbar }
         }
@@ -478,12 +478,12 @@ struct MessageView: View {
     private var sources: some View {
         FlowLayout(spacing: 6) {
             ForEach(message.citations, id: \.n) { c in
-                Button { ChatActions.open(c, window: window) } label: { Label("\(c.n). \(c.title.nonEmpty ?? "Untitled")", systemImage: "doc.text") }
-                    .buttonStyle(.bordered).controlSize(.small)
+                Button { ChatActions.open(c, window: window) } label: { Label("\(c.n). \(c.title.nonEmpty ?? "Untitled")", coreSymbol: "doc.text") }
+                    .buttonStyle(.bordered).controlSize(.regular)
             }
             ForEach(message.webCitations, id: \.n) { c in
                 if let u = URL(string: c.url) {
-                    Link(destination: u) { Label("\(c.n). \(c.domain)", systemImage: "globe") }.buttonStyle(.bordered).controlSize(.small)
+                    Link(destination: u) { Label("\(c.n). \(c.domain)", coreSymbol: "globe") }.buttonStyle(.bordered).controlSize(.regular)
                 }
             }
         }
@@ -492,13 +492,13 @@ struct MessageView: View {
     @ViewBuilder private var actions: some View {
         if !message.actions.isEmpty, message.actionsOutcome == nil {
             VStack(alignment: .leading, spacing: 6) {
-                ForEach(message.actions, id: \.title) { a in Label(a.title, systemImage: "wand.and.stars").font(.callout) }
+                ForEach(message.actions, id: \.title) { a in Label(a.title, coreSymbol: "wand.and.stars").font(.callout) }
                 HStack {
                     Button("Do It") { app.perform { _ = try await $0.command(Commands.AiActions(ChatActionsArgs(conversationId: conversationId, messageId: message.id, apply: true))) } }
                         .buttonStyle(InkPillStyle())
                     Button("No Thanks") { app.perform { _ = try await $0.command(Commands.AiActions(ChatActionsArgs(conversationId: conversationId, messageId: message.id, apply: false))) } }
                 }
-                .controlSize(.small)
+                .controlSize(.regular)
             }
             .padding(12).background(.fill.quinary, in: .rect(cornerRadius: 10))
         } else if let outcome = message.actionsOutcome {
@@ -654,7 +654,7 @@ struct AgentRunView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Label(run.status == "pending" ? "Foli AI wants to make these changes" : "Changes", systemImage: "wand.and.stars").font(.headline)
+            Label(run.status == "pending" ? "Foli AI wants to make these changes" : "Changes", coreSymbol: "wand.and.stars").font(.headline)
             ForEach(run.operations, id: \.id) { op in
                 HStack(alignment: .top) {
                     if run.status == "pending" {
@@ -681,7 +681,7 @@ struct AgentRunView: View {
                     Button("Undo Changes") { undo(nil) }
                 }
             }
-            .controlSize(.small)
+            .controlSize(.regular)
         }
         .padding(12)
         .background(.fill.quinary, in: .rect(cornerRadius: 10))

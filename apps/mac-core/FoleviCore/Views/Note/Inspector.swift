@@ -58,7 +58,7 @@ struct NoteInfo: View {
                         Button { window.editor(EditorCommands.ScrollToTop()) } label: {
                             Text(window.title).fontWeight(.semibold).frame(maxWidth: .infinity, alignment: .leading)
                         }
-                        .buttonStyle(.plain)
+                        .buttonStyle(.hoverPlain)
                         .help("Back to the top")
                         ForEach(t.outline, id: \.id) { item in
                             Button {
@@ -69,7 +69,7 @@ struct NoteInfo: View {
                                     .fontWeight(item.id == t.current ? .semibold : .regular)
                                     .frame(maxWidth: .infinity, alignment: .leading)
                             }
-                            .buttonStyle(.plain)
+                            .buttonStyle(.hoverPlain)
                         }
                     }
                 }
@@ -77,7 +77,7 @@ struct NoteInfo: View {
                     Section("Pages") {
                         ForEach(t.pages, id: \.id) { p in
                             Button(p.title.nonEmpty ?? "Untitled") { window.go(.note(p.id)) }
-                                .buttonStyle(.plain)
+                                .buttonStyle(.hoverPlain)
                                 .padding(.leading, CGFloat(p.depth) * 12)
                         }
                     }
@@ -91,7 +91,7 @@ struct NoteInfo: View {
                                 Button { window.editor(EditorCommands.BlockJump(BlockJumpArgs(blockId: task.id))) } label: {
                                     Text(task.text).strikethrough(task.checked).frame(maxWidth: .infinity, alignment: .leading)
                                 }
-                                .buttonStyle(.plain).help("Show in the note")
+                                .buttonStyle(.hoverPlain).help("Show in the note")
                             }
                         }
                     }
@@ -104,7 +104,7 @@ struct NoteInfo: View {
                             } label: {
                                 Label(l.label, systemImage: l.internal ? "doc.text" : "link")
                             }
-                            .buttonStyle(.plain)
+                            .buttonStyle(.hoverPlain)
                         }
                     }
                 }
@@ -115,7 +115,7 @@ struct NoteInfo: View {
                                 Label(a.name + (a.uploading ? " (uploading)" : ""), systemImage: a.kind == "image" ? "photo" : a.kind == "audio" ? "waveform" : "paperclip")
                                     .foregroundStyle(a.uploading ? .secondary : .primary)
                             }
-                            .buttonStyle(.plain).help("Show in the note")
+                            .buttonStyle(.hoverPlain).help("Show in the note")
                         }
                     }
                 }
@@ -146,7 +146,7 @@ struct NoteInfo: View {
                                     if let w = th.waiting { Text(w == "failed" ? "Not sent" : "Waiting to send").font(.caption).foregroundStyle(.orange) }
                                 }
                             }
-                            .buttonStyle(.plain)
+                            .buttonStyle(.hoverPlain)
                         }
                         Button("Show Comments") { window.panel(.comments) }
                     }

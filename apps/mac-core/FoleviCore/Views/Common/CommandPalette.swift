@@ -118,7 +118,7 @@ struct CommandPalette: View {
             .fixedSize()
             Spacer()
         }
-        .controlSize(.small)
+        .controlSize(.regular)
         .padding(.horizontal, 14)
         .padding(.bottom, 10)
     }

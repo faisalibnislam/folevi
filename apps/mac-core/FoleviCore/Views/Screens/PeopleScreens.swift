@@ -50,7 +50,7 @@ struct NotificationsScreen: View {
                 .pickerStyle(.segmented).labelsHidden().fixedSize()
                 Button("Mark All as Read") { app.perform { _ = try await $0.command(Commands.NotificationMarkAllRead()) } }
                     .disabled(app.unread == 0)
-                Button { SettingsRouter.shared.open("notifications") } label: { Label("Notification Settings", systemImage: "gearshape") }
+                Button { SettingsRouter.shared.open("notifications") } label: { Label("Notification Settings", coreSymbol: "gearshape") }
                     .help("Notification Settings")
             }
         }
@@ -61,7 +61,7 @@ struct NotificationsScreen: View {
         NotificationLine(row: n, window: window, reply: { replying = n })
             .overlay(alignment: .trailing) {
                 if let file = n.fileId {
-                    Button("Download") { download(file) }.controlSize(.small)
+                    Button("Download") { download(file) }.controlSize(.regular)
                 }
             }
             .tag(n.id)
@@ -147,7 +147,7 @@ struct NotificationLine: View {
                     Button("Resolve") { act("resolve") }
                 }
             }
-            .controlSize(.small)
+            .controlSize(.regular)
             .padding(.top, 2)
         }
     }

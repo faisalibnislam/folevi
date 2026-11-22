@@ -79,9 +79,14 @@ Closed or improved after the grading below; the per-item marks haven't been redo
   reminder marks; inline diffs on Changes; a Folders tree; File > Share for pages off a note; keys typed right
   after ⌘K go to the palette; links caught before launch; the engine's launch snapshot (sidebar, Home and counts
   drawn at once, nothing kept for encrypted spaces); card previews with the page's own line breaks.
+- Design pass (22 November 2026, against docs/MAC_NATIVE_LOOK.md inside the system frame): Folevi's web icons in
+  labels, menus and toolbars (CoreIcon); a hover on plain controls that never touches its words; no small controls;
+  no lines between list rows; cards 25% smaller (188 pt notes, 180 pt folders, 16 pt gaps); Home's sections 8 pt
+  closer. Sidebar picks now navigate (they only highlighted before) and start fresh with no way back, as the
+  owner's Back rule says.
 
 The items closed in this session's later work packages are marked [x] with "closed after the grading", and the
-summary table below is recounted from the marks (1096 there, 27 partly, 0 missing, 220 not applicable).
+summary table below is recounted from the marks (1102 there, 21 partly, 0 missing, 220 not applicable).
 
 ## Summary
 
@@ -122,10 +127,10 @@ summary table below is recounted from the marks (1096 there, 27 partly, 0 missin
 | Debug & eval harness | `DBG` | 0 | 0 | 0 | 8 | 8 |
 | Capabilities | `CAP` | 20 | 0 | 0 | 0 | 20 |
 | Stays web, WebPage values and the parity list | `WEB` | 2 | 0 | 0 | 2 | 4 |
-| Binding UX rules from owner memory | `RULE` | 23 | 8 | 0 | 13 | 44 |
+| Binding UX rules from owner memory | `RULE` | 29 | 2 | 0 | 13 | 44 |
 | iPhone and iPad only (skip) | `IOS` | 0 | 0 | 0 | 5 | 5 |
 | Gaps, bugs and contradictions | `GAP` | 26 | 4 | 0 | 13 | 43 |
-| **Total** | | **1096** | **27** | **0** | **220** | **1343** |
+| **Total** | | **1102** | **21** | **0** | **220** | **1343** |
 
 Notable findings (all in the first work package at the end):
 
@@ -1661,16 +1666,16 @@ Notable findings (all in the first work package at the end):
 - [n/a] `RULE-004` **Mac tabs**: Safari rule; every tab the same width filling the bar; × on the open tab and on hover. Why: Core's design uses native window tabs.
 - [n/a] `RULE-005` **Mac note layout = web**: the left sidebar shows the note tools (contents, comments, tasks, attachments, find) with a Folders switch beside the sidebar… Why: Core's design: native sidebar, note tools in the inspector, the page draws its panels.
 - [n/a] `RULE-006` **Show All Tabs**: looks like Safari's (real pictures). iPhone/iPad flat-note rules come later. Why: macOS Show All Tabs.
-- [~] `RULE-007` **Back always works**: tabs opened from a page remember their opener; Back with no history closes the tab and shows the opener. The sidebar and "+"/New… Core: the opener rule is in (`Model/WindowModel.swift`); sidebar picks still keep history.
+- [x] `RULE-007` **Back always works**: tabs opened from a page remember their opener; Back with no history closes the tab and shows the opener. The sidebar and "+"/New… Core: closed after the grading (see "Since this grading").
 - [n/a] `RULE-008` **Home's overview picture**: is drawn from data (Recent notes plus Recent folders rows, HomePicture), never a cropped screenshot; any screenshot picture is… Why: native window tabs have no pictures.
 - [n/a] `RULE-009` **iPhone Home strips**: cards 176 pt wide, 12 pt apart, 12 pt under the folder row; a folder name drops to one line when needed. Why: iPhone only.
 - [x] `RULE-010` **Folder style Frosted everywhere**: the back has an S-curve tab at 85% opacity; fanned notes behind a frosted front; name, counts and "Edited" on the front; "…" chip… Core: FoleviDesign WebFolderCard.
-- [~] `RULE-011` **25% smaller folder and note cards**: in grids on Mac and web only. Core: adaptive grid sizes in Core; not checked against the 25% rule.
+- [x] `RULE-011` **25% smaller folder and note cards**: in grids on Mac and web only. Core: closed after the grading (see "Since this grading").
 - [x] `RULE-012` **Sidebar folder icon**: page inside / stack for subfolders / outline when empty. Core: `Views/Sidebar.swift` FolderMark kind (notes, stack, empty).
 - [x] `RULE-013` **Back's bottom corners**: match the front (14 pt circles). Core: FoleviDesign WebFolderCard.
 - [x] `RULE-014` **Final frost**: the whole front fully frosted; tint light 62 to 66%, dark 82 to 78%; 7 px blur. Core: FoleviDesign WebFolderCard.
-- [~] `RULE-015` **Home spacing**: sections 8 px closer; the Mac carousel hugs smaller cards. Core: Core's own spacing; not checked.
-- [~] `RULE-016` **Every clickable control shows a hover**: (buttons, icon buttons, menu triggers, segments, row actions, chips, tabs, rows) on web, Mac and iPad with a pointer. Use the… Core: hovers on cards, pills and some plain buttons; not on every plain button (tag chips, inspector rows).
+- [x] `RULE-015` **Home spacing**: sections 8 px closer; the Mac carousel hugs smaller cards. Core: closed after the grading (see "Since this grading").
+- [x] `RULE-016` **Every clickable control shows a hover**: (buttons, icon buttons, menu triggers, segments, row actions, chips, tabs, rows) on web, Mac and iPad with a pointer. Use the… Core: closed after the grading (see "Since this grading").
 - [x] `RULE-017` **One native look**: no setting and no beta app. Core: one native look.
 - [x] `RULE-018` **System chrome, Folevi content**: stock macOS 26 parts and SF Pro for window, sidebar, toolbar, menus, popovers, lists, Settings and dialogs; notes and editor keep… Core: `Views/Common/Style.swift` CoreType (SF Pro chrome, Spectral and Instrument Sans for notes).
 - [n/a] `RULE-019` **Folevi tab model kept**: (joined, pinned, per-place, folder tabs) as a capsule track in the glass top bar; native window tabs rejected. Why: Core deliberately uses native window tabs instead.
@@ -1681,17 +1686,17 @@ Notable findings (all in the first work package at the end):
 - [x] `RULE-024` **Owner's Mac UI guide**: applies to the window profile. Core: the guide applies to the sidebar scale, Settings and empty/loading states; the owner chose (21 November 2026) to keep native window tabs, so its main-window profile is not used.
 - [n/a] `RULE-025` **Web-parity screenshot diffs**: cover note content only, not chrome. Why: a testing process, not a feature.
 - [n/a] `RULE-026` **iPad uses the same layout as the Mac**. Why: iPad only.
-- [~] `RULE-027` **Sidebar rows**: need more breathing space. Core: system sidebar rows, not tuned.
+- [x] `RULE-027` **Sidebar rows**: need more breathing space. Core: closed after the grading (see "Since this grading").
 - [x] `RULE-028` **Liquid Glass**: wherever there is scope: on floating controls and the navigation layer, never on content. Core: glass on toasts, the palette and Quick Add only.
-- [~] `RULE-029` **Consistent button size, thickness and font sizes**: (one control size via `macNativeChrome`). Core: mixed control sizes (small, regular, large).
+- [~] `RULE-029` **Consistent button size, thickness and font sizes**: (one control size via `macNativeChrome`). Core: no small or mini controls left (spinners aside); buttons are the system regular size in rows and toolbars, not one large size everywhere.
 - [x] `RULE-030` **System font everywhere**: except notes, folders and the editor. A note card keeps its Spectral title and the note-font preview, with system dates and chip.… Core: CoreType on cards and titles, system font elsewhere.
 - [x] `RULE-031` **One New note**: a black "+ New note" pill in the title bar right after the tabs, before sync and bell (white in dark mode), native Liquid Glass.… Core: `Views/MainWindow.swift` the one New Note pill in the toolbar.
 - [x] `RULE-032` **Section headings that open a page**: get a full-row hover. Core: closed after the grading (see "Since this grading").
 - [x] `RULE-033` **No unnecessary or repeated buttons**: (no circle + on Home or a note, no extra floating Share on a note). Core: one New Note, no repeated buttons.
-- [~] `RULE-034` **Icons**: Folevi's web icons wherever the web has one, and the Foli AI icon for Foli AI; this overrides SF Symbols in the chrome (MacSymbol). Core: web icons in the sidebar and note toolbar; SF Symbols in menus, palette and list toolbars.
+- [x] `RULE-034` **Icons**: Folevi's web icons wherever the web has one, and the Foli AI icon for Foli AI; this overrides SF Symbols in the chrome (MacSymbol). Core: closed after the grading (see "Since this grading").
 - [n/a] `RULE-035` **Checklist**: of native, Liquid Glass and macOS UI use lives in. Why: reference document.
 - [n/a] `RULE-036` **Verify with real window captures**: (`screencapture -l`), not the app's own windowShot. Why: a testing process, not a feature.
-- [~] `RULE-037` **Follow `docs/MAC_NATIVE_LOOK.md`**: (row sizes, `macNativeChrome`, MacSymbol, no control twice). Core: not reviewed against MAC_NATIVE_LOOK.md yet.
+- [~] `RULE-037` **Follow `docs/MAC_NATIVE_LOOK.md`**: (row sizes, `macNativeChrome`, MacSymbol, no control twice). Core: reviewed on 22 November 2026: icons, hovers, row rhythm, no lines between rows, card sizes and Home spacing follow it; the window profile (custom title bar strip, one card, drawn sidebar) is not used, by the owner's choice of native tabs.
 - [x] `RULE-038` **New note shortcut**: MenuModel binds ⌘N to New Note and ⇧⌘N to New Window, but AppContextMenu says ⌘⌥N on the Mac "(⌘N is a new window there)" and the… Core: resolved: ⌘N New Note, ⇧⌘N New Window, the palette says ⌘N.
 - [n/a] `RULE-039` **Stale header comment**: CardControls says "New note is the sidebar's row", which contradicts the owner's pill rule. Why: today's code.
 - [n/a] `RULE-040` **Dead code**: SidebarViewController, TabStripView and NoteMenu.build are compiled but never instantiated. Why: today's code.

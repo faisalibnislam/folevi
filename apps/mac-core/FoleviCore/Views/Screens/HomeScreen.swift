@@ -16,7 +16,7 @@ struct HomeScreen: View {
     var body: some View {
         ScrollView {
             if let h = home.value {
-                VStack(alignment: .leading, spacing: 28) {
+                VStack(alignment: .leading, spacing: 20) {
                     Text(h.spaceName.nonEmpty ?? app.spaceName)
                         .font(CoreType.screenTitle(30))
                         .padding(.top, 8)
@@ -35,7 +35,7 @@ struct HomeScreen: View {
                             EmptyHint(title: "No notes yet", text: "Press New Note (⌘N) to write your first one.")
                         } else {
                             Carousel(label: "recent notes") {
-                                ForEach(h.recents) { row in NoteCardButton(row: row, window: window, fromRecent: true).frame(width: 196) }
+                                ForEach(h.recents) { row in NoteCardButton(row: row, window: window, fromRecent: true).frame(width: CoreCards.noteWidth) }
                             }
                         }
                     }
@@ -45,7 +45,7 @@ struct HomeScreen: View {
                             EmptyHint(title: "No starred notes yet", text: "Star notes you come back to often, and they wait for you here.")
                         } else {
                             Carousel(label: "starred notes") {
-                                ForEach(h.starred.rows.prefix(6)) { row in NoteCardButton(row: row, window: window).frame(width: 196) }
+                                ForEach(h.starred.rows.prefix(6)) { row in NoteCardButton(row: row, window: window).frame(width: CoreCards.noteWidth) }
                             }
                         }
                     }
@@ -119,7 +119,7 @@ struct HomeScreen: View {
                 EmptyHint(title: "No folders yet", text: "Make one from the sidebar (⌃⌘N) to keep related notes together.")
             } else {
                 Carousel(label: "folders", rows: all.count > 4 ? 2 : 1) {
-                    ForEach(all, id: \.id) { f in HomeFolderCard(folder: f, window: window).frame(width: 190) }
+                    ForEach(all, id: \.id) { f in HomeFolderCard(folder: f, window: window).frame(width: CoreCards.folderWidth) }
                 }
             }
         }
@@ -132,7 +132,7 @@ struct HomeScreen: View {
                 Spacer()
                 if let action, let dest {
                     Button(action) { window.go(dest) }
-                        .buttonStyle(.plain)
+                        .buttonStyle(.hoverPlain)
                         .foregroundStyle(.secondary)
                         .hoverEffectCompat()
                 }
@@ -190,7 +190,7 @@ struct Carousel<Content: View>: View {
         } label: {
             Image(systemName: symbol).font(.body.weight(.semibold)).frame(width: 30, height: 30)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.hoverIcon)
         .glassEffect(.regular.interactive(), in: .circle)
         .help(help)
         .accessibilityLabel(help)
@@ -202,7 +202,7 @@ struct Carousel<Content: View>: View {
 /// A card's shape while Home loads.
 struct SkeletonCard: View {
     var body: some View {
-        RoundedRectangle(cornerRadius: 10).fill(.fill.tertiary).frame(width: 196, height: 180)
+        RoundedRectangle(cornerRadius: 10).fill(.fill.tertiary).frame(width: CoreCards.noteWidth, height: 172)
             .accessibilityHidden(true)
     }
 }
@@ -322,7 +322,7 @@ struct CatchUpCardView: View {
         VStack(alignment: .leading, spacing: 10) {
             HStack {
                 Button { window.go(.catchUp) } label: { Label { Text("Catch Me Up") } icon: { AiMarkGlyph(size: 16) }.font(.headline) }
-                    .buttonStyle(.plain).help("About Catch Me Up")
+                    .buttonStyle(.hoverPlain).help("About Catch Me Up")
                 Spacer()
                 switch card.state {
                 case .running: EmptyView()
@@ -341,7 +341,7 @@ struct CatchUpCardView: View {
                     FlowLayout(spacing: 6) {
                         ForEach(Array(brief.sources.enumerated()), id: \.element.id) { i, s in
                             Button { window.go(.note(s.id)) } label: { Text("\(i + 1). \(s.title.nonEmpty ?? "Untitled")") }
-                                .buttonStyle(.bordered).controlSize(.small)
+                                .buttonStyle(.bordered).controlSize(.regular)
                         }
                     }
                 }
@@ -377,9 +377,9 @@ struct CatchUpScreen: View {
                 Text("Foli AI reads what changed in your notes since you last looked and writes a short brief, with the notes it came from.")
                     .foregroundStyle(.secondary)
                 VStack(alignment: .leading, spacing: 10) {
-                    Label("What changed: notes you and others edited, added or finished.", systemImage: "pencil.line")
-                    Label("What's due: tasks coming up and overdue.", systemImage: "checklist")
-                    Label("Where it came from: every line points to its note.", systemImage: "quote.bubble")
+                    Label("What changed: notes you and others edited, added or finished.", coreSymbol: "pencil.line")
+                    Label("What's due: tasks coming up and overdue.", coreSymbol: "checklist")
+                    Label("Where it came from: every line points to its note.", coreSymbol: "quote.bubble")
                 }
                 if let card = home.value?.catchUp {
                     if card.available {
@@ -448,7 +448,7 @@ struct FlowTags: View {
                         .background(Color.folevi(t.color).opacity(0.15), in: .capsule)
                         .foregroundStyle(Color.folevi(t.color))
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.hoverChip)
             }
         }
     }

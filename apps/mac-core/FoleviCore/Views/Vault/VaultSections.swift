@@ -97,7 +97,7 @@ struct VaultPeopleView: View {
                     }
                 }
                 if p.onlyOneCustodian {
-                    Label("Only one person can open this Vault's recovery. Make someone else a custodian too.", systemImage: "exclamationmark.triangle").foregroundStyle(.orange)
+                    Label("Only one person can open this Vault's recovery. Make someone else a custodian too.", coreSymbol: "exclamationmark.triangle").foregroundStyle(.orange)
                 }
                 Button("Everyone Here Should Have Access") { app.perform { _ = try await $0.command(Commands.VaultPeopleReviewed(VaultIdArgs(vaultId: vaultId))) } }
                 if p.canAdd, !p.candidates.isEmpty {

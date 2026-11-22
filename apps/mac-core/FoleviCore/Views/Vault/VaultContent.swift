@@ -30,7 +30,7 @@ struct VaultFilesView: View {
         VStack(spacing: 0) {
             HStack {
                 if let f = folder {
-                    Button { folder = (folders.value?.folders ?? []).first { $0.id == f }?.parentId } label: { Label("Back", systemImage: "chevron.left") }
+                    Button { folder = (folders.value?.folders ?? []).first { $0.id == f }?.parentId } label: { Label("Back", coreSymbol: "chevron.left") }
                     Text((folders.value?.folders ?? []).first { $0.id == f }?.name ?? "").font(.headline)
                 } else {
                     Text("Files & Notes").font(.headline)
@@ -46,7 +46,7 @@ struct VaultFilesView: View {
                     Button("New Folder…") { naming = .folder }
                     Button("New Note…") { naming = .note }
                     Button("Upload Files…", action: upload)
-                } label: { Label("Add", systemImage: "plus") }
+                } label: { Label("Add", coreSymbol: "plus") }
                 .fixedSize()
             }
             .padding(10)

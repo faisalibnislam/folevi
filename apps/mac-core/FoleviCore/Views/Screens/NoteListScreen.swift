@@ -120,6 +120,7 @@ struct NoteListScreen: View {
                         FolderListRow(folder: f)
                             .tag("folder:" + f.id)
                             .onTapGesture(count: 2) { window.go(.folder(f.id)) }
+                            .listRowSeparator(.hidden)
                     }
                 }
             }
@@ -130,7 +131,7 @@ struct NoteListScreen: View {
                         .overlay(alignment: .trailing) {
                             if kind == .templates {
                                 Button("Use") { NoteActions.newNote(app: app, window: window, template: row.id) }
-                                    .controlSize(.small).help("New note from this template")
+                                    .controlSize(.regular).help("New note from this template")
                             }
                         }
                         .tag(row.id)
@@ -140,6 +141,8 @@ struct NoteListScreen: View {
                                      moveDown: sort == .manual && i < list.rows.count - 1 ? { move(row.id, after: list.rows[i + 1].id) } : nil)
                         }
                         .onAppear { if row.id == list.rows.last?.id { more() } }
+                        // No line between rows (the owner: spacing and the hover tell rows apart).
+                        .listRowSeparator(.hidden)
                 }
                 .onMove(perform: sort == .manual ? reorder : nil)
             } header: {
@@ -180,19 +183,19 @@ struct NoteListScreen: View {
                 } else {
                     let allStarred = notes.allSatisfy { id in list.rows.first { $0.id == id }?.starred == true }
                     Button { star(notes, !allStarred) } label: { Label(allStarred ? "Unstar" : "Star", systemImage: allStarred ? "bookmark.slash" : "bookmark") }
-                    Button { window.pickFolder(.moveNotes, notes) } label: { Label("Move", systemImage: "folder") }
-                    Button { window.pickFolder(.copyNotes, notes) } label: { Label("Copy To", systemImage: "doc.on.doc") }
+                    Button { window.pickFolder(.moveNotes, notes) } label: { Label("Move", coreSymbol: "folder") }
+                    Button { window.pickFolder(.copyNotes, notes) } label: { Label("Copy To", coreSymbol: "doc.on.doc") }
                     if let tags = app.tree.value?.tags, !tags.isEmpty {
                         Menu {
                             ForEach(tags, id: \.id) { t in Button("#" + t.name) { addTag(t.id, to: notes) } }
-                        } label: { Label("Add Tag", systemImage: "number") }
+                        } label: { Label("Add Tag", coreSymbol: "number") }
                         .fixedSize()
                     }
                     Button {
                         archive(notes, kind != .archive)
                         selection.removeAll()
-                    } label: { Label(kind == .archive ? "Unarchive" : "Archive", systemImage: "archivebox") }
-                    Button(role: .destructive) { trashSelection() } label: { Label("Trash", systemImage: "trash") }
+                    } label: { Label(kind == .archive ? "Unarchive" : "Archive", coreSymbol: "archivebox") }
+                    Button(role: .destructive) { trashSelection() } label: { Label("Trash", coreSymbol: "trash") }
                 }
                 Button { selection.removeAll() } label: { Image(systemName: "xmark") }.help("Clear Selection (Esc)").keyboardShortcut(.cancelAction)
             }
@@ -211,7 +214,7 @@ struct NoteListScreen: View {
     private var cards: some View {
         ScrollView {
             if kind == .folder, let folders = subfolders.value?.folders, !folders.isEmpty {
-                LazyVGrid(columns: [GridItem(.adaptive(minimum: 180, maximum: 240), spacing: 20)], spacing: 20) {
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: CoreCards.folderWidth - 16, maximum: CoreCards.folderWidth), spacing: CoreCards.gap)], spacing: CoreCards.gap) {
                     ForEach(folders, id: \.id) { f in
                         Button { window.go(.folder(f.id)) } label: { WebFolderCard(Cards.folder(f)) }
                             .buttonStyle(CardPressStyle())
@@ -219,7 +222,7 @@ struct NoteListScreen: View {
                 }
                 .padding([.horizontal, .top], 24)
             }
-            LazyVGrid(columns: [compact ? GridItem(.adaptive(minimum: 150, maximum: 180), spacing: 14) : GridItem(.adaptive(minimum: 190, maximum: 250), spacing: 20)], spacing: compact ? 14 : 22) {
+            LazyVGrid(columns: [compact ? GridItem(.adaptive(minimum: 150, maximum: 180), spacing: 14) : GridItem(.adaptive(minimum: CoreCards.noteWidth - 16, maximum: CoreCards.noteWidth), spacing: CoreCards.gap)], spacing: compact ? 14 : CoreCards.gap + 2) {
                 ForEach(shownRows) { row in
                     NoteCardButton(row: row, window: window, inTrash: kind == .trash)
                         .scaleEffect(compact ? 0.8 : 1, anchor: .top)
@@ -368,7 +371,7 @@ struct NoteListScreen: View {
                 }
                 .pickerStyle(.inline)
             } label: {
-                Label("Sort", systemImage: "arrow.up.arrow.down")
+                Label("Sort", coreSymbol: "arrow.up.arrow.down")
             }
             .help("Sort")
             if kind == .trash {
@@ -379,20 +382,20 @@ struct NoteListScreen: View {
                 Menu {
                     ForEach(enclosing, id: \.id) { f in
                         Button { window.go(.folder(f.id)) } label: {
-                            if f.id == node.id { Label(f.name, systemImage: "checkmark") } else { Text(f.name) }
+                            if f.id == node.id { Label(f.name, coreSymbol: "checkmark") } else { Text(f.name) }
                         }
                     }
                     Divider()
                     Button("All Folders") { window.go(.folders) }
-                } label: { Label("Enclosing Folders", systemImage: "folder.badge.gearshape") }
+                } label: { Label("Enclosing Folders", coreSymbol: "folder.badge.gearshape") }
                 .help("Enclosing Folders")
                 Menu {
                     FolderMenu(folder: node, window: window, rename: { renamingFolder = $0 }, newSubfolder: { newSubfolderOf = $0 })
-                } label: { Label("Folder Options", systemImage: "ellipsis.circle") }
+                } label: { Label("Folder Options", coreSymbol: "ellipsis.circle") }
                 .help("Folder Options")
             }
             if kind == .folder, app.session.value?.mode != .local {
-                Button { window.sharingFolder = folderId } label: { Label("Share Folder", systemImage: "person.crop.circle.badge.plus") }
+                Button { window.sharingFolder = folderId } label: { Label("Share Folder", coreSymbol: "person.crop.circle.badge.plus") }
                     .help("Share Folder")
             }
         }
@@ -439,9 +442,9 @@ struct ListStylePicker: View {
 
     var body: some View {
         Picker("View", selection: $window.listStyle) {
-            Label("List", systemImage: "list.bullet").tag(WindowModel.ListStyleChoice.list)
-            Label("Cards", systemImage: "square.grid.2x2").tag(WindowModel.ListStyleChoice.cards)
-            Label("Compact Cards", systemImage: "square.grid.3x3").tag(WindowModel.ListStyleChoice.compact)
+            Label("List", coreSymbol: "list.bullet").tag(WindowModel.ListStyleChoice.list)
+            Label("Cards", coreSymbol: "square.grid.2x2").tag(WindowModel.ListStyleChoice.cards)
+            Label("Compact Cards", coreSymbol: "square.grid.3x3").tag(WindowModel.ListStyleChoice.compact)
         }
         .pickerStyle(.segmented)
         .labelsHidden()

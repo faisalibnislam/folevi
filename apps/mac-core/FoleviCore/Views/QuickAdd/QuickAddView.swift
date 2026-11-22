@@ -42,7 +42,7 @@ struct QuickAddView: View {
                             Button {
                                 if p.id != places.current { Places.shared.switchTo(p.id) }
                             } label: {
-                                if p.id == places.current { Label(p.kind == .library ? "On This Mac" : p.name, systemImage: "checkmark") } else { Text(p.kind == .library ? "On This Mac" : p.name) }
+                                if p.id == places.current { Label(p.kind == .library ? "On This Mac" : p.name, coreSymbol: "checkmark") } else { Text(p.kind == .library ? "On This Mac" : p.name) }
                             }
                         }
                     } label: {
@@ -128,8 +128,8 @@ struct QuickAddView: View {
 
     private func chip(_ label: String, icon: String, edit: Chip?, remove: @escaping () -> Void) -> some View {
         HStack(spacing: 4) {
-            Button { if let edit { editing = edit } } label: { Label(label, systemImage: icon) }.buttonStyle(.plain)
-            Button(action: remove) { Image(systemName: "xmark") }.buttonStyle(.plain).help("Keep the words as typed")
+            Button { if let edit { editing = edit } } label: { Label(label, systemImage: icon) }.buttonStyle(.hoverPlain)
+            Button(action: remove) { Image(systemName: "xmark") }.buttonStyle(.hoverIcon).help("Keep the words as typed")
         }
         .font(.caption)
         .padding(.horizontal, 8).padding(.vertical, 4)
@@ -273,7 +273,7 @@ struct PagePickerList: View {
         VStack(alignment: .leading) {
             TextField("Inbox, or search a page…", text: $query).textFieldStyle(.roundedBorder)
             List(hits, id: \.0) { h in
-                Button(h.1.nonEmpty ?? "Untitled") { picked(h.0, h.1.nonEmpty ?? "Untitled") }.buttonStyle(.plain)
+                Button(h.1.nonEmpty ?? "Untitled") { picked(h.0, h.1.nonEmpty ?? "Untitled") }.buttonStyle(.hoverPlain)
             }
         }
         .task(id: query) {

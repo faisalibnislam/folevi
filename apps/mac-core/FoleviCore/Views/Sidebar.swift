@@ -31,7 +31,7 @@ struct Sidebar: View {
     @State private var graphOpen = false
 
     var body: some View {
-        List(selection: $window.sidebarSelection) {
+        List(selection: Binding(get: { window.sidebarSelection }, set: { window.pickInSidebar($0) })) {
             Section {
                 row(.home)
                 row(.search(""), title: "Search")
@@ -151,6 +151,7 @@ struct Sidebar: View {
             }
         }
         .listStyle(.sidebar)
+        // (More breathing room than the system's rows: the rows' own padding, about 32 pt as the owner's polish pass.)
         .safeAreaInset(edge: .top, spacing: 0) {
             PlaceMenu()
                 .padding(.horizontal, 10)
@@ -229,6 +230,7 @@ struct Sidebar: View {
         } icon: {
             PlaceIcon(dest: dest, size: 14).frame(width: 18)
         }
+        .padding(.vertical, 2.5)
         .badge(badge)
         .tag(dest)
         .onMiddleClick { app.open(dest, newTab: true, background: true) }
@@ -312,6 +314,7 @@ struct FolderRow: View {
         } icon: {
             FolderMark(colorId: folder.color, size: 14, kind: folder.childCount > 0 ? .stack : ((folder.noteCount ?? 0) > 0 ? .notes : .empty))
         }
+        .padding(.vertical, 2.5)
         .badge(folder.noteCount ?? 0)
         .tag(Destination.folder(folder.id))
         .onMiddleClick { app.open(.folder(folder.id), newTab: true, background: true) }
@@ -351,7 +354,7 @@ struct SectionHeaderWithAdd<M: View>: View {
     var body: some View {
         HStack {
             if let open {
-                Button(title, action: open).buttonStyle(.plain).help("Show All \(title)")
+                Button(title, action: open).buttonStyle(.hoverPlain).help("Show All \(title)")
             } else {
                 Text(title)
             }
@@ -418,9 +421,9 @@ struct SyncDetails: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text(status.label.nonEmpty ?? status.state.rawValue.capitalized).font(.headline)
-            if !status.online { Label("You're offline. Changes are kept on this Mac and sync when you're back.", systemImage: "wifi.slash").font(.callout) }
+            if !status.online { Label("You're offline. Changes are kept on this Mac and sync when you're back.", coreSymbol: "wifi.slash").font(.callout) }
             if status.pending > 0 { Text(status.pending == 1 ? "1 change waiting to sync" : "\(status.pending) changes waiting to sync").foregroundStyle(.secondary) }
-            if status.conflicts > 0 { Label("\(status.conflicts) notes changed in two places", systemImage: "exclamationmark.triangle").foregroundStyle(.orange) }
+            if status.conflicts > 0 { Label("\(status.conflicts) notes changed in two places", coreSymbol: "exclamationmark.triangle").foregroundStyle(.orange) }
             ForEach(status.spaces, id: \.space) { sp in
                 if let total = sp.total, total > 0 {
                     VStack(alignment: .leading, spacing: 2) {

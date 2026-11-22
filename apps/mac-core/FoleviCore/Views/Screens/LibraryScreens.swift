@@ -48,7 +48,7 @@ struct RecentScreen: View {
             ToolbarItemGroup(placement: .secondaryAction) {
                 ListStylePicker(window: window)
                 if (app.places.value?.places.count ?? 0) > 1 {
-                    Toggle(isOn: $everywhere) { Label("Every Place", systemImage: "square.stack.3d.up") }
+                    Toggle(isOn: $everywhere) { Label("Every Place", coreSymbol: "square.stack.3d.up") }
                         .help("Show recent notes from every place on this Mac")
                 }
             }
@@ -163,7 +163,7 @@ struct SearchScreen: View {
             filters
             Divider()
             if app.sync.value?.online == false {
-                Label("Showing what's on this Mac. Folevi searches everything when it's back online.", systemImage: "wifi.slash")
+                Label("Showing what's on this Mac. Folevi searches everything when it's back online.", coreSymbol: "wifi.slash")
                     .font(.callout).foregroundStyle(.secondary).frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.horizontal, 24).padding(.vertical, 8).background(.fill.quinary)
             }
@@ -243,7 +243,7 @@ struct SearchScreen: View {
                 Button("Clear", action: clearFilters).help("Clear the filters")
             }
         }
-        .controlSize(.small)
+        .controlSize(.regular)
         .padding(.horizontal, 24)
         .padding(.vertical, 10)
     }
@@ -261,7 +261,7 @@ struct SearchScreen: View {
                             Button("Clear") { RecentSearches.clear(); recents = [] }.buttonStyle(.borderless).font(.caption).padding(.top, 12)
                         }
                         ForEach(recents, id: \.self) { q in
-                            row(.query(q)) { Label(q, systemImage: "clock.arrow.circlepath") }
+                            row(.query(q)) { Label(q, coreSymbol: "clock.arrow.circlepath") }
                         }
                     }
                     if let rows = recentNotes.value?.rows, !rows.isEmpty {
@@ -606,7 +606,7 @@ struct SharedFolderScreen: View {
                                     Text([f.workspaceName ?? f.ownerName, f.roleLabel].compactMap { $0 }.joined(separator: " · ")).foregroundStyle(.secondary)
                                 }
                                 Spacer()
-                                Button { window.sharingFolder = f.sharedFolderId ?? f.id } label: { Label("People", systemImage: "person.2") }
+                                Button { window.sharingFolder = f.sharedFolderId ?? f.id } label: { Label("People", coreSymbol: "person.2") }
                                     .help("Who has this folder")
                             }
                             .padding(.vertical, 6)
@@ -681,13 +681,13 @@ struct ChangesScreen: View {
                                 ForEach(c.proposals, id: \.id) { p in
                                     VStack(alignment: .leading, spacing: 6) {
                                         if let note = p.noteId {
-                                            Button(p.title.nonEmpty ?? "Untitled") { window.go(.note(note)) }.buttonStyle(.plain).font(CoreType.noteTitle(15))
+                                            Button(p.title.nonEmpty ?? "Untitled") { window.go(.note(note)) }.buttonStyle(.hoverPlain).font(CoreType.noteTitle(15))
                                         } else {
                                             Text(p.title.nonEmpty ?? "Untitled").font(CoreType.noteTitle(15))
                                         }
                                         Text("\(p.sourceName) proposed this \(CoreDates.short(p.createdAt))").font(.caption).foregroundStyle(.secondary)
                                         if let problem = p.problem {
-                                            Label(problem, systemImage: "exclamationmark.triangle").font(.callout).foregroundStyle(.red)
+                                            Label(problem, coreSymbol: "exclamationmark.triangle").font(.callout).foregroundStyle(.red)
                                         } else if p.noteId == nil {
                                             Text("You can't open this note, so its proposal isn't shown.").font(.callout).foregroundStyle(.secondary)
                                         } else {
@@ -713,7 +713,7 @@ struct ChangesScreen: View {
                                             }
                                             if let note = p.noteId { Button("Open Note") { window.go(.note(note)) }.buttonStyle(InkLinkStyle()) }
                                         }
-                                        .controlSize(.small)
+                                        .controlSize(.regular)
                                     }
                                     .padding(.vertical, 4)
                                 }
@@ -835,7 +835,7 @@ struct TemplatesScreen: View {
                         let r = try await client.command(Commands.TemplateCreate(TemplateCreateArgs(space: nil, title: nil, open: false)))
                         window.go(.note(r.id))
                     }
-                } label: { Label("New Template", systemImage: "plus.square.on.square") }
+                } label: { Label("New Template", coreSymbol: "plus.square.on.square") }
             }
         }
         .sheet(isPresented: $generating) { GenerateTemplateSheet(window: window) }
@@ -859,7 +859,7 @@ struct GenerateTemplateSheet: View {
             TextField("What's the template for?", text: $instruction, axis: .vertical).lineLimit(2...4).textFieldStyle(.roundedBorder)
             HStack {
                 ForEach(["Weekly team meeting", "Project kickoff", "Book notes", "Trip planner"], id: \.self) { e in
-                    Button(e) { instruction = e }.buttonStyle(.bordered).controlSize(.small)
+                    Button(e) { instruction = e }.buttonStyle(.bordered).controlSize(.regular)
                 }
             }
             if let d = draft {
@@ -963,9 +963,9 @@ struct FoldersScreen: View {
         .toolbar {
             ToolbarItemGroup(placement: .secondaryAction) {
                 Picker("View", selection: $layout) {
-                    Label("Cards", systemImage: "square.grid.2x2").tag("grid")
-                    Label("List", systemImage: "list.bullet").tag("list")
-                    Label("Tree", systemImage: "list.bullet.indent").tag("tree")
+                    Label("Cards", coreSymbol: "square.grid.2x2").tag("grid")
+                    Label("List", coreSymbol: "list.bullet").tag("list")
+                    Label("Tree", coreSymbol: "list.bullet.indent").tag("tree")
                 }
                 .pickerStyle(.segmented).labelsHidden().help("View as Cards or List")
                 Menu {
@@ -975,9 +975,9 @@ struct FoldersScreen: View {
                         Text("Recently Changed").tag("recent")
                     }
                     .pickerStyle(.inline)
-                } label: { Label("Sort", systemImage: "arrow.up.arrow.down") }
+                } label: { Label("Sort", coreSymbol: "arrow.up.arrow.down") }
                 .help("Sort Folders")
-                Button { newFolder = true } label: { Label("New Folder", systemImage: "folder.badge.plus") }.help("New Folder (⌃⌘N)")
+                Button { newFolder = true } label: { Label("New Folder", coreSymbol: "folder.badge.plus") }.help("New Folder (⌃⌘N)")
             }
         }
         .overlay(alignment: .bottom) { selectionBar }
@@ -1055,9 +1055,9 @@ struct FoldersScreen: View {
                 Text("\(ids.count) selected").font(.callout.weight(.medium))
                 if ids.count < shown.count { Button("Select All") { selection = Set(shown.map(\.id)) } }
                 Divider().frame(height: 16)
-                Button { openInTabs(ids) } label: { Label("Open in Tabs", systemImage: "plus.square.on.square") }
-                Button { window.colorPick = ColorPickTarget(ids: ids, current: nil) } label: { Label("Colour", systemImage: "paintpalette") }
-                Button(role: .destructive) { FolderActions.delete(ids, app: app); selection.removeAll() } label: { Label("Delete", systemImage: "trash") }
+                Button { openInTabs(ids) } label: { Label("Open in Tabs", coreSymbol: "plus.square.on.square") }
+                Button { window.colorPick = ColorPickTarget(ids: ids, current: nil) } label: { Label("Colour", coreSymbol: "paintpalette") }
+                Button(role: .destructive) { FolderActions.delete(ids, app: app); selection.removeAll() } label: { Label("Delete", coreSymbol: "trash") }
                 Button { selection.removeAll() } label: { Image(systemName: "xmark") }.help("Clear Selection (Esc)").keyboardShortcut(.cancelAction)
             }
             .labelStyle(.titleAndIcon)
@@ -1179,7 +1179,7 @@ struct TagsScreen: View {
                         Text("Newest").tag("newest")
                     }
                     .pickerStyle(.inline)
-                } label: { Label("Sort", systemImage: "arrow.up.arrow.down") }
+                } label: { Label("Sort", coreSymbol: "arrow.up.arrow.down") }
                 .help("Sort Tags")
             }
         }
@@ -1309,7 +1309,7 @@ struct InviteScreen: View {
                 Text(p.inviterName.map { "\($0) invited you" } ?? "You're invited").font(CoreType.screenTitle(26))
                 if let name = p.name { Text(name).font(.title3) }
                 if let role = p.roleLabel { Text(role).foregroundStyle(.secondary) }
-                if !p.emailMatches { Label("This invitation was sent to a different email address.", systemImage: "exclamationmark.triangle").foregroundStyle(.orange) }
+                if !p.emailMatches { Label("This invitation was sent to a different email address.", coreSymbol: "exclamationmark.triangle").foregroundStyle(.orange) }
                 HStack {
                     Button("Decline") { app.perform { _ = try await $0.command(Commands.InviteDecline(InviteDeclineArgs(kind: .init(rawValue: kind.rawValue) ?? .workspace, inviteId: nil, token: token))); window.go(.home) } }
                     Button("Accept") { accept() }.buttonStyle(.borderedProminent).keyboardShortcut(.defaultAction)

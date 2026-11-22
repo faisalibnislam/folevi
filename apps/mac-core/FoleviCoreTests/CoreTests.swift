@@ -133,6 +133,18 @@ struct WindowHistoryTests {
         w.closed()
     }
 
+    @Test func sidebarPicksStartFresh() {
+        let w = WindowModel(app: .shared, start: .home)
+        w.start()
+        w.go(.allNotes)
+        w.go(.starred)
+        w.pickInSidebar(.tags)
+        #expect(w.current == .tags)
+        #expect(w.sidebarSelection == .tags)
+        #expect(!w.canGoBack)
+        w.closed()
+    }
+
     @Test func trashedNotesLeaveHistory() {
         let w = WindowModel(app: .shared, start: .home)
         w.start()

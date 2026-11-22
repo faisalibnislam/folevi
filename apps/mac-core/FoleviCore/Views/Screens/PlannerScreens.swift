@@ -73,6 +73,7 @@ struct TasksScreen: View {
                             Section {
                                 ForEach(group.tasks, id: \.id) { task in
                                     TaskLine(task: task, window: window, showNote: group.kind != .note)
+                                        .listRowSeparator(.hidden)
                                 }
                             } header: {
                                 HStack(spacing: 6) {
@@ -94,7 +95,7 @@ struct TasksScreen: View {
         .navigationSubtitle(facts)
         .toolbar {
             ToolbarItem(placement: .secondaryAction) {
-                Button { window.quickAddShown = true } label: { Label("Add Task", systemImage: "plus") }.help("Add Task (⌘N)")
+                Button { window.quickAddShown = true } label: { Label("Add Task", coreSymbol: "plus") }.help("Add Task (⌘N)")
             }
         }
         .task(id: view) { tasks.bind(app.client, Views.TasksList(TasksListArgs(space: nil, view: TaskViewName(rawValue: view.rawValue) ?? .today))) }
@@ -124,13 +125,13 @@ struct TasksScreen: View {
                     .onSubmit(add)
                     .onChange(of: draft) { parse() }
                 if !draft.trimmingCharacters(in: .whitespaces).isEmpty {
-                    Button("Add", action: add).buttonStyle(.borderedProminent).controlSize(.small)
+                    Button("Add", action: add).buttonStyle(.borderedProminent).controlSize(.regular)
                 }
             }
             if let p = parsed, p.dateText != nil || p.repeatLabel != nil {
                 HStack(spacing: 8) {
-                    if let d = p.dateText { Label(d, systemImage: "calendar").font(.caption) }
-                    if let r = p.repeatLabel { Label(r, systemImage: "repeat").font(.caption) }
+                    if let d = p.dateText { Label(d, coreSymbol: "calendar").font(.caption) }
+                    if let r = p.repeatLabel { Label(r, coreSymbol: "repeat").font(.caption) }
                 }
                 .foregroundStyle(.secondary)
                 .padding(.leading, 26)
@@ -201,11 +202,11 @@ struct TaskLine: View {
                 }
                 HStack(spacing: 10) {
                     if let d = task.dueDate {
-                        Label(dueText(d), systemImage: "calendar").foregroundStyle(task.overdue ? .red : .secondary)
+                        Label(dueText(d), coreSymbol: "calendar").foregroundStyle(task.overdue ? .red : .secondary)
                     }
                     if task.reminderAt != nil { Image(systemName: "bell").foregroundStyle(.secondary) }
-                    if let r = task.repeat, !r.isEmpty { Label(r, systemImage: "repeat").foregroundStyle(.secondary) }
-                    if let a = task.assigneeName { Label(a, systemImage: "person").foregroundStyle(.secondary) }
+                    if let r = task.repeat, !r.isEmpty { Label(r, coreSymbol: "repeat").foregroundStyle(.secondary) }
+                    if let a = task.assigneeName { Label(a, coreSymbol: "person").foregroundStyle(.secondary) }
                     if showNote {
                         Button { window.go(.note(task.noteId)) } label: {
                             Text(task.noteTitle.nonEmpty ?? "Untitled")
@@ -413,7 +414,7 @@ struct CalendarScreen: View {
         .toolbar {
             ToolbarItem(placement: .secondaryAction) {
                 Button { calendarsShown = true } label: {
-                    Label("Calendars", systemImage: "calendar.badge.plus")
+                    Label("Calendars", coreSymbol: "calendar.badge.plus")
                         .overlay(alignment: .topTrailing) { if hasError { Circle().fill(.red).frame(width: 7, height: 7).offset(x: 3, y: -2) } }
                 }
                 .help(hasError ? "Calendars (one isn't loading)" : "Calendars")
@@ -865,7 +866,7 @@ struct EventChip: View {
             Text(event.title.nonEmpty ?? "Untitled event").font(.headline).textSelection(.enabled)
             Text(event.allDay ? start.formatted(.dateTime.weekday(.wide).day().month(.wide)) + ", all day" : "\(start.formatted(date: .abbreviated, time: .shortened)) to \(end.formatted(date: .omitted, time: .shortened))")
                 .font(.callout)
-            if !event.location.isEmpty { Label(event.location, systemImage: "mappin.and.ellipse").font(.callout).textSelection(.enabled) }
+            if !event.location.isEmpty { Label(event.location, coreSymbol: "mappin.and.ellipse").font(.callout).textSelection(.enabled) }
             if !event.description.isEmpty {
                 ScrollView { Text(event.description).font(.callout).textSelection(.enabled).frame(maxWidth: .infinity, alignment: .leading) }
                     .frame(maxHeight: 180)
@@ -904,14 +905,14 @@ struct CalendarsPopover: View {
                         }
                         Spacer()
                         Toggle("Show", isOn: Binding(get: { c.visible }, set: { v in app.perform { _ = try await $0.command(Commands.CalendarUpdate(CalendarUpdateArgs(id: c.id, name: nil, color: nil, visible: v))) } }))
-                            .toggleStyle(.switch).labelsHidden().controlSize(.small)
+                            .toggleStyle(.switch).labelsHidden().controlSize(.regular)
                         Button(editing == c.id ? "Close" : "Edit") {
                             if editing == c.id { editing = nil } else { editing = c.id; name = c.name; color = c.color }
                         }
                         .buttonStyle(.borderless)
                     }
                     if let e = c.lastError {
-                        Label(e, systemImage: "exclamationmark.triangle").font(.caption).foregroundStyle(.orange)
+                        Label(e, coreSymbol: "exclamationmark.triangle").font(.caption).foregroundStyle(.orange)
                     }
                     if editing == c.id {
                         TextField("Name", text: $name).textFieldStyle(.roundedBorder)
@@ -935,7 +936,7 @@ struct CalendarsPopover: View {
                             }
                             .buttonStyle(InkPillStyle())
                         }
-                        .controlSize(.small)
+                        .controlSize(.regular)
                     }
                 }
                 Divider()
@@ -1175,7 +1176,7 @@ struct NotePickerSheet: View {
                         if let f = h.folder { Text(f.name).font(.caption).foregroundStyle(.secondary) }
                     }
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.hoverPlain)
             }
             .frame(height: 260)
             HStack { Spacer(); Button("Cancel", role: .cancel) { dismiss() }.keyboardShortcut(.cancelAction) }

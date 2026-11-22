@@ -151,7 +151,7 @@ struct ResearchJobsView: View {
             ForEach(research.value?.jobs ?? [], id: \.id) { job in
                 VStack(alignment: .leading, spacing: 8) {
                     HStack {
-                        Label(job.question, systemImage: "globe").font(.headline).lineLimit(2)
+                        Label(job.question, coreSymbol: "globe").font(.headline).lineLimit(2)
                         Spacer()
                         if job.status == "running" {
                             ProgressView().controlSize(.small)
@@ -166,9 +166,9 @@ struct ResearchJobsView: View {
                         FlowLayout(spacing: 6) {
                             ForEach(job.sources, id: \.n) { s in
                                 if let note = s.noteId {
-                                    Button("\(s.n). \(s.title)") { window.go(.note(note)) }.buttonStyle(.bordered).controlSize(.small)
+                                    Button("\(s.n). \(s.title)") { window.go(.note(note)) }.buttonStyle(.bordered).controlSize(.regular)
                                 } else if let u = s.url.flatMap(URL.init(string:)) {
-                                    Link("\(s.n). \(s.domain ?? s.title)", destination: u).buttonStyle(.bordered).controlSize(.small)
+                                    Link("\(s.n). \(s.domain ?? s.title)", destination: u).buttonStyle(.bordered).controlSize(.regular)
                                 }
                             }
                         }

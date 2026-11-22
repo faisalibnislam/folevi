@@ -49,7 +49,7 @@ struct VaultScreen: View {
             if let key = s.recoveryToSave { RecoveryKeyCard(key: key, vaultId: vault) }
             if s.accessReviewDue && !s.personal {
                 Button { pane = .people } label: {
-                    Label("Check who has access to this Vault.", systemImage: "person.badge.shield.checkmark")
+                    Label("Check who has access to this Vault.", coreSymbol: "person.badge.shield.checkmark")
                         .frame(maxWidth: .infinity, alignment: .leading).padding(10).background(.yellow.opacity(0.15))
                 }
                 .buttonStyle(.plain)
@@ -77,7 +77,7 @@ struct VaultScreen: View {
                 Menu {
                     ForEach(panes) { p in Button(p.rawValue) { pane = p } }
                 } label: {
-                    Label("More in the Vault", systemImage: "ellipsis.circle")
+                    Label("More in the Vault", coreSymbol: "ellipsis.circle")
                 }
                 .help("More in the Vault")
             }
@@ -267,7 +267,7 @@ struct VaultUnlock: View {
                 if !summary.personal {
                     Divider().frame(width: 300)
                     if asked {
-                        Label("Asked. A custodian can reset your access next time they open the Vault.", systemImage: "checkmark.circle").foregroundStyle(.secondary)
+                        Label("Asked. A custodian can reset your access next time they open the Vault.", coreSymbol: "checkmark.circle").foregroundStyle(.secondary)
                     } else {
                         Button("No recovery key? Ask a custodian") {
                             app.perform { _ = try await $0.command(Commands.VaultRequestReset(VaultIdArgs(vaultId: summary.vaultId ?? ""))); asked = true }
@@ -315,7 +315,7 @@ struct RecoveryKeyCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Label("Save your Vault's recovery key", systemImage: "key.horizontal").font(.headline)
+            Label("Save your Vault's recovery key", coreSymbol: "key.horizontal").font(.headline)
             Text("If you forget your PIN, this key is the only way back in. Keep it somewhere safe, such as your password manager.").font(.callout).foregroundStyle(.secondary)
             Text(key).font(.body.monospaced()).textSelection(.enabled)
             HStack {

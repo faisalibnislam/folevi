@@ -265,6 +265,7 @@ struct AnswerPartsTests {
     }
 }
 
+@MainActor
 @Suite("Settings search and time zones")
 struct SettingsSearchTests {
     @Test func findsRowsAndHidesOtherModes() {
@@ -282,6 +283,7 @@ struct SettingsSearchTests {
     }
 }
 
+@MainActor
 @Suite("Spotlight pruning")
 struct SpotlightPruneTests {
     @Test func keepAndRemove() {
@@ -291,6 +293,7 @@ struct SpotlightPruneTests {
     }
 }
 
+@MainActor
 @Suite("Notification categories")
 struct NotificationCategoryTests {
     @Test func kindsPickActions() {

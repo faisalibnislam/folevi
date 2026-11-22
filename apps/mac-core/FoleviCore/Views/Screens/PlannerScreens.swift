@@ -17,6 +17,7 @@ struct TasksScreen: View {
     @State private var parsed: TaskParseValue?
     @State private var filter = ""
     @FocusState private var adding: Bool
+    @FocusState private var filterFocused: Bool
 
     /// The groups with only the tasks whose title or page matches the filter.
     private func filtered(_ v: TasksValue) -> [TaskGroup] {
@@ -88,6 +89,8 @@ struct TasksScreen: View {
             }
         }
         .searchable(text: $filter, placement: .toolbar, prompt: "Filter by Task or Page")
+        .searchFocused($filterFocused)
+        .onChange(of: window.filterFocus) { filterFocused = true }
         .navigationSubtitle(facts)
         .toolbar {
             ToolbarItem(placement: .secondaryAction) {
@@ -1003,6 +1006,7 @@ struct CalendarFeedSheet: View {
     private var app: AppModel { .shared }
     @Environment(\.dismiss) private var dismiss
     @State private var feed = Live<Views.CalendarFeed>()
+    @State private var workspaces = true
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
@@ -1017,10 +1021,19 @@ struct CalendarFeedSheet: View {
                     if let u = URL(string: url.replacingOccurrences(of: "https://", with: "webcal://")) {
                         Button("Subscribe in Calendar") { NSWorkspace.shared.open(u) }
                     }
-                    Button("Turn Off Feed", role: .destructive) { app.perform { _ = try await $0.command(Commands.CalendarFeedRevoke()) } }
+                    Toggle("Workspace tasks assigned to you", isOn: Binding(get: { f.includeWorkspaces }, set: { v in
+                        app.perform { _ = try await $0.command(Commands.CalendarFeedWorkspaces(CalendarFeedWorkspacesArgs(includeWorkspaces: v))) }
+                    }))
+                    Text("Your personal tasks are always in it.").font(.caption).foregroundStyle(.secondary)
+                    HStack {
+                        Button("Make a New Link") { app.perform { _ = try await $0.command(Commands.CalendarFeedCreate(CalendarFeedCreateArgs(includeWorkspaces: f.includeWorkspaces))) } }
+                        Button("Turn Off Feed", role: .destructive) { app.perform { _ = try await $0.command(Commands.CalendarFeedRevoke()) } }
+                    }
+                    Text("A new link stops the old one working.").font(.caption).foregroundStyle(.secondary)
                 } else {
-                    Toggle("Include workspaces", isOn: .constant(f.includeWorkspaces)).disabled(true)
-                    Button("Make a Feed") { app.perform { _ = try await $0.command(Commands.CalendarFeedCreate(CalendarFeedCreateArgs(includeWorkspaces: true))) } }
+                    Toggle("Workspace tasks assigned to you", isOn: $workspaces)
+                    Text("Your personal tasks are always in it.").font(.caption).foregroundStyle(.secondary)
+                    Button("Make a Link") { let w = workspaces; app.perform { _ = try await $0.command(Commands.CalendarFeedCreate(CalendarFeedCreateArgs(includeWorkspaces: w))) } }
                         .buttonStyle(InkPillStyle())
                 }
             } else {

@@ -304,3 +304,13 @@ struct NotificationCategoryTests {
         #expect(CoreNotifications.category(for: "share", hasThread: false) == "folevi.plain")
     }
 }
+
+@MainActor
+@Suite("Recovery key typing")
+struct RecoveryKeyTests {
+    @Test func groupsOfFour() {
+        #expect(GateScreen.formatKey("abcd efgh-1234") == "ABCD-EFGH-1234")
+        #expect(GateScreen.formatKey("ab") == "AB")
+        #expect(GateScreen.formatKey("") == "")
+    }
+}

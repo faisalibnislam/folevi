@@ -75,25 +75,25 @@ Closed or improved after the grading below; the per-item marks haven't been redo
   previews, and notes dragged out as files (file promises for the page's noteFile requests).
 
 The items closed in this session's later work packages are marked [x] with "closed after the grading", and the
-summary table below is recounted from the marks (1067 there, 54 partly, 2 missing, 220 not applicable).
+summary table below is recounted from the marks (1084 there, 37 partly, 2 missing, 220 not applicable).
 
 ## Summary
 
 | Area | Id prefix | [x] | [~] | [ ] | [n/a] | Items |
 |---|---|---|---|---|---|---|
 | Architecture today | `ARCH` | 15 | 0 | 1 | 1 | 17 |
-| App & windows | `APP` | 44 | 5 | 1 | 23 | 73 |
-| Sign-in, onboarding, accounts, spaces & local mode | `AUTH` | 64 | 5 | 0 | 11 | 80 |
-| Sidebar & navigation | `NAV` | 28 | 2 | 0 | 7 | 37 |
-| Tabs | `TAB` | 13 | 2 | 0 | 28 | 43 |
+| App & windows | `APP` | 46 | 3 | 1 | 23 | 73 |
+| Sign-in, onboarding, accounts, spaces & local mode | `AUTH` | 66 | 3 | 0 | 11 | 80 |
+| Sidebar & navigation | `NAV` | 29 | 1 | 0 | 7 | 37 |
+| Tabs | `TAB` | 14 | 1 | 0 | 28 | 43 |
 | Home | `HOME` | 19 | 1 | 0 | 10 | 30 |
-| Notes lists | `LIST` | 58 | 3 | 0 | 11 | 72 |
-| Folders | `FOLD` | 32 | 2 | 0 | 3 | 37 |
+| Notes lists | `LIST` | 60 | 1 | 0 | 11 | 72 |
+| Folders | `FOLD` | 33 | 1 | 0 | 3 | 37 |
 | Tags | `TAG` | 7 | 0 | 0 | 2 | 9 |
-| Note page & editor integration | `NOTE` | 40 | 3 | 0 | 3 | 46 |
+| Note page & editor integration | `NOTE` | 41 | 2 | 0 | 3 | 46 |
 | Search & command palette | `SRCH` | 33 | 2 | 0 | 2 | 37 |
-| Tasks | `TASK` | 23 | 2 | 0 | 10 | 35 |
-| Calendar | `CAL` | 30 | 1 | 0 | 6 | 37 |
+| Tasks | `TASK` | 25 | 0 | 0 | 10 | 35 |
+| Calendar | `CAL` | 31 | 0 | 0 | 6 | 37 |
 | Foli AI | `AI` | 44 | 0 | 0 | 5 | 49 |
 | Foli DNA | `DNA` | 36 | 0 | 0 | 0 | 36 |
 | Vault | `VAULT` | 40 | 0 | 0 | 1 | 41 |
@@ -116,10 +116,10 @@ summary table below is recounted from the marks (1067 there, 54 partly, 2 missin
 | Debug & eval harness | `DBG` | 0 | 0 | 0 | 8 | 8 |
 | Capabilities | `CAP` | 20 | 0 | 0 | 0 | 20 |
 | Stays web, WebPage values and the parity list | `WEB` | 2 | 0 | 0 | 2 | 4 |
-| Binding UX rules from owner memory | `RULE` | 22 | 9 | 0 | 13 | 44 |
+| Binding UX rules from owner memory | `RULE` | 23 | 8 | 0 | 13 | 44 |
 | iPhone and iPad only (skip) | `IOS` | 0 | 0 | 0 | 5 | 5 |
-| Gaps, bugs and contradictions | `GAP` | 23 | 7 | 0 | 13 | 43 |
-| **Total** | | **1067** | **54** | **2** | **220** | **1343** |
+| Gaps, bugs and contradictions | `GAP` | 26 | 4 | 0 | 13 | 43 |
+| **Total** | | **1084** | **37** | **2** | **220** | **1343** |
 
 Notable findings (all in the first work package at the end):
 
@@ -187,7 +187,7 @@ Notable findings (all in the first work package at the end):
 - [x] `APP-030` **⌘K early keys**: a local monitor opens search before the web view eats the keys (QA F04). Core: `App/FoleviCoreApp.swift` a local key monitor opens the palette before the page sees ⌘K.
 - [x] `APP-031` **Live engine views at launch**: session, home, folders.tree, sync.status, places.list, all with snapshot keys. Core: `Model/AppModel.swift` rebind (session, sync, folders.tree, places, counts); no snapshot keys.
 - [ ] `APP-032` **Native text line layout for card previews**. Core: cards draw previews without the engine's `text.layout`.
-- [~] `APP-033` **Cover image loader for note cards**. Core: image covers are passed to FoleviDesign as file ids; no `files.urls` loader in Core.
+- [x] `APP-033` **Cover image loader for note cards**. Core: closed after the grading (see "Since this grading").
 - [x] `APP-034` **Settings opens apart**: its own window on the Mac, a sheet on the wide iPad. A /settings link opens it at its section. Core: SwiftUI Settings scene and `Views/Settings/SettingsView.swift` SettingsRouter (/settings links).
 - [x] `APP-035` **Search routes to the command palette**: on the Mac (folevi://search, /search?q=). Core: closed after the grading (see "Since this grading").
 - [x] `APP-036` **Sync popover**: headline, detail, waiting count, download progress, Retry. Core: `Views/Sidebar.swift` SyncDetails popover (headline, waiting, conflicts, per-space progress, Sync Now, Sign In Again).
@@ -204,7 +204,7 @@ Notable findings (all in the first work package at the end):
 - [x] `APP-047` **Native More routes**: /help, /graph, /review, /shared/<id>, /shared, /changes drawn natively; unknown paths show an empty state with a way back (MAC-65). Core: closed after the grading (see "Since this grading").
 - [n/a] `APP-048` **iPad wide layout (IPadFrame)**: (iPad): same views as the Mac (strip, sidebar, card). Account in the strip corner; floating sidebar when narrow (`sidebarFloats`… Why: iPad only.
 - [x] `APP-049` **Main menu**. Core: `App/AppCommands.swift`.
-- [~] `APP-050` **Format keys gating**: a format key runs only while the note's text has the keyboard; ⌘⌫ only when nothing is being edited. Core: Format items are disabled off a note, but not gated on where the keyboard is.
+- [x] `APP-050` **Format keys gating**: a format key runs only while the note's text has the keyboard; ⌘⌫ only when nothing is being edited. Core: closed after the grading (see "Since this grading").
 - [~] `APP-051` **View-level keys**. Core: lists take Return and Delete, sheets Esc and Return; the rest of today's view keys are not mapped.
 
 ### App lifecycle & windows (launch, restore, multiple windows, dock menu, status item, reopen)
@@ -281,8 +281,8 @@ Notable findings (all in the first work package at the end):
 - [x] `AUTH-040` **Library setup places**: iCloud, Dropbox, Google Drive, a folder, this Mac only, each with a Mac detail line; Back. Core: closed after the grading (see "Since this grading").
 - [~] `AUTH-041` **Library ready**: "Folevi keeps your notes as files in <path>"; "Encrypt with a passphrase" switch; passphrase and confirm fields; warning; "I… Core: the library-ready step shows the engine's fields and actions; the encrypt switch and checks are the engine's, drawn generically.
 - [x] `AUTH-042` **Library locked**: "Enter your library's passphrase", the passphrase field, Unlock, "Forgot the passphrase?" with help text. Core: generic fields and actions.
-- [~] `AUTH-043` **Migration and place move**: progress label with "N of M"; iOS migration summary (notes, folders, tags, files and their size, existing notes, "There isn't… Core: `Views/Gate/GateScreen.swift` progress and MigrationSummaryView; no existing-notes or no-room lines.
-- [~] `AUTH-044` **E2EE unlock**: choose passphrase or recovery key (one field at a time; "Use recovery key" / "Use passphrase instead"); the recovery key is… Core: the engine sends one field per view (passphrase or recovery key), each with its words; no recovery-key formatting as you type.
+- [x] `AUTH-043` **Migration and place move**: progress label with "N of M"; iOS migration summary (notes, folders, tags, files and their size, existing notes, "There isn't… Core: closed after the grading (see "Since this grading").
+- [x] `AUTH-044` **E2EE unlock**: choose passphrase or recovery key (one field at a time; "Use recovery key" / "Use passphrase instead"); the recovery key is… Core: closed after the grading (see "Since this grading").
 - [x] `AUTH-045` **E2EE approval (iOS block)**: approve from another device: waiting spinner, compare-code display, failed notice; space name chip. Core: closed after the grading (see "Since this grading").
 - [x] `AUTH-046` **E2EE setup**: methods added (Recovery key, Passphrase, Passkey, Another device); recovery key shown once; confirm groups 3 and 7… Core: closed after the grading (see "Since this grading").
 - [x] `AUTH-047` **E2EE waiting and trust**: "Waiting for your encryption key" and "Trust this device?". Core: generic card.
@@ -345,7 +345,7 @@ Notable findings (all in the first work package at the end):
 - [x] `NAV-015` **Changes row with count**: (with the `changes` capability). Core: `Views/Sidebar.swift` (changes capability, count).
 - [x] `NAV-016` **Templates row**. Core: `Views/Sidebar.swift`.
 - [x] `NAV-017` **Archive and Trash rows**: at the end. Core: `Views/Sidebar.swift` More section.
-- [~] `NAV-018` **Row click rules**: the sidebar opens a fresh tab with no way back (`fromPage: false`); ⌘-click on a folder opens a background tab; middle-click on a… Core: selection navigates the window with history; no ⌘-click or middle-click to a background tab.
+- [x] `NAV-018` **Row click rules**: the sidebar opens a fresh tab with no way back (`fromPage: false`); ⌘-click on a folder opens a background tab; middle-click on a… Core: closed after the grading (see "Since this grading").
 - [x] `NAV-019` **Section headings as links**: with a full-row hover (Folders goes to /folders, Tags to /tags) and a fold chevron. Core: closed after the grading (see "Since this grading").
 - [x] `NAV-020` **Folders section**: tree, first 5 top-level folders plus the active root, Show more / Show less; "No folders yet". Core: `Views/Sidebar.swift` every folder (no Show more); "No folders yet".
 - [x] `NAV-021` **Folder sort menu**: (Manual, Name, Recent) kept on the device; Recent watches `folders.cards(all:true)`. Core: closed after the grading (see "Since this grading").
@@ -369,7 +369,7 @@ Notable findings (all in the first work package at the end):
 ## Tabs
 
 - [n/a] `TAB-001` **Tab model rules**: Home pinned first; one tab per page; at most 12 tabs besides Home (the oldest is dropped). Why: native window tabs: no tab cap or pinned Home tab.
-- [~] `TAB-002` **Show route**: an existing tab comes forward, and a view's tab follows you inside the view. Core: an open note's tab comes forward (⌘-opening it again); a place that is open in another tab isn't brought forward.
+- [x] `TAB-002` **Show route**: an existing tab comes forward, and a view's tab follows you inside the view. Core: closed after the grading (see "Since this grading").
 - [x] `TAB-003` **Replace in a note**: a link inside a note replaces the note tab (a joined pane is replaced in place). Core: `Model/WindowModel.swift` navigate.request replaces in the window, newTab opens a tab.
 - [n/a] `TAB-004` **Folder tabs (Finder style)**: `folders:` id; shows in the folder tab on screen or the last-used one, else a new one. Why: native window tabs; folders open in the front window.
 - [x] `TAB-005` **Per-tab history**: (Back/Forward, limit 100). Core: `Model/WindowModel.swift` (200 steps).
@@ -484,7 +484,7 @@ Notable findings (all in the first work package at the end):
 
 - [x] `LIST-031` **Note sort options**: Last edited, Created, Title, Manual order; saved per view (`folevi.sort.<view>`); changing the sort restarts the list. Core: closed after the grading (see "Since this grading").
 - [x] `LIST-032` **Sort controls**: web "Sort [x ⌄]" select; title-row sort (icon, value, chevron, tooltip "Sort"); card `.sort` group. Core: toolbar Sort menu.
-- [~] `LIST-033` **Mac view modes**: Grid, Compact cards, List (`WebNotesLayout`); saved in `folevi.web.layout.<view>`; List by default for Trash and Archive… Core: list or cards, saved per list (Trash and Archive default to list); no compact cards.
+- [x] `LIST-033` **Mac view modes**: Grid, Compact cards, List (`WebNotesLayout`); saved in `folevi.web.layout.<view>`; List by default for Trash and Archive… Core: closed after the grading (see "Since this grading").
 - [x] `LIST-034` **View switch control**: web segmented control or the system segmented picker in the native look; tooltips Grid / Compact cards / List. Core: `Views/Screens/NoteListScreen.swift` ListStylePicker.
 - [n/a] `LIST-035` **iOS view modes**: Cards and List (`NotesLayout`, `folevi.layout.<view>`). Why: iPhone/iPad only.
 - [x] `LIST-036` **Folders page sort**: Manual, Name, Recent (`folevi.web.folders-sort`; old saved values migrated). Core: closed after the grading (see "Since this grading").
@@ -493,7 +493,7 @@ Notable findings (all in the first work package at the end):
 - [x] `LIST-039` **Folders page empty**: "No folders yet / Create one to group related pages." or "No folders match "x"". Core: FoldersScreen empty state with New Folder.
 - [x] `LIST-040` **Folders page search**: looks through every level; a match shows "in <path>". Core: closed after the grading (see "Since this grading").
 - [n/a] `LIST-041` **Card glass controls (native look)**: count subtitle; segmented, pull-down, button, more and actions groups; they fold to compact, then into one menu, when narrow. Why: native toolbar items.
-- [~] `LIST-042` **Finder-style selection rules**: ⌘-click toggles, ⇧-click selects a range from the anchor, ⌥-click opens, ⌘A selects everything shown, Esc clears. Core: rows: ⌘-click, ⇧-click, ⌘A, Esc; Folders cards: ⌘-click; note cards have no selection.
+- [x] `LIST-042` **Finder-style selection rules**: ⌘-click toggles, ⇧-click selects a range from the anchor, ⌥-click opens, ⌘A selects everything shown, Esc clears. Core: closed after the grading (see "Since this grading").
 - [x] `LIST-043` **What can be selected**: subfolders first, then the loaded notes; templates can't be selected. Core: subfolder rows and notes are selectable in the list.
 - [x] `LIST-044` **Selection bar**: "N selected", Select all (while not everything is), the actions, × "Clear selection (Esc)"; glass capsule in the native look… Core: closed after the grading (see "Since this grading").
 - [x] `LIST-045` **Bulk actions offered**: only what every selected item can take. Notes: Bookmark/unbookmark, Archive/unarchive, Trash, Copy to. Folders: Change color… Core: closed after the grading (see "Since this grading").
@@ -533,7 +533,7 @@ Notable findings (all in the first work package at the end):
 - [x] `FOLD-001` **New folder (name prompt)**: "New folder" or "New folder in "X""; "Folder name"; "Create folder"; optionally opens it. Core: `Views/Common/Menus.swift` NameSheet from the sidebar + and Folders screen (folder.create).
 - [x] `FOLD-002` **Quick new folder**: (File > New Folder, no prompt, "New folder"). Core: closed after the grading (see "Since this grading").
 - [x] `FOLD-003` **Rename folder**: toast "Renamed". Core: FolderMenu Rename (folder.rename).
-- [~] `FOLD-004` **Change color**: (25 colours, 5x5, current ringed). Core: ten named colours in a menu, not the 25-colour grid.
+- [x] `FOLD-004` **Change color**: (25 colours, 5x5, current ringed). Core: closed after the grading (see "Since this grading").
 - [x] `FOLD-005` **Change color for several**. Core: closed after the grading (see "Since this grading").
 - [x] `FOLD-006` **Move folder**: (picker with Top level first; notes and subfolders go with it). Core: closed after the grading (see "Since this grading").
 - [x] `FOLD-007` **Move items (notes and/or folders)**: no Drafts or top level when mixed. Core: closed after the grading (see "Since this grading").
@@ -619,7 +619,7 @@ Notable findings (all in the first work package at the end):
 - [n/a] `NOTE-035` **Review this note's cards**: (iPhone menu item; route /review?note=). Why: iPhone menu item.
 - [~] `NOTE-036` **Foli DNA of this note**: (/graph?note=<id>). Core: Foli DNA of This Note opens Foli DNA and sends /graph?note=<id> to the page (the engine's center); not yet seen on a library with linked notes.
 - [x] `NOTE-037` **Present / Move to the Vault / Save as template / Show-Hide editors / Make text in images searchable**: (page via `note.menu`; listed in NoteMenuPlan). Core: NoteMoreMenu (present, moveToVault, saveAsTemplate, showEditors, readImages).
-- [~] `NOTE-038` **Note picture / cover**: card covers via `files.urls`; tab pictures via `note.picture`. Core: covers passed as file ids, no files.urls loader; no note.picture (native tabs).
+- [x] `NOTE-038` **Note picture / cover**: card covers via `files.urls`; tab pictures via `note.picture`. Core: closed after the grading (see "Since this grading").
 - [x] `NOTE-039` **Floating notes bar**: (Mac Float Note). Core: closed after the grading (see "Since this grading").
 - [x] `NOTE-040` **Text context menu in native fields**: spelling guesses, Learn, Ignore, Look up, Cut, Copy, Paste, Select all, Share. Core: system menus on SwiftUI text fields.
 - [x] `NOTE-041` **Undo / Redo**: (system menu to the web view). Core: `Host/PageView.swift` Edit > Undo and Redo run the editor's undo and redo on a note.
@@ -689,7 +689,7 @@ Notable findings (all in the first work package at the end):
 - [x] `TASK-011` **Empty states per view**: Inbox "No undated tasks / Tasks without a due date land here."; Today "Nothing due today / Enjoy the quiet."; Upcoming "Nothing… Core: closed after the grading (see "Since this grading").
 - [x] `TASK-012` **Filtered empty state**: "No tasks match that filter". Core: closed after the grading (see "Since this grading").
 - [x] `TASK-013` **Keyboard: ⌘N**: opens Quick add task dialog. Core: closed after the grading (see "Since this grading").
-- [~] `TASK-014` **Keyboard: ⌘F**: focuses the filter. Core: the filter is the toolbar search field (click or Tab to it); ⌘F is Find in a note.
+- [x] `TASK-014` **Keyboard: ⌘F**: focuses the filter. Core: closed after the grading (see "Since this grading").
 - [n/a] `TASK-015` **Keyboard: ⌘1 to ⌘6**: pick a view (note: collides with Go > Go to Tab ⌘1 to ⌘9 in ). Why: ⌘1 to ⌘9 pick a window tab in Core (native tabs), as the inventory notes the clash; views are one click in the segmented control.
 - [x] `TASK-016` **Menu: Go > Today's Tasks ⌥⌘T, Go > Inbox**: open `.tasks(.today)` / `.tasks(.inbox)`. Core: closed after the grading (see "Since this grading").
 - [x] `TASK-017` **Task row**: checkbox, title (struck and muted when done or canceled, "Untitled task"), page link with doc icon (hover underline, opens note)… Core: closed after the grading (see "Since this grading").
@@ -700,7 +700,7 @@ Notable findings (all in the first work package at the end):
 - [x] `TASK-022` **Drag a task**: row drags its id as text (to Calendar days and hour slots). Core: closed after the grading (see "Since this grading").
 - [x] `TASK-023` **Edit task dialog**: read-only title; Status (Open, Done, Canceled); Due date (popover month calendar); Clear / Clear date; Time (optional, "All day"… Core: closed after the grading (see "Since this grading").
 - [x] `TASK-024` **Move task dialog**: "Move <title> to the end of another page", page picker excludes the current page, clearing means Inbox; toast "Task moved to… Core: closed after the grading (see "Since this grading").
-- [~] `TASK-025` **Page picker (DocumentPicker)**: chosen page chip with x ("Add to Inbox instead"), field "Inbox, or search a page…" / "Search another page…", recent 6 pages when… Core: a search sheet for pages (NotePickerSheet); no chip with x or recent pages before typing.
+- [x] `TASK-025` **Page picker (DocumentPicker)**: chosen page chip with x ("Add to Inbox instead"), field "Inbox, or search a page…" / "Search another page…", recent 6 pages when… Core: closed after the grading (see "Since this grading").
 - [x] `TASK-026` **Date field + month popover**: field with clear (x), popover month grid, Previous/Next month, arrow keys move days, Clear button. Core: graphical date popover, Remove Due Date.
 - [x] `TASK-027` **Time field + option list**: "All day" plus half-hour times, popover list with arrow keys. Core: closed after the grading (see "Since this grading").
 - [x] `TASK-028` **Assignees only in workspaces**: members watched lazily when the place is a workspace. Core: closed after the grading (see "Since this grading").
@@ -743,7 +743,7 @@ Notable findings (all in the first work package at the end):
 - [x] `CAL-027` **Subscription row**: colour dot, name (muted when hidden), host and "Loading…" / "Updated <relative>", error banner, Show switch (flips at once… Core: closed after the grading (see "Since this grading").
 - [x] `CAL-028` **Edit a subscription**: Edit / Close, name field, colour picker (Cocoa, Moss, Marigold, Plum, Coral, Gray), Save, Refresh, Remove then confirm "Remove… Core: closed after the grading (see "Since this grading").
 - [x] `CAL-029` **Add calendar**: URL ("https://… or webcal://…"), optional name, colour (cycles by count), Add on Return; cap message at 20 calendars. Core: `Views/Screens/PlannerScreens.swift` AddCalendarSheet (calendar.add).
-- [~] `CAL-030` **Tasks feed dialog "Your tasks in your calendar"**: switch "Workspace tasks assigned to you" (Personal always in), Make a link / Make a new link, the link shown once with Copy and… Core: `Views/Screens/PlannerScreens.swift` CalendarFeedSheet (calendar.feed, feedCreate, feedRevoke); no workspace choice, setup words or feedWorkspaces.
+- [x] `CAL-030` **Tasks feed dialog "Your tasks in your calendar"**: switch "Workspace tasks assigned to you" (Personal always in), Make a link / Make a new link, the link shown once with Copy and… Core: closed after the grading (see "Since this grading").
 - [x] `CAL-031` **Menu: Go > Calendar ⌥⌘C**. Core: Go > Calendar (⌃⌘K, not ⌥⌘C).
 - [n/a] `CAL-032` **Debug hook**: notification `folevi.calendar.layout` switches layout. Why: Debug harness.
 - [x] `CAL-033` **Gap on Mac**: no ⌘T / ⌘Left / ⌘Right, no "new task on this day" (Quick Add's `due:` parameter exists but nothing passes it). Core: closed after the grading (see "Since this grading").
@@ -1690,7 +1690,7 @@ Notable findings (all in the first work package at the end):
 - [n/a] `RULE-039` **Stale header comment**: CardControls says "New note is the sidebar's row", which contradicts the owner's pill rule. Why: today's code.
 - [n/a] `RULE-040` **Dead code**: SidebarViewController, TabStripView and NoteMenu.build are compiled but never instantiated. Why: today's code.
 - [x] `RULE-041` **Mac note "..." menu is web-drawn**: Folevi Core needs a native one; use NoteMenuPlan plus `editor.state.menu`. Core: `Views/Note/NoteScreen.swift` NoteMoreMenu (native, from editor.state.menu).
-- [~] `RULE-042` **Lock contract is split**: `folder.lock` is in EngineAPI and also duplicated in PendingN7Commands. `folders.locks` and `changes.diff` are still pending. The… Core: uses folder.lock and FolderNode.locked; changes.diff still unused.
+- [x] `RULE-042` **Lock contract is split**: `folder.lock` is in EngineAPI and also duplicated in PendingN7Commands. `folders.locks` and `changes.diff` are still pending. The… Core: closed after the grading (see "Since this grading").
 - [n/a] `RULE-043` **frameDownloadFile is a stub**: (toast "Open Folevi on the web…"). Why: today's code.
 - [x] `RULE-044` **Note Copy Link hardcodes the host**: `https://app.folevi.com/d/<id>`, while folders use FoleviLinks. Core: resolved: links use Paths.serviceURL (`Views/Common/Menus.swift`).
 
@@ -1709,7 +1709,7 @@ Notable findings (all in the first work package at the end):
 - [x] `GAP-001` **New note shortcut disagrees**: the main menu binds ⌘N to New Note and ⇧⌘N to New Window, but AppContextMenu, the iPad bar and the command palette hint ⌥⌘N. Core: resolved in Core (⌘N everywhere).
 - [n/a] `GAP-002` **Dead code**: `SidebarViewController`, `TabStripView` and `NoteMenu.build` are compiled but nothing creates them. Why: today's code.
 - [x] `GAP-003` **Note "…" menu is the web page's**: the Mac note overflow menu is drawn by the web page; natively it only exists as the iPhone's `NoteMenuPlan`. Core: resolved: Core's note menu is native (NoteMoreMenu).
-- [~] `GAP-004` **Lock contract split**: two folder.lock specs; folders.locks and changes.diff are still pending contracts; the sidebar folder menu passes locks… Core: still open: changes.diff unused.
+- [x] `GAP-004` **Lock contract split**: two folder.lock specs; folders.locks and changes.diff are still pending contracts; the sidebar folder menu passes locks… Core: closed after the grading (see "Since this grading").
 - [x] `GAP-005` **Sidebar rule vs code**: an owner rule says the sidebar is always visible with no hide button, but the code has a hide button and ⌘\ (View > Hide Sidebar). Core: closed after the grading (see "Since this grading").
 - [n/a] `GAP-006` **frameDownloadFile**: only shows a toast. Why: today's code.
 - [~] `GAP-007` **Two-step verification**: no native flow; the row opens folevi.com/settings/security. Core: still the web screen (in a window of its own).
@@ -1747,9 +1747,9 @@ Notable findings (all in the first work package at the end):
 - [~] `GAP-036` **Invite-accept and OAuth consent screens**: NATIVE_APP_PLAN 5.1 lists them; they are not in these modules. Core: invitation screen yes; no OAuth consent screen.
 - [n/a] `GAP-037` **Swipes (plan 5.4)**: star, archive, long-swipe delete exist on iOS only; the Mac has no equivalent beyond menus. Why: touch gestures.
 - [x] `GAP-038` **MAC_NATIVE_CHECKLIST 4, open**: empty states (about 32) as `ContentUnavailableView`. Core: EmptyScreen is ContentUnavailableView (`Views/Common/Style.swift`).
-- [~] `GAP-039` **MAC_NATIVE_CHECKLIST 4, open**: list layouts (All notes, Folders, Shared, Changes) as `Table` with sortable columns. Core: Tags is a Table (not sortable); other lists are List.
+- [x] `GAP-039` **MAC_NATIVE_CHECKLIST 4, open**: list layouts (All notes, Folders, Shared, Changes) as `Table` with sortable columns. Core: closed after the grading (see "Since this grading").
 - [~] `GAP-040` **MAC_NATIVE_CHECKLIST 6, open**: `WebGateScreen` still uses drawn buttons, fields and switch; wants `Form`, `SecureField` and the system Sign in with Apple button. Core: native fields and buttons; no system Sign in with Apple button.
-- [~] `GAP-041` **MAC_NATIVE_CHECKLIST 1 and 3, open**: the card's search as an `NSSearchField`; the folder picker (Move folder) as `NSSearchField` plus `List` or `OutlineGroup`. Core: `.searchable` toolbar fields; the folder picker is a plain submenu.
+- [x] `GAP-041` **MAC_NATIVE_CHECKLIST 1 and 3, open**: the card's search as an `NSSearchField`; the folder picker (Move folder) as `NSSearchField` plus `List` or `OutlineGroup`. Core: closed after the grading (see "Since this grading").
 - [x] `GAP-042` **Mac Home has no counted rows, Tags, Templates, Archive or Trash**: they are in the sidebar instead, by design, unlike plan 5.3's Home. Core: Core's Home has counted rows and Tags.
 - [n/a] `GAP-043` **HomeModel move flow unused on Mac**: `noteMenu`, `run`, `movingNotes` and `homeNoteSheets` serve iOS only; the Mac Home menu goes through `NotesListModel` (All notes)… Why: today's code.
 

@@ -3,6 +3,7 @@
 // sign-in, unlocking, onboarding), toasts, and which window is in front. Native holds no authority: every value
 // comes from the engine, every write is an engine command.
 import AppKit
+import FoleviDesign
 import FoleviEngine
 import Observation
 import SwiftUI
@@ -145,6 +146,19 @@ final class AppModel {
             listen(client)
             for w in windows.values.compactMap(\.model) { w.engineChanged() }
         }
+        // Cards' image covers: their signed links from the engine (files.urls), downloaded once per run.
+        CoverFiles.shared.loader = { ids in
+            let value = try await client.query(.filesUrls(ids: ids))
+            func pair(_ light: String, _ dark: String) -> ColorPair? {
+                guard let l = RGBA(hex: light), let d = RGBA(hex: dark) else { return nil }
+                return ColorPair(light: l, dark: d)
+            }
+            return value.urls.mapValues { link in
+                // A sealed image's bytes are ciphertext: only the note page can open them, so the card stays plain.
+                let palette = link.palette.value
+                return CoverFiles.Link(url: link.sealed ? nil : link.url.flatMap(URL.init(string:)), paper: palette.flatMap { pair($0.paper, $0.paperDark) }, ink: palette.flatMap { pair($0.ink, $0.inkDark) })
+            }
+        }
         session.bind(client, Views.Session())
         sync.bind(client, Views.SyncStatus())
         tree.bind(client, Views.FoldersTree(SpaceArgs()))
@@ -279,6 +293,12 @@ final class AppModel {
             } else if let t = win.tabs.first, let d = Destination(path: t.path) {
                 openWindow?(d, false, false)
             }
+        }
+        // The window you were in comes back in front, with its first tab showing.
+        Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(700))
+            first.window?.makeKeyAndOrderFront(nil)
+            if let w = first.window { w.tabGroup?.selectedWindow = w }
         }
     }
 
@@ -484,7 +504,7 @@ final class AppModel {
 
     func open(_ dest: Destination, newTab: Bool = false, background: Bool = false) {
         // A note already open in a window or tab comes forward instead of opening twice.
-        if newTab, dest.isNote, let open = windows.values.compactMap(\.model).first(where: { $0.current == dest }), let w = open.window {
+        if newTab, !background, dest != .home, !dest.isSearchLike, let open = windows.values.compactMap(\.model).first(where: { $0.current == dest }), let w = open.window {
             w.makeKeyAndOrderFront(nil)
             NSApp.activate()
             return

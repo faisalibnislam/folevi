@@ -924,6 +924,7 @@ struct FoldersScreen: View {
     @State private var selection: Set<String> = []
     @AppStorage("core.folders.sort") private var sort = "manual"
     @AppStorage("core.folders.layout") private var layout = "grid"
+    @FocusState private var filterFocused: Bool
 
     private var shown: [FolderCard] {
         var all = cards.value?.folders ?? []
@@ -953,6 +954,8 @@ struct FoldersScreen: View {
             }
         }
         .searchable(text: $filter, placement: .toolbar, prompt: "Filter Folders")
+        .searchFocused($filterFocused)
+        .onChange(of: window.filterFocus) { filterFocused = true }
         .navigationSubtitle(subtitle)
         .toolbar {
             ToolbarItemGroup(placement: .secondaryAction) {
@@ -1036,11 +1039,7 @@ struct FoldersScreen: View {
 
     @ViewBuilder private func bulkItems(_ ids: [String]) -> some View {
         Button("Open \(ids.count) Folders in New Tabs") { openInTabs(ids) }
-        Menu("Colour") {
-            ForEach(FolderColors.all, id: \.id) { c in
-                Button(c.name) { for id in ids { app.perform { _ = try await $0.command(Commands.FolderSetColor(FolderSetColorArgs(id: id, color: c.id))) } } }
-            }
-        }
+        Button("Change Colour…") { window.colorPick = ColorPickTarget(ids: ids, current: nil) }
         Divider()
         Button("Delete \(ids.count) Folders…", role: .destructive) { FolderActions.delete(ids, app: app); selection.removeAll() }
     }
@@ -1053,12 +1052,7 @@ struct FoldersScreen: View {
                 if ids.count < shown.count { Button("Select All") { selection = Set(shown.map(\.id)) } }
                 Divider().frame(height: 16)
                 Button { openInTabs(ids) } label: { Label("Open in Tabs", systemImage: "plus.square.on.square") }
-                Menu {
-                    ForEach(FolderColors.all, id: \.id) { c in
-                        Button(c.name) { for id in ids { app.perform { _ = try await $0.command(Commands.FolderSetColor(FolderSetColorArgs(id: id, color: c.id))) } } }
-                    }
-                } label: { Label("Colour", systemImage: "paintpalette") }
-                .fixedSize()
+                Button { window.colorPick = ColorPickTarget(ids: ids, current: nil) } label: { Label("Colour", systemImage: "paintpalette") }
                 Button(role: .destructive) { FolderActions.delete(ids, app: app); selection.removeAll() } label: { Label("Delete", systemImage: "trash") }
                 Button { selection.removeAll() } label: { Image(systemName: "xmark") }.help("Clear Selection (Esc)").keyboardShortcut(.cancelAction)
             }
@@ -1101,6 +1095,9 @@ struct TagsScreen: View {
     @State private var tags = Live<Views.TagsIndex>()
     @State private var editing: TagIndexRow?
     @State private var filter = ""
+    @FocusState private var filterFocused: Bool
+    /// Column sorting (click a header); the Sort menu sets it too.
+    @State private var order: [KeyPathComparator<TagIndexRow>] = [KeyPathComparator(\.name)]
     @AppStorage("core.tags.sort") private var sort = "name"
 
     private func shown(_ rows: [TagIndexRow]) -> [TagIndexRow] {
@@ -1123,12 +1120,12 @@ struct TagsScreen: View {
                 } else if rows.isEmpty {
                     EmptyScreen(symbol: "magnifyingglass", title: "No Results", message: "No tag matches “\(filter)”.")
                 } else {
-                    Table(rows) {
-                        TableColumn("Tag") { t in
+                    Table(rows.sorted(using: order), sortOrder: $order) {
+                        TableColumn("Tag", value: \.name) { t in
                             Label { Text(t.name) } icon: { WebIcon.hash.image(size: 14).foregroundStyle(Color.folevi(t.color)) }
                         }
-                        TableColumn("Notes") { t in Text(t.documentCount.formatted()).monospacedDigit() }.width(80)
-                        TableColumn("Created") { t in Text(CoreDates.short(t.createdAt)) }.width(120)
+                        TableColumn("Notes", value: \.documentCount) { t in Text(t.documentCount.formatted()).monospacedDigit() }.width(80)
+                        TableColumn("Created", value: \.createdAt) { t in Text(CoreDates.short(t.createdAt)) }.width(120)
                     }
                     .contextMenu(forSelectionType: TagIndexRow.ID.self) { ids in
                         if let id = ids.first, let t = all.first(where: { $0.id == id }) {
@@ -1165,6 +1162,15 @@ struct TagsScreen: View {
             }
         }
         .sheet(item: $editing) { t in TagEditSheet(id: t.id, initialName: t.name, initialColor: t.color) }
+        .onChange(of: sort, initial: true) {
+            switch sort {
+            case "used": order = [KeyPathComparator(\.documentCount, order: .reverse)]
+            case "newest": order = [KeyPathComparator(\.createdAt, order: .reverse)]
+            default: order = [KeyPathComparator(\.name)]
+            }
+        }
+        .searchFocused($filterFocused)
+        .onChange(of: window.filterFocus) { filterFocused = true }
         .task(id: app.client.map(ObjectIdentifier.init)) { tags.bind(app.client, Views.TagsIndex(TagsIndexArgs(space: nil))) }
     }
 

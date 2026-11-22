@@ -5,6 +5,7 @@ import AppKit
 import FoleviEngine
 import Observation
 import SwiftUI
+import WebKit
 
 @MainActor
 @Observable
@@ -48,6 +49,10 @@ final class WindowModel: Identifiable {
     /// Foli DNA of this note: the note the map opens around; or a link's query ("note=…&depth=…&view=…").
     var graphCenter: String?
     var graphQuery: String?
+    /// The folder colour grid, for one folder or several.
+    var colorPick: ColorPickTarget?
+    /// ⌘F off a note on a screen with a filter: the filter takes the keyboard (screens watch this count).
+    var filterFocus = 0
     /// Move or copy to another place (notes, folders).
     var placeMove: PlaceMoveTarget?
     /// Edit > Find > Use Selection for Find: the words the find bar starts with.
@@ -65,7 +70,7 @@ final class WindowModel: Identifiable {
     /// Lists as cards (gallery) or rows, per window (View > as Cards / as List).
     var listStyle: ListStyleChoice = .list
 
-    enum ListStyleChoice: String, CaseIterable { case list, cards }
+    enum ListStyleChoice: String, CaseIterable { case list, cards, compact }
 
     @ObservationIgnored weak var window: NSWindow?
     @ObservationIgnored private var pageEvents: Task<Void, Never>?
@@ -342,7 +347,13 @@ final class WindowModel: Identifiable {
         Task { _ = try? await page.client.editor(command) }
     }
 
-    func format(_ mark: EditorMark) { editor(EditorCommands.Format(FormatArgs(mark: mark, block: nil))) }
+    /// Format keys run only while the note's text has the keyboard (a field elsewhere keeps ⌘B and the like).
+    var noteHasKeyboard: Bool { window?.firstResponder is WKWebView }
+
+    func format(_ mark: EditorMark) {
+        guard noteHasKeyboard else { return }
+        editor(EditorCommands.Format(FormatArgs(mark: mark, block: nil)))
+    }
 
     func block(_ block: EditorBlock) { editor(EditorCommands.Format(FormatArgs(mark: nil, block: block))) }
 

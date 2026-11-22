@@ -69,7 +69,8 @@ struct AppCommands: SwiftUI.Commands {
         CommandGroup(after: .textEditing) {
             // On a note: its find bar. Elsewhere: Search, its field ready.
             Button(window?.current.isNote == true ? "Find in Note…" : "Find…") {
-                if window?.current.isNote == true { window?.findShown = true } else { window?.go(.search("")) }
+                guard let window else { return }
+                if window.current.isNote { window.findShown = true } else if window.current.hasFilter { window.filterFocus += 1 } else { window.go(.search("")) }
             }
             .keyboardShortcut("f")
             .disabled(window == nil)

@@ -157,9 +157,13 @@ struct GateScreen: View {
                         Group {
                             if f.kind == .secret {
                                 SecureField(f.placeholder, text: binding(f.id))
+                            } else if f.kind == .recoveryKey {
+                                // A recovery key types in groups of four, upper case, as it was shown.
+                                TextField(f.placeholder, text: Binding(get: { values[f.id] ?? "" }, set: { values[f.id] = GateScreen.formatKey($0) }))
+                                    .font(.body.monospaced())
                             } else {
                                 TextField(f.placeholder, text: binding(f.id))
-                                    .font(f.kind == .recoveryKey || f.kind == .code ? .body.monospaced() : .body)
+                                    .font(f.kind == .code ? .body.monospaced() : .body)
                             }
                         }
                         .textFieldStyle(.roundedBorder)
@@ -244,6 +248,12 @@ struct GateScreen: View {
         .background(.fill.quinary, in: .rect(cornerRadius: 10))
     }
 
+    /// "abcd efgh-1234" → "ABCD-EFGH-1234".
+    static func formatKey(_ raw: String) -> String {
+        let chars = Array(raw.uppercased().filter { $0.isLetter || $0.isNumber })
+        return stride(from: 0, to: chars.count, by: 4).map { String(chars[$0..<min($0 + 4, chars.count)]) }.joined(separator: "-")
+    }
+
     private func binding(_ id: String) -> Binding<String> {
         Binding(get: { values[id] ?? "" }, set: { values[id] = $0 })
     }
@@ -269,11 +279,22 @@ struct MigrationSummaryView: View {
     let summary: MigrationSummary
 
     var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
         Grid(alignment: .leading, horizontalSpacing: 18, verticalSpacing: 6) {
             GridRow { Text("Notes").foregroundStyle(.secondary); Text(summary.notes.formatted()) }
             GridRow { Text("Folders").foregroundStyle(.secondary); Text(summary.folders.formatted()) }
             GridRow { Text("Tags").foregroundStyle(.secondary); Text(summary.tags.formatted()) }
             GridRow { Text("Files").foregroundStyle(.secondary); Text("\(summary.files.formatted()) (\(ByteCountFormatter.string(fromByteCount: Int64(summary.fileBytes), countStyle: .file)))") }
+            if summary.existingNotes > 0 {
+                GridRow { Text("Already there").foregroundStyle(.secondary); Text(summary.existingNotes == 1 ? "1 note, kept" : "\(summary.existingNotes.formatted()) notes, kept") }
+            }
+            if let room = summary.availableBytes {
+                GridRow { Text("Room").foregroundStyle(.secondary); Text(ByteCountFormatter.string(fromByteCount: Int64(room), countStyle: .file) + " free") }
+            }
+        }
+        if !summary.fits {
+            Label("There isn't room for everything there.", systemImage: "exclamationmark.triangle").foregroundStyle(.orange).padding(.top, 4)
+        }
         }
         .padding(14)
         .frame(maxWidth: .infinity, alignment: .leading)

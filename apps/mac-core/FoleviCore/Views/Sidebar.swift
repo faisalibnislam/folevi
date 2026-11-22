@@ -231,6 +231,7 @@ struct Sidebar: View {
         }
         .badge(badge)
         .tag(dest)
+        .onMiddleClick { app.open(dest, newTab: true, background: true) }
     }
 }
 
@@ -313,6 +314,7 @@ struct FolderRow: View {
         }
         .badge(folder.noteCount ?? 0)
         .tag(Destination.folder(folder.id))
+        .onMiddleClick { app.open(.folder(folder.id), newTab: true, background: true) }
         .draggable(FolderDrag(id: folder.id, name: folder.name))
         .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { rowHeight = $0 }
         .onDrop(of: [FolderDrag.type, NoteDrag.type], delegate: FolderCardDrop(width: rowHeight, zones: true, vertical: true, zone: $zone) { z, providers in

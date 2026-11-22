@@ -136,11 +136,7 @@ struct FolderMenu: View {
         }
         Divider()
         Button("Rename…") { rename(folder) }
-        Menu("Colour") {
-            ForEach(FolderColors.all, id: \.id) { c in
-                Button(c.name) { app.perform { _ = try await $0.command(Commands.FolderSetColor(FolderSetColorArgs(id: folder.id, color: c.id))) } }
-            }
-        }
+        Button("Change Colour…") { window.colorPick = ColorPickTarget(ids: [folder.id], current: folder.color) }
         if app.session.value?.mode != .local, app.currentSpace?.encrypted == true || app.currentSpace?.canLock == true {
             Button(folder.locked ? "Stop Fully Encrypting…" : "Always Fully Encrypt…") { FolderActions.lock(folder, app: app) }
         }
@@ -537,5 +533,48 @@ enum CoreAlerts {
         guard alert.buttons.count >= 2 else { return }
         alert.buttons[0].keyEquivalent = ""
         alert.buttons[1].keyEquivalent = "\r"
+    }
+}
+
+
+struct ColorPickTarget: Identifiable {
+    let id = UUID()
+    let ids: [String]
+    let current: String?
+}
+
+/// A folder's colour from Folevi's 25, five by five, the current one ringed.
+struct FolderColorSheet: View {
+    let target: ColorPickTarget
+    @Environment(\.dismiss) private var dismiss
+    @Environment(\.colorScheme) private var scheme
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Text(target.ids.count == 1 ? "Folder Colour" : "Colour for \(target.ids.count) Folders").font(.headline)
+            LazyVGrid(columns: Array(repeating: GridItem(.fixed(34), spacing: 10), count: 5), spacing: 10) {
+                ForEach(FoleviTokens.folderColors) { c in
+                    Button { set(c.id) } label: {
+                        Circle().fill(c.color.color).frame(width: 26, height: 26)
+                            .overlay { if c.id == (target.current ?? FolderColor.defaultId) { Circle().strokeBorder(Color.primary, lineWidth: 2).padding(-4) } }
+                            .frame(width: 34, height: 34)
+                    }
+                    .buttonStyle(.plain)
+                    .help(c.name)
+                    .accessibilityLabel(c.name)
+                    .accessibilityAddTraits(c.id == target.current ? .isSelected : [])
+                }
+            }
+            HStack { Spacer(); Button("Done") { dismiss() }.keyboardShortcut(.cancelAction) }
+        }
+        .padding(20)
+    }
+
+    private func set(_ color: String) {
+        let ids = target.ids
+        AppModel.shared.perform { client in
+            for id in ids { _ = try await client.command(Commands.FolderSetColor(FolderSetColorArgs(id: id, color: color))) }
+        }
+        dismiss()
     }
 }

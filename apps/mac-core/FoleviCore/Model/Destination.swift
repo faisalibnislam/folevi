@@ -67,6 +67,17 @@ enum Destination: Hashable, Codable {
 
     var isFoliAI: Bool { if case .foliAI = self { true } else { false } }
 
+    /// Screens with a filter field ⌘F goes to.
+    var hasFilter: Bool {
+        switch self {
+        case .allNotes, .starred, .drafts, .folder, .tag, .archive, .trash, .templates, .folders, .tags, .tasks: true
+        default: false
+        }
+    }
+
+    /// Screens a new tab may open again beside one already open (Search starts fresh).
+    var isSearchLike: Bool { if case .search = self { true } else { false } }
+
     var noteId: String? { if case .note(let id) = self { id } else { nil } }
 
     /// Folevi's app path for this place (what links and the engine use).

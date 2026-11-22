@@ -17,6 +17,7 @@ struct NoteListScreen: View {
     /// The sort, kept per list (core.list.sort.<list>).
     @State private var sortRaw = NotesSort.updated.rawValue
     @State private var renamingFolder: FolderNode?
+    @FocusState private var filterFocused: Bool
     @State private var newSubfolderOf: FolderNode?
     @State private var filter = ""
     @State private var subfolders = Live<Views.FoldersCards>()
@@ -50,6 +51,8 @@ struct NoteListScreen: View {
     var body: some View {
         content
             .searchable(text: $filter, placement: .toolbar, prompt: "Filter \(title)")
+            .searchFocused($filterFocused)
+            .onChange(of: window.filterFocus) { filterFocused = true }
             .toolbar { toolbar }
             .task(id: spec.args) { list.bind(app.client, spec) }
             .task(id: folderId) {
@@ -78,10 +81,10 @@ struct NoteListScreen: View {
 
     @ViewBuilder private var content: some View {
         if list.isLoading && list.rows.isEmpty {
-            if window.listStyle == .cards { SkeletonGrid() } else { SkeletonRows() }
+            if window.listStyle != .list { SkeletonGrid() } else { SkeletonRows() }
         } else if list.rows.isEmpty && (subfolders.value?.folders ?? []).isEmpty {
             empty
-        } else if window.listStyle == .cards {
+        } else if window.listStyle == .cards || window.listStyle == .compact {
             cards
         } else {
             rows
@@ -216,15 +219,30 @@ struct NoteListScreen: View {
                 }
                 .padding([.horizontal, .top], 24)
             }
-            LazyVGrid(columns: [GridItem(.adaptive(minimum: 190, maximum: 250), spacing: 20)], spacing: 22) {
+            LazyVGrid(columns: [compact ? GridItem(.adaptive(minimum: 150, maximum: 180), spacing: 14) : GridItem(.adaptive(minimum: 190, maximum: 250), spacing: 20)], spacing: compact ? 14 : 22) {
                 ForEach(shownRows) { row in
                     NoteCardButton(row: row, window: window, inTrash: kind == .trash)
+                        .scaleEffect(compact ? 0.8 : 1, anchor: .top)
+                        .frame(height: compact ? 190 : nil, alignment: .top)
+                        .overlay(alignment: .topTrailing) {
+                            if selection.contains(row.id) {
+                                Image(systemName: "checkmark.circle.fill").font(.title3).foregroundStyle(Color.foleviInk).padding(6)
+                                    .accessibilityLabel("Selected")
+                            }
+                        }
+                        .simultaneousGesture(TapGesture().modifiers(.command).onEnded {
+                            if selection.contains(row.id) { selection.remove(row.id) } else { selection.insert(row.id) }
+                        })
                         .onAppear { if row.id == list.rows.last?.id { more() } }
                 }
             }
             .padding(24)
         }
+        .overlay(alignment: .bottom) { selectionBar }
+        .onKeyPress(.escape) { if selection.isEmpty { return .ignored }; selection.removeAll(); return .handled }
     }
+
+    private var compact: Bool { window.listStyle == .compact }
 
     // MARK: actions
 
@@ -423,10 +441,11 @@ struct ListStylePicker: View {
         Picker("View", selection: $window.listStyle) {
             Label("List", systemImage: "list.bullet").tag(WindowModel.ListStyleChoice.list)
             Label("Cards", systemImage: "square.grid.2x2").tag(WindowModel.ListStyleChoice.cards)
+            Label("Compact Cards", systemImage: "square.grid.3x3").tag(WindowModel.ListStyleChoice.compact)
         }
         .pickerStyle(.segmented)
         .labelsHidden()
-        .help("View as List or Cards")
+        .help("View as List, Cards or Compact Cards")
     }
 }
 

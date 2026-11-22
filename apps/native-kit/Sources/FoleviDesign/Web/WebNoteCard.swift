@@ -249,36 +249,91 @@ public struct WebNoteCard: View {
         cardBody.noteContent()
     }
 
+    /// At rest the card's shadow (and a stack's sheets, a divider's tabs: everything under the cover) is a picture
+    /// (CardPictures), one for every card of its size and look, and the face is drawn live over it, not flattened.
+    /// A plain card's shadow is only soft, so its picture isn't kept on whole pixels; a stack's sheets and a
+    /// divider's tabs have edges, so theirs is. While the pointer is over the card, and while its shadow settles
+    /// back after, the shadow is drawn live (flattened, as before), so it lifts.
+    @State private var live = false
+    /// The shadow lifted (while live; nil at rest).
+    @State private var lift: Bool?
+    @State private var hoverTurn = 0
+    @Environment(\.nativeShadowScale) private var shadowScale
+
+    /// The hover's shadow: the pointer is over it.
+    private var risen: Bool { CardPictures.enabled ? (lift ?? false) : hovered }
+
+    /// Room round the card for its shadow and a stack's sheets: what `flattened` drew in.
+    static let shadowRoom: CGFloat = 48
+
     @ViewBuilder private var cardBody: some View {
         GeometryReader { geo in
-            face(width: geo.size.width, height: geo.size.height).flattened()
+            let w = geo.size.width, h = geo.size.height
+            if CardPictures.enabled {
+                ZStack(alignment: .topLeading) {
+                    if !hovered && !live {
+                        CardPicture(key: "note-shadow|\(lookKey)|\(phone)|\(shadowScale)", margin: EdgeInsets(top: Self.shadowRoom, leading: Self.shadowRoom, bottom: Self.shadowRoom, trailing: Self.shadowRoom), snaps: model.look == .stack || model.look == .tabs) { size in
+                            behind(width: size.width, height: size.height)
+                        }
+                    } else {
+                        behind(width: w, height: h).flattened(margin: Self.shadowRoom)
+                    }
+                    // Not flattened: a drawingGroup is drawn again on every frame it moves (RenderBox), and with
+                    // nothing blurred left in the face its layers move as they are. (Flattened, it missed as many
+                    // frames as the whole card live.) Live under the pointer too, so only the shadow changes there.
+                    face(width: w, height: h, behind: false)
+                }
+            } else {
+                face(width: w, height: h, behind: true).flattened()
+            }
         }
         .aspectRatio(Self.aspect, contentMode: .fit)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(model.accessibilityText)
         .accessibilityAddTraits(.isLink)
+        .onChange(of: hovered) { _, now in
+            guard CardPictures.enabled else { return }
+            // Live first (at rest, as the picture), then lifted, so the shadow lifts as it always did; back at rest,
+            // the picture once it has settled.
+            hoverTurn += 1
+            let turn = hoverTurn
+            if now {
+                live = true
+                Task { @MainActor in if hoverTurn == turn { lift = true } }
+            } else {
+                lift = false
+                Task { @MainActor in
+                    try? await Task.sleep(for: .milliseconds(400))
+                    if hoverTurn == turn {
+                        live = false
+                        lift = nil
+                    }
+                }
+            }
+        }
     }
 
-    private func face(width w: CGFloat, height h: CGFloat) -> some View {
+    /// What the picture under the cover shows but its size, the scale and the colour scheme: the look's sheets or
+    /// tabs (in the app's colours, not the note's), or neither.
+    private var lookKey: String {
+        switch model.look {
+        case .stack: "stack"
+        case .tabs: "tabs"
+        default: "plain"
+        }
+    }
+
+    /// Everything under the cover: a stack's sheets, a divider's tabs and the card's shadow.
+    @ViewBuilder private func behind(width w: CGFloat, height h: CGFloat) -> some View {
         let cq = w / 100
         let link = s("link")
         let sheetStyle = s("sheet")
-        let pal = palette
-        let heading = pal?.heading ?? s("title").color
-        let faint = pal?.faint ?? s("created").color
-        let muted = pal?.muted ?? s("time").color
-        let chip = pal?.chip ?? s("chip").background
         let shape = phone ? WebCornersShape.phoneNoteCard : WebCornersShape.noteCard
-        let sheetW = w - cq, sheetH = h - cq
-        let shadows = hovered ? Self.hoverShadows : link.visibleShadows
+        let shadows = risen ? Self.hoverShadows : link.visibleShadows
         let look = model.look
-        let paper = pal?.paper ?? sheetStyle.background
-        // `color-mix(in oklab, var(--color-heading) p%, var(--color-surface))`: outside the cover the app's colours,
-        // on it the note's.
         let appHeading = s("title").color
         let appTint = { (p: Double) in appHeading.oklabMix(sheetStyle.background, p / 100) }
-        let tint = { (p: Double) in heading.oklabMix(paper, p / 100) }
-        return ZStack(alignment: .topLeading) {
+        ZStack(alignment: .topLeading) {
             if look == .stack {
                 // Sheets fanned behind the cover: the note has pages inside.
                 let sheetShadows = [ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(0, 0, 0, 0.08), inset: true), ShadowLayer(x: 0, y: 4, blur: 10, spread: -6, color: RGBA(20, 20, 30, 0.25))]
@@ -306,6 +361,30 @@ public struct WebNoteCard: View {
             }
             WebShapeBox(shape: shape, fill: nil, shadows: shadows)
                 .frame(width: w, height: h)
+                // Lifted a moment after the picture gives way, when the cell's own animation has passed: WebNoteCell's
+                // lift curve, here (the same when cards aren't pictures and it lifts with `hovered`).
+                .animation(.timingCurve(0.2, 0.8, 0.2, 1, duration: 0.2), value: risen)
+        }
+        .frame(width: w, height: h, alignment: .topLeading)
+    }
+
+    private func face(width w: CGFloat, height h: CGFloat, behind withBehind: Bool) -> some View {
+        let cq = w / 100
+        let sheetStyle = s("sheet")
+        let pal = palette
+        let heading = pal?.heading ?? s("title").color
+        let faint = pal?.faint ?? s("created").color
+        let muted = pal?.muted ?? s("time").color
+        let chip = pal?.chip ?? s("chip").background
+        let shape = phone ? WebCornersShape.phoneNoteCard : WebCornersShape.noteCard
+        let sheetW = w - cq, sheetH = h - cq
+        let look = model.look
+        let paper = pal?.paper ?? sheetStyle.background
+        // `color-mix(in oklab, var(--color-heading) p%, var(--color-surface))`: on the cover the note's colours (outside
+        // it the app's: behind).
+        let tint = { (p: Double) in heading.oklabMix(paper, p / 100) }
+        return ZStack(alignment: .topLeading) {
+            if withBehind { behind(width: w, height: h) }
             // The page block, peeking out past the cover's open edge and bottom.
             shape.fill(s("page").background.color)
                 .frame(width: w, height: h * (1 - 0.014))

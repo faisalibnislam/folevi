@@ -246,7 +246,7 @@ The ones most likely to be broken:
 - Snapshot tests: re-record only your own snapshots; never clear `__Snapshots__` wholesale.
 - Give before/after screenshots for UI work and ask the owner with clear options when a decision is theirs.
 
-## 9. Current state (as of 2026-11-21)
+## 9. Current state (as of 2026-11-22)
 
 **Live: Folevi 1.5.63** (tag `v1.5.63`, PR 46 merged with PR 47 in it, `main` = `3258f12b`): Mac published (feed and
 DMG at folevi.com/download/mac show 1.5.63), iPhone and iPad uploaded to TestFlight. Vercel skipped the web build
@@ -271,10 +271,13 @@ OCR, call recorder). The owner asked mid-build (2026-11-21) to keep the main app
 its black and white buttons: done (shared AppIcon.icon, web icons, Folevi ink whatever the Mac's accent).
 Read `apps/mac-core/README.md`; parity item by item in `apps/mac-core/PARITY.md`. Checked: Debug build runs on
 the demo engine and on the real engine with a scratch "on this Mac" library (gates, Home, lists, a note in the
-editor, Tasks, Calendar, Foli AI screens), 21 Core test suites pass, FoleviMac's 243 tests still pass, today's Mac
+editor, Tasks, Calendar, Foli AI screens), Core's 35 tests in 14 suites pass, FoleviMac's 243 tests still pass, today's Mac
 app still builds; `scripts/release.mjs` makes a Developer ID signed, checked DMG (not notarized). Core has its own
-Sparkle key (login Keychain, account `folevi-core`; the owner should back it up). Not checked: signing in to a
-real account in Core, iCloud/folder libraries, every parity item (see PARITY.md's gaps).
+Sparkle key (login Keychain, account `folevi-core`; the owner should back it up). Parity on 2026-11-22: 1,102 of
+1,343 there, 21 partly, 0 missing, 220 n/a (launch snapshot, card line breaks, spelling, inline diffs, Folders tree
+and a design pass against MAC_NATIVE_LOOK.md done; sidebar picks now navigate, fresh, per the Back rule). Not
+checked: signing in to a real account in Core, iCloud/folder libraries, real drags by hand (drop zones,
+spring-loading, drag-out to Finder), Foli DNA on a library with links, notification actions from macOS.
 
 **Also in progress:** branch `claude/liquid-glass-animations-b1d70e` (worktree
 `.claude/worktrees/liquid-glass-animations-b1d70e`, off `main` at `d752bb0d`, PR 45, not released): a Liquid Glass
@@ -349,8 +352,12 @@ account button should move past iPadOS's window buttons).
 
 ## 10. Next steps / open work
 - Folevi Core (`apps/mac-core`, branch `claude/folevi-core-529dbe`): close the remaining gaps in
-  `apps/mac-core/PARITY.md` (1,041 of 1,343 there, 81 partly, 3 missing, 218 n/a; the "Since this grading"
-  section lists what's left and why: launch snapshots, native card text layout, file drag-out;
+  `apps/mac-core/PARITY.md` (1,102 of 1,343 there, 21 partly, 0 missing, 220 n/a). The 21 partly: owner
+  choices (TAB-040 ⌘T opens Search, SET-027 Open at login off, RULE-037 native tabs instead of the custom window
+  profile), web or engine screens kept (AUTH-041, SET-007, GAP-007/008/036/040, AUTH-022 Vault Touch ID,
+  SYS-016/BRIDGE-074 native ask, UPD-004), and small native work left (APP-051 view keys, NAV-035 intents,
+  HOME-021 pausing hidden tabs, NOTE-002 prepare on touch-down, SET-074 billing history list, RULE-029 one control
+  size), plus LIST-053/NOTE-036 untried by hand;
   earlier list for reference: notes lists and folders pages, tasks views, calendar, notifications, Settings search,
   time zone picker, Foli AI memory), then the owner tries it with a real account. Publishing
   (`apps/mac-core/scripts/publish.mjs`, R2 `folevi-updates` under `core/`) only with the owner's OK. The release
@@ -423,6 +430,7 @@ account button should move past iPadOS's window buttons).
   `DATABASE_UDF_USER_TIMEOUT_SECONDS=4` for that backend. Bursts show in `convex.log` as "took a long time".
 
 ## 12. Change log
+- 2026-11-22: Folevi Core: third finishing round (1,102 of 1,343 there, 21 partly, 0 missing): launch snapshot wired (sidebar, Home, counts drawn at once; nothing kept for encrypted spaces), card previews with the page's line breaks (text.layout), spelling from the word's paragraph with 8 guesses and Learn/Ignore clearing WebKit's underline (core-page.js), Dock badge for places not open, plan badges and reminder marks in the account menu, inline diffs on Changes, a Folders tree, File > Share off a note, early keys after ⌘K, early link handler; design pass (web icons, hovers, no small controls, no row lines, cards 25% smaller, Home spacing); sidebar picks now navigate and start fresh.
 - 2026-11-22: Folevi Core: second finishing round (1,041 of 1,343 there, 81 partly, 3 missing): demo mode fixed (one shared demo client), tabs per space, file import, empty-space menu, middle-click, mixed moves, Add Tag, Foli DNA of a note, folder drop zones and spring-loading, optimistic list changes. Drag behaviours and Foli DNA centring are built and unit-tested but not yet tried by hand.
 - 2026-11-21: Folevi Core: finishing round toward full parity (1,027 of 1,343 there, 83 partly, 17 missing): lists, folders, tags, tasks, calendar week grid, sharing, templates, changes, notifications, Help window, Settings search and rows, menus, move between places, gate screens, links, App Lock, sidebar rule, inspector. The owner's Mac UI guide (macloving-mac-ui.md) is applied to the sidebar scale and Settings; the owner chose to keep native window tabs, so its main-window profile is not used.
 - 2026-11-21: Folevi Core: tabs (trashed notes leave history, background tabs, ⌘T at Search) and Home (catch-up Markdown and sources, reviews card, carousels, all folders with menus and drops); fixed a launch crash restoring windows saved by earlier builds; PARITY.md: 688 there, 290 partly, 155 missing.

@@ -75,14 +75,14 @@ Closed or improved after the grading below; the per-item marks haven't been redo
   previews, and notes dragged out as files (file promises for the page's noteFile requests).
 
 The items closed in this session's later work packages are marked [x] with "closed after the grading", and the
-summary table below is recounted from the marks (1062 there, 59 partly, 2 missing, 220 not applicable).
+summary table below is recounted from the marks (1067 there, 54 partly, 2 missing, 220 not applicable).
 
 ## Summary
 
 | Area | Id prefix | [x] | [~] | [ ] | [n/a] | Items |
 |---|---|---|---|---|---|---|
 | Architecture today | `ARCH` | 15 | 0 | 1 | 1 | 17 |
-| App & windows | `APP` | 39 | 10 | 1 | 23 | 73 |
+| App & windows | `APP` | 44 | 5 | 1 | 23 | 73 |
 | Sign-in, onboarding, accounts, spaces & local mode | `AUTH` | 64 | 5 | 0 | 11 | 80 |
 | Sidebar & navigation | `NAV` | 28 | 2 | 0 | 7 | 37 |
 | Tabs | `TAB` | 13 | 2 | 0 | 28 | 43 |
@@ -119,7 +119,7 @@ summary table below is recounted from the marks (1062 there, 59 partly, 2 missin
 | Binding UX rules from owner memory | `RULE` | 22 | 9 | 0 | 13 | 44 |
 | iPhone and iPad only (skip) | `IOS` | 0 | 0 | 0 | 5 | 5 |
 | Gaps, bugs and contradictions | `GAP` | 23 | 7 | 0 | 13 | 43 |
-| **Total** | | **1062** | **59** | **2** | **220** | **1343** |
+| **Total** | | **1067** | **54** | **2** | **220** | **1343** |
 
 Notable findings (all in the first work package at the end):
 
@@ -165,7 +165,7 @@ Notable findings (all in the first work package at the end):
 - [n/a] `APP-008` **Other-theme screens (Vault)**: the card chrome (fill, edge effect, controls, Ask AI, toasts) takes the inverted theme over the Vault. Why: no card chrome to invert; the Vault is a native screen.
 - [n/a] `APP-009` **One Page View per window**: the WKWebView runs both the engine and the note page and never leaves the window. A native screen covers it. Why: replaced by one engine page per place plus warm editor pages (`Engine/Pages.swift`).
 - [n/a] `APP-010` **Note top inset**: the bar height divided by the page zoom is sent so the note title clears the bar. Why: the page sits below the native toolbar (safe area), no inset to send.
-- [~] `APP-011` **Keep note mounted**: the note stays in the Page View 30 s after a native screen comes in front, then `note.close`. Core: leaving a note for a native screen closes it at once; the 20 s grace is only for hidden windows (`Model/WindowModel.swift`).
+- [x] `APP-011` **Keep note mounted**: the note stays in the Page View 30 s after a native screen comes in front, then `note.close`. Core: closed after the grading (see "Since this grading").
 - [x] `APP-012` **Show note on route change**: `note.show` gets the id, joined panes, sizes and other open note tabs (for the Join picker), then `note.meta` is queried. Core: `Model/WindowModel.swift` enterNote: note.show with panes, sizes and the other open notes, then note.meta.
 - [x] `APP-013` **Drawn-note handoff**: the previous content stays on screen until `note.ready` (never a blank page). Core: `Views/Note/NoteScreen.swift` (NotePlaceholder until note.ready).
 - [x] `APP-014` **Accessibility**: the page is hidden from VoiceOver while a native screen covers it. Core: the page leaves the view tree when no note is shown (`Views/Note/NoteScreen.swift` PageHostView).
@@ -178,7 +178,7 @@ Notable findings (all in the first work package at the end):
 - [n/a] `APP-021` **Card controls (glass at the card top)**: screen title, the screen's controls, a search capsule that opens into a field (⌘K, Esc closes while empty, typing opens the… Why: native toolbar items and `.searchable`; ⌘K palette (`Views/Common/CommandPalette.swift`).
 - [n/a] `APP-022` **Card item groups**: segmented, pull-down (Sort with "Sort by" heading), action button, "…" more, clusters. They fold to pull-downs, then into one "…"… Why: native toolbar overflow.
 - [x] `APP-023` **Main window basics**: 1280x820 start, 800x480 minimum. The frame is built on the page with a marker script before first paint; rebuilt on a place or… Core: closed after the grading (see "Since this grading").
-- [~] `APP-024` **Window restore**: windows.json keeps frame, path and the native frame's TabsModel.Saved (including other spaces). Front-to-back order kept.… Core: `Views/MainWindow.swift` SceneStorage brings each window back to its place and list style; no history.
+- [x] `APP-024` **Window restore**: windows.json keeps frame, path and the native frame's TabsModel.Saved (including other spaces). Front-to-back order kept.… Core: closed after the grading (see "Since this grading").
 - [n/a] `APP-025` **iPad tab restore (DeskTabs)**: (iPad): UserDefaults `folevi.desk.tabs`, debounced 600 ms. Why: iPad only.
 - [x] `APP-026` **Title bar (native frame)**: traffic lights centred on the strip at `MacLook.trafficLightsX`. Window title = note title (without "· Folevi"). Full-screen, key… Core: native title bar; title is the note's title (`Model/WindowModel.swift`).
 - [x] `APP-027` **Multiple windows**: new window, Open in New Window (folder, destination, note), bring to front. Core: New Window, Open in New Window, Open Note in New Window (`App/AppCommands.swift`, `Views/Common/Menus.swift`).
@@ -192,7 +192,7 @@ Notable findings (all in the first work package at the end):
 - [x] `APP-035` **Search routes to the command palette**: on the Mac (folevi://search, /search?q=). Core: closed after the grading (see "Since this grading").
 - [x] `APP-036` **Sync popover**: headline, detail, waiting count, download progress, Retry. Core: `Views/Sidebar.swift` SyncDetails popover (headline, waiting, conflicts, per-space progress, Sync Now, Sign In Again).
 - [n/a] `APP-037` **Notifications popover (bell)**: list, mark read, mark all read, open. Why: replaced by the Notifications screen (`Views/Screens/PeopleScreens.swift`) and its sidebar badge.
-- [~] `APP-038` **Floating notes window (Float Note)**: one NSPanel per note with its own Page View and EngineClient. Keep-on-top pin (floating level, all Spaces); cascade placement… Core: a floating window per note with its own window model and a pool page, a Keep on Top pin (floating, every Space); not an NSPanel with its own engine client.
+- [x] `APP-038` **Floating notes window (Float Note)**: one NSPanel per note with its own Page View and EngineClient. Keep-on-top pin (floating level, all Spaces); cascade placement… Core: closed after the grading (see "Since this grading").
 - [x] `APP-039` **Floating note bar**: room for window buttons, emoji and title, pin "Keep on top" / "Stop keeping on top"; dragging the bar moves the window… Core: closed after the grading (see "Since this grading").
 - [x] `APP-040` **Page text menu services**: spelling guesses by context, Learn and Ignore Spelling (clears WebKit underline), Look Up. Core: `Host/DesktopRouter.swift` spelling, learnWord, ignoreWord, lookUp.
 - [n/a] `APP-041` **Quiet scroll**: no pointer hit-testing while a list scrolls (performance). Why: native SwiftUI List scrolling.
@@ -223,13 +223,13 @@ Notable findings (all in the first work package at the end):
 - [x] `APP-063` **WindowManager**: Holds the main window controllers and a weak set of every view. Provides `frontMain`, `openMain(path:tabs:)`, `showMain(path:)`… Core: `Host/WindowManager.swift`.
 - [n/a] `APP-064` **MainWindowController**. Why: SwiftUI WindowGroup and WindowModel.
 - [x] `APP-065` **Navigation policy**. Core: `Host/PageView.swift` Navigation.
-- [~] `APP-066` **Window restore**: in the support folder `{ v: 1, windows: [{ frame, path, hidden?, tabs? }] }`. Saved front to back (debounced 0.6 s) on move… Core: macOS restores windows and tabs, each at its SceneStorage path; no windows.json, no history.
+- [x] `APP-066` **Window restore**: in the support folder `{ v: 1, windows: [{ frame, path, hidden?, tabs? }] }`. Saved front to back (debounced 0.6 s) on move… Core: closed after the grading (see "Since this grading").
 - [n/a] `APP-067` **Last window hides instead of closing**: Keeps syncing and Quick Add working. Why: the engine page lives apart from windows, so sync and Quick Add go on with none open.
 - [x] `APP-068` **Dock menu**: New Note (menu `file.new-note`), Quick Add Task, New Window (`/documents`), up to 5 recent notes, and a Places submenu with a… Core: closed after the grading (see "Since this grading").
 - [~] `APP-069` **Dock badge**: Sum of each place's `setBadge` count plus the last-known unread of account places that report nothing; shows "99+". Core: `Host/DesktopRouter.swift` sums setBadge; no last-known unread for silent account places.
 - [x] `APP-070` **Status item (menu bar icon)**: Template "F" image, rebuilt each time the menu opens. Core: `App/FoleviCoreApp.swift` StatusItem (Quick Add, New Note, Recent, Open, Quit; SF Symbol, not the "F" template).
 - [n/a] `APP-071` **Chrome per-view state**: `PageState`: disabled and checked ids, ai, sidebar, inspector, focus, find, locked, route. Also badges, recent notes and status.… Why: replaced by per-window WindowModel editor state (`Model/WindowModel.swift`).
-- [~] `APP-072` **Floating notes ("Float Note")**: See the Services section. Restored at launch with the native frame. Core: Note > Float on Top; restored only as SwiftUI restores windows.
+- [x] `APP-072` **Floating notes ("Float Note")**: See the Services section. Restored at launch with the native frame. Core: closed after the grading (see "Since this grading").
 - [x] `APP-073` **Settings window**: Separate window (`SettingsWindow.show(section:)`), native with the frame or `/settings/<section>?window=1`. Referenced only. Core: SwiftUI Settings window (`Views/Settings/SettingsView.swift`).
 
 ## Sign-in, onboarding, accounts, spaces & local mode

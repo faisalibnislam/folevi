@@ -217,6 +217,71 @@ final class AppModel {
         for w in windows.values.compactMap(\.model) { w.reset() }
     }
 
+    // MARK: windows across relaunches
+
+    /// Every main window (front to back), each with its tabs (path, Back, Forward) and frame, kept on this Mac
+    /// whatever the system's "close windows when quitting" setting says.
+    struct SavedWindow: Codable {
+        var frame: String
+        var tabs: [SavedTab]
+    }
+    struct SavedTab: Codable {
+        var path: String
+        var back: [String]
+        var forward: [String]
+    }
+
+    @ObservationIgnored private var saveTask: Task<Void, Never>?
+    @ObservationIgnored private(set) var windowsRestored = false
+
+    func saveWindowsSoon() {
+        saveTask?.cancel()
+        saveTask = Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(600))
+            guard !Task.isCancelled else { return }
+            saveWindows()
+        }
+    }
+
+    func saveWindows() {
+        let models = windows.values.compactMap(\.model)
+        var seen = Set<ObjectIdentifier>()
+        var out: [SavedWindow] = []
+        for w in NSApp.orderedWindows {
+            guard let lead = models.first(where: { $0.window === w }), !seen.contains(ObjectIdentifier(w)) else { continue }
+            let group = (w.tabbedWindows ?? [w])
+            group.forEach { seen.insert(ObjectIdentifier($0)) }
+            let tabs = group.compactMap { nw in models.first { $0.window === nw } }.map { SavedTab(path: $0.current.path, back: $0.backPaths, forward: $0.forwardPaths) }
+            out.append(SavedWindow(frame: NSStringFromRect(w.frame), tabs: tabs.isEmpty ? [SavedTab(path: lead.current.path, back: lead.backPaths, forward: lead.forwardPaths)] : tabs))
+        }
+        guard !out.isEmpty, let data = try? JSONEncoder().encode(out) else { return }
+        UserDefaults.standard.set(data, forKey: "core.windows")
+    }
+
+    /// At launch, once: the first window takes the first saved window's first tab; the rest open as they were.
+    func restoreWindows(into first: WindowModel) {
+        guard !windowsRestored else { return }
+        windowsRestored = true
+        NotificationCenter.default.addObserver(forName: NSApplication.willTerminateNotification, object: nil, queue: .main) { _ in
+            MainActor.assumeIsolated { AppModel.shared.saveWindows() }
+        }
+        guard let data = UserDefaults.standard.data(forKey: "core.windows"), let saved = try? JSONDecoder().decode([SavedWindow].self, from: data), !saved.isEmpty else { return }
+        // macOS brought windows back itself: leave them.
+        guard windows.count <= 1, first.current == .home, first.backPaths.isEmpty else { return }
+        for (i, win) in saved.prefix(8).enumerated() {
+            if i == 0 {
+                if let t = win.tabs.first, let d = Destination(path: t.path) {
+                    if d != .home { first.replace(with: d) }
+                    first.restoreHistory(back: t.back, forward: t.forward)
+                }
+                first.window?.setFrame(NSRectFromString(win.frame), display: true)
+                for t in win.tabs.dropFirst() { if let d = Destination(path: t.path) { open(d, newTab: true, background: true) } }
+            } else if let t = win.tabs.first, let d = Destination(path: t.path) {
+                openWindow?(d, false, false)
+            }
+        }
+    }
+
     // MARK: tabs per space
 
     /// The space shown ("<place>|<space>"), and each space's tabs (the front window's, as paths, up to 50 spaces).
@@ -276,6 +341,7 @@ final class AppModel {
     func register(_ window: WindowModel) {
         windows[window.id] = WeakWindow(model: window)
         windows = windows.filter { $0.value.model != nil }
+        if windowsRestored { saveWindowsSoon() }
     }
 
     /// Where closed windows and tabs were (File > Reopen Closed Tab), newest last.

@@ -15,6 +15,8 @@ struct MainWindow: View {
     /// Where this window was, kept by macOS with the window (state restoration).
     @SceneStorage("core.path") private var restoredPath = ""
     @SceneStorage("core.listStyle") private var restoredStyle = ""
+    @SceneStorage("core.back") private var restoredBack = ""
+    @SceneStorage("core.forward") private var restoredForward = ""
 
     init(seed: WindowSeed?) {
         self.seed = seed
@@ -84,8 +86,21 @@ struct MainWindow: View {
             // A restored window goes back where it was (a fresh window opens where its seed says).
             if seed?.start == .home, !restoredPath.isEmpty, let d = Destination(path: restoredPath), d != .home { window.replace(with: d) }
             if let s = WindowModel.ListStyleChoice(rawValue: restoredStyle) { window.listStyle = s }
+            if seed?.start == .home, !restoredPath.isEmpty {
+                window.restoreHistory(back: restoredBack.split(separator: "\n").map(String.init), forward: restoredForward.split(separator: "\n").map(String.init))
+            }
+            FloatingNotes.restoreOnce(openWindow)
+            Task { @MainActor in
+                try? await Task.sleep(for: .milliseconds(300))
+                app.restoreWindows(into: window)
+            }
         }
-        .onChange(of: window.current) { restoredPath = window.current.path }
+        .onChange(of: window.current) {
+            restoredPath = window.current.path
+            restoredBack = window.backPaths.joined(separator: "\n")
+            restoredForward = window.forwardPaths.joined(separator: "\n")
+            app.saveWindowsSoon()
+        }
         .onChange(of: window.listStyle) { restoredStyle = window.listStyle.rawValue }
         .frame(minWidth: 800, minHeight: 480)
         .onChange(of: app.currentSpaceKey, initial: true) {

@@ -94,7 +94,7 @@ enum DebugCommands {
         }
         MacEval.commands["tabs"] = { _, done in
             MainActor.assumeIsolated {
-                done(["value": AppModel.shared.debugTabs()])
+                done(["value": AppModel.shared.debugTabs(), "back": AppModel.shared.front?.backPaths ?? []])
             }
         }
         MacEval.commands["notefile"] = { _, done in

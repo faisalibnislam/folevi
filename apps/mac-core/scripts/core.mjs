@@ -52,6 +52,11 @@ function running() {
 }
 
 async function quit() {
+  // A normal quit first (the app saves its windows), then a signal if it doesn't go.
+  if (running().length) {
+    try { execFileSync("osascript", ["-e", 'tell application id "app.folevicore.FoleviCore.dev" to quit']); } catch {}
+    for (let i = 0; i < 40 && running().length; i++) await sleep(100);
+  }
   for (const p of running()) {
     process.kill(p, "SIGTERM");
     for (let i = 0; i < 50 && alive(p); i++) await sleep(100);

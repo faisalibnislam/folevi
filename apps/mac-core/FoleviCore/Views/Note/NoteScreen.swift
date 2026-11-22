@@ -303,11 +303,49 @@ struct FloatingNote: View {
                 }
             }
             .task { try? await Task.sleep(for: .milliseconds(100)); apply() }
+            .onAppear { FloatingNotes.opened(id) }
+            .onDisappear { FloatingNotes.closed(id) }
     }
 
     private func apply() {
         guard let w = window.window else { return }
         w.level = onTop ? .floating : .normal
         w.collectionBehavior = onTop ? [.canJoinAllSpaces, .fullScreenAuxiliary] : [.managed]
+    }
+}
+
+
+/// Floating notes open at quit open again at launch (SwiftUI may bring some back itself; none opens twice).
+@MainActor
+enum FloatingNotes {
+    private static let key = "core.floatingNotes"
+    private static var open: Set<String> = []
+    private static var restored = false
+    private static var quitting = false
+
+    static func opened(_ id: String) {
+        open.insert(id)
+        save()
+    }
+
+    static func closed(_ id: String) {
+        open.remove(id)
+        // Quitting closes every window: what was open at that moment is what comes back.
+        if !quitting { save() }
+    }
+
+    private static func save() { UserDefaults.standard.set(Array(open), forKey: key) }
+
+    static func restoreOnce(_ openWindow: OpenWindowAction) {
+        guard !restored else { return }
+        restored = true
+        NotificationCenter.default.addObserver(forName: NSApplication.willTerminateNotification, object: nil, queue: .main) { _ in
+            MainActor.assumeIsolated { quitting = true }
+        }
+        let saved = UserDefaults.standard.stringArray(forKey: key) ?? []
+        Task { @MainActor in
+            try? await Task.sleep(for: .seconds(1.5))
+            for id in saved where !open.contains(id) { openWindow(id: "float", value: id) }
+        }
     }
 }

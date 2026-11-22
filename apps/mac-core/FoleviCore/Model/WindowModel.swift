@@ -155,7 +155,7 @@ final class WindowModel: Identifiable {
         if dest.isNote {
             Task { await enterNote() }
         } else if wasNote {
-            leaveNote()
+            leaveNote(grace: true)
         }
         window?.title = title
     }
@@ -192,7 +192,13 @@ final class WindowModel: Identifiable {
 
     // MARK: the note
 
+    /// A note left for a list or screen stays in its page for 30 s (coming back is instant), then the page goes
+    /// back to the pool.
+    @ObservationIgnored private var releaseTask: Task<Void, Never>?
+
     private func enterNote() async {
+        releaseTask?.cancel()
+        releaseTask = nil
         guard let id = current.noteId else { return }
         guard let page = app.pool.editor(for: self.id) else { return }
         if self.page !== page {
@@ -213,7 +219,7 @@ final class WindowModel: Identifiable {
         }
     }
 
-    private func leaveNote() {
+    private func leaveNote(grace: Bool = false) {
         pageEvents?.cancel()
         pageEvents = nil
         page = nil
@@ -221,7 +227,29 @@ final class WindowModel: Identifiable {
         noteTools = nil
         noteMeta = nil
         noteReady = false
-        app.pool.giveBack(from: id)
+        releaseTask?.cancel()
+        releaseTask = nil
+        if grace {
+            releaseTask = Task { @MainActor [weak self] in
+                try? await Task.sleep(for: .seconds(30))
+                guard let self, !Task.isCancelled, !self.current.isNote else { return }
+                self.app.pool.giveBack(from: self.id)
+            }
+        } else {
+            app.pool.giveBack(from: id)
+        }
+    }
+
+    // MARK: history across relaunches
+
+    var backPaths: [String] { backStack.suffix(50).map(\.path) }
+    var forwardPaths: [String] { forwardStack.suffix(50).map(\.path) }
+
+    /// Back and Forward as they were when the window was saved.
+    func restoreHistory(back: [String], forward: [String]) {
+        guard backStack.isEmpty, forwardStack.isEmpty else { return }
+        backStack = back.compactMap { Destination(path: $0) }
+        forwardStack = forward.compactMap { Destination(path: $0) }
     }
 
     private func listen(_ page: Page) {

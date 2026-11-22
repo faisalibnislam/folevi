@@ -79,13 +79,16 @@ final class Page: PageHost {
         hook()
     }
 
+    private static let demoClient = DemoEngine.shared.client()
+
     private static func make(place: String?) -> (view: FoleviWebView, transport: CoreEngineTransport, client: EngineClient) {
         let view = WebViewFactory.make(place: place, role: .main, bootstrap: WindowManager.shared.bootstrapOf(place, .main), frame: NSRect(x: 0, y: 0, width: 900, height: 700), nativeFrame: true, window: { NSApp.keyWindow })
         view.autoresizingMask = [.width, .height]
         let transport = CoreEngineTransport(view: view)
         let client: EngineClient
         if Paths.demo {
-            client = DemoEngine.shared.client()
+            // One client for the one scripted transport: a second client would take its messages away.
+            client = demoClient
         } else {
             client = EngineClient(transport: transport, place: place ?? "", app: AppInfo(platform: .macos, version: Paths.version, build: Paths.build, protocol: EngineContract.protocolVersion, schemaHash: EngineContract.schemaHash))
         }

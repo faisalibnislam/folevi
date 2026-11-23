@@ -19,14 +19,12 @@ struct Inspector: View {
 
     @ViewBuilder private var content: some View {
         VStack(spacing: 0) {
-            // The tabs: a quiet capsule track near the panel's top, the selected tab a capsule inset 3 pt.
-            BarChoice(selection: $window.inspectorTab, options: WindowModel.InspectorTab.allCases.map { .init(value: $0, title: $0.title) })
-                .padding(.horizontal, 3)
-                .frame(height: WindowMetrics.barControlHeight)
-                .background(Capsule().fill(Color(nsColor: .quaternaryLabelColor).opacity(0.5)))
+            // The tabs: the system's segmented control, centred at the inspector's top.
+            SegmentedChoice(selection: $window.inspectorTab, options: WindowModel.InspectorTab.allCases.map { .init(value: $0, title: $0.title) }, label: "Inspector")
+                .frame(maxWidth: .infinity)
                 .padding(.horizontal, 12)
-                .padding(.top, 12)
-                .padding(.bottom, 8)
+                .padding(.top, 10)
+                .padding(.bottom, 10)
             switch window.inspectorTab {
             case .foliAI:
                 if let id = window.current.noteId {
@@ -155,6 +153,7 @@ struct NoteInfo: View {
                 }
             }
             .listStyle(.sidebar)
+            .scrollContentBackground(.hidden)
         } else {
             EmptyScreen(symbol: "info.circle", title: "No Note Info", message: "Open a note to see its outline, tasks, links and comments.")
         }

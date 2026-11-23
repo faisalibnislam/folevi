@@ -200,15 +200,9 @@ struct AppCommands: SwiftUI.Commands {
             }
             Divider()
         }
-        // No Toggle Sidebar (the sidebar is always there) and no toolbar commands (the bar is the card's own).
-        CommandGroup(after: .sidebar) {
-            Button(window?.inspectorShown == true ? "Hide Inspector" : "Show Inspector") {
-                guard let window else { return }
-                Motion.run(Motion.panel) { window.inspectorShown.toggle() }
-            }
-            .keyboardShortcut("i", modifiers: [.command, .control])
-            .disabled(window == nil)
-        }
+        SidebarCommands()
+        InspectorCommands()
+        ToolbarCommands()
 
         // Go
         CommandMenu("Go") {

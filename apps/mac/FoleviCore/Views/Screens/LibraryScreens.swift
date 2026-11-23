@@ -169,6 +169,8 @@ struct SearchScreen: View {
             }
             content
         }
+        // The field and its filters stay at the top whatever the list below holds (an empty state is shorter).
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .onAppear {
             text = initial
             recents = RecentSearches.list()
@@ -963,7 +965,7 @@ struct FoldersScreen: View {
         .screenSubtitle(subtitle)
         .screenActions {
             Group {
-                BarChoice(selection: $layout, options: [
+                SegmentedChoice(selection: $layout, options: [
                     .init(value: "grid", title: "Cards", symbol: "square.grid.2x2"),
                     .init(value: "list", title: "List", symbol: "list.bullet"),
                     .init(value: "tree", title: "Tree", symbol: "list.bullet.indent"),

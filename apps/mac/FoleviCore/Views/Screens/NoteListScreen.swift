@@ -496,7 +496,7 @@ struct ListStylePicker: View {
     @Bindable var window: WindowModel
 
     var body: some View {
-        BarChoice(selection: $window.listStyle, options: [
+        SegmentedChoice(selection: $window.listStyle, options: [
             .init(value: .list, title: "List", symbol: "list.bullet"),
             .init(value: .cards, title: "Cards", symbol: "square.grid.2x2"),
             .init(value: .compact, title: "Compact Cards", symbol: "square.grid.3x3"),

@@ -780,6 +780,8 @@ struct CalendarScreen: View {
             }
         }
         .listStyle(.sidebar)
+        // The day's pane shares the window's background (as Foli AI's chat list does), the split's divider between.
+        .scrollContentBackground(.hidden)
     }
 
     private func addTask() {

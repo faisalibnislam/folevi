@@ -107,16 +107,14 @@ struct NoteBarChip: View {
 
     var body: some View {
         if let crumbs = window.noteMeta?.breadcrumbs, let folder = window.noteMeta?.folder {
-            BarGroup {
-                Menu {
-                    Button("Open \(folder.name)") { window.go(.folder(folder.id)) }
-                    ForEach(crumbs, id: \.id) { c in Button(c.title.nonEmpty ?? "Untitled") { window.go(.note(c.id)) } }
-                } label: {
-                    Label { Text(folder.name).lineLimit(1) } icon: { FolderMark(colorId: folder.color, size: 13) }
-                        .labelStyle(.titleAndIcon)
-                }
-                .help("Where this note is")
+            Menu {
+                Button("Open \(folder.name)") { window.go(.folder(folder.id)) }
+                ForEach(crumbs, id: \.id) { c in Button(c.title.nonEmpty ?? "Untitled") { window.go(.note(c.id)) } }
+            } label: {
+                Label { Text(folder.name).lineLimit(1) } icon: { FolderMark(colorId: folder.color, size: 13) }
+                    .labelStyle(.titleAndIcon)
             }
+            .help("Where this note is")
             .fixedSize()
         }
     }

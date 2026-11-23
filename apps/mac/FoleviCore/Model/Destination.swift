@@ -66,14 +66,6 @@ enum Destination: Hashable, Codable {
     var isNote: Bool { if case .note = self { true } else { false } }
 
     var isFoliAI: Bool { if case .foliAI = self { true } else { false } }
-    /// A screen built on a split view (AppKit's): it starts below the window's bar instead of running under it,
-    /// since the split view doesn't pass SwiftUI's safe area on to its panes.
-    var isSplit: Bool {
-        switch self {
-        case .foliAI, .calendar, .vault: true
-        default: false
-        }
-    }
 
     /// Screens with a filter field ⌘F goes to.
     var hasFilter: Bool {

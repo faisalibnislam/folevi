@@ -43,6 +43,10 @@ public struct WebTopBar: View {
     @State var bellAnchor: NSView?
     /// The room iPadOS's own window buttons take at the strip's leading end (a resizable window's; none full screen).
     @State var windowControlsRoom: CGFloat = 0
+    #if os(iOS)
+    /// Where iPhone Duo's fold crosses the strip's tabs and buttons, partly closed (FoldSpan): the tabs end before it.
+    @State var fold: FoldSpan?
+    #endif
 
     public init(model: FrameModel) { self.model = model }
 

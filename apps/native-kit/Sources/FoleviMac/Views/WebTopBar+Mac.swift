@@ -102,11 +102,15 @@ extension WebTopBar {
             MacHistoryButtons(model: model)
                 .padding(.trailing, 2)
             #endif
-            // The tabs fill the bar up to the sync status (Safari's rule: every tab the same width).
+            // The tabs fill the bar up to the sync status (Safari's rule: every tab the same width). iPhone Duo partly
+            // closed: they end before the fold, the sync status and the bell staying at the far end past it.
             tabStrip
-                .frame(maxWidth: .infinity, alignment: .leading)
+                .frame(maxWidth: tabsWidth, alignment: .leading)
                 .layoutPriority(1)
                 .padding(.trailing, 2)
+            #if os(iOS)
+            Spacer(minLength: 0)
+            #endif
             #if os(macOS)
             // New note, the web's top bar's black pill (the owner, 2026-11-19: the one New note on screen, moved
             // from the sidebar), right after the tabs. It opens the note in a new tab, ready to type. (The iPad's is
@@ -118,6 +122,18 @@ extension WebTopBar {
             MacSyncStatus(model: model) { model.showSync?($0) }
             stripButton("bell", label: "Notifications", help: "Notifications", anchored: true) { model.showNotifications?(bellAnchor) }
         }
+        #if os(iOS)
+        .readFold { fold = $0 }
+        #endif
+    }
+
+    /// How wide the tabs may be: all the room there is, or up to the fold (iPhone Duo partly closed; the tabs start at
+    /// the tail's leading edge, so the fold's position in it is their room).
+    private var tabsWidth: CGFloat {
+        #if os(iOS)
+        if let fold, fold.minX > 120 { return fold.minX - FoldSpan.margin }
+        #endif
+        return .infinity
     }
 
     /// A button in the strip: a symbol in a 28 pt capsule (the tabs' shape) with the quiet hover, its tooltip and its

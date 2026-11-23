@@ -116,6 +116,7 @@ export function PageDock({ tab, open, onPick, buttonRef, extra, ai = true }: { t
       // Lifted above the on-screen keyboard (--kb-inset, set by useKeyboardInset).
       // Never wider than the note it floats over: icons only when the words don't fit (globals.css, Page tools),
       // and as a last resort it scrolls sideways, so its first and last actions stay in reach (QA audit F03).
+      data-note-dock
       className="ui-pop absolute bottom-[calc(1.25rem+var(--kb-inset,0px))] left-1/2 z-30 flex max-w-[calc(100%-1rem)] -translate-x-1/2 items-center gap-0.5 overflow-x-auto rounded-panel p-1 [scrollbar-width:none]"
     >
       {DOCK.filter((d) => ai || d.id !== "ai").map((d) => {

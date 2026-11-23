@@ -253,12 +253,47 @@ final class RebuildFrameController: UIViewController, PhoneRouting {
         }
     }
 
+    override func viewWillTransition(to size: CGSize, with coordinator: any UIViewControllerTransitionCoordinator) {
+        super.viewWillTransition(to: size, with: coordinator)
+        // iPhone Duo folding or unfolding mid-sentence (or an iPad window crossing 700 pt): the other layout takes the
+        // note's page, which loses the keyboard on the way; it comes back there, the caret where it was (the owner's
+        // rule, 2026-11-19: the note stays the focus).
+        let wasWide = wide
+        // (The keyboard may already have gone as the screens trade places: a moment ago counts.)
+        let keys = model.keyboardVisible || keyboardHidAt.map { Date().timeIntervalSince($0) < 1 } == true
+        let typing = keys && (wasWide ? desk.route.isNote : frame.top.isNote)
+        guard typing else { return }
+        coordinator.animate(alongsideTransition: nil) { [weak self] _ in
+            // (Again a little later if the first try came before the new layout had settled the page in place.)
+            for delay in [0.45, 1.2] {
+                DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
+                    guard let self, self.wide != wasWide, !self.model.keyboardVisible else { return }
+                    self.pageHost.pageView.becomeFirstResponder()
+                    self.model.editor(.focus)
+                }
+            }
+            // The caret in sight once the page has its new width (the layout may have put back where its own tab
+            // was scrolled to).
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.6) { [weak self] in
+                guard let self, self.wide != wasWide else { return }
+                self.pageHost.pageView.evaluateJavaScript(Self.caretInSight)
+            }
+        }
+    }
+
+    /// Scrolls the caret to the middle of what shows when it's out of sight (above the top, or under the keyboard).
+    private static let caretInSight = "(()=>{const s=getSelection();if(!s||!s.rangeCount)return;const r=s.getRangeAt(0).getBoundingClientRect();const h=window.visualViewport?visualViewport.height:innerHeight;if(r.top>=0&&r.bottom<=h)return;const n=s.focusNode&&(s.focusNode.nodeType===1?s.focusNode:s.focusNode.parentElement);if(n)n.scrollIntoView({block:'center'})})()"
+
+    /// When the on-screen keyboard last went away (iPhone Duo: folding or unfolding can close it first).
+    private var keyboardHidAt: Date?
+
     private func keyboardMoved(to end: CGRect, hiding: Bool) {
         guard let window = view.window else { return }
         let keyboard = window.convert(end, from: window.screen.coordinateSpace)
         let overlap = hiding ? 0 : KeyboardBridge.coveredHeight(keyboard: keyboard, bounds: window.bounds)
         model.keyboardOverlap = overlap
         let appeared = overlap > 0 && !model.keyboardVisible
+        if overlap == 0, model.keyboardVisible { keyboardHidAt = Date() }
         model.keyboardVisible = overlap > 0
         if appeared { model.refreshEditorState() }
     }
@@ -384,6 +419,7 @@ private struct RebuildRoot: View {
             let wide = RebuildIPad.isWide(width: g.size.width, regular: sizeClass == .regular)
             // The desk's touch sizes (the iPad's styles) while it shows, set before either layout is built.
             let _ = (WebStyles.isPad = UIDevice.current.userInterfaceIdiom == .pad || wide)
+            let _ = (RebuildIPad.showingWide = wide)
             Group {
                 if wide {
                     RebuildIPadRoot(desk: desk, phone: phone, pageHost: pageHost, gate: gate)

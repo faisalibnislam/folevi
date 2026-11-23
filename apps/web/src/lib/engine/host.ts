@@ -575,9 +575,11 @@ export class BridgeHost {
         return { id: noteId, ready: isNoteReady(noteId) };
       }
       case "web.show": {
-        only(args, ["page"]);
+        only(args, ["page", "query"]);
         const page = oneOf(args, "page", WEB_PAGES);
-        this.ctx.deps().navigate(WEB_PAGE_ROUTES[page]);
+        const query = args.query ?? "";
+        if (typeof query !== "string" || query.length > 512 || !/^[A-Za-z0-9_.=&%-]*$/.test(query)) throw new BridgeError("invalid_args", "query must be a URL query without “?”.");
+        this.ctx.deps().navigate(query ? `${WEB_PAGE_ROUTES[page]}?${query}` : WEB_PAGE_ROUTES[page]);
         this.showMeta(null);
         return { id: page, ready: true };
       }

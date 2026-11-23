@@ -101,7 +101,9 @@ Closed or improved after the grading below; the per-item marks haven't been redo
   folder.
 
 The items closed in this session's later work packages are marked [x] with "closed after the grading", and the
-summary table below is recounted from the marks (1112 there, 6 partly, 0 missing, 225 not applicable).
+summary table below is recounted from the marks (1114 there, 4 partly, 0 missing, 225 not applicable). The 4 partly
+(`SET-007`, `GAP-007`, `GAP-008`, `GAP-036`: two-step verification, end-to-end encryption on/off, OAuth consent and
+the workspace settings group) stay web pages on purpose: the owner's choice on 2026-11-23.
 
 ## Summary
 
@@ -113,10 +115,10 @@ summary table below is recounted from the marks (1112 there, 6 partly, 0 missing
 | Sidebar & navigation | `NAV` | 30 | 0 | 0 | 7 | 37 |
 | Tabs | `TAB` | 14 | 0 | 0 | 29 | 43 |
 | Home | `HOME` | 20 | 0 | 0 | 10 | 30 |
-| Notes lists | `LIST` | 60 | 1 | 0 | 11 | 72 |
+| Notes lists | `LIST` | 61 | 0 | 0 | 11 | 72 |
 | Folders | `FOLD` | 34 | 0 | 0 | 3 | 37 |
 | Tags | `TAG` | 7 | 0 | 0 | 2 | 9 |
-| Note page & editor integration | `NOTE` | 42 | 1 | 0 | 3 | 46 |
+| Note page & editor integration | `NOTE` | 43 | 0 | 0 | 3 | 46 |
 | Search & command palette | `SRCH` | 35 | 0 | 0 | 2 | 37 |
 | Tasks | `TASK` | 25 | 0 | 0 | 10 | 35 |
 | Calendar | `CAL` | 31 | 0 | 0 | 6 | 37 |
@@ -145,7 +147,7 @@ summary table below is recounted from the marks (1112 there, 6 partly, 0 missing
 | Binding UX rules from owner memory | `RULE` | 30 | 0 | 0 | 14 | 44 |
 | iPhone and iPad only (skip) | `IOS` | 0 | 0 | 0 | 5 | 5 |
 | Gaps, bugs and contradictions | `GAP` | 27 | 3 | 0 | 13 | 43 |
-| **Total** | | **1112** | **6** | **0** | **225** | **1343** |
+| **Total** | | **1114** | **4** | **0** | **225** | **1343** |
 
 Notable findings (all in the first work package at the end):
 
@@ -530,7 +532,7 @@ Notable findings (all in the first work package at the end):
 - [x] `LIST-050` **Change color and Delete folders (bulk)**: delete confirmation "Delete N folders? / … notes move to Drafts". Core: closed after the grading (see "Since this grading").
 - [x] `LIST-051` **Drag payloads**: `NoteDragItem` (one note or the whole selection, folders included) and `FolderDragItem`; UTTypes `com.folevi.note-ref` and… Core: closed after the grading (see "Since this grading").
 - [x] `LIST-052` **Drop on folders**: notes go inside; a folder goes before, inside or after depending on the zone; spring-loading after 0.6 s; nesting rules… Core: closed after the grading (see "Since this grading").
-- [~] `LIST-053` **Folders page drag reorder**: a gap opens, a dashed placeholder marks it, the dragged card dims; the commit may switch the sort to Manual; off while searching. Core: drop a folder on the leading or trailing quarter of another card on the Folders page to put it before or after (folder.move afterId; the sort turns Manual); an accent bar marks the spot; no dashed gap or dimmed card; not yet tried with a real drag.
+- [x] `LIST-053` **Folders page drag reorder**: a gap opens, a dashed placeholder marks it, the dragged card dims; the commit may switch the sort to Manual; off while searching. Core: `FoldersScreen` gap (`FolderGap`): over a card's leading or trailing quarter the cards slide aside, the dragged card dims with a dashed edge in the gap (a folder from the sidebar shows as a dashed spot); over a card's middle the gap holds and a drop goes inside; the drop keeps the page's level (folder.move afterId), turns the sort Manual with the web's toast; off while filtering. Tried with real mouse drags 2026-11-23.
 - [x] `LIST-054` **Manual note order**: Move up / Move down in the menu (`note.reorder`); drag reorder exists only in the iOS List (`onMove`). The Mac has no drag… Core: closed after the grading (see "Since this grading").
 - [x] `LIST-055` **Hide from recent**: "Remove from recent" (Home cards); toast "Removed from Recent notes" with Undo. Core: `Views/Screens/LibraryScreens.swift` RecentScreen "Hide from Recent" (list rows only).
 - [x] `LIST-056` **Card pictures**: cover (built-in art, own image file, colour or plain), preview lines, font, shape, created and edited times; folder cards show up… Core: `Views/Common/Style.swift` Cards (cover, preview lines, font, shape, times, folder previews).
@@ -643,7 +645,7 @@ Notable findings (all in the first work package at the end):
 - [n/a] `NOTE-033` **Note menu plan**: (iPhone): sections and submenus (Connections, History, Move and copy, Share and export); trash-only menu; permissions (canEdit… Why: iPhone only.
 - [n/a] `NOTE-034` **Legacy native note menu**: (legacy, Mac). Why: legacy.
 - [n/a] `NOTE-035` **Review this note's cards**: (iPhone menu item; route /review?note=). Why: iPhone menu item.
-- [~] `NOTE-036` **Foli DNA of this note**: (/graph?note=<id>). Core: Foli DNA of This Note opens Foli DNA and sends /graph?note=<id> to the page (the engine's center); not yet seen on a library with linked notes.
+- [x] `NOTE-036` **Foli DNA of this note**: (/graph?note=<id>). Core: Foli DNA of This Note opens Foli DNA around the note: Core passes the query in `web.show` (engine contract revision 34; the page never heard the old navigate message), also when Foli DNA is already open. Seen on a local library with linked notes 2026-11-23 ("Around Welcome to Folevi").
 - [x] `NOTE-037` **Present / Move to the Vault / Save as template / Show-Hide editors / Make text in images searchable**: (page via `note.menu`; listed in NoteMenuPlan). Core: NoteMoreMenu (present, moveToVault, saveAsTemplate, showEditors, readImages).
 - [x] `NOTE-038` **Note picture / cover**: card covers via `files.urls`; tab pictures via `note.picture`. Core: closed after the grading (see "Since this grading").
 - [x] `NOTE-039` **Floating notes bar**: (Mac Float Note). Core: closed after the grading (see "Since this grading").

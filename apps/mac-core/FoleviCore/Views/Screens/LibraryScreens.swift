@@ -923,6 +923,9 @@ struct FoldersScreen: View {
     @State private var newFolder = false
     @State private var filter = ""
     @State private var selection: Set<String> = []
+    /// While a folder is dragged over the cards: where it will land among the others (the cards slide aside).
+    @State private var gap: FolderGap?
+    @State private var leaveTick = 0
     @AppStorage("core.folders.sort") private var sort = "manual"
     @AppStorage("core.folders.layout") private var layout = "grid"
     @FocusState private var filterFocused: Bool
@@ -998,17 +1001,28 @@ struct FoldersScreen: View {
     private var grid: some View {
         ScrollView {
             LazyVGrid(columns: [GridItem(.adaptive(minimum: CoreCards.folderWidth - 16, maximum: CoreCards.folderWidth), spacing: CoreCards.gap)], spacing: CoreCards.gap + 2) {
-                ForEach(shown, id: \.id) { folder in
-                    HomeFolderCard(folder: folder, window: window, reorder: filter.isEmpty ? { zone, moving in reorder(moving, zone, around: folder) } : nil)
-                        .overlay(alignment: .topTrailing) {
-                            if selection.contains(folder.id) {
-                                Image(systemName: "checkmark.circle.fill").font(.title3).foregroundStyle(Color.foleviInk).padding(6)
+                let byId = Dictionary(shown.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
+                ForEach(drawn, id: \.self) { id in
+                    if let folder = byId[id] {
+                        HomeFolderCard(folder: folder, window: window, reorder: hooks(for: folder))
+                            .overlay(alignment: .topTrailing) {
+                                if selection.contains(folder.id) {
+                                    Image(systemName: "checkmark.circle.fill").font(.title3).foregroundStyle(Color.foleviInk).padding(6)
+                                }
                             }
-                        }
-                        .simultaneousGesture(TapGesture().modifiers(.command).onEnded { toggle(folder.id) })
+                            .simultaneousGesture(TapGesture().modifiers(.command).onEnded { toggle(folder.id) })
+                    } else {
+                        // A folder dragged in from the sidebar: an empty spot where it will land.
+                        RoundedRectangle(cornerRadius: 14, style: .continuous)
+                            .strokeBorder(Color.secondary.opacity(0.6), style: StrokeStyle(lineWidth: 2, dash: [6, 4]))
+                            .frame(minHeight: 120)
+                    }
                 }
             }
+            .coreAnimation(.smooth(duration: 0.24), value: drawn)
             .padding(24)
+            // The spaces between cards keep the gap and take the drop there too.
+            .onDrop(of: [FolderDrag.type], delegate: FolderGapDrop(keep: { keepGap() }, leave: { leaveGap() }, drop: { dropInGap() }))
         }
         .focusable()
         .focusEffectDisabled()
@@ -1077,19 +1091,96 @@ struct FoldersScreen: View {
         }
     }
 
-    /// A folder dropped before or after another: it joins that folder's siblings at that place (the sort turns
-    /// Manual so the new order shows).
-    private func reorder(_ moving: String, _ zone: FolderDropZone, around target: FolderCard) {
-        let parent = target.parentId
+    /// The cards in the order to draw them: the dragged folder moved to its gap while there is one.
+    private var drawn: [String] {
+        let ids = shown.map(\.id)
+        guard let gap, filter.isEmpty else { return ids }
+        var others = ids.filter { $0 != gap.id }
+        others.insert(gap.id, at: min(gap.at, others.count))
+        return others
+    }
+
+    private func hooks(for folder: FolderCard) -> FolderReorderHooks? {
+        guard filter.isEmpty else { return nil }
+        return FolderReorderHooks(
+            hover: { zone in hover(folder, zone) },
+            drop: { zone in drop(on: folder, zone) },
+            landing: gap?.id == folder.id
+        )
+    }
+
+    /// A dragged folder over a card: its left or right quarter opens the gap before or after it; over a card's
+    /// middle the gap stays where it is (so the cards don't jump back under the pointer); over the dragged folder
+    /// itself, the gap is where it already is.
+    private func hover(_ target: FolderCard, _ zone: FolderDropZone?) {
+        guard let dragged = FolderDrag.current else { return }
+        guard let zone else { leaveGap(); return }
+        keepGap()
+        let ids = shown.map(\.id)
+        let others = ids.filter { $0 != dragged }
+        var at: Int?
+        if target.id == dragged {
+            if gap?.id != dragged { at = ids.firstIndex(of: dragged) }
+        } else if let i = others.firstIndex(of: target.id) {
+            switch zone {
+            case .before: at = i
+            case .after: at = i + 1
+            case .inside: break
+            }
+        }
+        if let at, gap != FolderGap(id: dragged, at: at) { gap = FolderGap(id: dragged, at: at) }
+    }
+
+    /// A folder dropped on a card: on another card's middle it goes inside (false: the card moves it); anywhere
+    /// else it lands in the gap.
+    private func drop(on target: FolderCard, _ zone: FolderDropZone) -> Bool {
+        guard let moving = FolderDrag.current else { return false }
+        if zone == .inside, target.id != moving {
+            gap = nil
+            FolderDrag.current = nil
+            return false
+        }
+        return dropInGap()
+    }
+
+    @discardableResult
+    private func dropInGap() -> Bool {
+        defer { gap = nil; FolderDrag.current = nil }
+        guard let g = gap, let moving = FolderDrag.current, g.id == moving else { return false }
+        let ids = shown.map(\.id)
+        if ids.firstIndex(of: moving) == g.at { return true }   // back where it was
+        // The folder stays at this page's level (as on the web: one dragged in from deeper comes up to it), after
+        // the nearest card before the gap at that level.
+        let others = ids.filter { $0 != moving }
+        let level = Set(shown.filter { $0.parentId == parent }.map(\.id))
+        let after = others.prefix(min(g.at, others.count)).last { level.contains($0) }
+        place(moving, after: after)
+        return true
+    }
+
+    /// The drag is still over the cards (cancels a pending close of the gap).
+    private func keepGap() { leaveTick &+= 1 }
+
+    /// The drag left a card or the grid: the gap closes unless it comes back over the cards within a moment
+    /// (moving from one card to the next passes through here).
+    private func leaveGap() {
+        leaveTick &+= 1
+        let tick = leaveTick
+        Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(180))
+            if leaveTick == tick { gap = nil }
+        }
+    }
+
+    /// A folder put in its place on this page: at the page's level, after `after` (nil: first). The sort turns
+    /// Manual so the new order shows.
+    private func place(_ moving: String, after: String?) {
         if let parent, let why = FolderActions.refusal(moving: moving, into: parent) { app.toast(why, tone: .error); return }
-        let siblings = shown.filter { $0.parentId == parent && $0.id != moving }
-        let after: String? = {
-            if zone == .after { return target.id }
-            guard let i = siblings.firstIndex(where: { $0.id == target.id }) else { return nil }
-            return i > 0 ? siblings[i - 1].id : nil
-        }()
+        let name = shown.first { $0.id == moving }?.name ?? "the folder"
+        let wasManual = sort == "manual"
         sort = "manual"
         app.perform { _ = try await $0.command(Commands.FolderMove(FolderMoveArgs(id: moving, parentId: parent, afterId: after))) }
+        app.toast(wasManual ? "Moved “\(name)”" : "Moved “\(name)”. Folders are now in manual order.")
     }
 
     /// Every folder in its place in the tree, opened and closed by disclosure.
@@ -1259,22 +1350,27 @@ struct WebScreen: View {
     let page: WebPage
     private var app: AppModel { .shared }
     @State private var host: Page?
+    @State private var shown: WebPage?
+
+    /// Foli DNA of a note: the map around it (/graph?note=<id>, the engine's `center`); a saved view: /graph?view=<id>.
+    private var request: String? { page == .graph ? window.graphQuery ?? window.graphCenter.map({ "note=\($0)" }) : nil }
 
     var body: some View {
         PageHostView(page: host)
-            .task(id: page) {
+            // (Keyed by the request too: "Foli DNA of This Note" while Foli DNA is already open.)
+            .task(id: "\(page)|\(request ?? "")") {
                 guard let p = app.pool.editor(for: window.id) else { return }
                 host = p
-                await p.show(web: page)
-                // Foli DNA of this note: the map opens around it (/graph?note=<id>, the engine's `center`).
-                if page == .graph, let query = window.graphQuery ?? window.graphCenter.map({ "note=\($0)" }) {
-                    window.graphCenter = nil
-                    window.graphQuery = nil
-                    try? await Task.sleep(for: .milliseconds(250))
-                    Events.command(["type": "navigate", "path": "/graph?\(query)"], to: p.view)
-                }
+                let query = request
+                // Clearing the request below runs this again: the page is already there.
+                if query == nil, shown == page { return }
+                window.graphCenter = nil
+                window.graphQuery = nil
+                shown = page
+                await p.show(web: page, query: query)
             }
             .onDisappear {
+                shown = nil
                 host = nil
                 app.pool.giveBack(from: window.id)
             }

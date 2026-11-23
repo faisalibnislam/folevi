@@ -318,7 +318,7 @@ struct FolderRow: View {
         .badge(folder.noteCount ?? 0)
         .tag(Destination.folder(folder.id))
         .onMiddleClick { app.open(.folder(folder.id), newTab: true, background: true) }
-        .draggable(FolderDrag(id: folder.id, name: folder.name))
+        .draggable(FolderDrag.begin(id: folder.id, name: folder.name))
         .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { rowHeight = $0 }
         .onDrop(of: [FolderDrag.type, NoteDrag.type], delegate: FolderCardDrop(width: rowHeight, zones: true, vertical: true, zone: $zone) { z, providers in
             for p in providers {
@@ -449,6 +449,16 @@ struct FolderDrag: Codable, Transferable {
     var name: String
 
     static let type = UTType(exportedAs: "app.folevicore.folder-drag")
+
+    /// The folder being dragged now, set as its drag starts (the payload is made then), so the Folders page can
+    /// open a gap for it while it's on the way, before the drop hands over the payload.
+    nonisolated(unsafe) static var current: String?
+
+    /// The payload for a folder's drag, noting it as the one being dragged.
+    static func begin(id: String, name: String) -> FolderDrag {
+        current = id
+        return FolderDrag(id: id, name: name)
+    }
 
     static var transferRepresentation: some TransferRepresentation {
         CodableRepresentation(contentType: type)

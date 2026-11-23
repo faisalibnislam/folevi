@@ -172,9 +172,10 @@ final class Page: PageHost {
     }
 
     /// One of the screens that stay on the page (Reviews, Graph, some Settings sections).
-    func show(web page: FoleviEngine.WebPage) async {
+    /// A web page in this view; `query` (without "?") goes on its route, e.g. "note=<id>" for Foli DNA around a note.
+    func show(web page: FoleviEngine.WebPage, query: String? = nil) async {
         shownNote = nil
-        _ = try? await client.editor(EditorCommands.WebShow(WebShowArgs(page: page)))
+        _ = try? await client.editor(EditorCommands.WebShow(WebShowArgs(page: page, query: query)))
     }
 
     func closeNote() async {

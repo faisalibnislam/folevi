@@ -35,7 +35,7 @@
 export const PROTOCOL_VERSION = 1 as const;
 
 /** Bumps with every added view, command, editor command, event or field. */
-export const CONTRACT_REVISION = 33;
+export const CONTRACT_REVISION = 34;
 
 /** The `WKScriptMessageHandler` name the engine posts to. */
 export const MESSAGE_HANDLER = "foleviEngine";
@@ -2071,6 +2071,11 @@ export type WebPage =
 
 export interface WebShowArgs {
   page: WebPage;
+  /**
+   * Revision 34: the page's query, without "?" (Foli DNA around one note: "note=<id>"; a saved view: "view=<id>").
+   * Letters, digits and `_-.=&%` only.
+   */
+  query?: string;
 }
 
 // ---------------------------------------------------------------------------------------------------------------

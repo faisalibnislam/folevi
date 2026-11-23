@@ -229,8 +229,8 @@ struct EmptyHint: View {
 struct HomeFolderCard: View {
     let folder: FolderCard
     let window: WindowModel
-    /// Where a folder dropped on this card goes: before it, inside it, after it (Folders page); nil: inside only.
-    var reorder: ((FolderDropZone, String) -> Void)? = nil
+    /// The Folders page's drag reorder (nil: a folder dropped here goes inside only).
+    var reorder: FolderReorderHooks? = nil
     @State private var zone: FolderDropZone?
     @State private var width: CGFloat = 190
     private var app: AppModel { .shared }
@@ -240,6 +240,7 @@ struct HomeFolderCard: View {
     @State private var newSubfolderOf: FolderNode?
 
     private var node: FolderNode? { app.tree.value?.folders.first { $0.id == folder.id } }
+    private var landing: Bool { reorder?.landing ?? false }
 
     var body: some View {
         Button { window.go(.folder(folder.id)) } label: {
@@ -263,28 +264,33 @@ struct HomeFolderCard: View {
         }
         .onHover { h in Motion.run(Motion.hover) { hoveringCard = h } }
         .onMiddleClick { app.open(.folder(folder.id), newTab: true, background: true) }
-        .scaleEffect(zone == .inside ? 1.04 : 1)
+        // The folder being dragged, drawn where it will land: dimmed, with a dashed edge.
+        .opacity(landing ? 0.35 : 1)
+        .overlay {
+            if landing {
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .strokeBorder(Color.secondary.opacity(0.6), style: StrokeStyle(lineWidth: 2, dash: [6, 4]))
+                    .padding(-4)
+            }
+        }
+        .scaleEffect(zone == .inside && !landing ? 1.04 : 1)
         .coreAnimation(Motion.tap, value: zone)
         .task(id: zone) {
             // Spring-loading: a drag that rests on the folder for 0.6 s opens it.
-            guard zone == .inside else { return }
+            guard zone == .inside, !landing else { return }
             try? await Task.sleep(for: .milliseconds(600))
             if zone == .inside, !Task.isCancelled { window.go(.folder(folder.id)) }
         }
-        .draggable(FolderDrag(id: folder.id, name: folder.name))
+        .draggable(FolderDrag.begin(id: folder.id, name: folder.name))
         .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { width = $0 }
-        .onDrop(of: [FolderDrag.type, NoteDrag.type], delegate: FolderCardDrop(width: width, zones: reorder != nil, zone: $zone) { z, providers in
+        .onDrop(of: [FolderDrag.type, NoteDrag.type], delegate: FolderCardDrop(width: width, zones: reorder != nil, zone: $zone, folderHover: reorder?.hover, folderDrop: reorder?.drop) { z, providers in
             for p in providers {
                 if p.hasItemConformingToTypeIdentifier(FolderDrag.type.identifier) {
                     _ = p.loadTransferable(type: FolderDrag.self) { r in
                         guard case .success(let f) = r else { return }
                         Task { @MainActor in
                             guard f.id != folder.id else { return }
-                            if z == .inside || reorder == nil {
-                                if FolderActions.move(f.id, into: folder.id) { app.toast("Moved to \(folder.name)") }
-                            } else {
-                                reorder?(z, f.id)
-                            }
+                            if FolderActions.move(f.id, into: folder.id) { app.toast("Moved to \(folder.name)") }
                         }
                     }
                 } else {
@@ -298,8 +304,6 @@ struct HomeFolderCard: View {
                 }
             }
         })
-        .overlay(alignment: .leading) { if zone == .before { Capsule().fill(Color.foleviInk).frame(width: 3).padding(.vertical, 8).offset(x: -10) } }
-        .overlay(alignment: .trailing) { if zone == .after { Capsule().fill(Color.foleviInk).frame(width: 3).padding(.vertical, 8).offset(x: 10) } }
         .contextMenu {
             if let node { FolderMenu(folder: node, window: window, rename: { renaming = $0 }, newSubfolder: { newSubfolderOf = $0 }) }
         }
@@ -507,6 +511,33 @@ struct HoverHighlight: ViewModifier {
 
 enum FolderDropZone: Equatable { case before, inside, after }
 
+/// Where a dragged folder will land on the Folders page: `at` is its place among the other cards.
+struct FolderGap: Equatable {
+    var id: String
+    var at: Int
+}
+
+/// The spaces between the Folders page's cards: a dragged folder there keeps its gap and lands in it.
+struct FolderGapDrop: DropDelegate {
+    let keep: () -> Void
+    let leave: () -> Void
+    let drop: () -> Bool
+
+    func dropEntered(info: DropInfo) { keep() }
+    func dropUpdated(info: DropInfo) -> DropProposal? { keep(); return DropProposal(operation: .move) }
+    func dropExited(info: DropInfo) { leave() }
+    func performDrop(info: DropInfo) -> Bool { drop() }
+}
+
+/// The Folders page's drag reorder, for one card: `hover` hears where a dragged folder is over the card (nil: it
+/// left); `drop` takes a folder dropped on it and answers true when that was a reorder (false: it goes inside);
+/// `landing`: this card is the folder being dragged, drawn in the gap where it will land.
+struct FolderReorderHooks {
+    let hover: (FolderDropZone?) -> Void
+    let drop: (FolderDropZone) -> Bool
+    let landing: Bool
+}
+
 /// A folder card as a drop target: notes go inside; a folder goes before (leading quarter), inside (middle) or
 /// after (trailing quarter) when the card's place in the order can change.
 struct FolderCardDrop: DropDelegate {
@@ -515,6 +546,9 @@ struct FolderCardDrop: DropDelegate {
     /// Rows (the sidebar): the zones run top to bottom, measured against `width` as the row's height.
     var vertical = false
     @Binding var zone: FolderDropZone?
+    /// A dragged folder over the card (nil: it left), and a folder dropped on it (true: handled here).
+    var folderHover: ((FolderDropZone?) -> Void)? = nil
+    var folderDrop: ((FolderDropZone) -> Bool)? = nil
     let perform: (FolderDropZone, [NSItemProvider]) -> Void
 
     private func zone(for info: DropInfo) -> FolderDropZone {
@@ -525,12 +559,23 @@ struct FolderCardDrop: DropDelegate {
         return .inside
     }
 
-    func dropEntered(info: DropInfo) { zone = zone(for: info) }
-    func dropUpdated(info: DropInfo) -> DropProposal? { zone = zone(for: info); return DropProposal(operation: .move) }
-    func dropExited(info: DropInfo) { zone = nil }
+    private func isFolder(_ info: DropInfo) -> Bool { info.hasItemsConforming(to: [FolderDrag.type]) }
+
+    func dropEntered(info: DropInfo) { _ = dropUpdated(info: info) }
+    func dropUpdated(info: DropInfo) -> DropProposal? {
+        let z = zone(for: info)
+        if zone != z { zone = z }
+        if isFolder(info) { folderHover?(z) }
+        return DropProposal(operation: .move)
+    }
+    func dropExited(info: DropInfo) {
+        zone = nil
+        if isFolder(info) { folderHover?(nil) }
+    }
     func performDrop(info: DropInfo) -> Bool {
         let z = zone(for: info)
         zone = nil
+        if isFolder(info), let folderDrop, folderDrop(z) { return true }
         perform(z, info.itemProviders(for: [FolderDrag.type, NoteDrag.type]))
         return true
     }

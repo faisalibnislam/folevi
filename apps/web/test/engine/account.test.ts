@@ -118,4 +118,11 @@ describe("web pages", () => {
     expect(r.navigations).toEqual(["/settings/connected-apps", "/review"]);
     expect(await code({ kind: "editor", name: "web.show", args: { page: "settings.billing" } })).toBe("invalid_args");
   });
+
+  it("web.show takes the page's query (revision 34: Foli DNA around one note)", async () => {
+    expect(await ok({ kind: "editor", name: "web.show", args: { page: "graph", query: "note=doc_00002" } })).toEqual({ id: "graph", ready: true });
+    expect(r.navigations.at(-1)).toBe("/graph?note=doc_00002");
+    expect(await code({ kind: "editor", name: "web.show", args: { page: "graph", query: "?note=x" } })).toBe("invalid_args");
+    expect(await code({ kind: "editor", name: "web.show", args: { page: "graph", query: "note=<x>" } })).toBe("invalid_args");
+  });
 });

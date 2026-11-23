@@ -43,6 +43,19 @@ android {
         manifestPlaceholders["appLinkHost"] = "app.folevi.com"
     }
 
+    signingConfigs {
+        // The owner's upload key, from their own ~/.gradle/gradle.properties (README "Release"); never in the repo.
+        val store = (project.findProperty("folevi.uploadStoreFile") as String?)?.takeIf { it.isNotBlank() }
+        if (store != null) {
+            create("upload") {
+                storeFile = file(store)
+                storePassword = project.findProperty("folevi.uploadStorePassword") as String?
+                keyAlias = project.findProperty("folevi.uploadKeyAlias") as String?
+                keyPassword = project.findProperty("folevi.uploadKeyPassword") as String?
+            }
+        }
+    }
+
     buildTypes {
         debug {
             // The website the app signs in with: the local dev server (reached through `adb reverse tcp:3002 tcp:3002`,
@@ -54,8 +67,13 @@ android {
         release {
             buildConfigField("String", "SERVICE_URL", quoted("https://app.folevi.com"))
             buildConfigField("String", "AUTH_REDIRECT_URI", quoted("https://app.folevi.com/native/callback"))
-            isMinifyEnabled = false
+            isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            // Signed with the upload key when it's set up; -Pfolevi.releaseWithDebugKey=true signs a local test
+            // build with the debug key instead (never upload one of those).
+            signingConfig = signingConfigs.findByName("upload")
+                ?: if (project.findProperty("folevi.releaseWithDebugKey") == "true") signingConfigs.getByName("debug") else null
         }
     }
 

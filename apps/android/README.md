@@ -1,88 +1,67 @@
 # Folevi for Android
 
-Two builds live here while the native app takes over (owner decision 2026-11-23, `docs/ANDROID_NATIVE_PLAN.md`):
+A native app for Android phones, foldables, tablets and Googlebooks (owner decisions 2026-11-23,
+`docs/ANDROID_NATIVE_PLAN.md`): Compose screens in Material 3 Expressive with Folevi's colors, fonts and icons;
+the web engine and the note editor in one WebView per window, as on iPhone and Mac; Kotlin for everything the
+page can't do itself (sign-in, the Keystore, the local library, Drive and Dropbox, Foli AI on the device, the
+lock, reminders, push, widgets, the share target, the Quick Settings tile, the scanner).
 
-- **The native app** (this folder's Gradle build: `settings.gradle.kts`, modules `engine/` and `app/`): Compose
-  screens in Material 3 Expressive with Folevi's colors, fonts and icons; the web engine and note editor in one
-  WebView per window, as on iPhone and Mac. Phones, foldables, tablets and Googlebooks.
-- **The Capacitor app** (`android/`, below): paused since 2026-10-23. Its Kotlin services move into the native
-  app (plan phase 1 and 2), then it goes.
+- Package `com.folevi.android`, minSdk 33 (Android 13), targetSdk 36, compileSdk 37.2 (Compose 1.13 needs it).
+- The version comes from the repo's `version.json` (scripts/version.mjs is the only way it changes).
+- The web export is served from `https://localhost` inside the app. Account mode signs in with a bearer token
+  through a Custom Tab (PKCE); local mode never contacts Folevi.
 
-## The native app
+## How it fits together
 
-| Path | What it is |
-| --- | --- |
-| `engine/` | The bridge: `generated/` (from `protocol.ts` by `scripts/engine-codegen-kotlin.mjs`, never edited by hand), `client/` (EngineClient, stores), `transport/` (WebViewTransport over WebMessageListener, ScriptedTransport), `protocol/` (envelope, Patch, Json). Its unit test decodes every contract fixture. |
-| `app/` | `MainActivity` (one per window; the Page View laid over the note pane), `engine/` (PageView, AppSession, the debug demo engine), `ui/` (adaptive shell, screens, gate screen), `design/` (theme, palette, Lucide icons from `scripts/icons-codegen-kotlin.mjs`, Folevi's cards and folders) |
-
-Build and run (JDK from Homebrew's `openjdk`, the SDK in `~/Library/Android/sdk` with platform 37.2):
-
-```sh
-cd apps/web && node scripts/build-shell.mjs --platform android && cd ../android   # the web export, into web/
-./gradlew :engine:testDebugUnitTest :app:assembleDebug
-adb install -r app/build/outputs/apk/debug/app-debug.apk
-adb shell am start -n com.folevi.android/.MainActivity                 # the real engine in the WebView
-adb shell am start -n com.folevi.android/.MainActivity --ez demo true  # debug only: fixture data, no page
+```
+Compose screens (app/ui)  --typed views, lists, commands, events-->  EngineClient (engine/)
+                                                                        |  WebViewTransport
+Page View: one WebView per window (app/engine/PageView.kt) running the Android web export in native chrome mode
+    |  window.foleviShell / window.foleviNative (assets/folevi-bridge.js) -> window.Capacitor stand-in
+Host plugins (app/bridge + the services in auth/, secure/, library/, cloud/, ai/, e2ee/, lock/, host/, extras/, push/)
 ```
 
-The build copies `web/` into the app's assets and, for debug builds, the contract fixtures for the demo
-engine. After any change to `protocol.ts`, run `pnpm engine:gen` (Swift and Kotlin); CI checks both.
-Emulators: `node scripts/emulator.mjs boot phone|tablet|foldable` and an AVD `Folevi_Desktop` (Android 17
-image, 1920x1200 at 160 dpi, the Googlebook test size). `-Pfolevi.pageUrl=http://app.localhost:3002` loads a
-dev server instead of the built-in export (debug builds).
-
-Not there yet (plan phase 1): the host bridge (`window.foleviShell`, sign-in, secrets, places), so the real
-engine stops at its first gate.
-
-# The Capacitor app (paused)
-
-The web app's built-in interface (the static `FOLEVI_BUILD=shell` export the Mac app ships) in a Capacitor 8
-shell, with Kotlin for everything the page can't do itself. Plan and owner decisions: `docs/ANDROID_PLAN.md`.
-
-- Package `com.folevi.android`, minSdk 33 (Android 13), targetSdk 36, compileSdk 37.
-- The interface is served from `https://localhost` inside the app. Account mode talks to Folevi with a bearer
-  token, like the Mac's built-in interface. Local mode never contacts Folevi.
-- Debug builds only so far. Release signing (upload key plus Play App Signing) is an owner step, below.
-
-## What's where
-
 | Path | What it is |
 | --- | --- |
-| `capacitor.config.ts` | App id, `webDir: web`, start path `/documents`, edge-to-edge insets handled by the app |
-| `android/app/src/main/assets/folevi-bridge.js` | `window.foleviShell` (platform `android`) and `window.foleviNative`, injected at document start for `https://localhost` only |
-| `bridge/` | The cloud half of the bridge (Dropbox and Google Drive through `packages/cloud-folders`), bundled into `assets/folevi-cloud.js` by `scripts/bundle-bridge.mjs` before every Gradle build |
-| `android/app/src/main/java/com/folevi/android/` | `MainActivity` (insets, keyboard, back and predictive back, links), `web/` (bridge script, link rules), `auth/` (Custom Tab sign-in with PKCE), `secure/` (Keystore), `library/` (the library folder and journal), `cloud/`, `ai/` (Gemini Nano or the person's own key), `host/` (reminders, saving files, calendars), `lock/`, `extras/` (share target, Quick Settings tile, widgets, scanner, REST client), `push/` (FCM), `e2ee/` (device keys) |
-| `android/app/src/test/` | JVM unit tests (fs contract, journal, links, sign-in, cloud auth, AI providers, calendars, E2EE vectors, local actions) |
+| `engine/` | The bridge to the web engine: `generated/` (from `apps/web/src/lib/engine/protocol.ts` by `scripts/engine-codegen-kotlin.mjs`; never edit by hand), `client/` (EngineClient, value and list stores), `transport/` (WebViewTransport over WebMessageListener, ScriptedTransport), `protocol/` (envelope, Patch, Json). Its unit test decodes every contract fixture. |
+| `app/src/main/java/com/folevi/android/` | `MainActivity` (one per window: the Compose frame, the Page View laid over the note pane, the host duties), `engine/` (PageView, AppSession, the debug demo engine), `ui/` (adaptive shell, screens, gate screen, Googlebook keys and menus), `design/` (theme, palette, Lucide icons from `scripts/icons-codegen-kotlin.mjs`, cards and folders), `bridge/` (the host bridge: Plugin, PluginCall, the page's `window.Capacitor` stand-in) and the services |
+| `app/src/main/assets/folevi-bridge.js` | `window.foleviShell` (platform `android`) and `window.foleviNative`, injected at document start for `https://localhost` only, after the stand-in |
+| `bridge/` | The cloud half of the bridge (Dropbox and Google Drive through `packages/cloud-folders`), bundled into `assets/folevi-cloud.js` by `scripts/bundle-bridge.mjs` before every build |
+| `app/src/test/` | JVM unit tests of the services (fs contract, journal, links, sign-in, cloud auth, AI providers, calendars, E2EE vectors, local actions) |
 | `scripts/emulator.mjs` | Emulators, build, install, screenshots, JavaScript in the web view |
-| `scripts/e2e/` | Sign-in through the real Custom Tab, and UI Automator helpers |
+
+Layouts by window width: phones get a Material navigation bar (Home, Tasks, Calendar, Foli AI) and a New note
+button, and a note opens full screen; medium and expanded windows (tablets, an open foldable) get a rail and the
+list beside the note; large windows (Googlebooks, big tablets) get a sidebar with the folders. On Googlebooks
+and with a keyboard: Ctrl (or the Googlebook key) + N new note, Shift+N new window, K or F search, comma
+settings, 1 to 4 the tabs, [ back; right-click or long-press a note for its menu; drag a note out as a link.
 
 ## Build and run
 
-You need the Android SDK in `~/Library/Android/sdk` (or `ANDROID_HOME`) with platform 37, the android-36
-`google_apis_playstore` arm64 system image, and a JDK (Homebrew `openjdk`, or `JAVA_HOME`).
+You need the Android SDK in `~/Library/Android/sdk` (or `ANDROID_HOME`) with platform 37.2 and the android-36 or
+android-37.0 `google_apis_playstore` arm64 system image, and a JDK (Homebrew `openjdk`, or `JAVA_HOME`).
 
 ```sh
 pnpm install
-# 1. The built-in interface, into apps/android/web (git-ignored)
-cd apps/web && node scripts/build-shell.mjs --platform android && cd ../android
-# 2. Into the app's assets
-npx cap copy android
-# 3. Emulators (made once from the installed image), then build and run
-node scripts/emulator.mjs avds
-node scripts/emulator.mjs boot phone        # or tablet, foldable; add --window to see it
-node scripts/emulator.mjs build
+cd apps/web && node scripts/build-shell.mjs --platform android && cd ../android   # the web export, into web/
+./gradlew :engine:testDebugUnitTest :app:testDebugUnitTest :app:assembleDebug
+node scripts/emulator.mjs avds && node scripts/emulator.mjs boot phone             # or tablet, foldable
 node scripts/emulator.mjs run emulator-5554
+adb shell am start -n com.folevi.android/.MainActivity --ez demo true              # debug only: fixture data, no page
 ```
 
-Debug builds talk to the dev server at `http://app.localhost:3002`. `install` and `run` set up
-`adb reverse tcp:3002` so the emulator reaches it. Use `-Pfolevi.serviceUrl=...` for another server.
+The build copies `web/` into the app's assets, bundles `bridge/` and, for debug builds, copies the contract
+fixtures for the demo engine. After any change to `protocol.ts`, run `pnpm engine:gen` (Swift and Kotlin); after
+the web adds a Lucide icon, `pnpm icons:gen:kotlin`. CI checks both.
 
-Handy while testing:
+A desktop-size emulator for Googlebook layouts: an AVD named `Folevi_Desktop` from the android-37.0 image with
+`hw.lcd.width=1920`, `hw.lcd.height=1200`, `hw.lcd.density=160`, `hw.keyboard=yes` in its `config.ini`.
+
+Debug builds sign in with the dev server at `http://app.localhost:3002`. `install` and `run` set up
+`adb reverse tcp:3002` so the emulator reaches it. Use `-Pfolevi.serviceUrl=...` for another server.
 
 ```sh
 node scripts/emulator.mjs eval 'return location.href' emulator-5554   # JavaScript in the web view (debug only)
-node scripts/emulator.mjs click 'Open Folevi' emulator-5554
-node scripts/emulator.mjs theme dark emulator-5554
 node scripts/emulator.mjs shot out.png emulator-5558 <display id>      # a foldable has two displays
 node scripts/e2e/signin.mjs emulator-5554                              # a new dev account, signed in through the Custom Tab
 ```
@@ -93,9 +72,8 @@ The foldable folds with `adb shell cmd device_state state 0` and opens with `sta
 
 ```sh
 cd apps/android
-pnpm typecheck
-pnpm test:bridge                    # the Mac's Dropbox and Drive contract through Android's bridge marshalling
-node scripts/emulator.mjs unit      # Kotlin unit tests
+pnpm typecheck && pnpm test:bridge                  # the cloud bridge's TypeScript half
+./gradlew :engine:testDebugUnitTest :app:testDebugUnitTest
 cd ../.. && npx vitest run tests/parity/android.test.ts   # local mode's parity scenarios on the bridge script
 ```
 
@@ -111,6 +89,7 @@ them out of the repo anyway.
 | `folevi.googleAndroidClientId` | `FOLEVI_GOOGLE_ANDROID_CLIENT_ID` | Sync with Google Drive |
 | `folevi.firebaseAppId`, `folevi.firebaseApiKey`, `folevi.firebaseProjectId`, `folevi.firebaseSenderId` | `FOLEVI_FIREBASE_APP_ID`, `FOLEVI_FIREBASE_API_KEY`, `FOLEVI_FIREBASE_PROJECT_ID`, `FOLEVI_FIREBASE_SENDER_ID` | Notifications through FCM (no `google-services.json` needed) |
 | `folevi.serviceUrl` | `FOLEVI_SERVICE_URL` | Debug builds only: another dev server |
+| `folevi.uploadStoreFile`, `folevi.uploadStorePassword`, `folevi.uploadKeyAlias`, `folevi.uploadKeyPassword` | (none) | Release signing with the owner's upload key. Keep these in `~/.gradle/gradle.properties` only, never in the repo |
 
 Server side (set by the owner, never by a build):
 
@@ -119,13 +98,22 @@ Server side (set by the owner, never by a build):
 - Vercel `FOLEVI_ANDROID_CERT_SHA256`: the signing certificates' SHA-256 fingerprints, comma separated, for
   `/.well-known/assetlinks.json` (App Links for sign-in and shared links).
 
+## Release
+
+```sh
+./gradlew :app:bundleRelease     # app/build/outputs/bundle/release/app-release.aab, signed when the upload key is set
+```
+
+Release builds shrink and optimize with R8 (`app/proguard-rules.pro` keeps the bridge's reflective plugin calls
+and the generated contract). Without the upload key properties the bundle is unsigned and can't be uploaded.
+
 ## Steps only the owner can do
 
-1. **Play Console:** create the app `com.folevi.android`, turn on Play App Signing, add internal testers.
+1. **Play Console:** create the app `com.folevi.android`, turn on Play App Signing, add internal testers. A
+   personal developer account needs a closed test with 12 testers for 14 days before production.
 2. **Upload key:** make one outside the repo (`keytool -genkeypair -v -keystore folevi-upload.jks -alias upload
-   -keyalg RSA -keysize 4096 -validity 10000`), keep the password yourself, and register it in Play Console.
-   Gradle has no release signing config yet (debug builds only for now); when it's added it reads the
-   keystore's path and passwords from your own `~/.gradle/gradle.properties`, never from the repo.
+   -keyalg RSA -keysize 4096 -validity 10000`), keep the password yourself, register it in Play Console, and put
+   the four `folevi.upload*` properties above into your own `~/.gradle/gradle.properties`.
 3. **App Links:** put the SHA-256 of the upload key and of Play's app signing key into `FOLEVI_ANDROID_CERT_SHA256`
    on Vercel. Release builds then return from sign-in on `https://app.folevi.com/native/callback`.
 4. **Firebase:** a project with an Android app `com.folevi.android`. Its app id, API key, project id and sender
@@ -133,10 +121,10 @@ Server side (set by the owner, never by a build):
    Convex `FCM_SERVICE_ACCOUNT`, on the development deployment first, then production.
 5. **Google Cloud (Drive):** in the project that holds the web's Drive client, turn on the Drive API, add an
    Android OAuth client for `com.folevi.android` with the SHA-1 of the debug key, the upload key and Play's
-   signing key, with the `drive.file` scope on the consent screen. Google matches that client by package name
-   and SHA-1, so the app never sends its id; putting the id into `folevi.googleAndroidClientId` is what shows
-   Sync with Google Drive.
+   signing key, with the `drive.file` scope on the consent screen. Putting the client id into
+   `folevi.googleAndroidClientId` is what shows Sync with Google Drive.
 6. **Dropbox:** in the Folevi Dropbox app, add the redirect URI `com.folevi.android://oauth/dropbox`. The app key
    goes into `folevi.dropboxAppKey`.
-7. **API 33 emulator (optional):** testing on Android 13 needs the android-33 system image, which isn't
-   installed here.
+7. **Play listing:** the Data safety form (notes and account data are collected and encrypted in transit; the
+   WebView's traffic counts), the account deletion link (`https://app.folevi.com/settings`), and screenshots for
+   phone, 7-inch and 10-inch tablet and Chromebook/Googlebook.

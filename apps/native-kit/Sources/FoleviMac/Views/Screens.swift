@@ -296,7 +296,11 @@ struct ScreenRoot: View {
 
     /// The room the card's top bar takes: the screen starts below it.
     private var barRoom: CGFloat {
-        native ? model.barHeight : ContentViewController.barHeight
+        #if os(iOS)
+        // The iPad's bar sits above the screen in the card (IPadScreenBar), not over it: no room to leave.
+        if native { return 0 }
+        #endif
+        return native ? model.barHeight : ContentViewController.barHeight
     }
 
     /// The screen's own fill, under the bar too. The native look: the card's opaque fill (controlBackgroundColor).

@@ -135,12 +135,29 @@ enum CardFit: CaseIterable {
     case full, compact, folded
 }
 
-/// A screen's groups, each its own glass capsule, at a fit.
+/// A screen's groups, each its own glass capsule, at a fit; or, `oneCapsule` (the iPad's top bar, the Mac UI guide's
+/// "group related buttons into one capsule": the owner, 2026-11-23), all of them together in one glass capsule.
 struct CardGroupsView: View {
     let groups: [CardGroup]
     let fit: CardFit
+    var oneCapsule = false
 
     var body: some View {
+        if oneCapsule {
+            if !groups.isEmpty {
+                HStack(spacing: 2) { groupsBody }
+                    .environment(\.cardGroupGlass, false)
+                    .padding(.horizontal, MacLook.capsuleInset)
+                    .frame(height: MacLook.barControlHeight)
+                    .nativeGlass(Capsule(), interactive: true)
+                    .fixedSize()
+            }
+        } else {
+            groupsBody
+        }
+    }
+
+    @ViewBuilder private var groupsBody: some View {
         if fit == .folded {
             if !groups.isEmpty { CardMenuButton(label: "More", help: "More", symbol: "ellipsis", chevron: false) { anchor in Self.folded(groups, anchor: anchor) } }
         } else {
@@ -213,6 +230,7 @@ struct CardSegmented: View {
     let options: [CardOption]
     let selected: String
     let pick: @MainActor (String) -> Void
+    @Environment(\.cardGroupGlass) private var glass
 
     var body: some View {
         HStack(spacing: 0) {
@@ -244,9 +262,9 @@ struct CardSegmented: View {
                 .accessibilityAddTraits(on ? [.isSelected] : [])
             }
         }
-        .padding(.horizontal, MacLook.capsuleInset)
+        .padding(.horizontal, glass ? MacLook.capsuleInset : 0)
         .frame(height: MacLook.barControlHeight)
-        .nativeGlass(Capsule(), interactive: true)
+        .cardGlass(Capsule())
         .fixedSize()
         .cardHitRegion()
         .accessibilityElement(children: .contain)
@@ -281,7 +299,7 @@ struct CardMenuButton: View {
         }
         .buttonStyle(QuietHoverStyle(shape: AnyShape(Capsule())))
         .foregroundStyle(MacLook.Colors.label)
-        .nativeGlass(Capsule(), interactive: true)
+        .cardGlass(Capsule())
         .fixedSize()
         .cardHitRegion()
         .foleviTooltip(help)
@@ -311,10 +329,29 @@ struct CardActionButton: View {
         }
         .buttonStyle(QuietHoverStyle(shape: AnyShape(Circle())))
         .foregroundStyle(MacLook.Colors.label)
-        .nativeGlass(Circle(), interactive: true)
+        .cardGlass(Circle())
         .cardHitRegion()
         .foleviTooltip(help)
         .accessibilityLabel(label)
     }
+}
+
+extension EnvironmentValues {
+    /// Whether each of the card's groups draws its own glass (false inside the one capsule that holds them all).
+    @Entry var cardGroupGlass = true
+}
+
+private struct CardGlass<S: Shape>: ViewModifier {
+    let shape: S
+    @Environment(\.cardGroupGlass) private var glass
+
+    func body(content: Content) -> some View {
+        if glass { content.nativeGlass(shape, interactive: true) } else { content }
+    }
+}
+
+extension View {
+    /// A card control's own interactive glass, unless it sits in a capsule with the others (`cardGroupGlass`).
+    func cardGlass<S: Shape>(_ shape: S) -> some View { modifier(CardGlass(shape: shape)) }
 }
 #endif

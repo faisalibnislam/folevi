@@ -1,5 +1,41 @@
 # Folevi for Android
 
+Two builds live here while the native app takes over (owner decision 2026-11-23, `docs/ANDROID_NATIVE_PLAN.md`):
+
+- **The native app** (this folder's Gradle build: `settings.gradle.kts`, modules `engine/` and `app/`): Compose
+  screens in Material 3 Expressive with Folevi's colors, fonts and icons; the web engine and note editor in one
+  WebView per window, as on iPhone and Mac. Phones, foldables, tablets and Googlebooks.
+- **The Capacitor app** (`android/`, below): paused since 2026-10-23. Its Kotlin services move into the native
+  app (plan phase 1 and 2), then it goes.
+
+## The native app
+
+| Path | What it is |
+| --- | --- |
+| `engine/` | The bridge: `generated/` (from `protocol.ts` by `scripts/engine-codegen-kotlin.mjs`, never edited by hand), `client/` (EngineClient, stores), `transport/` (WebViewTransport over WebMessageListener, ScriptedTransport), `protocol/` (envelope, Patch, Json). Its unit test decodes every contract fixture. |
+| `app/` | `MainActivity` (one per window; the Page View laid over the note pane), `engine/` (PageView, AppSession, the debug demo engine), `ui/` (adaptive shell, screens, gate screen), `design/` (theme, palette, Lucide icons from `scripts/icons-codegen-kotlin.mjs`, Folevi's cards and folders) |
+
+Build and run (JDK from Homebrew's `openjdk`, the SDK in `~/Library/Android/sdk` with platform 37.2):
+
+```sh
+cd apps/web && node scripts/build-shell.mjs --platform android && cd ../android   # the web export, into web/
+./gradlew :engine:testDebugUnitTest :app:assembleDebug
+adb install -r app/build/outputs/apk/debug/app-debug.apk
+adb shell am start -n com.folevi.android/.MainActivity                 # the real engine in the WebView
+adb shell am start -n com.folevi.android/.MainActivity --ez demo true  # debug only: fixture data, no page
+```
+
+The build copies `web/` into the app's assets and, for debug builds, the contract fixtures for the demo
+engine. After any change to `protocol.ts`, run `pnpm engine:gen` (Swift and Kotlin); CI checks both.
+Emulators: `node scripts/emulator.mjs boot phone|tablet|foldable` and an AVD `Folevi_Desktop` (Android 17
+image, 1920x1200 at 160 dpi, the Googlebook test size). `-Pfolevi.pageUrl=http://app.localhost:3002` loads a
+dev server instead of the built-in export (debug builds).
+
+Not there yet (plan phase 1): the host bridge (`window.foleviShell`, sign-in, secrets, places), so the real
+engine stops at its first gate.
+
+# The Capacitor app (paused)
+
 The web app's built-in interface (the static `FOLEVI_BUILD=shell` export the Mac app ships) in a Capacitor 8
 shell, with Kotlin for everything the page can't do itself. Plan and owner decisions: `docs/ANDROID_PLAN.md`.
 

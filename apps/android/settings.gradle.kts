@@ -18,4 +18,4 @@ dependencyResolutionManagement {
 rootProject.name = "FoleviNative"
 
 include(":engine")
-// include(":app")
+include(":app")

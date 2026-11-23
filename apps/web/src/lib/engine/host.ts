@@ -112,6 +112,15 @@ function defaultPost(json: string): void {
   handler?.postMessage(json);
 }
 
+/**
+ * Whether the default post takes a batch of any size: Android's WebMessageListener (`foleviEngineHost`) does, and
+ * an Android WebView can't read a POST body, so the `/_bridge` route is only for WebKit's message handler.
+ */
+function postsAnySize(): boolean {
+  const w = globalThis as unknown as { webkit?: { messageHandlers?: Record<string, unknown> }; foleviEngineHost?: unknown };
+  return !w.webkit?.messageHandlers?.[MESSAGE_HANDLER] && Boolean(w.foleviEngineHost);
+}
+
 async function defaultUpload(id: string, body: string): Promise<void> {
   const res = await fetch(`/_bridge/${id}`, { method: "POST", body, headers: { "content-type": "application/json" } });
   if (!res.ok) throw new Error(`The bridge body route answered ${res.status}.`);
@@ -421,7 +430,7 @@ export class BridgeHost {
   }
 
   private send(json: string): void {
-    if (json.length <= BIG_PAYLOAD_BYTES) {
+    if (json.length <= BIG_PAYLOAD_BYTES || (this.post === defaultPost && postsAnySize())) {
       // In order: after a big batch still uploading, if there is one.
       if (this.uploading === 0) this.post(json);
       else this.posting = this.posting.then(() => this.post(json));

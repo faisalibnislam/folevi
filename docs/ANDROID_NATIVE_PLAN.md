@@ -99,16 +99,18 @@ Phase 0, this session
 - [x] Research and owner answers (sections 1 and 2)
 - [x] Kotlin codegen for the contract, with `--check` for CI
 - [x] Engine module: client, stores, WebView transport, fixture test over every contract fixture
-- [ ] App module: theme (Folevi colors, fonts, Lucide icons), adaptive scaffold, Home, All notes, folders,
-      note page, Tasks, Calendar, Foli AI and Search screens, generic gate screen
-- [ ] Demo engine (fixture data, debug only) so every layout can be checked without an account
-- [ ] Page View with the engine: marker, transport, the Android export; gates drawn natively
-- [ ] Run on phone, tablet, foldable and desktop-size emulators; screenshots
+- [x] App module: theme (Folevi colors, fonts, Lucide icons), adaptive scaffold, Home, All notes, folders,
+      note page, Tasks, Calendar, Foli AI and Search screens, generic gate screen (first versions)
+- [x] Demo engine (fixture data, debug only) so every layout can be checked without an account
+- [x] Page View with the engine: marker, transport, the Android export; gates drawn natively
+- [x] Run on phone, tablet, foldable and desktop-size emulators; screenshots
 
 Phase 1, sign-in and data
+- [ ] Phone polish from the first run: the bar steps away on a note (as on iPhone), a back button in the note bar,
+      Home's section rows open their own lists (Drafts, Shared, Changes, Reviews)
 - [ ] Host bridge stand-in and the first host plugins: Shell, Auth, Secrets, Places
 - [ ] Native sign-in screens (email and password, Google with Credential Manager, passkeys, browser sign-in)
-- [ ] Web: phone note layout for the Android marker; big batches straight to `foleviEngineHost`
+- [x] Web: phone note layout for the Android marker; big batches straight to `foleviEngineHost`
 - [ ] Contract revision adding `"android"` to the marker and `AppInfo` platforms
 
 Phase 2, the rest of the first build

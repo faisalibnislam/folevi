@@ -9,7 +9,10 @@ plugins {
 
 android {
     namespace = "com.folevi.engine"
-    compileSdk = rootProject.extra["compileSdk"] as Int
+    // Android 17 QPR2 (API 37.2): Compose 1.13 needs 37.1 or later.
+    compileSdk {
+        version = release(rootProject.extra["compileSdk"] as Int) { minorApiLevel = 2 }
+    }
     defaultConfig {
         minSdk = rootProject.extra["minSdk"] as Int
     }

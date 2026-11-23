@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- The canvas (packages/design-tokens color.light.canvas / color.dark.canvas), behind the first frame. -->
+    <color name="canvas">#FAF6F3</color>
+</resources>

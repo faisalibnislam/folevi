@@ -21,6 +21,7 @@
     "engine:gen": "node scripts/engine-codegen.mjs && node scripts/engine-codegen-kotlin.mjs",
     "engine:gen:kotlin": "node scripts/engine-codegen-kotlin.mjs",
     "icons:gen": "node scripts/icons-codegen.mjs",
+    "icons:gen:kotlin": "node scripts/icons-codegen-kotlin.mjs",
     "styles:gen": "node scripts/web-styles.mjs",
     "match": "node apps/mac/scripts/match.mjs",
     "format": "prettier --write .",

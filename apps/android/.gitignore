@@ -3,4 +3,4 @@
 .kotlin/
 local.properties
 /app/src/main/assets/public/
-/app/src/main/assets/demo/
+/app/src/debug/assets/demo/

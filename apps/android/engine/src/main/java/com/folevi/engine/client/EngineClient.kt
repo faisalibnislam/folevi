@@ -60,8 +60,11 @@ import kotlinx.serialization.json.JsonObject
 
 class EngineClient(
     private val transport: EngineTransport,
-    /** The place this client's Page View is bound to (`acct:<user id>` or `library`); every message names it. */
-    val place: String,
+    /**
+     * The place this client's Page View is bound to (`acct:<user id>` or `library`); every message names it. Empty:
+     * the place the engine reports in hello (a page that picks its own place).
+     */
+    place: String,
     private val app: AppIdentity,
     /** A main-thread scope that lives as long as the Page View. */
     private val scope: CoroutineScope,
@@ -77,6 +80,9 @@ class EngineClient(
         data object Disconnected : State
         data class Mismatch(val message: String) : State
     }
+
+    var place: String = place
+        private set
 
     private val _state = MutableStateFlow<State>(State.Idle)
     val state: StateFlow<State> = _state.asStateFlow()
@@ -241,6 +247,7 @@ class EngineClient(
     }
 
     private fun apply(items: List<Inbound>) {
+        if (Log.isLoggable(TAG, Log.DEBUG)) Log.d(TAG, "applying ${items.size} items")
         for (item in items) {
             when (item) {
                 is Inbound.Update -> {
@@ -298,9 +305,12 @@ class EngineClient(
         } catch (e: kotlinx.coroutines.CancellationException) {
             throw e
         } catch (e: Exception) {
+            // (Expected while the page boots: no engine yet. Anything else is worth seeing.)
+            if (e !is EngineFailure.NotReady && e !is EngineFailure.PageGone) Log.w(TAG, "hello failed: ${e.message}")
             if (_state.value != State.Disconnected) _state.value = State.Connecting
             return false
         }
+        if (place.isEmpty()) value.place?.let { place = it }
         _hello.value = value
         if (value.protocol.toInt() != EngineContract.PROTOCOL_VERSION) {
             _state.value = State.Mismatch("The app speaks protocol ${EngineContract.PROTOCOL_VERSION}, the engine ${value.protocol}.")
@@ -310,6 +320,7 @@ class EngineClient(
         contractWarning = if (value.schemaHash == EngineContract.SCHEMA_HASH) null else
             "The engine's contract (${value.schemaHash}, revision ${value.revision}) differs from this build's (${EngineContract.SCHEMA_HASH}, revision ${EngineContract.REVISION}). Run pnpm engine:gen:kotlin and rebuild."
         contractWarning?.let { Log.w(TAG, it) }
+        Log.i(TAG, "connected to ${value.place}: protocol ${value.protocol}, revision ${value.revision}, ready ${value.ready}")
         if (value.ready) becameReady() else _state.value = State.Waiting
         return true
     }
@@ -355,6 +366,7 @@ class EngineClient(
     }
 
     private fun sendWatch(sub: String, entry: Entry) {
+        if (Log.isLoggable(TAG, Log.DEBUG)) Log.d(TAG, "watch $sub ${entry.name}")
         val m = OutgoingMessage(newId("w"), OutgoingKind.WATCH, place = place, name = entry.name, args = entry.args, sub = sub, window = entry.window)
         scope.launch {
             try {

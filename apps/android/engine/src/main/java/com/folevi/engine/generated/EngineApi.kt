@@ -20,9 +20,9 @@ object EngineContract {
     /** The envelope's major version (`v` on every message to the engine). */
     const val PROTOCOL_VERSION = 1
     /** Bumps with every added view, command, editor command, event or field. */
-    const val REVISION = 33
+    const val REVISION = 34
     /** FNV-1a of the names and revision; the engine's `hello` reply carries the same when this file is current. */
-    const val SCHEMA_HASH = "c3b914d5"
+    const val SCHEMA_HASH = "bbfa6dca"
     /** The handler name the engine posts batches to (`window.foleviEngineHost` on Android). */
     const val MESSAGE_HANDLER = "foleviEngine"
     /** The global the host calls (`__foleviEngine.handle(json)`). */

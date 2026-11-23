@@ -14,6 +14,7 @@ import kotlinx.serialization.json.JsonElement
 /** What the host sets as `window.__foleviNativeChrome` before the first paint. */
 @Serializable
 data class NativeChromeMarker(
+    /** Revision 34: "android" (Folevi for Android, apps/android: phones, tablets and Googlebooks). */
     val platform: NativeChromeMarker.Platform,
     /** The protocol the host speaks; must equal `PROTOCOL_VERSION`. */
     val protocol: Long,
@@ -25,6 +26,7 @@ data class NativeChromeMarker(
         @SerialName("ios") IOS("ios"),
         @SerialName("ipados") IPADOS("ipados"),
         @SerialName("macos") MACOS("macos"),
+        @SerialName("android") ANDROID("android"),
         ;
 
         companion object {
@@ -36,6 +38,7 @@ data class NativeChromeMarker(
 /** The app as it introduces itself in `hello`. */
 @Serializable
 data class AppInfo(
+    /** Revision 34: "android". */
     val platform: AppInfo.Platform,
     /** The unified version, `1.1.00`. */
     val version: String,
@@ -50,6 +53,7 @@ data class AppInfo(
         @SerialName("ios") IOS("ios"),
         @SerialName("ipados") IPADOS("ipados"),
         @SerialName("macos") MACOS("macos"),
+        @SerialName("android") ANDROID("android"),
         ;
 
         companion object {

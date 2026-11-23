@@ -1,7 +1,9 @@
 // The iPad's wide layout in the rebuild frame (docs/IOS_REBUILD_PLAN.md, I7): FoleviMac's frame (IPadFrameView:
 // the sidebar, the content card, its glass top bar and tab strip) on the same engine as the phone's, the note
 // being the app's one Page View in the card. Under 700 pt wide (Split View, Slide Over, a small Stage Manager
-// window) the iPad shows the phone's layout, as the web does (lib/iphone.ts IPAD_COMPACT).
+// window) the iPad shows the phone's layout, as the web does (lib/iphone.ts IPAD_COMPACT). iPhone Duo open (the inner
+// screen, across or upright: any iPhone window of regular width) shows this layout too, the owner's pick of
+// 2026-11-23 (docs/IPHONE_DUO_PLAN.md); closed, and in a Split View half, it's the phone's.
 import SwiftUI
 import UIKit
 import WebKit
@@ -14,6 +16,58 @@ import FoleviScreens
 enum RebuildIPad {
     /// lib/iphone.ts: `(max-width: 699px)` is compact.
     static let minWidth: CGFloat = 700
+    /// An iPhone window this wide or wider, of regular width, takes the wide layout (iPhone Duo's inner screen is
+    /// 951 pt across and 669 pt upright; its outer screen and a Split View half are compact).
+    static let phoneMinWidth: CGFloat = 600
+
+    /// Whether a window this wide shows the wide layout: an iPad window from 700 pt, an iPhone window of regular
+    /// width (iPhone Duo open). Decided by size, never by the device's model.
+    static func isWide(width: CGFloat, regular: Bool) -> Bool {
+        if UIDevice.current.userInterfaceIdiom == .pad { return width >= minWidth }
+        return regular && width >= phoneMinWidth
+    }
+}
+
+/// Tells the note page which layout is showing on an iPhone (iPhone Duo): the iPad's look and its tools in the wide
+/// layout, the phone's (native bars) otherwise. The page reads `wide` on its marker and follows the event
+/// (lib/iphone.ts nativeWide); the iPad's page measures its own width instead and is never told.
+@MainActor
+enum RebuildPageLayout {
+    nonisolated private static let key = "folevi-native-wide"
+    /// What the page was last told, and which telling is the latest (an older one's retries stop).
+    private static var wide: Bool?
+    private static var telling = 0
+
+    /// Tells the page, again every half second until it has loaded and taken it (it may still be loading at launch).
+    static func tell(wide: Bool) {
+        guard UIDevice.current.userInterfaceIdiom == .phone else { return }
+        self.wide = wide
+        telling += 1
+        send(wide, telling: telling, tries: 40)
+    }
+
+    /// The page loaded again (a reload): it hears the last word again once it's back.
+    static func again() {
+        guard let wide else { return }
+        tell(wide: wide)
+    }
+
+    private static func send(_ wide: Bool, telling: Int, tries: Int) {
+        guard telling == self.telling, tries > 0 else { return }
+        let flag = wide ? "true" : "false"
+        let script = "if(!window.__foleviNativeChrome||document.readyState==='loading'){false}else{try{sessionStorage.setItem('\(key)','\(wide ? 1 : 0)')}catch(e){};window.__foleviNativeChrome.wide=\(flag);window.dispatchEvent(new Event('folevi-native-layout'));true}"
+        guard let web = WebHost.current?.webView else { return retry(wide, telling: telling, tries: tries) }
+        web.evaluateJavaScript(script) { result, _ in
+            if (result as? Bool) != true { retry(wide, telling: telling, tries: tries) }
+        }
+    }
+
+    private static func retry(_ wide: Bool, telling: Int, tries: Int) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { send(wide, telling: telling, tries: tries - 1) }
+    }
+
+    /// Run after the marker at each page load: the last word, again after a reload.
+    nonisolated static let markerAddition = "try{var w=sessionStorage.getItem('\(key)');if(w!==null&&window.__foleviNativeChrome)window.__foleviNativeChrome.wide=w==='1'}catch(e){};"
 }
 
 struct RebuildIPadRoot: View {
@@ -264,7 +318,7 @@ extension RebuildFrameController {
         return (super.keyCommands ?? []) + FoleviShortcut.all.map { $0.keyCommand(action: #selector(pressRebuildShortcut(_:))) }
     }
 
-    var wide: Bool { UIDevice.current.userInterfaceIdiom == .pad && view.bounds.width >= RebuildIPad.minWidth }
+    var wide: Bool { RebuildIPad.isWide(width: view.bounds.width, regular: traitCollection.horizontalSizeClass == .regular) }
 
     @objc func pressRebuildShortcut(_ command: UIKeyCommand) {
         guard let shortcut = FoleviShortcut.matching(command) else { return }

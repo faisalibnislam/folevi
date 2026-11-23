@@ -259,6 +259,16 @@ fun SettingsScreen(open: (Route) -> Unit, onBack: (() -> Unit)?) {
             }
         }
         item { SectionTitle("More") }
+        item {
+            ListItem(
+                headlineContent = { Text("Vault") },
+                supportingContent = { Text("Passwords and files only you can open", color = p.inkFaint) },
+                leadingContent = { FoleviIcon(WebIcon.LOCK_KEYHOLE, null) },
+                trailingContent = { FoleviIcon(WebIcon.CHEVRON_RIGHT, null, tint = p.inkFaint) },
+                colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                modifier = Modifier.clickable { open(VaultRoute) },
+            )
+        }
         val pages = listOf(
             Triple("settings.security", "Security", WebIcon.SHIELD),
             Triple("settings.privacy", "Privacy", WebIcon.LOCK),

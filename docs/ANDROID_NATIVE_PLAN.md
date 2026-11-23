@@ -105,28 +105,40 @@ Phase 0, this session
 - [x] Page View with the engine: marker, transport, the Android export; gates drawn natively
 - [x] Run on phone, tablet, foldable and desktop-size emulators; screenshots
 
-Phase 1, sign-in and data
-- [ ] Phone polish from the first run: the bar steps away on a note (as on iPhone), a back button in the note bar,
-      Home's section rows open their own lists (Drafts, Shared, Changes, Reviews)
-- [ ] Host bridge stand-in and the first host plugins: Shell, Auth, Secrets, Places
-- [ ] Native sign-in screens (email and password, Google with Credential Manager, passkeys, browser sign-in)
+Phase 1, sign-in and data (done 2026-11-23)
+- [x] Phone polish: the bar steps away on a note, a back arrow in the note bar, Home's rows open their lists
+      (Drafts is `notes.list` unsorted, Shared with Me and Changes are native, Reviews through `web.show`)
+- [x] Host bridge: a `window.Capacitor` stand-in over a WebMessageListener (`app/.../bridge/`), answered by
+      Plugin and PluginCall with the API the services were written against
+- [x] Every service moved from `apps/android/android` with its tests and manifest entries; the page runs on
+      `https://localhost` as before
+- [x] Sign-in: the page's own sign-in gate drives AuthBridge's Custom Tab flow (PKCE), drawn by the generic
+      gate screen. Not yet run against an account on an emulator (needs a test account on the dev backend)
 - [x] Web: phone note layout for the Android marker; big batches straight to `foleviEngineHost`
-- [ ] Contract revision adding `"android"` to the marker and `AppInfo` platforms
+- [x] Contract revision 34: `"android"` in the marker's and `AppInfo`'s platforms
 
-Phase 2, the rest of the first build
-- [ ] Tasks and Calendar screens in full, Foli AI chat and note actions, Settings
-- [ ] Local mode (library, Drive, Dropbox), Vault and E2EE unlock
-- [ ] Android extras: share target, widgets (Glance), Quick Settings tile, app shortcuts, push (FCM),
-      scanner, biometric lock, app actions
-- [ ] Googlebook: shortcuts helper, right-click menus, hover, several windows, drag and drop of notes and
-      files, desktop emulator pass
-- [ ] Remove Capacitor and the old `apps/android/android` project once every service has moved
+Phase 2, the rest of the first build (done 2026-11-23 unless noted)
+- [x] Tasks (Today, Upcoming, Inbox, All, quick add) and Calendar (month grid, the day's tasks)
+- [x] Foli AI chat (conversations, streamed replies) and Settings (account, appearance, text size, the web's
+      settings pages, sign-out, Delete account)
+- [x] Local mode on this device (checked end to end); Drive and Dropbox wait for the owner's client ids
+- [x] Vault: set up, recovery key, unlock, passwords, files, trash, item fields, Lock
+- [x] Android extras moved: share target (checked end to end), widgets, Quick Settings tile, app shortcuts,
+      push (needs the owner's Firebase settings), scanner, biometric lock, app actions
+- [x] Googlebook: keyboard shortcuts with the shortcuts helper, right-click and long-press note menus, Open in
+      new window, dragging a note out as a link, hand pointer; desktop-size emulator pass
+- [x] Capacitor and `apps/android/android` removed
+- [ ] Native screens still drawn by the web or missing: onboarding and sign-in polish (Google and passkeys via
+      Credential Manager), note sharing sheet, templates, archive and trash lists in the sidebar, Search's
+      filters, widgets restyled in Material 3
 
 Phase 3, release
-- [ ] Release build, R8, signing config reading the owner's keystore from `~/.gradle/gradle.properties`
+- [x] Release build with R8 (keep rules for the bridge and the contract), upload-key signing from the owner's
+      `~/.gradle/gradle.properties`; a debug-key R8 build ran local mode on an emulator
 - [ ] Play internal testing (owner uploads), Data safety form, account deletion link
 - [ ] Adaptive quality Tier 2 checks, then the large-screen badge
-- [ ] Target API 37 before the next Play deadline
+- [ ] Target API 37 before the next Play deadline; the app bundle is large (about 128 MB universal APK: the web
+      export and ML Kit), so check the bundle's per-device size in Play Console
 
 ## 5. Owner steps (later)
 

@@ -34,6 +34,9 @@ data class AiChatRoute(val id: String?, val first: String? = null) : Route
 data object SettingsRoute : Route
 
 @Serializable
+data object VaultRoute : Route
+
+@Serializable
 data object SharedRoute : Route
 
 @Serializable

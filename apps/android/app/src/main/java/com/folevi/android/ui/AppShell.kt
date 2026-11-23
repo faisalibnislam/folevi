@@ -140,7 +140,7 @@ private fun Content(stack: NavBackStack<NavKey>, open: (Route) -> Unit, width: W
     val session = LocalSession.current
     val scope = rememberCoroutineScope()
     val top = stack.lastOrNull()
-    val showNew = ((top as? Route)?.isDetail() != true || width != WidthClass.COMPACT) && top !is AiRoute && top !is SettingsRoute
+    val showNew = ((top as? Route)?.isDetail() != true || width != WidthClass.COMPACT) && top !is AiRoute && top !is SettingsRoute && top !is VaultRoute
     val back: (() -> Unit)? = if (width == WidthClass.COMPACT && stack.size > 1) ({ stack.removeAt(stack.lastIndex) }) else null
     Scaffold(
         modifier = modifier,
@@ -174,6 +174,7 @@ private fun Content(stack: NavBackStack<NavKey>, open: (Route) -> Unit, width: W
                 entry<AiRoute>(metadata = ListDetailSceneStrategy.listPane(detailPlaceholder = { NotePlaceholder() })) { AiHome(open) }
                 entry<AiChatRoute>(metadata = ListDetailSceneStrategy.detailPane()) { AiChatScreen(it, back) }
                 entry<SettingsRoute>(metadata = ListDetailSceneStrategy.listPane(detailPlaceholder = { NotePlaceholder() })) { SettingsScreen(open, back) }
+                entry<VaultRoute>(metadata = ListDetailSceneStrategy.listPane(detailPlaceholder = { NotePlaceholder() })) { VaultScreen(back) }
                 entry<SharedRoute>(metadata = ListDetailSceneStrategy.listPane(detailPlaceholder = { NotePlaceholder() })) { SharedScreen(open, back) }
                 entry<ChangesRoute>(metadata = ListDetailSceneStrategy.listPane(detailPlaceholder = { NotePlaceholder() })) { ChangesScreen(open, back) }
                 entry<WebShowRoute>(metadata = ListDetailSceneStrategy.detailPane()) { WebShowScreen(it, back) }

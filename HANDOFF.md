@@ -269,6 +269,14 @@ redesign (`claude/ios-native-redesign-f4a8be`) opens its pull request into this 
 - **Shared host files:** the UI-free files moved into `apps/mac/FoleviCore/Host/Shared`.
 - **Editor and data layer:** SwiftUI around the web editor, which runs in pooled warm web views. The data layer is
   the web export through FoleviEngine and the iOS shell services, compiled by path.
+- **The window (2026-11-23, latest):** the owner set the Macloving guide aside ("do the UI your way, pixel
+  perfect, as good as Finder and Apple Notes, UX like the web, every feature"). The window is now built the way
+  Finder and Notes are: a system `NavigationSplitView` (sidebar can be hidden, View > Hide Sidebar), a unified
+  Liquid Glass toolbar (Back and Forward, title and subtitle, New Note as the ink pill, the screen's items, the
+  screen's search as the toolbar search field), the system `.inspector`, native window tabs laid out by the system.
+  Screens still declare their bar with `.screenActions` / `.screenSearch` / `.screenSubtitle` / `.screenLeading` /
+  `.screenTitle` (`Views/Common/ScreenBar.swift`); those now feed the system toolbar. The custom card, glass top
+  bar and `WindowMetrics` are gone. `docs/design/macloving-mac-ui.md` no longer applies to the Mac window.
 - **Read first:** `apps/mac/README.md`, then `apps/mac/PARITY.md`.
 - **Parity on 2026-11-23:** 1,114 of 1,343 there, 4 partly, 0 missing, 225 n/a. The 4 partly stay web pages on
   purpose, by the owner's choice: two-step verification, end-to-end encryption on/off, OAuth consent and the
@@ -408,6 +416,9 @@ account button should move past iPadOS's window buttons).
      The iPad already had this profile; its card margin is now 12 pt. Not yet looked at on the iPad itself; its
      layout tests pass.
 
+     Superseded the same day: the owner set the guide aside and the window is now native (see "The window" in
+     Current state; commit 4a2f2031).
+
      Then a HIG and Liquid Glass pass (2026-11-23, the owner's "/apple-hig /liquid-glass /liquid-glass-motion
      /axiom:axiom-design" ask): content scrolls under the glass bar (a `safeAreaBar` placeholder, with a soft fade
      drawn behind the bar because macOS draws its own scroll edge effect only under system toolbars); split screens
@@ -502,6 +513,7 @@ account button should move past iPadOS's window buttons).
   `DATABASE_UDF_USER_TIMEOUT_SECONDS=4` for that backend. Bursts show in `convex.log` as "took a long time".
 
 ## 12. Change log
+- 2026-11-23: Folevi for Mac: the window rebuilt the native way (system split view, unified Liquid Glass toolbar with each screen's items and search, system inspector, segmented controls, sidebar can be hidden); the Macloving card design dropped at the owner's word; 38 tests pass.
 - 2026-11-23: Folevi for Mac: HIG and Liquid Glass pass (content under the glass bar with a soft edge, split screens below it, tab bar state after restored tabs, no shadow on the palette's glass, Jump to Latest materializes, hover on bar choices); iPhone/iPad pass handed to the redesign session (PR 52).
 - 2026-11-23: `claude/folevi-core-529dbe` pushed to GitHub with the owner's OK (a337b65b) so the iPhone/iPad redesign can open its pull request into it; `main` untouched.
 - 2026-11-23: Folevi for Mac: the owner's main-window profile (hidden title bar, sidebar, content card, glass top bar from each screen, flat inspector panel, capsule choices; ink kept, native tabs kept below the tab bar); iPad card margin 12 pt; a notarized test DMG built for the owner (1.5.64, not published).

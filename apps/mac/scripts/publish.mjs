@@ -1,96 +1,130 @@
 #!/usr/bin/env node
-// Publishes Folevi for everyone. THE OWNER RUNS THIS: it sends the app to Apple's notary service and uploads
-// to the update bucket. Builders never do (they use release.mjs, which stops before both).
+// Publishes Folevi for Mac for everyone (docs/MAC_RELEASE.md). THE OWNER RUNS THIS, or a builder with the owner's
+// OK for that release: it uploads to Apple and to the update bucket. Builders otherwise use release.mjs's dry run.
+// The same flow, feed, key and file names as the AppKit Folevi used (tag archive/mac-appkit), so every installed
+// copy updates to this app in place.
 //
-//   node apps/mac/scripts/publish.mjs [--plan] [--universal]
+//   node apps/mac/scripts/publish.mjs [--plan] [--arm64]
 //
-//   1. checks: version.json's version is newer than the live Core feed's, the Developer ID identity, the notary
-//      profile (FOLEVI_NOTARY_PROFILE, default folevi-notary), Core's Sparkle key (login Keychain, account
-//      folevi, the same key as the AppKit Folevi), wrangler signed in
-//   2. the release build (release.mjs, into apps/mac/release-dist/<version>)
-//   3. notarizes the app and staples it
-//   4. the ZIP Sparkle installs and the DMG (Applications link), the DMG notarized and stapled too
-//   5. the appcast: generate_appcast signs the ZIP with Core's own key, deltas from apps/mac/release-archive/
-//   6. uploads to R2 `folevi-updates` under core/ (served at https://folevi.com/download/core/): the ZIP, deltas,
-//      FoleviCore-<v>.dmg, FoleviCore.dmg (the stable link), then core/appcast.xml last
+//   1. checks: the version (version.json, its CHANGELOG.json entry; newer than every version and build the live
+//      feed already has, so nothing is published twice or older), the Developer ID identity, the notarization
+//      profile (`xcrun notarytool store-credentials folevi-notary`), the Sparkle key in the login Keychain (account
+//      "folevi", the same key as the AppKit Folevi), wrangler signed in
+//   2. the release build (release.mjs's steps, into apps/mac/release-dist/<version>): universal, as before (Intel
+//      Macs on macOS 26 update too), or Apple silicon only with --arm64
+//   3. notarizes the app (notarytool, the keychain profile folevi-notary) and staples it
+//   4. the ZIP Sparkle installs and the DMG (with an Applications link), the DMG signed, notarized, stapled
+//   5. the appcast: generate_appcast signs the new ZIP (EdDSA, the Keychain's key) and makes deltas from the
+//      versions kept in apps/mac/release-archive/ (the ZIPs of earlier releases, the AppKit app's included), with
+//      the feed from the bucket as its starting point (read from the bucket's own address, so no cache stands
+//      between), and the version's CHANGELOG.json entry as its release notes (Folevi-<v>.html beside the ZIP)
+//   6. uploads with wrangler to the update bucket (Cloudflare R2 `folevi-updates`), which people reach through
+//      https://folevi.com/download/ (a rewrite in apps/web/next.config.ts): mac/Folevi-<v>.zip, the deltas,
+//      mac/Folevi-<v>.dmg, mac/Folevi.dmg (the stable download link), then mac/appcast.xml last
 // --plan prints what it would do and stops.
 import { execFileSync, spawnSync } from "node:child_process";
-import { cpSync, existsSync, mkdirSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import { cpSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { CORE, buildRelease, currentVersion, identity, makeDmg, SPARKLE_ACCOUNT, sparkleBin, verify } from "./release.mjs";
+import { CORE, buildRelease, currentVersion, identity, makeDmg, SPARKLE_ACCOUNT, sparkleBin, unregister, verify } from "./release.mjs";
+import { appcastReleases, compareVersions, findRelease, RELEASE_TYPES, releaseNotesHtml } from "../../../scripts/version.mjs";
 
 const argv = process.argv.slice(2);
 const bucket = process.env.FOLEVI_UPDATE_BUCKET ?? "folevi-updates";
-const base = (process.env.FOLEVI_UPDATE_URL ?? "https://folevi.com/download").replace(/\/+$/, "") + "/mac";
-const bucketUrl = (process.env.FOLEVI_BUCKET_URL ?? "https://pub-e55d5e1b47314fcbbbe3664ed7aed1c2.r2.dev").replace(/\/+$/, "") + "/mac";
+// Where people and Sparkle download from (the appcast's links), and the bucket's own public address (r2.dev).
+const base = (process.env.FOLEVI_UPDATE_URL ?? "https://folevi.com/download").replace(/\/+$/, "");
+const bucketUrl = (process.env.FOLEVI_BUCKET_URL ?? "https://pub-e55d5e1b47314fcbbbe3664ed7aed1c2.r2.dev").replace(/\/+$/, "");
 const notary = process.env.FOLEVI_NOTARY_PROFILE ?? "folevi-notary";
+const universal = !argv.includes("--arm64");
 const { version, build } = currentVersion();
-const universal = argv.includes("--universal");
+const notes = findRelease(version);
 const out = join(CORE, "release-dist", version);
 const archiveDir = join(CORE, "release-archive");
 const zipName = `Folevi-${version}.zip`;
 const dmgName = `Folevi-${version}.dmg`;
-const run = (cmd, args, o = {}) => execFileSync(cmd, args, { stdio: "inherit", maxBuffer: 256 * 1024 * 1024, ...o });
-const ok = (cmd, args) => spawnSync(cmd, args, { stdio: "ignore" }).status === 0;
+
 const fail = (m) => {
   console.error(m);
   process.exit(1);
 };
+const run = (cmd, args, o = {}) => execFileSync(cmd, args, { stdio: "inherit", maxBuffer: 256 * 1024 * 1024, ...o });
+const ok = (cmd, args) => spawnSync(cmd, args, { stdio: "ignore" }).status === 0;
 
 if (argv.includes("--plan")) {
-  console.log(`Would publish Folevi ${version} (build ${build}) from ${out}:
-  build (release.mjs${universal ? ", universal" : ""}), notarize with the keychain profile ${notary}, staple, ZIP + DMG,
-  sign the appcast with Core's Sparkle key (login Keychain, account ${SPARKLE_ACCOUNT}), deltas from ${archiveDir},
-  upload to ${bucket}: mac/${zipName}, mac/${dmgName}, mac/Folevi.dmg, then mac/appcast.xml,
-  downloads at ${base}/Folevi.dmg, the feed at ${base}/appcast.xml`);
+  console.log(`Would publish Folevi ${version} (build ${build}, what Sparkle compares), a ${RELEASE_TYPES[notes.type]} released ${notes.released}, ${universal ? "universal" : "Apple silicon only"}, from ${out}:
+  release notes: ${notes.summary}
+  notarize with the keychain profile ${notary}, staple, ZIP + DMG,
+  sign the appcast with the Sparkle key (login Keychain, account ${SPARKLE_ACCOUNT}), deltas from ${archiveDir},
+  the current feed from ${bucketUrl}/mac/appcast.xml,
+  upload to ${bucket} (wrangler r2 object put --remote): mac/${zipName}, mac/${dmgName}, mac/Folevi.dmg, then mac/appcast.xml,
+  downloads at ${base}/mac/Folevi.dmg, the feed at ${base}/mac/appcast.xml`);
   process.exit(0);
 }
 
-// 1. What publishing needs.
-const feed = spawnSync("curl", ["-fsSL", `${bucketUrl}/appcast.xml`], { encoding: "utf8" });
-if (feed.status === 0) {
-  const builds = [...feed.stdout.matchAll(/<sparkle:version>(\d+)<\/sparkle:version>/g)].map((m) => Number(m[1]));
-  if (builds.some((b) => b >= Number(build))) fail(`The live Mac feed already has build ${Math.max(...builds)}; version.json's is ${build}.`);
+// 1. What publishing needs. The live feed first: never a version or build it has already, never an older one.
+let feed = "";
+try {
+  const res = await fetch(`${bucketUrl}/mac/appcast.xml`, { cache: "no-store" });
+  if (res.ok) feed = await res.text();
+  else if (res.status !== 404) fail(`The live feed answered ${res.status}: try again.`);
+} catch (e) {
+  fail(`The live feed couldn't be read (${e instanceof Error ? e.message : e}): try again.`);
 }
+const live = appcastReleases(feed);
+const newer = live.versions.filter((v) => compareVersions(v, version) >= 0);
+if (newer.length) fail(`The feed has ${newer.join(", ")} already: release the next version first (node scripts/version.mjs release patch|update).`);
+if (live.builds.some((b) => b >= Number(build))) fail(`The feed has build ${Math.max(...live.builds)} already, and Sparkle needs a higher one than ${build}.`);
 identity();
-if (!ok("xcrun", ["notarytool", "history", "--keychain-profile", notary])) fail(`No notary profile "${notary}" (xcrun notarytool store-credentials ${notary} --team-id 7K32QQ2FX8 ...).`);
-if (!ok(sparkleBin("generate_keys"), ["--account", SPARKLE_ACCOUNT, "-p"])) fail(`No Sparkle key for account ${SPARKLE_ACCOUNT} in the login Keychain.`);
-if (!ok("npx", ["wrangler", "whoami"])) fail("wrangler isn't signed in (npx wrangler login).");
+if (!ok("xcrun", ["notarytool", "history", "--keychain-profile", notary])) fail(`No notarization profile "${notary}": run \`xcrun notarytool store-credentials ${notary} --apple-id <Apple ID> --team-id 7K32QQ2FX8\` once.`);
+if (!ok(sparkleBin("generate_keys"), ["--account", SPARKLE_ACCOUNT, "-p"])) fail(`No Sparkle key in the login Keychain (account ${SPARKLE_ACCOUNT}).`);
+if (!ok("npx", ["wrangler", "whoami"])) fail("wrangler isn't signed in: run `npx wrangler login` with the Cloudflare account that owns the update bucket.");
 
 // 2. The build.
+rmSync(out, { recursive: true, force: true });
 mkdirSync(out, { recursive: true });
 const app = buildRelease({ out, universal, version, build });
-const checked = verify(app, { version, build, universal });
-if (checked.problems.length) fail("Problems:\n  " + checked.problems.join("\n  "));
+const first = verify(app, { version, build, universal });
+if (first.problems.length) fail(`The build isn't fit to publish:\n  ${first.problems.join("\n  ")}`);
 
 // 3. Notarize and staple the app.
-const appZip = join(out, "notarize.zip");
-run("ditto", ["-c", "-k", "--keepParent", app, appZip]);
-run("xcrun", ["notarytool", "submit", appZip, "--keychain-profile", notary, "--wait"]);
+const notarize = (file) => run("xcrun", ["notarytool", "submit", file, "--keychain-profile", notary, "--wait"]);
+const forApple = join(out, "Folevi-notarize.zip");
+run("ditto", ["-c", "-k", "--sequesterRsrc", "--keepParent", app, forApple]);
+notarize(forApple);
 run("xcrun", ["stapler", "staple", app]);
-rmSync(appZip, { force: true });
+rmSync(forApple, { force: true });
+const checked = verify(app, { version, build, universal });
+if (checked.problems.length) fail(`After notarizing:\n  ${checked.problems.join("\n  ")}`);
+if (!ok("spctl", ["-a", "-t", "exec", app])) fail("Gatekeeper doesn't accept the notarized app.");
 
-// 4. The ZIP Sparkle installs and the DMG.
+// 4. The ZIP (what Sparkle installs) and the DMG.
 const updates = join(out, "updates");
-rmSync(updates, { recursive: true, force: true });
 mkdirSync(updates, { recursive: true });
 run("ditto", ["-c", "-k", "--sequesterRsrc", "--keepParent", app, join(updates, zipName)]);
 const dmg = makeDmg(app, join(out, dmgName));
-run("xcrun", ["notarytool", "submit", dmg, "--keychain-profile", notary, "--wait"]);
+notarize(dmg);
 run("xcrun", ["stapler", "staple", dmg]);
+unregister(app);
 
-// 5. The appcast, from the live feed and the ZIPs kept for deltas.
-if (feed.status === 0) writeFileSync(join(updates, "appcast.xml"), feed.stdout);
-if (existsSync(archiveDir)) for (const f of readdirSync(archiveDir).filter((f) => f.endsWith(".zip"))) cpSync(join(archiveDir, f), join(updates, f));
-run(sparkleBin("generate_appcast"), ["--account", SPARKLE_ACCOUNT, "--download-url-prefix", `${base}/`, "--maximum-deltas", "3", updates]);
+// 5. The appcast: the bucket's feed as it is (read in step 1), earlier ZIPs for deltas, the new ZIP signed, its
+// release notes from CHANGELOG.json (an HTML fragment generate_appcast embeds as the item's description).
+if (feed) writeFileSync(join(updates, "appcast.xml"), feed);
+writeFileSync(join(updates, `Folevi-${version}.html`), releaseNotesHtml(notes));
 mkdirSync(archiveDir, { recursive: true });
+for (const f of readdirSync(archiveDir).filter((f) => /^Folevi-[0-9.]+\.zip$/.test(f) && f !== zipName)) cpSync(join(archiveDir, f), join(updates, f));
+run(sparkleBin("generate_appcast"), ["--account", SPARKLE_ACCOUNT, "--download-url-prefix", `${base}/mac/`, "--maximum-deltas", "3", updates]);
+const appcast = readFileSync(join(updates, "appcast.xml"), "utf8");
+if (!appcast.includes(`sparkle:shortVersionString>${version}<`) && !appcast.includes(`sparkle:shortVersionString="${version}"`)) fail("generate_appcast didn't add this version.");
+// Sparkle compares the hidden build (sparkle:version, CFBundleVersion); the version is only what people see.
+if (!appcast.includes(`sparkle:version>${build}<`) && !appcast.includes(`sparkle:version="${build}"`)) fail(`generate_appcast didn't give this version the build ${build} (sparkle:version).`);
 cpSync(join(updates, zipName), join(archiveDir, zipName));
 
-// 6. Upload: everything but the feed, then the feed.
-const put = (file, key, type) => run("npx", ["wrangler", "r2", "object", "put", `${bucket}/mac/${key}`, "--file", file, "--content-type", type, "--remote"]);
-put(join(updates, zipName), zipName, "application/zip");
-for (const f of readdirSync(updates).filter((f) => f.endsWith(".delta"))) put(join(updates, f), f, "application/octet-stream");
-put(dmg, dmgName, "application/x-apple-diskimage");
-put(dmg, "Folevi.dmg", "application/x-apple-diskimage");
-put(join(updates, "appcast.xml"), "appcast.xml", "application/xml");
-console.log(`\nPublished Folevi ${version}: ${base}/Folevi.dmg (feed ${base}/appcast.xml)`);
+// 6. Upload, the feed last so it never names a file that isn't there yet.
+const put = (key, file, type, cache) => run("npx", ["wrangler", "r2", "object", "put", `${bucket}/${key}`, "--file", file, "--content-type", type, "--cache-control", cache, "--remote"]);
+const immutable = "public, max-age=31536000, immutable";
+put(`mac/${zipName}`, join(updates, zipName), "application/zip", immutable);
+for (const delta of readdirSync(updates).filter((f) => f.endsWith(".delta"))) put(`mac/${delta}`, join(updates, delta), "application/octet-stream", immutable);
+put(`mac/${dmgName}`, dmg, "application/x-apple-diskimage", immutable);
+put("mac/Folevi.dmg", dmg, "application/x-apple-diskimage", "no-cache");
+put("mac/appcast.xml", join(updates, "appcast.xml"), "application/xml", "no-cache");
+
+console.log(`Published Folevi for Mac ${version}: ${base}/mac/Folevi.dmg, feed ${base}/mac/appcast.xml`);

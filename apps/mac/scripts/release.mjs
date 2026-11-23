@@ -160,6 +160,12 @@ export function verify(app, { version, build, universal = false } = {}) {
   return { problems, notes };
 }
 
+/** Forgets built copies in Launch Services, so folevi:// links and "Open with" go to the installed app. */
+export function unregister(...apps) {
+  const ls = "/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister";
+  for (const a of apps) if (existsSync(a)) spawnSync(ls, ["-u", a], { stdio: "ignore" });
+}
+
 /** A DMG with the app and an Applications link, signed (notarized later, by publish.mjs). */
 export function makeDmg(app, dmg) {
   const stage = join(dirname(dmg), "dmg-stage");

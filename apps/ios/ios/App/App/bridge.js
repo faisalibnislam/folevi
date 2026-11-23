@@ -3,7 +3,7 @@
 // (FoleviViewController.prepare), on Folevi's own page only: the app fills in that one origin below. The page's
 // typed view of this is apps/web/src/lib/nativeApp.ts.
 //
-// The transport is the Mac app's (docs/NATIVE_APP_PLAN.md N1, apps/mac/Folevi/Bridge/mac-bridge.js), no longer
+// The transport is the Mac app's (docs/NATIVE_APP_PLAN.md N1, apps/mac/FoleviCore/Host/Shared/Bridge/mac-bridge.js), no longer
 // Capacitor's: call(plugin, method, options) posts { plugin, method, options } to the "folevi" message handler
 // (Native/Host/Bridge.swift) and resolves with the answer, or rejects with { code, message, data } (the shape
 // Capacitor's errors had, so the page reads them alike). Options or answers above 256 KB go through

@@ -7,7 +7,7 @@
 //   listen(plugin, event, cb): native events for this page; returns the function that stops listening
 //   platform, version, deviceName (when the app gave none), deviceFamily (iOS only), fileBase (library.fileUrl's
 //   start: "folevi-file://lib/" on iOS, "app://folevi/_files/" on the Mac), cloudKit (FoleviCloudKit, or null)
-// The native side is Native/Shell/FoleviShellPlugin.swift on iOS and apps/mac/Folevi/Bridge/ShellRouter.swift on
+// The native side is Native/Shell/FoleviShellPlugin.swift on iOS and apps/mac/FoleviCore/Host/Shared/Bridge/ShellRouter.swift on
 // the Mac, with the same method names and options. Bytes cross as base64 (a Uint8Array can't be posted).
 // eslint-disable-next-line no-unused-vars
 var foleviShellBridge = function (SHELL, host) {

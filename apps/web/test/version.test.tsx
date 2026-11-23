@@ -282,7 +282,7 @@ describe("the repository", () => {
   });
 
   test("the apps read their version from the project, and the build is never handed to the page", () => {
-    for (const plist of ["apps/mac/Folevi/Resources/Info.plist", "apps/ios/ios/App/App/Info.plist", "apps/ios/ios/App/ShareExtension/Info.plist", "apps/ios/ios/App/Widgets/Info.plist"]) {
+    for (const plist of ["apps/mac/FoleviCore/Resources/Info.plist", "apps/ios/ios/App/App/Info.plist", "apps/ios/ios/App/ShareExtension/Info.plist", "apps/ios/ios/App/Widgets/Info.plist"]) {
       expect(read(plist)).toMatch(/<key>CFBundleShortVersionString<\/key>\s*<string>\$\(MARKETING_VERSION\)<\/string>/);
       expect(read(plist)).toMatch(/<key>CFBundleVersion<\/key>\s*<string>\$\(CURRENT_PROJECT_VERSION\)<\/string>/);
     }
@@ -290,8 +290,8 @@ describe("the repository", () => {
     expect(read("apps/ios/ios/App/App/FoleviViewController.swift")).not.toMatch(/__FOLEVI_BUILD__/);
     expect(read("apps/android/android/app/src/main/java/com/folevi/android/MainActivity.kt")).toMatch(/put\("version", BuildConfig\.VERSION_NAME\)/);
     // The Mac's About panel: the version alone, an empty build.
-    expect(read("apps/mac/Folevi/App/AppDelegate.swift")).toMatch(/\.applicationVersion: Paths\.version, \.version: ""/);
-    expect(read("apps/mac/Folevi/Chrome/MenuModel.swift")).toMatch(/"app\.about", "About Folevi", "showAboutPanel:"/);
+    expect(read("apps/mac/FoleviCore/App/AppCommands.swift")).toMatch(/Button\("About Folevi"\)/);
+    expect(read("apps/mac/FoleviCore/App/AppCommands.swift")).toMatch(/\.applicationVersion: "Version \\\(v\)", \.version: ""/);
     // Sparkle compares the hidden build; the release checks both.
     expect(read("apps/mac/scripts/publish.mjs")).toMatch(/sparkle:version>\$\{build\}</);
     expect(read("apps/mac/scripts/release.mjs")).toMatch(/CFBundleVersion/);

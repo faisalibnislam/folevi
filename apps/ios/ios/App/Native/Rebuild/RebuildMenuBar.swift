@@ -1,4 +1,4 @@
-// The iPad's menu bar (iPadOS 26, and the ⌘ overlay before it): the Mac's menus (apps/mac/Folevi/Chrome/MenuModel.swift)
+// The iPad's menu bar (iPadOS 26, and the ⌘ overlay before it): the Mac's menus (the AppKit Mac app's MenuModel.swift (tag archive/mac-appkit))
 // with the same ids, titles and shortcuts, for what the iPad has. Mac-only items are left out: Quick Add from Any
 // App, New Window and Close Window (one window, see docs/IOS.md), Services, Share, Hide and Quit, Check for Updates,
 // Float Note, Minimize and Zoom, Enter Full Screen, As Cards and As List, the Debug menu. Edit keeps iPadOS's own

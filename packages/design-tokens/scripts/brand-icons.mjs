@@ -11,7 +11,7 @@
 //   apps/web/public/icon.svg                       the mark as an SVG (older links to it)
 //   apps/web/public/brand/folevi-mark.svg, -256.png   the in-app mark (FoleviMark.tsx, the OG image)
 //   apps/web/public/brand/folevi-mark-dark.svg        the mark in dark mode (from logo-dark.svg)
-//   apps/mac/Folevi/Chrome/StatusItemTemplate.png, @2x.png  the F alone (template) for the menu bar, 16 and 32 px tall
+//   apps/mac/FoleviCore/Resources/StatusItemTemplate.png, @2x.pngthe F alone (template) for the menu bar, 16 and 32 px tall
 //   apps/web/public/brand/email/folevi-logo@2x.png       the logo for emails (dark letters, light backgrounds)
 //   apps/web/public/brand/email/folevi-logo-dark@2x.png  logo-dark.svg, for dark mode
 //

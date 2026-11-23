@@ -1,5 +1,5 @@
 // Debug builds only: a stand-in for the model when FOLEVI_FAKE_AI=1 (the screen diffs, scripts/screen-match.mjs,
-// and checking Foli AI in the Simulator), the twin of the Mac's apps/mac/Folevi/Bridge/FakeAI.swift. It answers
+// and checking Foli AI in the Simulator), the twin of the Mac's apps/mac/FoleviCore/Host/Shared/Bridge/FakeAI.swift. It answers
 // every request the same way, offline and free: nothing leaves the device, no key and no Apple Intelligence
 // needed. Plumbing requests (JSON) get an empty object, titles a short title, everything else one fixed answer
 // that cites the first note it was given, written out a few words at a time.

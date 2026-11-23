@@ -407,6 +407,16 @@ account button should move past iPadOS's window buttons).
 
      The iPad already had this profile; its card margin is now 12 pt. Not yet looked at on the iPad itself; its
      layout tests pass.
+
+     Then a HIG and Liquid Glass pass (2026-11-23, the owner's "/apple-hig /liquid-glass /liquid-glass-motion
+     /axiom:axiom-design" ask): content scrolls under the glass bar (a `safeAreaBar` placeholder, with a soft fade
+     drawn behind the bar because macOS draws its own scroll edge effect only under system toolbars); split screens
+     (`Destination.isSplit`: Foli AI, Calendar, Vault) start below the bar since AppKit's split view drops SwiftUI's
+     safe area; the tab bar state is re-read when a window's tab group changes (restored tabs had left content under
+     the tab bar). Left for the owner: the HIG asks for a way to hide the sidebar, but the owner's rule is an
+     always-visible sidebar, so none was added. Running `xcodebuild test` into `build/dd` relinks the Debug app with
+     the engine twice and it no longer starts: delete `build/dd/Build/Products/Debug/Folevi Dev.app` and run
+     `build.mjs` again.
   2. Done 2026-11-23: a signed, notarized, stapled, universal test DMG at
      `apps/mac/release-dist/test-1.5.64/Folevi-1.5.64.dmg` (git-ignored, in the Core worktree). It has the
      production web build and the same designated requirement as the installed Folevi. The owner tries it over
@@ -492,6 +502,7 @@ account button should move past iPadOS's window buttons).
   `DATABASE_UDF_USER_TIMEOUT_SECONDS=4` for that backend. Bursts show in `convex.log` as "took a long time".
 
 ## 12. Change log
+- 2026-11-23: Folevi for Mac: HIG and Liquid Glass pass (content under the glass bar with a soft edge, split screens below it, tab bar state after restored tabs, no shadow on the palette's glass, Jump to Latest materializes, hover on bar choices); iPhone/iPad pass handed to the redesign session (PR 52).
 - 2026-11-23: `claude/folevi-core-529dbe` pushed to GitHub with the owner's OK (a337b65b) so the iPhone/iPad redesign can open its pull request into it; `main` untouched.
 - 2026-11-23: Folevi for Mac: the owner's main-window profile (hidden title bar, sidebar, content card, glass top bar from each screen, flat inspector panel, capsule choices; ink kept, native tabs kept below the tab bar); iPad card margin 12 pt; a notarized test DMG built for the owner (1.5.64, not published).
 - 2026-11-23: Folevi for Mac: "Folevi Core" replaced the AppKit app as an update in place (same bundle id, data, Keychain, scheme, Sparkle feed and key, Developer ID profile); `apps/mac-core` became `apps/mac`; the AppKit app is at tag `archive/mac-appkit`; it takes over lock.json, Spotlight and the Electron migration; publish.mjs follows the AppKit flow (universal, changelog notes); LIST-053 drag gap and NOTE-036 Foli DNA of a note done (engine contract revision 34: `web.show` query); a dark-mode accent that kept selected rows unreadable fixed. Next: the full Macloving window redesign on Mac and iPad, then a test DMG.

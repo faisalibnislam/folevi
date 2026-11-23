@@ -249,7 +249,8 @@ The ones most likely to be broken:
 ## 9. Current state (as of 2026-11-23)
 
 **Folevi for Mac is now the native app (in progress, not released):** branch `claude/folevi-core-529dbe`
-(worktree `.claude/worktrees/folevi-core-529dbe`), `apps/mac`.
+(worktree `.claude/worktrees/folevi-core-529dbe`), `apps/mac`; pushed to GitHub 2026-11-23 with the owner's OK (not merged). The iPhone/iPad
+redesign (`claude/ios-native-redesign-f4a8be`) opens its pull request into this branch, not `main`.
 
 - **What happened (2026-11-23):** "Folevi Core", the native macOS 26 app, replaced the AppKit Folevi for Mac (the
   owner's choice). The AppKit app was removed from `apps/mac`; its last release, 1.5.64, is at the git tag
@@ -491,6 +492,7 @@ account button should move past iPadOS's window buttons).
   `DATABASE_UDF_USER_TIMEOUT_SECONDS=4` for that backend. Bursts show in `convex.log` as "took a long time".
 
 ## 12. Change log
+- 2026-11-23: `claude/folevi-core-529dbe` pushed to GitHub with the owner's OK (a337b65b) so the iPhone/iPad redesign can open its pull request into it; `main` untouched.
 - 2026-11-23: Folevi for Mac: the owner's main-window profile (hidden title bar, sidebar, content card, glass top bar from each screen, flat inspector panel, capsule choices; ink kept, native tabs kept below the tab bar); iPad card margin 12 pt; a notarized test DMG built for the owner (1.5.64, not published).
 - 2026-11-23: Folevi for Mac: "Folevi Core" replaced the AppKit app as an update in place (same bundle id, data, Keychain, scheme, Sparkle feed and key, Developer ID profile); `apps/mac-core` became `apps/mac`; the AppKit app is at tag `archive/mac-appkit`; it takes over lock.json, Spotlight and the Electron migration; publish.mjs follows the AppKit flow (universal, changelog notes); LIST-053 drag gap and NOTE-036 Foli DNA of a note done (engine contract revision 34: `web.show` query); a dark-mode accent that kept selected rows unreadable fixed. Next: the full Macloving window redesign on Mac and iPad, then a test DMG.
 - 2026-11-22: Folevi Core: Liquid Glass motion pass: one named motion set (`Motion` in `Views/Common/CoreLook.swift`) taken from the family's FoleviSpring/WebMotion (the owner's playful springs: panels grow from what opened them with a visible overshoot, selection slides, bars arrive firmly, Mac presses darken and never scale), each with a Reduce Motion substitute; floating glass (toasts, selection bars, the Ask button, carousel arrows, the folder menu, the palette) materializes instead of fading, in containers that never merge stacked toasts; the Ask panel and palette animate the same from every way in (persistent animation contexts); presses dim instead of scaling with Reduce Motion.

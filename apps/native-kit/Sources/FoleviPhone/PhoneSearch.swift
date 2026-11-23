@@ -84,7 +84,7 @@ public struct PhoneSearchScreen: View {
             }
             .scrollDismissesKeyboard(.interactively)
             .safeAreaBar(edge: .bottom) { scopes.padding(.top, 8).padding(.bottom, 4) }
-            .background(FoleviTokens.Chrome.canvas.resolve(scheme).color.ignoresSafeArea())
+            .background(PhoneLook.frame.resolve(scheme).color.ignoresSafeArea())
             // The field's own close button ends the search: back to the screen search was opened from (the
             // owner, 2026-11-19), not the Search tab left empty.
             .background(SearchEndWatcher(ended: close))
@@ -126,7 +126,7 @@ public struct PhoneSearchScreen: View {
             .padding(.top, geo.safeAreaInsets.top)
             .ignoresSafeArea(edges: [.top, .bottom])
         }
-        .background(FoleviTokens.Chrome.canvas.resolve(scheme).color.ignoresSafeArea())
+        .background(PhoneLook.frame.resolve(scheme).color.ignoresSafeArea())
         .onAppear {
             withAnimation(FoleviSpring.pop) { arrived = true }
             focused = !Self.noKeyboard
@@ -217,34 +217,39 @@ public struct PhoneSearchScreen: View {
         if model.noResults {
             Text("No notes match “\(model.text.trimmingCharacters(in: .whitespaces))”.").webText(sub15).foregroundStyle(muted.color).padding(.horizontal, 20).padding(.vertical, 12)
         }
+        // Each section's rows on one card on the frame's grey (the owner, 2026-11-23).
         caps(typed ? "Notes" : "Recent", first: true)
         if typed {
-            ForEach(model.noteHits, id: \.id) { hit in noteRow(hit) }
+            if !model.noteHits.isEmpty {
+                VStack(spacing: 0) { ForEach(model.noteHits, id: \.id) { hit in noteRow(hit) } }.phoneCard()
+            }
             let meaning = model.meaningHits
             if !meaning.isEmpty {
                 caps("By meaning", first: false)
-                ForEach(meaning, id: \.id) { hit in noteRow(hit) }
+                VStack(spacing: 0) { ForEach(meaning, id: \.id) { hit in noteRow(hit) } }.phoneCard()
             }
-        } else {
-            ForEach(viewed?.value?.rows ?? [], id: \.id) { row in
-                recentRow(row)
-            }
+        } else if let rows = viewed?.value?.rows, !rows.isEmpty {
+            VStack(spacing: 0) { ForEach(rows, id: \.id) { row in recentRow(row) } }.phoneCard()
         }
         let q = model.text.trimmingCharacters(in: .whitespaces)
         let matching = q.isEmpty ? Array(actions.prefix(4)) : actions.filter { $0.label.localizedCaseInsensitiveContains(q) }
         if aiOn || !matching.isEmpty {
             caps("Actions", first: false)
-            if aiOn {
-                actionRow(PhoneSearchAction(id: "ask-ai", label: q.isEmpty ? "Ask Foli AI about your notes" : "Ask Foli AI: “\(q)”", icon: nil, ai: true) { askAI(q.isEmpty ? nil : q) })
+            VStack(spacing: 0) {
+                if aiOn {
+                    actionRow(PhoneSearchAction(id: "ask-ai", label: q.isEmpty ? "Ask Foli AI about your notes" : "Ask Foli AI: “\(q)”", icon: nil, ai: true) { askAI(q.isEmpty ? nil : q) })
+                }
+                ForEach(matching) { actionRow($0) }
             }
-            ForEach(matching) { actionRow($0) }
+            .phoneCard()
         }
     }
 
     /// IPHONE_CAPS: footnote, semibold, caps, 0.04em; 24 above (12 for the first), 6 below.
     private func caps(_ text: String, first: Bool) -> some View {
-        Text(text.uppercased())
-            .webText(WebTextStyle(size: 13, leading: 18, weight: 600, letterSpacing: 0.52))
+        // (The Mac’s section heading (the owner, 2026-11-23): sentence case, semibold, muted.)
+        Text(text)
+            .webText(PhoneType.captionCaps)
             .foregroundStyle(muted.color)
             .padding(.horizontal, 20)
             .padding(.top, first ? 12 : 24)
@@ -306,10 +311,9 @@ public struct PhoneSearchScreen: View {
                 icon.frame(width: 28).foregroundStyle(muted.color).padding(.top, iconTop ?? 0)
                 content()
                     .frame(maxWidth: .infinity, minHeight: minHeight, alignment: .leading)
-                    .overlay(alignment: .bottom) { PhoneRowHairlineView() }
             }
-            .padding(.leading, 20)
-            .padding(.trailing, 16)
+            .padding(.leading, 14)
+            .padding(.trailing, 12)
             .contentShape(Rectangle())
         }
         .buttonStyle(PhoneRowPressStyle())

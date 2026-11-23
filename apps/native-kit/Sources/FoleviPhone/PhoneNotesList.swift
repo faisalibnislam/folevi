@@ -406,6 +406,8 @@ public struct PhoneNotesListScreen: View {
                     .onDisappear { model.slotDisappeared(slot.index) }
                 }
             }
+            // (The rows on one card: the owner, 2026-11-23.)
+            .phoneCard()
             .padding(.top, ps("phone.list").padding.top)
         }
     }
@@ -439,6 +441,7 @@ struct PhoneNoteRow: View {
     var selecting = false
     var selected = false
     @Environment(\.colorScheme) private var scheme
+    @Environment(\.phoneRowGrouped) private var grouped
 
     private func ps(_ id: String) -> WebComputedStyle { WebStyles.named(id).resolve(scheme) }
 
@@ -468,8 +471,8 @@ struct PhoneNoteRow: View {
             .frame(maxWidth: .infinity, minHeight: body.height, alignment: .leading)
             .overlay(alignment: .bottom) { PhoneRowHairlineView() }
         }
-        .padding(.leading, r.padding.left)
-        .padding(.trailing, r.padding.right)
+        .padding(.leading, grouped ? PhoneRowGroupMetrics.leading : r.padding.left)
+        .padding(.trailing, grouped ? PhoneRowGroupMetrics.trailing : r.padding.right)
         .contentShape(Rectangle())
     }
 }

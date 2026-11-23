@@ -56,6 +56,8 @@ public struct PhoneTagsScreen: View {
                         }
                     }
                 }
+                // (On one card: the owner, 2026-11-23.)
+                .phoneCard()
                 .padding(.top, 8)
                 .accessibilityLabel("Tags")
             }

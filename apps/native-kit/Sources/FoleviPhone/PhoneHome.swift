@@ -48,14 +48,18 @@ public struct PhoneHomeContent: View {
 
     private func ps(_ id: String) -> WebComputedStyle { WebStyles.named(id).resolve(scheme) }
 
+    /// The Mac's Home order (the owner, 2026-11-23: Home may be reorganized to match the Mac's): the places with
+    /// their counts first, Catch me up, then Recent, Bookmarks, Folders and Tags as titled sections, and the rest of
+    /// the library at the end. Every part is an opaque card on the frame's grey.
     public var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            recents
+            tiles.padding(.top, 4)
             if model.aiOn {
                 PhoneCatchUpCard { actions.open("/catch-up") }
                     .padding(.horizontal, PhoneRowGroupMetrics.inset)
+                    .padding(.top, PhoneLook.gap)
             }
-            tiles.padding(.top, model.aiOn ? 10 : 0)
+            PhoneHomeSection("Recent") { recents }
             starred
             folders
             if !model.tags.isEmpty { tags }
@@ -95,7 +99,7 @@ public struct PhoneHomeContent: View {
     private var tiles: some View {
         let rows = model.rows
         let pairs = stride(from: 0, to: rows.count, by: 2).map { Array(rows[$0..<min($0 + 2, rows.count)]) }
-        return Grid(horizontalSpacing: 10, verticalSpacing: 10) {
+        return Grid(horizontalSpacing: PhoneLook.gap, verticalSpacing: PhoneLook.gap) {
             ForEach(pairs, id: \.first!.id) { pair in
                 GridRow {
                     ForEach(pair, id: \.id) { row in
@@ -119,18 +123,21 @@ public struct PhoneHomeContent: View {
     @ViewBuilder private var recents: some View {
         let strip = ps("phone.recents")
         if !model.recentsLoaded {
-            // Three placeholders while the first answer comes (the web's pulse boxes).
-            HStack(spacing: Self.stripGap) {
-                ForEach(0..<3, id: \.self) { _ in
-                    RoundedRectangle(cornerRadius: FoleviTokens.Radius.container, style: .continuous)
-                        .fill(FoleviTokens.Chrome.surfaceSunken.resolve(scheme).color)
-                        .frame(width: Self.cardWidth)
-                        .aspectRatio(WebNoteCard.aspect, contentMode: .fit)
+            // Three placeholders while the first answer comes (the web's pulse boxes). (In a still scroll view, which
+            // takes the screen's width: the row on its own is wider than the screen and pushed the whole of Home left.)
+            ScrollView(.horizontal) {
+                HStack(spacing: Self.stripGap) {
+                    ForEach(0..<3, id: \.self) { _ in
+                        RoundedRectangle(cornerRadius: PhoneLook.tileRadius, style: .continuous)
+                            .fill(PhoneLook.card.resolve(scheme).color)
+                            .frame(width: Self.cardWidth)
+                            .aspectRatio(WebNoteCard.aspect, contentMode: .fit)
+                    }
                 }
+                .padding(strip.padding.edgeInsets)
             }
-            .padding(strip.padding.edgeInsets)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .clipped()
+            .scrollDisabled(true)
+            .scrollIndicators(.hidden)
             .accessibilityLabel("Loading")
         } else if model.recents.isEmpty {
             PhoneEmptyBox("Notes you open show up here").padding(.top, 12)
@@ -233,20 +240,19 @@ public struct PhoneHomeContent: View {
 
     // MARK: Tags
 
+    /// Tags as chips that wrap, as on the Mac's Home (the owner, 2026-11-23), always in sight; See all opens every
+    /// tag (/tags). A chip's long press is the tag's menu.
     private var tags: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            // The heading folds the rows; See all opens every tag (/tags).
-            PhoneHomeSection("Tags", open: { withAnimation(.easeOut(duration: 0.2)) { tagsOpen.toggle() } }, opened: tagsOpen, seeAll: { actions.open("/tags") }) {
-                if tagsOpen {
-                    PhoneRowGroup("Tags") {
-                        ForEach(model.tags, id: \.id) { tag in
-                            PhoneListRow(tag.name, action: { actions.open("/tags/\(tag.id)") }, onLongPress: actions.tagMenu.map { menu in { menu(tag, $0) } }) {
-                                PhoneRowGlyph(.hash).foregroundStyle(Self.tagColor(tag.color, scheme).color)
-                            }
-                        }
-                    }
+        PhoneHomeSection("Tags", seeAll: { actions.open("/tags") }) {
+            PhoneVaultFlow(gap: 8, rowGap: 8, pushAfterFirst: false) {
+                ForEach(model.tags, id: \.id) { tag in
+                    PhoneTagChip(name: tag.name, color: Self.tagColor(tag.color, scheme).color, open: { actions.open("/tags/\(tag.id)") },
+                                 menu: actions.tagMenu.map { menu in { menu(tag, $0) } })
                 }
             }
+            .padding(.horizontal, PhoneRowGroupMetrics.inset)
+            .accessibilityElement(children: .contain)
+            .accessibilityLabel("Tags")
         }
     }
 
@@ -275,7 +281,7 @@ struct PhoneHomeTile: View {
 
     var body: some View {
         let ink = { (p: ColorPair) in p.resolve(scheme).color }
-        let shape = RoundedRectangle(cornerRadius: FoleviTokens.Radius.panel, style: .continuous)
+        let shape = RoundedRectangle(cornerRadius: PhoneLook.tileRadius, style: .continuous)
         Button(action: action) {
             VStack(alignment: .leading, spacing: 10) {
                 HStack(spacing: 8) {
@@ -300,7 +306,7 @@ struct PhoneHomeTile: View {
             }
             .padding(12)
             .frame(maxWidth: .infinity, minHeight: 80, alignment: .leading)
-            .background(shape.fill(ink(PhoneSurface.card)))
+            .background(shape.fill(ink(PhoneLook.card)))
             .contentShape(shape)
         }
         .buttonStyle(PhoneTilePressStyle(shape: shape))
@@ -319,8 +325,7 @@ struct PhoneCatchUpCard: View {
 
     var body: some View {
         let ink = { (p: ColorPair) in p.resolve(scheme).color }
-        let r = FoleviTokens.Radius.container
-        let shape = RoundedRectangle(cornerRadius: r, style: .continuous)
+        let shape = RoundedRectangle(cornerRadius: PhoneLook.tileRadius, style: .continuous)
         Button(action: action) {
             HStack(spacing: 12) {
                 WebAiMark(size: 28).frame(width: 36, height: 36)
@@ -338,7 +343,7 @@ struct PhoneCatchUpCard: View {
             .padding(.horizontal, 16)
             .padding(.vertical, 12)
             .frame(minHeight: 68)
-            .background(shape.fill(ink(PhoneSurface.card)))
+            .background(shape.fill(ink(PhoneLook.card)))
             .contentShape(shape)
         }
         .buttonStyle(PhoneTilePressStyle(shape: shape, scale: 0.98))
@@ -368,6 +373,32 @@ struct PhoneTilePressStyle<S: Shape>: ButtonStyle {
 struct PhoneCardPressStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label.pressDip(configuration.isPressed, scale: 0.97)
+    }
+}
+/// A tag on Home: its name after a coloured #, in a capsule on the card fill; a long press opens its menu.
+struct PhoneTagChip: View {
+    let name: String
+    let color: Color
+    let open: () -> Void
+    let menu: ((CGRect) -> Void)?
+    @Environment(\.colorScheme) private var scheme
+
+    var body: some View {
+        PhonePressable(scale: 0.96, onTap: open, onLongPress: menu) {
+            HStack(spacing: 4) {
+                WebIconView(.hash, size: 15, strokeWidth: 2.2).foregroundStyle(color)
+                Text(name)
+                    .webText(PhoneType.body())
+                    .lineLimit(1)
+                    .foregroundStyle(FoleviTokens.Chrome.ink.resolve(scheme).color)
+            }
+            .padding(.horizontal, 14)
+            .frame(minHeight: 40)
+            .background(Capsule().fill(PhoneLook.card.resolve(scheme).color))
+            .contentShape(Capsule())
+        }
+        .accessibilityLabel("Tag \(name)")
+        .accessibilityAddTraits(.isButton)
     }
 }
 #endif

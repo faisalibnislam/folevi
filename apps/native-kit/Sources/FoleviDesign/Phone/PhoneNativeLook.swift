@@ -40,6 +40,12 @@ public enum PhoneNativeLook {
 }
 
 public extension View {
+    /// Rows on one opaque rounded card on the frame's grey, inset from the screen's edges (the owner, 2026-11-23):
+    /// a list's group (a day's tasks, a note's group), with rounded press highlights and no lines between rows.
+    func phoneCard(radius: CGFloat = PhoneLook.tileRadius, inset: CGFloat = PhoneLook.inset) -> some View {
+        modifier(PhoneCardModifier(radius: radius, inset: inset))
+    }
+
     /// The iPhone's native look for everything inside: the chrome, the accent as the tint, the lighter shadows.
     func phoneNativeChrome(menus: PhoneMenus? = nil) -> some View {
         environment(\.nativeChrome, PhoneNativeLook.chrome)
@@ -64,6 +70,49 @@ public extension EnvironmentValues {
     /// The tab's first screen's Create and Foli AI buttons, set by the frame for that screen only (PhoneScreen draws
     /// them in its bar). Nil: none.
     @Entry var phoneRootCreate: PhoneRootCreate? = nil
+    /// Opens the app's Search (the frame's), for the search capsule at the end of every screen's top bar (the owner,
+    /// 2026-11-23). Nil: no capsule (Search itself, a sheet, the iPad).
+    @Entry var phoneOpenSearch: (@MainActor () -> Void)? = nil
+}
+
+struct PhoneCardModifier: ViewModifier {
+    let radius: CGFloat
+    let inset: CGFloat
+    @Environment(\.colorScheme) private var scheme
+
+    func body(content: Content) -> some View {
+        let shape = RoundedRectangle(cornerRadius: radius, style: .continuous)
+        content
+            .environment(\.phoneRowGrouped, true)
+            .padding(.vertical, PhoneLook.cardPadding)
+            .background(shape.fill(PhoneLook.card.resolve(scheme).color))
+            .clipShape(shape)
+            .padding(.horizontal, inset)
+    }
+}
+
+/// The iPhone's redesign after the Mac's window (the owner, 2026-11-23; docs/design/macloving-mac-ui.md as iOS has
+/// it): the frame's grey under everything, the content's sections as rounded opaque cards on it, no row lines,
+/// interface text in four sizes (Subheadline 15, Body 17, Title 3 20, Title 28, with Dynamic Type), Folevi's ink.
+public enum PhoneLook {
+    /// The frame: the grey every screen sits on.
+    public static let frame = PhoneSurface.grouped
+    /// A card on it: opaque white (dark: the raised grey).
+    public static let card = PhoneSurface.row
+    /// A section's card corners (iOS 26's inset grouped corners), and a small card's (a tile, a chip row).
+    public static let cardRadius: CGFloat = 26
+    public static let tileRadius: CGFloat = 20
+    /// Between a card and the screen's edge, and between cards.
+    public static let inset: CGFloat = 16
+    public static let gap: CGFloat = 12
+    /// A section heading: Title 3 semibold over its card, sentence case (the Mac's Home), with "See all" after it.
+    public static let sectionGap: CGFloat = 28
+    /// A selected or pressed row's rounded highlight inside a card (no row lines).
+    public static let highlightRadius: CGFloat = 14
+    /// A card's air above its first row and under its last.
+    public static let cardPadding: CGFloat = 4
+    /// Something appearing in place (a filter field opening from the bar).
+    @MainActor public static var reveal: Animation? { WebMotion.reduced ? nil : .spring(response: 0.34, dampingFraction: 0.86) }
 }
 
 /// What a tab's first screen offers in its bar besides the bell and More (the owner, 2026-11-19): + for the Create
@@ -90,11 +139,35 @@ public struct PhoneRootCreate {
 }
 
 #if os(iOS)
+/// A tab's first screen's main action in its bar: + in Folevi's ink (the Mac's New Note pill as iOS has it, a
+/// prominent glass circle), after the screen's actions and before search.
+public struct PhoneRootCreateItem: ToolbarContent {
+    let create: PhoneRootCreate
+
+    public init(create: PhoneRootCreate) { self.create = create }
+
+    public var body: some ToolbarContent {
+        if #available(iOS 26, *) {
+            ToolbarItem(placement: .topBarTrailing) {
+                PhoneRootCreateButtons(create, prominent: true)
+            }
+            .sharedBackgroundVisibility(.hidden)
+        } else {
+            ToolbarItem(placement: .topBarTrailing) { PhoneRootCreateButtons(create) }
+        }
+    }
+}
+
 /// The flower and +, in one of the bar's glass capsules.
 public struct PhoneRootCreateButtons: View {
     let create: PhoneRootCreate
+    /// + on its own ink circle (the bar's main action), not in the bar's shared glass.
+    let prominent: Bool
 
-    public init(_ create: PhoneRootCreate) { self.create = create }
+    public init(_ create: PhoneRootCreate, prominent: Bool = false) {
+        self.create = create
+        self.prominent = prominent
+    }
 
     public var body: some View {
         HStack(spacing: 6) {
@@ -124,11 +197,19 @@ public struct PhoneRootCreateButtons: View {
         }
     }
 
-    private var plus: some View {
-        WebIconView(.plus, size: 22, strokeWidth: 2.1)
-            .foregroundStyle(.primary)
-            .frame(width: 30, height: 30)
-            .contentShape(Rectangle())
+    @ViewBuilder private var plus: some View {
+        if prominent, #available(iOS 26, *) {
+            WebIconView(.plus, size: 22, strokeWidth: 2.2)
+                .foregroundStyle(PhoneNativeLook.onAccent)
+                .frame(width: 44, height: 44)
+                .glassEffect(.regular.tint(PhoneNativeLook.accent).interactive(), in: .circle)
+                .contentShape(Circle())
+        } else {
+            WebIconView(.plus, size: 22, strokeWidth: 2.1)
+                .foregroundStyle(.primary)
+                .frame(width: 30, height: 30)
+                .contentShape(Rectangle())
+        }
     }
 }
 #endif

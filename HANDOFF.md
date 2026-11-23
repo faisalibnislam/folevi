@@ -248,6 +248,17 @@ The ones most likely to be broken:
 
 ## 9. Current state (as of 2026-11-23)
 
+**iPhone Duo, third pass (owner's pick, 2026-11-23; not pushed, not released):** branch
+`claude/iphone-duo-ipad-layout` (worktree `.claude/worktrees/iphone-duo-18adb4`), on top of PR 52's branch
+`claude/ios-native-redesign-f4a8be`. Open (the inner screen, across or upright) the Duo shows the iPad's wide
+layout; closed, and in a Split View half, the iPhone layout with iOS's side column (`RebuildIPad.isWide`: an iPhone
+window of regular width, 600 pt or more). The note page follows (`RebuildPageLayout` sets `wide` on the page's
+marker; `lib/iphone.ts`), the open note, caret and keyboard carry across folds both ways, and partly folded nothing
+sits in the crease (`FoldSpan`: the strip's tabs, the card's bar, the note's dock). The second pass's split view
+(PhoneColumns, the last note in the empty column) is gone: Home is one stack on every iPhone again. Plan, research
+and screenshots: `docs/IPHONE_DUO_PLAN.md`, `docs/iphone-duo/`. Decisions:
+`docs/claude-context/memory/iphone-duo-decisions.md`.
+
 **iPhone and iPad redesigned after the Mac's window (1.5.65, TestFlight):** branch
 `claude/ios-native-redesign-f4a8be` (worktree `.claude/worktrees/ios-native-redesign-f4a8be`), built on the Mac
 redesign branch `claude/folevi-core-529dbe`. The owner's answers: `docs/claude-context/memory/ios-redesign-decisions-2026-11-23.md`.
@@ -397,7 +408,6 @@ own HANDOFF.md every turn: it needs none).
 - Chrome extension, `apps/clipper` on `chrome-extension`: 1.1.0 (quick note, a note on a clip, keyboard shortcuts) and
   an unfinished, untested search that asks to read notes only when first used. Plan and checklist:
   `apps/clipper/PLAN.md`; store listing: `apps/clipper/STORE.md`.
-- iPhone Duo beyond what shipped: `docs/claude-context/memory/iphone-duo-decisions.md`.
 
 **Waiting on the owner:** `pricing-decisions` (new plans, fair-use downloads, files on R2: `docs/PRICING_PROPOSAL.md`
 there; tests pass; the owner's decisions are still open). Backup secrets (`backup-setup-half-done.md`). Items in
@@ -419,6 +429,9 @@ signed-in account, 1.5.58's frosted folders with a large library, and the iPad c
 account button should move past iPadOS's window buttons).
 
 ## 10. Next steps / open work
+- iPhone Duo third pass (`claude/iphone-duo-ipad-layout`): the owner's look on the Duo simulator or a device, then
+  merge after PR 52 (it's built on that branch). Not checked: Split View halves and tabletop (no simulator control),
+  a real device.
 - iPhone and iPad redesign (`claude/ios-native-redesign-f4a8be`): the owner tries 1.5.65 from TestFlight; PR 52
   (https://github.com/faisalibnislam/folevi/pull/52) into `claude/folevi-core-529dbe` (the owner's choice) is
   open for review. The `v1.5.65` tag is local only (pushing it was not asked for).
@@ -469,7 +482,7 @@ account button should move past iPadOS's window buttons).
    restyled yet.
 4. Any one failed query takes a whole web page to "Something went wrong" (`useQuery` throws to
    `app/global-error.tsx`); treat a failed non-essential query as still loading and retry.
-5. Paused work (Chrome extension, iPhone Duo) and `pricing-decisions`: only when the owner asks.
+5. Paused work (Chrome extension) and `pricing-decisions`: only when the owner asks.
 6. Mac App Store build (sandboxed, no Sparkle) doesn't exist; only Developer ID. Folevi keeps its `com.folevi.*`
    bundle IDs (the owner's choice, `folevi-keeps-com-bundle-ids.md`): don't rename.
 7. Owner items carried from October (status unverified): SPF record for Sign in with Apple's email relay, export
@@ -527,6 +540,7 @@ account button should move past iPadOS's window buttons).
   `DATABASE_UDF_USER_TIMEOUT_SECONDS=4` for that backend. Bursts show in `convex.log` as "took a long time".
 
 ## 12. Change log
+- 2026-11-23: iPhone Duo resumed and redone (third pass, owner's pick): the iPad's wide layout when open, the iPhone layout closed; branch `claude/iphone-duo-ipad-layout` on PR 52's branch, not pushed.
 - 2026-11-23: PR 52 opened (iPhone and iPad redesign into `claude/folevi-core-529dbe`).
 - 2026-11-23: iPhone and iPad redesigned after the Mac's window (owner's checkbox answers saved in memory); 1.5.65 cut on `claude/ios-native-redesign-f4a8be` and uploaded to TestFlight; not merged.
 - 2026-11-23: `claude/folevi-core-529dbe` pushed to GitHub with the owner's OK (a337b65b) so the iPhone/iPad redesign can open its pull request into it; `main` untouched.

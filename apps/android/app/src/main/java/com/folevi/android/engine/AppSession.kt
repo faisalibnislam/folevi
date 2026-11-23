@@ -17,15 +17,15 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
-class AppSession(context: Context, private val scope: CoroutineScope, demo: Boolean) {
+class AppSession(context: Context, private val scope: CoroutineScope, demo: Boolean, private val host: PageView.Host?) {
     /** Null in demo mode: there is no page, and the note pane says so. */
-    val page: PageView? = if (demo) null else PageView(context, place = null)
+    val page: PageView? = if (demo || host == null) null else PageView(context as androidx.activity.ComponentActivity, host)
     val isDemo: Boolean get() = page == null
 
     private val transport: EngineTransport = page?.transport ?: DemoEngine.transport(context, scope)
 
-    // The place is the Page View's own (`acct:<id>` or `library`); until the host bridge picks one (plan phase 1)
-    // the client asks for the place the page reports in hello.
+    // The place is the Page View's own (`acct:<id>` or `library`): the one the page reports in hello, which
+    // follows the host's open place (Places.kt) across reloads.
     val client = EngineClient(transport, place = if (demo) "acct:demo" else "", AppIdentity("android", BuildConfig.VERSION_NAME, BuildConfig.VERSION_CODE.toString()), scope)
 
     private val _gate = MutableStateFlow<GateChangedEvent?>(null)
@@ -34,6 +34,12 @@ class AppSession(context: Context, private val scope: CoroutineScope, demo: Bool
 
     /** Where the note page sits in the window (set by the note pane while it is on screen). */
     val noteSlot = mutableStateOf<Rect?>(null)
+
+    /** Routes the page itself to one of its own routes (`/drafts`), for screens the web draws in the note pane. */
+    fun openRoute(route: String) {
+        if (page == null) return
+        host?.deliverLink("folevi:/" + (if (route.startsWith("/")) route else "/$route"))
+    }
 
     fun start() {
         scope.launch { client.hello.collect { h -> if (h != null) _gate.value = h.gate.takeIf { it.gate != null } } }

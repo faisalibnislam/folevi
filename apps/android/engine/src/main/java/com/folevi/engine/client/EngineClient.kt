@@ -310,7 +310,8 @@ class EngineClient(
             if (_state.value != State.Disconnected) _state.value = State.Connecting
             return false
         }
-        if (place.isEmpty()) value.place?.let { place = it }
+        // The Page View's place may change between loads (another account, the library): follow it.
+        value.place?.let { place = it }
         _hello.value = value
         if (value.protocol.toInt() != EngineContract.PROTOCOL_VERSION) {
             _state.value = State.Mismatch("The app speaks protocol ${EngineContract.PROTOCOL_VERSION}, the engine ${value.protocol}.")

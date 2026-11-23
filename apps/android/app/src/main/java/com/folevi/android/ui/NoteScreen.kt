@@ -29,14 +29,33 @@ import com.folevi.engine.generated.EditorCommands
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun NoteScreen(route: NoteRoute) {
+fun NoteScreen(route: NoteRoute, onBack: (() -> Unit)? = null) {
     val session = LocalSession.current
     val p = LocalPalette.current
     LaunchedEffect(route.id) { runCatching { session.client.editor(EditorCommands.noteShow(id = route.id)) } }
-    DisposableEffect(route.id) { onDispose { session.noteSlot.value = null } }
+    PagePane(route.title.ifEmpty { "Untitled" }, onBack, route.id)
+}
+
+/** A web page the app doesn't draw natively yet (Drafts, Shared, Changes, Reviews), in the note pane. */
+@Composable
+fun WebPageScreen(route: PageRoute, onBack: (() -> Unit)? = null) {
+    val session = LocalSession.current
+    LaunchedEffect(route.route) { session.openRoute(route.route) }
+    PagePane(route.title, onBack, route.route)
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun PagePane(title: String, onBack: (() -> Unit)?, key: String) {
+    val session = LocalSession.current
+    val p = LocalPalette.current
+    DisposableEffect(key) { onDispose { session.noteSlot.value = null } }
     Column(Modifier.fillMaxSize().background(p.surface)) {
         TopAppBar(
-            title = { Text(route.title.ifEmpty { "Untitled" }, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+            title = { Text(title, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+            navigationIcon = {
+                if (onBack != null) androidx.compose.material3.IconButton(onClick = onBack) { com.folevi.android.design.FoleviIcon(com.folevi.android.design.WebIcon.CHEVRON_LEFT, "Back", size = 24.dp) }
+            },
             colors = TopAppBarDefaults.topAppBarColors(containerColor = p.surface),
         )
         Box(

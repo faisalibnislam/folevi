@@ -18,6 +18,10 @@ data class NotesRoute(val view: String, val title: String, val folderId: String?
 @Serializable
 data class NoteRoute(val id: String, val title: String) : Route
 
+/** A web page in the note pane (Drafts, Shared, Changes, Reviews): the page routes itself to `route`. */
+@Serializable
+data class PageRoute(val route: String, val title: String) : Route
+
 @Serializable
 data object TasksRoute : Route
 

@@ -102,7 +102,8 @@ fun HomeScreen(open: (Route) -> Unit) {
                 modifier = Modifier.clickable {
                     when (r.id) {
                         HomeRow.Id.NOTES -> open(NotesRoute(NotesListView.ALL.value, r.title))
-                        else -> open(NotesRoute(NotesListView.ALL.value, r.title))
+                        // The web draws these lists for now, in the note pane (its own router takes the route).
+                        else -> open(PageRoute(r.route, r.title))
                     }
                 },
             )

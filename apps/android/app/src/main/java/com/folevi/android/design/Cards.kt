@@ -101,7 +101,7 @@ fun FrostedFolder(folder: FolderCard, onClick: () -> Unit, modifier: Modifier = 
         }
         Spacer(Modifier.height(6.dp))
         Text(folder.name, style = MaterialTheme.typography.labelLarge, color = p.ink, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.width(104.dp))
-        Text("${folder.noteCount} notes", style = MaterialTheme.typography.labelSmall, color = p.inkFaint)
+        Text(if (folder.noteCount == 1L) "1 note" else "${folder.noteCount} notes", style = MaterialTheme.typography.labelSmall, color = p.inkFaint)
     }
 }
 

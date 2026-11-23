@@ -1,98 +1,120 @@
 // The window's Page View (docs/NATIVE_APP_PLAN.md section 3, docs/ANDROID_NATIVE_PLAN.md section 3): one WebView
-// running the web export in native chrome mode. It is the engine the Compose screens talk to (through
-// WebViewTransport) and the note page they show. Configuration changes are handled in place (the manifest), so
-// the view lives as long as its activity.
+// running the web export in native chrome mode. It is three things at once:
 //
-// The export (apps/android/web, build-shell.mjs --platform android) is served from the app's own https origin by
-// WebViewAssetLoader, with the SPA fallback the Mac and iPhone apps use: a path without an extension is
-// index.html and the client router takes it from there. Debug builds can load a dev server instead
-// (BuildConfig.PAGE_URL). Links to other sites never load in the view.
+// - the engine the Compose screens talk to (WebViewTransport, `foleviEngineHost` / `foleviEngineReply`);
+// - the note page they show (MainActivity lays it over the note pane);
+// - the page the host services serve (the Bridge: `window.foleviShell` and `window.foleviNative` from
+//   assets/folevi-bridge.js, answered by the Kotlin plugins moved from the Capacitor app).
+//
+// The export (apps/android/web, build-shell.mjs --platform android) is served from https://localhost, the origin
+// the Capacitor app used, with the SPA fallback the Mac and iPhone apps use: a path without an extension is
+// index.html and the client router takes it from there. Configuration changes are handled in place (the
+// manifest), so the view lives as long as its activity.
 package com.folevi.android.engine
 
 import android.annotation.SuppressLint
 import android.content.Context
-import android.content.Intent
-import android.graphics.Bitmap
 import android.graphics.Color
 import android.net.Uri
 import android.util.Log
 import android.view.ViewGroup
-import android.webkit.RenderProcessGoneDetail
-import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
 import android.webkit.WebView
-import android.webkit.WebViewClient
+import androidx.activity.ComponentActivity
 import androidx.webkit.WebViewAssetLoader
 import com.folevi.android.BuildConfig
+import com.folevi.android.FoleviApp
+import com.folevi.android.bridge.Bridge
+import com.folevi.android.web.BridgeScript
+import com.folevi.android.web.FoleviWebViewClient
+import com.folevi.android.web.Links
 import com.folevi.engine.transport.WebViewTransport
 import java.io.InputStream
+import org.json.JSONObject
 
-class PageView(context: Context, place: String?) {
-    /** The origin the page runs on (the export's, or a dev server's). */
-    val origin: String
-    private val startUrl: String
-    val webView: WebView = WebView(context)
+class PageView(private val activity: ComponentActivity, private val host: Host) {
+    /** What the page needs from its window (MainActivity). */
+    interface Host {
+        fun openBrowser(uri: Uri)
+        fun deliverLink(url: String)
+        /** The values the bridge script needs before the page's first render (BridgeScript). */
+        fun bootValues(): JSONObject
+    }
+
+    val webView: WebView = WebView(activity)
     val transport: WebViewTransport
+    val bridge: Bridge
+    private val script = BridgeScript(activity)
 
     init {
-        val devUrl = BuildConfig.PAGE_URL.takeIf { it.isNotBlank() }
-        startUrl = devUrl?.let { Uri.parse(it).buildUpon().path("/documents").build().toString() } ?: "https://$ASSET_HOST/documents"
-        origin = devUrl?.let { Uri.parse(it).let { u -> "${u.scheme}://${u.authority}" } } ?: "https://$ASSET_HOST"
-        configure(context)
-        val origins = setOf(origin)
-        WebViewTransport.installMarker(webView, place, origins)
+        configure()
+        val origins = setOf(APP_ORIGIN)
+        WebViewTransport.installMarker(webView, FoleviApp.instance.places.state.current, origins)
         transport = WebViewTransport(webView, origins)
+        bridge = Bridge(activity, webView, APP_ORIGIN)
+        Plugins.registerAll(bridge)
+        installScript()
     }
 
     @SuppressLint("SetJavaScriptEnabled")
-    private fun configure(context: Context) {
+    private fun configure() {
         webView.layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
         webView.setBackgroundColor(Color.TRANSPARENT)
+        webView.overScrollMode = WebView.OVER_SCROLL_NEVER
         with(webView.settings) {
             javaScriptEnabled = true
             domStorageEnabled = true
-            databaseEnabled = true
             allowFileAccess = false
             allowContentAccess = false
             mediaPlaybackRequiresUserGesture = true
+            setSupportZoom(false)
+            builtInZoomControls = false
+            displayZoomControls = false
+            // The text follows Android's font size, up to 150%.
+            textZoom = (activity.resources.configuration.fontScale * 100).toInt().coerceIn(85, 150)
             setSupportMultipleWindows(false)
         }
         WebView.setWebContentsDebuggingEnabled(BuildConfig.DEBUG)
         val loader = WebViewAssetLoader.Builder()
-            .setDomain(ASSET_HOST)
-            .addPathHandler("/", ExportHandler(context))
+            .setDomain("localhost")
+            .addPathHandler("/", ExportHandler(activity))
             .build()
-        webView.webViewClient = object : WebViewClient() {
-            override fun shouldInterceptRequest(view: WebView, request: WebResourceRequest): WebResourceResponse? = loader.shouldInterceptRequest(request.url)
-
-            override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
-                if (!request.isForMainFrame) return false
-                val url = request.url
-                if ("${url.scheme}://${url.authority}" == origin) return false
-                // Other sites open in the browser, never in the Page View.
-                if (url.scheme == "https" || url.scheme == "http" || url.scheme == "mailto") {
-                    runCatching { view.context.startActivity(Intent(Intent.ACTION_VIEW, url).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
+        val app = FoleviApp.instance
+        webView.webViewClient = FoleviWebViewClient(
+            appOrigin = APP_ORIGIN,
+            serviceOrigin = Links.originOf(BuildConfig.SERVICE_URL),
+            assets = { loader.shouldInterceptRequest(it) },
+            openBrowser = { host.openBrowser(it) },
+            deepLink = { host.deliverLink(it) },
+            files = com.folevi.android.library.LibraryFiles {
+                val lib = app.library
+                when (lib.kind) {
+                    "device" -> lib.deviceFs.root
+                    "dropbox" -> lib.mirror("dropbox").root
+                    "gdrive" -> lib.mirror("googleDrive").root
+                    else -> null
                 }
-                return true
-            }
-
-            override fun onPageStarted(view: WebView, url: String?, favicon: Bitmap?) {
-                transport.pageWillReload()
-            }
-
-            override fun onRenderProcessGone(view: WebView, detail: RenderProcessGoneDetail): Boolean {
-                Log.w(TAG, "the page's renderer ended (crash: ${detail.didCrash()}); reloading")
+            },
+            onStarted = { transport.pageWillReload() },
+            onGone = {
+                Log.w(TAG, "the page's renderer ended; reloading")
                 transport.renderProcessGone()
-                view.post { load() }
-                return true
-            }
-        }
+                webView.post { load() }
+            },
+        )
     }
 
-    fun load() = webView.loadUrl(startUrl)
+    /** The bridge script (with the Capacitor stand-in before it) for the next load, with fresh boot values. */
+    fun installScript() = script.install(webView, host.bootValues(), APP_ORIGIN, prelude = Bridge.STAND_IN)
+
+    fun load(path: String = "/documents") {
+        installScript()
+        webView.loadUrl("$APP_ORIGIN$path")
+    }
 
     fun destroy() {
         transport.detach()
+        bridge.destroy()
         (webView.parent as? ViewGroup)?.removeView(webView)
         webView.destroy()
     }
@@ -102,12 +124,11 @@ class PageView(context: Context, place: String?) {
         override fun handle(path: String): WebResourceResponse? {
             val clean = path.trimStart('/').substringBefore('?')
             val ext = clean.substringAfterLast('/', clean).substringAfterLast('.', "")
-            val candidates = if (ext.isEmpty()) listOf("index.html") else listOf(clean)
-            for (c in candidates) {
-                val stream = open("public/$c") ?: continue
-                return WebResourceResponse(mimeOf(c), if (mimeOf(c).startsWith("text/") || c.endsWith(".js")) "utf-8" else null, stream)
-            }
-            return WebResourceResponse("text/plain", "utf-8", 404, "Not Found", mapOf("x-content-type-options" to "nosniff"), null)
+            val file = if (ext.isEmpty()) "index.html" else clean
+            val stream = open("public/$file")
+                ?: return WebResourceResponse("text/plain", "utf-8", 404, "Not Found", mapOf("x-content-type-options" to "nosniff"), null)
+            val mime = mimeOf(file)
+            return WebResourceResponse(mime, if (mime.startsWith("text/") || mime.endsWith("json")) "utf-8" else null, stream)
         }
 
         private fun open(path: String): InputStream? = try {
@@ -137,7 +158,30 @@ class PageView(context: Context, place: String?) {
     }
 
     companion object {
-        const val ASSET_HOST = "appassets.androidplatform.net"
+        /** The page's origin: the Capacitor app's, so the bridge script, links and stored data line up. */
+        const val APP_ORIGIN = "https://localhost"
         private const val TAG = "FoleviPage"
+    }
+}
+
+/** The host services the page can call (the Capacitor app's MainActivity registered the same list). */
+object Plugins {
+    fun registerAll(bridge: Bridge) {
+        listOf(
+            com.folevi.android.web.ShellPlugin(),
+            com.folevi.android.auth.AuthPlugin(),
+            com.folevi.android.secure.SecretsPlugin(),
+            com.folevi.android.extras.NativePlugin(),
+            com.folevi.android.library.LibraryPlugin(),
+            com.folevi.android.cloud.CloudPlugin(),
+            com.folevi.android.ai.AiPlugin(),
+            com.folevi.android.host.NotifyPlugin(),
+            com.folevi.android.host.FilesPlugin(),
+            com.folevi.android.host.HttpPlugin(),
+            com.folevi.android.lock.LockPlugin(),
+            com.folevi.android.e2ee.E2eePlugin(),
+            com.folevi.android.web.PlacesPlugin(),
+        ).forEach { bridge.register(it) }
+        bridge.loadPlugins()
     }
 }

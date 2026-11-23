@@ -83,8 +83,8 @@ fun AppShell() {
         val stacks = Tab.entries.associateWith { rememberNavBackStack(it.root) }
         val stack = stacks.getValue(tab)
         val open: (Route) -> Unit = { r ->
-            // A note replaces the note on screen rather than piling up behind it.
-            if (r is NoteRoute && stack.lastOrNull() is NoteRoute) stack.removeAt(stack.lastIndex)
+            // A note (or page) replaces the one on screen rather than piling up behind it.
+            if ((r is NoteRoute || r is PageRoute) && (stack.lastOrNull() is NoteRoute || stack.lastOrNull() is PageRoute)) stack.removeAt(stack.lastIndex)
             stack.add(r)
         }
         val pick: (Tab) -> Unit = { t ->
@@ -102,7 +102,12 @@ fun AppShell() {
                         item(selected = t == tab, onClick = { pick(t) }, icon = { FoleviIcon(t.icon, null) }, label = { Text(t.label) })
                     }
                 },
-                layoutType = if (width == WidthClass.COMPACT) NavigationSuiteType.NavigationBar else NavigationSuiteType.NavigationRail,
+                // On a phone the bar steps away while a note is open (as on iPhone).
+                layoutType = when {
+                    width != WidthClass.COMPACT -> NavigationSuiteType.NavigationRail
+                    stack.lastOrNull() is NoteRoute || stack.lastOrNull() is PageRoute -> NavigationSuiteType.None
+                    else -> NavigationSuiteType.NavigationBar
+                },
             ) {
                 Content(stack, open, width, Modifier.fillMaxSize())
             }
@@ -116,7 +121,9 @@ private fun Content(stack: NavBackStack<NavKey>, open: (Route) -> Unit, width: W
     val strategy = rememberListDetailSceneStrategy<NavKey>()
     val session = LocalSession.current
     val scope = rememberCoroutineScope()
-    val showNew = stack.lastOrNull() !is NoteRoute || width != WidthClass.COMPACT
+    val top = stack.lastOrNull()
+    val showNew = (top !is NoteRoute && top !is PageRoute) || width != WidthClass.COMPACT
+    val back: (() -> Unit)? = if (width == WidthClass.COMPACT && stack.size > 1) ({ stack.removeAt(stack.lastIndex) }) else null
     Scaffold(
         modifier = modifier,
         containerColor = MaterialTheme.colorScheme.background,
@@ -147,7 +154,8 @@ private fun Content(stack: NavBackStack<NavKey>, open: (Route) -> Unit, width: W
                 entry<TasksRoute>(metadata = ListDetailSceneStrategy.listPane(detailPlaceholder = { NotePlaceholder() })) { TasksScreen(open) }
                 entry<CalendarRoute>(metadata = ListDetailSceneStrategy.listPane(detailPlaceholder = { NotePlaceholder() })) { CalendarScreen(open) }
                 entry<AiRoute> { AiScreen() }
-                entry<NoteRoute>(metadata = ListDetailSceneStrategy.detailPane()) { NoteScreen(it) }
+                entry<NoteRoute>(metadata = ListDetailSceneStrategy.detailPane()) { NoteScreen(it, back) }
+                entry<PageRoute>(metadata = ListDetailSceneStrategy.detailPane()) { WebPageScreen(it, back) }
             },
         )
     }

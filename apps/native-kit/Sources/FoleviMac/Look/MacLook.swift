@@ -49,8 +49,9 @@ public enum MacLook {
     /// owner, 2026-11-18). The sidebar's button, ⌘\ and View > Hide Sidebar hide it; so does Focus mode on a note.
     public static let sidebarWidth: CGFloat = pick(288, 300)
     /// The content card's margin on its trailing and bottom edges (the sidebar, or the margin when it's hidden, is
-    /// its leading edge; the strip its top).
-    public static let containerMargin: CGFloat = 8
+    /// its leading edge; the strip its top): 12 pt, the owner's Mac UI guide (docs/design/macloving-mac-ui.md,
+    /// carried to the iPad on 2026-11-23).
+    public static let containerMargin: CGFloat = 12
     public static let containerRadius: CGFloat = pick(12, 18)
     /// Where the sidebar's content starts, under the strip.
     public static let sidebarTop: CGFloat = pick(2, 4)

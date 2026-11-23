@@ -90,6 +90,24 @@ fun AppShell() {
         val pick: (Tab) -> Unit = { t ->
             if (t == tab) stacks.getValue(t).let { s -> while (s.size > 1) s.removeAt(s.lastIndex) } else tab = t
         }
+        val session = LocalSession.current
+        val context = androidx.compose.ui.platform.LocalContext.current
+        val scope = rememberCoroutineScope()
+        // A new window opened at a note starts there.
+        androidx.compose.runtime.LaunchedEffect(Unit) {
+            session.initialNote?.let { (id, title) -> session.initialNote = null; stacks.getValue(Tab.HOME).add(NoteRoute(id, title)) }
+        }
+        androidx.compose.runtime.DisposableEffect(stack, tab) {
+            session.shortcuts = Shortcuts(
+                newNote = { scope.launch { runCatching { session.client.command(Commands.noteCreate(open = false)) }.getOrNull()?.let { open(NoteRoute(it.id, "Untitled")) } } },
+                search = { tab = Tab.HOME; stacks.getValue(Tab.HOME).add(SearchRoute) },
+                settings = { tab = Tab.HOME; stacks.getValue(Tab.HOME).add(SettingsRoute) },
+                tab = { pick(it) },
+                back = { if (stack.size > 1) stack.removeAt(stack.lastIndex) },
+                newWindow = { openWindow(context) },
+            )
+            onDispose { session.shortcuts = null }
+        }
         if (width >= WidthClass.LARGE) {
             Row(Modifier.fillMaxSize()) {
                 Sidebar(tab, pick, onFolder = { id, name -> pick(Tab.HOME); stacks.getValue(Tab.HOME).let { s -> while (s.size > 1) s.removeAt(s.lastIndex); s.add(NotesRoute(NotesListView.FOLDER.value, name, folderId = id)) }; tab = Tab.HOME })
@@ -156,6 +174,8 @@ private fun Content(stack: NavBackStack<NavKey>, open: (Route) -> Unit, width: W
                 entry<AiRoute>(metadata = ListDetailSceneStrategy.listPane(detailPlaceholder = { NotePlaceholder() })) { AiHome(open) }
                 entry<AiChatRoute>(metadata = ListDetailSceneStrategy.detailPane()) { AiChatScreen(it, back) }
                 entry<SettingsRoute>(metadata = ListDetailSceneStrategy.listPane(detailPlaceholder = { NotePlaceholder() })) { SettingsScreen(open, back) }
+                entry<SharedRoute>(metadata = ListDetailSceneStrategy.listPane(detailPlaceholder = { NotePlaceholder() })) { SharedScreen(open, back) }
+                entry<ChangesRoute>(metadata = ListDetailSceneStrategy.listPane(detailPlaceholder = { NotePlaceholder() })) { ChangesScreen(open, back) }
                 entry<WebShowRoute>(metadata = ListDetailSceneStrategy.detailPane()) { WebShowScreen(it, back) }
                 entry<NoteRoute>(metadata = ListDetailSceneStrategy.detailPane()) { NoteScreen(it, back) }
                 entry<PageRoute>(metadata = ListDetailSceneStrategy.detailPane()) { WebPageScreen(it, back) }

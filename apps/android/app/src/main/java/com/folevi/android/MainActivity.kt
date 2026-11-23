@@ -69,6 +69,7 @@ class MainActivity : FragmentActivity(), PageView.Host {
         current = java.lang.ref.WeakReference(this)
         val demo = BuildConfig.DEBUG && intent.getBooleanExtra("demo", false) && DemoEngine.available(this)
         session = AppSession(this, lifecycleScope, demo, host = this)
+        intent.getStringExtra(EXTRA_NOTE)?.let { session.initialNote = it to (intent.getStringExtra(EXTRA_TITLE) ?: "") }
 
         val root = FrameLayout(this)
         val compose = ComposeView(this)
@@ -107,6 +108,21 @@ class MainActivity : FragmentActivity(), PageView.Host {
         session.start()
         adoptLegacySession()
         handleIntent(intent)
+    }
+
+    /** Folevi's shortcuts first; Ctrl+F and Ctrl+K stay the editor's while a note has the keyboard. */
+    override fun dispatchKeyEvent(event: android.view.KeyEvent): Boolean {
+        val typingInNote = session.page?.webView?.hasFocus() == true
+        val k = event.keyCode
+        val editorKeys = k == android.view.KeyEvent.KEYCODE_F || k == android.view.KeyEvent.KEYCODE_K || k == android.view.KeyEvent.KEYCODE_LEFT_BRACKET
+        if (!(typingInNote && editorKeys) && session.shortcuts?.handle(androidx.compose.ui.input.key.KeyEvent(event)) == true) return true
+        return super.dispatchKeyEvent(event)
+    }
+
+    /** The shortcuts in Android's keyboard shortcuts helper (Meta + /). */
+    override fun onProvideKeyboardShortcuts(data: MutableList<android.view.KeyboardShortcutGroup>, menu: android.view.Menu?, deviceId: Int) {
+        super.onProvideKeyboardShortcuts(data, menu, deviceId)
+        data.add(com.folevi.android.ui.Shortcuts.helperGroup())
     }
 
     /** Lays the Page View over the note pane (or hides it, still running, when no note is on screen). */
@@ -410,6 +426,9 @@ class MainActivity : FragmentActivity(), PageView.Host {
         @Volatile var current: java.lang.ref.WeakReference<MainActivity>? = null
 
         const val APP_ORIGIN = PageView.APP_ORIGIN
+        /** A new window's note (Desktop.kt openWindow). */
+        const val EXTRA_NOTE = "folevi.note"
+        const val EXTRA_TITLE = "folevi.title"
         const val CANVAS_LIGHT = 0xFFFAF6F3.toInt()
         const val CANVAS_DARK = 0xFF15110F.toInt()
 

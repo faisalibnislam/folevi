@@ -32,6 +32,12 @@ class AppSession(context: Context, private val scope: CoroutineScope, demo: Bool
     /** The screen the engine wants instead of the app; null once the app itself is on screen. */
     val gate: StateFlow<GateChangedEvent?> = _gate.asStateFlow()
 
+    /** The app's keyboard shortcuts (set by AppShell while the app is on screen). */
+    var shortcuts: com.folevi.android.ui.Shortcuts? = null
+
+    /** A note this window opens at (a new window from "Open in new window"). */
+    var initialNote: Pair<String, String>? = null
+
     /** Where the note page sits in the window (set by the note pane while it is on screen). */
     val noteSlot = mutableStateOf<Rect?>(null)
 

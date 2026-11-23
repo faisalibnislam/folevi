@@ -4,6 +4,7 @@ package com.folevi.android.ui
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -89,7 +90,7 @@ fun HomeScreen(open: (Route) -> Unit) {
             item { SectionTitle("Recent") }
             item {
                 LazyRow(contentPadding = PaddingValues(horizontal = 20.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    items(v.recents, key = { it.id }) { r -> NoteCard(r, onClick = { open(NoteRoute(r.id, r.title)) }, width = 220.dp) }
+                    items(v.recents, key = { it.id }) { r -> NoteActions(r, open) { m -> NoteCard(r, onClick = null, modifier = m, width = 220.dp) } }
                 }
             }
         }
@@ -103,15 +104,18 @@ fun HomeScreen(open: (Route) -> Unit) {
                 modifier = Modifier.clickable {
                     when (r.id) {
                         HomeRow.Id.NOTES -> open(NotesRoute(NotesListView.ALL.value, r.title))
-                        // The web draws these lists for now, in the note pane (its own router takes the route).
-                        else -> open(PageRoute(r.route, r.title))
+                        // Drafts are the notes in no folder (`unsorted`), as on iPhone.
+                        HomeRow.Id.DRAFTS -> open(NotesRoute(NotesListView.UNSORTED.value, r.title))
+                        HomeRow.Id.SHARED -> open(SharedRoute)
+                        HomeRow.Id.CHANGES -> open(ChangesRoute)
+                        HomeRow.Id.REVIEWS -> open(WebShowRoute("reviews", r.title))
                     }
                 },
             )
         }
         if (v.starred.rows.isNotEmpty()) {
             item { SectionTitle("Starred") }
-            items(v.starred.rows, key = { "s" + it.id }) { r -> NoteCard(r, onClick = { open(NoteRoute(r.id, r.title)) }, modifier = Modifier.padding(horizontal = 20.dp, vertical = 6.dp)) }
+            items(v.starred.rows, key = { "s" + it.id }) { r -> Box(Modifier.padding(horizontal = 20.dp, vertical = 6.dp)) { NoteActions(r, open) { m -> NoteCard(r, onClick = null, modifier = m) } } }
         }
         if (v.folders.isNotEmpty()) {
             item { SectionTitle("Folders") }
@@ -159,7 +163,7 @@ fun NotesScreen(route: NotesRoute, open: (Route) -> Unit) {
         ) {
             items(count = list.total, key = { i -> list.order.getOrNull(i - list.start) ?: "slot$i" }) { i ->
                 val row = list.rowAt(i)
-                if (row != null) NoteCard(row, onClick = { open(NoteRoute(row.id, row.title)) })
+                if (row != null) NoteActions(row, open) { m -> NoteCard(row, onClick = null, modifier = m) }
                 else Spacer(Modifier.height(120.dp))
             }
         }

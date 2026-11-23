@@ -18,7 +18,7 @@ data class NotesRoute(val view: String, val title: String, val folderId: String?
 @Serializable
 data class NoteRoute(val id: String, val title: String) : Route
 
-/** A web page in the note pane (Drafts, Shared, Changes, Reviews): the page routes itself to `route`. */
+/** A web page in the note pane: the page routes itself to `route` (native chrome mode draws notes only, so keep this for note routes). */
 @Serializable
 data class PageRoute(val route: String, val title: String) : Route
 
@@ -32,6 +32,12 @@ data class AiChatRoute(val id: String?, val first: String? = null) : Route
 
 @Serializable
 data object SettingsRoute : Route
+
+@Serializable
+data object SharedRoute : Route
+
+@Serializable
+data object ChangesRoute : Route
 
 @Serializable
 data object TasksRoute : Route

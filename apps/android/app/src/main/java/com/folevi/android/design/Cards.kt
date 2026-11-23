@@ -52,7 +52,7 @@ private val CardShape = RoundedCornerShape(18.dp)
 
 /** A note as a page card: title in the display face, a few lines of its text, its folder. */
 @Composable
-fun NoteCard(row: NoteRow, onClick: () -> Unit, modifier: Modifier = Modifier, width: Dp? = null) {
+fun NoteCard(row: NoteRow, onClick: (() -> Unit)?, modifier: Modifier = Modifier, width: Dp? = null) {
     val p = LocalPalette.current
     Column(
         modifier
@@ -61,7 +61,7 @@ fun NoteCard(row: NoteRow, onClick: () -> Unit, modifier: Modifier = Modifier, w
             .clip(CardShape)
             .background(p.surface)
             .border(1.dp, p.line, CardShape)
-            .clickable(onClick = onClick)
+            .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {

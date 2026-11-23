@@ -399,3 +399,56 @@ fun CalendarHome(open: (Route) -> Unit) {
         item { Spacer(Modifier.height(24.dp)) }
     }
 }
+
+// ---------------------------------------------------------------- Shared with me, Changes
+
+@Composable
+fun SharedScreen(open: (Route) -> Unit, onBack: (() -> Unit)?) {
+    val shared by rememberView(Views.sharedList())
+    val p = LocalPalette.current
+    LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 96.dp)) {
+        item { BigTitle("Shared with Me", navigation = onBack?.let { { BackButton(it) } }) }
+        val rows = shared.value?.rows
+        if (rows.isNullOrEmpty()) item { EmptyBox(if (rows == null) "Loading…" else "Notes people share with you show up here.") }
+        items(rows.orEmpty(), key = { it.id }) { r ->
+            ListItem(
+                headlineContent = { Text(r.title.ifEmpty { "Untitled" }, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                supportingContent = { Text(listOfNotNull(r.sharedBy.takeIf { it.isNotBlank() }, r.workspaceName, shortDate(r.sharedAt)).joinToString(" · "), color = p.inkFaint) },
+                leadingContent = { val icon = r.icon; if (icon != null) Text(icon) else FoleviIcon(WebIcon.USERS, null) },
+                colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                modifier = Modifier.clickable { open(NoteRoute(r.id, r.title)) },
+            )
+        }
+    }
+}
+
+@Composable
+fun ChangesScreen(open: (Route) -> Unit, onBack: (() -> Unit)?) {
+    val changes by rememberView(Views.changes())
+    val p = LocalPalette.current
+    LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 96.dp)) {
+        item { BigTitle("Changes", navigation = onBack?.let { { BackButton(it) } }) }
+        val v = changes.value
+        if (v == null || (v.notes.isEmpty() && v.proposals.isEmpty())) item { EmptyBox(if (v == null) "Loading…" else "What others change in your notes shows up here.") }
+        if (!v?.proposals.isNullOrEmpty()) item { SectionTitle("Suggested") }
+        items(v?.proposals.orEmpty(), key = { "p" + it.id }) { r ->
+            ListItem(
+                headlineContent = { Text(r.title) },
+                supportingContent = { Text("${r.sourceName} · ${r.summary}", color = p.inkFaint, maxLines = 2, overflow = TextOverflow.Ellipsis) },
+                leadingContent = { FoleviIcon(WebIcon.GIT_MERGE, null) },
+                colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                modifier = Modifier.clickable { r.noteId?.let { open(NoteRoute(it, r.title)) } },
+            )
+        }
+        if (!v?.notes.isNullOrEmpty()) item { SectionTitle("Edited") }
+        items(v?.notes.orEmpty(), key = { "n" + it.id }) { r ->
+            ListItem(
+                headlineContent = { Text(r.title.ifEmpty { "Untitled" }) },
+                supportingContent = { Text("${r.who} · ${r.counts} · ${shortDate(r.changedAt)}", color = p.inkFaint) },
+                leadingContent = { val icon = r.icon; if (icon != null) Text(icon) else FoleviIcon(WebIcon.FILE_DIFF, null) },
+                colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                modifier = Modifier.clickable { open(NoteRoute(r.id, r.title)) },
+            )
+        }
+    }
+}

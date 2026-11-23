@@ -1,6 +1,21 @@
 {
   "releases": [
     {
+      "version": "1.5.64",
+      "build": 79,
+      "released": "2026-11-22T08:28:24+06:00",
+      "type": "patch",
+      "summary": "Smoother scrolling through folders and notes on the Mac, and All folders on the iPhone opens the right screen.",
+      "improved": [
+        "Folder cards scroll from a picture, so a large folder grid and Home scroll with far fewer dropped frames on the Mac.",
+        "Note card shadows are drawn once and shared, so All Notes on the Mac drops about half as many frames while scrolling."
+      ],
+      "fixed": [
+        "On the iPhone, Home's Folders menu > All Folders opens the folders grid instead of All Notes."
+      ],
+      "tag": "v1.5.64"
+    },
+    {
       "version": "1.5.63",
       "build": 78,
       "released": "2026-11-21T15:28:49+06:00",

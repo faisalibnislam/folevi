@@ -47,9 +47,11 @@ enum Memory {
             if view.responds(to: clear) { view.perform(clear) }
         }
         Paths.dataStore.removeData(ofTypes: [WKWebsiteDataTypeMemoryCache], modifiedSince: .distantPast) {}
-        // The native side's own caches (card covers decoded, card line breaks): what shows asks again.
+        // The native side's own caches (card covers decoded, card line breaks, cards' pictures): what shows asks
+        // again.
         CoverFiles.shared.relieve()
         WebLineLayout.shared.relieve()
+        CardPictures.shared.relieve()
         lastRelief = ["level": level, "why": why, "at": Date().timeIntervalSince1970, "pages": pages, "runnersReleased": runners]
     }
 }

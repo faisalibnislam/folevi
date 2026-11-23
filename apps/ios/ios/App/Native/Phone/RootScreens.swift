@@ -214,6 +214,19 @@ final class ChangesScreenController: HostedScreen<AnyView> {
 
 }
 
+/// All folders (Home's Folders "…", a `/folders` link): the folders grid with its "…" (New folder, View as, Sort by).
+/// It pushed All notes before (21 November 2026).
+final class AllFoldersScreenController: HostedScreen<AnyView> {
+    init(model: AllFoldersModel, navigator: ScreenNavigator, feedback: ScreenFeedback) {
+        super.init(rootView: AnyView(AllFoldersScreen(model: model).phoneEnvironment(navigator, feedback)))
+        title = "All folders"
+        navigationItem.largeTitleDisplayMode = .never
+        navigationItem.rightBarButtonItem = barItem(AllFoldersTrailingItems(model: model).phoneEnvironment(navigator, nil))
+        tabBarRoom = PhoneTabsController.room
+    }
+
+}
+
 // MARK: - Tasks and Calendar (FoleviScreens, N10)
 
 /// A tab's root other than Home: its screen with the large title in its content, the avatar, and the pill with the

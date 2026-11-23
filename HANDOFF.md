@@ -2,7 +2,7 @@
 
 > Read this first if you are a Claude (or any agent) picking this project up, on this Mac or another one. Then read `CLAUDE.md`, `docs/HANDOFF.md` (the long handoff: unfinished branches, release detail, what the owner is waiting on) and `docs/claude-context/memory/MEMORY.md` (the owner's standing rules). Keep this file current: after every change to the project, update "Current state", "Next steps" and "Change log", and commit it.
 
-Last updated: 2026-11-21 (Folevi Core) · Written on: Faisal's MacBook Pro M5
+Last updated: 2026-11-21 · Written on: Faisal's MacBook Pro M5
 
 ## 1. What this is
 
@@ -246,18 +246,7 @@ The ones most likely to be broken:
 - Snapshot tests: re-record only your own snapshots; never clear `__Snapshots__` wholesale.
 - Give before/after screenshots for UI work and ask the owner with clear options when a decision is theirs.
 
-## 9. Current state (as of 2026-11-22)
-
-**Live: Folevi 1.5.63** (tag `v1.5.63`, PR 46 merged with PR 47 in it, `main` = `3258f12b`): Mac published (feed and
-DMG at folevi.com/download/mac show 1.5.63), iPhone and iPad uploaded to TestFlight. Vercel skipped the web build
-(Ignored Build Step: only native code changed), so the web is still 1.5.62's build. 1.5.63 carries PR 45's Liquid
-Glass motion pass, card strips that no longer clip their shadows, iPhone search at the foot above the keyboard, and
-Quick add's Task/Note in Foli AI's switch style. 1.5.62 (PR 44) shipped on all three before it. 1.5.60 and 1.5.61 are tags only (each was superseded before shipping; tags never move). 1.5.59
-(PR 43) shipped earlier the same day on all three.
-
-This session's wrangler login lives in the app's own `XDG_CONFIG_HOME` (not `~/.wrangler`); `npx wrangler whoami`
-there shows the account that owns `folevi-updates`. Decisions: `docs/claude-context/memory/tab-back-and-overview-2026-11-21.md`
-and `frosted-folders-decision-2026-11-20.md`.
+## 9. Current state (as of 2026-11-21)
 
 **Folevi Core (new app, in progress):** branch `claude/folevi-core-529dbe` (worktree
 `.claude/worktrees/folevi-core-529dbe`), `apps/mac-core`. A new, fully native macOS 26 app beside today's Folevi
@@ -278,6 +267,43 @@ Sparkle key (login Keychain, account `folevi-core`; the owner should back it up)
 and a design pass against MAC_NATIVE_LOOK.md done; sidebar picks now navigate, fresh, per the Back rule). Not
 checked: signing in to a real account in Core, iCloud/folder libraries, real drags by hand (drop zones,
 spring-loading, drag-out to Finder), Foli DNA on a library with links, notification actions from macOS.
+
+
+**Live: Folevi 1.5.63** (tag `v1.5.63`, PR 46 merged with PR 47 in it, `main` = `3258f12b`): Mac published (feed and
+DMG at folevi.com/download/mac show 1.5.63), iPhone and iPad uploaded to TestFlight. Vercel skipped the web build
+(Ignored Build Step: only native code changed), so the web is still 1.5.62's build. 1.5.63 carries PR 45's Liquid
+Glass motion pass, card strips that no longer clip their shadows, iPhone search at the foot above the keyboard, and
+Quick add's Task/Note in Foli AI's switch style. 1.5.62 (PR 44) shipped on all three before it. 1.5.60 and 1.5.61 are tags only (each was superseded before shipping; tags never move). 1.5.59
+(PR 43) shipped earlier the same day on all three.
+
+This session's wrangler login lives in the app's own `XDG_CONFIG_HOME` (not `~/.wrangler`); `npx wrangler whoami`
+there shows the account that owns `folevi-updates`. Decisions: `docs/claude-context/memory/tab-back-and-overview-2026-11-21.md`
+and `frosted-folders-decision-2026-11-20.md`.
+
+**Also in progress:** branch `claude/native-perf-pass` (worktree `.claude/worktrees/recursing-dijkstra-48aa7c`, off
+`main` at `d617d60b`, not released): a native performance pass, report in `docs/NATIVE_PERFORMANCE_2026-11-21.md`.
+Folder cards at rest are drawn once into a picture (`FoleviDesign/Web/CardPicture.swift`; live while hovered, on whole
+pixels, a capped cache let go on memory warnings, `FOLEVI_CARD_PICTURES=0` draws them live): a 60-folder Mac grid
+missed 321 to 347 of about 360 frames in a 3 s scroll, now 13 to 37; Home 52 to 166, now 0 to 11. Window captures
+match the live cards. Note cards are unchanged (pictures thrashed the cache on All notes); iPhone numbers need the
+owner's phone (the Simulator shows no difference).
+
+**Also in progress:** branch `claude/note-card-shadow-pictures` (off `claude/native-perf-pass`, so it carries PR 48;
+rebase onto `main` once PR 48 merges; not released): a note card's shadow (and a stack's sheets, a divider's tabs) is
+one shared picture per card size and look, and the card's face is drawn live and no longer flattened (the
+`drawingGroup` RenderBox redrew on every frame of a scroll was the real cost, more than the blurs). Mac All notes, 3 s
+scroll: 175 to 232 missed frames down to 67 to 135 in quiet alternating pairs (median of every run 296 to 197; the
+slowest 5% of frames 151 to 60 ms). Shadows match pixel for pixel in window captures; cards at fractional places
+round their words half a point differently (0.5 to 0.6% of pixels). Hover lifts the shadow as before. Report in
+`docs/NATIVE_PERFORMANCE_2026-11-21.md`.
+
+**Also in progress:** branch `claude/phone-all-folders-route` (not released): on the iPhone, Home's Folders "…" >
+All folders opened All notes. That Home and menu belong to the older UIKit phone frame (`PhoneFrameController`,
+`Native/Phone/`), which Debug builds run unless `FOLEVI_REBUILD=1` or the `folevi.rebuild` default is set; Release
+builds run the rebuild (`RebuildFrame`), where All folders is a row in More and already opened the grid. The old
+frame now pushes `AllFoldersScreenController` (the shared `AllFoldersScreen` with its "…": New folder, View as, Sort
+by). The Mac's `FrameNavigation` also sent `.allFolders` to Home; it now opens `/folders` (nothing on the Mac calls
+it today). Checked in the Simulator (iPhone 17 Pro, Debug, a fresh local library).
 
 **Also in progress:** branch `claude/liquid-glass-animations-b1d70e` (worktree
 `.claude/worktrees/liquid-glass-animations-b1d70e`, off `main` at `d752bb0d`, PR 45, not released): a Liquid Glass
@@ -359,13 +385,22 @@ account button should move past iPadOS's window buttons).
   time zone picker, Foli AI memory), then the owner tries it with a real account. Publishing
   (`apps/mac-core/scripts/publish.mjs`, R2 `folevi-updates` under `core/`) only with the owner's OK. The release
   build already carries iCloud (`iCloud.com.folevi`) on its Developer ID profile. Demo mode (`core.mjs launch --demo`) works again.
+- Folevi Core Debug with a fresh data folder (no places yet): the bundled dev web page fails at once with "The
+  operation is insecure" from its Convex WebSocket (seen 2026-11-22), so the first-run gates can't be walked in
+  Debug that way; a scratch "on this Mac" library never opens Convex and works. Check the dev bundle's Convex URL
+  against the app:// page's content security rules before a real-account test. `core.mjs cmd fakegate` shows a
+  gate screen from JSON instead.
+- `claude/phone-all-folders-route`: review and merge with the next release (Debug-only bug; no user-visible change in
+  Release builds).
 - Liquid Glass motion branch (`claude/liquid-glass-animations-b1d70e`): the owner's look on a real Mac and iPhone, then
   merge with the next release. Known left: the Mac's Foli AI chat closes at once, with no exit animation (its host
   view shrinks before SwiftUI can animate the chat out; older than this branch).
 0. On real devices: Back after Home's See all (Mac, iPad, web), Show All Tabs' Home picture, iPhone Home's folder
    and note strips (1.5.62).
 1. On a real iPhone, iPad and Mac with the owner's library: the note bar swap (1.5.56), Offline & sync's Download
-   everything now with an account (1.5.57), frosted folders' scrolling in long grids (1.5.58).
+   everything now with an account (1.5.57), frosted folders' scrolling in long grids (1.5.58; on
+   `claude/native-perf-pass` folder cards scroll from pictures, and on `claude/note-card-shadow-pictures` note cards'
+   shadows: compare with `FOLEVI_CARD_PICTURES=0` on the phone).
 2. iPad audit leftovers (found 2026-11-19, not fixed): the tab strip leaves a cut-off empty slot at its start once
    the tabs overflow; database table rows are far too tall on iPad (cause not found: inspect the note page); note
    text cuts off hard at the card's top on scroll. Unprofiled speed ideas: card line layout re-measured at every
@@ -384,11 +419,6 @@ account button should move past iPadOS's window buttons).
    files in `apps/native-kit/Tests/FoleviScreensTests/__Snapshots__` (the tests pass; those are old diffs).
 
 ## 11. Gotchas
-- Folevi Core Debug with a fresh data folder (no places yet): the bundled dev web page fails at once with "The
-  operation is insecure" from its Convex WebSocket (seen 2026-11-22), so the first-run gates can't be walked in
-  Debug that way; a scratch "on this Mac" library never opens Convex and works. Check the dev bundle's Convex URL
-  against the app:// page's content security rules before a real-account test. `core.mjs cmd fakegate` shows a
-  gate screen from JSON instead.
 
 - `docs/HANDOFF.md` sections 1 to 8 are from 24 October (1.0.04, the `native-app-snapshot` branch, Capacitor-era
   work; the native rebuild has since shipped on `main`): use them for history, the owner's open items and release
@@ -442,6 +472,9 @@ account button should move past iPadOS's window buttons).
 - 2026-11-21: Folevi Core: the Vault complete, Quick Add parity, Foli AI chat details and a floating Ask Foli AI panel (⌘J), search and palette, Settings in today's order with a Library pane, About and Support, sidebar details; ready follows the engine client (no more stuck starting screen); PARITY.md recounted: 672 there, 301 partly, 160 missing, 210 n/a.
 - 2026-11-21: Folevi Core: draft PR 51; parity checklist (595 of 1,343 present, 343 partial, 195 missing, 210 n/a at first grading) and the first work packages closed (bugs, sharing, folder picker, tabs, task editor, calendar views); Developer ID release with iCloud verified (not notarized).
 - 2026-11-21: Folevi Core started in `apps/mac-core` (branch `claude/folevi-core-529dbe`): native app, release and publish scripts, tests, parity checklist. FoleviKit's demo engine is its own target `FoleviEngineDemo` (files unmoved, re-exported by FoleviMac).
+- 2026-11-21: Note cards' shadows as shared pictures, faces live and unflattened, on `claude/note-card-shadow-pictures` (Mac All notes 175-232 missed frames to 67-135); not released.
+- 2026-11-21: Native performance pass on `claude/native-perf-pass`: folder cards scroll from a picture (Mac Folders 321-347 missed frames to 13-37); report in `docs/NATIVE_PERFORMANCE_2026-11-21.md`; not released.
+- 2026-11-21: iPhone (old UIKit frame, Debug builds): Home's Folders "…" > All folders opens the folders grid, not All notes; the Mac's `.allFolders` route opens `/folders` instead of Home; on `claude/phone-all-folders-route`.
 - 2026-11-21: 1.5.63 released on Mac and TestFlight (PR 46 + 47 + PR 45's motion pass); the web build was skipped (native-only).
 - 2026-11-21: iPhone Home's folder strip no longer cuts its cards' shadow off in a straight line (`scrollClipDisabled`), on `claude/phone-strip-shadows`.
 - 2026-11-21: iPhone search's field and close button at the foot above the keyboard (iOS 26), chips just above it; Quick add's Task/Note switch matches Foli AI's Chat/Research, full width; on `claude/phone-search-bottom`.

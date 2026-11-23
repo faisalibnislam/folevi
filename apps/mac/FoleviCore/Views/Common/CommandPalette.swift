@@ -65,7 +65,6 @@ struct CommandPalette: View {
             .frame(width: 640)
             .glassEffect(.regular, in: .rect(cornerRadius: 18))
             .glassArrival()
-            .shadow(color: .black.opacity(0.18), radius: 30, y: 12)
             .padding(.top, 80)
         }
         .onAppear {

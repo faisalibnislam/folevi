@@ -251,7 +251,7 @@ struct HomeFolderCard: View {
         }
         .buttonStyle(CardPressStyle())
         .overlay(alignment: .topTrailing) {
-            if hoveringCard, let node {
+            if hoveringCard, !landing, let node {
                 Menu { FolderMenu(folder: node, window: window, rename: { renaming = $0 }, newSubfolder: { newSubfolderOf = $0 }) } label: {
                     Image(systemName: "ellipsis").frame(width: 24, height: 24)
                 }

@@ -189,13 +189,17 @@ struct ChatView: View {
                 proxy.scrollTo("bottom", anchor: .bottom)
             }
             .overlay(alignment: .bottom) {
-                if !atBottom && !messageList.isEmpty {
-                    Button { Motion.run(Motion.scroll) { proxy.scrollTo("bottom", anchor: .bottom) } } label: { Label("Jump to Latest", coreSymbol: "arrow.down") }
-                        .buttonStyle(.hoverPlain)
-                        .padding(.horizontal, 12).padding(.vertical, 6)
-                        .glassEffect(.regular.interactive(), in: .capsule)
-                        .padding(10)
+                ZStack {
+                    if !atBottom && !messageList.isEmpty {
+                        Button { Motion.run(Motion.scroll) { proxy.scrollTo("bottom", anchor: .bottom) } } label: { Label("Jump to Latest", coreSymbol: "arrow.down") }
+                            .buttonStyle(.hoverPlain)
+                            .padding(.horizontal, 12).padding(.vertical, 6)
+                            .glassEffect(.regular.interactive(), in: .capsule)
+                            .glassArrival(from: .bottom)
+                            .padding(10)
+                    }
                 }
+                .coreAnimation(Motion.bar, value: !atBottom && !messageList.isEmpty)
             }
         }
     }

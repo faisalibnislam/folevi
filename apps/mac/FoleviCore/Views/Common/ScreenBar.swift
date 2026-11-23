@@ -133,6 +133,23 @@ struct ScreenTopBar: View {
         .padding(.top, 14)
         .padding(.bottom, 10)
         .frame(height: WindowMetrics.barHeight)
+        .background(alignment: .top) { ScrollEdgeFade() }
+    }
+}
+
+/// The bar's soft scroll edge: content scrolling under the bar fades into the card, so the title and the glass
+/// controls stay legible. macOS draws its own scroll edge effect only under system toolbars, not under a bar a
+/// window draws itself, so the window draws this one (the system's soft style: no line, a fade).
+private struct ScrollEdgeFade: View {
+    var body: some View {
+        let card = Color(nsColor: .controlBackgroundColor)
+        LinearGradient(
+            stops: [.init(color: card, location: 0), .init(color: card.opacity(0.85), location: 0.55), .init(color: card.opacity(0), location: 1)],
+            startPoint: .top, endPoint: .bottom
+        )
+        .frame(height: WindowMetrics.barHeight + 16)
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
     }
 }
 
@@ -203,7 +220,8 @@ struct BarSearchField: View {
         .padding(.horizontal, 12)
         .frame(height: WindowMetrics.barControlHeight)
         .frame(minWidth: 170, idealWidth: 240, maxWidth: 280)
-        .glassEffect(.regular, in: .capsule)
+        .contentShape(Capsule())
+        .glassEffect(.regular.interactive(), in: .capsule)
         .onChange(of: window.filterFocus) { focused = true }
     }
 }
@@ -221,6 +239,7 @@ struct BarChoice<Value: Hashable>: View {
     @Binding var selection: Value
     let options: [Option]
     @Namespace private var space
+    @State private var hovered: Value?
 
     var body: some View {
         HStack(spacing: 0) {
@@ -240,11 +259,16 @@ struct BarChoice<Value: Hashable>: View {
                     .background {
                         if selected {
                             Capsule().fill(Color.primary.opacity(0.1)).matchedGeometryEffect(id: "selected", in: space)
+                        } else {
+                            Capsule().fill(Color(nsColor: .quaternaryLabelColor).opacity(hovered == option.value ? 0.7 : 0))
                         }
                     }
                     .contentShape(Capsule())
                 }
                 .buttonStyle(.plain)
+                .onHover { inside in
+                    if inside { hovered = option.value } else if hovered == option.value { hovered = nil }
+                }
                 .help(option.title)
                 .accessibilityLabel(option.title)
                 .accessibilityAddTraits(selected ? .isSelected : [])

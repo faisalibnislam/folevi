@@ -166,36 +166,38 @@ struct WindowCard: View {
 
     var body: some View {
         let shape = RoundedRectangle(cornerRadius: WindowMetrics.containerRadius, style: .continuous)
-        VStack(spacing: 0) {
-            // The bar's place: the bar itself is drawn over it from the screen's preference (below).
-            Color.clear.frame(height: WindowMetrics.barHeight)
-            HStack(spacing: 12) {
-                ScreenView(window: window)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .dropDestination(for: URL.self) { urls, _ in
-                        guard !window.current.isNote, urls.contains(where: FileImport.accepts) else { return false }
-                        FileImport.importFiles(urls, window: window)
-                        return true
-                    }
-                    .userActivity("com.folevi.note", isActive: window.current.isNote) { activity in
-                        // Handoff and the system's "continue" on another Mac: the note.
-                        guard let id = window.current.noteId else { return }
-                        activity.title = window.title
-                        activity.userInfo = ["id": id]
-                        activity.webpageURL = NoteActions.webURL(id)
-                        activity.isEligibleForHandoff = true
-                    }
-                if window.inspectorShown {
-                    // The inspector: a flat rounded panel inside the card (no glass, no shadow), its width reserved
-                    // in the layout so it never covers the screen.
-                    Inspector(window: window)
-                        .frame(width: WindowMetrics.inspectorWidth)
-                        .frame(maxHeight: .infinity)
-                        .background(Color(nsColor: .quaternaryLabelColor).opacity(0.6), in: RoundedRectangle(cornerRadius: WindowMetrics.inspectorRadius, style: .continuous))
-                        .clipShape(RoundedRectangle(cornerRadius: WindowMetrics.inspectorRadius, style: .continuous))
-                        .padding([.trailing, .bottom], 12)
-                        .transition(.move(edge: .trailing).combined(with: .opacity))
+        HStack(spacing: 12) {
+            ScreenView(window: window)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                // The bar's place, as a safe-area bar: a screen's scrolling content runs under the glass bar (glass
+                // needs something to refract; the bar's own soft edge keeps it legible). A split screen starts
+                // below it instead. The bar itself is drawn over it from the screen's preference (below).
+                .safeAreaBar(edge: .top, spacing: 0) { Color.clear.frame(height: window.current.isSplit ? 0 : WindowMetrics.barHeight) }
+                .padding(.top, window.current.isSplit ? WindowMetrics.barHeight : 0)
+                .dropDestination(for: URL.self) { urls, _ in
+                    guard !window.current.isNote, urls.contains(where: FileImport.accepts) else { return false }
+                    FileImport.importFiles(urls, window: window)
+                    return true
                 }
+                .userActivity("com.folevi.note", isActive: window.current.isNote) { activity in
+                    // Handoff and the system's "continue" on another Mac: the note.
+                    guard let id = window.current.noteId else { return }
+                    activity.title = window.title
+                    activity.userInfo = ["id": id]
+                    activity.webpageURL = NoteActions.webURL(id)
+                    activity.isEligibleForHandoff = true
+                }
+            if window.inspectorShown {
+                // The inspector: a flat rounded panel inside the card (no glass, no shadow), its width reserved
+                // in the layout so it never covers the screen.
+                Inspector(window: window)
+                    .frame(width: WindowMetrics.inspectorWidth)
+                    .frame(maxHeight: .infinity)
+                    .background(Color(nsColor: .quaternaryLabelColor).opacity(0.6), in: RoundedRectangle(cornerRadius: WindowMetrics.inspectorRadius, style: .continuous))
+                    .clipShape(RoundedRectangle(cornerRadius: WindowMetrics.inspectorRadius, style: .continuous))
+                    .padding([.trailing, .bottom], 12)
+                    .padding(.top, WindowMetrics.barHeight)
+                    .transition(.move(edge: .trailing).combined(with: .opacity))
             }
         }
         .coreAnimation(Motion.panel, value: window.inspectorShown)
@@ -297,7 +299,8 @@ struct WindowAccessor: NSViewRepresentable {
 
     final class AccessorView: NSView {
         weak var model: WindowModel?
-        private var tabBarWatch: NSKeyValueObservation?
+        private var tabBarWatch: [NSKeyValueObservation] = []
+        private weak var watchedGroup: NSWindowTabGroup?
         var asTab = false
         var keepsOpener = false
         var background = false
@@ -329,13 +332,21 @@ struct WindowAccessor: NSViewRepresentable {
             observers.forEach(center.removeObserver)
             observers = [
                 center.addObserver(forName: NSWindow.didBecomeKeyNotification, object: window, queue: .main) { [weak self] _ in
-                    MainActor.assumeIsolated { if let m = self?.model { AppModel.shared.becameFront(m) } }
+                    MainActor.assumeIsolated {
+                        if let m = self?.model { AppModel.shared.becameFront(m) }
+                        // A restored or merged tab can sit in a group other than the one first watched.
+                        self?.watchTabBar()
+                    }
                 },
                 center.addObserver(forName: NSWindow.didChangeOcclusionStateNotification, object: window, queue: .main) { [weak self] n in
                     MainActor.assumeIsolated {
                         guard let w = n.object as? NSWindow else { return }
                         self?.model?.setVisible(w.occlusionState.contains(.visible))
+                        self?.watchTabBar()
                     }
+                },
+                center.addObserver(forName: NSWindow.didBecomeMainNotification, object: window, queue: .main) { [weak self] _ in
+                    MainActor.assumeIsolated { self?.watchTabBar() }
                 },
                 center.addObserver(forName: NSWindow.willCloseNotification, object: window, queue: .main) { [weak self] _ in
                     MainActor.assumeIsolated { self?.model?.closed() }
@@ -345,12 +356,24 @@ struct WindowAccessor: NSViewRepresentable {
             watchTabBar()
         }
 
-        /// The tab bar comes and goes with the second tab; its group changes when tabs merge or move.
+        /// The tab bar comes and goes with the second tab; its group changes when tabs merge or move (a restored
+        /// tab included), so the group is watched again whenever it changes, and the state is read afresh whenever
+        /// the window becomes key, main or visible.
         private func watchTabBar() {
-            tabBarWatch = window?.tabGroup?.observe(\.isTabBarVisible, options: [.initial, .new]) { [weak self] group, _ in
-                let visible = group.isTabBarVisible
-                DispatchQueue.main.async { if self?.model?.tabBarVisible != visible { self?.model?.tabBarVisible = visible } }
+            if window?.tabGroup !== watchedGroup || tabBarWatch.isEmpty {
+                watchedGroup = window?.tabGroup
+                tabBarWatch = []
+                if let group = window?.tabGroup {
+                    tabBarWatch = [
+                        group.observe(\.isTabBarVisible, options: [.new]) { [weak self] _, _ in DispatchQueue.main.async { self?.watchTabBar() } },
+                        group.observe(\.windows, options: [.new]) { [weak self] _, _ in DispatchQueue.main.async { self?.watchTabBar() } },
+                    ]
+                }
             }
+            // Two tabs or more always show the bar; one tab shows it after View > Show Tab Bar.
+            let group = window?.tabGroup
+            let visible = (group?.isTabBarVisible ?? false) || (group?.windows.count ?? 1) > 1
+            if model?.tabBarVisible != visible { model?.tabBarVisible = visible }
         }
 
         override func viewDidMoveToSuperview() {

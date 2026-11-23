@@ -31,6 +31,7 @@ jobs:
           node packages/editor-schema/scripts/generate.mjs --check
           node packages/design-tokens/scripts/contrast.mjs
           node scripts/engine-codegen.mjs --check
+          node scripts/engine-codegen-kotlin.mjs --check
           node scripts/icons-codegen.mjs --check
       - name: Lint
         run: |

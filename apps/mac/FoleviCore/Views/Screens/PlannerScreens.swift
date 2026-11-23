@@ -89,12 +89,10 @@ struct TasksScreen: View {
                 SkeletonRows()
             }
         }
-        .searchable(text: $filter, placement: .toolbar, prompt: "Filter by Task or Page")
-        .searchFocused($filterFocused)
-        .onChange(of: window.filterFocus) { filterFocused = true }
-        .navigationSubtitle(facts)
-        .toolbar {
-            ToolbarItem(placement: .secondaryAction) {
+        .screenSearch(text: $filter, prompt: "Filter by Task or Page")
+        .screenSubtitle(facts)
+        .screenActions {
+            Group {
                 Button { window.quickAddShown = true } label: { Label("Add Task", coreSymbol: "plus") }.help("Add Task (⌘N)")
             }
         }
@@ -411,8 +409,8 @@ struct CalendarScreen: View {
         .sheet(isPresented: $adding) { AddCalendarSheet() }
         .sheet(isPresented: $feedShown) { CalendarFeedSheet() }
         .sheet(item: $editingTask) { TaskEditSheet(task: $0) }
-        .toolbar {
-            ToolbarItem(placement: .secondaryAction) {
+        .screenActions {
+            Group {
                 Button { calendarsShown = true } label: {
                     Label("Calendars", coreSymbol: "calendar.badge.plus")
                         .overlay(alignment: .topTrailing) { if hasError { Circle().fill(.red).frame(width: 7, height: 7).offset(x: 3, y: -2) } }

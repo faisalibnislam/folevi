@@ -10,6 +10,7 @@ import UniformTypeIdentifiers
 struct Sidebar: View {
     @Bindable var window: WindowModel
     private var app: AppModel { .shared }
+    @Environment(\.windowTabBarVisible) private var tabBarVisible
     @State private var expanded: Set<String> = []
     @State private var renaming: FolderNode?
     @State private var renamingTag: TagRow?
@@ -151,16 +152,20 @@ struct Sidebar: View {
             }
         }
         .listStyle(.sidebar)
+        // No surface of its own: the window's translucent material shows through, with no divider (the owner's
+        // main-window profile).
+        .scrollContentBackground(.hidden)
         // (More breathing room than the system's rows: the rows' own padding, about 32 pt as the owner's polish pass.)
         .safeAreaInset(edge: .top, spacing: 0) {
             PlaceMenu()
                 .padding(.horizontal, 10)
                 .padding(.bottom, 6)
+                // Below the traffic lights (the window has no title bar); the strip above moves the window.
+                .padding(.top, tabBarVisible ? 8 : WindowMetrics.trafficLightsInset - 6)
         }
         .safeAreaInset(edge: .bottom, spacing: 0) {
             SyncFooter()
         }
-        .navigationSplitViewColumnWidth(min: 200, ideal: 236, max: 340)
         .onAppear {
             expanded = Set(openFolders.split(separator: ",").map(String.init))
             revealCurrent()

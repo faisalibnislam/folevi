@@ -26,8 +26,8 @@ struct FoliAIScreen: View {
             .frame(minWidth: 420)
         }
         .task(id: search) { list.bind(app.client, Views.AiConversations(ChatConversationsArgs(space: nil, search: search.isEmpty ? nil : search))) }
-        .toolbar {
-            ToolbarItem(placement: .secondaryAction) {
+        .screenActions {
+            Group {
                 Button { window.go(.foliAI(nil)) } label: { Label("New Chat", coreSymbol: "plus.bubble") }.help("New Chat")
             }
         }
@@ -44,7 +44,10 @@ struct FoliAIScreen: View {
             }
         }
         .listStyle(.sidebar)
-        .searchable(text: $search, placement: .sidebar, prompt: "Search Chats")
+        .scrollContentBackground(.hidden)
+        .safeAreaInset(edge: .top, spacing: 0) {
+            InlineSearchField(text: $search, prompt: "Search Chats").padding(.horizontal, 12).padding(.vertical, 8)
+        }
     }
 
     private func row(_ c: ChatConversationRow) -> some View {
@@ -126,9 +129,9 @@ struct ChatView: View {
                 composer
             }
         }
-        .toolbar {
+        .screenActions {
             if let id = conversationId, let info = conversation.value?.conversation {
-                ToolbarItem(placement: .secondaryAction) {
+                Group {
                     Menu {
                         ConversationMenu(id: id, title: info.title, pinned: info.pinned, shared: info.shared, canShare: info.canShare, window: window, deleted: deleted)
                     } label: { Label("Conversation Options", coreSymbol: "ellipsis.circle") }

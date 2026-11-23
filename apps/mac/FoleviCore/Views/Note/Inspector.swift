@@ -19,12 +19,14 @@ struct Inspector: View {
 
     @ViewBuilder private var content: some View {
         VStack(spacing: 0) {
-            Picker("Inspector", selection: $window.inspectorTab) {
-                ForEach(WindowModel.InspectorTab.allCases) { Text($0.title).tag($0) }
-            }
-            .pickerStyle(.segmented)
-            .labelsHidden()
-            .padding(10)
+            // The tabs: a quiet capsule track near the panel's top, the selected tab a capsule inset 3 pt.
+            BarChoice(selection: $window.inspectorTab, options: WindowModel.InspectorTab.allCases.map { .init(value: $0, title: $0.title) })
+                .padding(.horizontal, 3)
+                .frame(height: WindowMetrics.barControlHeight)
+                .background(Capsule().fill(Color(nsColor: .quaternaryLabelColor).opacity(0.5)))
+                .padding(.horizontal, 12)
+                .padding(.top, 12)
+                .padding(.bottom, 8)
             switch window.inspectorTab {
             case .foliAI:
                 if let id = window.current.noteId {

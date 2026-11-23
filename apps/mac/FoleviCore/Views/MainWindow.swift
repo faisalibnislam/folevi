@@ -1,6 +1,9 @@
-// A Folevi Core window: a two-column split view (the sidebar and the screen), the toolbar with Back and Forward,
-// the screen's own items and New Note, an inspector on notes (Foli AI and the note's info), toasts at the foot,
-// and the engine's gates and the app lock over everything. Window tabs are macOS's own (⌘T, Show All Tabs).
+// A Folevi window, in the owner's main-window profile (docs/design/macloving-mac-ui.md, 23 November 2026): a
+// hidden title bar over one translucent surface (the sidebar and the margins, no divider), and one opaque rounded
+// card holding the screen. The card's top bar (Views/Common/ScreenBar.swift) has Back and Forward, the title, the
+// screen's actions, New Note and its search; the inspector (Foli AI and the note's info) is a flat rounded panel
+// inside the card. Toasts at the foot, the engine's gates and the app lock over everything. Window tabs are
+// macOS's own (⌘T, Show All Tabs).
 import AppKit
 import FoleviDesign
 import FoleviEngine
@@ -30,39 +33,24 @@ struct MainWindow: View {
                 // A gate is the whole window: no sidebar, no toolbar items until the engine is ready.
                 GateScreen(gate: gate)
                     .onAppear { window.window?.title = "Folevi" }
-                    .toolbar(removing: .sidebarToggle)
-                    .navigationTitle("Folevi")
+                    .background(.background)
                     .transition(.opacity)
             } else if app.gate?.gate == "loading" || (!app.ready && app.session.value == nil) {
                 StartingScreen()
-                    .navigationTitle("Folevi")
             } else {
-                NavigationSplitView(columnVisibility: $window.columnVisibility) {
-                    // The owner's rule: the sidebar is always there, with no hide button (Focus Mode on a note
-                    // still gives the page the whole width).
-                    Sidebar(window: window)
-                        .toolbar(removing: .sidebarToggle)
-                } detail: {
-                    ScreenView(window: window)
-                        .dropDestination(for: URL.self) { urls, _ in
-                            guard !window.current.isNote, urls.contains(where: FileImport.accepts) else { return false }
-                            FileImport.importFiles(urls, window: window)
-                            return true
-                        }
-                        .navigationTitle(window.title)
-                        .toolbar { WindowToolbar(window: window) }
-                        .userActivity("com.folevi.note", isActive: window.current.isNote) { activity in
-                            // Handoff and the system's "continue" on another Mac running Core: the note.
-                            guard let id = window.current.noteId else { return }
-                            activity.title = window.title
-                            activity.userInfo = ["id": id]
-                            activity.webpageURL = NoteActions.webURL(id)
-                            activity.isEligibleForHandoff = true
-                        }
-                }
-                .inspector(isPresented: $window.inspectorShown) {
-                    Inspector(window: window)
-                        .inspectorColumnWidth(min: 280, ideal: 340, max: 520)
+                GeometryReader { geo in
+                    HStack(spacing: 0) {
+                        // The owner's rule: the sidebar is always there, with no hide button (Focus Mode on a note
+                        // still gives the page the whole card).
+                        Sidebar(window: window)
+                            .frame(width: WindowMetrics.sidebarWidth)
+                        WindowCard(window: window)
+                    }
+                    // The content runs under the hidden title bar; with two tabs or more, macOS draws its tab bar
+                    // there, so everything starts below it (the safe area holds the title bar and the tab bar).
+                    .padding(.top, window.tabBarVisible ? geo.safeAreaInsets.top : 0)
+                    .environment(\.windowTabBarVisible, window.tabBarVisible)
+                    .ignoresSafeArea()
                 }
                 .overlay(alignment: .bottom) { ToastStack().padding(.bottom, window.current.isNote ? 78 : 0) }
                 .overlay(alignment: .bottomTrailing) {
@@ -114,7 +102,8 @@ struct MainWindow: View {
             app.saveWindowsSoon()
         }
         .onChange(of: window.listStyle) { restoredStyle = window.listStyle.rawValue }
-        .frame(minWidth: 800, minHeight: 480)
+        .frame(minWidth: 860, minHeight: 480)
+        .containerBackground(for: .window) { WindowMaterial() }
         .onChange(of: app.currentSpaceKey, initial: true) {
             // Each space keeps its own tabs (only the front window acts, once).
             if app.front == nil || app.front === window { app.spaceMaybeChanged() }
@@ -162,43 +151,61 @@ struct ScreenView: View {
         case .reviews: WebScreen(window: window, page: .reviews)
         case .catchUp: CatchUpScreen(window: window)
         case .graph: WebScreen(window: window, page: .graph)
-        case .note(let id): NoteScreen(window: window, id: id)
+        case .note(let id):
+            NoteScreen(window: window, id: id)
+                .screenLeading { NoteBarChip(window: window) }
+                .screenActions { NoteBarActions(window: window) }
         case .invite(let kind, let token): InviteScreen(window: window, kind: kind, token: token)
         }
     }
 }
 
-/// The window's toolbar: Back and Forward at the leading edge, then the screen's items; New Note at the end.
-struct WindowToolbar: ToolbarContent {
+/// The opaque rounded card: the top bar (from what the screen says), the screen, and the inspector panel.
+struct WindowCard: View {
     let window: WindowModel
-    private var app: AppModel { .shared }
 
-    var body: some ToolbarContent {
-        ToolbarItemGroup(placement: .navigation) {
-            ControlGroup {
-                Button { window.back() } label: { Label { Text("Back") } icon: { WebIcon.chevronLeft.image(size: 16) } }
-                    .disabled(!window.canGoBack)
-                    .help("Back")
-                Button { window.forward() } label: { Label { Text("Forward") } icon: { WebIcon.chevronRight.image(size: 16) } }
-                    .disabled(!window.canGoForward)
-                    .help("Forward")
+    var body: some View {
+        let shape = RoundedRectangle(cornerRadius: WindowMetrics.containerRadius, style: .continuous)
+        VStack(spacing: 0) {
+            // The bar's place: the bar itself is drawn over it from the screen's preference (below).
+            Color.clear.frame(height: WindowMetrics.barHeight)
+            HStack(spacing: 12) {
+                ScreenView(window: window)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .dropDestination(for: URL.self) { urls, _ in
+                        guard !window.current.isNote, urls.contains(where: FileImport.accepts) else { return false }
+                        FileImport.importFiles(urls, window: window)
+                        return true
+                    }
+                    .userActivity("com.folevi.note", isActive: window.current.isNote) { activity in
+                        // Handoff and the system's "continue" on another Mac: the note.
+                        guard let id = window.current.noteId else { return }
+                        activity.title = window.title
+                        activity.userInfo = ["id": id]
+                        activity.webpageURL = NoteActions.webURL(id)
+                        activity.isEligibleForHandoff = true
+                    }
+                if window.inspectorShown {
+                    // The inspector: a flat rounded panel inside the card (no glass, no shadow), its width reserved
+                    // in the layout so it never covers the screen.
+                    Inspector(window: window)
+                        .frame(width: WindowMetrics.inspectorWidth)
+                        .frame(maxHeight: .infinity)
+                        .background(Color(nsColor: .quaternaryLabelColor).opacity(0.6), in: RoundedRectangle(cornerRadius: WindowMetrics.inspectorRadius, style: .continuous))
+                        .clipShape(RoundedRectangle(cornerRadius: WindowMetrics.inspectorRadius, style: .continuous))
+                        .padding([.trailing, .bottom], 12)
+                        .transition(.move(edge: .trailing).combined(with: .opacity))
+                }
             }
-            .controlGroupStyle(.navigation)
         }
-        if window.current.isNote {
-            NoteToolbar(window: window)
+        .coreAnimation(Motion.panel, value: window.inspectorShown)
+        .overlayPreferenceValue(ScreenBarKey.self, alignment: .top) { spec in
+            ScreenTopBar(window: window, spec: spec)
         }
-        ToolbarItem(placement: .primaryAction) {
-            // New Note: the main app's black pill (white in dark mode), the one New Note in the window.
-            Button {
-                NoteActions.newNote(app: app, window: window)
-            } label: {
-                Label { Text("New Note") } icon: { WebIcon.plus.image(size: 14) }
-                    .labelStyle(.titleAndIcon)
-            }
-            .buttonStyle(InkPillStyle())
-            .help("New Note (⌘N)")
-        }
+        .background(Color(nsColor: .controlBackgroundColor), in: shape)
+        .clipShape(shape)
+        .shadow(color: .black.opacity(0.02), radius: 5, y: 1)
+        .padding([.top, .trailing, .bottom], WindowMetrics.containerMargin)
     }
 }
 
@@ -290,6 +297,7 @@ struct WindowAccessor: NSViewRepresentable {
 
     final class AccessorView: NSView {
         weak var model: WindowModel?
+        private var tabBarWatch: NSKeyValueObservation?
         var asTab = false
         var keepsOpener = false
         var background = false
@@ -334,6 +342,20 @@ struct WindowAccessor: NSViewRepresentable {
                 },
             ]
             if window.isKeyWindow { AppModel.shared.becameFront(model) }
+            watchTabBar()
+        }
+
+        /// The tab bar comes and goes with the second tab; its group changes when tabs merge or move.
+        private func watchTabBar() {
+            tabBarWatch = window?.tabGroup?.observe(\.isTabBarVisible, options: [.initial, .new]) { [weak self] group, _ in
+                let visible = group.isTabBarVisible
+                DispatchQueue.main.async { if self?.model?.tabBarVisible != visible { self?.model?.tabBarVisible = visible } }
+            }
+        }
+
+        override func viewDidMoveToSuperview() {
+            super.viewDidMoveToSuperview()
+            watchTabBar()
         }
 
         deinit { observers.forEach(NotificationCenter.default.removeObserver) }

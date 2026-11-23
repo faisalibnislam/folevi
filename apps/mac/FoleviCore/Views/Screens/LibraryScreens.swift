@@ -44,8 +44,8 @@ struct RecentScreen: View {
                 LoadingScreen()
             }
         }
-        .toolbar {
-            ToolbarItemGroup(placement: .secondaryAction) {
+        .screenActions {
+            Group {
                 ListStylePicker(window: window)
                 if (app.places.value?.places.count ?? 0) > 1 {
                     Toggle(isOn: $everywhere) { Label("Every Place", coreSymbol: "square.stack.3d.up") }
@@ -568,7 +568,7 @@ struct SharedScreen: View {
                 .listStyle(.inset)
             }
         }
-        .navigationSubtitle(facts)
+        .screenSubtitle(facts)
         .task(id: app.client.map(ObjectIdentifier.init)) {
             notes.bind(app.client, Views.SharedList())
             folders.bind(app.client, Views.SharedFolders())
@@ -755,9 +755,9 @@ struct ChangesScreen: View {
                     .sheet(isPresented: Binding(get: { diffNote != nil }, set: { if !$0 { diffNote = nil } })) {
                         if let id = diffNote { ChangeDiffSheet(noteId: id, window: window) }
                     }
-                    .navigationSubtitle(c.proposals.isEmpty && c.notes.isEmpty ? "Nothing new" : "\(c.proposals.count) proposed · \(c.notes.count) \(c.notes.count == 1 ? "note" : "notes") changed since you last looked")
-                    .toolbar {
-                        ToolbarItem(placement: .secondaryAction) {
+                    .screenSubtitle(c.proposals.isEmpty && c.notes.isEmpty ? "Nothing new" : "\(c.proposals.count) proposed · \(c.notes.count) \(c.notes.count == 1 ? "note" : "notes") changed since you last looked")
+                    .screenActions {
+                        Group {
                             Button("Mark All as Seen") {
                                 let ids = c.notes.map(\.id)
                                 app.perform { _ = try await $0.command(Commands.ChangesMarkSeen(NoteIdsArgs(ids: ids))) }
@@ -824,8 +824,8 @@ struct TemplatesScreen: View {
             Text("Your Templates").font(.subheadline.weight(.semibold)).foregroundStyle(.secondary).padding([.horizontal, .top], 24).padding(.bottom, 4)
             NoteListScreen(window: window, kind: .templates)
         }
-        .toolbar {
-            ToolbarItemGroup(placement: .secondaryAction) {
+        .screenActions {
+            Group {
                 if canGenerate {
                     Button { generating = true } label: { Label { Text("Generate with Foli AI…") } icon: { AiMarkGlyph(size: 15) } }
                         .help("Generate a template with Foli AI")
@@ -959,18 +959,15 @@ struct FoldersScreen: View {
                 SkeletonGrid()
             }
         }
-        .searchable(text: $filter, placement: .toolbar, prompt: "Filter Folders")
-        .searchFocused($filterFocused)
-        .onChange(of: window.filterFocus) { filterFocused = true }
-        .navigationSubtitle(subtitle)
-        .toolbar {
-            ToolbarItemGroup(placement: .secondaryAction) {
-                Picker("View", selection: $layout) {
-                    Label("Cards", coreSymbol: "square.grid.2x2").tag("grid")
-                    Label("List", coreSymbol: "list.bullet").tag("list")
-                    Label("Tree", coreSymbol: "list.bullet.indent").tag("tree")
-                }
-                .pickerStyle(.segmented).labelsHidden().help("View as Cards or List")
+        .screenSearch(text: $filter, prompt: "Filter Folders")
+        .screenSubtitle(subtitle)
+        .screenActions {
+            Group {
+                BarChoice(selection: $layout, options: [
+                    .init(value: "grid", title: "Cards", symbol: "square.grid.2x2"),
+                    .init(value: "list", title: "List", symbol: "list.bullet"),
+                    .init(value: "tree", title: "Tree", symbol: "list.bullet.indent"),
+                ])
                 Menu {
                     Picker("Sort By", selection: $sort) {
                         Text("Manually").tag("manual")
@@ -1268,10 +1265,10 @@ struct TagsScreen: View {
                 LoadingScreen()
             }
         }
-        .searchable(text: $filter, placement: .toolbar, prompt: "Filter Tags")
-        .navigationSubtitle(subtitle)
-        .toolbar {
-            ToolbarItem(placement: .secondaryAction) {
+        .screenSearch(text: $filter, prompt: "Filter Tags")
+        .screenSubtitle(subtitle)
+        .screenActions {
+            Group {
                 Menu {
                     Picker("Sort By", selection: $sort) {
                         Text("Name").tag("name")
@@ -1291,8 +1288,6 @@ struct TagsScreen: View {
             default: order = [KeyPathComparator(\.name)]
             }
         }
-        .searchFocused($filterFocused)
-        .onChange(of: window.filterFocus) { filterFocused = true }
         .task(id: app.client.map(ObjectIdentifier.init)) { tags.bind(app.client, Views.TagsIndex(TagsIndexArgs(space: nil))) }
     }
 

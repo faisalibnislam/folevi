@@ -27,7 +27,8 @@ struct FoleviCoreApp: App {
         } defaultValue: {
             WindowSeed(start: .home, asTab: false)
         }
-        .windowToolbarStyle(.unified)
+        // The owner's main-window profile: no title bar; each screen's bar sits inside the content card.
+        .windowStyle(.hiddenTitleBar)
         .defaultSize(width: 1280, height: 820)
         .commands { AppCommands(app: app) }
 

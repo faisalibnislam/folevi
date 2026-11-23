@@ -328,9 +328,9 @@ struct VaultItemDetail: View {
             }
         }
         .formStyle(.grouped)
-        .toolbar {
+        .screenActions {
             if let item {
-                ToolbarItemGroup {
+                Group {
                     Button("Earlier Versions") { history = true }
                     Button("Share…") { sharing = true }
                     if item.canChange {

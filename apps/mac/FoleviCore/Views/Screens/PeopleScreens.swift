@@ -40,14 +40,10 @@ struct NotificationsScreen: View {
                 SkeletonRows()
             }
         }
-        .navigationSubtitle(app.unread == 0 ? "Nothing unread" : "\(app.unread) unread")
-        .toolbar {
-            ToolbarItemGroup(placement: .secondaryAction) {
-                Picker("Show", selection: $unreadOnly) {
-                    Text("All").tag(false)
-                    Text("Unread").tag(true)
-                }
-                .pickerStyle(.segmented).labelsHidden().fixedSize()
+        .screenSubtitle(app.unread == 0 ? "Nothing unread" : "\(app.unread) unread")
+        .screenActions {
+            Group {
+                BarChoice(selection: $unreadOnly, options: [.init(value: false, title: "All"), .init(value: true, title: "Unread")])
                 Button("Mark All as Read") { app.perform { _ = try await $0.command(Commands.NotificationMarkAllRead()) } }
                     .disabled(app.unread == 0)
                 Button { SettingsRouter.shared.open("notifications") } label: { Label("Notification Settings", coreSymbol: "gearshape") }

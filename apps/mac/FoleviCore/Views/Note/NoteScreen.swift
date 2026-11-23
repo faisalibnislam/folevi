@@ -100,55 +100,59 @@ struct PageHostView: NSViewRepresentable {
     }
 }
 
-/// The note's toolbar items: the place chip (where the note lives), star, share, Foli AI and the inspector, the
-/// note's menu.
-struct NoteToolbar: ToolbarContent {
+/// The note's part of the window's bar: the place chip (where the note lives) before the title, then star, the
+/// note's menu and the inspector in one capsule.
+struct NoteBarChip: View {
     let window: WindowModel
-    private var app: AppModel { .shared }
 
-    var body: some ToolbarContent {
-        ToolbarItem(placement: .navigation) {
-            if let crumbs = window.noteMeta?.breadcrumbs, let folder = window.noteMeta?.folder {
+    var body: some View {
+        if let crumbs = window.noteMeta?.breadcrumbs, let folder = window.noteMeta?.folder {
+            BarGroup {
                 Menu {
                     Button("Open \(folder.name)") { window.go(.folder(folder.id)) }
                     ForEach(crumbs, id: \.id) { c in Button(c.title.nonEmpty ?? "Untitled") { window.go(.note(c.id)) } }
                 } label: {
-                    Label { Text(folder.name) } icon: { FolderMark(colorId: folder.color, size: 13) }
+                    Label { Text(folder.name).lineLimit(1) } icon: { FolderMark(colorId: folder.color, size: 13) }
                         .labelStyle(.titleAndIcon)
                 }
                 .help("Where this note is")
             }
+            .fixedSize()
         }
-        ToolbarItemGroup(placement: .primaryAction) {
-            if let id = window.current.noteId {
-                let starred = window.noteMeta?.starred ?? false
-                Button {
-                    app.perform { _ = try await $0.command(Commands.NoteStar(NoteStarArgs(ids: [id], starred: !starred))) }
-                    window.toggleStarLocally()
-                } label: {
-                    Label { Text(starred ? "Remove Bookmark" : "Bookmark") } icon: { (starred ? WebIcon.bookmarkOff : WebIcon.bookmark).image(size: 16) }
-                }
-                .help(starred ? "Remove Bookmark" : "Bookmark")
+    }
+}
 
-                Menu {
-                    NoteMoreMenu(window: window)
-                } label: {
-                    Label { Text("More") } icon: { WebIcon.ellipsis.image(size: 16) }
-                }
-                .help("More")
-            }
-        }
-        ToolbarItem(placement: .primaryAction) {
+struct NoteBarActions: View {
+    let window: WindowModel
+    private var app: AppModel { .shared }
+
+    var body: some View {
+        if let id = window.current.noteId {
+            let starred = window.noteMeta?.starred ?? false
             Button {
-                Motion.run(Motion.panel) {
-                    window.inspectorTab = .info
-                    window.inspectorShown.toggle()
-                }
+                app.perform { _ = try await $0.command(Commands.NoteStar(NoteStarArgs(ids: [id], starred: !starred))) }
+                window.toggleStarLocally()
             } label: {
-                Label { Text("Note Info") } icon: { WebIcon.info.image(size: 16) }
+                Label { Text(starred ? "Remove Bookmark" : "Bookmark") } icon: { (starred ? WebIcon.bookmarkOff : WebIcon.bookmark).image(size: 16) }
             }
-            .help(window.inspectorShown ? "Hide Note Info" : "Show Note Info")
+            .help(starred ? "Remove Bookmark" : "Bookmark")
+
+            Menu {
+                NoteMoreMenu(window: window)
+            } label: {
+                Label { Text("More") } icon: { WebIcon.ellipsis.image(size: 16) }
+            }
+            .help("More")
         }
+        Button {
+            Motion.run(Motion.panel) {
+                window.inspectorTab = .info
+                window.inspectorShown.toggle()
+            }
+        } label: {
+            Label { Text("Note Info") } icon: { WebIcon.info.image(size: 16) }
+        }
+        .help(window.inspectorShown ? "Hide Note Info" : "Show Note Info")
     }
 }
 

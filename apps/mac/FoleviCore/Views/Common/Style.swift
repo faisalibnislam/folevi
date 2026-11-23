@@ -179,6 +179,8 @@ extension Color {
 /// The main app's black pill (New Note, a sheet's main action): ink fill, the inverse for its text, a press dip
 /// and a hover.
 struct InkPillStyle: ButtonStyle {
+    /// A fixed height (the window bar's 36 pt controls); nil: the label's own with 6 pt above and below.
+    var height: CGFloat? = nil
     @State private var hovered = false
 
     func makeBody(configuration: Configuration) -> some View {
@@ -186,7 +188,8 @@ struct InkPillStyle: ButtonStyle {
             .font(.body.weight(.semibold))
             .foregroundStyle(Color.foleviOnInk)
             .padding(.horizontal, 14)
-            .padding(.vertical, 6)
+            .padding(.vertical, height == nil ? 6 : 0)
+            .frame(height: height)
             .background(Capsule().fill(Color.foleviInk.opacity(configuration.isPressed ? 0.8 : hovered ? 0.9 : 1)))
             .pressFeedback(configuration.isPressed)
             .onHover { hovered = $0 }

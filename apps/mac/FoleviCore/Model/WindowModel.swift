@@ -58,6 +58,8 @@ final class WindowModel: Identifiable {
     var colorPick: ColorPickTarget?
     /// ⌘F off a note on a screen with a filter: the filter takes the keyboard (screens watch this count).
     var filterFocus = 0
+    /// macOS shows the window's tab bar (two tabs or more): the window's content starts below it.
+    var tabBarVisible = false
     /// Move or copy to another place (notes, folders).
     var placeMove: PlaceMoveTarget?
     /// Edit > Find > Use Selection for Find: the words the find bar starts with.

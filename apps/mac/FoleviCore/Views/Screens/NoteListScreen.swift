@@ -54,10 +54,8 @@ struct NoteListScreen: View {
 
     var body: some View {
         content
-            .searchable(text: $filter, placement: .toolbar, prompt: "Filter \(title)")
-            .searchFocused($filterFocused)
-            .onChange(of: window.filterFocus) { filterFocused = true }
-            .toolbar { toolbar }
+            .screenSearch(text: $filter, prompt: "Filter \(title)")
+            .screenActions { toolbar }
             .task(id: spec.args) { list.bind(app.client, spec) }
             .task(id: folderId) {
                 if kind == .folder { subfolders.bind(app.client, Views.FoldersCards(FolderCardsArgs(space: nil, parentId: folderId, all: nil))) }
@@ -77,7 +75,7 @@ struct NoteListScreen: View {
                     app.perform { _ = try await $0.command(Commands.FolderCreate(FolderCreateArgs(space: nil, name: name, parentId: f.id, color: nil))) }
                 }
             }
-            .navigationSubtitle(subtitle)
+            .screenSubtitle(subtitle)
             .sheet(isPresented: Binding(get: { window.sharingFolder != nil && window.sharingFolder == folderId }, set: { if !$0 { window.sharingFolder = nil } })) {
                 if let folderId { FolderSharingSheet(folderId: folderId) }
             }
@@ -416,8 +414,8 @@ struct NoteListScreen: View {
         }
     }
 
-    @ToolbarContentBuilder private var toolbar: some ToolbarContent {
-        ToolbarItemGroup(placement: .secondaryAction) {
+    @ViewBuilder private var toolbar: some View {
+        Group {
             ListStylePicker(window: window)
             Menu {
                 Picker("Sort By", selection: $sortRaw) {
@@ -498,14 +496,11 @@ struct ListStylePicker: View {
     @Bindable var window: WindowModel
 
     var body: some View {
-        Picker("View", selection: $window.listStyle) {
-            Label("List", coreSymbol: "list.bullet").tag(WindowModel.ListStyleChoice.list)
-            Label("Cards", coreSymbol: "square.grid.2x2").tag(WindowModel.ListStyleChoice.cards)
-            Label("Compact Cards", coreSymbol: "square.grid.3x3").tag(WindowModel.ListStyleChoice.compact)
-        }
-        .pickerStyle(.segmented)
-        .labelsHidden()
-        .help("View as List, Cards or Compact Cards")
+        BarChoice(selection: $window.listStyle, options: [
+            .init(value: .list, title: "List", symbol: "list.bullet"),
+            .init(value: .cards, title: "Cards", symbol: "square.grid.2x2"),
+            .init(value: .compact, title: "Compact Cards", symbol: "square.grid.3x3"),
+        ])
     }
 }
 

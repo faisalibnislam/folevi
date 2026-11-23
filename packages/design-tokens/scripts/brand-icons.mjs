@@ -26,7 +26,7 @@ const here = dirname(fileURLToPath(import.meta.url));
 const brand = resolve(here, "../brand");
 const repo = resolve(here, "../../..");
 const web = resolve(repo, "apps/web/public");
-const macChrome = resolve(repo, "apps/mac/Folevi/Chrome");
+const macChrome = resolve(repo, "apps/mac/FoleviCore/Resources");
 // sharp ships with Next (apps/web); borrow it rather than adding a second copy.
 const fromWeb = createRequire(resolve(repo, "apps/web/package.json"));
 const sharp = createRequire(fromWeb.resolve("next/package.json"))("sharp");

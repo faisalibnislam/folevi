@@ -1,67 +1,42 @@
 #!/usr/bin/env node
-// Builds the release Folevi for Mac (docs/MAC_WEBKIT_PLAN.md §9.1): com.folevi.mac, Developer ID, hardened runtime,
-// iCloud and the Keychain group from the Developer ID profile, Sparkle inside, the production interface in
-// Resources/web. A DRY RUN BY DEFAULT: the build goes to a scratch folder and is checked; nothing is bumped, installed
-// or opened, and /Applications is never touched. Only the owner passes --install.
+// Builds a release of Folevi for direct download: the production web export inside the app, signed with the
+// team's Developer ID (hardened runtime, secure timestamp, Sparkle's helpers signed inside out), then a DMG with
+// an Applications link. Nothing is notarized or uploaded here: publish.mjs does that, and only the owner runs it.
 //
-//   node apps/mac/scripts/release.mjs [--out DIR] [--universal] [--launch-check] [--web DIR]   dry run (builders)
-//   node apps/mac/scripts/release.mjs --install [--universal]                       the owner's release
+//   node apps/mac/scripts/release.mjs [--universal] [--web DIR] [--out DIR] [--launch-check]
 //
-//   1. the version: version.json's (`node scripts/version.mjs release major|update|patch` at the repo root sets it,
-//      never this script), with its CHANGELOG.json entry; --install refuses a version that was released already (its
-//      mac-v<version> tag), since Sparkle needs a newer build
-//   2. the built-in interface, production build (apps/web build-shell.mjs --production, this app's version)
-//   3. XcodeGen, then `xcodebuild archive` (Release; arm64, or arm64 + x86_64 with --universal)
-//   4. Resources/web goes into the archived app, which is signed again (the outer bundle only, with the archive's
-//      own entitlements; Sparkle's nested code keeps Xcode's signatures)
-//   5. checks: the signature (deep, strict), Gatekeeper's view (unnotarized until publish.mjs), the entitlements
-//      (iCloud container, Keychain group, microphone, no JIT), the embedded profile, Resources/web's build.json,
-//      Sparkle (framework, feed, public key = the key in the login Keychain), the designated requirement the
-//      Electron app's Keychain item asks for (the migration reads it, R1), the architectures
-//   6. --launch-check: opens the build once on a scratch FOLEVI_USER_DATA (no updates, no migration of real data).
-//      Its folder, Keychain names and web storage are the run's own, but AppKit still keeps small window state in
-//      com.folevi.mac's preferences, which the installed Folevi shares: leave it off on the owner's Mac
-//   7. --install (owner only): replaces /Applications/Folevi.app (an Electron copy is kept as "Folevi (previous).app"),
-//      tags mac-v<version>, opens it
-// publish.mjs (owner only) notarizes, staples, makes the DMG and ZIP, signs the appcast and uploads.
+//   1. the version: version.json (one version for every Folevi app; Core shows the same number)
+//   2. the built-in interface, production build (apps/web build-shell.mjs --production --required)
+//   3. XcodeGen, then `xcodebuild archive` (Release; automatic signing, team 7K32QQ2FX8)
+//   4. Resources/web goes into the archived app; Sparkle's helpers and the app are signed again with Developer ID
+//   5. checks (signature, hardened runtime, entitlements, the export's target) and the DMG
 import { execFileSync, spawn, spawnSync } from "node:child_process";
 import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
-import { join, resolve } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { outOfSync, problems as versionProblems, readVersion } from "../../../scripts/version.mjs";
-import { MAC, generateProject } from "./project.mjs";
 
-export const TEAM = "7K32QQ2FX8";
+export const CORE = join(dirname(fileURLToPath(import.meta.url)), "..");
+const REPO = join(CORE, "../..");
+const TEAM = "7K32QQ2FX8";
+const DERIVED = join(CORE, "build/release-dd");
+export const SPARKLE_ACCOUNT = "folevi";
 export const BUNDLE_ID = "com.folevi.mac";
 export const PROFILE_NAME = "Folevi for Mac Developer ID iCloud";
-export const PROFILE_FILE = join(MAC, "signing", "Folevi.provisionprofile");
-export const SPARKLE_ACCOUNT = "folevi";
-export const FEED_URL = "https://folevi.com/download/mac/appcast.xml";
-/** The designated requirement both the Electron app (on Macs that ran it) and this one carry: the Keychain hands
- * Electron's safeStorage item to an app that meets it (R1), so the migration opens it without a prompt. */
-export const ELECTRON_REQUIREMENT = `identifier "${BUNDLE_ID}" and anchor apple generic and certificate 1[field.1.2.840.113635.100.6.2.6] /* exists */ and certificate leaf[field.1.2.840.113635.100.6.1.13] /* exists */ and certificate leaf[subject.OU] = "${TEAM}"`;
-const REPO = resolve(MAC, "../..");
-const DERIVED = join(MAC, "build", "DerivedData-release");
-export const sparkleBin = () => join(DERIVED, "SourcePackages", "artifacts", "sparkle", "Sparkle", "bin");
+export const PROFILE_FILE = join(CORE, "signing", "Folevi.provisionprofile");
+/** The designated requirement the AppKit Folevi (and the Electron app before it) carried: the Keychain hands
+ * Folevi's items (sign-ins, library keys) only to an app that meets it, so an update keeps them without a prompt. */
+export const REQUIREMENT = `identifier "${BUNDLE_ID}" and anchor apple generic and certificate 1[field.1.2.840.113635.100.6.2.6] /* exists */ and certificate leaf[field.1.2.840.113635.100.6.1.13] /* exists */ and certificate leaf[subject.OU] = "${TEAM}"`;
 
 const run = (cmd, args, o = {}) => execFileSync(cmd, args, { stdio: "inherit", maxBuffer: 256 * 1024 * 1024, ...o });
 const read = (cmd, args) => {
   const r = spawnSync(cmd, args, { encoding: "utf8", maxBuffer: 64 * 1024 * 1024 });
-  return { ok: r.status === 0, out: `${r.stdout ?? ""}${r.stderr ?? ""}` };
+  return { ok: r.status === 0, out: (r.stdout ?? "") + (r.stderr ?? "") };
 };
 
-/** Folevi's version and hidden build (version.json), once apps/mac/project.yml and the changelog say the same. */
 export function currentVersion() {
-  if (outOfSync().includes("apps/mac/project.yml")) throw new Error("apps/mac/project.yml doesn't say version.json's version and build: run node scripts/version.mjs sync.");
-  const found = versionProblems();
-  if (found.length) throw new Error(`Folevi's version isn't consistent (node scripts/version.mjs check):\n  ${found.join("\n  ")}`);
-  return readVersion();
-}
-
-/** Whether `version` was released from this Mac (release.mjs --install tags mac-v<version>). */
-export function released(version) {
-  return spawnSync("git", ["rev-parse", "--verify", "--quiet", `refs/tags/mac-v${version}`], { cwd: MAC, stdio: "ignore" }).status === 0;
+  const v = JSON.parse(readFileSync(join(REPO, "version.json"), "utf8"));
+  return { version: v.version, build: String(v.build) };
 }
 
 /** The Developer ID Application identity's SHA-1 in the login keychain. */
@@ -71,228 +46,169 @@ export function identity() {
   return m[1];
 }
 
-/** The profile's plist (security cms decodes it; a profile isn't secret). */
-export function profileInfo(file = PROFILE_FILE) {
-  const xml = execFileSync("security", ["cms", "-D", "-i", file], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] });
-  const tmp = join(mkdtempSync(join(tmpdir(), "folevi-profile-")), "p.plist");
-  writeFileSync(tmp, xml);
-  const get = (key) => read("/usr/libexec/PlistBuddy", ["-c", `Print :${key}`, tmp]).out.trim();
-  const info = { uuid: get("UUID"), name: get("Name"), expires: new Date(get("ExpirationDate")), appId: get("Entitlements:com.apple.application-identifier"), xml };
-  rmSync(join(tmp, ".."), { recursive: true, force: true });
-  return info;
+/** Sparkle's command line tools (generate_appcast, sign_update), from the package Xcode resolved. */
+export function sparkleBin(tool) {
+  for (const dd of [DERIVED, join(CORE, "build/dd")]) {
+    const p = join(dd, "SourcePackages/artifacts/sparkle/Sparkle/bin", tool);
+    if (existsSync(p)) return p;
+  }
+  throw new Error(`Sparkle's ${tool} isn't there yet: build once first.`);
 }
 
-/** Xcode finds a manual signing profile by name in its profiles folder: the committed one is put there (by UUID). */
+/** Xcode finds the manual signing profile by name in its profiles folder: the committed one is put there. */
 export function installProfile() {
-  const p = profileInfo();
+  const xml = execFileSync("security", ["cms", "-D", "-i", PROFILE_FILE], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] });
+  const dir = mkdtempSync(join(tmpdir(), "folevi-profile-"));
+  const tmp = join(dir, "p.plist");
+  writeFileSync(tmp, xml);
+  const get = (key) => read("/usr/libexec/PlistBuddy", ["-c", `Print :${key}`, tmp]).out.trim();
+  const p = { uuid: get("UUID"), name: get("Name"), expires: new Date(get("ExpirationDate")), appId: get("Entitlements:com.apple.application-identifier") };
+  rmSync(dir, { recursive: true, force: true });
   if (p.name !== PROFILE_NAME || p.appId !== `${TEAM}.${BUNDLE_ID}`) throw new Error(`signing/Folevi.provisionprofile is "${p.name}" for ${p.appId}`);
-  if (p.expires < new Date()) throw new Error(`The Developer ID profile expired on ${p.expires.toISOString().slice(0, 10)}: make a new one (docs/MAC_RELEASE.md).`);
-  const dir = join(homedir(), "Library", "Developer", "Xcode", "UserData", "Provisioning Profiles");
-  const target = join(dir, `${p.uuid}.provisionprofile`);
+  if (p.expires < new Date()) throw new Error(`The Developer ID profile expired on ${p.expires.toISOString().slice(0, 10)}.`);
+  const profiles = join(homedir(), "Library/Developer/Xcode/UserData/Provisioning Profiles");
+  const target = join(profiles, `${p.uuid}.provisionprofile`);
   if (!existsSync(target)) {
-    mkdirSync(dir, { recursive: true });
+    mkdirSync(profiles, { recursive: true });
     cpSync(PROFILE_FILE, target);
   }
   return p;
 }
 
-/** The Info.plist value of a bundle. */
-const plist = (app, key) => read("/usr/libexec/PlistBuddy", ["-c", `Print :${key}`, join(app, "Contents", "Info.plist")]).out.trim();
+export function buildRelease({ out, universal = false, version, build, web: given = null }) {
+  console.log("\n== the built-in interface, production build");
+  const web = given ?? join(out, "web");
+  if (!given) run("node", [join(REPO, "apps/web/scripts/build-shell.mjs"), "--production", "--required", "--dest", web, "--app-version", version], { cwd: join(REPO, "apps/web") });
 
-/** Launch Services notices bundles as they're written: a build outside /Applications must never answer folevi:// links. */
-export function unregister(...apps) {
-  const ls = "/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister";
-  for (const a of apps) if (existsSync(a)) spawnSync(ls, ["-u", a], { stdio: "ignore" });
+  console.log("\n== the archive");
+  const xcodegen = ["/opt/homebrew/bin/xcodegen", "/usr/local/bin/xcodegen"].find((p) => existsSync(p)) ?? "xcodegen";
+  run(xcodegen, ["generate", "--spec", join(CORE, "project.yml"), "--project", CORE, "--quiet"], { cwd: CORE });
+  const profile = installProfile();
+  console.log(`Signing with "${profile.name}" (${profile.uuid}), expires ${profile.expires.toISOString().slice(0, 10)}`);
+  const archive = join(out, "Folevi.xcarchive");
+  rmSync(archive, { recursive: true, force: true });
+  run("xcodebuild", ["-project", join(CORE, "FoleviCore.xcodeproj"), "-scheme", "FoleviCore", "-configuration", "Release", "-destination", "generic/platform=macOS", "-derivedDataPath", DERIVED,
+    "-archivePath", archive, `ARCHS=${universal ? "arm64 x86_64" : "arm64"}`, "ONLY_ACTIVE_ARCH=NO", `MARKETING_VERSION=${version}`, `CURRENT_PROJECT_VERSION=${build}`, "archive"], { cwd: CORE });
+  const archived = join(archive, "Products/Applications/Folevi.app");
+  if (!existsSync(archived)) throw new Error(`The archive has no ${archived}`);
+
+  console.log("\n== Resources/web, and the Developer ID signature");
+  const app = join(out, "Folevi.app");
+  rmSync(app, { recursive: true, force: true });
+  run("ditto", [archived, app]);
+  run("ditto", [web, join(app, "Contents/Resources/web")]);
+  const entitlements = join(out, "Folevi.entitlements.plist");
+  writeFileSync(entitlements, execFileSync("codesign", ["-d", "--entitlements", "-", "--xml", archived]));
+  const id = identity();
+  const sign = (path, ...extra) => existsSync(path) && run("codesign", ["--force", "--options", "runtime", "--timestamp", ...extra, "--sign", id, path]);
+  const sparkle = join(app, "Contents/Frameworks/Sparkle.framework");
+  if (existsSync(sparkle)) {
+    const b = join(sparkle, "Versions/B");
+    sign(join(b, "XPCServices/Installer.xpc"));
+    sign(join(b, "XPCServices/Downloader.xpc"), "--preserve-metadata=entitlements");
+    sign(join(b, "Autoupdate"));
+    sign(join(b, "Updater.app"));
+    sign(sparkle);
+  }
+  for (const f of read("find", [join(app, "Contents/Frameworks"), "-maxdepth", "1", "-name", "*.framework", "!", "-name", "Sparkle.framework"]).out.split("\n").filter(Boolean)) sign(f);
+  run("codesign", ["--force", "--options", "runtime", "--timestamp", "--entitlements", entitlements, "--sign", id, app]);
+  return app;
 }
 
-/** Every check of step 5; returns the problems (empty when the build is fit). */
-export function verify(app, { version, build, universal = false, notarized = false } = {}) {
+/** Checks a built app: its signature, hardened runtime, team, entitlements, version and built-in interface. */
+export function verify(app, { version, build, universal = false } = {}) {
   const problems = [];
   const notes = [];
   const sig = read("codesign", ["--verify", "--deep", "--strict", "--verbose=2", app]);
   if (!sig.ok) problems.push(`codesign --verify: ${sig.out.trim()}`);
   const details = read("codesign", ["-dv", "--verbose=4", app]).out;
-  if (!details.includes("Authority=Developer ID Application:") || !details.includes(`TeamIdentifier=${TEAM}`)) problems.push("not signed with the team's Developer ID Application certificate");
-  if (!/flags=0x10000\(runtime\)/.test(details)) problems.push("no hardened runtime");
-  if (!/Timestamp=/.test(details)) notes.push("no secure timestamp (notarization needs one; publish.mjs signs with it)");
-  const dr = read("codesign", ["-d", "-r-", app]).out;
-  const designated = /designated => (.*)/.exec(dr)?.[1]?.trim();
-  if (designated !== ELECTRON_REQUIREMENT) problems.push(`designated requirement differs from the Electron app's:\n    ${designated}\n    ${ELECTRON_REQUIREMENT}`);
-  // What the Keychain item's access list asks of the app reading it.
-  if (!read("codesign", ["--verify", `-R=${ELECTRON_REQUIREMENT}`, app]).ok) problems.push("doesn't meet the Electron app's designated requirement");
+  if (!details.includes("Authority=Developer ID Application")) problems.push("not signed with Developer ID Application");
+  if (!details.includes(`TeamIdentifier=${TEAM}`)) problems.push(`not team ${TEAM}`);
+  if (!/flags=.*runtime/.test(details)) problems.push("no hardened runtime");
+  if (!details.includes("Timestamp=")) problems.push("no secure timestamp");
+  const plist = (k) => read("/usr/libexec/PlistBuddy", ["-c", `Print :${k}`, join(app, "Contents/Info.plist")]).out.trim();
+  if (plist("CFBundleIdentifier") !== "com.folevi.mac") problems.push(`bundle id ${plist("CFBundleIdentifier")}`);
+  if (version && plist("CFBundleShortVersionString") !== version) problems.push(`version ${plist("CFBundleShortVersionString")}, expected ${version}`);
+  if (build && plist("CFBundleVersion") !== build) problems.push(`build ${plist("CFBundleVersion")}, expected ${build}`);
+  if (!plist("SUPublicEDKey") || plist("SUPublicEDKey").includes("$(")) problems.push("no SUPublicEDKey");
+  if (plist("SUFeedURL") !== "https://folevi.com/download/mac/appcast.xml") problems.push(`feed ${plist("SUFeedURL")}`);
+  const ent = read("codesign", ["-d", "--entitlements", "-", "--xml", app]).out;
+  if (ent.includes("com.apple.security.cs.allow-jit")) problems.push("JIT entitlement present");
+  if (ent.includes("get-task-allow")) problems.push("get-task-allow present (a development signature)");
+  if (!ent.includes("iCloud.com.folevi")) problems.push("no iCloud container (iCloud.com.folevi) in the entitlements");
+  if (!existsSync(join(app, "Contents/embedded.provisionprofile"))) problems.push("no embedded Developer ID profile");
+  if (!ent.includes(`${TEAM}.${BUNDLE_ID}`)) problems.push(`no Keychain group ${TEAM}.${BUNDLE_ID} in the entitlements`);
+  // The Keychain's access lists ask for the AppKit Folevi's designated requirement: this build must carry it.
+  const designated = /designated => (.*)/.exec(read("codesign", ["-d", "-r-", app]).out)?.[1]?.trim();
+  if (designated !== REQUIREMENT) problems.push(`designated requirement differs from Folevi's:\n    ${designated}\n    ${REQUIREMENT}`);
   const installed = "/Applications/Folevi.app";
   if (existsSync(installed)) {
     const theirs = /designated => (.*)/.exec(read("codesign", ["-d", "-r-", installed]).out)?.[1]?.trim();
     if (theirs && theirs !== designated) problems.push(`the installed Folevi's designated requirement is different (${theirs})`);
-    else if (theirs) notes.push("same designated requirement as the installed Folevi (its Keychain item accepts this build)");
+    else if (theirs) notes.push("same designated requirement as the installed Folevi (its Keychain items accept this build)");
   }
-  const gate = read("spctl", ["-a", "-t", "exec", "-vv", app]).out;
-  if (notarized ? !/source=Notarized Developer ID/.test(gate) : !/source=(Unnotarized|Notarized) Developer ID/.test(gate)) problems.push(`Gatekeeper: ${gate.trim()}`);
-  else notes.push(`Gatekeeper: ${/source=([^\n]*)/.exec(gate)?.[1] ?? gate.trim()}`);
-  const ent = read("codesign", ["-d", "--entitlements", "-", "--xml", app]).out;
-  for (const want of ["iCloud.com.folevi", `${TEAM}.com.folevi.mac`, "com.apple.security.device.audio-input", "CloudDocuments", "com.apple.developer.icloud-container-environment", `${TEAM}.${BUNDLE_ID}`]) {
-    if (!ent.includes(want)) problems.push(`entitlements lack ${want}`);
-  }
-  for (const banned of ["com.apple.security.cs.allow-jit", "com.apple.security.cs.allow-unsigned-executable-memory", "com.apple.security.app-sandbox", "get-task-allow"]) {
-    if (ent.includes(banned)) problems.push(`entitlements have ${banned}`);
-  }
-  const embedded = join(app, "Contents", "embedded.provisionprofile");
-  if (!existsSync(embedded)) problems.push("no embedded.provisionprofile");
-  else if (profileInfo(embedded).uuid !== profileInfo().uuid) problems.push("the embedded profile isn't signing/Folevi.provisionprofile");
-  if (plist(app, "CFBundleIdentifier") !== BUNDLE_ID) problems.push(`bundle id ${plist(app, "CFBundleIdentifier")}`);
-  if (version && plist(app, "CFBundleShortVersionString") !== version) problems.push(`Info.plist says ${plist(app, "CFBundleShortVersionString")}, version.json ${version}`);
-  // The hidden build number is what Sparkle compares (sparkle:version); the version is only shown.
-  if (build !== undefined && plist(app, "CFBundleVersion") !== String(build)) problems.push(`CFBundleVersion is ${plist(app, "CFBundleVersion")}, version.json's build ${build}`);
-  if (plist(app, "LSMinimumSystemVersion") !== "26.0") problems.push(`minimum macOS ${plist(app, "LSMinimumSystemVersion")}`);
-  // The built-in interface, production, for this version.
   try {
-    const info = JSON.parse(readFileSync(join(app, "Contents", "Resources", "web", "shell", "build.json"), "utf8"));
+    const info = JSON.parse(readFileSync(join(app, "Contents/Resources/web/shell/build.json"), "utf8"));
     if (info.target !== "production") problems.push(`Resources/web is a ${info.target} build`);
     if (info.convexUrl !== "https://fastidious-clownfish-123.convex.cloud") problems.push(`Resources/web talks to ${info.convexUrl}`);
-    if (info.siteUrl !== "https://app.folevi.com") problems.push(`Resources/web signs in at ${info.siteUrl}`);
-    if (info.platform !== "mac") problems.push(`Resources/web is for ${info.platform}`);
-    if (version && info.appVersion !== version) problems.push(`Resources/web was built for ${info.appVersion}, the app is ${version}`);
-    if (!existsSync(join(app, "Contents", "Resources", "web", "index.html"))) problems.push("Resources/web has no index.html");
-    notes.push(`Resources/web: production, ${info.convexUrl}, IndexedDB v${info.dbVersion}`);
+    notes.push(`Resources/web: ${info.target}, ${info.convexUrl}, built for ${info.appVersion}`);
   } catch {
     problems.push("Resources/web/shell/build.json is missing");
   }
-  // Sparkle.
-  const sparkle = join(app, "Contents", "Frameworks", "Sparkle.framework");
-  if (!existsSync(sparkle)) problems.push("no Sparkle.framework");
-  else if (!read("codesign", ["-dv", "--verbose=2", sparkle]).out.includes(`TeamIdentifier=${TEAM}`)) problems.push("Sparkle.framework isn't signed by the team");
-  if (plist(app, "SUFeedURL") !== FEED_URL) problems.push(`SUFeedURL is ${plist(app, "SUFeedURL")}`);
-  const pub = plist(app, "SUPublicEDKey");
-  const keychainPub = existsSync(join(sparkleBin(), "generate_keys")) ? read(join(sparkleBin(), "generate_keys"), ["-p", "--account", SPARKLE_ACCOUNT]).out.trim() : "";
-  if (!/^[A-Za-z0-9+/]{43}=$/.test(pub)) problems.push("SUPublicEDKey isn't an EdDSA public key");
-  else if (keychainPub && keychainPub !== pub) problems.push(`SUPublicEDKey isn't the login Keychain's Sparkle key (account ${SPARKLE_ACCOUNT})`);
-  else if (keychainPub) notes.push("SUPublicEDKey is the login Keychain's Sparkle key");
-  const archs = read("lipo", ["-archs", join(app, "Contents", "MacOS", plist(app, "CFBundleExecutable"))]).out.trim().split(/\s+/).sort().join(" ");
-  if (archs !== (universal ? "arm64 x86_64" : "arm64")) problems.push(`architectures: ${archs}`);
-  notes.push(`architectures: ${archs}`);
+  const archs = read("lipo", ["-archs", join(app, "Contents/MacOS/Folevi")]).out.trim();
+  if (archs !== (universal ? "x86_64 arm64" : "arm64") && archs !== (universal ? "arm64 x86_64" : "arm64")) problems.push(`architectures: ${archs}`);
   return { problems, notes };
 }
 
-/** Steps 2 to 5: the export, the archive, Resources/web, the signature; returns the app's path. */
-export function buildRelease({ out, universal = false, version, web: given = null }) {
-  console.log("\n== the built-in interface, production build");
-  const web = given ?? join(out, "web");
-  if (given) console.log(`Using the export in ${given} (checked with the app below)`);
-  else run("node", [join(REPO, "apps/web/scripts/build-shell.mjs"), "--production", "--required", "--dest", web, "--app-version", version], { cwd: join(REPO, "apps/web") });
-
-  console.log("\n== the archive");
-  const profile = installProfile();
-  console.log(`Signing with "${profile.name}" (${profile.uuid}), expires ${profile.expires.toISOString().slice(0, 10)}`);
-  const project = generateProject({ quiet: true });
-  const archive = join(out, "Folevi.xcarchive");
-  rmSync(archive, { recursive: true, force: true });
-  run("xcodebuild", ["-project", project, "-scheme", "Folevi", "-configuration", "Release", "-destination", "generic/platform=macOS", "-derivedDataPath", DERIVED,
-    "-archivePath", archive, `ARCHS=${universal ? "arm64 x86_64" : "arm64"}`, "ONLY_ACTIVE_ARCH=NO", "archive"], { cwd: MAC });
-  const archived = join(archive, "Products", "Applications", "Folevi.app");
-  if (!existsSync(archived)) throw new Error(`The archive has no ${archived}`);
-
-  console.log("\n== Resources/web, and the signature again");
-  const app = join(out, "Folevi.app");
-  rmSync(app, { recursive: true, force: true });
-  run("ditto", [archived, app]);
-  run("ditto", [web, join(app, "Contents", "Resources", "web")]);
-  const entitlements = join(out, "Folevi.entitlements.plist");
-  writeFileSync(entitlements, execFileSync("codesign", ["-d", "--entitlements", "-", "--xml", archived]));
-  // Sparkle's helpers arrive signed by Sparkle's own build: notarization needs each one signed with the team's
-  // Developer ID, the hardened runtime and a secure timestamp, from the inside out (Sparkle's documented order).
-  const sparkle = join(app, "Contents", "Frameworks", "Sparkle.framework");
-  if (existsSync(sparkle)) {
-    const b = join(sparkle, "Versions", "B");
-    const sign = (path, ...extra) => existsSync(path) && run("codesign", ["--force", "--options", "runtime", "--timestamp", ...extra, "--sign", identity(), path]);
-    sign(join(b, "XPCServices", "Installer.xpc"));
-    sign(join(b, "XPCServices", "Downloader.xpc"), "--preserve-metadata=entitlements");
-    sign(join(b, "Autoupdate"));
-    sign(join(b, "Updater.app"));
-    sign(sparkle);
-  }
-  run("codesign", ["--force", "--options", "runtime", "--timestamp", "--entitlements", entitlements, "--sign", identity(), app]);
-  // Xcode registers what it builds with Launch Services too: none of these copies may answer folevi:// links.
-  const built = spawnSync("find", [DERIVED, "-name", "Folevi.app", "-type", "d", "-prune"], { encoding: "utf8" }).stdout.split("\n").filter(Boolean);
-  unregister(archived, app, ...built);
-  return app;
-}
-
-/** Opens the build once on a scratch data folder and checks it keeps running. */
-async function launchCheck(app, out) {
-  const data = join(out, "launch-check");
-  mkdirSync(data, { recursive: true });
-  const exe = join(app, "Contents", "MacOS", plist(app, "CFBundleExecutable"));
-  const child = spawn(exe, [], { env: { ...process.env, FOLEVI_USER_DATA: data, FOLEVI_UPDATES: "off" }, stdio: "ignore" });
-  await new Promise((r) => setTimeout(r, 8000));
-  const alive = child.exitCode === null;
-  child.kill();
-  unregister(app);
-  return alive;
+/** A DMG with the app and an Applications link, signed (notarized later, by publish.mjs). */
+export function makeDmg(app, dmg) {
+  const stage = join(dirname(dmg), "dmg-stage");
+  rmSync(stage, { recursive: true, force: true });
+  mkdirSync(stage, { recursive: true });
+  run("ditto", [app, join(stage, "Folevi.app")]);
+  run("ln", ["-s", "/Applications", join(stage, "Applications")]);
+  rmSync(dmg, { force: true });
+  run("hdiutil", ["create", "-volname", "Folevi", "-srcfolder", stage, "-ov", "-format", "UDZO", dmg]);
+  run("codesign", ["--force", "--timestamp", "--sign", identity(), dmg]);
+  rmSync(stage, { recursive: true, force: true });
+  return dmg;
 }
 
 async function main() {
   const argv = process.argv.slice(2);
-  const install = argv.includes("--install");
-  const universal = argv.includes("--universal");
-  const outFlag = argv.indexOf("--out");
-  const out = resolve(outFlag >= 0 && argv[outFlag + 1] ? argv[outFlag + 1] : install ? join(MAC, "release") : mkdtempSync(join(tmpdir(), "folevi-mac-release-")));
-  mkdirSync(out, { recursive: true });
-  console.log("== the version");
+  const flag = (n) => argv.includes(n);
+  const value = (n) => (argv.indexOf(n) >= 0 ? argv[argv.indexOf(n) + 1] : null);
   const { version, build } = currentVersion();
-  if (install && released(version)) throw new Error(`Folevi ${version} was released already: give the next one a version first (node scripts/version.mjs release patch|update --summary ... --fixed ...).`);
-  console.log(`Folevi ${version} (build ${build}, never shown)`);
-
-  // --web <dir>: an export already made by build-shell.mjs --production --app-version <version> (dry runs only).
-  const webFlag = argv.indexOf("--web");
-  const web = !install && webFlag >= 0 && argv[webFlag + 1] ? resolve(argv[webFlag + 1]) : null;
-  const app = buildRelease({ out, universal, version, web });
-
-  console.log("\n== checks");
-  const { problems, notes } = verify(app, { version, build, universal });
-  for (const n of notes) console.log(`  ok  ${n}`);
-  if (argv.includes("--launch-check")) {
-    const alive = await launchCheck(app, out);
-    if (!alive) problems.push("the build quit within 8 seconds of opening");
-    else console.log("  ok  opens and keeps running (scratch data folder)");
-  }
-  writeFileSync(join(out, "checks.json"), `${JSON.stringify({ version, build, universal, problems, notes, at: new Date().toISOString() }, null, 2)}\n`);
+  const out = resolve(value("--out") ?? join(CORE, "release-dist", version));
+  mkdirSync(out, { recursive: true });
+  console.log(`== Folevi ${version} (build ${build}) into ${out}`);
+  const app = buildRelease({ out, universal: flag("--universal"), version, build, web: value("--web") });
+  const { problems, notes } = verify(app, { version, build, universal: flag("--universal") });
+  notes.forEach((n) => console.log("  " + n));
   if (problems.length) {
-    console.error(`\nThe build isn't fit to release:\n  ${problems.join("\n  ")}`);
+    console.error("\nProblems:\n  " + problems.join("\n  "));
     process.exit(1);
   }
-  if (!install) {
-    console.log(`\nDry run done, nothing installed or opened: ${out}\n  app     ${app}\n  checks  ${join(out, "checks.json")}`);
-    return;
-  }
-
-  console.log("\n== install (/Applications)");
-  const installed = "/Applications/Folevi.app";
-  spawnSync("osascript", ["-e", `if application id "${BUNDLE_ID}" is running then tell application id "${BUNDLE_ID}" to quit`], { stdio: "ignore" });
-  for (let i = 0; i < 60 && read("pgrep", ["-f", `${installed}/Contents/MacOS/`]).ok; i++) execFileSync("sleep", ["0.5"]);
-  if (read("pgrep", ["-f", `${installed}/Contents/MacOS/`]).ok) throw new Error("Folevi didn't quit: quit it and run this again.");
-  if (existsSync(installed)) {
-    const electron = existsSync(join(installed, "Contents", "Frameworks", "Electron Framework.framework"));
-    if (electron) {
-      // Kept until the owner says it can go (phase 3): opened once, it sends what it hadn't (docs/MAC_RELEASE.md).
-      const previous = "/Applications/Folevi (previous).app";
-      if (existsSync(previous)) spawnSync("osascript", ["-e", `tell application "Finder" to delete POSIX file "${previous}"`], { stdio: "ignore" });
-      run("mv", [installed, previous]);
-      console.log(`The Electron Folevi is kept as ${previous}.`);
-    } else {
-      spawnSync("osascript", ["-e", `tell application "Finder" to delete POSIX file "${installed}"`], { stdio: "ignore" });
-      if (existsSync(installed)) rmSync(installed, { recursive: true, force: true });
+  const dmg = makeDmg(app, join(out, `Folevi-${version}.dmg`));
+  if (flag("--launch-check")) {
+    const data = join(out, "launch-check");
+    mkdirSync(data, { recursive: true });
+    const child = spawn(join(app, "Contents/MacOS/Folevi"), [], { env: { ...process.env, FOLEVI_USER_DATA: data, FOLEVI_UPDATES: "off" }, stdio: "ignore" });
+    await new Promise((r) => setTimeout(r, 8000));
+    const alive = child.exitCode === null;
+    child.kill();
+    if (!alive) {
+      console.error("The release build quit within 8 seconds of launching.");
+      process.exit(1);
     }
+    console.log("  launch check: still running after 8 s");
   }
-  run("ditto", [app, installed]);
-  unregister(app);
-  spawnSync("git", ["tag", `mac-v${version}`], { cwd: MAC, stdio: "inherit" });
-  run("open", [installed]);
-  console.log(`Folevi ${version} is in /Applications (tagged mac-v${version}; commit apps/mac/project.yml if the version moved).`);
+  console.log(`\nBuilt and checked (not notarized): ${app}\nDMG: ${dmg}\nTo ship it: node apps/mac/scripts/publish.mjs (the owner runs it).`);
 }
 
 if (fileURLToPath(import.meta.url) === process.argv[1]) {
   main().catch((e) => {
-    console.error(e.message ?? e);
+    console.error(e.message);
     process.exit(1);
   });
 }

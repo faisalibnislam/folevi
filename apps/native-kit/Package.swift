@@ -52,7 +52,7 @@ let package = Package(
         ),
         // The scripted demo engine (sample notes, folders, tags, tasks; no account, no web export) for tests,
         // previews and screenshots. Its files stay in FoleviMac/Demo; FoleviMac re-exports it. Folevi Core
-        // (apps/mac-core) uses it for its demo mode and tests.
+        // (apps/mac) uses it for its demo mode and tests.
         .target(
             name: "FoleviEngineDemo",
             dependencies: ["FoleviEngine"],

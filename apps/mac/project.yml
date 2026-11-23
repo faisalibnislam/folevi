@@ -1,172 +1,186 @@
-# Folevi for Mac, the native app (AppKit + WKWebView, docs/MAC_WEBKIT_PLAN.md). XcodeGen spec: scripts/project.mjs
-# turns it into Folevi.xcodeproj (not committed). Add Swift files under Folevi/ and they're in; files shared with
-# the iPhone and iPad app are listed one by one below (a new iOS-only file there must never break this build).
-name: Folevi
+# Folevi for Mac: the fully native macOS 26 app (SwiftUI with AppKit where it matters), built as "Folevi Core" and
+# since 23 November 2026 the Mac app itself (the owner's choice): it replaces the AppKit Folevi as an update in
+# place, with that app's bundle id, name, data folder, Keychain names, URL scheme and Sparkle feed and key.
+# XcodeGen spec: scripts/project.mjs turns it into FoleviCore.xcodeproj (not committed).
+#
+# What it reuses, by path and never copied (README.md, "What Core shares"):
+#   - the shared sync engine and editor: the bundled web export (apps/web, build-shell.mjs) in native chrome mode,
+#     driven through FoleviEngine (apps/native-kit), the typed bridge generated from protocol.ts;
+#   - the data layer's native side: the shell services shared with the iPhone and iPad app (library, sign-in,
+#     keys, Foli AI on device, places) and the Mac host's UI-free plumbing (the app:// scheme, the message
+#     routers, places, background sync);
+#   - FoleviDesign for the fonts (Spectral, Instrument Sans), tokens and the folder and note glyphs.
+# Everything the person sees is Core's own (FoleviCore/).
+name: FoleviCore
 options:
   deploymentTarget:
     macOS: "26.0"
   createIntermediateGroups: true
   generateEmptyDirectories: true
   groupSortPosition: top
-# Sparkle 2 for updates (Updates/Updater.swift, docs/MAC_WEBKIT_PLAN.md §9), at an exact version.
 packages:
   Sparkle:
     url: https://github.com/sparkle-project/Sparkle
     exactVersion: 2.10.0
-  # The Swift shared with the iPhone and iPad app (docs/NATIVE_APP_PLAN.md section 6.1).
   FoleviKit:
     path: ../native-kit
 settings:
   base:
-    MARKETING_VERSION: "1.5.64"
-    CURRENT_PROJECT_VERSION: 79
+    # Folevi's one version (version.json); release.mjs passes version.json's at build time.
+    MARKETING_VERSION: "1.5.63"
+    CURRENT_PROJECT_VERSION: 78
     MACOSX_DEPLOYMENT_TARGET: "26.0"
     DEVELOPMENT_TEAM: 7K32QQ2FX8
-    # The shared iOS Swift is written for the Swift 5 language mode (as the iOS project builds it).
+    CODE_SIGN_STYLE: Automatic
+    # The shared host files are written for the Swift 5 language mode (as today's Mac app builds them).
     SWIFT_VERSION: "5.0"
     SWIFT_STRICT_CONCURRENCY: minimal
     ENABLE_HARDENED_RUNTIME: YES
     DEAD_CODE_STRIPPING: YES
     ENABLE_USER_SCRIPT_SANDBOXING: YES
 targets:
-  Folevi:
+  FoleviCore:
     type: application
     platform: macOS
     sources:
-      - path: Folevi
+      - path: FoleviCore
         excludes:
           - "Resources/Info.plist"
           - "Resources/*.entitlements"
-          - "Bridge/mac-bridge.js"
-      - path: Folevi/Bridge/mac-bridge.js
-        buildPhase: resources
-      # The app icon, the iPhone and iPad app's (Icon Composer files serve every platform).
+          - "Host/Shared/Bridge/*.js"
+      # The app icon: Folevi's own (the owner, 21 November 2026: keep the main app's coloured icon), the same Icon
+      # Composer file the iPhone, iPad and today's Mac app use.
       - path: ../ios/ios/App/App/AppIcon.icon
         group: Shared
-      # Shared with the iPhone and iPad app (apps/ios/ios/App/Native/Shell), by path, never copied, one by one
-      # (everything there but FoleviShellPlugin.swift, the Capacitor transport).
+      # The Mac host's UI-free plumbing (FoleviCore/Host/Shared, from the AppKit Folevi): the bridge scripts the
+      # pages load, as resources (the Swift files there build with the rest of FoleviCore).
+      - path: FoleviCore/Host/Shared/Bridge/mac-bridge.js
+        group: FoleviCore/Host/Shared/Bridge
+        buildPhase: resources
+      - path: FoleviCore/Host/Shared/Bridge/capabilities.js
+        group: FoleviCore/Host/Shared/Bridge
+        buildPhase: resources
+      # The shell services shared with the iPhone and iPad app (apps/ios/ios/App/Native/Shell), the same set
+      # today's Mac app builds (everything there but FoleviShellPlugin.swift, the Capacitor transport).
       - path: ../ios/ios/App/Native/Shell/E2eeKeys.swift
-        group: Shared
+        group: Shared/Shell
       - path: ../ios/ios/App/Native/Shell/EncryptedFS.swift
-        group: Shared
+        group: Shared/Shell
       - path: ../ios/ios/App/Native/Shell/Keychain.swift
-        group: Shared
+        group: Shared/Shell
       - path: ../ios/ios/App/Native/Shell/LibraryCrypto.swift
-        group: Shared
+        group: Shared/Shell
       - path: ../ios/ios/App/Native/Shell/LibraryFileHandler.swift
-        group: Shared
+        group: Shared/Shell
       - path: ../ios/ios/App/Native/Shell/LibraryFS.swift
-        group: Shared
+        group: Shared/Shell
       - path: ../ios/ios/App/Native/Shell/LibraryJournal.swift
-        group: Shared
+        group: Shared/Shell
       - path: ../ios/ios/App/Native/Shell/LibraryPaths.swift
-        group: Shared
+        group: Shared/Shell
       - path: ../ios/ios/App/Native/Shell/LibraryService.swift
-        group: Shared
+        group: Shared/Shell
       - path: ../ios/ios/App/Native/Shell/LibraryWatcher.swift
-        group: Shared
+        group: Shared/Shell
       - path: ../ios/ios/App/Native/Shell/Platform.swift
-        group: Shared
+        group: Shared/Shell
       - path: ../ios/ios/App/Native/Shell/ShellAI.swift
-        group: Shared
+        group: Shared/Shell
       - path: ../ios/ios/App/Native/Shell/ShellAuth.swift
-        group: Shared
+        group: Shared/Shell
       - path: ../ios/ios/App/Native/Shell/ShellCloud.swift
-        group: Shared
+        group: Shared/Shell
       - path: ../ios/ios/App/Native/Shell/ShellPlaces.swift
-        group: Shared
+        group: Shared/Shell
       - path: ../ios/ios/App/Native/Shell/ShellServices.swift
-        group: Shared
+        group: Shared/Shell
       - path: ../ios/ios/App/Native/Shell/shell-bridge.js
-        group: Shared
+        group: Shared/Shell
         buildPhase: resources
       - path: ../ios/ios/App/Native/Shell/folevi-cloud.js
-        group: Shared
+        group: Shared/Shell
         buildPhase: resources
       - path: ../ios/ios/App/Shared/SaveTargets.swift
-        group: Shared
+        group: Shared/Shell
       - path: ../ios/ios/App/Shared/DeviceCredential.swift
-        group: Shared
+        group: Shared/Shell
       - path: ../ios/ios/App/Shared/Folevi.swift
-        group: Shared
+        group: Shared/Shell
       - path: ../ios/ios/App/Shared/FoleviAPI.swift
-        group: Shared
+        group: Shared/Shell
       - path: ../ios/ios/App/Shared/LocalExtras.swift
-        group: Shared
+        group: Shared/Shell
     dependencies:
       - package: Sparkle
       - package: FoleviKit
         product: FoleviEngine
       - package: FoleviKit
         product: FoleviDesign
-      # N8: the native frame (and the shared screens it shows).
       - package: FoleviKit
-        product: FoleviScreens
-      - package: FoleviKit
-        product: FoleviMac
+        product: FoleviEngineDemo
     settings:
       base:
-        PRODUCT_MODULE_NAME: Folevi
-        INFOPLIST_FILE: Folevi/Resources/Info.plist
+        PRODUCT_MODULE_NAME: FoleviCore
+        INFOPLIST_FILE: FoleviCore/Resources/Info.plist
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
-        CODE_SIGN_STYLE: Manual
         LD_RUNPATH_SEARCH_PATHS: "$(inherited) @executable_path/../Frameworks"
         COMBINE_HIDPI_IMAGES: YES
+        ENABLE_APP_SANDBOX: NO
       configs:
-        # Development: its own bundle id, support folder, Keychain names and URL scheme (§3.2), so it never
-        # touches the installed app or its data. Signed with Apple Development (a stable signature, so its
-        # Keychain items open again after each rebuild without a prompt).
+        # Development: its own bundle id, support folder, Keychain names and URL scheme (CorePaths.swift), so it
+        # never touches the installed Folevi or its data.
         Debug:
           PRODUCT_BUNDLE_IDENTIFIER: com.folevi.mac.dev
           PRODUCT_NAME: Folevi Dev
           CODE_SIGN_IDENTITY: Apple Development
-          CODE_SIGN_ENTITLEMENTS: Folevi/Resources/FoleviDev.entitlements
+          CODE_SIGN_ENTITLEMENTS: FoleviCore/Resources/FoleviCoreDev.entitlements
           FOLEVI_URL_SCHEME: folevi-dev
-          # The development copy of the built-in interface (apps/mac/web, from build-shell.mjs).
           FOLEVI_DEV_SHELL_DIR: "$(SRCROOT)/web"
           SWIFT_ACTIVE_COMPILATION_CONDITIONS: "DEBUG $(inherited)"
         Release:
+          # Never change these: installed copies update in place only with this id (and the Keychain hands its
+          # items only to an app with this id, signed with the team's Developer ID).
           PRODUCT_BUNDLE_IDENTIFIER: com.folevi.mac
           PRODUCT_NAME: Folevi
+          # Developer ID with the committed profile (signing/Folevi.provisionprofile, installed by release.mjs), as the
+          # AppKit Folevi signed: iCloud and the Keychain group need it, and the Keychain hands Folevi's items only
+          # to an app with this id and the team's Developer ID.
+          CODE_SIGN_STYLE: Manual
           CODE_SIGN_IDENTITY: Developer ID Application
-          CODE_SIGN_ENTITLEMENTS: Folevi/Resources/Folevi.entitlements
-          # iCloud and the Keychain group need the Developer ID profile (apps/mac/signing, installed by release.mjs).
           PROVISIONING_PROFILE_SPECIFIER: Folevi for Mac Developer ID iCloud
+          CODE_SIGN_ENTITLEMENTS: FoleviCore/Resources/FoleviCore.entitlements
           OTHER_CODE_SIGN_FLAGS: "--timestamp"
           FOLEVI_URL_SCHEME: folevi
           FOLEVI_DEV_SHELL_DIR: ""
-  FoleviTests:
+  FoleviCoreTests:
     type: bundle.unit-test
     platform: macOS
     sources:
-      - path: FoleviTests
+      - path: FoleviCoreTests
     dependencies:
-      - target: Folevi
+      - target: FoleviCore
+      - package: FoleviKit
+        product: FoleviEngineDemo
     settings:
       base:
         GENERATE_INFOPLIST_FILE: YES
         PRODUCT_BUNDLE_IDENTIFIER: com.folevi.mac.dev.tests
         TEST_HOST: "$(BUILT_PRODUCTS_DIR)/Folevi Dev.app/Contents/MacOS/Folevi Dev"
         BUNDLE_LOADER: "$(TEST_HOST)"
-        CODE_SIGN_STYLE: Manual
-        CODE_SIGN_IDENTITY: Apple Development
+        SWIFT_VERSION: "6.0"
 schemes:
-  Folevi:
+  FoleviCore:
     build:
       targets:
-        Folevi: all
-        FoleviTests: [test]
+        FoleviCore: all
+        FoleviCoreTests: [test]
     run:
       config: Debug
-      environmentVariables:
-        FOLEVI_DEV_RUN: "1"
     test:
       config: Debug
       targets:
-        - FoleviTests
-      # The tests' own data folder (WM1): places.json, the library and the Keychain names are a run's own, never
-      # Folevi Dev's (Paths.swift).
+        - FoleviCoreTests
       environmentVariables:
         FOLEVI_USER_DATA: "$(PROJECT_DIR)/build/run/tests"
     archive:

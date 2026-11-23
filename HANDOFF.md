@@ -394,11 +394,23 @@ account button should move past iPadOS's window buttons).
 
 ## 10. Next steps / open work
 - Folevi for Mac (native, `apps/mac`, branch `claude/folevi-core-529dbe`), the owner's order of 2026-11-23:
-  1. Apply the owner's Mac UI guide (`docs/design/macloving-mac-ui.md`) as the **full window redesign**: hidden
-     title bar, an always-visible custom sidebar, an opaque rounded content card, and a glass top bar per screen,
-     plus the component rules. Keep Folevi's black and white ink, not the system accent. Then carry it to the iPad
-     layout (Mac and iPad).
-  2. Make one signed, notarized test DMG for the owner to try over the installed Folevi with real data.
+  1. Done 2026-11-23: the owner's Mac UI guide (`docs/design/macloving-mac-ui.md`) as the **full window
+     redesign**:
+     - hidden title bar
+     - an always-visible sidebar (still a List)
+     - an opaque rounded content card whose glass top bar is drawn from each screen's `.screenActions` /
+       `.screenSearch` / `.screenSubtitle` (`FoleviCore/Views/Common/ScreenBar.swift`)
+     - a flat rounded inspector panel and capsule choices
+     - Folevi's ink kept
+     - native window tabs kept (the content starts below macOS's tab bar when shown)
+
+     The iPad already had this profile; its card margin is now 12 pt. Not yet looked at on the iPad itself; its
+     layout tests pass.
+  2. Done 2026-11-23: a signed, notarized, stapled, universal test DMG at
+     `apps/mac/release-dist/test-1.5.64/Folevi-1.5.64.dmg` (git-ignored, in the Core worktree). It has the
+     production web build and the same designated requirement as the installed Folevi. The owner tries it over
+     the installed Folevi with real data. It says 1.5.64 like the live feed, so Sparkle offers no update; the
+     next real release must be 1.5.65 or later.
   3. Publish to the `mac/` feed only with the owner's OK. That update reaches every Mac user.
   4. Merge into `main` (pushing `main` deploys the website).
   5. The Mac App Store build: not now.
@@ -479,6 +491,7 @@ account button should move past iPadOS's window buttons).
   `DATABASE_UDF_USER_TIMEOUT_SECONDS=4` for that backend. Bursts show in `convex.log` as "took a long time".
 
 ## 12. Change log
+- 2026-11-23: Folevi for Mac: the owner's main-window profile (hidden title bar, sidebar, content card, glass top bar from each screen, flat inspector panel, capsule choices; ink kept, native tabs kept below the tab bar); iPad card margin 12 pt; a notarized test DMG built for the owner (1.5.64, not published).
 - 2026-11-23: Folevi for Mac: "Folevi Core" replaced the AppKit app as an update in place (same bundle id, data, Keychain, scheme, Sparkle feed and key, Developer ID profile); `apps/mac-core` became `apps/mac`; the AppKit app is at tag `archive/mac-appkit`; it takes over lock.json, Spotlight and the Electron migration; publish.mjs follows the AppKit flow (universal, changelog notes); LIST-053 drag gap and NOTE-036 Foli DNA of a note done (engine contract revision 34: `web.show` query); a dark-mode accent that kept selected rows unreadable fixed. Next: the full Macloving window redesign on Mac and iPad, then a test DMG.
 - 2026-11-22: Folevi Core: Liquid Glass motion pass: one named motion set (`Motion` in `Views/Common/CoreLook.swift`) taken from the family's FoleviSpring/WebMotion (the owner's playful springs: panels grow from what opened them with a visible overshoot, selection slides, bars arrive firmly, Mac presses darken and never scale), each with a Reduce Motion substitute; floating glass (toasts, selection bars, the Ask button, carousel arrows, the folder menu, the palette) materializes instead of fading, in containers that never merge stacked toasts; the Ask panel and palette animate the same from every way in (persistent animation contexts); presses dim instead of scaling with Reduce Motion.
 - 2026-11-22: Folevi Core: web screens made native where safe (library passphrase step, system Sign in with Apple button, Touch ID for encryption keys, test feed folder, ink primary gate buttons); two-step, workspace group, e2ee on/off and OAuth consent kept on the web on purpose; owner kept ⌘T, Open at login and native tabs (1,112 there, 6 partly); saved windows per data folder.

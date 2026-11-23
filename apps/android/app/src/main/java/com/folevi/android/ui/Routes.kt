@@ -22,6 +22,17 @@ data class NoteRoute(val id: String, val title: String) : Route
 @Serializable
 data class PageRoute(val route: String, val title: String) : Route
 
+/** One of the web's own pages the engine can show (`web.show`: settings pages, reviews, graph). */
+@Serializable
+data class WebShowRoute(val page: String, val title: String) : Route
+
+/** A Foli AI chat; `id` null is a new one, which sends `first` when it opens. */
+@Serializable
+data class AiChatRoute(val id: String?, val first: String? = null) : Route
+
+@Serializable
+data object SettingsRoute : Route
+
 @Serializable
 data object TasksRoute : Route
 
@@ -41,3 +52,6 @@ enum class Tab(val label: String, val icon: WebIcon, val root: Route) {
     CALENDAR("Calendar", WebIcon.CALENDAR, CalendarRoute),
     AI("Foli AI", WebIcon.SPARKLES, AiRoute),
 }
+
+/** Routes shown in the detail pane (beside the list on wider windows, full screen on a phone). */
+fun Route.isDetail(): Boolean = this is NoteRoute || this is PageRoute || this is WebShowRoute || this is AiChatRoute

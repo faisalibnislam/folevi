@@ -44,6 +44,16 @@ fun WebPageScreen(route: PageRoute, onBack: (() -> Unit)? = null) {
     PagePane(route.title, onBack, route.route)
 }
 
+/** One of the web's own pages (`web.show`), in the note pane. */
+@Composable
+fun WebShowScreen(route: WebShowRoute, onBack: (() -> Unit)? = null) {
+    val session = LocalSession.current
+    LaunchedEffect(route.page) {
+        com.folevi.engine.generated.WebPage.of(route.page)?.let { page -> runCatching { session.client.editor(EditorCommands.webShow(page = page)) } }
+    }
+    PagePane(route.title, onBack, route.page)
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun PagePane(title: String, onBack: (() -> Unit)?, key: String) {

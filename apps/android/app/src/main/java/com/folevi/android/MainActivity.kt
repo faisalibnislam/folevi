@@ -80,10 +80,18 @@ class MainActivity : FragmentActivity(), PageView.Host {
         setContentView(root)
 
         compose.setContent {
-            FoleviTheme {
-                CompositionLocalProvider(LocalSession provides session) {
-                    val gate by session.gate.collectAsState()
-                    val state by session.client.state.collectAsState()
+            CompositionLocalProvider(LocalSession provides session) {
+                val gate by session.gate.collectAsState()
+                val state by session.client.state.collectAsState()
+                // Settings > Appearance (the engine's), once the app is up; the system's until then.
+                val ready = state is EngineClient.State.Ready
+                val chosen = if (ready && !session.isDemo) com.folevi.android.ui.rememberView(com.folevi.engine.generated.Views.settingsAppearance()).value.value?.appearance else null
+                val dark = when (chosen) {
+                    com.folevi.engine.generated.AppearanceSettings.Appearance.LIGHT -> false
+                    com.folevi.engine.generated.AppearanceSettings.Appearance.DARK -> true
+                    else -> androidx.compose.foundation.isSystemInDarkTheme()
+                }
+                FoleviTheme(dark = dark) {
                     LaunchedEffect(Unit) { snapshotFlow { session.noteSlot.value }.collect { placePage(it) } }
                     Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).safeDrawingPadding()) {
                         val g = gate

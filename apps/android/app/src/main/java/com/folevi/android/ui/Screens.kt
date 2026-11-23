@@ -78,6 +78,7 @@ fun HomeScreen(open: (Route) -> Unit) {
         item {
             ScreenTitle(v?.spaceName?.takeIf { it.isNotBlank() } ?: "Home") {
                 androidx.compose.material3.IconButton(onClick = { open(SearchRoute) }) { FoleviIcon(WebIcon.SEARCH, "Search") }
+                androidx.compose.material3.IconButton(onClick = { open(SettingsRoute) }) { FoleviIcon(WebIcon.SETTINGS, "Settings") }
             }
         }
         if (v == null) {
@@ -196,73 +197,6 @@ fun SearchScreen(open: (Route) -> Unit) {
                     modifier = Modifier.clickable { open(NoteRoute(h.id, h.title)) },
                 )
             }
-        }
-    }
-}
-
-@Composable
-fun TasksScreen(open: (Route) -> Unit) {
-    TaskList("Tasks", TaskViewName.TODAY, open)
-}
-
-@Composable
-fun CalendarScreen(open: (Route) -> Unit) {
-    TaskList("Calendar", TaskViewName.UPCOMING, open)
-}
-
-@Composable
-private fun TaskList(title: String, view: TaskViewName, open: (Route) -> Unit) {
-    val tasks by rememberView(Views.tasksList(view = view))
-    val session = LocalSession.current
-    val scope = rememberCoroutineScope()
-    val p = LocalPalette.current
-    LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 96.dp)) {
-        item { ScreenTitle(title) }
-        val v = tasks.value
-        if (v == null || v.total == 0L) {
-            item { EmptyBox(if (v == null) "Loading…" else "Nothing due.") }
-        } else {
-            for (g in v.groups) {
-                item(key = "g" + g.id) { SectionTitle(g.title) }
-                items(g.tasks, key = { it.id }) { t ->
-                    ListItem(
-                        headlineContent = { Text(t.title) },
-                        supportingContent = { Text(listOfNotNull(t.noteTitle.takeIf { it.isNotBlank() }, t.dueDate, t.dueTime).joinToString(" · "), color = if (t.overdue) p.destructive else p.inkFaint) },
-                        leadingContent = {
-                            Checkbox(checked = t.status == "done", onCheckedChange = { on -> scope.launch { runCatching { session.client.command(Commands.taskUpdate(id = t.id, checked = on)) } } })
-                        },
-                        colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-                        modifier = Modifier.clickable { open(NoteRoute(t.noteId, t.noteTitle)) },
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
-fun AiScreen() {
-    val convos by rememberView(Views.aiConversations())
-    val p = LocalPalette.current
-    Column(Modifier.fillMaxSize()) {
-        ScreenTitle("Foli AI")
-        val v = convos.value
-        LazyColumn(Modifier.weight(1f), contentPadding = PaddingValues(bottom = 24.dp)) {
-            val rows = v?.pinned.orEmpty() + v?.recent.orEmpty()
-            if (rows.isEmpty()) item { EmptyBox("Ask Foli AI about your notes.") }
-            items(rows, key = { it.id }) { c ->
-                ListItem(
-                    headlineContent = { Text(c.title.ifEmpty { "New conversation" }) },
-                    supportingContent = { Text(shortDate(c.lastMessageAt), color = p.inkFaint) },
-                    leadingContent = { FoleviIcon(if (c.pinned) WebIcon.PIN else WebIcon.MESSAGE_CIRCLE, null) },
-                    colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-                )
-                HorizontalDivider(color = p.line)
-            }
-        }
-        val draft = rememberTextFieldState()
-        Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-            androidx.compose.material3.OutlinedTextField(state = draft, placeholder = { Text("Ask Foli AI") }, modifier = Modifier.weight(1f), lineLimits = androidx.compose.foundation.text.input.TextFieldLineLimits.SingleLine)
         }
     }
 }

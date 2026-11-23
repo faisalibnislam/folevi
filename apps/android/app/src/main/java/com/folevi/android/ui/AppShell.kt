@@ -84,7 +84,7 @@ fun AppShell() {
         val stack = stacks.getValue(tab)
         val open: (Route) -> Unit = { r ->
             // A note (or page) replaces the one on screen rather than piling up behind it.
-            if ((r is NoteRoute || r is PageRoute) && (stack.lastOrNull() is NoteRoute || stack.lastOrNull() is PageRoute)) stack.removeAt(stack.lastIndex)
+            if (r.isDetail() && stack.lastOrNull()?.let { it is Route && it.isDetail() } == true) stack.removeAt(stack.lastIndex)
             stack.add(r)
         }
         val pick: (Tab) -> Unit = { t ->
@@ -105,7 +105,7 @@ fun AppShell() {
                 // On a phone the bar steps away while a note is open (as on iPhone).
                 layoutType = when {
                     width != WidthClass.COMPACT -> NavigationSuiteType.NavigationRail
-                    stack.lastOrNull() is NoteRoute || stack.lastOrNull() is PageRoute -> NavigationSuiteType.None
+                    (stack.lastOrNull() as? Route)?.isDetail() == true -> NavigationSuiteType.None
                     else -> NavigationSuiteType.NavigationBar
                 },
             ) {
@@ -122,13 +122,13 @@ private fun Content(stack: NavBackStack<NavKey>, open: (Route) -> Unit, width: W
     val session = LocalSession.current
     val scope = rememberCoroutineScope()
     val top = stack.lastOrNull()
-    val showNew = (top !is NoteRoute && top !is PageRoute) || width != WidthClass.COMPACT
+    val showNew = ((top as? Route)?.isDetail() != true || width != WidthClass.COMPACT) && top !is AiRoute && top !is SettingsRoute
     val back: (() -> Unit)? = if (width == WidthClass.COMPACT && stack.size > 1) ({ stack.removeAt(stack.lastIndex) }) else null
     Scaffold(
         modifier = modifier,
         containerColor = MaterialTheme.colorScheme.background,
         floatingActionButton = {
-            if (showNew && stack.lastOrNull() !is AiRoute) {
+            if (showNew) {
                 SmallExtendedFloatingActionButton(
                     text = { Text("New note") },
                     icon = { FoleviIcon(WebIcon.PLUS, null) },
@@ -151,9 +151,12 @@ private fun Content(stack: NavBackStack<NavKey>, open: (Route) -> Unit, width: W
                 entry<HomeRoute>(metadata = ListDetailSceneStrategy.listPane(detailPlaceholder = { NotePlaceholder() })) { HomeScreen(open) }
                 entry<NotesRoute>(metadata = ListDetailSceneStrategy.listPane(detailPlaceholder = { NotePlaceholder() })) { NotesScreen(it, open) }
                 entry<SearchRoute>(metadata = ListDetailSceneStrategy.listPane(detailPlaceholder = { NotePlaceholder() })) { SearchScreen(open) }
-                entry<TasksRoute>(metadata = ListDetailSceneStrategy.listPane(detailPlaceholder = { NotePlaceholder() })) { TasksScreen(open) }
-                entry<CalendarRoute>(metadata = ListDetailSceneStrategy.listPane(detailPlaceholder = { NotePlaceholder() })) { CalendarScreen(open) }
-                entry<AiRoute> { AiScreen() }
+                entry<TasksRoute>(metadata = ListDetailSceneStrategy.listPane(detailPlaceholder = { NotePlaceholder() })) { TasksHome(open) }
+                entry<CalendarRoute>(metadata = ListDetailSceneStrategy.listPane(detailPlaceholder = { NotePlaceholder() })) { CalendarHome(open) }
+                entry<AiRoute>(metadata = ListDetailSceneStrategy.listPane(detailPlaceholder = { NotePlaceholder() })) { AiHome(open) }
+                entry<AiChatRoute>(metadata = ListDetailSceneStrategy.detailPane()) { AiChatScreen(it, back) }
+                entry<SettingsRoute>(metadata = ListDetailSceneStrategy.listPane(detailPlaceholder = { NotePlaceholder() })) { SettingsScreen(open, back) }
+                entry<WebShowRoute>(metadata = ListDetailSceneStrategy.detailPane()) { WebShowScreen(it, back) }
                 entry<NoteRoute>(metadata = ListDetailSceneStrategy.detailPane()) { NoteScreen(it, back) }
                 entry<PageRoute>(metadata = ListDetailSceneStrategy.detailPane()) { WebPageScreen(it, back) }
             },

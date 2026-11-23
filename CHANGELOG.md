@@ -4,6 +4,25 @@ Every Folevi release, newest first, written by `node scripts/version.mjs` from `
 
 Versions are MAJOR.UPDATE.PATCH, PATCH at least two digits: a Major release (2.0.00), a Big update (1.1.05 after 1.0.05) or a Small update (1.0.06 after 1.0.05).
 
+## Version 1.5.65: Small update
+
+Released 2026-11-23 22:09:59+06:00 (build 80, tag v1.5.65)
+
+A new look for iPhone and iPad, in step with Folevi for Mac.
+
+### Improved
+
+- iPhone: every screen sits on a soft grey, its lists on rounded cards, with no lines between rows.
+- iPhone: each top bar ends the same way, with the screen's actions, a black + for something new and a search button.
+- iPhone: Home starts with your places and Catch me up, then Recent, Bookmarks, Folders and tags you can tap.
+- iPhone: Tasks and Calendar keep each day's tasks together on a card.
+- iPad: each screen has its own top bar inside the page, with Back, Forward, New note and search.
+- iPad: a note's tools sit in a flat panel beside it, and the sidebar is slimmer.
+
+### Fixed
+
+- iPhone: Home no longer slides to one side while it loads.
+
 ## Version 1.5.64: Small update
 
 Released 2026-11-22 08:28:24+06:00 (build 79, tag v1.5.64)

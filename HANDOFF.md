@@ -252,10 +252,13 @@ The ones most likely to be broken:
 (worktree `.claude/worktrees/folevi-core-529dbe`), `apps/mac`; pushed to GitHub 2026-11-23 with the owner's OK (not merged). The iPhone/iPad
 redesign (`claude/ios-native-redesign-f4a8be`) opens its pull request into this branch, not `main`.
 
-- **What happened (2026-11-23):** "Folevi Core", the native macOS 26 app, replaced the AppKit Folevi for Mac (the
-  owner's choice). The AppKit app was removed from `apps/mac`; its last release, 1.5.64, is at the git tag
-  `archive/mac-appkit`. Core moved from `apps/mac-core` into `apps/mac`. Its Xcode project and module are still
-  named `FoleviCore`; the product is "Folevi".
+- **What happened (2026-11-23):** the native macOS 26 app (built as "Folevi Core" from 2026-11-21) replaced the
+  AppKit Folevi for Mac (the owner's choice). The AppKit app was removed from `apps/mac`; its last release, 1.5.64,
+  is at the git tag `archive/mac-appkit`. The owner then said there is no separate Core version any more: the
+  project, target and module are `Folevi` (`apps/mac/Folevi`, `apps/mac/FoleviTests`, `Folevi.xcodeproj` generated
+  from `project.yml`), and `scripts/app.mjs` runs the Debug app (was `core.mjs`). The product is "Folevi" ("Folevi
+  Dev" in Debug). Only the branch and worktree keep the old name (`claude/folevi-core-529dbe`), because PR 52 targets
+  it. "Folevi Core" elsewhere in the repo is the pricing plan, unrelated.
 - **Seamless update:** it carries the AppKit app's identity unchanged:
   - `com.folevi.mac`, `Application Support/Folevi`, Keychain `com.folevi.*`, `folevi://`
   - the Sparkle feed `download/mac/appcast.xml` with the EdDSA key at account "folevi"
@@ -266,7 +269,7 @@ redesign (`claude/ios-native-redesign-f4a8be`) opens its pull request into this 
   - the Electron migration, which runs at launch as before
 - **Trial Release build:** it met the Keychain items' designated requirement ("same designated requirement as the
   installed Folevi").
-- **Shared host files:** the UI-free files moved into `apps/mac/FoleviCore/Host/Shared`.
+- **Shared host files:** the UI-free files moved into `apps/mac/Folevi/Host/Shared`.
 - **Editor and data layer:** SwiftUI around the web editor, which runs in pooled warm web views. The data layer is
   the web export through FoleviEngine and the iOS shell services, compiled by path.
 - **The window (2026-11-23, latest):** the owner set the Macloving guide aside ("do the UI your way, pixel
@@ -408,7 +411,7 @@ account button should move past iPadOS's window buttons).
      - hidden title bar
      - an always-visible sidebar (still a List)
      - an opaque rounded content card whose glass top bar is drawn from each screen's `.screenActions` /
-       `.screenSearch` / `.screenSubtitle` (`FoleviCore/Views/Common/ScreenBar.swift`)
+       `.screenSearch` / `.screenSubtitle` (`Folevi/Views/Common/ScreenBar.swift`)
      - a flat rounded inspector panel and capsule choices
      - Folevi's ink kept
      - native window tabs kept (the content starts below macOS's tab bar when shown)
@@ -439,7 +442,7 @@ account button should move past iPadOS's window buttons).
 - Folevi for Mac Debug with a fresh data folder (no places yet): the bundled dev web page fails at once with "The
   operation is insecure" from its Convex WebSocket (seen 2026-11-22), so the first-run gates can't be walked in
   Debug that way; a scratch "on this Mac" library never opens Convex and works. Check the dev bundle's Convex URL
-  against the app:// page's content security rules before a real-account test. `core.mjs cmd fakegate` shows a
+  against the app:// page's content security rules before a real-account test. `app.mjs cmd fakegate` shows a
   gate screen from JSON instead.
 - `claude/phone-all-folders-route`: review and merge with the next release (Debug-only bug; no user-visible change in
   Release builds).
@@ -513,6 +516,7 @@ account button should move past iPadOS's window buttons).
   `DATABASE_UDF_USER_TIMEOUT_SECONDS=4` for that backend. Bursts show in `convex.log` as "took a long time".
 
 ## 12. Change log
+- 2026-11-23: Folevi for Mac: no more Core naming; `apps/mac/FoleviCore` became `apps/mac/Folevi` (project, target, scheme, module, tests), `core.mjs` became `app.mjs`, internal Core* types became App*; identity, data and update feed unchanged; 38 Mac tests and the web version test pass.
 - 2026-11-23: Folevi for Mac: the window rebuilt the native way (system split view, unified Liquid Glass toolbar with each screen's items and search, system inspector, segmented controls, sidebar can be hidden); the Macloving card design dropped at the owner's word; 38 tests pass.
 - 2026-11-23: Folevi for Mac: HIG and Liquid Glass pass (content under the glass bar with a soft edge, split screens below it, tab bar state after restored tabs, no shadow on the palette's glass, Jump to Latest materializes, hover on bar choices); iPhone/iPad pass handed to the redesign session (PR 52).
 - 2026-11-23: `claude/folevi-core-529dbe` pushed to GitHub with the owner's OK (a337b65b) so the iPhone/iPad redesign can open its pull request into it; `main` untouched.

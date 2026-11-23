@@ -62,7 +62,7 @@ npx convex run admin:bootstrapSuperAdmin '{"email":"you@example.com"}'
 ### Folevi for Mac
 
 ```bash
-node apps/web/scripts/build-shell.mjs && node apps/mac/scripts/build.mjs && node apps/mac/scripts/core.mjs launch --fresh
+node apps/web/scripts/build-shell.mjs && node apps/mac/scripts/build.mjs && node apps/mac/scripts/app.mjs launch --fresh
 ```
 
 Builds the built-in interface into `apps/mac/web`, then the Debug app ("Folevi Dev", its own data and

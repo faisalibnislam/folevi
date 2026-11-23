@@ -268,7 +268,7 @@ struct AppCommands: SwiftUI.Commands {
         }
 
         CommandGroup(replacing: .help) {
-            Button("Folevi Core Help") { openWindow(id: "help") }.keyboardShortcut("?", modifiers: .command)
+            Button("Folevi Help") { openWindow(id: "help") }.keyboardShortcut("?", modifiers: .command)
             Button("Keyboard Shortcuts") { openWindow(id: "shortcuts") }.keyboardShortcut("/", modifiers: [.command, .option])
             Button("Online Guide") { NSWorkspace.shared.open(URL(string: "https://folevi.com/docs")!) }
             Button("What's New") { NSWorkspace.shared.open(URL(string: "https://folevi.com/changelog")!) }
@@ -278,7 +278,7 @@ struct AppCommands: SwiftUI.Commands {
         }
         CommandGroup(replacing: .appInfo) {
             // The version alone, never a build number.
-            Button("About Folevi Core") {
+            Button("About Folevi") {
                 let v = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? ""
                 NSApp.orderFrontStandardAboutPanel(options: [.applicationVersion: "Version \(v)", .version: ""])
             }

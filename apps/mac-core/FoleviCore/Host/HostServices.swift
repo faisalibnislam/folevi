@@ -5,8 +5,8 @@ import CoreSpotlight
 import os
 
 enum CoreLog {
-    static let launch = Logger(subsystem: "app.folevicore", category: "launch")
-    static let engine = Logger(subsystem: "app.folevicore", category: "engine")
+    static let launch = Logger(subsystem: "com.folevi.mac", category: "launch")
+    static let engine = Logger(subsystem: "com.folevi.mac", category: "engine")
 
     /// Debug builds also keep a plain log in the support folder's Debug/core.log (scripts read it).
     static func debug(_ message: String) {
@@ -72,6 +72,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         Task { @MainActor in
             CoreLog.debug("launch: rules")
             await WebViewFactory.prepareRules()
+            // The first launch after the Electron app moves what it kept before anything reads the support folder;
+            // false holds launch back (an update comes first, or quitting).
+            guard await MigrationFlow.runAtLaunch() else { return }
             CoreLog.debug("launch: \(Self.beforeFirstWindow.count) steps")
             for step in Self.beforeFirstWindow { _ = await step() }
             CoreLog.debug("launch: done")
@@ -143,6 +146,16 @@ final class MacAppLock {
 
     private static let key = "folevi.lock"
 
+    /// The AppKit Folevi kept these settings in lock.json in the support folder ({ lock, lockAfter }, as Electron
+    /// did). Taken over once, so a Mac that locked Folevi still locks it after the update; the file is left alone.
+    private static func adoptLockFile() {
+        guard Paths.defaults.dictionary(forKey: key) == nil else { return }
+        let file = Paths.supportFolder.appendingPathComponent("lock.json")
+        guard let data = try? Data(contentsOf: file), let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { return }
+        let after = (json["lockAfter"] as? NSNumber)?.intValue ?? 0
+        Paths.defaults.set(["lock": json["lock"] as? Bool ?? false, "lockAfter": max(0, after)], forKey: key)
+    }
+
     /// "lock": on or off; "lockAfter": seconds away before it asks (0 = every time).
     private(set) var lock = false
     private(set) var lockAfter = 0
@@ -151,6 +164,7 @@ final class MacAppLock {
     private var awaySince: Date?
 
     func start() {
+        Self.adoptLockFile()
         let saved = Paths.defaults.dictionary(forKey: Self.key) ?? [:]
         lock = saved["lock"] as? Bool ?? false
         lockAfter = saved["lockAfter"] as? Int ?? 0
@@ -202,7 +216,7 @@ final class MacAppLock {
         }
         if let n = newLock as? NSNumber, CFGetTypeID(n) == CFBooleanGetTypeID(), n.boolValue != lock {
             let on = n.boolValue
-            guard await AppLock.confirm(reason: on ? "Lock Folevi Core with Touch ID" : "Stop locking Folevi Core", fresh: true) else { return settings() }
+            guard await AppLock.confirm(reason: on ? "Lock Folevi with Touch ID" : "Stop locking Folevi", fresh: true) else { return settings() }
             lock = on
         }
         Paths.defaults.set(["lock": lock, "lockAfter": lockAfter], forKey: Self.key)
@@ -216,7 +230,7 @@ final class MacAppLock {
         guard isCovered, !prompting else { return }
         prompting = true
         defer { prompting = false }
-        if await AppLock.confirm(reason: "Unlock Folevi Core", fresh: true) { isCovered = false }
+        if await AppLock.confirm(reason: "Unlock Folevi", fresh: true) { isCovered = false }
     }
 
     /// While covered, keys and menu shortcuts go nowhere; Return or Space asks to unlock.
@@ -242,7 +256,7 @@ final class MacAppLock {
 final class Spotlight {
     static let shared = Spotlight()
 
-    private let index = CSSearchableIndex(name: "app.folevicore.notes")
+    private let index = CSSearchableIndex(name: "com.folevi.notes")
     static let domainPrefix = "place:"
 
     struct Item {
@@ -264,8 +278,12 @@ final class Spotlight {
     /// A new index version: everything comes out, and the pages hand every note over again.
     func checkVersion() {
         guard Paths.defaults.integer(forKey: Self.versionKey) != Self.indexVersion else { return }
-        Task { try? await index.deleteAllSearchableItems() }
-        for key in Paths.defaults.dictionaryRepresentation().keys where key.hasPrefix("spotlight.stamps.") { Paths.defaults.removeObject(forKey: key) }
+        Task {
+            try? await index.deleteAllSearchableItems()
+            // The AppKit Folevi's entries (the default index, domains "com.folevi.notes…"), so no note shows twice.
+            try? await CSSearchableIndex.default().deleteAllSearchableItems()
+        }
+        for key in Paths.defaults.dictionaryRepresentation().keys where key.hasPrefix("spotlight.stamps.") || key.hasPrefix("spotlight.indexed.") || key == "spotlight.version" { Paths.defaults.removeObject(forKey: key) }
         Paths.defaults.set(Self.indexVersion, forKey: Self.versionKey)
     }
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Runs and drives the Debug Folevi Core: always with a scratch data folder (FOLEVI_USER_DATA), never the owner's
+// Runs and drives the Debug Folevi: always with a scratch data folder (FOLEVI_USER_DATA), never the owner's
 // library or any installed app's data.
 //
 //   node apps/mac-core/scripts/core.mjs launch [--demo] [--data <dir>] [--fresh]   start (quits a running one first)
@@ -16,8 +16,8 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const CORE = join(dirname(fileURLToPath(import.meta.url)), "..");
-const APP = join(CORE, "build/dd/Build/Products/Debug/Folevi Core Dev.app");
-const BIN = join(APP, "Contents/MacOS/Folevi Core Dev");
+const APP = join(CORE, "build/dd/Build/Products/Debug/Folevi Dev.app");
+const BIN = join(APP, "Contents/MacOS/Folevi Dev");
 const argv = process.argv.slice(2);
 const flag = (n) => argv.includes(n);
 const value = (n, d) => (argv.indexOf(n) >= 0 ? argv[argv.indexOf(n) + 1] : d);
@@ -54,7 +54,7 @@ function running() {
 async function quit() {
   // A normal quit first (the app saves its windows), then a signal if it doesn't go.
   if (running().length) {
-    try { execFileSync("osascript", ["-e", 'tell application id "app.folevicore.FoleviCore.dev" to quit']); } catch {}
+    try { execFileSync("osascript", ["-e", 'tell application id "com.folevi.mac.dev" to quit']); } catch {}
     for (let i = 0; i < 40 && running().length; i++) await sleep(100);
   }
   for (const p of running()) {

@@ -239,7 +239,7 @@ struct QuickAddView: View {
                 }
             } catch {
                 QuickAddQueue.shared.keep(item)
-                added = "Saved. It goes in once Folevi Core is ready."
+                added = "Saved. It goes in once Folevi is ready."
                 if !stay { try? await Task.sleep(for: .milliseconds(900)); close() }
             }
         }

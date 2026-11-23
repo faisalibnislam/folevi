@@ -26,7 +26,7 @@ enum Capabilities {
             "recognizeText": recognizeText,
             "screenAccess": { _, _ in ["value": CallRecorder.screenAccess()] },
             "openSystemSettings": { _, o in
-                guard o["pane"] as? String == "screen-recording", let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture") else { throw BridgeError.invalid("Folevi Core can't open that.") }
+                guard o["pane"] as? String == "screen-recording", let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture") else { throw BridgeError.invalid("Folevi can't open that.") }
                 NSWorkspace.shared.open(url)
                 return [:]
             },
@@ -87,7 +87,7 @@ enum Capabilities {
             throw BridgeError.invalid("That image couldn't be read.")
         }
         guard let text = await TextRecognition.shared.recognize(data, handwriting: o["handwriting"] as? Bool == true) else {
-            throw BridgeError(code: "io", message: "Folevi Core couldn't read the text in that image.")
+            throw BridgeError(code: "io", message: "Folevi couldn't read the text in that image.")
         }
         return ["text": text]
     }

@@ -1,12 +1,12 @@
 #!/usr/bin/env node
-// Publishes Folevi Core for everyone. THE OWNER RUNS THIS: it sends the app to Apple's notary service and uploads
+// Publishes Folevi for everyone. THE OWNER RUNS THIS: it sends the app to Apple's notary service and uploads
 // to the update bucket. Builders never do (they use release.mjs, which stops before both).
 //
 //   node apps/mac-core/scripts/publish.mjs [--plan] [--universal]
 //
 //   1. checks: version.json's version is newer than the live Core feed's, the Developer ID identity, the notary
 //      profile (FOLEVI_NOTARY_PROFILE, default folevi-notary), Core's Sparkle key (login Keychain, account
-//      folevi-core), wrangler signed in
+//      folevi, the same key as the AppKit Folevi), wrangler signed in
 //   2. the release build (release.mjs, into apps/mac-core/release-dist/<version>)
 //   3. notarizes the app and staples it
 //   4. the ZIP Sparkle installs and the DMG (Applications link), the DMG notarized and stapled too
@@ -21,15 +21,15 @@ import { CORE, buildRelease, currentVersion, identity, makeDmg, SPARKLE_ACCOUNT,
 
 const argv = process.argv.slice(2);
 const bucket = process.env.FOLEVI_UPDATE_BUCKET ?? "folevi-updates";
-const base = (process.env.FOLEVI_UPDATE_URL ?? "https://folevi.com/download").replace(/\/+$/, "") + "/core";
-const bucketUrl = (process.env.FOLEVI_BUCKET_URL ?? "https://pub-e55d5e1b47314fcbbbe3664ed7aed1c2.r2.dev").replace(/\/+$/, "") + "/core";
+const base = (process.env.FOLEVI_UPDATE_URL ?? "https://folevi.com/download").replace(/\/+$/, "") + "/mac";
+const bucketUrl = (process.env.FOLEVI_BUCKET_URL ?? "https://pub-e55d5e1b47314fcbbbe3664ed7aed1c2.r2.dev").replace(/\/+$/, "") + "/mac";
 const notary = process.env.FOLEVI_NOTARY_PROFILE ?? "folevi-notary";
 const { version, build } = currentVersion();
 const universal = argv.includes("--universal");
 const out = join(CORE, "release-dist", version);
 const archiveDir = join(CORE, "release-archive");
-const zipName = `FoleviCore-${version}.zip`;
-const dmgName = `FoleviCore-${version}.dmg`;
+const zipName = `Folevi-${version}.zip`;
+const dmgName = `Folevi-${version}.dmg`;
 const run = (cmd, args, o = {}) => execFileSync(cmd, args, { stdio: "inherit", maxBuffer: 256 * 1024 * 1024, ...o });
 const ok = (cmd, args) => spawnSync(cmd, args, { stdio: "ignore" }).status === 0;
 const fail = (m) => {
@@ -38,11 +38,11 @@ const fail = (m) => {
 };
 
 if (argv.includes("--plan")) {
-  console.log(`Would publish Folevi Core ${version} (build ${build}) from ${out}:
+  console.log(`Would publish Folevi ${version} (build ${build}) from ${out}:
   build (release.mjs${universal ? ", universal" : ""}), notarize with the keychain profile ${notary}, staple, ZIP + DMG,
   sign the appcast with Core's Sparkle key (login Keychain, account ${SPARKLE_ACCOUNT}), deltas from ${archiveDir},
-  upload to ${bucket}: core/${zipName}, core/${dmgName}, core/FoleviCore.dmg, then core/appcast.xml,
-  downloads at ${base}/FoleviCore.dmg, the feed at ${base}/appcast.xml`);
+  upload to ${bucket}: mac/${zipName}, mac/${dmgName}, mac/Folevi.dmg, then mac/appcast.xml,
+  downloads at ${base}/Folevi.dmg, the feed at ${base}/appcast.xml`);
   process.exit(0);
 }
 
@@ -50,7 +50,7 @@ if (argv.includes("--plan")) {
 const feed = spawnSync("curl", ["-fsSL", `${bucketUrl}/appcast.xml`], { encoding: "utf8" });
 if (feed.status === 0) {
   const builds = [...feed.stdout.matchAll(/<sparkle:version>(\d+)<\/sparkle:version>/g)].map((m) => Number(m[1]));
-  if (builds.some((b) => b >= Number(build))) fail(`The live Core feed already has build ${Math.max(...builds)}; version.json's is ${build}.`);
+  if (builds.some((b) => b >= Number(build))) fail(`The live Mac feed already has build ${Math.max(...builds)}; version.json's is ${build}.`);
 }
 identity();
 if (!ok("xcrun", ["notarytool", "history", "--keychain-profile", notary])) fail(`No notary profile "${notary}" (xcrun notarytool store-credentials ${notary} --team-id 7K32QQ2FX8 ...).`);
@@ -87,10 +87,10 @@ mkdirSync(archiveDir, { recursive: true });
 cpSync(join(updates, zipName), join(archiveDir, zipName));
 
 // 6. Upload: everything but the feed, then the feed.
-const put = (file, key, type) => run("npx", ["wrangler", "r2", "object", "put", `${bucket}/core/${key}`, "--file", file, "--content-type", type, "--remote"]);
+const put = (file, key, type) => run("npx", ["wrangler", "r2", "object", "put", `${bucket}/mac/${key}`, "--file", file, "--content-type", type, "--remote"]);
 put(join(updates, zipName), zipName, "application/zip");
 for (const f of readdirSync(updates).filter((f) => f.endsWith(".delta"))) put(join(updates, f), f, "application/octet-stream");
 put(dmg, dmgName, "application/x-apple-diskimage");
-put(dmg, "FoleviCore.dmg", "application/x-apple-diskimage");
+put(dmg, "Folevi.dmg", "application/x-apple-diskimage");
 put(join(updates, "appcast.xml"), "appcast.xml", "application/xml");
-console.log(`\nPublished Folevi Core ${version}: ${base}/FoleviCore.dmg (feed ${base}/appcast.xml)`);
+console.log(`\nPublished Folevi ${version}: ${base}/Folevi.dmg (feed ${base}/appcast.xml)`);

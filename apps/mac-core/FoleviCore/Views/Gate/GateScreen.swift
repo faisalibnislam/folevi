@@ -87,10 +87,10 @@ struct GateScreen: View {
         case "suspended": return "This account is paused"
         case "setupFailed": return "Folevi couldn't finish setting up"
         case "offline": return "You're offline"
-        case "updateRequired": return "Folevi Core needs an update"
+        case "updateRequired": return "Folevi needs an update"
         case "error": return "Something went wrong"
         case "librarySetup": return "Where should the library live?"
-        default: return "Folevi Core"
+        default: return "Folevi"
         }
     }
 
@@ -100,7 +100,7 @@ struct GateScreen: View {
         case "modeChoice", "welcome", "choose", "first-launch": return "Sync and share them with a Folevi account, or keep them on your devices."
         case "emailUnverified": return "We sent you a link to confirm your email. It expires in 24 hours and works once."
         case "offline": return "Folevi needs a connection the first time it opens. Your notes open offline after that."
-        case "updateRequired": return "This version can't open your notes any more. Choose Check for Updates in the Folevi Core menu."
+        case "updateRequired": return "This version can't open your notes any more. Choose Check for Updates in the Folevi menu."
         default: return ""
         }
     }

@@ -316,7 +316,7 @@ struct AboutPane: View {
                 HStack(spacing: 14) {
                     Image(nsImage: NSApp.applicationIconImage).resizable().frame(width: 56, height: 56)
                     VStack(alignment: .leading) {
-                        Text("Folevi Core \(version)").font(.title3.weight(.semibold))
+                        Text("Folevi \(version)").font(.title3.weight(.semibold))
                         Text("A native Mac app for Folevi.").foregroundStyle(.secondary)
                     }
                 }

@@ -1205,7 +1205,7 @@ struct TaskDrag: Codable, Transferable {
     var time: String? = nil
 
     static var transferRepresentation: some TransferRepresentation {
-        CodableRepresentation(contentType: UTType(exportedAs: "app.folevicore.task-drag"))
+        CodableRepresentation(contentType: UTType(exportedAs: "com.folevi.task-drag"))
     }
 }
 

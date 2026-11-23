@@ -448,7 +448,7 @@ struct FolderDrag: Codable, Transferable {
     var id: String
     var name: String
 
-    static let type = UTType(exportedAs: "app.folevicore.folder-drag")
+    static let type = UTType(exportedAs: "com.folevi.folder-drag")
 
     /// The folder being dragged now, set as its drag starts (the payload is made then), so the Folders page can
     /// open a gap for it while it's on the way, before the drop hands over the payload.

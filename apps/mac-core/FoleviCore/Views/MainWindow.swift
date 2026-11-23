@@ -29,13 +29,13 @@ struct MainWindow: View {
             if let gate = app.gate, gate.gate != "loading" {
                 // A gate is the whole window: no sidebar, no toolbar items until the engine is ready.
                 GateScreen(gate: gate)
-                    .onAppear { window.window?.title = "Folevi Core" }
+                    .onAppear { window.window?.title = "Folevi" }
                     .toolbar(removing: .sidebarToggle)
-                    .navigationTitle("Folevi Core")
+                    .navigationTitle("Folevi")
                     .transition(.opacity)
             } else if app.gate?.gate == "loading" || (!app.ready && app.session.value == nil) {
                 StartingScreen()
-                    .navigationTitle("Folevi Core")
+                    .navigationTitle("Folevi")
             } else {
                 NavigationSplitView(columnVisibility: $window.columnVisibility) {
                     // The owner's rule: the sidebar is always there, with no hide button (Focus Mode on a note
@@ -51,7 +51,7 @@ struct MainWindow: View {
                         }
                         .navigationTitle(window.title)
                         .toolbar { WindowToolbar(window: window) }
-                        .userActivity("app.folevicore.note", isActive: window.current.isNote) { activity in
+                        .userActivity("com.folevi.note", isActive: window.current.isNote) { activity in
                             // Handoff and the system's "continue" on another Mac running Core: the note.
                             guard let id = window.current.noteId else { return }
                             activity.title = window.title
@@ -219,7 +219,7 @@ struct LockCover: View {
     var body: some View {
         VStack(spacing: 16) {
             Image(systemName: "lock.fill").font(.system(size: 40)).foregroundStyle(.secondary)
-            Text("Folevi Core is locked").font(.title2.weight(.semibold))
+            Text("Folevi is locked").font(.title2.weight(.semibold))
             Button("Unlock with Touch ID") { Task { await MacAppLock.shared.unlock() } }
                 .buttonStyle(.borderedProminent)
                 .keyboardShortcut(.defaultAction)
@@ -300,7 +300,7 @@ struct WindowAccessor: NSViewRepresentable {
             guard let window, let model else { return }
             model.window = window
             window.tabbingMode = .preferred
-            window.tabbingIdentifier = "app.folevicore.main"
+            window.tabbingIdentifier = "com.folevi.main"
             window.title = model.title
             if keepsOpener, model.opener == nil, let from = AppModel.shared.pendingOpener, from !== window {
                 model.opener = from

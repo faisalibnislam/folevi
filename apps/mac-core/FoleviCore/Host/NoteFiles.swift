@@ -49,7 +49,7 @@ final class NoteFiles {
     func file(id: String, title: String) async throws -> URL {
         let folder = Self.fileName(title, ext: "") + " files"
         guard let note = await ask(id: id, folder: folder) else { throw CocoaError(.fileWriteUnknown) }
-        let dir = FileManager.default.temporaryDirectory.appendingPathComponent("folevi-core-drag-\(UUID().uuidString)", isDirectory: true)
+        let dir = FileManager.default.temporaryDirectory.appendingPathComponent("folevi-drag-\(UUID().uuidString)", isDirectory: true)
         try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         let url = dir.appendingPathComponent(Self.fileName(title))
         try Data(note.text.utf8).write(to: url, options: .atomic)

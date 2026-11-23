@@ -594,7 +594,7 @@ struct AppLockPane: View {
     var body: some View {
         Form {
             Section {
-                Toggle("Lock Folevi Core with Touch ID", isOn: Binding(get: { lock.lock }, set: { v in Task { await lock.set(lock: v) } }))
+                Toggle("Lock Folevi with Touch ID", isOn: Binding(get: { lock.lock }, set: { v in Task { await lock.set(lock: v) } }))
                     .disabled(!MacAppLock.available)
                 Picker("Ask Again After", selection: Binding(get: { lock.lockAfter }, set: { v in Task { await lock.set(after: v) } })) {
                     Text("Immediately").tag(0)
@@ -786,7 +786,7 @@ struct MacPane: View {
                 if settings.quickAddShortcut != DesktopSettings().quickAddShortcut {
                     Button("Use \(HotKey.display(DesktopSettings().quickAddShortcut))") { settings.quickAddShortcut = DesktopSettings().quickAddShortcut }
                 }
-                Toggle("Show Folevi Core in the menu bar", isOn: $settings.menuBarIcon)
+                Toggle("Show Folevi in the menu bar", isOn: $settings.menuBarIcon)
             }
             Section {
                 Toggle("Open at login", isOn: $settings.openAtLogin)
@@ -895,7 +895,7 @@ final class SettingsWebWindow: NSObject, NSWindowDelegate {
     func show() {
         guard let p = PagePool.shared.editor(for: id) else { return }
         let w = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 720, height: 620), styleMask: [.titled, .closable, .resizable, .miniaturizable], backing: .buffered, defer: false)
-        w.title = "Folevi Core"
+        w.title = "Folevi"
         w.isReleasedWhenClosed = false
         w.delegate = self
         p.view.frame = w.contentView?.bounds ?? .zero

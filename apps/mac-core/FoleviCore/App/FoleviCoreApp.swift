@@ -20,7 +20,7 @@ struct FoleviCoreApp: App {
     }
 
     var body: some Scene {
-        WindowGroup("Folevi Core", id: "main", for: WindowSeed.self) { $seed in
+        WindowGroup("Folevi", id: "main", for: WindowSeed.self) { $seed in
             MainWindow(seed: seed)
                 .environment(app)
                 .task { await app.start() }
@@ -40,7 +40,7 @@ struct FoleviCoreApp: App {
         .defaultSize(width: 460, height: 600)
         .commandsRemoved()
 
-        Window("Folevi Core Help", id: "help") {
+        Window("Folevi Help", id: "help") {
             HelpView()
         }
         .defaultSize(width: 640, height: 640)
@@ -76,7 +76,7 @@ enum CoreSetup {
                     if hit.place != ShellPlaces.state.current, ShellPlaces.has(hit.place) { Places.shared.switchTo(hit.place, path: "/d/\(hit.note)") } else { AppModel.shared.open(.note(hit.note)) }
                     return true
                 }
-                if activity.activityType == "app.folevicore.note", let id = activity.userInfo?["id"] as? String {
+                if activity.activityType == "com.folevi.note", let id = activity.userInfo?["id"] as? String {
                     AppModel.shared.open(.note(id))
                     return true
                 }
@@ -183,7 +183,7 @@ final class StatusItem: NSObject, NSMenuDelegate {
         }
         guard item == nil else { return }
         let i = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
-        i.button?.image = NSImage(systemSymbolName: "square.and.pencil", accessibilityDescription: "Folevi Core")
+        i.button?.image = NSImage(systemSymbolName: "square.and.pencil", accessibilityDescription: "Folevi")
         let menu = NSMenu()
         menu.delegate = self
         i.menu = menu
@@ -197,7 +197,7 @@ final class StatusItem: NSObject, NSMenuDelegate {
         qa.target = a
         let shortcut = DesktopSettings.current.quickAddShortcut
         if !shortcut.isEmpty { qa.toolTip = HotKey.display(shortcut) }
-        menu.addItem(withTitle: "Search Folevi Core…", action: #selector(CoreMenuActions.search(_:)), keyEquivalent: "").target = a
+        menu.addItem(withTitle: "Search Folevi…", action: #selector(CoreMenuActions.search(_:)), keyEquivalent: "").target = a
         menu.addItem(withTitle: "New Note", action: #selector(CoreMenuActions.newNote(_:)), keyEquivalent: "").target = a
         if !DesktopHooks.recent.isEmpty {
             menu.addItem(.separator())
@@ -229,9 +229,9 @@ final class StatusItem: NSObject, NSMenuDelegate {
             }
         }
         menu.addItem(.separator())
-        menu.addItem(withTitle: "Open Folevi Core", action: #selector(CoreMenuActions.openApp(_:)), keyEquivalent: "").target = a
+        menu.addItem(withTitle: "Open Folevi", action: #selector(CoreMenuActions.openApp(_:)), keyEquivalent: "").target = a
         menu.addItem(withTitle: "Settings…", action: #selector(CoreMenuActions.settings(_:)), keyEquivalent: ",").target = a
-        menu.addItem(withTitle: "Quit Folevi Core", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
+        menu.addItem(withTitle: "Quit Folevi", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
     }
 }
 

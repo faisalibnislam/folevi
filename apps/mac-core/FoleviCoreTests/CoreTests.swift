@@ -89,15 +89,15 @@ struct SettingsModelTests {
 
 struct PathsAndCardsTests {
     @Test func keychainNamesAreCoresOwn() {
-        #expect(Paths.keychainService("com.folevi.e2ee").hasPrefix("app.folevicore."))
+        #expect(Paths.keychainService("com.folevi.e2ee").hasPrefix("com.folevi.dev."))
         #expect(!Paths.keychainService("com.folevi.e2ee").hasPrefix("com.folevi."))
-        #expect(Paths.keychainService("library-key").hasPrefix("app.folevicore."))
+        #expect(Paths.keychainService("library-key").hasPrefix("com.folevi.dev."))
     }
 
     @Test func coreNeverUsesTodaysFolders() {
         #expect(!Paths.supportFolder.path.hasSuffix("/Folevi"))
         #expect(!Paths.documentsFolder.path.hasSuffix("Folevi Library"))
-        #expect(Paths.urlScheme.hasPrefix("folevi-core"))
+        #expect(Paths.urlScheme == "folevi-dev")
     }
 
     @Test func covers() {

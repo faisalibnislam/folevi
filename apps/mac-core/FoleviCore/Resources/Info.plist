@@ -59,7 +59,7 @@
 	<key>NSHumanReadableCopyright</key>
 	<string>Folevi</string>
 	<key>NSMicrophoneUsageDescription</key>
-	<string>Folevi Core records audio into your notes when you ask it to.</string>
+	<string>Folevi records audio into your notes when you ask it to.</string>
 	<key>NSPrincipalClass</key>
 	<string>NSApplication</string>
 	<key>NSServices</key>
@@ -90,16 +90,16 @@
 	<false/>
 	<key>NSUserActivityTypes</key>
 	<array>
-		<string>app.folevicore.note</string>
+		<string>com.folevi.note</string>
 	</array>
 	<key>SUAutomaticallyUpdate</key>
 	<true/>
 	<key>SUEnableAutomaticChecks</key>
 	<true/>
 	<key>SUFeedURL</key>
-	<string>https://folevi.com/download/core/appcast.xml</string>
+	<string>https://folevi.com/download/mac/appcast.xml</string>
 	<key>SUPublicEDKey</key>
-	<string>YTKgLs3Y+HxUChfMGrkrKZzyKr19l5ybu5DydZeBEzI=</string>
+	<string>F+N/necf9zCMzOTldJSKppxPoWCYn8rTANGly0mLbtA=</string>
 	<key>SUScheduledCheckInterval</key>
 	<integer>21600</integer>
 	<key>SUVerifyUpdateBeforeExtraction</key>
@@ -112,9 +112,9 @@
 				<string>public.data</string>
 			</array>
 			<key>UTTypeDescription</key>
-			<string>Folevi Core note</string>
+			<string>Folevi note (drag)</string>
 			<key>UTTypeIdentifier</key>
-			<string>app.folevicore.note-drag</string>
+			<string>com.folevi.note-drag</string>
 		</dict>
 		<dict>
 			<key>UTTypeConformsTo</key>
@@ -122,9 +122,9 @@
 				<string>public.data</string>
 			</array>
 			<key>UTTypeDescription</key>
-			<string>Folevi Core folder</string>
+			<string>Folevi folder (drag)</string>
 			<key>UTTypeIdentifier</key>
-			<string>app.folevicore.folder-drag</string>
+			<string>com.folevi.folder-drag</string>
 		</dict>
 		<dict>
 			<key>UTTypeConformsTo</key>
@@ -132,13 +132,10 @@
 				<string>public.data</string>
 			</array>
 			<key>UTTypeDescription</key>
-			<string>Folevi Core task</string>
+			<string>Folevi task</string>
 			<key>UTTypeIdentifier</key>
-			<string>app.folevicore.task-drag</string>
+			<string>com.folevi.task-drag</string>
 		</dict>
-	</array>
-	<key>UTImportedTypeDeclarations</key>
-	<array>
 		<dict>
 			<key>UTTypeConformsTo</key>
 			<array>

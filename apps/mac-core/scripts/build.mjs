@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Builds Folevi Core (Debug by default) and prints only what matters: errors, warnings in Core's own files, and
+// Builds Folevi (Debug by default) and prints only what matters: errors, warnings in Core's own files, and
 // where the app is. `--release` builds Release; `--generate` regenerates the Xcode project first (always done
 // when project.yml is newer than it).
 //
@@ -34,6 +34,6 @@ for (const l of lines) {
   else if (args.has("--warnings") && /^\/.*mac-core\/.*warning:/.test(l)) show(l);
 }
 const ok = lines.some((l) => l.includes("BUILD SUCCEEDED"));
-const name = config === "Debug" ? "Folevi Core Dev" : "Folevi Core";
+const name = config === "Debug" ? "Folevi Dev" : "Folevi";
 console.log(ok ? `BUILD SUCCEEDED: ${join(CORE, "build/dd/Build/Products", config, name + ".app")}` : "BUILD FAILED");
 process.exit(ok ? 0 : 1);

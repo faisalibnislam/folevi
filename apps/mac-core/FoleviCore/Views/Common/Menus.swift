@@ -11,7 +11,7 @@ struct NoteDrag: Codable, Transferable {
     var id: String
     var title: String
 
-    static let type = UTType(exportedAs: "app.folevicore.note-drag")
+    static let type = UTType(exportedAs: "com.folevi.note-drag")
 
     static var transferRepresentation: some TransferRepresentation {
         CodableRepresentation(contentType: type)
@@ -517,7 +517,7 @@ enum AccountActions {
     static func forgetLibrary() {
         let alert = NSAlert()
         alert.messageText = "Stop keeping a library on this Mac?"
-        alert.informativeText = "Folevi Core forgets the library. Its folder and notes stay where they are, and you can open it again later."
+        alert.informativeText = "Folevi forgets the library. Its folder and notes stay where they are, and you can open it again later."
         alert.addButton(withTitle: "Forget Library")
         alert.addButton(withTitle: "Cancel")
         guard alert.runModal() == .alertFirstButtonReturn else { return }

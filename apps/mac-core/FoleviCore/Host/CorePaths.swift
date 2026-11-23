@@ -1,10 +1,12 @@
-// The only place that knows which build of Folevi Core this is and where it keeps things. The shared host and
-// shell files (by path from apps/mac and apps/ios) ask `Paths` for their folder, Keychain names, settings and web
-// storage, so Core answers with names of its own and never touches today's Folevi or its data:
+// The only place that knows which build of Folevi this is and where it keeps things. The shared host and shell
+// files (apps/ios) ask `Paths` for their folder, Keychain names, settings and web storage. Since 23 November 2026
+// this app replaces the AppKit Folevi for Mac as an update in place (the owner's choice), so every name here is
+// that app's, unchanged: the same support folder, Keychain items, settings, web storage and URL scheme, so a
+// signed-in Mac keeps its libraries, sign-ins and keys. Never change them.
 //
-// | Build   | Bundle id                       | Support folder                     | Keychain services     | URL scheme      |
-// | Debug   | app.folevicore.FoleviCore.dev   | Application Support/Folevi Core Dev | app.folevicore.dev.*  | folevi-core-dev |
-// | Release | app.folevicore.FoleviCore       | Application Support/Folevi Core     | app.folevicore.*      | folevi-core     |
+// | Build   | Bundle id          | Support folder                 | Keychain services | URL scheme |
+// | Debug   | com.folevi.mac.dev | Application Support/Folevi Dev | com.folevi.dev.*  | folevi-dev |
+// | Release | com.folevi.mac     | Application Support/Folevi     | com.folevi.*      | folevi     |
 //
 // With FOLEVI_USER_DATA (tests, scratch runs) the support folder is that folder, and the Keychain names, settings
 // and web storage get a suffix of their own taken from its path.
@@ -15,8 +17,8 @@ import WebKit
 enum Paths {
     private static let env = ProcessInfo.processInfo.environment
 
-    /// The product's name, for folders and messages ("Folevi Core" or "Folevi Core Dev").
-    static var appName: String { isDebug ? "Folevi Core Dev" : "Folevi Core" }
+    /// The product's name, for folders and messages ("Folevi" or "Folevi Dev").
+    static var appName: String { isDebug ? "Folevi Dev" : "Folevi" }
 
     /// A Debug build (Xcode, scripts/build.mjs): never installed, never the owner's data.
     static var isDebug: Bool {
@@ -38,7 +40,8 @@ enum Paths {
         SHA256.hash(data: Data(url.path.utf8)).prefix(4).map { String(format: "%02x", $0) }.joined()
     }
 
-    /// Application Support/Folevi Core (Dev), or FOLEVI_USER_DATA.
+    /// Application Support/Folevi (release, also Electron's userData), Application Support/Folevi Dev, or
+    /// FOLEVI_USER_DATA.
     static let supportFolder: URL = {
         let dir = userDataOverride ?? FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
             .appendingPathComponent(appName, isDirectory: true)
@@ -46,19 +49,17 @@ enum Paths {
         return dir
     }()
 
-    /// Where a library "on this Mac" goes. Core keeps it in a folder of its own in Documents ("Folevi Core"), never
-    /// the folder today's Folevi uses; a Debug build or a test run keeps it in its own support folder instead.
+    /// Where a library "on this Mac" goes: ~/Documents (Documents/<device folder>), as before; a Debug build or a
+    /// test run keeps it in its own support folder instead.
     static var documentsFolder: URL {
         if isDebug || userDataOverride != nil { return supportFolder.appendingPathComponent("Documents", isDirectory: true) }
-        let dir = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0].appendingPathComponent("Folevi Core", isDirectory: true)
-        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-        return dir
+        return FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
     }
 
-    /// The Keychain service for a shared service name: "com.folevi.e2ee" becomes "app.folevicore.e2ee" in a release
-    /// build, "app.folevicore.dev.e2ee" in a Debug build and "app.folevicore.dev.<run>.e2ee" in a FOLEVI_USER_DATA run.
+    /// The Keychain service for a shared service name: "com.folevi.e2ee" stays as it is in a release build,
+    /// becomes "com.folevi.dev.e2ee" in a Debug build, and "com.folevi.dev.<run>.e2ee" in a FOLEVI_USER_DATA run.
     static func keychainService(_ service: String) -> String {
-        var prefix = isDebug ? "app.folevicore.dev." : "app.folevicore."
+        var prefix = isDebug ? "com.folevi.dev." : "com.folevi."
         if let runTag { prefix += "\(runTag)." }
         guard service.hasPrefix("com.folevi.") else { return prefix + service }
         return prefix + service.dropFirst("com.folevi.".count)
@@ -66,7 +67,7 @@ enum Paths {
 
     /// Settings: the app's own (per bundle id), or a run's own suite with FOLEVI_USER_DATA.
     static let defaults: UserDefaults = {
-        guard let runTag, let suite = UserDefaults(suiteName: "\(Bundle.main.bundleIdentifier ?? "app.folevicore.FoleviCore.dev").run-\(runTag)") else { return .standard }
+        guard let runTag, let suite = UserDefaults(suiteName: "\(Bundle.main.bundleIdentifier ?? "com.folevi.mac.dev").run-\(runTag)") else { return .standard }
         return suite
     }()
 
@@ -74,7 +75,7 @@ enum Paths {
     /// run's own with FOLEVI_USER_DATA.
     @MainActor static let dataStore: WKWebsiteDataStore = {
         guard let userDataOverride else { return .default() }
-        let digest = Array(SHA256.hash(data: Data(("folevi-core-webkit:" + userDataOverride.path).utf8)))
+        let digest = Array(SHA256.hash(data: Data(("folevi-webkit:" + userDataOverride.path).utf8)))
         var b = Array(digest.prefix(16))
         b[6] = (b[6] & 0x0F) | 0x50
         b[8] = (b[8] & 0x3F) | 0x80
@@ -82,12 +83,12 @@ enum Paths {
         return WKWebsiteDataStore(forIdentifier: id)
     }()
 
-    /// folevi-core-dev:// for a Debug build, folevi-core:// for a release.
+    /// folevi-dev:// for a Debug build, folevi:// for a release.
     static var urlScheme: String {
-        (Bundle.main.object(forInfoDictionaryKey: "FoleviURLScheme") as? String).flatMap { $0.isEmpty ? nil : $0 } ?? (isDebug ? "folevi-core-dev" : "folevi-core")
+        (Bundle.main.object(forInfoDictionaryKey: "FoleviURLScheme") as? String).flatMap { $0.isEmpty ? nil : $0 } ?? (isDebug ? "folevi-dev" : "folevi")
     }
 
-    /// Folevi Core's version (CFBundleShortVersionString). `build` (CFBundleVersion) is the whole number Sparkle
+    /// Folevi's version (CFBundleShortVersionString). `build` (CFBundleVersion) is the whole number Sparkle
     /// compares; it's never shown.
     static var version: String { Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0.0.0" }
     static var build: String { Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "" }

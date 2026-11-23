@@ -25,7 +25,7 @@ struct HelpView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 22) {
                     VStack(alignment: .leading, spacing: 6) {
-                        Text("Folevi Core Help").font(.title.weight(.semibold))
+                        Text("Folevi Help").font(.title.weight(.semibold))
                         (Text("The guide is at ") + Text("[folevi.com/docs](https://folevi.com/docs)") + Text(". Write to ") + Text("[support@folevi.com](mailto:support@folevi.com)") + Text(" for help, or ") + Text("[security@folevi.com](mailto:security@folevi.com)") + Text(" to report a security problem."))
                             .foregroundStyle(.secondary)
                     }

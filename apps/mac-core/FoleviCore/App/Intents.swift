@@ -46,7 +46,7 @@ struct NoteQuery: EntityStringQuery {
 
 struct NewNoteIntent: AppIntent {
     static let title: LocalizedStringResource = "New Note"
-    static let description = IntentDescription("Makes a note in Folevi Core, with the text you give it.")
+    static let description = IntentDescription("Makes a note in Folevi, with the text you give it.")
     static let openAppWhenRun = true
 
     @Parameter(title: "Text")
@@ -75,7 +75,7 @@ struct AddTaskIntent: AppIntent {
     @MainActor
     func perform() async throws -> some IntentResult & ProvidesDialog {
         await AppDelegate.whenLaunched()
-        guard let client = AppModel.shared.client else { return .result(dialog: "Open Folevi Core first.") }
+        guard let client = AppModel.shared.client else { return .result(dialog: "Open Folevi first.") }
         let r = try await client.command(Commands.TaskCreate(TaskCreateArgs(text: text, dueDate: due.map { $0.formatted(CoreDates.dayFormat) })))
         return .result(dialog: "Added to \(r.where).")
     }
@@ -83,7 +83,7 @@ struct AddTaskIntent: AppIntent {
 
 struct OpenNoteIntent: AppIntent {
     static let title: LocalizedStringResource = "Open Note"
-    static let description = IntentDescription("Opens one of your notes in Folevi Core.")
+    static let description = IntentDescription("Opens one of your notes in Folevi.")
     static let openAppWhenRun = true
 
     @Parameter(title: "Note")
@@ -98,7 +98,7 @@ struct OpenNoteIntent: AppIntent {
 
 struct SearchNotesIntent: AppIntent {
     static let title: LocalizedStringResource = "Search Notes"
-    static let description = IntentDescription("Searches your notes in Folevi Core.")
+    static let description = IntentDescription("Searches your notes in Folevi.")
     static let openAppWhenRun = true
 
     @Parameter(title: "Search for")

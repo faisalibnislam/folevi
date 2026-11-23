@@ -709,7 +709,7 @@ final class AppModel {
 
     /// Runs an engine call; a refusal shows its message as a toast.
     func perform(_ work: @escaping @MainActor (EngineClient) async throws -> Void) {
-        guard let client else { return toast("Folevi Core is still starting. Try again in a moment.", tone: .error) }
+        guard let client else { return toast("Folevi is still starting. Try again in a moment.", tone: .error) }
         Task { @MainActor in
             do { try await work(client) } catch let f as EngineFailure {
                 let unknown = [BridgeErrorCode.unknownCommand.rawValue, BridgeErrorCode.unknownView.rawValue].contains(f.code)

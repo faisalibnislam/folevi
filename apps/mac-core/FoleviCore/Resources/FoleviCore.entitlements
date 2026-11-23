@@ -16,6 +16,10 @@
 	<array>
 		<string>iCloud.com.folevi</string>
 	</array>
+	<key>keychain-access-groups</key>
+	<array>
+		<string>7K32QQ2FX8.com.folevi.mac</string>
+	</array>
 	<key>com.apple.security.device.audio-input</key>
 	<true/>
 </dict>

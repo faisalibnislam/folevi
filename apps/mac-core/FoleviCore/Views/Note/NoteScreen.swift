@@ -264,7 +264,7 @@ struct FindBar: View {
 }
 
 extension Notification.Name {
-    static let coreFindNext = Notification.Name("app.folevicore.findNext")
+    static let coreFindNext = Notification.Name("com.folevi.findNext")
 }
 
 extension WindowModel {

@@ -108,6 +108,11 @@ fun AppShell() {
             )
             onDispose { session.shortcuts = null }
         }
+        // A fold or a resize changes the window in place (the manifest keeps the activity and its Page View): the
+        // frame below starts over for the new window, and the tab and back stacks above it carry on, so an open
+        // note stays open. (Kept across a fold, parts of the frame drew nothing until laid out again.)
+        val window = androidx.compose.ui.platform.LocalConfiguration.current.let { "${it.screenWidthDp}x${it.screenHeightDp}@${it.densityDpi}" }
+        androidx.compose.runtime.key(window) {
         if (width >= WidthClass.LARGE) {
             Row(Modifier.fillMaxSize()) {
                 Sidebar(tab, pick, onFolder = { id, name -> pick(Tab.HOME); stacks.getValue(Tab.HOME).let { s -> while (s.size > 1) s.removeAt(s.lastIndex); s.add(NotesRoute(NotesListView.FOLDER.value, name, folderId = id)) }; tab = Tab.HOME })
@@ -129,6 +134,7 @@ fun AppShell() {
             ) {
                 Content(stack, open, width, Modifier.fillMaxSize())
             }
+        }
         }
     }
 }

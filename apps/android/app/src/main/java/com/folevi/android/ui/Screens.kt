@@ -204,3 +204,4 @@ fun SearchScreen(open: (Route) -> Unit) {
         }
     }
 }
+

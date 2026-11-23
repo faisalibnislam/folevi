@@ -1551,7 +1551,7 @@
 :root[data-ipad-native] [data-note-panel]:has(~ aside[aria-label="Page tools"]:not(.ui-pop)) { margin-bottom: 0; }
 :root[data-ipad-native] aside[aria-label="Page tools"]:not(.ui-pop) {
   height: auto; align-self: stretch; margin: 0 12px 12px 12px;
-  background: var(--ipad-panel); border-radius: 18px; box-shadow: none; overflow: hidden;
+  background: var(--ipad-panel); border-radius: var(--radius-container); box-shadow: none; overflow: hidden;
 }
 
 /* Folevi for Mac's native look: Liquid Glass for everything that floats over a note (the owner, 2026-11-18: the

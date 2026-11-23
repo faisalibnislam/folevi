@@ -175,13 +175,18 @@ public struct PhoneScreen<Leading: View, Trailing: View, Header: View, Content: 
                     ToolbarSpacer(.fixed, placement: .topBarTrailing)
                 }
                 ToolbarItem(placement: .topBarTrailing) {
+                    // (A title with the icon, shown icon-only: the bar's overflow and VoiceOver read the title.)
                     Button { searchAction?() } label: {
-                        WebIconView(options.search != nil ? options.searchIcon : .search, size: 21, strokeWidth: 1.9)
-                            .frame(width: 30, height: 30)
-                            .contentShape(Rectangle())
+                        Label {
+                            Text(options.search != nil ? options.searchPrompt : "Search")
+                        } icon: {
+                            WebIconView(options.search != nil ? options.searchIcon : .search, size: 21, strokeWidth: 1.9)
+                                .frame(width: 30, height: 30)
+                                .contentShape(Rectangle())
+                        }
+                        .labelStyle(.iconOnly)
                     }
                     .buttonStyle(.plain)
-                    .accessibilityLabel(options.search != nil ? options.searchPrompt : "Search")
                     .accessibilityIdentifier("bar-search")
                 }
             }

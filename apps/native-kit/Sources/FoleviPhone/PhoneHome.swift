@@ -393,7 +393,8 @@ struct PhoneTagChip: View {
                     .foregroundStyle(FoleviTokens.Chrome.ink.resolve(scheme).color)
             }
             .padding(.horizontal, 14)
-            .frame(minHeight: 40)
+            // (The HIG's 44 pt touch target, `accessibility.md`.)
+            .frame(minHeight: 44)
             .background(Capsule().fill(PhoneLook.card.resolve(scheme).color))
             .contentShape(Capsule())
         }

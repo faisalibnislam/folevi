@@ -2,7 +2,7 @@
 
 > Read this first if you are a Claude (or any agent) picking this project up, on this Mac or another one. Then read `CLAUDE.md`, `docs/HANDOFF.md` (the long handoff: unfinished branches, release detail, what the owner is waiting on) and `docs/claude-context/memory/MEMORY.md` (the owner's standing rules). Keep this file current: after every change to the project, update "Current state", "Next steps" and "Change log", and commit it.
 
-Last updated: 2026-11-21 · Written on: Faisal's MacBook Pro M5
+Last updated: 2026-11-23 · Written on: Faisal's MacBook Pro M5
 
 ## 1. What this is
 
@@ -25,7 +25,7 @@ on `origin/main`.
 | Backend | Convex, production deployment `fastidious-clownfish-123` | Live |
 | Folevi for Mac | `apps/mac` (AppKit + native screens + one WKWebView for the editor), Developer ID, notarized, Sparkle updates from `folevi.com/download/mac/appcast.xml` | Shipped by direct download only (no Mac App Store build) |
 | Folevi for iPhone and iPad | `apps/ios` (native SwiftUI/UIKit screens, web note editor), iOS 18+ | TestFlight internal group "Folevi team" only; never submitted to App Review |
-| Android | `apps/android` (Capacitor) | Built, **paused** since 2026-10-23 by the owner: no Android work |
+| Android | `apps/android`: a native Compose app (Gradle root `apps/android`, modules `engine`, `app`) replacing the paused Capacitor app (`apps/android/android`) | **Resumed 2026-11-23** as a native app "just like iPhone" for phones, foldables, tablets and Googlebooks; skeleton on branch `claude/android-native-622675`, not released (`docs/ANDROID_NATIVE_PLAN.md`) |
 | Web Clipper | `apps/clipper` (Chrome/Edge extension, own lockfile) | Built and tested in CI; store listing status: see `apps/clipper/STORE.md` |
 | MCP server listing | `mcp/` (`server.json`) | Folevi exposes an MCP endpoint through its OAuth provider |
 
@@ -259,6 +259,20 @@ This session's wrangler login lives in the app's own `XDG_CONFIG_HOME` (not `~/.
 there shows the account that owns `folevi-updates`. Decisions: `docs/claude-context/memory/tab-back-and-overview-2026-11-21.md`
 and `frosted-folders-decision-2026-11-20.md`.
 
+**Android native app (2026-11-23):** branch `claude/android-native-622675` (worktree
+`.claude/worktrees/android-native-622675`, off `e12fb272`), not merged or pushed. The owner's checkbox answers are in
+`docs/ANDROID_NATIVE_PLAN.md` section 1 and `docs/claude-context/memory/android-native-decisions-2026-11-23.md`
+("Google Book" = Googlebook; API 33; Material 3 Expressive with Folevi's colors, fonts, icons, cards and folders;
+Foli AI as a phone tab; everything in the first build; the Capacitor app is replaced). Done: research
+(`docs/ANDROID_RESEARCH_2026-11.md`), the Kotlin bridge codegen (`scripts/engine-codegen-kotlin.mjs`, CI `--check`,
+`pnpm engine:gen` now writes Swift and Kotlin), the engine module (client, stores, WebView transport; its unit test
+round-trips all 359 contract fixtures), the app skeleton (adaptive bar / rail / Googlebook sidebar, list beside note,
+Home, notes list, search, Tasks, Calendar, Foli AI, gate screen, Lucide icons via `scripts/icons-codegen-kotlin.mjs`),
+and two small web changes (big engine batches straight to `foleviEngineHost`; phone note layout for the Android
+marker). Verified on phone, tablet, open foldable and a 1920x1200 desktop AVD (`Folevi_Desktop`): the demo engine
+(`--ez demo true`, debug only) fills every screen; the real WebView engine answers hello and its gate is drawn
+natively, but stops there ("You're offline") until the host bridge exists.
+
 **Also in progress:** branch `claude/native-perf-pass` (worktree `.claude/worktrees/recursing-dijkstra-48aa7c`, off
 `main` at `d617d60b`, not released): a native performance pass, report in `docs/NATIVE_PERFORMANCE_2026-11-21.md`.
 Folder cards at rest are drawn once into a picture (`FoleviDesign/Web/CardPicture.swift`; live while hovered, on whole
@@ -356,6 +370,10 @@ signed-in account, 1.5.58's frosted folders with a large library, and the iPad c
 account button should move past iPadOS's window buttons).
 
 ## 10. Next steps / open work
+- Android native (`claude/android-native-622675`, plan `docs/ANDROID_NATIVE_PLAN.md` section 4): phase 1 is the host
+  bridge (a `Capacitor.nativePromise` stand-in over a WebMessageListener, then the Shell, Auth, Secrets and Places
+  plugins moved from `apps/android/android`), native sign-in, and a contract revision adding `"android"` to the
+  marker and `AppInfo` platforms (after the iOS redesign session lands, to avoid clashing regenerated Swift).
 - `claude/phone-all-folders-route`: review and merge with the next release (Debug-only bug; no user-visible change in
   Release builds).
 - Liquid Glass motion branch (`claude/liquid-glass-animations-b1d70e`): the owner's look on a real Mac and iPhone, then
@@ -428,6 +446,7 @@ account button should move past iPadOS's window buttons).
   `DATABASE_UDF_USER_TIMEOUT_SECONDS=4` for that backend. Bursts show in `convex.log` as "took a long time".
 
 ## 12. Change log
+- 2026-11-23: Android resumed as a native Compose app (owner's answers, research, Kotlin bridge codegen, engine module, app skeleton verified on phone/tablet/foldable/desktop emulators) on `claude/android-native-622675`; not released.
 - 2026-11-21: Note cards' shadows as shared pictures, faces live and unflattened, on `claude/note-card-shadow-pictures` (Mac All notes 175-232 missed frames to 67-135); not released.
 - 2026-11-21: Native performance pass on `claude/native-perf-pass`: folder cards scroll from a picture (Mac Folders 321-347 missed frames to 13-37); report in `docs/NATIVE_PERFORMANCE_2026-11-21.md`; not released.
 - 2026-11-21: iPhone (old UIKit frame, Debug builds): Home's Folders "…" > All folders opens the folders grid, not All notes; the Mac's `.allFolders` route opens `/folders` instead of Home; on `claude/phone-all-folders-route`.

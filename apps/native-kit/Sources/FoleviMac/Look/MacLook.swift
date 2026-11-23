@@ -47,12 +47,13 @@ public enum MacLook {
     public static let trafficLightsRoom: CGFloat = pick(78, 4)
     /// The sidebar's width (under the strip), the same as the page's tools column at the right (inspectorWidth: the
     /// owner, 2026-11-18). The sidebar's button, ⌘\ and View > Hide Sidebar hide it; so does Focus mode on a note.
-    public static let sidebarWidth: CGFloat = pick(288, 300)
+    /// (The iPad: the Mac UI guide's 228 pt, the owner, 2026-11-23.)
+    public static let sidebarWidth: CGFloat = pick(288, 228)
     /// The content card's margin on its trailing and bottom edges (the sidebar, or the margin when it's hidden, is
     /// its leading edge; the strip its top): 12 pt, the owner's Mac UI guide (docs/design/macloving-mac-ui.md,
     /// carried to the iPad on 2026-11-23).
     public static let containerMargin: CGFloat = 12
-    public static let containerRadius: CGFloat = pick(12, 18)
+    public static let containerRadius: CGFloat = 12
     /// Where the sidebar's content starts, under the strip.
     public static let sidebarTop: CGFloat = pick(2, 4)
     /// The sidebar's outer horizontal inset.
@@ -71,14 +72,15 @@ public enum MacLook {
 
     // MARK: The card's floating controls (Liquid Glass, no bar behind them)
 
-    /// The controls' inset from the card's top and sides.
-    public static let barPaddingTop: CGFloat = 12
-    public static let barPaddingSides: CGFloat = 12
-    public static let barPaddingBottom: CGFloat = 12
+    /// The controls' inset from the card's top and sides. (The iPad's bar is the Mac UI guide's top bar, inside the
+    /// card with the screen below it: 14 pt above and at the sides, 10 pt below; the owner, 2026-11-23.)
+    public static let barPaddingTop: CGFloat = pick(12, 14)
+    public static let barPaddingSides: CGFloat = pick(12, 14)
+    public static let barPaddingBottom: CGFloat = pick(12, 10)
     /// Every card control is a circle or a capsule this tall.
     public static let barControlHeight: CGFloat = pick(36, 44)
     /// The gap between controls.
-    public static let barSpacing: CGFloat = 8
+    public static let barSpacing: CGFloat = pick(8, 10)
     /// A screen's title: inset from the controls' leading edge so that it starts where the screens' content does
     /// (34 pt from the card's edge).
     public static let titleInset: CGFloat = pick(22, 20)
@@ -110,10 +112,11 @@ public enum MacLook {
     public static var rowPitch: CGFloat { rowHeight + rowGap }
     public static let rowRadius: CGFloat = 8
     /// A row's content inset from its fill's leading and trailing edges.
-    public static let rowPadding: CGFloat = pick(10, 12)
-    public static let rowSymbolSize: CGFloat = pick(15, 19)
-    public static let rowIconSlot: CGFloat = pick(20, 26)
-    public static let rowIconGap: CGFloat = pick(8, 12)
+    public static let rowPadding: CGFloat = 10
+    /// (The iPad: the Mac UI guide's 18 pt icon column and 8 pt gap, rows kept a finger's 44 pt; 2026-11-23.)
+    public static let rowSymbolSize: CGFloat = pick(15, 17)
+    public static let rowIconSlot: CGFloat = pick(20, 18)
+    public static let rowIconGap: CGFloat = 8
     /// One indentation step per hierarchy level (folders inside folders).
     public static let rowIndent: CGFloat = pick(16, 20)
     /// The air above a sidebar section's heading, and under it before its first row.
@@ -128,9 +131,10 @@ public enum MacLook {
     public static let panelRadius: CGFloat = 18
     /// The gutter between the card's content and a side panel, and the panel's inset from the card's edges.
     public static let panelGutter: CGFloat = 10
-    /// The page's own tools column at the right (Foli AI, Insert, Format, Style), under the strip: as wide as the
-    /// sidebar, its 8 pt gap and the page's 280 px panel (globals.css).
-    public static let inspectorWidth: CGFloat = pick(288, 300)
+    /// The page's own tools column at the right (Foli AI, Insert, Format, Style): the page's 280 px panel and its
+    /// gaps (globals.css). On the iPad it is a flat rounded panel inside the card, 12 pt from the note and from the
+    /// card's trailing and bottom edges (the Mac's inspector, 2026-11-23).
+    public static let inspectorWidth: CGFloat = pick(288, 304)
     /// The least room the content keeps beside the inspector: in a narrower card the inspector steps aside until
     /// the window is wider again (the page never runs under it).
     public static let inspectorMinContent: CGFloat = 440
@@ -167,8 +171,9 @@ public enum MacLook {
     // MARK: Type: the system font in four sizes, for every piece of interface text
 
     public enum Text {
-        /// 11 pt (iPad 13): secondary text, captions, sidebar and form section headings.
-        public static let small = pick(Font.subheadline, Font.footnote)
+        /// 11 pt (iPad 15, iPadOS's subheadline: the guide's four styles, 2026-11-23): secondary text, captions,
+        /// sidebar and form section headings.
+        public static let small = Font.subheadline
         public static let smallStrong = small.weight(.semibold)
         /// 13 pt (iPad 17): almost everything.
         public static let body = Font.body
@@ -185,7 +190,7 @@ public enum MacLook {
 
         /// The four styles' point sizes, for text laid out by size (the shared web components under NativeChrome).
         public enum Size {
-            public static let small: CGFloat = pick(11, 13)
+            public static let small: CGFloat = pick(11, 15)
             public static let body: CGFloat = pick(13, 17)
             public static let title3: CGFloat = pick(15, 20)
             public static let title: CGFloat = pick(22, 28)
@@ -231,7 +236,8 @@ public enum MacLook {
         /// A capsule track's fill on the frame (the strip's tab track, its round buttons).
         public static let track = MacLook.color(MacLook.dynamic(light: UIColor(white: 0, alpha: 0.06), dark: UIColor(white: 1, alpha: 0.08)))
         /// A side panel's flat fill.
-        public static let panel = MacLook.color(MacLook.dynamic(light: UIColor(white: 0, alpha: 0.05), dark: UIColor(white: 1, alpha: 0.06)))
+        /// (The Mac's quaternary label at 60%, in neutral grey: globals.css draws the note's panel in the same.)
+        public static let panel = MacLook.color(MacLook.dynamic(light: UIColor(white: 0, alpha: 0.07), dark: UIColor(white: 1, alpha: 0.09)))
         public static let green = Color(uiColor: .systemGreen)
         public static let orange = Color(uiColor: .systemOrange)
         public static let red = Color(uiColor: .systemRed)

@@ -1,11 +1,13 @@
 // The iPad's wide layout (docs/IOS_REBUILD_PLAN.md, I7), in the Mac's native look since the owner's 2026-11-19
 // decision ("the same layout as the Mac", docs/MAC_NATIVE_LOOK.md; iPadOS 26 controls and touch sizes): the window's
 // grey surface (the Mac's translucent frame) under everything; on it the strip along the top (the sidebar's button,
-// Back and Forward, Home, Show All Tabs and the tabs in their track, the sync status and the bell), the sidebar under
-// it at the leading edge, and the content card beside it with its controls floating in Liquid Glass at its top. On a
-// note the page draws its own card and its panel on the surface (`data-ipad-native`, globals.css), as the Mac's
-// does. The same views as the Mac's frame (FrameViews.swift lays them out with AppKit there); the note is the app's
-// one Page View, handed in as `page`.
+// Home, Show All Tabs and the tabs in their track, the sync status and the bell), the sidebar under
+// it at the leading edge, and the content card beside it. Since the owner's 2026-11-23 pick (the Mac UI guide's
+// window profile, docs/design/macloving-mac-ui.md) the card holds its own top bar (IPadScreenBar: Back and Forward,
+// the title, the screen's controls in one glass capsule, New note, search) with the screen below it; on a note the
+// page draws its sheet into the card and its tools as a flat rounded panel inside it (`data-ipad-native`,
+// globals.css). The same views as the Mac's frame (FrameViews.swift lays them out with AppKit there); the note is
+// the app's one Page View, handed in as `page`.
 #if os(iOS)
 import Combine
 import SwiftUI
@@ -27,7 +29,6 @@ public struct IPadFrameView<Page: View>: View {
     let page: Page
     @State private var models: ScreenModels
     @State private var askAi: AiAskState
-    @State private var regions = CardHitRegions()
     @MadeOnce private var notifications: NotificationsModel
     @MadeOnce private var tasks: ValueStore<TaskCounts>
     /// The sidebar's actions, made once: built in the body, new closures every time made the whole sidebar draw again
@@ -55,9 +56,6 @@ public struct IPadFrameView<Page: View>: View {
         let m = MacLook.containerMargin
         // The sidebar beside the card (the Mac's), unless it's hidden or the window is too narrow for it.
         let inline = !model.sidebarFloats && !model.sidebarHidden
-        // A note's own panel (Style, Format, Insert, Foli AI) beside the note: the page takes the card's room to
-        // the window's trailing and bottom edges and draws its card and the panel itself (the Mac's layout).
-        let panel = Self.panelBeside(model, width: width - (inline ? MacLook.sidebarWidth : m))
         return ZStack(alignment: .topLeading) {
                 WindowMaterial().ignoresSafeArea()
                 VStack(spacing: 0) {
@@ -69,10 +67,11 @@ public struct IPadFrameView<Page: View>: View {
                                 .frame(width: MacLook.sidebarWidth)
                                 .transition(.move(edge: .leading).combined(with: .opacity))
                         }
+                        // (A note's panel is inside the card now, so the card keeps its margins on a note too.)
                         card
                             .padding(.leading, inline ? 0 : m)
-                            .padding(.trailing, panel ? 0 : m)
-                            .padding(.bottom, panel ? 0 : m)
+                            .padding(.trailing, m)
+                            .padding(.bottom, m)
                     }
                 }
                 .ignoresSafeArea(.container, edges: .bottom)
@@ -170,11 +169,6 @@ public struct IPadFrameView<Page: View>: View {
     /// The bar's room at the page's top in the web-matched layout (the web's main padding).
     static var barRoom: CGFloat { WebStyles.named("frame.main").light.padding.top }
 
-    /// A note's own panel is open beside it: the card wide enough to keep `inspectorMinContent` for the note.
-    static func panelBeside(_ model: FrameModel, width: CGFloat) -> Bool {
-        model.route.isNote && model.editorPanel != nil && width - MacLook.inspectorWidth >= MacLook.inspectorMinContent
-    }
-
     /// A screen that draws itself in the other theme (the Vault: dark in a light window, light in a dark one).
     static func drawsOtherTheme(_ route: FrameRoute) -> Bool {
         if case .web(let path) = route { return path == "/vault" || path.hasPrefix("/vault/") }
@@ -186,46 +180,41 @@ public struct IPadFrameView<Page: View>: View {
             .defaultAppStorage(WebSidebarController.defaults)
     }
 
-    /// The content card: the screen, its controls floating in glass at its top, toasts at its foot, Ask Foli AI in its
-    /// corner. On a note the page draws its own card (and its panel beside it) on the frame's surface.
+    /// The content card (the owner's Mac UI guide, 2026-11-23): one opaque rounded card holding the top bar
+    /// (IPadScreenBar) and, below it, the screen or the note; toasts at its foot, Ask Foli AI in its corner. A note's
+    /// page draws into the card: its sheet on the card's fill and its own tools (Style, Format, Insert, Foli AI) as a
+    /// flat rounded panel inside the card's trailing edge (globals.css, `data-ipad-native`), the Mac's inspector.
     private var card: some View {
         let note = model.route.isNote
         let shape = RoundedRectangle(cornerRadius: MacLook.containerRadius, style: .continuous)
-        // Over a screen in the other theme (the Vault), the card's own chrome (its fill, the scroll edge, the glass
-        // controls and their title, Ask Foli AI, toasts) takes that theme too, as the Mac's does
-        // (ContentViewController.syncChromeAppearance); the screen keeps the window's (it flips its own colours).
+        // Over a screen in the other theme (the Vault), the card's own chrome (its fill, the bar and its title, Ask Foli
+        // AI, toasts) takes that theme too, as the Mac's does (ContentViewController.syncChromeAppearance); the screen
+        // keeps the window's (it flips its own colours).
         let chrome: ColorScheme = Self.drawsOtherTheme(model.route) ? (scheme == .dark ? .light : .dark) : scheme
-        return ZStack(alignment: .top) {
-            if note {
-                page
-            } else {
-                ScreenRoot(model: model, models: models, route: model.route)
-                    .clipShape(shape)
-                // The soft scroll edge under the card's controls, where a screen's content runs on under its title.
-                LinearGradient(stops: [.init(color: MacLook.Colors.container, location: 0), .init(color: MacLook.Colors.container, location: 0.55),
-                                       .init(color: MacLook.Colors.container.opacity(0), location: 1)],
-                               startPoint: .top, endPoint: .bottom)
-                    .frame(height: MacLook.barHeight + 18)
-                    .clipShape(UnevenRoundedRectangle(topLeadingRadius: MacLook.containerRadius, topTrailingRadius: MacLook.containerRadius, style: .continuous))
-                    .allowsHitTesting(false)
-                    .accessibilityHidden(true)
-                    .environment(\.colorScheme, chrome)
-                CardControls(model: model, regions: regions)
-                    .environment(\.colorScheme, chrome)
+        return VStack(spacing: 0) {
+            IPadScreenBar(model: model)
+                .environment(\.colorScheme, chrome)
+            Group {
+                if note {
+                    page
+                } else {
+                    ScreenRoot(model: model, models: models, route: model.route)
+                }
             }
-            VStack {
-                Spacer()
-                ToastStack(model: model)
-            }
-            .environment(\.colorScheme, chrome)
-            if model.overviewShown { TabOverviewLayer(model: model).clipShape(shape) }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
+        .overlay(alignment: .bottom) {
+            ToastStack(model: model)
+                .environment(\.colorScheme, chrome)
+        }
+        .overlay {
+            if model.overviewShown { TabOverviewLayer(model: model) }
+        }
+        .clipShape(shape)
+        // The card's own fill and its quiet shadow (the Mac's: black at 2%, radius 5, 1 pt down).
         .background {
-            if !note {
-                // The card's own fill and its quiet shadow (the Mac's ContentCard).
-                shape.fill(MacLook.Colors.container).shadow(color: .black.opacity(0.03), radius: 5, y: 1)
-                    .environment(\.colorScheme, chrome)
-            }
+            shape.fill(MacLook.Colors.container).shadow(color: .black.opacity(0.02), radius: 5, y: 1)
+                .environment(\.colorScheme, chrome)
         }
         // Foli AI's chat floats above the card, not inside it, so the card's rounded edge never cuts its shadow.
         .overlay(alignment: .bottomTrailing) {

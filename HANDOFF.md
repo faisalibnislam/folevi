@@ -246,27 +246,43 @@ The ones most likely to be broken:
 - Snapshot tests: re-record only your own snapshots; never clear `__Snapshots__` wholesale.
 - Give before/after screenshots for UI work and ask the owner with clear options when a decision is theirs.
 
-## 9. Current state (as of 2026-11-21)
+## 9. Current state (as of 2026-11-23)
 
-**Folevi Core (new app, in progress):** branch `claude/folevi-core-529dbe` (worktree
-`.claude/worktrees/folevi-core-529dbe`), `apps/mac-core`. A new, fully native macOS 26 app beside today's Folevi
-(owner's decisions of 2026-11-21: its own name, bundle id `app.folevicore.FoleviCore`, data folder, Keychain
-names `app.folevicore.*`, URL scheme `folevi-core://`; same accounts; today's app keeps shipping). SwiftUI with
-AppKit where it matters; the web editor stays for note pages in a pool of warm web views (one hidden engine page
-per place, which is also the first window's editor, plus up to three editors for other windows). The data layer
-is reused by path, never copied: the web export in native chrome mode through FoleviEngine, the iOS shell
-services, and the Mac host's UI-free files (app:// scheme, routers, Places, background sync, Updater, printing,
-OCR, call recorder). The owner asked mid-build (2026-11-21) to keep the main app's coloured icon, its icon set and
-its black and white buttons: done (shared AppIcon.icon, web icons, Folevi ink whatever the Mac's accent).
-Read `apps/mac-core/README.md`; parity item by item in `apps/mac-core/PARITY.md`. Checked: Debug build runs on
-the demo engine and on the real engine with a scratch "on this Mac" library (gates, Home, lists, a note in the
-editor, Tasks, Calendar, Foli AI screens), Core's 35 tests in 14 suites pass, FoleviMac's 243 tests still pass, today's Mac
-app still builds; `scripts/release.mjs` makes a Developer ID signed, checked DMG (not notarized). Core has its own
-Sparkle key (login Keychain, account `folevi-core`; the owner should back it up). Parity on 2026-11-22: 1,112 of
-1,343 there, 6 partly, 0 missing, 225 n/a (launch snapshot, card line breaks, spelling, inline diffs, Folders tree
-and a design pass against MAC_NATIVE_LOOK.md done; sidebar picks now navigate, fresh, per the Back rule). Not
-checked: signing in to a real account in Core, iCloud/folder libraries, real drags by hand (drop zones,
-spring-loading, drag-out to Finder), Foli DNA on a library with links, notification actions from macOS.
+**Folevi for Mac is now the native app (in progress, not released):** branch `claude/folevi-core-529dbe`
+(worktree `.claude/worktrees/folevi-core-529dbe`), `apps/mac`.
+
+- **What happened (2026-11-23):** "Folevi Core", the native macOS 26 app, replaced the AppKit Folevi for Mac (the
+  owner's choice). The AppKit app was removed from `apps/mac`; its last release, 1.5.64, is at the git tag
+  `archive/mac-appkit`. Core moved from `apps/mac-core` into `apps/mac`. Its Xcode project and module are still
+  named `FoleviCore`; the product is "Folevi".
+- **Seamless update:** it carries the AppKit app's identity unchanged:
+  - `com.folevi.mac`, `Application Support/Folevi`, Keychain `com.folevi.*`, `folevi://`
+  - the Sparkle feed `download/mac/appcast.xml` with the EdDSA key at account "folevi"
+  - Developer ID signing with the committed profile `apps/mac/signing/Folevi.provisionprofile`
+- **What it takes over on first launch:**
+  - the app lock (`lock.json`)
+  - Spotlight (the old entries are cleared, then indexed again)
+  - the Electron migration, which runs at launch as before
+- **Trial Release build:** it met the Keychain items' designated requirement ("same designated requirement as the
+  installed Folevi").
+- **Shared host files:** the UI-free files moved into `apps/mac/FoleviCore/Host/Shared`.
+- **Editor and data layer:** SwiftUI around the web editor, which runs in pooled warm web views. The data layer is
+  the web export through FoleviEngine and the iOS shell services, compiled by path.
+- **Read first:** `apps/mac/README.md`, then `apps/mac/PARITY.md`.
+- **Parity on 2026-11-23:** 1,114 of 1,343 there, 4 partly, 0 missing, 225 n/a. The 4 partly stay web pages on
+  purpose, by the owner's choice: two-step verification, end-to-end encryption on/off, OAuth consent and the
+  workspace settings group. LIST-053 (Folders page drag gap) and NOTE-036 (Foli DNA of a note, which needed the
+  engine's `web.show` query, contract revision 34) were closed and tried by hand.
+- **Checked:**
+  - the Debug "Folevi Dev" runs on the demo engine and on a scratch "on this Mac" library
+  - its 38 tests pass
+  - the web tests pass
+- **Not checked yet:**
+  - the update in place over a real installed Folevi, with real data
+  - signing in to a real account
+  - iCloud and folder libraries
+  - drag-out to Finder
+  - notification actions
 
 
 **Live: Folevi 1.5.63** (tag `v1.5.63`, PR 46 merged with PR 47 in it, `main` = `3258f12b`): Mac published (feed and
@@ -377,15 +393,16 @@ signed-in account, 1.5.58's frosted folders with a large library, and the iPad c
 account button should move past iPadOS's window buttons).
 
 ## 10. Next steps / open work
-- Folevi Core (`apps/mac-core`, branch `claude/folevi-core-529dbe`): close the remaining gaps in
-  `apps/mac-core/PARITY.md` (1,112 of 1,343 there, 6 partly, 0 missing, 225 n/a). The 6 partly: web screens kept
-  on purpose (SET-007 workspace group, GAP-007 two-step verification, GAP-008 e2ee on/off, GAP-036 OAuth consent),
-  plus LIST-053/NOTE-036 untried by hand;
-  earlier list for reference: notes lists and folders pages, tasks views, calendar, notifications, Settings search,
-  time zone picker, Foli AI memory), then the owner tries it with a real account. Publishing
-  (`apps/mac-core/scripts/publish.mjs`, R2 `folevi-updates` under `core/`) only with the owner's OK. The release
-  build already carries iCloud (`iCloud.com.folevi`) on its Developer ID profile. Demo mode (`core.mjs launch --demo`) works again.
-- Folevi Core Debug with a fresh data folder (no places yet): the bundled dev web page fails at once with "The
+- Folevi for Mac (native, `apps/mac`, branch `claude/folevi-core-529dbe`), the owner's order of 2026-11-23:
+  1. Apply the owner's Mac UI guide (`docs/design/macloving-mac-ui.md`) as the **full window redesign**: hidden
+     title bar, an always-visible custom sidebar, an opaque rounded content card, and a glass top bar per screen,
+     plus the component rules. Keep Folevi's black and white ink, not the system accent. Then carry it to the iPad
+     layout (Mac and iPad).
+  2. Make one signed, notarized test DMG for the owner to try over the installed Folevi with real data.
+  3. Publish to the `mac/` feed only with the owner's OK. That update reaches every Mac user.
+  4. Merge into `main` (pushing `main` deploys the website).
+  5. The Mac App Store build: not now.
+- Folevi for Mac Debug with a fresh data folder (no places yet): the bundled dev web page fails at once with "The
   operation is insecure" from its Convex WebSocket (seen 2026-11-22), so the first-run gates can't be walked in
   Debug that way; a scratch "on this Mac" library never opens Convex and works. Check the dev bundle's Convex URL
   against the app:// page's content security rules before a real-account test. `core.mjs cmd fakegate` shows a
@@ -462,6 +479,7 @@ account button should move past iPadOS's window buttons).
   `DATABASE_UDF_USER_TIMEOUT_SECONDS=4` for that backend. Bursts show in `convex.log` as "took a long time".
 
 ## 12. Change log
+- 2026-11-23: Folevi for Mac: "Folevi Core" replaced the AppKit app as an update in place (same bundle id, data, Keychain, scheme, Sparkle feed and key, Developer ID profile); `apps/mac-core` became `apps/mac`; the AppKit app is at tag `archive/mac-appkit`; it takes over lock.json, Spotlight and the Electron migration; publish.mjs follows the AppKit flow (universal, changelog notes); LIST-053 drag gap and NOTE-036 Foli DNA of a note done (engine contract revision 34: `web.show` query); a dark-mode accent that kept selected rows unreadable fixed. Next: the full Macloving window redesign on Mac and iPad, then a test DMG.
 - 2026-11-22: Folevi Core: Liquid Glass motion pass: one named motion set (`Motion` in `Views/Common/CoreLook.swift`) taken from the family's FoleviSpring/WebMotion (the owner's playful springs: panels grow from what opened them with a visible overshoot, selection slides, bars arrive firmly, Mac presses darken and never scale), each with a Reduce Motion substitute; floating glass (toasts, selection bars, the Ask button, carousel arrows, the folder menu, the palette) materializes instead of fading, in containers that never merge stacked toasts; the Ask panel and palette animate the same from every way in (persistent animation contexts); presses dim instead of scaling with Reduce Motion.
 - 2026-11-22: Folevi Core: web screens made native where safe (library passphrase step, system Sign in with Apple button, Touch ID for encryption keys, test feed folder, ink primary gate buttons); two-step, workspace group, e2ee on/off and OAuth consent kept on the web on purpose; owner kept ⌘T, Open at login and native tabs (1,112 there, 6 partly); saved windows per data folder.
 - 2026-11-22: Folevi Core: last native items (1,108 there, 15 partly): card grid keys and ⌘A, one intent dispatcher, views paused off screen, notes prepared on press, a billing history list, the large control size; Core's 36 tests pass.

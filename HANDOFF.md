@@ -266,11 +266,18 @@ The ones most likely to be broken:
   merged.
 - **Tabs (owner, 2026-11-24):** everything opens in a new tab exactly like the web on Mac, iPad, and Android
   tablets/Googlebooks (`docs/claude-context/memory/tabs-match-web-2026-11-24.md`). iPad and Android were forwarded
-  to their sessions (the iPad already matched). Mac: in progress on the local branch `claude/mac-web-tabs` (a WIP
-  commit: `Destination.tabKind`, `AppModel.route`, `WindowModel.go/step`, fresh sidebar and New Note), not built
-  into any release. Still to do there: in-note callers (`inNote:` for crumbs and the inspector's pages), carrying
-  Foli DNA's settings and the folder share sheet into the new tab, a pure placement function with tests, then
-  check it in the app. Never publish while editing in the same worktree: the release build reads the sources.
+  to their sessions (the iPad already matched). **Mac: done on branch `claude/mac-web-tabs`** (off the release
+  branch, pushed, no PR yet, not released): the rule is `AppModel.placement` (`Destination.tabKind`,
+  `TabRuleTests`), `WindowModel.go` routes, `step(to:)` moves inside a tab. Checked in the demo app.
+- **Mac best-native pass (owner, 2026-11-24), same branch:** three read-only skill audits (HIG/macOS, motion,
+  SwiftUI performance), then the fixes: no-bounce motion, Bookmark wording, Ask Foli AI in the toolbar, New
+  Folder ⇧⌘N, menu and performance fixes (commit dc6b33ed). Owner's picks:
+  `docs/claude-context/memory/mac-best-native-pass-2026-11-24.md`. 77 Mac tests pass; demo screenshots checked.
+  Not checked: signed-in account screens, a Release build. Next: the owner's go to release it as **1.5.70**
+  (1.5.69 is the iPhone Duo TestFlight build on PR 55). Not done from the audits: toolbar customization
+  (`.toolbar(id:)`), menu-bar items for every toolbar action (Sort By, Empty Trash, Enclosing Folder), click
+  semantics (select vs open) across lists, Recent/Shared selection, cover image downsampling, card picture
+  invalidation, Settings search.
 
 **iPhone and iPad redesigned after the Mac's window (1.5.65, TestFlight):** branch
 `claude/ios-native-redesign-f4a8be` (worktree `.claude/worktrees/ios-native-redesign-f4a8be`), built on the Mac
@@ -577,6 +584,7 @@ account button should move past iPadOS's window buttons).
   `DATABASE_UDF_USER_TIMEOUT_SECONDS=4` for that backend. Bursts show in `convex.log` as "took a long time".
 
 ## 12. Change log
+- 2026-11-24: Mac tabs open as on the web and the Mac best-native pass (skills audits + owner picks) on `claude/mac-web-tabs`; not released.
 - 2026-11-24: 1.5.68 confirmed by the owner and published to the Mac feed; Mac web-style tabs started on `claude/mac-web-tabs`; Taskeni Mac polish started in its own session.
 - 2026-11-24: 1.5.66 released (Mac on Sparkle, TestFlight) and pulled from the Mac feed after it left signed-in Macs on the loading screen (page policy never knew the place's mode); fix in 1.5.68, notarized DMG handed to the owner, not on the feed yet; tabs-match-web rule saved and forwarded.
 - 2026-11-23: Folevi for Mac: no more Core naming; `apps/mac/FoleviCore` became `apps/mac/Folevi` (project, target, scheme, module, tests), `core.mjs` became `app.mjs`, internal Core* types became App*; identity, data and update feed unchanged; 38 Mac tests and the web version test pass.

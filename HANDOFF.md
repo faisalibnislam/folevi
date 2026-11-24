@@ -612,6 +612,7 @@ account button should move past iPadOS's window buttons).
   `DATABASE_UDF_USER_TIMEOUT_SECONDS=4` for that backend. Bursts show in `convex.log` as "took a long time".
 
 ## 12. Change log
+- 2026-11-24: Web everywhere PR 2 (`claude/web-everywhere-shortcuts`): shortcuts on screen are written the way each system writes them (Ctrl+Alt+N off Apple's, ⌘⌥N on Apple's): IconButton tooltips and `aria-keyshortcuts`, key caps, the palette, Back/Forward, the tab strip, Tasks, the Format panel, onboarding, Help and the canvas editors' chrome. Rendering hooks in `lib/shortcuts.ts` (`useMacKeys`, `useKeyLabels`) start in the server's Mac form. 6 new unit tests. Marketing pages keep their Mac wording.
 - 2026-11-24: Merged `main` (PR 54, Android native) into `claude/ios-native-redesign-f4a8be` to clear PR 56's conflicts; only HANDOFF.md conflicted (next steps and change log, both sides kept). All native-kit iOS tests (274, 31, 38, 28, 31), the macOS build and 39 Mac app tests pass (one earlier run timed out 19 checks in FoleviScreens while the machine's load average was about 40; the rerun passed).
 - 2026-11-24: PR 56 opened (iPhone and iPad second round, 1.5.67, into `main`) after merging `main` (PR 51, 1.5.68) into `claude/ios-native-redesign-f4a8be`; all native-kit iOS tests, the macOS build and 39 Mac app tests pass.
 - 2026-11-24: Owner confirmed links inside a note stay in the same tab, like the web (saved in `ios-redesign-decisions-2026-11-23.md`); no code change.

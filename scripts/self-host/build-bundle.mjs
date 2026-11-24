@@ -99,6 +99,10 @@ const webDir = path.join(ROOT, "apps/web");
 const distDir = ".next-server";
 if (!args["skip-web-build"]) {
   step("building the web app (server edition)");
+  // next build rewrites next-env.d.ts for the other build folder; put it back afterwards.
+  const nextEnv = path.join(webDir, "next-env.d.ts");
+  const nextEnvBefore = fs.readFileSync(nextEnv, "utf8");
+  process.on("exit", () => fs.writeFileSync(nextEnv, nextEnvBefore));
   sh("npx", ["turbo", "run", "build", "--filter=./apps/web"], {
     cwd: ROOT,
     stdio: "inherit",

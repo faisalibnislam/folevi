@@ -18,6 +18,10 @@
   "use strict";
   if (window.foleviShell || location.origin !== boot.origin) return;
 
+  // The app starts at index.html ("/"); the product's start page is /documents (as on the website, where "/" is a
+  // redirect). Set before the page's router reads the address, as the iPhone app's bridge does.
+  if (location.pathname === "/" || location.pathname === "/index.html") history.replaceState(history.state, "", "/documents" + location.search + location.hash);
+
   // ---------------------------------------------------------------- calls to the app
 
   var cap = function () {
@@ -876,11 +880,11 @@
     applyInsets(e.insets);
   });
 
-  // WebView reports the system bars to env(safe-area-inset-*) only from version 140 (older ones give 0 for
-  // everything but a display cutout). There, every env(safe-area-inset-X) in the page's styles and inline
-  // styles reads the app's own value instead: var(--android-inset-X). Newer WebViews keep env() as it is.
-  var major = parseInt(String(boot.webViewVersion || "0").split(".")[0], 10) || 0;
-  var polyfill = major < 140;
+  // Every env(safe-area-inset-X) in the page's styles and inline styles reads the app's own value instead:
+  // var(--android-inset-X). WebView reports the system bars to env() only from version 140, and inside the
+  // Capacitor app (whose window handles the insets itself, MainActivity.kt) even newer ones report 0, so the app's
+  // values are used on every version.
+  var polyfill = true;
   var ENV_RE = /env\(\s*safe-area-inset-(top|right|bottom|left)\s*(?:,\s*([^()]*(?:\([^()]*\)[^()]*)*))?\)/g;
   function rewrite(text) {
     return text.replace(ENV_RE, function (_, side, fallback) {
@@ -1209,5 +1213,16 @@
 
   ready(function () {
     call("FoleviShell", "pageReady").catch(function () {});
+    // The mobile app's splash screen (Capacitor's SplashScreen plugin) goes once the page has drawn.
+    requestAnimationFrame(function () {
+      call("SplashScreen", "hide", { fadeOutDuration: 150 }).catch(function () {});
+    });
+  });
+  // Whatever happens to the page, the app never stays behind its splash screen (a hide that comes before the splash
+  // is up is ignored, so it's asked again; hiding a hidden splash does nothing).
+  [1500, 4000, 8000].forEach(function (ms) {
+    setTimeout(function () {
+      call("SplashScreen", "hide", {}).catch(function () {});
+    }, ms);
   });
 })

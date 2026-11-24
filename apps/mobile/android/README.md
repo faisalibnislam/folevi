@@ -26,7 +26,7 @@ back on Capacitor's real `Plugin` classes.
 | --- | --- |
 | `../capacitor.config.ts` | Shared with iOS. Android's block: `includePlugins: []` (no stock plugins on Android, see below), user agent, debugging |
 | `app/src/main/assets/folevi-bridge.js` | `window.foleviShell` (platform `android`) and `window.foleviNative`, injected at document start for `https://localhost` only |
-| `bridge/` | The cloud half of the bridge (Dropbox and Google Drive through `packages/cloud-folders`), bundled into `assets/folevi-cloud.js` by `scripts/bundle-bridge.mjs` before every build |
+| `assets/folevi-cloud.js` | The Dropbox and Google Drive kit shared with iOS (`apps/android/bridge/cloud.ts` over `packages/cloud-folders`), built by `apps/mobile/scripts/bundle-bridge.mjs` before every Gradle build (git-ignored) |
 | `app/src/main/java/com/folevi/android/` | `MainActivity` (windows, insets, keyboard, back and predictive back, links, sign-in return), `web/` (bridge script, link rules), `auth/` (Custom Tab sign-in), `secure/` (Keystore), `library/` (the library on this phone and its journal), `cloud/`, `ai/` (Gemini Nano or the person's own key), `host/` (reminders, saving files, calendars), `lock/`, `extras/` (share target, Quick Settings tile, widgets, scanner, REST client), `push/` (FCM), `e2ee/` (device keys) |
 | `app/src/test/` | JVM unit tests (fs contract, journal, links, sign-in, cloud auth, AI providers, calendars, E2EE vectors, local actions) |
 | `scripts/emulator.mjs` | Emulators, build, install, screenshots, JavaScript in the web view |
@@ -60,7 +60,7 @@ You need the Android SDK in `~/Library/Android/sdk` (or `ANDROID_HOME`) with pla
 ```sh
 cd apps/mobile && CI=true pnpm install --ignore-workspace       # Capacitor, outside the pnpm workspace
 cd ../web && node scripts/build-shell.mjs --platform android --dest ../mobile/web && cd ../mobile
-npx cap sync android
+pnpm sync                                                    # the shared cloud kit, then cap sync (both platforms)
 cd android && ./gradlew :app:assembleDebug :app:testDebugUnitTest
 node scripts/emulator.mjs boot phone        # or tablet, foldable, desktop; add --window to see it
 node scripts/emulator.mjs run phone
@@ -88,8 +88,7 @@ node scripts/e2e/signin.mjs emulator-5560                      # a new dev accou
 ```sh
 cd apps/mobile/android
 ./gradlew :app:testDebugUnitTest                                                  # Kotlin unit tests
-cd ../../.. && node_modules/.bin/vitest run --config apps/mobile/android/bridge/vitest.config.ts   # the cloud bridge
-npx vitest run tests/parity/android.test.ts                                       # local mode's parity scenarios on the bridge script
+cd ../../.. && npx vitest run tests/parity/android.test.ts                       # local mode's parity scenarios on the bridge script
 ```
 
 ## Build settings

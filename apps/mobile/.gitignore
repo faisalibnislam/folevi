@@ -1,0 +1,6 @@
+node_modules/
+# The built-in interface (pnpm shell: apps/web's shell export) and the bridge kit (pnpm bundle), both regenerated.
+# Only this folder's own web/ (a bare "web/" also hid android/.../com/folevi/android/web/, the app's Kotlin).
+/web/
+bridge/build/
+android/app/src/main/assets/folevi-cloud.js

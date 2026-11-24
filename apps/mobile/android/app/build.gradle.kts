@@ -1,5 +1,4 @@
-// Folevi for Android: the Android half of the one Capacitor mobile app (apps/mobile, docs/MOBILE.md), the app
-// module (Kotlin, AGP's built-in Kotlin). apps/mobile/android/README.md.
+// Folevi for Android: the app module (Kotlin, AGP's built-in Kotlin). docs/ANDROID_PLAN.md, apps/android/README.md.
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
@@ -11,10 +10,10 @@ plugins {
 fun setting(name: String, env: String, default: String): String =
     (project.findProperty(name) as String?)?.takeIf { it.isNotBlank() } ?: System.getenv(env)?.takeIf { it.isNotBlank() } ?: default
 
-fun quoted(value: String) = "\"" + value.replace("\\", "\\\\").replace("\"", "\\\"") + "\""
-
-/** The unified version (version.json at the repository root, scripts/version.mjs is the only way it changes). */
+/** The unified version (version.json at the repo root, scripts/version.mjs). */
 val folevi = groovy.json.JsonSlurper().parse(rootProject.file("../../../version.json")) as Map<*, *>
+
+fun quoted(value: String) = "\"" + value.replace("\\", "\\\\").replace("\"", "\\\"") + "\""
 
 android {
     namespace = "com.folevi.android"
@@ -24,9 +23,8 @@ android {
         applicationId = "com.folevi.android"
         minSdk = rootProject.extra["minSdkVersion"] as Int
         targetSdk = rootProject.extra["targetSdkVersion"] as Int
-        // Play's versionCode is the shared build number, so this app updates in place over the native app (build 83).
-        versionName = folevi["version"] as String
         versionCode = (folevi["build"] as Number).toInt()
+        versionName = folevi["version"] as String
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         // OAuth client ids are public (they ship in every copy of the app) but come from the build, never the
         // repository (docs/LOCAL_MODE.md "Owner setup checklist"; apps/android/README.md). Empty hides the option.
@@ -42,7 +40,7 @@ android {
     }
 
     signingConfigs {
-        // The owner's upload key, from their own ~/.gradle/gradle.properties (README "Release"); never in the repo.
+        // The owner's upload key, from their own ~/.gradle/gradle.properties; never in the repo.
         val store = (project.findProperty("folevi.uploadStoreFile") as String?)?.takeIf { it.isNotBlank() }
         if (store != null) {
             create("upload") {
@@ -68,8 +66,8 @@ android {
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
-            // Signed with the upload key when it's set up; -Pfolevi.releaseWithDebugKey=true signs a local test
-            // build with the debug key instead (never upload one of those).
+            // Signed with the owner's upload key when it's set up (~/.gradle/gradle.properties, never the repo);
+            // -Pfolevi.releaseWithDebugKey=true signs a local test build with the debug key (never upload one).
             signingConfig = signingConfigs.findByName("upload")
                 ?: if (project.findProperty("folevi.releaseWithDebugKey") == "true") signingConfigs.getByName("debug") else null
         }
@@ -141,13 +139,13 @@ dependencies {
 
 apply(from = "capacitor.build.gradle")
 
-// The bridge's TypeScript half (apps/mobile/android/bridge with packages/cloud-folders) into assets/folevi-cloud.js.
+// The bridge's TypeScript half (apps/android/bridge with packages/cloud-folders) into assets/folevi-cloud.js.
 val bundleBridge by tasks.registering(Exec::class) {
-    description = "Builds assets/folevi-cloud.js from apps/mobile/android/bridge (esbuild)."
-    workingDir = rootProject.projectDir
+    description = "Builds assets/folevi-cloud.js from apps/android/bridge (esbuild)."
+    workingDir = rootProject.projectDir.parentFile
     commandLine("node", "scripts/bundle-bridge.mjs")
-    inputs.dir(rootProject.projectDir.resolve("bridge"))
-    inputs.dir(rootProject.projectDir.resolve("../../../packages/cloud-folders/src"))
+    inputs.dir(rootProject.projectDir.parentFile.resolve("bridge"))
+    inputs.dir(rootProject.projectDir.parentFile.resolve("../../packages/cloud-folders/src"))
     outputs.file(layout.projectDirectory.file("src/main/assets/folevi-cloud.js"))
 }
 tasks.named("preBuild") { dependsOn(bundleBridge) }

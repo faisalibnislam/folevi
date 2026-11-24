@@ -1,11 +1,11 @@
 // Folevi for Android's library host for the parity harness (docs/ANDROID_PLAN.md "Local mode", the "Android-like
 // driver"): the app's real bridge script (apps/mobile/android/app/src/main/assets/folevi-bridge.js) and its
-// cloud half (apps/mobile/android/bridge), evaluated here with a stand-in for the app's Kotlin side that keeps the same
+// cloud half (apps/android/bridge, shared with iOS), evaluated here with a stand-in for the app's Kotlin side that keeps the same
 // rules as LibraryPlugin.kt and FolderFs.kt (path checks, etags that change on every write, create-only and
 // compare-and-swap writes, conditional removes, the journal, base64 bytes, chunked uploads), and, for a library
 // on Dropbox, CloudPlugin.kt's requests answered by the Mac's fake Dropbox. LibraryStore then runs over
 // `foleviShell.library` exactly as it does in the app.
-import { createCloudKit, copyLibrary, prepareLibrary, isCloudKind, KIND_PROVIDER, LIBRARY_FILE } from "../../../apps/mobile/android/bridge/cloud";
+import { createCloudKit, copyLibrary, prepareLibrary, isCloudKind, KIND_PROVIDER, LIBRARY_FILE } from "../../../apps/android/bridge/cloud";
 import bridgeSource from "../../../apps/mobile/android/app/src/main/assets/folevi-bridge.js?raw";
 import { FakeDropbox } from "../../../packages/cloud-folders/test/fakeDropbox";
 

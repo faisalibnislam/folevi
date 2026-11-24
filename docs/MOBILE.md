@@ -84,6 +84,23 @@ closed, Android foldable open, and installing the new app over the native one on
 as it was). Not checked: a real device, signing in end to end, iPhone Duo open and folding, push delivery.
 Screenshots: `docs/mobile/`.
 
+## Note styles and covers (owner's decision, 2026-11-24)
+
+The owner's words: "keep inside the app and sync if sever side changes the note styles." So:
+
+- **Bundled stays:** the built-in covers (`public/covers`, 64 MB) and the build's snapshot of the admin-managed styles
+  (`shell/snapshot.json` with their images in `shell/themes/`, written by `apps/web/scripts/snapshot-themes.mjs`) ship
+  inside the app and are the offline fallback. Built-in covers are code, so new built-in art comes with app updates.
+- **Sync from the server:** the server's styles are `themes.list` (public, no account), each row with `updatedAt`
+  and `revision`, which serve as the version to compare. Signed in, the page already reads that list live, so a
+  changed style shows without a release; what's missing is keeping the newest rows and their images on the device
+  for offline use (Cache Storage in the web view), with the newest of bundled and cached winning by `updatedAt`.
+- **Local mode** ("Keep notes on my devices") reads only the bundled snapshot today and promises never to contact
+  Folevi (enforced by the app's network rules). Checking `themes.list` there needs the owner's OK to relax that
+  promise for this one anonymous, read-only request. Asked 2026-11-24; open.
+- The work is in `apps/web` (`lib/shell/snapshot.ts`, `lib/local/functions/themes.ts`, the theme loader), which the
+  web session owns; coordinated through the main session.
+
 ## Not carried over yet (follow-ups)
 
 - iOS widgets, Control Center control, Siri and Shortcuts intents, Spotlight (their code is in `apps/ios`; add the
@@ -91,4 +108,4 @@ Screenshots: `docs/mobile/`.
 - iOS's native long-press preview, date and colour pickers and keyboard bar (the web's own versions show instead).
 - One bridge script for both platforms (Android still has its own `folevi-bridge.js` with its own plugin names).
 - Release scripts (`pnpm release` for TestFlight and Play) and `scripts/version.mjs` writing `apps/mobile`'s versions.
-- Note covers are 64 MB of the 86 MB web export: compressing them, or fetching them on demand, would shrink both apps.
+- Note styles sync (above): keep the server's newest styles and images on the device; local mode waits on the owner.

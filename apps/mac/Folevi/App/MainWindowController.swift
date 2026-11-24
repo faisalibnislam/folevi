@@ -1,0 +1,82 @@
+// One main window: a seamless title bar and one web view on the built-in interface. WM2 takes over the window's
+// chrome (TitleBar.swift: the buttons where the page asks, drag areas, full screen) and its restoration; this
+// keeps the basics Electron had: 1280 x 820 to start, 800 x 480 at least, the size and place remembered. The page
+// draws everything inside the window (the web app's own sidebar, tabs and top bar), as on Windows and Linux.
+import AppKit
+import WebKit
+
+@MainActor
+final class MainWindowController: NSWindowController, NSWindowDelegate {
+    private(set) var view: FoleviWebView
+    private(set) var place: String?
+
+    init(place: String?, path: String) {
+        self.place = place
+        let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 1280, height: 820), styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView], backing: .buffered, defer: false)
+        window.titlebarAppearsTransparent = true
+        window.titleVisibility = .hidden
+        window.title = "Folevi"
+        window.minSize = NSSize(width: 800, height: 480)
+        window.tabbingMode = .disallowed
+        window.isReleasedWhenClosed = false
+        window.collectionBehavior.insert(.fullScreenPrimary)
+        let boot = WindowManager.shared.bootstrapOf(place, .main)
+        view = WebViewFactory.make(place: place, role: .main, bootstrap: boot, frame: window.contentView?.bounds ?? .zero, window: { [weak window] in window })
+        super.init(window: window)
+        window.delegate = self
+        install(view)
+        if WindowManager.shared.mains.isEmpty {
+            if !window.setFrameUsingName("FoleviMain") { window.center() }
+            window.setFrameAutosaveName("FoleviMain")
+        } else if let front = WindowManager.shared.frontMain?.window {
+            window.setFrame(front.frame.offsetBy(dx: 24, dy: -24), display: false)
+        } else {
+            window.center()
+        }
+        view.load(URLRequest(url: Links.appURL(path)))
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) { fatalError("not from a nib") }
+
+    private func install(_ view: FoleviWebView) {
+        guard let content = window?.contentView else { return }
+        view.frame = content.bounds
+        view.autoresizingMask = [.width, .height]
+        content.addSubview(view)
+    }
+
+    /// The page again from a fresh bootstrap (a mode or place switch): new scripts and rules, the same path.
+    /// `place: .some(nil)` binds the window to no place (the first-launch choice or the sign-in screen).
+    func rebuild(place newPlace: String?? = nil, path: String? = nil) {
+        if let newPlace { place = newPlace }
+        let at = path ?? view.url.flatMap { Links.isAppUrl($0) ? $0 : nil }.map { u -> String in
+            var s = u.path(percentEncoded: true)
+            if let q = u.query(percentEncoded: true) { s += "?" + q }
+            return s.isEmpty ? "/" : s
+        } ?? "/"
+        let old = view
+        let next = WebViewFactory.make(place: place, role: .main, bootstrap: WindowManager.shared.bootstrapOf(place, .main), frame: old.frame, window: { [weak self] in self?.window })
+        // The old page saves what was typed a moment ago and leaves (its databases and locks close, PageClosing);
+        // the new one takes its spot.
+        PageClosing.flush(old) { old.load(URLRequest(url: URL(string: "about:blank")!)) }
+        install(next)
+        old.removeFromSuperview()
+        view = next
+        next.load(URLRequest(url: Links.appURL(at)))
+    }
+
+    func windowShouldClose(_ sender: NSWindow) -> Bool {
+        WindowManager.shared.shouldClose?(self) ?? true
+    }
+
+    func windowWillClose(_ notification: Notification) {
+        // The window goes from the screen now; its page stays a moment longer, told that it is closing, so the
+        // words typed just before (still waiting for their save) are written. Then the view is let go.
+        PageClosing.flush(view)
+        WindowManager.shared.closed(self)
+    }
+
+    /// What window restoration saves: the page's path.
+    var restorePath: String { WindowRestore.restorablePath(view.url) }
+}

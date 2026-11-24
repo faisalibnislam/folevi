@@ -258,7 +258,12 @@ keys, calendars, reminders, tray, Quick Add (Ctrl+Alt+Space), notifications, bad
 instance, window state, own spelling, printing, Windows caption buttons. Builds: `.github/workflows/desktop.yml` on
 GitHub's native Windows x64/ARM64 and Linux x64/ARM64 machines (owner's pick), with memory measured against Electron.
 141 Rust tests, bridge tests and a local smoke run (`apps/desktop/scripts/smoke.mjs`) pass. Updater off until an
-update signing key is approved. Details and the owner's checklist: `docs/DESKTOP_APP.md`.
+update signing key is approved. Details and the owner's checklist: `docs/DESKTOP_APP.md`. First CI results (Windows
+x64, run 45358129332): NSIS 78 MB and MSI 79 MB against Electron's 182 MB installer; after 30 s on the same machine
+139 MB private memory (375 MB working set) against Electron's 204 MB (430 MB). Windows ARM64 lost an increment in a
+concurrent-write test (NTFS creation-time tunneling made etags repeat); fixed by using the NTFS file index
+(bb8c25a1), rerun pending. Since 2026-11-24 this session is **Windows only**: a Linux session
+(`claude/linux-tauri-02790e`) takes Linux packaging (the Linux CI jobs and `apps/desktop/flatpak/`) on top of this branch.
 
 **Release, 2026-11-24 (branch `claude/folevi-core-529dbe`, PR 51 merged into `main` as 7e2080e9):**
 - **1.5.66** (tag `v1.5.66`, local): the native Mac app replacing the AppKit one, plus PR 52's iPhone/iPad redesign.
@@ -621,6 +626,7 @@ account button should move past iPadOS's window buttons).
   `DATABASE_UDF_USER_TIMEOUT_SECONDS=4` for that backend. Bursts show in `convex.log` as "took a long time".
 
 ## 12. Change log
+- 2026-11-24: Desktop CI: Windows x64 builds (NSIS 78 MB, MSI 79 MB) and is lighter than Electron (139 vs 204 MB private); Windows etags now use the NTFS file index (concurrent writes lost an update on ARM64); the workflow's binary lookup fixed for Linux.
 - 2026-11-24: Folevi desktop moved to Tauri 2 for Windows (ARM64, x64) and Linux (x86_64, aarch64) on `claude/desktop-tauri` (owner: "one web app everywhere", small and light like the Mac app); CI builds and memory measurements; Electron PR 58 superseded, not merged.
 - 2026-11-24: Merged `main` (PR 56, iPhone/iPad second round, and the e2e and secret-scan fixes) into `claude/windows-electron-4ed862` to clear PR 58's conflict; only HANDOFF.md conflicted (both sides kept). Owner decided "one web app everywhere": this Electron app becomes the desktop app for Windows, Mac and Linux (Mac and Linux targets wait for the plan).
 - 2026-11-24: Folevi for Windows: branch pushed and PR 58 opened into `main` with the owner's OK; not merged.

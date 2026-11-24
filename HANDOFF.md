@@ -651,6 +651,7 @@ account button should move past iPadOS's window buttons).
   `DATABASE_UDF_USER_TIMEOUT_SECONDS=4` for that backend. Bursts show in `convex.log` as "took a long time".
 
 ## 12. Change log
+- 2026-11-24: 1.5.75 is one shared release: Linux downloads and the iPhone/iPad TestFlight build (mobile session tagged v1.5.75); the Linux files keep their names. Next version on any platform: 1.5.76 or later, check the tags first.
 - 2026-11-24: PR 73 CI: gitleaks flagged the made-up Vault demo login in apps/mac/scripts/screens.mjs (from the Mac web-view work); added main's same `.gitleaksignore` entry.
 - 2026-11-24: PR 73 opened (owner's OK): `claude/linux-tauri-02790e` into `claude/desktop-tauri`, after merging its two newest commits (the cherry-picked blank-window fix, smoke.mjs `--embedded`); the `--embedded` smoke walk passes 7/7 on Linux.
 - 2026-11-24: Folevi for Linux 1.5.75 published (owner's OK in chat): 14 files at R2 `folevi-updates/linux/` (versioned AppImage, .deb, .rpm for x86_64 and aarch64, SHA256SUMS-1.5.75.txt, and no-cache latest names), all checked live (sizes, types, a downloaded .deb's checksum). 144 Rust tests pass on the merged code.

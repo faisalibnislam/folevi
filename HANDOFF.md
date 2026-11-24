@@ -248,6 +248,13 @@ The ones most likely to be broken:
 
 ## 9. Current state (as of 2026-11-24)
 
+**1.5.70 on TestFlight (2026-11-24, owner's OK):** build 85, cut on `claude/ios-release-1.5.70` from the iPhone Duo
+branch (PR 55, which holds all of `main`), so testers keep the Duo window that 1.5.69 had; uploaded (delivery
+e18198df), tag `v1.5.70` local only. No visible change from 1.5.69: it lines TestFlight up with the merged code
+(engine contract revision 35). Its PR into `main` holds only the version commit once PR 55 merges. **Owner's
+decision the same day: "one web app everywhere"** (Electron for desktop, Capacitor for iPhone, iPad, Duo and
+Android); native releases and new native UI work are paused until the owner says otherwise.
+
 **Release, 2026-11-24 (branch `claude/folevi-core-529dbe`, PR 51 merged into `main` as 7e2080e9):**
 - **1.5.66** (tag `v1.5.66`, local): the native Mac app replacing the AppKit one, plus PR 52's iPhone/iPad redesign.
   Published to Sparkle and uploaded to TestFlight with the owner's OK. **It broke signed-in Macs:** the window stayed
@@ -640,6 +647,7 @@ account button should move past iPadOS's window buttons).
 
 ## 12. Change log
 - 2026-11-24: Web everywhere PR 4 (`claude/web-everywhere-wording`): one wording set for empty states on phone and desktop, "note" as the one noun, matching task labels and Tasks/Calendar icons, Calendar shows a placeholder (not "Nothing planned") while loading. Still split (follow-ups): sync status labels (Saved/Synced, Offline/Waiting to sync, Conflict/Edited in two places), four empty-state components (`ui/EmptyState`, phone `ScreenEmpty`, `EmptyBox`, `PhoneEmpty`), no error state when a list fails to load, "page" in template and sidebar wording.
+- 2026-11-24: 1.5.70 (build 85) cut on `claude/ios-release-1.5.70` (off PR 55's branch, all of `main` plus iPhone Duo) and uploaded to TestFlight with the owner's OK (delivery e18198df); tag local. Native releases then paused by the owner (one web app everywhere).
 - 2026-11-24: PR 56 merged into `main` (546f6aa4); PR 55 retargeted to `main` and `main` merged into the Duo branch (no conflicts).
 - 2026-11-24: PR 55 caught up again with its base (the iPad branch's test notes and the secret scan's known false positive in `.gitleaksignore`), which clears PR 55's failing secret scan.
 - 2026-11-24: PR 56's conflicts with `main` fixed (main's PR 54 merged into the iPad branch, HANDOFF only), then the iPad branch merged into the Duo branch for PR 55: Android's Gradle version comes from version.json (main's), and `isIphoneApp` keeps the Duo's `wide` check next to main's Android phone check.

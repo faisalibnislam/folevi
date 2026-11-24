@@ -2,7 +2,7 @@
 
 > Read this first if you are a Claude (or any agent) picking this project up, on this Mac or another one. Then read `CLAUDE.md`, `docs/HANDOFF.md` (the long handoff: unfinished branches, release detail, what the owner is waiting on) and `docs/claude-context/memory/MEMORY.md` (the owner's standing rules). Keep this file current: after every change to the project, update "Current state", "Next steps" and "Change log", and commit it.
 
-Last updated: 2026-11-23 · Written on: Faisal's MacBook Pro M5
+Last updated: 2026-11-24 · Written on: Faisal's MacBook Pro M5
 
 ## 1. What this is
 
@@ -26,6 +26,7 @@ on `origin/main`.
 | Folevi for Mac | `apps/mac` (AppKit + native screens + one WKWebView for the editor), Developer ID, notarized, Sparkle updates from `folevi.com/download/mac/appcast.xml` | Shipped by direct download only (no Mac App Store build) |
 | Folevi for iPhone and iPad | `apps/ios` (native SwiftUI/UIKit screens, web note editor), iOS 18+ | TestFlight internal group "Folevi team" only; never submitted to App Review |
 | Android | `apps/android`: a native Compose app (Gradle root `apps/android`, modules `engine`, `app`); the Capacitor app is gone | **Resumed 2026-11-23** as a native app "just like iPhone" for phones, foldables, tablets and Googlebooks; first build complete on branch `claude/android-native-622675` (not merged, not on Play; `docs/ANDROID_NATIVE_PLAN.md`) |
+| Folevi for Windows | `apps/desktop` (Electron, revived 2026-11-24): native arm64 and x64 builds, Windows 10 22H2 and 11, the bundled web interface; `docs/WINDOWS.md` | **Built 2026-11-24** on branch `claude/windows-electron-4ed862`: unsigned test installers handed to the owner; not merged, not published |
 | Web Clipper | `apps/clipper` (Chrome/Edge extension, own lockfile) | Built and tested in CI; store listing status: see `apps/clipper/STORE.md` |
 | MCP server listing | `mcp/` (`server.json`) | Folevi exposes an MCP endpoint through its OAuth provider |
 
@@ -247,6 +248,19 @@ The ones most likely to be broken:
 - Give before/after screenshots for UI work and ask the owner with clear options when a decision is theirs.
 
 ## 9. Current state (as of 2026-11-24)
+
+**Folevi for Windows (branch `claude/windows-electron-4ed862`, not merged, nothing published):** the old Electron
+Mac app came back as `apps/desktop`, now Windows-only (owner's picks in
+`docs/claude-context/memory/windows-app-decisions-2026-11-24.md`: Electron, native arm64 + x64, unsigned for now,
+folevi.com download with updates from R2, Windows 10 22H2 + 11, Folevi's own top bar with Windows' caption buttons).
+Cloud sign-in (incl. Google/Apple straight), the library on this PC, several places, E2EE keys (DPAPI), tray icon,
+Quick Add (Ctrl+Alt+Space), notifications and a taskbar badge, folevi:// links, single instance, window state,
+Folevi's own spelling, Ctrl+P printing, browser-style tab keys, electron-updater per architecture. The web got a
+`windows` platform (words "this PC", Settings > Desktop app in Windows' words, caption-button room in
+`globals.css`, Segoe UI Variable, accent color). Installers cross-build on this Mac (`node apps/desktop/scripts/dist.mjs`):
+`Folevi-Setup-1.5.68-arm64.exe` and `-x64.exe` (+ ZIPs) were handed to the owner with the checklist in
+`docs/WINDOWS.md`; not tried on a real Windows PC yet. 301 desktop unit tests, the web's tests and a smoke run
+(`apps/desktop/scripts/smoke.mjs`) pass.
 
 **Release in progress, 2026-11-24 (branch `claude/folevi-core-529dbe`, PR 51 into `main`, not merged):**
 - **1.5.66** (tag `v1.5.66`, local): the native Mac app replacing the AppKit one, plus PR 52's iPhone/iPad redesign.
@@ -479,6 +493,12 @@ signed-in account, 1.5.58's frosted folders with a large library, and the iPad c
 account button should move past iPadOS's window buttons).
 
 ## 10. Next steps / open work
+- Folevi for Windows (`claude/windows-electron-4ed862`): the owner tries the test installers on a Windows on ARM and
+  an Intel/AMD PC (checklist in `docs/WINDOWS.md`); fix what they find; then, each with the owner's OK: a PR into
+  `main` (it changes web files, so merging deploys), signing (Azure Trusted Signing suggested), uploading to R2
+  `windows/<arch>/`, a Windows entry on the download page, Dropbox/Google Drive client ids in the build, and a
+  `windows` minimum in `convex/lib/shellVersions.ts`. Not on Windows yet: app lock, bookmark previews in local
+  mode, notification actions, call recording, text in images.
 - Android native (`claude/android-native-622675`, PR 54 https://github.com/faisalibnislam/folevi/pull/54): the owner reviews and merges the PR (it also carries
   contract revision 34, which touches `apps/native-kit/.../Generated` and the web engine). Then the owner's Play steps (`apps/android/README.md` "Steps only the owner can do"), and the
   plan's remaining phase 2 items (Credential Manager sign-in, onboarding, sharing sheet, templates).
@@ -605,6 +625,7 @@ account button should move past iPadOS's window buttons).
   `DATABASE_UDF_USER_TIMEOUT_SECONDS=4` for that backend. Bursts show in `convex.log` as "took a long time".
 
 ## 12. Change log
+- 2026-11-24: Folevi for Windows built on `claude/windows-electron-4ed862` (Electron `apps/desktop` revived, Mac parts removed, web `windows` platform); unsigned arm64 and x64 test installers handed to the owner; not merged or published.
 - 2026-11-24: PR 51 merged, so `main` was merged into the Android branch (PR 54): main's version kept (1.5.68, build 83, read from `version.json`; the old Capacitor `build.gradle.kts` stays deleted); both sides had used contract revision 34, so Android's platform became revision 35 (Swift, Kotlin and fixtures regenerated).
 - 2026-11-24: PR 54 CI fix: the version test checked the removed Capacitor project; it now checks that Android's Gradle build reads version.json.
 - 2026-11-24: Android native branch pushed and opened as PR 54 (14 commits, merges cleanly with main); not merged.

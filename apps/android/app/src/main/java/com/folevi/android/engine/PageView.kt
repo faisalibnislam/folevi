@@ -41,6 +41,8 @@ class PageView(private val activity: ComponentActivity, private val host: Host) 
         fun deliverLink(url: String)
         /** The values the bridge script needs before the page's first render (BridgeScript). */
         fun bootValues(): JSONObject
+        /** Asks for the microphone (the editor's audio recorder); `done` says whether Folevi may use it. */
+        fun requestMicrophone(done: (Boolean) -> Unit)
     }
 
     val webView: WebView = WebView(activity)
@@ -83,6 +85,16 @@ class PageView(private val activity: ComponentActivity, private val host: Host) 
             setSupportMultipleWindows(false)
         }
         WebView.setWebContentsDebuggingEnabled(BuildConfig.DEBUG)
+        // The page's microphone (the editor's audio recorder): only Folevi's own page, only audio, only once the
+        // person allowed it. Everything else the page might ask for (camera, MIDI, protected media) is refused.
+        webView.webChromeClient = object : android.webkit.WebChromeClient() {
+            override fun onPermissionRequest(request: android.webkit.PermissionRequest) {
+                val audio = android.webkit.PermissionRequest.RESOURCE_AUDIO_CAPTURE
+                val own = request.origin?.let { "${it.scheme}://${it.host}" } == APP_ORIGIN
+                if (!own || request.resources.any { it != audio }) return request.deny()
+                host.requestMicrophone { ok -> webView.post { if (ok) request.grant(arrayOf(audio)) else request.deny() } }
+            }
+        }
         val loader = WebViewAssetLoader.Builder()
             .setDomain("localhost")
             .addPathHandler("/", ExportHandler(activity))

@@ -90,7 +90,7 @@ export function FolderMenu({
     const url = `${window.location.origin}/folders/${folder.id}`;
     void navigator.clipboard.writeText(url).then(
       () => toast.show("Link copied"),
-      () => toast.show("Couldn’t copy the link", { tone: "error" }),
+      () => toast.show("Couldn’t copy. Try again.", { tone: "error" }),
     );
   };
 

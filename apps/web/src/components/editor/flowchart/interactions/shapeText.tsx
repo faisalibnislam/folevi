@@ -17,6 +17,7 @@ import { FLOWCHART_FONT_SIZE, FLOWCHART_LIMITS, FLOWCHART_LINE_HEIGHT, TextColor
 import { LABEL_EXTENSIONS, labelDoc, labelParagraphs, pastedLines, type LabelList } from "../richLabel";
 import { safeHref } from "../contentOps";
 import type { View } from "../controller/types";
+import { keyLabel } from "@/lib/shortcuts";
 
 /** Keeps a label within the model's limits (characters and lines), whatever is typed or pasted. */
 const LabelLimit = Extension.create({
@@ -314,7 +315,7 @@ export function ShapeTextEditor({
     fn(editor);
   };
   const btn = (label: string, shortcut: string, pressed: boolean, onClick: () => void, icon: React.ReactNode) => (
-    <button type="button" className="fc-btn" aria-label={label} aria-pressed={pressed} title={shortcut ? `${label} (${shortcut})` : label} onMouseDown={keep} onPointerDown={keep} onClick={onClick}>
+    <button type="button" className="fc-btn" aria-label={label} aria-pressed={pressed} title={shortcut ? `${label} (${keyLabel(shortcut)})` : label} onMouseDown={keep} onPointerDown={keep} onClick={onClick}>
       {icon}
     </button>
   );

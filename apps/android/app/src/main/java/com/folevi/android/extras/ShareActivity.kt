@@ -51,15 +51,19 @@ class ShareActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        val content = read(intent)
-        if (content == null) {
-            finish()
-            return
+        val shared = intent
+        lifecycleScope.launch {
+            // Shared files can be big: read them off the main thread.
+            val content = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { read(shared) }
+            if (content == null) {
+                finish()
+                return@launch
+            }
+            place = getSharedPreferences("folevi-share", MODE_PRIVATE).getString("place", null)
+            if (targets.isNotEmpty()) target = SaveTargets.preferred()
+            setContentView(card(content))
+            loadPlaces()
         }
-        place = getSharedPreferences("folevi-share", MODE_PRIVATE).getString("place", null)
-        if (targets.isNotEmpty()) target = SaveTargets.preferred()
-        setContentView(card(content))
-        lifecycleScope.launch { loadPlaces() }
     }
 
     // ---------------------------------------------------------------- what was shared
@@ -87,7 +91,21 @@ class ShareActivity : ComponentActivity() {
         return Content(title.take(200), text, link, files, skipped)
     }
 
+    /**
+     * Whether a shared address is one the sending app could give: a content:// address from someone else. Never a
+     * file:// path, Folevi's own provider, or a folder Folevi was given access to (another app could otherwise have
+     * Folevi copy its own private files into the Inbox).
+     */
+    private fun allowed(uri: Uri): Boolean {
+        if (uri.scheme != android.content.ContentResolver.SCHEME_CONTENT) return false
+        val authority = uri.authority ?: return false
+        if (authority == packageName || authority.startsWith("$packageName.")) return false
+        val held = contentResolver.persistedUriPermissions.any { p -> p.uri.authority == authority && uri.toString().startsWith(p.uri.toString()) }
+        return !held
+    }
+
     private fun file(uri: Uri): ShareQueue.SharedFile? {
+        if (!allowed(uri)) return null
         val type = contentResolver.getType(uri) ?: "application/octet-stream"
         var name = "file"
         var size = -1L

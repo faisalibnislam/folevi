@@ -56,7 +56,7 @@ import { insertAfterMindmap, mindmapToList, takePendingAi, tasksMarkdown } from 
 import { addChild, addIdeas, addSibling, branchIds, byId, depthOf, moveIdea, outdent, removeIdeas, reorder, setAllCollapsed, setCollapsed, setColor, setLayout, setText, startMap, tidy } from "./ops";
 import { useMindDoc } from "./useMindDoc";
 import { targetUnder } from "../canvas/targetUnder";
-import { capturePointer, dropFocusIn, notePress, pinchPair, useTapFocus, type DownPointer } from "../canvas/pointers";
+import { capturePointer, pressIsElsewhere, dropFocusIn, notePress, pinchPair, useTapFocus, type DownPointer } from "../canvas/pointers";
 
 const MIN_K = 0.2;
 const MAX_K = 2.5;
@@ -545,6 +545,8 @@ function MindmapEditor(props: ReactNodeViewProps) {
   const tapFocus = useTapFocus({ isActive: () => activeRef.current, focus: focusCanvas, drop: () => dropFocusIn(wrapRef.current) });
 
   const onPointerDown = (e: React.PointerEvent<SVGSVGElement>) => {
+    // A press in something this board drew on top of the page (a phone sheet) isn't the board's (pointers.ts).
+    if (pressIsElsewhere(e.currentTarget, e.target)) return;
     if (editingRef.current) finishEdit({ refocus: false });
     const pts = pointers.current;
     const what = notePress(pts, e);

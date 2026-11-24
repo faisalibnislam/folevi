@@ -137,7 +137,8 @@ test("onboarding: every step can be skipped, and passes axe in dark mode", async
   await expect(page.getByText("None this time. You’ll find templates in the sidebar.")).toBeVisible();
   await expect(page.getByText("Plain, like every new page")).toBeVisible();
   await expect(page.getByText("Matches your system")).toBeVisible();
-  await expect(page.getByText("On. Press ⌘J in a note to ask.")).toBeVisible();
+  // (The shortcut as this system writes it: ⌘J on Apple's, Ctrl+J elsewhere, as on the CI runner.)
+  await expect(page.getByText(/^On\. Press (⌘J|Ctrl\+J) in a note to ask\.$/)).toBeVisible();
   await scan(page, "ready (dark)");
   await page.getByRole("button", { name: "Open “Welcome to Folevi”" }).click();
   await expect(page.getByRole("textbox", { name: "Title" })).toHaveValue("Welcome to Folevi");

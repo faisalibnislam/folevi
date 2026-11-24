@@ -2,19 +2,31 @@
 
 import { createContext, useContext, useSyncExternalStore } from "react";
 import { inAndroidApp, inIosApp, nativeChrome } from "./nativeApp";
+import { formFactor, PHONE_QUERY, watchPlatform } from "./platform";
 
-// The iPhone app's own interface (components/iphone): a navigation stack with large titles, a floating glass
-// tab bar, bottom sheets. Only inside the iOS app (data-native="ios"), on an iPhone, or on an iPad in a
-// window too narrow for the sidebar (Slide Over, a third of Split View, a small Stage Manager window): there
-// the iPad app takes the same compact interface, as iPad apps do in a compact-width window, and goes back to
-// the sidebar layout when the window widens. A phone's browser keeps the mobile web layout. Nothing else
-// changes.
+// The phone interface (components/iphone): a navigation stack with large titles, a floating glass tab bar, bottom
+// sheets. Width decides, on every device (the owner, 2026-11-24; lib/platform.ts): any window under 700 px shows it
+// (a phone's browser, the iPhone and Android app, a folded iPhone Duo, iPad Slide Over, a narrow window on a
+// computer), and wider windows get the sidebar layout, switching in place as the window changes. Never the device
+// model: an open iPhone Duo is an iPhone 951 pt wide, and takes the tablet layout.
 //
 // An iPhone's web view says "iPhone" in its user agent in portrait and landscape; on an iPad the app asks for
 // the desktop site (preferredContentMode "recommended"), so its web view reports a Mac with a touch screen.
 
 /** An iPad window narrower than this is compact: the sidebar and a note don't both fit. */
-const IPAD_COMPACT = "(max-width: 699px)";
+const IPAD_COMPACT = PHONE_QUERY;
+
+/**
+ * iPhone Duo: the iPhone app shows the iPad's wide layout while the phone is open (any iPhone window of regular width)
+ * and the phone's when it's closed. The app says which on the marker (`wide`, RebuildPageLayout in the iOS app) and
+ * fires this event when it changes; undefined everywhere else (the iPad's page measures its own width).
+ */
+const NATIVE_LAYOUT_EVENT = "folevi-native-layout";
+
+function nativeWide(): boolean | undefined {
+  const wide = (nativeChrome() as { wide?: unknown } | null)?.wide;
+  return typeof wide === "boolean" ? wide : undefined;
+}
 
 /** Whether this page is the iPad app (its web view reports a Mac with a touch screen). */
 export function isIpadApp(): boolean {
@@ -46,46 +58,51 @@ export function displayCornerRadius(): number | null {
 }
 
 /**
- * Whether this page shows the native phone interface: the iPhone app, the iPad app in a compact window, or the
- * Android app on a phone (or a folded foldable, or any window too narrow for the sidebar). Android tablets and
- * unfolded foldables keep the sidebar layout, as the iPad does, and switch in place when the window changes.
- * iOS-only touches (glass, Face ID copy) check inIosApp() themselves.
+ * Whether this page shows the phone interface: any window under 700 px (lib/platform.ts formFactor). The native
+ * apps' native chrome mode (the native iPhone and Android apps of 1.5.x, still installed) keeps its own rule:
+ * the note page of the native iPhone app is always the phone's. iOS-only touches (glass, Face ID copy) check
+ * inIosApp() themselves.
  */
 export function isIphoneApp(): boolean {
   if (typeof navigator === "undefined") return false;
-  // Native chrome mode on an iPhone: the note page takes the phone layout (the native app draws the bars).
   const marker = nativeChrome();
-  // Native chrome mode on an Android phone (or any Android window too narrow for the sidebar layout): the same.
-  if (marker) return marker.platform === "ios" || (marker.platform === "android" && typeof window.matchMedia === "function" && window.matchMedia(IPAD_COMPACT).matches);
-  if (inAndroidApp()) return typeof window.matchMedia === "function" && window.matchMedia(IPAD_COMPACT).matches;
-  if (!inIosApp()) return false;
-  if (/\b(iPhone|iPod)\b/.test(navigator.userAgent)) return true;
-  return isIpadApp() && typeof window.matchMedia === "function" && window.matchMedia(IPAD_COMPACT).matches;
+  // Native chrome mode on an iPhone (the app's word on an iPhone Duo, `wide`) or an Android phone.
+  if (marker) {
+    if (marker.platform === "ios") return nativeWide() !== true;
+    return marker.platform === "android" && typeof window.matchMedia === "function" && window.matchMedia(IPAD_COMPACT).matches;
+  }
+  return formFactor() === "phone";
 }
 
 /** The same question by its platform-neutral name (the iPhone and Android apps share the phone interface). */
 export const isNativePhone = (): boolean => isIphoneApp();
 
 const followWidth = (changed: () => void) => {
-  // (Only the iPad app's and the Android app's width can change which interface shows.)
-  if (typeof window === "undefined" || typeof window.matchMedia !== "function" || !(isIpadApp() || inAndroidApp())) return () => undefined;
-  const mq = window.matchMedia(IPAD_COMPACT);
-  mq.addEventListener("change", changed);
-  return () => mq.removeEventListener("change", changed);
+  // (Width, pointer and fold can all change which interface shows: a resized window, an unfolded Duo; so can the
+  // native iPhone Duo app's word in native chrome mode.)
+  if (typeof window === "undefined") return () => undefined;
+  window.addEventListener(NATIVE_LAYOUT_EVENT, changed);
+  const stop = watchPlatform(changed);
+  return () => {
+    window.removeEventListener(NATIVE_LAYOUT_EVENT, changed);
+    stop();
+  };
 };
 
-/** The same, for rendering: false on the server; on an iPad it follows the window's width. */
+/** The same, for rendering: false on the server; it follows the window's width. */
 export function useIphoneApp(): boolean {
   return useSyncExternalStore(followWidth, isIphoneApp, () => false);
 }
 
 /**
- * Whether this page shows the iPad layout: the iPad app in a window wide enough for the sidebar (Shell marks
- * <html data-ipad>, and globals.css draws the iPadOS look: touch-sized rows, the tab strip as iPad tabs, no
- * desktop pills or hints). False on the server, and while the window is compact (the phone interface then).
+ * Whether this page shows the tablet layout: a window wide enough for the sidebar on a device used by touch (the
+ * iPad app, the Android app on a tablet or an open foldable, a tablet's browser). Shell marks <html data-tablet>
+ * (and data-ipad on Apple's), and globals.css draws the touch look: 44 pt rows, the tab strip as touch tabs, no
+ * keyboard hints until a keyboard is used. False on the server, and while the window is a phone's.
  */
 export function isIpadLayout(): boolean {
-  return isIpadApp() && !isIphoneApp();
+  if (nativeChrome()) return isIpadApp() && !isIphoneApp();
+  return formFactor() === "tablet";
 }
 
 /** The same, for rendering. */
@@ -93,27 +110,54 @@ export function useIpadLayout(): boolean {
   return useSyncExternalStore(followWidth, isIpadLayout, () => false);
 }
 
+/** The same by its platform-neutral name. */
+export const useTabletLayout = useIpadLayout;
+export const isTabletLayout = isIpadLayout;
+
 /**
  * Whether this page is the note page of the native iPad app's wide layout (native chrome mode, `ipados`, a window
  * wide enough for the sidebar). Its native frame draws the window, sidebar and tabs but no note tools, so the page
  * keeps the web's floating dock (Insert, Format, Style, Comments, Share and the note's "…"), as Folevi for Mac does.
- * Under 700 pt the iPad shows the phone's layout, whose native bars carry those tools instead.
+ * Under 700 pt the iPad shows the phone's layout, whose native bars carry those tools instead. iPhone Duo open is the
+ * same layout, on the app's word (`nativeWide`).
  */
 export function isIpadNativeWide(): boolean {
-  if (typeof window === "undefined" || nativeChrome()?.platform !== "ipados") return false;
+  if (typeof window === "undefined") return false;
+  const told = nativeWide();
+  if (told !== undefined) return told;
+  if (nativeChrome()?.platform !== "ipados") return false;
   return !(typeof window.matchMedia === "function" && window.matchMedia(IPAD_COMPACT).matches);
 }
 
 const followIpadNativeWidth = (changed: () => void) => {
-  if (typeof window === "undefined" || typeof window.matchMedia !== "function" || nativeChrome()?.platform !== "ipados") return () => undefined;
-  const mq = window.matchMedia(IPAD_COMPACT);
-  mq.addEventListener("change", changed);
-  return () => mq.removeEventListener("change", changed);
+  if (typeof window === "undefined" || !nativeChrome()) return () => undefined;
+  window.addEventListener(NATIVE_LAYOUT_EVENT, changed);
+  const mq = typeof window.matchMedia === "function" && nativeChrome()?.platform === "ipados" ? window.matchMedia(IPAD_COMPACT) : null;
+  mq?.addEventListener("change", changed);
+  return () => {
+    window.removeEventListener(NATIVE_LAYOUT_EVENT, changed);
+    mq?.removeEventListener("change", changed);
+  };
 };
 
 /** The same, for rendering: it follows the window's width. */
 export function useIpadNativeWide(): boolean {
   return useSyncExternalStore(followIpadNativeWidth, isIpadNativeWide, () => false);
+}
+
+/**
+ * iPhone Duo open across: iOS puts the toolbar in a column at the side of the screen, and the note's tools (Foli AI,
+ * Insert, Format, Style, Share, the note's "…") are iOS's toolbar items in that column, as they are when the phone is
+ * closed. The app says so on the marker (`sideTools`, RebuildPageLayout) and the page drops its floating dock.
+ */
+export function isNativeSideTools(): boolean {
+  if (typeof window === "undefined") return false;
+  return (nativeChrome() as { sideTools?: unknown } | null)?.sideTools === true;
+}
+
+/** The same, for rendering: it follows the app's word as the phone opens, folds and turns. */
+export function useNativeSideTools(): boolean {
+  return useSyncExternalStore(followIpadNativeWidth, isNativeSideTools, () => false);
 }
 
 /**

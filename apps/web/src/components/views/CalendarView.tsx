@@ -213,7 +213,7 @@ export function CalendarView({ month }: { month: string | null }) {
   const iphoneMenu = calendarMenu(mode, pickLayout, feeds ? () => setFeedOpen(true) : null, () => setCalendarsOpen(true));
   if (iphone && mode === "agenda") {
     return (
-      <IphoneAgenda today={today} selected={selected} onSelect={setSelected} days={agendaDays} byDate={byDate} eventsByDate={eventsByDate} overdue={overdue} timeZone={timeZone} onToggle={toggle} onEdit={setEditing} onOpenEvent={showEvent} menu={iphoneMenu}>
+      <IphoneAgenda today={today} selected={selected} onSelect={setSelected} days={agendaDays} byDate={byDate} eventsByDate={eventsByDate} overdue={overdue} timeZone={timeZone} onToggle={toggle} onEdit={setEditing} onOpenEvent={showEvent} menu={iphoneMenu} loading={tasks === undefined}>
         {dialogs}
       </IphoneAgenda>
     );
@@ -341,9 +341,11 @@ export function CalendarView({ month }: { month: string | null }) {
             <aside aria-label="Selected day">
               <h3 className="font-semibold">{formatCalendarDate(selected, { weekday: "long", month: "long", day: "numeric" })}</h3>
               <ul className="mt-3 divide-y divide-transparent overflow-hidden ui-card rounded-control">
-                {(byDate.get(selected) ?? []).length === 0 ? (
+                {tasks === undefined ? (
+                  <li aria-hidden className="m-3 h-10 animate-pulse rounded-control bg-sunken motion-reduce:animate-none" />
+                ) : (byDate.get(selected) ?? []).length === 0 ? (
                   <li>
-                    <EmptyState size="inline" icon={CalendarCheck} title="No tasks due" body="Drag a task onto this day to schedule it." />
+                    <EmptyState size="inline" icon={CalendarCheck} title="Nothing planned" body="Drag a task onto this day to schedule it." />
                   </li>
                 ) : null}
                 {(byDate.get(selected) ?? []).map((t) => (
@@ -386,7 +388,7 @@ export function CalendarView({ month }: { month: string | null }) {
                     {d === today ? "Today" : formatCalendarDate(d, { weekday: "long", month: "long", day: "numeric" })}
                   </h3>
                   <ul className="divide-y divide-transparent overflow-hidden ui-card rounded-control">
-                    {(byDate.get(d) ?? []).length === 0 && !eventsByDate.has(d) ? <li className="px-4 py-3 text-subheadline text-muted">Nothing due.</li> : null}
+                    {tasks !== undefined && (byDate.get(d) ?? []).length === 0 && !eventsByDate.has(d) ? <li className="px-4 py-3 text-subheadline text-muted">Nothing planned</li> : null}
                     {(byDate.get(d) ?? []).map((t) => (
                       <TaskItem key={t.blockId} task={t} today={today} onToggle={toggle} onEdit={setEditing} />
                     ))}

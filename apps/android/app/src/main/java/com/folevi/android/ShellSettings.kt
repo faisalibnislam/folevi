@@ -17,7 +17,7 @@ class ShellSettings(context: Context) {
         get() = prefs.getString(KEY_MODE, null)?.takeIf { it in MODES } ?: "unset"
         set(value) {
             require(value in MODES)
-            prefs.edit().putString(KEY_MODE, value).commit()
+            prefs.edit().putString(KEY_MODE, value).apply()
         }
 
     /** One id per install, for the REST token the widgets and the share target use (lib/nativeDevice.ts). */

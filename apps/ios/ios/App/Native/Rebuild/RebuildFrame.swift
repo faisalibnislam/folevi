@@ -100,7 +100,11 @@ final class RebuildFrameController: UIViewController, PhoneRouting {
         super.init(nibName: nil, bundle: nil)
         host.viewController = self
         WebHost.current = host
-        host.onPageLifecycle = { [weak transport] event in transport?.pageEvent(event) }
+        host.onPageLifecycle = { [weak transport] event in
+            transport?.pageEvent(event)
+            // (iPhone Duo: the reloaded page hears which layout shows again.)
+            RebuildPageLayout.again()
+        }
         model.router = self
     }
 
@@ -161,7 +165,7 @@ final class RebuildFrameController: UIViewController, PhoneRouting {
         observers.append(Observer { [weak self] in
             guard let self else { return }
             let r = self.desk.route
-            guard r != RebuildDeskBridge.placed, (self.view.window?.bounds.width ?? 0) < RebuildIPad.minWidth || UIDevice.current.userInterfaceIdiom != .pad else { return }
+            guard r != RebuildDeskBridge.placed, !self.wide else { return }
             RebuildDeskBridge.placed = r
             if case .note(let id) = r { self.openNote(id, source: nil, focus: false) } else { self.frame.open(r) }
         })
@@ -217,7 +221,7 @@ final class RebuildFrameController: UIViewController, PhoneRouting {
         if ProcessInfo.processInfo.environment["FOLEVI_REBUILD_NEWNOTE"] == "1" {
             DispatchQueue.main.asyncAfter(deadline: .now() + 3) { [weak self] in
                 guard let self else { return }
-                if UIDevice.current.userInterfaceIdiom == .pad, (self.view.window?.bounds.width ?? 0) >= RebuildIPad.minWidth { self.desk.newNote() } else { self.model.newNote() }
+                if self.wide { self.desk.newNote() } else { self.model.newNote() }
             }
         }
     }
@@ -249,12 +253,49 @@ final class RebuildFrameController: UIViewController, PhoneRouting {
         }
     }
 
+    override func viewWillTransition(to size: CGSize, with coordinator: any UIViewControllerTransitionCoordinator) {
+        super.viewWillTransition(to: size, with: coordinator)
+        // (The desk's split view reports its columns as the size changes: not the person hiding the sidebar.)
+        desk.windowResizedAt = Date()
+        // iPhone Duo folding or unfolding mid-sentence (or an iPad window crossing 700 pt): the other layout takes the
+        // note's page, which loses the keyboard on the way; it comes back there, the caret where it was (the owner's
+        // rule, 2026-11-19: the note stays the focus).
+        let wasWide = wide
+        // (The keyboard may already have gone as the screens trade places: a moment ago counts.)
+        let keys = model.keyboardVisible || keyboardHidAt.map { Date().timeIntervalSince($0) < 1 } == true
+        let typing = keys && (wasWide ? desk.route.isNote : frame.top.isNote)
+        guard typing else { return }
+        coordinator.animate(alongsideTransition: nil) { [weak self] _ in
+            // (Again a little later if the first try came before the new layout had settled the page in place.)
+            for delay in [0.45, 1.2] {
+                DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
+                    guard let self, self.wide != wasWide, !self.model.keyboardVisible else { return }
+                    self.pageHost.pageView.becomeFirstResponder()
+                    self.model.editor(.focus)
+                }
+            }
+            // The caret in sight once the page has its new width (the layout may have put back where its own tab
+            // was scrolled to).
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.6) { [weak self] in
+                guard let self, self.wide != wasWide else { return }
+                self.pageHost.pageView.evaluateJavaScript(Self.caretInSight)
+            }
+        }
+    }
+
+    /// Scrolls the caret to the middle of what shows when it's out of sight (above the top, or under the keyboard).
+    private static let caretInSight = "(()=>{const s=getSelection();if(!s||!s.rangeCount)return;const r=s.getRangeAt(0).getBoundingClientRect();const h=window.visualViewport?visualViewport.height:innerHeight;if(r.top>=0&&r.bottom<=h)return;const n=s.focusNode&&(s.focusNode.nodeType===1?s.focusNode:s.focusNode.parentElement);if(n)n.scrollIntoView({block:'center'})})()"
+
+    /// When the on-screen keyboard last went away (iPhone Duo: folding or unfolding can close it first).
+    private var keyboardHidAt: Date?
+
     private func keyboardMoved(to end: CGRect, hiding: Bool) {
         guard let window = view.window else { return }
         let keyboard = window.convert(end, from: window.screen.coordinateSpace)
         let overlap = hiding ? 0 : KeyboardBridge.coveredHeight(keyboard: keyboard, bounds: window.bounds)
         model.keyboardOverlap = overlap
         let appeared = overlap > 0 && !model.keyboardVisible
+        if overlap == 0, model.keyboardVisible { keyboardHidAt = Date() }
         model.keyboardVisible = overlap > 0
         if appeared { model.refreshEditorState() }
     }
@@ -321,7 +362,7 @@ final class RebuildFrameController: UIViewController, PhoneRouting {
         guard let path = DeepLink.path(of: url) else { return }
         if FrameRoute.opensInboxPage(path) { return openInboxPage() }
         let route = FrameRoute(path: path)
-        if UIDevice.current.userInterfaceIdiom == .pad, (view.window?.bounds.width ?? 0) >= RebuildIPad.minWidth {
+        if wide {
             desk.open(route)
             return
         }
@@ -369,42 +410,18 @@ private struct RebuildRoot: View {
     @State private var newWorkspace = false
     /// What sheets grow out of (phoneZoomSource / phoneSheet(zoomFrom:)).
     @Namespace private var zoom
-    /// Regular width (iPhone Duo open): Home's detail column shows the last note opened when nothing is open.
+    /// Regular width (iPhone Duo open): the wide layout, as on the iPad.
     @Environment(\.horizontalSizeClass) private var sizeClass
-
-    /// What decides whether Home's empty detail column should show the most recent note.
-    private struct RecentKey: Hashable {
-        var regular: Bool
-        var onHome: Bool
-        var noteOpen: Bool
-        var recent: String?
-    }
-
-    private var recentKey: RecentKey {
-        let s = model.stacks[.home] ?? []
-        return RecentKey(regular: sizeClass == .regular && UIDevice.current.userInterfaceIdiom == .phone,
-                         onHome: model.current == .home && !model.searching,
-                         noteOpen: PhoneFrameModel.noteRunStart(s) < s.count,
-                         recent: model.noteToShow(recents: home.recents.map(\.id)))
-    }
-
-    /// The open inner screen with no note beside Home: the last one opened shows there, as Notes does.
-    private func showRecent(_ k: RecentKey) {
-        guard k.regular, k.onHome, !k.noteOpen, let id = k.recent else { return }
-        model.openRecent(id)
-    }
-
-    /// Folding: a note the detail column showed by itself (never written in) closes, so the outer screen shows Home.
-    private func closeRecent() {
-        guard let id = model.autoNote, model.stacks[.home]?.last?.route == .note(id) else { return }
-        model.closeNotes(in: .home)
-    }
 
     var body: some View {
         // The iPad in a window wide enough for the sidebar: the web's desktop layout (lib/iphone.ts
-        // isIpadLayout, under 700 pt the phone's); the iPhone always the phone's.
+        // isIpadLayout, under 700 pt the phone's). An iPhone window of regular width (iPhone Duo open, the owner's
+        // pick of 2026-11-23) takes the same layout; any other iPhone window the phone's.
         GeometryReader { g in
-            let wide = UIDevice.current.userInterfaceIdiom == .pad && g.size.width >= RebuildIPad.minWidth
+            let wide = RebuildIPad.isWide(width: g.size.width, regular: sizeClass == .regular)
+            // The desk's touch sizes (the iPad's styles) while it shows, set before either layout is built.
+            let _ = (WebStyles.isPad = UIDevice.current.userInterfaceIdiom == .pad || wide)
+            let _ = (RebuildIPad.showingWide = wide)
             Group {
                 if wide {
                     RebuildIPadRoot(desk: desk, phone: phone, pageHost: pageHost, gate: gate)
@@ -415,13 +432,14 @@ private struct RebuildRoot: View {
                 }
             }
             .onChange(of: wide) { _, isWide in
-                // Keep the open screen when Split View or Stage Manager crosses the layout boundary.
+                // Keep the open screen when Split View or Stage Manager crosses the layout boundary, or iPhone Duo
+                // opens or closes.
                 if isWide { desk.open(model.top) } else { model.open(desk.route) }
             }
+            // The note page's look follows the layout (iPhone Duo).
+            .onChange(of: wide, initial: true) { _, isWide in RebuildPageLayout.tell(wide: isWide) }
         }
         .ignoresSafeArea(.keyboard)
-        .onChange(of: recentKey, initial: true) { _, k in showRecent(k) }
-        .onChange(of: sizeClass) { _, c in if c != .regular { closeRecent() } }
         .environment(\.sheetZoom, zoom)
         .phoneSheet(isPresented: Bindable(phone).quickAddShown, size: .fit) {
             // (The iPhone's native look; the iPad keeps its own.)

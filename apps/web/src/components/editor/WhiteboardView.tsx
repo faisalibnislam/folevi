@@ -28,6 +28,7 @@ import { BlockExportMenu } from "./canvas/BlockExport";
 import { useFullCanvas } from "./canvas/useFullCanvas";
 import { targetUnder } from "./canvas/targetUnder";
 import { clampMove, isHighlight, strokeAt, strokeInBox, strokeKey, strokesBounds, stylusTouch, translateStroke, type Box, type Point } from "./whiteboard/ops";
+import { withKeyLabels } from "@/lib/shortcuts";
 
 type Tool = "pen" | "highlighter" | "eraser" | "select";
 const PEN_COLORS = ["ink", "blue", "red", "green", "orange", "purple"] as const;
@@ -825,7 +826,7 @@ export function WhiteboardView({ node, selected, updateAttributes, editor, getPo
               ) : null}
               {picking ? (
                 <span role="group" aria-label="Selected strokes" className="fb-wb-group">
-                  <button type="button" className={btn} aria-label="Duplicate" title="Duplicate (⌘D)" onClick={duplicatePicked}>
+                  <button type="button" className={btn} aria-label="Duplicate" title={withKeyLabels("Duplicate (⌘D)")} onClick={duplicatePicked}>
                     <Copy size={15} aria-hidden />
                   </button>
                   <button type="button" className={btn} aria-label="Delete selected strokes" title="Delete (⌫)" onClick={removePicked}>
@@ -840,7 +841,7 @@ export function WhiteboardView({ node, selected, updateAttributes, editor, getPo
           <span className="fb-wb-break" aria-hidden />
           {editable ? (
             <>
-              <button type="button" className={btn} aria-label="Undo" title="Undo (⌘Z)" disabled={!canUndo} onClick={undo}>
+              <button type="button" className={btn} aria-label="Undo" title={withKeyLabels("Undo (⌘Z)")} disabled={!canUndo} onClick={undo}>
                 <Undo2 size={15} aria-hidden />
               </button>
               <button type="button" className={btn} aria-label="Clear whiteboard" title="Clear" disabled={!count} onClick={clear}>
@@ -850,7 +851,7 @@ export function WhiteboardView({ node, selected, updateAttributes, editor, getPo
             </>
           ) : null}
           <BlockExportMenu type="whiteboard" attrs={() => ({ data: count ? serializeWhiteboard({ strokes: latest.current }) : "", height: sheetHeight })} empty={!count} triggerClassName={btn} />
-          <button type="button" className={btn} aria-pressed={full} aria-label={full ? "Exit full canvas" : "Full canvas"} title={full ? "Exit full canvas (Esc)" : "Full canvas (⇧⌘F)"} onClick={() => toggleFull()}>
+          <button type="button" className={btn} aria-pressed={full} aria-label={full ? "Exit full canvas" : "Full canvas"} title={full ? "Exit full canvas (Esc)" : withKeyLabels("Full canvas (⇧⌘F)")} onClick={() => toggleFull()}>
             {full ? <Shrink size={15} aria-hidden /> : <Expand size={15} aria-hidden />}
           </button>
         </div>

@@ -69,12 +69,17 @@ class MainActivity : FragmentActivity(), PageView.Host {
         current = java.lang.ref.WeakReference(this)
         val demo = BuildConfig.DEBUG && intent.getBooleanExtra("demo", false) && DemoEngine.available(this)
         session = AppSession(this, lifecycleScope, demo, host = this)
-        intent.getStringExtra(EXTRA_NOTE)?.let { session.initialNote = it to (intent.getStringExtra(EXTRA_TITLE) ?: "") }
+        // A window at a note: only Folevi's own "Open in new window" (another app can't name one).
+        if (isInternal(intent)) {
+            intent.getStringExtra(EXTRA_NOTE)?.takeIf { NOTE_ID.matches(it) }?.let { session.initialNote = it to (intent.getStringExtra(EXTRA_TITLE) ?: "").take(200) }
+        }
 
         val root = FrameLayout(this)
         val compose = ComposeView(this)
         root.addView(compose, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
         session.page?.webView?.let { web ->
+            // The note pane already sits inside the bars and above the keyboard: the page must not inset itself again.
+            androidx.core.view.ViewCompat.setOnApplyWindowInsetsListener(web) { _, _ -> androidx.core.view.WindowInsetsCompat.CONSUMED }
             web.visibility = View.INVISIBLE
             root.addView(web, FrameLayout.LayoutParams(1, 1))
         }
@@ -92,14 +97,25 @@ class MainActivity : FragmentActivity(), PageView.Host {
                     com.folevi.engine.generated.AppearanceSettings.Appearance.DARK -> true
                     else -> androidx.compose.foundation.isSystemInDarkTheme()
                 }
+                // The status and navigation bar icons follow Folevi's appearance, not only the system's (the app can be
+                // dark on a light phone).
+                androidx.compose.runtime.DisposableEffect(dark) {
+                    val style = if (dark) androidx.activity.SystemBarStyle.dark(android.graphics.Color.TRANSPARENT)
+                    else androidx.activity.SystemBarStyle.light(android.graphics.Color.TRANSPARENT, android.graphics.Color.TRANSPARENT)
+                    enableEdgeToEdge(style, style)
+                    window.isNavigationBarContrastEnforced = false
+                    onDispose {}
+                }
                 FoleviTheme(dark = dark) {
                     LaunchedEffect(Unit) { snapshotFlow { session.noteSlot.value }.collect { placePage(it) } }
-                    Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).safeDrawingPadding()) {
+                    // Edge to edge: each area keeps itself clear of the bars, the cutout and the keyboard (AppShell's
+                    // scaffolds, the tab strip, the gate screens), so backgrounds reach the screen's edges.
+                    Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
                         val g = gate
                         when {
-                            g != null -> GateScreen(g)
+                            g != null -> Box(Modifier.safeDrawingPadding()) { GateScreen(g) }
                             state is EngineClient.State.Ready || session.isDemo -> AppShell()
-                            else -> GateScreen(LOADING)
+                            else -> Box(Modifier.safeDrawingPadding()) { GateScreen(LOADING) }
                         }
                     }
                 }
@@ -122,7 +138,7 @@ class MainActivity : FragmentActivity(), PageView.Host {
     /** The shortcuts in Android's keyboard shortcuts helper (Meta + /). */
     override fun onProvideKeyboardShortcuts(data: MutableList<android.view.KeyboardShortcutGroup>, menu: android.view.Menu?, deviceId: Int) {
         super.onProvideKeyboardShortcuts(data, menu, deviceId)
-        data.add(com.folevi.android.ui.Shortcuts.helperGroup())
+        data.add(com.folevi.android.ui.Shortcuts.helperGroup(tabs = session.shortcuts?.tabs != null))
     }
 
     /** Lays the Page View over the note pane (or hides it, still running, when no note is on screen). */
@@ -164,8 +180,8 @@ class MainActivity : FragmentActivity(), PageView.Host {
 
     /** Several places: the session older builds kept moves to its account, then the page opens in it. */
     private fun adoptLegacySession() {
-        if (app.auth.token(null) == null) return
         lifecycleScope.launch {
+            if (kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { app.auth.token(null) } == null) return@launch
             val user = runCatching { app.auth.adoptLegacy() }.getOrNull() ?: return@launch
             val first = app.places.state.accounts.isEmpty()
             val added = app.places.addAccount(user.userId, user.name, user.email, user.avatarUrl) ?: return@launch
@@ -237,6 +253,20 @@ class MainActivity : FragmentActivity(), PageView.Host {
     }
 
     private var photosWaiting: kotlinx.coroutines.CompletableDeferred<List<Uri>>? = null
+    private var micDone: ((Boolean) -> Unit)? = null
+    private val micPermission = registerForActivityResult(androidx.activity.result.contract.ActivityResultContracts.RequestPermission()) { ok ->
+        micDone?.invoke(ok)
+        micDone = null
+    }
+
+    override fun requestMicrophone(done: (Boolean) -> Unit) {
+        if (checkSelfPermission(android.Manifest.permission.RECORD_AUDIO) == android.content.pm.PackageManager.PERMISSION_GRANTED) return done(true)
+        // One request at a time; a second one while the prompt is up is turned down.
+        if (micDone != null) return done(false)
+        micDone = done
+        micPermission.launch(android.Manifest.permission.RECORD_AUDIO)
+    }
+
     private val pickPhotos = registerForActivityResult(androidx.activity.result.contract.ActivityResultContracts.PickMultipleVisualMedia(10)) { uris ->
         val w = photosWaiting
         photosWaiting = null
@@ -337,6 +367,7 @@ class MainActivity : FragmentActivity(), PageView.Host {
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
+        setIntent(intent)
         handleIntent(intent)
     }
 
@@ -350,7 +381,9 @@ class MainActivity : FragmentActivity(), PageView.Host {
             if (place != null) {
                 data = uri.buildUpon().clearQuery().apply { for (k in uri.queryParameterNames) if (k != "place") for (v in uri.getQueryParameters(k)) appendQueryParameter(k, v) }.build().toString()
             }
-            if (place != null && app.places.has(place) && place != app.places.state.current) {
+            // Only a link Folevi made (a notification, a reminder, a widget, Quick add) may switch the place: a web page
+            // or another app could otherwise move this phone to another account or the library unasked.
+            if (place != null && isInternal(intent) && app.places.has(place) && place != app.places.state.current) {
                 app.places.setCurrent(place)
                 if (uri.host == "quick-add" || uri.host == "new") {
                     reloadForMode("/documents")
@@ -426,6 +459,17 @@ class MainActivity : FragmentActivity(), PageView.Host {
         @Volatile var current: java.lang.ref.WeakReference<MainActivity>? = null
 
         const val APP_ORIGIN = PageView.APP_ORIGIN
+        /** The non-exported alias Folevi's own intents go through (AndroidManifest.xml). */
+        private const val INTERNAL = "com.folevi.android.InternalLink"
+        /** A note id as the engine makes them. */
+        private val NOTE_ID = Regex("^[A-Za-z0-9_-]{1,64}$")
+
+        /** An intent for this app made by this app: only it may switch the place or open a window at a note. */
+        fun internalIntent(data: android.net.Uri?, context: android.content.Context): Intent =
+            Intent(Intent.ACTION_VIEW).setComponent(android.content.ComponentName(context.packageName, INTERNAL)).apply { if (data != null) setData(data) else action = Intent.ACTION_MAIN }
+
+        /** Whether an intent came through the non-exported alias (other apps can't reach it). */
+        fun isInternal(intent: Intent?): Boolean = intent?.component?.className == INTERNAL
         /** A new window's note (Desktop.kt openWindow). */
         const val EXTRA_NOTE = "folevi.note"
         const val EXTRA_TITLE = "folevi.title"

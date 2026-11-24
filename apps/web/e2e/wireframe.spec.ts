@@ -159,7 +159,8 @@ test.describe("Wireframe", () => {
     // enough for its tools; at 360 it is 308, under the 320 where the picture takes over.)
     await page.setViewportSize({ width: 360, height: 800 });
     await expect(tools).toBeHidden();
-    await card.getByRole("button", { name: /^Open canvas/ }).click();
+    // (A phone's width gets the phone layout, where a canvas is a card that opens the full canvas: Open <name>.)
+    await page.getByRole("button", { name: /^Open (canvas|Wireframe)/ }).click();
     await expect(card.locator(".fb-canvas-card")).toHaveAttribute("data-full", "true");
     const fits = (el: HTMLElement | SVGElement) => {
       const box = el.parentElement!.getBoundingClientRect();

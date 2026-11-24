@@ -25,7 +25,7 @@ if [[ $TEST_TOOLS == 1 ]]; then
   apt-get install -y -qq --no-install-recommends \
     xvfb xauth x11-utils xdotool imagemagick dbus-x11 dbus-user-session gnome-keyring libsecret-tools \
     weston at-spi2-core xdg-desktop-portal xdg-desktop-portal-gtk libnotify-bin \
-    flatpak flatpak-builder fuse3 libfuse2
+    flatpak flatpak-builder elfutils fuse3 libfuse2
 fi
 
 # Node (the version in the repo's .nvmrc) for building the web interface the app ships with.

@@ -80,9 +80,10 @@ them, so the shell checks the install kind first.
 - **File dialogs.** Through the XDG file chooser portal (tauri-plugin-dialog's `xdg-portal` backend), so the
   Flatpak sees exactly the files someone picks, with no filesystem permission, and it looks native on GNOME and
   KDE. Needs `xdg-desktop-portal` with a backend, which every mainstream desktop installs.
-- **Dark mode.** GTK 3 (and so WebKitGTK) doesn't read the desktop's modern light/dark setting, so the shell reads
-  the portal's `color-scheme` and follows it live (`linux::follow_color_scheme`); Folevi's "System" appearance
-  then matches the desktop.
+- **Dark mode.** The desktop's light/dark setting comes through the portal's `color-scheme`. WebKitGTK 2.50
+  already follows it for the page (checked in the VM: the page turned dark with and without the shell's hook), so
+  Folevi's "System" appearance matches the desktop. GTK 3's own parts (title bar, menus, dialogs) don't read it,
+  so the shell also reads it and sets the app's theme live (`linux::follow_color_scheme`).
 - **NVIDIA.** With NVIDIA's own driver WebKitGTK can show a blank window; the shell sets
   `WEBKIT_DISABLE_DMABUF_RENDERER=1` there (and only there) before the window opens.
 

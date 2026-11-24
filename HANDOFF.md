@@ -639,6 +639,7 @@ account button should move past iPadOS's window buttons).
   `DATABASE_UDF_USER_TIMEOUT_SECONDS=4` for that backend. Bursts show in `convex.log` as "took a long time".
 
 ## 12. Change log
+- 2026-11-24: Web everywhere PR 4 (`claude/web-everywhere-wording`): one wording set for empty states on phone and desktop, "note" as the one noun, matching task labels and Tasks/Calendar icons, Calendar shows a placeholder (not "Nothing planned") while loading. Still split (follow-ups): sync status labels (Saved/Synced, Offline/Waiting to sync, Conflict/Edited in two places), four empty-state components (`ui/EmptyState`, phone `ScreenEmpty`, `EmptyBox`, `PhoneEmpty`), no error state when a list fails to load, "page" in template and sidebar wording.
 - 2026-11-24: PR 56 merged into `main` (546f6aa4); PR 55 retargeted to `main` and `main` merged into the Duo branch (no conflicts).
 - 2026-11-24: PR 55 caught up again with its base (the iPad branch's test notes and the secret scan's known false positive in `.gitleaksignore`), which clears PR 55's failing secret scan.
 - 2026-11-24: PR 56's conflicts with `main` fixed (main's PR 54 merged into the iPad branch, HANDOFF only), then the iPad branch merged into the Duo branch for PR 55: Android's Gradle version comes from version.json (main's), and `isIphoneApp` keeps the Duo's `wide` check next to main's Android phone check.

@@ -248,7 +248,7 @@ The ones most likely to be broken:
 
 ## 9. Current state (as of 2026-11-24)
 
-**One mobile app with Capacitor (2026-11-24, branch `claude/mobile-capacitor-f41734`, PR into `main`, not merged):**
+**One mobile app with Capacitor (2026-11-24, branch `claude/mobile-capacitor-f41734`, PR 66 https://github.com/faisalibnislam/folevi/pull/66 into `main`, not merged):**
 the owner's "one web app everywhere" plan for phones and tablets. `apps/mobile` is one Capacitor 8 project for
 iPhone, iPad, iPhone Duo and Android around the web app's shell export (`build-shell.mjs --platform mobile`), with
 no native screens. Details: `docs/MOBILE.md`.
@@ -542,7 +542,7 @@ signed-in account, 1.5.58's frosted folders with a large library, and the iPad c
 account button should move past iPadOS's window buttons).
 
 ## 10. Next steps / open work
-- Mobile app (`apps/mobile`, PR from `claude/mobile-capacitor-f41734`): the owner reviews and merges (merging
+- Mobile app (`apps/mobile`, PR 66 from `claude/mobile-capacitor-f41734`): the owner also decides whether to shrink the 64 MB of note covers or download them when used; the owner reviews and merges (merging
   deploys the web, which has the layout change in `lib/iphone.ts`); then check sign-in, push and iPhone Duo folding
   on real devices; carry over widgets, Siri/Shortcuts and Spotlight; one bridge script for both platforms; release
   scripts for TestFlight and Play (only with the owner's OK); decide on note covers (64 MB of the app).
@@ -676,6 +676,7 @@ account button should move past iPadOS's window buttons).
   `DATABASE_UDF_USER_TIMEOUT_SECONDS=4` for that backend. Bursts show in `convex.log` as "took a long time".
 
 ## 12. Change log
+- 2026-11-24: PR 66 opened for the Capacitor mobile app (`claude/mobile-capacitor-f41734` pushed); open question to the owner: note covers.
 - 2026-11-24: `apps/mobile`: one Capacitor app for iPhone, iPad, iPhone Duo and Android around the web app (no native screens), reusing the shared Swift and Kotlin services; window-size layouts in `lib/iphone.ts`; `version.mjs` covers it; checked on simulators and emulators, size and memory compared (docs/MOBILE.md). Branch `claude/mobile-capacitor-f41734`, PR not merged.
 - 2026-11-24: 1.5.70 (build 85) cut on `claude/ios-release-1.5.70` (off PR 55's branch, all of `main` plus iPhone Duo) and uploaded to TestFlight with the owner's OK (delivery e18198df); tag local. Native releases then paused by the owner (one web app everywhere).
 - 2026-11-24: PR 56 merged into `main` (546f6aa4); PR 55 retargeted to `main` and `main` merged into the Duo branch (no conflicts).

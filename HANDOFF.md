@@ -294,6 +294,21 @@ no native screens. Details: `docs/MOBILE.md`.
   terms accepted on the emulator; iOS's sign-in sheet couldn't be tapped from scripts); iPhone Duo open and
   folding (the simulator's hinge couldn't be moved from scripts on this Mac); push delivery.
 - Nothing uploaded; native releases stay paused (a release would be 1.5.71 or later via `node scripts/version.mjs`).
+**Folevi for Mac back to the web view (owner, 2026-11-24, branch `claude/mac-webview`, PR 67): released as 1.5.73**
+(build 88, tag `v1.5.73` local, live on the Mac feed, notarized, universal; the owner said "Release it"; 1.5.72 was
+already the Capacitor mobile app's, recorded from tag `v1.5.72`). the owner
+chose to bring back the AppKit WKWebView app (`archive/mac-appkit`, 1.5.64) showing the web app's own UI (sidebar,
+tabs, top bar, Mac window buttons in the page's top bar), as on Windows and Linux, keeping the menu bar, Quick Add
+and the menu bar icon, Spotlight, Shortcuts, Share and Services. Done: `apps/mac` restored from the tag and the
+native frame (N8) removed (Frame/, floating notes, the native Settings window: ⌘, opens the web's /settings in the
+main window; Quick Add is the web panel). The SwiftUI app is at tag `archive/mac-swiftui` (= v1.5.71, local).
+Carry-over from 1.5.71 checked on scratch data: same bundle id, support folder, Keychain names, web storage and
+desktop settings key; the SwiftUI app's "Lock Folevi" defaults (`folevi.lock`) are written back to lock.json once.
+111 Mac tests pass; the Release build passes release.mjs's checks; 1.5.71 then the new build on one scratch
+library opens the same notes. The owner kept this look (window buttons in the web's top-left corner). Not done: a signed-in Release
+run (twice the owner answered "notes appear" but the test copy's scratch folder recorded no sign-in: do it with the
+owner at the Mac, the installed Folevi quit first), which the owner chose to skip by releasing. Debug scripts that compared "web" and "native" frames (screens, menus, quickadd, gates) still take a kind;
+only "web" means anything now.
 
 **1.5.70 on TestFlight (2026-11-24, owner's OK):** build 85, cut on `claude/ios-release-1.5.70` from the iPhone Duo
 branch (PR 55, which holds all of `main`), so testers keep the Duo window that 1.5.69 had; uploaded (delivery
@@ -319,11 +334,25 @@ Android); native releases and new native UI work are paused until the owner says
   iPhone/iPad session opened PR 56 into `main`.
 - **Tabs (owner, 2026-11-24):** everything opens in a new tab exactly like the web on Mac, iPad, and Android
   tablets/Googlebooks (`docs/claude-context/memory/tabs-match-web-2026-11-24.md`). iPad and Android were forwarded
-  to their sessions (the iPad already matched). Mac: in progress on the local branch `claude/mac-web-tabs` (a WIP
-  commit: `Destination.tabKind`, `AppModel.route`, `WindowModel.go/step`, fresh sidebar and New Note), not built
-  into any release. Still to do there: in-note callers (`inNote:` for crumbs and the inspector's pages), carrying
-  Foli DNA's settings and the folder share sheet into the new tab, a pure placement function with tests, then
-  check it in the app. Never publish while editing in the same worktree: the release build reads the sources.
+  to their sessions (the iPad already matched). **Mac: done on branch `claude/mac-web-tabs`** (off the release
+  branch, pushed, no PR yet, not released): the rule is `AppModel.placement` (`Destination.tabKind`,
+  `TabRuleTests`), `WindowModel.go` routes, `step(to:)` moves inside a tab. Checked in the demo app.
+- **Mac best-native pass (owner, 2026-11-24), same branch:** three read-only skill audits (HIG/macOS, motion,
+  SwiftUI performance), then the fixes: no-bounce motion, Bookmark wording, Ask Foli AI in the toolbar, New
+  Folder ⇧⌘N, menu and performance fixes (commit dc6b33ed). Owner's picks:
+  `docs/claude-context/memory/mac-best-native-pass-2026-11-24.md`. 77 Mac tests pass; demo screenshots checked.
+  **Released as 1.5.71 (build 86, tag `v1.5.71`, local) and live on the Mac feed, 2026-11-24**, with the owner's
+  OK ("Release Mac 1.5.71"), from branch `claude/mac-app-d228e2` (the Mac session's worktree; it merged
+  `claude/mac-web-tabs` and main at PR 56, 546f6aa4). 1.5.69 and 1.5.70 (TestFlight, other branches) were recorded
+  from tag `v1.5.70`. Release build checked: signed, universal, production export, same Keychain requirement; on a
+  scratch folder with an account place and no token it reaches the first-launch screen (no hang). The owner said
+  "publish" after being asked to sign in on that test copy, but no sign-in showed up in its data folder, so a real
+  signed-in Release run was **not** observed; the Mac host and shell code is unchanged since 1.5.68 (the
+  `modeOf` fix), and web changes since then are Android-only. Owner's strategy (2026-11-24): the Mac keeps this
+  web-view app; Windows/Linux get a Tauri shell and mobile Capacitor (other sessions). Not done from the audits: toolbar customization
+  (`.toolbar(id:)`), menu-bar items for every toolbar action (Sort By, Empty Trash, Enclosing Folder), click
+  semantics (select vs open) across lists, Recent/Shared selection, cover image downsampling, card picture
+  invalidation, Settings search.
 
 **iPhone Duo, third pass (owner's pick, 2026-11-23; was PR 53, now in PR 55 below):** branch
 `claude/iphone-duo-ipad-layout` (worktree `.claude/worktrees/iphone-duo-18adb4`), on top of PR 52's branch
@@ -567,6 +596,14 @@ account button should move past iPadOS's window buttons).
   deploys the web, which has the layout change in `lib/iphone.ts`); then check sign-in, push and iPhone Duo folding
   on real devices; carry over widgets, Siri/Shortcuts and Spotlight; one bridge script for both platforms; from the iOS review (docs/mobile/ios-review-2026-11-24.md), the web session's iPad touch targets and the note page's memory growth; release
   scripts for TestFlight and Play (only with the owner's OK).
+- Folevi for Mac on the web view: 1.5.73 is live. PR 67 (`claude/mac-webview`) merges after PR 60. Watch for reports
+  of signed-in Macs stuck on loading after updating (no signed-in Release run was observed); the fix path is
+  `AppScheme.modeOf` / WebViewFactory. Push the `v1.5.69` to `v1.5.73` and `archive/mac-swiftui` tags if the owner asks. Ask the web session (through the main session) for the Mac's no-bounce motion when
+  `inMacApp()`.
+- Folevi for Mac 1.5.71 is live. Its PR 60 (`claude/mac-app-d228e2` into `main`, main at bda71bcd merged in) is merged by the main
+  session when CI is green. Push the `v1.5.69` to `v1.5.71` tags only if the owner asks. Watch for reports of signed-in Macs
+  stuck on loading after updating (see section 9).
+- iPhone Duo: PR 55 (https://github.com/faisalibnislam/folevi/pull/55, `claude/iphone-duo-native-ipad` into
 - Android native: PR 54 merged into `main` on 2026-11-24 (289b11af), after PR 51 as the owner asked. Native Android is paused (owner, 2026-11-24: one web app everywhere): no Play releases, no new Compose UI.
 - Android tabs and polish (`claude/android-tabs`, PR 57 https://github.com/faisalibnislam/folevi/pull/57): web-style tabs on large screens and the
   android-skills audit fixes (`docs/ANDROID_POLISH_2026-11-24.md`). The owner reviews and merges. Its "Not done
@@ -718,6 +755,23 @@ account button should move past iPadOS's window buttons).
 - 2026-11-24: Owner: keep note covers inside the mobile app and sync note styles when the server changes them. Plan in docs/MOBILE.md; local mode's part asked of the owner.
 - 2026-11-24: PR 66 opened for the Capacitor mobile app (`claude/mobile-capacitor-f41734` pushed); open question to the owner: note covers.
 - 2026-11-24: `apps/mobile`: one Capacitor app for iPhone, iPad, iPhone Duo and Android around the web app (no native screens), reusing the shared Swift and Kotlin services; window-size layouts in `lib/iphone.ts`; `version.mjs` covers it; checked on simulators and emulators, size and memory compared (docs/MOBILE.md). Branch `claude/mobile-capacitor-f41734`, PR not merged.
+- 2026-11-24: PR 74's memory spec is tagged @local too and skips outside WebKit (CI's account project had run it signed in, with no local library).
+- 2026-11-24: PR 74 also empties the move's screen picture when it ends (`leaving.replaceChildren()`, the iOS review's TestFlight 1.5.75 change): with it a WebKit probe keeps 0 of 10 pictures and 0 of 5 editors in every run. The iOS review's remaining ~2 MB per open (no-copy runs) was the real note screen held by finished animations, which the first PR 74 commit releases; the mobile session re-measures on iOS.
+- 2026-11-24: iPhone layout memory fix (branch `claude/web-iphone-note-memory`): the push/pop/zoom moves' finished animations kept every note that slid in reachable in WebKit (about 5 MB per open on iOS); `transitions.ts` now drops their element and handlers when a move ends. Regression spec `e2e/iphone-note-memory.spec.ts` (tagged @local and @mac, skipped outside WebKit) runs in the mac-webkit project against the shell dev server; CI's account project leaves it out. How it was found: a WeakRef probe in Playwright WebKit; note that locators mark what they touch (`__playwright_target__`), which keeps elements alive, so such probes must find elements from inside the page.
+- 2026-11-24: Intermittent e2e fix (`claude/web-e2e-flakes`): the note tools panel chose its tool only after a note's details loaded and forgot a tool picked on the previous note, so clicks raced a late switch (documents.spec:187, ai-study.spec:60). Now decided before the note's first draw, and a picked tool stays from note to note. Local stack: both specs 8/8, 42 panel-related account specs pass. Local runs need the stack's GEMINI_API_KEY removed for the "isn't set up" specs (CI has none).
+- 2026-11-24: `apps/web/test/version.test.tsx` checks the AppKit app's About panel again (AppDelegate.swift, MenuModel.swift) instead of the SwiftUI app's AppCommands.swift.
+- 2026-11-24: Secret scan: the Mac screenshot script's made-up Vault demo values (brought back in 8ebce629) marked `gitleaks:allow` and fingerprinted in `.gitleaksignore`.
+- 2026-11-24: Folevi for Mac 1.5.73 (build 88) released to the Mac feed with the owner's OK ("Release it"): the AppKit web-view app with the web's own UI; 1.5.72 (Capacitor mobile) recorded from its tag.
+- 2026-11-24: Folevi for Mac back to the AppKit web-view app on `claude/mac-webview` (owner's pick): web's own UI, native frame removed, Mac extras kept; SwiftUI app tagged `archive/mac-swiftui`; 111 Mac tests pass; not released.
+- 2026-11-24: Merged `main` (PR 57, bda71bcd) into the Mac branch for PR 60; versions stay 1.5.71 / 86.
+- 2026-11-24: Merged `main` (PRs 55 and 59, f7893e54) into the Mac branch for PR 60; versions stay 1.5.71 / 86, changelogs kept.
+- 2026-11-24: Folevi for Mac 1.5.71 (build 86) released to the Mac feed with the owner's OK: web-style tabs and the best-native pass; main (PR 56) merged into the Mac branch, 46 Mac tests pass, notarized and stapled.
+- 2026-11-24: All branches synced with main (289b11af): PR 56 `claude/ios-native-redesign-f4a8be` (da225a57), PR 55 `claude/iphone-duo-native-ipad` (9642b0f7: Android version read from version.json, `isIphoneApp` keeps the Duo and Android rules), PR 57 `claude/android-tabs`, PR 58 `claude/windows-electron-4ed862`, and `claude/mac-web-tabs` (Phase 0 added). A trial merge of all five onto main in that order is clean except HANDOFF.md change-log lines (keep both); result 1.5.69 build 84. Merge order: 56, then 55 (retarget to main), 57, 58, then the Mac branch's PR. Leftover branches `claude/iphone-duo-ipad-layout`, `claude/ipad-native` and `claude/handoff-2026-11-23` hold nothing new.
+- 2026-11-24: Synology native Folevi Server started. Phase 0 passed on branch `worktree-agent-a21c347ca995aad59` (commit 0b4dd44e, not pushed; `docs/self-hosting/PHASE0.md`, `scripts/self-host/`): Folevi deploys to a standalone Convex backend unchanged; single-origin proxy works; memory about 570 MB peak tuned. Fixes needed: optional email verification, internal URLs, LAN http, hide AI/billing, standalone build. Waiting on the owner's OK to download the Linux Convex and Node binaries, and their NAS models.
+- 2026-11-24: Self-hosting plan updated with the owner's decision: native Synology `.spk` and QNAP `.qpkg` apps (no Docker), containers elsewhere; the owner also wants a Windows app (options given: revive the Electron app from 7cb6ddda^, Tauri, PWA, native).
+- 2026-11-24: Self-hosting plan written for the owner (`docs/SELF_HOSTING_PLAN.md`): Folevi Server on NAS boxes and hosts, apps sign in to any server; plan only, decisions in its section 7.
+- 2026-11-24: PR 51 (native Mac app, 1.5.66 to 1.5.68 line) merged into main and deployed; PR 54 freed.
+- 2026-11-24: Mac tabs open as on the web and the Mac best-native pass (skills audits + owner picks) on `claude/mac-web-tabs`; not released.
 - 2026-11-24: Merged `main` (PR 59, 1.5.70 build 85) into `claude/android-tabs` for PR 57; only the change log conflicted (both sides kept), main's version.json kept.
 - 2026-11-24: 1.5.70 (build 85) cut on `claude/ios-release-1.5.70` (off PR 55's branch, all of `main` plus iPhone Duo) and uploaded to TestFlight with the owner's OK (delivery e18198df); tag local. Native releases then paused by the owner (one web app everywhere).
 - 2026-11-24: Merged `main` (PR 55, iPhone Duo, 1.5.69) into `claude/android-tabs` to clear PR 57's conflicts; only HANDOFF.md conflicted (both sides kept).

@@ -14,7 +14,7 @@
 - [Roadmap 2026-10-14](roadmap-2026-10-14.md): user approved building the whole roadmap (phases 0-4 + P2); MCP for everyone r/w; owner decisions recorded
 - [Email on Resend](email-provider-resend.md): Resend only, one domain folevi.com; sending blocked since 2026-10-15 by pending "send" SPF records (revisit)
 - [iOS app](ios-app.md): 2026-10-15 Capacitor shell loading app.folevi.com, iPhone+iPad, iOS 17+, no in-app buying, Developer Program since 2026-10-22
-- [Platforms](platforms-mac-ios-web-only.md): web, Mac, iOS and (since 2026-10-22) Android; Windows dropped 2026-10-16
+- [Platforms](platforms-mac-ios-web-only.md): web, Mac, iOS and (since 2026-10-22) Android; Windows dropped 2026-10-16, back 2026-11-24 (see windows-app-decisions)
 - [Local mode decisions](local-mode-decisions.md): 2026-10-20 free "Keep notes on my devices" mode for Mac/iPhone/iPad: folder of files, iCloud or any folder, on-device AI + own key, built-in UI
 - [E2EE decisions](e2ee-decisions.md): 2026-10-21 opt-in levels + per-feature switches + per-folder lock, titles encrypted, Personal and workspaces, 2 recovery methods, every plan
 - [Multi-account decisions](multi-account-decisions.md): 2026-10-21 one Mac library + many accounts (web too), switcher in sidebar bottom account menu, ask move/keep after sign-in, takeout file, all places sync
@@ -51,3 +51,4 @@
 - [Tab Back and overview rules](tab-back-and-overview-2026-11-21.md) — Back returns to the opener tab and closes it; sidebar and + are fresh; Home's overview picture is drawn
 - [Android native decisions 2026-11-23](android-native-decisions-2026-11-23.md): native Compose app like iPhone: Googlebook/phones/tablets, API 33, M3 Expressive + Folevi colors, replaces Capacitor
 - [iOS redesign decisions 2026-11-23](ios-redesign-decisions-2026-11-23.md) — iPhone native Mac profile, tab bar Home/Tasks/Calendar/Foli AI + search, iPad ScreenBar + flat inspector, PR into core branch, TestFlight 1.5.65
+- [Windows app decisions 2026-11-24](windows-app-decisions-2026-11-24.md): Electron, native arm64 + x64, unsigned for now, folevi.com download + auto-update from R2, Windows 10 22H2 + 11, Folevi's top bar with Windows caption buttons

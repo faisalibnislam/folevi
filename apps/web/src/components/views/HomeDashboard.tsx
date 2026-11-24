@@ -57,7 +57,7 @@ function Section({ title, icon, href, count, children, empty, shelf }: { title: 
           {title}
           {count ? <span className="ml-2 text-subheadline font-normal text-muted">{count}</span> : null}
         </h2>
-        <AppLink href={href} className="inline-flex items-center gap-1 rounded-chip px-2.5 py-1 text-subheadline font-medium text-ink transition-colors hover:bg-accent-soft">
+        <AppLink href={href} className="ui-hit inline-flex items-center gap-1 rounded-chip px-2.5 py-1 text-subheadline font-medium text-ink transition-colors hover:bg-accent-soft">
           See all <span className="sr-only">{title.toLowerCase()}</span>
           <ArrowRight size={13} aria-hidden />
         </AppLink>

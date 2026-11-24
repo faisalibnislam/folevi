@@ -205,13 +205,19 @@ test.describe("Chart", () => {
     // enough for its tools; at 360 it is 308, under the 320 where the picture takes over.)
     await page.setViewportSize({ width: 360, height: 800 });
     await card.scrollIntoViewIfNeeded();
+    // (A phone's width gets the phone layout, where a chart is a picture with Open, which opens it to work in.)
+    const openChart = card.getByRole("button", { name: /^Open/ });
+    if (await openChart.isVisible()) await openChart.click();
     const fits = () => tools.evaluate((el) => el.scrollWidth <= el.clientWidth + 1 && [...el.querySelectorAll("button")].filter((b) => b.offsetParent).every((b) => b.getBoundingClientRect().right <= el.getBoundingClientRect().right + 1));
     await expect.poll(fits).toBe(true);
     const moreTools = tools.getByRole("button", { name: "More chart tools" });
-    await expect(moreTools).toBeVisible();
     await expect(tools.getByRole("button", { name: "Chart type" })).toBeVisible();
-    await moreTools.click();
-    await page.getByRole("menu", { name: "More chart tools" }).getByRole("menuitem", { name: "Data from" }).click();
+    // (Opened on a phone the chart has the whole width, and every tool may fit: Data from is then on the bar.)
+    const opener = (await moreTools.isVisible()) ? moreTools : tools.getByRole("button", { name: "Data from" });
+    if (opener === moreTools) {
+      await moreTools.click();
+      await page.getByRole("menu", { name: "More chart tools" }).getByRole("menuitem", { name: "Data from" }).click();
+    } else await opener.click();
     const fromPanel = page.getByRole("dialog", { name: "Where the chart's numbers come from" });
     await expect(fromPanel).toBeVisible();
     const pb = (await fromPanel.boundingBox())!;
@@ -220,7 +226,7 @@ test.describe("Chart", () => {
     await fromPanel.getByRole("button").first().focus();
     await page.keyboard.press("Escape");
     await expect(fromPanel).toHaveCount(0);
-    await expect(moreTools).toBeFocused();
+    await expect(opener).toBeFocused();
     await page.setViewportSize({ width: 1280, height: 720 });
 
     // Saved: after a reload everything is still there.

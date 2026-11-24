@@ -41,6 +41,7 @@ import { useEditorZoom } from "@/lib/editorZoom";
 import { useScrollActivity } from "@/lib/scrollActivity";
 import { loadDocumentView, loadedDocumentView } from "@/lib/app/noteView";
 import { IphoneShell } from "@/components/iphone/IphoneShell";
+import { installPlatformMarks, os, useFold } from "@/lib/platform";
 import { installInputModality } from "@/components/iphone/chrome";
 import { MacCommands } from "./MacCommands";
 import { inMacApp } from "@/lib/desktop/mac";
@@ -336,7 +337,8 @@ function WebShell() {
   const [inspectorPref, setInspectorPref] = useLocalStorage("folevi:inspector-open", true);
   // The iPhone app has its own interface (components/iphone): a navigation stack and a floating tab bar.
   const iphone = useIphoneApp();
-  const isNarrow = useMediaQuery("(max-width: 767px)") || iphone;
+  // (Under 700 px the phone interface takes over, so the drawer is only for the old native chrome's note page.)
+  const isNarrow = iphone;
   const isMedium = useMediaQuery("(max-width: 1199px)");
   useLayoutEffect(() => {
     if (!iphone) return;
@@ -350,12 +352,16 @@ function WebShell() {
       root.style.removeProperty("--iphone-sheet-bottom");
     };
   }, [iphone]);
-  // The iPad app with room for the sidebar: <html data-ipad> gives the desktop layout iPadOS's look (globals.css).
+  // <html data-form, data-shell, data-os, data-touch, data-fold> follow the window (lib/platform.ts).
+  useLayoutEffect(() => installPlatformMarks(), []);
+  // A touch device with room for the sidebar (the iPad, an Android tablet or open foldable, a tablet's browser):
+  // <html data-tablet> gives the desktop layout its touch look (globals.css); data-ipad also on Apple's.
   const ipad = useIpadLayout();
   useLayoutEffect(() => {
     if (!ipad) return;
     const root = document.documentElement;
-    root.dataset.ipad = "";
+    root.dataset.tablet = "";
+    if (os() === "ios") root.dataset.ipad = "";
     // Keyboard hints (⌘K) show only while a hardware keyboard is attached: the app says so (bridge.js,
     // data-hardware-keyboard). An older app doesn't, and then the first key pressed with ⌘, ⌃ or ⌥ (which
     // the on-screen keyboard has none of) or Tab says one is there.
@@ -367,6 +373,7 @@ function WebShell() {
     // Focus rings only while a keyboard moves focus, never left behind by a tap (globals.css, data-input).
     const stopModality = installInputModality();
     return () => {
+      delete root.dataset.tablet;
       delete root.dataset.ipad;
       window.removeEventListener("keydown", onKey, true);
       stopModality();
@@ -433,6 +440,9 @@ function WebShell() {
   // the room (at 820 it left one and a half note cards). ⌘\ or the sidebar button opens it; it folds again the
   // next time the window narrows. The saved choice (collapsed) is for wider windows and stays untouched.
   const tight = useMediaQuery("(max-width: 999px)") && !ipad && !isNarrow;
+  // A foldable partly open like a book (an iPhone Duo, an Android foldable): the sidebar takes the first half.
+  const foldLine = useFold();
+  const foldSplit = ipad && foldLine?.orientation === "vertical" && foldLine.start > 240;
   const [tightOpen, setTightOpen] = useState(false);
   useEffect(() => setTightOpen(false), [tight]);
   const sidebarOpen = isNarrow ? drawerOpen : tight ? tightOpen : !collapsed;
@@ -630,11 +640,18 @@ function WebShell() {
         </div>
         {isNarrow ? (
           drawerOpen ? <NavDrawer onClose={closeDrawer}>{pageSidebar ? <div ref={setSidebarSlot} className="h-full" /> : <Sidebar onNavigate={closeDrawer} />}</NavDrawer> : null
-        ) : sidebarOpen ? (
-          // The iPad's sidebar is iPadOS's width, 320, and isn't dragged (a finger can't hold a 4 pt edge).
-          <div ref={sidebarPanel} data-ipad-sidebar={ipad ? "" : undefined} className="relative z-20 flex-none" style={{ width: ipad ? 320 : width }}>
+        ) : sidebarOpen || foldSplit ? (
+          // The tablet's sidebar is iPadOS's width, 320, and isn't dragged (a finger can't hold a 4 pt edge). On a
+          // foldable partly open like a book it fills the first half and ends before the fold, and the page starts
+          // past it: nothing sits in the fold (the owner's iPhone Duo rule).
+          <div
+            ref={sidebarPanel}
+            data-ipad-sidebar={ipad ? "" : undefined}
+            className="relative z-20 flex-none"
+            style={foldSplit && foldLine ? { width: Math.max(240, foldLine.start - 12), marginRight: foldLine.size + 4 } : { width: ipad ? 320 : width }}
+          >
             {pageSidebar ? <div ref={setSidebarSlot} className="h-full" /> : <Sidebar />}
-            {ipad ? null : <div
+            {ipad || foldSplit ? null : <div
               role="separator"
               aria-orientation="vertical"
               aria-label="Resize sidebar"

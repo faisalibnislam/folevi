@@ -249,6 +249,17 @@ The ones most likely to be broken:
 
 ## 9. Current state (as of 2026-11-24)
 
+**One web app everywhere: the web side (branch `claude/web-everywhere-0e2975`, 2026-11-24).** The web app is now the
+interface on every platform (browser, Mac, Windows, Linux, iPhone, iPad, Duo, Android, Folevi Server). Layout rule
+(owner, 2026-11-24, `docs/claude-context/memory/web-everywhere-layout-rules-2026-11-24.md`): width decides on every
+device. `apps/web/src/lib/platform.ts` answers `formFactor()` (phone under 700 px, else tablet when used by touch,
+else desktop), `shell()` and `os()`, and marks `<html data-form data-shell data-os data-touch data-fold>` (first paint:
+`lib/theme/bootScript.ts`). `lib/iphone.ts` reads it: a phone's browser and a narrow computer window now get the
+phone interface with the bottom bar; an open iPhone Duo gets the tablet layout (it got a stretched phone layout,
+because the phone was picked from the iPhone user agent); Android tablets and touch browsers get the iPad's touch
+look (CSS moved from `:root[data-ipad]` to `:root[data-tablet]`). A vertical fold keeps the sidebar left of the
+fold and the page past it; the fold is read from the marks the native Duo app already sets (`data-fold`,
+`--fold-start`, `--fold-end`) or Chromium's viewport segments, and an app's own marks are never cleared. The contract for shells is in the shared notes (`web-everywhere-platform-contract.md`).
 **Folevi for Mac back to the web view (owner, 2026-11-24, branch `claude/mac-webview`, PR 67): released as 1.5.73**
 (build 88, tag `v1.5.73` local, live on the Mac feed, notarized, universal; the owner said "Release it"; 1.5.72 was
 already the Capacitor mobile app's, recorded from tag `v1.5.72`). the owner
@@ -547,6 +558,10 @@ signed-in account, 1.5.58's frosted folders with a large library, and the iPad c
 account button should move past iPadOS's window buttons).
 
 ## 10. Next steps / open work
+- Web everywhere: PRs #61 (platform model, `claude/web-everywhere-0e2975`), #62 (shortcut labels), #63 (Mac no-bounce,
+  Android ripple) and #64 (one wording set) are open and wait on CI and the owner's merge (merging deploys). Next PRs: shortcut labels per OS (about 40 files still write ⌘ by hand; `lib/shortcuts.ts keyLabel` exists),
+  Windows/Linux/Android accents behind `data-shell`, one motion/empty/loading style, mobile web view performance,
+  the "Your own server" sign-in with the Synology session. The starter "Welcome to Folevi" note names Mac shortcuts.
 - Folevi for Mac on the web view: 1.5.73 is live. PR 67 (`claude/mac-webview`) merges after PR 60. Watch for reports
   of signed-in Macs stuck on loading after updating (no signed-in Release run was observed); the fix path is
   `AppScheme.modeOf` / WebViewFactory. Push the `v1.5.69` to `v1.5.73` and `archive/mac-swiftui` tags if the owner asks. Ask the web session (through the main session) for the Mac's no-bounce motion when
@@ -694,6 +709,11 @@ account button should move past iPadOS's window buttons).
   `DATABASE_UDF_USER_TIMEOUT_SECONDS=4` for that backend. Bursts show in `convex.log` as "took a long time".
 
 ## 12. Change log
+- 2026-11-25: PR 61 CI fixes: the app counts as a touch device only with touch points (real iPhones, iPads and Android devices report them; the e2e suite's desktop "iOS app" keeps the desktop layout); a tab's 44 pt hit area moved onto its link (the wrapper's layer took the link's taps); the iOS purchase check no longer matches Choose profile picture. Local: ios-app, ios-native, tab-strip-overflow and iphone-app pass (11).
+- 2026-11-24: Web everywhere PR 1: touch hit areas of at least 44 pt (`.ui-hit`, `.ui-seg > *`, `:root[data-tablet|data-iphone]`) for the small chrome controls the iOS review measured, no change to the look. Note-page memory growth (iOS review): no web leak found; in Chromium the growth is V8 optimizing existing functions (decelerating) and in desktop WebKit the web process has no trend; waiting on the mobile session's repro details or a Web Inspector heap snapshot.
+- 2026-11-24: Web everywhere PR 1 fixes from CI: boards (flowchart, stickies, wireframe, mind map) ignored nothing React handed up from their sheets, so a sheet's buttons never worked with a mouse (`pressIsElsewhere`); the phone layout no longer hides the note's tools while typing on a computer; phone-width e2e steps go through the phone layout. Local CI-style run: 79 + 4 affected account specs pass.
+- 2026-11-24: Web everywhere PR 1 merged with `main` (PR 55, iPhone Duo); `lib/platform.ts` now uses the Duo app's fold marks (`data-fold`, `--fold-start`, `--fold-end`) instead of its own; 12 platform unit tests.
+- 2026-11-24: Web everywhere PR 1: `lib/platform.ts` (form factor, shell, OS, fold, `<html>` marks), width decides the phone layout on every device (owner's pick), the open Duo gets the tablet layout, every touch tablet gets the iPad's touch look; e2e specs updated for the phone browser's bottom bar; 11 new unit tests.
 - 2026-11-24: PR 74's memory spec is tagged @local too and skips outside WebKit (CI's account project had run it signed in, with no local library).
 - 2026-11-24: PR 74 also empties the move's screen picture when it ends (`leaving.replaceChildren()`, the iOS review's TestFlight 1.5.75 change): with it a WebKit probe keeps 0 of 10 pictures and 0 of 5 editors in every run. The iOS review's remaining ~2 MB per open (no-copy runs) was the real note screen held by finished animations, which the first PR 74 commit releases; the mobile session re-measures on iOS.
 - 2026-11-24: iPhone layout memory fix (branch `claude/web-iphone-note-memory`): the push/pop/zoom moves' finished animations kept every note that slid in reachable in WebKit (about 5 MB per open on iOS); `transitions.ts` now drops their element and handlers when a move ends. Regression spec `e2e/iphone-note-memory.spec.ts` (tagged @local and @mac, skipped outside WebKit) runs in the mac-webkit project against the shell dev server; CI's account project leaves it out. How it was found: a WeakRef probe in Playwright WebKit; note that locators mark what they touch (`__playwright_target__`), which keeps elements alive, so such probes must find elements from inside the page.

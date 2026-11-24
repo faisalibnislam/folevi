@@ -244,9 +244,9 @@ test.describe("documents", () => {
     // The save state sits in the page's sidebar, not on the bar.
     await expect(page.getByTestId("sync-status")).toHaveCount(1);
     await expect(icons.getByTestId("sync-status")).toHaveCount(0);
-    // Phone width: the dock stays, icons only.
+    // Phone width: the phone's note bars carry the same tools (width decides, the owner's 2026-11-24 rule).
     await page.setViewportSize({ width: 390, height: 800 });
-    await expect(page.getByRole("toolbar", { name: "Page tools" }).getByRole("button", { name: "Format", exact: true })).toBeVisible();
+    await expect(page.getByRole("toolbar", { name: "Note tools" }).getByRole("button", { name: "Format", exact: true })).toBeVisible();
     await context.close();
   });
 });

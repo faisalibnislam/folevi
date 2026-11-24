@@ -266,7 +266,8 @@ test.describe("Mind map", () => {
     // The card is too narrow to work in at this width: a fitted picture with Open canvas, which opens the full
     // canvas to work in.
     await expect(card.getByRole("toolbar", { name: "Mind map tools" })).toBeHidden();
-    await page.getByRole("button", { name: /^Open canvas/ }).click();
+    // (A phone's width gets the phone layout, where a canvas is a card that opens the full canvas: Open <name>.)
+    await page.getByRole("button", { name: /^Open (canvas|Mind map)/ }).click();
     await expect(card).toHaveAttribute("data-full", "true");
     // (The rest is the full canvas at 390, the width its toolbar is said to fit in whole; at 360 it folds.)
     await page.setViewportSize({ width: 390, height: 844 });

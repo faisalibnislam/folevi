@@ -6,7 +6,7 @@
 // gesture's `move` at most once a frame, panning the view when a drag reaches the canvas's edge, and ending a
 // gesture whose pointer was lost.
 import { useRef, useState } from "react";
-import { capturePointer, dropFocusIn, notePress, pinchPair, useTapFocus, type DownPointer } from "../../canvas/pointers";
+import { capturePointer, pressIsElsewhere, dropFocusIn, notePress, pinchPair, useTapFocus, type DownPointer } from "../../canvas/pointers";
 import { targetUnder } from "../../canvas/targetUnder";
 import { MAX_K, MIN_K, clamp } from "./useViewport";
 import type { CanvasHit, FlowController, Interaction } from "./types";
@@ -88,6 +88,8 @@ export function useInteractions(ctrl: FlowController, interactions: Interaction[
   };
 
   const onPointerDown = (e: React.PointerEvent<SVGSVGElement>) => {
+    // A press in something this board drew on top of the page (a phone sheet) isn't the board's (pointers.ts).
+    if (pressIsElsewhere(e.currentTarget, e.target)) return;
     let keep = false;
     for (const i of interactions) if (i.beforePress?.(e) === "keep") keep = true;
     if (keep) return;

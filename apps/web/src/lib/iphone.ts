@@ -16,6 +16,33 @@ import { inAndroidApp, inIosApp, nativeChrome } from "./nativeApp";
 /** An iPad window narrower than this is compact: the sidebar and a note don't both fit. */
 const IPAD_COMPACT = "(max-width: 699px)";
 
+/**
+ * An Android window is compact (the phone interface) when it's narrow, or short: a phone turned sideways is wide
+ * but has no room for the sidebar's rows either. A tablet or an unfolded foldable is neither.
+ */
+const ANDROID_COMPACT = "(max-width: 699px), (max-height: 499px)";
+
+/**
+ * An iPhone window this wide and this tall shows the sidebar layout, as an iPad does: iPhone Duo open (its inner
+ * screen, 951 x 669 points across or 669 x 951 upright). Closed (466 x 678), or any iPhone turned sideways (short),
+ * it's the phone interface. Decided by the window's size, never the model (docs/claude-context/memory/
+ * iphone-duo-decisions.md): fold or unfold, and the page switches in place.
+ */
+const IPHONE_WIDE = "(min-width: 600px) and (min-height: 600px)";
+
+const iphoneUA = () => typeof navigator !== "undefined" && /\b(iPhone|iPod)\b/.test(navigator.userAgent);
+
+/** Whether this page is the iPhone app in a window wide enough for the sidebar layout (iPhone Duo open). */
+export function isWideIphone(): boolean {
+  if (typeof window === "undefined" || !inIosApp() || !iphoneUA() || nativeChrome()) return false;
+  return typeof window.matchMedia === "function" && window.matchMedia(IPHONE_WIDE).matches;
+}
+
+/** The iPad app, or the iPhone app in a window as wide as one (iPhone Duo open): the tablet's touches apply. */
+export function isTabletApp(): boolean {
+  return isIpadApp() || isWideIphone();
+}
+
 /** Whether this page is the iPad app (its web view reports a Mac with a touch screen). */
 export function isIpadApp(): boolean {
   if (typeof navigator === "undefined" || !inIosApp() || /\b(iPhone|iPod)\b/.test(navigator.userAgent)) return false;
@@ -57,9 +84,9 @@ export function isIphoneApp(): boolean {
   const marker = nativeChrome();
   // Native chrome mode on an Android phone (or any Android window too narrow for the sidebar layout): the same.
   if (marker) return marker.platform === "ios" || (marker.platform === "android" && typeof window.matchMedia === "function" && window.matchMedia(IPAD_COMPACT).matches);
-  if (inAndroidApp()) return typeof window.matchMedia === "function" && window.matchMedia(IPAD_COMPACT).matches;
+  if (inAndroidApp()) return typeof window.matchMedia === "function" && window.matchMedia(ANDROID_COMPACT).matches;
   if (!inIosApp()) return false;
-  if (/\b(iPhone|iPod)\b/.test(navigator.userAgent)) return true;
+  if (iphoneUA()) return !isWideIphone();
   return isIpadApp() && typeof window.matchMedia === "function" && window.matchMedia(IPAD_COMPACT).matches;
 }
 
@@ -67,9 +94,12 @@ export function isIphoneApp(): boolean {
 export const isNativePhone = (): boolean => isIphoneApp();
 
 const followWidth = (changed: () => void) => {
-  // (Only the iPad app's and the Android app's width can change which interface shows.)
-  if (typeof window === "undefined" || typeof window.matchMedia !== "function" || !(isIpadApp() || inAndroidApp())) return () => undefined;
-  const mq = window.matchMedia(IPAD_COMPACT);
+  // (Only the iPad app's, the Android app's and the iPhone app's window size can change which interface shows: an
+  // iPad in Split View, a foldable, iPhone Duo folded or opened.)
+  if (typeof window === "undefined" || typeof window.matchMedia !== "function") return () => undefined;
+  const query = isIpadApp() ? IPAD_COMPACT : inAndroidApp() ? ANDROID_COMPACT : inIosApp() && iphoneUA() && !nativeChrome() ? IPHONE_WIDE : null;
+  if (!query) return () => undefined;
+  const mq = window.matchMedia(query);
   mq.addEventListener("change", changed);
   return () => mq.removeEventListener("change", changed);
 };
@@ -85,7 +115,7 @@ export function useIphoneApp(): boolean {
  * desktop pills or hints). False on the server, and while the window is compact (the phone interface then).
  */
 export function isIpadLayout(): boolean {
-  return isIpadApp() && !isIphoneApp();
+  return isTabletApp() && !isIphoneApp();
 }
 
 /** The same, for rendering. */

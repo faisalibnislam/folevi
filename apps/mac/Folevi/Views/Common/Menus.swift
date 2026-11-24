@@ -446,8 +446,9 @@ enum NoteActions {
         let target = folder ?? { if case .folder(let id) = window?.current { return id } else { return nil } }()
         app.perform { client in
             let r = try await client.command(Commands.NoteCreate(NoteCreateArgs(space: nil, folderId: target, parentId: nil, title: nil, templateId: template, open: false, text: nil)))
-            if newTab || window == nil { app.open(.note(r.id), newTab: true) } else { window?.go(.note(r.id)) }
-            window?.focusNoteSoon = true
+            // "+" and New Note open a fresh tab (no way back), as on the web; a folder's own New Note remembers the folder.
+            app.focusNote = r.id
+            if let window { app.route(.note(r.id), from: window, fresh: folder == nil, newTab: newTab) } else { app.open(.note(r.id), newTab: true) }
         }
     }
 

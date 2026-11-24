@@ -95,6 +95,9 @@ final class WindowModel: Identifiable {
     }
 
     @ObservationIgnored private var started = false
+    /// When this window was last the front one (a counter): a folder opened from elsewhere goes to the folder tab
+    /// used last, as on the web.
+    @ObservationIgnored var frontAt = 0
 
     /// The window is on screen: it joins the app's windows and opens its note (once). SwiftUI may make a window's
     /// view, and so a model, more than once; only the one that appears starts.
@@ -109,8 +112,15 @@ final class WindowModel: Identifiable {
 
     var canGoForward: Bool { !forwardStack.isEmpty }
 
-    /// Goes to `dest`, keeping the way back.
-    func go(_ dest: Destination) {
+    /// Opens `dest` from this page by the web's tab rule (`AppModel.route`): a new tab that remembers this one, the
+    /// tab that already holds it, or here when it's inside the same tab. `inNote`: from inside the note on screen (a
+    /// nested page, a link, a breadcrumb), which stays in this tab. `newTab`: a new tab even inside the same view.
+    func go(_ dest: Destination, newTab: Bool = false, inNote: Bool = false) {
+        app.route(dest, from: self, newTab: newTab, inNote: inNote)
+    }
+
+    /// Goes to `dest` in this tab, keeping the way back.
+    func step(to dest: Destination) {
         guard dest != current else { return }
         backStack.append(current)
         if backStack.count > 200 { backStack.removeFirst() }
@@ -119,11 +129,7 @@ final class WindowModel: Identifiable {
     }
 
     /// A sidebar choice: the place itself, from the sidebar.
-    func select(_ dest: Destination?) {
-        guard let dest else { return }
-        sidebarSelection = dest
-        go(dest)
-    }
+    func select(_ dest: Destination?) { pickInSidebar(dest) }
 
     /// A note pressed (a card's touch-down, a row selected): its page starts drawing it before the click ends.
     /// Only a page this window already holds, so a press that comes to nothing takes no page from another window.
@@ -132,16 +138,13 @@ final class WindowModel: Identifiable {
         page.prepare(note: noteId)
     }
 
-    /// A row picked in the sidebar: the place opens fresh, with no way back (the owner's rule of 21 November 2026:
-    /// the sidebar, "+" and New note start fresh; Back is for pages opened from a page). A note on screen leaves.
+    /// A row picked in the sidebar: the place's own tab (the one already open, or a fresh one with no way back), as
+    /// on the web (the owner's rules of 21 and 24 November 2026: the sidebar, "+" and New note start fresh; Back is
+    /// for pages opened from a page). Only a move inside this tab's own view or folders stays here.
     func pickInSidebar(_ dest: Destination?) {
         guard let dest else { return }
-        sidebarSelection = dest
-        guard dest != current else { return }
-        backStack.removeAll()
-        forwardStack.removeAll()
-        opener = nil
-        move(to: dest)
+        guard dest != current else { sidebarSelection = dest; return }
+        app.route(dest, from: self, fresh: true)
     }
 
     /// Where the window is, without a history step.
@@ -237,8 +240,10 @@ final class WindowModel: Identifiable {
         noteReady = page.shownNote == id
         if page.shownNote != id { noteTools = nil; editorState = nil }
         noteMeta = nil
-        let focus = focusNoteSoon
+        // A new note may open in another tab than the window that made it: the note itself says to take the caret.
+        let focus = focusNoteSoon || app.focusNote == id
         focusNoteSoon = false
+        if app.focusNote == id { app.focusNote = nil }
         if let p = panes, !p.contains(id) { panes = nil; paneSizes = nil }
         await page.show(note: id, focus: focus, panes: panes, sizes: paneSizes, tabs: app.openNoteTabs(except: self.id))
         noteReady = true
@@ -299,7 +304,8 @@ final class WindowModel: Identifiable {
                 case .editorPanel(let p): self.editorPanel = p.panel
                 case .panesChange(let c): self.panesChanged(c)
                 case .navigateRequest(let n) where !isEngine:
-                    if n.external, let url = URL(string: n.route) { NSWorkspace.shared.open(url) } else { self.app.open(path: n.route, newTab: n.newTab) }
+                    // A link inside the note: another note stays in this tab, as on the web; anything else follows the tab rule.
+                    if n.external, let url = URL(string: n.route) { NSWorkspace.shared.open(url) } else { self.app.open(path: n.route, newTab: n.newTab, from: self) }
                 case .toast(let t) where !isEngine: self.app.toast(t)
                 default: break
                 }
@@ -401,12 +407,16 @@ struct WindowSeed: Codable, Hashable {
     var asTab: Bool
     /// A tab opened behind the one in front (Open in Background Tab).
     var background = false
+    /// A tab opened from a page: Back on its first page closes it and returns there. False for fresh tabs (the
+    /// sidebar, "+", New Note) and tabs put back at launch.
+    var keepsOpener = false
     var token = UUID()
 
-    init(start: Destination, asTab: Bool, background: Bool = false) {
+    init(start: Destination, asTab: Bool, background: Bool = false, keepsOpener: Bool = false) {
         self.start = start
         self.asTab = asTab
         self.background = background
+        self.keepsOpener = keepsOpener
     }
 
     /// Seeds saved by earlier builds (state restoration) lack the newer fields.
@@ -415,6 +425,7 @@ struct WindowSeed: Codable, Hashable {
         start = try c.decode(Destination.self, forKey: .start)
         asTab = try c.decodeIfPresent(Bool.self, forKey: .asTab) ?? false
         background = try c.decodeIfPresent(Bool.self, forKey: .background) ?? false
+        keepsOpener = try c.decodeIfPresent(Bool.self, forKey: .keepsOpener) ?? false
         token = try c.decodeIfPresent(UUID.self, forKey: .token) ?? UUID()
     }
 }

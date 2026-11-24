@@ -80,6 +80,48 @@ enum Destination: Hashable, Codable {
 
     var noteId: String? { if case .note(let id) = self { id } else { nil } }
 
+    /// The tab a place belongs to, as on the web (lib/app/tabs.tsx `viewKey`): one tab per note, one per view (it
+    /// follows you inside the view: Foli AI's chats, Tasks' lists, Calendar's days), one per tag; folders and the
+    /// Folders page share folder tabs that move between them, as in Finder. An invite has no tab of its own.
+    enum TabKind: Hashable {
+        case note(String)
+        case view(String)
+        case folders
+        case none
+    }
+
+    var tabKind: TabKind {
+        switch self {
+        case .note(let id): .note(id)
+        case .folders, .folder: .folders
+        case .tag(let id): .view("tag:\(id)")
+        case .invite: .none
+        case .home: .view("home")
+        case .search: .view("search")
+        case .foliAI: .view("ai")
+        case .inbox: .view("inbox")
+        case .notifications: .view("notifications")
+        case .tasks: .view("tasks")
+        case .calendar: .view("calendar")
+        case .daily: .view("daily")
+        case .allNotes: .view("all-notes")
+        case .recent: .view("recent")
+        case .starred: .view("starred")
+        case .shared: .view("shared")
+        case .sharedFolder: .view("shared-folder")
+        case .drafts: .view("drafts")
+        case .changes: .view("changes")
+        case .templates: .view("templates")
+        case .tags: .view("tags")
+        case .archive: .view("archive")
+        case .trash: .view("trash")
+        case .vault: .view("vault")
+        case .reviews: .view("reviews")
+        case .catchUp: .view("catch-up")
+        case .graph: .view("graph")
+        }
+    }
+
     /// Folevi's app path for this place (what links and the engine use).
     var path: String {
         switch self {

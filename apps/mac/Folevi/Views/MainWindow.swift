@@ -85,12 +85,12 @@ struct MainWindow: View {
         .appAnimation(Motion.fade, value: app.gate?.gate)
         .tint(.foleviInk)
         .focusedSceneValue(\.window, window)
-        .background(WindowAccessor(model: window, asTab: seed?.asTab == true, keepsOpener: seed?.asTab == true && seed?.start.isNote == true, background: seed?.background == true))
+        .background(WindowAccessor(model: window, asTab: seed?.asTab == true, keepsOpener: seed?.asTab == true && seed?.keepsOpener == true, background: seed?.background == true))
         .environment(window)
         .onAppear {
             window.start()
             app.openHelp = { openWindow(id: "help") }
-            app.openWindow = { dest, asTab, background in openWindow(id: "main", value: WindowSeed(start: dest ?? .home, asTab: asTab, background: background)) }
+            app.openWindow = { dest, asTab, background in openWindow(id: "main", value: WindowSeed(start: dest ?? .home, asTab: asTab, background: background, keepsOpener: asTab && AppModel.shared.pendingOpener != nil)) }
             SettingsRouter.shared.openSettings = { openSettings() }
             // A restored window goes back where it was (a fresh window opens where its seed says).
             if seed?.start == .home, !restoredPath.isEmpty, let d = Destination(path: restoredPath), d != .home { window.replace(with: d) }

@@ -476,7 +476,7 @@ final class AppModel {
         closedTabs.removeAll()
         let saved = (tabsBySpace[key] ?? []).compactMap { Destination(path: $0) }
         lead.reset()
-        if let start = saved.first, start != .home { lead.go(start) }
+        if let start = saved.first, start != .home { lead.step(to: start) }
         for d in saved.dropFirst() { open(d, newTab: true, background: true) }
     }
 
@@ -506,6 +506,8 @@ final class AppModel {
 
     func becameFront(_ window: WindowModel) {
         frontWindow = window.id
+        frontClock += 1
+        window.frontAt = frontClock
         flushWaitingPaths()
     }
 
@@ -545,7 +547,8 @@ final class AppModel {
     /// Opens Help (set by the window, which can open scenes).
     @ObservationIgnored var openHelp: (() -> Void)?
 
-    func open(path: String, newTab: Bool = false) {
+    /// `from`: the window whose page asked (a link inside its note), so a note link stays in its tab.
+    func open(path: String, newTab: Bool = false, from: WindowModel? = nil) {
         guard ready, front != nil else { waitingPaths.append((path, newTab)); return }
         if let section = Destination.settingsSection(path: path) {
             SettingsRouter.shared.open(section)
@@ -565,7 +568,7 @@ final class AppModel {
             if !keep.isEmpty, let w = newTab ? nil : front { w.graphQuery = keep.joined(separator: "&") }
         }
         guard let dest = Destination(path: route) else { return }
-        open(dest, newTab: newTab)
+        if let from { self.route(dest, from: from, newTab: newTab, inNote: true) } else { open(dest, newTab: newTab) }
         if let block, !block.isEmpty, dest.isNote {
             Task { @MainActor in
                 try? await Task.sleep(for: .milliseconds(500))
@@ -627,19 +630,64 @@ final class AppModel {
     }
 
     func open(_ dest: Destination, newTab: Bool = false, background: Bool = false) {
-        // A note already open in a window or tab comes forward instead of opening twice.
-        if newTab, !background, dest != .home, !dest.isSearchLike, let open = windows.values.compactMap(\.model).first(where: { $0.current == dest }), let w = open.window {
-            w.makeKeyAndOrderFront(nil)
+        if background || front == nil {
+            // Tabs put back at launch or opened behind: no way back to the one in front.
+            pendingOpener = nil
+            openWindow?(dest, newTab, background && newTab)
+        } else if let front {
+            route(dest, from: front, newTab: newTab)
+        }
+        if !background { NSApp.activate() }
+    }
+
+    /// The note a new note's window takes the caret in (it may open in another tab than the one that made it).
+    @ObservationIgnored var focusNote: String?
+    @ObservationIgnored private var frontClock = 0
+
+    /// Opens `dest` from `source` by the web's tab rule (lib/app/tabs.tsx; the owner's rule of 24 November 2026,
+    /// Mac, iPad and Android as on the web):
+    /// - inside the same tab it stays there, with a way back: Foli AI's chats, Tasks' lists, a folder tab moving
+    ///   between folders, and (`inNote`) a nested page or link opened from inside the note on screen;
+    /// - a note or view already in a tab shows that tab (a view's tab goes to `dest`); a folder goes to the folder
+    ///   tab used last;
+    /// - anything else opens a new tab. From a page it remembers `source` (Back with nothing left closes it and
+    ///   comes back); `fresh` (the sidebar, "+", New Note) starts it with no way back.
+    func route(_ dest: Destination, from source: WindowModel, fresh: Bool = false, newTab: Bool = false, inNote: Bool = false) {
+        guard dest != source.current else {
+            source.window?.makeKeyAndOrderFront(nil)
+            return
+        }
+        let kind = dest.tabKind
+        let here = source.current.tabKind
+        let stays = !newTab && (kind == .none || kind == here || (inNote && dest.isNote && source.current.isNote))
+        if stays {
+            source.step(to: dest)
+            return
+        }
+        if let held = tab(holding: dest, except: source.id) {
+            if held.current != dest, !dest.isNote { held.step(to: dest) }
+            if let w = held.window {
+                w.tabGroup?.selectedWindow = w
+                w.makeKeyAndOrderFront(nil)
+            }
             NSApp.activate()
             return
         }
-        if newTab || front == nil {
-            pendingOpener = front?.window
-            openWindow?(dest, newTab, background && newTab)
-        } else {
-            front?.go(dest)
+        pendingOpener = fresh ? nil : source.window
+        openWindow?(dest, true, false)
+        NSApp.activate()
+    }
+
+    /// The window or tab that already holds `dest`'s tab: the note's (or a tab it's joined in), the view's, or the
+    /// folder tab used last.
+    func tab(holding dest: Destination, except: UUID? = nil) -> WindowModel? {
+        let others = windows.values.compactMap(\.model).filter { $0.id != except && $0.window != nil }
+        switch dest.tabKind {
+        case .none: return nil
+        case .note(let id): return others.first { $0.current.noteId == id || $0.panes?.contains(id) == true }
+        case .folders: return others.filter { $0.current.tabKind == .folders }.max { $0.frontAt < $1.frontAt }
+        case .view: return others.first { $0.current.tabKind == dest.tabKind }
         }
-        if !background { NSApp.activate() }
     }
 
     /// folevi-core:// links, Spotlight results and app.folevi.com links.

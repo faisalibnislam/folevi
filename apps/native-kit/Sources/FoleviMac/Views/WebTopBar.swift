@@ -43,6 +43,10 @@ public struct WebTopBar: View {
     @State var bellAnchor: NSView?
     /// The room iPadOS's own window buttons take at the strip's leading end (a resizable window's; none full screen).
     @State var windowControlsRoom: CGFloat = 0
+    #if os(iOS)
+    /// Where iPhone Duo's fold crosses the tabs row, partly closed (FoldSpan): the tabs end before it.
+    @State var fold: FoldSpan?
+    #endif
 
     /// The iPad's native window (the owner, 2026-11-24): only the tabs (Home, Show All Tabs and the tab track), in a
     /// row of their own under the system toolbar, as Safari's on iPadOS.

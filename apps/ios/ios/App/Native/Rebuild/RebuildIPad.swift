@@ -1,7 +1,9 @@
 // The iPad's wide layout in the rebuild frame (docs/IOS_REBUILD_PLAN.md, I7): FoleviMac's frame (IPadFrameView:
 // the sidebar, the content card, its glass top bar and tab strip) on the same engine as the phone's, the note
 // being the app's one Page View in the card. Under 700 pt wide (Split View, Slide Over, a small Stage Manager
-// window) the iPad shows the phone's layout, as the web does (lib/iphone.ts IPAD_COMPACT).
+// window) the iPad shows the phone's layout, as the web does (lib/iphone.ts IPAD_COMPACT). iPhone Duo open (the inner
+// screen, across or upright: any iPhone window of regular width) shows this layout too, the owner's pick of
+// 2026-11-23 (docs/IPHONE_DUO_PLAN.md); closed, and in a Split View half, it's the phone's.
 import SwiftUI
 import UIKit
 import WebKit
@@ -14,6 +16,82 @@ import FoleviScreens
 enum RebuildIPad {
     /// lib/iphone.ts: `(max-width: 699px)` is compact.
     static let minWidth: CGFloat = 700
+    /// An iPhone window this wide or wider, of regular width, takes the wide layout (iPhone Duo's inner screen is
+    /// 951 pt across and 669 pt upright; its outer screen and a Split View half are compact).
+    static let phoneMinWidth: CGFloat = 600
+
+    /// Whether a window this wide shows the wide layout: an iPad window from 700 pt, an iPhone window of regular
+    /// width (iPhone Duo open). Decided by size, never by the device's model.
+    /// Which layout is on screen now (set by the frame's root as it picks one): what routing and the page's owner
+    /// follow, rather than the window's traits, which change a moment before the layouts trade places.
+    @MainActor static var showingWide = UIDevice.current.userInterfaceIdiom == .pad
+
+    static func isWide(width: CGFloat, regular: Bool) -> Bool {
+        if UIDevice.current.userInterfaceIdiom == .pad { return width >= minWidth }
+        return regular && width >= phoneMinWidth
+    }
+}
+
+/// Tells the note page which layout is showing on an iPhone (iPhone Duo): the iPad's look and its tools in the wide
+/// layout, the phone's (native bars) otherwise. The page reads `wide` on its marker and follows the event
+/// (lib/iphone.ts nativeWide); the iPad's page measures its own width instead and is never told.
+@MainActor
+enum RebuildPageLayout {
+    nonisolated private static let key = "folevi-native-wide"
+    nonisolated private static let sideKey = "folevi-native-side-tools"
+    /// What the page was last told, and which telling is the latest (an older one's retries stop).
+    private static var wide: Bool?
+    /// iPhone Duo open across: the note's tools are iOS's toolbar items in the column at the side (IPadToolbar), so
+    /// the page drops its floating dock (lib/iphone.ts isNativeSideTools).
+    private static var sideTools = false
+    private static var telling = 0
+
+    /// Tells the page, again every half second until it has loaded and taken it (it may still be loading at launch).
+    static func tell(wide: Bool) {
+        guard UIDevice.current.userInterfaceIdiom == .phone else { return }
+        self.wide = wide
+        telling += 1
+        send(telling: telling, tries: 40)
+    }
+
+    /// Tells the page whether the note's tools sit in iOS's column at the side.
+    static func tell(sideTools: Bool) {
+        guard UIDevice.current.userInterfaceIdiom == .phone, sideTools != self.sideTools else { return }
+        self.sideTools = sideTools
+        if let wide { tell(wide: wide) }
+    }
+
+    /// The page loaded again (a reload): it hears the last word again once it's back.
+    static func again() {
+        guard let wide else { return }
+        tell(wide: wide)
+    }
+
+    private static func send(telling: Int, tries: Int) {
+        guard telling == self.telling, tries > 0, let wide else { return }
+        let side = wide && sideTools
+        let script = "if(!window.__foleviNativeChrome||document.readyState==='loading'){false}else{try{sessionStorage.setItem('\(key)','\(wide ? 1 : 0)');sessionStorage.setItem('\(sideKey)','\(side ? 1 : 0)')}catch(e){};window.__foleviNativeChrome.wide=\(wide);window.__foleviNativeChrome.sideTools=\(side);window.dispatchEvent(new Event('folevi-native-layout'));true}"
+        guard let web = WebHost.current?.webView else { return retry(telling: telling, tries: tries) }
+        web.evaluateJavaScript(script) { result, _ in
+            if (result as? Bool) != true { retry(telling: telling, tries: tries) }
+        }
+    }
+
+    private static func retry(telling: Int, tries: Int) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { send(telling: telling, tries: tries - 1) }
+    }
+
+    /// Where the fold crosses the page (iPhone Duo partly closed), in its own coordinates, or nil: the page keeps its
+    /// floating tools out of it (globals.css, `data-fold`).
+    static func fold(_ span: FoldSpan?) {
+        guard let web = WebHost.current?.webView else { return }
+        let set = span.map { "r.setAttribute('data-fold','');r.style.setProperty('--fold-start','\(Int($0.minX))px');r.style.setProperty('--fold-end','\(Int($0.maxX.rounded(.up)))px')" }
+            ?? "r.removeAttribute('data-fold');r.style.removeProperty('--fold-start');r.style.removeProperty('--fold-end')"
+        web.evaluateJavaScript("(()=>{const r=document.documentElement;\(set)})()")
+    }
+
+    /// Run after the marker at each page load: the last word, again after a reload.
+    nonisolated static let markerAddition = "try{var w=sessionStorage.getItem('\(key)'),t=sessionStorage.getItem('\(sideKey)');if(w!==null&&window.__foleviNativeChrome){window.__foleviNativeChrome.wide=w==='1';window.__foleviNativeChrome.sideTools=t==='1'}}catch(e){};"
 }
 
 struct RebuildIPadRoot: View {
@@ -25,6 +103,10 @@ struct RebuildIPadRoot: View {
     var body: some View {
         IPadFrameView(model: desk) {
             IPadNotePage(pageHost: pageHost, desk: desk)
+                // (iPhone Duo partly closed: the page keeps its dock out of the fold.)
+                .readFold { RebuildPageLayout.fold($0) }
+                // (iPhone Duo open across: the note's tools are in iOS's column at the side, not the page's dock.)
+                .readVerticalBars { RebuildPageLayout.tell(sideTools: $0) }
         }
         // The screens before the app, as on the phone.
         .overlay {
@@ -92,6 +174,21 @@ private struct IPadNotePage: UIViewControllerRepresentable {
         override func viewWillAppear(_ animated: Bool) {
             super.viewWillAppear(animated)
             pageHost?.adopt(by: self)
+        }
+
+        override func viewDidAppear(_ animated: Bool) {
+            super.viewDidAppear(animated)
+            // (Coming from the phone's layout, iPhone Duo unfolding or an iPad window widening, its note screen can
+            // let go of the page a moment after this took it: it's taken back.)
+            for delay in [0.1, 0.4, 1.0] {
+                DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in self?.keepPage() }
+            }
+        }
+
+        /// The page view here, while this is on screen.
+        func keepPage() {
+            guard let pageHost, view.window != nil, pageHost.pageView.superview !== holder else { return }
+            pageHost.adopt(by: self)
         }
 
         override func viewDidDisappear(_ animated: Bool) {
@@ -270,7 +367,7 @@ extension RebuildFrameController {
         return (super.keyCommands ?? []) + FoleviShortcut.all.map { $0.keyCommand(action: #selector(pressRebuildShortcut(_:))) }
     }
 
-    var wide: Bool { UIDevice.current.userInterfaceIdiom == .pad && view.bounds.width >= RebuildIPad.minWidth }
+    var wide: Bool { RebuildIPad.showingWide }
 
     @objc func pressRebuildShortcut(_ command: UIKeyCommand) {
         guard let shortcut = FoleviShortcut.matching(command) else { return }

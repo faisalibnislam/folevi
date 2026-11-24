@@ -258,8 +258,9 @@ main window; Quick Add is the web panel). The SwiftUI app is at tag `archive/mac
 Carry-over from 1.5.71 checked on scratch data: same bundle id, support folder, Keychain names, web storage and
 desktop settings key; the SwiftUI app's "Lock Folevi" defaults (`folevi.lock`) are written back to lock.json once.
 111 Mac tests pass; the Release build passes release.mjs's checks; 1.5.71 then the new build on one scratch
-library opens the same notes. Not done: a signed-in Release run (needs the owner), the owner's OK to release as
-1.5.72. Debug scripts that compared "web" and "native" frames (screens, menus, quickadd, gates) still take a kind;
+library opens the same notes. The owner kept this look (window buttons in the web's top-left corner). Not done: a signed-in Release
+run (twice the owner answered "notes appear" but the test copy's scratch folder recorded no sign-in: do it with the
+owner at the Mac, the installed Folevi quit first), and the owner's OK to release as 1.5.72. Debug scripts that compared "web" and "native" frames (screens, menus, quickadd, gates) still take a kind;
 only "web" means anything now.
 
 **1.5.70 on TestFlight (2026-11-24, owner's OK):** build 85, cut on `claude/ios-release-1.5.70` from the iPhone Duo

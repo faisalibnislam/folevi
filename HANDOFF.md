@@ -651,6 +651,7 @@ account button should move past iPadOS's window buttons).
   `DATABASE_UDF_USER_TIMEOUT_SECONDS=4` for that backend. Bursts show in `convex.log` as "took a long time".
 
 ## 12. Change log
+- 2026-11-24: PR 73 CI: both Flatpak jobs failed (Flathub's shared tray module puts ayatana-ido in /app/lib64 with the GNOME 51 SDK); the tray modules are now inlined in `packaging/linux/flatpak/com.folevi.Folevi.yml` with `-DCMAKE_INSTALL_LIBDIR=lib` and their patches.
 - 2026-11-24: Windows session takes on the web-export-as-files memory idea for Windows and Linux; Linux merges it when it lands and re-measures.
 - 2026-11-24: Linux memory measured in the VM (docs/LINUX.md "Memory"): 1.5.75 as published 446 MB PSS; with the merged Quick Add-on-first-use change (e75ac156) 369 MB (Electron on CI: 348). Folevi's own process: 27 MB program file (web export compiled in), 23 MB software renderer (no GPU). Merged `claude/desktop-tauri` (e75ac156, d5283c55) into PR 73.
 - 2026-11-24: 1.5.75 is one shared release: Linux downloads and the iPhone/iPad TestFlight build (mobile session tagged v1.5.75); the Linux files keep their names. Next version on any platform: 1.5.76 or later, check the tags first.

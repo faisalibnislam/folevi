@@ -33,9 +33,6 @@ struct RebuildNoteScreen: View {
     /// The frame draws this note's bottom bars (PhoneNoteBarsSlot), not the page.
     @Environment(\.phoneNoteBarsInFrame) private var barsInFrame
     /// The window is regular width: the note sits beside its list, with no Back of its own.
-    @Environment(\.phoneWideWindow) private var wideWindow
-    /// The note is the first in the split view's detail column.
-    @Environment(\.phoneNoteFirst) private var first
 
     var body: some View {
         let meta = model.noteMeta[noteId]
@@ -100,17 +97,12 @@ struct RebuildNoteScreen: View {
         }
         // Writing is the task here: the tab bar minimizes before the note's tools go into the overflow menu.
         .modifier(PrefersToolbarItems())
-        // (Collapsed, iOS draws a Back over the note column's first note only when the note was opened there, not
-        // when it came over as the phone folded: the note draws its own either way, and iOS's steps aside.)
-        .navigationBarBackButtonHidden(sideBars && first)
         .background(FoleviTokens.Chrome.canvas.color)
         .onGeometryChange(for: EdgeInsets.self) { $0.safeAreaInsets } action: { safe = $0 }
         .onChange(of: insets) { _, i in sendInsets(i) }
         // (For taking the keyboard back after iPhone Duo folds or unfolds mid-sentence: NotePageSlot.)
         .onChange(of: editing, initial: true) { _, e in
             NotePageRegistry.controller(for: noteId).writing = e
-            // (Written in: a note the detail column showed by itself is the person's now, and stays on folding.)
-            if e { frame.keepNote() }
         }
         // The page loaded again (iOS ended its process while the app was away) has forgotten the bars' room: said
         // again once the note is back, or the title sat under the top bar until the keyboard was next raised.
@@ -404,12 +396,6 @@ struct RebuildNoteScreen: View {
     @ToolbarContentBuilder
     private func sideBarItems(meta: NoteMeta?, canEdit: Bool, editing: Bool, panel: EditorPanel?) -> some ToolbarContent {
         if #available(iOS 27.1, *) {
-            // (Collapsed, the note column's first note: its Back, in place of iOS's, see navigationBarBackButtonHidden.)
-            if first, !wideWindow {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button(action: back) { Label { Text("Back") } icon: { WebIcon.chevronLeft.image(size: 22, strokeWidth: 2.2) } }
-                }
-            }
             if editing {
                 ToolbarItem(placement: .topBarPinnedTrailing) {
                     Button(action: done) { Label { Text("Done") } icon: { WebIcon.check.image(size: 20, strokeWidth: 2.4) } }
@@ -536,39 +522,10 @@ struct RebuildNoteScreen: View {
         printer.present(animated: true)
     }
 
-    /// The web menu's icons (lucide).
-    static func icon(_ item: NoteMenuItem) -> WebIcon {
-        switch item {
-        case .bookmark(let on): on ? .bookmarkOff : .bookmark
-        case .info: .info
-        case .find: .search
-        case .review: .layers
-        case .readImages: .scanText
-        case .related, .dna: .waypoints
-        case .history: .rotateCcwClock
-        case .showEditors: .users
-        case .move: .folderInput
-        case .copyTo: .copyPlus
-        case .duplicate: .copy
-        case .moveToVault: .lock
-        case .export: .download
-        case .present: .presentation
-        case .print: .printer
-        case .saveAsTemplate: .layoutTemplate
-        case .archive(let on, _): on ? .archiveRestore : .archive
-        case .trash, .deleteForever: .trash
-        case .restore: .undo2
-        }
-    }
+    /// The web menu's icons (lucide; NoteMenuIcons).
+    static func icon(_ item: NoteMenuItem) -> WebIcon { item.webIcon }
 
-    static func icon(_ group: NoteMenuGroup) -> WebIcon {
-        switch group {
-        case .connections: .waypoints
-        case .history: .rotateCcwClock
-        case .moveCopy: .folderInput
-        case .shareExport: .share
-        }
-    }
+    static func icon(_ group: NoteMenuGroup) -> WebIcon { group.webIcon }
 }
 
 /// One controller per note on screen, holding the page view while it's that note's (a note further down the stack

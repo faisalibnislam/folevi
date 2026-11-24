@@ -626,6 +626,7 @@ account button should move past iPadOS's window buttons).
   `DATABASE_UDF_USER_TIMEOUT_SECONDS=4` for that backend. Bursts show in `convex.log` as "took a long time".
 
 ## 12. Change log
+- 2026-11-24: Linux build root fix: the amd64 root needs a two-stage debootstrap (Rosetta can't run x86_64 programs in a root without /proc); `setup-amd64-root.sh` updated. The build scripts live in `packaging/linux/scripts/` (the repo's .gitignore drops any `build/` folder, so the first commit missed them).
 - 2026-11-24: Folevi for Linux started on `claude/linux-tauri-02790e`: packaging, docs, build scripts and CI workflow committed (34cc11fe); waiting on the shared Tauri shell from `claude/desktop-tauri`.
 - 2026-11-24: Merged `main` (PR 54, Android native) into `claude/ios-native-redesign-f4a8be` to clear PR 56's conflicts; only HANDOFF.md conflicted (next steps and change log, both sides kept). All native-kit iOS tests (274, 31, 38, 28, 31), the macOS build and 39 Mac app tests pass (one earlier run timed out 19 checks in FoleviScreens while the machine's load average was about 40; the rerun passed).
 - 2026-11-24: PR 56 opened (iPhone and iPad second round, 1.5.67, into `main`) after merging `main` (PR 51, 1.5.68) into `claude/ios-native-redesign-f4a8be`; all native-kit iOS tests, the macOS build and 39 Mac app tests pass.

@@ -41,9 +41,9 @@ import { useEditorZoom } from "@/lib/editorZoom";
 import { useScrollActivity } from "@/lib/scrollActivity";
 import { loadDocumentView, loadedDocumentView } from "@/lib/app/noteView";
 import { IphoneShell } from "@/components/iphone/IphoneShell";
-import { installPressRipple } from "@/lib/android/ripple";
 import { installInputModality } from "@/components/iphone/chrome";
 import { MacCommands } from "./MacCommands";
+import { installPressRipple } from "@/lib/android/ripple";
 import { inMacApp } from "@/lib/desktop/mac";
 import { IphoneScreen, type IphoneScreenOptions } from "@/components/iphone/Screen";
 

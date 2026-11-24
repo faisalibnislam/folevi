@@ -3,16 +3,21 @@
 A checklist for trying the test builds on real Linux computers. It takes about 20 minutes per computer. Use a
 test account or "On this computer" with a few throwaway notes, never your real library.
 
-The test builds are in `~/Downloads/Folevi for Linux <version> test/` on the Mac:
+The builds are on folevi.com (1.5.75, published 2026-11-24) and in `~/Downloads/Folevi for Linux 1.5.75 test/`
+on the Mac:
 
-| File | Use it on |
-| --- | --- |
-| `Folevi_<version>_amd64.AppImage` | Any Intel or AMD PC |
-| `Folevi_<version>_aarch64.AppImage` | Any ARM computer (Snapdragon laptop, Raspberry Pi 5) |
-| `folevi_<version>_amd64.deb`, `folevi_<version>_arm64.deb` | Ubuntu, Debian, Mint, Pop!_OS |
-| `folevi-<version>-1.x86_64.rpm`, `folevi-<version>-1.aarch64.rpm` | Fedora, openSUSE |
-| `com.folevi.Folevi-<arch>.flatpak` | Any distribution with Flatpak |
-| `SHA256.txt` | To check a download: `sha256sum -c SHA256.txt --ignore-missing` |
+| File | Use it on | Latest link |
+| --- | --- | --- |
+| `Folevi_<version>_amd64.AppImage` | Any Intel or AMD PC | https://folevi.com/download/linux/Folevi-x86_64.AppImage |
+| `Folevi_<version>_aarch64.AppImage` | Any ARM computer (Snapdragon laptop, Raspberry Pi 5) | https://folevi.com/download/linux/Folevi-aarch64.AppImage |
+| `Folevi_<version>_amd64.deb` | Ubuntu, Debian, Mint, Pop!_OS (Intel/AMD) | https://folevi.com/download/linux/Folevi-amd64.deb |
+| `Folevi_<version>_arm64.deb` | The same, on ARM | https://folevi.com/download/linux/Folevi-arm64.deb |
+| `Folevi-<version>-1.x86_64.rpm` | Fedora, openSUSE (Intel/AMD) | https://folevi.com/download/linux/Folevi-x86_64.rpm |
+| `Folevi-<version>-1.aarch64.rpm` | The same, on ARM | https://folevi.com/download/linux/Folevi-aarch64.rpm |
+| `SHA256SUMS.txt` | To check a download: `sha256sum -c SHA256SUMS.txt --ignore-missing` | https://folevi.com/download/linux/SHA256SUMS.txt |
+
+The Flatpak isn't in this set yet: it builds in CI (`.github/workflows/desktop.yml`) or with
+`packaging/linux/scripts/flatpak-bundle.sh`; section 3 is for when it is.
 
 Write down anything that looks wrong with the distribution, desktop (GNOME, KDE...) and whether it's Wayland or
 X11 (Settings > About, or run `echo $XDG_SESSION_TYPE` in a terminal).
@@ -42,7 +47,7 @@ X11 (Settings > About, or run `echo $XDG_SESSION_TYPE` in a terminal).
 ## 2. Fedora 42 or newer (Workstation or KDE), the .rpm
 
 - [ ] Double-click the .rpm. GNOME Software (or Discover) opens it; Install.
-  - If it refuses an unsigned package: in a terminal, `sudo dnf install ./folevi-*.rpm`.
+  - If it refuses an unsigned package: in a terminal, `sudo dnf install ./Folevi-*.rpm`.
 - [ ] Same checks as Ubuntu: opens, sign in, stays signed in, light/dark, `xdg-open folevi://new`, notifications,
       file dialog.
 - [ ] Quick Add on Fedora 42+ (GNOME 48+) or KDE: the first press of Ctrl+Alt+Space (or opening Folevi) shows the
@@ -50,10 +55,11 @@ X11 (Settings > About, or run `echo $XDG_SESSION_TYPE` in a terminal).
 - [ ] Tray: KDE shows it. Fedora's GNOME shows it only with the "AppIndicator and KStatusNotifierItem Support"
       extension; without it there's no tray icon (expected).
 - [ ] Uninstall: `sudo dnf remove folevi`.
+- [ ] openSUSE: `sudo zypper install --allow-unsigned-rpm ./Folevi-*.rpm`, then the same checks.
 
 ## 3. Any distribution, the Flatpak
 
-- [ ] `flatpak install --user com.folevi.Folevi-<arch>.flatpak` (it may first ask to install the GNOME 51 runtime
+- [ ] `flatpak install --user Folevi-<arch>.flatpak` (it may first ask to install the GNOME 51 runtime
       from Flathub: say yes).
 - [ ] `flatpak run com.folevi.Folevi`, or open it from the app grid.
 - [ ] Sign in; quit and reopen: still signed in.

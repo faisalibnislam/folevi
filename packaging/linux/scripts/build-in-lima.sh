@@ -42,6 +42,8 @@ limactl shell "$VM" -- bash -c "rm -rf '$VM_SRC/apps/desktop/web' && mkdir -p '$
 
 for arch in $ARCHES; do
   echo "== $arch"
+  # Old bundles would be copied out with the new ones.
+  limactl shell "$VM" -- sudo rm -rf "$VM_SRC/apps/desktop/src-tauri/target/release/bundle" "$ROOT64/root/target-x86/release/bundle"
   if [[ $arch == aarch64 ]]; then
     limactl shell "$VM" -- bash -lc "cd '$VM_SRC/apps/desktop/src-tauri' && APPIMAGE_EXTRACT_AND_RUN=1 cargo tauri build --bundles appimage,deb,rpm"
     BUNDLE="$VM_SRC/apps/desktop/src-tauri/target/release/bundle"

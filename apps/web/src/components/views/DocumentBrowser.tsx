@@ -87,14 +87,14 @@ const TITLES: Record<View, string> = {
 
 // What an empty list says: a short heading and one line of help.
 const EMPTY: Record<View, { icon: LucideIcon; title: string; body?: string }> = {
-  all: { icon: Files, title: "Nothing here yet", body: "Starting a document takes one keystroke." },
-  starred: { icon: Bookmark, title: "No bookmarks yet", body: "Bookmark a note to keep it close at hand." },
+  all: { icon: Files, title: "No notes yet", body: "Start one with New note." },
+  starred: { icon: Bookmark, title: "No bookmarks yet", body: "Bookmark a note to keep it here." },
   archive: { icon: Archive, title: "Archive is empty", body: "Archived notes rest here, out of your lists but never lost." },
   trash: { icon: Trash2, title: "Trash is empty", body: "Deleted notes stay here for 30 days." },
   templates: { icon: LayoutTemplate, title: "No templates of your own yet", body: "Save any note as a template from its menu." },
-  unsorted: { icon: Inbox, title: "No drafts", body: "Everything has a folder. Nicely done." },
-  folder: { icon: FolderOpen, title: "This folder is empty", body: "Start a document here, or move one in with Move to folder." },
-  tag: { icon: Hash, title: "No documents carry this tag yet", body: "Add tags to a document from its Info panel." },
+  unsorted: { icon: Inbox, title: "No drafts", body: "Notes without a folder show up here." },
+  folder: { icon: FolderOpen, title: "This folder is empty", body: "Start a note here, or move one in with Move to folder." },
+  tag: { icon: Hash, title: "No notes with this tag yet", body: "Add tags to a note from its Info panel." },
 };
 
 const PAGE_SIZE = 48;
@@ -611,7 +611,7 @@ function DocumentList({ view, folderId, tagId, org, titleOverride }: { view: Vie
               {filterField(false)}
               <label className="flex items-center gap-2 text-subheadline text-muted">
                 <span>Sort</span>
-                <Select value={sort} onChange={(e) => setSort(e.target.value as Sort)} className="h-9 ui-input rounded-chip px-3 text-callout text-ink">
+                <Select value={sort} onChange={(e) => setSort(e.target.value as Sort)} className="ui-hit h-9 ui-input rounded-chip px-3 text-callout text-ink">
                   {NOTE_SORTS.map(([v, label]) => (
                     <option key={v} value={v}>
                       {label}
@@ -699,7 +699,7 @@ function DocumentList({ view, folderId, tagId, org, titleOverride }: { view: Vie
             ))}
           </div>
         ) : filtering && shown.length === 0 ? (
-          <EmptyState icon={FileText} title={`No notes match “${q.trim()}”`} body={canLoadMore ? "Load more to look further, or search every note with Search." : "Try other words, or search every note with Search."} />
+          <EmptyState icon={FileText} title={`No notes match “${q.trim()}”`} body={canLoadMore ? "Load more to look further, or search all notes." : "Try other words, or search all notes."} />
         ) : docs.length === 0 ? (
           <EmptyState
             icon={EMPTY[view].icon}

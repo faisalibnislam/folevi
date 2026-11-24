@@ -1,12 +1,13 @@
 // themes.* in local mode (convex/themes.ts), from the snapshot bundled with the app (lib/shell/snapshot.ts):
 // the theme rows admins changed or added, with their images copied into the shell, and the built-in
-// templates admins switched off. Both stay as the build saw them until the app updates.
+// templates admins switched off. The templates stay as the build saw them until the app updates; the note styles
+// are kept up to date when online (lib/shell/styleSync.ts, the owner's 2026-11-24 choice).
 //
 // Also the snapshot's other readers here: whether a built-in template is on (settings.builtInTemplates, a
 // note made from a template, onboarding's starter pages) and what a theme key means (the built-in setup with
 // an admin's change on top, convex/lib/noteThemes.ts effectiveTheme).
 import { api } from "@/lib/convex/api";
-import { EMPTY_SNAPSHOT, loadShellSnapshot, type ShellSnapshot } from "@/lib/shell/snapshot";
+import { currentShellSnapshot, EMPTY_SNAPSHOT, type ShellSnapshot } from "@/lib/shell/snapshot";
 import { builtInSetup, isCustomThemeKey, STANDARD_DEFAULTS, STANDARD_FONTS, type ThemeDefaults, type ThemeFonts, type ThemePlan, type ThemeStatus } from "@/lib/themes";
 import { defineLocal } from "../registry";
 import { getProfile } from "./shared";
@@ -18,11 +19,14 @@ export function setBundledSnapshotForTests(snapshot: ShellSnapshot | null): void
   testSnapshot = snapshot;
 }
 
-/** The build's snapshot: empty on the website, in tests and when the build had none. */
+/**
+ * The build's snapshot, with the newer note styles this device kept since (lib/shell/styleSync.ts): empty on the
+ * website, in tests and when the build had none.
+ */
 export async function bundledSnapshot(): Promise<ShellSnapshot> {
   if (testSnapshot) return testSnapshot;
   try {
-    return await loadShellSnapshot();
+    return await currentShellSnapshot();
   } catch {
     return EMPTY_SNAPSHOT;
   }

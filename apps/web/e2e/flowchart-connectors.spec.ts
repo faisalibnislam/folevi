@@ -4,7 +4,7 @@
 // line, the connector menu, a finger, and a 200-shape chart that stays smooth while a shape is dragged.
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Locator, type Page } from "@playwright/test";
-import { APP, newPerson, settle, waitForSaved } from "./helpers";
+import { APP, newPerson, settle, waitForSaved, openCanvasOnPhone } from "./helpers";
 
 const SHOTS = process.env.FLOWCHART_SHOTS;
 async function shot(page: Page, name: string) {
@@ -325,7 +325,7 @@ test.describe("Flowchart connectors", () => {
     await page.setViewportSize({ width: 360, height: 800 });
     await canvas.scrollIntoViewIfNeeded();
     await expect(page.getByRole("toolbar", { name: "Flowchart tools" })).toBeHidden();
-    await page.getByRole("button", { name: /^Open canvas/ }).click();
+    await openCanvasOnPhone(page, "Flowchart");
     await expect(page.locator(".fb-flowchart .fb-canvas-card")).toHaveAttribute("data-full", "true");
     await page.mouse.click(...Object.values(await along(canvas, "ac", 0.5)) as [number, number]);
     const one = page.getByRole("toolbar", { name: "Selected connectors" });
@@ -352,6 +352,7 @@ test.describe("Flowchart connectors", () => {
     const pc = ph.getByRole("application", { name: /Flowchart, 3 shapes/ });
     await expect(pc).toBeVisible({ timeout: 30_000 });
     await pc.scrollIntoViewIfNeeded();
+    await openCanvasOnPhone(ph, "Flowchart");
     await pc.getByRole("button", { name: "Fit to content" }).click();
     const p = await along(pc, "ab", 0.5);
     await ph.touchscreen.tap(p.x, p.y);

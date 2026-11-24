@@ -14,7 +14,8 @@ import { ageText } from "@/lib/format";
 import { t } from "@/i18n";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { useCapabilities } from "@/lib/mode";
-import { isTabletApp, useIphoneApp } from "@/lib/iphone";
+import { useIphoneApp } from "@/lib/iphone";
+import { touchPrimary } from "@/lib/platform";
 import { SwipeRow } from "@/components/iphone/Swipe";
 
 type Item = FunctionReturnType<typeof api.notifications.list>[number];
@@ -36,8 +37,8 @@ export function NotificationsButton() {
 
 function NotificationsBell() {
   const unread = useQuery(api.notifications.unreadCount, {});
-  // On iPad the list is kept warm too, so the popover opens on it (a touch screen has no hover to get ahead).
-  useNotificationList(isTabletApp());
+  // On a touch device the list is kept warm too, so the popover opens on it (a touch screen has no hover to get ahead).
+  useNotificationList(touchPrimary());
   const [open, setOpen] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);

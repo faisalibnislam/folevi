@@ -297,8 +297,8 @@ describe("the repository", () => {
     expect(mobileGradle).toMatch(/^\s*versionCode = \(folevi\["build"\] as Number\)\.toInt\(\)$/m);
     expect(read("apps/mobile/android/app/src/main/java/com/folevi/android/MainActivity.kt")).toMatch(/put\("version", BuildConfig\.VERSION_NAME\)/);
     // The Mac's About panel: the version alone, an empty build.
-    expect(read("apps/mac/Folevi/App/AppCommands.swift")).toMatch(/Button\("About Folevi"\)/);
-    expect(read("apps/mac/Folevi/App/AppCommands.swift")).toMatch(/\.applicationVersion: "Version \\\(v\)", \.version: ""/);
+    expect(read("apps/mac/Folevi/App/AppDelegate.swift")).toMatch(/\.applicationVersion: Paths\.version, \.version: ""/);
+    expect(read("apps/mac/Folevi/Chrome/MenuModel.swift")).toMatch(/"app\.about", "About Folevi", "showAboutPanel:"/);
     // Sparkle compares the hidden build; the release checks both.
     expect(read("apps/mac/scripts/publish.mjs")).toMatch(/sparkle:version>\$\{build\}</);
     expect(read("apps/mac/scripts/release.mjs")).toMatch(/CFBundleVersion/);

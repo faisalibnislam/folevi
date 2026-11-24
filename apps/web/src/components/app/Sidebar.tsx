@@ -2,7 +2,7 @@
 
 import { useMutation, useQuery } from "convex/react";
 import { useEffect, useMemo, useState } from "react";
-import { ArrowDownUp, Archive, Calendar, CheckSquare, ChevronDown, ChevronRight, FileDiff, FolderPlus, Hash, Files, Inbox, Layers, LayoutTemplate, MoreHorizontal, Search, Share2, Trash2, House as Home, FileText, Waypoints, Lock } from "lucide-react";
+import { ArrowDownUp, Archive, CalendarDays, SquareCheckBig, ChevronDown, ChevronRight, FileDiff, FolderPlus, Hash, Files, Inbox, Layers, LayoutTemplate, MoreHorizontal, Search, Share2, Trash2, House as Home, FileText, Waypoints, Lock } from "lucide-react";
 import { Bookmark } from "lucide-react";
 import { api } from "@/lib/convex/api";
 import { useAppState } from "@/lib/app/state";
@@ -206,7 +206,7 @@ function Section({ title, href, children, action, defaultOpen = true, onNavigate
               onClick={() => setOpen(!open)}
               aria-expanded={open}
               aria-label={open ? `Collapse ${title}` : `Expand ${title}`}
-              className="ui-caps grid h-7 w-6 flex-none place-items-center rounded-chip transition-colors hover:bg-[var(--glass-hover)] hover:text-heading"
+              className="ui-hit ui-caps grid h-7 w-6 flex-none place-items-center rounded-chip transition-colors hover:bg-[var(--glass-hover)] hover:text-heading"
             >
               {open ? <ChevronDown size={12} aria-hidden /> : <ChevronRight size={12} aria-hidden />}
             </button>
@@ -214,7 +214,7 @@ function Section({ title, href, children, action, defaultOpen = true, onNavigate
               href={href}
               onClick={onNavigate}
               aria-current={isActive(route, href) ? "page" : undefined}
-              className={`ui-caps flex h-7 min-w-0 flex-1 items-center rounded-chip pl-2.5 pr-2 transition-colors hover:bg-[var(--glass-hover)] hover:text-heading ${isActive(route, href) ? "text-heading" : ""}`}
+              className={`ui-hit ui-caps flex h-7 min-w-0 flex-1 items-center rounded-chip pl-2.5 pr-2 transition-colors hover:bg-[var(--glass-hover)] hover:text-heading ${isActive(route, href) ? "text-heading" : ""}`}
               title={`All ${title.toLowerCase()}`}
             >
               {title}
@@ -596,7 +596,7 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
             ) : null}
           </div>
           {starred?.page.length && starredOpen ? (
-            <div className="space-y-0.5 pl-5" aria-label="Bookmarked pages" role="group">
+            <div className="space-y-0.5 pl-5" aria-label="Bookmarked notes" role="group">
               {starred.page.filter((d, i) => i < SIDEBAR_LIMIT || (route.name === "doc" && route.id === d.id)).map((d) => (
                 <NavItem key={d.id} href={`/d/${d.id}`} icon={<FileText size={15} />} label={d.title || "Untitled"} onNavigate={onNavigate} dragNoteId={canEdit ? d.id : undefined} locked={(d as { locked?: boolean }).locked === true} />
               ))}
@@ -605,8 +605,8 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
           ) : null}
           <NavItem href="/drafts" icon={<Inbox size={16} />} label="Drafts" count={drafts ?? undefined} onNavigate={onNavigate} dropFolderId="" />
           <NavItem href="/notes" icon={<Files size={16} />} label="All notes" onNavigate={onNavigate} />
-          <NavItem href="/tasks/today" icon={<CheckSquare size={16} />} label="Tasks" count={counts ? counts.today : undefined} onNavigate={onNavigate} />
-          <NavItem href="/calendar" icon={<Calendar size={16} />} label="Calendar" onNavigate={onNavigate} />
+          <NavItem href="/tasks/today" icon={<SquareCheckBig size={16} />} label="Tasks" count={counts ? counts.today : undefined} onNavigate={onNavigate} />
+          <NavItem href="/calendar" icon={<CalendarDays size={16} />} label="Calendar" onNavigate={onNavigate} />
           {reviews?.hasCards || route.name === "review" ? <NavItem href="/review" icon={<Layers size={16} />} label="Reviews" count={reviews ? reviews.due + reviews.new : undefined} onNavigate={onNavigate} /> : null}
           {caps.sharing ? <NavItem href="/shared" icon={<Share2 size={16} />} label="Shared with Me" onNavigate={onNavigate} /> : null}
           {vaultHere && vault !== null && vault !== undefined ? <NavItem href="/vault" icon={<Lock size={16} />} label="Vault" onNavigate={onNavigate} /> : null}
@@ -649,7 +649,7 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
         </Section>
 
         <Section title="Tags" href="/tags" onNavigate={onNavigate} defaultOpen={false}>
-          {org?.tags.length === 0 ? <p className="px-2 py-1 text-footnote text-faint">Tag documents from the inspector</p> : null}
+          {org?.tags.length === 0 ? <p className="px-2 py-1 text-footnote text-faint">Add tags from a note’s Info panel</p> : null}
           {shownTags.map((t) => (
             <div key={t.id} data-ctx-host="" className="group/tag flex items-center">
               <div className="min-w-0 flex-1">

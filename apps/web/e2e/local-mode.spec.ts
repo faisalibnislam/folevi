@@ -5,7 +5,7 @@
 //   E2E_LOCAL_BASE_URL=http://localhost:3003 E2E_BASE_URL=http://app.localhost:3002 E2E_NO_SERVER=1 \
 //     npx playwright test e2e/local-mode.spec.ts --project local
 import AxeBuilder from "@axe-core/playwright";
-import type { Locator, Page } from "@playwright/test";
+import type { Page } from "@playwright/test";
 import { expect, test } from "./fixtures/localShell";
 import { settle } from "./helpers";
 
@@ -274,15 +274,12 @@ test.describe("local mode", { tag: "@local" }, () => {
     await page.goto("/documents");
     await expect(page.getByRole("heading", { name: "Home", level: 1 })).toBeVisible({ timeout: 30_000 });
     await noScroll("home");
-    // The sidebar is a drawer on a phone.
-    await page.getByRole("button", { name: "Show sidebar" }).click();
-    const drawer: Locator = sidebar(page);
-    await expect(drawer.getByRole("button", { name: /settings and help/ })).toBeVisible();
-    await expect(drawer.getByText(NOTE)).toHaveCount(0);
-    await expect(drawer.getByRole("link", { name: "Shared with Me" })).toHaveCount(0);
-    await page.keyboard.press("Escape");
+    // A phone gets the phone interface with its tab bar (the owner's 2026-11-24 rule: width decides).
+    await expect(page.getByRole("navigation", { name: "Tabs" })).toBeVisible();
+    await expect(page.getByText(NOTE)).toHaveCount(0);
+    await expect(page.getByRole("link", { name: "Shared with Me" })).toHaveCount(0);
     await page.goto("/settings");
-    await expect(page.getByRole("navigation", { name: "Settings sections" })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1, name: "Settings" })).toBeVisible({ timeout: 30_000 });
     await noScroll("settings");
     await expectNoProblems(page, problems);
   });

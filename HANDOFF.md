@@ -259,8 +259,9 @@ sits in the crease (`FoldSpan`: the strip's tabs, the card's bar, the note's doc
 and screenshots: `docs/IPHONE_DUO_PLAN.md`, `docs/iphone-duo/`. Decisions:
 `docs/claude-context/memory/iphone-duo-decisions.md`.
 
-**iPhone Duo on the native iPad window, Apple's Duo rules applied (2026-11-24; local branch
-`claude/iphone-duo-native-ipad`, not pushed):** PR 53's Duo work merged with `claude/ios-native-redesign-f4a8be` (the
+**iPhone Duo on the native iPad window, Apple's Duo rules applied (2026-11-24; PR 55,
+https://github.com/faisalibnislam/folevi/pull/55, branch `claude/iphone-duo-native-ipad` into
+`claude/ios-native-redesign-f4a8be`; replaces PR 53, closed):** PR 53's Duo work merged with `claude/ios-native-redesign-f4a8be` (the
 native iPad window), then a pass against Apple's "Designing for iPhone Duo" (owner: "make the best duo app possible").
 Open, the whole toolbar sits in iOS's side column (`IPadToolbar` with `sideBars`, read by `readVerticalBars`), the
 note's tools sit at its foot where the closed phone has them and the page drops its dock (marker `sideTools`), the
@@ -454,15 +455,9 @@ signed-in account, 1.5.58's frosted folders with a large library, and the iPad c
 account button should move past iPadOS's window buttons).
 
 ## 10. Next steps / open work
-- iPhone Duo third pass (`claude/iphone-duo-ipad-layout`): PR 53 (https://github.com/faisalibnislam/folevi/pull/53), now into
-  `claude/folevi-core-529dbe` (PR 52 merged 2026-11-24); on hold: `claude/folevi-core-529dbe` is being released as 1.5.66 (PR 51
-  into main), so PR 53 waits until PR 51 merges, then is retargeted to main and the owner merges it. Tabletop checked
-  2026-11-24; not checked: Split View halves (no simulator control), a real device.
-- iPhone Duo on the native iPad window (`claude/iphone-duo-native-ipad`, local, not pushed): PR 53's work merged with
-  `claude/ios-native-redesign-f4a8be` (1.5.67's native iPad window) plus Apple's Duo rules (side-column toolbar and
-  note tools, sidebar beside and to the fold); every posture checked on the Duo simulator. How it lands is the owner's
-  call: replace PR 53 with this branch stacked on the iPad redesign's PR, or land it after both. Not checked: Split
-  View halves, a real device.
+- iPhone Duo: PR 55 (https://github.com/faisalibnislam/folevi/pull/55, `claude/iphone-duo-native-ipad` into
+  `claude/ios-native-redesign-f4a8be`), replacing PR 53 (closed). It lands after the iPad redesign branch, which goes
+  to main after the 1.5.66 release (PR 51); the owner merges. Not checked: Split View halves, a real device.
 - iPhone and iPad redesign (`claude/ios-native-redesign-f4a8be`): the owner tries 1.5.65 from TestFlight; PR 52
   (https://github.com/faisalibnislam/folevi/pull/52) merged into `claude/folevi-core-529dbe` on 2026-11-24
   with the owner's OK (main untouched). The `v1.5.65` tag is local only (pushing it was not asked for).
@@ -585,6 +580,7 @@ account button should move past iPadOS's window buttons).
   `DATABASE_UDF_USER_TIMEOUT_SECONDS=4` for that backend. Bursts show in `convex.log` as "took a long time".
 
 ## 12. Change log
+- 2026-11-24: PR 55 opened for the iPhone Duo on the native iPad window (owner: replace PR 53); PR 53 closed, its branch kept.
 - 2026-11-24: iPhone Duo made to Apple's Duo page on `claude/iphone-duo-native-ipad` (owner's ask): whole toolbar and the note's tools in iOS's side column, page dock dropped there, sidebar beside the content and to the fold, inspector makes room; fold no longer hides the sidebar.
 - 2026-11-24: iPhone Duo put on the native iPad window (local branch `claude/iphone-duo-native-ipad`: PR 53 + the iPad redesign branch; fold handling on the tabs row); PR 53 caught up with the 1.5.66 release branch (HANDOFF conflict only); tabletop checked.
 - 2026-11-24: PR 53 held until the 1.5.66 release (PR 51) merges, at the main session's request; then retarget it to main.

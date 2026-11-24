@@ -97,6 +97,23 @@ them, so the shell checks the install kind first.
 - **NVIDIA.** With NVIDIA's own driver WebKitGTK can show a blank window; the shell sets
   `WEBKIT_DISABLE_DMABUF_RENDERER=1` there (and only there) before the window opens.
 
+## Memory (2026-11-24)
+
+Measured in the Ubuntu 22.04 arm64 VM with `apps/desktop/scripts/measure.mjs` (first-launch screen, 30 s, PSS
+summed over every process), the same way CI measures:
+
+| Build | Total PSS | Folevi | Page's web process | Quick Add's web process | Network |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| 1.5.75 as published | 446 MB | 119 | 199 | 111 | 17 |
+| With Quick Add made on first use (e75ac156) | 369 MB | 120 | 230 | none | 19 |
+
+CI measured Electron at 348 MB on Linux x86_64 (run 45418586764). Inside Folevi's own process: 27 MB is the program
+file itself (90 MB, most of it the web export compiled in), 23 MB is Mesa's software renderer (libLLVM, swrast),
+present because the VM and CI have no GPU, about 20 MB WebKit and GTK libraries, the rest its own heap. Ideas not
+yet tried: ship the web export as files beside the program (`/usr/lib/Folevi/web`) instead of compiled in, which
+would cut the program to about 10 MB and leave the interface in the page cache; WebKitGTK's memory-pressure settings.
+The page itself (the web process) is most of the total and is the same web app Electron runs.
+
 ## Building
 
 Linux builds need Linux (WebKitGTK and GTK can't be cross-built from a Mac). Two ways:

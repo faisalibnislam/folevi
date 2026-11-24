@@ -4,6 +4,16 @@ Every Folevi release, newest first, written by `node scripts/version.mjs` from `
 
 Versions are MAJOR.UPDATE.PATCH, PATCH at least two digits: a Major release (2.0.00), a Big update (1.1.05 after 1.0.05) or a Small update (1.0.06 after 1.0.05).
 
+## Version 1.5.68: Small update
+
+Released 2026-11-24 07:43:25+06:00 (build 83, tag v1.5.68)
+
+Folevi for Mac opens signed-in accounts again.
+
+### Fixed
+
+- Mac: after updating to 1.5.66, a Mac signed in to a Folevi account stayed on the loading screen. It opens again.
+
 ## Version 1.5.67: Small update
 
 Released 2026-11-24 07:30:13+06:00 (build 82, tag v1.5.67)

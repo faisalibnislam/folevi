@@ -21,7 +21,7 @@ while [[ $# -gt 0 ]]; do
 done
 REPO="$(git rev-parse --show-toplevel)"
 VM=folevi-linux
-VM_SRC=/home/$USER.linux/folevi
+VM_SRC="$(limactl shell "$VM" -- sh -c 'echo $HOME')/folevi"
 VM_ROOT64=/srv/jammy-amd64
 
 if [[ $SKIP_WEB == 0 ]]; then
@@ -31,8 +31,10 @@ fi
 
 # The sources the build needs, onto the VM's own disk (much faster than the shared folder).
 limactl shell "$VM" -- mkdir -p "$VM_SRC"
-(cd "$REPO" && { git ls-files apps/desktop packaging version.json; find apps/desktop/web -type f; } | grep -v '^apps/desktop/src-tauri/target/') \
-  | (cd "$REPO" && tar -cf - -T -) | limactl shell "$VM" -- tar -xf - -C "$VM_SRC"
+# (build.rs also reads the shared shell-bridge.js from apps/ios). COPYFILE_DISABLE and --no-xattrs keep macOS's
+# "._" metadata files out: tauri-build reads every file in capabilities/ and fails on them.
+(cd "$REPO" && { git ls-files apps/desktop packaging version.json apps/ios/ios/App/Native/Shell/shell-bridge.js packages/local-store/fixtures; find apps/desktop/web -type f; } | grep -v '^apps/desktop/src-tauri/target/') \
+  | (cd "$REPO" && COPYFILE_DISABLE=1 tar --no-xattrs -cf - -T -) | limactl shell "$VM" -- tar -xf - -C "$VM_SRC"
 
 CONFIG_ARGS=()
 if [[ -z "${TAURI_SIGNING_PRIVATE_KEY:-}" ]]; then

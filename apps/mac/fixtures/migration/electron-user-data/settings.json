@@ -1,0 +1,8 @@
+{
+  "quickAddShortcut": "Command+Shift+K",
+  "openAtLogin": false,
+  "menuBarIcon": false,
+  "notifications": true,
+  "mode": "account",
+  "bundledShell": true
+}

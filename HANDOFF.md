@@ -260,7 +260,12 @@ redesign branch `claude/folevi-core-529dbe`. The owner's answers: `docs/claude-c
   20, 28), sentence-case headings. Home in the Mac's order (places, Catch me up, Recent, Bookmarks, Folders, Tags
   as chips, the rest). Tasks, Calendar and Search group rows on cards. The note keeps its drawn bars; its place
   chip is 44 pt. Tab bar unchanged: Home, Tasks, Calendar, Foli AI, search.
-- **iPad** (FoleviMac, merged from `claude/ipad-redesign`): a top bar per screen inside the card
+- **iPad, second round (2026-11-24, replaces the bullet below):** `IPadFrame` is a system split view;
+  `IPadToolbar.swift` fills the system toolbar; tabs sit in a Safari-style row under it; `IPadInspector.swift` is
+  the system inspector holding the iPhone's native Style, Format and Insert panels and the Ask Foli AI chat. Under
+  700 pt the phone layout takes over. Owner's call: the inspector's Foli AI tab is the Ask chat, not the web
+  panel's Write/Ask/Study actions.
+- **iPad, first round** (FoleviMac, merged from `claude/ipad-redesign`): a top bar per screen inside the card
   (`IPadScreenBar`: Back/Forward, title, actions capsule, New note ink pill, search; 44 pt controls), screens start
   below it; the note's tools panel is the Mac's flat inspector (`data-ipad-native` in `globals.css`); 228 pt
   sidebar, 44 pt rows; card corners 12 pt; tabs stay on the strip.
@@ -506,8 +511,7 @@ account button should move past iPadOS's window buttons).
 - `pnpm audit` ignores four better-auth GHSAs on purpose (`pnpm-workspace.yaml`); upgrade better-auth and
   `@convex-dev/better-auth` together when supported, then drop the ignores.
 - zsh doesn't word-split a variable of file names: use `git diff --name-only -z | xargs -0 git commit ...`.
-- Debug iPad: launching with `FOLEVI_REBUILD_OPEN` crashes (the `desk` lazy getter calls `frameStateChanged`,
-  which reads `desk` again: `RebuildIPad.swift:213`, `RebuildFrame.swift:79`). The iPhone is fine.
+- Debug iPad: `FOLEVI_IPAD_TOOL=style|format|insert|ai` opens that tool in the inspector at launch.
 - Driving a simulator headlessly: `FOLEVI_REBUILD_OPEN=/notes` (via `SIMCTL_CHILD_`), the `folevi.rebuild` default
   for the rebuilt frame in Debug, and `scripts/gates.mjs`'s `simulator()` helper (press, engine commands) to make a
   scratch local library.
@@ -529,6 +533,7 @@ account button should move past iPadOS's window buttons).
   `DATABASE_UDF_USER_TIMEOUT_SECONDS=4` for that backend. Bursts show in `convex.log` as "took a long time".
 
 ## 12. Change log
+- 2026-11-24: iPad rebuilt natively and merged (`claude/ipad-native`): system split view, system toolbar (Back/Forward, title, items, ink New note, sync, bell, search), Safari-style tabs row, the note's Style/Format/Insert/Foli AI in the system inspector; Debug iPad launch with FOLEVI_REBUILD_OPEN fixed; all iOS package tests pass on the iPhone simulator.
 - 2026-11-24: Owner chose native like the Mac for iOS: iPhone lists and Settings on iOS's own List (rows unlined, native swipe actions); the iPad's native split-view rebuild runs on `claude/ipad-native` (helper, not merged yet).
 - 2026-11-23: iPhone/iPad audited with apple-hig, liquid-glass, liquid-glass-motion and axiom-design (owner's ask): + is the system's prominent glass, search button titled, 44 pt tag chips and iPad history buttons; owner's calls listed in PR 52.
 - 2026-11-23: PR 52 opened (iPhone and iPad redesign into `claude/folevi-core-529dbe`).

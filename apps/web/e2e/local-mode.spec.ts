@@ -131,9 +131,10 @@ test.describe("local mode", { tag: "@local" }, () => {
     await page.keyboard.press("Backspace");
     await page.keyboard.press("Backspace");
 
-    // Every tile in the Insert panel, one after another, at the end of the note.
+    // Every tile in the Insert panel, one after another, at the end of the note. With Foli AI off a note opens with
+    // its tools panel on Insert (the owner, 2026-11-18), so it's already open: clicking Insert would close it.
     const tools = page.getByRole("toolbar", { name: "Page tools" });
-    await tools.getByRole("button", { name: "Insert", exact: true }).click();
+    await expect(tools.getByRole("button", { name: "Insert", exact: true })).toBeVisible();
     const panel = page.getByRole("region", { name: "Insert", exact: true });
     await expect(panel.getByText("Drag and drop any item to the document")).toBeVisible();
     await expect(panel.getByRole("button", { name: "Image from Unsplash" })).toHaveCount(0);

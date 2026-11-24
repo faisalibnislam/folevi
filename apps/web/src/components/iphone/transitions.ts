@@ -220,6 +220,9 @@ function playZoom(kind: "push" | "pop", entering: HTMLElement, leaving: HTMLElem
   const unpromote = promote([entering, leaving, dim]);
   const done = () => {
     if (leaving.parentElement === pictures) pictures.replaceChildren();
+    // The picture is only a copy: empty it. On iPhone something inside WebKit keeps a shown picture after it's
+    // removed (docs/mobile/ios-review-2026-11-24.md); this way it keeps one empty element, not a whole screen.
+    leaving.replaceChildren();
     entering.removeAttribute("data-iphone-zoom");
     entering.style.transformOrigin = "";
     unpromote();
@@ -323,6 +326,9 @@ export function playTransition(entering: HTMLElement | null) {
   const unpromote = promote([entering, leaving, dim, shadow]);
   const done = () => {
     if (leaving.parentElement === pictures) pictures.replaceChildren();
+    // The picture is only a copy: empty it. On iPhone something inside WebKit keeps a shown picture after it's
+    // removed (docs/mobile/ios-review-2026-11-24.md); this way it keeps one empty element, not a whole screen.
+    leaving.replaceChildren();
     unpromote();
   };
   const at = (k: number) => round(k * 100);

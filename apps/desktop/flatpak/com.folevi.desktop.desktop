@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Name=Folevi
+GenericName=Notes
+Comment=A calm place for notes, tasks and ideas
+Exec=folevi %u
+Icon=com.folevi.desktop
+Terminal=false
+Categories=Office;TextEditor;
+Keywords=notes;tasks;writing;journal;
+MimeType=x-scheme-handler/folevi;
+StartupWMClass=Folevi

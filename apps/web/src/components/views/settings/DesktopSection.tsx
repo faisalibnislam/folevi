@@ -1,8 +1,9 @@
 "use client";
-// Settings > Desktop app: what only the Mac app does (Quick Add from any app, opening at login, the menu bar
-// icon, Mac notifications). Kept by the Mac app itself, on this Mac.
+// Settings > Desktop app: what only the desktop apps do (Quick Add from any app, opening at login or sign-in, the
+// menu bar or notification area icon, notifications). Kept by the app itself, on this Mac or PC. Folevi for Windows
+// (apps/desktop) gets Windows' words: Ctrl+Alt+Space, the notification area, the taskbar button.
 import { useEffect, useId, useState, type KeyboardEvent } from "react";
-import { acceleratorFrom, DEFAULT_QUICK_ADD_SHORTCUT, desktop, shortcutLabel, type DesktopSettings } from "@/lib/desktop";
+import { acceleratorFrom, defaultQuickAddShortcut, desktop, shortcutLabel, type DesktopPlatform, type DesktopSettings } from "@/lib/desktop";
 import { Button } from "@/components/ui/Button";
 import { Switch } from "@/components/ui/Switch";
 import { Card } from "./Card";
@@ -25,21 +26,43 @@ export function DesktopSection() {
   if (!state) return <p className="text-subheadline text-muted">Loading…</p>;
   const save = (patch: Partial<DesktopSettings>) => void bridge.setSettings(patch).then((next) => next && setState(next));
   const { settings } = state;
+  const windows = bridge.platform === "windows";
+  const linux = bridge.platform === "linux";
   return (
     <div className="space-y-5">
       <Card title="Quick Add" description="Add a task from any app without switching to Folevi. Write “tomorrow 9am”, “!high” or “#page” as you type; tasks without a page go to your Inbox.">
-        <ShortcutField value={settings.quickAddShortcut} error={state.error} onChange={(quickAddShortcut) => save({ quickAddShortcut })} />
+        <ShortcutField value={settings.quickAddShortcut} error={state.error} platform={bridge.platform} onChange={(quickAddShortcut) => save({ quickAddShortcut })} />
       </Card>
-      <Card title="On this Mac">
+      <Card title={windows ? "On this PC" : linux ? "On this computer" : "On this Mac"}>
         <div className="max-w-xl divide-y divide-line/70">
-          <Row label="Open at login" hint="Folevi starts quietly when you log in, so Quick Add is always ready." checked={settings.openAtLogin} onChange={(openAtLogin) => save({ openAtLogin })} />
-          <Row label="Menu bar icon" hint="Quick Add, a new note, recent notes and the save state from the menu bar." checked={settings.menuBarIcon} onChange={(menuBarIcon) => save({ menuBarIcon })} />
+          {linux ? (
+            <>
+              <Row label="Open at login" hint="Folevi starts quietly in the tray when you log in, so Quick Add is always ready." checked={settings.openAtLogin} onChange={(openAtLogin) => save({ openAtLogin })} />
+              <Row label="Tray icon" hint="Quick Add, a new note, recent notes and the save state from Folevi's icon in your panel. With it on, closing the window keeps Folevi running there." checked={settings.menuBarIcon} onChange={(menuBarIcon) => save({ menuBarIcon })} />
+            </>
+          ) : windows ? (
+            <>
+              <Row label="Open when you sign in" hint="Folevi starts quietly in the notification area when you sign in to Windows, so Quick Add is always ready." checked={settings.openAtLogin} onChange={(openAtLogin) => save({ openAtLogin })} />
+              <Row label="Notification area icon" hint="Quick Add, a new note, recent notes and the save state from the icon by the clock. With it on, closing the window keeps Folevi running there." checked={settings.menuBarIcon} onChange={(menuBarIcon) => save({ menuBarIcon })} />
+            </>
+          ) : (
+            <>
+              <Row label="Open at login" hint="Folevi starts quietly when you log in, so Quick Add is always ready." checked={settings.openAtLogin} onChange={(openAtLogin) => save({ openAtLogin })} />
+              <Row label="Menu bar icon" hint="Quick Add, a new note, recent notes and the save state from the menu bar." checked={settings.menuBarIcon} onChange={(menuBarIcon) => save({ menuBarIcon })} />
+            </>
+          )}
           {settings.spotlight !== undefined ? (
             <Row label="Show notes in Spotlight" hint="Find any note by its words from Spotlight, archived ones too. Locked and encrypted notes are never added." checked={settings.spotlight} onChange={(spotlight) => save({ spotlight })} />
           ) : null}
           <Row
-            label="Mac notifications"
-            hint="Comments, mentions and reminders appear as Mac notifications while Folevi isn't the app in front. The Dock icon shows how many are unread."
+            label={windows ? "Windows notifications" : linux ? "Notifications" : "Mac notifications"}
+            hint={
+              linux
+                ? "Comments, mentions and reminders appear as desktop notifications. Folevi's icon in the dock shows how many are unread where your desktop supports it."
+                : windows
+                ? "Comments, mentions and reminders appear as Windows notifications. The taskbar button shows how many are unread."
+                : "Comments, mentions and reminders appear as Mac notifications while Folevi isn't the app in front. The Dock icon shows how many are unread."
+            }
             checked={settings.notifications}
             onChange={(notifications) => save({ notifications })}
           />
@@ -66,8 +89,8 @@ function Row({ label, hint, checked, onChange }: { label: string; hint: string; 
   );
 }
 
-/** Press the keys you want: the field shows them as the Mac writes shortcuts (⌥Space). */
-function ShortcutField({ value, error, onChange }: { value: string; error: string | null; onChange: (accelerator: string) => void }) {
+/** Press the keys you want: the field shows them as the Mac writes shortcuts (⌥Space), or Windows (Ctrl+Alt+Space). */
+function ShortcutField({ value, error, platform, onChange }: { value: string; error: string | null; platform: DesktopPlatform; onChange: (accelerator: string) => void }) {
   const [recording, setRecording] = useState(false);
   const [hint, setHint] = useState<string | null>(null);
   useEffect(() => {
@@ -76,7 +99,8 @@ function ShortcutField({ value, error, onChange }: { value: string; error: strin
     return () => desktop()?.pauseShortcut(false);
   }, [recording]);
   const hintId = useId();
-  const fallback = DEFAULT_QUICK_ADD_SHORTCUT;
+  const fallback = defaultQuickAddShortcut(platform);
+  const label = (a: string) => shortcutLabel(a, platform);
   const onKeyDown = (e: KeyboardEvent<HTMLButtonElement>) => {
     if (!recording) return;
     e.preventDefault();
@@ -86,9 +110,9 @@ function ShortcutField({ value, error, onChange }: { value: string; error: strin
       setHint(null);
       return;
     }
-    const accelerator = acceleratorFrom(e.nativeEvent);
+    const accelerator = acceleratorFrom(e.nativeEvent, platform);
     if (!accelerator) {
-      if (!["Meta", "Control", "Alt", "Shift"].includes(e.key)) setHint("Hold ⌘, ⌥ or ⌃ with the key.");
+      if (!["Meta", "Control", "Alt", "Shift"].includes(e.key)) setHint(platform === "windows" ? "Hold Ctrl, Alt or the Windows key with the key." : platform === "linux" ? "Hold Ctrl, Alt or Super with the key." : "Hold ⌘, ⌥ or ⌃ with the key.");
       return;
     }
     setRecording(false);
@@ -102,16 +126,16 @@ function ShortcutField({ value, error, onChange }: { value: string; error: strin
         <button
           type="button"
           aria-describedby={hintId}
-          aria-label={recording ? "Press the new shortcut" : `Quick Add shortcut: ${shortcutLabel(value)}. Change`}
+          aria-label={recording ? "Press the new shortcut" : `Quick Add shortcut: ${label(value)}. Change`}
           onClick={() => setRecording((r) => !r)}
           onKeyDown={onKeyDown}
           onBlur={() => setRecording(false)}
           className={`ui-input h-9 min-w-36 rounded-chip px-3 text-left font-medium outline-none ${recording ? "ring-2 ring-focus" : ""}`}
         >
-          {recording ? <span className="text-muted">Press keys…</span> : shortcutLabel(value)}
+          {recording ? <span className="text-muted">Press keys…</span> : label(value)}
         </button>
         {value ? <Button onClick={() => onChange("")}>Turn off</Button> : null}
-        {value !== fallback ? <Button onClick={() => onChange(fallback)}>Use {shortcutLabel(fallback)}</Button> : null}
+        {value !== fallback ? <Button onClick={() => onChange(fallback)}>Use {label(fallback)}</Button> : null}
       </div>
       <p id={hintId} role={error || hint ? "alert" : undefined} className={`mt-1.5 text-footnote ${error || hint ? "text-danger" : "text-muted"}`}>
         {hint ?? error ?? (recording ? "Press the keys together. Esc cancels." : "Click, then press the keys you want.")}

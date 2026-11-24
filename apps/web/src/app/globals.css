@@ -272,6 +272,19 @@
 /* The Quick Add window is the form alone: no page around it. */
 :root[data-desktop]:has(.ui-desktop-quick-add) body::before { display: none; }
 .ui-desktop-quick-add { min-height: 100vh; }
+/* Folevi for Windows (apps/desktop, data-desktop="windows"): Folevi's own top bar fills the window's top and the
+   caption buttons (minimize, maximize, close, drawn as Windows 11 draws them by apps/desktop/src-tauri/bridge/host.js)
+   sit in the top right corner. The tab strip ends before them: host.js sets --win-caption-inset to their width
+   (env(titlebar-area-*) stays as the fallback for a host with Window Controls Overlay). The shell's 8 px margin is
+   already between the strip and the window's edge. The logo stays in the sidebar. Linux keeps its window manager's
+   title bar (data-desktop="linux": nothing to keep clear). */
+:root[data-desktop="windows"] .ui-tabbar { right: var(--win-caption-inset, max(4px, calc(100vw - env(titlebar-area-x, 0px) - env(titlebar-area-width, 100vw) - 2px))); }
+/* Windows' own font, as the native Mac app uses the Mac's (the owner's system font rule): Segoe UI Variable on
+   Windows 11, Segoe UI on Windows 10. Titles keep Folevi's display face. */
+:root[data-desktop="windows"] { --font-sans: "Segoe UI Variable Text", "Segoe UI Variable", "Segoe UI", system-ui, sans-serif; }
+/* Windows' accent color (Settings > Personalization > Colors) for focus rings and selected text, as Windows' own apps. */
+:root[data-desktop="windows"][data-win-accent] { --color-focus: var(--win-accent); }
+:root[data-desktop="windows"][data-win-accent] ::selection { background: color-mix(in srgb, var(--win-accent) 32%, transparent); }
 
 /* The iPhone and iPad app (apps/ios, data-native="ios") and the Android app (apps/android, data-native="android",
    which reads the insets from the app on WebViews older than 140): the page fills the screen (viewport-fit=cover, set by

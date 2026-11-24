@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>com.folevi.desktop</id>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>LicenseRef-proprietary</project_license>
+  <name>Folevi</name>
+  <summary>A calm place for notes, tasks and ideas</summary>
+  <developer id="com.folevi">
+    <name>Folevi</name>
+  </developer>
+  <description>
+    <p>Folevi is a calm writing and notes workspace: nested pages, tasks, a calendar, canvases, sharing, offline editing and sync, optional end-to-end encryption and Foli AI.</p>
+    <p>Keep your notes in your Folevi account, or as files on this computer with no account at all.</p>
+  </description>
+  <launchable type="desktop-id">com.folevi.desktop.desktop</launchable>
+  <url type="homepage">https://folevi.com</url>
+  <url type="help">https://folevi.com/help</url>
+  <content_rating type="oars-1.1"/>
+  <releases>
+    <release version="1.5.68" date="2026-11-24"/>
+  </releases>
+</component>

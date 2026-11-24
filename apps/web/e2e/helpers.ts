@@ -247,8 +247,34 @@ export function seedExternalCalendar(email: string, name: string, color: string,
   });
 }
 
+/**
+ * Opens a canvas block at a phone's width. There the phone layout draws it as a card (PhoneCanvasCover) that opens
+ * the full canvas ("Open Flowchart"); a card squeezed in a wider window offers "Open canvas" instead.
+ */
+export async function openCanvasOnPhone(page: Page, name: string) {
+  const open = page.getByRole("button", { name: new RegExp(`^Open (canvas|${name})`) }).first();
+  await open.click();
+}
+
+/**
+ * Waits until `target` has stopped moving and is wholly on screen: a phone sheet springs up from below, and a
+ * click made while it's still rising lands where the button was a moment ago.
+ */
+export async function untilSettled(target: Locator) {
+  await expect
+    .poll(async () => {
+      const a = await target.boundingBox();
+      await target.page().waitForTimeout(120);
+      const b = await target.boundingBox();
+      const h = target.page().viewportSize()?.height ?? Infinity;
+      return Boolean(a && b && a.y === b.y && a.x === b.x && b.y + b.height <= h);
+    })
+    .toBe(true);
+}
+
 export async function waitForSaved(page: Page) {
-  await expect(page.getByTestId("sync-status")).toHaveAttribute("data-status", "saved", { timeout: 20_000 });
+  // (At a phone's width the phone layout shows its own save status, sync-status-touch, with the same states.)
+  await expect(page.getByTestId("sync-status").or(page.getByTestId("sync-status-touch")).first()).toHaveAttribute("data-status", "saved", { timeout: 20_000 });
 }
 
 /**

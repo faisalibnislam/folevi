@@ -1,7 +1,7 @@
 // Building a flowchart faster: a whole flow from the keyboard, quick add arrows with a mouse and a finger,
 // the shape picker where a connector is let go on empty canvas, smart guides and align.
 import { expect, test, type Locator, type Page } from "@playwright/test";
-import { APP, newPerson, waitForSaved, closeToolsPanel } from "./helpers";
+import { APP, newPerson, waitForSaved, closeToolsPanel, openCanvasOnPhone } from "./helpers";
 
 const SHOTS = process.env.FLOWCHART_SHOTS;
 
@@ -274,6 +274,7 @@ test.describe("Flowchart: building faster", () => {
     await expect(ph.getByRole("application", { name: /Flowchart, 4 shapes/ })).toBeVisible({ timeout: 30_000 });
     const pc = ph.getByRole("application", { name: /Flowchart/ });
     await pc.scrollIntoViewIfNeeded();
+    await openCanvasOnPhone(ph, "Flowchart");
     await pc.getByRole("button", { name: "Fit to content" }).click();
     const pOne = pc.getByRole("button", { name: /^Process: One/ });
     const ob = (await pOne.boundingBox())!;

@@ -1,6 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
-import { APP, newPerson, openShare, settle, waitForSaved } from "./helpers";
+import { APP, newPerson, openShare, settle, untilSettled, waitForSaved } from "./helpers";
 
 const IPHONE_UA = "Mozilla/5.0 (iPhone; CPU iPhone OS 18_7 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 FoleviiOS/1.0";
 
@@ -190,7 +190,8 @@ test.describe("Sticky notes", () => {
     // enough for its tools; at 360 it is 308, under the 320 where the picture takes over.)
     await page.setViewportSize({ width: 360, height: 800 });
     await expect(tools).toBeHidden();
-    await page.getByRole("button", { name: /^Open canvas/ }).click();
+    // (A phone's width gets the phone layout, where a canvas is a card that opens the full canvas: Open <name>.)
+    await page.getByRole("button", { name: /^Open (canvas|Sticky notes)/ }).click();
     const fullCard = page.locator(".fb-stickies .fb-canvas-card[data-full]");
     await expect(fullCard).toBeVisible();
     const fits = () => tools.evaluate((el) => el.scrollWidth <= el.clientWidth + 1 && [...el.querySelectorAll("button")].filter((b) => b.offsetParent).every((b) => b.getBoundingClientRect().right <= el.getBoundingClientRect().right + 1));
@@ -233,15 +234,17 @@ test.describe("Sticky notes", () => {
     };
     await openBulk();
     await expect(bulk).toBeVisible();
-    await tools.getByRole("button", { name: "Add a note" }).focus();
+    // (At a phone's width the panel is the phone's sheet, which holds the keyboard until it closes, so nothing
+    // behind it can take focus: Escape closes it.)
     await page.keyboard.press("Escape");
     await expect(bulk).toHaveCount(0);
-    await expect(tools.getByRole("button", { name: "Add a note" })).toBeFocused();
 
     // The selection bar fits too.
     await openBulk();
     await bulk.getByRole("textbox").fill("One\nTwo");
-    await bulk.getByRole("button", { name: "Add 2 notes" }).click();
+    const addBtn = bulk.getByRole("button", { name: "Add 2 notes" });
+    await untilSettled(addBtn);
+    await addBtn.click();
     await board.getByRole("button", { name: /^One, yellow note/ }).click();
     const selBar = page.getByRole("toolbar", { name: "Selected note" });
     await expect(selBar).toBeVisible();

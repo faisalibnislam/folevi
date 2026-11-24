@@ -11,6 +11,8 @@ test("phone width: the phone interface with its tab bar, reachable by keyboard",
   // A window under 700 px gets the bottom bar on every device, a computer's narrow window too (the owner, 2026-11-24).
   const { page, context } = await newPerson(browser, "Tab Bar Tester");
   await page.setViewportSize({ width: 390, height: 844 });
+  // (A new account opens on its Welcome note, where the note's own bars take the tab bar's place: Home has it.)
+  await page.goto(new URL("/documents", page.url()).href);
   const tabs = page.getByRole("navigation", { name: "Tabs" });
   await expect(tabs).toBeVisible({ timeout: 30_000 });
   await expect(page.getByRole("button", { name: "Show sidebar" })).toHaveCount(0);

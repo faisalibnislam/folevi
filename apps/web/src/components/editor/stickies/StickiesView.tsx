@@ -89,7 +89,7 @@ import {
 } from "./ops";
 import { useStickiesDoc } from "./useStickiesDoc";
 import { targetUnder } from "../canvas/targetUnder";
-import { capturePointer, dropFocusIn, notePress, pinchPair, useTapFocus, type DownPointer } from "../canvas/pointers";
+import { capturePointer, pressIsElsewhere, dropFocusIn, notePress, pinchPair, useTapFocus, type DownPointer } from "../canvas/pointers";
 import { coarsePointer } from "@/lib/hooks/useMediaQuery";
 
 const MIN_K = 0.15;
@@ -562,6 +562,8 @@ function StickiesEditor(props: ReactNodeViewProps & { me: string; people: People
   };
 
   const onPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    // A press in something this board drew on top of the page (a phone sheet) isn't the board's (pointers.ts).
+    if (pressIsElsewhere(e.currentTarget, e.target)) return;
     const target = e.target as Element;
     if (target.closest(".st-text-input, .st-label-input")) return;
     lastPointer.current = e.pointerType;

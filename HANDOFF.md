@@ -462,7 +462,8 @@ What's there (checklist in the plan, section 4):
   Folevi_Tablet, Folevi_Foldable, Folevi_Desktop (1920x1200 @160). Boot them on free ports.
 
 **Android as Capacitor (2026-11-24, replaces the native app above; owner: one web app everywhere):** branch
-`claude/android-capacitor-197cf4` (worktree `.claude/worktrees/android-capacitor-197cf4`), pushed, no PR. Folder
+`claude/android-capacitor-197cf4` (worktree `.claude/worktrees/android-capacitor-197cf4`), **PR 69**
+(https://github.com/faisalibnislam/folevi/pull/69, contains PR 66 and `main` up to PR 60; merging it deploys the web). Folder
 `apps/mobile/android`: the Android half of the one Capacitor mobile app; the shared setup (`apps/mobile`,
 `capacitor.config.ts`, `package.json`, `scripts/`) is the iOS session's `claude/mobile-capacitor-f41734`, merged
 into this branch. Both sessions had restored the same Android app; the merge keeps this branch's Kotlin and
@@ -745,6 +746,7 @@ account button should move past iPadOS's window buttons).
   `DATABASE_UDF_USER_TIMEOUT_SECONDS=4` for that backend. Bursts show in `convex.log` as "took a long time".
 
 ## 12. Change log
+- 2026-11-24: PR 69 opened for the Android Capacitor app (contains PR 66); mergeable with `main`, not merged.
 - 2026-11-24: Merged `main` (PR 60, Mac 1.5.71) into `claude/android-capacitor-197cf4` for its PR: versions stay 1.5.72 / 87, both changelog entries kept.
 - 2026-11-24: Android 87 (1.5.72), the Capacitor app, published to Play internal testing with the owner's OK (built from `d2ef501c`, Firebase push on); replaces 83.
 - 2026-11-24: Android release prepared for Play internal testing (owner's OK via the main session): dry-run AAB with Firebase push built, signed with build 83's upload key; waiting for the mobile session's 1.5.72 commit.

@@ -248,7 +248,7 @@ The ones most likely to be broken:
 
 ## 9. Current state (as of 2026-11-23)
 
-**iPhone Duo, third pass (owner's pick, 2026-11-23; not pushed, not released):** branch
+**iPhone Duo, third pass (owner's pick, 2026-11-23; PR 53, not released):** branch
 `claude/iphone-duo-ipad-layout` (worktree `.claude/worktrees/iphone-duo-18adb4`), on top of PR 52's branch
 `claude/ios-native-redesign-f4a8be`. Open (the inner screen, across or upright) the Duo shows the iPad's wide
 layout; closed, and in a Split View half, the iPhone layout with iOS's side column (`RebuildIPad.isWide`: an iPhone
@@ -429,8 +429,8 @@ signed-in account, 1.5.58's frosted folders with a large library, and the iPad c
 account button should move past iPadOS's window buttons).
 
 ## 10. Next steps / open work
-- iPhone Duo third pass (`claude/iphone-duo-ipad-layout`): the owner's look on the Duo simulator or a device, then
-  merge after PR 52 (it's built on that branch). Not checked: Split View halves and tabletop (no simulator control),
+- iPhone Duo third pass (`claude/iphone-duo-ipad-layout`): PR 53 (https://github.com/faisalibnislam/folevi/pull/53) into PR 52's
+  branch; the owner's look on the Duo simulator or a device, then merge PR 53 after PR 52 merges. Not checked: Split View halves and tabletop (no simulator control),
   a real device.
 - iPhone and iPad redesign (`claude/ios-native-redesign-f4a8be`): the owner tries 1.5.65 from TestFlight; PR 52
   (https://github.com/faisalibnislam/folevi/pull/52) into `claude/folevi-core-529dbe` (the owner's choice) is
@@ -542,6 +542,7 @@ account button should move past iPadOS's window buttons).
   `DATABASE_UDF_USER_TIMEOUT_SECONDS=4` for that backend. Bursts show in `convex.log` as "took a long time".
 
 ## 12. Change log
+- 2026-11-24: iPhone Duo branch pushed with the owner's OK; PR 53 opened into `claude/ios-native-redesign-f4a8be` (PR 52's audit commits merged in first).
 - 2026-11-23: iPhone Duo resumed and redone (third pass, owner's pick): the iPad's wide layout when open, the iPhone layout closed; branch `claude/iphone-duo-ipad-layout` on PR 52's branch, not pushed.
 - 2026-11-23: iPhone/iPad audited with apple-hig, liquid-glass, liquid-glass-motion and axiom-design (owner's ask): + is the system's prominent glass, search button titled, 44 pt tag chips and iPad history buttons; owner's calls listed in PR 52.
 - 2026-11-23: PR 52 opened (iPhone and iPad redesign into `claude/folevi-core-529dbe`).

@@ -3,6 +3,8 @@
 7c57c1445e6485264854b1d733b8bf3e23911525:apps/web/test/share-grant.test.ts:generic-api-key:8
 # Test (old Electron app): a placeholder Dropbox app key.
 e484dde3d5ce3da79dfd40fea1192c34f5f21230:apps/desktop/test/cloud/connection.test.ts:generic-api-key:258
+# The same placeholder, brought back with the Windows Electron app (claude/windows-electron-4ed862).
+acbdeb96b58afae1802e917a0da345562ee415ef:apps/desktop/test/cloud/connection.test.ts:generic-api-key:258
 # Test: made-up tokens for test users Ana and Ben.
 6b028ea01f26b994d63e411a8467ebd4689cccb9:apps/ios/ios/App/Tests/LocalExtrasTests.swift:generic-api-key:133
 6b028ea01f26b994d63e411a8467ebd4689cccb9:apps/ios/ios/App/Tests/LocalExtrasTests.swift:generic-api-key:134

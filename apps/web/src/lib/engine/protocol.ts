@@ -35,7 +35,7 @@
 export const PROTOCOL_VERSION = 1 as const;
 
 /** Bumps with every added view, command, editor command, event or field. */
-export const CONTRACT_REVISION = 34;
+export const CONTRACT_REVISION = 35;
 
 /** The `WKScriptMessageHandler` name the engine posts to. */
 export const MESSAGE_HANDLER = "foleviEngine";
@@ -57,7 +57,7 @@ export const RECOMMENDED_OVERSCAN = 100;
 
 /** What the host sets as `window.__foleviNativeChrome` before the first paint. */
 export interface NativeChromeMarker {
-  /** Revision 34: "android" (Folevi for Android, apps/android: phones, tablets and Googlebooks). */
+  /** Revision 35: "android" (Folevi for Android, apps/android: phones, tablets and Googlebooks). */
   platform: "ios" | "ipados" | "macos" | "android";
   /** The protocol the host speaks; must equal `PROTOCOL_VERSION`. */
   protocol: number;
@@ -71,7 +71,7 @@ export interface NativeChromeMarker {
 
 /** The app as it introduces itself in `hello`. */
 export interface AppInfo {
-  /** Revision 34: "android". */
+  /** Revision 35: "android". */
   platform: "ios" | "ipados" | "macos" | "android";
   /** The unified version, `1.1.00`. */
   version: string;
@@ -2073,6 +2073,11 @@ export type WebPage =
 
 export interface WebShowArgs {
   page: WebPage;
+  /**
+   * Revision 34: the page's query, without "?" (Foli DNA around one note: "note=<id>"; a saved view: "view=<id>").
+   * Letters, digits and `_-.=&%` only.
+   */
+  query?: string;
 }
 
 // ---------------------------------------------------------------------------------------------------------------

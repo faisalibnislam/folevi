@@ -20,9 +20,9 @@ object EngineContract {
     /** The envelope's major version (`v` on every message to the engine). */
     const val PROTOCOL_VERSION = 1
     /** Bumps with every added view, command, editor command, event or field. */
-    const val REVISION = 34
+    const val REVISION = 35
     /** FNV-1a of the names and revision; the engine's `hello` reply carries the same when this file is current. */
-    const val SCHEMA_HASH = "bbfa6dca"
+    const val SCHEMA_HASH = "2ee47af3"
     /** The handler name the engine posts batches to (`window.foleviEngineHost` on Android). */
     const val MESSAGE_HANDLER = "foleviEngine"
     /** The global the host calls (`__foleviEngine.handle(json)`). */
@@ -618,7 +618,7 @@ object EditorCommands {
     fun scrollToTop(): EditorSpec<EmptyArgs, OkResult> = EditorSpec("scrollToTop", EmptyArgs, EmptyArgs.serializer(), OkResult.serializer())
     fun insets(top: Double, bottom: Double): EditorSpec<InsetsArgs, OkResult> = EditorSpec("insets", InsetsArgs(top = top, bottom = bottom), InsetsArgs.serializer(), OkResult.serializer())
     fun state(): EditorSpec<EmptyArgs, EditorStateEvent> = EditorSpec("state", EmptyArgs, EmptyArgs.serializer(), EditorStateEvent.serializer())
-    fun webShow(page: WebPage): EditorSpec<WebShowArgs, NoteShownResult> = EditorSpec("web.show", WebShowArgs(page = page), WebShowArgs.serializer(), NoteShownResult.serializer())
+    fun webShow(page: WebPage, query: String? = null): EditorSpec<WebShowArgs, NoteShownResult> = EditorSpec("web.show", WebShowArgs(page = page, query = query), WebShowArgs.serializer(), NoteShownResult.serializer())
     fun blockMove(dir: BlockMoveArgs.Dir): EditorSpec<BlockMoveArgs, OkResult> = EditorSpec("block.move", BlockMoveArgs(dir = dir), BlockMoveArgs.serializer(), OkResult.serializer())
     fun blockDuplicate(): EditorSpec<EmptyArgs, OkResult> = EditorSpec("block.duplicate", EmptyArgs, EmptyArgs.serializer(), OkResult.serializer())
     fun focusToggle(): EditorSpec<EmptyArgs, OkResult> = EditorSpec("focus.toggle", EmptyArgs, EmptyArgs.serializer(), OkResult.serializer())

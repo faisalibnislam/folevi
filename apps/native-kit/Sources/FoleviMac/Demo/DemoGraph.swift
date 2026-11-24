@@ -7,7 +7,7 @@ import Foundation
 import FoleviEngine
 
 extension DemoEngine {
-    static let graph: GraphValue = {
+    public static let graph: GraphValue = {
         let day = 86_400_000.0
         let now = 1_800_000_000_000.0
         var nodes: [GraphNode] = []

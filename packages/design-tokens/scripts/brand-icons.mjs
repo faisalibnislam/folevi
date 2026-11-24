@@ -11,7 +11,7 @@
 //   apps/web/public/icon.svg                       the mark as an SVG (older links to it)
 //   apps/web/public/brand/folevi-mark.svg, -256.png   the in-app mark (FoleviMark.tsx, the OG image)
 //   apps/web/public/brand/folevi-mark-dark.svg        the mark in dark mode (from logo-dark.svg)
-//   apps/mac/Folevi/Chrome/StatusItemTemplate.png, @2x.png  the F alone (template) for the menu bar, 16 and 32 px tall
+//   apps/mac/Folevi/Resources/StatusItemTemplate.png, @2x.pngthe F alone (template) for the menu bar, 16 and 32 px tall
 //   apps/web/public/brand/email/folevi-logo@2x.png       the logo for emails (dark letters, light backgrounds)
 //   apps/web/public/brand/email/folevi-logo-dark@2x.png  logo-dark.svg, for dark mode
 //
@@ -26,7 +26,7 @@ const here = dirname(fileURLToPath(import.meta.url));
 const brand = resolve(here, "../brand");
 const repo = resolve(here, "../../..");
 const web = resolve(repo, "apps/web/public");
-const macChrome = resolve(repo, "apps/mac/Folevi/Chrome");
+const macChrome = resolve(repo, "apps/mac/Folevi/Resources");
 // sharp ships with Next (apps/web); borrow it rather than adding a second copy.
 const fromWeb = createRequire(resolve(repo, "apps/web/package.json"));
 const sharp = createRequire(fromWeb.resolve("next/package.json"))("sharp");

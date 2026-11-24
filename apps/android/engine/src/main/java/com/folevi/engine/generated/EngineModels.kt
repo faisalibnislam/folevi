@@ -14,7 +14,7 @@ import kotlinx.serialization.json.JsonElement
 /** What the host sets as `window.__foleviNativeChrome` before the first paint. */
 @Serializable
 data class NativeChromeMarker(
-    /** Revision 34: "android" (Folevi for Android, apps/android: phones, tablets and Googlebooks). */
+    /** Revision 35: "android" (Folevi for Android, apps/android: phones, tablets and Googlebooks). */
     val platform: NativeChromeMarker.Platform,
     /** The protocol the host speaks; must equal `PROTOCOL_VERSION`. */
     val protocol: Long,
@@ -38,7 +38,7 @@ data class NativeChromeMarker(
 /** The app as it introduces itself in `hello`. */
 @Serializable
 data class AppInfo(
-    /** Revision 34: "android". */
+    /** Revision 35: "android". */
     val platform: AppInfo.Platform,
     /** The unified version, `1.1.00`. */
     val version: String,
@@ -2594,6 +2594,11 @@ enum class WebPage(val value: String) {
 @Serializable
 data class WebShowArgs(
     val page: WebPage,
+    /**
+     * Revision 34: the page's query, without "?" (Foli DNA around one note: "note=<id>"; a saved view: "view=<id>").
+     * Letters, digits and `_-.=&%` only.
+     */
+    val query: String? = null,
 )
 
 @Serializable

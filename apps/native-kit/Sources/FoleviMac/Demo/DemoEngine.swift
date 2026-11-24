@@ -54,7 +54,7 @@ public final class DemoEngine {
 
     // MARK: the protocol
 
-    func respond(_ m: JSONValue) async throws -> JSONValue {
+    public func respond(_ m: JSONValue) async throws -> JSONValue {
         let kind = m["kind"]?.string ?? ""
         let name = m["name"]?.string ?? ""
         switch kind {
@@ -134,7 +134,7 @@ public final class DemoEngine {
 
     // MARK: views
 
-    func view(_ name: String, args: JSONValue, window: ListWindow?) throws -> JSONValue {
+    public func view(_ name: String, args: JSONValue, window: ListWindow?) throws -> JSONValue {
         switch name {
         case "session": return try .from(session)
         case "vault.summary":
@@ -488,7 +488,7 @@ public final class DemoEngine {
         return candidate < b ? candidate : a + "0"
     }
 
-    static let style = CardStyle(font: "system", width: "normal", background: "paper", accent: "ember", card: "plain")
+    public static let style = CardStyle(font: "system", width: "normal", background: "paper", accent: "ember", card: "plain")
 
     static func row(id: String, title: String, icon: String? = nil, excerpt: String, preview: [PreviewLine]? = nil, cover: String? = nil, folder: FolderChip?, tags: [TagChip] = [], starred: Bool = false, updated: Date, kind: String = "document", font: String = "system") -> NoteRow {
         let ms = updated.timeIntervalSince1970 * 1000

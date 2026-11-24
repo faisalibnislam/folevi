@@ -45,6 +45,7 @@ public struct PhoneSwipeRow<Content: View>: View {
     @State private var full = false
     @State private var width: CGFloat = 0
     @Environment(\.colorScheme) private var scheme
+    @Environment(\.phoneRowGrouped) private var grouped
 
     static var actionWidth: CGFloat { 76 }
     /// The actions widening or narrowing as the row crosses the full-swipe point (no finger speed to carry).
@@ -84,7 +85,8 @@ public struct PhoneSwipeRow<Content: View>: View {
                 .animation(Self.spring, value: full)
             }
             content
-                .background(FoleviTokens.Chrome.canvas.resolve(scheme).color)
+                // (On a card: the card's own fill, so the row is one with it.)
+                .background((grouped ? PhoneLook.card : FoleviTokens.Chrome.canvas).resolve(scheme).color)
                 .offset(x: offset)
         }
         .clipped()

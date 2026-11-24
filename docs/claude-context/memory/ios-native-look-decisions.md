@@ -28,3 +28,5 @@ The owner's rules from reviewing 1.5.50 on a real iPhone (shipped 1.5.51):
 **Why:** It supersedes [[mac-native-look-decisions]]'s "iPad undecided"; the review rules are the owner's corrections.
 
 **How to apply:** Follow these for new iPhone screens. Each TestFlight upload and each push of main still needs the owner's OK for that release.
+
+**Superseded in part (2026-11-23):** see [[ios-redesign-decisions-2026-11-23]]: the Filter-fields-always-visible and + alone rules were dropped; the note's drawn bars and Foli AI as a tab item stay.

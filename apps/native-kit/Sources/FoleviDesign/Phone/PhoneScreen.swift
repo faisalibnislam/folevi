@@ -24,7 +24,8 @@ public struct PhoneScreenOptions {
     public var startOffset: CGFloat?
     /// The header stays under the bar once the large title has scrolled away (`sticky`: the Calendar's week strip).
     public var pinsHeader = false
-    /// A search field for the screen (iOS's own, under the large title, `.searchable`), filtering what's loaded.
+    /// A field that filters the screen's list (Mac redesign, 2026-11-23: it opens from the search capsule at the end
+    /// of the screen's top bar, under the large title, and stays while it holds text).
     public var search: Binding<String>?
     /// The search field's prompt.
     public var searchPrompt = "Search"
@@ -32,6 +33,9 @@ public struct PhoneScreenOptions {
     public var searchIcon: WebIcon = .search
     /// The trailing items have nothing to show this time (Home's bell when not signed in): no empty glass for them.
     public var trailingEmpty = false
+    /// The search capsule at the bar's end (the owner, 2026-11-23: search in each screen's top bar): on a screen with
+    /// a filter it opens the filter, elsewhere the app's Search. Off for Search itself and sheets.
+    public var showsSearch = true
 
     public init(title: String, large: Bool = true, eyebrow: String? = nil, subtitle: String? = nil, status: String? = nil, grouped: Bool = false, collapseAt: CGFloat? = nil) {
         self.title = title
@@ -69,6 +73,8 @@ public struct PhoneScreen<Leading: View, Trailing: View, Header: View, Content: 
     let scrollToTop: Int
     @Environment(\.colorScheme) private var scheme
     @Environment(\.phoneRootCreate) private var rootCreate
+    @Environment(\.phoneOpenSearch) private var openSearch
+    @State private var filterShown = false
     @State private var offset: CGFloat = 0
     @State private var titleFoot: CGFloat = 60
     @State private var titleHeight: CGFloat = 38
@@ -95,18 +101,22 @@ public struct PhoneScreen<Leading: View, Trailing: View, Header: View, Content: 
     }
 
     #if os(iOS)
-    /// The native look (the owner, 2026-11-19): the screen in the tab's navigation stack under iOS's own navigation
-    /// bar: the large title collapsing into the bar as it scrolls, the system's Back (and its edge swipe), the
-    /// screen's controls as toolbar items in Liquid Glass, iOS's search field, the scroll edge effect under the bar.
+    /// The native look (the owner, 2026-11-19), redesigned after the Mac's window (the owner, 2026-11-23,
+    /// docs/design/macloving-mac-ui.md as iOS has it): the screen on the frame's grey under iOS's own navigation bar,
+    /// the large title collapsing into it as it scrolls, the system's Back (and its edge swipe), and at the bar's end
+    /// the Mac's order: the screen's actions in one glass capsule, the one main action in Folevi's ink, then the search
+    /// capsule. The content's sections are rounded opaque cards on the grey.
     private var nativeBody: some View {
         ScrollViewReader { proxy in
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
                     Color.clear.frame(height: 0).id("top")
-                    // The screen's field, always in sight at the top of the list rather than iOS's, which waits for a
-                    // pull (the owner, 2026-11-19), with the funnel when it filters the list.
-                    if let search = options.search {
-                        PhoneSearchField(options.searchPrompt, text: search, icon: options.searchIcon)
+                    // The screen's filter, opened from the bar's search capsule; it stays while it holds text.
+                    if let search = options.search, filterShown || !search.wrappedValue.isEmpty {
+                        PhoneSearchField(options.searchPrompt, text: search, icon: options.searchIcon, autofocus: filterShown) {
+                            withAnimation(PhoneLook.reveal) { filterShown = false }
+                        }
+                        .transition(.move(edge: .top).combined(with: .opacity))
                     }
                     if !options.pinsHeader { header }
                     content
@@ -122,6 +132,9 @@ public struct PhoneScreen<Leading: View, Trailing: View, Header: View, Content: 
                 position.scrollTo(y: y)
             }
             .onChange(of: scrollToTop) { withAnimation(WebMotion.reduced ? nil : .easeInOut(duration: 0.35)) { proxy.scrollTo("top", anchor: .top) } }
+            .onChange(of: filterShown) { _, shown in
+                if shown { withAnimation(WebMotion.reduced ? nil : .easeInOut(duration: 0.3)) { proxy.scrollTo("top", anchor: .top) } }
+            }
         }
         .modifier(PinnedHeader(pinned: options.pinsHeader, header: header))
         .background(surface.color.ignoresSafeArea())
@@ -145,16 +158,53 @@ public struct PhoneScreen<Leading: View, Trailing: View, Header: View, Content: 
                     Text(status).font(.headline).lineLimit(1)
                 }
             }
-            if root, let rootCreate {
-                ToolbarItem(placement: .topBarTrailing) { PhoneRootCreateButtons(rootCreate) }
-                if #available(iOS 26, *), hasTrailing {
-                    ToolbarSpacer(.fixed, placement: .topBarTrailing)
-                }
-            }
+            // The screen's actions: one glass capsule.
             if hasTrailing {
                 ToolbarItem(placement: .topBarTrailing) { HStack(spacing: 6) { trailing }.environment(\.phoneInSystemBar, true) }
             }
+            // The main action (a tab's first screen: Create, or on Tasks a quick task), in Folevi's ink.
+            if root, let rootCreate {
+                if #available(iOS 26, *), hasTrailing {
+                    ToolbarSpacer(.fixed, placement: .topBarTrailing)
+                }
+                PhoneRootCreateItem(create: rootCreate)
+            }
+            // Search, last, as on the Mac.
+            if searchAction != nil {
+                if #available(iOS 26, *), hasTrailing || (root && rootCreate != nil) {
+                    ToolbarSpacer(.fixed, placement: .topBarTrailing)
+                }
+                ToolbarItem(placement: .topBarTrailing) {
+                    // (A title with the icon, shown icon-only: the bar's overflow and VoiceOver read the title.)
+                    Button { searchAction?() } label: {
+                        Label {
+                            Text(options.search != nil ? options.searchPrompt : "Search")
+                        } icon: {
+                            WebIconView(options.search != nil ? options.searchIcon : .search, size: 21, strokeWidth: 1.9)
+                                .frame(width: 30, height: 30)
+                                .contentShape(Rectangle())
+                        }
+                        .labelStyle(.iconOnly)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityIdentifier("bar-search")
+                }
+            }
         }
+    }
+
+    /// What the bar's search capsule does: open the screen's filter (closing it again when empty), or the app's
+    /// Search. Nil: no capsule.
+    private var searchAction: (@MainActor () -> Void)? {
+        guard options.showsSearch else { return nil }
+        if let search = options.search {
+            return {
+                withAnimation(PhoneLook.reveal) {
+                    if filterShown, search.wrappedValue.isEmpty { filterShown = false } else { filterShown = true }
+                }
+            }
+        }
+        return openSearch
     }
     #endif
 
@@ -263,9 +313,14 @@ public struct PhoneScreen<Leading: View, Trailing: View, Header: View, Content: 
     static var barRoom: CGFloat { 64 }
 
     /// `.iphone-bar`: the screen's colour, solid, with a hairline at its foot.
-    /// The screen's surface: the canvas (the grouped grey), with the tint mixed in.
+    /// The screen's surface: the frame's grey (since the 2026-11-23 redesign every native screen, its sections the
+    /// rounded opaque cards on it), with the tint mixed in. The web's drawing keeps its canvas unless grouped.
     private var surface: RGBA {
+        #if os(iOS)
+        let base = PhoneSurface.grouped.resolve(scheme)
+        #else
         let base = (options.grouped ? PhoneSurface.grouped : FoleviTokens.Chrome.canvas).resolve(scheme)
+        #endif
         guard let tint = options.tint else { return base }
         return tint.oklabMix(base, scheme == .dark ? 0.16 : 0.10)
     }

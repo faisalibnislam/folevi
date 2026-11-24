@@ -1,0 +1,13 @@
+{
+  "kind": "editor",
+  "name": "web.show",
+  "description": "Foli DNA around one note (revision 34: the page's query).",
+  "args": {
+    "page": "graph",
+    "query": "note=doc_00002"
+  },
+  "result": {
+    "id": "graph",
+    "ready": true
+  }
+}

@@ -20,8 +20,6 @@
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
 	<string>$(MARKETING_VERSION)</string>
-	<key>CFBundleVersion</key>
-	<string>$(CURRENT_PROJECT_VERSION)</string>
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>
@@ -33,22 +31,37 @@
 			</array>
 		</dict>
 	</array>
-	<key>FoleviURLScheme</key>
-	<string>$(FOLEVI_URL_SCHEME)</string>
+	<key>CFBundleVersion</key>
+	<string>$(CURRENT_PROJECT_VERSION)</string>
 	<key>FoleviDevShellDir</key>
 	<string>$(FOLEVI_DEV_SHELL_DIR)</string>
+	<key>FoleviURLScheme</key>
+	<string>$(FOLEVI_URL_SCHEME)</string>
 	<key>LSApplicationCategoryType</key>
 	<string>public.app-category.productivity</string>
 	<key>LSMinimumSystemVersion</key>
 	<string>$(MACOSX_DEPLOYMENT_TARGET)</string>
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsLocalNetworking</key>
+		<true/>
+		<key>NSExceptionDomains</key>
+		<dict>
+			<key>localhost</key>
+			<dict>
+				<key>NSExceptionAllowsInsecureHTTPLoads</key>
+				<true/>
+				<key>NSIncludesSubdomains</key>
+				<true/>
+			</dict>
+		</dict>
+	</dict>
 	<key>NSHumanReadableCopyright</key>
 	<string>Folevi</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Folevi records audio into your notes when you ask it to.</string>
 	<key>NSPrincipalClass</key>
 	<string>NSApplication</string>
-	<key>NSSupportsAutomaticTermination</key>
-	<false/>
-	<key>NSSupportsSuddenTermination</key>
-	<false/>
 	<key>NSServices</key>
 	<array>
 		<dict>
@@ -61,70 +74,87 @@
 			<string>newNoteWithSelection</string>
 			<key>NSPortName</key>
 			<string>$(PRODUCT_NAME)</string>
+			<key>NSRequiredContext</key>
+			<dict/>
 			<key>NSSendTypes</key>
 			<array>
 				<string>public.utf8-plain-text</string>
 				<string>NSStringPboardType</string>
 				<string>public.rtf</string>
 			</array>
-			<key>NSRequiredContext</key>
-			<dict/>
 		</dict>
 	</array>
-	<key>NSMicrophoneUsageDescription</key>
-	<string>Folevi records audio into your notes when you ask it to.</string>
-	<key>NSAppTransportSecurity</key>
-	<dict>
-		<key>NSAllowsLocalNetworking</key>
-		<true/>
-		<key>NSExceptionDomains</key>
-		<dict>
-			<key>localhost</key>
-			<dict>
-				<key>NSIncludesSubdomains</key>
-				<true/>
-				<key>NSExceptionAllowsInsecureHTTPLoads</key>
-				<true/>
-			</dict>
-		</dict>
-	</dict>
-	<!-- Updates (Sparkle 2, Updates/Updater.swift): the appcast in the update bucket (served through folevi.com/download), signed with the owner's EdDSA key
-	     (private half in the login Keychain, account "folevi"); checked every six hours, downloaded in the background,
-	     installed on quit or from Restart to Update. Debug builds never check (Updater.enabled). -->
+	<key>NSSupportsAutomaticTermination</key>
+	<false/>
+	<key>NSSupportsSuddenTermination</key>
+	<false/>
+	<key>NSUserActivityTypes</key>
+	<array>
+		<string>com.folevi.note</string>
+	</array>
+	<key>SUAutomaticallyUpdate</key>
+	<true/>
+	<key>SUEnableAutomaticChecks</key>
+	<true/>
 	<key>SUFeedURL</key>
 	<string>https://folevi.com/download/mac/appcast.xml</string>
 	<key>SUPublicEDKey</key>
 	<string>F+N/necf9zCMzOTldJSKppxPoWCYn8rTANGly0mLbtA=</string>
-	<key>SUEnableAutomaticChecks</key>
-	<true/>
-	<key>SUAutomaticallyUpdate</key>
-	<true/>
 	<key>SUScheduledCheckInterval</key>
 	<integer>21600</integer>
 	<key>SUVerifyUpdateBeforeExtraction</key>
 	<true/>
-	<!-- What a dragged note or folder carries inside the app (FoleviScreens DragItems, the native sidebar; plan 5.5). -->
 	<key>UTExportedTypeDeclarations</key>
 	<array>
 		<dict>
-			<key>UTTypeIdentifier</key>
-			<string>com.folevi.note-ref</string>
-			<key>UTTypeDescription</key>
-			<string>Folevi note</string>
 			<key>UTTypeConformsTo</key>
 			<array>
 				<string>public.data</string>
 			</array>
+			<key>UTTypeDescription</key>
+			<string>Folevi note (drag)</string>
+			<key>UTTypeIdentifier</key>
+			<string>com.folevi.note-drag</string>
 		</dict>
 		<dict>
-			<key>UTTypeIdentifier</key>
-			<string>com.folevi.folder-ref</string>
-			<key>UTTypeDescription</key>
-			<string>Folevi folder</string>
 			<key>UTTypeConformsTo</key>
 			<array>
 				<string>public.data</string>
 			</array>
+			<key>UTTypeDescription</key>
+			<string>Folevi folder (drag)</string>
+			<key>UTTypeIdentifier</key>
+			<string>com.folevi.folder-drag</string>
+		</dict>
+		<dict>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<string>public.data</string>
+			</array>
+			<key>UTTypeDescription</key>
+			<string>Folevi task</string>
+			<key>UTTypeIdentifier</key>
+			<string>com.folevi.task-drag</string>
+		</dict>
+		<dict>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<string>public.data</string>
+			</array>
+			<key>UTTypeDescription</key>
+			<string>Folevi note</string>
+			<key>UTTypeIdentifier</key>
+			<string>com.folevi.note-ref</string>
+		</dict>
+		<dict>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<string>public.data</string>
+			</array>
+			<key>UTTypeDescription</key>
+			<string>Folevi folder</string>
+			<key>UTTypeIdentifier</key>
+			<string>com.folevi.folder-ref</string>
 		</dict>
 	</array>
 </dict>

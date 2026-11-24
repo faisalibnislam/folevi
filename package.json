@@ -23,7 +23,6 @@
     "icons:gen": "node scripts/icons-codegen.mjs",
     "icons:gen:kotlin": "node scripts/icons-codegen-kotlin.mjs",
     "styles:gen": "node scripts/web-styles.mjs",
-    "match": "node apps/mac/scripts/match.mjs",
     "format": "prettier --write .",
     "format:check": "prettier --check ."
   },

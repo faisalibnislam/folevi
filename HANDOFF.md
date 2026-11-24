@@ -385,7 +385,7 @@ account button should move past iPadOS's window buttons).
   the owner's order is "merge PR 54 after PR 51". When PR 51 lands: merge origin/main into the branch keeping main's
   version (1.5.66, build 81; the old Capacitor `build.gradle.kts` stays deleted, the app reads `version.json`), push,
   wait for CI, merge.
-- Android tabs and polish (`claude/android-tabs`, stacked on PR 54, not pushed): web-style tabs on large screens
+- Android tabs and polish (`claude/android-tabs`, stacked on PR 54, pushed 2026-11-24, no PR yet): web-style tabs on large screens
   and the android-skills audit fixes (`docs/ANDROID_POLISH_2026-11-24.md`). After PR 54 merges, rebase it onto
   main and open its PR. Its "Not done yet" list is the next Android work.
 - (PR 54, older note) the owner reviews and merges the PR (it also carries
@@ -463,7 +463,7 @@ account button should move past iPadOS's window buttons).
   `DATABASE_UDF_USER_TIMEOUT_SECONDS=4` for that backend. Bursts show in `convex.log` as "took a long time".
 
 ## 12. Change log
-- 2026-11-24: Android tabs on tablets, foldables and Googlebooks with the web's rules, links inside notes, and an android-skills polish pass (security, edge-to-edge, widgets, ANRs, Back, keys) on `claude/android-tabs` (976a7172); not pushed.
+- 2026-11-24: Android tabs on tablets, foldables and Googlebooks with the web's rules, links inside notes, and an android-skills polish pass (security, edge-to-edge, widgets, ANRs, Back, keys) on `claude/android-tabs` (976a7172); pushed, no PR yet.
 - 2026-11-24: PR 54 CI fix: the version test checked the removed Capacitor project; it now checks that Android's Gradle build reads version.json.
 - 2026-11-24: Android native branch pushed and opened as PR 54 (14 commits, merges cleanly with main); not merged.
 - 2026-11-24: Android: signing in from the first-launch screen opened an empty Home ("The message names no place.") until a restart; the page's place marker now refreshes when the open place changes. Sign-in checked on an emulator with a dev test account; on `claude/android-native-622675`, not merged.

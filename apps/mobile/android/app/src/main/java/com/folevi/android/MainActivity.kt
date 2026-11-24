@@ -238,12 +238,15 @@ class MainActivity : BridgeActivity() {
                 event("insets", JSONObject().put("insets", json))
             }
             // With the keyboard up, the web view no longer reaches the gesture bar.
-            if (ime.bottom > 0) {
+            val out = if (ime.bottom > 0) {
                 WindowInsetsCompat.Builder(insets)
                     .setInsets(WindowInsetsCompat.Type.navigationBars(), androidx.core.graphics.Insets.of(bars.left, 0, bars.right, 0))
                     .setInsets(WindowInsetsCompat.Type.ime(), androidx.core.graphics.Insets.NONE)
                     .build()
             } else insets
+            // The WebView's own handling too: it fills in env(safe-area-inset-*) from these (WebView 140 and later),
+            // which the page's layout uses. A listener alone would replace that handling and leave env() at 0.
+            ViewCompat.onApplyWindowInsets(v, out)
         }
         ViewCompat.setWindowInsetsAnimationCallback(
             wv,

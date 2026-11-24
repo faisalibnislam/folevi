@@ -111,7 +111,9 @@ async function main() {
       const avd = AVDS[args[0] ?? "phone"];
       if (!avd) throw new Error("boot phone | tablet | foldable | desktop");
       const flags = ["-avd", avd.name, "-port", String(avd.port), "-no-audio", "-no-boot-anim"];
-      if (!args.includes("--window")) flags.push("-no-window", "-gpu", "swiftshader_indirect");
+      // Headless by default. FOLEVI_EMU_GPU=host draws with the Mac's GPU (much faster than SwiftShader when the
+      // Mac is busy); swiftshader_indirect is the default because it works everywhere.
+      if (!args.includes("--window")) flags.push("-no-window", "-gpu", process.env.FOLEVI_EMU_GPU ?? "swiftshader_indirect");
       spawn(join(sdk, "emulator/emulator"), flags, { env, detached: true, stdio: "ignore" }).unref();
       const serial = `emulator-${avd.port}`;
       for (let i = 0; i < 180; i++) {

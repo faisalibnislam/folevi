@@ -6,7 +6,7 @@ struct HelpView: View {
     var section: String? = nil
 
     private static let shortcuts: [(String, [(String, String)])] = [
-        ("Everywhere", [("⌘K", "Search or run a command"), ("⇧⌘F", "Search all notes"), ("⌘N", "New note (on Tasks: new task)"), ("⇧⌘A", "Quick Add task"), ("⌥Space", "Quick Add from any app (change it in Settings)"), ("⌘J", "Ask Foli AI"), ("⇧⌘J", "Go to Foli AI"), ("⌘T", "New tab"), ("⇧⌘T", "Reopen closed tab"), ("⌘1 to ⌘9", "Show tab 1 to 9"), ("⌘[ / ⌘]", "Back / Forward"), ("⇧⌘H", "Home"), ("⌃⌘T", "Tasks"), ("⌥⌘T", "Today's tasks"), ("⌃⌘N", "New folder"), ("⌥⌘I", "Inspector"), ("⌘,", "Settings")]),
+        ("Everywhere", [("⌘K", "Search or run a command"), ("⇧⌘F", "Search all notes"), ("⌘N", "New note (on Tasks: new task)"), ("⇧⌘A", "Quick Add task"), ("⌥Space", "Quick Add from any app (change it in Settings)"), ("⌘J", "Ask Foli AI"), ("⇧⌘J", "Go to Foli AI"), ("⌘T", "New tab"), ("⇧⌘T", "Reopen closed tab"), ("⌘1 to ⌘9", "Show tab 1 to 9"), ("⌘[ / ⌘]", "Back / Forward"), ("⇧⌘H", "Home"), ("⌃⌘T", "Tasks"), ("⌥⌘T", "Today's tasks"), ("⇧⌘N", "New folder"), ("⌥⌘N", "New window"), ("⌃⌘I", "Inspector"), ("⌘,", "Settings")]),
         ("In a note", [("⌘F", "Find in the note"), ("⌘G / ⇧⌘G", "Find next / previous"), ("⌘B / ⌘I / ⌘U", "Bold, italic, underline"), ("⌥⌘] / ⌥⌘[", "Indent / outdent"), ("⌘Z / ⇧⌘Z", "Undo / Redo"), ("⌘P", "Print"), ("⇧⌘E", "Export"), ("⌘⌫", "Move the note to Trash")]),
         ("Lists and calendar", [("Return", "Open the selected note"), ("⌫", "Move selected notes to Trash"), ("⌘A", "Select all"), ("Esc", "Clear the selection"), ("⌘Return", "Open in a new tab (palette)"), ("← → ↑ ↓", "Move a day or a week (calendar)"), ("⌘← / ⌘→", "Previous / next month or week")]),
     ]

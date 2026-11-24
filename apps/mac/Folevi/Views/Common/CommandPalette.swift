@@ -36,37 +36,36 @@ struct CommandPalette: View {
 
     private var q: String { query.trimmingCharacters(in: .whitespaces) }
 
+    /// The card alone: MainWindow draws the scrim and holds the card in its glass container, so the scrim fades
+    /// and the card materializes from one animation.
     var body: some View {
-        ZStack(alignment: .top) {
-            Color.black.opacity(0.08).ignoresSafeArea().onTapGesture { close() }
-            VStack(spacing: 0) {
-                HStack(spacing: 10) {
-                    Image(systemName: "magnifyingglass").font(.title3).foregroundStyle(.secondary)
-                    TextField("Search notes or type a command", text: $query)
-                        .textFieldStyle(.plain)
-                        .font(.title3)
-                        .focused($focused)
-                        .onSubmit { run(newTab: false) }
-                        .onKeyPress(.downArrow) { move(1); return .handled }
-                        .onKeyPress(.upArrow) { move(-1); return .handled }
-                        .onKeyPress(.escape) { close(); return .handled }
-                        .onKeyPress(.return, phases: .down) { press in
-                            guard press.modifiers.contains(.command) else { return .ignored }
-                            run(newTab: true)
-                            return .handled
-                        }
-                    if searching { ProgressView().controlSize(.small) }
-                }
-                .padding(14)
-                filters
-                Divider()
-                results
+        VStack(spacing: 0) {
+            HStack(spacing: 10) {
+                Image(systemName: "magnifyingglass").font(.title3).foregroundStyle(.secondary)
+                TextField("Search notes or type a command", text: $query)
+                    .textFieldStyle(.plain)
+                    .font(.title3)
+                    .focused($focused)
+                    .onSubmit { run(newTab: false) }
+                    .onKeyPress(.downArrow) { move(1); return .handled }
+                    .onKeyPress(.upArrow) { move(-1); return .handled }
+                    .onKeyPress(.escape) { close(); return .handled }
+                    .onKeyPress(.return, phases: .down) { press in
+                        guard press.modifiers.contains(.command) else { return .ignored }
+                        run(newTab: true)
+                        return .handled
+                    }
+                if searching { ProgressView().controlSize(.small) }
             }
-            .frame(width: 640)
-            .glassEffect(.regular, in: .rect(cornerRadius: 18))
-            .glassArrival()
-            .padding(.top, 80)
+            .padding(14)
+            filters
+            Divider()
+            results
         }
+        .frame(width: 640)
+        .glassEffect(.regular, in: .rect(cornerRadius: 18))
+        .glassArrival()
+        .padding(.top, 80)
         .onAppear {
             focused = true
             Task { @MainActor in
@@ -208,7 +207,7 @@ struct CommandPalette: View {
         .init(id: "c-home", kind: .place(.home), title: "Go to Home", subtitle: nil, symbol: "house", shortcut: "⇧⌘H"),
         .init(id: "c-all", kind: .place(.allNotes), title: "Go to All Notes", subtitle: nil, symbol: "doc.text", shortcut: nil),
         .init(id: "c-recent", kind: .place(.recent), title: "Go to Recent", subtitle: nil, symbol: "clock", shortcut: nil),
-        .init(id: "c-starred", kind: .place(.starred), title: "Go to Starred", subtitle: nil, symbol: "star", shortcut: nil),
+        .init(id: "c-starred", kind: .place(.starred), title: "Go to Bookmarks", subtitle: nil, symbol: "bookmark", shortcut: nil),
         .init(id: "c-drafts", kind: .place(.drafts), title: "Go to Drafts", subtitle: nil, symbol: "tray", shortcut: nil),
         .init(id: "c-notif", kind: .place(.notifications), title: "Go to Notifications", subtitle: nil, symbol: "bell", shortcut: nil),
         .init(id: "c-changes", kind: .place(.changes), title: "Go to Changes", subtitle: nil, symbol: "clock.arrow.circlepath", shortcut: nil),

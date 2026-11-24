@@ -21,7 +21,7 @@ class LibraryService(private val base: File, private val prefsContext: Context?)
 
     private fun get(key: String): String? = prefs?.getString(key, null) ?: memory[key]
     private fun put(key: String, value: String?) {
-        if (prefs != null) prefs.edit().apply { if (value == null) remove(key) else putString(key, value) }.commit()
+        if (prefs != null) prefs.edit().apply { if (value == null) remove(key) else putString(key, value) }.apply()
         else if (value == null) memory.remove(key) else memory[key] = value
     }
 

@@ -307,6 +307,33 @@ export const FIXTURES: Record<string, Fixture> = {
       },
     ],
   },
+  "envelope.hello.android": {
+    kind: "envelope",
+    description: "Revision 34: Folevi for Android says hello (platform \"android\") and gets the same reply.",
+    toEngine: [{ v: 1, id: "1", kind: "hello", app: { platform: "android", version: "1.1.00", build: "1100", protocol: PROTOCOL_VERSION, schemaHash: schemaHash() } }],
+    fromEngine: [
+      {
+        kind: "reply",
+        id: "1",
+        ok: true,
+        value: {
+          protocol: PROTOCOL_VERSION,
+          revision: CONTRACT_REVISION,
+          build: "dev",
+          schemaHash: schemaHash(),
+          ready: true,
+          place: "acct:user_1",
+          features: [...FEATURES],
+          views: [...VIEW_NAMES],
+          listViews: [...LIST_VIEW_NAMES],
+          commands: [...COMMAND_NAMES],
+          editorCommands: [...EDITOR_COMMAND_NAMES],
+          events: [...EVENT_NAMES],
+          gate: gateEvent({ gate: null }),
+        },
+      },
+    ],
+  },
   "envelope.protocol-mismatch": {
     kind: "envelope",
     description: "An app built against another protocol is refused loudly.",

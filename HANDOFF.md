@@ -223,6 +223,7 @@ Then, each with the owner's OK:
 | Developer ID / Apple Distribution certs (team 7K32QQ2FX8) | login keychain | Export as .p12 from Keychain Access or let Xcode re-create |
 | Cloudflare (R2 `folevi-updates`) | wrangler OAuth login | `npx wrangler login` |
 | Mac provisioning profile | `apps/mac/signing/Folevi.provisionprofile` (committed) | Comes with the clone |
+| Android upload key (alias `folevi-upload`, SHA-1 25:A4:2E:A7:...:98:75) | Keystore `~/.android-upload-keys/folevi-upload.jks`; its passwords in `~/.gradle/gradle.properties` (`folevi.upload*`, chmod 600) | Copy both securely; without them, ask Play support for an upload key reset (Play App Signing holds the app signing key) |
 | Owner's real data (do not touch) | `~/Documents/Folevi Library`, `~/Library/Application Support/Folevi`, Keychain item "Folevi Safe Storage" | Not part of the project |
 
 The owner sets secrets themselves (`--from-file` / `"$(pbpaste)"` style); never ask for or echo values.
@@ -483,6 +484,10 @@ account button should move past iPadOS's window buttons).
 - Android tabs and polish (`claude/android-tabs`, PR 57 https://github.com/faisalibnislam/folevi/pull/57): web-style tabs on large screens and the
   android-skills audit fixes (`docs/ANDROID_POLISH_2026-11-24.md`). The owner reviews and merges. Its "Not done
   yet" list is the next Android work. Then the owner's Play steps (`apps/android/README.md` "Steps only the owner can do").
+- Google Play (2026-11-24): app **Folevi** (`com.folevi.android`) created in the Airly.io Play Console account;
+  Internal testing uses the "Involets testers" list. Release 1 (1.5.68, build 83, from `claude/android-tabs`) is a draft
+  waiting for the owner to drag `apps/android/app/build/outputs/bundle/release/Folevi-1.5.68-83.aab` in (106 MB, too big
+  for the browser tools). Later Play uploads need a higher `build` in `version.json`.
 - iPhone and iPad redesign (`claude/ios-native-redesign-f4a8be`): the owner tries 1.5.65 from TestFlight; PR 52
   (https://github.com/faisalibnislam/folevi/pull/52) into `claude/folevi-core-529dbe` (the owner's choice) is
   open for review. The `v1.5.65` tag is local only (pushing it was not asked for).
@@ -606,6 +611,7 @@ account button should move past iPadOS's window buttons).
   `DATABASE_UDF_USER_TIMEOUT_SECONDS=4` for that backend. Bursts show in `convex.log` as "took a long time".
 
 ## 12. Change log
+- 2026-11-24: Android upload key created (outside the repo) and a signed release bundle built; Folevi created in Play Console with an internal testing track (owner's OK, declarations ticked with the owner's OK); first upload waits on the owner.
 - 2026-11-24: PR 54 (Android native app) merged into `main` (289b11af) once CI passed; `main` merged into `claude/android-tabs`, opened as PR 57.
 - 2026-11-24: Android tabs on tablets, foldables and Googlebooks with the web's rules, links inside notes, and an android-skills polish pass (security, edge-to-edge, widgets, ANRs, Back, keys) on `claude/android-tabs` (976a7172); pushed, no PR yet.
 - 2026-11-24: PR 51 merged, so `main` was merged into the Android branch (PR 54): main's version kept (1.5.68, build 83, read from `version.json`; the old Capacitor `build.gradle.kts` stays deleted); both sides had used contract revision 34, so Android's platform became revision 35 (Swift, Kotlin and fixtures regenerated).

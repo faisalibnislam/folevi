@@ -95,9 +95,13 @@ The owner's words: "keep inside the app and sync if sever side changes the note 
   and `revision`, which serve as the version to compare. Signed in, the page already reads that list live, so a
   changed style shows without a release; what's missing is keeping the newest rows and their images on the device
   for offline use (Cache Storage in the web view), with the newest of bundled and cached winning by `updatedAt`.
-- **Local mode** ("Keep notes on my devices") reads only the bundled snapshot today and promises never to contact
-  Folevi (enforced by the app's network rules). Checking `themes.list` there needs the owner's OK to relax that
-  promise for this one anonymous, read-only request. Asked 2026-11-24; open.
+- **Local mode** ("Keep notes on my devices"): the owner chose (2026-11-24) to let it check for new styles when online:
+  one anonymous, read-only request for the style list, then only new or changed images, kept for offline use; nothing
+  about the person or their notes is sent. The proposed endpoint is `GET <deployment>.convex.site/note-styles` (an
+  HTTP action answering `themes.list`'s rows), with images from `GET <deployment>.convex.cloud/api/storage/<id>`.
+  The iOS app's local-mode network rules allow exactly those two and still block everything else on Folevi and Convex
+  (checked on the simulator); Android has no network rules of its own. The copy on the features and docs pages now
+  says "your notes never leave the device; the app only checks Folevi for new note styles".
 - The work is in `apps/web` (`lib/shell/snapshot.ts`, `lib/local/functions/themes.ts`, the theme loader), which the
   web session owns; coordinated through the main session.
 
@@ -108,4 +112,4 @@ The owner's words: "keep inside the app and sync if sever side changes the note 
 - iOS's native long-press preview, date and colour pickers and keyboard bar (the web's own versions show instead).
 - One bridge script for both platforms (Android still has its own `folevi-bridge.js` with its own plugin names).
 - Release scripts (`pnpm release` for TestFlight and Play) and `scripts/version.mjs` writing `apps/mobile`'s versions.
-- Note styles sync (above): keep the server's newest styles and images on the device; local mode waits on the owner.
+- Note styles sync (above): the `/note-styles` endpoint and the page's fetch and cache (web session), and the local e2e guard's allowance for them.

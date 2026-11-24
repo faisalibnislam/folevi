@@ -12,8 +12,17 @@ final class FoleviViewController: CAPBridgeViewController {
     private let libraryFiles = LibraryFileHandler()
     private let hostPlugin = FoleviHostPlugin()
 
+    /// Whether local mode's network rules were on the web view before its first page load.
+    private var rulesAtLoad = false
+
     override func webView(with frame: CGRect, configuration: WKWebViewConfiguration) -> WKWebView {
         configuration.setURLSchemeHandler(libraryFiles, forURLScheme: LibraryFileHandler.scheme)
+        // Local mode's rules go on before the page loads, so not even its first request can reach Folevi. They're
+        // compiled once (AppDelegate starts it at launch) and looked up from WebKit's store after that.
+        if ShellMode.current == "local", let rules = Self.localRules {
+            configuration.userContentController.add(rules)
+            rulesAtLoad = true
+        }
         configuration.allowsInlineMediaPlayback = true
         configuration.mediaTypesRequiringUserActionForPlayback = []
         let webView = super.webView(with: frame, configuration: configuration)
@@ -28,6 +37,21 @@ final class FoleviViewController: CAPBridgeViewController {
         webView.isOpaque = false
         webView.backgroundColor = .systemBackground
         return webView
+    }
+
+    /// In local mode the first page load waits for the network rules (a lookup in WebKit's store, a few milliseconds;
+    /// the splash screen is up meanwhile): Capacitor's viewDidLoad is what starts it.
+    override func viewDidLoad() {
+        guard ShellMode.current == "local", !rulesAtLoad else { return super.viewDidLoad() }
+        Self.prepareLocalRules { [weak self] rules in self?.loadAfterRules(rules) }
+    }
+
+    private func loadAfterRules(_ rules: WKContentRuleList?) {
+        if let rules, let webView {
+            webView.configuration.userContentController.add(rules)
+            rulesAtLoad = true
+        }
+        super.viewDidLoad()
     }
 
     override func capacitorDidLoad() {
@@ -145,20 +169,62 @@ final class FoleviViewController: CAPBridgeViewController {
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { load.finish() }
     }
 
-    /// Local mode never reaches Folevi or its database: rules WebKit applies to everything the web view loads,
-    /// under the page's own policy. Account mode takes them away again.
+    /// Local mode sends Folevi nothing: rules WebKit applies to everything the web view loads, under the page's own
+    /// policy. The one exception (the owner's choice, 2026-11-24, docs/MOBILE.md "Note styles and covers"): when online,
+    /// the page may fetch the public list of note styles and their images, anonymously and read-only, to keep the
+    /// built-in styles current. Account mode has no rules. On the rare launch where the rules weren't ready before the
+    /// first load (the first one in local mode), they're added as soon as they are and the page loads again under them.
     private func applyMode() {
-        guard let controller = webView?.configuration.userContentController else { return }
-        controller.removeAllContentRuleLists()
-        guard ShellMode.current == "local" else { return }
-        let patterns = [#"^[a-z]+://([^/]*\.)?folevi\.com"#, #"^[a-z]+://[^/]*\.convex\.cloud"#, #"^[a-z]+://[^/]*\.convex\.site"#]
-        let rules = patterns.map { ["trigger": ["url-filter": $0], "action": ["type": "block"]] }
-        guard let data = try? JSONSerialization.data(withJSONObject: rules), let encoded = String(data: data, encoding: .utf8) else { return }
-        WKContentRuleListStore.default().compileContentRuleList(forIdentifier: "folevi-local-mode", encodedContentRuleList: encoded) { list, _ in
-            guard let list else { return }
-            DispatchQueue.main.async { controller.add(list) }
+        guard ShellMode.current == "local", !rulesAtLoad else { return }
+        Self.prepareLocalRules { [weak self] rules in
+            guard let self, let rules, let webView = self.webView else { return }
+            webView.configuration.userContentController.add(rules)
+            self.rulesAtLoad = true
+            webView.reload()
         }
     }
+
+    /// The compiled rules, once WebKit has them (main thread only).
+    private static var localRules: WKContentRuleList?
+    private static var preparing: [(WKContentRuleList?) -> Void] = []
+
+    /// Looks the rules up in WebKit's store, compiling them the first time (or after they change), then answers on
+    /// the main thread. If the list with the exception can't compile, the strict list (block everything) is used.
+    static func prepareLocalRules(_ done: @escaping (WKContentRuleList?) -> Void = { _ in }) {
+        if let localRules { return done(localRules) }
+        preparing.append(done)
+        guard preparing.count == 1 else { return }
+        let finish: (WKContentRuleList?) -> Void = { list in
+            DispatchQueue.main.async {
+                if let list { localRules = list }
+                let waiting = preparing
+                preparing = []
+                waiting.forEach { $0(list) }
+            }
+        }
+        let blocks = [#"^[a-z]+://([^/]*\.)?folevi\.com"#, #"^[a-z]+://[^/]*\.convex\.cloud"#, #"^[a-z]+://[^/]*\.convex\.site"#]
+        let strict: [[String: Any]] = blocks.map { ["trigger": ["url-filter": $0], "action": ["type": "block"]] }
+        let full = strict + noteStylePatterns.map { ["trigger": ["url-filter": $0], "action": ["type": "ignore-previous-rules"]] }
+        let encode = { (r: [[String: Any]]) in (try? JSONSerialization.data(withJSONObject: r, options: [.sortedKeys])).flatMap { String(data: $0, encoding: .utf8) } }
+        guard let encoded = encode(full), let fallback = encode(strict), let store = WKContentRuleListStore.default() else { return finish(nil) }
+        // The identifier names this exact list, so a changed list compiles anew and an unchanged one is only looked up.
+        // (FNV-1a: String's own hash changes from one launch to the next.)
+        let hash = encoded.utf8.reduce(UInt64(14_695_981_039_346_656_037)) { ($0 ^ UInt64($1)) &* 1_099_511_628_211 }
+        let id = "folevi-local-mode-\(String(hash, radix: 36))"
+        store.lookUpContentRuleList(forIdentifier: id) { found, _ in
+            if let found { return finish(found) }
+            store.compileContentRuleList(forIdentifier: id, encodedContentRuleList: encoded) { list, _ in
+                if let list { return finish(list) }
+                // Never without the rules: if the exception can't compile, block everything as before.
+                store.compileContentRuleList(forIdentifier: "folevi-local-mode-strict", encodedContentRuleList: fallback) { strictList, _ in finish(strictList) }
+            }
+        }
+    }
+
+    /// What local mode may load from Folevi: the note styles list (GET <deployment>.convex.site/note-styles, public, no
+    /// account) and the styles' images in Convex file storage (GET <deployment>.convex.cloud/api/storage/<id>).
+    /// (Plain prefixes: WebKit's rules know a small regex subset, and a list it can't compile would drop every rule.)
+    static let noteStylePatterns = [#"^https://[^/]*\.convex\.site/note-styles"#, #"^https://[^/]*\.convex\.cloud/api/storage/"#]
 
     private static func jsString(_ value: String) -> String {
         guard let data = try? JSONSerialization.data(withJSONObject: [value]), let json = String(data: data, encoding: .utf8) else { return "\"\"" }

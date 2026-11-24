@@ -4,6 +4,33 @@ Every Folevi release, newest first, written by `node scripts/version.mjs` from `
 
 Versions are MAJOR.UPDATE.PATCH, PATCH at least two digits: a Major release (2.0.00), a Big update (1.1.05 after 1.0.05) or a Small update (1.0.06 after 1.0.05).
 
+## Version 1.5.74: Small update
+
+Released 2026-11-24 19:58:58+06:00 (build 89, tag v1.5.74)
+
+A tidier, steadier Folevi on iPhone and iPad.
+
+### Improved
+
+- Calendar's month handle, a note's folder chip and Foli AI's Add button are easier to tap.
+- Keep notes on my devices blocks Folevi's servers from the moment the app opens.
+
+## Version 1.5.73: Small update
+
+Released 2026-11-24 19:03:37+06:00 (build 88, tag v1.5.73)
+
+Folevi for Mac is the web app in a Mac window again: the same screens as everywhere else, smaller and lighter.
+
+### Improved
+
+- Mac: the window shows Folevi's own sidebar, tabs and top bar, the same as on the web, Windows and Linux.
+- Mac: Settings opens in the main window.
+- Mac: the menu bar, Quick Add from any app, the menu bar icon, Spotlight, Shortcuts, Share and Services stay.
+
+### Breaking changes
+
+- Mac: floating note windows are gone. Notes open in tabs.
+
 ## Version 1.5.72: Small update
 
 Released 2026-11-24 18:18:21+06:00 (build 87, tag v1.5.72)

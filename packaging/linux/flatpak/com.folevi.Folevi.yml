@@ -6,7 +6,7 @@
 # It's supported until about September 2027; before then Tauri needs its GTK 4 port, or we move to another
 # runtime that carries WebKitGTK 4.1 (docs/LINUX.md, "WebKitGTK").
 #
-# Local test build (no download): packaging/linux/build/flatpak-local.sh points the .deb sources at a local file.
+# Local test build (no download): packaging/linux/scripts/flatpak-local.sh points the .deb sources at a local file.
 id: com.folevi.Folevi
 runtime: org.gnome.Platform
 runtime-version: '51'
@@ -37,7 +37,7 @@ modules:
   - name: folevi
     buildsystem: simple
     sources:
-      # The release .deb for each architecture. scripts in packaging/linux/build/ fill in version and sha256.
+      # The release .deb for each architecture. scripts in packaging/linux/scripts/ fill in version and sha256.
       - type: file
         only-arches: [x86_64]
         url: https://folevi.com/download/linux/x86_64/folevi_1.5.68_amd64.deb

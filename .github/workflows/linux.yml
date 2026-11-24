@@ -60,7 +60,7 @@ jobs:
           name: desktop-web
           path: apps/desktop/web
       - name: Build tools
-        run: sudo -E bash packaging/linux/build/install-build-deps.sh
+        run: sudo -E bash packaging/linux/scripts/install-build-deps.sh
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: apps/desktop/src-tauri

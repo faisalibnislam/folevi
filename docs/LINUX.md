@@ -21,7 +21,7 @@ repository without the owner's OK. Native app releases are paused.
 | Flatpak manifest | `packaging/linux/flatpak/com.folevi.Folevi.yml` |
 | Snap | `packaging/linux/snap/snapcraft.yaml` |
 | apt and dnf/zypper repositories | `packaging/linux/repo/` |
-| Build machine setup, smoke test | `packaging/linux/build/` |
+| Build machine setup, smoke test | `packaging/linux/scripts/` |
 
 App id: `com.folevi.Folevi` (Flatpak, AppStream, the desktop file in the Flatpak). The program is `folevi`.
 
@@ -92,12 +92,12 @@ Linux builds need Linux (WebKitGTK and GTK can't be cross-built from a Mac). Two
 
 1. **On a Mac, in a Lima VM** (what this session used): Ubuntu 22.04 arm64 VM with Rosetta. aarch64 builds
    natively; x86_64 builds in an Ubuntu 22.04 amd64 root inside the VM that runs through Rosetta.
-   `packaging/linux/build/install-build-deps.sh` installs everything.
+   `packaging/linux/scripts/install-build-deps.sh` installs everything.
 2. **CI** (for releases): GitHub's `ubuntu-22.04` and `ubuntu-22.04-arm` runners, the same script.
 
 Then, from the shell's folder: `cargo tauri build --bundles appimage,deb,rpm` (with
 `TAURI_SIGNING_PRIVATE_KEY` for the updater signature: the key lives in the owner's password manager, never in
-the repo). `packaging/linux/build/smoke-test.sh` launches a build headless and screenshots it.
+the repo). `packaging/linux/scripts/smoke-test.sh` launches a build headless and screenshots it.
 
 ## Repositories (plan, not live)
 

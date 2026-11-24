@@ -4,6 +4,20 @@ Every Folevi release, newest first, written by `node scripts/version.mjs` from `
 
 Versions are MAJOR.UPDATE.PATCH, PATCH at least two digits: a Major release (2.0.00), a Big update (1.1.05 after 1.0.05) or a Small update (1.0.06 after 1.0.05).
 
+## Version 1.5.66: Small update
+
+Released 2026-11-24 06:37:46+06:00 (build 81, tag v1.5.66)
+
+Folevi for Mac is rebuilt with the Mac's own window, sidebar, toolbar and inspector.
+
+### Improved
+
+- Mac: the app's screens are rebuilt with the Mac's own controls. Your notes, settings, sign-in and encryption keys carry over as it updates.
+- Mac: hide the sidebar, search from the toolbar, and open a note's tools in a panel beside it.
+- Mac: each screen's actions sit in the toolbar next to New Note, with Back and Forward at its start.
+- Mac: view choices such as list or grid use the standard segmented control.
+- iPhone and iPad: the + button uses the system's prominent glass, the search button has a title, and tag chips and iPad's Back and Forward are easier to tap.
+
 ## Version 1.5.65: Small update
 
 Released 2026-11-23 22:09:59+06:00 (build 80, tag v1.5.65)

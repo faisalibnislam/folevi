@@ -1,8 +1,9 @@
 import "server-only";
+import { serverConvexSiteUrl, serverConvexUrl } from "@/lib/serverEdition";
 
 /** Where Convex HTTP actions live (the MCP server and Better Auth). */
 export function convexSiteUrl(): string {
-  return (process.env.NEXT_PUBLIC_CONVEX_SITE_URL ?? (process.env.NEXT_PUBLIC_CONVEX_URL ?? "").replace(".convex.cloud", ".convex.site")).replace(/\/$/, "");
+  return (serverConvexSiteUrl() || serverConvexUrl().replace(".convex.cloud", ".convex.site")).replace(/\/$/, "");
 }
 
 /** The app's public origin (the MCP resource and the OAuth issuer live under it). */

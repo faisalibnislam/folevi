@@ -65,6 +65,28 @@ function isProduction(): boolean {
 }
 
 /**
+ * Folevi Server (docs/SELF_HOSTING_PLAN.md §5.3): a self-hosted server may have no way to send email. Then
+ * people can't confirm their address, so sign-up and sign-in don't ask them to (the owner invites people
+ * instead). Folevi Cloud always sends email and always asks.
+ */
+function verifiesEmail(): boolean {
+  if (process.env.FOLEVI_EDITION !== "server") return true;
+  return Boolean(process.env.RESEND_API_KEY || process.env.SMTP_HOST);
+}
+
+/**
+ * Origins whose pages may call Better Auth: the app's own, plus on Folevi Server the other addresses its owner
+ * reaches it on (FOLEVI_TRUSTED_ORIGINS, comma separated: a LAN address, a Tailscale or reverse-proxy name).
+ */
+function trustedOrigins(): string[] {
+  const extra = (process.env.FOLEVI_TRUSTED_ORIGINS ?? "")
+    .split(",")
+    .map((o) => o.trim().replace(/\/$/, ""))
+    .filter(Boolean);
+  return [siteUrl(), ...extra];
+}
+
+/**
  * Pages that may use passkeys: the app origin. Outside production, a second local dev server on another
  * port (apps/web/src/lib/auth/server.ts, FOLEVI_DEV_AUTH_ORIGIN) presents the trusted origin to Better Auth,
  * but the browser signs the page's real one, so the same host on the usual dev ports counts too.
@@ -219,12 +241,12 @@ export function createAuthOptions(ctx: GenericCtx<DataModel>) {
     appName: "Folevi",
     baseURL: siteUrl(),
     secret: process.env.BETTER_AUTH_SECRET,
-    trustedOrigins: [siteUrl()],
+    trustedOrigins: trustedOrigins(),
     // Refresh token rotation needs one fix on Convex (lib/authAdapter.ts).
     database: guardRefreshTokenRevoke(ctx, authComponent.adapter(ctx)),
     emailAndPassword: {
       enabled: true,
-      requireEmailVerification: true,
+      requireEmailVerification: verifiesEmail(),
       autoSignIn: false,
       minPasswordLength: 10,
       maxPasswordLength: 128,
@@ -245,8 +267,8 @@ export function createAuthOptions(ctx: GenericCtx<DataModel>) {
       },
     },
     emailVerification: {
-      sendOnSignUp: true,
-      sendOnSignIn: true,
+      sendOnSignUp: verifiesEmail(),
+      sendOnSignIn: verifiesEmail(),
       autoSignInAfterVerification: true,
       expiresIn: 60 * 60 * 24,
       sendVerificationEmail: async ({ user, url, token }) => {

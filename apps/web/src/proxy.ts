@@ -3,6 +3,7 @@ import { buildContentSecurityPolicy, createNonce } from "@/lib/security/csp";
 import { themeBootScriptHash } from "@/lib/theme/bootScript";
 import { SIGNED_IN_HINT, hintCookie, hintDomain } from "@/lib/auth/signedInHint";
 import { SIGNED_IN_PATH, signedInCheckScriptHash } from "@/lib/auth/signedInCheck";
+import { SERVER_EDITION } from "@/lib/serverEdition";
 
 const MARKETING_URL = process.env.NEXT_PUBLIC_MARKETING_URL ?? "https://folevi.com";
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://app.folevi.com";
@@ -45,14 +46,16 @@ function wantsNonce(request: NextRequest): boolean {
   return !h.has("rsc") && !h.has("next-router-prefetch") && h.get("purpose") !== "prefetch";
 }
 
-async function withNonce(request: NextRequest): Promise<NextResponse> {
+async function withNonce(request: NextRequest, serverOrigin?: string): Promise<NextResponse> {
   const nonce = createNonce();
   const policy = buildContentSecurityPolicy({
     nonce,
     dev: process.env.NODE_ENV !== "production",
-    convexUrl: process.env.NEXT_PUBLIC_CONVEX_URL ?? "",
-    convexSiteUrl: process.env.NEXT_PUBLIC_CONVEX_SITE_URL ?? "",
-    appUrl: APP_URL,
+    // Folevi Server: Convex is on the page's own origin, behind the server's proxy (lib/serverEdition.ts).
+    convexUrl: serverOrigin ? `${serverOrigin}/convex` : (process.env.NEXT_PUBLIC_CONVEX_URL ?? ""),
+    convexSiteUrl: serverOrigin ? `${serverOrigin}/convex-site` : (process.env.NEXT_PUBLIC_CONVEX_SITE_URL ?? ""),
+    appUrl: serverOrigin ?? APP_URL,
+    upgradeInsecure: serverOrigin ? false : undefined,
     scriptHashes: [await themeBootScriptHash(), await signedInCheckScriptHash()],
     frameAncestors: request.nextUrl.pathname === "/place-sync" ? "self" : "none",
   });
@@ -89,7 +92,23 @@ export async function proxy(request: NextRequest) {
   return host === appHost ? syncSignedInHint(request, response) : response;
 }
 
+/**
+ * Folevi Server (lib/serverEdition.ts): one host, whatever address it's reached on, with the product only.
+ * The home page and marketing pages go to the notes.
+ */
+async function serverRoute(request: NextRequest): Promise<NextResponse> {
+  const pathname = request.nextUrl.pathname;
+  if (pathname === "/" || (MARKETING_ONLY.test(pathname) && !isAppPath(pathname))) return NextResponse.redirect(new URL("/documents", request.url));
+  if (NONCE_ROUTES.test(pathname) && wantsNonce(request)) {
+    const host = request.headers.get("x-forwarded-host")?.split(",")[0]?.trim() || request.headers.get("host") || request.nextUrl.host;
+    const proto = request.headers.get("x-forwarded-proto")?.split(",")[0]?.trim() || request.nextUrl.protocol.replace(/:$/, "");
+    return withNonce(request, `${proto}://${host}`);
+  }
+  return NextResponse.next();
+}
+
 async function route(request: NextRequest): Promise<NextResponse> {
+  if (SERVER_EDITION) return serverRoute(request);
   const url = request.nextUrl;
   // The public host. Next's own internal requests (e.g. rendering a server action's redirect target) go to
   // request.url's origin but carry the original host in x-forwarded-host, as does Vercel's edge.

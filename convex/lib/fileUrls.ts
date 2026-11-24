@@ -2,6 +2,15 @@ import { secretOrDevFallback, toHex } from "./crypto";
 
 const enc = new TextEncoder();
 
+/**
+ * Where signed file links point: this deployment's HTTP actions. Folevi Server runs its backend on a loopback
+ * address behind a one-origin proxy (docs/SELF_HOSTING_PLAN.md §5.8), so it sets FOLEVI_PUBLIC_SITE_URL to the
+ * address browsers use (`<server address>/convex-site`). Folevi Cloud leaves it unset.
+ */
+export function publicSiteUrl(): string {
+  return process.env.FOLEVI_PUBLIC_SITE_URL || process.env.CONVEX_SITE_URL || "";
+}
+
 export async function signFileUrl(value: string): Promise<string> {
   const secret = secretOrDevFallback(["FOLEVI_FILE_URL_SECRET", "FOLEVI_HASH_SALT"], "folevi-development-file-secret");
   const key = await crypto.subtle.importKey("raw", enc.encode(secret), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);

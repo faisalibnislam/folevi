@@ -5,7 +5,7 @@ import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
 import { releaseFileStorage } from "./entitlements";
 import { fail } from "./errors";
-import { signFileUrl } from "./fileUrls";
+import { signFileUrl, publicSiteUrl } from "./fileUrls";
 import { bump } from "./metrics";
 import { inScope, scopeOfRow, type Scope } from "./scope";
 
@@ -25,7 +25,7 @@ export async function identityImageUrl(ctx: QueryCtx, fileId: Id<"files"> | unde
   if (!file || file.status !== "ready") return null;
   const exp = Math.floor(Date.now() / DAY_MS) * DAY_MS + 8 * DAY_MS;
   const sig = await signFileUrl(`${file.publicId}:${exp}`);
-  return `${process.env.CONVEX_SITE_URL ?? ""}/files/${file.publicId}?exp=${exp}&sig=${sig}`;
+  return `${publicSiteUrl()}/files/${file.publicId}?exp=${exp}&sig=${sig}`;
 }
 
 /** The picture shown for a team workspace: its logo. */

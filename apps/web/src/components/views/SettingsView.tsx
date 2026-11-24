@@ -99,6 +99,8 @@ const NEEDS: Partial<Record<Section, Capability>> = {
   // The account's offline copy; a library's own section takes its place (WP10).
   sync: "account",
   ...Object.fromEntries([...WORKSPACE_SECTIONS].map((id) => [id, "workspaces"])),
+  // Plans are sold only by Folevi Cloud (not on a self-hosted Folevi Server, lib/serverEdition.ts).
+  "workspace-billing": "billing",
 };
 /** Where Settings opens when the account's first section, Account, isn't there (local mode). */
 const LOCAL_FIRST: Section = "library";

@@ -1,4 +1,5 @@
 import "server-only";
+import { serverConvexSiteUrl, serverConvexUrl } from "@/lib/serverEdition";
 import { convexBetterAuthNextJs } from "@convex-dev/better-auth/nextjs";
 import { APP_HOST, APP_URL, MARKETING_HOST } from "@/lib/env";
 import { hintCookie, hintDomain, sessionChange } from "@/lib/auth/signedInHint";
@@ -7,8 +8,8 @@ import { answeredSignedOut, checkPinnedSession, listPlaces, pinRequest, signOutP
 import { isPrivateAuthPath } from "@/lib/auth/placesCookies";
 
 const convexAuth = convexBetterAuthNextJs({
-  convexUrl: process.env.NEXT_PUBLIC_CONVEX_URL ?? "",
-  convexSiteUrl: process.env.NEXT_PUBLIC_CONVEX_SITE_URL ?? "",
+  convexUrl: serverConvexUrl(),
+  convexSiteUrl: serverConvexSiteUrl(),
 });
 
 /** Server-side bridge to Better Auth running inside Convex. */

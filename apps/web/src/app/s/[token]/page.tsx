@@ -1,3 +1,4 @@
+import { serverConvexUrl } from "@/lib/serverEdition";
 import type { Metadata } from "next";
 import { cache } from "react";
 import { cookies, headers } from "next/headers";
@@ -46,7 +47,7 @@ async function clientKey(): Promise<string> {
 }
 
 async function openLink(token: string, password: string | undefined) {
-  const url = process.env.NEXT_PUBLIC_CONVEX_URL;
+  const url = serverConvexUrl();
   const secret = process.env.FOLEVI_SERVER_SECRET;
   const requestId = await currentRequestId();
   if (!url || !secret) {
@@ -82,7 +83,7 @@ const load = cache(async (token: string): Promise<Result> => {
  * shared page draws its theme as the app does. Without them it falls back to the shipped themes.
  */
 async function loadThemes() {
-  const url = process.env.NEXT_PUBLIC_CONVEX_URL;
+  const url = serverConvexUrl();
   if (!url) return;
   try {
     setThemeRows((await new ConvexHttpClient(url).query(api.themes.list, {})) as ThemeRow[]);

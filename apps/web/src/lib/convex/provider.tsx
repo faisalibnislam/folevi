@@ -1,4 +1,5 @@
 "use client";
+import { browserConvexUrl } from "@/lib/serverEdition";
 
 import { ConvexProvider, ConvexProviderWithAuth, ConvexReactClient, useConvexAuth } from "convex/react";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
@@ -12,7 +13,7 @@ import type { E2eeRouterClient } from "@/lib/e2ee/router/client";
 import { setActiveRouter } from "@/lib/e2ee/router/active";
 import { adoptSession, pinnedUserId } from "@/lib/places/pin";
 
-const convexUrl = process.env.NEXT_PUBLIC_CONVEX_URL;
+const convexUrl = browserConvexUrl();
 
 let client: ConvexReactClient | null = null;
 /**

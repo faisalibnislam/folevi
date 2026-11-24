@@ -11,7 +11,7 @@ import { liveBlocks, toWireBlock } from "./lib/documents";
 import { ReaderLabels } from "./lib/linkLabels";
 import { withSyncedForReader } from "./lib/synced";
 import { safeFilename } from "./lib/images";
-import { signFileUrl } from "./lib/fileUrls";
+import { signFileUrl, publicSiteUrl } from "./lib/fileUrls";
 import { insertScoped, vScope, vScopeArg, type Scope } from "./lib/scope";
 import { canExportWorkspace } from "./lib/permissions";
 import { isSealed } from "./lib/e2ee/state";
@@ -169,7 +169,7 @@ export const exportScope = action({
     const sig = await signFileUrl(`${built.fileId}:${exp}`);
     const { fileId: _f, ...rest } = built;
     void _f;
-    return { url: `${process.env.CONVEX_SITE_URL ?? ""}/files/${built.fileId}?exp=${exp}&sig=${sig}`, ...rest };
+    return { url: `${publicSiteUrl()}/files/${built.fileId}?exp=${exp}&sig=${sig}`, ...rest };
   },
 });
 

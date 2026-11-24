@@ -10,6 +10,7 @@ import { capabilitiesOf, currentBackendMode as modeNow, localCapabilityExtras, t
 import { LOCAL_FUNCTIONS } from "./local/registry";
 import { localAiState, subscribeLocalAi, type LocalAiState } from "./local/ai/state";
 import { ACCOUNT_FEATURES, type AiFeature, type AiFeatures } from "./local/ai/features";
+import { SERVER_EDITION, serverInfo, subscribeServerInfo } from "./serverEdition";
 
 export { canPurchaseHere } from "./nativeApp";
 export { CAPABILITIES, currentBackendMode, type BackendMode, type Capabilities, type Capability } from "./backendMode";
@@ -25,6 +26,12 @@ const LOCAL = capabilitiesOf("local");
 const ACCOUNT = capabilitiesOf("account");
 
 const LOCAL_WITH_AI: Capabilities = { ...LOCAL, foliAi: true };
+// Folevi Server (lib/serverEdition.ts): no billing or stock photos, and Foli AI (with semantic search, which
+// needs its embeddings) only once the server's owner has given it an AI key.
+const SERVER: Capabilities = { ...ACCOUNT, billing: false, stockPhotos: false };
+const SERVER_NO_AI: Capabilities = { ...SERVER, aiServer: false, foliAi: false, semanticSearch: false };
+const serverAiNow = () => serverInfo()?.ai ?? false;
+const serverAiOnServer = () => false;
 const serverAiState = () => null;
 const merged: { base: Capabilities; extras: object; value: Capabilities }[] = [];
 
@@ -43,7 +50,8 @@ const noopSubscribe = () => () => {};
 export function useCapabilities(): Capabilities {
   const local = useBackendMode() === "local";
   const ai = useLocalAi();
-  if (!local) return ACCOUNT;
+  const serverAi = useSyncExternalStore(SERVER_EDITION ? subscribeServerInfo : noopSubscribe, serverAiNow, serverAiOnServer);
+  if (!local) return SERVER_EDITION ? (serverAi ? SERVER : SERVER_NO_AI) : ACCOUNT;
   // Foli AI shows in local mode once this device has a model for it (Apple's, or the person's own key).
   const base = ai?.active ? LOCAL_WITH_AI : LOCAL;
   const extras = localCapabilityExtras();

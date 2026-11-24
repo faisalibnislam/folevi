@@ -23,7 +23,7 @@ import { consume } from "./lib/rateLimit";
 import { liveBlocks, toWireBlock } from "./lib/documents";
 import { sharedLabels } from "./lib/linkLabels";
 import { withSyncedShared } from "./lib/synced";
-import { signFileUrl } from "./lib/fileUrls";
+import { signFileUrl, publicSiteUrl } from "./lib/fileUrls";
 import { appUrl, notify, notifyAccessChange, notifyAccessLostOnRestrict, removeInviteNotices, shareRoleLabel } from "./lib/notify";
 import { sharePermissions } from "./lib/permissions";
 import { vPublishTheme, vShareRole } from "./lib/validators";
@@ -146,7 +146,7 @@ async function scopeIsOpen(ctx: QueryCtx | MutationCtx, doc: Doc<"documents">): 
 
 /** A short-lived signed address for one of a shared page's files. */
 async function signedFileUrl(fileId: string, exp: number): Promise<string> {
-  return `${process.env.CONVEX_SITE_URL ?? ""}/files/${fileId}?exp=${exp}&sig=${await signFileUrl(`${fileId}:${exp}`)}`;
+  return `${publicSiteUrl()}/files/${fileId}?exp=${exp}&sig=${await signFileUrl(`${fileId}:${exp}`)}`;
 }
 
 /**
@@ -951,7 +951,7 @@ export const openPublicLink = mutation({
     const blocks = await sharedLabels(ctx, doc, synced.blocks);
     const collections = await publicCollections(ctx, doc, blocks as { type: string; props: Record<string, unknown> }[]);
     // Attachments of this document only, via short-lived signed URLs.
-    const site = process.env.CONVEX_SITE_URL ?? "";
+    const site = publicSiteUrl();
     const exp = Date.now() + 60 * 60_000;
     const fileUrls: Record<string, string> = {};
     // Each block's own file, and the images in flowchart shapes.

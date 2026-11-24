@@ -407,8 +407,21 @@ export interface PersonalEntitlements {
   devices: number | null;
 }
 
+/**
+ * Folevi Server (self-hosted, docs/SELF_HOSTING_PLAN.md): there is no billing, so everyone on it has the top
+ * plan with no trial, and storage is the server's own disk. Admin overrides still apply. The web app imports
+ * this file too; in the browser there's no FOLEVI_EDITION, so nothing changes there.
+ */
+const SERVER_STORAGE_BYTES = 1024 * GB;
+function isServerEdition(): boolean {
+  return typeof process !== "undefined" && process.env?.FOLEVI_EDITION === "server";
+}
+
 /** What someone's Personal plan gives right now. No record (older accounts before billing) = Free. */
 export function personalEntitlementsOf(sub: SubscriptionLike | null, now: number): PersonalEntitlements {
+  if (isServerEdition()) {
+    sub = { plan: "pro_ai", interval: "year", status: "active", storageOverrideBytes: sub?.storageOverrideBytes ?? SERVER_STORAGE_BYTES, deviceLimitOverride: sub?.deviceLimitOverride ?? "unlimited" };
+  }
   // A paid (or admin-set) plan counts while it's active or in its grace period; a period end in the past
   // (a manual plan that ran out, a lapsed subscription) falls back to Free.
   const storedId = sub ? personalPlanId(sub.plan, sub.interval) : "personal_free";
@@ -482,6 +495,9 @@ export interface WorkspaceEntitlements {
 }
 
 export function workspaceEntitlementsOf(sub: WorkspaceSubscriptionLike | null, overrides: { storageBytes?: number }, now: number): WorkspaceEntitlements {
+  if (isServerEdition()) {
+    sub = { tier: "pro_ai", interval: "year", status: "active" };
+  }
   const storedId = sub ? workspacePlanId(sub.tier, sub.interval) : "workspace_free";
   // Same rule as Personal: in force while active, or canceled but paid through the period's end.
   const inForce = sub && isPaidPlan(storedId) && (sub.currentPeriodEnd === undefined ? sub.status !== "canceled" : sub.currentPeriodEnd > now);

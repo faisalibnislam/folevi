@@ -1,4 +1,5 @@
 "use client";
+import { browserConvexUrl } from "@/lib/serverEdition";
 // "Move or copy notes..." between places (docs/MULTI_ACCOUNT_PLAN.md §7): the open place and another one, both
 // reached from this page. The open place through the client the page already has (the E2EE router when that
 // account encrypts); another account through a Convex HTTP client with its own short-lived token (website: the
@@ -74,7 +75,7 @@ async function webToken(userId: string): Promise<string | null> {
 
 /** Another account, reached over HTTP with a token of its own (refreshed before it runs out). */
 export async function otherAccountEnd(place: PlaceId): Promise<MoveEnd> {
-  const url = process.env.NEXT_PUBLIC_CONVEX_URL;
+  const url = browserConvexUrl();
   if (!url) throw new Error("Folevi isn't connected to a backend here.");
   const userId = userIdOf(place);
   if (!userId) throw new Error("That isn't an account.");

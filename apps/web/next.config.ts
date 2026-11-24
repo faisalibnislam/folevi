@@ -1,9 +1,14 @@
+import path from "node:path";
 import type { NextConfig } from "next";
 
 const convexUrl = process.env.NEXT_PUBLIC_CONVEX_URL ?? "";
 // HTTP actions live on *.convex.site; derive it from the deployment URL when not set explicitly.
 const convexSite = process.env.NEXT_PUBLIC_CONVEX_SITE_URL ?? convexUrl.replace(".convex.cloud", ".convex.site");
 const isDev = process.env.NODE_ENV !== "production";
+// Folevi Server (src/lib/serverEdition.ts): a standalone build for one self-hosted server. It is often reached
+// over plain HTTP on a home network, so it neither upgrades requests to HTTPS nor sends HSTS (an HTTPS reverse
+// proxy in front of it can add HSTS).
+const isServerEdition = process.env.NEXT_PUBLIC_FOLEVI_EDITION === "server";
 const appOrigin = (() => {
   try {
     return new URL(process.env.NEXT_PUBLIC_APP_URL ?? "https://app.folevi.com").origin;
@@ -44,7 +49,7 @@ export const staticCsp = [
   "object-src 'none'",
   "worker-src 'self' blob:",
   "manifest-src 'self'",
-  ...(isDev ? [] : ["upgrade-insecure-requests"]),
+  ...(isDev || isServerEdition ? [] : ["upgrade-insecure-requests"]),
 ]
   .map((d) => d.replace(/\s+/g, " ").trim())
   .filter(Boolean)
@@ -52,7 +57,7 @@ export const staticCsp = [
 
 const securityHeaders = [
   { key: "Content-Security-Policy", value: staticCsp },
-  { key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains; preload" },
+  ...(isServerEdition ? [] : [{ key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains; preload" }]),
   { key: "X-Frame-Options", value: "DENY" },
   { key: "X-Content-Type-Options", value: "nosniff" },
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
@@ -87,6 +92,9 @@ const nextConfig: NextConfig = {
   // A second local dev server (another port) needs its own build folder.
   ...(process.env.NEXT_DIST_DIR ? { distDir: process.env.NEXT_DIST_DIR } : {}),
   ...(isShell ? shellConfig : {}),
+  // Folevi Server runs `node server.js` from a self-contained folder (scripts/self-host/build-bundle.mjs); the
+  // workspace root is traced so the packages under packages/ come along.
+  ...(isServerEdition ? { output: "standalone" as const, outputFileTracingRoot: path.resolve(process.cwd(), "../..") } : {}),
   env: { NEXT_PUBLIC_CONVEX_SITE_URL: convexSite, ...(isShell ? { NEXT_PUBLIC_FOLEVI_SHELL: "1" } : {}) },
   reactStrictMode: true,
   poweredByHeader: false,

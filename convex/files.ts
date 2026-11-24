@@ -41,7 +41,7 @@ import {
   stripImageMetadata,
 } from "./lib/images";
 import { toHex } from "./lib/crypto";
-import { signFileUrl as sign } from "./lib/fileUrls";
+import { signFileUrl as sign, publicSiteUrl } from "./lib/fileUrls";
 import { bump } from "./lib/metrics";
 import { MAX_IDENTITY_IMAGE_BYTES } from "./lib/identityImages";
 import { FileCopies } from "./lib/fileCopies";
@@ -439,7 +439,7 @@ export const urls = query({
   args: { fileIds: v.array(v.string()), now: v.number() },
   handler: async (ctx, args) => {
     const profile = await requireProfile(ctx);
-    const site = process.env.CONVEX_SITE_URL ?? "";
+    const site = publicSiteUrl();
     // Round expiry to the hour so the query result is cacheable and stable for re-renders. The client's
     // clock is only trusted up to a few minutes ahead of the server's: a link never lasts more than ~2 hours.
     const now = Math.min(args.now, Date.now() + MAX_CLOCK_SKEW_MS);

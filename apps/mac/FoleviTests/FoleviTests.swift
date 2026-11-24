@@ -118,11 +118,12 @@ struct PathsAndCardsTests {
 
 @MainActor
 struct WindowHistoryTests {
+    // History inside one tab (`step(to:)`); which tab a page opens in is TabRuleTests'.
     @Test func backAndForward() {
         let w = WindowModel(app: .shared, start: .home)
         w.start()
-        w.go(.allNotes)
-        w.go(.starred)
+        w.step(to: .allNotes)
+        w.step(to: .starred)
         #expect(w.current == .starred)
         #expect(w.canGoBack)
         w.back()
@@ -130,30 +131,28 @@ struct WindowHistoryTests {
         #expect(w.canGoForward)
         w.forward()
         #expect(w.current == .starred)
-        w.go(.trash)
+        w.step(to: .trash)
         #expect(!w.canGoForward)
         w.closed()
     }
 
-    @Test func sidebarPicksStartFresh() {
-        let w = WindowModel(app: .shared, start: .home)
+    @Test func sidebarMovesInsideItsOwnTabKeepTheWayBack() {
+        let w = WindowModel(app: .shared, start: .folder("a"))
         w.start()
-        w.go(.allNotes)
-        w.go(.starred)
-        w.pickInSidebar(.tags)
-        #expect(w.current == .tags)
-        #expect(w.sidebarSelection == .tags)
-        #expect(!w.canGoBack)
+        w.pickInSidebar(.folder("b"))
+        #expect(w.current == .folder("b"))
+        #expect(w.sidebarSelection == .folder("b"))
+        #expect(w.canGoBack)
         w.closed()
     }
 
     @Test func trashedNotesLeaveHistory() {
         let w = WindowModel(app: .shared, start: .home)
         w.start()
-        w.go(.allNotes)
-        w.go(.note("n1"))
-        w.go(.starred)
-        w.go(.note("n2"))
+        w.step(to: .allNotes)
+        w.step(to: .note("n1"))
+        w.step(to: .starred)
+        w.step(to: .note("n2"))
         w.forget(notes: ["n1", "n2"])
         #expect(w.current == .starred)
         w.back()
@@ -174,7 +173,7 @@ struct WindowHistoryTests {
     @Test func replaceKeepsHistory() {
         let w = WindowModel(app: .shared, start: .home)
         w.start()
-        w.go(.foliAI(nil))
+        w.step(to: .foliAI(nil))
         w.replace(with: .foliAI("c1"))
         #expect(w.current == .foliAI("c1"))
         w.back()
@@ -185,7 +184,7 @@ struct WindowHistoryTests {
     @Test func sidebarFollowsPlacesButNotNotes() {
         let w = WindowModel(app: .shared, start: .home)
         w.start()
-        w.select(.allNotes)
+        w.step(to: .allNotes)
         #expect(w.sidebarSelection == .allNotes)
         w.reset()
         #expect(w.current == .home)
@@ -395,5 +394,52 @@ struct SchemeModeTests {
         #expect(WebViewFactory.scheme.modeOf(local) == "local")
         #expect(AppScheme.csp(mode: WebViewFactory.scheme.modeOf(account), serviceOrigin: "https://app.folevi.com").contains("wss://*.convex.cloud"))
         #expect(!AppScheme.csp(mode: WebViewFactory.scheme.modeOf(local), serviceOrigin: "https://app.folevi.com").contains("convex"))
+    }
+}
+
+/// Tabs open as on the web (lib/app/tabs.tsx; the owner's rule of 24 November 2026).
+struct TabRuleTests {
+    typealias T = AppModel.TabState
+    let a = UUID(), b = UUID(), c = UUID()
+
+    @Test func aCardFromHomeOpensANewTabThatRemembersHome() {
+        #expect(AppModel.placement(of: .note("n1"), from: .home, others: []) == .newTab(keepsOpener: true))
+        #expect(AppModel.placement(of: .allNotes, from: .home, others: []) == .newTab(keepsOpener: true))
+    }
+
+    @Test func theSidebarAndNewNoteOpenFreshTabs() {
+        #expect(AppModel.placement(of: .tasks(.today), from: .home, others: [], fresh: true) == .newTab(keepsOpener: false))
+        #expect(AppModel.placement(of: .note("new"), from: .allNotes, others: [], fresh: true) == .newTab(keepsOpener: false))
+    }
+
+    @Test func aPageAlreadyInATabShowsThatTab() {
+        let others = [T(id: a, current: .note("n1")), T(id: b, current: .tasks(.inbox)), T(id: c, current: .note("n2"), panes: ["n2", "n3"])]
+        #expect(AppModel.placement(of: .note("n1"), from: .home, others: others) == .existing(a))
+        #expect(AppModel.placement(of: .tasks(.today), from: .home, others: others, fresh: true) == .existing(b))
+        #expect(AppModel.placement(of: .note("n3"), from: .home, others: others) == .existing(c))
+    }
+
+    @Test func movesInsideAViewStayInItsTab() {
+        #expect(AppModel.placement(of: .tasks(.today), from: .tasks(.inbox), others: []) == .here)
+        #expect(AppModel.placement(of: .foliAI("chat"), from: .foliAI(nil), others: []) == .here)
+        #expect(AppModel.placement(of: .folder("f2"), from: .folder("f1"), others: []) == .here)
+        #expect(AppModel.placement(of: .folder("f1"), from: .folders, others: []) == .here)
+    }
+
+    @Test func aFolderFromElsewhereGoesToTheFolderTabUsedLast() {
+        let others = [T(id: a, current: .folder("f1"), frontAt: 3), T(id: b, current: .folders, frontAt: 7)]
+        #expect(AppModel.placement(of: .folder("f9"), from: .home, others: others) == .existing(b))
+        #expect(AppModel.placement(of: .folder("f9"), from: .home, others: []) == .newTab(keepsOpener: true))
+    }
+
+    @Test func aLinkInsideANoteStaysButOtherNotesFromANoteOpenATab() {
+        #expect(AppModel.placement(of: .note("n2"), from: .note("n1"), others: [], inNote: true) == .here)
+        #expect(AppModel.placement(of: .note("n2"), from: .note("n1"), others: []) == .newTab(keepsOpener: true))
+        #expect(AppModel.placement(of: .note("n2"), from: .note("n1"), others: [], newTab: true, inNote: true) == .newTab(keepsOpener: true))
+    }
+
+    @Test func eachTagHasItsOwnTab() {
+        #expect(AppModel.placement(of: .tag("b"), from: .tag("a"), others: []) == .newTab(keepsOpener: true))
+        #expect(Destination.tag("a").tabKind != Destination.tags.tabKind)
     }
 }

@@ -24,6 +24,8 @@ struct NoteListScreen: View {
     @FocusState private var filterFocused: Bool
     @State private var newSubfolderOf: FolderNode?
     @State private var filter = ""
+    /// The filter the list runs: `filter` once typing pauses for 200 ms, so a word isn't a query per keystroke.
+    @State private var appliedFilter = ""
     @State private var subfolders = Live<Views.FoldersCards>()
     @State private var trash = Live<Views.TrashSummary>()
 
@@ -48,15 +50,28 @@ struct NoteListScreen: View {
         app.optimistic(ids, star: on) { try await $0.command(Commands.NoteStar(NoteStarArgs(ids: ids, starred: on))) }
     }
 
-    private var spec: ListViews.NotesList {
+    private var spec: ListViews.NotesList { spec(filter: appliedFilter) }
+
+    private func spec(filter: String) -> ListViews.NotesList {
         ListViews.NotesList(NotesListArgs(space: nil, view: kind, folderId: folderId, tagId: tagId, sort: sort, filter: filter.isEmpty ? nil : filter))
     }
+
+    /// More than one note selected: the selection bar shows.
+    private var barShown: Bool { selection.lazy.filter { !$0.hasPrefix("folder:") }.count > 1 }
 
     var body: some View {
         content
             .screenSearch(text: $filter, prompt: "Filter \(title)")
             .screenActions { toolbar }
             .task(id: spec.args) { list.bind(app.client, spec) }
+            .task(id: filter) {
+                // Clearing applies at once; typing waits for a pause. The new results bind here, keeping the old
+                // rows on screen until they arrive (no skeleton per keystroke).
+                if !filter.isEmpty { try? await Task.sleep(for: .milliseconds(200)) }
+                guard !Task.isCancelled, filter != appliedFilter else { return }
+                list.bind(app.client, spec(filter: filter), keepRows: true)
+                appliedFilter = filter
+            }
             .task(id: folderId) {
                 if kind == .folder { subfolders.bind(app.client, Views.FoldersCards(FolderCardsArgs(space: nil, parentId: folderId, all: nil))) }
                 if kind == .trash { trash.bind(app.client, Views.TrashSummary(SpaceArgs())) }
@@ -98,7 +113,7 @@ struct NoteListScreen: View {
         case .folder: app.tree.value?.folders.first { $0.id == folderId }?.name ?? "Folder"
         case .tag: app.tree.value?.tags.first { $0.id == tagId }.map { "#" + $0.name } ?? "Tag"
         case .all: "All Notes"
-        case .starred: "Starred"
+        case .starred: "Bookmarks"
         case .archive: "Archive"
         case .trash: "Trash"
         case .templates: "Templates"
@@ -127,7 +142,9 @@ struct NoteListScreen: View {
                 }
             }
             Section {
-                ForEach(Array(shownRows.enumerated()), id: \.element.id) { i, row in
+                // One pass over the rows; Move Up and Down index this same array (hidden notes are not in it).
+                let shown = shownRows
+                ForEach(Array(shown.enumerated()), id: \.element.id) { i, row in
                     NoteListRow(row: row, showFolder: kind != .folder)
                         .draggable(containerItemID: row.id)
                         .overlay(alignment: .trailing) {
@@ -139,8 +156,8 @@ struct NoteListScreen: View {
                         .tag(row.id)
                         .contextMenu {
                             NoteMenu(row: row, window: window,
-                                     moveUp: sort == .manual && i > 0 ? { move(row.id, after: i >= 2 ? list.rows[i - 2].id : nil) } : nil,
-                                     moveDown: sort == .manual && i < list.rows.count - 1 ? { move(row.id, after: list.rows[i + 1].id) } : nil)
+                                     moveUp: sort == .manual && i > 0 ? { move(row.id, after: i >= 2 ? shown[i - 2].id : nil) } : nil,
+                                     moveDown: sort == .manual && i < shown.count - 1 ? { move(row.id, after: shown[i + 1].id) } : nil)
                         }
                         .onAppear { if row.id == list.rows.last?.id { more() } }
                         // No line between rows (the owner: spacing and the hover tell rows apart).
@@ -170,7 +187,7 @@ struct NoteListScreen: View {
             return .handled
         }
         .onDeleteCommand { trashSelection() }
-        .overlay(alignment: .bottom) { GlassEffectContainer { ZStack { selectionBar } }.appAnimation(Motion.bar, value: selection.isEmpty) }
+        .overlay(alignment: .bottom) { GlassEffectContainer { ZStack { selectionBar } }.appAnimation(Motion.bar, value: barShown) }
     }
 
     /// With more than one note selected: what every one of them can take, in a glass bar at the foot.
@@ -179,14 +196,22 @@ struct NoteListScreen: View {
         if notes.count > 1 {
             HStack(spacing: 14) {
                 Text("\(notes.count) selected").font(.callout.weight(.medium))
-                if notes.count < list.rows.count { Button("Select All") { selection = Set(list.rows.map(\.id)) } }
+                if notes.count < shownRows.count { Button("Select All") { selection = Set(shownRows.map(\.id)) } }
                 Divider().frame(height: 16)
                 if kind == .trash {
                     Button("Restore") { app.optimistic(notes, hide: true) { try await $0.command(Commands.NoteRestore(NoteIdsArgs(ids: notes))) }; selection.removeAll() }
                     Button("Delete…", role: .destructive) { NoteActions.deleteForever(notes, app: app); selection.removeAll() }
                 } else {
                     let allStarred = notes.allSatisfy { id in list.rows.first { $0.id == id }?.starred == true }
-                    Button { star(notes, !allStarred) } label: { Label(allStarred ? "Unstar" : "Star", systemImage: allStarred ? "bookmark.slash" : "bookmark") }
+                    Button { star(notes, !allStarred) } label: {
+                        Label {
+                            Text(allStarred ? "Remove Bookmark" : "Bookmark")
+                        } icon: {
+                            // Folevi's own bookmark icons (not SF Symbols), so the swap is a crossfade.
+                            (allStarred ? WebIcon.bookmarkOff : WebIcon.bookmark).image(size: 15).contentTransition(.opacity)
+                        }
+                    }
+                    .appAnimation(Motion.tap, value: allStarred)
                     Button { window.pickFolder(.moveNotes, notes) } label: { Label("Move", appSymbol: "folder") }
                     Button { window.pickFolder(.copyNotes, notes) } label: { Label("Copy To", appSymbol: "doc.on.doc") }
                     if let tags = app.tree.value?.tags, !tags.isEmpty {
@@ -267,7 +292,7 @@ struct NoteListScreen: View {
         }
         .overlay(alignment: .bottom) {
             // (The animation lives on a view that stays, so the bar's leaving animates too.)
-            GlassEffectContainer { ZStack { selectionBar } }.appAnimation(Motion.bar, value: selection.isEmpty)
+            GlassEffectContainer { ZStack { selectionBar } }.appAnimation(Motion.bar, value: barShown)
         }
         .onKeyPress(.escape) { if selection.isEmpty { return .ignored }; selection.removeAll(); return .handled }
         }
@@ -296,7 +321,8 @@ struct NoteListScreen: View {
         }
         keyCard = rows[next].id
         window.prepare(rows[next].id)
-        Motion.run(Motion.scroll) { proxy.scrollTo(rows[next].id) }
+        // Unanimated: a held arrow key repeats faster than a scroll animation settles.
+        proxy.scrollTo(rows[next].id)
         return .handled
     }
 
@@ -317,7 +343,8 @@ struct NoteListScreen: View {
 
     /// Manual order: the moved note goes after the row it lands under.
     private func reorder(_ from: IndexSet, _ to: Int) {
-        let rows = list.rows
+        // The indices are the ForEach's, so they count the rows as shown.
+        let rows = shownRows
         guard let i = from.first, rows.indices.contains(i) else { return }
         let id = rows[i].id
         let after = to == 0 ? nil : rows[min(to, rows.count) - 1].id
@@ -398,10 +425,9 @@ struct NoteListScreen: View {
                 Button("Restore \(notes.count) Notes") { app.perform { _ = try await $0.command(Commands.NoteRestore(NoteIdsArgs(ids: notes))) } }
                 Button("Delete \(notes.count) Notes Immediately…", role: .destructive) { NoteActions.deleteForever(notes, app: app) }
             } else {
-                Button("Star") { star(notes, true) }
-                Button("Remove Star") { star(notes, false) }
-                Menu("Move To") { MoveTargets(ids: notes) }
-                Button("Move To Folder…") { window.pickFolder(.moveNotes, notes) }
+                let allStarred = notes.allSatisfy { id in shownRows.first { $0.id == id }?.starred == true }
+                Button(allStarred ? "Remove Bookmark" : "Bookmark") { star(notes, !allStarred) }
+                Menu("Move To") { MoveTargets(ids: notes) { window.pickFolder(.moveNotes, notes) } }
                 Button("Copy To…") { window.pickFolder(.copyNotes, notes) }
                 addTagMenu(notes)
                 Button(kind == .archive ? "Unarchive" : "Archive") { archive(notes, kind != .archive) }
@@ -473,18 +499,18 @@ struct NoteListScreen: View {
         switch kind {
         case .trash: EmptyScreen(symbol: "trash", title: "Trash Is Empty", message: "Notes you delete stay here for 30 days.")
         case .archive: EmptyScreen(symbol: "archivebox", title: "Nothing Archived", message: "Archive notes you're done with to keep them out of the way.")
-        case .starred: EmptyScreen(symbol: "star", title: "No Starred Notes", message: "Star a note to keep it close.")
+        case .starred: EmptyScreen(symbol: "bookmark", title: "No Bookmarks", message: "Bookmark a note to keep it close.")
         case .templates: EmptyScreen(symbol: "square.on.square", title: "No Templates", message: "Save a note as a template from its menu.")
-        case .folder where filter.isEmpty:
-            EmptyScreen(symbol: "folder", title: "This Folder Is Empty", message: "Start a note here, or move one in with Move To Folder.", actionTitle: "New Note") {
+        case .folder where appliedFilter.isEmpty:
+            EmptyScreen(symbol: "folder", title: "This Folder Is Empty", message: "Start a note here, or move one in with Move To in a note's menu.", actionTitle: "New Note") {
                 NoteActions.newNote(app: app, window: window, folder: folderId)
             }
-        case .unsorted where filter.isEmpty:
+        case .unsorted where appliedFilter.isEmpty:
             EmptyScreen(symbol: "tray", title: "No Drafts", message: "Everything has a folder. Nicely done.")
-        case .tag where filter.isEmpty:
-            EmptyScreen(symbol: "number", title: "No Notes Have This Tag Yet", message: "Add tags to a note from its Info panel (⌥⌘I).")
+        case .tag where appliedFilter.isEmpty:
+            EmptyScreen(symbol: "number", title: "No Notes Have This Tag Yet", message: "Type # and a tag name in a note to tag it.")
         default:
-            EmptyScreen(symbol: "square.and.pencil", title: filter.isEmpty ? "No Notes" : "No Results", message: filter.isEmpty ? "Notes you write show up here." : "No note here matches “\(filter)”.", actionTitle: filter.isEmpty ? "New Note" : nil) {
+            EmptyScreen(symbol: "square.and.pencil", title: appliedFilter.isEmpty ? "No Notes" : "No Results", message: appliedFilter.isEmpty ? "Notes you write show up here." : "No note here matches “\(appliedFilter)”.", actionTitle: appliedFilter.isEmpty ? "New Note" : nil) {
                 NoteActions.newNote(app: app, window: window, folder: folderId)
             }
         }
@@ -518,7 +544,7 @@ struct NoteListRow: View {
                         .font(AppType.noteTitle(15))
                         .foregroundStyle(row.title.isEmpty ? .secondary : .primary)
                         .lineLimit(1)
-                    if row.starred { Image(systemName: "star.fill").font(.caption2).foregroundStyle(.yellow) }
+                    if row.starred { WebIcon.bookmark.image(size: 11).foregroundStyle(.secondary).accessibilityLabel("Bookmarked") }
                     if row.encrypted { Image(systemName: "lock.fill").font(.caption2).foregroundStyle(.secondary) }
                     if row.sync != .saved { Image(systemName: row.sync == .failed || row.sync == .conflict ? "exclamationmark.icloud" : "icloud.and.arrow.up").font(.caption2).foregroundStyle(.secondary) }
                 }

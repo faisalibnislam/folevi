@@ -36,6 +36,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
@@ -138,7 +139,7 @@ private fun rowIcon(id: HomeRow.Id): WebIcon = when (id) {
 
 /** A windowed notes list (`notes.list`): the store moves its window as rows scroll into view. */
 @Composable
-fun NotesScreen(route: NotesRoute, open: (Route) -> Unit) {
+fun NotesScreen(route: NotesRoute, open: (Route) -> Unit, onBack: (() -> Unit)? = null) {
     val view = NotesListView.of(route.view) ?: NotesListView.ALL
     val (store, state) = rememberList(ListViews.notesList(view = view, folderId = route.folderId, tagId = route.tagId), key = route)
     val list = state.value.list
@@ -149,7 +150,7 @@ fun NotesScreen(route: NotesRoute, open: (Route) -> Unit) {
         }
     }
     Column(Modifier.fillMaxSize()) {
-        ScreenTitle(route.title)
+        if (onBack != null) BigTitle(route.title, navigation = { BackButton(onBack) }) else ScreenTitle(route.title)
         if (list.total == 0) {
             EmptyBox(if (state.value.status == com.folevi.engine.client.StoreStatus.LOADING) "Loading…" else "No notes here yet.")
             return
@@ -161,7 +162,7 @@ fun NotesScreen(route: NotesRoute, open: (Route) -> Unit) {
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            items(count = list.total, key = { i -> list.order.getOrNull(i - list.start) ?: "slot$i" }) { i ->
+            items(count = list.total, key = { i -> list.order.getOrNull(i - list.start) ?: "slot$i" }, contentType = { i -> if (list.rowAt(i) != null) "note" else "slot" }) { i ->
                 val row = list.rowAt(i)
                 if (row != null) NoteActions(row, open) { m -> NoteCard(row, onClick = null, modifier = m) }
                 else Spacer(Modifier.height(120.dp))
@@ -172,9 +173,9 @@ fun NotesScreen(route: NotesRoute, open: (Route) -> Unit) {
 
 @OptIn(FlowPreview::class)
 @Composable
-fun SearchScreen(open: (Route) -> Unit) {
+fun SearchScreen(open: (Route) -> Unit, onBack: (() -> Unit)? = null) {
     val session = LocalSession.current
-    var text by remember { mutableStateOf("") }
+    var text by rememberSaveable { mutableStateOf("") }
     var result by remember { mutableStateOf<SearchValue?>(null) }
     LaunchedEffect(Unit) {
         snapshotFlow { text }.debounce(200).collect { q ->
@@ -182,7 +183,7 @@ fun SearchScreen(open: (Route) -> Unit) {
         }
     }
     Column(Modifier.fillMaxSize()) {
-        ScreenTitle("Search")
+        if (onBack != null) BigTitle("Search", navigation = { BackButton(onBack) }) else ScreenTitle("Search")
         OutlinedTextField(
             value = text,
             onValueChange = { text = it },

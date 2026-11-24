@@ -1,6 +1,21 @@
 {
   "releases": [
     {
+      "version": "1.5.71",
+      "build": 86,
+      "released": "2026-11-24T13:21:54+06:00",
+      "type": "patch",
+      "summary": "Folevi for Mac opens pages in tabs like the web app and feels more at home on the Mac.",
+      "improved": [
+        "Mac: notes, folders and lists open in a new tab exactly as they do on the web, and Back and Forward move inside a tab.",
+        "Mac: Ask Foli AI sits in the toolbar.",
+        "Mac: New Folder is ⇧⌘N.",
+        "Mac: \"Star\" is now \"Bookmark\", as on the web.",
+        "Mac: calmer motion with no bounce, plus menu and speed fixes."
+      ],
+      "tag": "v1.5.71"
+    },
+    {
       "version": "1.5.70",
       "build": 85,
       "released": "2026-11-24T13:07:28+06:00",

@@ -63,6 +63,27 @@ cd ios/App && xcodegen                         # only after editing project.yml 
 - `npx cap sync` rewrites `ios/App/CapApp-SPM/Package.swift`; `scripts/after-update.mjs` (a Capacitor hook) raises its
   tools version so it can name iOS 18.
 
+## Size and memory (2026-11-24, against the native apps)
+
+Release builds of each, with the same 86 MB web export inside (64 MB of it the bundled note covers):
+
+| | New Capacitor app | Native app (before) |
+| --- | --- | --- |
+| iOS app bundle (Release, iphoneos, unsigned) | **94 MB** (app code 2.5 MB, Capacitor 1 MB, share extension 1 MB) | 182 MB (app code 89 MB, widgets and share extension 2.6 MB) |
+| Android APK (release, R8, all CPU types) | **125 MB** | 128 MB |
+| iOS memory at Home, local library (Simulator, phys_footprint) | app 30 MB + web view 153 MB = **183 MB** | app 55 MB + web view 117 MB = 172 MB |
+| Android memory at Home, local library (emulator, PSS) | app 96 MB + web view 131 MB = **227 MB** | app 89 MB + web view 116 MB = 205 MB |
+
+The new app halves the iOS download's native part; memory is about the same as before (5 to 10% more), since the
+native apps also ran the web app in a web view behind their screens. On Android the Play Store splits the APK per
+device, so a phone downloads about 30 MB less than the universal APK above.
+
+The checks: first launch, a library on the device, Home, the note editor (an edit lands in the library's `.fnote`
+file), tabs on iPad and Android tablet, the share inbox (a queued share becomes a note), dark mode, iPhone Duo
+closed, Android foldable open, and installing the new app over the native one on iOS and Android (the library opens
+as it was). Not checked: a real device, signing in end to end, iPhone Duo open and folding, push delivery.
+Screenshots: `docs/mobile/`.
+
 ## Not carried over yet (follow-ups)
 
 - iOS widgets, Control Center control, Siri and Shortcuts intents, Spotlight (their code is in `apps/ios`; add the

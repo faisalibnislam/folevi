@@ -104,7 +104,7 @@ class QuickAddChooser : ComponentActivity() {
         /** Folevi on Quick add task, in `place` when it's given (the app switches to it first). */
         fun openIntent(context: Context, place: String?): Intent {
             val link = "folevi://quick-add" + (place?.let { "?place=" + Uri.encode(it) } ?: "")
-            return Intent(Intent.ACTION_VIEW, Uri.parse(link), context, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+            return MainActivity.internalIntent(Uri.parse(link), context).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP)
         }
 
         /** What the tile and the widgets start: this card. */

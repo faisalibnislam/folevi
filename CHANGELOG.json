@@ -1,6 +1,35 @@
 {
   "releases": [
     {
+      "version": "1.5.72",
+      "build": 87,
+      "released": "2026-11-24T18:18:21+06:00",
+      "type": "patch",
+      "summary": "Folevi for iPhone, iPad and Android is now one app, built from the same web app as everywhere else.",
+      "added": [
+        "One app for iPhone, iPad, iPhone Duo and Android, with the web app's own screens and layouts."
+      ],
+      "improved": [
+        "The iPhone and iPad app is about half the size."
+      ],
+      "tag": "v1.5.72"
+    },
+    {
+      "version": "1.5.71",
+      "build": 86,
+      "released": "2026-11-24T13:21:54+06:00",
+      "type": "patch",
+      "summary": "Folevi for Mac opens pages in tabs like the web app and feels more at home on the Mac.",
+      "improved": [
+        "Mac: notes, folders and lists open in a new tab exactly as they do on the web, and Back and Forward move inside a tab.",
+        "Mac: Ask Foli AI sits in the toolbar.",
+        "Mac: New Folder is ⇧⌘N.",
+        "Mac: \"Star\" is now \"Bookmark\", as on the web.",
+        "Mac: calmer motion with no bounce, plus menu and speed fixes."
+      ],
+      "tag": "v1.5.71"
+    },
+    {
       "version": "1.5.70",
       "build": 85,
       "released": "2026-11-24T13:07:28+06:00",

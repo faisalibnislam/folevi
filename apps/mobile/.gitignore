@@ -4,3 +4,4 @@ node_modules/
 /web/
 bridge/build/
 android/app/src/main/assets/folevi-cloud.js
+release/

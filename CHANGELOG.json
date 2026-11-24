@@ -1,6 +1,17 @@
 {
   "releases": [
     {
+      "version": "1.5.76",
+      "build": 91,
+      "released": "2026-11-25T00:45:13+06:00",
+      "type": "patch",
+      "summary": "Folevi on iPhone no longer builds up memory as you open notes.",
+      "fixed": [
+        "On iPhone, each note you opened and closed stayed in memory; now it's let go."
+      ],
+      "tag": "v1.5.76"
+    },
+    {
       "version": "1.5.75",
       "build": 90,
       "released": "2026-11-24T21:30:14+06:00",

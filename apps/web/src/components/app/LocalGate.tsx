@@ -7,7 +7,7 @@ import { api } from "@/lib/convex/api";
 import { useLocalClient } from "@/lib/convex/provider";
 import { AppStateProvider, FullPageMessage } from "@/lib/app/state";
 import { useAppRouter } from "@/lib/app/router";
-import { shell } from "@/lib/shell";
+import { isShell, shell } from "@/lib/shell";
 import { clearSetupIntent, setupIntent } from "@/lib/local/libraryPlace";
 import { useLibraryControl, useLibraryStatusPick } from "@/lib/local/useLibrary";
 import { Button } from "@/components/ui/Button";
@@ -15,6 +15,7 @@ import { errorMessage } from "@/components/ui/Toast";
 import { Shell } from "./Shell";
 import { LibraryPlaceSync } from "@/components/places/LibraryPlaceSync";
 import { LockedLibrary } from "./LockedLibrary";
+import { syncNoteStyles } from "@/lib/shell/styleSync";
 
 // The Mac app's Quick Add window (its own page): loaded only there.
 const DesktopQuickAdd = lazy(() => import("./DesktopQuickAdd").then((m) => ({ default: m.DesktopQuickAdd })));
@@ -60,6 +61,14 @@ export function LocalGate() {
   const started = useRef(false);
   const [setupError, setSetupError] = useState<string | null>(null);
   const [joining, setJoining] = useState<boolean | null>(null);
+
+  // New or changed note styles, once per launch when online: one anonymous, read-only request, the only one local
+  // mode makes to Folevi (the owner's choice, 2026-11-24; lib/shell/styleSync.ts). They show from the next launch.
+  useEffect(() => {
+    if (!isShell() || (typeof navigator !== "undefined" && navigator.onLine === false)) return;
+    const t = window.setTimeout(() => void syncNoteStyles(), 4000);
+    return () => window.clearTimeout(t);
+  }, []);
 
   // The product uses neutral chrome so the notes carry the colour (globals.css, data-chrome).
   useEffect(() => {

@@ -7,6 +7,7 @@
 // convex/settings.ts). Account mode keeps reading both from the server.
 import type { ThemeRow } from "@/lib/themes";
 import { isShell } from "./index";
+import { keptStyles, mergeStyles } from "./styleSync";
 
 export interface ShellSnapshot {
   version: 1;
@@ -29,4 +30,17 @@ export function loadShellSnapshot(): Promise<ShellSnapshot> {
     .then((s) => (s && s.version === 1 && Array.isArray(s.themes) ? s : EMPTY_SNAPSHOT))
     .catch(() => EMPTY_SNAPSHOT);
   return pending;
+}
+
+let current: Promise<ShellSnapshot> | null = null;
+
+/**
+ * The bundled snapshot with any newer note styles this device kept since (styleSync.ts): what local mode reads.
+ * Read once per launch, so styles kept during this launch show from the next one.
+ */
+export function currentShellSnapshot(): Promise<ShellSnapshot> {
+  current ??= Promise.all([loadShellSnapshot(), isShell() ? keptStyles().catch(() => []) : Promise.resolve([])]).then(([bundled, kept]) =>
+    kept.length ? { ...bundled, themes: mergeStyles(bundled.themes, kept) } : bundled,
+  );
+  return current;
 }

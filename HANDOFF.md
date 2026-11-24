@@ -309,6 +309,15 @@ because the phone was picked from the iPhone user agent); Android tablets and to
 look (CSS moved from `:root[data-ipad]` to `:root[data-tablet]`). A vertical fold keeps the sidebar left of the
 fold and the page past it; the fold is read from the marks the native Duo app already sets (`data-fold`,
 `--fold-start`, `--fold-end`) or Chromium's viewport segments, and an app's own marks are never cleared. The contract for shells is in the shared notes (`web-everywhere-platform-contract.md`).
+**Web everywhere, landed on `main` 2026-11-25 (PRs 61, 62, 63, 64, 68, 70, 71, 72, 74, 75).** Besides the layout rule
+above: shortcuts read the way each system writes them (`lib/shortcuts.ts` `useMacKeys`, `useKeyLabels`; Ctrl+ off
+Apple's); the owner's platform touches (Instrument Sans everywhere, the web's springs kept except the Mac's no-bounce
+motion, Android's press ripple `lib/android/ripple.ts`); one wording set and one icon per thing on phone and desktop;
+touch hit areas of at least 44 pt (`.ui-hit`); the app counts as a touch device only with touch points; boards ignore
+presses from their own sheets (`canvas/pointers.ts pressIsElsewhere`); the iPhone layout lets go of closed notes in
+WebKit (`components/iphone/transitions.ts`, about 5 MB per open before); the tools panel picks its tool before a note
+draws; `/apps` lists Folevi for Windows and Linux; note styles sync into the apps (`GET /note-styles`,
+`lib/shell/styleSync.ts`, local mode's one anonymous request) and the privacy policy says so.
 **Folevi for Mac back to the web view (owner, 2026-11-24, branch `claude/mac-webview`, PR 67): released as 1.5.73**
 (build 88, tag `v1.5.73` local, live on the Mac feed, notarized, universal; the owner said "Release it"; 1.5.72 was
 already the Capacitor mobile app's, recorded from tag `v1.5.72`). the owner
@@ -615,6 +624,13 @@ account button should move past iPadOS's window buttons).
   Android ripple) and #64 (one wording set) are open and wait on CI and the owner's merge (merging deploys). Next PRs: shortcut labels per OS (about 40 files still write ⌘ by hand; `lib/shortcuts.ts keyLabel` exists),
   Windows/Linux/Android accents behind `data-shell`, one motion/empty/loading style, mobile web view performance,
   the "Your own server" sign-in with the Synology session. The starter "Welcome to Folevi" note names Mac shortcuts.
+- Web everywhere (all landed 2026-11-25). Open: the iOS simulator `footprint` re-run of the iPhone memory fix (mobile
+  session); sync status labels still differ between phone and desktop (Saved/Synced, Offline/Waiting to sync,
+  Conflict/Edited in two places) and there are four empty-state components; no error state when a list fails to load;
+  splitting the phone interface out of every page's bundle (measure with a production build first); "Your own server"
+  sign-in for the apps, planned in the shared notes (`web-everywhere-own-server-plan.md`), after the Synology branch
+  lands; the starter "Welcome to Folevi" note names Mac shortcuts. Known failing e2e on `main` (not from this work):
+  `iphone-local-settings` switch size, `local-mode` Insert panel, `iphone-chrome` theme bar colour.
 - Folevi for Mac on the web view: 1.5.73 is live. PR 67 (`claude/mac-webview`) merges after PR 60. Watch for reports
   of signed-in Macs stuck on loading after updating (no signed-in Release run was observed); the fix path is
   `AppScheme.modeOf` / WebViewFactory. Push the `v1.5.69` to `v1.5.73` and `archive/mac-swiftui` tags if the owner asks. Ask the web session (through the main session) for the Mac's no-bounce motion when
@@ -776,6 +792,14 @@ account button should move past iPadOS's window buttons).
 - 2026-11-24: Owner: keep note covers inside the mobile app and sync note styles when the server changes them. Plan in docs/MOBILE.md; local mode's part asked of the owner.
 - 2026-11-24: PR 66 opened for the Capacitor mobile app (`claude/mobile-capacitor-f41734` pushed); open question to the owner: note covers.
 - 2026-11-24: `apps/mobile`: one Capacitor app for iPhone, iPad, iPhone Duo and Android around the web app (no native screens), reusing the shared Swift and Kotlin services; window-size layouts in `lib/iphone.ts`; `version.mjs` covers it; checked on simulators and emulators, size and memory compared (docs/MOBILE.md). Branch `claude/mobile-capacitor-f41734`, PR not merged.
+- 2026-11-25: Web everywhere queue landed (61, 62, 63, 64, 70, 75, 71, 72 after 68 and 74); this is their combined entry:
+  PR 62 shortcuts per system (and documents.spec:187 waits for the bar's Share and the panel's focus instead of racing
+  them); PR 63 Mac no-bounce motion and Android press ripple, the owner's picks in the web-everywhere memory; PR 64 one
+  wording set, Tasks and Calendar icons, Calendar's loading placeholder (native and Android icon files regenerated);
+  PR 70 and 75 Windows and Linux downloads on `/apps` (pickers by user agent, every package listed, unsigned-build notes);
+  PR 71 note styles sync (`/note-styles`, Cache Storage, newer `updatedAt` wins; the local e2e guard answers the check);
+  PR 72 the privacy policy's "Using the apps without an account" paragraph. While queued, these PRs left HANDOFF.md
+  alone so each merge didn't conflict the rest.
 - 2026-11-25: PR 61 CI fixes: the app counts as a touch device only with touch points (real iPhones, iPads and Android devices report them; the e2e suite's desktop "iOS app" keeps the desktop layout); a tab's 44 pt hit area moved onto its link (the wrapper's layer took the link's taps); the iOS purchase check no longer matches Choose profile picture. Local: ios-app, ios-native, tab-strip-overflow and iphone-app pass (11).
 - 2026-11-24: Web everywhere PR 1: touch hit areas of at least 44 pt (`.ui-hit`, `.ui-seg > *`, `:root[data-tablet|data-iphone]`) for the small chrome controls the iOS review measured, no change to the look. Note-page memory growth (iOS review): no web leak found; in Chromium the growth is V8 optimizing existing functions (decelerating) and in desktop WebKit the web process has no trend; waiting on the mobile session's repro details or a Web Inspector heap snapshot.
 - 2026-11-24: Web everywhere PR 1 fixes from CI: boards (flowchart, stickies, wireframe, mind map) ignored nothing React handed up from their sheets, so a sheet's buttons never worked with a mouse (`pressIsElsewhere`); the phone layout no longer hides the note's tools while typing on a computer; phone-width e2e steps go through the phone layout. Local CI-style run: 79 + 4 affected account specs pass.

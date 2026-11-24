@@ -161,7 +161,7 @@ export function IphoneHome() {
         </ul>
       ) : (
         <div className="pt-3">
-          <EmptyBox>Notes you open show up here</EmptyBox>
+          <EmptyBox>Notes you open show up here.</EmptyBox>
         </div>
       )}
 
@@ -175,7 +175,7 @@ export function IphoneHome() {
         {reviews?.hasCards ? <HomeTile href="/review" icon={<Layers />} label="Reviews" count={waitingReviews || undefined} /> : null}
       </nav>
 
-      <HomeSection id="starred" title="Bookmarks" href="/starred" seeAll={starred && starred.page.length > SHOWN ? "/starred" : undefined} empty={starred && !starred.page.length ? <EmptyBox>Bookmark notes to keep them close</EmptyBox> : undefined}>
+      <HomeSection id="starred" title="Bookmarks" href="/starred" seeAll={starred && starred.page.length > SHOWN ? "/starred" : undefined} empty={starred && !starred.page.length ? <EmptyBox>Bookmark a note to keep it here.</EmptyBox> : undefined}>
         {starred?.page.length ? (
           <RowGroup label="Bookmarks">
             {starred.page.slice(0, SHOWN).map((d) => (
@@ -193,7 +193,7 @@ export function IphoneHome() {
           { label: "New folder", icon: <FolderPlus size={18} />, onSelect: openNewFolder },
           { label: "All folders", icon: <Files size={18} />, onSelect: () => navigate("/folders") },
         ]}
-        empty={org && !topFolders.length ? <EmptyBox>Folders keep related notes together</EmptyBox> : undefined}
+        empty={org && !topFolders.length ? <EmptyBox>Folders keep related notes together.</EmptyBox> : undefined}
       >
         {/* The app's own folder cards, side by side, as on Home in the browser and the Mac app. */}
         <ul aria-label="Folders" data-iphone-tappable="" className="flex snap-x snap-mandatory scroll-px-4 gap-3 overflow-x-auto px-4 pb-7 pt-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">

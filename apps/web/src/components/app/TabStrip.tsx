@@ -2,7 +2,7 @@
 
 import { memo, useEffect, useLayoutEffect, useRef, useState, type PointerEvent, type RefObject } from "react";
 import { createPortal } from "react-dom";
-import { Archive, ArrowLeftToLine, CircleHelp, Settings, ArrowRightToLine, Calendar, CheckSquare, ChevronLeft, ChevronRight, FileDiff, FileText, Files, Folder, Hash, House, Inbox, Layers, LayoutGrid, LayoutList, LayoutTemplate, Lock, Pin, PinOff, Plus, SquareSplitHorizontal, Share2, Trash2, Waypoints, X, XCircle } from "lucide-react";
+import { Archive, ArrowLeftToLine, CircleHelp, Settings, ArrowRightToLine, CalendarDays, SquareCheckBig, ChevronLeft, ChevronRight, FileDiff, FileText, Files, Folder, Hash, House, Inbox, Layers, LayoutGrid, LayoutList, LayoutTemplate, Lock, Pin, PinOff, Plus, SquareSplitHorizontal, Share2, Trash2, Waypoints, X, XCircle } from "lucide-react";
 import { Bookmark } from "lucide-react";
 import { AppLink, useAppRouter } from "@/lib/app/router";
 import { tabHolds, tabHref, useTabs, type DocTab } from "@/lib/app/tabs";
@@ -81,10 +81,10 @@ function ViewIcon({ kind }: { kind: string }) {
     case "notes":
       return <Files size={14} aria-hidden className={c} />;
     case "tasks":
-      return <CheckSquare size={14} aria-hidden className={c} />;
+      return <SquareCheckBig size={14} aria-hidden className={c} />;
     case "calendar":
     case "daily":
-      return <Calendar size={14} aria-hidden className={c} />;
+      return <CalendarDays size={14} aria-hidden className={c} />;
     case "review":
       return <Layers size={14} aria-hidden className={c} />;
     case "changes":

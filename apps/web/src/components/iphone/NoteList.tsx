@@ -186,7 +186,7 @@ export function IphoneNoteList(props: IphoneNoteListProps) {
         </div>
       ) : shown.length === 0 ? (
         query ? (
-          <ScreenEmpty title={`No notes match “${query.trim()}”`} body="Try other words, or search everywhere from Home." />
+          <ScreenEmpty title={`No notes match “${query.trim()}”`} body="Try other words, or search all notes." />
         ) : (
           <ScreenEmpty icon={empty.icon} title={subfolders.length && view === "folder" ? "No notes directly in this folder yet" : empty.title} body={empty.body} action={empty.action} />
         )

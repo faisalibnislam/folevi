@@ -241,11 +241,11 @@ export function HomeDashboard() {
         {/* With Home from its first frame (it used to arrive a moment later and push everything below down). */}
         {aiOn ? <CatchUp /> : null}
         <TodaysReviews />
-        <Section shelf title="Recent notes" icon={<Clock3 size={17} strokeWidth={1.9} />} href="/notes" empty={recent && !recent.length ? <EmptyState size="inline" title="No notes yet" body="Press New to write your first one." /> : undefined}>
+        <Section shelf title="Recent notes" icon={<Clock3 size={17} strokeWidth={1.9} />} href="/notes" empty={recent && !recent.length ? <EmptyState size="inline" title="No notes yet" body="Notes you open show up here." /> : undefined}>
           <NoteCarousel docs={recent} label="Recent notes" recent />
         </Section>
 
-        <Section shelf title="Bookmarks" icon={<Bookmark size={17} strokeWidth={1.9} />} href="/starred" empty={starred && !starred.page.length ? <EmptyState size="inline" title="No bookmarks yet" body="Bookmark notes you come back to often and they’ll appear here." /> : undefined}>
+        <Section shelf title="Bookmarks" icon={<Bookmark size={17} strokeWidth={1.9} />} href="/starred" empty={starred && !starred.page.length ? <EmptyState size="inline" title="No bookmarks yet" body="Bookmark a note to keep it here." /> : undefined}>
           <NoteCarousel docs={starred?.page} label="Bookmarked notes" />
         </Section>
 
@@ -253,7 +253,7 @@ export function HomeDashboard() {
           title="Recent folders"
           href="/folders"
           icon={<Folder size={17} strokeWidth={1.9} />}
-          empty={org && !org.total ? <EmptyState size="inline" title="No folders yet" body="Create one from the sidebar to group related notes." /> : undefined}
+          empty={org && !org.total ? <EmptyState size="inline" title="No folders yet" body="Folders keep related notes together." /> : undefined}
         >
           <div ref={folders.ref}>
             <ul className="grid" style={{ gridTemplateColumns: `repeat(${folders.cols}, minmax(0, 1fr))`, columnGap: sizes.gap, rowGap: sizes.rowGap }}>

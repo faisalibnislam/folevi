@@ -4,7 +4,7 @@ import { useAction, useQuery } from "convex/react";
 import { useLocalSearch } from "@/lib/hooks/useLocalNotes";
 import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { AiIcon } from "@/components/ai/AiIcon";
-import { ArrowRight, CalendarDays, CheckSquare, FileDiff, FileText, House as Home, Layers, Moon, Plus, Search, Settings, Sun, Trash2, Waypoints } from "lucide-react";
+import { ArrowRight, CalendarDays, SquareCheckBig, FileDiff, FileText, House as Home, Layers, Moon, Plus, Search, Settings, Sun, Trash2, Waypoints } from "lucide-react";
 import { fileTextLabel, flattenFolders, type FileTextSource } from "@folevi/editor-schema";
 import { api } from "@/lib/convex/api";
 import { useCanCall } from "@/lib/mode";
@@ -117,7 +117,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
   const actions: Item[] = useMemo(
     () => [
       { kind: "action", id: "new", label: "New note", hint: "⌘⌥N", icon: <Plus size={16} />, run: () => void createDocument({}) },
-      { kind: "action", id: "tasks", label: "Go to Tasks · Today", icon: <CheckSquare size={16} />, run: () => navigate("/tasks/today") },
+      { kind: "action", id: "tasks", label: "Go to Tasks · Today", icon: <SquareCheckBig size={16} />, run: () => navigate("/tasks/today") },
       { kind: "action", id: "calendar", label: "Go to Calendar", icon: <CalendarDays size={16} />, run: () => navigate("/calendar") },
       { kind: "action", id: "review", label: "Go to Reviews", icon: <Layers size={16} />, run: () => navigate("/review") },
       { kind: "action", id: "changes", label: "Go to Changes", icon: <FileDiff size={16} />, run: () => navigate("/changes") },

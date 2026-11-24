@@ -5,14 +5,14 @@
 //
 //   node scripts/e2e/signin.mjs [serial] [--account <file>]
 // Without --account it makes a new verified account on the dev server first (sign up, the dev mailbox's
-// confirmation link) and writes it to apps/android/.e2e-account.json (git-ignored) for the other checks.
+// confirmation link) and writes it to apps/mobile/android/.e2e-account.json (git-ignored) for the other checks.
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { resolve } from "node:path";
 import { evaluate } from "../emulator.mjs";
 import { fill, find, has, key, sleep, tapText } from "./ui.mjs";
 
-const require = createRequire(resolve(import.meta.dirname, "../../../web/package.json"));
+const require = createRequire(resolve(import.meta.dirname, "../../../../web/package.json"));
 const { chromium } = require("@playwright/test");
 
 export const APP = process.env.E2E_BASE_URL ?? "http://app.localhost:3002";

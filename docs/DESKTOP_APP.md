@@ -109,6 +109,9 @@ Folevi for Windows 1.5.73, unsigned (Windows warns about an unknown publisher), 
 - Intel and AMD: https://folevi.com/download/windows/Folevi_1.5.73_x64-setup.exe
   (SHA-256 a54b07bf0926b5b04c009a918c83e6146656b7282aed77861d97255a468cc241)
 
+Stable links that always point at the latest build (cache `no-cache`, like the Mac's `Folevi.dmg`):
+https://folevi.com/download/windows/Folevi-arm64-setup.exe and https://folevi.com/download/windows/Folevi-x64-setup.exe.
+
 Uploaded with `npx wrangler r2 object put folevi-updates/windows/<file> --remote` from CI run 45392111016. The
 version came from `apps/desktop/RELEASE_VERSION` (1.5.73) because this branch's version.json predates 1.5.72.
 

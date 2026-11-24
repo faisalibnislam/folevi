@@ -42,9 +42,10 @@ fi
 corepack enable
 
 # Rust (stable) for the person running the build, not root.
-TARGET_USER="${SUDO_USER:-$USER}"
-if ! sudo -u "$TARGET_USER" bash -lc 'command -v cargo' >/dev/null 2>&1; then
-  sudo -u "$TARGET_USER" bash -lc 'curl -fsSL https://sh.rustup.rs | sh -s -- -y --profile minimal'
+TARGET_USER="${SUDO_USER:-$(id -un)}"
+as_user() { if [[ "$(id -un)" == "$TARGET_USER" ]]; then bash -lc "$1"; else sudo -u "$TARGET_USER" bash -lc "$1"; fi; }
+if ! as_user 'command -v cargo' >/dev/null 2>&1; then
+  as_user 'curl -fsSL https://sh.rustup.rs | sh -s -- -y --profile minimal'
 fi
 
-echo "Build tools ready: $(node --version), $(sudo -u "$TARGET_USER" bash -lc 'cargo --version'), WebKitGTK $(pkg-config --modversion webkit2gtk-4.1)"
+echo "Build tools ready: $(node --version), $(as_user 'cargo --version'), WebKitGTK $(pkg-config --modversion webkit2gtk-4.1)"

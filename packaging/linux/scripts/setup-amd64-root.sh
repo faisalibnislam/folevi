@@ -16,12 +16,15 @@ mount_all() {
   done
 }
 if [[ ! -x "$ROOT/usr/bin/apt-get" ]]; then
-  apt-get install -y -qq debootstrap
-  # Two stages: Rosetta needs /proc inside the root before any x86_64 program there can run, and a one-stage
-  # debootstrap runs one before it mounts /proc ("rosetta error: Unable to open /proc/self/exe").
-  debootstrap --foreign --arch=amd64 --variant=buildd --include=ca-certificates,curl,sudo jammy "$ROOT" http://archive.ubuntu.com/ubuntu
-  mount_all
-  chroot "$ROOT" /debootstrap/debootstrap --second-stage
+  # Ubuntu's own minimal 22.04 root (checked against its SHA256SUMS). Not debootstrap: its second stage unmounts
+  # /proc while it runs ldconfig, and Rosetta can't start an x86_64 program without /proc.
+  base=https://cdimage.ubuntu.com/ubuntu-base/releases/22.04/release
+  file="$(curl -fsSL "$base/SHA256SUMS" | awk '/base-amd64.tar.gz/ { gsub(/\*/, "", $2); print $2 }' | tail -1)"
+  curl -fsSL "$base/$file" -o /tmp/ubuntu-base.tgz
+  curl -fsSL "$base/SHA256SUMS" | awk -v f="$file" '{ n = $2; gsub(/\*/, "", n) } n == f { print $1 "  /tmp/ubuntu-base.tgz" }' | sha256sum -c -
+  mkdir -p "$ROOT"
+  tar -xzf /tmp/ubuntu-base.tgz -C "$ROOT"
+  rm -f /tmp/ubuntu-base.tgz
 fi
 mount_all
 cat > "$ROOT/etc/apt/sources.list" <<'EOF'

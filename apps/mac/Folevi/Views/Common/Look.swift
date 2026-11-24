@@ -43,7 +43,7 @@ extension Label where Title == Text, Icon == Image {
 }
 
 /// A plain control's hover: a quiet fill that reaches 8 pt past its words (6 pt round an icon), so the hover never
-/// touches them; pressed, it dims.
+/// touches them; pressed, it darkens (PressDip, the one press feedback).
 struct HoverPlainButtonStyle: ButtonStyle {
     var capsule = false
     var inset: CGFloat = 8
@@ -70,7 +70,7 @@ struct HoverPlainButtonStyle: ButtonStyle {
                     .padding(.vertical, capsule ? -1 : -3)
                     .opacity(hovering && enabled ? 1 : 0)
                 }
-                .opacity(configuration.isPressed ? 0.6 : 1)
+                .pressFeedback(configuration.isPressed)
                 .onHover { hovering = $0 }
                 .appAnimation(Motion.hover, value: hovering)
         }
@@ -116,18 +116,20 @@ extension View {
     }
 }
 
-/// The app's motion, named once and taken from the family's own (FoleviSpring and WebMotion in FoleviDesign, the
-/// owner's decision of 2026-11-01): what opens grows from what opened it with a visible, playful overshoot, a
-/// selection slides, a bar arrives firmly, and on the Mac a press darkens rather than moving (MAC-07). With Reduce
+/// The app's motion, named once. On the Mac nothing bounces: every click-driven change is a quick, critically
+/// damped `.smooth` (the owner's decision of 2026-11-24; the shared FoleviSpring values stay as they are for the
+/// iPad). A selection slides, a bar arrives firmly, and a press darkens rather than moving (MAC-07). With Reduce
 /// Motion every one is a short fade-speed ease and nothing scales or moves.
 @MainActor
 enum Motion {
     /// Panels the app draws over a screen (the Ask panel, the palette), the inspector, Focus Mode.
-    static var panel: Animation { FoleviSpring.pop }
+    static var panel: Animation { .smooth(duration: 0.25) }
     /// Toggles, selection, a drop zone lighting up.
-    static var tap: Animation { FoleviSpring.slide }
+    static var tap: Animation { .smooth(duration: 0.2) }
     /// Floating bars and toasts arriving and leaving.
-    static var bar: Animation { FoleviSpring.bar }
+    static var bar: Animation { .smooth(duration: 0.25) }
+    /// A sidebar or inspector column showing or hiding: critically damped, as the system's own columns move.
+    static var column: Animation { .smooth(duration: 0.25) }
     /// Hover fills and hover-revealed controls (the web's hover answers at once; this is only the fade).
     static let hover: Animation = .easeOut(duration: WebMotion.fadeOut)
     /// Programmatic scrolling (Jump to Latest, carousel arrows, the keyboard's card).
@@ -173,15 +175,26 @@ private struct MotionTransition: ViewModifier {
 }
 
 /// A floating glass surface (a toast, a selection bar, a hover-revealed control) arriving and leaving: the glass
-/// materializes rather than fading (Liquid Glass never animates its opacity), and the surface slides from
-/// `edge` unless Reduce Motion is on.
+/// materializes, and the surface rises 8 pt from `edge` with a fade (a short travel reads as arriving, a full
+/// edge move read as flying in); with Reduce Motion it only materializes.
 private struct GlassArrival: ViewModifier {
     let edge: Edge?
     @Environment(\.accessibilityReduceMotion) private var reduce
     func body(content: Content) -> some View {
         content
             .glassEffectTransition(.materialize)
-            .transition(edge.map { reduce ? AnyTransition.identity : .move(edge: $0) } ?? .identity)
+            .transition(edge.map { reduce ? AnyTransition.identity : Self.rise(from: $0) } ?? .identity)
+    }
+
+    private static func rise(from edge: Edge) -> AnyTransition {
+        let d: CGFloat = 8
+        let offset: CGSize = switch edge {
+        case .top: CGSize(width: 0, height: -d)
+        case .bottom: CGSize(width: 0, height: d)
+        case .leading: CGSize(width: -d, height: 0)
+        case .trailing: CGSize(width: d, height: 0)
+        }
+        return AnyTransition.offset(offset).combined(with: .opacity)
     }
 }
 

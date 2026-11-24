@@ -69,8 +69,19 @@ struct MainWindow: View {
                         .appAnimation(Motion.panel, value: window.askShown)
                 }
                 .overlay {
-                    ZStack { if window.paletteShown { CommandPalette(window: window) } }
-                        .appAnimation(Motion.panel, value: window.paletteShown)
+                    // The palette: its scrim fades, its glass card materializes in one container, both carried by
+                    // the view that stays.
+                    ZStack(alignment: .top) {
+                        if window.paletteShown {
+                            Color.black.opacity(0.08).ignoresSafeArea()
+                                .onTapGesture { window.paletteShown = false }
+                                .transition(.opacity)
+                        }
+                        GlassEffectContainer {
+                            if window.paletteShown { CommandPalette(window: window) }
+                        }
+                    }
+                    .appAnimation(Motion.panel, value: window.paletteShown)
                 }
                 .sheet(item: $window.folderPick) { FolderPickerSheet(target: $0) }
                 .sheet(item: $window.placeMove) { PlaceMoveSheet(notes: $0.notes, folders: $0.folders) }
@@ -85,12 +96,12 @@ struct MainWindow: View {
         .appAnimation(Motion.fade, value: app.gate?.gate)
         .tint(.foleviInk)
         .focusedSceneValue(\.window, window)
-        .background(WindowAccessor(model: window, asTab: seed?.asTab == true, keepsOpener: seed?.asTab == true && seed?.start.isNote == true, background: seed?.background == true))
+        .background(WindowAccessor(model: window, asTab: seed?.asTab == true, keepsOpener: seed?.asTab == true && seed?.keepsOpener == true, background: seed?.background == true))
         .environment(window)
         .onAppear {
             window.start()
             app.openHelp = { openWindow(id: "help") }
-            app.openWindow = { dest, asTab, background in openWindow(id: "main", value: WindowSeed(start: dest ?? .home, asTab: asTab, background: background)) }
+            app.openWindow = { dest, asTab, background in openWindow(id: "main", value: WindowSeed(start: dest ?? .home, asTab: asTab, background: background, keepsOpener: asTab && AppModel.shared.pendingOpener != nil)) }
             SettingsRouter.shared.openSettings = { openSettings() }
             // A restored window goes back where it was (a fresh window opens where its seed says).
             if seed?.start == .home, !restoredPath.isEmpty, let d = Destination(path: restoredPath), d != .home { window.replace(with: d) }
@@ -186,6 +197,29 @@ struct WindowToolbar: ToolbarContent {
             .controlGroupStyle(.navigation)
         }
         NewNoteItem()
+        // Ask Foli AI beside New Note, on every screen: the window's one way in besides ⌘J.
+        ToolbarItem(placement: .primaryAction) { AskFoliAIButton(window: window) }
+    }
+}
+
+/// The toolbar's Ask Foli AI: the Foli AI glyph, the same action as ⌘J.
+private struct AskFoliAIButton: View {
+    let window: WindowModel
+    private var app: AppModel { .shared }
+
+    var body: some View {
+        Button { window.askFoliAI() } label: {
+            Label { Text("Ask Foli AI") } icon: { AiMarkGlyph(size: 16) }
+        }
+        .help("Ask Foli AI (⌘J)")
+        .disabled(app.session.value?.capabilities.ai == false)
+    }
+}
+
+extension WindowModel {
+    /// Ask Foli AI (⌘J and the toolbar): on a note, the page's own Foli AI panel; elsewhere the floating chat.
+    func askFoliAI() {
+        if current.isNote { editor(EditorCommands.Ai(AiArgs(action: .open, prompt: nil))) } else { Motion.run(Motion.panel) { askShown.toggle() } }
     }
 }
 
@@ -335,21 +369,13 @@ extension FocusedValues {
     @Entry var window: WindowModel?
 }
 
-/// Ask Foli AI: a floating button on every screen but a note and the Foli AI page, and the panel it opens (⌘J).
+/// Ask Foli AI's floating chat (⌘J or the toolbar's Ask Foli AI, on any screen but a note).
 struct AskOverlay: View {
     let window: WindowModel
 
     var body: some View {
         if window.askShown {
             AskPanel(window: window).motionTransition(.scale(scale: 0.92, anchor: .bottomTrailing).combined(with: .opacity))
-        } else if !window.current.isNote, !window.current.isFoliAI {
-            Button { Motion.run(Motion.panel) { window.askShown = true } } label: { AiMarkGlyph(size: 22).padding(12) }
-                .buttonStyle(.plain)
-                .glassEffect(.regular.interactive(), in: .circle)
-                .glassArrival()
-                .help("Ask Foli AI (⌘J)")
-                .accessibilityLabel("Ask Foli AI")
-                .padding(20)
         }
     }
 }

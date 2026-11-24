@@ -59,20 +59,31 @@ final class Live<V: EngineViewSpec> {
 @Observable
 final class LiveList<L: EngineListSpec> {
     private(set) var store: ListStore<L.Row>?
+    /// The list `bind(keepRows:)` replaced: already unwatched, its last rows drawn until the new list answers.
+    private var outgoing: ListStore<L.Row>?
     @ObservationIgnored private var key: (ObjectIdentifier, L.Args)?
 
-    var rows: [L.Row] { store?.rows ?? [] }
-    var total: Int { store?.total ?? 0 }
-    var isLoading: Bool { store == nil || (store?.rows.isEmpty == true && store?.isComplete == false) }
+    /// The list on screen: the outgoing one while the new one has no answer yet.
+    private var shown: ListStore<L.Row>? {
+        if let outgoing, let store, store.status == .loading, store.error == nil { return outgoing }
+        return store
+    }
+
+    var rows: [L.Row] { shown?.rows ?? [] }
+    var total: Int { shown?.total ?? 0 }
+    var isLoading: Bool { shown == nil || (shown?.rows.isEmpty == true && shown?.isComplete == false) }
 
     /// Off screen for a minute pauses the list's subscription; back on screen resumes it.
     func setVisible(_ visible: Bool) { store?.setVisible(visible) }
 
-    func bind(_ client: EngineClient?, _ spec: L) {
+    /// `keepRows`: the old rows stay until the new list answers (a filter refining the same list), instead of the
+    /// skeleton. Leave it off when the list is a different one, so its rows never show under another title.
+    func bind(_ client: EngineClient?, _ spec: L, keepRows: Bool = false) {
         guard let client else { return }
         let k = (ObjectIdentifier(client), spec.args)
         if let key, key.0 == k.0, key.1 == k.1 { return }
         store?.cancel()
+        outgoing = keepRows ? shown : nil
         key = k
         store = client.watchList(spec, window: ListWindow(start: 0, count: 300))
     }
@@ -80,6 +91,7 @@ final class LiveList<L: EngineListSpec> {
     func cancel() {
         store?.cancel()
         store = nil
+        outgoing = nil
         key = nil
     }
 }
@@ -476,7 +488,7 @@ final class AppModel {
         closedTabs.removeAll()
         let saved = (tabsBySpace[key] ?? []).compactMap { Destination(path: $0) }
         lead.reset()
-        if let start = saved.first, start != .home { lead.go(start) }
+        if let start = saved.first, start != .home { lead.step(to: start) }
         for d in saved.dropFirst() { open(d, newTab: true, background: true) }
     }
 
@@ -485,6 +497,10 @@ final class AppModel {
     func register(_ window: WindowModel) {
         windows[window.id] = WeakWindow(model: window)
         windows = windows.filter { $0.value.model != nil }
+        if let carry = pendingCarry {
+            pendingCarry = nil
+            carry.apply(to: window)
+        }
         if windowsRestored { saveWindowsSoon() }
     }
 
@@ -506,6 +522,8 @@ final class AppModel {
 
     func becameFront(_ window: WindowModel) {
         frontWindow = window.id
+        frontClock += 1
+        window.frontAt = frontClock
         flushWaitingPaths()
     }
 
@@ -545,7 +563,8 @@ final class AppModel {
     /// Opens Help (set by the window, which can open scenes).
     @ObservationIgnored var openHelp: (() -> Void)?
 
-    func open(path: String, newTab: Bool = false) {
+    /// `from`: the window whose page asked (a link inside its note), so a note link stays in its tab.
+    func open(path: String, newTab: Bool = false, from: WindowModel? = nil) {
         guard ready, front != nil else { waitingPaths.append((path, newTab)); return }
         if let section = Destination.settingsSection(path: path) {
             SettingsRouter.shared.open(section)
@@ -565,7 +584,7 @@ final class AppModel {
             if !keep.isEmpty, let w = newTab ? nil : front { w.graphQuery = keep.joined(separator: "&") }
         }
         guard let dest = Destination(path: route) else { return }
-        open(dest, newTab: newTab)
+        if let from { self.route(dest, from: from, newTab: newTab, inNote: true) } else { open(dest, newTab: newTab) }
         if let block, !block.isEmpty, dest.isNote {
             Task { @MainActor in
                 try? await Task.sleep(for: .milliseconds(500))
@@ -627,19 +646,97 @@ final class AppModel {
     }
 
     func open(_ dest: Destination, newTab: Bool = false, background: Bool = false) {
-        // A note already open in a window or tab comes forward instead of opening twice.
-        if newTab, !background, dest != .home, !dest.isSearchLike, let open = windows.values.compactMap(\.model).first(where: { $0.current == dest }), let w = open.window {
-            w.makeKeyAndOrderFront(nil)
-            NSApp.activate()
-            return
-        }
-        if newTab || front == nil {
-            pendingOpener = front?.window
+        if background || front == nil {
+            // Tabs put back at launch or opened behind: no way back to the one in front.
+            pendingOpener = nil
             openWindow?(dest, newTab, background && newTab)
-        } else {
-            front?.go(dest)
+        } else if let front {
+            route(dest, from: front, newTab: newTab)
         }
         if !background { NSApp.activate() }
+    }
+
+    /// The note a new note's window takes the caret in (it may open in another tab than the one that made it).
+    @ObservationIgnored var focusNote: String?
+    /// What a page asked the new tab to show (taken by the next window that registers).
+    @ObservationIgnored var pendingCarry: WindowCarry?
+    @ObservationIgnored private var frontClock = 0
+
+    /// Opens `dest` from `source` by the web's tab rule (lib/app/tabs.tsx; the owner's rule of 24 November 2026,
+    /// Mac, iPad and Android as on the web):
+    /// - inside the same tab it stays there, with a way back: Foli AI's chats, Tasks' lists, a folder tab moving
+    ///   between folders, and (`inNote`) a nested page or link opened from inside the note on screen;
+    /// - a note or view already in a tab shows that tab (a view's tab goes to `dest`); a folder goes to the folder
+    ///   tab used last;
+    /// - anything else opens a new tab. From a page it remembers `source` (Back with nothing left closes it and
+    ///   comes back); `fresh` (the sidebar, "+", New Note) starts it with no way back.
+    func route(_ dest: Destination, from source: WindowModel, fresh: Bool = false, newTab: Bool = false, inNote: Bool = false) {
+        guard dest != source.current else {
+            source.window?.makeKeyAndOrderFront(nil)
+            return
+        }
+        let others = windows.values.compactMap(\.model).filter { $0.id != source.id && $0.window != nil }
+        let place = Self.placement(of: dest, from: source.current, others: others.map(\.tabState), fresh: fresh, newTab: newTab, inNote: inNote)
+        if place == .here {
+            source.step(to: dest)
+            return
+        }
+        // What the page asked to show there (Foli DNA's centre or saved view, the folder's share sheet) goes with it.
+        let carry = WindowCarry(graphQuery: source.graphQuery, graphCenter: source.graphCenter, sharingFolder: source.sharingFolder)
+        source.graphQuery = nil
+        source.graphCenter = nil
+        source.sharingFolder = nil
+        switch place {
+        case .existing(let id):
+            guard let held = others.first(where: { $0.id == id }) else { return }
+            carry.apply(to: held)
+            if held.current != dest, !dest.isNote { held.step(to: dest) }
+            if let w = held.window {
+                w.tabGroup?.selectedWindow = w
+                w.makeKeyAndOrderFront(nil)
+            }
+        case .newTab(let keepsOpener):
+            pendingOpener = keepsOpener ? source.window : nil
+            pendingCarry = carry.isEmpty ? nil : carry
+            openWindow?(dest, true, false)
+        case .here:
+            break
+        }
+        NSApp.activate()
+    }
+
+    /// Where a page opens (the web's rule, lib/app/tabs.tsx): `.here` inside the same tab, `.existing` the tab that
+    /// already holds it, else a new tab that keeps its opener unless it's `fresh`.
+    enum TabPlacement: Equatable {
+        case here
+        case existing(UUID)
+        case newTab(keepsOpener: Bool)
+    }
+
+    /// A window or tab as the rule sees it.
+    struct TabState {
+        let id: UUID
+        let current: Destination
+        var panes: [String]? = nil
+        var frontAt = 0
+    }
+
+    nonisolated static func placement(of dest: Destination, from here: Destination, others: [TabState], fresh: Bool = false, newTab: Bool = false, inNote: Bool = false) -> TabPlacement {
+        let kind = dest.tabKind
+        if !newTab, kind == .none || kind == here.tabKind || (inNote && dest.isNote && here.isNote) { return .here }
+        if let held = holder(of: dest, among: others) { return .existing(held.id) }
+        return .newTab(keepsOpener: !fresh)
+    }
+
+    /// The tab that already holds `dest`'s tab: the note's (or a tab it's joined in), the view's, or the folder tab
+    /// used last.
+    nonisolated static func holder(of dest: Destination, among others: [TabState]) -> TabState? {
+        switch dest.tabKind {
+        case .none: return nil
+        case .note(let id): return others.first { $0.current.noteId == id || $0.panes?.contains(id) == true }
+        case .folders: return others.filter { $0.current.tabKind == .folders }.max { $0.frontAt < $1.frontAt }
+        case .view: return others.first { $0.current.tabKind == dest.tabKind }
+        }
     }
 
     /// folevi-core:// links, Spotlight results and app.folevi.com links.
@@ -733,4 +830,20 @@ final class AppModel {
     }
 
     var unread: Int { notifications.value?.unread ?? 0 }
+}
+
+
+/// A page's request that travels with it to the tab it opens in.
+struct WindowCarry {
+    var graphQuery: String?
+    var graphCenter: String?
+    var sharingFolder: String?
+
+    var isEmpty: Bool { graphQuery == nil && graphCenter == nil && sharingFolder == nil }
+
+    @MainActor func apply(to window: WindowModel) {
+        if let graphQuery { window.graphQuery = graphQuery }
+        if let graphCenter { window.graphCenter = graphCenter }
+        if let sharingFolder { window.sharingFolder = sharingFolder }
+    }
 }

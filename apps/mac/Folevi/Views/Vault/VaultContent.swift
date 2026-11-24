@@ -147,14 +147,25 @@ struct VaultFilesView: View {
         panel.urls.forEach(uploadFile)
     }
 
+    private static let maxUpload = 100 * 1024 * 1024
+
     private func uploadFile(_ url: URL) {
-        guard let data = try? Data(contentsOf: url), data.count <= 100 * 1024 * 1024 else { app.toast("That file is too big for the Vault (100 MB at most).", tone: .error); return }
+        // The size from the file's attributes first, so a file over the limit is never read.
+        let size = (try? url.resourceValues(forKeys: [.fileSizeKey]))?.fileSize ?? 0
+        guard size <= Self.maxUpload else { app.toast("That file is too big for the Vault (100 MB at most).", tone: .error); return }
         let mime = UTType(filenameExtension: url.pathExtension)?.preferredMIMEType ?? "application/octet-stream"
         let f = folder
+        let limit = Self.maxUpload
         busy = true
         app.perform { client in
             defer { busy = false }
-            _ = try await client.command(Commands.VaultFileUpload(VaultUploadArgs(vaultId: vaultId, folderId: f, name: url.lastPathComponent, mime: mime, data: data.base64EncodedString())))
+            // Reading and encoding up to 100 MB would stall the window: both run off the main actor.
+            let encoded = try await Task.detached(priority: .userInitiated) { () throws -> String? in
+                let data = try Data(contentsOf: url)
+                return data.count <= limit ? data.base64EncodedString() : nil
+            }.value
+            guard let encoded else { app.toast("That file is too big for the Vault (100 MB at most).", tone: .error); return }
+            _ = try await client.command(Commands.VaultFileUpload(VaultUploadArgs(vaultId: vaultId, folderId: f, name: url.lastPathComponent, mime: mime, data: encoded)))
         }
     }
 }

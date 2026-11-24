@@ -286,9 +286,8 @@ no native screens. Details: `docs/MOBILE.md`.
   widgets, Siri/Shortcuts and Spotlight not carried over yet.
 - **Android** (`com.folevi.android`): the Capacitor project as it was before the native rewrite (`7a4155c0~1`) with
   its Kotlin plugins and `folevi-bridge.js`, now on Capacitor 8.6.2, R8 in release, splash/insets/start-page fixes.
-- **Layouts** (`apps/web/src/lib/iphone.ts`): iPhone Duo open (window at least 600 x 600 pt) takes the iPad's
-  sidebar layout, closed the phone's; Android phones sideways keep the phone layout. Tests:
-  `apps/web/test/mobile-layout.test.ts`. `scripts/version.mjs` now writes the mobile app's version (1.5.70, 85).
+- **Layouts** (`apps/web/src/lib/platform.ts`, from PR 61): under 700 px the phone layout, wider the sidebar layout
+  (iPhone Duo open is 951 pt wide, so the sidebar); tests in `apps/web/test/platform.test.ts`. `scripts/version.mjs` now writes the mobile app's version (1.5.70, 85).
 - **Checked** (simulators "Folevi Mobile iPhone/iPad/Duo", emulators `Folevi_Mobile_Phone/Tablet/Foldable`):
   first launch, a library on the device, Home, the editor (an edit lands in the `.fnote` file), tabs on iPad and
   Android tablet, the share inbox (a queued share becomes a note), dark mode, Duo closed, foldable open; updating
@@ -763,6 +762,7 @@ account button should move past iPadOS's window buttons).
   `DATABASE_UDF_USER_TIMEOUT_SECONDS=4` for that backend. Bursts show in `convex.log` as "took a long time".
 
 ## 12. Change log
+- 2026-11-25: `main` (4d22880f, all web PRs) merged into `claude/mobile-capacitor-f41734` for PR 66: `lib/iphone.ts`, NotificationsButton and DocumentView taken from `main` (PR 61's width rule, `lib/platform.ts`, replaces this branch's iPhone Duo 600 x 600 rule; `test/mobile-layout.test.ts` removed, `test/platform.test.ts` covers it); HANDOFF both sides kept. Checks: typecheck, lint, all 2,161 web tests, version check and the iOS build pass. 1.5.76 unchanged.
 - 2026-11-25: 1.5.76 (build 91) with PR 74's iPhone memory fix uploaded to TestFlight (delivery bc805158); `main` (85574054) merged into `claude/mobile-capacitor-f41734`.
 - 2026-11-24: PR 74 plus 1.5.75's change measured: 140 MB after the low-memory signal against a 130 MB start, the same as PR 74 alone; nothing left of the memory growth. 1.5.75 is one shared release with Linux (published untagged by the Linux session first): when PR 66 merges, combine the Linux notes into the 1.5.75 changelog entry. Next free version 1.5.76.
 - 2026-11-24: PR 74's fix for the iPhone note memory growth measured on the simulator: after 20 opens and WebKit's low-memory signal, 138 MB against a 136 MB start (before: 232 to 241 MB). Goes into the next TestFlight build once PR 74 merges; when merging main here, keep PR 74's `transitions.ts` (my 1.5.75 change is superseded).

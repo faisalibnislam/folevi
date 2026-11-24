@@ -1,0 +1,17 @@
+{
+  "about": "Made 2026-10-23 by Electron 44.4.5 safeStorage.encryptString in a throwaway Developer ID app (com.folevi.migration-test) whose throwaway Keychain item \"Folevi Migration Test Safe Storage\" held keychainPassword; the item was deleted afterwards, so the password protects nothing.",
+  "blobs": [
+    "djEwAggADTTLh4JLqzeGkTS3f6BR/9KEQIgugLU3nCogF/4=",
+    "djEwZWoYjUhG+UTxvwfxMVutxfz9cHmAFFLdklIByVIctyM=",
+    "djEw42VDSXh2uDjUikvl3ewIBVQ3zu1tRr/yUjun+SSQie/a4pyxTkYXL3qcakgh+sLmNhx/ldEOdOvhrqy9n6fDRRBKFc+HWBPR8mphSZ886ezCdusmRQNASBW2WqrJcn2B6E+6Vu1XNVib4Md59xWbrw==",
+    "djEwilOA6ab9emzg7GacPBmqKQ=="
+  ],
+  "keychainPassword": "ZkdOUEZsekVEaGEwcDBVK2pLb0N0QT09",
+  "madeBy": "Electron 44.4.5 safeStorage.encryptString",
+  "plain": [
+    "folevi r1 vector",
+    "{\"x\":\"AAAA\",\"ed\":\"BBBB\"}",
+    "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "\u00fcn\u00efc\u00f8d\u00e9 \u2713"
+  ]
+}

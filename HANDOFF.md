@@ -259,8 +259,8 @@ instance, window state, own spelling, printing, Windows caption buttons. Builds:
 GitHub's native Windows x64/ARM64 and Linux x64/ARM64 machines (owner's pick), with memory measured against Electron.
 141 Rust tests, bridge tests and a local smoke run (`apps/desktop/scripts/smoke.mjs`) pass. Updater off until an
 update signing key is approved. Details and the owner's checklist: `docs/DESKTOP_APP.md`. First CI results (Windows
-x64, run 45358129332): NSIS 78 MB and MSI 79 MB against Electron's 182 MB installer; after 30 s on the same machine
-139 MB private memory (375 MB working set) against Electron's 204 MB (430 MB). Windows ARM64 lost an increment in a
+x64): NSIS 78 MB and MSI 79 MB against Electron's 182 MB installer; memory about the same as Electron's on Windows
+(214 vs 207 MB private, run 45418586764; an earlier lower figure measured a page that never loaded). Windows ARM64 lost an increment in a
 concurrent-write test (NTFS creation-time tunneling made etags repeat); fixed by using the NTFS file index
 (bb8c25a1). Rerun 45361580640 passed every job (Windows x64 and ARM64, Linux x86_64 and aarch64, Flatpak); its
 Windows test builds are in the owner's Downloads ("Folevi for Windows 1.5.68 Tauri test"), measurements in
@@ -630,6 +630,7 @@ account button should move past iPadOS's window buttons).
   `DATABASE_UDF_USER_TIMEOUT_SECONDS=4` for that backend. Bursts show in `convex.log` as "took a long time".
 
 ## 12. Change log
+- 2026-11-24: The published Windows 1.5.73 installers opened a blank window (built-in pages served under the asked-for name, so as application/octet-stream without the boot script; the Linux session found it, fix bb9906f0 cherry-picked as c150ba78). Replaced in place with the fixed build from CI run 45418586764 (owner's choice; same names and version; sha256 arm64 4a651ed1..., x64 326d03ba...). Memory corrected: with the page loaded Tauri is about Electron's on Windows (214 vs 207 MB private) and higher on Linux; the earlier "a third lighter" measured the blank page. Quick Add's window is now made on first use. `smoke.mjs --embedded` covers built-in assets.
 - 2026-11-24: Release 1.5.73 (build 88) recorded on `claude/desktop-tauri` (untagged: the Mac session's own 1.5.73 on `claude/mac-webview` took tag v1.5.73 three minutes earlier; the main session decided: one release 1.5.73 / build 88 for both, the Mac's tag v1.5.73 (b972616a) stays, no rebuild; whichever of PR 65 and the Mac PR merges second merges main and combines the two CHANGELOG entries into one 1.5.73 entry) with the 1.5.69 to 1.5.72 history from tag v1.5.72; PR 66 (1.5.72) merges first, take the higher version on conflict.
 - 2026-11-24: Owner: "release it", on folevi.com: stable latest links live (folevi.com/download/windows/Folevi-arm64-setup.exe and Folevi-x64-setup.exe, no-cache, now 1.5.73); the download page entry (Web session) and the 1.5.73 version record and tag on main (main session) requested.
 - 2026-11-24: Folevi for Windows 1.5.73 test download published (owner's OK, after v1.5.72): unsigned NSIS installers at https://folevi.com/download/windows/Folevi_1.5.73_arm64-setup.exe (sha256 72f39313...2f4c) and .../Folevi_1.5.73_x64-setup.exe (sha256 a54b07bf...c241), R2 `folevi-updates` windows/, from CI run 45392111016; no update feed (no signing key); version.json/CHANGELOG/tag for 1.5.73 still to record at merge.

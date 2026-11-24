@@ -79,19 +79,25 @@ Installers are built by `.github/workflows/desktop.yml` on GitHub's machines (Wi
 touch the app. Each run also measures memory against the Electron build of PR 58 on the same machine
 (`scripts/measure.mjs`) and lists installer sizes in the run summary.
 
-## Size and memory against Electron (CI run 45361580640, 2026-11-24)
+## Size and memory against Electron (CI run 45418586764, 2026-11-24)
 
-Same machines, same interface, the first-launch screen 30 seconds after start (`scripts/measure.mjs`). Windows:
-Task Manager's figures (private bytes; working set counts shared libraries in every process). Linux: PSS.
+Same machines, same interface, 30 seconds after start on the first-launch screen, the main window and Quick Add's
+both loaded (`scripts/measure.mjs`). Windows: Task Manager's figures (private bytes; the working set counts shared
+libraries in every process). Linux: PSS.
 
 | Build | Installer | Private memory | Working set |
 | --- | ---: | ---: | ---: |
-| Tauri, Windows x64 | 78 MB (MSI 79 MB) | 143 MB | 372 MB |
-| Electron, Windows x64 | 182 MB | 210 MB | 438 MB |
-| Tauri, Windows ARM64 | 78 MB | 148 MB | 418 MB |
+| Tauri, Windows x64 | 78 MB (MSI 79 MB) | 214 MB | 495 MB |
+| Electron, Windows x64 | 182 MB | 207 MB | 434 MB |
+| Tauri, Windows ARM64 | 78 MB | 202 MB | 483 MB |
 | Electron, Windows ARM64 | 176 MB | (not measured) | |
-| Tauri, Linux x86_64 | (Linux session) | 275 MB PSS | |
-| Electron, Linux x86_64 | | 353 MB PSS | |
+| Tauri, Linux x86_64 | (Linux session) | 456 MB PSS | |
+| Electron, Linux x86_64 | | 348 MB PSS | |
+
+So the installer is less than half the size, but memory is about the same as Electron's on Windows and higher on
+Linux (WebKitGTK). An earlier run that looked a third lighter measured a page that never loaded (the asset bug fixed
+in c150ba78), so those figures were wrong. Since then Quick Add's window is made on first use instead of at launch,
+which saves one copy of the interface; the next run's figures show what that buys.
 
 Most of the installer is the interface itself (78 MB, mostly note-cover images); the app's own code is a few MB.
 
@@ -103,16 +109,17 @@ version.
 
 ## Test download (published 2026-11-24, the owner's OK)
 
-Folevi for Windows 1.5.73, unsigned (Windows warns about an unknown publisher), no automatic updates:
+Folevi for Windows 1.5.73, unsigned (Windows warns about an unknown publisher), no automatic updates. The files were
+replaced the same day with a fixed build (the first upload opened a blank window):
 - Windows on ARM: https://folevi.com/download/windows/Folevi_1.5.73_arm64-setup.exe
-  (SHA-256 72f39313076c413343ffbd55bd57b6008034a6dd3be1de05917d194d599b2f4c)
+  (SHA-256 4a651ed19485222980a790e8393e700a7f5d5d091fd9947cd76e3bfda3d9afa0)
 - Intel and AMD: https://folevi.com/download/windows/Folevi_1.5.73_x64-setup.exe
-  (SHA-256 a54b07bf0926b5b04c009a918c83e6146656b7282aed77861d97255a468cc241)
+  (SHA-256 326d03bacd9ba24805a6206c53a4c7d64553f21199342e52e47ddd4adddbf5c7)
 
 Stable links that always point at the latest build (cache `no-cache`, like the Mac's `Folevi.dmg`):
 https://folevi.com/download/windows/Folevi-arm64-setup.exe and https://folevi.com/download/windows/Folevi-x64-setup.exe.
 
-Uploaded with `npx wrangler r2 object put folevi-updates/windows/<file> --remote` from CI run 45392111016. The
+Uploaded with `npx wrangler r2 object put folevi-updates/windows/<file> --remote` from CI run 45418586764 (the fixed build). The
 version came from `apps/desktop/RELEASE_VERSION` (1.5.73) because this branch's version.json predates 1.5.72.
 
 ## Not done yet

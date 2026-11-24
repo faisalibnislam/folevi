@@ -42,7 +42,10 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - name: Build the interface built into the app (production backend)
-        run: node apps/web/scripts/build-shell.mjs --platform windows --production --required --no-copy
+        run: |
+          # A desktop release cut before version.json catches up (apps/desktop/RELEASE_VERSION) stamps its own version.
+          v=$( [ -f apps/desktop/RELEASE_VERSION ] && tr -d '[:space:]' < apps/desktop/RELEASE_VERSION || true )
+          node apps/web/scripts/build-shell.mjs --platform windows --production --required --no-copy ${v:+--app-version "$v"}
       - uses: actions/upload-artifact@v4
         with:
           name: web-export

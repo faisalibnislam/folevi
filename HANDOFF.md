@@ -249,6 +249,19 @@ The ones most likely to be broken:
 
 ## 9. Current state (as of 2026-11-24)
 
+**Folevi for Mac back to the web view (owner, 2026-11-24, branch `claude/mac-webview`, not released):** the owner
+chose to bring back the AppKit WKWebView app (`archive/mac-appkit`, 1.5.64) showing the web app's own UI (sidebar,
+tabs, top bar, Mac window buttons in the page's top bar), as on Windows and Linux, keeping the menu bar, Quick Add
+and the menu bar icon, Spotlight, Shortcuts, Share and Services. Done: `apps/mac` restored from the tag and the
+native frame (N8) removed (Frame/, floating notes, the native Settings window: ⌘, opens the web's /settings in the
+main window; Quick Add is the web panel). The SwiftUI app is at tag `archive/mac-swiftui` (= v1.5.71, local).
+Carry-over from 1.5.71 checked on scratch data: same bundle id, support folder, Keychain names, web storage and
+desktop settings key; the SwiftUI app's "Lock Folevi" defaults (`folevi.lock`) are written back to lock.json once.
+111 Mac tests pass; the Release build passes release.mjs's checks; 1.5.71 then the new build on one scratch
+library opens the same notes. Not done: a signed-in Release run (needs the owner), the owner's OK to release as
+1.5.72. Debug scripts that compared "web" and "native" frames (screens, menus, quickadd, gates) still take a kind;
+only "web" means anything now.
+
 **1.5.70 on TestFlight (2026-11-24, owner's OK):** build 85, cut on `claude/ios-release-1.5.70` from the iPhone Duo
 branch (PR 55, which holds all of `main`), so testers keep the Duo window that 1.5.69 had; uploaded (delivery
 e18198df), tag `v1.5.70` local only. No visible change from 1.5.69: it lines TestFlight up with the merged code
@@ -531,6 +544,10 @@ signed-in account, 1.5.58's frosted folders with a large library, and the iPad c
 account button should move past iPadOS's window buttons).
 
 ## 10. Next steps / open work
+- Folevi for Mac on the web view (`claude/mac-webview`): its PR into `main` after PR 60; a signed-in Release run on
+  scratch data with the owner; then, with the owner's OK, release 1.5.72 (`node scripts/version.mjs release patch`,
+  release.mjs, publish.mjs). Ask the web session (through the main session) for the Mac's no-bounce motion when
+  `inMacApp()`.
 - Folevi for Mac 1.5.71 is live. Its PR 60 (`claude/mac-app-d228e2` into `main`, main at bda71bcd merged in) is merged by the main
   session when CI is green. Push the `v1.5.69` to `v1.5.71` tags only if the owner asks. Watch for reports of signed-in Macs
   stuck on loading after updating (see section 9).
@@ -674,6 +691,7 @@ account button should move past iPadOS's window buttons).
   `DATABASE_UDF_USER_TIMEOUT_SECONDS=4` for that backend. Bursts show in `convex.log` as "took a long time".
 
 ## 12. Change log
+- 2026-11-24: Folevi for Mac back to the AppKit web-view app on `claude/mac-webview` (owner's pick): web's own UI, native frame removed, Mac extras kept; SwiftUI app tagged `archive/mac-swiftui`; 111 Mac tests pass; not released.
 - 2026-11-24: Merged `main` (PR 57, bda71bcd) into the Mac branch for PR 60; versions stay 1.5.71 / 86.
 - 2026-11-24: Merged `main` (PRs 55 and 59, f7893e54) into the Mac branch for PR 60; versions stay 1.5.71 / 86, changelogs kept.
 - 2026-11-24: Folevi for Mac 1.5.71 (build 86) released to the Mac feed with the owner's OK: web-style tabs and the best-native pass; main (PR 56) merged into the Mac branch, 46 Mac tests pass, notarized and stapled.

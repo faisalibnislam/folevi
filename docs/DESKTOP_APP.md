@@ -79,11 +79,41 @@ Installers are built by `.github/workflows/desktop.yml` on GitHub's machines (Wi
 touch the app. Each run also measures memory against the Electron build of PR 58 on the same machine
 (`scripts/measure.mjs`) and lists installer sizes in the run summary.
 
+## Size and memory against Electron (CI run 45361580640, 2026-11-24)
+
+Same machines, same interface, the first-launch screen 30 seconds after start (`scripts/measure.mjs`). Windows:
+Task Manager's figures (private bytes; working set counts shared libraries in every process). Linux: PSS.
+
+| Build | Installer | Private memory | Working set |
+| --- | ---: | ---: | ---: |
+| Tauri, Windows x64 | 78 MB (MSI 79 MB) | 143 MB | 372 MB |
+| Electron, Windows x64 | 182 MB | 210 MB | 438 MB |
+| Tauri, Windows ARM64 | 78 MB | 148 MB | 418 MB |
+| Electron, Windows ARM64 | 176 MB | (not measured) | |
+| Tauri, Linux x86_64 | (Linux session) | 275 MB PSS | |
+| Electron, Linux x86_64 | | 353 MB PSS | |
+
+Most of the installer is the interface itself (78 MB, mostly note-cover images); the app's own code is a few MB.
+
 ## Versions
 
 Folevi's one version (`version.json`): `scripts/version.mjs` copies it into `package.json` (`foleviVersion`, shown
 in the app; `version`, its semver form for the installers). Tauri reads `package.json`. It never changes the
 version.
+
+## Test download (published 2026-11-24, the owner's OK)
+
+Folevi for Windows 1.5.73, unsigned (Windows warns about an unknown publisher), no automatic updates:
+- Windows on ARM: https://folevi.com/download/windows/Folevi_1.5.73_arm64-setup.exe
+  (SHA-256 72f39313076c413343ffbd55bd57b6008034a6dd3be1de05917d194d599b2f4c)
+- Intel and AMD: https://folevi.com/download/windows/Folevi_1.5.73_x64-setup.exe
+  (SHA-256 a54b07bf0926b5b04c009a918c83e6146656b7282aed77861d97255a468cc241)
+
+Stable links that always point at the latest build (cache `no-cache`, like the Mac's `Folevi.dmg`):
+https://folevi.com/download/windows/Folevi-arm64-setup.exe and https://folevi.com/download/windows/Folevi-x64-setup.exe.
+
+Uploaded with `npx wrangler r2 object put folevi-updates/windows/<file> --remote` from CI run 45392111016. The
+version came from `apps/desktop/RELEASE_VERSION` (1.5.73) because this branch's version.json predates 1.5.72.
 
 ## Not done yet
 

@@ -4,6 +4,73 @@ Every Folevi release, newest first, written by `node scripts/version.mjs` from `
 
 Versions are MAJOR.UPDATE.PATCH, PATCH at least two digits: a Major release (2.0.00), a Big update (1.1.05 after 1.0.05) or a Small update (1.0.06 after 1.0.05).
 
+## Version 1.5.73: Small update
+
+Released 2026-11-24 19:06:07+06:00 (build 88, tag v1.5.73)
+
+Folevi for Windows test build: Tauri app for Arm and Intel/AMD PCs, unsigned, no automatic updates yet.
+
+### Added
+
+- Folevi for Windows: a test build for Arm and for Intel and AMD PCs, each native, from folevi.com/download/windows. It's unsigned for now, so Windows asks you to confirm it, and it doesn't update itself yet.
+
+## Version 1.5.72: Small update
+
+Released 2026-11-24 18:18:21+06:00 (build 87, tag v1.5.72)
+
+Folevi for iPhone, iPad and Android is now one app, built from the same web app as everywhere else.
+
+### Added
+
+- One app for iPhone, iPad, iPhone Duo and Android, with the web app's own screens and layouts.
+
+### Improved
+
+- The iPhone and iPad app is about half the size.
+
+## Version 1.5.71: Small update
+
+Released 2026-11-24 13:21:54+06:00 (build 86, tag v1.5.71)
+
+Folevi for Mac opens pages in tabs like the web app and feels more at home on the Mac.
+
+### Improved
+
+- Mac: notes, folders and lists open in a new tab exactly as they do on the web, and Back and Forward move inside a tab.
+- Mac: Ask Foli AI sits in the toolbar.
+- Mac: New Folder is ⇧⌘N.
+- Mac: "Star" is now "Bookmark", as on the web.
+- Mac: calmer motion with no bounce, plus menu and speed fixes.
+
+## Version 1.5.70: Small update
+
+Released 2026-11-24 13:07:28+06:00 (build 85, tag v1.5.70)
+
+iPhone and iPad built from the same code as Folevi's other apps.
+
+### Improved
+
+- iPhone and iPad: the redesign and the iPhone Duo window now come from the same code as Folevi for Mac and Android.
+
+## Version 1.5.69: Small update
+
+Released 2026-11-24 09:17:46+06:00 (build 84, tag v1.5.69)
+
+Folevi on iPhone Duo: the iPad's window when open, the iPhone's when closed.
+
+### Added
+
+- iPhone Duo: open, Folevi shows the iPad's window, with the toolbar and the note's tools in the column at the side, as when the phone is closed.
+
+### Improved
+
+- iPhone Duo: the sidebar stays beside your note, and partly folded it reaches the fold, so the list and the note each have a side.
+- iPhone Duo: fold or unfold while you type, and the note, your text, the cursor and the keyboard come along.
+
+### Fixed
+
+- iPhone Duo: the sidebar no longer stays hidden after you fold and unfold the phone.
+
 ## Version 1.5.68: Small update
 
 Released 2026-11-24 07:43:25+06:00 (build 83, tag v1.5.68)

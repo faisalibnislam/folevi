@@ -42,7 +42,10 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - name: Build the interface built into the app (production backend)
-        run: node apps/web/scripts/build-shell.mjs --platform windows --production --required --no-copy
+        run: |
+          # A desktop release cut before version.json catches up (apps/desktop/RELEASE_VERSION) stamps its own version.
+          v=$( [ -f apps/desktop/RELEASE_VERSION ] && tr -d '[:space:]' < apps/desktop/RELEASE_VERSION || true )
+          node apps/web/scripts/build-shell.mjs --platform windows --production --required --no-copy ${v:+--app-version "$v"}
       - uses: actions/upload-artifact@v4
         with:
           name: web-export
@@ -123,13 +126,13 @@ jobs:
             find bundle -maxdepth 2 -type f \( -name '*.exe' -o -name '*.msi' -o -name '*.deb' -o -name '*.rpm' -o -name '*.AppImage' \) -print0 | while IFS= read -r -d '' f; do
               echo "| $(basename "$f") | $(awk -v b=$(wc -c < "$f") 'BEGIN { printf "%.1f", b/1048576 }') |"
             done
-            bin=$(ls Folevi.exe Folevi folevi 2>/dev/null | head -1)
+            bin=""; for f in Folevi.exe Folevi folevi; do if [ -f "$f" ]; then bin=$f; break; fi; done
             echo "| $bin (the app itself) | $(awk -v b=$(wc -c < "$bin") 'BEGIN { printf "%.1f", b/1048576 }') |"
           } >> "$GITHUB_STEP_SUMMARY"
       - name: Memory (Tauri)
         working-directory: apps/desktop
         run: |
-          bin=$(ls src-tauri/target/release/Folevi.exe src-tauri/target/release/Folevi src-tauri/target/release/folevi 2>/dev/null | head -1)
+          bin=""; for f in Folevi.exe Folevi folevi; do if [ -f "src-tauri/target/release/$f" ]; then bin=src-tauri/target/release/$f; break; fi; done
           if [ "$RUNNER_OS" = "Linux" ]; then
             xvfb-run -a dbus-run-session -- node scripts/measure.mjs --label tauri --out measure-tauri.json --wait 30 -- "$bin"
           else

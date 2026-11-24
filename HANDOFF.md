@@ -651,6 +651,7 @@ account button should move past iPadOS's window buttons).
   `DATABASE_UDF_USER_TIMEOUT_SECONDS=4` for that backend. Bursts show in `convex.log` as "took a long time".
 
 ## 12. Change log
+- 2026-11-24: PR 73: merged `claude/desktop-tauri` again (HANDOFF conflict only); Flatpak CI chose the sandboxed builder on Ubuntu 24.04 (flatpak-builder 1.4.2) and it couldn't find the SDK; the version check in `flatpak-bundle.sh` now parses robustly and logs what it found.
 - 2026-11-24: PR 73 conflict (HANDOFF only) resolved by merging `claude/desktop-tauri` (interface installed as files, 6269a7ff; ready marker for measurements). On Linux in the VM: .deb puts the interface at /usr/lib/Folevi/web, the Flatpak at /app/lib/Folevi/web, AppImage inside; all three open; memory 355 MB PSS (main 101).
 - 2026-11-24: First Flatpak: ARM bundle from the 1.5.75 .deb built in the VM, installed system-wide and opens to the first-launch screen (tray library loads); copy in `~/Downloads/Folevi for Linux 1.5.75 test/`. Not on Flathub or folevi.com. AppStream release set to 1.5.75.
 - 2026-11-24: Flatpak in the VM: the inlined tray modules and the Folevi module build; Ubuntu 22.04's flatpak-builder 1.2 then fails on appstream-compose (gone from GNOME 51), so `flatpak-bundle.sh` uses Flathub's org.flatpak.Builder below 1.3.

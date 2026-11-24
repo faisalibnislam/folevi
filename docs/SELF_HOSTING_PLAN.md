@@ -4,6 +4,11 @@ Written 2026-11-24 for the owner. Status: plan only, nothing built yet. Research
 
 ## The short version
 
+**Owner's decision (2026-11-24): Synology and QNAP get real native apps** (`.spk`, `.qpkg`) with no Docker and no
+Container Manager: the backend program and the web app (with its own Node.js) run as an ordinary NAS service.
+Everything else (UGREEN, TrueNAS, Unraid, hosts) uses the container. Both come from one self-contained server
+bundle, so there is one server, packaged two ways (see §5.8).
+
 Anyone can run their own **Folevi Server** at home or on a rented server, and every Folevi app (web, Mac, iPhone,
 iPad, Android) can sign in to it instead of Folevi Cloud.
 
@@ -12,7 +17,7 @@ iPad, Android) can sign in to it instead of Folevi Cloud.
   first account, and turn on the features they want.
 - **For the person using the apps:** on the sign-in screen, choose **Your own server**. Then scan a QR code from the
   server's setup page, or type its address. Everything else works as it does with Folevi Cloud.
-- **For us:** about 8 to 11 weeks of work in five phases. The hardest part isn't the server. Today the apps have
+- **For us:** about 10 to 13 weeks of work in five phases. The hardest part isn't the server. Today the apps have
   Folevi's own server address built into them, and they must learn to take one at sign-in.
 
 ## 1. What Folevi is made of today
@@ -162,8 +167,8 @@ way. Servers without the relay still work; they just don't wake phones.
 
 | Platform | How people install | What we ship |
 | --- | --- | --- |
-| Synology DSM 7.3/7.4 | Container Manager > Project > paste `compose.yaml` | Guide with screenshots. Later a Package Center SPK using Synology's Docker Project worker |
-| QNAP QTS/QuTS | Container Station 3 > Create > Application (YAML) | Guide; note that 32-bit ARM models aren't supported |
+| Synology DSM 7.x | **Native app**: Package Center from Folevi's package source, or Manual Install of the `.spk`. No Container Manager | `Folevi-Server-<version>-x86_64.spk` and `-aarch64.spk`, a Folevi package source, and later an application to Synology's official Package Center |
+| QNAP QTS/QuTS | **Native app**: App Center from Folevi's repository, or a manual install of the `.qpkg`. No Container Station | `.qpkg` for x86_64 and ARM64; note that 32-bit ARM models aren't supported |
 | UGREEN UGOS Pro (DXP series) | Docker > Project > Create | Guide |
 | TrueNAS Community Edition (25.10+, the old SCALE) | Apps > Discover > Custom App > Install via YAML; use host paths, not ixVolumes | Guide; later a listing in the TrueNAS community catalog |
 | TrueNAS CORE | Reached end of life; jails and VMs are unsupported | Advise moving to Community Edition, or a Linux VM |
@@ -175,6 +180,28 @@ way. Servers without the relay still work; they just don't wake phones.
 | Render | Blueprint button (needs a paid disk) | `render.yaml` |
 | DigitalOcean App Platform, Vercel, Netlify | Not suitable alone (no lasting disk for the backend) | Docs say so |
 
+### 5.8 The native NAS apps (Synology and QNAP)
+
+- **One bundle, two packagings:** the release builds `folevi-server-<version>-linux-<arch>`, which holds:
+  - the Convex backend program for that chip (Convex already builds it to run without Docker; if the NAS's system
+    libraries are too old for it, we build a fully self-contained version ourselves)
+  - the Next.js standalone server with its own Node.js
+  - a small supervisor that starts both, runs the function deploy and the nightly backup, and writes logs
+- **Synology `.spk`:**
+  - runs as its own package user (DSM 7 doesn't let packages run as root)
+  - keeps data in a shared folder the person picks during install (default `folevi`), so DSM's Hyper Backup and
+    snapshots cover it
+  - registers its address with DSM's web server, so it works through the NAS's HTTPS and reverse proxy without
+    extra setup
+  - opens the setup page from a Folevi icon in the DSM main menu
+  - Folevi's own package source (an address added once under Package Center > Settings > Package Sources) gives
+    one-click installs and normal update buttons
+- **QNAP `.qpkg`:** the same bundle as an App Center app, with a Folevi repository for updates.
+- **Builds:** two chips (x86_64, ARM64) per brand per release. Tested on at least one real Synology and one QNAP of
+  each chip before a release.
+- **To check in Phase 0:** whether Convex's ready-made backend program runs on DSM 7 and QTS as is; memory use on a
+  2 GB model.
+
 ## 6. Phases and effort
 
 | Phase | What | Rough effort |
@@ -183,7 +210,7 @@ way. Servers without the relay still work; they just don't wake phones.
 | 1. Server and web | `folevi-server` image, runtime config and `/.well-known/folevi.json`, server edition build, setup page, SMTP, generated secrets, own AI key, `compose.yaml` and `example.env` | 2 to 3 weeks |
 | 2. Apps | Server choice and QR at sign-in, server per place, per-place security policy, runtime Convex address in the bundled export, version check: Mac, iPhone/iPad, Android | 3 weeks |
 | 3. Running it | Backups and restore, update flow, push relay, moving in from Folevi Cloud, admin console server page | 2 weeks |
-| 4. Packaging | NAS guides with screenshots, Railway/Fly/Render/Coolify templates, Unraid/Umbrel/CasaOS/TrueNAS listings, help pages on folevi.com | 1 to 2 weeks |
+| 4. Packaging | Native Synology `.spk` and QNAP `.qpkg` with their package sources, NAS guides with screenshots, Railway/Fly/Render/Coolify templates, Unraid/Umbrel/CasaOS/TrueNAS listings, help pages on folevi.com | 3 to 4 weeks |
 
 A first private beta is possible after Phases 0 to 2: about 6 to 7 weeks.
 

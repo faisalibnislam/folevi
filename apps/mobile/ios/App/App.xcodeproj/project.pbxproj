@@ -1,0 +1,806 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		017DF53D809813350ED77E2B /* AppleSignIn.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0D3E48B5C52B219F0328A2DD /* AppleSignIn.swift */; };
+		036C8E00CFB4F4A4AA0F8A09 /* AppServices.swift in Sources */ = {isa = PBXBuildFile; fileRef = 526B777995EB115C4DDAF4AD /* AppServices.swift */; };
+		03EA26FAC5393F9DDF60C80E /* DocumentScanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2E1B7C940904223FA978A25A /* DocumentScanner.swift */; };
+		0500473E20561DA8C2B440C4 /* DeviceCredential.swift in Sources */ = {isa = PBXBuildFile; fileRef = 26B9BA4BFA5D051264363BA2 /* DeviceCredential.swift */; };
+		0578DF6D4658257CBF9532A7 /* LocalExtras.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8A0B87D30FDCC81E0B18E88 /* LocalExtras.swift */; };
+		099E49FB50E77BCDD20998DA /* FoleviViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 88A036FC00BB8528F5AEEA47 /* FoleviViewController.swift */; };
+		09F7186A65CD52FC13E4B27B /* shell-bridge.js in Resources */ = {isa = PBXBuildFile; fileRef = 64B9A920E9BB6609F38C744D /* shell-bridge.js */; };
+		0CC5C2C9B46E78D4A5441594 /* Keychain.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3824D3E875409B96E5C2B1EF /* Keychain.swift */; };
+		19A11DCF5266CCBFDCE23A88 /* Spectral-SemiBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 3FED64A95210A5413E52375B /* Spectral-SemiBold.ttf */; };
+		1CA998C627766237F2232BEB /* CapApp-SPM in Frameworks */ = {isa = PBXBuildFile; productRef = FD127B870EFB46EFAC91834E /* CapApp-SPM */; };
+		2A18BCD857CE4675E40ABE32 /* Palette.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3CBA0593CD34903EDB4540A3 /* Palette.swift */; };
+		2B915D453F1AAAF41061A211 /* ShellCloud.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B925756625589174B3D1E40 /* ShellCloud.swift */; };
+		2E3E00A4804C2766E8ADDFE3 /* E2eeKeys.swift in Sources */ = {isa = PBXBuildFile; fileRef = 24E5AE6D20AE75C4417E1C58 /* E2eeKeys.swift */; };
+		2EFB1568B559CE5EB25B36FC /* SimulatorEval.swift in Sources */ = {isa = PBXBuildFile; fileRef = A927E021455A57DAEE3D0203 /* SimulatorEval.swift */; };
+		3384862EF58CC46BF05A409C /* FakeAI.swift in Sources */ = {isa = PBXBuildFile; fileRef = 37F6704CB775A10B78D13742 /* FakeAI.swift */; };
+		3AFA54116CC06800C083670E /* mobile-bridge.js in Resources */ = {isa = PBXBuildFile; fileRef = 34B8DA3C342BA46F2F899191 /* mobile-bridge.js */; };
+		3B4E4DE081B8C8DD4E9858B6 /* TextRecognition.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2DB820D201D0833FF9A815B0 /* TextRecognition.swift */; };
+		3E4E6A45BE193F4AEFCFF5C8 /* ShellAI.swift in Sources */ = {isa = PBXBuildFile; fileRef = 95AF78E7BFDEDDD312D00465 /* ShellAI.swift */; };
+		3FB3C8C0634A765EE81D042E /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 76989E05CECAD7B8B3C424A7 /* Assets.xcassets */; };
+		408B474C05ECBC4195179E02 /* ShareView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2DB6142814D4D332F9565895 /* ShareView.swift */; };
+		4315B594FCF03D8881EB9386 /* LibraryCrypto.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0532853BF0D571AC413332C /* LibraryCrypto.swift */; };
+		432D7873997630075F347C09 /* LibraryService.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD9CA44774CFA05823B4F8B9 /* LibraryService.swift */; };
+		4B1E033F0CB271B0C3529DB1 /* ShellAuth.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0E6DC60FC172F7819C8D39E4 /* ShellAuth.swift */; };
+		4D313BA5F68B6F9BEBB00532 /* HostBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = F8B065EAB43E1C6E40AA0658 /* HostBridge.swift */; };
+		4FB34C264C0E482A4F3BA9EA /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 23F8D68E28D07D16EB72E4AA /* LaunchScreen.storyboard */; };
+		56BCBF9A2336909F8C121842 /* EncryptedFS.swift in Sources */ = {isa = PBXBuildFile; fileRef = B4B6C114130587E9F969523D /* EncryptedFS.swift */; };
+		577D40D534D4E4B674164D30 /* PlacesCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6B15FD9273FAAF81F6FDDCB2 /* PlacesCache.swift */; };
+		57CA367213CAD98C798BF0C6 /* Platform.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3439A8BBC97E6B3C26899919 /* Platform.swift */; };
+		5DE01760B6873F25DCED83E7 /* ShareExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 84AD5BD5C2783C3C5B5230A4 /* ShareExtension.appex */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
+		5E04533C01261A377D816DB8 /* config.xml in Resources */ = {isa = PBXBuildFile; fileRef = 8776CD2CC1249496A6F18C86 /* config.xml */; };
+		666ACD0EEBA603C9A6D93CEA /* FoleviShellPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9E4172F5E9B04E6746EE24BC /* FoleviShellPlugin.swift */; };
+		67740B5377F807ABF1532F55 /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = ED2016878D44EAA9692D059F /* SceneDelegate.swift */; };
+		6B4FB12CA6B65E0E8BBC3F74 /* AppIcon.icon in Resources */ = {isa = PBXBuildFile; fileRef = EAD76DE7C9BD042F04E2D09E /* AppIcon.icon */; };
+		6BDAA4D2B8175034CC6B4882 /* LibraryJournal.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2598872289A542EBDB61B23B /* LibraryJournal.swift */; };
+		75C454952F309B262BC8EFEE /* LibraryFileHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2DEB25863D825961588A6A42 /* LibraryFileHandler.swift */; };
+		7872388CA332B719E74D6EEA /* DeepLinkRouter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 94048CD5B558DCB25AF029FB /* DeepLinkRouter.swift */; };
+		7C37F625AD39DE64AC43DFBE /* DeepLinks.swift in Sources */ = {isa = PBXBuildFile; fileRef = 67ED84667D5B66AFA4AB035A /* DeepLinks.swift */; };
+		7D5117DED1874387DEADA79C /* ShareQueue.swift in Sources */ = {isa = PBXBuildFile; fileRef = 355E1BBB4063EB34F3136556 /* ShareQueue.swift */; };
+		7E503C283EE62648822FDE88 /* ShareViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4C0E59F1450FD764F83CEB9E /* ShareViewController.swift */; };
+		801D6A47A63DF696B8E2AE78 /* Spectral-SemiBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 3FED64A95210A5413E52375B /* Spectral-SemiBold.ttf */; };
+		807AC30C322B6C6A418F3E21 /* Folevi.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5A0518B6718F0B648E7C896 /* Folevi.swift */; };
+		81138B00431411BE1EF97D97 /* capacitor.config.json in Resources */ = {isa = PBXBuildFile; fileRef = 68ED4E8FE0185474B6E8E85B /* capacitor.config.json */; };
+		83DEC383861FA77E11C0A3FB /* SaveTargets.swift in Sources */ = {isa = PBXBuildFile; fileRef = B7228A872DC4C5177EFDCD45 /* SaveTargets.swift */; };
+		848D7C8A074DA2BA780B87B5 /* FoleviAPI.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6EE67862C9188E0A2A3BD701 /* FoleviAPI.swift */; };
+		8510D3E7CBC4044DCDCECEDA /* Palette.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3CBA0593CD34903EDB4540A3 /* Palette.swift */; };
+		892604B4B5BEFB5A01F61C49 /* LibraryFS.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB65F9D58B63BAB0B1B24981 /* LibraryFS.swift */; };
+		8C7F73655D4E1084BA13F7A6 /* public in Resources */ = {isa = PBXBuildFile; fileRef = 4CD648EB22208AF4347378BB /* public */; };
+		90A8A159BA6E8F6790EB5718 /* NativeServices.swift in Sources */ = {isa = PBXBuildFile; fileRef = 23A55A55437D0C95B2ABA6E3 /* NativeServices.swift */; };
+		9274D422E80DD96E1259E455 /* ShareSaver.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0C9FD04904A54B3D88DD4B25 /* ShareSaver.swift */; };
+		953D94C006E5CF91926DF3A4 /* LocalExtras.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8A0B87D30FDCC81E0B18E88 /* LocalExtras.swift */; };
+		9657428DC77612318269A6A5 /* FoleviAPI.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6EE67862C9188E0A2A3BD701 /* FoleviAPI.swift */; };
+		969DC361E52B7AA67BE8178E /* WidgetData.swift in Sources */ = {isa = PBXBuildFile; fileRef = A97A8753F0B7ECE02F15BF34 /* WidgetData.swift */; };
+		982A580AB20B0F6A25814E01 /* ShellPlaces.swift in Sources */ = {isa = PBXBuildFile; fileRef = 43811EE3B5B96F8A243C00F0 /* ShellPlaces.swift */; };
+		9AF08673EE64BC5A31A571EE /* LibraryPaths.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7F32FE13F616D969AFD5C6F /* LibraryPaths.swift */; };
+		A4206C8DDA3E11900F8C4118 /* LibraryWatcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = 37CE41FEDAF5956944B87114 /* LibraryWatcher.swift */; };
+		BBC78BC604DA63F8CE333400 /* DeviceModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 54A689B155411B8B140C03C6 /* DeviceModel.swift */; };
+		C24F8DFEE0D82B9AB8BDEA9C /* folevi-cloud.js in Resources */ = {isa = PBXBuildFile; fileRef = 54B63D044F30EDE39B853A47 /* folevi-cloud.js */; };
+		CB1BA80070FA32589D37593C /* DeepLinks.swift in Sources */ = {isa = PBXBuildFile; fileRef = 67ED84667D5B66AFA4AB035A /* DeepLinks.swift */; };
+		CB7A0B04D732AE411C1D28F5 /* PushBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 24B4FA1A099DA8B5338F53CB /* PushBridge.swift */; };
+		D0E50C5E56AFB1047B25DE3F /* SaveTargets.swift in Sources */ = {isa = PBXBuildFile; fileRef = B7228A872DC4C5177EFDCD45 /* SaveTargets.swift */; };
+		D894FDECBA99BDA7F0E8B303 /* ShareQueue.swift in Sources */ = {isa = PBXBuildFile; fileRef = 355E1BBB4063EB34F3136556 /* ShareQueue.swift */; };
+		DDBD364CB1352FFB5706EBC6 /* FoleviNativePlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = B93FEF2673D0F9650689C5D3 /* FoleviNativePlugin.swift */; };
+		DFC23C5C37392998C3324FF1 /* PushNotifications.swift in Sources */ = {isa = PBXBuildFile; fileRef = C07535498F63D3E064C76484 /* PushNotifications.swift */; };
+		E31E9100F02C72A98318975E /* Folevi.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5A0518B6718F0B648E7C896 /* Folevi.swift */; };
+		E39F60A48A8213B27ADCC485 /* SystemSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3E2931EFDAADA7C8C68A981E /* SystemSettings.swift */; };
+		E50223D7959D2BC4B3F26BA5 /* ShareSaver.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0C9FD04904A54B3D88DD4B25 /* ShareSaver.swift */; };
+		E8E03F4FB1BE61A377693A7C /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9420949282AB92AA28A975D3 /* AppDelegate.swift */; };
+		EE0DCC8BDD221D448545A066 /* ShellServices.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5730EE47B557DC9DE87DF93C /* ShellServices.swift */; };
+		F563AF89FB9DC32C47DED7F2 /* DeviceCredential.swift in Sources */ = {isa = PBXBuildFile; fileRef = 26B9BA4BFA5D051264363BA2 /* DeviceCredential.swift */; };
+		FB4EEDA3400A9AF9E8725508 /* AppLock.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E4FBACCB2323A11AC8E7CAC /* AppLock.swift */; };
+		FDF35B4820695887788C948F /* PlacesCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6B15FD9273FAAF81F6FDDCB2 /* PlacesCache.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		0AE2CC07233781EB876159F4 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 6B590BF25178DC7D824D09CE /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = BAE4075C05F13B1D1D6F0DCF;
+			remoteInfo = ShareExtension;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		7C6B2DB89D01A1E9B8F2A565 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				5DE01760B6873F25DCED83E7 /* ShareExtension.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
+/* Begin PBXFileReference section */
+		00974E067C806B76249CC31E /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/LaunchScreen.storyboard; sourceTree = "<group>"; };
+		0C9FD04904A54B3D88DD4B25 /* ShareSaver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareSaver.swift; sourceTree = "<group>"; };
+		0D3E48B5C52B219F0328A2DD /* AppleSignIn.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppleSignIn.swift; sourceTree = "<group>"; };
+		0E6DC60FC172F7819C8D39E4 /* ShellAuth.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShellAuth.swift; sourceTree = "<group>"; };
+		23A55A55437D0C95B2ABA6E3 /* NativeServices.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeServices.swift; sourceTree = "<group>"; };
+		24B4FA1A099DA8B5338F53CB /* PushBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PushBridge.swift; sourceTree = "<group>"; };
+		24E5AE6D20AE75C4417E1C58 /* E2eeKeys.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = E2eeKeys.swift; sourceTree = "<group>"; };
+		2598872289A542EBDB61B23B /* LibraryJournal.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryJournal.swift; sourceTree = "<group>"; };
+		26B9BA4BFA5D051264363BA2 /* DeviceCredential.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceCredential.swift; sourceTree = "<group>"; };
+		2DB6142814D4D332F9565895 /* ShareView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareView.swift; sourceTree = "<group>"; };
+		2DB820D201D0833FF9A815B0 /* TextRecognition.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TextRecognition.swift; sourceTree = "<group>"; };
+		2DEB25863D825961588A6A42 /* LibraryFileHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryFileHandler.swift; sourceTree = "<group>"; };
+		2E1B7C940904223FA978A25A /* DocumentScanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DocumentScanner.swift; sourceTree = "<group>"; };
+		3439A8BBC97E6B3C26899919 /* Platform.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Platform.swift; sourceTree = "<group>"; };
+		34B8DA3C342BA46F2F899191 /* mobile-bridge.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; name = "mobile-bridge.js"; path = "../../../bridge/mobile-bridge.js"; sourceTree = "<group>"; };
+		355E1BBB4063EB34F3136556 /* ShareQueue.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareQueue.swift; sourceTree = "<group>"; };
+		37CE41FEDAF5956944B87114 /* LibraryWatcher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryWatcher.swift; sourceTree = "<group>"; };
+		37F6704CB775A10B78D13742 /* FakeAI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FakeAI.swift; sourceTree = "<group>"; };
+		3824D3E875409B96E5C2B1EF /* Keychain.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Keychain.swift; sourceTree = "<group>"; };
+		3CBA0593CD34903EDB4540A3 /* Palette.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Palette.swift; sourceTree = "<group>"; };
+		3E2931EFDAADA7C8C68A981E /* SystemSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemSettings.swift; sourceTree = "<group>"; };
+		3FED64A95210A5413E52375B /* Spectral-SemiBold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Spectral-SemiBold.ttf"; sourceTree = "<group>"; };
+		43811EE3B5B96F8A243C00F0 /* ShellPlaces.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShellPlaces.swift; sourceTree = "<group>"; };
+		49D88A349FD70A9153DD2C03 /* App.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = App.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		4C0E59F1450FD764F83CEB9E /* ShareViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareViewController.swift; sourceTree = "<group>"; };
+		4CD648EB22208AF4347378BB /* public */ = {isa = PBXFileReference; lastKnownFileType = folder; name = public; path = App/public; sourceTree = SOURCE_ROOT; };
+		526B777995EB115C4DDAF4AD /* AppServices.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppServices.swift; sourceTree = "<group>"; };
+		54A689B155411B8B140C03C6 /* DeviceModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceModel.swift; sourceTree = "<group>"; };
+		54B63D044F30EDE39B853A47 /* folevi-cloud.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; name = "folevi-cloud.js"; path = "../../../bridge/build/folevi-cloud.js"; sourceTree = "<group>"; };
+		5730EE47B557DC9DE87DF93C /* ShellServices.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShellServices.swift; sourceTree = "<group>"; };
+		5B925756625589174B3D1E40 /* ShellCloud.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShellCloud.swift; sourceTree = "<group>"; };
+		5E4FBACCB2323A11AC8E7CAC /* AppLock.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppLock.swift; sourceTree = "<group>"; };
+		64B9A920E9BB6609F38C744D /* shell-bridge.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = "shell-bridge.js"; sourceTree = "<group>"; };
+		67ED84667D5B66AFA4AB035A /* DeepLinks.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeepLinks.swift; sourceTree = "<group>"; };
+		68ED4E8FE0185474B6E8E85B /* capacitor.config.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = capacitor.config.json; sourceTree = "<group>"; };
+		6B04ADF7B81E144C4949AE51 /* CapApp-SPM */ = {isa = PBXFileReference; lastKnownFileType = folder; name = "CapApp-SPM"; path = "CapApp-SPM"; sourceTree = SOURCE_ROOT; };
+		6B15FD9273FAAF81F6FDDCB2 /* PlacesCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlacesCache.swift; sourceTree = "<group>"; };
+		6EE67862C9188E0A2A3BD701 /* FoleviAPI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FoleviAPI.swift; sourceTree = "<group>"; };
+		76989E05CECAD7B8B3C424A7 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		84AD5BD5C2783C3C5B5230A4 /* ShareExtension.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = ShareExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		8776CD2CC1249496A6F18C86 /* config.xml */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = config.xml; sourceTree = "<group>"; };
+		88A036FC00BB8528F5AEEA47 /* FoleviViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FoleviViewController.swift; sourceTree = "<group>"; };
+		94048CD5B558DCB25AF029FB /* DeepLinkRouter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeepLinkRouter.swift; sourceTree = "<group>"; };
+		9420949282AB92AA28A975D3 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
+		95AF78E7BFDEDDD312D00465 /* ShellAI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShellAI.swift; sourceTree = "<group>"; };
+		9E4172F5E9B04E6746EE24BC /* FoleviShellPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FoleviShellPlugin.swift; sourceTree = "<group>"; };
+		A5A0518B6718F0B648E7C896 /* Folevi.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Folevi.swift; sourceTree = "<group>"; };
+		A927E021455A57DAEE3D0203 /* SimulatorEval.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SimulatorEval.swift; sourceTree = "<group>"; };
+		A97A8753F0B7ECE02F15BF34 /* WidgetData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WidgetData.swift; sourceTree = "<group>"; };
+		B4B6C114130587E9F969523D /* EncryptedFS.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EncryptedFS.swift; sourceTree = "<group>"; };
+		B7228A872DC4C5177EFDCD45 /* SaveTargets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SaveTargets.swift; sourceTree = "<group>"; };
+		B8A0B87D30FDCC81E0B18E88 /* LocalExtras.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalExtras.swift; sourceTree = "<group>"; };
+		B93FEF2673D0F9650689C5D3 /* FoleviNativePlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FoleviNativePlugin.swift; sourceTree = "<group>"; };
+		BB65F9D58B63BAB0B1B24981 /* LibraryFS.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryFS.swift; sourceTree = "<group>"; };
+		C07535498F63D3E064C76484 /* PushNotifications.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PushNotifications.swift; sourceTree = "<group>"; };
+		EAD76DE7C9BD042F04E2D09E /* AppIcon.icon */ = {isa = PBXFileReference; lastKnownFileType = wrapper.icon; path = AppIcon.icon; sourceTree = "<group>"; };
+		ED2016878D44EAA9692D059F /* SceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneDelegate.swift; sourceTree = "<group>"; };
+		F0532853BF0D571AC413332C /* LibraryCrypto.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryCrypto.swift; sourceTree = "<group>"; };
+		F7F32FE13F616D969AFD5C6F /* LibraryPaths.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryPaths.swift; sourceTree = "<group>"; };
+		F8B065EAB43E1C6E40AA0658 /* HostBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HostBridge.swift; sourceTree = "<group>"; };
+		FD9CA44774CFA05823B4F8B9 /* LibraryService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryService.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		BC0DC3536DED64E0E8C9923E /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				1CA998C627766237F2232BEB /* CapApp-SPM in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		0A983A628C3E0A302696B3F0 /* Shell */ = {
+			isa = PBXGroup;
+			children = (
+				24E5AE6D20AE75C4417E1C58 /* E2eeKeys.swift */,
+				B4B6C114130587E9F969523D /* EncryptedFS.swift */,
+				37F6704CB775A10B78D13742 /* FakeAI.swift */,
+				9E4172F5E9B04E6746EE24BC /* FoleviShellPlugin.swift */,
+				3824D3E875409B96E5C2B1EF /* Keychain.swift */,
+				F0532853BF0D571AC413332C /* LibraryCrypto.swift */,
+				2DEB25863D825961588A6A42 /* LibraryFileHandler.swift */,
+				BB65F9D58B63BAB0B1B24981 /* LibraryFS.swift */,
+				2598872289A542EBDB61B23B /* LibraryJournal.swift */,
+				F7F32FE13F616D969AFD5C6F /* LibraryPaths.swift */,
+				FD9CA44774CFA05823B4F8B9 /* LibraryService.swift */,
+				37CE41FEDAF5956944B87114 /* LibraryWatcher.swift */,
+				3439A8BBC97E6B3C26899919 /* Platform.swift */,
+				64B9A920E9BB6609F38C744D /* shell-bridge.js */,
+				95AF78E7BFDEDDD312D00465 /* ShellAI.swift */,
+				0E6DC60FC172F7819C8D39E4 /* ShellAuth.swift */,
+				5B925756625589174B3D1E40 /* ShellCloud.swift */,
+				43811EE3B5B96F8A243C00F0 /* ShellPlaces.swift */,
+				5730EE47B557DC9DE87DF93C /* ShellServices.swift */,
+			);
+			name = Shell;
+			path = ../../../ios/ios/App/Native/Shell;
+			sourceTree = "<group>";
+		};
+		15BF5FC5D49E176C5C97BF41 /* Bridge */ = {
+			isa = PBXGroup;
+			children = (
+				54B63D044F30EDE39B853A47 /* folevi-cloud.js */,
+				34B8DA3C342BA46F2F899191 /* mobile-bridge.js */,
+			);
+			name = Bridge;
+			sourceTree = "<group>";
+		};
+		4102E3E068508DD683953C7D = {
+			isa = PBXGroup;
+			children = (
+				4CD648EB22208AF4347378BB /* public */,
+				443E9F32F0EC65EEBF466F3B /* App */,
+				CA32E770025ED8C61B614F01 /* App */,
+				C7C4030FE3210AC366EA6269 /* AppAndWidgets */,
+				D39EBCD6DDA677D485D45DFC /* Native */,
+				A09E2501204CB86B4B2B6562 /* Packages */,
+				9D2C6B5818429C4B03B3E455 /* Shared */,
+				C6D4E426DD3FDC4CD0B6183D /* ShareExtension */,
+				0A983A628C3E0A302696B3F0 /* Shell */,
+				E9C3DB3EC6D7655028A9C0D3 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		443E9F32F0EC65EEBF466F3B /* App */ = {
+			isa = PBXGroup;
+			children = (
+				9420949282AB92AA28A975D3 /* AppDelegate.swift */,
+				EAD76DE7C9BD042F04E2D09E /* AppIcon.icon */,
+				526B777995EB115C4DDAF4AD /* AppServices.swift */,
+				76989E05CECAD7B8B3C424A7 /* Assets.xcassets */,
+				68ED4E8FE0185474B6E8E85B /* capacitor.config.json */,
+				8776CD2CC1249496A6F18C86 /* config.xml */,
+				94048CD5B558DCB25AF029FB /* DeepLinkRouter.swift */,
+				B93FEF2673D0F9650689C5D3 /* FoleviNativePlugin.swift */,
+				88A036FC00BB8528F5AEEA47 /* FoleviViewController.swift */,
+				ED2016878D44EAA9692D059F /* SceneDelegate.swift */,
+				15BF5FC5D49E176C5C97BF41 /* Bridge */,
+				D3E847546E20FF53D0A18F28 /* Host */,
+				23F8D68E28D07D16EB72E4AA /* LaunchScreen.storyboard */,
+			);
+			path = App;
+			sourceTree = "<group>";
+		};
+		9D2C6B5818429C4B03B3E455 /* Shared */ = {
+			isa = PBXGroup;
+			children = (
+				67ED84667D5B66AFA4AB035A /* DeepLinks.swift */,
+				26B9BA4BFA5D051264363BA2 /* DeviceCredential.swift */,
+				A5A0518B6718F0B648E7C896 /* Folevi.swift */,
+				6EE67862C9188E0A2A3BD701 /* FoleviAPI.swift */,
+				B8A0B87D30FDCC81E0B18E88 /* LocalExtras.swift */,
+				3CBA0593CD34903EDB4540A3 /* Palette.swift */,
+				6B15FD9273FAAF81F6FDDCB2 /* PlacesCache.swift */,
+				B7228A872DC4C5177EFDCD45 /* SaveTargets.swift */,
+				355E1BBB4063EB34F3136556 /* ShareQueue.swift */,
+				0C9FD04904A54B3D88DD4B25 /* ShareSaver.swift */,
+				3FED64A95210A5413E52375B /* Spectral-SemiBold.ttf */,
+			);
+			name = Shared;
+			path = ../../../ios/ios/App/Shared;
+			sourceTree = "<group>";
+		};
+		A09E2501204CB86B4B2B6562 /* Packages */ = {
+			isa = PBXGroup;
+			children = (
+				6B04ADF7B81E144C4949AE51 /* CapApp-SPM */,
+			);
+			name = Packages;
+			sourceTree = "<group>";
+		};
+		C6D4E426DD3FDC4CD0B6183D /* ShareExtension */ = {
+			isa = PBXGroup;
+			children = (
+				2DB6142814D4D332F9565895 /* ShareView.swift */,
+				4C0E59F1450FD764F83CEB9E /* ShareViewController.swift */,
+			);
+			name = ShareExtension;
+			path = ../../../ios/ios/App/ShareExtension;
+			sourceTree = "<group>";
+		};
+		C7C4030FE3210AC366EA6269 /* AppAndWidgets */ = {
+			isa = PBXGroup;
+			children = (
+				A97A8753F0B7ECE02F15BF34 /* WidgetData.swift */,
+			);
+			name = AppAndWidgets;
+			path = ../../../ios/ios/App/AppAndWidgets;
+			sourceTree = "<group>";
+		};
+		CA32E770025ED8C61B614F01 /* App */ = {
+			isa = PBXGroup;
+			children = (
+				5E4FBACCB2323A11AC8E7CAC /* AppLock.swift */,
+				A927E021455A57DAEE3D0203 /* SimulatorEval.swift */,
+			);
+			name = App;
+			path = ../../../ios/ios/App/App;
+			sourceTree = "<group>";
+		};
+		D39EBCD6DDA677D485D45DFC /* Native */ = {
+			isa = PBXGroup;
+			children = (
+				0D3E48B5C52B219F0328A2DD /* AppleSignIn.swift */,
+				54A689B155411B8B140C03C6 /* DeviceModel.swift */,
+				2E1B7C940904223FA978A25A /* DocumentScanner.swift */,
+				23A55A55437D0C95B2ABA6E3 /* NativeServices.swift */,
+				24B4FA1A099DA8B5338F53CB /* PushBridge.swift */,
+				C07535498F63D3E064C76484 /* PushNotifications.swift */,
+				3E2931EFDAADA7C8C68A981E /* SystemSettings.swift */,
+				2DB820D201D0833FF9A815B0 /* TextRecognition.swift */,
+			);
+			name = Native;
+			path = ../../../ios/ios/App/Native;
+			sourceTree = "<group>";
+		};
+		D3E847546E20FF53D0A18F28 /* Host */ = {
+			isa = PBXGroup;
+			children = (
+				F8B065EAB43E1C6E40AA0658 /* HostBridge.swift */,
+			);
+			path = Host;
+			sourceTree = "<group>";
+		};
+		E9C3DB3EC6D7655028A9C0D3 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				49D88A349FD70A9153DD2C03 /* App.app */,
+				84AD5BD5C2783C3C5B5230A4 /* ShareExtension.appex */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		93E9E330FC2CE7458D9C925F /* App */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = FFC1863BD4026D2C17CBE82B /* Build configuration list for PBXNativeTarget "App" */;
+			buildPhases = (
+				B77F0AF073564580D75A2CF1 /* Sources */,
+				37BFF6A8CB5CC7FA21AD3FA3 /* Resources */,
+				BC0DC3536DED64E0E8C9923E /* Frameworks */,
+				7C6B2DB89D01A1E9B8F2A565 /* Embed Foundation Extensions */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				C3A3519DE812F4B5CC7645E7 /* PBXTargetDependency */,
+			);
+			name = App;
+			packageProductDependencies = (
+				FD127B870EFB46EFAC91834E /* CapApp-SPM */,
+			);
+			productName = App;
+			productReference = 49D88A349FD70A9153DD2C03 /* App.app */;
+			productType = "com.apple.product-type.application";
+		};
+		BAE4075C05F13B1D1D6F0DCF /* ShareExtension */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = ABF5F71A3EAB710BDF4529C7 /* Build configuration list for PBXNativeTarget "ShareExtension" */;
+			buildPhases = (
+				8DD4FCFA893C596B4739A0A0 /* Sources */,
+				266DAF57127ECDE8135A2BA6 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = ShareExtension;
+			packageProductDependencies = (
+			);
+			productName = ShareExtension;
+			productReference = 84AD5BD5C2783C3C5B5230A4 /* ShareExtension.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		6B590BF25178DC7D824D09CE /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1430;
+				TargetAttributes = {
+					93E9E330FC2CE7458D9C925F = {
+						DevelopmentTeam = 7K32QQ2FX8;
+						ProvisioningStyle = Automatic;
+					};
+					BAE4075C05F13B1D1D6F0DCF = {
+						DevelopmentTeam = 7K32QQ2FX8;
+						ProvisioningStyle = Automatic;
+					};
+				};
+			};
+			buildConfigurationList = B3FD05C59F197F398A0B04AB /* Build configuration list for PBXProject "App" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = 4102E3E068508DD683953C7D;
+			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				397805CC4E683B158816CC6E /* XCLocalSwiftPackageReference "CapApp-SPM" */,
+			);
+			preferredProjectObjectVersion = 77;
+			productRefGroup = E9C3DB3EC6D7655028A9C0D3 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				93E9E330FC2CE7458D9C925F /* App */,
+				BAE4075C05F13B1D1D6F0DCF /* ShareExtension */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		266DAF57127ECDE8135A2BA6 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				19A11DCF5266CCBFDCE23A88 /* Spectral-SemiBold.ttf in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		37BFF6A8CB5CC7FA21AD3FA3 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				6B4FB12CA6B65E0E8BBC3F74 /* AppIcon.icon in Resources */,
+				3FB3C8C0634A765EE81D042E /* Assets.xcassets in Resources */,
+				4FB34C264C0E482A4F3BA9EA /* LaunchScreen.storyboard in Resources */,
+				801D6A47A63DF696B8E2AE78 /* Spectral-SemiBold.ttf in Resources */,
+				81138B00431411BE1EF97D97 /* capacitor.config.json in Resources */,
+				5E04533C01261A377D816DB8 /* config.xml in Resources */,
+				C24F8DFEE0D82B9AB8BDEA9C /* folevi-cloud.js in Resources */,
+				3AFA54116CC06800C083670E /* mobile-bridge.js in Resources */,
+				8C7F73655D4E1084BA13F7A6 /* public in Resources */,
+				09F7186A65CD52FC13E4B27B /* shell-bridge.js in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		8DD4FCFA893C596B4739A0A0 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				7C37F625AD39DE64AC43DFBE /* DeepLinks.swift in Sources */,
+				0500473E20561DA8C2B440C4 /* DeviceCredential.swift in Sources */,
+				E31E9100F02C72A98318975E /* Folevi.swift in Sources */,
+				848D7C8A074DA2BA780B87B5 /* FoleviAPI.swift in Sources */,
+				953D94C006E5CF91926DF3A4 /* LocalExtras.swift in Sources */,
+				2A18BCD857CE4675E40ABE32 /* Palette.swift in Sources */,
+				577D40D534D4E4B674164D30 /* PlacesCache.swift in Sources */,
+				83DEC383861FA77E11C0A3FB /* SaveTargets.swift in Sources */,
+				D894FDECBA99BDA7F0E8B303 /* ShareQueue.swift in Sources */,
+				E50223D7959D2BC4B3F26BA5 /* ShareSaver.swift in Sources */,
+				408B474C05ECBC4195179E02 /* ShareView.swift in Sources */,
+				7E503C283EE62648822FDE88 /* ShareViewController.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		B77F0AF073564580D75A2CF1 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				E8E03F4FB1BE61A377693A7C /* AppDelegate.swift in Sources */,
+				FB4EEDA3400A9AF9E8725508 /* AppLock.swift in Sources */,
+				036C8E00CFB4F4A4AA0F8A09 /* AppServices.swift in Sources */,
+				017DF53D809813350ED77E2B /* AppleSignIn.swift in Sources */,
+				7872388CA332B719E74D6EEA /* DeepLinkRouter.swift in Sources */,
+				CB1BA80070FA32589D37593C /* DeepLinks.swift in Sources */,
+				F563AF89FB9DC32C47DED7F2 /* DeviceCredential.swift in Sources */,
+				BBC78BC604DA63F8CE333400 /* DeviceModel.swift in Sources */,
+				03EA26FAC5393F9DDF60C80E /* DocumentScanner.swift in Sources */,
+				2E3E00A4804C2766E8ADDFE3 /* E2eeKeys.swift in Sources */,
+				56BCBF9A2336909F8C121842 /* EncryptedFS.swift in Sources */,
+				3384862EF58CC46BF05A409C /* FakeAI.swift in Sources */,
+				807AC30C322B6C6A418F3E21 /* Folevi.swift in Sources */,
+				9657428DC77612318269A6A5 /* FoleviAPI.swift in Sources */,
+				DDBD364CB1352FFB5706EBC6 /* FoleviNativePlugin.swift in Sources */,
+				666ACD0EEBA603C9A6D93CEA /* FoleviShellPlugin.swift in Sources */,
+				099E49FB50E77BCDD20998DA /* FoleviViewController.swift in Sources */,
+				4D313BA5F68B6F9BEBB00532 /* HostBridge.swift in Sources */,
+				0CC5C2C9B46E78D4A5441594 /* Keychain.swift in Sources */,
+				4315B594FCF03D8881EB9386 /* LibraryCrypto.swift in Sources */,
+				892604B4B5BEFB5A01F61C49 /* LibraryFS.swift in Sources */,
+				75C454952F309B262BC8EFEE /* LibraryFileHandler.swift in Sources */,
+				6BDAA4D2B8175034CC6B4882 /* LibraryJournal.swift in Sources */,
+				9AF08673EE64BC5A31A571EE /* LibraryPaths.swift in Sources */,
+				432D7873997630075F347C09 /* LibraryService.swift in Sources */,
+				A4206C8DDA3E11900F8C4118 /* LibraryWatcher.swift in Sources */,
+				0578DF6D4658257CBF9532A7 /* LocalExtras.swift in Sources */,
+				90A8A159BA6E8F6790EB5718 /* NativeServices.swift in Sources */,
+				8510D3E7CBC4044DCDCECEDA /* Palette.swift in Sources */,
+				FDF35B4820695887788C948F /* PlacesCache.swift in Sources */,
+				57CA367213CAD98C798BF0C6 /* Platform.swift in Sources */,
+				CB7A0B04D732AE411C1D28F5 /* PushBridge.swift in Sources */,
+				DFC23C5C37392998C3324FF1 /* PushNotifications.swift in Sources */,
+				D0E50C5E56AFB1047B25DE3F /* SaveTargets.swift in Sources */,
+				67740B5377F807ABF1532F55 /* SceneDelegate.swift in Sources */,
+				7D5117DED1874387DEADA79C /* ShareQueue.swift in Sources */,
+				9274D422E80DD96E1259E455 /* ShareSaver.swift in Sources */,
+				3E4E6A45BE193F4AEFCFF5C8 /* ShellAI.swift in Sources */,
+				4B1E033F0CB271B0C3529DB1 /* ShellAuth.swift in Sources */,
+				2B915D453F1AAAF41061A211 /* ShellCloud.swift in Sources */,
+				982A580AB20B0F6A25814E01 /* ShellPlaces.swift in Sources */,
+				EE0DCC8BDD221D448545A066 /* ShellServices.swift in Sources */,
+				2EFB1568B559CE5EB25B36FC /* SimulatorEval.swift in Sources */,
+				E39F60A48A8213B27ADCC485 /* SystemSettings.swift in Sources */,
+				3B4E4DE081B8C8DD4E9858B6 /* TextRecognition.swift in Sources */,
+				969DC361E52B7AA67BE8178E /* WidgetData.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		C3A3519DE812F4B5CC7645E7 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = BAE4075C05F13B1D1D6F0DCF /* ShareExtension */;
+			targetProxy = 0AE2CC07233781EB876159F4 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin PBXVariantGroup section */
+		23F8D68E28D07D16EB72E4AA /* LaunchScreen.storyboard */ = {
+			isa = PBXVariantGroup;
+			children = (
+				00974E067C806B76249CC31E /* Base */,
+			);
+			name = LaunchScreen.storyboard;
+			sourceTree = "<group>";
+		};
+/* End PBXVariantGroup section */
+
+/* Begin XCBuildConfiguration section */
+		4859524CD0BFA571280181E5 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CODE_SIGN_ENTITLEMENTS = ../../../ios/ios/App/ShareExtension/ShareExtension.entitlements;
+				INFOPLIST_FILE = ../../../ios/ios/App/ShareExtension/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.folevi.ios.share;
+				PRODUCT_NAME = ShareExtension;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		4A0C935808978B5A7673E412 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = App/App.entitlements;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				INFOPLIST_FILE = App/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.folevi.ios;
+				PRODUCT_NAME = App;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		5C9EF0E6AF4F9491454DE177 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				"CODE_SIGN_IDENTITY[sdk=iphonesimulator*]" = "-";
+				CODE_SIGN_STYLE = Automatic;
+				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 83;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = 7K32QQ2FX8;
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				MARKETING_VERSION = 1.5.68;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		9A88BC63FE28A3C568BAF1E5 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CODE_SIGN_ENTITLEMENTS = ../../../ios/ios/App/ShareExtension/ShareExtension.entitlements;
+				INFOPLIST_FILE = ../../../ios/ios/App/ShareExtension/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.folevi.ios.share;
+				PRODUCT_NAME = ShareExtension;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		EB1CC3A930E09FEBECF9195D /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = App/App.entitlements;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				INFOPLIST_FILE = App/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.folevi.ios;
+				PRODUCT_NAME = App;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		F61063B78755D98B1B9C3697 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				"CODE_SIGN_IDENTITY[sdk=iphonesimulator*]" = "-";
+				CODE_SIGN_STYLE = Automatic;
+				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 83;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = 7K32QQ2FX8;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				MARKETING_VERSION = 1.5.68;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		ABF5F71A3EAB710BDF4529C7 /* Build configuration list for PBXNativeTarget "ShareExtension" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				4859524CD0BFA571280181E5 /* Debug */,
+				9A88BC63FE28A3C568BAF1E5 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		B3FD05C59F197F398A0B04AB /* Build configuration list for PBXProject "App" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				F61063B78755D98B1B9C3697 /* Debug */,
+				5C9EF0E6AF4F9491454DE177 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		FFC1863BD4026D2C17CBE82B /* Build configuration list for PBXNativeTarget "App" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				4A0C935808978B5A7673E412 /* Debug */,
+				EB1CC3A930E09FEBECF9195D /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+
+/* Begin XCLocalSwiftPackageReference section */
+		397805CC4E683B158816CC6E /* XCLocalSwiftPackageReference "CapApp-SPM" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = "CapApp-SPM";
+		};
+/* End XCLocalSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		FD127B870EFB46EFAC91834E /* CapApp-SPM */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = "CapApp-SPM";
+		};
+/* End XCSwiftPackageProductDependency section */
+	};
+	rootObject = 6B590BF25178DC7D824D09CE /* Project object */;
+}

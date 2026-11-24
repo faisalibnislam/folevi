@@ -1,0 +1,41 @@
+{
+  "name": "@folevi/mobile",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Folevi for iPhone, iPad, iPhone Duo and Android: one Capacitor app around the web app's built-in interface (the shell export), with small native plugins.",
+  "type": "module",
+  "scripts": {
+    "shell": "node ../web/scripts/build-shell.mjs --platform mobile",
+    "bundle": "node scripts/bundle-bridge.mjs",
+    "sync": "pnpm bundle && node scripts/prepare-web.mjs && npx cap sync",
+    "ios": "node scripts/run.mjs ios",
+    "android": "node scripts/run.mjs android",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "capacitor:update:after": "node scripts/after-update.mjs"
+  },
+  "dependencies": {
+    "@capacitor/action-sheet": "8.1.1",
+    "@capacitor/android": "8.6.2",
+    "@capacitor/app": "8.1.2",
+    "@capacitor/browser": "8.0.5",
+    "@capacitor/clipboard": "8.0.1",
+    "@capacitor/core": "8.6.2",
+    "@capacitor/haptics": "8.0.2",
+    "@capacitor/ios": "8.6.2",
+    "@capacitor/keyboard": "8.0.6",
+    "@capacitor/share": "8.0.3",
+    "@capacitor/splash-screen": "8.0.2",
+    "@capacitor/status-bar": "8.0.4"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "8.6.2",
+    "@types/node": "24.13.6",
+    "esbuild": "0.28.2",
+    "typescript": "6.0.3"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild"
+    ]
+  }
+}

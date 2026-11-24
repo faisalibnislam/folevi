@@ -694,6 +694,7 @@ account button should move past iPadOS's window buttons).
   `DATABASE_UDF_USER_TIMEOUT_SECONDS=4` for that backend. Bursts show in `convex.log` as "took a long time".
 
 ## 12. Change log
+- 2026-11-24: PR 74 also empties the move's screen picture when it ends (`leaving.replaceChildren()`, the iOS review's TestFlight 1.5.75 change): with it a WebKit probe keeps 0 of 10 pictures and 0 of 5 editors in every run. The iOS review's remaining ~2 MB per open (no-copy runs) was the real note screen held by finished animations, which the first PR 74 commit releases; the mobile session re-measures on iOS.
 - 2026-11-24: iPhone layout memory fix (branch `claude/web-iphone-note-memory`): the push/pop/zoom moves' finished animations kept every note that slid in reachable in WebKit (about 5 MB per open on iOS); `transitions.ts` now drops their element and handlers when a move ends. Regression spec `e2e/iphone-note-memory.spec.ts` runs in the mac-webkit project (not in CI). How it was found: a WeakRef probe in Playwright WebKit; note that locators mark what they touch (`__playwright_target__`), which keeps elements alive, so such probes must find elements from inside the page.
 - 2026-11-24: `apps/web/test/version.test.tsx` checks the AppKit app's About panel again (AppDelegate.swift, MenuModel.swift) instead of the SwiftUI app's AppCommands.swift.
 - 2026-11-24: Secret scan: the Mac screenshot script's made-up Vault demo values (brought back in 8ebce629) marked `gitleaks:allow` and fingerprinted in `.gitleaksignore`.

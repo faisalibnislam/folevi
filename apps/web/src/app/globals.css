@@ -1540,6 +1540,19 @@
    the same width): MacLook.sidebarWidth (288 pt) is this 8px gap and the 280px panel. Its width doesn't drag here. */
 :root:is([data-mac-native], [data-ipad-native]) aside[aria-label="Page tools"]:not(.ui-pop) { width: 280px !important; }
 :root:is([data-mac-native], [data-ipad-native]) aside[aria-label="Page tools"]:not(.ui-pop) > [role="separator"] { display: none; }
+/* The iPad (the owner's Mac UI guide, 2026-11-23): the native content card holds its top bar and, below it, the note,
+   so the page draws no card of its own (its sheet sits on the card's fill) and its tools are the Mac's inspector, a
+   flat rounded panel inside the card: a quiet grey fill (the Mac's quaternary label at 60%, MacLook.Colors.panel),
+   18pt corners, no glass and no shadow, 12pt from the note and from the card's trailing and bottom edges. */
+:root[data-ipad-native] { --ipad-panel: rgb(0 0 0 / 0.07); }
+:root[data-ipad-native][data-theme="dark"] { --ipad-panel: rgb(255 255 255 / 0.09); }
+@media (prefers-color-scheme: dark) { :root[data-ipad-native]:not([data-theme="light"]) { --ipad-panel: rgb(255 255 255 / 0.09); } }
+:root[data-ipad-native] [data-note-panel] { background: transparent; border-radius: 0; }
+:root[data-ipad-native] [data-note-panel]:has(~ aside[aria-label="Page tools"]:not(.ui-pop)) { margin-bottom: 0; }
+:root[data-ipad-native] aside[aria-label="Page tools"]:not(.ui-pop) {
+  height: auto; align-self: stretch; margin: 0 12px 12px 12px;
+  background: var(--ipad-panel); border-radius: var(--radius-container); box-shadow: none; overflow: hidden;
+}
 
 /* Folevi for Mac's native look: Liquid Glass for everything that floats over a note (the owner, 2026-11-18: the
    note's menu "doesn't feel native ... it is pure white"). Menus, the floating bar and popovers were white at 82%:

@@ -71,8 +71,8 @@ public struct PhoneNotificationsContent: View {
                         PhoneScreenEmpty(icon: .bellOff, title: model.filter == .unread && !(model.rows.isEmpty) ? "No unread notifications" : "You’re all caught up", message: "Comments, replies, @mentions and pages shared with you show up here.")
                     } else {
                         ForEach(groups, id: \.label) { g in
-                            Text(g.label.uppercased())
-                                .webText(WebTextStyle(size: 12, leading: 16, weight: 600, letterSpacing: 0.48))
+                            Text(g.label)
+                                .webText(PhoneType.captionCaps)
                                 .foregroundStyle(FoleviTokens.Chrome.inkMuted.resolve(scheme).color)
                                 .padding(.horizontal, 20)
                                 .padding(.top, 16)

@@ -1,6 +1,25 @@
 {
   "releases": [
     {
+      "version": "1.5.65",
+      "build": 80,
+      "released": "2026-11-23T22:09:59+06:00",
+      "type": "patch",
+      "summary": "A new look for iPhone and iPad, in step with Folevi for Mac.",
+      "improved": [
+        "iPhone: every screen sits on a soft grey, its lists on rounded cards, with no lines between rows.",
+        "iPhone: each top bar ends the same way, with the screen's actions, a black + for something new and a search button.",
+        "iPhone: Home starts with your places and Catch me up, then Recent, Bookmarks, Folders and tags you can tap.",
+        "iPhone: Tasks and Calendar keep each day's tasks together on a card.",
+        "iPad: each screen has its own top bar inside the page, with Back, Forward, New note and search.",
+        "iPad: a note's tools sit in a flat panel beside it, and the sidebar is slimmer."
+      ],
+      "fixed": [
+        "iPhone: Home no longer slides to one side while it loads."
+      ],
+      "tag": "v1.5.65"
+    },
+    {
       "version": "1.5.64",
       "build": 79,
       "released": "2026-11-22T08:28:24+06:00",

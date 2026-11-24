@@ -341,7 +341,7 @@ public struct PhoneStyleSheetContent: View {
     // MARK: Parts
 
     private func caps(_ title: String) -> some View {
-        Text(title.uppercased())
+        Text(title)
             .webText(PhoneType.captionCaps)
             .foregroundStyle(FoleviTokens.Chrome.inkMuted.resolve(scheme).color)
             .padding(.horizontal, 4)
@@ -353,9 +353,8 @@ public struct PhoneStyleSheetContent: View {
         VStack(spacing: 0) {
             Group(subviews: content()) { rows in
                 ForEach(Array(rows.enumerated()), id: \.element.id) { i, row in
-                    row.overlay(alignment: .top) {
-                        if i > 0 { PhoneSurface.separator.resolve(scheme).color.frame(height: 0.5).padding(.leading, 16) }
-                    }
+                    // (No lines between the rows: the owner, 2026-11-23.)
+                    row
                 }
             }
         }

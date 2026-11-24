@@ -300,9 +300,8 @@ struct PhoneSheetGroup<Content: View>: View {
         VStack(spacing: 0) {
             Group(subviews: content) { rows in
                 ForEach(Array(rows.enumerated()), id: \.element.id) { i, row in
-                    row.overlay(alignment: .top) {
-                        if i > 0 { PhoneSurface.separator.resolve(scheme).color.frame(height: 0.5).allowsHitTesting(false) }
-                    }
+                    // (No lines between the rows: the owner, 2026-11-23.)
+                    row
                 }
             }
         }

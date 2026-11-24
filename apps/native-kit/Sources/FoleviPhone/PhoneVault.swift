@@ -59,6 +59,8 @@ public struct PhoneVaultScreen: View {
     private var options: PhoneScreenOptions {
         var o = PhoneScreenOptions(title: "Vault")
         if native { o.subtitle = subtitle }
+        // (Lock and More only while it's open: no empty glass in the bar otherwise.)
+        o.trailingEmpty = !(native && model.isOpen)
         return o
     }
 

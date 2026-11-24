@@ -465,7 +465,7 @@ private struct RebuildRoot: View {
             } else if let kind = NotesListKind(route: route) {
                 RebuildNotesScreen(kind: kind, frame: model, menus: menus, phone: phone, newFolder: { newFolder = NewFolderRequest(parent: $0) }) { selecting = $0 }
             } else {
-                PlaceholderScreen(model: model, route: route, desk: desk).phoneOwnBar()
+                PlaceholderScreen(model: model, route: route, desk: desk)
             }
         }
         // The keyboard covers the tab bar and the screens (the web's page doesn't move for it); a field that needs
@@ -578,23 +578,13 @@ private struct PlaceholderScreen: View {
     let desk: FrameModel
     @Environment(\.colorScheme) private var scheme
 
+    /// Under iOS's own bar like every other screen (the owner, 2026-11-23): the title, the system's Back, the frame's
+    /// grey behind the borrowed screen.
     var body: some View {
-        let root = PhoneFrameModel.isTabRoot(route) && model.stack.first?.route == route
-        VStack(spacing: 0) {
-            HStack(spacing: 8) {
-                if !root {
-                    WebGlassCircle("Back", action: { model.back() }) {
-                        WebIconView(.chevronLeft, size: 22, strokeWidth: 2.2)
-                    }
-                }
-                Text(route.fallbackTitle).webText(.display(.title3)).lineLimit(1).foregroundStyle(FoleviTokens.Chrome.heading.resolve(scheme).color)
-                Spacer(minLength: 0)
-            }
-            .padding(.horizontal, 16)
-            .frame(height: 52)
-            DeskScreen(model: desk, route: route)
-        }
-        .background(FoleviTokens.Chrome.canvas.resolve(scheme).color.ignoresSafeArea())
+        DeskScreen(model: desk, route: route)
+        .navigationTitle(route.fallbackTitle)
+        .navigationBarTitleDisplayMode(.inline)
+        .background(PhoneLook.frame.resolve(scheme).color.ignoresSafeArea())
         .onAppear { RebuildDeskBridge.show(route, on: desk) }
     }
 }

@@ -242,7 +242,7 @@ public struct PhoneInsertSheetContent: View {
 
     private func section(_ s: InsertSectionSpec) -> some View {
         VStack(alignment: .leading, spacing: 0) {
-            Text(s.title.uppercased())
+            Text(s.title)
                 .webText(PhoneType.captionCaps)
                 .foregroundStyle(FoleviTokens.Chrome.inkMuted.resolve(scheme).color)
                 .padding(.horizontal, 4)

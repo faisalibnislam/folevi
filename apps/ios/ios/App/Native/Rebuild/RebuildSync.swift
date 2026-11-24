@@ -130,7 +130,6 @@ struct RebuildSyncSheet: View {
                 if !rows.isEmpty {
                     VStack(spacing: 0) {
                         ForEach(rows.indices, id: \.self) { i in
-                            if i > 0 { Divider().padding(.leading, 16) }
                             HStack {
                                 Text(rows[i].label).foregroundStyle(DS.color.ink)
                                 Spacer(minLength: 12)

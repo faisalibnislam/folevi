@@ -26,7 +26,7 @@ on `origin/main`.
 | Folevi for Mac | `apps/mac` (AppKit + native screens + one WKWebView for the editor), Developer ID, notarized, Sparkle updates from `folevi.com/download/mac/appcast.xml` | Shipped by direct download only (no Mac App Store build) |
 | Folevi for iPhone and iPad | `apps/ios` (native SwiftUI/UIKit screens, web note editor), iOS 18+ | TestFlight internal group "Folevi team" only; never submitted to App Review |
 | Android | `apps/android`: a native Compose app (Gradle root `apps/android`, modules `engine`, `app`); the Capacitor app is gone | **Resumed 2026-11-23** as a native app "just like iPhone" for phones, foldables, tablets and Googlebooks; first build complete on branch `claude/android-native-622675` (not merged, not on Play; `docs/ANDROID_NATIVE_PLAN.md`) |
-| Folevi for Windows | `apps/desktop` (Electron, revived 2026-11-24): native arm64 and x64 builds, Windows 10 22H2 and 11, the bundled web interface; `docs/WINDOWS.md` | **Built 2026-11-24** on branch `claude/windows-electron-4ed862`: unsigned test installers handed to the owner; not merged, not published |
+| Folevi for Windows and Linux | `apps/desktop` (Tauri 2, system web view): Windows ARM64/x64 (NSIS, MSI), Linux x86_64/aarch64 (AppImage, deb, rpm, Flatpak); `docs/DESKTOP_APP.md` | **Built 2026-11-24** on branch `claude/desktop-tauri` (replaces the Electron PR 58): CI test builds only; not merged, not published |
 | Web Clipper | `apps/clipper` (Chrome/Edge extension, own lockfile) | Built and tested in CI; store listing status: see `apps/clipper/STORE.md` |
 | MCP server listing | `mcp/` (`server.json`) | Folevi exposes an MCP endpoint through its OAuth provider |
 
@@ -249,18 +249,16 @@ The ones most likely to be broken:
 
 ## 9. Current state (as of 2026-11-24)
 
-**Folevi for Windows (branch `claude/windows-electron-4ed862`, PR 58 https://github.com/faisalibnislam/folevi/pull/58 into `main`, not merged, nothing published):** the old Electron
-Mac app came back as `apps/desktop`, now Windows-only (owner's picks in
-`docs/claude-context/memory/windows-app-decisions-2026-11-24.md`: Electron, native arm64 + x64, unsigned for now,
-folevi.com download with updates from R2, Windows 10 22H2 + 11, Folevi's own top bar with Windows' caption buttons).
-Cloud sign-in (incl. Google/Apple straight), the library on this PC, several places, E2EE keys (DPAPI), tray icon,
-Quick Add (Ctrl+Alt+Space), notifications and a taskbar badge, folevi:// links, single instance, window state,
-Folevi's own spelling, Ctrl+P printing, browser-style tab keys, electron-updater per architecture. The web got a
-`windows` platform (words "this PC", Settings > Desktop app in Windows' words, caption-button room in
-`globals.css`, Segoe UI Variable, accent color). Installers cross-build on this Mac (`node apps/desktop/scripts/dist.mjs`):
-`Folevi-Setup-1.5.68-arm64.exe` and `-x64.exe` (+ ZIPs) were handed to the owner with the checklist in
-`docs/WINDOWS.md`; not tried on a real Windows PC yet. 301 desktop unit tests, the web's tests and a smoke run
-(`apps/desktop/scripts/smoke.mjs`) pass.
+**Folevi for Windows and Linux (branch `claude/desktop-tauri`, not merged, nothing published):** the owner chose "one
+web app everywhere" and the Mac app's approach (small, light), so the desktop app is now **Tauri 2** in the system
+web view (WebView2, WebKitGTK), replacing the same day's Electron build (PR 58, `claude/windows-electron-4ed862`,
+kept in history; the main session closes PR 58 when the Tauri PR supersedes it). Rust shell with the Mac's
+ShellRouter method names behind the shared shell-bridge.js: library (FLV1), sign-in, places, E2EE keys, Foli AI own
+keys, calendars, reminders, tray, Quick Add (Ctrl+Alt+Space), notifications, badge, folevi:// links, single
+instance, window state, own spelling, printing, Windows caption buttons. Builds: `.github/workflows/desktop.yml` on
+GitHub's native Windows x64/ARM64 and Linux x64/ARM64 machines (owner's pick), with memory measured against Electron.
+141 Rust tests, bridge tests and a local smoke run (`apps/desktop/scripts/smoke.mjs`) pass. Updater off until an
+update signing key is approved. Details and the owner's checklist: `docs/DESKTOP_APP.md`.
 
 **Release, 2026-11-24 (branch `claude/folevi-core-529dbe`, PR 51 merged into `main` as 7e2080e9):**
 - **1.5.66** (tag `v1.5.66`, local): the native Mac app replacing the AppKit one, plus PR 52's iPhone/iPad redesign.
@@ -501,23 +499,11 @@ signed-in account, 1.5.58's frosted folders with a large library, and the iPad c
 account button should move past iPadOS's window buttons).
 
 ## 10. Next steps / open work
-- Folevi for Windows (`claude/windows-electron-4ed862`): the owner tries the test installers on a Windows on ARM and
-  an Intel/AMD PC (checklist in `docs/WINDOWS.md`); fix what they find; then, each with the owner's OK: merging
-  PR 58 (it changes web files, so merging deploys), signing (Azure Trusted Signing suggested), uploading to R2
-  `windows/<arch>/`, a Windows entry on the download page, Dropbox/Google Drive client ids in the build, and a
-  `windows` minimum in `convex/lib/shellVersions.ts`. Not on Windows yet: app lock, bookmark previews in local
-  mode, notification actions, call recording, text in images.
-  Owner, 2026-11-24: "one web app everywhere": this Electron app becomes the desktop app for Windows, Mac and
-  Linux (Capacitor for mobile). Merge PR 58 after PRs 55 and 57 (merge `main` in again then); add Mac and Linux
-  targets only once the plan arrives.
-- iPhone and iPad redesign (`claude/ios-native-redesign-f4a8be`): PR 56 into `main` waits on the owner's review
-  and merge; the owner tries 1.5.67 from TestFlight. The `v1.5.65` and `v1.5.67` tags are local only (pushing them
-  was not asked for). Open question: should the iPad inspector's Foli AI tab get back the web panel's ready-made
-  actions (Summarize, Continue...) next to the Ask chat?
-  Owner's calls from the 2026-11-23 HIG audit: Foli AI is a tab that opens a sheet (the HIG says tabs navigate,
-  never act); section headings stay sentence case (Apple uses title case); dark mode keeps a pure black frame.
-  Known gaps: the notifications sheet's rows are not on cards yet; screens borrowed from the iPad (Foli DNA,
-  Reviews) keep their own white page under the system bar.
+- Folevi for Windows and Linux (`claude/desktop-tauri`, Tauri): the owner tries the CI test builds (checklist in
+  `docs/DESKTOP_APP.md`); fix what they find; open the Tauri PR into `main` (supersedes PR 58, which the main session
+  closes); then, each with the owner's OK: an update signing key (turns the updater on), Windows signing, uploads to
+  R2, a download page entry, Flathub (manifest ready), Dropbox/Google Drive sign-in on this platform, a `windows`
+  and `linux` minimum in `convex/lib/shellVersions.ts`. Mac keeps its own app (no Mac target here).
 - Android native (PR 54, merged into `main` as 289b11af): next are the owner's Play steps (`apps/android/README.md` "Steps only the owner can do"), and the
   plan's remaining phase 2 items (Credential Manager sign-in, onboarding, sharing sheet, templates).
 - Folevi for Mac (native, `apps/mac`, branch `claude/folevi-core-529dbe`), the owner's order of 2026-11-23:
@@ -635,6 +621,7 @@ account button should move past iPadOS's window buttons).
   `DATABASE_UDF_USER_TIMEOUT_SECONDS=4` for that backend. Bursts show in `convex.log` as "took a long time".
 
 ## 12. Change log
+- 2026-11-24: Folevi desktop moved to Tauri 2 for Windows (ARM64, x64) and Linux (x86_64, aarch64) on `claude/desktop-tauri` (owner: "one web app everywhere", small and light like the Mac app); CI builds and memory measurements; Electron PR 58 superseded, not merged.
 - 2026-11-24: Merged `main` (PR 56, iPhone/iPad second round, and the e2e and secret-scan fixes) into `claude/windows-electron-4ed862` to clear PR 58's conflict; only HANDOFF.md conflicted (both sides kept). Owner decided "one web app everywhere": this Electron app becomes the desktop app for Windows, Mac and Linux (Mac and Linux targets wait for the plan).
 - 2026-11-24: Folevi for Windows: branch pushed and PR 58 opened into `main` with the owner's OK; not merged.
 - 2026-11-24: Folevi for Windows built on `claude/windows-electron-4ed862` (Electron `apps/desktop` revived, Mac parts removed, web `windows` platform); unsigned arm64 and x64 test installers handed to the owner; not merged or published.

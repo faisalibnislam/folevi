@@ -674,6 +674,7 @@ account button should move past iPadOS's window buttons).
   `DATABASE_UDF_USER_TIMEOUT_SECONDS=4` for that backend. Bursts show in `convex.log` as "took a long time".
 
 ## 12. Change log
+- 2026-11-24: Note styles sync (branch `claude/web-note-styles-sync`): `GET /note-styles` (convex/http.ts), `lib/shell/styleSync.ts` (anonymous check once per launch, new or changed styles and images kept in Cache Storage, newer `updatedAt` wins over the bundled snapshot), local mode reads the merged set. Not checked against a real deployment's storage CORS; the privacy policy doesn't mention local mode, so a sentence about the style check is the owner's call.
 - 2026-11-24: Merged `main` (PR 57, bda71bcd) into the Mac branch for PR 60; versions stay 1.5.71 / 86.
 - 2026-11-24: Merged `main` (PRs 55 and 59, f7893e54) into the Mac branch for PR 60; versions stay 1.5.71 / 86, changelogs kept.
 - 2026-11-24: Folevi for Mac 1.5.71 (build 86) released to the Mac feed with the owner's OK: web-style tabs and the best-native pass; main (PR 56) merged into the Mac branch, 46 Mac tests pass, notarized and stapled.

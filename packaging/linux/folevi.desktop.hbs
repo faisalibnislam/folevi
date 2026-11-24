@@ -1,0 +1,29 @@
+[Desktop Entry]
+Type=Application
+Version=1.5
+Name={{name}}
+GenericName=Notes
+Comment=Notes, tasks and docs in one calm place
+Exec={{exec}} %u
+TryExec={{exec}}
+Icon={{icon}}
+Terminal=false
+Categories=Office;TextEditor;Utility;
+Keywords=notes;tasks;todo;docs;writing;journal;
+MimeType=x-scheme-handler/folevi;
+StartupNotify=true
+StartupWMClass=folevi
+SingleMainWindow=true
+Actions=new-note;quick-add;today;
+
+[Desktop Action new-note]
+Name=New Note
+Exec={{exec}} folevi://new
+
+[Desktop Action quick-add]
+Name=Quick Add
+Exec={{exec}} folevi://quick-add
+
+[Desktop Action today]
+Name=Today's Tasks
+Exec={{exec}} folevi://tasks/today

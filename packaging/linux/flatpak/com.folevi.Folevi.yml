@@ -1,0 +1,79 @@
+# Folevi for Linux as a Flatpak, ready for Flathub (docs/LINUX.md, "Flathub"). Not submitted: that needs the
+# owner's OK. Folevi's source is private, so (like other closed-source apps on Flathub) this repackages the signed
+# release .deb from folevi.com instead of building from source.
+#
+# Runtime: GNOME 51 is the last GNOME runtime that still ships WebKitGTK 4.1 (the GTK 3 WebKit Tauri 2 uses).
+# It's supported until about September 2027; before then Tauri needs its GTK 4 port, or we move to another
+# runtime that carries WebKitGTK 4.1 (docs/LINUX.md, "WebKitGTK").
+#
+# Local test build (no download): packaging/linux/build/flatpak-local.sh points the .deb sources at a local file.
+id: com.folevi.Folevi
+runtime: org.gnome.Platform
+runtime-version: '51'
+sdk: org.gnome.Sdk
+command: folevi
+separate-locales: false
+
+finish-args:
+  # Display: Wayland first, X11 only where there's no Wayland. GPU for WebKit's compositing.
+  - --socket=wayland
+  - --socket=fallback-x11
+  - --share=ipc
+  - --device=dri
+  # Sync with your Folevi account, Foli AI, images.
+  - --share=network
+  # Sound for audio notes and media in notes.
+  - --socket=pulseaudio
+  # Desktop notifications (reminders, comments). The app talks to org.freedesktop.Notifications directly.
+  - --talk-name=org.freedesktop.Notifications
+  # The tray icon (StatusNotifierItem, what libayatana-appindicator speaks).
+  - --talk-name=org.kde.StatusNotifierWatcher
+  # The sign-in is kept in the desktop's keyring (GNOME Keyring, KWallet) through the Secret Service.
+  - --talk-name=org.freedesktop.secrets
+  # Files: none by default. Import, export and "a folder you choose" for notes on this computer all go through the
+  # file chooser portal, which grants access to just what you pick, and remembers it.
+
+modules:
+  - name: folevi
+    buildsystem: simple
+    sources:
+      # The release .deb for each architecture. scripts in packaging/linux/build/ fill in version and sha256.
+      - type: file
+        only-arches: [x86_64]
+        url: https://folevi.com/download/linux/x86_64/folevi_1.5.68_amd64.deb
+        sha256: 0000000000000000000000000000000000000000000000000000000000000000
+        dest-filename: folevi.deb
+      - type: file
+        only-arches: [aarch64]
+        url: https://folevi.com/download/linux/aarch64/folevi_1.5.68_arm64.deb
+        sha256: 0000000000000000000000000000000000000000000000000000000000000000
+        dest-filename: folevi.deb
+      - type: file
+        path: ../com.folevi.Folevi.metainfo.xml
+      - type: file
+        path: ../folevi.desktop.hbs
+    build-commands:
+      - ar x folevi.deb
+      - tar -xf data.tar.*
+      # The program and the files Tauri ships beside it (usr/lib/Folevi when there are any).
+      - install -Dm755 usr/bin/folevi /app/bin/folevi
+      - if [ -d usr/lib/Folevi ]; then mkdir -p /app/lib && cp -a usr/lib/Folevi /app/lib/; fi
+      # Desktop entry under the app id (Flatpak requires it), from the same template the .deb uses.
+      - >-
+        sed -e 's|{{name}}|Folevi|g' -e 's|{{exec}}|folevi|g' -e 's|{{icon}}|com.folevi.Folevi|g'
+        -e 's|^StartupWMClass=.*|StartupWMClass=com.folevi.Folevi|'
+        folevi.desktop.hbs > com.folevi.Folevi.desktop
+      - desktop-file-validate com.folevi.Folevi.desktop
+      - install -Dm644 com.folevi.Folevi.desktop /app/share/applications/com.folevi.Folevi.desktop
+      # The .deb's metainfo names its desktop file Folevi.desktop; here it's the app id's.
+      - sed -i 's|<launchable type="desktop-id">Folevi.desktop</launchable>|<launchable type="desktop-id">com.folevi.Folevi.desktop</launchable>|' com.folevi.Folevi.metainfo.xml
+      - install -Dm644 com.folevi.Folevi.metainfo.xml /app/share/metainfo/com.folevi.Folevi.metainfo.xml
+      # Icons, renamed to the app id.
+      - >-
+        for d in usr/share/icons/hicolor/*/apps; do
+          size=$(basename "$(dirname "$d")");
+          for f in "$d"/folevi.*; do
+            [ -e "$f" ] || continue;
+            install -Dm644 "$f" "/app/share/icons/hicolor/$size/apps/com.folevi.Folevi.${f##*.}";
+          done;
+        done

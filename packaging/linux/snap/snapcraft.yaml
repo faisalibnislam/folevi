@@ -1,0 +1,65 @@
+# Folevi as a Snap (optional; docs/LINUX.md, "Snap"). Not registered or uploaded: that needs the owner's OK.
+# Like the Flatpak it repackages the release .deb; the gnome extension brings GTK 3 and WebKitGTK 4.1 from the
+# gnome-46-2404 content snap, so the snap itself stays small.
+#
+# Build (on Ubuntu, with snapcraft and LXD):  cp folevi_<version>_<arch>.deb packaging/linux/snap/folevi.deb
+#                                             cd packaging/linux/snap && snapcraft pack
+name: folevi
+title: Folevi
+base: core24
+version: '1.5.68'
+summary: Notes, tasks and docs in one calm place
+description: |
+  Folevi keeps your notes, tasks and documents together. Write in a clean editor, organize with folders,
+  and find anything fast. A Folevi account syncs your notes with the web, Mac, Windows, iPhone, iPad and
+  Android apps.
+website: https://folevi.com
+contact: https://folevi.com/help
+license: Proprietary
+icon: ../icons/512x512.png
+grade: stable
+confinement: strict
+platforms:
+  amd64:
+  arm64:
+
+apps:
+  folevi:
+    command: usr/bin/folevi
+    desktop: usr/share/applications/Folevi.desktop
+    extensions: [gnome]
+    common-id: com.folevi.Folevi
+    plugs:
+      - network
+      - home
+      - desktop
+      - desktop-legacy
+      - wayland
+      - x11
+      - opengl
+      - audio-playback
+      # The sign-in in the desktop's keyring (Secret Service).
+      - password-manager-service
+      # The tray icon.
+      - unity7
+    slots:
+      - dbus-folevi
+
+slots:
+  dbus-folevi:
+    interface: dbus
+    bus: session
+    name: com.folevi.Folevi
+
+parts:
+  folevi:
+    plugin: dump
+    source: folevi.deb
+    source-type: deb
+    stage-packages:
+      - libayatana-appindicator3-1
+      - libxdo3
+    override-prime: |
+      craftctl default
+      sed -i -e 's|^Icon=.*|Icon=${SNAP}/usr/share/icons/hicolor/512x512/apps/folevi.png|' \
+        usr/share/applications/Folevi.desktop

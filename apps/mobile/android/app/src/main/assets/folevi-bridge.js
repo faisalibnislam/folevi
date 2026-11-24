@@ -1041,15 +1041,37 @@
     return null;
   }
 
+  // The sidebar interface (tablets, an open foldable, Googlebooks) has tabs, and its own Back button knows the
+  // tab's rule (components/app/BackForward.tsx, lib/app/tabs.tsx): back within the tab, and with nothing left the
+  // tab closes and the tab it was opened from shows. Android's Back presses that button. When it can't go back,
+  // Back goes Home first, as on the phone; Home leaves the app. Browser history doesn't know about tabs.
+  function hasTabs() {
+    return Boolean(root && !root.hasAttribute("data-iphone") && document.querySelector('[aria-label="Open pages"]'));
+  }
+
+  function wideBack() {
+    if (!hasTabs()) return null;
+    var buttons = Array.prototype.filter.call(document.querySelectorAll('button[aria-label="Back"]'), function (b) {
+      return !b.disabled && visible(b);
+    });
+    if (buttons.length) return buttons[buttons.length - 1];
+    if (!/^\/documents\/?$/.test(location.pathname)) {
+      var home = document.querySelector("[data-tab-home]");
+      if (home && visible(home)) return home;
+    }
+    return null;
+  }
+
   function canGoBack() {
     if (root && root.hasAttribute("data-iphone")) return phoneBack() !== null;
+    if (hasTabs()) return wideBack() !== null;
     var nav = window.navigation;
     if (nav && typeof nav.canGoBack === "boolean") return nav.canGoBack;
     return history.length > 1;
   }
 
   function historyBack() {
-    var b = phoneBack();
+    var b = phoneBack() || wideBack();
     if (b) b.click();
     else history.back();
   }
@@ -1163,7 +1185,8 @@
       childList: true,
       subtree: true,
       attributes: true,
-      attributeFilter: ["open", "popover", "data-full", "role", "data-state"],
+      // "disabled": the sidebar interface's Back button turns on and off with its tab (wideBack).
+      attributeFilter: ["open", "popover", "data-full", "role", "data-state", "disabled"],
     });
     document.addEventListener("toggle", reportBack, true);
     window.addEventListener("popstate", reportBack);

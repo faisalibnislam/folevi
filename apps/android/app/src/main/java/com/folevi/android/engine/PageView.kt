@@ -20,7 +20,9 @@ import android.util.Log
 import android.view.ViewGroup
 import android.webkit.WebResourceResponse
 import android.webkit.WebView
+import android.os.Looper
 import androidx.activity.ComponentActivity
+import androidx.webkit.ScriptHandler
 import androidx.webkit.WebViewAssetLoader
 import com.folevi.android.BuildConfig
 import com.folevi.android.FoleviApp
@@ -45,15 +47,21 @@ class PageView(private val activity: ComponentActivity, private val host: Host) 
     val transport: WebViewTransport
     val bridge: Bridge
     private val script = BridgeScript(activity)
+    private val origins = setOf(APP_ORIGIN)
+    private var marker: ScriptHandler? = null
+
+    /** The open place changed: the next load, even one the page starts itself, opens the new place. */
+    private val placeChanged: () -> Unit = {
+        if (Looper.myLooper() == Looper.getMainLooper()) installScript() else webView.post { installScript() }
+    }
 
     init {
         configure()
-        val origins = setOf(APP_ORIGIN)
-        WebViewTransport.installMarker(webView, FoleviApp.instance.places.state.current, origins)
         transport = WebViewTransport(webView, origins)
         bridge = Bridge(activity, webView, APP_ORIGIN)
         Plugins.registerAll(bridge)
         installScript()
+        FoleviApp.instance.placeListeners.add(placeChanged)
     }
 
     @SuppressLint("SetJavaScriptEnabled")
@@ -104,8 +112,16 @@ class PageView(private val activity: ComponentActivity, private val host: Host) 
         )
     }
 
-    /** The bridge script (with the Capacitor stand-in before it) for the next load, with fresh boot values. */
-    fun installScript() = script.install(webView, host.bootValues(), APP_ORIGIN, prelude = Bridge.STAND_IN)
+    /**
+     * The scripts for the next load: the native chrome marker with the current place (signing in or switching
+     * libraries changes it, and the engine opens the place the marker names), then the bridge script (with the
+     * Capacitor stand-in before it) with fresh boot values.
+     */
+    fun installScript() {
+        marker?.remove()
+        marker = WebViewTransport.installMarker(webView, FoleviApp.instance.places.state.current, origins)
+        script.install(webView, host.bootValues(), APP_ORIGIN, prelude = Bridge.STAND_IN)
+    }
 
     fun load(path: String = "/documents") {
         installScript()
@@ -113,6 +129,7 @@ class PageView(private val activity: ComponentActivity, private val host: Host) 
     }
 
     fun destroy() {
+        FoleviApp.instance.placeListeners.remove(placeChanged)
         transport.detach()
         bridge.destroy()
         (webView.parent as? ViewGroup)?.removeView(webView)

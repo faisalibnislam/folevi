@@ -17,6 +17,7 @@ import androidx.webkit.JavaScriptReplyProxy
 import androidx.webkit.WebMessageCompat
 import androidx.webkit.WebViewCompat
 import androidx.webkit.WebViewFeature
+import androidx.webkit.ScriptHandler
 import com.folevi.engine.generated.EngineContract
 import com.folevi.engine.protocol.EngineFailure
 import com.folevi.engine.protocol.jsonString
@@ -121,10 +122,14 @@ class WebViewTransport(
             return "document.documentElement.setAttribute('data-native-chrome','');window.${EngineContract.MARKER_GLOBAL}=$marker;"
         }
 
-        /** Adds the marker as a document-start script for the allowed origins. */
-        fun installMarker(webView: WebView, place: String?, allowedOrigins: Set<String>) {
+        /**
+         * Adds the marker as a document-start script for the allowed origins. The place is fixed in the script, so
+         * when it changes (signing in, switching libraries) remove the returned handler and add the marker again
+         * before the next load.
+         */
+        fun installMarker(webView: WebView, place: String?, allowedOrigins: Set<String>): ScriptHandler {
             check(WebViewFeature.isFeatureSupported(WebViewFeature.DOCUMENT_START_SCRIPT)) { "This WebView is too old for Folevi (no document-start scripts)." }
-            WebViewCompat.addDocumentStartJavaScript(webView, markerScript(place), allowedOrigins)
+            return WebViewCompat.addDocumentStartJavaScript(webView, markerScript(place), allowedOrigins)
         }
     }
 }

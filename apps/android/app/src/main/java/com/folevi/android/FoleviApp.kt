@@ -55,6 +55,12 @@ class FoleviApp : Application() {
      * The places changed: an account that went takes its own REST token with it; another place opening makes its
      * token the open one (the widgets show it) and the widgets draw again from it.
      */
+    /**
+     * Told when the open place changes (a sign-in, a switch, a sign-out). Every window's page refreshes its
+     * document-start scripts here, because the page often reloads itself right after (shellSignIn).
+     */
+    val placeListeners = java.util.concurrent.CopyOnWriteArraySet<() -> Unit>()
+
     private fun placesChanged(s: Places.State, before: String?) {
         val credential = com.folevi.android.extras.DeviceCredential.get(this)
         val kept = s.accounts.map { it.userId }.toSet()
@@ -65,6 +71,7 @@ class FoleviApp : Application() {
             credential.openedPlace(Places.userIdOf(s.current))
             com.folevi.android.extras.Widgets.clear(this)
             com.folevi.android.extras.Widgets.refreshSoon(this)
+            for (l in placeListeners) l()
         }
     }
 

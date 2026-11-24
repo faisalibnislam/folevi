@@ -34,8 +34,8 @@ let warmed = false;
  */
 export function macTextServices(): MacTextServices | null {
   const d = desktop() as (ReturnType<typeof desktop> & MacTextServices) | null;
-  // Folevi for Windows has no text services of its own: its spelling is the website's (below).
-  if (d && d.platform !== "windows") return d;
+  // Folevi for Windows and Linux have no text services of their own: their spelling is the website's (below).
+  if (d && d.platform === "mac") return d;
   if (!ownSpelling()) return null;
   // Asked for when a menu is about to open, or an editor mounts: the dictionary loads once, ahead of the first question.
   if (!warmed) {

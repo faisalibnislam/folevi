@@ -38,7 +38,7 @@ export function passphraseHere(): boolean {
 /** "this Mac" on the Mac, "this phone" in the Android app, "this device" elsewhere. */
 export function thisDevice(): string {
   const platform = shell()?.platform;
-  return platform === "android" || platform === "ios" || platform === "windows" ? deviceWords().here : "this Mac";
+  return platform === "android" || platform === "ios" || platform === "windows" || platform === "linux" ? deviceWords().here : "this Mac";
 }
 
 interface Place {
@@ -60,8 +60,8 @@ export function placeOptions(available: CloudProvider[] | null): { kind: Library
     return out;
   }
   const icloud = shell()?.platform === "ios" ? "On all your iPhones, iPads and Macs." : "On all your Macs.";
-  // Windows has no iCloud choice (no iCloud container there): a folder (OneDrive's, say), Dropbox or Google Drive.
-  const out: { kind: LibraryKind; title: string; detail: string }[] = shell()?.platform === "windows" ? [] : [{ kind: "icloud", title: "Sync with iCloud", detail: icloud }];
+  // Windows and Linux have no iCloud choice (no iCloud container there): a folder (OneDrive's, say), Dropbox or Google Drive.
+  const out: { kind: LibraryKind; title: string; detail: string }[] = shell()?.platform === "windows" || shell()?.platform === "linux" ? [] : [{ kind: "icloud", title: "Sync with iCloud", detail: icloud }];
   if (available?.includes("dropbox")) out.push({ kind: "dropbox", title: "Sync with Dropbox", detail: "Folevi uses only its own folder." });
   if (available?.includes("googleDrive")) out.push({ kind: "gdrive", title: "Sync with Google Drive", detail: "Folevi sees only the files it makes." });
   out.push(

@@ -7,7 +7,7 @@
 // Types only: nothing here runs.
 
 /** Which host the shell runs in ("android": apps/android, docs/ANDROID_PLAN.md). */
-export type ShellPlatform = "mac" | "ios" | "android" | "windows";
+export type ShellPlatform = "mac" | "ios" | "android" | "windows" | "linux";
 
 /** Where the person's notes live: on their devices (local mode) or in their Folevi account. */
 export type Backend = "local" | "account";

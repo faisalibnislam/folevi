@@ -1,0 +1,8 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "Folevi's own pages (the interface built in, served at app://folevi, https://app.localhost on Windows) may call the shell. Nothing else.",
+  "windows": ["main", "quickadd"],
+  "remote": { "urls": ["app://folevi/*", "https://app.localhost/*", "http://app.localhost/*"] },
+  "permissions": ["core:default"]
+}

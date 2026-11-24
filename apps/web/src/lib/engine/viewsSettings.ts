@@ -66,7 +66,7 @@ function shortStatus(status: LibraryStatus | null): string {
   return "Not synced yet";
 }
 
-const platformName = (p: string) => (p === "ios" ? "iPhone or iPad" : p === "android" ? "Android phone or tablet" : p === "web" ? "Browser" : p === "windows" ? "Windows PC" : "Mac");
+const platformName = (p: string) => (p === "ios" ? "iPhone or iPad" : p === "android" ? "Android phone or tablet" : p === "web" ? "Browser" : p === "windows" ? "Windows PC" : p === "linux" ? "Linux computer" : "Mac");
 
 const HEALTH = [
   { key: "unreadable", title: "Can't be read", icon: "triangleAlert", why: "These files are damaged, only half written, or were saved with a different passphrase. Folevi never writes over them and keeps trying. A copy that's fine on another device fixes them when it syncs." },
@@ -321,7 +321,7 @@ export function localAiValue(deps: EngineDeps, state: LocalAiState) {
       onDeviceFooter: `${ON_DEVICE_COPY[status]}${status === "available" ? " It's a small model: it does writing help, questions about your notes, chats and the smaller block tools. Long notes are cut to what it can read, and wireframes and flowcharts need your own key." : ""}`,
       historyText: `Your Foli AI conversations are kept on ${here.here} so you can come back to them, rename, pin and search them. They aren't synced with your library. When this is off, a conversation is deleted as soon as you close it.`,
       noHost: "Foli AI in a library on your devices needs Folevi for Mac: it runs on Apple Intelligence there, or on your own key.",
-      phoneDevice: here.noun !== "Mac" && here.noun !== "PC",
+      phoneDevice: here.noun !== "Mac" && here.noun !== "PC" && here.noun !== "computer",
     },
     historyText: `Your Foli AI conversations are kept on ${here.here} so you can come back to them, rename, pin and search them. They stay on this device and aren't synced with your library. When this is off, a conversation is deleted as soon as you close it.`,
     memory: Boolean(active),

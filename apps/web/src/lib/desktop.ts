@@ -94,8 +94,8 @@ export function watchMenuCommands(cb: () => void): () => void {
   return () => menuWatchers.delete(cb);
 }
 
-/** Which desktop app the page is in: the Mac app, or Folevi for Windows (apps/desktop, Electron). */
-export type DesktopPlatform = "mac" | "windows";
+/** Which desktop app the page is in: the Mac app, or Folevi for Windows or Linux (apps/desktop, Tauri). */
+export type DesktopPlatform = "mac" | "windows" | "linux";
 
 export interface DesktopBridge {
   platform: DesktopPlatform;
@@ -167,7 +167,7 @@ export const WINDOWS_QUICK_ADD_SHORTCUT = "Control+Alt+Space";
 
 /** Quick Add's default shortcut in the desktop app the page is in. */
 export function defaultQuickAddShortcut(platform: DesktopPlatform | undefined = desktop()?.platform): string {
-  return platform === "windows" ? WINDOWS_QUICK_ADD_SHORTCUT : DEFAULT_QUICK_ADD_SHORTCUT;
+  return platform === "windows" || platform === "linux" ? WINDOWS_QUICK_ADD_SHORTCUT : DEFAULT_QUICK_ADD_SHORTCUT;
 }
 
 const KEY_NAMES: Record<string, string> = {
@@ -195,7 +195,7 @@ const KEY_NAMES: Record<string, string> = {
  */
 export function acceleratorFrom(e: Pick<KeyboardEvent, "key" | "code" | "metaKey" | "ctrlKey" | "altKey" | "shiftKey">, platform: DesktopPlatform = "mac"): string | null {
   if (["Meta", "Control", "Alt", "Shift", "CapsLock", "Fn", "OS"].includes(e.key)) return null;
-  const mods = [e.metaKey && (platform === "windows" ? "Super" : "Command"), e.ctrlKey && "Control", e.altKey && "Alt", e.shiftKey && "Shift"].filter(Boolean) as string[];
+  const mods = [e.metaKey && (platform === "mac" ? "Command" : "Super"), e.ctrlKey && "Control", e.altKey && "Alt", e.shiftKey && "Shift"].filter(Boolean) as string[];
   if (!mods.some((m) => m !== "Shift")) return null;
   // Letters and digits by their place on the keyboard: ⌥ changes what they type ("⌥K" types "˚").
   const key = /^Key[A-Z]$/.test(e.code)
@@ -215,15 +215,16 @@ const SYMBOLS: Record<string, string> = { Command: "⌘", Control: "⌃", Alt: "
 /** How Windows writes keys in a shortcut ("Ctrl+Alt+Space", "Ctrl+Shift+K"). */
 const WINDOWS_NAMES: Record<string, string> = { Control: "Ctrl", Command: "Win", Super: "Win", Return: "Enter", Escape: "Esc", Delete: "Del", Plus: "+" };
 
-/** A shortcut as the Mac writes it (⌥Space, ⇧⌘K), or on Windows as Windows does (Ctrl+Alt+Space). */
+/** A shortcut as the Mac writes it (⌥Space, ⇧⌘K), or on Windows and Linux as they do (Ctrl+Alt+Space). */
 export function shortcutLabel(accelerator: string, platform: DesktopPlatform = "mac"): string {
   if (!accelerator) return "None";
   const parts = accelerator.split("+");
   const key = parts.pop()!;
-  if (platform === "windows") {
+  if (platform === "windows" || platform === "linux") {
     const order = ["Control", "Super", "Command", "Alt", "Shift"];
-    const mods = order.filter((m) => parts.includes(m)).map((m) => WINDOWS_NAMES[m] ?? m);
-    return [...mods, WINDOWS_NAMES[key] ?? key].join("+");
+    const names = platform === "linux" ? { ...WINDOWS_NAMES, Command: "Super", Super: "Super" } : WINDOWS_NAMES;
+    const mods = order.filter((m) => parts.includes(m)).map((m) => names[m] ?? m);
+    return [...mods, names[key] ?? key].join("+");
   }
   const order = ["Control", "Alt", "Shift", "Command"];
   const mods = order.filter((m) => parts.includes(m)).map((m) => SYMBOLS[m]);

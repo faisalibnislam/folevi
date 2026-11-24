@@ -272,12 +272,13 @@
 /* The Quick Add window is the form alone: no page around it. */
 :root[data-desktop]:has(.ui-desktop-quick-add) body::before { display: none; }
 .ui-desktop-quick-add { min-height: 100vh; }
-/* Folevi for Windows (apps/desktop, data-desktop="windows"): Folevi's own top bar fills the window's top and Windows
-   draws its caption buttons (minimize, maximize, close) over the top right corner (Electron's Window Controls
-   Overlay, 48 px tall: apps/desktop/src/chrome.ts). The tab strip ends before them: their width is what
-   env(titlebar-area-*) leaves of the window (none in full screen, where the buttons go). The shell's 8 px margin
-   is already between the strip and the window's edge. The logo stays in the sidebar (no window buttons there). */
-:root[data-desktop="windows"] .ui-tabbar { right: max(4px, calc(100vw - env(titlebar-area-x, 0px) - env(titlebar-area-width, 100vw) - 2px)); }
+/* Folevi for Windows (apps/desktop, data-desktop="windows"): Folevi's own top bar fills the window's top and the
+   caption buttons (minimize, maximize, close, drawn as Windows 11 draws them by apps/desktop/src-tauri/bridge/host.js)
+   sit in the top right corner. The tab strip ends before them: host.js sets --win-caption-inset to their width
+   (env(titlebar-area-*) stays as the fallback for a host with Window Controls Overlay). The shell's 8 px margin is
+   already between the strip and the window's edge. The logo stays in the sidebar. Linux keeps its window manager's
+   title bar (data-desktop="linux": nothing to keep clear). */
+:root[data-desktop="windows"] .ui-tabbar { right: var(--win-caption-inset, max(4px, calc(100vw - env(titlebar-area-x, 0px) - env(titlebar-area-width, 100vw) - 2px))); }
 /* Windows' own font, as the native Mac app uses the Mac's (the owner's system font rule): Segoe UI Variable on
    Windows 11, Segoe UI on Windows 10. Titles keep Folevi's display face. */
 :root[data-desktop="windows"] { --font-sans: "Segoe UI Variable Text", "Segoe UI Variable", "Segoe UI", system-ui, sans-serif; }

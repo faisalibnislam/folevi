@@ -27,14 +27,20 @@ export function DesktopSection() {
   const save = (patch: Partial<DesktopSettings>) => void bridge.setSettings(patch).then((next) => next && setState(next));
   const { settings } = state;
   const windows = bridge.platform === "windows";
+  const linux = bridge.platform === "linux";
   return (
     <div className="space-y-5">
       <Card title="Quick Add" description="Add a task from any app without switching to Folevi. Write “tomorrow 9am”, “!high” or “#page” as you type; tasks without a page go to your Inbox.">
         <ShortcutField value={settings.quickAddShortcut} error={state.error} platform={bridge.platform} onChange={(quickAddShortcut) => save({ quickAddShortcut })} />
       </Card>
-      <Card title={windows ? "On this PC" : "On this Mac"}>
+      <Card title={windows ? "On this PC" : linux ? "On this computer" : "On this Mac"}>
         <div className="max-w-xl divide-y divide-line/70">
-          {windows ? (
+          {linux ? (
+            <>
+              <Row label="Open at login" hint="Folevi starts quietly in the tray when you log in, so Quick Add is always ready." checked={settings.openAtLogin} onChange={(openAtLogin) => save({ openAtLogin })} />
+              <Row label="Tray icon" hint="Quick Add, a new note, recent notes and the save state from Folevi's icon in your panel. With it on, closing the window keeps Folevi running there." checked={settings.menuBarIcon} onChange={(menuBarIcon) => save({ menuBarIcon })} />
+            </>
+          ) : windows ? (
             <>
               <Row label="Open when you sign in" hint="Folevi starts quietly in the notification area when you sign in to Windows, so Quick Add is always ready." checked={settings.openAtLogin} onChange={(openAtLogin) => save({ openAtLogin })} />
               <Row label="Notification area icon" hint="Quick Add, a new note, recent notes and the save state from the icon by the clock. With it on, closing the window keeps Folevi running there." checked={settings.menuBarIcon} onChange={(menuBarIcon) => save({ menuBarIcon })} />
@@ -49,9 +55,11 @@ export function DesktopSection() {
             <Row label="Show notes in Spotlight" hint="Find any note by its words from Spotlight, archived ones too. Locked and encrypted notes are never added." checked={settings.spotlight} onChange={(spotlight) => save({ spotlight })} />
           ) : null}
           <Row
-            label={windows ? "Windows notifications" : "Mac notifications"}
+            label={windows ? "Windows notifications" : linux ? "Notifications" : "Mac notifications"}
             hint={
-              windows
+              linux
+                ? "Comments, mentions and reminders appear as desktop notifications. Folevi's icon in the dock shows how many are unread where your desktop supports it."
+                : windows
                 ? "Comments, mentions and reminders appear as Windows notifications. The taskbar button shows how many are unread."
                 : "Comments, mentions and reminders appear as Mac notifications while Folevi isn't the app in front. The Dock icon shows how many are unread."
             }
@@ -104,7 +112,7 @@ function ShortcutField({ value, error, platform, onChange }: { value: string; er
     }
     const accelerator = acceleratorFrom(e.nativeEvent, platform);
     if (!accelerator) {
-      if (!["Meta", "Control", "Alt", "Shift"].includes(e.key)) setHint(platform === "windows" ? "Hold Ctrl, Alt or the Windows key with the key." : "Hold ⌘, ⌥ or ⌃ with the key.");
+      if (!["Meta", "Control", "Alt", "Shift"].includes(e.key)) setHint(platform === "windows" ? "Hold Ctrl, Alt or the Windows key with the key." : platform === "linux" ? "Hold Ctrl, Alt or Super with the key." : "Hold ⌘, ⌥ or ⌃ with the key.");
       return;
     }
     setRecording(false);

@@ -58,21 +58,35 @@ describe("words on Windows", () => {
   });
 });
 
-describe("the Windows look and the apps' contract", () => {
+describe("Linux", () => {
+  test("labels and the Super key", () => {
+    expect(shortcutLabel("Control+Alt+Space", "linux")).toBe("Ctrl+Alt+Space");
+    expect(shortcutLabel("Super+Shift+K", "linux")).toBe("Super+Shift+K");
+    expect(acceleratorFrom(press("k", "KeyK", { metaKey: true, ctrlKey: true }), "linux")).toBe("Super+Control+K");
+    expect(defaultQuickAddShortcut("linux")).toBe("Control+Alt+Space");
+  });
+
+  test("the device is this computer", () => {
+    (window as { __foleviTestShell?: unknown }).__foleviTestShell = { platform: "linux", shellVersion: "1.5.68", initialMode: "local" } as unknown as FoleviShell;
+    expect(deviceWords().here).toBe("this computer");
+    expect(deviceWords().files).toBe("your file manager");
+  });
+});
+
+describe("the desktop app's contract (apps/desktop, Tauri)", () => {
   test("the desktop app's default shortcut matches the page's", async () => {
     const { readFileSync } = await import("node:fs");
     const { resolve } = await import("node:path");
-    const settings = readFileSync(resolve(__dirname, "../../desktop/src/settings.ts"), "utf8");
-    expect(settings).toContain(`"${WINDOWS_QUICK_ADD_SHORTCUT}"`);
+    const settings = readFileSync(resolve(__dirname, "../../desktop/src-tauri/src/settings.rs"), "utf8");
+    expect(settings).toContain(`DEFAULT_QUICK_ADD_SHORTCUT: &str = "${WINDOWS_QUICK_ADD_SHORTCUT}"`);
   });
 
-  test("the caption buttons' height is the one the CSS keeps clear", async () => {
+  test("the caption buttons' room is the variable host.js sets", async () => {
     const { readFileSync } = await import("node:fs");
     const { resolve } = await import("node:path");
-    const chrome = readFileSync(resolve(__dirname, "../../desktop/src/chrome.ts"), "utf8");
+    const host = readFileSync(resolve(__dirname, "../../desktop/src-tauri/bridge/host.js"), "utf8");
     const css = readFileSync(resolve(__dirname, "../src/app/globals.css"), "utf8");
-    expect(chrome).toMatch(/CAPTION_HEIGHT = 48;/);
-    expect(css).toContain(':root[data-desktop="windows"] .ui-tabbar { right:');
-    expect(css).toContain("48 px tall");
+    expect(host).toContain('"--win-caption-inset"');
+    expect(css).toContain(':root[data-desktop="windows"] .ui-tabbar { right: var(--win-caption-inset,');
   });
 });

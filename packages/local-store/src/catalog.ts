@@ -130,7 +130,7 @@ export interface DeviceRecord {
   v: 1;
   deviceId: string;
   name: string;
-  platform: "mac" | "ios" | "android" | "web" | "windows";
+  platform: "mac" | "ios" | "android" | "web" | "windows" | "linux";
   appVersion: string;
   /** The newest note format this device understands. */
   formatVersion: number;

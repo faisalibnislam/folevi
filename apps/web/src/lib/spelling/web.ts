@@ -93,8 +93,8 @@ export function webSpellingAvailable(): boolean {
  * there is no dictionary for (the browser's own underlines stay on there).
  */
 export function ownSpelling(): boolean {
-  // Folevi for Windows checks spelling as the website does (the Mac and the phones use the system's checker).
-  if (typeof window === "undefined" || (desktop() && desktop()!.platform !== "windows") || nativeApp() !== null) return false;
+  // Folevi for Windows and Linux check spelling as the website does (the Mac and the phones use the system's checker).
+  if (typeof window === "undefined" || (desktop() && desktop()!.platform === "mac") || nativeApp() !== null) return false;
   if (window.matchMedia?.("(pointer: coarse)").matches) return false;
   return webSpellingAvailable();
 }

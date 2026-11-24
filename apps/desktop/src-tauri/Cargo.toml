@@ -1,0 +1,72 @@
+[package]
+name = "folevi"
+version = "1.5.68"
+description = "Folevi for Windows and Linux: Folevi's own interface in the system's web view, with Quick Add, a notification area icon and notifications."
+authors = ["Folevi"]
+license = "UNLICENSED"
+edition = "2021"
+rust-version = "1.80"
+
+[lib]
+name = "folevi_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = ["tray-icon", "image-png"] }
+tauri-plugin-single-instance = { version = "2", features = ["deep-link"] }
+tauri-plugin-deep-link = "2"
+tauri-plugin-window-state = "2"
+tauri-plugin-global-shortcut = "2"
+tauri-plugin-updater = "2"
+tauri-plugin-autostart = "2"
+tauri-plugin-dialog = "2"
+tauri-plugin-opener = "2"
+tauri-plugin-process = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync", "time", "fs"] }
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "json", "stream", "gzip"] }
+futures-util = "0.3"
+base64 = "0.22"
+hex = "0.4"
+rand = "0.8"
+sha2 = "0.10"
+hmac = "0.12"
+hkdf = "0.12"
+pbkdf2 = { version = "0.12", default-features = false, features = ["hmac"] }
+aes-gcm = "0.10"
+x25519-dalek = { version = "2", features = ["static_secrets"] }
+ed25519-dalek = { version = "2", features = ["rand_core"] }
+keyring = { version = "3", features = ["apple-native", "windows-native", "sync-secret-service", "crypto-rust"] }
+notify = "6"
+url = "2"
+mime_guess = "2"
+percent-encoding = "2"
+once_cell = "1"
+parking_lot = "0.12"
+log = "0.4"
+thiserror = "1"
+hostname = "0.4"
+unicode-normalization = "0.1"
+regex = "1"
+
+[target.'cfg(windows)'.dependencies]
+# Toasts whose click Folevi hears (tauri-plugin-notification can't report clicks on desktop).
+tauri-winrt-notification = "0.8"
+windows-sys = { version = "0.59", features = ["Win32_UI_Shell", "Win32_Foundation"] }
+
+[target.'cfg(not(windows))'.dependencies]
+notify-rust = "4"
+
+[dev-dependencies]
+tempfile = "3"
+
+[profile.release]
+# Small and quick: the point of the move from Electron.
+codegen-units = 1
+lto = true
+opt-level = "s"
+strip = true

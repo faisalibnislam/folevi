@@ -36,6 +36,9 @@ export function deviceWords(): DeviceWords {
   if (s?.platform === "windows") {
     return { here: "this PC", Here: "This PC", noun: "PC", settings: "Windows Settings", files: "File Explorer", signInPlace: "your browser", ios: false, onDeviceModel: "an on-device model" };
   }
+  if (s?.platform === "linux") {
+    return { here: "this computer", Here: "This computer", noun: "computer", settings: "your system settings", files: "your file manager", signInPlace: "your browser", ios: false, onDeviceModel: "an on-device model" };
+  }
   // The native Mac app (apps/mac, WebKit) signs in to Dropbox and Google in a sign-in sheet; Electron in the browser.
   const sheet = typeof document !== "undefined" && document.documentElement?.getAttribute("data-mac-engine") === "webkit";
   return { here: "this Mac", Here: "This Mac", noun: "Mac", settings: "System Settings", files: "Finder", signInPlace: sheet ? "the sign-in sheet" : "your browser", ios: false, onDeviceModel: "Apple Intelligence" };

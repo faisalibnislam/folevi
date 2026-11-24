@@ -15,8 +15,8 @@ export function useShellOutdated(): boolean {
   const host = isShell() ? shell() : null;
   const status = useQuery(api.settings.status, host ? {} : "skip");
   if (!host || !status) return false;
-  // Folevi for Windows has no minimum on the backend yet (convex/lib/shellVersions.ts knows mac, ios and android).
-  if (host.platform === "windows") return false;
+  // Folevi for Windows and Linux have no minimum on the backend yet (convex/lib/shellVersions.ts knows mac, ios and android).
+  if (host.platform === "windows" || host.platform === "linux") return false;
   return shellNeedsUpdate(host.shellVersion, status.minShellVersion?.[host.platform]);
 }
 

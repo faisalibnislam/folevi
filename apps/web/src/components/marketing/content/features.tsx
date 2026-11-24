@@ -300,7 +300,7 @@ export const FEATURES: Feature[] = [
               <li><strong>iCloud Drive</strong>: a Folevi folder that syncs to every iPhone, iPad and Mac signed in to your iCloud account.</li>
               <li><strong>Dropbox</strong> or <strong>Google Drive</strong>: sign in once, and Folevi only uses its own folder there.</li>
               <li><strong>Any folder</strong>: on the Mac, any folder; on iPhone and iPad, any folder the Files app offers, such as one in OneDrive.</li>
-              <li><strong>This device only</strong>: nothing leaves the device. You can turn on sync later in Settings.</li>
+              <li><strong>This device only</strong>: your notes never leave the device. When you’re online, the app only checks Folevi for new note styles, and sends nothing about you or your notes. You can turn on sync later in Settings.</li>
             </ul>
           </>
         ),

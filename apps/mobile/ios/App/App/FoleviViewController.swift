@@ -145,20 +145,35 @@ final class FoleviViewController: CAPBridgeViewController {
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { load.finish() }
     }
 
-    /// Local mode never reaches Folevi or its database: rules WebKit applies to everything the web view loads,
-    /// under the page's own policy. Account mode takes them away again.
+    /// Local mode sends Folevi nothing: rules WebKit applies to everything the web view loads, under the page's own
+    /// policy. The one exception (the owner's choice, 2026-11-24, docs/MOBILE.md "Note styles and covers"): when online,
+    /// the page may fetch the public list of note styles and their images, anonymously and read-only, to keep the
+    /// built-in styles current. Account mode takes the rules away again.
     private func applyMode() {
         guard let controller = webView?.configuration.userContentController else { return }
         controller.removeAllContentRuleLists()
         guard ShellMode.current == "local" else { return }
         let patterns = [#"^[a-z]+://([^/]*\.)?folevi\.com"#, #"^[a-z]+://[^/]*\.convex\.cloud"#, #"^[a-z]+://[^/]*\.convex\.site"#]
-        let rules = patterns.map { ["trigger": ["url-filter": $0], "action": ["type": "block"]] }
-        guard let data = try? JSONSerialization.data(withJSONObject: rules), let encoded = String(data: data, encoding: .utf8) else { return }
-        WKContentRuleListStore.default().compileContentRuleList(forIdentifier: "folevi-local-mode", encodedContentRuleList: encoded) { list, _ in
-            guard let list else { return }
-            DispatchQueue.main.async { controller.add(list) }
+        var rules: [[String: Any]] = patterns.map { ["trigger": ["url-filter": $0], "action": ["type": "block"]] }
+        let blockOnly = rules
+        rules += Self.noteStylePatterns.map { ["trigger": ["url-filter": $0], "action": ["type": "ignore-previous-rules"]] }
+        let encode = { (r: [[String: Any]]) in (try? JSONSerialization.data(withJSONObject: r)).flatMap { String(data: $0, encoding: .utf8) } }
+        guard let encoded = encode(rules), let fallback = encode(blockOnly) else { return }
+        let store = WKContentRuleListStore.default()
+        store?.compileContentRuleList(forIdentifier: "folevi-local-mode", encodedContentRuleList: encoded) { list, _ in
+            if let list { return DispatchQueue.main.async { controller.add(list) } }
+            // Never without the rules: if the exception can't compile, block everything as before.
+            store?.compileContentRuleList(forIdentifier: "folevi-local-mode-strict", encodedContentRuleList: fallback) { strict, _ in
+                guard let strict else { return }
+                DispatchQueue.main.async { controller.add(strict) }
+            }
         }
     }
+
+    /// What local mode may load from Folevi: the note styles list (GET <deployment>.convex.site/note-styles, public, no
+    /// account) and the styles' images in Convex file storage (GET <deployment>.convex.cloud/api/storage/<id>).
+    /// (Plain prefixes: WebKit's rules know a small regex subset, and a list it can't compile would drop every rule.)
+    static let noteStylePatterns = [#"^https://[^/]*\.convex\.site/note-styles"#, #"^https://[^/]*\.convex\.cloud/api/storage/"#]
 
     private static func jsString(_ value: String) -> String {
         guard let data = try? JSONSerialization.data(withJSONObject: [value]), let json = String(data: data, encoding: .utf8) else { return "\"\"" }

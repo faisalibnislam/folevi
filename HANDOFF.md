@@ -255,8 +255,8 @@ everywhere, system web views" direction. The shell itself comes from the Windows
 `apps/desktop/src-tauri`, merged into this branch 2026-11-24); Linux adds only Linux config, `src-tauri/src/linux.rs` and packaging.
 Committed so far: `packaging/linux/` (desktop template, AppStream metadata, icons, `tauri.linux.conf.json` staged
 for the shell, Flatpak manifest on GNOME 51, optional Snap, apt and dnf/zypper repo scripts), build scripts (Lima
-VM on this Mac: Ubuntu 22.04 arm64 + a Rosetta amd64 root), `.github/workflows/linux.yml` (hand-started, artifacts
-only), `docs/LINUX.md`, `docs/LINUX-TESTING.md`. Nothing published.
+VM on this Mac: Ubuntu 22.04 arm64 + a Rosetta amd64 root), Linux jobs in `.github/workflows/desktop.yml`,
+`apps/desktop/src-tauri/src/linux.rs` and `tauri.linux.conf.json`, `docs/LINUX.md`, `docs/LINUX-TESTING.md`. Nothing published.
 
 **Folevi for Windows and Linux (branch `claude/desktop-tauri`, not merged, nothing published):** the owner chose "one
 web app everywhere" and the Mac app's approach (small, light), so the desktop app is now **Tauri 2** in the system
@@ -508,9 +508,8 @@ signed-in account, 1.5.58's frosted folders with a large library, and the iPad c
 account button should move past iPadOS's window buttons).
 
 ## 10. Next steps / open work
-- Folevi for Linux (`claude/linux-tauri-02790e`): merge `claude/desktop-tauri` once the Windows session pushes it,
-  move `packaging/linux/tauri.linux.conf.json` into `apps/desktop/src-tauri/`, add `src/linux.rs` and its
-  `#[cfg(target_os = "linux")]` hooks (sent to the Windows session), build AppImage/.deb/.rpm for x86_64 and
+- Folevi for Linux (`claude/linux-tauri-02790e`, shared shell merged):
+  check the Linux compile and tests of the merged shell in the VM, build AppImage/.deb/.rpm for x86_64 and
   aarch64 in the Lima VM `folevi-linux`, smoke-test, put test builds in `~/Downloads/Folevi for Linux <version> test/`.
   Owner decisions pending: Linux signing key and repositories on R2, Flathub/Snap submission (all need an OK).
 - iPhone and iPad redesign (`claude/ios-native-redesign-f4a8be`): PR 56 into `main` waits on the owner's review
@@ -643,6 +642,7 @@ account button should move past iPadOS's window buttons).
   `DATABASE_UDF_USER_TIMEOUT_SECONDS=4` for that backend. Bursts show in `convex.log` as "took a long time".
 
 ## 12. Change log
+- 2026-11-24: Linux on the shared shell: merged `claude/desktop-tauri` (ed8a4c17) into `claude/linux-tauri-02790e`; added `apps/desktop/src-tauri/src/linux.rs` with cfg(linux) hooks, the Linux dialog/portal dependencies, `tauri.linux.conf.json`; one Flatpak manifest (`packaging/linux/flatpak`, GNOME 51, tray module) replaced `apps/desktop/flatpak`; `desktop.yml` builds Flatpaks for both architectures. Linux compile and tests running in the VM.
 - 2026-11-24: Linux probe (a small Tauri app with `linux.rs`, scratch only) passed on X11 in the VM: window renders, tray, notification sent, global shortcut registered, `folevi://new` from a second launch reaches the running app, Secret Service store and read back, desktop dark mode through the portal turns the page dark (WebKitGTK 2.50 does that by itself; the hook keeps GTK's title bar and menus in step). Smoke test fixed (inner part re-invokes the script; test keyring password; portals get the display).
 - 2026-11-24: Linux build root fix: the amd64 root is Ubuntu's own 22.04 base image (debootstrap unmounts /proc mid-way and Rosetta can't run x86_64 programs without it); `setup-amd64-root.sh` and `install-build-deps.sh` (no sudo needed as root) updated. The build scripts live in `packaging/linux/scripts/` (the repo's .gitignore drops any `build/` folder, so the first commit missed them).
 - 2026-11-24: Folevi for Linux started on `claude/linux-tauri-02790e`: packaging, docs, build scripts and CI workflow committed (34cc11fe); waiting on the shared Tauri shell from `claude/desktop-tauri`.

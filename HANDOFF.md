@@ -508,7 +508,8 @@ account button should move past iPadOS's window buttons).
 ## 10. Next steps / open work
 - Folevi for Windows and Linux (`claude/desktop-tauri`, Tauri): the owner tries the CI test builds (checklist in
   `docs/DESKTOP_APP.md`); the Web session adds Windows to folevi.com's download page (stable links above) and the main
-  session records 1.5.73; fix what testers find; open the Tauri PR into `main` (supersedes PR 58, which the main session
+  session records 1.5.73; when PR 65's turn comes (after PR 66), merge main and, if the Mac PR merged first,
+  combine the two 1.5.73 CHANGELOG entries into one (version.json stays 1.5.73 / 88); fix what testers find; open the Tauri PR into `main` (supersedes PR 58, which the main session
   closes); then, each with the owner's OK: an update signing key (turns the updater on), Windows signing, uploads to
   R2, a download page entry, Flathub (manifest ready), Dropbox/Google Drive sign-in on this platform, a `windows`
   and `linux` minimum in `convex/lib/shellVersions.ts`. Mac keeps its own app (no Mac target here).
@@ -629,7 +630,7 @@ account button should move past iPadOS's window buttons).
   `DATABASE_UDF_USER_TIMEOUT_SECONDS=4` for that backend. Bursts show in `convex.log` as "took a long time".
 
 ## 12. Change log
-- 2026-11-24: Release 1.5.73 (build 88) recorded on `claude/desktop-tauri` (untagged: the Mac session's own 1.5.73 on `claude/mac-webview` took tag v1.5.73 three minutes earlier; the main session decides whether to combine the two under 1.5.73 or move Windows to 1.5.74) with the 1.5.69 to 1.5.72 history from tag v1.5.72; PR 66 (1.5.72) merges first, take the higher version on conflict.
+- 2026-11-24: Release 1.5.73 (build 88) recorded on `claude/desktop-tauri` (untagged: the Mac session's own 1.5.73 on `claude/mac-webview` took tag v1.5.73 three minutes earlier; the main session decided: one release 1.5.73 / build 88 for both, the Mac's tag v1.5.73 (b972616a) stays, no rebuild; whichever of PR 65 and the Mac PR merges second merges main and combines the two CHANGELOG entries into one 1.5.73 entry) with the 1.5.69 to 1.5.72 history from tag v1.5.72; PR 66 (1.5.72) merges first, take the higher version on conflict.
 - 2026-11-24: Owner: "release it", on folevi.com: stable latest links live (folevi.com/download/windows/Folevi-arm64-setup.exe and Folevi-x64-setup.exe, no-cache, now 1.5.73); the download page entry (Web session) and the 1.5.73 version record and tag on main (main session) requested.
 - 2026-11-24: Folevi for Windows 1.5.73 test download published (owner's OK, after v1.5.72): unsigned NSIS installers at https://folevi.com/download/windows/Folevi_1.5.73_arm64-setup.exe (sha256 72f39313...2f4c) and .../Folevi_1.5.73_x64-setup.exe (sha256 a54b07bf...c241), R2 `folevi-updates` windows/, from CI run 45392111016; no update feed (no signing key); version.json/CHANGELOG/tag for 1.5.73 still to record at merge.
 - 2026-11-24: Owner (directly): build Folevi for Windows 1.5.73 test installers now and upload them unsigned to `folevi.com/download/windows/` once tag v1.5.72 exists; `apps/desktop/RELEASE_VERSION` stamps 1.5.73 on this branch (version.json and CHANGELOG still to record it at merge).

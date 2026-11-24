@@ -485,8 +485,11 @@
   else window.addEventListener("load", function () {
     requestAnimationFrame(hideSplash);
   }, { once: true });
-  // Whatever happens to the page, the app never stays behind its splash screen.
-  setTimeout(hideSplash, 4000);
+  // Whatever happens to the page, the app never stays behind its splash screen (a hide that comes before the splash
+  // is up is ignored, so it's asked again; hiding a hidden splash does nothing).
+  [1500, 4000, 8000].forEach(function (ms) {
+    setTimeout(hideSplash, ms);
+  });
 
   // The bridge is up: links the app kept for this page come now.
   void quietly(plugin("FoleviHost", "ready", {}));

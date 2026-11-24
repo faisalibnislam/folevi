@@ -4,6 +4,16 @@ Every Folevi release, newest first, written by `node scripts/version.mjs` from `
 
 Versions are MAJOR.UPDATE.PATCH, PATCH at least two digits: a Major release (2.0.00), a Big update (1.1.05 after 1.0.05) or a Small update (1.0.06 after 1.0.05).
 
+## Version 1.5.70: Small update
+
+Released 2026-11-24 13:07:28+06:00 (build 85, tag v1.5.70)
+
+iPhone and iPad built from the same code as Folevi's other apps.
+
+### Improved
+
+- iPhone and iPad: the redesign and the iPhone Duo window now come from the same code as Folevi for Mac and Android.
+
 ## Version 1.5.69: Small update
 
 Released 2026-11-24 09:17:46+06:00 (build 84, tag v1.5.69)

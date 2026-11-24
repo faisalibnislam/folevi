@@ -1,5 +1,5 @@
-// The iPad's menu bar (Native/Rebuild/RebuildMenuBar.swift) against the Mac's (apps/mac/Folevi/Chrome/MenuModel.swift,
-// read from the repository): the same ids, titles and shortcuts where the iPad has the item, no shortcut twice, and
+// The iPad's menu bar (Native/Rebuild/RebuildMenuBar.swift) against the Mac's: the AppKit Mac app's MenuModel.swift,
+// kept as MacMenuModel.reference.txt beside this test since that app was retired (2026-11-23, tag archive/mac-appkit): the same ids, titles and shortcuts where the iPad has the item, no shortcut twice, and
 // every Mac item the iPad leaves out named here with why.
 import GameController
 import UIKit
@@ -42,7 +42,7 @@ final class IPadMenuTests: XCTestCase {
 
     /// The Mac's MenuModel, read as text: each item's id, title and shortcut (as MenuKey.label writes it).
     private func macItems() throws -> [String: MacItem] {
-        let url = URL(fileURLWithPath: #filePath).deletingLastPathComponent().appendingPathComponent("../../../../mac/Folevi/Chrome/MenuModel.swift").standardized
+        let url = URL(fileURLWithPath: #filePath).deletingLastPathComponent().appendingPathComponent("MacMenuModel.reference.txt").standardized
         let text = try String(contentsOf: url, encoding: .utf8)
         var found: [String: MacItem] = [:]
         let patterns = [

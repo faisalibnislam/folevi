@@ -130,7 +130,8 @@ public struct PhoneFrameView<Screen: View>: View {
         return TabView(selection: selection) {
             ForEach(PhoneTab.allCases) { tab in
                 Tab(value: Selection.tab(tab)) {
-                    stack(tab)
+                    // Every screen's top bar ends in the search capsule (the owner, 2026-11-23), which opens Search.
+                    stack(tab).environment(\.phoneOpenSearch, { model.openSearch() })
                 } label: {
                     Label { Text(tab.label) } icon: { tab.icon.image(size: 24, strokeWidth: 1.9) }
                 }

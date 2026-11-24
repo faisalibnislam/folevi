@@ -21,7 +21,7 @@ export type DesktopCommand =
   | { type: "notification"; action: string; id: string; kind?: string; path?: string; text?: string; thread?: string };
 
 /**
- * The menu bar's page commands in the native Mac app (apps/mac/Folevi/Chrome/MenuModel.swift; its MenuTests checks
+ * The menu bar's page commands in the native Mac app (the AppKit Mac app's MenuModel.swift (tag archive/mac-appkit); its MenuTests checks
  * this list against the menus). Each reaches the key window's page as { type: "menu", id }.
  */
 export const MAC_MENU_COMMANDS = [

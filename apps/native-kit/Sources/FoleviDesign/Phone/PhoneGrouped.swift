@@ -33,30 +33,23 @@ public struct PhoneGroupedSection<Content: View>: View {
     public var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             if let title {
-                Text(title.uppercased())
+                // The Mac's section heading (the owner, 2026-11-23): sentence case, semibold, the muted ink.
+                Text(title)
                     .webText(PhoneType.captionCaps)
                     .lineLimit(1)
                     .foregroundStyle(FoleviTokens.Chrome.inkMuted.resolve(scheme).color)
                     .padding(.horizontal, 16)
                     .padding(.bottom, 8)
+                    .accessibilityAddTraits(.isHeader)
             }
-            VStack(spacing: 0) {
-                Group(subviews: content) { rows in
-                    ForEach(Array(rows.enumerated()), id: \.element.id) { i, row in
-                        row.overlay(alignment: .top) {
-                            if i > 0 {
-                                PhoneSurface.separator.resolve(scheme).color
-                                    .frame(height: 0.5)
-                                    .padding(.leading, row.containerValues.phoneSeparatorInset)
-                                    .allowsHitTesting(false)
-                            }
-                        }
-                    }
-                }
-            }
-            .background(PhoneSurface.row.resolve(scheme).color)
+            // The rows on one opaque card, with no lines between them (the owner, 2026-11-23: no row lines; a press
+            // shows a rounded highlight instead).
+            VStack(spacing: 0) { content }
+            .environment(\.phoneRowGrouped, true)
+            .padding(.vertical, chrome != nil ? 4 : 0)
+            .background(PhoneLook.card.resolve(scheme).color)
             // (The native look: iOS 26's inset grouped corners, wide and continuous.)
-            .clipShape(RoundedRectangle(cornerRadius: chrome != nil ? 26 : FoleviTokens.Radius.container, style: chrome != nil ? .continuous : .circular))
+            .clipShape(RoundedRectangle(cornerRadius: chrome != nil ? PhoneLook.cardRadius : FoleviTokens.Radius.container, style: chrome != nil ? .continuous : .circular))
             if let footer {
                 // (On exact CSS line boxes: a paragraph laid out by Text drifted a little each line.)
                 WebFittedLines(footer, style: WebTextStyle(size: WebTypeRole.footnote.metrics.size, leading: 18), maxLines: 40)
@@ -71,10 +64,11 @@ public struct PhoneGroupedSection<Content: View>: View {
 
 /// Type the phone's lists use that isn't a plain role.
 public enum PhoneType {
-    /// `.ui-caption-caps`: Footnote, 600, +0.04em, in capitals.
+    /// A section's heading over its card: the Mac's sidebar and section headings (the owner, 2026-11-23),
+    /// Subheadline semibold in sentence case (once `.ui-caption-caps`, Footnote in capitals).
     public static var captionCaps: WebTextStyle {
-        let m = WebTypeRole.footnote.metrics
-        return WebTextStyle(size: m.size, leading: m.leading, weight: FoleviTokens.FontWeight.semibold, letterSpacing: 0.04 * m.size)
+        let m = WebTypeRole.subheadline.metrics
+        return WebTextStyle(size: m.size, leading: m.leading, weight: FoleviTokens.FontWeight.semibold, letterSpacing: 0)
     }
 
     /// `text-body leading-[22px]`.
@@ -94,10 +88,21 @@ public struct PhoneRowPressStyle: ButtonStyle {
 
     public init() {}
 
+    @Environment(\.phoneRowGrouped) private var grouped
+
     public func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .contentShape(Rectangle())
-            .background(configuration.isPressed ? LiquidGlassLook.press.resolve(scheme).color : .clear)
+            .background {
+                // In a card, a rounded highlight inset from its edges (the Mac's rows); a plain list's whole row.
+                if grouped {
+                    RoundedRectangle(cornerRadius: PhoneLook.highlightRadius, style: .continuous)
+                        .fill(configuration.isPressed ? LiquidGlassLook.press.resolve(scheme).color : .clear)
+                        .padding(.horizontal, 6)
+                } else {
+                    configuration.isPressed ? LiquidGlassLook.press.resolve(scheme).color : .clear
+                }
+            }
             .animation(configuration.isPressed ? nil : .easeOut(duration: 0.15), value: configuration.isPressed)
     }
 }

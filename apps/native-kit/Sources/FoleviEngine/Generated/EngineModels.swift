@@ -4301,9 +4301,13 @@ public enum WebPage: String, Codable, Hashable, Sendable, CaseIterable {
 
 public struct WebShowArgs: Codable, Hashable, Sendable {
     public var page: WebPage
+    /// Revision 34: the page's query, without "?" (Foli DNA around one note: "note=<id>"; a saved view: "view=<id>").
+    /// Letters, digits and `_-.=&%` only.
+    public var query: String?
 
-    public init(page: WebPage) {
+    public init(page: WebPage, query: String? = nil) {
         self.page = page
+        self.query = query
     }
 }
 

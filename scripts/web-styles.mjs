@@ -45,6 +45,9 @@ const APP_DIR = join(repo, "packages/design-tokens/match/app-styles");
 const CACHE_DIR = join(repo, "packages/design-tokens/match/app-styles-cache");
 
 async function fromApp(only) {
+  // App mode measured the web app inside the AppKit Mac app's web frame. That app was retired on 23 November 2026
+  // (the native Folevi for Mac replaced it); its harness is kept at the git tag archive/mac-appkit.
+  if (!existsSync(join(repo, "apps/mac/scripts/mac.mjs"))) throw new Error("App mode needs the AppKit Mac app's harness, retired on 2026-11-23 (git tag archive/mac-appkit).");
   const mac = await import(pathToFileURL(join(repo, "apps/mac/scripts/mac.mjs")).href);
   const dir = join(repo, "apps/mac/build/run/screens");
   if (!existsSync(join(dir, "fixture.json"))) throw new Error("No scratch library yet: run node apps/mac/scripts/screens.mjs --fresh first.");

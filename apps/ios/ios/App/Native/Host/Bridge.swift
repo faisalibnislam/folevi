@@ -1,5 +1,5 @@
 // The page's way to the app without Capacitor (docs/NATIVE_APP_PLAN.md §3.1 and N1): the Mac app's transport
-// (apps/mac/Folevi/Bridge/MessageRouter.swift), so both apps answer `foleviShell` and `foleviNative` the same way.
+// (apps/mac/Folevi/Host/Shared/Bridge/MessageRouter.swift), so both apps answer `foleviShell` and `foleviNative` the same way.
 //
 //   page:   window.webkit.messageHandlers.folevi.postMessage({ plugin, method, options })   (bridge.js)
 //           -> a promise of { ok: true, value } or { ok: false, error: { code, message, data } }
@@ -210,7 +210,7 @@ final class MessageRouter: NSObject, WKScriptMessageHandlerWithReply {
 }
 
 /// Bodies of bridge calls too big for a message, and answers too big for a reply: each is taken once (the Mac's
-/// BridgeBodies, apps/mac/Folevi/App/AppScheme.swift).
+/// BridgeBodies, apps/mac/Folevi/Host/Shared/App/AppScheme.swift).
 final class BridgeBodies {
     static let shared = BridgeBodies()
     private let lock = NSLock()

@@ -49,3 +49,4 @@
 - [Editor quality bar 2026-11-19](editor-quality-bar-2026-11-19.md) — hurts most on iPhone/iPad, 2,000-block target, deep fixes OK but saved format stays
 - [Frosted folders decision](frosted-folders-decision-2026-11-20.md) — 2026-11-20: Frosted folders all platforms, 25% smaller on Mac+web, new sidebar icon; shipped 1.5.58
 - [Tab Back and overview rules](tab-back-and-overview-2026-11-21.md) — Back returns to the opener tab and closes it; sidebar and + are fresh; Home's overview picture is drawn
+- [iOS redesign decisions 2026-11-23](ios-redesign-decisions-2026-11-23.md) — iPhone native Mac profile, tab bar Home/Tasks/Calendar/Foli AI + search, iPad ScreenBar + flat inspector, PR into core branch, TestFlight 1.5.65

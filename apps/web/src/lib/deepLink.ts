@@ -1,5 +1,5 @@
 // folevi:// links (Shortcuts, Raycast, a link in a document) as what they open. The Mac app reads them natively
-// (apps/mac/Folevi/App/Links.swift); the iPhone and iPad app hands them to the page, which reads them here. Both
+// (apps/mac/Folevi/Host/Shared/App/Links.swift); the iPhone and iPad app hands them to the page, which reads them here. Both
 // accept exactly the same links (test/native-app.test.tsx checks this one against the Mac's answers).
 
 export type DeepLink = { type: "open"; path: string } | { type: "new-note" } | { type: "quick-add" };

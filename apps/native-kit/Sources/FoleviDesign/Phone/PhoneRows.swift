@@ -183,11 +183,12 @@ public struct PhoneRowGroup<Content: View>: View {
     }
 
     public var body: some View {
-        let shape = RoundedRectangle(cornerRadius: FoleviTokens.Radius.container, style: .continuous)
+        // An opaque card on the frame's grey (the owner, 2026-11-23), its rows with no lines between them.
+        let shape = RoundedRectangle(cornerRadius: PhoneLook.tileRadius, style: .continuous)
         VStack(spacing: 0) { content }
             .environment(\.phoneRowGrouped, true)
             .padding(.vertical, 4)
-            .background(shape.fill(PhoneSurface.card.resolve(scheme).color))
+            .background(shape.fill(PhoneLook.card.resolve(scheme).color))
             .clipShape(shape)
             .padding(.horizontal, PhoneRowGroupMetrics.inset)
             .accessibilityElement(children: .contain)
@@ -233,12 +234,15 @@ public struct PhoneHomeSection<Content: View>: View {
         let t = ps("phone.section.title", scheme)
         let chev = ps("phone.section.chevron", scheme)
         let dots = ps("phone.section.more", scheme)
+        // The Mac's Home sections (the owner, 2026-11-23): the title in Title 3 semibold, no chevron, and "See all"
+        // at the right where the section opens a screen of its own. (A folding section keeps its chevron.)
+        let seeAll = self.seeAll ?? (opened == nil ? open : nil)
         VStack(alignment: .leading, spacing: 0) {
             HStack(spacing: head.gap) {
                 Button { open?() } label: {
                     HStack(spacing: link.gap) {
                         Text(title).webText(t.text).foregroundStyle(t.color.color)
-                        if open != nil {
+                        if opened != nil {
                             WebIconView(.chevronRight, size: chev.width, strokeWidth: 2.6, absoluteStrokeWidth: true)
                                 .foregroundStyle(chev.color.color)
                                 .rotationEffect(.degrees(opened == true ? 90 : 0))
@@ -249,7 +253,8 @@ public struct PhoneHomeSection<Content: View>: View {
                     .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
-                .disabled(open == nil)
+                // (Not `disabled`, which greys the title of a section that opens nothing.)
+                .allowsHitTesting(open != nil)
                 .accessibilityAddTraits(.isHeader)
                 Spacer(minLength: 0)
                 if let seeAll {
@@ -337,7 +342,6 @@ public struct PhoneEmptyBox: View {
     public init(_ text: String) { self.text = text }
 
     public var body: some View {
-        let ink = FoleviTokens.Chrome.ink.resolve(scheme)
         // (font-serif italic, Subheadline: 15 on 20.)
         Text(text)
             .font(Font(WebFont.ctFont(.display, size: 15, italic: true)))
@@ -346,7 +350,7 @@ public struct PhoneEmptyBox: View {
             .foregroundStyle(FoleviTokens.Chrome.inkMuted.resolve(scheme).color)
             .padding(.horizontal, 20)
             .frame(maxWidth: .infinity, minHeight: 56)
-            .background(RoundedRectangle(cornerRadius: FoleviTokens.Radius.container, style: .continuous).fill(ink.opacity(0.04).color))
+            .background(RoundedRectangle(cornerRadius: PhoneLook.tileRadius, style: .continuous).fill(PhoneLook.card.resolve(scheme).color))
             .padding(.horizontal, 16)
     }
 }
@@ -356,14 +360,20 @@ public struct PhoneSearchField: View {
     let placeholder: String
     @Binding var text: String
     let icon: WebIcon
+    /// Put the cursor in it when it appears (opened from the bar's search capsule).
+    let autofocus: Bool
+    /// Cancel was pressed (the field is cleared first): the screen can put it away.
+    let onCancel: (() -> Void)?
     @FocusState private var focused: Bool
     @Environment(\.colorScheme) private var scheme
 
     /// `icon`: the magnifier, or `.funnel` for a field that filters the list under it ("Filter notes").
-    public init(_ placeholder: String, text: Binding<String>, icon: WebIcon = .search) {
+    public init(_ placeholder: String, text: Binding<String>, icon: WebIcon = .search, autofocus: Bool = false, onCancel: (() -> Void)? = nil) {
         self.placeholder = placeholder
         self._text = text
         self.icon = icon
+        self.autofocus = autofocus
+        self.onCancel = onCancel
     }
 
     public var body: some View {
@@ -400,10 +410,11 @@ public struct PhoneSearchField: View {
             // it as a tap on the text does.
             .contentShape(RoundedRectangle(cornerRadius: box.radius, style: .continuous))
             .onTapGesture { focused = true }
-            if focused || !text.isEmpty {
+            if focused || !text.isEmpty || onCancel != nil {
                 Button("Cancel") {
                     text = ""
                     focused = false
+                    onCancel?()
                 }
                 .webText(input.text)
                 .foregroundStyle(FoleviTokens.Chrome.heading.resolve(scheme).color)
@@ -414,6 +425,12 @@ public struct PhoneSearchField: View {
         }
         .padding(wrap.padding.edgeInsets)
         .animation(.easeOut(duration: 0.15), value: focused || !text.isEmpty)
+        .task {
+            guard autofocus else { return }
+            // (After the field's arrival: focusing during the transition drops the keyboard's request.)
+            try? await Task.sleep(for: .milliseconds(120))
+            focused = true
+        }
     }
 }
 

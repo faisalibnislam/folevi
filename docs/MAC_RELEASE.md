@@ -1,5 +1,10 @@
 # Folevi for Mac: migration, signing, updates and releases (WM3)
 
+> **Since 23 November 2026** Folevi for Mac is the native SwiftUI app (once "Folevi Core") in `apps/mac`, which
+> replaced the AppKit app described below as an update in place: same bundle id, support folder, Keychain names,
+> URL scheme, Sparkle feed and key. Its build, run and release steps are in [apps/mac/README.md](../apps/mac/README.md).
+> The AppKit app's code is at the git tag `archive/mac-appkit`. What follows is kept for its history.
+
 The native Folevi for Mac (`apps/mac`, docs/MAC_WEBKIT_PLAN.md, docs/DESKTOP.md) replaces the Electron app (removed
 from the repository on 2026-10-23; its last version was 1.21.0) in place: same bundle id (`com.folevi.mac`), same team (`7K32QQ2FX8`), same support folder
 (`~/Library/Application Support/Folevi`). This page covers how an Electron Mac becomes a native one, how the app

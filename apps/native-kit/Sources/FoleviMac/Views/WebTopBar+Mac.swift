@@ -13,7 +13,8 @@
 // Folevi's tab model is unchanged (WebTopBar.swift keeps it: pinned, joined and per-place tabs, folder tabs, close,
 // middle click, dragging to reorder, sideways scrolling, a picture on hover, the Tab Overview, the tab's menu); only
 // its drawing is the Mac's. The card's own controls (Back, New note, the title, search or Share) float in the card
-// (CardControls, below).
+// (CardControls, below). On the iPad (the owner's Mac UI guide, 2026-11-23) Back, Forward and New note leave the
+// strip for the card's own top bar (IPadScreenBar), so each is on screen once.
 #if os(macOS) || os(iOS)
 #if os(macOS)
 import AppKit
@@ -94,20 +95,25 @@ extension WebTopBar {
     /// Back and Forward, the tabs, and the strip's trailing buttons, after its leading part.
     private var tail: some View {
         HStack(spacing: 6) {
+            #if os(macOS)
             // Back and Forward stay put, dimmed with nowhere to go (Finder's and Safari's), so the tabs never shift
             // and nothing floats over the page for them. (A view of their own: only they redraw when the history
-            // changes, not the whole strip.)
+            // changes, not the whole strip.) On the iPad they are in the card's own bar (IPadScreenBar), once.
             MacHistoryButtons(model: model)
                 .padding(.trailing, 2)
+            #endif
             // The tabs fill the bar up to the sync status (Safari's rule: every tab the same width).
             tabStrip
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .layoutPriority(1)
                 .padding(.trailing, 2)
+            #if os(macOS)
             // New note, the web's top bar's black pill (the owner, 2026-11-19: the one New note on screen, moved
-            // from the sidebar), right after the tabs. It opens the note in a new tab, ready to type.
+            // from the sidebar), right after the tabs. It opens the note in a new tab, ready to type. (The iPad's is
+            // in the card's bar, IPadScreenBar.)
             MacNewNotePill(model: model)
                 .padding(.horizontal, 2)
+            #endif
             // Whether everything is saved and synced, then the bell (the owner, 2026-11-18).
             MacSyncStatus(model: model) { model.showSync?($0) }
             stripButton("bell", label: "Notifications", help: "Notifications", anchored: true) { model.showNotifications?(bellAnchor) }
@@ -463,6 +469,8 @@ struct MacOverviewButton: View {
 /// (the web's primary button), in the system's prominent Liquid Glass button.
 struct MacNewNotePill: View {
     let model: FrameModel
+    /// Its height in the iPad's card bar (a control's, 44 pt); nil: the strip's, inside the tab track's height.
+    var height: CGFloat? = nil
     @Environment(\.colorScheme) private var scheme
     /// The pointer's over it (a Mac's, an iPad's trackpad): the pill lightens a touch, as the web's primary does.
     @State private var hover = false
@@ -470,13 +478,13 @@ struct MacNewNotePill: View {
     var body: some View {
         let dark = scheme == .dark
         let button = Button { model.newNote() } label: {
-            HStack(spacing: 5) {
-                MacSymbol("plus", size: 13, weight: .semibold)
-                Text("New note").font(.system(size: 13, weight: .semibold))
+            HStack(spacing: height == nil ? 5 : 6) {
+                MacSymbol("plus", size: height == nil ? 13 : 15, weight: .semibold)
+                Text("New note").font(height == nil ? .system(size: 13, weight: .semibold) : MacLook.Text.headline)
             }
             .foregroundStyle(dark ? Color.black : Color.white)
-            .padding(.horizontal, 14)
-            .frame(height: WebTopBar.trackHeight - 8)
+            .padding(.horizontal, height == nil ? 14 : 18)
+            .frame(height: height ?? WebTopBar.trackHeight - 8)
             .contentShape(Capsule())
         }
         // (A solid black or white under Liquid Glass, not the system's prominent button or a tint alone: those came out

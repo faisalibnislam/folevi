@@ -484,10 +484,11 @@ account button should move past iPadOS's window buttons).
 - Android tabs and polish (`claude/android-tabs`, PR 57 https://github.com/faisalibnislam/folevi/pull/57): web-style tabs on large screens and the
   android-skills audit fixes (`docs/ANDROID_POLISH_2026-11-24.md`). The owner reviews and merges. Its "Not done
   yet" list is the next Android work. Then the owner's Play steps (`apps/android/README.md` "Steps only the owner can do").
-- Google Play (2026-11-24): app **Folevi** (`com.folevi.android`) created in the Airly.io Play Console account;
-  Internal testing uses the "Involets testers" list. Release 1 (1.5.68, build 83, from `claude/android-tabs`) is a draft
-  waiting for the owner to drag `apps/android/app/build/outputs/bundle/release/Folevi-1.5.68-83.aab` in (106 MB, too big
-  for the browser tools). Later Play uploads need a higher `build` in `version.json`.
+- Google Play (2026-11-24): app **Folevi** (`com.folevi.android`) in the Airly.io Play Console account. Internal
+  testing is live with release 83 (1.5.68, built from `claude/android-tabs`), tester list "Involets testers"; join link
+  https://play.google.com/apps/internaltest/4701659242250904528. Testers see the temporary name "com.folevi.android
+  (unreviewed)" until the store listing and app content are done. Next uploads need a higher `build` in `version.json`;
+  bundles over 10 MB must be dragged in by the owner (the browser tools can't attach them). No native debug symbols yet.
 - iPhone and iPad redesign (`claude/ios-native-redesign-f4a8be`): the owner tries 1.5.65 from TestFlight; PR 52
   (https://github.com/faisalibnislam/folevi/pull/52) into `claude/folevi-core-529dbe` (the owner's choice) is
   open for review. The `v1.5.65` tag is local only (pushing it was not asked for).
@@ -611,6 +612,7 @@ account button should move past iPadOS's window buttons).
   `DATABASE_UDF_USER_TIMEOUT_SECONDS=4` for that backend. Bursts show in `convex.log` as "took a long time".
 
 ## 12. Change log
+- 2026-11-24: Play internal testing live: release 83 (1.5.68) published to the internal track with the owner's OK.
 - 2026-11-24: Android upload key created (outside the repo) and a signed release bundle built; Folevi created in Play Console with an internal testing track (owner's OK, declarations ticked with the owner's OK); first upload waits on the owner.
 - 2026-11-24: PR 54 (Android native app) merged into `main` (289b11af) once CI passed; `main` merged into `claude/android-tabs`, opened as PR 57.
 - 2026-11-24: Android tabs on tablets, foldables and Googlebooks with the web's rules, links inside notes, and an android-skills polish pass (security, edge-to-edge, widgets, ANRs, Back, keys) on `claude/android-tabs` (976a7172); pushed, no PR yet.

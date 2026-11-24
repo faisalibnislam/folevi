@@ -4,6 +4,20 @@ Every Folevi release, newest first, written by `node scripts/version.mjs` from `
 
 Versions are MAJOR.UPDATE.PATCH, PATCH at least two digits: a Major release (2.0.00), a Big update (1.1.05 after 1.0.05) or a Small update (1.0.06 after 1.0.05).
 
+## Version 1.5.71: Small update
+
+Released 2026-11-24 13:21:54+06:00 (build 86, tag v1.5.71)
+
+Folevi for Mac opens pages in tabs like the web app and feels more at home on the Mac.
+
+### Improved
+
+- Mac: notes, folders and lists open in a new tab exactly as they do on the web, and Back and Forward move inside a tab.
+- Mac: Ask Foli AI sits in the toolbar.
+- Mac: New Folder is ⇧⌘N.
+- Mac: "Star" is now "Bookmark", as on the web.
+- Mac: calmer motion with no bounce, plus menu and speed fixes.
+
 ## Version 1.5.70: Small update
 
 Released 2026-11-24 13:07:28+06:00 (build 85, tag v1.5.70)

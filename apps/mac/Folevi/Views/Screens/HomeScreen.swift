@@ -40,11 +40,11 @@ struct HomeScreen: View {
                         }
                     }
 
-                    section("Starred", action: h.starred.more ? "See All" : nil, to: .starred) {
+                    section("Bookmarks", action: h.starred.more ? "See All" : nil, to: .starred) {
                         if h.starred.rows.isEmpty {
-                            EmptyHint(title: "No starred notes yet", text: "Star notes you come back to often, and they wait for you here.")
+                            EmptyHint(title: "No bookmarks yet", text: "Bookmark notes you come back to often, and they wait for you here.")
                         } else {
-                            Carousel(label: "starred notes") {
+                            Carousel(label: "bookmarks") {
                                 ForEach(h.starred.rows.prefix(6)) { row in NoteCardButton(row: row, window: window).frame(width: AppCards.noteWidth) }
                             }
                         }
@@ -121,7 +121,7 @@ struct HomeScreen: View {
         let all = (folders.value?.folders ?? h.folders).sorted { $0.updatedAt > $1.updatedAt }
         section(all.isEmpty ? "Folders" : "Folders · \(all.count)", action: all.isEmpty ? nil : "See All", to: .folders) {
             if all.isEmpty {
-                EmptyHint(title: "No folders yet", text: "Make one from the sidebar (⌃⌘N) to keep related notes together.")
+                EmptyHint(title: "No folders yet", text: "Make one from the sidebar (⇧⌘N) to keep related notes together.")
             } else {
                 Carousel(label: "folders", rows: all.count > 4 ? 2 : 1) {
                     ForEach(all, id: \.id) { f in HomeFolderCard(folder: f, window: window).frame(width: AppCards.folderWidth) }
@@ -196,8 +196,9 @@ struct Carousel<Content: View>: View {
             Image(systemName: symbol).font(.body.weight(.semibold)).frame(width: 30, height: 30)
         }
         .buttonStyle(.hoverIcon)
-        .glassEffect(.regular.interactive(), in: .circle)
-        .glassArrival()
+        // A material, not Liquid Glass: glass is for the window's controls, and these sit in the content.
+        .background(.regularMaterial, in: .circle)
+        .transition(.opacity)
         .help(help)
         .accessibilityLabel(help)
         .padding(.horizontal, 4)
@@ -235,9 +236,10 @@ struct HomeFolderCard: View {
     @State private var width: CGFloat = 190
     private var app: AppModel { .shared }
     @State private var targeted = false
-    @State private var hoveringCard = false
     @State private var renaming: FolderNode?
     @State private var newSubfolderOf: FolderNode?
+
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private var node: FolderNode? { app.tree.value?.folders.first { $0.id == folder.id } }
     private var landing: Bool { reorder?.landing ?? false }
@@ -250,19 +252,7 @@ struct HomeFolderCard: View {
             }
         }
         .buttonStyle(CardPressStyle())
-        .overlay(alignment: .topTrailing) {
-            if hoveringCard, !landing, let node {
-                Menu { FolderMenu(folder: node, window: window, rename: { renaming = $0 }, newSubfolder: { newSubfolderOf = $0 }) } label: {
-                    Image(systemName: "ellipsis").frame(width: 24, height: 24)
-                }
-                .menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize()
-                .glassEffect(.regular.interactive(), in: .circle)
-                .glassArrival()
-                .help("Folder Options")
-                .padding(.top, 54).padding(.trailing, 8)
-            }
-        }
-        .onHover { h in Motion.run(Motion.hover) { hoveringCard = h } }
+        // (No hover menu: the context menu below has the folder's commands.)
         .onMiddleClick { app.open(.folder(folder.id), newTab: true, background: true) }
         // The folder being dragged, drawn where it will land: dimmed, with a dashed edge.
         .opacity(landing ? 0.35 : 1)
@@ -273,7 +263,8 @@ struct HomeFolderCard: View {
                     .padding(-4)
             }
         }
-        .scaleEffect(zone == .inside && !landing ? 1.04 : 1)
+        // A drop target grows a little, never under Reduce Motion (a scale is motion).
+        .scaleEffect(zone == .inside && !landing && !reduceMotion ? 1.04 : 1)
         .appAnimation(Motion.tap, value: zone)
         .task(id: zone) {
             // Spring-loading: a drag that rests on the folder for 0.6 s opens it.

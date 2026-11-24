@@ -81,7 +81,7 @@ struct Sidebar: View {
                     Text("No folders yet").foregroundStyle(.secondary).font(.callout)
                 }
             } header: {
-                SectionHeaderWithAdd(title: "Folders", help: "New Folder (⌃⌘N)", open: { window.go(.folders) }) {
+                SectionHeaderWithAdd(title: "Folders", help: "New Folder (⌃⌘N)", open: { window.pickInSidebar(.folders) }) {
                     newFolderParent = .some(nil)
                 } menu: {
                     Picker("Sort Folders", selection: $folderSort) {
@@ -125,7 +125,7 @@ struct Sidebar: View {
                     Text("Tag notes from the inspector (⌥⌘I).").foregroundStyle(.secondary).font(.callout)
                 }
             } header: {
-                SectionHeaderWithAdd(title: "Tags", help: nil, open: { window.go(.tags) })
+                SectionHeaderWithAdd(title: "Tags", help: nil, open: { window.pickInSidebar(.tags) })
             }
 
             Section("More") {
@@ -141,7 +141,7 @@ struct Sidebar: View {
                             ForEach(graphViews.value?.views ?? [], id: \.id) { v in
                                 Label { Text(v.name).lineLimit(1) } icon: { WebIcon.bookmark.image(size: 13).frame(width: 18) }
                                     .contentShape(Rectangle())
-                                    .onTapGesture { window.graphQuery = "view=\(v.id)"; window.go(.graph) }
+                                    .onTapGesture { window.graphQuery = "view=\(v.id)"; window.pickInSidebar(.graph) }
                             }
                         } label: { row(.graph) }
                     }

@@ -141,7 +141,7 @@ struct FolderMenu: View {
             Button(folder.locked ? "Stop Fully Encrypting…" : "Always Fully Encrypt…") { FolderActions.lock(folder, app: app) }
         }
         if app.session.value?.mode != .local {
-            Button("Share Folder…") { window.go(.folder(folder.id)); window.sharingFolder = folder.id }
+            Button("Share Folder…") { window.sharingFolder = folder.id; window.go(.folder(folder.id)) }
         }
         Divider()
         Button("Copy Folder Link") { FolderActions.copyLink(folder) }
@@ -284,7 +284,7 @@ enum TagActions {
         alert.buttons.first?.hasDestructiveAction = true
         AppAlerts.cancelIsDefault(alert)
         guard alert.runModal() == .alertFirstButtonReturn else { return }
-        if window?.current == .tag(id) { window?.go(.home) }
+        if window?.current == .tag(id) { window?.step(to: .home) }
         AppModel.shared.perform { client in
             _ = try await client.command(Commands.TagDelete(TagIdArgs(id: id)))
             AppModel.shared.toast("Deleted #\(name)")

@@ -109,7 +109,7 @@ struct NoteBarChip: View {
         if let crumbs = window.noteMeta?.breadcrumbs, let folder = window.noteMeta?.folder {
             Menu {
                 Button("Open \(folder.name)") { window.go(.folder(folder.id)) }
-                ForEach(crumbs, id: \.id) { c in Button(c.title.nonEmpty ?? "Untitled") { window.go(.note(c.id)) } }
+                ForEach(crumbs, id: \.id) { c in Button(c.title.nonEmpty ?? "Untitled") { window.go(.note(c.id), inNote: true) } }
             } label: {
                 Label { Text(folder.name).lineLimit(1) } icon: { FolderMark(colorId: folder.color, size: 13) }
                     .labelStyle(.titleAndIcon)

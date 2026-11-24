@@ -119,6 +119,9 @@ final class WindowModel: Identifiable {
         app.route(dest, from: self, newTab: newTab, inNote: inNote)
     }
 
+    /// This tab as the tab rule sees it.
+    var tabState: AppModel.TabState { AppModel.TabState(id: id, current: current, panes: panes, frontAt: frontAt) }
+
     /// Goes to `dest` in this tab, keeping the way back.
     func step(to dest: Destination) {
         guard dest != current else { return }

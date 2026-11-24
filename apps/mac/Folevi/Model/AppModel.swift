@@ -485,6 +485,10 @@ final class AppModel {
     func register(_ window: WindowModel) {
         windows[window.id] = WeakWindow(model: window)
         windows = windows.filter { $0.value.model != nil }
+        if let carry = pendingCarry {
+            pendingCarry = nil
+            carry.apply(to: window)
+        }
         if windowsRestored { saveWindowsSoon() }
     }
 
@@ -642,6 +646,8 @@ final class AppModel {
 
     /// The note a new note's window takes the caret in (it may open in another tab than the one that made it).
     @ObservationIgnored var focusNote: String?
+    /// What a page asked the new tab to show (taken by the next window that registers).
+    @ObservationIgnored var pendingCarry: WindowCarry?
     @ObservationIgnored private var frontClock = 0
 
     /// Opens `dest` from `source` by the web's tab rule (lib/app/tabs.tsx; the owner's rule of 24 November 2026,
@@ -657,31 +663,62 @@ final class AppModel {
             source.window?.makeKeyAndOrderFront(nil)
             return
         }
-        let kind = dest.tabKind
-        let here = source.current.tabKind
-        let stays = !newTab && (kind == .none || kind == here || (inNote && dest.isNote && source.current.isNote))
-        if stays {
+        let others = windows.values.compactMap(\.model).filter { $0.id != source.id && $0.window != nil }
+        let place = Self.placement(of: dest, from: source.current, others: others.map(\.tabState), fresh: fresh, newTab: newTab, inNote: inNote)
+        if place == .here {
             source.step(to: dest)
             return
         }
-        if let held = tab(holding: dest, except: source.id) {
+        // What the page asked to show there (Foli DNA's centre or saved view, the folder's share sheet) goes with it.
+        let carry = WindowCarry(graphQuery: source.graphQuery, graphCenter: source.graphCenter, sharingFolder: source.sharingFolder)
+        source.graphQuery = nil
+        source.graphCenter = nil
+        source.sharingFolder = nil
+        switch place {
+        case .existing(let id):
+            guard let held = others.first(where: { $0.id == id }) else { return }
+            carry.apply(to: held)
             if held.current != dest, !dest.isNote { held.step(to: dest) }
             if let w = held.window {
                 w.tabGroup?.selectedWindow = w
                 w.makeKeyAndOrderFront(nil)
             }
-            NSApp.activate()
-            return
+        case .newTab(let keepsOpener):
+            pendingOpener = keepsOpener ? source.window : nil
+            pendingCarry = carry.isEmpty ? nil : carry
+            openWindow?(dest, true, false)
+        case .here:
+            break
         }
-        pendingOpener = fresh ? nil : source.window
-        openWindow?(dest, true, false)
         NSApp.activate()
     }
 
-    /// The window or tab that already holds `dest`'s tab: the note's (or a tab it's joined in), the view's, or the
-    /// folder tab used last.
-    func tab(holding dest: Destination, except: UUID? = nil) -> WindowModel? {
-        let others = windows.values.compactMap(\.model).filter { $0.id != except && $0.window != nil }
+    /// Where a page opens (the web's rule, lib/app/tabs.tsx): `.here` inside the same tab, `.existing` the tab that
+    /// already holds it, else a new tab that keeps its opener unless it's `fresh`.
+    enum TabPlacement: Equatable {
+        case here
+        case existing(UUID)
+        case newTab(keepsOpener: Bool)
+    }
+
+    /// A window or tab as the rule sees it.
+    struct TabState {
+        let id: UUID
+        let current: Destination
+        var panes: [String]? = nil
+        var frontAt = 0
+    }
+
+    nonisolated static func placement(of dest: Destination, from here: Destination, others: [TabState], fresh: Bool = false, newTab: Bool = false, inNote: Bool = false) -> TabPlacement {
+        let kind = dest.tabKind
+        if !newTab, kind == .none || kind == here.tabKind || (inNote && dest.isNote && here.isNote) { return .here }
+        if let held = holder(of: dest, among: others) { return .existing(held.id) }
+        return .newTab(keepsOpener: !fresh)
+    }
+
+    /// The tab that already holds `dest`'s tab: the note's (or a tab it's joined in), the view's, or the folder tab
+    /// used last.
+    nonisolated static func holder(of dest: Destination, among others: [TabState]) -> TabState? {
         switch dest.tabKind {
         case .none: return nil
         case .note(let id): return others.first { $0.current.noteId == id || $0.panes?.contains(id) == true }
@@ -781,4 +818,20 @@ final class AppModel {
     }
 
     var unread: Int { notifications.value?.unread ?? 0 }
+}
+
+
+/// A page's request that travels with it to the tab it opens in.
+struct WindowCarry {
+    var graphQuery: String?
+    var graphCenter: String?
+    var sharingFolder: String?
+
+    var isEmpty: Bool { graphQuery == nil && graphCenter == nil && sharingFolder == nil }
+
+    @MainActor func apply(to window: WindowModel) {
+        if let graphQuery { window.graphQuery = graphQuery }
+        if let graphCenter { window.graphCenter = graphCenter }
+        if let sharingFolder { window.sharingFolder = sharingFolder }
+    }
 }

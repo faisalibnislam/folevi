@@ -7,28 +7,23 @@ async function newDocument(page: Page) {
   await expect(page.getByRole("textbox", { name: "Title" })).toBeFocused();
 }
 
-test("phone-width navigation drawer is a modal dialog with a focus trap", async ({ browser }) => {
-  const { page, context } = await newPerson(browser, "Drawer Tester");
+test("phone width: the phone interface with its tab bar, reachable by keyboard", async ({ browser }) => {
+  // A window under 700 px gets the bottom bar on every device, a computer's narrow window too (the owner, 2026-11-24).
+  const { page, context } = await newPerson(browser, "Tab Bar Tester");
   await page.setViewportSize({ width: 390, height: 844 });
-  await waitForSaved(page);
-  const toggle = page.getByRole("button", { name: "Show sidebar" });
-  await expect(toggle).toHaveAttribute("aria-expanded", "false");
-  await toggle.focus();
+  const tabs = page.getByRole("navigation", { name: "Tabs" });
+  await expect(tabs).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByRole("button", { name: "Show sidebar" })).toHaveCount(0);
+  await expect(page.locator("html")).toHaveAttribute("data-form", "phone");
+  // Each tab is a named link; Tasks opens Tasks, and widening the window brings the sidebar back in place.
+  await tabs.getByRole("link", { name: "Tasks" }).focus();
   await page.keyboard.press("Enter");
-
-  const drawer = page.getByRole("dialog", { name: "Navigation" });
-  await expect(drawer).toBeVisible();
-  await expect(drawer).toHaveAttribute("aria-modal", "true");
-  // Focus moved into the drawer and Tab never leaves it (the page behind is inert).
-  await expect.poll(() => page.evaluate(() => Boolean(document.activeElement?.closest('[role="dialog"]')))).toBe(true);
-  for (let i = 0; i < 40; i++) {
-    await page.keyboard.press(i % 7 === 6 ? "Shift+Tab" : "Tab");
-    expect(await page.evaluate(() => Boolean(document.activeElement?.closest('[role="dialog"][aria-label="Navigation"]')))).toBe(true);
-  }
-  // Escape closes it and focus returns to the toggle.
-  await page.keyboard.press("Escape");
-  await expect(drawer).toHaveCount(0);
-  await expect(toggle).toBeFocused();
+  await expect(page.getByRole("heading", { level: 1, name: "Tasks" })).toBeVisible();
+  await expect(tabs.getByRole("link", { name: "Tasks" })).toHaveAttribute("aria-current", "page");
+  await page.setViewportSize({ width: 1280, height: 844 });
+  await expect(page.getByRole("navigation", { name: "Folio" })).toBeVisible();
+  await expect(tabs).toHaveCount(0);
+  await expect(page.locator("html")).toHaveAttribute("data-form", "desktop");
   await context.close();
 });
 

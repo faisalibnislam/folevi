@@ -140,15 +140,8 @@ test.describe("account mode", { tag: "@account-menu" }, () => {
       await page.keyboard.press("Escape");
     });
 
-    // Phone width: the sidebar is a drawer.
-    await page.setViewportSize({ width: 390, height: 844 });
-    await page.goto(`${APP}/documents`);
-    await page.getByRole("button", { name: "Show sidebar" }).click();
-    menu = await openMenu(page);
-    await shot(page, "5-phone", menu, switcher(page));
-    await page.keyboard.press("Escape");
-
-    // The iPhone app's account sheet: the same contents, in the phone's measure.
+    // Phone width (a phone's browser or the app alike, since 2026-11-24): the account sheet, the same contents in
+    // the phone's measure.
     const state = await context.storageState();
     await context.close();
     const phone = await browser.newContext({ storageState: state, viewport: { width: 402, height: 874 }, userAgent: IPHONE_UA, hasTouch: true });

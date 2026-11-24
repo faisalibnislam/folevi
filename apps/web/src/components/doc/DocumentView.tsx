@@ -98,7 +98,7 @@ import { ExportDialog } from "./ExportDialog";
 import { FindBar } from "./FindBar";
 import { useNoteActions } from "@/components/views/noteActions";
 import { PageDock } from "./PageDock";
-import { isIpadApp, isIphoneApp, useIpadNativeWide, useIphoneApp } from "@/lib/iphone";
+import { isIpadLayout, isIphoneApp, useIpadNativeWide, useIphoneApp } from "@/lib/iphone";
 import { NoteBars } from "@/components/iphone/NoteBars";
 import { nativeChrome } from "@/lib/nativeApp";
 import { useNativeNote } from "@/lib/engine/editorCommands";
@@ -1185,7 +1185,7 @@ export function DocumentView({ documentId }: { documentId: string }) {
       {/* The note floats on its backdrop in a rounded panel; the chrome (sidebars, inspector) sits flat behind.
           Inset like the tab strip above it (inset-x-1), so the page lines up with it. The iPad app's glass bar
           sits 8 points in from the card, so there the page does too, and its shadow keeps room inside the card. */}
-      <div ref={attachNoteRow} className={`relative flex h-full min-h-0 ${iphone ? "" : isIpadApp() ? "px-2 pb-2" : "sm:px-1 sm:pb-1"}`}>
+      <div ref={attachNoteRow} className={`relative flex h-full min-h-0 ${iphone ? "" : isIpadLayout() ? "px-2 pb-2" : "sm:px-1 sm:pb-1"}`}>
         <div ref={noteRef} data-note-panel="" className={`relative min-w-0 flex-1 ${iphone ? "" : "px-1.5 pb-2 sm:px-0 sm:pb-0"}`}>
         {findBar && editor ? <FindBar editor={editor} withReplace={findBar.replace} focusKey={findBar.key} readOnly={readOnly} onClose={() => setFindBar(null)} /> : null}
 

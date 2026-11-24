@@ -1140,7 +1140,7 @@
    25% smaller than they were, so more fit in a row (the owner, 20 November 2026); the iPad and the iPhone keep the
    full size. */
 :root { --folder-card-min: 158px; --note-card-min: 172px; --subfolder-card: 114px; --card-gap: 24px; --card-row-gap: 28px; --subfolder-gap-x: 16px; --subfolder-gap-y: 24px; }
-:root:is([data-ipad], [data-iphone]) { --folder-card-min: 210px; --note-card-min: 230px; --subfolder-card: 152px; --card-gap: 32px; --card-row-gap: 40px; --subfolder-gap-x: 24px; --subfolder-gap-y: 32px; }
+:root:is([data-tablet], [data-iphone]) { --folder-card-min: 210px; --note-card-min: 230px; --subfolder-card: 152px; --card-gap: 32px; --card-row-gap: 40px; --subfolder-gap-x: 24px; --subfolder-gap-y: 32px; }
 /* Folder cards (FolderCardArt.tsx), "Frosted" (the owner, 20 November 2026): the back and the subfolders stacked
    behind in the folder's muted colour, a little darker at the top-left; a see-through front with its words in the
    colour's darkest tone (white in dark). The whole front is fully frosted (the owner, 21 November 2026): a strong
@@ -1188,20 +1188,21 @@
 @keyframes iphone-spinner { to { transform: rotate(360deg); } }
 
 /* ------------------------------------------------------------------------------------------------
- * iOS polish WP5: the iPad layout (docs/IOS_POLISH_PLAN.md §3 "iPad"). Shell marks <html data-ipad> in the iPad
- * app while its window has room for the sidebar (lib/iphone.ts isIpadLayout); a compact window gets the phone
- * interface instead. The desktop layout stays, drawn the way iPadOS draws it: touch-sized rows and text, the
- * tab strip as iPad tabs (TabStrip.tsx), no keyboard hints without a keyboard, no ring left behind by a tap,
- * no "…" showing on every card. Nothing here applies to the website or the Mac app.
+ * The tablet layout (first the iPad's, iOS polish WP5; since 2026-11-24 every touch tablet's). Shell marks
+ * <html data-tablet> on a device used by touch while its window has room for the sidebar (lib/iphone.ts
+ * isIpadLayout, lib/platform.ts): the iPad, an Android tablet or open foldable (an open iPhone Duo too), a
+ * tablet's browser. A window under 700 px gets the phone interface instead. The desktop layout stays, drawn for
+ * touch: touch-sized rows and text, the tab strip as touch tabs (TabStrip.tsx), no keyboard hints without a
+ * keyboard, no ring left behind by a tap, no "…" showing on every card. Computers never get it.
  * --------------------------------------------------------------------------------------------- */
-:root[data-ipad] { -webkit-tap-highlight-color: transparent; }
+:root[data-tablet] { -webkit-tap-highlight-color: transparent; }
 /* The tab strip: a glass capsule, capsule tabs and their close buttons. */
-:root[data-ipad] :is([data-ipad-tabs], [data-ipad-tab], [data-ipad-tab-close]) { border-radius: var(--radius-capsule); }
+:root[data-tablet] :is([data-ipad-tabs], [data-ipad-tab], [data-ipad-tab-close]) { border-radius: var(--radius-capsule); }
 /* Keyboard hints (⌘K in the search box) only while a hardware keyboard is attached (bridge.js, Shell.tsx). */
-:root[data-ipad]:not([data-hardware-keyboard]) :is(.ui-kbd, .ui-shortcut-hint) { display: none; }
+:root[data-tablet]:not([data-hardware-keyboard]) :is(.ui-kbd, .ui-shortcut-hint) { display: none; }
 /* No focus ring after a tap: only while a keyboard moves focus (data-input="key", components/iphone/chrome.tsx). */
-:root[data-ipad]:not([data-input="key"]) :focus-visible { outline: none !important; --tw-ring-shadow: 0 0 #0000 !important; --tw-ring-offset-shadow: 0 0 #0000 !important; }
-:root[data-ipad][data-input="key"] :focus-visible { --tw-ring-color: var(--color-focus); }
+:root[data-tablet]:not([data-input="key"]) :focus-visible { outline: none !important; --tw-ring-shadow: 0 0 #0000 !important; --tw-ring-offset-shadow: 0 0 #0000 !important; }
+:root[data-tablet][data-input="key"] :focus-visible { --tw-ring-color: var(--color-focus); }
 /* The iPad's native wide layout (Shell.tsx data-ipad-native) too: a panel that hands its close button focus as it
    opens left a black ring after a tap. */
 :root[data-ipad-native]:not([data-input="key"]) :focus-visible { outline: none !important; --tw-ring-shadow: 0 0 #0000 !important; --tw-ring-offset-shadow: 0 0 #0000 !important; }
@@ -1209,38 +1210,38 @@
    press opens the same menu (and the lifted picture of the card has no "…" either). A trackpad's pointer
    hovering the card (data-input="pointer": a finger counts as hovering too), or keyboard focus, shows it (not the focus a closing menu hands back after a touch: only a keyboard's,
    data-input="key"). */
-:root[data-ipad]:not([data-input="key"]) [data-card-menu], :root[data-ipad] [data-card-menu]:not(:has(:focus-visible)) { opacity: 0; pointer-events: none; }
+:root[data-tablet]:not([data-input="key"]) [data-card-menu], :root[data-tablet] [data-card-menu]:not(:has(:focus-visible)) { opacity: 0; pointer-events: none; }
 @media (any-hover: hover) {
-  :root[data-ipad][data-input="pointer"] .group:hover > [data-card-menu], :root[data-ipad][data-input="pointer"] .group:hover [data-card-menu] { opacity: 1; pointer-events: auto; }
+  :root[data-tablet][data-input="pointer"] .group:hover > [data-card-menu], :root[data-tablet][data-input="pointer"] .group:hover [data-card-menu] { opacity: 1; pointer-events: auto; }
 }
 /* The sidebar as an iPadOS sidebar: 44 pt rows in 17 pt text, the open item a filled capsule (no raised card). */
-:root[data-ipad] nav[aria-label="Folio"] a.group { min-height: 44px; font-size: var(--type-body); gap: 12px; padding-inline: 12px; }
-:root[data-ipad] nav[aria-label="Folio"] a.group > span:first-child svg { width: 20px; height: 20px; }
-:root[data-ipad] nav[aria-label="Folio"] a.group,
-:root[data-ipad] [data-ipad-sidebar] button.ui-well { border-radius: var(--radius-capsule); }
-:root[data-ipad] nav[aria-label="Folio"] a.group[aria-current="page"] { background: color-mix(in oklab, var(--color-heading) 9%, transparent); box-shadow: none; }
+:root[data-tablet] nav[aria-label="Folio"] a.group { min-height: 44px; font-size: var(--type-body); gap: 12px; padding-inline: 12px; }
+:root[data-tablet] nav[aria-label="Folio"] a.group > span:first-child svg { width: 20px; height: 20px; }
+:root[data-tablet] nav[aria-label="Folio"] a.group,
+:root[data-tablet] [data-ipad-sidebar] button.ui-well { border-radius: var(--radius-capsule); }
+:root[data-tablet] nav[aria-label="Folio"] a.group[aria-current="page"] { background: color-mix(in oklab, var(--color-heading) 9%, transparent); box-shadow: none; }
 /* The search box at the top of either sidebar (the app's and a note's own). */
-:root[data-ipad] [data-ipad-sidebar] button.ui-well { min-height: 44px; font-size: var(--type-body); padding-left: 14px; }
-:root[data-ipad] [data-ipad-sidebar] button.ui-well svg { width: 18px; height: 18px; }
+:root[data-tablet] [data-ipad-sidebar] button.ui-well { min-height: 44px; font-size: var(--type-body); padding-left: 14px; }
+:root[data-tablet] [data-ipad-sidebar] button.ui-well svg { width: 18px; height: 18px; }
 /* A note's own sidebar (its contents, comments, tasks, files, find): the desktop's 12 to 13.5 pt text at 15. */
-:root[data-ipad] [data-ipad-sidebar] [role="tabpanel"] :is(.text-footnote, .text-subheadline, .text-callout, .text-body) { font-size: var(--type-subheadline); line-height: var(--type-subheadline-leading); }
-:root[data-ipad] [data-ipad-sidebar] [role="tabpanel"] :is(a, button):is(.block, .w-full) { min-height: 36px; }
+:root[data-tablet] [data-ipad-sidebar] [role="tabpanel"] :is(.text-footnote, .text-subheadline, .text-callout, .text-body) { font-size: var(--type-subheadline); line-height: var(--type-subheadline-leading); }
+:root[data-tablet] [data-ipad-sidebar] [role="tabpanel"] :is(a, button):is(.block, .w-full) { min-height: 36px; }
 /* Foli AI's floating chat has no launcher pill on the iPad (the tab strip's Foli AI opens it): it sits low. */
-:root[data-ipad] .ai-chat .ui-fab-panel { bottom: calc(16px + env(safe-area-inset-bottom)); right: 16px; }
+:root[data-tablet] .ai-chat .ui-fab-panel { bottom: calc(16px + env(safe-area-inset-bottom)); right: 16px; }
 /* A finger scrolls Home's rows of cards: no arrow buttons over them. */
-:root[data-ipad] button[aria-label^="Scroll "][aria-label$=" back"], :root[data-ipad] button[aria-label^="Scroll "][aria-label$=" forward"] { display: none; }
+:root[data-tablet] button[aria-label^="Scroll "][aria-label$=" back"], :root[data-tablet] button[aria-label^="Scroll "][aria-label$=" forward"] { display: none; }
 /* The note's floating bar (PageDock.tsx): a 52 pt glass capsule, 44 pt tools in 15 pt text with 20 pt icons. */
-:root[data-ipad] [role="toolbar"][aria-label="Page tools"] {
+:root[data-tablet] [role="toolbar"][aria-label="Page tools"] {
   border-radius: var(--radius-capsule); padding: 4px; gap: 2px;
   background: var(--liquid-fill-strong); -webkit-backdrop-filter: blur(30px) saturate(1.8); backdrop-filter: blur(30px) saturate(1.8);
   box-shadow: var(--liquid-edge), var(--liquid-shadow);
 }
-:root[data-ipad] [role="toolbar"][aria-label="Page tools"] button { min-height: 44px; min-width: 44px; border-radius: var(--radius-capsule); font-size: var(--type-subheadline); }
-:root[data-ipad] [role="toolbar"][aria-label="Page tools"] button svg { width: 20px; height: 20px; }
+:root[data-tablet] [role="toolbar"][aria-label="Page tools"] button { min-height: 44px; min-width: 44px; border-radius: var(--radius-capsule); font-size: var(--type-subheadline); }
+:root[data-tablet] [role="toolbar"][aria-label="Page tools"] button svg { width: 20px; height: 20px; }
 /* Segmented controls (a note's sidebar tools, the inspector's tabs): iPadOS's, 36 tall with 18 pt icons. */
-:root[data-ipad] .ui-seg > * { min-height: 36px; font-size: var(--type-subheadline); border-radius: var(--radius-small); }
-:root[data-ipad] .ui-seg { border-radius: var(--radius-control); padding: 2px; }
-:root[data-ipad] .ui-seg > * svg { width: 18px; height: 18px; }
+:root[data-tablet] .ui-seg > * { min-height: 36px; font-size: var(--type-subheadline); border-radius: var(--radius-small); }
+:root[data-tablet] .ui-seg { border-radius: var(--radius-control); padding: 2px; }
+:root[data-tablet] .ui-seg > * svg { width: 18px; height: 18px; }
 /* The screens before the app in the phone and tablet apps (ModeChoice, LibrarySetup, ShellSignIn): the grouped
    background runs under the status bar and the home indicator too. */
 :root[data-native]:has([data-pre-app]) body { background: var(--iphone-grouped); }

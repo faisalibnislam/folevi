@@ -51,3 +51,4 @@
 - [Tab Back and overview rules](tab-back-and-overview-2026-11-21.md) — Back returns to the opener tab and closes it; sidebar and + are fresh; Home's overview picture is drawn
 - [Android native decisions 2026-11-23](android-native-decisions-2026-11-23.md): native Compose app like iPhone: Googlebook/phones/tablets, API 33, M3 Expressive + Folevi colors, replaces Capacitor
 - [iOS redesign decisions 2026-11-23](ios-redesign-decisions-2026-11-23.md) — iPhone native Mac profile, tab bar Home/Tasks/Calendar/Foli AI + search, iPad ScreenBar + flat inspector, PR into core branch, TestFlight 1.5.65
+- [Layout rule: width decides](web-everywhere-layout-rules-2026-11-24.md) — 2026-11-24: under ~700 px every window (phone, folded Duo, narrow computer window) gets the phone layout with the bottom bar; an open Duo gets the tablet layout

@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!-- AppStream metadata: what software centers (GNOME Software, KDE Discover, Flathub) show for Folevi.
      Installed as /usr/share/metainfo/com.folevi.Folevi.metainfo.xml (deb, rpm) and /app/share/metainfo/ (Flatpak).
-     Check with: appstreamcli validate --pedantic com.folevi.Folevi.metainfo.xml
+     Check it with appstreamcli validate (the pedantic option catches the most).
      Before Flathub: the screenshots below must exist at those URLs (docs/LINUX.md, "Flathub"). -->
 <component type="desktop-application">
   <id>com.folevi.Folevi</id>
@@ -34,7 +34,6 @@
   <url type="help">https://folevi.com/help</url>
   <url type="bugtracker">https://folevi.com/help</url>
   <url type="contact">https://folevi.com/help</url>
-  <url type="privacy">https://folevi.com/privacy</url>
 
   <categories>
     <category>Office</category>

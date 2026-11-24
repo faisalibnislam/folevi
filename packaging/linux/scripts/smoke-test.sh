@@ -26,11 +26,11 @@ inner() {
     if xdotool search --onlyvisible --name "Folevi" >/dev/null 2>&1; then break; fi
     sleep 1
   done
-  sleep 4
+  sleep "${SMOKE_WAIT:-4}"
   import -window root "$OUT/window.png"
   # A second launch with a link, as the desktop does when someone clicks folevi://new: it must reach the
   # running app (single instance) instead of opening a second window.
-  "$BIN" "folevi://new" >> "$OUT/second.log" 2>&1 || true
+  timeout 15 "$BIN" "folevi://new" >> "$OUT/second.log" 2>&1 || true
   sleep 2
   xdotool search --name "Folevi" > "$OUT/windows.txt" 2>/dev/null || true
   kill "$pid" 2>/dev/null || true

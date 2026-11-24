@@ -557,6 +557,7 @@ account button should move past iPadOS's window buttons).
   `DATABASE_UDF_USER_TIMEOUT_SECONDS=4` for that backend. Bursts show in `convex.log` as "took a long time".
 
 ## 12. Change log
+- 2026-11-24: 1.5.67 (build 82) cut on `claude/ios-native-redesign-f4a8be` (after merging the released 1.5.66) and uploaded to TestFlight with the owner's OK (delivery f33671ae): the native iPad window and the iPhone's system lists. Tag `v1.5.67` local; web and Mac not released; a PR into `main` follows once PR 51 merges.
 - 2026-11-24: iPad rebuilt natively and merged (`claude/ipad-native`): system split view, system toolbar (Back/Forward, title, items, ink New note, sync, bell, search), Safari-style tabs row, the note's Style/Format/Insert/Foli AI in the system inspector; Debug iPad launch with FOLEVI_REBUILD_OPEN fixed; all iOS package tests pass on the iPhone simulator.
 - 2026-11-24: Owner chose native like the Mac for iOS: iPhone lists and Settings on iOS's own List (rows unlined, native swipe actions); the iPad's native split-view rebuild runs on `claude/ipad-native` (helper, not merged yet).
 - 2026-11-23: Folevi for Mac: no more Core naming; `apps/mac/FoleviCore` became `apps/mac/Folevi` (project, target, scheme, module, tests), `core.mjs` became `app.mjs`, internal Core* types became App*; identity, data and update feed unchanged; 38 Mac tests and the web version test pass.

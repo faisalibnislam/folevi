@@ -466,7 +466,13 @@ additions. The only shared-config line Android adds is `android.includePlugins: 
   layout, account notes open); fold/unfold switches phone/sidebar layout with no reload; Googlebook-size window
   with Ctrl+Shift+N opening a second window; light and dark. Kotlin unit tests, cloud bridge tests (27), parity
   tests (133, now on this app's bridge), version test.
-- Size and memory vs the native app: AAB 96.6 vs 100.8 MB; memory on Home 205.7 vs 199.3 MB (table in the README).
+- **Release to Play internal testing (owner's OK relayed by the main session, 2026-11-24: "release all ready apps
+  for all platform", mobile to testers):** version 1.5.72, which the mobile session cuts on
+  `claude/mobile-capacitor-f41734`; merge it here, then build. Firebase push values come from the owner's
+  `~/Downloads/google-services.json` (project `folevi-9b8a5`, `com.folevi.android`) as `FOLEVI_FIREBASE_*` at build
+  time, never committed. A dry-run release AAB (1.5.70) built and is signed with the same upload key as build 83.
+  Upload goes through Play Console in the browser; bundles over 10 MB must be dragged in by the owner.
+ AAB 96.6 vs 100.8 MB; memory on Home 205.7 vs 199.3 MB (table in the README).
 - Not checked: push (needs Firebase settings), Drive/Dropbox, widgets and the tile, a real device, Android 13.
   On a Googlebook the device words say "tablet" (the web knows only phone and tablet for Android).
 - Native app (`apps/android`) stays in the tree as the reference; CI's Kotlin codegen checks still point at it.
@@ -584,6 +590,8 @@ account button should move past iPadOS's window buttons).
   never act); section headings stay sentence case (Apple uses title case); dark mode keeps a pure black frame.
   Known gaps: the notifications sheet's rows are not on cards yet; screens borrowed from the iPad (Foli DNA,
   Reviews) keep their own white page under the system bar.
+- Android 1.5.72 to Play internal testing: wait for the mobile session's 1.5.72 commit, merge, production web export,
+  signed AAB with the Firebase settings, smoke test, owner drags the AAB into the internal release, then roll out.
 - Android as Capacitor (`claude/android-capacitor-197cf4`, `apps/mobile/android`, with the iOS session's
   `claude/mobile-capacitor-f41734` merged in): open a PR with the owner's OK; it and the iOS branch should land
   together (or this one alone, since it contains the other). Web session: "This Googlebook" device words for Android laptops (FEATURE_PC).
@@ -705,6 +713,7 @@ account button should move past iPadOS's window buttons).
   `DATABASE_UDF_USER_TIMEOUT_SECONDS=4` for that backend. Bursts show in `convex.log` as "took a long time".
 
 ## 12. Change log
+- 2026-11-24: Android release prepared for Play internal testing (owner's OK via the main session): dry-run AAB with Firebase push built, signed with build 83's upload key; waiting for the mobile session's 1.5.72 commit.
 - 2026-11-24: Merged the iOS session's `claude/mobile-capacitor-f41734` into the Android branch: both had restored the same Capacitor Android app into `apps/mobile/android`; kept this branch's Kotlin and manifest fixes and their shared cloud-kit bundling, R8 rules and bridge additions; `apps/mobile/.gitignore` now ignores only `/web/` (a bare `web/` had hidden the app's `com/folevi/android/web/` Kotlin from their commits).
 - 2026-11-24: Android as Capacitor: safe areas reach the WebView, wide-window Back follows the web's tab rule; checked on phone, tablet (signed in), foldable and desktop emulators; size and memory measured against the native app (README). Pushed, no PR.
 - 2026-11-24: Android as Capacitor on `claude/android-capacitor-197cf4`: `apps/mobile/android` restored from the paused Capacitor app on Capacitor 8.6.2, updating in place over the native app (same package and storage); version from version.json, upload-key signing, R8, multi-window, no stock plugins on Android; unit, bridge, parity and version tests pass; not pushed.

@@ -249,7 +249,7 @@ The ones most likely to be broken:
 
 ## 9. Current state (as of 2026-11-24)
 
-**Folevi for Windows and Linux (branch `claude/desktop-tauri`, PR 65 https://github.com/faisalibnislam/folevi/pull/65 into `main`, not merged, nothing published):** the owner chose "one
+**Folevi for Windows and Linux (branch `claude/desktop-tauri`, PR 65 https://github.com/faisalibnislam/folevi/pull/65 into `main`, not merged; Windows 1.5.73 unsigned test installers published at `folevi.com/download/windows/Folevi_1.5.73_<arm64|x64>-setup.exe`):** the owner chose "one
 web app everywhere" and the Mac app's approach (small, light), so the desktop app is now **Tauri 2** in the system
 web view (WebView2, WebKitGTK), replacing the same day's Electron build (PR 58, `claude/windows-electron-4ed862`,
 kept in history; the main session closes PR 58 when the Tauri PR supersedes it). Rust shell with the Mac's
@@ -628,6 +628,7 @@ account button should move past iPadOS's window buttons).
   `DATABASE_UDF_USER_TIMEOUT_SECONDS=4` for that backend. Bursts show in `convex.log` as "took a long time".
 
 ## 12. Change log
+- 2026-11-24: Folevi for Windows 1.5.73 test download published (owner's OK, after v1.5.72): unsigned NSIS installers at https://folevi.com/download/windows/Folevi_1.5.73_arm64-setup.exe (sha256 72f39313...2f4c) and .../Folevi_1.5.73_x64-setup.exe (sha256 a54b07bf...c241), R2 `folevi-updates` windows/, from CI run 45392111016; no update feed (no signing key); version.json/CHANGELOG/tag for 1.5.73 still to record at merge.
 - 2026-11-24: Owner (directly): build Folevi for Windows 1.5.73 test installers now and upload them unsigned to `folevi.com/download/windows/` once tag v1.5.72 exists; `apps/desktop/RELEASE_VERSION` stamps 1.5.73 on this branch (version.json and CHANGELOG still to record it at merge).
 - 2026-11-24: PR 65 opened (Tauri desktop app into `main`, supersedes PR 58); merge `main` in when its turn comes (after PRs 55 and 57).
 - 2026-11-24: Desktop CI: Windows x64 builds (NSIS 78 MB, MSI 79 MB) and is lighter than Electron (139 vs 204 MB private); Windows etags now use the NTFS file index (concurrent writes lost an update on ARM64); the workflow's binary lookup fixed for Linux.

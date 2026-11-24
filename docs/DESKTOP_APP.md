@@ -101,6 +101,17 @@ Folevi's one version (`version.json`): `scripts/version.mjs` copies it into `pac
 in the app; `version`, its semver form for the installers). Tauri reads `package.json`. It never changes the
 version.
 
+## Test download (published 2026-11-24, the owner's OK)
+
+Folevi for Windows 1.5.73, unsigned (Windows warns about an unknown publisher), no automatic updates:
+- Windows on ARM: https://folevi.com/download/windows/Folevi_1.5.73_arm64-setup.exe
+  (SHA-256 72f39313076c413343ffbd55bd57b6008034a6dd3be1de05917d194d599b2f4c)
+- Intel and AMD: https://folevi.com/download/windows/Folevi_1.5.73_x64-setup.exe
+  (SHA-256 a54b07bf0926b5b04c009a918c83e6146656b7282aed77861d97255a468cc241)
+
+Uploaded with `npx wrangler r2 object put folevi-updates/windows/<file> --remote` from CI run 45392111016. The
+version came from `apps/desktop/RELEASE_VERSION` (1.5.73) because this branch's version.json predates 1.5.72.
+
 ## Not done yet
 
 - Updates: the Tauri updater is in the app and points at `folevi.com/download/desktop/<target>-<arch>/latest.json`,

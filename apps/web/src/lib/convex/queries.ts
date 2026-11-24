@@ -264,13 +264,18 @@ export function usePaginatedQuery<Query extends PaginatedQueryReference>(query: 
     if (key !== null) retryNow(key);
   }, [key]);
   if (skip) return { ...(result as UsePaginatedQueryReturnType<Query>), failed: false, retry };
-  if (error || dropped) {
+  const failedBefore = (flags & FAILED) !== 0;
+  // A retry starts the query over, so it loads its first page again with no results. Until that page answers, the
+  // list keeps what it had and still reads as failed: otherwise every retry would empty the list and swap its
+  // "Couldn't load" for the loading placeholder until the next failure.
+  const reloading = failedBefore && result.status === "LoadingFirstPage";
+  if (error || dropped || reloading) {
     const kept = last.current.results;
     // Still loading, as far as the page is concerned: what was loaded stays, and nothing more can load yet.
     const loading = kept.length
       ? ({ results: kept, status: "LoadingMore", isLoading: true, loadMore: () => undefined } as const)
       : ({ results: kept, status: "LoadingFirstPage", isLoading: true, loadMore: () => undefined } as const);
-    return { ...(loading as unknown as UsePaginatedQueryReturnType<Query>), failed: !!error || (flags & FAILED) !== 0, retry };
+    return { ...(loading as unknown as UsePaginatedQueryReturnType<Query>), failed: !!error || failedBefore, retry };
   }
   return { ...(result as UsePaginatedQueryReturnType<Query>), failed: false, retry };
 }

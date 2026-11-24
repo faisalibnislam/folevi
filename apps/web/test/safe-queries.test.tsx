@@ -119,6 +119,37 @@ describe("queries that fail", () => {
     await waitFor(() => host.textContent === "Exhausted:a,b:ok");
   });
 
+  test("a paginated list that failed keeps its results and stays failed through every retry", async () => {
+    let pageRuns = 0;
+    const listed = makeFunctionReference<"query", { paginationOpts: { numItems: number; cursor: string | null } }, { page: string[]; isDone: boolean; continueCursor: string }>("test:flakyListed");
+    defineLocal(listed, "query", async (ctx) => {
+      pageRuns++;
+      const docs = await ctx.db.list("documents");
+      if (failing.on) throw new ConvexError({ code: "unavailable" });
+      return { page: docs.map((d) => d.id), isDone: true, continueCursor: "end" };
+    });
+    failing.on = false;
+    const frames: string[] = [];
+    function View() {
+      const p = usePaginatedQuery(listed, {}, { initialNumItems: 5 });
+      const text = `${p.results.join(",")}|${p.failed ? "failed" : "ok"}`;
+      frames.push(text);
+      return createElement("p", null, text);
+    }
+    mount(createElement(View));
+    await waitFor(() => host.textContent === "D1|ok");
+    failing.on = true;
+    await act(async () => void (await client.mutation(addDoc, { id: "D2" })));
+    await waitFor(() => host.textContent === "D1|failed");
+    const from = frames.length;
+    const runs = pageRuns;
+    // At least two retries (each drops the query and starts it over from its first page).
+    await waitFor(() => pageRuns >= runs + 2);
+    expect(frames.slice(from).filter((f) => f !== "D1|failed")).toEqual([]);
+    failing.on = false;
+    await waitFor(() => host.textContent === "D1,D2|ok");
+  });
+
   test("a failed list says what it couldn't load, with Try again", () => {
     const onRetry = vi.fn();
     act(() => root.render(createElement(LoadFailed, { what: "your notes", onRetry })));

@@ -733,6 +733,11 @@ account button should move past iPadOS's window buttons).
   `DATABASE_UDF_USER_TIMEOUT_SECONDS=4` for that backend. Bursts show in `convex.log` as "took a long time".
 
 ## 12. Change log
+- 2026-11-25: PR 79 review fix: a paginated list that failed emptied and swapped "Couldn't load" for the loading
+  placeholder on every retry (the retry starts the query over from its first page, and that first load read as
+  "ok"). `usePaginatedQuery` now keeps the loaded results and `failed` until the restarted query answers; new
+  regression test in `test/safe-queries.test.tsx` (fails on the old hook). Pages loaded with "load more" before the
+  failure still go back to the first page once it recovers. Web unit tests: 2167 pass.
 - 2026-11-24: Failed queries keep the page: `lib/convex/queries.ts` hooks (retry with backoff, last good result,
   `failed` and `retry()`), used in every component with an eslint rule; `LoadFailed` error state on the main lists;
   local query cache re-runs failed entries; `test/safe-queries.test.tsx`.

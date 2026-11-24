@@ -585,7 +585,7 @@ export function TabStrip() {
 /** How a tab looks: its shape, and open or closed. */
 function tabLook(ipad: boolean) {
   const tabBase = ipad
-    ? "group relative flex h-10 items-center gap-2 rounded-container px-3.5 text-body outline-none transition-[background-color,color,box-shadow] duration-150 ring-focus focus-visible:ring-2 has-[:focus-visible]:ring-2"
+    ? "ui-hit group relative flex h-10 items-center gap-2 rounded-container px-3.5 text-body outline-none transition-[background-color,color,box-shadow] duration-150 ring-focus focus-visible:ring-2 has-[:focus-visible]:ring-2"
     : "group relative flex h-9 items-center gap-2 rounded-control px-2.5 text-subheadline outline-none transition-[background-color,color,box-shadow] duration-150 ring-focus ring-offset-1 ring-offset-canvas focus-visible:ring-2 has-[:focus-visible]:ring-2";
   // Every tab is an outlined rounded rectangle. Closed tabs sit back (a light grey fill, quiet text); the
   // open one comes forward: white, a firm dark outline, a soft shadow and bold text. On the iPad: no outline,

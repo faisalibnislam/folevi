@@ -1247,6 +1247,12 @@
 :root[data-tablet] [role="toolbar"][aria-label="Page tools"] button svg { width: 20px; height: 20px; }
 /* Segmented controls (a note's sidebar tools, the inspector's tabs): iPadOS's, 36 tall with 18 pt icons. */
 :root[data-tablet] .ui-seg > * { min-height: 36px; font-size: var(--type-subheadline); border-radius: var(--radius-small); }
+/* Touch: a control smaller than a finger keeps its look and gets an invisible hit area of at least 44 pt round it
+   (Apple's minimum), so nothing on screen moves: .ui-hit on the small chrome controls (the sidebar's header buttons
+   and section headers, tabs, See all, a list's sort), and every segmented control's segments. Computers keep the
+   pointer's own size. */
+:root:is([data-tablet], [data-iphone]) :is(.ui-hit, .ui-seg > *) { position: relative; }
+:root:is([data-tablet], [data-iphone]) :is(.ui-hit, .ui-seg > *)::after { content: ""; position: absolute; left: 50%; top: 50%; width: max(100%, 44px); height: max(100%, 44px); transform: translate(-50%, -50%); }
 :root[data-tablet] .ui-seg { border-radius: var(--radius-control); padding: 2px; }
 :root[data-tablet] .ui-seg > * svg { width: 18px; height: 18px; }
 /* The screens before the app in the phone and tablet apps (ModeChoice, LibrarySetup, ShellSignIn): the grouped

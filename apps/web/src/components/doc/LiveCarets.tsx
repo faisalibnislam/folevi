@@ -1,6 +1,7 @@
 "use client";
 
-import { useMutation, useQuery } from "convex/react";
+import { useMutation } from "convex/react";
+import { useQuery } from "@/lib/convex/queries";
 import { useEffect, useMemo, useRef } from "react";
 import type { Editor as TiptapEditor } from "@tiptap/react";
 import { api } from "@/lib/convex/api";

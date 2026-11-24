@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useMutation, useQuery } from "convex/react";
+import { useMutation } from "convex/react";
+import { useQuery } from "@/lib/convex/queries";
 import { useAiFeature } from "@/lib/mode";
 import type { FunctionReturnType } from "convex/server";
 import type { Editor } from "@tiptap/core";

@@ -3,7 +3,8 @@
 
 import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { useMutation, useQuery } from "convex/react";
+import { useMutation } from "convex/react";
+import { useQuery } from "@/lib/convex/queries";
 import { History, Maximize2, MoreHorizontal, Plus, X } from "lucide-react";
 import { useIphoneApp } from "@/lib/iphone";
 import { inIosApp } from "@/lib/nativeApp";

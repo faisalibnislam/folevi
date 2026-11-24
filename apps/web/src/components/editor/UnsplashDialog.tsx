@@ -1,6 +1,7 @@
 "use client";
 
-import { useAction, useQuery } from "convex/react";
+import { useAction } from "convex/react";
+import { useQuery } from "@/lib/convex/queries";
 import { useEffect, useId, useRef, useState } from "react";
 import { Search } from "lucide-react";
 import { api } from "@/lib/convex/api";

@@ -1,7 +1,8 @@
 "use client";
 
 import { useId, useState } from "react";
-import { useMutation, useQuery } from "convex/react";
+import { useMutation } from "convex/react";
+import { useQuery } from "@/lib/convex/queries";
 import type { FunctionReturnType } from "convex/server";
 import { Check, Pencil, Trash2, X } from "lucide-react";
 import { api } from "@/lib/convex/api";

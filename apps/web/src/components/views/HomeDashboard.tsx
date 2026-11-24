@@ -1,6 +1,6 @@
 "use client";
 
-import { useQuery } from "convex/react";
+import { useQuery } from "@/lib/convex/queries";
 import { useEffect, useState, type ReactNode } from "react";
 import { useAiEnabled } from "@/components/ai/useAi";
 import { CatchUp } from "@/components/ai/CatchUp";

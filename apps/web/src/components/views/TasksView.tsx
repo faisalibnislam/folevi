@@ -1,7 +1,8 @@
 "use client";
 
 import { DateField, TimeField } from "@/components/ui/DateField";
-import { useMutation, useQuery } from "convex/react";
+import { useMutation } from "convex/react";
+import { useQuery, useQueryState } from "@/lib/convex/queries";
 import { useCallback, useDeferredValue, useMemo, useRef, useState, type ReactNode } from "react";
 import { ArrowRightLeft, CalendarDays, Check, FileText, Funnel, Plus, Repeat, RotateCcw, SlidersHorizontal, SquareCheckBig, X } from "lucide-react";
 import { DocumentPicker, type Target } from "@/components/app/QuickAddTask";
@@ -17,6 +18,7 @@ import { dueLabel, formatRelative } from "@/lib/format";
 import { formatCalendarDate } from "@/i18n";
 import { Select } from "@/components/ui/Select";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { LoadFailed } from "@/components/ui/LoadFailed";
 import { haptic } from "@/lib/nativeApp";
 import { useIphoneApp } from "@/lib/iphone";
 import { IphoneTasks } from "@/components/iphone/Tasks";
@@ -36,10 +38,10 @@ const VIEWS: { id: View; label: string; empty: { title: string; body?: string } 
 type Priority = "none" | "low" | "medium" | "high";
 const PRIORITY_LABEL: Record<Priority, string> = { none: "None", low: "Low", medium: "Medium", high: "High" };
 
-export type TaskRow = NonNullable<ReturnType<typeof useTasks>>[number];
+export type TaskRow = NonNullable<ReturnType<typeof useTasks>["data"]>[number];
 function useTasks(view: View) {
   const { scope, today } = useAppState();
-  return useQuery(api.tasks.list, { scope, view, today });
+  return useQueryState(api.tasks.list, { scope, view, today });
 }
 
 /** Moves a task (its to-do) to the end of another page, or to the Inbox page. */
@@ -338,7 +340,10 @@ function TaskEditForm({ task, onClose }: { task: TaskRow; onClose: () => void })
 export function TasksView({ view }: { view: View }) {
   const keys = useKeyLabels();
   const { today, scope, context } = useAppState();
-  const tasks = useTasks(view);
+  const tasksState = useTasks(view);
+  const tasks = tasksState.data;
+  // The list failed (it keeps retrying): said in place of the loading rows.
+  const failed = tasks === undefined && tasksState.failed ? tasksState.retry : undefined;
   const counts = useQuery(api.tasks.counts, { scope, today });
   const { openQuickAdd } = useShell();
   const toggle = useToggleTask();
@@ -376,7 +381,7 @@ export function TasksView({ view }: { view: View }) {
   const iphone = useIphoneApp();
   if (iphone) {
     return (
-      <IphoneTasks view={view} tasks={tasks === undefined ? undefined : shown} counts={counts} filter={filter} onFilter={setFilter} onToggle={onToggle} onEdit={setEditing} empty={empty}>
+      <IphoneTasks view={view} tasks={tasks === undefined ? undefined : shown} counts={counts} filter={filter} onFilter={setFilter} onToggle={onToggle} onEdit={setEditing} empty={empty} onRetry={failed}>
         <IphoneTaskSheet task={editing} onClose={() => setEditing(null)} />
       </IphoneTasks>
     );
@@ -453,7 +458,9 @@ export function TasksView({ view }: { view: View }) {
             </button>
           ) : null}
         </div>
-        {tasks === undefined ? (
+        {failed ? (
+          <LoadFailed what="your tasks" onRetry={failed} />
+        ) : tasks === undefined ? (
           <div className="mt-6 space-y-2" aria-busy>
             {[0, 1, 2].map((i) => (
               <div key={i} className="h-12 animate-pulse rounded-chip bg-surface motion-reduce:animate-none" />

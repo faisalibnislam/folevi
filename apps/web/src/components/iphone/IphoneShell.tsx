@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { useQuery } from "convex/react";
+import { useQuery } from "@/lib/convex/queries";
 import { useCapabilities } from "@/lib/mode";
 import { api } from "@/lib/convex/api";
 import { useAppRouter, type Route } from "@/lib/app/router";

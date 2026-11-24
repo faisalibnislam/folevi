@@ -1,6 +1,7 @@
 "use client";
 // The Vault's Activity (its log), People (team Vault) and Settings (docs/VAULT_PLAN.md §7, §9).
-import { useMutation, useQuery } from "convex/react";
+import { useMutation } from "convex/react";
+import { useQuery } from "@/lib/convex/queries";
 import { useId, useState } from "react";
 import { CheckCircle2, Download, KeyRound, LifeBuoy, Lock, Search, ShieldAlert, ShieldCheck, Timer, UserPlus, Users, X } from "lucide-react";
 import { Avatar } from "@/components/ui/Avatar";

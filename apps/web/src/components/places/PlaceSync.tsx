@@ -5,7 +5,7 @@
 // app state (AppStateProvider opens its engine, outbox and uploader, so whatever was queued when the person
 // switched away still goes up), plus a watch on its notifications. It renders nothing and reports to whoever
 // runs it: the page that made the iframe (postMessage), or the Mac app (its notifications, the place's counts).
-import { useQuery } from "convex/react";
+import { useQuery } from "@/lib/convex/queries";
 import { useEffect, useRef, useState } from "react";
 import { api } from "@/lib/convex/api";
 import { useAppState } from "@/lib/app/state";

@@ -1,6 +1,6 @@
 "use client";
 
-import { useQuery } from "convex/react";
+import { useQuery } from "@/lib/convex/queries";
 import { useCallback, useMemo, useState } from "react";
 import { Check, Hash, LayoutGrid, Rows3, FolderOpen } from "lucide-react";
 import { folderAncestors } from "@folevi/editor-schema";

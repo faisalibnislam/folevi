@@ -1,7 +1,8 @@
 "use client";
 
 import { DateField, TimeField } from "@/components/ui/DateField";
-import { useMutation, useQuery } from "convex/react";
+import { useMutation } from "convex/react";
+import { useQuery } from "@/lib/convex/queries";
 import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
 import { Inbox, X, FileText, CalendarDays } from "lucide-react";
 import { naturalDateLabel, parseNaturalDate, useNaturalDatesReady } from "@/lib/nlDate";

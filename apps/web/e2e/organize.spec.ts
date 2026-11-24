@@ -14,7 +14,7 @@ test("tasks: quick add with priority, My Tasks in Personal, edit/cancel from the
   await expect(page.getByRole("status").filter({ hasText: "Task added to Inbox" })).toBeVisible();
 
   // Personal: unassigned tasks are mine.
-  await page.getByRole("link", { name: /^My Tasks/ }).click();
+  await page.getByRole("link", { name: /^My tasks/ }).click();
   const row = page.getByRole("listitem").filter({ hasText: "Plan the herb bed" });
   await expect(row).toBeVisible();
   await expect(row.getByText("High")).toBeVisible();

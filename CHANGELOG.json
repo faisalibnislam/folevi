@@ -1,6 +1,17 @@
 {
   "releases": [
     {
+      "version": "1.5.70",
+      "build": 85,
+      "released": "2026-11-24T13:07:28+06:00",
+      "type": "patch",
+      "summary": "iPhone and iPad built from the same code as Folevi's other apps.",
+      "improved": [
+        "iPhone and iPad: the redesign and the iPhone Duo window now come from the same code as Folevi for Mac and Android."
+      ],
+      "tag": "v1.5.70"
+    },
+    {
       "version": "1.5.69",
       "build": 84,
       "released": "2026-11-24T09:17:46+06:00",

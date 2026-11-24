@@ -4,7 +4,7 @@ import { useAction, useQuery } from "convex/react";
 import { useLocalSearch } from "@/lib/hooks/useLocalNotes";
 import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { AiIcon } from "@/components/ai/AiIcon";
-import { ArrowRight, CalendarDays, CheckSquare, FileDiff, FileText, House as Home, Layers, Moon, Plus, Search, Settings, Sun, Trash2, Waypoints } from "lucide-react";
+import { ArrowRight, CalendarDays, SquareCheckBig, FileDiff, FileText, House as Home, Layers, Moon, Plus, Search, Settings, Sun, Trash2, Waypoints } from "lucide-react";
 import { fileTextLabel, flattenFolders, type FileTextSource } from "@folevi/editor-schema";
 import { api } from "@/lib/convex/api";
 import { useCanCall } from "@/lib/mode";
@@ -23,6 +23,7 @@ import { t } from "@/i18n";
 import { Select } from "@/components/ui/Select";
 import { useIphoneApp } from "@/lib/iphone";
 import { IphoneScopes } from "@/components/iphone/SearchScopes";
+import { useKeyLabels } from "@/lib/shortcuts";
 
 /** A group's heading in the iPhone's search: caption caps (13/18 600, uppercase) at the 20 pt inset. */
 const IPHONE_CAPS = "px-5 pb-1.5 pt-6 text-footnote font-semibold uppercase leading-[18px] tracking-[0.04em] text-muted";
@@ -42,6 +43,7 @@ function useDebounced<T>(value: T, ms: number): T {
 
 /** ⌘K palette: recent documents, full-text search with highlighted matches, and actions (combobox pattern). */
 export function CommandPalette({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const keys = useKeyLabels();
   const { scope, workspace, appearance, setAppearance } = useAppState();
   const { navigate } = useAppRouter();
   const createDocument = useCreateDocument();
@@ -117,7 +119,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
   const actions: Item[] = useMemo(
     () => [
       { kind: "action", id: "new", label: "New note", hint: "⌘⌥N", icon: <Plus size={16} />, run: () => void createDocument({}) },
-      { kind: "action", id: "tasks", label: "Go to Tasks · Today", icon: <CheckSquare size={16} />, run: () => navigate("/tasks/today") },
+      { kind: "action", id: "tasks", label: "Go to Tasks · Today", icon: <SquareCheckBig size={16} />, run: () => navigate("/tasks/today") },
       { kind: "action", id: "calendar", label: "Go to Calendar", icon: <CalendarDays size={16} />, run: () => navigate("/calendar") },
       { kind: "action", id: "review", label: "Go to Reviews", icon: <Layers size={16} />, run: () => navigate("/review") },
       { kind: "action", id: "changes", label: "Go to Changes", icon: <FileDiff size={16} />, run: () => navigate("/changes") },
@@ -338,7 +340,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
                       role="option"
                       aria-selected={selected}
                       aria-label={paletteOptionLabel(item)}
-                      aria-description={paletteOptionDetail(item)}
+                      aria-description={paletteOptionDetail(item.kind === "action" && item.hint ? { ...item, hint: keys(item.hint) } : item)}
                       className={cls}
                       onMouseEnter={() => setActive(i)}
                       onClick={() => run(item)}
@@ -373,7 +375,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
                             {item.icon}
                           </span>
                           <span className={iphone ? "ui-row-sep flex min-h-[52px] min-w-0 flex-1 items-center text-body leading-[22px] text-ink" : "flex-1 text-subheadline"}>{item.label}</span>
-                          {item.hint && !iphone ? <span className="text-footnote text-faint">{item.hint}</span> : null}
+                          {item.hint && !iphone ? <span className="text-footnote text-faint">{keys(item.hint)}</span> : null}
                         </>
                       )}
                     </li>

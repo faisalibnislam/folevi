@@ -8,13 +8,8 @@ import SwiftUI
 public extension EnvironmentValues {
     /// iOS puts bars in a column at the side here (iPhone Duo closed, or open across): the note uses iOS's bars.
     @Entry var phoneSideBars = false
-    /// The window is regular width (iPhone Duo open): the note sits beside its list, with no Back of its own.
-    @Entry var phoneWideWindow = false
-    /// The note's buttons are iOS's toolbar items (PhoneSideBars' NoteBar): at the side where `phoneSideBars`, in the
-    /// top bar otherwise (the open inner screen upright, where the tab bar has the bottom).
+    /// The note's buttons are iOS's toolbar items (PhoneSideBars' NoteBar), in the column at the side.
     @Entry var phoneSystemNoteBars = false
-    /// The note is the first in the split view's detail column: collapsed, iOS draws no Back for it.
-    @Entry var phoneNoteFirst = false
 }
 
 public extension View {
@@ -67,12 +62,10 @@ private struct SideBarsReader271: ViewModifier {
 
 private struct NoteBar: ViewModifier {
     @Environment(\.phoneSideBars) private var side
-    @Environment(\.phoneWideWindow) private var wide
 
     func body(content: Content) -> some View {
-        // iOS's bars where they sit at the side, and on the open inner screen upright too (the note beside its list,
-        // its tools in iOS's bottom bar, laid out with the tab bar rather than floating over it).
-        if side || wide {
+        // iOS's bars where they sit at the side (iPhone Duo closed, or a Split View half on its inner screen).
+        if side {
             content
                 .environment(\.phoneSystemNoteBars, true)
                 .toolbar(.visible, for: .navigationBar)

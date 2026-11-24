@@ -14,6 +14,8 @@ acbdeb96b58afae1802e917a0da345562ee415ef:apps/desktop/test/cloud/connection.test
 33b5f376d98379ff64967098f21266364962331c:apps/ios/ios/App/Tests/ShellTests.swift:generic-api-key:293
 # Mac screenshot script: made-up Vault demo items.
 1f8a8207c159ecfc47589988692ffd262842e3a9:apps/mac/scripts/screens.mjs:generic-api-key:128
+# The same script's made-up Vault demo login, brought back with the AppKit Mac app (claude/mac-webview).
+8ebce6298d1a0df592b4b541dfe3ff69fc39b9cf:apps/mac/scripts/screens.mjs:generic-api-key:185
 # Test: made-up note ids.
 5c5107deb5ebcbd5277562e684ccc29ec9072644:apps/macos/FoleviTests/KeychainAndAuthTests.swift:generic-api-key:96
 # Mac demo engine: the demo recovery key.

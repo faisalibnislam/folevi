@@ -36,7 +36,8 @@ function fakeBridge() {
   if (!document.documentElement) new MutationObserver((_, watch) => document.documentElement && (mark(), watch.disconnect())).observe(document, { childList: true });
 }
 
-const PURCHASE = /upgrade|buy|choose (a |pro|core)|choose plan|see plans|manage billing|checkout|get unlimited/i;
+// (Pro and Core as plan names: "Choose profile picture" isn't a purchase.)
+const PURCHASE = /upgrade|buy|choose (a |pro\b|core\b)|choose plan|see plans|manage billing|checkout|get unlimited/i;
 
 /** Every link and button on the page whose words offer a purchase. */
 async function purchaseActions(page: Page): Promise<string[]> {

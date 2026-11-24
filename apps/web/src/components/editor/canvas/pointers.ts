@@ -43,6 +43,17 @@ export function pinchPair(pts: Map<number, DownPointer>): [DownPointer, DownPoin
 }
 
 /**
+ * Whether a press reaching a board's handler isn't the board's: it began in something the board drew on top of the
+ * page (a phone sheet, a dialog), which React hands up its own tree, or outside the board altogether. A board
+ * that captured such a press took the click from the sheet's buttons (they never worked with a mouse).
+ */
+export function pressIsElsewhere(board: Element, target: EventTarget | null): boolean {
+  if (!(target instanceof Node) || !board.contains(target)) return true;
+  const el = target instanceof Element ? target : target.parentElement;
+  return (el?.closest("dialog") ?? null) !== board.closest("dialog");
+}
+
+/**
  * Captures a pointer for `el`, so its moves and its release come to `el` whatever the press began on (a
  * control that the press itself takes off the page, a handle hidden while a gesture runs).
  */

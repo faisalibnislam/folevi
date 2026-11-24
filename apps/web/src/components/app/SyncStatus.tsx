@@ -114,7 +114,7 @@ export function SyncStatus({ documentId, compact = true, align = "end" }: { docu
         title={compact ? LABELS[status] : undefined}
         className={
           compact
-            ? `relative grid h-8 w-8 place-items-center rounded-chip transition-colors hover:bg-accent-soft ${tone}`
+            ? `ui-hit relative grid h-8 w-8 place-items-center rounded-chip transition-colors hover:bg-accent-soft ${tone}`
             : `ui-well inline-flex h-8 w-[7.75rem] items-center justify-center gap-1.5 rounded-chip px-2.5 text-footnote font-semibold transition-colors hover:text-heading ${tone}`
         }
         data-testid="sync-status"

@@ -62,8 +62,6 @@ private struct ZoomSource: ViewModifier {
 public struct PhoneFrameView<Screen: View>: View {
     @Bindable var model: PhoneFrameModel
     @Namespace private var zoom
-    /// The window's width class (the split view's columns side by side, PhoneColumns).
-    @Environment(\.horizontalSizeClass) private var sizeClass
     let menus: PhoneMenus
     let aiOn: Bool
     /// Whether the tab bar steps out of the way (the keyboard, Select).
@@ -155,11 +153,6 @@ public struct PhoneFrameView<Screen: View>: View {
         }
         .tabBarMinimizeBehavior(.onScrollDown)
         .phoneSideBarsReader()
-        // (The open note's place: beside its list on Home when the window is regular width, PhoneFrameModel.columns.)
-        .onChange(of: sizeClass == .regular && model.current == .home, initial: true) { _, on in
-            if model.columns != on { model.columns = on }
-        }
-        .environment(\.phoneWideWindow, sizeClass == .regular)
         // A note's bottom bars, where the tab bar is (PhoneNoteBarsSlot): they trade places with it, not ride the page.
         .overlay { PhoneNoteBarsLayer(model: model) }
         .overlay { PhoneMenuLayer(menus: menus) }
@@ -206,35 +199,15 @@ public struct PhoneFrameView<Screen: View>: View {
     }
 
     /// A tab's screens: its first screen, then what was opened on top (bound to the model, so Back by the edge swipe
-    /// pops the model too). Home is iOS's split view: the open note beside its list on a wide window (iPhone Duo
-    /// open), pushed over it on a narrow one (PhoneColumns). Tasks and Calendar keep one stack, full width.
-    @ViewBuilder
+    /// pops the model too).
     private func stack(_ tab: PhoneTab) -> some View {
         let first = model.stacks[tab]?.first?.route ?? PhoneFrameModel.root(of: tab)
-        let regular = sizeClass == .regular
-        if tab == .home {
-            PhoneColumns(model: model, tab: tab, regular: regular) { path in
-                NavigationStack(path: path) { root(tab, first) }
-            } note: { route, path in
-                NavigationStack(path: path) {
-                    noteScreen(route, regular: regular)
-                        .environment(\.phoneNoteFirst, true)
-                        .navigationDestination(for: PhoneStackEntry.self) { entry in
-                            noteScreen(entry.route, regular: regular)
-                        }
-                }
-            } empty: {
-                PhoneEmptyDetail(newNote: actions.newNote)
-            }
+        let path = Binding<[PhoneStackEntry]>(
+            get: { Array((model.stacks[tab] ?? []).dropFirst()) },
+            set: { model.setPath($0, in: tab) }
+        )
+        return NavigationStack(path: path) { root(tab, first) }
             .environment(\.phoneZoom, zoom)
-        } else {
-            let path = Binding<[PhoneStackEntry]>(
-                get: { Array((model.stacks[tab] ?? []).dropFirst()) },
-                set: { model.setPath($0, in: tab) }
-            )
-            NavigationStack(path: path) { root(tab, first) }
-                .environment(\.phoneZoom, zoom)
-        }
     }
 
     /// A tab's first screen, and the screens pushed over it.
@@ -245,11 +218,6 @@ public struct PhoneFrameView<Screen: View>: View {
             .navigationDestination(for: PhoneStackEntry.self) { entry in
                 destination(entry.route)
             }
-    }
-
-    /// A note in the detail column: the tab bar steps away for it on a narrow window, as for a pushed note.
-    private func noteScreen(_ route: FrameRoute, regular: Bool) -> some View {
-        screen(route).phoneNoteBar().toolbarVisibility(regular ? .automatic : .hidden, for: .tabBar)
     }
 
     /// A pushed screen; a note zooms out of the card it was opened from.
@@ -264,9 +232,7 @@ public struct PhoneFrameView<Screen: View>: View {
                 .toolbarVisibility(model.top.isNote ? .hidden : .automatic, for: .tabBar)
                 .navigationTransition(.zoom(sourceID: id, in: zoom))
         } else {
-            // (In Home's split view the list stays beside the note: no button to hide it on the screens pushed there.)
             screen(route).toolbarVisibility(barHidden(route) ? .hidden : .automatic, for: .tabBar)
-                .toolbar(removing: .sidebarToggle)
         }
     }
 }

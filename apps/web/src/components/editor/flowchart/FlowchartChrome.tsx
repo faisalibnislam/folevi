@@ -17,6 +17,7 @@ import { useRef } from "react";
 import { MenuButton } from "@/components/ui/Menu";
 import { useScrollEdges } from "../scrollEdges";
 import { ShapeThumb } from "./chrome/ShapeLibrary";
+import { withKeyLabels } from "@/lib/shortcuts";
 
 /** A small outline of each shape for buttons and menus. */
 export function ShapeIcon({ shape, size = 18 }: { shape: FlowShape; size?: number }) {
@@ -108,10 +109,10 @@ export function MainToolbar({
       ) : null}
       {checkControl}
       <span className="fc-sep" aria-hidden />
-      <button type="button" className="fc-btn" aria-label="Undo" title="Undo (⌘Z)" disabled={!canUndo} onClick={onUndo}>
+      <button type="button" className="fc-btn" aria-label="Undo" title={withKeyLabels("Undo (⌘Z)")} disabled={!canUndo} onClick={onUndo}>
         <Undo2 size={15} aria-hidden />
       </button>
-      <button type="button" className="fc-btn" aria-label="Redo" title="Redo (⇧⌘Z)" disabled={!canRedo} onClick={onRedo}>
+      <button type="button" className="fc-btn" aria-label="Redo" title={withKeyLabels("Redo (⇧⌘Z)")} disabled={!canRedo} onClick={onRedo}>
         <Redo2 size={15} aria-hidden />
       </button>
       {walkTools ? (
@@ -142,10 +143,10 @@ export function ZoomBar({ zoom, onZoomIn, onZoomOut, onFit, full, onFull }: { zo
       <button type="button" className="fc-btn" aria-label="Zoom in" title="Zoom in (+)" onClick={onZoomIn}>
         <Plus size={15} aria-hidden />
       </button>
-      <button type="button" className="fc-btn" aria-label="Fit to content" title="Fit to content (⇧1)" onClick={onFit}>
+      <button type="button" className="fc-btn" aria-label="Fit to content" title={withKeyLabels("Fit to content (⇧1)")} onClick={onFit}>
         <Maximize size={14} aria-hidden />
       </button>
-      <button type="button" className="fc-btn" aria-pressed={full} aria-label={full ? "Exit full canvas" : "Full canvas"} title={full ? "Exit full canvas (Esc)" : "Full canvas (⇧⌘F)"} onClick={onFull}>
+      <button type="button" className="fc-btn" aria-pressed={full} aria-label={full ? "Exit full canvas" : "Full canvas"} title={full ? "Exit full canvas (Esc)" : withKeyLabels("Full canvas (⇧⌘F)")} onClick={onFull}>
         {full ? <Shrink size={14} aria-hidden /> : <Expand size={14} aria-hidden />}
       </button>
     </div>
@@ -228,7 +229,7 @@ export function NodeBar({
         </>
       ) : null}
       <span className="fc-sep" aria-hidden />
-      <button type="button" className="fc-btn" aria-label="Duplicate" title="Duplicate (⌘D)" onClick={onDuplicate}>
+      <button type="button" className="fc-btn" aria-label="Duplicate" title={withKeyLabels("Duplicate (⌘D)")} onClick={onDuplicate}>
         <Copy size={14} aria-hidden />
       </button>
       <button type="button" className="fc-btn" aria-label="Delete" title="Delete (⌫)" onClick={onDelete}>

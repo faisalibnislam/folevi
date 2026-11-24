@@ -1,39 +1,53 @@
 #!/usr/bin/env node
-// Builds Folevi (Debug by default) and prints only what matters: errors, warnings in the app's own files, and
-// where the app is. `--release` builds Release; `--generate` regenerates the Xcode project first (always done
-// when project.yml is newer than it).
+// Builds Folevi for Mac (apps/mac): generates the project, then xcodebuild. Debug by default: the app is
+// "Folevi Dev.app" (com.folevi.mac.dev, its own data, folevi-dev:// links), left in apps/mac/build and never
+// installed. One xcodebuild at a time on a loaded Mac.
 //
-//   node apps/mac/scripts/build.mjs [--release] [--warnings]
-import { execFileSync, spawnSync } from "node:child_process";
-import { existsSync, statSync } from "node:fs";
-import { dirname, join } from "node:path";
+//   node apps/mac/scripts/build.mjs             Debug build, prints the app's path
+//   node apps/mac/scripts/build.mjs --test      Debug build and the FoleviTests (XCTest)
+//   node apps/mac/scripts/build.mjs --test --only FoleviTests/SchemeTests
+//   node apps/mac/scripts/build.mjs --release   Release build (Developer ID signed, not notarized, not installed;
+//                                               release.mjs, WM3, does the real thing)
+//   node apps/mac/scripts/build.mjs --clean
+import { execFileSync } from "node:child_process";
+import { rmSync } from "node:fs";
+import { join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { MAC, generateProject } from "./project.mjs";
+import { guardMemory } from "./memguard.mjs";
 
-const CORE = join(dirname(fileURLToPath(import.meta.url)), "..");
-const args = new Set(process.argv.slice(2));
-const config = args.has("--release") ? "Release" : "Debug";
-const project = join(CORE, "Folevi.xcodeproj");
-
-const spec = join(CORE, "project.yml");
-if (!args.has("--no-generate")) {
-  const xcodegen = ["/opt/homebrew/bin/xcodegen", "/usr/local/bin/xcodegen"].find((p) => existsSync(p)) ?? "xcodegen";
-  execFileSync(xcodegen, ["generate", "--spec", spec, "--project", CORE, "--quiet"], { cwd: CORE, stdio: "inherit" });
-}
-
-const r = spawnSync("xcodebuild", ["-project", project, "-scheme", "Folevi", "-configuration", config, "-derivedDataPath", join(CORE, "build/dd"), "-destination", "platform=macOS", "-allowProvisioningUpdates", "build"], { cwd: CORE, encoding: "utf8", maxBuffer: 1 << 28 });
-const lines = (r.stdout + r.stderr).split("\n");
-const seen = new Set();
-const show = (l) => {
-  const short = l.replace(/^.*\/apps\//, "");
-  if (seen.has(short)) return;
-  seen.add(short);
-  console.log(short);
+const args = process.argv.slice(2);
+const flag = (name) => args.includes(name);
+const value = (name) => {
+  const i = args.indexOf(name);
+  return i >= 0 ? args[i + 1] : undefined;
 };
-for (const l of lines) {
-  if (/^\/.*error:/.test(l)) show(l);
-  else if (args.has("--warnings") && /^\/.*apps\/mac\/Folevi\/.*warning:/.test(l)) show(l);
+
+export const DERIVED = join(MAC, "build", "DerivedData");
+export const configuration = (release) => (release ? "Release" : "Debug");
+export const appPath = (release = false) => join(DERIVED, "Build", "Products", configuration(release), release ? "Folevi.app" : "Folevi Dev.app");
+
+export function build({ release = false, test = false, only = null, quiet = false } = {}) {
+  const project = generateProject({ quiet: true });
+  const xcodeArgs = ["-project", project, "-scheme", "Folevi", "-configuration", configuration(release), "-destination", "platform=macOS,arch=arm64", "-derivedDataPath", DERIVED, "-jobs", "4"];
+  if (only) xcodeArgs.push(`-only-testing:${only}`);
+  xcodeArgs.push(test ? "test" : "build");
+  // At most 4 compile jobs and a memory watchdog (memguard.mjs): a runaway compile froze the Mac (2026-10-28).
+  const stopGuard = guardMemory();
+  try {
+    execFileSync("xcodebuild", xcodeArgs, { cwd: MAC, stdio: quiet ? "pipe" : "inherit", maxBuffer: 256 * 1024 * 1024 });
+  } finally {
+    stopGuard();
+  }
+  return appPath(release);
 }
-const ok = lines.some((l) => l.includes("BUILD SUCCEEDED"));
-const name = config === "Debug" ? "Folevi Dev" : "Folevi";
-console.log(ok ? `BUILD SUCCEEDED: ${join(CORE, "build/dd/Build/Products", config, name + ".app")}` : "BUILD FAILED");
-process.exit(ok ? 0 : 1);
+
+if (fileURLToPath(import.meta.url) === process.argv[1]) {
+  if (flag("--clean")) rmSync(DERIVED, { recursive: true, force: true });
+  try {
+    const app = build({ release: flag("--release"), test: flag("--test"), only: value("--only") ?? null });
+    console.log(`\n${app}`);
+  } catch (e) {
+    process.exitCode = typeof e.status === "number" ? e.status : 1;
+  }
+}

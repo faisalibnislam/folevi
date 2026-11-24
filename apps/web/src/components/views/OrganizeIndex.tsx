@@ -211,7 +211,7 @@ export function FoldersIndex() {
         />
 
         {data && !list.length ? (
-          <EmptyState icon={FolderOpen} title={q.trim() ? `No folders match “${q.trim()}”` : "No folders yet"} body={q.trim() ? undefined : "Create one to group related pages."} />
+          <EmptyState icon={FolderOpen} title={q.trim() ? `No folders match “${q.trim()}”` : "No folders yet"} body={q.trim() ? undefined : "Folders keep related notes together."} />
         ) : layout === "grid" ? (
           <ul {...reorder.listProps} className="relative grid grid-cols-[repeat(auto-fill,minmax(var(--folder-card-min),1fr))] gap-x-[var(--card-gap)] gap-y-[var(--card-row-gap)]" aria-label="Folders">
             {reorderedCards(list, reorder).map((f) =>
@@ -327,7 +327,7 @@ export function TagsIndex() {
           />
         </div>
         {data && !list.length ? (
-          <EmptyState icon={Hash} title={q.trim() ? `No tags match “${q.trim()}”` : "No tags yet"} body={q.trim() ? undefined : "Add tags to a page from its Info panel."} />
+          <EmptyState icon={Hash} title={q.trim() ? `No tags match “${q.trim()}”` : "No tags yet"} body={q.trim() ? undefined : "Add tags to a note from its Info panel."} />
         ) : (
           <ul className="mt-6 flex flex-wrap gap-2" aria-label="Tags">
             {list.map((t) => (

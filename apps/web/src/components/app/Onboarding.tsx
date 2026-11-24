@@ -21,6 +21,7 @@ import "./onboarding/onboarding.css";
 import { withoutPurchaseHints } from "@/lib/nativeApp";
 import { NativeGate } from "@/lib/engine/NativeGate";
 import { onboardingInfo } from "@/lib/engine/gates";
+import { useKeyLabels } from "@/lib/shortcuts";
 
 /** The steps, in order, and the server step each one completes (convex/lib/onboarding.ts). */
 const STEPS = [
@@ -555,6 +556,7 @@ function Appearances({ headingId, value, styleId, onPick }: { headingId: string;
 type Entitlements = ReturnType<typeof useAppState>["profile"]["entitlements"];
 
 function AiChoice({ on, onChange, entitlements }: { on: boolean; onChange: (next: boolean) => void; entitlements: Entitlements }) {
+  const keys = useKeyLabels();
   const descId = useId();
   const ends = entitlements.trialEndsAt ? new Date(entitlements.trialEndsAt).toLocaleDateString(undefined, { month: "long", day: "numeric" }) : null;
   // AI is counted in credits: the trial's fixed allowance, then the plan's monthly credits. Core has none.
@@ -572,7 +574,7 @@ function AiChoice({ on, onChange, entitlements }: { on: boolean; onChange: (next
         items={[
           { icon: MessageSquareText, title: "Ask Foli AI", body: "Ask a question about your notes and get an answer with links to its sources." },
           { icon: "ai", title: "Catch me up", body: "On Home, a short brief of your week: recent notes and what’s due." },
-          { icon: PenLine, title: "Writing help", body: "Rewrite, shorten, fix or summarize the text you select, or press ⌘J in a note." },
+          { icon: PenLine, title: "Writing help", body: keys("Rewrite, shorten, fix or summarize the text you select, or press ⌘J in a note.") },
         ]}
       />
       <div className="ob-rise mt-6 flex items-start gap-4 rounded-panel bg-surface p-4 shadow-[var(--shadow-card)]" style={{ ["--i" as string]: 3 }}>
@@ -590,11 +592,12 @@ function AiChoice({ on, onChange, entitlements }: { on: boolean; onChange: (next
 }
 
 function Summary({ pages, style, appearance, ai }: { pages: string[]; style: string; appearance: Appearance; ai: boolean }) {
+  const keys = useKeyLabels();
   const rows: { icon: ReactNode; title: string; body: string }[] = [
     { icon: <IconTile icon={Files} />, title: pages.length ? `${pages.length} starter ${pages.length === 1 ? "page" : "pages"}` : "Starter pages", body: pages.length ? listOf(pages) : "None this time. You’ll find templates in the sidebar." },
     { icon: <IconTile icon={Paintbrush} />, title: WELCOME, body: style === "Plain" ? "Plain, like every new page" : `In the ${style} theme` },
     { icon: <IconTile icon={SunMoon} />, title: "Appearance", body: appearance === "system" ? "Matches your system" : appearance === "dark" ? "Dark" : "Light" },
-    { icon: <AiIconTile />, title: "Foli AI", body: ai ? "On. Press ⌘J in a note to ask." : "Off. Turn it on in Settings any time." },
+    { icon: <AiIconTile />, title: "Foli AI", body: ai ? keys("On. Press ⌘J in a note to ask.") : "Off. Turn it on in Settings any time." },
   ];
   return (
     <ul className="space-y-2.5">

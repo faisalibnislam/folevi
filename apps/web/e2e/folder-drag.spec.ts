@@ -167,7 +167,7 @@ test("mouse: notes onto folders from a list, a folder page's chips, Home, search
   const draft = page.getByRole("main").locator("[data-card-id]").filter({ hasText: title }).first();
   await draft.click({ button: "right" });
   await page.getByRole("menuitem", { name: /^Bookmark/ }).click();
-  const bookmarked = nav(page).getByRole("group", { name: "Bookmarked pages" }).getByRole("link", { name: title });
+  const bookmarked = nav(page).getByRole("group", { name: "Bookmarked notes" }).getByRole("link", { name: title });
   await expect(bookmarked).toBeVisible();
   await drag(page, bookmarked, row(page, "Shelf"), 0.5).then((x) => x.drop());
   await expect(toast(page, "Moved to Shelf")).toBeVisible();

@@ -6,13 +6,23 @@ Versions are MAJOR.UPDATE.PATCH, PATCH at least two digits: a Major release (2.0
 
 ## Version 1.5.73: Small update
 
-Released 2026-11-24 19:06:07+06:00 (build 88, tag v1.5.73)
+Released 2026-11-24 19:03:37+06:00 (build 88, tag v1.5.73)
 
-Folevi for Windows test build: Tauri app for Arm and Intel/AMD PCs, unsigned, no automatic updates yet.
+Folevi for Mac is the web app in a Mac window again, smaller and lighter, and Folevi for Windows arrives as a test build for Arm and Intel/AMD PCs.
 
 ### Added
 
-- Folevi for Windows: a test build for Arm and for Intel and AMD PCs, each native, from folevi.com/download/windows. It's unsigned for now, so Windows asks you to confirm it, and it doesn't update itself yet.
+- Folevi for Windows: a test build for Arm and for Intel and AMD PCs, each native, from folevi.com/download/windows. It is unsigned for now, so Windows asks you to confirm it, and it does not update itself yet.
+
+### Improved
+
+- Mac: the window shows Folevi's own sidebar, tabs and top bar, the same as on the web, Windows and Linux.
+- Mac: Settings opens in the main window.
+- Mac: the menu bar, Quick Add from any app, the menu bar icon, Spotlight, Shortcuts, Share and Services stay.
+
+### Breaking changes
+
+- Mac: floating note windows are gone. Notes open in tabs.
 
 ## Version 1.5.72: Small update
 

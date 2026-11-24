@@ -707,6 +707,8 @@ export function installFakeShell(cfg: FakeShellConfig) {
 /** Requests local mode must never make (§5.4): Folevi's servers, Convex, and the app server's own API. */
 export class NetworkGuard {
   readonly violations: string[] = [];
+  /** The note style checks local mode made (allowed; answered by the guard). */
+  readonly styleChecks: string[] = [];
 
   /** Forgets what was caught (after a test made a request on purpose to check the guard). */
   clear() {
@@ -725,6 +727,18 @@ export class NetworkGuard {
     // The page's own server stands in for the app:// origin; its API is Folevi's server.
     if (appOrigin) patterns.push(`${new URL(appOrigin).origin}/api/**`);
     for (const p of patterns) await context.route(p, block);
+    // The one request local mode may make (the owner, 2026-11-24): the anonymous, read-only note style list and the
+    // images it links (lib/shell/styleSync.ts). Answered here (no styles changed), never sent out, and counted
+    // apart: anything else, or this with a cookie or a body, is still a violation.
+    const styles = async (route: import("@playwright/test").Route) => {
+      const req = route.request();
+      if (req.method() !== "GET" || (await req.headerValue("cookie")) || req.postData()) return block(route);
+      this.styleChecks.push(req.url());
+      if (new URL(req.url()).pathname.endsWith("/note-styles")) await route.fulfill({ contentType: "application/json", body: JSON.stringify({ version: 1, themes: [] }) });
+      else await route.fulfill({ status: 404, body: "" });
+    };
+    await context.route("**/note-styles", styles);
+    await context.route("**/api/storage/**", styles);
     const wsHosts = new RegExp(`folevi\\.com|\\.convex\\.|${convex.host.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`);
     await context.routeWebSocket(wsHosts, (ws) => {
       this.violations.push(`WS ${ws.url()}`);

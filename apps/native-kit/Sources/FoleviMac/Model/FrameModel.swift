@@ -214,6 +214,10 @@ public final class FrameModel {
     public var sidebarFloats = false
     /// iPad: the floating sidebar is out.
     public var sidebarOverlayShown = false
+    /// When the window last started to change size (the app says, before it does: an iPhone Duo folding or opening,
+    /// a rotation). The split view reports its columns as the size changes, and that report isn't the person hiding
+    /// the sidebar (IPadFrameView).
+    @ObservationIgnored public var windowResizedAt = Date.distantPast
 
     /// ⌘\ and the bar's sidebar button: the floating sidebar in or out on a narrow iPad, else collapse or expand.
     public func toggleSidebar() {

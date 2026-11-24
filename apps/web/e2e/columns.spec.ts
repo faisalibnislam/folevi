@@ -149,9 +149,10 @@ test("columns from the slash menu: typing in each, resizing, after a reload, on 
   await page.keyboard.press("End");
   await page.keyboard.type(" on the go");
   await expect(line(page, "Middle notes on the go")).toHaveAttribute("data-depth", "2");
-  await waitForSaved(page);
   await shot(page, "5-phone");
+  // (While typing, a phone's bar shows Done where the save status was: it's checked back at full width.)
   await page.setViewportSize({ width: 1440, height: 900 });
+  await waitForSaved(page);
   await expectSideBySide(page, ["Left plan", "Middle notes on the go", "Right ideas"]);
 });
 

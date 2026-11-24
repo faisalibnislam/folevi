@@ -233,20 +233,23 @@ test.describe("documents", () => {
     await expect(page.locator("#document-inspector").getByRole("heading", { name: "Format" })).toBeVisible();
     await dock.getByRole("button", { name: "Format", exact: true }).click();
     await expect(panel).toBeHidden();
-    // The "…" menu is on the bar (Share and Info are in it); Info opens in the sidebar.
+    // The note's Share button and its "…" menu are on the bar (once the note's details are in: checking for no Share
+    // before then passed only by being early); Info, in the menu, opens in the sidebar.
     const icons = dock.getByRole("group", { name: "Page" });
-    await expect(icons.getByRole("button", { name: "Share", exact: true })).toHaveCount(0);
+    await expect(icons.getByRole("button", { name: /^Share/ })).toBeVisible();
     await icons.getByRole("button", { name: "Document actions" }).click();
     await page.getByRole("menuitem", { name: "Info" }).click();
     await expect(panel.getByRole("heading", { name: "Info" })).toBeVisible();
+    // Focus moves into the panel a frame after it opens (DocumentView); Escape closes it from there.
+    await expect.poll(() => page.evaluate(() => Boolean(document.getElementById("document-inspector")?.contains(document.activeElement)))).toBe(true);
     await page.keyboard.press("Escape");
     await expect(panel).toBeHidden();
     // The save state sits in the page's sidebar, not on the bar.
     await expect(page.getByTestId("sync-status")).toHaveCount(1);
     await expect(icons.getByTestId("sync-status")).toHaveCount(0);
-    // Phone width: the dock stays, icons only.
+    // Phone width: the phone's note bars carry the same tools (width decides, the owner's 2026-11-24 rule).
     await page.setViewportSize({ width: 390, height: 800 });
-    await expect(page.getByRole("toolbar", { name: "Page tools" }).getByRole("button", { name: "Format", exact: true })).toBeVisible();
+    await expect(page.getByRole("toolbar", { name: "Note tools" }).getByRole("button", { name: "Format", exact: true })).toBeVisible();
     await context.close();
   });
 });

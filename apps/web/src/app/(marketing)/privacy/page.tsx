@@ -30,7 +30,7 @@ export default function PrivacyPage() {
   return (
     <PageFrame>
       <PageHeader eyebrow="Legal" title="Privacy policy" lede="How Folevi handles your information, written to be read.">
-        <DraftNotice updated="September 30, 2026" />
+        <DraftNotice updated="November 24, 2026" />
       </PageHeader>
       <DocShell toc={toc}>
         <h2 id="short">The short version</h2>
@@ -55,6 +55,14 @@ export default function PrivacyPage() {
           records needed to keep your devices in step. Content in your Personal is yours alone. Content you add to a
           workspace belongs to that workspace: its owner and admins can see, export and delete
           it, and it stays with the workspace if you leave.
+        </p>
+        <h3>Using the apps without an account</h3>
+        <p>
+          If you choose Keep notes on my devices in the apps, your notes stay on your devices and in the place you choose
+          for them, such as iCloud Drive or a folder. None of them reach Folevi. When you’re online, the app checks Folevi once each time it opens for new note
+          styles. That check sends no notes and no account information, and it gets back only the list of styles and
+          their pictures. Like any request, it shows our servers your IP address and app version (see Technical
+          information).
         </p>
         <h3>Technical information</h3>
         <p>

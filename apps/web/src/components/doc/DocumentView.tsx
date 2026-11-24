@@ -98,7 +98,7 @@ import { ExportDialog } from "./ExportDialog";
 import { FindBar } from "./FindBar";
 import { useNoteActions } from "@/components/views/noteActions";
 import { PageDock } from "./PageDock";
-import { isIpadApp, isIphoneApp, useIpadNativeWide, useIphoneApp } from "@/lib/iphone";
+import { isIpadLayout, isIphoneApp, useIpadNativeWide, useIphoneApp, useNativeSideTools } from "@/lib/iphone";
 import { NoteBars } from "@/components/iphone/NoteBars";
 import { nativeChrome } from "@/lib/nativeApp";
 import { useNativeNote } from "@/lib/engine/editorCommands";
@@ -176,6 +176,13 @@ function useNoteBlocks(documentId: string): NoteBlocks | null | undefined {
 /** When the pointer last went down (to tell a panel opened by mouse from one opened by keyboard). */
 let lastPointerDown = 0;
 
+/**
+ * Whether the tool in the panel was picked by the person (a dock button, a shortcut, a tab in the panel) rather than
+ * come up with a note, for as long as the panel stays open. Such a tool stays from note to note; a note only opens
+ * on Foli AI (or Insert) by itself. It outlives each note's view (one per note, keyed by its id).
+ */
+let toolPicked = false;
+
 export function DocumentView({ documentId }: { documentId: string }) {
   const { engine, outbox, profile, online, scopeKey } = useAppState();
   const meta = useQuery(api.documents.get, { documentId });
@@ -202,10 +209,11 @@ export function DocumentView({ documentId }: { documentId: string }) {
     (open: boolean) => {
       if (open) {
         panelAsked.current = true;
+        toolPicked = true;
         setNarrowHold(false);
         // Asked for: Foli AI's composer may take the keyboard (it doesn't when the panel came up with the note).
         noteAiAsked();
-      }
+      } else toolPicked = false;
       setInspectorWanted(open);
     },
     [setInspectorWanted],
@@ -218,6 +226,8 @@ export function DocumentView({ documentId }: { documentId: string }) {
   const iphone = useIphoneApp();
   // The native iPad's wide layout: its frame draws no note tools, so the page keeps the floating dock (IPAD-11).
   const ipadNativeWide = useIpadNativeWide();
+  // iPhone Duo open across: the note's tools are iOS's toolbar items in the column at the side, not the dock.
+  const nativeSideTools = useNativeSideTools();
   const sidebarOpenRef = useRef(sidebarOpen);
   sidebarOpenRef.current = sidebarOpen;
   const toggleSidebarRef = useRef(toggleSidebar);
@@ -747,6 +757,7 @@ export function DocumentView({ documentId }: { documentId: string }) {
   const pickInspectorTab = useCallback(
     (t: InspectorTab) => {
       panelAsked.current = true;
+      toolPicked = true;
       noteAiAsked();
       setInspectorTab(t);
     },
@@ -756,17 +767,31 @@ export function DocumentView({ documentId }: { documentId: string }) {
   useEffect(() => {
     if (!aiOn && inspectorTab === "ai") setInspectorTab("insert");
   }, [aiOn, inspectorTab, setInspectorTab]);
-  // Every note opens on Foli AI, or on Insert where Foli AI is off (once its details are in, so the choice is
-  // this note's). Foli DNA's `?panel=related` keeps Related notes.
-  const defaultedFor = useRef<string | null>(null);
+  // Every note opens on Foli AI, or on Insert where Foli AI is off, unless the person picked the tool that's open
+  // (it stays from note to note). Decided before the note first draws, from where the person is, so the panel
+  // never shows one tool and switches to another a moment later (a click in between went the wrong way: it closed
+  // the panel it meant to open, or opened the one it meant to close). Once the note's details are in, its own
+  // answer (a note from a workspace without Foli AI) corrects that guess. Foli DNA's `?panel=related` keeps Related.
+  const defaultedFor = useRef<{ id: string; tab: InspectorTab; settled: boolean } | null>(null);
+  const keepsTool = () => wantsRelated || panelAsked.current || (toolPicked && inspectorWanted);
+  useLayoutEffect(() => {
+    if (defaultedFor.current?.id === documentId) return;
+    const tab: InspectorTab = aiOn ? "ai" : "insert";
+    defaultedFor.current = { id: documentId, tab, settled: Boolean(meta) };
+    if (!keepsTool()) setInspectorTab(tab);
+    // (Only as the note opens: the rest is below.)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [documentId]);
   useEffect(() => {
-    if (!meta || defaultedFor.current === documentId) return;
-    defaultedFor.current = documentId;
-    // (A tool picked while the note's details were still loading stays: the panel used to flip from Style back
-    // to Foli AI a moment after a click made straight after a reload.)
-    if (wantsRelated || panelAsked.current) return;
-    setInspectorTab(aiOn ? "ai" : "insert");
-  }, [meta, documentId, aiOn, wantsRelated, setInspectorTab]);
+    const d = defaultedFor.current;
+    if (!meta || !d || d.id !== documentId || d.settled) return;
+    d.settled = true;
+    const tab: InspectorTab = aiOn ? "ai" : "insert";
+    // (A tool picked while the note's details were still loading stays.)
+    if (tab === d.tab || keepsTool()) return;
+    setInspectorTab(tab);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [meta, documentId, aiOn, setInspectorTab]);
   useEffect(() => {
     if (!aiOn) return;
     setNoteAi(() => openAi());
@@ -1185,7 +1210,7 @@ export function DocumentView({ documentId }: { documentId: string }) {
       {/* The note floats on its backdrop in a rounded panel; the chrome (sidebars, inspector) sits flat behind.
           Inset like the tab strip above it (inset-x-1), so the page lines up with it. The iPad app's glass bar
           sits 8 points in from the card, so there the page does too, and its shadow keeps room inside the card. */}
-      <div ref={attachNoteRow} className={`relative flex h-full min-h-0 ${iphone ? "" : isIpadApp() ? "px-2 pb-2" : "sm:px-1 sm:pb-1"}`}>
+      <div ref={attachNoteRow} className={`relative flex h-full min-h-0 ${iphone ? "" : isIpadLayout() ? "px-2 pb-2" : "sm:px-1 sm:pb-1"}`}>
         <div ref={noteRef} data-note-panel="" className={`relative min-w-0 flex-1 ${iphone ? "" : "px-1.5 pb-2 sm:px-0 sm:pb-0"}`}>
         {findBar && editor ? <FindBar editor={editor} withReplace={findBar.replace} focusKey={findBar.key} readOnly={readOnly} onClose={() => setFindBar(null)} /> : null}
 
@@ -1353,7 +1378,7 @@ export function DocumentView({ documentId }: { documentId: string }) {
         </div>
         {/* The floating bar: AI, Insert, Format and Style, then the note's people, Share and its "…" menu. A tool opens
             in the right sidebar (on a phone, a sheet above the bar); AI opens the assistant on this note. */}
-        {nativeChromeMode && !macNativeFrame && !ipadNativeWide ? null : iphone ? (
+        {(nativeChromeMode && !macNativeFrame && !ipadNativeWide) || (nativeChromeMode && nativeSideTools) ? null : iphone ? (
           <NoteBars
             editor={editor}
             ai={aiOn}

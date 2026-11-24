@@ -399,8 +399,18 @@ was written: merge it in when it is, then drop the local untracked copies of its
   and `https://localhost` origin as the native app, so it updates in place. Version and versionCode from
   `version.json`, upload-key signing, R8. Android takes no stock Capacitor plugins (`android.includePlugins: []`,
   the one line it needs in the shared config; reasons in `apps/mobile/android/README.md`).
-- Checked: debug build and Kotlin unit tests, cloud bridge tests (27), parity tests (133, now on this app's
-  bridge), version test; installing it over the native debug build on an emulator keeps the library on the phone.
+- Fixed on the way: `env(safe-area-inset-*)` never reached the WebView (the inset listener replaced its handling;
+  the phone top bar sat under the status bar), and wide windows' Back used browser history instead of the web's
+  tab rule (one Back from a note could leave the app). Back now presses the page's Back, then Home, then leaves.
+- Checked on emulators (debug unless noted): installed over the native app (debug and release builds) it opens
+  the same library; editor, keyboard and its bar; Back on phone and tablet (a tab opened from Home closes back to
+  Home); share target into the Inbox; signing in to a scratch dev account through the Custom Tab (tablet, sidebar
+  layout, account notes open); fold/unfold switches phone/sidebar layout with no reload; Googlebook-size window
+  with Ctrl+Shift+N opening a second window; light and dark. Kotlin unit tests, cloud bridge tests (27), parity
+  tests (133, now on this app's bridge), version test.
+- Size and memory vs the native app: AAB 96.6 vs 100.8 MB; memory on Home 205.7 vs 199.3 MB (table in the README).
+- Not checked: push (needs Firebase settings), Drive/Dropbox, widgets and the tile, a real device, Android 13.
+  On a Googlebook the device words say "tablet" (the web knows only phone and tablet for Android).
 - Native app (`apps/android`) stays in the tree as the reference; CI's Kotlin codegen checks still point at it.
 
 **Also in progress:** branch `claude/native-perf-pass` (worktree `.claude/worktrees/recursing-dijkstra-48aa7c`, off
@@ -509,8 +519,8 @@ account button should move past iPadOS's window buttons).
   Known gaps: the notifications sheet's rows are not on cards yet; screens borrowed from the iPad (Foli DNA,
   Reviews) keep their own white page under the system bar.
 - Android as Capacitor (`claude/android-capacitor-197cf4`, `apps/mobile/android`): merge the iOS session's
-  `claude/mobile-capacitor` when it's pushed, check on the tablet, foldable and desktop emulators, sign in, share,
-  light and dark screenshots, size and memory against the native app; then push and open a PR (owner's OK).
+  `claude/mobile-capacitor` when it's pushed (then delete the untracked local copies of its files first), and open
+  a PR with the owner's OK. Web session: "This Googlebook" device words for Android laptops (FEATURE_PC).
   No Play upload until the owner says so (native releases paused); the upload needs a versionCode above 83.
 - Android native (PR 54, merged into `main` as 289b11af): superseded by the Capacitor app above. Its next steps were the owner's Play steps (`apps/android/README.md` "Steps only the owner can do"), and the
   plan's remaining phase 2 items (Credential Manager sign-in, onboarding, sharing sheet, templates).
@@ -629,6 +639,7 @@ account button should move past iPadOS's window buttons).
   `DATABASE_UDF_USER_TIMEOUT_SECONDS=4` for that backend. Bursts show in `convex.log` as "took a long time".
 
 ## 12. Change log
+- 2026-11-24: Android as Capacitor: safe areas reach the WebView, wide-window Back follows the web's tab rule; checked on phone, tablet (signed in), foldable and desktop emulators; size and memory measured against the native app (README). Pushed, no PR.
 - 2026-11-24: Android as Capacitor on `claude/android-capacitor-197cf4`: `apps/mobile/android` restored from the paused Capacitor app on Capacitor 8.6.2, updating in place over the native app (same package and storage); version from version.json, upload-key signing, R8, multi-window, no stock plugins on Android; unit, bridge, parity and version tests pass; not pushed.
 - 2026-11-24: Merged `main` (PR 54, Android native) into `claude/ios-native-redesign-f4a8be` to clear PR 56's conflicts; only HANDOFF.md conflicted (next steps and change log, both sides kept). All native-kit iOS tests (274, 31, 38, 28, 31), the macOS build and 39 Mac app tests pass (one earlier run timed out 19 checks in FoleviScreens while the machine's load average was about 40; the rerun passed).
 - 2026-11-24: PR 56 opened (iPhone and iPad second round, 1.5.67, into `main`) after merging `main` (PR 51, 1.5.68) into `claude/ios-native-redesign-f4a8be`; all native-kit iOS tests, the macOS build and 39 Mac app tests pass.

@@ -639,6 +639,7 @@ account button should move past iPadOS's window buttons).
   `DATABASE_UDF_USER_TIMEOUT_SECONDS=4` for that backend. Bursts show in `convex.log` as "took a long time".
 
 ## 12. Change log
+- 2026-11-24: Web everywhere PR 3 (`claude/web-everywhere-touches`): owner's platform-touch picks (Instrument Sans everywhere; the web's springs kept except the Mac; Android light touches). The Mac web view (`data-desktop="mac"`) moves with no bounce in about 0.2 s; the Android app ripples presses (`lib/android/ripple.ts`, a layer over the control, none with Reduce Motion). Back gesture and share sheet belong to the Capacitor shell. 3 new unit tests.
 - 2026-11-24: PR 56 merged into `main` (546f6aa4); PR 55 retargeted to `main` and `main` merged into the Duo branch (no conflicts).
 - 2026-11-24: PR 55 caught up again with its base (the iPad branch's test notes and the secret scan's known false positive in `.gitleaksignore`), which clears PR 55's failing secret scan.
 - 2026-11-24: PR 56's conflicts with `main` fixed (main's PR 54 merged into the iPad branch, HANDOFF only), then the iPad branch merged into the Duo branch for PR 55: Android's Gradle version comes from version.json (main's), and `isIphoneApp` keeps the Duo's `wide` check next to main's Android phone check.

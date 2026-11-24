@@ -3,7 +3,7 @@
 // Windows look), always on a scratch data folder: never anyone's library, settings or credential store. It runs
 // the development build with FOLEVI_PROBE and the scripted walk in scripts/smoke-flow.js (first launch -> Keep notes
 // on my devices -> This device only -> Open Folevi -> the library -> Settings > Desktop app) and checks each step.
-//   node scripts/smoke.mjs            (needs `cargo build` in src-tauri and the export in web/)
+//   node scripts/smoke.mjs [--embedded]   (needs `cargo build` in src-tauri and the export in web/)
 import { spawn } from "node:child_process";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -12,7 +12,11 @@ import { join, resolve } from "node:path";
 const root = resolve(import.meta.dirname, "..");
 const exe = join(root, "src-tauri/target/debug", process.platform === "win32" ? "Folevi.exe" : "Folevi");
 const data = mkdtempSync(join(tmpdir(), "folevi-smoke-"));
-const env = { ...process.env, FOLEVI_PROBE: "1", FOLEVI_PROBE_SCRIPT: join(root, "scripts/smoke-flow.js"), FOLEVI_USER_DATA: data, FOLEVI_SHELL_DIR: join(root, "web") };
+// --embedded: the interface compiled into the app, as a release build serves it (a page served under the wrong name
+// once left release builds blank while runs from the folder were fine). Otherwise the export in web/.
+const embedded = process.argv.includes("--embedded");
+const env = { ...process.env, FOLEVI_PROBE: "1", FOLEVI_PROBE_SCRIPT: join(root, "scripts/smoke-flow.js"), FOLEVI_USER_DATA: data, ...(embedded ? {} : { FOLEVI_SHELL_DIR: join(root, "web") }) };
+delete (embedded ? env : {}).FOLEVI_SHELL_DIR;
 const child = spawn(exe, [], { env, stdio: ["ignore", "pipe", "pipe"] });
 const steps = new Map();
 let log = "";

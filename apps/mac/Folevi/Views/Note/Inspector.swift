@@ -1,5 +1,6 @@
-// The note's inspector (⌥⌘0): Foli AI about the note on screen, and the note's info from the page (its outline to
-// jump to, the pages inside it, tasks, links, attachments, comments). Native Mac inspector, SF Pro.
+// The note's inspector (⌃⌘I, the system's Show Inspector): Foli AI about the note on screen, and the note's info
+// from the page (its outline to jump to, the pages inside it, tasks, links, attachments, comments). Native Mac
+// inspector, SF Pro.
 import FoleviDesign
 import FoleviEngine
 import SwiftUI
@@ -19,7 +20,7 @@ struct Inspector: View {
 
     @ViewBuilder private var content: some View {
         VStack(spacing: 0) {
-            // The tabs: the system's segmented control, centred at the inspector's top.
+            // The tabs: the system's segmented control, centered at the inspector's top.
             SegmentedChoice(selection: $window.inspectorTab, options: WindowModel.InspectorTab.allCases.map { .init(value: $0, title: $0.title) }, label: "Inspector")
                 .frame(maxWidth: .infinity)
                 .padding(.horizontal, 12)

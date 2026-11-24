@@ -59,20 +59,31 @@ final class Live<V: EngineViewSpec> {
 @Observable
 final class LiveList<L: EngineListSpec> {
     private(set) var store: ListStore<L.Row>?
+    /// The list `bind(keepRows:)` replaced: already unwatched, its last rows drawn until the new list answers.
+    private var outgoing: ListStore<L.Row>?
     @ObservationIgnored private var key: (ObjectIdentifier, L.Args)?
 
-    var rows: [L.Row] { store?.rows ?? [] }
-    var total: Int { store?.total ?? 0 }
-    var isLoading: Bool { store == nil || (store?.rows.isEmpty == true && store?.isComplete == false) }
+    /// The list on screen: the outgoing one while the new one has no answer yet.
+    private var shown: ListStore<L.Row>? {
+        if let outgoing, let store, store.status == .loading, store.error == nil { return outgoing }
+        return store
+    }
+
+    var rows: [L.Row] { shown?.rows ?? [] }
+    var total: Int { shown?.total ?? 0 }
+    var isLoading: Bool { shown == nil || (shown?.rows.isEmpty == true && shown?.isComplete == false) }
 
     /// Off screen for a minute pauses the list's subscription; back on screen resumes it.
     func setVisible(_ visible: Bool) { store?.setVisible(visible) }
 
-    func bind(_ client: EngineClient?, _ spec: L) {
+    /// `keepRows`: the old rows stay until the new list answers (a filter refining the same list), instead of the
+    /// skeleton. Leave it off when the list is a different one, so its rows never show under another title.
+    func bind(_ client: EngineClient?, _ spec: L, keepRows: Bool = false) {
         guard let client else { return }
         let k = (ObjectIdentifier(client), spec.args)
         if let key, key.0 == k.0, key.1 == k.1 { return }
         store?.cancel()
+        outgoing = keepRows ? shown : nil
         key = k
         store = client.watchList(spec, window: ListWindow(start: 0, count: 300))
     }
@@ -80,6 +91,7 @@ final class LiveList<L: EngineListSpec> {
     func cancel() {
         store?.cancel()
         store = nil
+        outgoing = nil
         key = nil
     }
 }

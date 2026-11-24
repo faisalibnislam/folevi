@@ -1,7 +1,7 @@
 // A note: Folevi's web editor (the page lent by the pool, already warm) inside the app's native window. Around it
-// everything is native: the toolbar (star, share, Foli AI, the note's menu), Find (⌘F, the page's own matches
-// driven natively), Focus Mode, the inspector (Foli AI and the note's outline, links, tasks, attachments and
-// comments), and the breadcrumb of where the note lives.
+// everything is native: the toolbar (bookmark, the note's menu, the window's Ask Foli AI), Find (⌘F, the page's
+// own matches driven natively), Focus Mode, the inspector (Foli AI and the note's outline, links, tasks,
+// attachments and comments), and the breadcrumb of where the note lives.
 import AppKit
 import FoleviDesign
 import FoleviEngine
@@ -15,7 +15,11 @@ struct NoteScreen: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            if window.findShown { FindBar(window: window) }
+            if window.findShown {
+                FindBar(window: window)
+                    .motionTransition(.move(edge: .top).combined(with: .opacity))
+                    .zIndex(1)
+            }
             ZStack {
                 PageHostView(page: window.page)
                     .accessibilityLabel("Note")
@@ -27,11 +31,14 @@ struct NoteScreen: View {
             }
             .appAnimation(Motion.fade, value: window.noteReady)
         }
+        // On the stack that stays, so the bar's leaving animates too.
+        .appAnimation(Motion.bar, value: window.findShown)
+        .clipped()
         .background(Color(nsColor: .textBackgroundColor))
         .sheet(isPresented: Binding(get: { window.sharingNote == id }, set: { if !$0 { window.sharingNote = nil } })) { NoteSharingSheet(noteId: id) }
         .onChange(of: window.editorState?.focus) { _, on in
             // Focus Mode: the page hides its own chrome; the app hides the sidebar and the inspector with it.
-            Motion.run(Motion.panel) {
+            Motion.run(Motion.column) {
                 window.columnVisibility = on == true ? .detailOnly : .all
                 if on == true { window.inspectorShown = false }
             }
@@ -143,7 +150,7 @@ struct NoteBarActions: View {
             .help("More")
         }
         Button {
-            Motion.run(Motion.panel) {
+            Motion.run(Motion.column) {
                 window.inspectorTab = .info
                 window.inspectorShown.toggle()
             }

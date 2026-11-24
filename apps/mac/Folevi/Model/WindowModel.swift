@@ -62,7 +62,7 @@ final class WindowModel: Identifiable {
     var placeMove: PlaceMoveTarget?
     /// Edit > Find > Use Selection for Find: the words the find bar starts with.
     var findSeed: String?
-    /// New Folder (⌃⌘N) asked for from the menu; the sidebar opens its sheet.
+    /// New Folder (⇧⌘N) asked for from the menu; the sidebar opens its sheet.
     var newFolderRequested = false
     /// The floating Ask Foli AI panel (⌘J) over this window.
     var askShown = false
@@ -296,10 +296,12 @@ final class WindowModel: Identifiable {
             for await event in page.client.events() {
                 guard let self, !Task.isCancelled else { return }
                 switch event {
+                // The editor repeats these on every caret move; an unchanged value would still wake every view
+                // that reads it, so only a real change is stored.
                 case .editorState(let s):
-                    self.editorState = s
-                    page.editorState = s
-                case .noteTools(let t): self.noteTools = t
+                    if self.editorState != s { self.editorState = s }
+                    if page.editorState != s { page.editorState = s }
+                case .noteTools(let t): if self.noteTools != t { self.noteTools = t }
                 case .noteMeta(let m) where m.id == self.current.noteId:
                     self.noteMeta = m
                     self.window?.title = self.title

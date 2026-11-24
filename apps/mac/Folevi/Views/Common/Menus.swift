@@ -50,11 +50,10 @@ struct NoteMenu: View {
             Button("Open in Background Tab") { app.open(.note(row.id), newTab: true, background: true) }
             Button("Open in New Window") { openWindow(id: "main", value: WindowSeed(start: .note(row.id), asTab: false)) }
             Divider()
-            Button(row.starred ? "Remove Star" : "Star") {
+            Button(row.starred ? "Remove Bookmark" : "Bookmark") {
                 app.perform { _ = try await $0.command(Commands.NoteStar(NoteStarArgs(ids: [row.id], starred: !row.starred))) }
             }
-            Menu("Move To") { MoveTargets(ids: [row.id]) }
-            Button("Move To Folder…") { window.pickFolder(.moveNotes, [row.id]) }
+            Menu("Move To") { MoveTargets(ids: [row.id]) { window.pickFolder(.moveNotes, [row.id]) } }
             Button("Copy To…") { window.pickFolder(.copyNotes, [row.id]) }
             if (app.places.value?.places.count ?? 0) > 1 { Button("Move to Another Place…") { window.placeMove = PlaceMoveTarget(notes: [row.id]) } }
             Button("Duplicate") { app.perform { _ = try await $0.command(Commands.NoteDuplicate(NoteIdArgs(id: row.id))) } }
@@ -76,9 +75,11 @@ struct NoteMenu: View {
     }
 }
 
-/// The folders a note can move to (Drafts, then every folder by its path).
+/// The folders a note can move to (Drafts, then every folder by its path), and at the end Other Folder… for the
+/// folder picker when `other` is given.
 struct MoveTargets: View {
     let ids: [String]
+    var other: (() -> Void)? = nil
     private var app: AppModel { .shared }
 
     var body: some View {
@@ -90,6 +91,10 @@ struct MoveTargets: View {
             } label: {
                 Text(String(repeating: "    ", count: depth) + folder.name)
             }
+        }
+        if let other {
+            Divider()
+            Button("Other Folder…", action: other)
         }
     }
 
@@ -136,7 +141,7 @@ struct FolderMenu: View {
         }
         Divider()
         Button("Rename…") { rename(folder) }
-        Button("Change Colour…") { window.colorPick = ColorPickTarget(ids: [folder.id], current: folder.color) }
+        Button("Change Color…") { window.colorPick = ColorPickTarget(ids: [folder.id], current: folder.color) }
         if app.session.value?.mode != .local, app.currentSpace?.encrypted == true || app.currentSpace?.canLock == true {
             Button(folder.locked ? "Stop Fully Encrypting…" : "Always Fully Encrypt…") { FolderActions.lock(folder, app: app) }
         }

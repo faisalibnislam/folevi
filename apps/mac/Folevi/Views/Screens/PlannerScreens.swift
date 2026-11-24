@@ -13,10 +13,7 @@ struct TasksScreen: View {
     let view: TasksView
     private var app: AppModel { .shared }
     @State private var tasks = Live<Views.TasksList>()
-    @State private var draft = ""
-    @State private var parsed: TaskParseValue?
     @State private var filter = ""
-    @FocusState private var adding: Bool
     @FocusState private var filterFocused: Bool
 
     /// The groups with only the tasks whose title or page matches the filter.
@@ -60,16 +57,17 @@ struct TasksScreen: View {
             .padding(.horizontal, 24)
             .padding(.vertical, 12)
 
-            if view != .completed { quickAdd }
+            if view != .completed { TaskQuickAdd(view: view) }
 
             if let value = tasks.value {
+                let groups = filtered(value)
                 if value.groups.allSatisfy(\.tasks.isEmpty) {
                     EmptyScreen(symbol: view == .completed ? "checkmark.circle" : "checklist", title: emptyText.0, message: emptyText.1)
-                } else if filtered(value).isEmpty {
+                } else if groups.isEmpty {
                     EmptyScreen(symbol: "magnifyingglass", title: "No Tasks Match That Filter", message: "Nothing here matches “\(filter)”.")
                 } else {
                     List {
-                        ForEach(filtered(value), id: \.id) { group in
+                        ForEach(groups, id: \.id) { group in
                             Section {
                                 ForEach(group.tasks, id: \.id) { task in
                                     TaskLine(task: task, window: window, showNote: group.kind != .note)
@@ -112,8 +110,18 @@ struct TasksScreen: View {
         }
         return n > 0 ? "  \(n)" : ""
     }
+}
 
-    private var quickAdd: some View {
+/// Tasks' quick-add field. Its own view, owning the draft, so a keystroke redraws this field and not the task list.
+private struct TaskQuickAdd: View {
+    let view: TasksView
+    private var app: AppModel { .shared }
+    @State private var draft = ""
+    @State private var parsed: TaskParseValue?
+    @State private var parseTask: Task<Void, Never>?
+    @FocusState private var adding: Bool
+
+    var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             HStack(spacing: 8) {
                 Image(systemName: "plus.circle").foregroundStyle(.secondary)
@@ -140,8 +148,6 @@ struct TasksScreen: View {
         .padding(.horizontal, 24)
         .padding(.bottom, 10)
     }
-
-    @State private var parseTask: Task<Void, Never>?
 
     private func parse() {
         parseTask?.cancel()
@@ -341,7 +347,6 @@ struct CalendarScreen: View {
     @State private var calendarsShown = false
     @State private var editingTask: TaskRow?
     @State private var newTask = ""
-    @State private var now = Date()
     @AppStorage("core.calendar.layout") private var layout = "month"
     @FocusState private var focused: Bool
 
@@ -370,14 +375,16 @@ struct CalendarScreen: View {
     }
 
     var body: some View {
+        // The range's items grouped by day once for this pass; every cell reads its day from it.
+        let index = dayIndex()
         HSplitView {
             VStack(spacing: 0) {
                 header
                 Group {
                     switch layout {
-                    case "week": week
-                    case "agenda": agenda
-                    default: monthGrid
+                    case "week": week(index)
+                    case "agenda": agenda(index)
+                    default: monthGrid(index)
                     }
                 }
                 .transition(.opacity)
@@ -392,7 +399,6 @@ struct CalendarScreen: View {
             .onKeyPress(.downArrow) { step(days: 7); return .handled }
             dayDetail.frame(minWidth: 250, idealWidth: 300, maxWidth: 380)
         }
-        .appAnimation(Motion.fade, value: layout)
         .onAppear {
             if let month, let d = try? Date(month + "-01", strategy: AppDates.dayFormat) { anchor = d; selected = d }
             bind()
@@ -400,12 +406,6 @@ struct CalendarScreen: View {
         }
         .onChange(of: anchor) { bind() }
         .onChange(of: layout) { bind() }
-        .task {
-            while !Task.isCancelled {
-                try? await Task.sleep(for: .seconds(60))
-                now = Date()
-            }
-        }
         .sheet(isPresented: $adding) { AddCalendarSheet() }
         .sheet(isPresented: $feedShown) { CalendarFeedSheet() }
         .sheet(item: $editingTask) { TaskEditSheet(task: $0) }
@@ -471,7 +471,8 @@ struct CalendarScreen: View {
         HStack {
             Text(heading).font(AppType.screenTitle(24)).lineLimit(1).minimumScaleFactor(0.8)
             Spacer()
-            Picker("Calendar View", selection: $layout) {
+            // The view switch's one animation: a fade of the content, set where the choice is made.
+            Picker("Calendar View", selection: Binding(get: { layout }, set: { v in Motion.run(Motion.fade) { layout = v } })) {
                 Text("Month").tag("month"); Text("Week").tag("week"); Text("Agenda").tag("agenda")
             }
             .pickerStyle(.segmented).labelsHidden().fixedSize()
@@ -501,9 +502,32 @@ struct CalendarScreen: View {
 
     private func isDone(_ t: TaskRow) -> Bool { t.status == "done" || t.completedAt != nil }
 
+    /// The range's events and tasks by day (yyyy-MM-dd), so a grid of 42 cells doesn't filter every item 42 times.
+    private struct DayIndex {
+        var events: [String: [CalendarEvent]] = [:]
+        var tasks: [String: [TaskRow]] = [:]
+        func items(_ key: String) -> (events: [CalendarEvent], tasks: [TaskRow]) { (events[key] ?? [], tasks[key] ?? []) }
+    }
+
+    private func dayIndex() -> DayIndex {
+        var index = DayIndex()
+        index.tasks = Dictionary(grouping: allTasks.filter { $0.dueDate != nil }, by: { $0.dueDate! })
+        let (from, to) = range
+        for e in events.value?.events ?? [] {
+            // Every day the event touches (as `items(on:)` has it), within the range on screen.
+            let end = min(Date(timeIntervalSince1970: Double(e.end) / 1000), to)
+            var day = max(cal.startOfDay(for: Date(timeIntervalSince1970: Double(e.start) / 1000)), from)
+            while day < end {
+                index.events[iso(day), default: []].append(e)
+                day = cal.date(byAdding: .day, value: 1, to: day)!
+            }
+        }
+        return index
+    }
+
     // MARK: month
 
-    private var monthGrid: some View {
+    private func monthGrid(_ index: DayIndex) -> some View {
         VStack(spacing: 0) {
             HStack(spacing: 0) {
                 ForEach(0..<7, id: \.self) { i in
@@ -513,18 +537,18 @@ struct CalendarScreen: View {
             .padding(.horizontal, 12)
             .padding(.bottom, 4)
             LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 0), count: 7), spacing: 0) {
-                ForEach(days, id: \.self) { day in dayCell(day) }
+                ForEach(days, id: \.self) { day in dayCell(day, index) }
             }
             .padding(.horizontal, 12)
             Spacer(minLength: 0)
         }
     }
 
-    private func dayCell(_ day: Date) -> some View {
+    private func dayCell(_ day: Date, _ index: DayIndex) -> some View {
         let inMonth = cal.isDate(day, equalTo: anchor, toGranularity: .month)
         let today = cal.isDateInToday(day)
         let picked = cal.isDate(day, inSameDayAs: selected)
-        let it = items(on: day)
+        let it = index.items(iso(day))
         return VStack(alignment: .leading, spacing: 2) {
             Text(day.formatted(.dateTime.day()))
                 .font(.callout.weight(today ? .bold : .regular))
@@ -564,7 +588,7 @@ struct CalendarScreen: View {
 
     // MARK: week
 
-    private var week: some View {
+    private func week(_ index: DayIndex) -> some View {
         VStack(spacing: 0) {
             HStack(spacing: 0) {
                 Color.clear.frame(width: 52, height: 1)
@@ -587,7 +611,7 @@ struct CalendarScreen: View {
             HStack(alignment: .top, spacing: 0) {
                 Text("all-day").font(.caption2).foregroundStyle(.secondary).frame(width: 52, alignment: .trailing).padding(.trailing, 6)
                 ForEach(weekDays, id: \.self) { day in
-                    let it = items(on: day)
+                    let it = index.items(iso(day))
                     VStack(alignment: .leading, spacing: 2) {
                         ForEach(it.events.filter(\.allDay), id: \.id) { e in EventChip(event: e) }
                         ForEach(it.tasks.filter { $0.dueTime == nil }, id: \.id) { t in taskChip(t) }
@@ -611,7 +635,7 @@ struct CalendarScreen: View {
                                     .id("h\(h)")
                             }
                         }
-                        ForEach(weekDays, id: \.self) { day in hourColumn(day) }
+                        ForEach(weekDays, id: \.self) { day in hourColumn(day, index) }
                     }
                 }
                 .task {
@@ -633,8 +657,8 @@ struct CalendarScreen: View {
     private struct Block: Identifiable { let id: String; let start: Double; let end: Double; let task: TaskRow?; let event: CalendarEvent?; var column = 0; var columns = 1 }
 
     /// Timed tasks (half an hour each) and events by their span, side by side where they overlap.
-    private func blocks(_ day: Date) -> [Block] {
-        let it = items(on: day)
+    private func blocks(_ day: Date, _ index: DayIndex) -> [Block] {
+        let it = index.items(iso(day))
         let dayStart = cal.startOfDay(for: day).timeIntervalSince1970
         var out: [Block] = []
         for e in it.events where !e.allDay {
@@ -668,7 +692,7 @@ struct CalendarScreen: View {
         return p[0] * 60 + p[1]
     }
 
-    private func hourColumn(_ day: Date) -> some View {
+    private func hourColumn(_ day: Date, _ index: DayIndex) -> some View {
         let today = cal.isDateInToday(day)
         return GeometryReader { g in
             ZStack(alignment: .topLeading) {
@@ -683,19 +707,13 @@ struct CalendarScreen: View {
                             } isTargeted: { _ in }
                     }
                 }
-                ForEach(blocks(day)) { b in
+                ForEach(blocks(day, index)) { b in
                     let w = (g.size.width - 4) / CGFloat(b.columns)
                     blockView(b)
                         .frame(width: w - 2, height: max(18, CGFloat(b.end - b.start) * Self.hourHeight - 2))
                         .offset(x: 2 + CGFloat(b.column) * w, y: CGFloat(b.start) * Self.hourHeight + 1)
                 }
-                if today {
-                    let comps = cal.dateComponents([.hour, .minute], from: now)
-                    let y = (CGFloat(comps.hour ?? 0) + CGFloat(comps.minute ?? 0) / 60) * Self.hourHeight
-                    Rectangle().fill(Color.red).frame(height: 1.5).offset(y: y)
-                    Text(now.formatted(date: .omitted, time: .shortened)).font(.system(size: 9, weight: .semibold)).foregroundStyle(.red)
-                        .padding(.horizontal, 3).background(.background, in: .capsule).offset(x: 2, y: y - 6)
-                }
+                if today { NowLine(hourHeight: Self.hourHeight) }
             }
         }
         .frame(height: Self.hourHeight * 24)
@@ -721,7 +739,7 @@ struct CalendarScreen: View {
 
     // MARK: agenda
 
-    private var agenda: some View {
+    private func agenda(_ index: DayIndex) -> some View {
         let today = cal.startOfDay(for: Date())
         let overdue = allTasks.filter { t in !isDone(t) && (t.dueDate.flatMap { try? Date($0, strategy: AppDates.dayFormat) }.map { $0 < today } ?? false) }
         let span = (0..<31).map { cal.date(byAdding: .day, value: $0, to: today)! }
@@ -734,7 +752,7 @@ struct CalendarScreen: View {
                 }
             }
             ForEach(span, id: \.self) { day in
-                let it = items(on: day)
+                let it = index.items(iso(day))
                 let isToday = cal.isDateInToday(day)
                 if isToday || !it.events.isEmpty || !it.tasks.isEmpty {
                     Section(isToday ? "Today · " + day.formatted(.dateTime.weekday(.wide).day().month(.wide)) : day.formatted(.dateTime.weekday(.wide).day().month(.wide))) {
@@ -823,6 +841,25 @@ struct CalendarScreen: View {
             }
         }
         return true
+    }
+}
+
+/// Today's now line in the week's hours. It has its own minute clock, so the minute tick redraws this line and not
+/// the whole calendar.
+private struct NowLine: View {
+    let hourHeight: CGFloat
+
+    var body: some View {
+        TimelineView(.everyMinute) { context in
+            let now = context.date
+            let comps = Calendar.current.dateComponents([.hour, .minute], from: now)
+            let y = (CGFloat(comps.hour ?? 0) + CGFloat(comps.minute ?? 0) / 60) * hourHeight
+            ZStack(alignment: .topLeading) {
+                Rectangle().fill(Color.red).frame(height: 1.5).offset(y: y)
+                Text(now.formatted(date: .omitted, time: .shortened)).font(.system(size: 9, weight: .semibold)).foregroundStyle(.red)
+                    .padding(.horizontal, 3).background(.background, in: .capsule).offset(x: 2, y: y - 6)
+            }
+        }
     }
 }
 

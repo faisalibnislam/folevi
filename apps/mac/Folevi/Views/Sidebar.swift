@@ -1,5 +1,5 @@
 // The window's sidebar: a source list in the system's sidebar material (Liquid Glass on macOS 26), SF Pro,
-// SF Symbols tinted by the person's accent colour, and Folevi's folder glyph for folders. Two levels at most
+// SF Symbols tinted by the person's accent color, and Folevi's folder glyph for folders. Two levels at most
 // (folders nest by disclosure). The space and account menu sits at the top (nothing critical at the bottom).
 import FoleviDesign
 import CoreTransferable
@@ -50,10 +50,14 @@ struct Sidebar: View {
                 } else {
                 DisclosureGroup(isExpanded: $starredOpen) {
                     ForEach(starred.rows.prefix(5)) { n in
-                        Label { Text(n.title.nonEmpty ?? "Untitled").lineLimit(1) } icon: { NoteMark(icon: n.icon, size: 13).frame(width: 18) }
-                            .contentShape(Rectangle())
-                            .onTapGesture { app.open(.note(n.id), newTab: true) }
-                            .help("Open in a new tab")
+                        // A button, so the keyboard and VoiceOver reach it (a tap gesture is neither).
+                        Button { app.open(.note(n.id), newTab: true) } label: {
+                            Label { Text(n.title.nonEmpty ?? "Untitled").lineLimit(1) } icon: { NoteMark(icon: n.icon, size: 13).frame(width: 18) }
+                                .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                        .help("Open in a new tab")
+                        .accessibilityHint("Opens in a new tab")
                     }
                 } label: {
                     row(.starred)
@@ -68,8 +72,10 @@ struct Sidebar: View {
             }
 
             Section(isExpanded: $foldersOpen) {
+                // Every folder's subfolders, grouped and sorted once for the whole tree (not once per row).
+                let children = childrenByParent
                 ForEach(rootFolders, id: \.id) { folder in
-                    FolderRow(folder: folder, all: folders, expanded: $expanded, window: window, byName: folderSort == "name", rename: { renaming = $0 }, newSubfolder: { newFolderParent = .some($0.id) })
+                    FolderRow(folder: folder, all: folders, children: children, expanded: $expanded, window: window, rename: { renaming = $0 }, newSubfolder: { newFolderParent = .some($0.id) })
                 }
                 .onMove(perform: folderSort != "manual" ? nil : { from, to in
                     // The sidebar's own order of top-level folders (folder.setSidebarOrder).
@@ -81,7 +87,7 @@ struct Sidebar: View {
                     Text("No folders yet").foregroundStyle(.secondary).font(.callout)
                 }
             } header: {
-                SectionHeaderWithAdd(title: "Folders", help: "New Folder (⌃⌘N)", open: { window.pickInSidebar(.folders) }) {
+                SectionHeaderWithAdd(title: "Folders", help: "New Folder (⇧⌘N)", open: { window.pickInSidebar(.folders) }) {
                     newFolderParent = .some(nil)
                 } menu: {
                     Picker("Sort Folders", selection: $folderSort) {
@@ -109,8 +115,14 @@ struct Sidebar: View {
                     .contextMenu {
                         Button("Open in New Tab") { app.open(.tag(tag.id), newTab: true) }
                         Button("Edit Tag…") { renamingTag = tag }
-                        ForEach(TagColors.all.filter { $0.id != tag.color }, id: \.id) { c in
-                            Button("Colour: \(c.name)") { app.perform { _ = try await $0.command(Commands.TagUpdate(TagUpdateArgs(id: tag.id, color: c.id))) } }
+                        Menu("Color") {
+                            Picker("Color", selection: Binding(get: { tag.color }, set: { c in
+                                app.perform { _ = try await $0.command(Commands.TagUpdate(TagUpdateArgs(id: tag.id, color: c))) }
+                            })) {
+                                ForEach(TagColors.all, id: \.id) { c in Text(c.name).tag(c.id) }
+                            }
+                            .pickerStyle(.inline)
+                            .labelsHidden()
                         }
                         Divider()
                         Button("Delete Tag…", role: .destructive) { TagActions.delete(id: tag.id, name: tag.name, window: window) }
@@ -122,7 +134,7 @@ struct Sidebar: View {
                         .tag(Destination.tags)
                 }
                 if tags.isEmpty, app.tree.value != nil {
-                    Text("Tag notes from the inspector (⌥⌘I).").foregroundStyle(.secondary).font(.callout)
+                    Text("Type # in a note to tag it.").foregroundStyle(.secondary).font(.callout)
                 }
             } header: {
                 SectionHeaderWithAdd(title: "Tags", help: nil, open: { window.pickInSidebar(.tags) })
@@ -139,9 +151,11 @@ struct Sidebar: View {
                     } else {
                         DisclosureGroup(isExpanded: $graphOpen) {
                             ForEach(graphViews.value?.views ?? [], id: \.id) { v in
-                                Label { Text(v.name).lineLimit(1) } icon: { WebIcon.bookmark.image(size: 13).frame(width: 18) }
-                                    .contentShape(Rectangle())
-                                    .onTapGesture { window.graphQuery = "view=\(v.id)"; window.pickInSidebar(.graph) }
+                                Button { window.graphQuery = "view=\(v.id)"; window.pickInSidebar(.graph) } label: {
+                                    Label { Text(v.name).lineLimit(1) } icon: { WebIcon.bookmark.image(size: 13).frame(width: 18) }
+                                        .contentShape(Rectangle())
+                                }
+                                .buttonStyle(.plain)
                             }
                         } label: { row(.graph) }
                     }
@@ -197,6 +211,14 @@ struct Sidebar: View {
 
     private var folders: [FolderNode] { app.tree.value?.folders ?? [] }
 
+    /// Each folder's subfolders in the sidebar's order (by name, or by rank).
+    private var childrenByParent: [String: [FolderNode]] {
+        let byName = folderSort == "name"
+        return Dictionary(grouping: folders.filter { $0.parentId != nil }, by: { $0.parentId! }).mapValues { c in
+            byName ? c.sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending } : c.sorted { $0.rank < $1.rank }
+        }
+    }
+
     /// Opens the folders above the one on screen, so it shows in the sidebar.
     private func revealCurrent() {
         guard case .folder(let id) = window.current else { return }
@@ -237,7 +259,7 @@ struct Sidebar: View {
     }
 }
 
-/// A place's icon: the main app's icon in the sidebar's tint; Foli AI keeps its coloured mark.
+/// A place's icon: the main app's icon in the sidebar's tint; Foli AI keeps its colored mark.
 struct PlaceIcon: View {
     let dest: Destination
     var size: CGFloat = 16
@@ -255,13 +277,13 @@ struct PlaceIcon: View {
 struct FolderRow: View {
     let folder: FolderNode
     let all: [FolderNode]
+    /// Every folder's subfolders, sorted (the sidebar builds it once per pass).
+    let children: [String: [FolderNode]]
     @Binding var expanded: Set<String>
     let window: WindowModel
-    var byName = false
     let rename: (FolderNode) -> Void
     let newSubfolder: (FolderNode) -> Void
     private var app: AppModel { .shared }
-    @State private var hovering = false
     @State private var zone: FolderDropZone?
     @State private var rowHeight: CGFloat = 24
 
@@ -280,18 +302,14 @@ struct FolderRow: View {
         app.perform { _ = try await $0.command(Commands.FolderMove(FolderMoveArgs(id: moving, parentId: parent, afterId: after))) }
     }
 
-    private var children: [FolderNode] {
-        let c = all.filter { $0.parentId == folder.id }
-        return byName ? c.sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending } : c.sorted { $0.rank < $1.rank }
-    }
-
     var body: some View {
-        if children.isEmpty {
+        let mine = children[folder.id] ?? []
+        if mine.isEmpty {
             label
         } else {
             DisclosureGroup(isExpanded: Binding(get: { expanded.contains(folder.id) }, set: { if $0 { expanded.insert(folder.id) } else { expanded.remove(folder.id) } })) {
-                ForEach(children, id: \.id) { child in
-                    FolderRow(folder: child, all: all, expanded: $expanded, window: window, byName: byName, rename: rename, newSubfolder: newSubfolder)
+                ForEach(mine, id: \.id) { child in
+                    FolderRow(folder: child, all: all, children: children, expanded: $expanded, window: window, rename: rename, newSubfolder: newSubfolder)
                 }
             } label: {
                 label
@@ -304,13 +322,7 @@ struct FolderRow: View {
             HStack {
                 Text(folder.name)
                 if folder.locked { Image(systemName: "lock.fill").font(.caption2).foregroundStyle(.secondary) }
-                if hovering {
-                    Spacer(minLength: 0)
-                    Menu { FolderMenu(folder: folder, window: window, rename: rename, newSubfolder: newSubfolder) } label: { Image(systemName: "ellipsis") }
-                        .menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize().help("Folder Options")
-                }
             }
-            .onHover { hovering = $0 }
         } icon: {
             FolderMark(colorId: folder.color, size: 14, kind: folder.childCount > 0 ? .stack : ((folder.noteCount ?? 0) > 0 ? .notes : .empty))
         }

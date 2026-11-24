@@ -10,6 +10,8 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         PendingLink.handler = { url in Task { @MainActor in DeepLinkRouter.open(url) } }
         PushNotifications.shared.attach()
         Keychain.forgetAfterReinstall()
+        // Local mode's network rules, ready before the first page loads (FoleviViewController.prepareLocalRules).
+        if ShellMode.current == "local" { FoleviViewController.prepareLocalRules() }
         return true
     }
 

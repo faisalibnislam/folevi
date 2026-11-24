@@ -34,6 +34,7 @@ deb http://security.ubuntu.com/ubuntu jammy-security main universe
 EOF
 cp /etc/resolv.conf "$ROOT/etc/resolv.conf"
 cp "$HERE/install-build-deps.sh" "$ROOT/tmp/"
-chroot "$ROOT" bash /tmp/install-build-deps.sh
-chroot "$ROOT" bash -lc 'command -v cargo-tauri >/dev/null || cargo install tauri-cli --version "^2" --locked'
+# As root inside the root (the outer sudo's SUDO_USER names a user that doesn't exist there).
+chroot "$ROOT" env -u SUDO_USER bash /tmp/install-build-deps.sh
+chroot "$ROOT" env -u SUDO_USER bash -lc 'command -v cargo-tauri >/dev/null || cargo install tauri-cli --version "^2" --locked'
 echo "amd64 build root ready at $ROOT"

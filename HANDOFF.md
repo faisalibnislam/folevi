@@ -248,6 +248,15 @@ The ones most likely to be broken:
 
 ## 9. Current state (as of 2026-11-24)
 
+**Folevi Server for Synology, test build 1 (branch `claude/synology-server-3e22b1`, no PR):** a native DSM 7
+package, no Docker (`docs/self-hosting/SYNOLOGY.md`). Server edition code behind `NEXT_PUBLIC_FOLEVI_EDITION` /
+`FOLEVI_EDITION=server` (Folevi Cloud unchanged), the supervisor and builders in `scripts/self-host/`. The two
+packages (`Folevi-Server-0.1.0-0001-x86_64.spk`, `-aarch64.spk`) and the install checklist are in the owner's
+`~/Downloads/Folevi Server test build 1/`; downloads and build outputs in `~/Library/Caches/folevi-server-build/`.
+Tested on this Mac with the macOS backend (every Phase 0 check passes, backups, diagnostics, DSM scripts, crash
+recovery); the Linux programs and DSM itself are untested until the owner installs it. The owner said both boxes
+run DSM 7.2 or newer and approved bundling Ubuntu 22.04's C/C++ runtime libraries as a fallback.
+
 **Release in progress, 2026-11-24 (branch `claude/folevi-core-529dbe`, PR 51 into `main`, not merged):**
 - **1.5.66** (tag `v1.5.66`, local): the native Mac app replacing the AppKit one, plus PR 52's iPhone/iPad redesign.
   Published to Sparkle and uploaded to TestFlight with the owner's OK. **It broke signed-in Macs:** the window stayed
@@ -486,6 +495,11 @@ signed-in account, 1.5.58's frosted folders with a large library, and the iPad c
 account button should move past iPadOS's window buttons).
 
 ## 10. Next steps / open work
+- Folevi Server for Synology (`docs/self-hosting/SYNOLOGY.md`): the owner installs test build 1 on an Intel/AMD
+  and an ARM Synology and sends both diagnostics pages. Then fix what DSM shows (arch matching, the data-share
+  wizard variable, the package user's rights), add SMTP email, an invite-only switch, and HTTPS through DSM's
+  reverse proxy. Raise `--build` for every new test build. Later: QNAP (`.qpkg`, needs the bundled glibc path),
+  and the apps signing in to a server (plan §5.2).
 - Android native (`claude/android-native-622675`, PR 54 https://github.com/faisalibnislam/folevi/pull/54): the owner reviews and merges the PR (it also carries
   contract revision 34, which touches `apps/native-kit/.../Generated` and the web engine). Then the owner's Play steps (`apps/android/README.md` "Steps only the owner can do"), and the
   plan's remaining phase 2 items (Credential Manager sign-in, onboarding, sharing sheet, templates).
@@ -612,6 +626,8 @@ account button should move past iPadOS's window buttons).
   `DATABASE_UDF_USER_TIMEOUT_SECONDS=4` for that backend. Bursts show in `convex.log` as "took a long time".
 
 ## 12. Change log
+
+- 2026-11-24: Folevi Server for Synology test build 1 (`claude/synology-server-3e22b1`): server edition code (runtime Convex address, no billing, email-optional sign-up, plain-HTTP CSP), the supervisor, bundle and `.spk` builders; both `.spk` files and the install checklist in the owner's Downloads. Tested on this Mac; not yet on a NAS.
 - 2026-11-24: All branches synced with main (289b11af): PR 56 `claude/ios-native-redesign-f4a8be` (da225a57), PR 55 `claude/iphone-duo-native-ipad` (9642b0f7: Android version read from version.json, `isIphoneApp` keeps the Duo and Android rules), PR 57 `claude/android-tabs`, PR 58 `claude/windows-electron-4ed862`, and `claude/mac-web-tabs` (Phase 0 added). A trial merge of all five onto main in that order is clean except HANDOFF.md change-log lines (keep both); result 1.5.69 build 84. Merge order: 56, then 55 (retarget to main), 57, 58, then the Mac branch's PR. Leftover branches `claude/iphone-duo-ipad-layout`, `claude/ipad-native` and `claude/handoff-2026-11-23` hold nothing new.
 - 2026-11-24: Synology native Folevi Server started. Phase 0 passed on branch `worktree-agent-a21c347ca995aad59` (commit 0b4dd44e, not pushed; `docs/self-hosting/PHASE0.md`, `scripts/self-host/`): Folevi deploys to a standalone Convex backend unchanged; single-origin proxy works; memory about 570 MB peak tuned. Fixes needed: optional email verification, internal URLs, LAN http, hide AI/billing, standalone build. Waiting on the owner's OK to download the Linux Convex and Node binaries, and their NAS models.
 - 2026-11-24: Self-hosting plan updated with the owner's decision: native Synology `.spk` and QNAP `.qpkg` apps (no Docker), containers elsewhere; the owner also wants a Windows app (options given: revive the Electron app from 7cb6ddda^, Tauri, PWA, native).

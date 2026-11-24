@@ -486,8 +486,8 @@ account button should move past iPadOS's window buttons).
 ## 10. Next steps / open work
 - iPhone Duo: PR 55 (https://github.com/faisalibnislam/folevi/pull/55, `claude/iphone-duo-native-ipad` into
   `claude/ios-native-redesign-f4a8be`), replacing PR 53 (closed). 1.5.69 (build 84) from this branch is on TestFlight
-  (owner's OK; the branch has 1.5.68's release line merged in). The owner tries it on TestFlight; it lands after the
-  iPad redesign branch, which goes to main after the 1.5.66 release (PR 51); the owner merges. Not checked: Split View
+  (owner's OK; the branch has 1.5.68's release line merged in). The owner tries it on TestFlight. PR 51 is in main;
+  PR 56 takes the iPad redesign branch to main, then PR 55 is retargeted to main; the owner merges. Not checked: Split View
   halves, a real device. Next free version: 1.5.70.
 - iPhone and iPad redesign (`claude/ios-native-redesign-f4a8be`): the owner tries 1.5.65 from TestFlight; PR 52
   (https://github.com/faisalibnislam/folevi/pull/52) merged into `claude/folevi-core-529dbe` on 2026-11-24
@@ -615,6 +615,7 @@ account button should move past iPadOS's window buttons).
   `DATABASE_UDF_USER_TIMEOUT_SECONDS=4` for that backend. Bursts show in `convex.log` as "took a long time".
 
 ## 12. Change log
+- 2026-11-24: PR 55's merge conflict with its base (which took main's PR 51) resolved: versions stay 1.5.69 (build 84), changelogs merged.
 - 2026-11-24: 1.5.69 (build 84) cut on `claude/iphone-duo-native-ipad` (1.5.68's release line merged in first; 1.5.68 was the Mac fix) and uploaded to TestFlight with the owner's OK (delivery 5facce96): Folevi on iPhone Duo. Tag v1.5.69 local only.
 - 2026-11-24: PR 55 opened for the iPhone Duo on the native iPad window (owner: replace PR 53); PR 53 closed, its branch kept.
 - 2026-11-24: iPhone Duo made to Apple's Duo page on `claude/iphone-duo-native-ipad` (owner's ask): whole toolbar and the note's tools in iOS's side column, page dock dropped there, sidebar beside the content and to the fold, inspector makes room; fold no longer hides the sidebar.

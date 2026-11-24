@@ -16,8 +16,9 @@ on the Mac:
 | `Folevi-<version>-1.aarch64.rpm` | The same, on ARM | https://folevi.com/download/linux/Folevi-aarch64.rpm |
 | `SHA256SUMS.txt` | To check a download: `sha256sum -c SHA256SUMS.txt --ignore-missing` | https://folevi.com/download/linux/SHA256SUMS.txt |
 
-The Flatpak isn't in this set yet: it builds in CI (`.github/workflows/desktop.yml`) or with
-`packaging/linux/scripts/flatpak-bundle.sh`; section 3 is for when it is.
+Flatpak (test only, not on Flathub or folevi.com): `Folevi-1.5.75-aarch64.flatpak` for ARM is in the Downloads
+folder (built in the VM, opens there); the Intel/AMD one comes from CI (`.github/workflows/desktop.yml`, artifact
+"Folevi Linux Flatpak x86_64") or `packaging/linux/scripts/flatpak-bundle.sh`. Section 3.
 
 Write down anything that looks wrong with the distribution, desktop (GNOME, KDE...) and whether it's Wayland or
 X11 (Settings > About, or run `echo $XDG_SESSION_TYPE` in a terminal).
@@ -59,7 +60,7 @@ X11 (Settings > About, or run `echo $XDG_SESSION_TYPE` in a terminal).
 
 ## 3. Any distribution, the Flatpak
 
-- [ ] `flatpak install --user Folevi-<arch>.flatpak` (it may first ask to install the GNOME 51 runtime
+- [ ] `flatpak install --user Folevi-1.5.75-<arch>.flatpak` (it may first ask to install the GNOME 51 runtime
       from Flathub: say yes).
 - [ ] `flatpak run com.folevi.Folevi`, or open it from the app grid.
 - [ ] Sign in; quit and reopen: still signed in.

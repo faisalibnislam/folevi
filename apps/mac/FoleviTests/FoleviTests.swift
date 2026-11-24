@@ -6,6 +6,7 @@ import FoleviEngine
 import FoleviEngineDemo
 import Foundation
 import Testing
+import WebKit
 @testable import Folevi
 
 struct DestinationTests {
@@ -377,5 +378,22 @@ struct MotionTests {
         #expect(Motion.pick(Motion.panel, reduce: true) == Motion.reduced)
         #expect(Motion.pick(Motion.bar, reduce: true) == Motion.reduced)
         #expect(Motion.pick(Motion.panel, reduce: false) == Motion.panel)
+    }
+}
+
+/// 1.5.66 shipped without the app:// handler knowing each page's mode, so every page got the local policy and a
+/// signed-in place's engine page couldn't reach Convex (it stopped on "Something went wrong" behind the start screen).
+@MainActor
+struct SchemeModeTests {
+    @Test func accountPagesGetTheAccountPolicy() {
+        let saved = WindowManager.shared.modeOf
+        defer { WindowManager.shared.modeOf = saved }
+        WindowManager.shared.modeOf = { $0?.hasPrefix("acct:") == true ? "account" : "local" }
+        let account = FoleviWebView(frame: .zero, configuration: WKWebViewConfiguration(), place: "acct:k1test", role: .main, nativeFrame: true)
+        let local = FoleviWebView(frame: .zero, configuration: WKWebViewConfiguration(), place: "library", role: .main, nativeFrame: true)
+        #expect(WebViewFactory.scheme.modeOf(account) == "account")
+        #expect(WebViewFactory.scheme.modeOf(local) == "local")
+        #expect(AppScheme.csp(mode: WebViewFactory.scheme.modeOf(account), serviceOrigin: "https://app.folevi.com").contains("wss://*.convex.cloud"))
+        #expect(!AppScheme.csp(mode: WebViewFactory.scheme.modeOf(local), serviceOrigin: "https://app.folevi.com").contains("convex"))
     }
 }

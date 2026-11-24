@@ -172,8 +172,13 @@ struct Bootstrap {
 
 @MainActor
 enum WebViewFactory {
-    /// The app:// handler every view shares.
-    static var scheme: AppScheme = AppScheme(root: Paths.shellRoot, serviceOrigin: origin(Paths.serviceURL), extraConnect: Paths.extraConnect)
+    /// The app:// handler every view shares. Each page's policy follows its place's mode: without `modeOf` every
+    /// page got the local policy, which blocks Convex, so a signed-in place's engine page failed at start (1.5.66).
+    static var scheme: AppScheme = {
+        let scheme = AppScheme(root: Paths.shellRoot, serviceOrigin: origin(Paths.serviceURL), extraConnect: Paths.extraConnect)
+        scheme.modeOf = { view in WindowManager.shared.modeOf((view as? FoleviWebView)?.place) }
+        return scheme
+    }()
 
     /// Content rule lists every view gets (FOLEVI_OFFLINE's); Places adds the library's through `rulesFor`.
     static var rules: [WKContentRuleList] = []

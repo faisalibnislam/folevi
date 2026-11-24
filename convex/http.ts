@@ -3,7 +3,7 @@ import { polarWebhook } from "./billing";
 import { mcpHttp } from "./mcpServer";
 import { restApiHttp } from "./restApiServer";
 import { httpAction } from "./_generated/server";
-import { internal } from "./_generated/api";
+import { api, internal } from "./_generated/api";
 import {
   fetchReceivedEmail,
   parseResendWebhook,
@@ -275,6 +275,27 @@ http.route({
         headers: { "content-type": "application/json", "cache-control": "no-store" },
       }),
   ),
+});
+
+// Note styles (themes.list), for the apps to keep the newest ones on the device (docs/MOBILE.md "Note styles and
+// covers"): public and read-only, the same rows any page reads, with each style's updatedAt to compare. Local mode
+// ("Keep notes on my devices") asks this once per launch when online and sends nothing about the person or their
+// notes: no cookie, no account, no body. The images are on Convex storage, linked from the rows.
+http.route({
+  path: "/note-styles",
+  method: "GET",
+  handler: httpAction(async (ctx) => {
+    const themes = await ctx.runQuery(api.themes.list, {});
+    return new Response(JSON.stringify({ version: 1, themes }), {
+      status: 200,
+      headers: {
+        "Content-Type": "application/json",
+        // Public data for every app's page (capacitor://localhost, https://localhost, the desktop apps).
+        "Access-Control-Allow-Origin": "*",
+        "Cache-Control": "public, max-age=300",
+      },
+    });
+  }),
 });
 
 // Better Auth (sign-up, sign-in, email verification, password reset, two-factor, sessions, JWKS).

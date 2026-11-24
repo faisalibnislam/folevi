@@ -22,6 +22,7 @@ import { useAiAccess } from "@/components/ai/useAi";
 import { TabPicture } from "./TabPreview";
 import { TabOverview, type OverviewEntry } from "./TabOverview";
 import { NewFolderButton } from "./NewFolderButton";
+import { useKeyLabels } from "@/lib/shortcuts";
 
 /** How wide the strip's soft edges are when it scrolls (the open tab is kept clear of them). */
 const FADE = 40;
@@ -119,6 +120,7 @@ function ViewIcon({ kind }: { kind: string }) {
  * page. Pages open in tabs; closing the current tab moves to its neighbour.
  */
 export function TabStrip() {
+  const keys = useKeyLabels();
   const { sidebarOpen, openAsk } = useShell();
   // The iPad app keeps its tabs (the owner's call, docs/IOS_POLISH_PLAN.md §6 D2), drawn as iPadOS draws them: a
   // glass capsule bar, 40 pt capsule tabs in 15 pt text, chevrons and round glass buttons instead of the Mac's
@@ -415,7 +417,7 @@ export function TabStrip() {
       {/* Back and Forward, like a browser's, then a divider before the tab arrows and tabs. */}
       <BackForward ipad={ipad} />
       {ipad ? null : (
-        <button type="button" aria-label="Show all tabs" title="Show all tabs (⌘⇧\)" aria-haspopup="dialog" aria-expanded={overview} onClick={() => setOverview(true)} className="grid h-9 w-8 flex-none place-items-center rounded-control text-muted transition-colors hover:bg-accent-soft hover:text-heading focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">
+        <button type="button" aria-label="Show all tabs" title={keys("Show all tabs (⌘⇧\\)")} aria-haspopup="dialog" aria-expanded={overview} onClick={() => setOverview(true)} className="grid h-9 w-8 flex-none place-items-center rounded-control text-muted transition-colors hover:bg-accent-soft hover:text-heading focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">
           <LayoutGrid size={15} aria-hidden />
         </button>
       )}
@@ -573,7 +575,7 @@ export function TabStrip() {
       ) : (
       <>
       {folderParent !== undefined ? <NewFolderButton key={folderParent ?? "top"} parentId={folderParent} /> : null}
-      <Button size="sm" variant="primary" title={inFolder ? "New note in this folder (⌘⌥N)" : "New note (⌘⌥N)"} onClick={() => void createDocument({})} className="h-9 flex-none rounded-control">
+      <Button size="sm" variant="primary" title={keys(inFolder ? "New note in this folder (⌘⌥N)" : "New note (⌘⌥N)")} onClick={() => void createDocument({})} className="h-9 flex-none rounded-control">
         <Plus size={14} aria-hidden /> New note
       </Button>
       </>

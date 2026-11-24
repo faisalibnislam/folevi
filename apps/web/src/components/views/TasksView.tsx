@@ -21,6 +21,7 @@ import { haptic } from "@/lib/nativeApp";
 import { useIphoneApp } from "@/lib/iphone";
 import { IphoneTasks } from "@/components/iphone/Tasks";
 import { IphoneTaskSheet } from "@/components/iphone/TaskSheet";
+import { useKeyLabels } from "@/lib/shortcuts";
 
 type View = "inbox" | "today" | "upcoming" | "all" | "completed" | "mine";
 const VIEWS: { id: View; label: string; empty: { title: string; body?: string } }[] = [
@@ -335,6 +336,7 @@ function TaskEditForm({ task, onClose }: { task: TaskRow; onClose: () => void })
 }
 
 export function TasksView({ view }: { view: View }) {
+  const keys = useKeyLabels();
   const { today, scope, context } = useAppState();
   const tasks = useTasks(view);
   const counts = useQuery(api.tasks.counts, { scope, today });
@@ -395,7 +397,7 @@ export function TasksView({ view }: { view: View }) {
           <AppLink href="/calendar" title="Calendar" className="ui-btn ui-btn-secondary h-8 gap-1.5 px-3 text-callout pointer-coarse:h-11">
             <CalendarDays size={14} aria-hidden /> <span className="max-md:sr-only">Calendar</span>
           </AppLink>
-          <Button size="sm" variant="primary" title="Add task (⌘⇧A)" onClick={() => openQuickAdd()}>
+          <Button size="sm" variant="primary" title={keys("Add task (⌘⇧A)")} onClick={() => openQuickAdd()}>
             <Plus size={14} aria-hidden /> Add task
           </Button>
         </header>

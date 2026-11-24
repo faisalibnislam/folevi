@@ -176,6 +176,13 @@ function useNoteBlocks(documentId: string): NoteBlocks | null | undefined {
 /** When the pointer last went down (to tell a panel opened by mouse from one opened by keyboard). */
 let lastPointerDown = 0;
 
+/**
+ * Whether the tool in the panel was picked by the person (a dock button, a shortcut, a tab in the panel) rather than
+ * come up with a note, for as long as the panel stays open. Such a tool stays from note to note; a note only opens
+ * on Foli AI (or Insert) by itself. It outlives each note's view (one per note, keyed by its id).
+ */
+let toolPicked = false;
+
 export function DocumentView({ documentId }: { documentId: string }) {
   const { engine, outbox, profile, online, scopeKey } = useAppState();
   const meta = useQuery(api.documents.get, { documentId });
@@ -202,10 +209,11 @@ export function DocumentView({ documentId }: { documentId: string }) {
     (open: boolean) => {
       if (open) {
         panelAsked.current = true;
+        toolPicked = true;
         setNarrowHold(false);
         // Asked for: Foli AI's composer may take the keyboard (it doesn't when the panel came up with the note).
         noteAiAsked();
-      }
+      } else toolPicked = false;
       setInspectorWanted(open);
     },
     [setInspectorWanted],
@@ -749,6 +757,7 @@ export function DocumentView({ documentId }: { documentId: string }) {
   const pickInspectorTab = useCallback(
     (t: InspectorTab) => {
       panelAsked.current = true;
+      toolPicked = true;
       noteAiAsked();
       setInspectorTab(t);
     },
@@ -758,17 +767,31 @@ export function DocumentView({ documentId }: { documentId: string }) {
   useEffect(() => {
     if (!aiOn && inspectorTab === "ai") setInspectorTab("insert");
   }, [aiOn, inspectorTab, setInspectorTab]);
-  // Every note opens on Foli AI, or on Insert where Foli AI is off (once its details are in, so the choice is
-  // this note's). Foli DNA's `?panel=related` keeps Related notes.
-  const defaultedFor = useRef<string | null>(null);
+  // Every note opens on Foli AI, or on Insert where Foli AI is off, unless the person picked the tool that's open
+  // (it stays from note to note). Decided before the note first draws, from where the person is, so the panel
+  // never shows one tool and switches to another a moment later (a click in between went the wrong way: it closed
+  // the panel it meant to open, or opened the one it meant to close). Once the note's details are in, its own
+  // answer (a note from a workspace without Foli AI) corrects that guess. Foli DNA's `?panel=related` keeps Related.
+  const defaultedFor = useRef<{ id: string; tab: InspectorTab; settled: boolean } | null>(null);
+  const keepsTool = () => wantsRelated || panelAsked.current || (toolPicked && inspectorWanted);
+  useLayoutEffect(() => {
+    if (defaultedFor.current?.id === documentId) return;
+    const tab: InspectorTab = aiOn ? "ai" : "insert";
+    defaultedFor.current = { id: documentId, tab, settled: Boolean(meta) };
+    if (!keepsTool()) setInspectorTab(tab);
+    // (Only as the note opens: the rest is below.)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [documentId]);
   useEffect(() => {
-    if (!meta || defaultedFor.current === documentId) return;
-    defaultedFor.current = documentId;
-    // (A tool picked while the note's details were still loading stays: the panel used to flip from Style back
-    // to Foli AI a moment after a click made straight after a reload.)
-    if (wantsRelated || panelAsked.current) return;
-    setInspectorTab(aiOn ? "ai" : "insert");
-  }, [meta, documentId, aiOn, wantsRelated, setInspectorTab]);
+    const d = defaultedFor.current;
+    if (!meta || !d || d.id !== documentId || d.settled) return;
+    d.settled = true;
+    const tab: InspectorTab = aiOn ? "ai" : "insert";
+    // (A tool picked while the note's details were still loading stays.)
+    if (tab === d.tab || keepsTool()) return;
+    setInspectorTab(tab);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [meta, documentId, aiOn, setInspectorTab]);
   useEffect(() => {
     if (!aiOn) return;
     setNoteAi(() => openAi());

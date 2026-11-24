@@ -26,6 +26,23 @@ iPhone Duo simulator (screenshots in `docs/iphone-duo/`).
   icons only (Apple's book-pose rule: controls go where they'll be when the phone opens flat). Scrolling content runs
   on across the fold, as Apple's guidance says it should.
 
+## Update (2026-11-24): on the native iPad window
+
+The owner then chose a native iPad window (system split view, the system toolbar in Liquid Glass, Safari-style tabs in
+a row under it, the note's tools in the system inspector). The Duo's inner screen follows it unchanged, through the same
+size switch (`RebuildIPad.isWide` / `showingWide`). Branch `claude/iphone-duo-native-ipad` = PR 53's work merged with
+`claude/ios-native-redesign-f4a8be`:
+
+- The old card bar (IPadScreenBar) is gone with its fold handling; the toolbar, sidebar column and inspector are system
+  pieces. On the open Duo, iOS itself moves the toolbar's trailing items (Back/Forward, the bell, the inspector button,
+  search) into the side column, as it does for every app's system bars.
+- The tabs row is the one custom row left: partly folded, its tabs end before the fold (`tabsBody`, `rowTabsWidth`).
+- The note's floating dock still moves past the fold, icons only (unchanged CSS).
+- Checked on the simulator: open across, half open at 110 degrees (tabs row, dock, Foli AI inspector past the fold),
+  tabletop (upright and half open: the fold runs across, only scrolling text crosses it), closed, and fold/unfold with
+  the keyboard up (note, text, caret and keyboard carried both ways in two runs). Once, after the inspector had been
+  opened and closed, a fold showed the first tab's note instead; it did not happen again in two retries.
+
 ## Why this layout (the research)
 
 Apple's sources (HIG "Designing for iPhone Duo", "Preparing your app for iPhone Duo", tech talks 111461 to 111466, the

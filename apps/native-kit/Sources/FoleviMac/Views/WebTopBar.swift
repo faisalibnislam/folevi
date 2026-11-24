@@ -44,11 +44,18 @@ public struct WebTopBar: View {
     /// The room iPadOS's own window buttons take at the strip's leading end (a resizable window's; none full screen).
     @State var windowControlsRoom: CGFloat = 0
     #if os(iOS)
-    /// Where iPhone Duo's fold crosses the strip's tabs and buttons, partly closed (FoldSpan): the tabs end before it.
+    /// Where iPhone Duo's fold crosses the tabs row, partly closed (FoldSpan): the tabs end before it.
     @State var fold: FoldSpan?
     #endif
 
-    public init(model: FrameModel) { self.model = model }
+    /// The iPad's native window (the owner, 2026-11-24): only the tabs (Home, Show All Tabs and the tab track), in a
+    /// row of their own under the system toolbar, as Safari's on iPadOS.
+    var tabsOnly = false
+
+    public init(model: FrameModel, tabsOnly: Bool = false) {
+        self.model = model
+        self.tabsOnly = tabsOnly
+    }
 
     /// The bar's coordinate space (a tab's picture is placed from its tab's frame in it).
     static let space = "frame.topbar"
@@ -62,7 +69,7 @@ public struct WebTopBar: View {
         #if os(macOS)
         macBody
         #else
-        if native { macBody } else { webBody }
+        if tabsOnly { tabsBody } else if native { macBody } else { webBody }
         #endif
     }
 

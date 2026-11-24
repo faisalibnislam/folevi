@@ -102,15 +102,11 @@ extension WebTopBar {
             MacHistoryButtons(model: model)
                 .padding(.trailing, 2)
             #endif
-            // The tabs fill the bar up to the sync status (Safari's rule: every tab the same width). iPhone Duo partly
-            // closed: they end before the fold, the sync status and the bell staying at the far end past it.
+            // The tabs fill the bar up to the sync status (Safari's rule: every tab the same width).
             tabStrip
-                .frame(maxWidth: tabsWidth, alignment: .leading)
+                .frame(maxWidth: .infinity, alignment: .leading)
                 .layoutPriority(1)
                 .padding(.trailing, 2)
-            #if os(iOS)
-            Spacer(minLength: 0)
-            #endif
             #if os(macOS)
             // New note, the web's top bar's black pill (the owner, 2026-11-19: the one New note on screen, moved
             // from the sidebar), right after the tabs. It opens the note in a new tab, ready to type. (The iPad's is
@@ -122,18 +118,6 @@ extension WebTopBar {
             MacSyncStatus(model: model) { model.showSync?($0) }
             stripButton("bell", label: "Notifications", help: "Notifications", anchored: true) { model.showNotifications?(bellAnchor) }
         }
-        #if os(iOS)
-        .readFold { fold = $0 }
-        #endif
-    }
-
-    /// How wide the tabs may be: all the room there is, or up to the fold (iPhone Duo partly closed; the tabs start at
-    /// the tail's leading edge, so the fold's position in it is their room).
-    private var tabsWidth: CGFloat {
-        #if os(iOS)
-        if let fold, fold.minX > 120 { return fold.minX - FoldSpan.margin }
-        #endif
-        return .infinity
     }
 
     /// A button in the strip: a symbol in a 28 pt capsule (the tabs' shape) with the quiet hover, its tooltip and its
@@ -152,6 +136,28 @@ extension WebTopBar {
     }
 
     // MARK: the tabs
+
+    /// The tabs alone, in a row under the iPad's system toolbar (the owner, 2026-11-24: tabs kept, drawn the way
+    /// Safari draws them on iPadOS).
+    var tabsBody: some View {
+        tabStrip
+            // iPhone Duo partly closed: the tabs end before the fold, nothing in the crease (FoldSpan).
+            .frame(maxWidth: rowTabsWidth, alignment: .leading)
+            .padding(.horizontal, 12)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+            #if os(iOS)
+            .readFold { fold = $0 }
+            #endif
+            .coordinateSpace(name: Self.space)
+    }
+
+    /// The tabs row's room for its tabs: all of it, or up to the fold (they start 12 pt in from the row's edge).
+    private var rowTabsWidth: CGFloat {
+        #if os(iOS)
+        if let fold, fold.minX > 120 { return fold.minX - 12 - FoldSpan.margin }
+        #endif
+        return .infinity
+    }
 
     /// Home and Show All Tabs in their round buttons; then the tabs in their track, the only part that scrolls.
     private var tabStrip: some View {

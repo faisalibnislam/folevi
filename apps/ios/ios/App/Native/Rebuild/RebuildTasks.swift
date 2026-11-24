@@ -123,6 +123,8 @@ struct RebuildTasksScreen: View {
     /// The title, and the filter in iOS's own search field (the native look).
     private var tasksOptions: PhoneScreenOptions {
         var o = PhoneScreenOptions(title: "Tasks")
+        // iOS's own List (the owner, 2026-11-24).
+        o.list = true
         if PhoneNotesListScreen.nativeSearch {
             o.search = Bindable(model).filter
             o.searchPrompt = "Filter by task or note"
@@ -193,6 +195,8 @@ struct RebuildCalendarScreen: View {
     private var calendarOptions: PhoneScreenOptions {
         var o = PhoneScreenOptions(title: model.title)
         o.pinsHeader = true
+        // The agenda is iOS's own List (the owner, 2026-11-24); the week grid isn't a list.
+        o.list = layout != .week
         return o
     }
 

@@ -259,6 +259,11 @@ sits in the crease (`FoldSpan`: the strip's tabs, the card's bar, the note's doc
 and screenshots: `docs/IPHONE_DUO_PLAN.md`, `docs/iphone-duo/`. Decisions:
 `docs/claude-context/memory/iphone-duo-decisions.md`.
 
+**iPhone Duo on the native iPad window (2026-11-24; local branch `claude/iphone-duo-native-ipad`, not pushed):**
+PR 53's Duo work merged with `claude/ios-native-redesign-f4a8be` (the native iPad window: system split view, toolbar,
+inspector). The open Duo shows that window through the same size switch; iOS puts the toolbar's trailing items in the
+Duo's side column; partly folded, the tabs row (`tabsBody`) ends before the fold and the note's dock moves past it.
+
 **iPhone and iPad redesigned after the Mac's window (1.5.65, TestFlight):** branch
 `claude/ios-native-redesign-f4a8be` (worktree `.claude/worktrees/ios-native-redesign-f4a8be`), built on the Mac
 redesign branch `claude/folevi-core-529dbe`. The owner's answers: `docs/claude-context/memory/ios-redesign-decisions-2026-11-23.md`.
@@ -271,7 +276,12 @@ redesign branch `claude/folevi-core-529dbe`. The owner's answers: `docs/claude-c
   20, 28), sentence-case headings. Home in the Mac's order (places, Catch me up, Recent, Bookmarks, Folders, Tags
   as chips, the rest). Tasks, Calendar and Search group rows on cards. The note keeps its drawn bars; its place
   chip is 44 pt. Tab bar unchanged: Home, Tasks, Calendar, Foli AI, search.
-- **iPad** (FoleviMac, merged from `claude/ipad-redesign`): a top bar per screen inside the card
+- **iPad, second round (2026-11-24, replaces the bullet below):** `IPadFrame` is a system split view;
+  `IPadToolbar.swift` fills the system toolbar; tabs sit in a Safari-style row under it; `IPadInspector.swift` is
+  the system inspector holding the iPhone's native Style, Format and Insert panels and the Ask Foli AI chat. Under
+  700 pt the phone layout takes over. Owner's call: the inspector's Foli AI tab is the Ask chat, not the web
+  panel's Write/Ask/Study actions.
+- **iPad, first round** (FoleviMac, merged from `claude/ipad-redesign`): a top bar per screen inside the card
   (`IPadScreenBar`: Back/Forward, title, actions capsule, New note ink pill, search; 44 pt controls), screens start
   below it; the note's tools panel is the Mac's flat inspector (`data-ipad-native` in `globals.css`); 228 pt
   sidebar, 44 pt rows; card corners 12 pt; tabs stay on the strip.
@@ -442,8 +452,12 @@ account button should move past iPadOS's window buttons).
 ## 10. Next steps / open work
 - iPhone Duo third pass (`claude/iphone-duo-ipad-layout`): PR 53 (https://github.com/faisalibnislam/folevi/pull/53), now into
   `claude/folevi-core-529dbe` (PR 52 merged 2026-11-24); on hold: `claude/folevi-core-529dbe` is being released as 1.5.66 (PR 51
-  into main), so PR 53 waits until PR 51 merges, then is retargeted to main and the owner merges it. Not checked: Split View halves and tabletop (no simulator control),
-  a real device.
+  into main), so PR 53 waits until PR 51 merges, then is retargeted to main and the owner merges it. Tabletop checked
+  2026-11-24; not checked: Split View halves (no simulator control), a real device.
+- iPhone Duo on the native iPad window (`claude/iphone-duo-native-ipad`, local, not pushed): PR 53's work merged with
+  `claude/ios-native-redesign-f4a8be` (1.5.67's native iPad window), IPadScreenBar dropped, fold handling moved to the
+  tabs row; every posture checked on the Duo simulator (docs/IPHONE_DUO_PLAN.md, "Update"). How it lands is the owner's
+  call: stacked on the iPad redesign's PR, or after both PRs merge.
 - iPhone and iPad redesign (`claude/ios-native-redesign-f4a8be`): the owner tries 1.5.65 from TestFlight; PR 52
   (https://github.com/faisalibnislam/folevi/pull/52) merged into `claude/folevi-core-529dbe` on 2026-11-24
   with the owner's OK (main untouched). The `v1.5.65` tag is local only (pushing it was not asked for).
@@ -544,8 +558,7 @@ account button should move past iPadOS's window buttons).
 - `pnpm audit` ignores four better-auth GHSAs on purpose (`pnpm-workspace.yaml`); upgrade better-auth and
   `@convex-dev/better-auth` together when supported, then drop the ignores.
 - zsh doesn't word-split a variable of file names: use `git diff --name-only -z | xargs -0 git commit ...`.
-- Debug iPad: launching with `FOLEVI_REBUILD_OPEN` crashes (the `desk` lazy getter calls `frameStateChanged`,
-  which reads `desk` again: `RebuildIPad.swift:213`, `RebuildFrame.swift:79`). The iPhone is fine.
+- Debug iPad: `FOLEVI_IPAD_TOOL=style|format|insert|ai` opens that tool in the inspector at launch.
 - Driving a simulator headlessly: `FOLEVI_REBUILD_OPEN=/notes` (via `SIMCTL_CHILD_`), the `folevi.rebuild` default
   for the rebuilt frame in Debug, and `scripts/gates.mjs`'s `simulator()` helper (press, engine commands) to make a
   scratch local library.
@@ -567,10 +580,14 @@ account button should move past iPadOS's window buttons).
   `DATABASE_UDF_USER_TIMEOUT_SECONDS=4` for that backend. Bursts show in `convex.log` as "took a long time".
 
 ## 12. Change log
+- 2026-11-24: iPhone Duo put on the native iPad window (local branch `claude/iphone-duo-native-ipad`: PR 53 + the iPad redesign branch; fold handling on the tabs row); PR 53 caught up with the 1.5.66 release branch (HANDOFF conflict only); tabletop checked.
 - 2026-11-24: PR 53 held until the 1.5.66 release (PR 51) merges, at the main session's request; then retarget it to main.
 - 2026-11-24: PR 52 merged into `claude/folevi-core-529dbe` (owner's OK; no required checks, so it merged before its lint run, which PR 53 had already passed on a superset); PR 53 retargeted to `claude/folevi-core-529dbe`.
 - 2026-11-24: iPhone Duo branch pushed with the owner's OK; PR 53 opened into `claude/ios-native-redesign-f4a8be` (PR 52's audit commits merged in first).
 - 2026-11-23: iPhone Duo resumed and redone (third pass, owner's pick): the iPad's wide layout when open, the iPhone layout closed; branch `claude/iphone-duo-ipad-layout` on PR 52's branch, not pushed.
+- 2026-11-24: 1.5.67 (build 82) cut on `claude/ios-native-redesign-f4a8be` (after merging the released 1.5.66) and uploaded to TestFlight with the owner's OK (delivery f33671ae): the native iPad window and the iPhone's system lists. Tag `v1.5.67` local; web and Mac not released; a PR into `main` follows once PR 51 merges.
+- 2026-11-24: iPad rebuilt natively and merged (`claude/ipad-native`): system split view, system toolbar (Back/Forward, title, items, ink New note, sync, bell, search), Safari-style tabs row, the note's Style/Format/Insert/Foli AI in the system inspector; Debug iPad launch with FOLEVI_REBUILD_OPEN fixed; all iOS package tests pass on the iPhone simulator.
+- 2026-11-24: Owner chose native like the Mac for iOS: iPhone lists and Settings on iOS's own List (rows unlined, native swipe actions); the iPad's native split-view rebuild runs on `claude/ipad-native` (helper, not merged yet).
 - 2026-11-23: Folevi for Mac: no more Core naming; `apps/mac/FoleviCore` became `apps/mac/Folevi` (project, target, scheme, module, tests), `core.mjs` became `app.mjs`, internal Core* types became App*; identity, data and update feed unchanged; 38 Mac tests and the web version test pass.
 - 2026-11-23: Folevi for Mac: the window rebuilt the native way (system split view, unified Liquid Glass toolbar with each screen's items and search, system inspector, segmented controls, sidebar can be hidden); the Macloving card design dropped at the owner's word; 38 tests pass.
 - 2026-11-23: Folevi for Mac: HIG and Liquid Glass pass (content under the glass bar with a soft edge, split screens below it, tab bar state after restored tabs, no shadow on the palette's glass, Jump to Latest materializes, hover on bar choices); iPhone/iPad pass handed to the redesign session (PR 52).

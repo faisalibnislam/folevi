@@ -4,6 +4,18 @@ Every Folevi release, newest first, written by `node scripts/version.mjs` from `
 
 Versions are MAJOR.UPDATE.PATCH, PATCH at least two digits: a Major release (2.0.00), a Big update (1.1.05 after 1.0.05) or a Small update (1.0.06 after 1.0.05).
 
+## Version 1.5.67: Small update
+
+Released 2026-11-24 07:30:13+06:00 (build 82, tag v1.5.67)
+
+iPhone and iPad, built the native way like Folevi for Mac.
+
+### Improved
+
+- iPad: a native window with the system sidebar, the system toolbar with New note and search, and your tabs in a row under it, as Safari has them.
+- iPad: a note's Style, Format, Insert and Foli AI open in the side panel.
+- iPhone: Settings, Tasks, Calendar, Search, Tags and note and folder lists use the system's own lists and swipe actions.
+
 ## Version 1.5.66: Small update
 
 Released 2026-11-24 06:37:46+06:00 (build 81, tag v1.5.66)

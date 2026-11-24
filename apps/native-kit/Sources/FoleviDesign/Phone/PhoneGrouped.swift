@@ -23,6 +23,7 @@ public struct PhoneGroupedSection<Content: View>: View {
     let content: Content
     @Environment(\.colorScheme) private var scheme
     @Environment(\.nativeChrome) private var chrome
+    @Environment(\.phoneInList) private var inList
 
     public init(_ title: String? = nil, footer: String? = nil, @ViewBuilder content: () -> Content) {
         self.title = title
@@ -31,6 +32,31 @@ public struct PhoneGroupedSection<Content: View>: View {
     }
 
     public var body: some View {
+        if inList { listBody } else { stackBody }
+    }
+
+    /// One of iOS's own inset grouped sections (the owner, 2026-11-24), rows with no lines between them.
+    private var listBody: some View {
+        Section {
+            Group { content }
+                .listRowInsets(EdgeInsets())
+                .listRowSeparator(.hidden)
+                .environment(\.phoneRowGrouped, true)
+        } header: {
+            if let title {
+                Text(title).webText(PhoneType.captionCaps).textCase(nil)
+                    .foregroundStyle(FoleviTokens.Chrome.inkMuted.resolve(scheme).color)
+            }
+        } footer: {
+            if let footer {
+                Text(footer).webText(WebTextStyle(size: WebTypeRole.footnote.metrics.size, leading: 18))
+                    .foregroundStyle(FoleviTokens.Chrome.inkMuted.resolve(scheme).color)
+            }
+        }
+        .listSectionSeparator(.hidden)
+    }
+
+    private var stackBody: some View {
         VStack(alignment: .leading, spacing: 0) {
             if let title {
                 // The Mac's section heading (the owner, 2026-11-23): sentence case, semibold, the muted ink.

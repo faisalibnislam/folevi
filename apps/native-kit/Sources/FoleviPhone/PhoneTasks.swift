@@ -424,33 +424,28 @@ public struct PhoneTasksContent: View {
             }
             .phoneCard()
             .padding(.top, 12)
+            .listRowBackground(Color.clear)
             .accessibilityLabel("Loading tasks")
         } else if model.isEmpty {
             let empty = model.emptyText
             PhoneScreenEmpty(icon: model.view == .today && model.filter.isEmpty ? .sun : .circleCheckBig, title: empty.title, message: empty.message)
+                .listRowBackground(Color.clear)
         } else {
-            VStack(alignment: .leading, spacing: 0) {
-                ForEach(model.sections) { section in
-                    VStack(alignment: .leading, spacing: 0) {
-                        PhoneTaskGroupHeader(
-                            label: section.title,
-                            detail: section.detail,
-                            open: section.kind == .note ? { actions.openNote(section.id) } : nil,
-                            count: section.folded ? section.count : nil,
-                            folded: section.folded,
-                            fold: { withAnimation(.easeOut(duration: 0.2)) { model.toggleFold(section.id) } }
-                        )
-                        if !section.tasks.isEmpty {
-                            VStack(spacing: 0) {
-                                ForEach(section.tasks, id: \.id) { t in
-                                    row(t, today: today)
-                                }
-                            }
-                            .phoneCard()
-                        }
+            // Each group a section of iOS's own List (the owner, 2026-11-24), its note or day as the heading.
+            ForEach(model.sections) { section in
+                PhoneListSection {
+                    ForEach(section.tasks, id: \.id) { t in
+                        row(t, today: today)
                     }
-                    .padding(.top, 16)
-                    .accessibilityElement(children: .contain)
+                } header: {
+                    PhoneTaskGroupHeader(
+                        label: section.title,
+                        detail: section.detail,
+                        open: section.kind == .note ? { actions.openNote(section.id) } : nil,
+                        count: section.folded ? section.count : nil,
+                        folded: section.folded,
+                        fold: { withAnimation(.easeOut(duration: 0.2)) { model.toggleFold(section.id) } }
+                    )
                     .accessibilityLabel(section.detail.map { "\(section.title), \($0)" } ?? section.title)
                 }
             }

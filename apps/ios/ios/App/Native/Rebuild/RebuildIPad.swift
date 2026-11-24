@@ -294,7 +294,13 @@ extension RebuildFrameController: FrameHost {
 
     /// The wide layout's tabs are kept a moment after they change (DeskTabs), as the Mac keeps its windows'.
     func frameStateChanged() {
-        if UIDevice.current.userInterfaceIdiom == .pad { DeskTabs.changed(desk) }
+        // (On the next turn: a change while the desk is still being made, FOLEVI_REBUILD_OPEN's routes opening in its
+        // lazy getter, read `desk` again from inside that getter and never came back.)
+        guard UIDevice.current.userInterfaceIdiom == .pad else { return }
+        DispatchQueue.main.async { [weak self] in
+            guard let self else { return }
+            DeskTabs.changed(self.desk)
+        }
     }
 
     /// Settings > This device: the app lock (the iPhone's Settings has the same, RebuildSettings).

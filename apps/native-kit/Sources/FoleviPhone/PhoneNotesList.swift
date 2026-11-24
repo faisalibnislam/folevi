@@ -111,19 +111,18 @@ public struct PhoneNotesListScreen: View {
                 PhoneSearchField("Filter notes", text: $model.filter, icon: .funnel)
             }
         } content: {
-            VStack(alignment: .leading, spacing: 0) {
-                if !model.subfolders.isEmpty {
-                    VStack(spacing: 0) {
-                        ForEach(model.subfolders) { f in
-                            PhoneListRow(f.name, detail: f.count > 0 ? String(f.count) : nil, action: { actions.open("/folders/\(f.id)") }) {
-                                FolderGlyph(colorId: f.colorId, size: 22)
-                            }
+            // (Sections of their own, so in iOS's own List each is one of its sections.)
+            if !model.subfolders.isEmpty {
+                PhoneListSection {
+                    ForEach(model.subfolders) { f in
+                        PhoneListRow(f.name, detail: f.count > 0 ? String(f.count) : nil, action: { actions.open("/folders/\(f.id)") }) {
+                            FolderGlyph(colorId: f.colorId, size: 22)
                         }
                     }
-                    .padding(.top, 8)
                 }
-                notes
+                .padding(.top, 8)
             }
+            notes
         }
         .overlay(alignment: .bottom) {
             if model.selecting {
@@ -165,6 +164,8 @@ public struct PhoneNotesListScreen: View {
         var o = PhoneScreenOptions(title: model.title, status: model.selecting ? (picked > 0 ? "\(picked) selected" : "Select notes") : nil)
         if model.kind.view == .folder { o.tint = FolderColor.resolve(model.folder?.color).color }
         // iOS's own search field under the large title (the native look).
+        // The list layout is iOS's own List (the owner, 2026-11-24); cards stay a grid.
+        o.list = model.layout != .cards
         if Self.nativeSearch, model.total > 0 || model.isFiltering {
             o.search = $model.filter
             o.searchPrompt = "Filter notes"
@@ -321,8 +322,10 @@ public struct PhoneNotesListScreen: View {
                 }
             }
             .padding(grid.padding.edgeInsets)
+            .listRowBackground(Color.clear)
             .accessibilityLabel("Loading")
         } else if model.slots.isEmpty {
+            Group {
             if model.isFiltering {
                 PhoneScreenEmpty(icon: nil, title: model.filterEmptyTitle, message: "Try other words, or search everywhere from Home.")
             } else {
@@ -337,6 +340,9 @@ public struct PhoneNotesListScreen: View {
                     }
                 }
             }
+            }
+            // (In iOS's own List: on the screen's grey, not on a card.)
+            .listRowBackground(Color.clear)
         } else if model.layout == .cards {
             let arrangeable = canArrange
             LazyVGrid(columns: columns(grid), spacing: 20) {
@@ -385,7 +391,7 @@ public struct PhoneNotesListScreen: View {
             .padding(grid.padding.edgeInsets)
             .environment(\.webPhoneCards, true)
         } else {
-            LazyVStack(spacing: 0) {
+            PhoneListSection {
                 ForEach(model.slots) { slot in
                     Group {
                         if let row = slot.row {
@@ -406,9 +412,6 @@ public struct PhoneNotesListScreen: View {
                     .onDisappear { model.slotDisappeared(slot.index) }
                 }
             }
-            // (The rows on one card: the owner, 2026-11-23.)
-            .phoneCard()
-            .padding(.top, ps("phone.list").padding.top)
         }
     }
 

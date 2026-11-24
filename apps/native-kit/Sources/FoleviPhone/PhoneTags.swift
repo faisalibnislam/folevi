@@ -28,6 +28,7 @@ public struct PhoneTagsScreen: View {
     /// The title, and iOS's own search field under it (the native look).
     private var searchOptions: PhoneScreenOptions {
         var o = PhoneScreenOptions(title: "Tags")
+        o.list = true
         if PhoneNotesListScreen.nativeSearch {
             o.search = $model.query
             o.searchPrompt = "Filter tags"
@@ -48,17 +49,15 @@ public struct PhoneTagsScreen: View {
             if !model.isLoading && shown.isEmpty {
                 let q = model.query.trimmingCharacters(in: .whitespaces)
                 PhoneScreenEmpty(icon: .hash, title: q.isEmpty ? "No tags yet" : "No tags match “\(q)”", message: q.isEmpty ? "Add tags to a note from its Info panel." : nil)
+                    .listRowBackground(Color.clear)
             } else {
-                LazyVStack(spacing: 0) {
+                PhoneListSection {
                     ForEach(shown, id: \.id) { t in
                         PhoneListRow(t.name, detail: String(t.documentCount), action: { open("/tags/\(t.id)") }) {
                             PhoneRowGlyph(.hash).foregroundStyle(PhoneHomeContent.tagColor(t.color, scheme).color)
                         }
                     }
                 }
-                // (On one card: the owner, 2026-11-23.)
-                .phoneCard()
-                .padding(.top, 8)
                 .accessibilityLabel("Tags")
             }
         }

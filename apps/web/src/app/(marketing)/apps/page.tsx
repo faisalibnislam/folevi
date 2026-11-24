@@ -9,6 +9,7 @@ import { SyncPiece } from "@/components/marketing/pieces";
 import { JsonLd, pageMetadata, softwareLd, type FaqItem } from "@/components/marketing/seo";
 import { APP_STORE_URL, IOS_REQUIREMENT, MAC_DOWNLOAD_URL, MAC_REQUIREMENT, WEB_APP_URL, WINDOWS_REQUIREMENT } from "@/components/marketing/site";
 import { WindowsDownload } from "@/components/marketing/WindowsDownload";
+import { LinuxDownload } from "@/components/marketing/LinuxDownload";
 import { ButtonLink, Eyebrow, SectionHeading, cx } from "@/components/marketing/ui";
 import { PRICES, formatPrice } from "@/lib/plans";
 
@@ -52,6 +53,12 @@ const WINDOWS_POINTS = [
   "Keep notes on this PC, with no account",
   "Made for Arm PCs and for Intel and AMD PCs",
 ];
+const LINUX_POINTS = [
+  "The same workspace, in a window of its own",
+  "Keep notes on this computer, with no account",
+  "AppImage, .deb and .rpm packages",
+  "For Intel and AMD, and for ARM",
+];
 const IOS_POINTS = [
   "Made for iOS 26 on iPhone, with the Mac’s layout on iPad",
   "Home Screen widgets: Today, Recent notes and Quick add",
@@ -84,7 +91,7 @@ const FAQS: FaqItem[] = [
   },
   {
     q: "What do the apps need?",
-    a: `Folevi for Mac needs ${MAC_REQUIREMENT}, on Apple silicon or Intel. Folevi for Windows needs ${WINDOWS_REQUIREMENT}. Folevi for iPhone and iPad needs ${IOS_REQUIREMENT}.`,
+    a: `Folevi for Mac needs ${MAC_REQUIREMENT}, on Apple silicon or Intel. Folevi for Windows needs ${WINDOWS_REQUIREMENT}. Folevi for Linux comes as an AppImage for most distributions, a .deb for Ubuntu, Debian and Mint, and an .rpm for Fedora and openSUSE, on Intel and AMD or ARM. Folevi for iPhone and iPad needs ${IOS_REQUIREMENT}.`,
   },
 ];
 
@@ -252,6 +259,20 @@ export default function AppsPage() {
               <p className="mt-1">This early build isn’t signed yet, so Windows asks you to confirm it (More info, then Run anyway). It doesn’t update itself yet.</p>
             </>
           }
+        />
+
+        <AppCard
+          id="linux"
+          eyebrow="For Linux"
+          title={
+            <>
+              Folevi on <Mark>Linux.</Mark>
+            </>
+          }
+          lede="The same docs, tasks and databases on your Linux computer, whichever distribution you use."
+          points={LINUX_POINTS}
+          actions={<LinuxDownload />}
+          requirement="This early build’s packages aren’t signed yet, and it doesn’t update itself yet."
         />
 
         <AppCard

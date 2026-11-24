@@ -8,6 +8,13 @@ export const MAC_DOWNLOAD_URL = "https://folevi.com/download/mac/Folevi.dmg";
 /** Folevi for Windows' latest installers, one per kind of PC (the same bucket through folevi.com/download, docs/WINDOWS.md). */
 export const WINDOWS_DOWNLOAD_ARM64_URL = "https://folevi.com/download/windows/Folevi-arm64-setup.exe";
 export const WINDOWS_DOWNLOAD_X64_URL = "https://folevi.com/download/windows/Folevi-x64-setup.exe";
+/** Folevi for Linux's latest packages, by format and kind of PC (folevi.com/download/linux). */
+export const LINUX_DOWNLOADS = {
+  appimage: { x64: "https://folevi.com/download/linux/Folevi-x86_64.AppImage", arm64: "https://folevi.com/download/linux/Folevi-aarch64.AppImage" },
+  deb: { x64: "https://folevi.com/download/linux/Folevi-amd64.deb", arm64: "https://folevi.com/download/linux/Folevi-arm64.deb" },
+  rpm: { x64: "https://folevi.com/download/linux/Folevi-x86_64.rpm", arm64: "https://folevi.com/download/linux/Folevi-aarch64.rpm" },
+} as const;
+export const LINUX_CHECKSUMS_URL = "https://folevi.com/download/linux/SHA256SUMS.txt";
 /**
  * Folevi for iPhone and iPad on the App Store. TODO(owner, 2026-11-07): replace with the app's own App Store link
  * (https://apps.apple.com/app/folevi/id…). Until then it opens an App Store search for Folevi.

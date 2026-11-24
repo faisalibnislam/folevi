@@ -79,27 +79,25 @@ Installers are built by `.github/workflows/desktop.yml` on GitHub's machines (Wi
 touch the app. Each run also measures memory against the Electron build of PR 58 on the same machine
 (`scripts/measure.mjs`) and lists installer sizes in the run summary.
 
-## Size and memory against Electron (CI run 45418586764, 2026-11-24)
+## Size and memory against Electron (CI run 45443908032, 2026-11-24)
 
-Same machines, same interface, 30 seconds after start on the first-launch screen, the main window and Quick Add's
-both loaded (`scripts/measure.mjs`). Windows: Task Manager's figures (private bytes; the working set counts shared
-libraries in every process). Linux: PSS.
+Same machines, same interface, 30 seconds after start on the first-launch screen (`scripts/measure.mjs`). Each Tauri
+figure counts only if the app said its page started (`--expect-ready`, "FOLEVI READY"); an earlier run measured a
+page that never loaded and looked lighter than it was. Windows: Task Manager's figures (private bytes; the working
+set counts shared libraries in every process). Linux: PSS.
 
 | Build | Installer | Private memory | Working set |
 | --- | ---: | ---: | ---: |
-| Tauri, Windows x64 | 78 MB (MSI 79 MB) | 214 MB | 495 MB |
-| Electron, Windows x64 | 182 MB | 207 MB | 434 MB |
-| Tauri, Windows ARM64 | 78 MB | 202 MB | 483 MB |
+| Tauri, Windows x64 | 77 MB (MSI 80 MB) | 151 MB | 375 MB |
+| Electron, Windows x64 | 182 MB | 207 MB | 433 MB |
+| Tauri, Windows ARM64 | 78 MB | 149 MB | 402 MB |
 | Electron, Windows ARM64 | 176 MB | (not measured) | |
-| Tauri, Linux x86_64 | (Linux session) | 456 MB PSS | |
-| Electron, Linux x86_64 | | 348 MB PSS | |
+| Tauri, Linux x86_64 | (Linux session) | 365 MB PSS | |
+| Electron, Linux x86_64 | | 349 MB PSS | |
 
-So the installer is less than half the size, but memory is about the same as Electron's on Windows and higher on
-Linux (WebKitGTK). An earlier run that looked a third lighter measured a page that never loaded (the asset bug fixed
-in c150ba78), so those figures were wrong. Since then Quick Add's window is made on first use instead of at launch,
-which saves one copy of the interface; the next run's figures show what that buys.
-
-Most of the installer is the interface itself (78 MB, mostly note-cover images); the app's own code is a few MB.
+How it got there: Quick Add's window is made on first use (Electron loads it at launch, which is part of its
+figure), and the interface is installed as files beside the app instead of compiled into it. With both pages
+loaded the two were about even on Windows (214 vs 207 MB private). The installer is less than half Electron's.
 
 ## Versions
 

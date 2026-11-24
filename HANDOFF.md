@@ -2,7 +2,7 @@
 
 > Read this first if you are a Claude (or any agent) picking this project up, on this Mac or another one. Then read `CLAUDE.md`, `docs/HANDOFF.md` (the long handoff: unfinished branches, release detail, what the owner is waiting on) and `docs/claude-context/memory/MEMORY.md` (the owner's standing rules). Keep this file current: after every change to the project, update "Current state", "Next steps" and "Change log", and commit it.
 
-Last updated: 2026-11-23 · Written on: Faisal's MacBook Pro M5
+Last updated: 2026-11-24 · Written on: Faisal's MacBook Pro M5
 
 ## 1. What this is
 
@@ -247,6 +247,32 @@ The ones most likely to be broken:
 - Give before/after screenshots for UI work and ask the owner with clear options when a decision is theirs.
 
 ## 9. Current state (as of 2026-11-24)
+
+**One mobile app with Capacitor (2026-11-24, branch `claude/mobile-capacitor-f41734`, PR into `main`, not merged):**
+the owner's "one web app everywhere" plan for phones and tablets. `apps/mobile` is one Capacitor 8 project for
+iPhone, iPad, iPhone Duo and Android around the web app's shell export (`build-shell.mjs --platform mobile`), with
+no native screens. Details: `docs/MOBILE.md`.
+- **iOS** (`com.folevi.ios`, same App Group, Keychain group, iCloud container and `capacitor://localhost` origin as
+  the native app): XcodeGen project `apps/mobile/ios/App/project.yml`; the shell services shared with the Mac app are
+  built in place from `apps/ios/ios/App/Native/Shell` behind one Capacitor plugin, `FoleviHost`
+  (`App/Host/HostBridge.swift`); `bridge/mobile-bridge.js` gives the page `foleviNative` and `foleviShell` with
+  Capacitor's Haptics, StatusBar, Share, Clipboard, ActionSheet, App and SplashScreen plugins. Share extension in;
+  widgets, Siri/Shortcuts and Spotlight not carried over yet.
+- **Android** (`com.folevi.android`): the Capacitor project as it was before the native rewrite (`7a4155c0~1`) with
+  its Kotlin plugins and `folevi-bridge.js`, now on Capacitor 8.6.2, R8 in release, splash/insets/start-page fixes.
+- **Layouts** (`apps/web/src/lib/iphone.ts`): iPhone Duo open (window at least 600 x 600 pt) takes the iPad's
+  sidebar layout, closed the phone's; Android phones sideways keep the phone layout. Tests:
+  `apps/web/test/mobile-layout.test.ts`. `scripts/version.mjs` now writes the mobile app's version (1.5.70, 85).
+- **Checked** (simulators "Folevi Mobile iPhone/iPad/Duo", emulators `Folevi_Mobile_Phone/Tablet/Foldable`):
+  first launch, a library on the device, Home, the editor (an edit lands in the `.fnote` file), tabs on iPad and
+  Android tablet, the share inbox (a queued share becomes a note), dark mode, Duo closed, foldable open; updating
+  in place over the native iOS and Android apps keeps the library. Release builds: iOS 94 MB vs native 182 MB;
+  Android 125 MB vs native 128 MB (86 MB of each is the web export, 64 MB of that note covers). Memory at Home:
+  iOS about 183 MB vs native 172 MB; Android about 227 MB vs native 205 MB (PSS).
+- **Not checked:** a real device; signing in end to end (on Android it reached the browser, which wanted its own
+  terms accepted on the emulator; iOS's sign-in sheet couldn't be tapped from scripts); iPhone Duo open and
+  folding (the simulator's hinge couldn't be moved from scripts on this Mac); push delivery.
+- Nothing uploaded; native releases stay paused (a release would be 1.5.71 or later via `node scripts/version.mjs`).
 
 **1.5.70 on TestFlight (2026-11-24, owner's OK):** build 85, cut on `claude/ios-release-1.5.70` from the iPhone Duo
 branch (PR 55, which holds all of `main`), so testers keep the Duo window that 1.5.69 had; uploaded (delivery
@@ -516,6 +542,10 @@ signed-in account, 1.5.58's frosted folders with a large library, and the iPad c
 account button should move past iPadOS's window buttons).
 
 ## 10. Next steps / open work
+- Mobile app (`apps/mobile`, PR from `claude/mobile-capacitor-f41734`): the owner reviews and merges (merging
+  deploys the web, which has the layout change in `lib/iphone.ts`); then check sign-in, push and iPhone Duo folding
+  on real devices; carry over widgets, Siri/Shortcuts and Spotlight; one bridge script for both platforms; release
+  scripts for TestFlight and Play (only with the owner's OK); decide on note covers (64 MB of the app).
 - iPhone Duo: PR 55 (https://github.com/faisalibnislam/folevi/pull/55, `claude/iphone-duo-native-ipad` into
   `main`, retargeted after PR 56 merged), replacing PR 53 (closed). 1.5.69 (build 84) from this branch is on TestFlight
   (owner's OK; the branch has 1.5.68's release line merged in). The owner tries it on TestFlight. PR 51 is in main;
@@ -646,6 +676,7 @@ account button should move past iPadOS's window buttons).
   `DATABASE_UDF_USER_TIMEOUT_SECONDS=4` for that backend. Bursts show in `convex.log` as "took a long time".
 
 ## 12. Change log
+- 2026-11-24: `apps/mobile`: one Capacitor app for iPhone, iPad, iPhone Duo and Android around the web app (no native screens), reusing the shared Swift and Kotlin services; window-size layouts in `lib/iphone.ts`; `version.mjs` covers it; checked on simulators and emulators, size and memory compared (docs/MOBILE.md). Branch `claude/mobile-capacitor-f41734`, PR not merged.
 - 2026-11-24: 1.5.70 (build 85) cut on `claude/ios-release-1.5.70` (off PR 55's branch, all of `main` plus iPhone Duo) and uploaded to TestFlight with the owner's OK (delivery e18198df); tag local. Native releases then paused by the owner (one web app everywhere).
 - 2026-11-24: PR 56 merged into `main` (546f6aa4); PR 55 retargeted to `main` and `main` merged into the Duo branch (no conflicts).
 - 2026-11-24: PR 55 caught up again with its base (the iPad branch's test notes and the secret scan's known false positive in `.gitleaksignore`), which clears PR 55's failing secret scan.

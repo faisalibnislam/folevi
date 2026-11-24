@@ -38,3 +38,14 @@ upload iPhone and iPad to TestFlight without asking again (web and Mac not relea
 
 **How to apply:** follow these for any iPhone/iPad screen work after 2026-11-23. Related:
 [[iphone-feedback-applies-to-ipad]], [[editor-quality-bar-2026-11-19]].
+
+**Second round (2026-11-24): native like the Mac.** After the Mac dropped the Macloving guide for a system-native
+window (commit 4a2f2031: split view, unified Liquid Glass toolbar, system inspector, native tabs), the owner chose
+the same direction for iOS, replacing the iPad and list parts above:
+- **iPad:** a system split view (sidebar column) with the system toolbar in Liquid Glass (Back/Forward, title,
+  New note ink pill, the screen's items, search); Folevi's tabs kept but drawn the system way (Safari on iPadOS 26
+  style); the note's tools (Style, Format, Insert, Foli AI) in the system inspector as native panels, not the web
+  panel.
+- **iPhone:** lists and Settings become iOS's own List (inset grouped, system grouped background, native swipe
+  actions) with row lines hidden (the owner ticked both "system lists" and "keep cards, no lines"); Home keeps
+  its note and folder cards, recent strip and tiles; the note keeps Folevi's drawn bars.

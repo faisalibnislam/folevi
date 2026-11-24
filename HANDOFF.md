@@ -637,8 +637,11 @@ account button should move past iPadOS's window buttons).
   never act); section headings stay sentence case (Apple uses title case); dark mode keeps a pure black frame.
   Known gaps: the notifications sheet's rows are not on cards yet; screens borrowed from the iPad (Foli DNA,
   Reviews) keep their own white page under the system bar.
-- Android 87 (1.5.72) is on Play internal testing: testers update from 83 and report; the next Android upload needs a
-  `build` above 87. Native debug symbols could go up with the next bundle.
+- Android 89 (1.5.74) built for Play internal testing (owner: "release everything when ready"), from `b5b4b4a3`
+  (this branch with the mobile release `e86fbbca` merged): signed with the upload key, Firebase push on, parity
+  tests pass, and on an emulator it updated over the signed 1.5.72 release keeping the library (editor, Back, no
+  crash). Waiting for the owner to drag `~/Downloads/Folevi-1.5.74-89.aab` into release 3's draft; then add from the
+  library, notes, publish. Native debug symbols could go up with a later bundle.
 - Android as Capacitor (`claude/android-capacitor-197cf4`, `apps/mobile/android`, with the iOS session's
   `claude/mobile-capacitor-f41734` merged in): open a PR with the owner's OK; it and the iOS branch should land
   together (or this one alone, since it contains the other). Web session: "This Googlebook" device words for Android laptops (FEATURE_PC).
@@ -760,6 +763,7 @@ account button should move past iPadOS's window buttons).
   `DATABASE_UDF_USER_TIMEOUT_SECONDS=4` for that backend. Bursts show in `convex.log` as "took a long time".
 
 ## 12. Change log
+- 2026-11-24: Android 1.5.74 (89) built from the merged mobile release for Play internal testing; upload waits on the owner's drag-in.
 - 2026-11-24: PR 69 opened for the Android Capacitor app (contains PR 66); mergeable with `main`, not merged.
 - 2026-11-24: Merged `main` (PR 60, Mac 1.5.71) into `claude/android-capacitor-197cf4` for its PR: versions stay 1.5.72 / 87, both changelog entries kept.
 - 2026-11-24: Android 87 (1.5.72), the Capacitor app, published to Play internal testing with the owner's OK (built from `d2ef501c`, Firebase push on); replaces 83.

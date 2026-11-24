@@ -19,11 +19,18 @@ const flag = (n, d) => (flags.includes(n) ? flags[flags.indexOf(n) + 1] : d);
 const label = flag("--label", "app");
 const out = flag("--out", `measure-${label}.json`);
 const wait = Number(flag("--wait", "30"));
+// --expect-ready: the app must say its page started (Folevi's Tauri build prints "FOLEVI READY" with
+// FOLEVI_REPORT_READY), else the figures would be a blank window's and the run fails.
+const expectReady = flags.includes("--expect-ready");
 if (!command.length) throw new Error("measure: give the command after --");
 
 const data = mkdtempSync(join(tmpdir(), "folevi-measure-"));
-const env = { ...process.env, FOLEVI_USER_DATA: data, FOLEVI_UPDATES: "off", FOLEVI_SHELL: "1" };
-const child = spawn(command[0], command.slice(1), { env, stdio: "ignore", detached: process.platform !== "win32" });
+const env = { ...process.env, FOLEVI_USER_DATA: data, FOLEVI_UPDATES: "off", FOLEVI_SHELL: "1", FOLEVI_REPORT_READY: "1" };
+const child = spawn(command[0], command.slice(1), { env, stdio: ["ignore", "pipe", "ignore"], detached: process.platform !== "win32" });
+let ready = false;
+child.stdout.on("data", (d) => {
+  if (/FOLEVI READY main /.test(String(d))) ready = true;
+});
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 /** Every process under `root` (and itself): [{ pid, name, ...memory }]. */
@@ -95,6 +102,8 @@ try {
   await sleep(1000);
   rmSync(data, { recursive: true, force: true });
 }
+result.ready = ready;
 writeFileSync(out, JSON.stringify(result, null, 2));
 const head = process.platform === "win32" ? `working set ${result.workingSetMB} MB, private ${result.privateMB} MB` : `PSS ${result.pssMB} MB, RSS ${result.rssMB} MB`;
-console.log(`${label}: ${result.processes} processes, ${head}`);
+console.log(`${label}: ${result.processes} processes, ${head}${expectReady ? (ready ? ", page ready" : ", PAGE NEVER STARTED") : ""}`);
+if (expectReady && !ready) process.exit(1);

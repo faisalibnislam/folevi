@@ -965,6 +965,11 @@ async fn desktop_call(app: AppHandle, webview: tauri::Webview, name: String, arg
             Ok(Value::Null)
         }
         "ready" => {
+            // FOLEVI_REPORT_READY (any build): the page and its bridge started, said on stdout, so a measurement
+            // (scripts/measure.mjs) can tell a loaded page from a blank window.
+            if std::env::var_os("FOLEVI_REPORT_READY").is_some() {
+                println!("FOLEVI READY {label} {}", webview.url().map(|u| u.to_string()).unwrap_or_default());
+            }
             update_badge(&app);
             Ok(Value::Null)
         }

@@ -126,9 +126,9 @@ jobs:
         run: |
           bin=""; for f in Folevi.exe Folevi folevi; do if [ -f "src-tauri/target/release/$f" ]; then bin=src-tauri/target/release/$f; break; fi; done
           if [ "$RUNNER_OS" = "Linux" ]; then
-            xvfb-run -a dbus-run-session -- node scripts/measure.mjs --label tauri --out measure-tauri.json --wait 30 -- "$bin"
+            xvfb-run -a dbus-run-session -- node scripts/measure.mjs --label tauri --out measure-tauri.json --wait 30 --expect-ready -- "$bin"
           else
-            node scripts/measure.mjs --label tauri --out measure-tauri.json --wait 30 -- "$bin"
+            node scripts/measure.mjs --label tauri --out measure-tauri.json --wait 30 --expect-ready -- "$bin"
           fi
       - uses: actions/upload-artifact@v4
         with:

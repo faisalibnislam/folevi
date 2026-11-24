@@ -272,6 +272,29 @@ The ones most likely to be broken:
   Foli DNA's settings and the folder share sheet into the new tab, a pure placement function with tests, then
   check it in the app. Never publish while editing in the same worktree: the release build reads the sources.
 
+**iPhone Duo, third pass (owner's pick, 2026-11-23; was PR 53, now in PR 55 below):** branch
+`claude/iphone-duo-ipad-layout` (worktree `.claude/worktrees/iphone-duo-18adb4`), on top of PR 52's branch
+`claude/ios-native-redesign-f4a8be`. Open (the inner screen, across or upright) the Duo shows the iPad's wide
+layout; closed, and in a Split View half, the iPhone layout with iOS's side column (`RebuildIPad.isWide`: an iPhone
+window of regular width, 600 pt or more). The note page follows (`RebuildPageLayout` sets `wide` on the page's
+marker; `lib/iphone.ts`), the open note, caret and keyboard carry across folds both ways, and partly folded nothing
+sits in the crease (`FoldSpan`: the strip's tabs, the card's bar, the note's dock). The second pass's split view
+(PhoneColumns, the last note in the empty column) is gone: Home is one stack on every iPhone again. Plan, research
+and screenshots: `docs/IPHONE_DUO_PLAN.md`, `docs/iphone-duo/`. Decisions:
+`docs/claude-context/memory/iphone-duo-decisions.md`.
+
+**iPhone Duo on the native iPad window, Apple's Duo rules applied (2026-11-24; PR 55,
+https://github.com/faisalibnislam/folevi/pull/55, branch `claude/iphone-duo-native-ipad` into
+`claude/ios-native-redesign-f4a8be`; replaces PR 53, closed; released as 1.5.69 build 84 to TestFlight, tag
+v1.5.69 local only):** PR 53's Duo work merged with `claude/ios-native-redesign-f4a8be` (the
+native iPad window), then a pass against Apple's "Designing for iPhone Duo" (owner: "make the best duo app possible").
+Open, the whole toolbar sits in iOS's side column (`IPadToolbar` with `sideBars`, read by `readVerticalBars`), the
+note's tools sit at its foot where the closed phone has them and the page drops its dock (marker `sideTools`), the
+sidebar stays beside the content and reaches the fold when partly closed, and it steps aside while the inspector is
+open. `FrameModel.windowResizedAt` (set by RebuildFrame's viewWillTransition) keeps a fold from hiding the sidebar.
+Details and checks: `docs/IPHONE_DUO_PLAN.md`, "Update (2026-11-24)".
+
+**iPhone and iPad redesigned after the Mac's window (1.5.65, TestFlight):** branch
 **iPhone and iPad redesigned after the Mac's window (1.5.65 and 1.5.67, TestFlight):** branch
 `claude/ios-native-redesign-f4a8be` (worktree `.claude/worktrees/ios-native-redesign-f4a8be`), built on the Mac
 redesign branch `claude/folevi-core-529dbe`. The owner's answers: `docs/claude-context/memory/ios-redesign-decisions-2026-11-23.md`.
@@ -466,7 +489,6 @@ own HANDOFF.md every turn: it needs none).
 - Chrome extension, `apps/clipper` on `chrome-extension`: 1.1.0 (quick note, a note on a clip, keyboard shortcuts) and
   an unfinished, untested search that asks to read notes only when first used. Plan and checklist:
   `apps/clipper/PLAN.md`; store listing: `apps/clipper/STORE.md`.
-- iPhone Duo beyond what shipped: `docs/claude-context/memory/iphone-duo-decisions.md`.
 
 **Waiting on the owner:** `pricing-decisions` (new plans, fair-use downloads, files on R2: `docs/PRICING_PROPOSAL.md`
 there; tests pass; the owner's decisions are still open). Backup secrets (`backup-setup-half-done.md`). Items in
@@ -488,7 +510,7 @@ signed-in account, 1.5.58's frosted folders with a large library, and the iPad c
 account button should move past iPadOS's window buttons).
 
 ## 10. Next steps / open work
-- Android native: PR 54 merged into `main` on 2026-11-24 (289b11af), after PR 51 as the owner asked.
+- Android native: PR 54 merged into `main` on 2026-11-24 (289b11af), after PR 51 as the owner asked. Native Android is paused (owner, 2026-11-24: one web app everywhere): no Play releases, no new Compose UI.
 - Android tabs and polish (`claude/android-tabs`, PR 57 https://github.com/faisalibnislam/folevi/pull/57): web-style tabs on large screens and the
   android-skills audit fixes (`docs/ANDROID_POLISH_2026-11-24.md`). The owner reviews and merges. Its "Not done
   yet" list is the next Android work. Then the owner's Play steps (`apps/android/README.md` "Steps only the owner can do").
@@ -497,6 +519,11 @@ account button should move past iPadOS's window buttons).
   https://play.google.com/apps/internaltest/4701659242250904528. Testers see the temporary name "com.folevi.android
   (unreviewed)" until the store listing and app content are done. Next uploads need a higher `build` in `version.json`;
   bundles over 10 MB must be dragged in by the owner (the browser tools can't attach them). No native debug symbols yet.
+- iPhone Duo: PR 55 merged into `main` (3fd6cf52); it was PR 55 (https://github.com/faisalibnislam/folevi/pull/55, `claude/iphone-duo-native-ipad` into
+  `main`, retargeted after PR 56 merged), replacing PR 53 (closed). 1.5.69 (build 84) from this branch is on TestFlight
+  (owner's OK; the branch has 1.5.68's release line merged in). The owner tries it on TestFlight. PR 51 is in main;
+  PR 56 (the iPad redesign) is merged into main (546f6aa4); PR 55 now targets main and is merged when its CI is green. Not checked: Split View
+  halves, a real device. Next free version: 1.5.70.
 - iPhone and iPad redesign (`claude/ios-native-redesign-f4a8be`): PR 56 merged into `main` (546f6aa4);
   the owner tries 1.5.67 from TestFlight. The `v1.5.65` and `v1.5.67` tags are local only (pushing them
   was not asked for). Open question: should the iPad inspector's Foli AI tab get back the web panel's ready-made
@@ -565,7 +592,7 @@ account button should move past iPadOS's window buttons).
    restyled yet.
 4. Any one failed query takes a whole web page to "Something went wrong" (`useQuery` throws to
    `app/global-error.tsx`); treat a failed non-essential query as still loading and retry.
-5. Paused work (Chrome extension, iPhone Duo) and `pricing-decisions`: only when the owner asks.
+5. Paused work (Chrome extension) and `pricing-decisions`: only when the owner asks.
 6. Mac App Store build (sandboxed, no Sparkle) doesn't exist; only Developer ID. Folevi keeps its `com.folevi.*`
    bundle IDs (the owner's choice, `folevi-keeps-com-bundle-ids.md`): don't rename.
 7. Owner items carried from October (status unverified): SPF record for Sign in with Apple's email relay, export
@@ -622,11 +649,24 @@ account button should move past iPadOS's window buttons).
   `DATABASE_UDF_USER_TIMEOUT_SECONDS=4` for that backend. Bursts show in `convex.log` as "took a long time".
 
 ## 12. Change log
+- 2026-11-24: Merged `main` (PR 55, iPhone Duo, 1.5.69) into `claude/android-tabs` to clear PR 57's conflicts; only HANDOFF.md conflicted (both sides kept).
 - 2026-11-24: Merged `main` (PR 56, iPhone and iPad second round) into `claude/android-tabs` to clear PR 57's conflicts; only HANDOFF.md conflicted (both sides kept). PR 57's secret scan fixed: it tripped on the Windows branch's placeholder Dropbox key (the scan reads every branch); same ignore line as main.
 - 2026-11-24: Play internal testing live: release 83 (1.5.68) published to the internal track with the owner's OK.
 - 2026-11-24: Android upload key created (outside the repo) and a signed release bundle built; Folevi created in Play Console with an internal testing track (owner's OK, declarations ticked with the owner's OK); first upload waits on the owner.
 - 2026-11-24: PR 54 (Android native app) merged into `main` (289b11af) once CI passed; `main` merged into `claude/android-tabs`, opened as PR 57.
 - 2026-11-24: Android tabs on tablets, foldables and Googlebooks with the web's rules, links inside notes, and an android-skills polish pass (security, edge-to-edge, widgets, ANRs, Back, keys) on `claude/android-tabs` (976a7172); pushed, no PR yet.
+- 2026-11-24: PR 56 merged into `main` (546f6aa4); PR 55 retargeted to `main` and `main` merged into the Duo branch (no conflicts).
+- 2026-11-24: PR 55 caught up again with its base (the iPad branch's test notes and the secret scan's known false positive in `.gitleaksignore`), which clears PR 55's failing secret scan.
+- 2026-11-24: PR 56's conflicts with `main` fixed (main's PR 54 merged into the iPad branch, HANDOFF only), then the iPad branch merged into the Duo branch for PR 55: Android's Gradle version comes from version.json (main's), and `isIphoneApp` keeps the Duo's `wide` check next to main's Android phone check.
+- 2026-11-24: PR 55's merge conflict with its base (which took main's PR 51) resolved: versions stay 1.5.69 (build 84), changelogs merged.
+- 2026-11-24: 1.5.69 (build 84) cut on `claude/iphone-duo-native-ipad` (1.5.68's release line merged in first; 1.5.68 was the Mac fix) and uploaded to TestFlight with the owner's OK (delivery 5facce96): Folevi on iPhone Duo. Tag v1.5.69 local only.
+- 2026-11-24: PR 55 opened for the iPhone Duo on the native iPad window (owner: replace PR 53); PR 53 closed, its branch kept.
+- 2026-11-24: iPhone Duo made to Apple's Duo page on `claude/iphone-duo-native-ipad` (owner's ask): whole toolbar and the note's tools in iOS's side column, page dock dropped there, sidebar beside the content and to the fold, inspector makes room; fold no longer hides the sidebar.
+- 2026-11-24: iPhone Duo put on the native iPad window (local branch `claude/iphone-duo-native-ipad`: PR 53 + the iPad redesign branch; fold handling on the tabs row); PR 53 caught up with the 1.5.66 release branch (HANDOFF conflict only); tabletop checked.
+- 2026-11-24: PR 53 held until the 1.5.66 release (PR 51) merges, at the main session's request; then retarget it to main.
+- 2026-11-24: PR 52 merged into `claude/folevi-core-529dbe` (owner's OK; no required checks, so it merged before its lint run, which PR 53 had already passed on a superset); PR 53 retargeted to `claude/folevi-core-529dbe`.
+- 2026-11-24: iPhone Duo branch pushed with the owner's OK; PR 53 opened into `claude/ios-native-redesign-f4a8be` (PR 52's audit commits merged in first).
+- 2026-11-23: iPhone Duo resumed and redone (third pass, owner's pick): the iPad's wide layout when open, the iPhone layout closed; branch `claude/iphone-duo-ipad-layout` on PR 52's branch, not pushed.
 - 2026-11-24: Merged `main` (PR 54, Android native) into `claude/ios-native-redesign-f4a8be` to clear PR 56's conflicts; only HANDOFF.md conflicted (next steps and change log, both sides kept). All native-kit iOS tests (274, 31, 38, 28, 31), the macOS build and 39 Mac app tests pass (one earlier run timed out 19 checks in FoleviScreens while the machine's load average was about 40; the rerun passed).
 - 2026-11-24: PR 56 opened (iPhone and iPad second round, 1.5.67, into `main`) after merging `main` (PR 51, 1.5.68) into `claude/ios-native-redesign-f4a8be`; all native-kit iOS tests, the macOS build and 39 Mac app tests pass.
 - 2026-11-24: Owner confirmed links inside a note stay in the same tab, like the web (saved in `ios-redesign-decisions-2026-11-23.md`); no code change.

@@ -37,9 +37,79 @@ finish-args:
   - --filesystem=home
 
 modules:
-  # The tray icon: the GNOME runtime has no libayatana-appindicator, so Flathub's shared module builds it (the
-  # flathub/shared-modules repository, a git submodule in the Flathub repo; flatpak-bundle.sh fetches it).
-  - shared-modules/libayatana-appindicator/libayatana-appindicator-gtk3.json
+  # The tray icon: the GNOME runtime has no libayatana-appindicator. These modules are Flathub's shared module
+  # (flathub/shared-modules libayatana-appindicator-gtk3.json and intltool-0.51.json at 34add58f, 2026-11-22, with
+  # their patches in patches/), copied here with one change: the CMake modules install into /app/lib. With the
+  # GNOME 51 SDK's CMake they otherwise go to /app/lib64, where neither the next module's pkg-config nor the app's
+  # loader looks ("libayatana-ido3-0.4 not found").
+  - name: libayatana-appindicator
+    buildsystem: cmake-ninja
+    cleanup: [/include, /lib/pkgconfig]
+    config-opts:
+      - -DCMAKE_INSTALL_LIBDIR=lib
+      - -DENABLE_BINDINGS_MONO=NO
+      - -DENABLE_BINDINGS_VALA=NO
+      - -DENABLE_GTKDOC=NO
+    modules:
+      - name: intltool
+        cleanup: ['*']
+        sources:
+          - type: archive
+            url: https://launchpad.net/intltool/trunk/0.51.0/+download/intltool-0.51.0.tar.gz
+            mirror-urls:
+              - https://gstreamer.freedesktop.org/src/mirror/intltool-0.51.0.tar.gz
+            sha256: 67c74d94196b153b774ab9f89b2fa6c6ba79352407037c8c14d5aeb334e959cd
+          - type: patch
+            path: patches/intltool-perl5.26-regex-fixes.patch
+      - name: libdbusmenu
+        buildsystem: autotools
+        build-options:
+          cflags: -Wno-error
+        cleanup: ['*.la', /include, /lib/pkgconfig, /libexec, /share/doc, /share/gtk-doc]
+        config-opts:
+          - --with-gtk=3
+          - --disable-dumper
+          - --disable-static
+          - --disable-tests
+          - --disable-gtk-doc
+          - --enable-introspection=no
+          - --disable-vala
+        sources:
+          - type: archive
+            url: https://launchpad.net/libdbusmenu/16.04/16.04.0/+download/libdbusmenu-16.04.0.tar.gz
+            mirror-urls:
+              - https://ftp.fr.openbsd.org/pub/OpenBSD/distfiles/libdbusmenu-16.04.0.tar.gz
+            sha256: b9cc4a2acd74509435892823607d966d424bd9ad5d0b00938f27240a1bfa878a
+          - type: patch
+            paths: [patches/0001-Fix-HAVE_VALGRIND-AM_CONDITIONAL.patch]
+      - name: ayatana-ido
+        buildsystem: cmake-ninja
+        cleanup: [/include, /lib/pkgconfig]
+        config-opts:
+          - -DCMAKE_INSTALL_LIBDIR=lib
+          - -DENABLE_INTROSPECTION=OFF
+        sources:
+          - type: git
+            url: https://github.com/AyatanaIndicators/ayatana-ido.git
+            tag: 0.10.4
+            commit: f968079b09e2310fefc3fc307359025f1c74b3eb
+          - type: patch
+            paths: [patches/0001-Make-introspection-configurable.patch]
+      - name: libayatana-indicator
+        buildsystem: cmake-ninja
+        cleanup: [/include, /lib/pkgconfig, /libexec, /share]
+        config-opts:
+          - -DCMAKE_INSTALL_LIBDIR=lib
+        sources:
+          - type: git
+            url: https://github.com/AyatanaIndicators/libayatana-indicator.git
+            tag: 0.9.5
+            commit: 0db7877be8c61953b50540183d5932ab159181f1
+    sources:
+      - type: git
+        url: https://github.com/AyatanaIndicators/libayatana-appindicator.git
+        tag: 0.6.1
+        commit: 836356daa20c833cbc051c77c6b4f97c94de5e61
 
   - name: folevi
     buildsystem: simple

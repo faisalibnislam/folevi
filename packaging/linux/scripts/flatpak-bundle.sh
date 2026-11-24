@@ -17,6 +17,7 @@ flatpak install --user -y --noninteractive flathub "org.gnome.Platform//$RUNTIME
 mkdir -p "$WORK/flatpak"
 cp "$HERE/com.folevi.Folevi.metainfo.xml" "$HERE/folevi.desktop.hbs" "$WORK/"
 cp "$DEB" "$WORK/flatpak/folevi.deb"
+cp -R "$HERE/flatpak/patches" "$WORK/flatpak/"
 # The manifest with both architecture-specific downloads replaced by the local .deb.
 python3 - "$HERE/flatpak/com.folevi.Folevi.yml" "$WORK/flatpak/com.folevi.Folevi.yml" <<'EOF'
 import re, sys
@@ -24,12 +25,10 @@ text = open(sys.argv[1]).read()
 block = re.compile(r"      - type: file\n        only-arches: \[\w+\]\n        url: [^\n]+\n        sha256: [^\n]+\n        dest-filename: folevi.deb\n")
 text, n = block.subn("", text)
 assert n == 2, f"expected two .deb sources, found {n}"
-text = text.replace("    sources:\n", "    sources:\n      - type: file\n        path: folevi.deb\n", 1)
+at = text.index("  - name: folevi\n")
+text = text[:at] + text[at:].replace("    sources:\n", "    sources:\n      - type: file\n        path: folevi.deb\n", 1)
 open(sys.argv[2], "w").write(text)
 EOF
-
-# Flathub's shared modules (libayatana-appindicator for the tray), as the Flathub repo has them as a submodule.
-git clone --quiet --depth 1 https://github.com/flathub/shared-modules.git "$WORK/flatpak/shared-modules"
 
 cd "$WORK/flatpak"
 flatpak-builder --user --force-clean --disable-rofiles-fuse --repo=repo build com.folevi.Folevi.yml

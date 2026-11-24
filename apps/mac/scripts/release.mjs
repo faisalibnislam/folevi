@@ -5,7 +5,7 @@
 //
 //   node apps/mac/scripts/release.mjs [--universal] [--web DIR] [--out DIR] [--launch-check]
 //
-//   1. the version: version.json (one version for every Folevi app; Core shows the same number)
+//   1. the version: version.json (one version for every Folevi app; the app shows the same number)
 //   2. the built-in interface, production build (apps/web build-shell.mjs --production --required)
 //   3. XcodeGen, then `xcodebuild archive` (Release; automatic signing, team 7K32QQ2FX8)
 //   4. Resources/web goes into the archived app; Sparkle's helpers and the app are signed again with Developer ID
@@ -87,7 +87,7 @@ export function buildRelease({ out, universal = false, version, build, web: give
   console.log(`Signing with "${profile.name}" (${profile.uuid}), expires ${profile.expires.toISOString().slice(0, 10)}`);
   const archive = join(out, "Folevi.xcarchive");
   rmSync(archive, { recursive: true, force: true });
-  run("xcodebuild", ["-project", join(CORE, "FoleviCore.xcodeproj"), "-scheme", "FoleviCore", "-configuration", "Release", "-destination", "generic/platform=macOS", "-derivedDataPath", DERIVED,
+  run("xcodebuild", ["-project", join(CORE, "Folevi.xcodeproj"), "-scheme", "Folevi", "-configuration", "Release", "-destination", "generic/platform=macOS", "-derivedDataPath", DERIVED,
     "-archivePath", archive, `ARCHS=${universal ? "arm64 x86_64" : "arm64"}`, "ONLY_ACTIVE_ARCH=NO", `MARKETING_VERSION=${version}`, `CURRENT_PROJECT_VERSION=${build}`, "archive"], { cwd: CORE });
   const archived = join(archive, "Products/Applications/Folevi.app");
   if (!existsSync(archived)) throw new Error(`The archive has no ${archived}`);

@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Builds Folevi (Debug by default) and prints only what matters: errors, warnings in Core's own files, and
+// Builds Folevi (Debug by default) and prints only what matters: errors, warnings in the app's own files, and
 // where the app is. `--release` builds Release; `--generate` regenerates the Xcode project first (always done
 // when project.yml is newer than it).
 //
@@ -12,7 +12,7 @@ import { fileURLToPath } from "node:url";
 const CORE = join(dirname(fileURLToPath(import.meta.url)), "..");
 const args = new Set(process.argv.slice(2));
 const config = args.has("--release") ? "Release" : "Debug";
-const project = join(CORE, "FoleviCore.xcodeproj");
+const project = join(CORE, "Folevi.xcodeproj");
 
 const spec = join(CORE, "project.yml");
 if (!args.has("--no-generate")) {
@@ -20,7 +20,7 @@ if (!args.has("--no-generate")) {
   execFileSync(xcodegen, ["generate", "--spec", spec, "--project", CORE, "--quiet"], { cwd: CORE, stdio: "inherit" });
 }
 
-const r = spawnSync("xcodebuild", ["-project", project, "-scheme", "FoleviCore", "-configuration", config, "-derivedDataPath", join(CORE, "build/dd"), "-destination", "platform=macOS", "-allowProvisioningUpdates", "build"], { cwd: CORE, encoding: "utf8", maxBuffer: 1 << 28 });
+const r = spawnSync("xcodebuild", ["-project", project, "-scheme", "Folevi", "-configuration", config, "-derivedDataPath", join(CORE, "build/dd"), "-destination", "platform=macOS", "-allowProvisioningUpdates", "build"], { cwd: CORE, encoding: "utf8", maxBuffer: 1 << 28 });
 const lines = (r.stdout + r.stderr).split("\n");
 const seen = new Set();
 const show = (l) => {
@@ -31,7 +31,7 @@ const show = (l) => {
 };
 for (const l of lines) {
   if (/^\/.*error:/.test(l)) show(l);
-  else if (args.has("--warnings") && /^\/.*mac-core\/.*warning:/.test(l)) show(l);
+  else if (args.has("--warnings") && /^\/.*apps\/mac\/Folevi\/.*warning:/.test(l)) show(l);
 }
 const ok = lines.some((l) => l.includes("BUILD SUCCEEDED"));
 const name = config === "Debug" ? "Folevi Dev" : "Folevi";

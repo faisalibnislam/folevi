@@ -1,13 +1,14 @@
 # Folevi for Mac
 
-Folevi's Mac app: fully native, built for macOS 26 Tahoe (SwiftUI, with AppKit where it matters). It began as
-"Folevi Core", a separate app beside the AppKit Folevi for Mac. On 23 November 2026 it replaced that app as an
-update in place (the owner's choice). It now carries that app's bundle id (`com.folevi.mac`), name, data folder
+Folevi's Mac app: fully native, built for macOS 26 Tahoe (SwiftUI, with AppKit where it matters). It replaced the
+AppKit Folevi for Mac on 23 November 2026 as an update in place (the owner's choice); there is one Mac app, and no
+separate "Core" build any more. It now carries that app's bundle id (`com.folevi.mac`), name, data folder
 (`Application Support/Folevi`), Keychain names (`com.folevi.*`), URL scheme (`folevi://`) and Sparkle feed and key,
 so installed copies update to it and keep their libraries, sign-ins and keys. The AppKit app's code is kept at the
 git tag `archive/mac-appkit` (its last release, 1.5.64).
 
-The Xcode project and module are still named `FoleviCore`; the product is "Folevi" ("Folevi Dev" in Debug).
+The Xcode project, target and module are `Folevi` (`Folevi/`, `FoleviTests/`); the product is "Folevi" ("Folevi Dev"
+in Debug). `scripts/app.mjs` runs and drives the Debug app.
 
 Parity with the AppKit app is tracked item by item in [PARITY.md](PARITY.md).
 
@@ -34,11 +35,11 @@ Parity with the AppKit app is tracked item by item in [PARITY.md](PARITY.md).
 | Sync engine, offline queue, local library, end-to-end encryption, editor | The bundled web export (`apps/web`, `build-shell.mjs`) in native chrome mode |
 | Typed bridge to the engine (views, lists, commands, editor commands, events) | `FoleviEngine` (`apps/native-kit`, generated from `protocol.ts`) |
 | Native side of the data layer (library files, sign-in, keys, places, on-device Foli AI) | `apps/ios/ios/App/Native/Shell/*`, compiled by path |
-| Mac host plumbing (app:// scheme, message routers, places and background runners, links, offline switch, Sparkle wrapper, printing, OCR, call recorder, clipboard, downloads, login item) | `FoleviCore/Host/Shared` (moved from the AppKit app when it was retired) |
+| Mac host plumbing (app:// scheme, message routers, places and background runners, links, offline switch, Sparkle wrapper, printing, OCR, call recorder, clipboard, downloads, login item) | `Folevi/Host/Shared` (moved from the AppKit app when it was retired) |
 | Fonts, tokens, folder glyph, note and folder cards, web icons, Foli AI mark | `FoleviDesign` |
 | Demo engine (sample notes, no account) for tests and screenshots | `FoleviEngineDemo` |
 
-The app's own host code is in `FoleviCore/Host` (its `Paths`, page views and navigation policy, the window registry
+The app's own host code is in `Folevi/Host` (its `Paths`, page views and navigation policy, the window registry
 the shared Places uses, the desktop router and capabilities, the app lock, Spotlight, the Debug channel).
 
 ## Build, run, test
@@ -46,15 +47,15 @@ the shared Places uses, the desktop router and capabilities, the app lock, Spotl
 ```bash
 node apps/web/scripts/build-shell.mjs                         # the development web export into apps/mac/web (once, and after web changes)
 node apps/mac/scripts/build.mjs                               # Debug build ("Folevi Dev")
-node apps/mac/scripts/core.mjs launch --fresh                 # run on a scratch data folder (never real data)
-node apps/mac/scripts/core.mjs launch --demo --fresh          # run on the demo engine (no export, no account)
-node apps/mac/scripts/core.mjs cmd state                      # Debug commands: state, go, gate, notes, palette...
-node apps/mac/scripts/core.mjs shot apps/mac/screens/home.png
-xcodebuild -project apps/mac/FoleviCore.xcodeproj -scheme FoleviCore -derivedDataPath apps/mac/build/dd test
+node apps/mac/scripts/app.mjs launch --fresh                 # run on a scratch data folder (never real data)
+node apps/mac/scripts/app.mjs launch --demo --fresh          # run on the demo engine (no export, no account)
+node apps/mac/scripts/app.mjs cmd state                      # Debug commands: state, go, gate, notes, palette...
+node apps/mac/scripts/app.mjs shot apps/mac/screens/home.png
+xcodebuild -project apps/mac/Folevi.xcodeproj -scheme Folevi -derivedDataPath apps/mac/build/dd test
 ```
 
 The Debug app is "Folevi Dev" (`com.folevi.mac.dev`). It keeps its data in `Application Support/Folevi Dev` (or
-`FOLEVI_USER_DATA`, which core.mjs always sets), with Keychain names under `com.folevi.dev.`, and has no iCloud
+`FOLEVI_USER_DATA`, which app.mjs always sets), with Keychain names under `com.folevi.dev.`, and has no iCloud
 entitlement, as the AppKit Dev build had none. A library "on this Mac" in Debug lives in that folder too.
 
 ## Release (direct download)

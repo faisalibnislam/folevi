@@ -282,10 +282,13 @@ redesign branch `claude/folevi-core-529dbe`. The owner's answers: `docs/claude-c
 (worktree `.claude/worktrees/folevi-core-529dbe`), `apps/mac`; pushed to GitHub 2026-11-23 with the owner's OK (not merged). The iPhone/iPad
 redesign (`claude/ios-native-redesign-f4a8be`) opens its pull request into this branch, not `main`.
 
-- **What happened (2026-11-23):** "Folevi Core", the native macOS 26 app, replaced the AppKit Folevi for Mac (the
-  owner's choice). The AppKit app was removed from `apps/mac`; its last release, 1.5.64, is at the git tag
-  `archive/mac-appkit`. Core moved from `apps/mac-core` into `apps/mac`. Its Xcode project and module are still
-  named `FoleviCore`; the product is "Folevi".
+- **What happened (2026-11-23):** the native macOS 26 app (built as "Folevi Core" from 2026-11-21) replaced the
+  AppKit Folevi for Mac (the owner's choice). The AppKit app was removed from `apps/mac`; its last release, 1.5.64,
+  is at the git tag `archive/mac-appkit`. The owner then said there is no separate Core version any more: the
+  project, target and module are `Folevi` (`apps/mac/Folevi`, `apps/mac/FoleviTests`, `Folevi.xcodeproj` generated
+  from `project.yml`), and `scripts/app.mjs` runs the Debug app (was `core.mjs`). The product is "Folevi" ("Folevi
+  Dev" in Debug). Only the branch and worktree keep the old name (`claude/folevi-core-529dbe`), because PR 52 targets
+  it. "Folevi Core" elsewhere in the repo is the pricing plan, unrelated.
 - **Seamless update:** it carries the AppKit app's identity unchanged:
   - `com.folevi.mac`, `Application Support/Folevi`, Keychain `com.folevi.*`, `folevi://`
   - the Sparkle feed `download/mac/appcast.xml` with the EdDSA key at account "folevi"
@@ -296,9 +299,17 @@ redesign (`claude/ios-native-redesign-f4a8be`) opens its pull request into this 
   - the Electron migration, which runs at launch as before
 - **Trial Release build:** it met the Keychain items' designated requirement ("same designated requirement as the
   installed Folevi").
-- **Shared host files:** the UI-free files moved into `apps/mac/FoleviCore/Host/Shared`.
+- **Shared host files:** the UI-free files moved into `apps/mac/Folevi/Host/Shared`.
 - **Editor and data layer:** SwiftUI around the web editor, which runs in pooled warm web views. The data layer is
   the web export through FoleviEngine and the iOS shell services, compiled by path.
+- **The window (2026-11-23, latest):** the owner set the Macloving guide aside ("do the UI your way, pixel
+  perfect, as good as Finder and Apple Notes, UX like the web, every feature"). The window is now built the way
+  Finder and Notes are: a system `NavigationSplitView` (sidebar can be hidden, View > Hide Sidebar), a unified
+  Liquid Glass toolbar (Back and Forward, title and subtitle, New Note as the ink pill, the screen's items, the
+  screen's search as the toolbar search field), the system `.inspector`, native window tabs laid out by the system.
+  Screens still declare their bar with `.screenActions` / `.screenSearch` / `.screenSubtitle` / `.screenLeading` /
+  `.screenTitle` (`Views/Common/ScreenBar.swift`); those now feed the system toolbar. The custom card, glass top
+  bar and `WindowMetrics` are gone. `docs/design/macloving-mac-ui.md` no longer applies to the Mac window.
 - **Read first:** `apps/mac/README.md`, then `apps/mac/PARITY.md`.
 - **Parity on 2026-11-23:** 1,114 of 1,343 there, 4 partly, 0 missing, 225 n/a. The 4 partly stay web pages on
   purpose, by the owner's choice: two-step verification, end-to-end encryption on/off, OAuth consent and the
@@ -437,13 +448,26 @@ account button should move past iPadOS's window buttons).
      - hidden title bar
      - an always-visible sidebar (still a List)
      - an opaque rounded content card whose glass top bar is drawn from each screen's `.screenActions` /
-       `.screenSearch` / `.screenSubtitle` (`FoleviCore/Views/Common/ScreenBar.swift`)
+       `.screenSearch` / `.screenSubtitle` (`Folevi/Views/Common/ScreenBar.swift`)
      - a flat rounded inspector panel and capsule choices
      - Folevi's ink kept
      - native window tabs kept (the content starts below macOS's tab bar when shown)
 
      The iPad already had this profile; its card margin is now 12 pt. Not yet looked at on the iPad itself; its
      layout tests pass.
+
+     Superseded the same day: the owner set the guide aside and the window is now native (see "The window" in
+     Current state; commit 4a2f2031).
+
+     Then a HIG and Liquid Glass pass (2026-11-23, the owner's "/apple-hig /liquid-glass /liquid-glass-motion
+     /axiom:axiom-design" ask): content scrolls under the glass bar (a `safeAreaBar` placeholder, with a soft fade
+     drawn behind the bar because macOS draws its own scroll edge effect only under system toolbars); split screens
+     (`Destination.isSplit`: Foli AI, Calendar, Vault) start below the bar since AppKit's split view drops SwiftUI's
+     safe area; the tab bar state is re-read when a window's tab group changes (restored tabs had left content under
+     the tab bar). Left for the owner: the HIG asks for a way to hide the sidebar, but the owner's rule is an
+     always-visible sidebar, so none was added. Running `xcodebuild test` into `build/dd` relinks the Debug app with
+     the engine twice and it no longer starts: delete `build/dd/Build/Products/Debug/Folevi Dev.app` and run
+     `build.mjs` again.
   2. Done 2026-11-23: a signed, notarized, stapled, universal test DMG at
      `apps/mac/release-dist/test-1.5.64/Folevi-1.5.64.dmg` (git-ignored, in the Core worktree). It has the
      production web build and the same designated requirement as the installed Folevi. The owner tries it over
@@ -455,7 +479,7 @@ account button should move past iPadOS's window buttons).
 - Folevi for Mac Debug with a fresh data folder (no places yet): the bundled dev web page fails at once with "The
   operation is insecure" from its Convex WebSocket (seen 2026-11-22), so the first-run gates can't be walked in
   Debug that way; a scratch "on this Mac" library never opens Convex and works. Check the dev bundle's Convex URL
-  against the app:// page's content security rules before a real-account test. `core.mjs cmd fakegate` shows a
+  against the app:// page's content security rules before a real-account test. `app.mjs cmd fakegate` shows a
   gate screen from JSON instead.
 - `claude/phone-all-folders-route`: review and merge with the next release (Debug-only bug; no user-visible change in
   Release builds).
@@ -535,6 +559,9 @@ account button should move past iPadOS's window buttons).
 ## 12. Change log
 - 2026-11-24: iPad rebuilt natively and merged (`claude/ipad-native`): system split view, system toolbar (Back/Forward, title, items, ink New note, sync, bell, search), Safari-style tabs row, the note's Style/Format/Insert/Foli AI in the system inspector; Debug iPad launch with FOLEVI_REBUILD_OPEN fixed; all iOS package tests pass on the iPhone simulator.
 - 2026-11-24: Owner chose native like the Mac for iOS: iPhone lists and Settings on iOS's own List (rows unlined, native swipe actions); the iPad's native split-view rebuild runs on `claude/ipad-native` (helper, not merged yet).
+- 2026-11-23: Folevi for Mac: no more Core naming; `apps/mac/FoleviCore` became `apps/mac/Folevi` (project, target, scheme, module, tests), `core.mjs` became `app.mjs`, internal Core* types became App*; identity, data and update feed unchanged; 38 Mac tests and the web version test pass.
+- 2026-11-23: Folevi for Mac: the window rebuilt the native way (system split view, unified Liquid Glass toolbar with each screen's items and search, system inspector, segmented controls, sidebar can be hidden); the Macloving card design dropped at the owner's word; 38 tests pass.
+- 2026-11-23: Folevi for Mac: HIG and Liquid Glass pass (content under the glass bar with a soft edge, split screens below it, tab bar state after restored tabs, no shadow on the palette's glass, Jump to Latest materializes, hover on bar choices); iPhone/iPad pass handed to the redesign session (PR 52).
 - 2026-11-23: iPhone/iPad audited with apple-hig, liquid-glass, liquid-glass-motion and axiom-design (owner's ask): + is the system's prominent glass, search button titled, 44 pt tag chips and iPad history buttons; owner's calls listed in PR 52.
 - 2026-11-23: PR 52 opened (iPhone and iPad redesign into `claude/folevi-core-529dbe`).
 - 2026-11-23: iPhone and iPad redesigned after the Mac's window (owner's checkbox answers saved in memory); 1.5.65 cut on `claude/ios-native-redesign-f4a8be` and uploaded to TestFlight; not merged.

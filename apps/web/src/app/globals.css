@@ -854,6 +854,13 @@
 @media (prefers-color-scheme: dark) { :root:is([data-mac-native], [data-ipad-native]):not([data-theme="light"]) { --mac-card: #1e1e1e; } }
 /* The note's card has the native window's content card corners (MacLook.containerRadius, 12 pt). */
 :root:is([data-mac-native], [data-ipad-native]) { --mac-card-radius: 12px; }
+/* iPhone Duo partly closed (the app sets data-fold and the fold's span on <html>, RebuildPageLayout.fold): the note's
+   floating dock moves to the part past the fold, where it will be when the phone opens flat, as icons only (the
+   compact bar's rule, Page tools below), so no button sits in the crease. */
+:root[data-fold] [data-note-dock] {
+  left: calc((var(--fold-end) + 100%) / 2);
+  max-width: calc(100% - var(--fold-end) - 1.5rem);
+}
 :root:is([data-mac-native], [data-ipad-native]) div:has(> [data-note-panel]) { padding: 0; }
 :root:is([data-mac-native], [data-ipad-native]) [data-note-panel] { padding: 0; border-radius: var(--mac-card-radius, var(--radius-control)); overflow: hidden; background: var(--mac-card); }
 :root:is([data-mac-native], [data-ipad-native]) .fb-page { border-radius: 0; box-shadow: none; }
@@ -1385,8 +1392,10 @@
   [role="toolbar"][aria-label="Page tools"] button > span:not([aria-hidden]) { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
   [role="toolbar"][aria-label="Page tools"] button { padding-inline: 10px; }
 }
-[role="toolbar"][aria-label="Page tools"][data-compact] button > span:not([aria-hidden]) { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
-[role="toolbar"][aria-label="Page tools"][data-compact] button { padding-inline: 10px; }
+[role="toolbar"][aria-label="Page tools"][data-compact] button > span:not([aria-hidden]),
+:root[data-fold] [role="toolbar"][aria-label="Page tools"] button > span:not([aria-hidden]) { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+[role="toolbar"][aria-label="Page tools"][data-compact] button,
+:root[data-fold] [role="toolbar"][aria-label="Page tools"] button { padding-inline: 10px; }
 
 /* Folevi's one tooltip, on every page (the app, the website, the Mac app): never the browser's own. */
 [data-mac-tooltip] {

@@ -31,6 +31,7 @@ afterEach(() => {
   vi.restoreAllMocks();
   delete (window as { foleviNative?: unknown }).foleviNative;
   for (const a of ["data-desktop", "data-native", "data-form", "data-shell", "data-os", "data-touch", "data-fold", "style"]) document.documentElement.removeAttribute(a);
+  document.documentElement.style.cssText = "";
 });
 
 describe("formFactor: width decides, on every device", () => {
@@ -109,17 +110,32 @@ describe("shell and os", () => {
 });
 
 describe("fold", () => {
-  it("is null on a flat screen, and read from the app's marks while partly open", () => {
+  it("is null on a flat screen, and read from the app's marks while partly open (RebuildIPad.swift's contract)", () => {
     windowLike(951, { touch: true, ua: IPHONE });
     expect(fold()).toBeNull();
     const root = document.documentElement;
-    root.style.setProperty("--folevi-fold-orientation", "vertical");
-    root.style.setProperty("--folevi-fold-start", "470");
-    root.style.setProperty("--folevi-fold-size", "12");
+    root.setAttribute("data-fold", "");
+    root.style.setProperty("--fold-start", "470px");
+    root.style.setProperty("--fold-end", "482px");
     expect(fold()).toEqual({ orientation: "vertical", start: 470, size: 12 });
+    // The page leaves an app's marks alone.
     markPlatform();
-    expect(root.getAttribute("data-fold")).toBe("vertical");
-    expect(root.style.getPropertyValue("--fold-start")).toBe("470px");
+    expect(root.getAttribute("data-fold")).toBe("");
+    expect(root.style.getPropertyValue("--fold-end")).toBe("482px");
+  });
+
+  it("reads Chromium's viewport segments, marks them, and clears only its own marks", () => {
+    windowLike(1800, { touch: true, ua: ANDROID });
+    const viewport = { segments: [{ x: 0, y: 0, width: 880, height: 1000 }, { x: 920, y: 0, width: 880, height: 1000 }] as { x: number; y: number; width: number; height: number }[] | null };
+    Object.defineProperty(window, "viewport", { value: viewport, configurable: true });
+    const root = document.documentElement;
+    expect(fold()).toEqual({ orientation: "vertical", start: 880, size: 40 });
+    markPlatform();
+    expect([root.getAttribute("data-fold"), root.style.getPropertyValue("--fold-start"), root.style.getPropertyValue("--fold-end")]).toEqual(["", "880px", "920px"]);
+    viewport.segments = null;
+    markPlatform();
+    expect(root.hasAttribute("data-fold")).toBe(false);
+    delete (window as { viewport?: unknown }).viewport;
   });
 });
 

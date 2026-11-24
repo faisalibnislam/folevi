@@ -1,6 +1,24 @@
 {
   "releases": [
     {
+      "version": "1.5.69",
+      "build": 84,
+      "released": "2026-11-24T09:17:46+06:00",
+      "type": "patch",
+      "summary": "Folevi on iPhone Duo: the iPad's window when open, the iPhone's when closed.",
+      "added": [
+        "iPhone Duo: open, Folevi shows the iPad's window, with the toolbar and the note's tools in the column at the side, as when the phone is closed."
+      ],
+      "improved": [
+        "iPhone Duo: the sidebar stays beside your note, and partly folded it reaches the fold, so the list and the note each have a side.",
+        "iPhone Duo: fold or unfold while you type, and the note, your text, the cursor and the keyboard come along."
+      ],
+      "fixed": [
+        "iPhone Duo: the sidebar no longer stays hidden after you fold and unfold the phone."
+      ],
+      "tag": "v1.5.69"
+    },
+    {
       "version": "1.5.68",
       "build": 83,
       "released": "2026-11-24T07:43:25+06:00",

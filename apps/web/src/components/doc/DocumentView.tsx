@@ -98,7 +98,7 @@ import { ExportDialog } from "./ExportDialog";
 import { FindBar } from "./FindBar";
 import { useNoteActions } from "@/components/views/noteActions";
 import { PageDock } from "./PageDock";
-import { isIpadLayout, isIphoneApp, useIpadNativeWide, useIphoneApp } from "@/lib/iphone";
+import { isIpadLayout, isIphoneApp, useIpadNativeWide, useIphoneApp, useNativeSideTools } from "@/lib/iphone";
 import { NoteBars } from "@/components/iphone/NoteBars";
 import { nativeChrome } from "@/lib/nativeApp";
 import { useNativeNote } from "@/lib/engine/editorCommands";
@@ -218,6 +218,8 @@ export function DocumentView({ documentId }: { documentId: string }) {
   const iphone = useIphoneApp();
   // The native iPad's wide layout: its frame draws no note tools, so the page keeps the floating dock (IPAD-11).
   const ipadNativeWide = useIpadNativeWide();
+  // iPhone Duo open across: the note's tools are iOS's toolbar items in the column at the side, not the dock.
+  const nativeSideTools = useNativeSideTools();
   const sidebarOpenRef = useRef(sidebarOpen);
   sidebarOpenRef.current = sidebarOpen;
   const toggleSidebarRef = useRef(toggleSidebar);
@@ -1353,7 +1355,7 @@ export function DocumentView({ documentId }: { documentId: string }) {
         </div>
         {/* The floating bar: AI, Insert, Format and Style, then the note's people, Share and its "…" menu. A tool opens
             in the right sidebar (on a phone, a sheet above the bar); AI opens the assistant on this note. */}
-        {nativeChromeMode && !macNativeFrame && !ipadNativeWide ? null : iphone ? (
+        {(nativeChromeMode && !macNativeFrame && !ipadNativeWide) || (nativeChromeMode && nativeSideTools) ? null : iphone ? (
           <NoteBars
             editor={editor}
             ai={aiOn}

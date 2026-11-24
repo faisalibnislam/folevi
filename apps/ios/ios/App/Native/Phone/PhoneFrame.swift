@@ -28,7 +28,8 @@ enum PhoneFrame {
     /// What the page runs before its first paint: `<html data-native-chrome>` and `window.__foleviNativeChrome`.
     static func markerScript(place: String?) -> String {
         let platform: NativeChromeMarker.Platform = UIDevice.current.userInterfaceIdiom == .pad ? .ipados : .ios
-        return WebViewTransport.markerScript(NativeChromeMarker(platform: platform, protocol: EngineContract.protocolVersion, place: place))
+        // (iPhone Duo: whether the iPad's wide layout is showing, as last told; RebuildPageLayout.)
+        return WebViewTransport.markerScript(NativeChromeMarker(platform: platform, protocol: EngineContract.protocolVersion, place: place)) + RebuildPageLayout.markerAddition
     }
 
     /// The page the Page View idles on (nothing drawn, the engine running).

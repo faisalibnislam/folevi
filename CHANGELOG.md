@@ -4,6 +4,16 @@ Every Folevi release, newest first, written by `node scripts/version.mjs` from `
 
 Versions are MAJOR.UPDATE.PATCH, PATCH at least two digits: a Major release (2.0.00), a Big update (1.1.05 after 1.0.05) or a Small update (1.0.06 after 1.0.05).
 
+## Version 1.5.75: Small update
+
+Released 2026-11-24 21:30:14+06:00 (build 90, tag v1.5.75)
+
+Folevi on iPhone uses less memory as you open and close notes.
+
+### Improved
+
+- Moving between screens on iPhone keeps less in memory afterwards.
+
 ## Version 1.5.74: Small update
 
 Released 2026-11-24 19:58:58+06:00 (build 89, tag v1.5.74)

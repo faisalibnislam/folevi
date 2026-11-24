@@ -146,15 +146,45 @@ public struct PhoneRootCreateItem: ToolbarContent {
 
     public init(create: PhoneRootCreate) { self.create = create }
 
+    @available(iOS 26, *)
+    private var prominentItem: some View {
+        PhoneRootCreateButtons(create, prominent: true)
+            .buttonStyle(.glassProminent)
+            .buttonBorderShape(.circle)
+            .tint(PhoneNativeLook.accent)
+    }
+
     public var body: some ToolbarContent {
         if #available(iOS 26, *) {
-            ToolbarItem(placement: .topBarTrailing) {
-                PhoneRootCreateButtons(create, prominent: true)
+            // The system's prominent glass, tinted with Folevi's ink (liquid-glass: one prominent action per bar,
+            // `.glassProminent` tinted with `.tint`, never hand-rolled glass where the bar provides it).
+            if create.quickTaskOnly {
+                // A button: the bar draws the prominent glass itself, in its shared capsule.
+                ToolbarItem(placement: .topBarTrailing) { prominentItem }
+            } else {
+                // A menu draws its own prominent glass: the bar's shared capsule round it would be glass on glass.
+                ToolbarItem(placement: .topBarTrailing) { prominentItem }
+                    .sharedBackgroundVisibility(.hidden)
             }
-            .sharedBackgroundVisibility(.hidden)
         } else {
             ToolbarItem(placement: .topBarTrailing) { PhoneRootCreateButtons(create) }
         }
+    }
+}
+
+/// A plain button, unless the bar draws it as its prominent glass (the style set round it then applies).
+private struct PlainUnlessProminent: ViewModifier {
+    let prominent: Bool
+    func body(content: Content) -> some View {
+        if prominent { content } else { content.buttonStyle(.plain) }
+    }
+}
+
+/// A menu drawn as a button, so the prominent glass style set round it reaches it.
+private struct ButtonMenuWhenProminent: ViewModifier {
+    let prominent: Bool
+    func body(content: Content) -> some View {
+        if prominent { content.menuStyle(.button) } else { content }
     }
 }
 
@@ -180,7 +210,7 @@ public struct PhoneRootCreateButtons: View {
             }
             if create.quickTaskOnly {
                 Button(action: create.quickTask) { plus }
-                    .buttonStyle(.plain)
+                    .modifier(PlainUnlessProminent(prominent: prominent))
                     .accessibilityLabel("Quick task")
                     .accessibilityIdentifier("root-create")
             } else {
@@ -191,6 +221,7 @@ public struct PhoneRootCreateButtons: View {
                 } label: {
                     plus
                 }
+                .modifier(ButtonMenuWhenProminent(prominent: prominent))
                 .accessibilityLabel("Create")
                 .accessibilityIdentifier("root-create")
             }
@@ -198,12 +229,11 @@ public struct PhoneRootCreateButtons: View {
     }
 
     @ViewBuilder private var plus: some View {
-        if prominent, #available(iOS 26, *) {
+        if prominent {
             WebIconView(.plus, size: 22, strokeWidth: 2.2)
                 .foregroundStyle(PhoneNativeLook.onAccent)
-                .frame(width: 44, height: 44)
-                .glassEffect(.regular.tint(PhoneNativeLook.accent).interactive(), in: .circle)
-                .contentShape(Circle())
+                .frame(width: 30, height: 30)
+                .contentShape(Rectangle())
         } else {
             WebIconView(.plus, size: 22, strokeWidth: 2.1)
                 .foregroundStyle(.primary)

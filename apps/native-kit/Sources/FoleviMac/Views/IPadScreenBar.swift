@@ -131,7 +131,8 @@ struct IPadHistoryCapsule: View {
     private func button(_ symbol: String, label: String, help: String, enabled: Bool, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             MacSymbol(symbol, size: 16, weight: .medium)
-                .frame(width: 40, height: MacLook.barControlHeight - MacLook.capsuleInset * 2)
+                // (44 wide: the HIG's touch target on iPad.)
+                .frame(width: 44, height: MacLook.barControlHeight - MacLook.capsuleInset * 2)
                 .contentShape(Capsule())
         }
         .buttonStyle(QuietHoverStyle(shape: AnyShape(Capsule())))

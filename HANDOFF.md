@@ -435,6 +435,8 @@ account button should move past iPadOS's window buttons).
 - iPhone and iPad redesign (`claude/ios-native-redesign-f4a8be`): the owner tries 1.5.65 from TestFlight; PR 52
   (https://github.com/faisalibnislam/folevi/pull/52) into `claude/folevi-core-529dbe` (the owner's choice) is
   open for review. The `v1.5.65` tag is local only (pushing it was not asked for).
+  Owner's calls from the 2026-11-23 HIG audit: Foli AI is a tab that opens a sheet (the HIG says tabs navigate,
+  never act); section headings stay sentence case (Apple uses title case); dark mode keeps a pure black frame.
   Known gaps: the notifications sheet's rows are not on cards yet; screens borrowed from the iPad (Foli DNA,
   Reviews) keep their own white page under the system bar.
 - Folevi for Mac (native, `apps/mac`, branch `claude/folevi-core-529dbe`), the owner's order of 2026-11-23:
@@ -541,6 +543,7 @@ account button should move past iPadOS's window buttons).
 
 ## 12. Change log
 - 2026-11-23: iPhone Duo resumed and redone (third pass, owner's pick): the iPad's wide layout when open, the iPhone layout closed; branch `claude/iphone-duo-ipad-layout` on PR 52's branch, not pushed.
+- 2026-11-23: iPhone/iPad audited with apple-hig, liquid-glass, liquid-glass-motion and axiom-design (owner's ask): + is the system's prominent glass, search button titled, 44 pt tag chips and iPad history buttons; owner's calls listed in PR 52.
 - 2026-11-23: PR 52 opened (iPhone and iPad redesign into `claude/folevi-core-529dbe`).
 - 2026-11-23: iPhone and iPad redesigned after the Mac's window (owner's checkbox answers saved in memory); 1.5.65 cut on `claude/ios-native-redesign-f4a8be` and uploaded to TestFlight; not merged.
 - 2026-11-23: `claude/folevi-core-529dbe` pushed to GitHub with the owner's OK (a337b65b) so the iPhone/iPad redesign can open its pull request into it; `main` untouched.

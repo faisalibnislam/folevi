@@ -30,7 +30,31 @@ load average was 100 to 700 throughout, so absolute times are pessimistic; compa
 ### Memory (web content)
 | Severity | Location | Before | After | Why |
 | --- | --- | --- | --- | --- |
-| MEDIUM | The web app's JavaScript heap (the note page) | Web content 131 MB at Home, 263 MB after 20 rounds of opening and closing two notes, 219 MB after WebKit's low-memory signal (`org.WebKit.lowMemory`): about 4 MB kept per round | For the web session: a heap snapshot in Safari's Web Inspector (Develop > Simulator) around a note open and close | Grows for as long as notes are opened; the native app stayed flat at 25 to 26 MB. Not listeners or timers: window listeners, intervals and Resize/Mutation observers stayed balanced, and the DOM went back to 487 elements with no editor left |
+| MEDIUM | The iPhone layout's note page under WebKit (`components/iphone` and what it renders around a note) | Opening and closing "Welcome to Folevi" 20 times: web content 131 to 300 MB, 238 to 241 MB after WebKit's low-memory signal, about 5 MB kept per open | For the web session (see the follow-up below) | Grows for as long as notes are opened, until iOS ends the web view |
+
+**Follow-up (2026-11-24, at the main session's request).** The web session found no leak in Chromium heap snapshots or in
+WebKit under Playwright, so the steps were narrowed on the simulator. Every run is a fresh launch of the Debug build
+(production web export), local library on this device ("This device only", the sample notes), iPhone 18 Pro or iPad Pro
+13 (iOS 27.2), light mode, one round = tap the Home card, wait 2 s, close, wait 2 s; memory is the app's WebContent
+process (`footprint`):
+
+| Run | Layout | Rounds and note | Closed with | Start | After 20 | After `org.WebKit.lowMemory` |
+| --- | --- | --- | --- | --- | --- | --- |
+| A | iPhone | Home to Tasks and Calendar, no notes | history.back() | 134 MB | 139 MB | 113 MB |
+| B | iPhone | "Reading Shelf" + "Welcome to Folevi", 40 rounds | history.back() | 135 MB | 263 MB (344 MB at 40) | 299 MB |
+| C1 | iPhone | "Welcome to Folevi" twice per round | history.back() | 134 MB | 270 MB | 219 MB |
+| D | iPhone | "Welcome to Folevi" | the note's Back button | 131 MB | 300 MB | 241 MB |
+| E | iPhone | as D, with Capacitor's logging and web inspection off (as in releases) | Back button | 128 MB | 300 MB | 238 MB |
+| F | iPad (sidebar layout) | "Welcome to Folevi" | Back button | 135 MB | 189 MB (levels off) | 136 MB |
+
+- Not WebKit's caches: JIT code is 1.2 MB and graphics memory negligible; the growth is in "WebKit Malloc" (184 of
+  247 MB in run D), where JavaScript objects and WebKit's page objects live, and the low-memory signal doesn't free it.
+- Not the bridge: its event listeners (`listen`) and Capacitor plugin listeners stayed at the same counts; window
+  listeners, intervals and Resize/Mutation observers stayed balanced; the page returned to 487 elements with no editor.
+- Not the close path or debug logging (D, E), and not the shared note page (F: none on iPad).
+- So it is something the **iPhone layout** keeps per note open that WebKit's collector can't free, invisible in
+  Chromium. Next step: a heap snapshot in Safari's Web Inspector (Develop > Simulator > Folevi) on a Debug build before
+  and after five opens, comparing the largest retained types; that needs Safari's window, which these tools can't drive.
 
 ### Launch and local mode's network rules
 | Severity | Location | Before | After | Why |
@@ -60,4 +84,4 @@ wait 0.25 s warm (1.3 s cold under heavy load) for the library to open.
   note open and close with `footprint`; `elementFromPoint` taps 6 to 20 pt outside each fixed control; `tsc` and eslint.
 - Not verified: a real device, Reduce Transparency (no `simctl` switch), iPhone Duo open, VoiceOver itself, the iPad
   fixes (handed over).
-- Verdict: **Needs changes** (MEDIUM items with the web session: iPad touch targets and the web content memory growth).
+- Verdict: **Needs changes** (MEDIUM items with the web session: iPad touch targets and the iPhone layout's memory growth).

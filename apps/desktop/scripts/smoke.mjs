@@ -10,7 +10,8 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 
 const root = resolve(import.meta.dirname, "..");
-const exe = join(root, "src-tauri/target/debug", process.platform === "win32" ? "Folevi.exe" : "Folevi");
+// Windows' program is Folevi.exe; Linux's is folevi (tauri.linux.conf.json; a Mac's disk doesn't mind the case).
+const exe = join(root, "src-tauri/target/debug", process.platform === "win32" ? "Folevi.exe" : process.platform === "linux" ? "folevi" : "Folevi");
 const data = mkdtempSync(join(tmpdir(), "folevi-smoke-"));
 // --embedded: the interface as a release build serves it (installed beside the app as resources, src-tauri/target/
 // debug/web here; a page served under the wrong name once left release builds blank while runs from the folder were
@@ -50,7 +51,8 @@ const checks = [
   ["the caption buttons' corner is kept clear", process.platform === "linux" || parseFloat(steps.get("app")?.tabbarRight ?? "0") > 100],
   ["the library is on this computer", steps.get("library-info")?.configured === true && steps.get("library-info")?.kind === "device"],
   ["the starter notes are files", (steps.get("library-list")?.notes ?? 0) > 0],
-  ["Settings > Desktop app speaks Windows", steps.get("settings")?.hasPC === true && steps.get("settings")?.shortcut === true],
+  // Windows says "this PC", Linux "this computer".
+  ["Settings > Desktop app speaks this platform", steps.get("settings")?.hasPC === (process.platform !== "linux") && steps.get("settings")?.shortcut === true],
 ];
 for (const [name, ok] of checks) console.log(`${ok ? "ok  " : "FAIL"} ${name}`);
 const failed = checks.filter(([, ok]) => !ok).length;

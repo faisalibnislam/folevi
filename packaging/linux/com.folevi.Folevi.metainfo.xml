@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- AppStream metadata: what software centers (GNOME Software, KDE Discover, Flathub) show for Folevi.
+     Installed as /usr/share/metainfo/com.folevi.Folevi.metainfo.xml (deb, rpm) and /app/share/metainfo/ (Flatpak).
+     Check it with appstreamcli validate (the pedantic option catches the most).
+     Before Flathub: the screenshots below must exist at those URLs (docs/LINUX.md, "Flathub"). -->
+<component type="desktop-application">
+  <id>com.folevi.Folevi</id>
+  <name>Folevi</name>
+  <summary>Notes, tasks and docs in one calm place</summary>
+  <developer id="com.folevi">
+    <name>Folevi</name>
+  </developer>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>LicenseRef-proprietary=https://folevi.com/terms</project_license>
+  <launchable type="desktop-id">Folevi.desktop</launchable>
+  <icon type="remote" width="512" height="512">https://folevi.com/icons/icon-512.png</icon>
+
+  <description>
+    <p>
+      Folevi keeps your notes, tasks and documents together. Write in a clean editor, organize with folders,
+      and find anything fast.
+    </p>
+    <ul>
+      <li>Notes with checklists, tables, code and images</li>
+      <li>Tasks with due dates, a Today view and a calendar</li>
+      <li>Quick Add from anywhere on your desktop</li>
+      <li>Keep notes in your Folevi account, or only on this computer</li>
+      <li>Foli AI answers questions about your notes when you turn it on</li>
+    </ul>
+    <p>A Folevi account syncs your notes with the web, Mac, Windows, iPhone, iPad and Android apps.</p>
+  </description>
+
+  <url type="homepage">https://folevi.com</url>
+  <url type="help">https://folevi.com/help</url>
+  <url type="bugtracker">https://folevi.com/help</url>
+  <url type="contact">https://folevi.com/help</url>
+
+  <categories>
+    <category>Office</category>
+    <category>Utility</category>
+  </categories>
+  <keywords>
+    <keyword>notes</keyword>
+    <keyword>tasks</keyword>
+    <keyword>todo</keyword>
+    <keyword>docs</keyword>
+    <keyword>writing</keyword>
+  </keywords>
+
+  <screenshots>
+    <screenshot type="default">
+      <caption>Notes and folders</caption>
+      <image>https://folevi.com/marketing/linux/screenshot-notes.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>Tasks for today</caption>
+      <image>https://folevi.com/marketing/linux/screenshot-today.png</image>
+    </screenshot>
+  </screenshots>
+
+  <branding>
+    <color type="primary" scheme_preference="light">#f4f4f2</color>
+    <color type="primary" scheme_preference="dark">#111111</color>
+  </branding>
+
+  <requires>
+    <display_length compare="ge">768</display_length>
+  </requires>
+  <supports>
+    <control>keyboard</control>
+    <control>pointing</control>
+    <control>touch</control>
+  </supports>
+
+  <provides>
+    <binary>folevi</binary>
+  </provides>
+
+  <content_rating type="oars-1.1">
+    <content_attribute id="social-info">mild</content_attribute>
+  </content_rating>
+
+  <releases>
+    <release version="1.5.75" date="2026-11-24">
+      <description>
+        <p>The first Folevi for Linux.</p>
+      </description>
+    </release>
+  </releases>
+</component>

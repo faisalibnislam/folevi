@@ -250,6 +250,15 @@ The ones most likely to be broken:
 
 ## 9. Current state (as of 2026-11-24)
 
+**Folevi for Linux (branch `claude/linux-tauri-02790e`, worktree `.claude/worktrees/linux-tauri-02790e`, PR 73 https://github.com/faisalibnislam/folevi/pull/73 into `claude/desktop-tauri`, not merged; 1.5.75 published as downloads at `https://folevi.com/download/linux/`, latest links `Folevi-x86_64.AppImage`, `Folevi-aarch64.AppImage`, `Folevi-amd64.deb`, `Folevi-arm64.deb`, `Folevi-x86_64.rpm`, `Folevi-aarch64.rpm`, `SHA256SUMS.txt`; docs/LINUX.md "Releasing"):**
+the shared Tauri 2 desktop shell (WebKitGTK) packaged for Linux, per the owner's 2026-11-24 "one web app
+everywhere, system web views" direction. The shell itself comes from the Windows session (`claude/desktop-tauri`,
+`apps/desktop/src-tauri`, merged into this branch 2026-11-24); Linux adds only Linux config, `src-tauri/src/linux.rs` and packaging.
+Committed so far: `packaging/linux/` (desktop template, AppStream metadata, icons, `tauri.linux.conf.json` staged
+for the shell, Flatpak manifest on GNOME 51, optional Snap, apt and dnf/zypper repo scripts), build scripts (Lima
+VM on this Mac: Ubuntu 22.04 arm64 + a Rosetta amd64 root), Linux jobs in `.github/workflows/desktop.yml`,
+`apps/desktop/src-tauri/src/linux.rs` and `tauri.linux.conf.json`, `docs/LINUX.md`, `docs/LINUX-TESTING.md`. Not on Flathub, Snap or apt/dnf (each needs the owner's OK); no in-app updates (no signing key). Untested on real Linux hardware: Wayland Quick Add, tray, notifications, file dialogs, browser sign-in, NVIDIA, Fedora/openSUSE installs, the Flatpak.
+
 **Folevi for Windows and Linux (branch `claude/desktop-tauri`, PR 65 https://github.com/faisalibnislam/folevi/pull/65 into `main`, not merged; Windows 1.5.73 unsigned test installers published at `folevi.com/download/windows/Folevi_1.5.73_<arm64|x64>-setup.exe`):** the owner chose "one
 web app everywhere" and the Mac app's approach (small, light), so the desktop app is now **Tauri 2** in the system
 web view (WebView2, WebKitGTK), replacing the same day's Electron build (PR 58, `claude/windows-electron-4ed862`,
@@ -585,6 +594,24 @@ signed-in account, 1.5.58's frosted folders with a large library, and the iPad c
 account button should move past iPadOS's window buttons).
 
 ## 10. Next steps / open work
+- Folevi for Linux, changelog at the sync with `main` (main session's ask, 2026-11-25; PR 73 merges last, after PR 65):
+  combine Linux into the existing 1.5.75 entry (iOS's, from `claude/mobile-capacitor-f41734` / tag v1.5.75, build
+  90) in CHANGELOG.json and CHANGELOG.md rather than adding a second one. Proposed: summary "Folevi on iPhone uses
+  less memory as you open and close notes, and Folevi for Linux is here."; added: "Folevi for Linux: AppImage,
+  .deb and .rpm for Intel/AMD and ARM computers, at folevi.com/download/linux."; keep iOS's improved line. Tags
+  already go to v1.5.76, so nothing new is cut for this.
+- Folevi for Linux (`claude/linux-tauri-02790e`, 1.5.75 published): the owner tries it on real Linux (docs/LINUX-TESTING.md, files in `~/Downloads/Folevi for Linux 1.5.75 test/`); PR 73 into `claude/desktop-tauri` waits on the owner's review and merge (it reaches `main` with PR 65); record 1.5.75 in version.json/CHANGELOG/tag at merge (main session); the blank-window fix reached Windows (c150ba78); Linux memory (docs/LINUX.md "Memory"): the web export as files beside the program landed (6269a7ff) and is merged here: Linux 355 MB PSS in the VM; later, each with an OK: Flathub, Snap, apt/dnf repositories, an update signing key. Earlier notes:
+  check the Linux compile and tests of the merged shell in the VM, build AppImage/.deb/.rpm for x86_64 and
+  aarch64 in the Lima VM `folevi-linux`, smoke-test, put test builds in `~/Downloads/Folevi for Linux <version> test/`.
+  Owner decisions pending: Linux signing key and repositories on R2, Flathub/Snap submission (all need an OK).
+- iPhone and iPad redesign (`claude/ios-native-redesign-f4a8be`): PR 56 into `main` waits on the owner's review
+  and merge; the owner tries 1.5.67 from TestFlight. The `v1.5.65` and `v1.5.67` tags are local only (pushing them
+  was not asked for). Open question: should the iPad inspector's Foli AI tab get back the web panel's ready-made
+  actions (Summarize, Continue...) next to the Ask chat?
+  Owner's calls from the 2026-11-23 HIG audit: Foli AI is a tab that opens a sheet (the HIG says tabs navigate,
+  never act); section headings stay sentence case (Apple uses title case); dark mode keeps a pure black frame.
+  Known gaps: the notifications sheet's rows are not on cards yet; screens borrowed from the iPad (Foli DNA,
+  Reviews) keep their own white page under the system bar.
 - Folevi for Windows and Linux (`claude/desktop-tauri`, Tauri): the owner tries the CI test builds (checklist in
   `docs/DESKTOP_APP.md`); the Web session adds Windows to folevi.com's download page (stable links above) and the main
   session records 1.5.73; when PR 65's turn comes (after PR 66), merge main and, if the Mac PR merged first,
@@ -750,6 +777,29 @@ account button should move past iPadOS's window buttons).
   `DATABASE_UDF_USER_TIMEOUT_SECONDS=4` for that backend. Bursts show in `convex.log` as "took a long time".
 
 ## 12. Change log
+- 2026-11-25: PR 73: merged `claude/desktop-tauri` (Windows 1.5.77, main 1a1ca06f); `apps/desktop/RELEASE_VERSION` removed (version.json is 1.5.77), so the next Linux build is 1.5.77 or later unless stamped. CHANGELOG now has iOS's 1.5.75 entry; Linux joins it at the sync after PR 65.
+- 2026-11-25: PR 73: merged `claude/desktop-tauri` (now carrying main 4d22880f, the web PRs); HANDOFF conflict only. The web download page's Linux links (apps/web/src/components/marketing/site.ts) match the uploaded latest names.
+- 2026-11-25: Main session: PR 73 merges last (after PR 65); its 1.5.75 changelog lines join iOS's 1.5.75 entry at the sync with main (proposed text in Next steps). PR 73 e2e shard 7 (tab-switch.spec) failed twice, then passed on rerun (flaky; the branch changes no web code); all PR 73 checks green. Merge order (main session): 66, 69, 65, then 73.
+- 2026-11-24: PR 73: merged `claude/desktop-tauri` again (HANDOFF conflict only); Flatpak CI chose the sandboxed builder on Ubuntu 24.04 (flatpak-builder 1.4.2) and it couldn't find the SDK; the version check in `flatpak-bundle.sh` now parses robustly and logs what it found.
+- 2026-11-24: PR 73 conflict (HANDOFF only) resolved by merging `claude/desktop-tauri` (interface installed as files, 6269a7ff; ready marker for measurements). On Linux in the VM: .deb puts the interface at /usr/lib/Folevi/web, the Flatpak at /app/lib/Folevi/web, AppImage inside; all three open; memory 355 MB PSS (main 101).
+- 2026-11-24: First Flatpak: ARM bundle from the 1.5.75 .deb built in the VM, installed system-wide and opens to the first-launch screen (tray library loads); copy in `~/Downloads/Folevi for Linux 1.5.75 test/`. Not on Flathub or folevi.com. AppStream release set to 1.5.75.
+- 2026-11-24: Flatpak in the VM: the inlined tray modules and the Folevi module build; Ubuntu 22.04's flatpak-builder 1.2 then fails on appstream-compose (gone from GNOME 51), so `flatpak-bundle.sh` uses Flathub's org.flatpak.Builder below 1.3.
+- 2026-11-24: `install-build-deps.sh --test-tools` adds elfutils (flatpak-builder needs eu-strip).
+- 2026-11-24: PR 73 CI: both Flatpak jobs failed (Flathub's shared tray module puts ayatana-ido in /app/lib64 with the GNOME 51 SDK); the tray modules are now inlined in `packaging/linux/flatpak/com.folevi.Folevi.yml` with `-DCMAKE_INSTALL_LIBDIR=lib` and their patches.
+- 2026-11-24: Windows session takes on the web-export-as-files memory idea for Windows and Linux; Linux merges it when it lands and re-measures.
+- 2026-11-24: Linux memory measured in the VM (docs/LINUX.md "Memory"): 1.5.75 as published 446 MB PSS; with the merged Quick Add-on-first-use change (e75ac156) 369 MB (Electron on CI: 348). Folevi's own process: 27 MB program file (web export compiled in), 23 MB software renderer (no GPU). Merged `claude/desktop-tauri` (e75ac156, d5283c55) into PR 73.
+- 2026-11-24: 1.5.75 is one shared release: Linux downloads and the iPhone/iPad TestFlight build (mobile session tagged v1.5.75); the Linux files keep their names. Next version on any platform: 1.5.76 or later, check the tags first.
+- 2026-11-24: PR 73 CI: gitleaks flagged the made-up Vault demo login in apps/mac/scripts/screens.mjs (from the Mac web-view work); added main's same `.gitleaksignore` entry.
+- 2026-11-24: PR 73 opened (owner's OK): `claude/linux-tauri-02790e` into `claude/desktop-tauri`, after merging its two newest commits (the cherry-picked blank-window fix, smoke.mjs `--embedded`); the `--embedded` smoke walk passes 7/7 on Linux.
+- 2026-11-24: Folevi for Linux 1.5.75 published (owner's OK in chat): 14 files at R2 `folevi-updates/linux/` (versioned AppImage, .deb, .rpm for x86_64 and aarch64, SHA256SUMS-1.5.75.txt, and no-cache latest names), all checked live (sizes, types, a downloaded .deb's checksum). 144 Rust tests pass on the merged code.
+- 2026-11-24: Linux 1.5.75 built (AppImage, .deb, .rpm for x86_64 and aarch64) and smoke-tested in the VM: installed .deb and AppImage of both architectures render the first-launch screen (x86_64 through Rosetta); test copies in `~/Downloads/Folevi for Linux 1.5.75 test/`; upload next.
+- 2026-11-24: Linux release 1.5.75 under way (owner in chat: upload the Linux builds now; Flathub, Snap, apt/dnf still need an OK): merged the latest `claude/desktop-tauri` (Windows 1.5.73 recorded), `apps/desktop/RELEASE_VERSION` = 1.5.75, `packaging/linux/scripts/upload-release.sh` added; building in the VM, upload to `folevi.com/download/linux/` after the smoke tests.
+- 2026-11-24: Desktop app fix found on Linux: release builds showed a blank window because a built-in page was served under the asked-for name ("documents" as application/octet-stream, no boot script); `asset()` in lib.rs now takes exact names only. Likely affects Windows release builds too (told the Windows session). On Linux: release renders from its built-in files, 144 Rust tests and all 7 smoke-walk checks pass; AppImage, .deb, .rpm built for aarch64 and x86_64 with `build-in-lima.sh`.
+- 2026-11-24: Linux on the shared shell: merged `claude/desktop-tauri` (ed8a4c17) into `claude/linux-tauri-02790e`; added `apps/desktop/src-tauri/src/linux.rs` with cfg(linux) hooks, the Linux dialog/portal dependencies, `tauri.linux.conf.json`; one Flatpak manifest (`packaging/linux/flatpak`, GNOME 51, tray module) replaced `apps/desktop/flatpak`; `desktop.yml` builds Flatpaks for both architectures. Linux compile and tests running in the VM.
+- 2026-11-24: The merged shell compiles on Linux (Ubuntu 22.04 arm64 VM) and 143 of 144 Rust tests pass, the new Linux ones included; `reminders::survive_a_restart_and_late_ones_show_within_a_day` failed once under heavy load and passes 3 of 3 alone (timing). `build-in-lima.sh` now also copies the iOS shell-bridge.js and the local-store fixtures and keeps macOS `._` files out.
+- 2026-11-24: Linux probe (a small Tauri app with `linux.rs`, scratch only) passed on X11 in the VM: window renders, tray, notification sent, global shortcut registered, `folevi://new` from a second launch reaches the running app, Secret Service store and read back, desktop dark mode through the portal turns the page dark (WebKitGTK 2.50 does that by itself; the hook keeps GTK's title bar and menus in step). Smoke test fixed (inner part re-invokes the script; test keyring password; portals get the display).
+- 2026-11-24: Linux build root fix: the amd64 root is Ubuntu's own 22.04 base image (debootstrap unmounts /proc mid-way and Rosetta can't run x86_64 programs without it); `setup-amd64-root.sh` and `install-build-deps.sh` (no sudo needed as root) updated. The build scripts live in `packaging/linux/scripts/` (the repo's .gitignore drops any `build/` folder, so the first commit missed them).
+- 2026-11-24: Folevi for Linux started on `claude/linux-tauri-02790e`: packaging, docs, build scripts and CI workflow committed (34cc11fe); waiting on the shared Tauri shell from `claude/desktop-tauri`.
 - 2026-11-25: Merged main (4d22880f, the web PRs incl. the Windows download page, PR 70) into `claude/desktop-tauri` for PR 65; 1.5.73's Mac and Windows changelog entries combined into one release (build 88, tag v1.5.73); web 2,169, Rust 141, bridge 4 tests and the Windows smoke walk pass.
 - 2026-11-24: Desktop CI measurements now require the page to have started (the app prints "FOLEVI READY" with FOLEVI_REPORT_READY; measure.mjs --expect-ready fails otherwise). Verified run 45443908032 (every Tauri page started) with both memory changes: Windows x64 151 MB private (375 MB working set) vs Electron's 207 (433), ARM64 149 MB, Linux x86_64 365 vs 349 MB PSS. Not in the published 1.5.73 yet.
 - 2026-11-24: Desktop memory work (not in the published 1.5.73 yet): Quick Add's window made on first use (e75ac156; Linux measured 446 -> 369 MB PSS) and the web export installed as files beside the app instead of compiled in (6269a7ff; frontendDist is `apps/desktop/shell-stub`, the pages read from `<resources>/web`); CI run measuring both on Windows pending.

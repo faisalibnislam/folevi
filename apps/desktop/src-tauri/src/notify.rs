@@ -37,7 +37,8 @@ pub fn show(app_id: &str, title: &str, body: &str, on_click: OnClick) {
             #[cfg(all(unix, not(target_os = "macos")))]
             {
                 n.action("default", "Open");
-                n.icon("com.folevi.desktop");
+                #[cfg(target_os = "linux")]
+                n.icon(crate::linux::icon_name());
                 if let Ok(handle) = n.show() {
                     handle.wait_for_action(|action| {
                         if action == "default" {

@@ -6,7 +6,7 @@ view, WebView2 on Windows and WebKitGTK on Linux, so it carries no browser of it
 | System | Architectures | Packages |
 | --- | --- | --- |
 | Windows 10 22H2 and Windows 11 | ARM64, x64 | NSIS installer (ARM64 and x64), MSI (x64) |
-| Linux | x86_64, aarch64 | AppImage, .deb (Ubuntu, Debian), .rpm (Fedora, openSUSE), Flatpak |
+| Linux | x86_64, aarch64 | AppImage, .deb (Ubuntu, Debian), .rpm (Fedora, openSUSE), Flatpak (Linux details: docs/LINUX.md) |
 
 The interface is the export every Folevi app carries (`apps/web/scripts/build-shell.mjs --platform windows`, used
 for Linux too), compiled into the app and served at `app://localhost` (`https://app.localhost` on Windows).
@@ -125,8 +125,8 @@ version came from `apps/desktop/RELEASE_VERSION` (1.5.73) because this branch's 
 - Updates: the Tauri updater is in the app and points at `folevi.com/download/desktop/<target>-<arch>/latest.json`,
   but stays off until the owner approves an update signing key (it signs every update) and its public key is put in
   `tauri.conf.json`.
-- Signing (Windows), uploading to R2, a download page, Flathub submission (`flatpak/com.folevi.desktop.yml` needs the
-  release's .deb addresses and checksums), the Microsoft Store.
+- Signing (Windows), uploading to R2, a download page, Flathub submission (`packaging/linux/flatpak/com.folevi.Folevi.yml`
+  needs the release's .deb addresses and checksums; docs/LINUX.md), the Microsoft Store.
 - Dropbox and Google Drive sign-in on this platform (the library's cloud copy is ported; the sign-in flow isn't).
 - An app lock, notification actions, call recording, text in images.
 - Snap layouts when hovering the maximize button (Windows+Z still works).

@@ -8,11 +8,20 @@
 set -euo pipefail
 DEB="$(readlink -f "${1:?.deb}")"; OUT="$(readlink -f "$(dirname "${2:?out .flatpak}")")/$(basename "$2")"
 HERE="$(cd "$(dirname "$0")/.." && pwd)"
-WORK="$(mktemp -d)"; trap 'rm -rf "$WORK"' EXIT
+# Under home, not /tmp: Flathub's builder runs sandboxed and doesn't see the host's /tmp.
+mkdir -p "$HOME/.cache"; WORK="$(mktemp -d "$HOME/.cache/folevi-flatpak.XXXXXX")"; trap 'rm -rf "$WORK"' EXIT
 
 RUNTIME="$(awk -F"'" '/^runtime-version:/ { print $2 }' "$HERE/flatpak/com.folevi.Folevi.yml")"
 flatpak remote-add --user --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
 flatpak install --user -y --noninteractive flathub "org.gnome.Platform//$RUNTIME" "org.gnome.Sdk//$RUNTIME"
+
+# flatpak-builder 1.3 or newer (it composes AppStream with appstreamcli; 1.2, Ubuntu 22.04's, calls
+# appstream-compose, which the GNOME 51 SDK no longer has). Older systems use Flathub's own builder.
+BUILDER=(flatpak-builder)
+if ! printf '1.3\n%s\n' "$(flatpak-builder --version | awk '{ print $2 }')" | sort -V -C; then
+  flatpak install --user -y --noninteractive flathub org.flatpak.Builder
+  BUILDER=(flatpak run --filesystem=host org.flatpak.Builder)
+fi
 
 mkdir -p "$WORK/flatpak"
 cp "$HERE/com.folevi.Folevi.metainfo.xml" "$HERE/folevi.desktop.hbs" "$WORK/"
@@ -31,6 +40,6 @@ open(sys.argv[2], "w").write(text)
 EOF
 
 cd "$WORK/flatpak"
-flatpak-builder --user --force-clean --disable-rofiles-fuse --repo=repo build com.folevi.Folevi.yml
+"${BUILDER[@]}" --user --force-clean --disable-rofiles-fuse --repo=repo build com.folevi.Folevi.yml
 flatpak build-bundle --runtime-repo=https://dl.flathub.org/repo/flathub.flatpakrepo repo "$OUT" com.folevi.Folevi
 echo "Flatpak bundle: $OUT ($(du -m "$OUT" | cut -f1) MB)"

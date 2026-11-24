@@ -1,13 +1,11 @@
-// The iPad's wide layout (docs/IOS_REBUILD_PLAN.md, I7), in the Mac's native look since the owner's 2026-11-19
-// decision ("the same layout as the Mac", docs/MAC_NATIVE_LOOK.md; iPadOS 26 controls and touch sizes): the window's
-// grey surface (the Mac's translucent frame) under everything; on it the strip along the top (the sidebar's button,
-// Home, Show All Tabs and the tabs in their track, the sync status and the bell), the sidebar under
-// it at the leading edge, and the content card beside it. Since the owner's 2026-11-23 pick (the Mac UI guide's
-// window profile, docs/design/macloving-mac-ui.md) the card holds its own top bar (IPadScreenBar: Back and Forward,
-// the title, the screen's controls in one glass capsule, New note, search) with the screen below it; on a note the
-// page draws its sheet into the card and its tools as a flat rounded panel inside it (`data-ipad-native`,
-// globals.css). The same views as the Mac's frame (FrameViews.swift lays them out with AppKit there); the note is
-// the app's one Page View, handed in as `page`.
+// The iPad's wide layout (docs/IOS_REBUILD_PLAN.md, I7), native like the Mac's window since the owner's 2026-11-24
+// pick (the Mac set its UI guide aside for a window built the way Finder and Notes are): iPadOS's own split view, the
+// sidebar in its column (hidden and shown by the system's button, sliding over a narrow window), and the detail
+// under the system toolbar in Liquid Glass (IPadToolbar: Back and Forward, the title and subtitle, the screen's own
+// items, New note in Folevi's ink, sync and the bell, search). Folevi's tabs sit in a row of their own under the
+// toolbar, as Safari's on iPadOS; a note's tools (Style, Format, Insert, Foli AI) are native panels in the system
+// inspector (IPadNoteInspector). The same views as the Mac's frame for the screens; the note is the app's one Page
+// View, handed in as `page`.
 #if os(iOS)
 import Combine
 import SwiftUI
@@ -37,6 +35,12 @@ public struct IPadFrameView<Page: View>: View {
     /// The window's width (all the frame lays out by): read on its own, so a change of height (the keyboard coming
     /// up, a sheet) doesn't run the whole frame again as the GeometryReader round it did.
     @State private var width: CGFloat = 0
+    /// The note's tools in the inspector: shown, and which.
+    @State private var toolsShown = false
+    @State private var tool: IPadNoteTool = .format
+    /// The toolbar's search field.
+    @State private var searchText = ""
+    @FocusState private var searchFocused: Bool
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.colorScheme) private var scheme
 
@@ -53,57 +57,20 @@ public struct IPadFrameView<Page: View>: View {
     }
 
     public var body: some View {
-        let m = MacLook.containerMargin
-        // The sidebar beside the card (the Mac's), unless it's hidden or the window is too narrow for it.
-        let inline = !model.sidebarFloats && !model.sidebarHidden
-        return ZStack(alignment: .topLeading) {
-                WindowMaterial().ignoresSafeArea()
-                VStack(spacing: 0) {
-                    WebTopBar(model: model)
-                        .frame(height: MacLook.titleBarHeight)
-                    HStack(spacing: 0) {
-                        if inline {
-                            sidebar
-                                .frame(width: MacLook.sidebarWidth)
-                                .transition(.move(edge: .leading).combined(with: .opacity))
-                        }
-                        // (A note's panel is inside the card now, so the card keeps its margins on a note too.)
-                        card
-                            .padding(.leading, inline ? 0 : m)
-                            .padding(.trailing, m)
-                            .padding(.bottom, m)
-                    }
-                }
-                .ignoresSafeArea(.container, edges: .bottom)
-                // Too narrow for the sidebar beside the content: it slides over the card on the frame's surface, and
-                // goes again with a tap beside it or once something in it is picked (the route changes).
-                if model.sidebarFloats && model.sidebarOverlayShown {
-                    Color.black.opacity(0.12)
-                        .ignoresSafeArea()
-                        .contentShape(Rectangle())
-                        .onTapGesture { model.sidebarOverlayShown = false }
-                        .transition(.opacity)
-                    sidebar
-                        .frame(width: MacLook.sidebarWidth)
-                        .padding(.top, MacLook.titleBarHeight)
-                        // A swipe back towards the edge puts it away, as iPadOS's own sidebar goes (IPAD-16).
-                        .simultaneousGesture(DragGesture(minimumDistance: 20).onEnded { g in
-                            if g.translation.width < -60, abs(g.translation.width) > abs(g.translation.height) { model.sidebarOverlayShown = false }
-                        })
-                        .background {
-                            WindowMaterial()
-                                .clipShape(UnevenRoundedRectangle(bottomTrailingRadius: MacLook.containerRadius, topTrailingRadius: MacLook.containerRadius, style: .continuous))
-                                .nativeShadow(.overlay)
-                                .ignoresSafeArea()
-                        }
-                        .ignoresSafeArea(.container, edges: .bottom)
-                        .transition(.move(edge: .leading))
-                }
-            }
-            // A swipe in from the left edge brings the floating sidebar out (IPAD-16: only its button did).
-            .gesture(SidebarEdgePan { if model.sidebarFloats && !model.sidebarOverlayShown { model.sidebarOverlayShown = true } })
-            // A secondary click where nothing has a menu of its own: New note, Search, Ask Foli AI, Back, Forward.
-            .appContextMenu(model)
+        // The system's split view (the owner, 2026-11-24: the iPad native like the Mac): the sidebar column, hidden and
+        // shown by the system's own button, and the detail with iPadOS's toolbar, the tabs under it and the note's
+        // tools in the system inspector. Narrow (portrait, Split View, Stage Manager) the sidebar slides over the
+        // detail, as the system's does.
+        NavigationSplitView(columnVisibility: columnVisibility) {
+            sidebar
+                .navigationSplitViewColumnWidth(min: 240, ideal: 280, max: 340)
+                .toolbar { sidebarToolbar }
+        } detail: {
+            detail
+        }
+        .modifier(IPadSplitStyle(floats: model.sidebarFloats))
+        // A secondary click where nothing has a menu of its own: New note, Search, Ask Foli AI, Back, Forward.
+        .appContextMenu(model)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { w in
             if abs(width - w) > 0.5 { width = w }
@@ -180,28 +147,67 @@ public struct IPadFrameView<Page: View>: View {
             .defaultAppStorage(WebSidebarController.defaults)
     }
 
-    /// The content card (the owner's Mac UI guide, 2026-11-23): one opaque rounded card holding the top bar
-    /// (IPadScreenBar) and, below it, the screen or the note; toasts at its foot, Ask Foli AI in its corner. A note's
-    /// page draws into the card: its sheet on the card's fill and its own tools (Style, Format, Insert, Foli AI) as a
-    /// flat rounded panel inside the card's trailing edge (globals.css, `data-ipad-native`), the Mac's inspector.
-    private var card: some View {
-        let note = model.route.isNote
-        let shape = RoundedRectangle(cornerRadius: MacLook.containerRadius, style: .continuous)
-        // Over a screen in the other theme (the Vault), the card's own chrome (its fill, the bar and its title, Ask Foli
-        // AI, toasts) takes that theme too, as the Mac's does (ContentViewController.syncChromeAppearance); the screen
-        // keeps the window's (it flips its own colours).
-        let chrome: ColorScheme = Self.drawsOtherTheme(model.route) ? (scheme == .dark ? .light : .dark) : scheme
-        return VStack(spacing: 0) {
-            IPadScreenBar(model: model)
-                .environment(\.colorScheme, chrome)
-            Group {
-                if note {
-                    page
+    /// The sidebar's place: the system's split view keeps it (shown, collapsed by its button, or sliding over a
+    /// narrow window); the frame's own flags follow it so the keyboard and the menus keep working.
+    private var columnVisibility: Binding<NavigationSplitViewVisibility> {
+        Binding(
+            get: {
+                // (Not measured yet: the detail alone, so a narrow window doesn't open with the sidebar over it before
+                // it knows it's narrow. Narrow, the sidebar slides over the detail when asked for.)
+                if width == 0 { return .detailOnly }
+                if model.sidebarFloats { return model.sidebarOverlayShown ? .doubleColumn : .detailOnly }
+                return model.sidebarHidden ? .detailOnly : .doubleColumn
+            },
+            set: { v in
+                if model.sidebarFloats {
+                    model.sidebarOverlayShown = v == .doubleColumn || v == .all
                 } else {
-                    ScreenRoot(model: model, models: models, route: model.route)
+                    model.sidebarCollapsed = v == .detailOnly
                 }
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        )
+    }
+
+    /// The sidebar column's own bar: on a note, the switch between the note's outline (and comments, tasks, files)
+    /// and the folders in the sidebar.
+    @ToolbarContentBuilder private var sidebarToolbar: some ToolbarContent {
+        if model.route.isNote {
+            ToolbarItem(placement: .topBarTrailing) {
+                let tools = model.noteToolsShown
+                Button { WebSidebarController.setNoteTools(model, shown: !tools) } label: {
+                    Label(tools ? "Show folders" : "Show the note's outline", systemImage: tools ? "folder" : "list.bullet.rectangle")
+                }
+                .accessibilityValue(tools ? "Note outline" : "Folders")
+            }
+        }
+    }
+
+    /// The detail column: the screen or the note under the system toolbar, the tabs in a row of their own under it
+    /// (Safari's on iPadOS), the note's tools in the inspector; toasts at the foot, the Foli AI chat in the corner.
+    private var detail: some View {
+        let note = model.route.isNote
+        // Over a screen in the other theme (the Vault), the chrome takes that theme too, as the Mac's does.
+        let chrome: ColorScheme = Self.drawsOtherTheme(model.route) ? (scheme == .dark ? .light : .dark) : scheme
+        return Group {
+            if note {
+                page
+            } else {
+                ScreenRoot(model: model, models: models, route: model.route)
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .modifier(IPadTabsBar(model: model))
+        .navigationTitle(CardControls.title(model))
+        .modifier(IPadSubtitle(text: model.route.isNote ? nil : model.cardItems[model.route.tabKey]?.subtitle))
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar { IPadToolbar(model: model, inspectorShown: inspectorShown) }
+        .searchable(text: $searchText, placement: .toolbar, prompt: "Search")
+        .searchFocused($searchFocused)
+        .onSubmit(of: .search) { openPalette(searchText) }
+        .onChange(of: searchText) { _, q in if !q.isEmpty { openPalette(q) } }
+        .inspector(isPresented: inspectorShown) {
+            IPadNoteInspector(model: model, tool: $tool, askAi: askAi)
+                .inspectorColumnWidth(min: 300, ideal: 340, max: 440)
         }
         .overlay(alignment: .bottom) {
             ToastStack(model: model)
@@ -210,22 +216,46 @@ public struct IPadFrameView<Page: View>: View {
         .overlay {
             if model.overviewShown { TabOverviewLayer(model: model) }
         }
-        .clipShape(shape)
-        // The card's own fill and its quiet shadow (the Mac's: black at 2%, radius 5, 1 pt down).
-        .background {
-            shape.fill(MacLook.Colors.container).shadow(color: .black.opacity(0.02), radius: 5, y: 1)
-                .environment(\.colorScheme, chrome)
-        }
-        // Foli AI's chat floats above the card, not inside it, so the card's rounded edge never cuts its shadow.
         .overlay(alignment: .bottomTrailing) {
             AiAskOverlay(frame: model, state: askAi)
                 .environment(\.colorScheme, chrome)
         }
         .onGeometryChange(for: CGFloat.self, of: { $0.size.height }) { h in
-            // The floating chat ends under the card's own controls.
-            let max = h - MacLook.barHeight - AiAskOverlay.panelLift
+            let max = h - AiAskOverlay.panelLift
             if abs(askAi.maxHeight - max) > 0.5 { askAi.maxHeight = max }
         }
+        // A panel the page asks for (its bar's Style, Format, Insert, Foli AI) opens here, natively; the page's own
+        // stays shut.
+        .onChange(of: model.editorPanel) { _, panel in
+            guard let panel, let t = IPadNoteTool(panel) else { return }
+            tool = t
+            toolsShown = true
+            model.editor(.panelClose)
+        }
+        .onChange(of: note) { _, isNote in if !isNote { toolsShown = false } }
+        #if DEBUG
+        // FOLEVI_IPAD_TOOL=style|format|insert|ai: that tool in the inspector once a note is up (headless checks).
+        .task {
+            guard let t = ProcessInfo.processInfo.environment["FOLEVI_IPAD_TOOL"].flatMap(IPadNoteTool.init(rawValue:)) else { return }
+            try? await Task.sleep(for: .seconds(4))
+            tool = t
+            toolsShown = true
+        }
+        #endif
+        .onChange(of: model.barSearchFocus) { searchFocused = true }
+    }
+
+    /// The note's tools: shown on a note only.
+    private var inspectorShown: Binding<Bool> {
+        Binding(get: { toolsShown && model.route.isNote }, set: { toolsShown = $0 })
+    }
+
+    /// What's typed in the toolbar's search opens the palette with it (the Mac's and the old card's search).
+    private func openPalette(_ query: String) {
+        guard !query.isEmpty else { return }
+        searchText = ""
+        searchFocused = false
+        CommandPalette.show(model, query: query)
     }
 
     private static func sidebarActions(_ model: FrameModel, notifications: NotificationsModel) -> WebSidebarActions {
@@ -241,6 +271,45 @@ public struct IPadFrameView<Page: View>: View {
         // (The same system popover as the strip's cloud: IPadFrameView's showSync.)
         a.sync = { [model] anchor in model.showSync?(anchor) }
         return a
+    }
+}
+
+/// The tabs in a row of their own under the toolbar (Safari's on iPadOS 26), on the bar's own material: iOS 26 carries
+/// the scroll edge effect under it; before that a plain bar material.
+private struct IPadTabsBar: ViewModifier {
+    let model: FrameModel
+
+    func body(content: Content) -> some View {
+        if #available(iOS 26, *) {
+            content.safeAreaBar(edge: .top, spacing: 0) { tabs }
+        } else {
+            content.safeAreaInset(edge: .top, spacing: 0) { tabs.background(.bar) }
+        }
+    }
+
+    private var tabs: some View {
+        WebTopBar(model: model, tabsOnly: true).frame(height: 44)
+    }
+}
+
+/// Wide: the sidebar beside the detail, both kept whole; narrow: the detail first, the sidebar sliding over it.
+private struct IPadSplitStyle: ViewModifier {
+    let floats: Bool
+    func body(content: Content) -> some View {
+        if floats { content.navigationSplitViewStyle(.prominentDetail) } else { content.navigationSplitViewStyle(.balanced) }
+    }
+}
+
+/// The line under the title (iOS 26's navigation subtitle: a count, a date).
+private struct IPadSubtitle: ViewModifier {
+    let text: String?
+
+    func body(content: Content) -> some View {
+        if #available(iOS 26, *), let text, !text.isEmpty {
+            content.navigationSubtitle(text)
+        } else {
+            content
+        }
     }
 }
 

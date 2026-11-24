@@ -60,6 +60,8 @@ struct RebuildSettingsScreen: View {
 
     private func options(_ section: PhoneSettingsSection?, _ screen: String?) -> PhoneScreenOptions {
         var o = PhoneScreenOptions(title: section.map { PhoneSettingsSectionView.title($0, screen: screen) } ?? "Settings", grouped: true)
+        // iOS's own List, as iOS's Settings (the owner, 2026-11-24).
+        o.list = true
         if section == nil, PhoneNotesListScreen.nativeSearch {
             o.search = $query
             o.searchPrompt = "Search Settings"

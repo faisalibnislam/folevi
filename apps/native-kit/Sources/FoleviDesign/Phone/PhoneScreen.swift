@@ -36,6 +36,9 @@ public struct PhoneScreenOptions {
     /// The search capsule at the bar's end (the owner, 2026-11-23: search in each screen's top bar): on a screen with
     /// a filter it opens the filter, elsewhere the app's Search. Off for Search itself and sheets.
     public var showsSearch = true
+    /// The content is iOS's own List, inset grouped (the owner, 2026-11-24: system lists): its PhoneListSection,
+    /// PhoneGroupedSection and swipe rows become the List's sections, rows and swipe actions.
+    public var list = false
 
     public init(title: String, large: Bool = true, eyebrow: String? = nil, subtitle: String? = nil, status: String? = nil, grouped: Bool = false, collapseAt: CGFloat? = nil) {
         self.title = title
@@ -106,7 +109,56 @@ public struct PhoneScreen<Leading: View, Trailing: View, Header: View, Content: 
     /// the large title collapsing into it as it scrolls, the system's Back (and its edge swipe), and at the bar's end
     /// the Mac's order: the screen's actions in one glass capsule, the one main action in Folevi's ink, then the search
     /// capsule. The content's sections are rounded opaque cards on the grey.
-    private var nativeBody: some View {
+    @ViewBuilder private var nativeBody: some View {
+        if options.list { listBody } else { stackBody }
+    }
+
+    /// The screen as iOS's own List: the filter and the header as rows of their own with no card, then the content's
+    /// sections.
+    private var listBody: some View {
+        barChrome(listContent)
+    }
+
+    private var listContent: some View {
+        let filter = options.search.flatMap { search in (filterShown || !search.wrappedValue.isEmpty) ? search : nil }
+        let headerRow = !options.pinsHeader && Header.self != EmptyView.self
+        return List {
+            if filter != nil || headerRow {
+                // The filter and the header run edge to edge, on the screen's grey, not on a card.
+                Section {
+                    if let filter {
+                        PhoneSearchField(options.searchPrompt, text: filter, icon: options.searchIcon, autofocus: filterShown) {
+                            withAnimation(PhoneLook.reveal) { filterShown = false }
+                        }
+                    }
+                    if headerRow { header }
+                }
+                .listRowInsets(EdgeInsets())
+                .listRowBackground(Color.clear)
+                .listRowSeparator(.hidden)
+                .modifier(EdgeToEdgeSection())
+            }
+            content
+        }
+        .listStyle(.insetGrouped)
+        .listSectionSpacing(.compact)
+        .environment(\.defaultMinListRowHeight, 0)
+        .environment(\.phoneInList, true)
+        .scrollContentBackground(.hidden)
+        .scrollPosition($position)
+        .onChange(of: scrollToTop) { withAnimation(WebMotion.reduced ? nil : .easeInOut(duration: 0.35)) { position.scrollTo(edge: .top) } }
+        .onChange(of: filterShown) { _, shown in
+            if shown { withAnimation(WebMotion.reduced ? nil : .easeInOut(duration: 0.3)) { position.scrollTo(edge: .top) } }
+        }
+        .modifier(PinnedHeader(pinned: options.pinsHeader, header: header))
+        .background(surface.color.ignoresSafeArea())
+    }
+
+    private var stackBody: some View {
+        barChrome(stackContent)
+    }
+
+    private var stackContent: some View {
         ScrollViewReader { proxy in
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
@@ -138,59 +190,65 @@ public struct PhoneScreen<Leading: View, Trailing: View, Header: View, Content: 
         }
         .modifier(PinnedHeader(pinned: options.pinsHeader, header: header))
         .background(surface.color.ignoresSafeArea())
-        .navigationTitle(options.title)
-        .navigationBarTitleDisplayMode(options.large && !options.pinsHeader ? .large : .inline)
-        .modifier(PhoneScreenSubtitle(text: options.subtitle ?? options.eyebrow))
-        .navigationBarBackButtonHidden(root)
-        .toolbar {
-            if root, Leading.self != EmptyView.self {
-                // The account button is its own picture: no system glass around it (the owner, 2026-11-19: the
-                // glass circle around the workspace's logo "looks weird"), and its badge's ring in this screen's
-                // colour.
-                if #available(iOS 26, *) {
-                    ToolbarItem(placement: .topBarLeading) { leadingItem }.sharedBackgroundVisibility(.hidden)
-                } else {
-                    ToolbarItem(placement: .topBarLeading) { leadingItem }
-                }
-            }
-            if let status = options.status {
-                ToolbarItem(placement: .principal) {
-                    Text(status).font(.headline).lineLimit(1)
-                }
-            }
-            // The screen's actions: one glass capsule.
-            if hasTrailing {
-                ToolbarItem(placement: .topBarTrailing) { HStack(spacing: 6) { trailing }.environment(\.phoneInSystemBar, true) }
-            }
-            // The main action (a tab's first screen: Create, or on Tasks a quick task), in Folevi's ink.
-            if root, let rootCreate {
-                if #available(iOS 26, *), hasTrailing {
-                    ToolbarSpacer(.fixed, placement: .topBarTrailing)
-                }
-                PhoneRootCreateItem(create: rootCreate)
-            }
-            // Search, last, as on the Mac.
-            if searchAction != nil {
-                if #available(iOS 26, *), hasTrailing || (root && rootCreate != nil) {
-                    ToolbarSpacer(.fixed, placement: .topBarTrailing)
-                }
-                ToolbarItem(placement: .topBarTrailing) {
-                    // (A title with the icon, shown icon-only: the bar's overflow and VoiceOver read the title.)
-                    Button { searchAction?() } label: {
-                        Label {
-                            Text(options.search != nil ? options.searchPrompt : "Search")
-                        } icon: {
-                            WebIconView(options.search != nil ? options.searchIcon : .search, size: 21, strokeWidth: 1.9)
-                                .frame(width: 30, height: 30)
-                                .contentShape(Rectangle())
-                        }
-                        .labelStyle(.iconOnly)
+    }
+
+    /// The bar every screen shares: the title (large, collapsing), the subtitle, Back, and the trailing items in the
+    /// Mac's order.
+    private func barChrome<V: View>(_ content: V) -> some View {
+        content
+            .navigationTitle(options.title)
+            .navigationBarTitleDisplayMode(options.large && !options.pinsHeader ? .large : .inline)
+            .modifier(PhoneScreenSubtitle(text: options.subtitle ?? options.eyebrow))
+            .navigationBarBackButtonHidden(root)
+            .toolbar {
+                if root, Leading.self != EmptyView.self {
+                    // The account button is its own picture: no system glass around it (the owner, 2026-11-19: the
+                    // glass circle around the workspace's logo "looks weird"), and its badge's ring in this screen's
+                    // colour.
+                    if #available(iOS 26, *) {
+                        ToolbarItem(placement: .topBarLeading) { leadingItem }.sharedBackgroundVisibility(.hidden)
+                    } else {
+                        ToolbarItem(placement: .topBarLeading) { leadingItem }
                     }
-                    .buttonStyle(.plain)
-                    .accessibilityIdentifier("bar-search")
+                }
+                if let status = options.status {
+                    ToolbarItem(placement: .principal) {
+                        Text(status).font(.headline).lineLimit(1)
+                    }
+                }
+                // The screen's actions: one glass capsule.
+                if hasTrailing {
+                    ToolbarItem(placement: .topBarTrailing) { HStack(spacing: 6) { trailing }.environment(\.phoneInSystemBar, true) }
+                }
+                // The main action (a tab's first screen: Create, or on Tasks a quick task), in Folevi's ink.
+                if root, let rootCreate {
+                    if #available(iOS 26, *), hasTrailing {
+                        ToolbarSpacer(.fixed, placement: .topBarTrailing)
+                    }
+                    PhoneRootCreateItem(create: rootCreate)
+                }
+                // Search, last, as on the Mac.
+                if searchAction != nil {
+                    if #available(iOS 26, *), hasTrailing || (root && rootCreate != nil) {
+                        ToolbarSpacer(.fixed, placement: .topBarTrailing)
+                    }
+                    ToolbarItem(placement: .topBarTrailing) {
+                        // (A title with the icon, shown icon-only: the bar's overflow and VoiceOver read the title.)
+                        Button { searchAction?() } label: {
+                            Label {
+                                Text(options.search != nil ? options.searchPrompt : "Search")
+                            } icon: {
+                                WebIconView(options.search != nil ? options.searchIcon : .search, size: 21, strokeWidth: 1.9)
+                                    .frame(width: 30, height: 30)
+                                    .contentShape(Rectangle())
+                            }
+                            .labelStyle(.iconOnly)
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityIdentifier("bar-search")
+                    }
                 }
             }
-        }
     }
 
     /// What the bar's search capsule does: open the screen's filter (closing it again when empty), or the app's
@@ -317,7 +375,7 @@ public struct PhoneScreen<Leading: View, Trailing: View, Header: View, Content: 
     /// rounded opaque cards on it), with the tint mixed in. The web's drawing keeps its canvas unless grouped.
     private var surface: RGBA {
         #if os(iOS)
-        let base = PhoneSurface.grouped.resolve(scheme)
+        let base = PhoneLook.frame.resolve(scheme)
         #else
         let base = (options.grouped ? PhoneSurface.grouped : FoleviTokens.Chrome.canvas).resolve(scheme)
         #endif
@@ -383,6 +441,17 @@ private struct PinnedHeader<H: View>: ViewModifier {
             } else {
                 content.safeAreaInset(edge: .top, spacing: 0) { header.background(.bar) }
             }
+        } else {
+            content
+        }
+    }
+}
+
+/// A List section with no side margins (iOS 26): the screen's own header rows span the width.
+private struct EdgeToEdgeSection: ViewModifier {
+    func body(content: Content) -> some View {
+        if #available(iOS 26, *) {
+            content.listSectionMargins(.horizontal, 0)
         } else {
             content
         }

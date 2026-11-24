@@ -11,7 +11,8 @@
     "ios": "node scripts/run.mjs ios",
     "android": "node scripts/run.mjs android",
     "typecheck": "tsc --noEmit -p tsconfig.json",
-    "capacitor:update:after": "node scripts/after-update.mjs"
+    "capacitor:update:after": "node scripts/after-update.mjs",
+    "release": "node scripts/release.mjs"
   },
   "dependencies": {
     "@capacitor/action-sheet": "8.1.1",

@@ -1,6 +1,20 @@
 {
   "releases": [
     {
+      "version": "1.5.72",
+      "build": 87,
+      "released": "2026-11-24T18:18:21+06:00",
+      "type": "patch",
+      "summary": "Folevi for iPhone, iPad and Android is now one app, built from the same web app as everywhere else.",
+      "added": [
+        "One app for iPhone, iPad, iPhone Duo and Android, with the web app's own screens and layouts."
+      ],
+      "improved": [
+        "The iPhone and iPad app is about half the size."
+      ],
+      "tag": "v1.5.72"
+    },
+    {
       "version": "1.5.71",
       "build": 86,
       "released": "2026-11-24T13:21:54+06:00",

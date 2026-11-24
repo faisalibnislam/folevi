@@ -694,6 +694,7 @@ account button should move past iPadOS's window buttons).
   `DATABASE_UDF_USER_TIMEOUT_SECONDS=4` for that backend. Bursts show in `convex.log` as "took a long time".
 
 ## 12. Change log
+- 2026-11-24: `/apps` gets Folevi for Linux 1.5.75 (branch `claude/web-linux-download`, on top of the Windows PR 70): AppImage, .deb and .rpm for Intel/AMD and ARM, a suggested package from the user agent, the checksums link and the unsigned-build note.
 - 2026-11-24: `/apps` gets Folevi for Windows (branch `claude/web-windows-download`): stable installer links (arm64, x64) on folevi.com/download/windows, a picker by `navigator.userAgentData` architecture with both buttons as the fallback, and the unsigned-build note. Linux stays off the page.
 - 2026-11-24: `apps/web/test/version.test.tsx` checks the AppKit app's About panel again (AppDelegate.swift, MenuModel.swift) instead of the SwiftUI app's AppCommands.swift.
 - 2026-11-24: Secret scan: the Mac screenshot script's made-up Vault demo values (brought back in 8ebce629) marked `gitleaks:allow` and fingerprinted in `.gitleaksignore`.

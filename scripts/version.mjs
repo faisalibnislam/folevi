@@ -20,8 +20,8 @@
 // and `check` (and the web tests in CI) fail otherwise. This script writes the version and build into each project:
 //   apps/mac/project.yml                          MARKETING_VERSION, CURRENT_PROJECT_VERSION
 //   apps/ios/ios/App/App.xcodeproj/project.pbxproj MARKETING_VERSION, CURRENT_PROJECT_VERSION (app and extensions)
-//   apps/android/android/app/build.gradle.kts     versionName, versionCode
-// The website reads version.json itself (apps/web/src/lib/version.ts), and so does the built-in interface's
+// The website reads version.json itself (apps/web/src/lib/version.ts), and so do Folevi for Android's Gradle build
+// (apps/android/app/build.gradle.kts) and the built-in interface's
 // shell/build.json (apps/web/scripts/build-shell.mjs). The Mac's About panel and Settings read Info.plist, which
 // says $(MARKETING_VERSION); Sparkle's update dialog reads the appcast, which publish.mjs fills from here. The
 // workspaces' package.json "version" fields are npm package versions, not Folevi's: npm needs semver there, and
@@ -186,16 +186,6 @@ export const TARGETS = [
         /(\bCURRENT_PROJECT_VERSION = )[^;]*;/g,
         `$1${build};`,
         "CURRENT_PROJECT_VERSION",
-      ),
-  },
-  {
-    file: "apps/android/android/app/build.gradle.kts",
-    write: (text, { version, build }) =>
-      replaceAll(
-        replaceAll(text, /^(\s*versionName\s*=\s*).*$/gm, `$1"${version}"`, "versionName"),
-        /^(\s*versionCode\s*=\s*).*$/gm,
-        `$1${build}`,
-        "versionCode",
       ),
   },
 ];

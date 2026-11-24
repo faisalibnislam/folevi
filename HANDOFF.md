@@ -25,7 +25,7 @@ on `origin/main`.
 | Backend | Convex, production deployment `fastidious-clownfish-123` | Live |
 | Folevi for Mac | `apps/mac` (AppKit + native screens + one WKWebView for the editor), Developer ID, notarized, Sparkle updates from `folevi.com/download/mac/appcast.xml` | Shipped by direct download only (no Mac App Store build) |
 | Folevi for iPhone and iPad | `apps/ios` (native SwiftUI/UIKit screens, web note editor), iOS 18+ | TestFlight internal group "Folevi team" only; never submitted to App Review |
-| Android | `apps/android` (Capacitor) | Built, **paused** since 2026-10-23 by the owner: no Android work |
+| Android | `apps/android`: a native Compose app (Gradle root `apps/android`, modules `engine`, `app`); the Capacitor app is gone | **Resumed 2026-11-23** as a native app "just like iPhone" for phones, foldables, tablets and Googlebooks; first build complete on branch `claude/android-native-622675` (not merged, not on Play; `docs/ANDROID_NATIVE_PLAN.md`) |
 | Web Clipper | `apps/clipper` (Chrome/Edge extension, own lockfile) | Built and tested in CI; store listing status: see `apps/clipper/STORE.md` |
 | MCP server listing | `mcp/` (`server.json`) | Folevi exposes an MCP endpoint through its OAuth provider |
 
@@ -364,6 +364,31 @@ This session's wrangler login lives in the app's own `XDG_CONFIG_HOME` (not `~/.
 there shows the account that owns `folevi-updates`. Decisions: `docs/claude-context/memory/tab-back-and-overview-2026-11-21.md`
 and `frosted-folders-decision-2026-11-20.md`.
 
+**Android native app (2026-11-23):** branch `claude/android-native-622675` (worktree
+`.claude/worktrees/android-native-622675`, off `e12fb272`), not merged or pushed. Owner's answers:
+`docs/ANDROID_NATIVE_PLAN.md` section 1 and `docs/claude-context/memory/android-native-decisions-2026-11-23.md`.
+What's there (checklist in the plan, section 4):
+- Kotlin bridge codegen (`scripts/engine-codegen-kotlin.mjs`; `pnpm engine:gen` writes Swift and Kotlin; CI
+  `--check`), Lucide icons (`scripts/icons-codegen-kotlin.mjs`), the engine module (client, stores, WebView
+  transport; test round-trips every fixture).
+- **Contract revision 34** (on this branch): `"android"` in the marker's and `AppInfo`'s platforms; Swift and
+  Kotlin regenerated (hash `bbfa6dca`); web host posts big batches straight to `foleviEngineHost`.
+- The Capacitor app is **removed**; its Kotlin services moved into `apps/android/app` behind a host bridge
+  (`bridge/`: a `window.Capacitor` stand-in over a WebMessageListener). 38 service tests and 133 parity tests pass.
+- Screens: adaptive frame (bar / rail / Googlebook sidebar, list beside note, note stays on fold), Home, notes
+  lists, Drafts, Shared, Changes, search, Tasks with quick add, Calendar month, Foli AI chat, Settings, Vault,
+  generic gate screen (first-launch choice, sign-in, library setup, E2EE). Googlebook: shortcuts helper,
+  right-click menus, new windows, drag out. Release build with R8 and upload-key signing.
+- Checked on emulators: local mode end to end, the editor in the note pane, share target, Vault set-up/lock/
+  unlock, Googlebook-size window, fold/unfold, an R8 release build, and (2026-11-24) signing in to a test account
+  on the dev backend (`peaceful-mockingbird-196`) by tapping Sign in to Folevi, Sign in with email and Continue,
+  landing on the account's Home and notes. The test account is in `apps/android/.e2e-account.json` (git-ignored);
+  `node apps/android/scripts/e2e/signin.mjs` makes a new one.
+- **Not verified:** push (needs Firebase settings), Drive/Dropbox (need client ids), widgets and the tile on a home screen, a Back press
+  that once left the app on the desktop emulator (not reproduced).
+- Emulators: Taskeni's emulators (another project) use ports 5554-5558 now; this app's AVDs are Folevi_Phone,
+  Folevi_Tablet, Folevi_Foldable, Folevi_Desktop (1920x1200 @160). Boot them on free ports.
+
 **Also in progress:** branch `claude/native-perf-pass` (worktree `.claude/worktrees/recursing-dijkstra-48aa7c`, off
 `main` at `d617d60b`, not released): a native performance pass, report in `docs/NATIVE_PERFORMANCE_2026-11-21.md`.
 Folder cards at rest are drawn once into a picture (`FoleviDesign/Web/CardPicture.swift`; live while hovered, on whole
@@ -461,6 +486,9 @@ signed-in account, 1.5.58's frosted folders with a large library, and the iPad c
 account button should move past iPadOS's window buttons).
 
 ## 10. Next steps / open work
+- Android native (`claude/android-native-622675`, PR 54 https://github.com/faisalibnislam/folevi/pull/54): the owner reviews and merges the PR (it also carries
+  contract revision 34, which touches `apps/native-kit/.../Generated` and the web engine). Then the owner's Play steps (`apps/android/README.md` "Steps only the owner can do"), and the
+  plan's remaining phase 2 items (Credential Manager sign-in, onboarding, sharing sheet, templates).
 - iPhone and iPad redesign (`claude/ios-native-redesign-f4a8be`): the owner tries 1.5.65 from TestFlight; PR 52
   (https://github.com/faisalibnislam/folevi/pull/52) into `claude/folevi-core-529dbe` (the owner's choice) is
   open for review. The `v1.5.65` tag is local only (pushing it was not asked for).
@@ -589,6 +617,12 @@ account button should move past iPadOS's window buttons).
 - 2026-11-24: Self-hosting plan written for the owner (`docs/SELF_HOSTING_PLAN.md`): Folevi Server on NAS boxes and hosts, apps sign in to any server; plan only, decisions in its section 7.
 - 2026-11-24: PR 51 (native Mac app, 1.5.66 to 1.5.68 line) merged into main and deployed; PR 54 freed.
 - 2026-11-24: Mac tabs open as on the web and the Mac best-native pass (skills audits + owner picks) on `claude/mac-web-tabs`; not released.
+- 2026-11-24: PR 51 merged, so `main` was merged into the Android branch (PR 54): main's version kept (1.5.68, build 83, read from `version.json`; the old Capacitor `build.gradle.kts` stays deleted); both sides had used contract revision 34, so Android's platform became revision 35 (Swift, Kotlin and fixtures regenerated).
+- 2026-11-24: PR 54 CI fix: the version test checked the removed Capacitor project; it now checks that Android's Gradle build reads version.json.
+- 2026-11-24: Android native branch pushed and opened as PR 54 (14 commits, merges cleanly with main); not merged.
+- 2026-11-24: Android: signing in from the first-launch screen opened an empty Home ("The message names no place.") until a restart; the page's place marker now refreshes when the open place changes. Sign-in checked on an emulator with a dev test account; on `claude/android-native-622675`, not merged.
+- 2026-11-23: Android first build on `claude/android-native-622675`: host bridge and services moved in, Capacitor removed, all first-build screens, Vault, Googlebook keys/menus/windows, contract revision 34, R8 release build; not merged.
+- 2026-11-23: Android resumed as a native Compose app (owner's answers, research, Kotlin bridge codegen, engine module, app skeleton verified on phone/tablet/foldable/desktop emulators) on `claude/android-native-622675`; not released.
 - 2026-11-24: 1.5.68 confirmed by the owner and published to the Mac feed; Mac web-style tabs started on `claude/mac-web-tabs`; Taskeni Mac polish started in its own session.
 - 2026-11-24: 1.5.66 released (Mac on Sparkle, TestFlight) and pulled from the Mac feed after it left signed-in Macs on the loading screen (page policy never knew the place's mode); fix in 1.5.68, notarized DMG handed to the owner, not on the feed yet; tabs-match-web rule saved and forwarded.
 - 2026-11-23: Folevi for Mac: no more Core naming; `apps/mac/FoleviCore` became `apps/mac/Folevi` (project, target, scheme, module, tests), `core.mjs` became `app.mjs`, internal Core* types became App*; identity, data and update feed unchanged; 38 Mac tests and the web version test pass.

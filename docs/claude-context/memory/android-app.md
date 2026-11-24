@@ -22,3 +22,5 @@ metadata:
 **How to apply:** web stays the source of truth ([[mac-follows-web]]); once Android exists, web changes ship to Android too. Ask the owner for Play Console steps (they do console work and secrets).
 
 2026-10-23: owner said "pause the android for now". Android is built (apps/android) but paused: no new Android builds, releases or Android-specific work until the owner resumes it; web changes don't need an Android rebuild meanwhile.
+
+2026-11-23: resumed and superseded by [[android-native-decisions-2026-11-23]]: a native Compose app replaces the Capacitor shell (its Kotlin services move over).

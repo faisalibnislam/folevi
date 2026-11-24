@@ -8,8 +8,9 @@ shared shell is `apps/desktop` (docs/DESKTOP_APP.md, from the Windows session's 
 only Linux config, a Linux module, a few `#[cfg(target_os = "linux")]` lines and packaging, so the shell isn't
 forked.
 
-Status: **not released.** Test builds only. Nothing is published to Flathub, the Snap Store, folevi.com or any
-repository without the owner's OK. Native app releases are paused.
+Status: **1.5.75 published 2026-11-24** as downloads at `https://folevi.com/download/linux/` (owner's OK in chat):
+AppImage, .deb and .rpm for x86_64 and aarch64, stable latest links and SHA256 lists. Not on Flathub, the Snap Store
+or any apt/dnf repository: each needs its own OK. No in-app updates yet (no update signing key).
 
 ## Where things are
 
@@ -110,6 +111,28 @@ Linux builds need Linux (WebKitGTK and GTK can't be cross-built from a Mac). Two
 Then, from `apps/desktop`: `pnpm exec tauri build --bundles appimage,deb,rpm` (or `cargo tauri build` in
 `src-tauri`). Updater files are off until the owner approves an update signing key; then the build needs
 `TAURI_SIGNING_PRIVATE_KEY` (kept in the owner's password manager, never in the repo). `packaging/linux/scripts/smoke-test.sh` launches a build headless and screenshots it.
+
+## Releasing
+
+1. Stamp the version: `apps/desktop/RELEASE_VERSION` (until version.json records it), then
+   `node apps/desktop/scripts/version.mjs`.
+2. Build: `packaging/linux/scripts/build-in-lima.sh <out>` on the Mac (or the CI artifacts), with the web export
+   built for that version (`build-shell.mjs --platform windows --production --app-version <v>`).
+3. Smoke-test each architecture's .deb and AppImage in the VM (`smoke-test.sh`; x86_64 inside `/srv/jammy-amd64`).
+4. With the owner's OK: `packaging/linux/scripts/upload-release.sh <v> <out>` (R2 `folevi-updates/linux/`).
+
+| Latest link | File |
+| --- | --- |
+| https://folevi.com/download/linux/Folevi-x86_64.AppImage | AppImage, Intel/AMD |
+| https://folevi.com/download/linux/Folevi-aarch64.AppImage | AppImage, ARM |
+| https://folevi.com/download/linux/Folevi-amd64.deb | .deb, Intel/AMD |
+| https://folevi.com/download/linux/Folevi-arm64.deb | .deb, ARM |
+| https://folevi.com/download/linux/Folevi-x86_64.rpm | .rpm, Intel/AMD |
+| https://folevi.com/download/linux/Folevi-aarch64.rpm | .rpm, ARM |
+| https://folevi.com/download/linux/SHA256SUMS.txt | checksums |
+
+Versioned copies stay beside them (`Folevi_1.5.75_amd64.AppImage`, `Folevi_1.5.75_arm64.deb`,
+`Folevi-1.5.75-1.x86_64.rpm`, `SHA256SUMS-1.5.75.txt`...).
 
 ## Repositories (plan, not live)
 

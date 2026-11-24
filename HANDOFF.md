@@ -629,6 +629,7 @@ account button should move past iPadOS's window buttons).
   `DATABASE_UDF_USER_TIMEOUT_SECONDS=4` for that backend. Bursts show in `convex.log` as "took a long time".
 
 ## 12. Change log
+- 2026-11-24: Release 1.5.73 (build 88, tag v1.5.73, local) recorded on `claude/desktop-tauri` with the 1.5.69 to 1.5.72 history from tag v1.5.72; PR 66 (1.5.72) merges first, take the higher version on conflict.
 - 2026-11-24: Owner: "release it", on folevi.com: stable latest links live (folevi.com/download/windows/Folevi-arm64-setup.exe and Folevi-x64-setup.exe, no-cache, now 1.5.73); the download page entry (Web session) and the 1.5.73 version record and tag on main (main session) requested.
 - 2026-11-24: Folevi for Windows 1.5.73 test download published (owner's OK, after v1.5.72): unsigned NSIS installers at https://folevi.com/download/windows/Folevi_1.5.73_arm64-setup.exe (sha256 72f39313...2f4c) and .../Folevi_1.5.73_x64-setup.exe (sha256 a54b07bf...c241), R2 `folevi-updates` windows/, from CI run 45392111016; no update feed (no signing key); version.json/CHANGELOG/tag for 1.5.73 still to record at merge.
 - 2026-11-24: Owner (directly): build Folevi for Windows 1.5.73 test installers now and upload them unsigned to `folevi.com/download/windows/` once tag v1.5.72 exists; `apps/desktop/RELEASE_VERSION` stamps 1.5.73 on this branch (version.json and CHANGELOG still to record it at merge).

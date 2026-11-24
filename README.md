@@ -10,7 +10,7 @@ workspaces with their own plans, seats and billing (`docs/ACCOUNT_MODEL_PLAN.md`
 | Marketing site | `folevi.com` → `apps/web/src/app/(marketing)` | Next.js 16 (App Router) |
 | Product web app (PWA) | `app.folevi.com` → `apps/web/src/app/(app)` | Next.js, React 19, Tiptap/ProseMirror |
 | Admin console | `app.folevi.com/admin` → `apps/web/src/app/admin` | Next.js |
-| Folevi for Mac | `apps/mac` (the built-in interface on `app://folevi`) | AppKit + WKWebView, Sparkle updates: Quick Add, menu bar icon, notifications |
+| Folevi for Mac | `apps/mac` (the built-in interface on `app://folevi`) | Native SwiftUI for macOS 26, the editor in WKWebView, Sparkle updates: Quick Add, menu bar icon, notifications |
 | Backend | `convex/` | Convex (queries, mutations, actions, crons, HTTP) |
 | Identity | Built-in accounts: Better Auth inside Convex (email + password, verified email, optional authenticator-app 2FA) | `convex/auth.ts`, `convex/betterAuth` |
 | Transactional email | Resend: sending, plus the support inbox (templates rendered in the repo) | `packages/email` |
@@ -62,7 +62,7 @@ npx convex run admin:bootstrapSuperAdmin '{"email":"you@example.com"}'
 ### Folevi for Mac
 
 ```bash
-node apps/web/scripts/build-shell.mjs && node apps/mac/scripts/build.mjs && node apps/mac/scripts/mac.mjs launch
+node apps/web/scripts/build-shell.mjs && node apps/mac/scripts/build.mjs && node apps/mac/scripts/app.mjs launch --fresh
 ```
 
 Builds the built-in interface into `apps/mac/web`, then the Debug app ("Folevi Dev", its own data and

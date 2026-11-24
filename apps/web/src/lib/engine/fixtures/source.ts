@@ -1165,6 +1165,7 @@ export const FIXTURES: Record<string, Fixture> = {
   "editor.insert.slash": editor({ name: "insert", description: "Type / at the caret: the slash menu opens.", args: { kind: "slash" }, result: { ok: true } }),
   "editor.web.show.privacy": editor({ name: "web.show", description: "Show Settings > Privacy as a web page.", args: { page: "settings.privacy" }, result: { id: "settings.privacy", ready: true } }),
   "editor.web.show.deleteAccount": editor({ name: "web.show", description: "Show the delete account page.", args: { page: "settings.deleteAccount" }, result: { id: "settings.deleteAccount", ready: true } }),
+  "editor.web.show.query": editor({ name: "web.show", description: "Foli DNA around one note (revision 34: the page's query).", args: { page: "graph", query: "note=doc_00002" }, result: { id: "graph", ready: true } }),
   "editor.web.show": editor({ name: "web.show", description: "Show Connected apps (a web page with native bars).", args: { page: "settings.connectedApps" }, result: { id: "settings.connectedApps", ready: true } }),
 
   // ---- revision 7

@@ -4,6 +4,61 @@ Every Folevi release, newest first, written by `node scripts/version.mjs` from `
 
 Versions are MAJOR.UPDATE.PATCH, PATCH at least two digits: a Major release (2.0.00), a Big update (1.1.05 after 1.0.05) or a Small update (1.0.06 after 1.0.05).
 
+## Version 1.5.68: Small update
+
+Released 2026-11-24 07:43:25+06:00 (build 83, tag v1.5.68)
+
+Folevi for Mac opens signed-in accounts again.
+
+### Fixed
+
+- Mac: after updating to 1.5.66, a Mac signed in to a Folevi account stayed on the loading screen. It opens again.
+
+## Version 1.5.67: Small update
+
+Released 2026-11-24 07:30:13+06:00 (build 82, tag v1.5.67)
+
+iPhone and iPad, built the native way like Folevi for Mac.
+
+### Improved
+
+- iPad: a native window with the system sidebar, the system toolbar with New note and search, and your tabs in a row under it, as Safari has them.
+- iPad: a note's Style, Format, Insert and Foli AI open in the side panel.
+- iPhone: Settings, Tasks, Calendar, Search, Tags and note and folder lists use the system's own lists and swipe actions.
+
+## Version 1.5.66: Small update
+
+Released 2026-11-24 06:37:46+06:00 (build 81, tag v1.5.66)
+
+Folevi for Mac is rebuilt with the Mac's own window, sidebar, toolbar and inspector.
+
+### Improved
+
+- Mac: the app's screens are rebuilt with the Mac's own controls. Your notes, settings, sign-in and encryption keys carry over as it updates.
+- Mac: hide the sidebar, search from the toolbar, and open a note's tools in a panel beside it.
+- Mac: each screen's actions sit in the toolbar next to New Note, with Back and Forward at its start.
+- Mac: view choices such as list or grid use the standard segmented control.
+- iPhone and iPad: the + button uses the system's prominent glass, the search button has a title, and tag chips and iPad's Back and Forward are easier to tap.
+
+## Version 1.5.65: Small update
+
+Released 2026-11-23 22:09:59+06:00 (build 80, tag v1.5.65)
+
+A new look for iPhone and iPad, in step with Folevi for Mac.
+
+### Improved
+
+- iPhone: every screen sits on a soft grey, its lists on rounded cards, with no lines between rows.
+- iPhone: each top bar ends the same way, with the screen's actions, a black + for something new and a search button.
+- iPhone: Home starts with your places and Catch me up, then Recent, Bookmarks, Folders and tags you can tap.
+- iPhone: Tasks and Calendar keep each day's tasks together on a card.
+- iPad: each screen has its own top bar inside the page, with Back, Forward, New note and search.
+- iPad: a note's tools sit in a flat panel beside it, and the sidebar is slimmer.
+
+### Fixed
+
+- iPhone: Home no longer slides to one side while it loads.
+
 ## Version 1.5.64: Small update
 
 Released 2026-11-22 08:28:24+06:00 (build 79, tag v1.5.64)

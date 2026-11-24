@@ -27,9 +27,6 @@ struct CardControls: View {
     @Bindable var model: FrameModel
     /// Where its controls are, for its hosting view's hit test (PassThroughControlsHostingView).
     let regions: CardHitRegions
-    @State private var text = ""
-    @FocusState private var focused: Bool
-    @State private var searching = false
     /// The card's width (a page's own panel takes its last `inspectorWidth` only where the note keeps its room).
     @State private var width: CGFloat = 0
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -55,12 +52,6 @@ struct CardControls: View {
         .padding(.trailing, MacLook.barPaddingSides + (Self.panelBeside(model, width: width) ? MacLook.inspectorWidth : 0))
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .onGeometryChange(for: CGFloat.self, of: { $0.size.width }) { width = $0 }
-        .animation(MacLook.animation(reduceMotion), value: searching)
-        // ⌘K and Edit > Search All Notes: the search control opens and takes the keyboard.
-        .onChange(of: model.barSearchFocus) {
-            searching = true
-            DispatchQueue.main.async { focused = true }
-        }
         .macClickThrough()
         .environment(\.cardHitRegions, regions)
         // (The whole hosting view: the controls' frames in it.)
@@ -95,16 +86,37 @@ struct CardControls: View {
                 if let items {
                     CardGroupsView(groups: fit == .folded ? items.leading + items.trailing : items.trailing, fit: fit)
                 }
-                search
+                CardSearch(model: model)
             }
         }
     }
 
-    /// The search control: a glass capsule with the magnifier that opens into the field. One capsule throughout, its
-    /// width springing between the button's and the field's while the two insides cross-fade in it: two capsules
-    /// swapped (the button's for the field's) had no frame where both were there, so the glass couldn't morph and
-    /// only cut from one to the other.
-    private var search: some View {
+    /// A note's own panel (Style, Format, Insert, Foli AI) has the card's last `inspectorWidth` points beside the note:
+    /// open, and the card wide enough to keep `inspectorMinContent` for the note.
+    static func panelBeside(_ model: FrameModel, width: CGFloat) -> Bool {
+        model.route.isNote && model.editorPanel != nil && width - MacLook.inspectorWidth >= MacLook.inspectorMinContent
+    }
+
+    /// The title for what's on screen: a folder's name, a view's name (the tab's label).
+    static func title(_ model: FrameModel) -> String {
+        if case .folder(let id) = model.route, let f = model.folders.value?.folders.first(where: { $0.id == id }) { return f.name }
+        return model.tabs.label(model.tabs.active)
+    }
+}
+
+/// The search control: a glass capsule with the magnifier that opens into the field. One capsule throughout, its
+/// width springing between the button's and the field's while the two insides cross-fade in it: two capsules
+/// swapped (the button's for the field's) had no frame where both were there, so the glass couldn't morph and
+/// only cut from one to the other. ⌘K and Edit > Search All Notes open it and give it the keyboard.
+@MainActor
+struct CardSearch: View {
+    let model: FrameModel
+    @State private var text = ""
+    @FocusState private var focused: Bool
+    @State private var searching = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    var body: some View {
         ZStack(alignment: .leading) {
             if searching {
                 BarSearchFieldBody(text: $text, prompt: "Search", focus: $focused) { openPalette(text) }
@@ -141,6 +153,11 @@ struct CardControls: View {
         .cardHitRegion()
         .foleviTooltip("Search or jump to… (⌘K)")
         .onChange(of: focused) { _, has in if !has && text.isEmpty { searching = false } }
+        .animation(MacLook.animation(reduceMotion), value: searching)
+        .onChange(of: model.barSearchFocus) {
+            searching = true
+            DispatchQueue.main.async { focused = true }
+        }
     }
 
     private func close() {
@@ -157,18 +174,6 @@ struct CardControls: View {
         FrameSheets.window(for: model)?.makeFirstResponder(nil)
         #endif
         CommandPalette.show(model, query: query)
-    }
-
-    /// A note's own panel (Style, Format, Insert, Foli AI) has the card's last `inspectorWidth` points beside the note:
-    /// open, and the card wide enough to keep `inspectorMinContent` for the note.
-    static func panelBeside(_ model: FrameModel, width: CGFloat) -> Bool {
-        model.route.isNote && model.editorPanel != nil && width - MacLook.inspectorWidth >= MacLook.inspectorMinContent
-    }
-
-    /// The title for what's on screen: a folder's name, a view's name (the tab's label).
-    static func title(_ model: FrameModel) -> String {
-        if case .folder(let id) = model.route, let f = model.folders.value?.folders.first(where: { $0.id == id }) { return f.name }
-        return model.tabs.label(model.tabs.active)
     }
 }
 

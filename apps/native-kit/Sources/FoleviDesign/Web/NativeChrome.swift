@@ -51,6 +51,18 @@ public struct NativeChrome: Hashable, Sendable {
         appleStyles.min { abs($0.size - web) < abs($1.size - web) || (abs($0.size - web) == abs($1.size - web) && $0.size > $1.size) }!.size
     }
 
+    /// The iPhone's four interface sizes (the owner, 2026-11-23: the Mac guide's four, as iOS's text styles have
+    /// them): Subheadline 15 for secondary words, Body 17 (and Headline) for almost everything, Title 3 20 for
+    /// section titles, Title 28 for the rare large number or hero line. An Apple size snaps to the nearest of these.
+    public static func fourSize(_ apple: CGFloat) -> CGFloat {
+        switch apple {
+        case 24...: 28
+        case 18..<24: 20
+        case 16..<18: 17
+        default: 15
+        }
+    }
+
     /// The text style whose default size is `size` (an Apple size, see `appleSize`).
     static func textStyle(_ size: CGFloat) -> Font.TextStyle? {
         appleStyles.first { $0.size == size }?.style
@@ -81,8 +93,8 @@ public struct NativeChrome: Hashable, Sendable {
     public func text(_ s: WebTextStyle) -> WebTextStyle {
         guard s.family == .sans || s.family == .display else { return s }
         if dynamicType {
-            let size = Self.appleSize(s.size)
-            return WebTextStyle(family: .system, size: size, leading: Self.leading(size), weight: s.weight, letterSpacing: 0)
+            let size = Self.fourSize(Self.appleSize(s.size))
+            return WebTextStyle(family: .system, size: size, leading: Self.leading(size), weight: size == 28 ? max(s.weight, 600) : s.weight, letterSpacing: 0)
         }
         let size = size(for: s.size)
         let weight = size == title ? max(s.weight, 600) : s.weight
@@ -98,7 +110,7 @@ public struct NativeChrome: Hashable, Sendable {
         default: 400
         }
         if dynamicType {
-            let size = Self.appleSize(s == .caps ? 13 : s.size)
+            let size = Self.fourSize(Self.appleSize(s == .caps ? 15 : s.size))
             return WebTextStyle(family: .system, size: size, leading: Self.leading(size), weight: s == .caps ? 600 : weight, letterSpacing: 0)
         }
         let size = s == .caps ? small : size(for: s.size)
@@ -127,7 +139,7 @@ public extension WebFont {
     static func interface(_ chrome: NativeChrome?, _ family: WebFontFamily = .sans, size: CGFloat, weight: CGFloat = 400, italic: Bool = false) -> Font {
         guard let chrome else { return font(family, size: size, weight: weight, italic: italic) }
         if chrome.dynamicType, family != .mono {
-            let f = chrome.font(WebTextStyle(family: .system, size: NativeChrome.appleSize(size), leading: 0, weight: weight))
+            let f = chrome.font(WebTextStyle(family: .system, size: NativeChrome.fourSize(NativeChrome.appleSize(size)), leading: 0, weight: weight))
             return italic ? f.italic() : f
         }
         let f = Font.system(size: size, weight: nearestStatic(weight), design: family == .mono ? .monospaced : .default)

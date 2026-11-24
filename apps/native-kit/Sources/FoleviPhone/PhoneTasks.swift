@@ -145,12 +145,12 @@ public struct PhoneTaskLine: View {
                 .padding(.vertical, twoLines ? 10 : 15)
                 .frame(maxWidth: .infinity, minHeight: twoLines ? 64 : 52, alignment: .leading)
                 .contentShape(Rectangle())
-                .overlay(alignment: .bottom) { PhoneRowHairlineView() }
             }
             .buttonStyle(.plain)
             .padding(.leading, -11)
         }
-        .padding(.leading, 20)
+        // (On its day's or note's card: 16 in from the card's edge.)
+        .padding(.leading, 16)
         .padding(.trailing, 16)
         .animation(.easeOut(duration: 0.25), value: closed)
     }
@@ -316,7 +316,7 @@ struct PhoneTaskChips: View {
                             .padding(.trailing, 14)
                             .padding(.vertical, 4)
                             .frame(minHeight: 34)
-                            .background(Capsule().fill(on ? C(FoleviTokens.Chrome.heading, scheme) : inkMix(0.065, scheme)))
+                            .background(Capsule().fill(on ? C(FoleviTokens.Chrome.heading, scheme) : C(PhoneLook.card, scheme)))
                             .frame(height: 44)
                             .contentShape(Rectangle())
                         }
@@ -417,11 +417,12 @@ public struct PhoneTasksContent: View {
                                 .frame(maxHeight: .infinity)
                         }
                     }
-                    .padding(.leading, 20)
+                    .padding(.leading, 16)
                     .padding(.trailing, 16)
                     .frame(height: 52)
                 }
             }
+            .phoneCard()
             .padding(.top, 12)
             .accessibilityLabel("Loading tasks")
         } else if model.isEmpty {
@@ -439,8 +440,13 @@ public struct PhoneTasksContent: View {
                             folded: section.folded,
                             fold: { withAnimation(.easeOut(duration: 0.2)) { model.toggleFold(section.id) } }
                         )
-                        ForEach(section.tasks, id: \.id) { t in
-                            row(t, today: today)
+                        if !section.tasks.isEmpty {
+                            VStack(spacing: 0) {
+                                ForEach(section.tasks, id: \.id) { t in
+                                    row(t, today: today)
+                                }
+                            }
+                            .phoneCard()
                         }
                     }
                     .padding(.top, 16)

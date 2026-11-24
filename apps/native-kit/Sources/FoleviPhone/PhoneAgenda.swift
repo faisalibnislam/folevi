@@ -81,7 +81,7 @@ public struct PhoneWeekStrip: View {
                         feel()
                         select(month == String(today.prefix(7)) ? today : "\(month)-01")
                     }
-                    .background(C(FoleviTokens.Chrome.canvas, scheme))
+                    .background(C(PhoneLook.frame, scheme))
                 }
             }
             .frame(height: max(0, height), alignment: .top)
@@ -103,7 +103,8 @@ public struct PhoneWeekStrip: View {
         .padding(.horizontal, 10)
         .padding(.top, 6)
         .padding(.bottom, monthOnly ? 10 : 4)
-        .background(C(FoleviTokens.Chrome.canvas, scheme))
+        // (The frame's grey, as the screen under it: the strip is part of the bar, not a band of its own.)
+        .background(C(PhoneLook.frame, scheme))
         .contentShape(Rectangle())
         .simultaneousGesture(pullGesture(travel: max(1, fullHeight - Self.rowHeight)), including: monthOnly ? .subviews : .all)
     }
@@ -322,19 +323,24 @@ public struct PhoneAgendaContent: View {
             ForEach(Array(days.enumerated()), id: \.element.id) { i, day in
                 VStack(alignment: .leading, spacing: 0) {
                     PhoneAgendaDayHeader(date: day.day, today: today) { actions.add(day.day) }
-                    if day.isEmpty {
-                        Text("Nothing planned")
-                            .webText(WebTextStyle(family: .display, size: WebTypeRole.subheadline.metrics.size, leading: 20))
-                            .italic()
-                            .foregroundStyle(C(FoleviTokens.Chrome.inkFaint, scheme))
-                            .frame(minHeight: 56)
-                            .padding(.horizontal, 20)
-                    } else {
-                        ForEach(day.overdue + day.tasks, id: \.id) { t in
-                            PhoneTaskLine(task: t, today: today, showNote: true, onDay: true, toggle: { model.toggle(t) }, open: { model.open(t) })
+                    // The day's tasks and events on one card (the owner, 2026-11-23).
+                    VStack(alignment: .leading, spacing: 0) {
+                        if day.isEmpty {
+                            Text("Nothing planned")
+                                .webText(WebTextStyle(family: .display, size: WebTypeRole.subheadline.metrics.size, leading: 20))
+                                .italic()
+                                .foregroundStyle(C(FoleviTokens.Chrome.inkFaint, scheme))
+                                .frame(minHeight: 48)
+                                .padding(.horizontal, 16)
+                        } else {
+                            ForEach(day.overdue + day.tasks, id: \.id) { t in
+                                PhoneTaskLine(task: t, today: today, showNote: true, onDay: true, toggle: { model.toggle(t) }, open: { model.open(t) })
+                            }
+                            ForEach(day.events) { e in event(e.event) }
                         }
-                        ForEach(day.events) { e in event(e.event) }
                     }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .phoneCard()
                 }
                 .padding(.top, i == 0 ? 8 : 20)
             }
@@ -364,9 +370,8 @@ public struct PhoneAgendaContent: View {
                 }
                 .padding(.vertical, 10)
                 .frame(maxWidth: .infinity, minHeight: 64, alignment: .leading)
-                .overlay(alignment: .bottom) { PhoneRowHairlineView() }
             }
-            .padding(.leading, 20)
+            .padding(.leading, 16)
             .padding(.trailing, 16)
         }
         .buttonStyle(PhoneRowPressStyle())

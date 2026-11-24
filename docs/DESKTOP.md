@@ -1,5 +1,10 @@
 # Folevi for Mac
 
+> **Since 23 November 2026** Folevi for Mac is the native SwiftUI app (once "Folevi Core") in `apps/mac`, which
+> replaced the AppKit app described below as an update in place: same bundle id, support folder, Keychain names,
+> URL scheme, Sparkle feed and key. Its build, run and release steps are in [apps/mac/README.md](../apps/mac/README.md).
+> The AppKit app's code is at the git tag `archive/mac-appkit`. What follows is kept for its history.
+
 Folevi for Mac (`apps/mac`) is a native AppKit app that shows Folevi's own interface in the system's web view
 (`WKWebView`). The interface is the web app's built-in export (`apps/web/scripts/build-shell.mjs`), served from
 inside the app at `app://folevi`, so every screen is the same web code that runs on the website and on iPhone and

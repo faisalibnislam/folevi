@@ -285,7 +285,8 @@ and screenshots: `docs/IPHONE_DUO_PLAN.md`, `docs/iphone-duo/`. Decisions:
 
 **iPhone Duo on the native iPad window, Apple's Duo rules applied (2026-11-24; PR 55,
 https://github.com/faisalibnislam/folevi/pull/55, branch `claude/iphone-duo-native-ipad` into
-`claude/ios-native-redesign-f4a8be`; replaces PR 53, closed):** PR 53's Duo work merged with `claude/ios-native-redesign-f4a8be` (the
+`claude/ios-native-redesign-f4a8be`; replaces PR 53, closed; released as 1.5.69 build 84 to TestFlight, tag
+v1.5.69 local only):** PR 53's Duo work merged with `claude/ios-native-redesign-f4a8be` (the
 native iPad window), then a pass against Apple's "Designing for iPhone Duo" (owner: "make the best duo app possible").
 Open, the whole toolbar sits in iOS's side column (`IPadToolbar` with `sideBars`, read by `readVerticalBars`), the
 note's tools sit at its foot where the closed phone has them and the page drops its dock (marker `sideTools`), the
@@ -480,8 +481,10 @@ account button should move past iPadOS's window buttons).
 
 ## 10. Next steps / open work
 - iPhone Duo: PR 55 (https://github.com/faisalibnislam/folevi/pull/55, `claude/iphone-duo-native-ipad` into
-  `claude/ios-native-redesign-f4a8be`), replacing PR 53 (closed). It lands after the iPad redesign branch, which goes
-  to main after the 1.5.66 release (PR 51); the owner merges. Not checked: Split View halves, a real device.
+  `claude/ios-native-redesign-f4a8be`), replacing PR 53 (closed). 1.5.69 (build 84) from this branch is on TestFlight
+  (owner's OK; the branch has 1.5.68's release line merged in). The owner tries it on TestFlight; it lands after the
+  iPad redesign branch, which goes to main after the 1.5.66 release (PR 51); the owner merges. Not checked: Split View
+  halves, a real device. Next free version: 1.5.70.
 - iPhone and iPad redesign (`claude/ios-native-redesign-f4a8be`): the owner tries 1.5.65 from TestFlight; PR 52
   (https://github.com/faisalibnislam/folevi/pull/52) merged into `claude/folevi-core-529dbe` on 2026-11-24
   with the owner's OK (main untouched). The `v1.5.65` tag is local only (pushing it was not asked for).
@@ -604,6 +607,7 @@ account button should move past iPadOS's window buttons).
   `DATABASE_UDF_USER_TIMEOUT_SECONDS=4` for that backend. Bursts show in `convex.log` as "took a long time".
 
 ## 12. Change log
+- 2026-11-24: 1.5.69 (build 84) cut on `claude/iphone-duo-native-ipad` (1.5.68's release line merged in first; 1.5.68 was the Mac fix) and uploaded to TestFlight with the owner's OK (delivery 5facce96): Folevi on iPhone Duo. Tag v1.5.69 local only.
 - 2026-11-24: PR 55 opened for the iPhone Duo on the native iPad window (owner: replace PR 53); PR 53 closed, its branch kept.
 - 2026-11-24: iPhone Duo made to Apple's Duo page on `claude/iphone-duo-native-ipad` (owner's ask): whole toolbar and the note's tools in iOS's side column, page dock dropped there, sidebar beside the content and to the fold, inspector makes room; fold no longer hides the sidebar.
 - 2026-11-24: iPhone Duo put on the native iPad window (local branch `claude/iphone-duo-native-ipad`: PR 53 + the iPad redesign branch; fold handling on the tabs row); PR 53 caught up with the 1.5.66 release branch (HANDOFF conflict only); tabletop checked.

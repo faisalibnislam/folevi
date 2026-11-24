@@ -248,6 +248,15 @@ The ones most likely to be broken:
 
 ## 9. Current state (as of 2026-11-24)
 
+**Folevi for Linux (in progress, branch `claude/linux-tauri-02790e`, worktree `.claude/worktrees/linux-tauri-02790e`):**
+the shared Tauri 2 desktop shell (WebKitGTK) packaged for Linux, per the owner's 2026-11-24 "one web app
+everywhere, system web views" direction. The shell itself comes from the Windows session (`claude/desktop-tauri`,
+`apps/desktop/src-tauri`, not pushed yet); Linux adds only Linux config, `src-tauri/src/linux.rs` and packaging.
+Committed so far: `packaging/linux/` (desktop template, AppStream metadata, icons, `tauri.linux.conf.json` staged
+for the shell, Flatpak manifest on GNOME 51, optional Snap, apt and dnf/zypper repo scripts), build scripts (Lima
+VM on this Mac: Ubuntu 22.04 arm64 + a Rosetta amd64 root), `.github/workflows/linux.yml` (hand-started, artifacts
+only), `docs/LINUX.md`, `docs/LINUX-TESTING.md`. Not built against the real shell yet; nothing published.
+
 **Release, 2026-11-24 (branch `claude/folevi-core-529dbe`, PR 51 merged into `main` as 7e2080e9):**
 - **1.5.66** (tag `v1.5.66`, local): the native Mac app replacing the AppKit one, plus PR 52's iPhone/iPad redesign.
   Published to Sparkle and uploaded to TestFlight with the owner's OK. **It broke signed-in Macs:** the window stayed
@@ -487,6 +496,11 @@ signed-in account, 1.5.58's frosted folders with a large library, and the iPad c
 account button should move past iPadOS's window buttons).
 
 ## 10. Next steps / open work
+- Folevi for Linux (`claude/linux-tauri-02790e`): merge `claude/desktop-tauri` once the Windows session pushes it,
+  move `packaging/linux/tauri.linux.conf.json` into `apps/desktop/src-tauri/`, add `src/linux.rs` and its
+  `#[cfg(target_os = "linux")]` hooks (sent to the Windows session), build AppImage/.deb/.rpm for x86_64 and
+  aarch64 in the Lima VM `folevi-linux`, smoke-test, put test builds in `~/Downloads/Folevi for Linux <version> test/`.
+  Owner decisions pending: Linux signing key and repositories on R2, Flathub/Snap submission (all need an OK).
 - iPhone and iPad redesign (`claude/ios-native-redesign-f4a8be`): PR 56 into `main` waits on the owner's review
   and merge; the owner tries 1.5.67 from TestFlight. The `v1.5.65` and `v1.5.67` tags are local only (pushing them
   was not asked for). Open question: should the iPad inspector's Foli AI tab get back the web panel's ready-made
@@ -612,6 +626,7 @@ account button should move past iPadOS's window buttons).
   `DATABASE_UDF_USER_TIMEOUT_SECONDS=4` for that backend. Bursts show in `convex.log` as "took a long time".
 
 ## 12. Change log
+- 2026-11-24: Folevi for Linux started on `claude/linux-tauri-02790e`: packaging, docs, build scripts and CI workflow committed (34cc11fe); waiting on the shared Tauri shell from `claude/desktop-tauri`.
 - 2026-11-24: Merged `main` (PR 54, Android native) into `claude/ios-native-redesign-f4a8be` to clear PR 56's conflicts; only HANDOFF.md conflicted (next steps and change log, both sides kept). All native-kit iOS tests (274, 31, 38, 28, 31), the macOS build and 39 Mac app tests pass (one earlier run timed out 19 checks in FoleviScreens while the machine's load average was about 40; the rerun passed).
 - 2026-11-24: PR 56 opened (iPhone and iPad second round, 1.5.67, into `main`) after merging `main` (PR 51, 1.5.68) into `claude/ios-native-redesign-f4a8be`; all native-kit iOS tests, the macOS build and 39 Mac app tests pass.
 - 2026-11-24: Owner confirmed links inside a note stay in the same tab, like the web (saved in `ios-redesign-decisions-2026-11-23.md`); no code change.

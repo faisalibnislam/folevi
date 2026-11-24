@@ -1,4 +1,4 @@
-// The bridge contract between the native apps (iPhone, iPad, Mac) and the web engine that runs in their Page View
+// The bridge contract between the native apps (iPhone, iPad, Mac, Android) and the web engine that runs in their Page View
 // (docs/NATIVE_APP_PLAN.md section 3). This file is the single source of truth: the Swift models in
 // apps/native-kit/Sources/FoleviEngine/Generated/ are generated from it (scripts/engine-codegen.mjs), and the
 // fixtures in ./fixtures/*.json are checked against it by the vitest suite (test/engine/fixtures.test.ts) and
@@ -35,7 +35,7 @@
 export const PROTOCOL_VERSION = 1 as const;
 
 /** Bumps with every added view, command, editor command, event or field. */
-export const CONTRACT_REVISION = 34;
+export const CONTRACT_REVISION = 35;
 
 /** The `WKScriptMessageHandler` name the engine posts to. */
 export const MESSAGE_HANDLER = "foleviEngine";
@@ -57,7 +57,8 @@ export const RECOMMENDED_OVERSCAN = 100;
 
 /** What the host sets as `window.__foleviNativeChrome` before the first paint. */
 export interface NativeChromeMarker {
-  platform: "ios" | "ipados" | "macos";
+  /** Revision 35: "android" (Folevi for Android, apps/android: phones, tablets and Googlebooks). */
+  platform: "ios" | "ipados" | "macos" | "android";
   /** The protocol the host speaks; must equal `PROTOCOL_VERSION`. */
   protocol: number;
   /** The place this Page View is bound to (`acct:<user id>` or `library`); messages naming another are refused. */
@@ -70,7 +71,8 @@ export interface NativeChromeMarker {
 
 /** The app as it introduces itself in `hello`. */
 export interface AppInfo {
-  platform: "ios" | "ipados" | "macos";
+  /** Revision 35: "android". */
+  platform: "ios" | "ipados" | "macos" | "android";
   /** The unified version, `1.1.00`. */
   version: string;
   build: string;

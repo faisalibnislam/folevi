@@ -49,8 +49,10 @@ public struct NativeChromeMarker: Codable, Hashable, Sendable {
         case ios
         case ipados
         case macos
+        case android
     }
 
+    /// Revision 35: "android" (Folevi for Android, apps/android: phones, tablets and Googlebooks).
     public var platform: Platform
     /// The protocol the host speaks; must equal `PROTOCOL_VERSION`.
     public var `protocol`: Int
@@ -90,8 +92,10 @@ public struct AppInfo: Codable, Hashable, Sendable {
         case ios
         case ipados
         case macos
+        case android
     }
 
+    /// Revision 35: "android".
     public var platform: Platform
     /// The unified version, `1.1.00`.
     public var version: String

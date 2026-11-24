@@ -147,10 +147,6 @@ describe("scripts/version.mjs on a copy of the projects", () => {
     expect(marketing.length).toBeGreaterThanOrEqual(3);
     expect(new Set(marketing)).toEqual(new Set(["1.0.01"]));
     expect(new Set(builds)).toEqual(new Set(["5"]));
-    // Android: versionName shown, versionCode the hidden whole number.
-    const gradle = at("apps/android/android/app/build.gradle.kts");
-    expect(gradle).toMatch(/^\s*versionName = "1\.0\.01"$/m);
-    expect(gradle).toMatch(/^\s*versionCode = 5$/m);
     expect(v.problems(root)).toEqual([]);
   });
 
@@ -288,7 +284,12 @@ describe("the repository", () => {
     }
     expect(read("apps/ios/ios/App/App/bridge.js")).not.toMatch(/BUILD/);
     expect(read("apps/ios/ios/App/App/FoleviViewController.swift")).not.toMatch(/__FOLEVI_BUILD__/);
-    expect(read("apps/android/android/app/src/main/java/com/folevi/android/MainActivity.kt")).toMatch(/put\("version", BuildConfig\.VERSION_NAME\)/);
+    // Android: Gradle reads version.json itself (versionName shown, versionCode the hidden whole number).
+    const gradle = read("apps/android/app/build.gradle.kts");
+    expect(gradle).toMatch(/rootProject\.file\("\.\.\/\.\.\/version\.json"\)/);
+    expect(gradle).toMatch(/^\s*versionName = folevi\["version"\] as String$/m);
+    expect(gradle).toMatch(/^\s*versionCode = \(folevi\["build"\] as Number\)\.toInt\(\)$/m);
+    expect(read("apps/android/app/src/main/java/com/folevi/android/MainActivity.kt")).toMatch(/put\("version", BuildConfig\.VERSION_NAME\)/);
     // The Mac's About panel: the version alone, an empty build.
     expect(read("apps/mac/Folevi/App/AppCommands.swift")).toMatch(/Button\("About Folevi"\)/);
     expect(read("apps/mac/Folevi/App/AppCommands.swift")).toMatch(/\.applicationVersion: "Version \\\(v\)", \.version: ""/);

@@ -67,7 +67,11 @@ export function isIphoneApp(): boolean {
   if (typeof navigator === "undefined") return false;
   // Native chrome mode on an iPhone: the note page takes the phone layout (the native app draws the bars).
   const marker = nativeChrome();
-  if (marker) return marker.platform === "ios" && nativeWide() !== true;
+  // Native chrome mode on an Android phone (or any Android window too narrow for the sidebar layout): the same.
+  if (marker) {
+    if (marker.platform === "ios") return nativeWide() !== true;
+    return marker.platform === "android" && typeof window.matchMedia === "function" && window.matchMedia(IPAD_COMPACT).matches;
+  }
   if (inAndroidApp()) return typeof window.matchMedia === "function" && window.matchMedia(IPAD_COMPACT).matches;
   if (!inIosApp()) return false;
   if (/\b(iPhone|iPod)\b/.test(navigator.userAgent)) return true;

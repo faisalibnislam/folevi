@@ -1,0 +1,7 @@
+# The native app's Gradle build (settings.gradle.kts here); the Capacitor app has its own in android/.
+.gradle/
+.kotlin/
+local.properties
+/app/src/main/assets/public/
+/app/src/debug/assets/demo/
+/app/src/main/assets/folevi-cloud.js

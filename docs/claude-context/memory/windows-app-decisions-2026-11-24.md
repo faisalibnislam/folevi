@@ -1,6 +1,6 @@
 ---
 name: windows-app-decisions-2026-11-24
-description: "Owner's 2026-11-24 Windows app picks: Electron, native arm64 + x64, unsigned for now, folevi.com download with auto-update (R2), Windows 10 22H2 + 11, Folevi's own top bar with Windows caption buttons"
+description: "Owner's 2026-11-24 desktop picks: first Electron for Windows, then Tauri 2 (system web view) for Windows ARM64/x64 and Linux x86_64/aarch64; unsigned, folevi.com + R2 updates, Win10 22H2 + 11, own top bar, CI builds"
 metadata:
   type: project
 ---
@@ -16,7 +16,9 @@ setup questions (AskUserQuestion):
 - **Title bar:** Folevi's own top bar, with Windows' real caption buttons (Window Controls Overlay), not the
   standard title bar.
 
-Built in `apps/desktop` (the revived Electron app, Mac parts removed), docs in `docs/WINDOWS.md`. Tabs follow
+**Later the same day** the owner chose "one web app everywhere" and asked to keep the Mac app's approach ("small in size and run smoothly, use less ram") for every platform: the desktop app became **Tauri 2** with the system web view, for Windows (ARM64, x64) and Linux (x86_64, aarch64: AppImage, deb, rpm, Flatpak). Builds run on GitHub Actions' native machines (owner's pick), kept 7 days as workflow artifacts. The Electron build stays in history (PR 58, `claude/windows-electron-4ed862`). Mac keeps its own app.
+
+Built in `apps/desktop` (Tauri), docs in `docs/DESKTOP_APP.md`. Tabs follow
 [[tabs-match-web-2026-11-24]] for free: it is the web app's tab strip. This reverses "Windows dropped 2026-10-16"
 in [[platforms-mac-ios-web-only]].
 

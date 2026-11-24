@@ -51,4 +51,4 @@
 - [Tab Back and overview rules](tab-back-and-overview-2026-11-21.md) — Back returns to the opener tab and closes it; sidebar and + are fresh; Home's overview picture is drawn
 - [Android native decisions 2026-11-23](android-native-decisions-2026-11-23.md): native Compose app like iPhone: Googlebook/phones/tablets, API 33, M3 Expressive + Folevi colors, replaces Capacitor
 - [iOS redesign decisions 2026-11-23](ios-redesign-decisions-2026-11-23.md) — iPhone native Mac profile, tab bar Home/Tasks/Calendar/Foli AI + search, iPad ScreenBar + flat inspector, PR into core branch, TestFlight 1.5.65
-- [Windows app decisions 2026-11-24](windows-app-decisions-2026-11-24.md): Electron, native arm64 + x64, unsigned for now, folevi.com download + auto-update from R2, Windows 10 22H2 + 11, Folevi's top bar with Windows caption buttons
+- [Desktop app decisions 2026-11-24](windows-app-decisions-2026-11-24.md): Tauri 2 (system web view) for Windows ARM64/x64 and Linux x86_64/aarch64 (Electron dropped same day), unsigned, folevi.com + R2 updates, Win10 22H2 + 11, own top bar, CI builds

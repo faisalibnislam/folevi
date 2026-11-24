@@ -1,6 +1,6 @@
 # Folevi for Mac
 
-> **Folevi for Windows** (2026-11-24) is the revived Electron app in `apps/desktop`: see [WINDOWS.md](WINDOWS.md).
+> **Folevi for Windows and Linux** (2026-11-24) is the Tauri app in `apps/desktop`: see [DESKTOP_APP.md](DESKTOP_APP.md).
 
 > **Since 23 November 2026** Folevi for Mac is the native SwiftUI app (once "Folevi Core") in `apps/mac`, which
 > replaced the AppKit app described below as an update in place: same bundle id, support folder, Keychain names,

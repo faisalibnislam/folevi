@@ -515,6 +515,12 @@ signed-in account, 1.5.58's frosted folders with a large library, and the iPad c
 account button should move past iPadOS's window buttons).
 
 ## 10. Next steps / open work
+- Folevi for Linux, changelog at the sync with `main` (main session's ask, 2026-11-25; PR 73 merges last, after PR 65):
+  combine Linux into the existing 1.5.75 entry (iOS's, from `claude/mobile-capacitor-f41734` / tag v1.5.75, build
+  90) in CHANGELOG.json and CHANGELOG.md rather than adding a second one. Proposed: summary "Folevi on iPhone uses
+  less memory as you open and close notes, and Folevi for Linux is here."; added: "Folevi for Linux: AppImage,
+  .deb and .rpm for Intel/AMD and ARM computers, at folevi.com/download/linux."; keep iOS's improved line. Tags
+  already go to v1.5.76, so nothing new is cut for this.
 - Folevi for Linux (`claude/linux-tauri-02790e`, 1.5.75 published): the owner tries it on real Linux (docs/LINUX-TESTING.md, files in `~/Downloads/Folevi for Linux 1.5.75 test/`); PR 73 into `claude/desktop-tauri` waits on the owner's review and merge (it reaches `main` with PR 65); record 1.5.75 in version.json/CHANGELOG/tag at merge (main session); the blank-window fix reached Windows (c150ba78); Linux memory (docs/LINUX.md "Memory"): the web export as files beside the program landed (6269a7ff) and is merged here: Linux 355 MB PSS in the VM; later, each with an OK: Flathub, Snap, apt/dnf repositories, an update signing key. Earlier notes:
   check the Linux compile and tests of the merged shell in the VM, build AppImage/.deb/.rpm for x86_64 and
   aarch64 in the Lima VM `folevi-linux`, smoke-test, put test builds in `~/Downloads/Folevi for Linux <version> test/`.
@@ -651,6 +657,7 @@ account button should move past iPadOS's window buttons).
   `DATABASE_UDF_USER_TIMEOUT_SECONDS=4` for that backend. Bursts show in `convex.log` as "took a long time".
 
 ## 12. Change log
+- 2026-11-25: Main session: PR 73 merges last (after PR 65); its 1.5.75 changelog lines join iOS's 1.5.75 entry at the sync with main (proposed text in Next steps). PR 73 e2e shard 7 (tab-switch.spec) failed twice; the branch changes no web code, rerun requested.
 - 2026-11-24: PR 73: merged `claude/desktop-tauri` again (HANDOFF conflict only); Flatpak CI chose the sandboxed builder on Ubuntu 24.04 (flatpak-builder 1.4.2) and it couldn't find the SDK; the version check in `flatpak-bundle.sh` now parses robustly and logs what it found.
 - 2026-11-24: PR 73 conflict (HANDOFF only) resolved by merging `claude/desktop-tauri` (interface installed as files, 6269a7ff; ready marker for measurements). On Linux in the VM: .deb puts the interface at /usr/lib/Folevi/web, the Flatpak at /app/lib/Folevi/web, AppImage inside; all three open; memory 355 MB PSS (main 101).
 - 2026-11-24: First Flatpak: ARM bundle from the 1.5.75 .deb built in the VM, installed system-wide and opens to the first-launch screen (tray library loads); copy in `~/Downloads/Folevi for Linux 1.5.75 test/`. Not on Flathub or folevi.com. AppStream release set to 1.5.75.

@@ -58,6 +58,13 @@ process (`footprint`):
 | O | iPhone, copy shown without `will-change` | same | Back button | 129 MB | 308 MB | 241 MB |
 | P | iPhone, copy emptied after the move (shipped) | same | Back button | 131 MB | 281 MB | 216 MB |
 
+| Q | iPhone, PR 74's `transitions.ts` (finished animations let go: `effect = null`, handlers dropped) | same | Back button | 136 MB | 244 MB | **138 MB** |
+
+**Fixed by PR 74 (2026-11-24):** with the web session's change, WebKit's low-memory signal brings the web view back to
+its starting level after 20 note opens (138 MB against 136 MB at the start), so nothing is kept per open any more. The
+peak before the signal (246 MB) is garbage not yet collected. My cancel-and-drop test (H) didn't detach the effects;
+PR 74 does. The partial fix in 1.5.75 (emptying the copy) becomes unnecessary once PR 74 is in.
+
 What it is, as far as these runs go (2026-11-24, second follow-up):
 - About 60% of the growth is the **screen copy the iPhone layout shows during a move** (`picture()` in
   `components/iphone/transitions.ts`, a `cloneNode(true)` of the screen being left): with no copy (I), or with the

@@ -53,3 +53,4 @@
 - [iOS redesign decisions 2026-11-23](ios-redesign-decisions-2026-11-23.md) — iPhone native Mac profile, tab bar Home/Tasks/Calendar/Foli AI + search, iPad ScreenBar + flat inspector, PR into core branch, TestFlight 1.5.65
 - [Desktop app decisions 2026-11-24](windows-app-decisions-2026-11-24.md): Tauri 2 (system web view) for Windows ARM64/x64 and Linux x86_64/aarch64 (Electron dropped same day), unsigned, folevi.com + R2 updates, Win10 22H2 + 11, own top bar, CI builds
 - [Layout rule: width decides](web-everywhere-layout-rules-2026-11-24.md) — 2026-11-24: under ~700 px every window (phone, folded Duo, narrow computer window) gets the phone layout with the bottom bar; an open Duo gets the tablet layout
+- [Web everywhere rules](web-everywhere-layout-rules-2026-11-24.md): 2026-11-24, width decides (under ~700 px = phone + bottom bar, open Duo = tablet); Instrument Sans everywhere; springs kept except Mac; Android light touches

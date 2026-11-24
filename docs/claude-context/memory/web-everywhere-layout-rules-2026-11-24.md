@@ -16,6 +16,14 @@ On 2026-11-24 the owner answered (AskUserQuestion, recommended option) for the w
   must get the tablet layout).
 - Duo: tablet when open, phone when closed, nothing interactive in the fold.
 
+Platform touches (same day, AskUserQuestion; the owner did not take the system-font recommendation):
+- **Interface font: Instrument Sans everywhere**, in every app and the browser (not Segoe UI on Windows, not San
+  Francisco in the web-view Mac app). Notes keep Folevi's own fonts. The paused native apps keep what they have.
+- **Motion: keep today's springs** (the web's small bouncy springs), **except the Mac**, which keeps its no-bounce,
+  ~0.2 s motion ([[mac-best-native-pass-2026-11-24]]). Reduce Motion still turns movement into fades.
+- **Android: light touches only**: same layout and colors as iPhone, plus the press ripple, Android's back gesture and
+  share sheet. No Material shapes, no system font.
+
 **Why:** one rule everywhere is the owner's consistency-first ask.
 **How to apply:** use `apps/web/src/lib/platform.ts` (`formFactor()`, `<html data-form>`) for layout choices, not
 user-agent checks. Related: [[tabs-match-web-2026-11-24]], [[iphone-duo-decisions]].

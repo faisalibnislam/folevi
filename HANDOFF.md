@@ -248,7 +248,7 @@ The ones most likely to be broken:
 
 ## 9. Current state (as of 2026-11-24)
 
-**Release in progress, 2026-11-24 (branch `claude/folevi-core-529dbe`, PR 51 into `main`, not merged):**
+**Release, 2026-11-24 (branch `claude/folevi-core-529dbe`, PR 51 merged into `main` as 7e2080e9):**
 - **1.5.66** (tag `v1.5.66`, local): the native Mac app replacing the AppKit one, plus PR 52's iPhone/iPad redesign.
   Published to Sparkle and uploaded to TestFlight with the owner's OK. **It broke signed-in Macs:** the window stayed
   on the loading screen. Cause: the app never set `AppScheme.modeOf`, so every page got the local
@@ -260,10 +260,9 @@ The ones most likely to be broken:
   `modeOf`; `SchemeModeTests`), 70 Mac tests pass. The owner installed it by hand and confirmed their signed-in
   account opens; then it was published (feed and `Folevi.dmg` show 1.5.68, notarized). With a fake account place and
   no token, the Release build has no page errors but still waits. 1.5.67 is the iPhone/iPad release that
-  `claude/ios-native-redesign-f4a8be` cut; its changelog entry is recorded here, but its code is not on this branch.
-- **PR 51 merged into `main`** (7e2080e9, 2026-11-24) after green CI; Vercel deployed production. Then the
-  Android session was told to merge PR 54 (owner: "merge PR 54 after PR 51"). Tell the Duo session (PR 53) and the iPhone/iPad session when PR 51 has
-  merged.
+  `claude/ios-native-redesign-f4a8be` cut; its code reaches `main` through PR 56.
+- **PR 51 merged** (7e2080e9). After it: the Android session merges PR 54 (owner: "merge PR 54 after PR 51"); the
+  iPhone/iPad session opened PR 56 into `main`.
 - **Tabs (owner, 2026-11-24):** everything opens in a new tab exactly like the web on Mac, iPad, and Android
   tablets/Googlebooks (`docs/claude-context/memory/tabs-match-web-2026-11-24.md`). iPad and Android were forwarded
   to their sessions (the iPad already matched). **Mac: done on branch `claude/mac-web-tabs`** (off the release
@@ -279,7 +278,7 @@ The ones most likely to be broken:
   semantics (select vs open) across lists, Recent/Shared selection, cover image downsampling, card picture
   invalidation, Settings search.
 
-**iPhone and iPad redesigned after the Mac's window (1.5.65, TestFlight):** branch
+**iPhone and iPad redesigned after the Mac's window (1.5.65 and 1.5.67, TestFlight):** branch
 `claude/ios-native-redesign-f4a8be` (worktree `.claude/worktrees/ios-native-redesign-f4a8be`), built on the Mac
 redesign branch `claude/folevi-core-529dbe`. The owner's answers: `docs/claude-context/memory/ios-redesign-decisions-2026-11-23.md`.
 
@@ -291,7 +290,12 @@ redesign branch `claude/folevi-core-529dbe`. The owner's answers: `docs/claude-c
   20, 28), sentence-case headings. Home in the Mac's order (places, Catch me up, Recent, Bookmarks, Folders, Tags
   as chips, the rest). Tasks, Calendar and Search group rows on cards. The note keeps its drawn bars; its place
   chip is 44 pt. Tab bar unchanged: Home, Tasks, Calendar, Foli AI, search.
-- **iPad** (FoleviMac, merged from `claude/ipad-redesign`): a top bar per screen inside the card
+- **iPad, second round (2026-11-24, replaces the bullet below):** `IPadFrame` is a system split view;
+  `IPadToolbar.swift` fills the system toolbar; tabs sit in a Safari-style row under it; `IPadInspector.swift` is
+  the system inspector holding the iPhone's native Style, Format and Insert panels and the Ask Foli AI chat. Under
+  700 pt the phone layout takes over. Owner's call: the inspector's Foli AI tab is the Ask chat, not the web
+  panel's Write/Ask/Study actions.
+- **iPad, first round** (FoleviMac, merged from `claude/ipad-redesign`): a top bar per screen inside the card
   (`IPadScreenBar`: Back/Forward, title, actions capsule, New note ink pill, search; 44 pt controls), screens start
   below it; the note's tools panel is the Mac's flat inspector (`data-ipad-native` in `globals.css`); 228 pt
   sidebar, 44 pt rows; card corners 12 pt; tabs stay on the strip.
@@ -301,12 +305,16 @@ redesign branch `claude/folevi-core-529dbe`. The owner's answers: `docs/claude-c
 - **Not checked:** a real iPhone or iPad, signed-in screens (Shared with Me, Changes, notifications with data),
   Dynamic Type at the largest sizes in the app itself (the snapshot tests cover xxxl for some screens).
 - **Released:** 1.5.65 (build 80) cut on this branch (tag `v1.5.65`, local, not pushed) and uploaded to TestFlight
-  with the owner's OK (delivery 953a8af0, internal group once Apple has processed it).
-  Web and Mac are not released; `main` is not pushed.
+  with the owner's OK (delivery 953a8af0, internal group once Apple has processed it). Its first round reached
+  `main` through PR 52 into `claude/folevi-core-529dbe` and PR 51.
+- **1.5.67** (build 82, tag `v1.5.67`, local): the second round (native iPad window, iPhone system lists) on
+  TestFlight with the owner's OK. **PR 56** (https://github.com/faisalibnislam/folevi/pull/56) brings it into
+  `main`, with `main` (1.5.68) merged in; native-kit iOS tests, the macOS build and the Mac app's 39 tests pass.
+  Merging is the owner's call (it deploys the web, though no web code changed).
 
 **Folevi for Mac is now the native app (in progress, not released):** branch `claude/folevi-core-529dbe`
 (worktree `.claude/worktrees/folevi-core-529dbe`), `apps/mac`; pushed to GitHub 2026-11-23 with the owner's OK (not merged). The iPhone/iPad
-redesign (`claude/ios-native-redesign-f4a8be`) opens its pull request into this branch, not `main`.
+redesign's first round came in through PR 52; its second round goes straight to `main` (PR 56).
 
 - **What happened (2026-11-23):** the native macOS 26 app (built as "Folevi Core" from 2026-11-21) replaced the
   AppKit Folevi for Mac (the owner's choice). The AppKit app was removed from `apps/mac`; its last release, 1.5.64,
@@ -486,16 +494,16 @@ signed-in account, 1.5.58's frosted folders with a large library, and the iPad c
 account button should move past iPadOS's window buttons).
 
 ## 10. Next steps / open work
-- Android native (`claude/android-native-622675`, PR 54 https://github.com/faisalibnislam/folevi/pull/54): the owner reviews and merges the PR (it also carries
-  contract revision 34, which touches `apps/native-kit/.../Generated` and the web engine). Then the owner's Play steps (`apps/android/README.md` "Steps only the owner can do"), and the
-  plan's remaining phase 2 items (Credential Manager sign-in, onboarding, sharing sheet, templates).
-- iPhone and iPad redesign (`claude/ios-native-redesign-f4a8be`): the owner tries 1.5.65 from TestFlight; PR 52
-  (https://github.com/faisalibnislam/folevi/pull/52) into `claude/folevi-core-529dbe` (the owner's choice) is
-  open for review. The `v1.5.65` tag is local only (pushing it was not asked for).
+- iPhone and iPad redesign (`claude/ios-native-redesign-f4a8be`): PR 56 into `main` waits on the owner's review
+  and merge; the owner tries 1.5.67 from TestFlight. The `v1.5.65` and `v1.5.67` tags are local only (pushing them
+  was not asked for). Open question: should the iPad inspector's Foli AI tab get back the web panel's ready-made
+  actions (Summarize, Continue...) next to the Ask chat?
   Owner's calls from the 2026-11-23 HIG audit: Foli AI is a tab that opens a sheet (the HIG says tabs navigate,
   never act); section headings stay sentence case (Apple uses title case); dark mode keeps a pure black frame.
   Known gaps: the notifications sheet's rows are not on cards yet; screens borrowed from the iPad (Foli DNA,
   Reviews) keep their own white page under the system bar.
+- Android native (PR 54, merged into `main` as 289b11af): next are the owner's Play steps (`apps/android/README.md` "Steps only the owner can do"), and the
+  plan's remaining phase 2 items (Credential Manager sign-in, onboarding, sharing sheet, templates).
 - Folevi for Mac (native, `apps/mac`, branch `claude/folevi-core-529dbe`), the owner's order of 2026-11-23:
   1. Done 2026-11-23: the owner's Mac UI guide (`docs/design/macloving-mac-ui.md`) as the **full window
      redesign**:
@@ -589,8 +597,7 @@ account button should move past iPadOS's window buttons).
 - `pnpm audit` ignores four better-auth GHSAs on purpose (`pnpm-workspace.yaml`); upgrade better-auth and
   `@convex-dev/better-auth` together when supported, then drop the ignores.
 - zsh doesn't word-split a variable of file names: use `git diff --name-only -z | xargs -0 git commit ...`.
-- Debug iPad: launching with `FOLEVI_REBUILD_OPEN` crashes (the `desk` lazy getter calls `frameStateChanged`,
-  which reads `desk` again: `RebuildIPad.swift:213`, `RebuildFrame.swift:79`). The iPhone is fine.
+- Debug iPad: `FOLEVI_IPAD_TOOL=style|format|insert|ai` opens that tool in the inspector at launch.
 - Driving a simulator headlessly: `FOLEVI_REBUILD_OPEN=/notes` (via `SIMCTL_CHILD_`), the `folevi.rebuild` default
   for the rebuilt frame in Debug, and `scripts/gates.mjs`'s `simulator()` helper (press, engine commands) to make a
   scratch local library.
@@ -618,6 +625,13 @@ account button should move past iPadOS's window buttons).
 - 2026-11-24: Self-hosting plan written for the owner (`docs/SELF_HOSTING_PLAN.md`): Folevi Server on NAS boxes and hosts, apps sign in to any server; plan only, decisions in its section 7.
 - 2026-11-24: PR 51 (native Mac app, 1.5.66 to 1.5.68 line) merged into main and deployed; PR 54 freed.
 - 2026-11-24: Mac tabs open as on the web and the Mac best-native pass (skills audits + owner picks) on `claude/mac-web-tabs`; not released.
+- 2026-11-24: Merged `main` (PR 54, Android native) into `claude/ios-native-redesign-f4a8be` to clear PR 56's conflicts; only HANDOFF.md conflicted (next steps and change log, both sides kept). All native-kit iOS tests (274, 31, 38, 28, 31), the macOS build and 39 Mac app tests pass (one earlier run timed out 19 checks in FoleviScreens while the machine's load average was about 40; the rerun passed).
+- 2026-11-24: PR 56 opened (iPhone and iPad second round, 1.5.67, into `main`) after merging `main` (PR 51, 1.5.68) into `claude/ios-native-redesign-f4a8be`; all native-kit iOS tests, the macOS build and 39 Mac app tests pass.
+- 2026-11-24: Owner confirmed links inside a note stay in the same tab, like the web (saved in `ios-redesign-decisions-2026-11-23.md`); no code change.
+- 2026-11-24: iPad tabs audited against the web's rule (owner, 2026-11-24: everything opens in a new tab like the web): already matching, no change. Lists, cards, See all, folder cards, search, palette and Foli AI/notification links open a new tab with an opener (FrameModel.open default); sidebar items and the toolbar's New note open fresh tabs; links inside a note follow in the same tab (FrameModel:694, as tabs.tsx); Back with nothing left closes the tab and returns to its opener (TabsModel.travel). Checked on the iPad simulator.
+- 2026-11-24: 1.5.67 (build 82) cut on `claude/ios-native-redesign-f4a8be` (after merging the released 1.5.66) and uploaded to TestFlight with the owner's OK (delivery f33671ae): the native iPad window and the iPhone's system lists. Tag `v1.5.67` local; web and Mac not released; a PR into `main` follows once PR 51 merges.
+- 2026-11-24: iPad rebuilt natively and merged (`claude/ipad-native`): system split view, system toolbar (Back/Forward, title, items, ink New note, sync, bell, search), Safari-style tabs row, the note's Style/Format/Insert/Foli AI in the system inspector; Debug iPad launch with FOLEVI_REBUILD_OPEN fixed; all iOS package tests pass on the iPhone simulator.
+- 2026-11-24: Owner chose native like the Mac for iOS: iPhone lists and Settings on iOS's own List (rows unlined, native swipe actions); the iPad's native split-view rebuild runs on `claude/ipad-native` (helper, not merged yet).
 - 2026-11-24: PR 51 merged, so `main` was merged into the Android branch (PR 54): main's version kept (1.5.68, build 83, read from `version.json`; the old Capacitor `build.gradle.kts` stays deleted); both sides had used contract revision 34, so Android's platform became revision 35 (Swift, Kotlin and fixtures regenerated).
 - 2026-11-24: PR 54 CI fix: the version test checked the removed Capacitor project; it now checks that Android's Gradle build reads version.json.
 - 2026-11-24: Android native branch pushed and opened as PR 54 (14 commits, merges cleanly with main); not merged.

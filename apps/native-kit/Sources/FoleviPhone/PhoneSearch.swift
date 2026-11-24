@@ -78,10 +78,12 @@ public struct PhoneSearchScreen: View {
     @available(iOS 26, *)
     private var nativeBody: some View {
         NavigationStack {
-            ScrollView {
-                LazyVStack(alignment: .leading, spacing: 0) { results }
-                    .padding(.bottom, 16)
-            }
+            List { results }
+            .listStyle(.insetGrouped)
+            .listSectionSpacing(.compact)
+            .environment(\.defaultMinListRowHeight, 0)
+            .environment(\.phoneInList, true)
+            .scrollContentBackground(.hidden)
             .scrollDismissesKeyboard(.interactively)
             .safeAreaBar(edge: .bottom) { scopes.padding(.top, 8).padding(.bottom, 4) }
             .background(PhoneLook.frame.resolve(scheme).color.ignoresSafeArea())
@@ -213,49 +215,34 @@ public struct PhoneSearchScreen: View {
         let typed = !model.text.trimmingCharacters(in: .whitespaces).isEmpty
         if typed && model.searching && model.result == nil {
             Text("Searching…").webText(sub15).foregroundStyle(muted.color).padding(.horizontal, 20).padding(.vertical, 12)
+                .listRowBackground(Color.clear)
         }
         if model.noResults {
             Text("No notes match “\(model.text.trimmingCharacters(in: .whitespaces))”.").webText(sub15).foregroundStyle(muted.color).padding(.horizontal, 20).padding(.vertical, 12)
+                .listRowBackground(Color.clear)
         }
-        // Each section's rows on one card on the frame's grey (the owner, 2026-11-23).
-        caps(typed ? "Notes" : "Recent", first: true)
+        // Each part a section of iOS's own List (the owner, 2026-11-24).
         if typed {
             if !model.noteHits.isEmpty {
-                VStack(spacing: 0) { ForEach(model.noteHits, id: \.id) { hit in noteRow(hit) } }.phoneCard()
+                PhoneListSection("Notes") { ForEach(model.noteHits, id: \.id) { hit in noteRow(hit) } }
             }
             let meaning = model.meaningHits
             if !meaning.isEmpty {
-                caps("By meaning", first: false)
-                VStack(spacing: 0) { ForEach(meaning, id: \.id) { hit in noteRow(hit) } }.phoneCard()
+                PhoneListSection("By meaning") { ForEach(meaning, id: \.id) { hit in noteRow(hit) } }
             }
         } else if let rows = viewed?.value?.rows, !rows.isEmpty {
-            VStack(spacing: 0) { ForEach(rows, id: \.id) { row in recentRow(row) } }.phoneCard()
+            PhoneListSection("Recent") { ForEach(rows, id: \.id) { row in recentRow(row) } }
         }
         let q = model.text.trimmingCharacters(in: .whitespaces)
         let matching = q.isEmpty ? Array(actions.prefix(4)) : actions.filter { $0.label.localizedCaseInsensitiveContains(q) }
         if aiOn || !matching.isEmpty {
-            caps("Actions", first: false)
-            VStack(spacing: 0) {
+            PhoneListSection("Actions") {
                 if aiOn {
                     actionRow(PhoneSearchAction(id: "ask-ai", label: q.isEmpty ? "Ask Foli AI about your notes" : "Ask Foli AI: “\(q)”", icon: nil, ai: true) { askAI(q.isEmpty ? nil : q) })
                 }
                 ForEach(matching) { actionRow($0) }
             }
-            .phoneCard()
         }
-    }
-
-    /// IPHONE_CAPS: footnote, semibold, caps, 0.04em; 24 above (12 for the first), 6 below.
-    private func caps(_ text: String, first: Bool) -> some View {
-        // (The Mac’s section heading (the owner, 2026-11-23): sentence case, semibold, muted.)
-        Text(text)
-            .webText(PhoneType.captionCaps)
-            .foregroundStyle(muted.color)
-            .padding(.horizontal, 20)
-            .padding(.top, first ? 12 : 24)
-            .padding(.bottom, 6)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .accessibilityAddTraits(.isHeader)
     }
 
     private func noteRow(_ hit: SearchHit) -> some View {

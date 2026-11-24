@@ -57,6 +57,7 @@ public struct PhoneAllFoldersScreen: View {
         if PhoneNotesListScreen.nativeSearch {
             o.search = $model.query
             o.searchPrompt = "Filter folders"
+            o.list = model.layout == .list
             o.searchIcon = .funnel
         }
         return o
@@ -75,17 +76,15 @@ public struct PhoneAllFoldersScreen: View {
             if !model.isLoading && shown.isEmpty {
                 let q = model.query.trimmingCharacters(in: .whitespaces)
                 PhoneScreenEmpty(icon: .folderOpen, title: q.isEmpty ? "No folders yet" : "No folders match “\(q)”", message: q.isEmpty ? "Folders keep related notes together." : nil)
+                    .listRowBackground(Color.clear)
             } else if model.layout == .list {
-                LazyVStack(spacing: 0) {
+                PhoneListSection {
                     ForEach(shown, id: \.id) { f in
                         PhoneListRow(f.name, detail: f.noteCount.map(String.init), action: { open("/folders/\(f.id)") }) {
                             FolderGlyph(colorId: f.color, size: 22, kind: f.childCount > 0 ? .stack : (f.noteCount == 0 ? .empty : .notes))
                         }
                     }
                 }
-                // (On one card: the owner, 2026-11-23.)
-                .phoneCard()
-                .padding(.top, 8)
             } else {
                 let draggable = model.canEdit
                 LazyVGrid(columns: [GridItem(.flexible(), spacing: grid.gap), GridItem(.flexible(), spacing: grid.gap)], spacing: 20) {

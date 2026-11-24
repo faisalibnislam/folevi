@@ -146,10 +146,20 @@ extension ValueStore where Value == SettingsQueryValue {
 /// A Settings screen's content: `space-y-7 pb-4 pt-3`.
 public struct PhoneSettingsPage<Content: View>: View {
     let content: Content
+    @Environment(\.phoneInList) private var inList
 
     public init(@ViewBuilder content: () -> Content) { self.content = content() }
 
     public var body: some View {
+        // In iOS's own List (the owner, 2026-11-24): its groups are the List's sections.
+        if inList {
+            Group { content }
+        } else {
+            stack
+        }
+    }
+
+    private var stack: some View {
         VStack(alignment: .leading, spacing: 28) { content }
             .padding(.top, 12)
             .padding(.bottom, 16)

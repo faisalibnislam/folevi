@@ -249,7 +249,7 @@ The ones most likely to be broken:
 
 ## 9. Current state (as of 2026-11-24)
 
-**Folevi for Windows and Linux (branch `claude/desktop-tauri`, not merged, nothing published):** the owner chose "one
+**Folevi for Windows and Linux (branch `claude/desktop-tauri`, PR 65 https://github.com/faisalibnislam/folevi/pull/65 into `main`, not merged, nothing published):** the owner chose "one
 web app everywhere" and the Mac app's approach (small, light), so the desktop app is now **Tauri 2** in the system
 web view (WebView2, WebKitGTK), replacing the same day's Electron build (PR 58, `claude/windows-electron-4ed862`,
 kept in history; the main session closes PR 58 when the Tauri PR supersedes it). Rust shell with the Mac's
@@ -628,6 +628,7 @@ account button should move past iPadOS's window buttons).
   `DATABASE_UDF_USER_TIMEOUT_SECONDS=4` for that backend. Bursts show in `convex.log` as "took a long time".
 
 ## 12. Change log
+- 2026-11-24: PR 65 opened (Tauri desktop app into `main`, supersedes PR 58); merge `main` in when its turn comes (after PRs 55 and 57).
 - 2026-11-24: Desktop CI: Windows x64 builds (NSIS 78 MB, MSI 79 MB) and is lighter than Electron (139 vs 204 MB private); Windows etags now use the NTFS file index (concurrent writes lost an update on ARM64); the workflow's binary lookup fixed for Linux.
 - 2026-11-24: Folevi desktop moved to Tauri 2 for Windows (ARM64, x64) and Linux (x86_64, aarch64) on `claude/desktop-tauri` (owner: "one web app everywhere", small and light like the Mac app); CI builds and memory measurements; Electron PR 58 superseded, not merged.
 - 2026-11-24: Merged `main` (PR 56, iPhone/iPad second round, and the e2e and secret-scan fixes) into `claude/windows-electron-4ed862` to clear PR 58's conflict; only HANDOFF.md conflicted (both sides kept). Owner decided "one web app everywhere": this Electron app becomes the desktop app for Windows, Mac and Linux (Mac and Linux targets wait for the plan).

@@ -181,8 +181,8 @@ const VAULT_FIXTURE = `
   const vaultId = s.vaultId;
   await run("vault.recoverySaved", { vaultId });
   await run("vault.item.save", { vaultId, kind: "wifi", title: "Studio Wi-Fi", values: { network: "Studio", password: "abc123", security: "WPA3" }, notes: "" });
-  await run("vault.item.save", { vaultId, kind: "apiKey", title: "Maps API key", values: { service: "Maps", key: "made-up-key-for-screens", environment: "Production" }, notes: "" });
-  await run("vault.item.save", { vaultId, kind: "login", title: "Bank of Kyoto", values: { username: "sam@example.com", password: "Plum-Lantern-42-Harbor", website: "bank.example" }, notes: "" });
+  await run("vault.item.save", { vaultId, kind: "apiKey", title: "Maps API key", values: { service: "Maps", key: "made-up-key-for-screens", environment: "Production" }, notes: "" }); // gitleaks:allow (made-up demo values)
+  await run("vault.item.save", { vaultId, kind: "login", title: "Bank of Kyoto", values: { username: "sam@example.com", password: "Plum-Lantern-42-Harbor", website: "bank.example" }, notes: "" }); // gitleaks:allow (made-up demo values)
   const folder = await run("vault.folder.create", { vaultId, parentId: null, name: "Contracts" });
   await run("vault.folder.create", { vaultId, parentId: null, name: "Passports" });
   await run("vault.note.create", { vaultId, folderId: null, title: "Safe deposit box" });

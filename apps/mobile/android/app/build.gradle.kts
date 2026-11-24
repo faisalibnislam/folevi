@@ -10,6 +10,9 @@ plugins {
 fun setting(name: String, env: String, default: String): String =
     (project.findProperty(name) as String?)?.takeIf { it.isNotBlank() } ?: System.getenv(env)?.takeIf { it.isNotBlank() } ?: default
 
+/** The unified version (version.json at the repo root, scripts/version.mjs). */
+val folevi = groovy.json.JsonSlurper().parse(rootProject.file("../../../version.json")) as Map<*, *>
+
 fun quoted(value: String) = "\"" + value.replace("\\", "\\\\").replace("\"", "\\\"") + "\""
 
 android {
@@ -20,8 +23,8 @@ android {
         applicationId = "com.folevi.android"
         minSdk = rootProject.extra["minSdkVersion"] as Int
         targetSdk = rootProject.extra["targetSdkVersion"] as Int
-        versionCode = 83
-        versionName = "1.5.68"
+        versionCode = (folevi["build"] as Number).toInt()
+        versionName = folevi["version"] as String
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         // OAuth client ids are public (they ship in every copy of the app) but come from the build, never the
         // repository (docs/LOCAL_MODE.md "Owner setup checklist"; apps/android/README.md). Empty hides the option.

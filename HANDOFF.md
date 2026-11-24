@@ -249,7 +249,7 @@ The ones most likely to be broken:
 
 ## 9. Current state (as of 2026-11-24)
 
-**Folevi for Windows (branch `claude/windows-electron-4ed862`, not merged, nothing published):** the old Electron
+**Folevi for Windows (branch `claude/windows-electron-4ed862`, PR 58 https://github.com/faisalibnislam/folevi/pull/58 into `main`, not merged, nothing published):** the old Electron
 Mac app came back as `apps/desktop`, now Windows-only (owner's picks in
 `docs/claude-context/memory/windows-app-decisions-2026-11-24.md`: Electron, native arm64 + x64, unsigned for now,
 folevi.com download with updates from R2, Windows 10 22H2 + 11, Folevi's own top bar with Windows' caption buttons).
@@ -494,8 +494,8 @@ account button should move past iPadOS's window buttons).
 
 ## 10. Next steps / open work
 - Folevi for Windows (`claude/windows-electron-4ed862`): the owner tries the test installers on a Windows on ARM and
-  an Intel/AMD PC (checklist in `docs/WINDOWS.md`); fix what they find; then, each with the owner's OK: a PR into
-  `main` (it changes web files, so merging deploys), signing (Azure Trusted Signing suggested), uploading to R2
+  an Intel/AMD PC (checklist in `docs/WINDOWS.md`); fix what they find; then, each with the owner's OK: merging
+  PR 58 (it changes web files, so merging deploys), signing (Azure Trusted Signing suggested), uploading to R2
   `windows/<arch>/`, a Windows entry on the download page, Dropbox/Google Drive client ids in the build, and a
   `windows` minimum in `convex/lib/shellVersions.ts`. Not on Windows yet: app lock, bookmark previews in local
   mode, notification actions, call recording, text in images.
@@ -625,6 +625,7 @@ account button should move past iPadOS's window buttons).
   `DATABASE_UDF_USER_TIMEOUT_SECONDS=4` for that backend. Bursts show in `convex.log` as "took a long time".
 
 ## 12. Change log
+- 2026-11-24: Folevi for Windows: branch pushed and PR 58 opened into `main` with the owner's OK; not merged.
 - 2026-11-24: Folevi for Windows built on `claude/windows-electron-4ed862` (Electron `apps/desktop` revived, Mac parts removed, web `windows` platform); unsigned arm64 and x64 test installers handed to the owner; not merged or published.
 - 2026-11-24: PR 51 merged, so `main` was merged into the Android branch (PR 54): main's version kept (1.5.68, build 83, read from `version.json`; the old Capacitor `build.gradle.kts` stays deleted); both sides had used contract revision 34, so Android's platform became revision 35 (Swift, Kotlin and fixtures regenerated).
 - 2026-11-24: PR 54 CI fix: the version test checked the removed Capacitor project; it now checks that Android's Gradle build reads version.json.

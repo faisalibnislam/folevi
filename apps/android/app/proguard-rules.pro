@@ -34,3 +34,7 @@
 -dontwarn org.conscrypt.**
 -dontwarn org.bouncycastle.**
 -dontwarn org.openjsse.**
+
+# Glance builds widget actions by name (actionRunCallback<CompleteTask>()): keep their no-argument constructors, which
+# Glance's own rule doesn't, so R8's full mode can't strip them (android-skills glance-appwidget-updates-and-memory).
+-keep class * implements androidx.glance.appwidget.action.ActionCallback { public <init>(); }

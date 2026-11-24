@@ -105,4 +105,7 @@ fun FrostedFolder(folder: FolderCard, onClick: () -> Unit, modifier: Modifier = 
     }
 }
 
-fun shortDate(ms: Double): String = if (ms <= 0) "" else DateFormat.getDateInstance(DateFormat.MEDIUM).format(Date(ms.toLong()))
+/** One formatter for every card (a new DateFormat per card cost an allocation each time a card drew). */
+private val mediumDate = java.time.format.DateTimeFormatter.ofLocalizedDate(java.time.format.FormatStyle.MEDIUM)
+
+fun shortDate(ms: Double): String = if (ms <= 0) "" else mediumDate.withZone(java.time.ZoneId.systemDefault()).format(java.time.Instant.ofEpochMilli(ms.toLong()))

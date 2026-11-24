@@ -128,7 +128,7 @@ class Reminders(private val context: Context) {
         /** Folevi at a page (a note's to-do), as the activity's deep link; `place`: the place it's in (several places). */
         fun openIntent(context: Context, path: String, request: Int, place: String? = null): PendingIntent {
             val link = "folevi://" + path.removePrefix("/") + (place?.let { (if (path.contains("?")) "&" else "?") + "place=" + Uri.encode(it) } ?: "")
-            val i = Intent(Intent.ACTION_VIEW, Uri.parse(link), context, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+            val i = MainActivity.internalIntent(Uri.parse(link), context).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP)
             return PendingIntent.getActivity(context, request, i, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
         }
 

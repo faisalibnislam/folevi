@@ -121,6 +121,7 @@ dependencies {
     implementation(libs.compose.adaptive.navigation3)
     implementation(libs.navigation3.runtime)
     implementation(libs.navigation3.ui)
+    implementation(libs.navigationevent.compose)
     implementation(libs.compose.ui.tooling.preview)
     debugImplementation(libs.compose.ui.tooling)
 

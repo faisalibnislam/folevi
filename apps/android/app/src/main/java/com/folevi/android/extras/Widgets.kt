@@ -88,11 +88,24 @@ object Widgets {
     }
 
     fun redraw(context: Context) {
-        kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Default).launchSafely {
-            TodayWidget().updateAll(context)
-            RecentNotesWidget().updateAll(context)
-            QuickAddWidget().updateAll(context)
+        kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Default).launchSafely { redrawNow(context) }
+    }
+
+    /**
+     * Each widget's revision: bumped with every change to the copy, so a widget whose session is still live (Glance
+     * keeps one for about 45 seconds and doesn't run provideGlance again) reads the copy again.
+     */
+    val REV = androidx.datastore.preferences.core.longPreferencesKey("rev")
+
+    suspend fun redrawNow(context: Context) {
+        val manager = androidx.glance.appwidget.GlanceAppWidgetManager(context)
+        val rev = System.nanoTime()
+        for (kind in listOf(TodayWidget::class.java, RecentNotesWidget::class.java, QuickAddWidget::class.java)) {
+            for (id in manager.getGlanceIds(kind)) androidx.glance.appwidget.state.updateAppWidgetState(context, id) { it[REV] = rev }
         }
+        TodayWidget().updateAll(context)
+        RecentNotesWidget().updateAll(context)
+        QuickAddWidget().updateAll(context)
     }
 
     /** A string field, "" when it's missing or null (org.json's optString says "null" for null). */
@@ -170,7 +183,7 @@ object Widgets {
     fun quickAdd(context: Context): Intent = QuickAddChooser.intent(context)
 
     fun open(context: Context, link: String): Intent =
-        Intent(Intent.ACTION_VIEW, Uri.parse(link), context, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+        MainActivity.internalIntent(Uri.parse(link), context).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP)
 }
 
 private fun kotlinx.coroutines.CoroutineScope.launchSafely(block: suspend () -> Unit) {
@@ -180,9 +193,7 @@ private fun kotlinx.coroutines.CoroutineScope.launchSafely(block: suspend () -> 
 class WidgetWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
     override suspend fun doWork(): Result {
         Widgets.refresh(applicationContext)
-        TodayWidget().updateAll(applicationContext)
-        RecentNotesWidget().updateAll(applicationContext)
-        QuickAddWidget().updateAll(applicationContext)
+        Widgets.redrawNow(applicationContext)
         return Result.success()
     }
 }
@@ -220,8 +231,11 @@ private fun SignedOut(context: Context) {
 
 class TodayWidget : GlanceAppWidget() {
     override suspend fun provideGlance(context: Context, id: GlanceId) {
-        val data = Widgets.read(context)
-        provideContent { GlanceTheme { Today(context, data) } }
+        provideContent {
+            val rev = androidx.glance.currentState<androidx.datastore.preferences.core.Preferences>()[Widgets.REV]
+            val data = androidx.compose.runtime.remember(rev) { Widgets.read(context) }
+            GlanceTheme { Today(context, data) }
+        }
     }
 
     @Composable
@@ -284,17 +298,10 @@ class CompleteTask : ActionCallback {
         pending.put(id)
         data.put("pendingDone", pending)
         Widgets.write(context, data)
-        TodayWidget().update(context, glanceId)
-        if (data.optBoolean("local", false)) return
-        val api = FoleviApi.forDevice(context) ?: return
-        val sent = runCatching { api.setTask(id, true) }.isSuccess
-        if (sent) {
-            val now = Widgets.read(context)
-            val left = JSONArray()
-            val p = now.optJSONArray("pendingDone") ?: JSONArray()
-            for (i in 0 until p.length()) if (p.getString(i) != id) left.put(p.getString(i))
-            Widgets.write(context, now.put("pendingDone", left))
-        }
+        Widgets.redrawNow(context)
+        // Sending it to Folevi is the background refresh's job (it sends pendingDone): an action must stay short, and
+        // a slow network here could take longer than a receiver may run.
+        if (!data.optBoolean("local", false)) Widgets.refreshSoon(context)
     }
 }
 
@@ -306,8 +313,11 @@ class TodayWidgetReceiver : GlanceAppWidgetReceiver() {
 
 class RecentNotesWidget : GlanceAppWidget() {
     override suspend fun provideGlance(context: Context, id: GlanceId) {
-        val data = Widgets.read(context)
-        provideContent { GlanceTheme { Recent(context, data) } }
+        provideContent {
+            val rev = androidx.glance.currentState<androidx.datastore.preferences.core.Preferences>()[Widgets.REV]
+            val data = androidx.compose.runtime.remember(rev) { Widgets.read(context) }
+            GlanceTheme { Recent(context, data) }
+        }
     }
 
     @Composable

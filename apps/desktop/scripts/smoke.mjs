@@ -13,8 +13,9 @@ const root = resolve(import.meta.dirname, "..");
 // Windows' program is Folevi.exe; Linux's is folevi (tauri.linux.conf.json; a Mac's disk doesn't mind the case).
 const exe = join(root, "src-tauri/target/debug", process.platform === "win32" ? "Folevi.exe" : process.platform === "linux" ? "folevi" : "Folevi");
 const data = mkdtempSync(join(tmpdir(), "folevi-smoke-"));
-// --embedded: the interface compiled into the app, as a release build serves it (a page served under the wrong name
-// once left release builds blank while runs from the folder were fine). Otherwise the export in web/.
+// --embedded: the interface as a release build serves it (installed beside the app as resources, src-tauri/target/
+// debug/web here; a page served under the wrong name once left release builds blank while runs from the folder were
+// fine). Otherwise the export in web/ through FOLEVI_SHELL_DIR.
 const embedded = process.argv.includes("--embedded");
 const env = { ...process.env, FOLEVI_PROBE: "1", FOLEVI_PROBE_SCRIPT: join(root, "scripts/smoke-flow.js"), FOLEVI_USER_DATA: data, ...(embedded ? {} : { FOLEVI_SHELL_DIR: join(root, "web") }) };
 delete (embedded ? env : {}).FOLEVI_SHELL_DIR;

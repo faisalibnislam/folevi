@@ -990,6 +990,11 @@ async fn desktop_call(app: AppHandle, webview: tauri::Webview, name: String, arg
             Ok(Value::Null)
         }
         "ready" => {
+            // FOLEVI_REPORT_READY (any build): the page and its bridge started, said on stdout, so a measurement
+            // (scripts/measure.mjs) can tell a loaded page from a blank window.
+            if std::env::var_os("FOLEVI_REPORT_READY").is_some() {
+                println!("FOLEVI READY {label} {}", webview.url().map(|u| u.to_string()).unwrap_or_default());
+            }
             update_badge(&app);
             Ok(Value::Null)
         }
@@ -1254,6 +1259,13 @@ fn asset(app: &AppHandle, path: &str) -> Option<(Vec<u8>, String)> {
     if let Ok(dir) = std::env::var("FOLEVI_SHELL_DIR") {
         return disk_asset(&PathBuf::from(dir), &candidates);
     }
+    // The installed interface: files beside the app (bundle resources, web/), so the binary stays small and the pages
+    // live in the system's file cache rather than being decompressed into Folevi's own memory on every request.
+    if let Some(dir) = installed_web(app) {
+        if let Some(found) = disk_asset(dir, &candidates) {
+            return Some(found);
+        }
+    }
     let resolver = app.asset_resolver();
     // Only an exact name, as from disk: Tauri's resolver falls back by itself ("documents" gives documents.html,
     // anything else index.html), and the name asked for would then set the type ("documents" is
@@ -1272,6 +1284,13 @@ fn asset(app: &AppHandle, path: &str) -> Option<(Vec<u8>, String)> {
         return disk_asset(&PathBuf::from(concat!(env!("CARGO_MANIFEST_DIR"), "/../web")), &candidates);
     }
     None
+}
+
+/// The interface installed beside the app (<resources>/web), when it's there.
+fn installed_web(app: &AppHandle) -> Option<&'static std::path::Path> {
+    static DIR: std::sync::OnceLock<Option<PathBuf>> = std::sync::OnceLock::new();
+    DIR.get_or_init(|| app.path().resource_dir().ok().map(|r| r.join("web")).filter(|d| d.join("index.html").is_file()).and_then(|d| d.canonicalize().ok()))
+        .as_deref()
 }
 
 fn disk_asset(root: &std::path::Path, candidates: &[String]) -> Option<(Vec<u8>, String)> {

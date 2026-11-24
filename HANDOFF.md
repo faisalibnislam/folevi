@@ -275,10 +275,11 @@ What's there (checklist in the plan, section 4):
   generic gate screen (first-launch choice, sign-in, library setup, E2EE). Googlebook: shortcuts helper,
   right-click menus, new windows, drag out. Release build with R8 and upload-key signing.
 - Checked on emulators: local mode end to end, the editor in the note pane, share target, Vault set-up/lock/
-  unlock, Googlebook-size window, fold/unfold, an R8 release build.
-- **Not verified:** signing in to an account on an emulator (needs a test account on the Convex dev backend,
-  which I didn't create without the owner's OK; `node apps/android/scripts/e2e/signin.mjs` does it), push
-  (needs Firebase settings), Drive/Dropbox (need client ids), widgets and the tile on a home screen, a Back press
+  unlock, Googlebook-size window, fold/unfold, an R8 release build, and (2026-11-24) signing in to a test account
+  on the dev backend (`peaceful-mockingbird-196`) by tapping Sign in to Folevi, Sign in with email and Continue,
+  landing on the account's Home and notes. The test account is in `apps/android/.e2e-account.json` (git-ignored);
+  `node apps/android/scripts/e2e/signin.mjs` makes a new one.
+- **Not verified:** push (needs Firebase settings), Drive/Dropbox (need client ids), widgets and the tile on a home screen, a Back press
   that once left the app on the desktop emulator (not reproduced).
 - Emulators: Taskeni's emulators (another project) use ports 5554-5558 now; this app's AVDs are Folevi_Phone,
   Folevi_Tablet, Folevi_Foldable, Folevi_Desktop (1920x1200 @160). Boot them on free ports.
@@ -381,8 +382,7 @@ account button should move past iPadOS's window buttons).
 
 ## 10. Next steps / open work
 - Android native (`claude/android-native-622675`): the owner reviews and merges the branch (it also carries
-  contract revision 34, which touches `apps/native-kit/.../Generated` and the web engine). Then account sign-in
-  on an emulator, the owner's Play steps (`apps/android/README.md` "Steps only the owner can do"), and the
+  contract revision 34, which touches `apps/native-kit/.../Generated` and the web engine). Then the owner's Play steps (`apps/android/README.md` "Steps only the owner can do"), and the
   plan's remaining phase 2 items (Credential Manager sign-in, onboarding, sharing sheet, templates).
 - `claude/phone-all-folders-route`: review and merge with the next release (Debug-only bug; no user-visible change in
   Release builds).
@@ -456,6 +456,7 @@ account button should move past iPadOS's window buttons).
   `DATABASE_UDF_USER_TIMEOUT_SECONDS=4` for that backend. Bursts show in `convex.log` as "took a long time".
 
 ## 12. Change log
+- 2026-11-24: Android: signing in from the first-launch screen opened an empty Home ("The message names no place.") until a restart; the page's place marker now refreshes when the open place changes. Sign-in checked on an emulator with a dev test account; on `claude/android-native-622675`, not merged.
 - 2026-11-23: Android first build on `claude/android-native-622675`: host bridge and services moved in, Capacitor removed, all first-build screens, Vault, Googlebook keys/menus/windows, contract revision 34, R8 release build; not merged.
 - 2026-11-23: Android resumed as a native Compose app (owner's answers, research, Kotlin bridge codegen, engine module, app skeleton verified on phone/tablet/foldable/desktop emulators) on `claude/android-native-622675`; not released.
 - 2026-11-21: Note cards' shadows as shared pictures, faces live and unflattened, on `claude/note-card-shadow-pictures` (Mac All notes 175-232 missed frames to 67-135); not released.

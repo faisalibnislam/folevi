@@ -113,7 +113,7 @@ Phase 1, sign-in and data (done 2026-11-23)
 - [x] Every service moved from `apps/android/android` with its tests and manifest entries; the page runs on
       `https://localhost` as before
 - [x] Sign-in: the page's own sign-in gate drives AuthBridge's Custom Tab flow (PKCE), drawn by the generic
-      gate screen. Not yet run against an account on an emulator (needs a test account on the dev backend)
+      gate screen. Checked on an emulator with a dev test account (2026-11-24)
 - [x] Web: phone note layout for the Android marker; big batches straight to `foleviEngineHost`
 - [x] Contract revision 34: `"android"` in the marker's and `AppInfo`'s platforms
 

@@ -47,6 +47,27 @@ process (`footprint`):
 | E | iPhone | as D, with Capacitor's logging and web inspection off (as in releases) | Back button | 128 MB | 300 MB | 238 MB |
 | F | iPad (sidebar layout) | "Welcome to Folevi" | Back button | 135 MB | 189 MB (levels off) | 136 MB |
 
+| G | iPhone, Reduce Motion on (no screen transitions) | "Welcome to Folevi" | Back button | 130 MB | 209 MB | 173 MB |
+| H | iPhone, transitions on, every animation cancelled and its callbacks dropped after the move | same | Back button | 128 MB | 300 MB | 233 MB |
+| I | iPhone, transitions on, no picture (an empty element instead of the screen's copy) | same | Back button | 130 MB | 207 MB | 172 MB |
+| J | iPhone, copy without `contenteditable`, its fields disabled | same | Back button | 129 MB | 295 MB | 232 MB |
+| K | iPhone, copy made and trimmed but never shown | same | Back button | 130 MB | 210 MB | 172 MB |
+| L | iPhone, copy shown with nothing in it scrollable | same | Back button | 129 MB | 296 MB | 234 MB |
+| M | iPhone, copy shown without its images | same | Back button | 124 MB | 300 MB | 238 MB |
+| N | iPhone, copy shown without `inert` and `aria-hidden` | same | Back button | 127 MB | 308 MB | 241 MB |
+| O | iPhone, copy shown without `will-change` | same | Back button | 129 MB | 308 MB | 241 MB |
+| P | iPhone, copy emptied after the move (shipped) | same | Back button | 131 MB | 281 MB | 216 MB |
+
+What it is, as far as these runs go (2026-11-24, second follow-up):
+- About 60% of the growth is the **screen copy the iPhone layout shows during a move** (`picture()` in
+  `components/iphone/transitions.ts`, a `cloneNode(true)` of the screen being left): with no copy (I), or with the
+  copy made but not shown (K), the growth matches having no transitions at all (G). A shown copy is kept after it's
+  removed, by something none of these switches reach: not its animations (H), scroll areas (L), images (M), editing
+  surfaces (J), accessibility attributes (N) or compositing (O). Emptying the copy after the move (P, shipped) gives
+  back about a third of it (216 MB against 232 to 241 MB).
+- The rest, about 2 MB per open (G, I, K: 172 to 173 MB against iPad's 136 MB), is something else in the iPhone layout.
+- Both need a heap snapshot to name what holds them (Safari's Web Inspector on the Simulator).
+
 - Not WebKit's caches: JIT code is 1.2 MB and graphics memory negligible; the growth is in "WebKit Malloc" (184 of
   247 MB in run D), where JavaScript objects and WebKit's page objects live, and the low-memory signal doesn't free it.
 - Not the bridge: its event listeners (`listen`) and Capacitor plugin listeners stayed at the same counts; window

@@ -1255,7 +1255,15 @@ fn asset(app: &AppHandle, path: &str) -> Option<(Vec<u8>, String)> {
         return disk_asset(&PathBuf::from(dir), &candidates);
     }
     let resolver = app.asset_resolver();
+    // Only an exact name, as from disk: Tauri's resolver falls back by itself ("documents" gives documents.html,
+    // anything else index.html), and the name asked for would then set the type ("documents" is
+    // application/octet-stream), so the page went out undecorated and, with nosniff, blank in WebKitGTK.
+    static NAMES: std::sync::OnceLock<std::collections::HashSet<String>> = std::sync::OnceLock::new();
+    let names = NAMES.get_or_init(|| resolver.iter().map(|(k, _)| k.trim_start_matches('/').to_string()).collect());
     for c in &candidates {
+        if !names.contains(c.as_str()) {
+            continue;
+        }
         if let Some(a) = resolver.get(c.clone()) {
             return Some((a.bytes().to_vec(), c.clone()));
         }

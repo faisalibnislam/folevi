@@ -132,6 +132,12 @@ Phase 2, the rest of the first build (done 2026-11-23 unless noted)
       Credential Manager), note sharing sheet, templates, archive and trash lists in the sidebar, Search's
       filters, widgets restyled in Material 3
 
+Phase 2b, tabs and polish (2026-11-24, branch `claude/android-tabs`; details in `docs/ANDROID_POLISH_2026-11-24.md`)
+- [x] Tabs on tablets, open foldables and Googlebooks with the web's rules (owner, 2026-11-24); phones keep Back
+- [x] Links inside notes (`navigate.request`); note titles name their tabs
+- [x] android-skills audit: place switching and share-target hardening, edge-to-edge, widgets, ANRs, keys, Back
+- [ ] Audit follow-ups: Baseline Profile, icon codegen, R8 rules, Glance canonical layouts, app lock, previews
+
 Phase 3, release
 - [x] Release build with R8 (keep rules for the bridge and the contract), upload-key signing from the owner's
       `~/.gradle/gradle.properties`; a debug-key R8 build ran local mode on an emulator

@@ -20,7 +20,7 @@ class QuickAddTile : TileService() {
 
     override fun onClick() {
         // With several places on the phone it asks which one first (QuickAddChooser); with one it opens Quick add.
-        val intent = if (SaveTargets.several()) QuickAddChooser.intent(this) else Intent(Intent.ACTION_VIEW, Uri.parse("folevi://quick-add"), this, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        val intent = if (SaveTargets.several()) QuickAddChooser.intent(this) else MainActivity.internalIntent(Uri.parse("folevi://quick-add"), this).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         startActivityAndCollapse(PendingIntent.getActivity(this, 7, intent, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT))
     }
 }

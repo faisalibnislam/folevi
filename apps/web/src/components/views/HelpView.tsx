@@ -4,7 +4,7 @@ import { useState } from "react";
 import { ViewChrome } from "@/components/app/Shell";
 import { Button, Kbd } from "@/components/ui/Button";
 import { SupportDialog, SupportRequests } from "@/components/support/SupportDialog";
-import { isMac } from "@/lib/hooks/useEngine";
+import { useMacKeys } from "@/lib/shortcuts";
 import { useCapabilities } from "@/lib/mode";
 
 const SHORTCUTS: [string, string][] = [
@@ -48,7 +48,7 @@ const LOCAL_STATUSES: [string, string][] = [
 ];
 
 export function HelpView() {
-  const mac = isMac();
+  const mac = useMacKeys();
   const fmt = (s: string) => (mac ? s : s.replace(/⌘/g, "Ctrl").replace(/⌥/g, "Alt").replace(/⇧/g, "Shift"));
   const [contacting, setContacting] = useState(false);
   // Local mode: support requests belong to an account, so support is an email (docs/LOCAL_MODE_PLAN.md §2.4).

@@ -20,6 +20,7 @@ import { Sheet } from "@/components/iphone/Sheet";
 import { tasksMarkdown } from "./noteConvert";
 import { useAiWhere } from "@/components/ai/aiWhere";
 import { useBackendMode } from "@/lib/mode";
+import { withKeyLabels } from "@/lib/shortcuts";
 
 export type MapSource = "prompt" | "note" | "text" | "file";
 
@@ -237,7 +238,7 @@ export function MindmapAi({
               ))}
             </ul>
           ) : null}
-          {hasMap ? <p className="mm-ai-note">Replaces this map. Undo with ⌘Z.</p> : null}
+          {hasMap ? <p className="mm-ai-note">{withKeyLabels("Replaces this map. Undo with ⌘Z.")}</p> : null}
         </div>
       ) : (
         <div className="mm-ai-actions" role="group" aria-label="Foli AI actions">
@@ -284,13 +285,13 @@ export function MindmapAi({
           <Action
             icon={<AiIcon size={15} />}
             label="Tidy with Foli AI"
-            detail="Groups, merges and rewords ideas. Undo with ⌘Z."
+            detail={withKeyLabels("Groups, merges and rewords ideas. Undo with ⌘Z.")}
             disabled={Boolean(busy)}
             onClick={() =>
               run("Tidying the map…", async () => {
                 const r = await ai.tidy(current());
                 onMap(r.data, "tidy");
-                setDone("Tidied. Undo with ⌘Z.");
+                setDone(withKeyLabels("Tidied. Undo with ⌘Z."));
               })
             }
           />

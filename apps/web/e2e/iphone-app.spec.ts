@@ -43,13 +43,14 @@ test("the iPhone app: tab bar, large titles, Back, the + menu and sheets", async
   const state = await signedIn.storageState();
   await signedIn.close();
 
-  // In a phone's browser: the mobile web layout, no tab bar.
+  // In a phone's browser: the same phone interface as the app (width decides, the owner's 2026-11-24 rule).
   const web = await browser.newContext({ storageState: state, viewport: { width: 390, height: 844 }, userAgent: IPHONE_UA, hasTouch: true });
   const browserPage = await web.newPage();
   await browserPage.goto(`${APP}/documents`);
-  await expect(browserPage.getByRole("button", { name: "Show sidebar" })).toBeVisible({ timeout: 30_000 });
-  await expect(browserPage.getByRole("navigation", { name: "Tabs" })).toHaveCount(0);
-  await expect(browserPage.locator("html")).not.toHaveAttribute("data-iphone", "");
+  await expect(browserPage.getByRole("navigation", { name: "Tabs" })).toBeVisible({ timeout: 30_000 });
+  await expect(browserPage.getByRole("button", { name: "Show sidebar" })).toHaveCount(0);
+  await expect(browserPage.locator("html")).toHaveAttribute("data-iphone", "");
+  await expect(browserPage.locator("html")).toHaveAttribute("data-form", "phone");
   await web.close();
 
   // In the iPhone app.
@@ -196,6 +197,8 @@ test("the iPad app in a narrow window (Slide Over, a third of Split View) takes 
   // ...in iPadOS's look (WP5): <html data-ipad>, the tabs kept as iPad tabs with 44 pt round buttons, no
   // floating Ask Foli AI pill, no ⌘K hint without a keyboard.
   await expect(page.locator("html")).toHaveAttribute("data-ipad", "");
+  await expect(page.locator("html")).toHaveAttribute("data-tablet", "");
+  await expect(page.locator("html")).toHaveAttribute("data-form", "tablet");
   const strip = page.locator("[data-ipad-tabs]");
   await expect(strip).toBeVisible();
   expect((await strip.getByRole("button", { name: "New note", exact: true }).first().boundingBox())!.height).toBeGreaterThanOrEqual(44);

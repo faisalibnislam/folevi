@@ -25,23 +25,19 @@ barely changed since (import swaps only).
 
 ## Layouts: one UI, picked by the window
 
-The web app decides in `apps/web/src/lib/iphone.ts`, by the window's size, never the model:
+The web app decides in `apps/web/src/lib/platform.ts` (with `lib/iphone.ts` on top), by the window's width, never the
+model (the owner's rule, 2026-11-24): any window under 700 px gets the phone interface (`components/iphone`: large
+titles, the floating bottom bar with Home, Tasks, Calendar, Foli AI and +, bottom sheets), and wider windows get the
+sidebar layout, with touch sizes on a touch device (`<html data-tablet>`, and `data-ipad` on Apple's). It switches in
+place as the window changes.
 
-- **iPhone**: the phone interface (`components/iphone`: large titles, the floating bottom bar with Home, Tasks,
-  Calendar, Foli AI and +, bottom sheets). Upright or sideways.
-- **iPad**: the sidebar layout with iPadOS touches (`<html data-ipad>`); under 700 pt (Slide Over, a third of Split
-  View) the phone interface, switching in place.
-- **iPhone Duo**: open (inner screen, 951 x 669 or 669 x 951 pt) is a window at least 600 x 600 pt, so it takes the
-  iPad's sidebar layout (`isWideIphone`, `isTabletApp`); closed (466 x 678) the phone interface, with iOS's side
-  column kept clear by the safe-area insets. Folding or unfolding switches the layout in place, without reloading
-  the page. (Checked: closed, on the iPhone Duo simulator; open: by the unit tests only, since the hinge couldn't be
-  moved from scripts on the build Mac.)
-- **Android**: the phone interface on phones (also sideways: short windows) and folded foldables; the sidebar layout
-  on tablets and unfolded foldables.
+- **iPhone**: the phone interface, upright or sideways.
+- **iPad**: the sidebar layout; Slide Over or a narrow Split View the phone interface.
+- **iPhone Duo**: closed, the phone interface, with iOS's side column kept clear by the safe-area insets; open (951 pt
+  wide), the sidebar layout. Checked: closed on the iPhone Duo simulator; open by `apps/web/test/platform.test.ts`.
+- **Android**: phones and folded foldables the phone interface; tablets and unfolded foldables the sidebar layout.
 - **Tabs** follow the web's rule everywhere the sidebar layout shows (a note from a list opens a tab that remembers its
   opener; the sidebar and New note open fresh tabs).
-
-Tests: `apps/web/test/mobile-layout.test.ts`.
 
 ## Build and run
 

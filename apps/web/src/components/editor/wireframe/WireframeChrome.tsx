@@ -56,6 +56,7 @@ import { ToolFold, type FoldTool } from "../canvas/ToolFold";
 import { colsOf, countOf, drawItem } from "./draw";
 import type { Align } from "./ops";
 import type { ExportAction } from "../canvas/BlockExport";
+import { withKeyLabels } from "@/lib/shortcuts";
 
 export const FRAME_ICON: Record<WireframeFrame, ReactNode> = {
   phone: <Smartphone size={15} aria-hidden />,
@@ -162,7 +163,7 @@ export function wireTools({ style, onStyle, onAddScreen, libraryOpen, onLibrary,
       sep: true,
       priority: 4,
       node: (
-        <button type="button" className="fb-vc-btn" aria-label="Undo" title="Undo (⌘Z)" disabled={!canUndo} onClick={onUndo}>
+        <button type="button" className="fb-vc-btn" aria-label="Undo" title={withKeyLabels("Undo (⌘Z)")} disabled={!canUndo} onClick={onUndo}>
           <Undo2 size={15} aria-hidden />
         </button>
       ),
@@ -172,7 +173,7 @@ export function wireTools({ style, onStyle, onAddScreen, libraryOpen, onLibrary,
       key: "redo",
       priority: 3,
       node: (
-        <button type="button" className="fb-vc-btn" aria-label="Redo" title="Redo (⇧⌘Z)" disabled={!canRedo} onClick={onRedo}>
+        <button type="button" className="fb-vc-btn" aria-label="Redo" title={withKeyLabels("Redo (⇧⌘Z)")} disabled={!canRedo} onClick={onRedo}>
           <Redo2 size={15} aria-hidden />
         </button>
       ),
@@ -194,7 +195,7 @@ export function ZoomBar({ zoom, onZoomIn, onZoomOut, onFit }: { zoom: number; on
       <button type="button" className="fb-vc-btn" aria-label="Zoom in" title="Zoom in (+)" onClick={onZoomIn}>
         <Plus size={15} aria-hidden />
       </button>
-      <button type="button" className="fb-vc-btn" aria-label="Fit to screens" title="Fit to screens (⇧1)" onClick={onFit}>
+      <button type="button" className="fb-vc-btn" aria-label="Fit to screens" title={withKeyLabels("Fit to screens (⇧1)")} onClick={onFit}>
         <Maximize size={14} aria-hidden />
       </button>
     </div>
@@ -546,7 +547,7 @@ export function SelectionBar(p: SelectionBarProps) {
       sep: true,
       priority: 3,
       node: (
-        <button type="button" className="fb-vc-btn" aria-label="Duplicate" title="Duplicate (⌘D)" onClick={p.onDuplicate} disabled={!p.items.length && !p.screens.length}>
+        <button type="button" className="fb-vc-btn" aria-label="Duplicate" title={withKeyLabels("Duplicate (⌘D)")} onClick={p.onDuplicate} disabled={!p.items.length && !p.screens.length}>
           <Copy size={14} aria-hidden />
         </button>
       ),

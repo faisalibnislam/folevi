@@ -1,7 +1,7 @@
 import { readFileSync, mkdirSync } from "node:fs";
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Locator, type Page } from "@playwright/test";
-import { newPerson, settle, waitForSaved } from "./helpers";
+import { newPerson, settle, waitForSaved, openCanvasOnPhone } from "./helpers";
 
 // Frames and swimlanes in the flowchart: frame a selection, move a frame with what's in it, nest frames, delete
 // a frame keeping its shapes; swimlanes in rows and columns, shapes dropped into lanes, lanes renamed from the
@@ -301,7 +301,7 @@ test.describe("Flowchart frames and swimlanes", () => {
     await page.setViewportSize({ width: 360, height: 800 });
     await settle(page);
     await expect(tools).toBeHidden();
-    await page.getByRole("button", { name: /^Open canvas/ }).click();
+    await openCanvasOnPhone(page, "Flowchart");
     await expect(page.locator(".fb-flowchart .fb-canvas-card")).toHaveAttribute("data-full", "true");
     await page.getByRole("button", { name: "Fit to content" }).click();
     await lane(laneIds[1]!).focus();

@@ -3,7 +3,7 @@
 import { DateField, TimeField } from "@/components/ui/DateField";
 import { useMutation, useQuery } from "convex/react";
 import { useCallback, useDeferredValue, useMemo, useRef, useState, type ReactNode } from "react";
-import { ArrowRightLeft, CalendarDays, Check, FileText, Funnel, Plus, Repeat, RotateCcw, SlidersHorizontal, CheckSquare, X } from "lucide-react";
+import { ArrowRightLeft, CalendarDays, Check, FileText, Funnel, Plus, Repeat, RotateCcw, SlidersHorizontal, SquareCheckBig, X } from "lucide-react";
 import { DocumentPicker, type Target } from "@/components/app/QuickAddTask";
 import { api } from "@/lib/convex/api";
 import { useAppState } from "@/lib/app/state";
@@ -21,15 +21,16 @@ import { haptic } from "@/lib/nativeApp";
 import { useIphoneApp } from "@/lib/iphone";
 import { IphoneTasks } from "@/components/iphone/Tasks";
 import { IphoneTaskSheet } from "@/components/iphone/TaskSheet";
+import { useKeyLabels } from "@/lib/shortcuts";
 
 type View = "inbox" | "today" | "upcoming" | "all" | "completed" | "mine";
 const VIEWS: { id: View; label: string; empty: { title: string; body?: string } }[] = [
   { id: "inbox", label: "Inbox", empty: { title: "No undated tasks", body: "Tasks without a due date land here." } },
-  { id: "today", label: "Today", empty: { title: "Nothing due today", body: "Enjoy the quiet." } },
+  { id: "today", label: "Today", empty: { title: "Nothing due today" } },
   { id: "upcoming", label: "Upcoming", empty: { title: "Nothing scheduled ahead" } },
   { id: "all", label: "All", empty: { title: "No open tasks" } },
   { id: "completed", label: "Completed", empty: { title: "Nothing completed yet", body: "Completed and canceled tasks appear here." } },
-  { id: "mine", label: "My Tasks", empty: { title: "Nothing is assigned to you" } },
+  { id: "mine", label: "My tasks", empty: { title: "Nothing is assigned to you" } },
 ];
 
 type Priority = "none" | "low" | "medium" | "high";
@@ -335,6 +336,7 @@ function TaskEditForm({ task, onClose }: { task: TaskRow; onClose: () => void })
 }
 
 export function TasksView({ view }: { view: View }) {
+  const keys = useKeyLabels();
   const { today, scope, context } = useAppState();
   const tasks = useTasks(view);
   const counts = useQuery(api.tasks.counts, { scope, today });
@@ -395,7 +397,7 @@ export function TasksView({ view }: { view: View }) {
           <AppLink href="/calendar" title="Calendar" className="ui-btn ui-btn-secondary h-8 gap-1.5 px-3 text-callout pointer-coarse:h-11">
             <CalendarDays size={14} aria-hidden /> <span className="max-md:sr-only">Calendar</span>
           </AppLink>
-          <Button size="sm" variant="primary" title="Add task (⌘⇧A)" onClick={() => openQuickAdd()}>
+          <Button size="sm" variant="primary" title={keys("Add task (⌘⇧A)")} onClick={() => openQuickAdd()}>
             <Plus size={14} aria-hidden /> Add task
           </Button>
         </header>
@@ -432,7 +434,7 @@ export function TasksView({ view }: { view: View }) {
                   setFilter("");
                 }
               }}
-              placeholder="Filter by task or page"
+              placeholder="Filter by task or note"
               className="h-9 w-full ui-input rounded-chip pl-8 pr-9 text-callout pointer-coarse:h-11"
             />
           </label>
@@ -458,7 +460,7 @@ export function TasksView({ view }: { view: View }) {
             ))}
           </div>
         ) : shown.length === 0 ? (
-          <EmptyState icon={CheckSquare} title={query ? "No tasks match that filter" : empty.title} body={query ? undefined : empty.body} />
+          <EmptyState icon={SquareCheckBig} title={query ? "No tasks match that filter" : empty.title} body={query ? undefined : empty.body} />
         ) : (
           list
         )}

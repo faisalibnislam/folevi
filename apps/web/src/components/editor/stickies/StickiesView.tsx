@@ -89,8 +89,9 @@ import {
 } from "./ops";
 import { useStickiesDoc } from "./useStickiesDoc";
 import { targetUnder } from "../canvas/targetUnder";
-import { capturePointer, dropFocusIn, notePress, pinchPair, useTapFocus, type DownPointer } from "../canvas/pointers";
+import { capturePointer, pressIsElsewhere, dropFocusIn, notePress, pinchPair, useTapFocus, type DownPointer } from "../canvas/pointers";
 import { coarsePointer } from "@/lib/hooks/useMediaQuery";
+import { keyLabel, withKeyLabels } from "@/lib/shortcuts";
 
 const MIN_K = 0.15;
 const MAX_K = 2.5;
@@ -415,7 +416,7 @@ function StickiesEditor(props: ReactNodeViewProps & { me: string; people: People
       commit(next);
       setSel(NO_SELECTION);
       fitView(next);
-      toast.show(`Grouped into ${r.groups.length} ${r.groups.length === 1 ? "theme" : "themes"}. Undo with ⌘Z.`);
+      toast.show(`Grouped into ${r.groups.length} ${r.groups.length === 1 ? "theme" : "themes"}. Undo with ${keyLabel("⌘Z")}.`);
       setPanel(null);
     } else if (r.kind === "ideas" || r.kind === "photo") {
       const ids = addNotes(r.kind === "ideas" ? r.ideas : r.notes, viewCenter(), { select: true });
@@ -562,6 +563,8 @@ function StickiesEditor(props: ReactNodeViewProps & { me: string; people: People
   };
 
   const onPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    // A press in something this board drew on top of the page (a phone sheet) isn't the board's (pointers.ts).
+    if (pressIsElsewhere(e.currentTarget, e.target)) return;
     const target = e.target as Element;
     if (target.closest(".st-text-input, .st-label-input")) return;
     lastPointer.current = e.pointerType;
@@ -1021,7 +1024,7 @@ function StickiesEditor(props: ReactNodeViewProps & { me: string; people: People
       sep: true,
       priority: 5,
       node: (
-        <button type="button" className="fb-vc-btn" aria-label="Undo" title="Undo (⌘Z)" disabled={!canUndo} onClick={undo}>
+        <button type="button" className="fb-vc-btn" aria-label="Undo" title={withKeyLabels("Undo (⌘Z)")} disabled={!canUndo} onClick={undo}>
           <Undo2 size={15} aria-hidden />
         </button>
       ),
@@ -1031,7 +1034,7 @@ function StickiesEditor(props: ReactNodeViewProps & { me: string; people: People
       key: "redo",
       priority: 4,
       node: (
-        <button type="button" className="fb-vc-btn" aria-label="Redo" title="Redo (⇧⌘Z)" disabled={!canRedo} onClick={redo}>
+        <button type="button" className="fb-vc-btn" aria-label="Redo" title={withKeyLabels("Redo (⇧⌘Z)")} disabled={!canRedo} onClick={redo}>
           <Redo2 size={15} aria-hidden />
         </button>
       ),

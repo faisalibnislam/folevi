@@ -55,7 +55,7 @@ export function AppContextMenu() {
     const copyText = (text: string, done: string) =>
       navigator.clipboard.writeText(text).then(
         () => toast.show(done),
-        () => toast.show("Couldn’t copy. Your browser blocked clipboard access.", { tone: "error" }),
+        () => toast.show("Couldn’t copy. Try again.", { tone: "error" }),
       );
     // Folevi for Mac: spelling suggestions, Look Up and Share join the text menu once the app has answered
     // (lib/desktop/textMenu.ts); nothing changes elsewhere.

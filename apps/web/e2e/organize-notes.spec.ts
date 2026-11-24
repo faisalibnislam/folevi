@@ -65,7 +65,7 @@ test("a new note on a folder page starts in that folder; the tab strip shows the
   // The folder is empty: its empty state offers New note. The top bar's New note makes the note in the open folder
   // too, and says so.
   await expect(page.getByRole("main").getByRole("button", { name: "New note", exact: true }).first()).toBeVisible();
-  await page.getByRole("button", { name: "New note", exact: true, description: "New note in this folder (⌘⌥N)" }).click();
+  await page.getByRole("button", { name: "New note", exact: true, description: /^New note in this folder \((⌘⌥N|Ctrl\+Alt\+N)\)$/ }).click();
   await page.waitForURL(/\/d\/[0-9A-Z]{26}\?new=1/);
   await page.getByRole("textbox", { name: "Title" }).fill("Soup");
   await waitForSaved(page);

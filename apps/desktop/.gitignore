@@ -1,0 +1,6 @@
+node_modules/
+dist/
+release/
+# The interface built into the app (node ../web/scripts/build-shell.mjs --platform windows copies it here).
+web/
+.release-config.json

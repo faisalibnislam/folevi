@@ -1,0 +1,40 @@
+{
+  "name": "folevi-desktop",
+  "productName": "Folevi",
+  "version": "1.5.68",
+  "foleviVersion": "1.5.68",
+  "private": true,
+  "description": "Folevi for Windows: Folevi in a window of its own, with Quick Add, a notification area icon and Windows notifications.",
+  "author": "Folevi",
+  "homepage": "https://folevi.com",
+  "main": "dist/main.js",
+  "type": "commonjs",
+  "scripts": {
+    "version:sync": "node scripts/version.mjs",
+    "build": "node scripts/version.mjs && tsc -p tsconfig.json && node scripts/cloud-config.mjs",
+    "start": "pnpm build && electron .",
+    "dev": "pnpm build && FOLEVI_URL=http://app.localhost:3002 electron .",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "shell": "node ../web/scripts/build-shell.mjs --platform windows",
+    "icons": "node scripts/icons.mjs",
+    "dist": "node scripts/dist.mjs",
+    "dist:test": "node scripts/dist.mjs --test"
+  },
+  "dependencies": {
+    "electron-updater": "6.8.11"
+  },
+  "devDependencies": {
+    "@types/node": "24.13.6",
+    "electron": "45.4.1",
+    "electron-builder": "26.18.0",
+    "fake-indexeddb": "6.2.5",
+    "typescript": "6.0.3",
+    "vitest": "5.0.5"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "electron"
+    ]
+  }
+}

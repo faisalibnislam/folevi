@@ -187,6 +187,13 @@
   .ui-pop { animation-name: folio-fade !important; animation-duration: 120ms !important; animation-timing-function: linear !important; }
 }
 
+/* Android's press ripple (lib/android/ripple.ts, inside the Android app only): a layer over the pressed control,
+   clipped to it, in the control's own text color at a low opacity. */
+.ui-ripple-host { position: fixed; z-index: 2147483000; overflow: hidden; pointer-events: none; opacity: 1; transition: opacity 220ms linear; }
+.ui-ripple-host[data-out] { opacity: 0; }
+.ui-ripple { position: absolute; border-radius: var(--radius-capsule); background: currentColor; opacity: 0.12; transform: scale(0); animation: ui-ripple 380ms cubic-bezier(0.2, 0, 0, 1) forwards; }
+@keyframes ui-ripple { to { transform: scale(1); } }
+
 /* Utility: visually hidden but available to assistive tech. */
 .sr-only-focusable:not(:focus):not(:focus-within) {
   position: absolute;
@@ -1425,6 +1432,15 @@
 :root[data-desktop="mac"] dialog.ui-pop.max-w-lg { max-width: 480px; }
 :root[data-desktop="mac"] dialog.ui-pop[open] { animation: mac-sheet-in 480ms var(--spring-pop); transform-origin: center; }
 :root[data-desktop="mac"] dialog.ui-pop > div { max-height: calc(100dvh - 76px); }
+/* Folevi for Mac moves with no bounce, quick (the owner, 2026-11-24): what springs elsewhere settles in about 0.2 s
+   with no overshoot here, as Finder and Notes do. Every other platform keeps Folevi's springs (the owner, same day). */
+:root[data-desktop="mac"] {
+  --spring-pop: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --spring-press: cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+:root[data-desktop="mac"] .ui-btn { transition-duration: 160ms, 200ms, 160ms, 160ms, 160ms; }
+:root[data-desktop="mac"] [role="dialog"][popover].ui-pop { animation-duration: 200ms; }
+:root[data-desktop="mac"] dialog.ui-pop[open] { animation-duration: 240ms; }
 :root[data-desktop="mac"] dialog.ui-pop > div > header h2 { font-size: var(--type-title-3); }
 /* §3.14 The command palette isn't a sheet: it keeps its place, 640 wide, its rows 36 tall. */
 :root[data-desktop="mac"] dialog.ui-pop.mt-\[12vh\] { margin-top: 12vh; max-width: 640px; }

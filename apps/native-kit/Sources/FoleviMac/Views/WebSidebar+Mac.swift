@@ -388,13 +388,8 @@ struct MacAccountButton: View {
     @State private var anchor: NSView?
 
     /// The iPad with the sidebar beside the card: the account is in the title bar, not the sidebar.
-    static func inBar(_ model: FrameModel) -> Bool {
-        #if os(iOS)
-        !model.sidebarFloats && !model.sidebarHidden
-        #else
-        false
-        #endif
-    }
+    /// (Since the iPad's native window, 2026-11-24, the account is the sidebar's on the iPad too.)
+    static func inBar(_ model: FrameModel) -> Bool { false }
 
     var body: some View {
         let name = model.accountName.isEmpty ? "You" : model.accountName

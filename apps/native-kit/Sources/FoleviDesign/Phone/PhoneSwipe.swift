@@ -59,7 +59,32 @@ public struct PhoneSwipeRow<Content: View>: View {
         self.content = content()
     }
 
+    @Environment(\.phoneInList) private var inList
+
     public var body: some View {
+        if inList { nativeBody } else { drawnBody }
+    }
+
+    /// In iOS's own List (the owner, 2026-11-24: system lists): the system's swipe actions, the first one running on a
+    /// full swipe, in their colours with the icon and label.
+    private var nativeBody: some View {
+        content
+            .swipeActions(edge: .leading, allowsFullSwipe: true) {
+                ForEach(leading) { a in Self.nativeButton(a) }
+            }
+            .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                ForEach(trailing) { a in Self.nativeButton(a) }
+            }
+    }
+
+    private static func nativeButton(_ a: PhoneSwipeAction) -> some View {
+        Button(role: a.danger ? .destructive : nil, action: a.action) {
+            Label { Text(a.label) } icon: { a.icon.image() }
+        }
+        .tint(a.tone.color)
+    }
+
+    @ViewBuilder private var drawnBody: some View {
         let side = offset > 0 ? leading : offset < 0 ? Array(trailing.reversed()) : []
         ZStack(alignment: offset > 0 ? .leading : .trailing) {
             if !side.isEmpty {

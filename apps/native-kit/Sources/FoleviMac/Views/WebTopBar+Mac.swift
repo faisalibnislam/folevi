@@ -137,6 +137,15 @@ extension WebTopBar {
 
     // MARK: the tabs
 
+    /// The tabs alone, in a row under the iPad's system toolbar (the owner, 2026-11-24: tabs kept, drawn the way
+    /// Safari draws them on iPadOS).
+    var tabsBody: some View {
+        tabStrip
+            .padding(.horizontal, 12)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+            .coordinateSpace(name: Self.space)
+    }
+
     /// Home and Show All Tabs in their round buttons; then the tabs in their track, the only part that scrolls.
     private var tabStrip: some View {
         HStack(spacing: MacLook.barSpacing) {

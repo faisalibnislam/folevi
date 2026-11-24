@@ -83,6 +83,8 @@ public struct PhoneAllFoldersScreen: View {
                         }
                     }
                 }
+                // (On one card: the owner, 2026-11-23.)
+                .phoneCard()
                 .padding(.top, 8)
             } else {
                 let draggable = model.canEdit

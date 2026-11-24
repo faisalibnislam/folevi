@@ -129,7 +129,7 @@ public struct PhoneFormatSheetContent: View {
             }
             if inCode {
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("LANGUAGE").webText(PhoneType.captionCaps).foregroundStyle(FoleviTokens.Chrome.inkMuted.resolve(scheme).color).padding(.horizontal, 4)
+                    Text("Language").webText(PhoneType.captionCaps).foregroundStyle(FoleviTokens.Chrome.inkMuted.resolve(scheme).color).padding(.horizontal, 4)
                     Menu {
                         ForEach(Self.languages, id: \.self) { l in
                             Button(l) { run(.codeLanguage(l)) }
@@ -273,9 +273,6 @@ public struct PhoneFormatSheetContent: View {
         .buttonStyle(FormatRowStyle())
         .disabled(off)
         .opacity(off ? 0.35 : 1)
-        .overlay(alignment: .top) {
-            if label != "Quote" { PhoneSurface.separator.resolve(scheme).color.frame(height: 0.5).padding(.leading, 56) }
-        }
         .accessibilityAddTraits(on ? .isSelected : [])
     }
 

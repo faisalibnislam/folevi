@@ -2,7 +2,7 @@
 
 > Read this first if you are a Claude (or any agent) picking this project up, on this Mac or another one. Then read `CLAUDE.md`, `docs/HANDOFF.md` (the long handoff: unfinished branches, release detail, what the owner is waiting on) and `docs/claude-context/memory/MEMORY.md` (the owner's standing rules). Keep this file current: after every change to the project, update "Current state", "Next steps" and "Change log", and commit it.
 
-Last updated: 2026-11-21 · Written on: Faisal's MacBook Pro M5
+Last updated: 2026-11-23 · Written on: Faisal's MacBook Pro M5
 
 ## 1. What this is
 
@@ -248,6 +248,31 @@ The ones most likely to be broken:
 
 ## 9. Current state (as of 2026-11-23)
 
+**iPhone and iPad redesigned after the Mac's window (1.5.65, TestFlight):** branch
+`claude/ios-native-redesign-f4a8be` (worktree `.claude/worktrees/ios-native-redesign-f4a8be`), built on the Mac
+redesign branch `claude/folevi-core-529dbe`. The owner's answers: `docs/claude-context/memory/ios-redesign-decisions-2026-11-23.md`.
+
+- **iPhone** (FoleviDesign/Phone, FoleviPhone, apps/ios Rebuild): every screen on the frame's grey
+  (`PhoneLook.frame`), its sections and lists on rounded opaque cards (`.phoneCard()`, `PhoneLook`), no row lines
+  (rounded press highlights). Each top bar ends in the Mac's order: the screen's actions in one glass capsule, the
+  main action (+) in Folevi's ink (`PhoneRootCreateItem`), then a search capsule (a screen's filter where it has
+  one, else the app's Search, `phoneOpenSearch`). Interface text in four sizes (`NativeChrome.fourSize`: 15, 17,
+  20, 28), sentence-case headings. Home in the Mac's order (places, Catch me up, Recent, Bookmarks, Folders, Tags
+  as chips, the rest). Tasks, Calendar and Search group rows on cards. The note keeps its drawn bars; its place
+  chip is 44 pt. Tab bar unchanged: Home, Tasks, Calendar, Foli AI, search.
+- **iPad** (FoleviMac, merged from `claude/ipad-redesign`): a top bar per screen inside the card
+  (`IPadScreenBar`: Back/Forward, title, actions capsule, New note ink pill, search; 44 pt controls), screens start
+  below it; the note's tools panel is the Mac's flat inspector (`data-ipad-native` in `globals.css`); 228 pt
+  sidebar, 44 pt rows; card corners 12 pt; tabs stay on the strip.
+- **Checked:** Simulators "Folevi Redesign iPhone", "Folevi Redesign iPad", "Folevi Redesign iPad 11" (scratch
+  local libraries), light and dark; native-kit iOS tests (all pass after the iOS snapshots were recorded again: the
+  references were stale on Xcode 27.2), the iOS app's tests, the macOS package build.
+- **Not checked:** a real iPhone or iPad, signed-in screens (Shared with Me, Changes, notifications with data),
+  Dynamic Type at the largest sizes in the app itself (the snapshot tests cover xxxl for some screens).
+- **Released:** 1.5.65 (build 80) cut on this branch (tag `v1.5.65`, local, not pushed) and uploaded to TestFlight
+  with the owner's OK (delivery 953a8af0, internal group once Apple has processed it).
+  Web and Mac are not released; `main` is not pushed.
+
 **Folevi for Mac is now the native app (in progress, not released):** branch `claude/folevi-core-529dbe`
 (worktree `.claude/worktrees/folevi-core-529dbe`), `apps/mac`; pushed to GitHub 2026-11-23 with the owner's OK (not merged). The iPhone/iPad
 redesign (`claude/ios-native-redesign-f4a8be`) opens its pull request into this branch, not `main`.
@@ -405,6 +430,13 @@ signed-in account, 1.5.58's frosted folders with a large library, and the iPad c
 account button should move past iPadOS's window buttons).
 
 ## 10. Next steps / open work
+- iPhone and iPad redesign (`claude/ios-native-redesign-f4a8be`): the owner tries 1.5.65 from TestFlight; PR 52
+  (https://github.com/faisalibnislam/folevi/pull/52) into `claude/folevi-core-529dbe` (the owner's choice) is
+  open for review. The `v1.5.65` tag is local only (pushing it was not asked for).
+  Owner's calls from the 2026-11-23 HIG audit: Foli AI is a tab that opens a sheet (the HIG says tabs navigate,
+  never act); section headings stay sentence case (Apple uses title case); dark mode keeps a pure black frame.
+  Known gaps: the notifications sheet's rows are not on cards yet; screens borrowed from the iPad (Foli DNA,
+  Reviews) keep their own white page under the system bar.
 - Folevi for Mac (native, `apps/mac`, branch `claude/folevi-core-529dbe`), the owner's order of 2026-11-23:
   1. Done 2026-11-23: the owner's Mac UI guide (`docs/design/macloving-mac-ui.md`) as the **full window
      redesign**:
@@ -498,6 +530,11 @@ account button should move past iPadOS's window buttons).
 - `pnpm audit` ignores four better-auth GHSAs on purpose (`pnpm-workspace.yaml`); upgrade better-auth and
   `@convex-dev/better-auth` together when supported, then drop the ignores.
 - zsh doesn't word-split a variable of file names: use `git diff --name-only -z | xargs -0 git commit ...`.
+- Debug iPad: launching with `FOLEVI_REBUILD_OPEN` crashes (the `desk` lazy getter calls `frameStateChanged`,
+  which reads `desk` again: `RebuildIPad.swift:213`, `RebuildFrame.swift:79`). The iPhone is fine.
+- Driving a simulator headlessly: `FOLEVI_REBUILD_OPEN=/notes` (via `SIMCTL_CHILD_`), the `folevi.rebuild` default
+  for the rebuilt frame in Debug, and `scripts/gates.mjs`'s `simulator()` helper (press, engine commands) to make a
+  scratch local library.
 - Snapshot tests re-record with `FOLEVI_RECORD_SNAPSHOTS=1` (Mac) or `TEST_RUNNER_FOLEVI_RECORD_SNAPSHOTS=1` (iOS); recording rewrites every image, so restore the ones that didn't really change.
 - CI's local Convex backend stops a query after 1 second, and a timed-out query takes the page to its error screen
   ("Something went wrong"). On a cold backend the first chat message of a shard can trip it: that is
@@ -519,6 +556,9 @@ account button should move past iPadOS's window buttons).
 - 2026-11-23: Folevi for Mac: no more Core naming; `apps/mac/FoleviCore` became `apps/mac/Folevi` (project, target, scheme, module, tests), `core.mjs` became `app.mjs`, internal Core* types became App*; identity, data and update feed unchanged; 38 Mac tests and the web version test pass.
 - 2026-11-23: Folevi for Mac: the window rebuilt the native way (system split view, unified Liquid Glass toolbar with each screen's items and search, system inspector, segmented controls, sidebar can be hidden); the Macloving card design dropped at the owner's word; 38 tests pass.
 - 2026-11-23: Folevi for Mac: HIG and Liquid Glass pass (content under the glass bar with a soft edge, split screens below it, tab bar state after restored tabs, no shadow on the palette's glass, Jump to Latest materializes, hover on bar choices); iPhone/iPad pass handed to the redesign session (PR 52).
+- 2026-11-23: iPhone/iPad audited with apple-hig, liquid-glass, liquid-glass-motion and axiom-design (owner's ask): + is the system's prominent glass, search button titled, 44 pt tag chips and iPad history buttons; owner's calls listed in PR 52.
+- 2026-11-23: PR 52 opened (iPhone and iPad redesign into `claude/folevi-core-529dbe`).
+- 2026-11-23: iPhone and iPad redesigned after the Mac's window (owner's checkbox answers saved in memory); 1.5.65 cut on `claude/ios-native-redesign-f4a8be` and uploaded to TestFlight; not merged.
 - 2026-11-23: `claude/folevi-core-529dbe` pushed to GitHub with the owner's OK (a337b65b) so the iPhone/iPad redesign can open its pull request into it; `main` untouched.
 - 2026-11-23: Folevi for Mac: the owner's main-window profile (hidden title bar, sidebar, content card, glass top bar from each screen, flat inspector panel, capsule choices; ink kept, native tabs kept below the tab bar); iPad card margin 12 pt; a notarized test DMG built for the owner (1.5.64, not published).
 - 2026-11-23: Folevi for Mac: "Folevi Core" replaced the AppKit app as an update in place (same bundle id, data, Keychain, scheme, Sparkle feed and key, Developer ID profile); `apps/mac-core` became `apps/mac`; the AppKit app is at tag `archive/mac-appkit`; it takes over lock.json, Spotlight and the Electron migration; publish.mjs follows the AppKit flow (universal, changelog notes); LIST-053 drag gap and NOTE-036 Foli DNA of a note done (engine contract revision 34: `web.show` query); a dark-mode accent that kept selected rows unreadable fixed. Next: the full Macloving window redesign on Mac and iPad, then a test DMG.

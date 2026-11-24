@@ -28,8 +28,8 @@ public enum PhoneNotePlace: Sendable, Equatable {
     }
 }
 
-/// NotePlaceChip: glass, 32 tall, 10 pt in at the start and 8 at the end, its icon, the place in Footnote 500 and a
-/// small chevron; it shrinks a little while pressed.
+/// NotePlaceChip: glass, 44 tall like the bar's other controls, its icon, the place in Subheadline 500 and a small
+/// chevron; it shrinks a little while pressed.
 public struct PhoneNotePlaceChip: View {
     let place: PhoneNotePlace
     let action: () -> Void
@@ -54,19 +54,18 @@ public struct PhoneNotePlaceChip: View {
                 }
                 .accessibilityHidden(true)
                 Text(place.label)
-                    .webText(WebTextStyle(size: WebTypeRole.footnote.metrics.size, leading: WebTypeRole.footnote.metrics.leading, weight: FoleviTokens.FontWeight.medium))
+                    .webText(WebTextStyle(size: WebTypeRole.subheadline.metrics.size, leading: WebTypeRole.subheadline.metrics.leading, weight: FoleviTokens.FontWeight.medium))
                     .lineLimit(1)
                     .foregroundStyle(FoleviTokens.Chrome.heading.resolve(scheme).color)
                 WebIconView(.chevronRight, size: 13, strokeWidth: 2.4)
                     .foregroundStyle(FoleviTokens.Chrome.inkFaint.resolve(scheme).color)
                     .accessibilityHidden(true)
             }
-            .padding(.leading, 10)
-            .padding(.trailing, 8)
-            .frame(height: 32)
+            // As tall as the bar's other controls, 44 pt (the owner, 2026-11-23: the Mac's one control height in a bar).
+            .padding(.leading, 14)
+            .padding(.trailing, 12)
+            .frame(height: 44)
             .liquidGlass()
-            // (A 44 pt target around the 32 pt chip: a tap just off it went to the note under the bar.)
-            .padding(.vertical, 6)
             .padding(.horizontal, 4)
             .contentShape(Rectangle())
         }

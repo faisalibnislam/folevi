@@ -189,9 +189,22 @@ final class MacAppLock {
         return (try? await context.evaluatePolicy(.deviceOwnerAuthentication, localizedReason: reason)) ?? false
     }
 
+    /// The SwiftUI Folevi (1.5.66 to 1.5.71) kept these settings in the app's defaults ("folevi.lock", { lock,
+    /// lockAfter }) instead of lock.json. Written back to lock.json once, so a Mac that changed them there keeps them.
+    static func adoptSwiftUISettings(defaults: UserDefaults = Paths.defaults, file: URL) {
+        let key = "folevi.lock"
+        guard let saved = defaults.dictionary(forKey: key) else { return }
+        let json: [String: Any] = ["lock": saved["lock"] as? Bool ?? false, "lockAfter": max(0, (saved["lockAfter"] as? NSNumber)?.intValue ?? 0)]
+        if let data = try? JSONSerialization.data(withJSONObject: json, options: [.sortedKeys]), (try? data.write(to: file, options: .atomic)) != nil {
+            defaults.removeObject(forKey: key)
+        }
+    }
+
     private var current: LockLogic {
         if let logic { return logic }
-        let made = LockLogic(.init(file: Paths.supportFolder.appendingPathComponent("lock.json"), canPrompt: Self.canPromptTouchID, prompt: Self.promptTouchID,
+        let file = Paths.supportFolder.appendingPathComponent("lock.json")
+        Self.adoptSwiftUISettings(file: file)
+        let made = LockLogic(.init(file: file, canPrompt: Self.canPromptTouchID, prompt: Self.promptTouchID,
                                    show: { [weak self] in self?.show() }, hide: { [weak self] in self?.hide() }))
         logic = made
         return made

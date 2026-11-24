@@ -241,4 +241,22 @@ final class PlacesTests: XCTestCase {
         XCTAssertEqual(got7["lockAfter"] as? Int, 3600)
         XCTAssertEqual(LockLogic.validAfter(true as NSNumber), nil, "a boolean isn't seconds")
     }
+
+    /// The SwiftUI app's lock settings (defaults "folevi.lock", 1.5.66 to 1.5.71) come back as lock.json once.
+    @MainActor
+    func testLockSettingsFromTheSwiftUIApp() throws {
+        let suite = "folevi.tests.lock.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let file = FileManager.default.temporaryDirectory.appendingPathComponent("lock-\(UUID().uuidString).json")
+        defer { try? FileManager.default.removeItem(at: file) }
+        MacAppLock.adoptSwiftUISettings(defaults: defaults, file: file)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: file.path), "nothing to adopt, nothing written")
+        defaults.set(["lock": true, "lockAfter": 300], forKey: "folevi.lock")
+        MacAppLock.adoptSwiftUISettings(defaults: defaults, file: file)
+        let json = try XCTUnwrap(JSONSerialization.jsonObject(with: Data(contentsOf: file)) as? [String: Any])
+        XCTAssertEqual(json["lock"] as? Bool, true)
+        XCTAssertEqual(json["lockAfter"] as? Int, 300)
+        XCTAssertNil(defaults.dictionary(forKey: "folevi.lock"), "adopted once")
+    }
 }

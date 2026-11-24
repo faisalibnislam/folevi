@@ -1,5 +1,7 @@
 package com.folevi.android
 
+import kotlinx.coroutines.launch
+
 import android.app.Application
 import com.folevi.android.auth.AuthBridge
 import com.folevi.android.net.Http
@@ -83,8 +85,12 @@ class FoleviApp : Application() {
         instance = this
         settings = ShellSettings(this)
         com.folevi.android.host.Reminders.channels(this)
-        com.folevi.android.extras.Widgets.schedule(this)
-        com.folevi.android.extras.PlaceOutbox.schedule(this)
+        // Background work is scheduled off the main thread (WorkManager starts its database); every process start runs
+        // this, a widget update or a push included.
+        kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.SupervisorJob() + kotlinx.coroutines.Dispatchers.Default).launch {
+            runCatching { com.folevi.android.extras.Widgets.schedule(this@FoleviApp) }
+            runCatching { com.folevi.android.extras.PlaceOutbox.schedule(this@FoleviApp) }
+        }
         com.folevi.android.push.Push.start(this)
         secrets = SecretStore(File(noBackupFilesDir, "secrets"), KeystoreCipher("folevi.secrets.v1"))
         library = com.folevi.android.library.LibraryService(noBackupFilesDir, this)

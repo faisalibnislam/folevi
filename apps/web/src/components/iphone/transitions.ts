@@ -240,6 +240,7 @@ function playZoom(kind: "push" | "pop", entering: HTMLElement, leaving: HTMLElem
     if (leaving.parentElement === pictures) pictures.replaceChildren();
     entering.removeAttribute("data-iphone-zoom");
     entering.style.transformOrigin = "";
+    leaving.replaceChildren();
     unpromote();
     release(all);
   };
@@ -344,6 +345,9 @@ export function playTransition(entering: HTMLElement | null) {
   const all: Animation[] = [];
   const done = () => {
     if (leaving.parentElement === pictures) pictures.replaceChildren();
+    // The picture's own contents too: WebKit can keep a copy that was on screen alive after it's gone, and an
+    // empty one costs nothing (the iOS review's run on TestFlight 1.5.75).
+    leaving.replaceChildren();
     unpromote();
     release(all);
   };

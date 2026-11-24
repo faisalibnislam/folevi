@@ -40,8 +40,10 @@ away from `FoleviMessagingService`.
 How the platform behaves:
 - **Edge to edge:** the page draws under the bars and gets the insets as `--android-inset-*` and events.
 - **Keyboard:** the web view's bottom margin follows the IME; the page gets the keyboard's height as it animates.
-- **Back and predictive back:** the gesture's progress goes to the page; the page says whether it has something
-  to go back to (the web's tab rule: Back with nothing left closes the tab), else the system takes the app home.
+- **Back and predictive back:** the gesture's progress goes to the page. Sheets and menus close first. On the
+  phone layout Back follows the screen's own Back, then Home. On wide windows (tablets, an open foldable,
+  Googlebooks) Back presses the page's own Back button, which follows the web's tab rule (back within the tab;
+  with nothing left the tab closes and the tab it was opened from shows), then Home. Home leaves the app.
 - **Windows:** `singleInstancePerTask` with multi-instance: links and notifications go to the open window, and
   Googlebooks and tablets can open more from the launcher or with Ctrl+Shift+N. Resizing, folding and keyboards
   are handled in place (no restart), and the page picks the phone or sidebar layout from the window's width.
@@ -117,6 +119,18 @@ cd android && ./gradlew :app:bundleRelease   # app/build/outputs/bundle/release/
 
 Release builds shrink and optimize with R8 (Capacitor's own consumer rules keep the plugins). Native releases are
 paused (owner, 2026-11-24): no Play upload without the owner's OK.
+
+## Size and memory (2026-11-24, emulators)
+
+| | Native app (build 83) | This app |
+| --- | --- | --- |
+| Release AAB | 100.8 MB | 96.6 MB |
+| Release APK | 122.3 MB | 119.1 MB |
+| Code (dex) | 6.3 MB | 3.4 MB |
+| Memory on Home, local library (PSS: app + WebView renderer) | 78.8 + 120.5 = 199.3 MB | 80.2 + 125.4 = 205.7 MB |
+
+Both carry the same web export (84 MB, of which 64 MB is note covers) and 39 MB of native libraries (ML Kit, Tink,
+Firebase). Memory was measured on the Folevi_Phone emulator, release builds, three samples after a 45 s settle.
 
 ## Steps only the owner can do
 

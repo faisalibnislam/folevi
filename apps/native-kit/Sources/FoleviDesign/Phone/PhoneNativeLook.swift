@@ -73,6 +73,76 @@ public extension EnvironmentValues {
     /// Opens the app's Search (the frame's), for the search capsule at the end of every screen's top bar (the owner,
     /// 2026-11-23). Nil: no capsule (Search itself, a sheet, the iPad).
     @Entry var phoneOpenSearch: (@MainActor () -> Void)? = nil
+    /// Inside iOS's own List (a PhoneScreen with `list`, the owner's 2026-11-24 pick): sections are the List's
+    /// sections, swipe actions the system's.
+    @Entry var phoneInList = false
+}
+
+/// A list's group of rows: in iOS's own List (`phoneInList`) one of its inset grouped sections, with no lines
+/// between rows (the owner, 2026-11-24: system lists, no row lines) and an optional heading; elsewhere the rows on
+/// one card (`phoneCard`) under the heading.
+public struct PhoneListSection<Header: View, Content: View>: View {
+    let header: Header
+    let content: Content
+    @Environment(\.phoneInList) private var inList
+
+    public init(@ViewBuilder content: () -> Content, @ViewBuilder header: () -> Header) {
+        self.content = content()
+        self.header = header()
+    }
+
+    public var body: some View {
+        if inList {
+            Section {
+                Group { content }
+                    .listRowInsets(EdgeInsets())
+                    .listRowSeparator(.hidden)
+                    .environment(\.phoneRowGrouped, true)
+            } header: {
+                if Header.self != EmptyView.self {
+                    header.textCase(nil).listRowInsets(EdgeInsets(top: 8, leading: 4, bottom: 6, trailing: 0))
+                }
+            }
+            .listSectionSeparator(.hidden)
+        } else {
+            VStack(alignment: .leading, spacing: 0) {
+                if Header.self != EmptyView.self { header }
+                VStack(spacing: 0) { content }.phoneCard()
+            }
+        }
+    }
+}
+
+public extension PhoneListSection where Header == EmptyView {
+    init(@ViewBuilder content: () -> Content) {
+        self.init(content: content, header: { EmptyView() })
+    }
+}
+
+public extension PhoneListSection where Header == PhoneSectionHeading {
+    /// With a heading in the Mac's section style (Subheadline semibold, muted, sentence case).
+    init(_ title: String, @ViewBuilder content: () -> Content) {
+        self.init(content: content, header: { PhoneSectionHeading(title) })
+    }
+}
+
+/// A section's heading: Subheadline semibold in the muted ink, sentence case.
+public struct PhoneSectionHeading: View {
+    let title: String
+    @Environment(\.colorScheme) private var scheme
+    @Environment(\.phoneInList) private var inList
+    public init(_ title: String) { self.title = title }
+    public var body: some View {
+        Text(title)
+            .webText(PhoneType.captionCaps)
+            .lineLimit(1)
+            .foregroundStyle(FoleviTokens.Chrome.inkMuted.resolve(scheme).color)
+            .padding(.horizontal, inList ? 0 : 20)
+            .padding(.top, inList ? 0 : 16)
+            .padding(.bottom, inList ? 0 : 6)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .accessibilityAddTraits(.isHeader)
+    }
 }
 
 struct PhoneCardModifier: ViewModifier {
@@ -96,7 +166,8 @@ struct PhoneCardModifier: ViewModifier {
 /// interface text in four sizes (Subheadline 15, Body 17, Title 3 20, Title 28, with Dynamic Type), Folevi's ink.
 public enum PhoneLook {
     /// The frame: the grey every screen sits on.
-    public static let frame = PhoneSurface.grouped
+    /// iOS's own grouped background (systemGroupedBackground), as its lists draw it.
+    public static let frame = ColorPair(light: RGBA(242, 242, 247), dark: RGBA(0, 0, 0))
     /// A card on it: opaque white (dark: the raised grey).
     public static let card = PhoneSurface.row
     /// A section's card corners (iOS 26's inset grouped corners), and a small card's (a tile, a chip row).

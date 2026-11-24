@@ -319,12 +319,10 @@ public struct PhoneAgendaContent: View {
     public var body: some View {
         let today = model.today
         let days = model.agenda
-        VStack(alignment: .leading, spacing: 0) {
-            ForEach(Array(days.enumerated()), id: \.element.id) { i, day in
-                VStack(alignment: .leading, spacing: 0) {
-                    PhoneAgendaDayHeader(date: day.day, today: today) { actions.add(day.day) }
-                    // The day's tasks and events on one card (the owner, 2026-11-23).
-                    VStack(alignment: .leading, spacing: 0) {
+        Group {
+            ForEach(days, id: \.id) { day in
+                // The day's tasks and events, a section of iOS's own List (the owner, 2026-11-24).
+                PhoneListSection {
                         if day.isEmpty {
                             Text("Nothing planned")
                                 .webText(WebTextStyle(family: .display, size: WebTypeRole.subheadline.metrics.size, leading: 20))
@@ -332,17 +330,16 @@ public struct PhoneAgendaContent: View {
                                 .foregroundStyle(C(FoleviTokens.Chrome.inkFaint, scheme))
                                 .frame(minHeight: 48)
                                 .padding(.horizontal, 16)
+                                .frame(maxWidth: .infinity, alignment: .leading)
                         } else {
                             ForEach(day.overdue + day.tasks, id: \.id) { t in
                                 PhoneTaskLine(task: t, today: today, showNote: true, onDay: true, toggle: { model.toggle(t) }, open: { model.open(t) })
                             }
                             ForEach(day.events) { e in event(e.event) }
                         }
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .phoneCard()
+                } header: {
+                    PhoneAgendaDayHeader(date: day.day, today: today) { actions.add(day.day) }
                 }
-                .padding(.top, i == 0 ? 8 : 20)
             }
             if days.count <= 1 {
                 Text("Nothing else in the next 30 days.")
@@ -352,6 +349,7 @@ public struct PhoneAgendaContent: View {
                     .frame(maxWidth: .infinity)
                     .padding(.horizontal, 20)
                     .padding(.top, 32)
+                    .listRowBackground(Color.clear)
             }
         }
     }

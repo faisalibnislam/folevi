@@ -49,3 +49,7 @@ the same direction for iOS, replacing the iPad and list parts above:
 - **iPhone:** lists and Settings become iOS's own List (inset grouped, system grouped background, native swipe
   actions) with row lines hidden (the owner ticked both "system lists" and "keep cards, no lines"); Home keeps
   its note and folder cards, recent strip and tiles; the note keeps Folevi's drawn bars.
+
+**Tabs (2026-11-24):** the iPad opens pages in tabs exactly as the web does (checked, no change needed). The owner
+confirmed links inside a note stay in the same tab, like the web (only pages opened from lists, cards, See all,
+folder cards, search, the palette and Foli AI or notification links get a new tab with an opener).

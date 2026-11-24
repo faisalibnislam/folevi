@@ -261,8 +261,8 @@ The ones most likely to be broken:
   account opens; then it was published (feed and `Folevi.dmg` show 1.5.68, notarized). With a fake account place and
   no token, the Release build has no page errors but still waits. 1.5.67 is the iPhone/iPad release that
   `claude/ios-native-redesign-f4a8be` cut; its changelog entry is recorded here, but its code is not on this branch.
-- **Next:** merge PR 51 after CI (deploys the web; a flaky e2e shard is being re-run), then tell the Android
-  session to merge PR 54 (owner: "merge PR 54 after PR 51"). Tell the Duo session (PR 53) and the iPhone/iPad session when PR 51 has
+- **PR 51 merged into `main`** (7e2080e9, 2026-11-24) after green CI; Vercel deployed production. Then the
+  Android session was told to merge PR 54 (owner: "merge PR 54 after PR 51"). Tell the Duo session (PR 53) and the iPhone/iPad session when PR 51 has
   merged.
 - **Tabs (owner, 2026-11-24):** everything opens in a new tab exactly like the web on Mac, iPad, and Android
   tablets/Googlebooks (`docs/claude-context/memory/tabs-match-web-2026-11-24.md`). iPad and Android were forwarded
@@ -584,6 +584,7 @@ account button should move past iPadOS's window buttons).
   `DATABASE_UDF_USER_TIMEOUT_SECONDS=4` for that backend. Bursts show in `convex.log` as "took a long time".
 
 ## 12. Change log
+- 2026-11-24: PR 51 (native Mac app, 1.5.66 to 1.5.68 line) merged into main and deployed; PR 54 freed.
 - 2026-11-24: Mac tabs open as on the web and the Mac best-native pass (skills audits + owner picks) on `claude/mac-web-tabs`; not released.
 - 2026-11-24: 1.5.68 confirmed by the owner and published to the Mac feed; Mac web-style tabs started on `claude/mac-web-tabs`; Taskeni Mac polish started in its own session.
 - 2026-11-24: 1.5.66 released (Mac on Sparkle, TestFlight) and pulled from the Mac feed after it left signed-in Macs on the loading screen (page policy never knew the place's mode); fix in 1.5.68, notarized DMG handed to the owner, not on the feed yet; tabs-match-web rule saved and forwarded.

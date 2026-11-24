@@ -248,7 +248,7 @@ The ones most likely to be broken:
 
 ## 9. Current state (as of 2026-11-24)
 
-**Release in progress, 2026-11-24 (branch `claude/folevi-core-529dbe`, PR 51 into `main`, not merged):**
+**Release, 2026-11-24 (branch `claude/folevi-core-529dbe`, PR 51 merged into `main` as 7e2080e9):**
 - **1.5.66** (tag `v1.5.66`, local): the native Mac app replacing the AppKit one, plus PR 52's iPhone/iPad redesign.
   Published to Sparkle and uploaded to TestFlight with the owner's OK. **It broke signed-in Macs:** the window stayed
   on the loading screen. Cause: the app never set `AppScheme.modeOf`, so every page got the local
@@ -260,10 +260,9 @@ The ones most likely to be broken:
   `modeOf`; `SchemeModeTests`), 70 Mac tests pass. The owner installed it by hand and confirmed their signed-in
   account opens; then it was published (feed and `Folevi.dmg` show 1.5.68, notarized). With a fake account place and
   no token, the Release build has no page errors but still waits. 1.5.67 is the iPhone/iPad release that
-  `claude/ios-native-redesign-f4a8be` cut; its changelog entry is recorded here, but its code is not on this branch.
-- **Next:** merge PR 51 after CI (deploys the web; a flaky e2e shard is being re-run), then tell the Android
-  session to merge PR 54 (owner: "merge PR 54 after PR 51"). Tell the Duo session (PR 53) and the iPhone/iPad session when PR 51 has
-  merged.
+  `claude/ios-native-redesign-f4a8be` cut; its code reaches `main` through PR 56.
+- **PR 51 merged** (7e2080e9). After it: the Android session merges PR 54 (owner: "merge PR 54 after PR 51"); the
+  iPhone/iPad session opened PR 56 into `main`.
 - **Tabs (owner, 2026-11-24):** everything opens in a new tab exactly like the web on Mac, iPad, and Android
   tablets/Googlebooks (`docs/claude-context/memory/tabs-match-web-2026-11-24.md`). iPad and Android were forwarded
   to their sessions (the iPad already matched). Mac: in progress on the local branch `claude/mac-web-tabs` (a WIP
@@ -295,6 +294,7 @@ open. `FrameModel.windowResizedAt` (set by RebuildFrame's viewWillTransition) ke
 Details and checks: `docs/IPHONE_DUO_PLAN.md`, "Update (2026-11-24)".
 
 **iPhone and iPad redesigned after the Mac's window (1.5.65, TestFlight):** branch
+**iPhone and iPad redesigned after the Mac's window (1.5.65 and 1.5.67, TestFlight):** branch
 `claude/ios-native-redesign-f4a8be` (worktree `.claude/worktrees/ios-native-redesign-f4a8be`), built on the Mac
 redesign branch `claude/folevi-core-529dbe`. The owner's answers: `docs/claude-context/memory/ios-redesign-decisions-2026-11-23.md`.
 
@@ -321,12 +321,16 @@ redesign branch `claude/folevi-core-529dbe`. The owner's answers: `docs/claude-c
 - **Not checked:** a real iPhone or iPad, signed-in screens (Shared with Me, Changes, notifications with data),
   Dynamic Type at the largest sizes in the app itself (the snapshot tests cover xxxl for some screens).
 - **Released:** 1.5.65 (build 80) cut on this branch (tag `v1.5.65`, local, not pushed) and uploaded to TestFlight
-  with the owner's OK (delivery 953a8af0, internal group once Apple has processed it).
-  Web and Mac are not released; `main` is not pushed.
+  with the owner's OK (delivery 953a8af0, internal group once Apple has processed it). Its first round reached
+  `main` through PR 52 into `claude/folevi-core-529dbe` and PR 51.
+- **1.5.67** (build 82, tag `v1.5.67`, local): the second round (native iPad window, iPhone system lists) on
+  TestFlight with the owner's OK. **PR 56** (https://github.com/faisalibnislam/folevi/pull/56) brings it into
+  `main`, with `main` (1.5.68) merged in; native-kit iOS tests, the macOS build and the Mac app's 39 tests pass.
+  Merging is the owner's call (it deploys the web, though no web code changed).
 
 **Folevi for Mac is now the native app (in progress, not released):** branch `claude/folevi-core-529dbe`
 (worktree `.claude/worktrees/folevi-core-529dbe`), `apps/mac`; pushed to GitHub 2026-11-23 with the owner's OK (not merged). The iPhone/iPad
-redesign (`claude/ios-native-redesign-f4a8be`) opens its pull request into this branch, not `main`.
+redesign's first round came in through PR 52; its second round goes straight to `main` (PR 56).
 
 - **What happened (2026-11-23):** the native macOS 26 app (built as "Folevi Core" from 2026-11-21) replaced the
   AppKit Folevi for Mac (the owner's choice). The AppKit app was removed from `apps/mac`; its last release, 1.5.64,
@@ -488,6 +492,10 @@ account button should move past iPadOS's window buttons).
 - iPhone and iPad redesign (`claude/ios-native-redesign-f4a8be`): the owner tries 1.5.65 from TestFlight; PR 52
   (https://github.com/faisalibnislam/folevi/pull/52) merged into `claude/folevi-core-529dbe` on 2026-11-24
   with the owner's OK (main untouched). The `v1.5.65` tag is local only (pushing it was not asked for).
+- iPhone and iPad redesign (`claude/ios-native-redesign-f4a8be`): PR 56 into `main` waits on the owner's review
+  and merge; the owner tries 1.5.67 from TestFlight. The `v1.5.65` and `v1.5.67` tags are local only (pushing them
+  was not asked for). Open question: should the iPad inspector's Foli AI tab get back the web panel's ready-made
+  actions (Summarize, Continue...) next to the Ask chat?
   Owner's calls from the 2026-11-23 HIG audit: Foli AI is a tab that opens a sheet (the HIG says tabs navigate,
   never act); section headings stay sentence case (Apple uses title case); dark mode keeps a pure black frame.
   Known gaps: the notifications sheet's rows are not on cards yet; screens borrowed from the iPad (Foli DNA,
@@ -615,6 +623,7 @@ account button should move past iPadOS's window buttons).
 - 2026-11-24: PR 52 merged into `claude/folevi-core-529dbe` (owner's OK; no required checks, so it merged before its lint run, which PR 53 had already passed on a superset); PR 53 retargeted to `claude/folevi-core-529dbe`.
 - 2026-11-24: iPhone Duo branch pushed with the owner's OK; PR 53 opened into `claude/ios-native-redesign-f4a8be` (PR 52's audit commits merged in first).
 - 2026-11-23: iPhone Duo resumed and redone (third pass, owner's pick): the iPad's wide layout when open, the iPhone layout closed; branch `claude/iphone-duo-ipad-layout` on PR 52's branch, not pushed.
+- 2026-11-24: PR 56 opened (iPhone and iPad second round, 1.5.67, into `main`) after merging `main` (PR 51, 1.5.68) into `claude/ios-native-redesign-f4a8be`; all native-kit iOS tests, the macOS build and 39 Mac app tests pass.
 - 2026-11-24: Owner confirmed links inside a note stay in the same tab, like the web (saved in `ios-redesign-decisions-2026-11-23.md`); no code change.
 - 2026-11-24: iPad tabs audited against the web's rule (owner, 2026-11-24: everything opens in a new tab like the web): already matching, no change. Lists, cards, See all, folder cards, search, palette and Foli AI/notification links open a new tab with an opener (FrameModel.open default); sidebar items and the toolbar's New note open fresh tabs; links inside a note follow in the same tab (FrameModel:694, as tabs.tsx); Back with nothing left closes the tab and returns to its opener (TabsModel.travel). Checked on the iPad simulator.
 - 2026-11-24: 1.5.67 (build 82) cut on `claude/ios-native-redesign-f4a8be` (after merging the released 1.5.66) and uploaded to TestFlight with the owner's OK (delivery f33671ae): the native iPad window and the iPhone's system lists. Tag `v1.5.67` local; web and Mac not released; a PR into `main` follows once PR 51 merges.

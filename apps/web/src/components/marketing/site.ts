@@ -5,6 +5,9 @@ export const SIGN_UP_URL = `${APP_URL}/signup`;
 export const WEB_APP_URL = APP_URL;
 /** Folevi for Mac's latest DMG: the update bucket through folevi.com/download (next.config.ts, docs/MAC_RELEASE.md). */
 export const MAC_DOWNLOAD_URL = "https://folevi.com/download/mac/Folevi.dmg";
+/** Folevi for Windows' latest installers, one per kind of PC (the same bucket through folevi.com/download, docs/WINDOWS.md). */
+export const WINDOWS_DOWNLOAD_ARM64_URL = "https://folevi.com/download/windows/Folevi-arm64-setup.exe";
+export const WINDOWS_DOWNLOAD_X64_URL = "https://folevi.com/download/windows/Folevi-x64-setup.exe";
 /**
  * Folevi for iPhone and iPad on the App Store. TODO(owner, 2026-11-07): replace with the app's own App Store link
  * (https://apps.apple.com/app/folevi/id…). Until then it opens an App Store search for Folevi.
@@ -13,6 +16,7 @@ export const APP_STORE_URL = "https://apps.apple.com/us/search?term=Folevi";
 /** The apps' minimum systems (apps/native-kit/Package.swift, apps/mac/project.yml). */
 export const MAC_REQUIREMENT = "macOS 26 or later";
 export const IOS_REQUIREMENT = "iOS 18 or iPadOS 18 or later";
+export const WINDOWS_REQUIREMENT = "Windows 11 or Windows 10 (22H2), on Arm or Intel and AMD PCs";
 export const SECURITY_EMAIL = "security@folevi.com";
 export const SUPPORT_EMAIL = "support@folevi.com";
 

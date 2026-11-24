@@ -88,7 +88,8 @@ struct SegmentedChoice<Value: Hashable>: View {
     var label = "View"
 
     var body: some View {
-        Picker(selection: Binding(get: { selection }, set: { v in Motion.run(Motion.tap) { selection = v } })) {
+        // The switch's one animation: a fade of the content it swaps (the segment itself moves on its own).
+        Picker(selection: Binding(get: { selection }, set: { v in Motion.run(Motion.fade) { selection = v } })) {
             ForEach(options.indices, id: \.self) { i in
                 let option = options[i]
                 Group {

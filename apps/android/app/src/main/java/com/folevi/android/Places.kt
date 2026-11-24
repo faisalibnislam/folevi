@@ -222,7 +222,7 @@ class Places(private val store: Store, private val onChange: (State) -> Unit = {
             return object : Store {
                 override fun read() = prefs.getString("places", null)
                 override fun write(json: String) {
-                    prefs.edit().putString("places", json).commit()
+                    prefs.edit().putString("places", json).apply()
                 }
             }
         }

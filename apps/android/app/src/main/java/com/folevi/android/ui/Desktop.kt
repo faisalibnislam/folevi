@@ -53,11 +53,22 @@ class Shortcuts(
     val tab: (Tab) -> Unit,
     val back: () -> Unit,
     val newWindow: () -> Unit,
+    /** Tablets and Googlebooks only (the tab strip); null on a phone. */
+    val tabs: TabKeys? = null,
 ) {
+    /** The tab strip's keys, as in a browser. */
+    class TabKeys(val close: () -> Unit, val reopen: () -> Unit, val cycle: (Int) -> Unit, val forward: () -> Unit)
+
     /** Handles a key press; true when it was one of Folevi's. Ctrl on Android keyboards, Meta (the Googlebook key) too. */
     fun handle(e: KeyEvent): Boolean {
         if (e.type != KeyEventType.KeyDown || !(e.isCtrlPressed || e.isMetaPressed)) return false
+        // A held key repeats: one press, one action (holding Ctrl+N made a note per repeat).
+        if (e.nativeKeyEvent.repeatCount > 0) return e.key in HANDLED
         when {
+            tabs != null && e.key == Key.W -> tabs.close()
+            tabs != null && e.key == Key.T && e.isShiftPressed -> tabs.reopen()
+            tabs != null && e.key == Key.Tab -> tabs.cycle(if (e.isShiftPressed) -1 else 1)
+            tabs != null && e.key == Key.RightBracket -> tabs.forward()
             e.key == Key.N && e.isShiftPressed -> newWindow()
             e.key == Key.N -> newNote()
             e.key == Key.F || e.key == Key.K -> search()
@@ -73,19 +84,28 @@ class Shortcuts(
     }
 
     companion object {
-        /** The same list for Android's keyboard shortcuts helper (Meta + /). */
-        fun helperGroup(): KeyboardShortcutGroup = KeyboardShortcutGroup(
+        /** Keys whose held repeats are swallowed (the first press acted). */
+        private val HANDLED = setOf(Key.W, Key.T, Key.Tab, Key.RightBracket, Key.N, Key.F, Key.K, Key.Comma, Key.One, Key.Two, Key.Three, Key.Four, Key.LeftBracket)
+
+        /** The same list for Android's keyboard shortcuts helper (Meta + /); the tab keys only where there are tabs. */
+        fun helperGroup(tabs: Boolean): KeyboardShortcutGroup = KeyboardShortcutGroup(
             "Folevi",
-            listOf(
+            listOfNotNull(
                 KeyboardShortcutInfo("New note", AndroidKeyEvent.KEYCODE_N, AndroidKeyEvent.META_CTRL_ON),
                 KeyboardShortcutInfo("New window", AndroidKeyEvent.KEYCODE_N, AndroidKeyEvent.META_CTRL_ON or AndroidKeyEvent.META_SHIFT_ON),
                 KeyboardShortcutInfo("Search", AndroidKeyEvent.KEYCODE_K, AndroidKeyEvent.META_CTRL_ON),
+                KeyboardShortcutInfo("Search", AndroidKeyEvent.KEYCODE_F, AndroidKeyEvent.META_CTRL_ON),
                 KeyboardShortcutInfo("Settings", AndroidKeyEvent.KEYCODE_COMMA, AndroidKeyEvent.META_CTRL_ON),
                 KeyboardShortcutInfo("Home", AndroidKeyEvent.KEYCODE_1, AndroidKeyEvent.META_CTRL_ON),
                 KeyboardShortcutInfo("Tasks", AndroidKeyEvent.KEYCODE_2, AndroidKeyEvent.META_CTRL_ON),
                 KeyboardShortcutInfo("Calendar", AndroidKeyEvent.KEYCODE_3, AndroidKeyEvent.META_CTRL_ON),
                 KeyboardShortcutInfo("Foli AI", AndroidKeyEvent.KEYCODE_4, AndroidKeyEvent.META_CTRL_ON),
                 KeyboardShortcutInfo("Back", AndroidKeyEvent.KEYCODE_LEFT_BRACKET, AndroidKeyEvent.META_CTRL_ON),
+                if (tabs) KeyboardShortcutInfo("Forward", AndroidKeyEvent.KEYCODE_RIGHT_BRACKET, AndroidKeyEvent.META_CTRL_ON) else null,
+                if (tabs) KeyboardShortcutInfo("Close tab", AndroidKeyEvent.KEYCODE_W, AndroidKeyEvent.META_CTRL_ON) else null,
+                if (tabs) KeyboardShortcutInfo("Reopen closed tab", AndroidKeyEvent.KEYCODE_T, AndroidKeyEvent.META_CTRL_ON or AndroidKeyEvent.META_SHIFT_ON) else null,
+                if (tabs) KeyboardShortcutInfo("Next tab", AndroidKeyEvent.KEYCODE_TAB, AndroidKeyEvent.META_CTRL_ON) else null,
+                if (tabs) KeyboardShortcutInfo("Previous tab", AndroidKeyEvent.KEYCODE_TAB, AndroidKeyEvent.META_CTRL_ON or AndroidKeyEvent.META_SHIFT_ON) else null,
             ),
         )
     }
@@ -93,7 +113,7 @@ class Shortcuts(
 
 /** Opens a new window of Folevi (Googlebooks and tablets put it beside this one), at a note when given. */
 fun openWindow(context: android.content.Context, noteId: String? = null, title: String? = null) {
-    val i = Intent(context, MainActivity::class.java)
+    val i = MainActivity.internalIntent(null, context)
         .addFlags(Intent.FLAG_ACTIVITY_NEW_DOCUMENT or Intent.FLAG_ACTIVITY_MULTIPLE_TASK or Intent.FLAG_ACTIVITY_LAUNCH_ADJACENT)
     if (noteId != null) i.putExtra(MainActivity.EXTRA_NOTE, noteId).putExtra(MainActivity.EXTRA_TITLE, title ?: "")
     context.startActivity(i)

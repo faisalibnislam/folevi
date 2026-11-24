@@ -13,6 +13,7 @@ import { effectiveTheme, themeRow } from "./lib/noteThemes";
 import { BUILT_IN_THEME_KEYS, builtInSetup, isCustomThemeKey, isFontId, type FontSlot } from "./lib/themes";
 import { vThemeDefaults, vThemeFonts, vThemeImage, vThemePalette, vThemePlan, vThemeStatus } from "./lib/validators";
 import { themeForClient } from "./themes";
+import { publicUploadUrl } from "./lib/fileUrls";
 
 const EDITORS: PlatformRole[] = ["super_admin", "ops_admin"];
 const vMeta = { requestId: v.optional(v.string()), clientHash: v.optional(v.string()) };
@@ -102,7 +103,7 @@ export const uploadUrl = mutation({
   args: {},
   handler: async (ctx) => {
     await requirePlatformRole(ctx, EDITORS);
-    return await ctx.storage.generateUploadUrl();
+    return publicUploadUrl(await ctx.storage.generateUploadUrl());
   },
 });
 

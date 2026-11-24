@@ -17,6 +17,18 @@ export async function signFileUrl(value: string): Promise<string> {
   return toHex(await crypto.subtle.sign("HMAC", key, enc.encode(value))).slice(0, 40);
 }
 
+/**
+ * An upload address from ctx.storage.generateUploadUrl() as the browser should use it. Folevi Server's backend
+ * runs on a loopback address, so it sets FOLEVI_PUBLIC_CONVEX_URL to the path its proxy serves Convex on
+ * ("/convex"); the page then uploads to its own origin, whichever address it was opened on.
+ */
+export function publicUploadUrl(url: string): string {
+  const pub = process.env.FOLEVI_PUBLIC_CONVEX_URL;
+  const cloud = process.env.CONVEX_CLOUD_URL;
+  if (!pub || !cloud || !url.startsWith(cloud)) return url;
+  return `${pub.replace(/\/$/, "")}${url.slice(cloud.length)}`;
+}
+
 /** No link we sign lasts longer than this (identity images: 8 days, rounded to the day). */
 const MAX_LINK_LIFETIME_MS = 9 * 86_400_000;
 

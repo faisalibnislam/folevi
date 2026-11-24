@@ -29,6 +29,7 @@ import { deleteFileBlob } from "../lib/fileCopies";
 import { isLocked, isSealed } from "../lib/e2ee/state";
 import { E2EE_LIMITS } from "../lib/e2ee/validators";
 import { ulid } from "@folevi/editor-schema";
+import { publicUploadUrl } from "../lib/fileUrls";
 
 /** Characters per stored chunk (a Convex document holds at most 1 MiB; UTF-8 takes up to 3 bytes a character). */
 const CHUNK_CHARS = 250_000;
@@ -231,7 +232,7 @@ export const generateFileUploadUrl = mutation({
       expiresAt: Date.now() + PUBLISH_INTENT_TTL_MS,
       forPublish: true,
     });
-    return { uploadUrl: await ctx.storage.generateUploadUrl(), intentId: intentId as string };
+    return { uploadUrl: publicUploadUrl(await ctx.storage.generateUploadUrl()), intentId: intentId as string };
   },
 });
 

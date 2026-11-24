@@ -16,6 +16,7 @@ import { appendLog } from "./lib/vault/log";
 import { notifyVaultChange } from "./lib/vault/notify";
 import { vVaultClient } from "./lib/vault/validators";
 import { checkKeyVersion, checkSealed, itemOf, keepVersion, requireCanChange, vSealedItem } from "./vaultItems";
+import { publicUploadUrl } from "./lib/fileUrls";
 
 type Ctx = QueryCtx | MutationCtx;
 
@@ -191,7 +192,7 @@ export const uploadUrl = mutation({
     await assertWritable(ctx, profile);
     await requireVault(ctx, profile, args.vaultId);
     await consume(ctx, "upload", profile._id);
-    return await ctx.storage.generateUploadUrl();
+    return publicUploadUrl(await ctx.storage.generateUploadUrl());
   },
 });
 

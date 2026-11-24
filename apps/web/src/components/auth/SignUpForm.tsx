@@ -6,6 +6,7 @@ import { Alert, AuthHeading, Field, PasswordField, SubmitButton, TextLink } from
 import { CheckInbox } from "./CheckInbox";
 import { SocialSignIn } from "./SocialSignIn";
 import { pendingTemplate, rememberTemplate, signUpCallback } from "@/lib/pendingTemplate";
+import { SERVER_EDITION } from "@/lib/serverEdition";
 
 /** Password guidance: length matters most; we only block what's too short or obviously weak. */
 function passwordProblem(password: string, email: string): string | null {
@@ -33,7 +34,10 @@ export function SignUpForm({ template, social = { google: false, apple: false },
 
   return (
     <>
-      <AuthHeading title="Start writing" lede={offered ? `Create your Folevi account with ${offered}, or with your email (we'll email you a link to confirm it).` : "Create your Folevi account. We'll email you a link to confirm your address."} />
+      <AuthHeading
+        title="Start writing"
+        lede={SERVER_EDITION ? "Create your account on this server." : offered ? `Create your Folevi account with ${offered}, or with your email (we'll email you a link to confirm it).` : "Create your Folevi account. We'll email you a link to confirm your address."}
+      />
       <SocialSignIn providers={social} returnTo={signUpCallback(template ?? pendingTemplate()?.key)} />
       <form
         className="space-y-4"
@@ -66,6 +70,22 @@ export function SignUpForm({ template, social = { google: false, apple: false },
           if (err && err.code !== "USER_ALREADY_EXISTS" && err.code !== "USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL") {
             setError(authErrorMessage(err, undefined, "up to an hour"));
             return;
+          }
+          // Folevi Server with no email (lib/serverEdition.ts): nothing to confirm, so sign straight in.
+          if (SERVER_EDITION) {
+            if (err) {
+              setError("That email address already has an account here. Sign in instead.");
+              return;
+            }
+            const destination = signUpCallback(template ?? pendingTemplate()?.key);
+            setBusy(true);
+            const { error: signInError } = await authClient.signIn.email({ email: trimmedEmail, password, callbackURL: destination });
+            if (!signInError) return void window.location.assign(destination);
+            setBusy(false);
+            if (signInError.code !== "EMAIL_NOT_VERIFIED") {
+              setError(authErrorMessage(signInError));
+              return;
+            }
           }
           setSentTo(trimmedEmail);
         }}

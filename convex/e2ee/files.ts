@@ -27,6 +27,7 @@ import { bump } from "../lib/metrics";
 import { failE2ee } from "../lib/e2ee/state";
 import { E2EE_LIMITS } from "../lib/e2ee/validators";
 import { NoteKeyVersions, checkRecord } from "../lib/e2ee/sealedRows";
+import { publicUploadUrl } from "../lib/fileUrls";
 
 const INTENT_TTL_MS = 10 * 60_000;
 /** A sealed file's kinds (note files; avatars, logos, exports and chat attachments are never sealed). */
@@ -88,7 +89,7 @@ export const generateUploadUrl = mutation({
       createdAt: Date.now(),
       expiresAt: Date.now() + INTENT_TTL_MS,
     });
-    return { uploadUrl: await ctx.storage.generateUploadUrl(), intentId: intentId as string };
+    return { uploadUrl: publicUploadUrl(await ctx.storage.generateUploadUrl()), intentId: intentId as string };
   },
 });
 

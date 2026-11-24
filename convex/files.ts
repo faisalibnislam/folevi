@@ -41,7 +41,7 @@ import {
   stripImageMetadata,
 } from "./lib/images";
 import { toHex } from "./lib/crypto";
-import { signFileUrl as sign, publicSiteUrl } from "./lib/fileUrls";
+import { signFileUrl as sign, publicSiteUrl, publicUploadUrl } from "./lib/fileUrls";
 import { bump } from "./lib/metrics";
 import { MAX_IDENTITY_IMAGE_BYTES } from "./lib/identityImages";
 import { FileCopies } from "./lib/fileCopies";
@@ -145,7 +145,7 @@ export const generateUploadUrl = mutation({
       createdAt: Date.now(),
       expiresAt: Date.now() + INTENT_TTL_MS,
     });
-    return { uploadUrl: await ctx.storage.generateUploadUrl(), intentId: intentId as string };
+    return { uploadUrl: publicUploadUrl(await ctx.storage.generateUploadUrl()), intentId: intentId as string };
   },
 });
 

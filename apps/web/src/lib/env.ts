@@ -21,13 +21,28 @@ export const APP_HOST = hostOf(APP_URL);
  */
 export const SHARE_ORIGIN = MARKETING_URL.replace(/\/$/, "");
 
-/** A public link's whole address. */
-export function publicLinkUrl(token: string): string {
-  return `${SHARE_ORIGIN}/s/${token}`;
+/**
+ * Where public links are given out right now: SHARE_ORIGIN, or on Folevi Server (lib/serverEdition.ts) the
+ * address this page was opened on, since one server build runs at any address.
+ */
+export function shareOrigin(): string {
+  if (process.env.NEXT_PUBLIC_FOLEVI_EDITION === "server" && typeof window !== "undefined") return window.location.origin;
+  return SHARE_ORIGIN;
 }
 
-/** The same link (its path, query and fragment) on SHARE_ORIGIN. */
+/** The product's address for links to a note: APP_URL, or on Folevi Server the address this page was opened on. */
+export function appUrlHere(): string {
+  if (process.env.NEXT_PUBLIC_FOLEVI_EDITION === "server" && typeof window !== "undefined") return window.location.origin;
+  return APP_URL.replace(/\/$/, "");
+}
+
+/** A public link's whole address. */
+export function publicLinkUrl(token: string): string {
+  return `${shareOrigin()}/s/${token}`;
+}
+
+/** The same link (its path, query and fragment) on the share origin. */
 export function onShareOrigin(url: string): string {
   const u = new URL(url);
-  return `${SHARE_ORIGIN}${u.pathname}${u.search}${u.hash}`;
+  return `${shareOrigin()}${u.pathname}${u.search}${u.hash}`;
 }

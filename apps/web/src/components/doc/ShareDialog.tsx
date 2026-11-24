@@ -18,7 +18,7 @@ import { createEncryptedLink, isSealedDocument, publishPlainCopy, revokeEncrypte
 import { useAppState } from "@/lib/app/state";
 import { PublishCopyDialog } from "@/components/e2ee/PublishCopyDialog";
 import { roleLabel } from "@/lib/app/folderSharing";
-import { APP_URL, MARKETING_HOST, publicLinkUrl } from "@/lib/env";
+import { MARKETING_HOST, appUrlHere, publicLinkUrl } from "@/lib/env";
 
 export type ShareData = NonNullable<FunctionReturnType<typeof api.sharing.get>>;
 export type ShareFolderAccess = FunctionReturnType<typeof api.folderSharing.forNote>;
@@ -246,7 +246,7 @@ export function ShareDialogView({
       size="md"
       footer={
         <>
-          <Button variant="quiet" className="mr-auto" onClick={() => copyText(`${APP_URL.replace(/\/$/, "")}/d/${documentId}`)}>
+          <Button variant="quiet" className="mr-auto" onClick={() => copyText(`${appUrlHere()}/d/${documentId}`)}>
             <Link2 size={14} aria-hidden /> Copy link
           </Button>
           <Button variant="primary" onClick={close}>

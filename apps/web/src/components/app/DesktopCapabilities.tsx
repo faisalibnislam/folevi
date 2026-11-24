@@ -19,7 +19,7 @@ import { api } from "@/lib/convex/api";
 import { useAppState } from "@/lib/app/state";
 import { useAppRouter } from "@/lib/app/router";
 import { useBackendMode } from "@/lib/mode";
-import { APP_URL } from "@/lib/env";
+import { appUrlHere } from "@/lib/env";
 import { asCapabilityCommand, macDesktop, noteFromText, setNoteFileSource, spotlightGone, spotlightLeft, type DesktopSpotlightItem, type MacCapabilities, type MacCapabilityCommand } from "@/lib/desktop/capabilities";
 import { desktopChanged } from "@/lib/engine/viewsSettings";
 // Export (Markdown, PDF, zips) loads when a note is first shared, printed or dragged out.
@@ -122,7 +122,7 @@ function Capabilities() {
   const docId = route.name === "doc" ? route.id : null;
   const meta = useQuery(api.documents.get, docId ? { documentId: docId } : "skip");
   const title = meta?.document.title ?? "";
-  const link = docId && !local ? `${APP_URL.replace(/\/$/, "")}/d/${docId}` : undefined;
+  const link = docId && !local ? `${appUrlHere()}/d/${docId}` : undefined;
 
   // File > Share's services are for the note in front.
   useEffect(() => {

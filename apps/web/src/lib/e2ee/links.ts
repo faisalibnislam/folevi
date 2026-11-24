@@ -12,7 +12,7 @@
 // A published copy (§9.3) is plain on purpose: the device renders the note (link labels resolved, collections
 // as read-only tables) and e2ee.links.publishCopy stores it.
 import { ConvexError } from "convex/values";
-import { SHARE_ORIGIN } from "@/lib/env";
+import { shareOrigin } from "@/lib/env";
 import {
   ctx as aad,
   deriveNoteKeys,
@@ -60,7 +60,7 @@ async function rawNoteKey(keyring: KeyRingLike, documentId: string, version: num
 
 /** Where links are given out: the real web address, in the apps too (lib/env.ts SHARE_ORIGIN). */
 function appOrigin(): string {
-  return SHARE_ORIGIN;
+  return shareOrigin();
 }
 
 /** The link's URL: the token for the server, the secret (and, when needed, the space id) in the fragment. */

@@ -121,9 +121,32 @@ fn ns(t: io::Result<SystemTime>) -> u128 {
 
 #[cfg(windows)]
 fn file_id(m: &Metadata) -> u128 {
-    // Creation time in 100 ns units: the part of a file's identity std reads on every Windows.
+    // Only a fallback (no handle to ask): the creation time in 100 ns units. NTFS "tunnels" a replaced file's creation
+    // time to the file that takes its name, so the real file index (windows_index) is used wherever there's a handle.
     use std::os::windows::fs::MetadataExt;
     m.creation_time() as u128
+}
+
+/// The file's identity on Windows: its volume's serial number and NTFS file index, which every new file (the temp
+/// file a write renames into place included) gets afresh. None if Windows won't say.
+#[cfg(windows)]
+fn windows_index(f: &fs::File) -> Option<u128> {
+    use std::os::windows::io::AsRawHandle;
+    use windows_sys::Win32::Storage::FileSystem::{GetFileInformationByHandle, BY_HANDLE_FILE_INFORMATION};
+    let mut info: BY_HANDLE_FILE_INFORMATION = unsafe { std::mem::zeroed() };
+    let ok = unsafe { GetFileInformationByHandle(f.as_raw_handle() as _, &mut info) };
+    (ok != 0).then(|| ((info.dwVolumeSerialNumber as u128) << 64) | ((info.nFileIndexHigh as u128) << 32) | info.nFileIndexLow as u128)
+}
+
+/// A handle for asking a file's identity: attributes only, sharing everything, never following a link.
+#[cfg(windows)]
+fn open_for_stat(path: &Path) -> io::Result<fs::File> {
+    use std::os::windows::fs::OpenOptionsExt;
+    const FILE_READ_ATTRIBUTES: u32 = 0x80;
+    const SHARE_ALL: u32 = 0x1 | 0x2 | 0x4;
+    const FILE_FLAG_BACKUP_SEMANTICS: u32 = 0x0200_0000;
+    const FILE_FLAG_OPEN_REPARSE_POINT: u32 = 0x0020_0000;
+    fs::OpenOptions::new().access_mode(FILE_READ_ATTRIBUTES).share_mode(SHARE_ALL).custom_flags(FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OPEN_REPARSE_POINT).open(path)
 }
 
 #[cfg(unix)]
@@ -157,6 +180,16 @@ impl Stat {
         Stat { id: file_id(m), size: m.len(), mtime_ns: ns(m.modified()), online_only: online_only(m) }
     }
 
+    /// The stat of an open file: on Windows with its real file index (see windows_index).
+    pub fn of_file(f: &fs::File, m: &Metadata) -> Stat {
+        #[cfg(windows)]
+        if let Some(id) = windows_index(f) {
+            return Stat { id, ..Stat::of_meta(m) };
+        }
+        let _ = f;
+        Stat::of_meta(m)
+    }
+
     pub fn etag(&self) -> String {
         format!("{}-{}-{}", radix36(self.id), radix36(self.size as u128), radix36(self.mtime_ns))
     }
@@ -183,7 +216,13 @@ pub fn radix36(mut v: u128) -> String {
 /// A regular file's stat (not a link, not a folder), or None when there's none.
 pub fn stat_file(path: &Path) -> io::Result<Option<Stat>> {
     match fs::symlink_metadata(path) {
-        Ok(m) if m.file_type().is_file() => Ok(Some(Stat::of_meta(&m))),
+        Ok(m) if m.file_type().is_file() => {
+            #[cfg(windows)]
+            if let Ok(f) = open_for_stat(path) {
+                return Ok(Some(Stat::of_file(&f, &m)));
+            }
+            Ok(Some(Stat::of_meta(&m)))
+        }
         Ok(_) => Ok(None),
         Err(e) if e.kind() == io::ErrorKind::NotFound => Ok(None),
         Err(e) if is_not_a_dir(&e) => Ok(None),
@@ -577,10 +616,9 @@ impl LibraryFs for FolderFs {
             let mut bytes = Vec::with_capacity(before.len() as usize);
             f.read_to_end(&mut bytes).map_err(|e| io_error(e, path))?;
             let after = f.metadata().map_err(|e| io_error(e, path))?;
-            drop(f);
             // An open file stays one file, so a rename can't tear the read; another program rewriting it in
             // place could, and shows as a changed size or time.
-            let (b, a) = (Stat::of_meta(&before), Stat::of_meta(&after));
+            let (b, a) = (Stat::of_file(&f, &before), Stat::of_file(&f, &after));
             if b.size == a.size && b.mtime_ns == a.mtime_ns && bytes.len() as u64 == a.size {
                 return Ok(ReadResult::Bytes(bytes, a.etag()));
             }

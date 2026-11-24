@@ -56,7 +56,7 @@ regex = "1"
 [target.'cfg(windows)'.dependencies]
 # Toasts whose click Folevi hears (tauri-plugin-notification can't report clicks on desktop).
 tauri-winrt-notification = "0.8"
-windows-sys = { version = "0.59", features = ["Win32_UI_Shell", "Win32_Foundation"] }
+windows-sys = { version = "0.59", features = ["Win32_UI_Shell", "Win32_Foundation", "Win32_Storage_FileSystem"] }
 
 [target.'cfg(not(windows))'.dependencies]
 notify-rust = "4"

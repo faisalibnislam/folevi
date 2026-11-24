@@ -317,7 +317,7 @@ function MoveDialog({ open, current, onClose, onMoved }: { open: boolean; curren
 // ---- devices -------------------------------------------------------------------------------------------------
 
 function DevicesCard({ status }: { status: LibraryStatus }) {
-  const platform = (p: string) => (p === "ios" ? "iPhone or iPad" : p === "android" ? "Android phone or tablet" : p === "web" ? "Browser" : "Mac");
+  const platform = (p: string) => (p === "ios" ? "iPhone or iPad" : p === "android" ? "Android phone or tablet" : p === "web" ? "Browser" : p === "windows" ? "Windows PC" : "Mac");
   return (
     <Card title="Devices" description="Every device that opens this library, and when each last synced with it.">
       {status.devices.length === 0 ? (
@@ -762,7 +762,7 @@ function shortStatus(status: LibraryStatus | null): string {
   return "Not synced yet";
 }
 
-const devicePlatform = (p: string) => (p === "ios" ? "iPhone or iPad" : p === "android" ? "Android phone or tablet" : p === "web" ? "Browser" : "Mac");
+const devicePlatform = (p: string) => (p === "ios" ? "iPhone or iPad" : p === "android" ? "Android phone or tablet" : p === "web" ? "Browser" : p === "windows" ? "Windows PC" : "Mac");
 
 function IphoneLibrary({ info, status, onChanged, control }: { info: LibraryInfo | null; status: LibraryStatus | null; onChanged: () => void; control: ReturnType<typeof useLibraryControl> }) {
   return (

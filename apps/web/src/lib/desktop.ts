@@ -94,8 +94,8 @@ export function watchMenuCommands(cb: () => void): () => void {
   return () => menuWatchers.delete(cb);
 }
 
-/** Which desktop app the page is in: there is only the Mac app. */
-export type DesktopPlatform = "mac";
+/** Which desktop app the page is in: the Mac app, or Folevi for Windows (apps/desktop, Electron). */
+export type DesktopPlatform = "mac" | "windows";
 
 export interface DesktopBridge {
   platform: DesktopPlatform;
@@ -160,8 +160,15 @@ export function desktop(): DesktopBridge | null {
   return typeof window !== "undefined" ? (window.foleviDesktop ?? null) : null;
 }
 
-/** Quick Add's shortcut until changed: ⌥Space. */
+/** Quick Add's shortcut until changed: ⌥Space on the Mac. */
 export const DEFAULT_QUICK_ADD_SHORTCUT = "Alt+Space";
+/** On Windows, Ctrl+Alt+Space (Alt+Space opens every window's system menu there). Kept in step with apps/desktop settings.ts. */
+export const WINDOWS_QUICK_ADD_SHORTCUT = "Control+Alt+Space";
+
+/** Quick Add's default shortcut in the desktop app the page is in. */
+export function defaultQuickAddShortcut(platform: DesktopPlatform | undefined = desktop()?.platform): string {
+  return platform === "windows" ? WINDOWS_QUICK_ADD_SHORTCUT : DEFAULT_QUICK_ADD_SHORTCUT;
+}
 
 const KEY_NAMES: Record<string, string> = {
   " ": "Space",
@@ -182,12 +189,13 @@ const KEY_NAMES: Record<string, string> = {
 };
 
 /**
- * A pressed key combination as the Mac app's shortcut format ("Alt+Space", "Command+Shift+K"), or null while
- * only modifiers are held or the combination can't be a shortcut (it needs a modifier other than Shift).
+ * A pressed key combination as the desktop app's shortcut format ("Alt+Space", "Command+Shift+K"; on Windows the
+ * Windows key is "Super"), or null while only modifiers are held or the combination can't be a shortcut (it needs a
+ * modifier other than Shift).
  */
-export function acceleratorFrom(e: Pick<KeyboardEvent, "key" | "code" | "metaKey" | "ctrlKey" | "altKey" | "shiftKey">): string | null {
+export function acceleratorFrom(e: Pick<KeyboardEvent, "key" | "code" | "metaKey" | "ctrlKey" | "altKey" | "shiftKey">, platform: DesktopPlatform = "mac"): string | null {
   if (["Meta", "Control", "Alt", "Shift", "CapsLock", "Fn", "OS"].includes(e.key)) return null;
-  const mods = [e.metaKey && "Command", e.ctrlKey && "Control", e.altKey && "Alt", e.shiftKey && "Shift"].filter(Boolean) as string[];
+  const mods = [e.metaKey && (platform === "windows" ? "Super" : "Command"), e.ctrlKey && "Control", e.altKey && "Alt", e.shiftKey && "Shift"].filter(Boolean) as string[];
   if (!mods.some((m) => m !== "Shift")) return null;
   // Letters and digits by their place on the keyboard: ⌥ changes what they type ("⌥K" types "˚").
   const key = /^Key[A-Z]$/.test(e.code)
@@ -204,11 +212,19 @@ export function acceleratorFrom(e: Pick<KeyboardEvent, "key" | "code" | "metaKey
 
 const SYMBOLS: Record<string, string> = { Command: "⌘", Control: "⌃", Alt: "⌥", Shift: "⇧", Space: "Space", Return: "↩", Escape: "⎋", Backspace: "⌫", Delete: "⌦", Tab: "⇥", Up: "↑", Down: "↓", Left: "←", Right: "→", Plus: "+" };
 
-/** A shortcut as the Mac writes it (⌥Space, ⇧⌘K). */
-export function shortcutLabel(accelerator: string): string {
+/** How Windows writes keys in a shortcut ("Ctrl+Alt+Space", "Ctrl+Shift+K"). */
+const WINDOWS_NAMES: Record<string, string> = { Control: "Ctrl", Command: "Win", Super: "Win", Return: "Enter", Escape: "Esc", Delete: "Del", Plus: "+" };
+
+/** A shortcut as the Mac writes it (⌥Space, ⇧⌘K), or on Windows as Windows does (Ctrl+Alt+Space). */
+export function shortcutLabel(accelerator: string, platform: DesktopPlatform = "mac"): string {
   if (!accelerator) return "None";
   const parts = accelerator.split("+");
   const key = parts.pop()!;
+  if (platform === "windows") {
+    const order = ["Control", "Super", "Command", "Alt", "Shift"];
+    const mods = order.filter((m) => parts.includes(m)).map((m) => WINDOWS_NAMES[m] ?? m);
+    return [...mods, WINDOWS_NAMES[key] ?? key].join("+");
+  }
   const order = ["Control", "Alt", "Shift", "Command"];
   const mods = order.filter((m) => parts.includes(m)).map((m) => SYMBOLS[m]);
   return `${mods.join("")}${SYMBOLS[key] ?? key}`;

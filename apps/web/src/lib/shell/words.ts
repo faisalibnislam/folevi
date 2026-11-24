@@ -1,5 +1,6 @@
 // How the built-in interface names the device it runs on, in the local mode and sign-in screens: "this Mac" in
-// the Mac app, "this iPhone" or "this iPad" in the iOS app, "this phone" in the Android app. Also where its
+// the Mac app, "this iPhone" or "this iPad" in the iOS app, "this phone" in the Android app, "this PC" in the
+// Windows app. Also where its
 // settings and files live ("System Settings" and Finder on the Mac, the Settings and Files apps on iOS).
 import { shell } from "./index";
 
@@ -31,6 +32,9 @@ export function deviceWords(): DeviceWords {
     // A tablet says so (deviceFamily from the shell); a foldable is a phone, folded or not.
     const noun = s.deviceFamily === "tablet" ? "tablet" : "phone";
     return { here: `this ${noun}`, Here: `This ${noun}`, noun, settings: "the Settings app", files: "the Files app", signInPlace: "the sign-in page", ios: false, onDeviceModel: "Android's on-device model" };
+  }
+  if (s?.platform === "windows") {
+    return { here: "this PC", Here: "This PC", noun: "PC", settings: "Windows Settings", files: "File Explorer", signInPlace: "your browser", ios: false, onDeviceModel: "an on-device model" };
   }
   // The native Mac app (apps/mac, WebKit) signs in to Dropbox and Google in a sign-in sheet; Electron in the browser.
   const sheet = typeof document !== "undefined" && document.documentElement?.getAttribute("data-mac-engine") === "webkit";

@@ -16,6 +16,9 @@
 // --platform ios: the export the iPhone and iPad app carries (apps/ios/web, docs/IOS.md), in .next-shell-ios (or
 // .next-shell-ios-release with --production), with Folevi's version in shell/build.json.
 // --app-version <v>: the version shell/build.json records (else version.json's, the one version of every app).
+// --platform windows: the export Folevi for Windows carries (apps/desktop/web, docs/WINDOWS.md), in
+// .next-shell-windows (or .next-shell-windows-release with --production). It keeps the spelling dictionaries: the
+// Windows app checks spelling with Folevi's own checker, as the website does (lib/spelling/web.ts ownSpelling).
 // --platform android: the export Folevi for Android carries (apps/android/web, docs/ANDROID_PLAN.md), built in a
 // folder of its own (.next-shell-android, or .next-shell-android-release with --production) so it never replaces
 // another app's export while it builds, with Folevi's version in shell/build.json.
@@ -35,14 +38,15 @@ const flagValue = (name) => {
   const i = argv.indexOf(name);
   return i >= 0 && argv[i + 1] && !argv[i + 1].startsWith("--") ? argv[i + 1] : null;
 };
-/** Which app the export is for: "mac" (the default), "android" or "ios". */
+/** Which app the export is for: "mac" (the default), "android", "ios" or "windows". */
 const platform = flagValue("--platform") ?? "mac";
-if (!["mac", "android", "ios"].includes(platform)) throw new Error(`build-shell: unknown --platform ${platform}`);
+if (!["mac", "android", "ios", "windows"].includes(platform)) throw new Error(`build-shell: unknown --platform ${platform}`);
 const android = platform === "android";
 const ios = platform === "ios";
-const outName = android ? (production ? ".next-shell-android-release" : ".next-shell-android") : ios ? (production ? ".next-shell-ios-release" : ".next-shell-ios") : production ? ".next-shell-release" : "out-shell";
+const windows = platform === "windows";
+const outName = windows ? (production ? ".next-shell-windows-release" : ".next-shell-windows") : android ? (production ? ".next-shell-android-release" : ".next-shell-android") : ios ? (production ? ".next-shell-ios-release" : ".next-shell-ios") : production ? ".next-shell-release" : "out-shell";
 const out = join(web, outName);
-const shellCopy = resolve(flagValue("--dest") ?? resolve(web, android ? "../android/web" : ios ? "../ios/web" : "../mac/web"));
+const shellCopy = resolve(flagValue("--dest") ?? resolve(web, windows ? "../desktop/web" : android ? "../android/web" : ios ? "../ios/web" : "../mac/web"));
 
 /**
  * Folevi in production (docs/DEPLOYMENT.md): the Convex deployment and the website a release talks to. A release
@@ -108,7 +112,8 @@ const mb = (n) => `${(n / 1024 / 1024).toFixed(1)} MB`;
 
 async function prune() {
   const removed = [];
-  for (const rule of PRUNE) {
+  // Windows keeps the spelling dictionaries (see --platform windows above).
+  for (const rule of windows ? PRUNE.filter((r) => r !== "spelling/") : PRUNE) {
     if (typeof rule === "string") {
       const p = join(out, rule);
       if (existsSync(p)) {
@@ -232,7 +237,7 @@ async function main() {
   for (const f of ["next-env.d.ts", "tsconfig.json"]) if (existsSync(join(web, f))) kept.set(f, await readFile(join(web, f), "utf8"));
   await rm(out, { recursive: true, force: true });
   const env = buildEnv(process.env, { production, files });
-  if (production || android || ios) env.NEXT_DIST_DIR = outName;
+  if (production || android || ios || windows) env.NEXT_DIST_DIR = outName;
   const build = spawnSync(join(web, "node_modules/.bin/next"), ["build"], { cwd: web, stdio: "inherit", env });
   for (const [f, text] of kept) await writeFile(join(web, f), text);
   if (build.status !== 0) process.exit(build.status ?? 1);

@@ -8,12 +8,18 @@ struct AppCommands: SwiftUI.Commands {
     @FocusedValue(\.window) private var window
     @Environment(\.openWindow) private var openWindow
 
+    /// Tasks is on screen: ⌘N adds a task there.
+    private var onTasks: Bool {
+        if case .tasks? = window?.current { return true }
+        return false
+    }
+
     var body: some SwiftUI.Commands {
         // File
         CommandGroup(replacing: .newItem) {
-            Button("New Note") {
+            Button(onTasks ? "New Task" : "New Note") {
                 // On Tasks, ⌘N adds a task (Quick Add in the window), as today's app does.
-                if let window, case .tasks = window.current { window.quickAddShown = true } else { NoteActions.newNote(app: app, window: window, newTab: window == nil) }
+                if let window, onTasks { window.quickAddShown = true } else { NoteActions.newNote(app: app, window: window, newTab: window == nil) }
             }
                 .keyboardShortcut("n")
             Button("New Note from Template…") { window?.go(.templates) }.keyboardShortcut("n", modifiers: [.command, .option, .shift])
@@ -22,8 +28,9 @@ struct AppCommands: SwiftUI.Commands {
             // opens Home with search focused).
             Button("New Tab") { openWindow(id: "main", value: WindowSeed(start: .search(""), asTab: true)) }
                 .keyboardShortcut("t")
+            // ⌥⌘N and New Folder's ⇧⌘N, as Notes and Finder have them.
             Button("New Window") { openWindow(id: "main", value: WindowSeed(start: .home, asTab: false)) }
-                .keyboardShortcut("n", modifiers: [.command, .shift])
+                .keyboardShortcut("n", modifiers: [.command, .option])
             Button("Quick Add Task…") { if let window { window.quickAddShown = true } else { QuickAdd.shared.show() } }
                 .keyboardShortcut("a", modifiers: [.command, .shift])
             QuickAddAnywhereItem()
@@ -33,9 +40,11 @@ struct AppCommands: SwiftUI.Commands {
         CommandGroup(after: .newItem) {
             Divider()
             Button("Open Inbox") { window?.go(.inbox) }
-            if let id = window?.current.noteId {
-                Button("Open Note in New Window") { openWindow(id: "main", value: WindowSeed(start: .note(id), asTab: false)) }
+            // Always there, disabled without a note (a menu keeps its shape).
+            Button("Open Note in New Window") {
+                if let id = window?.current.noteId { openWindow(id: "main", value: WindowSeed(start: .note(id), asTab: false)) }
             }
+            .disabled(window?.current.noteId == nil)
         }
         CommandGroup(replacing: .printItem) {
             Button("Print…") { window?.noteMenu(.print) }
@@ -45,7 +54,7 @@ struct AppCommands: SwiftUI.Commands {
                 .keyboardShortcut("e", modifiers: [.command, .shift])
                 .disabled(window?.current.isNote != true)
             Button("New Folder…") { window?.newFolderRequested = true }
-                .keyboardShortcut("n", modifiers: [.command, .control])
+                .keyboardShortcut("n", modifiers: [.command, .shift])
                 .disabled(window == nil)
             Button("Import Notes…") { SettingsRouter.shared.open("data") }
         }
@@ -173,12 +182,10 @@ struct AppCommands: SwiftUI.Commands {
             Button("as Cards") { window?.listStyle = .cards }.keyboardShortcut("2", modifiers: [.command, .control])
             Button("as Compact Cards") { window?.listStyle = .compact }.keyboardShortcut("3", modifiers: [.command, .control])
             Divider()
-            Button(window?.inspectorShown == true ? "Hide Inspector" : "Show Inspector") { window?.inspectorShown.toggle() }
-                .keyboardShortcut("i", modifiers: [.command, .option])
+            // (Show and Hide Inspector are the system's InspectorCommands below, the one toggle.)
             Button("Focus Mode") { window?.editor(EditorCommands.FocusToggle()) }
                 .keyboardShortcut("f", modifiers: [.command, .control, .shift])
                 .disabled(window?.current.isNote != true)
-            Button("Note Info") { window?.inspectorTab = .info; window?.inspectorShown = true }
             Button("Reload") { app.perform { _ = try await $0.command(Commands.EngineRefresh()) } }.keyboardShortcut("r")
             Divider()
             Menu("Appearance") {
@@ -186,10 +193,14 @@ struct AppCommands: SwiftUI.Commands {
                     Button(v.1) { app.perform { _ = try await $0.command(Commands.SettingsUpdate(SettingsUpdateArgs(name: nil, appearance: .init(rawValue: v.0), timeZone: nil, reviewAppEdits: nil, aiEnabled: nil, editorZoom: nil))) } }
                 }
             }
-            Button("Actual Size") { PageZoom.set(1) }.keyboardShortcut("0")
-            Button("Zoom In") { PageZoom.step(1) }.keyboardShortcut("+")
-            Button("Zoom Out") { PageZoom.step(-1) }.keyboardShortcut("-")
-                .disabled(window?.current.isNote != true)
+            // Page zoom acts on notes only: all three wait for one.
+            Group {
+                Button("Actual Size") { PageZoom.set(1) }.keyboardShortcut("0")
+                // ⌘=, the key under + (no Shift needed), as Safari takes it.
+                Button("Zoom In") { PageZoom.step(1) }.keyboardShortcut("=")
+                Button("Zoom Out") { PageZoom.step(-1) }.keyboardShortcut("-")
+            }
+            .disabled(window?.current.isNote != true)
             Divider()
         }
         // Window > Show Tab 1…9 (⌘1 to ⌘9; ⌘9 the last), as Safari.
@@ -212,10 +223,7 @@ struct AppCommands: SwiftUI.Commands {
             Button("Home") { window?.select(.home) }.keyboardShortcut("h", modifiers: [.command, .shift])
             Button("Search") { window?.select(.search("")) }
             Button("Foli AI") { window?.select(.foliAI(nil)) }.keyboardShortcut("j", modifiers: [.command, .shift])
-            Button("Ask Foli AI") {
-                guard let window else { return }
-                if window.current.isNote { window.editor(EditorCommands.Ai(AiArgs(action: .open, prompt: nil))) } else { Motion.run(Motion.panel) { window.askShown.toggle() } }
-            }
+            Button("Ask Foli AI") { window?.askFoliAI() }
             .keyboardShortcut("j")
             .disabled(app.session.value?.capabilities.ai == false)
             Button("Notifications") { window?.select(.notifications) }.keyboardShortcut("y", modifiers: [.command, .shift])
@@ -228,7 +236,7 @@ struct AppCommands: SwiftUI.Commands {
             Divider()
             Button("All Notes") { window?.select(.allNotes) }
             Button("Recent") { window?.select(.recent) }.keyboardShortcut("r", modifiers: [.command, .shift])
-            Button("Starred") { window?.select(.starred) }
+            Button("Bookmarks") { window?.select(.starred) }
             Button("Shared with Me") { window?.select(.shared) }
             Button("Drafts") { window?.select(.drafts) }
             Button("Changes") { window?.select(.changes) }
@@ -236,7 +244,7 @@ struct AppCommands: SwiftUI.Commands {
             Button("Folders") { window?.select(.folders) }
             Button("Tags") { window?.select(.tags) }
             Divider()
-            if app.session.value?.capabilities.graph != false { Button("Foli DNA") { window?.select(.graph) } }
+            Button("Foli DNA") { window?.select(.graph) }.disabled(app.session.value?.capabilities.graph == false)
             Button("Reviews") { window?.select(.reviews) }
             Button("Vault") { window?.select(.vault) }
             Button("Archive") { window?.select(.archive) }
@@ -244,27 +252,52 @@ struct AppCommands: SwiftUI.Commands {
         }
 
         // Note
+        // Without a note the items stay, disabled, so the menu keeps its shape.
         CommandMenu("Note") {
             let isNote = window?.current.isNote == true
-            if let window, isNote {
-                let starred = window.noteMeta?.starred ?? false
-                Button(starred ? "Remove Star" : "Star") {
-                    if let id = window.current.noteId {
-                        app.perform { _ = try await $0.command(Commands.NoteStar(NoteStarArgs(ids: [id], starred: !starred))) }
-                        window.toggleStarLocally()
-                    }
-                }
-                .keyboardShortcut("s", modifiers: [.command, .option])
-                Divider()
-                NoteMoreMenu(window: window)
-                Divider()
-                Button("Ask Foli AI About This Note") { window.editor(EditorCommands.Ai(AiArgs(action: .open, prompt: nil))) }
-                    .keyboardShortcut("j", modifiers: [.command, .option])
-                Button("Comments") { window.panel(.comments) }.keyboardShortcut("m", modifiers: [.command, .option])
-                Button("Related Notes") { window.panel(.related) }
-            } else {
-                Button("Open a note to see its commands") {}.disabled(true)
+            let starred = window?.noteMeta?.starred ?? false
+            Button(starred ? "Remove Bookmark" : "Bookmark") {
+                guard let window, let id = window.current.noteId else { return }
+                app.perform { _ = try await $0.command(Commands.NoteStar(NoteStarArgs(ids: [id], starred: !starred))) }
+                window.toggleStarLocally()
             }
+            .keyboardShortcut("s", modifiers: [.command, .option])
+            .disabled(!isNote)
+            Divider()
+            if let window, isNote {
+                NoteMoreMenu(window: window)
+            } else {
+                // The note menu's usual items, without shortcuts: a disabled item shouldn't claim a key (⌘⌫)
+                // that a text field wants.
+                Group {
+                    Button("Move To…") {}
+                    Button("Copy To…") {}
+                    Button("Duplicate") {}
+                    Divider()
+                    Button("Share…") {}
+                    Button("Archive") {}
+                    Divider()
+                    Button("Find in Note") {}
+                    Button("Focus Mode") {}
+                    Divider()
+                    Button("Export…") {}
+                    Button("Print…") {}
+                    Divider()
+                    Button("Copy Link") {}
+                    Button("Open in New Tab") {}
+                    Divider()
+                    Button("Move to Trash") {}
+                }
+                .disabled(true)
+            }
+            Divider()
+            Group {
+                Button("Ask Foli AI About This Note") { window?.editor(EditorCommands.Ai(AiArgs(action: .open, prompt: nil))) }
+                    .keyboardShortcut("j", modifiers: [.command, .option])
+                Button("Comments") { window?.panel(.comments) }.keyboardShortcut("m", modifiers: [.command, .option])
+                Button("Related Notes") { window?.panel(.related) }
+            }
+            .disabled(!isNote)
         }
 
         CommandGroup(replacing: .help) {

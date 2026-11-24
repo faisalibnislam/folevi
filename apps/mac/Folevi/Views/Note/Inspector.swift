@@ -1,5 +1,6 @@
-// The note's inspector (⌥⌘0): Foli AI about the note on screen, and the note's info from the page (its outline to
-// jump to, the pages inside it, tasks, links, attachments, comments). Native Mac inspector, SF Pro.
+// The note's inspector (⌃⌘I, the system's Show Inspector): Foli AI about the note on screen, and the note's info
+// from the page (its outline to jump to, the pages inside it, tasks, links, attachments, comments). Native Mac
+// inspector, SF Pro.
 import FoleviDesign
 import FoleviEngine
 import SwiftUI
@@ -19,7 +20,7 @@ struct Inspector: View {
 
     @ViewBuilder private var content: some View {
         VStack(spacing: 0) {
-            // The tabs: the system's segmented control, centred at the inspector's top.
+            // The tabs: the system's segmented control, centered at the inspector's top.
             SegmentedChoice(selection: $window.inspectorTab, options: WindowModel.InspectorTab.allCases.map { .init(value: $0, title: $0.title) }, label: "Inspector")
                 .frame(maxWidth: .infinity)
                 .padding(.horizontal, 12)
@@ -62,7 +63,7 @@ struct NoteInfo: View {
                         .help("Back to the top")
                         ForEach(t.outline, id: \.id) { item in
                             Button {
-                                if let doc = item.documentId, item.kind == .page { window.go(.note(doc)) } else { window.editor(EditorCommands.BlockJump(BlockJumpArgs(blockId: item.id))) }
+                                if let doc = item.documentId, item.kind == .page { window.go(.note(doc), inNote: true) } else { window.editor(EditorCommands.BlockJump(BlockJumpArgs(blockId: item.id))) }
                             } label: {
                                 Text(item.text.nonEmpty ?? "Untitled")
                                     .padding(.leading, CGFloat(max(0, item.level - 1)) * 12)
@@ -76,7 +77,7 @@ struct NoteInfo: View {
                 if !t.pages.isEmpty {
                     Section("Pages") {
                         ForEach(t.pages, id: \.id) { p in
-                            Button(p.title.nonEmpty ?? "Untitled") { window.go(.note(p.id)) }
+                            Button(p.title.nonEmpty ?? "Untitled") { window.go(.note(p.id), inNote: true) }
                                 .buttonStyle(.hoverPlain)
                                 .padding(.leading, CGFloat(p.depth) * 12)
                         }

@@ -344,7 +344,8 @@ struct SearchScreen: View {
                     .padding(.horizontal, 16)
                     .padding(.vertical, 10)
             }
-            .onChange(of: picked) { if let picked { Motion.run(Motion.scroll) { proxy.scrollTo(picked) } } }
+            // Unanimated: a held arrow key repeats faster than a scroll animation settles.
+            .onChange(of: picked) { if let picked { proxy.scrollTo(picked) } }
         }
     }
 
@@ -916,7 +917,7 @@ struct GenerateTemplateSheet: View {
 // MARK: Folders and tags
 
 /// Folders: every folder of the space (nested ones too, with their path), as cards or rows; filter, sort
-/// (manually, by name, by recent change), several selected for Open in New Tabs, Colour or Delete.
+/// (manually, by name, by recent change), several selected for Open in New Tabs, Color or Delete.
 struct FoldersScreen: View {
     let window: WindowModel
     let parent: String?
@@ -931,6 +932,7 @@ struct FoldersScreen: View {
     @AppStorage("core.folders.sort") private var sort = "manual"
     @AppStorage("core.folders.layout") private var layout = "grid"
     @FocusState private var filterFocused: Bool
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private var shown: [FolderCard] {
         var all = cards.value?.folders ?? []
@@ -944,6 +946,8 @@ struct FoldersScreen: View {
     }
 
     var body: some View {
+        // Filtered and sorted once per pass; the parts below take it rather than each running it again.
+        let shown = self.shown
         Group {
             if let all = cards.value?.folders {
                 if all.isEmpty {
@@ -951,18 +955,18 @@ struct FoldersScreen: View {
                 } else if shown.isEmpty {
                     EmptyScreen(symbol: "magnifyingglass", title: "No Results", message: "No folder matches “\(filter)”.")
                 } else if layout == "list" {
-                    list
+                    list(shown)
                 } else if layout == "tree" {
                     tree
                 } else {
-                    grid
+                    grid(shown)
                 }
             } else {
                 SkeletonGrid()
             }
         }
         .screenSearch(text: $filter, prompt: "Filter Folders")
-        .screenSubtitle(subtitle)
+        .screenSubtitle(subtitle(shown))
         .screenActions {
             Group {
                 SegmentedChoice(selection: $layout, options: [
@@ -979,10 +983,10 @@ struct FoldersScreen: View {
                     .pickerStyle(.inline)
                 } label: { Label("Sort", appSymbol: "arrow.up.arrow.down") }
                 .help("Sort Folders")
-                Button { newFolder = true } label: { Label("New Folder", appSymbol: "folder.badge.plus") }.help("New Folder (⌃⌘N)")
+                Button { newFolder = true } label: { Label("New Folder", appSymbol: "folder.badge.plus") }.help("New Folder (⇧⌘N)")
             }
         }
-        .overlay(alignment: .bottom) { GlassEffectContainer { ZStack { selectionBar } }.appAnimation(Motion.bar, value: selection.isEmpty) }
+        .overlay(alignment: .bottom) { GlassEffectContainer { ZStack { selectionBar(shown) } }.appAnimation(Motion.bar, value: selection.count > 1) }
         .sheet(isPresented: $newFolder) {
             NameSheet(title: "New Folder", initial: "", action: "Create") { name in
                 app.perform { _ = try await $0.command(Commands.FolderCreate(FolderCreateArgs(space: nil, name: name, parentId: parent, color: nil))) }
@@ -991,17 +995,18 @@ struct FoldersScreen: View {
         .task(id: parent) { cards.bind(app.client, Views.FoldersCards(FolderCardsArgs(space: nil, parentId: parent, all: parent == nil ? true : nil))) }
     }
 
-    private var subtitle: String {
+    private func subtitle(_ shown: [FolderCard]) -> String {
         let total = cards.value?.folders.count ?? 0
         let n = shown.count
         return filter.isEmpty ? (total == 1 ? "1 folder" : "\(total) folders") : "\(n) of \(total) folders"
     }
 
-    private var grid: some View {
-        ScrollView {
+    private func grid(_ shown: [FolderCard]) -> some View {
+        let cardOrder = drawn(shown)
+        return ScrollView {
             LazyVGrid(columns: [GridItem(.adaptive(minimum: AppCards.folderWidth - 16, maximum: AppCards.folderWidth), spacing: AppCards.gap)], spacing: AppCards.gap + 2) {
                 let byId = Dictionary(shown.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
-                ForEach(drawn, id: \.self) { id in
+                ForEach(cardOrder, id: \.self) { id in
                     if let folder = byId[id] {
                         HomeFolderCard(folder: folder, window: window, reorder: hooks(for: folder))
                             .overlay(alignment: .topTrailing) {
@@ -1018,7 +1023,8 @@ struct FoldersScreen: View {
                     }
                 }
             }
-            .appAnimation(.smooth(duration: 0.24), value: drawn)
+            // Only a drag's gap moves the cards; a filter, a sort or new data swaps them at once.
+            .animation(gap == nil ? nil : Motion.pick(.smooth(duration: 0.24), reduce: reduceMotion), value: cardOrder)
             .padding(24)
             // The spaces between cards keep the gap and take the drop there too.
             .onDrop(of: [FolderDrag.type], delegate: FolderGapDrop(keep: { keepGap() }, leave: { leaveGap() }, drop: { dropInGap() }))
@@ -1033,7 +1039,7 @@ struct FoldersScreen: View {
         .onKeyPress(.escape) { if selection.isEmpty { return .ignored }; selection.removeAll(); return .handled }
     }
 
-    private var list: some View {
+    private func list(_ shown: [FolderCard]) -> some View {
         List(selection: $selection) {
             ForEach(shown, id: \.id) { f in
                 HStack(spacing: 10) {
@@ -1064,12 +1070,12 @@ struct FoldersScreen: View {
 
     @ViewBuilder private func bulkItems(_ ids: [String]) -> some View {
         Button("Open \(ids.count) Folders in New Tabs") { openInTabs(ids) }
-        Button("Change Colour…") { window.colorPick = ColorPickTarget(ids: ids, current: nil) }
+        Button("Change Color…") { window.colorPick = ColorPickTarget(ids: ids, current: nil) }
         Divider()
         Button("Delete \(ids.count) Folders…", role: .destructive) { FolderActions.delete(ids, app: app); selection.removeAll() }
     }
 
-    @ViewBuilder private var selectionBar: some View {
+    @ViewBuilder private func selectionBar(_ shown: [FolderCard]) -> some View {
         if selection.count > 1 {
             let ids = Array(selection)
             HStack(spacing: 14) {
@@ -1077,7 +1083,7 @@ struct FoldersScreen: View {
                 if ids.count < shown.count { Button("Select All") { selection = Set(shown.map(\.id)) } }
                 Divider().frame(height: 16)
                 Button { openInTabs(ids) } label: { Label("Open in Tabs", appSymbol: "plus.square.on.square") }
-                Button { window.colorPick = ColorPickTarget(ids: ids, current: nil) } label: { Label("Colour", appSymbol: "paintpalette") }
+                Button { window.colorPick = ColorPickTarget(ids: ids, current: nil) } label: { Label("Color", appSymbol: "paintpalette") }
                 Button(role: .destructive) { FolderActions.delete(ids, app: app); selection.removeAll() } label: { Label("Delete", appSymbol: "trash") }
                 Button { selection.removeAll() } label: { Image(systemName: "xmark") }.help("Clear Selection (Esc)").keyboardShortcut(.cancelAction)
             }
@@ -1091,7 +1097,7 @@ struct FoldersScreen: View {
     }
 
     /// The cards in the order to draw them: the dragged folder moved to its gap while there is one.
-    private var drawn: [String] {
+    private func drawn(_ shown: [FolderCard]) -> [String] {
         let ids = shown.map(\.id)
         guard let gap, filter.isEmpty else { return ids }
         var others = ids.filter { $0 != gap.id }
@@ -1221,27 +1227,23 @@ struct TagsScreen: View {
     @State private var order: [KeyPathComparator<TagIndexRow>] = [KeyPathComparator(\.name)]
     @AppStorage("core.tags.sort") private var sort = "name"
 
+    /// The tags the filter keeps. The order is the table's (`order`, which the Sort menu sets), applied once.
     private func shown(_ rows: [TagIndexRow]) -> [TagIndexRow] {
         var q = filter.trimmingCharacters(in: .whitespaces)
         if q.hasPrefix("#") { q.removeFirst() }
-        let f = q.isEmpty ? rows : rows.filter { $0.name.localizedCaseInsensitiveContains(q) }
-        switch sort {
-        case "used": return f.sorted { $0.documentCount > $1.documentCount }
-        case "newest": return f.sorted { $0.createdAt > $1.createdAt }
-        default: return f.sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
-        }
+        return q.isEmpty ? rows : rows.filter { $0.name.localizedCaseInsensitiveContains(q) }
     }
 
     var body: some View {
         Group {
             if let all = tags.value?.tags {
-                let rows = shown(all)
+                let rows = shown(all).sorted(using: order)
                 if all.isEmpty {
-                    EmptyScreen(symbol: "number", title: "No Tags", message: "Type # in a note, or add tags from its Info panel (⌥⌘I).")
+                    EmptyScreen(symbol: "number", title: "No Tags", message: "Type # and a tag name in a note to tag it.")
                 } else if rows.isEmpty {
                     EmptyScreen(symbol: "magnifyingglass", title: "No Results", message: "No tag matches “\(filter)”.")
                 } else {
-                    Table(rows.sorted(using: order), sortOrder: $order) {
+                    Table(rows, sortOrder: $order) {
                         TableColumn("Tag", value: \.name) { t in
                             Label { Text(t.name) } icon: { WebIcon.hash.image(size: 14).foregroundStyle(Color.folevi(t.color)) }
                         }
@@ -1253,8 +1255,14 @@ struct TagsScreen: View {
                             Button("Open") { window.go(.tag(t.id)) }
                             Button("Open in New Tab") { app.open(.tag(t.id), newTab: true) }
                             Button("Edit Tag…") { editing = t }
-                            ForEach(TagColors.all.filter { $0.id != t.color }, id: \.id) { c in
-                                Button("Colour: \(c.name)") { app.perform { _ = try await $0.command(Commands.TagUpdate(TagUpdateArgs(id: t.id, name: nil, color: c.id))) } }
+                            Menu("Color") {
+                                Picker("Color", selection: Binding(get: { t.color }, set: { c in
+                                    app.perform { _ = try await $0.command(Commands.TagUpdate(TagUpdateArgs(id: t.id, name: nil, color: c))) }
+                                })) {
+                                    ForEach(TagColors.all, id: \.id) { c in Text(c.name).tag(c.id) }
+                                }
+                                .pickerStyle(.inline)
+                                .labelsHidden()
                             }
                             Divider()
                             Button("Delete Tag…", role: .destructive) { TagActions.delete(id: t.id, name: t.name, window: window) }

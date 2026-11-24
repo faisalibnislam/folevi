@@ -592,15 +592,27 @@ struct AnswerText: View {
         return out
     }
 
+    /// A part with an id that holds while a reply streams: text only grows at the end, so a part keeps its place
+    /// and kind, and the parts before the growing one keep theirs (their bodies are skipped).
+    struct Piece: Identifiable {
+        let id: String
+        let part: Part
+    }
+
+    static func pieces(_ text: String) -> [Piece] {
+        parts(text).enumerated().map { i, part in
+            switch part {
+            case .prose: Piece(id: "p\(i)", part: part)
+            case .code: Piece(id: "c\(i)", part: part)
+            }
+        }
+    }
+
     var body: some View {
+        let known = Set(citations.map(\.n) + webCitations.map(\.n))
         VStack(alignment: .leading, spacing: 10) {
-            ForEach(Array(Self.parts(text).enumerated()), id: \.offset) { _, part in
-                switch part {
-                case .prose(let p):
-                    Text(markdown(p)).font(AppType.noteText(15)).lineSpacing(3).textSelection(.enabled)
-                case .code(let lang, let c):
-                    CodeBlock(language: lang, code: c)
-                }
+            ForEach(Self.pieces(text)) { piece in
+                AnswerPart(part: piece.part, known: known)
             }
         }
         .environment(\.openURL, OpenURLAction { url in
@@ -613,10 +625,25 @@ struct AnswerText: View {
             return .handled
         })
     }
+}
+
+/// One part of an answer. Equatable on its text and the cited numbers, so a part that's done skips its Markdown
+/// parse while a later part streams.
+private struct AnswerPart: View, Equatable {
+    let part: AnswerText.Part
+    let known: Set<Int>
+
+    var body: some View {
+        switch part {
+        case .prose(let p):
+            Text(markdown(p)).font(AppType.noteText(15)).lineSpacing(3).textSelection(.enabled)
+        case .code(let lang, let c):
+            CodeBlock(language: lang, code: c)
+        }
+    }
 
     /// Markdown, with each [n] that names a source turned into a link to it.
     private func markdown(_ s: String) -> AttributedString {
-        let known = Set(citations.map(\.n) + webCitations.map(\.n))
         let linked = s.replacing(/\[(\d{1,2})\](?!\()/) { m in
             let n = Int(m.output.1) ?? 0
             return known.contains(n) ? "[[\(n)]](folevi-cite://\(n))" : String(m.output.0)

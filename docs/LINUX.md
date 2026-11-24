@@ -106,12 +106,14 @@ summed over every process), the same way CI measures:
 | --- | ---: | ---: | ---: | ---: | ---: |
 | 1.5.75 as published | 446 MB | 119 | 199 | 111 | 17 |
 | With Quick Add made on first use (e75ac156) | 369 MB | 120 | 230 | none | 19 |
+| And the interface installed as files beside the program (6269a7ff) | 355 MB | 101 | 235 | none | 19 |
 
 CI measured Electron at 348 MB on Linux x86_64 (run 45418586764). Inside Folevi's own process: 27 MB is the program
 file itself (90 MB, most of it the web export compiled in), 23 MB is Mesa's software renderer (libLLVM, swrast),
 present because the VM and CI have no GPU, about 20 MB WebKit and GTK libraries, the rest its own heap. Ideas not
-yet tried: ship the web export as files beside the program (`/usr/lib/Folevi/web`) instead of compiled in, which
-would cut the program to about 10 MB and leave the interface in the page cache; WebKitGTK's memory-pressure settings.
+tried: WebKitGTK's memory-pressure settings. Since 6269a7ff the interface is installed as files beside the program
+(`/usr/lib/Folevi/web` for .deb and .rpm, inside the AppImage, `/app/lib/Folevi/web` in the Flatpak), checked in
+the VM for all three.
 The page itself (the web process) is most of the total and is the same web app Electron runs.
 
 ## Building

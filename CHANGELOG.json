@@ -1,6 +1,36 @@
 {
   "releases": [
     {
+      "version": "1.5.73",
+      "build": 88,
+      "released": "2026-11-24T19:03:37+06:00",
+      "type": "patch",
+      "summary": "Folevi for Mac is the web app in a Mac window again: the same screens as everywhere else, smaller and lighter.",
+      "improved": [
+        "Mac: the window shows Folevi's own sidebar, tabs and top bar, the same as on the web, Windows and Linux.",
+        "Mac: Settings opens in the main window.",
+        "Mac: the menu bar, Quick Add from any app, the menu bar icon, Spotlight, Shortcuts, Share and Services stay."
+      ],
+      "breaking": [
+        "Mac: floating note windows are gone. Notes open in tabs."
+      ],
+      "tag": "v1.5.73"
+    },
+    {
+      "version": "1.5.72",
+      "build": 87,
+      "released": "2026-11-24T18:18:21+06:00",
+      "type": "patch",
+      "summary": "Folevi for iPhone, iPad and Android is now one app, built from the same web app as everywhere else.",
+      "added": [
+        "One app for iPhone, iPad, iPhone Duo and Android, with the web app's own screens and layouts."
+      ],
+      "improved": [
+        "The iPhone and iPad app is about half the size."
+      ],
+      "tag": "v1.5.72"
+    },
+    {
       "version": "1.5.71",
       "build": 86,
       "released": "2026-11-24T13:21:54+06:00",

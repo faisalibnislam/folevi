@@ -573,7 +573,14 @@ account button should move past iPadOS's window buttons).
   splitting the phone interface out of every page's bundle (measure with a production build first); "Your own server"
   sign-in for the apps, planned in the shared notes (`web-everywhere-own-server-plan.md`), after the Synology branch
   lands; the starter "Welcome to Folevi" note names Mac shortcuts. Known failing e2e on `main` (not from this work):
-  `iphone-local-settings` switch size, `local-mode` Insert panel, `iphone-chrome` theme bar colour.
+  `iphone-local-settings` switch size, `local-mode` Insert panel, `iphone-chrome` theme bar colour (PR 77 fixes the
+  three specs) and `multi-select-local` rubber band (fixed on `claude/project-thread-8numex`).
+- Dependencies (2026-11-25 triage): tiptap 3.32 breaks the Markdown list shortcuts ("1. " and "- " stay text;
+  `editor-core-edges` and `editor-core-keys` unit tests), so tiptap stays on 3.31.3 until that is understood; bump all
+  four `@tiptap/*` together. @types/node stays on 24 to match `.nvmrc` (Dependabot now skips its majors). TypeScript 7
+  (Dependabot PR 22, `apps/ios` only) waits for a whole-repo move. The Actions majors (checkout, setup-node,
+  upload-artifact v7, pnpm/action-setup v6) are open as Dependabot PRs 19, 20, 21, 27: take them together, since runners
+  already force the v4 actions onto Node 24.
 - Folevi for Mac on the web view: 1.5.73 is live. PR 67 (`claude/mac-webview`) merges after PR 60. Watch for reports
   of signed-in Macs stuck on loading after updating (no signed-in Release run was observed); the fix path is
   `AppScheme.modeOf` / WebViewFactory. Push the `v1.5.69` to `v1.5.73` and `archive/mac-swiftui` tags if the owner asks. Ask the web session (through the main session) for the Mac's no-bounce motion when
@@ -721,6 +728,12 @@ account button should move past iPadOS's window buttons).
   `DATABASE_UDF_USER_TIMEOUT_SECONDS=4` for that backend. Bursts show in `convex.log` as "took a long time".
 
 ## 12. Change log
+- 2026-11-25: Main green pass (`claude/project-thread-8numex`): `multi-select-local` draws its rectangle from under
+  Birch (the smaller desktop cards of 2026-11-20 put Alder, Birch and Cedar on one row, so a rectangle from the right of
+  Cedar crossed Cedar); `e2ee-approve` waits for the first dialog to close and for the second request's code before
+  "They don't match" (failed twice on `main` after PR 76, which changed only docs); safe dependency bumps (katex 0.19.1,
+  typescript-eslint 8.72.2, the clipper's @types/chrome 0.3.7 and jsdom 30.1.3, lockfiles regenerated); Dependabot
+  groups `@tiptap/*` and skips @types/node majors.
 - 2026-11-25: Web everywhere queue landed (61, 62, 63, 64, 70, 75, 71, 72 after 68 and 74); this is their combined entry:
   PR 62 shortcuts per system (and documents.spec:187 waits for the bar's Share and the panel's focus instead of racing
   them); PR 63 Mac no-bounce motion and Android press ripple, the owner's picks in the web-everywhere memory; PR 64 one

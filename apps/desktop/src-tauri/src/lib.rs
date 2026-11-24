@@ -1452,7 +1452,8 @@ pub fn run() {
             if start_link.is_none() {
                 create_main(&handle, "/documents", Some("main".into()), !hidden)?;
             }
-            create_quick_add(&handle, false)?;
+            // Quick Add's window is made on first use (toggle_quick_add): a second copy of the interface loaded at
+            // launch would cost as much memory as the main window's.
             if let Some(link) = start_link {
                 open_link(&handle, &link);
             }

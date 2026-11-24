@@ -13,6 +13,8 @@ mod e2ee;
 mod events;
 mod http;
 mod library;
+#[cfg(target_os = "linux")]
+pub mod linux;
 mod notify;
 mod places;
 mod protocol;
@@ -44,6 +46,11 @@ const SCHEME: &str = "folevi";
 const FOLEVI_VERSION: &str = env!("FOLEVI_VERSION");
 const WINDOWS: bool = cfg!(windows);
 const MAC: bool = cfg!(target_os = "macos");
+/// How notes "on this device" are named in notifications: Windows says "this PC", Linux "this computer".
+#[cfg(not(target_os = "linux"))]
+const THIS_DEVICE: &str = "On this PC";
+#[cfg(target_os = "linux")]
+const THIS_DEVICE: &str = linux::THIS_DEVICE;
 /// The caption buttons' height on Windows (the page's tab strip sits below and to their left).
 const CAPTION_HEIGHT: u32 = 40;
 const HOST_JS: &str = include_str!("../bridge/host.js");
@@ -530,6 +537,24 @@ fn register_shortcut(app: &AppHandle) -> Option<String> {
     let gs = app.global_shortcut();
     let _ = gs.unregister_all();
     let accel = s.settings.lock().quick_add_shortcut.clone();
+    // Wayland doesn't let apps grab keys (the plugin "registers" but never fires): ask the desktop's portal.
+    #[cfg(target_os = "linux")]
+    if linux::is_wayland() {
+        let press_app = app.clone();
+        let done_app = app.clone();
+        linux::bind_quick_add(
+            app,
+            &accel,
+            Arc::new(move || {
+                let a = press_app.clone();
+                let _ = press_app.run_on_main_thread(move || toggle_quick_add(&a));
+            }),
+            Arc::new(move |error| {
+                services(&done_app).ui.lock().shortcut_error = error;
+            }),
+        );
+        return None;
+    }
     if accel.is_empty() {
         return None;
     }
@@ -1332,7 +1357,7 @@ pub fn run() {
                     return;
                 }
                 let labelled = !s.places.lock().account_ids().is_empty();
-                let title = if labelled { format!("On this PC · {}", r.title) } else { r.title.clone() };
+                let title = if labelled { format!("{} · {}", THIS_DEVICE, r.title) } else { r.title.clone() };
                 let path = r.path.clone();
                 let app2 = app.clone();
                 notify::show(APP_ID, &title, &r.body, Arc::new(move || {
@@ -1399,9 +1424,15 @@ pub fn run() {
 
             // folevi:// links: the one that started the app, then each later one (the single-instance plugin
             // forwards a second start's). Registered at run time too, for the AppImage and test builds.
-            if !services.paths.test_run && !cfg!(debug_assertions) {
+            // On Linux only the AppImage needs it: a .deb, .rpm or Flatpak registers through its .desktop file.
+            let register_links = !services.paths.test_run && !cfg!(debug_assertions);
+            #[cfg(target_os = "linux")]
+            let register_links = register_links && linux::should_register_links();
+            if register_links {
                 let _ = handle.deep_link().register_all();
             }
+            #[cfg(target_os = "linux")]
+            linux::follow_color_scheme(&handle);
             let link_app = handle.clone();
             handle.deep_link().on_open_url(move |event| {
                 for url in event.urls() {

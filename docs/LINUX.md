@@ -4,8 +4,9 @@ Folevi for Linux is the shared Tauri 2 desktop shell (the same one Folevi for Wi
 app, shown in the system's own web view, WebKitGTK. Small download, low memory, no bundled browser.
 
 Owner's direction (2026-11-24): one web app everywhere with system web views; one session per platform. The
-shared shell comes from the Windows session (`claude/desktop-tauri`); Linux adds only Linux config, a Linux
-module and packaging, so the shell isn't forked.
+shared shell is `apps/desktop` (docs/DESKTOP_APP.md, from the Windows session's `claude/desktop-tauri`); Linux adds
+only Linux config, a Linux module, a few `#[cfg(target_os = "linux")]` lines and packaging, so the shell isn't
+forked.
 
 Status: **not released.** Test builds only. Nothing is published to Flathub, the Snap Store, folevi.com or any
 repository without the owner's OK. Native app releases are paused.
@@ -14,16 +15,19 @@ repository without the owner's OK. Native app releases are paused.
 
 | What | Where |
 | --- | --- |
-| Linux-only Rust (dark mode, Quick Add on Wayland, update gating, NVIDIA fix, AppImage links) | `src-tauri/src/linux.rs` in the shared shell, behind `#[cfg(target_os = "linux")]` |
-| Linux bundle config (Tauri merges it on Linux only) | `src-tauri/tauri.linux.conf.json` (staged in `packaging/linux/`) |
+| Linux-only Rust (dark mode, Quick Add on Wayland, update gating, NVIDIA fix, AppImage links) | `apps/desktop/src-tauri/src/linux.rs`, called from `lib.rs`, `main.rs`, `notify.rs` behind `#[cfg(target_os = "linux")]` |
+| Linux bundle config (Tauri merges it over `tauri.conf.json` on Linux only) | `apps/desktop/src-tauri/tauri.linux.conf.json` |
+| Linux file dialogs (portal backend) and portals | `apps/desktop/src-tauri/Cargo.toml`, the `cfg(target_os = "linux")` dependencies |
+| CI builds (x86_64, aarch64, Flatpak) | `.github/workflows/desktop.yml` (shared with Windows) |
 | Desktop entry template | `packaging/linux/folevi.desktop.hbs` |
 | AppStream metadata (software centers, Flathub) | `packaging/linux/com.folevi.Folevi.metainfo.xml` |
 | Flatpak manifest | `packaging/linux/flatpak/com.folevi.Folevi.yml` |
 | Snap | `packaging/linux/snap/snapcraft.yaml` |
 | apt and dnf/zypper repositories | `packaging/linux/repo/` |
-| Build machine setup, smoke test | `packaging/linux/scripts/` |
+| Build machine setup, Lima VM build, Flatpak bundle, smoke test | `packaging/linux/scripts/` |
 
-App id: `com.folevi.Folevi` (Flatpak, AppStream, the desktop file in the Flatpak). The program is `folevi`.
+App id: `com.folevi.Folevi` (Tauri's identifier on Linux, Flatpak, AppStream). The program is `folevi`. Windows
+keeps `com.folevi.desktop` and `Folevi.exe`.
 
 ## Packages and how each installs and updates
 
@@ -59,16 +63,17 @@ them, so the shell checks the install kind first.
   `folevi://` link). The Flatpak renames them to `com.folevi.Folevi`.
 - **folevi:// links.** The desktop file declares `MimeType=x-scheme-handler/folevi`, so the desktop sends links
   to Folevi; the single-instance plugin hands a link from a second launch to the running app. The AppImage isn't
-  installed, so it registers itself on first run (`linux::register_deep_links`).
+  installed, so it registers itself at run time (`linux::should_register_links`); the others don't, so there's
+  no second handler entry.
 - **Tray.** Through libayatana-appindicator (StatusNotifierItem). On Linux a tray icon shows a menu but can't
   react to a plain click, so Open Folevi is the menu's first item. GNOME shows tray icons only with the
   AppIndicator extension, which Ubuntu, Fedora's KDE spin and most others include; stock GNOME on Fedora
   Workstation needs the extension. KDE, Cinnamon, XFCE, Budgie show it without help.
 - **Notifications.** Through `org.freedesktop.Notifications` (libnotify's protocol), which every desktop
   provides, and the Flatpak is allowed to talk to.
-- **Sign-in storage.** The sign-in is kept in the desktop's keyring through the Secret Service (GNOME Keyring,
-  KWallet 5.97+, KeePassXC). If there's no keyring running, the shell keeps it in the app's own data folder and
-  Settings says so.
+- **Sign-in storage.** The shell keeps a random data key in the desktop's keyring through the Secret Service
+  (GNOME Keyring, KWallet 5.97+, KeePassXC) and seals the sign-in and other secrets with it (`secrets.rs`). With
+  no keyring running it keeps the key in a private file (0600) in the app's data folder instead.
 - **Quick Add shortcut** (Ctrl+Alt+Space by default), honestly:
   - **X11** (Ubuntu with "Xorg", Mint Cinnamon, XFCE, MATE): works like on Windows.
   - **Wayland** (default on Ubuntu, Fedora, Debian GNOME, KDE Plasma 6): apps can't grab keys there. Folevi asks
@@ -76,10 +81,14 @@ them, so the shell checks the install kind first.
     25.04+, Fedora 42+) and Hyprland; the desktop asks the person once to confirm the keys.
   - **Wayland without the portal** (Ubuntu 22.04 and 24.04 GNOME, older Debian): add a system shortcut that runs
     `folevi folevi://quick-add` (Flatpak: `flatpak run com.folevi.Folevi folevi://quick-add`). GNOME: Settings >
-    Keyboard > Keyboard Shortcuts > Custom Shortcuts. Settings > Desktop app shows these steps there.
-- **File dialogs.** Through the XDG file chooser portal (tauri-plugin-dialog's `xdg-portal` backend), so the
-  Flatpak sees exactly the files someone picks, with no filesystem permission, and it looks native on GNOME and
-  KDE. Needs `xdg-desktop-portal` with a backend, which every mainstream desktop installs.
+    Keyboard > Keyboard Shortcuts > Custom Shortcuts. Settings > Desktop app shows this command (`linux::system_shortcut_hint`) when the
+    portal isn't there.
+- **File dialogs.** Through the XDG file chooser portal (tauri-plugin-dialog's `xdg-portal` backend), so they're
+  the desktop's own on GNOME and KDE, and work inside the Flatpak. Needs `xdg-desktop-portal` with a backend,
+  which every mainstream desktop installs (the .deb recommends it).
+- **Files in the Flatpak.** Notes "on this computer" are files in a folder Folevi watches for outside changes
+  (Documents/Folevi Library, or one chosen anywhere in home). The document portal can't pass those change events,
+  so the Flatpak has `--filesystem=home`, as other notes apps that keep files do on Flathub.
 - **Dark mode.** The desktop's light/dark setting comes through the portal's `color-scheme`. WebKitGTK 2.50
   already follows it for the page (checked in the VM: the page turned dark with and without the shell's hook), so
   Folevi's "System" appearance matches the desktop. GTK 3's own parts (title bar, menus, dialogs) don't read it,
@@ -94,11 +103,13 @@ Linux builds need Linux (WebKitGTK and GTK can't be cross-built from a Mac). Two
 1. **On a Mac, in a Lima VM** (what this session used): Ubuntu 22.04 arm64 VM with Rosetta. aarch64 builds
    natively; x86_64 builds in an Ubuntu 22.04 amd64 root inside the VM that runs through Rosetta.
    `packaging/linux/scripts/install-build-deps.sh` installs everything.
-2. **CI** (for releases): GitHub's `ubuntu-22.04` and `ubuntu-22.04-arm` runners, the same script.
+2. **CI**: `.github/workflows/desktop.yml` builds Linux x86_64 and aarch64 on GitHub's `ubuntu-22.04` and
+   `ubuntu-22.04-arm` machines, checks the packages, measures memory, and makes a Flatpak bundle for each
+   (`packaging/linux/scripts/flatpak-bundle.sh`). Artifacts only, kept 7 days.
 
-Then, from the shell's folder: `cargo tauri build --bundles appimage,deb,rpm` (with
-`TAURI_SIGNING_PRIVATE_KEY` for the updater signature: the key lives in the owner's password manager, never in
-the repo). `packaging/linux/scripts/smoke-test.sh` launches a build headless and screenshots it.
+Then, from `apps/desktop`: `pnpm exec tauri build --bundles appimage,deb,rpm` (or `cargo tauri build` in
+`src-tauri`). Updater files are off until the owner approves an update signing key; then the build needs
+`TAURI_SIGNING_PRIVATE_KEY` (kept in the owner's password manager, never in the repo). `packaging/linux/scripts/smoke-test.sh` launches a build headless and screenshots it.
 
 ## Repositories (plan, not live)
 

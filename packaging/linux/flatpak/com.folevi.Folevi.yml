@@ -6,7 +6,7 @@
 # It's supported until about September 2027; before then Tauri needs its GTK 4 port, or we move to another
 # runtime that carries WebKitGTK 4.1 (docs/LINUX.md, "WebKitGTK").
 #
-# Local test build (no download): packaging/linux/scripts/flatpak-local.sh points the .deb sources at a local file.
+# Local or CI test build (no download): packaging/linux/scripts/flatpak-bundle.sh points the .deb sources at a local file.
 id: com.folevi.Folevi
 runtime: org.gnome.Platform
 runtime-version: '51'
@@ -30,10 +30,17 @@ finish-args:
   - --talk-name=org.kde.StatusNotifierWatcher
   # The sign-in is kept in the desktop's keyring (GNOME Keyring, KWallet) through the Secret Service.
   - --talk-name=org.freedesktop.secrets
-  # Files: none by default. Import, export and "a folder you choose" for notes on this computer all go through the
-  # file chooser portal, which grants access to just what you pick, and remembers it.
+  # Notes "on this computer" are plain files in a folder (Documents/Folevi Library by default, or one the person
+  # chooses anywhere in their home), which Folevi watches for changes made by other apps and sync tools. The
+  # document portal can't deliver those change events, so, like other notes apps on Flathub that keep notes as
+  # files, Folevi gets the home folder. Import and export go through the file chooser portal.
+  - --filesystem=home
 
 modules:
+  # The tray icon: the GNOME runtime has no libayatana-appindicator, so Flathub's shared module builds it (the
+  # flathub/shared-modules repository, a git submodule in the Flathub repo; flatpak-bundle.sh fetches it).
+  - shared-modules/libayatana-appindicator/libayatana-appindicator-gtk3.json
+
   - name: folevi
     buildsystem: simple
     sources:

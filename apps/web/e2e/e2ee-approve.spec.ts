@@ -22,13 +22,17 @@ test("approve a new browser from a trusted one, and refuse one", async ({ browse
   await expect(waiting.getByLabel(code)).toBeVisible({ timeout: 30_000 });
   await ask.getByRole("button", { name: "They match" }).click();
   await expect(page.getByRole("radiogroup", { name: "Your notes are unlocked" })).toBeVisible({ timeout: 30_000 });
+  // The first request's dialog closes before the next one can show (so the steps below act on the second request).
+  await expect(ask).toHaveCount(0, { timeout: 30_000 });
   await page.getByRole("button", { name: "Continue" }).click();
 
   const other = await browser.newContext();
   const second = await signIn(other, trusted.account);
   await second.goto(`${APP}/documents`);
   await second.getByRole("button", { name: "Approve from another device" }).click();
-  await expect(ask).toBeVisible({ timeout: 30_000 });
+  // Refuse once the code is on show, as a person would (and as e2ee-screens.spec.ts does): the trusted browser has
+  // answered the request by then, so the refusal can't race its answer.
+  await expect(ask.getByLabel(/^Code /)).toBeVisible({ timeout: 60_000 });
   await ask.getByRole("button", { name: "They don't match" }).click();
   await expect(ask.getByRole("alert")).toContainText("Approval cancelled.");
   await expect(second.getByRole("dialog", { name: "Waiting for approval" }).getByRole("alert")).toBeVisible({ timeout: 30_000 });

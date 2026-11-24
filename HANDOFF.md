@@ -249,6 +249,12 @@ The ones most likely to be broken:
 
 ## 9. Current state (as of 2026-11-24)
 
+**Release 1.5.75 (build 90), the Capacitor mobile app, 2026-11-24:** the iPhone screen moves empty their screen copy
+afterwards (part of the memory growth, docs/mobile/ios-review-2026-11-24.md experiments G to P); release commit
+`21c40255`, tag `v1.5.75` local; uploaded to TestFlight under the owner's standing OK ("release everything when ready",
+relayed by the main session: internal "Folevi team" only, App Store submission still asked), delivery
+13e2530f-5ba1-4952-9fbe-2989389f7657. iOS only.
+
 **Release 1.5.74 (build 89), the Capacitor mobile app, 2026-11-24:** the iOS review's fixes (44 pt hit areas, local
 mode's rules from the first request), cut after 1.5.73's history entry (tag `v1.5.73`, the Mac release); release
 commit `e86fbbca`, tag `v1.5.74` local. Uploaded to TestFlight on the owner's "Release it" (delivery
@@ -700,6 +706,7 @@ account button should move past iPadOS's window buttons).
   `DATABASE_UDF_USER_TIMEOUT_SECONDS=4` for that backend. Bursts show in `convex.log` as "took a long time".
 
 ## 12. Change log
+- 2026-11-24: Memory growth traced further: about 60% is the screen copy shown during iPhone moves (kept by WebKit after removal), the rest elsewhere in the iPhone layout; emptying the copy recovers a third of it, shipped as 1.5.75 (build 90) to TestFlight (delivery 13e2530f). A Safari heap snapshot is still needed for the rest.
 - 2026-11-24: Mobile memory growth narrowed (docs/mobile/ios-review-2026-11-24.md follow-up): only in the iPhone layout under WebKit, about 5 MB kept per note open; not the bridge, logging, close path or WebKit caches; none on iPad. Needs a Safari Web Inspector heap snapshot next.
 - 2026-11-24: 1.5.74 (build 89), the mobile app with the iOS review's fixes, uploaded to TestFlight with the owner's OK (delivery 9fe1d590); tag local.
 - 2026-11-24: iOS review of the mobile app (design/HIG, polish, performance; docs/mobile/ios-review-2026-11-24.md): 44 pt hit areas for Calendar's grabber, a note's place chip and Foli AI's Add; local mode's network rules now apply from the first request and compile once. Open for the web session: iPad touch targets under 44 pt and about 4 MB of web memory kept per note open and close.

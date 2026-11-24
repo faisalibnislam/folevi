@@ -1,8 +1,8 @@
 {
   "name": "folevi-desktop",
   "productName": "Folevi",
-  "version": "1.5.73",
-  "foleviVersion": "1.5.73",
+  "version": "1.5.75",
+  "foleviVersion": "1.5.75",
   "private": true,
   "description": "Folevi for Windows and Linux: Folevi's own interface in the system's web view (Tauri 2).",
   "type": "module",

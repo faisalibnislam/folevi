@@ -430,7 +430,8 @@ account button should move past iPadOS's window buttons).
 
 ## 10. Next steps / open work
 - iPhone Duo third pass (`claude/iphone-duo-ipad-layout`): PR 53 (https://github.com/faisalibnislam/folevi/pull/53), now into
-  `claude/folevi-core-529dbe` (PR 52 merged 2026-11-24); the owner asked to merge it, pending its end-to-end run. Not checked: Split View halves and tabletop (no simulator control),
+  `claude/folevi-core-529dbe` (PR 52 merged 2026-11-24); on hold: `claude/folevi-core-529dbe` is being released as 1.5.66 (PR 51
+  into main), so PR 53 waits until PR 51 merges, then is retargeted to main and the owner merges it. Not checked: Split View halves and tabletop (no simulator control),
   a real device.
 - iPhone and iPad redesign (`claude/ios-native-redesign-f4a8be`): the owner tries 1.5.65 from TestFlight; PR 52
   (https://github.com/faisalibnislam/folevi/pull/52) merged into `claude/folevi-core-529dbe` on 2026-11-24
@@ -542,6 +543,7 @@ account button should move past iPadOS's window buttons).
   `DATABASE_UDF_USER_TIMEOUT_SECONDS=4` for that backend. Bursts show in `convex.log` as "took a long time".
 
 ## 12. Change log
+- 2026-11-24: PR 53 held until the 1.5.66 release (PR 51) merges, at the main session's request; then retarget it to main.
 - 2026-11-24: PR 52 merged into `claude/folevi-core-529dbe` (owner's OK; no required checks, so it merged before its lint run, which PR 53 had already passed on a superset); PR 53 retargeted to `claude/folevi-core-529dbe`.
 - 2026-11-24: iPhone Duo branch pushed with the owner's OK; PR 53 opened into `claude/ios-native-redesign-f4a8be` (PR 52's audit commits merged in first).
 - 2026-11-23: iPhone Duo resumed and redone (third pass, owner's pick): the iPad's wide layout when open, the iPhone layout closed; branch `claude/iphone-duo-ipad-layout` on PR 52's branch, not pushed.

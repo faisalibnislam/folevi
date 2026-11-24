@@ -168,7 +168,24 @@ function promote(els: HTMLElement[]): () => void {
   for (const el of els) el.style.willChange = "transform, opacity";
   return () => {
     for (const el of els) el.style.willChange = "";
+    els.length = 0;
   };
+}
+
+/**
+ * Lets go of a move's animations once it's over. WebKit keeps finished animations reachable (its document
+ * timeline), and each one holds the element it moved and its handlers: the screen a note slid in on, the
+ * whole note behind it. A finished move's animations have nothing left to show (none fill), so they drop their
+ * element and handlers, and every screen that moved can be collected once it's gone (the iPhone review's
+ * memory growth, 2026-11-24: about 5 MB kept per note opened).
+ */
+function release(anims: Animation[]) {
+  for (const a of anims) {
+    a.onfinish = null;
+    a.oncancel = null;
+    a.effect = null;
+  }
+  anims.length = 0;
 }
 
 /**
@@ -218,11 +235,13 @@ function playZoom(kind: "push" | "pop", entering: HTMLElement, leaving: HTMLElem
   dim.setAttribute("data-iphone-zoom-dim", "");
   const card = inBox(box.rect, w);
   const unpromote = promote([entering, leaving, dim]);
+  const all: Animation[] = [];
   const done = () => {
     if (leaving.parentElement === pictures) pictures.replaceChildren();
     entering.removeAttribute("data-iphone-zoom");
     entering.style.transformOrigin = "";
     unpromote();
+    release(all);
   };
   entering.setAttribute("data-iphone-zoom", kind);
   let out: Animation;
@@ -249,12 +268,13 @@ function playZoom(kind: "push" | "pop", entering: HTMLElement, leaving: HTMLElem
     scrollersOf(leaving).forEach((el, i) => (el.scrollTop = scrolls[i] ?? 0));
     const shrink = track(ZOOM, (k) => between(card, 1 - k));
     const t = linear(shrink.ms);
-    entering.animate(track(ZOOM, (k) => ({ transform: `scale(${round(BEHIND_SCALE + (1 - BEHIND_SCALE) * k)})` })).frames, t);
-    dim.animate(track(ZOOM, (k) => ({ opacity: round(Math.max(0, UNDER_DIM * (1 - k))) })).frames, t);
+    anims.push(entering.animate(track(ZOOM, (k) => ({ transform: `scale(${round(BEHIND_SCALE + (1 - BEHIND_SCALE) * k)})` })).frames, t));
+    anims.push(dim.animate(track(ZOOM, (k) => ({ opacity: round(Math.max(0, UNDER_DIM * (1 - k))) })).frames, t));
     leaving.style.transformOrigin = "0 0";
     out = leaving.animate(shrink.frames, t);
-    leaving.animate([{ opacity: 1 }, { opacity: 1, offset: 0.6 }, { opacity: 0 }], t);
+    anims.push(out, leaving.animate([{ opacity: 1 }, { opacity: 1, offset: 0.6 }, { opacity: 0 }], t));
   }
+  all.push(...anims);
   out.onfinish = done;
   out.oncancel = done;
 }
@@ -321,9 +341,11 @@ export function playTransition(entering: HTMLElement | null) {
   scrollersOf(leaving).forEach((s, i) => (s.scrollTop = scrolls[i] ?? 0));
   const pictures = layer;
   const unpromote = promote([entering, leaving, dim, shadow]);
+  const all: Animation[] = [];
   const done = () => {
     if (leaving.parentElement === pictures) pictures.replaceChildren();
     unpromote();
+    release(all);
   };
   const at = (k: number) => round(k * 100);
   const slide = track(SPRINGS.push, (k) => ({ transform: `translateX(${at(1 - k)}%)` }));
@@ -340,11 +362,13 @@ export function playTransition(entering: HTMLElement | null) {
     // A note slid in (a link to it): it moves once its words are in. A new note has none to wait for.
     whenReady(entering, anims, location.pathname.startsWith("/d/") && new URLSearchParams(location.search).get("new") !== "1");
   } else {
-    entering.animate(track(SPRINGS.push, (k) => ({ transform: under(1 - k) })).frames, t);
-    dim.animate(track(SPRINGS.push, (k) => ({ opacity: round(Math.max(0, UNDER_DIM * (1 - k))) })).frames, t);
-    shadow.animate(track(SPRINGS.push, (k) => ({ transform: `translateX(${round(k * 100)}vw)` })).frames, t);
+    anims.push(entering.animate(track(SPRINGS.push, (k) => ({ transform: under(1 - k) })).frames, t));
+    anims.push(dim.animate(track(SPRINGS.push, (k) => ({ opacity: round(Math.max(0, UNDER_DIM * (1 - k))) })).frames, t));
+    anims.push(shadow.animate(track(SPRINGS.push, (k) => ({ transform: `translateX(${round(k * 100)}vw)` })).frames, t));
     out = leaving.animate(track(SPRINGS.push, (k) => ({ transform: `translateX(${at(k)}%)` })).frames, t);
+    anims.push(out);
   }
+  all.push(...anims);
   out.onfinish = done;
   out.oncancel = done;
 }

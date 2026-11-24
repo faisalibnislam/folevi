@@ -249,6 +249,16 @@ The ones most likely to be broken:
 
 ## 9. Current state (as of 2026-11-24)
 
+**Release 1.5.72 (build 87), the Capacitor mobile app, 2026-11-24:** owner's OK, relayed by the main session ("release
+all ready apps for all platform", "Mobile to testers": TestFlight and Play internal testing only). Cut on
+`claude/mobile-capacitor-f41734` after 1.5.71's history entry (from tag `v1.5.71`); release commit `d153ae34`, tag
+`v1.5.72` local. iOS: `apps/mobile/scripts/release.mjs --skip-shell --no-upload` made `apps/mobile/release/Folevi.ipa`
+(84 MB, App Store profiles, production push, production backend); **the TestFlight upload was refused by this session's
+permission check and is not done**: run `cd apps/mobile && xcrun altool --upload-app --type ios --file release/Folevi.ipa
+--apiKey HS88CK5RQF --apiIssuer 9479ebb4-e44a-45b4-bfef-e625408057ae`, or `pnpm release --skip-shell` once allowed.
+Android: the Android session builds the same commit for Play internal testing. The Windows session takes 1.5.73.
+Sign-in on the simulator reached iOS's "Folevi wants to use app.folevi.com to sign in" prompt (no account used further).
+
 **One mobile app with Capacitor (2026-11-24, branch `claude/mobile-capacitor-f41734`, PR 66 https://github.com/faisalibnislam/folevi/pull/66 into `main`, not merged):**
 the owner's "one web app everywhere" plan for phones and tablets. `apps/mobile` is one Capacitor 8 project for
 iPhone, iPad, iPhone Duo and Android around the web app's shell export (`build-shell.mjs --platform mobile`), with
@@ -686,6 +696,7 @@ account button should move past iPadOS's window buttons).
   `DATABASE_UDF_USER_TIMEOUT_SECONDS=4` for that backend. Bursts show in `convex.log` as "took a long time".
 
 ## 12. Change log
+- 2026-11-24: 1.5.72 (build 87) cut on `claude/mobile-capacitor-f41734` (tag local) for the Capacitor mobile app; iOS IPA exported, TestFlight upload pending a permission; Android build handed to the Android session. PR 66: main merged again; its one failing e2e (vault-team) had passed on the same code the run before.
 - 2026-11-24: Owner: keep note covers inside the mobile app and sync note styles when the server changes them. Plan in docs/MOBILE.md; local mode's part asked of the owner.
 - 2026-11-24: PR 66 opened for the Capacitor mobile app (`claude/mobile-capacitor-f41734` pushed); open question to the owner: note covers.
 - 2026-11-24: `apps/mobile`: one Capacitor app for iPhone, iPad, iPhone Duo and Android around the web app (no native screens), reusing the shared Swift and Kotlin services; window-size layouts in `lib/iphone.ts`; `version.mjs` covers it; checked on simulators and emulators, size and memory compared (docs/MOBILE.md). Branch `claude/mobile-capacitor-f41734`, PR not merged.

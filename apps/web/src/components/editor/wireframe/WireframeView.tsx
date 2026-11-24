@@ -94,7 +94,7 @@ import {
 import { withKeyLabels } from "@/lib/shortcuts";
 import { useWireDoc } from "./useWireDoc";
 import { targetUnder } from "../canvas/targetUnder";
-import { capturePointer, dropFocusIn, notePress, pinchPair, useTapFocus, type DownPointer } from "../canvas/pointers";
+import { capturePointer, pressIsElsewhere, dropFocusIn, notePress, pinchPair, useTapFocus, type DownPointer } from "../canvas/pointers";
 
 const MIN_K = 0.05;
 const MAX_K = 4;
@@ -666,6 +666,8 @@ function WireframeEditor(props: ReactNodeViewProps) {
   const tapFocus = useTapFocus({ isActive: active, focus: focusCanvas, drop: () => dropFocusIn(stageRef.current?.closest(".fb-canvas-card")) });
 
   const onPointerDown = (e: React.PointerEvent<SVGSVGElement>) => {
+    // A press in something this board drew on top of the page (a phone sheet) isn't the board's (pointers.ts).
+    if (pressIsElsewhere(e.currentTarget, e.target)) return;
     if (editingRef.current) finishEdit(false);
     const pts = pointers.current;
     const what = notePress(pts, e);

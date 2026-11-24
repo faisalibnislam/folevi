@@ -611,7 +611,7 @@ function DocumentList({ view, folderId, tagId, org, titleOverride }: { view: Vie
               {filterField(false)}
               <label className="flex items-center gap-2 text-subheadline text-muted">
                 <span>Sort</span>
-                <Select value={sort} onChange={(e) => setSort(e.target.value as Sort)} className="h-9 ui-input rounded-chip px-3 text-callout text-ink">
+                <Select value={sort} onChange={(e) => setSort(e.target.value as Sort)} className="ui-hit h-9 ui-input rounded-chip px-3 text-callout text-ink">
                   {NOTE_SORTS.map(([v, label]) => (
                     <option key={v} value={v}>
                       {label}

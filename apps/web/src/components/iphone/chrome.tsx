@@ -2,6 +2,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { nativeApp } from "@/lib/nativeApp";
+import { touchPrimary } from "@/lib/platform";
 import { scrollerAround } from "@/lib/native/bars";
 
 /**
@@ -55,8 +56,9 @@ function useKeyboardOpen(): boolean {
       window.removeEventListener("keyboardWillHide", hide);
     };
   }, []);
-  // A hardware keyboard keeps the on-screen one away: the plugin says hidden while a field has focus.
-  return focused && shown !== false;
+  // A hardware keyboard keeps the on-screen one away: the plugin says hidden while a field has focus. A computer
+  // has none at all (a narrow window on a Mac or PC shows this phone layout too), so its bars stay put while typing.
+  return focused && shown !== false && touchPrimary();
 }
 
 /** The scrolling view around a node (a note's page, a list), if any. */

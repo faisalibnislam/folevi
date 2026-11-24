@@ -67,6 +67,12 @@ describe("formFactor: width decides, on every device", () => {
     expect(formFactor()).toBe("tablet");
   });
 
+  it("the app's tablet look needs a touch screen (the iOS app's bridge in a desktop test browser stays a desktop)", () => {
+    windowLike(1280, { touch: false, ua: MAC, touchPoints: 0 });
+    app("ios");
+    expect(formFactor()).toBe("desktop");
+  });
+
   it("an Android tablet and a tablet's browser get the tablet layout", () => {
     windowLike(1280, { touch: true, ua: ANDROID.replace(" Mobile", "") });
     app("android");

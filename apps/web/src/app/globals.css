@@ -1253,6 +1253,9 @@
    pointer's own size. */
 :root:is([data-tablet], [data-iphone]) :is(.ui-hit, .ui-seg > *) { position: relative; }
 :root:is([data-tablet], [data-iphone]) :is(.ui-hit, .ui-seg > *)::after { content: ""; position: absolute; left: 50%; top: 50%; width: max(100%, 44px); height: max(100%, 44px); transform: translate(-50%, -50%); }
+/* A tab holds its own link and close button, so it gets no layer of its own on top (it took the link's taps): the
+   link's hit area, which already covers the whole tab, reaches 44 pt instead. */
+:root:is([data-tablet], [data-iphone]) [data-ipad-tab] a::before { top: min(0px, calc((100% - 44px) / 2)); bottom: min(0px, calc((100% - 44px) / 2)); }
 :root[data-tablet] .ui-seg { border-radius: var(--radius-control); padding: 2px; }
 :root[data-tablet] .ui-seg > * svg { width: 18px; height: 18px; }
 /* The screens before the app in the phone and tablet apps (ModeChoice, LibrarySetup, ShellSignIn): the grouped

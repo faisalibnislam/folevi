@@ -65,12 +65,13 @@ export const usesCommandKey = (): boolean => {
 };
 
 /**
- * Whether touch is how this window is used: the iPhone, iPad and Android app (a keyboard and trackpad on an iPad
- * keep it a touch device, as iPadOS does), or a browser whose main pointer is a finger.
+ * Whether touch is how this window is used: the iPhone, iPad and Android app on their touch screens (a keyboard
+ * and trackpad on an iPad keep it a touch device, as iPadOS does: its web view still reports five touch points),
+ * or a browser whose main pointer is a finger.
  */
 export function touchPrimary(): boolean {
   const app = shell();
-  if (app === "ios" || app === "android") return true;
+  if (app === "ios" || app === "android") return (typeof navigator !== "undefined" && navigator.maxTouchPoints > 0) || media(TOUCH_QUERY);
   if (app !== "browser") return false;
   return media(TOUCH_QUERY);
 }

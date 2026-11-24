@@ -246,7 +246,28 @@ The ones most likely to be broken:
 - Snapshot tests: re-record only your own snapshots; never clear `__Snapshots__` wholesale.
 - Give before/after screenshots for UI work and ask the owner with clear options when a decision is theirs.
 
-## 9. Current state (as of 2026-11-23)
+## 9. Current state (as of 2026-11-24)
+
+**Release in progress, 2026-11-24 (branch `claude/folevi-core-529dbe`, PR 51 into `main`, not merged):**
+- **1.5.66** (tag `v1.5.66`, local): the native Mac app replacing the AppKit one, plus PR 52's iPhone/iPad redesign.
+  Published to Sparkle and uploaded to TestFlight with the owner's OK. **It broke signed-in Macs:** the window stayed
+  on the loading screen. Cause: the app never set `AppScheme.modeOf`, so every page got the local
+  Content-Security-Policy, which blocks Convex; a signed-in place's engine page threw on its first WebSocket.
+  Local libraries were fine.
+- **Mitigation (owner's OK):** the 1.5.66 item was removed from `mac/appcast.xml` and `mac/Folevi.dmg` points at
+  1.5.64 again, so Macs on 1.5.64 get no update. Macs already on 1.5.66 stay stuck until 1.5.68.
+- **1.5.68** (tag `v1.5.68`, local; build 83): the fix (`WebViewFactory.scheme` sets `modeOf`; `SchemeModeTests`),
+  70 Mac tests pass. A notarized, stapled DMG is in the owner's `~/Downloads/Folevi-1.5.68.dmg` for a manual try;
+  **not on the feed yet.** Not checked: a real signed-in account (none on our side). With a fake account place and
+  no token, the Release build has no page errors but still waits. 1.5.67 is the iPhone/iPad release that
+  `claude/ios-native-redesign-f4a8be` cut; its changelog entry is recorded here, but its code is not on this branch.
+- **Next, once the owner confirms 1.5.68 opens their account:** `node apps/mac/scripts/publish.mjs` (it rebuilds
+  and puts 1.5.68 on the feed), merge PR 51 after CI (deploys the web), then tell the Android session to merge
+  PR 54 (owner: "merge PR 54 after PR 51"). Tell the Duo session (PR 53) and the iPhone/iPad session when PR 51 has
+  merged.
+- **Tabs (owner, 2026-11-24):** everything opens in a new tab exactly like the web on Mac, iPad, and Android
+  tablets/Googlebooks (`docs/claude-context/memory/tabs-match-web-2026-11-24.md`). iPad and Android were forwarded
+  to their sessions; the Mac part is still to do.
 
 **iPhone and iPad redesigned after the Mac's window (1.5.65, TestFlight):** branch
 `claude/ios-native-redesign-f4a8be` (worktree `.claude/worktrees/ios-native-redesign-f4a8be`), built on the Mac
@@ -553,6 +574,7 @@ account button should move past iPadOS's window buttons).
   `DATABASE_UDF_USER_TIMEOUT_SECONDS=4` for that backend. Bursts show in `convex.log` as "took a long time".
 
 ## 12. Change log
+- 2026-11-24: 1.5.66 released (Mac on Sparkle, TestFlight) and pulled from the Mac feed after it left signed-in Macs on the loading screen (page policy never knew the place's mode); fix in 1.5.68, notarized DMG handed to the owner, not on the feed yet; tabs-match-web rule saved and forwarded.
 - 2026-11-23: Folevi for Mac: no more Core naming; `apps/mac/FoleviCore` became `apps/mac/Folevi` (project, target, scheme, module, tests), `core.mjs` became `app.mjs`, internal Core* types became App*; identity, data and update feed unchanged; 38 Mac tests and the web version test pass.
 - 2026-11-23: Folevi for Mac: the window rebuilt the native way (system split view, unified Liquid Glass toolbar with each screen's items and search, system inspector, segmented controls, sidebar can be hidden); the Macloving card design dropped at the owner's word; 38 tests pass.
 - 2026-11-23: Folevi for Mac: HIG and Liquid Glass pass (content under the glass bar with a soft edge, split screens below it, tab bar state after restored tabs, no shadow on the palette's glass, Jump to Latest materializes, hover on bar choices); iPhone/iPad pass handed to the redesign session (PR 52).

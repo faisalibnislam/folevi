@@ -87,10 +87,10 @@ export function clickScript(name) {
 }
 
 function gradle(...tasks) {
-  execFileSync(join(root, "android/gradlew"), tasks, { cwd: join(root, "android"), env, stdio: "inherit" });
+  execFileSync(join(root, "gradlew"), tasks, { cwd: root, env, stdio: "inherit" });
 }
 
-const apk = join(root, "android/app/build/outputs/apk/debug/app-debug.apk");
+const apk = join(root, "app/build/outputs/apk/debug/app-debug.apk");
 
 async function main() {
   switch (command) {

@@ -1255,7 +1255,7 @@
 /* ------------------------------------------------------------------------------------------------
  * Mac polish WM4 (docs/MAC_POLISH_PLAN.md §2, §3.4, §3.7, §3.12, §3.14 to §3.16; docs/MAC_WEBKIT_PLAN.md §10):
  * the web layer of Folevi for Mac (the native WebKit app; the Electron app it replaced shared it). Only under
- * <html data-desktop="mac">, which the app sets before the first paint (apps/mac/FoleviCore/Host/Shared/Bridge/mac-bridge.js); the website in a browser never has it. components/app/MacPolish.tsx keeps
+ * <html data-desktop="mac">, which the app sets before the first paint (apps/mac/Folevi/Host/Shared/Bridge/mac-bridge.js); the website in a browser never has it. components/app/MacPolish.tsx keeps
  * data-input ("key" after keyboard navigation, "pointer" after a click), data-window-active and data-fullscreen;
  * the native app may add data-vibrancy (the system's translucent sidebar, decision M3). Everything here is plain
  * CSS outside the layers, so it wins over the components' utility classes without !important.

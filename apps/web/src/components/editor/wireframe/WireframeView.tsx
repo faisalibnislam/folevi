@@ -91,6 +91,7 @@ import {
   type ResizeHandle,
   type Selection,
 } from "./ops";
+import { withKeyLabels } from "@/lib/shortcuts";
 import { useWireDoc } from "./useWireDoc";
 import { targetUnder } from "../canvas/targetUnder";
 import { capturePointer, pressIsElsewhere, dropFocusIn, notePress, pinchPair, useTapFocus, type DownPointer } from "../canvas/pointers";
@@ -1136,7 +1137,7 @@ function WireframeEditor(props: ReactNodeViewProps) {
             }
           }}
         />
-        <p className="wf-text-hint">{multiline ? "⌘Enter to finish" : "Enter to finish"}{TEXT_HINT[editItem.kind] && multiline ? ` · ${TEXT_HINT[editItem.kind]}` : ""}</p>
+        <p className="wf-text-hint">{multiline ? withKeyLabels("⌘Enter to finish") : "Enter to finish"}{TEXT_HINT[editItem.kind] && multiline ? ` · ${TEXT_HINT[editItem.kind]}` : ""}</p>
       </div>
     );
   } else if (editScreen) {

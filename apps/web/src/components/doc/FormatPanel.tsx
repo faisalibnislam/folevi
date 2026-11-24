@@ -48,6 +48,7 @@ import { useActiveCellEditor } from "@/components/editor/table/cellEditorStore";
 import { useIphoneApp } from "@/lib/iphone";
 import { askText, feel } from "@/lib/native/ui";
 import { useToast } from "@/components/ui/Toast";
+import { useKeyLabels } from "@/lib/shortcuts";
 
 /*
  * The page tools' Format panel: turn the current block into another kind, format the selected text, its
@@ -94,6 +95,7 @@ const TONES: Record<string, string> = {
 const BLOCK_OFF_HINT = "Put the cursor in text, a list or a quote to use these.";
 
 export function FormatPanel({ editor, disabled }: { editor: Editor | null; disabled: boolean }) {
+  const keys = useKeyLabels();
   const palette = useNotePalette();
   const [, force] = useState(0);
   const [href, setHref] = useState("");
@@ -455,7 +457,7 @@ export function FormatPanel({ editor, disabled }: { editor: Editor | null; disab
           ) : null}
         </form>
         <p id={`${linkId}-hint`} className={`mt-1 px-1 text-footnote ${linkError ? "text-danger" : "text-muted"}`} role={linkError ? "alert" : undefined}>
-          {linkError ?? "Links the selected text. Shortcut: ⌘⇧K."}
+          {linkError ?? keys("Links the selected text. Shortcut: ⌘⇧K.")}
         </p>
       </section>
       {/* Text colours and highlights come from the note's theme (its own colours and names) when it has
@@ -542,7 +544,7 @@ export function FormatPanel({ editor, disabled }: { editor: Editor | null; disab
       ) : null}
         </div>
       </details>
-      <p className="ui-shortcut-hint px-1 text-footnote text-muted">Shortcuts: ⌘⌥0–3 headings, ⌘⇧7/8/9 lists and to-dos, Tab / ⇧Tab to nest, ⌥⇧↑↓ to move, ⌘⇧K link, ⌥F10 formatting toolbar, Esc then ⇧↑↓ to select blocks, ⌘. for block options.</p>
+      <p className="ui-shortcut-hint px-1 text-footnote text-muted">{keys("Shortcuts: ⌘⌥0–3 headings, ⌘⇧7/8/9 lists and to-dos, Tab / ⇧Tab to nest, ⌥⇧↑↓ to move, ⌘⇧K link, ⌥F10 formatting toolbar, Esc then ⇧↑↓ to select blocks, ⌘. for block options.")}</p>
     </div>
   );
 }

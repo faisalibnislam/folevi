@@ -1,5 +1,8 @@
+"use client";
+
 import { forwardRef, type ButtonHTMLAttributes } from "react";
 import { haptic } from "@/lib/nativeApp";
+import { keyLabel, useMacKeys } from "@/lib/shortcuts";
 
 type Variant = "primary" | "secondary" | "ghost" | "danger" | "quiet";
 type Size = "sm" | "md" | "icon";
@@ -44,22 +47,33 @@ export const IconButton = forwardRef<HTMLButtonElement, ButtonProps & { label: s
   { label, shortcut, variant = "quiet", ...rest },
   ref,
 ) {
-  return <Button ref={ref} variant={variant} size="icon" aria-label={label} title={shortcut ? `${label} (${shortcut})` : label} aria-keyshortcuts={shortcut ? ariaShortcut(shortcut) : undefined} {...rest} />;
+  // The shortcut as this system writes it (Ctrl+Alt+N off Apple's), in the tooltip and for assistive tech.
+  const mac = useMacKeys();
+  return <Button ref={ref} variant={variant} size="icon" aria-label={label} title={shortcut ? `${label} (${keyLabel(shortcut, mac)})` : label} aria-keyshortcuts={shortcut ? ariaShortcut(shortcut, mac) : undefined} {...rest} />;
 });
 
 const ARIA_MODS: Record<string, string> = { "⌘": "Meta", "⌃": "Control", "⌥": "Alt", "⇧": "Shift" };
-/** "⌘⇧K" as ARIA writes shortcuts ("Meta+Shift+K"), so assistive tech can announce it (docs/MAC_POLISH_PLAN.md §3.15). */
-export function ariaShortcut(shortcut: string): string {
+/**
+ * "⌘⇧K" as ARIA writes shortcuts ("Meta+Shift+K"), so assistive tech can announce it (docs/MAC_POLISH_PLAN.md
+ * §3.15). Off Apple's systems ⌘ is Ctrl ("Control+Shift+K").
+ */
+export function ariaShortcut(shortcut: string, mac = true): string {
   const chars = [...shortcut];
   const mods: string[] = [];
-  while (chars.length > 1 && ARIA_MODS[chars[0]!]) mods.push(ARIA_MODS[chars.shift()!]!);
+  while (chars.length > 1 && ARIA_MODS[chars[0]!]) {
+    const mod = ARIA_MODS[chars.shift()!]!;
+    const named = !mac && mod === "Meta" ? "Control" : mod;
+    if (!mods.includes(named)) mods.push(named);
+  }
   return [...mods, chars.join("")].join("+");
 }
 
+/** A key cap. A shortcut given as text ("⌘K") is written as this system writes it ("Ctrl+K" off Apple's). */
 export function Kbd({ children }: { children: React.ReactNode }) {
+  const mac = useMacKeys();
   return (
     <kbd className="ui-kbd">
-      {children}
+      {typeof children === "string" ? keyLabel(children, mac) : children}
     </kbd>
   );
 }

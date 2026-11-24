@@ -8,6 +8,7 @@ import { MINDMAP_AUTO_COLORS, MINDMAP_COLOR_LABEL, MINDMAP_COLORS, type MindmapC
 import { AiIcon } from "@/components/ai/AiIcon";
 import { MenuButton, type MenuEntry, type MenuItem } from "@/components/ui/Menu";
 import type { FoldTool } from "../canvas/ToolFold";
+import { withKeyLabels } from "@/lib/shortcuts";
 
 export const LAYOUT_LABEL: Record<MindmapLayout, string> = { both: "Both sides", right: "Right only", down: "Top down" };
 
@@ -110,7 +111,7 @@ export function mindmapTools({ layout, onLayout, onTidy, canTidy, outline, onOut
       sep: true,
       priority: 5,
       node: (
-        <button type="button" className="fb-vc-btn" aria-label="Undo" title="Undo (⌘Z)" disabled={!canUndo} onClick={onUndo}>
+        <button type="button" className="fb-vc-btn" aria-label="Undo" title={withKeyLabels("Undo (⌘Z)")} disabled={!canUndo} onClick={onUndo}>
           <Undo2 size={14} aria-hidden />
         </button>
       ),
@@ -120,7 +121,7 @@ export function mindmapTools({ layout, onLayout, onTidy, canTidy, outline, onOut
       key: "redo",
       priority: 4,
       node: (
-        <button type="button" className="fb-vc-btn" aria-label="Redo" title="Redo (⇧⌘Z)" disabled={!canRedo} onClick={onRedo}>
+        <button type="button" className="fb-vc-btn" aria-label="Redo" title={withKeyLabels("Redo (⇧⌘Z)")} disabled={!canRedo} onClick={onRedo}>
           <Redo2 size={14} aria-hidden />
         </button>
       ),
@@ -158,7 +159,7 @@ export function ZoomBar({ zoom, onZoomIn, onZoomOut, onFit }: { zoom: number; on
       <button type="button" className="fb-vc-btn" aria-label="Zoom in" title="Zoom in (+)" onClick={onZoomIn}>
         <Plus size={14} aria-hidden />
       </button>
-      <button type="button" className="fb-vc-btn" aria-label="Fit to view" title="Fit to view (⇧1)" onClick={onFit}>
+      <button type="button" className="fb-vc-btn" aria-label="Fit to view" title={withKeyLabels("Fit to view (⇧1)")} onClick={onFit}>
         <Maximize size={13} aria-hidden />
       </button>
     </div>
@@ -230,7 +231,7 @@ export function IdeaBar({ ref, style, where, a, onMore }: { ref?: React.Ref<HTML
         <CornerDownRight size={14} aria-hidden />
       </button>
       {!a.isRoot ? (
-        <button type="button" className="fb-vc-btn" aria-label="Add idea after" title="Add idea after (⇧Enter)" onClick={a.onAddSibling}>
+        <button type="button" className="fb-vc-btn" aria-label="Add idea after" title={withKeyLabels("Add idea after (⇧Enter)")} onClick={a.onAddSibling}>
           <Plus size={14} aria-hidden />
         </button>
       ) : null}

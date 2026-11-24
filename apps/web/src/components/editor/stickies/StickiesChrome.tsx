@@ -14,6 +14,7 @@ import { haptic } from "@/lib/nativeApp";
 import { ToolFold, type FoldTool } from "../canvas/ToolFold";
 import { ARRANGE_LABEL, type ArrangeKey } from "./ops";
 import { serverNow } from "./serverClock";
+import { withKeyLabels } from "@/lib/shortcuts";
 
 /** A panel over the board, or a sheet in the iPhone app. */
 export function Panel({ title, onClose, children, className = "", wide = false }: { title: string; onClose: () => void; children: ReactNode; className?: string; wide?: boolean }) {
@@ -238,7 +239,7 @@ export function SelectionBar({
         sep: true,
         priority: 1,
         node: (
-          <button type="button" className="st-btn" aria-label="Duplicate" title="Duplicate (⌘D)" onClick={onDuplicate}>
+          <button type="button" className="st-btn" aria-label="Duplicate" title={withKeyLabels("Duplicate (⌘D)")} onClick={onDuplicate}>
             <Copy size={15} aria-hidden />
           </button>
         ),
@@ -306,7 +307,7 @@ export function ZoomBar({ zoom, onIn, onOut, onFit }: { zoom: number; onIn: () =
       <button type="button" className="st-btn" aria-label="Zoom in" title="Zoom in (+)" onClick={onIn}>
         <Plus size={15} aria-hidden />
       </button>
-      <button type="button" className="st-btn" aria-label="Fit the board" title="Fit the board (⇧1)" onClick={onFit}>
+      <button type="button" className="st-btn" aria-label="Fit the board" title={withKeyLabels("Fit the board (⇧1)")} onClick={onFit}>
         <Maximize size={14} aria-hidden />
       </button>
     </div>

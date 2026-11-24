@@ -43,6 +43,18 @@ export function isTabletApp(): boolean {
   return isIpadApp() || isWideIphone();
 }
 
+/**
+ * iPhone Duo: the iPhone app shows the iPad's wide layout while the phone is open (any iPhone window of regular width)
+ * and the phone's when it's closed. The app says which on the marker (`wide`, RebuildPageLayout in the iOS app) and
+ * fires this event when it changes; undefined everywhere else (the iPad's page measures its own width).
+ */
+const NATIVE_LAYOUT_EVENT = "folevi-native-layout";
+
+function nativeWide(): boolean | undefined {
+  const wide = (nativeChrome() as { wide?: unknown } | null)?.wide;
+  return typeof wide === "boolean" ? wide : undefined;
+}
+
 /** Whether this page is the iPad app (its web view reports a Mac with a touch screen). */
 export function isIpadApp(): boolean {
   if (typeof navigator === "undefined" || !inIosApp() || /\b(iPhone|iPod)\b/.test(navigator.userAgent)) return false;
@@ -83,7 +95,10 @@ export function isIphoneApp(): boolean {
   // Native chrome mode on an iPhone: the note page takes the phone layout (the native app draws the bars).
   const marker = nativeChrome();
   // Native chrome mode on an Android phone (or any Android window too narrow for the sidebar layout): the same.
-  if (marker) return marker.platform === "ios" || (marker.platform === "android" && typeof window.matchMedia === "function" && window.matchMedia(IPAD_COMPACT).matches);
+  if (marker) {
+    if (marker.platform === "ios") return nativeWide() !== true;
+    return marker.platform === "android" && typeof window.matchMedia === "function" && window.matchMedia(IPAD_COMPACT).matches;
+  }
   if (inAndroidApp()) return typeof window.matchMedia === "function" && window.matchMedia(ANDROID_COMPACT).matches;
   if (!inIosApp()) return false;
   if (iphoneUA()) return !isWideIphone();
@@ -95,13 +110,16 @@ export const isNativePhone = (): boolean => isIphoneApp();
 
 const followWidth = (changed: () => void) => {
   // (Only the iPad app's, the Android app's and the iPhone app's window size can change which interface shows: an
-  // iPad in Split View, a foldable, iPhone Duo folded or opened.)
-  if (typeof window === "undefined" || typeof window.matchMedia !== "function") return () => undefined;
+  // iPad in Split View, a foldable, iPhone Duo folded or opened; and the native iPhone Duo app's word.)
+  if (typeof window === "undefined") return () => undefined;
+  window.addEventListener(NATIVE_LAYOUT_EVENT, changed);
   const query = isIpadApp() ? IPAD_COMPACT : inAndroidApp() ? ANDROID_COMPACT : inIosApp() && iphoneUA() && !nativeChrome() ? IPHONE_WIDE : null;
-  if (!query) return () => undefined;
-  const mq = window.matchMedia(query);
-  mq.addEventListener("change", changed);
-  return () => mq.removeEventListener("change", changed);
+  const mq = typeof window.matchMedia === "function" && query ? window.matchMedia(query) : null;
+  mq?.addEventListener("change", changed);
+  return () => {
+    window.removeEventListener(NATIVE_LAYOUT_EVENT, changed);
+    mq?.removeEventListener("change", changed);
+  };
 };
 
 /** The same, for rendering: false on the server; on an iPad it follows the window's width. */
@@ -127,23 +145,46 @@ export function useIpadLayout(): boolean {
  * Whether this page is the note page of the native iPad app's wide layout (native chrome mode, `ipados`, a window
  * wide enough for the sidebar). Its native frame draws the window, sidebar and tabs but no note tools, so the page
  * keeps the web's floating dock (Insert, Format, Style, Comments, Share and the note's "…"), as Folevi for Mac does.
- * Under 700 pt the iPad shows the phone's layout, whose native bars carry those tools instead.
+ * Under 700 pt the iPad shows the phone's layout, whose native bars carry those tools instead. iPhone Duo open is the
+ * same layout, on the app's word (`nativeWide`).
  */
 export function isIpadNativeWide(): boolean {
-  if (typeof window === "undefined" || nativeChrome()?.platform !== "ipados") return false;
+  if (typeof window === "undefined") return false;
+  const told = nativeWide();
+  if (told !== undefined) return told;
+  if (nativeChrome()?.platform !== "ipados") return false;
   return !(typeof window.matchMedia === "function" && window.matchMedia(IPAD_COMPACT).matches);
 }
 
 const followIpadNativeWidth = (changed: () => void) => {
-  if (typeof window === "undefined" || typeof window.matchMedia !== "function" || nativeChrome()?.platform !== "ipados") return () => undefined;
-  const mq = window.matchMedia(IPAD_COMPACT);
-  mq.addEventListener("change", changed);
-  return () => mq.removeEventListener("change", changed);
+  if (typeof window === "undefined" || !nativeChrome()) return () => undefined;
+  window.addEventListener(NATIVE_LAYOUT_EVENT, changed);
+  const mq = typeof window.matchMedia === "function" && nativeChrome()?.platform === "ipados" ? window.matchMedia(IPAD_COMPACT) : null;
+  mq?.addEventListener("change", changed);
+  return () => {
+    window.removeEventListener(NATIVE_LAYOUT_EVENT, changed);
+    mq?.removeEventListener("change", changed);
+  };
 };
 
 /** The same, for rendering: it follows the window's width. */
 export function useIpadNativeWide(): boolean {
   return useSyncExternalStore(followIpadNativeWidth, isIpadNativeWide, () => false);
+}
+
+/**
+ * iPhone Duo open across: iOS puts the toolbar in a column at the side of the screen, and the note's tools (Foli AI,
+ * Insert, Format, Style, Share, the note's "…") are iOS's toolbar items in that column, as they are when the phone is
+ * closed. The app says so on the marker (`sideTools`, RebuildPageLayout) and the page drops its floating dock.
+ */
+export function isNativeSideTools(): boolean {
+  if (typeof window === "undefined") return false;
+  return (nativeChrome() as { sideTools?: unknown } | null)?.sideTools === true;
+}
+
+/** The same, for rendering: it follows the app's word as the phone opens, folds and turns. */
+export function useNativeSideTools(): boolean {
+  return useSyncExternalStore(followIpadNativeWidth, isNativeSideTools, () => false);
 }
 
 /**

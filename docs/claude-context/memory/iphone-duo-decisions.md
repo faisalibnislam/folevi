@@ -1,21 +1,21 @@
 ---
 name: iphone-duo-decisions
-description: "Owner's 2026-11-19 picks for iPhone Duo: tab sidebar + list beside note inside, note stays the focus on fold/unfold, note bars join iOS's side bars"
+description: "iPhone Duo (owner, 2026-11-23, third pass): open = the iPad's wide layout, closed = the iPhone layout with iOS side bars; note, caret and keyboard carry across folds; nothing in the crease"
 metadata:
   type: project
 ---
 
-On 2026-11-19 the owner asked for a good iPhone Duo experience in every posture and answered these in a question dialog:
+**Current (2026-11-23, third pass):** the owner rejected the first two passes (a custom tab sidebar; then iOS's split view with Home in a 320 pt column and the tabs in the side column) and, after a fresh audit and research, picked from two working options on the Duo simulator:
 
-- **Inner screen (open):** the iPhone's tabs (Home, Tasks, Calendar, Search, Foli AI) become a sidebar, and the open note shows beside its list. Same structure inside and out (not the iPad's Mac-style layout, not the iPhone layout stretched).
-- **Fold/unfold with a note open:** the note stays the focus. Folding shows it full screen on the outer screen with Back to its list; unfolding puts the list back beside it. Caret, typed text, scroll and keyboard carry over.
-- **Note bars:** on iPhone Duo the note's top bar and tool buttons become iOS bars, so they join iOS's side column like every other screen. The bar on the keyboard stays on the keyboard. Other iPhones keep today's note bars.
+- **Open (inner screen, across or upright):** the iPad's wide layout (PR 52's iPad window: strip with tabs, sidebar, the content card and its bar, the note's floating dock). Not a phone layout stretched or split.
+- **Closed (outer screen) and a Split View half:** the iPhone layout, its tab bar and the note's buttons in iOS's side column (iOS 27.1 vertical bars).
+- **Decided by size class and width, never the model:** an iPhone window of regular width and at least 600 pt (`RebuildIPad.isWide`).
+- **Fold/unfold:** the note stays the focus (the owner's 2026-11-19 rule, still in force): the open screen, typed text, caret and keyboard carry over both ways.
+- **Partly folded:** nothing interactive in the crease (`FoldSpan`): tabs end before the fold, the card bar's controls and the note's dock sit past it.
+- Earlier picks this replaces: the tab sidebar + list beside the note (2026-11-19), the split view and "Last note I opened" in its empty column (2026-11-19). The "pause" of 2026-11-19 was lifted when the owner said "resume" on 2026-11-23.
 
-- **Second pass, same day:** the owner called the first build a mess (empty space, crowded bars, sidebar squeezing the list) and asked for controls on the right side, vertically, after deep research. Redone per Apple's HIG and tech talks: iOS's split view for Home, iOS's tab bar and toolbar items in the side column, no custom sidebar (docs/IPHONE_DUO_PLAN.md). This replaces the sidebar pick above.
-- **Right column with nothing open (2026-11-19):** the owner picked "Last note I opened" (as Notes does), not an empty page or the newest edited note.
+**Why:** Apple's guidance is to show more of the app on the inner screen, not a stretched iPhone layout; the iPad window is the owner's chosen large-screen design (Mac and iPad, 2026-11-23), and it looked right on the Duo in the comparison.
 
-- **Paused (2026-11-19):** the owner said "pause duo app". Do no more iPhone Duo work until they ask again. Branch `claude/iphone-duo-18adb4` holds it all (last commit `8850c330`), unpushed and unreleased.
+**2026-11-24:** the iPad window became native (system split view, toolbar, inspector; owner's pick), so the open Duo shows that window (branch `claude/iphone-duo-native-ipad`). Then, on the owner's "make the best duo app possible", Apple's iPhone Duo page applied: the whole toolbar in iOS's side column (New note as a symbol), the note's tools in that column where the closed phone has them (page dock dropped, the note's "…" in iOS's overflow menu), the sidebar beside the content (not floating) and reaching the fold when partly closed, the sidebar stepping aside while the inspector is open.
 
-**Why:** Apple's iPhone Duo guidance (keep the hierarchy identical inside and out, use system bars so they move to the side and avoid the fold).
-
-**How to apply:** decide layout by size class and width, never by device model. The iPad keeps its own Mac-style layout (see ios-native-look-decisions).
+**How to apply:** design changes to the iPad window apply to the Duo's inner screen too, so check them at 951x669 and 669x951 and half open. Keep the phone layout working on the outer screen with iOS's side column. Plan and screenshots: `docs/IPHONE_DUO_PLAN.md`, `docs/iphone-duo/`.

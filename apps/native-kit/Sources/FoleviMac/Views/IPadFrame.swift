@@ -38,10 +38,26 @@ public struct IPadFrameView<Page: View>: View {
     /// The note's tools in the inspector: shown, and which.
     @State private var toolsShown = false
     @State private var tool: IPadNoteTool = .format
+    /// iOS lays the toolbar out in a column at the side (iPhone Duo open across, iOS 27.1): the whole toolbar goes
+    /// there, the note's tools with it, and the sidebar stays beside the content.
+    @State private var sideBars = false
+    /// Whether iOS has said yet (it says once the frame has appeared and the phone has finished opening): until then
+    /// the sidebar keeps its last state rather than slide away for a moment. (An iPad never puts bars at the side.)
+    @State private var sideBarsKnown = UIDevice.current.userInterfaceIdiom == .pad
+    /// Where the fold starts, partly closed (iPhone Duo; FoldSpan): the sidebar reaches it, so the list and the note
+    /// each have a side of the fold, as Notes' split view does.
+    @State private var foldMinX: CGFloat?
+    /// When the frame last appeared or the sidebar switched between floating and beside: the split view reports its
+    /// columns as it settles (it starts with the detail alone until the width is known), and that report isn't the
+    /// person hiding the sidebar.
+    @State private var settlingSince = Date.distantPast
     /// The toolbar's search field.
     @State private var searchText = ""
     @FocusState private var searchFocused: Bool
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    /// Compact (iPhone Duo closed, with this frame kept for when it opens): the split view folds into one column and
+    /// says so, which isn't the person hiding the sidebar.
+    @Environment(\.horizontalSizeClass) private var sizeClass
     @Environment(\.colorScheme) private var scheme
 
     public init(model: FrameModel, @ViewBuilder page: () -> Page) {
@@ -63,30 +79,32 @@ public struct IPadFrameView<Page: View>: View {
         // detail, as the system's does.
         NavigationSplitView(columnVisibility: columnVisibility) {
             sidebar
-                .navigationSplitViewColumnWidth(min: 240, ideal: 280, max: 340)
+                .navigationSplitViewColumnWidth(min: 240, ideal: sidebarIdeal, max: max(340, sidebarIdeal))
                 .toolbar { sidebarToolbar }
         } detail: {
             detail
         }
         .modifier(IPadSplitStyle(floats: model.sidebarFloats))
+        .readFold { foldMinX = $0?.minX }
         // A secondary click where nothing has a menu of its own: New note, Search, Ask Foli AI, Back, Forward.
         .appContextMenu(model)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { w in
             if abs(width - w) > 0.5 { width = w }
-            let floats = w < IPadFrameMetrics.floatingSidebarBelow
-            if floats != model.sidebarFloats {
-                model.sidebarFloats = floats
-                model.sidebarOverlayShown = false
-            }
+            updateSidebarFloats(w)
         }
+        .onChange(of: sideBars) { updateSidebarFloats(width) }
+        .onChange(of: inspectorShown.wrappedValue) { updateSidebarFloats(width) }
         // The native look for everything the frame draws (and, through MacLook.padWide, for what it presents), with
         // Folevi's black and white accent for what iOS tints (switches, a borderless button's words), never blue.
         .environment(\.macNativeLook, true)
         .tint(MacLook.Colors.accent)
         // Switches in their own colour: the accent can't fill one in dark mode (FoleviSwitchTint).
         .toggleStyle(NativeSwitchStyle())
-        .onAppear { MacLook.padWide = true }
+        .onAppear {
+            MacLook.padWide = true
+            settlingSince = Date()
+        }
         .onDisappear { MacLook.padWide = false }
         .animation(MacLook.animation(reduceMotion), value: model.sidebarHidden)
         .animation(MacLook.animation(reduceMotion), value: model.sidebarOverlayShown)
@@ -159,6 +177,9 @@ public struct IPadFrameView<Page: View>: View {
                 return model.sidebarHidden ? .detailOnly : .doubleColumn
             },
             set: { v in
+                // (Not while the window is about to change size, or just has: iPhone Duo folding shut, a rotation.)
+                let quiet = min(Date().timeIntervalSince(settlingSince), Date().timeIntervalSince(model.windowResizedAt))
+                guard width > 0, sizeClass != .compact, quiet > 1.5 else { return }
                 if model.sidebarFloats {
                     model.sidebarOverlayShown = v == .doubleColumn || v == .all
                 } else {
@@ -200,7 +221,12 @@ public struct IPadFrameView<Page: View>: View {
         .navigationTitle(CardControls.title(model))
         .modifier(IPadSubtitle(text: model.route.isNote ? nil : model.cardItems[model.route.tabKey]?.subtitle))
         .navigationBarTitleDisplayMode(.inline)
-        .toolbar { IPadToolbar(model: model, inspectorShown: inspectorShown) }
+        .toolbar { IPadToolbar(model: model, inspectorShown: inspectorShown, tool: $tool, sideBars: sideBars, narrow: width > 0 && width < 760) }
+        .readVerticalBars { side in
+            sideBars = side
+            sideBarsKnown = true
+            updateSidebarFloats(width)
+        }
         .searchable(text: $searchText, placement: .toolbar, prompt: "Search")
         .searchFocused($searchFocused)
         .onSubmit(of: .search) { openPalette(searchText) }
@@ -243,6 +269,27 @@ public struct IPadFrameView<Page: View>: View {
         }
         #endif
         .onChange(of: model.barSearchFocus) { searchFocused = true }
+    }
+
+    /// Narrow, the sidebar slides over the detail. iPhone Duo open across keeps it beside the content (Apple's HIG:
+    /// the inner screen shows one more level of the hierarchy, as Mail and Notes do), and the system's split view
+    /// evens its columns out at the fold when the phone is partly closed. While the note's tools are open the three
+    /// don't fit side by side there: the sidebar steps aside for them, as on a narrow iPad, and comes back after.
+    private func updateSidebarFloats(_ w: CGFloat) {
+        guard w > 0, sideBarsKnown else { return }
+        let beside = sideBars && !inspectorShown.wrappedValue
+        let floats = w < IPadFrameMetrics.floatingSidebarBelow && !beside
+        if floats != model.sidebarFloats {
+            settlingSince = Date()
+            model.sidebarFloats = floats
+            model.sidebarOverlayShown = false
+        }
+    }
+
+    /// The sidebar's width: 280 pt, or up to the fold while the phone is partly closed.
+    private var sidebarIdeal: CGFloat {
+        if let x = foldMinX, x > 240, !model.sidebarFloats { return x }
+        return 280
     }
 
     /// The note's tools: shown on a note only.

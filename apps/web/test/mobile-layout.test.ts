@@ -17,7 +17,7 @@ function matches(query: string, width: number, height: number): boolean {
       .map((c) => c.trim().replace(/^\(|\)$/g, ""))
       .every((c) => {
         const [name, raw] = c.split(":").map((s) => s.trim());
-        const v = parseFloat(raw);
+        const v = parseFloat(raw ?? "");
         if (name === "min-width") return width >= v;
         if (name === "max-width") return width <= v;
         if (name === "min-height") return height >= v;

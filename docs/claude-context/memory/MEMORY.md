@@ -33,7 +33,7 @@
 - [iOS rebuild decisions](ios-rebuild-decisions.md): 2026-10-30 iPhone+iPad native rebuild, Mac rule, pixel match with the web phone layout, iOS 18, one build at the end; plan docs/IOS_REBUILD_PLAN.md
 - [Hover everywhere](hover-everywhere.md): 2026-11-06 every button and clickable control shows a visible hover, web, Mac and iPad pointer; check on every UI change
 - [Website copy voice](website-copy-voice.md): all web, help, blog and marketing copy (new pages too) follows the humanizer rules: plain and calm, US English, sentence case, "we" for promises; since 2026-11-18
-- [iPhone Duo decisions](iphone-duo-decisions.md): PAUSED by the owner 2026-11-19. Earlier picks: tab sidebar + list beside note inside, note stays the focus on fold/unfold, note bars join iOS's side bars on iPhone Duo
+- [iPhone Duo decisions](iphone-duo-decisions.md) — 2026-11-24: open = the native iPad window with the whole toolbar and note tools in iOS's side column, sidebar to the fold; closed = iPhone; note/caret/keyboard carry over
 
 ## From the 2026-11-17 to 11-20 native look and release sessions
 - [Folevi keeps com.folevi bundle IDs](folevi-keeps-com-bundle-ids.md) — owner chose 2026-11-16 not to rename to app.folevi

@@ -42,3 +42,5 @@ d30d0351a16ecce8d5690a391fe76e5564030656:docs/DEPLOYMENT.md:private-key:138
 d30d0351a16ecce8d5690a391fe76e5564030656:tests/convex/apple-signin.test.ts:private-key:42
 # Showcase capture spec: a made-up demo Vault login (studio.example, bank.example) on the dev deployment.
 72d0fcbed919bb8da5a40070d743aa0a04b5da22:apps/web/e2e/showcase-capture.spec.ts:generic-api-key:243
+# The same script's made-up Vault demo login, brought back with the AppKit Mac app (claude/mac-webview).
+8ebce6298d1a0df592b4b541dfe3ff69fc39b9cf:apps/mac/scripts/screens.mjs:generic-api-key:185

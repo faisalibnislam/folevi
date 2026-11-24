@@ -33,7 +33,9 @@ export function ripple(el: HTMLElement, x: number, y: number): () => void {
   const host = document.createElement("div");
   host.className = "ui-ripple-host";
   host.setAttribute("aria-hidden", "true");
-  host.style.cssText = `left:${rect.left}px;top:${rect.top}px;width:${rect.width}px;height:${rect.height}px;border-radius:${style.borderRadius};color:${style.color}`;
+  host.style.cssText = `left:${rect.left}px;top:${rect.top}px;width:${rect.width}px;height:${rect.height}px;color:${style.color}`;
+  // (The pressed control's own corners, so the ripple stays inside them.)
+  host.style.borderRadius = style.borderRadius;
   const dot = document.createElement("span");
   dot.className = "ui-ripple";
   // A circle reaching the farthest corner from the finger.

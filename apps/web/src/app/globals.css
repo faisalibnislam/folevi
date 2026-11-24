@@ -191,7 +191,7 @@
    clipped to it, in the control's own text color at a low opacity. */
 .ui-ripple-host { position: fixed; z-index: 2147483000; overflow: hidden; pointer-events: none; opacity: 1; transition: opacity 220ms linear; }
 .ui-ripple-host[data-out] { opacity: 0; }
-.ui-ripple { position: absolute; border-radius: 50%; background: currentColor; opacity: 0.12; transform: scale(0); animation: ui-ripple 380ms cubic-bezier(0.2, 0, 0, 1) forwards; }
+.ui-ripple { position: absolute; border-radius: var(--radius-capsule); background: currentColor; opacity: 0.12; transform: scale(0); animation: ui-ripple 380ms cubic-bezier(0.2, 0, 0, 1) forwards; }
 @keyframes ui-ripple { to { transform: scale(1); } }
 
 /* Utility: visually hidden but available to assistive tech. */

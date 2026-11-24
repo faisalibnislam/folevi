@@ -34,13 +34,14 @@ import { MovePlacesHost } from "@/components/places/MovePlaces";
 import { NativeBridge } from "./NativeBridge";
 import { DeviceCopyRunner } from "./DeviceCopyRunner";
 import { displayCornerRadius, useIpadLayout, useIpadNativeWide, useIphoneApp } from "@/lib/iphone";
-import { nativeApp, nativeChrome } from "@/lib/nativeApp";
+import { inAndroidApp, nativeApp, nativeChrome } from "@/lib/nativeApp";
 import { NativeGate } from "@/lib/engine/NativeGate";
 import { WEB_SETTINGS_SECTIONS } from "@/lib/engine/webSettings";
 import { useEditorZoom } from "@/lib/editorZoom";
 import { useScrollActivity } from "@/lib/scrollActivity";
 import { loadDocumentView, loadedDocumentView } from "@/lib/app/noteView";
 import { IphoneShell } from "@/components/iphone/IphoneShell";
+import { installPressRipple } from "@/lib/android/ripple";
 import { installInputModality } from "@/components/iphone/chrome";
 import { MacCommands } from "./MacCommands";
 import { inMacApp } from "@/lib/desktop/mac";
@@ -180,6 +181,8 @@ export function Shell() {
   useEditorZoom();
   // Thin scroll bars, the knob shown while an area scrolls (globals.css).
   useScrollActivity();
+  // Android's press ripple, inside the Android app (the owner's light Android touches, 2026-11-24).
+  useEffect(() => (inAndroidApp() ? installPressRipple() : undefined), []);
   // The native apps draw the frame themselves (docs/NATIVE_APP_PLAN.md section 8): only the note page and the
   // engine. (Fixed for the page's life: the host marks it before the first paint.)
   if (nativeChrome()) return <NativeContentShell />;

@@ -12,7 +12,9 @@ const IPHONE_UA = "Mozilla/5.0 (iPhone; CPU iPhone OS 18_7 like Mac OS X) AppleW
 
 type Probe = { __refs: WeakRef<Element>[]; __sentinel: WeakRef<object> };
 
-test("the iPhone layout lets go of a closed note", { tag: "@mac" }, async ({ browser }, testInfo) => {
+test("the iPhone layout lets go of a closed note", { tag: ["@local", "@mac"] }, async ({ browser, browserName }, testInfo) => {
+  // A local library (the local and mac-webkit projects, never the account one), and only WebKit's answer counts.
+  test.skip(browserName !== "webkit", "JavaScriptCore is what kept the notes; Chromium's collector timing proves nothing here");
   test.setTimeout(300_000);
   const context = await browser.newContext({ viewport: { width: 402, height: 874 }, hasTouch: true, userAgent: IPHONE_UA });
   await prepareContext(context, testInfo, { initialMode: "local", configured: true, platform: "ios", libraryName: `note-memory-${Date.now()}` });

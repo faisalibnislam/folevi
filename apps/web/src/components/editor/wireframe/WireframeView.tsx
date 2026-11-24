@@ -91,10 +91,10 @@ import {
   type ResizeHandle,
   type Selection,
 } from "./ops";
+import { withKeyLabels } from "@/lib/shortcuts";
 import { useWireDoc } from "./useWireDoc";
 import { targetUnder } from "../canvas/targetUnder";
 import { capturePointer, dropFocusIn, notePress, pinchPair, useTapFocus, type DownPointer } from "../canvas/pointers";
-import { withKeyLabels } from "@/lib/shortcuts";
 
 const MIN_K = 0.05;
 const MAX_K = 4;

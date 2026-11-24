@@ -140,6 +140,21 @@ export function useIpadNativeWide(): boolean {
 }
 
 /**
+ * iPhone Duo open across: iOS puts the toolbar in a column at the side of the screen, and the note's tools (Foli AI,
+ * Insert, Format, Style, Share, the note's "…") are iOS's toolbar items in that column, as they are when the phone is
+ * closed. The app says so on the marker (`sideTools`, RebuildPageLayout) and the page drops its floating dock.
+ */
+export function isNativeSideTools(): boolean {
+  if (typeof window === "undefined") return false;
+  return (nativeChrome() as { sideTools?: unknown } | null)?.sideTools === true;
+}
+
+/** The same, for rendering: it follows the app's word as the phone opens, folds and turns. */
+export function useNativeSideTools(): boolean {
+  return useSyncExternalStore(followIpadNativeWidth, isNativeSideTools, () => false);
+}
+
+/**
  * Settings on the iPad draws its sections as the iPhone's grouped lists (iOS polish WP5): inside it, this says so.
  * Only the settings sections read it (useIphoneLook), so dialogs, menus and the shell keep the iPad's own.
  */

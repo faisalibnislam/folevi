@@ -140,10 +140,13 @@ extension WebTopBar {
     /// The tabs alone, in a row under the iPad's system toolbar (the owner, 2026-11-24: tabs kept, drawn the way
     /// Safari draws them on iPadOS).
     var tabsBody: some View {
-        tabStrip
-            // iPhone Duo partly closed: the tabs end before the fold, nothing in the crease (FoldSpan).
-            .frame(maxWidth: rowTabsWidth, alignment: .leading)
-            .padding(.horizontal, 12)
+        let place = rowTabsPlace
+        return tabStrip
+            // iPhone Duo partly closed: nothing in the crease (FoldSpan). The tabs end before the fold, or start past
+            // it when there isn't room for them before it.
+            .frame(maxWidth: place.width, alignment: .leading)
+            .padding(.leading, place.lead)
+            .padding(.trailing, 12)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
             #if os(iOS)
             .readFold { fold = $0 }
@@ -151,12 +154,17 @@ extension WebTopBar {
             .coordinateSpace(name: Self.space)
     }
 
-    /// The tabs row's room for its tabs: all of it, or up to the fold (they start 12 pt in from the row's edge).
-    private var rowTabsWidth: CGFloat {
+    /// Where the tabs row's tabs go: from 12 pt in, across all the room there is; partly folded, before the fold when
+    /// 240 pt fit there, otherwise just past it.
+    private var rowTabsPlace: (lead: CGFloat, width: CGFloat) {
         #if os(iOS)
-        if let fold, fold.minX > 120 { return fold.minX - 12 - FoldSpan.margin }
+        if let fold {
+            let before = fold.minX - 12 - FoldSpan.margin
+            if before >= 240 { return (12, before) }
+            return (fold.maxX + FoldSpan.margin, .infinity)
+        }
         #endif
-        return .infinity
+        return (12, .infinity)
     }
 
     /// Home and Show All Tabs in their round buttons; then the tabs in their track, the only part that scrolls.

@@ -255,6 +255,8 @@ final class RebuildFrameController: UIViewController, PhoneRouting {
 
     override func viewWillTransition(to size: CGSize, with coordinator: any UIViewControllerTransitionCoordinator) {
         super.viewWillTransition(to: size, with: coordinator)
+        // (The desk's split view reports its columns as the size changes: not the person hiding the sidebar.)
+        desk.windowResizedAt = Date()
         // iPhone Duo folding or unfolding mid-sentence (or an iPad window crossing 700 pt): the other layout takes the
         // note's page, which loses the keyboard on the way; it comes back there, the caret where it was (the owner's
         // rule, 2026-11-19: the note stays the focus).

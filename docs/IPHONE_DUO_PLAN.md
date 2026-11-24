@@ -26,22 +26,33 @@ iPhone Duo simulator (screenshots in `docs/iphone-duo/`).
   icons only (Apple's book-pose rule: controls go where they'll be when the phone opens flat). Scrolling content runs
   on across the fold, as Apple's guidance says it should.
 
-## Update (2026-11-24): on the native iPad window
+## Update (2026-11-24): on the native iPad window, then Apple's Duo rules
 
 The owner then chose a native iPad window (system split view, the system toolbar in Liquid Glass, Safari-style tabs in
-a row under it, the note's tools in the system inspector). The Duo's inner screen follows it unchanged, through the same
-size switch (`RebuildIPad.isWide` / `showingWide`). Branch `claude/iphone-duo-native-ipad` = PR 53's work merged with
-`claude/ios-native-redesign-f4a8be`:
+a row under it, the note's tools in the system inspector). Branch `claude/iphone-duo-native-ipad` = PR 53's work merged
+with `claude/ios-native-redesign-f4a8be`, then a pass against Apple's "Designing for iPhone Duo" page (the owner's ask:
+"make the best duo app possible"). The open Duo now:
 
-- The old card bar (IPadScreenBar) is gone with its fold handling; the toolbar, sidebar column and inspector are system
-  pieces. On the open Duo, iOS itself moves the toolbar's trailing items (Back/Forward, the bell, the inspector button,
-  search) into the side column, as it does for every app's system bars.
-- The tabs row is the one custom row left: partly folded, its tabs end before the fold (`tabsBody`, `rowTabsWidth`).
-- The note's floating dock still moves past the fold, icons only (unchanged CSS).
-- Checked on the simulator: open across, half open at 110 degrees (tabs row, dock, Foli AI inspector past the fold),
-  tabletop (upright and half open: the fold runs across, only scrolling text crosses it), closed, and fold/unfold with
-  the keyboard up (note, text, caret and keyboard carried both ways in two runs). Once, after the inspector had been
-  opened and closed, a fold showed the first tab's note instead; it did not happen again in two retries.
+- **One column of controls, as when closed.** iOS puts a split view's toolbar in the column at the side (iOS 27.1
+  vertical bars); every item now goes there (`IPadToolbar`, `sideBars` from `readVerticalBars`, the system's
+  `toolbarVerticalEdge`): Back and Forward on top, New note as a black + (words keep an item horizontal), the sync
+  status and the bell (opted in with `axisBehavior(.verticalPreferred)`), search at the foot.
+- **The note's tools where the closed phone has them.** On a note the column's foot holds Comments, Style, Format,
+  Foli AI and Insert (the closed screen's order and icons); Share; the note's "…" in iOS's own overflow menu
+  (`ToolbarOverflowMenu`, `NoteMenuPlan`). The page drops its floating dock (marker `sideTools`, lib/iphone.ts
+  `isNativeSideTools`). Style, Format, Insert and Foli AI open the inspector, again closes it.
+- **One more level of the hierarchy (Mail, Notes).** The sidebar stays beside the content instead of floating (it
+  floats under 1000 pt on an iPad); while the inspector is open it steps aside, as the three don't fit.
+- **The book pose.** Partly folded, the sidebar reaches the fold, so the list and the note each have a side. The tabs
+  row ends before the fold, or starts past it when there isn't room before it.
+- **Narrow windows** (the inner screen upright, 669 pt; an iPad mini in portrait): New note shows its symbol alone so
+  the title isn't cut to a letter.
+- **Fixed on the way:** the sidebar no longer stays hidden after a fold (the split view reports "detail only" as the
+  window changes size; the frame controller now says when a resize starts, `FrameModel.windowResizedAt`, and those
+  reports are ignored).
+- Checked on the simulator: open across (Home, a note, the Style panel), half open at 110 degrees, tabletop (upright
+  and half open), closed, and fold and unfold mid-sentence (note, text, caret and keyboard carried both ways). iOS
+  shortens the column while the keyboard is up (New note and the writing tools stay; the rest go into "…").
 
 ## Why this layout (the research)
 

@@ -38,8 +38,12 @@ enum RebuildIPad {
 @MainActor
 enum RebuildPageLayout {
     nonisolated private static let key = "folevi-native-wide"
+    nonisolated private static let sideKey = "folevi-native-side-tools"
     /// What the page was last told, and which telling is the latest (an older one's retries stop).
     private static var wide: Bool?
+    /// iPhone Duo open across: the note's tools are iOS's toolbar items in the column at the side (IPadToolbar), so
+    /// the page drops its floating dock (lib/iphone.ts isNativeSideTools).
+    private static var sideTools = false
     private static var telling = 0
 
     /// Tells the page, again every half second until it has loaded and taken it (it may still be loading at launch).
@@ -47,7 +51,14 @@ enum RebuildPageLayout {
         guard UIDevice.current.userInterfaceIdiom == .phone else { return }
         self.wide = wide
         telling += 1
-        send(wide, telling: telling, tries: 40)
+        send(telling: telling, tries: 40)
+    }
+
+    /// Tells the page whether the note's tools sit in iOS's column at the side.
+    static func tell(sideTools: Bool) {
+        guard UIDevice.current.userInterfaceIdiom == .phone, sideTools != self.sideTools else { return }
+        self.sideTools = sideTools
+        if let wide { tell(wide: wide) }
     }
 
     /// The page loaded again (a reload): it hears the last word again once it's back.
@@ -56,18 +67,18 @@ enum RebuildPageLayout {
         tell(wide: wide)
     }
 
-    private static func send(_ wide: Bool, telling: Int, tries: Int) {
-        guard telling == self.telling, tries > 0 else { return }
-        let flag = wide ? "true" : "false"
-        let script = "if(!window.__foleviNativeChrome||document.readyState==='loading'){false}else{try{sessionStorage.setItem('\(key)','\(wide ? 1 : 0)')}catch(e){};window.__foleviNativeChrome.wide=\(flag);window.dispatchEvent(new Event('folevi-native-layout'));true}"
-        guard let web = WebHost.current?.webView else { return retry(wide, telling: telling, tries: tries) }
+    private static func send(telling: Int, tries: Int) {
+        guard telling == self.telling, tries > 0, let wide else { return }
+        let side = wide && sideTools
+        let script = "if(!window.__foleviNativeChrome||document.readyState==='loading'){false}else{try{sessionStorage.setItem('\(key)','\(wide ? 1 : 0)');sessionStorage.setItem('\(sideKey)','\(side ? 1 : 0)')}catch(e){};window.__foleviNativeChrome.wide=\(wide);window.__foleviNativeChrome.sideTools=\(side);window.dispatchEvent(new Event('folevi-native-layout'));true}"
+        guard let web = WebHost.current?.webView else { return retry(telling: telling, tries: tries) }
         web.evaluateJavaScript(script) { result, _ in
-            if (result as? Bool) != true { retry(wide, telling: telling, tries: tries) }
+            if (result as? Bool) != true { retry(telling: telling, tries: tries) }
         }
     }
 
-    private static func retry(_ wide: Bool, telling: Int, tries: Int) {
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { send(wide, telling: telling, tries: tries - 1) }
+    private static func retry(telling: Int, tries: Int) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { send(telling: telling, tries: tries - 1) }
     }
 
     /// Where the fold crosses the page (iPhone Duo partly closed), in its own coordinates, or nil: the page keeps its
@@ -80,7 +91,7 @@ enum RebuildPageLayout {
     }
 
     /// Run after the marker at each page load: the last word, again after a reload.
-    nonisolated static let markerAddition = "try{var w=sessionStorage.getItem('\(key)');if(w!==null&&window.__foleviNativeChrome)window.__foleviNativeChrome.wide=w==='1'}catch(e){};"
+    nonisolated static let markerAddition = "try{var w=sessionStorage.getItem('\(key)'),t=sessionStorage.getItem('\(sideKey)');if(w!==null&&window.__foleviNativeChrome){window.__foleviNativeChrome.wide=w==='1';window.__foleviNativeChrome.sideTools=t==='1'}}catch(e){};"
 }
 
 struct RebuildIPadRoot: View {
@@ -94,6 +105,8 @@ struct RebuildIPadRoot: View {
             IPadNotePage(pageHost: pageHost, desk: desk)
                 // (iPhone Duo partly closed: the page keeps its dock out of the fold.)
                 .readFold { RebuildPageLayout.fold($0) }
+                // (iPhone Duo open across: the note's tools are in iOS's column at the side, not the page's dock.)
+                .readVerticalBars { RebuildPageLayout.tell(sideTools: $0) }
         }
         // The screens before the app, as on the phone.
         .overlay {

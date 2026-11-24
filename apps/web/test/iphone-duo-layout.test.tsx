@@ -4,9 +4,9 @@
 import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, describe, expect, test } from "vitest";
-import { isIpadNativeWide, isIphoneApp, useIpadNativeWide, useIphoneApp } from "@/lib/iphone";
+import { isIpadNativeWide, isIphoneApp, isNativeSideTools, useIpadNativeWide, useIphoneApp, useNativeSideTools } from "@/lib/iphone";
 
-type Marker = { platform: string; protocol: number; place: string | null; wide?: boolean };
+type Marker = { platform: string; protocol: number; place: string | null; wide?: boolean; sideTools?: boolean };
 const marker = (m: Marker | undefined) => {
   (window as unknown as { __foleviNativeChrome?: Marker }).__foleviNativeChrome = m;
 };
@@ -56,5 +56,22 @@ describe("the iPhone app's layout on iPhone Duo", () => {
     act(() => tell(false));
     expect(phone.current).toBe(true);
     expect(wide.current).toBe(false);
+  });
+
+  test("open across, the note's tools are in iOS's side column and the page drops its dock", () => {
+    marker({ platform: "ios", protocol: 1, place: null, wide: true });
+    expect(isNativeSideTools()).toBe(false);
+    const side = watch(useNativeSideTools);
+    expect(side.current).toBe(false);
+    act(() => {
+      (window as unknown as { __foleviNativeChrome: Marker }).__foleviNativeChrome.sideTools = true;
+      window.dispatchEvent(new Event("folevi-native-layout"));
+    });
+    expect(side.current).toBe(true);
+    expect(isIpadNativeWide()).toBe(true);
+  });
+
+  test("off the app, nothing is in a side column", () => {
+    expect(isNativeSideTools()).toBe(false);
   });
 });

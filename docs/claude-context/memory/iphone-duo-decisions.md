@@ -16,6 +16,6 @@ metadata:
 
 **Why:** Apple's guidance is to show more of the app on the inner screen, not a stretched iPhone layout; the iPad window is the owner's chosen large-screen design (Mac and iPad, 2026-11-23), and it looked right on the Duo in the comparison.
 
-**2026-11-24:** the iPad window became native (system split view, toolbar, inspector; owner's pick), so the Duo's open screen is that window now (branch `claude/iphone-duo-native-ipad`); only the tabs row needs fold handling, iOS places the system toolbar's items in the side column.
+**2026-11-24:** the iPad window became native (system split view, toolbar, inspector; owner's pick), so the open Duo shows that window (branch `claude/iphone-duo-native-ipad`). Then, on the owner's "make the best duo app possible", Apple's iPhone Duo page applied: the whole toolbar in iOS's side column (New note as a symbol), the note's tools in that column where the closed phone has them (page dock dropped, the note's "…" in iOS's overflow menu), the sidebar beside the content (not floating) and reaching the fold when partly closed, the sidebar stepping aside while the inspector is open.
 
 **How to apply:** design changes to the iPad window apply to the Duo's inner screen too, so check them at 951x669 and 669x951 and half open. Keep the phone layout working on the outer screen with iOS's side column. Plan and screenshots: `docs/IPHONE_DUO_PLAN.md`, `docs/iphone-duo/`.

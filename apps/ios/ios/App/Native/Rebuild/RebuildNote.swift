@@ -522,39 +522,10 @@ struct RebuildNoteScreen: View {
         printer.present(animated: true)
     }
 
-    /// The web menu's icons (lucide).
-    static func icon(_ item: NoteMenuItem) -> WebIcon {
-        switch item {
-        case .bookmark(let on): on ? .bookmarkOff : .bookmark
-        case .info: .info
-        case .find: .search
-        case .review: .layers
-        case .readImages: .scanText
-        case .related, .dna: .waypoints
-        case .history: .rotateCcwClock
-        case .showEditors: .users
-        case .move: .folderInput
-        case .copyTo: .copyPlus
-        case .duplicate: .copy
-        case .moveToVault: .lock
-        case .export: .download
-        case .present: .presentation
-        case .print: .printer
-        case .saveAsTemplate: .layoutTemplate
-        case .archive(let on, _): on ? .archiveRestore : .archive
-        case .trash, .deleteForever: .trash
-        case .restore: .undo2
-        }
-    }
+    /// The web menu's icons (lucide; NoteMenuIcons).
+    static func icon(_ item: NoteMenuItem) -> WebIcon { item.webIcon }
 
-    static func icon(_ group: NoteMenuGroup) -> WebIcon {
-        switch group {
-        case .connections: .waypoints
-        case .history: .rotateCcwClock
-        case .moveCopy: .folderInput
-        case .shareExport: .share
-        }
-    }
+    static func icon(_ group: NoteMenuGroup) -> WebIcon { group.webIcon }
 }
 
 /// One controller per note on screen, holding the page view while it's that note's (a note further down the stack

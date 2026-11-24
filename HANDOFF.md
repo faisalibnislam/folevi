@@ -390,6 +390,19 @@ What's there (checklist in the plan, section 4):
 - Emulators: Taskeni's emulators (another project) use ports 5554-5558 now; this app's AVDs are Folevi_Phone,
   Folevi_Tablet, Folevi_Foldable, Folevi_Desktop (1920x1200 @160). Boot them on free ports.
 
+**Android as Capacitor (2026-11-24, replaces the native app above; owner: one web app everywhere):** branch
+`claude/android-capacitor-197cf4` (worktree `.claude/worktrees/android-capacitor-197cf4`), not pushed. Folder
+`apps/mobile/android`: the Android half of the one Capacitor mobile app whose shared setup (`apps/mobile`,
+`capacitor.config.ts`, `package.json`) the iOS session owns on `claude/mobile-capacitor` (not pushed yet when this
+was written: merge it in when it is, then drop the local untracked copies of its files in `apps/mobile`).
+- Restored from the paused Capacitor app (`e12fb272`) on Capacitor 8.6.2; same package, storage names, Keystore
+  and `https://localhost` origin as the native app, so it updates in place. Version and versionCode from
+  `version.json`, upload-key signing, R8. Android takes no stock Capacitor plugins (`android.includePlugins: []`,
+  the one line it needs in the shared config; reasons in `apps/mobile/android/README.md`).
+- Checked: debug build and Kotlin unit tests, cloud bridge tests (27), parity tests (133, now on this app's
+  bridge), version test; installing it over the native debug build on an emulator keeps the library on the phone.
+- Native app (`apps/android`) stays in the tree as the reference; CI's Kotlin codegen checks still point at it.
+
 **Also in progress:** branch `claude/native-perf-pass` (worktree `.claude/worktrees/recursing-dijkstra-48aa7c`, off
 `main` at `d617d60b`, not released): a native performance pass, report in `docs/NATIVE_PERFORMANCE_2026-11-21.md`.
 Folder cards at rest are drawn once into a picture (`FoleviDesign/Web/CardPicture.swift`; live while hovered, on whole
@@ -495,7 +508,11 @@ account button should move past iPadOS's window buttons).
   never act); section headings stay sentence case (Apple uses title case); dark mode keeps a pure black frame.
   Known gaps: the notifications sheet's rows are not on cards yet; screens borrowed from the iPad (Foli DNA,
   Reviews) keep their own white page under the system bar.
-- Android native (PR 54, merged into `main` as 289b11af): next are the owner's Play steps (`apps/android/README.md` "Steps only the owner can do"), and the
+- Android as Capacitor (`claude/android-capacitor-197cf4`, `apps/mobile/android`): merge the iOS session's
+  `claude/mobile-capacitor` when it's pushed, check on the tablet, foldable and desktop emulators, sign in, share,
+  light and dark screenshots, size and memory against the native app; then push and open a PR (owner's OK).
+  No Play upload until the owner says so (native releases paused); the upload needs a versionCode above 83.
+- Android native (PR 54, merged into `main` as 289b11af): superseded by the Capacitor app above. Its next steps were the owner's Play steps (`apps/android/README.md` "Steps only the owner can do"), and the
   plan's remaining phase 2 items (Credential Manager sign-in, onboarding, sharing sheet, templates).
 - Folevi for Mac (native, `apps/mac`, branch `claude/folevi-core-529dbe`), the owner's order of 2026-11-23:
   1. Done 2026-11-23: the owner's Mac UI guide (`docs/design/macloving-mac-ui.md`) as the **full window
@@ -612,6 +629,7 @@ account button should move past iPadOS's window buttons).
   `DATABASE_UDF_USER_TIMEOUT_SECONDS=4` for that backend. Bursts show in `convex.log` as "took a long time".
 
 ## 12. Change log
+- 2026-11-24: Android as Capacitor on `claude/android-capacitor-197cf4`: `apps/mobile/android` restored from the paused Capacitor app on Capacitor 8.6.2, updating in place over the native app (same package and storage); version from version.json, upload-key signing, R8, multi-window, no stock plugins on Android; unit, bridge, parity and version tests pass; not pushed.
 - 2026-11-24: Merged `main` (PR 54, Android native) into `claude/ios-native-redesign-f4a8be` to clear PR 56's conflicts; only HANDOFF.md conflicted (next steps and change log, both sides kept). All native-kit iOS tests (274, 31, 38, 28, 31), the macOS build and 39 Mac app tests pass (one earlier run timed out 19 checks in FoleviScreens while the machine's load average was about 40; the rerun passed).
 - 2026-11-24: PR 56 opened (iPhone and iPad second round, 1.5.67, into `main`) after merging `main` (PR 51, 1.5.68) into `claude/ios-native-redesign-f4a8be`; all native-kit iOS tests, the macOS build and 39 Mac app tests pass.
 - 2026-11-24: Owner confirmed links inside a note stay in the same tab, like the web (saved in `ios-redesign-decisions-2026-11-23.md`); no code change.

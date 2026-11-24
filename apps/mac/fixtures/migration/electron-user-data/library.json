@@ -1,0 +1,10 @@
+{
+  "v": 1,
+  "kind": "folder",
+  "path": "$LIBRARY/Folevi Library",
+  "libraryId": "01JTESTLIBRARY00000000000A",
+  "chosenFolder": "$LIBRARY",
+  "encryptionJob": {
+    "direction": "encrypt"
+  }
+}

@@ -249,7 +249,7 @@ The ones most likely to be broken:
 
 ## 9. Current state (as of 2026-11-24)
 
-**Folevi for Linux (branch `claude/linux-tauri-02790e`, worktree `.claude/worktrees/linux-tauri-02790e`, no PR yet; 1.5.75 published as downloads at `https://folevi.com/download/linux/`, latest links `Folevi-x86_64.AppImage`, `Folevi-aarch64.AppImage`, `Folevi-amd64.deb`, `Folevi-arm64.deb`, `Folevi-x86_64.rpm`, `Folevi-aarch64.rpm`, `SHA256SUMS.txt`; docs/LINUX.md "Releasing"):**
+**Folevi for Linux (branch `claude/linux-tauri-02790e`, worktree `.claude/worktrees/linux-tauri-02790e`, PR 73 https://github.com/faisalibnislam/folevi/pull/73 into `claude/desktop-tauri`, not merged; 1.5.75 published as downloads at `https://folevi.com/download/linux/`, latest links `Folevi-x86_64.AppImage`, `Folevi-aarch64.AppImage`, `Folevi-amd64.deb`, `Folevi-arm64.deb`, `Folevi-x86_64.rpm`, `Folevi-aarch64.rpm`, `SHA256SUMS.txt`; docs/LINUX.md "Releasing"):**
 the shared Tauri 2 desktop shell (WebKitGTK) packaged for Linux, per the owner's 2026-11-24 "one web app
 everywhere, system web views" direction. The shell itself comes from the Windows session (`claude/desktop-tauri`,
 `apps/desktop/src-tauri`, merged into this branch 2026-11-24); Linux adds only Linux config, `src-tauri/src/linux.rs` and packaging.
@@ -515,7 +515,7 @@ signed-in account, 1.5.58's frosted folders with a large library, and the iPad c
 account button should move past iPadOS's window buttons).
 
 ## 10. Next steps / open work
-- Folevi for Linux (`claude/linux-tauri-02790e`, 1.5.75 published): the owner tries it on real Linux (docs/LINUX-TESTING.md, files in `~/Downloads/Folevi for Linux 1.5.75 test/`); a PR into `main` (or into `claude/desktop-tauri`) with the owner's OK; record 1.5.75 in version.json/CHANGELOG/tag at merge (main session); the blank-window fix bb9906f0 must reach Windows; later, each with an OK: Flathub, Snap, apt/dnf repositories, an update signing key. Earlier notes:
+- Folevi for Linux (`claude/linux-tauri-02790e`, 1.5.75 published): the owner tries it on real Linux (docs/LINUX-TESTING.md, files in `~/Downloads/Folevi for Linux 1.5.75 test/`); PR 73 into `claude/desktop-tauri` waits on the owner's review and merge (it reaches `main` with PR 65); record 1.5.75 in version.json/CHANGELOG/tag at merge (main session); the blank-window fix bb9906f0 must reach Windows; later, each with an OK: Flathub, Snap, apt/dnf repositories, an update signing key. Earlier notes:
   check the Linux compile and tests of the merged shell in the VM, build AppImage/.deb/.rpm for x86_64 and
   aarch64 in the Lima VM `folevi-linux`, smoke-test, put test builds in `~/Downloads/Folevi for Linux <version> test/`.
   Owner decisions pending: Linux signing key and repositories on R2, Flathub/Snap submission (all need an OK).
@@ -651,6 +651,7 @@ account button should move past iPadOS's window buttons).
   `DATABASE_UDF_USER_TIMEOUT_SECONDS=4` for that backend. Bursts show in `convex.log` as "took a long time".
 
 ## 12. Change log
+- 2026-11-24: PR 73 opened (owner's OK): `claude/linux-tauri-02790e` into `claude/desktop-tauri`, after merging its two newest commits (the cherry-picked blank-window fix, smoke.mjs `--embedded`); the `--embedded` smoke walk passes 7/7 on Linux.
 - 2026-11-24: Folevi for Linux 1.5.75 published (owner's OK in chat): 14 files at R2 `folevi-updates/linux/` (versioned AppImage, .deb, .rpm for x86_64 and aarch64, SHA256SUMS-1.5.75.txt, and no-cache latest names), all checked live (sizes, types, a downloaded .deb's checksum). 144 Rust tests pass on the merged code.
 - 2026-11-24: Linux 1.5.75 built (AppImage, .deb, .rpm for x86_64 and aarch64) and smoke-tested in the VM: installed .deb and AppImage of both architectures render the first-launch screen (x86_64 through Rosetta); test copies in `~/Downloads/Folevi for Linux 1.5.75 test/`; upload next.
 - 2026-11-24: Linux release 1.5.75 under way (owner in chat: upload the Linux builds now; Flathub, Snap, apt/dnf still need an OK): merged the latest `claude/desktop-tauri` (Windows 1.5.73 recorded), `apps/desktop/RELEASE_VERSION` = 1.5.75, `packaging/linux/scripts/upload-release.sh` added; building in the VM, upload to `folevi.com/download/linux/` after the smoke tests.

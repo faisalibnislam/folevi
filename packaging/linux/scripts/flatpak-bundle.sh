@@ -18,7 +18,9 @@ flatpak install --user -y --noninteractive flathub "org.gnome.Platform//$RUNTIME
 # flatpak-builder 1.3 or newer (it composes AppStream with appstreamcli; 1.2, Ubuntu 22.04's, calls
 # appstream-compose, which the GNOME 51 SDK no longer has). Older systems use Flathub's own builder.
 BUILDER=(flatpak-builder)
-if ! printf '1.3\n%s\n' "$(flatpak-builder --version | awk '{ print $2 }')" | sort -V -C; then
+HAVE="$(flatpak-builder --version 2>&1 | grep -oE '[0-9]+(\.[0-9]+)+' | head -1)"
+echo "flatpak-builder ${HAVE:-not found}"
+if [[ -z "$HAVE" ]] || ! printf '1.3\n%s\n' "$HAVE" | sort -V -C; then
   flatpak install --user -y --noninteractive flathub org.flatpak.Builder
   BUILDER=(flatpak run --filesystem=host org.flatpak.Builder)
 fi

@@ -776,6 +776,9 @@ export function FloatTabsProvider({ documentId, children }: { documentId: string
       place: noop,
       warm: [],
       tabHistory: null,
+      // One tab, the floating note's own.
+      shownId: documentId,
+      pick: noop,
     }),
     [documentId],
   );

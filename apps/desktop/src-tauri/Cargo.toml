@@ -29,6 +29,8 @@ serde_json = "1"
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync", "time", "fs"] }
 reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "json", "stream", "gzip"] }
 futures-util = "0.3"
+# Folevi servers on the home network (_folevi._tcp), on Windows and Linux alike (src/server.rs).
+mdns-sd = "0.13"
 base64 = "0.22"
 hex = "0.4"
 rand = "0.8"
@@ -53,9 +55,12 @@ unicode-normalization = "0.1"
 regex = "1"
 
 [target.'cfg(windows)'.dependencies]
-# Toasts whose click Folevi hears (tauri-plugin-notification can't report clicks on desktop).
-tauri-winrt-notification = "0.8"
 windows-sys = { version = "0.59", features = ["Win32_UI_Shell", "Win32_Foundation", "Win32_Storage_FileSystem"] }
+# The windows crate: Windows Hello for the app lock and encrypted notes (src/hello.rs), the Jump List
+# (src/jumplist.rs), toasts with buttons and typed replies (src/notify.rs), the Share sheet and text
+# recognition (src/winshare.rs).
+windows = { version = "0.62", features = ["ApplicationModel_DataTransfer", "Data_Xml_Dom", "Foundation", "Foundation_Collections", "Graphics_Imaging", "Media_Ocr", "Security_Credentials_UI", "Storage_Streams", "UI_Notifications", "Win32_Foundation", "Win32_Storage_EnhancedStorage", "Win32_System_Com", "Win32_System_Com_StructuredStorage", "Win32_System_Variant", "Win32_System_WinRT", "Win32_UI_Shell", "Win32_UI_Shell_Common", "Win32_UI_Shell_PropertiesSystem"] }
+windows-future = "0.3"
 
 # File dialogs: the system's own (Windows), and on Linux the XDG file chooser portal, which the Flatpak needs to
 # reach the person's files and which looks native on GNOME and KDE (rfd refuses its GTK and portal backends together).

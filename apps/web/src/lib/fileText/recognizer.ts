@@ -11,7 +11,7 @@ export type RecognizeKind = "image" | "handwriting";
 
 export interface DeviceRecognizer {
   /** Where the recogniser runs (what Settings says). */
-  where: "iphone" | "mac" | "test";
+  where: "iphone" | "mac" | "windows" | "test";
   recognize(image: Blob, kind: RecognizeKind): Promise<string>;
 }
 
@@ -51,7 +51,7 @@ export function deviceRecognizer(): DeviceRecognizer | null {
   const mac = desktop();
   if (mac?.recognizeText) {
     const read = mac.recognizeText.bind(mac);
-    return { where: "mac", recognize: async (image, kind) => (await read(new Uint8Array(await image.arrayBuffer()), kind === "handwriting"))?.text ?? "" };
+    return { where: mac.platform === "windows" ? "windows" : "mac", recognize: async (image, kind) => (await read(new Uint8Array(await image.arrayBuffer()), kind === "handwriting"))?.text ?? "" };
   }
   return null;
 }

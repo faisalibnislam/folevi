@@ -313,6 +313,8 @@ suggestions and backlinks; `globals.css` `:root[data-float]`) under a slim bar w
   is an iframe on `/float/<id>?pip=1`, a row of names switches between them once there are two, floating one again
   brings it forward; each note's size is remembered (localStorage `folevi:float-size:<id>`) for when it opens first.
   Chrome places the window itself (position can't be set).
+- App lock: a floating note is covered like the main windows (Mac: the same lock cover on its panel; Windows and
+  Linux: its window hides while locked and comes back on unlock).
 - Tests: `apps/web/test/float-note.test.tsx` (23), `apps/web/e2e/float-note.spec.ts` (4, local mode, Chromium and
   WebKit), `apps/mac/FoleviTests/FloatTests.swift` (8, panels made but never shown), `lib.rs`
   `floating_note_windows`. Not checked: a real floating panel on screen on the Mac or Windows (headless only, per
@@ -1297,12 +1299,57 @@ account button should move past iPadOS's window buttons).
   Picture-in-Picture): right-click a note tab or a listed note; one window per note on the desktop apps (pinned on
   top until turned off, size and place remembered); full editing in the main window's editor, compact. Branch
   `claude/float-this-note`, nothing released.
+- 2026-11-25: **Windows and Linux parity PRs landed together** (branch `claude/desktop-parity-integration`): PRs 116,
+  118, 119, 120, 121, 123, 124, 125, 126 and 127 merged into one branch (each conflicted with the next in HANDOFF.md,
+  Cargo.toml and lib.rs). Resolved once: one `windows` crate line with every feature; the page's boot carries the
+  server, the lock and `background`; background sync's unread count uses each Folevi Server account's own Convex
+  and site; the open windows are saved in `prepare_to_quit`, so an update's restart keeps them too. 177 Rust tests.
+- 2026-11-25: **Your own server in Folevi for Windows and Linux** (branch `claude/desktop-server-places`, item 2 of
+  docs/DESKTOP_PARITY.md): `src/server.rs` ports ShellServer (address and folevi.json checks, names, page policy,
+  ServerReach, Bonjour); places, sign-in, Convex tokens and the page's config follow each account's server. Rust
+  tests pass (155, plus a live lookup against the test server at localhost:8460). Not yet: http servers on the
+  home network other than localhost (WebView2 mixed content; the shell is to carry that traffic), and
+  `serverPlaces: false` in bridge/host.js comes out once PR 113 is on main.
 - 2026-11-25: **Automatic updates for Folevi for Windows and the Linux AppImage** (branch `claude/desktop-updater`,
   first item of docs/DESKTOP_PARITY.md): the Tauri updater is registered, checks a minute after launch and every 12
   hours, and the tray has Check for Updates…. Update key made and kept at `~/.folevi-desktop-signing/` (section 7);
   `packaging/desktop/publish-update-feed.sh` signs the published installers and writes the feed
   (docs/DESKTOP_APP.md, "Updates"). Takes effect from the first release that carries it; 1.6.78 and older have no
   updater, so their users install that release by hand once.
+- 2026-11-25: **App lock and Windows Hello in Folevi for Windows and Linux** (branch `claude/desktop-app-lock`, item 3
+  of docs/DESKTOP_PARITY.md): lockGet/lockSet as on the Mac; Windows Hello on Windows, a passphrase on Linux; the
+  shell's cover over the main windows at launch, after time away and after sleep; "Ask for Windows Hello to unlock
+  encrypted notes". Rust tests pass (149), the cover was walked through in jsdom (14 checks), the Windows Hello
+  code compiles for x86_64-pc-windows-msvc. Not run on real Windows or a Linux desktop.
+- 2026-11-25: **Background sync in Folevi for Windows and Linux** (branch `claude/desktop-background-sync`, item 4 of
+  docs/DESKTOP_PARITY.md): hidden runner windows for places not on screen, woken and closed by the Mac's
+  BackgroundSync plan, and a native unread count per background account. Rust tests pass (152). Not run end to end
+  (needs two signed-in accounts on a test machine).
+- 2026-11-25: **Windows Jump List** (branch `claude/desktop-launcher-actions`, item 8 of docs/DESKTOP_PARITY.md): New
+  Note, Quick Add Task, Today's Tasks; Linux's .desktop actions already had them. Compiles for x86_64-pc-windows-msvc;
+  not seen on real Windows.
+- 2026-11-25: **Dropbox and Google Drive in Folevi for Windows and Linux** (branch `claude/desktop-cloud-sync`, item 5
+  of docs/DESKTOP_PARITY.md): `src/cloud.rs` (loopback PKCE sign-in, sealed tokens, refresh, the page's requests to
+  the provider's hosts only, revoke on sign-out) and the shared cloud kit in every page. Waiting on the owner: the
+  Dropbox app's loopback redirect URIs, a Google "Desktop app" client, and repository variables
+  `FOLEVI_DROPBOX_APP_KEY` / `FOLEVI_GOOGLE_DESKTOP_CLIENT_ID`; until then neither is offered. Rust tests pass
+  (149, including a real loopback sign-in that's refused and cancelled); no real sign-in run.
+- 2026-11-25: **Notification actions in Folevi for Windows and Linux** (branch `claude/desktop-notification-actions`,
+  item 6 of docs/DESKTOP_PARITY.md): Reply (Windows), Mark as Read, Open, Complete and the three Snoozes, Windows
+  toasts grouped by note; the web now does Complete and Snooze (they did nothing before, the Mac included). Rust
+  tests pass (146); the toast code compiles for Windows; not run on a real desktop.
+- 2026-11-25: **Recording a call in Folevi for Windows** (branch `claude/desktop-call-recording`, item 7 of
+  docs/DESKTOP_PARITY.md): WebView2's getDisplayMedia with "Share system audio", Windows wording when the sound
+  doesn't come. Web unit test passes; not tried on a real PC.
+- 2026-11-25: **Shortcuts and Open for attachments in Folevi for Windows and Linux** (branch
+  `claude/desktop-shortcuts-open`, part of item 9 of docs/DESKTOP_PARITY.md): the Mac's menu shortcuts the page
+  handles, Ctrl+Q on Linux, and attachments opened in their default app. Rust tests pass (144).
+- 2026-11-25: **Windows open again where they were in Folevi for Windows and Linux** (branch
+  `claude/desktop-window-restore`, part of item 9 of docs/DESKTOP_PARITY.md): every main window and its page, from
+  windows.json. Rust tests pass (145).
+- 2026-11-25: **Share and text in images in Folevi for Windows** (branch `claude/desktop-share-ocr`, the last part of
+  item 9 of docs/DESKTOP_PARITY.md): the Share sheet from the note's Share dialog, and Windows.Media.Ocr for
+  search in images. The Windows code compiles for x86_64-pc-windows-msvc; not run on a real PC.
 - 2026-11-25: **1.6.78 released** from PR 109's merge (`e0183862`): web and Convex deployed; Mac published
   (notarized, Sparkle feed); iPhone and iPad on TestFlight (delivery 7120ad6e); Windows installers and Linux packages
   uploaded, apt and rpm repositories rebuilt and uploaded; the Android bundle built and left for the owner's Play

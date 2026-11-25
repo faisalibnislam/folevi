@@ -592,6 +592,8 @@ signed-in account, 1.5.58's frosted folders with a large library, and the iPad c
 account button should move past iPadOS's window buttons).
 
 ## 10. Next steps / open work
+- Shell performance (2026-11-25): merge PRs 84, 85, 86 into their shell branches; check PR 85 on a Windows PC with two
+  accounts and a library; Android launch time needs the SDK and an emulator (owner's OK).
 - Backend performance pass, owner's OK needed for production: run `migrations:backfillListStats` (optional, speeds
   up existing folders) and `migrations:backfillDocumentText` (required before the note text switch PR merges).
 - Backend performance pass (`docs/perf/backend-results.md`): kept folder and Drafts counts, task rows that carry
@@ -756,6 +758,11 @@ account button should move past iPadOS's window buttons).
 - 2026-11-25: Notes say Android is active (the Capacitor app, PR 69, Play internal testing); only the native Compose
   app is paused. An Android SDK is installed at `~/Library/Android/sdk` (not on PATH), so Android builds can run on
   this Mac.
+- 2026-11-25: Performance pass, Android and Windows/Linux shells (`docs/perf/android-windows-results.md`). PRs into
+  each shell's branch: #86 Android (Firebase and legacy session off the main thread, one resize per keyboard slide,
+  a new Android CI workflow), #84 Tauri (library and reminders open after the window, lighter asset serving and
+  scans, launch time in `measure.mjs`), #85 Electron (Quick Add on first use, runners on demand, throttling back
+  on). Electron uses about 28% less memory on Windows x64 (CI). Android not measured (no SDK).
 - 2026-11-25: Backend performance pass, step 3 (widen): `documentText` table holds each note's search text and search
   fields, kept in step by the write hook; `migrations:backfillDocumentText` copies older notes (production run waits
   for the owner). Readers are unchanged until the switch PR.

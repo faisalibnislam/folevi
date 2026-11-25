@@ -23,7 +23,7 @@ import { Highlight } from "./Highlight";
 import { formatRelative } from "@/lib/format";
 import { t } from "@/i18n";
 import { Select } from "@/components/ui/Select";
-import { useIphoneApp } from "@/lib/iphone";
+import { useIphoneApp, sideInsets } from "@/lib/iphone";
 import { useFold } from "@/lib/platform";
 import { IphoneScopes } from "@/components/iphone/SearchScopes";
 import { useKeyLabels } from "@/lib/shortcuts";
@@ -204,7 +204,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
   // on the fold), right of a fold down the middle (centred there) or below one across.
   const fold = useFold();
   const past = fold ? fold.start + fold.size + 16 : 0;
-  const folded: CSSProperties | undefined = iphone || !fold ? undefined : fold.orientation === "vertical" ? { left: past, right: 16, width: `calc(100% - ${past + 16}px)` } : { top: past, bottom: 16, marginTop: 0, maxHeight: `calc(100dvh - ${past + 16}px)` };
+  const folded: CSSProperties | undefined = iphone || !fold ? undefined : fold.orientation === "vertical" ? { left: past, right: 16 + sideInsets().right, width: `calc(100% - ${past + 16 + sideInsets().right}px)` } : { top: past, bottom: 16, marginTop: 0, maxHeight: `calc(100dvh - ${past + 16}px)` };
 
   return (
     <dialog

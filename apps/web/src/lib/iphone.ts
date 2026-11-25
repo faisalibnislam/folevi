@@ -178,6 +178,22 @@ export function useIphoneLook(): boolean {
  * placed by script stay clear of them. Also the sides: a closed iPhone Duo's status bar runs down the outer
  * screen's right edge, and a phone turned on its side has the camera housing at one.
  */
+/**
+ * The screen's side insets in the apps, in any layout (safeInsets() answers only in the phone layout): what a
+ * status bar standing on its side takes, as the iPhone Duo's does on the right, 84 pt open. Zero on the web.
+ */
+export function sideInsets(): { left: number; right: number } {
+  if (typeof document === "undefined" || (!inIosApp() && !inAndroidApp())) return { left: 0, right: 0 };
+  const probe = document.createElement("div");
+  probe.style.cssText = inAndroidApp()
+    ? "position:fixed;top:0;height:0;left:var(--android-inset-left,0px);right:var(--android-inset-right,0px);visibility:hidden;pointer-events:none"
+    : "position:fixed;top:0;height:0;left:env(safe-area-inset-left);right:env(safe-area-inset-right);visibility:hidden;pointer-events:none";
+  document.body.appendChild(probe);
+  const r = probe.getBoundingClientRect();
+  probe.remove();
+  return { left: r.left, right: Math.max(0, window.innerWidth - r.right) };
+}
+
 export function safeInsets(): { top: number; bottom: number; left: number; right: number } {
   if (typeof document === "undefined" || !isIphoneApp()) return { top: 0, bottom: 0, left: 0, right: 0 };
   const probe = document.createElement("div");

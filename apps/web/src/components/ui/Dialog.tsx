@@ -3,7 +3,7 @@
 import { useEffect, useId, useLayoutEffect, useRef, useState, type CSSProperties, type KeyboardEvent, type ReactNode } from "react";
 import { X } from "lucide-react";
 import { IconButton } from "./Button";
-import { isIpadNativeWide, useIphoneApp } from "@/lib/iphone";
+import { isIpadNativeWide, sideInsets, useIphoneApp } from "@/lib/iphone";
 import { Sheet } from "@/components/iphone/Sheet";
 import { confirmAction, hasNative } from "@/lib/native/ui";
 import { nativeChrome } from "@/lib/nativeApp";
@@ -23,8 +23,10 @@ export function pastFoldFrame(f: Fold | null, room: { top: number; bottom: numbe
   if (!f) return { room, side: null };
   const past = f.start + f.size + 16;
   if (f.orientation === "horizontal") return { room: { top: Math.max(room?.top ?? 0, past), bottom: Math.max(room?.bottom ?? 0, 16) }, side: null };
-  // (Between `left` and `right` the dialog's auto margins centre it; the width fills that span, its max-width caps it.)
-  return { room, side: { left: past, right: 16, width: `calc(100% - ${past + 16}px)` } };
+  // (Between `left` and `right` the dialog's auto margins centre it; the width fills that span, its max-width caps it.
+  // On the right it keeps clear of the screen's side inset too: the iPhone Duo's status column, 84 pt open.)
+  const right = 16 + (typeof window === "undefined" ? 0 : sideInsets().right);
+  return { room, side: { left: past, right, width: `calc(100% - ${past + right}px)` } };
 }
 
 function macFrameRoom(): { top: number; bottom: number } | null {

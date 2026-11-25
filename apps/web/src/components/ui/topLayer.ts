@@ -1,7 +1,7 @@
 "use client";
 
 import { useLayoutEffect, useState, type CSSProperties, type RefObject } from "react";
-import { safeInsets } from "@/lib/iphone";
+import { sideInsets } from "@/lib/iphone";
 import { fold } from "@/lib/platform";
 
 /**
@@ -12,7 +12,7 @@ import { fold } from "@/lib/platform";
  * past the fold otherwise.
  */
 export function popupSpan(anchor: { left: number; right: number }, margin = 8): { min: number; max: number; clamp: (left: number, width: number) => number } {
-  const safe = safeInsets();
+  const safe = sideInsets();
   let min = margin + safe.left;
   let max = window.innerWidth - margin - safe.right;
   const f = fold();

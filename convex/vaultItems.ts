@@ -3,7 +3,8 @@
 // show) and its secrets. Lists get summaries only; the secrets come from `open`, which the server logs itself, so
 // "who opened what" can't be left out by a modified browser. Every change keeps the version before it.
 import { v } from "convex/values";
-import { action, mutation, query } from "./_generated/server";
+import { action, query } from "./_generated/server";
+import { mutation } from "./lib/functions";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
 import type { Doc, Id } from "./_generated/dataModel";
 import { assertWritable, requireIdentity, requireProfile } from "./lib/auth";

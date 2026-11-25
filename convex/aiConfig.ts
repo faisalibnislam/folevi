@@ -7,7 +7,8 @@
 // returned by any query or logged: the panel sees only whether a key is set and its last four characters.
 // A key in the environment (GEMINI_API_KEY, OPENAI_API_KEY, ANTHROPIC_API_KEY) still works when none is saved.
 import { v } from "convex/values";
-import { action, internalMutation, internalQuery, mutation, query, type ActionCtx, type MutationCtx, type QueryCtx } from "./_generated/server";
+import { action, internalQuery, query, type ActionCtx, type MutationCtx, type QueryCtx } from "./_generated/server";
+import { internalMutation, mutation } from "./lib/functions";
 import { internal } from "./_generated/api";
 import type { Doc, Id } from "./_generated/dataModel";
 import { ALL_ADMIN_ROLES, requirePlatformRole, type PlatformRole } from "./lib/auth";

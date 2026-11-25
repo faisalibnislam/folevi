@@ -1,5 +1,6 @@
 import { v } from "convex/values";
-import { mutation, query } from "./_generated/server";
+import { query } from "./_generated/server";
+import { mutation } from "./lib/functions";
 import { rankSequence } from "@folevi/editor-schema";
 import { assertWritable, documentAccess, getDocumentByPublicId, requireDocument, requireProfile, accessAtLeast } from "./lib/auth";
 import { liveBlocks, toWireBlock } from "./lib/documents";

@@ -24,7 +24,8 @@
 // request: never in a Core place, never with AI turned off. Note text, prompts and answers are never
 // logged; only events, counts and codes are.
 import { v } from "convex/values";
-import { action, internalMutation, internalQuery, mutation, type ActionCtx } from "./_generated/server";
+import { action, internalQuery, type ActionCtx } from "./_generated/server";
+import { internalMutation, mutation } from "./lib/functions";
 import { api, internal } from "./_generated/api";
 import type { Doc, Id } from "./_generated/dataModel";
 import { CHART_MARKDOWN_HINT, COLUMNS_MARKDOWN_HINT, WIREFRAME_MARKDOWN_HINT, ulid } from "@folevi/editor-schema";

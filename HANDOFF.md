@@ -266,6 +266,19 @@ locally: the e2e suite and a visual check of the admin page (this Mac's local Co
 500, with or without the change); CI runs both on the PR.
 
 
+**Backend performance pass (session `perf-backend`, 2026-11-25).** A generated 5,000-note test library
+(`convex/lib/fakeLibrary.ts`, seeded by `convex/devSeed.ts` into an `@example.com` test account, refused on
+production) and a read-cost harness (`tests/convex/perf/`, run with `FOLEVI_PERF=1`). Baseline and every fix's
+before/after numbers: `docs/perf/backend-results.md`. At 5,000 notes `organization.index` reads 13 MB per run (the
+limit is 16 MiB) and task lists read up to 1,476 documents.
+Step 2: every mutation is now built from `convex/lib/functions.ts` (not `_generated/server`), whose db wrapper reports
+writes to `documents` and `folders` to `lib/listStats.ts`. That keeps `listStats` (per folder: page count, last edit,
+5 newest previews; per scope: the Drafts count) in step, and `organization.index`, `recentFolders` and `draftCount`
+read it instead of the pages. A folder or scope without a row is counted from its pages as before until
+`migrations:backfillListStats` runs (production run waits for the owner's OK). Task rows carry their note's public
+id, title and icon (`syncTaskLabels`, cleared when a note is sealed), so task lists read no notes. Writing straight
+to the db in a test (`t.run`) skips the wrapper: use `watchedDb(ctx)` from `lib/functions.ts` there.
+
 **A failed query no longer takes a page down (branch `claude/project-thread-u99yc5`, open PR, 2026-11-24).** Components
 read queries through `apps/web/src/lib/convex/queries.ts` (`useQuery`, `usePaginatedQuery`, `useQueryState`), never
 convex/react's (an eslint `no-restricted-imports` rule says so). A failed query reads as still loading (keeping its
@@ -601,10 +614,14 @@ account button should move past iPadOS's window buttons).
   (one cheap call), a local-mode equivalent is already there (own keys), Anthropic's server-side refusal fallback
   (left out: the owner chose no fallback), and audio attachments in a chat routed to OpenAI or Claude are refused
   by the adapter rather than up front.
+- Backend performance pass, owner's OK needed for production: run `migrations:backfillListStats` (optional, speeds
+  up existing folders) and `migrations:backfillDocumentText` (required before the note text switch PR merges).
+- Backend performance pass (`docs/perf/backend-results.md`): kept folder and Drafts counts, task rows that carry
+  their note's title, a cheaper `changes.list`, then note text (`searchText`) split out of `documents`
+  (widen, backfill, narrow; the owner approves each production backfill).
 - Web everywhere (all landed 2026-11-25). Open: the iOS simulator `footprint` re-run of the iPhone memory fix (mobile
-  session); sync status labels still differ between phone and desktop (Saved/Synced, Offline/Waiting to sync,
-  Conflict/Edited in two places) and there are four empty-state components; lists not yet given `LoadFailed` still load
-  until a retry answers (settings lists, Calendar, Graph, pickers);
+  session); there are four empty-state components; lists not yet given `LoadFailed` still load until a retry answers
+  (settings lists, Calendar, Graph, pickers);
   splitting the phone interface out of every page's bundle (measure with a production build first); "Your own server"
   sign-in for the apps, planned in the shared notes (`web-everywhere-own-server-plan.md`), after the Synology branch
   lands; the starter "Welcome to Folevi" note names Mac shortcuts. Known failing e2e on `main` (not from this work):
@@ -756,11 +773,28 @@ account button should move past iPadOS's window buttons).
   `DATABASE_UDF_USER_TIMEOUT_SECONDS=4` for that backend. Bursts show in `convex.log` as "took a long time".
 
 ## 12. Change log
+- 2026-11-25: Foli AI providers branch: main merged in again (backend performance pass); `convex/aiConfig.ts` now
+  builds its mutations from `lib/functions.ts` like every other mutation.
 - 2026-11-25: Foli AI on OpenAI and Anthropic too (`claude/foli-ai-openai-anthropic-8112bb`): Admin > Foli AI with
   sealed keys, a provider per feature and Fast/Main/Heavy models; OpenAI (Responses API) and Anthropic (Messages
   API) adapters through their SDKs with native streaming, tools, JSON, web search and prompt caching; credits priced
   per provider; "cheap first" defaults (Gemini Main is now Flash-Lite). 19 new tests; 4 existing tests updated for
   the new default (3 metering tests pin Main to Flash).
+- 2026-11-25: Backend performance pass, step 3 (widen): `documentText` table holds each note's search text and search
+  fields, kept in step by the write hook; `migrations:backfillDocumentText` copies older notes (production run waits
+  for the owner). Readers are unchanged until the switch PR.
+- 2026-11-25: Backend performance pass, step 2: kept folder and Drafts stats (`listStats`, through the new
+  `lib/functions.ts` write hook), task rows with their note's title and icon, `changes.list` reads a note only once it
+  has unseen changes, a folder by last edit pages through its index. Numbers in `docs/perf/backend-results.md`.
+- 2026-11-25: Backend performance pass, step 1: a generated 5,000-note test library (`convex/devSeed.ts`, test
+  accounts only, refused on production), a read-cost harness with Convex's limits on (`tests/convex/perf/`), and the
+  baseline in `docs/perf/backend-results.md`.
+- 2026-11-25: One set of sync status words on every screen (owner's pick: the desktop's): the phone and iPad's sync
+  button (`components/iphone/SyncStatusTouch.tsx`) now reads `SYNC_LABELS` from `components/app/SyncStatus.tsx`
+  (Saved, Saving…, Syncing…, Offline, Conflict, Not saved) instead of Synced / Waiting to sync / Edited in two places,
+  and its accessible name is the desktop's `sync.button.label` ("Sync status: Offline, 2 changes waiting").
+  `offline-notes.spec.ts` follows. Help, docs and marketing already used these words. The paused native apps'
+  `SyncStatus.swift` was left as it is. Web unit tests: 2161 pass; e2e not run locally.
 - 2026-11-25: PR 79 review fix: a paginated list that failed emptied and swapped "Couldn't load" for the loading
   placeholder on every retry (the retry starts the query over from its first page, and that first load read as
   "ok"). `usePaginatedQuery` now keeps the loaded results and `failed` until the restarted query answers; new

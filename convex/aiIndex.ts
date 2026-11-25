@@ -15,7 +15,8 @@
 // is never logged; only counts are.
 import { v } from "convex/values";
 import { flattenTree } from "@folevi/editor-schema";
-import { internalAction, internalMutation, internalQuery, type ActionCtx, type MutationCtx } from "./_generated/server";
+import { internalAction, internalQuery, type ActionCtx, type MutationCtx } from "./_generated/server";
+import { internalMutation } from "./lib/functions";
 import { internal } from "./_generated/api";
 import type { Doc, Id } from "./_generated/dataModel";
 import { requireProfile, resolveScope } from "./lib/auth";

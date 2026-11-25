@@ -290,7 +290,7 @@ for (const device of ["iPhone", "iPad"] as const) {
     await expect(page.getByRole("list", { name: "Recent notes" }).locator('[data-waiting-to-sync="queued"]')).toHaveCount(1);
     if (phone) {
       // The status counts what's waiting; its sheet lists the note.
-      await expect(status).toHaveAccessibleName(/Waiting to sync, \d+ changes? on this device/);
+      await expect(status).toHaveAccessibleName(/Sync status: Offline, \d+ changes? waiting/);
       await status.click();
       const sheet = page.getByTestId("sync-sheet");
       await expect(sheet).toHaveAttribute("data-status", "offline");

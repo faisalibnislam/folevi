@@ -17,7 +17,8 @@ import { t } from "@/i18n";
 import { useToast } from "@/components/ui/Toast";
 import { useBackendMode } from "@/lib/mode";
 
-const LABELS = {
+/** The sync status's words, the same on every screen (the phone and iPad's SyncStatusTouch reads these too). */
+export const SYNC_LABELS = {
   saved: "Saved",
   saving: "Saving…",
   syncing: "Syncing…",
@@ -110,8 +111,8 @@ export function SyncStatus({ documentId, compact = true, align = "end" }: { docu
         onClick={() => setOpen((o) => !o)}
         aria-expanded={open}
         aria-controls={open ? panelId : undefined}
-        aria-label={t("sync.button.label", { status: LABELS[status], pending })}
-        title={compact ? LABELS[status] : undefined}
+        aria-label={t("sync.button.label", { status: SYNC_LABELS[status], pending })}
+        title={compact ? SYNC_LABELS[status] : undefined}
         className={
           compact
             ? `ui-hit relative grid h-8 w-8 place-items-center rounded-chip transition-colors hover:bg-accent-soft ${tone}`
@@ -130,7 +131,7 @@ export function SyncStatus({ documentId, compact = true, align = "end" }: { docu
           <>
             <span className={`h-1.5 w-1.5 flex-none rounded-tiny ${dot}`} aria-hidden />
             {icon}
-            <span>{LABELS[status]}</span>
+            <span>{SYNC_LABELS[status]}</span>
             {status === "offline" && pending ? <span className="tabular-nums">· {pending}</span> : null}
           </>
         )}
@@ -142,7 +143,7 @@ export function SyncStatus({ documentId, compact = true, align = "end" }: { docu
         <div ref={panelRef} id={panelId} role="dialog" aria-label="Sync details" popover="manual" style={panelStyle} className={`ui-pop z-[100] border-0 text-ink w-72 max-w-[calc(100vw-2rem)] rounded-panel px-4 py-3.5 text-subheadline leading-snug animate-[folio-rise_160ms_var(--ease-folio)]`}>
           <p className="flex items-center gap-2 font-semibold text-heading">
             <span className={`h-2 w-2 flex-none rounded-tiny ${dot}`} aria-hidden />
-            {LABELS[status]}
+            {SYNC_LABELS[status]}
           </p>
           <p className="mt-1 pl-4 text-muted">
             {status === "saved" && (local ? "Every change has been saved to your library." : "Every change has been saved to Folevi.")}

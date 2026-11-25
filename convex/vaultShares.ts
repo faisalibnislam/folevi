@@ -4,7 +4,8 @@
 // in the link's fragment, working 1 to 10 times until it expires, its wrapped key deleted once used up. Folders are
 // never shared. Every share, open, edit and end is logged in the Vault's log.
 import { v } from "convex/values";
-import { mutation, query } from "./_generated/server";
+import { query } from "./_generated/server";
+import { mutation } from "./lib/functions";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
 import type { Doc, Id } from "./_generated/dataModel";
 import { assertWritable, membership, requireProfile } from "./lib/auth";

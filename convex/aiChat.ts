@@ -18,7 +18,8 @@
 // Privacy: prompts, note text and answers are never logged; only events, codes and counts are.
 import { v } from "convex/values";
 import { paginationOptsValidator } from "convex/server";
-import { action, internalMutation, internalQuery, mutation, query, type ActionCtx, type MutationCtx, type QueryCtx } from "./_generated/server";
+import { action, internalQuery, query, type ActionCtx, type MutationCtx, type QueryCtx } from "./_generated/server";
+import { internalMutation, mutation } from "./lib/functions";
 import { internal } from "./_generated/api";
 import type { Doc, Id } from "./_generated/dataModel";
 import { blockSearchText, markdownToBlocks, ulid, type InlineNode } from "@folevi/editor-schema";

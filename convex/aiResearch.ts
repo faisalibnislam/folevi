@@ -17,7 +17,8 @@
 // (ai.begin: never in Core). Text from the web is untrusted data. Prompts, notes, pages and reports are
 // never logged; only events, counts and codes are.
 import { v } from "convex/values";
-import { action, internalAction, internalMutation, internalQuery, mutation, query, type ActionCtx, type MutationCtx, type QueryCtx } from "./_generated/server";
+import { action, internalAction, internalQuery, query, type ActionCtx, type MutationCtx, type QueryCtx } from "./_generated/server";
+import { internalMutation, mutation } from "./lib/functions";
 import { internal } from "./_generated/api";
 import type { Doc, Id } from "./_generated/dataModel";
 import { markdownToBlocks, ulid } from "@folevi/editor-schema";

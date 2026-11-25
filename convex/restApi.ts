@@ -5,7 +5,8 @@
 //
 // Writes with an Idempotency-Key keep their answer for a day (apiRequests): a retry gets the first answer.
 import { v } from "convex/values";
-import { internalMutation, internalQuery, type MutationCtx, type QueryCtx } from "./_generated/server";
+import { internalQuery, type MutationCtx, type QueryCtx } from "./_generated/server";
+import { internalMutation } from "./lib/functions";
 import type { Doc } from "./_generated/dataModel";
 import { localDate, ulid } from "@folevi/editor-schema";
 import { accessAtLeast, documentAccess, PageReader } from "./lib/auth";

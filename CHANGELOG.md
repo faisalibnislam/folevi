@@ -4,6 +4,16 @@ Every Folevi release, newest first, written by `node scripts/version.mjs` from `
 
 Versions are MAJOR.UPDATE.PATCH, PATCH at least two digits: a Major release (2.0.00), a Big update (1.1.05 after 1.0.05) or a Small update (1.0.06 after 1.0.05).
 
+## Version 1.5.77: Small update
+
+Released 2026-11-25 04:56:22+06:00 (build 92, tag v1.5.77)
+
+Folevi for Windows uses less memory: Quick Add opens its window when first used, and the app's pages are installed as files.
+
+### Improved
+
+- Windows: Folevi uses about a quarter less memory than before (Quick Add's window opens when you first use it, and the app's pages are installed beside it instead of inside it).
+
 ## Version 1.5.76: Small update
 
 Released 2026-11-25 00:45:13+06:00 (build 91, tag v1.5.76)
@@ -39,7 +49,11 @@ A tidier, steadier Folevi on iPhone and iPad.
 
 Released 2026-11-24 19:03:37+06:00 (build 88, tag v1.5.73)
 
-Folevi for Mac is the web app in a Mac window again: the same screens as everywhere else, smaller and lighter.
+Folevi for Mac is the web app in a Mac window again, smaller and lighter, and Folevi for Windows arrives as a test build for Arm and Intel/AMD PCs.
+
+### Added
+
+- Folevi for Windows: a test build for Arm and for Intel and AMD PCs, each native, from folevi.com/download/windows. It is unsigned for now, so Windows asks you to confirm it, and it does not update itself yet.
 
 ### Improved
 

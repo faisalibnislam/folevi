@@ -1,6 +1,17 @@
 {
   "releases": [
     {
+      "version": "1.5.77",
+      "build": 92,
+      "released": "2026-11-25T04:56:22+06:00",
+      "type": "patch",
+      "summary": "Folevi for Windows uses less memory: Quick Add opens its window when first used, and the app's pages are installed as files.",
+      "improved": [
+        "Windows: Folevi uses about a quarter less memory than before (Quick Add's window opens when you first use it, and the app's pages are installed beside it instead of inside it)."
+      ],
+      "tag": "v1.5.77"
+    },
+    {
       "version": "1.5.76",
       "build": 91,
       "released": "2026-11-25T00:45:13+06:00",
@@ -39,7 +50,10 @@
       "build": 88,
       "released": "2026-11-24T19:03:37+06:00",
       "type": "patch",
-      "summary": "Folevi for Mac is the web app in a Mac window again: the same screens as everywhere else, smaller and lighter.",
+      "summary": "Folevi for Mac is the web app in a Mac window again, smaller and lighter, and Folevi for Windows arrives as a test build for Arm and Intel/AMD PCs.",
+      "added": [
+        "Folevi for Windows: a test build for Arm and for Intel and AMD PCs, each native, from folevi.com/download/windows. It is unsigned for now, so Windows asks you to confirm it, and it does not update itself yet."
+      ],
       "improved": [
         "Mac: the window shows Folevi's own sidebar, tabs and top bar, the same as on the web, Windows and Linux.",
         "Mac: Settings opens in the main window.",

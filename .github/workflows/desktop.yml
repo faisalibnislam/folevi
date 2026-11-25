@@ -26,7 +26,7 @@ permissions:
 env:
   CARGO_TERM_COLOR: always
   # The Electron build this one replaces, for the memory comparison.
-  ELECTRON_REF: claude/windows-electron-4ed862
+  ELECTRON_REF: claude/perf-electron
 
 jobs:
   shell:

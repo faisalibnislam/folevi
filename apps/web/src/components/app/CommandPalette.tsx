@@ -114,8 +114,10 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
     }
     // Closing fades it out with its results still drawn (ui/closing.ts), then it closes.
     if (!open && d.open) {
-      const fade = fadeOut(d, () => {
-        if (closing.current !== fade) return;
+      // Without the Web Animations API `done` runs at once, before `fade` is set: then it just closes.
+      let fade: Animation | null = null;
+      fade = fadeOut(d, () => {
+        if (fade && closing.current !== fade) return;
         closing.current = null;
         d.close();
         setVisible(false);

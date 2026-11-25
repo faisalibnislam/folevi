@@ -89,8 +89,10 @@ export function Dialog({
       setShown(false);
       return;
     }
-    const fade = fadeOut(el, () => {
-      if (closing.current !== fade) return;
+    // Without the Web Animations API `done` runs at once, before `fade` is set: then it just closes.
+    let fade: Animation | null = null;
+    fade = fadeOut(el, () => {
+      if (fade && closing.current !== fade) return;
       closing.current = null;
       el.close();
       setShown(false);

@@ -266,6 +266,22 @@ everything but the writing area, matching today's UI with Liquid Glass and iOS's
 - Next: screen-by-screen details (Tasks' filter field, Calendar's large title, Search, Settings, sheets), this
   week's Capacitor-only work carried over (sync sheet redesign, Folevi Server sign-in, keyboard and Duo fixes),
   native Foli AI chat finish, then iPad and iPhone Duo, tests, the switch.
+- **iPad and iPhone Duo, today's tablet layout (branch `claude/ios-native-ipad-duo`, off this one, 2026-11-25).**
+  `IPadFrameView` keeps iOS's split view but draws today's tablet Shell: the sidebar beside the content at every
+  wide width (320 pt; it steps aside only for the note's tools in a window under 1000 pt), today's web sidebar
+  (`WebSidebar.webBody`: wordmark, the real sync status, bell, its own button, "Search or jump to…", places,
+  Folders, Tags, Archive, Trash, account; a note's outline on a note) with no system bar over it; iOS's toolbar in
+  today's order (Back and Forward, the tabs via `WebTopBar(stripOnly:)`, Foli AI, New note as a glass +; no title,
+  no toolbar search, no floating Ask button). Screens keep their own controls in their content
+  (`screensKeepControls`, so `cardSlot` is nil): Calendar's title row, Tasks' views and Add task, list headers;
+  narrow content stacks Calendar's day list under the month (iOS only) and scrolls the Tasks views and list header
+  controls sideways. A note opens with its outline and the page's dock, the inspector shut until a tool is asked
+  for; the page is told `wide` on the iPad too (`RebuildPageLayout.tell`). iPhone Duo open across keeps iOS's
+  toolbar column (sideBars) with the same sidebar; closed is the phone layout; half open the sidebar reaches the
+  fold. Checked on Simulators "Folevi Native iPad" (11-inch, portrait), "Folevi Native iPad 13" and "Folevi Native
+  Duo" (closed, half open, open; note, caret and keyboard carried both ways). Not checked: iPad landscape, Split
+  View and Slide Over (no rotation access to the iPad Simulator), Duo upright (the Simulator's rotation drew a
+  squeezed frame). Screenshots: `/tmp/folevi-ipad-duo/`.
 
 **Foli AI on Gemini, OpenAI and Anthropic (branch `claude/foli-ai-openai-anthropic-8112bb`, 2026-11-25, PR open, not
 merged).** Owner's decisions: `docs/claude-context/memory/foli-ai-multi-provider-decisions.md`. Admin > Foli AI
@@ -953,6 +969,10 @@ signed-in account, 1.5.58's frosted folders with a large library, and the iPad c
 account button should move past iPadOS's window buttons).
 
 ## 10. Next steps / open work
+- Native iPad/Duo (`claude/ios-native-ipad-duo`): check iPad landscape, Split View and Slide Over, and the Duo
+  upright (669 pt: still the wide layout by the Duo decision; today's web rule would give it the phone's under
+  700, owner's call); Foli AI's page is tight beside the sidebar in iPad portrait (conversations and chat side by
+  side in about 500 pt).
 - Shell performance (2026-11-25): merge PRs 84, 85, 86 into their shell branches; check PR 85 on a Windows PC with two
   accounts and a library; Android launch time needs the SDK and an emulator (owner's OK).
 - Apple performance: the Mac launch run (owner's OK, 2026-11-25) showed no measurable difference at a load average
@@ -1232,6 +1252,7 @@ account button should move past iPadOS's window buttons).
   `DATABASE_UDF_USER_TIMEOUT_SECONDS=4` for that backend. Bursts show in `convex.log` as "took a long time".
 
 ## 12. Change log
+- 2026-11-25: Native iPad and iPhone Duo matched to today's tablet layout on `claude/ios-native-ipad-duo` (49c8757b, 7347a057).
 - 2026-11-25: Native iOS restarted on `claude/ios-native-today-ui` to match today's UI (owner's decision); step 1 committed (ae912d75).
 - 2026-11-25: **Integration branch `claude/integration-2026-11-25`** (the owner: "check and resolve [the merging issues]
   and release all apps and platforms, I approve everything"). The backlog could not drain PR by PR: every PR edits

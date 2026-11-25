@@ -269,7 +269,8 @@ ending the server's session. Also covered: Bonjour entries (`LocalServers.entry`
 (home name first, back to the added address when leaving home, no sign-out, `probe` injectable, `networkChanged()`),
 and each server place's token in the Keychain only (`session.<user>` for place `acct:<user>`, never in places.json,
 the run folder or the settings). The live tests skip without the server or `~/FoleviServerTest/test-accounts.env`;
-the real Bonjour browse runs only with `FOLEVI_LIVE_BONJOUR=1` (it can ask for Local Network access). The server
+the real Bonjour browse runs only with `FOLEVI_LIVE_BONJOUR=1` (it can ask for Local Network access; with the
+owner's OK it ran and passed on this Mac on 2026-11-25, headless, `TEST_RUNNER_FOLEVI_LIVE_BONJOUR=1`). The server
 rate-limits sign-ins: run the two live sign-in tests a minute apart if they get 429. Also fixed: the Mac build was
 broken on `main` since the icon regeneration dropped `WebIcon.calendar` (now `.calendarDays`).
 The sign-in screen (account mode, no place yet: `AppScheme.signInOf`) gets `https: http:` in its connect-src so the
@@ -626,8 +627,7 @@ account button should move past iPadOS's window buttons).
   DNS token for folevi.app; `connect.folevi.com` records at folevi.com's DNS), then each app session adds server
   sign-in to its shell (Mac, iPhone/iPad, Android, Windows, Linux). minAppVersion is 1.6.0.
 - Folevi Server on the Mac, still to do with the owner: one run of the real sign-in sheet against the test server in
-  a 1.6.0 Debug build on scratch data (GUI, needs the owner's OK), the real Bonjour browse (`FOLEVI_LIVE_BONJOUR=1`,
-  may ask for Local Network access), and a check with the real bundled export that a server place's data loads over
+  a 1.6.0 Debug build on scratch data (GUI, needs the owner's OK), and a check with the real bundled export that a server place's data loads over
   `http://localhost:8460/convex` (the header policy and mixed content are covered; the export's own meta CSP must
   also allow `http:`/`ws:`). Optional: `places.scanCode()` on Macs with a camera (left out for now). Possible
   hardening: the Mac's Keychain items use the login keychain, which keeps no "this device only" class; moving
@@ -791,6 +791,8 @@ account button should move past iPadOS's window buttons).
   `DATABASE_UDF_USER_TIMEOUT_SECONDS=4` for that backend. Bursts show in `convex.log` as "took a long time".
 
 ## 12. Change log
+- 2026-11-25: the live Bonjour browse (`testAServerAdvertisedOnThisNetworkIsFound`) ran on this Mac with the owner's
+  OK and passed: it advertised `_folevi._tcp` and found it with its TXT name, version and url.
 - 2026-11-25: Mac sign-in screen may look up any server (`https: http:` in its connect-src, `ShellPolicy.csp`
   `signIn`); `ServerPageTests` (offscreen web view) shows home http servers aren't mixed content on the Mac.
 - 2026-11-25: Folevi Server on the Mac: `ServerFlowTests` (end to end against the local test server, Bonjour entries,

@@ -45,6 +45,11 @@ export const E2EE_ROUTES: Record<string, Route> = {
   "signInOptions:*": pass,
   "passkeyUsage:*": pass,
   "support:*": pass,
+  // Folevi Server setup, its admin panel, invites and Connect: server settings and people, never note content.
+  "server:*": pass,
+  "serverAdmin:*": pass,
+  "serverInvites:*": pass,
+  "connect:*": pass,
   "clock:*": pass,
   "unsplash:*": pass,
   "externalCalendars:*": pass,

@@ -194,6 +194,11 @@ export const LOCAL_HIDDEN: Readonly<Record<string, Capability>> = {
   "users:requestAccountDeletion": "account",
   "users:cancelAccountDeletion": "account",
   "support:*": "account",
+  // Folevi Server setup, its admin panel, invites and Connect only exist for an account on a server or Folevi Cloud.
+  "server:*": "account",
+  "serverAdmin:*": "account",
+  "serverInvites:*": "account",
+  "connect:*": "account",
   "signInOptions:*": "account",
   "passkeyUsage:*": "account",
   "authEmails:*": "account",

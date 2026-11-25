@@ -14,7 +14,7 @@ import { localStatus } from "../../apps/web/src/lib/local/registry";
 import "../../apps/web/src/lib/local/functions";
 
 /** Modules whose functions carry no note content: a `module:*` pass is allowed for them. */
-const NO_CONTENT = new Set(["users", "workspaces", "billing", "workspaceBilling", "settings", "themes", "presence", "push", "apiTokens", "mcp", "webhooks", "authEmails", "signInOptions", "passkeyUsage", "support", "clock", "unsplash", "externalCalendars", "calendarFeeds", "emailNotes", "aiDigest", "routines", "proposals", "e2ee"]);
+const NO_CONTENT = new Set(["users", "workspaces", "billing", "workspaceBilling", "settings", "themes", "presence", "push", "apiTokens", "mcp", "webhooks", "authEmails", "signInOptions", "passkeyUsage", "support", "clock", "unsplash", "externalCalendars", "calendarFeeds", "emailNotes", "aiDigest", "routines", "proposals", "e2ee", "server", "serverAdmin", "serverInvites", "connect"]);
 
 describe("E2EE route coverage", () => {
   test("every Convex function the product calls has a route", () => {

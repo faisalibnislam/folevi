@@ -22,8 +22,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { LoadFailed } from "@/components/ui/LoadFailed";
 import { haptic } from "@/lib/nativeApp";
 import { useIphoneApp } from "@/lib/iphone";
-import { IphoneTasks } from "@/components/iphone/Tasks";
-import { IphoneTaskSheet } from "@/components/iphone/TaskSheet";
+import { IphoneTasks, IphoneTaskSheet } from "@/components/iphone/lazy";
 import { useKeyLabels } from "@/lib/shortcuts";
 
 type View = "inbox" | "today" | "upcoming" | "all" | "completed" | "mine";

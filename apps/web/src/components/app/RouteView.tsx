@@ -15,7 +15,7 @@ import { useAppState } from "@/lib/app/state";
 import { api } from "@/lib/convex/api";
 import { inboxPage } from "@/lib/share/save";
 import { useIpadLayout, useIphoneApp } from "@/lib/iphone";
-import { IphoneHome } from "@/components/iphone/IphoneHome";
+import { IphoneHome } from "@/components/iphone/lazy";
 import { useCanCall, useCapabilities } from "@/lib/mode";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Waypoints } from "lucide-react";

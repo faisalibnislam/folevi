@@ -100,13 +100,12 @@ import { FindBar } from "./FindBar";
 import { useNoteActions } from "@/components/views/noteActions";
 import { PageDock } from "./PageDock";
 import { isIpadLayout, isIphoneApp, useIpadNativeWide, useIphoneApp, useNativeSideTools } from "@/lib/iphone";
-import { NoteBars } from "@/components/iphone/NoteBars";
 import { nativeChrome } from "@/lib/nativeApp";
 import { useNativeNote } from "@/lib/engine/editorCommands";
 import { NativeNoteTools } from "@/lib/engine/noteTools";
 import { requestNavigation } from "@/lib/engine/navigation";
 import { nativeToast } from "@/lib/engine/toasts";
-import { NotePlaceChip, NoteSyncTrailing, NoteTrailing, ToolSheet } from "@/components/iphone/NoteChrome";
+import { NoteBars, NotePlaceChip, NoteSyncTrailing, NoteTrailing, ToolSheet } from "@/components/iphone/lazy";
 
 /** Native chrome mode (the native apps draw the note's bars): fixed for the page's life. */
 const nativeChromeMode = typeof window !== "undefined" && nativeChrome() !== null;

@@ -22,7 +22,7 @@ import { useAppRouter } from "@/lib/app/router";
 import { useBackendMode } from "@/lib/mode";
 import { APP_URL } from "@/lib/env";
 import { asCapabilityCommand, macDesktop, noteFromText, setNoteFileSource, spotlightGone, spotlightLeft, type DesktopSpotlightItem, type MacCapabilities, type MacCapabilityCommand } from "@/lib/desktop/capabilities";
-import { desktopChanged } from "@/lib/engine/viewsSettings";
+import { desktopChanged } from "@/lib/engine/desktopChanged";
 // Export (Markdown, PDF, zips) loads when a note is first shared, printed or dragged out.
 const exporting = () => import("@/components/doc/export");
 import { errorMessage, useToast } from "@/components/ui/Toast";

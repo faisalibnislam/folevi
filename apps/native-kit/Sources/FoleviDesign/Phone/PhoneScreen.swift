@@ -120,16 +120,15 @@ public struct PhoneScreen<Leading: View, Trailing: View, Header: View, Content: 
     }
 
     private var listContent: some View {
-        let filter = options.search.flatMap { search in (filterShown || !search.wrappedValue.isEmpty) ? search : nil }
+        // Always in sight under the title, as today's app (the owner, 2026-11-25).
+        let filter = options.search
         let headerRow = !options.pinsHeader && Header.self != EmptyView.self
         return List {
             if filter != nil || headerRow {
                 // The filter and the header run edge to edge, on the screen's grey, not on a card.
                 Section {
                     if let filter {
-                        PhoneSearchField(options.searchPrompt, text: filter, icon: options.searchIcon, autofocus: filterShown) {
-                            withAnimation(PhoneLook.reveal) { filterShown = false }
-                        }
+                        PhoneSearchField(options.searchPrompt, text: filter, icon: options.searchIcon)
                     }
                     if headerRow { header }
                 }
@@ -164,10 +163,8 @@ public struct PhoneScreen<Leading: View, Trailing: View, Header: View, Content: 
                 VStack(alignment: .leading, spacing: 0) {
                     Color.clear.frame(height: 0).id("top")
                     // The screen's filter, opened from the bar's search capsule; it stays while it holds text.
-                    if let search = options.search, filterShown || !search.wrappedValue.isEmpty {
-                        PhoneSearchField(options.searchPrompt, text: search, icon: options.searchIcon, autofocus: filterShown) {
-                            withAnimation(PhoneLook.reveal) { filterShown = false }
-                        }
+                    if let search = options.search {
+                        PhoneSearchField(options.searchPrompt, text: search, icon: options.searchIcon)
                         .transition(.move(edge: .top).combined(with: .opacity))
                     }
                     if !options.pinsHeader { header }
@@ -254,15 +251,8 @@ public struct PhoneScreen<Leading: View, Trailing: View, Header: View, Content: 
     /// What the bar's search capsule does: open the screen's filter (closing it again when empty), or the app's
     /// Search. Nil: no capsule.
     private var searchAction: (@MainActor () -> Void)? {
-        guard options.showsSearch else { return nil }
-        if let search = options.search {
-            return {
-                withAnimation(PhoneLook.reveal) {
-                    if filterShown, search.wrappedValue.isEmpty { filterShown = false } else { filterShown = true }
-                }
-            }
-        }
-        // Search is the tab bar's own button (the owner, 2026-11-25): the bar offers no second way in.
+        // The filter field is always in sight and Search is the tab bar's own button (the owner, 2026-11-25): the
+        // bar offers neither.
         return nil
     }
     #endif

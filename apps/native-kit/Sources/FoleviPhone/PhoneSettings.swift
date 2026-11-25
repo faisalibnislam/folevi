@@ -207,7 +207,9 @@ public struct PhoneSettingsList: View {
 
     private var list: some View {
         PhoneSettingsPage {
-            ForEach(Self.groups(model), id: \.label) { g in
+            // (Until the session is known, at launch: no sections, rather than an account's flashing up for a
+            // library on this iPhone.)
+            ForEach(model.session.value == nil ? [] : Self.groups(model), id: \.label) { g in
                 PhoneSettingsGroup(g.label) {
                     ForEach(g.items, id: \.self) { s in
                         PhoneSettingsRow(s.label, chevron: true, action: { model.open("/settings/\(s.rawValue)") }) { s.rowIcon }

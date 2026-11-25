@@ -846,6 +846,10 @@ account button should move past iPadOS's window buttons).
   `DATABASE_UDF_USER_TIMEOUT_SECONDS=4` for that backend. Bursts show in `convex.log` as "took a long time".
 
 ## 12. Change log
+- 2026-11-25: CI secret scan fix for PR 69: gitleaks scans every branch (`git log --all`), and it flagged
+  `cfg.Certificate.KeyType = certcrypto.EC256` in `server/folevid/internal/connect/acme.go` (commit b9ca0904, only on
+  `claude/sleepy-goodall-3cg4e7`), which failed the check on every PR. Not a secret; its fingerprint is now in
+  `.gitleaksignore`.
 - 2026-11-25: PR 69 checked on this Mac (Android session): the Android SDK is at `~/Library/Android/sdk` (set
   `ANDROID_HOME`, put `platform-tools` and `emulator` on PATH; JDK is Homebrew `openjdk`). `apps/android` compiles
   (`:app:compileDebugKotlin`, so `CALENDAR_DAYS` is fine); `apps/mobile/android` `:app:assembleDebug` builds and

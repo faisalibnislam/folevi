@@ -45,6 +45,8 @@ struct AppRequest {
     var mode: String = "unset"
     /// The Folevi Server of the view's place (or of its sign-in screen); nil: Folevi Cloud.
     var server: ShellServer? = nil
+    /// The view shows the sign-in screen (no place yet): it may look up any server (ShellPolicy.csp).
+    var signIn: Bool = false
 
     func header(_ name: String) -> String? { headers.first { $0.key.caseInsensitiveCompare(name) == .orderedSame }?.value }
 }
@@ -111,6 +113,8 @@ final class AppScheme: NSObject, WKURLSchemeHandler {
     var modeOf: (WKWebView) -> String = { _ in "unset" }
     /// The Folevi Server of the view's place (Places sets it), for its policy.
     var serverOf: (WKWebView) -> ShellServer? = { _ in nil }
+    /// Whether the view shows the sign-in screen (Places sets it).
+    var signInOf: (WKWebView) -> Bool = { _ in false }
     var files: LibraryFiles = NoLibraryFiles()
     let serviceOrigin: String
     let extraConnect: [String]
@@ -131,7 +135,7 @@ final class AppScheme: NSObject, WKURLSchemeHandler {
 
     func webView(_ webView: WKWebView, start task: WKURLSchemeTask) {
         guard let url = task.request.url else { return task.didFailWithError(URLError(.badURL)) }
-        var request = AppRequest(url: url, method: task.request.httpMethod ?? "GET", headers: task.request.allHTTPHeaderFields ?? [:], body: task.request.httpBody, mode: modeOf(webView), server: serverOf(webView))
+        var request = AppRequest(url: url, method: task.request.httpMethod ?? "GET", headers: task.request.allHTTPHeaderFields ?? [:], body: task.request.httpBody, mode: modeOf(webView), server: serverOf(webView), signIn: signInOf(webView))
         if request.body == nil, let stream = task.request.httpBodyStream { request.body = Self.drain(stream) }
         let id = ObjectIdentifier(task)
         work.async {
@@ -225,7 +229,7 @@ final class AppScheme: NSObject, WKURLSchemeHandler {
         let type = Self.types[real.pathExtension.lowercased()] ?? "application/octet-stream"
         var headers = ["Content-Type": type]
         if type.hasPrefix("text/html") {
-            headers["Content-Security-Policy"] = Self.csp(mode: r.mode, serviceOrigin: serviceOrigin, extraConnect: extraConnect, server: r.server)
+            headers["Content-Security-Policy"] = Self.csp(mode: r.mode, serviceOrigin: serviceOrigin, extraConnect: extraConnect, server: r.server, signIn: r.signIn)
             headers["Cache-Control"] = "no-cache"
         } else if segments.count > 1, segments[0] == "_next", segments[1] == "static" {
             // Next's hashed assets never change under the same name.
@@ -320,8 +324,8 @@ final class AppScheme: NSObject, WKURLSchemeHandler {
     /// The header policy for the interface's pages (protocol.ts shellCsp): local mode and the first-launch choice
     /// reach nothing but app://folevi itself; signed-in mode adds Folevi's website and Convex, or, for a Folevi
     /// Server place (`server`), that server's own origins instead (shared with iOS: ShellPolicy, ShellServer.swift).
-    static func csp(mode: String, serviceOrigin: String, extraConnect: [String] = [], server: ShellServer? = nil) -> String {
-        ShellPolicy.csp(mode: mode, serviceOrigin: serviceOrigin, extraConnect: extraConnect, server: server)
+    static func csp(mode: String, serviceOrigin: String, extraConnect: [String] = [], server: ShellServer? = nil, signIn: Bool = false) -> String {
+        ShellPolicy.csp(mode: mode, serviceOrigin: serviceOrigin, extraConnect: extraConnect, server: server, signIn: signIn)
     }
 
     static let types: [String: String] = [

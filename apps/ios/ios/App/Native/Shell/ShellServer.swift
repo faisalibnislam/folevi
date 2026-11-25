@@ -273,8 +273,11 @@ enum ShellPolicy {
 
     /// Local mode and the first-launch choice reach nothing but the app itself; a Folevi Cloud account adds
     /// Folevi's website and Convex (`serviceOrigin`, `*.convex.cloud`, `*.convex.site`, plus `extraConnect`); a
-    /// server place's account (`server`) reaches that server's origins only.
-    static func csp(mode: String, serviceOrigin: String, extraConnect: [String] = [], server: ShellServer? = nil) -> String {
+    /// server place's account (`server`) reaches that server's origins only. The sign-in screen (`signIn`: account
+    /// mode, no account yet) also reads any server's /.well-known/folevi.json ("Your own server", lookUpServer):
+    /// any https origin, and http, since a home server's address (a private IP) can't be named in a policy. It
+    /// holds no notes, and the app checks the server again itself (addServerPlace).
+    static func csp(mode: String, serviceOrigin: String, extraConnect: [String] = [], server: ShellServer? = nil, signIn: Bool = false) -> String {
         let account = mode == "account"
         var connect = ["'self'"]
         if account {
@@ -283,6 +286,7 @@ enum ShellPolicy {
             } else {
                 connect += [serviceOrigin, "https://*.convex.cloud", "wss://*.convex.cloud", "https://*.convex.site"] + extraConnect
             }
+            if signIn { connect += ["https:", "http:"] }
         }
         var seen = Set<String>()
         connect = connect.filter { seen.insert($0).inserted }

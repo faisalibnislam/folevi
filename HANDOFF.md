@@ -251,6 +251,22 @@ The ones most likely to be broken:
 
 ## 9. Current state (as of 2026-11-25)
 
+**Native iOS again, matching today's UI (2026-11-25, branch `claude/ios-native-today-ui`, worktree
+`.claude/worktrees/ios-native-today`).** The owner found the Capacitor app finicky and chose native SwiftUI for
+everything but the writing area, matching today's UI with Liquid Glass and iOS's own controls (decisions:
+`docs/claude-context/memory/native-apps-today-ui-2026-11-25.md`). The base is `apps/ios` + `apps/native-kit` on
+`main` (RebuildFrame, FoleviPhone), which already had native screens; one big switch, Simulator only until then.
+- Step 1 (ae912d75): iOS 26 minimum; `NativeChrome.brandText` keeps Folevi's fonts for interface text (Instrument
+  Sans, Spectral titles via the navigation bar's appearance); plain rows on the web canvas instead of cards on grey
+  (`PhoneLook.frame` = canvas, `phoneCard` draws no card; grouped screens keep the grey); Home in today's order
+  with "Search in <place>" (`PhoneSearchOpener`); + as a floating Liquid Glass button over the tab bar
+  (`PhoneCreateButton`; iOS's bar holds five items), no + or search capsule in the top bars. Mac package builds.
+- Checked on the "Folevi Native iPhone" Simulator (AC2852C2), local mode: Home, Tasks, Calendar, a note, Foli AI's
+  sheet, the account sheet. Reference shots of today's app from the Capacitor build on "Folevi Mobile iPhone".
+- Next: screen-by-screen details (Tasks' filter field, Calendar's large title, Search, Settings, sheets), this
+  week's Capacitor-only work carried over (sync sheet redesign, Folevi Server sign-in, keyboard and Duo fixes),
+  native Foli AI chat finish, then iPad and iPhone Duo, tests, the switch.
+
 **Foli AI on Gemini, OpenAI and Anthropic (branch `claude/foli-ai-openai-anthropic-8112bb`, 2026-11-25, PR open, not
 merged).** Owner's decisions: `docs/claude-context/memory/foli-ai-multi-provider-decisions.md`. Admin > Foli AI
 (`/admin/foli-ai`, `convex/aiConfig.ts`, `components/admin/FoliAiView.tsx`) picks a provider per feature (chat,
@@ -1216,6 +1232,7 @@ account button should move past iPadOS's window buttons).
   `DATABASE_UDF_USER_TIMEOUT_SECONDS=4` for that backend. Bursts show in `convex.log` as "took a long time".
 
 ## 12. Change log
+- 2026-11-25: Native iOS restarted on `claude/ios-native-today-ui` to match today's UI (owner's decision); step 1 committed (ae912d75).
 - 2026-11-25: **Integration branch `claude/integration-2026-11-25`** (the owner: "check and resolve [the merging issues]
   and release all apps and platforms, I approve everything"). The backlog could not drain PR by PR: every PR edits
   this file, so each merge made the others conflict and restart CI, and the PRs also conflicted in code. PRs 104, 96,

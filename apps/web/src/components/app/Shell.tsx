@@ -2,6 +2,7 @@
 
 import { createContext, lazy, Suspense, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useQuery } from "@/lib/convex/queries";
+import { useOfflineQuery } from "@/lib/sync/queryCache";
 import { ChevronLeft, ChevronRight, GripVertical, PanelLeft, Plus, X } from "lucide-react";
 import { usePane } from "@/lib/app/panes";
 import { api } from "@/lib/convex/api";
@@ -415,7 +416,8 @@ function WebShell() {
   const aiOnRef = useRef(aiOn);
   aiOnRef.current = aiOn;
   const createDocument = useCreateDocument();
-  const settings = useQuery(api.settings.status, {});
+  // The last answer kept on this device first, so a server banner doesn't arrive late and push the app down.
+  const settings = useOfflineQuery(api.settings.status, {});
   const { profile, context } = useAppState();
   const [sidebarSlot, setSidebarSlot] = useState<HTMLElement | null>(null);
   const [docSidebarMode, setDocSidebarModePref] = useLocalStorage<"document" | "folders">("folevi:doc-sidebar-mode", "document");
@@ -449,6 +451,69 @@ function WebShell() {
   const [tightOpen, setTightOpen] = useState(false);
   useEffect(() => setTightOpen(false), [tight]);
   const sidebarOpen = isNarrow ? drawerOpen : tight ? tightOpen : !collapsed;
+  // On the iPad the sidebar slides in and out (iPadOS's sidebar), the page moving with it: while it slides out it
+  // stays drawn, inert, over the page (which already has its full width), and goes once it's out of sight.
+  const sidebarShown = sidebarOpen || foldSplit;
+  const [sidebarLeaving, setSidebarLeaving] = useState(false);
+  const [sidebarShownBefore, setSidebarShownBefore] = useState(sidebarShown);
+  if (sidebarShownBefore !== sidebarShown) {
+    setSidebarShownBefore(sidebarShown);
+    setSidebarLeaving(ipad && !sidebarShown);
+  }
+  const sidebarGoing = sidebarLeaving && ipad && !isNarrow && !sidebarShown;
+  const sidebarPanel = useRef<HTMLDivElement>(null);
+  const contentPanel = useRef<HTMLDivElement>(null);
+  const sidebarMotion = useRef<Animation[]>([]);
+  const sidebarWasShown = useRef(sidebarShown);
+  useLayoutEffect(() => {
+    if (sidebarWasShown.current === sidebarShown) return;
+    sidebarWasShown.current = sidebarShown;
+    const panel = sidebarPanel.current;
+    const content = contentPanel.current;
+    if (!ipad || isNarrow || !panel || !content) return;
+    // Interrupted halfway (opened again as it closes, say): each part goes on from where it is now.
+    const offset = (el: Element) => {
+      const t = getComputedStyle(el).transform;
+      return t && t !== "none" ? new DOMMatrixReadOnly(t).m41 : 0;
+    };
+    const running = sidebarMotion.current.length > 0;
+    const panelFrom = running ? offset(panel) : null;
+    const panelOpacity = running ? Number(getComputedStyle(panel).opacity) : null;
+    const contentFrom = running ? offset(content) : 0;
+    for (const a of sidebarMotion.current) a.cancel();
+    content.style.marginRight = "";
+    // How far the page moves: the sidebar's width and the gap after it.
+    const delta = panel.getBoundingClientRect().width + (parseFloat(getComputedStyle(panel.parentElement ?? panel).columnGap) || 0);
+    const timing: KeyframeAnimationOptions = { duration: 260, easing: "cubic-bezier(0.32, 0.72, 0, 1)" };
+    let anims: Animation[];
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      // Reduce Motion: a quick fade, nothing moves.
+      anims = [panel.animate([{ opacity: panelOpacity ?? (sidebarShown ? 0 : 1) }, { opacity: sidebarShown ? 1 : 0 }], { duration: 160, easing: "ease-out", fill: sidebarShown ? "none" : "forwards" })];
+    } else if (sidebarShown) {
+      // In: the page keeps its old width while it slides (its right edge out of sight), and narrows once there.
+      content.style.marginRight = `${-delta}px`;
+      anims = [
+        panel.animate([{ transform: `translateX(${panelFrom ?? -delta}px)` }, { transform: "translateX(0)" }], timing),
+        content.animate([{ transform: `translateX(${contentFrom - delta}px)` }, { transform: "translateX(0)" }], timing),
+      ];
+    } else {
+      // Out: the page has its full width already and slides back from where it was.
+      anims = [
+        panel.animate([{ transform: `translateX(${panelFrom ?? 0}px)` }, { transform: `translateX(${-delta}px)` }], { ...timing, fill: "forwards" }),
+        content.animate([{ transform: `translateX(${contentFrom + delta}px)` }, { transform: "translateX(0)" }], timing),
+      ];
+    }
+    sidebarMotion.current = anims;
+    const shown = sidebarShown;
+    void Promise.all(anims.map((a) => a.finished)).then(
+      () => {
+        if (sidebarMotion.current === anims) sidebarMotion.current = [];
+        content.style.marginRight = "";
+        if (!shown) setSidebarLeaving(false);
+      },
+      () => undefined,
+    );
+  }, [sidebarShown, ipad, isNarrow]);
   const toggleSidebar = useCallback(() => {
     if (isNarrow) setDrawerOpen((o) => !o);
     else if (tight) setTightOpen((o) => !o);
@@ -536,7 +601,6 @@ function WebShell() {
 
   // Dragging moves the panel's edge directly and saves the width once, on release: saving on every move
   // wrote localStorage and re-rendered the whole app each time.
-  const sidebarPanel = useRef<HTMLDivElement>(null);
   const startResize = (e: React.PointerEvent) => {
     e.preventDefault();
     const startX = e.clientX;
@@ -643,15 +707,17 @@ function WebShell() {
         </div>
         {isNarrow ? (
           drawerOpen ? <NavDrawer onClose={closeDrawer}>{pageSidebar ? <div ref={setSidebarSlot} className="h-full" /> : <Sidebar onNavigate={closeDrawer} />}</NavDrawer> : null
-        ) : sidebarOpen || foldSplit ? (
+        ) : sidebarShown || sidebarGoing ? (
           // The tablet's sidebar is iPadOS's width, 320, and isn't dragged (a finger can't hold a 4 pt edge). On a
           // foldable partly open like a book it fills the first half and ends before the fold, and the page starts
           // past it: nothing sits in the fold (the owner's iPhone Duo rule).
           <div
             ref={sidebarPanel}
             data-ipad-sidebar={ipad ? "" : undefined}
+            inert={sidebarGoing}
             className="relative z-20 flex-none"
-            style={foldSplit && foldLine ? { width: Math.max(240, foldLine.start - 12), marginRight: foldLine.size + 4 } : { width: ipad ? 320 : width }}
+            // (Sliding out, it gives its room back at once: the page takes its full width under it.)
+            style={foldSplit && foldLine ? { width: Math.max(240, foldLine.start - 12), marginRight: foldLine.size + 4 } : { width: ipad ? 320 : width, marginRight: sidebarGoing ? -(320 + 8) : undefined }}
           >
             {pageSidebar ? <div ref={setSidebarSlot} className="h-full" /> : <Sidebar />}
             {ipad || foldSplit ? null : <div
@@ -673,7 +739,7 @@ function WebShell() {
         ) : null}
         {/* While the modal drawer is open, the page behind it is inert (not focusable, hidden from AT). */}
         {/* The content panel. A note brings its own panel (its page on its backdrop), so it sits straight on the canvas. */}
-        <div className={`relative flex min-w-0 flex-1 flex-col ${isNarrow ? "" : route.name === "doc" ? "" : "ui-content overflow-hidden rounded-container"}`} inert={isNarrow && drawerOpen}>
+        <div ref={contentPanel} className={`relative flex min-w-0 flex-1 flex-col ${isNarrow ? "" : route.name === "doc" ? "" : "ui-content overflow-hidden rounded-container"}`} inert={isNarrow && drawerOpen}>
           {/* The tab strip floats over the view: content scrolls behind it (views pad their top to clear it). */}
           {!isNarrow ? <TabStrip /> : null}
           <RouteView />
@@ -805,7 +871,7 @@ export function ViewChrome({ title, subtitle, leading, actions, children, tabTit
  * place; × takes the note out into its own tab.
  */
 function JoinedBar({ joined, primary, title, tabTitle, sync, actions }: { joined: NonNullable<ReturnType<typeof usePane>["joined"]>; primary: boolean; title: ReactNode; tabTitle?: string; sync: ReactNode; actions?: ReactNode }) {
-  const PANE_BTN = "grid h-7 w-7 flex-none place-items-center rounded-control text-faint outline-none transition-colors hover:bg-[var(--glass-hover)] hover:text-heading focus-visible:ring-2 focus-visible:ring-focus disabled:pointer-events-none disabled:opacity-30";
+  const PANE_BTN = "ui-hit grid h-7 w-7 flex-none place-items-center rounded-control text-faint outline-none transition-colors hover:bg-[var(--glass-hover)] hover:text-heading focus-visible:ring-2 focus-visible:ring-focus disabled:pointer-events-none disabled:opacity-30";
   return (
     <header
       onPointerDown={joined.dragStart}

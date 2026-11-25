@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Paintbrush, Plus, Type } from "lucide-react";
 import { AiIcon } from "@/components/ai/AiIcon";
 import { setDockClearance } from "@/components/editor/scrollEdges";
+import { rideKeyboard } from "@/lib/native/ui";
 import type { InspectorTab } from "./Inspector";
 import "./page-dock.css";
 
@@ -24,11 +25,12 @@ export function dockCompact(noteWidth: number): boolean {
 
 /**
  * Icons only when the note the bar floats over is narrower than its words: measured on the note itself, so a
- * tools panel open beside it counts (QA audit F03), not only the pane's or the window's width.
+ * tools panel open beside it counts (QA audit F03), not only the pane's or the window's width. Measured before the
+ * first paint, so a note never opens with words that turn into icons a moment later.
  */
 function useDockCompact(ref: React.RefObject<HTMLDivElement | null>): boolean {
   const [compact, setCompact] = useState(false);
-  useEffect(() => {
+  useLayoutEffect(() => {
     const note = ref.current?.parentElement;
     if (!note || typeof ResizeObserver === "undefined") return;
     const measure = () => setCompact(dockCompact(note.clientWidth));
@@ -78,13 +80,15 @@ function useDockClearance(ref: React.RefObject<HTMLDivElement | null>) {
     // The scroller's own padding changes with its classes (a drawer open below it, the phone layout).
     const classes = new MutationObserver(later);
     classes.observe(page, { attributes: true, attributeFilter: ["class"] });
-    // The on-screen keyboard lifts the bar (--kb-inset) without resizing it.
+    // The on-screen keyboard lifts the bar (--kb-inset; --kb-ride in the iOS app) without resizing it.
+    const stopRide = rideKeyboard(dock, { onMove: later });
     const viewport = window.visualViewport;
     window.addEventListener("resize", later);
     viewport?.addEventListener("resize", later);
     viewport?.addEventListener("scroll", later);
     return () => {
       cancelAnimationFrame(frame);
+      stopRide();
       size.disconnect();
       classes.disconnect();
       window.removeEventListener("resize", later);
@@ -113,11 +117,12 @@ export function PageDock({ tab, open, onPick, buttonRef, extra, ai = true }: { t
       data-compact={compact ? "" : undefined}
       role="toolbar"
       aria-label="Page tools"
-      // Lifted above the on-screen keyboard (--kb-inset, set by useKeyboardInset).
+      // Lifted above the on-screen keyboard: --kb-inset (set by useKeyboardInset) on the web, --kb-ride (rideKeyboard,
+      // moving with the keyboard before the web view shrinks) in the iOS app.
       // Never wider than the note it floats over: icons only when the words don't fit (globals.css, Page tools),
       // and as a last resort it scrolls sideways, so its first and last actions stay in reach (QA audit F03).
       data-note-dock
-      className="ui-pop absolute bottom-[calc(1.25rem+var(--kb-inset,0px))] left-1/2 z-30 flex max-w-[calc(100%-1rem)] -translate-x-1/2 items-center gap-0.5 overflow-x-auto rounded-panel p-1 [scrollbar-width:none]"
+      className="ui-pop absolute bottom-[calc(1.25rem+var(--kb-inset,0px)+var(--kb-ride,0px))] left-1/2 z-30 flex max-w-[calc(100%-1rem)] -translate-x-1/2 items-center gap-0.5 overflow-x-auto rounded-panel p-1 [scrollbar-width:none]"
     >
       {DOCK.filter((d) => ai || d.id !== "ai").map((d) => {
         const on = open && tab === d.id;

@@ -23,7 +23,7 @@ final class FoleviNativePlugin: BridgePlugin {
         // Local mode's widgets, Shortcuts and Spotlight (apps/ios Native/LocalExtensions.swift).
         "setWidgetSnapshot", "takeLocalActions", "finishLocalAction", "indexSpotlight",
         // The keyboard's moves for the page (apps/ios Native/UI/KeyboardBridge.swift).
-        "keyboard",
+        "keyboard", "keyboardWillLeave",
     ]
 
     /// A widget or an intent queuing something while the app runs tells this page ("folevi:local-actions").
@@ -140,3 +140,24 @@ final class FoleviNativePlugin: BridgePlugin {
         return top
     }
 }
+
+extension FoleviNativePlugin {
+    /// The page is about to let the keyboard go (a sheet closing with its field in focus): the web view gets its full
+    /// height back now, while the keyboard still covers the bottom, so WebKit lays out and draws what the keyboard
+    /// will uncover before it moves. (Capacitor's Keyboard plugin gives the height back only as the keyboard leaves,
+    /// and the uncovered part showed blank for a moment.) When the keyboard then goes, the plugin finds the web view
+    /// already at that size.
+    @objc func keyboardWillLeave(_ call: BridgeCall) {
+        Task { @MainActor in
+            guard self.fromFolevi else { return call.reject("Not allowed here") }
+            if let webView = self.bridge?.webView, let window = webView.window {
+                let f = window.bounds
+                let wf = webView.frame
+                let full = CGRect(x: wf.origin.x, y: wf.origin.y, width: f.width - wf.origin.x, height: f.height - wf.origin.y)
+                if wf.height < full.height - 0.5 { webView.frame = full }
+            }
+            call.resolve()
+        }
+    }
+}
+

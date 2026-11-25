@@ -5,7 +5,7 @@ import { flushSync } from "react-dom";
 import { X } from "lucide-react";
 import { SPRINGS, VelocityTracker, prefersReducedMotion } from "@/lib/native/physics";
 import { safeInsets } from "@/lib/iphone";
-import { KEYBOARD_EASE, onKeyboardFrame } from "@/lib/native/ui";
+import { KEYBOARD_EASE, letKeyboardGo, onKeyboardFrame } from "@/lib/native/ui";
 import { dimAt, poseFor, releaseTarget, restingDetent, springFrames, springStart, type SheetPose } from "./sheetMotion";
 
 export type SheetSize = "fit" | "medium" | "large";
@@ -310,6 +310,11 @@ export function Sheet({
       const fromDim = s ? Number(getComputedStyle(s).opacity) || 0 : 0;
       stop();
       motion.current.closing = true;
+      // Typing in it: the keyboard goes down with the sheet, as on iOS, not half a second later once the sheet has
+      // gone (its field kept the focus until then, and the screen showed under a keyboard with nothing to type in).
+      const typing = document.activeElement;
+      // (A frame later: the sheet's own move has started by then and runs while the page is laid out again.)
+      if (typing instanceof HTMLElement && el.contains(typing)) requestAnimationFrame(() => letKeyboardGo(typing));
       const done = () => {
         if (!motion.current.closing) return;
         motion.current.closing = false;

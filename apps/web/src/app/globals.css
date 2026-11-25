@@ -185,6 +185,9 @@
   }
   /* With Reduce Motion what floats in still fades in (the owner, 2026-11-01), without moving or bouncing. */
   .ui-pop { animation-name: folio-fade !important; animation-duration: 120ms !important; animation-timing-function: linear !important; }
+  /* Fades that only change opacity (nothing moves) keep a short fade instead of snapping: the top bar's material,
+     and anything that transitions opacity alone. Reduce Motion is about movement, not about things blinking. */
+  .iphone-bar, .transition-opacity { transition-duration: 150ms !important; }
 }
 
 /* Android's press ripple (lib/android/ripple.ts, inside the Android app only): a layer over the pressed control,
@@ -972,6 +975,14 @@
    starts on a card, tile, row or glass button doesn't flash it pressed; a tap still shows it (letting go has no
    delay). The owner's feedback, 2026-11-25: the app felt finicky. */
 :root[data-iphone] :is(.ui-glass-press, [class*="active:scale-"], [class*="active:bg-"]):active { transition-delay: 70ms !important; }
+/* The iPad (and other touch tablets): the sidebar's rows, the tabs and the sidebar's buttons style only hover, which
+   a finger never shows, so a press showed nothing. They show the same press as the phone's rows, after the same
+   beat, so scrolling the sidebar doesn't flash them. */
+:root[data-tablet] :is(nav[aria-label="Folio"] a, [data-ipad-tab]:is(a, button), [data-ipad-tab] :is(a, button), [data-ipad-sidebar] button):active {
+  background-color: var(--liquid-press);
+  transition-delay: 70ms;
+}
+:root[data-tablet] :is(.ui-glass-press, [class*="active:scale-"], [class*="active:bg-"]):active { transition-delay: 70ms !important; }
 /* A note opened on the phone arrives with the screen's own zoom or push: the page doesn't also fade and tilt in
    (folio-settle), which ran on top of the move and made opening a note look loose. */
 :root[data-iphone] .fb-sheet.ui-sheet { animation: none; }

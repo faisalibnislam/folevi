@@ -297,10 +297,46 @@ Capacitor app), PR 79 (failed queries keep pages up) and PR 80 (one set of sync 
   before the first frame, Changes and Reviews hold their last answer, Settings/Changes/Shared/Reviews/Vault preload
   on the phone and draw in the same turn (`RouteView.tsx soon`), the note bar takes the page's tone in
   `useLayoutEffect`, press feedback waits 70 ms, and a note no longer fades and tilts in on top of the zoom.
-  Not done from the audit (next): rows that vanish with no exit motion (checked tasks, swipe to Trash), SwipeRow's
-  non-passive touchmove (sticky scroll starts), the week-to-month strip animating height, the tab bar's CSS curve vs
-  the push spring, Reduce Motion cancelling opacity fades, the 150 ms wait before pushing to a note, Spectral swap on
-  cold launch, and the blank frame after the keyboard closes.
+- The rest of the audit, build 98 (delivery 6ce7ce3e-efa3-4ac1-aeca-0ba594e74920; the first upload try failed when a
+  cleanup removed altool's temporary copy, the retry with the same .ipa succeeded): leaving rows (checked tasks, swipe
+  to Trash/Archive) slide, fade and fold away (`components/iphone/exit.tsx`, `Swipe.tsx` `removes`, `Tasks.tsx`);
+  SwipeRow uses passive Pointer Events with `touch-action: pan-y` (no touchmove listener holding up scrolls); the
+  week-to-month strip moves with transforms only (`WeekStrip.tsx`); the tab bar moves on the push's spring when the
+  move starts (`transitions.ts onMoveStart`); `READY_WAIT_MS` 50 (was 150); Reduce Motion keeps opacity-only fades
+  (150 ms); Spectral uses `display: fallback`. Checked in the Simulator: the Foli AI composer above a real on-screen
+  keyboard (it stays at 292 of 374 pt), the month opening and closing, a checked task folding away after about 0.9 s.
+- Build 99 (delivery cea3add5-fcd0-4340-b6bc-5a8ceefb2abe): the keyboard leaves cleanly. Recorded in the Simulator
+  (`simctl io recordVideo --display=1`, frames at 30 fps): closing Foli AI, the keyboard stayed up about 0.45 s after
+  the sheet had gone, then Home showed blank where it had been for about 150 ms. Cause, measured: Capacitor's Keyboard
+  plugin gives the web view its height back at keyboardWillHide, and WebKit takes about 90 ms (the page's own resize
+  handlers take 0 ms) to lay the page out and draw it at the new size while the keyboard moves. Fix: a sheet closing
+  with its field in focus lets the keyboard go as it starts to close, through `letKeyboardGo` (`lib/native/ui.ts`),
+  which first calls the app's new `foleviNative.keyboardWillLeave` (`FoleviNativePlugin.swift`: the web view back to
+  full height under the keyboard) and blurs once the page has re-laid out and drawn (resize plus two frames, at most
+  300 ms); the sheet's own move starts a frame earlier. Done over a note and Hide keyboard use it too (blur after
+  126 ms, measured). After: no blank frames as the keyboard uncovers Home. A keyboard dismissed by the user's own
+  gesture (dragging it down) still goes the Capacitor way.
+- Swipe axis lock checked in the Simulator with real touch drags (List layout of All notes): a sideways swipe opens
+  Archive and Trash without scrolling; a vertical drag starting on a row scrolls the list 184 pt and opens nothing.
+- iPad polish pass, build 100 (delivery e0d350bc-6c0e-4517-ba54-7b8cb39076b6; owner: "do the same polish pass for
+  iPad"). The tablet layout (Shell, Sidebar, TabStrip, HomeDashboard, PageDock), audited then fixed:
+  - Sidebar: unmounted on close and when a note opens, so its counts and rows loaded again each time; all its queries
+    and the unread badge use `useOfflineQuery` (clock-moving ones held, as on the phone). It slides in and out with the
+    page (transform only, 260 ms; `Shell.tsx`), checked on the iPad Simulator: hide 8 to -320 over about 270 ms, show
+    with an ease-out. 44 pt targets for the folder chevron, Bookmarks toggle and pane buttons.
+  - Home: Today's reviews held, Recent folders measure columns before paint. Settings, Foli AI, Changes, Shared,
+    Reviews and Vault preload on the iPad too (`RouteView.tsx`). Tab titles keep known titles (`TabStrip.tsx`).
+  - Touch: sidebar rows, tabs and sidebar buttons show a press (they only had hover), after the 70 ms beat.
+  - Keyboard: the note's tool bar and overlay panels ride the keyboard (`rideKeyboard` in `lib/native/ui.ts`, the lift
+    is `max(0, keyboard - (screen - 100dvh))` in CSS so the web view's resize can't leave it a frame out of place;
+    measured: no more off-screen frame). Closing the floating chat, the command palette, prompts and popovers with a
+    field in focus lets the keyboard go first (`afterKeyboardGoes`).
+  - Motion: menus and popovers open on one 150 ms rise (`POP_IN`) and fade out (`popOut`); the note's floating side
+    panel fades out on Close panel (`Inspector.tsx`).
+  - Not changed, on purpose: `FolderDropLayer.tsx`'s document-wide non-passive touchmove (it lets press-and-hold drag
+    stop the page scrolling; WebKit decides at touchstart, so it can't be added mid-drag).
+  - Checked in local mode on a new "Folevi Feedback iPad" Simulator (iPad Air 11-inch): no late DOM insertions on Home,
+    All notes, Tasks, Calendar or a folder. Not checked signed in or on a device.
 - Memory re-check (the open item): Duo closed, 20 opens of "Welcome to Folevi": 126 MB, 200 MB, 130 MB after
   `org.WebKit.lowMemory`; nothing kept per open.
 - The three failing e2e specs listed in section 10 were already fixed on `main` by PR 77.
@@ -355,6 +391,12 @@ no native screens. Details: `docs/MOBILE.md`.
   terms accepted on the emulator; iOS's sign-in sheet couldn't be tapped from scripts); iPhone Duo open and
   folding (the simulator's hinge couldn't be moved from scripts on this Mac); push delivery.
 - Nothing uploaded; native releases stay paused (a release would be 1.5.71 or later via `node scripts/version.mjs`).
+**Backend performance pass (session `perf-backend`, 2026-11-25).** A generated 5,000-note test library
+(`convex/lib/fakeLibrary.ts`, seeded by `convex/devSeed.ts` into an `@example.com` test account, refused on
+production) and a read-cost harness (`tests/convex/perf/`, run with `FOLEVI_PERF=1`). Baseline and every fix's
+before/after numbers: `docs/perf/backend-results.md`. At 5,000 notes `organization.index` reads 13 MB per run (the
+limit is 16 MiB) and task lists read up to 1,476 documents.
+
 **A failed query no longer takes a page down (branch `claude/project-thread-u99yc5`, open PR, 2026-11-24).** Components
 read queries through `apps/web/src/lib/convex/queries.ts` (`useQuery`, `usePaginatedQuery`, `useQueryState`), never
 convex/react's (an eslint `no-restricted-imports` rule says so). A failed query reads as still loading (keeping its
@@ -697,11 +739,12 @@ account button should move past iPadOS's window buttons).
   Android ripple) and #64 (one wording set) are open and wait on CI and the owner's merge (merging deploys). Next PRs: shortcut labels per OS (about 40 files still write ⌘ by hand; `lib/shortcuts.ts keyLabel` exists),
   Windows/Linux/Android accents behind `data-shell`, one motion/empty/loading style, mobile web view performance,
   the "Your own server" sign-in with the Synology session. The starter "Welcome to Folevi" note names Mac shortcuts.
+- Backend performance pass (`docs/perf/backend-results.md`): kept folder and Drafts counts, task rows that carry
+  their note's title, a cheaper `changes.list`, then note text (`searchText`) split out of `documents`
+  (widen, backfill, narrow; the owner approves each production backfill).
 - Web everywhere (all landed 2026-11-25). Open: the iOS simulator `footprint` re-run of the iPhone memory fix (mobile
-  session); sync status labels still differ between phone and desktop (Saved/Synced, Offline/Waiting to sync,
-  Conflict/Edited in two places) and there are four empty-state components; lists not yet given `LoadFailed` still load
-  until a retry answers (settings lists, Calendar, Graph, pickers);
-  session); there are four empty-state components; no error state when a list fails to load;
+  session); there are four empty-state components; lists not yet given `LoadFailed` still load until a retry answers
+  (settings lists, Calendar, Graph, pickers);
   splitting the phone interface out of every page's bundle (measure with a production build first); "Your own server"
   sign-in for the apps, planned in the shared notes (`web-everywhere-own-server-plan.md`), after the Synology branch
   lands; the starter "Welcome to Folevi" note names Mac shortcuts. Known failing e2e on `main` (not from this work):
@@ -868,6 +911,15 @@ account button should move past iPadOS's window buttons).
 - 2026-11-24: Owner: keep note covers inside the mobile app and sync note styles when the server changes them. Plan in docs/MOBILE.md; local mode's part asked of the owner.
 - 2026-11-24: PR 66 opened for the Capacitor mobile app (`claude/mobile-capacitor-f41734` pushed); open question to the owner: note covers.
 - 2026-11-24: `apps/mobile`: one Capacitor app for iPhone, iPad, iPhone Duo and Android around the web app (no native screens), reusing the shared Swift and Kotlin services; window-size layouts in `lib/iphone.ts`; `version.mjs` covers it; checked on simulators and emulators, size and memory compared (docs/MOBILE.md). Branch `claude/mobile-capacitor-f41734`, PR not merged.
+- 2026-11-25: Backend performance pass, step 1: a generated 5,000-note test library (`convex/devSeed.ts`, test
+  accounts only, refused on production), a read-cost harness with Convex's limits on (`tests/convex/perf/`), and the
+  baseline in `docs/perf/backend-results.md`.
+- 2026-11-25: One set of sync status words on every screen (owner's pick: the desktop's): the phone and iPad's sync
+  button (`components/iphone/SyncStatusTouch.tsx`) now reads `SYNC_LABELS` from `components/app/SyncStatus.tsx`
+  (Saved, Saving…, Syncing…, Offline, Conflict, Not saved) instead of Synced / Waiting to sync / Edited in two places,
+  and its accessible name is the desktop's `sync.button.label` ("Sync status: Offline, 2 changes waiting").
+  `offline-notes.spec.ts` follows. Help, docs and marketing already used these words. The paused native apps'
+  `SyncStatus.swift` was left as it is. Web unit tests: 2161 pass; e2e not run locally.
 - 2026-11-25: PR 79 review fix: a paginated list that failed emptied and swapped "Couldn't load" for the loading
   placeholder on every retry (the retry starts the query over from its first page, and that first load read as
   "ok"). `usePaginatedQuery` now keeps the loaded results and `failed` until the restarted query answers; new
@@ -876,12 +928,6 @@ account button should move past iPadOS's window buttons).
 - 2026-11-24: Failed queries keep the page: `lib/convex/queries.ts` hooks (retry with backoff, last good result,
   `failed` and `retry()`), used in every component with an eslint rule; `LoadFailed` error state on the main lists;
   local query cache re-runs failed entries; `test/safe-queries.test.tsx`.
-- 2026-11-25: One set of sync status words on every screen (owner's pick: the desktop's): the phone and iPad's sync
-  button (`components/iphone/SyncStatusTouch.tsx`) now reads `SYNC_LABELS` from `components/app/SyncStatus.tsx`
-  (Saved, Saving…, Syncing…, Offline, Conflict, Not saved) instead of Synced / Waiting to sync / Edited in two places,
-  and its accessible name is the desktop's `sync.button.label` ("Sync status: Offline, 2 changes waiting").
-  `offline-notes.spec.ts` follows. Help, docs and marketing already used these words. The paused native apps'
-  `SyncStatus.swift` was left as it is. Web unit tests: 2161 pass; e2e not run locally.
 - 2026-11-25: Web everywhere queue landed (61, 62, 63, 64, 70, 75, 71, 72 after 68 and 74); this is their combined entry:
   PR 62 shortcuts per system (and documents.spec:187 waits for the bar's Share and the panel's focus instead of racing
   them); PR 63 Mac no-bounce motion and Android press ripple, the owner's picks in the web-everywhere memory; PR 64 one

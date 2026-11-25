@@ -208,6 +208,10 @@
             }
           });
         },
+        /** The page is about to let the keyboard go: the web view takes its full height back first (drawn under it). */
+        keyboardWillLeave: function () {
+          return quietly(call("FoleviNative", "keyboardWillLeave")).then(function () {});
+        },
         /** { interactiveDismiss }: whether a drag down in a scrolling view takes the keyboard with the finger. */
         keyboard: function (o) {
           return quietly(call("FoleviNative", "keyboard", { interactiveDismiss: !!(o && o.interactiveDismiss) })).then(function () {});

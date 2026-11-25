@@ -1,0 +1,17 @@
+{
+  "mcpServers": {
+    "convex-prod-readonly": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "convex@1.46.0",
+        "mcp",
+        "start",
+        "--prod",
+        "--cautiously-allow-production-pii",
+        "--disable-tools",
+        "data,envGet,envList,envRemove,envSet,run,runOneoffQuery"
+      ]
+    }
+  }
+}

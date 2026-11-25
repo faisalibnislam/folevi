@@ -263,6 +263,8 @@ export interface NativeBridge {
   share?(o: { title?: string; text?: string; url?: string; anchor?: NativeRect }): Promise<boolean>;
   /** How the keyboard behaves: dragging a view that scrolls down past the keyboard takes it away with the finger. */
   keyboard?(o: { interactiveDismiss?: boolean }): void;
+  /** The page is about to let the keyboard go: the app gives the web view its full height back first. */
+  keyboardWillLeave?(): Promise<void>;
   /** Every move of the keyboard (shown, hidden, resized, dragged by a finger); returns the function that stops. */
   onKeyboard?(listener: (frame: NativeKeyboardFrame) => void): () => void;
   /** Text onto the pasteboard; true once it's there. (The app also stands in for navigator.clipboard.writeText when WebKit refuses it.) */

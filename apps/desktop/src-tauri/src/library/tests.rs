@@ -445,3 +445,30 @@ fn library_ids_and_manifests() {
     assert!(is_plain_attachment_path("files/9f/9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08"));
     assert!(!is_plain_attachment_path("files/9f/abc"));
 }
+
+#[tokio::test]
+async fn calls_wait_for_the_launch_open_instead_of_finding_it_unopened() {
+    let k = make();
+    ok(&k, "libSetup", json!({ "kind": "device" })).await;
+    let sha = hex::encode(sha2::Sha256::digest(b"picture"));
+    write(&k, &format!("files/{}/{sha}", &sha[..2]), b"picture").await;
+    k.s.dispose();
+
+    // The next launch opens in the background; calls made meanwhile see the library as configured.
+    let again = make_with(Some(k.home.clone()), Some(k.user_data.clone()), None);
+    assert!(!again.s.is_ready());
+    let s2 = again.s.clone();
+    let opening = tokio::spawn(async move { s2.open().await });
+    let (info, file) = tokio::join!(again.s.info(), again.s.attachment(&sha));
+    assert_eq!((info["configured"].clone(), info["available"].clone()), (json!(true), json!(true)));
+    assert_eq!(file.unwrap(), Some((b"picture".to_vec(), None)));
+    opening.await.unwrap();
+    assert!(again.s.is_ready());
+
+    // An attachment asked for before anything opened the library opens it itself.
+    let third = make_with(Some(k.home.clone()), Some(k.user_data.clone()), None);
+    assert_eq!(third.s.attachment(&sha).await.unwrap(), Some((b"picture".to_vec(), None)));
+    assert!(third.s.is_ready());
+    again.s.dispose();
+    third.s.dispose();
+}

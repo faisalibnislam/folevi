@@ -112,6 +112,8 @@ struct State {
     due: Vec<Reminder>,
     /// A write of the file is on its way.
     save_pending: bool,
+    /// load_soon asked for the saved reminders and they aren't loaded yet.
+    load_pending: bool,
 }
 
 pub struct Reminders {
@@ -146,10 +148,40 @@ impl Reminders {
         Arc::new_cyclic(|me| Self { file, show, now, step: step.max(1), me: me.clone(), state: Mutex::new(State::default()), writing: Mutex::new(()) })
     }
 
-    /// Loads the saved reminders and arms them (late ones within a day still show).
+    /// Loads the saved reminders and arms them (late ones within a day still show). The app uses load_soon.
+    #[cfg_attr(not(test), allow(dead_code))]
     pub fn load(self: &Arc<Self>) {
         let mut st = self.state.lock();
-        Self::stop_all(&mut st);
+        self.load_into(&mut st);
+        self.flush(st);
+    }
+
+    /// The same on a worker thread (launch), so the window doesn't wait for the file. Any call that comes
+    /// before it's done loads them itself first, so nothing scheduled meanwhile is lost or loaded over.
+    pub fn load_soon(self: &Arc<Self>) {
+        self.state.lock().load_pending = true;
+        let me = self.clone();
+        spawn(async move {
+            let _ = tokio::task::spawn_blocking(move || {
+                let st = me.ready();
+                me.flush(st);
+            })
+            .await;
+        });
+    }
+
+    /// The state, with the saved reminders loaded first if load_soon hasn't got to it yet.
+    fn ready(&self) -> parking_lot::MutexGuard<'_, State> {
+        let mut st = self.state.lock();
+        if st.load_pending {
+            self.load_into(&mut st);
+        }
+        st
+    }
+
+    fn load_into(&self, st: &mut State) {
+        st.load_pending = false;
+        Self::stop_all(st);
         st.reminders.clear();
         let data: Value = std::fs::read(&self.file).ok().and_then(|b| serde_json::from_slice(&b).ok()).unwrap_or(Value::Null);
         let now = (self.now)();
@@ -172,16 +204,15 @@ impl Reminders {
         }
         let all: Vec<Reminder> = st.reminders.values().cloned().collect();
         for r in all {
-            self.arm(&mut st, r);
+            self.arm(st, r);
         }
-        self.save(&mut st);
-        self.flush(st);
+        self.save(st);
     }
 
     /// notifySchedule's options; false when they aren't a reminder.
     pub fn schedule(self: &Arc<Self>, o: &Value) -> bool {
         let Some(r) = clean_reminder(o) else { return false };
-        let mut st = self.state.lock();
+        let mut st = self.ready();
         if !st.reminders.contains_key(&r.id) && st.reminders.len() >= MAX_REMINDERS {
             return false;
         }
@@ -194,18 +225,17 @@ impl Reminders {
     }
 
     pub fn cancel(&self, id: &str) {
-        let mut st = self.state.lock();
-        if !st.reminders.contains_key(id) {
-            return;
+        let mut st = self.ready();
+        if st.reminders.remove(id).is_some() {
+            Self::disarm(&mut st, id);
+            self.save(&mut st);
         }
-        Self::disarm(&mut st, id);
-        st.reminders.remove(id);
-        self.save(&mut st);
+        self.flush(st);
     }
 
     /// Drops every reminder (leaving local mode).
     pub fn clear(&self) {
-        let mut st = self.state.lock();
+        let mut st = self.ready();
         Self::stop_all(&mut st);
         st.reminders.clear();
         self.save(&mut st);
@@ -213,7 +243,10 @@ impl Reminders {
 
     /// What's waiting, soonest first.
     pub fn pending(&self) -> Vec<Reminder> {
-        Self::sorted(&self.state.lock())
+        let st = self.ready();
+        let list = Self::sorted(&st);
+        self.flush(st);
+        list
     }
 
     /// Stops every timer (the reminders stay saved).
@@ -332,7 +365,7 @@ impl Reminders {
     pub fn save_now(&self) {
         let _writing = self.writing.lock();
         let bytes = {
-            let mut st = self.state.lock();
+            let mut st = self.ready();
             st.save_pending = false;
             serde_json::to_vec(&FileShape { reminders: Self::sorted(&st), shown: &st.shown })
         };
@@ -435,6 +468,34 @@ mod tests {
         assert!(shown.lock().is_empty());
         advance(3000).await;
         assert_eq!(ids(&shown), vec!["reminder:a"]);
+    }
+
+    #[tokio::test]
+    async fn a_call_before_the_background_load_keeps_what_was_saved() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("reminders.json");
+        let now = clock();
+        let first = reminders(path.clone(), Arc::new(|_| {}), now.clone());
+        first.load();
+        first.schedule(&reminder("reminder:saved", now() + 60_000));
+        first.save_now();
+        first.stop();
+
+        // The next launch loads in the background; the page schedules one before that load has run (this
+        // runtime runs one task at a time, so the load can't have started yet).
+        let (show, shown) = recorder();
+        let second = reminders(path.clone(), show, now.clone());
+        second.load_soon();
+        assert!(second.schedule(&reminder("reminder:new", now() + 30_000)));
+        let ids_of = |r: &Reminders| r.pending().into_iter().map(|r| r.id).collect::<Vec<_>>();
+        assert_eq!(ids_of(&second), vec!["reminder:new", "reminder:saved"]);
+        // The background load, when it runs, doesn't load over the new one.
+        advance(0).await;
+        assert_eq!(ids_of(&second), vec!["reminder:new", "reminder:saved"]);
+        assert_eq!(second.armed(), 2);
+        advance(30_000).await;
+        assert_eq!(ids(&shown), vec!["reminder:new"]);
+        second.stop();
     }
 
     #[tokio::test]

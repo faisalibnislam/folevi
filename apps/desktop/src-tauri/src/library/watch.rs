@@ -1,6 +1,9 @@
 //! Change detection for the library folder (docs/LOCAL_MODE_PLAN.md §3.7): the system's file notifications
-//! (ReadDirectoryChangesW on Windows, inotify on Linux, through `notify`) for speed, plus a full listing every 30
-//! seconds, because notifications can be dropped or coalesced and sync apps write behind their back. Every listing
+//! (ReadDirectoryChangesW on Windows, inotify on Linux, through `notify`) for speed, plus a full listing as a safety
+//! net, because notifications can be dropped or coalesced and sync apps write behind their back. The listing runs
+//! every 30 seconds while notifications aren't working (none could be set up, or one reported an error), and only
+//! every few minutes while they are, so an idle library isn't walked twice a minute; the app also rescans when its
+//! window comes to the front. Every listing
 //! is compared with the state last reported, so the page gets one batch per burst of changes, each path once,
 //! in path order, and never its own writes back (the service notes them). The same batches as the iPhone's
 //! LibraryWatcher.swift: [{ path, kind }], kind "changed" (new or a different etag), "removed" or "downloaded"
@@ -16,6 +19,8 @@ use super::fs::Entry;
 use super::paths::TMP_DIR;
 
 pub const SCAN_INTERVAL: Duration = Duration::from_secs(30);
+/// How many SCAN_INTERVALs apart the safety-net listings are while notifications are working (5 minutes).
+const WATCHED_FACTOR: u32 = 10;
 pub const DEBOUNCE: Duration = Duration::from_millis(300);
 /// A steady stream of events still gets a scan this often.
 const MAX_DELAY: Duration = Duration::from_secs(2);
@@ -90,10 +95,21 @@ pub fn batch(changes: &[(String, &'static str)]) -> Value {
 
 enum Msg {
     Fs,
+    /// The notifications reported an error (dropped events, a watch that broke): listings go back to `interval`.
+    FsError,
     Stop,
 }
 
-/// A running watcher: notifications and the 30 s listing, on a thread of its own. Stops when dropped.
+/// How long to wait between safety-net listings: `interval` without working notifications, longer with them.
+fn full_interval(interval: Duration, notifications_ok: bool) -> Duration {
+    if notifications_ok {
+        interval.saturating_mul(WATCHED_FACTOR)
+    } else {
+        interval
+    }
+}
+
+/// A running watcher: notifications and the safety-net listing, on a thread of its own. Stops when dropped.
 pub struct WatchHandle {
     tx: Sender<Msg>,
     _watcher: Option<notify::RecommendedWatcher>,
@@ -106,37 +122,47 @@ impl Drop for WatchHandle {
 }
 
 /// Watches `root`: `scan(true)` once first (the baseline), then `scan(false)` after each burst of changes and every
-/// `interval`. `scan` returns false when this watcher is no longer the library's (it then stops).
+/// `interval` (ten times that while notifications work). `scan` returns false when this watcher is no longer the
+/// library's (it then stops).
 pub fn start(root: PathBuf, interval: Duration, scan: impl Fn(bool) -> bool + Send + 'static) -> WatchHandle {
     let (tx, rx) = mpsc::channel::<Msg>();
     let events = tx.clone();
     let watcher = notify::recommended_watcher(move |res: notify::Result<notify::Event>| {
-        let relevant = match res {
+        match res {
             // Our own temporary files say nothing; everything else might.
-            Ok(ev) => ev.paths.is_empty() || ev.paths.iter().any(|p| !p.components().any(|c| c.as_os_str() == TMP_DIR)),
-            Err(_) => true,
-        };
-        if relevant {
-            let _ = events.send(Msg::Fs);
+            Ok(ev) => {
+                if ev.paths.is_empty() || ev.paths.iter().any(|p| !p.components().any(|c| c.as_os_str() == TMP_DIR)) {
+                    let _ = events.send(Msg::Fs);
+                }
+            }
+            Err(_) => {
+                let _ = events.send(Msg::FsError);
+            }
         }
     })
     .ok()
     .and_then(|mut w| w.watch(&root, RecursiveMode::Recursive).ok().map(|_| w));
-    // Without notifications (a network share, too many inotify watches) the listings still run.
+    // Without notifications (a network share, too many inotify watches) the listings still run, every `interval`.
+    let mut notifications_ok = watcher.is_some();
     std::thread::Builder::new()
         .name("folevi-library-watch".into())
         .spawn(move || {
             if !scan(true) {
                 return;
             }
-            let mut next_full = Instant::now() + interval;
+            let mut next_full = Instant::now() + full_interval(interval, notifications_ok);
             let mut pending: Option<(Instant, Instant)> = None; // (fire at, first event)
             loop {
                 let now = Instant::now();
                 let wake = pending.map(|(at, _)| at).unwrap_or(next_full).min(next_full);
                 match rx.recv_timeout(wake.saturating_duration_since(now)) {
-                    Ok(Msg::Fs) => {
+                    Ok(msg @ (Msg::Fs | Msg::FsError)) => {
                         let now = Instant::now();
+                        if matches!(msg, Msg::FsError) && notifications_ok {
+                            // Something may have been missed: look soon, and keep looking often from now on.
+                            notifications_ok = false;
+                            next_full = next_full.min(now + interval);
+                        }
                         let first = pending.map(|(_, f)| f).unwrap_or(now);
                         pending = Some(((now + DEBOUNCE).min(first + MAX_DELAY), first));
                     }
@@ -146,7 +172,7 @@ pub fn start(root: PathBuf, interval: Duration, scan: impl Fn(bool) -> bool + Se
                         let due = pending.is_some_and(|(at, _)| at <= now) || next_full <= now;
                         if due {
                             pending = None;
-                            next_full = now + interval;
+                            next_full = now + full_interval(interval, notifications_ok);
                             if !scan(false) {
                                 return;
                             }
@@ -180,6 +206,12 @@ mod tests {
         // Someone else's write of "a" is.
         assert_eq!(s.diff(&[e("a", "3", true), e("b", "1", true), e("d", "1", true)]), vec![("a".into(), "changed")]);
         assert_eq!(batch(&[("a".into(), "changed")]), json!({ "changes": [{ "path": "a", "kind": "changed" }] }));
+    }
+
+    #[test]
+    fn listings_are_rarer_only_while_notifications_work() {
+        assert_eq!(full_interval(SCAN_INTERVAL, false), Duration::from_secs(30));
+        assert_eq!(full_interval(SCAN_INTERVAL, true), Duration::from_secs(300));
     }
 
     #[test]

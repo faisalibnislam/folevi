@@ -58,7 +58,7 @@ data object SearchRoute : Route
 enum class Tab(val label: String, val icon: WebIcon, val root: Route) {
     HOME("Home", WebIcon.HOUSE, HomeRoute),
     TASKS("Tasks", WebIcon.SQUARE_CHECK_BIG, TasksRoute),
-    CALENDAR("Calendar", WebIcon.CALENDAR, CalendarRoute),
+    CALENDAR("Calendar", WebIcon.CALENDAR_DAYS, CalendarRoute),
     AI("Foli AI", WebIcon.SPARKLES, AiRoute),
 }
 

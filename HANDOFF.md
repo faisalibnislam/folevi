@@ -2,7 +2,7 @@
 
 > Read this first if you are a Claude (or any agent) picking this project up, on this Mac or another one. Then read `CLAUDE.md`, `docs/HANDOFF.md` (the long handoff: unfinished branches, release detail, what the owner is waiting on) and `docs/claude-context/memory/MEMORY.md` (the owner's standing rules). Keep this file current: after every change to the project, update "Current state", "Next steps" and "Change log", and commit it.
 
-Last updated: 2026-11-23 · Written on: Faisal's MacBook Pro M5
+Last updated: 2026-11-24 · Written on: Faisal's MacBook Pro M5
 
 ## 1. What this is
 
@@ -290,6 +290,45 @@ fades, no hover lift on the Mac except folders, state icons cross-fade (`ui/Swap
 image outlines (`ui-img-outline`), steady-width counters, tab pin/close no longer overlap. Checked headlessly in an offscreen WKWebView harness (real NSEvent wheel events, a
 `FOLEVI_BUILD=shell` dev server with the e2e FakeShell, scratch OPFS library); not yet seen in a Mac release build.
 
+**Release 1.5.74 (build 89), the Capacitor mobile app, 2026-11-24:** the iOS review's fixes (44 pt hit areas, local
+mode's rules from the first request), cut after 1.5.73's history entry (tag `v1.5.73`, the Mac release); release
+commit `e86fbbca`, tag `v1.5.74` local. Uploaded to TestFlight on the owner's "Release it" (delivery
+9fe1d590-737b-47d1-a14c-fa4968d94428), internal group "Folevi team". iOS only; Android was not rebuilt.
+
+**Release 1.5.72 (build 87), the Capacitor mobile app, 2026-11-24:** owner's OK, relayed by the main session ("release
+all ready apps for all platform", "Mobile to testers": TestFlight and Play internal testing only). Cut on
+`claude/mobile-capacitor-f41734` after 1.5.71's history entry (from tag `v1.5.71`); release commit `d153ae34`, tag
+`v1.5.72` local. iOS: `apps/mobile/scripts/release.mjs --skip-shell --no-upload` made `apps/mobile/release/Folevi.ipa`
+(84 MB, App Store profiles, production push, production backend), **uploaded to TestFlight on the owner's own
+"Release it" in chat (delivery 58636ca8-bf67-4fb5-bcb9-6ce7ec46059c)**, internal group "Folevi team" once Apple has
+processed it. That build predates the local-mode note-style rules (commit 2aa79b97). Android: the Android session builds the same commit for Play internal testing. The Windows session takes 1.5.73.
+Sign-in on the simulator reached iOS's "Folevi wants to use app.folevi.com to sign in" prompt (no account used further).
+
+**One mobile app with Capacitor (2026-11-24, branch `claude/mobile-capacitor-f41734`, PR 66 https://github.com/faisalibnislam/folevi/pull/66 into `main`, not merged):**
+the owner's "one web app everywhere" plan for phones and tablets. `apps/mobile` is one Capacitor 8 project for
+iPhone, iPad, iPhone Duo and Android around the web app's shell export (`build-shell.mjs --platform mobile`), with
+no native screens. Details: `docs/MOBILE.md`.
+- **iOS** (`com.folevi.ios`, same App Group, Keychain group, iCloud container and `capacitor://localhost` origin as
+  the native app): XcodeGen project `apps/mobile/ios/App/project.yml`; the shell services shared with the Mac app are
+  built in place from `apps/ios/ios/App/Native/Shell` behind one Capacitor plugin, `FoleviHost`
+  (`App/Host/HostBridge.swift`); `bridge/mobile-bridge.js` gives the page `foleviNative` and `foleviShell` with
+  Capacitor's Haptics, StatusBar, Share, Clipboard, ActionSheet, App and SplashScreen plugins. Share extension in;
+  widgets, Siri/Shortcuts and Spotlight not carried over yet.
+- **Android** (`com.folevi.android`): the Capacitor project as it was before the native rewrite (`7a4155c0~1`) with
+  its Kotlin plugins and `folevi-bridge.js`, now on Capacitor 8.6.2, R8 in release, splash/insets/start-page fixes.
+- **Layouts** (`apps/web/src/lib/iphone.ts`): iPhone Duo open (window at least 600 x 600 pt) takes the iPad's
+  sidebar layout, closed the phone's; Android phones sideways keep the phone layout. Tests:
+  `apps/web/test/mobile-layout.test.ts`. `scripts/version.mjs` now writes the mobile app's version (1.5.70, 85).
+- **Checked** (simulators "Folevi Mobile iPhone/iPad/Duo", emulators `Folevi_Mobile_Phone/Tablet/Foldable`):
+  first launch, a library on the device, Home, the editor (an edit lands in the `.fnote` file), tabs on iPad and
+  Android tablet, the share inbox (a queued share becomes a note), dark mode, Duo closed, foldable open; updating
+  in place over the native iOS and Android apps keeps the library. Release builds: iOS 94 MB vs native 182 MB;
+  Android 125 MB vs native 128 MB (86 MB of each is the web export, 64 MB of that note covers). Memory at Home:
+  iOS about 183 MB vs native 172 MB; Android about 227 MB vs native 205 MB (PSS).
+- **Not checked:** a real device; signing in end to end (on Android it reached the browser, which wanted its own
+  terms accepted on the emulator; iOS's sign-in sheet couldn't be tapped from scripts); iPhone Duo open and
+  folding (the simulator's hinge couldn't be moved from scripts on this Mac); push delivery.
+- Nothing uploaded; native releases stay paused (a release would be 1.5.71 or later via `node scripts/version.mjs`).
 **Backend performance pass (session `perf-backend`, 2026-11-25).** A generated 5,000-note test library
 (`convex/lib/fakeLibrary.ts`, seeded by `convex/devSeed.ts` into an `@example.com` test account, refused on
 production) and a read-cost harness (`tests/convex/perf/`, run with `FOLEVI_PERF=1`). Baseline and every fix's
@@ -537,6 +576,42 @@ What's there (checklist in the plan, section 4):
 - Emulators: Taskeni's emulators (another project) use ports 5554-5558 now; this app's AVDs are Folevi_Phone,
   Folevi_Tablet, Folevi_Foldable, Folevi_Desktop (1920x1200 @160). Boot them on free ports.
 
+**Android as Capacitor (2026-11-24, replaces the native app above; owner: one web app everywhere):** branch
+`claude/android-capacitor-197cf4` (worktree `.claude/worktrees/android-capacitor-197cf4`), **PR 69**
+(https://github.com/faisalibnislam/folevi/pull/69, contains PR 66 and `main` up to PR 60; merging it deploys the web). Folder
+`apps/mobile/android`: the Android half of the one Capacitor mobile app; the shared setup (`apps/mobile`,
+`capacitor.config.ts`, `package.json`, `scripts/`) is the iOS session's `claude/mobile-capacitor-f41734`, merged
+into this branch. Both sessions had restored the same Android app; the merge keeps this branch's Kotlin and
+manifest fixes and their shared cloud-kit bundling (`apps/mobile/scripts/bundle-bridge.mjs`), R8 rules and bridge
+additions. The only shared-config line Android adds is `android.includePlugins: []`.
+- Restored from the paused Capacitor app (`e12fb272`) on Capacitor 8.6.2; same package, storage names, Keystore
+  and `https://localhost` origin as the native app, so it updates in place. Version and versionCode from
+  `version.json`, upload-key signing, R8. Android takes no stock Capacitor plugins (`android.includePlugins: []`,
+  the one line it needs in the shared config; reasons in `apps/mobile/android/README.md`).
+- Fixed on the way: `env(safe-area-inset-*)` never reached the WebView (the inset listener replaced its handling;
+  the phone top bar sat under the status bar), and wide windows' Back used browser history instead of the web's
+  tab rule (one Back from a note could leave the app). Back now presses the page's Back, then Home, then leaves.
+- Checked on emulators (debug unless noted): installed over the native app (debug and release builds) it opens
+  the same library; editor, keyboard and its bar; Back on phone and tablet (a tab opened from Home closes back to
+  Home); share target into the Inbox; signing in to a scratch dev account through the Custom Tab (tablet, sidebar
+  layout, account notes open); fold/unfold switches phone/sidebar layout with no reload; Googlebook-size window
+  with Ctrl+Shift+N opening a second window; light and dark. Kotlin unit tests, cloud bridge tests (27), parity
+  tests (133, now on this app's bridge), version test.
+- **On Play internal testing: 87 (1.5.72), published 2026-11-24 19:05** with the owner's OK (relayed by the main
+  session, "release all ready apps for all platform", mobile to testers), replacing 83 (the native app). Built from
+  `d2ef501c` (this branch with the mobile session's release commit `d153ae34` merged): production web export
+  (`build-shell.mjs --platform mobile --production --required`), `FOLEVI_RELEASE=1 npx cap sync android`,
+  `bundleRelease` with the upload key and Firebase push values (`FOLEVI_FIREBASE_*` from the owner's
+  `~/Downloads/google-services.json`, project `folevi-9b8a5`; never committed). The owner dragged the AAB into Play
+  Console; Claude added it from the library, wrote the release notes and published. Only warning: no native debug
+  symbols. Checked on an emulator with that exact build: first launch, local mode Home, editor, Back, no crash.
+  Not tested: production sign-in, push arriving, Drive/Dropbox, widgets and tile, a real device, Android 13, the
+  update from build 83 with release keys (checked with debug-key builds only).
+- Size and memory vs the native app: AAB 96.6 vs 100.8 MB; memory on Home 205.7 vs 199.3 MB (table in the README).
+- Not checked: push arriving (Firebase is set up as of 1.5.72), Drive/Dropbox, widgets and the tile, a real device, Android 13.
+  On a Googlebook the device words say "tablet" (the web knows only phone and tablet for Android).
+- Native app (`apps/android`) stays in the tree as the reference; CI's Kotlin codegen checks still point at it.
+
 **Also in progress:** branch `claude/native-perf-pass` (worktree `.claude/worktrees/recursing-dijkstra-48aa7c`, off
 `main` at `d617d60b`, not released): a native performance pass, report in `docs/NATIVE_PERFORMANCE_2026-11-21.md`.
 Folder cards at rest are drawn once into a picture (`FoleviDesign/Web/CardPicture.swift`; live while hovered, on whole
@@ -647,6 +722,19 @@ account button should move past iPadOS's window buttons).
 - Mac feedback branch (`claude/mac-feedback-8652d2`): the owner checks Home scrolling, folder corners and the new Show
   all tabs in the next Mac build (needs "release it"); a split-view tab in the overview was not drawn in the
   headless check (no split tab in the scratch library).
+- Android emulators: the android-36 image is still kernel-only (no `system.img`), and `Folevi_Phone` (the
+  `phone` AVD in `apps/mobile/android/scripts/emulator.mjs`) uses it. Boot it on the 37.0 image with
+  `-sysdir ~/Library/Android/sdk/system-images/android-37.0/google_apis_playstore/arm64-v8a -read-only -wipe-data`,
+  or move the AVD to 37.0. Android 37 debug builds log "unable to find plugin : SplashScreen" for the page's
+  `SplashScreen.hide` calls (`includePlugins: []`); harmless, but the page could skip that call on Android.
+- Mobile app (`apps/mobile`, PR 66 from `claude/mobile-capacitor-f41734`): note covers stay bundled (owner, 2026-11-24) and styles sync from the server when they change (docs/MOBILE.md "Note styles and covers": signed-in offline caching to build in `apps/web` with the web session; local mode may check for new styles too (owner, 2026-11-24): iOS network rules allow `convex.site/note-styles` and Convex storage images only, copy updated; the endpoint and the page's fetch and cache are the web session's); the owner reviews and merges (merging
+  deploys the web, which has the layout change in `lib/iphone.ts`); then check sign-in, push and iPhone Duo folding
+  on real devices; carry over widgets, Siri/Shortcuts and Spotlight; one bridge script for both platforms; from the iOS review (docs/mobile/ios-review-2026-11-24.md), the web session's iPad touch targets and the note page's memory growth; release
+  scripts for TestFlight and Play (only with the owner's OK).
+- Web everywhere: PRs #61 (platform model, `claude/web-everywhere-0e2975`), #62 (shortcut labels), #63 (Mac no-bounce,
+  Android ripple) and #64 (one wording set) are open and wait on CI and the owner's merge (merging deploys). Next PRs: shortcut labels per OS (about 40 files still write ⌘ by hand; `lib/shortcuts.ts keyLabel` exists),
+  Windows/Linux/Android accents behind `data-shell`, one motion/empty/loading style, mobile web view performance,
+  the "Your own server" sign-in with the Synology session. The starter "Welcome to Folevi" note names Mac shortcuts.
 - Backend performance pass, owner's OK needed for production: run `migrations:backfillListStats` (optional, speeds
   up existing folders) and `migrations:backfillDocumentText` (required before the note text switch PR merges).
 - Backend performance pass (`docs/perf/backend-results.md`): kept folder and Drafts counts, task rows that carry
@@ -696,7 +784,15 @@ account button should move past iPadOS's window buttons).
   never act); section headings stay sentence case (Apple uses title case); dark mode keeps a pure black frame.
   Known gaps: the notifications sheet's rows are not on cards yet; screens borrowed from the iPad (Foli DNA,
   Reviews) keep their own white page under the system bar.
-- Android native (PR 54, merged into `main` as 289b11af): next are the owner's Play steps (`apps/android/README.md` "Steps only the owner can do"), and the
+- Android **89 (1.5.74) is live on Play internal testing** (published 2026-11-24 21:51, owner: "release everything
+  when ready"), replacing 87. Built from `b5b4b4a3` (this branch with the mobile release `e86fbbca` merged), upload
+  key, Firebase push on; on an emulator it updated over the signed 1.5.72 release keeping the library. Testers
+  update and report; the next Android upload needs a `build` above 89. Native debug symbols could go up later.
+- Android as Capacitor (`claude/android-capacitor-197cf4`, `apps/mobile/android`, with the iOS session's
+  `claude/mobile-capacitor-f41734` merged in): open a PR with the owner's OK; it and the iOS branch should land
+  together (or this one alone, since it contains the other). Web session: "This Googlebook" device words for Android laptops (FEATURE_PC).
+  No Play upload until the owner says so (native releases paused); the upload needs a versionCode above 83.
+- Android native (PR 54, merged into `main` as 289b11af): superseded by the Capacitor app above. Its next steps were the owner's Play steps (`apps/android/README.md` "Steps only the owner can do"), and the
   plan's remaining phase 2 items (Credential Manager sign-in, onboarding, sharing sheet, templates).
 - Folevi for Mac (native, `apps/mac`, branch `claude/folevi-core-529dbe`), the owner's order of 2026-11-23:
   1. Done 2026-11-23: the owner's Mac UI guide (`docs/design/macloving-mac-ui.md`) as the **full window
@@ -850,6 +946,26 @@ account button should move past iPadOS's window buttons).
   the top bar, names under cards, on iPad too). How scrolling was checked: a Swift harness puts a WKWebView in an
   offscreen window and calls `scrollWheel(with:)` with CGEvent-made wheel events (location = window coordinates,
   since the event has no window); Playwright's wheel bypasses macOS's scrolling path and can't show this bug.
+- 2026-11-25: CI secret scan fix for PR 69: gitleaks scans every branch (`git log --all`), so false positives on
+  `claude/sleepy-goodall-3cg4e7` (the certificate key type line in folevid's `acme.go`, and made-up tokens in three
+  folevid and Connect tests) failed the check on every PR. Their fingerprints are now in `.gitleaksignore`. New test
+  values on any branch should carry a `gitleaks:allow` comment, or every open PR fails again.
+- 2026-11-25: PR 69 checked on this Mac (Android session): the Android SDK is at `~/Library/Android/sdk` (set
+  `ANDROID_HOME`, put `platform-tools` and `emulator` on PATH; JDK is Homebrew `openjdk`). `apps/android` compiles
+  (`:app:compileDebugKotlin`, so `CALENDAR_DAYS` is fine); `apps/mobile/android` `:app:assembleDebug` builds and
+  `:app:testDebugUnitTest` passes (38 tests, 11 suites). Fixed `pnpm sync` in `apps/mobile`: it ran
+  `scripts/prepare-web.mjs`, which never existed (build-shell `--dest ../mobile/web` already copies the export).
+  Emulator not run: both installed system images (android-36, android-37.0 google_apis_playstore arm64) are only
+  the kernel, without `system.img`; re-downloading android-37.0 is about 2.0 GB and waits for the owner's OK.
+- 2026-11-25: Owner OK'd the image download: `system-images;android-37.0;google_apis_playstore;arm64-v8a` reinstalled
+  (about 2 GB). PR 69's debug APK installed on `Folevi_Phone` (headless, read-only, 37.0 image, port 5560): MainActivity
+  resumed in 2.5 s, no crash, the first-launch screen ("Where should your notes live?") renders.
+- 2026-11-25: PR 69 build fix: `Routes.kt:61` and `Tabs.kt:88` used `WebIcon.CALENDAR`, which the icon regeneration
+  (c3ce5640) removed; both now use `WebIcon.CALENDAR_DAYS` (owner's pick, matching the web's command palette). Not
+  compiled locally (no Android SDK on this Mac).
+- 2026-11-25: Merged `main` (e35a97d3, the backend performance pass and the sync status words) into
+  `claude/android-capacitor-197cf4` for PR 69 (owner's OK); only HANDOFF.md conflicted, both sides kept.
+- 2026-11-25: Merged `main` (4d22880f, the web PRs) into `claude/android-capacitor-197cf4` for PR 69: versions stay 1.5.74 / 89; the web layout files take main's width-decides version (formFactor).
 - 2026-11-25: Backend performance pass, step 3 (widen): `documentText` table holds each note's search text and search
   fields, kept in step by the write hook; `migrations:backfillDocumentText` copies older notes (production run waits
   for the owner). Readers are unchanged until the switch PR.
@@ -879,6 +995,23 @@ account button should move past iPadOS's window buttons).
   "They don't match" (failed twice on `main` after PR 76, which changed only docs); safe dependency bumps (katex 0.19.1,
   typescript-eslint 8.72.2, the clipper's @types/chrome 0.3.7 and jsdom 30.1.3, lockfiles regenerated); Dependabot
   groups `@tiptap/*` and skips @types/node majors.
+- 2026-11-24: Android 89 (1.5.74) published to Play internal testing (owner dragged the AAB in; Claude added it from the library, notes, published).
+- 2026-11-24: Android 1.5.74 (89) built from the merged mobile release for Play internal testing; upload waits on the owner's drag-in.
+- 2026-11-24: PR 69 opened for the Android Capacitor app (contains PR 66); mergeable with `main`, not merged.
+- 2026-11-24: Merged `main` (PR 60, Mac 1.5.71) into `claude/android-capacitor-197cf4` for its PR: versions stay 1.5.72 / 87, both changelog entries kept.
+- 2026-11-24: Android 87 (1.5.72), the Capacitor app, published to Play internal testing with the owner's OK (built from `d2ef501c`, Firebase push on); replaces 83.
+- 2026-11-24: Android release prepared for Play internal testing (owner's OK via the main session): dry-run AAB with Firebase push built, signed with build 83's upload key; waiting for the mobile session's 1.5.72 commit.
+- 2026-11-24: Merged the iOS session's `claude/mobile-capacitor-f41734` into the Android branch: both had restored the same Capacitor Android app into `apps/mobile/android`; kept this branch's Kotlin and manifest fixes and their shared cloud-kit bundling, R8 rules and bridge additions; `apps/mobile/.gitignore` now ignores only `/web/` (a bare `web/` had hidden the app's `com/folevi/android/web/` Kotlin from their commits).
+- 2026-11-24: Android as Capacitor: safe areas reach the WebView, wide-window Back follows the web's tab rule; checked on phone, tablet (signed in), foldable and desktop emulators; size and memory measured against the native app (README). Pushed, no PR.
+- 2026-11-24: Android as Capacitor on `claude/android-capacitor-197cf4`: `apps/mobile/android` restored from the paused Capacitor app on Capacitor 8.6.2, updating in place over the native app (same package and storage); version from version.json, upload-key signing, R8, multi-window, no stock plugins on Android; unit, bridge, parity and version tests pass; not pushed.
+- 2026-11-24: 1.5.74 (build 89), the mobile app with the iOS review's fixes, uploaded to TestFlight with the owner's OK (delivery 9fe1d590); tag local.
+- 2026-11-24: iOS review of the mobile app (design/HIG, polish, performance; docs/mobile/ios-review-2026-11-24.md): 44 pt hit areas for Calendar's grabber, a note's place chip and Foli AI's Add; local mode's network rules now apply from the first request and compile once. Open for the web session: iPad touch targets under 44 pt and about 4 MB of web memory kept per note open and close.
+- 2026-11-24: 1.5.72 (build 87), the Capacitor mobile app, uploaded to TestFlight with the owner's OK (delivery 58636ca8); internal testing only.
+- 2026-11-24: Owner: local mode may check Folevi for new note styles. iOS local-mode rules allow only `<deployment>.convex.site/note-styles` and Convex storage images (checked on the simulator: everything else still blocked); features and docs pages say notes never leave the device and the app only checks for new styles.
+- 2026-11-24: 1.5.72 (build 87) cut on `claude/mobile-capacitor-f41734` (tag local) for the Capacitor mobile app; iOS IPA exported, TestFlight upload pending a permission; Android build handed to the Android session. PR 66: main merged again; its one failing e2e (vault-team) had passed on the same code the run before.
+- 2026-11-24: Owner: keep note covers inside the mobile app and sync note styles when the server changes them. Plan in docs/MOBILE.md; local mode's part asked of the owner.
+- 2026-11-24: PR 66 opened for the Capacitor mobile app (`claude/mobile-capacitor-f41734` pushed); open question to the owner: note covers.
+- 2026-11-24: `apps/mobile`: one Capacitor app for iPhone, iPad, iPhone Duo and Android around the web app (no native screens), reusing the shared Swift and Kotlin services; window-size layouts in `lib/iphone.ts`; `version.mjs` covers it; checked on simulators and emulators, size and memory compared (docs/MOBILE.md). Branch `claude/mobile-capacitor-f41734`, PR not merged.
 - 2026-11-25: Web everywhere queue landed (61, 62, 63, 64, 70, 75, 71, 72 after 68 and 74); this is their combined entry:
   PR 62 shortcuts per system (and documents.spec:187 waits for the bar's Share and the panel's focus instead of racing
   them); PR 63 Mac no-bounce motion and Android press ripple, the owner's picks in the web-everywhere memory; PR 64 one

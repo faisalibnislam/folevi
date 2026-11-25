@@ -20,6 +20,7 @@
 // and `check` (and the web tests in CI) fail otherwise. This script writes the version and build into each project:
 //   apps/mac/project.yml                          MARKETING_VERSION, CURRENT_PROJECT_VERSION
 //   apps/ios/ios/App/App.xcodeproj/project.pbxproj MARKETING_VERSION, CURRENT_PROJECT_VERSION (app and extensions)
+//   apps/mobile/ios/App/project.yml and App.xcodeproj  the same, for the Capacitor mobile app (docs/MOBILE.md)
 // The website reads version.json itself (apps/web/src/lib/version.ts), and so do Folevi for Android's Gradle build
 // (apps/android/app/build.gradle.kts) and the built-in interface's
 // shell/build.json (apps/web/scripts/build-shell.mjs). The Mac's About panel and Settings read Info.plist, which
@@ -175,6 +176,27 @@ export const TARGETS = [
         replaceAll(text, /^(\s*MARKETING_VERSION:\s*).*$/gm, `$1"${version}"`, "MARKETING_VERSION"),
         /^(\s*CURRENT_PROJECT_VERSION:\s*).*$/gm,
         `$1${build}`,
+        "CURRENT_PROJECT_VERSION",
+      ),
+  },
+  {
+    // The Capacitor mobile app (docs/MOBILE.md): XcodeGen's source and the project generated from it.
+    file: "apps/mobile/ios/App/project.yml",
+    write: (text, { version, build }) =>
+      replaceAll(
+        replaceAll(text, /^(\s*MARKETING_VERSION:\s*).*$/gm, `$1"${version}"`, "MARKETING_VERSION"),
+        /^(\s*CURRENT_PROJECT_VERSION:\s*).*$/gm,
+        `$1${build}`,
+        "CURRENT_PROJECT_VERSION",
+      ),
+  },
+  {
+    file: "apps/mobile/ios/App/App.xcodeproj/project.pbxproj",
+    write: (text, { version, build }) =>
+      replaceAll(
+        replaceAll(text, /(\bMARKETING_VERSION = )[^;]*;/g, `$1${version};`, "MARKETING_VERSION"),
+        /(\bCURRENT_PROJECT_VERSION = )[^;]*;/g,
+        `$1${build};`,
         "CURRENT_PROJECT_VERSION",
       ),
   },

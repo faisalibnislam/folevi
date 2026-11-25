@@ -290,6 +290,12 @@ describe("the repository", () => {
     expect(gradle).toMatch(/^\s*versionName = folevi\["version"\] as String$/m);
     expect(gradle).toMatch(/^\s*versionCode = \(folevi\["build"\] as Number\)\.toInt\(\)$/m);
     expect(read("apps/android/app/src/main/java/com/folevi/android/MainActivity.kt")).toMatch(/put\("version", BuildConfig\.VERSION_NAME\)/);
+    // The Capacitor Android app (apps/mobile/android), which updates in place over the native one: the same.
+    const mobileGradle = read("apps/mobile/android/app/build.gradle.kts");
+    expect(mobileGradle).toMatch(/rootProject\.file\("\.\.\/\.\.\/\.\.\/version\.json"\)/);
+    expect(mobileGradle).toMatch(/^\s*versionName = folevi\["version"\] as String$/m);
+    expect(mobileGradle).toMatch(/^\s*versionCode = \(folevi\["build"\] as Number\)\.toInt\(\)$/m);
+    expect(read("apps/mobile/android/app/src/main/java/com/folevi/android/MainActivity.kt")).toMatch(/put\("version", BuildConfig\.VERSION_NAME\)/);
     // The Mac's About panel: the version alone, an empty build.
     expect(read("apps/mac/Folevi/App/AppDelegate.swift")).toMatch(/\.applicationVersion: Paths\.version, \.version: ""/);
     expect(read("apps/mac/Folevi/Chrome/MenuModel.swift")).toMatch(/"app\.about", "About Folevi", "showAboutPanel:"/);

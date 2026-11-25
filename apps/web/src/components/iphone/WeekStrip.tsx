@@ -198,7 +198,8 @@ export function WeekStrip({ today, selected, onSelect, marked }: { today: string
           setPull(0);
           requestAnimationFrame(() => requestAnimationFrame(() => settle(true)));
         }}
-        className="mx-auto flex h-5 w-16 items-center justify-center rounded-capsule outline-none focus-visible:ring-2 focus-visible:ring-focus"
+        // 44 pt to tap (HIG): the hit area reaches down into the space under the strip, never up into the days.
+        className="relative mx-auto flex h-5 w-16 items-center justify-center rounded-capsule outline-none before:absolute before:inset-x-0 before:top-0 before:-bottom-6 before:content-[''] focus-visible:ring-2 focus-visible:ring-focus"
       >
         <span aria-hidden className="h-[5px] w-9 rounded-capsule bg-[color-mix(in_oklab,var(--color-ink)_20%,transparent)]" />
       </button>

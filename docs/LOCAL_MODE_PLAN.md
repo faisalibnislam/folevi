@@ -513,6 +513,12 @@ All paths are relative to the library, use forward slashes, and are rejected if 
 
 ### 5.4 Tests that guard "never contacts Folevi"
 
+**Exception (owner, 2026-11-24):** when online, local mode may fetch the public list of note styles and their images
+(`GET <deployment>.convex.site/note-styles`, `GET <deployment>.convex.cloud/api/storage/<id>`), anonymous and read-only,
+so built-in styles stay current; nothing about the person or their notes is sent. The iOS app's network rules allow
+exactly those two (apps/mobile FoleviViewController.noteStylePatterns); the guards below must allow them too once the
+web side fetches them (docs/MOBILE.md "Note styles and covers").
+
 - The Playwright `local` project routes `**/*.folevi.com/**` and `**/*.convex.*/**` to abort and fail the test.
 - A unit test asserts that `ConvexReactClient` is never constructed in local mode.
 

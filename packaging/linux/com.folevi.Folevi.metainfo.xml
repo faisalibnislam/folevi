@@ -13,7 +13,6 @@
   <metadata_license>CC0-1.0</metadata_license>
   <project_license>LicenseRef-proprietary=https://folevi.com/terms</project_license>
   <launchable type="desktop-id">Folevi.desktop</launchable>
-  <icon type="remote" width="512" height="512">https://folevi.com/icons/icon-512.png</icon>
 
   <description>
     <p>
@@ -31,9 +30,9 @@
   </description>
 
   <url type="homepage">https://folevi.com</url>
-  <url type="help">https://app.folevi.com/help</url>
-  <url type="bugtracker">https://app.folevi.com/help</url>
-  <url type="contact">https://app.folevi.com/help</url>
+  <url type="help">https://folevi.com/support</url>
+  <url type="bugtracker">https://folevi.com/support</url>
+  <url type="contact">https://folevi.com/support</url>
 
   <categories>
     <category>Office</category>

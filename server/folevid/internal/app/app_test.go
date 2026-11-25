@@ -357,6 +357,7 @@ func TestLoaderWrap(t *testing.T) {
 		fmt.Sprint(args) != fmt.Sprint([]string{"--library-path", filepath.Join(dir, "runtime", "lib"), "/x/node", "a"}) {
 		t.Fatal(p, args)
 	}
+	writeFile(t, filepath.Join(dir, "runtime", "node", "bin", "node"), "", 0o755)
 	shim, err := b.nodeShim(filepath.Join(dir, "shim"))
 	if err != nil || shim == "" {
 		t.Fatal(err)
@@ -364,5 +365,34 @@ func TestLoaderWrap(t *testing.T) {
 	s, _ := os.ReadFile(filepath.Join(shim, "node"))
 	if !strings.Contains(string(s), "--library-path") {
 		t.Fatal(string(s))
+	}
+}
+
+// TestPatchedRunsDirectly: a program whose ELF interpreter is inside the bundle (patchelf'd for QNAP) is not
+// wrapped; one using the system loader is.
+func TestPatchedRunsDirectly(t *testing.T) {
+	sys, err := exec.LookPath("ls")
+	if err != nil || ELFInterp(sys) == "" {
+		t.Skip("no dynamically linked ls")
+	}
+	dir := t.TempDir()
+	b := Bundle{Dir: dir}
+	loader := filepath.Join(dir, "runtime", "lib", "ld-linux-x86-64.so.2")
+	writeFile(t, loader, "", 0o755)
+	if p, _ := b.Wrap(sys); p != loader {
+		t.Fatalf("system program not wrapped: %s", p)
+	}
+	patchelf, err := exec.LookPath("patchelf")
+	if err != nil {
+		t.Skip("patchelf not installed")
+	}
+	prog := filepath.Join(dir, "bin", "prog")
+	data, _ := os.ReadFile(sys)
+	writeFile(t, prog, string(data), 0o755)
+	if out, err := exec.Command(patchelf, "--set-interpreter", loader, prog).CombinedOutput(); err != nil {
+		t.Fatalf("patchelf: %v %s", err, out)
+	}
+	if p, _ := b.Wrap(prog); p != prog {
+		t.Fatalf("patched program wrapped: %s", p)
 	}
 }

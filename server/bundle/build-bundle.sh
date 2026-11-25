@@ -22,7 +22,23 @@
 #   OUT              output folder (default: ./dist)
 #   TARBALL=1        also write <bundle>.tar.gz and its .sha256
 #   *_SHA256         optional expected SHA-256 for CONVEX_BACKEND and NODE_DIST
+#
+# Arguments (override the variables of the same name): --version V --arch A --out DIR. The bundle is written
+# to DIR/folevi-server-V-linux-A/.
 set -euo pipefail
+
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --version) VERSION="$2"; shift 2 ;;
+    --arch) ARCH="$2"; shift 2 ;;
+    --out) OUT="$2"; shift 2 ;;
+    --version=*) VERSION="${1#*=}"; shift ;;
+    --arch=*) ARCH="${1#*=}"; shift ;;
+    --out=*) OUT="${1#*=}"; shift ;;
+    -h|--help) sed -n '2,32p' "$0"; exit 0 ;;
+    *) echo "build-bundle: unknown argument $1" >&2; exit 2 ;;
+  esac
+done
 
 die() { echo "build-bundle: $*" >&2; exit 1; }
 : "${VERSION:?set VERSION}"
@@ -32,8 +48,8 @@ die() { echo "build-bundle: $*" >&2; exit 1; }
 : "${WEB_STANDALONE:?set WEB_STANDALONE}"
 : "${FUNCTIONS_DIR:?set FUNCTIONS_DIR}"
 case "$ARCH" in
-  x86_64) GOARCH=amd64; NODE_ARCH=x64 ;;
-  aarch64) GOARCH=arm64; NODE_ARCH=arm64 ;;
+  x86_64|amd64|x64) ARCH=x86_64; GOARCH=amd64; NODE_ARCH=x64 ;;
+  aarch64|arm64) ARCH=aarch64; GOARCH=arm64; NODE_ARCH=arm64 ;;
   *) die "ARCH must be x86_64 or aarch64" ;;
 esac
 case "$VERSION" in *[!A-Za-z0-9.+-]*) die "VERSION has odd characters" ;; esac
@@ -41,6 +57,8 @@ case "$VERSION" in *[!A-Za-z0-9.+-]*) die "VERSION has odd characters" ;; esac
 HERE="$(cd "$(dirname "$0")" && pwd)"
 REPO="$(cd "$HERE/../.." && pwd)"
 OUT="${OUT:-$PWD/dist}"
+mkdir -p "$OUT"
+OUT="$(cd "$OUT" && pwd)"
 NAME="folevi-server-$VERSION-linux-$ARCH"
 DEST="$OUT/$NAME"
 WORK="$(mktemp -d)"

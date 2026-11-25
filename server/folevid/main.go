@@ -251,5 +251,34 @@ func cmdHealth(data string, stdout, stderr io.Writer) int {
 	if !ok {
 		return 1
 	}
+	// Running is not enough: both must answer through the public port.
+	c, _, err := loadLocal(data)
+	if err != nil {
+		return reportErr(stderr, err)
+	}
+	host := c.BindAddress
+	if host == "" || host == "0.0.0.0" || host == "::" {
+		host = "127.0.0.1"
+	}
+	base := "http://" + net.JoinHostPort(host, strconv.Itoa(c.Port))
+	hc := &http.Client{Timeout: 10 * time.Second, Transport: &http.Transport{Proxy: nil},
+		CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
+	for _, chk := range []struct {
+		name, path string
+		ok         func(int) bool
+	}{
+		{"backend answers", "/convex/version", func(code int) bool { return code == http.StatusOK }},
+		{"web answers", "/", func(code int) bool { return code > 0 && code < 500 }},
+	} {
+		code := 0
+		if resp, err := hc.Get(base + chk.path); err == nil {
+			code = resp.StatusCode
+			resp.Body.Close()
+		}
+		fmt.Fprintf(stdout, "%s: %d\n", chk.name, code)
+		if !chk.ok(code) {
+			return 1
+		}
+	}
 	return 0
 }

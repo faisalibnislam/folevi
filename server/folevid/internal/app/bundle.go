@@ -2,6 +2,7 @@ package app
 
 import (
 	"crypto/sha256"
+	"debug/elf"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -68,13 +69,44 @@ func (b Bundle) Loader() string {
 	return m[0]
 }
 
-// Wrap turns a program and its arguments into the command to run: unchanged, or through the private loader
-// (`ld-linux --library-path runtime/lib program args...`) when the bundle has one.
+// Wrap turns a program and its arguments into the command to run. A program whose ELF interpreter already
+// points inside the bundle (patchelf'd by the QNAP package) runs directly, as does everything when the bundle
+// has no private loader. Otherwise, as a fallback, it runs through the loader:
+// `ld-linux --library-path runtime/lib program args...`.
 func (b Bundle) Wrap(program string, args ...string) (string, []string) {
-	if l := b.Loader(); l != "" {
+	if l := b.Loader(); l != "" && !b.patched(program) {
 		return l, append([]string{"--library-path", b.LibDir(), program}, args...)
 	}
 	return program, args
+}
+
+// patched reports whether program's ELF interpreter (PT_INTERP) is inside the bundle.
+func (b Bundle) patched(program string) bool {
+	interp := ELFInterp(program)
+	if interp == "" {
+		return false
+	}
+	rel, err := filepath.Rel(b.Dir, interp)
+	return err == nil && !strings.HasPrefix(rel, "..")
+}
+
+// ELFInterp returns the PT_INTERP path of an ELF program ("" when it has none or is not ELF).
+func ELFInterp(path string) string {
+	f, err := elf.Open(path)
+	if err != nil {
+		return ""
+	}
+	defer f.Close()
+	for _, p := range f.Progs {
+		if p.Type == elf.PT_INTERP {
+			buf := make([]byte, p.Filesz)
+			if _, err := p.ReadAt(buf, 0); err != nil {
+				return ""
+			}
+			return strings.TrimRight(string(buf), "\x00")
+		}
+	}
+	return ""
 }
 
 // Version reads VERSION ("" when missing).
@@ -137,7 +169,7 @@ func TreeHash(dir string) string {
 // backend's own `node` child (found on PATH) also gets the private libraries.
 func (b Bundle) nodeShim(dir string) (string, error) {
 	loader := b.Loader()
-	if loader == "" {
+	if loader == "" || !b.HasBundledNode() || b.patched(filepath.Join(b.NodeBinDir(), "node")) {
 		return "", nil
 	}
 	if err := os.MkdirAll(dir, 0o755); err != nil {

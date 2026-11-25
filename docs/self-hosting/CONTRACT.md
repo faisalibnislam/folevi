@@ -327,3 +327,18 @@ Server version numbers follow the app's unified version (`docs/claude-context/me
    `userId`.
 6. **Additions:** a `/v1/admin/*` API for Folevi staff (flags, kill switches), extra fields on `GET
    /v1/servers/{id}`, and `hostname` in the register response. See `services/connect/README.md`.
+
+### 10.1 Changes from the folevid build (2026-11-25)
+
+- Backup files are `backups/<UTC timestamp>-<kind>.zip`. Each holds the Convex export with stored files and
+  `secrets.json` (hash salt, auth and file-URL secrets) so a restore on a new machine keeps sign-ins and file links.
+  Treat backups as secret; encrypting them (above all on S3) is open work.
+- New secret file `secrets/connect-key` (the server's Ed25519 key for Connect).
+- `FOLEVI_JWKS` starts as a single space: the Convex CLI refuses an auth config that reads an unset variable.
+- Additions: `/v1/status` has `memory.profile` (`tiny` up to 2.5 GB of RAM, `low` up to 8 GB, `high` above) and
+  `memory.low`; `POST /v1/backups?wait=1` waits for the backup to finish.
+- Extra settings: `FOLEVI_TMPDIR`, `FOLEVI_BIND`, `FOLEVI_RELAY_URL`, `FOLEVI_MANAGED_BY`, `FOLEVI_PUBLIC_URL`.
+- Relayed streams are handed to the HTTPS server in-process (not dialed to :8443), so the client address survives.
+- `server/bundle/build-bundle.sh --version V --arch A --out DIR` also needs `CONVEX_BACKEND`, `NODE_DIST`,
+  `WEB_STANDALONE` and `FUNCTIONS_DIR` (paths, or https URLs it downloads), and `functions/` needs the target
+  chip's `@esbuild` binary.

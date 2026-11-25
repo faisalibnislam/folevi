@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery } from "@/lib/convex/queries";
-import { useEffect, useState, type ReactNode } from "react";
+import { startTransition, useEffect, useState, type ReactNode } from "react";
 import { useAiEnabled } from "@/components/ai/useAi";
 import { CatchUp } from "@/components/ai/CatchUp";
 import { ArrowRight, ChevronLeft, ChevronRight, Clock3, Folder, Layers } from "lucide-react";
@@ -112,6 +112,8 @@ function NoteCard({ d, recent }: { d: Summary; recent?: boolean }) {
 }
 
 const CAROUSEL_COUNT = 10;
+/** Cards a row draws with the click that opens Home (a wide screen shows about six); the rest follow a moment later. */
+const CAROUSEL_FIRST = 7;
 /** Recent folders fetched at least (two rows of the widest grid). */
 const RECENT_FOLDERS = 12;
 
@@ -119,10 +121,11 @@ const RECENT_FOLDERS = 12;
  * One row of note cards that scrolls sideways, with arrow buttons at either end (shown only when there's
  * more to see that way). Cards are real list items, so Tab moves through them and scrolls them into view.
  */
-function NoteCarousel({ docs, label, recent }: { docs: Summary[] | undefined; label: string; recent?: boolean }) {
+function NoteCarousel({ docs, label, recent, allCards }: { docs: Summary[] | undefined; label: string; recent?: boolean; /** False for Home's first frame: only the cards a screen shows. */ allCards: boolean }) {
   const { noteCard: CARD_WIDTH, gap: CARD_GAP } = useCardSizes();
   const [el, setEl] = useState<HTMLUListElement | null>(null);
   const [edges, setEdges] = useState({ start: true, end: true });
+
   useEffect(() => {
     if (!el) return;
     const update = () => setEdges({ start: el.scrollLeft <= 2, end: el.scrollLeft + el.clientWidth >= el.scrollWidth - 2 });
@@ -162,7 +165,7 @@ function NoteCarousel({ docs, label, recent }: { docs: Summary[] | undefined; la
         style={{ maskImage: fadeMask, WebkitMaskImage: fadeMask, gap: CARD_GAP }}
         className="-mx-4 -mb-5 flex snap-x snap-mandatory scroll-px-4 overflow-x-auto px-4 pb-12 pt-2 [scrollbar-width:none] sm:-mx-6 sm:scroll-px-6 sm:px-6 [&::-webkit-scrollbar]:hidden"
       >
-        {docs.slice(0, CAROUSEL_COUNT).map((d) => (
+        {docs.slice(0, allCards ? CAROUSEL_COUNT : CAROUSEL_FIRST).map((d) => (
           <li key={d.id} style={{ width: CARD_WIDTH }} className="flex-none snap-start">
             <NoteCard d={d} recent={recent} />
           </li>
@@ -231,6 +234,13 @@ export function HomeDashboard() {
   // Only the most recently changed folders are counted (a fixed minimum, so resizing rarely refetches).
   const org = useOfflineQuery(api.organization.recentFolders, { scope, limit: Math.max(RECENT_FOLDERS, folders.cols * 2) });
   const recentFolders = (org?.folders ?? []).slice(0, folders.cols * 2);
+  // Home's first frame (the one the click that opened it waits for) has the notes a screen shows; the cards past the
+  // rows' edges and the folder cards, the last section, come in the background right after (INP,
+  // docs/perf/web-results.md). Nothing sits below the folders, so nothing moves when they come.
+  const [allCards, setAllCards] = useState(false);
+  useEffect(() => {
+    if (!allCards) startTransition(() => setAllCards(true));
+  }, [allCards]);
 
   return (
     <ViewChrome
@@ -242,11 +252,11 @@ export function HomeDashboard() {
         {aiOn ? <CatchUp /> : null}
         <TodaysReviews />
         <Section shelf title="Recent notes" icon={<Clock3 size={17} strokeWidth={1.9} />} href="/notes" empty={recent && !recent.length ? <EmptyState size="inline" title="No notes yet" body="Notes you open show up here." /> : undefined}>
-          <NoteCarousel docs={recent} label="Recent notes" recent />
+          <NoteCarousel docs={recent} label="Recent notes" recent allCards={allCards} />
         </Section>
 
         <Section shelf title="Bookmarks" icon={<Bookmark size={17} strokeWidth={1.9} />} href="/starred" empty={starred && !starred.page.length ? <EmptyState size="inline" title="No bookmarks yet" body="Bookmark a note to keep it here." /> : undefined}>
-          <NoteCarousel docs={starred?.page} label="Bookmarked notes" />
+          <NoteCarousel docs={starred?.page} label="Bookmarked notes" allCards={allCards} />
         </Section>
 
         <Section
@@ -257,7 +267,7 @@ export function HomeDashboard() {
         >
           <div ref={folders.ref}>
             <ul className="grid" style={{ gridTemplateColumns: `repeat(${folders.cols}, minmax(0, 1fr))`, columnGap: sizes.gap, rowGap: sizes.rowGap }}>
-              {recentFolders.map((f) => (
+              {(allCards ? recentFolders : []).map((f) => (
                 <li key={f.id}>
                   <FolderCard folder={f} parentName={f.parentName ?? undefined} />
                 </li>

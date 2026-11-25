@@ -115,11 +115,41 @@ compare the CLS and memory rows, which don't depend on load.
    OPFS); strings went down. No per-note leak found in the app's code in local mode. Not measured: account mode
    (the sync engine's block cache, from the web audit), which needs a backend.
 
+### PR 3: All notes and Home clicks
+
+A Chromium trace of each sidebar click (`PERF_TRACE=1`) splits it: the click's own task (React rendering the new
+view synchronously, since the router reads the address with `useSyncExternalStore`) was 190 to 290 ms at 4×, with
+style, layout and paint after it. Inside the script, React itself and each card measuring its lines were the
+biggest app-side parts; on Home also the local `recentFolders` query.
+
+1. **The note grid draws the first 24 cards with the click** and the rest of the page (48) in a transition right
+   after (`DocumentBrowser.tsx`, `FIRST_CARDS`); per list, so going from All notes to a folder starts over. 24 is
+   more than a large screen shows before scrolling.
+2. **Home draws 7 cards per row with the click** (a wide screen shows about 6 of the 10) and the recent-folder
+   cards, its last section, right after (`HomeDashboard.tsx`). Nothing sits below the folders, so nothing moves.
+3. **Cards stop rendering twice.** Each card started at 12 lines, measured the room for its text and drew again;
+   it now starts from what the last card with that title measured (else the last of any), so the measure usually
+   finds the same number and React skips the second render (`useFitLines`, `DocumentCard.tsx`).
+4. **Local folder queries**: `organization.index` and `recentFolders` filtered every note once per folder (200 ×
+   5,000); notes are grouped by folder in one pass (`lib/local/functions/organization.ts`).
+
+Desktop sidebar clicks, INP in ms at 4× CPU (before is PR 2's run):
+
+| Click | PR 2 | PR 3 |
+| --- | --- | --- |
+| Tasks | 120 | 136 |
+| All notes (worst of three) | 304 | 168 |
+| Home | 280 | 152 |
+| Calendar | 200 | 224 |
+
+Same run, load average about 15: desktop LCP 1,628 / 1,556 ms (cold / warm), phone 1,692 / 1,716; keyboard note
+open 245 ms desktop, 233 ms phone (p50); phone clicks Tasks 160, Home 152, Calendar 224. Calendar (not changed
+here) stays just over 200 ms at 4× on both widths; typing stayed under 70 ms at p95 (one 288 ms key on desktop).
+
 ### What's left (in order)
 
-- Desktop All notes click (~300 ms at 4×) and Home (~280 ms): mostly style and layout of the new view (note cards
-  with container queries and color-mix) plus each card measuring its lines (`useFitLines`, a second render of
-  every card).
+- The rest of each click is style, layout and paint of the new view (note cards with container queries and
+  color-mix); lowering it further would mean changing how cards are drawn.
 - From the web audit, not done yet: the sync engine keeping every opened note's blocks (memory), validators for
   every block kind in the start (`editor-schema` 233 KB), browsers' warm start without waiting for `me`, the
   note page's whole-note work per save echo, the first list read of the whole scope from IndexedDB.

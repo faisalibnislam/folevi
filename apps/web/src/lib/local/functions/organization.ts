@@ -76,9 +76,24 @@ const listedIn = (folderId: string) => (d: LocalDocument) => d.folderId === fold
 /** A live folder's parent as the server shows it: null when the parent was deleted. */
 const shownParent = (f: LocalFolder, live: Set<string>) => (f.parentFolderId && live.has(f.parentFolderId) ? f.parentFolderId : null);
 
-/** One folder of the All folders view / Home (organization.ts folderRow). */
-function folderRow(f: LocalFolder, docs: LocalDocument[], live: Set<string>, all: LocalFolder[]) {
-  const inside = docs.filter(listedIn(f.id));
+/**
+ * Each folder's listed notes, found in one pass over the notes (a filter of every note per folder took a
+ * noticeable moment on Home and All folders with 5,000 notes in 200 folders, docs/perf/web-results.md).
+ */
+function listedByFolder(docs: LocalDocument[]): Map<string, LocalDocument[]> {
+  const out = new Map<string, LocalDocument[]>();
+  for (const d of docs) {
+    if (d.folderId === null || !listedIn(d.folderId)(d)) continue;
+    const list = out.get(d.folderId);
+    if (list) list.push(d);
+    else out.set(d.folderId, [d]);
+  }
+  return out;
+}
+
+/** One folder of the All folders view / Home (organization.ts folderRow). `byFolder`: listedByFolder(docs). */
+function folderRow(f: LocalFolder, byFolder: Map<string, LocalDocument[]>, live: Set<string>, all: LocalFolder[]) {
+  const inside = byFolder.get(f.id) ?? [];
   // Direct subfolders, most recently changed first (the card draws up to two behind it), as the server's row.
   const children = all.filter((c) => shownParent(c, live) === f.id).sort((a, b) => b.updatedAt - a.updatedAt);
   return {
@@ -88,7 +103,7 @@ function folderRow(f: LocalFolder, docs: LocalDocument[], live: Set<string>, all
     parentFolderId: shownParent(f, live),
     rank: f.rank,
     createdAt: f.createdAt,
-    updatedAt: Math.max(f.updatedAt, ...inside.map((d) => d.updatedAt)),
+    updatedAt: inside.reduce((m, d) => Math.max(m, d.updatedAt), f.updatedAt),
     documentCount: inside.length,
     childCount: children.length,
     childColors: children.slice(0, 2).map((c) => c.color ?? null),
@@ -120,7 +135,8 @@ defineLocal(api.organization.index, "query", async (ctx, args) => {
   if (args.only !== "tags") {
     const folders = (await liveFolders(ctx.db)).sort(byCreation);
     const live = new Set(folders.map((f) => f.id));
-    for (const f of folders) folderRows.push(folderRow(f, docs, live, folders));
+    const byFolder = listedByFolder(docs);
+    for (const f of folders) folderRows.push(folderRow(f, byFolder, live, folders));
   }
   const tagRows = [];
   if (args.only !== "folders") {
@@ -138,16 +154,17 @@ defineLocal(api.organization.recentFolders, "query", async (ctx, args) => {
   const live = new Set(folders.map((f) => f.id));
   const byId = new Map(folders.map((f) => [f.id, f]));
   const docs = await ctx.db.list("documents");
+  const byFolder = listedByFolder(docs);
   // A folder's last change: its own, or its most recently edited listed note.
   const latest = new Map<string, number>();
-  for (const f of folders) latest.set(f.id, Math.max(f.updatedAt, ...docs.filter(listedIn(f.id)).map((d) => d.updatedAt)));
+  for (const f of folders) latest.set(f.id, (byFolder.get(f.id) ?? []).reduce((m, d) => Math.max(m, d.updatedAt), f.updatedAt));
   const limit = Math.max(0, Math.min(Math.floor(args.limit), 100));
   const recent = [...folders].sort((a, b) => latest.get(b.id)! - latest.get(a.id)!).slice(0, limit);
   return {
     total: folders.length,
     folders: recent.map((f) => {
       const parent = f.parentFolderId ? byId.get(f.parentFolderId) : undefined;
-      return { ...folderRow(f, docs, live, folders), parentName: parent?.name ?? null };
+      return { ...folderRow(f, byFolder, live, folders), parentName: parent?.name ?? null };
     }),
   };
 });

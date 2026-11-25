@@ -77,6 +77,24 @@ export function importChains(entryFile, target, all = false) {
   });
 }
 
+/** Every file the entry reaches through static imports (repository paths). */
+export function reachable(entryFile) {
+  const entry = resolve(entryFile);
+  const seen = new Set([entry]);
+  const queue = [entry];
+  while (queue.length) {
+    const f = queue.shift();
+    for (const spec of imports(f)) {
+      const g = resolveSpec(spec, f);
+      if (g && !seen.has(g)) {
+        seen.add(g);
+        queue.push(g);
+      }
+    }
+  }
+  return [...seen].map((f) => relative(repo, f));
+}
+
 if (process.argv[1] && resolve(process.argv[1]) === resolve(import.meta.filename)) {
   const chains = importChains(entryArg, target, all);
   if (!chains.length) console.log(`no static import chain from ${entryArg} to "${target}"`);

@@ -261,6 +261,36 @@ async function profiled<T>(cdp: CDPSession, name: string, act: () => Promise<T>)
   }
 }
 
+/**
+ * PERF_TRACE=1: a Chromium trace of `act`, summed by event (script, style, layout, paint) on the page's main thread:
+ * what a CPU profile files under "(program)".
+ */
+async function traced<T>(cdp: CDPSession, label: string, act: () => Promise<T>): Promise<T> {
+  if (!process.env.PERF_TRACE) return act();
+  const events: { name: string; ph: string; dur?: number; tid: number; pid: number; args?: { data?: { frame?: string } } }[] = [];
+  const on = (e: { value: typeof events }) => events.push(...e.value);
+  cdp.on("Tracing.dataCollected", on);
+  await cdp.send("Tracing.start", { categories: "devtools.timeline,disabled-by-default-devtools.timeline", transferMode: "ReportEvents" });
+  let result: T;
+  try {
+    result = await act();
+  } finally {
+    const done = new Promise<void>((resolve) => cdp.once("Tracing.tracingComplete", () => resolve()));
+    await cdp.send("Tracing.end");
+    await done;
+    cdp.off("Tracing.dataCollected", on);
+  }
+  // The renderer's main thread: the one that ran the most RunTask time.
+  const busy = new Map<string, number>();
+  for (const e of events) if (e.name === "RunTask" && e.dur) busy.set(`${e.pid}:${e.tid}`, (busy.get(`${e.pid}:${e.tid}`) ?? 0) + e.dur);
+  const main = [...busy].sort((a, b) => b[1] - a[1])[0]?.[0];
+  const by = new Map<string, number>();
+  for (const e of events) if (e.ph === "X" && e.dur && `${e.pid}:${e.tid}` === main && e.name !== "RunTask") by.set(e.name, (by.get(e.name) ?? 0) + e.dur / 1000);
+  const top = [...by].sort((a, b) => b[1] - a[1]).slice(0, 12).map(([k, v]) => `${k} ${Math.round(v)}`);
+  log("trace", label, top.join(", "));
+  return result!;
+}
+
 async function seed(page: Page) {
   log("seeding:", NOTES, "notes in", batches(), "imports");
   await page.goto("/settings/data");
@@ -409,10 +439,12 @@ test.describe("web app speed with a big library", { tag: "@web-perf" }, () => {
           const link = page.getByRole("link", { name, exact: true }).first();
           if (await link.isVisible().catch(() => false)) {
             const had = await meter(page, (m) => [...m.interactions.keys()]);
-            await profiled(cdp, `${width}-click-${Object.keys(perLink).length + 1}-${name.replace(/\s+/g, "")}`, async () => {
-              await link.click();
-              await page.waitForTimeout(1500);
-            });
+            await traced(cdp, `${width} click ${name}`, () =>
+              profiled(cdp, `${width}-click-${Object.keys(perLink).length + 1}-${name.replace(/\s+/g, "")}`, async () => {
+                await link.click();
+                await page.waitForTimeout(1500);
+              }),
+            );
             const now = await meter(page, (m) => [...m.interactions.entries()].map(([k, v]) => [k, v.duration] as [number, number]));
             perLink[`${Object.keys(perLink).length + 1}. ${name}`] = Math.round(Math.max(0, ...now.filter(([k]) => !had.includes(k)).map(([, d]) => d)));
           }

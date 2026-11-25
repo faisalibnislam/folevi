@@ -29,12 +29,12 @@ type Config struct {
 	RelayIPv6          string
 	LogLevel           string
 
-	DNSProvider        string
-	CloudflareToken    string // secret
-	CloudflareZoneID   string
-	DNSTTL             int
-	ReachAllowPrivate  bool
-	ReachTimeout       time.Duration
+	DNSProvider       string
+	CloudflareToken   string // secret
+	CloudflareZoneID  string
+	DNSTTL            int
+	ReachAllowPrivate bool
+	ReachTimeout      time.Duration
 
 	RelayBytesPerSecond int64
 	RelayMonthlyBytes   int64
@@ -42,46 +42,46 @@ type Config struct {
 	RelayMaxConns       int
 	RelayIdleTimeout    time.Duration
 
-	RegisterPerIPHourly   int
-	LinkCodesPerHour      int
-	ApprovePerUserHourly  int
+	RegisterPerIPHourly  int
+	LinkCodesPerHour     int
+	ApprovePerUserHourly int
 
-	ResendAPIKey            string // secret
-	ResendBaseURL           string
-	MailFromAddress         string
-	MailDisabled            bool
-	MailRequireLinked       bool
-	MailPerServerHourly     int
-	MailPerServerDaily      int
-	MailPerRecipientHourly  int
-	MailPerRecipientDaily   int
-	MailGlobalDaily         int
+	ResendAPIKey           string // secret
+	ResendBaseURL          string
+	MailFromAddress        string
+	MailDisabled           bool
+	MailRequireLinked      bool
+	MailPerServerHourly    int
+	MailPerServerDaily     int
+	MailPerRecipientHourly int
+	MailPerRecipientDaily  int
+	MailGlobalDaily        int
 
-	APNsKeyID    string
-	APNsTeamID   string
-	APNsBundleID string
-	APNsKey      string // secret (contents of the .p8)
-	FCMServiceAccount []byte // secret (JSON)
-	FCMProjectID string
+	APNsKeyID           string
+	APNsTeamID          string
+	APNsBundleID        string
+	APNsKey             string // secret (contents of the .p8)
+	FCMServiceAccount   []byte // secret (JSON)
+	FCMProjectID        string
 	PushPerServerHourly int
 
-	GeminiAPIKey       string // secret
-	AIBaseURL          string
-	AIChatModel        string
-	AIEmbeddingModel   string
-	AIAllowedModels    []string
-	AIMonthlyTokens    int64
-	AIPerServerMinute  int
-	AIRequireLinked    bool
-	AIMaxRequestBytes  int64
+	GeminiAPIKey      string // secret
+	AIBaseURL         string
+	AIChatModel       string
+	AIEmbeddingModel  string
+	AIAllowedModels   []string
+	AIMonthlyTokens   int64
+	AIPerServerMinute int
+	AIRequireLinked   bool
+	AIMaxRequestBytes int64
 
-	UnsplashAccessKey     string // secret
-	UnsplashBaseURL       string
+	UnsplashAccessKey       string // secret
+	UnsplashBaseURL         string
 	UnsplashPerServerHourly int
 
-	DiagMaxBytes        int64
-	DiagRetention       time.Duration
-	DiagPerServerDaily  int
+	DiagMaxBytes       int64
+	DiagRetention      time.Duration
+	DiagPerServerDaily int
 }
 
 type reader struct {

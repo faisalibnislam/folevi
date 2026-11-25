@@ -30,17 +30,17 @@ import (
 
 // Deps are the pieces the API uses. Nil senders turn their endpoint into 503.
 type Deps struct {
-	Config  *config.Config
-	Store   store.Store
-	DNS     *dns.Manager // nil: no DNS changes
-	Relay   *relay.Relay // nil: no relay
-	Mail    mail.Sender
-	APNs    push.Sender
-	FCM     push.Sender
-	AI      *ai.Gateway // nil: AI unavailable
-	HTTP    *http.Client
-	Log     *slog.Logger
-	Now     func() time.Time
+	Config *config.Config
+	Store  store.Store
+	DNS    *dns.Manager // nil: no DNS changes
+	Relay  *relay.Relay // nil: no relay
+	Mail   mail.Sender
+	APNs   push.Sender
+	FCM    push.Sender
+	AI     *ai.Gateway // nil: AI unavailable
+	HTTP   *http.Client
+	Log    *slog.Logger
+	Now    func() time.Time
 	// ReachRoots verifies the certificate seen by the reachability check (nil: the system roots).
 	ReachRoots *x509.CertPool
 }
@@ -344,8 +344,3 @@ func validAccount(s string) bool {
 	return true
 }
 
-// discard drains and closes a body we do not read, so keep-alive works.
-func discard(r io.ReadCloser) {
-	_, _ = io.Copy(io.Discard, io.LimitReader(r, 64<<10))
-	_ = r.Close()
-}

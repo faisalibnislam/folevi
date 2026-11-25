@@ -68,6 +68,7 @@ type Deployed struct {
 	Version       string `json:"version,omitempty"`
 	FunctionsHash string `json:"functionsHash,omitempty"`
 	EnvHash       string `json:"envHash,omitempty"`
+	Origin        string `json:"origin,omitempty"`
 }
 
 // Internal ports. The contract fixes them (3501, 3510, 3511); they are settable only so tests can run beside

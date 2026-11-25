@@ -21,11 +21,11 @@ import (
 )
 
 const (
-	linkCodeTTL   = 10 * time.Minute
-	onlineWindow  = 5 * time.Minute
-	maxLanIPs     = 8
-	tokenPrefix   = "fct_"
-	codeAlphabet  = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789" // no 0/O, 1/I
+	linkCodeTTL  = 10 * time.Minute
+	onlineWindow = 5 * time.Minute
+	maxLanIPs    = 8
+	tokenPrefix  = "fct_"
+	codeAlphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789" // no 0/O, 1/I
 )
 
 var (
@@ -60,7 +60,9 @@ func newLinkCode() string {
 	return string(out)
 }
 
-func normalizeCode(code string) string { return strings.ToUpper(codeCleanRe.ReplaceAllString(code, "")) }
+func normalizeCode(code string) string {
+	return strings.ToUpper(codeCleanRe.ReplaceAllString(code, ""))
+}
 
 func codeHash(code string) []byte {
 	h := sha256.Sum256([]byte("link:" + normalizeCode(code)))

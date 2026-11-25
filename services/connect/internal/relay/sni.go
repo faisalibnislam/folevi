@@ -19,14 +19,14 @@ var errHelloRead = errors.New("hello read")
 // readOnlyConn lets crypto/tls parse a ClientHello from a reader without ever writing back.
 type readOnlyConn struct{ r io.Reader }
 
-func (c readOnlyConn) Read(p []byte) (int, error)       { return c.r.Read(p) }
-func (readOnlyConn) Write([]byte) (int, error)          { return 0, io.ErrClosedPipe }
-func (readOnlyConn) Close() error                       { return nil }
-func (readOnlyConn) LocalAddr() net.Addr                { return nil }
-func (readOnlyConn) RemoteAddr() net.Addr               { return nil }
-func (readOnlyConn) SetDeadline(time.Time) error        { return nil }
-func (readOnlyConn) SetReadDeadline(time.Time) error    { return nil }
-func (readOnlyConn) SetWriteDeadline(time.Time) error   { return nil }
+func (c readOnlyConn) Read(p []byte) (int, error)     { return c.r.Read(p) }
+func (readOnlyConn) Write([]byte) (int, error)        { return 0, io.ErrClosedPipe }
+func (readOnlyConn) Close() error                     { return nil }
+func (readOnlyConn) LocalAddr() net.Addr              { return nil }
+func (readOnlyConn) RemoteAddr() net.Addr             { return nil }
+func (readOnlyConn) SetDeadline(time.Time) error      { return nil }
+func (readOnlyConn) SetReadDeadline(time.Time) error  { return nil }
+func (readOnlyConn) SetWriteDeadline(time.Time) error { return nil }
 
 // PeekSNI reads the TLS ClientHello from r and returns the server name it asks for and every byte read, so the
 // caller can replay them. It never answers the client and never holds a key: the handshake is abandoned the moment
@@ -110,7 +110,7 @@ type proxiedConn struct {
 }
 
 func (c *proxiedConn) Read(p []byte) (int, error) { return c.r.Read(p) }
-func (c *proxiedConn) RemoteAddr() net.Addr      { return c.remote }
+func (c *proxiedConn) RemoteAddr() net.Addr       { return c.remote }
 
 // ReadProxyV1 reads a PROXY protocol v1 line from c (sent by a load balancer such as Fly's proxy_proto handler)
 // and returns a conn whose RemoteAddr is the original client.

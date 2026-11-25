@@ -109,9 +109,9 @@ type scanner interface{ Scan(dest ...any) error }
 
 func scanServer(row scanner) (*Server, error) {
 	var (
-		sv                                  Server
-		lan, flags                          string
-		reachable                           sql.NullInt64
+		sv                                 Server
+		lan, flags                         string
+		reachable                          sql.NullInt64
 		checked, created, seen, tunnelSeen int64
 	)
 	err := row.Scan(&sv.ID, &sv.Name, &sv.Version, &sv.PublicKey, &sv.TokenHash, &sv.OwnerAccount, &lan, &sv.PublicIP, &sv.PublicPort, &reachable, &checked, &created, &seen, &tunnelSeen, &flags)

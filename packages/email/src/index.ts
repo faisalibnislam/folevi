@@ -1,5 +1,5 @@
 // @folevi/email is Folevi's transactional email: templates (compiled in the repo), rendering, sending
-// through Resend, webhook verification and inbound mail.
+// through Resend (Folevi Cloud) or Folevi Mail and SMTP (Folevi Server), webhook verification and inbound mail.
 // Runtime-agnostic: only Web APIs (fetch, crypto.subtle, TextEncoder, atob/btoa), so it runs
 // in the Convex V8 runtime, browsers and Node. No runtime dependencies.
 
@@ -22,7 +22,21 @@ export { emailManifest, TEMPLATE_KEYS, EMAIL_BRAND_BASE_URL, EMAIL_LOGO, EMAIL_S
 export { validateDataVariables, isAllowedUrl, isPlausibleEmail } from "./validate";
 export { renderEmail, EmailRenderError, escapeHtml } from "./render";
 export { isRecipientAllowed } from "./policy";
-export { selectProvider, sendingDomain, sendEmail, normaliseMessageId, threadHeaders, type ProviderSelection } from "./send";
+export { selectProvider, sendingDomain, sendEmail, normaliseMessageId, threadHeaders, type ProviderSelection, type SmtpTransport } from "./send";
+export { postToFoleviMail, foleviMailBody, type FoleviMailMessage } from "./providers/folevi";
+export {
+  sendSmtp,
+  buildMimeMessage,
+  dataBlock,
+  encodeHeaderValue,
+  formatAddress,
+  base64Utf8,
+  type SmtpSocket,
+  type SmtpConnect,
+  type SmtpConnectOptions,
+  type SmtpConfig,
+  type SmtpMessage,
+} from "./providers/smtp";
 export { RESEND_API, RESEND_SEND_ENDPOINT, resendRequestBody, postToResend, formatFrom, sanitizeProviderError } from "./providers/resend";
 export { verifyResendSignature, parseResendWebhook, WEBHOOK_TOLERANCE_MS, type ResendWebhook } from "./providers/resendWebhook";
 export { redactEmail, hashRecipient } from "./privacy";

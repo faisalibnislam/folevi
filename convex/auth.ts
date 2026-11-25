@@ -17,7 +17,6 @@ import { oauthProvider } from "@better-auth/oauth-provider";
 import { passkey, type PasskeyOptions } from "@better-auth/passkey";
 import { components, internal } from "./_generated/api";
 import type { DataModel } from "./_generated/dataModel";
-import authConfig from "./auth.config";
 import authSchema from "./betterAuth/schema";
 import { CLAIM_EMAIL_VERIFIED, CLAIM_MFA } from "./lib/claims";
 import { CLIENT_IP_HEADER } from "./lib/clientIp";
@@ -27,6 +26,8 @@ import { appleClientSecret, appleRevocationFor, appleSignInConfig, type AppleSig
 import { appleNative } from "./lib/appleNative";
 import { guardRefreshTokenRevoke } from "./lib/authAdapter";
 import { ACCESS_TOKEN_PREFIX, mcpResourceUrl, OAUTH_SCOPES, REFRESH_TOKEN_PREFIX } from "./lib/mcp/config";
+import { isServerEdition } from "./lib/edition";
+import { pluginJwksOptions } from "./lib/jwks";
 
 /** Linking an account needs a sign-in this recent (the session's freshAge). */
 const FRESH_LINK_MS = 10 * 60_000;
@@ -213,6 +214,52 @@ async function queueIdentityEmail(
   await scheduler.runAfter(0, internal.authEmails.send as never, args as never);
 }
 
+type RunQuery = (fn: never, args: never) => Promise<unknown>;
+type RunMutation = (fn: never, args: never) => Promise<unknown>;
+
+/**
+ * Folevi Server: the invitation a sign-up carries, from the request body (`inviteToken`) or the
+ * `x-folevi-invite` header (docs/self-hosting/CONTRACT.md §7). Null without one.
+ */
+function inviteTokenOf(hookCtx: unknown): string | null {
+  const c = hookCtx as { body?: Record<string, unknown>; headers?: Headers } | null | undefined;
+  const fromBody = c?.body?.inviteToken;
+  const raw = typeof fromBody === "string" ? fromBody : (c?.headers?.get?.("x-folevi-invite") ?? "");
+  const token = raw.trim();
+  return token && token.length <= 200 ? token : null;
+}
+
+/**
+ * Folevi Server's sign-up rules for a new account, whichever way it signs up (convex/server.ts signUpGate):
+ * invite-only, open, or chosen email domains. With email off there is no way to verify an address, so the account
+ * starts verified (sign-up and sign-in then need no email). Returns the user row to create.
+ */
+async function serverSignUp(ctx: GenericCtx<DataModel>, user: Record<string, unknown>, hookCtx: unknown): Promise<Record<string, unknown>> {
+  const runQuery = (ctx as { runQuery?: RunQuery }).runQuery;
+  if (!runQuery) return user;
+  const gate = (await runQuery(internal.server.signUpGate as never, { email: String(user.email ?? ""), ...(inviteTokenOf(hookCtx) ? { inviteToken: inviteTokenOf(hookCtx)! } : {}) } as never)) as {
+    allowed: boolean;
+    code?: string;
+    message?: string;
+    emailOn: boolean;
+  };
+  if (!gate.allowed) throw new APIError("FORBIDDEN", { message: gate.message ?? "Sign-up isn't open on this server.", code: gate.code ?? "SIGNUP_CLOSED" });
+  return gate.emailOn ? user : { ...user, emailVerified: true };
+}
+
+/** Folevi Server: which sign-in methods the owner turned off, refused here as well as hidden in the apps. */
+async function serverSignInRules(ctx: GenericCtx<DataModel>, path: string): Promise<void> {
+  const passwordPaths = ["/sign-in/email", "/sign-up/email"];
+  const passkeyPaths = ["/passkey/generate-authenticate-options", "/passkey/verify-authentication"];
+  if (!passwordPaths.includes(path) && !passkeyPaths.includes(path)) return;
+  const runQuery = (ctx as { runQuery?: RunQuery }).runQuery;
+  if (!runQuery) return;
+  const rules = (await runQuery(internal.server.authSettings as never, {} as never)) as { password: boolean; passkey: boolean } | null;
+  if (!rules) return;
+  if (passwordPaths.includes(path) && !rules.password) throw new APIError("FORBIDDEN", { message: "Signing in with a password is off on this server.", code: "PASSWORD_SIGN_IN_OFF" });
+  if (passkeyPaths.includes(path) && !rules.passkey) throw new APIError("FORBIDDEN", { message: "Signing in with a passkey is off on this server.", code: "PASSKEY_SIGN_IN_OFF" });
+}
+
 /** Better Auth options (split out so the local component's adapter can derive its schema from them). */
 export function createAuthOptions(ctx: GenericCtx<DataModel>) {
   return {
@@ -250,6 +297,8 @@ export function createAuthOptions(ctx: GenericCtx<DataModel>) {
       autoSignInAfterVerification: true,
       expiresIn: 60 * 60 * 24,
       sendVerificationEmail: async ({ user, url, token }) => {
+        // Folevi Server with email off creates accounts verified: there is nothing to send.
+        if (isServerEdition() && user.emailVerified) return;
         await queueIdentityEmail(ctx, {
           key: "auth_verify_email",
           to: user.email,
@@ -310,11 +359,20 @@ export function createAuthOptions(ctx: GenericCtx<DataModel>) {
         create: {
           // A first sign-in with Google or Apple is a sign-up, so it follows the same switch as email sign-ups.
           before: async (user: Record<string, unknown>, hookCtx: unknown) => {
+            // Folevi Server: its sign-up rules apply to every new account (email, Google, Apple).
+            if (isServerEdition()) user = await serverSignUp(ctx, user, hookCtx);
             if (!fromSocialSignIn(hookCtx)) return { data: user };
             const runQuery = (ctx as { runQuery?: (fn: never, args: never) => Promise<unknown> }).runQuery;
             const open = runQuery ? await runQuery(internal.authEmails.signupsOpen as never, {} as never) : true;
             if (open === false) throw new APIError("FORBIDDEN", { message: SOCIAL_REFUSED.signupsPaused });
             return { data: user };
+          },
+          // Folevi Server: an invitation used to sign up is spent by this account (it accepts it on its first visit).
+          after: async (user: Record<string, unknown>, hookCtx: unknown) => {
+            if (!isServerEdition()) return;
+            const token = inviteTokenOf(hookCtx);
+            const runMutation = (ctx as { runMutation?: RunMutation }).runMutation;
+            if (token && runMutation) await runMutation(internal.server.spendInviteAtSignUp as never, { inviteToken: token, email: String(user.email ?? "") } as never);
           },
         },
       },
@@ -339,6 +397,7 @@ export function createAuthOptions(ctx: GenericCtx<DataModel>) {
     },
     hooks: {
       before: createAuthMiddleware(async (hookCtx) => {
+        if (isServerEdition()) await serverSignInRules(ctx, hookCtx.path ?? "");
         // Linking a Google or Apple account needs a sign-in in the last 10 minutes: a stolen session can't link
         // the attacker's own account to come back later (docs/SECURITY_PLAN.md P0.5).
         if (hookCtx.path === "/link-social") {
@@ -419,7 +478,8 @@ export function createAuthOptions(ctx: GenericCtx<DataModel>) {
       // Folevi's /api/places routes call them server to server.
       multiSession({ maximumSessions: MAX_BROWSER_ACCOUNTS }),
       convex({
-        authConfig,
+        // Folevi Server may give the signing keys inline (FOLEVI_JWKS, lib/jwks.ts); Folevi Cloud never does.
+        ...pluginJwksOptions(),
         jwt: {
           expirationSeconds: 60 * 15,
           // Only what the backend needs to authorize a request; `sessionId` is added by the plugin.

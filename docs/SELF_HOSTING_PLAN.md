@@ -320,8 +320,8 @@ early, during Phase 1.
 2. **The Connect domain:** done, the owner bought **`folevi.app`** (2026-11-25). Still to do: point its
    nameservers at Cloudflare (Connect manages records through Cloudflare's API) and approve the Public Suffix List
    request. `.app` is on the browsers' HTTPS-only list, which suits us: every server name is HTTPS anyway.
-3. **Test hardware:** the owner has a Synology (model to confirm: its chip decides which `.spk` gets tested first)
-   and no QNAP. QNAP is tested without hardware: the private glibc runs in an old-glibc Linux container in CI
+3. **Test hardware:** the owner has a Synology **DS223** (ARM64, Realtek RTD1619B, 2 GB RAM that can't be
+   expanded, DSM 7.2): the ARM64 `.spk` is tested first, and it is the real test of the 2 GB memory profile. No QNAP. QNAP is tested without hardware: the private glibc runs in an old-glibc Linux container in CI
    (Ubuntu 16.04 has glibc 2.23, near QTS 5's 2.21), then on QNAP's QuTScloud virtual appliance (QTS in a VM, which
    can run in Synology's Virtual Machine Manager; license terms unverified), then with beta testers who own QNAPs
    before the QNAP package leaves beta.

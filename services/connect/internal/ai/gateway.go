@@ -33,7 +33,9 @@ type Limits interface {
 // StaticLimits gives every server the same monthly budget.
 type StaticLimits struct{ Tokens int64 }
 
-func (s StaticLimits) MonthlyTokens(context.Context, string, string) (int64, error) { return s.Tokens, nil }
+func (s StaticLimits) MonthlyTokens(context.Context, string, string) (int64, error) {
+	return s.Tokens, nil
+}
 
 // Gateway forwards requests upstream.
 type Gateway struct {

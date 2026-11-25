@@ -60,6 +60,10 @@ class MainActivity : FragmentActivity(), PageView.Host {
     val lock: com.folevi.android.lock.AppLock by lazy { com.folevi.android.lock.AppLock(this) }
     private var started = false
     private var widgetsAt = 0L
+    /** The note pane's latest spot (placePage), applied again when the keyboard settles. */
+    private var slot: Rect? = null
+    /** When the keyboard started sliding in or out (0: it isn't): the page keeps its size until it settles. */
+    private var keyboardMovingSince = 0L
 
     override fun onCreate(savedInstanceState: Bundle?) {
         installSplashScreen()
@@ -82,6 +86,7 @@ class MainActivity : FragmentActivity(), PageView.Host {
             androidx.core.view.ViewCompat.setOnApplyWindowInsetsListener(web) { _, _ -> androidx.core.view.WindowInsetsCompat.CONSUMED }
             web.visibility = View.INVISIBLE
             root.addView(web, FrameLayout.LayoutParams(1, 1))
+            followKeyboard(root, web)
         }
         setContentView(root)
 
@@ -143,6 +148,7 @@ class MainActivity : FragmentActivity(), PageView.Host {
 
     /** Lays the Page View over the note pane (or hides it, still running, when no note is on screen). */
     private fun placePage(slot: Rect?) {
+        this.slot = slot
         val web = session.page?.webView ?: return
         if (slot == null || slot.width < 1f || slot.height < 1f) {
             web.visibility = View.INVISIBLE
@@ -151,7 +157,10 @@ class MainActivity : FragmentActivity(), PageView.Host {
         val lp = web.layoutParams as FrameLayout.LayoutParams
         val w = slot.width.roundToInt()
         val h = slot.height.roundToInt()
-        if (lp.width != w || lp.height != h) {
+        // The keyboard's slide moves the note pane's bottom every frame: the page on screen keeps its size until the
+        // keyboard settles (followKeyboard), so it lays out once instead of once a frame.
+        val holdSize = keyboardMoving() && web.visibility == View.VISIBLE && lp.width == w
+        if (!holdSize && (lp.width != w || lp.height != h)) {
             lp.width = w
             lp.height = h
             web.layoutParams = lp
@@ -159,6 +168,56 @@ class MainActivity : FragmentActivity(), PageView.Host {
         web.translationX = slot.left
         web.translationY = slot.top
         web.visibility = View.VISIBLE
+    }
+
+    /** A slide that never reported its end (it always should) stops holding the page's size after a second. */
+    private fun keyboardMoving(): Boolean =
+        keyboardMovingSince != 0L && android.os.SystemClock.uptimeMillis() - keyboardMovingSince < 1000
+
+    /**
+     * The keyboard resizes the page once per slide. Coming up, the page takes its final height as the slide starts
+     * (the composer is above the keyboard all the way up); going down, it grows back when the slide ends. The window
+     * itself never resizes (edge to edge): only the note pane's spot changes, through the Compose insets.
+     */
+    private fun followKeyboard(root: View, web: View) {
+        val ime = androidx.core.view.WindowInsetsCompat.Type.ime()
+        androidx.core.view.ViewCompat.setWindowInsetsAnimationCallback(
+            root,
+            object : androidx.core.view.WindowInsetsAnimationCompat.Callback(androidx.core.view.WindowInsetsAnimationCompat.Callback.DISPATCH_MODE_CONTINUE_ON_SUBTREE) {
+                override fun onStart(
+                    animation: androidx.core.view.WindowInsetsAnimationCompat,
+                    bounds: androidx.core.view.WindowInsetsAnimationCompat.BoundsCompat,
+                ): androidx.core.view.WindowInsetsAnimationCompat.BoundsCompat {
+                    if ((animation.typeMask and ime) == 0) return bounds
+                    keyboardMovingSince = android.os.SystemClock.uptimeMillis()
+                    // The insets the slide ends at: coming up, the page is cut to sit above where the keyboard will be.
+                    val end = androidx.core.view.ViewCompat.getRootWindowInsets(root)
+                    val s = slot
+                    if (end != null && end.isVisible(ime) && s != null && web.visibility == View.VISIBLE) {
+                        val others = androidx.core.view.WindowInsetsCompat.Type.systemBars() or androidx.core.view.WindowInsetsCompat.Type.displayCutout()
+                        val bottom = maxOf(end.getInsets(ime).bottom, end.getInsets(others).bottom)
+                        val h = ((root.height - bottom).toFloat().coerceAtMost(s.bottom) - s.top).roundToInt()
+                        val lp = web.layoutParams as FrameLayout.LayoutParams
+                        if (h >= 1 && h < lp.height) {
+                            lp.height = h
+                            web.layoutParams = lp
+                        }
+                    }
+                    return bounds
+                }
+
+                override fun onProgress(
+                    insets: androidx.core.view.WindowInsetsCompat,
+                    runningAnimations: MutableList<androidx.core.view.WindowInsetsAnimationCompat>,
+                ): androidx.core.view.WindowInsetsCompat = insets
+
+                override fun onEnd(animation: androidx.core.view.WindowInsetsAnimationCompat) {
+                    if ((animation.typeMask and ime) == 0) return
+                    keyboardMovingSince = 0L
+                    placePage(slot)
+                }
+            },
+        )
     }
 
     // ---------------------------------------------------------------- the page (PageView.Host)
@@ -181,11 +240,14 @@ class MainActivity : FragmentActivity(), PageView.Host {
     /** Several places: the session older builds kept moves to its account, then the page opens in it. */
     private fun adoptLegacySession() {
         lifecycleScope.launch {
-            if (kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { app.auth.token(null) } == null) return@launch
-            val user = runCatching { app.auth.adoptLegacy() }.getOrNull() ?: return@launch
+            // Reading, moving and deleting the old session are Keystore and file work: off the main thread. The places
+            // and the page change back on it, as before.
+            val user = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                if (app.auth.token(null) == null) null else runCatching { app.auth.adoptLegacy() }.getOrNull()
+            } ?: return@launch
             val first = app.places.state.accounts.isEmpty()
             val added = app.places.addAccount(user.userId, user.name, user.email, user.avatarUrl) ?: return@launch
-            if (first) app.adoptLegacyKeys(user.userId)
+            if (first) kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { app.adoptLegacyKeys(user.userId) }
             if (app.places.state.current == null && app.settings.mode == "account") {
                 app.places.setCurrent(added.id)
                 reloadForMode()

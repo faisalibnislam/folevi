@@ -86,12 +86,14 @@ class FoleviApp : Application() {
         settings = ShellSettings(this)
         com.folevi.android.host.Reminders.channels(this)
         // Background work is scheduled off the main thread (WorkManager starts its database); every process start runs
-        // this, a widget update or a push included.
+        // this, a widget update or a push included. Firebase starts here too: nothing on screen needs it at launch, and
+        // everything that does (the messaging service, turning notifications on or off) calls Push.start itself, which
+        // waits for this one if it's still running.
         kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.SupervisorJob() + kotlinx.coroutines.Dispatchers.Default).launch {
+            runCatching { com.folevi.android.push.Push.start(this@FoleviApp) }
             runCatching { com.folevi.android.extras.Widgets.schedule(this@FoleviApp) }
             runCatching { com.folevi.android.extras.PlaceOutbox.schedule(this@FoleviApp) }
         }
-        com.folevi.android.push.Push.start(this)
         secrets = SecretStore(File(noBackupFilesDir, "secrets"), KeystoreCipher("folevi.secrets.v1"))
         library = com.folevi.android.library.LibraryService(noBackupFilesDir, this)
         val cloudPrefs = getSharedPreferences("folevi-cloud", MODE_PRIVATE)

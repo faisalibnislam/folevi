@@ -31,3 +31,10 @@ On 2026-11-25 the owner found the Capacitor iOS app "finicky" (UI and UX fine, t
 **Android:** the same shape in Jetpack Compose (handed to the Android session): today's UI with Material 3
 (Expressive) elements, motion and predictive back; web editor only for writing; one big switch; emulators until
 done; no Play upload without the OK.
+
+**Follow-up picks (same day, after comparing the native app on `main` with today's app on the Simulator):**
+- Screen titles in Folevi's serif (Spectral), as today, still collapsing into the bar natively.
+- Bottom: iOS 26's Liquid Glass tab bar (Home, Tasks, Calendar, Foli AI) with + as a floating glass control beside
+  it and Search as iOS's separate search button.
+- Lists (Calendar, Tasks and the like): plain rows on the screen's background, as today, not cards on grey.
+- Home in today's order: search field, recent notes, Catch me up, All notes / Drafts, Bookmarks, Folders.

@@ -21,6 +21,8 @@ struct RebuildSyncButton: View {
         let pending = status?.pending ?? 0
         WebPillButton(RebuildSync.label(status), action: action) {
             RebuildSyncIcon(state: state, justSynced: justSynced)
+                // (The web's tone: red when something needs a look, muted when saved, the heading otherwise.)
+                .foregroundStyle(state == .error || state == .conflict ? DS.color.destructive : state == .saved ? DS.color.inkMuted : DS.color.heading)
                 .overlay(alignment: .topTrailing) { badge(state, pending) }
         }
         .accessibilityIdentifier("sync-status-touch")
@@ -82,10 +84,11 @@ struct RebuildSyncIcon: View {
 /// loader-circle turning (`animate-spin`; still under Reduce Motion).
 private struct RebuildSyncSpinner: View {
     let size: CGFloat
+    var strokeWidth: CGFloat = 1.9
     @State private var turning = false
 
     var body: some View {
-        WebIconView(.loaderCircle, size: size, strokeWidth: 1.9)
+        WebIconView(.loaderCircle, size: size, strokeWidth: strokeWidth)
             .rotationEffect(.degrees(turning ? 360 : 0))
             .onAppear {
                 guard !WebMotion.reduced else { return }
@@ -94,102 +97,147 @@ private struct RebuildSyncSpinner: View {
     }
 }
 
-/// The details (the web's SyncSheet): what the state means, when it last synced, notes still downloading, and Retry.
+/// The details (the web's SyncSheet, redesigned 2026-11-25): the status as a hero (its mark on a tinted disc, the
+/// state's name and one sentence), the facts on one card (Last synced, kept current while open; what's waiting on
+/// this iPhone; the connection; where it's saved), anything still downloading, then Try again now when it helps.
+/// iOS's own sheet (fitted detent, its grabber) with Close as a glass button in the header.
 struct RebuildSyncSheet: View {
     let phone: PhoneModel
     let close: () -> Void
     @Environment(\.colorScheme) private var scheme
 
-    /// The details (the owner, 2026-11-20: the title, the words and the last sync didn't line up): the state's
-    /// mark in its colour with its name and one sentence, centred; then the facts as a grouped list, label left and
-    /// value right; then the one button there is, only when there's something to do.
     var body: some View {
         let s = phone.sync.value
         let state = RebuildSync.debugState ?? s?.state ?? .saved
-        let pending = RebuildSync.debugState == nil ? (s?.pending ?? 0) : 3
-        PhoneSheetPanel(close: close, scrolls: false) {
-            VStack(spacing: 22) {
+        let pending = RebuildSync.debugState == nil ? (s?.pending ?? 0) : (state == .saved ? 0 : 3)
+        let online = RebuildSync.debugState == .offline ? false : (s?.online ?? true)
+        let local = phone.session.value?.mode == .local
+        let tone = RebuildSync.tone(state)
+        PhoneSheetPanel(close: close) {
+            VStack(spacing: 24) {
                 VStack(spacing: 12) {
-                    RebuildSyncIcon(state: state, size: 28)
-                        .foregroundStyle(RebuildSync.tone(state))
+                    RebuildSyncHeroIcon(state: state)
+                        .foregroundStyle(tone.icon)
                         .frame(width: 64, height: 64)
-                        .background(Circle().fill(RebuildSync.tone(state).opacity(scheme == .dark ? 0.2 : 0.12)))
+                        .background(Circle().fill(tone.disc))
                         .accessibilityHidden(true)
-                    Text(RebuildSync.title(state))
-                        .font(.system(.title2, weight: .semibold))
-                        .foregroundStyle(DS.color.heading)
-                        .accessibilityIdentifier("sync-state")
-                    Text(RebuildSync.describe(s, state: state, pending: pending))
-                        .font(.system(.body))
-                        .foregroundStyle(DS.color.inkMuted)
-                        .multilineTextAlignment(.center)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-                .frame(maxWidth: .infinity)
-                let rows = facts(s, state: state, pending: pending)
-                if !rows.isEmpty {
-                    VStack(spacing: 0) {
-                        ForEach(rows.indices, id: \.self) { i in
-                            HStack {
-                                Text(rows[i].label).foregroundStyle(DS.color.ink)
-                                Spacer(minLength: 12)
-                                Text(rows[i].value).foregroundStyle(DS.color.inkMuted).monospacedDigit().multilineTextAlignment(.trailing)
-                            }
-                            .font(.system(.callout))
-                            .padding(.horizontal, 16)
-                            .frame(minHeight: 46)
-                        }
+                    VStack(spacing: 4) {
+                        Text(RebuildSync.title(state))
+                            .webText(.role(.title2, weight: FoleviTokens.FontWeight.semibold))
+                            .foregroundStyle(DS.color.heading)
+                            .accessibilityAddTraits(.isHeader)
+                            .accessibilityIdentifier("sync-state")
+                        Text(RebuildSync.describe(s, state: state, pending: pending, local: local))
+                            .webText(.role(.body))
+                            .foregroundStyle(DS.color.inkMuted)
+                            .multilineTextAlignment(.center)
+                            .frame(maxWidth: 300)
+                            .fixedSize(horizontal: false, vertical: true)
                     }
-                    .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(DS.color.ink.opacity(scheme == .dark ? 0.07 : 0.04)))
                 }
+                .padding(.horizontal, 24)
+                .frame(maxWidth: .infinity)
+                // "1 min ago", kept current while the sheet is open (the web's useAge: every 15 seconds).
+                TimelineView(.periodic(from: .now, by: 15)) { context in
+                    RebuildSyncFacts(rows: facts(s, state: state, pending: pending, online: online, local: local, now: context.date))
+                }
+                .accessibilityElement(children: .contain)
+                .accessibilityLabel("Sync details")
                 if state != .saved {
                     let offline = state == .offline
                     Button { phone.retrySync() } label: {
-                        Label { Text(offline ? "Sync when online" : "Retry now") } icon: { WebIconView(.refreshCw, size: 17, strokeWidth: 2) }
-                            .font(.system(.body, weight: .semibold))
+                        Label { Text(offline ? "Syncs when you\u{2019}re online" : "Try again now") } icon: { WebIconView(.refreshCw, size: 17, strokeWidth: 2) }
+                            .webText(.role(.headline, weight: FoleviTokens.FontWeight.semibold))
                             .foregroundStyle(DS.color.canvas)
                             .frame(maxWidth: .infinity)
-                            .frame(height: 50)
-                            .background(Capsule().fill(DS.color.heading))
-                            .contentShape(Capsule())
+                            .frame(height: 38)
                     }
-                    .buttonStyle(.plain)
-                    .disabled(offline && s?.online != true)
-                    .opacity(offline && s?.online != true ? 0.4 : 1)
+                    .buttonStyle(.glassProminent)
+                    .buttonBorderShape(.capsule)
+                    .controlSize(.large)
+                    .tint(DS.color.heading)
+                    .disabled(offline && !online)
                     .accessibilityIdentifier("sync-retry")
                 }
             }
-            .padding(.horizontal, 20)
+            .padding(.horizontal, 16)
             .padding(.top, 4)
             .padding(.bottom, 24)
         }
         .accessibilityIdentifier("sync-sheet")
+        .accessibilityValue(state.rawValue)
     }
 
-    /// What's known, as label and value: when it last synced, what's waiting, what's still downloading.
-    private func facts(_ s: SyncStatusValue?, state: SyncState, pending: Int) -> [(label: String, value: String)] {
-        var rows: [(label: String, value: String)] = []
-        if let last = RebuildSync.lastSynced(phone) {
-            rows.append(("Last synced", last.formatted(.relative(presentation: .named)).capitalizedFirst))
-        } else if state == .offline {
-            rows.append(("Last synced", "Not yet on this iPhone"))
-        }
-        if pending > 0 { rows.append(("Waiting to sync", pending == 1 ? "1 change" : "\(pending) changes")) }
-        if state == .conflict, let c = s?.conflicts, c > 0 { rows.append(("Edited in two places", c == 1 ? "1 note" : "\(c) notes")) }
+    /// The facts, as the web's: Last synced, Waiting on this device, Connection, Saved to (Library in local mode),
+    /// then what the engine says is still downloading or locked.
+    private func facts(_ s: SyncStatusValue?, state: SyncState, pending: Int, online: Bool, local: Bool, now: Date) -> [RebuildSyncFacts.Row] {
+        var rows: [RebuildSyncFacts.Row] = []
+        let last = RebuildSync.lastSynced(phone).map { RebuildSync.age($0, now: max(now, $0)) }
+        rows.append(.init(label: "Last synced", value: last ?? (state == .saved ? "Up to date" : "Not yet on this iPhone")))
+        rows.append(.init(label: "Waiting on this iPhone", value: pending == 0 ? "Nothing" : pending == 1 ? "1 change" : "\(pending) changes", strong: pending > 0))
+        rows.append(.init(label: "Connection", value: online ? "Online" : "Offline"))
+        rows.append(.init(label: local ? "Library" : "Saved to", value: local ? "On your devices" : "Folevi"))
         for space in s?.spaces ?? [] where space.state != .ready {
             switch space.state {
-            case .downloading: rows.append(("Downloading notes", space.total.map { "\(space.have) of \($0)" } ?? "\(space.have)"))
-            case .locked: rows.append(("Library", "Locked on this iPhone"))
-            default: rows.append(("Library", "Opening"))
+            case .downloading: rows.append(.init(label: "Downloading notes", value: space.total.map { "\(space.have) of \($0)" } ?? "\(space.have)"))
+            case .locked: rows.append(.init(label: "Library", value: "Locked on this iPhone"))
+            default: rows.append(.init(label: "Library", value: "Opening"))
             }
         }
         return rows
     }
 }
 
-private extension String {
-    /// "3 seconds ago" as "3 seconds ago", "yesterday" as "Yesterday".
-    var capitalizedFirst: String { prefix(1).uppercased() + dropFirst() }
+/// The facts card (the web's ui-grouped list of Fact rows): label left, value right, hairlines between.
+struct RebuildSyncFacts: View {
+    struct Row: Hashable {
+        let label: String
+        let value: String
+        var strong = false
+    }
+    let rows: [Row]
+    @Environment(\.colorScheme) private var scheme
+
+    var body: some View {
+        VStack(spacing: 0) {
+            ForEach(Array(rows.enumerated()), id: \.offset) { i, row in
+                if i > 0 { Rectangle().fill(DS.color.line).frame(height: 1 / 3).padding(.leading, 16) }
+                HStack(spacing: 12) {
+                    Text(row.label).foregroundStyle(DS.color.ink)
+                    Spacer(minLength: 0)
+                    Text(row.value)
+                        .foregroundStyle(row.strong ? DS.color.heading : DS.color.inkMuted)
+                        .fontWeight(row.strong ? .semibold : nil)
+                        .monospacedDigit()
+                        .lineLimit(1)
+                        .truncationMode(.tail)
+                }
+                .webText(.role(.body))
+                .padding(.horizontal, 16)
+                .padding(.vertical, 10)
+                .frame(minHeight: 44)
+                .accessibilityElement(children: .combine)
+                .accessibilityIdentifier("sync-fact-\(i)")
+            }
+        }
+        .background(RoundedRectangle(cornerRadius: 26, style: .continuous).fill(DS.color.ink.opacity(scheme == .dark ? 0.08 : 0.045)))
+    }
+}
+
+/// The hero's mark (the web's HeroIcon): cloud-check synced, cloud-off offline, git-merge conflict, cloud-alert
+/// not saved, a turning loader while sending.
+struct RebuildSyncHeroIcon: View {
+    let state: SyncState
+
+    var body: some View {
+        switch state {
+        case .saved: WebIconView(.cloudCheck, size: 30, strokeWidth: 1.8)
+        case .offline: WebIconView(.cloudOff, size: 30, strokeWidth: 1.8)
+        case .conflict: WebIconView(.gitMerge, size: 30, strokeWidth: 1.8)
+        case .error: WebIconView(.cloudAlert, size: 30, strokeWidth: 1.8)
+        case .saving, .syncing: RebuildSyncSpinner(size: 30, strokeWidth: 1.8)
+        }
+    }
 }
 
 /// The words, in the web's (SyncStatusTouch.tsx TITLES, describe, label).
@@ -205,56 +253,72 @@ enum RebuildSync {
         #endif
     }
 
+    /// The same words as the web and Mac's cloud button (SYNC_LABELS; the owner, 2026-11-25: one set on every screen).
     static func title(_ state: SyncState) -> String {
         switch state {
-        case .saved: "Synced"
-        case .saving, .syncing: "Syncing"
-        case .offline: "Waiting to sync"
-        case .conflict: "Edited in two places"
+        case .saved: "Saved"
+        case .saving: "Saving\u{2026}"
+        case .syncing: "Syncing\u{2026}"
+        case .offline: "Offline"
+        case .conflict: "Conflict"
         case .error: "Not saved"
         }
     }
 
+    /// Read out as the web's button: "Sync status: Offline, 2 changes waiting".
     static func label(_ s: SyncStatusValue?) -> String {
         let pending = s?.pending ?? 0
-        let changes = pending == 0 ? "" : pending == 1 ? ", 1 change on this iPhone" : ", \(pending) changes on this iPhone"
+        let changes = pending == 0 ? "" : pending == 1 ? ", 1 change waiting" : ", \(pending) changes waiting"
         return "Sync status: \(title(s?.state ?? .saved))\(changes)"
     }
 
-    static func describe(_ s: SyncStatusValue?) -> String {
-        describe(s, state: s?.state ?? .saved, pending: s?.pending ?? 0)
-    }
-
-    static func describe(_ s: SyncStatusValue?, state: SyncState, pending n: Int) -> String {
-        guard s != nil || debugState != nil else { return "Starting…" }
+    static func describe(_ s: SyncStatusValue?, state: SyncState, pending n: Int, local: Bool = false) -> String {
+        guard s != nil || debugState != nil else { return "Starting\u{2026}" }
         switch state {
-        case .saved: return "Every change is saved to Folevi."
-        case .saving, .syncing: return n == 1 ? "Sending 1 change." : "Sending \(n) changes."
+        case .saved: return local ? "Every change is saved in your library." : "Every change is saved to Folevi."
+        case .saving, .syncing: return n == 1 ? "Sending 1 change." : n > 0 ? "Sending \(n) changes." : "Sending your latest changes."
         case .offline:
             return n > 0
-                ? "\(n == 1 ? "1 change is" : "\(n) changes are") saved on this iPhone. \(n == 1 ? "It syncs" : "They sync") when you’re back online."
-                : "You’re offline. What you write is saved on this iPhone and syncs when you’re back online."
+                ? "\(n == 1 ? "1 change is" : "\(n) changes are") kept on this iPhone until you\u{2019}re back online."
+                : "What you write is kept on this iPhone and syncs when you\u{2019}re back online."
         case .conflict:
-            let conflicts = s?.conflicts ?? 1
-            return conflicts == 1
-                ? "A change was also edited somewhere else. Open the note to choose which to keep."
-                : "\(conflicts) changes were also edited somewhere else. Open the notes to choose which to keep."
+            let c = max(1, s?.conflicts ?? 1)
+            return c == 1
+                ? "A note was also edited somewhere else. Open it to choose which version to keep."
+                : "\(c) notes were also edited somewhere else. Open them to choose which version to keep."
         case .error:
             return s?.authRequired == true
-                ? "Folevi needs you signed in again to send your changes. They’re kept on this iPhone."
-                : "Some changes weren’t accepted by the server. They’re kept on this iPhone: try again, or open the note."
+                ? "Sign in again to send your changes. They\u{2019}re kept on this iPhone."
+                : "Some changes weren\u{2019}t accepted. They\u{2019}re kept on this iPhone, so you can try again."
         }
     }
 
-    /// The state's colour: green synced, blue sending, grey offline, orange edited in two places, red not saved.
-    static func tone(_ state: SyncState) -> Color {
+    /// The status's colours (the web's toneOf): calm green when all is saved, red when something needs a look,
+    /// neutral otherwise.
+    static func tone(_ state: SyncState) -> (disc: Color, icon: Color) {
         switch state {
-        case .saved: .green
-        case .saving, .syncing: .blue
-        case .offline: .secondary
-        case .conflict: .orange
-        case .error: .red
+        case .saved: (DS.color.success.opacity(0.14), DS.color.success)
+        case .error, .conflict: (DS.color.destructiveSoft, DS.color.destructive)
+        case .offline: (DS.color.surfaceSunken, DS.color.heading)
+        case .saving, .syncing: (DS.color.accentSoft, DS.color.heading)
         }
+    }
+
+    /// The web's ageText (lib/format.ts formatRelative, sentence case): "Just now", "1 min ago", "3 hours ago",
+    /// "2 days ago", then the date ("Sep 10", with the year when it isn't this year's).
+    static func age(_ date: Date, now: Date = Date()) -> String {
+        let mins = Int((now.timeIntervalSince(date) / 60).rounded())
+        func unit(_ n: Int, _ u: String) -> String { "\(n) \(u)\(n == 1 ? "" : "s") ago" }
+        let out: String
+        if mins < 1 { out = "just now" }
+        else if mins < 60 { out = unit(mins, "min") }
+        else if Int((Double(mins) / 60).rounded()) < 24 { out = unit(Int((Double(mins) / 60).rounded()), "hour") }
+        else if Int((Double(mins) / 1440).rounded()) < 7 { out = unit(Int((Double(mins) / 60 / 24).rounded()), "day") }
+        else {
+            let sameYear = Calendar.current.component(.year, from: date) == Calendar.current.component(.year, from: now)
+            out = date.formatted(sameYear ? .dateTime.month(.abbreviated).day() : .dateTime.month(.abbreviated).day().year())
+        }
+        return out.prefix(1).uppercased() + out.dropFirst()
     }
 
     /// FOLEVI_REBUILD_SYNC_STATE=offline|syncing|conflict|error: the details as in that state, for checking each one

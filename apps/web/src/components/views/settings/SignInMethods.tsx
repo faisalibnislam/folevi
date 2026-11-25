@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { useQuery } from "convex/react";
+import { useQuery } from "@/lib/convex/queries";
 import { authClient, authErrorMessage } from "@/lib/auth/client";
 import { PROVIDER_NAMES, isSocialProvider, socialError, type SocialProvider } from "@/lib/auth/socialErrors";
 import { api } from "@/lib/convex/api";

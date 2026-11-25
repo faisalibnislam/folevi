@@ -6,7 +6,7 @@
 // sends its clicks back as editor commands (lib/engine/editorCommands.ts: block.jump, task.toggle, thread.open,
 // find). Imported only by the note page.
 import { useEffect, useMemo, useRef } from "react";
-import { useQuery } from "convex/react";
+import { useQuery } from "@/lib/convex/queries";
 import { flattenTree, plainText, type InlineNode, type WireBlock } from "@folevi/editor-schema";
 import { api } from "@/lib/convex/api";
 import { useAppState } from "@/lib/app/state";

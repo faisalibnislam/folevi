@@ -3,7 +3,7 @@
 // picture and workspaces for the switcher, its unread count and what's waiting to sync for the dots. On the
 // website that's the registry in localStorage; in the apps the host keeps it (shell().places.describe). It also
 // holds the Web Lock that tells another tab's background runner this account is open here (§5.1).
-import { useQuery } from "convex/react";
+import { useQuery } from "@/lib/convex/queries";
 import { useEffect, useRef, useState } from "react";
 import { api } from "@/lib/convex/api";
 import { authClient } from "@/lib/auth/client";

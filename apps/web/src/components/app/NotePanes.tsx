@@ -2,7 +2,7 @@
 
 import { memo, useEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent, type ReactNode, type RefObject } from "react";
 import { createPortal } from "react-dom";
-import { useQuery } from "convex/react";
+import { useQuery } from "@/lib/convex/queries";
 import { FileText, GripVertical, Search } from "lucide-react";
 import { MiniPage } from "./TabPreview";
 import { api } from "@/lib/convex/api";

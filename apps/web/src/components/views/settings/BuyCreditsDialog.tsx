@@ -1,6 +1,7 @@
 "use client";
 
-import { useAction, useMutation, useQuery } from "convex/react";
+import { useAction, useMutation } from "convex/react";
+import { useQuery } from "@/lib/convex/queries";
 import { useState } from "react";
 import { api } from "@/lib/convex/api";
 import { Dialog } from "@/components/ui/Dialog";

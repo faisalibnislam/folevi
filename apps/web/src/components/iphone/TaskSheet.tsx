@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState, type ReactNode } from "react";
-import { useMutation, useQuery } from "convex/react";
+import { useMutation } from "convex/react";
+import { useQuery } from "@/lib/convex/queries";
 import { addDays } from "@folevi/editor-schema";
 import { CalendarDays, ChevronRight, Clock, FileText, Flag, Repeat, UserRound } from "lucide-react";
 import { api } from "@/lib/convex/api";

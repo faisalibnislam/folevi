@@ -1,6 +1,7 @@
 "use client";
 
-import { useMutation, useQuery } from "convex/react";
+import { useMutation } from "convex/react";
+import { useQuery } from "@/lib/convex/queries";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api, type Id } from "@/lib/convex/api";
 

@@ -5,7 +5,8 @@
 // change, and puts into the library what a widget, Siri or Shortcuts did meanwhile (a task checked off or
 // added, a note made), which the app kept for it (apps/ios Shared/LocalExtras.swift). Rendered by
 // NativeBridge in local mode only; in account mode the app reads the REST API with this device's token.
-import { useMutation, useQuery } from "convex/react";
+import { useMutation } from "convex/react";
+import { useQuery } from "@/lib/convex/queries";
 import { useEffect, useRef } from "react";
 import { api } from "@/lib/convex/api";
 import { useAppState } from "@/lib/app/state";

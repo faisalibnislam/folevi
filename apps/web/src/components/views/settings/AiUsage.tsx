@@ -1,7 +1,7 @@
 "use client";
 
 import { useId, useState } from "react";
-import { useQuery } from "convex/react";
+import { useQuery } from "@/lib/convex/queries";
 import type { FunctionReturnType } from "convex/server";
 import { api } from "@/lib/convex/api";
 import { AppLink } from "@/lib/app/router";

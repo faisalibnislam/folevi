@@ -11,7 +11,8 @@
 // here (a handler registered with registerMenuCommand first, then the shell's own, then the key the page already
 // answers, sent to what has focus), and the page tells the menu bar what it can do now (setMenuState). A
 // notification's actions (Reply, Mark as Read) arrive as { type: "notification", ... }.
-import { useMutation, useQuery } from "convex/react";
+import { useMutation } from "convex/react";
+import { useQuery } from "@/lib/convex/queries";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api } from "@/lib/convex/api";
 import { useAppState } from "@/lib/app/state";

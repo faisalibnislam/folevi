@@ -2,7 +2,7 @@
 
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import type { FunctionReturnType } from "convex/server";
-import { useQuery } from "convex/react";
+import { useQuery } from "@/lib/convex/queries";
 import { Check, Copy, EyeOff, FileText, Globe, MoreHorizontal, Pencil, Play, RotateCcw, Wand2, CornerDownLeft } from "lucide-react";
 import { api } from "@/lib/convex/api";
 import { useIphoneApp } from "@/lib/iphone";

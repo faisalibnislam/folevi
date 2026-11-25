@@ -2,7 +2,7 @@
 
 // Presenting a note in the app: its blocks as they are now, with signed addresses for its images and files.
 import { useMemo, useState } from "react";
-import { useQuery } from "convex/react";
+import { useQuery } from "@/lib/convex/queries";
 import { blocksFileIds, type DocumentCover, type DocumentStyle, type WireBlock } from "@folevi/editor-schema";
 import { api } from "@/lib/convex/api";
 import type { StyleColors } from "@/lib/cover";

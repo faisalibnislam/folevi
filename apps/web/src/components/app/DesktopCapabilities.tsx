@@ -12,7 +12,8 @@
 //   lists for the Trash or for good, comes out at once (not only at the next full look).
 // - Notes dragged out to Finder: each one's Markdown and attachments, made when it's dropped.
 // Rendered by Shell next to DesktopBridge; nothing in the Electron app (it has none of these) or a browser.
-import { useConvex, useMutation, useQuery, type ConvexReactClient } from "convex/react";
+import { useConvex, useMutation, type ConvexReactClient } from "convex/react";
+import { useQuery } from "@/lib/convex/queries";
 import type { WireScope } from "@folevi/editor-schema";
 import { useEffect, useRef } from "react";
 import { api } from "@/lib/convex/api";

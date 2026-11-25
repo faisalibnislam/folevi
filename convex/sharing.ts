@@ -1,5 +1,6 @@
 import { v } from "convex/values";
-import { mutation, query } from "./_generated/server";
+import { query } from "./_generated/server";
+import { mutation } from "./lib/functions";
 import { internal } from "./_generated/api";
 import { blocksFileIds, isValidId, ulid, type WireBlock } from "@folevi/editor-schema";
 import {

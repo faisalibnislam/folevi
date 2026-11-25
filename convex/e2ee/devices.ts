@@ -3,7 +3,8 @@
 // and keys before it sees the approver's nonce, so a server substituting keys can't grind a matching code.
 // The server only relays; both devices compute and compare the code. WP2.
 import { v } from "convex/values";
-import { internalMutation, mutation, query } from "../_generated/server";
+import { query } from "../_generated/server";
+import { internalMutation, mutation } from "../lib/functions";
 import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
 import { ulid } from "@folevi/editor-schema";

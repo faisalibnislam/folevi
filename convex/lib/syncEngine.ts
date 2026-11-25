@@ -16,7 +16,7 @@ import {
   type WireDocumentPatch,
 } from "@folevi/editor-schema";
 import { accessAtLeast, documentAccess, documentAccessInfo, getDocumentByPublicId, membership, memberAtLeast, memberLevel, isScheduledForDeletion, DELETION_SCHEDULED_MESSAGE } from "./auth";
-import { IdResolver, liveBlocks, Placement, refreshDerived, sanitizeTitle, syncTaskProjection, toWireBlock, type DocumentSummary } from "./documents";
+import { IdResolver, liveBlocks, Placement, refreshDerived, sanitizeTitle, syncTaskLabels, syncTaskProjection, toWireBlock, type DocumentSummary } from "./documents";
 import { studyKindOf, syncStudyCard } from "./study";
 import { createDocument, cloneBlocks } from "./create";
 import { builtInTemplateBlocks } from "./templates";
@@ -1327,6 +1327,8 @@ export async function builtInTemplateEnabled(ctx: MutationCtx, key: string): Pro
  * refreshes again.
  */
 export async function refreshLinkLabels(ctx: MutationCtx, doc: Doc<"documents">, actor: Id<"profiles">): Promise<void> {
+  // Its task rows carry its title and icon too.
+  await syncTaskLabels(ctx, doc);
   const links = await ctx.db
     .query("documentLinks")
     .withIndex("by_target", (q) => q.eq("targetPublicId", doc.publicId))

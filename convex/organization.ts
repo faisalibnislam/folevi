@@ -1,6 +1,7 @@
 // Folders (nested up to MAX_FOLDER_DEPTH levels) and tags.
 import { v } from "convex/values";
-import { mutation, query } from "./_generated/server";
+import { query } from "./_generated/server";
+import { mutation } from "./lib/functions";
 import type { Doc, Id } from "./_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
 import { MAX_FOLDER_DEPTH, canNestFolderIn, folderMoveProblem, isValidId, normalizeForSearch, rankBetween, ulid, type FolderLink } from "@folevi/editor-schema";
@@ -13,6 +14,7 @@ import { failE2ee, requirePlainWriteInScope, spaceE2ee } from "./lib/e2ee/state"
 import { lockOfFolder, sealedFieldsOf } from "./lib/e2ee/sealedRows";
 import { applyDocumentTags, relockFolder } from "./e2ee/content";
 import { writeTombstone } from "./lib/e2ee/sealedWrites";
+import { draftStats, inDrafts, inFolderList, PREVIEWS, scopeStats, type ListStats } from "./lib/listStats";
 
 /** A sealed folder's or tag's sealed name next to its placeholder; nothing for a Standard one (docs/E2EE_DESIGN.md §5.2). */
 const sealedName = (row: { sealedName?: { c: ArrayBuffer; k: number }; locked?: boolean }) => ({
@@ -112,9 +114,9 @@ function childrenByParent(folders: Doc<"folders">[]) {
   return kids;
 }
 
-async function folderRow(ctx: QueryCtx, reader: PageReader, f: Doc<"folders">, idToPublic: Map<Id<"folders">, string>, kids: Map<string, Doc<"folders">[]>) {
+/** A folder card's fields that don't depend on its pages. */
+function folderBase(f: Doc<"folders">, idToPublic: Map<Id<"folders">, string>, kids: Map<string, Doc<"folders">[]>) {
   const children = kids.get(f._id) ?? [];
-  const docs = await reader.filter((await folderPages(ctx, f._id).take(2000)).filter((d) => d.kind !== "template"));
   return {
     id: f.publicId,
     name: f.name,
@@ -123,21 +125,80 @@ async function folderRow(ctx: QueryCtx, reader: PageReader, f: Doc<"folders">, i
     rank: f.rank,
     ...sealedName(f),
     createdAt: f.createdAt,
-    updatedAt: Math.max(f.updatedAt, ...docs.map((d) => d.updatedAt)),
-    documentCount: docs.length,
     // Direct subfolders: how many, and the colours of the two most recently changed (drawn stacked behind the card).
     childCount: children.length,
     childColors: children.slice(0, 2).map((c) => c.color ?? null),
+  };
+}
+
+type FolderPreview = { cover: Doc<"documents">["cover"]; title: string; createdAt: number; excerpt: string; sealed?: ReturnType<typeof sealedFieldsOf> };
+
+/**
+ * Folders (by id, "" for Drafts) whose stats this person can't use: they hold a listed page that is restricted
+ * (or synced content) they can't open, so those are counted from their pages. null: count every one that way.
+ */
+async function hiddenFrom(ctx: QueryCtx, reader: PageReader, scope: Scope): Promise<Set<string> | null> {
+  const out = new Set<string>();
+  if (await reader.opensAllInScope()) return out;
+  if (scope.kind === "personal" || !reader.hasStanding) return null;
+  const base = () => ctx.db.query("documents");
+  const limit = 500;
+  const restricted = await base()
+    .withIndex("by_workspace_access", (q) => q.eq("workspaceId", scope.workspaceId).eq("accessMode", "restricted"))
+    .take(limit + 1);
+  const synced = await base()
+    .withIndex("by_workspace_kind", (q) => q.eq("workspaceId", scope.workspaceId).eq("kind", "synced"))
+    .take(limit + 1);
+  if (restricted.length > limit || synced.length > limit) return null;
+  for (const d of [...restricted, ...synced]) {
+    if (!inFolderList(d) && !inDrafts(d)) continue;
+    if (!(await reader.canOpen(d))) out.add(d.folderId ?? "");
+  }
+  return out;
+}
+
+/**
+ * One folder of the All folders view / Home: its page count, last change and previews, counting only the
+ * pages this person can open (a restricted page they can't open is neither counted nor previewed). From the
+ * folder's stats (lib/listStats.ts) when it has them and they hold nothing hidden from this person; otherwise
+ * from its pages.
+ */
+async function folderRow(
+  ctx: QueryCtx,
+  reader: PageReader,
+  f: Doc<"folders">,
+  idToPublic: Map<Id<"folders">, string>,
+  kids: Map<string, Doc<"folders">[]>,
+  stats: ListStats | undefined,
+) {
+  const base = folderBase(f, idToPublic, kids);
+  if (stats) {
+    const previews: FolderPreview[] = stats.previews.map((e) => ({ cover: e.cover, title: e.title, createdAt: e.createdAt, excerpt: e.excerpt, ...(e.sealed ? { sealed: e.sealed } : {}) }));
+    return { ...base, updatedAt: Math.max(f.updatedAt, stats.lastEditedAt ?? 0), documentCount: stats.count, previews };
+  }
+  const docs = await reader.filter((await folderPages(ctx, f._id).take(2000)).filter((d) => d.kind !== "template"));
+  return {
+    ...base,
+    updatedAt: Math.max(f.updatedAt, ...docs.map((d) => d.updatedAt)),
+    documentCount: docs.length,
     // The most recently edited notes inside that this person can read: style, title and opening text,
     // shown as small pages peeking out of the folder.
     previews: [...docs]
       .sort((a, b) => b.updatedAt - a.updatedAt || a._creationTime - b._creationTime)
-      .slice(0, 5)
-      .map((d) => {
+      .slice(0, PREVIEWS)
+      .map((d): FolderPreview => {
         const sealed = sealedFieldsOf(d);
         return { cover: d.cover, title: d.title, createdAt: d.createdAt, excerpt: d.excerpt.slice(0, 280), ...(sealed ? { sealed } : {}) };
       }),
   };
+}
+
+/** The stats a person can use for each folder (none where hiddenFrom says the folder is counted from its pages). */
+async function usableStats(ctx: QueryCtx, reader: PageReader, scope: Scope): Promise<(folderId: string) => ListStats | undefined> {
+  const hidden = await hiddenFrom(ctx, reader, scope);
+  if (hidden === null) return () => undefined;
+  const stats = await scopeStats(ctx, scope);
+  return (folderId) => (hidden.has(folderId) ? undefined : stats.get(folderId));
 }
 
 /**
@@ -158,7 +219,8 @@ export const index = query({
       const folders = (await scopeFolders(ctx, scope)).filter((f) => !f.deletedAt);
       const idToPublic = new Map(folders.map((f) => [f._id, f.publicId]));
       const kids = childrenByParent(folders);
-      for (const f of folders) folderRows.push(await folderRow(ctx, reader, f, idToPublic, kids));
+      const statsOf = await usableStats(ctx, reader, scope);
+      for (const f of folders) folderRows.push(await folderRow(ctx, reader, f, idToPublic, kids, statsOf(f._id)));
     }
     const tagRows = [];
     if (args.only !== "folders") {
@@ -195,15 +257,19 @@ export const recentFolders = query({
     const folders = (await scopeFolders(ctx, standing.scope)).filter((f) => !f.deletedAt);
     const idToPublic = new Map(folders.map((f) => [f._id, f.publicId]));
     const byId = new Map(folders.map((f) => [f._id as string, f]));
+    const statsOf = await usableStats(ctx, reader, standing.scope);
     // A folder's last change: its own, or its most recently edited page this person can open.
     const latest = new Map<string, number>();
     for (const f of folders) {
       let at = f.updatedAt;
-      for await (const d of folderPages(ctx, f._id)) {
-        if (d.kind === "template" || !(await reader.canOpen(d))) continue;
-        at = Math.max(at, d.updatedAt);
-        break;
-      }
+      const stats = statsOf(f._id);
+      if (stats) at = Math.max(at, stats.lastEditedAt ?? 0);
+      else
+        for await (const d of folderPages(ctx, f._id)) {
+          if (d.kind === "template" || !(await reader.canOpen(d))) continue;
+          at = Math.max(at, d.updatedAt);
+          break;
+        }
       latest.set(f._id, at);
     }
     const limit = Math.max(0, Math.min(Math.floor(args.limit), 100));
@@ -212,7 +278,7 @@ export const recentFolders = query({
     const rows = [];
     for (const f of recent) {
       const parent = f.parentFolderId ? byId.get(f.parentFolderId) : undefined;
-      rows.push({ ...(await folderRow(ctx, reader, f, idToPublic, kids)), parentName: parent?.name ?? null, ...(parent?.sealedName ? { parentSealedName: parent.sealedName } : {}) });
+      rows.push({ ...(await folderRow(ctx, reader, f, idToPublic, kids, statsOf(f._id))), parentName: parent?.name ?? null, ...(parent?.sealedName ? { parentSealedName: parent.sealedName } : {}) });
     }
     return { total: folders.length, folders: rows };
   },
@@ -319,6 +385,13 @@ export const draftCount = query({
     const profile = await requireProfile(ctx);
     const standing = await resolveScope(ctx, profile, args.scope);
     const { scope } = standing;
+    const reader = new PageReader(ctx, profile, standing);
+    // The kept count (lib/listStats.ts) when nothing in Drafts is hidden from this person.
+    const hidden = await hiddenFrom(ctx, reader, scope);
+    if (hidden && !hidden.has("")) {
+      const stats = await draftStats(ctx, scope);
+      if (stats) return stats.count;
+    }
     const base = ctx.db.query("documents");
     // Only the Drafts themselves are read (not nested pages, Trash or the Archive, which share "no folder").
     const rows = await (
@@ -331,7 +404,7 @@ export const draftCount = query({
           )
     ).take(5000);
     const drafts = rows.filter((d) => d.kind === "document" || d.kind === "daily");
-    return (await new PageReader(ctx, profile, standing).filter(drafts)).length;
+    return (await reader.filter(drafts)).length;
   },
 });
 

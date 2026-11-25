@@ -1,7 +1,8 @@
 import { v } from "convex/values";
 import { SETTLE_MS, settlePending } from "./lib/editSettle";
 import { paginationOptsValidator, type PaginationOptions, type PaginationResult } from "convex/server";
-import { internalMutation, mutation, query } from "./_generated/server";
+import { query } from "./_generated/server";
+import { internalMutation, mutation } from "./lib/functions";
 import { internal } from "./_generated/api";
 import type { Doc, Id } from "./_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
@@ -297,6 +298,8 @@ export const list = query({
         };
       };
       if (cursor?.startsWith(OVERFLOW)) return overflowPage(cursor.slice(OVERFLOW.length));
+      // A folder by last edit is already in its index's order: page through it rather than reading it whole.
+      if (view === "folder" && sort === "updated") return overflowPage(null);
       const whole = await source.take();
       if (!whole) return overflowPage(null);
       const docs = await reader.filter(whole.docs);

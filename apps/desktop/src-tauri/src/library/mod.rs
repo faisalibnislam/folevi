@@ -215,6 +215,9 @@ struct Core {
 
 pub struct LibraryService {
     core: Arc<Core>,
+    /// Set once the configured library has been opened. Every public entry point awaits it, so a call that
+    /// arrives while the launch-time open is still running waits for it instead of seeing an unopened library.
+    ready: tokio::sync::OnceCell<()>,
 }
 
 enum Target {
@@ -238,7 +241,10 @@ impl LibraryService {
             watch_gen: 0,
             known: WatchState::default(),
         };
-        Arc::new(Self { core: Arc::new(Core { o, inner: Mutex::new(inner), iterations: AtomicU32::new(DEFAULT_ITERATIONS), scan_interval: watch::SCAN_INTERVAL }) })
+        Arc::new(Self {
+            core: Arc::new(Core { o, inner: Mutex::new(inner), iterations: AtomicU32::new(DEFAULT_ITERATIONS), scan_interval: watch::SCAN_INTERVAL }),
+            ready: tokio::sync::OnceCell::new(),
+        })
     }
 
     async fn blocking<T: Send + 'static>(&self, work: impl FnOnce(&Arc<Core>) -> Result<T, ShellError> + Send + 'static) -> Result<T, ShellError> {
@@ -246,15 +252,32 @@ impl LibraryService {
         tokio::task::spawn_blocking(move || work(&core)).await.map_err(|_| ShellError::io("The library stopped unexpectedly. Try again."))?
     }
 
-    /// Opens the configured library at launch (and starts nothing else).
+    /// Opens the configured library at launch (and starts nothing else). The app runs this in the background;
+    /// calling it again, or making any other call, waits for that one open rather than starting a second.
     pub async fn open(&self) {
-        let _ = self
-            .blocking(|core| {
-                let mut i = core.inner.lock();
-                core.ensure_open(&mut i);
-                Ok(())
+        self.ready().await;
+    }
+
+    /// Waits until the library is open, opening it if nothing has yet. Opening reports no error of its own: a
+    /// library that couldn't be opened answers each call as before (unreachable, locked, not configured).
+    async fn ready(&self) {
+        self.ready
+            .get_or_init(|| async {
+                let _ = self
+                    .blocking(|core| {
+                        let mut i = core.inner.lock();
+                        core.ensure_open(&mut i);
+                        Ok(())
+                    })
+                    .await;
             })
             .await;
+    }
+
+    /// Whether the launch-time open has finished (tests).
+    #[cfg(test)]
+    fn is_ready(&self) -> bool {
+        self.ready.initialized()
     }
 
     /// Every library call of shell-bridge.js: libSetup, libInfo, libList, libRead, libWrite, libRemove,
@@ -262,6 +285,7 @@ impl LibraryService {
     /// libUnlock, libSetPassphrase, libChangePassphrase, journalAppend, journalRead, journalTruncate, libSetCloud,
     /// cloudStatus, cloudConnect, cloudCancel, cloudSignOut, cloudRequest, mirror*.
     pub async fn call(&self, method: &str, o: &Value) -> ShellResult {
+        self.ready().await;
         let o = o.clone();
         match method {
             "libSetup" | "libMove" => {
@@ -481,11 +505,13 @@ impl LibraryService {
 
     /// libInfo's answer.
     pub async fn info(&self) -> Value {
+        self.ready().await;
         self.info_value().await.unwrap_or_else(|_| json!({ "configured": false }))
     }
 
     /// Forgets the library on this PC (its files stay where they are).
     pub async fn forget(&self) -> Result<(), ShellError> {
+        self.ready().await;
         self.blocking(|core| {
             let mut i = core.inner.lock();
             core.ensure_open(&mut i);
@@ -503,6 +529,7 @@ impl LibraryService {
 
     /// A full look at the library folder (waking, the app coming to the front).
     pub async fn rescan(&self) {
+        self.ready().await;
         let _ = self
             .blocking(|core| {
                 let gen = core.inner.lock().watch_gen;
@@ -519,6 +546,7 @@ impl LibraryService {
         if !is_sha(&sha) {
             return Ok(None);
         }
+        self.ready().await;
         let s2 = sha.clone();
         let place = self.blocking(move |core| Ok(core.locate_attachment(&s2))).await?;
         let Some(place) = place else { return Ok(None) };

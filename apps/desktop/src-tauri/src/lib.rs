@@ -1230,7 +1230,14 @@ async fn serve(app: &AppHandle, label: &str, request: &tauri::http::Request<Vec<
             }
         }
         protocol::Route::Asset(path) => {
-            let found = asset(app, &path).or_else(|| (protocol::spa_fallback(&path)).then(|| asset(app, "index.html")).flatten());
+            // File reads go to a blocking thread, so a slow disk never holds up the async runtime's workers.
+            let (app2, path2) = (app.clone(), path.clone());
+            let found = tauri::async_runtime::spawn_blocking(move || {
+                asset(&app2, &path2).or_else(|| (protocol::spa_fallback(&path2)).then(|| asset(&app2, "index.html")).flatten())
+            })
+            .await
+            .ok()
+            .flatten();
             let Some((bytes, served)) = found else {
                 return if protocol::spa_fallback(&path) { text(StatusCode::SERVICE_UNAVAILABLE, "The interface built into Folevi is missing. Reinstall Folevi.") } else { text(StatusCode::NOT_FOUND, "Not found") };
             };
@@ -1256,8 +1263,10 @@ async fn serve(app: &AppHandle, label: &str, request: &tauri::http::Request<Vec<
 /// A file of the export: compiled into the app (release builds), or from FOLEVI_SHELL_DIR / ../web (development).
 fn asset(app: &AppHandle, path: &str) -> Option<(Vec<u8>, String)> {
     let candidates = [path.to_string(), format!("{path}.html"), format!("{path}/index.html")];
-    if let Ok(dir) = std::env::var("FOLEVI_SHELL_DIR") {
-        return disk_asset(&PathBuf::from(dir), &candidates);
+    // The folder's real path is looked up once; each request still checks its own file's real path against it.
+    static SHELL_DIR: std::sync::OnceLock<Option<Option<PathBuf>>> = std::sync::OnceLock::new();
+    if let Some(dir) = SHELL_DIR.get_or_init(|| std::env::var("FOLEVI_SHELL_DIR").ok().map(|d| PathBuf::from(d).canonicalize().ok())) {
+        return dir.as_deref().and_then(|d| disk_asset(d, &candidates));
     }
     // The installed interface: files beside the app (bundle resources, web/), so the binary stays small and the pages
     // live in the system's file cache rather than being decompressed into Folevi's own memory on every request.
@@ -1281,7 +1290,9 @@ fn asset(app: &AppHandle, path: &str) -> Option<(Vec<u8>, String)> {
         }
     }
     if cfg!(debug_assertions) {
-        return disk_asset(&PathBuf::from(concat!(env!("CARGO_MANIFEST_DIR"), "/../web")), &candidates);
+        static DEV_WEB: std::sync::OnceLock<Option<PathBuf>> = std::sync::OnceLock::new();
+        let dir = DEV_WEB.get_or_init(|| PathBuf::from(concat!(env!("CARGO_MANIFEST_DIR"), "/../web")).canonicalize().ok());
+        return dir.as_deref().and_then(|d| disk_asset(d, &candidates));
     }
     None
 }
@@ -1293,12 +1304,13 @@ fn installed_web(app: &AppHandle) -> Option<&'static std::path::Path> {
         .as_deref()
 }
 
+/// A file under `root`, which must already be canonical (each caller caches it), so a request costs one lookup
+/// of its own real path. Anything that resolves outside `root` (`..`, a link pointing elsewhere) is refused.
 fn disk_asset(root: &std::path::Path, candidates: &[String]) -> Option<(Vec<u8>, String)> {
-    let root = root.canonicalize().ok()?;
     for c in candidates {
         let file = root.join(c);
         let Ok(real) = file.canonicalize() else { continue };
-        if real.starts_with(&root) && real.is_file() {
+        if real.starts_with(root) && real.is_file() {
             return std::fs::read(&real).ok().map(|b| (b, c.clone()));
         }
     }
@@ -1437,12 +1449,18 @@ pub fn run() {
                 ui: Mutex::new(Ui::default()),
             });
             app.manage(services.clone());
-            tauri::async_runtime::block_on(library.open());
+            // The library and reminders open in the background so the window doesn't wait on the disk. Library
+            // calls (the page's, attachments, rescans) wait until it's open; a reminders call that comes first
+            // loads them itself.
+            {
+                let library = library.clone();
+                tauri::async_runtime::spawn(async move { library.open().await });
+            }
             {
                 let s = services.clone();
                 let local = s.settings.lock().mode == "local" || s.places.lock().has_library();
                 if local {
-                    reminders.load();
+                    reminders.load_soon();
                 }
             }
             let error = register_shortcut(&handle);

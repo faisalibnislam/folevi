@@ -20,7 +20,7 @@ import { useMediaQuery } from "@/lib/hooks/useMediaQuery";
 import { quickAddOnDevice } from "@/lib/quickAddOffline";
 import { useIphoneApp } from "@/lib/iphone";
 import { Sheet } from "@/components/iphone/Sheet";
-import { PhoneQuickAdd } from "@/components/iphone/QuickAddSheet";
+import { PhoneQuickAdd } from "@/components/iphone/lazy";
 
 /** What Quick add says when it's submitted without a task (the same words as the server's and the Mac app's). */
 export const QUICK_ADD_TITLE_MISSING = "Write the task first.";

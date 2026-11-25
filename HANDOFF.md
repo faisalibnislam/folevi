@@ -282,9 +282,17 @@ everything but the writing area, matching today's UI with Liquid Glass and iOS's
   moved to localStorage, so sign-in follows the choice); R5.7 native side (`RebuildNote.swift`: the note's cover
   and a spinner stay until the engine is ready, the note is asked for once more). Debug `FOLEVI_SLOW_ENGINE=<s>`.
   Not checked: QR scanning (no camera in the Simulator), a real server sign-in, the sync sheet signed in.
-- Next: screen-by-screen details (Tasks' filter field, Calendar's large title, Search, Settings, sheets), this
-  week's Capacitor-only work carried over (sync sheet redesign, Folevi Server sign-in, keyboard and Duo fixes),
-  native Foli AI chat finish, then iPad and iPhone Duo, tests, the switch.
+- Step 2 (all merged on this branch, 2026-11-25): launch snapshot in the rebuild frame (no pop-in), filter fields
+  always shown, capital headings, lists loading not empty at launch, the keyboard bar riding down, + readable in dark;
+  sync sheet, Your own server sign-in, R5.6 and R5.7 native (`claude/ios-native-sync-signin`); native Foli AI
+  finished (`claude/ios-native-foli-ai`); iPad today's tablet layout and Duo (`claude/ios-native-ipad-duo`); Duo
+  upright = phone layout (owner); iPad tabs 128 pt least. Web changes ride along: `ShellSignIn.tsx` (R5.6) and
+  `lib/engine/validate.ts` (`~` in ids): merging this branch into `main` deploys them.
+- Tests: app Debug build, `swift build`, `swift test` (2 timing tests flake only under the full run), web engine
+  tests 168/168, tsc. Unchecked: iPad landscape, Split View, Slide Over, rotation (Simulator access not granted), QR
+  scan, a real server sign-in, signed-in Foli AI and sync sheet, a device.
+- Next: the owner tests; then the switch (a TestFlight build from `apps/ios`, `pnpm release`), and `apps/mobile`
+  stays for Android.
 - **iPad and iPhone Duo, today's tablet layout (branch `claude/ios-native-ipad-duo`, off this one, 2026-11-25).**
   `IPadFrameView` keeps iOS's split view but draws today's tablet Shell: the sidebar beside the content at every
   wide width (320 pt; it steps aside only for the note's tools in a window under 1000 pt), today's web sidebar

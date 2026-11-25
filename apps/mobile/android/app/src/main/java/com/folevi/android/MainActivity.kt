@@ -6,8 +6,16 @@ import android.content.res.Configuration
 import android.graphics.Color
 import android.net.Uri
 import android.os.Bundle
+import android.view.View
 import android.view.ViewGroup
 import android.webkit.WebView
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
+import androidx.window.layout.FoldingFeature
+import androidx.window.layout.WindowInfoTracker
+import androidx.window.layout.WindowLayoutInfo
+import androidx.webkit.WebViewFeature
 import androidx.activity.BackEventCompat
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.SystemBarStyle
@@ -50,6 +58,25 @@ class MainActivity : BridgeActivity() {
     private var started = false
     private var widgetsAt = 0L
 
+    // The keyboard. While it moves (and while a finger drags it) the web view keeps its full height and the page
+    // rides the keyboard itself with the frames it gets (foleviNative.onKeyboard); the web view shrinks once the
+    // keyboard is up, and gets its height back the moment it starts to go (or when the page says it will let it go).
+    private var imeAnimating = false
+    /** Between onPrepare and onStart: the web view keeps the height it has until the page has the frame. */
+    private var imeStarting = false
+    private var imeLeaving = false
+    private var lastKeyboard = 0
+    private var leaveDone: (() -> Unit)? = null
+
+    /** Covers the canvas while the page loads again (a place switch), until the bridge says the page is ready. */
+    private var cover: View? = null
+    private val dropCover = Runnable { hideCover() }
+
+    /** The last script that marked the fold on <html>, sent again after each page load. */
+    private var foldScript: String? = null
+
+    private val shellPrefs get() = getSharedPreferences("folevi-shell", MODE_PRIVATE)
+
     /**
      * The open place changed (a sign-in, a switch, a sign-out): the boot values carry it, and the page often reloads
      * itself right after (shellSignIn), so the next load must already open the new place.
@@ -81,12 +108,13 @@ class MainActivity : BridgeActivity() {
         registerPlugin(com.folevi.android.lock.LockPlugin::class.java)
         registerPlugin(com.folevi.android.e2ee.E2eePlugin::class.java)
         registerPlugin(com.folevi.android.web.PlacesPlugin::class.java)
-        applyBars(systemDark())
+        applyBars(launchDark())
         super.onCreate(savedInstanceState)
         onBackPressedDispatcher.addCallback(this, back)
         app.showForResult = { pi -> showForResult(pi) }
         current = java.lang.ref.WeakReference(this)
         bridge?.webView?.let { setUpWebView(it) }
+        watchFold()
         adoptLegacySession()
     }
 
@@ -199,6 +227,9 @@ class MainActivity : BridgeActivity() {
 
     @SuppressLint("SetJavaScriptEnabled")
     private fun setUpWebView(wv: WebView) {
+        // Android's stretch stays off: in the WebView it only ever stretches the whole page (bars and all, when a
+        // scroller without overscroll-behavior: contain hands its overscroll on); the page's own scrollers never
+        // stretch either way (checked on the Android 37 emulator).
         wv.overScrollMode = WebView.OVER_SCROLL_NEVER
         wv.isVerticalScrollBarEnabled = false
         wv.isHorizontalScrollBarEnabled = false
@@ -206,22 +237,28 @@ class MainActivity : BridgeActivity() {
             setSupportZoom(false)
             builtInZoomControls = false
             displayZoomControls = false
-            // The text follows Android's font size, up to 150% (past that the screens don't have the room).
-            textZoom = (resources.configuration.fontScale * 100).toInt().coerceIn(85, 150)
+            textZoom = textZoomNow()
             allowFileAccess = false
             allowContentAccess = false
         }
-        wv.setBackgroundColor(if (pageDark ?: systemDark()) CANVAS_DARK else CANVAS_LIGHT)
+        wv.setBackgroundColor(if (pageDark ?: launchDark()) CANVAS_DARK else CANVAS_LIGHT)
 
-        // Edge to edge: the page lays itself out under the bars with the insets; the keyboard shrinks the web
-        // view so what's being typed stays above it.
-        val parent = wv.parent as? ViewGroup
+        // Edge to edge: the page lays itself out under the bars with the insets. Once the keyboard is up the web
+        // view ends above it, so what's being typed stays in view; while the keyboard moves it keeps its full height
+        // (imeAnimating, imeLeaving) and the page moves its bars with the keyboard's frames.
         ViewCompat.setOnApplyWindowInsetsListener(wv) { v, insets ->
             val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout())
             val ime = insets.getInsets(WindowInsetsCompat.Type.ime())
+            if (ime.bottom == 0 && imeLeaving) finishLeaving()
             val keyboard = (ime.bottom - bars.bottom).coerceAtLeast(0)
             val lp = v.layoutParams as ViewGroup.MarginLayoutParams
-            val bottomMargin = if (ime.bottom > 0) ime.bottom else 0
+            // The page must have the keyboard's frame before the web view changes size (else it takes the new
+            // height for the screen's and counts the keyboard twice): until onStart sends it, nothing changes.
+            val bottomMargin = when {
+                imeStarting -> (v.layoutParams as ViewGroup.MarginLayoutParams).bottomMargin
+                ime.bottom > 0 && !imeAnimating && !imeLeaving -> ime.bottom
+                else -> 0
+            }
             if (lp.bottomMargin != bottomMargin) {
                 lp.bottomMargin = bottomMargin
                 v.layoutParams = lp
@@ -230,50 +267,123 @@ class MainActivity : BridgeActivity() {
             val json = JSONObject()
                 .put("top", (bars.top / d).toInt())
                 .put("right", (bars.right / d).toInt())
-                .put("bottom", if (ime.bottom > 0) 0 else (bars.bottom / d).toInt())
+                .put("bottom", if (bottomMargin > 0) 0 else (bars.bottom / d).toInt())
                 .put("left", (bars.left / d).toInt())
                 .put("keyboard", (keyboard / d).toInt())
             if (json.toString() != lastInsets.toString()) {
                 lastInsets = json
                 event("insets", JSONObject().put("insets", json))
             }
-            // With the keyboard up, the web view no longer reaches the gesture bar.
-            val out = if (ime.bottom > 0) {
-                WindowInsetsCompat.Builder(insets)
-                    .setInsets(WindowInsetsCompat.Type.navigationBars(), androidx.core.graphics.Insets.of(bars.left, 0, bars.right, 0))
-                    .setInsets(WindowInsetsCompat.Type.ime(), androidx.core.graphics.Insets.NONE)
-                    .build()
-            } else insets
+            // A keyboard that came or went without an animation (a hardware keyboard, a window resize): one frame.
+            if (!imeAnimating) keyboardFrame("jump", ime.bottom, ime.bottom > 0, 0, "linear")
+            // The WebView never gets the keyboard's insets (it would shrink its visual viewport for them); with the
+            // web view above the keyboard it no longer reaches the gesture bar either.
+            val b = WindowInsetsCompat.Builder(insets).setInsets(WindowInsetsCompat.Type.ime(), androidx.core.graphics.Insets.NONE)
+            if (bottomMargin > 0) b.setInsets(WindowInsetsCompat.Type.navigationBars(), androidx.core.graphics.Insets.of(bars.left, 0, bars.right, 0))
             // The WebView's own handling too: it fills in env(safe-area-inset-*) from these (WebView 140 and later),
             // which the page's layout uses. A listener alone would replace that handling and leave env() at 0.
-            ViewCompat.onApplyWindowInsets(v, out)
+            ViewCompat.onApplyWindowInsets(v, b.build())
         }
+        // On the root view, so no other callback on the way down (a plugin's DISPATCH_MODE_STOP) can keep it from
+        // running; it lets the animation carry on to the views below.
         ViewCompat.setWindowInsetsAnimationCallback(
-            wv,
+            window.decorView,
             object : WindowInsetsAnimationCompat.Callback(DISPATCH_MODE_CONTINUE_ON_SUBTREE) {
                 private var showing = false
+                private var dragged = false
+
+                private fun isIme(a: WindowInsetsAnimationCompat) = a.typeMask and WindowInsetsCompat.Type.ime() != 0
+
+                // Before the end state's insets are dispatched: the web view keeps its height through the move.
+                override fun onPrepare(animation: WindowInsetsAnimationCompat) {
+                    if (isIme(animation)) {
+                        imeAnimating = true
+                        imeStarting = true
+                    }
+                }
 
                 override fun onStart(animation: WindowInsetsAnimationCompat, bounds: WindowInsetsAnimationCompat.BoundsCompat): WindowInsetsAnimationCompat.BoundsCompat {
-                    if (animation.typeMask and WindowInsetsCompat.Type.ime() != 0) {
+                    if (isIme(animation)) {
+                        imeAnimating = true
                         val visible = ViewCompat.getRootWindowInsets(wv)?.isVisible(WindowInsetsCompat.Type.ime()) == true
                         showing = visible
-                        val h = (bounds.upperBound.bottom / resources.displayMetrics.density).toInt()
-                        event("keyboard", JSONObject().put("visible", visible).put("phase", "start").put("height", if (visible) h else 0))
+                        // A finger dragging the keyboard (no fixed duration): frames follow in onProgress.
+                        dragged = animation.durationMillis <= 0
+                        if (!dragged) keyboardFrame("start", if (visible) bounds.upperBound.bottom else 0, visible, animation.durationMillis, "keyboard", force = true)
+                        // A drag's first frame: where the keyboard is now, before the web view grows under it.
+                        else keyboardFrame("drag", (lastKeyboard * resources.displayMetrics.density).toInt(), visible, 0, "linear", force = true)
+                        // Only now (the frame is on its way to the page) the web view takes its full height.
+                        imeStarting = false
+                        ViewCompat.requestApplyInsets(wv)
                     }
                     return bounds
                 }
 
-                override fun onProgress(insets: WindowInsetsCompat, running: MutableList<WindowInsetsAnimationCompat>): WindowInsetsCompat = insets
+                override fun onProgress(insets: WindowInsetsCompat, running: MutableList<WindowInsetsAnimationCompat>): WindowInsetsCompat {
+                    if (dragged && running.any { isIme(it) }) {
+                        keyboardFrame("drag", insets.getInsets(WindowInsetsCompat.Type.ime()).bottom, showing, 0, "linear")
+                    }
+                    return insets
+                }
 
                 override fun onEnd(animation: WindowInsetsAnimationCompat) {
-                    if (animation.typeMask and WindowInsetsCompat.Type.ime() != 0) {
-                        val h = ViewCompat.getRootWindowInsets(wv)?.getInsets(WindowInsetsCompat.Type.ime())?.bottom ?: 0
-                        event("keyboard", JSONObject().put("visible", showing).put("phase", "end").put("height", (h / resources.displayMetrics.density).toInt()))
-                    }
+                    if (!isIme(animation)) return
+                    imeAnimating = false
+                    imeStarting = false
+                    dragged = false
+                    val root = ViewCompat.getRootWindowInsets(wv)
+                    val h = root?.getInsets(WindowInsetsCompat.Type.ime())?.bottom ?: 0
+                    lastKeyboard = (h / resources.displayMetrics.density).toInt()
+                    event("keyboard", JSONObject().put("visible", h > 0).put("phase", "end").put("height", lastKeyboard))
+                    // The keyboard is where it's going: the web view ends above it now.
+                    ViewCompat.requestApplyInsets(wv)
                 }
             },
         )
-        parent?.let { ViewCompat.requestApplyInsets(it) }
+        (wv.parent as? ViewGroup)?.let { ViewCompat.requestApplyInsets(it) }
+    }
+
+    /** The text follows Android's font size, up to 150% (past that the screens don't have the room). */
+    private fun textZoomNow(): Int = (resources.configuration.fontScale * 100).toInt().coerceIn(85, 150)
+
+    /**
+     * A keyboard frame for the page (foleviNative.onKeyboard): where the keyboard is going (its height over the
+     * window's bottom, in CSS px), how long it takes and on which curve, and when it set off.
+     */
+    private fun keyboardFrame(phase: String, heightPx: Int, visible: Boolean, duration: Long, curve: String, force: Boolean = false) {
+        val h = (heightPx / resources.displayMetrics.density).toInt()
+        if (!force && h == lastKeyboard) return
+        lastKeyboard = h
+        event(
+            "keyboard",
+            JSONObject().put("phase", phase).put("visible", visible).put("height", h)
+                .put("duration", duration.coerceAtLeast(0)).put("curve", curve).put("at", System.currentTimeMillis()),
+        )
+    }
+
+    /**
+     * foleviNative.keyboardWillLeave: the web view gets its full height back now, while the keyboard still covers
+     * the bottom; the page lets the keyboard go a moment later. `done` runs once the new height is laid out.
+     */
+    fun keyboardWillLeave(done: () -> Unit) {
+        val wv = bridge?.webView ?: return done()
+        val ime = ViewCompat.getRootWindowInsets(wv)?.getInsets(WindowInsetsCompat.Type.ime())?.bottom ?: 0
+        if (ime == 0) return done()
+        leaveDone?.invoke()
+        leaveDone = done
+        imeLeaving = true
+        ViewCompat.requestApplyInsets(wv)
+        // After the next frame (the one laid out at the full height).
+        wv.postOnAnimation { wv.post { leaveDone?.invoke(); leaveDone = null } }
+        // The keyboard stayed after all (the page kept the focus): the web view ends above it again.
+        wv.postDelayed({ if (imeLeaving) finishLeaving(reapply = true) }, 1000)
+    }
+
+    private fun finishLeaving(reapply: Boolean = false) {
+        imeLeaving = false
+        leaveDone?.invoke()
+        leaveDone = null
+        if (reapply) bridge?.webView?.let { ViewCompat.requestApplyInsets(it) }
     }
 
     /**
@@ -297,6 +407,7 @@ class MainActivity : BridgeActivity() {
     fun reloadForMode(path: String = "/documents") {
         val wv = bridge?.webView ?: return
         ready = false
+        showCover()
         installScript(wv)
         wv.loadUrl("$APP_ORIGIN$path")
     }
@@ -308,6 +419,79 @@ class MainActivity : BridgeActivity() {
         queued.clear()
         for ((name, data) in waiting) bridge?.triggerWindowJSEvent("folevi-android:$name", data)
         event("insets", JSONObject().put("insets", lastInsets))
+        foldScript?.let { bridge?.webView?.evaluateJavascript(it, null) }
+        val wv = bridge?.webView
+        val c = cover
+        if (wv != null && c != null && c.visibility == View.VISIBLE) {
+            // Once the page has drawn what it has now, not before.
+            if (WebViewFeature.isFeatureSupported(WebViewFeature.VISUAL_STATE_CALLBACK)) {
+                WebViewCompat.postVisualStateCallback(wv, 0L) { hideCover() }
+            } else {
+                c.postDelayed(dropCover, 150)
+            }
+        }
+    }
+
+    // ---------------------------------------------------------------- the cover over a reload
+
+    private fun showCover() {
+        val c = cover ?: View(this).also {
+            it.isClickable = true
+            it.importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
+            addContentView(it, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
+            cover = it
+        }
+        c.animate().cancel()
+        c.setBackgroundColor(if (pageDark ?: launchDark()) CANVAS_DARK else CANVAS_LIGHT)
+        c.alpha = 1f
+        c.visibility = View.VISIBLE
+        c.bringToFront()
+        // Whatever happens to the page, the cover never stays.
+        c.removeCallbacks(dropCover)
+        c.postDelayed(dropCover, 8000)
+    }
+
+    private fun hideCover() {
+        val c = cover ?: return
+        c.removeCallbacks(dropCover)
+        if (c.visibility != View.VISIBLE) return
+        c.animate().alpha(0f).setDuration(150).withEndAction { c.visibility = View.GONE }.start()
+    }
+
+    // ---------------------------------------------------------------- the fold
+
+    /**
+     * A foldable held half open (a book, or a laptop on a table): <html data-fold> ("" for a vertical fold,
+     * "horizontal" for a horizontal one) with --fold-start and --fold-end in CSS px, as the iPhone Duo app sets them
+     * (FoldMarks.swift). Gone again when the phone is flat or closed.
+     */
+    private fun watchFold() {
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                WindowInfoTracker.getOrCreate(this@MainActivity).windowLayoutInfo(this@MainActivity).collect { applyFold(it) }
+            }
+        }
+    }
+
+    private fun applyFold(info: WindowLayoutInfo) {
+        val wv = bridge?.webView ?: return
+        val f = info.displayFeatures.filterIsInstance<FoldingFeature>().firstOrNull { it.state == FoldingFeature.State.HALF_OPENED }
+        val script = if (f == null) {
+            "(function(){var r=document.documentElement;r.removeAttribute('data-fold');r.style.removeProperty('--fold-start');r.style.removeProperty('--fold-end')})()"
+        } else {
+            val at = IntArray(2)
+            wv.getLocationInWindow(at)
+            val d = resources.displayMetrics.density
+            val vertical = f.orientation == FoldingFeature.Orientation.VERTICAL
+            val b = f.bounds
+            val start = Math.round((if (vertical) b.left - at[0] else b.top - at[1]) / d)
+            val end = Math.round((if (vertical) b.right - at[0] else b.bottom - at[1]) / d)
+            "(function(){var r=document.documentElement;r.setAttribute('data-fold','${if (vertical) "" else "horizontal"}');" +
+                "r.style.setProperty('--fold-start','${start}px');r.style.setProperty('--fold-end','${end}px')})()"
+        }
+        if (script == foldScript) return
+        foldScript = script
+        wv.evaluateJavascript(script, null)
     }
 
     /** A window event for the bridge script ("folevi-android:<name>"), held until the page is ready. */
@@ -371,6 +555,33 @@ class MainActivity : BridgeActivity() {
         pageDark = dark
         applyBars(dark)
         bridge?.webView?.setBackgroundColor(if (dark) CANVAS_DARK else CANVAS_LIGHT)
+        rememberTheme(dark)
+    }
+
+    /**
+     * The page's theme for the next launch: with Dark or Light chosen in the app against the system's, the splash,
+     * the canvas and the bar icons start in the page's colour instead of flashing the system's.
+     */
+    private fun rememberTheme(dark: Boolean) {
+        val system = systemDark()
+        shellPrefs.edit().putBoolean(KEY_PAGE_DARK, dark).putBoolean(KEY_PAGE_DARK_SYSTEM, system).apply()
+        runCatching {
+            splashScreen.setSplashScreenTheme(
+                when {
+                    dark == system -> android.content.res.Resources.ID_NULL
+                    dark -> R.style.Splash_Dark
+                    else -> R.style.Splash_Light
+                },
+            )
+        }
+    }
+
+    /** The colour to start in: the page's last one when it differed from the system's then, else the system's. */
+    private fun launchDark(): Boolean {
+        val p = shellPrefs
+        if (!p.contains(KEY_PAGE_DARK)) return systemDark()
+        val page = p.getBoolean(KEY_PAGE_DARK, false)
+        return if (page == p.getBoolean(KEY_PAGE_DARK_SYSTEM, page)) systemDark() else page
     }
 
     private fun applyBars(dark: Boolean) {
@@ -386,7 +597,9 @@ class MainActivity : BridgeActivity() {
 
     override fun onConfigurationChanged(newConfig: Configuration) {
         super.onConfigurationChanged(newConfig)
-        if (pageDark == null) applyBars(systemDark())
+        if (pageDark == null) applyBars(launchDark())
+        // Android's font size changed while the app was open.
+        bridge?.webView?.settings?.let { s -> textZoomNow().let { if (s.textZoom != it) s.textZoom = it } }
     }
 
     // ---------------------------------------------------------------- links
@@ -541,5 +754,7 @@ class MainActivity : BridgeActivity() {
         const val APP_ORIGIN = "https://localhost"
         const val CANVAS_LIGHT = 0xFFFFFFFF.toInt()
         const val CANVAS_DARK = 0xFF101011.toInt()
+        private const val KEY_PAGE_DARK = "pageDark"
+        private const val KEY_PAGE_DARK_SYSTEM = "pageDarkSystem"
     }
 }

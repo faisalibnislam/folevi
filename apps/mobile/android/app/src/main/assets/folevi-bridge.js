@@ -694,9 +694,24 @@
   });
 
   var NATIVE = "FoleviNative";
+  /** foleviNative.onKeyboard's listeners (the "keyboard" event below sends them frames). */
+  var keyboardListeners = [];
   var nativeBridge = {
     platform: "android",
     version: boot.version,
+    /** Every move of the keyboard, before it moves (and each frame while a finger drags it); returns the stop. */
+    onKeyboard: function (listener) {
+      if (typeof listener !== "function") return function () {};
+      keyboardListeners.push(listener);
+      return function () {
+        var i = keyboardListeners.indexOf(listener);
+        if (i >= 0) keyboardListeners.splice(i, 1);
+      };
+    },
+    /** The page is about to let the keyboard go: the web view gets its full height back first. */
+    keyboardWillLeave: function () {
+      return call("FoleviShell", "keyboardWillLeave").then(function () {});
+    },
     haptic: function (kind) {
       call("FoleviShell", "haptic", { kind: String(kind || "light") }).catch(function () {});
     },
@@ -972,13 +987,32 @@
     setBars(t === "dark" ? "dark" : "light");
   }
 
-  // The keyboard (the web view ends above it): the same window events the iPhone app's Keyboard plugin sends,
-  // which the phone interface listens for (apps/web/src/components/iphone/chrome.tsx).
+  // The keyboard. Frames for foleviNative.onKeyboard as it sets off ("start", with its duration), while a finger
+  // drags it ("drag", duration 0) and when it came or went without moving ("jump"); the web view keeps its full
+  // height while it moves and ends above it once it's up (MainActivity.kt). Also the window events the iPhone
+  // app's Keyboard plugin sends, for an older page (keyboardWillShow and the rest).
   onNative("keyboard", function (e) {
-    var name = e.visible ? (e.phase === "end" ? "keyboardDidShow" : "keyboardWillShow") : e.phase === "end" ? "keyboardDidHide" : "keyboardWillHide";
-    var ev = new Event(name);
-    ev.keyboardHeight = e.height || 0;
-    window.dispatchEvent(ev);
+    if (e.phase === "start" || e.phase === "end") {
+      var name = e.visible ? (e.phase === "end" ? "keyboardDidShow" : "keyboardWillShow") : e.phase === "end" ? "keyboardDidHide" : "keyboardWillHide";
+      var ev = new Event(name);
+      ev.keyboardHeight = e.height || 0;
+      window.dispatchEvent(ev);
+    }
+    if (e.phase === "end" || !keyboardListeners.length) return;
+    var frame = {
+      height: Math.max(0, Number(e.height) || 0),
+      duration: Math.max(0, Number(e.duration) || 0),
+      curve: e.curve === "linear" ? "linear" : "keyboard",
+      visible: Boolean(e.visible),
+      late: e.at ? Math.max(0, Date.now() - Number(e.at)) : 0,
+    };
+    keyboardListeners.slice().forEach(function (fn) {
+      try {
+        fn(Object.assign({}, frame));
+      } catch (err) {
+        console.error(err);
+      }
+    });
   });
 
   // ---------------------------------------------------------------- back
@@ -1034,9 +1068,19 @@
   // The phone interface (apps/web/src/components/iphone) has its own stack per tab: a screen that isn't a tab's
   // first one shows Back, which knows where back is (the tab's stack, or the screen's parent). Back from another
   // tab's first screen goes Home, as Android's bottom navigation does; Home's first screen leaves the app.
+  // The page's Back controls carry data-back; an older page has only the "Back" label.
+  function backControls(keep) {
+    var found = Array.prototype.filter.call(document.querySelectorAll("[data-back]"), keep);
+    if (found.length) return found;
+    return Array.prototype.filter.call(document.querySelectorAll('button[aria-label="Back"]'), keep);
+  }
+
   function phoneBack() {
     if (!root || !root.hasAttribute("data-iphone")) return null;
-    var buttons = Array.prototype.filter.call(document.querySelectorAll('button[aria-label="Back"]'), visible);
+    // More than one can be mounted (stacked screens): the one showing and enabled.
+    var buttons = backControls(function (b) {
+      return !b.disabled && b.getAttribute("aria-disabled") !== "true" && visible(b);
+    });
     if (buttons.length) return buttons[buttons.length - 1];
     if (!/^\/documents\/?$/.test(location.pathname)) {
       var home = document.querySelector('nav[aria-label="Tabs"] button[aria-label="Home"], nav[aria-label="Tabs"] a[aria-label="Home"]');
@@ -1055,8 +1099,8 @@
 
   function wideBack() {
     if (!hasTabs()) return null;
-    var buttons = Array.prototype.filter.call(document.querySelectorAll('button[aria-label="Back"]'), function (b) {
-      return !b.disabled && visible(b);
+    var buttons = backControls(function (b) {
+      return !b.disabled && b.getAttribute("aria-disabled") !== "true" && visible(b);
     });
     if (buttons.length) return buttons[buttons.length - 1];
     if (!/^\/documents\/?$/.test(location.pathname)) {
@@ -1131,13 +1175,17 @@
   }
 
   // Predictive back: while the gesture is held the page eases back (smaller, toward the edge it came from),
-  // and springs back if the gesture is cancelled.
+  // and springs back if the gesture is cancelled. On the phone layout only an overlay (a dialog, a sheet, a menu)
+  // eases back: a screen pops with the phone interface's own slide, and moving the whole body first (which
+  // re-roots every fixed bar and repaints everything) only to snap it back before that slide looked broken.
   var peekTarget = null;
   function peek(progress, edge) {
     var reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     if (reduce) return;
     var list = overlays();
-    var el = list.length ? list[list.length - 1].el : document.body;
+    var phone = root && root.hasAttribute("data-iphone");
+    var el = list.length ? list[list.length - 1].el : phone ? null : document.body;
+    if (!el) return unpeek(false);
     if (peekTarget && peekTarget !== el) unpeek();
     peekTarget = el;
     var p = Math.max(0, Math.min(1, progress));
@@ -1185,12 +1233,28 @@
       followTheme();
       reportBack();
     }).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme", "data-back-handlers"] });
-    new MutationObserver(reportBack).observe(document.body || document.documentElement, {
+    // At most once a frame, and not for what typing changes inside editable text (each keystroke).
+    var backQueued = false;
+    function queueBack() {
+      if (backQueued) return;
+      backQueued = true;
+      requestAnimationFrame(function () {
+        backQueued = false;
+        reportBack();
+      });
+    }
+    new MutationObserver(function (records) {
+      for (var i = 0; i < records.length; i++) {
+        var r = records[i];
+        if (r.type === "attributes" || !(r.target && r.target.isContentEditable)) return queueBack();
+      }
+    }).observe(document.body || document.documentElement, {
+      // childList stays: menus and Back controls arrive as new nodes, which no attribute change announces.
       childList: true,
       subtree: true,
       attributes: true,
       // "disabled": the sidebar interface's Back button turns on and off with its tab (wideBack).
-      attributeFilter: ["open", "popover", "data-full", "role", "data-state", "disabled"],
+      attributeFilter: ["open", "popover", "data-full", "role", "data-state", "disabled", "data-back"],
     });
     document.addEventListener("toggle", reportBack, true);
     window.addEventListener("popstate", reportBack);

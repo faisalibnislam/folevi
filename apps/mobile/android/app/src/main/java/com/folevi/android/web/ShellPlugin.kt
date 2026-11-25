@@ -92,6 +92,15 @@ class ShellPlugin : Plugin() {
         call.resolve()
     }
 
+    /** The page is about to let the keyboard go: the web view gets its full height back first (MainActivity). */
+    @PluginMethod
+    fun keyboardWillLeave(call: PluginCall) {
+        activity.runOnUiThread {
+            val a = activityOrNull
+            if (a == null) call.resolve() else a.keyboardWillLeave { call.resolve() }
+        }
+    }
+
     @PluginMethod
     fun info(call: PluginCall) {
         val s = FoleviApp.instance.settings

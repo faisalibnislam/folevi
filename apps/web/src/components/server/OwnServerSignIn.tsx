@@ -178,7 +178,7 @@ function LinkedServers() {
                   {s.role === "owner" ? "Yours" : "Shared with you"} · {s.online ? "Online" : "Offline"}
                 </span>
               </span>
-              <span aria-hidden className={`size-2 flex-none rounded-full ${s.online ? "bg-success" : "bg-[color-mix(in_oklab,var(--color-ink)_25%,transparent)]"}`} />
+              <span aria-hidden className={`size-2 flex-none rounded-tiny ${s.online ? "bg-success" : "bg-[color-mix(in_oklab,var(--color-ink)_25%,transparent)]"}`} />
             </button>
           </li>
         ))}

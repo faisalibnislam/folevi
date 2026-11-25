@@ -7,7 +7,7 @@
   "scripts": {
     "shell": "node ../web/scripts/build-shell.mjs --platform mobile",
     "bundle": "node scripts/bundle-bridge.mjs",
-    "sync": "pnpm bundle && node scripts/prepare-web.mjs && npx cap sync",
+    "sync": "pnpm bundle && npx cap sync",
     "ios": "node scripts/run.mjs ios",
     "android": "node scripts/run.mjs android",
     "typecheck": "tsc --noEmit -p tsconfig.json",

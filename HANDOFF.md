@@ -666,6 +666,8 @@ signed-in account, 1.5.58's frosted folders with a large library, and the iPad c
 account button should move past iPadOS's window buttons).
 
 ## 10. Next steps / open work
+- Android emulators: re-download `system-images;android-37.0;google_apis_playstore;arm64-v8a` (about 2.0 GB,
+  owner's OK needed); the installed copies have no `system.img`, so no Folevi AVD boots.
 - Mobile app (`apps/mobile`, PR 66 from `claude/mobile-capacitor-f41734`): note covers stay bundled (owner, 2026-11-24) and styles sync from the server when they change (docs/MOBILE.md "Note styles and covers": signed-in offline caching to build in `apps/web` with the web session; local mode may check for new styles too (owner, 2026-11-24): iOS network rules allow `convex.site/note-styles` and Convex storage images only, copy updated; the endpoint and the page's fetch and cache are the web session's); the owner reviews and merges (merging
   deploys the web, which has the layout change in `lib/iphone.ts`); then check sign-in, push and iPhone Duo folding
   on real devices; carry over widgets, Siri/Shortcuts and Spotlight; one bridge script for both platforms; from the iOS review (docs/mobile/ios-review-2026-11-24.md), the web session's iPad touch targets and the note page's memory growth; release
@@ -841,6 +843,13 @@ account button should move past iPadOS's window buttons).
   `DATABASE_UDF_USER_TIMEOUT_SECONDS=4` for that backend. Bursts show in `convex.log` as "took a long time".
 
 ## 12. Change log
+- 2026-11-25: PR 69 checked on this Mac (Android session): the Android SDK is at `~/Library/Android/sdk` (set
+  `ANDROID_HOME`, put `platform-tools` and `emulator` on PATH; JDK is Homebrew `openjdk`). `apps/android` compiles
+  (`:app:compileDebugKotlin`, so `CALENDAR_DAYS` is fine); `apps/mobile/android` `:app:assembleDebug` builds and
+  `:app:testDebugUnitTest` passes (38 tests, 11 suites). Fixed `pnpm sync` in `apps/mobile`: it ran
+  `scripts/prepare-web.mjs`, which never existed (build-shell `--dest ../mobile/web` already copies the export).
+  Emulator not run: both installed system images (android-36, android-37.0 google_apis_playstore arm64) are only
+  the kernel, without `system.img`; re-downloading android-37.0 is about 2.0 GB and waits for the owner's OK.
 - 2026-11-25: PR 69 build fix: `Routes.kt:61` and `Tabs.kt:88` used `WebIcon.CALENDAR`, which the icon regeneration
   (c3ce5640) removed; both now use `WebIcon.CALENDAR_DAYS` (owner's pick, matching the web's command palette). Not
   compiled locally (no Android SDK on this Mac).

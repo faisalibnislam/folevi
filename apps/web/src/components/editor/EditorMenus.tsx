@@ -109,7 +109,7 @@ import { insertColumns } from "./columns/columnsCommands";
 import { columnsBlockAt, columnsGripOnly, type SideDrop } from "./columns/columnsLayout";
 import { UnsplashDialog, unsplashCredit, useStockPhotos } from "./UnsplashDialog";
 import { colorName, useNotePalette } from "./notePalette";
-import { useShowInTopLayer } from "@/components/ui/topLayer";
+import { popupSpan, useShowInTopLayer } from "@/components/ui/topLayer";
 import { AI_TOOL_SLASH_ITEMS, INLINE_AI_EVENT, openInlineAi, useAiEnabled, type InlineAiOpen } from "@/components/ai/useAi";
 import type { InlineAiRequest } from "@/components/ai/InlineAi";
 import { FindTodosHost, openFindTodos } from "@/components/ai/FindTodos";
@@ -258,7 +258,9 @@ function Popover({
     const shrinkAbove = side.current === "above" && h > roomAbove;
     const top = side.current === "above" ? Math.max(ceiling, at.top - (shrinkAbove ? roomAbove : h) - 6) : below;
     // At least 12px from the window's sides (lined up with what opened it when that's further in).
-    setPos({ left: Math.max(EDGE_INSET, Math.min(room && dock ? 8 : at.left, window.innerWidth - w - EDGE_INSET)), top, width: w, maxHeight: shrink ? roomBelow : shrinkAbove ? roomAbove : undefined });
+    // (And inside the screen's sides and on the caret's side of a fold: popupSpan.)
+    const left = room && dock ? 8 : popupSpan({ left: at.left, right: at.left }, EDGE_INSET).clamp(at.left, w);
+    setPos({ left, top, width: w, maxHeight: shrink ? roomBelow : shrinkAbove ? roomAbove : undefined });
   }, [at, width, dock, children, ref]);
   if (!anchor) return null;
   return (
@@ -1563,7 +1565,7 @@ function SelectionBubble({ editor, onComment, inCell = false }: { editor: Editor
     }
     const w = el.offsetWidth;
     const h = el.offsetHeight;
-    const left = Math.min(Math.max(8, state.left - w / 2), window.innerWidth - w - 8);
+    const left = popupSpan({ left: state.left, right: state.left }).clamp(state.left - w / 2, w);
     // In the iPhone app while writing: on the bar of writing tools above the keyboard, in its place, so it
     // never meets iOS's own edit menu over the selection (or covers the text).
     const bar = document.querySelector<HTMLElement>("[data-iphone-keyboard-bar]")?.getBoundingClientRect();

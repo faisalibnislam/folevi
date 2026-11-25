@@ -25,6 +25,8 @@ export const APP_ROUTE_HEADS = new Set([
   "help",
   "onboarding",
   "quick-add",
+  // A floating note's window (lib/app/float.ts).
+  "float",
   "place-sync",
   "oauth",
   "invite",

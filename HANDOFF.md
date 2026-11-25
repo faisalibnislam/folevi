@@ -305,9 +305,19 @@ Capacitor app), PR 79 (failed queries keep pages up) and PR 80 (one set of sync 
   move starts (`transitions.ts onMoveStart`); `READY_WAIT_MS` 50 (was 150); Reduce Motion keeps opacity-only fades
   (150 ms); Spectral uses `display: fallback`. Checked in the Simulator: the Foli AI composer above a real on-screen
   keyboard (it stays at 292 of 374 pt), the month opening and closing, a checked task folding away after about 0.9 s.
-  Still open: Home's blank strip for a moment as the keyboard leaves (Capacitor grows the web view at keyboardWillHide
-  and WebKit paints the uncovered part a frame or two later; the fix changes how the keyboard resizes the web view,
-  so it needs a device to test); swipe axis lock on a real phone; e2e not run locally (CI on the PR).
+- Build 99 (delivery cea3add5-fcd0-4340-b6bc-5a8ceefb2abe): the keyboard leaves cleanly. Recorded in the Simulator
+  (`simctl io recordVideo --display=1`, frames at 30 fps): closing Foli AI, the keyboard stayed up about 0.45 s after
+  the sheet had gone, then Home showed blank where it had been for about 150 ms. Cause, measured: Capacitor's Keyboard
+  plugin gives the web view its height back at keyboardWillHide, and WebKit takes about 90 ms (the page's own resize
+  handlers take 0 ms) to lay the page out and draw it at the new size while the keyboard moves. Fix: a sheet closing
+  with its field in focus lets the keyboard go as it starts to close, through `letKeyboardGo` (`lib/native/ui.ts`),
+  which first calls the app's new `foleviNative.keyboardWillLeave` (`FoleviNativePlugin.swift`: the web view back to
+  full height under the keyboard) and blurs once the page has re-laid out and drawn (resize plus two frames, at most
+  300 ms); the sheet's own move starts a frame earlier. Done over a note and Hide keyboard use it too (blur after
+  126 ms, measured). After: no blank frames as the keyboard uncovers Home. A keyboard dismissed by the user's own
+  gesture (dragging it down) still goes the Capacitor way.
+- Swipe axis lock checked in the Simulator with real touch drags (List layout of All notes): a sideways swipe opens
+  Archive and Trash without scrolling; a vertical drag starting on a row scrolls the list 184 pt and opens nothing.
 - Memory re-check (the open item): Duo closed, 20 opens of "Welcome to Folevi": 126 MB, 200 MB, 130 MB after
   `org.WebKit.lowMemory`; nothing kept per open.
 - The three failing e2e specs listed in section 10 were already fixed on `main` by PR 77.

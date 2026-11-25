@@ -9,7 +9,8 @@
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
-import { internalAction, internalMutation, internalQuery } from "./_generated/server";
+import { internalAction, internalQuery } from "./_generated/server";
+import { internalMutation } from "./lib/functions";
 import { appleClientSecret, appleSignInConfig, asAppleClient, revokeAppleToken, type AppleRevokeResult } from "./lib/appleSignIn";
 
 /** Waits before each try after the first. After the last, the row is dropped and the failure logged. */

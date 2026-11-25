@@ -306,6 +306,32 @@ export async function refreshDerived(ctx: MutationCtx, doc: Doc<"documents">, ro
   if (doc.kind === "synced") for (const note of await notesShowingInPlace(ctx, doc)) await refreshDerived(ctx, note);
 }
 
+/** Keeps the note's title and icon on its task rows in step (task lists show them without reading the note). */
+export async function syncTaskLabels(ctx: MutationCtx, doc: Doc<"documents">): Promise<void> {
+  // A sealed note's rows carry no title (task lists read the note, and leave its to-dos out).
+  if (doc.sealedAt !== undefined) return await clearTaskLabels(ctx, doc._id);
+  const tasks = await ctx.db
+    .query("tasks")
+    .withIndex("by_document", (q) => q.eq("documentId", doc._id))
+    .collect();
+  for (const t of tasks) {
+    if (t.documentPublicId === doc.publicId && t.documentTitle === doc.title && t.documentIcon === doc.icon) continue;
+    await ctx.db.patch(t._id, { documentPublicId: doc.publicId, documentTitle: doc.title, documentIcon: doc.icon });
+  }
+}
+
+/**
+ * A note was sealed or unsealed: its task rows drop the title they carry, so task lists read the note (and leave
+ * a sealed note's to-dos out) until the rows are purged or projected again.
+ */
+export async function clearTaskLabels(ctx: MutationCtx, documentId: Id<"documents">): Promise<void> {
+  const tasks = await ctx.db
+    .query("tasks")
+    .withIndex("by_document", (q) => q.eq("documentId", documentId))
+    .collect();
+  for (const t of tasks) if (t.documentTitle !== undefined || t.documentPublicId !== undefined) await ctx.db.patch(t._id, { documentPublicId: undefined, documentTitle: undefined, documentIcon: undefined });
+}
+
 /** Keeps the task projection in step with a todo block (the block stays canonical). */
 export async function syncTaskProjection(
   ctx: MutationCtx,
@@ -351,6 +377,9 @@ export async function syncTaskProjection(
     reminderAt: projection.reminderAt ?? undefined,
     completedAt: projection.completedAt ?? (projection.status === "done" ? doneAt : undefined),
     documentInTrash: doc.inTrash,
+    documentPublicId: doc.publicId,
+    documentTitle: doc.title,
+    documentIcon: doc.icon,
     repeat: projection.repeat ?? undefined,
   };
   // A task is in its document's scope (documents never change scope).

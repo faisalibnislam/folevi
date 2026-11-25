@@ -1,5 +1,6 @@
 import { v } from "convex/values";
-import { action, internalAction, internalQuery, internalMutation, type ActionCtx } from "./_generated/server";
+import { action, internalAction, internalQuery, type ActionCtx } from "./_generated/server";
+import { internalMutation } from "./lib/functions";
 import { internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 import { Zip, ZipDeflate, ZipPassThrough, strToU8 } from "fflate";

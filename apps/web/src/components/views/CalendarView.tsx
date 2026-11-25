@@ -2,7 +2,7 @@
 
 import { useCapabilities } from "@/lib/mode";
 import { useMutation } from "convex/react";
-import { useQuery } from "@/lib/convex/queries";
+import { useOfflineQuery } from "@/lib/sync/queryCache";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { CalendarPlus, ChevronLeft, ChevronRight, Rss, CalendarCheck } from "lucide-react";
 import { addDays } from "@folevi/editor-schema";
@@ -81,15 +81,16 @@ export function CalendarView({ month }: { month: string | null }) {
   const stripTo = [monthGrid(shiftMonth(stripMonth, 1))[41]!, addDays(agendaStart, 30)].sort()[1]!;
   const from = mode === "month" ? days[0]! : mode === "week" ? weekDays[0]! : iphoneAgenda ? stripFrom : today;
   const to = mode === "month" ? days[41]! : mode === "week" ? weekDays[weekDays.length - 1]! : iphoneAgenda ? stripTo : addDays(today, 30);
-  const liveTasks = useQuery(api.tasks.range, { scope, from, to, includeCompleted: true });
+  // (Calendar's lists as last seen until the server answers, so they're drawn with the screen, not a moment after.)
+  const liveTasks = useOfflineQuery(api.tasks.range, { scope, from, to, includeCompleted: true });
   // On the iPhone the last answer stays while another range loads, so the strip's dots and the list don't blink.
   const lastTasks = useRef(liveTasks);
   if (liveTasks !== undefined) lastTasks.current = liveTasks;
   const tasks = liveTasks ?? (iphoneAgenda ? lastTasks.current : undefined);
   const stripDays = useMemo(() => (iphoneAgenda ? Array.from({ length: Math.round((Date.parse(stripTo) - Date.parse(stripFrom)) / 86_400_000) + 1 }, (_, i) => addDays(stripFrom, i)) : null), [iphoneAgenda, stripFrom, stripTo]);
   // The agenda starts with anything still open from before today; undated tasks can be scheduled from here.
-  const overdue = useQuery(api.tasks.range, mode === "agenda" ? { scope, from: "0000-01-01", to: addDays(today, -1) } : "skip");
-  const open = useQuery(api.tasks.list, { scope, view: "all", today });
+  const overdue = useOfflineQuery(api.tasks.range, mode === "agenda" ? { scope, from: "0000-01-01", to: addDays(today, -1) } : "skip");
+  const open = useOfflineQuery(api.tasks.list, { scope, view: "all", today });
   const unscheduled = useMemo(() => (open ?? []).filter((t) => !t.dueDate), [open]);
   const [editing, setEditing] = useState<TaskRow | null>(null);
   const update = useMutation(api.tasks.update);

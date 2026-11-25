@@ -100,19 +100,21 @@ export function IphoneHome() {
   const starredList = useOfflineQuery(api.documents.list, { scope, view: "starred", sort: "updated", paginationOpts: { numItems: SHOWN + 1, cursor: null } });
   const starredPage = useNotesWithLocal(starredList?.page, { include: "none" });
   const starred = starredList && starredPage ? { ...starredList, page: starredPage } : starredList;
-  const drafts = useQuery(api.organization.draftCount, { scope });
+  // As last seen until the server answers (here and below): the counts, the Reviews tile and the Vault row are
+  // drawn with Home instead of popping in a moment later and moving what's under them.
+  const drafts = useOfflineQuery(api.organization.draftCount, { scope });
   // Local mode has no Shared with Me or Changes (docs/LOCAL_MODE_PLAN.md §5.2).
   const caps = useCapabilities();
   const graph = useCanCall(api.aiGraph.graph);
-  const changes = useQuery(api.changes.list, caps.changes ? {} : "skip");
+  const changes = useOfflineQuery(api.changes.list, caps.changes ? {} : "skip");
   const minute = useMinute();
   const proposed = useQuery(api.proposals.count, caps.changes ? { now: minute } : "skip");
-  const reviews = useQuery(api.study.summary, useReviewWindow(5 * 60_000));
+  const reviews = useOfflineQuery(api.study.summary, useReviewWindow(5 * 60_000));
   // The Vault, for whoever has one here, as the sidebar lists it (Sidebar.tsx): the phone has no sidebar.
   const mode = useBackendMode();
   const canVault = useCanCall(api.vault.get);
   const vaultHere = caps.sharing || (mode === "local" && canVault);
-  const vault = useQuery(api.vault.get, vaultHere ? { scope } : "skip");
+  const vault = useOfflineQuery(api.vault.get, vaultHere ? { scope } : "skip");
   const org = useFolderTree(scope);
   // Folders with how many notes each holds (the folder index, with what's waiting to sync laid over it).
   const served = useOfflineQuery(api.organization.index, { scope, only: "folders" });

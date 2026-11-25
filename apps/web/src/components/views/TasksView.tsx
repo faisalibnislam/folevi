@@ -3,6 +3,7 @@
 import { DateField, TimeField } from "@/components/ui/DateField";
 import { useMutation } from "convex/react";
 import { useQuery, useQueryState } from "@/lib/convex/queries";
+import { useOfflineQuery } from "@/lib/sync/queryCache";
 import { useCallback, useDeferredValue, useMemo, useRef, useState, type ReactNode } from "react";
 import { ArrowRightLeft, CalendarDays, Check, FileText, Funnel, Plus, Repeat, RotateCcw, SlidersHorizontal, SquareCheckBig, X } from "lucide-react";
 import { DocumentPicker, type Target } from "@/components/app/QuickAddTask";
@@ -344,7 +345,7 @@ export function TasksView({ view }: { view: View }) {
   const tasks = tasksState.data;
   // The list failed (it keeps retrying): said in place of the loading rows.
   const failed = tasks === undefined && tasksState.failed ? tasksState.retry : undefined;
-  const counts = useQuery(api.tasks.counts, { scope, today });
+  const counts = useOfflineQuery(api.tasks.counts, { scope, today });
   const { openQuickAdd } = useShell();
   const toggle = useToggleTask();
   // The rows are memoized below, so they need a toggle that keeps its identity between renders.

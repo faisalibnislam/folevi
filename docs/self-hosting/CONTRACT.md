@@ -116,6 +116,37 @@ Folevi Cloud serves the same file with `"kind": "folevi-cloud"`. Apps refuse a s
 don't know, and show "Ask the person who runs this server to update it" when their own version is below
 `minAppVersion` or the server's `version` is below what the app needs.
 
+### 6.1 Notes from the Apps workstream (native shells)
+
+- `connect.hostnames`: each entry is `host` or `host:port`, always reached over https. Home names
+  (`192-168-1-20.<id>.folevi.net`, first label a dashed IPv4) are tried first, then the address the person added,
+  then the rest; the apps move each of `urls` that sits on the added origin to the chosen name with the same path.
+  The server must therefore serve the same paths on every name, and Better Auth must trust every one of its names
+  as an origin (the session is the server's, so switching names never signs anyone out).
+- Bridge (`window.foleviShell.places`, shell-bridge.js), for `apps/web/src/lib/shell/types.ts`:
+  - `server: ShellServerInfo | null`, set before page scripts run: the server of this page's place, or of the
+    sign-in screen it shows; null for Folevi Cloud and the library.
+    `ShellServerInfo = { origin, addedOrigin, name, version, serverId: string | null, urls: { app, convex, convexSite } }`,
+    with `origin` and `urls` at the name in use now. The bundled export must read its Convex and site addresses
+    from here when it is non-null, instead of the build-time `NEXT_PUBLIC_*` values.
+  - `addServerPlace({ origin, info? }): Promise<ShellServerInfo>`. The app ignores `info` and fetches
+    `/.well-known/folevi.json` itself. It rejects with `{ code, message }`, code one of `bad_address`,
+    `unreachable`, `not_folevi`, `folevi_cloud`, `server_outdated`, `app_outdated`, `needs_setup`. On success
+    every window reloads on that server's sign-in screen (mode `account`, `current: null`, `server` set);
+    `auth.signIn`, `auth.fetch` and `places.signIn` then go to that server, and the account that signs in becomes
+    a place on it.
+  - `listLocalServers(): Promise<{ name, origin, serverId: string | null, version: string | null }[]>` (Bonjour).
+  - `ShellPlace` (kind `account`) gains `server: ShellServerInfo | null`.
+- Accepted addresses: `https://` anywhere; `http://` only for localhost, a name with no dots, `*.local`, or a
+  private, link-local or 100.64/10 IP. No path, query or user name.
+- Security policy: a server place's pages get a header CSP whose `connect-src` is `'self'` plus each of the
+  server's origins at every name, over http(s) and ws(s); never `*.convex.cloud`. The header narrows the export's
+  meta CSP (both apply), so the server-capable export's meta `connect-src` must not be limited to the build's
+  Convex host (for example `'self' https: wss:` plus `http: ws:` if home http addresses are to work).
+- Bonjour (supervisor): advertise `_folevi._tcp` on the public port with TXT `id` (Connect server id, if any),
+  `name`, `v` (server version) and `url` (the https origin to use, when a certificate exists). Without `url` the
+  apps use `http://<address>:<port>` of the service.
+
 ## 7. Backend functions (Convex, server edition)
 
 Public (no sign-in):
@@ -187,19 +218,19 @@ Server calls use `Authorization: Bearer <connect-token>`. Cloud calls (from Fole
 | Method and path | Caller | Shape |
 | --- | --- | --- |
 | `POST /v1/servers` | server | `{name, version, publicKey}` (Ed25519, base64) to `{serverId, token}`. `serverId` is 10 lowercase base32 characters |
-| `PATCH /v1/servers/{id}` | server | `{name?, version?, lanIps?, publicPort?}`; Connect points `<id>.folevi.net` at the public IP (or the relay) and `<a-b-c-d>.<id>.folevi.net` at each LAN IP |
+| `PATCH /v1/servers/{id}` | server | `{name?, version?, lanIps?, publicPort?}`; Connect points `<id>.folevi.app` at the public IP (or the relay) and `<a-b-c-d>.<id>.folevi.app` at each LAN IP |
 | `POST /v1/servers/{id}/link-codes` | server | to `{code, approveUrl: "https://app.folevi.com/connect/approve?code=..."}`, 10 minutes |
 | `GET /v1/servers/{id}` | server | `{linked: boolean, ownerAccount?, hostname, lanHostnames, reachable?}` |
-| `PUT /v1/servers/{id}/acme/{label}` / `DELETE` | server | `{value}`; sets `_acme-challenge.<label>.<id>.folevi.net` (label `@` for the bare name) for the DNS-01 check |
+| `PUT /v1/servers/{id}/acme/{label}` / `DELETE` | server | `{value}`; sets `_acme-challenge.<label>.<id>.folevi.app` (label `@` for the bare name) for the DNS-01 check |
 | `POST /v1/servers/{id}/reachability` | server | `{port}` to `{reachable, publicIp}` |
-| `POST /v1/mail` | server | `{to, subject, html, text, replyTo?, tag}` to `202 {id}`; From is `<server name> <no-reply@folevi.net>` |
+| `POST /v1/mail` | server | `{to, subject, html, text, replyTo?, tag}` to `202 {id}`; From is `<server name> <no-reply@folevi.app>` |
 | `POST /v1/push` | server | `{platform: "apns" \| "fcm", token, environment?: "production" \| "sandbox", title, body, data?, collapseId?, threadId?}` to `202` |
 | `POST /v1/ai/chat/completions`, `POST /v1/ai/embeddings` | server | OpenAI-compatible request and response (streaming allowed); counts against the owner's plan |
 | `GET /v1/unsplash/*` | server | proxied Unsplash API |
 | `POST /v1/diagnostics` | server | `{text}` to `{reference}` |
 | `POST /v1/link-codes/{code}/approve` | cloud | links to `X-Folevi-User` |
 | `GET /v1/accounts/{userId}/servers` | cloud | see `connect:myServers` |
-| `wss://relay.folevi.net/v1/tunnel` | server | bearer token; yamux over WebSocket; the relay accepts TLS on :443, reads the SNI, and pipes raw bytes for `<id>.folevi.net` and `*.<id>.folevi.net` into a new stream. It never terminates TLS |
+| `wss://relay.folevi.app/v1/tunnel` | server | bearer token; yamux over WebSocket; the relay accepts TLS on :443, reads the SNI, and pipes raw bytes for `<id>.folevi.app` and `*.<id>.folevi.app` into a new stream. It never terminates TLS |
 
 ## 10. Bundle layout and versions
 

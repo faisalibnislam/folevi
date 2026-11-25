@@ -129,7 +129,7 @@ Apps container template is offered too, since many Unraid owners prefer containe
 | **Vultr, Linode/Akamai** | Their marketplaces, later, from the same image build |
 
 On a server with a public address, `folevid` gets a Let's Encrypt certificate for the owner's own domain, or uses
-the free `folevi.net` address (§4). Ports 80 and 443 only; nothing else is open.
+the free `folevi.app` address (§4). Ports 80 and 443 only; nothing else is open.
 
 ### 3.5 Later, if wanted
 
@@ -148,10 +148,10 @@ server registers with `connect.folevi.com` and gets an ID. From then on:
 - invited members who have Folevi accounts see it too (§5).
 
 **A real HTTPS address, at home and away.** Each server gets its own name under a domain we register for this,
-for example `https://<server-id>.folevi.net`, with a certificate the server holds itself (Let's Encrypt, the DNS
+for example `https://<server-id>.folevi.app`, with a certificate the server holds itself (Let's Encrypt, the DNS
 check done through our API, so no ports need to be open). Like Plex's `plex.direct`, the name
-`192-168-1-20.<server-id>.folevi.net` resolves to the NAS's home address, so **inside the home the apps connect
-directly with full HTTPS**, and passkeys, encryption and offline mode all work there. We put `folevi.net` on the
+`192-168-1-20.<server-id>.folevi.app` resolves to the NAS's home address, so **inside the home the apps connect
+directly with full HTTPS**, and passkeys, encryption and offline mode all work there. We put `folevi.app` on the
 Public Suffix List so one server's site can never set cookies for another's.
 
 **Remote access, in the order the apps try it:**
@@ -226,7 +226,7 @@ Each outside service has three settings: **Folevi's relay** (works out of the bo
 
 | Service | Folevi's relay | Owner's own | If off |
 | --- | --- | --- | --- |
-| **Email out** (verification, password reset, invites, sharing, reminders, digests) | **Folevi Mail**: the server sends through our API, from `no-reply@folevi.net` with Reply-To set to the server owner; rate-limited per server against abuse | Any SMTP account: the NAS's mail server, Gmail, iCloud, Fastmail, Microsoft 365, Amazon SES | No verification emails; invites by link or QR; password resets by an admin |
+| **Email out** (verification, password reset, invites, sharing, reminders, digests) | **Folevi Mail**: the server sends through our API, from `no-reply@folevi.app` with Reply-To set to the server owner; rate-limited per server against abuse | Any SMTP account: the NAS's mail server, Gmail, iCloud, Fastmail, Microsoft 365, Amazon SES | No verification emails; invites by link or QR; password resets by an admin |
 | **Email in** (email a note to your library, `emailNotes.ts`) | Each person gets an address at the server's Folevi domain; our mail server forwards it to the server | The server checks a mailbox over IMAP that the owner sets up | Hidden |
 | **Push to phones** (APNs, FCM) | **Folevi push relay** (Apple and Google only accept our keys): device token and a short notice, generic text for encrypted spaces | Not possible for the App Store and Play builds | No wake-ups; the app catches up when opened |
 | **Web push** in browsers | Not needed | Works on the server itself (its own VAPID keys) | |
@@ -275,7 +275,7 @@ The work from version 1 §5.2 stands, plus Connect:
 ## 10. Security
 
 - Secrets made on the server, kept in the data folder with owner-only permissions, never shown or logged.
-- HTTPS everywhere outside the home network; inside it, HTTPS through the `folevi.net` LAN names. Plain HTTP only
+- HTTPS everywhere outside the home network; inside it, HTTPS through the `folevi.app` LAN names. Plain HTTP only
   for the first setup on the home network.
 - Folevi's relays handle only what each row of §7 says; the remote-access relay can't decrypt traffic.
 - No phone-home except what the owner turns on (Connect, relays, update checks); Convex's beacon is off
@@ -292,7 +292,7 @@ The work from version 1 §5.2 stands, plus Connect:
 | `folevid` | Supervisor, proxy, secrets, deploy, certificates, mDNS, UPnP, Connect client, backups, updates, logs | New Go program |
 | Admin panel | Server edition of `/admin` with §6's sections | Reuses the cloud console |
 | Setup page | First account, server name, link to Folevi, remote access, email, AI, backups | |
-| Folevi Connect service | Server registry, DNS and certificate help for `folevi.net`, reachability check, relay, Folevi account sign-in for servers | Runs on our infrastructure; small, but it must stay up |
+| Folevi Connect service | Server registry, DNS and certificate help for `folevi.app`, reachability check, relay, Folevi account sign-in for servers | Runs on our infrastructure; small, but it must stay up |
 | Relays | Mail, push, AI gateway, sign-in broker, Unsplash proxy | Each needs per-server keys, rate limits and abuse controls |
 | Apps | §8 for Mac and iPhone/iPad (Android later) | Biggest client change |
 | Packaging | `.spk`, `.qpkg`, ASUSTOR `.apk`, `.tpk`, `.upk`, Unraid `.plg`, `.deb`/`.rpm` + apt/rpm repos, install script, container image, TrueNAS/Zima/Umbrel catalog entries, DigitalOcean image | One CI job builds the bundle, one per format wraps it |
@@ -306,7 +306,7 @@ The work from version 1 §5.2 stands, plus Connect:
 | 1. Server core | Server edition web build, backend fixes from Phase 0, `folevid` (supervisor, proxy, secrets, deploy, backups, logs), setup page, SMTP, own AI key, roles and invites, admin panel first version | 4 weeks |
 | 2. Apps | Your own server at sign-in, server places, best connection, per-place security policy, runtime addresses, version check: web, Mac, iPhone, iPad | 3 weeks |
 | 3. First packages | Synology `.spk` and package source, QNAP `.qpkg` with private glibc, Linux one-command installer and apt repo, container image. **Private beta here (about 10 weeks)** | 3 weeks |
-| 4. Folevi Connect and relays | Server linking, `folevi.net` names and certificates, LAN HTTPS, UPnP and reachability, remote-access relay, push relay, Folevi Mail, AI gateway, sign-in broker, Folevi-account sign-in for members | 4 weeks |
+| 4. Folevi Connect and relays | Server linking, `folevi.app` names and certificates, LAN HTTPS, UPnP and reachability, remote-access relay, push relay, Folevi Mail, AI gateway, sign-in broker, Folevi-account sign-in for members | 4 weeks |
 | 5. Everywhere else | ASUSTOR, TerraMaster, Unraid plugin, TrueNAS catalog, ZimaOS/CasaOS/Umbrel, DigitalOcean Marketplace, Hetzner guide, Coolify/Railway templates, UGREEN when authorized; store submissions; help pages on folevi.com | 3 to 4 weeks, plus each store's review time |
 
 Store reviews (Synology, QNAP signing, ASUSTOR, TerraMaster, UGREEN, TrueNAS) take weeks and run in parallel. Apply
@@ -317,8 +317,9 @@ early, during Phase 1.
 1. **Developer accounts and applications:** Synology third-party package program, QNAP partner program (signing),
    ASUSTOR Developer Corner, TerraMaster TOS Developer Platform, UGREEN developer portal, DigitalOcean Marketplace
    vendor account.
-2. **Register the Connect domain** (for example `folevi.net`; it must be its own domain, not a subdomain of
-   folevi.com, for the Public Suffix List) and approve the PSL request.
+2. **The Connect domain:** done, the owner bought **`folevi.app`** (2026-11-25). Still to do: point its
+   nameservers at Cloudflare (Connect manages records through Cloudflare's API) and approve the Public Suffix List
+   request. `.app` is on the browsers' HTTPS-only list, which suits us: every server name is HTTPS anyway.
 3. **Test hardware:** the owner has a Synology (model to confirm: its chip decides which `.spk` gets tested first)
    and no QNAP. QNAP is tested without hardware: the private glibc runs in an old-glibc Linux container in CI
    (Ubuntu 16.04 has glibc 2.23, near QTS 5's 2.21), then on QNAP's QuTScloud virtual appliance (QTS in a VM, which

@@ -253,7 +253,7 @@ The ones most likely to be broken:
 native packages on Synology, QNAP, ASUSTOR and TerraMaster (UGREEN once they authorize us), a native Unraid plugin,
 one-click catalog apps where only containers are allowed (TrueNAS, ZimaOS/CasaOS, Umbrel), a one-command native
 Linux installer plus DigitalOcean 1-Click for hosted servers, one Go supervisor (`folevid`) wrapping the same
-bundle everywhere, Plex-like Folevi Connect (server listed in the apps, `folevi.net` HTTPS names including LAN,
+bundle everywhere, Plex-like Folevi Connect (server listed in the apps, `folevi.app` HTTPS names including LAN,
 pass-through relay), owner/admin/member/guest roles, a full server admin panel, and relays for email, push, AI and
 sign-in. Plan only; Phase 0 is still the only built part.
 

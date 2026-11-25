@@ -50,9 +50,17 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.folevi.android.MainActivity
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import com.folevi.android.design.FoleviIcon
 import com.folevi.android.design.LocalPalette
+import com.folevi.android.design.PhoneRadius
+import com.folevi.android.design.PhoneType
 import com.folevi.android.design.WebIcon
+import com.folevi.android.design.foleviGlass
 import com.folevi.android.server.LocalServers
 import com.folevi.android.server.ServerSignIn
 import com.folevi.android.server.ShellServer
@@ -66,15 +74,11 @@ fun OwnServerSignIn(modifier: Modifier = Modifier) {
         HorizontalDivider(color = p.line)
         Spacer(Modifier.height(20.dp))
         if (open) {
-            Text("Your own server", style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold), color = p.heading)
+            Text("Your own server", style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold), color = p.heading, modifier = Modifier.semantics { heading() })
             Spacer(Modifier.height(12.dp))
             AddressForm()
         } else {
-            TextButton(onClick = { open = true }, modifier = Modifier.fillMaxWidth().height(44.dp)) {
-                FoleviIcon(WebIcon.SERVER, null, size = 16.dp)
-                Spacer(Modifier.width(8.dp))
-                Text("Sign in to your own server")
-            }
+            ServerButton("Sign in to your own server", { open = true }, Modifier.fillMaxWidth(), ServerButtonKind.QUIET, icon = WebIcon.SERVER)
         }
     }
 }
@@ -127,17 +131,16 @@ private fun AddressForm() {
                     keyboardActions = KeyboardActions(onGo = { go(address) }),
                     modifier = Modifier.fillMaxWidth().testTag("server-address"),
                 )
-                FilledTonalButton(onClick = { go(address) }, enabled = !busy, modifier = Modifier.fillMaxWidth().height(44.dp)) {
-                    if (busy) CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp) else FoleviIcon(WebIcon.ARROW_RIGHT, null, size = 16.dp)
-                    Spacer(Modifier.width(8.dp))
-                    Text("Continue")
-                }
+                ServerButton("Continue", { go(address) }, Modifier.fillMaxWidth(), ServerButtonKind.GLASS, enabled = !busy, busy = busy, icon = WebIcon.ARROW_RIGHT)
                 if (hasCamera(context)) {
-                    TextButton(
+                    ServerButton(
+                        "Scan QR code",
                         enabled = !busy,
-                        modifier = Modifier.fillMaxWidth().height(44.dp),
+                        modifier = Modifier.fillMaxWidth(),
+                        kind = ServerButtonKind.QUIET,
+                        icon = WebIcon.QR_CODE,
                         onClick = {
-                            val activity = context as? Activity ?: return@TextButton
+                            val activity = context as? Activity ?: return@ServerButton
                             scope.launch {
                                 // A refusal says why; the address field stays for typing.
                                 val text = try {
@@ -151,11 +154,7 @@ private fun AddressForm() {
                                 go(value)
                             }
                         },
-                    ) {
-                        FoleviIcon(WebIcon.QR_CODE, null, size = 16.dp)
-                        Spacer(Modifier.width(8.dp))
-                        Text("Scan QR code")
-                    }
+                    )
                 }
                 if (nearby.isNotEmpty()) {
                     Text("On your network", style = MaterialTheme.typography.labelLarge, color = p.inkMuted, modifier = Modifier.padding(top = 4.dp))
@@ -177,19 +176,34 @@ private fun Found(server: ShellServer, onBack: () -> Unit, onOpen: () -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         ServerRow(server.name, server.origin.replace(Regex("^https?://"), ""), enabled = false, onClick = {})
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            TextButton(onClick = onBack, modifier = Modifier.height(44.dp)) { Text("Back") }
-            Button(
-                onClick = { busy = true; onOpen() },
-                enabled = !busy,
-                modifier = Modifier.weight(1f).height(44.dp).testTag("server-sign-in"),
-            ) {
-                if (busy) {
-                    CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp)
-                    Spacer(Modifier.width(8.dp))
-                }
-                Text("Sign in to ${server.name}", maxLines = 1, overflow = TextOverflow.Ellipsis)
-            }
+            ServerButton("Back", onBack, Modifier, ServerButtonKind.QUIET)
+            ServerButton("Sign in to ${server.name}", { busy = true; onOpen() }, Modifier.weight(1f).testTag("server-sign-in"), ServerButtonKind.STRONG, enabled = !busy, busy = busy)
         }
+    }
+}
+
+private enum class ServerButtonKind { STRONG, GLASS, QUIET }
+
+/** Folevi's buttons (the web's ui-btn): strong (heading fill), glass, or quiet; at least 48 tall, Android's ripple. */
+@Composable
+private fun ServerButton(label: String, onClick: () -> Unit, modifier: Modifier = Modifier, kind: ServerButtonKind = ServerButtonKind.GLASS, enabled: Boolean = true, busy: Boolean = false, icon: WebIcon? = null) {
+    val p = LocalPalette.current
+    val shape = PhoneRadius.panel
+    val ink = when (kind) { ServerButtonKind.STRONG -> p.canvas; ServerButtonKind.GLASS -> p.ink; ServerButtonKind.QUIET -> p.inkMuted }
+    val look = when (kind) {
+        ServerButtonKind.STRONG -> Modifier.background(p.heading, shape)
+        ServerButtonKind.GLASS -> Modifier.foleviGlass(shape)
+        ServerButtonKind.QUIET -> Modifier
+    }
+    Row(
+        modifier.heightIn(min = 48.dp).alpha(if (enabled) 1f else 0.4f).then(look).clip(shape)
+            .clickable(enabled = enabled && !busy, role = Role.Button, onClick = onClick).padding(horizontal = 16.dp, vertical = 10.dp),
+        horizontalArrangement = Arrangement.Center,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        if (busy) CircularProgressIndicator(Modifier.size(16.dp), color = ink, strokeWidth = 2.dp) else if (icon != null) FoleviIcon(icon, null, size = 16.dp, tint = ink)
+        if (busy || icon != null) Spacer(Modifier.width(8.dp))
+        Text(label, style = PhoneType.headline.copy(fontWeight = if (kind == ServerButtonKind.QUIET) FontWeight.Medium else FontWeight.SemiBold), color = ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
 }
 

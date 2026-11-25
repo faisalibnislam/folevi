@@ -261,6 +261,17 @@ everything but the writing area, matching today's UI with Liquid Glass and iOS's
   (`PhoneLook.frame` = canvas, `phoneCard` draws no card; grouped screens keep the grey); Home in today's order
   with "Search in <place>" (`PhoneSearchOpener`); + as a floating Liquid Glass button over the tab bar
   (`PhoneCreateButton`; iOS's bar holds five items), no + or search capsule in the top bars. Mac package builds.
+- Foli AI (branch `claude/ios-native-foli-ai`): the composer is Liquid Glass and the thread's bottom bar
+  (`safeAreaBar`): answers scroll under it, it rides the keyboard with SwiftUI's own avoidance in the sheet and on the
+  page (the page's composer used to float mid-screen over a gap), Return sends, a light haptic on Send and a tick on
+  Stop (RebuildAI now uses `RebuildFeedback`). Fixed: the tab bar's Foli AI opened its sheet only on the next touch;
+  an answer with follow-ups crashed the app (`ai.followup` style missing; `PhoneFollowUp` draws ChatMessage.tsx's
+  values); Stop never fired on the iPhone (the Mac's hover and Cmd-. on the button ate the tap) and, in local mode,
+  the engine refused it (`validate.ts` ids now allow `~`, a local message id's separator; also fixes Apply, Save as
+  note and Copy as Markdown of one answer); the drawer drew under the status bar and kept the keyboard; the thread
+  stopped following when the keyboard went. No credits line without an account. Checked on the Simulator with
+  Apple's on-device model: send, stream, citations opening notes, follow-ups, Stop, Regenerate, history open and
+  delete, light and dark.
 - Checked on the "Folevi Native iPhone" Simulator (AC2852C2), local mode: Home, Tasks, Calendar, a note, Foli AI's
   sheet, the account sheet. Reference shots of today's app from the Capacitor build on "Folevi Mobile iPhone".
 - Step 2b (branch `claude/ios-native-sync-signin`, from step 2 at af78bdbd): the sync sheet in this week's design
@@ -1245,6 +1256,7 @@ account button should move past iPadOS's window buttons).
 
 ## 12. Change log
 - 2026-11-25: Native iOS sync sheet redesign, Your own server sign-in, R5.6 and R5.7 (native) on `claude/ios-native-sync-signin`.
+- 2026-11-25: Native Foli AI on iPhone finished on `claude/ios-native-foli-ai` (glass composer on the keyboard, Stop, follow-ups crash, local message ids).
 - 2026-11-25: Native iOS restarted on `claude/ios-native-today-ui` to match today's UI (owner's decision); step 1 committed (ae912d75).
 - 2026-11-25: **Integration branch `claude/integration-2026-11-25`** (the owner: "check and resolve [the merging issues]
   and release all apps and platforms, I approve everything"). The backlog could not drain PR by PR: every PR edits

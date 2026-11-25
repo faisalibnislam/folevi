@@ -186,6 +186,20 @@ public extension EnvironmentValues {
     @Entry var aiPhone = false
 }
 
+/// Stop's hover fill and ⌘. where there's a pointer and a keyboard (the Mac, the iPad's floating chat). Not on the
+/// iPhone's thread: there the button never took a tap while an answer was coming (no ⌘. to offer there anyway).
+private struct AiStopPointerExtras: ViewModifier {
+    let on: Bool
+
+    func body(content: Content) -> some View {
+        if on {
+            content.webHover(radius: 12).keyboardShortcut(".", modifiers: .command)
+        } else {
+            content
+        }
+    }
+}
+
 /// The web's `RunStatus`: three softly pulsing dots, what Foli AI is doing, and Stop.
 public struct AiRunStatus: View {
     let label: String
@@ -229,9 +243,8 @@ public struct AiRunStatus: View {
                     .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
-                .webHover(radius: 12)
+                .modifier(AiStopPointerExtras(on: !phone))
                 .padding(.leading, 4)
-                .keyboardShortcut(".", modifiers: .command)
                 .fixedSize()
             }
         }

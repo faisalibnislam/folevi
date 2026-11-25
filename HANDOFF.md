@@ -222,6 +222,7 @@ Then, each with the owner's OK:
 | App Store Connect API key HS88CK5RQF | `~/.appstoreconnect/private_keys/AuthKey_HS88CK5RQF.p8` | Copy the folder securely; never print it |
 | Sign in with Apple key BNZC6FGWJC | `.p8` in `~/.appstoreconnect/private_keys/`; already loaded into Convex env | Only needed to rotate the client secret |
 | Sparkle EdDSA key | login Keychain, account "folevi" (backup with the owner) | Export/import with Sparkle's `generate_keys` |
+| Windows/Linux update key (Tauri updater, minisign) | `~/.folevi-desktop-signing/folevi-updater.key` (chmod 600, no password; public key in `apps/desktop/src-tauri/tauri.conf.json`) | Copy the folder securely; keep a copy in the password manager. Without it, Windows and AppImage users must download the next version by hand |
 | Developer ID / Apple Distribution certs (team 7K32QQ2FX8) | login keychain | Export as .p12 from Keychain Access or let Xcode re-create |
 | Cloudflare (R2 `folevi-updates`) | wrangler OAuth login | `npx wrangler login` |
 | Mac provisioning profile | `apps/mac/signing/Folevi.provisionprofile` (committed) | Comes with the clone |
@@ -1258,6 +1259,12 @@ account button should move past iPadOS's window buttons).
   `DATABASE_UDF_USER_TIMEOUT_SECONDS=4` for that backend. Bursts show in `convex.log` as "took a long time".
 
 ## 12. Change log
+- 2026-11-25: **Automatic updates for Folevi for Windows and the Linux AppImage** (branch `claude/desktop-updater`,
+  first item of docs/DESKTOP_PARITY.md): the Tauri updater is registered, checks a minute after launch and every 12
+  hours, and the tray has Check for Updates…. Update key made and kept at `~/.folevi-desktop-signing/` (section 7);
+  `packaging/desktop/publish-update-feed.sh` signs the published installers and writes the feed
+  (docs/DESKTOP_APP.md, "Updates"). Takes effect from the first release that carries it; 1.6.78 and older have no
+  updater, so their users install that release by hand once.
 - 2026-11-25: **1.6.78 released** from PR 109's merge (`e0183862`): web and Convex deployed; Mac published
   (notarized, Sparkle feed); iPhone and iPad on TestFlight (delivery 7120ad6e); Windows installers and Linux packages
   uploaded, apt and rpm repositories rebuilt and uploaded; the Android bundle built and left for the owner's Play

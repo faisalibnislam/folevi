@@ -17,7 +17,7 @@ import FoleviScreens
 /// The iPad frame's widths.
 public enum IPadFrameMetrics {
     /// Narrower than this (every iPad in portrait but the 13-inch ones, Split View, Stage Manager windows), the
-    /// sidebar floats over the content instead of taking a third of the width beside it.
+    /// sidebar floats over the content while the note's tools are open in the inspector, so the note keeps its room.
     public static let floatingSidebarBelow: CGFloat = 1000
 }
 
@@ -35,6 +35,8 @@ public struct IPadFrameView<Page: View>: View {
     /// The window's width (all the frame lays out by): read on its own, so a change of height (the keyboard coming
     /// up, a sheet) doesn't run the whole frame again as the GeometryReader round it did.
     @State private var width: CGFloat = 0
+    /// The detail column's width (today's top bar gives its tabs the room its buttons leave).
+    @State private var detailWidth: CGFloat = 0
     /// The note's tools in the inspector: shown, and which.
     @State private var toolsShown = false
     @State private var tool: IPadNoteTool = .format
@@ -51,6 +53,8 @@ public struct IPadFrameView<Page: View>: View {
     /// columns as it settles (it starts with the detail alone until the width is known), and that report isn't the
     /// person hiding the sidebar.
     @State private var settlingSince = Date.distantPast
+    /// When the page last drew a note (its own panel request on load isn't the person asking for the tools).
+    @State private var noteDrawnAt = Date.distantPast
     /// The toolbar's search field.
     @State private var searchText = ""
     @FocusState private var searchFocused: Bool
@@ -81,6 +85,8 @@ public struct IPadFrameView<Page: View>: View {
             sidebar
                 .navigationSplitViewColumnWidth(min: 240, ideal: sidebarIdeal, max: max(340, sidebarIdeal))
                 .toolbar { sidebarToolbar }
+                // (Today's sidebar has its own button at its top, and the toolbar shows one while it's away.)
+                .modifier(IPadNoSystemSidebarToggle(on: !sideBars))
         } detail: {
             detail
         }
@@ -144,9 +150,11 @@ public struct IPadFrameView<Page: View>: View {
         // Nothing floats over a note, so its page keeps only a small gap at its top (MacLook.notePageTop), as the
         // Mac's does. (Again once the note has drawn: at launch the page may not be listening yet.)
         .onChange(of: model.route.noteId, initial: true) { _, id in
+            noteDrawnAt = Date()
             if id != nil { model.editor(.insets(top: Double(MacLook.notePageTop), bottom: 0)) }
         }
         .onChange(of: model.drawnNote) { _, id in
+            noteDrawnAt = Date()
             if id != nil { model.editor(.insets(top: Double(MacLook.notePageTop), bottom: 0)) }
         }
     }
@@ -160,9 +168,14 @@ public struct IPadFrameView<Page: View>: View {
         return false
     }
 
+    /// Today's tablet sidebar (Sidebar.tsx, the owner's 2026-11-25 pick: today's UI, natively): the wordmark, the
+    /// sync status, the bell and the sidebar's button at its top, "Search or jump to…", the places, Folders, Tags,
+    /// Archive and Trash, and the account at its foot; on a note, the note's own tools.
     private var sidebar: some View {
         WebSidebar(model: model, tasks: tasks, actions: sidebarActions)
             .defaultAppStorage(WebSidebarController.defaults)
+            .environment(\.macNativeLook, false)
+            .background((WebStyles.vars["color-sidebar"]?.resolve(scheme).color ?? Color(uiColor: .secondarySystemBackground)).ignoresSafeArea())
     }
 
     /// The sidebar's place: the system's split view keeps it (shown, collapsed by its button, or sliding over a
@@ -192,7 +205,8 @@ public struct IPadFrameView<Page: View>: View {
     /// The sidebar column's own bar: on a note, the switch between the note's outline (and comments, tasks, files)
     /// and the folders in the sidebar.
     @ToolbarContentBuilder private var sidebarToolbar: some ToolbarContent {
-        if model.route.isNote {
+        // (Today's layout has the switch in the sidebar's own button menu, Show folders and Show document.)
+        if model.route.isNote && sideBars {
             ToolbarItem(placement: .topBarTrailing) {
                 let tools = model.noteToolsShown
                 Button { WebSidebarController.setNoteTools(model, shown: !tools) } label: {
@@ -214,23 +228,25 @@ public struct IPadFrameView<Page: View>: View {
                 page
             } else {
                 ScreenRoot(model: model, models: models, route: model.route)
+                    .environment(\.screensKeepControls, !sideBars)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .modifier(IPadTabsBar(model: model))
+        .modifier(IPadTabsBar(model: model, shown: sideBars))
         .navigationTitle(CardControls.title(model))
-        .modifier(IPadSubtitle(text: model.route.isNote ? nil : model.cardItems[model.route.tabKey]?.subtitle))
+        .modifier(IPadSubtitle(text: model.route.isNote || !sideBars ? nil : model.cardItems[model.route.tabKey]?.subtitle))
         .navigationBarTitleDisplayMode(.inline)
-        .toolbar { IPadToolbar(model: model, inspectorShown: inspectorShown, tool: $tool, sideBars: sideBars, narrow: width > 0 && width < 760) }
+        .toolbar { IPadToolbar(model: model, inspectorShown: inspectorShown, tool: $tool, sideBars: sideBars, narrow: width > 0 && width < 760, detailWidth: detailWidth) }
+        .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { w in
+            if abs(detailWidth - w) > 0.5 { detailWidth = w }
+        }
         .readVerticalBars { side in
             sideBars = side
             sideBarsKnown = true
             updateSidebarFloats(width)
         }
-        .searchable(text: $searchText, placement: .toolbar, prompt: "Search")
-        .searchFocused($searchFocused)
-        .onSubmit(of: .search) { openPalette(searchText) }
-        .onChange(of: searchText) { _, q in if !q.isEmpty { openPalette(q) } }
+        // (The toolbar's search field only in iOS's column at the side: in today's layout the sidebar has it.)
+        .modifier(IPadToolbarSearch(on: sideBars, text: $searchText, focused: $searchFocused, open: openPalette))
         .inspector(isPresented: inspectorShown) {
             IPadNoteInspector(model: model, tool: $tool, askAi: askAi)
                 .inspectorColumnWidth(min: 300, ideal: 340, max: 440)
@@ -243,7 +259,8 @@ public struct IPadFrameView<Page: View>: View {
             if model.overviewShown { TabOverviewLayer(model: model) }
         }
         .overlay(alignment: .bottomTrailing) {
-            AiAskOverlay(frame: model, state: askAi)
+            // (No floating button in today's layout: Foli AI is the toolbar's flower, as today's top bar has it.)
+            AiAskOverlay(frame: model, state: askAi, launcher: sideBars)
                 .environment(\.colorScheme, chrome)
         }
         .onGeometryChange(for: CGFloat.self, of: { $0.size.height }) { h in
@@ -254,9 +271,12 @@ public struct IPadFrameView<Page: View>: View {
         // stays shut.
         .onChange(of: model.editorPanel) { _, panel in
             guard let panel, let t = IPadNoteTool(panel) else { return }
+            model.editor(.panelClose)
+            // (A note opening asks for its panel by itself, the web's remembered inspector: today's tablet layout opens
+            // a note with its outline in the sidebar and the page's dock, the tools shut until asked for.)
+            guard Date().timeIntervalSince(noteDrawnAt) > 1.5 else { return }
             tool = t
             toolsShown = true
-            model.editor(.panelClose)
         }
         .onChange(of: note) { _, isNote in if !isNote { toolsShown = false } }
         #if DEBUG
@@ -268,17 +288,21 @@ public struct IPadFrameView<Page: View>: View {
             toolsShown = true
         }
         #endif
-        .onChange(of: model.barSearchFocus) { searchFocused = true }
+        .onChange(of: model.barSearchFocus) {
+            if sideBars { searchFocused = true } else { CommandPalette.show(model) }
+        }
     }
 
-    /// Narrow, the sidebar slides over the detail. iPhone Duo open across keeps it beside the content (Apple's HIG:
-    /// the inner screen shows one more level of the hierarchy, as Mail and Notes do), and the system's split view
-    /// evens its columns out at the fold when the phone is partly closed. While the note's tools are open the three
-    /// don't fit side by side there: the sidebar steps aside for them, as on a narrow iPad, and comes back after.
+    /// The sidebar stays beside the content, as today's tablet layout keeps it on every iPad and on iPhone Duo open
+    /// (Apple's HIG: the inner screen shows one more level of the hierarchy, as Mail and Notes do); the system's split
+    /// view evens its columns out at the fold when the phone is partly closed. While the note's tools are open in a
+    /// window under 1000 pt the three don't fit side by side: the sidebar steps aside for them and comes back after.
     private func updateSidebarFloats(_ w: CGFloat) {
         guard w > 0, sideBarsKnown else { return }
-        let beside = sideBars && !inspectorShown.wrappedValue
-        let floats = w < IPadFrameMetrics.floatingSidebarBelow && !beside
+        // Today's tablet layout (Shell.tsx: the iPad's sidebar never folds away for width) keeps the sidebar beside
+        // the content at every width the wide layout takes; only the note's tools in the inspector, which need the
+        // room, send it over the content in a narrower window, and it comes back when they close.
+        let floats = inspectorShown.wrappedValue && w < IPadFrameMetrics.floatingSidebarBelow
         if floats != model.sidebarFloats {
             settlingSince = Date()
             model.sidebarFloats = floats
@@ -289,7 +313,8 @@ public struct IPadFrameView<Page: View>: View {
     /// The sidebar's width: 280 pt, or up to the fold while the phone is partly closed.
     private var sidebarIdeal: CGFloat {
         if let x = foldMinX, x > 240, !model.sidebarFloats { return x }
-        return 280
+        // (Today's tablet sidebar is 320 wide, Shell.tsx; a narrow window keeps more of itself for the content.)
+        return width >= 800 ? 320 : 280
     }
 
     /// The note's tools: shown on a note only.
@@ -325,9 +350,13 @@ public struct IPadFrameView<Page: View>: View {
 /// the scroll edge effect under it; before that a plain bar material.
 private struct IPadTabsBar: ViewModifier {
     let model: FrameModel
+    /// Only with the toolbar in iOS's column at the side (iPhone Duo open across); otherwise the tabs are in the bar.
+    var shown = true
 
     func body(content: Content) -> some View {
-        if #available(iOS 26, *) {
+        if !shown {
+            content
+        } else if #available(iOS 26, *) {
             content.safeAreaBar(edge: .top, spacing: 0) { tabs }
         } else {
             content.safeAreaInset(edge: .top, spacing: 0) { tabs.background(.bar) }
@@ -336,6 +365,35 @@ private struct IPadTabsBar: ViewModifier {
 
     private var tabs: some View {
         WebTopBar(model: model, tabsOnly: true).frame(height: 44)
+    }
+}
+
+/// The toolbar's search field (iPhone Duo's column at the side), opening the palette with what's typed.
+private struct IPadToolbarSearch: ViewModifier {
+    let on: Bool
+    @Binding var text: String
+    var focused: FocusState<Bool>.Binding
+    let open: (String) -> Void
+
+    func body(content: Content) -> some View {
+        if on {
+            content
+                .searchable(text: $text, placement: .toolbar, prompt: "Search")
+                .searchFocused(focused)
+                .onSubmit(of: .search) { open(text) }
+                .onChange(of: text) { _, q in if !q.isEmpty { open(q) } }
+        } else {
+            content
+        }
+    }
+}
+
+/// Takes the split view's own sidebar button away (today's layout has its own).
+private struct IPadNoSystemSidebarToggle: ViewModifier {
+    let on: Bool
+    func body(content: Content) -> some View {
+        // (And no bar over the sidebar: its own top row is today's, the wordmark, sync, bell and its button.)
+        if on { content.toolbar(removing: .sidebarToggle).toolbar(.hidden, for: .navigationBar) } else { content }
     }
 }
 

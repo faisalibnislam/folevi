@@ -30,8 +30,110 @@ struct IPadToolbar: ToolbarContent {
     /// A narrow window (iPhone Duo's inner screen upright, an iPad mini in portrait): New note's words would leave the
     /// title a letter or two, so it shows its symbol alone.
     var narrow = false
+    /// The detail column's width: today's bar gives its tabs what the buttons round them leave.
+    var detailWidth: CGFloat = 0
 
     var body: some ToolbarContent {
+        if sideBars { columnBar } else { todayBar }
+    }
+
+    /// Today's tablet top bar (the owner, 2026-11-25: TabStrip.tsx in Shell.tsx, PR 83), in iOS's own toolbar and
+    /// its Liquid Glass:
+    ///
+    ///   [sidebar] (‹ ›)  (Home  All notes  Welcome ×)                     (screen's items)  (✿) (+)  [tools]
+    ///
+    /// Back and Forward, the tabs where the title would be, then the screen's own items, Foli AI and New note. The
+    /// sync status, the bell and "Search or jump to…" sit at the sidebar's top, where today's app has them; the
+    /// sidebar's button shows here only while the sidebar is away.
+    @ToolbarContentBuilder private var todayBar: some ToolbarContent {
+        ToolbarItemGroup(placement: .topBarLeading) {
+            if model.sidebarHidden || (model.sidebarFloats && !model.sidebarOverlayShown) {
+                Button { model.toggleSidebar() } label: { Label("Show sidebar", systemImage: "sidebar.left") }
+                    .accessibilityIdentifier("ipad-sidebar")
+            }
+        }
+        ToolbarItemGroup(placement: .topBarLeading) {
+            Button { model.goBack() } label: { Label("Back", systemImage: "chevron.left") }
+                .disabled(!model.canGoBack)
+                .accessibilityIdentifier("ipad-back")
+            Button { model.goForward() } label: { Label("Forward", systemImage: "chevron.right") }
+                .disabled(!model.history.canGoForward)
+                .accessibilityIdentifier("ipad-forward")
+        }
+        // (No title: the tabs name the screen, as today's bar does. The window keeps its title for the app switcher.)
+        ToolbarItem(placement: .principal) { Color.clear.frame(width: 1, height: 1).accessibilityHidden(true) }
+        let items = model.route.isNote ? nil : model.cardItems[model.route.tabKey]
+        // The tabs right after Back and Forward, as today's strip has them, as wide as the bar leaves them (a toolbar
+        // sizes an item by what it holds, so the room is worked out here: a few tabs, then the strip scrolls).
+        ToolbarItem(placement: .topBarLeading) {
+            WebTopBar(model: model, stripOnly: true)
+                .frame(width: stripWidth(items), height: 44)
+                .accessibilityElement(children: .contain)
+                .accessibilityLabel("Tabs")
+        }
+        ForEach(items?.leading ?? []) { g in
+            ToolbarItem(placement: .primaryAction) { IPadToolbarGroup(group: g) }
+        }
+        ForEach(items?.trailing ?? []) { g in
+            ToolbarItem(placement: .primaryAction) { IPadToolbarGroup(group: g) }
+        }
+        if #available(iOS 26, *) {
+            ToolbarSpacer(.fixed, placement: .primaryAction)
+        }
+        if model.session.value?.capabilities.ai ?? false {
+            if #available(iOS 27, *) {
+                ToolbarItem(placement: .primaryAction) { aiButton }.visibilityPriority(.high)
+            } else {
+                ToolbarItem(placement: .primaryAction) { aiButton }
+            }
+        }
+        // (Foli AI and New note are the last to go into the bar's "…" in a narrow window.)
+        if #available(iOS 27, *) {
+            ToolbarItem(placement: .primaryAction) { IPadNewNoteButton(model: model, symbolOnly: true) }
+                .visibilityPriority(.high)
+        } else {
+            ToolbarItem(placement: .primaryAction) { IPadNewNoteButton(model: model, symbolOnly: true) }
+        }
+        if model.route.isNote {
+            if #available(iOS 26, *) {
+                ToolbarSpacer(.fixed, placement: .primaryAction)
+            }
+            ToolbarItem(placement: .primaryAction) {
+                Button { inspectorShown.toggle() } label: { Label(inspectorShown ? "Hide note tools" : "Show note tools", systemImage: "sidebar.right") }
+                    .accessibilityIdentifier("ipad-note-tools")
+            }
+        }
+    }
+
+    private var aiButton: some View {
+        Button { model.askAI() } label: { Label { Text("Foli AI") } icon: { AiMarkImage.image(size: 22) } }
+            .accessibilityIdentifier("ipad-foli-ai")
+    }
+
+    /// What today's bar leaves its tabs: the detail's width less the buttons round them (each round glass button
+    /// about 52 pt with its gap, Back and Forward's capsule about 110, the bar's margins 40), never under 160.
+    private func stripWidth(_ items: CardItems?) -> CGFloat {
+        guard detailWidth > 0 else { return 240 }
+        var taken: CGFloat = 40 + 110 + 52  // margins, Back and Forward, New note
+        if model.sidebarHidden || (model.sidebarFloats && !model.sidebarOverlayShown) { taken += 52 }
+        if model.session.value?.capabilities.ai ?? false { taken += 52 }
+        if model.route.isNote { taken += 52 + 8 }
+        var screen: CGFloat = 0
+        for g in (items?.leading ?? []) + (items?.trailing ?? []) {
+            switch g.kind {
+            case .segmented(let options, _, _): screen += CGFloat(options.count) * (options.first?.symbol == nil ? 78 : 44) + 16
+            case .actions(let options, _): screen += CGFloat(options.count) * 40 + 16
+            default: screen += 52
+            }
+        }
+        if screen > 0 { screen += 12 }
+        // (What doesn't fit beside the tabs goes into the bar's "…", which takes a button's room.)
+        if detailWidth - taken - screen < 240, screen > 0 { screen = 52 }
+        return max(160, detailWidth - taken - screen)
+    }
+
+    /// iPhone Duo open across (iOS 27.1's toolbar in a column at the side): the whole toolbar there, as before.
+    @ToolbarContentBuilder private var columnBar: some ToolbarContent {
         ToolbarItemGroup(placement: .topBarLeading) {
             Button { model.goBack() } label: { Label("Back", systemImage: "chevron.left") }
                 .disabled(!model.canGoBack)

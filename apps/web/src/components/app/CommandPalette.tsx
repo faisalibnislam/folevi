@@ -27,7 +27,7 @@ import { useIphoneApp, sideInsets } from "@/lib/iphone";
 import { useFold } from "@/lib/platform";
 import { IphoneScopes } from "@/components/iphone/lazy";
 import { useKeyLabels } from "@/lib/shortcuts";
-import { fadeOut } from "@/components/ui/closing";
+import { fadeOut, type Closing } from "@/components/ui/closing";
 
 /** A group's heading in the iPhone's search: caption caps (13/18 600, uppercase) at the 20 pt inset. */
 const IPHONE_CAPS = "px-5 pb-1.5 pt-6 text-footnote font-semibold uppercase leading-[18px] tracking-[0.04em] text-muted";
@@ -99,7 +99,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
   // Opened in the same pass as the ⌘K that asked for it, the field focused before the next key arrives: every
   // key typed right after ⌘K lands in the search, none in the note underneath (QA audit F04).
   const inputRef = useRef<HTMLInputElement>(null);
-  const closing = useRef<Animation | null>(null);
+  const closing = useRef<Closing | null>(null);
   const openRef = useRef(open);
   useLayoutEffect(() => {
     openRef.current = open;
@@ -122,7 +122,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
       afterKeyboardGoes(d, () => {
         if (openRef.current || !d.open) return;
         // Without the Web Animations API `done` runs at once, before `fade` is set: then it just closes.
-        let fade: Animation | null = null;
+        let fade: Closing | null = null;
         fade = fadeOut(d, () => {
           if (fade && closing.current !== fade) return;
           closing.current = null;

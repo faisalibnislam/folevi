@@ -7,7 +7,7 @@ import { isIpadNativeWide, sideInsets, useIphoneApp } from "@/lib/iphone";
 import { Sheet } from "@/components/iphone/Sheet";
 import { confirmAction, hasNative } from "@/lib/native/ui";
 import { nativeChrome } from "@/lib/nativeApp";
-import { fadeOut } from "./closing";
+import { fadeOut, type Closing } from "./closing";
 import { useFold, type Fold } from "@/lib/platform";
 
 /**
@@ -90,7 +90,7 @@ export function Dialog({
   const { room, side } = pastFoldFrame(useFold(), macRoom);
   // Closing fades out over 150 ms (a 4 px rise on the web; only the fade on the Mac and with Reduce Motion), then the
   // dialog closes and its content goes (2026-11-25 polish review: it used to vanish at once after its animated entry).
-  const closing = useRef<Animation | null>(null);
+  const closing = useRef<Closing | null>(null);
   useLayoutEffect(() => {
     const el = ref.current;
     if (!el) return;
@@ -107,7 +107,7 @@ export function Dialog({
       return;
     }
     // Without the Web Animations API `done` runs at once, before `fade` is set: then it just closes.
-    let fade: Animation | null = null;
+    let fade: Closing | null = null;
     fade = fadeOut(el, () => {
       if (fade && closing.current !== fade) return;
       closing.current = null;

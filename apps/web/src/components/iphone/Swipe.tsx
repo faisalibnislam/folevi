@@ -215,8 +215,23 @@ export function SwipeRow({ children, leading = [], trailing = [], className = ""
       openRef.current = 0;
       setOffset(0);
     };
+    // A finger put down outside the list closes it at once, as iOS does. (It doesn't wait for the click: Chromium
+    // holds back the click of a tap that lands within about 300 ms of a drag's end, so on Android a quick tap
+    // elsewhere would otherwise leave the row open.) Inside the list the click above decides, so that tap still
+    // does nothing else.
+    const closeOutside = (e: PointerEvent) => {
+      if (e.pointerType === "mouse") return;
+      const list = row.current?.closest("ul, ol") ?? row.current;
+      if (list?.contains(e.target as Node)) return;
+      openRef.current = 0;
+      setOffset(0);
+    };
     document.addEventListener("click", close, true);
-    return () => document.removeEventListener("click", close, true);
+    document.addEventListener("pointerdown", closeOutside, { capture: true, passive: true });
+    return () => {
+      document.removeEventListener("click", close, true);
+      document.removeEventListener("pointerdown", closeOutside, { capture: true });
+    };
   }, [offset, dragging, gone]);
 
   const side = offset > 0 ? leading : offset < 0 ? trailing : [];

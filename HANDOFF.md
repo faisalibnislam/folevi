@@ -1258,6 +1258,9 @@ account button should move past iPadOS's window buttons).
   `DATABASE_UDF_USER_TIMEOUT_SECONDS=4` for that backend. Bursts show in `convex.log` as "took a long time".
 
 ## 12. Change log
+- 2026-11-25: **Shortcuts and Open for attachments in Folevi for Windows and Linux** (branch
+  `claude/desktop-shortcuts-open`, part of item 9 of docs/DESKTOP_PARITY.md): the Mac's menu shortcuts the page
+  handles, Ctrl+Q on Linux, and attachments opened in their default app. Rust tests pass (144).
 - 2026-11-25: **1.6.78 released** from PR 109's merge (`e0183862`): web and Convex deployed; Mac published
   (notarized, Sparkle feed); iPhone and iPad on TestFlight (delivery 7120ad6e); Windows installers and Linux packages
   uploaded, apt and rpm repositories rebuilt and uploaded; the Android bundle built and left for the owner's Play

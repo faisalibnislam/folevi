@@ -120,6 +120,16 @@ https://folevi.com/download/windows/Folevi-arm64-setup.exe and https://folevi.co
 Uploaded with `npx wrangler r2 object put folevi-updates/windows/<file> --remote` from CI run 45418586764 (the fixed build). The
 version came from `apps/desktop/RELEASE_VERSION` (1.5.73) because this branch's version.json predates 1.5.72.
 
+## Shortcuts and opening attachments
+
+Beyond the tab, window and zoom keys, Folevi for Windows and Linux has the Mac's menu shortcuts with Ctrl (host.js
+keyAction): Ctrl+N New Note, Ctrl+Alt+Shift+N New from Template, Ctrl+Shift+F Search, Ctrl+/ Keyboard Shortcuts,
+Ctrl+Shift+] and [ next and previous tab, Ctrl+Alt+C Calendar, Ctrl+Alt+\ Focus, and on Linux Ctrl+Q Quit. Ctrl+Alt
+keys are left alone when they're AltGr. Formatting keys are the editor's own.
+
+An attachment's Open button (the Mac's Quick Look) opens a copy in the app that opens its kind: the copy goes to
+`<temp>/Folevi Open/`, emptied at the next launch.
+
 ## Not done yet
 
 - Updates: the Tauri updater is in the app and points at `folevi.com/download/desktop/<target>-<arch>/latest.json`,

@@ -1,6 +1,6 @@
 "use client";
 
-import { useQuery } from "convex/react";
+import { useQuery } from "@/lib/convex/queries";
 import { useBackendMode, useCapabilities } from "@/lib/mode";
 import { TouchSyncButton } from "@/components/iphone/SyncStatusTouch";
 import { Bell, MoreHorizontal } from "lucide-react";

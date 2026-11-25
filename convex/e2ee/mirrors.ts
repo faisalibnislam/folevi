@@ -19,7 +19,8 @@
 // Copies are what the switch's description in Settings > Privacy says is readable by Folevi, and nothing
 // more. Locked notes never have one.
 import { v } from "convex/values";
-import { internalMutation, mutation, query, type MutationCtx, type QueryCtx } from "../_generated/server";
+import { query, type MutationCtx, type QueryCtx } from "../_generated/server";
+import { internalMutation, mutation } from "../lib/functions";
 import { internal } from "../_generated/api";
 import type { Doc, Id } from "../_generated/dataModel";
 import { accessAtLeast, assertWritable, documentAccess, getDocumentByPublicId, requireProfile, resolveScope } from "../lib/auth";

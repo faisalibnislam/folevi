@@ -4,7 +4,7 @@
 // hour), or the local library's own addresses in local mode (files.urls answers there too). Until an
 // address arrives, and for a file that has gone, the shape shows its placeholder.
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useQuery } from "convex/react";
+import { useQuery } from "@/lib/convex/queries";
 import { api } from "@/lib/convex/api";
 import { flowchartFileIds, type FlowchartData } from "./schema";
 

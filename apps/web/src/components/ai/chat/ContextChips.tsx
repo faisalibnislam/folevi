@@ -1,6 +1,6 @@
 "use client";
 
-import { useQuery } from "convex/react";
+import { useQuery } from "@/lib/convex/queries";
 import { FileText, Folder, Layers, Plus, X } from "lucide-react";
 import { api } from "@/lib/convex/api";
 import { useFolderTree } from "@/lib/app/folders";

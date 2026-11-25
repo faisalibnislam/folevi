@@ -3,7 +3,8 @@
 // Comments on a note: the floating thread anchored under a block (opened from the "2 comments" line, the
 // block menu, the selection toolbar or ⌘⌥M), and the overview of every thread in the note (Comments panel).
 import type { Editor } from "@tiptap/react";
-import { useMutation, useQuery } from "convex/react";
+import { useMutation } from "convex/react";
+import { useQuery } from "@/lib/convex/queries";
 import { useCapabilities } from "@/lib/mode";
 import { SignInToCollaborate } from "@/components/app/SignInToCollaborate";
 import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";

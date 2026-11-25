@@ -13,7 +13,8 @@
 //   reject:      leaves the note as it is.
 //   sweep:       hourly, pending proposals past their 14 days expire; decided ones go after 30 days.
 import { v } from "convex/values";
-import { internalMutation, mutation, query } from "./_generated/server";
+import { query } from "./_generated/server";
+import { internalMutation, mutation } from "./lib/functions";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
 import type { Doc, Id } from "./_generated/dataModel";
 import { LIMITS, plainText, rankSequence, ulid, type InlineNode, type SyncOp, type WireBlock } from "@folevi/editor-schema";

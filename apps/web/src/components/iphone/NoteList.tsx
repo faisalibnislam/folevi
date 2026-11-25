@@ -1,13 +1,14 @@
 "use client";
 
 import { useMemo, useState, type ReactNode } from "react";
-import { Archive, ArchiveRestore, Check, LayoutGrid, List, Trash2, Undo2, type LucideIcon } from "lucide-react";
+import { Archive, ArchiveRestore, Check, LayoutGrid, List, RotateCw, Trash2, Undo2, type LucideIcon } from "lucide-react";
 import { Bookmark, BookmarkOff } from "lucide-react";
 import { AppLink } from "@/lib/app/router";
 import { ageText, editedText, formatRelative } from "@/lib/format";
 import { useLocalStorage } from "@/lib/hooks/useEngine";
 import type { MenuEntry } from "@/components/ui/Menu";
 import { FolderGlyph } from "@/components/ui/FolderGlyph";
+import { Button } from "@/components/ui/Button";
 import { NOTE_CARD_LINK, NoteCardFace } from "@/components/views/DocumentCard";
 import { NoteContextMenu, contextPoint, type Summary } from "@/components/views/DocumentBrowser";
 import type { SelectionAction } from "@/components/views/SelectionBar";
@@ -40,6 +41,8 @@ export interface IphoneNoteListProps {
   title: string;
   docs: Summary[];
   loading: boolean;
+  /** The list couldn't load (it keeps retrying): said in place of the empty state, with Try again. */
+  failed?: { icon: LucideIcon; title: string; body: string; onRetry: () => void };
   canLoadMore: boolean;
   onLoadMore: () => void;
   /** The folders inside this one (a folder's screen). */
@@ -70,7 +73,7 @@ export interface IphoneNoteListProps {
  * to archive or delete); everything also has a long-press menu.
  */
 export function IphoneNoteList(props: IphoneNoteListProps) {
-  const { view, title, docs, loading, canLoadMore, onLoadMore, subfolders, folderCounts, empty, selection, bulkActions, sort, onSort, menu = [], before, unsynced, canArrange, onNudge, tint, children } = props;
+  const { view, title, docs, loading, failed, canLoadMore, onLoadMore, subfolders, folderCounts, empty, selection, bulkActions, sort, onSort, menu = [], before, unsynced, canArrange, onNudge, tint, children } = props;
   const [layout, setLayout] = useLocalStorage<"cards" | "list">(`folevi:iphone-layout:${view}`, view === "trash" || view === "archive" ? "list" : "cards");
   const [query, setQuery] = useState("");
   const [selecting, setSelecting] = useState(false);
@@ -183,6 +186,19 @@ export function IphoneNoteList(props: IphoneNoteListProps) {
           {[0, 1, 2, 3].map((i) => (
             <div key={i} className="aspect-[25/27] animate-pulse rounded-container bg-sunken motion-reduce:animate-none" />
           ))}
+        </div>
+      ) : failed && shown.length === 0 ? (
+        <div role="alert">
+          <ScreenEmpty
+            icon={failed.icon}
+            title={failed.title}
+            body={failed.body}
+            action={
+              <Button variant="secondary" onClick={failed.onRetry}>
+                <RotateCw size={14} aria-hidden /> Try again
+              </Button>
+            }
+          />
         </div>
       ) : shown.length === 0 ? (
         query ? (

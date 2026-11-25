@@ -1,6 +1,7 @@
 // Public, non-sensitive platform settings the clients need (maintenance banner, flags, templates).
 import { v } from "convex/values";
-import { internalMutation, query } from "./_generated/server";
+import { query } from "./_generated/server";
+import { internalMutation } from "./lib/functions";
 import { optionalProfile } from "./lib/auth";
 import { BUILT_IN_TEMPLATES } from "./lib/templates";
 import { isShellVersion, MIN_SHELL_VERSIONS, newerFloor } from "./lib/shellVersions";

@@ -2,7 +2,8 @@
 // Convex CLI (`npx convex run testSupport:…`), never from browsers. They also refuse to run on a
 // production deployment.
 import { v } from "convex/values";
-import { internalAction, internalMutation, internalQuery } from "./_generated/server";
+import { internalAction, internalQuery } from "./_generated/server";
+import { internalMutation } from "./lib/functions";
 import { components, internal } from "./_generated/api";
 import type { Id, TableNames } from "./_generated/dataModel";
 import schema from "./schema";

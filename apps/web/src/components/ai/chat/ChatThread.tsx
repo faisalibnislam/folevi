@@ -2,7 +2,8 @@
 
 import { AI_FOCUS_EVENT } from "./events";
 import { memo, useCallback, useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from "react";
-import { useAction, useMutation, useQuery } from "convex/react";
+import { useAction, useMutation } from "convex/react";
+import { useQuery } from "@/lib/convex/queries";
 import { ArrowDown, ArrowUp, Loader2, MessageCircle } from "lucide-react";
 import { useIphoneApp } from "@/lib/iphone";
 import { inIosApp } from "@/lib/nativeApp";

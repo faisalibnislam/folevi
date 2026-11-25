@@ -2,7 +2,8 @@
 // review, and the new key version a custodian's device makes when someone loses access. A Personal Vault has only
 // its owner. Workspace admins have no access unless added; guests never.
 import { v } from "convex/values";
-import { mutation, query } from "./_generated/server";
+import { query } from "./_generated/server";
+import { mutation } from "./lib/functions";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
 import type { Doc, Id } from "./_generated/dataModel";
 import { assertWritable, membership, normalizeMembership, requireProfile } from "./lib/auth";

@@ -1,6 +1,7 @@
 "use client";
 
-import { useMutation, useQuery } from "convex/react";
+import { useMutation } from "convex/react";
+import { useQuery, useQueryState } from "@/lib/convex/queries";
 import type { FunctionReturnType } from "convex/server";
 import { useMemo, useState } from "react";
 import { blocksFileIds } from "@folevi/editor-schema";
@@ -25,6 +26,7 @@ import "@/components/editor/stickies/stickies.css";
 import "@/components/editor/chart/chart.css";
 import "@/components/editor/wireframe/wireframe.css";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { LoadFailed } from "@/components/ui/LoadFailed";
 
 type ChangeList = FunctionReturnType<typeof api.changes.list>;
 type NoteChanges = ChangeList["notes"][number];
@@ -39,7 +41,8 @@ const NO_FILES: Record<string, string> = {};
  * or undo it.
  */
 export function ChangesView() {
-  const data = useQuery(api.changes.list, {});
+  const changes = useQueryState(api.changes.list, {});
+  const data = changes.data;
   const now = useMinute();
   const proposals = useQuery(api.proposals.list, { now });
   const markSeen = useMutation(api.changes.markSeen);
@@ -80,7 +83,9 @@ export function ChangesView() {
             </Button>
           </div>
         ) : null}
-        {data === undefined ? (
+        {data === undefined && changes.failed ? (
+          <LoadFailed what="what changed" onRetry={changes.retry} />
+        ) : data === undefined ? (
           <div className="mt-6 h-32 animate-pulse rounded-control bg-surface motion-reduce:animate-none" aria-busy aria-label="Loading changes" />
         ) : notes.length === 0 && waiting.length ? (
           <p className="mt-4 text-subheadline text-muted">Nothing else changed since you last looked.</p>

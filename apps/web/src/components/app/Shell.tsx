@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, lazy, Suspense, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { useQuery } from "convex/react";
+import { useQuery } from "@/lib/convex/queries";
 import { ChevronLeft, ChevronRight, GripVertical, PanelLeft, Plus, X } from "lucide-react";
 import { usePane } from "@/lib/app/panes";
 import { api } from "@/lib/convex/api";

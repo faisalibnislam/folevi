@@ -1,6 +1,6 @@
 "use client";
 
-import { useQuery } from "convex/react";
+import { useQuery } from "@/lib/convex/queries";
 import { useState } from "react";
 import { ChevronRight, FileText, FolderX, Users } from "lucide-react";
 import { api } from "@/lib/convex/api";

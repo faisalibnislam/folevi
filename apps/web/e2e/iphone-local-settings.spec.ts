@@ -139,11 +139,12 @@ test.describe("the iPhone app in local mode", { tag: "@local" }, () => {
     await screen(page).getByRole("button", { name: /^Location/ }).click();
     await expect(screen(page).getByRole("heading", { level: 1, name: "Location" })).toBeVisible();
     await page.getByRole("button", { name: "Back", exact: true }).click();
-    // The lock: an iOS switch in its own row, its explanation the footer.
+    // The lock: a switch in its own row, its explanation the footer. The web's own switch, the same as the Mac's and
+    // the web's (one switch everywhere, the owner's iPhone review, 2026-11-01), not iOS's 51 by 31 capsule.
     const lock = screen(page).getByRole("switch", { name: "Lock with Face ID" });
     await lock.click();
     await expect(lock).toHaveAttribute("aria-checked", "true");
-    expect(await lock.evaluate((el) => [el.getBoundingClientRect().width, el.getBoundingClientRect().height])).toEqual([51, 31]);
+    expect(await lock.evaluate((el) => [el.getBoundingClientRect().width, el.getBoundingClientRect().height])).toEqual([40, 24]);
     await screen(page).getByRole("button", { name: /^Ask again/ }).click();
     await screen(page).getByRole("radio", { name: "After 5 minutes" }).click();
     const lockCalls = (await page.evaluate(() => window.__foleviTestShellControl!.log.filter((c) => c.call === "lock.setSettings").map((c) => c.detail))) as unknown[];

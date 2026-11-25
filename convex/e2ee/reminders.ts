@@ -11,7 +11,8 @@
 // The times are visible to the server (§3.2). The text is generic ("A reminder is due") unless the space
 // has notification previews on, when the device supplies the to-do's text and the note's title.
 import { v } from "convex/values";
-import { internalMutation, mutation, type MutationCtx } from "../_generated/server";
+import { type MutationCtx } from "../_generated/server";
+import { internalMutation, mutation } from "../lib/functions";
 import { internal } from "../_generated/api";
 import type { Doc } from "../_generated/dataModel";
 import { accessAtLeast, assertWritable, documentAccess, getDocumentByPublicId, membership, requireProfile } from "../lib/auth";

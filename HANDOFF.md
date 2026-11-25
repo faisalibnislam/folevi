@@ -25,7 +25,7 @@ on `origin/main`.
 | Backend | Convex, production deployment `fastidious-clownfish-123` | Live |
 | Folevi for Mac | `apps/mac` (AppKit + native screens + one WKWebView for the editor), Developer ID, notarized, Sparkle updates from `folevi.com/download/mac/appcast.xml` | Shipped by direct download only (no Mac App Store build) |
 | Folevi for iPhone and iPad | `apps/ios` (native SwiftUI/UIKit screens, web note editor), iOS 18+ | TestFlight internal group "Folevi team" only; never submitted to App Review |
-| Android | `apps/android`: a native Compose app (Gradle root `apps/android`, modules `engine`, `app`); the Capacitor app is gone | **Resumed 2026-11-23** as a native app "just like iPhone" for phones, foldables, tablets and Googlebooks; first build complete on branch `claude/android-native-622675` (not merged, not on Play; `docs/ANDROID_NATIVE_PLAN.md`) |
+| Android | The Capacitor app on branch `claude/android-capacitor-197cf4` (PR 69); `apps/android` on `main` still holds the native Compose app (Gradle root `apps/android`, modules `engine`, `app`) | **Active** (owner, 2026-11-25: "we need Android"): 1.5.74 (build 89) on Play internal testing, PR 69 not merged yet. Only the native Compose app is paused (owner, 2026-11-24: one web app everywhere) |
 | Web Clipper | `apps/clipper` (Chrome/Edge extension, own lockfile) | Built and tested in CI; store listing status: see `apps/clipper/STORE.md` |
 | MCP server listing | `mcp/` (`server.json`) | Folevi exposes an MCP endpoint through its OAuth provider |
 
@@ -314,7 +314,8 @@ branch (PR 55, which holds all of `main`), so testers keep the Duo window that 1
 e18198df), tag `v1.5.70` local only. No visible change from 1.5.69: it lines TestFlight up with the merged code
 (engine contract revision 35). Its PR into `main` holds only the version commit once PR 55 merges. **Owner's
 decision the same day: "one web app everywhere"** (Electron for desktop, Capacitor for iPhone, iPad, Duo and
-Android); native releases and new native UI work are paused until the owner says otherwise.
+Android); native releases and new native UI work are paused until the owner says otherwise. This pauses the
+native apps only: Android itself is active as the Capacitor app (owner, 2026-11-25).
 
 **Release, 2026-11-24 (branch `claude/folevi-core-529dbe`, PR 51 merged into `main` as 7e2080e9):**
 - **1.5.66** (tag `v1.5.66`, local): the native Mac app replacing the AppKit one, plus PR 52's iPhone/iPad redesign.
@@ -752,6 +753,9 @@ account button should move past iPadOS's window buttons).
 ## 12. Change log
 - 2026-11-25: CI secret scan reads only the history HEAD reaches (`--log-opts=HEAD`, owner's OK), not every fetched
   branch: test tokens on unmerged branches (Folevi Server, Linux stores) had failed the required check on every PR.
+- 2026-11-25: Notes say Android is active (the Capacitor app, PR 69, Play internal testing); only the native Compose
+  app is paused. An Android SDK is installed at `~/Library/Android/sdk` (not on PATH), so Android builds can run on
+  this Mac.
 - 2026-11-25: Backend performance pass, step 3 (widen): `documentText` table holds each note's search text and search
   fields, kept in step by the write hook; `migrations:backfillDocumentText` copies older notes (production run waits
   for the owner). Readers are unchanged until the switch PR.

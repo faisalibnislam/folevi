@@ -198,6 +198,22 @@ Right-click Folevi in the Windows taskbar or Start menu: New Note, Quick Add Tas
 (`src/jumplist.rs`, set once per launch). Linux's launchers show the same three from the .desktop file's actions
 (`packaging/linux/folevi.desktop.hbs`, in the .deb, .rpm, AppImage, Snap and Flatpak). Each opens a folevi:// link,
 which a running Folevi receives through the single-instance plugin.
+## Dropbox and Google Drive
+
+The library can sync through Dropbox or Google Drive as on the Mac (`src/cloud.rs`, a port of ShellCloud.swift).
+The syncing is the shared code in the page (packages/cloud-folders, bundled by `apps/ios/scripts/bundle-cloud.mjs`
+and put in every page by lib.rs). The shell signs in, keeps the tokens sealed in the secret store
+(`cloud.dropbox`, `cloud.googleDrive`; never readable by the page), refreshes them, and makes the page's requests
+only to the provider's own hosts.
+
+Sign-in is OAuth with PKCE in the browser, ending on a loopback address Folevi listens on (no secret):
+- Dropbox: `http://127.0.0.1:41753/` (or `:41754/`, `:41755/`). The Dropbox app needs those three redirect URIs and
+  "Allow public clients (Implicit Grant & PKCE)" (docs/LOCAL_MODE.md has the checklist).
+- Google: a "Desktop app" OAuth client (any `http://127.0.0.1:<port>/` works; the Mac's iOS client doesn't).
+
+Owner step before it shows up: set the public client ids as repository variables `FOLEVI_DROPBOX_APP_KEY` and
+`FOLEVI_GOOGLE_DESKTOP_CLIENT_ID` (and for local builds, the same names in the environment of
+`packaging/linux/scripts/build-in-lima.sh`). Without them Dropbox and Google Drive aren't offered.
 
 ## Not done yet
 
@@ -205,6 +221,7 @@ which a running Folevi receives through the single-instance plugin.
   needs the release's .deb addresses and checksums; docs/LINUX.md), the Microsoft Store.
 - Dropbox and Google Drive sign-in on this platform (the library's cloud copy is ported; the sign-in flow isn't).
 - Notification actions, call recording, text in images.
+- An app lock, notification actions, call recording, text in images.
 - Snap layouts when hovering the maximize button (Windows+Z still works).
 
 ## Testing checklist for the owner

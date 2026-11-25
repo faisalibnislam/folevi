@@ -32,7 +32,11 @@
     version: BOOT.version,
     deviceName: BOOT.deviceName,
     fileBase: origin + "/_files/",
-    cloudKit: null,
+    // The shared Dropbox and Google Drive code (lib.rs fills it in when the build has it): `var FoleviCloudKit = …`.
+    cloudKit: (function () {
+      /*CLOUD_KIT*/
+      return typeof FoleviCloudKit === "object" && FoleviCloudKit ? FoleviCloudKit : null; // eslint-disable-line no-undef
+    })(),
     call: function (plugin, method, options) {
       return invoke("shell_call", { plugin: String(plugin), method: String(method), options: options || {} }).catch(function (e) {
         throw asError(e);

@@ -11,6 +11,7 @@ mod applock;
 mod hello;
 mod auth;
 mod backsync;
+mod cloud;
 mod badge;
 mod e2ee;
 mod events;
@@ -61,6 +62,8 @@ const THIS_DEVICE: &str = linux::THIS_DEVICE;
 const CAPTION_HEIGHT: u32 = 40;
 const HOST_JS: &str = include_str!("../bridge/host.js");
 const SHELL_BRIDGE_JS: &str = include_str!("../../../ios/ios/App/Native/Shell/shell-bridge.js");
+/// The shared Dropbox and Google Drive code, when this build has it (build.rs; empty otherwise).
+const CLOUD_KIT_JS: &str = include_str!(concat!(env!("OUT_DIR"), "/folevi-cloud.js"));
 
 /// The look the page gets: "windows", or "linux"; a development run on a Mac gets Windows' (FOLEVI_LOOK=linux for Linux's).
 fn look() -> &'static str {
@@ -137,6 +140,8 @@ struct Services {
     ai: Arc<ai::Ai>,
     reminders: Arc<reminders::Reminders>,
     lock: Arc<applock::AppLock>,
+    /// Dropbox and Google Drive for the library: sign-in, tokens, the page's requests (cloud.rs).
+    cloud: Arc<cloud::Cloud>,
     places: Mutex<PlacesStore>,
     /// Background sync's plan: which places sync in hidden runners, which are awake (backsync.rs).
     backsync: Mutex<backsync::BackSync>,
@@ -248,7 +253,7 @@ fn boot_script(_app: &AppHandle, label: &str) -> String {
         "probe": cfg!(debug_assertions) && std::env::var_os("FOLEVI_PROBE").is_some(),
         "origins": [app_origin()],
     });
-    let script = HOST_JS.replace("/*BOOT*/ { shell: false, platform: \"windows\", window: \"main\" } /*BOOT_END*/", &boot.to_string()).replace("/*SHELL_BRIDGE*/", SHELL_BRIDGE_JS);
+    let script = HOST_JS.replace("/*BOOT*/ { shell: false, platform: \"windows\", window: \"main\" } /*BOOT_END*/", &boot.to_string()).replace("/*SHELL_BRIDGE*/", SHELL_BRIDGE_JS).replace("/*CLOUD_KIT*/", CLOUD_KIT_JS);
     if cfg!(debug_assertions) && std::env::var_os("FOLEVI_PROBE").is_some() {
         // Development: the script's own failures reach the terminal too.
         let report = "function(m){try{fetch(location.origin+'/_probe?'+encodeURIComponent(m))}catch(_){}}";
@@ -1214,6 +1219,7 @@ async fn route_call(app: &AppHandle, s: &Arc<Services>, label: &str, place: Opti
     match method {
         "setMode" => set_mode(app, s, place, req_str(o, "mode")?),
         m if m.starts_with("places") => places_call(app, s, label, place, m, o).await,
+        "cloudStatus" | "cloudConnect" | "cloudCancel" | "cloudSignOut" | "cloudRequest" => s.cloud.call(method, o).await,
         m if m.starts_with("lib") || m.starts_with("journal") || m.starts_with("cloud") || m.starts_with("mirror") => s.library.call(m, o).await,
         "secretsHas" => Ok(value(secrets::is_page_secret(req_str(o, "name")?) && s.secrets.has(req_str(o, "name")?))),
         "secretsSet" => {
@@ -1905,6 +1911,10 @@ pub fn run() {
                 }),
                 emit: emitter(&handle),
             });
+            let cloud_opener = handle.clone();
+            let cloud = cloud::Cloud::new(user_data.clone(), cloud::Config::from_build(), secret_store.clone(), Arc::new(move |url: &str| {
+                let _ = cloud_opener.opener().open_url(url, None::<&str>);
+            }), emitter(&handle));
             let opener_app = handle.clone();
             let auth = auth::Auth::new(service_url.clone(), secret_store.clone(), Arc::new(move |url: &str| {
                 let _ = opener_app.opener().open_url(url, None::<&str>);
@@ -1964,6 +1974,7 @@ pub fn run() {
                 ai: ai::Ai::new(secret_store),
                 reminders: reminders.clone(),
                 lock: Arc::new(applock::AppLock::load(user_data.join("lock.json"), lock_method())),
+                cloud,
                 places: Mutex::new(places),
                 backsync: Mutex::new(backsync::BackSync::new(backsync::Plan::default())),
                 poll_tokens: Mutex::new(HashMap::new()),

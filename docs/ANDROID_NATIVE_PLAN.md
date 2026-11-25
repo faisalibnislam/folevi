@@ -238,3 +238,44 @@ mode.
    - The owner's OK.
    - Play upload by the owner.
    - The Capacitor app retires.
+
+### Where it stands (2026-11-25, evening)
+
+Built natively, to the web phone layout's sizes, type, colors and shadows (`design/PhoneKit.kt`, `design/Glass.kt`):
+
+| Area | Where | Notes |
+| --- | --- | --- |
+| Phone bar | `ui/PhoneBar.kt` | The tab capsule and the Foli AI and + capsule. |
+| Home | `ui/HomeScreens.kt` | Avatar, sync and bell, the "…" menu, search pill, notebook cards, Catch me up, tiles, Bookmarks, Folders, Tags, then Vault, Templates, Archive and Trash. |
+| Note lists | `ui/HomeScreens.kt` | Cards or rows, filter, view and sort, swipe actions, long-press menu, Select mode with its bar, Empty Trash, built-in templates. |
+| All folders, Notifications | `ui/HomeScreens.kt` | |
+| Note page chrome | `ui/NoteScreen.kt` | A Compose layer over the page (MainActivity). Glass top bar (Back, place chip, Share, menu, Done while writing), tool capsules, keyboard bar, native Format sheet, the note menu from `NoteMenuState`. |
+| Tasks, Quick add | `ui/TasksScreens.kt` | Chips with counts, groups, task lines, swipes, the task sheet. |
+| Calendar | `ui/CalendarScreens.kt` | Week strip and month, the agenda with events. |
+| Search | `ui/SearchScreens.kt` | |
+| Account sheet, New folder | `ui/AccountSheet.kt`, `ui/NewFolderSheet.kt` | |
+| Settings | `ui/SettingsScreens.kt` | Native sections. The technical ones (and those the engine has no typed view for) open as web pages. |
+| Your own server | `ui/OwnServer.kt`, `server/*` | |
+
+Checked on the Android 37 emulator with real data (local mode):
+- The screens above.
+- The chrome over the live editor.
+- The Format sheet and the keyboard bar.
+- A tablet-sized window.
+
+The 87 app unit tests and 5 engine unit tests pass; 14 of the app tests are Robolectric UI tests.
+
+Still open:
+- **Engine and page side:**
+  - Insert, Comments, Style and Foli AI panels are still the page's own sheets. There is no Kotlin Insert catalogue, and no flag to stop the page drawing its sheet.
+  - The place chip doesn't fold into the title on scroll, because the page sends no scroll event.
+- **Screens not restyled yet:** the Foli AI chat, Vault, Shared and Changes keep the earlier native styling.
+- **Smaller gaps:**
+  - Search's Actions section.
+  - The month view's 1:1 drag.
+  - The tablet's rail is Material, not the web tablet sidebar.
+- **Not tested:**
+  - Signing in to Folevi Cloud on the emulator. Chrome's first-run screen asks to accept Google's terms, which is left to the owner.
+  - A real QR code.
+  - Signing in to a home server.
+- **Activity theme:** it is now light by day and dark at night, so the page follows the phone (it was always dark).

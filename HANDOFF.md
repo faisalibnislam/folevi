@@ -1217,6 +1217,12 @@ account button should move past iPadOS's window buttons).
 
 ## 12. Change log
 
+- 2026-11-25 (evening): Android native, the whole phone UI except the writing area is built in Compose (PR 112, branch `claude/android-native-compose`):
+  - Home and lists, the note page chrome, Tasks, Calendar, Search, the account sheet, New folder and Settings.
+  - Checked with real data on the emulator in local mode; 92 unit tests pass.
+  - Open items are in `docs/ANDROID_NATIVE_PLAN.md` section 6, "Where it stands".
+  - How to test locally: an account-free Convex on ports 3310 and 3311 (`CONVEX_AGENT_MODE=anonymous npx convex dev --local-cloud-port 3310 --local-site-port 3311`), web on 3002, `adb reverse` for 3000→3002, 3002, 3310 and 3311.
+
 - 2026-11-25: Android native: "Your own server" ported from the Capacitor app.
   - What moved: the server code, places, per-site sign-in, CSP, cleartext to home addresses, and the bridge.
   - A native block under the sign-in gate, like the web's (`ui/OwnServer.kt`).

@@ -257,7 +257,10 @@ along the way it scrolls (`test/mac-scroll-axes.test.ts`). (2) Folders 35% less 
 `TabOverview.tsx` + `TabPictures.tsx`; a note tab is its Home card, a split tab two cards (double-wide tile), a
 folder tab its folder card, Home and other views a small drawing; names under the cards; it fills the page's panel
 below the top bar (no clash with the window buttons); arrow keys by position (`test/tab-overview.test.ts`); also on
-the iPad's tab bar now. Checked headlessly in an offscreen WKWebView harness (real NSEvent wheel events, a
+the iPad's tab bar now. Then an interface-polish pass (owner's "fix MEDIUM and LOW", conflicts by Folevi's rule):
+Mac buttons don't shrink on press, overlays fade out (`ui/closing.ts`, Popover's copy fade), Reduce Motion keeps
+fades, no hover lift on the Mac except folders, state icons cross-fade (`ui/SwapIcons.tsx`), concentric corners,
+image outlines (`ui-img-outline`), steady-width counters, tab pin/close no longer overlap. Checked headlessly in an offscreen WKWebView harness (real NSEvent wheel events, a
 `FOLEVI_BUILD=shell` dev server with the e2e FakeShell, scratch OPFS library); not yet seen in a Mac release build.
 **A failed query no longer takes a page down (branch `claude/project-thread-u99yc5`, open PR, 2026-11-24).** Components
 read queries through `apps/web/src/lib/convex/queries.ts` (`useQuery`, `usePaginatedQuery`, `useQueryState`), never
@@ -746,6 +749,9 @@ account button should move past iPadOS's window buttons).
   `DATABASE_UDF_USER_TIMEOUT_SECONDS=4` for that backend. Bursts show in `convex.log` as "took a long time".
 
 ## 12. Change log
+- 2026-11-25: Interface-polish pass on the whole web UI (review by typography, surfaces and motion; owner chose to fix
+  every MEDIUM and LOW finding): see the commit "Interface polish pass". Checked: typecheck, lint, full unit suite,
+  WebKit harness (dialog, command palette and Show all tabs fade out; Mac fades only), screenshots.
 - 2026-11-25: Mac feedback: Home's card rows no longer block page scrolling in the Mac app (overscroll held per axis);
   folders 35% less round (`folder` radius token, 9); Show all tabs redesigned (cards of what each tab holds, below
   the top bar, names under cards, on iPad too). How scrolling was checked: a Swift harness puts a WKWebView in an

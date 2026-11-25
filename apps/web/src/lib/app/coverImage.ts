@@ -1,6 +1,7 @@
 "use client";
 
-import { useMutation, useQuery, type ConvexReactClient } from "convex/react";
+import { useMutation, type ConvexReactClient } from "convex/react";
+import { useQuery } from "@/lib/convex/queries";
 import { useEffect, useState } from "react";
 import type { DocumentCover } from "@folevi/editor-schema";
 import { api } from "@/lib/convex/api";

@@ -1,7 +1,8 @@
 "use client";
 // The Vault's Trash (docs/VAULT_PLAN.md §5): deleted items for 30 days, then gone for good (a daily job, logged).
 // Anyone who could change an item restores it; custodians empty the Trash now. Both are logged.
-import { useMutation, useQuery } from "convex/react";
+import { useMutation } from "convex/react";
+import { useQuery } from "@/lib/convex/queries";
 import { useEffect, useState } from "react";
 import { RotateCcw, Trash2 } from "lucide-react";
 import { api } from "@/lib/convex/api";

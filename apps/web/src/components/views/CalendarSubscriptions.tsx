@@ -1,6 +1,7 @@
 "use client";
 
-import { useMutation, useQuery } from "convex/react";
+import { useMutation } from "convex/react";
+import { useQuery } from "@/lib/convex/queries";
 import { useEffect, useMemo, useRef, useState, type RefObject } from "react";
 import type { FunctionReturnType } from "convex/server";
 import { CalendarRange, MapPin, RefreshCw, Trash2 } from "lucide-react";

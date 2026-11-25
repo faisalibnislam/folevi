@@ -2,7 +2,7 @@
 
 import { imeKey } from "./canvas/wheel";
 import { DateField } from "@/components/ui/DateField";
-import { useQuery } from "convex/react";
+import { useQuery } from "@/lib/convex/queries";
 import type { AnchorHTMLAttributes } from "react";
 import { createContext, memo, useCallback, useContext, useEffect, useId, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import { ArrowDownUp, ArrowUpRight, CalendarDays, ChevronLeft, ChevronRight, Columns3, Filter, GalleryHorizontalEnd, MoreHorizontal, Plus, Search, Settings2, SquareFunction, Table2, Trash2, FileText } from "lucide-react";

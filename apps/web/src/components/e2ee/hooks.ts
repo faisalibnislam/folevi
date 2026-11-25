@@ -2,7 +2,8 @@
 // What the encryption screens read and write, from the real packages (docs/E2EE_DESIGN.md §12): WP6's keys
 // (`@/lib/e2ee/keys`, imported directly by the screens), WP7's router hooks, WP8's migration, features and
 // links, and the few Convex calls of §5.3 the screens make themselves.
-import { useMutation, useQuery } from "convex/react";
+import { useMutation } from "convex/react";
+import { useQuery } from "@/lib/convex/queries";
 import { useEffect, useState } from "react";
 import type { WireScope } from "@folevi/editor-schema";
 import { memberSecurityCode } from "@folevi/local-store/e2ee";

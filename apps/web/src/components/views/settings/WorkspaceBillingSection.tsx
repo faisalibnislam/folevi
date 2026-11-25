@@ -1,7 +1,8 @@
 "use client";
 
 import { replaceEntry } from "@/lib/app/historyNav";
-import { useAction, useMutation, useQuery } from "convex/react";
+import { useAction, useMutation } from "convex/react";
+import { useQuery } from "@/lib/convex/queries";
 import { useEffect, useState } from "react";
 import { AiIcon } from "@/components/ai/AiIcon";
 import { CreditCard, HardDrive, Users, Receipt } from "lucide-react";

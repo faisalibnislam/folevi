@@ -83,3 +83,12 @@ describe("best connection", () => {
     stop();
   });
 });
+
+describe("QR codes", () => {
+  it("reads an address or an invite link", async () => {
+    const { addressFromCode } = await import("@/lib/server-edition/address");
+    expect(addressFromCode("https://abc1234567.folevi.app/join/tok")).toBe("https://abc1234567.folevi.app");
+    expect(addressFromCode("http://192.168.1.20:8460")).toBe("http://192.168.1.20:8460");
+    expect(addressFromCode(" nas.local:8460 ")).toBe("nas.local:8460");
+  });
+});

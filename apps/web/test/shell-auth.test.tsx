@@ -169,6 +169,25 @@ describe("signing in and out through the host", () => {
     act(() => root.unmount());
   });
 
+  test("a place on a Folevi server shows that server's sign-in, not Folevi Cloud's", async () => {
+    const auth = fakeAuth({ signIn: vi.fn(async (_o?: unknown) => false) });
+    const server = { origin: "http://192.168.1.20:8460", addedOrigin: "http://192.168.1.20:8460", name: "Smith family", version: "1.6.0", serverId: null, urls: { app: "http://192.168.1.20:8460", convex: "http://192.168.1.20:8460/convex", convexSite: "http://192.168.1.20:8460/convex-site" } };
+    w().__foleviTestShell = { ...w().__foleviTestShell, places: { server } } as unknown as Partial<FoleviShell>;
+    const { ShellSignIn } = await import("@/components/app/ShellSignIn");
+    const host = document.createElement("div");
+    document.body.append(host);
+    const root = createRoot(host);
+    await act(async () => root.render(<ShellSignIn />));
+    // Straight to the server's sign-in: no first-launch choice, no Apple or Google, the server named.
+    expect(host.textContent).toMatch(/Sign in to Smith family/);
+    expect(host.textContent).toMatch(/192\.168\.1\.20:8460/);
+    expect(host.textContent).not.toMatch(/Continue with Apple|Continue with Google/);
+    const signIn = [...host.querySelectorAll("button")].find((b) => b.textContent?.trim() === "Sign in")!;
+    await act(async () => signIn.click());
+    expect(vi.mocked(auth.signIn).mock.calls[0]).toEqual([]);
+    act(() => root.unmount());
+  });
+
   test("shellSignIn passes the provider on, and only a provider", async () => {
     const auth = fakeAuth({ signIn: vi.fn(async (_o?: unknown) => false) });
     await shellSignIn({ provider: "apple" });

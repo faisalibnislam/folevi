@@ -372,6 +372,12 @@ no native screens. Details: `docs/MOBILE.md`.
   terms accepted on the emulator; iOS's sign-in sheet couldn't be tapped from scripts); iPhone Duo open and
   folding (the simulator's hinge couldn't be moved from scripts on this Mac); push delivery.
 - Nothing uploaded; native releases stay paused (a release would be 1.5.71 or later via `node scripts/version.mjs`).
+**Backend performance pass (session `perf-backend`, 2026-11-25).** A generated 5,000-note test library
+(`convex/lib/fakeLibrary.ts`, seeded by `convex/devSeed.ts` into an `@example.com` test account, refused on
+production) and a read-cost harness (`tests/convex/perf/`, run with `FOLEVI_PERF=1`). Baseline and every fix's
+before/after numbers: `docs/perf/backend-results.md`. At 5,000 notes `organization.index` reads 13 MB per run (the
+limit is 16 MiB) and task lists read up to 1,476 documents.
+
 **A failed query no longer takes a page down (branch `claude/project-thread-u99yc5`, open PR, 2026-11-24).** Components
 read queries through `apps/web/src/lib/convex/queries.ts` (`useQuery`, `usePaginatedQuery`, `useQueryState`), never
 convex/react's (an eslint `no-restricted-imports` rule says so). A failed query reads as still loading (keeping its
@@ -714,6 +720,9 @@ account button should move past iPadOS's window buttons).
   Android ripple) and #64 (one wording set) are open and wait on CI and the owner's merge (merging deploys). Next PRs: shortcut labels per OS (about 40 files still write ⌘ by hand; `lib/shortcuts.ts keyLabel` exists),
   Windows/Linux/Android accents behind `data-shell`, one motion/empty/loading style, mobile web view performance,
   the "Your own server" sign-in with the Synology session. The starter "Welcome to Folevi" note names Mac shortcuts.
+- Backend performance pass (`docs/perf/backend-results.md`): kept folder and Drafts counts, task rows that carry
+  their note's title, a cheaper `changes.list`, then note text (`searchText`) split out of `documents`
+  (widen, backfill, narrow; the owner approves each production backfill).
 - Web everywhere (all landed 2026-11-25). Open: the iOS simulator `footprint` re-run of the iPhone memory fix (mobile
   session); there are four empty-state components; lists not yet given `LoadFailed` still load until a retry answers
   (settings lists, Calendar, Graph, pickers);
@@ -883,6 +892,9 @@ account button should move past iPadOS's window buttons).
 - 2026-11-24: Owner: keep note covers inside the mobile app and sync note styles when the server changes them. Plan in docs/MOBILE.md; local mode's part asked of the owner.
 - 2026-11-24: PR 66 opened for the Capacitor mobile app (`claude/mobile-capacitor-f41734` pushed); open question to the owner: note covers.
 - 2026-11-24: `apps/mobile`: one Capacitor app for iPhone, iPad, iPhone Duo and Android around the web app (no native screens), reusing the shared Swift and Kotlin services; window-size layouts in `lib/iphone.ts`; `version.mjs` covers it; checked on simulators and emulators, size and memory compared (docs/MOBILE.md). Branch `claude/mobile-capacitor-f41734`, PR not merged.
+- 2026-11-25: Backend performance pass, step 1: a generated 5,000-note test library (`convex/devSeed.ts`, test
+  accounts only, refused on production), a read-cost harness with Convex's limits on (`tests/convex/perf/`), and the
+  baseline in `docs/perf/backend-results.md`.
 - 2026-11-25: One set of sync status words on every screen (owner's pick: the desktop's): the phone and iPad's sync
   button (`components/iphone/SyncStatusTouch.tsx`) now reads `SYNC_LABELS` from `components/app/SyncStatus.tsx`
   (Saved, Saving…, Syncing…, Offline, Conflict, Not saved) instead of Synced / Waiting to sync / Edited in two places,

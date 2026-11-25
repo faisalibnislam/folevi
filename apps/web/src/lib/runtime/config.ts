@@ -108,7 +108,7 @@ export function runtimeConfig(): RuntimeConfig {
 
 /** The JSON for the script tag: `<` escaped so the text can never close the tag. */
 export function serializeRuntimeConfig(config: RuntimeConfig): string {
-  return JSON.stringify(config).replace(/</g, "\\u003c").replace(/ /g, "\\u2028").replace(/ /g, "\\u2029");
+  return JSON.stringify(config).replace(/</g, "\\u003c").replace(/\u2028/g, "\\u2028").replace(/\u2029/g, "\\u2029");
 }
 
 /** Whether the public address is served over HTTPS (HSTS and upgrade-insecure-requests only then). */

@@ -18,7 +18,7 @@ final class ServerTests: XCTestCase {
         var i: [String: Any] = [
             "kind": "folevi-server", "apiVersion": 1, "name": "Smith family", "version": "1.0.0", "minAppVersion": "1.6.0",
             "urls": ["app": "https://nas.example.com", "convex": "https://nas.example.com/convex", "convexSite": "https://nas.example.com/convex-site"],
-            "connect": ["serverId": "abcde12345", "hostnames": ["abcde12345.folevi.net", "192-168-1-20.abcde12345.folevi.net:8443"]],
+            "connect": ["serverId": "abcde12345", "hostnames": ["abcde12345.folevi.app", "192-168-1-20.abcde12345.folevi.app:8443"]],
             "needsSetup": false,
         ]
         for (k, v) in patch { i[k] = v }
@@ -111,15 +111,15 @@ final class ServerTests: XCTestCase {
 
     func testTheOrderNamesAreTriedIn() throws {
         let s = try XCTUnwrap(server())
-        XCTAssertEqual(s.candidates, ["https://192-168-1-20.abcde12345.folevi.net:8443", "https://nas.example.com", "https://abcde12345.folevi.net"])
+        XCTAssertEqual(s.candidates, ["https://192-168-1-20.abcde12345.folevi.app:8443", "https://nas.example.com", "https://abcde12345.folevi.app"])
         var moved = s
-        moved.active = "https://abcde12345.folevi.net"
-        XCTAssertEqual(moved.activeUrls.convex, "https://abcde12345.folevi.net/convex")
-        XCTAssertEqual(moved.appURL?.absoluteString, "https://abcde12345.folevi.net")
+        moved.active = "https://abcde12345.folevi.app"
+        XCTAssertEqual(moved.activeUrls.convex, "https://abcde12345.folevi.app/convex")
+        XCTAssertEqual(moved.appURL?.absoluteString, "https://abcde12345.folevi.app")
         XCTAssertEqual(moved.json["addedOrigin"] as? String, "https://nas.example.com")
         // Bad names are left out.
-        let odd = try XCTUnwrap(server(["connect": ["serverId": "BAD ID", "hostnames": ["ok.folevi.net", "bad name", "x/y", 3]]]))
-        XCTAssertEqual(odd.hostnames, ["ok.folevi.net"])
+        let odd = try XCTUnwrap(server(["connect": ["serverId": "BAD ID", "hostnames": ["ok.folevi.app", "bad name", "x/y", 3]]]))
+        XCTAssertEqual(odd.hostnames, ["ok.folevi.app"])
         XCTAssertNil(odd.serverId)
     }
 
@@ -129,8 +129,8 @@ final class ServerTests: XCTestCase {
         let s = try XCTUnwrap(server())
         let csp = AppScheme.csp(mode: "account", serviceOrigin: "https://app.folevi.com", extraConnect: ["http://127.0.0.1:3210"], server: s)
         let connect = try XCTUnwrap(csp.split(separator: ";").map { $0.trimmingCharacters(in: .whitespaces) }.first { $0.hasPrefix("connect-src") })
-        for origin in ["https://nas.example.com", "wss://nas.example.com", "https://abcde12345.folevi.net", "wss://abcde12345.folevi.net",
-                       "https://192-168-1-20.abcde12345.folevi.net:8443", "wss://192-168-1-20.abcde12345.folevi.net:8443"] {
+        for origin in ["https://nas.example.com", "wss://nas.example.com", "https://abcde12345.folevi.app", "wss://abcde12345.folevi.app",
+                       "https://192-168-1-20.abcde12345.folevi.app:8443", "wss://192-168-1-20.abcde12345.folevi.app:8443"] {
             XCTAssertTrue(connect.split(separator: " ").contains(Substring(origin)), "\(origin) in \(connect)")
         }
         // Folevi Cloud's hosts aren't reachable from a server's pages.
@@ -204,11 +204,11 @@ final class ServerTests: XCTestCase {
         let s = try XCTUnwrap(server())
         ShellPlaces.setCurrent(nil, pending: true, server: s)
         let a = try XCTUnwrap(ShellPlaces.addAccount(userId: "serverAna", name: "Ana", email: "ana@nas.example.com", avatarUrl: nil))
-        ShellPlaces.setActiveOrigin(a.id, "https://192-168-1-20.abcde12345.folevi.net:8443")
-        XCTAssertEqual(ShellPlaces.server(of: a.id)?.activeOrigin, "https://192-168-1-20.abcde12345.folevi.net:8443")
+        ShellPlaces.setActiveOrigin(a.id, "https://192-168-1-20.abcde12345.folevi.app:8443")
+        XCTAssertEqual(ShellPlaces.server(of: a.id)?.activeOrigin, "https://192-168-1-20.abcde12345.folevi.app:8443")
         // Only one of its own names.
         ShellPlaces.setActiveOrigin(a.id, "https://elsewhere.example.com")
-        XCTAssertEqual(ShellPlaces.server(of: a.id)?.activeOrigin, "https://192-168-1-20.abcde12345.folevi.net:8443")
+        XCTAssertEqual(ShellPlaces.server(of: a.id)?.activeOrigin, "https://192-168-1-20.abcde12345.folevi.app:8443")
         ShellPlaces.setActiveOrigin(a.id, nil)
         XCTAssertEqual(ShellPlaces.server(of: a.id)?.activeOrigin, "https://nas.example.com")
     }

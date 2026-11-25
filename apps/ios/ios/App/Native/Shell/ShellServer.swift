@@ -42,9 +42,9 @@ struct ShellServer: Codable, Equatable {
 
     /// The addresses for the origin in use now: each of `urls` that is on `origin` moves to the active origin (same
     /// path), as CONTRACT §2 lays them out (`<origin>`, `<origin>/convex`, `<origin>/convex-site`).
-    var activeUrls: Urls { urls(at: activeOrigin) }
+    var activeUrls: Urls { addresses(at: activeOrigin) }
 
-    func urls(at target: String) -> Urls {
+    func addresses(at target: String) -> Urls {
         Urls(app: Self.move(urls.app, from: origin, to: target), convex: Self.move(urls.convex, from: origin, to: target), convexSite: Self.move(urls.convexSite, from: origin, to: target))
     }
 
@@ -57,7 +57,7 @@ struct ShellServer: Codable, Equatable {
     }
 
     /// Every origin this server can be reached at, in the order to try: home names (Connect's
-    /// `192-168-1-20.<id>.folevi.net`), then the address the person added, then the other names (public, relay).
+    /// `192-168-1-20.<id>.folevi.app`), then the address the person added, then the other names (public, relay).
     var candidates: [String] {
         let named = hostnames.compactMap { Self.normalizeOrigin("https://" + $0) }
         let home = named.filter { Self.isHomeName($0) }
@@ -65,7 +65,7 @@ struct ShellServer: Codable, Equatable {
         return (home + [origin] + named).filter { seen.insert($0).inserted }
     }
 
-    /// A Connect home name: its first label is a dashed IPv4 address ("https://192-168-1-20.abc.folevi.net").
+    /// A Connect home name: its first label is a dashed IPv4 address ("https://192-168-1-20.abc.folevi.app").
     static func isHomeName(_ origin: String) -> Bool {
         guard let host = URLComponents(string: origin)?.host else { return false }
         let first = host.split(separator: ".").first.map(String.init) ?? ""
@@ -250,7 +250,7 @@ enum ShellPolicy {
         var out: [String] = []
         var seen = Set<String>()
         for origin in server.candidates {
-            let u = server.urls(at: origin)
+            let u = server.addresses(at: origin)
             for raw in [u.app, u.convex, u.convexSite] {
                 guard let c = URLComponents(string: raw), let scheme = c.scheme?.lowercased(), let host = c.host else { continue }
                 let port = c.port.map { ":\($0)" } ?? ""

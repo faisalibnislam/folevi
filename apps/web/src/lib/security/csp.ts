@@ -23,6 +23,12 @@ export interface CspOptions {
    * another account of this browser in sync (docs/MULTI_ACCOUNT_PLAN.md §5.1).
    */
   frameAncestors?: "none" | "self";
+  /**
+   * `upgrade-insecure-requests` (on by default outside development). Folevi Server turns it off while it's served
+   * over plain http (a first setup on the home network): it would rewrite every request, the sync socket too, to
+   * an https address that doesn't exist (docs/self-hosting/PHASE0.md item 7).
+   */
+  upgradeInsecure?: boolean;
 }
 
 export function origin(url: string): string {
@@ -72,7 +78,7 @@ export function buildContentSecurityPolicy(opts: CspOptions): string {
     "object-src 'none'",
     "worker-src 'self' blob:",
     "manifest-src 'self'",
-    ...(opts.dev ? [] : ["upgrade-insecure-requests"]),
+    ...(opts.dev || opts.upgradeInsecure === false ? [] : ["upgrade-insecure-requests"]),
   ]
     .map((d) => d.replace(/\s+/g, " ").trim())
     .filter(Boolean)

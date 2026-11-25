@@ -75,6 +75,8 @@ targets:
         group: Shared
       - path: ../ios/ios/App/Native/Shell/ShellPlaces.swift
         group: Shared
+      - path: ../ios/ios/App/Native/Shell/ShellServer.swift
+        group: Shared
       - path: ../ios/ios/App/Native/Shell/ShellServices.swift
         group: Shared
       - path: ../ios/ios/App/Native/Shell/shell-bridge.js

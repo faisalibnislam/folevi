@@ -30,7 +30,7 @@ import (
 type DNSProvider struct {
 	Client   *Client
 	ServerID string
-	Hostname string // <id>.folevi.net
+	Hostname string // <id>.folevi.app
 	// Wait bounds lego's propagation check.
 	Wait time.Duration
 }
@@ -82,7 +82,7 @@ func (p *DNSProvider) Timeout() (time.Duration, time.Duration) {
 }
 
 // Sequential makes lego solve the bare name and the wildcard one after the other, because both use the same
-// TXT name (_acme-challenge.<id>.folevi.net) and Connect may keep one value per label.
+// TXT name (_acme-challenge.<id>.folevi.app) and Connect may keep one value per label.
 func (p *DNSProvider) Sequential() (bool, time.Duration) { return true, 5 * time.Second }
 
 // acmeUser is the ACME account.

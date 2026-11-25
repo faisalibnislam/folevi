@@ -1,3 +1,4 @@
+import { internalConvexUrl } from "@/lib/runtime/internal";
 import { createHash } from "node:crypto";
 import { NextResponse } from "next/server";
 import { ConvexHttpClient } from "convex/browser";
@@ -33,7 +34,7 @@ export const POST = withRequestLog("api/support", async (request: Request) => {
   const requestId = requestIdFrom(request.headers);
   if (!isSameOrigin(request)) return NextResponse.json({ error: { code: "forbidden", message: "Not allowed." } }, { status: 403 });
   if (Number(request.headers.get("content-length") ?? "0") > MAX_BYTES) return NextResponse.json({ error: { code: "invalid_argument", message: "That request is too long." } }, { status: 413 });
-  const url = process.env.NEXT_PUBLIC_CONVEX_URL;
+  const url = internalConvexUrl();
   const secret = process.env.FOLEVI_SERVER_SECRET;
   if (!url || !secret) {
     logEvent("error", "support.submit", { requestId, outcome: "not_configured" });

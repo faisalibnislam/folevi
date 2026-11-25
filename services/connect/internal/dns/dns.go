@@ -1,4 +1,4 @@
-// Package dns manages the records of the servers' zone (folevi.net): A/AAAA records for each server's names and
+// Package dns manages the records of the servers' zone (folevi.app): A/AAAA records for each server's names and
 // the _acme-challenge TXT records for its certificates. Provider is the DNS host (Cloudflare in production, an
 // in-memory fake in tests); Manager holds the rules for what a server may have.
 package dns
@@ -36,7 +36,7 @@ var ErrInvalid = errors.New("invalid")
 
 // Names builds and checks the names under the zone.
 type Names struct {
-	Zone string // "folevi.net"
+	Zone string // "folevi.app"
 }
 
 var serverIDRe = regexp.MustCompile(`^[a-z2-7]{10}$`)

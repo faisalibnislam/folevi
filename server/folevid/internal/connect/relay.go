@@ -14,9 +14,9 @@ import (
 	"github.com/hashicorp/yamux"
 )
 
-// Relay keeps one outbound tunnel to the relay (CONTRACT §9): a WebSocket to wss://relay.folevi.net/v1/tunnel
+// Relay keeps one outbound tunnel to the relay (CONTRACT §9): a WebSocket to wss://relay.folevi.app/v1/tunnel
 // with the connect token as a bearer token, carrying a yamux session. The relay opens one yamux stream per
-// incoming TLS connection for <id>.folevi.net (it reads only the SNI and never terminates TLS); folevid is the
+// incoming TLS connection for <id>.folevi.app (it reads only the SNI and never terminates TLS); folevid is the
 // yamux server side and pipes each stream into its own HTTPS listener (Target, 127.0.0.1:8443).
 type Relay struct {
 	URL    string

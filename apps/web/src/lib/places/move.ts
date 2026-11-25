@@ -5,6 +5,7 @@
 // tab-pinned token route; apps: the host's `places.convexToken`); the library on this device opened beside an
 // account (apps only). The copy itself is lib/migrate's, reshaped (picked notes, new ids), and a move then puts
 // the originals in Trash.
+import { runtimeConfig } from "@/lib/runtime/config";
 import { ConvexHttpClient } from "convex/browser";
 import { inboxDocumentId, PERSONAL_SCOPE_KEY, type WireScope } from "@folevi/editor-schema";
 import { api } from "@/lib/convex/api";
@@ -74,7 +75,7 @@ async function webToken(userId: string): Promise<string | null> {
 
 /** Another account, reached over HTTP with a token of its own (refreshed before it runs out). */
 export async function otherAccountEnd(place: PlaceId): Promise<MoveEnd> {
-  const url = process.env.NEXT_PUBLIC_CONVEX_URL;
+  const url = runtimeConfig().convexUrl;
   if (!url) throw new Error("Folevi isn't connected to a backend here.");
   const userId = userIdOf(place);
   if (!userId) throw new Error("That isn't an account.");

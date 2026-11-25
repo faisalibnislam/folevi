@@ -37,6 +37,7 @@ final class ShellRouter {
     static let methods: Set<String> = [
         "setMode",
         "placesList", "placesSwitch", "placesSignIn", "placesDescribe", "placesSignOut", "placesForgetLibrary", "placesConvexToken", "placesQuickAdd", "placesSetQuickAdd",
+        "placesAddServer", "placesLocalServers",
         "libSetup", "libInfo", "libList", "libRead", "libWrite", "libRemove", "libConflictVersions", "libResolveConflicts", "libStartDownload",
         "libWatch", "libUnwatch", "libRescan", "journalAppend", "journalRead", "journalTruncate", "libUnlock", "libSetPassphrase", "libChangePassphrase", "libMove",
         "secretsHas", "secretsSet", "secretsDelete",
@@ -139,6 +140,17 @@ final class ShellRouter {
         case "placesSetQuickAdd":
             if let id = s(o, "id"), ShellPlaces.has(id) { places.setQuickAdd(id) }
             return [:]
+        case "placesAddServer":
+            // "Your own server": the address and the server's folevi.json are checked here (never the page's copy),
+            // then every window opens that server's sign-in screen (Places.addServer).
+            switch await ShellServer.lookUp(s(o, "origin") ?? "", appVersion: Paths.version) {
+            case .failure(let problem): throw BridgeError(code: problem.code, message: problem.message)
+            case .success(let server):
+                places.addServer(server)
+                return ["value": server.json]
+            }
+        case "placesLocalServers":
+            return ["servers": await LocalServers.shared.list()]
 
         // ---- the library (LibraryService; Dropbox and Google Drive run in the bridge, folevi-cloud.js)
         case "libSetup", "libMove":

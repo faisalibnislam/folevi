@@ -1,3 +1,4 @@
+import { internalConvexUrl } from "@/lib/runtime/internal";
 import { createHash } from "node:crypto";
 import { NextResponse } from "next/server";
 import { ConvexHttpClient } from "convex/browser";
@@ -27,7 +28,7 @@ export const POST = withRequestLog("api/vault-link", async (request: Request) =>
   const requestId = requestIdFrom(request.headers);
   const noStore = { "cache-control": "no-store" };
   if (!isSameOrigin(request)) return NextResponse.json({ status: "error", message: "Not allowed." }, { status: 403, headers: noStore });
-  const url = process.env.NEXT_PUBLIC_CONVEX_URL;
+  const url = internalConvexUrl();
   const secret = process.env.FOLEVI_SERVER_SECRET;
   if (!url || !secret) {
     logEvent("error", "vaultLink.open", { requestId, outcome: "not_configured" });

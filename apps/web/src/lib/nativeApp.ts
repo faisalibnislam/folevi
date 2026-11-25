@@ -7,6 +7,7 @@
 // credit packs). Every purchase surface asks canPurchaseHere() first; text written by the server that says
 // where to buy goes through withoutPurchaseHints().
 
+import { isServerEdition } from "./edition";
 import { currentBackendMode } from "./backendMode";
 import { MARKER_GLOBAL, type NativeChromeMarker } from "./engine/protocol";
 
@@ -324,7 +325,8 @@ export function inIosApp(): boolean {
  * there Plan & billing shows the plan as it is, and nothing in the app links to buying or says where to.
  * Never in local mode either, on any platform: a library on the person's devices has no plan to buy.
  */
-export const canPurchaseHere = (): boolean => !isNativeStoreApp() && currentBackendMode() !== "local";
+// Folevi Server (lib/edition.ts) has no billing at all.
+export const canPurchaseHere = (): boolean => !isServerEdition() && !isNativeStoreApp() && currentBackendMode() !== "local";
 
 /**
  * Server messages end with where to buy ("Buy more in Settings → Plan & billing.", "Upgrade to use it.").

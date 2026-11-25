@@ -1,5 +1,5 @@
 // Package connect is folevid's side of Folevi Connect (CONTRACT §9): registration, addresses, link codes,
-// the DNS-01 certificate for <id>.folevi.net, the reachability check, the relay tunnel and diagnostics.
+// the DNS-01 certificate for <id>.folevi.app, the reachability check, the relay tunnel and diagnostics.
 // Nothing here runs until the owner turns Connect on.
 package connect
 
@@ -139,7 +139,7 @@ func (c *Client) State(ctx context.Context, id string) (ServerState, error) {
 	return s, err
 }
 
-// SetACME sets the DNS-01 TXT value for _acme-challenge.<label>.<id>.folevi.net ("@" for the bare name).
+// SetACME sets the DNS-01 TXT value for _acme-challenge.<label>.<id>.folevi.app ("@" for the bare name).
 func (c *Client) SetACME(ctx context.Context, id, label, value string) error {
 	return c.do(ctx, http.MethodPut, "/servers/"+url.PathEscape(id)+"/acme/"+url.PathEscape(label), map[string]string{"value": value}, nil)
 }

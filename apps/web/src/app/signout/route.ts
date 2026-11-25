@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { APP_URL, MARKETING_URL } from "@/lib/env";
+import { appUrl, marketingUrl } from "@/lib/env";
+import { isServerEdition } from "@/lib/edition";
 import { withRequestLog } from "@/lib/server/log";
 import { isSameOrigin } from "@/lib/auth/origin";
 import { handler } from "@/lib/auth/server";
@@ -13,7 +14,7 @@ export const dynamic = "force-dynamic";
  */
 export const POST = withRequestLog("signout", async (request: Request) => {
   if (!isSameOrigin(request)) return new NextResponse("Forbidden", { status: 403 });
-  const origin = new URL(APP_URL).origin;
+  const origin = new URL(appUrl()).origin;
   // Handled in-process by the same proxy that serves /api/auth/* (no network hop back to this app).
   const upstream = await handler
     .POST(
@@ -24,7 +25,7 @@ export const POST = withRequestLog("signout", async (request: Request) => {
       }),
     )
     .catch(() => null);
-  const res = NextResponse.redirect(new URL("/", MARKETING_URL), 303);
+  const res = NextResponse.redirect(isServerEdition() ? new URL("/signin?notice=signed_out", appUrl()) : new URL("/", marketingUrl()), 303);
   // Forward the cookie-clearing headers from Better Auth.
   for (const c of upstream?.headers.getSetCookie?.() ?? []) res.headers.append("set-cookie", c);
   return res;

@@ -45,7 +45,7 @@ type Config struct {
 	MaxConns          int           // concurrent client connections in all
 	IdleTimeout       time.Duration // a client connection with no bytes either way for this long is closed
 	HelloTimeout      time.Duration // time to send the ClientHello
-	LocalHosts        []string      // names the relay answers itself (connect.folevi.com, relay.folevi.net)
+	LocalHosts        []string      // names the relay answers itself (connect.folevi.com, relay.folevi.app)
 	AcceptProxyHeader bool          // the :443 listener sits behind a load balancer that sends PROXY v1
 }
 

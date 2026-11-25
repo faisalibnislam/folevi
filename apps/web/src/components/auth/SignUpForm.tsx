@@ -6,6 +6,7 @@ import { Alert, AuthHeading, Field, PasswordField, SubmitButton, TextLink } from
 import { CheckInbox } from "./CheckInbox";
 import { SocialSignIn } from "./SocialSignIn";
 import { pendingTemplate, rememberTemplate, signUpCallback } from "@/lib/pendingTemplate";
+import { websiteUrl } from "@/lib/env";
 
 /** Password guidance: length matters most; we only block what's too short or obviously weak. */
 function passwordProblem(password: string, email: string): string | null {
@@ -87,8 +88,8 @@ export function SignUpForm({ template, social = { google: false, apple: false },
         />
         <SubmitButton busy={busy}>Create account</SubmitButton>
         <p className="text-footnote leading-relaxed text-muted">
-          By creating an account you agree to the <TextLink href={`${process.env.NEXT_PUBLIC_MARKETING_URL ?? ""}/terms`}>Terms</TextLink> and{" "}
-          <TextLink href={`${process.env.NEXT_PUBLIC_MARKETING_URL ?? ""}/privacy`}>Privacy Policy</TextLink>.
+          By creating an account you agree to the <TextLink href={`${websiteUrl()}/terms`}>Terms</TextLink> and{" "}
+          <TextLink href={`${websiteUrl()}/privacy`}>Privacy Policy</TextLink>.
         </p>
       </form>
       <p className="mt-6 text-subheadline text-muted">

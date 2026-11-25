@@ -1,8 +1,8 @@
-import { APP_URL, MARKETING_URL } from "@/lib/env";
+import { appUrl, marketingUrl } from "@/lib/env";
 
-export const SIGN_IN_URL = `${APP_URL}/signin`;
-export const SIGN_UP_URL = `${APP_URL}/signup`;
-export const WEB_APP_URL = APP_URL;
+export const SIGN_IN_URL = `${appUrl()}/signin`;
+export const SIGN_UP_URL = `${appUrl()}/signup`;
+export const WEB_APP_URL = appUrl();
 /** Folevi for Mac's latest DMG: the update bucket through folevi.com/download (next.config.ts, docs/MAC_RELEASE.md). */
 export const MAC_DOWNLOAD_URL = "https://folevi.com/download/mac/Folevi.dmg";
 /** Folevi for Windows' latest installers, one per kind of PC (the same bucket through folevi.com/download, docs/WINDOWS.md). */
@@ -55,7 +55,7 @@ export const MARKETING_ROUTES = [
 ] as const;
 
 export function absoluteUrl(path: string): string {
-  return new URL(path, MARKETING_URL).toString();
+  return new URL(path, marketingUrl()).toString();
 }
 
 /** "2026-09-30" → "30 September 2026" (UTC, so the day never shifts). */

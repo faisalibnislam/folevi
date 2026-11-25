@@ -15,7 +15,7 @@ import (
 
 const (
 	DefaultConnectURL = "https://connect.folevi.com"
-	DefaultRelayURL   = "wss://relay.folevi.net/v1/tunnel"
+	DefaultRelayURL   = "wss://relay.folevi.app/v1/tunnel"
 	DefaultKeep       = 14
 	DefaultBackupHour = 3
 )

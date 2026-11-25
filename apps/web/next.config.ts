@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import path from "node:path";
 
 const convexUrl = process.env.NEXT_PUBLIC_CONVEX_URL ?? "";
 // HTTP actions live on *.convex.site; derive it from the deployment URL when not set explicitly.
@@ -60,6 +61,15 @@ const securityHeaders = [
   { key: "Cross-Origin-Opener-Policy", value: "same-origin" },
 ];
 
+// FOLEVI_EDITION=server: Folevi Server, the self-hosted build (docs/self-hosting/CONTRACT.md §1). A standalone
+// output (`node server.js`, no workspace or node_modules beside it), no marketing site or billing, and every
+// address read at run time (src/lib/runtime/config.ts). Its content policy and HSTS are made per request by
+// src/proxy.ts from the server's public address, so the static ones below (fixed at build time, with
+// upgrade-insecure-requests and HSTS that break plain http on a home network) are left out.
+const isServerEdition = process.env.FOLEVI_EDITION === "server";
+const serverHeaders = (entries: { key: string; value: string }[]) =>
+  isServerEdition ? entries.filter((h) => h.key !== "Content-Security-Policy" && h.key !== "Strict-Transport-Security") : entries;
+
 // FOLEVI_BUILD=shell: the app shell the Mac, iPhone and iPad apps carry built in (docs/LOCAL_MODE_PLAN.md §1):
 // a static export of src/app/*.shell.tsx only, so every page.tsx, layout.tsx, route.ts and proxy.ts (admin,
 // marketing, /api, share pages, auth pages) is left out. Static export has no headers or redirects.
@@ -87,7 +97,12 @@ const nextConfig: NextConfig = {
   // A second local dev server (another port) needs its own build folder.
   ...(process.env.NEXT_DIST_DIR ? { distDir: process.env.NEXT_DIST_DIR } : {}),
   ...(isShell ? shellConfig : {}),
-  env: { NEXT_PUBLIC_CONVEX_SITE_URL: convexSite, ...(isShell ? { NEXT_PUBLIC_FOLEVI_SHELL: "1" } : {}) },
+  env: {
+    NEXT_PUBLIC_CONVEX_SITE_URL: convexSite,
+    ...(isShell ? { NEXT_PUBLIC_FOLEVI_SHELL: "1" } : {}),
+    ...(isServerEdition ? { NEXT_PUBLIC_FOLEVI_EDITION: "server" } : {}),
+  },
+  ...(isServerEdition && !isShell ? { output: "standalone" as const, outputFileTracingRoot: path.resolve(process.cwd(), "../..") } : {}),
   reactStrictMode: true,
   poweredByHeader: false,
   // FOLEVI_SOURCEMAPS=1: source maps in a production build, to see what the first screen's code is made of
@@ -129,25 +144,25 @@ async function redirects() {
 
 async function headers() {
   return [
-    { source: "/:path*", headers: securityHeaders },
+    { source: "/:path*", headers: serverHeaders(securityHeaders) },
     // The hidden page that keeps another account of this browser in sync: framed by the app itself, nobody else
     // (docs/MULTI_ACCOUNT_PLAN.md §5.1).
     {
       source: "/place-sync",
-      headers: [
+      headers: serverHeaders([
         { key: "Content-Security-Policy", value: staticCsp.replace("frame-ancestors 'none'", "frame-ancestors 'self'") },
         { key: "X-Frame-Options", value: "SAMEORIGIN" },
         { key: "Cache-Control", value: "private, no-store" },
-      ],
+      ]),
     },
     // The home page's showcase: the app on a demo library in memory (components/marketing/showcase), framed by the
     // site itself only.
     {
       source: "/showcase-app",
-      headers: [
+      headers: serverHeaders([
         { key: "Content-Security-Policy", value: staticCsp.replace("frame-ancestors 'none'", "frame-ancestors 'self'") },
         { key: "X-Frame-Options", value: "SAMEORIGIN" },
-      ],
+      ]),
     },
     {
       // Authenticated surfaces and share pages are never cached by shared caches.

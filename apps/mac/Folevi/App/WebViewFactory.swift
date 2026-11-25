@@ -125,6 +125,9 @@ struct Bootstrap {
     var background = false
     /// Where to open after a switch to another place (shell-bridge.js's SHELL.start).
     var start: String?
+    /// The place's Folevi Server (or the sign-in screen's): the page reads its addresses at runtime instead of the
+    /// build's NEXT_PUBLIC values (CONTRACT §6 notes). Nil: Folevi Cloud.
+    var server: ShellServer? = nil
 
     var json: [String: Any] {
         [
@@ -135,7 +138,7 @@ struct Bootstrap {
             "shell": [
                 "mode": mode,
                 "deviceName": Platform.deviceName,
-                "places": ["current": place.map { $0 as Any } ?? NSNull(), "background": background] as [String: Any],
+                "places": ["current": place.map { $0 as Any } ?? NSNull(), "background": background, "server": server.map { $0.json as Any } ?? NSNull()] as [String: Any],
                 "start": start.map { $0 as Any } ?? NSNull(),
             ] as [String: Any],
         ]

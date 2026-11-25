@@ -119,7 +119,7 @@ don't know, and show "Ask the person who runs this server to update it" when the
 ### 6.1 Notes from the Apps workstream (native shells)
 
 - `connect.hostnames`: each entry is `host` or `host:port`, always reached over https. Home names
-  (`192-168-1-20.<id>.folevi.net`, first label a dashed IPv4) are tried first, then the address the person added,
+  (`192-168-1-20.<id>.folevi.app`, first label a dashed IPv4) are tried first, then the address the person added,
   then the rest; the apps move each of `urls` that sits on the added origin to the chosen name with the same path.
   The server must therefore serve the same paths on every name, and Better Auth must trust every one of its names
   as an origin (the session is the server's, so switching names never signs anyone out).

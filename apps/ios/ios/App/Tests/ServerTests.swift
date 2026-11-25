@@ -21,7 +21,7 @@ final class ServerTests: XCTestCase {
         let info: [String: Any] = [
             "kind": "folevi-server", "apiVersion": 1, "name": "Smith family", "version": "1.0.0", "minAppVersion": "1.6.0",
             "urls": ["app": "https://nas.example.com", "convex": "https://nas.example.com/convex", "convexSite": "https://nas.example.com/convex-site"],
-            "connect": ["serverId": "abcde12345", "hostnames": ["abcde12345.folevi.net"]],
+            "connect": ["serverId": "abcde12345", "hostnames": ["abcde12345.folevi.app"]],
         ]
         if case .success(let s) = ShellServer.check(info, origin: "https://nas.example.com", appVersion: "1.6.0") { return s }
         return nil
@@ -50,7 +50,7 @@ final class ServerTests: XCTestCase {
         ShellPlaces.setCurrent(nil, pending: true, server: s)
         let csp = try XCTUnwrap(scheme.respond(url: URL(string: "capacitor://localhost/documents")!, method: "GET").headers["Content-Security-Policy"])
         XCTAssertTrue(csp.contains("https://nas.example.com wss://nas.example.com"), csp)
-        XCTAssertTrue(csp.contains("https://abcde12345.folevi.net"), csp)
+        XCTAssertTrue(csp.contains("https://abcde12345.folevi.app"), csp)
         XCTAssertFalse(csp.contains("convex.cloud"))
         // Only pages carry it.
         try Data("x".utf8).write(to: root.appendingPathComponent("a.txt"))

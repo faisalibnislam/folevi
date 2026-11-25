@@ -70,6 +70,8 @@ import { docxToText } from "./lib/ai/docx";
 import { toolDeclarations } from "./lib/ai/tools";
 import { untrusted } from "./lib/ai/tools/untrusted";
 import { FOLLOW_UPS, metered, providedArgs, splitFollowUps, type AnswerOutput, type AnswerSink, type Settled, type SourceNote } from "./ai";
+import { routeIn } from "./aiConfig";
+import { meterRoute } from "./lib/ai/config";
 
 const GONE = "That conversation isn't there anymore.";
 /** Model calls an answer about spreadsheet data may make (each round of `calculate`, then the answer). */
@@ -444,7 +446,8 @@ async function recordingFor(ctx: QueryCtx, profile: Doc<"profiles">, args: { doc
   if (!f || f.documentId !== doc._id || f.status !== "ready") fail("not_found", "That recording isn't there anymore.");
   if (f.sealed !== undefined) failE2ee("e2ee_required", SEALED_FILE);
   if (!(f.kind === "audio" || f.mimeType.startsWith("audio/"))) fail("not_found", "That recording isn't there anymore.");
-  if (!capabilities().audioIn) fail("maintenance", "The AI model in use can't listen to recordings.");
+  // Transcription always uses Gemini (lib/ai/config.ts).
+  if (!capabilities("heavy", await routeIn(ctx, "transcription")).audioIn) fail("maintenance", "The AI model in use can't listen to recordings.");
   let duration: number | undefined;
   for (const b of await liveBlocks(ctx, doc._id)) {
     const props = b.props as { fileId?: unknown; duration?: unknown } | null;
@@ -463,7 +466,7 @@ async function providedRecording(ctx: ActionCtx, provided: ProvidedContext, seco
   const [file, ...rest] = providedFiles(provided);
   if (!file || rest.length || file.kind !== "audio") fail("invalid_argument", "Send the recording with the request.");
   if (!(await ctx.runQuery(internal.stickiesAi.photoAllowed, {}))) fail("forbidden", ATTACHMENTS_OFF);
-  if (!capabilities().audioIn) fail("maintenance", "The AI model in use can't listen to recordings.");
+  if (!capabilities("heavy", await ctx.runQuery(internal.aiConfig.publicRoute, { feature: "transcription" })).audioIn) fail("maintenance", "The AI model in use can't listen to recordings.");
   const length = recordingSeconds(seconds, file.size);
   if (length > MAX_TRANSCRIBE_SECONDS) fail("limit_exceeded", `This recording is too long to transcribe. Recordings up to ${MAX_TRANSCRIBE_SECONDS / 3600} hours can be transcribed.`);
   // Read inline in one go: windows over an uploaded copy would leave the recording with Google's Files API.
@@ -497,7 +500,7 @@ export const transcribeEstimate = query({
       seconds: Math.round(f.seconds),
       minutes: Math.max(1, Math.round(f.seconds / 60)),
       windows: transcriptWindows(f.seconds).length,
-      credits: estimateCredits(transcriptPlan(f.seconds, "estimate"), provider().models()),
+      credits: estimateCredits(transcriptPlan(f.seconds, "estimate"), (await routeIn(ctx, "transcription")).models),
       confirm: f.seconds > CONFIRM_SECONDS,
     };
   },
@@ -586,7 +589,8 @@ export const transcribe = action({
             return cleanTranscript(res.text);
           });
           return windows.length === 1 ? parts[0]! : joinTranscripts(parts);
-        });
+          // The upload uses the same key as the calls: the transcription route's (always Gemini).
+        }, meterRoute(meter)?.apiKey);
       },
       async (c) => {
         cost = c;

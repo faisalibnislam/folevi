@@ -29,7 +29,8 @@ import { inScope, insertScoped, scopeOfRow, vScopeArg, type ScopeArg } from "./l
 import { liveBlocks, toWireBlock } from "./lib/documents";
 import { ReaderLabels } from "./lib/linkLabels";
 import { aiPrefsOf } from "./lib/ai/prefs";
-import { capabilities as modelCapabilities, provider } from "./lib/ai/provider";
+import { capabilities as modelCapabilities } from "./lib/ai/provider";
+import { routeIn } from "./aiConfig";
 import { vAiAction } from "./lib/aiActions";
 import { wireRun } from "./lib/ai/tools/wire";
 import { NEW_CHAT_TITLE, bestBlock, citingSentences, passageBlock, cleanTitle, conversationFilename, conversationMarkdown, normalizeContext, titleFromQuestion, vAiContext, type AiContext, type MarkdownMessage } from "./lib/ai/chat";
@@ -217,7 +218,7 @@ async function createConversation(ctx: MutationCtx, profile: Doc<"profiles">, sc
     title: NEW_CHAT_TITLE,
     pinned: false,
     context: clean,
-    model: provider().models().main,
+    model: (await routeIn(ctx, "chat")).models.main,
     sharedWith: "none",
     // History off: this conversation lasts only while its chat is open.
     ...(aiPrefsOf(profile).history ? {} : { ephemeral: true }),
@@ -262,9 +263,14 @@ export const capabilities = query({
   args: {},
   handler: async (ctx) => {
     const profile = await requireProfile(ctx);
-    const c = modelCapabilities();
+    // The chat's provider (Admin > Foli AI): what its heavy model can do (files and web searches go to it,
+    // lib/ai/config.ts slotFor), named by the model normal answers use.
+    const route = await routeIn(ctx, "chat");
+    const c = modelCapabilities("heavy", route);
     return {
-      model: c.model,
+      model: route.models.main,
+      /** Who serves it ("gemini", "openai", "anthropic"; local mode names its own: "on-device", "google"...). */
+      provider: route.provider as string,
       vision: c.vision,
       audioIn: c.audioIn,
       tools: c.tools,
@@ -839,7 +845,7 @@ async function respond(ctx: ActionCtx, messageId: Id<"aiMessages">, web = false)
   const withFiles = files.files.length > 0;
   // Web research must be allowed by the person's settings (checked here, on the server) and the model.
   const prefs = await ctx.runQuery(internal.aiAgent.prefs, {});
-  const refusal = web && !prefs.webResearch ? WEB_OFF : web && !modelCapabilities().searchGrounding ? WEB_UNSUPPORTED : null;
+  const refusal = web && !prefs.webResearch ? WEB_OFF : web && !modelCapabilities("heavy", await ctx.runQuery(internal.aiConfig.publicRoute, { feature: "chat" })).searchGrounding ? WEB_UNSUPPORTED : null;
   if (refusal) {
     await ctx.runMutation(internal.aiChat.finishMessage, { messageId, status: "error", error: { code: "forbidden", message: refusal } });
     return { status: "error" };
@@ -1002,7 +1008,7 @@ export const sendSealed = action({
     const history = args.history.slice(-6).map((t) => ({ role: t.role, text: t.text.slice(0, 3000) }));
     const prefs = await ctx.runQuery(internal.aiAgent.prefs, {});
     const web = args.web === true;
-    const refusal = web && !prefs.webResearch ? WEB_OFF : web && !modelCapabilities().searchGrounding ? WEB_UNSUPPORTED : null;
+    const refusal = web && !prefs.webResearch ? WEB_OFF : web && !modelCapabilities("heavy", await ctx.runQuery(internal.aiConfig.publicRoute, { feature: "chat" })).searchGrounding ? WEB_UNSUPPORTED : null;
     if (refusal) return { ...empty, error: { code: "forbidden", message: refusal } };
     const urls = prefs.webResearch ? extractUrls(question) : [];
     const withWeb = web || urls.length > 0;

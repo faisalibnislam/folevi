@@ -5,7 +5,7 @@ import { api, internal } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
 import { CREDIT_NANO_USD, GEMINI_PRICES, costNano, creditsFor, estimateCredits, monthlyWindow } from "../../convex/lib/credits";
 import { addMonthsUtc } from "../../convex/lib/plans";
-import { inWorkspace, person, PERSONAL, setup, type T } from "./helpers";
+import { inWorkspace, person, PERSONAL, setAiSettings, setup, type T } from "./helpers";
 
 type Person = Awaited<ReturnType<typeof person>>;
 const FLASH = "gemini-3.8-flash";
@@ -85,6 +85,8 @@ describe("metering real requests", () => {
   test("a request is charged from Gemini's usage metadata; cheap tasks go to Flash-Lite; nothing about the text is stored", async () => {
     const t = setup();
     const a = await person(t, "meter@example.com");
+    // Metering on Flash: Main pinned to it, as an admin can (the default Main is Flash-Lite, lib/ai/config.ts).
+    await setAiSettings(t, { models: { gemini: { main: FLASH } } });
     await endTrial(t, a);
     await a.as.mutation(api.billing.testPurchase, { plan: "pro", interval: "month" });
     process.env.GEMINI_API_KEY = "test-key";
@@ -117,6 +119,8 @@ describe("metering real requests", () => {
   test("a streamed answer is charged from the last usage metadata in the stream", async () => {
     const t = setup();
     const a = await person(t, "stream-meter@example.com");
+    // Metering on Flash: Main pinned to it, as an admin can (the default Main is Flash-Lite, lib/ai/config.ts).
+    await setAiSettings(t, { models: { gemini: { main: FLASH } } });
     process.env.GEMINI_API_KEY = "test-key";
     const sse = [
       { candidates: [{ content: { parts: [{ text: "Hello" }] } }], usageMetadata: { promptTokenCount: 50_000, candidatesTokenCount: 2 } },
@@ -135,6 +139,8 @@ describe("metering real requests", () => {
   test("a failed reply that Gemini still billed is charged; a refused request isn't", async () => {
     const t = setup();
     const a = await person(t, "failed@example.com");
+    // Metering on Flash: Main pinned to it, as an admin can (the default Main is Flash-Lite, lib/ai/config.ts).
+    await setAiSettings(t, { models: { gemini: { main: FLASH } } });
     process.env.GEMINI_API_KEY = "test-key";
     vi.stubGlobal("fetch", vi.fn(async () => geminiReply("", { promptTokenCount: 20_000, candidatesTokenCount: 0 })));
     await expect(a.as.action(api.ai.write, { scope: a.scope, task: "summarize", text: "x" })).rejects.toThrow(/returned nothing/);

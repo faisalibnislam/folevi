@@ -59,6 +59,7 @@ import { metered, providedArgs, type Settled } from "./ai";
 import type { CallUsage } from "./lib/credits";
 import { checkProvidedSizes, vProvidedContext, type ProvidedContext } from "./lib/e2ee/ai";
 import { storedError } from "./aiChat";
+import { routeIn } from "./aiConfig";
 
 type Ctx = QueryCtx | MutationCtx;
 
@@ -153,7 +154,8 @@ export const allowed = internalQuery({
   handler: async (ctx) => {
     const profile = await requireProfile(ctx);
     if (!aiPrefsOf(profile).webResearch) fail("forbidden", WEB_OFF);
-    if (!capabilities().searchGrounding) fail("maintenance", "The AI model in use can't search the web.");
+    // A search is a heavy job (lib/ai/config.ts slotFor): the research route's heavy model must search.
+    if (!capabilities("heavy", await routeIn(ctx, "research")).searchGrounding) fail("maintenance", "The AI model in use can't search the web.");
     return null;
   },
 });

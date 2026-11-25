@@ -249,7 +249,7 @@ export const readImage = action({
       if (!FOLI_IMAGE_TYPES.has(file.mime)) fail("unsupported_file", "Foli AI reads PNG, JPEG and WebP images.");
       if (file.bytes.byteLength > MAX_FOLI_IMAGE_BYTES) fail("unsupported_file", "That image is too large for Foli AI to read.");
       await ctx.runQuery(internal.fileText.sealedImageForFoli, { documentId: args.documentId, fileId: args.fileId, auto: Boolean(args.auto) });
-      if (!capabilities(true).vision) fail("unsupported_file", "Foli AI can't read images right now.");
+      if (!capabilities(true, await ctx.runQuery(internal.aiConfig.publicRoute, { feature: "attachments" })).vision) fail("unsupported_file", "Foli AI can't read images right now.");
       const prompt = "Copy the text in this image.";
       const plan = [{ fast: true, inputChars: OCR_SYSTEM.length + prompt.length + attachmentTokens("image", file.bytes.byteLength) * 4, maxOutputTokens: 4096 }];
       // The gate (lib/e2ee/ai.ts): Foli AI not off in the space, the note not locked, consent as the switch says.
@@ -263,7 +263,7 @@ export const readImage = action({
     }
     const image = await ctx.runQuery(internal.fileText.imageForFoli, { documentId: args.documentId, fileId: args.fileId, auto: Boolean(args.auto) });
     if (image.known) return { status: "known", chars: 0 };
-    if (!capabilities(true).vision) fail("unsupported_file", "Foli AI can't read images right now.");
+    if (!capabilities(true, await ctx.runQuery(internal.aiConfig.publicRoute, { feature: "attachments" })).vision) fail("unsupported_file", "Foli AI can't read images right now.");
     const blob = await ctx.storage.get(image.storageId);
     if (!blob) fail("not_found", "File not found.");
     const data = Buffer.from(await blob.arrayBuffer()).toString("base64");

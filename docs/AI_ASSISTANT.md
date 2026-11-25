@@ -37,11 +37,35 @@ Everything below extends these; nothing is replaced wholesale.
 
 ### Provider layer (`convex/lib/ai/`)
 
-- `provider.ts`: one interface for `generate` (text or JSON, streaming or not, tools, attachments) and `embed`.
-- `gemini.ts`: the adapter (moves today's `gemini()` here unchanged in behaviour: fallback model, timeouts, usage).
-- `capabilities.ts`: per model: text, vision, audio input, tool calling, structured output, long context, search
-  grounding, embeddings, context window, prices. The client only offers what the active model can do.
-- A fake provider for tests (`convex-test` stubs `fetch` today; the fake keeps that pattern for agent and tool tests).
+- `provider.ts`: one interface for `generate` (text or JSON, streaming or not, tools, attachments, web search) and
+  `embed`. It sends each call to the provider and model its feature's route names, through that provider's adapter.
+- Adapters, each done the provider's own way (since 2026-11-25):
+  - `gemini.ts`: Gemini over fetch (SSE streaming, function declarations, JSON mime type, Google Search grounding,
+    one retry on the route's Fast model when busy).
+  - `openai.ts`: the OpenAI SDK and the Responses API (typed streaming events, function tools, `json_object`
+    format, the `web_search` tool and its URL citations, reasoning effort by slot, `store: false` with encrypted
+    reasoning carried through tool loops, automatic prompt caching with a stable `prompt_cache_key`).
+  - `anthropic.ts`: the Anthropic SDK and the Messages API (typed streaming, adaptive thinking with effort by slot,
+    the system prompt and multi-turn conversations as prompt cache breakpoints, tools with the whole turn
+    (thinking included) sent back as-is, Claude's web search tool with `pause_turn` resumed, `refusal` counted as
+    the provider's filter, no sampling parameters).
+  - `common.ts`: what they share: the safety rules on every system prompt, refusal reading, deadlines, errors.
+- `config.ts`: routing (Admin > Foli AI, `convex/aiConfig.ts`). A provider per feature (chat, agent, writing,
+  research, attachments, digests, routines, knowledge graph, other) and three models per provider: Fast (requests
+  marked `fast`), Heavy (tools, web search, files, prompts over about 50k tokens) and Main (the rest). Defaults are
+  "cheap first": Gemini Flash-Lite / Flash-Lite / 3.8 Flash, OpenAI GPT-6 Luna / Luna / GPT-6.2 Sol, Claude Haiku
+  5.5 / Haiku 5.5 / Sonnet 5.5. Transcription and search embeddings always use Gemini. There is no fallback to
+  another provider. A request's route rides on its meter (`metered`, like memory); the knowledge graph builds its
+  own (`routedMeter`).
+- Keys: saved by the owner in Admin > Foli AI, sealed with AES-GCM (`lib/crypto.ts sealSecret`, keyed from
+  `FOLEVI_HASH_SALT`) in `aiProviderKeys`, opened only inside the action about to call the provider, never
+  returned or logged (the panel sees set / not set and the last four characters). Without a saved key the
+  environment variable is used: `GEMINI_API_KEY`, `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`.
+- `capabilities.ts`: per model: provider, text, vision, audio input, tool calling, structured output, long context,
+  web search and its price, embeddings, context window, prices (cached input and cache writes where priced apart,
+  Haiku 5.5's long-prompt rate). Credits follow each provider's real list price. The client only offers what the
+  feature's model can do.
+- Tests stub `fetch` (every adapter's only way out, the SDKs included): `tests/convex/ai-providers.test.ts`.
 
 ### Conversations (`convex/aiChat.ts`)
 

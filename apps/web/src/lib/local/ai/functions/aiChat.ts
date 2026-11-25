@@ -135,6 +135,7 @@ defineLocal(api.aiChat.capabilities, "query", async (ctx) => {
   const prefs = prefsAll(profile);
   return {
     model: active ? active.model : "",
+    provider: active ? active.provider : "",
     vision: false,
     audioIn: false,
     tools: false,

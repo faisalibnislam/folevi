@@ -73,6 +73,7 @@ import { sealedAiCopy } from "./lib/ai/indexing";
 import { storedError } from "./aiChat";
 import { contradictionItems, scopeContradictionRows } from "./aiGraph";
 import { schedulePush } from "./lib/push";
+import { routeIn } from "./aiConfig";
 
 type Ctx = QueryCtx | MutationCtx;
 
@@ -116,7 +117,7 @@ async function routinesIncluded(ctx: Ctx, profile: Doc<"profiles">, scope: Scope
 }
 
 /** Credits one run holds (the estimate shown before it's on). */
-const perRun = (kind: RoutineKind) => estimateCredits(routinePlan(kind), provider().models());
+const perRun = async (ctx: QueryCtx | MutationCtx, kind: RoutineKind) => estimateCredits(routinePlan(kind), (await routeIn(ctx, "routines")).models);
 
 const PLAN_REFUSAL = `${PLAN_NOTE} Upgrade in Settings > Plan & billing.`;
 const capMessage = (kind: RoutineKind, cap: number, period: string, locale?: string) =>
@@ -151,7 +152,7 @@ export const list = query({
       const aiOn = profile.aiEnabled !== false;
       const available = aiOn && (await routinesIncluded(ctx, profile, scopeOf(profile, workspaceId)));
       const last = row?.lastDocumentId ? await ctx.db.get(row.lastDocumentId) : null;
-      const credits = perRun(kind);
+      const credits = await perRun(ctx, kind);
       const enabled = Boolean(row?.enabled && aiOn);
       routines.push({
         kind,
@@ -233,7 +234,7 @@ export const runNow = mutation({
     if (!place) fail("forbidden", "You can't add pages where it's saved anymore. Pick another place.");
     if (!(await routinesIncluded(ctx, profile, place.scope))) fail("forbidden", PLAN_REFUSAL, { reason: "routines_not_included" });
     const period = periodKey(Date.now(), profile.timeZone);
-    if (spentIn(row.spend, period) + perRun(args.kind) > row.monthlyCap) fail("forbidden", capMessage(args.kind, row.monthlyCap, period, profile.locale));
+    if (spentIn(row.spend, period) + (await perRun(ctx, args.kind)) > row.monthlyCap) fail("forbidden", capMessage(args.kind, row.monthlyCap, period, profile.locale));
     await consume(ctx, "routineRunNow", profile._id);
     await ctx.scheduler.runAfter(0, internal.routines.run, { routineId: row._id });
     return null;
@@ -482,7 +483,7 @@ export const start = internalMutation({
     // An encrypted space: only with Background Foli AI on (docs/E2EE_DESIGN.md §7.2).
     if (!(await backgroundAiAllowed(ctx, place.scope))) return { status: "skipped", reason: "off" };
     const until = Date.now();
-    if (spentIn(row.spend, periodKey(until, profile.timeZone)) + perRun(row.kind) > row.monthlyCap) return await skip(ctx, row, profile, "cap");
+    if (spentIn(row.spend, periodKey(until, profile.timeZone)) + (await perRun(ctx, row.kind)) > row.monthlyCap) return await skip(ctx, row, profile, "cap");
     const today = localDay(until, profile.timeZone);
     let found: { kind: "morning"; morning: MorningMaterial } | { kind: "openLoops"; loops: LoopItem[] };
     if (row.kind === "morning") {

@@ -203,7 +203,8 @@ describe("the Morning brief", () => {
     const out = await t.action(internal.routines.run, { routineId: (await rowOf(t, p, "morning"))._id });
     expect(out.status).toBe("delivered");
     expect(calls).toHaveLength(1);
-    expect(calls[0]!.url).toContain(MODELS.main);
+    // A brief is a normal answer: the Main model, Flash-Lite by default ("cheap first", lib/ai/config.ts).
+    expect(calls[0]!.url).toContain(MODELS.fast);
     // To-dos as untrusted data, overdue ones marked; the rules about untrusted text in the system prompt.
     expect(calls[0]!.prompt).toMatch(/<untrusted_note note="Inbox" due="2026-10-08" overdue="yes">\nPay the deposit/);
     expect(calls[0]!.prompt).toContain("Book the ferry");

@@ -51,6 +51,8 @@ import {
   textKey,
 } from "./lib/ai/graph";
 import { blockText, dropNoteGraph, graphStateOf, noteLines, writeNoteGraph } from "./lib/ai/graphStore";
+import { hasKey, loadRoute, routeIn } from "./aiConfig";
+import { routedMeter } from "./lib/ai/config";
 
 /** Over the hourly extraction limit: try again after this. */
 const RATE_RETRY_MS = 15 * 60_000;
@@ -101,8 +103,8 @@ export const prepareExtract = internalMutation({
     const scope = scopeOfRow(doc);
     // An end-to-end encrypted note isn't read into the graph (v1: its copy for Foli AI gives embeddings only).
     if (!indexable(doc) || isSealed(doc) || !(await indexEligible(ctx, scope))) return { kind: (await dropAll(ctx, doc._id)) ? "done" : "later" };
-    // AI isn't set up on this server (or the fast model can't answer in JSON): nothing to read with.
-    if (!process.env.GEMINI_API_KEY || !capabilities(true).json) return { kind: "done" };
+    // AI isn't set up on this server (or the graph's fast model can't answer in JSON): nothing to read with.
+    if (!(await hasKey(ctx, "graph")) || !capabilities(true, await routeIn(ctx, "graph")).json) return { kind: "done" };
     const title = doc.title || "Untitled";
     const lines = capLines(await noteLines(ctx, doc));
     const hash = await graphHash(title, lines);
@@ -219,7 +221,7 @@ export const extract = internalAction({
     let raw: string;
     try {
       // Platform-paid: the usage is logged by the adapter and never charged to anyone's credits.
-      raw = (await provider().generate({ system: GRAPH_SYSTEM, prompt: graphPrompt(job.title, job.lines, near.context), fast: true, json: true, temperature: 0.1, maxOutputTokens: 4_096 }, [])).text;
+      raw = (await provider().generate({ system: GRAPH_SYSTEM, prompt: graphPrompt(job.title, job.lines, near.context), fast: true, json: true, temperature: 0.1, maxOutputTokens: 4_096 }, routedMeter(await loadRoute(ctx, "graph")))).text;
     } catch {
       // Left for the next edit (or the sweep): the hash isn't stored, so it's read again then.
       console.warn(JSON.stringify({ event: "ai.graph_failed", lines: job.lines.length }));

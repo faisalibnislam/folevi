@@ -1,16 +1,19 @@
-// Google Gemini over fetch (server-side only: the key never reaches a browser). The provider adapter for
-// lib/ai/provider.ts. Settings: GEMINI_API_KEY, GEMINI_MODEL (main), GEMINI_FAST_MODEL (Flash-Lite),
-// GEMINI_EMBEDDING_MODEL (semantic search).
+// Google Gemini over fetch (server-side only: the key never reaches a browser). A provider adapter for
+// lib/ai/provider.ts: the model and key come with each call (the feature's route, lib/ai/config.ts), the
+// key from the admin panel or GEMINI_API_KEY. GEMINI_MODEL and GEMINI_FAST_MODEL seed the default models
+// (lib/ai/config.ts defaultModels); GEMINI_EMBEDDING_MODEL picks semantic search's model.
 //
 // Privacy: prompts, note text and answers are never logged. Only the event, model, status and token
 // counts are.
 import { fail } from "../errors";
 import { tokensForChars, type CallUsage } from "../credits";
-import type { AiProvider, Content, EmbedResult, EmbedTask, GenerateRequest, GenerateResult, Grounding, OnDelta, Part, ToolCall } from "./provider";
+import type { CallTarget, Content, EmbedResult, EmbedTask, GenerateRequest, GenerateResult, Grounding, OnDelta, Part, ProviderAdapter, ToolCall } from "./provider";
 import { capabilitiesOf } from "./capabilities";
 import { EMBEDDING_DIMENSIONS, normalize } from "./retrieval";
-import { attachmentTokens } from "./attachments";
-import { DECLINE_RULE, MAX_FREE_REFUSAL_CHARS, readDecline, SAFETY_RULE, visibleSoFar, type RefusalKind } from "@folevi/ai-prompts/safety";
+import { visibleSoFar } from "@folevi/ai-prompts/safety";
+import { Deadline, emptyMessage, estimatedUsage, KEY_REFUSED, NOT_SET_UP, refusalOf as readRefusal, STREAM_IDLE_MS, systemWithSafety, TOO_SLOW, UNREACHABLE, BUSY, withoutMarker } from "./common";
+
+export { systemWithSafety } from "./common";
 
 const ENDPOINT = "https://generativelanguage.googleapis.com/v1beta/models";
 export const geminiModel = () => process.env.GEMINI_MODEL ?? "gemini-3.8-flash";
@@ -36,34 +39,13 @@ const BLOCKED_FINISH = new Set(["SAFETY", "PROHIBITED_CONTENT", "BLOCKLIST", "SP
  */
 const finishOf = (data: GeminiChunk): string | null => data.candidates?.[0]?.finishReason ?? (data.promptFeedback?.blockReason ? "BLOCKED_PROMPT" : null);
 const blocked = (finish: string | null) => finish === "BLOCKED_PROMPT" || (finish !== null && BLOCKED_FINISH.has(finish));
-const EMPTY = (finish: string | null) => (blocked(finish) ? "The AI couldn't help with that request." : "The AI returned nothing. Try rephrasing.");
-
-/** Characters sent in a request (for a usage estimate when none came back). */
-function charsSent(req: GenerateRequest): number {
-  let n = req.system.length + req.prompt.length;
-  for (const p of [...(req.contents ?? []).flatMap((c) => c.parts), ...(req.attachments ?? [])]) {
-    if ("text" in p) n += p.text.length;
-    else if ("functionCall" in p) n += JSON.stringify(p.functionCall.args).length;
-    else if ("functionResponse" in p) n += JSON.stringify(p.functionResponse.response).length;
-    else if ("inlineData" in p) n += inlineChars(p.inlineData);
-    // A file the Files API holds (fileData, lib/ai/geminiFiles.ts) has no size here: Gemini's usage counts it.
-  }
-  return n;
-}
-
-/** A file sent inline, as characters' worth of its tokens (lib/ai/attachments.ts estimates them). */
-function inlineChars(d: { mimeType: string; data: string }): number {
-  const kind = d.mimeType.startsWith("image/") ? "image" : d.mimeType.startsWith("audio/") ? "audio" : "pdf";
-  return attachmentTokens(kind, Math.floor((d.data.length * 3) / 4)) * 4;
-}
-
 /**
  * A call's token counts, from Gemini's usage metadata (cumulative in a stream, so the last one counts).
  * Without any (a stream stopped before it arrived), estimated from the characters sent and received.
  */
 function usageOf(model: string, meta: GeminiUsage | undefined, req: GenerateRequest, text: string): CallUsage {
   if (meta && typeof meta.promptTokenCount === "number") return { model, promptTokens: meta.promptTokenCount, outputTokens: meta.candidatesTokenCount ?? 0, thoughtsTokens: meta.thoughtsTokenCount ?? 0 };
-  return { model, promptTokens: tokensForChars(charsSent(req)), outputTokens: tokensForChars(text.length), thoughtsTokens: 0 };
+  return estimatedUsage(model, req, text);
 }
 
 /**
@@ -119,8 +101,6 @@ const callsOf = (data: GeminiChunk): ToolCall[] =>
  * The model's turn to send back in the next request of a tool loop: its text and calls, each with the
  * thought signature Gemini 3 attached (a request that drops them is refused), never its thoughts.
  */
-/** The model's turn with any refusal marker taken out of its text (it goes back to the model in a tool loop). */
-const withoutMarker = (parts: Part[]): Part[] => parts.map((p) => ("text" in p && !("functionCall" in p) ? { ...p, text: readDecline(p.text).text } : p));
 
 const modelPartsOf = (parts: GeminiPart[]): Part[] =>
   parts.flatMap((p): Part[] => {
@@ -138,26 +118,15 @@ const modelPartsOf = (parts: GeminiPart[]): Part[] =>
  */
 const SAFETY_SETTINGS = ["HARM_CATEGORY_DANGEROUS_CONTENT", "HARM_CATEGORY_HARASSMENT", "HARM_CATEGORY_HATE_SPEECH", "HARM_CATEGORY_SEXUALLY_EXPLICIT"].map((category) => ({ category, threshold: "BLOCK_MEDIUM_AND_ABOVE" }));
 
-/**
- * Every system prompt ends with the safety rules (docs/AI_GUARDRAILS.md), whichever feature built it; a
- * text reply is also asked to mark a refusal (a JSON reply can't carry the marker, Gemini's filter still applies).
- */
-export const systemWithSafety = (req: Pick<GenerateRequest, "system" | "json">) => `${req.system}\n\n${SAFETY_RULE}${req.json ? "" : ` ${DECLINE_RULE}`}`;
-
-/**
- * What a reply declined, if it did: the marker the model wrote, or Gemini's filter (a blocked finish, or the question itself blocked). A short
- * refusal is free; a long reply that carries a marker is still charged (lib/credits.ts settleHold).
- */
-function refusalOf(raw: string, finish: string | null): { text: string; refused?: { kind: RefusalKind; free: boolean } } {
-  const { text, declined } = readDecline(raw);
-  const kind: RefusalKind | null = declined ?? (blocked(finish) ? "filtered" : null);
-  return kind ? { text, refused: { kind, free: text.trim().length <= MAX_FREE_REFUSAL_CHARS } } : { text };
-}
+/** What a reply declined, if it did: the marker the model wrote, or Gemini's filter (lib/ai/common.ts). */
+const refusalOf = (raw: string, finish: string | null) => readRefusal(raw, blocked(finish));
 
 /** The request body: the system prompt, the turns (earlier ones, then the question with any files), and settings. */
 function bodyOf(req: GenerateRequest, model: string): string {
   const ask: Part[] = [...(req.prompt ? [{ text: req.prompt }] : []), ...(req.attachments ?? [])];
-  const contents: Content[] = [...(req.contents ?? []), ...(ask.length ? [{ role: "user" as const, parts: ask }] : [])];
+  // Another provider's own record of a turn (`raw`) means nothing to Gemini.
+  const earlier = (req.contents ?? []).map((c) => ({ ...c, parts: c.parts.filter((p) => !("raw" in p)) })).filter((c) => c.parts.length);
+  const contents: Content[] = [...earlier, ...(ask.length ? [{ role: "user" as const, parts: ask }] : [])];
   // Google Search grounding goes in a request of its own: not every model takes it with function
   // declarations (lib/ai/provider.ts), so the declarations win and the search is left out.
   const tools = [
@@ -180,16 +149,6 @@ function bodyOf(req: GenerateRequest, model: string): string {
   });
 }
 
-/** No answer to a request at all within this long (a streamed reply's first bytes): the call is given up. */
-const RESPONSE_TIMEOUT_MS = 60_000;
-/** A whole reply that isn't streamed (a flowchart's JSON can take a while to think through). */
-const REPLY_TIMEOUT_MS = 120_000;
-/** A stream that goes quiet this long between pieces has stalled. */
-const STREAM_IDLE_MS = 30_000;
-/** However well a stream is flowing, it ends by then (well inside an action's time limit). */
-const STREAM_TOTAL_MS = 5 * 60_000;
-const TOO_SLOW = "The AI took too long to answer. Try again shortly.";
-
 /**
  * One call to Gemini. With `onDelta`, the reply streams (server-sent events) and each new piece of text is
  * passed on as it arrives; `onDelta` returning false stops the stream (the person pressed Stop). Falls back
@@ -198,28 +157,18 @@ const TOO_SLOW = "The AI took too long to answer. Try again shortly.";
  * Every call has a deadline (no answer, a stalled stream, or a stream running too long), so a hung
  * connection can't hold the action, and the person's credit hold, until the platform kills it.
  */
-async function generate(req: GenerateRequest, meter: CallUsage[], onDelta?: OnDelta): Promise<GenerateResult> {
-  const key = process.env.GEMINI_API_KEY;
-  if (!key) fail("maintenance", "Foli AI isn't set up on this server yet.");
-  // A grounded request only goes to models that can search (no fallback to one that can't).
-  const models = (req.fast ? [geminiFastModel()] : [geminiModel(), geminiFastModel()]).filter((m, i) => i === 0 || !req.searchGrounding || capabilitiesOf(m).searchGrounding);
+async function generate(req: GenerateRequest, meter: CallUsage[], onDelta: OnDelta | undefined, target: CallTarget): Promise<GenerateResult> {
+  const key = target.apiKey ?? process.env.GEMINI_API_KEY;
+  if (!key) fail("maintenance", NOT_SET_UP);
+  // When the model is busy, its lighter one gets one try (Gemini only, same provider), as long as it can do
+  // what was asked: a grounded request only goes to models that can search.
+  const models = [target.model, ...(target.lighter && target.lighter !== target.model ? [target.lighter] : [])].filter((m, i) => i === 0 || !req.searchGrounding || capabilitiesOf(m).searchGrounding);
   let lastStatus = 0;
   for (const m of models) {
     const stream = Boolean(onDelta);
-    // One controller for Stop and for the deadlines; `timedOut` tells them apart.
-    const controller = new AbortController();
-    let timedOut = false;
-    const expire = () => {
-      timedOut = true;
-      controller.abort();
-    };
-    let idle: ReturnType<typeof setTimeout> | undefined;
-    const waitAtMost = (ms: number) => {
-      clearTimeout(idle);
-      idle = setTimeout(expire, ms);
-    };
-    const total = setTimeout(expire, stream ? STREAM_TOTAL_MS : REPLY_TIMEOUT_MS);
-    waitAtMost(stream ? RESPONSE_TIMEOUT_MS : REPLY_TIMEOUT_MS);
+    const deadline = new Deadline(stream);
+    const controller = deadline.controller;
+    const waitAtMost = (ms: number) => deadline.waitAtMost(ms);
     try {
       let res: Response;
       try {
@@ -230,7 +179,7 @@ async function generate(req: GenerateRequest, meter: CallUsage[], onDelta?: OnDe
           body: bodyOf(req, m),
         });
       } catch (e) {
-        if (!timedOut) throw e;
+        if (!deadline.timedOut) throw e;
         console.warn(JSON.stringify({ event: "ai.timeout", model: m, stream }));
         fail("maintenance", TOO_SLOW);
       }
@@ -269,7 +218,7 @@ async function generate(req: GenerateRequest, meter: CallUsage[], onDelta?: OnDe
           try {
             next = await reader.read();
           } catch (e) {
-            if (!timedOut) throw e;
+            if (!deadline.timedOut) throw e;
             break;
           }
           const { done, value } = next;
@@ -286,15 +235,15 @@ async function generate(req: GenerateRequest, meter: CallUsage[], onDelta?: OnDe
             }
           }
         }
-        if (!stopped && !timedOut && buffer.trim()) take(buffer);
+        if (!stopped && !deadline.timedOut && buffer.trim()) take(buffer);
         // A stream cut off by its deadline was still billed for what it produced.
         const refusal = refusalOf(text, finish);
         const used = { ...withSearches(usageOf(m, usage, req, text), grounding), ...(refusal.refused ? { refused: refusal.refused } : {}) };
         text = refusal.text;
         meter.push(used);
-        console.log(JSON.stringify({ event: "ai.call", model: m, status: res.status, stream: true, finish, stopped, timedOut, tokensIn: used.promptTokens, tokensOut: used.outputTokens + used.thoughtsTokens, ...(refusal.refused ? { refused: refusal.refused.kind } : {}) }));
-        if (timedOut) fail("maintenance", TOO_SLOW);
-        if (!text.trim() && !stopped && !toolCalls.length) fail("invalid_argument", EMPTY(finish));
+        console.log(JSON.stringify({ event: "ai.call", model: m, status: res.status, stream: true, finish, stopped, timedOut: deadline.timedOut, tokensIn: used.promptTokens, tokensOut: used.outputTokens + used.thoughtsTokens, ...(refusal.refused ? { refused: refusal.refused.kind } : {}) }));
+        if (deadline.timedOut) fail("maintenance", TOO_SLOW);
+        if (!text.trim() && !stopped && !toolCalls.length) fail("invalid_argument", emptyMessage(blocked(finish)));
         return { text: text.trim(), toolCalls, parts: [...(text ? [{ text }] : []), ...callParts], finish, stopped, model: m, usage: used, ...(grounding ? { grounding } : {}) };
       }
       if (res.ok) {
@@ -302,7 +251,7 @@ async function generate(req: GenerateRequest, meter: CallUsage[], onDelta?: OnDe
         try {
           data = (await res.json()) as GeminiChunk;
         } catch (e) {
-          if (!timedOut) throw e;
+          if (!deadline.timedOut) throw e;
           console.warn(JSON.stringify({ event: "ai.timeout", model: m, stream }));
           fail("maintenance", TOO_SLOW);
         }
@@ -315,19 +264,18 @@ async function generate(req: GenerateRequest, meter: CallUsage[], onDelta?: OnDe
         const used = { ...withSearches(usageOf(m, data.usageMetadata, req, raw), grounding), ...(refusal.refused ? { refused: refusal.refused } : {}) };
         meter.push(used);
         console.log(JSON.stringify({ event: "ai.call", model: m, status: res.status, finish, tokensIn: used.promptTokens, tokensOut: used.outputTokens + used.thoughtsTokens, ...(used.searches ? { searches: used.searches } : {}), ...(refusal.refused ? { refused: refusal.refused.kind } : {}) }));
-        if (!text && !toolCalls.length) fail("invalid_argument", EMPTY(finish));
+        if (!text && !toolCalls.length) fail("invalid_argument", emptyMessage(blocked(finish)));
         return { text, toolCalls, parts: withoutMarker(modelPartsOf(partsOf(data))), finish, stopped: false, model: m, usage: used, ...(grounding ? { grounding } : {}) };
       }
       console.warn(JSON.stringify({ event: "ai.error", model: m, status: res.status }));
       if (res.status !== 429 && res.status !== 503 && res.status !== 500) break;
     } finally {
-      clearTimeout(idle);
-      clearTimeout(total);
+      deadline.clear();
     }
   }
-  if (lastStatus === 429) fail("rate_limited", "The AI is busy right now. Try again in a minute.");
-  if (lastStatus === 400 || lastStatus === 403) fail("maintenance", "Foli AI isn't available right now (the server's AI key was refused).");
-  fail("maintenance", "Foli AI couldn't be reached. Try again shortly.");
+  if (lastStatus === 429) fail("rate_limited", BUSY);
+  if (lastStatus === 400 || lastStatus === 403) fail("maintenance", KEY_REFUSED);
+  fail("maintenance", UNREACHABLE);
 }
 
 /** Texts per batchEmbedContents request (Gemini's limit is 100). */
@@ -341,9 +289,9 @@ const EMBED_TIMEOUT_MS = 30_000;
  * Platform-paid: the caller rate-limits per account, nothing is charged to credits. No usage comes back,
  * so tokens are estimated from the characters sent.
  */
-async function embed(texts: string[], task: EmbedTask): Promise<EmbedResult> {
-  const key = process.env.GEMINI_API_KEY;
-  if (!key) fail("maintenance", "Foli AI isn't set up on this server yet.");
+async function embed(texts: string[], task: EmbedTask, apiKey?: string): Promise<EmbedResult> {
+  const key = apiKey ?? process.env.GEMINI_API_KEY;
+  if (!key) fail("maintenance", NOT_SET_UP);
   const model = geminiEmbeddingModel();
   const vectors: number[][] = [];
   for (let i = 0; i < texts.length; i += EMBED_BATCH) {
@@ -373,14 +321,14 @@ async function embed(texts: string[], task: EmbedTask): Promise<EmbedResult> {
     }
     if (!res.ok) {
       console.warn(JSON.stringify({ event: "ai.embed_error", model, status: res.status }));
-      if (res.status === 429) fail("rate_limited", "The AI is busy right now. Try again in a minute.");
-      fail("maintenance", "Foli AI couldn't be reached. Try again shortly.");
+      if (res.status === 429) fail("rate_limited", BUSY);
+      fail("maintenance", UNREACHABLE);
     }
     const data = (await res.json().catch(() => null)) as { embeddings?: { values?: unknown }[] } | null;
     const got = (data?.embeddings ?? []).map((e) => (Array.isArray(e.values) ? (e.values as unknown[]).filter((x): x is number => typeof x === "number") : []));
     if (got.length !== batch.length || got.some((v) => v.length !== EMBEDDING_DIMENSIONS)) {
       console.warn(JSON.stringify({ event: "ai.embed_error", model, status: res.status, count: got.length }));
-      fail("maintenance", "Foli AI couldn't be reached. Try again shortly.");
+      fail("maintenance", UNREACHABLE);
     }
     vectors.push(...got.map(normalize));
   }
@@ -389,10 +337,7 @@ async function embed(texts: string[], task: EmbedTask): Promise<EmbedResult> {
   return { vectors, model, tokens };
 }
 
-export const geminiProvider: AiProvider = {
-  id: "gemini",
-  models: () => ({ main: geminiModel(), fast: geminiFastModel() }),
-  embeddingModel: geminiEmbeddingModel,
-  generate,
-  embed,
-};
+export const geminiAdapter: ProviderAdapter = { id: "gemini", generate };
+
+/** Semantic search's embeddings: always Gemini (the owner's decision, 2026-11-25). */
+export const geminiEmbeddings = { model: geminiEmbeddingModel, embed };

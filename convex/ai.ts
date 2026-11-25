@@ -47,6 +47,8 @@ import { withSyncedForReader } from "./lib/synced";
 import { failE2ee, isSealed, readableFor } from "./lib/e2ee/state";
 import { aiGate, providedMemories, providedMeta, providedNote, providedSources, vProvidedContext, vProvidedMeta, type ProvidedContext } from "./lib/e2ee/ai";
 import { memoryPrompt } from "./lib/ai/memory";
+import { routedFeatureOf, setMeterRoute } from "./lib/ai/config";
+import { loadHoldRoute, routeIn } from "./aiConfig";
 import {
   ASK_MESSAGES,
   BRIEF_EMPTY,
@@ -74,7 +76,6 @@ export { FOLLOW_UPS, MAX_QUESTION, PERSONA, hideFollowUps, splitFollowUps, type 
 type GeminiRequest = GenerateRequest;
 
 /** The models requests use, for estimates (the provider's settings: GEMINI_MODEL, GEMINI_FAST_MODEL). */
-const models = () => provider().models();
 
 /**
  * One call to the AI provider (Gemini; lib/ai/gemini.ts has the details: fallback model, deadlines,
@@ -240,7 +241,7 @@ async function streamed(ctx: RunCtx, streamId: Id<"aiStreams"> | undefined, req:
 
 const vPlannedCall = v.object({ fast: v.boolean(), inputChars: v.number(), maxOutputTokens: v.number(), searches: v.optional(v.number()) });
 const vRefusalKind = v.union(v.literal("harmful"), v.literal("crisis"), v.literal("other"), v.literal("filtered"));
-const vCallUsage = v.object({ model: v.string(), promptTokens: v.number(), outputTokens: v.number(), thoughtsTokens: v.number(), searches: v.optional(v.number()), refused: v.optional(v.object({ kind: vRefusalKind, free: v.boolean() })) });
+const vCallUsage = v.object({ model: v.string(), promptTokens: v.number(), cachedTokens: v.optional(v.number()), cacheWriteTokens: v.optional(v.number()), outputTokens: v.number(), thoughtsTokens: v.number(), searches: v.optional(v.number()), refused: v.optional(v.object({ kind: vRefusalKind, free: v.boolean() })) });
 
 /**
  * Auth, whether AI may be used where it's asked for, the hourly abuse limit, and a hold on the request's
@@ -304,7 +305,9 @@ export async function holdFor(ctx: MutationCtx, profile: Doc<"profiles">, target
   const access = await aiAccountFor(ctx, profile, target);
   if (!access.allowed) fail("forbidden", access.message ?? "Foli AI isn't available here.", { reason: "ai_not_included" });
   await consume(ctx, access.account.rateRule, access.account.rateSubject);
-  return await holdCredits(ctx, access.account, target, estimateCredits(plan, models()), Date.now(), feature);
+  // Held at the models the feature's provider would use (lib/ai/config.ts, Admin > Foli AI).
+  const route = await routeIn(ctx, routedFeatureOf(feature));
+  return await holdCredits(ctx, access.account, target, estimateCredits(plan, route.models), Date.now(), feature);
 }
 
 /** Ends a request: releases its hold and charges what its Gemini calls really cost. */
@@ -315,7 +318,7 @@ export const settle = internalMutation({
 
 type SettleCtx = {
   runMutation: (ref: typeof internal.ai.settle, args: { holdId: Id<"aiCreditHolds">; calls: CallUsage[] }) => Promise<unknown>;
-  runQuery: (ref: typeof internal.aiMemory.forHold, args: { holdId: Id<"aiCreditHolds"> }) => Promise<string | null>;
+  runQuery: Pick<ActionCtx, "runQuery">["runQuery"];
 };
 
 /** What a settled request cost: credits charged and tokens used. */
@@ -328,7 +331,8 @@ export interface Settled {
 /**
  * Runs a request's work, then settles its credits from the calls it made, however it ends. `onSettled`
  * hears what it cost (an AI chat stores it on the answer). The person's saved preferences (memory, when
- * it's on) ride on the meter, so every call the work makes gets them (lib/ai/memory.ts).
+ * it's on) ride on the meter, so every call the work makes gets them (lib/ai/memory.ts), and so does the
+ * route of the hold's feature, so every call goes to the provider and models set for it (lib/ai/config.ts).
  */
 export async function metered<T>(
   ctx: SettleCtx,
@@ -350,6 +354,8 @@ export async function metered<T>(
         /* answered without preferences */
       }
     setMeterMemory(meter, memory);
+    // Where the request's calls go: its feature's provider, models and key (lib/ai/config.ts).
+    setMeterRoute(meter, await loadHoldRoute(ctx, holdId));
     return await work(meter);
   } finally {
     const r = (await ctx.runMutation(internal.ai.settle, { holdId, calls: meter })) as { credits: number } | null;

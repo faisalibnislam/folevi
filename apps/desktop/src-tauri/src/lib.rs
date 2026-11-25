@@ -15,6 +15,7 @@ mod badge;
 mod e2ee;
 mod events;
 mod http;
+mod jumplist;
 mod library;
 #[cfg(target_os = "linux")]
 pub mod linux;
@@ -1997,6 +1998,15 @@ pub fn run() {
             }
             watch_sleep(&handle);
             start_background_sync(&handle);
+            // The Jump List: New Note, Quick Add Task, Today's Tasks (once per launch; COM on its own thread).
+            #[cfg(windows)]
+            if !services.paths.test_run {
+                std::thread::spawn(|| {
+                    if let Err(e) = jumplist::set_tasks(APP_ID) {
+                        log::warn!("Folevi: no Jump List ({e})");
+                    }
+                });
+            }
 
             // folevi:// links: the one that started the app, then each later one (the single-instance plugin
             // forwards a second start's). Registered at run time too, for the AppImage and test builds.

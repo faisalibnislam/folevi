@@ -1280,6 +1280,9 @@ account button should move past iPadOS's window buttons).
   docs/DESKTOP_PARITY.md): hidden runner windows for places not on screen, woken and closed by the Mac's
   BackgroundSync plan, and a native unread count per background account. Rust tests pass (152). Not run end to end
   (needs two signed-in accounts on a test machine).
+- 2026-11-25: **Windows Jump List** (branch `claude/desktop-launcher-actions`, item 8 of docs/DESKTOP_PARITY.md): New
+  Note, Quick Add Task, Today's Tasks; Linux's .desktop actions already had them. Compiles for x86_64-pc-windows-msvc;
+  not seen on real Windows.
 - 2026-11-25: **1.6.78 released** from PR 109's merge (`e0183862`): web and Convex deployed; Mac published
   (notarized, Sparkle feed); iPhone and iPad on TestFlight (delivery 7120ad6e); Windows installers and Linux packages
   uploaded, apt and rpm repositories rebuilt and uploaded; the Android bundle built and left for the owner's Play

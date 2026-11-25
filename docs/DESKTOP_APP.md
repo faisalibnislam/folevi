@@ -192,6 +192,12 @@ in front): `POST <convex>/api/query notifications:unreadCount` with the account'
 switcher's dots and the taskbar badge, and wakes the page to show the notification. Runners are off in test runs
 (`FOLEVI_USER_DATA`) unless `FOLEVI_RUNNERS=1`. A Folevi Server account's count comes from its own server's Convex.
 Not yet: closing idle runners on low memory.
+## Jump List and launcher actions
+
+Right-click Folevi in the Windows taskbar or Start menu: New Note, Quick Add Task and Today's Tasks
+(`src/jumplist.rs`, set once per launch). Linux's launchers show the same three from the .desktop file's actions
+(`packaging/linux/folevi.desktop.hbs`, in the .deb, .rpm, AppImage, Snap and Flatpak). Each opens a folevi:// link,
+which a running Folevi receives through the single-instance plugin.
 
 ## Not done yet
 

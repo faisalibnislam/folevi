@@ -863,6 +863,8 @@ account button should move past iPadOS's window buttons).
   `DATABASE_UDF_USER_TIMEOUT_SECONDS=4` for that backend. Bursts show in `convex.log` as "took a long time".
 
 ## 12. Change log
+- 2026-11-25: CI secret scan reads only the history HEAD reaches (`--log-opts=HEAD`, owner's OK), not every fetched
+  branch: test tokens on unmerged branches (Folevi Server, Linux stores) had failed the required check on every PR.
 - 2026-11-25: Android own server, part 2 (PR 103): merged PR 100's a800051c (the sign-in names the server, the
   version check uses the app's version, `places.scanCode`). Added `scanCode` with Google's code scanner
   (`play-services-code-scanner`, no camera permission; the module is installed on first use), only on devices with

@@ -1,6 +1,8 @@
 // Change detection for the library folder (docs/LOCAL_MODE_PLAN.md §3.7): `fs.watch(root, { recursive: true })`
-// (FSEvents) for speed, plus a full listing every 30 seconds, on wake and on focus, because FSEvents can
-// coalesce or drop events and providers write behind its back. Everything is diffed against the state last
+// (FSEvents, ReadDirectoryChangesW) for speed, plus full listings, on wake and on focus, because the watcher can
+// coalesce or drop events and providers write behind its back. The regular listing runs every 30 seconds while
+// there's no working watcher, and every 5 minutes while there is one (a safety net: a whole listing of a large
+// library every 30 s cost the disk and the CPU all day for what the watcher already reports). Everything is diffed against the state last
 // reported, so the page gets one batch per burst of changes, with each path once, and never its own writes
 // echoed back (fs.ts tells the watcher about them).
 //
@@ -24,8 +26,10 @@ export interface WatcherOptions {
   root: string;
   source: WatchSource;
   onChanges: (changes: LibraryChange[]) => void;
-  /** Full listing interval (30 s). */
+  /** Full listing interval without a working fs.watch (30 s). */
   scanIntervalMs?: number;
+  /** Full listing interval while fs.watch works (5 minutes). */
+  watchedScanIntervalMs?: number;
   /** Quiet time before a burst of fs.watch events is reported. */
   debounceMs?: number;
   /** Off in tests that drive scans by hand. */
@@ -48,6 +52,10 @@ export class LibraryWatcher {
   private running: Promise<void> | null = null;
   private again = false;
   private stopped = false;
+  /** fs.watch is running and hasn't failed. */
+  private healthy = false;
+  /** When the last full listing finished (ms). */
+  private lastFull = 0;
   private ready: Promise<void>;
 
   constructor(private readonly o: WatcherOptions) {
@@ -61,19 +69,28 @@ export class LibraryWatcher {
     if (this.o.useFsEvents !== false) {
       try {
         this.watcher = fsWatch(this.o.root, { recursive: true, persistent: false }, (_event, name) => this.onEvent(name ? String(name) : null));
-        this.watcher.on("error", () => this.schedule(true));
+        this.healthy = true;
+        this.watcher.on("error", () => {
+          // It may have missed something, and may miss more: list everything now and every 30 s from here on.
+          this.healthy = false;
+          this.schedule(true);
+        });
       } catch {
         // No FSEvents for this folder (a network volume): the scans still run.
         this.watcher = null;
       }
     }
-    this.timer = setInterval(() => this.rescan(), this.o.scanIntervalMs ?? 30_000);
+    const every = this.o.scanIntervalMs ?? 30_000;
+    const watched = Math.max(every, this.o.watchedScanIntervalMs ?? 5 * 60_000);
+    // Ticks at the short interval; while the watcher works only a listing older than the long one runs.
+    this.timer = setInterval(() => void this.rescan({ ifOlderThanMs: this.healthy ? watched - every / 2 : 0 }), every);
     this.timer.unref();
   }
 
   private async baseline() {
     try {
       for (const e of await this.o.source.list("")) this.state.set(e.path, { etag: e.etag, downloaded: e.downloaded, uploaded: null });
+      this.lastFull = Date.now();
     } catch {
       // The folder isn't there right now; the first scan that works becomes the baseline's diff.
     }
@@ -105,8 +122,17 @@ export class LibraryWatcher {
     this.schedule(false);
   }
 
-  /** A full listing now (the 30 s timer, wake, focus, "Sync now"). */
-  rescan(): Promise<void> {
+  /** Whether fs.watch is running and hasn't failed (the regular listing slows down then). */
+  get watching(): boolean {
+    return this.healthy && !this.stopped;
+  }
+
+  /**
+   * A full listing now (the timer, wake, focus, "Sync now"). With `ifOlderThanMs`, only when the last one finished
+   * longer ago than that (focus coming back and forth doesn't list the whole library each time).
+   */
+  rescan(o: { ifOlderThanMs?: number } = {}): Promise<void> {
+    if (o.ifOlderThanMs && this.lastFull && Date.now() - this.lastFull < o.ifOlderThanMs) return this.running ?? Promise.resolve();
     this.fullPending = true;
     return this.flush();
   }
@@ -144,7 +170,10 @@ export class LibraryWatcher {
         this.pendingPhysical.clear();
         if (this.stopped) return;
         try {
-          if (full) await this.diffAll();
+          if (full) {
+            await this.diffAll();
+            this.lastFull = Date.now();
+          }
           else if (physical.length) await this.diffSome(physical);
         } catch {
           // The folder went away mid-scan; the next scan tries again.
@@ -212,6 +241,7 @@ export class LibraryWatcher {
     this.stopped = true;
     this.watcher?.close();
     this.watcher = null;
+    this.healthy = false;
     if (this.timer) clearInterval(this.timer);
     if (this.debounce) clearTimeout(this.debounce);
     this.timer = this.debounce = null;

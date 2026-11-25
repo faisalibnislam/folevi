@@ -55,6 +55,7 @@ import { keyAction, type KeyAction } from "./keys";
 import { HIDDEN_ARG, linkFromArgs, startedHidden } from "./launch";
 import { accentColor, captionColors, cleanTheme, windowBackground } from "./chrome";
 import { badgeDescription, badgePng } from "./badge";
+import { BackgroundSync, jwtExpiry, planFromEnv } from "./background";
 
 const PARTITION = "persist:folevi";
 /** Windows ties notifications, the taskbar button and the Start menu shortcut to this (electron-builder's appId). */
@@ -231,12 +232,41 @@ const webPreferences = () => ({
 });
 
 /**
- * In local mode one window hosts the library for all of them (apps/web/src/lib/local/host.ts), and it may be a
- * hidden one. Chromium slows a hidden page's timers, which would hold back the library's writes, so in local mode
- * hidden windows keep full speed.
+ * Chromium slows a hidden page's timers. Windows keep that (a hidden or minimized window has nothing to hurry for),
+ * except where a hidden page is doing work right now:
+ * - a runner (background.ts), which is only up while its place has work, then goes;
+ * - in local mode one window hosts the library for all of them (apps/web/src/lib/local/host.ts), and it may be a
+ *   hidden one: while Quick Add is up (and a little after), the library's windows keep full speed so its writes
+ *   aren't held back.
  */
+let quickAddBusy = false;
+let quickAddCalm: NodeJS.Timeout | null = null;
+function needsFullSpeed(win: BrowserWindow): boolean {
+  if (isRunner(win.webContents)) return true;
+  return quickAddBusy && bundled && modeOf(placeOfContents(win.webContents)) === "local";
+}
 function applyThrottling(win: BrowserWindow) {
-  if (!win.isDestroyed()) win.webContents.setBackgroundThrottling(!(bundled && modeOf(placeOfContents(win.webContents)) === "local"));
+  if (!win.isDestroyed()) win.webContents.setBackgroundThrottling(!needsFullSpeed(win));
+}
+function applyThrottlingAll() {
+  for (const win of BrowserWindow.getAllWindows()) applyThrottling(win);
+}
+/** Quick Add came up (true) or went away (false): the library's hidden host keeps full speed meanwhile, and 15 s after. */
+function quickAddActive(on: boolean) {
+  if (quickAddCalm) clearTimeout(quickAddCalm);
+  quickAddCalm = null;
+  if (on) {
+    if (!quickAddBusy) {
+      quickAddBusy = true;
+      applyThrottlingAll();
+    }
+    return;
+  }
+  quickAddCalm = setTimeout(() => {
+    quickAddCalm = null;
+    quickAddBusy = false;
+    applyThrottlingAll();
+  }, 15_000);
 }
 
 /** Loads a page, or the offline page (with a way back) when neither the network nor the site's cache has it. */
@@ -254,7 +284,7 @@ function load(win: BrowserWindow, url: string) {
 /**
  * The library on this PC and any number of accounts (places.ts). Each page is bound to one place (`bound`, by
  * webContents id): its session, keys and reminders are that place's, never one the page names. Main windows show
- * the open place; every other place has a hidden runner window (/place-sync) that keeps it in sync.
+ * the open place; every other place gets a hidden runner window (/place-sync) while it has work (background.ts).
  */
 let places: PlacesStore | null = null;
 const bound = new Map<number, string | null>();
@@ -314,12 +344,15 @@ function adoptLegacyKeys(userId: string) {
 // ---------------------------------------------------------------- the built-in interface's services
 
 let library: LibraryService | null = null;
+/** The Convex deployment the built-in interface talks to (shell/build.json): the background's unread poll asks it. */
+let convexUrl: string | null = null;
 
 /** Serves app://folevi on the session: the export built into the app, by mode (protocol.ts). */
 function installBundledInterface(ses: Session) {
   const root = shellRoot({ packaged: app.isPackaged, resourcesPath: process.resourcesPath, appDir: join(__dirname, ".."), env: process.env });
   if (!existsSync(join(root, "index.html"))) console.error(`Folevi: no bundled interface at ${root} (run \`pnpm shell\`).`);
   const build = readShellBuild(root);
+  convexUrl = build?.convexUrl ?? null;
   for (const problem of shellBuildProblems(build, { version: FOLEVI_VERSION, packaged: app.isPackaged, serviceUrl: SERVICE_URL.href })) console.error(`Folevi: ${problem}.`);
   const extraConnect = (process.env.FOLEVI_SHELL_CONNECT ?? "").split(/[\s,]+/).filter((o) => /^(https?|wss?):\/\/[^\s;']+$/.test(o));
   ses.protocol.handle(
@@ -597,29 +630,90 @@ async function printPage(wc: WebContents) {
 
 // ---------------------------------------------------------------- the hidden runners and switching places
 
+/**
+ * The places no window shows, and when each one's runner runs (background.ts): only while it has work, never one
+ * per place all day. Nothing starts before the first window has loaded.
+ */
+const convexTokens = new Map<string, { jwt: string; until: number }>();
+const background = new BackgroundSync(
+  {
+    startRunner: (place) => {
+      if (!bundled || !places?.has(place)) return false;
+      const open = runners.get(place);
+      if (!open || open.isDestroyed()) runners.set(place, createRunner(place));
+      return true;
+    },
+    stopRunner: (place) => stopRunner(place),
+    isAccount: (place) => userIdOf(place) !== null,
+    unread: (place) => unreadOf(place),
+    onUnread: (place, unread) => places?.describe(place, { unread }),
+    isFront: () => BrowserWindow.getFocusedWindow() !== null,
+  },
+  { plan: planFromEnv(process.env) },
+);
+
 function ensureRunners() {
   if (!places || !bundled) return;
-  const want = new Set<string>();
-  for (const a of places.state.accounts) if (a.id !== places.state.current) want.add(a.id);
-  if (places.state.library && libraryConfigured && places.state.current !== LIBRARY) want.add(LIBRARY);
-  for (const [id, win] of runners) {
-    if (want.has(id) && !win.isDestroyed()) continue;
-    runners.delete(id);
-    if (!win.isDestroyed()) win.destroy();
-  }
-  for (const id of want) if (!runners.has(id)) runners.set(id, createRunner(id));
+  const want: string[] = [];
+  for (const a of places.state.accounts) if (a.id !== places.state.current) want.push(a.id);
+  if (places.state.library && libraryConfigured && places.state.current !== LIBRARY) want.push(LIBRARY);
+  // A runner whose place is open in the windows now, or gone, goes (also one the background doesn't know of).
+  for (const id of [...runners.keys()]) if (!want.includes(id)) stopRunner(id);
+  background.setWanted(want);
+}
+
+function stopRunner(place: string) {
+  const win = runners.get(place);
+  runners.delete(place);
+  if (win && !win.isDestroyed()) win.destroy();
 }
 
 function createRunner(place: string): BrowserWindow {
   const win = new BrowserWindow({ show: false, width: 480, height: 320, paintWhenInitiallyHidden: false, skipTaskbar: true, webPreferences: webPreferences() });
   bindOnLoad(win, () => place);
-  applyThrottling(win);
+  // Full speed while it's up: it's only up while it has work.
+  win.webContents.setBackgroundThrottling(false);
   guardNavigation(win.webContents);
   win.on("closed", () => {
-    if (runners.get(place) === win) runners.delete(place);
+    if (runners.get(place) !== win) return;
+    runners.delete(place);
+    background.runnerGone(place);
+  });
+  // A crashed page frees its memory; the background starts a new one when it's due.
+  win.webContents.on("render-process-gone", () => {
+    if (!win.isDestroyed()) win.destroy();
   });
   load(win, appUrl(`/place-sync?place=${encodeURIComponent(place)}`));
   return win;
+}
+
+/** An account's unread count from Folevi, asked with its own Convex token (null: offline, signed out, no answer). */
+async function unreadOf(place: string): Promise<number | null> {
+  const user = userIdOf(place);
+  if (!user || !authBridge || !convexUrl || noNetwork) return null;
+  let jwt: string | null = null;
+  const kept = convexTokens.get(place);
+  if (kept && kept.until > Date.now()) jwt = kept.jwt;
+  else {
+    jwt = await authBridge.convexToken(user).catch(() => null);
+    if (!jwt) return null;
+    // Kept until a minute before it runs out.
+    convexTokens.set(place, { jwt, until: (jwtExpiry(jwt) ?? Date.now() + 360_000) - 60_000 });
+  }
+  try {
+    const res = await fetch(new URL("api/query", convexUrl.endsWith("/") ? convexUrl : `${convexUrl}/`), {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${jwt}` },
+      body: JSON.stringify({ path: "notifications:unreadCount", args: {}, format: "json" }),
+      signal: AbortSignal.timeout(20_000),
+    });
+    if (res.status === 401 || res.status === 403) convexTokens.delete(place);
+    if (!res.ok) return null;
+    const json = (await res.json()) as { status?: unknown; value?: unknown };
+    return json.status === "success" && typeof json.value === "number" && Number.isFinite(json.value) ? Math.max(0, Math.floor(json.value)) : null;
+  } catch {
+    return null;
+  }
 }
 
 const isRunner = (wc: WebContents | null | undefined) => !!wc && [...runners.values()].some((w) => !w.isDestroyed() && w.webContents.id === wc.id);
@@ -693,9 +787,8 @@ async function signOutPlace(id: string, nextPlace: string | null = null) {
   }
   accountKeys.delete(user);
   rmSync(join(app.getPath("userData"), "e2ee", "accounts", user), { recursive: true, force: true });
-  const runner = runners.get(id);
-  runners.delete(id);
-  if (runner && !runner.isDestroyed()) runner.destroy();
+  stopRunner(id);
+  convexTokens.delete(id);
   const wasOpen = places.state.current === id;
   const next = places.removeAccount(id);
   if (lastAdded === id) lastAdded = null;
@@ -709,6 +802,11 @@ async function signOutPlace(id: string, nextPlace: string | null = null) {
 }
 
 // ---------------------------------------------------------------- Quick Add (Ctrl+Alt+Space from any app)
+
+// Made the first time it's asked for (the shortcut, the notification area icon, a folevi://quick-add link), not at
+// launch: a page of its own costs a renderer's memory, and most launches never use it. Kept afterwards, hidden, so
+// every later Quick Add is instant. The first one shows once its page has painted.
+let quickAddLoading = false;
 
 function createQuickAdd() {
   quickAdd = new BrowserWindow({
@@ -733,7 +831,13 @@ function createQuickAdd() {
   guardNavigation(quickAdd.webContents);
   // Clicking elsewhere puts it away, like the Start menu's search.
   quickAdd.on("blur", () => quickAdd?.hide());
-  quickAdd.on("closed", () => (quickAdd = null));
+  quickAdd.on("show", () => quickAddActive(true));
+  quickAdd.on("hide", () => quickAddActive(false));
+  quickAdd.on("closed", () => {
+    quickAdd = null;
+    quickAddLoading = false;
+    quickAddActive(false);
+  });
   quickAdd.webContents.on("before-input-event", (event, input) => {
     if (input.type === "keyDown" && input.key === "Escape") {
       event.preventDefault();
@@ -744,13 +848,28 @@ function createQuickAdd() {
 }
 
 function toggleQuickAdd() {
-  if (!quickAdd || quickAdd.isDestroyed()) createQuickAdd();
-  const win = quickAdd!;
+  if (!quickAdd || quickAdd.isDestroyed()) {
+    createQuickAdd();
+    const win = quickAdd!;
+    quickAddLoading = true;
+    win.once("ready-to-show", () => {
+      quickAddLoading = false;
+      if (!win.isDestroyed()) presentQuickAdd(win);
+    });
+    return;
+  }
+  // Asked again before its first page has painted: it shows then.
+  if (quickAddLoading) return;
+  const win = quickAdd;
   if (win.isVisible() && win.isFocused()) {
     win.hide();
     return;
   }
   if (!win.webContents.getURL().startsWith(appUrl("/quick-add"))) load(win, quickAddUrl());
+  presentQuickAdd(win);
+}
+
+function presentQuickAdd(win: BrowserWindow) {
   // On the screen the pointer is on, a little above the middle.
   const area = screen.getDisplayNearestPoint(screen.getCursorScreenPoint()).workArea;
   const [w] = win.getSize() as [number, number];
@@ -1046,6 +1165,8 @@ function listen() {
   ipcMain.handle("shell:places-describe", (e, d: unknown) => {
     if (!placesCall(e)) return null;
     const place = placeOfEvent(e);
+    // A runner's page saying what's waiting: it goes once nothing is (background.ts).
+    if (isRunner(e.sender) && d && typeof d === "object") background.reported(place, (d as Record<string, unknown>).waiting as number | undefined);
     if (place === LIBRARY) places!.describeLibrary(d);
     else if (place && userIdOf(place)) places!.describe(place, d);
     return null;
@@ -1062,9 +1183,8 @@ function listen() {
     const wasOpen = places!.state.current === LIBRARY;
     places!.setLibrary(false);
     reminders?.clear();
-    const runner = runners.get(LIBRARY);
-    runners.delete(LIBRARY);
-    if (runner && !runner.isDestroyed()) runner.destroy();
+    stopRunner(LIBRARY);
+    ensureRunners();
     if (wasOpen) setTimeout(() => switchTo(places!.state.accounts[0]?.id ?? null), 50);
     return true;
   });
@@ -1215,9 +1335,12 @@ app.whenReady().then(async () => {
     installBundledInterface(folevi);
     const libraryIpc: IpcMainLike = { handle: (c, l) => ipcMain.handle(c, l as never), removeHandler: (c) => ipcMain.removeHandler(c) };
     registerLibraryIpc(libraryIpc, library, (e) => fromFolevi(e as unknown as IpcMainInvokeEvent));
-    // A full look at the library folder on waking and when Folevi comes to the front (watch.ts also scans every 30 s).
+    // A full look at the library folder on waking, and when Folevi comes to the front unless one was done in the last
+    // 30 s (watch.ts also scans on its own: every 30 s without a working folder watcher, every 5 minutes with one).
     powerMonitor.on("resume", () => void library?.rescan());
-    app.on("browser-window-focus", () => void library?.rescan());
+    app.on("browser-window-focus", () => void library?.rescan({ ifOlderThanMs: 30_000 }));
+    // Another device wrote to the library: its runner catches up (and schedules the reminders) if no window shows it.
+    library.watch(() => background.libraryChanged());
     authBridge = createShellAuth();
     ai = createAi();
     await startPlaces();
@@ -1231,7 +1354,10 @@ app.whenReady().then(async () => {
   // A start at sign-in stays in the notification area (with the icon off there'd be no way to it, so it shows).
   const hidden = startedHidden(process.argv) && settings.menuBarIcon;
   if (!pendingLink) createMainWindow("/documents", { show: !hidden });
-  createQuickAdd();
+  // The places in the background start catching up once the first window has loaded (or after 15 s at the latest).
+  const first = BrowserWindow.getAllWindows()[0];
+  if (first) first.webContents.once("did-finish-load", () => setTimeout(() => background.ready(), 2_000));
+  setTimeout(() => background.ready(), 15_000);
   ensureRunners();
   if (pendingLink) {
     openLink(pendingLink);
@@ -1260,6 +1386,7 @@ app.on("before-quit", () => {
 });
 app.on("will-quit", () => {
   globalShortcut.unregisterAll();
+  background.dispose();
   library?.dispose();
 });
 // Every window closed (the main one hides instead): stay running for Quick Add and the notification area icon.

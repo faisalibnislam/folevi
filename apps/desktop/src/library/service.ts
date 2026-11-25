@@ -61,7 +61,7 @@ export interface LibraryServiceOptions {
   /** Electron's safeStorage. */
   sealer: StringSealer | null;
   now?: () => number;
-  watch?: { scanIntervalMs?: number; debounceMs?: number; useFsEvents?: boolean };
+  watch?: { scanIntervalMs?: number; watchedScanIntervalMs?: number; debounceMs?: number; useFsEvents?: boolean };
   /** "Sync with Dropbox" and "Sync with Google Drive" (cloud/library.ts's CloudLibrary); absent without them. */
   cloud?: CloudSource | null;
   /** PBKDF2 iterations for a new passphrase (600,000; tests use fewer). */
@@ -617,9 +617,9 @@ export class LibraryService {
     return () => this.listeners.delete(cb);
   }
 
-  /** A full listing now: the 30 s timer, waking from sleep, the app coming to the front, "Sync now". */
-  rescan(): Promise<void> {
-    return this.watcher?.rescan() ?? Promise.resolve();
+  /** A full listing now: waking from sleep, the app coming to the front (`ifOlderThanMs`), "Sync now". */
+  rescan(o: { ifOlderThanMs?: number } = {}): Promise<void> {
+    return this.watcher?.rescan(o) ?? Promise.resolve();
   }
 
   // ---------------------------------------------------------------- the journal

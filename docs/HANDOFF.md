@@ -4,6 +4,21 @@ Written at the end of a long Claude Code session on the owner's Mac, so work can
 computer and another Claude Code account. Read this first, then `docs/claude-context/` (the owner's saved
 decisions and rules), then the plan docs named below.
 
+## 2026-11-25: Windows (Electron) launch time and memory (branch `claude/perf-electron`, not pushed)
+
+- Quick Add's window is made the first time it's asked for (then kept, hidden), not at launch.
+- Runners (hidden /place-sync pages) come and go like the Mac app's BackgroundSync: `apps/desktop/src/background.ts`
+  (tests: `background.test.ts`). Nothing starts before the first window has loaded; a per-minute unread poll keeps
+  other accounts' notifications prompt; the library's runner wakes when its folder changes.
+- Background throttling stays on except for runners and, in local mode, while Quick Add is up (plus 15 s).
+- The library's full listing: every 5 minutes while the folder watcher works (30 s without one); focus listings at most
+  every 30 s.
+- Not changed: the preload's synchronous `shell:bootstrap` (its answer changes per navigation, so it can't move to
+  `additionalArguments`).
+- Next: run it on Windows with two accounts and a library (switch, Quick Add first press, notifications from a
+  background account, reminders from another device); the Tauri branch's `desktop.yml` measures Electron memory
+  from `ELECTRON_REF` (point it at this branch to compare).
+
 ## 0. Latest: 2026-11-19, the note editor audit (branch `editor/rock-solid`, pull request 40)
 
 The sections below this one are from 24 October and are not kept up to date by every session: for this work,

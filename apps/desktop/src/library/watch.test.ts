@@ -126,4 +126,21 @@ describe("the library watcher", { timeout: 15_000 }, () => {
     expect(hmacName(key, "note", "01J9ZDOC000000000000000009")).not.toBe("01J9ZDOC000000000000000009");
     expect((await fs.list("notes")).map((e) => e.path)).toEqual(["notes/01J9ZDOC000000000000000009.fnote"]);
   });
+
+  test("a focus listing skips when one finished just now; a forced one always runs; the watcher says it works", async () => {
+    const { root, watcher, all, start } = setup({ useFsEvents: false });
+    await start();
+    expect(watcher.watching).toBe(false);
+    writeFileSync(join(root, "notes", "LATE.fnote"), "late");
+    // The baseline was just listed: a focus listing waits its turn, a forced one finds the file.
+    await watcher.rescan({ ifOlderThanMs: 30_000 });
+    expect(all()).toEqual([]);
+    await watcher.rescan();
+    expect(all().map((c) => c.path)).toEqual(["notes/LATE.fnote"]);
+    const live = setup();
+    await live.start();
+    expect(live.watcher.watching).toBe(true);
+    live.watcher.stop();
+    expect(live.watcher.watching).toBe(false);
+  });
 });

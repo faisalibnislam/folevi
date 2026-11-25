@@ -102,6 +102,7 @@ app/src/main/res/xml/config.xml
 
 # Built from apps/android/bridge by scripts/bundle-bridge.mjs (Gradle runs it before every build).
 app/src/main/assets/folevi-cloud.js
+app/src/main/assets/folevi-server.js
 
 # The dev test account scripts/e2e/signin.mjs makes (dev server only).
 .e2e-account.json

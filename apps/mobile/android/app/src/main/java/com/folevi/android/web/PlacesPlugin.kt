@@ -13,6 +13,11 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import com.folevi.android.BuildConfig
+import com.folevi.android.net.Http
+import com.folevi.android.server.LocalServers
+import com.folevi.android.server.ShellServer
 
 /**
  * "FoleviPlaces": `foleviShell.places` (docs/MULTI_ACCOUNT_PLAN.md §2.2): the library and any number of accounts.
@@ -124,6 +129,68 @@ class PlacesPlugin : Plugin() {
         scope.launch {
             val token = runCatching { app.auth.convexTokenFor(user) }.getOrNull()
             call.resolve(JSObject().put("value", token ?: JSObject.NULL))
+        }
+    }
+
+    // ---------------------------------------------------------------- Folevi Server (CONTRACT §6.1)
+
+    private val localServers by lazy { LocalServers(context) }
+
+    /**
+     * "Your own server" (the page's addServerPlace): checks the address, fetches the server's folevi.json here
+     * (what the page read is never trusted), checks the versions, then opens that server's sign-in screen: the page
+     * loads again bound to it, and the account that signs in there becomes a place on that server. Answers
+     * { value: server } or rejects with the reason (ShellServer.Problem's code and words).
+     */
+    @PluginMethod
+    fun addServer(call: PluginCall) {
+        val raw = call.getString("origin") ?: ""
+        scope.launch {
+            val result = withContext(Dispatchers.IO) { ShellServer.lookUp(ShellServer.client(Http.client), raw, BuildConfig.VERSION_NAME) }
+            when (result) {
+                is ShellServer.Result.Refused -> call.reject(result.problem.message, result.problem.code)
+                is ShellServer.Result.Ok -> {
+                    places.setCurrent(null, pending = true, server = result.server)
+                    // The sign-in screen is account mode's (from the first launch's choice too), as ShellPlugin.setMode.
+                    val settings = app.settings
+                    if (settings.mode != "account") {
+                        if (settings.mode == "local") {
+                            com.folevi.android.extras.LocalActions.get(context).clear()
+                            com.folevi.android.extras.Widgets.clear(context)
+                        }
+                        settings.mode = "account"
+                    }
+                    call.resolve(JSObject().put("value", JSObject(result.server.json().toString())))
+                    reload()
+                }
+            }
+        }
+    }
+
+    /** Folevi servers on the home network (DNS-SD): { servers: [{ name, origin, serverId, version }] }. */
+    @PluginMethod
+    fun localServers(call: PluginCall) {
+        scope.launch {
+            val list = runCatching { localServers.list() }.getOrDefault(emptyList())
+            call.resolve(JSObject().put("servers", com.getcapacitor.JSArray(org.json.JSONArray(list).toString())))
+        }
+    }
+
+    /**
+     * The best connection (the bridge script runs lib/server-edition/connection.ts): the open server place now
+     * uses `origin`, one of its own names only. The page loads again there (`path`), still signed in: the
+     * session is the server's, not one name's.
+     */
+    @PluginMethod
+    fun setActiveOrigin(call: PluginCall) {
+        val place = places.state.current
+        val origin = call.getString("origin")
+        if (place == null || origin == null || places.serverOf(place) == null) return call.resolve(JSObject().put("value", false))
+        val changed = places.setActiveOrigin(place, origin)
+        call.resolve(JSObject().put("value", changed))
+        if (changed) {
+            val path = call.getString("path")?.takeIf { it.startsWith("/") && !it.startsWith("//") && it.length <= 500 } ?: "/documents"
+            reload(path)
         }
     }
 

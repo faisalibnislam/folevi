@@ -23,7 +23,9 @@ object SaveTargets {
         val s = places.state
         val out = ArrayList<Target>()
         if (s.library) out.add(Target(Places.LIBRARY, "On this phone", "Kept on this device only"))
-        for (a in s.accounts) out.add(Target(a.id, a.name.ifEmpty { a.email }, a.email))
+        // Saving from outside the app goes through Folevi Cloud's REST API: a Folevi Server's accounts aren't offered
+        // here yet (as on iPhone and iPad).
+        for (a in s.accounts) if (a.server == null) out.add(Target(a.id, a.name.ifEmpty { a.email }, a.email))
         return out
     }
 

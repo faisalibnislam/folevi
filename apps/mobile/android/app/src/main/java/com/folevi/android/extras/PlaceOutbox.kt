@@ -34,6 +34,8 @@ object PlaceOutbox {
         var sent = 0
         for (account in places.state.accounts) {
             if (account.id == open && FoleviApp.instance.settings.mode != "local") continue
+            // Folevi Cloud's REST API only (SaveTargets): a server's account never had anything queued here.
+            if (account.server != null) continue
             val api = SaveTargets.api(context, SaveTargets.Target(account.id, account.name, account.email)) ?: continue
             // Shares with files need the page's upload; text and links go now.
             val shares = ShareQueue.get(context)

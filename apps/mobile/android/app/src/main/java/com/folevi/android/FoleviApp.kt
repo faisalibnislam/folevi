@@ -124,6 +124,9 @@ class FoleviApp : Application() {
             store = secrets,
             deviceName = { "Folevi for Android (${settings.deviceName})" },
             currentUser = { places.currentUserId },
+            // Folevi Server places: an account on a server signs in and talks to that server's website.
+            actingSite = { places.actingServer?.appUrl },
+            siteOfUser = { places.serverOfUser(it)?.appUrl },
         )
     }
 

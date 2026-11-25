@@ -1,6 +1,7 @@
 package com.folevi.android
 
 import android.content.Context
+import com.folevi.android.server.ShellServer
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -11,6 +12,9 @@ import org.json.JSONObject
  * list: which place the app shows, the accounts (what each account's own page last said of itself, for the
  * switcher) and Quick Add's last place. Nothing here is secret. The app has one web view: the open place is the
  * page's place. Pure logic over a [Store], so the JVM tests run it without Android.
+ *
+ * An account can be on a Folevi Server ([ShellServer], docs/self-hosting/CONTRACT.md §6): it keeps its server's
+ * addresses with it; one without is Folevi Cloud's, as every account was before (older files read unchanged).
  */
 class Places(private val store: Store, private val onChange: (State) -> Unit = {}) {
     interface Store {
@@ -30,6 +34,8 @@ class Places(private val store: Store, private val onChange: (State) -> Unit = {
         val unread: Int = 0,
         val reminders: Int = 0,
         val waiting: Int = 0,
+        /** The Folevi Server this account is on; null: Folevi Cloud. */
+        val server: ShellServer? = null,
     ) {
         val id get() = "acct:$userId"
     }
@@ -47,6 +53,23 @@ class Places(private val store: Store, private val onChange: (State) -> Unit = {
 
     /** Account mode with no account yet (the sign-in screen). For this run only. */
     @Volatile var pendingAccount = false
+
+    /** The server that sign-in screen is for (addServerPlace); null: Folevi Cloud's. For this run only. */
+    @Volatile var pendingServer: ShellServer? = null
+        private set
+
+    /**
+     * The server a place is on: an account's own, or, for the sign-in screen (null), the server it signs in to.
+     * Null: Folevi Cloud (or the library).
+     */
+    fun serverOf(place: String?): ShellServer? =
+        if (place == null) pendingServer.takeIf { pendingAccount } else state.accounts.firstOrNull { it.id == place }?.server
+
+    /** The server of the open place (or its sign-in screen): where AuthBridge signs in and sends /api/auth. */
+    val actingServer: ShellServer? get() = serverOf(state.current)
+
+    /** The server an account is on, by its user id. */
+    fun serverOfUser(userId: String?): ShellServer? = userId?.let { u -> state.accounts.firstOrNull { it.userId == u }?.server }
 
     val exists: Boolean get() = store.read() != null
 
@@ -68,11 +91,26 @@ class Places(private val store: Store, private val onChange: (State) -> Unit = {
         onChange(state)
     }
 
+    /** `server`: with `pending`, the sign-in screen is that server's (null: Folevi Cloud's). */
     @Synchronized
-    fun setCurrent(place: String?, pending: Boolean = false) {
+    fun setCurrent(place: String?, pending: Boolean = false, server: ShellServer? = null) {
         if (place != null && !has(place)) return
         pendingAccount = place == null && pending
+        pendingServer = if (pendingAccount) server else null
         commit(state.copy(current = place))
+    }
+
+    /** The origin a server place uses now (the page's best connection); one of its names only. True when it changed. */
+    @Synchronized
+    fun setActiveOrigin(place: String, origin: String): Boolean {
+        val s = state
+        val a = s.accounts.firstOrNull { it.id == place } ?: return false
+        val server = a.server ?: return false
+        if (origin !in server.candidates) return false
+        val active = origin.takeIf { it != server.origin }
+        if (server.active == active) return false
+        commit(s.copy(accounts = s.accounts.map { if (it.id == place) it.copy(server = server.copy(active = active)) else it }))
+        return true
     }
 
     @Synchronized
@@ -81,12 +119,16 @@ class Places(private val store: Store, private val onChange: (State) -> Unit = {
         commit(s.copy(library = on, current = if (!on && s.current == LIBRARY) null else s.current, quickAdd = if (!on && s.quickAdd == LIBRARY) null else s.quickAdd))
     }
 
+    /**
+     * A new account is on the server the sign-in went to ([actingServer]), unless `server` is given. An account
+     * already here keeps its own.
+     */
     @Synchronized
-    fun addAccount(userId: String, name: String, email: String, avatarUrl: String?): Account? {
+    fun addAccount(userId: String, name: String, email: String, avatarUrl: String?, server: ShellServer? = actingServer): Account? {
         if (!ID.matches(userId)) return null
         val s = state
         val existing = s.accounts.firstOrNull { it.userId == userId }
-        val next = (existing ?: Account(userId)).copy(
+        val next = (existing ?: Account(userId, server = server)).copy(
             name = name.ifEmpty { existing?.name ?: "" }.take(120),
             email = email.ifEmpty { existing?.email ?: "" }.take(254),
             avatarUrl = avatarUrl ?: existing?.avatarUrl,
@@ -150,7 +192,9 @@ class Places(private val store: Store, private val onChange: (State) -> Unit = {
             for (w in a.workspaces) ws.put(JSONObject().put("id", w.id).put("name", w.name).put("logoUrl", w.logoUrl ?: JSONObject.NULL))
             out.put(
                 JSONObject().put("kind", "account").put("id", a.id).put("userId", a.userId).put("profileId", a.profileId ?: JSONObject.NULL).put("name", a.name).put("email", a.email)
-                    .put("avatarUrl", a.avatarUrl ?: JSONObject.NULL).put("workspaces", ws).put("unread", a.unread).put("reminders", a.reminders).put("waiting", a.waiting),
+                    .put("avatarUrl", a.avatarUrl ?: JSONObject.NULL).put("workspaces", ws).put("unread", a.unread).put("reminders", a.reminders).put("waiting", a.waiting)
+                    // Folevi Server places (CONTRACT §6.1): the server's name and addresses; null: Folevi Cloud.
+                    .put("server", a.server?.json() ?: JSONObject.NULL),
             )
         }
         return out
@@ -196,6 +240,7 @@ class Places(private val store: Store, private val onChange: (State) -> Unit = {
                         unread = a.optInt("unread"),
                         reminders = a.optInt("reminders"),
                         waiting = a.optInt("waiting"),
+                        server = ShellServer.fromStore(a.optJSONObject("server")),
                     ),
                 )
             }
@@ -208,10 +253,11 @@ class Places(private val store: Store, private val onChange: (State) -> Unit = {
             for (a in s.accounts) {
                 val ws = JSONArray()
                 for (w in a.workspaces) ws.put(JSONObject().put("id", w.id).put("name", w.name).put("logoUrl", w.logoUrl ?: JSONObject.NULL))
-                arr.put(
-                    JSONObject().put("userId", a.userId).put("profileId", a.profileId ?: JSONObject.NULL).put("name", a.name).put("email", a.email).put("avatarUrl", a.avatarUrl ?: JSONObject.NULL)
-                        .put("workspaces", ws).put("unread", a.unread).put("reminders", a.reminders).put("waiting", a.waiting),
-                )
+                val o = JSONObject().put("userId", a.userId).put("profileId", a.profileId ?: JSONObject.NULL).put("name", a.name).put("email", a.email).put("avatarUrl", a.avatarUrl ?: JSONObject.NULL)
+                    .put("workspaces", ws).put("unread", a.unread).put("reminders", a.reminders).put("waiting", a.waiting)
+                // Only a server's account has the key: a file from before servers writes back unchanged.
+                a.server?.let { o.put("server", it.store()) }
+                arr.put(o)
             }
             return JSONObject().put("v", 1).put("current", s.current ?: JSONObject.NULL).put("library", s.library).put("accounts", arr).put("quickAdd", s.quickAdd ?: JSONObject.NULL).put("lastAdded", s.lastAdded ?: JSONObject.NULL).toString()
         }

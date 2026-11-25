@@ -4,6 +4,12 @@
 // the picked day and the 30 after it, tasks and calendar events, a + per day for Quick add.
 package com.folevi.android.ui
 
+import androidx.compose.ui.semantics.heading
+
+import androidx.compose.foundation.layout.defaultMinSize
+
+import androidx.compose.foundation.selection.toggleable
+
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
@@ -210,7 +216,7 @@ fun CalendarHome(open: (Route) -> Unit) {
             if (day != today) GlassTextButton("Today", onClick = { picked = today.toString() })
             Box {
                 GlassPill { PillButton("More", onClick = { menu = true }) { FoleviIcon(WebIcon.ELLIPSIS, null, size = 24.dp, tint = p.ink) } }
-                DropdownMenu(expanded = menu, onDismissRequest = { menu = false }, shape = MaterialTheme.shapes.large, containerColor = p.surfaceRaised) {
+                PhoneMenu(menu, { menu = false }) {
                     Text("Show", style = PhoneType.footnote.copy(fontWeight = FontWeight.SemiBold), color = p.inkMuted, modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp))
                     for ((s, label) in listOf(CalendarShow.AGENDA to "Agenda", CalendarShow.WEEK to "Week", CalendarShow.MONTH to "Month")) {
                         DropdownMenuItem(
@@ -289,7 +295,7 @@ private fun AgendaHeader(day: LocalDate, today: LocalDate, first: Boolean, onAdd
     val p = LocalPalette.current
     val (main, rest) = agendaHeader(day, today)
     Row(Modifier.fillMaxWidth().padding(top = if (first) 8.dp else 20.dp, start = 20.dp, end = 8.dp).heightIn(min = 44.dp), verticalAlignment = Alignment.CenterVertically) {
-        Text(main, style = PhoneType.headline, color = p.heading, maxLines = 1)
+        Text(main, style = PhoneType.headline, color = p.heading, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.semantics { heading() })
         Text(" · $rest", style = PhoneType.body, color = p.inkMuted, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
         Box(
             Modifier.size(44.dp).clip(CircleShape).clickable(role = Role.Button, onClickLabel = "Add a task", onClick = onAdd).semantics { contentDescription = "Add a task on $main" },
@@ -379,7 +385,7 @@ private fun WeekStrip(day: LocalDate, today: LocalDate, busy: (LocalDate) -> Boo
                 )
             }
         }
-        AnimatedVisibility(!monthOpen, enter = fadeIn(tween(150)) + expandVertically(tween(320)), exit = fadeOut(tween(150)) + shrinkVertically(tween(320))) {
+        AnimatedVisibility(!monthOpen, enter = fadeIn(com.folevi.android.design.Motion.defaultEffects()) + expandVertically(com.folevi.android.design.Motion.defaultSpatial()), exit = fadeOut(com.folevi.android.design.Motion.defaultEffects()) + shrinkVertically(com.folevi.android.design.Motion.defaultSpatial())) {
             val base = weekStart(today)
             val pager = rememberPagerState(initialPage = WEEKS + ChronoUnit.WEEKS.between(base, weekStart(day)).toInt().coerceIn(-WEEKS, WEEKS)) { WEEKS * 2 + 1 }
             // Paging keeps the same weekday picked; a pick elsewhere moves the pager to its week.
@@ -403,7 +409,7 @@ private fun WeekStrip(day: LocalDate, today: LocalDate, busy: (LocalDate) -> Boo
                 }
             }
         }
-        AnimatedVisibility(monthOpen, enter = fadeIn(tween(150)) + expandVertically(tween(320)), exit = fadeOut(tween(150)) + shrinkVertically(tween(320))) {
+        AnimatedVisibility(monthOpen, enter = fadeIn(com.folevi.android.design.Motion.defaultEffects()) + expandVertically(com.folevi.android.design.Motion.defaultSpatial()), exit = fadeOut(com.folevi.android.design.Motion.defaultEffects()) + shrinkVertically(com.folevi.android.design.Motion.defaultSpatial())) {
             val base = YearMonth.from(today)
             val pager = rememberPagerState(initialPage = MONTHS + ChronoUnit.MONTHS.between(base, YearMonth.from(day)).toInt().coerceIn(-MONTHS, MONTHS)) { MONTHS * 2 + 1 }
             HorizontalPager(pager, modifier = Modifier.fillMaxWidth()) { page ->
@@ -423,12 +429,12 @@ private fun WeekStrip(day: LocalDate, today: LocalDate, busy: (LocalDate) -> Boo
             }
         }
         // The grabber: a 36 by 5 capsule; a tap opens or folds the month.
-        Box(Modifier.fillMaxWidth().padding(bottom = 4.dp), contentAlignment = Alignment.Center) {
+        Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
             Box(
-                Modifier.size(64.dp, 20.dp).clip(CircleShape).clickable(role = Role.Button, onClickLabel = if (monthOpen) "Show week" else "Show month") { onMonth(!monthOpen) }
+                Modifier.size(64.dp, 44.dp).clip(RoundedCornerShape(12.dp)).clickable(role = Role.Button, onClickLabel = if (monthOpen) "Show week" else "Show month") { onMonth(!monthOpen) }
                     .semantics { contentDescription = if (monthOpen) "Show week" else "Show month" },
-                contentAlignment = Alignment.Center,
-            ) { Box(Modifier.size(36.dp, 5.dp).clip(CircleShape).background(c.ink(0.2f))) }
+                contentAlignment = Alignment.TopCenter,
+            ) { Box(Modifier.padding(top = 8.dp).size(36.dp, 5.dp).clip(CircleShape).background(c.ink(0.2f))) }
         }
     }
 }
@@ -439,12 +445,12 @@ private fun DayCell(d: LocalDate, today: LocalDate, selected: Boolean, outside: 
     val c = phoneColors()
     val isToday = d == today
     Column(
-        modifier.height(48.dp).padding(top = 2.dp).alpha(if (outside) 0.4f else 1f).clip(RoundedCornerShape(10.dp)).clickable(role = Role.Button, onClick = onClick)
+        modifier.heightIn(min = 48.dp).padding(top = 2.dp).alpha(if (outside) 0.4f else 1f).clip(RoundedCornerShape(10.dp)).clickable(role = Role.Button, onClick = onClick)
             .semantics { contentDescription = d.format(DateTimeFormatter.ofLocalizedDate(FormatStyle.FULL)); this.selected = selected },
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Box(
-            Modifier.size(34.dp).clip(CircleShape).background(if (selected) p.heading else if (isToday) c.ink(0.09f) else Color.Transparent),
+            Modifier.defaultMinSize(34.dp, 34.dp).clip(CircleShape).background(if (selected) p.heading else if (isToday) c.ink(0.09f) else Color.Transparent),
             contentAlignment = Alignment.Center,
         ) {
             Text(
@@ -482,21 +488,27 @@ private fun CalendarsSheet(onDismiss: () -> Unit, onSubscribe: () -> Unit) {
             } else SheetGroup {
                 cals.forEachIndexed { i, cal ->
                     if (i > 0) SheetSeparator()
-                    Row(Modifier.fillMaxWidth().heightIn(min = 52.dp).padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Row(Modifier.fillMaxWidth().heightIn(min = 52.dp).padding(end = 16.dp), verticalAlignment = Alignment.CenterVertically) {
+                      Row(
+                        Modifier.weight(1f).heightIn(min = 52.dp)
+                            .toggleable(value = cal.visible, role = Role.Switch) { on -> scope.launch { runCatching { session.client.command(Commands.calendarUpdate(id = cal.id, visible = on)) } } }
+                            .padding(start = 16.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                      ) {
                         Box(Modifier.size(12.dp).clip(CircleShape).background(calendarColor(cal.color)))
                         Column(Modifier.weight(1f).padding(start = 12.dp)) {
                             Text(cal.name, style = PhoneType.body, color = p.ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
                             val detail = cal.lastError ?: cal.eventCount?.let { "$it events" }
-                            if (detail != null) Text(detail, style = PhoneType.footnote, color = if (cal.lastError != null) p.destructive else p.inkMuted, maxLines = 1)
+                            if (detail != null) Text(detail, style = PhoneType.footnote, color = if (cal.lastError != null) p.destructive else p.inkMuted, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         }
                         Switch(
                             checked = cal.visible,
-                            onCheckedChange = { on -> scope.launch { runCatching { session.client.command(Commands.calendarUpdate(id = cal.id, visible = on)) } } },
+                            onCheckedChange = null,
                             colors = SwitchDefaults.colors(checkedTrackColor = p.heading, checkedThumbColor = p.canvas),
-                            modifier = Modifier.semantics { contentDescription = "Show ${cal.name}" },
                         )
+                      }
                         Box(
-                            Modifier.size(44.dp).clip(CircleShape).clickable(onClickLabel = "Remove") { scope.launch { runCatching { session.client.command(Commands.calendarRemove(id = cal.id)) } } }
+                            Modifier.size(44.dp).clip(CircleShape).clickable(role = Role.Button, onClickLabel = "Remove") { scope.launch { runCatching { session.client.command(Commands.calendarRemove(id = cal.id)) } } }
                                 .semantics { contentDescription = "Remove ${cal.name}" },
                             contentAlignment = Alignment.Center,
                         ) { FoleviIcon(WebIcon.X, null, size = 18.dp, tint = p.inkMuted) }

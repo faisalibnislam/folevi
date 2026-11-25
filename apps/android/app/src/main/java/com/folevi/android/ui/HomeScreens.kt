@@ -3,6 +3,18 @@
 // engine's live views. Owner 2026-11-25: the Capacitor app's UX with Folevi's styling and Android's ripple.
 package com.folevi.android.ui
 
+import androidx.compose.ui.semantics.heading
+
+import androidx.compose.foundation.layout.widthIn
+
+import androidx.compose.foundation.layout.fillMaxHeight
+
+import androidx.compose.ui.text.style.Hyphens
+
+import androidx.compose.ui.text.style.LineBreak
+
+import androidx.compose.ui.platform.LocalDensity
+
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
@@ -165,7 +177,7 @@ fun HomeScreen(open: (Route) -> Unit) {
         item(key = "recent") {
             when {
                 !v.recentsLoaded -> Row(Modifier.padding(start = 16.dp, top = 12.dp, bottom = 24.dp), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-                    repeat(3) { Box(Modifier.width(156.dp).aspectRatio(25f / 27f).clip(PhoneRadius.container).background(LocalPalette.current.surfaceSunken)) }
+                    repeat(3) { Box(Modifier.width(156.dp * LocalDensity.current.fontScale.coerceIn(1f, 1.6f)).aspectRatio(25f / 27f).clip(PhoneRadius.container).background(LocalPalette.current.surfaceSunken)) }
                 }
                 v.recents.isEmpty() -> EmptyNote("Notes you open show up here.", Modifier.padding(top = 12.dp, bottom = 12.dp))
                 else -> LazyRow(
@@ -173,7 +185,7 @@ fun HomeScreen(open: (Route) -> Unit) {
                     horizontalArrangement = Arrangement.spacedBy(14.dp),
                     flingBehavior = androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior(rememberLazyListState()),
                 ) {
-                    items(v.recents.take(10), key = { it.id }) { r -> NoteMenuHost(r, open) { m -> NotebookCard(r, m.width(156.dp)) } }
+                    items(v.recents.take(10), key = { it.id }) { r -> NoteMenuHost(r, open) { m -> NotebookCard(r, m.width(156.dp * LocalDensity.current.fontScale.coerceIn(1f, 1.6f))) } }
                 }
             }
         }
@@ -205,7 +217,7 @@ fun HomeScreen(open: (Route) -> Unit) {
             var menu by remember { mutableStateOf(false) }
             SectionHeader("Folders", onTitle = { open(FoldersRoute) }, more = {
                 Box {
-                    Box(Modifier.size(44.dp).clip(CircleShape).clickable(onClickLabel = "Folder actions") { menu = true }, contentAlignment = Alignment.Center) {
+                    Box(Modifier.size(44.dp).clip(CircleShape).clickable(role = Role.Button, onClickLabel = "Folder actions") { menu = true }, contentAlignment = Alignment.Center) {
                         FoleviIcon(WebIcon.ELLIPSIS, "Folder actions", size = 22.dp, tint = LocalPalette.current.inkMuted)
                     }
                     PhoneMenu(menu, { menu = false }) {
@@ -324,21 +336,39 @@ private val NotebookShape = RoundedCornerShape(topStart = 4.dp, bottomStart = 4.
 @Composable
 fun NotebookCard(row: NoteRow, modifier: Modifier = Modifier) {
     val p = LocalPalette.current
+    // Large text: the card grows to fit rather than keep the web's 25:27 page (where long words would break).
+    val scale = LocalDensity.current.fontScale
+    val big = scale > 1.15f
     Box(
-        modifier.aspectRatio(25f / 27f)
+        (if (big) modifier.heightIn(min = 168.dp * scale.coerceIn(1f, 1.6f)) else modifier.aspectRatio(25f / 27f))
             // The web's layered shadow, folded into one soft drop (Compose clips spread shadows at the row's edge).
             .dropShadow(NotebookShape, Shadow(radius = 14.dp, offset = DpOffset((-2).dp, 6.dp), color = Color(20, 20, 30).copy(alpha = 0.09f)))
             .clip(NotebookShape).background(p.surface).border(0.5.dp, p.line, NotebookShape),
     ) {
         // The spine in the folder's color.
-        Box(Modifier.width(4.dp).fillMaxSize().background(row.folder?.let { folderColor(it.color) } ?: p.heading.copy(alpha = 0.14f)))
-        Column(Modifier.fillMaxSize().padding(start = 14.dp, end = 12.dp, top = 12.dp, bottom = 10.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Box(Modifier.matchParentSize()) {
+            Box(Modifier.width(4.dp).fillMaxHeight().background(row.folder?.let { folderColor(it.color) } ?: p.heading.copy(alpha = 0.14f)))
+        }
+        Column(
+            (if (big) Modifier.fillMaxWidth() else Modifier.fillMaxSize()).padding(start = 14.dp, end = 12.dp, top = 12.dp, bottom = 10.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
             Row(verticalAlignment = Alignment.Top) {
                 row.icon?.let { Text(it, modifier = Modifier.padding(end = 4.dp)) }
-                Text(row.title.ifEmpty { "Untitled" }, style = CardTitle.copy(fontSize = CardTitle.fontSize * 0.88f), color = p.heading, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+                Text(
+                    row.title.ifEmpty { "Untitled" },
+                    style = CardTitle.copy(fontSize = CardTitle.fontSize * 0.88f, lineBreak = LineBreak.Heading, hyphens = Hyphens.None),
+                    color = p.heading,
+                    maxLines = if (big) 3 else 2,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f),
+                )
             }
             val text = row.preview?.joinToString("\n") { it.x }?.takeIf { it.isNotBlank() } ?: row.excerpt
-            if (text.isNotBlank()) Text(text, style = PhoneType.footnote, color = p.inkMuted, maxLines = 5, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+            if (big) {
+                if (text.isNotBlank()) Text(text, style = PhoneType.footnote, color = p.inkMuted, maxLines = 3, overflow = TextOverflow.Ellipsis)
+                Spacer(Modifier.height(6.dp))
+            } else if (text.isNotBlank()) Text(text, style = PhoneType.footnote, color = p.inkMuted, maxLines = 5, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
             else Spacer(Modifier.weight(1f))
             Text(relativeAge(row.updatedAt), style = PhoneType.caption2, color = p.inkFaint, maxLines = 1)
         }
@@ -417,7 +447,7 @@ fun NoteMenuHost(row: NoteRow, open: (Route) -> Unit, onSelect: (() -> Unit)? = 
     var deleting by remember { mutableStateOf(false) }
     val act = rememberNoteActs()
     Box {
-        content(Modifier.combinedClickable(onClick = onClick ?: { open(NoteRoute(row.id, row.title)) }, onLongClick = { menu = true }))
+        content(Modifier.combinedClickable(onClick = onClick ?: { open(NoteRoute(row.id, row.title)) }, onLongClickLabel = "More actions", onLongClick = { menu = true }))
         PhoneMenu(menu, { menu = false }) {
             if (row.inTrash) {
                 MenuItem("Restore", WebIcon.ROTATE_CCW) { menu = false; act.restore(listOf(row.id)) }
@@ -499,14 +529,6 @@ private fun ConfirmDelete(count: Int, onDismiss: () -> Unit, onConfirm: () -> Un
 
 // ---------------------------------------------------------------- note lists
 
-/** The swipe actions' colors (Swipe.tsx). */
-private object SwipeColors {
-    val bookmark = Color(0xFFC58A12)
-    val unbookmark = Color(0xFFB07A12)
-    val trash = Color(0xFFD6453D)
-    val archive = Color(0xFF6B6B73)
-    val restore = Color(0xFF3F7D58)
-}
 
 /** A windowed notes list (`notes.list`) as the web's IphoneNoteList: cards or rows, filter, sort, swipe, Select. */
 @Composable
@@ -637,12 +659,12 @@ fun NotesScreen(route: NotesRoute, open: (Route) -> Unit, onBack: (() -> Unit)? 
                         val on = row.id in selected
                         val leading = when {
                             selecting -> emptyList()
-                            trash -> listOf(SwipeAction("Restore", WebIcon.ROTATE_CCW, SwipeColors.restore) { act.restore(listOf(row.id)) })
-                            else -> listOf(if (row.starred) SwipeAction("Remove", WebIcon.BOOKMARK_OFF, SwipeColors.unbookmark) { act.star(listOf(row.id), false) } else SwipeAction("Bookmark", WebIcon.BOOKMARK, SwipeColors.bookmark) { act.star(listOf(row.id), true) })
+                            trash -> listOf(SwipeAction("Restore", WebIcon.ROTATE_CCW, LocalPalette.current.swipeRestore) { act.restore(listOf(row.id)) })
+                            else -> listOf(if (row.starred) SwipeAction("Remove", WebIcon.BOOKMARK_OFF, LocalPalette.current.swipeUnbookmark) { act.star(listOf(row.id), false) } else SwipeAction("Bookmark", WebIcon.BOOKMARK, LocalPalette.current.swipeBookmark) { act.star(listOf(row.id), true) })
                         }
                         val trailing = if (selecting || trash) emptyList() else listOf(
-                            SwipeAction("Trash", WebIcon.TRASH, SwipeColors.trash) { act.trash(listOf(row.id)) },
-                            if (row.archived) SwipeAction("Unarchive", WebIcon.ARCHIVE_RESTORE, SwipeColors.archive) { act.archive(listOf(row.id), false) } else SwipeAction("Archive", WebIcon.ARCHIVE, SwipeColors.archive) { act.archive(listOf(row.id), true) },
+                            SwipeAction("Trash", WebIcon.TRASH, LocalPalette.current.swipeTrash) { act.trash(listOf(row.id)) },
+                            if (row.archived) SwipeAction("Unarchive", WebIcon.ARCHIVE_RESTORE, LocalPalette.current.swipeArchive) { act.archive(listOf(row.id), false) } else SwipeAction("Archive", WebIcon.ARCHIVE, LocalPalette.current.swipeArchive) { act.archive(listOf(row.id), true) },
                         )
                         SwipeRow(leading, trailing) {
                             NoteMenuHost(row, open, onSelect = if (templates) null else ({ toggle(selected, row.id); selecting = true }), selected = on, onClick = if (selecting) ({ toggle(selected, row.id) }) else null) { m ->
@@ -656,8 +678,8 @@ fun NotesScreen(route: NotesRoute, open: (Route) -> Unit, onBack: (() -> Unit)? 
         // The select bar takes the tab bar's place.
         AnimatedVisibility(
             visible = selecting,
-            enter = slideInVertically { it },
-            exit = slideOutVertically { it },
+            enter = slideInVertically(com.folevi.android.design.Motion.defaultSpatial()) { it },
+            exit = slideOutVertically(com.folevi.android.design.Motion.fastSpatial()) { it },
             modifier = Modifier.align(Alignment.BottomCenter),
         ) {
             SelectBar(trash, selected.toList(), nav, act, onDone = { selected.clear(); selecting = false }, onEmpty = { emptying = true })
@@ -681,7 +703,7 @@ private fun toggle(list: MutableList<String>, id: String) {
 
 @Composable
 private fun MenuHeadingRow(text: String) {
-    Text(text.uppercase(), style = PhoneType.eyebrow, color = LocalPalette.current.inkMuted, modifier = Modifier.padding(start = 20.dp, top = 24.dp, bottom = 6.dp))
+    Text(text.uppercase(), style = PhoneType.eyebrow, color = LocalPalette.current.inkMuted, modifier = Modifier.padding(start = 20.dp, top = 24.dp, bottom = 6.dp).semantics { heading() })
 }
 
 /** A list row (NoteList.tsx): the page glyph (or the select circle), title with a bookmark, "{age} · {folder}". */
@@ -750,19 +772,19 @@ private fun SelectBar(trash: Boolean, ids: List<String>, nav: androidx.compose.u
     var deleting by remember { mutableStateOf(false) }
     val none = ids.isEmpty()
     Row(
-        Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, bottom = maxOf(10.dp, nav)).height(64.dp).foleviGlass(CircleShape).padding(4.dp),
+        Modifier.padding(start = 16.dp, end = 16.dp, bottom = maxOf(10.dp, nav)).widthIn(max = 480.dp).fillMaxWidth().heightIn(min = 64.dp).foleviGlass(CircleShape).padding(4.dp),
         horizontalArrangement = Arrangement.SpaceEvenly,
         verticalAlignment = Alignment.CenterVertically,
     ) {
         @Composable
         fun B(label: String, icon: WebIcon, danger: Boolean = false, run: () -> Unit) {
             Column(
-                Modifier.weight(1f).height(56.dp).clip(CircleShape).clickable(enabled = !none, role = Role.Button, onClick = run).padding(top = 6.dp),
+                Modifier.weight(1f).heightIn(min = 56.dp).clip(CircleShape).clickable(enabled = !none, role = Role.Button, onClick = run).padding(top = 6.dp, bottom = 4.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 val tint = (if (danger) p.destructive else p.ink).copy(alpha = if (none) 0.35f else 1f)
                 FoleviIcon(icon, null, size = 22.dp, tint = tint)
-                Text(label, style = PhoneType.caption2.copy(fontWeight = FontWeight.Medium), color = tint, modifier = Modifier.padding(top = 3.dp))
+                Text(label, style = PhoneType.caption2.copy(fontWeight = FontWeight.Medium), color = tint, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 3.dp))
             }
         }
         if (trash) {

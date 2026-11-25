@@ -276,8 +276,8 @@ fun AppShell() {
                 PhoneContent(stack, phoneOpen, Modifier.fillMaxSize()) {
                     AnimatedVisibility(
                         visible = showBar,
-                        enter = slideInVertically(MaterialTheme.motionScheme.defaultSpatialSpec()) { it } + fadeIn(),
-                        exit = slideOutVertically(MaterialTheme.motionScheme.fastSpatialSpec()) { it } + fadeOut(),
+                        enter = slideInVertically(com.folevi.android.design.Motion.defaultSpatial()) { it } + fadeIn(com.folevi.android.design.Motion.fastEffects()),
+                        exit = slideOutVertically(com.folevi.android.design.Motion.fastSpatial()) { it } + fadeOut(com.folevi.android.design.Motion.fastEffects()),
                     ) { PhoneBar(tab, pick, newNote) }
                 }
                 // Back at the root of Tasks, Calendar or Foli AI goes Home first, then leaves (Android's "exit through
@@ -313,8 +313,9 @@ private fun TabbedFrame(width: WidthClass, tabs: TabsModel, newNote: () -> Unit)
     val pages = rememberSaveableStateHolder()
     // The web's tablet sidebar (TabletSidebar.kt), 320 wide: beside the page on expanded and wider windows, over it
     // with a scrim on a medium one (an open foldable, a small tablet), where it starts hidden. Hide sidebar and Show
-    // sidebar (the strip) fold it away; the choice holds for this window.
-    val wide = width >= WidthClass.EXPANDED
+    // sidebar (the strip) fold it away; the choice holds for this window. A short window (a phone turned sideways,
+    // under 480 tall) has no room for it beside the page: there it slides over the page too, and starts hidden.
+    val wide = width >= WidthClass.EXPANDED && !com.folevi.android.design.shortWindow()
     var sidebarChoice by rememberSaveable { mutableStateOf<Boolean?>(null) }
     val sidebarShown = sidebarChoice ?: wide
     val showSidebar: () -> Unit = { sidebarChoice = true }
@@ -327,8 +328,8 @@ private fun TabbedFrame(width: WidthClass, tabs: TabsModel, newNote: () -> Unit)
         Row(Modifier.fillMaxSize()) {
             AnimatedVisibility(
                 visible = wide && sidebarShown,
-                enter = expandHorizontally(expandFrom = Alignment.Start) + fadeIn(),
-                exit = shrinkHorizontally(shrinkTowards = Alignment.Start) + fadeOut(),
+                enter = expandHorizontally(com.folevi.android.design.Motion.defaultSpatial(), expandFrom = Alignment.Start) + fadeIn(com.folevi.android.design.Motion.defaultEffects()),
+                exit = shrinkHorizontally(com.folevi.android.design.Motion.defaultSpatial(), shrinkTowards = Alignment.Start) + fadeOut(com.folevi.android.design.Motion.defaultEffects()),
             ) {
                 TabletSidebar(route, fromSidebar, onHide = hideSidebar, modifier = Modifier.windowInsetsPadding(bars))
             }
@@ -356,13 +357,13 @@ private fun TabbedFrame(width: WidthClass, tabs: TabsModel, newNote: () -> Unit)
         }
         // A medium window: the sidebar slides in over the page, which dims; a tap on it, or Back, closes it.
         if (!wide) {
-            AnimatedVisibility(visible = sidebarShown, enter = fadeIn(), exit = fadeOut()) {
+            AnimatedVisibility(visible = sidebarShown, enter = fadeIn(com.folevi.android.design.Motion.defaultEffects()), exit = fadeOut(com.folevi.android.design.Motion.defaultEffects())) {
                 Box(Modifier.fillMaxSize().background(androidx.compose.ui.graphics.Color.Black.copy(alpha = 0.25f)).clickable(onClickLabel = "Hide sidebar", indication = null, interactionSource = null, onClick = hideSidebar))
             }
             AnimatedVisibility(
                 visible = sidebarShown,
-                enter = slideInHorizontally { -it },
-                exit = slideOutHorizontally { -it },
+                enter = slideInHorizontally(com.folevi.android.design.Motion.defaultSpatial()) { -it },
+                exit = slideOutHorizontally(com.folevi.android.design.Motion.defaultSpatial()) { -it },
             ) {
                 TabletSidebar(route, fromSidebar, onHide = hideSidebar, modifier = Modifier.windowInsetsPadding(bars))
             }
@@ -438,14 +439,4 @@ private fun PhoneContent(stack: NavBackStack<NavKey>, open: (Route) -> Unit, mod
             },
         )
     }
-}
-
-@Composable
-fun SectionTitle(text: String, modifier: Modifier = Modifier) {
-    Text(text, style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold), color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = modifier.padding(horizontal = 20.dp, vertical = 8.dp))
-}
-
-@Composable
-fun EmptyBox(text: String) {
-    Box(Modifier.fillMaxSize().padding(32.dp)) { Text(text, color = MaterialTheme.colorScheme.onSurfaceVariant) }
 }

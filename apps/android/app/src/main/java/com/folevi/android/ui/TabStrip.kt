@@ -6,6 +6,8 @@
 // other tabs.
 package com.folevi.android.ui
 
+import androidx.compose.foundation.layout.heightIn
+
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -129,7 +131,7 @@ private fun TabChip(t: FrameTab, active: Boolean, tabs: TabsModel) {
     val c = phoneColors()
     val dark = p == com.folevi.android.design.FoleviPalette.Dark
     // The web's tablet tab: 40 tall, a capsule; the one on screen on the row color with a soft shadow and a hairline.
-    val row = if (dark) Color(0xFF1C1C1E) else Color.White
+    val row = LocalPalette.current.groupedRow
     val container = when {
         active -> row
         hovered -> c.active
@@ -138,7 +140,7 @@ private fun TabChip(t: FrameTab, active: Boolean, tabs: TabsModel) {
     Box {
         Row(
             modifier = Modifier
-                .height(40.dp)
+                .heightIn(min = 40.dp)
                 .then(if (active) Modifier.dropShadow(CircleShape, Shadow(radius = 4.dp, offset = DpOffset(0.dp, 1.dp), color = Color.Black.copy(alpha = 0.08f))) else Modifier)
                 .clip(CircleShape)
                 .background(container)
@@ -180,17 +182,18 @@ private fun TabChip(t: FrameTab, active: Boolean, tabs: TabsModel) {
                 Spacer(Modifier.width(8.dp))
                 Text(t.name, style = text, color = ink, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.widthIn(min = 48.dp, max = 200.dp))
                 // A finger closes only the tab on screen; a pointer sees every tab's × on hover.
-                Box(Modifier.padding(start = 4.dp).size(28.dp), contentAlignment = Alignment.Center) {
+                // The × is 28 to the eye and 40 to the finger (the tab's own height).
+                Box(Modifier.size(40.dp), contentAlignment = Alignment.Center) {
                     if (active || hovered) {
                         Box(
-                            Modifier.size(28.dp).clip(CircleShape).clickable(role = Role.Button, onClickLabel = "Close ${t.name}") { tabs.close(t.id) }.semantics { contentDescription = "Close ${t.name}" },
+                            Modifier.size(40.dp).clip(CircleShape).clickable(role = Role.Button, onClickLabel = "Close ${t.name}") { tabs.close(t.id) }.semantics { contentDescription = "Close ${t.name}" },
                             contentAlignment = Alignment.Center,
                         ) { FoleviIcon(WebIcon.X, null, size = 15.dp, tint = p.inkMuted) }
                     }
                 }
             }
         }
-        DropdownMenu(expanded = menu, onDismissRequest = { menu = false }, shape = com.folevi.android.design.PhoneRadius.panel, containerColor = p.surfaceRaised, tonalElevation = 0.dp, shadowElevation = 8.dp) {
+        PhoneMenu(menu, { menu = false }) {
             if (!t.isHome) DropdownMenuItem(text = { Text("Close tab") }, onClick = { menu = false; tabs.close(t.id) })
             DropdownMenuItem(text = { Text("Close other tabs") }, enabled = tabs.tabs.size > 2 || (tabs.tabs.size == 2 && t.isHome), onClick = { menu = false; tabs.closeOthers(t.id) })
             if (tabs.closed.isNotEmpty()) DropdownMenuItem(text = { Text("Reopen closed tab") }, onClick = { menu = false; tabs.reopenClosed() })

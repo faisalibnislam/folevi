@@ -4,6 +4,8 @@
 // shortcuts helper, MainActivity.onProvideKeyboardShortcuts).
 package com.folevi.android.ui
 
+import androidx.compose.material3.HorizontalDivider
+
 import android.content.ClipData
 import android.content.Intent
 import android.view.KeyEvent as AndroidKeyEvent
@@ -148,26 +150,21 @@ fun NoteActions(row: NoteRow, open: (Route) -> Unit, content: @Composable (Modif
                 .dragAndDropSource { _ ->
                     DragAndDropTransferData(ClipData.newPlainText(row.title.ifEmpty { "Untitled" }, "folevi://d/${row.id}"), flags = android.view.View.DRAG_FLAG_GLOBAL)
                 }
-                .combinedClickable(onClick = { open(NoteRoute(row.id, row.title)) }, onLongClick = { menu = true }),
+                .combinedClickable(onClick = { open(NoteRoute(row.id, row.title)) }, onLongClickLabel = "More actions", onLongClick = { menu = true }),
         )
-        DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
-            DropdownMenuItem(text = { Text("Open") }, leadingIcon = { FoleviIcon(WebIcon.FILE_TEXT, null) }, onClick = { menu = false; open(NoteRoute(row.id, row.title)) })
-            DropdownMenuItem(text = { Text("Open in new window") }, leadingIcon = { FoleviIcon(WebIcon.APP_WINDOW, null) }, onClick = { menu = false; openWindow(context, row.id, row.title) })
-            DropdownMenuItem(
-                text = { Text(if (row.starred) "Unstar" else "Star") },
-                leadingIcon = { FoleviIcon(if (row.starred) WebIcon.BOOKMARK_OFF else WebIcon.BOOKMARK, null) },
-                onClick = { menu = false; scope.launch { runCatching { session.client.command(Commands.noteStar(ids = listOf(row.id), starred = !row.starred)) } } },
-            )
-            DropdownMenuItem(
-                text = { Text(if (row.archived) "Unarchive" else "Archive") },
-                leadingIcon = { FoleviIcon(if (row.archived) WebIcon.ARCHIVE_RESTORE else WebIcon.ARCHIVE, null) },
-                onClick = { menu = false; scope.launch { runCatching { session.client.command(Commands.noteArchive(ids = listOf(row.id), archived = !row.archived)) } } },
-            )
-            DropdownMenuItem(
-                text = { Text("Move to Trash") },
-                leadingIcon = { FoleviIcon(WebIcon.TRASH, null) },
-                onClick = { menu = false; scope.launch { runCatching { session.client.command(Commands.noteTrash(ids = listOf(row.id))) } } },
-            )
+        PhoneMenu(menu, { menu = false }) {
+            MenuItem("Open", WebIcon.FILE_TEXT) { menu = false; open(NoteRoute(row.id, row.title)) }
+            MenuItem("Open in new window", WebIcon.APP_WINDOW) { menu = false; openWindow(context, row.id, row.title) }
+            MenuItem(if (row.starred) "Remove bookmark" else "Bookmark", if (row.starred) WebIcon.BOOKMARK_OFF else WebIcon.BOOKMARK) {
+                menu = false; scope.launch { runCatching { session.client.command(Commands.noteStar(ids = listOf(row.id), starred = !row.starred)) } }
+            }
+            MenuItem(if (row.archived) "Unarchive" else "Archive", if (row.archived) WebIcon.ARCHIVE_RESTORE else WebIcon.ARCHIVE) {
+                menu = false; scope.launch { runCatching { session.client.command(Commands.noteArchive(ids = listOf(row.id), archived = !row.archived)) } }
+            }
+            HorizontalDivider(color = com.folevi.android.design.phoneColors().separator)
+            MenuItem("Move to Trash", WebIcon.TRASH, destructive = true) {
+                menu = false; scope.launch { runCatching { session.client.command(Commands.noteTrash(ids = listOf(row.id))) } }
+            }
         }
     }
 }

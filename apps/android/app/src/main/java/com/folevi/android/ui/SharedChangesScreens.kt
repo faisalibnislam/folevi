@@ -3,6 +3,10 @@
 // hairlines under the text, and the web's empty states.
 package com.folevi.android.ui
 
+import androidx.compose.ui.semantics.semantics
+
+import androidx.compose.ui.semantics.heading
+
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -93,7 +97,7 @@ fun ChangesScreen(open: (Route) -> Unit, onBack: (() -> Unit)?) {
 
 @Composable
 private fun Caps(text: String) {
-    Text(text.uppercase(), style = PhoneType.eyebrow, color = LocalPalette.current.inkMuted, modifier = Modifier.padding(start = 20.dp, top = 24.dp, bottom = 6.dp))
+    Text(text.uppercase(), style = PhoneType.eyebrow, color = LocalPalette.current.inkMuted, modifier = Modifier.padding(start = 20.dp, top = 24.dp, bottom = 6.dp).semantics { heading() })
 }
 
 @Composable

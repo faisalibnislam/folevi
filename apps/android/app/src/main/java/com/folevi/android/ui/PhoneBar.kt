@@ -168,7 +168,7 @@ private fun CreateMenu(newNote: () -> Unit) {
     var task by remember { mutableStateOf(false) }
     Box {
         GlassButton("Create", onClick = { open = true }) { PlusDisc() }
-        DropdownMenu(expanded = open, onDismissRequest = { open = false }, shape = MaterialTheme.shapes.large, containerColor = LocalPalette.current.surfaceRaised, tonalElevation = 0.dp, shadowElevation = 8.dp) {
+        PhoneMenu(open, { open = false }) {
             DropdownMenuItem(text = { Text("New note") }, leadingIcon = { FoleviIcon(WebIcon.FILE_PLUS_CORNER, null) }, onClick = { open = false; newNote() })
             DropdownMenuItem(text = { Text("New folder") }, leadingIcon = { FoleviIcon(WebIcon.FOLDER_PLUS, null) }, onClick = { open = false; sheets.newFolder(null) })
             DropdownMenuItem(text = { Text("Quick task") }, leadingIcon = { FoleviIcon(WebIcon.LIST_PLUS, null) }, onClick = { open = false; task = true })

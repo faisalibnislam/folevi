@@ -212,7 +212,7 @@ fun SearchScreen(open: (Route) -> Unit, onBack: (() -> Unit)? = null) {
         // The field and Cancel.
         Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
             Row(
-                Modifier.weight(1f).height(44.dp).clip(PhoneRadius.panel).background(c.ink(0.065f)).padding(horizontal = 12.dp),
+                Modifier.weight(1f).heightIn(min = 44.dp).clip(PhoneRadius.panel).background(c.ink(0.065f)).padding(start = 12.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
@@ -230,9 +230,11 @@ fun SearchScreen(open: (Route) -> Unit, onBack: (() -> Unit)? = null) {
                     )
                 }
                 if (text.isNotEmpty()) {
-                    Box(Modifier.size(28.dp).clip(CircleShape).clickable(onClickLabel = "Clear") { text = "" }, contentAlignment = Alignment.Center) {
-                        FoleviIcon(WebIcon.CIRCLE_X, "Clear", size = 17.dp, tint = p.inkFaint)
+                    Box(Modifier.size(44.dp).clip(CircleShape).clickable(role = Role.Button, onClickLabel = "Clear") { text = "" }.semantics { contentDescription = "Clear" }, contentAlignment = Alignment.Center) {
+                        FoleviIcon(WebIcon.CIRCLE_X, null, size = 17.dp, tint = p.inkFaint)
                     }
+                } else {
+                    Spacer(Modifier.width(12.dp))
                 }
             }
             if (onBack != null) {
@@ -240,7 +242,7 @@ fun SearchScreen(open: (Route) -> Unit, onBack: (() -> Unit)? = null) {
                     "Cancel",
                     style = PhoneType.body,
                     color = p.heading,
-                    modifier = Modifier.height(44.dp).clip(CircleShape).clickable(role = Role.Button, onClick = onBack).padding(start = 12.dp, end = 4.dp).wrapCenter(),
+                    modifier = Modifier.heightIn(min = 44.dp).clip(CircleShape).clickable(role = Role.Button, onClick = onBack).padding(start = 12.dp, end = 4.dp).wrapCenter(),
                 )
             }
         }
@@ -272,7 +274,7 @@ fun SearchScreen(open: (Route) -> Unit, onBack: (() -> Unit)? = null) {
         // The results.
         val q = text.trim()
         val showPlace = everywhere
-        LazyColumn(Modifier.weight(1f), contentPadding = PaddingValues(bottom = nav + 24.dp)) {
+        LazyColumn(Modifier.weight(1f), contentPadding = PaddingValues(start = com.folevi.android.design.landscapeInset(), end = com.folevi.android.design.landscapeInset(), bottom = nav + 24.dp)) {
             if (q.isEmpty()) {
                 val rows = recent.value?.rows.orEmpty()
                 if (rows.isNotEmpty()) {
@@ -335,7 +337,7 @@ private fun <T> ScopeChip(label: String, on: Boolean, options: List<Pair<T, Stri
     val c = phoneColors()
     var open by remember { mutableStateOf(false) }
     Box(Modifier.alpha(if (enabled) 1f else 0.4f)) {
-        Box(Modifier.height(44.dp).clip(CircleShape).clickable(enabled = enabled, role = Role.Button) { open = true }, contentAlignment = Alignment.Center) {
+        Box(Modifier.heightIn(min = 44.dp).clip(CircleShape).clickable(enabled = enabled, role = Role.Button) { open = true }, contentAlignment = Alignment.Center) {
             Row(
                 Modifier.heightIn(min = 32.dp).widthIn(max = 180.dp).clip(CircleShape).background(if (on) p.heading else c.ink(0.065f)).padding(start = 14.dp, end = 10.dp),
                 verticalAlignment = Alignment.CenterVertically,
@@ -345,7 +347,7 @@ private fun <T> ScopeChip(label: String, on: Boolean, options: List<Pair<T, Stri
                 FoleviIcon(WebIcon.CHEVRON_DOWN, null, size = 14.dp, tint = if (on) p.canvas.copy(alpha = 0.7f) else p.inkMuted)
             }
         }
-        DropdownMenu(expanded = open, onDismissRequest = { open = false }, shape = MaterialTheme.shapes.large, containerColor = p.surfaceRaised, tonalElevation = 0.dp, shadowElevation = 8.dp) {
+        PhoneMenu(open, { open = false }) {
             options.forEachIndexed { i, (value, text) ->
                 DropdownMenuItem(
                     text = { Text(text) },

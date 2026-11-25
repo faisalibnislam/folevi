@@ -1276,6 +1276,10 @@ account button should move past iPadOS's window buttons).
   shell's cover over the main windows at launch, after time away and after sleep; "Ask for Windows Hello to unlock
   encrypted notes". Rust tests pass (149), the cover was walked through in jsdom (14 checks), the Windows Hello
   code compiles for x86_64-pc-windows-msvc. Not run on real Windows or a Linux desktop.
+- 2026-11-25: **Background sync in Folevi for Windows and Linux** (branch `claude/desktop-background-sync`, item 4 of
+  docs/DESKTOP_PARITY.md): hidden runner windows for places not on screen, woken and closed by the Mac's
+  BackgroundSync plan, and a native unread count per background account. Rust tests pass (152). Not run end to end
+  (needs two signed-in accounts on a test machine).
 - 2026-11-25: **1.6.78 released** from PR 109's merge (`e0183862`): web and Convex deployed; Mac published
   (notarized, Sparkle feed); iPhone and iPad on TestFlight (delivery 7120ad6e); Windows installers and Linux packages
   uploaded, apt and rpm repositories rebuilt and uploaded; the Android bundle built and left for the owner's Play

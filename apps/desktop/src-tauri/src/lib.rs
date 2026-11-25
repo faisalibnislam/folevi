@@ -10,6 +10,7 @@ mod ai;
 mod applock;
 mod hello;
 mod auth;
+mod backsync;
 mod badge;
 mod e2ee;
 mod events;
@@ -136,6 +137,10 @@ struct Services {
     reminders: Arc<reminders::Reminders>,
     lock: Arc<applock::AppLock>,
     places: Mutex<PlacesStore>,
+    /// Background sync's plan: which places sync in hidden runners, which are awake (backsync.rs).
+    backsync: Mutex<backsync::BackSync>,
+    /// Convex tokens for the native unread count, by place, with when each runs out (unix seconds).
+    poll_tokens: Mutex<HashMap<String, (String, u64)>>,
     settings: Mutex<DesktopSettings>,
     /// Which place each window's page belongs to (by label).
     bound: Mutex<HashMap<String, Option<String>>>,
@@ -154,6 +159,8 @@ struct Ui {
     windows: u32,
     tray: Option<TrayIcon>,
     dark: Option<bool>,
+    /// Background sync has begun (a few seconds after launch).
+    runners_started: bool,
 }
 
 fn services(app: &AppHandle) -> tauri::State<'_, Arc<Services>> {
@@ -214,7 +221,12 @@ fn emit_to_pages(app: &AppHandle, key: &str, payload: &Value, only: Option<&str>
 
 fn emitter(app: &AppHandle) -> events::Emit {
     let app = app.clone();
-    Arc::new(move |event: &str, payload: Value| emit_to_pages(&app, &format!("FoleviShell:{event}"), &payload, None))
+    Arc::new(move |event: &str, payload: Value| {
+        emit_to_pages(&app, &format!("FoleviShell:{event}"), &payload, None);
+        if event == "libraryChanges" {
+            library_changed(&app);
+        }
+    })
 }
 
 /// What every page of a window starts with (host.js's BOOT): the look and the app's facts. The page's own place
@@ -226,7 +238,7 @@ fn boot_script(_app: &AppHandle, label: &str) -> String {
         "shell": true,
         "platform": look(),
         "mac": MAC,
-        "window": if quick { "quickadd" } else { "main" },
+        "window": if quick { "quickadd" } else if is_runner(label) { "runner" } else { "main" },
         "version": FOLEVI_VERSION,
         "deviceName": device_name(),
         "accent": accent,
@@ -261,7 +273,7 @@ fn page_boot(s: &Services, label: &str, path: &str) -> Value {
         "deviceName": device_name(),
         "start": if path.starts_with('/') && !path.starts_with("//") && path != "/" && path != "/index.html" { path } else { "/documents" },
         // "Your own server": the server the page talks to (its website, Convex and Convex site), or null.
-        "places": { "current": place, "background": false, "server": s.server_of(place.as_deref()).map(|sv| sv.json()) },
+        "places": { "current": place, "background": is_runner(label), "server": s.server_of(place.as_deref()).map(|sv| sv.json()) },
         // The app lock's cover, from the page's first moment (no flash of notes while locked).
         "locked": is_main_label(label) && s.lock.covered(),
         "lockMethod": s.lock.method(),
@@ -656,6 +668,200 @@ fn switch_with(app: &AppHandle, place: Option<String>, path: &str, pending: bool
         recreate_quick_add(app);
     }
     update_badge(app);
+    // The place now on screen stops syncing in the background; the one it replaced starts.
+    ensure_runners(app);
+}
+
+// ---------------------------------------------------------------- background sync (backsync.rs)
+
+fn is_runner(label: &str) -> bool {
+    label.starts_with("runner-")
+}
+
+fn runner_label(place: &str) -> String {
+    format!("runner-{place}")
+}
+
+/// Whether runners run: not in test runs (FOLEVI_RUNNERS=1 turns them on there, for checks).
+fn runners_allowed(s: &Services) -> bool {
+    !s.paths.test_run || std::env::var_os("FOLEVI_RUNNERS").is_some()
+}
+
+/// The places that sync in the background: every account not on screen, and the library when another place is.
+fn wanted_places(s: &Services) -> Vec<String> {
+    let p = s.places.lock();
+    let current = p.current();
+    let mut want: Vec<String> = p.account_ids().into_iter().filter(|id| Some(id) != current.as_ref()).collect();
+    if p.has_library() && current.as_deref() != Some(LIBRARY) {
+        want.push(LIBRARY.to_string());
+    }
+    want
+}
+
+/// Brings the runners in line with the places: newly wanted ones wake, ones now on screen (or gone) close.
+fn ensure_runners(app: &AppHandle) {
+    let s = services(app);
+    if !runners_allowed(&s) || !s.ui.lock().runners_started {
+        return;
+    }
+    let (added, gone) = s.backsync.lock().set_wanted(wanted_places(&s));
+    for p in gone {
+        close_runner(app, &p);
+    }
+    for p in added {
+        wake_runner(app, &p, "background", None);
+    }
+}
+
+/// Wakes a place's runner (makes its hidden page, or keeps the one that's up).
+fn wake_runner(app: &AppHandle, place: &str, why: &str, hold: Option<std::time::Duration>) {
+    let s = services(app);
+    if !s.backsync.lock().wanted().iter().any(|p| p == place) {
+        return;
+    }
+    s.backsync.lock().woke(place, std::time::Instant::now(), hold);
+    let label = runner_label(place);
+    if app.get_webview_window(&label).is_some() {
+        return;
+    }
+    log::info!("Folevi: background sync wakes {place} ({why})");
+    s.bound.lock().insert(label.clone(), Some(place.to_string()));
+    let path = format!("/place-sync?place={}", percent_encoding::utf8_percent_encode(place, percent_encoding::NON_ALPHANUMERIC));
+    let script = boot_script(app, &label);
+    let app = app.clone();
+    // Made off the event handler: WebView2 needs the message loop free while a webview starts.
+    tauri::async_runtime::spawn(async move {
+        #[allow(unused_mut)]
+        let mut b = WebviewWindowBuilder::new(&app, &label, WebviewUrl::CustomProtocol(app_url(&path)))
+            .title("Folevi")
+            .inner_size(480.0, 320.0)
+            .visible(false)
+            .skip_taskbar(true)
+            .focused(false)
+            .initialization_script(&script)
+            .disable_drag_drop_handler()
+            .on_navigation(|url| is_app_url(url.as_str()) || url.as_str().starts_with("about:"));
+        #[cfg(windows)]
+        {
+            b = b.use_https_scheme(true);
+        }
+        if let Err(e) = b.build() {
+            log::warn!("Folevi: couldn't start background sync for a place ({e})");
+            services(&app).bound.lock().remove(&label);
+        }
+    });
+}
+
+fn close_runner(app: &AppHandle, place: &str) {
+    let label = runner_label(place);
+    if let Some(w) = app.get_webview_window(&label) {
+        let _ = w.destroy();
+    }
+    services(app).bound.lock().remove(&label);
+}
+
+/// The library's folder changed: its runner wakes (debounced, as the Mac's 3 seconds).
+fn library_changed(app: &AppHandle) {
+    static PENDING: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+    if PENDING.swap(true, std::sync::atomic::Ordering::SeqCst) {
+        return;
+    }
+    let app = app.clone();
+    tauri::async_runtime::spawn(async move {
+        tokio::time::sleep(std::time::Duration::from_secs(3)).await;
+        PENDING.store(false, std::sync::atomic::Ordering::SeqCst);
+        wake_runner(&app, LIBRARY, "folder", None);
+    });
+}
+
+/// The scheduler: closes runners that are done, wakes the next place due a catch-up, and asks each background
+/// account's unread count natively (waking its page when it went up).
+fn start_background_sync(app: &AppHandle) {
+    let s = services(app);
+    if !runners_allowed(&s) {
+        return;
+    }
+    let app2 = app.clone();
+    tauri::async_runtime::spawn(async move {
+        // After the first window has loaded its page (or five seconds).
+        tokio::time::sleep(std::time::Duration::from_secs(5)).await;
+        services(&app2).ui.lock().runners_started = true;
+        let a = app2.clone();
+        let _ = app2.run_on_main_thread(move || ensure_runners(&a));
+        loop {
+            let pace = services(&app2).backsync.lock().pace();
+            tokio::time::sleep(pace).await;
+            let now = std::time::Instant::now();
+            let (done, due) = {
+                let s = services(&app2);
+                let mut b = s.backsync.lock();
+                let done = b.to_release(now);
+                let due = b.due(now);
+                (done, due)
+            };
+            for p in done {
+                close_runner(&app2, &p);
+            }
+            for p in due {
+                wake_runner(&app2, &p, "catch up", None);
+            }
+        }
+    });
+    let app3 = app.clone();
+    tauri::async_runtime::spawn(async move {
+        tokio::time::sleep(std::time::Duration::from_secs(10)).await;
+        loop {
+            poll_unread(&app3).await;
+            let front = app3.webview_windows().values().any(|w| w.is_focused().unwrap_or(false));
+            let every = backsync::poll_interval();
+            tokio::time::sleep(if front { every } else { every * 3 }).await;
+        }
+    });
+}
+
+/// The Convex deployment a place's account syncs with: its Folevi Server's ("Your own server"), else the one this
+/// interface was built for (shell/build.json).
+fn convex_url_of(app: &AppHandle, place: &str) -> Option<String> {
+    if let Some(sv) = services(app).server_of(Some(place)) {
+        return Some(sv.active_urls().convex);
+    }
+    let (bytes, _) = asset(app, "shell/build.json")?;
+    let v: Value = serde_json::from_slice(&bytes).ok()?;
+    v.get("convexUrl").and_then(Value::as_str).filter(|u| u.starts_with("https://") || u.starts_with("http://")).map(|u| u.trim_end_matches('/').to_string())
+}
+
+async fn poll_unread(app: &AppHandle) {
+    let s = services(app).inner().clone();
+    let accounts: Vec<String> = s.backsync.lock().wanted().iter().filter(|p| user_id_of(Some(p)).is_some()).cloned().collect();
+    let client = reqwest::Client::builder().timeout(std::time::Duration::from_secs(20)).build().unwrap_or_default();
+    for place in accounts {
+        let Some(convex) = convex_url_of(app, &place) else { continue };
+        let now_s = now_ms() / 1000;
+        let cached = s.poll_tokens.lock().get(&place).filter(|(_, until)| *until > now_s).map(|(t, _)| t.clone());
+        let token = match cached {
+            Some(t) => t,
+            None => {
+                let site = s.site_of(Some(&place));
+                let Ok(Some(t)) = s.auth.convex_token(user_id_of(Some(&place)).as_deref(), site.as_ref()).await else { continue };
+                s.poll_tokens.lock().insert(place.clone(), (t.clone(), backsync::token_good_until(&t, now_s)));
+                t
+            }
+        };
+        let body = json!({ "path": "notifications:unreadCount", "args": {}, "format": "json" });
+        let Ok(res) = client.post(format!("{convex}/api/query")).bearer_auth(&token).json(&body).send().await else { continue };
+        if matches!(res.status().as_u16(), 401 | 403) {
+            s.poll_tokens.lock().remove(&place);
+            continue;
+        }
+        let Ok(v) = res.json::<Value>().await else { continue };
+        let Some(count) = v.get("value").and_then(Value::as_u64) else { continue };
+        s.places.lock().describe(&place, &json!({ "unread": count }));
+        let new = s.backsync.lock().unread_now(&place, count);
+        signal_places_changed(app);
+        if new {
+            wake_runner(app, &place, "notification", None);
+        }
+    }
 }
 
 /// ServerReach (ShellServer.swift): each server account uses the first of its server's names that answers, home
@@ -702,6 +908,9 @@ fn signal_places_changed(app: &AppHandle) {
         let list = places_list(&app).await;
         emit_to_pages(&app, "FoleviShell:placesChanged", &json!({ "places": list }), None);
         update_badge(&app);
+        // A place added, signed out or opened: background sync follows.
+        let a = app.clone();
+        let _ = app.run_on_main_thread(move || ensure_runners(&a));
     });
 }
 
@@ -1184,8 +1393,14 @@ async fn places_call(app: &AppHandle, s: &Arc<Services>, label: &str, place: Opt
                     _ => {}
                 }
             }
-            if label == "main" {
+            if is_runner(label) {
+                if let (Some(pl), Some(w)) = (place.as_deref(), o.get("waiting").and_then(Value::as_u64)) {
+                    s.backsync.lock().reported(pl, w);
+                }
+            }
+            if label == "main" || is_runner(label) {
                 signal_places_changed(app);
+                update_badge(app);
             }
             Ok(Value::Null)
         }
@@ -1749,6 +1964,8 @@ pub fn run() {
                 reminders: reminders.clone(),
                 lock: Arc::new(applock::AppLock::load(user_data.join("lock.json"), lock_method())),
                 places: Mutex::new(places),
+                backsync: Mutex::new(backsync::BackSync::new(backsync::Plan::default())),
+                poll_tokens: Mutex::new(HashMap::new()),
                 settings: Mutex::new(settings),
                 bound: Mutex::new(HashMap::new()),
                 keys: Mutex::new(HashMap::new()),
@@ -1779,6 +1996,7 @@ pub fn run() {
                 log::info!("Folevi: locked at launch");
             }
             watch_sleep(&handle);
+            start_background_sync(&handle);
 
             // folevi:// links: the one that started the app, then each later one (the single-instance plugin
             // forwards a second start's). Registered at run time too, for the AppImage and test builds.

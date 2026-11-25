@@ -1271,6 +1271,11 @@ account button should move past iPadOS's window buttons).
   `packaging/desktop/publish-update-feed.sh` signs the published installers and writes the feed
   (docs/DESKTOP_APP.md, "Updates"). Takes effect from the first release that carries it; 1.6.78 and older have no
   updater, so their users install that release by hand once.
+- 2026-11-25: **App lock and Windows Hello in Folevi for Windows and Linux** (branch `claude/desktop-app-lock`, item 3
+  of docs/DESKTOP_PARITY.md): lockGet/lockSet as on the Mac; Windows Hello on Windows, a passphrase on Linux; the
+  shell's cover over the main windows at launch, after time away and after sleep; "Ask for Windows Hello to unlock
+  encrypted notes". Rust tests pass (149), the cover was walked through in jsdom (14 checks), the Windows Hello
+  code compiles for x86_64-pc-windows-msvc. Not run on real Windows or a Linux desktop.
 - 2026-11-25: **1.6.78 released** from PR 109's merge (`e0183862`): web and Convex deployed; Mac published
   (notarized, Sparkle feed); iPhone and iPad on TestFlight (delivery 7120ad6e); Windows installers and Linux packages
   uploaded, apt and rpm repositories rebuilt and uploaded; the Android bundle built and left for the owner's Play

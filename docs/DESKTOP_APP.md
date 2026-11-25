@@ -159,13 +159,30 @@ Snap or Flatpak updates through the system (`linux::self_update_allowed`), so it
   `packaging/desktop/publish-update-feed.sh <v> <dir with the release files> [--notes "..."] [--dry-run]`. It checks
   the hosted installer is byte for byte the local one, signs it and uploads each `latest.json`. Nothing is in CI: the
   key never leaves the Mac.
+## App lock
+
+As on the Mac (Settings > Library > App lock, `src/applock.rs`): Folevi covers its main windows when it opens, when
+you come back after the chosen time away ("Ask again when you come back") and after the computer slept, until you
+show it's you. Quick Add stays usable, as on the Mac. The cover is drawn by the shell (`bridge/host.js`, a closed
+shadow root, the page under it inert).
+- Windows: Windows Hello (a face, a fingerprint or the PIN; `src/hello.rs`), which also confirms turning the lock on
+  or off. A PC without Windows Hello can't turn it on, and a lock whose Windows Hello went away is dropped.
+- Linux: a passphrase chosen for Folevi's lock when it's turned on, and typed to unlock or to turn it off. lock.json
+  keeps its PBKDF2-SHA256 hash, never the passphrase. Forgotten: quit Folevi and delete
+  `~/.local/share/com.folevi.Folevi/lock.json` (the lock covers the screen; it encrypts nothing).
+
+"Ask for Windows Hello to unlock encrypted notes" (Settings > Desktop app) asks before the device keys open a box;
+a yes counts for 30 seconds (the Mac's Touch ID rule). The choice is kept in the keys' `prefs.json` (`touchId`).
+Linux has nothing to ask with, so the switch isn't shown there.
+
+Not covered: Windows locking the screen without sleeping or leaving Folevi (the Mac also watches the screen lock).
 
 ## Not done yet
 
 - Signing (Windows), uploading to R2, a download page, Flathub submission (`packaging/linux/flatpak/com.folevi.Folevi.yml`
   needs the release's .deb addresses and checksums; docs/LINUX.md), the Microsoft Store.
 - Dropbox and Google Drive sign-in on this platform (the library's cloud copy is ported; the sign-in flow isn't).
-- An app lock, notification actions, call recording, text in images.
+- Notification actions, call recording, text in images.
 - Snap layouts when hovering the maximize button (Windows+Z still works).
 
 ## Testing checklist for the owner

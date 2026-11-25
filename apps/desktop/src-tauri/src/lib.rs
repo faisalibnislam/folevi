@@ -7,6 +7,8 @@
 //! ShellRouter.swift. Since 2026-11-24 (the owner's "one web app everywhere", small and light like the Mac app);
 //! it replaces the Electron build of PR 58. docs/DESKTOP_APP.md.
 mod ai;
+mod applock;
+mod hello;
 mod auth;
 mod badge;
 mod e2ee;
@@ -132,6 +134,7 @@ struct Services {
     auth: Arc<auth::Auth>,
     ai: Arc<ai::Ai>,
     reminders: Arc<reminders::Reminders>,
+    lock: Arc<applock::AppLock>,
     places: Mutex<PlacesStore>,
     settings: Mutex<DesktopSettings>,
     /// Which place each window's page belongs to (by label).
@@ -259,6 +262,9 @@ fn page_boot(s: &Services, label: &str, path: &str) -> Value {
         "start": if path.starts_with('/') && !path.starts_with("//") && path != "/" && path != "/index.html" { path } else { "/documents" },
         // "Your own server": the server the page talks to (its website, Convex and Convex site), or null.
         "places": { "current": place, "background": false, "server": s.server_of(place.as_deref()).map(|sv| sv.json()) },
+        // The app lock's cover, from the page's first moment (no flash of notes while locked).
+        "locked": is_main_label(label) && s.lock.covered(),
+        "lockMethod": s.lock.method(),
     })
 }
 
@@ -370,6 +376,9 @@ fn watch_window(app: &AppHandle, w: &WebviewWindow) {
         WindowEvent::Resized(_) | WindowEvent::Focused(_) => {
             let state = json!({ "maximized": win.is_maximized().unwrap_or(false), "fullscreen": win.is_fullscreen().unwrap_or(false), "focused": win.is_focused().unwrap_or(true) });
             emit_to_pages(&app, "desktop:window", &state, Some(&label));
+            if let WindowEvent::Focused(f) = event {
+                note_focus(&app, *f);
+            }
             if let WindowEvent::Focused(true) = event {
                 let lib = services(&app).library.clone();
                 tauri::async_runtime::spawn(async move { lib.rescan().await });
@@ -401,6 +410,205 @@ fn show_main(app: &AppHandle, path: Option<&str>) {
 fn command_main(app: &AppHandle, command: Value) {
     show_main(app, None);
     emit_to_pages(app, "desktop:command", &command, Some("main"));
+}
+
+// ---------------------------------------------------------------- the app lock (applock.rs)
+
+/// The passphrase prompts the page shows for the lock (Linux), by id: the page's answer, or None when cancelled.
+static LOCK_PROMPTS: once_cell::sync::Lazy<Mutex<HashMap<String, tokio::sync::oneshot::Sender<Option<String>>>>> = once_cell::sync::Lazy::new(|| Mutex::new(HashMap::new()));
+
+/// This PC's way to unlock: Windows Hello when it's set up, a passphrase on Linux.
+fn lock_method() -> &'static str {
+    if cfg!(windows) {
+        if std::thread::spawn(hello::available).join().unwrap_or(false) {
+            "windowsHello"
+        } else {
+            "none"
+        }
+    } else if cfg!(target_os = "linux") {
+        "passphrase"
+    } else {
+        "none"
+    }
+}
+
+fn is_main_label(label: &str) -> bool {
+    label == "main" || label.starts_with("main-")
+}
+
+/// Covers every main window (Quick Add stays, as on the Mac) when the lock is on.
+fn cover_windows(app: &AppHandle) {
+    let s = services(app);
+    if s.lock.cover() {
+        let state = json!({ "covered": true, "method": s.lock.method() });
+        for (label, w) in app.webview_windows() {
+            if is_main_label(&label) {
+                let _ = w.eval(&format!("window.__foleviHost&&window.__foleviHost.emit(\"desktop:lock\",{state})"));
+            }
+        }
+    }
+}
+
+fn uncover_windows(app: &AppHandle) {
+    services(app).lock.uncover();
+    emit_to_pages(app, "desktop:lock", &json!({ "covered": false }), None);
+}
+
+/// Windows Hello for the encrypted notes (e2ee.rs), in front of the window that asked.
+struct HelloAsk {
+    hwnd: isize,
+}
+
+impl HelloAsk {
+    fn for_window(app: &AppHandle, label: &str) -> Self {
+        #[cfg(windows)]
+        let hwnd = app.get_webview_window(label).and_then(|w| w.hwnd().ok()).map(|h| h.0 as isize).unwrap_or(0);
+        #[cfg(not(windows))]
+        let hwnd = {
+            let _ = (app, label);
+            0isize
+        };
+        Self { hwnd }
+    }
+}
+
+impl e2ee::Ask for HelloAsk {
+    fn available(&self) -> bool {
+        hello::available()
+    }
+    fn confirm(&self, message: &str) -> bool {
+        hello::verify(self.hwnd, message)
+    }
+}
+
+/// Windows Hello in front of the window `label`, on a blocking thread: true when it said it's them.
+async fn ask_hello(app: &AppHandle, label: &str, message: &'static str) -> bool {
+    #[cfg(windows)]
+    let hwnd = app.get_webview_window(label).and_then(|w| w.hwnd().ok()).map(|h| h.0 as isize).unwrap_or(0);
+    #[cfg(not(windows))]
+    let hwnd = {
+        let _ = (app, label);
+        0isize
+    };
+    tauri::async_runtime::spawn_blocking(move || hello::verify(hwnd, message)).await.unwrap_or(false)
+}
+
+/// The page's passphrase prompt in the window `label` ("set": choose one; "check": type it): the passphrase, or
+/// None when cancelled (or after five minutes).
+async fn ask_passphrase(app: &AppHandle, label: &str, mode: &str) -> Option<String> {
+    let id = format!("p{}", now_ms());
+    let (tx, rx) = tokio::sync::oneshot::channel();
+    LOCK_PROMPTS.lock().insert(id.clone(), tx);
+    emit_to_pages(app, "desktop:lockPrompt", &json!({ "id": id, "mode": mode, "min": applock::MIN_PASSPHRASE }), Some(label));
+    let answer = tokio::time::timeout(std::time::Duration::from_secs(300), rx).await.ok().and_then(Result::ok).flatten();
+    LOCK_PROMPTS.lock().remove(&id);
+    answer
+}
+
+/// lockSet { lock?, lockAfter? } (MacAppLock.swift): turning the lock on or off needs the person to confirm it.
+async fn lock_set(app: &AppHandle, s: &Arc<Services>, label: &str, o: &Value) -> ShellResult {
+    let after = match o.get("lockAfter") {
+        None | Some(Value::Null) => None,
+        Some(v) => Some(applock::valid_after(v).ok_or_else(|| ShellError::invalid("lockAfter is a number of seconds."))?),
+    };
+    let lock = match o.get("lock") {
+        None | Some(Value::Null) => None,
+        Some(Value::Bool(b)) => Some(*b),
+        Some(_) => return Err(ShellError::invalid("lock is true or false.")),
+    };
+    if cfg!(windows) {
+        let method = lock_method();
+        s.lock.set_method(method);
+    }
+    if let Some(on) = lock.filter(|on| *on != s.lock.on()) {
+        match s.lock.method() {
+            "windowsHello" => {
+                let message = if on { "Turn on the Windows Hello lock for Folevi" } else { "Turn off the Windows Hello lock for Folevi" };
+                if !ask_hello(app, label, message).await {
+                    return Err(ShellError::new("cancelled", "Windows Hello didn't confirm it."));
+                }
+                s.lock.set_lock(on, None).map_err(|e| ShellError::io(e.to_string()))?;
+            }
+            "passphrase" if on => {
+                let Some(p) = ask_passphrase(app, label, "set").await else { return Err(ShellError::new("cancelled", "The lock wasn't turned on.")) };
+                if p.chars().count() < applock::MIN_PASSPHRASE {
+                    return Err(ShellError::invalid(format!("Use at least {} characters.", applock::MIN_PASSPHRASE)));
+                }
+                s.lock.set_lock(true, Some(applock::hash_passphrase(&p))).map_err(|e| ShellError::io(e.to_string()))?;
+            }
+            "passphrase" => {
+                let Some(p) = ask_passphrase(app, label, "check").await else { return Err(ShellError::new("cancelled", "The lock is still on.")) };
+                let ok = s.lock.passphrase().is_some_and(|h| applock::passphrase_matches(&h, &p));
+                if !ok {
+                    return Err(ShellError::new("wrong_passphrase", "That passphrase isn't right."));
+                }
+                s.lock.set_lock(false, None).map_err(|e| ShellError::io(e.to_string()))?;
+            }
+            _ => return Err(ShellError::unavailable("Windows Hello isn't set up on this PC, so Folevi can't lock. Set it up in Settings > Accounts > Sign-in options.")),
+        }
+    }
+    if let Some(a) = after {
+        s.lock.set_after(a).map_err(|e| ShellError::io(e.to_string()))?;
+    }
+    Ok(s.lock.settings())
+}
+
+/// lockUnlock { passphrase? } from the cover: Windows Hello, or the passphrase; then every window is uncovered.
+async fn lock_unlock(app: &AppHandle, s: &Arc<Services>, label: &str, passphrase: Option<&str>) -> ShellResult {
+    if !s.lock.covered() {
+        return Ok(value(true));
+    }
+    let ok = match s.lock.method() {
+        "windowsHello" => ask_hello(app, label, "Unlock your Folevi notes").await,
+        "passphrase" => {
+            let ok = passphrase.zip(s.lock.passphrase()).is_some_and(|(p, h)| applock::passphrase_matches(&h, p));
+            if !ok {
+                return Err(ShellError::new("wrong_passphrase", "That passphrase isn't right."));
+            }
+            true
+        }
+        _ => true,
+    };
+    if ok {
+        uncover_windows(app);
+    }
+    Ok(value(ok))
+}
+
+/// Whether any Folevi window is in front; when none is, the lock's away clock runs.
+fn note_focus(app: &AppHandle, focused: bool) {
+    let s = services(app);
+    if focused {
+        if s.lock.back(std::time::Instant::now()) {
+            cover_windows(app);
+        }
+        return;
+    }
+    let app = app.clone();
+    tauri::async_runtime::spawn(async move {
+        // Focus moving between Folevi's own windows isn't being away.
+        tokio::time::sleep(std::time::Duration::from_millis(200)).await;
+        if !app.webview_windows().values().any(|w| w.is_focused().unwrap_or(false)) {
+            services(&app).lock.away(std::time::Instant::now());
+        }
+    });
+}
+
+/// Covers after the computer slept (a tick that came far too late), whatever "Ask again" says, as on the Mac.
+fn watch_sleep(app: &AppHandle) {
+    let app = app.clone();
+    tauri::async_runtime::spawn(async move {
+        let mut last = std::time::SystemTime::now();
+        loop {
+            tokio::time::sleep(std::time::Duration::from_secs(5)).await;
+            let now = std::time::SystemTime::now();
+            if now.duration_since(last).is_ok_and(|d| d > std::time::Duration::from_secs(40)) {
+                let a = app.clone();
+                let _ = app.run_on_main_thread(move || cover_windows(&a));
+            }
+            last = now;
+        }
+    });
 }
 
 /// Opens a place in every main window: each is made again with the new place's page (its policy and session are
@@ -838,8 +1046,8 @@ async fn route_call(app: &AppHandle, s: &Arc<Services>, label: &str, place: Opti
         "authFetch" => s.auth.fetch(o, slot.as_deref(), s.site_of(place.as_deref()).as_ref()).await,
         "authConvexToken" => Ok(value(s.auth.convex_token(slot.as_deref(), s.site_of(place.as_deref()).as_ref()).await?)),
         m if m.starts_with("ai") => s.ai.call(m, o, emitter(app)).await,
-        "lockGet" => Ok(Value::Null),
-        "lockSet" => Err(ShellError::unavailable("Folevi on this computer has no app lock yet.")),
+        "lockGet" => Ok(s.lock.settings()),
+        "lockSet" => lock_set(app, s, label, o).await,
         "notifySchedule" => Ok(value(local && s.reminders.schedule(o))),
         "notifyCancel" => {
             if local {
@@ -854,7 +1062,8 @@ async fn route_call(app: &AppHandle, s: &Arc<Services>, label: &str, place: Opti
         m if m.starts_with("e2ee") => {
             let keys = s.keys_for(place.as_deref());
             let (m, o) = (m.to_string(), o.clone());
-            tauri::async_runtime::spawn_blocking(move || keys.call(&m, &o)).await.map_err(|e| ShellError::io(e.to_string()))?
+            let hello = HelloAsk::for_window(app, label);
+            tauri::async_runtime::spawn_blocking(move || keys.call_asking(&m, &o, &hello)).await.map_err(|e| ShellError::io(e.to_string()))?
         }
         _ => Err(ShellError::unavailable(format!("{method} isn't in Folevi for this computer."))),
     }
@@ -1070,6 +1279,14 @@ async fn desktop_call(app: AppHandle, webview: tauri::Webview, name: String, arg
         "probe" => {
             if cfg!(debug_assertions) {
                 println!("PROBE {label} {args}");
+            }
+            Ok(Value::Null)
+        }
+        "lockUnlock" => lock_unlock(&app, &s, &label, opt_str(&args, "passphrase")).await,
+        "lockAnswer" => {
+            let id = text("id", 40);
+            if let Some(tx) = LOCK_PROMPTS.lock().remove(&id) {
+                let _ = tx.send(opt_str(&args, "passphrase").map(|p| p.chars().take(1000).collect()));
             }
             Ok(Value::Null)
         }
@@ -1530,6 +1747,7 @@ pub fn run() {
                 auth,
                 ai: ai::Ai::new(secret_store),
                 reminders: reminders.clone(),
+                lock: Arc::new(applock::AppLock::load(user_data.join("lock.json"), lock_method())),
                 places: Mutex::new(places),
                 settings: Mutex::new(settings),
                 bound: Mutex::new(HashMap::new()),
@@ -1556,6 +1774,11 @@ pub fn run() {
             update_tray(&handle);
             watch_server_names(&handle);
             updates::start(&handle, services.paths.test_run);
+            // The app lock: covered from the first page when it's on; again after time away or sleep.
+            if services.lock.cover() {
+                log::info!("Folevi: locked at launch");
+            }
+            watch_sleep(&handle);
 
             // folevi:// links: the one that started the app, then each later one (the single-instance plugin
             // forwards a second start's). Registered at run time too, for the AppImage and test builds.

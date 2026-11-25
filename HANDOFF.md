@@ -1258,6 +1258,9 @@ account button should move past iPadOS's window buttons).
   `DATABASE_UDF_USER_TIMEOUT_SECONDS=4` for that backend. Bursts show in `convex.log` as "took a long time".
 
 ## 12. Change log
+- 2026-11-25: **Recording a call in Folevi for Windows** (branch `claude/desktop-call-recording`, item 7 of
+  docs/DESKTOP_PARITY.md): WebView2's getDisplayMedia with "Share system audio", Windows wording when the sound
+  doesn't come. Web unit test passes; not tried on a real PC.
 - 2026-11-25: **1.6.78 released** from PR 109's merge (`e0183862`): web and Convex deployed; Mac published
   (notarized, Sparkle feed); iPhone and iPad on TestFlight (delivery 7120ad6e); Windows installers and Linux packages
   uploaded, apt and rpm repositories rebuilt and uploaded; the Android bundle built and left for the owner's Play

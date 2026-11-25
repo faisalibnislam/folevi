@@ -132,6 +132,8 @@
   };
   var bridge = {
     platform: BOOT.platform,
+    // Recording a call: WebView2's screen capture carries the PC's sound ("Share system audio"); WebKitGTK's doesn't.
+    callCapture: BOOT.platform === "windows",
     setBadge: function (count) {
       void desktop("badge", { count: Number(count) || 0 }).catch(function () {});
     },

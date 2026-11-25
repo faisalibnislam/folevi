@@ -55,7 +55,7 @@ export default [
   },
   {
     // Node scripts; page.evaluate/addInitScript callbacks run in the browser.
-    files: ["e2e/**/*.mjs", "scripts/**/*.mjs"],
-    languageOptions: { globals: { process: "readonly", console: "readonly", localStorage: "readonly", fetch: "readonly" } },
+    files: ["e2e/**/*.mjs", "scripts/**/*.mjs", "perf/**/*.mjs"],
+    languageOptions: { globals: { process: "readonly", console: "readonly", localStorage: "readonly", fetch: "readonly", URL: "readonly" } },
   },
 ];

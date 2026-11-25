@@ -68,6 +68,6 @@ const kb = (b: number) => (b < 1024 ? `${b} B` : b < 1 << 20 ? `${(b / 1024).toF
 
 /** A Markdown table of costs. */
 export function table(costs: Cost[]): string {
-  const rows = costs.map((c) => `| ${c.name} | ${c.documentsRead} | ${kb(c.bytesRead)} | ${c.databaseQueries} | ${c.ms} | ${c.error ? `fails: ${c.error}` : "ok"} |`);
-  return ["| Function | Docs read | Bytes read | Index ranges | ms (convex-test) | Result |", "|---|---:|---:|---:|---:|---|", ...rows].join("\n");
+  const rows = costs.map((c) => `| ${c.name} | ${c.documentsRead} | ${kb(c.bytesRead)} | ${c.databaseQueries} | ${c.documentsWritten} | ${c.ms} | ${c.error ? `fails: ${c.error}` : "ok"} |`);
+  return ["| Function | Docs read | Bytes read | Index ranges | Docs written | ms (convex-test) | Result |", "|---|---:|---:|---:|---:|---:|---|", ...rows].join("\n");
 }

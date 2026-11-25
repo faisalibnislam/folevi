@@ -2,7 +2,8 @@
 // workspace's space key goes to each member's account key; a shared page's note key goes to each guest's.
 // Devices seal the keys; the server checks who may receive them and stores the sealed boxes. WP2.
 import { v } from "convex/values";
-import { mutation, query } from "../_generated/server";
+import { query } from "../_generated/server";
+import { mutation } from "../lib/functions";
 import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
 import { assertWritable, documentAccess, documentAccessInfo, getDocumentByPublicId, requireDocument, requireProfile, resolveScope, accessAtLeast } from "../lib/auth";

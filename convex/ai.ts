@@ -21,7 +21,8 @@
 // needs. Prompts, note text and answers are never logged or stored. Only the event, model, status and
 // token counts are.
 import { v } from "convex/values";
-import { action, internalMutation, internalQuery, mutation, query, type ActionCtx, type MutationCtx } from "./_generated/server";
+import { action, internalQuery, query, type ActionCtx, type MutationCtx } from "./_generated/server";
+import { internalMutation, mutation } from "./lib/functions";
 import { internal } from "./_generated/api";
 import type { Doc, Id } from "./_generated/dataModel";
 import { blocksToMarkdown } from "@folevi/editor-schema";

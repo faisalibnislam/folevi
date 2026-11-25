@@ -1,7 +1,8 @@
 import { effectiveTheme } from "./lib/noteThemes";
 import { applyThemeDefaults } from "./lib/themes";
 import { v } from "convex/values";
-import { internalQuery, mutation, query } from "./_generated/server";
+import { internalQuery, query } from "./_generated/server";
+import { mutation } from "./lib/functions";
 import { internal } from "./_generated/api";
 import { deviceStatus } from "./lib/devices";
 import type { Doc, Id } from "./_generated/dataModel";

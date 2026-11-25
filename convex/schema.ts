@@ -292,6 +292,36 @@ export default defineSchema({
     .index("by_workspace_seq", ["workspaceId", "seq"])
     .index("by_owner_seq", ["ownerProfileId", "seq"]),
 
+  /**
+   * Per folder, and per scope for its Drafts (folderId unset): how many pages the list shows, when a folder's
+   * pages last changed and its newest pages as card previews. Derived, kept in step by every write to a note
+   * (lib/listStats.ts through lib/functions.ts), so folder views and counts needn't read the pages.
+   */
+  listStats: defineTable({
+    ...scoped,
+    folderId: v.optional(v.id("folders")),
+    count: v.number(),
+    lastEditedAt: v.optional(v.number()),
+    previews: v.array(
+      v.object({
+        documentId: v.id("documents"),
+        updatedAt: v.number(),
+        /** The page's _creationTime (ties in time are ordered by it). */
+        created: v.number(),
+        createdAt: v.number(),
+        title: v.string(),
+        cover: vDocumentCover,
+        excerpt: v.string(),
+        restricted: v.optional(v.boolean()),
+        /** A sealed note's sealed title and appearance (lib/e2ee/sealedRows.ts sealedFieldsOf). */
+        sealed: v.optional(v.any()),
+      }),
+    ),
+  })
+    .index("by_folder", ["folderId"])
+    .index("by_owner_folder", ["ownerProfileId", "folderId"])
+    .index("by_workspace_folder", ["workspaceId", "folderId"]),
+
   tags: defineTable({
     publicId: v.string(),
     ...scoped,
@@ -446,6 +476,28 @@ export default defineSchema({
     .searchIndex("search_title", {
       searchField: "title",
       filterFields: ["workspaceId", "ownerProfileId", "inTrash"],
+    }),
+
+  /**
+   * A note's search text, apart from its row (it can be 32,000 characters, and lists and counts read note rows):
+   * the text with the full-text index, and copies of the note's fields that search filters on. Kept in step by
+   * every write to a note (lib/documentText.ts through lib/functions.ts). Rollout: docs/perf/backend-results.md.
+   */
+  documentText: defineTable({
+    documentId: v.id("documents"),
+    ...scoped,
+    searchText: v.string(),
+    inTrash: v.boolean(),
+    folderId: v.optional(v.id("folders")),
+    createdBy: v.id("profiles"),
+    kind: vDocumentKind,
+  })
+    .index("by_document", ["documentId"])
+    .index("by_workspace", ["workspaceId"])
+    .index("by_owner", ["ownerProfileId"])
+    .searchIndex("search_text", {
+      searchField: "searchText",
+      filterFields: ["workspaceId", "ownerProfileId", "inTrash", "folderId", "createdBy", "kind"],
     }),
 
   documentLinks: defineTable({
@@ -1298,6 +1350,13 @@ export default defineSchema({
     createdBy: v.id("profiles"),
     updatedAt: v.number(),
     documentInTrash: v.boolean(),
+    /**
+     * The note's title and icon, kept in step (lib/documents.ts syncTaskProjection, syncTaskLabels) so task lists
+     * needn't read each note. Unset on rows saved before they were kept; lists then read the note.
+     */
+    documentPublicId: v.optional(v.string()),
+    documentTitle: v.optional(v.string()),
+    documentIcon: v.optional(v.string()),
   })
     .index("by_block", ["blockId"])
     .index("by_document", ["documentId"])

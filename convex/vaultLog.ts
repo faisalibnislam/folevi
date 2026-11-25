@@ -2,7 +2,8 @@
 // anchors and the 3-year expiry (docs/VAULT_PLAN.md §7). Entries are written only by lib/vault/log.ts. This module
 // never edits an entry; its one delete is the expiry (tests/convex/static/invariants.test.ts holds both).
 import { v } from "convex/values";
-import { internalMutation, mutation, query } from "./_generated/server";
+import { query } from "./_generated/server";
+import { internalMutation, mutation } from "./lib/functions";
 import { internal } from "./_generated/api";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
 import type { Doc } from "./_generated/dataModel";

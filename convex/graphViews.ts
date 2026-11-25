@@ -2,7 +2,8 @@
 // and the native apps through the engine). Private to the person who saved them; listed in the sidebar.
 import { v } from "convex/values";
 import { ulid } from "@folevi/editor-schema";
-import { mutation, query } from "./_generated/server";
+import { query } from "./_generated/server";
+import { mutation } from "./lib/functions";
 import { requireProfile, resolveScope } from "./lib/auth";
 import { fail } from "./lib/errors";
 import { scopeKey, vScopeArg } from "./lib/scope";

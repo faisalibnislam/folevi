@@ -262,6 +262,13 @@ sign-in. Plan only; Phase 0 is still the only built part.
 production) and a read-cost harness (`tests/convex/perf/`, run with `FOLEVI_PERF=1`). Baseline and every fix's
 before/after numbers: `docs/perf/backend-results.md`. At 5,000 notes `organization.index` reads 13 MB per run (the
 limit is 16 MiB) and task lists read up to 1,476 documents.
+Step 2: every mutation is now built from `convex/lib/functions.ts` (not `_generated/server`), whose db wrapper reports
+writes to `documents` and `folders` to `lib/listStats.ts`. That keeps `listStats` (per folder: page count, last edit,
+5 newest previews; per scope: the Drafts count) in step, and `organization.index`, `recentFolders` and `draftCount`
+read it instead of the pages. A folder or scope without a row is counted from its pages as before until
+`migrations:backfillListStats` runs (production run waits for the owner's OK). Task rows carry their note's public
+id, title and icon (`syncTaskLabels`, cleared when a note is sealed), so task lists read no notes. Writing straight
+to the db in a test (`t.run`) skips the wrapper: use `watchedDb(ctx)` from `lib/functions.ts` there.
 
 **A failed query no longer takes a page down (branch `claude/project-thread-u99yc5`, open PR, 2026-11-24).** Components
 read queries through `apps/web/src/lib/convex/queries.ts` (`useQuery`, `usePaginatedQuery`, `useQueryState`), never
@@ -592,9 +599,17 @@ signed-in account, 1.5.58's frosted folders with a large library, and the iPad c
 account button should move past iPadOS's window buttons).
 
 ## 10. Next steps / open work
-- Folevi Server (`docs/SELF_HOSTING_PLAN.md` v2): waiting on the owner's decisions (§14: price, Folevi account
-  optional, code openness, relays at launch) and owner-only steps (§13: store developer accounts, the Connect
-  domain, NAS models, OK to download Convex and Node binaries, Resend sending, Convex license). Then Phase 1.
+- Folevi Server (`docs/SELF_HOSTING_PLAN.md` v2, `docs/self-hosting/CONTRACT.md`): built on branch
+  `claude/sleepy-goodall-3cg4e7` (backend server edition, web server edition with setup and admin panel, `folevid`
+  in `server/`, Folevi Connect in `services/connect/`, every package in `packaging/`, Mac/iOS server places, the
+  folevi.com/server download page). Owner approved (2026-11-25) merging to main after CI passes and uploading
+  packages to R2 (`folevi-updates`, `server/<version>/` and `server/latest.json`): Linux/container after the full
+  server run passes, each NAS package after its first real install (Synology on the owner's DS223). Open: the
+  Mac/iOS build check on the owner's Mac; Connect deploy (Fly.io, folevi.app DNS on Cloudflare, keys); store
+  developer accounts; Convex license confirmation; real icons; email-to-note on servers; guests' limits; owner
+  Google keys and covers on servers; dialog closing on resize in the admin panel; invite tokens in `next dev` logs.
+- Backend performance pass, owner's OK needed for production: run `migrations:backfillListStats` (optional, speeds
+  up existing folders) and `migrations:backfillDocumentText` (required before the note text switch PR merges).
 - Backend performance pass (`docs/perf/backend-results.md`): kept folder and Drafts counts, task rows that carry
   their note's title, a cheaper `changes.list`, then note text (`searchText`) split out of `documents`
   (widen, backfill, narrow; the owner approves each production backfill).
@@ -752,9 +767,20 @@ account button should move past iPadOS's window buttons).
   `DATABASE_UDF_USER_TIMEOUT_SECONDS=4` for that backend. Bursts show in `convex.log` as "took a long time".
 
 ## 12. Change log
+- 2026-11-25: Folevi Server built (branch `claude/sleepy-goodall-3cg4e7`): backend and web server editions, setup
+  and admin panel walked end to end on a real backend, `folevid` supervisor (encrypted backups, Connect client,
+  memory profiles), Folevi Connect service, packages for Synology/QNAP/ASUSTOR/TerraMaster/UGREEN/Unraid/Linux/
+  container/TrueNAS/CasaOS/Umbrel, Mac/iOS server places, folevi.com/server. Server domain `folevi.app` (owner
+  bought it); owner's test NAS is a DS223 (ARM64, 2 GB).
 - 2026-11-25: Self-hosting plan version 2 (`docs/SELF_HOSTING_PLAN.md`): native packages on every NAS that allows
   them, catalog apps on TrueNAS and the container-only systems, native Linux installer for DigitalOcean/Hetzner,
   Folevi Connect for Plex-like access, roles and admin panel, email and other services through optional relays.
+- 2026-11-25: Backend performance pass, step 3 (widen): `documentText` table holds each note's search text and search
+  fields, kept in step by the write hook; `migrations:backfillDocumentText` copies older notes (production run waits
+  for the owner). Readers are unchanged until the switch PR.
+- 2026-11-25: Backend performance pass, step 2: kept folder and Drafts stats (`listStats`, through the new
+  `lib/functions.ts` write hook), task rows with their note's title and icon, `changes.list` reads a note only once it
+  has unseen changes, a folder by last edit pages through its index. Numbers in `docs/perf/backend-results.md`.
 - 2026-11-25: Backend performance pass, step 1: a generated 5,000-note test library (`convex/devSeed.ts`, test
   accounts only, refused on production), a read-cost harness with Convex's limits on (`tests/convex/perf/`), and the
   baseline in `docs/perf/backend-results.md`.

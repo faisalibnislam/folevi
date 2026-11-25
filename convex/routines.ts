@@ -20,7 +20,8 @@
 // Note content is never emailed or logged. Turning a routine off (or AI off) stops it: nothing is scheduled,
 // read or sent.
 import { v } from "convex/values";
-import { internalAction, internalMutation, mutation, query, type MutationCtx, type QueryCtx } from "./_generated/server";
+import { internalAction, query, type MutationCtx, type QueryCtx } from "./_generated/server";
+import { internalMutation, mutation } from "./lib/functions";
 import { internal } from "./_generated/api";
 import type { Doc, Id } from "./_generated/dataModel";
 import { markdownToBlocks, plainText, rankSequence, SCHEMA_VERSION, ulid, type InlineNode, type WireBlock } from "@folevi/editor-schema";

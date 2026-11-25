@@ -15,7 +15,8 @@
 // text is never logged; only counts are.
 import { v } from "convex/values";
 import { isSealed } from "./lib/e2ee/state";
-import { internalAction, internalMutation, internalQuery, mutation, query, type QueryCtx } from "./_generated/server";
+import { internalAction, internalQuery, query, type QueryCtx } from "./_generated/server";
+import { internalMutation, mutation } from "./lib/functions";
 import { internal } from "./_generated/api";
 import type { Doc, Id } from "./_generated/dataModel";
 import { accessAtLeast, assertWritable, documentAccess, getDocumentByPublicId, PageReader, requireProfile, resolveScope } from "./lib/auth";

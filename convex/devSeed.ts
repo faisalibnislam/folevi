@@ -6,7 +6,8 @@
 //   1. sign in once as e.g. perf@example.com (creates the profile), then
 //   2. npx convex run devSeed:seedLibrary '{"email":"perf@example.com"}'
 import { v } from "convex/values";
-import { internalAction, internalMutation } from "./_generated/server";
+import { internalAction } from "./_generated/server";
+import { internalMutation } from "./lib/functions";
 import { internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 import { rankSequence, ulid } from "@folevi/editor-schema";

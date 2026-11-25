@@ -6,7 +6,8 @@
 // Polar is optional: without POLAR_* settings, upgrades explain that payments aren't set up, and
 // development builds offer test purchases instead (never in production). docs/BILLING.md.
 import { v } from "convex/values";
-import { action, httpAction, internalMutation, internalQuery, mutation, query } from "./_generated/server";
+import { action, httpAction, internalQuery, query } from "./_generated/server";
+import { internalMutation, mutation } from "./lib/functions";
 import { internal } from "./_generated/api";
 import type { Doc, Id } from "./_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "./_generated/server";

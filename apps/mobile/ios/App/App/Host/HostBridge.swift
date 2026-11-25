@@ -141,6 +141,13 @@ final class WebHost: NSObject {
         let send: () -> Void = { self.hostPlugin?.notifyListeners("event", data: ["plugin": plugin, "event": event, "data": data]) }
         if Thread.isMainThread { send() } else { DispatchQueue.main.async(execute: send) }
     }
+
+    /// A "folevi:…" event on the page's window (what the iPhone and iPad app's WebHost does with the same call):
+    /// FoleviHost's "windowEvent", which bridge/mobile-bridge.js dispatches.
+    func triggerWindowJSEvent(eventName: String) {
+        guard eventName.hasPrefix("folevi:") else { return }
+        emit("FoleviHost", "windowEvent", ["name": eventName])
+    }
 }
 
 /// "FoleviHost": the one Capacitor plugin the page's bridge calls; it routes to the Folevi plugins by name.

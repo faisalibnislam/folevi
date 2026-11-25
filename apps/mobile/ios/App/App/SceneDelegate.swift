@@ -30,11 +30,16 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
 
     func sceneWillResignActive(_ scene: UIScene) { AppLock.shared.willResignActive() }
 
-    func sceneDidBecomeActive(_ scene: UIScene) { AppLock.shared.didBecomeActive() }
+    func sceneDidBecomeActive(_ scene: UIScene) {
+        AppLock.shared.didBecomeActive()
+        // The widgets, Shortcuts and Spotlight: fetched again with an account, and a link an extension left opens.
+        MainActor.assumeIsolated { AppServices.becameActive() }
+    }
 
     func sceneDidEnterBackground(_ scene: UIScene) {
         holdForPageSave()
         AppLock.shared.didEnterBackground()
+        MainActor.assumeIsolated { AppServices.enteredBackground() }
     }
 
     /// The page hears the app is leaving (Capacitor's App plugin, "appStateChange") and writes what was typed in the

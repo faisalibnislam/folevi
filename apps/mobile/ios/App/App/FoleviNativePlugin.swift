@@ -2,7 +2,9 @@
 // do (bridge/mobile-bridge.js sends haptics, the status bar, the keyboard, sharing and the clipboard to those). Here:
 // the Face ID lock's settings, where links go, and, through the extensions in apps/ios (Native/NativeServices.swift,
 // PushBridge.swift, AppleSignIn.swift, SystemSettings.swift, TextRecognition.swift), the device's token for the share
-// extension, kept shares, the document scanner, notifications, Sign in with Apple and the system's text settings.
+// extension, kept shares, the document scanner, notifications, Sign in with Apple and the system's text settings;
+// and, in local mode, the widgets' copy, Spotlight's notes and what a widget, Siri or Shortcuts did meanwhile
+// (LocalExtensions.swift).
 //
 // Links: the app's own pages stay in the web view; a link to another site opens in an in-app Safari view (never
 // Folevi's pricing page, App Store rule 3.1.1); mail, phone and folevi:// links go to the system.
@@ -18,7 +20,14 @@ final class FoleviNativePlugin: BridgePlugin {
         "device", "setCredential", "clearCredential", "takeShares", "finishShare", "scanDocument",
         "pushStatus", "enablePush", "disablePush", "setBadge", "openNotificationSettings",
         "accessibility", "setBackdrop", "authenticate", "recognizeText", "signInWithApple",
+        // Local mode's widgets, Shortcuts and Spotlight (apps/ios Native/LocalExtensions.swift).
+        "setWidgetSnapshot", "takeLocalActions", "finishLocalAction", "indexSpotlight",
     ]
+
+    /// A widget or an intent queuing something while the app runs tells this page ("folevi:local-actions").
+    override func load() {
+        MainActor.assumeIsolated { LocalExtensions.attach(bridge) }
+    }
 
     var appOrigin: String { AppOrigin.of(bridge?.serverURL) }
 

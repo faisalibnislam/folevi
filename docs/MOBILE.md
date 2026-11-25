@@ -103,8 +103,21 @@ The owner's words: "keep inside the app and sync if sever side changes the note 
 
 ## Not carried over yet (follow-ups)
 
-- iOS widgets, Control Center control, Siri and Shortcuts intents, Spotlight (their code is in `apps/ios`; add the
-  targets to `project.yml` when wanted). The share extension is in.
+Carried over (2026-11-25): the share extension, and the widgets (Today, Recent notes, Quick add, the Lock Screen's),
+the Control Center control, Siri and Shortcuts (App Intents, `FoleviShortcuts`) and Spotlight. They build from
+`apps/ios` in place (`project.yml`: the `FoleviWidgets` target, `com.folevi.ios.widgets`, App Group
+`group.com.folevi`). With an account the app fetches their data from the REST API with this device's token
+(`App/AppServices.swift`, as the iPhone and iPad app did); in local mode the page feeds them through FoleviNative
+(`setWidgetSnapshot`, `indexSpotlight`, `takeLocalActions`, `finishLocalAction`: `apps/ios` Native/LocalExtensions.swift,
+called by the web app's `LocalExtensions`). Taps on a widget, a Shortcut or a Spotlight result reach the page as
+folevi:// links (`App/DeepLinkRouter.swift`).
+
+Still missing:
+
+
+- The background refresh task (`apps/ios` Native/BackgroundRefresh.swift: BGAppRefreshTask for accounts that aren't
+  open). The widgets refresh their own copy on their timeline, and the app refreshes it as it comes and goes.
+- The widgets' PNG renders for checks in the Simulator (`apps/ios` Native/WidgetSnapshots.swift, Debug only).
 - iOS's native long-press preview, date and colour pickers and keyboard bar (the web's own versions show instead).
 - One bridge script for both platforms (Android still has its own `folevi-bridge.js` with its own plugin names).
 - Release scripts (`pnpm release` for TestFlight and Play) and `scripts/version.mjs` writing `apps/mobile`'s versions.

@@ -136,10 +136,15 @@ server's addresses (`places.server`) and may reach only that server's names (pag
 Every two minutes Folevi checks which of a server's names answers, home names first (Folevi Connect), and moves the
 place there without signing anyone out.
 
-Not done: an http server on the home network other than `localhost`. Windows serves the page from
-`https://app.localhost`, so WebView2 blocks http and ws to a LAN address as mixed content (the page policy allows
-it). The owner chose the shell carrying that traffic (the place keeps its origin and storage); that's still to build.
-Check WebKitGTK the same way on Linux.
+An http server on the home network (Windows, `src/lan_bridge.rs`): Windows serves the page from
+`https://app.localhost`, so WebView2 blocks http and ws to a LAN address as mixed content. The owner chose the shell
+carrying that traffic, so the place keeps its origin and storage. For each plain http address other than this
+computer, the app listens on `127.0.0.1` (a port picked from the address, the same each launch). It relays every
+request and WebSocket to that one address, with the server's own `Host`. The page is given
+`http://127.0.0.1:<port>` for Convex and Convex site, and the page policy allows it. The website address (links,
+shared addresses) keeps the server's name. The sign-in screen's own look at an http LAN address still fails on
+Windows ("A browser can't always check a server on your home network"), and "Open it anyway" lets the app check it.
+`lan_bridge::needed()` is Windows only; turn it on for Linux if WebKitGTK blocks the same traffic.
 
 ## Not done yet
 

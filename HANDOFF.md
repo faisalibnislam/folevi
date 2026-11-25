@@ -2,7 +2,7 @@
 
 > Read this first if you are a Claude (or any agent) picking this project up, on this Mac or another one. Then read `CLAUDE.md`, `docs/HANDOFF.md` (the long handoff: unfinished branches, release detail, what the owner is waiting on) and `docs/claude-context/memory/MEMORY.md` (the owner's standing rules). Keep this file current: after every change to the project, update "Current state", "Next steps" and "Change log", and commit it.
 
-Last updated: 2026-11-23 · Written on: Faisal's MacBook Pro M5
+Last updated: 2026-11-24 · Written on: Faisal's MacBook Pro M5
 
 ## 1. What this is
 
@@ -249,6 +249,55 @@ The ones most likely to be broken:
 
 ## 9. Current state (as of 2026-11-24)
 
+**Release 1.5.76 (build 91), the Capacitor mobile app, 2026-11-25:** the iPhone note memory fix (PR 74, merged into
+`main` as 85574054, then `main` merged here; PR 74's `transitions.ts` replaces 1.5.75's change); release commit
+`83a4f3fc`, tag `v1.5.76` local; uploaded to TestFlight under the owner's "mobile to testers" approval (relayed by the
+main session), delivery bc805158-7281-477d-923c-970475668b7e, internal "Folevi team". iOS only. Next free: 1.5.77.
+
+**Release 1.5.75 (build 90), the Capacitor mobile app, 2026-11-24:** the iPhone screen moves empty their screen copy
+afterwards (part of the memory growth, docs/mobile/ios-review-2026-11-24.md experiments G to P); release commit
+`21c40255`, tag `v1.5.75` local; uploaded to TestFlight under the owner's standing OK ("release everything when ready",
+relayed by the main session: internal "Folevi team" only, App Store submission still asked), delivery
+13e2530f-5ba1-4952-9fbe-2989389f7657. iOS only.
+
+**Release 1.5.74 (build 89), the Capacitor mobile app, 2026-11-24:** the iOS review's fixes (44 pt hit areas, local
+mode's rules from the first request), cut after 1.5.73's history entry (tag `v1.5.73`, the Mac release); release
+commit `e86fbbca`, tag `v1.5.74` local. Uploaded to TestFlight on the owner's "Release it" (delivery
+9fe1d590-737b-47d1-a14c-fa4968d94428), internal group "Folevi team". iOS only; Android was not rebuilt.
+
+**Release 1.5.72 (build 87), the Capacitor mobile app, 2026-11-24:** owner's OK, relayed by the main session ("release
+all ready apps for all platform", "Mobile to testers": TestFlight and Play internal testing only). Cut on
+`claude/mobile-capacitor-f41734` after 1.5.71's history entry (from tag `v1.5.71`); release commit `d153ae34`, tag
+`v1.5.72` local. iOS: `apps/mobile/scripts/release.mjs --skip-shell --no-upload` made `apps/mobile/release/Folevi.ipa`
+(84 MB, App Store profiles, production push, production backend), **uploaded to TestFlight on the owner's own
+"Release it" in chat (delivery 58636ca8-bf67-4fb5-bcb9-6ce7ec46059c)**, internal group "Folevi team" once Apple has
+processed it. That build predates the local-mode note-style rules (commit 2aa79b97). Android: the Android session builds the same commit for Play internal testing. The Windows session takes 1.5.73.
+Sign-in on the simulator reached iOS's "Folevi wants to use app.folevi.com to sign in" prompt (no account used further).
+
+**One mobile app with Capacitor (2026-11-24, branch `claude/mobile-capacitor-f41734`, PR 66 https://github.com/faisalibnislam/folevi/pull/66 into `main`, not merged):**
+the owner's "one web app everywhere" plan for phones and tablets. `apps/mobile` is one Capacitor 8 project for
+iPhone, iPad, iPhone Duo and Android around the web app's shell export (`build-shell.mjs --platform mobile`), with
+no native screens. Details: `docs/MOBILE.md`.
+- **iOS** (`com.folevi.ios`, same App Group, Keychain group, iCloud container and `capacitor://localhost` origin as
+  the native app): XcodeGen project `apps/mobile/ios/App/project.yml`; the shell services shared with the Mac app are
+  built in place from `apps/ios/ios/App/Native/Shell` behind one Capacitor plugin, `FoleviHost`
+  (`App/Host/HostBridge.swift`); `bridge/mobile-bridge.js` gives the page `foleviNative` and `foleviShell` with
+  Capacitor's Haptics, StatusBar, Share, Clipboard, ActionSheet, App and SplashScreen plugins. Share extension in;
+  widgets, Siri/Shortcuts and Spotlight not carried over yet.
+- **Android** (`com.folevi.android`): the Capacitor project as it was before the native rewrite (`7a4155c0~1`) with
+  its Kotlin plugins and `folevi-bridge.js`, now on Capacitor 8.6.2, R8 in release, splash/insets/start-page fixes.
+- **Layouts** (`apps/web/src/lib/platform.ts`, from PR 61): under 700 px the phone layout, wider the sidebar layout
+  (iPhone Duo open is 951 pt wide, so the sidebar); tests in `apps/web/test/platform.test.ts`. `scripts/version.mjs` now writes the mobile app's version (1.5.70, 85).
+- **Checked** (simulators "Folevi Mobile iPhone/iPad/Duo", emulators `Folevi_Mobile_Phone/Tablet/Foldable`):
+  first launch, a library on the device, Home, the editor (an edit lands in the `.fnote` file), tabs on iPad and
+  Android tablet, the share inbox (a queued share becomes a note), dark mode, Duo closed, foldable open; updating
+  in place over the native iOS and Android apps keeps the library. Release builds: iOS 94 MB vs native 182 MB;
+  Android 125 MB vs native 128 MB (86 MB of each is the web export, 64 MB of that note covers). Memory at Home:
+  iOS about 183 MB vs native 172 MB; Android about 227 MB vs native 205 MB (PSS).
+- **Not checked:** a real device; signing in end to end (on Android it reached the browser, which wanted its own
+  terms accepted on the emulator; iOS's sign-in sheet couldn't be tapped from scripts); iPhone Duo open and
+  folding (the simulator's hinge couldn't be moved from scripts on this Mac); push delivery.
+- Nothing uploaded; native releases stay paused (a release would be 1.5.71 or later via `node scripts/version.mjs`).
 **One web app everywhere: the web side (branch `claude/web-everywhere-0e2975`, 2026-11-24).** The web app is now the
 interface on every platform (browser, Mac, Windows, Linux, iPhone, iPad, Duo, Android, Folevi Server). Layout rule
 (owner, 2026-11-24, `docs/claude-context/memory/web-everywhere-layout-rules-2026-11-24.md`): width decides on every
@@ -567,6 +616,14 @@ signed-in account, 1.5.58's frosted folders with a large library, and the iPad c
 account button should move past iPadOS's window buttons).
 
 ## 10. Next steps / open work
+- Mobile app (`apps/mobile`, PR 66 from `claude/mobile-capacitor-f41734`): note covers stay bundled (owner, 2026-11-24) and styles sync from the server when they change (docs/MOBILE.md "Note styles and covers": signed-in offline caching to build in `apps/web` with the web session; local mode may check for new styles too (owner, 2026-11-24): iOS network rules allow `convex.site/note-styles` and Convex storage images only, copy updated; the endpoint and the page's fetch and cache are the web session's); the owner reviews and merges (merging
+  deploys the web, which has the layout change in `lib/iphone.ts`); then check sign-in, push and iPhone Duo folding
+  on real devices; carry over widgets, Siri/Shortcuts and Spotlight; one bridge script for both platforms; from the iOS review (docs/mobile/ios-review-2026-11-24.md), the web session's iPad touch targets and the note page's memory growth; release
+  scripts for TestFlight and Play (only with the owner's OK).
+- Web everywhere: PRs #61 (platform model, `claude/web-everywhere-0e2975`), #62 (shortcut labels), #63 (Mac no-bounce,
+  Android ripple) and #64 (one wording set) are open and wait on CI and the owner's merge (merging deploys). Next PRs: shortcut labels per OS (about 40 files still write ⌘ by hand; `lib/shortcuts.ts keyLabel` exists),
+  Windows/Linux/Android accents behind `data-shell`, one motion/empty/loading style, mobile web view performance,
+  the "Your own server" sign-in with the Synology session. The starter "Welcome to Folevi" note names Mac shortcuts.
 - Web everywhere (all landed 2026-11-25). Open: the iOS simulator `footprint` re-run of the iPhone memory fix (mobile
   session); sync status labels still differ between phone and desktop (Saved/Synced, Offline/Waiting to sync,
   Conflict/Edited in two places) and there are four empty-state components; no error state when a list fails to load;
@@ -721,6 +778,20 @@ account button should move past iPadOS's window buttons).
   `DATABASE_UDF_USER_TIMEOUT_SECONDS=4` for that backend. Bursts show in `convex.log` as "took a long time".
 
 ## 12. Change log
+- 2026-11-25: `main` (4d22880f, all web PRs) merged into `claude/mobile-capacitor-f41734` for PR 66: `lib/iphone.ts`, NotificationsButton and DocumentView taken from `main` (PR 61's width rule, `lib/platform.ts`, replaces this branch's iPhone Duo 600 x 600 rule; `test/mobile-layout.test.ts` removed, `test/platform.test.ts` covers it); HANDOFF both sides kept. Checks: typecheck, lint, all 2,161 web tests, version check and the iOS build pass. 1.5.76 unchanged.
+- 2026-11-25: 1.5.76 (build 91) with PR 74's iPhone memory fix uploaded to TestFlight (delivery bc805158); `main` (85574054) merged into `claude/mobile-capacitor-f41734`.
+- 2026-11-24: PR 74 plus 1.5.75's change measured: 140 MB after the low-memory signal against a 130 MB start, the same as PR 74 alone; nothing left of the memory growth. 1.5.75 is one shared release with Linux (published untagged by the Linux session first): when PR 66 merges, combine the Linux notes into the 1.5.75 changelog entry. Next free version 1.5.76.
+- 2026-11-24: PR 74's fix for the iPhone note memory growth measured on the simulator: after 20 opens and WebKit's low-memory signal, 138 MB against a 136 MB start (before: 232 to 241 MB). Goes into the next TestFlight build once PR 74 merges; when merging main here, keep PR 74's `transitions.ts` (my 1.5.75 change is superseded).
+- 2026-11-24: Memory growth traced further: about 60% is the screen copy shown during iPhone moves (kept by WebKit after removal), the rest elsewhere in the iPhone layout; emptying the copy recovers a third of it, shipped as 1.5.75 (build 90) to TestFlight (delivery 13e2530f). A Safari heap snapshot is still needed for the rest.
+- 2026-11-24: Mobile memory growth narrowed (docs/mobile/ios-review-2026-11-24.md follow-up): only in the iPhone layout under WebKit, about 5 MB kept per note open; not the bridge, logging, close path or WebKit caches; none on iPad. Needs a Safari Web Inspector heap snapshot next.
+- 2026-11-24: 1.5.74 (build 89), the mobile app with the iOS review's fixes, uploaded to TestFlight with the owner's OK (delivery 9fe1d590); tag local.
+- 2026-11-24: iOS review of the mobile app (design/HIG, polish, performance; docs/mobile/ios-review-2026-11-24.md): 44 pt hit areas for Calendar's grabber, a note's place chip and Foli AI's Add; local mode's network rules now apply from the first request and compile once. Open for the web session: iPad touch targets under 44 pt and about 4 MB of web memory kept per note open and close.
+- 2026-11-24: 1.5.72 (build 87), the Capacitor mobile app, uploaded to TestFlight with the owner's OK (delivery 58636ca8); internal testing only.
+- 2026-11-24: Owner: local mode may check Folevi for new note styles. iOS local-mode rules allow only `<deployment>.convex.site/note-styles` and Convex storage images (checked on the simulator: everything else still blocked); features and docs pages say notes never leave the device and the app only checks for new styles.
+- 2026-11-24: 1.5.72 (build 87) cut on `claude/mobile-capacitor-f41734` (tag local) for the Capacitor mobile app; iOS IPA exported, TestFlight upload pending a permission; Android build handed to the Android session. PR 66: main merged again; its one failing e2e (vault-team) had passed on the same code the run before.
+- 2026-11-24: Owner: keep note covers inside the mobile app and sync note styles when the server changes them. Plan in docs/MOBILE.md; local mode's part asked of the owner.
+- 2026-11-24: PR 66 opened for the Capacitor mobile app (`claude/mobile-capacitor-f41734` pushed); open question to the owner: note covers.
+- 2026-11-24: `apps/mobile`: one Capacitor app for iPhone, iPad, iPhone Duo and Android around the web app (no native screens), reusing the shared Swift and Kotlin services; window-size layouts in `lib/iphone.ts`; `version.mjs` covers it; checked on simulators and emulators, size and memory compared (docs/MOBILE.md). Branch `claude/mobile-capacitor-f41734`, PR not merged.
 - 2026-11-25: Web everywhere queue landed (61, 62, 63, 64, 70, 75, 71, 72 after 68 and 74); this is their combined entry:
   PR 62 shortcuts per system (and documents.spec:187 waits for the bar's Share and the panel's focus instead of racing
   them); PR 63 Mac no-bounce motion and Android press ripple, the owner's picks in the web-everywhere memory; PR 64 one

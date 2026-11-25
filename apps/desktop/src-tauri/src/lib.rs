@@ -1538,22 +1538,50 @@ async fn desktop_call(app: AppHandle, webview: tauri::Webview, name: String, arg
             }
             let path = text("path", 500);
             let place = s.place_of(&label);
+            let note = notify::Note {
+                id: text("id", 120),
+                title,
+                body: text("body", 400),
+                kind: text("kind", 40),
+                thread: text("thread", 80),
+                comment_thread: text("commentThread", 80),
+            };
             let app2 = app.clone();
-            notify::show(
+            let (id, kind, thread) = (note.id.clone(), note.kind.clone(), note.comment_thread.clone());
+            // Buttons only for a notification the page can name (its id: Mark as Read and the rest need it).
+            notify::show_note(
                 APP_ID,
-                &title,
-                &text("body", 400),
-                Arc::new(move || {
+                &note,
+                !note.id.is_empty(),
+                Arc::new(move |action, typed| {
                     let app3 = app2.clone();
                     let (path, place) = (path.clone(), place.clone());
+                    let (id, kind, thread) = (id.clone(), kind.clone(), thread.clone());
                     let _ = app2.run_on_main_thread(move || {
                         let current = services(&app3).places.lock().current();
-                        if place.is_some() && place != current && place.as_ref().is_some_and(|p| services(&app3).places.lock().has(p)) {
-                            switch_to(&app3, place, if path.starts_with('/') { &path } else { "/documents" }, false);
-                            show_main(&app3, None);
-                        } else {
-                            show_main(&app3, (!path.is_empty()).then_some(path.as_str()));
+                        let Some(action) = action else {
+                            // The click: Folevi forward at the page, in the notification's place.
+                            if place.is_some() && place != current && place.as_ref().is_some_and(|p| services(&app3).places.lock().has(p)) {
+                                switch_to(&app3, place, if path.starts_with('/') { &path } else { "/documents" }, false);
+                                show_main(&app3, None);
+                            } else {
+                                show_main(&app3, (!path.is_empty()).then_some(path.as_str()));
+                            }
+                            return;
+                        };
+                        // A button: the page of that place does it, without coming forward (the Mac's way: a place
+                        // with no page open hears nothing).
+                        if place != current {
+                            return;
                         }
+                        let mut command = json!({ "type": "notification", "action": action, "id": id, "kind": kind, "path": path });
+                        if !thread.is_empty() {
+                            command["thread"] = json!(thread);
+                        }
+                        if let Some(t) = typed.filter(|t| !t.trim().is_empty()) {
+                            command["text"] = json!(t);
+                        }
+                        emit_to_pages(&app3, "desktop:command", &command, Some("main"));
                     });
                 }),
             );

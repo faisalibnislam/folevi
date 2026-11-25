@@ -1289,6 +1289,10 @@ account button should move past iPadOS's window buttons).
   Dropbox app's loopback redirect URIs, a Google "Desktop app" client, and repository variables
   `FOLEVI_DROPBOX_APP_KEY` / `FOLEVI_GOOGLE_DESKTOP_CLIENT_ID`; until then neither is offered. Rust tests pass
   (149, including a real loopback sign-in that's refused and cancelled); no real sign-in run.
+- 2026-11-25: **Notification actions in Folevi for Windows and Linux** (branch `claude/desktop-notification-actions`,
+  item 6 of docs/DESKTOP_PARITY.md): Reply (Windows), Mark as Read, Open, Complete and the three Snoozes, Windows
+  toasts grouped by note; the web now does Complete and Snooze (they did nothing before, the Mac included). Rust
+  tests pass (146); the toast code compiles for Windows; not run on a real desktop.
 - 2026-11-25: **1.6.78 released** from PR 109's merge (`e0183862`): web and Convex deployed; Mac published
   (notarized, Sparkle feed); iPhone and iPad on TestFlight (delivery 7120ad6e); Windows installers and Linux packages
   uploaded, apt and rpm repositories rebuilt and uploaded; the Android bundle built and left for the owner's Play

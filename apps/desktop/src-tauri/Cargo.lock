@@ -1445,7 +1445,6 @@ dependencies = [
  "tauri-plugin-single-instance",
  "tauri-plugin-updater",
  "tauri-plugin-window-state",
- "tauri-winrt-notification",
  "tempfile",
  "thiserror 1.0.69",
  "tokio",

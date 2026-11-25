@@ -55,11 +55,10 @@ unicode-normalization = "0.1"
 regex = "1"
 
 [target.'cfg(windows)'.dependencies]
-# Toasts whose click Folevi hears (tauri-plugin-notification can't report clicks on desktop).
-tauri-winrt-notification = "0.8"
 windows-sys = { version = "0.59", features = ["Win32_UI_Shell", "Win32_Foundation", "Win32_Storage_FileSystem"] }
-# The windows crate: Windows Hello for the app lock and encrypted notes (src/hello.rs); the Jump List (src/jumplist.rs).
-windows = { version = "0.62", features = ["Foundation", "Security_Credentials_UI", "Win32_Foundation", "Win32_Storage_EnhancedStorage", "Win32_System_Com", "Win32_System_Com_StructuredStorage", "Win32_System_Variant", "Win32_System_WinRT", "Win32_UI_Shell", "Win32_UI_Shell_Common", "Win32_UI_Shell_PropertiesSystem"] }
+# The windows crate: Windows Hello for the app lock and encrypted notes (src/hello.rs); the Jump List
+# (src/jumplist.rs); toasts whose clicks, buttons and typed replies Folevi hears (src/notify.rs).
+windows = { version = "0.62", features = ["Data_Xml_Dom", "Foundation", "Foundation_Collections", "Security_Credentials_UI", "UI_Notifications", "Win32_Foundation", "Win32_Storage_EnhancedStorage", "Win32_System_Com", "Win32_System_Com_StructuredStorage", "Win32_System_Variant", "Win32_System_WinRT", "Win32_UI_Shell", "Win32_UI_Shell_Common", "Win32_UI_Shell_PropertiesSystem"] }
 windows-future = "0.3"
 
 # File dialogs: the system's own (Windows), and on Linux the XDG file chooser portal, which the Flatpak needs to

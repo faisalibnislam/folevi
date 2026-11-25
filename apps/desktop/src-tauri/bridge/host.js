@@ -316,7 +316,18 @@
     },
     notify: function (n) {
       var x = n || {};
-      void desktop("notify", { title: String(x.title || ""), body: x.body ? String(x.body) : "", path: x.path ? String(x.path) : "" }).catch(function () {});
+      var s = function (v) {
+        return typeof v === "string" ? v : "";
+      };
+      void desktop("notify", {
+        id: s(x.id),
+        title: String(x.title || ""),
+        body: x.body ? String(x.body) : "",
+        path: x.path ? String(x.path) : "",
+        kind: s(x.kind),
+        thread: s(x.thread),
+        commentThread: s(x.commentThread),
+      }).catch(function () {});
     },
     setRecent: function (notes) {
       var list = Array.isArray(notes) ? notes.slice(0, 8).map(function (n) { return { id: String((n && n.id) || ""), title: String((n && n.title) || "") }; }) : [];

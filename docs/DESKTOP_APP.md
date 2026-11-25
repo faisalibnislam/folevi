@@ -214,6 +214,14 @@ Sign-in is OAuth with PKCE in the browser, ending on a loopback address Folevi l
 Owner step before it shows up: set the public client ids as repository variables `FOLEVI_DROPBOX_APP_KEY` and
 `FOLEVI_GOOGLE_DESKTOP_CLIENT_ID` (and for local builds, the same names in the environment of
 `packaging/linux/scripts/build-in-lima.sh`). Without them Dropbox and Google Drive aren't offered.
+## Notification actions
+
+As on the Mac (`src/notify.rs`): a comment or mention has Reply (typed in the toast, Windows only: Linux's
+notification protocol has no typed replies) and Mark as Read; an assigned task Open and Complete; a task's
+reminder Complete, Snooze 1 Hour, Snooze Until This Evening and Snooze Until Tomorrow; anything else Mark as Read.
+Windows groups a note's toasts together in Action Center. A button reaches the open place's page as the command
+`{ type: "notification", action, id, kind, path, text?, thread? }` (DesktopBridge.tsx useNotificationActions,
+which now does Complete and Snooze too, for the Mac as well); a place with no page open hears nothing, as on the Mac.
 
 ## Not done yet
 

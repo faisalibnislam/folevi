@@ -33,6 +33,9 @@
     deviceName: BOOT.deviceName,
     fileBase: origin + "/_files/",
     cloudKit: null,
+    // "Your own server" (placesAddServer, placesLocalServers) isn't in this app yet: the shared bridge leaves
+    // addServerPlace out, so the page doesn't offer it. Remove this once lib.rs handles both.
+    serverPlaces: false,
     call: function (plugin, method, options) {
       return invoke("shell_call", { plugin: String(plugin), method: String(method), options: options || {} }).catch(function (e) {
         throw asError(e);

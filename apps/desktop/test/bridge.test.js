@@ -46,6 +46,10 @@ describe("the injected bridge", () => {
     win.__foleviHost.boot({ mode: "local", deviceName: "PC", start: "/documents", places: { current: "library", background: false } });
     expect(win.foleviShell.platform).toBe("windows");
     expect(win.foleviShell.initialMode).toBe("local");
+    // "Your own server" isn't built in this app yet, so the page mustn't be offered it (docs/DESKTOP_PARITY.md).
+    expect(win.foleviShell.places.addServerPlace).toBeUndefined();
+    expect(win.foleviShell.places.listLocalServers).toBeUndefined();
+    expect(typeof win.foleviShell.places.list).toBe("function");
     void win.foleviShell.library.info();
     expect(calls.some(([cmd, a]) => cmd === "shell_call" && a.method === "libInfo" && a.plugin === "FoleviShell")).toBe(true);
   });

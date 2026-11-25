@@ -1258,6 +1258,11 @@ account button should move past iPadOS's window buttons).
   `DATABASE_UDF_USER_TIMEOUT_SECONDS=4` for that backend. Bursts show in `convex.log` as "took a long time".
 
 ## 12. Change log
+- 2026-11-25: **Desktop parity.** Owner rule: web and Mac features also go to the Windows and Linux app
+  (`CLAUDE.md`, `docs/claude-context/memory/desktop-feature-parity.md`). Audit and to-do list in
+  `docs/DESKTOP_PARITY.md`. Fixed: the web app now recognises the Windows and Linux apps as native
+  (`macBridge.ts`; Linux had counted as a Mac, Windows as a browser), and the Tauri host leaves "Your own server" out
+  of the bridge (`host.serverPlaces = false`) until it is built, instead of failing.
 - 2026-11-25: **1.6.78 released** from PR 109's merge (`e0183862`): web and Convex deployed; Mac published
   (notarized, Sparkle feed); iPhone and iPad on TestFlight (delivery 7120ad6e); Windows installers and Linux packages
   uploaded, apt and rpm repositories rebuilt and uploaded; the Android bundle built and left for the owner's Play

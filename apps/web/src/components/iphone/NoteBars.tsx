@@ -8,7 +8,7 @@ import { applyLink, changeDepth, turnInto } from "@/components/editor/commands";
 import { requestSpecialInsert } from "@/components/editor/EditorMenus";
 import type { InspectorTab } from "@/components/doc/Inspector";
 import { useToast } from "@/components/ui/Toast";
-import { KEYBOARD_EASE, askText, feel, onKeyboardFrame, prepareFeel, setKeyboardInteractiveDismiss, type NativeKeyboardFrame } from "@/lib/native/ui";
+import { KEYBOARD_EASE, askText, feel, letKeyboardGo, onKeyboardFrame, prepareFeel, setKeyboardInteractiveDismiss, type NativeKeyboardFrame } from "@/lib/native/ui";
 import { PillButton } from "./Glass";
 import { useIphoneChrome } from "./chrome";
 import "./editor-phone.css";
@@ -402,8 +402,10 @@ function KeyboardBar({ editor, ai, onPick, ride, leaving = false }: { editor: Ed
         </div>
         <span aria-hidden className="mx-0.5 h-6 w-px flex-none bg-[var(--iphone-separator)]" />
         {key("Hide keyboard", <ChevronDown size={24} strokeWidth={2.2} aria-hidden />, () => {
-          editor.commands.blur();
-          (document.activeElement as HTMLElement | null)?.blur();
+          // (The page is laid out at its full height under the keyboard first, so nothing shows blank as it goes.)
+          const active = document.activeElement;
+          if (active instanceof HTMLElement && active !== document.body) letKeyboardGo(active);
+          else editor.commands.blur();
         })}
       </div>
     </div>

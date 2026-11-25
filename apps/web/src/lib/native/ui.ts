@@ -330,6 +330,36 @@ export function onKeyboardFrame(listener: (frame: NativeKeyboardFrame) => void):
 }
 
 /** Lets a drag down in a view that scrolls take the keyboard away with the finger (the note editor), or not. */
+/**
+ * Takes the keyboard away from `field` (a sheet closing while its field has the focus). In the iPhone app the web
+ * view first gets its full height back while the keyboard still covers the bottom, so the page is laid out and
+ * drawn there before the keyboard uncovers it (else that part showed blank for a moment); the focus goes a beat
+ * later. Elsewhere the focus simply goes now.
+ */
+export function letKeyboardGo(field: HTMLElement): void {
+  const leave = nativeApp()?.keyboardWillLeave;
+  if (typeof leave !== "function") return field.blur();
+  let done = false;
+  const go = () => {
+    if (done) return;
+    done = true;
+    window.removeEventListener("resize", onResize);
+    if (document.activeElement === field) field.blur();
+  };
+  // Once the page has been laid out at its full height and drawn (the resize, then two frames), or at the latest
+  // after 300 ms: the keyboard then uncovers a page that's already there.
+  const onResize = () => requestAnimationFrame(() => requestAnimationFrame(go));
+  window.addEventListener("resize", onResize, { once: true });
+  const before = window.innerHeight;
+  void leave()
+    .then(() => {
+      // Already at full height (no resize coming): go now.
+      if (window.innerHeight === before) window.setTimeout(() => window.innerHeight === before && go(), 60);
+    })
+    .catch(go);
+  window.setTimeout(go, 300);
+}
+
 export function setKeyboardInteractiveDismiss(on: boolean): void {
   nativeApp()?.keyboard?.({ interactiveDismiss: on });
 }

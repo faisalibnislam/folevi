@@ -813,6 +813,8 @@ account button should move past iPadOS's window buttons).
   `DATABASE_UDF_USER_TIMEOUT_SECONDS=4` for that backend. Bursts show in `convex.log` as "took a long time".
 
 ## 12. Change log
+- 2026-11-25: CI secret scan reads only the history HEAD reaches (`--log-opts=HEAD`, owner's OK), not every fetched
+  branch: test tokens on unmerged branches (Folevi Server, Linux stores) had failed the required check on every PR.
 - 2026-11-25: Linux icons: every package now uses the desktop icon (`apps/desktop/build/icon-1024.png`, sizes from `icons.mjs`) instead of the web's full-bleed icon-512; Snap `folevi` registered, shipped without the D-Bus slot (owner's pick) so it needs no manual review; arm64 revision 3 uploaded, amd64 building on Launchpad.
 - 2026-11-25: Linux apt/rpm repositories published (owner's OK, after the owner's Cloudflare sign-in) and install-tested from the live addresses; Flathub stopped by Flathub's Generative AI policy (no AI-written manifests or AI-opened submissions), recorded in docs/LINUX.md.
 - 2026-11-25: Linux stores prepared (owner's OK): signed apt and rpm repositories for 1.5.75 at

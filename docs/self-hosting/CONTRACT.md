@@ -68,6 +68,8 @@ Convex environment variables folevid sets with `convex env set` before each depl
 | `FOLEVI_SERVER_VERSION` | the bundle version |
 | `FOLEVI_CONNECT_URL` | `https://connect.folevi.com` (overridable for tests) |
 | `FOLEVI_CONNECT_TOKEN` | the server's Connect token, once registered (§7) |
+| `FOLEVI_CONNECT_SERVER_ID`, `FOLEVI_CONNECT_HOSTNAMES` | the Connect id and names (home names first, comma separated), once registered |
+| `FOLEVI_TRUSTED_ORIGINS` | every origin the server answers on, comma separated (public origin, Connect names, own domain, LAN addresses, `.local` name, loopback); Better Auth trusts each (added 2026-11-25) |
 
 To the web process: `PORT=3501`, `HOSTNAME=127.0.0.1`, `FOLEVI_EDITION=server`, `FOLEVI_PUBLIC_URL=<origin>`,
 `FOLEVI_INTERNAL_CONVEX_URL=http://127.0.0.1:3510`, `FOLEVI_INTERNAL_CONVEX_SITE_URL=http://127.0.0.1:3511`,

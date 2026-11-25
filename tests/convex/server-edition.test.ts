@@ -412,3 +412,15 @@ describe("Folevi Server: static JWKS", () => {
     expect(staticJwks()).toEqual({ kind: "none" });
   });
 });
+
+describe("Folevi Server: trusted origins", () => {
+  test("every name the server answers on is trusted for sign-in; the cloud trusts none of them", async () => {
+    const { serverTrustedOrigins } = await import("../../convex/lib/edition");
+    vi.stubEnv("FOLEVI_TRUSTED_ORIGINS", "http://192.168.1.20:8460, https://abc1234567.folevi.app,not a url,ftp://x,http://192.168.1.20:8460/");
+    vi.stubEnv("FOLEVI_EDITION", "");
+    expect(serverTrustedOrigins()).toEqual([]);
+    vi.stubEnv("FOLEVI_EDITION", "server");
+    expect(serverTrustedOrigins()).toEqual(["http://192.168.1.20:8460", "https://abc1234567.folevi.app"]);
+    vi.unstubAllEnvs();
+  });
+});

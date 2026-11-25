@@ -225,6 +225,8 @@ class MainActivity : BridgeActivity() {
             .put("deviceFamily", if (resources.configuration.smallestScreenWidthDp >= 600 && !packageManager.hasSystemFeature(android.content.pm.PackageManager.FEATURE_SENSOR_HINGE_ANGLE)) "tablet" else "phone")
             .put("webViewVersion", WebViewCompat.getCurrentWebViewPackage(this)?.versionName ?: "")
             .put("insets", lastInsets)
+            // A camera for "Scan QR code" (places.scanCode); without one the page hides the button.
+            .put("camera", packageManager.hasSystemFeature(android.content.pm.PackageManager.FEATURE_CAMERA_ANY))
             // Several places (Places.kt): the page is the open place's.
             .put("places", placesBoot())
         script.install(wv, boot, APP_ORIGIN)

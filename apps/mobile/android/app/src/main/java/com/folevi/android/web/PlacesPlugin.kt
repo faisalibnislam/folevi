@@ -14,6 +14,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.tasks.await
 import com.folevi.android.BuildConfig
 import com.folevi.android.net.Http
 import com.folevi.android.server.LocalServers
@@ -167,6 +168,43 @@ class PlacesPlugin : Plugin() {
         }
     }
 
+    /**
+     * "Scan QR code" (the page's scanCode): Google's code scanner reads a QR code with its own camera screen (the
+     * app asks for no camera permission) and answers its text, or null when the person closed it. The page turns
+     * an invite link into the server's address and looks it up as if typed.
+     */
+    @PluginMethod
+    fun scanCode(call: PluginCall) {
+        val a = activity ?: return call.resolve(JSObject().put("value", JSObject.NULL))
+        val options = com.google.mlkit.vision.codescanner.GmsBarcodeScannerOptions.Builder()
+            .setBarcodeFormats(com.google.mlkit.vision.barcode.common.Barcode.FORMAT_QR_CODE)
+            .build()
+        val scanner = com.google.mlkit.vision.codescanner.GmsBarcodeScanning.getClient(a, options)
+        scope.launch {
+            // The scanner is a Play services module, fetched on first use: wait for it rather than fail.
+            val ready = runCatching {
+                val request = com.google.android.gms.common.moduleinstall.ModuleInstallRequest.newBuilder().addApi(scanner).build()
+                com.google.android.gms.common.moduleinstall.ModuleInstall.getClient(a).installModules(request).await()
+            }
+            if (ready.isFailure) {
+                android.util.Log.w("FoleviPlaces", "scanCode: module install failed", ready.exceptionOrNull())
+                return@launch call.reject("Folevi couldn't open the camera to scan a code.", "unavailable")
+            }
+            try {
+                val code = scanner.startScan().await()
+                call.resolve(JSObject().put("value", code.rawValue?.take(2_000) ?: JSObject.NULL))
+            } catch (e: Exception) {
+                // Closing the scanner (Back, or its X) is "no code": Play services reports it as cancelled, or on
+                // some versions as an internal error (13, seen on the Android 37 emulator). Only the scanner being
+                // unusable here is a failure the page shows.
+                val code = (e as? com.google.mlkit.common.MlKitException)?.errorCode
+                android.util.Log.i("FoleviPlaces", "scanCode ended: ${e.javaClass.simpleName} $code")
+                if (code != null && code in UNUSABLE) call.reject("Folevi couldn't open the camera to scan a code.", "unavailable")
+                else call.resolve(JSObject().put("value", JSObject.NULL))
+            }
+        }
+    }
+
     /** Folevi servers on the home network (DNS-SD): { servers: [{ name, origin, serverId, version }] }. */
     @PluginMethod
     fun localServers(call: PluginCall) {
@@ -203,5 +241,18 @@ class PlacesPlugin : Plugin() {
     fun setQuickAddPlace(call: PluginCall) {
         call.getString("id")?.let { places.setQuickAdd(it) }
         call.resolve()
+    }
+
+    private companion object {
+        /** MlKitException codes that mean the scanner can't run here (not that the person closed it). */
+        val UNUSABLE = setOf(
+            com.google.mlkit.common.MlKitException.UNAVAILABLE,
+            com.google.mlkit.common.MlKitException.CODE_SCANNER_UNAVAILABLE,
+            com.google.mlkit.common.MlKitException.CODE_SCANNER_CAMERA_PERMISSION_NOT_GRANTED,
+            com.google.mlkit.common.MlKitException.CODE_SCANNER_APP_NAME_UNAVAILABLE,
+            com.google.mlkit.common.MlKitException.CODE_SCANNER_PIPELINE_INITIALIZATION_ERROR,
+            com.google.mlkit.common.MlKitException.CODE_SCANNER_PIPELINE_INFERENCE_ERROR,
+            com.google.mlkit.common.MlKitException.CODE_SCANNER_GOOGLE_PLAY_SERVICES_VERSION_TOO_OLD,
+        )
     }
 }

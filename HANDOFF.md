@@ -676,9 +676,9 @@ signed-in account, 1.5.58's frosted folders with a large library, and the iPad c
 account button should move past iPadOS's window buttons).
 
 ## 10. Next steps / open work
-- Android own server (`claude/android-own-server`): merge after PR 69 and PR 100. Web side, for the server lead: the
-  sign-in screen ignores `places.server` (still Folevi Cloud's buttons); a QR scan needs a bridge call in the
-  contract; Android's other windows don't reload when a server is added (only the one that added it).
+- Android own server (`claude/android-own-server`, PR 103): merge after PR 69 and PR 100, then merge main into it.
+  Still open: Android's other windows don't reload when a server is added (only the one that added it); reading a
+  real QR code and a full sign-in on a server are untested.
 - Android emulators: the android-36 image is still kernel-only (no `system.img`), and `Folevi_Phone` (the
   `phone` AVD in `apps/mobile/android/scripts/emulator.mjs`) uses it. Boot it on the 37.0 image with
   `-sysdir ~/Library/Android/sdk/system-images/android-37.0/google_apis_playstore/arm64-v8a -read-only -wipe-data`,
@@ -863,6 +863,12 @@ account button should move past iPadOS's window buttons).
   `DATABASE_UDF_USER_TIMEOUT_SECONDS=4` for that backend. Bursts show in `convex.log` as "took a long time".
 
 ## 12. Change log
+- 2026-11-25: Android own server, part 2 (PR 103): merged PR 100's a800051c (the sign-in names the server, the
+  version check uses the app's version, `places.scanCode`). Added `scanCode` with Google's code scanner
+  (`play-services-code-scanner`, no camera permission; the module is installed on first use), only on devices with
+  a camera. Emulator: the server's sign-in screen says "Sign in with your account on localhost:8460" with one Sign in
+  button; the scanner opens and closing it answers null (Play services reports Back as error 13 there). Reading a
+  real QR code wasn't tested (the emulator's camera shows a virtual scene).
 - 2026-11-25: Android "Your own server" (Folevi Server places, CONTRACT §6.1) on `claude/android-own-server`, built on
   PR 69 with PR 100 (`claude/server-apps-base`) merged in: `server/ShellServer.kt` (address rules, folevi.json
   check, CSP, the Kotlin twin of ShellServer.swift), `server/LocalServers.kt` (NsdManager `_folevi._tcp`), Places

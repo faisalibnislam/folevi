@@ -609,6 +609,15 @@
             return r && r.value ? r.value : null;
           });
         },
+        // "Scan QR code": the camera reads a QR code (Google's code scanner); its text, or null when closed. Only on
+        // a device with a camera (CONTRACT §6.1: hosts without one leave it out).
+        scanCode: boot.camera === true
+          ? function () {
+              return call("FoleviPlaces", "scanCode", {}, "Error").then(function (r) {
+                return r && typeof r.value === "string" ? r.value : null;
+              });
+            }
+          : undefined,
         // Folevi servers on the home network (DNS-SD `_folevi._tcp`): [{ name, origin, serverId, version }].
         listLocalServers: function () {
           return call("FoleviPlaces", "localServers", {}, "Error").then(function (r) {

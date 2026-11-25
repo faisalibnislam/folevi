@@ -960,6 +960,8 @@ account button should move past iPadOS's window buttons).
   `DATABASE_UDF_USER_TIMEOUT_SECONDS=4` for that backend. Bursts show in `convex.log` as "took a long time".
 
 ## 12. Change log
+- 2026-11-25: CI secret scan reads only the history HEAD reaches (`--log-opts=HEAD`, owner's OK), not every fetched
+  branch: test tokens on unmerged branches (Folevi Server, Linux stores) had failed the required check on every PR.
 - 2026-11-25: iPhone/iPad "Your own server" in the Capacitor app (`claude/ios-server-signin`, PR 106): VisionKit QR
   scan as `places.scanCode`, server places wired into the mobile host, Keychain test for server tokens, Info.plist
   local network keys; PR 100's web sign-in and scan button taken over this branch's; with an account open, adding a

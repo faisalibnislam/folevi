@@ -12,6 +12,9 @@ final class FoleviViewController: CAPBridgeViewController {
     private let libraryFiles = LibraryFileHandler()
     private let hostPlugin = FoleviHostPlugin()
 
+    /// Where iPhone Duo's fold crosses the page while partly open (FoldMarks.swift).
+    private var foldMarks: FoldMarks?
+
     /// Whether local mode's network rules were on the web view before its first page load.
     private var rulesAtLoad = false
 
@@ -73,12 +76,18 @@ final class FoleviViewController: CAPBridgeViewController {
         if let webView, let source = Self.bridgeScript(origin: host.appOrigin) {
             webView.configuration.userContentController.addUserScript(WKUserScript(source: source, injectionTime: .atDocumentStart, forMainFrameOnly: true))
         }
+        if let webView { foldMarks = FoldMarks(webView: webView) }
         #if DEBUG
         if let webView { webView.isInspectable = true }
         #endif
         #if DEBUG && targetEnvironment(simulator)
         if let webView { SimulatorEval.install(on: webView) }
         #endif
+    }
+
+    override func viewDidLayoutSubviews() {
+        super.viewDidLayoutSubviews()
+        foldMarks?.refresh()
     }
 
     /// mobile-bridge.js with the one origin allowed to use it, the app's version, and what `foleviShell` starts with

@@ -23,6 +23,7 @@
 		205F8B4C893766B2F68C02A8 /* Intents.swift in Sources */ = {isa = PBXBuildFile; fileRef = CF953FC2B5C3FB479C8429FA /* Intents.swift */; };
 		2A18BCD857CE4675E40ABE32 /* Palette.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3CBA0593CD34903EDB4540A3 /* Palette.swift */; };
 		2B915D453F1AAAF41061A211 /* ShellCloud.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B925756625589174B3D1E40 /* ShellCloud.swift */; };
+		2C5DCA5EB7647F6B6BCECEB6 /* FoldMarks.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4738AEA22B58504971425448 /* FoldMarks.swift */; };
 		2E3E00A4804C2766E8ADDFE3 /* E2eeKeys.swift in Sources */ = {isa = PBXBuildFile; fileRef = 24E5AE6D20AE75C4417E1C58 /* E2eeKeys.swift */; };
 		2EFB1568B559CE5EB25B36FC /* SimulatorEval.swift in Sources */ = {isa = PBXBuildFile; fileRef = A927E021455A57DAEE3D0203 /* SimulatorEval.swift */; };
 		31B4000AF29DBD108C38B49C /* FoleviWidgets.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = F7E762A031AE4DB1246C8A53 /* FoleviWidgets.appex */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
@@ -164,6 +165,7 @@
 		3E2931EFDAADA7C8C68A981E /* SystemSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemSettings.swift; sourceTree = "<group>"; };
 		3FED64A95210A5413E52375B /* Spectral-SemiBold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Spectral-SemiBold.ttf"; sourceTree = "<group>"; };
 		43811EE3B5B96F8A243C00F0 /* ShellPlaces.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShellPlaces.swift; sourceTree = "<group>"; };
+		4738AEA22B58504971425448 /* FoldMarks.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FoldMarks.swift; sourceTree = "<group>"; };
 		49D88A349FD70A9153DD2C03 /* App.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = App.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		4C0E59F1450FD764F83CEB9E /* ShareViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareViewController.swift; sourceTree = "<group>"; };
 		4CD648EB22208AF4347378BB /* public */ = {isa = PBXFileReference; lastKnownFileType = folder; name = public; path = App/public; sourceTree = SOURCE_ROOT; };
@@ -285,6 +287,7 @@
 				68ED4E8FE0185474B6E8E85B /* capacitor.config.json */,
 				8776CD2CC1249496A6F18C86 /* config.xml */,
 				94048CD5B558DCB25AF029FB /* DeepLinkRouter.swift */,
+				4738AEA22B58504971425448 /* FoldMarks.swift */,
 				B93FEF2673D0F9650689C5D3 /* FoleviNativePlugin.swift */,
 				88A036FC00BB8528F5AEEA47 /* FoleviViewController.swift */,
 				ED2016878D44EAA9692D059F /* SceneDelegate.swift */,
@@ -606,6 +609,7 @@
 				2E3E00A4804C2766E8ADDFE3 /* E2eeKeys.swift in Sources */,
 				56BCBF9A2336909F8C121842 /* EncryptedFS.swift in Sources */,
 				3384862EF58CC46BF05A409C /* FakeAI.swift in Sources */,
+				2C5DCA5EB7647F6B6BCECEB6 /* FoldMarks.swift in Sources */,
 				807AC30C322B6C6A418F3E21 /* Folevi.swift in Sources */,
 				9657428DC77612318269A6A5 /* FoleviAPI.swift in Sources */,
 				DDBD364CB1352FFB5706EBC6 /* FoleviNativePlugin.swift in Sources */,

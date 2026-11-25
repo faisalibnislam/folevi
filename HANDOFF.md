@@ -288,6 +288,19 @@ Capacitor app), PR 79 (failed queries keep pages up) and PR 80 (one set of sync 
   Measured in local mode: no late DOM insertions on All notes, Tasks, Calendar. Account mode not checked (no account).
 - Seen in the recording, not fixed: Home's lower half blank for a frame after the keyboard closes (WebKit repaint after
   the resize).
+- Phone polish pass (owner: "the app feels finicky, a lot of small things load when I go to the page"), build 97
+  (delivery d20d43f0-5651-4156-ae39-72d39011864a). Cause found by an audit: the iPhone remounts each screen on every
+  push, pop and tab switch (`IphoneShell.tsx key`), so anything not cached loads again. Fixed: note lists keep their
+  first page per list in memory (`DocumentBrowser.tsx firstPages`), Tasks use `useCachedQuery` (now with
+  `failed`/`retry`), theme images keep their signed URL and palette for 50 minutes (`coverImage.ts`), calendar events
+  and backlinks use `useOfflineQuery`, the list header and Select show while loading, Catch me up reads its brief
+  before the first frame, Changes and Reviews hold their last answer, Settings/Changes/Shared/Reviews/Vault preload
+  on the phone and draw in the same turn (`RouteView.tsx soon`), the note bar takes the page's tone in
+  `useLayoutEffect`, press feedback waits 70 ms, and a note no longer fades and tilts in on top of the zoom.
+  Not done from the audit (next): rows that vanish with no exit motion (checked tasks, swipe to Trash), SwipeRow's
+  non-passive touchmove (sticky scroll starts), the week-to-month strip animating height, the tab bar's CSS curve vs
+  the push spring, Reduce Motion cancelling opacity fades, the 150 ms wait before pushing to a note, Spectral swap on
+  cold launch, and the blank frame after the keyboard closes.
 - Memory re-check (the open item): Duo closed, 20 opens of "Welcome to Folevi": 126 MB, 200 MB, 130 MB after
   `org.WebKit.lowMemory`; nothing kept per open.
 - The three failing e2e specs listed in section 10 were already fixed on `main` by PR 77.

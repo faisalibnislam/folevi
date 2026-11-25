@@ -196,8 +196,9 @@ export interface ShellLockSettings {
   lock: boolean;
   /** Seconds in the background before it asks again. */
   lockAfter: number;
-  /** "biometric" and "screenLock": the Android app (a fingerprint or face, else the phone's PIN, pattern or password). */
-  method: "faceID" | "touchID" | "opticID" | "passcode" | "biometric" | "screenLock" | "none";
+  /** "biometric" and "screenLock": the Android app (a fingerprint or face, else the phone's PIN, pattern or password).
+   *  "windowsHello": Folevi for Windows; "passphrase": Folevi for Linux (a passphrase chosen for the lock). */
+  method: "faceID" | "touchID" | "opticID" | "passcode" | "biometric" | "screenLock" | "windowsHello" | "passphrase" | "none";
 }
 
 export interface ShellLock {

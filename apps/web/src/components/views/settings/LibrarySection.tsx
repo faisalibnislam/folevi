@@ -651,8 +651,10 @@ const LOCK_AFTER: { value: number; label: string }[] = [
 function lockName(method: ShellLockSettings["method"]): string {
   if (method === "biometric") return "your fingerprint or face";
   if (method === "screenLock") return "your screen lock";
+  if (method === "windowsHello") return "Windows Hello";
+  if (method === "passphrase") return "your passphrase";
   // No lock set up on this device: the name it would have once there is one.
-  if (method === "none") return shell()?.platform === "android" ? "your fingerprint or face" : deviceWords().ios ? "Face ID" : "Touch ID";
+  if (method === "none") return shell()?.platform === "android" ? "your fingerprint or face" : shell()?.platform === "windows" ? "Windows Hello" : deviceWords().ios ? "Face ID" : "Touch ID";
   return method === "faceID" ? "Face ID" : method === "opticID" ? "Optic ID" : method === "passcode" ? "your passcode" : "Touch ID";
 }
 
@@ -669,14 +671,14 @@ function LockCard() {
     try {
       await update(patch);
     } catch (e) {
-      // Cancelling Touch ID leaves it as it was.
+      // Cancelling Touch ID (Windows Hello, the passphrase prompt) leaves it as it was.
       if (hostError(e).code !== "cancelled") toast.show(hostError(e).message || "Couldn't change the lock.", { tone: "error" });
     } finally {
       setBusy(false);
     }
   };
   return (
-    <Card title="App lock" description={unavailable ? `${deviceWords().Here} has no ${deviceWords().ios ? "Face ID or passcode" : shell()?.platform === "android" ? "fingerprint, face or screen lock" : "Touch ID"}, or it isn't set up in ${deviceWords().settings}, so Folevi can't lock.` : `Folevi asks for ${name} when it opens, and when you come back to it. It covers your notes until then.`}>
+    <Card title="App lock" description={unavailable ? `${deviceWords().Here} has no ${deviceWords().ios ? "Face ID or passcode" : shell()?.platform === "android" ? "fingerprint, face or screen lock" : shell()?.platform === "windows" ? "Windows Hello" : "Touch ID"}, or it isn't set up in ${deviceWords().settings}, so Folevi can't lock.` : `Folevi asks for ${name} when it opens, and when you come back to it. It covers your notes until then.`}>
       <div className="grid gap-4" data-testid="library-lock">
         <div className="flex items-center justify-between gap-4">
           <span id={descId} className="text-subheadline text-ink">
@@ -992,7 +994,7 @@ function IphoneLock() {
   return (
     <IosSection
       header="App lock"
-      footer={unavailable ? `${deviceWords().Here} has no ${deviceWords().ios ? "Face ID or passcode" : shell()?.platform === "android" ? "fingerprint, face or screen lock" : "Touch ID"}, or it isn't set up in ${deviceWords().settings}, so Folevi can't lock.` : `Folevi asks for ${name} when it opens, and when you come back to it. It covers your notes until then.`}
+      footer={unavailable ? `${deviceWords().Here} has no ${deviceWords().ios ? "Face ID or passcode" : shell()?.platform === "android" ? "fingerprint, face or screen lock" : shell()?.platform === "windows" ? "Windows Hello" : "Touch ID"}, or it isn't set up in ${deviceWords().settings}, so Folevi can't lock.` : `Folevi asks for ${name} when it opens, and when you come back to it. It covers your notes until then.`}
     data={{ "data-testid": "library-lock" }}>
       <SwitchRow icon={<RowIcon><LockKeyhole /></RowIcon>} label={`Lock with ${name}`} checked={settings.lock} disabled={unavailable || busy} onChange={(on) => void change({ lock: on })} />
       {settings.lock ? <ChoiceRow screen="library-lock-after" label="Ask again" value={String(settings.lockAfter)} choices={LOCK_AFTER.map((o) => ({ value: String(o.value), label: o.label }))} footer="When you come back after Folevi has been in the background this long." disabled={busy} onChange={(v) => void change({ lockAfter: Number(v) })} /> : null}

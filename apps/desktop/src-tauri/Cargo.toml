@@ -56,6 +56,9 @@ regex = "1"
 # Toasts whose click Folevi hears (tauri-plugin-notification can't report clicks on desktop).
 tauri-winrt-notification = "0.8"
 windows-sys = { version = "0.59", features = ["Win32_UI_Shell", "Win32_Foundation", "Win32_Storage_FileSystem"] }
+# Windows Hello for the app lock and encrypted notes (src/hello.rs).
+windows = { version = "0.62", features = ["Security_Credentials_UI", "Foundation", "Win32_Foundation", "Win32_System_WinRT"] }
+windows-future = "0.3"
 
 # File dialogs: the system's own (Windows), and on Linux the XDG file chooser portal, which the Flatpak needs to
 # reach the person's files and which looks native on GNOME and KDE (rfd refuses its GTK and portal backends together).

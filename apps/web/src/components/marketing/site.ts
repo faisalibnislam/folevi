@@ -40,6 +40,7 @@ export function signUpWithTemplate(key: string): string {
 export const MARKETING_ROUTES = [
   { path: "/", priority: 1, changeFrequency: "weekly", updated: "2026-11-19" },
   { path: "/apps", priority: 0.9, changeFrequency: "monthly", updated: "2026-11-19" },
+  { path: "/downloads", priority: 0.8, changeFrequency: "monthly", updated: "2026-11-25" },
   { path: "/features", priority: 0.9, changeFrequency: "monthly", updated: "2026-11-06" },
   { path: "/mac", priority: 0.8, changeFrequency: "monthly", updated: "2026-11-19" },
   { path: "/security", priority: 0.8, changeFrequency: "monthly", updated: "2026-11-06" },

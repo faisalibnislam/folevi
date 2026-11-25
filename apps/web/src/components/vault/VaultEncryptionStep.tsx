@@ -8,6 +8,7 @@ import { ArrowLeft, KeyRound, LockKeyhole, ScrollText, Smartphone } from "lucide
 import { Button } from "@/components/ui/Button";
 import { copy } from "@/lib/e2ee/copy";
 import { getKeySession, inNativeApp, macE2ee, thisDevice } from "@/lib/e2ee/keys";
+import { shell } from "@/lib/shell";
 import type { ApprovalHandle } from "@/lib/e2ee/keys/session";
 import { SecretForm, TrustChoice } from "@/components/e2ee/UnlockScreen";
 import { ApprovalCode } from "@/components/e2ee/ApproveDeviceDialog";
@@ -125,7 +126,7 @@ export function VaultEncryptionStep({ onStart, onDone }: { onStart: () => void; 
 
 /** Right after unlocking in the Mac app: Touch ID next time instead of the passphrase (Settings has the same switch). */
 export function VaultTouchIdOffer() {
-  const v = copy.vaultUnlock;
+  const v = shell()?.platform === "windows" ? { ...copy.vaultUnlock, ...copy.vaultUnlockWindows } : copy.vaultUnlock;
   const bridge = macE2ee();
   const [show, setShow] = useState(false);
   const [busy, setBusy] = useState(false);

@@ -1,7 +1,7 @@
 // Recording a call in the Mac app (lib/callCapture.ts): offered only by a Mac app that says it can, what a
 // failed capture tells the person, and the microphone and this Mac's sound mixed into one stream.
 import { describe, expect, test, vi } from "vitest";
-import { CALL_PERMISSION, callProblem, canRecordCalls, mixAudio, type Mixer } from "@/lib/callCapture";
+import { CALL_PERMISSION, CALL_SHARE_SOUND, callProblem, canRecordCalls, mixAudio, type Mixer } from "@/lib/callCapture";
 
 describe("recording a call", () => {
   test("offered only in a Mac app that has call capture (older installed apps and browsers record the microphone)", () => {
@@ -9,6 +9,10 @@ describe("recording a call", () => {
     expect(canRecordCalls({ platform: "mac" })).toBe(false);
     expect(canRecordCalls({ platform: "mac", callCapture: "yes" as unknown as boolean })).toBe(false);
     expect(canRecordCalls(null)).toBe(false);
+    // Folevi for Windows records the call's sound through WebView2's "Share system audio"; Linux can't.
+    expect(canRecordCalls({ platform: "windows", callCapture: true })).toBe(true);
+    expect(canRecordCalls({ platform: "linux", callCapture: true })).toBe(false);
+    expect(canRecordCalls({ platform: "linux", callCapture: false })).toBe(false);
   });
 
   test("a refused or silent capture points to the Screen & System Audio Recording permission; anything else says so plainly", () => {
@@ -18,6 +22,9 @@ describe("recording a call", () => {
     expect(CALL_PERMISSION).toBe("Folevi needs Screen & System Audio Recording permission to hear the call. Turn it on in System Settings > Privacy & Security, then try again.");
     expect(callProblem(new DOMException("x", "NotFoundError"))).toEqual({ message: expect.stringMatching(/couldn’t be recorded.*microphone only/), settings: false });
     expect(callProblem("boom").settings).toBe(false);
+    // Windows has no permission to change: the person shares the sound when asked.
+    expect(callProblem(new DOMException("x", "NoSystemAudio"), "windows")).toEqual({ message: CALL_SHARE_SOUND, settings: false });
+    expect(callProblem(new DOMException("x", "NotAllowedError"), "mac")).toEqual({ message: CALL_PERMISSION, settings: true });
   });
 
   test("the microphone and this Mac's sound go into one destination, which is what's recorded; the meter hears both", () => {

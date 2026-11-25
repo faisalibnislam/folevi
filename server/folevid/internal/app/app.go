@@ -311,7 +311,7 @@ func (a *App) pathWithNode() string {
 
 func (a *App) backendEnv() []string {
 	knobs, _ := a.memoryKnobs()
-	extra := append([]string{"TMPDIR=" + a.tmpDir, "PATH=" + a.pathWithNode(), "DISABLE_BEACON=1"}, knobs...)
+	extra := append([]string{"TMPDIR=" + a.tmpDir, "PATH=" + a.pathWithNode(), "DISABLE_BEACON=1", "NO_COLOR=1"}, knobs...)
 	return supervisor.Environ([]string{"NODE_OPTIONS", "INSTANCE_SECRET"}, extra...)
 }
 

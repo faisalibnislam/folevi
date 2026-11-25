@@ -54,6 +54,7 @@ function Qr({ value }: { value: string }) {
       alive = false;
     };
   }, [value]);
+  // eslint-disable-next-line @next/next/no-img-element -- a data: URL made here, nothing to optimize
   return src ? <img src={src} alt="QR code of the invite link" width={180} height={180} className="rounded-control" /> : <div className="size-[180px] rounded-control bg-[var(--glass-hover)]" aria-hidden />;
 }
 

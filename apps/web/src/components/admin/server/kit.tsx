@@ -32,7 +32,7 @@ export async function control<T>(method: "GET" | "POST" | "PUT", path: string, b
     body: body === undefined ? undefined : JSON.stringify(body),
   });
   const text = await res.text();
-  let json: unknown = null;
+  let json: unknown;
   try {
     json = text ? JSON.parse(text) : null;
   } catch {

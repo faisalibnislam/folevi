@@ -18,7 +18,7 @@ export async function lookUpServer(origin: string): Promise<LookupResult> {
     return { ok: false, reason: "We couldn't reach that address. Check it, and that the server is on." };
   }
   if (!res.ok) return { ok: false, reason: "That address answered, but it isn't a Folevi server." };
-  let info: ServerInfo | null = null;
+  let info: ServerInfo | null;
   try {
     info = parseServerInfo(await res.json());
   } catch {

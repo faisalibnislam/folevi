@@ -190,12 +190,12 @@ func writeBackupZip(path string, man Manifest, export string, secrets map[string
 	defer f.Close()
 	zw := zip.NewWriter(f)
 	mb, _ := json.MarshalIndent(man, "", "  ")
-	if err := addBytes(zw, "manifest.json", mb); err != nil {
+	if err := addBytes(zw, "manifest.json", mb, man.CreatedAt); err != nil {
 		return err
 	}
 	if secrets != nil {
 		sb, _ := json.Marshal(secrets)
-		if err := addBytes(zw, "secrets.json", sb); err != nil {
+		if err := addBytes(zw, "secrets.json", sb, man.CreatedAt); err != nil {
 			return err
 		}
 	}
@@ -218,8 +218,8 @@ func writeBackupZip(path string, man Manifest, export string, secrets map[string
 	return f.Sync()
 }
 
-func addBytes(zw *zip.Writer, name string, b []byte) error {
-	w, err := zw.Create(name)
+func addBytes(zw *zip.Writer, name string, b []byte, mod time.Time) error {
+	w, err := zw.CreateHeader(&zip.FileHeader{Name: name, Method: zip.Deflate, Modified: mod})
 	if err != nil {
 		return err
 	}

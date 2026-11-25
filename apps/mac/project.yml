@@ -19,7 +19,7 @@ packages:
 settings:
   base:
     MARKETING_VERSION: "1.6.79"
-    CURRENT_PROJECT_VERSION: 104
+    CURRENT_PROJECT_VERSION: 105
     MACOSX_DEPLOYMENT_TARGET: "26.0"
     DEVELOPMENT_TEAM: 7K32QQ2FX8
     # The shared iOS Swift is written for the Swift 5 language mode (as the iOS project builds it).

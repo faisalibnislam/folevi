@@ -20,6 +20,7 @@
 // Privacy: note text goes to Google only when a person asks for AI help, and only the notes that request
 // needs. Prompts, note text and answers are never logged or stored. Only the event, model, status and
 // token counts are.
+import { noteText as textOfNote } from "./lib/documentText";
 import { v } from "convex/values";
 import { action, internalQuery, query, type ActionCtx, type MutationCtx } from "./_generated/server";
 import { internalMutation, mutation } from "./lib/functions";
@@ -460,15 +461,15 @@ export const gather = internalQuery({
       const text = q.trim().slice(0, 200);
       if (!text) continue;
       const found = await ctx.db
-        .query("documents")
+        .query("documentText")
         .withSearchIndex("search_text", (s) => {
           const found = s.search("searchText", text);
           const b = (scope.kind === "personal" ? found.eq("ownerProfileId", scope.profileId) : found.eq("workspaceId", scope.workspaceId)).eq("inTrash", false);
           return folder ? b.eq("folderId", folder._id) : b;
         })
         .take(12);
-      for (const d of found) {
-        docs.set(d._id, d);
+      for (const r of found) {
+        const d = { _id: r.documentId };
         const cur = score.get(d._id);
         if (cur) cur.hits++;
         else score.set(d._id, { hits: 1, rank: rank++ });
@@ -508,7 +509,7 @@ export const gather = internalQuery({
         const ordered = [...chunks].sort((a, b) => a.chunk.chunkIndex - b.chunk.chunkIndex);
         out.push({ id: d.publicId, title, text: ordered.map((c) => c.chunk.text).join("\n\n…\n\n").slice(0, NOTE_CHARS), blockIds: [...new Set(chunks.flatMap((c) => c.chunk.blockIds))] });
       } else {
-        out.push({ id: d.publicId, title, text: (copy ? copy.text : d.searchText).slice(0, NOTE_CHARS) });
+        out.push({ id: d.publicId, title, text: (copy ? copy.text : await textOfNote(ctx, d._id)).slice(0, NOTE_CHARS) });
       }
     }
     if (out.length) return fitToBudget(dedupePassages(out), SOURCES_TOKENS, Math.ceil(NOTE_CHARS / 4));
@@ -534,7 +535,7 @@ export const gather = internalQuery({
       if (!accessAtLeast(await documentAccess(ctx, profile, d), "read")) continue;
       const copy = isSealed(d) ? await readableFor(ctx, d, "ai") : null;
       if (isSealed(d) && !copy) continue;
-      out.push({ id: d.publicId, title: (copy ? copy.title : d.title) || "Untitled", text: (copy ? copy.text : d.searchText).slice(0, NOTE_CHARS), recent: true });
+      out.push({ id: d.publicId, title: (copy ? copy.title : d.title) || "Untitled", text: (copy ? copy.text : await textOfNote(ctx, d._id)).slice(0, NOTE_CHARS), recent: true });
     }
     return fitToBudget(out, SOURCES_TOKENS, Math.ceil(NOTE_CHARS / 4));
   },
@@ -837,7 +838,7 @@ export const recent = internalQuery({
       if (!accessAtLeast(await documentAccess(ctx, profile, d), "read")) continue;
       const copy = isSealed(d) ? await readableFor(ctx, d, "ai") : null;
       if (isSealed(d) && !copy) continue;
-      notes.push({ id: d.publicId, title: (copy ? copy.title : d.title) || "Untitled", text: (copy ? copy.text : d.searchText).slice(0, 2500) });
+      notes.push({ id: d.publicId, title: (copy ? copy.title : d.title) || "Untitled", text: (copy ? copy.text : await textOfNote(ctx, d._id)).slice(0, 2500) });
     }
     const open = await (
       scope.kind === "personal"

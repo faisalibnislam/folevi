@@ -311,3 +311,34 @@ export async function setAiSettings(t: T, value: { routes?: Record<string, "gemi
     else await ctx.db.insert("systemSettings", { key: "foliAi", value, updatedAt: Date.now() });
   });
 }
+
+/** A note's search text (its documentText row, convex/lib/documentText.ts); "" when it has none. */
+export async function textOf(t: T, publicId: string): Promise<string> {
+  return await t.run(async (ctx) => {
+    const doc = await ctx.db
+      .query("documents")
+      .withIndex("by_public_id", (q) => q.eq("publicId", publicId))
+      .unique();
+    if (!doc) return "";
+    const row = await ctx.db
+      .query("documentText")
+      .withIndex("by_document", (q) => q.eq("documentId", doc._id))
+      .unique();
+    return row?.searchText ?? "";
+  });
+}
+
+/** Sets a note's search text directly (as text derived by older code would have left it). */
+export async function setTextOf(t: T, publicId: string, searchText: string): Promise<void> {
+  await t.run(async (ctx) => {
+    const doc = (await ctx.db
+      .query("documents")
+      .withIndex("by_public_id", (q) => q.eq("publicId", publicId))
+      .unique())!;
+    const row = (await ctx.db
+      .query("documentText")
+      .withIndex("by_document", (q) => q.eq("documentId", doc._id))
+      .unique())!;
+    await ctx.db.patch(row._id, { searchText });
+  });
+}

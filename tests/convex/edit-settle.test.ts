@@ -17,8 +17,13 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
+/** The note's row, with its search text (kept in documentText) as `searchText`. */
 async function docRow(t: T, publicId: string) {
-  return await t.run(async (ctx) => (await ctx.db.query("documents").withIndex("by_public_id", (q) => q.eq("publicId", publicId)).unique())!);
+  return await t.run(async (ctx) => {
+    const doc = (await ctx.db.query("documents").withIndex("by_public_id", (q) => q.eq("publicId", publicId)).unique())!;
+    const text = await ctx.db.query("documentText").withIndex("by_document", (q) => q.eq("documentId", doc._id)).unique();
+    return { ...doc, searchText: text?.searchText ?? "" };
+  });
 }
 
 const pending = async (t: T) => await t.run(async (ctx) => await ctx.db.query("documentEdits").collect());

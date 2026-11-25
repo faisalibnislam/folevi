@@ -17,7 +17,7 @@ import { sha256Hex } from "../../convex/lib/crypto";
 import { copyCollectionsInto } from "../../convex/lib/collections";
 import { proposeAppend } from "../../convex/proposals";
 import { markerNeedles } from "../../convex/testSupport";
-import { join, para, person, PERSONAL, setup, teamWorkspace, ulid, inWorkspace, type ScopeArg, type T } from "./helpers";
+import { join, para, person, PERSONAL, setup, teamWorkspace, ulid, inWorkspace, type ScopeArg, type T, textOf } from "./helpers";
 import { watchedDb } from "../../convex/lib/functions";
 
 type Person = Awaited<ReturnType<typeof person>>;
@@ -498,7 +498,7 @@ describe("migration (Blind with sealed fields), migrations (Skip), users (compos
     await t.mutation(internal.migrations.backfillDocumentPreviews, {});
     const doc = await docOf(t, n.id);
     expect(doc.icon).toBeUndefined();
-    expect(doc.searchText).toBe("");
+    expect(await textOf(t, n.id)).toBe("");
   });
 
   test("onboarding in an encrypted Personal adds no plaintext starter pages", async () => {

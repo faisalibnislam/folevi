@@ -1040,6 +1040,10 @@ account button should move past iPadOS's window buttons).
   them to the data protection keychain needs a migration of existing items.
 - Backend performance pass, owner's OK needed for production: run `migrations:backfillListStats` (optional, speeds
   up existing folders) and `migrations:backfillDocumentText` (required before the note text switch PR merges).
+- Backend performance pass, production: `migrations:backfillDocumentText` ran on 2026-11-25 (373 notes copied, 0
+  failed). Next, with the owner's OK: merge #93 (the note text switch), let it deploy, then run
+  `npx convex run --prod migrations:narrowDocumentText` from the main checkout. Optional at any time:
+  `migrations:backfillListStats` (speeds up existing folders).
 - Backend performance pass (`docs/perf/backend-results.md`): kept folder and Drafts counts, task rows that carry
   their note's title, a cheaper `changes.list`, then note text (`searchText`) split out of `documents`
   (widen, backfill, narrow; the owner approves each production backfill).
@@ -1377,6 +1381,11 @@ account button should move past iPadOS's window buttons).
 - 2026-11-25: Folevi Server, app side split onto `main` (`claude/server-apps-base`): web server edition, admin panel,
   Your own server sign-in, Connect pages, backend server edition, Mac/iOS server places, best-connection module; server
   functions registered for E2EE routing and local mode; server fallback origin is 127.0.0.1 so shell exports pass.
+- 2026-11-25: The owner ran `migrations:backfillDocumentText` on production (373 notes copied, 0 failed); #93 is
+  ready to merge, then `migrations:narrowDocumentText`.
+- 2026-11-25: Backend performance pass, step 4 (draft PR, waits for the owner and the production backfill): search,
+  Foli AI and Spotlight read note text from `documentText`; `documents.searchText` is no longer written, emptied by
+  `migrations:narrowDocumentText`, and its search index dropped. Tests read text through `textOf` (tests/convex/helpers.ts).
 - 2026-11-25: Backend performance pass, step 3 (widen): `documentText` table holds each note's search text and search
   fields, kept in step by the write hook; `migrations:backfillDocumentText` copies older notes (production run waits
   for the owner). Readers are unchanged until the switch PR.

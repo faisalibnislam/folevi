@@ -29,8 +29,11 @@ describe.skipIf(!process.env.FOLEVI_PERF)("large library read costs", () => {
         const [bigFolderId, bigCount] = [...byFolder.entries()].sort((x, y) => y[1] - x[1])[0]!;
         const bigFolder = (await ctx.db.get(bigFolderId as never)) as { publicId: string };
         const tag = (await ctx.db.query("tags").collect()).find((tg) => tg.name === "tag-1")!;
-        const long = docs.find((d) => d.searchText.length > 20_000)!;
-        const short = docs.find((d) => d.folderId && d.searchText.length < 2_000)!;
+        // Note text is in documentText once it moved there (convex/lib/documentText.ts), on the row before.
+        const texts = new Map((await ctx.db.query("documentText").collect()).map((r) => [r.documentId as string, r.searchText.length]));
+        const len = (d: (typeof docs)[number]) => texts.get(d._id) ?? (d as { searchText?: string }).searchText?.length ?? 0;
+        const long = docs.find((d) => len(d) > 20_000)!;
+        const short = docs.find((d) => d.folderId && len(d) < 2_000)!;
         const bigNote = docs.find((d) => d.folderId === bigFolderId && !d.parentDocumentId)!;
         const other = (await ctx.db.query("folders").collect()).find((f) => f._id !== bigFolderId)!;
         return { bigFolder: bigFolder.publicId, bigCount, tag: tag.publicId, long: long.publicId, short: short.publicId, bigNote: bigNote.publicId, otherFolder: other.publicId, total: docs.length };

@@ -5,7 +5,7 @@ import { describe, expect, test } from "vitest";
 import { SCHEMA_VERSION, type WireBlock } from "@folevi/editor-schema";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
-import { e2eePerson, e2eeRecoveryMethods, e2eeSpace, para, PERSONAL, setup, ulid, type T } from "./helpers";
+import { e2eePerson, e2eeRecoveryMethods, e2eeSpace, para, PERSONAL, setup, ulid, type T, textOf } from "./helpers";
 import { push } from "./e2ee-fixtures";
 import { runSealJob, runUnsealJob, sealerFor, sealNote, unsealNote } from "./e2ee-device";
 
@@ -43,7 +43,7 @@ describe("seal migration", () => {
     const linking = await plainNote(p, "ZQXJ-TITLE-linking", "ZQXJ-BODY-linking", target);
     await p.as.mutation(api.documents.createSnapshot, { documentId: linking, reason: "manual" });
     const before = await docRow(t, linking);
-    expect(before.searchText).toContain("ZQXJ-BODY-linking");
+    expect(await textOf(t, linking)).toContain("ZQXJ-BODY-linking");
     const tasksBefore = await t.run(async (ctx) => await ctx.db.query("tasks").withIndex("by_document", (q) => q.eq("documentId", before._id)).collect());
     expect(tasksBefore).toHaveLength(1);
 
@@ -59,7 +59,7 @@ describe("seal migration", () => {
     expect(after.sealedAt).toBeTypeOf("number");
     expect(after.sealing).toBeUndefined();
     expect(after.title).toBe("");
-    expect(after.searchText).toBe("");
+    expect(await textOf(t, linking)).toBe("");
     expect(after.excerpt).toBe("");
     const left = await t.run(async (ctx) => ({
       tasks: await ctx.db.query("tasks").withIndex("by_document", (q) => q.eq("documentId", after._id)).collect(),
@@ -81,6 +81,7 @@ describe("seal migration", () => {
     // Every note of the space (the seeded ones too) is sealed.
     expect(left.docs.filter((d) => d.sealedAt === undefined).map((d) => d.title)).toEqual([]);
     expect(JSON.stringify(left.blocks.map((b) => [b.text, b.props])) + JSON.stringify(left.docs.map((d) => [d.title, d.searchText, d.excerpt, d.preview]))).not.toContain("ZQXJ");
+    expect(JSON.stringify((await t.run(async (ctx) => await ctx.db.query("documentText").collect())).map((r) => r.searchText))).not.toContain("ZQXJ");
 
     // The device reads it back: titles and blocks open.
     const listed = (await p.as.query(api.blocks.list, { documentId: target }))!.blocks as never[];
@@ -140,7 +141,7 @@ describe("unseal migration", () => {
     const note = await plainNote(p, "ZQXJ-TITLE-unseal", "ZQXJ-BODY-unseal");
     const { migrationId } = await p.as.mutation(api.e2ee.spaces.enable, { scope: PERSONAL, level: "full", switches: SWITCHES });
     await runSealJob(t, p, sealer, migrationId!, "device-unseal-001");
-    expect((await docRow(t, note)).searchText).toBe("");
+    expect(await textOf(t, note)).toBe("");
     // Lowering asks for a recovery method checked in the last ten minutes.
     const wraps = await p.as.query(api.e2ee.keys.listWraps, {});
     const wrap = (wraps as { publicId: string; kind: string }[]).find((w) => w.kind === "recoveryKey")!;
@@ -151,7 +152,7 @@ describe("unseal migration", () => {
     const after = await docRow(t, note);
     expect(after.sealedAt).toBeUndefined();
     expect(after.title).toBe("ZQXJ-TITLE-unseal");
-    expect(after.searchText).toContain("ZQXJ-BODY-unseal");
+    expect(await textOf(t, note)).toContain("ZQXJ-BODY-unseal");
     const tasks = await t.run(async (ctx) => await ctx.db.query("tasks").withIndex("by_document", (q) => q.eq("documentId", after._id)).collect());
     expect(tasks).toHaveLength(1);
   });
@@ -244,7 +245,7 @@ describe("a whole decrypt job (WP8's unseal runner needs every phase to finish)"
     expect(after.job!.phase).toBe("done");
     expect(after.space!.state).toBe("off");
     expect(after.docs.filter((d) => d.sealedAt !== undefined)).toEqual([]);
-    expect(after.docs.find((d) => d.publicId === note)!.searchText).toContain("ZQXJ-BODY-back");
+    expect(await textOf(t, note)).toContain("ZQXJ-BODY-back");
     expect(after.snaps.filter((s) => s.sealed)).toEqual([]);
     const ours = after.snaps.find((s) => s.title === "ZQXJ-TITLE-back");
     expect(ours).toBeDefined();

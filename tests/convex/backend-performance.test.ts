@@ -3,7 +3,7 @@ import { afterEach, describe, expect, test, vi } from "vitest";
 import { api, internal } from "../../convex/_generated/api";
 import type { Doc, Id } from "../../convex/_generated/dataModel";
 import { rankSequence } from "@folevi/editor-schema";
-import { para, person, PERSONAL, setup, teamWorkspace, ulid, type T } from "./helpers";
+import { para, person, PERSONAL, setup, teamWorkspace, ulid, type T, textOf } from "./helpers";
 
 type Person = Awaited<ReturnType<typeof person>>;
 type Routing = Person["scope"];
@@ -382,7 +382,6 @@ describe("end-to-end encryption costs a Standard space nothing visible", () => {
     // Derived data is as always: a big batch refreshes the search text a moment later (refreshDerivedLater).
     const doc = await t.run(async (ctx) => await ctx.db.query("documents").withIndex("by_public_id", (q) => q.eq("publicId", docId)).unique());
     await t.mutation(internal.documents.refreshDerivedLater, { documentId: doc!._id });
-    const fresh = await t.run(async (ctx) => await ctx.db.get(doc!._id));
-    expect(fresh!.searchText).toContain("line 0");
+    expect(await textOf(t, docId)).toContain("line 0");
   });
 });

@@ -392,7 +392,8 @@ export default defineSchema({
     titleRev: v.number(),
     seq: v.number(),
     contentSeq: v.number(),
-    searchText: v.string(),
+    /** Legacy: a note's search text is in documentText now (lib/documentText.ts); emptied by migrations.narrowDocumentText. */
+    searchText: v.optional(v.string()),
     wordCount: v.number(),
     charCount: v.number(),
     blockCount: v.number(),
@@ -469,10 +470,6 @@ export default defineSchema({
     .index("by_trash_deleted", ["inTrash", "deletedAt"])
     // Notes on a note theme (moving them when an admin deletes the theme, convex/themes.ts).
     .index("by_cover", ["cover.kind", "cover.value"])
-    .searchIndex("search_text", {
-      searchField: "searchText",
-      filterFields: ["workspaceId", "ownerProfileId", "inTrash", "folderId", "createdBy", "kind"],
-    })
     .searchIndex("search_title", {
       searchField: "title",
       filterFields: ["workspaceId", "ownerProfileId", "inTrash"],

@@ -6,7 +6,7 @@ Versions are MAJOR.UPDATE.PATCH, PATCH at least two digits: a Major release (2.0
 
 ## Version 1.5.78: Small update
 
-Released 2026-11-25 06:39:59+06:00 (build 94, tag v1.5.78)
+Released 2026-11-25 06:39:59+06:00 (build 95, tag v1.5.78)
 
 Folevi for iPhone and iPad gets its widgets, Siri and Shortcuts back, a clearer sync sheet, and iPhone Duo keeps clear of the fold.
 
@@ -20,12 +20,13 @@ Folevi for iPhone and iPad gets its widgets, Siri and Shortcuts back, a clearer 
 - Sync status uses the same words on every screen.
 - Lists that fail to load show it and try again instead of taking the page down.
 - The starter note reads right on phones, tablets and computers.
-- On iPhone, what scrolls under the top bar fades out softly instead of being cut off by a hard line.
+- On iPhone, the top bar has more room around its buttons, and what scrolls under it fades out softly instead of being cut off by a hard line.
 
 ### Fixed
 
 - On iPhone Duo partly open, the sidebar keeps to its side of the fold and nothing sits in the crease.
 - Links from widgets and Shortcuts, and returning to the app, now reach the page.
+- A note's small title no longer sits over the Back button.
 
 ## Version 1.5.77: Small update
 

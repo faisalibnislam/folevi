@@ -2,7 +2,8 @@
 // retire, reorder, and delete added themes for good (their notes move to a theme the admin picks). Every
 // change is audited. Staff can look; owners and admins can change (as for templates and configuration).
 import { v } from "convex/values";
-import { internalMutation, mutation, query, type MutationCtx } from "./_generated/server";
+import { query, type MutationCtx } from "./_generated/server";
+import { internalMutation, mutation } from "./lib/functions";
 import { internal } from "./_generated/api";
 import type { Doc } from "./_generated/dataModel";
 import { ulid } from "@folevi/editor-schema";

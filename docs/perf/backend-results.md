@@ -69,3 +69,85 @@ What it confirms from the static audit:
 ## Fixes
 
 (Each fix adds its before/after numbers here.)
+
+### Step 2: kept folder and Drafts stats, task titles on task rows, cheaper Changes (PR 2)
+
+What changed:
+
+- Every mutation is built from `convex/lib/functions.ts` instead of `_generated/server`. Its db wrapper reports each
+  write to `documents` and `folders` (with the row before and after) to `lib/listStats.ts`, which keeps a
+  `listStats` row per folder (listed page count, last edit, the 5 newest pages as card previews) and per scope (the
+  Drafts count). `organization.index`, `recentFolders` and `draftCount` read those rows instead of the pages. People
+  who can't open every page (a member of a workspace with restricted pages) get the stats only for folders without
+  a restricted page hidden from them; the rest are counted from their pages as before (`hiddenFrom`).
+- A folder or scope without a stats row (made before this, until `migrations:backfillListStats` runs) is counted
+  from its pages exactly as before, so nothing depends on the backfill.
+- Task rows carry their note's public id, title and icon (`syncTaskLabels` on rename, `syncTaskProjection` on any
+  task edit, cleared when a note is sealed or unsealed). Task lists read no notes when the person opens every page.
+  A row from before reads its note.
+- `changes.list` reads a note only once it has unseen lines by others, and skips the open note before reading its
+  lines (an edit there no longer re-runs the list).
+- A folder sorted by last edit pages through `by_folder_listed` instead of reading the whole folder.
+
+Reads at 5,000 notes (same library and harness as the baseline):
+
+| Function | Docs read before → after | Bytes read before → after |
+|---|---:|---:|
+| organization.sidebar | 237 → 237 | 66.8 KB → 66.8 KB |
+| organization.index (folders) | 4584 → 408 | 13.01 MB → 497.4 KB |
+| organization.index (tags) | 752 → 752 | 146.1 KB → 146.1 KB |
+| organization.recentFolders (6) | 952 → 408 | 2.33 MB → 497.4 KB |
+| organization.draftCount | 630 → 4 | 1.62 MB → 1.1 KB |
+| documents.list all (50) | 227 → 227 | 202.0 KB → 202.0 KB |
+| documents.list unsorted (50) | 149 → 149 | 160.7 KB → 160.7 KB |
+| documents.list starred (50) | 238 → 238 | 201.1 KB → 201.1 KB |
+| documents.list folder (300 notes, 50) | 405 → 155 | 992.8 KB → 224.9 KB |
+| documents.list tag (50) | 213 → 213 | 107.0 KB → 107.0 KB |
+| tasks.list inbox | 1365 → 1003 | 1.44 MB → 494.8 KB |
+| tasks.list today | 1316 → 1003 | 1.28 MB → 494.8 KB |
+| tasks.list upcoming | 1003 → 1003 | 390.9 KB → 494.8 KB |
+| tasks.list all | 1476 → 1003 | 1.75 MB → 494.8 KB |
+| tasks.list completed | 328 → 203 | 451.9 KB → 104.5 KB |
+| tasks.range (a month) | 136 → 72 | 217.6 KB → 35.8 KB |
+| changes.list | 3 → 3 | 986 B → 986 B |
+| search.documents 'project' | 188 → 188 | 423.9 KB → 423.9 KB |
+| sync.manifest (first page) | 733 → 733 | 1.08 MB → 1.08 MB |
+| documents.get (long note) | 11 → 11 | 37.5 KB → 37.5 KB |
+| blocks.list (long note) | 169 → 169 | 140.6 KB → 140.6 KB |
+| documents.get (short note) | 9 → 9 | 5.0 KB → 5.0 KB |
+| blocks.list (short note) | 13 → 13 | 7.5 KB → 7.5 KB |
+
+Write cost of the hook (300-note library, before → after): typing a block into a note: 17 → 23 documents and
+15.3 → 27.8 KB read, 6 → 8 written; moving a note to another folder: 12 → 26 documents and 11.5 → 43.8 KB read,
+3 → 6 written (the folder it left re-reads its newest pages when the note was one of its previews). In the test
+backend, seeding 5,000 notes took 643 s instead of 301 s.
+
+Task rows are a little larger now (they carry the title), so a view that read few notes before ("upcoming") reads a
+few more bytes. `changes.list` costs nothing here (a Personal has no other editors); `tests/convex/task-labels-changes.test.ts`
+checks that a list of 12 opened, unchanged shared notes reads no note.
+
+Still open after this step: `organization.index (tags)` (one tag-link read per tagged page), task lists still read
+every open task row (1,003 here: fine for reads, but `take(1000)` still caps them), list views and search still
+read whole note rows with their text (step 3).
+
+### Step 3: note text in its own table, widen (PR 3)
+
+Most of a note row's bytes are its search text (`searchText`, up to 32,000 characters), which no list shows. It
+moves to `documentText` (the text, the full-text index, and copies of the fields search filters on: scope,
+`inTrash`, `folderId`, `createdBy`, `kind`), in three steps so production keeps working throughout:
+
+1. Widen (this PR): every write to a note also keeps its `documentText` row (`lib/documentText.ts`, through the
+   `lib/functions.ts` hook). Readers still use `documents.searchText`. New notes have rows from the start.
+2. Backfill (production, the owner's OK): `npx convex run --prod migrations:backfillDocumentText` copies every older
+   note, 25 per transaction, idempotent. Check: the `documentText` row count equals the `documents` row count
+   (Convex dashboard, Data). Rollback: nothing to undo; readers don't use the rows yet.
+3. Switch and narrow (a later PR, merged only after step 2 and with the owner's OK): search and Foli AI read
+   `documentText`, `refreshDerived` stops writing `documents.searchText`, a migration empties it, then the field and
+   the `documents.search_text` index go. That is when lists, counts and title reads stop paying for note text.
+
+`excerpt` (at most 240 characters) and `preview` (at most 14 lines of 160) stay on the note row: every card shows
+them, so moving them would only add a read per card.
+
+Write cost while both copies are kept (300-note library): typing a block reads 25 documents and writes 9 (step 2:
+23 and 8), and writes the text twice until step 3.
+

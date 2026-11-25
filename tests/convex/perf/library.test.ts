@@ -31,7 +31,9 @@ describe.skipIf(!process.env.FOLEVI_PERF)("large library read costs", () => {
         const tag = (await ctx.db.query("tags").collect()).find((tg) => tg.name === "tag-1")!;
         const long = docs.find((d) => d.searchText.length > 20_000)!;
         const short = docs.find((d) => d.folderId && d.searchText.length < 2_000)!;
-        return { bigFolder: bigFolder.publicId, bigCount, tag: tag.publicId, long: long.publicId, short: short.publicId, total: docs.length };
+        const bigNote = docs.find((d) => d.folderId === bigFolderId && !d.parentDocumentId)!;
+        const other = (await ctx.db.query("folders").collect()).find((f) => f._id !== bigFolderId)!;
+        return { bigFolder: bigFolder.publicId, bigCount, tag: tag.publicId, long: long.publicId, short: short.publicId, bigNote: bigNote.publicId, otherFolder: other.publicId, total: docs.length };
       });
 
       const page = { numItems: 50, cursor: null };
@@ -55,6 +57,11 @@ describe.skipIf(!process.env.FOLEVI_PERF)("large library read costs", () => {
       await run("blocks.list (long note)", () => a.as.query(api.blocks.list, { documentId: fixtures.long }));
       await run("documents.get (short note)", () => a.as.query(api.documents.get, { documentId: fixtures.short }));
       await run("blocks.list (short note)", () => a.as.query(api.blocks.list, { documentId: fixtures.short }));
+
+      // Writes: one edit (a block typed into a note in the biggest folder), and a note moved between folders.
+      const { pushEdit, pushMove } = await import("./writes");
+      await run("sync.push (edit a block)", () => pushEdit(a, fixtures.bigNote));
+      await run("documents.move (to another folder)", () => pushMove(a, fixtures.bigNote, fixtures.otherFolder));
 
       console.log(`\nLibrary: ${fixtures.total} notes (biggest folder ${fixtures.bigCount}); seeded in ${seededMs} ms\n\n${table(costs)}\n`);
       expect(costs.length).toBeGreaterThan(0);

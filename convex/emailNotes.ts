@@ -19,7 +19,8 @@
 // Attachments aren't imported (their names are listed at the end of the note); Resend keeps them.
 // Logs carry outcomes only, never addresses, subjects or text.
 import { v } from "convex/values";
-import { internalMutation, internalQuery, mutation, query, type ActionCtx, type MutationCtx, type QueryCtx } from "./_generated/server";
+import { internalQuery, query, type ActionCtx, type MutationCtx, type QueryCtx } from "./_generated/server";
+import { internalMutation, mutation } from "./lib/functions";
 import { internal } from "./_generated/api";
 import type { Doc, Id } from "./_generated/dataModel";
 import { fetchReceivedEmail, readNoteEmail } from "@folevi/email";

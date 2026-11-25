@@ -3,7 +3,8 @@
 // your Personal and, if you choose, workspace tasks assigned to you. Read-only. The link is a secret: only
 // its hash is stored, it's shown once, and making a new one ends the old one.
 import { v } from "convex/values";
-import { internalMutation, internalQuery, mutation, query } from "./_generated/server";
+import { internalQuery, query } from "./_generated/server";
+import { internalMutation, mutation } from "./lib/functions";
 import type { Doc } from "./_generated/dataModel";
 import { requireProfile } from "./lib/auth";
 import { randomToken, sha256Hex } from "./lib/crypto";

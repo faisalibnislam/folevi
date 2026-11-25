@@ -17,7 +17,8 @@
 // Past due: the plan stays in force while Polar retries the payment; when Polar gives up it cancels the
 //   subscription, and the workspace is on Free.
 import { v } from "convex/values";
-import { action, internalAction, internalMutation, internalQuery, mutation, query } from "./_generated/server";
+import { action, internalAction, internalQuery, query } from "./_generated/server";
+import { internalMutation, mutation } from "./lib/functions";
 import { internal } from "./_generated/api";
 import type { Doc, Id } from "./_generated/dataModel";
 import type { ActionCtx, MutationCtx } from "./_generated/server";

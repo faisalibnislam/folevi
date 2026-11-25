@@ -152,3 +152,66 @@ The Capacitor README's list still applies (`apps/android/README.md`, "Steps only
 Console app and Play App Signing, an upload key outside the repo, App Links fingerprints on Vercel, Firebase
 for push, Google Cloud Android OAuth client for Drive, the Dropbox redirect URI. If the Play account is a
 personal one, budget 14 days of closed testing with 12 testers before production.
+
+## 6. Resumed 2026-11-25: native UI, "Today's UI, Material 3 native"
+
+Owner's answers (2026-11-25, relayed by the iOS session):
+
+- **Look:** keep today's screens, layout, spacing, type and colours from the web phone and tablet layout
+  (`apps/web/src/components/iphone/*`, the tablet Shell). Build them with Android's own elements: Material 3
+  Expressive buttons, sheets, menus, motion, predictive back and edge-to-edge.
+- **Shape:** Compose for every screen and for the note page's chrome; only the writing area stays the web editor.
+  The data layer stays the web engine (this plan's section 3).
+- **Rollout:** one big switch. The Capacitor app (`apps/mobile/android`, PR 69 with PR 103 and PR 108) ships until
+  then and gets only serious bug fixes. Emulators only; no Play upload without the owner's OK.
+- **Match iOS:**
+  - Foli AI chat is native.
+  - Settings are native, except Webhooks, API tokens, Connected apps, AI export and workspace Data, which open as
+    in-app web pages.
+  - Phone first, then tablet and foldable.
+
+Starting point: this app (sections 3 and 4), which still builds (59 unit tests pass, 2026-11-25) and runs in demo
+mode.
+
+### Gaps, in order
+
+1. **Phone bar** matches the web's (done 2026-11-25, `ui/PhoneBar.kt`):
+   - Home, Tasks and Calendar in one floating capsule; Foli AI and + in another.
+   - + offers New note, New folder and Quick task. On Tasks, + is Quick task straight away.
+   - Still to do:
+     - From template (needs a native templates screen).
+     - Content scrolling under the bar.
+     - The lens sliding between tabs.
+2. **Port the Capacitor app's newer service work** into `apps/android` (most file differences are only the
+   plugin base class):
+   - "Your own server": `server/ShellServer.kt`, `server/LocalServers.kt`, `Places.kt` (server places),
+     `AuthBridge` per-site sign-in, `PlacesPlugin` (addServer, localServers, scanCode, setActiveOrigin).
+   - The per-place CSP and the Http home-network rule.
+   - SaveTargets and PlaceOutbox skipping server places.
+   - PR 108's keyboard and polish fixes in `MainActivity`.
+3. **Screen-by-screen match with the web phone layout**, with screenshot tests per screen against the web's:
+   - Home (glass top bar, Recent cards, rows, Starred).
+   - Notes lists (swipe actions, Select mode, Organize).
+   - Note chrome (NoteBars: top bar, floating bottom bars, keyboard bar, tool sheets).
+   - Tasks (WeekStrip, TaskSheet).
+   - Calendar (Agenda).
+   - Search scopes.
+   - Account sheet.
+   - New folder sheet.
+   - Pull to refresh.
+   - Sync status.
+4. **Settings:** native for every section except the technical ones above, which open through `WebShowRoute`.
+5. **Missing native screens** (section 4's open items):
+   - Onboarding and sign-in (Credential Manager: Google, passkeys).
+   - Note sharing sheet.
+   - Templates.
+   - Archive and Trash.
+   - Search filters.
+   - Material 3 widgets.
+6. **Tablet and foldable**, matching the web tablet Shell (sidebar and tab strip are already here). Then
+   Googlebook.
+7. **The switch:**
+   - Release build checks.
+   - The owner's OK.
+   - Play upload by the owner.
+   - The Capacitor app retires.

@@ -25,8 +25,8 @@ on `origin/main`.
 | Backend | Convex, production deployment `fastidious-clownfish-123` | Live |
 | Folevi for Mac | `apps/mac` (AppKit + native screens + one WKWebView for the editor), Developer ID, notarized, Sparkle updates from `folevi.com/download/mac/appcast.xml` | Shipped by direct download only (no Mac App Store build) |
 | Folevi for iPhone and iPad | `apps/ios` (native SwiftUI/UIKit screens, web note editor), iOS 18+ | TestFlight internal group "Folevi team" only; never submitted to App Review |
-| Android | The Capacitor app on branch `claude/android-capacitor-197cf4` (PR 69); `apps/android` on `main` still holds the native Compose app (Gradle root `apps/android`, modules `engine`, `app`) | **Active** (owner, 2026-11-25: "we need Android"): 1.5.74 (build 89) on Play internal testing, PR 69 not merged yet. Only the native Compose app is paused (owner, 2026-11-24: one web app everywhere) |
-| Android | `apps/android`: a native Compose app (Gradle root `apps/android`, modules `engine`, `app`); the Capacitor app is gone | **Resumed 2026-11-23** as a native app "just like iPhone" for phones, foldables, tablets and Googlebooks; first build complete on branch `claude/android-native-622675` (not merged, not on Play; `docs/ANDROID_NATIVE_PLAN.md`) |
+| Android | The Capacitor app on branch `claude/android-capacitor-197cf4` (PR 69); `apps/android` on `main` still holds the native Compose app (Gradle root `apps/android`, modules `engine`, `app`) | **Active** (owner, 2026-11-25: "we need Android"): 1.5.74 (build 89) on Play internal testing, PR 69 not merged yet. Ships until the native app replaces it in one switch; only serious bug fixes meanwhile (owner, 2026-11-25) |
+| Android | `apps/android`: a native Compose app (Gradle root `apps/android`, modules `engine`, `app`); the Capacitor app is gone | **Resumed again 2026-11-25** (owner: rebuild the UI natively in Compose, everything but the writing area, "Today's UI, Material 3 native", one big switch). Work on branch `claude/android-native-compose`; plan section 6 of `docs/ANDROID_NATIVE_PLAN.md` |
 | Folevi for Windows and Linux | `apps/desktop` (Tauri 2, system web view): Windows ARM64/x64 (NSIS, MSI), Linux x86_64/aarch64 (AppImage, deb, rpm, Flatpak); `docs/DESKTOP_APP.md` | **Built 2026-11-24** on branch `claude/desktop-tauri` (replaces the Electron PR 58): CI test builds only; not merged, not published |
 | Web Clipper | `apps/clipper` (Chrome/Edge extension, own lockfile) | Built and tested in CI; store listing status: see `apps/clipper/STORE.md` |
 | MCP server listing | `mcp/` (`server.json`) | Folevi exposes an MCP endpoint through its OAuth provider |
@@ -1216,6 +1216,8 @@ account button should move past iPadOS's window buttons).
   `DATABASE_UDF_USER_TIMEOUT_SECONDS=4` for that backend. Bursts show in `convex.log` as "took a long time".
 
 ## 12. Change log
+
+- 2026-11-25: Android native Compose resumed (owner, relayed by the iOS session). `apps/android` on `main` builds and its 59 unit tests pass; the phone bar now matches the web's (Home, Tasks, Calendar capsule plus Foli AI and + capsule, `ui/PhoneBar.kt`); gap plan in `docs/ANDROID_NATIVE_PLAN.md` section 6. Branch `claude/android-native-compose`.
 - 2026-11-25: **Integration branch `claude/integration-2026-11-25`** (the owner: "check and resolve [the merging issues]
   and release all apps and platforms, I approve everything"). The backlog could not drain PR by PR: every PR edits
   this file, so each merge made the others conflict and restart CI, and the PRs also conflicted in code. PRs 104, 96,

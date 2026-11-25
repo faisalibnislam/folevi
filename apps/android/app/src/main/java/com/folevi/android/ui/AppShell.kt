@@ -1,9 +1,9 @@
 // The app's frame, adaptive by window width (docs/ANDROID_NATIVE_PLAN.md section 3; owner layouts 2026-11-23, tabs
 // 2026-11-24):
 //
-// - Compact (phones, a folded foldable): Material navigation bar with Home, Tasks, Calendar and Foli AI, a
-//   floating New note button, one page with Back; a note opens full screen (as on iPhone). Each bar tab keeps its
-//   own Navigation 3 back stack.
+// - Compact (phones, a folded foldable): the web's phone bar (PhoneBar.kt; owner 2026-11-25, "Today's UI, Material
+//   3 native"): Home, Tasks and Calendar in one floating capsule, Foli AI and + in another; one page with Back; a
+//   note opens full screen (as on iPhone). Each tab keeps its own Navigation 3 back stack.
 // - Medium and wider (tablets, an open foldable, Googlebooks): a navigation rail (Medium, Expanded) or the sidebar
 //   with the folders (Large and wider), and a tab strip at the top like the web app's, with the web's rules
 //   (Tabs.kt): everything opened from a page gets a tab that goes Back to it; the rail, the sidebar and New note
@@ -41,13 +41,15 @@ import androidx.compose.material3.NavigationRail
 import androidx.compose.material3.NavigationRailItem
 import androidx.compose.material3.PermanentDrawerSheet
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SmallExtendedFloatingActionButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
 import androidx.compose.material3.adaptive.navigation3.ListDetailSceneStrategy
 import androidx.compose.material3.adaptive.navigation3.rememberListDetailSceneStrategy
-import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffold
-import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteType
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -226,16 +228,16 @@ fun AppShell() {
             if (tabbed) {
                 TabbedFrame(width, tabs, newNote)
             } else {
-                NavigationSuiteScaffold(
-                    navigationSuiteItems = {
-                        for (t in Tab.entries) {
-                            item(selected = t == tab, onClick = { pick(t) }, icon = { FoleviIcon(t.icon, null) }, label = { Text(t.label) })
-                        }
-                    },
-                    // The bar steps away while a note is open (as on iPhone).
-                    layoutType = if ((stack.lastOrNull() as? Route)?.isDetail() == true) NavigationSuiteType.None else NavigationSuiteType.NavigationBar,
-                ) {
-                    PhoneContent(stack, phoneOpen, newNote, Modifier.fillMaxSize())
+                // The web's phone bar: two floating capsules (PhoneBar.kt). It steps away while a note, a page or
+                // Settings is open (as on iPhone).
+                val top = stack.lastOrNull() as? Route
+                val showBar = top != null && !top.isDetail() && top !is SettingsRoute && top !is VaultRoute
+                PhoneContent(stack, phoneOpen, Modifier.fillMaxSize()) {
+                    AnimatedVisibility(
+                        visible = showBar,
+                        enter = slideInVertically(MaterialTheme.motionScheme.defaultSpatialSpec()) { it } + fadeIn(),
+                        exit = slideOutVertically(MaterialTheme.motionScheme.fastSpatialSpec()) { it } + fadeOut(),
+                    ) { PhoneBar(tab, pick, newNote) }
                 }
                 // Back at the root of Tasks, Calendar or Foli AI goes Home first, then leaves (Android's "exit through
                 // home"); NavDisplay handles Back within a tab.
@@ -319,19 +321,15 @@ private fun TabPage(route: Route, name: String, open: (Route) -> Unit, back: (()
 
 @OptIn(ExperimentalMaterial3AdaptiveApi::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-private fun PhoneContent(stack: NavBackStack<NavKey>, open: (Route) -> Unit, newNote: () -> Unit, modifier: Modifier) {
+private fun PhoneContent(stack: NavBackStack<NavKey>, open: (Route) -> Unit, modifier: Modifier, bar: @Composable () -> Unit) {
     val strategy = rememberListDetailSceneStrategy<NavKey>()
-    val top = stack.lastOrNull()
-    val showNew = (top as? Route)?.isDetail() != true && top !is AiRoute && top !is SettingsRoute && top !is VaultRoute
     val back: (() -> Unit)? = if (stack.size > 1) ({ stack.removeAt(stack.lastIndex) }) else null
     Scaffold(
         modifier = modifier,
         containerColor = MaterialTheme.colorScheme.background,
         // Clear of the status bar, the cutout and the keyboard (the bar below takes care of its own space).
         contentWindowInsets = WindowInsets.safeDrawing,
-        floatingActionButton = {
-            if (showNew) SmallExtendedFloatingActionButton(text = { Text("New note") }, icon = { FoleviIcon(WebIcon.PLUS, null) }, onClick = newNote)
-        },
+        bottomBar = bar,
     ) { padding ->
         NavDisplay(
             backStack = stack,

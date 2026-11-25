@@ -1023,9 +1023,9 @@ function FileView({ node, selected, editor }: ReactNodeViewProps) {
             onClick={() => void quickLookFile(file.url, a.name ?? "Attachment")}
             className="inline-flex h-8 items-center gap-1.5 rounded-chip border border-line px-2.5 text-footnote hover:bg-surface"
             contentEditable={false}
-            title="Quick Look"
+            title={macDesktop()?.platform === "mac" ? "Quick Look" : "Open"}
           >
-            <Eye size={14} aria-hidden /> Quick Look
+            <Eye size={14} aria-hidden /> {macDesktop()?.platform === "mac" ? "Quick Look" : "Open"}
           </button>
         ) : null}
         {file ? (

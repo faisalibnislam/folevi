@@ -11,7 +11,7 @@
 // here (a handler registered with registerMenuCommand first, then the shell's own, then the key the page already
 // answers, sent to what has focus), and the page tells the menu bar what it can do now (setMenuState). A
 // notification's actions (Reply, Mark as Read) arrive as { type: "notification", ... }.
-import { useMutation } from "convex/react";
+import { useConvex, useMutation } from "convex/react";
 import { useQuery } from "@/lib/convex/queries";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api } from "@/lib/convex/api";
@@ -23,6 +23,7 @@ import { openNextInNewTab, tabHref, tabPage, useBackForward, useTabs, type DocTa
 import { useAiAccess } from "@/components/ai/useAi";
 import { useCommentActions } from "@/components/doc/commentActions";
 import { textToCommentBody } from "@/components/doc/MentionInput";
+import { snoozeUntil } from "@/lib/engine/commandsMac";
 import { useCreateDocument } from "./useCreateDocument";
 import { useShell } from "./Shell";
 import { useCapabilities } from "@/lib/mode";
@@ -335,15 +336,21 @@ function useMenuCommands(): (id: string) => void {
   }, []);
 }
 
-/** A Mac notification's actions that need the page: Reply (a comment in its thread) and Mark as Read. */
+/**
+ * A notification's actions that need the page (the Mac's banners, Windows' toasts, Linux's notifications): Reply (a
+ * comment in its thread), Mark as Read, and on a task's reminder Complete and Snooze (an hour, this evening,
+ * tomorrow: engine/commandsMac.ts snoozeUntil).
+ */
 function useNotificationActions(): (command: Extract<DesktopCommand, { type: "notification" }>) => void {
   const { notifications } = useCapabilities();
   const markRead = useMutation(api.notifications.markRead);
+  const updateTask = useMutation(api.tasks.update);
+  const convex = useConvex();
   const comments = useCommentActions("");
-  const latest = useRef({ notifications, markRead, comments });
-  latest.current = { notifications, markRead, comments };
+  const latest = useRef({ notifications, markRead, updateTask, convex, comments });
+  latest.current = { notifications, markRead, updateTask, convex, comments };
   return useCallback((c) => {
-    const { notifications: on, markRead: read, comments: actions } = latest.current;
+    const { notifications: on, markRead: read, updateTask: update, convex: client, comments: actions } = latest.current;
     if (!on) return;
     const done = () => (c.id ? read({ ids: [c.id] }).catch(() => undefined) : undefined);
     if (c.action === "read") void done();
@@ -352,6 +359,16 @@ function useNotificationActions(): (command: Extract<DesktopCommand, { type: "no
         .reply({ threadId: c.thread, body: textToCommentBody(c.text.trim(), [], []) })
         .then(done)
         .catch(() => undefined);
+    } else if (c.id && (c.action === "complete" || c.action.startsWith("snooze-"))) {
+      // The task the notification is about (its block), from the notification itself.
+      void (async () => {
+        const list = (await client.query(api.notifications.list, { limit: 100 })) as { id: string; blockId: string | null }[];
+        const blockId = list.find((n) => n.id === c.id)?.blockId;
+        if (!blockId) return;
+        if (c.action === "complete") await update({ blockId, checked: true });
+        else await update({ blockId, reminderAt: snoozeUntil(c.action) });
+        await done();
+      })().catch(() => undefined);
     } else if (runMenuCommand(`notification.${c.action}`)) void done();
   }, []);
 }

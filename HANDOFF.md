@@ -750,6 +750,9 @@ account button should move past iPadOS's window buttons).
   `DATABASE_UDF_USER_TIMEOUT_SECONDS=4` for that backend. Bursts show in `convex.log` as "took a long time".
 
 ## 12. Change log
+- 2026-11-25: New Downloads page (`/downloads`, owner's request): every download in one list (Mac, Windows x64 and
+  arm64, the six Linux packages and checksums, App Store, Android coming soon, web), in the site nav after Apps and
+  in the sitemap. The page is `/downloads` because `/download/*` is rewritten to the R2 download bucket.
 - 2026-11-25: Apps page (`/apps`): an Android card, "coming soon to Google Play" with the web app meanwhile (owner's
   choice while Play is internal testing only). Mac, Windows and Linux download links checked (all 200).
 - 2026-11-25: Backend performance pass, step 3 (widen): `documentText` table holds each note's search text and search

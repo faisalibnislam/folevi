@@ -129,3 +129,25 @@ checks that a list of 12 opened, unchanged shared notes reads no note.
 Still open after this step: `organization.index (tags)` (one tag-link read per tagged page), task lists still read
 every open task row (1,003 here: fine for reads, but `take(1000)` still caps them), list views and search still
 read whole note rows with their text (step 3).
+
+### Step 3: note text in its own table, widen (PR 3)
+
+Most of a note row's bytes are its search text (`searchText`, up to 32,000 characters), which no list shows. It
+moves to `documentText` (the text, the full-text index, and copies of the fields search filters on: scope,
+`inTrash`, `folderId`, `createdBy`, `kind`), in three steps so production keeps working throughout:
+
+1. Widen (this PR): every write to a note also keeps its `documentText` row (`lib/documentText.ts`, through the
+   `lib/functions.ts` hook). Readers still use `documents.searchText`. New notes have rows from the start.
+2. Backfill (production, the owner's OK): `npx convex run --prod migrations:backfillDocumentText` copies every older
+   note, 25 per transaction, idempotent. Check: the `documentText` row count equals the `documents` row count
+   (Convex dashboard, Data). Rollback: nothing to undo; readers don't use the rows yet.
+3. Switch and narrow (a later PR, merged only after step 2 and with the owner's OK): search and Foli AI read
+   `documentText`, `refreshDerived` stops writing `documents.searchText`, a migration empties it, then the field and
+   the `documents.search_text` index go. That is when lists, counts and title reads stop paying for note text.
+
+`excerpt` (at most 240 characters) and `preview` (at most 14 lines of 160) stay on the note row: every card shows
+them, so moving them would only add a read per card.
+
+Write cost while both copies are kept (300-note library): typing a block reads 25 documents and writes 9 (step 2:
+23 and 8), and writes the text twice until step 3.
+

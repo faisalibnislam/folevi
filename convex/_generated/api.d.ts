@@ -135,6 +135,7 @@ import type * as lib_create from "../lib/create.js";
 import type * as lib_credits from "../lib/credits.js";
 import type * as lib_crypto from "../lib/crypto.js";
 import type * as lib_devices from "../lib/devices.js";
+import type * as lib_documentText from "../lib/documentText.js";
 import type * as lib_documents from "../lib/documents.js";
 import type * as lib_e2ee_ai from "../lib/e2ee/ai.js";
 import type * as lib_e2ee_coreGuards from "../lib/e2ee/coreGuards.js";
@@ -383,6 +384,7 @@ declare const fullApi: ApiFromModules<{
   "lib/credits": typeof lib_credits;
   "lib/crypto": typeof lib_crypto;
   "lib/devices": typeof lib_devices;
+  "lib/documentText": typeof lib_documentText;
   "lib/documents": typeof lib_documents;
   "lib/e2ee/ai": typeof lib_e2ee_ai;
   "lib/e2ee/coreGuards": typeof lib_e2ee_coreGuards;

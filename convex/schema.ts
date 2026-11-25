@@ -473,6 +473,28 @@ export default defineSchema({
       filterFields: ["workspaceId", "ownerProfileId", "inTrash"],
     }),
 
+  /**
+   * A note's search text, apart from its row (it can be 32,000 characters, and lists and counts read note rows):
+   * the text with the full-text index, and copies of the note's fields that search filters on. Kept in step by
+   * every write to a note (lib/documentText.ts through lib/functions.ts). Rollout: docs/perf/backend-results.md.
+   */
+  documentText: defineTable({
+    documentId: v.id("documents"),
+    ...scoped,
+    searchText: v.string(),
+    inTrash: v.boolean(),
+    folderId: v.optional(v.id("folders")),
+    createdBy: v.id("profiles"),
+    kind: vDocumentKind,
+  })
+    .index("by_document", ["documentId"])
+    .index("by_workspace", ["workspaceId"])
+    .index("by_owner", ["ownerProfileId"])
+    .searchIndex("search_text", {
+      searchField: "searchText",
+      filterFields: ["workspaceId", "ownerProfileId", "inTrash", "folderId", "createdBy", "kind"],
+    }),
+
   documentLinks: defineTable({
     ...scoped,
     sourceDocumentId: v.id("documents"),

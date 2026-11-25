@@ -120,6 +120,23 @@ https://folevi.com/download/windows/Folevi-arm64-setup.exe and https://folevi.co
 Uploaded with `npx wrangler r2 object put folevi-updates/windows/<file> --remote` from CI run 45418586764 (the fixed build). The
 version came from `apps/desktop/RELEASE_VERSION` (1.5.73) because this branch's version.json predates 1.5.72.
 
+## Dropbox and Google Drive
+
+The library can sync through Dropbox or Google Drive as on the Mac (`src/cloud.rs`, a port of ShellCloud.swift).
+The syncing is the shared code in the page (packages/cloud-folders, bundled by `apps/ios/scripts/bundle-cloud.mjs`
+and put in every page by lib.rs). The shell signs in, keeps the tokens sealed in the secret store
+(`cloud.dropbox`, `cloud.googleDrive`; never readable by the page), refreshes them, and makes the page's requests
+only to the provider's own hosts.
+
+Sign-in is OAuth with PKCE in the browser, ending on a loopback address Folevi listens on (no secret):
+- Dropbox: `http://127.0.0.1:41753/` (or `:41754/`, `:41755/`). The Dropbox app needs those three redirect URIs and
+  "Allow public clients (Implicit Grant & PKCE)" (docs/LOCAL_MODE.md has the checklist).
+- Google: a "Desktop app" OAuth client (any `http://127.0.0.1:<port>/` works; the Mac's iOS client doesn't).
+
+Owner step before it shows up: set the public client ids as repository variables `FOLEVI_DROPBOX_APP_KEY` and
+`FOLEVI_GOOGLE_DESKTOP_CLIENT_ID` (and for local builds, the same names in the environment of
+`packaging/linux/scripts/build-in-lima.sh`). Without them Dropbox and Google Drive aren't offered.
+
 ## Not done yet
 
 - Updates: the Tauri updater is in the app and points at `folevi.com/download/desktop/<target>-<arch>/latest.json`,
@@ -127,7 +144,6 @@ version came from `apps/desktop/RELEASE_VERSION` (1.5.73) because this branch's 
   `tauri.conf.json`.
 - Signing (Windows), uploading to R2, a download page, Flathub submission (`packaging/linux/flatpak/com.folevi.Folevi.yml`
   needs the release's .deb addresses and checksums; docs/LINUX.md), the Microsoft Store.
-- Dropbox and Google Drive sign-in on this platform (the library's cloud copy is ported; the sign-in flow isn't).
 - An app lock, notification actions, call recording, text in images.
 - Snap layouts when hovering the maximize button (Windows+Z still works).
 

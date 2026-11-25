@@ -19,6 +19,7 @@ tink = "1.24.0"
 okhttp = "5.5.1"
 mlkit-docscanner = "16.0.0"
 mlkit-text = "16.0.1"
+code-scanner = "16.1.0"
 mlkit-genai-prompt = "1.0.0-beta4"
 firebase-bom = "35.1.0"
 play-services-auth = "21.6.0"
@@ -51,6 +52,7 @@ okhttp = { module = "com.squareup.okhttp3:okhttp", version.ref = "okhttp" }
 okhttp-mockwebserver = { module = "com.squareup.okhttp3:mockwebserver3", version.ref = "okhttp" }
 mlkit-docscanner = { module = "com.google.android.gms:play-services-mlkit-document-scanner", version.ref = "mlkit-docscanner" }
 mlkit-text = { module = "com.google.mlkit:text-recognition", version.ref = "mlkit-text" }
+code-scanner = { module = "com.google.android.gms:play-services-code-scanner", version.ref = "code-scanner" }
 mlkit-genai-prompt = { module = "com.google.mlkit:genai-prompt", version.ref = "mlkit-genai-prompt" }
 firebase-bom = { module = "com.google.firebase:firebase-bom", version.ref = "firebase-bom" }
 play-services-auth = { module = "com.google.android.gms:play-services-auth", version.ref = "play-services-auth" }

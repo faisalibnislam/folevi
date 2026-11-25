@@ -29,6 +29,10 @@ import kotlinx.coroutines.withTimeoutOrNull
  * Afterwards the page's Better Auth client sends every request through fetch() here: only the website's
  * /api/auth/..., GET or POST, a few harmless page headers, `Authorization: Bearer`, no cookies, `Origin` set to
  * the website, a rotated `set-auth-token` kept, and the token scrubbed from anything handed back.
+ *
+ * Folevi Server (docs/self-hosting/CONTRACT.md §6.1): an account on a server signs in and talks to that server's
+ * website, the same way (its /connect and /api/auth); every call goes to the website of the account it acts for.
+ * Each account's session is its own Keystore-sealed secret, by user id (its place id is `acct:<user id>`).
  */
 class AuthBridge(
     serviceUrl: String,
@@ -40,9 +44,19 @@ class AuthBridge(
     private val signInTimeoutMs: Long = 10 * 60_000L,
     /** Several places (com.folevi.android.Places): the open account's user id, whose session the page's calls use. */
     private val currentUser: () -> String? = { null },
+    /** The website of the open place's Folevi Server (or of the sign-in screen's); null: Folevi Cloud. */
+    private val actingSite: () -> String? = { null },
+    /** The website of the Folevi Server an account is on, by user id; null: Folevi Cloud. */
+    private val siteOfUser: (String) -> String? = { null },
 ) {
-    val service: HttpUrl = requireNotNull(serviceUrl.toHttpUrlOrNull()) { "Not a website: $serviceUrl" }.newBuilder().encodedPath("/").query(null).build()
-    private val origin = service.toString().removeSuffix("/")
+    /** Folevi Cloud's website (the build's). */
+    val cloud: HttpUrl = site(serviceUrl) ?: throw IllegalArgumentException("Not a website: $serviceUrl")
+
+    /** The website the open place's calls go to: its server's, else Folevi Cloud's. */
+    val service: HttpUrl get() = actingSite()?.let(::site) ?: cloud
+
+    /** The website an account's session belongs to (its server's, or Folevi Cloud's). */
+    fun serviceFor(user: String?): HttpUrl = if (user == null) service else siteOfUser(user)?.let(::site) ?: cloud
 
     data class Response(val status: Int, val headers: Map<String, String>, val body: String)
 
@@ -62,9 +76,9 @@ class AuthBridge(
     data class User(val userId: String, val name: String, val email: String, val avatarUrl: String?)
 
     /** Who a session belongs to (get-session with that bearer), or null. */
-    suspend fun userOf(bearer: String): User? = withContext(Dispatchers.IO) {
+    suspend fun userOf(bearer: String, site: HttpUrl = service): User? = withContext(Dispatchers.IO) {
         runCatching {
-            val (res) = send(service.resolve("/api/auth/get-session")!!, "GET", emptyMap(), null, bearer, keep = false)
+            val (res) = send(site.resolve("/api/auth/get-session")!!, "GET", emptyMap(), null, bearer, keep = false)
             res.use {
                 if (it.code != 200) return@use null
                 val user = JSONObject(it.body.string()).optJSONObject("user") ?: return@use null
@@ -77,7 +91,8 @@ class AuthBridge(
     /** The single session an older build kept, moved to its account's own secret: that account, or null. */
     suspend fun adoptLegacy(): User? {
         val legacy = token(null) ?: return null
-        val user = userOf(legacy) ?: return null
+        // Only Folevi Cloud had sessions before several places.
+        val user = userOf(legacy, cloud) ?: return null
         if (token(user.userId) == null) store.set(slotName(user.userId), legacy)
         store.delete(TOKEN)
         return user
@@ -85,18 +100,21 @@ class AuthBridge(
 
     /** Builds a sign-in for one more account: the /connect address, and what finishes it (who it was, or null). */
     fun beginAccount(): Pair<String, suspend () -> User?> {
-        val (url, code) = beginCode()
+        // The website of the place signing in (a server's sign-in screen, or Folevi Cloud's), fixed for this sign-in.
+        val site = service
+        val (url, code) = beginCode(site)
         return url to finish@{
             val access = code() ?: return@finish null
-            val user = userOf(access)
+            val user = userOf(access, site)
             if (user == null) {
-                withContext(Dispatchers.IO) { endSession(access) }
+                withContext(Dispatchers.IO) { endSession(access, site) }
                 return@finish null
             }
             val previous = token(user.userId)
+            val previousSite = serviceFor(user.userId)
             store.set(slotName(user.userId), access)
             // The same person again: only their old session here ends.
-            if (previous != null && previous != access) withContext(Dispatchers.IO) { endSession(previous) }
+            if (previous != null && previous != access) withContext(Dispatchers.IO) { endSession(previous, previousSite) }
             user
         }
     }
@@ -104,13 +122,13 @@ class AuthBridge(
     /** Another account's Convex token (moving notes between two accounts). */
     suspend fun convexTokenFor(user: String): String? = withContext(Dispatchers.IO) {
         val bearer = token(user) ?: return@withContext null
-        val (res) = send(service.resolve("/api/auth/convex/token")!!, "GET", emptyMap(), null, bearer, slot = user)
+        val (res) = send(serviceFor(user).resolve("/api/auth/convex/token")!!, "GET", emptyMap(), null, bearer, slot = user)
         res.use { if (!it.isSuccessful) null else JSONObject(it.body.string()).optString("token").takeIf { t -> t.isNotEmpty() } }
     }
 
     /** Ends one account's session here and forgets its token. */
     suspend fun signOutUser(user: String) = withContext(Dispatchers.IO) {
-        token(user)?.let { endSession(it) }
+        token(user)?.let { endSession(it, serviceFor(user)) }
         store.delete(slotName(user))
     }
 
@@ -141,24 +159,25 @@ class AuthBridge(
 
     /** Builds the /connect address for a new sign-in; what finishes it stores the session as the open place's. */
     fun begin(): Pair<String, suspend () -> Boolean> {
-        val (url, code) = beginCode()
+        val site = service
+        val (url, code) = beginCode(site)
         return url to finish@{
             val access = code() ?: return@finish false
             val previous = token()
             store.set(slotName(currentUser()), access)
             // Signing in again (after a stale session) ends the session this phone held before.
-            if (previous != null && previous != access) withContext(Dispatchers.IO) { endSession(previous) }
+            if (previous != null && previous != access) withContext(Dispatchers.IO) { endSession(previous, site) }
             true
         }
     }
 
     /** The /connect address for a new sign-in, and what waits for it to end in a new session's token (or null). */
-    private fun beginCode(): Pair<String, suspend () -> String?> {
+    private fun beginCode(site: HttpUrl): Pair<String, suspend () -> String?> {
         cancelPending()
         val verifier = b64url(bytes(32))
         val challenge = b64url(MessageDigest.getInstance("SHA-256").digest(verifier.toByteArray()))
         val state = b64url(bytes(24))
-        val connect = service.newBuilder()
+        val connect = site.newBuilder()
             .encodedPath("/connect")
             .addQueryParameter("client_id", CLIENT_ID)
             .addQueryParameter("redirect_uri", redirectUri)
@@ -174,12 +193,12 @@ class AuthBridge(
             if (callback == null) return@finish null
             if (queryParam(callback, "error") != null) return@finish null
             val code = queryParam(callback, "code")?.takeIf { it.isNotEmpty() && it.length <= 128 } ?: return@finish null
-            exchange(code, verifier)
+            exchange(code, verifier, site)
         }
         return connect.toString() to finish
     }
 
-    private suspend fun exchange(code: String, verifier: String): String? = withContext(Dispatchers.IO) {
+    private suspend fun exchange(code: String, verifier: String, site: HttpUrl): String? = withContext(Dispatchers.IO) {
         val body = JSONObject()
             .put("grant_type", "authorization_code")
             .put("code", code)
@@ -189,9 +208,9 @@ class AuthBridge(
             .put("device_name", deviceName().take(60))
             .toString()
         val request = Request.Builder()
-            .url(service.resolve("/api/auth/native/token")!!)
+            .url(site.resolve("/api/auth/native/token")!!)
             .post(body.toRequestBody(JSON))
-            .header("origin", origin)
+            .header("origin", originOf(site))
             .header("cache-control", "no-store")
             .build()
         val access = runCatching {
@@ -207,7 +226,8 @@ class AuthBridge(
     private fun send(url: HttpUrl, method: String, headers: Map<String, String>, body: String?, bearer: String?, keep: Boolean = true, slot: String? = currentUser()): Pair<okhttp3.Response, String?> {
         val b = Request.Builder().url(url)
         for ((k, v) in headers) b.header(k, v)
-        b.header("origin", origin)
+        // The website's own origin: the one the request goes to.
+        b.header("origin", originOf(url))
         if (bearer != null) b.header("authorization", "Bearer $bearer")
         if (method == "POST") b.post((body ?: "").toRequestBody(headers["content-type"]?.toMediaType())) else b.get()
         val res = http.newCall(b.build()).execute()
@@ -217,9 +237,9 @@ class AuthBridge(
         return res to rotated
     }
 
-    private fun endSession(bearer: String) {
+    private fun endSession(bearer: String, site: HttpUrl = service) {
         runCatching {
-            send(service.resolve("/api/auth/sign-out")!!, "POST", mapOf("content-type" to "application/json"), "{}", bearer).first.close()
+            send(site.resolve("/api/auth/sign-out")!!, "POST", mapOf("content-type" to "application/json"), "{}", bearer).first.close()
         }
         // Offline: the session expires on its own, and Settings > Devices can end it from anywhere.
     }
@@ -281,6 +301,16 @@ class AuthBridge(
         private const val MAX_BODY = 1_000_000
         private const val MAX_PATH = 4096
         val TOKEN_RE = Regex("^[A-Za-z0-9._~+/=-]{16,1024}$")
+
+        /** A website (its root, no query), or null. */
+        fun site(url: String): HttpUrl? = url.toHttpUrlOrNull()?.newBuilder()?.encodedPath("/")?.query(null)?.fragment(null)?.build()
+
+        /** "scheme://host[:port]" of a URL (no default port). */
+        fun originOf(url: HttpUrl): String {
+            val host = if (url.host.contains(':')) "[${url.host}]" else url.host
+            val port = if (url.port == HttpUrl.defaultPort(url.scheme)) "" else ":${url.port}"
+            return "${url.scheme}://$host$port"
+        }
 
         fun b64url(bytes: ByteArray): String = Base64.getUrlEncoder().withoutPadding().encodeToString(bytes)
 

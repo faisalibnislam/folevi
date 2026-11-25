@@ -124,6 +124,8 @@ dependencies {
     // The document scanner and the words in an image (ML Kit, on the phone).
     implementation(libs.mlkit.docscanner)
     implementation(libs.mlkit.text)
+    // "Scan QR code" for Your own server: Google's code scanner draws its own camera screen (no camera permission).
+    implementation(libs.code.scanner)
     // Notifications from Folevi's server (Firebase Cloud Messaging), switched on by the Firebase settings below.
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.messaging)

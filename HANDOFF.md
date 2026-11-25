@@ -926,6 +926,9 @@ account button should move past iPadOS's window buttons).
 - Mac feedback branch (`claude/mac-feedback-8652d2`): the owner checks Home scrolling, folder corners and the new Show
   all tabs in the next Mac build (needs "release it"); a split-view tab in the overview was not drawn in the
   headless check (no split tab in the scratch library).
+- Android own server (`claude/android-own-server`, PR 103): merge after PR 69 and PR 100, then merge main into it.
+  Still open: Android's other windows don't reload when a server is added (only the one that added it); reading a
+  real QR code and a full sign-in on a server are untested.
 - Android emulators: the android-36 image is still kernel-only (no `system.img`), and `Folevi_Phone` (the
   `phone` AVD in `apps/mobile/android/scripts/emulator.mjs`) uses it. Boot it on the 37.0 image with
   `-sysdir ~/Library/Android/sdk/system-images/android-37.0/google_apis_playstore/arm64-v8a -read-only -wipe-data`,
@@ -1208,6 +1211,24 @@ account button should move past iPadOS's window buttons).
   the top bar, names under cards, on iPad too). How scrolling was checked: a Swift harness puts a WKWebView in an
   offscreen window and calls `scrollWheel(with:)` with CGEvent-made wheel events (location = window coordinates,
   since the event has no window); Playwright's wheel bypasses macOS's scrolling path and can't show this bug.
+- 2026-11-25: Android own server, part 2 (PR 103): merged PR 100's a800051c (the sign-in names the server, the
+  version check uses the app's version, `places.scanCode`). Added `scanCode` with Google's code scanner
+  (`play-services-code-scanner`, no camera permission; the module is installed on first use), only on devices with
+  a camera. Emulator: the server's sign-in screen says "Sign in with your account on localhost:8460" with one Sign in
+  button; the scanner opens and closing it answers null (Play services reports Back as error 13 there). Reading a
+  real QR code wasn't tested (the emulator's camera shows a virtual scene).
+- 2026-11-25: Android "Your own server" (Folevi Server places, CONTRACT §6.1) on `claude/android-own-server`, built on
+  PR 69 with PR 100 (`claude/server-apps-base`) merged in: `server/ShellServer.kt` (address rules, folevi.json
+  check, CSP, the Kotlin twin of ShellServer.swift), `server/LocalServers.kt` (NsdManager `_folevi._tcp`), Places
+  accounts carry `server`, AuthBridge sends each account's calls to its own website, `places.server`,
+  `addServerPlace`, `listLocalServers` in the bridge, the best connection through connection.ts bundled as
+  `assets/folevi-server.js`, per-place CSP header, mixed content only for http server places and sign-in pages,
+  cleartext allowed in network_security_config but enforced to home addresses by `net/Http.kt`. Server accounts
+  are left out of the share sheet, Quick Add and the outbox (Folevi Cloud's REST API only). 46 unit tests pass
+  (8 new). On the emulator against the test server (`adb reverse tcp:8460`; its folevi.json says
+  `http://localhost:8460`, so 10.0.2.2 doesn't work): add, refusals, reload bound to the server, CSP and the
+  own-server lookup UI checked; sign-in not completed (no test password used). No QR scan: the contract has no
+  bridge call for it.
 - 2026-11-25: CI secret scan fix for PR 69: gitleaks scans every branch (`git log --all`), so false positives on
   `claude/sleepy-goodall-3cg4e7` (the certificate key type line in folevid's `acme.go`, and made-up tokens in three
   folevid and Connect tests) failed the check on every PR. Their fingerprints are now in `.gitleaksignore`. New test

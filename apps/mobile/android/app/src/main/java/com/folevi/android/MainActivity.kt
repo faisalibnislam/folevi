@@ -205,11 +205,44 @@ class MainActivity : BridgeActivity() {
                         else -> null
                     }
                 },
+                pagePolicy = { pagePolicy() },
             ),
         )
     }
 
+    /**
+     * The open place's Content-Security-Policy header (CONTRACT §6.1): a Folevi Server place's pages (and its
+     * sign-in screen) reach that server's names only, never Folevi Cloud's Convex. Release builds narrow every other
+     * place back to what the export allowed before servers (iOS's ShellPolicy.cloudNarrowing); debug builds leave
+     * them to the export's own policy, since a dev export talks to a dev server. Pages with no place open (the
+     * first launch, Folevi Cloud's sign-in screen) keep the export's policy too: "Your own server" there looks up
+     * the address the person types (lib/server-edition/handoff.ts lookUpServer) before the app adds it.
+     */
+    private fun pagePolicy(): String? {
+        val current = app.places.state.current
+        val server = app.places.serverOf(current)
+        return when {
+            server != null -> com.folevi.android.server.ShellServer.Policy.forServer(server)
+            BuildConfig.DEBUG || current == null -> null
+            else -> com.folevi.android.server.ShellServer.Policy.CLOUD_NARROWING
+        }
+    }
+
+    /**
+     * The page is https://localhost, so a Folevi Server on the home network over plain http is mixed content, which
+     * the web view blocks. It's allowed only while such a server's place (or its sign-in screen) is open, or no place
+     * is (looking up a typed address); the page's policy header still limits it to that server, and scripts only
+     * ever load from the app itself (`script-src 'self'`). Everything else: never.
+     */
+    private fun applyMixedContent(wv: WebView) {
+        val current = app.places.state.current
+        val server = app.places.serverOf(current)
+        val http = server?.candidates?.any { it.startsWith("http://") } == true || server?.activeUrls?.app?.startsWith("http://") == true
+        wv.settings.mixedContentMode = if (http || current == null) android.webkit.WebSettings.MIXED_CONTENT_ALWAYS_ALLOW else android.webkit.WebSettings.MIXED_CONTENT_NEVER_ALLOW
+    }
+
     private fun installScript(wv: WebView) {
+        applyMixedContent(wv)
         val s = app.settings
         val boot = JSONObject()
             .put("origin", APP_ORIGIN)
@@ -220,9 +253,25 @@ class MainActivity : BridgeActivity() {
             .put("deviceFamily", if (resources.configuration.smallestScreenWidthDp >= 600 && !packageManager.hasSystemFeature(android.content.pm.PackageManager.FEATURE_SENSOR_HINGE_ANGLE)) "tablet" else "phone")
             .put("webViewVersion", WebViewCompat.getCurrentWebViewPackage(this)?.versionName ?: "")
             .put("insets", lastInsets)
+            // A camera for "Scan QR code" (places.scanCode); without one the page hides the button.
+            .put("camera", packageManager.hasSystemFeature(android.content.pm.PackageManager.FEATURE_CAMERA_ANY))
             // Several places (Places.kt): the page is the open place's.
-            .put("places", JSONObject().put("current", app.places.state.current ?: JSONObject.NULL).put("background", false))
+            .put("places", placesBoot())
         script.install(wv, boot, APP_ORIGIN)
+    }
+
+    /**
+     * What the page knows of its place before its first render. `server` (CONTRACT §6.1): the open place's Folevi
+     * Server, or the sign-in screen's, with the addresses in use now; null for Folevi Cloud and the library. The
+     * page's Convex client and sign-in use it instead of the build's addresses. `serverReach` stays in the bridge
+     * script (the best connection, lib/server-edition/connection.ts); the page never sees it.
+     */
+    private fun placesBoot(): JSONObject {
+        val current = app.places.state.current
+        val server = app.places.serverOf(current)
+        val boot = JSONObject().put("current", current ?: JSONObject.NULL).put("background", false).put("server", server?.json() ?: JSONObject.NULL)
+        if (server != null && current != null) boot.put("serverReach", server.reachJson())
+        return boot
     }
 
     @SuppressLint("SetJavaScriptEnabled")

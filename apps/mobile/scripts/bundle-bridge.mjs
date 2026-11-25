@@ -3,7 +3,9 @@
 //   folevi-cloud.js: the Dropbox and Google Drive kit shared with the iPhone and iPad app and the Android app
 //     (apps/android/bridge/cloud.ts over packages/cloud-folders), an IIFE defining FoleviCloudKit, which the app
 //     places inside the bridge's own function, never on the page's window.
-// Then copies folevi-cloud.js into the Android app's assets (android/app/src/main/assets, beside its folevi-bridge.js).
+//   folevi-server.js: the best connection to a Folevi Server (apps/web/src/lib/server-edition/connection.ts, through
+//     bridge/server-reach.ts), an IIFE defining FoleviServerReach, for the Android app's bridge script.
+// Then copies both into the Android app's assets (android/app/src/main/assets, beside its folevi-bridge.js).
 // The iOS app reads it from bridge/build, and the shell half shared with the Mac app from apps/ios in place.
 // Run by `pnpm sync`.
 import { execFileSync } from "node:child_process";
@@ -20,9 +22,15 @@ execFileSync(
   [resolve(root, "../ios/bridge/index.ts"), "--bundle", "--format=iife", "--global-name=FoleviCloudKit", "--target=safari17,chrome120", "--legal-comments=none", "--minify", `--outfile=${resolve(out, "folevi-cloud.js")}`, "--log-level=warning"],
   { stdio: "inherit" },
 );
+execFileSync(
+  esbuild,
+  [resolve(root, "bridge/server-reach.ts"), "--bundle", "--format=iife", "--global-name=FoleviServerReach", "--target=chrome120", "--legal-comments=none", "--minify", `--outfile=${resolve(out, "folevi-server.js")}`, "--log-level=warning"],
+  { stdio: "inherit" },
+);
 const assets = resolve(root, "android/app/src/main/assets");
 if (existsSync(resolve(root, "android/app"))) {
   mkdirSync(assets, { recursive: true });
   copyFileSync(resolve(out, "folevi-cloud.js"), resolve(assets, "folevi-cloud.js"));
+  copyFileSync(resolve(out, "folevi-server.js"), resolve(assets, "folevi-server.js"));
 }
 console.log("bundle-bridge: bridge/build and the Android assets are up to date.");

@@ -1,0 +1,20 @@
+{
+  "$schema": "../app-info-schema.json",
+  "name": "Folevi Server",
+  "id": "folevi",
+  "available": true,
+  "short_desc": "Your notes, on your own server.",
+  "author": "Folevi",
+  "port": 8460,
+  "categories": ["utilities"],
+  "description": "Your own Folevi server for your family or team, used from the normal Folevi apps.",
+  "tipi_version": 1,
+  "version": "1.5.73",
+  "source": "https://folevi.com/server",
+  "website": "https://folevi.com/server",
+  "exposable": true,
+  "supported_architectures": ["amd64", "arm64"],
+  "form_fields": [],
+  "created_at": 1795651200000,
+  "updated_at": 1795651200000
+}

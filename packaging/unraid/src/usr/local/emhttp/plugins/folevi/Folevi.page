@@ -1,0 +1,45 @@
+Menu="NetworkServices"
+Title="Folevi Server"
+Icon="folevi.png"
+---
+<?php
+$cfg = parse_ini_file("/boot/config/plugins/folevi/folevi.cfg") ?: parse_ini_file("/usr/local/emhttp/plugins/folevi/default.cfg");
+$running = trim(shell_exec("/usr/local/emhttp/plugins/folevi/scripts/rc.folevi status")) === "running";
+$port = htmlspecialchars($cfg['FOLEVI_PORT'] ?? '8460');
+?>
+<p>Folevi Server is <strong><?= $running ? "running" : "stopped" ?></strong>.
+<?php if ($running): ?>
+<a href="http://<?= htmlspecialchars($_SERVER['SERVER_NAME'] ?? 'tower') ?>:<?= $port ?>/" target="_blank">Open Folevi Server</a>
+<?php endif; ?></p>
+
+<form markdown="1" method="POST" action="/update.php" target="progressFrame">
+<input type="hidden" name="#file" value="folevi/folevi.cfg">
+<input type="hidden" name="#command" value="/usr/local/emhttp/plugins/folevi/scripts/rc.folevi">
+<input type="hidden" name="#arg[1]" value="restart">
+
+Start with the array:
+: <select name="AUTOSTART">
+  <?= mk_option($cfg['AUTOSTART'] ?? 'yes', "yes", "Yes") ?>
+  <?= mk_option($cfg['AUTOSTART'] ?? 'yes', "no", "No") ?>
+  </select>
+
+Data folder:
+: <input type="text" name="DATA_DIR" value="<?= htmlspecialchars($cfg['DATA_DIR']) ?>" class="narrow">
+
+> Everyone's notes and files live here. A pool path (for example /mnt/cache/appdata/folevi/data) is best for the database.
+
+Program folder:
+: <input type="text" name="INSTALL_DIR" value="<?= htmlspecialchars($cfg['INSTALL_DIR']) ?>" class="narrow">
+
+Port (HTTP):
+: <input type="number" name="FOLEVI_PORT" value="<?= $port ?>" class="narrow">
+
+Port (HTTPS):
+: <input type="number" name="FOLEVI_HTTPS_PORT" value="<?= htmlspecialchars($cfg['FOLEVI_HTTPS_PORT'] ?? '8443') ?>" class="narrow">
+
+Run as user:
+: <input type="text" name="RUN_AS" value="<?= htmlspecialchars($cfg['RUN_AS'] ?? 'nobody') ?>" class="narrow">
+
+&nbsp;
+: <input type="submit" value="Apply and restart"><input type="button" value="Done" onclick="done()">
+</form>

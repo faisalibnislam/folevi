@@ -1,14 +1,16 @@
 import "server-only";
+import { runtimeConfig } from "@/lib/runtime/config";
+import { internalConvexSiteUrl } from "@/lib/runtime/internal";
 
 /** Where Convex HTTP actions live (the MCP server and Better Auth). */
 export function convexSiteUrl(): string {
-  return (process.env.NEXT_PUBLIC_CONVEX_SITE_URL ?? (process.env.NEXT_PUBLIC_CONVEX_URL ?? "").replace(".convex.cloud", ".convex.site")).replace(/\/$/, "");
+  return internalConvexSiteUrl().replace(/\/$/, "");
 }
 
 /** The app's public origin (the MCP resource and the OAuth issuer live under it). */
 export function appOrigin(): string {
   try {
-    return new URL(process.env.NEXT_PUBLIC_APP_URL ?? "https://app.folevi.com").origin;
+    return new URL(runtimeConfig().appUrl).origin;
   } catch {
     return "https://app.folevi.com";
   }

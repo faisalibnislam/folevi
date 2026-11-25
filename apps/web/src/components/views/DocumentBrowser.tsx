@@ -339,12 +339,12 @@ function DocumentList({ view, folderId, tagId, org, titleOverride }: { view: Vie
   // The grid's first cards draw with the click that opened the list; the rest (below the fold on any screen) follow
   // in the background a moment later, so the click answers sooner (INP, docs/perf/web-results.md).
   // (Per list: going from All notes to a folder reuses this view, and starts over.)
-  const listKey = `${view}:${folderId ?? ""}:${tagId ?? ""}`;
+  const cardsKey = `${view}:${folderId ?? ""}:${tagId ?? ""}`;
   const [allCardsFor, setAllCardsFor] = useState<string | null>(null);
   useEffect(() => {
-    if (allCardsFor !== listKey) startTransition(() => setAllCardsFor(listKey));
-  }, [allCardsFor, listKey]);
-  const cards = allCardsFor === listKey || shown.length <= FIRST_CARDS ? shown : shown.slice(0, FIRST_CARDS);
+    if (allCardsFor !== cardsKey) startTransition(() => setAllCardsFor(cardsKey));
+  }, [allCardsFor, cardsKey]);
+  const cards = allCardsFor === cardsKey || shown.length <= FIRST_CARDS ? shown : shown.slice(0, FIRST_CARDS);
   const moreCached = fromCache && (kept?.length ?? 0) > cachedShown;
   const canLoadMore = status === "CanLoadMore" || moreCached;
   // The server's list failed and there's nothing else to show: say so (it keeps retrying) instead of loading forever.

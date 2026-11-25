@@ -63,3 +63,6 @@ b9ca0904fdc07051333200ea33436949fbf3ff8f:server/folevid/internal/connect/acme.go
 # The same script's made-up Vault demo login, brought back with the AppKit Mac app (claude/mac-webview).
 # The same script's made-up Vault demo login, brought back with the AppKit Mac app (claude/mac-webview).
 # docs/LINUX.md: the Linux package signing key's public fingerprint (FOLEVI_REPO_KEY=...), not a secret.
+# Folevi Server (PR 107): made-up test tokens and secrets in Go tests, and a certificate key type name.
+# The handoff quoting that key type line (claude/android-own-server and others).
+# A public GPG key fingerprint for the Linux package repository (claude/linux-stores and others).

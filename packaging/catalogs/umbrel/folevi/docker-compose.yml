@@ -1,0 +1,17 @@
+version: "3.7"
+
+services:
+  app_proxy:
+    environment:
+      APP_HOST: folevi_server_1
+      APP_PORT: 8460
+      # Folevi has its own sign-in; Umbrel's extra login in front of it would break the apps' sync.
+      PROXY_AUTH_ADD: "false"
+
+  server:
+    image: ghcr.io/folevi/folevi-server:1.5.73
+    user: "1000:1000"
+    restart: on-failure
+    stop_grace_period: 60s
+    volumes:
+      - ${APP_DATA_DIR}/data:/data

@@ -1,0 +1,59 @@
+# Folevi Connect on Fly.io. Not deployed yet; see OPS.md before the first `fly deploy`.
+# One machine, one volume: the tunnel registry lives in memory and SQLite on the volume, so do not scale out
+# until the store moves to Postgres and tunnels are shared (OPS.md, "Scaling").
+app = "folevi-connect"
+primary_region = "iad"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  CONNECT_DB = "/data/connect.db"
+  CONNECT_ACME_CACHE_DIR = "/data/acme"
+  CONNECT_HTTP_ADDR = ":8080"
+  CONNECT_RELAY_ADDR = ":8443"
+  CONNECT_RELAY_PROXY_PROTOCOL = "true"
+  CONNECT_LOCAL_HOSTNAMES = "connect.folevi.com,relay.folevi.app"
+  CONNECT_ZONE = "folevi.app"
+  CONNECT_DNS_PROVIDER = "cloudflare"
+  CONNECT_APP_URL = "https://app.folevi.com"
+  CONNECT_LOG_LEVEL = "info"
+  # Set to the app's dedicated IPs after `fly ips allocate-v4` / `fly ips allocate-v6`.
+  # CONNECT_RELAY_IPV4 = ""
+  # CONNECT_RELAY_IPV6 = ""
+
+[mounts]
+  source = "connect_data"
+  destination = "/data"
+
+# Raw TCP on 443: the SNI router. Server names pass through untouched; Connect's own names
+# (connect.folevi.com, relay.folevi.app) get TLS from Let's Encrypt inside the app (TLS-ALPN-01).
+[[services]]
+  internal_port = 8443
+  protocol = "tcp"
+  auto_stop_machines = "off"
+  auto_start_machines = false
+  min_machines_running = 1
+
+  [[services.ports]]
+    port = 443
+    handlers = ["proxy_proto"]
+    proxy_proto_options = { version = "v1" }
+
+  [services.concurrency]
+    type = "connections"
+    hard_limit = 20000
+    soft_limit = 15000
+
+  [[services.tcp_checks]]
+    interval = "15s"
+    timeout = "2s"
+
+# Health checks on the plain HTTP port (not exposed publicly).
+[checks]
+  [checks.health]
+    type = "http"
+    port = 8080
+    path = "/healthz"
+    interval = "15s"
+    timeout = "2s"

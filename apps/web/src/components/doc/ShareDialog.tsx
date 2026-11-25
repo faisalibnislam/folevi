@@ -19,7 +19,7 @@ import { createEncryptedLink, isSealedDocument, publishPlainCopy, revokeEncrypte
 import { useAppState } from "@/lib/app/state";
 import { PublishCopyDialog } from "@/components/e2ee/PublishCopyDialog";
 import { roleLabel } from "@/lib/app/folderSharing";
-import { APP_URL, MARKETING_HOST, publicLinkUrl } from "@/lib/env";
+import { appUrl, hostOf, publicLinkUrl, shareOrigin } from "@/lib/env";
 
 export type ShareData = NonNullable<FunctionReturnType<typeof api.sharing.get>>;
 export type ShareFolderAccess = FunctionReturnType<typeof api.folderSharing.forNote>;
@@ -247,7 +247,7 @@ export function ShareDialogView({
       size="md"
       footer={
         <>
-          <Button variant="quiet" className="mr-auto" onClick={() => copyText(`${APP_URL.replace(/\/$/, "")}/d/${documentId}`)}>
+          <Button variant="quiet" className="mr-auto" onClick={() => copyText(`${appUrl().replace(/\/$/, "")}/d/${documentId}`)}>
             <Link2 size={14} aria-hidden /> Copy link
           </Button>
           <Button variant="primary" onClick={close}>
@@ -421,7 +421,7 @@ export function ShareDialogView({
                         <input readOnly value={url} aria-label="Public link address" className="h-8 min-w-0 flex-1 ui-well rounded-chip px-2 font-mono text-footnote" onFocus={(e) => e.target.select()} />
                       ) : (
                         <span className="min-w-0 flex-1 truncate font-mono text-footnote" title="The whole link is shown once, when it’s made.">
-                          {MARKETING_HOST}/s/{l.tokenHint}••••••••
+                          {hostOf(shareOrigin())}/s/{l.tokenHint}••••••••
                         </span>
                       )}
                       {url ? (

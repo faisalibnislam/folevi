@@ -1,5 +1,6 @@
 "use client";
 
+import { isServerEdition } from "@/lib/edition";
 import { useEffect, useState, type ComponentType } from "react";
 import { AppWindowMac, Info, ArrowDownUp, Bell, Building2, CreditCard, HelpCircle, LifeBuoy, LockKeyhole, MonitorSmartphone, Palette, Plug, Plus, RefreshCw, LibraryBig, Shield, ShieldCheck, Smartphone, UserRound, UserRoundPlus, Users } from "lucide-react";
 import { AiIcon } from "@/components/ai/AiIcon";
@@ -110,18 +111,22 @@ export function SettingsView({ section: asked }: { section: Section }) {
   // Folevi for Mac's Settings window (/settings/<section>?window=1): the section alone (its toolbar lists them).
   const settingsWindow = search.get("window") === "1" && inMacApp();
   const caps = useCapabilities();
-  const here = (id: Section) => !NEEDS[id] || caps[NEEDS[id]!];
+  // Folevi Server: no plans to buy, and Foli AI's settings only once the owner set it up (lib/mode.ts).
+  const serverHides = (id: Section) => isServerEdition() && ((id === "ai" && !caps.foliAi) || ((id === "billing" || id === "workspace-billing") && !caps.billing));
+  const here = (id: Section) => (!NEEDS[id] || caps[NEEDS[id]!]) && !serverHides(id);
   // A section this backend doesn't have (plain /settings opens on Account; an old link) shows the first one
   // it has, and the address follows.
-  const section = here(asked) ? asked : LOCAL_FIRST;
+  // (Account mode only gets here on a server, for a section it leaves out: Account is there.)
+  const first: Section = caps.account ? "account" : LOCAL_FIRST;
+  const section = here(asked) ? asked : first;
   const bare = pathname.replace(/\/+$/, "") === "/settings";
   useEffect(() => {
-    if (!here(asked) && !bare) navigate(`/settings/${LOCAL_FIRST}`, { replace: true });
+    if (!here(asked) && !bare) navigate(`/settings/${first}`, { replace: true });
   }, [asked, bare]); // eslint-disable-line react-hooks/exhaustive-deps
   const iphone = useIphoneApp();
   const ipad = useIpadLayout();
   const allowed = (who: (typeof WORKSPACE)[number]["who"]) => who === "everyone" || (who === "managers" ? workspace?.canManage === true : workspace?.canManageBilling === true);
-  const workspaceItems = WORKSPACE.filter((i) => allowed(i.who));
+  const workspaceItems = WORKSPACE.filter((i) => allowed(i.who) && !serverHides(i.id));
   // Desktop app: only in the Mac app; This device: only in the iPhone and iPad app (or opened by its address).
   const you = YOU.filter((i) => here(i.id) && (i.id !== "library" || !caps.account) && (i.id !== "desktop" || desktop() !== null || section === "desktop") && (i.id !== "this-device" || nativeApp() !== null || section === "this-device"))
     // In local mode the library comes first: it's where Settings opens (LOCAL_FIRST).

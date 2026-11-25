@@ -5,7 +5,9 @@ import { ConvexError } from "convex/values";
 import { api } from "@/lib/convex/api";
 import { hasSessionCookie } from "@/lib/auth/session";
 import { getToken } from "@/lib/auth/server";
+import { internalConvexUrl } from "@/lib/runtime/internal";
 import { AdminApp } from "@/components/admin/AdminApp";
+import { isServerEdition } from "@/lib/edition";
 
 export const dynamic = "force-dynamic";
 // Neutral title: nothing in the HTML hints at an admin area before the role is confirmed.
@@ -19,12 +21,27 @@ export const metadata: Metadata = { title: { absolute: "Folevi" }, robots: { ind
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   if (!(await hasSessionCookie())) redirect(`/signin?returnTo=${encodeURIComponent("/admin")}`);
 
+  // Folevi Server: the owner and admins, with no two-step requirement (CONTRACT §7.1: a home server's owner may
+  // not have an authenticator app). Their platform role says which; the serverAdmin functions check it again.
+  if (isServerEdition()) {
+    let role: string | null;
+    try {
+      const token = await getToken();
+      const me = token ? await fetchQuery(api.users.me, {}, { token, url: internalConvexUrl() }) : null;
+      role = me && me.state === "ready" ? me.profile.platformRole : null;
+    } catch {
+      role = null;
+    }
+    if (role !== "super_admin" && role !== "ops_admin") notFound();
+    return <AdminApp>{children}</AdminApp>;
+  }
+
   let rejected = false;
   let needsTwoStep = false;
   try {
     const token = await getToken();
     if (!token) rejected = true;
-    else await fetchQuery(api.admin.whoami, {}, { token });
+    else await fetchQuery(api.admin.whoami, {}, { token, url: internalConvexUrl() });
   } catch (error) {
     // An application error (not_found, suspended, profile_missing…) means "not an admin".
     // Transport errors fall through to the client gate, which fails closed on its own.

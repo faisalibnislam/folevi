@@ -1,0 +1,18 @@
+{
+  "port-config": {
+    "protocol-file": "app/folevi.sc"
+  },
+  "data-share": {
+    "shares": [
+      {
+        "name": "{{wizard_shared_folder_name}}",
+        "permission": {
+          "rw": ["folevi"]
+        }
+      }
+    ]
+  },
+  "usr-local-linker": {
+    "bin": ["bundle/bin/folevid"]
+  }
+}

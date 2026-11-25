@@ -323,6 +323,25 @@ export default function AppsPage() {
           }
           requirement="Until then, the web app works in your phone’s browser."
         />
+        <Card tint aria-labelledby="server-title">
+          <div className="grid gap-8 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)] lg:items-end lg:gap-16">
+            <SectionHeading
+              id="server-title"
+              eyebrow="Folevi Server"
+              title={
+                <>
+                  Or run Folevi on your own <Mark>NAS.</Mark>
+                </>
+              }
+              lede="Install Folevi Server on a Synology, QNAP, Unraid or TrueNAS, or on a Linux server. These apps connect to it with Your own server."
+            />
+            <div className="flex flex-wrap gap-2.5">
+              <ButtonLink href="/server" variant="secondary" icon="arrow-right">
+                Get Folevi Server
+              </ButtonLink>
+            </div>
+          </div>
+        </Card>
 
         <YourFiles />
 

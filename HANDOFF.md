@@ -495,6 +495,23 @@ concurrent-write test (NTFS creation-time tunneling made etags repeat); fixed by
 Windows test builds are in the owner's Downloads ("Folevi for Windows 1.5.68 Tauri test"), measurements in
 `docs/DESKTOP_APP.md`. Since 2026-11-24 this session is **Windows only**: a Linux session
 (`claude/linux-tauri-02790e`) takes Linux packaging (the Linux CI jobs and `apps/desktop/flatpak/`) on top of this branch.
+**Folevi Server plan, version 2 (2026-11-25).** `docs/SELF_HOSTING_PLAN.md` rewritten for the owner's new brief:
+native packages on Synology, QNAP, ASUSTOR and TerraMaster (UGREEN once they authorize us), a native Unraid plugin,
+one-click catalog apps where only containers are allowed (TrueNAS, ZimaOS/CasaOS, Umbrel), a one-command native
+Linux installer plus DigitalOcean 1-Click for hosted servers, one Go supervisor (`folevid`) wrapping the same
+bundle everywhere, Plex-like Folevi Connect (server listed in the apps, `folevi.app` HTTPS names including LAN,
+pass-through relay), owner/admin/member/guest roles, a full server admin panel, and relays for email, push, AI and
+sign-in. Plan only; Phase 0 is still the only built part.
+**Folevi Server, app side on `main` (server lead session, 2026-11-25, branch `claude/server-apps-base`).** "Your own
+server" sign-in (address, QR, home network, linked servers), the server edition of the web app (`FOLEVI_EDITION=server`:
+setup page, server admin panel, `/.well-known/folevi.json`, runtime addresses), Connect's cloud pages
+(`/connect/approve`, `connect:myServers`), the backend's server edition (`convex/server*.ts`, `connect.ts`, SMTP, own AI
+key, invites, roles), the Mac and iPhone/iPad `ShellServer` places, and `lib/server-edition/connection.ts` (best
+connection for the web-based shells). Folevi Cloud is unchanged when `FOLEVI_EDITION` is unset (tests). The supervisor,
+Connect service and packages stay on `claude/sleepy-goodall-3cg4e7` / `claude/server-connect`. Contract:
+`docs/self-hosting/CONTRACT.md`. Local test server and how apps test against it: shared notes `folevi-server-apps.md`.
+Rule for all Folevi Server work: mark every fake test token `// gitleaks:allow` (CI's secret scan reads every branch).
+
 **Backend performance pass (session `perf-backend`, 2026-11-25).** A generated 5,000-note test library
 (`convex/lib/fakeLibrary.ts`, seeded by `convex/devSeed.ts` into an `@example.com` test account, refused on
 production) and a read-cost harness (`tests/convex/perf/`, run with `FOLEVI_PERF=1`). Baseline and every fix's
@@ -940,6 +957,19 @@ account button should move past iPadOS's window buttons).
   Android ripple) and #64 (one wording set) are open and wait on CI and the owner's merge (merging deploys). Next PRs: shortcut labels per OS (about 40 files still write ⌘ by hand; `lib/shortcuts.ts keyLabel` exists),
   Windows/Linux/Android accents behind `data-shell`, one motion/empty/loading style, mobile web view performance,
   the "Your own server" sign-in with the Synology session. The starter "Welcome to Folevi" note names Mac shortcuts.
+- Folevi Server (`docs/SELF_HOSTING_PLAN.md` v2, `docs/self-hosting/CONTRACT.md`): built on branch
+  `claude/sleepy-goodall-3cg4e7` (backend server edition, web server edition with setup and admin panel, `folevid`
+  in `server/`, Folevi Connect in `services/connect/`, every package in `packaging/`, Mac/iOS server places, the
+  folevi.com/server download page). Owner approved (2026-11-25) merging to main after CI passes and uploading
+  packages to R2 (`folevi-updates`, `server/<version>/` and `server/latest.json`): Linux/container after the full
+  server run passes, each NAS package after its first real install (Synology on the owner's DS223). Open: the
+  Mac/iOS build check on the owner's Mac; Connect deploy (Fly.io, folevi.app DNS on Cloudflare, keys); store
+  developer accounts; Convex license confirmation; real icons; email-to-note on servers; guests' limits; owner
+  Google keys and covers on servers; dialog closing on resize in the admin panel; invite tokens in `next dev` logs.
+- Folevi Server: DS223 install of the ARM64 `.spk` (owner gives SSH user and address), memory on 2 GB (the backend
+  reached 1.9 GB RSS after seeding 5,000 notes on an 8 GB VM), Connect on Fly.io (owner's OK per deploy; Cloudflare
+  DNS token for folevi.app; `connect.folevi.com` records at folevi.com's DNS), then each app session adds server
+  sign-in to its shell (Mac, iPhone/iPad, Android, Windows, Linux). minAppVersion is 1.6.0.
 - Backend performance pass, owner's OK needed for production: run `migrations:backfillListStats` (optional, speeds
   up existing folders) and `migrations:backfillDocumentText` (required before the note text switch PR merges).
 - Backend performance pass (`docs/perf/backend-results.md`): kept folder and Drafts counts, task rows that carry
@@ -1234,6 +1264,17 @@ account button should move past iPadOS's window buttons).
 - 2026-11-24: Merged `main` (PR 56, iPhone/iPad second round, and the e2e and secret-scan fixes) into `claude/windows-electron-4ed862` to clear PR 58's conflict; only HANDOFF.md conflicted (both sides kept). Owner decided "one web app everywhere": this Electron app becomes the desktop app for Windows, Mac and Linux (Mac and Linux targets wait for the plan).
 - 2026-11-24: Folevi for Windows: branch pushed and PR 58 opened into `main` with the owner's OK; not merged.
 - 2026-11-24: Folevi for Windows built on `claude/windows-electron-4ed862` (Electron `apps/desktop` revived, Mac parts removed, web `windows` platform); unsigned arm64 and x64 test installers handed to the owner; not merged or published.
+- 2026-11-25: Folevi Server built (branch `claude/sleepy-goodall-3cg4e7`): backend and web server editions, setup
+  and admin panel walked end to end on a real backend, `folevid` supervisor (encrypted backups, Connect client,
+  memory profiles), Folevi Connect service, packages for Synology/QNAP/ASUSTOR/TerraMaster/UGREEN/Unraid/Linux/
+  container/TrueNAS/CasaOS/Umbrel, Mac/iOS server places, folevi.com/server. Server domain `folevi.app` (owner
+  bought it); owner's test NAS is a DS223 (ARM64, 2 GB).
+- 2026-11-25: Self-hosting plan version 2 (`docs/SELF_HOSTING_PLAN.md`): native packages on every NAS that allows
+  them, catalog apps on TrueNAS and the container-only systems, native Linux installer for DigitalOcean/Hetzner,
+  Folevi Connect for Plex-like access, roles and admin panel, email and other services through optional relays.
+- 2026-11-25: Folevi Server, app side split onto `main` (`claude/server-apps-base`): web server edition, admin panel,
+  Your own server sign-in, Connect pages, backend server edition, Mac/iOS server places, best-connection module; server
+  functions registered for E2EE routing and local mode; server fallback origin is 127.0.0.1 so shell exports pass.
 - 2026-11-25: Backend performance pass, step 3 (widen): `documentText` table holds each note's search text and search
   fields, kept in step by the write hook; `migrations:backfillDocumentText` copies older notes (production run waits
   for the owner). Readers are unchanged until the switch PR.

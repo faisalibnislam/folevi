@@ -1,0 +1,11 @@
+folevi: folevi (Folevi Server plugin for Unraid)
+folevi:
+folevi: Your own Folevi server for your family or team: notes, tasks and files
+folevi: on your own Unraid server, used from the normal Folevi apps.
+folevi: This package holds the plugin's settings page and control script; the
+folevi: server itself is unpacked to the array at start.
+folevi:
+folevi: https://folevi.com/server
+folevi:
+folevi:
+folevi:

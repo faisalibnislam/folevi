@@ -1,6 +1,6 @@
 // Revision 9's commands (R10.3): the calendar feed of tasks for other calendar apps.
 import { api } from "@/lib/convex/api";
-import { APP_URL } from "@/lib/env";
+import { appUrl } from "@/lib/env";
 import type { CommandDef } from "./commands";
 import { bool, only } from "./validate";
 import type { CommandName } from "./protocol";
@@ -11,7 +11,7 @@ export const PLANNER_COMMANDS = {
     async run(deps, args) {
       only(args, ["includeWorkspaces"]);
       const r = (await deps.client.mutation(api.calendarFeeds.create, { includeWorkspaces: bool(args, "includeWorkspaces", false) })) as { token: string };
-      return { url: `${APP_URL.replace(/\/$/, "")}/api/calendar/${r.token}.ics` };
+      return { url: `${appUrl().replace(/\/$/, "")}/api/calendar/${r.token}.ics` };
     },
   },
 

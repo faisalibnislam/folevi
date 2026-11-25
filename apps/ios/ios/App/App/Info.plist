@@ -49,6 +49,17 @@
 	<string>Folevi asks for Face ID to unlock the app when you turn on the lock in Settings.</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Folevi uses the microphone when you record audio in a note, for voice notes and transcripts.</string>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>Folevi looks for Folevi servers on your home network so you can sign in to one without typing its address.</string>
+	<key>NSBonjourServices</key>
+	<array>
+		<string>_folevi._tcp</string>
+	</array>
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsLocalNetworking</key>
+		<true/>
+	</dict>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Folevi reads the photos you choose when you scan pages from them into a note.</string>
 	<key>NSUserActivityTypes</key>

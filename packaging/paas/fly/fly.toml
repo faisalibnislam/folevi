@@ -1,0 +1,37 @@
+# Folevi Server on Fly.io. Unverified: deploy once before publishing.
+#   fly launch --copy-config --no-deploy --name <your-app>
+#   fly volumes create folevi_data --size 10 --region <region>
+#   fly secrets set FOLEVI_PUBLIC_URL=https://<your-app>.fly.dev   (not a secret, but keeps it out of git)
+#   fly deploy
+app = "folevi-server"
+primary_region = "ams"
+kill_signal = "SIGTERM"
+kill_timeout = 60
+
+[build]
+  # Fly volumes are owned by root: Dockerfile.fly starts the image as root so its entrypoint can fix the
+  # ownership of /data; it then drops to uid 10001 before folevid starts.
+  dockerfile = "Dockerfile.fly"
+
+[mounts]
+  source = "folevi_data"
+  destination = "/data"
+
+[http_service]
+  internal_port = 8460
+  force_https = true
+  auto_stop_machines = "off"
+  auto_start_machines = true
+  min_machines_running = 1
+
+  [[http_service.checks]]
+    grace_period = "120s"
+    interval = "30s"
+    method = "GET"
+    timeout = "5s"
+    path = "/.well-known/folevi.json"
+
+[[vm]]
+  memory = "2gb"
+  cpu_kind = "shared"
+  cpus = 1

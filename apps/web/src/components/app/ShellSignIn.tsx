@@ -20,6 +20,8 @@ import { FoleviLogo } from "@/components/brand/FoleviMark";
 import { ModeChoice, PRE_APP_PAGE, mobileApp, preAppBackground, preAppTitle, useSystemTheme } from "./ModeChoice";
 import { MOBILE_TEXT_BUTTON } from "./LibrarySetup";
 import { NativeGate, type NativeGateAction } from "@/lib/engine/NativeGate";
+import { OwnServerAddress } from "@/components/server/OwnServerSignIn";
+import { canAddServerPlace, pendingServer } from "@/lib/server-edition/handoff";
 
 /** The phone and tablet apps' sign-in buttons: full width, 50 tall, 17 pt (12 apart, from the grid). */
 const MOBILE_BUTTON = "!h-[50px] w-full !rounded-control !text-headline font-semibold";
@@ -31,7 +33,8 @@ export function ShellSignIn() {
   // The phone and tablet screen isn't a FullPageMessage: it follows the system's appearance itself.
   useSystemTheme();
   // "choose": Apple, Google or email, before anything opens.
-  const [state, setState] = useState<"idle" | "choose" | "waiting" | "failed">("idle");
+  // "server": "Your own server" (docs/self-hosting/CONTRACT.md §6), on hosts that can add a server place.
+  const [state, setState] = useState<"idle" | "choose" | "waiting" | "failed" | "server">("idle");
   const [way, setWay] = useState<SignInWay>("email");
   const [apple, setApple] = useState<"idle" | "busy" | { error: string }>("idle");
   // Opening the sheet again replaces the attempt before it, which then answers false: only the latest counts.
@@ -66,10 +69,15 @@ export function ShellSignIn() {
     setApple(r === "cancelled" ? "idle" : r);
   };
   const place = sheet ? "the sign-in sheet" : "your browser";
+  // A place on a Folevi server (CONTRACT §6.1): its sign-in goes to that server, which offers its own ways in.
+  const server = pendingServer();
+  const title = server ? `Sign in to ${server.name}` : "Sign in to Folevi";
   const body =
     state === "waiting"
       ? `${sheet ? "The sign-in sheet is open" : "Your browser is open"}${way === "email" ? "" : ` on ${WAY_NAMES[way]}'s page`}. Finish signing in there, and Folevi comes back here by itself.`
-      : `Continue with Apple or Google, or sign in with your email in ${place}. You come back here signed in.`;
+      : server
+        ? `Sign in with your account on ${server.origin.replace(/^https?:\/\//, "")} in ${place}. You come back here signed in.`
+        : `Continue with Apple or Google, or sign in with your email in ${place}. You come back here signed in.`;
   const mobile = mobileApp();
   const buttonClass = mobile ? MOBILE_BUTTON : MAC_BUTTON;
   const spinner = <Loader2 size={mobile ? 18 : 16} className="animate-spin motion-reduce:animate-none" aria-hidden />;
@@ -88,6 +96,10 @@ export function ShellSignIn() {
             Sign in another way
           </Button>
         </>
+      ) : server ? (
+        <Button variant="primary" className={buttonClass} onClick={() => void start("email")}>
+          Sign in
+        </Button>
       ) : (
         <>
           <button type="button" className={`${APPLE_BUTTON} ${mobile ? MOBILE_BUTTON : ""}`} disabled={apple === "busy"} aria-busy={apple === "busy"} onClick={() => void withApple()}>
@@ -101,6 +113,11 @@ export function ShellSignIn() {
           <Button variant="secondary" className={buttonClass} disabled={apple === "busy"} onClick={() => void start("email")}>
             Sign in with email
           </Button>
+          {canAddServerPlace() ? (
+            <Button variant="ghost" className={buttonClass} disabled={apple === "busy"} onClick={() => setState("server")}>
+              Sign in to your own server
+            </Button>
+          ) : null}
         </>
       )}
       {typeof apple === "object" && !waiting ? (
@@ -123,14 +140,20 @@ export function ShellSignIn() {
         { id: "another", label: "Sign in another way", style: "secondary", run: () => setState("choose") },
         { id: "local", label: "Keep notes on my devices instead", style: "quiet", run: () => void keepLocally() },
       ]
-    : [
+    : server
+      ? [
+          { id: "email", label: "Sign in", style: "primary", run: () => void start("email") },
+          { id: "local", label: "Keep notes on my devices instead", style: "quiet", run: () => void keepLocally() },
+        ]
+      : [
         { id: "apple", label: "Continue with Apple", style: "primary", enabled: apple !== "busy", run: () => void withApple() },
         { id: "google", label: "Continue with Google", style: "secondary", enabled: apple !== "busy", run: () => void start("google") },
         { id: "email", label: "Sign in with email", style: "secondary", enabled: apple !== "busy", run: () => void start("email") },
         { id: "local", label: "Keep notes on my devices instead", style: "quiet", run: () => void keepLocally() },
       ];
   const nativeError = typeof apple === "object" && !waiting ? { code: "failed", message: apple.error } : state === "failed" ? { code: "failed", message: "Signing in didn’t finish. Try again." } : null;
-  if (state === "idle")
+  // A server place has chosen already: straight to its sign-in.
+  if (state === "idle" && !server)
     return (
       <div data-testid="shell-sign-in">
         <NativeGate
@@ -149,16 +172,27 @@ export function ShellSignIn() {
         />
       </div>
     );
+  if (state === "server")
+    return (
+      <FullPageMessage title="Your own server" body="Enter the address of a Folevi server. It's added beside your other places.">
+        <div className="grid gap-3 text-left">
+          <OwnServerAddress />
+          <Button variant="ghost" className={MAC_BUTTON} onClick={() => setState("choose")}>
+            Back
+          </Button>
+        </div>
+      </FullPageMessage>
+    );
   if (mobile)
     // The phone and tablet apps: a screen of the app's own (no web card), the buttons iOS's size.
     return (
       <main id="main" tabIndex={-1} data-pre-app="" className={`${PRE_APP_PAGE} ${preAppBackground()}`}>
         {/* The iPhone and iPad's native frame draws this screen too, with the same buttons. */}
-        <NativeGate gate="signedOut" title="Sign in to Folevi" message={body} actions={nativeActions} error={nativeError} />
+        <NativeGate gate="signedOut" title={title} message={body} actions={nativeActions} error={nativeError} />
         <div className="grid w-full max-w-md gap-8">
           <div className="grid justify-items-center gap-5 text-center">
             <FoleviLogo height={26} className="text-ink" />
-            <h1 className={preAppTitle()}>Sign in to Folevi</h1>
+            <h1 className={preAppTitle()}>{title}</h1>
             <p className="px-2 text-body leading-[20px] text-muted">{body}</p>
           </div>
           <div className="grid gap-3" data-testid="shell-sign-in">
@@ -171,7 +205,7 @@ export function ShellSignIn() {
       </main>
     );
   return (
-    <FullPageMessage title="Sign in to Folevi" body={body} gate="signedOut" actions={nativeActions} error={nativeError}>
+    <FullPageMessage title={title} body={body} gate="signedOut" actions={nativeActions} error={nativeError}>
       <div className="grid gap-3" data-testid="shell-sign-in">
         {choices}
         <Button variant="ghost" className={MAC_BUTTON} onClick={() => void keepLocally()}>

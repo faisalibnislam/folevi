@@ -4,7 +4,9 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Component, Suspense, useState, type ReactNode } from "react";
 import { useQuery } from "@/lib/convex/queries";
-import { ArrowLeft, ArrowUp, BarChart3, Building2, ClipboardList, CreditCard, DollarSign, Eye, Gauge, LifeBuoy, LogOut, Mail, Palette, Settings2, Sparkles, Trash2, Users } from "lucide-react";
+import { ArrowLeft, ArrowUp, BarChart3, Bell, Building2, ClipboardList, CreditCard, DatabaseBackup, DollarSign, Eye, Gauge, Globe, HardDrive, KeyRound, LifeBuoy, LogOut, Mail, Palette, RefreshCw, ScrollText, Settings2, Sparkles, Trash2, Users } from "lucide-react";
+import { AiIcon } from "@/components/ai/AiIcon";
+import { isServerEdition } from "@/lib/edition";
 import { api } from "@/lib/convex/api";
 import { FoleviLogo } from "@/components/brand/FoleviMark";
 import { Avatar } from "@/components/ui/Avatar";
@@ -55,7 +57,40 @@ const NAV: { heading: string; items: NavEntry[] }[] = [
   },
 ];
 
-const ALL_ITEMS = NAV.flatMap((g) => g.items);
+/** Folevi Server's admin panel (docs/SELF_HOSTING_PLAN.md §6): the server's own settings, no billing or staff tools. */
+const SERVER_NAV: { heading: string; items: NavEntry[] }[] = [
+  {
+    heading: "Server",
+    items: [
+      { href: "/admin", label: "Overview", icon: Gauge, capability: "server.view" },
+      { href: "/admin/people", label: "People", icon: Users, capability: "server.view" },
+      { href: "/admin/sign-in", label: "Sign-in", icon: KeyRound, capability: "server.view" },
+      { href: "/admin/sharing", label: "Workspaces and sharing", icon: Building2, capability: "server.view" },
+    ],
+  },
+  {
+    heading: "Services",
+    items: [
+      { href: "/admin/remote", label: "Remote access", icon: Globe, capability: "server.view" },
+      { href: "/admin/email", label: "Email", icon: Mail, capability: "server.view" },
+      { href: "/admin/ai", label: "Foli AI", icon: AiIcon as unknown as typeof Gauge, capability: "server.view" },
+      { href: "/admin/notifications", label: "Notifications", icon: Bell, capability: "server.view" },
+    ],
+  },
+  {
+    heading: "Maintenance",
+    items: [
+      { href: "/admin/storage", label: "Storage", icon: HardDrive, capability: "server.view" },
+      { href: "/admin/backups", label: "Backups", icon: DatabaseBackup, capability: "server.view" },
+      { href: "/admin/updates", label: "Updates", icon: RefreshCw, capability: "server.view" },
+      { href: "/admin/logs", label: "Logs and diagnostics", icon: ScrollText, capability: "server.view" },
+      { href: "/admin/audit", label: "Audit log", icon: ClipboardList, capability: "audit.view" },
+    ],
+  },
+];
+
+const NAV_HERE = isServerEdition() ? SERVER_NAV : NAV;
+const ALL_ITEMS = NAV_HERE.flatMap((g) => g.items);
 
 function isActive(pathname: string, href: string): boolean {
   return href === "/admin" ? pathname === "/admin" : pathname === href || pathname.startsWith(`${href}/`);
@@ -102,8 +137,8 @@ export function AdminShell({ children }: { children: ReactNode }) {
   const pathname = usePathname() ?? "/admin";
   const admin = useAdmin();
   const [recordTitle, setRecordTitle] = useState<string | null>(null);
-  const groups = NAV.map((g) => ({ ...g, items: g.items.filter((n) => admin.can(n.capability)) })).filter((g) => g.items.length > 0);
-  const supportUnread = useQuery(api.support.unreadCount, admin.can("support.view") ? {} : "skip");
+  const groups = NAV_HERE.map((g) => ({ ...g, items: g.items.filter((n) => admin.can(n.capability)) })).filter((g) => g.items.length > 0);
+  const supportUnread = useQuery(api.support.unreadCount, admin.can("support.view") && !isServerEdition() ? {} : "skip");
   const section = ALL_ITEMS.find((n) => isActive(pathname, n.href));
   // A record's own page (a person, a workspace) sits under its section: the section becomes a tab you can go back to.
   const onRecord = Boolean(section && pathname !== section.href);

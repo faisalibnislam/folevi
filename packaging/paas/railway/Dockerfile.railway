@@ -1,0 +1,5 @@
+# Railway deploys from a repository; this one-line Dockerfile pulls the published Folevi Server image.
+# Set FOLEVI_PUBLIC_URL=https://${{RAILWAY_PUBLIC_DOMAIN}} and PORT=8460 in the service variables, and attach a
+# volume at /data. Railway mounts volumes as root, so the entrypoint fixes ownership and drops privileges.
+FROM ghcr.io/folevi/folevi-server:latest
+USER root

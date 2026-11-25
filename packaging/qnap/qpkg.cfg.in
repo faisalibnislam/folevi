@@ -1,0 +1,23 @@
+# QNAP package definition for Folevi Server (QDK format). build.sh fills the at-sign placeholders.
+QPKG_NAME="folevi"
+QPKG_DISPLAY_NAME="Folevi Server"
+QPKG_VER="@VERSION@"
+QPKG_AUTHOR="Folevi"
+QPKG_LICENSE="Proprietary; bundled third-party licenses in bundle/LICENSES"
+QPKG_SUMMARY="@FOLEVI_DESCRIPTION@"
+QPKG_RC_NUM="160"
+QPKG_SERVICE_PROGRAM="folevi.sh"
+QPKG_SERVICE_PORT="8460"
+QPKG_SERVICE_PIDFILE="/var/run/folevi.pid"
+# The App Center "Open" button and the main menu icon open http://<nas>:8460/ in a new tab.
+QPKG_WEBUI="/"
+QPKG_WEB_PORT="8460"
+QPKG_DESKTOP_APP="0"
+QPKG_VISIBLE="1"
+QTS_MINI_VERSION="5.0.0"
+# Let the owner pick the volume for the program (data goes to the Folevi shared folder, see package_routines).
+QPKG_VOLUME_SELECT="1"
+# Start can take a while on first run (secrets, deploy of functions); stop waits for a clean shutdown.
+QPKG_TIMEOUT="180,90"
+# Published through Folevi's own repository XML, not QNAP's, until QNAP lists it.
+QPKG_DISTRIBUTION_TYPE="1"

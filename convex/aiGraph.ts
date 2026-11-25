@@ -27,7 +27,7 @@ import { rankBetween, SCHEMA_VERSION, ulid, type WireBlock } from "@folevi/edito
 import { consume } from "./lib/rateLimit";
 import { hasValidScope, inScope, scopeKey, scopeOfRow, vScope, vScopeArg, type Scope } from "./lib/scope";
 import { indexable, indexEligible } from "./lib/ai/indexing";
-import { capabilities, provider } from "./lib/ai/provider";
+import { capabilities, provider, loadAiSettings } from "./lib/ai/provider";
 import {
   capLines,
   CONTEXT_CHARS,
@@ -98,6 +98,7 @@ async function dropAll(ctx: Parameters<typeof dropNoteGraph>[0], documentId: Id<
 export const prepareExtract = internalMutation({
   args: { documentId: v.id("documents") },
   handler: async (ctx, args): Promise<Prepared> => {
+    await loadAiSettings(ctx);
     const doc = await ctx.db.get(args.documentId);
     if (!doc || !hasValidScope(doc)) return { kind: (await dropAll(ctx, args.documentId)) ? "done" : "later" };
     const scope = scopeOfRow(doc);
@@ -204,6 +205,7 @@ export const extract = internalAction({
   handler: async (ctx, args): Promise<string> => {
     const job = await ctx.runMutation(internal.aiGraph.prepareExtract, { documentId: args.documentId });
     if (job.kind !== "extract") return job.kind;
+    await loadAiSettings(ctx);
     let near: { similar: { documentId: Id<"documents">; score: number }[]; context: ContextNote[] } = { similar: [], context: [] };
     if (job.vectors.length) {
       const s = job.scope;

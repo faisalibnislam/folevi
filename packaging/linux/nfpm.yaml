@@ -1,0 +1,54 @@
+# nfpm config template for the folevi-server .deb and .rpm. packaging/linux/build.sh fills the at-sign placeholders
+# (nfpm does not expand variables in every field) and adds rpm signing only when a key is given.
+name: folevi-server
+arch: @NFPM_ARCH@
+platform: linux
+version: @VERSION@
+version_schema: none
+release: "1"
+section: web
+priority: optional
+maintainer: Folevi <support@folevi.com>
+vendor: Folevi
+homepage: https://folevi.com/server
+license: Proprietary (bundled third-party licenses in /opt/folevi/LICENSES)
+description: |
+  Folevi Server: your own Folevi for your family or team.
+  Notes, tasks and files on your own machine, used from the normal Folevi apps.
+  Runs as the folevi system user, keeps its data in /var/lib/folevi and listens on port 8460.
+depends:
+  - ca-certificates
+overrides:
+  deb:
+    depends:
+      - ca-certificates
+      - adduser
+  rpm:
+    depends:
+      - ca-certificates
+      - shadow-utils
+contents:
+  - src: @FOLEVI_BUNDLE@
+    dst: /opt/folevi
+    type: tree
+  - src: @LINUX_DIR@/folevi-server.service
+    dst: /usr/lib/systemd/system/folevi-server.service
+    file_info:
+      mode: 0644
+  - src: @LINUX_DIR@/folevi-server.default
+    dst: /usr/share/folevi-server/folevi-server.default
+    file_info:
+      mode: 0644
+  - dst: /var/lib/folevi
+    type: dir
+    file_info:
+      mode: 0750
+scripts:
+  preinstall: @SCRIPTS_DIR@/preinstall.sh
+  postinstall: @SCRIPTS_DIR@/postinstall.sh
+  preremove: @SCRIPTS_DIR@/preremove.sh
+  postremove: @SCRIPTS_DIR@/postremove.sh
+rpm:
+  compression: xz
+deb:
+  compression: xz

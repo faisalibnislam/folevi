@@ -24,7 +24,7 @@ final class WindowManager {
 
     /// What a new view's page starts with.
     var bootstrapOf: (String?, ViewRole) -> Bootstrap = { place, role in
-        Bootstrap(mode: WindowManager.shared.modeOf(place), place: place, background: role == .runner)
+        Bootstrap(mode: WindowManager.shared.modeOf(place), place: place, background: role == .runner, server: ShellPlaces.server(of: place))
     }
 
     /// Opens Quick Add (WM2); until then a folevi://quick-add link shows the main window.

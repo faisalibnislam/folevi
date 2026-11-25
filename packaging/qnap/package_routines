@@ -1,0 +1,46 @@
+######################################################################
+# Folevi Server package routines (sourced by QDK's qinstall.sh during install and upgrade).
+# Unverified on real QTS hardware: test before release.
+######################################################################
+
+# Removal hooks are strings that qinstall.sh writes into the uninstall script, hence the escaping.
+# Never delete the owner's data on removal: only the program files and the runtime link go.
+PKG_PRE_REMOVE="{
+  [ -x \$SYS_QPKG_DIR/folevi.sh ] && \$SYS_QPKG_DIR/folevi.sh stop
+}"
+
+PKG_POST_REMOVE="{
+  /bin/rm -rf /usr/local/lib/folevi-rt
+}"
+
+pkg_check_requirement(){
+  case "$(/bin/uname -m)" in
+    x86_64|aarch64) ;;
+    *) err_log "Folevi Server needs a 64-bit NAS (x86-64 or ARM64)." ;;
+  esac
+  local mem_kb
+  mem_kb=$(/bin/awk '/^MemTotal:/{print $2}' /proc/meminfo)
+  [ "${mem_kb:-0}" -ge 1800000 ] || $CMD_ECHO "Warning: Folevi Server needs about 1 GB of free memory; this NAS has less than 2 GB."
+}
+
+# @@PRE_UPDATE_BACKUP_HELPER@@
+
+# An upgrade: take a pre-update backup with the old version (as the service user) before its files are replaced.
+pkg_pre_install(){
+  local fv="$SYS_QPKG_DIR/bundle/bin/folevid" data
+  [ -x "$fv" ] || return 0
+  data="$(/sbin/getcfg folevi Data_Path -f /etc/config/qpkg.conf)"
+  [ -n "$data" ] || data="$(/sbin/getcfg Folevi path -f /etc/config/smb.conf)"
+  [ -n "$data" ] || data="$SYS_QPKG_DIR/data"
+  [ -d "$data" ] || return 0
+  local cmd="sh -s"
+  /usr/bin/id folevi >/dev/null 2>&1 && cmd="/bin/su -s /bin/sh folevi -c 'sh -s'"
+  printf '%s\nfolevi_pre_update_backup "%s" "%s" "%s"\n' "$FOLEVI_BACKUP_HELPER" "$fv" "$data" "$SYS_QPKG_DIR/bundle" \
+    | eval "$cmd" || $CMD_ECHO "Pre-update backup did not finish; folevid protects its own migrations."
+  [ -x "$SYS_QPKG_DIR/folevi.sh" ] && "$SYS_QPKG_DIR/folevi.sh" stop
+  return 0
+}
+
+pkg_post_install(){
+  $CMD_CHMOD 755 "$SYS_QPKG_DIR/folevi.sh" "$SYS_QPKG_DIR/bundle/bin/folevid"
+}

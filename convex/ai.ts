@@ -36,7 +36,9 @@ import { ReaderLabels } from "./lib/linkLabels";
 import { inScope, sameScope, scopeOfRow, vScopeArg, type Scope, type ScopeArg } from "./lib/scope";
 import { FLOWCHART_SYSTEM, flowchartForPrompt, flowchartRequest, parseFlowchartDraft, type FlowDraft } from "./lib/flowchartAi";
 import { ACT_SYSTEM, actReply, checkPlan, parsePlan, type AiAction } from "./lib/aiActions";
-import { provider, type GenerateRequest, type OnDelta } from "./lib/ai/provider";
+import { loadAiSettings, provider, type GenerateRequest, type OnDelta } from "./lib/ai/provider";
+import { isServerEdition } from "./lib/edition";
+import { aiConfigured, readServerSettings, serverRoleOf } from "./lib/serverSettings";
 import { dedupePassages, fitToBudget, reciprocalRankFusion } from "./lib/ai/retrieval";
 import { hybridSearch } from "./aiIndex";
 import { PAGE_CHARS, webBlock, webForQuestion, type WebSource } from "./lib/ai/web";
@@ -297,6 +299,14 @@ export const begin = internalMutation({
  * background jobs that act for someone (digests, convex/aiDigest.ts).
  */
 export async function holdFor(ctx: MutationCtx, profile: Doc<"profiles">, target: Scope, plan: PlannedCall[], also: Scope[] = [], feature?: AiFeature): Promise<Id<"aiCreditHolds">> {
+  // Folevi Server: Foli AI only when the owner set it up, and only for the people they allow.
+  if (isServerEdition()) {
+    const settings = await readServerSettings(ctx);
+    if (!aiConfigured(settings)) fail("forbidden", "Foli AI is off on this server.", { reason: "ai_off" });
+    const role = serverRoleOf(profile);
+    if (settings.ai.allowed === "admins" && role !== "owner" && role !== "admin") fail("forbidden", "On this server, Foli AI is only for its admins.", { reason: "ai_not_allowed" });
+    await loadAiSettings(ctx);
+  }
   // Nothing from a Core Personal or a Core workspace is ever sent to AI, whoever asks.
   for (const s of [target, ...also]) {
     const blocked = await aiBlockedIn(ctx, profile._id, s);
@@ -343,6 +353,8 @@ export async function metered<T>(
 ): Promise<T> {
   const meter: CallUsage[] = [];
   try {
+    // Folevi Server: the provider the owner chose (a no-op on Folevi Cloud).
+    await loadAiSettings(ctx as unknown as { runQuery: (ref: never, args: never) => Promise<unknown> });
     let memory: string | null = null;
     // An encrypted space's device sends the person's preferences with the request (they're sealed records there).
     const sent = providedMemories(provided);

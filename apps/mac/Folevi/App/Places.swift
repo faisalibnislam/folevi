@@ -98,6 +98,10 @@ final class Places {
             MainActor.assumeIsolated { Places.shared.placesChanged() }
         }
         MacAppLock.shared.start()
+        // The best connection for Folevi Server places (a home name at home, the public one away), at launch and on
+        // every network change: that place's pages load again on the new name, still signed in.
+        ServerReach.shared.onChange = { place in MainActor.assumeIsolated { Places.shared.serverMoved(place) } }
+        ServerReach.shared.start()
         // The runners start once the first window's page has loaded (they would compete with it for the CPU and
         // the disk), or after 5 s whatever happens.
         var observer: NSObjectProtocol?
@@ -265,6 +269,28 @@ final class Places {
         for main in WindowManager.shared.mains { main.rebuild(place: .some(place), path: path) }
         ensureRunners()
         NotificationCenter.default.post(name: Self.switched, object: place)
+    }
+
+    /// "Your own server" (placesAddServer, the server checked already): every main window opens that server's
+    /// sign-in screen (account mode with no account yet, bound to the server); signing in there makes the account
+    /// a place on that server (ShellPlaces.addAccount takes the acting server).
+    func addServer(_ server: ShellServer) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+            MainActor.assumeIsolated {
+                ShellPlaces.setCurrent(nil, pending: true, server: server)
+                for main in WindowManager.shared.mains { main.rebuild(place: .some(nil), path: "/documents") }
+                self.ensureRunners()
+                NotificationCenter.default.post(name: Self.switched, object: nil)
+            }
+        }
+    }
+
+    /// A server place now uses another of its names (ServerReach): its windows load again where they were, with
+    /// the new addresses and policy. Its runner, if one is up, finishes on the old name; the next wake makes a new
+    /// one on the new name (BackgroundSync).
+    func serverMoved(_ place: String) {
+        for main in WindowManager.shared.mains where main.view.place == place { main.rebuild() }
+        placesChanged()
     }
 
     /// A path a switch may open ("/documents" otherwise), as Electron's places-switch.

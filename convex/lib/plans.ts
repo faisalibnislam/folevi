@@ -19,6 +19,8 @@
 // monthly credits. Core has no AI at all: the server refuses every AI request in a Core Personal or a Core
 // workspace, for everyone there.
 
+import { isServerEdition } from "./edition";
+
 export type PlanScope = "personal" | "workspace";
 export type BillingInterval = "month" | "year";
 export type BillingModel = "free" | "flat_user" | "per_seat";
@@ -407,8 +409,41 @@ export interface PersonalEntitlements {
   devices: number | null;
 }
 
+/**
+ * Folevi Server has no plans or billing (docs/SELF_HOSTING_PLAN.md §7): everyone has everything, with no trial.
+ * Storage is limited only by the server's quotas (lib/serverSettings.ts, checked in lib/entitlements.ts), and Foli
+ * AI by the server's monthly limit per person, when the owner set one.
+ */
+export const SERVER_STORAGE_BYTES = Number.MAX_SAFE_INTEGER;
+/** "Unlimited" AI credits a month on a server (a limit set in the server's settings replaces it). */
+export const SERVER_MONTHLY_CREDITS = 1_000_000_000;
+
+function serverPersonalEntitlements(sub: SubscriptionLike | null): PersonalEntitlements {
+  const planId: PersonalPlanId = "personal_pro_ai_yearly";
+  const e = PLAN_CATALOG[planId].entitlements;
+  return {
+    scope: "personal",
+    planId,
+    paidPlanId: planId,
+    plan: "pro_ai",
+    paidPlan: "pro_ai",
+    paid: true,
+    trialing: false,
+    trialEndsAt: null,
+    ai: true,
+    aiSource: "plan",
+    aiFairUse: e.aiFairUse,
+    monthlyCredits: SERVER_MONTHLY_CREDITS,
+    creditPacks: false,
+    storageBytes: sub?.storageOverrideBytes ?? SERVER_STORAGE_BYTES,
+    storageRule: "per_person",
+    devices: null,
+  };
+}
+
 /** What someone's Personal plan gives right now. No record (older accounts before billing) = Free. */
 export function personalEntitlementsOf(sub: SubscriptionLike | null, now: number): PersonalEntitlements {
+  if (isServerEdition()) return serverPersonalEntitlements(sub);
   // A paid (or admin-set) plan counts while it's active or in its grace period; a period end in the past
   // (a manual plan that ran out, a lapsed subscription) falls back to Free.
   const storedId = sub ? personalPlanId(sub.plan, sub.interval) : "personal_free";
@@ -485,7 +520,16 @@ export function workspaceEntitlementsOf(sub: WorkspaceSubscriptionLike | null, o
   const storedId = sub ? workspacePlanId(sub.tier, sub.interval) : "workspace_free";
   // Same rule as Personal: in force while active, or canceled but paid through the period's end.
   const inForce = sub && isPaidPlan(storedId) && (sub.currentPeriodEnd === undefined ? sub.status !== "canceled" : sub.currentPeriodEnd > now);
+  // Folevi Server: every workspace has the top plan, unbilled (storage is limited by people's quotas).
+  if (isServerEdition()) {
+    const top = workspaceEntitlementsOfPlan("workspace_pro_ai_yearly", overrides);
+    return { ...top, monthlyCredits: SERVER_MONTHLY_CREDITS, creditPacks: false, members: null, guests: null, storageBytes: overrides.storageBytes ?? SERVER_STORAGE_BYTES };
+  }
   const planId: WorkspacePlanId = inForce ? storedId : "workspace_free";
+  return workspaceEntitlementsOfPlan(planId, overrides);
+}
+
+function workspaceEntitlementsOfPlan(planId: WorkspacePlanId, overrides: { storageBytes?: number }): WorkspaceEntitlements {
   const e = PLAN_CATALOG[planId].entitlements;
   const paid = isPaidPlan(planId);
   return {

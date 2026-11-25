@@ -21,6 +21,8 @@ import {
 import { deleteSession, findActiveSession, listUserSessions } from "./lib/authStore";
 import { fail } from "./lib/errors";
 import { startTrial } from "./lib/billing";
+import { isServerEdition } from "./lib/edition";
+import { acceptSpentInvite } from "./lib/serverAccess";
 import { personalEntitlements } from "./lib/entitlements";
 import { consume } from "./lib/rateLimit";
 import { bump } from "./lib/metrics";
@@ -168,8 +170,10 @@ export const bootstrap = mutation({
     });
     const profile = (await ctx.db.get(profileId))!;
     await seedPersonal(ctx, profile, localDate(now, timeZone));
-    // Every new account starts with a Pro AI trial.
-    await startTrial(ctx, profileId);
+    // Every new account starts with a Pro AI trial (Folevi Server has no plans, so no trial there).
+    if (!isServerEdition()) await startTrial(ctx, profileId);
+    // Folevi Server: an invitation the sign-up used gives its role now (lib/serverAccess.ts).
+    else await acceptSpentInvite(ctx, profileId, email);
     await bump(ctx, "users_total");
     await bump(ctx, "signups");
     if (claims.emailVerified) await bump(ctx, "users_verified");

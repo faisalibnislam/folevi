@@ -32,7 +32,7 @@ import { inScope, scopeOfRow, vScopeArg } from "./lib/scope";
 import { liveBlocks } from "./lib/documents";
 import { estimateCredits, type CallUsage, type PlannedCall } from "./lib/credits";
 import { aiPrefsOf } from "./lib/ai/prefs";
-import { capabilities, provider, type Content, type GenerateRequest, type Part } from "./lib/ai/provider";
+import { capabilities, provider, type Content, type GenerateRequest, type Part, loadAiSettings } from "./lib/ai/provider";
 import {
   ATTACHMENT_LIMITS,
   attachmentKind,
@@ -439,6 +439,7 @@ export interface RecordingForModel extends FileForModel {
  * recording (on the note's audio block), or a guess from its size.
  */
 async function recordingFor(ctx: QueryCtx, profile: Doc<"profiles">, args: { documentId: string; fileId: string }): Promise<RecordingForModel> {
+  await loadAiSettings(ctx);
   if (profile.aiEnabled === false) fail("forbidden", "Foli AI is turned off in your settings.");
   if (!aiPrefsOf(profile).attachments) fail("forbidden", ATTACHMENTS_OFF);
   const { doc } = await requireDocument(ctx, profile, args.documentId, "read");
@@ -463,6 +464,7 @@ async function recordingFor(ctx: QueryCtx, profile: Doc<"profiles">, args: { doc
 
 /** A recording an encrypted note's device sent with the request: one audio file, read inline. */
 async function providedRecording(ctx: ActionCtx, provided: ProvidedContext, seconds: number | undefined): Promise<RecordingForModel> {
+  await loadAiSettings(ctx);
   const [file, ...rest] = providedFiles(provided);
   if (!file || rest.length || file.kind !== "audio") fail("invalid_argument", "Send the recording with the request.");
   if (!(await ctx.runQuery(internal.stickiesAi.photoAllowed, {}))) fail("forbidden", ATTACHMENTS_OFF);

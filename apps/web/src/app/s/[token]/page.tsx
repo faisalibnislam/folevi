@@ -1,3 +1,5 @@
+import { marketingUrl } from "@/lib/env";
+import { internalConvexUrl } from "@/lib/runtime/internal";
 import type { Metadata } from "next";
 import { cache } from "react";
 import { cookies, headers } from "next/headers";
@@ -46,7 +48,7 @@ async function clientKey(): Promise<string> {
 }
 
 async function openLink(token: string, password: string | undefined) {
-  const url = process.env.NEXT_PUBLIC_CONVEX_URL;
+  const url = internalConvexUrl();
   const secret = process.env.FOLEVI_SERVER_SECRET;
   const requestId = await currentRequestId();
   if (!url || !secret) {
@@ -82,7 +84,7 @@ const load = cache(async (token: string): Promise<Result> => {
  * shared page draws its theme as the app does. Without them it falls back to the shipped themes.
  */
 async function loadThemes() {
-  const url = process.env.NEXT_PUBLIC_CONVEX_URL;
+  const url = internalConvexUrl();
   if (!url) return;
   try {
     setThemeRows((await new ConvexHttpClient(url).query(api.themes.list, {})) as ThemeRow[]);
@@ -146,7 +148,7 @@ export default async function SharedPage({ params }: { params: Promise<{ token: 
       <header className="px-3 sm:px-6 print:hidden">
         <div className={frame.inset ? "px-3 sm:px-8" : undefined}>
           <div className={`mx-auto flex items-center justify-between py-4 ${frame.width}`}>
-            <a href={process.env.NEXT_PUBLIC_MARKETING_URL ?? "https://folevi.com"} className="inline-flex items-center gap-2 text-ink">
+            <a href={marketingUrl()} className="inline-flex items-center gap-2 text-ink">
               <FoleviLogo height={22} />
             </a>
             <span className="text-footnote text-muted">Read-only shared page</span>

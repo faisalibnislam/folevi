@@ -1,4 +1,5 @@
 import "server-only";
+import { internalConvexUrl } from "@/lib/runtime/internal";
 import { ConvexHttpClient } from "convex/browser";
 import { api } from "@/lib/convex/api";
 
@@ -8,7 +9,7 @@ export function devMailboxAvailable(): boolean {
 }
 
 export async function readDevMailbox(to?: string) {
-  const url = process.env.NEXT_PUBLIC_CONVEX_URL;
+  const url = internalConvexUrl();
   const secret = process.env.FOLEVI_DEV_MAILBOX_SECRET;
   if (!devMailboxAvailable() || !url || !secret) return null;
   const client = new ConvexHttpClient(url);

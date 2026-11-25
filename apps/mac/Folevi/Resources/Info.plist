@@ -73,6 +73,13 @@
 	</array>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Folevi records audio into your notes when you ask it to.</string>
+	<!-- Folevi Server: finding servers on the home network (Bonjour, LocalServers in ShellServer.swift). -->
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>Folevi looks for Folevi servers on your home network so you can sign in to one without typing its address.</string>
+	<key>NSBonjourServices</key>
+	<array>
+		<string>_folevi._tcp</string>
+	</array>
 	<key>NSAppTransportSecurity</key>
 	<dict>
 		<key>NSAllowsLocalNetworking</key>

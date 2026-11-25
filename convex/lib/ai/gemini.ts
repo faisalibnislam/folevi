@@ -6,6 +6,7 @@
 // Privacy: prompts, note text and answers are never logged. Only the event, model, status and token
 // counts are.
 import { fail } from "../errors";
+import { isServerEdition } from "../edition";
 import { tokensForChars, type CallUsage } from "../credits";
 import type { CallTarget, Content, EmbedResult, EmbedTask, GenerateRequest, GenerateResult, Grounding, OnDelta, Part, ProviderAdapter, ToolCall } from "./provider";
 import { capabilitiesOf } from "./capabilities";
@@ -16,10 +17,31 @@ import { Deadline, emptyMessage, estimatedUsage, KEY_REFUSED, NOT_SET_UP, refusa
 export { systemWithSafety } from "./common";
 
 const ENDPOINT = "https://generativelanguage.googleapis.com/v1beta/models";
-export const geminiModel = () => process.env.GEMINI_MODEL ?? "gemini-3.8-flash";
-export const geminiFastModel = () => process.env.GEMINI_FAST_MODEL ?? "gemini-flash-lite-latest";
+/**
+ * Folevi Server's Gemini settings (its key and models, from the server's settings: lib/ai/provider.ts
+ * loadAiSettings). Unset on Folevi Cloud, which reads the environment as it always has.
+ */
+export interface GeminiSettings {
+  apiKey?: string;
+  model?: string;
+  fastModel?: string;
+  embeddingModel?: string;
+}
+let serverGemini: GeminiSettings | null = null;
+export function setServerGemini(settings: GeminiSettings | null): void {
+  serverGemini = settings;
+}
+/** The server's settings, only ever in the server edition (Folevi Cloud never reads them). */
+const server = (): GeminiSettings | null => (isServerEdition() ? (serverGemini ?? {}) : null);
+/**
+ * The Gemini key a call uses when none came with it (undefined when there is none): GEMINI_API_KEY on Folevi
+ * Cloud, the key in the server's settings on a server (never the environment's).
+ */
+export const geminiKey = (): string | undefined => (server() ? server()!.apiKey : process.env.GEMINI_API_KEY);
+export const geminiModel = () => server()?.model ?? process.env.GEMINI_MODEL ?? "gemini-3.8-flash";
+export const geminiFastModel = () => server()?.fastModel ?? process.env.GEMINI_FAST_MODEL ?? "gemini-flash-lite-latest";
 /** Semantic search's embeddings (GEMINI_EMBEDDING_MODEL; lib/ai/capabilities.ts prices it). */
-export const geminiEmbeddingModel = () => process.env.GEMINI_EMBEDDING_MODEL ?? "gemini-embedding-001";
+export const geminiEmbeddingModel = () => server()?.embeddingModel ?? process.env.GEMINI_EMBEDDING_MODEL ?? "gemini-embedding-001";
 
 type GeminiUsage = { promptTokenCount?: number; candidatesTokenCount?: number; thoughtsTokenCount?: number };
 type GeminiPart = { text?: string; thought?: boolean; thoughtSignature?: string; functionCall?: { name?: string; args?: Record<string, unknown>; id?: string } };
@@ -158,7 +180,7 @@ function bodyOf(req: GenerateRequest, model: string): string {
  * connection can't hold the action, and the person's credit hold, until the platform kills it.
  */
 async function generate(req: GenerateRequest, meter: CallUsage[], onDelta: OnDelta | undefined, target: CallTarget): Promise<GenerateResult> {
-  const key = target.apiKey ?? process.env.GEMINI_API_KEY;
+  const key = target.apiKey ?? geminiKey();
   if (!key) fail("maintenance", NOT_SET_UP);
   // When the model is busy, its lighter one gets one try (Gemini only, same provider), as long as it can do
   // what was asked: a grounded request only goes to models that can search.
@@ -290,7 +312,7 @@ const EMBED_TIMEOUT_MS = 30_000;
  * so tokens are estimated from the characters sent.
  */
 async function embed(texts: string[], task: EmbedTask, apiKey?: string): Promise<EmbedResult> {
-  const key = apiKey ?? process.env.GEMINI_API_KEY;
+  const key = apiKey ?? geminiKey();
   if (!key) fail("maintenance", NOT_SET_UP);
   const model = geminiEmbeddingModel();
   const vectors: number[][] = [];

@@ -103,7 +103,7 @@ describe("the shell's Content Security Policy", () => {
     const d = (name: string) => policy.split("; ").find((x) => x.startsWith(`${name} `));
     expect(d("default-src")).toBe("default-src 'self'");
     expect(d("script-src")).toBe("script-src 'self' 'unsafe-inline'");
-    expect(d("connect-src")).toBe("connect-src 'self' folevi-file: https://happy-otter-123.convex.cloud wss://happy-otter-123.convex.cloud https://happy-otter-123.convex.site");
+    expect(d("connect-src")).toBe("connect-src 'self' folevi-file: https://happy-otter-123.convex.cloud wss://happy-otter-123.convex.cloud https://happy-otter-123.convex.site https: wss: http: ws:");
     expect(d("img-src")).toContain("folevi-file:");
     expect(d("frame-src")).toBe(`frame-src https://happy-otter-123.convex.site https://app.folevi.com ${EMBED_FRAME_ORIGINS.join(" ")}`);
     expect(policy).toContain("object-src 'none'");

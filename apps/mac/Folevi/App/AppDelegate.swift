@@ -99,6 +99,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             // FOLEVI_OFFLINE's rules (a lookup in WebKit's store) while the migration checks the support folder.
             async let offlineRules: Void = WebViewFactory.prepareRules()
             WebViewFactory.scheme.modeOf = { view in WindowManager.shared.modeOf((view as? FoleviWebView)?.place) }
+            // A Folevi Server place's pages reach that server only (or the server its sign-in screen is for).
+            WebViewFactory.scheme.serverOf = { view in ShellPlaces.server(of: (view as? FoleviWebView)?.place) }
             guard await Self.migrate() else { return }
             await offlineRules
             for step in Self.beforeFirstWindow { guard await step() else { return } }

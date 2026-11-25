@@ -29,7 +29,7 @@ import { inScope, insertScoped, scopeOfRow, vScopeArg, type ScopeArg } from "./l
 import { liveBlocks, toWireBlock } from "./lib/documents";
 import { ReaderLabels } from "./lib/linkLabels";
 import { aiPrefsOf } from "./lib/ai/prefs";
-import { capabilities as modelCapabilities } from "./lib/ai/provider";
+import { capabilities as modelCapabilities, loadAiSettings } from "./lib/ai/provider";
 import { routeIn } from "./aiConfig";
 import { vAiAction } from "./lib/aiActions";
 import { wireRun } from "./lib/ai/tools/wire";
@@ -202,6 +202,7 @@ export async function runsOf(ctx: Ctx, messages: Doc<"aiMessages">[]): Promise<M
 const applied = (run: Doc<"aiRuns"> | null) => Boolean(run && (run.status === "done" || run.status === "partial" || run.status === "executing" || run.status === "undoing"));
 
 async function createConversation(ctx: MutationCtx, profile: Doc<"profiles">, scopeArg: ScopeArg, publicId: string | undefined, context: AiContext | undefined): Promise<Doc<"aiConversations">> {
+  await loadAiSettings(ctx);
   if (profile.aiEnabled === false) fail("forbidden", "Foli AI is turned off in your settings.");
   const { scope } = await resolveScope(ctx, profile, scopeArg);
   // An encrypted space keeps its chats on the person's devices (aiChat records): none is stored here.
@@ -263,8 +264,9 @@ export const capabilities = query({
   args: {},
   handler: async (ctx) => {
     const profile = await requireProfile(ctx);
-    // The chat's provider (Admin > Foli AI): what its heavy model can do (files and web searches go to it,
-    // lib/ai/config.ts slotFor), named by the model normal answers use.
+    // The chat's provider (Admin > Foli AI; a server: its settings): what its heavy model can do (files and web
+    // searches go to it, lib/ai/config.ts slotFor), named by the model normal answers use.
+    await loadAiSettings(ctx);
     const route = await routeIn(ctx, "chat");
     const c = modelCapabilities("heavy", route);
     return {

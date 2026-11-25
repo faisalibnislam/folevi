@@ -39,6 +39,8 @@ import {
   type StoredAiSettings,
 } from "./lib/ai/config";
 import { capabilitiesOf } from "./lib/ai/capabilities";
+import { aiAvailable, embeddingsAvailable, loadAiSettings, serverRoute } from "./lib/ai/provider";
+import { isServerEdition } from "./lib/edition";
 
 const ADMIN: PlatformRole[] = ["super_admin", "ops_admin"];
 /** Keys are secrets: only the super admin saves or removes them. */
@@ -216,13 +218,23 @@ export const setModels = mutation({
 
 // ---------------------------------------------------------------------------------------------------
 // Routes for requests (internal: the sealed key only ever goes to an action, which opens it in memory)
+//
+// Folevi Server has no routes or saved provider keys: every reader below answers from the server's own
+// settings instead (lib/ai/provider.ts loadAiSettings and serverRoute), so callers ask the same way on both.
 // ---------------------------------------------------------------------------------------------------
+
+/** An action's `runQuery`, as lib/ai/provider.ts loadAiSettings takes it. */
+type SettingsQuery = { runQuery: (ref: never, args: never) => Promise<unknown> };
 
 const vRouteFeature = v.union(vRoutedFeature, v.literal("transcription"), v.literal("embeddings"));
 
 type RouteRead = { route: AiRoute; sealed: string | null };
 
 async function routeWithSealedKey(ctx: QueryCtx, feature: AiRoute["feature"]): Promise<RouteRead> {
+  if (isServerEdition()) {
+    await loadAiSettings(ctx);
+    return { route: serverRoute(feature), sealed: null };
+  }
   const route = routeOf(await readAiSettings(ctx), feature);
   const row = await keyRow(ctx, route.provider);
   return { route, sealed: row?.sealed ?? null };
@@ -256,29 +268,49 @@ async function opened(read: RouteRead): Promise<AiRoute> {
 
 /** A feature's route, key opened, for an action making calls outside a credit hold (the knowledge graph, embeddings). */
 export async function loadRoute(ctx: Pick<ActionCtx, "runQuery">, feature: AiRoute["feature"]): Promise<AiRoute> {
+  if (isServerEdition()) {
+    await loadAiSettings(ctx as unknown as SettingsQuery);
+    return serverRoute(feature, true);
+  }
   const read: RouteRead = await ctx.runQuery(internal.aiConfig.routeForFeature, { feature });
   return await opened(read);
 }
 
 /** The route for a credit hold, key opened. */
 export async function loadHoldRoute(ctx: Pick<ActionCtx, "runQuery">, holdId: Id<"aiCreditHolds">): Promise<AiRoute> {
+  if (isServerEdition()) {
+    await loadAiSettings(ctx as unknown as SettingsQuery);
+    const read: RouteRead = await ctx.runQuery(internal.aiConfig.routeForHold, { holdId });
+    return serverRoute(read.route.feature, true);
+  }
   const read: RouteRead = await ctx.runQuery(internal.aiConfig.routeForHold, { holdId });
   return await opened(read);
 }
 
-/** Whether a feature's provider has a key anywhere (a saved one or its environment variable). */
+/**
+ * Whether a feature's provider has a key anywhere (a saved one or its environment variable). A server:
+ * whether its settings name a provider that can do it (embeddings need an embedding model).
+ */
 export async function hasKey(ctx: QueryCtx, feature: AiRoute["feature"]): Promise<boolean> {
+  if (isServerEdition()) {
+    await loadAiSettings(ctx);
+    return feature === "embeddings" ? embeddingsAvailable() : aiAvailable();
+  }
   const route = routeOf(await readAiSettings(ctx), feature);
   return Boolean((await keyRow(ctx, route.provider)) || process.env[KEY_ENV[route.provider]]);
 }
 
 /** A feature's route without its key (for estimates and capability checks in queries and mutations). */
 export async function routeIn(ctx: QueryCtx | MutationCtx, feature: AiRoute["feature"]): Promise<AiRoute> {
+  if (isServerEdition()) {
+    await loadAiSettings(ctx);
+    return serverRoute(feature);
+  }
   return routeOf(await readAiSettings(ctx), feature);
 }
 
 /** A feature's route without its key, from an action. */
 export const publicRoute = internalQuery({
   args: { feature: vRouteFeature },
-  handler: async (ctx, args): Promise<AiRoute> => routeOf(await readAiSettings(ctx), args.feature),
+  handler: async (ctx, args): Promise<AiRoute> => await routeIn(ctx, args.feature),
 });

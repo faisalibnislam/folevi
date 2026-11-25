@@ -28,7 +28,7 @@ import { insertScoped, personalScope, sameScope, scopeKey, scopeOfRow, vScope, v
 import { indexable, indexEligible, indexScopeRow, indexStateOf, planIndexes, queueIndex, sealedAiCopy, startBackfill } from "./lib/ai/indexing";
 import { isSealed } from "./lib/e2ee/state";
 import { chunkHash, chunkLines, embeddingText, lineOf, type ChunkLine } from "./lib/ai/retrieval";
-import { provider } from "./lib/ai/provider";
+import { provider, loadAiSettings } from "./lib/ai/provider";
 import { withSyncedShared } from "./lib/synced";
 import { hasKey, loadRoute } from "./aiConfig";
 
@@ -132,6 +132,7 @@ type Prepared =
 export const prepare = internalMutation({
   args: { documentId: v.id("documents") },
   handler: async (ctx, args): Promise<Prepared> => {
+    await loadAiSettings(ctx);
     const now = Date.now();
     const doc = await ctx.db.get(args.documentId);
     const state = await indexStateOf(ctx, args.documentId);
@@ -257,6 +258,7 @@ export const indexDocument = internalAction({
       return job.kind;
     }
     let vectors: number[][];
+    await loadAiSettings(ctx);
     try {
       vectors = (await provider().embed(job.embed.map((e) => e.text), "document", (await loadRoute(ctx, "embeddings")).apiKey)).vectors;
     } catch {
@@ -462,6 +464,7 @@ export async function hybridSearch(ctx: ActionCtx, input: SearchInput) {
   if (target) {
     if (target.start) await ctx.runMutation(internal.aiIndex.ensureIndexed, { scope: input.scope });
     try {
+      await loadAiSettings(ctx);
       // The keyword queries carry what the conversation was about, which a short follow-up may not.
       const text = `${input.question}\n${input.queries.join(", ")}`.slice(0, 2_000);
       const [vector] = (await provider().embed([text], "query", (await loadRoute(ctx, "embeddings")).apiKey)).vectors;

@@ -24,6 +24,7 @@ import type { Doc, Id } from "./_generated/dataModel";
 import type { ActionCtx, MutationCtx } from "./_generated/server";
 import { normalizeMembership, requireIdentity, requireProfile } from "./lib/auth";
 import { fail } from "./lib/errors";
+import { assertBillingAvailable } from "./lib/edition";
 import { ensureWorkspaceSubscription, insertPayment, isWorkspaceSubscription, periodEndFrom, workspaceSubscriptionOf, type WorkspaceSubscription } from "./lib/billing";
 import { freePool, memberStorageUsed, storageUsage, workspaceEntitlements } from "./lib/entitlements";
 import { creditBalance, seatAccount } from "./lib/credits";
@@ -222,6 +223,7 @@ async function contextFor(ctx: ActionCtx, workspaceId: string, write = true): Pr
 export const checkout = action({
   args: { workspaceId: v.string(), planId: vPaidWorkspacePlanId },
   handler: async (ctx, args): Promise<{ url: string }> => {
+    assertBillingAvailable();
     await requireIdentity(ctx);
     const c = await contextFor(ctx, args.workspaceId);
     const ids: ProductIds = await ctx.runQuery(internal.billingSetup.productIds, {});
@@ -244,6 +246,7 @@ export const checkout = action({
 export const portal = action({
   args: { workspaceId: v.string() },
   handler: async (ctx, args): Promise<{ url: string }> => {
+    assertBillingAvailable();
     await requireIdentity(ctx);
     const c = await contextFor(ctx, args.workspaceId);
     if (c.provider !== "polar") fail("invalid_argument", "There's no paid subscription to manage yet.");
@@ -256,6 +259,7 @@ export const portal = action({
 export const changePlan = action({
   args: { workspaceId: v.string(), planId: vPaidWorkspacePlanId },
   handler: async (ctx, args): Promise<null> => {
+    assertBillingAvailable();
     await requireIdentity(ctx);
     const c = await contextFor(ctx, args.workspaceId);
     if (!c.polarLive || !c.polarSubscriptionId) fail("invalid_argument", "There's no subscription to change. Choose a plan to start one.");

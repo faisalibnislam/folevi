@@ -21,7 +21,7 @@ import { fail } from "./lib/errors";
 import { consume } from "./lib/rateLimit";
 import { insertScoped, scopeOfRow, type Scope } from "./lib/scope";
 import { aiPrefsOf } from "./lib/ai/prefs";
-import { capabilities } from "./lib/ai/provider";
+import { capabilities, loadAiSettings } from "./lib/ai/provider";
 import { attachmentTokens } from "./lib/ai/attachments";
 import { gemini, metered, providedArgs } from "./ai";
 import { failE2ee } from "./lib/e2ee/state";
@@ -239,6 +239,7 @@ export const readImage = action({
     provided: v.optional(vProvidedContext),
   },
   handler: async (ctx, args): Promise<{ status: "read" | "known"; chars: number; text?: string }> => {
+    await loadAiSettings(ctx);
     await requireIdentity(ctx);
     if (!BLOCK_ID.test(args.blockId)) fail("invalid_argument", "Unknown block.");
     if (args.provided) {

@@ -1,0 +1,21 @@
+# documentation: https://folevi.com/server
+# slogan: Your own Folevi server for your family or team.
+# tags: notes,tasks,productivity,self-hosted
+# logo: svgs/folevi.svg
+# port: 8460
+
+services:
+  folevi:
+    image: ghcr.io/folevi/folevi-server:latest
+    environment:
+      - SERVICE_FQDN_FOLEVI_8460
+      - FOLEVI_PUBLIC_URL=${SERVICE_FQDN_FOLEVI}
+    volumes:
+      - folevi-data:/data
+    stop_grace_period: 60s
+    healthcheck:
+      test: ["CMD", "/opt/folevi/bin/folevid", "healthcheck", "--data", "/data"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 120s

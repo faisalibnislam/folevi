@@ -1,0 +1,15 @@
+# Folevi Server on UGREEN UGOS Pro (Docker app > Project > Create). Paste this file, then Deploy.
+# Data is kept in the "folevi" shared folder on volume 1; change the left side of the volume line to move it.
+services:
+  folevi:
+    image: ghcr.io/folevi/folevi-server:latest
+    container_name: folevi
+    restart: unless-stopped
+    # Starts as root only to make the host folder owned by uid 10001, then drops to it (docker-entrypoint.sh).
+    user: "0:0"
+    ports:
+      - "8460:8460"
+      - "8443:8443"
+    volumes:
+      - /volume1/folevi:/data
+    stop_grace_period: 60s

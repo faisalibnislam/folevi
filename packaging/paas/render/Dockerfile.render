@@ -1,0 +1,3 @@
+# See render.yaml. Starts as root only so the entrypoint can chown the Render disk, then drops privileges.
+FROM ghcr.io/folevi/folevi-server:latest
+USER root

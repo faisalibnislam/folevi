@@ -1,0 +1,24 @@
+# Umbrel app store entry. Unverified: test with umbrel's app framework before submitting.
+manifestVersion: 1
+id: folevi
+category: files
+name: Folevi Server
+version: "1.5.73"
+tagline: Your notes, on your own server
+description: >-
+  Folevi Server is your own Folevi for your family or team: notes, tasks and files on your Umbrel, used from the
+  normal Folevi apps on Mac, iPhone, iPad, Android and the web. Open the app to create the owner account.
+releaseNotes: >-
+  See https://folevi.com/server/changelog
+developer: Folevi
+website: https://folevi.com/server
+dependencies: []
+repo: ""
+support: https://folevi.com/server/help
+port: 8460
+gallery: []
+path: ""
+defaultUsername: ""
+defaultPassword: ""
+submitter: Folevi
+submission: ""

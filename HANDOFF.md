@@ -249,6 +249,14 @@ The ones most likely to be broken:
 
 ## 9. Current state (as of 2026-11-24)
 
+**Folevi Server plan, version 2 (2026-11-25).** `docs/SELF_HOSTING_PLAN.md` rewritten for the owner's new brief:
+native packages on Synology, QNAP, ASUSTOR and TerraMaster (UGREEN once they authorize us), a native Unraid plugin,
+one-click catalog apps where only containers are allowed (TrueNAS, ZimaOS/CasaOS, Umbrel), a one-command native
+Linux installer plus DigitalOcean 1-Click for hosted servers, one Go supervisor (`folevid`) wrapping the same
+bundle everywhere, Plex-like Folevi Connect (server listed in the apps, `folevi.net` HTTPS names including LAN,
+pass-through relay), owner/admin/member/guest roles, a full server admin panel, and relays for email, push, AI and
+sign-in. Plan only; Phase 0 is still the only built part.
+
 **Backend performance pass (session `perf-backend`, 2026-11-25).** A generated 5,000-note test library
 (`convex/lib/fakeLibrary.ts`, seeded by `convex/devSeed.ts` into an `@example.com` test account, refused on
 production) and a read-cost harness (`tests/convex/perf/`, run with `FOLEVI_PERF=1`). Baseline and every fix's
@@ -584,6 +592,9 @@ signed-in account, 1.5.58's frosted folders with a large library, and the iPad c
 account button should move past iPadOS's window buttons).
 
 ## 10. Next steps / open work
+- Folevi Server (`docs/SELF_HOSTING_PLAN.md` v2): waiting on the owner's decisions (§14: price, Folevi account
+  optional, code openness, relays at launch) and owner-only steps (§13: store developer accounts, the Connect
+  domain, NAS models, OK to download Convex and Node binaries, Resend sending, Convex license). Then Phase 1.
 - Backend performance pass (`docs/perf/backend-results.md`): kept folder and Drafts counts, task rows that carry
   their note's title, a cheaper `changes.list`, then note text (`searchText`) split out of `documents`
   (widen, backfill, narrow; the owner approves each production backfill).
@@ -741,6 +752,9 @@ account button should move past iPadOS's window buttons).
   `DATABASE_UDF_USER_TIMEOUT_SECONDS=4` for that backend. Bursts show in `convex.log` as "took a long time".
 
 ## 12. Change log
+- 2026-11-25: Self-hosting plan version 2 (`docs/SELF_HOSTING_PLAN.md`): native packages on every NAS that allows
+  them, catalog apps on TrueNAS and the container-only systems, native Linux installer for DigitalOcean/Hetzner,
+  Folevi Connect for Plex-like access, roles and admin panel, email and other services through optional relays.
 - 2026-11-25: Backend performance pass, step 1: a generated 5,000-note test library (`convex/devSeed.ts`, test
   accounts only, refused on production), a read-cost harness with Convex's limits on (`tests/convex/perf/`), and the
   baseline in `docs/perf/backend-results.md`.

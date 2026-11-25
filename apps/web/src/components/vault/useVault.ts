@@ -1,7 +1,8 @@
 "use client";
 // The Vault's state on this page for its screens: the Vault of the current place (vault.get), whether it's open on
 // this device, and the device's encryption account (the Vault's keys are sealed to it; docs/VAULT_PLAN.md §3).
-import { useConvex, useMutation, useQuery } from "convex/react";
+import { useConvex, useMutation } from "convex/react";
+import { useQuery } from "@/lib/convex/queries";
 import { useCallback, useEffect, useSyncExternalStore } from "react";
 import { api } from "@/lib/convex/api";
 import { useAppState } from "@/lib/app/state";

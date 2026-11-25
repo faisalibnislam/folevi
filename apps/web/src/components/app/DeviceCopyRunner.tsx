@@ -7,7 +7,8 @@
 // loading that note's content into the copy and warms its server queries, so the note opens at once.
 // Account mode only: a local library is on this device already, and a public computer keeps nothing.
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
-import { useConvex, useQuery } from "convex/react";
+import { useConvex } from "convex/react";
+import { useQuery } from "@/lib/convex/queries";
 import type { WireScope } from "@folevi/editor-schema";
 import { api } from "@/lib/convex/api";
 import { useAppState } from "@/lib/app/state";

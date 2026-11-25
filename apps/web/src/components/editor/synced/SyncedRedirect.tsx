@@ -1,6 +1,6 @@
 "use client";
 
-import { useQuery } from "convex/react";
+import { useQuery } from "@/lib/convex/queries";
 import { useEffect } from "react";
 import { api } from "@/lib/convex/api";
 import { useAppRouter } from "@/lib/app/router";

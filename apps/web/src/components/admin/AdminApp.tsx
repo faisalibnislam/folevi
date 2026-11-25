@@ -1,7 +1,8 @@
 "use client";
 
 import { Component, createContext, useContext, useEffect, type ErrorInfo, type ReactNode } from "react";
-import { useConvexAuth, useQuery } from "convex/react";
+import { useConvexAuth } from "convex/react";
+import { useQueryOrThrow } from "@/lib/convex/queries";
 import { api } from "@/lib/convex/api";
 import { ConvexClientProvider, useAuthPhase } from "@/lib/convex/provider";
 import { ToastProvider } from "@/components/ui/Toast";
@@ -58,7 +59,7 @@ function Gate({ children }: { children: ReactNode }) {
   const { isAuthenticated } = useConvexAuth();
   // Ask for the admin identity only once the Convex connection carries the session token; asking
   // earlier would be rejected as unauthenticated and render the 404.
-  const me = useQuery(api.admin.whoami, isAuthenticated ? {} : "skip");
+  const me = useQueryOrThrow(api.admin.whoami, isAuthenticated ? {} : "skip");
   if (phase === "signed_out") return <AdminNotFound />;
   if (me === undefined) {
     return (

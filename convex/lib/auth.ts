@@ -654,6 +654,11 @@ export class PageReader {
     return new PageReader(ctx, profile, { scope, level });
   }
 
+  /** Has standing in the scope (not a guest): pages outside a restriction are open to them. */
+  get hasStanding(): boolean {
+    return this.standing !== null;
+  }
+
   /** Opens everything in the scope (their own Personal, or its owner / an admin). */
   get opensEverything(): boolean {
     if (!this.standing) return false;

@@ -1,5 +1,6 @@
 import { v } from "convex/values";
-import { mutation, query } from "./_generated/server";
+import { query } from "./_generated/server";
+import { mutation } from "./lib/functions";
 import type { Doc, Id } from "./_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
 import { COLLECTION_LIMITS, COLLECTION_VIEW_NAMES, clampCollectionViewConfig, collectionFormulaLoop, isValidId, normalizeCollectionOptions, rankBetween, renameInCollectionFormula, ulid } from "@folevi/editor-schema";

@@ -1,6 +1,6 @@
 "use client";
 
-import { useQuery } from "convex/react";
+import { useQuery } from "@/lib/convex/queries";
 import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { localDate } from "@folevi/editor-schema";
 import { api } from "@/lib/convex/api";

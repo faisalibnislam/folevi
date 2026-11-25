@@ -1,7 +1,7 @@
 "use client";
 
 import { useId, useState } from "react";
-import { useQuery } from "convex/react";
+import { useQuery } from "@/lib/convex/queries";
 import { api } from "@/lib/convex/api";
 import { Select } from "@/components/ui/Select";
 import { formatBytes } from "@/lib/format";

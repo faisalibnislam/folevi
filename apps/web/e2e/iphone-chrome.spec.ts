@@ -162,11 +162,28 @@ test.describe("the iPhone app's chrome", { tag: "@local" }, () => {
       const nav = await back.evaluate((el) => el.closest("header")!.getBoundingClientRect().toJSON());
       // The cover band (the sheet's top) starts 12 pt below the bar's row, the app's neutral colour between.
       expect(Math.abs(box.top - (nav.bottom + 12))).toBeLessThanOrEqual(2);
-      // Scrolled, the bar's material is the neutral colour too.
+      // Scrolled, the bar follows the page (the owner's design A, 2026-11-17, docs/IOS_REBUILD_PLAN.md): a short
+      // frost in the page's own colour, not the app's, and its glass and ink in the page's light or dark, whatever the phone's.
       await scroller.evaluate((el) => (el.scrollTop = 400));
       const bar = page.locator(".iphone-bar").last();
       await expect(bar).toHaveAttribute("data-on", "");
-      expect(await bar.evaluate((el) => getComputedStyle(el).backgroundColor)).toBe(canvas);
+      await expect(bar).toHaveAttribute("data-surface", "page");
+      const sheetColor = await sheet.evaluate((el) => getComputedStyle(el).backgroundColor);
+      const barColor = await bar.evaluate((el) => getComputedStyle(el).getPropertyValue("--bar-page").trim());
+      const bytes = (css: string) =>
+        page.evaluate((c) => {
+          const cx = document.createElement("canvas").getContext("2d")!;
+          cx.fillStyle = c;
+          cx.fillRect(0, 0, 1, 1);
+          return [...cx.getImageData(0, 0, 1, 1).data.slice(0, 3)];
+        }, css);
+      const pageBytes = await bytes(barColor);
+      expect(pageBytes).toEqual(await bytes(sheetColor));
+      expect(pageBytes).not.toEqual(await bytes(canvas));
+      // (The colour behind the theme's artwork counts, read the way Screen.tsx's pagePaint reads it.)
+      const lin = (v: number) => (v / 255 <= 0.04045 ? v / 255 / 12.92 : ((v / 255 + 0.055) / 1.055) ** 2.4);
+      const luminance = 0.2126 * lin(pageBytes[0]!) + 0.7152 * lin(pageBytes[1]!) + 0.0722 * lin(pageBytes[2]!);
+      await expect(page.locator("[data-page-tone]").last()).toHaveAttribute("data-page-tone", luminance < 0.179 ? "dark" : "light");
       await context.close();
     }
   });

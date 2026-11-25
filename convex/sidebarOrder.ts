@@ -6,7 +6,8 @@
 // row (or none saved yet): the sidebar shows rank order. Only ids, never names, so encrypted spaces keep it here too.
 import { v } from "convex/values";
 import { isValidId } from "@folevi/editor-schema";
-import { mutation, query } from "./_generated/server";
+import { query } from "./_generated/server";
+import { mutation } from "./lib/functions";
 import { assertWritable, requireProfile, resolveScope } from "./lib/auth";
 import { fail } from "./lib/errors";
 import { scopeKey, vScopeArg } from "./lib/scope";

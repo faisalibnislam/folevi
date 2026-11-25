@@ -5,7 +5,8 @@
 // (to-dos in the note) or tidy the whole map. The server returns checked block data or short lists; the
 // canvas applies each result as one change (⌘Z undoes it). Shown only while Foli AI is on (useAiEnabled);
 // in the iPhone app the panel is one of the app's sheets.
-import { useAction, useQuery } from "convex/react";
+import { useAction } from "convex/react";
+import { useQuery } from "@/lib/convex/queries";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ArrowUp, FileText, ListChecks, NotebookText, TextSelect, X, Network, ScrollText, PenLine } from "lucide-react";
 import type { MindmapLayout } from "@folevi/editor-schema";

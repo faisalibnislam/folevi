@@ -44,7 +44,7 @@ import { markdownToPlain, mindmapCopyText } from "./plainText";
 import { AI_RUN_EVENT, AI_TOOLS, REWRITE_TASKS, SELECTION_ACTIONS, TOOL_TASKS, useAi, useNoteAi, type AiRunDetail, type AiTask } from "./useAi";
 import { asksToChange } from "./editIntent";
 import { TOOL_ICONS } from "./toolIcons";
-import { useQuery } from "convex/react";
+import { useQuery } from "@/lib/convex/queries";
 import { api } from "@/lib/convex/api";
 import { AiCreditsNote, AiProblemNotice, aiProblem, type AiProblem } from "./AiCredits";
 import { useAppRouter } from "@/lib/app/router";

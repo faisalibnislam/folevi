@@ -3,7 +3,7 @@
 // (docs/LOCAL_MODE_PLAN.md §5.3, risk R1). When the backend says this version is too old to sync
 // (settings.status minShellVersion, convex/lib/shellVersions.ts), the app asks for an update instead of
 // syncing. No prices or plans here: it's an app update, nothing to buy.
-import { useQuery } from "convex/react";
+import { useQuery } from "@/lib/convex/queries";
 import type { ReactNode } from "react";
 import { api } from "@/lib/convex/api";
 import { FullPageMessage } from "@/lib/app/state";

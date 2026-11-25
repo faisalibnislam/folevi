@@ -7,7 +7,8 @@
 //
 // Phases: documents → history (versions) → files → cleanup → done. WP3.
 import { v } from "convex/values";
-import { internalMutation, mutation, query, type MutationCtx, type QueryCtx } from "../_generated/server";
+import { query, type MutationCtx, type QueryCtx } from "../_generated/server";
+import { internalMutation, mutation } from "../lib/functions";
 import type { Doc, Id } from "../_generated/dataModel";
 import { normalizeForSearch, sanitizeTitle, validateWireBlock, type WireBlock } from "@folevi/editor-schema";
 import { assertWritable, documentAccessInfo, membership, memberLevel, requireDocument, requireProfile, resolveScope } from "../lib/auth";

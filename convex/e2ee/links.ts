@@ -13,7 +13,8 @@
 //   unpublish:   deletes the copy, its chunks and its plain files, and revokes the link.
 import { v, type Infer } from "convex/values";
 import { validateWireBlock, type WireBlock } from "@folevi/editor-schema";
-import { mutation, type MutationCtx, type QueryCtx } from "../_generated/server";
+import { type MutationCtx, type QueryCtx } from "../_generated/server";
+import { mutation } from "../lib/functions";
 import type { Doc, Id } from "../_generated/dataModel";
 import { assertWritable, requireDocument, requireProfile } from "../lib/auth";
 import { fail } from "../lib/errors";

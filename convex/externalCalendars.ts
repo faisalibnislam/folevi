@@ -14,7 +14,8 @@
 // Safety: the fetch (lib/icsFetch.ts) only goes to public http(s) addresses, checks DNS answers and every
 // redirect, stops at 10 seconds and 5 MB. Up to MAX_CALENDARS per person.
 import { v, type Infer } from "convex/values";
-import { internalAction, internalMutation, mutation, query } from "./_generated/server";
+import { internalAction, query } from "./_generated/server";
+import { internalMutation, mutation } from "./lib/functions";
 import { internal } from "./_generated/api";
 import type { Doc } from "./_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "./_generated/server";

@@ -3,7 +3,8 @@
 // (lib/auth.ts: documentAccess reads folder grants through folderGrantOf, folderAccessInfo for the folder);
 // this module is the Share dialog for folders, the invitations, the shared folder page and "Shared with Me".
 import { v } from "convex/values";
-import { mutation, query } from "./_generated/server";
+import { query } from "./_generated/server";
+import { mutation } from "./lib/functions";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { ulid } from "@folevi/editor-schema";

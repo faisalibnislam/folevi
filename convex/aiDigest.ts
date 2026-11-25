@@ -17,7 +17,8 @@
 // told once per reason in the notification bell, never by email. Note content is never emailed or logged.
 // Turning digests off (or AI off) stops everything: nothing is scheduled, read or sent.
 import { v } from "convex/values";
-import { internalAction, internalMutation, mutation, query, type MutationCtx, type QueryCtx } from "./_generated/server";
+import { internalAction, query, type MutationCtx, type QueryCtx } from "./_generated/server";
+import { internalMutation, mutation } from "./lib/functions";
 import { internal } from "./_generated/api";
 import type { Doc, Id } from "./_generated/dataModel";
 import { markdownToBlocks, plainText, rankBetween, rankSequence, SCHEMA_VERSION, ulid, type InlineNode, type WireBlock } from "@folevi/editor-schema";

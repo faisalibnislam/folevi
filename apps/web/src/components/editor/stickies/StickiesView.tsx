@@ -22,7 +22,7 @@ import { useBlockDataWriter } from "../canvas/leaveFlush";
 import { useEditable } from "../useEditable";
 import { typingUndoKey, useTypingHistory } from "../canvas/typingHistory";
 import type { ReactNodeViewProps } from "@tiptap/react";
-import { useQuery } from "convex/react";
+import { useQuery } from "@/lib/convex/queries";
 import { useCapabilities } from "@/lib/mode";
 import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useReducer, useRef, useState } from "react";
 import { ListPlus, Redo2, SquareDashed, StickyNote, StickyNotes, Undo2 } from "lucide-react";

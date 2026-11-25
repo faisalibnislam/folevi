@@ -3,7 +3,8 @@
 // making it, its settings); keys and unlocking are in vaultKeys.ts, people in vaultPeople.ts, items in
 // vaultItems.ts, the log in vaultLog.ts. Access is decided in lib/vault/access.ts.
 import { v } from "convex/values";
-import { mutation, query } from "./_generated/server";
+import { query } from "./_generated/server";
+import { mutation } from "./lib/functions";
 import { ulid } from "@folevi/editor-schema";
 import { assertWritable, requireProfile, resolveScope } from "./lib/auth";
 import { fail } from "./lib/errors";

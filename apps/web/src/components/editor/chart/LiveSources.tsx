@@ -5,7 +5,7 @@
 // date. Copies are written without an undo step (undoing the table's edit undoes the chart's too), and only
 // by people who can edit the note. The rows saved with the chart are what share pages and exports show.
 import { Component, useEffect, useRef, useState, type ReactNode } from "react";
-import { useQuery } from "convex/react";
+import { useQueryOrThrow } from "@/lib/convex/queries";
 import type { Editor } from "@tiptap/react";
 import type { ChartSource } from "@folevi/editor-schema";
 import { api } from "@/lib/convex/api";
@@ -75,7 +75,7 @@ class Boundary extends Component<{ onError: () => void; children: ReactNode }, {
 }
 
 function CollectionReader({ source, onRows }: { source: Extract<ChartSource, { type: "collection" }>; onRows: (rows: ChartRows) => void }) {
-  const data = useQuery(api.collections.get, { collectionId: source.collectionId }) as CollectionLike | undefined;
+  const data = useQueryOrThrow(api.collections.get, { collectionId: source.collectionId }) as CollectionLike | undefined;
   const onRowsRef = useRef(onRows);
   useEffect(() => {
     onRowsRef.current = onRows;

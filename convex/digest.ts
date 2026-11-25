@@ -3,7 +3,7 @@
 // People on the digest get no per-event comment/mention emails (lib/notify.ts#wantsImmediateEmail),
 // and every notification that was already emailed carries `emailedAt`, so nothing is ever sent twice.
 import { v } from "convex/values";
-import { internalMutation } from "./_generated/server";
+import { internalMutation } from "./lib/functions";
 import { internal } from "./_generated/api";
 import type { Doc } from "./_generated/dataModel";
 import { appUrl, includedInDigest } from "./lib/notify";

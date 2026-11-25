@@ -141,10 +141,9 @@ public enum AiAge {
             if hours < 24 { out = unit(hours, "hour") } else {
                 let days = Int((Double(hours) / 24).rounded())
                 if days < 7 { out = unit(days, "day") } else {
-                    let f = DateFormatter()
+                    // (Shared formatters: making one per history row cost each row a DateFormatter on every pass.)
                     let sameYear = Calendar.current.component(.year, from: ts) == Calendar.current.component(.year, from: now)
-                    f.setLocalizedDateFormatFromTemplate(sameYear ? "MMM d" : "MMM d y")
-                    out = f.string(from: ts)
+                    out = ts.formatted(sameYear ? .dateTime.month(.abbreviated).day() : .dateTime.month(.abbreviated).day().year())
                 }
             }
         }

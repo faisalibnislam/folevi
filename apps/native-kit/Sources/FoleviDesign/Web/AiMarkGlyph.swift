@@ -92,11 +92,18 @@ public enum AiMarkImage {
     /// The flower at `size` points (in a `canvas` square, centred, when given), drawn as is.
     public static func uiImage(size: CGFloat, canvas: CGFloat? = nil) -> UIImage {
         let box = canvas ?? size
+        // (Drawn once per size: the tab bar asks for it on every pass of the frame's body.)
+        let key = "\(size)x\(box)" as NSString
+        if let made = drawn.object(forKey: key) { return made }
         let image = UIGraphicsImageRenderer(size: CGSize(width: box, height: box)).image { r in
             draw(in: r.cgContext, rect: CGRect(x: (box - size) / 2, y: (box - size) / 2, width: size, height: size))
-        }
-        return image.withRenderingMode(.alwaysOriginal)
+        }.withRenderingMode(.alwaysOriginal)
+        drawn.setObject(image, forKey: key)
+        return image
     }
+
+    /// The flowers drawn so far, by size (a handful at most).
+    nonisolated(unsafe) private static let drawn = NSCache<NSString, UIImage>()
     #endif
 
     #if canImport(AppKit) && !targetEnvironment(macCatalyst)

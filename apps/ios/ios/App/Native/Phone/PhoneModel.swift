@@ -76,6 +76,8 @@ final class PhoneModel {
     }
 
     func start() {
+        // (Once only: a second start would leave the first events loop listening, and every event handled twice.)
+        stop()
         client.start()
         eventsTask = Task { [weak self] in
             guard let stream = self?.client.events() else { return }

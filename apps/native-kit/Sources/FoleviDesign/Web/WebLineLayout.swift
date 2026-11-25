@@ -49,7 +49,14 @@ public final class WebLineLayout {
 
     /// What asks the page (set by the app).
     @ObservationIgnored public var requester: Requester?
-    private var answered: [Key: [String]] = [:]
+    /// One observable slot per text and style: a card reads only its own, so an answer redraws the cards that asked
+    /// for it and no others (one dictionary read by every card redrew every card on screen per batch).
+    @Observable final class Slot {
+        var lines: [String]?
+        init() {}
+    }
+    @ObservationIgnored private var answered: [Key: Slot] = [:]
+    @ObservationIgnored private var answeredCount = 0
     @ObservationIgnored private var asked: Set<Key> = []
     @ObservationIgnored private var queue: [Style: [String]] = [:]
     @ObservationIgnored private var flushing = false
@@ -59,18 +66,24 @@ public final class WebLineLayout {
     /// The most answers kept (a card's preview is a few short lines: a few MB at most).
     public static let cap = 6000
     /// How many answers are kept now (tests, and the Debug memory report).
-    public var count: Int { answered.count }
+    public var count: Int { answeredCount }
 
     /// Lets go of every answer (memory is short, or the cap was reached); what shows asks again.
     public func relieve() {
+        // (Each card showing one asks again: its slot empties, so it draws once more and finds none.)
+        let slots = answered.values
         answered.removeAll()
+        answeredCount = 0
         asked.removeAll()
+        for slot in slots { slot.lines = nil }
     }
 
     /// The text's lines as WebKit breaks them, or nil until they've come (asked for now if not yet).
     public func lines(_ text: String, style: Style) -> [String]? {
         let key = Key(text: text, style: style)
-        if let l = answered[key] { return l }
+        let slot: Slot
+        if let made = answered[key] { slot = made } else { slot = Slot(); answered[key] = slot }
+        if let l = slot.lines { return l }
         guard requester != nil, !asked.contains(key) else { return nil }
         asked.insert(key)
         queue[style, default: []].append(text)
@@ -97,8 +110,14 @@ public final class WebLineLayout {
                     }
                     // (A width is part of the key, so a window dragged through many widths adds a set of lines
                     // for each: past the cap everything goes, and what is on screen asks again.)
-                    if answered.count + chunk.count > Self.cap { relieve() }
-                    for (text, l) in zip(chunk, lines) { answered[Key(text: text, style: style)] = l }
+                    if answeredCount + chunk.count > Self.cap { relieve() }
+                    for (text, l) in zip(chunk, lines) {
+                        let key = Key(text: text, style: style)
+                        let slot: Slot
+                        if let made = answered[key] { slot = made } else { slot = Slot(); answered[key] = slot }
+                        if slot.lines == nil { answeredCount += 1 }
+                        slot.lines = l
+                    }
                 }
             }
         }

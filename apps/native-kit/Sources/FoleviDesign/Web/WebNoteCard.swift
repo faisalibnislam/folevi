@@ -1293,7 +1293,7 @@ public struct WebClampedText: View {
         // One word (a folder called "Brainstorming") is never broken across lines: it stays on one and ends in
         // "…" when it doesn't fit (the owner, 2026-11-01).
         let maxLines = text.contains(where: \.isWhitespace) ? maxLines : 1
-        let lines = balance ? Self.balancedClamped(text, style: style, width: width, max: maxLines) : Self.lines(text, style: style, width: width, max: maxLines)
+        let lines = Self.cachedLines(text, style: style, width: width, max: maxLines, balance: balance)
         VStack(alignment: alignment, spacing: 0) {
             ForEach(Array(lines.enumerated()), id: \.offset) { _, line in
                 Text(line).webText(style).lineLimit(1).truncationMode(.tail)
@@ -1301,6 +1301,22 @@ public struct WebClampedText: View {
         }
         .frame(width: width, alignment: Alignment(horizontal: alignment, vertical: .top))
     }
+
+    /// The lines, set once per text, style, width and count: a balanced title is about eight Core Text passes, and
+    /// a card's body runs again on every change around it.
+    static func cachedLines(_ text: String, style: WebTextStyle, width: CGFloat, max: Int, balance: Bool) -> [String] {
+        let key = "\(balance ? 1 : 0)|\(max)|\(width)|\(style.hashValue)|\(text)" as NSString
+        if let made = setLines.object(forKey: key) as? [String] { return made }
+        let made = balance ? balancedClamped(text, style: style, width: width, max: max) : lines(text, style: style, width: width, max: max)
+        setLines.setObject(made as NSArray, forKey: key)
+        return made
+    }
+
+    nonisolated(unsafe) private static let setLines: NSCache<NSString, NSArray> = {
+        let c = NSCache<NSString, NSArray>()
+        c.countLimit = 2000
+        return c
+    }()
 
     /// Balanced lines: the narrowest width that still sets the text in as many lines as `width` does, when they're
     /// all shown; otherwise the plain lines.

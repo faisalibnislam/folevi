@@ -404,7 +404,8 @@ private fun TabPage(route: Route, name: String, open: (Route) -> Unit, back: (()
 @Composable
 private fun PhoneContent(stack: NavBackStack<NavKey>, open: (Route) -> Unit, modifier: Modifier, bar: @Composable () -> Unit) {
     val strategy = rememberListDetailSceneStrategy<NavKey>()
-    val back: (() -> Unit)? = if (stack.size > 1) ({ stack.removeAt(stack.lastIndex) }) else null
+    // Each page reads the stack itself (backOf), so a page pushed in the frame's first moments (the end of
+    // onboarding) still gets its Back.
     Scaffold(
         modifier = modifier,
         containerColor = MaterialTheme.colorScheme.background,
@@ -420,23 +421,28 @@ private fun PhoneContent(stack: NavBackStack<NavKey>, open: (Route) -> Unit, mod
             modifier = Modifier.padding(padding).consumeWindowInsets(padding),
             entryProvider = entryProvider {
                 entry<HomeRoute>(metadata = ListDetailSceneStrategy.listPane()) { HomeScreen(open) }
-                entry<NotesRoute>(metadata = ListDetailSceneStrategy.listPane()) { NotesScreen(it, open, back) }
-                entry<SearchRoute>(metadata = ListDetailSceneStrategy.listPane()) { SearchScreen(open, back) }
-                entry<FoldersRoute>(metadata = ListDetailSceneStrategy.listPane()) { FoldersScreen(open, back) }
-                entry<NotificationsRoute>(metadata = ListDetailSceneStrategy.listPane()) { NotificationsScreen(open, back) }
+                entry<NotesRoute>(metadata = ListDetailSceneStrategy.listPane()) { NotesScreen(it, open, backOf(stack)) }
+                entry<SearchRoute>(metadata = ListDetailSceneStrategy.listPane()) { SearchScreen(open, backOf(stack)) }
+                entry<FoldersRoute>(metadata = ListDetailSceneStrategy.listPane()) { FoldersScreen(open, backOf(stack)) }
+                entry<NotificationsRoute>(metadata = ListDetailSceneStrategy.listPane()) { NotificationsScreen(open, backOf(stack)) }
                 entry<TasksRoute>(metadata = ListDetailSceneStrategy.listPane()) { TasksHome(open) }
                 entry<CalendarRoute>(metadata = ListDetailSceneStrategy.listPane()) { CalendarHome(open) }
                 entry<AiRoute>(metadata = ListDetailSceneStrategy.listPane()) { AiHome(open) }
-                entry<AiChatRoute>(metadata = ListDetailSceneStrategy.detailPane()) { AiChatScreen(it, back) }
-                entry<SettingsRoute>(metadata = ListDetailSceneStrategy.listPane()) { SettingsScreen(open, back) }
-                entry<SettingsPageRoute>(metadata = ListDetailSceneStrategy.listPane()) { SettingsPageScreen(it, open, back) }
-                entry<VaultRoute>(metadata = ListDetailSceneStrategy.listPane()) { VaultScreen(back) }
-                entry<SharedRoute>(metadata = ListDetailSceneStrategy.listPane()) { SharedScreen(open, back) }
-                entry<ChangesRoute>(metadata = ListDetailSceneStrategy.listPane()) { ChangesScreen(open, back) }
-                entry<WebShowRoute>(metadata = ListDetailSceneStrategy.detailPane()) { WebShowScreen(it, back) }
-                entry<NoteRoute>(metadata = ListDetailSceneStrategy.detailPane()) { NoteScreen(it, back) }
-                entry<PageRoute>(metadata = ListDetailSceneStrategy.detailPane()) { WebPageScreen(it, back) }
+                entry<AiChatRoute>(metadata = ListDetailSceneStrategy.detailPane()) { AiChatScreen(it, backOf(stack)) }
+                entry<SettingsRoute>(metadata = ListDetailSceneStrategy.listPane()) { SettingsScreen(open, backOf(stack)) }
+                entry<SettingsPageRoute>(metadata = ListDetailSceneStrategy.listPane()) { SettingsPageScreen(it, open, backOf(stack)) }
+                entry<VaultRoute>(metadata = ListDetailSceneStrategy.listPane()) { VaultScreen(backOf(stack)) }
+                entry<SharedRoute>(metadata = ListDetailSceneStrategy.listPane()) { SharedScreen(open, backOf(stack)) }
+                entry<ChangesRoute>(metadata = ListDetailSceneStrategy.listPane()) { ChangesScreen(open, backOf(stack)) }
+                entry<WebShowRoute>(metadata = ListDetailSceneStrategy.detailPane()) { WebShowScreen(it, backOf(stack)) }
+                entry<NoteRoute>(metadata = ListDetailSceneStrategy.detailPane()) { NoteScreen(it, backOf(stack)) }
+                entry<PageRoute>(metadata = ListDetailSceneStrategy.detailPane()) { WebPageScreen(it, backOf(stack)) }
             },
         )
     }
 }
+
+/** Back for a phone page: pops the stack when there's somewhere to go (read where the page draws, so it follows the stack). */
+@Composable
+private fun backOf(stack: NavBackStack<NavKey>): (() -> Unit)? =
+    if (stack.size > 1) ({ stack.removeAt(stack.lastIndex) }) else null

@@ -7,6 +7,8 @@ import { internal } from "../_generated/api";
 import { apnsConfig, type ApnsKind } from "./apns";
 import { fcmConfig } from "./fcm";
 import { appUrl } from "./notify";
+import { isServerEdition } from "./edition";
+import { pushRelayOn, readServerSettings } from "./serverSettings";
 
 export interface Push {
   profileId: Id<"profiles">;
@@ -25,8 +27,10 @@ export interface Push {
 
 export async function schedulePush(ctx: MutationCtx, push: Push): Promise<void> {
   await ctx.scheduler.runAfter(0, internal.pushSend.sendToProfile, { profileId: push.profileId, title: push.title, body: push.body, url: `${appUrl()}${push.path}`, tag: push.tag });
-  await scheduleFcm(ctx, push);
-  if (!apnsConfig()) return;
+  // Folevi Server: phones are reached through Folevi's push relay when the owner turned it on (no keys here).
+  const relay = isServerEdition() && pushRelayOn(await readServerSettings(ctx));
+  await scheduleFcm(ctx, push, relay);
+  if (!apnsConfig() && !relay) return;
   const device = await ctx.db
     .query("apnsTokens")
     .withIndex("by_profile", (q) => q.eq("profileId", push.profileId))
@@ -47,8 +51,8 @@ export async function schedulePush(ctx: MutationCtx, push: Push): Promise<void> 
 }
 
 /** The Android app (FCM, fcmSend.ts): only when it's set up and the person has an Android device for it. */
-async function scheduleFcm(ctx: MutationCtx, push: Push): Promise<void> {
-  if (!fcmConfig()) return;
+async function scheduleFcm(ctx: MutationCtx, push: Push, relay: boolean): Promise<void> {
+  if (!fcmConfig() && !relay) return;
   const device = await ctx.db
     .query("fcmTokens")
     .withIndex("by_profile", (q) => q.eq("profileId", push.profileId))

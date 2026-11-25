@@ -23,6 +23,8 @@ import { withoutPurchaseHints } from "@/lib/nativeApp";
 import { NativeGate } from "@/lib/engine/NativeGate";
 import { onboardingInfo } from "@/lib/engine/gates";
 import { useKeyLabels } from "@/lib/shortcuts";
+import { useCapabilities } from "@/lib/mode";
+import { isServerEdition } from "@/lib/edition";
 
 /** The steps, in order, and the server step each one completes (convex/lib/onboarding.ts). */
 const STEPS = [
@@ -60,6 +62,7 @@ export function Onboarding() {
     return pendingTemplate();
   });
 
+  const caps = useCapabilities();
   const [step, setStep] = useState(() => stepIndexOf(profile.onboardingStep));
   const [dir, setDir] = useState<"forward" | "back">("forward");
   const applied = profile.onboardingUseCases ?? [];
@@ -94,7 +97,11 @@ export function Onboarding() {
     window.scrollTo({ top: 0 });
   }, [step]);
 
-  const go = (to: number) => {
+  // Folevi Server without Foli AI set up: its step is left out (lib/mode.ts accountCapabilities).
+  const aiStep = !isServerEdition() || caps.foliAi;
+  const AI_STEP = STEPS.findIndex((s) => s.key === "ai");
+  const go = (asked: number) => {
+    const to = !aiStep && asked === AI_STEP ? (asked < step ? AI_STEP - 1 : AI_STEP + 1) : asked;
     setDir(to < step ? "back" : "forward");
     setError(null);
     setStep(Math.max(0, Math.min(LAST, to)));
@@ -115,6 +122,7 @@ export function Onboarding() {
   type Args = Parameters<typeof complete>[0];
   const saveAndGo = (args: Args, to = step + 1) => void run(async () => {
     await complete(args);
+    if (!aiStep && to === AI_STEP) await complete({ step: "ai", aiEnabled: false });
     go(to);
   });
 
@@ -327,7 +335,7 @@ export function Onboarding() {
                 </>
               ) : null}
               {step === 4 ? <AiChoice on={ai} onChange={setAi} entitlements={profile.entitlements} /> : null}
-              {step === LAST ? <Summary pages={starterPagesFor(applied).map((p) => p.title)} style={styleName(savedStyle ?? styleId)} appearance={profile.appearance} ai={profile.aiEnabled} /> : null}
+              {step === LAST ? <Summary pages={starterPagesFor(applied).map((p) => p.title)} style={styleName(savedStyle ?? styleId)} appearance={profile.appearance} ai={aiStep ? profile.aiEnabled : null} /> : null}
             </div>
             {error ? (
               <p role="alert" className="mt-5 text-subheadline text-danger">
@@ -592,13 +600,14 @@ function AiChoice({ on, onChange, entitlements }: { on: boolean; onChange: (next
   );
 }
 
-function Summary({ pages, style, appearance, ai }: { pages: string[]; style: string; appearance: Appearance; ai: boolean }) {
+/** `ai` null: Foli AI isn't offered here (a server without it), so it isn't listed. */
+function Summary({ pages, style, appearance, ai }: { pages: string[]; style: string; appearance: Appearance; ai: boolean | null }) {
   const keys = useKeyLabels();
   const rows: { icon: ReactNode; title: string; body: string }[] = [
     { icon: <IconTile icon={Files} />, title: pages.length ? `${pages.length} starter ${pages.length === 1 ? "page" : "pages"}` : "Starter pages", body: pages.length ? listOf(pages) : "None this time. You’ll find templates in the sidebar." },
     { icon: <IconTile icon={Paintbrush} />, title: WELCOME, body: style === "Plain" ? "Plain, like every new page" : `In the ${style} theme` },
     { icon: <IconTile icon={SunMoon} />, title: "Appearance", body: appearance === "system" ? "Matches your system" : appearance === "dark" ? "Dark" : "Light" },
-    { icon: <AiIconTile />, title: "Foli AI", body: ai ? keys("On. Press ⌘J in a note to ask.") : "Off. Turn it on in Settings any time." },
+    ...(ai === null ? [] : [{ icon: <AiIconTile />, title: "Foli AI", body: ai ? keys("On. Press ⌘J in a note to ask.") : "Off. Turn it on in Settings any time." }]),
   ];
   return (
     <ul className="space-y-2.5">

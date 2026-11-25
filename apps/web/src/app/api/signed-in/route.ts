@@ -1,11 +1,11 @@
 import { signedInStatus } from "@/lib/auth/server";
 import { signedInCors, signedInPreflight } from "@/lib/auth/signedInCheck";
-import { APP_URL, MARKETING_URL } from "@/lib/env";
+import { appUrl, marketingUrl } from "@/lib/env";
 
 export const dynamic = "force-dynamic";
 
-const marketingOrigin = new URL(MARKETING_URL).origin;
-const appOrigin = new URL(APP_URL).origin;
+const marketingOrigin = new URL(marketingUrl()).origin;
+const appOrigin = new URL(appUrl()).origin;
 
 /** Whether this browser is signed in, for folevi.com's home page (lib/auth/signedInCheck.ts). Only `{ signedIn }`. */
 export async function GET(request: Request) {

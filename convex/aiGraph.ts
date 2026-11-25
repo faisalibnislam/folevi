@@ -27,7 +27,7 @@ import { rankBetween, SCHEMA_VERSION, ulid, type WireBlock } from "@folevi/edito
 import { consume } from "./lib/rateLimit";
 import { hasValidScope, inScope, scopeKey, scopeOfRow, vScope, vScopeArg, type Scope } from "./lib/scope";
 import { indexable, indexEligible } from "./lib/ai/indexing";
-import { capabilities, provider } from "./lib/ai/provider";
+import { capabilities, provider, loadAiSettings, aiAvailable } from "./lib/ai/provider";
 import {
   capLines,
   CONTEXT_CHARS,
@@ -96,13 +96,14 @@ async function dropAll(ctx: Parameters<typeof dropNoteGraph>[0], documentId: Id<
 export const prepareExtract = internalMutation({
   args: { documentId: v.id("documents") },
   handler: async (ctx, args): Promise<Prepared> => {
+    await loadAiSettings(ctx);
     const doc = await ctx.db.get(args.documentId);
     if (!doc || !hasValidScope(doc)) return { kind: (await dropAll(ctx, args.documentId)) ? "done" : "later" };
     const scope = scopeOfRow(doc);
     // An end-to-end encrypted note isn't read into the graph (v1: its copy for Foli AI gives embeddings only).
     if (!indexable(doc) || isSealed(doc) || !(await indexEligible(ctx, scope))) return { kind: (await dropAll(ctx, doc._id)) ? "done" : "later" };
     // AI isn't set up on this server (or the fast model can't answer in JSON): nothing to read with.
-    if (!process.env.GEMINI_API_KEY || !capabilities(true).json) return { kind: "done" };
+    if (!aiAvailable() || !capabilities(true).json) return { kind: "done" };
     const title = doc.title || "Untitled";
     const lines = capLines(await noteLines(ctx, doc));
     const hash = await graphHash(title, lines);
@@ -202,6 +203,7 @@ export const extract = internalAction({
   handler: async (ctx, args): Promise<string> => {
     const job = await ctx.runMutation(internal.aiGraph.prepareExtract, { documentId: args.documentId });
     if (job.kind !== "extract") return job.kind;
+    await loadAiSettings(ctx);
     let near: { similar: { documentId: Id<"documents">; score: number }[]; context: ContextNote[] } = { similar: [], context: [] };
     if (job.vectors.length) {
       const s = job.scope;

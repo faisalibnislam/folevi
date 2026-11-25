@@ -10,6 +10,8 @@ import { capabilitiesOf, currentBackendMode as modeNow, localCapabilityExtras, t
 import { LOCAL_FUNCTIONS } from "./local/registry";
 import { localAiState, subscribeLocalAi, type LocalAiState } from "./local/ai/state";
 import { ACCOUNT_FEATURES, type AiFeature, type AiFeatures } from "./local/ai/features";
+import { isServerEdition } from "./edition";
+import { runtimeConfig } from "./runtime/config";
 
 export { canPurchaseHere } from "./nativeApp";
 export { CAPABILITIES, currentBackendMode, type BackendMode, type Capabilities, type Capability } from "./backendMode";
@@ -22,7 +24,22 @@ export function useBackendMode(): BackendMode {
 }
 
 const LOCAL = capabilitiesOf("local");
-const ACCOUNT = capabilitiesOf("account");
+const CLOUD_ACCOUNT = capabilitiesOf("account");
+
+let serverAccount: { features: unknown; value: Capabilities } | null = null;
+/**
+ * Account mode's capabilities. Folevi Cloud: all of them. Folevi Server (lib/edition.ts): no billing, and Foli AI
+ * only when the owner set it up (server:info `features.ai`, handed over by the root layout; unknown counts as off).
+ */
+export function accountCapabilities(): Capabilities {
+  if (!isServerEdition()) return CLOUD_ACCOUNT;
+  const features = runtimeConfig().features;
+  if (serverAccount && serverAccount.features === features) return serverAccount.value;
+  const ai = features?.ai === true;
+  const value: Capabilities = { ...CLOUD_ACCOUNT, billing: false, aiServer: ai, foliAi: ai };
+  serverAccount = { features, value };
+  return value;
+}
 
 const LOCAL_WITH_AI: Capabilities = { ...LOCAL, foliAi: true };
 const serverAiState = () => null;
@@ -43,7 +60,7 @@ const noopSubscribe = () => () => {};
 export function useCapabilities(): Capabilities {
   const local = useBackendMode() === "local";
   const ai = useLocalAi();
-  if (!local) return ACCOUNT;
+  if (!local) return accountCapabilities();
   // Foli AI shows in local mode once this device has a model for it (Apple's, or the person's own key).
   const base = ai?.active ? LOCAL_WITH_AI : LOCAL;
   const extras = localCapabilityExtras();

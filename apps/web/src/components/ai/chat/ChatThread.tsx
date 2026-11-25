@@ -31,7 +31,7 @@ import type { ResearchHandlers, ResearchJob } from "./ResearchCard";
 import { useChatMode } from "./mode";
 import { asksToChange, asksToContinue, CONTINUE_AGENT, FIX_IN_NOTE, wantsAgent } from "../editIntent";
 import { AiAnnouncer, useDoneAnnouncement } from "../announce";
-import { MARKETING_URL } from "@/lib/env";
+import { websiteUrl } from "@/lib/env";
 
 // Chat answers questions and makes changes, so its suggestions show both.
 export const SUGGESTIONS = ["What am I working on this week?", "Which tasks are still open?", "Put my notes about travel in a Travel folder", "Tag my recent notes by topic"];
@@ -660,7 +660,7 @@ export function ChatThread({
           <p className={iphone ? "mt-2 px-4 text-center text-footnote leading-[18px] text-faint" : "mt-2 px-1 text-footnote text-faint"}>
             Foli AI can make mistakes.
             {footNotes.length ? ` ${footNotes.join(" ")}` : ""}{" "}
-            <a href={`${MARKETING_URL}/ai-policy`} target="_blank" rel="noopener noreferrer" className="-my-1 inline-block py-1 underline underline-offset-2">
+            <a href={`${websiteUrl()}/ai-policy`} target="_blank" rel="noopener noreferrer" className="-my-1 inline-block py-1 underline underline-offset-2">
               AI policy
             </a>
           </p>

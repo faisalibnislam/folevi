@@ -6,6 +6,7 @@
 //
 // Privacy: the bytes go to Google and nowhere else. Only sizes, states and statuses are logged.
 import { fail } from "../errors";
+import { geminiKey } from "./gemini";
 
 const BASE = "https://generativelanguage.googleapis.com";
 /** Where an upload may be sent: Google's own upload address, nothing a response could point elsewhere. */
@@ -36,7 +37,7 @@ export interface GeminiFile {
 type FileJson = { name?: unknown; uri?: unknown; mimeType?: unknown; state?: unknown };
 
 const keyOf = (): string => {
-  const key = process.env.GEMINI_API_KEY;
+  const key = geminiKey();
   if (!key) fail("maintenance", "Foli AI isn't set up on this server yet.");
   return key;
 };

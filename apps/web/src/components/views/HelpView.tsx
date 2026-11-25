@@ -1,5 +1,6 @@
 "use client";
 
+import { websiteUrl } from "@/lib/env";
 import { useState } from "react";
 import { ViewChrome } from "@/components/app/Shell";
 import { Button, Kbd } from "@/components/ui/Button";
@@ -60,7 +61,7 @@ export function HelpView() {
           <h2 className="ui-display text-large-title leading-tight">Help</h2>
           <p className="text-muted">
             The full guide lives at{" "}
-            <a className="text-accent underline underline-offset-2" href={`${process.env.NEXT_PUBLIC_MARKETING_URL ?? "https://folevi.com"}/docs`}>
+            <a className="text-accent underline underline-offset-2" href={`${websiteUrl()}/docs`}>
               folevi.com/docs
             </a>
             . Questions or problems? Contact support below, or write to support@folevi.com. Security reports: security@folevi.com.

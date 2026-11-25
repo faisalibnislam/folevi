@@ -3,6 +3,8 @@
 // session (ShellAuth, Keychain account `session.<user id>`), encryption keys (E2eeKeys, `device.<user id>`) and
 // data. This keeps the list in the app's Application Support (places.json): which place the app shows, the
 // accounts (what each account's own page last said of itself, for the switcher), and Quick Add's last place.
+// An account can be on a Folevi Server (ShellServer.swift): it keeps its server's addresses with it; one without
+// is Folevi Cloud's, as every account was before (older places.json files read unchanged).
 // Nothing here is secret. The app has one web view: the open place is the page's place.
 import Foundation
 #if os(iOS)
@@ -31,6 +33,8 @@ enum ShellPlaces {
         var unread: Int
         var reminders: Int
         var waiting: Int
+        /// The Folevi Server this account is on; nil: Folevi Cloud.
+        var server: ShellServer? = nil
         var id: String { "acct:\(userId)" }
     }
 
@@ -94,7 +98,8 @@ enum ShellPlaces {
         let here = Platform.deviceLabel
         var targets: [SaveTarget] = []
         if s.library { targets.append(SaveTarget(id: library, name: "On this \(here)", detail: "Kept on this device only")) }
-        for a in s.accounts { targets.append(SaveTarget(id: a.id, name: a.name.isEmpty ? a.email : a.name, detail: a.email)) }
+        // The extensions save through Folevi Cloud's REST API: a server's accounts aren't offered there yet.
+        for a in s.accounts where a.server == nil { targets.append(SaveTarget(id: a.id, name: a.name.isEmpty ? a.email : a.name, detail: a.email)) }
         SaveTargets.write(targets, current: s.current)
         if let quickAdd = s.quickAdd, SaveTargets.last() == nil { SaveTargets.remember(quickAdd) }
         // The open place's token (one kept before places, the one account this device had) stays that account's
@@ -105,6 +110,25 @@ enum ShellPlaces {
 
     /// Account mode with no account yet (the sign-in screen). Kept for this run only.
     static var pendingAccount = false
+    /// The server that sign-in screen is for (addServerPlace); nil: Folevi Cloud's. Kept for this run only.
+    static var pendingServer: ShellServer?
+
+    /// The server a place is on: an account's own, or, for the sign-in screen (nil), the server it signs in to.
+    /// Nil: Folevi Cloud (or the library).
+    static func server(of place: String?) -> ShellServer? {
+        guard let place else { return pendingAccount ? pendingServer : nil }
+        return state.accounts.first { $0.id == place }?.server
+    }
+
+    /// The server of the place a call acts for (the acting place, else the open one): where ShellAuth signs in and
+    /// sends /api/auth, and the server a new account from that sign-in is on.
+    static var actingServer: ShellServer? { server(of: acting ?? state.current) }
+
+    /// The server an account is on, by its user id.
+    static func server(ofUser userId: String?) -> ShellServer? {
+        guard let userId else { return nil }
+        return state.accounts.first { $0.userId == userId }?.server
+    }
 
     static func modeOf(_ place: String?, pending: Bool = pendingAccount) -> String {
         if place == library { return "local" }
@@ -132,11 +156,23 @@ enum ShellPlaces {
     /// The open place's user id (nil: the library, or no account yet); the acting place's when one is set.
     static var currentUserId: String? { userIdOf(acting ?? state.current) }
 
-    static func setCurrent(_ place: String?, pending: Bool = false) {
+    /// `server`: with `pending`, the sign-in screen is that server's (nil: Folevi Cloud's).
+    static func setCurrent(_ place: String?, pending: Bool = false, server: ShellServer? = nil) {
         var s = state
         guard place == nil || has(place) else { return }
         s.current = place
         pendingAccount = place == nil && pending
+        pendingServer = pendingAccount ? server : nil
+        commit(s)
+    }
+
+    /// The origin a server place uses now (ServerReach: the best connection); nil goes back to the one added.
+    static func setActiveOrigin(_ place: String, _ origin: String?) {
+        var s = state
+        guard let i = s.accounts.firstIndex(where: { $0.id == place }), s.accounts[i].server != nil else { return }
+        guard origin == nil || s.accounts[i].server!.candidates.contains(origin!) else { return }
+        guard s.accounts[i].server!.active != origin else { return }
+        s.accounts[i].server!.active = origin
         commit(s)
     }
 
@@ -150,16 +186,19 @@ enum ShellPlaces {
         commit(s)
     }
 
+    /// A new account is on the server the sign-in went to (`actingServer`), unless `server` says otherwise. An
+    /// account already here keeps its own.
     @discardableResult
-    static func addAccount(userId: String, name: String, email: String, avatarUrl: String?) -> Account? {
+    static func addAccount(userId: String, name: String, email: String, avatarUrl: String?, server: ShellServer?? = nil) -> Account? {
         guard userId.range(of: idPattern, options: .regularExpression) != nil else { return nil }
+        let onServer = server ?? actingServer
         var s = state
         if let i = s.accounts.firstIndex(where: { $0.userId == userId }) {
             s.accounts[i].name = name.isEmpty ? s.accounts[i].name : name
             s.accounts[i].email = email.isEmpty ? s.accounts[i].email : email
             if avatarUrl != nil { s.accounts[i].avatarUrl = avatarUrl }
         } else {
-            s.accounts.append(Account(userId: userId, profileId: nil, name: String(name.prefix(120)), email: String(email.prefix(254)), avatarUrl: avatarUrl, workspaces: [], unread: 0, reminders: 0, waiting: 0))
+            s.accounts.append(Account(userId: userId, profileId: nil, name: String(name.prefix(120)), email: String(email.prefix(254)), avatarUrl: avatarUrl, workspaces: [], unread: 0, reminders: 0, waiting: 0, server: onServer))
         }
         s.lastAdded = "acct:\(userId)"
         commit(s)
@@ -222,6 +261,8 @@ enum ShellPlaces {
                 "kind": "account", "id": a.id, "userId": a.userId, "profileId": orNull(a.profileId), "name": a.name, "email": a.email,
                 "avatarUrl": orNull(a.avatarUrl), "workspaces": a.workspaces.map { ["id": $0.id, "name": $0.name, "logoUrl": orNull($0.logoUrl)] },
                 "unread": a.unread, "reminders": a.reminders, "waiting": a.waiting,
+                // Folevi Server places (CONTRACT §6 notes): the server's name and addresses; null: Folevi Cloud.
+                "server": orNull(a.server?.json),
             ])
         }
         return out
@@ -271,6 +312,7 @@ enum ShellPlaces {
         SharedAccount.accountId = s.accountId
         SharedAccount.tokenId = s.tokenId
         pendingAccount = false
+        pendingServer = nil
     }
 
     /// Tests only.
@@ -280,5 +322,6 @@ enum ShellPlaces {
         lock.unlock()
         try? FileManager.default.removeItem(at: file)
         pendingAccount = false
+        pendingServer = nil
     }
 }

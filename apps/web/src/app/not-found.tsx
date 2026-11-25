@@ -8,7 +8,7 @@ import { NotFoundHead } from "@/components/marketing/NotFoundHead";
 import { SiteFooter } from "@/components/marketing/SiteFooter";
 import { SiteShell } from "@/components/marketing/SiteShell";
 import { SIGN_IN_URL, SIGN_UP_URL } from "@/components/marketing/site";
-import { APP_HOST, MARKETING_URL } from "@/lib/env";
+import { appHost, marketingUrl } from "@/lib/env";
 
 // Any address that matches no route (and notFound() outside the marketing pages). The same app serves both
 // hosts, so the page follows the host: on the marketing site it sits in the site's shell, and on the product
@@ -19,7 +19,7 @@ export const metadata: Metadata = { title: "Page not found" };
 export default async function NotFound() {
   const h = await headers();
   const host = h.get("x-forwarded-host")?.split(",")[0]?.trim() || h.get("host") || "";
-  if (host === APP_HOST) return <AppNotFound />;
+  if (host === appHost()) return <AppNotFound />;
   return (
     <SiteShell signInUrl={SIGN_IN_URL} signUpUrl={SIGN_UP_URL} homeAmbient={heroGlow(HERO_STYLES[0]!)} footer={<SiteFooter />}>
       <MarketingNotFound />
@@ -34,7 +34,7 @@ function AppNotFound() {
       <NotFoundHead site="app" />
       <header className="px-3 sm:px-6">
         <div className="mx-auto flex max-w-5xl items-center py-4">
-          <a href={MARKETING_URL} className="inline-flex items-center gap-2 text-ink" aria-label="Folevi home">
+          <a href={marketingUrl()} className="inline-flex items-center gap-2 text-ink" aria-label="Folevi home">
             <FoleviLogo height={22} title={null} />
           </a>
         </div>
@@ -47,10 +47,10 @@ function AppNotFound() {
             <a href="/documents" className="ui-btn ui-btn-primary h-9 px-4 text-callout">
               Open Folevi
             </a>
-            <a href={`${MARKETING_URL}/docs`} className="ui-btn ui-btn-secondary h-9 px-4 text-callout">
+            <a href={`${marketingUrl()}/docs`} className="ui-btn ui-btn-secondary h-9 px-4 text-callout">
               Docs
             </a>
-            <a href={MARKETING_URL} className="ui-btn ui-btn-ghost h-9 px-4 text-callout">
+            <a href={marketingUrl()} className="ui-btn ui-btn-ghost h-9 px-4 text-callout">
               Home
             </a>
           </nav>

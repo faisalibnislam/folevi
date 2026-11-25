@@ -2,11 +2,13 @@ import { v } from "convex/values";
 import { internalAction, internalQuery, type MutationCtx } from "./_generated/server";
 import { internalMutation } from "./lib/functions";
 import { internal } from "./_generated/api";
-import { emailManifest, hashRecipient, redactEmail, selectProvider, sendEmail, type TemplateKey } from "@folevi/email";
+import { emailManifest, hashRecipient, isPlausibleEmail, postToFoleviMail, redactEmail, selectProvider, sendEmail, type ProviderSelection, type SendOutcome, type SmtpMessage, type TemplateKey } from "@folevi/email";
 import { ulid } from "@folevi/editor-schema";
 import type { Doc, Id } from "./_generated/dataModel";
 import { bump, type MetricKey } from "./lib/metrics";
 import { secretOrDevFallback } from "./lib/crypto";
+import { connectToken, connectUrl, isServerEdition } from "./lib/edition";
+import { fromAddress } from "./lib/serverSettings";
 
 type Environment = "production" | "preview" | "development" | "test";
 
@@ -96,8 +98,12 @@ export const sendTemplate = internalAction({
     const salt = secretOrDevFallback(["FOLEVI_HASH_SALT"], "folevi-development-salt");
     const recipientHash = await hashRecipient(to, salt);
     const requestId = ulid();
-    const env = process.env as Record<string, string | undefined>;
-    const provider = selectProvider(env, environment());
+    let env = process.env as Record<string, string | undefined>;
+    // Folevi Server picks its provider from its settings (null on Folevi Cloud, which uses Resend as always).
+    const server = isServerEdition() ? await ctx.runQuery(internal.server.emailTransport, {}) : null;
+    const provider = server ? serverProvider(server) : selectProvider(env, environment());
+    // Folevi Mail sends from no-reply@folevi.app; replies go to the server's owner.
+    if (server && provider.kind === "folevi" && server.ownerEmail) env = { ...env, EMAIL_REPLY_TO: server.ownerEmail };
     const attempt = await ctx.runMutation(internal.email.beginAttempt, {
       templateKey: key,
       category: def.category,
@@ -118,6 +124,11 @@ export const sendTemplate = internalAction({
       return { status: "skipped" as const };
     }
 
+    if (provider.kind === "none" && server) {
+      // A server with email off: nothing to send with, by the owner's choice. Not a failure.
+      await ctx.runMutation(internal.email.finishAttempt, { attemptId: attempt.attemptId, status: "skipped", attempts: 0, errorCode: "email_off" });
+      return { status: "skipped" as const };
+    }
     if (provider.kind === "none") {
       await ctx.runMutation(internal.email.finishAttempt, { attemptId: attempt.attemptId, status: "failed", attempts: 0, errorCode: "provider_not_configured" });
       console.warn(JSON.stringify({ event: "email.not_configured", template: key, requestId }));
@@ -127,6 +138,7 @@ export const sendTemplate = internalAction({
       { key, to, dataVariables: args.dataVariables, attemptId: attempt.attemptId, ...(args.thread ? { thread: args.thread } : {}) },
       {
         env,
+        ...(server ? { provider, smtp: (message: SmtpMessage) => ctx.runAction(internal.smtpSend.deliver, { message }) as Promise<SendOutcome> } : {}),
         policy: {
           environment: environment(),
           allowlist: (process.env.FOLEVI_EMAIL_ALLOWLIST ?? "").split(",").map((s) => s.trim().toLowerCase()).filter(Boolean),
@@ -148,6 +160,70 @@ export const sendTemplate = internalAction({
     return { status: outcome.status };
   },
 });
+
+type ServerTransport = { mode: "off" | "folevi" | "smtp"; configured: boolean; serverName: string; smtp: { from: string } | null };
+
+/** Folevi Server's provider, from its settings (convex/server.ts emailTransport). */
+export function serverProvider(t: ServerTransport): ProviderSelection {
+  if (!t.configured) return { kind: "none" };
+  if (t.mode === "folevi") {
+    const token = connectToken();
+    return token ? { kind: "folevi", baseUrl: connectUrl(), token } : { kind: "none" };
+  }
+  if (t.mode === "smtp" && t.smtp) {
+    const email = fromAddress(t.smtp.from);
+    if (!email) return { kind: "none" };
+    const name = /^(.*?)\s*<[^<>]+>\s*$/.exec(t.smtp.from)?.[1]?.replace(/^"|"$/g, "").trim();
+    return { kind: "smtp", from: { email, name: name || t.serverName } };
+  }
+  return { kind: "none" };
+}
+
+/**
+ * Folevi Server's "Send test email" (serverAdmin.testEmail): one short plain message through the server's
+ * settings, answering whether the provider took it. Never a template, never stored as a send attempt.
+ */
+export const sendServerTest = internalAction({
+  args: { to: v.string() },
+  handler: async (ctx, args): Promise<{ ok: boolean; error?: string }> => {
+    const to = args.to.trim();
+    if (!isPlausibleEmail(to)) return { ok: false, error: "Enter a valid email address." };
+    const server = await ctx.runQuery(internal.server.emailTransport, {});
+    if (!server) return { ok: false, error: "Not available." };
+    const provider = serverProvider(server);
+    const subject = `Test email from ${server.serverName}`;
+    const text = `This is a test email from Folevi Server "${server.serverName}". If you can read it, email works.`;
+    const html = `<p>${text.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!)}</p>`;
+    let outcome: SendOutcome;
+    if (provider.kind === "folevi") {
+      outcome = await postToFoleviMail({ to, subject, text, html, tag: "server_test" }, { baseUrl: provider.baseUrl, token: provider.token, idempotencyKey: `folevi-test-${Date.now()}`, maxAttempts: 1 });
+    } else if (provider.kind === "smtp") {
+      const message: SmtpMessage = { from: { email: provider.from.email, name: provider.from.name ?? server.serverName }, to, subject, text, html };
+      outcome = (await ctx.runAction(internal.smtpSend.deliver, { message })) as SendOutcome;
+    } else {
+      return { ok: false, error: server.mode === "folevi" ? "Folevi Mail needs this server to be linked to Folevi Connect." : "Email is off on this server." };
+    }
+    console.log(JSON.stringify({ event: "email.server_test", provider: provider.kind, status: outcome.status, code: outcome.errorCode }));
+    if (outcome.status === "accepted") return { ok: true };
+    return { ok: false, error: describeFailure(outcome) };
+  },
+});
+
+function describeFailure(o: SendOutcome): string {
+  const reason = o.providerError ? ` (${o.providerError})` : "";
+  switch (o.errorCode) {
+    case "unauthorized":
+      return `The mail server refused the user name or password${reason}.`;
+    case "timeout":
+      return "The mail server didn't answer in time.";
+    case "network_error":
+      return "The mail server couldn't be reached. Check its host name and port.";
+    case "tls_unavailable":
+      return "The mail server doesn't offer STARTTLS. Choose TLS or no encryption instead.";
+    default:
+      return `The email wasn't accepted${reason}.`;
+  }
+}
 
 export const beginAttempt = internalMutation({
   args: {

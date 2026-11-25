@@ -7,6 +7,9 @@
 // - no upgrade-insecure-requests: it would rewrite nothing useful and the dev shell talks to http://127.0.0.1.
 // In local mode the Mac host also sends `connect-src 'self'` as a header (docs/LOCAL_MODE.md S2): both policies
 // apply, so the header narrows this one. This is the account-mode ceiling.
+// Folevi Server places (docs/self-hosting/CONTRACT.md §6.1): the page reaches whichever server the host added, at
+// any of its names, over https and (on the home network) http, so this ceiling allows any http(s) and ws(s)
+// origin for connections, images and media; the host's header for each place narrows it to that server.
 import { EMBED_FRAME_ORIGINS } from "@folevi/editor-schema";
 import { origin } from "@/lib/security/csp";
 
@@ -28,10 +31,10 @@ export function shellContentSecurityPolicy(opts: ShellCspOptions): string {
     // Next's inline bootstrap scripts carry no nonce in a static export.
     `script-src 'self' 'unsafe-inline'${opts.dev ? " 'unsafe-eval'" : ""}`,
     "style-src 'self' 'unsafe-inline'",
-    `img-src 'self' data: blob: folevi-file: ${site} https:`,
-    `media-src 'self' blob: folevi-file: ${site}`,
+    `img-src 'self' data: blob: folevi-file: ${site} https: http:`,
+    `media-src 'self' blob: folevi-file: ${site} https: http:`,
     "font-src 'self'",
-    `connect-src 'self' folevi-file: ${convex} ${convexWs} ${site}${opts.dev ? " ws://localhost:* ws://127.0.0.1:* http://127.0.0.1:*" : ""}`,
+    `connect-src 'self' folevi-file: ${convex} ${convexWs} ${site} https: wss: http: ws:${opts.dev ? " ws://localhost:* ws://127.0.0.1:* http://127.0.0.1:*" : ""}`,
     `frame-src ${site} ${origin(opts.appUrl)} ${EMBED_FRAME_ORIGINS.join(" ")}`,
     "base-uri 'self'",
     "form-action 'self'",

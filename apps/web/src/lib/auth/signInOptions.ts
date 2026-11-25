@@ -1,4 +1,5 @@
 import "server-only";
+import { internalConvexUrl } from "@/lib/runtime/internal";
 import { ConvexHttpClient } from "convex/browser";
 import { api } from "@/lib/convex/api";
 
@@ -16,7 +17,7 @@ const NONE: SocialOptions = { google: false, apple: false };
  * still there.
  */
 export async function socialSignInOptions(): Promise<SocialOptions> {
-  const url = process.env.NEXT_PUBLIC_CONVEX_URL;
+  const url = internalConvexUrl();
   if (!url) return NONE;
   try {
     const options = await Promise.race([

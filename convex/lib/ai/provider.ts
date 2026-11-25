@@ -3,8 +3,14 @@
 // `fetch` (the adapter's only way out), which keeps every request, tool call and usage count testable.
 import type { CallUsage } from "../credits";
 import { capabilitiesOf, type ModelCapabilities } from "./capabilities";
-import { geminiProvider } from "./gemini";
+import { fail } from "../errors";
+import { connectToken, connectUrl, isServerEdition } from "../edition";
+import { geminiKey, geminiProvider, setServerGemini } from "./gemini";
 import { withMemory } from "./memory";
+import { openAiProvider } from "./openai";
+import { internal } from "../../_generated/api";
+import type { QueryCtx } from "../../_generated/server";
+import { readServerSettings, serverAiSettingsOf } from "../serverSettings";
 
 /** One piece of a message: text, a file sent inline (base64), or a file the provider already holds. */
 export type Part =
@@ -139,6 +145,8 @@ export interface AiProvider {
    * was still billed). Fails with a person-readable error when the provider can't be reached.
    */
   generate(req: GenerateRequest, meter: CallUsage[], onDelta?: OnDelta): Promise<GenerateResult>;
+  /** What a model can do, when the provider knows better than the model registry (lib/ai/capabilities.ts). */
+  capabilities?(model: string): ModelCapabilities;
 }
 
 /**
@@ -147,14 +155,96 @@ export interface AiProvider {
  */
 const active: AiProvider = { ...geminiProvider, generate: (req, meter, onDelta) => geminiProvider.generate(withMemory(req, meter), meter, onDelta) };
 
+// ---------------------------------------------------------------------------------------------------
+// Folevi Server: the provider comes from the server's settings (docs/self-hosting/CONTRACT.md §8 `ai`)
+// ---------------------------------------------------------------------------------------------------
+
+/** The server's AI settings, as convex/server.ts aiSettings returns them (keys included; backend only). */
+export interface ServerAiSettings {
+  mode: "off" | "folevi" | "gemini" | "openai";
+  configured: boolean;
+  gemini: { apiKey?: string; model?: string; embeddingModel?: string } | null;
+  openai: { baseUrl: string; apiKey?: string; model: string; embeddingModel?: string } | null;
+}
+
+/** The model Folevi AI (the Connect gateway) answers with unless told otherwise. */
+export const FOLEVI_AI_MODEL = "folevi-default";
+export const FOLEVI_AI_EMBEDDING_MODEL = "folevi-embedding";
+
+const OFF = "Foli AI is off on this server.";
+
+/** A server with Foli AI off (or not set up): every request is refused plainly. */
+const offProvider: AiProvider = {
+  id: "off",
+  models: () => ({ main: "off", fast: "off" }),
+  embeddingModel: () => "off",
+  embed: async () => fail("maintenance", OFF),
+  generate: async () => fail("maintenance", OFF),
+  capabilities: (model) => ({ ...capabilitiesOf(model), vision: false, audioIn: false, tools: false, searchGrounding: false }),
+};
+
+let serverAi: ServerAiSettings | null = null;
+let serverActive: AiProvider = offProvider;
+
+/** The provider for a server's settings (exported for tests). */
+export function serverProviderFor(s: ServerAiSettings | null): AiProvider {
+  if (!s || !s.configured) return offProvider;
+  if (s.mode === "gemini" && s.gemini?.apiKey) return geminiProvider;
+  if (s.mode === "openai" && s.openai) return openAiProvider({ id: "openai", baseUrl: s.openai.baseUrl, apiKey: s.openai.apiKey, model: s.openai.model, embeddingModel: s.openai.embeddingModel });
+  if (s.mode === "folevi") {
+    const token = connectToken();
+    if (token) return openAiProvider({ id: "folevi", baseUrl: `${connectUrl()}/v1/ai`, apiKey: token, model: FOLEVI_AI_MODEL, embeddingModel: FOLEVI_AI_EMBEDDING_MODEL, sendDimensions: true });
+  }
+  return offProvider;
+}
+
+/** Puts a server's settings in force for this function run (no-op on Folevi Cloud). */
+export function useServerAiSettings(s: ServerAiSettings | null): void {
+  serverAi = s;
+  setServerGemini(s?.mode === "gemini" && s.gemini ? { apiKey: s.gemini.apiKey, model: s.gemini.model, fastModel: s.gemini.model, embeddingModel: s.gemini.embeddingModel } : { apiKey: undefined });
+  const p = serverProviderFor(s);
+  serverActive = { ...p, generate: (req, meter, onDelta) => p.generate(withMemory(req, meter), meter, onDelta) };
+}
+
+type SettingsReader = { db: unknown } | { runQuery: (ref: never, args: never) => Promise<unknown> };
+
+/**
+ * Folevi Server: puts the server's AI settings in force before anything asks the provider (the provider is
+ * chosen by the owner in the admin panel, not by environment variables). Called at the start of every function
+ * that uses Foli AI; a query or mutation reads the settings directly, an action through convex/server.ts
+ * aiSettings. Folevi Cloud: does nothing.
+ */
+export async function loadAiSettings(ctx: SettingsReader): Promise<void> {
+  if (!isServerEdition()) return;
+  if ("db" in ctx) {
+    useServerAiSettings(serverAiSettingsOf(await readServerSettings(ctx as unknown as QueryCtx)));
+    return;
+  }
+  useServerAiSettings((await ctx.runQuery(internal.server.aiSettings as never, {} as never)) as ServerAiSettings | null);
+}
+
+/** Whether Foli AI can answer at all (Folevi Cloud: a Gemini key; a server: its settings, once loaded). */
+export function aiAvailable(): boolean {
+  if (!isServerEdition()) return Boolean(geminiKey());
+  return Boolean(serverAi?.configured) && serverActive.id !== "off";
+}
+
+/** Whether notes can be embedded for semantic search (a provider with an embedding model). */
+export function embeddingsAvailable(): boolean {
+  if (!isServerEdition()) return Boolean(geminiKey());
+  const m = serverActive.embeddingModel();
+  return aiAvailable() && m !== "none" && m !== "off";
+}
+
 /** The provider requests go to. */
 export function provider(): AiProvider {
-  return active;
+  return isServerEdition() ? serverActive : active;
 }
 
 /** What the model a request would use can do. */
 export function capabilities(fast = false): ModelCapabilities & { model: string } {
-  const p = provider().models();
-  const model = fast ? p.fast : p.main;
-  return { ...capabilitiesOf(model), model };
+  const p = provider();
+  const m = p.models();
+  const model = fast ? m.fast : m.main;
+  return { ...(p.capabilities?.(model) ?? capabilitiesOf(model)), model };
 }

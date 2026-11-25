@@ -1,0 +1,135 @@
+# Folevi for iPhone, iPad and iPhone Duo, the Capacitor app (docs/MOBILE.md). XcodeGen makes App.xcodeproj from this
+# file (`xcodegen` here, or `pnpm ios:project` in apps/mobile); the generated project is committed, as the Mac app's is.
+#
+# The app target is Capacitor's web view (CapApp-SPM, which `npx cap sync` keeps listing the plugins in) plus Folevi's
+# small native side: this folder's App/, and the services shared with the iPhone and iPad app and the Mac app, used
+# from apps/ios in place (the library, sign-in, the Keychain, end-to-end encryption keys, notifications, the share
+# extension, the widgets, Siri and Shortcuts, Spotlight). Nothing from apps/ios's native screens (Native/Phone,
+# Native/Rebuild, Native/UI) is built here. The extensions keep the iPhone and iPad app's bundle ids and App Group,
+# since this app updates that one in place.
+name: App
+options:
+  bundleIdPrefix: com.folevi
+  deploymentTarget:
+    iOS: "18.0"
+  generateEmptyDirectories: true
+settings:
+  base:
+    DEVELOPMENT_TEAM: 7K32QQ2FX8
+    CODE_SIGN_STYLE: Automatic
+    MARKETING_VERSION: "1.6.78"
+    CURRENT_PROJECT_VERSION: 102
+    SWIFT_VERSION: "5.0"
+    TARGETED_DEVICE_FAMILY: "1,2"
+    IPHONEOS_DEPLOYMENT_TARGET: "18.0"
+    ENABLE_USER_SCRIPT_SANDBOXING: NO
+    CODE_SIGN_IDENTITY[sdk=iphonesimulator*]: "-"
+packages:
+  CapApp-SPM:
+    path: CapApp-SPM
+targets:
+  App:
+    type: application
+    platform: iOS
+    sources:
+      - path: App
+        excludes:
+          - public
+          - "Info.plist"
+          - "App.entitlements"
+          - capacitor.config.json
+          - config.xml
+      - path: App/public
+        type: folder
+        buildPhase: resources
+      - path: App/capacitor.config.json
+        buildPhase: resources
+      - path: App/config.xml
+        buildPhase: resources
+      # The page's bridge (window.foleviNative, window.foleviShell), shared with the Android app.
+      - path: ../../bridge/mobile-bridge.js
+        group: App/Bridge
+        buildPhase: resources
+      # The Dropbox and Google Drive kit (scripts/bundle-bridge.mjs, git-ignored); optional.
+      - path: ../../bridge/build/folevi-cloud.js
+        group: App/Bridge
+        buildPhase: resources
+        optional: true
+      # The shell services shared with the iPhone and iPad app and the Mac app.
+      - path: ../../../ios/ios/App/Native/Shell
+        excludes:
+          - folevi-cloud.js
+      - path: ../../../ios/ios/App/Shared
+      - path: ../../../ios/ios/App/App/AppLock.swift
+      - path: ../../../ios/ios/App/Native/NativeServices.swift
+      - path: ../../../ios/ios/App/Native/DocumentScanner.swift
+      - path: ../../../ios/ios/App/Native/TextRecognition.swift
+      - path: ../../../ios/ios/App/Native/AppleSignIn.swift
+      - path: ../../../ios/ios/App/Native/PushBridge.swift
+      - path: ../../../ios/ios/App/Native/PushNotifications.swift
+      - path: ../../../ios/ios/App/Native/SystemSettings.swift
+      - path: ../../../ios/ios/App/Native/DeviceModel.swift
+      # The keyboard's moves for the page (foleviNative.onKeyboard): sheets and the note's bar ride with it.
+      - path: ../../../ios/ios/App/Native/UI/KeyboardBridge.swift
+      # The widgets' copy and views, and the App Intents (Siri, Shortcuts, the widgets' buttons, the Control Center
+      # control), shared with the widget extension; the Shortcuts phrases; Spotlight's notes; and local mode's calls
+      # that let the page feed them (FoleviNative: setWidgetSnapshot, indexSpotlight, takeLocalActions).
+      - path: ../../../ios/ios/App/AppAndWidgets
+      - path: ../../../ios/ios/App/Native/FoleviShortcuts.swift
+      - path: ../../../ios/ios/App/Native/SpotlightIndex.swift
+      - path: ../../../ios/ios/App/Native/LocalExtensions.swift
+      # Debug builds in the Simulator only: scripts run JavaScript in the page (scripts/sim.mjs eval).
+      - path: ../../../ios/ios/App/App/SimulatorEval.swift
+    dependencies:
+      - package: CapApp-SPM
+        product: CapApp-SPM
+      - target: ShareExtension
+        embed: true
+        codeSign: true
+      - target: FoleviWidgets
+        embed: true
+        codeSign: true
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.folevi.ios
+        PRODUCT_NAME: App
+        INFOPLIST_FILE: App/Info.plist
+        CODE_SIGN_ENTITLEMENTS: App/App.entitlements
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+  ShareExtension:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: ../../../ios/ios/App/ShareExtension
+        excludes:
+          - "Info.plist"
+          - "ShareExtension.entitlements"
+      - path: ../../../ios/ios/App/Shared
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.folevi.ios.share
+        PRODUCT_NAME: ShareExtension
+        INFOPLIST_FILE: ../../../ios/ios/App/ShareExtension/Info.plist
+        CODE_SIGN_ENTITLEMENTS: ../../../ios/ios/App/ShareExtension/ShareExtension.entitlements
+        APPLICATION_EXTENSION_API_ONLY: YES
+  # Folevi's widgets (Today, Recent notes, Quick add, the Lock Screen's) and the Control Center control, as the iPhone
+  # and iPad app built them (apps/ios/ios/App/Widgets with AppAndWidgets and Shared).
+  FoleviWidgets:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: ../../../ios/ios/App/Widgets
+        excludes:
+          - "Info.plist"
+          - "Widgets.entitlements"
+      - path: ../../../ios/ios/App/AppAndWidgets
+      - path: ../../../ios/ios/App/Shared
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.folevi.ios.widgets
+        PRODUCT_NAME: FoleviWidgets
+        INFOPLIST_FILE: ../../../ios/ios/App/Widgets/Info.plist
+        CODE_SIGN_ENTITLEMENTS: ../../../ios/ios/App/Widgets/Widgets.entitlements
+        APPLICATION_EXTENSION_API_ONLY: YES
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: ""

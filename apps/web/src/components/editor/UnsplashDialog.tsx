@@ -141,7 +141,7 @@ export function UnsplashDialog({
                         aria-label={`Insert photo by ${p.photographer}${p.alt ? `: ${p.alt}` : ""}`}
                       >
                         {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={p.thumbUrl} alt="" loading="lazy" className="h-full w-full object-cover transition-transform duration-200 group-hover:scale-[1.03]" />
+                        <img src={p.thumbUrl} alt="" loading="lazy" className="ui-img-outline h-full w-full rounded-[inherit] object-cover transition-transform duration-200 group-hover:scale-[1.03]" />
                       </button>
                       <p className="mt-1 truncate text-footnote text-muted">
                         <a href={p.photographerUrl} target="_blank" rel="noopener noreferrer" className="hover:text-ink hover:underline">

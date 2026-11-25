@@ -50,6 +50,7 @@ function Card({ label, on, onPick, art, footer, locked, children }: { label: str
       aria-checked={on}
       aria-label={label}
       onClick={onPick}
+      data-card-row=""
       className={`group relative flex flex-col overflow-hidden rounded-control bg-surface text-left transition-[transform,box-shadow] duration-150 hover:-translate-y-0.5 hover:shadow-[var(--shadow-pop)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus ${on ? "shadow-[0_0_0_2px_var(--color-heading)]" : "shadow-[var(--shadow-card)]"}`}
     >
       <span aria-hidden className="relative block aspect-[4/3] overflow-hidden" style={{ background: art }}>

@@ -21,7 +21,7 @@ import { fail } from "./lib/errors";
 import { consume } from "./lib/rateLimit";
 import { insertScoped, scopeOfRow, type Scope } from "./lib/scope";
 import { aiPrefsOf } from "./lib/ai/prefs";
-import { capabilities } from "./lib/ai/provider";
+import { capabilities, loadAiSettings } from "./lib/ai/provider";
 import { attachmentTokens } from "./lib/ai/attachments";
 import { gemini, metered, providedArgs } from "./ai";
 import { failE2ee } from "./lib/e2ee/state";
@@ -239,6 +239,7 @@ export const readImage = action({
     provided: v.optional(vProvidedContext),
   },
   handler: async (ctx, args): Promise<{ status: "read" | "known"; chars: number; text?: string }> => {
+    await loadAiSettings(ctx);
     await requireIdentity(ctx);
     if (!BLOCK_ID.test(args.blockId)) fail("invalid_argument", "Unknown block.");
     if (args.provided) {
@@ -249,7 +250,7 @@ export const readImage = action({
       if (!FOLI_IMAGE_TYPES.has(file.mime)) fail("unsupported_file", "Foli AI reads PNG, JPEG and WebP images.");
       if (file.bytes.byteLength > MAX_FOLI_IMAGE_BYTES) fail("unsupported_file", "That image is too large for Foli AI to read.");
       await ctx.runQuery(internal.fileText.sealedImageForFoli, { documentId: args.documentId, fileId: args.fileId, auto: Boolean(args.auto) });
-      if (!capabilities(true).vision) fail("unsupported_file", "Foli AI can't read images right now.");
+      if (!capabilities(true, await ctx.runQuery(internal.aiConfig.publicRoute, { feature: "attachments" })).vision) fail("unsupported_file", "Foli AI can't read images right now.");
       const prompt = "Copy the text in this image.";
       const plan = [{ fast: true, inputChars: OCR_SYSTEM.length + prompt.length + attachmentTokens("image", file.bytes.byteLength) * 4, maxOutputTokens: 4096 }];
       // The gate (lib/e2ee/ai.ts): Foli AI not off in the space, the note not locked, consent as the switch says.
@@ -263,7 +264,7 @@ export const readImage = action({
     }
     const image = await ctx.runQuery(internal.fileText.imageForFoli, { documentId: args.documentId, fileId: args.fileId, auto: Boolean(args.auto) });
     if (image.known) return { status: "known", chars: 0 };
-    if (!capabilities(true).vision) fail("unsupported_file", "Foli AI can't read images right now.");
+    if (!capabilities(true, await ctx.runQuery(internal.aiConfig.publicRoute, { feature: "attachments" })).vision) fail("unsupported_file", "Foli AI can't read images right now.");
     const blob = await ctx.storage.get(image.storageId);
     if (!blob) fail("not_found", "File not found.");
     const data = Buffer.from(await blob.arrayBuffer()).toString("base64");

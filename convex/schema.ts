@@ -27,6 +27,7 @@ import {
   vWorkspaceRole,
 } from "./lib/validators";
 import { vAiAction } from "./lib/aiActions";
+import { serverSettingsFields, vInvitableRole } from "./lib/serverSettings";
 import { vAiContext } from "./lib/ai/chat";
 import { vAgentOp, vRunNote, vRunStatus } from "./lib/ai/tools/ops";
 import { vReportSource, vResearchStep } from "./lib/ai/research";
@@ -167,6 +168,10 @@ export default defineSchema({
     personalChangeSeq: v.optional(v.number()),
     /** Bytes stored in this person's Personal (unset = 0), checked against their Personal plan only. */
     personalStorageUsedBytes: v.optional(v.number()),
+    /** Folevi Server only: a guest (CONTRACT §7; lib/serverSettings.ts serverRoleOf). Unset = not a guest. */
+    serverGuest: v.optional(v.boolean()),
+    /** Folevi Server only: this person's storage quota in bytes (unset = the server's default, if any). */
+    serverQuotaBytes: v.optional(v.number()),
     /** Documents in this person's Personal (unset = 0), for admin views. */
     personalDocumentCount: v.optional(v.number()),
     notificationPrefs: vNotificationPrefs,
@@ -387,7 +392,8 @@ export default defineSchema({
     titleRev: v.number(),
     seq: v.number(),
     contentSeq: v.number(),
-    searchText: v.string(),
+    /** Legacy: a note's search text is in documentText now (lib/documentText.ts); emptied by migrations.narrowDocumentText. */
+    searchText: v.optional(v.string()),
     wordCount: v.number(),
     charCount: v.number(),
     blockCount: v.number(),
@@ -464,10 +470,6 @@ export default defineSchema({
     .index("by_trash_deleted", ["inTrash", "deletedAt"])
     // Notes on a note theme (moving them when an admin deletes the theme, convex/themes.ts).
     .index("by_cover", ["cover.kind", "cover.value"])
-    .searchIndex("search_text", {
-      searchField: "searchText",
-      filterFields: ["workspaceId", "ownerProfileId", "inTrash", "folderId", "createdBy", "kind"],
-    })
     .searchIndex("search_title", {
       searchField: "title",
       filterFields: ["workspaceId", "ownerProfileId", "inTrash"],
@@ -2443,6 +2445,46 @@ export default defineSchema({
     updatedBy: v.optional(v.id("profiles")),
     updatedAt: v.number(),
   }).index("by_key", ["key"]),
+
+  /**
+   * Foli AI provider keys saved in the admin panel (convex/aiConfig.ts), one per provider, sealed with
+   * AES-GCM under the server's secret (lib/crypto.ts sealSecret): the database never holds a key in the
+   * clear, and no query returns it, only whether it's set and its last four characters.
+   */
+  aiProviderKeys: defineTable({
+    provider: v.union(v.literal("gemini"), v.literal("openai"), v.literal("anthropic")),
+    sealed: v.string(),
+    last4: v.string(),
+    updatedBy: v.id("profiles"),
+    updatedAt: v.number(),
+  }).index("by_provider", ["provider"]),
+
+  /**
+   * Folevi Server only (docs/self-hosting/CONTRACT.md §8): the server's settings, one row (key "server";
+   * lib/serverSettings.ts). Secrets in it are write-only: no public function returns them. Folevi Cloud has no row.
+   */
+  serverSettings: defineTable(serverSettingsFields).index("by_key", ["key"]),
+
+  /**
+   * Folevi Server only: invitations to join the server (convex/serverAdmin.ts invite, convex/serverInvites.ts).
+   * Only the SHA-256 of the link's token is kept. `usedByEmail` marks an invite spent by a sign-up (the new
+   * account accepts it); `acceptedBy` is who joined with it.
+   */
+  serverInvites: defineTable({
+    tokenHash: v.string(),
+    email: v.optional(v.string()),
+    role: vInvitableRole,
+    invitedBy: v.id("profiles"),
+    createdAt: v.number(),
+    expiresAt: v.number(),
+    usedByEmail: v.optional(v.string()),
+    usedAt: v.optional(v.number()),
+    acceptedBy: v.optional(v.id("profiles")),
+    acceptedAt: v.optional(v.number()),
+    revokedAt: v.optional(v.number()),
+  })
+    .index("by_token_hash", ["tokenHash"])
+    .index("by_created", ["createdAt"]),
 
   systemSettings: defineTable({
     key: v.string(),

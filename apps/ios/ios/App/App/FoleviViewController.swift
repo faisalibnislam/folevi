@@ -92,13 +92,19 @@ final class FoleviViewController: UIViewController {
             host.libraryFiles.origin = host.appOrigin
             host.register(FoleviShellPlugin())
             startPlaces()
+            // The best connection for server places (home name or public one), at launch and on network changes:
+            // the open place's page loads again on the new name, still signed in.
+            ServerReach.shared.onChange = { place in
+                if place == ShellPlaces.state.current { restart() }
+            }
+            ServerReach.shared.start()
             applyMode(to: host)
         }
         // Local mode's widgets, Shortcuts and Spotlight work from the page (Native/LocalExtensions.swift).
         AppServices.modeApplied(local: bundled && ShellMode.current == "local")
         LocalExtensions.attach(host)
         // The extensions' REST API is the site this app loads; links that came early can go to the page now.
-        AppServices.launched(serverURL: bundled ? ShellAuth.shared.service : host.serverURL)
+        AppServices.launched(serverURL: bundled ? ShellAuth.shared.cloudService : host.serverURL)
         if let source = bridgeScript(origin: host.appOrigin, shell: bundled ? shellBootstrap() : nil) { host.addUserScript(source) }
         // The native frame: the page runs in native chrome mode (the engine and the note page, no web frame).
         if PhoneFrame.enabled, bundled { host.addUserScript(PhoneFrame.markerScript(place: ShellPlaces.state.current)) }
@@ -137,7 +143,10 @@ final class FoleviViewController: UIViewController {
         startPath = nil
         return [
             "mode": ShellMode.current, "deviceName": ShellAuth.deviceName, "deviceFamily": UIDevice.current.userInterfaceIdiom == .pad ? "iPad" : "iPhone",
-            "places": ["current": ShellPlaces.state.current.map { $0 as Any } ?? NSNull(), "background": false] as [String: Any],
+            // A Folevi Server place's addresses (or the sign-in screen's server): the page's Convex client and
+            // sign-in use them instead of the build's NEXT_PUBLIC values (CONTRACT §6 notes). Null: Folevi Cloud.
+            "places": ["current": ShellPlaces.state.current.map { $0 as Any } ?? NSNull(), "background": false,
+                       "server": ShellPlaces.server(of: ShellPlaces.state.current).map { $0.json as Any } ?? NSNull()] as [String: Any],
             "start": start.map { $0 as Any } ?? NSNull(),
         ]
     }
@@ -147,7 +156,7 @@ final class FoleviViewController: UIViewController {
     private static func startPlaces() {
         let libraryFile = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0].appendingPathComponent("Folevi", isDirectory: true).appendingPathComponent("library.json")
         ShellPlaces.migrate(libraryConfigured: FileManager.default.fileExists(atPath: libraryFile.path))
-        if ShellMode.current == "account", ShellPlaces.state.current == nil, let first = ShellPlaces.state.accounts.first { ShellPlaces.setCurrent(first.id) }
+        if ShellMode.current == "account", ShellPlaces.state.current == nil, !ShellPlaces.pendingAccount, let first = ShellPlaces.state.accounts.first { ShellPlaces.setCurrent(first.id) }
         guard ShellAuth.shared.token(for: nil) != nil else { return }
         Task {
             guard let u = await ShellAuth.shared.adoptLegacy() else { return }

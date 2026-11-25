@@ -32,19 +32,19 @@ export function CatchUp({ row = false }: { /** A list row (the iPhone app's Home
   const { scope, scopeKey, today } = useAppState();
   const brief = useAction(api.ai.brief);
   const stream = useAiStream();
-  const [data, setData] = useState<Brief | null>(null);
+  // The brief kept for this visit is read before the first frame, so Home doesn't draw the short row and then swap
+  // it for the brief, pushing everything under it down (the iPhone remounts Home on every visit).
+  const [data, setData] = useState<Brief | null>(() => savedBrief(scopeKey));
+  const [shownFor, setShownFor] = useState(scopeKey);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<AiProblem | null>(null);
-
+  if (shownFor !== scopeKey) {
+    setShownFor(scopeKey);
+    setData(savedBrief(scopeKey));
+  }
   useEffect(() => {
-    try {
-      const saved = sessionStorage.getItem(key(scopeKey));
-      if (saved) void loadMarkdown();
-      setData(saved ? (JSON.parse(saved) as Brief) : null);
-    } catch {
-      setData(null);
-    }
-  }, [scopeKey]);
+    if (data) void loadMarkdown();
+  }, [data]);
 
   const run = async () => {
     void loadMarkdown();
@@ -87,7 +87,7 @@ export function CatchUp({ row = false }: { /** A list row (the iPhone app's Home
           onClick={() => void run()}
           aria-label="Catch me up"
           aria-description="A quick Foli AI brief of this week’s notes and what’s due"
-          className="ui-key-focus flex min-h-[68px] w-full items-center gap-3 rounded-container bg-[var(--iphone-card)] px-4 py-3 text-left outline-none transition-[background-color,transform] duration-150 hover:bg-[var(--glass-hover)] active:scale-[0.98] active:bg-[var(--liquid-press)] active:duration-0 motion-reduce:active:scale-100"
+          className="ui-key-focus flex min-h-[68px] w-full items-center gap-3 rounded-container bg-[var(--iphone-card)] px-4 py-3 text-left outline-none transition-[background-color,transform] duration-150 hover:bg-[var(--glass-hover)] active:scale-[0.96] active:bg-[var(--liquid-press)] active:duration-0 motion-reduce:active:scale-100"
         >
           <span aria-hidden className="grid h-9 w-9 flex-none place-items-center">
             <AiIcon size={28} />
@@ -168,4 +168,15 @@ export function CatchUp({ row = false }: { /** A list row (the iPhone app's Home
       {error ? <AiProblemNotice problem={error} className={error.kind === "other" ? "mt-2 text-subheadline text-danger" : "mt-3"} /> : data && !busy ? <AiCreditsNote className="mt-3" /> : null}
     </section>
   );
+}
+
+/** This visit's brief for a place, kept in sessionStorage, or null. */
+function savedBrief(scopeKey: string): Brief | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const saved = sessionStorage.getItem(key(scopeKey));
+    return saved ? (JSON.parse(saved) as Brief) : null;
+  } catch {
+    return null;
+  }
 }

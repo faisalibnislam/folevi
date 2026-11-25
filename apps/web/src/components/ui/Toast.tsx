@@ -50,7 +50,8 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   return (
     <ToastContext.Provider value={value}>
       {children}
-      <div className="ui-toasts pointer-events-none fixed inset-x-0 bottom-4 z-[60] flex flex-col items-center gap-2 px-4" role="region" aria-label="Notifications">
+      {/* (Clear of the side insets: a closed iPhone Duo's status bar runs down the right edge. Past a fold: globals.css.) */}
+      <div className="ui-toasts pointer-events-none fixed inset-x-0 bottom-4 z-[60] flex flex-col items-center gap-2 pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))]" role="region" aria-label="Notifications">
         <div aria-live="polite" className="contents">
           {toasts.map((t) => (
             <div

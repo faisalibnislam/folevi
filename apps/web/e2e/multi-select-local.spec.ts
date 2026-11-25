@@ -72,16 +72,19 @@ test.describe("multi-select", { tag: "@local" }, () => {
     await card(page, "Cedar").locator("a").first().click({ modifiers: ["Shift"] });
     await expect(bar(page).getByRole("status")).toHaveText("3 selected");
 
-    // A rectangle drawn from empty space (right of Cedar) up over Alder selects what it touches.
+    // A rectangle drawn from empty space (under Birch) up over Alder selects what it touches: Alder and Birch, not
+    // Cedar beside them. (Since the smaller desktop cards of 2026-11-20 the three share a row, so a rectangle from
+    // the right of Cedar would cross Cedar too.)
     await page.keyboard.press("Escape");
-    const cedar = (await card(page, "Cedar").boundingBox())!;
+    const birch = (await card(page, "Birch").boundingBox())!;
     const alder = (await card(page, "Alder").boundingBox())!;
-    await page.mouse.move(cedar.x + cedar.width + 40, cedar.y + cedar.height / 2);
+    await page.mouse.move(birch.x + birch.width - 20, birch.y + birch.height + 40);
     await page.mouse.down();
     await page.mouse.move(alder.x + 30, alder.y + alder.height - 30, { steps: 12 });
     await shot(page, "web-folders-rubber-band");
     await page.mouse.up();
     await expect(card(page, "Alder").locator("a").first()).toHaveAttribute("aria-label", /, selected$/);
+    await expect(card(page, "Birch").locator("a").first()).toHaveAttribute("aria-label", /, selected$/);
     await expect(card(page, "Cedar").locator("a").first()).not.toHaveAttribute("aria-label", /, selected$/);
 
     // Move Alder and Birch into Cedar with the Move dialog (Cedar itself can't take itself, so only two go).

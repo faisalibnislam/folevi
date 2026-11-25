@@ -5,6 +5,7 @@ import { Check, Copy } from "lucide-react";
 import { markdownToBlocks, type WireBlock } from "@folevi/editor-schema";
 import { ReadOnlyBlocks } from "@/components/doc/ReadOnlyBlocks";
 import { aiMindmapBlock } from "@/components/editor/mindmap/aiBlock";
+import { SwapIcons } from "@/components/ui/SwapIcons";
 
 /** Inline citations ([2]) become links to "#cite-2", which the answer's click handler opens. */
 export function linkCitations(markdown: string, cited: ReadonlySet<number>): string {
@@ -53,7 +54,7 @@ function CodeBlock({ block }: { block: WireBlock }) {
         }}
         className="absolute right-1.5 top-1.5 inline-flex h-7 items-center gap-1 rounded-chip bg-[var(--glass-active)] px-2 text-footnote text-muted opacity-0 shadow-[var(--glass-edge)] transition-opacity hover:text-heading focus-visible:opacity-100 group-hover/code:opacity-100 pointer-coarse:opacity-100"
       >
-        {copied ? <Check size={12} aria-hidden /> : <Copy size={12} aria-hidden />}
+        <SwapIcons index={copied ? 1 : 0} icons={[<Copy key="copy" size={12} />, <Check key="check" size={12} />]} />
         {language ? <span className="font-mono">{language}</span> : null}
         <span>{copied ? "Copied" : "Copy"}</span>
       </button>

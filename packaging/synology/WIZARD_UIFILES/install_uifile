@@ -1,0 +1,33 @@
+[
+  {
+    "step_title": "Where should Folevi Server keep its data?",
+    "items": [
+      {
+        "type": "textfield",
+        "desc": "Folevi Server keeps everyone's notes and files in a shared folder, so Snapshot Replication and Hyper Backup can protect it. The folder is created if it does not exist. Uninstalling Folevi Server never deletes it.",
+        "subitems": [
+          {
+            "key": "wizard_shared_folder_name",
+            "desc": "Shared folder",
+            "defaultValue": "folevi",
+            "validator": {
+              "allowBlank": false,
+              "regex": {
+                "expr": "/^[A-Za-z0-9][A-Za-z0-9 ._-]{0,31}$/",
+                "errorText": "Use letters, numbers, spaces, dots, dashes or underscores (up to 32)."
+              }
+            }
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "step_title": "Almost done",
+    "items": [
+      {
+        "desc": "After installing, open Folevi Server from the DSM main menu to create the owner account. Folevi Server uses ports 8460 (HTTP) and 8443 (HTTPS)."
+      }
+    ]
+  }
+]

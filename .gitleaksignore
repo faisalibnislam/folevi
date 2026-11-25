@@ -52,3 +52,17 @@ d30d0351a16ecce8d5690a391fe76e5564030656:tests/convex/apple-signin.test.ts:priva
 1b6e99cab9afc0fdfab794fd922724fd6b428501:HANDOFF.md:generic-api-key:850
 69ed4e522daad6bcd8a46f57f5fcde459868b066:docs/LINUX.md:generic-api-key:181
 b9ca0904fdc07051333200ea33436949fbf3ff8f:server/folevid/internal/connect/acme.go:generic-api-key:153
+# Folevi Server branches (claude/sleepy-goodall-3cg4e7, claude/server-connect) and notes about them: made-up test
+# tokens, a certificate key type name, a public signing-key fingerprint, and a HANDOFF line quoting the key type
+# code (checked 2026-11-25; none is a real key). gitleaks scans every branch, so these fail every PR until main
+# lists them. New fake values carry gitleaks:allow.
+# Not a secret: lego's certificate key type constant (certcrypto.EC256) in folevid's ACME client (claude/sleepy-goodall-3cg4e7).
+# The HANDOFF change log line about the entry above, which quoted that code.
+# Test fixtures in folevid and the Connect service (claude/sleepy-goodall-3cg4e7): made-up tokens and secrets.
+# docs/LINUX.md (claude/sleepy-goodall-3cg4e7 side): names the apt repository's signing key by its public fingerprint, not a secret.
+# The same script's made-up Vault demo login, brought back with the AppKit Mac app (claude/mac-webview).
+# The same script's made-up Vault demo login, brought back with the AppKit Mac app (claude/mac-webview).
+# docs/LINUX.md: the Linux package signing key's public fingerprint (FOLEVI_REPO_KEY=...), not a secret.
+# Folevi Server (PR 107): made-up test tokens and secrets in Go tests, and a certificate key type name.
+# The handoff quoting that key type line (claude/android-own-server and others).
+# A public GPG key fingerprint for the Linux package repository (claude/linux-stores and others).

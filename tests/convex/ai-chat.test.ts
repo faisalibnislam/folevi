@@ -154,8 +154,8 @@ describe("conversations", () => {
     expect(answer.citations[0]).toMatchObject({ n: 1, noteId: trip.id, title: "Trip Sketch: Coastal Weekend", quote: "Book the ferry for Friday morning" });
     const blocks = (await a.as.query(api.blocks.list, { documentId: trip.id }))!.blocks;
     expect(blocks.find((b) => b.id === answer.citations[0]!.blockId)?.text[0]?.text).toBe("Book the ferry for Friday morning");
-    // Search terms, the streamed answer, then the title (on the fast model).
-    expect(calls.map((c) => c.url.split("/").pop())).toEqual(["gemini-flash-lite-latest:generateContent", "gemini-3.8-flash:streamGenerateContent?alt=sse", "gemini-flash-lite-latest:generateContent"]);
+    // Search terms, the streamed answer (Main: Flash-Lite by default, "cheap first", lib/ai/config.ts), then the title (Fast).
+    expect(calls.map((c) => c.url.split("/").pop())).toEqual(["gemini-flash-lite-latest:generateContent", "gemini-flash-lite-latest:streamGenerateContent?alt=sse", "gemini-flash-lite-latest:generateContent"]);
     expect(calls[1]!.body).toContain("ferry");
     // Charged once, for all three calls, and the cost is on the answer.
     expect(answer.credits).toBeGreaterThan(0);

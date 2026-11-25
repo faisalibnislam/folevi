@@ -1,0 +1,1 @@
+Your own Folevi server: notes, tasks and files for your family or team, on your own NAS. Members use the normal Folevi apps on Mac, iPhone, iPad, Android and the web. Open Folevi Server from the ADM desktop to create the owner account.

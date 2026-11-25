@@ -61,7 +61,7 @@ export function ReadOnlyBookmark({
         // The standard social image shape (1.91:1), as in the editor's card.
         <span className="relative my-3 mr-3 hidden aspect-[1.91/1] w-[34%] max-w-[260px] flex-none self-center overflow-hidden rounded-chip bg-sunken shadow-[inset_0_0_0_1px_var(--color-line)] sm:block" aria-hidden>
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={image!} alt="" referrerPolicy="no-referrer" loading="lazy" onError={() => setImageFailed(true)} className="absolute inset-0 h-full w-full object-cover" />
+          <img src={image!} alt="" referrerPolicy="no-referrer" loading="lazy" onError={() => setImageFailed(true)} className="ui-img-outline absolute inset-0 h-full w-full rounded-[inherit] object-cover" />
         </span>
       ) : null}
     </>

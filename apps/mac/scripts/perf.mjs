@@ -1,17 +1,17 @@
 #!/usr/bin/env node
-// Launch time, memory and energy of the native frame (docs/MAC_REBUILD_PLAN.md M10): the Debug app on a scratch
-// library with a long list (2,000 notes by default) and several places in its list (the library and two made-up
-// accounts, never signed in: in a test run the app starts no runner for them). Nothing here touches the installed
-// app, its folder, its Keychain or the owner's library.
+// Launch time, memory and energy of the Mac app (the web app in WKWebView, docs/perf/apple-results.md): the Debug
+// app on a scratch library and several places in its list (the library and two made-up accounts, never signed in).
+// Nothing here touches the installed app, its folder, its Keychain or the owner's library. Launching the app
+// brings it to the front: run it only with the owner's OK (they keep working on this Mac).
 //
-//   node apps/mac/scripts/perf.mjs [--fresh] [--notes 2000] [--runs 3] [--idle 60]
+//   node apps/mac/scripts/perf.mjs [--fresh] [--library <generated library folder>] [--runs 3] [--idle 60]
 //
 // --fresh makes the scratch library again (apps/mac/build/run/perf and perf-library). Each run quits the app and
-// launches it again, timing the launch (the eval hook up) and the first screen (the engine ready, Home drawn);
-// then All notes is opened and the footprint (the app and the WebKit helpers it started) and `top`'s energy
-// impact are sampled while idle. Results in apps/mac/build/perf/perf.json. Pause Parallels first (prlctl list -a).
+// launches it again, timing the launch (the eval hook up, the first page loaded) and the first screen drawn; then
+// All notes is opened and the footprint (the app and the WebKit helpers it started) and `top`'s energy impact
+// are sampled while idle. Results in apps/mac/build/perf/perf.json. Pause Parallels first (prlctl list -a).
 import { execFileSync } from "node:child_process";
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { setTimeout as sleep } from "node:timers/promises";
@@ -25,7 +25,9 @@ const arg = (name, fallback) => {
   const i = process.argv.indexOf(name);
   return i > 0 ? process.argv[i + 1] : fallback;
 };
-const NOTES = Number(arg("--notes", "2000"));
+const SOURCE = arg("--library", null) ? resolve(arg("--library", null)) : null;
+/** The web app's first screen is drawn (its page loaded, the sidebar or the bottom bar in). */
+const DRAWN = `return document.readyState === "complete" && !!document.querySelector("nav")`;
 const RUNS = Number(arg("--runs", "3"));
 const IDLE = Number(arg("--idle", "60"));
 const env = { FOLEVI_TEST_FOLDER: library };
@@ -82,51 +84,24 @@ const powerSample = (pids) => {
 const round = (x) => Math.round(x * 10) / 10;
 const median = (xs) => [...xs].sort((a, b) => a - b)[Math.floor(xs.length / 2)];
 
-const ENGINE = `
-  const engine = window.__foleviEngine;
-  const place = window.__foleviNativeChrome && window.__foleviNativeChrome.place;
-  if (!engine || !place) throw new Error("no engine in this page");
-  let n = 0;
-  const run = async (name, args) => {
-    const reply = JSON.parse(await engine.handle({ v: 1, id: "pf" + n++, kind: "command", place, name, args }));
-    if (reply.error) throw new Error(name + ": " + JSON.stringify(reply.error));
-    return reply.result ?? reply.value;
-  };`;
-
-/** A library on the test folder (local mode), then the long list, through the native frame's engine. */
+/**
+ * The scratch library (local mode) the runs open. With --library <folder>, a library generated elsewhere (the perf
+ * pass's 5,000 notes) is copied in first; otherwise the library starts empty and the numbers are the frame's alone.
+ * (The native screens' engine that used to make the notes, window.__foleviEngine, is gone with them.)
+ */
 async function setUp() {
   await quit();
   rmSync(dir, { recursive: true, force: true });
   rmSync(library, { recursive: true, force: true });
   mkdirSync(library, { recursive: true });
-  await launch({ dir, env: { ...env, FOLEVI_WEB_FRAME: "1" } });
-  await waitFor(dir, `return /Where should your (notes|library) live\\?/.test(document.body.innerText)`, 90_000);
+  if (SOURCE) cpSync(SOURCE, library, { recursive: true });
+  await launch({ dir, env });
+  await waitFor(dir, `return /Where should your (notes|library) live\\?/.test(document.body.innerText) || !!document.querySelector("nav")`, 90_000);
   const info = await evaluate(dir, `return await foleviShell.library.setup({ kind: "folder" })`);
   if (!String(info?.displayPath ?? "").endsWith("perf-library")) throw new Error(`Not the script's own library: ${JSON.stringify(info)}. Stopped.`);
   await evaluate(dir, `await foleviShell.setMode("local"); setTimeout(() => location.reload(), 50); return true;`);
   await sleep(3000);
-  await waitFor(dir, `return document.readyState === "complete" && !!document.querySelector('nav[aria-label="Folio"]')`, 90_000);
-  await quit();
-  await launch({ dir, env });
-  await waitFor(dir, `return !!window.__foleviEngine && !!window.__foleviNativeChrome`, 90_000);
-  await sleep(1500);
-  const words = "Kyoto budget launch office passport garden market reading recipe meeting plan design".split(" ");
-  for (let start = 0; start < NOTES; start += 100) {
-    const count = Math.min(100, NOTES - start);
-    await evaluate(
-      dir,
-      `${ENGINE}
-      const words = ${JSON.stringify(words)};
-      for (let i = ${start}; i < ${start + count}; i++) {
-        const w = (k) => words[(i * 7 + k) % words.length];
-        await run("note.create", { text: "Note " + (i + 1) + ": " + w(0) + " and " + w(3) + "\\nAbout the " + w(1) + ", the " + w(2) + " and the " + w(5) + ". " + w(4) + " " + w(6) + ".", open: false });
-      }
-      return true;`,
-    );
-    process.stdout.write(`\r${start + count} notes`);
-  }
-  process.stdout.write("\n");
-  await sleep(3000);
+  await waitFor(dir, DRAWN, 90_000);
   await quit();
   // Several places in the list: the library (open) and two accounts.
   const places = JSON.parse(readFileSync(join(dir, "places.json"), "utf8"));
@@ -135,7 +110,7 @@ async function setUp() {
     { userId: "perf-account-2", name: "Work", email: "work@example.com", workspaces: [], unread: 0, reminders: 0, waiting: 0 },
   ];
   writeFileSync(join(dir, "places.json"), JSON.stringify(places));
-  writeFileSync(join(dir, "perf.json"), JSON.stringify({ notes: NOTES, at: new Date().toISOString() }));
+  writeFileSync(join(dir, "perf.json"), JSON.stringify({ library: SOURCE ?? "empty", at: new Date().toISOString() }));
 }
 
 if (process.argv.includes("--fresh") || !existsSync(join(dir, "perf.json"))) await setUp();
@@ -148,12 +123,7 @@ for (let r = 0; r < RUNS; r++) {
   const t0 = performance.now();
   await launch({ dir, env });
   const hook = performance.now() - t0;
-  await waitFor(dir, `return !!window.__foleviEngine`, 90_000);
-  for (let i = 0; i < 300; i++) {
-    const s = await command(dir, { cmd: "frame" }).catch(() => null);
-    if (s?.value?.engine === "ready") break;
-    await sleep(100);
-  }
+  await waitFor(dir, DRAWN, 90_000);
   const ready = performance.now() - t0;
   await sleep(5000);
   const pid = appPid();
@@ -162,7 +132,8 @@ for (let r = 0; r < RUNS; r++) {
   const home = pids.map(footprintMB).filter((x) => x !== null).reduce((s, x) => s + x, 0);
   // The long list.
   const t1 = performance.now();
-  await command(dir, { cmd: "open", url: "folevi-dev://notes" });
+  await evaluate(dir, `location.assign("/notes"); return true;`).catch(() => undefined);
+  await waitFor(dir, DRAWN, 30_000);
   await sleep(4000);
   const listOpen = performance.now() - t1;
   const list = pids.map(footprintMB).filter((x) => x !== null).reduce((s, x) => s + x, 0);
@@ -186,7 +157,7 @@ for (let r = 0; r < RUNS; r++) {
 
 const results = {
   at: new Date().toISOString(),
-  notes: JSON.parse(readFileSync(join(dir, "perf.json"), "utf8")).notes,
+  library: JSON.parse(readFileSync(join(dir, "perf.json"), "utf8")).library,
   places: 3,
   runs,
   median: { launchMs: median(runs.map((r) => r.launchMs)), readyMs: median(runs.map((r) => r.readyMs)), homeMB: median(runs.map((r) => r.footprintMB.home)), listMB: median(runs.map((r) => r.footprintMB.list)) },

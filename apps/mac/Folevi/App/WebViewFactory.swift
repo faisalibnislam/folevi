@@ -3,6 +3,7 @@
 // bound to this view, content rules (FOLEVI_OFFLINE; WM1 adds local mode's), the user agent, and the preferences
 // the owner chose (Writing Tools off in notes, decision M5).
 import AppKit
+import CryptoKit
 import WebKit
 import FoleviMac
 
@@ -125,6 +126,9 @@ struct Bootstrap {
     var background = false
     /// Where to open after a switch to another place (shell-bridge.js's SHELL.start).
     var start: String?
+    /// The place's Folevi Server (or the sign-in screen's): the page reads its addresses at runtime instead of the
+    /// build's NEXT_PUBLIC values (CONTRACT §6 notes). Nil: Folevi Cloud.
+    var server: ShellServer? = nil
 
     var json: [String: Any] {
         [
@@ -135,7 +139,7 @@ struct Bootstrap {
             "shell": [
                 "mode": mode,
                 "deviceName": Platform.deviceName,
-                "places": ["current": place.map { $0 as Any } ?? NSNull(), "background": background] as [String: Any],
+                "places": ["current": place.map { $0 as Any } ?? NSNull(), "background": background, "server": server.map { $0.json as Any } ?? NSNull()] as [String: Any],
                 "start": start.map { $0 as Any } ?? NSNull(),
             ] as [String: Any],
         ]
@@ -221,17 +225,34 @@ enum WebViewFactory {
         Bundle.main.url(forResource: name, withExtension: "js").flatMap { try? String(contentsOf: $0, encoding: .utf8) }
     }
 
-    /// mac-bridge.js with the bootstrap and the shared files inside its function.
-    static func bridgeScript(_ bootstrap: Bootstrap) -> String? {
-        guard let template = resource("mac-bridge"), let shell = resource("shell-bridge") else { return nil }
+    /// mac-bridge.js with the shared files and the extra scripts inside its function, read from the bundle (every
+    /// web view did this before the cache below, PerfTests measures both).
+    static func assembleTemplate() -> String? {
+        guard let base = resource("mac-bridge"), let shell = resource("shell-bridge") else { return nil }
         let kit = resource("folevi-cloud") ?? ""
         let extras = extraScripts.compactMap { resource($0) }.joined(separator: "\n")
-        guard let data = try? JSONSerialization.data(withJSONObject: bootstrap.json), let boot = String(data: data, encoding: .utf8) else { return nil }
-        return template
+        return base
             .replacingOccurrences(of: "/*__FOLEVI_CLOUD_KIT__*/", with: kit)
             .replacingOccurrences(of: "/*__FOLEVI_SHELL_BRIDGE__*/", with: shell)
             .replacingOccurrences(of: "/*__FOLEVI_EXTRAS__*/", with: extras)
-            .replacingOccurrences(of: "\"__FOLEVI_BOOT__\"", with: boot)
+    }
+
+    /// The bridge script with the shared files in it, read from the bundle once (they never change while the app
+    /// runs), for the extra scripts it was put together with.
+    private static var assembled: (extras: [String], text: String)?
+
+    /// mac-bridge.js with the bootstrap and the shared files inside its function.
+    static func bridgeScript(_ bootstrap: Bootstrap) -> String? {
+        let template: String
+        if let a = assembled, a.extras == extraScripts {
+            template = a.text
+        } else {
+            guard let text = assembleTemplate() else { return nil }
+            template = text
+            assembled = (extraScripts, template)
+        }
+        guard let data = try? JSONSerialization.data(withJSONObject: bootstrap.json), let boot = String(data: data, encoding: .utf8) else { return nil }
+        return template.replacingOccurrences(of: "\"__FOLEVI_BOOT__\"", with: boot)
     }
 
     // MARK: content rules
@@ -240,8 +261,25 @@ enum WebViewFactory {
     static func prepareRules() async {
         guard Paths.offline else { return }
         let json = #"[{"trigger":{"url-filter":"^https?://"},"action":{"type":"block"}},{"trigger":{"url-filter":"^wss?://"},"action":{"type":"block"}}]"#
-        if let list = try? await WKContentRuleListStore.default().compileContentRuleList(forIdentifier: "folevi-offline", encodedContentRuleList: json) {
+        if let list = await ruleList("folevi-offline", json: json) {
             rules.append(list)
         }
+    }
+
+    /// A content rule list by name: WebKit keeps compiled lists on disk, so the one compiled from this same text
+    /// on an earlier launch is looked up (a few milliseconds) and compiling (tens of milliseconds, before the first
+    /// window) happens only when the text is new. The identifier carries a hash of the text, so a changed text
+    /// (another website host) compiles once and the older lists of that name go.
+    /// `store` nil is WebKit's default store, looked up here on the main actor: never as a default argument, which an
+    /// `async let` evaluates off the main thread, where WebKit's first use crashes (it must start on the main thread).
+    static func ruleList(_ name: String, json: String, store: WKContentRuleListStore? = nil) async -> WKContentRuleList? {
+        guard let store = store ?? WKContentRuleListStore.default() else { return nil }
+        let id = name + "-" + SHA256.hash(data: Data(json.utf8)).prefix(8).map { String(format: "%02x", $0) }.joined()
+        if let found = try? await store.contentRuleList(forIdentifier: id) { return found }
+        let list = try? await store.compileContentRuleList(forIdentifier: id, encodedContentRuleList: json)
+        for old in await store.availableIdentifiers() ?? [] where old != id && (old == name || old.hasPrefix(name + "-")) {
+            try? await store.removeContentRuleList(forIdentifier: old)
+        }
+        return list
     }
 }

@@ -163,3 +163,42 @@ describe("marks on <html>", () => {
     }
   });
 });
+
+describe("fold: placing things clear of it", () => {
+  const foldAt = (start: number, end: number, horizontal = false) => {
+    const root = document.documentElement;
+    root.setAttribute("data-fold", horizontal ? "horizontal" : "");
+    root.style.setProperty("--fold-start", `${start}px`);
+    root.style.setProperty("--fold-end", `${end}px`);
+  };
+
+  it("reads the app's inline span without computing <html>'s style", () => {
+    windowLike(1024, { touch: true, ua: IPHONE });
+    foldAt(500, 524);
+    const computed = vi.spyOn(window, "getComputedStyle");
+    expect(fold()).toEqual({ orientation: "vertical", start: 500, size: 24 });
+    expect(computed).not.toHaveBeenCalled();
+  });
+
+  it("keeps a popup on its anchor's side of a fold down the middle", async () => {
+    const { popupSpan } = await import("@/components/ui/topLayer");
+    windowLike(1024, { touch: true, ua: IPHONE });
+    expect(popupSpan({ left: 400, right: 440 }).clamp(400, 200)).toBe(400);
+    foldAt(500, 524);
+    // Left of the fold: its right edge stops 8 px before it.
+    expect(popupSpan({ left: 400, right: 440 }).clamp(400, 200)).toBe(500 - 8 - 200);
+    // Past the fold: its left edge stays 8 px past it, even when it's too wide for that side.
+    expect(popupSpan({ left: 530, right: 560 }).clamp(480, 200)).toBe(524 + 8);
+    expect(popupSpan({ left: 530, right: 560 }).clamp(530, 900)).toBe(524 + 8);
+    // A fold across leaves the sides alone.
+    foldAt(400, 424, true);
+    expect(popupSpan({ left: 400, right: 440 }).clamp(400, 200)).toBe(400);
+  });
+
+  it("puts a centred dialog past the fold", async () => {
+    const { pastFoldFrame } = await import("@/components/ui/Dialog");
+    expect(pastFoldFrame(null, null)).toEqual({ room: null, side: null });
+    expect(pastFoldFrame({ orientation: "vertical", start: 500, size: 24 }, null)).toEqual({ room: null, side: { left: 540, right: 16, width: "calc(100% - 556px)" } });
+    expect(pastFoldFrame({ orientation: "horizontal", start: 400, size: 24 }, { top: 52, bottom: 80 })).toEqual({ room: { top: 440, bottom: 80 }, side: null });
+  });
+});

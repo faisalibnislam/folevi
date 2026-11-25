@@ -5,6 +5,8 @@ import { SignInForm } from "@/components/auth/SignInForm";
 import { safeReturnTo } from "@/lib/auth/returnTo";
 import { socialError, socialSignInOptions } from "@/lib/auth/signInOptions";
 import { isSocialProvider } from "@/lib/auth/socialErrors";
+import { isServerEdition } from "@/lib/edition";
+import { serverInfoCore } from "@/lib/server-edition/serverInfo";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Sign in" };
@@ -25,5 +27,10 @@ export default async function SignInPage({ searchParams }: { searchParams: Promi
   if (!adding && params.notice !== "session_ended" && (await hasSessionCookie())) redirect(returnTo);
   // ?error=…&via=apple|google: a sign-in with Apple or Google that came back refused (or cancelled).
   const problem = socialError(params.error, isSocialProvider(params.via) ? params.via : "google");
-  return <SignInForm adding={adding} returnTo={returnTo} notice={params.notice ? NOTICES[params.notice] : undefined} social={await socialSignInOptions()} socialProblem={problem} />;
+  const info = isServerEdition() ? await serverInfoCore() : null;
+  // A Folevi Server with no owner yet has nobody to sign in: send the first visitor to the setup steps, which
+  // explain where the NAS shows its setup link. (No answer from the backend is not "needs setup".)
+  if (info?.needsSetup && !adding) redirect("/setup");
+  const server = isServerEdition() ? { name: info?.name ?? null, signUp: info?.signIn.signUp ?? "invite" } : undefined;
+  return <SignInForm adding={adding} returnTo={returnTo} notice={params.notice ? NOTICES[params.notice] : undefined} social={await socialSignInOptions()} socialProblem={problem} server={server} />;
 }

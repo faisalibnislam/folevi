@@ -296,3 +296,49 @@ export async function e2eeSpace(owner: E2eePerson, scope: ScopeArg, members: E2e
   const result = await owner.as.mutation(api.e2ee.spaces.setUp, { scope, key, grants });
   return { sk, scopeId, ...result };
 }
+
+/**
+ * Sets Foli AI's routing as an admin would in Admin > Foli AI (lib/ai/config.ts): a provider per feature
+ * and models per provider. Tests that check metering on a particular model pin it here.
+ */
+export async function setAiSettings(t: T, value: { routes?: Record<string, "gemini" | "openai" | "anthropic">; models?: Record<string, { fast?: string; main?: string; heavy?: string }> }) {
+  await t.run(async (ctx) => {
+    const row = await ctx.db
+      .query("systemSettings")
+      .withIndex("by_key", (q) => q.eq("key", "foliAi"))
+      .unique();
+    if (row) await ctx.db.patch(row._id, { value, updatedAt: Date.now() });
+    else await ctx.db.insert("systemSettings", { key: "foliAi", value, updatedAt: Date.now() });
+  });
+}
+
+/** A note's search text (its documentText row, convex/lib/documentText.ts); "" when it has none. */
+export async function textOf(t: T, publicId: string): Promise<string> {
+  return await t.run(async (ctx) => {
+    const doc = await ctx.db
+      .query("documents")
+      .withIndex("by_public_id", (q) => q.eq("publicId", publicId))
+      .unique();
+    if (!doc) return "";
+    const row = await ctx.db
+      .query("documentText")
+      .withIndex("by_document", (q) => q.eq("documentId", doc._id))
+      .unique();
+    return row?.searchText ?? "";
+  });
+}
+
+/** Sets a note's search text directly (as text derived by older code would have left it). */
+export async function setTextOf(t: T, publicId: string, searchText: string): Promise<void> {
+  await t.run(async (ctx) => {
+    const doc = (await ctx.db
+      .query("documents")
+      .withIndex("by_public_id", (q) => q.eq("publicId", publicId))
+      .unique())!;
+    const row = (await ctx.db
+      .query("documentText")
+      .withIndex("by_document", (q) => q.eq("documentId", doc._id))
+      .unique())!;
+    await ctx.db.patch(row._id, { searchText });
+  });
+}

@@ -1,270 +1,379 @@
-# Folevi Server: the self-hosting plan
+# Folevi Server: the self-hosting plan (version 2)
 
-Written 2026-11-24 for the owner. Status: plan only, nothing built yet. Research sources are listed at the end.
+Version 2, written 2026-11-25 for the owner. It replaces version 1 (2026-11-24, in git history). Phase 0 is done
+and passed (`docs/self-hosting/PHASE0.md`). Everything else is a plan; nothing below is built yet.
 
 ## The short version
 
-**Owner's decision (2026-11-24): Synology and QNAP get real native apps** (`.spk`, `.qpkg`) with no Docker and no
-Container Manager: the backend program and the web app (with its own Node.js) run as an ordinary NAS service.
-Everything else (UGREEN, TrueNAS, Unraid, hosts) uses the container. Both come from one self-contained server
-bundle, so there is one server, packaged two ways (see §5.8).
+Folevi Server is one program that anyone can run on a NAS or a rented server. It works like Plex Media Server:
 
-Anyone can run their own **Folevi Server** at home or on a rented server, and every Folevi app (web, Mac, iPhone,
-iPad, Android) can sign in to it instead of Folevi Cloud.
+- **Install like any NAS app.** On Synology, QNAP, ASUSTOR and TerraMaster it is a real native package from the
+  NAS's own app store (or a downloaded installer). No Docker, no Container Manager, no command line, no other
+  apps to install first. On Unraid it is a native plugin. On a Linux server (DigitalOcean, Hetzner and others) it
+  is one command that installs a normal system service, or a 1-click image.
+- **Open it, own it.** A Folevi icon in the NAS menu opens the setup page and then the **admin panel**: people,
+  roles, storage, sign-in methods, email, Foli AI, remote access, backups, updates and logs.
+- **Members use the normal apps.** Mac, iPhone, iPad, Android and the web sign in to the server the way they sign
+  in to Folevi Cloud. If the server is linked to a Folevi account, it simply appears in the apps, like a Plex
+  server does. At home and away, with a real HTTPS certificate, without router setup.
+- **Email, notifications and Foli AI work out of the box** through small Folevi relays that never see note
+  content. Owners can switch each one to their own provider (their SMTP server, their AI key, a local model).
 
-- **For the person installing it:** paste one file into their NAS's Docker app (Synology, QNAP, UGREEN, TrueNAS) or
-  click one "Deploy" button on a host (Railway, Fly, Coolify). Then they open a setup page in the browser, create the
-  first account, and turn on the features they want.
-- **For the person using the apps:** on the sign-in screen, choose **Your own server**. Then scan a QR code from the
-  server's setup page, or type its address. Everything else works as it does with Folevi Cloud.
-- **For us:** about 10 to 13 weeks of work in five phases. The hardest part isn't the server. Today the apps have
-  Folevi's own server address built into them, and they must learn to take one at sign-in.
+The one honest limit: **TrueNAS, UGREEN (for now), ZimaOS/CasaOS and Umbrel only accept third-party apps as
+containers.** There we ship a one-click catalog app; the person never sees or types anything Docker-related, but
+it is a container underneath. Details in §3.
 
-## 1. What Folevi is made of today
+Effort: about 16 to 19 weeks for everything, in five phases after Phase 0. A private beta on Synology, QNAP and
+Linux servers is possible after about 10 weeks (§12).
 
-| Piece | Today (Folevi Cloud) | In Folevi Server |
+## 1. What the owner asked for (2026-11-25)
+
+1. Ready-made NAS boxes (Synology, QNAP and the other major brands): a native package, no Docker and no other
+   dependency, installed from the NAS's app store or an installer.
+2. TrueNAS and the other major NAS systems covered too.
+3. An admin panel with full control, regular members, and access from the Mac, Android, iPhone and iPad apps, as
+   with Plex.
+4. Email and the other services must work.
+5. Also runs on hosted servers: DigitalOcean, Hetzner and similar.
+
+## 2. How it is built: one server, many wrappers
+
+Every platform gets the same server, built once per chip (x86-64 and ARM64) in our CI. Only the outer package
+differs. This keeps one thing to test and one version number.
+
+```
+folevi-server-<version>-linux-<x86_64|aarch64>/
+  bin/folevid            the supervisor (one small static Go program, no dependencies)
+  bin/convex-backend     Convex's backend program (database, sync, files, search, scheduled jobs)
+  runtime/node/          our own Node.js (web app, and the backend's node actions)
+  runtime/lib/           private glibc + libstdc++ for NAS systems with old system libraries (QNAP)
+  web/                   the Next.js standalone build, server edition
+  functions/             Folevi's backend functions, already bundled, deployed on start
+  LICENSES/              Folevi, Convex (FSL-1.1), Node.js and the rest
+```
+
+**`folevid`, the supervisor,** is the one new program. It is what the NAS starts and stops. It:
+
+- starts the backend and the web app, restarts them if they crash, and stops them cleanly;
+- serves everything on **one port** (default 8460) with one origin: `/` the app, `/convex` the backend and its
+  WebSocket, `/convex-site` HTTP actions. Phase 0 proved this layout works (`scripts/self-host/proxy.mjs`);
+- creates every secret on first start and keeps them in the data folder, never shown;
+- deploys the matching backend functions after an install or update, and runs Folevi's migrations;
+- gets and renews the HTTPS certificate (§4), keeps the Folevi Connect link open (§4), and announces the server
+  on the home network (Bonjour/mDNS) so apps find it;
+- takes the nightly backup and the pre-update backup (§9);
+- writes logs that the admin panel shows and that "Send diagnostics" can redact and upload;
+- runs with low-memory settings measured in Phase 0 (backend peak 570 MB, settled 260 MB, web app about 150 MB),
+  and a larger profile when the machine has 8 GB or more.
+
+Why Go for `folevid`: a single static file runs on every NAS, whatever its system libraries, and Go has good
+libraries for reverse proxying, WebSockets, ACME certificates and mDNS. Node already ships for the web app, but
+the supervisor must keep working when Node does not.
+
+**Old system libraries.** Phase 0 found that Convex's backend needs glibc 2.35 and Node.js needs 2.28, while QNAP
+QTS 5 has glibc 2.21. We ship a private glibc and loader in `runtime/lib` and start both programs through it.
+Nothing on the NAS is changed, so it stays "no dependency". On systems that are new enough (DSM 7.2, Unraid,
+Debian 12, Ubuntu 22.04+) the system libraries are used and `runtime/lib` is skipped.
+
+**Hardware:** a 64-bit NAS (x86-64 or ARM64) with 2 GB of RAM free; 4 GB recommended for a family, 8 GB for a team
+of 20 or more. 32-bit ARM models are not supported (Convex doesn't build for them).
+
+## 3. Platforms
+
+### 3.1 Ready-made NAS boxes: native packages
+
+| NAS | Package | How people install | How it gets into the official store |
+| --- | --- | --- | --- |
+| **Synology** DSM 7.2+ | `.spk` | Package Center: from Folevi's package source (added once in Package Center > Settings > Package Sources), or Manual Install | Apply to Synology's third-party package program (Plex is listed there). Until accepted, our package source gives the same one-click installs and Update buttons |
+| **QNAP** QTS 5.x, QuTS hero | `.qpkg` | App Center: from Folevi's repository, or Install Manually | QNAP must sign the package (QTS blocks unsigned apps by default and never installs invalid ones). Apply to QNAP's partner program for signing and App Center listing. Until then: Qnapclub store, or the "allow apps without a digital signature" setting with a clear guide |
+| **ASUSTOR** ADM 4.x/5.x | `.apk` (ASUSTOR's own format) | App Central, or manual install | Upload in ASUSTOR's Developer Corner; listed after ASUSTOR approves it |
+| **TerraMaster** TOS 6 | `.tpk` | TOS App Center, or manual install | TerraMaster's TOS Developer Platform (opened 2026-10-30); listed after review |
+| **UGREEN** UGOS Pro (DXP) | `.upk` | App Center | UGREEN's developer portal. Their own docs say a NAS needs developer authorization from UGREEN to install a `.upk`, so a native app depends on UGREEN accepting us. **Until then: a container app** (§3.2) |
+
+What every native package does the same way:
+
+- runs as its own package user, never as root (DSM 7 requires this; we do it everywhere);
+- asks during install which shared folder holds the data (default `folevi`), so the NAS's own snapshots and backup
+  apps (Hyper Backup, HBS 3, ASUSTOR Backup Plan) cover it;
+- adds a Folevi icon to the NAS's main menu that opens the setup page, then the admin panel;
+- on Synology, registers with DSM's web server so the NAS's own HTTPS address and reverse proxy work without extra
+  rules (including the WebSocket header);
+- updates from the store's Update button. The supervisor takes a backup first.
+
+### 3.2 NAS systems that only allow containers: one-click catalog apps
+
+| System | What people do | What we ship |
 | --- | --- | --- |
-| Web app | Next.js 16 on Vercel (`apps/web`); marketing site, product and admin console in one build | Same app as a Docker image, product and admin only |
-| Backend and database | Convex Cloud (`convex/`): about 80 modules, 30 scheduled jobs, 6 text search indexes, 1 vector index, file storage, HTTP routes | The open-source Convex backend in Docker, with its database on the server's disk |
-| Sign-in | Better Auth inside Convex: email and password, passkeys, two-step codes, Google, Sign in with Apple | Email and password, passkeys and two-step codes work as they are. Google is optional with the owner's own keys. Sign in with Apple is off |
-| Email | Resend | Any email account via SMTP (Gmail, iCloud, Fastmail, the NAS's mail server), or no email at all |
-| Foli AI | Google Gemini (`GEMINI_API_KEY`) | The server owner's own key. Later, any OpenAI-compatible service, including a local model (Ollama) |
-| Push notifications | APNs and FCM keys held by Folevi | Through a small **Folevi push relay** that we run (Bitwarden does the same; see §5.4) |
-| Billing | Polar | Off |
-| Cover photos | Unsplash | Optional, with the owner's key |
-| Mac updates | Sparkle feed on R2 | Unchanged: apps keep updating from Folevi. Only the server is self-hosted |
+| **TrueNAS** Community Edition 25.04+ (the old SCALE) | Apps > Discover > Folevi > Install, fill in a short form (data folder, port) | An app in the TrueNAS Apps catalog: the Community train first, then ask iX for the Stable train. TrueNAS keeps its system read-only and only runs apps this way, so a native package is not possible |
+| TrueNAS CORE | End of life | Guide: move to Community Edition, or run Folevi in a Linux VM with the Linux installer |
+| **UGREEN** (until §3.1 is accepted) | Docker > Project > paste one short file | Guide with screenshots |
+| **ZimaOS / CasaOS**, **Umbrel**, Runtipi | Their app stores, one click | Store submissions |
 
-"On this device" mode (local libraries with no account) already exists and needs no server at all. Folevi Server
-is for people who want **sync and sharing on hardware they own**.
+The container image holds the exact same bundle and `folevid`, so behavior, admin panel and updates are
+identical. People never see a compose file or an environment variable in these stores.
 
-## 2. What the person installing it will see
+### 3.3 Unraid: a native plugin
 
-1. **Install.** On a NAS: open Container Manager (Synology), Container Station (QNAP), Docker (UGREEN) or Apps
-   (TrueNAS), choose *Create project / Install via YAML*, and paste Folevi's `compose.yaml`. On a host: click
-   *Deploy on Railway* (or Fly, Coolify, Dokploy).
-2. **Open the setup page** at `http://<nas-address>:8080`. It walks through:
-   - the server's name
-   - the first (owner) account
-   - how people will reach it (§4: Tailscale, Cloudflare, or the NAS's own HTTPS)
-   - email (optional)
-   - a Foli AI key (optional)
-   - nightly backups (on by default)
-3. **Connect the apps.** The setup page shows a QR code. In any Folevi app, choose *Sign in > Your own server >
-   Scan code* (or type the address). Then sign in as usual.
-4. **Updates:** a banner in the admin console says when a new server version is out. On a NAS, people update the
-   project's image tag; hosts have an Update button. Apps tell people when their server is too old for the app.
+Unraid allows native plugins (`.plg`), and its system libraries are new enough. We ship a plugin through Community
+Apps that installs the bundle on the array (`/mnt/user/appdata/folevi`) and starts `folevid` at boot. A Community
+Apps container template is offered too, since many Unraid owners prefer containers.
 
-## 3. The server package
+### 3.4 Hosted servers (DigitalOcean, Hetzner, any Linux machine)
 
-One public repository folder, `server/`, with a release-pinned `compose.yaml` and an `example.env`, like Immich.
-The containers:
+| Route | What people do |
+| --- | --- |
+| **One command** (recommended) | `curl -fsSL https://get.folevi.com/server \| sh` on Debian 12+ or Ubuntu 22.04+. It adds Folevi's apt (or rpm) repository, installs the `folevi-server` package as a systemd service, and prints the setup address. Updates arrive with the system's normal updates. No Docker |
+| **DigitalOcean 1-Click** | Folevi in the DigitalOcean Marketplace: a Droplet image with Folevi Server installed. About $6 a month for the 1 GB plan with swap, $12 for 2 GB (recommended) |
+| **Hetzner** | Hetzner Cloud has no third-party marketplace, so we give a cloud-init snippet to paste when creating the server. A CX22 (2 vCPU, 4 GB) is a few euros a month |
+| **Coolify, Dokploy, Railway, Fly.io, Render** | Templates and deploy buttons using the container image |
+| **Vultr, Linode/Akamai** | Their marketplaces, later, from the same image build |
 
-| Container | Image | Job |
+On a server with a public address, `folevid` gets a Let's Encrypt certificate for the owner's own domain, or uses
+the free `folevi.app` address (§4). Ports 80 and 443 only; nothing else is open.
+
+### 3.5 Later, if wanted
+
+Folevi Server for a Mac (a menu-bar app; a Mac mini makes a good home server) and for Windows. Plex offers both.
+Not planned until the owner asks.
+
+## 4. Reaching the server from anywhere, like Plex: Folevi Connect
+
+This is what makes it feel like Plex instead of a hobby project. It is optional: a server works fully without a
+Folevi account, on its own domain or on the home network.
+
+**Link the server to a Folevi account (optional).** In setup, the owner signs in with their Folevi account. The
+server registers with `connect.folevi.com` and gets an ID. From then on:
+
+- every app signed in to that Folevi account lists the server under **Your servers**, with no address to type;
+- invited members who have Folevi accounts see it too (§5).
+
+**A real HTTPS address, at home and away.** Each server gets its own name under a domain we register for this,
+for example `https://<server-id>.folevi.app`, with a certificate the server holds itself (Let's Encrypt, the DNS
+check done through our API, so no ports need to be open). Like Plex's `plex.direct`, the name
+`192-168-1-20.<server-id>.folevi.app` resolves to the NAS's home address, so **inside the home the apps connect
+directly with full HTTPS**, and passkeys, encryption and offline mode all work there. We put `folevi.app` on the
+Public Suffix List so one server's site can never set cookies for another's.
+
+**Remote access, in the order the apps try it:**
+
+1. **Home network, direct.** Found by Bonjour or the address above.
+2. **Internet, direct.** `folevid` asks the router to open a port (UPnP or NAT-PMP), and `connect.folevi.com`
+   checks from outside that it is reachable. The admin panel shows "Reachable from the internet" or tells the owner
+   what to change.
+3. **Folevi Relay.** When the router can't be opened (carrier-grade NAT, strict routers), the server keeps one
+   outbound connection to our relay, and apps reach it through the relay. The relay passes encrypted TLS through by
+   server name and **cannot read it**; only the server holds the certificate (Plex's relay works the same way).
+   Notes are small, so the relay is cheap to run; we cap bandwidth for large attachments on the free tier.
+4. **The owner's own way:** their own domain with the NAS's reverse proxy, Tailscale, or a Cloudflare Tunnel. The
+   admin panel has a guided setup for each, as version 1 planned.
+
+Public share links (`/s/<token>`) work through any of 2 to 4, so people outside the server can open a shared note.
+
+## 5. People: owner, admins, members
+
+| Role | Can |
+| --- | --- |
+| **Owner** (the first account, can be transferred) | Everything, including the server's settings, other admins, backups and restore, deleting the server's data |
+| **Admin** | Invite and manage members, quotas, sign-in rules, email and AI settings, see logs and health |
+| **Member** | Use Folevi fully: notes, tasks, sharing with other members and by link, encrypted spaces, Foli AI if allowed |
+| **Guest** (optional) | Only what was shared with them; no library of their own |
+
+These map onto the roles the cloud already has: the admin console's Owner/Admin roles (`profiles.platformRole`)
+and the workspace roles for sharing. Nothing about sharing, comments or encrypted spaces changes.
+
+**Inviting people:** by email, by a link, or a QR code shown in the admin panel. Optional: open sign-up, or sign-up
+only for chosen email domains (useful for a company).
+
+**How members sign in** (the owner turns each on or off):
+
+- **Server account:** email and password, passkeys, two-step codes. Always available, works with no internet.
+- **Folevi account:** members sign in with their existing Folevi account, like Plex users do. The server trusts
+  `folevi.com` for identity only (OpenID Connect); notes stay on the server.
+- **Google and Sign in with Apple:** through a Folevi sign-in broker, so owners don't need their own Google or Apple
+  developer keys. Owners who want their own Google keys can add them.
+- **Company sign-in (later):** any OpenID Connect provider (Synology SSO Server, Authentik, Microsoft Entra,
+  Google Workspace) and LDAP.
+
+## 6. The admin panel
+
+The server edition of today's admin console (`/admin`, `convex/admin.ts`), opened from the NAS menu icon or from
+any app's settings for owners and admins. Its sections:
+
+| Section | What it does |
+| --- | --- |
+| Overview | Version, health of each part, memory and disk use, members online, last backup, reachability |
+| People | Invite, roles, suspend, remove, reset password, end sessions, two-step requirement, per-person storage quota |
+| Sign-in | Methods on or off (§5), open sign-up, allowed email domains, password rules |
+| Workspaces and sharing | Workspaces and their owners; whether public links are allowed; link expiry defaults |
+| Remote access | Folevi Connect link, the server's addresses, reachability test, relay on or off, own domain, Tailscale and Cloudflare guides |
+| Email | Folevi Mail, own SMTP or none (§7), a "send test email" button, the send log |
+| Foli AI | Off, Folevi AI, own key or own model (§7); who may use it; monthly limits per person |
+| Notifications | Folevi push relay on or off; test notification |
+| Storage | Data folder, size by person, file size limits, cleanup of deleted files |
+| Backups | Schedule, how many to keep, where (the data folder, another shared folder, S3-compatible storage), Back up now, Restore |
+| Updates | Current and newest version, what's new, update channel (stable or beta), automatic updates on or off |
+| Logs and diagnostics | Live logs, download, "Send diagnostics to Folevi" (redacted) |
+| Audit log | Who changed what, as the cloud console already records |
+
+The cloud console's rule stays: **metadata, never content.** Admins see people, sizes and counts, never notes. The
+owner controls the hardware, so this is a product promise rather than a technical wall, and encrypted spaces stay
+unreadable even to the owner.
+
+## 7. Email and the other services
+
+Each outside service has three settings: **Folevi's relay** (works out of the box once the server is linked),
+**the owner's own provider**, or **off**. The relays never receive note content.
+
+| Service | Folevi's relay | Owner's own | If off |
+| --- | --- | --- | --- |
+| **Email out** (verification, password reset, invites, sharing, reminders, digests) | **Folevi Mail**: the server sends through our API, from `no-reply@folevi.app` with Reply-To set to the server owner; rate-limited per server against abuse | Any SMTP account: the NAS's mail server, Gmail, iCloud, Fastmail, Microsoft 365, Amazon SES | No verification emails; invites by link or QR; password resets by an admin |
+| **Email in** (email a note to your library, `emailNotes.ts`) | Each person gets an address at the server's Folevi domain; our mail server forwards it to the server | The server checks a mailbox over IMAP that the owner sets up | Hidden |
+| **Push to phones** (APNs, FCM) | **Folevi push relay** (Apple and Google only accept our keys): device token and a short notice, generic text for encrypted spaces | Not possible for the App Store and Play builds | No wake-ups; the app catches up when opened |
+| **Web push** in browsers | Not needed | Works on the server itself (its own VAPID keys) | |
+| **Foli AI** | **Folevi AI**: the server calls our AI gateway; usage counts against the owner's Folevi plan | The owner's Gemini key, or any OpenAI-compatible service, including a local model (Ollama, LM Studio) on the NAS | Hidden everywhere (Phase 0 found it shown with no key; fixed in Phase 1) |
+| **Google / Apple sign-in** | Folevi sign-in broker (§5) | Own Google keys | Hidden |
+| **Cover photos** (Unsplash) | Through our proxy | Own Unsplash key | Hidden |
+| **Calendar subscriptions, link previews, imports** | Not needed; the server fetches directly | | |
+| **REST API, MCP server, API tokens** | Work on the server's own address | | |
+| **Mac and phone app updates** | Unchanged: apps update from Folevi and the stores | | |
+| **Billing** (Polar) | Off in the server edition | | |
+
+Before the relays launch, the Resend sending problem from 2026-10-15 must be fixed, since Folevi Mail sends
+through it.
+
+## 8. The apps: Mac, iPhone, iPad, Android, web
+
+The work from version 1 §5.2 stands, plus Connect:
+
+- **Sign-in screen:** *Folevi Cloud* or *Your own server* (address, QR code, or found on the home network).
+  Signed in to Folevi Cloud, linked servers are listed and one tap signs in.
+- **Many places at once:** a server is another place in the place switcher, beside Folevi Cloud and "On this
+  device", as the apps already do for two accounts (`docs/MULTI_ACCOUNT_PLAN.md`). Each place remembers its server
+  and its addresses.
+- **Best connection:** the app tries home, internet, then relay (§4), and switches when the person leaves home,
+  without signing in again.
+- **Per-place security policy:** today the shells allow only `*.convex.cloud` (`AppScheme.csp` on the Mac). They
+  must allow the place's own server origins.
+- **Runtime addresses:** the bundled web export reads the server's addresses from
+  `/.well-known/folevi.json` at runtime instead of build-time variables.
+- **Version check:** a server older than the app needs gets a clear "Ask the person who runs this server to
+  update it", never a broken screen.
+- **Android** is paused (`apps/android`), so it follows when Android resumes. The web app already works in
+  Android browsers against a server.
+
+## 9. Backups, updates and moving in
+
+- **Backups:** nightly backup of the database export plus files, kept 14 days by default, and before every update.
+  Targets: the data folder, another shared folder, or S3-compatible storage (Backblaze B2, Wasabi, the NAS's own
+  S3). A Restore button in the admin panel, and a restore on a new machine from the setup page.
+- **Updates:** from the NAS store's Update button, the Linux package manager, or automatic updates if the owner
+  turns them on. The backend version is pinned per Folevi release, so they always match. If an update fails, the
+  supervisor goes back to the previous version and its backup.
+- **Moving in:** "Move everything to this server" from Folevi Cloud, using the existing move between accounts and
+  takeout import. Also out: a server can move to Folevi Cloud or to another server the same way.
+
+## 10. Security
+
+- Secrets made on the server, kept in the data folder with owner-only permissions, never shown or logged.
+- HTTPS everywhere outside the home network; inside it, HTTPS through the `folevi.app` LAN names. Plain HTTP only
+  for the first setup on the home network.
+- Folevi's relays handle only what each row of §7 says; the remote-access relay can't decrypt traffic.
+- No phone-home except what the owner turns on (Connect, relays, update checks); Convex's beacon is off
+  (`--disable-beacon`).
+- Signed packages wherever the store signs them; release checksums and a signed apt repository for Linux.
+- Rate limits and lockouts as in the cloud (Phase 0 confirmed they work on the server).
+
+## 11. What we have to build
+
+| Area | Work | Notes |
 | --- | --- | --- |
-| `folevi` | `ghcr.io/faisalibnislam/folevi-server:<version>` | The Next.js standalone server, the setup page, and on start the deploy of Folevi's backend functions to `convex` (with the admin key, `npx convex deploy`) |
-| `convex` | `ghcr.io/convex/convex-backend:<pinned>` | Database, sync, files, search, scheduled jobs |
-| `proxy` (optional) | Caddy | One address and one port for everything, with automatic HTTPS when the server has a public name |
-| `backup` | Same `folevi` image, another command | A nightly `convex export` into `./backups`, keeping 14, plus a copy of the files folder |
+| Server edition of the web app | Runtime addresses, `/.well-known/folevi.json`, `output: "standalone"`, no marketing or billing, CSP and HSTS that suit HTTP on first setup, internal Convex address for server-side calls | Phase 0 items 3, 5, 7, 8, 9 |
+| Backend changes | Email-optional sign-up, static JWKS, AI "configured" flag, SMTP sender, IMAP inbound, roles and quotas, invites, OIDC sign-in, relay clients | Phase 0 items 1, 2, 4 |
+| `folevid` | Supervisor, proxy, secrets, deploy, certificates, mDNS, UPnP, Connect client, backups, updates, logs | New Go program |
+| Admin panel | Server edition of `/admin` with §6's sections | Reuses the cloud console |
+| Setup page | First account, server name, link to Folevi, remote access, email, AI, backups | |
+| Folevi Connect service | Server registry, DNS and certificate help for `folevi.app`, reachability check, relay, Folevi account sign-in for servers | Runs on our infrastructure; small, but it must stay up |
+| Relays | Mail, push, AI gateway, sign-in broker, Unsplash proxy | Each needs per-server keys, rate limits and abuse controls |
+| Apps | §8 for Mac and iPhone/iPad (Android later) | Biggest client change |
+| Packaging | `.spk`, `.qpkg`, ASUSTOR `.apk`, `.tpk`, `.upk`, Unraid `.plg`, `.deb`/`.rpm` + apt/rpm repos, install script, container image, TrueNAS/Zima/Umbrel catalog entries, DigitalOcean image | One CI job builds the bundle, one per format wraps it |
+| Testing | A real NAS of each chip for Synology and QNAP before each release; the others before their store launch | |
 
-- **Disk layout:** one folder, such as `/volume1/docker/folevi`, holding `data/` (database and files), `backups/` and
-  `.env`. Backing up that folder backs up everything.
-- **Hardware:** a 64-bit NAS (x86-64 or ARM64; Convex publishes both) with 2 GB of RAM free, 4 GB recommended.
-  32-bit ARM models can't run it. Most current Synology Plus, QNAP, UGREEN DXP and TrueNAS boxes qualify.
-- **Database:** SQLite on disk by default, which is plenty for a family or small team. Postgres is an option in
-  `example.env` for larger teams.
-- **Secrets:** generated on first start and kept in `data/`, so nobody types random strings. That covers the
-  Convex instance secret, the Better Auth secret, `FOLEVI_SERVER_SECRET`, the file URL secret and the web push keys.
-  The Convex admin key is shown once in the setup page for people who want the dashboard.
-
-## 4. Reaching the server safely (HTTPS)
-
-The apps need HTTPS. Passkeys, encryption in the browser, iPhone and Android security rules and the web app's
-offline mode all refuse plain `http://` once you leave the home network. The setup page offers these, in this
-order:
-
-1. **Tailscale** (recommended for families). Install Tailscale on the NAS and on each phone or Mac; the server gets
-   `https://folevi.<name>.ts.net` with a real certificate, and nothing is open to the internet. The catch: every
-   device needs the Tailscale app.
-2. **Cloudflare Tunnel** (recommended for teams and sharing links). The server gets a public address on the owner's
-   own domain, with no router changes and WebSockets supported on the free plan. The catch: it needs a domain on
-   Cloudflare, and Cloudflare sees the traffic. Folevi's encrypted spaces stay encrypted end to end.
-3. **The NAS's own reverse proxy** with a Let's Encrypt certificate and the maker's free name (Synology's
-   `*.synology.me`, QNAP's myQNAPcloud). This needs port forwarding on the router. On Synology, the WebSocket
-   header must be added in the reverse proxy rule; the guide shows exactly where.
-4. **Built-in Caddy** on a VPS or any machine with ports 80 and 443 open: automatic certificates.
-
-At home, the apps can also connect over the local network with plain HTTP. This needs a small app change on iOS
-(`NSAllowsLocalNetworking`) and on Android (a network security rule for local addresses), and passkeys won't work
-there.
-
-## 5. What we have to build
-
-### 5.1 One web build for any server (Phase 1)
-
-- Today `NEXT_PUBLIC_CONVEX_URL`, the app URL and the content security policy are **baked in at build time**
-  (`apps/web/src/proxy.ts`, `app/layout.shell.tsx`, `lib/shell/csp.ts`). For one image that works on every server:
-  - the server reads its addresses from the environment when it starts
-  - it serves them at `/.well-known/folevi.json`: the server name, version, Convex URLs, sign-in methods, features
-    on, and the minimum app version
-  - the web app reads them at runtime. Next.js's own guidance is a root-layout provider; avoid `next-runtime-env`,
-    which doesn't support Next 16.
-- A `FOLEVI_EDITION=server` build leaves out the marketing site, billing and Folevi-only admin pages. It keeps the
-  product, sharing, the admin console's user list and the setup page.
-- Better Auth takes its base URL and trusted origins from the server's address. Passkeys use the server's host as
-  their relying party.
-
-### 5.2 The apps learn to sign in to any server (Phase 2, the biggest piece)
-
-Today the Mac, iPhone, iPad and Android apps carry the Folevi Cloud addresses in their bundled web export and
-their security policies (`AppScheme.csp` allows only `*.convex.cloud`). The plan:
-
-- **Sign-in screen:** *Folevi Cloud* (default) or *Your own server*, with a field for the address and a *Scan code*
-  button. The app fetches `/.well-known/folevi.json`, shows the server's name, and refuses `http://` outside the
-  local network.
-- **Places carry their server:** an account place (`acct:<user id>`) gains a server field, and you can be signed in
-  to Folevi Cloud and your own server at the same time, side by side in the place switcher, as the apps already do
-  for two Folevi accounts.
-- **Security policy per place:** the app's page server allows the place's own server origins instead of a fixed
-  list. On the Mac this is `AppScheme.csp` with the place's origins. iOS and Android need the same change in their
-  shells.
-- **Bundled web export:** the Convex address comes from the place's bootstrap at runtime instead of
-  `NEXT_PUBLIC_CONVEX_URL`.
-- **Version check:** when a server is older than the app needs, the app says "Ask the person who runs this server to
-  update it" instead of failing.
-
-### 5.3 Email without Resend (Phase 1)
-
-Add an SMTP sender beside Resend. With no email set up, the server skips email verification and the owner invites
-people with a link or code from the admin console.
-
-### 5.4 Push notifications (Phase 3)
-
-Apple and Google only accept pushes signed with Folevi's own keys, which can't go to every server. So each server
-registers once with a tiny **Folevi push relay** (`push.folevi.com`). It gets an installation id and key, and the
-relay forwards its notifications. Only the device token and a short notice pass through the relay, never note
-content, and encrypted spaces send generic text, as they do today. Bitwarden runs its self-hosted push the same
-way. Servers without the relay still work; they just don't wake phones.
-
-### 5.5 Foli AI (Phase 1 and later)
-
-- **Phase 1:** the server owner pastes their own Gemini key in the setup page.
-- **Later:** any OpenAI-compatible endpoint, which covers OpenRouter, a local Ollama or LM Studio on the NAS.
-  Embeddings need a matching model.
-- With no key, Foli AI is hidden, as it is for people who turned it off.
-
-### 5.6 Backups, updates and moving in (Phase 3)
-
-- **Backups:** a nightly export plus files, kept 14 days, and a *Restore* button in the admin console (Immich's
-  pattern).
-- **Updates:** the `folevi` container deploys its matching backend functions on start, and Folevi's existing
-  migrations run as they do in the cloud. The Convex image is pinned per Folevi release, so the two always match.
-  Before an update the server takes a backup.
-- **Moving from Folevi Cloud to your own server:** the existing account-to-account move and takeout ("move a note to
-  the other account" and the takeout import) are reused. Sign in to both in the app, then *Move everything to this
-  server*.
-
-### 5.7 Packaging for each platform (Phase 4)
-
-| Platform | How people install | What we ship |
-| --- | --- | --- |
-| Synology DSM 7.x | **Native app**: Package Center from Folevi's package source, or Manual Install of the `.spk`. No Container Manager | `Folevi-Server-<version>-x86_64.spk` and `-aarch64.spk`, a Folevi package source, and later an application to Synology's official Package Center |
-| QNAP QTS/QuTS | **Native app**: App Center from Folevi's repository, or a manual install of the `.qpkg`. No Container Station | `.qpkg` for x86_64 and ARM64; note that 32-bit ARM models aren't supported |
-| UGREEN UGOS Pro (DXP series) | Docker > Project > Create | Guide |
-| TrueNAS Community Edition (25.10+, the old SCALE) | Apps > Discover > Custom App > Install via YAML; use host paths, not ixVolumes | Guide; later a listing in the TrueNAS community catalog |
-| TrueNAS CORE | Reached end of life; jails and VMs are unsupported | Advise moving to Community Edition, or a Linux VM |
-| Unraid | Community Apps template, or a compose plugin | A CA template |
-| Umbrel, CasaOS/ZimaOS, Runtipi | Their app stores | Store submissions |
-| Any Linux box or VPS (Hetzner, DigitalOcean) | `curl` the compose file, `docker compose up`, or Coolify / Dokploy | Guide and a Coolify/Dokploy template |
-| Railway | Deploy button (about $10 to $20 a month) | A Railway template |
-| Fly.io | `fly launch` from our `fly.toml` (about $7 to $10 a month) | `fly.toml` |
-| Render | Blueprint button (needs a paid disk) | `render.yaml` |
-| DigitalOcean App Platform, Vercel, Netlify | Not suitable alone (no lasting disk for the backend) | Docs say so |
-
-### 5.8 The native NAS apps (Synology and QNAP)
-
-- **One bundle, two packagings:** the release builds `folevi-server-<version>-linux-<arch>`, which holds:
-  - the Convex backend program for that chip (Convex already builds it to run without Docker; if the NAS's system
-    libraries are too old for it, we build a fully self-contained version ourselves)
-  - the Next.js standalone server with its own Node.js
-  - a small supervisor that starts both, runs the function deploy and the nightly backup, and writes logs
-- **Synology `.spk`:**
-  - runs as its own package user (DSM 7 doesn't let packages run as root)
-  - keeps data in a shared folder the person picks during install (default `folevi`), so DSM's Hyper Backup and
-    snapshots cover it
-  - registers its address with DSM's web server, so it works through the NAS's HTTPS and reverse proxy without
-    extra setup
-  - opens the setup page from a Folevi icon in the DSM main menu
-  - Folevi's own package source (an address added once under Package Center > Settings > Package Sources) gives
-    one-click installs and normal update buttons
-- **QNAP `.qpkg`:** the same bundle as an App Center app, with a Folevi repository for updates.
-- **Builds:** two chips (x86_64, ARM64) per brand per release. Tested on at least one real Synology and one QNAP of
-  each chip before a release.
-- **To check in Phase 0:** whether Convex's ready-made backend program runs on DSM 7 and QTS as is; memory use on a
-  2 GB model.
-
-## 6. Phases and effort
+## 12. Phases and effort
 
 | Phase | What | Rough effort |
 | --- | --- | --- |
-| 0. Spike | Run Folevi's real backend on a self-hosted Convex, fix what breaks (Better Auth component, crons, vector search, file URLs), measure RAM on a Synology and an ARM box | 1 week |
-| 1. Server and web | `folevi-server` image, runtime config and `/.well-known/folevi.json`, server edition build, setup page, SMTP, generated secrets, own AI key, `compose.yaml` and `example.env` | 2 to 3 weeks |
-| 2. Apps | Server choice and QR at sign-in, server per place, per-place security policy, runtime Convex address in the bundled export, version check: Mac, iPhone/iPad, Android | 3 weeks |
-| 3. Running it | Backups and restore, update flow, push relay, moving in from Folevi Cloud, admin console server page | 2 weeks |
-| 4. Packaging | Native Synology `.spk` and QNAP `.qpkg` with their package sources, NAS guides with screenshots, Railway/Fly/Render/Coolify templates, Unraid/Umbrel/CasaOS/TrueNAS listings, help pages on folevi.com | 3 to 4 weeks |
+| 0. Spike | Folevi on a standalone Convex backend, one origin, memory | **Done 2026-11-24** |
+| 1. Server core | Server edition web build, backend fixes from Phase 0, `folevid` (supervisor, proxy, secrets, deploy, backups, logs), setup page, SMTP, own AI key, roles and invites, admin panel first version | 4 weeks |
+| 2. Apps | Your own server at sign-in, server places, best connection, per-place security policy, runtime addresses, version check: web, Mac, iPhone, iPad | 3 weeks |
+| 3. First packages | Synology `.spk` and package source, QNAP `.qpkg` with private glibc, Linux one-command installer and apt repo, container image. **Private beta here (about 10 weeks)** | 3 weeks |
+| 4. Folevi Connect and relays | Server linking, `folevi.app` names and certificates, LAN HTTPS, UPnP and reachability, remote-access relay, push relay, Folevi Mail, AI gateway, sign-in broker, Folevi-account sign-in for members | 4 weeks |
+| 5. Everywhere else | ASUSTOR, TerraMaster, Unraid plugin, TrueNAS catalog, ZimaOS/CasaOS/Umbrel, DigitalOcean Marketplace, Hetzner guide, Coolify/Railway templates, UGREEN when authorized; store submissions; help pages on folevi.com | 3 to 4 weeks, plus each store's review time |
 
-A first private beta is possible after Phases 0 to 2: about 6 to 7 weeks.
+Store reviews (Synology, QNAP signing, ASUSTOR, TerraMaster, UGREEN, TrueNAS) take weeks and run in parallel. Apply
+early, during Phase 1.
 
-## 7. Decisions for the owner
+## 13. What only the owner can do
 
-1. **Price.** Is Folevi Server free for everyone? Or free for personal use with a paid license for businesses (a key
-   entered in the setup page)? Or included with a paid plan?
-2. **Code openness.** Is the server image published publicly (free to run, code private), or is the code
-   open-sourced too?
-3. **Push relay.** Is it free for every server, or part of a paid tier (it costs us a little to run)?
-4. **AI.** Is Gemini enough at first, or is "any OpenAI-compatible service" (including local models) needed for
-   launch? Privacy-minded NAS owners will ask for local models.
-5. **Support.** Self-hosters can only be helped with their logs. Do we offer a "send diagnostics" button that
-   uploads a redacted log?
+1. **Developer accounts and applications:** Synology third-party package program, QNAP partner program (signing),
+   ASUSTOR Developer Corner, TerraMaster TOS Developer Platform, UGREEN developer portal, DigitalOcean Marketplace
+   vendor account.
+2. **The Connect domain:** done, the owner bought **`folevi.app`** (2026-11-25). Still to do: point its
+   nameservers at Cloudflare (Connect manages records through Cloudflare's API) and approve the Public Suffix List
+   request. `.app` is on the browsers' HTTPS-only list, which suits us: every server name is HTTPS anyway.
+3. **Test hardware:** the owner has a Synology **DS223** (ARM64, Realtek RTD1619B, 2 GB RAM that can't be
+   expanded, DSM 7.2): the ARM64 `.spk` is tested first, and it is the real test of the 2 GB memory profile. No QNAP. QNAP is tested without hardware: the private glibc runs in an old-glibc Linux container in CI
+   (Ubuntu 16.04 has glibc 2.23, near QTS 5's 2.21), then on QNAP's QuTScloud virtual appliance (QTS in a VM, which
+   can run in Synology's Virtual Machine Manager; license terms unverified), then with beta testers who own QNAPs
+   before the QNAP package leaves beta.
+4. **OK to download** Convex's Linux backend and Node.js for the bundle (Phase 0 is waiting on this).
+5. **Fix Resend sending** (open since 2026-10-15), needed for Folevi Mail.
+6. **Ask Convex** to confirm in writing that bundling their backend (FSL-1.1) in Folevi Server is fine.
 
-## 8. Risks
+## 14. Decisions for the owner
 
-- **Convex license (FSL-1.1, Apache-2.0 after two years).** Bundling it in Folevi Server looks allowed, since we
-  aren't selling a Convex competitor. We must keep Convex's license and notices in the package. Ask Convex to
-  confirm in writing before launch.
-- **Self-hosted Convex has no backup button,** so we build our own (§5.6).
-- **One backend version per Folevi version:** we must test each upgrade path, which adds release work.
-- **Memory:** the backend can use 1 to 4 GB. Low-end NAS models (2 GB total) will struggle; the requirements must
-  say so plainly.
-- **Support load:** network and HTTPS problems are where most self-hosters get stuck. The setup page's guided
-  Tailscale or Cloudflare choice is the main defense.
-- **Two backends to keep compatible:** every Convex schema or function change must work on both Folevi Cloud and
-  servers that update late. The version check (§5.2) makes the gap visible.
+1. **Price.** Recommended, Plex's model: Folevi Server is free; the relays that cost us money (remote-access relay
+   above a small cap, Folevi AI, Folevi Mail above a monthly allowance) come with a paid Folevi plan. A business
+   license (company sign-in, more than N members) is an option.
+2. **Is a Folevi account required?** Recommended: no. Connect, the relays and Folevi-account sign-in are optional;
+   a server with its own domain and SMTP works with no tie to Folevi at all.
+3. **Code openness.** Publish the packages only (code private), or open-source the server too?
+4. **Relays at launch.** All of §7 at once (Phase 4), or launch the beta with own SMTP and own AI key only and add
+   relays after?
+5. **Mac and Windows server builds** (§3.5): later, or never?
+
+## 15. Risks
+
+- **Store approval is outside our control.** Synology, QNAP and UGREEN may take months or say no. Our own package
+  sources (Synology, QNAP) and the container route (UGREEN) are the fallbacks, so launch doesn't wait on them.
+- **QNAP's old glibc.** The private glibc approach must be proven on QTS 5 in Phase 3: in an old-glibc container,
+  on QuTScloud, then by beta testers (we own no QNAP). Fallback:
+  build Convex's backend ourselves against an older glibc.
+- **Memory on small NAS models.** Phase 0's tuned numbers fit 2 GB, but a family's real use must be measured on the
+  hardware. The requirements say 4 GB recommended.
+- **Running Connect and the relays** makes Folevi responsible for uptime and abuse handling (spam through Folevi
+  Mail especially). Per-server limits, owner verification and a kill switch per server are required.
+- **Two backends to keep compatible:** every Convex change must also work on servers that update late. The version
+  check (§8) makes the gap visible; our CI must test upgrades from the last few server versions.
+- **Convex license (FSL-1.1, Apache-2.0 after two years):** looks allowed since we don't sell a Convex competitor;
+  get written confirmation and ship their license.
+- **Support load:** networking is where self-hosters get stuck. Connect (no router setup) and the reachability test
+  are the main defense, with "Send diagnostics" for the rest.
 
 ## Sources
 
-- Convex self-hosting: https://github.com/get-convex/convex-backend/tree/main/self-hosted (compose, Postgres/MySQL,
-  S3 storage, upgrading, disabling the beacon, Fly and Railway templates), https://docs.convex.dev/self-hosting,
-  license https://github.com/get-convex/convex-backend/blob/main/LICENSE.md
-- Coolify https://coolify.io/docs/services/convex; Dokploy https://docs.dokploy.com/docs/templates/convex
-- Next.js self-hosting https://nextjs.org/docs/app/guides/self-hosting; standalone output
-  https://nextjs.org/docs/app/api-reference/config/next-config-js/output
-- Synology Container Manager https://www.synology.com/en-us/releaseNote/ContainerManager; Synology Docker Project
-  worker https://help.synology.com/developer-guide/resource_acquisition/docker-project.html
-- QNAP Container Station https://www.qnap.com/en/how-to/tutorial/con_show.php?cid=510
-- UGREEN Docker https://nas.ugreen.com/blogs/how-to/set-up-navidrome-on-nas
-- TrueNAS custom apps https://www.truenas.com/docs/scale/27/apps/installcustomappscreens/; CORE migration
-  https://www.truenas.com/docs/scale/25.10/gettingstarted/migrate/
-- Unraid templates https://ca.unraid.net/submit/help/repository-xml; Umbrel https://github.com/getumbrel/umbrel-apps;
-  CasaOS https://github.com/IceWhaleTech/CasaOS-AppStore
-- Tailscale Serve https://tailscale.com/kb/1312/serve, Funnel https://tailscale.com/kb/1223/funnel; Cloudflare
-  WebSockets https://developers.cloudflare.com/network/websockets/; Caddy https://caddyserver.com/docs/automatic-https
-- iOS local networking https://developer.apple.com/documentation/bundleresources/information-property-list/nsapptransportsecurity/nsallowslocalnetworking;
-  Android network security config https://developer.android.com/privacy-and-security/security-config
-- Railway pricing https://railway.com/pricing; Fly pricing https://docs.fly.io/about/pricing; Render disks
-  https://render.com/docs/disks
-- Patterns: Immich install and backups https://docs.immich.app/install/docker-compose,
-  https://docs.immich.app/administration/backup-and-restore; Bitwarden self-hosted server URL
-  https://bitwarden.com/help/change-client-environment/
+- Phase 0 results: `docs/self-hosting/PHASE0.md`; scripts in `scripts/self-host/`.
+- TrueNAS apps catalog and trains: https://apps.truenas.com/managing-apps/discovering-apps/,
+  https://truenas.com/docs/truenasapps/communityapps, https://www.truenas.com/docs/truenasapps/usingtrains/
+- QNAP signatures: https://www.qnap.com/en/how-to/faq/con_show.php?cid=2434,
+  https://docs.qnap.com/operating-system/quts-hero/5.1.x/en-us/digital-signatures-343C4CD5.html; Plex's unsigned
+  QPKG report https://forums.plex.tv/t/new-qpkg-wont-install-invalid-siganture/939150
+- ASUSTOR: https://developer.asustor.com/, https://developer.asustor.com/document/Upload%20your%20Application.pdf
+- TerraMaster: https://www.terra-master.com/blogs/news/create-app, https://help.terra-master.com/docs/TOS6/tos-desktop/app-center
+- UGREEN developer docs: https://developer-aar.canary.ugnas.com/en/doc/backend/quick-start/testing.html
+- Plex relay and `plex.direct`: https://support.plex.tv/articles/200430283-network/,
+  https://forums.plex.tv/t/documentation-around-the-warn-cert-tls-errors-plex-direct-sni-dns-overlay-etc/801991
+- Version 1's sources (Convex self-hosting, Next.js standalone, Synology, Unraid, Umbrel, CasaOS, Tailscale,
+  Cloudflare, Caddy, iOS and Android local networking, Immich, Bitwarden) are in this file's git history.
 
-Not verified yet: exact Convex memory use, QNAP and UGREEN HTTPS tooling, TrueNAS catalog submission steps, current
-Hetzner prices. Phase 0 settles the first one.
+Not verified yet: Synology's current third-party package program terms; QNAP's partner signing process (not
+public); DSM 7.2 and QTS 5 library versions on real hardware; DigitalOcean and Hetzner prices on launch day.

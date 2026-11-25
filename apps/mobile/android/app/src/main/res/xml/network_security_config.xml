@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Cleartext is permitted here only because a network security config can't name private address ranges: a
+     Folevi Server on the home network may be plain http (docs/self-hosting/CONTRACT.md §6.1). The app enforces
+     "http only to localhost, a bare name, *.local, or a private, link-local or 100.64/10 address" itself: the
+     HTTP client's interceptor (net/Http.kt), the address check (server/ShellServer.kt) and each page's
+     Content-Security-Policy header (Folevi Cloud pages: https Convex only). -->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true" />
+</network-security-config>

@@ -49,22 +49,35 @@ function previewText(lines: PreviewLine[] | null | undefined, excerpt: string): 
   return out || excerpt;
 }
 
+/**
+ * What the last cards measured: by title (a one- or two-line title leaves a different room for the text), and the
+ * latest of any. A card starts from it, so when it measures the same (cards in a grid share their size) it doesn't
+ * draw a second time: every card of a list used to render twice on every visit (docs/perf/web-results.md).
+ */
+const fitByTitle = new Map<string, number>();
+let lastFit = 12;
+
 /** How many lines of body text fit in the element (its line height scales with the card). */
-function useFitLines() {
+function useFitLines(title: string) {
   const ref = useRef<HTMLDivElement>(null);
-  const [lines, setLines] = useState(12);
+  const [lines, setLines] = useState(() => fitByTitle.get(title) ?? lastFit);
   useLayoutEffect(() => {
     const el = ref.current;
     if (!el) return;
     const measure = () => {
       const lh = parseFloat(getComputedStyle(el).lineHeight);
-      if (lh > 0) setLines(Math.max(1, Math.floor((el.clientHeight + 1) / lh)));
+      if (!(lh > 0)) return;
+      const n = Math.max(1, Math.floor((el.clientHeight + 1) / lh));
+      lastFit = n;
+      if (fitByTitle.size > 2000) fitByTitle.clear();
+      fitByTitle.set(title, n);
+      setLines(n);
     };
     measure();
     const ro = new ResizeObserver(measure);
     ro.observe(el);
     return () => ro.disconnect();
-  }, []);
+  }, [title]);
   return { ref, lines };
 }
 
@@ -122,7 +135,7 @@ export function NoteCardFace({
 }) {
   const look = noteLook({ starred, shape, kind });
   const tint = (pct: number) => `color-mix(in oklab, var(--color-heading) ${pct}%, var(--color-surface))`;
-  const body = useFitLines();
+  const body = useFitLines(title);
   const { url: imageUrl, palette } = useCoverImage(cover);
   // A built-in style shows its small thumbnail in the spine (sharp at 2×, much lighter than the full image).
   const artOnSpine = cover.kind === "art" && !style.backdrop ? coverArtOf(cover) : null;

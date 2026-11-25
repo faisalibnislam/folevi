@@ -1,0 +1,10 @@
+#!/bin/sh
+# Remember the shared folder from the install wizard (wizard values exist only during install).
+. "$(dirname "$0")/common"
+mkdir -p "$PKG_VAR"
+if [ -n "${wizard_shared_folder_name:-}" ]; then
+  echo "$wizard_shared_folder_name" > "$SHARE_FILE"
+fi
+plog "installed $SYNOPKG_PKGVER, shared folder $(cat "$SHARE_FILE" 2>/dev/null)"
+ui_message "Folevi Server is installed. Open it from the DSM main menu to create the owner account."
+exit 0

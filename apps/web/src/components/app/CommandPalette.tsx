@@ -3,7 +3,7 @@
 import { useAction } from "convex/react";
 import { useQuery } from "@/lib/convex/queries";
 import { useLocalSearch } from "@/lib/hooks/useLocalNotes";
-import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { AiIcon } from "@/components/ai/AiIcon";
 import { ArrowRight, CalendarDays, SquareCheckBig, FileDiff, FileText, House as Home, Layers, Moon, Plus, Search, Settings, Sun, Trash2, Waypoints } from "lucide-react";
 import { fileTextLabel, flattenFolders, type FileTextSource } from "@folevi/editor-schema";
@@ -16,15 +16,18 @@ import { useAppState } from "@/lib/app/state";
 import { useAppRouter } from "@/lib/app/router";
 import { Kbd } from "@/components/ui/Button";
 import { useCreateDocument } from "./useCreateDocument";
+import { afterKeyboardGoes } from "@/lib/native/ui";
 import { useShell } from "./Shell";
 import { useAiEnabled } from "@/components/ai/useAi";
 import { Highlight } from "./Highlight";
 import { formatRelative } from "@/lib/format";
 import { t } from "@/i18n";
 import { Select } from "@/components/ui/Select";
-import { useIphoneApp } from "@/lib/iphone";
+import { useIphoneApp, sideInsets } from "@/lib/iphone";
+import { useFold } from "@/lib/platform";
 import { IphoneScopes } from "@/components/iphone/lazy";
 import { useKeyLabels } from "@/lib/shortcuts";
+import { fadeOut, type Closing } from "@/components/ui/closing";
 
 /** A group's heading in the iPhone's search: caption caps (13/18 600, uppercase) at the 20 pt inset. */
 const IPHONE_CAPS = "px-5 pb-1.5 pt-6 text-footnote font-semibold uppercase leading-[18px] tracking-[0.04em] text-muted";
@@ -51,19 +54,22 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
   const [query, setQuery] = useState("");
   const debounced = useDebounced(query.trim(), 120);
   const [active, setActive] = useState(0);
+  // Still drawn while it fades out after closing.
+  const [visible, setVisible] = useState(false);
+  const live = open || visible;
   const dialogRef = useRef<HTMLDialogElement>(null);
   const listId = useId();
   const [filters, setFilters] = useState<{ folderId?: string; tagId?: string; creatorId?: string; updated?: "7" | "30" | "365" }>({});
   // Search, recents and filters follow the current context (Personal or a workspace).
-  const org = useFolderTree(open ? scope : "skip");
+  const org = useFolderTree(live ? scope : "skip");
   // Personal has no members: everything in it is yours, so the "Created by" filter is for workspaces.
   const members = useQuery(api.workspaces.members, open && workspace ? { workspaceId: workspace.id } : "skip");
-  const recent = useQuery(api.documents.recent, open ? { scope, limit: 8 } : "skip");
+  const recent = useQuery(api.documents.recent, live ? { scope, limit: 8 } : "skip");
   // Coarse "updated after" so the query stays cacheable.
   const updatedAfter = filters.updated ? Math.floor((Date.now() - Number(filters.updated) * 86_400_000) / 3_600_000) * 3_600_000 : undefined;
   // "All places": Personal and every workspace at once (no folder, tag or person filters: they belong to one place).
   const [everywhere, setEverywhere] = useState(false);
-  const workspaces = useQuery(api.workspaces.mine, open ? {} : "skip");
+  const workspaces = useQuery(api.workspaces.mine, live ? {} : "skip");
   const manyPlaces = (workspaces?.length ?? 0) > 0;
   const allPlaces = everywhere && manyPlaces;
   const here = useQuery(
@@ -72,9 +78,9 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
   );
   const all = useQuery(api.search.everywhere, open && debounced && allPlaces ? { query: debounced, limit: 24 } : "skip");
   const results = allPlaces ? all : here;
-  const onDevice = useLocalSearch(open ? debounced : "");
+  const onDevice = useLocalSearch(live ? debounced : "");
   // Search by meaning (plans with the notes index): extra notes about what was typed, after a pause.
-  const meaningOn = useQuery(api.search.meaningAvailable, open ? { scope } : "skip");
+  const meaningOn = useQuery(api.search.meaningAvailable, live ? { scope } : "skip");
   const byMeaning = useAction(api.search.byMeaning);
   const slow = useDebounced(query.trim(), 450);
   const [meaning, setMeaning] = useState<{ q: string; notes: { id: string; title: string; snippet: string }[] } | null>(null);
@@ -93,16 +99,39 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
   // Opened in the same pass as the ⌘K that asked for it, the field focused before the next key arrives: every
   // key typed right after ⌘K lands in the search, none in the note underneath (QA audit F04).
   const inputRef = useRef<HTMLInputElement>(null);
+  const closing = useRef<Closing | null>(null);
+  const openRef = useRef(open);
   useLayoutEffect(() => {
+    openRef.current = open;
     const d = dialogRef.current;
     if (!d) return;
+    if (open) {
+      closing.current?.cancel();
+      closing.current = null;
+      setVisible(true);
+    }
     if (open && !d.open) {
       setQuery("");
       setActive(0);
       d.showModal();
       inputRef.current?.focus();
     }
-    if (!open && d.open) d.close();
+    // Closing: the keyboard goes before the palette does (the page drawn under it first), then the palette fades
+    // out with its results still drawn (ui/closing.ts) and closes.
+    if (!open && d.open) {
+      afterKeyboardGoes(d, () => {
+        if (openRef.current || !d.open) return;
+        // Without the Web Animations API `done` runs at once, before `fade` is set: then it just closes.
+        let fade: Closing | null = null;
+        fade = fadeOut(d, () => {
+          if (fade && closing.current !== fade) return;
+          closing.current = null;
+          d.close();
+          setVisible(false);
+        });
+        closing.current = fade;
+      });
+    }
   }, [open]);
 
   // A note found here can be dragged onto a folder in the sidebar. The browser's own drag can't leave the
@@ -195,6 +224,11 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
   const docCount = items.filter((i) => i.kind === "doc").length;
   // The iPhone app: a full-screen search, the field at the top with Cancel, results as list rows.
   const iphone = useIphoneApp();
+  // An iPhone Duo or a foldable partly open: in the part past the fold, 16 px clear of it (nothing interactive
+  // on the fold), right of a fold down the middle (centred there) or below one across.
+  const fold = useFold();
+  const past = fold ? fold.start + fold.size + 16 : 0;
+  const folded: CSSProperties | undefined = iphone || !fold ? undefined : fold.orientation === "vertical" ? { left: past, right: 16 + sideInsets().right, width: `calc(100% - ${past + 16 + sideInsets().right}px)` } : { top: past, bottom: 16, marginTop: 0, maxHeight: `calc(100dvh - ${past + 16}px)` };
 
   return (
     <dialog
@@ -210,12 +244,14 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
       }}
       className={
         iphone
-          ? "fixed inset-0 m-0 h-dvh max-h-none w-full max-w-none overflow-hidden bg-canvas p-0 pt-[env(safe-area-inset-top)] text-ink backdrop:bg-transparent open:animate-[iphone-fade-in_180ms_ease-out]"
+          ? "fixed inset-0 m-0 h-dvh max-h-none w-full max-w-none overflow-hidden bg-canvas p-0 pt-[env(safe-area-inset-top)] pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)] text-ink backdrop:bg-transparent open:animate-[iphone-fade-in_180ms_ease-out]"
           : "m-auto mt-[12vh] w-[calc(100%-2rem)] max-w-xl overflow-hidden ui-pop ui-modal ui-modal-light rounded-panel p-0 text-ink shadow-[var(--glass-edge),0_16px_48px_rgb(0_0_0/0.1),0_2px_8px_rgb(0_0_0/0.1)] open:animate-[folio-rise_160ms_var(--ease-folio)]"
       }
+      style={folded}
     >
-      {open ? (
-        <div className={iphone ? "flex h-full flex-col" : undefined}>
+      {live ? (
+        // (Folded across, the dialog is shorter than the list wants: a column, so the list scrolls in what's left.)
+        <div className={iphone ? "flex h-full flex-col" : undefined} style={folded?.maxHeight ? { display: "flex", flexDirection: "column", maxHeight: folded.maxHeight } : undefined}>
           <div className={iphone ? "flex items-center gap-2 px-4 pb-2 pt-2" : "flex items-center gap-3 px-5 shadow-[inset_0_-1px_0_var(--color-line)]"}>
             <span className={iphone ? "flex h-11 min-w-0 flex-1 items-center gap-2 rounded-panel bg-[color-mix(in_oklab,var(--color-ink)_6.5%,transparent)] px-3" : "contents"}>
             <Search size={iphone ? 19 : 18} className={iphone ? "flex-none text-faint" : "text-heading"} aria-hidden />
@@ -310,7 +346,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
             )}
           </div>
           )}
-          <div className={iphone ? "min-h-0 flex-1 overflow-y-auto overscroll-contain pb-[calc(env(safe-area-inset-bottom)+16px)]" : "max-h-[55vh] overflow-y-auto p-2"}>
+          <div className={iphone ? "min-h-0 flex-1 overflow-y-auto overscroll-contain pb-[calc(env(safe-area-inset-bottom)+16px)]" : "max-h-[55vh] min-h-0 overflow-y-auto p-2"}>
             {debounced && results === undefined ? <p className={iphone ? "px-5 py-3 text-subheadline text-muted" : "px-3 py-2 text-subheadline text-muted"}>Searching…</p> : null}
             {debounced && results?.length === 0 && onDevice.length === 0 ? <p className={iphone ? "px-5 py-3 text-subheadline text-muted" : "px-3 py-2 text-subheadline text-muted"}>No notes match “{debounced}”.</p> : null}
             {/* Its heading only over notes it has (no empty "Recent" right above Actions). */}

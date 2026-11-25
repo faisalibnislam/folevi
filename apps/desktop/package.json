@@ -1,0 +1,23 @@
+{
+  "name": "folevi-desktop",
+  "productName": "Folevi",
+  "version": "1.6.78",
+  "foleviVersion": "1.6.78",
+  "private": true,
+  "description": "Folevi for Windows and Linux: Folevi's own interface in the system's web view (Tauri 2).",
+  "type": "module",
+  "scripts": {
+    "version:sync": "node scripts/version.mjs",
+    "shell": "node ../web/scripts/build-shell.mjs --platform windows",
+    "icons": "node scripts/icons.mjs",
+    "dev": "FOLEVI_SHELL_DIR=web tauri dev --no-watch",
+    "build": "node scripts/version.mjs && tauri build",
+    "test": "cd src-tauri && cargo test && cd .. && vitest run",
+    "smoke": "node scripts/smoke.mjs",
+    "check": "cd src-tauri && cargo check"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "2.12.6",
+    "vitest": "5.0.5"
+  }
+}

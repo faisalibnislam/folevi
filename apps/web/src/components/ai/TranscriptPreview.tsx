@@ -9,6 +9,7 @@ import { markdownToPlain } from "./plainText";
 import { AiAnnouncer, useDoneAnnouncement } from "./announce";
 import { hasTodoLines } from "@/lib/ai/actionItems";
 import { useAiWhere } from "@/components/ai/aiWhere";
+import { SwapIcons } from "@/components/ui/SwapIcons";
 
 /** What a transcription shows: the transcript, its summary, or a meeting summary of it. */
 export type TranscriptView = "transcript" | "summary" | "meeting";
@@ -137,7 +138,7 @@ export function TranscriptPreview({
           ) : null}
           {transcript ? (
             <button type="button" onClick={copy} className="ui-btn ui-btn-ghost h-8 px-2.5 text-callout">
-              {copied ? <Check size={14} aria-hidden /> : <Copy size={14} aria-hidden />} {copied ? "Copied" : "Copy"}
+              <SwapIcons index={copied ? 1 : 0} icons={[<Copy key="copy" size={14} />, <Check key="check" size={14} />]} /> {copied ? "Copied" : "Copy"}
             </button>
           ) : null}
           <button type="button" onClick={onDiscard} className="ui-btn ui-btn-ghost ml-auto h-8 px-2.5 text-callout text-muted">

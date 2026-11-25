@@ -25,7 +25,7 @@ export function PasscodeField({ label, value, onChange, autoFocus, digits }: { l
       <span className="mb-1 flex items-baseline justify-between gap-3 text-footnote font-medium text-ink">
         {label}
         {digits ? (
-          <span className="font-normal text-faint" aria-live="polite">
+          <span className="font-normal text-faint tabular-nums" aria-live="polite">
             {value.length} of {digits}
           </span>
         ) : null}

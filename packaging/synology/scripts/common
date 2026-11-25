@@ -1,0 +1,22 @@
+#!/bin/sh
+# Shared by the Synology package scripts. DSM 7 runs them as the package user "folevi" (conf/privilege).
+PKG_DEST="${SYNOPKG_PKGDEST:-/var/packages/folevi/target}"
+PKG_VAR="${SYNOPKG_PKGVAR:-/var/packages/folevi/var}"
+BUNDLE="$PKG_DEST/bundle"
+FOLEVID="$BUNDLE/bin/folevid"
+PID_FILE="$PKG_VAR/folevid.pid"
+LOG_FILE="$PKG_VAR/folevi-package.log"
+SHARE_FILE="$PKG_VAR/share_name"
+
+# The data folder is the shared folder chosen in the wizard. DSM 7's data-share resource links it at
+# /var/packages/folevi/shares/<name>; we use the real path so TMPDIR stays short (CONTRACT.md section 3).
+data_dir() {
+  share="$(cat "$SHARE_FILE" 2>/dev/null || echo folevi)"
+  link="/var/packages/folevi/shares/$share"
+  if [ -e "$link" ]; then readlink -f "$link"; else echo "$link"; fi
+}
+
+plog() { echo "$(date '+%Y-%m-%d %H:%M:%S') $*" >> "$LOG_FILE"; }
+
+# Text DSM shows in the install/upgrade dialog.
+ui_message() { [ -n "${SYNOPKG_TEMP_LOGFILE:-}" ] && echo "$*" >> "$SYNOPKG_TEMP_LOGFILE"; return 0; }

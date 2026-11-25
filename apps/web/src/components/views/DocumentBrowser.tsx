@@ -3,7 +3,7 @@
 import { useMutation } from "convex/react";
 import { usePaginatedQuery, useQuery } from "@/lib/convex/queries";
 import { useCardSizes } from "@/lib/cardSize";
-import { lazy, Suspense, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { lazy, startTransition, Suspense, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Archive, ArchiveRestore, ArrowDown, ArrowUp, Check, CheckSquare, Copy, CopyPlus, EyeOff, FilePlus2, ExternalLink, FolderInput, LayoutGrid, List, MoreHorizontal, Plus, Rows3, Trash2, Undo2, FileText, Files, FolderOpen, Hash, Inbox, LayoutTemplate, Share2, type LucideIcon } from "lucide-react";
 import { Bookmark, BookmarkOff } from "lucide-react";
 import { folderAncestors } from "@folevi/editor-schema";
@@ -29,6 +29,7 @@ import { useCreateDocument } from "@/components/app/useCreateDocument";
 import { ageText, editedText, formatRelative, templatesCountText } from "@/lib/format";
 import { t } from "@/i18n";
 import { localDb } from "@/lib/sync/db";
+import { onMemoryPressure } from "@/lib/memoryPressure";
 import { TemplateTile } from "@/components/ui/TemplateIcon";
 import { DocumentCardPreview, NOTE_CARD_LINK, NoteCardFace } from "./DocumentCard";
 import { FolderBadge } from "./FolderBadge";
@@ -112,6 +113,23 @@ const EMPTY: Record<View, { icon: LucideIcon; title: string; body?: string }> = 
 };
 
 const PAGE_SIZE = 48;
+/** Cards drawn at once when a grid opens: more than a large screen shows before scrolling. */
+const FIRST_CARDS = 24;
+
+/**
+ * The first page the server last served for each list (account, scope, view, folder, tag and sort), for this visit:
+ * a list opened again (the phone remounts its screens on every push, pop and tab switch) draws these notes on its
+ * first frame, in the server's order, and the live page then replaces them in place.
+ */
+const firstPages = new Map<string, Summary[]>();
+const FIRST_PAGES_KEPT = 60;
+onMemoryPressure(() => firstPages.clear());
+
+function keepFirstPage(key: string, rows: Summary[]) {
+  firstPages.delete(key);
+  firstPages.set(key, rows);
+  if (firstPages.size > FIRST_PAGES_KEPT) firstPages.delete(firstPages.keys().next().value as string);
+}
 
 /** "drag to arrange" as a line of its own: "Drag to arrange". */
 const sentence = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
@@ -218,7 +236,7 @@ function DocumentList({ view, folderId, tagId, org, titleOverride }: { view: Vie
   const createDocument = useCreateDocument();
   const emptyTrash = useMutation(api.documents.emptyTrash);
   const toast = useToast();
-  const [cached, setCached] = useState<Summary[] | null>(null);
+  const [stored, setCached] = useState<Summary[] | null>(null);
   const [confirmEmpty, setConfirmEmpty] = useState(false);
   // A folder's Share dialog, from the folder page's title row (docs/SHARING.md).
   const [sharingFolder, setSharingFolder] = useState(false);
@@ -275,6 +293,14 @@ function DocumentList({ view, folderId, tagId, org, titleOverride }: { view: Vie
       live = false;
     };
   }, [status, fromDevice, profile.id, scopeKey, sort]);
+  // This list's first page as the server last served it (this visit), ahead of the device copy: it's exactly
+  // this list, in the server's order, so the live page replaces it without the notes moving.
+  const listKey = `${profile.id}|${scopeKey}|${view}|${folderId ?? ""}|${tagId ?? ""}|${sort}`;
+  useEffect(() => {
+    if (unsent || status === "LoadingFirstPage") return;
+    keepFirstPage(listKey, results.slice(0, PAGE_SIZE));
+  }, [unsent, status, results, listKey]);
+  const cached = firstPages.get(listKey) ?? stored;
   // Offline, the saved copies come a page at a time too, like the live list.
   const [cachedShown, setCachedShown] = useState(PAGE_SIZE);
 
@@ -310,6 +336,15 @@ function DocumentList({ view, folderId, tagId, org, titleOverride }: { view: Vie
     if (!needle) return docs;
     return docs.filter((d) => (d.title || "Untitled").toLocaleLowerCase().includes(needle) || d.excerpt.toLocaleLowerCase().includes(needle));
   }, [docs, q]);
+  // The grid's first cards draw with the click that opened the list; the rest (below the fold on any screen) follow
+  // in the background a moment later, so the click answers sooner (INP, docs/perf/web-results.md).
+  // (Per list: going from All notes to a folder reuses this view, and starts over.)
+  const cardsKey = `${view}:${folderId ?? ""}:${tagId ?? ""}`;
+  const [allCardsFor, setAllCardsFor] = useState<string | null>(null);
+  useEffect(() => {
+    if (allCardsFor !== cardsKey) startTransition(() => setAllCardsFor(cardsKey));
+  }, [allCardsFor, cardsKey]);
+  const cards = allCardsFor === cardsKey || shown.length <= FIRST_CARDS ? shown : shown.slice(0, FIRST_CARDS);
   const moreCached = fromCache && (kept?.length ?? 0) > cachedShown;
   const canLoadMore = status === "CanLoadMore" || moreCached;
   // The server's list failed and there's nothing else to show: say so (it keeps retrying) instead of loading forever.
@@ -695,6 +730,7 @@ function DocumentList({ view, folderId, tagId, org, titleOverride }: { view: Vie
                   type="button"
                   aria-label={`New page from ${t.name}`}
                   onClick={() => void createDocument({ title: t.name, templateId: t.key })}
+                  data-card-row=""
                   className="flex items-start gap-3 ui-card rounded-control p-4 text-left transition-[transform,box-shadow] hover:-translate-y-px hover:shadow-[var(--shadow-pop)]"
                 >
                   <TemplateTile name={t.icon} />
@@ -768,7 +804,7 @@ function DocumentList({ view, folderId, tagId, org, titleOverride }: { view: Vie
           </ul>
         ) : (
           <ul className={`grid gap-x-[var(--card-gap)] gap-y-[var(--card-row-gap)] ${layout === "compact" ? (cardScale < 1 ? "grid-cols-3 sm:grid-cols-4 lg:grid-cols-5 xl:grid-cols-7" : "grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5") : "grid-cols-[repeat(auto-fill,minmax(var(--note-card-min),1fr))]"}`}>
-            {shown.map((d) => {
+            {cards.map((d) => {
               const on = selection.selected.has(d.id);
               return (
                 <li
@@ -777,7 +813,7 @@ function DocumentList({ view, folderId, tagId, org, titleOverride }: { view: Vie
                   {...cardProps(d)}
                 >
                   {layout === "compact" ? (
-                    <AppLink href={`/d/${d.id}`} className="block h-28 rounded-chip shadow-[var(--shadow-card)] outline-none transition-[transform,box-shadow] duration-200 ease-[var(--ease-folio)] hover:-translate-y-0.5 hover:shadow-[var(--shadow-pop)] focus-visible:ring-2 focus-visible:ring-focus">
+                    <AppLink href={`/d/${d.id}`} data-card-row="" className="block h-28 rounded-chip shadow-[var(--shadow-card)] outline-none transition-[transform,box-shadow] duration-200 ease-[var(--ease-folio)] hover:-translate-y-0.5 hover:shadow-[var(--shadow-pop)] focus-visible:ring-2 focus-visible:ring-focus">
                       <DocumentCardPreview
                         title={d.title}
                         style={d.style}
@@ -813,7 +849,7 @@ function DocumentList({ view, folderId, tagId, org, titleOverride }: { view: Vie
                   {on ? <SelectedCheck /> : null}
                   <div data-card-menu="" className={`absolute top-2 flex items-center gap-1 ${d.starred && layout !== "compact" ? "right-[calc(11cqw+4px)]" : "right-2"} opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100 pointer-coarse:opacity-100`}>
                     {d.kind === "template" && view !== "trash" ? <UseTemplateButton doc={d} raised /> : null}
-                    <div className="ui-raised rounded-chip">
+                    <div className="ui-raised rounded-tiny [&_button]:rounded-tiny">
                       <DocMenu {...menuProps(d)} />
                     </div>
                   </div>

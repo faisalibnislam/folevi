@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { authClient } from "@/lib/auth/client";
-import { MARKETING_URL } from "@/lib/env";
+import { marketingUrl } from "@/lib/env";
+import { isServerEdition } from "@/lib/edition";
 import { desktop } from "@/lib/desktop";
 import { nativeApp } from "@/lib/nativeApp";
 import { hostAuth } from "@/lib/auth/shellFetch";
@@ -36,7 +37,7 @@ export async function unsyncedChangeCount(accountKey: string | null): Promise<nu
 
 /** The website lands on the marketing home page; the apps (iPhone, iPad, Android, Mac) stay on their sign-in screen. */
 function signedOutDestination(): string {
-  return nativeApp() || desktop() ? "/signin?notice=signed_out" : `${MARKETING_URL}/`;
+  return nativeApp() || desktop() ? "/signin?notice=signed_out" : isServerEdition() ? "/signin?notice=signed_out" : `${marketingUrl()}/`;
 }
 
 /**

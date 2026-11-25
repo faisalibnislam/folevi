@@ -36,7 +36,7 @@ import { insertScoped, scopeOfRow, vScopeArg, type ScopeArg } from "./lib/scope"
 import { estimateCredits, type CallUsage, type PlannedCall } from "./lib/credits";
 import { aiPrefsOf } from "./lib/ai/prefs";
 import { REMEMBER_RULE, takeRemember, vMemoryKind } from "./lib/ai/memory";
-import { capabilities, provider, type Content, type Part } from "./lib/ai/provider";
+import { capabilities, provider, type Content, type Part, loadAiSettings } from "./lib/ai/provider";
 import { vAiContext, type AiContext } from "./lib/ai/chat";
 import { recordUserAction } from "./lib/audit";
 import { refreshNoteRefs } from "./lib/ai/sharing";
@@ -297,10 +297,13 @@ async function opening(ctx: ActionCtx, env: Env, question: string, o: { files?: 
  * proposed and says what's left, with Continue.
  */
 async function runAgent(ctx: ActionCtx, messageId: Id<"aiMessages">): Promise<{ status: "done" | "error" }> {
+  await loadAiSettings(ctx);
   const turn = await ctx.runQuery(internal.aiChat.turn, { messageId });
   const prefs = await ctx.runQuery(internal.aiAgent.prefs, {});
+  // The agent's provider and models (Admin > Foli AI). A tool loop runs on the heavy model (lib/ai/config.ts).
+  const route = await ctx.runQuery(internal.aiConfig.publicRoute, { feature: "agent" });
   // The web tools only when the person's settings allow web research and the model can search.
-  const webOn = prefs.webResearch && capabilities().searchGrounding;
+  const webOn = prefs.webResearch && capabilities("heavy", route).searchGrounding;
   const today = new Date().toISOString().slice(0, 10);
   const env: Env = { scope: turn.scope, context: turn.context, today };
   const steps: AgentStep[] = [];
@@ -312,12 +315,12 @@ async function runAgent(ctx: ActionCtx, messageId: Id<"aiMessages">): Promise<{ 
   // What the run's model calls may spend: its budget's hold (web searches are held and bounded on their own).
   let capCredits = 0;
   try {
-    if (!capabilities().tools) fail("maintenance", "The AI model in use can't work with your notes this way yet.");
+    if (!capabilities("heavy", route).tools) fail("maintenance", "The AI model in use can't work with your notes this way yet.");
     // A long note in the conversation gets a long note's budget (lib/ai/agentBudget.ts).
     long = new Set((await ctx.runQuery(internal.aiAgent.noteSizes, env)).filter(isLongNote).map((n) => n.id));
     if (long.size) budget = LONG_BUDGET;
     const plan = webOn ? [...budget.plan, ...WEB_PLAN] : budget.plan;
-    capCredits = estimateCredits(budget.plan, provider().models());
+    capCredits = estimateCredits(budget.plan, route.models);
     // Files sent in the conversation, checked again as the person (refused when the setting is off).
     files = (await ctx.runQuery(internal.aiAttachments.forTurn, { messageId })).files;
     await ctx.runMutation(internal.aiAgent.limit, {});
@@ -380,7 +383,7 @@ async function runAgent(ctx: ActionCtx, messageId: Id<"aiMessages">): Promise<{ 
           { role: "user", parts: [{ text: await opening(ctx, env, turn.question, { files, long, pending }) }] },
         ];
         const deadline = Date.now() + budget.timeoutMs;
-        const model = provider().models().main;
+        const model = route.models.heavy;
         let calls = 0;
         for (let step = 0; step < budget.modelCalls; step++) {
           if (!(await ctx.runMutation(internal.aiAgent.progress, { messageId, steps, phase: step === 0 ? "planning" : "working" }))) {

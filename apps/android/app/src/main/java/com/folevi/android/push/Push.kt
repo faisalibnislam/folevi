@@ -40,7 +40,11 @@ object Push {
 
     fun configured(): Boolean = BuildConfig.FIREBASE_APP_ID.isNotEmpty() && BuildConfig.FIREBASE_API_KEY.isNotEmpty() && BuildConfig.FIREBASE_PROJECT_ID.isNotEmpty() && BuildConfig.FIREBASE_SENDER_ID.isNotEmpty()
 
-    /** Starts Firebase with this build's settings (once); false when the build has none. */
+    /**
+     * Starts Firebase with this build's settings (once); false when the build has none. Synchronized: the app starts
+     * it off the main thread at launch (FoleviApp) while the messaging service may ask for it at the same moment.
+     */
+    @Synchronized
     fun start(context: Context): Boolean {
         if (!configured()) return false
         if (FirebaseApp.getApps(context).isEmpty()) {
@@ -141,6 +145,12 @@ object Push {
 }
 
 class FoleviMessagingService : FirebaseMessagingService() {
+    /** Firebase is ready before the service handles anything, even while the app's own start of it is still running. */
+    override fun onCreate() {
+        Push.start(this)
+        super.onCreate()
+    }
+
     override fun onMessageReceived(message: RemoteMessage) = Push.show(this, message.data)
 
     override fun onNewToken(token: String) = Push.newToken(this, token)

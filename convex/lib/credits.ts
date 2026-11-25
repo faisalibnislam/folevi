@@ -26,7 +26,7 @@ import { subscriptionOf, workspaceSubscriptionOf } from "./billing";
 import { DAY_MS, PACK_VALID_MONTHS, PLAN_CATALOG, TIER_NAMES, TRIAL_DAYS, addMonthsUtc, monthStartUtc, planName, type PlanTier } from "./plans";
 import type { RateRuleName } from "./rateLimit";
 import type { Scope } from "./scope";
-import { priceOf, SEARCH_GROUNDING_NANO_PER_QUERY } from "./ai/capabilities";
+import { capabilitiesOf, priceOf, type TokenPrice } from "./ai/capabilities";
 import { recordFeatureUse, type AiFeature } from "./ai/usage";
 import { recordRefusal, refusalIn, type RefusalKind } from "./ai/safety";
 
@@ -40,27 +40,44 @@ export { GEMINI_PRICES, priceOf } from "./ai/capabilities";
 /** One credit, in nano-dollars ($0.01). */
 export const CREDIT_NANO_USD = 10_000_000;
 
-/** Token counts from one Gemini call (its usageMetadata), or an estimate when none came back. */
+/** Token counts from one provider call (its usage), or an estimate when none came back. */
 export interface CallUsage {
   model: string;
+  /** Every input token, cached ones included. */
   promptTokens: number;
+  /** Of `promptTokens`, those read from the provider's prompt cache (billed at its cached rate). */
+  cachedTokens?: number;
+  /** Of `promptTokens`, those written to the prompt cache (Anthropic bills them at 1.25x input). */
+  cacheWriteTokens?: number;
   /** Answer tokens (candidatesTokenCount). */
   outputTokens: number;
   /** Thinking tokens (thoughtsTokenCount), billed as output. */
   thoughtsTokens: number;
-  /** Google Search queries a grounded call ran (web research), each billed on top of the tokens. */
+  /** Web searches a call ran (web research), each billed on top of the tokens at its provider's price. */
   searches?: number;
-  /** The reply declined (lib/ai/gemini.ts): its kind, and whether it was short enough to be free. */
+  /** The reply declined (lib/ai/gemini.ts, openai.ts, anthropic.ts): its kind, and whether it was short enough to be free. */
   refused?: { kind: RefusalKind; free: boolean };
+}
+
+const whole = (n: number | undefined) => Math.max(0, Math.round(n ?? 0));
+
+/** The rate a call is billed at: a dearer long-prompt rate once its input passes the model's threshold. */
+function rateFor(price: TokenPrice, promptTokens: number): Omit<TokenPrice, "long"> {
+  return price.long && promptTokens > price.long.aboveTokens ? price.long.price : price;
 }
 
 /** The cost of some calls, in nano-dollars (integers, so rounding is exact). */
 export function costNano(calls: CallUsage[]): number {
   let total = 0;
   for (const c of calls) {
-    const p = priceOf(c.model);
-    total += Math.max(0, Math.round(c.promptTokens)) * p.inputNanoPerToken + (Math.max(0, Math.round(c.outputTokens)) + Math.max(0, Math.round(c.thoughtsTokens))) * p.outputNanoPerToken;
-    total += Math.max(0, Math.round(c.searches ?? 0)) * SEARCH_GROUNDING_NANO_PER_QUERY;
+    const prompt = whole(c.promptTokens);
+    const p = rateFor(priceOf(c.model), prompt);
+    // Cached and cache-written tokens are part of the prompt; each is billed at its own rate when the model prices it apart.
+    const cached = p.cachedInputNanoPerToken !== undefined ? Math.min(prompt, whole(c.cachedTokens)) : 0;
+    const written = p.cacheWriteNanoPerToken !== undefined ? Math.min(prompt - cached, whole(c.cacheWriteTokens)) : 0;
+    total += (prompt - cached - written) * p.inputNanoPerToken + cached * (p.cachedInputNanoPerToken ?? 0) + written * (p.cacheWriteNanoPerToken ?? 0);
+    total += (whole(c.outputTokens) + whole(c.thoughtsTokens)) * p.outputNanoPerToken;
+    total += whole(c.searches) * capabilitiesOf(c.model).searchNanoPerQuery;
   }
   return total;
 }
@@ -85,10 +102,17 @@ export interface PlannedCall {
 
 /**
  * A conservative estimate of a request's credits: every planned call at its full input and its maximum
- * output (thinking included in the output budget) on the model it would use.
+ * output (thinking included in the output budget) on the model it would use. A call that isn't fast may
+ * go to the main or the heavy model (lib/ai/config.ts slotFor), so it's held at the dearer of the two.
  */
-export function estimateCredits(calls: PlannedCall[], models: { main: string; fast: string }): number {
-  return creditsFor(calls.map((c) => ({ model: c.fast ? models.fast : models.main, promptTokens: tokensForChars(c.inputChars), outputTokens: c.maxOutputTokens, thoughtsTokens: 0, searches: c.searches ?? 0 })));
+export function estimateCredits(calls: PlannedCall[], models: { main: string; fast: string; heavy?: string }): number {
+  const dearer = (c: CallUsage) => (models.heavy && models.heavy !== models.main ? Math.max(costNano([c]), costNano([{ ...c, model: models.heavy }])) : costNano([c]));
+  if (!calls.length) return 0;
+  const nano = calls.reduce((n, c) => {
+    const call: CallUsage = { model: c.fast ? models.fast : models.main, promptTokens: tokensForChars(c.inputChars), outputTokens: c.maxOutputTokens, thoughtsTokens: 0, searches: c.searches ?? 0 };
+    return n + (c.fast ? costNano([call]) : dearer(call));
+  }, 0);
+  return Math.max(1, Math.ceil(nano / CREDIT_NANO_USD));
 }
 
 // ---------------------------------------------------------------------------------------------------

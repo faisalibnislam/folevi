@@ -1,6 +1,33 @@
 "use client";
 
 import { useLayoutEffect, useState, type CSSProperties, type RefObject } from "react";
+import { sideInsets } from "@/lib/iphone";
+import { fold } from "@/lib/platform";
+
+/**
+ * Where across the window a popup beside `anchor` may sit, and `clamp(left, width)` to keep it there: `margin`
+ * in from the window's sides and clear of the iPhone app's side insets (a closed iPhone Duo's status bar runs
+ * down the right edge). While the window is folded down the middle, on the anchor's side of the fold, as
+ * nothing interactive may sit on it: its right edge before the fold for an anchor left of it, its left edge
+ * past the fold otherwise.
+ */
+export function popupSpan(anchor: { left: number; right: number }, margin = 8): { min: number; max: number; clamp: (left: number, width: number) => number } {
+  const safe = sideInsets();
+  let min = margin + safe.left;
+  let max = window.innerWidth - margin - safe.right;
+  const f = fold();
+  let pastFold = false;
+  if (f?.orientation === "vertical") {
+    if ((anchor.left + anchor.right) / 2 < f.start + f.size / 2) max = Math.min(max, f.start - margin);
+    else {
+      min = Math.max(min, f.start + f.size + margin);
+      pastFold = true;
+    }
+  }
+  // (Too wide for its side: the edge facing the fold wins, so the popup never crosses it.)
+  const clamp = pastFold ? (left: number, width: number) => Math.max(min, Math.min(left, max - width)) : (left: number, width: number) => Math.min(Math.max(min, left), max - width);
+  return { min, max, clamp };
+}
 
 /**
  * Floats a popup (menu, panel, suggestion list) in the browser's top layer (Popover API), fixed next to its
@@ -36,7 +63,7 @@ export function useTopLayer(
       const below = window.innerHeight - a.bottom - gap - margin;
       const above = a.top - gap - margin;
       const up = side === "top" ? !(above < h && below > above) : below < h && above > below;
-      const left = Math.min(Math.max(margin, align === "end" ? a.right - w : a.left), window.innerWidth - w - margin);
+      const left = popupSpan(a, margin).clamp(align === "end" ? a.right - w : a.left, w);
       const top = Math.min(Math.max(margin, up ? a.top - gap - h : a.bottom + gap), window.innerHeight - h - margin);
       setPos({ left, top, width: matchWidth ? w : undefined });
     };

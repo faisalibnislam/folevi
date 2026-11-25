@@ -1,10 +1,10 @@
 // A note's search text row (documentText, lib/documentText.ts) stays equal to the note through creates, edits,
 // renames, moves, Trash, restore and deletes; the backfill builds rows for notes from before; and its search
-// index finds what the note's own index finds (the rollout's widen step, docs/perf/backend-results.md).
+// is what search reads; the backfill and narrow migrations move older notes' text (docs/perf/backend-results.md).
 import { describe, expect, test } from "vitest";
 import { api, internal } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
-import { para, person, PERSONAL, setup, ulid, type T } from "./helpers";
+import { para, person, PERSONAL, setup, textOf, ulid, type T } from "./helpers";
 
 type Person = Awaited<ReturnType<typeof person>>;
 
@@ -21,7 +21,7 @@ async function newNote(p: Person, title: string, folderId: string | null = null)
 
 const write = (documentId: string, text: string) => ({ opId: ulid(), kind: "block.upsert", documentId, block: para(ulid(), text), baseRevision: null, fields: ["content", "position"] });
 
-/** Every note of the person's Personal has exactly one documentText row, equal to the note. */
+/** Every note of the person's Personal has exactly one documentText row, with the note's search fields. */
 async function expectTextMatchesNotes(t: T, profileId: string) {
   await t.run(async (ctx) => {
     const owner = profileId as Id<"profiles">;
@@ -38,13 +38,10 @@ async function expectTextMatchesNotes(t: T, profileId: string) {
     for (const d of docs) {
       const r = byDoc.get(d._id);
       expect(r, d.title).toBeDefined();
-      expect({ searchText: r!.searchText, inTrash: r!.inTrash, folderId: r!.folderId, createdBy: r!.createdBy, kind: r!.kind }).toEqual({
-        searchText: d.searchText,
-        inTrash: d.inTrash,
-        folderId: d.folderId,
-        createdBy: d.createdBy,
-        kind: d.kind,
-      });
+      expect({ inTrash: r!.inTrash, folderId: r!.folderId, createdBy: r!.createdBy, kind: r!.kind }).toEqual({ inTrash: d.inTrash, folderId: d.folderId, createdBy: d.createdBy, kind: d.kind });
+      // The text starts with the title; the note row keeps no copy.
+      expect(r!.searchText.startsWith(d.title)).toBe(true);
+      expect(d.searchText).toBeUndefined();
     }
   });
 }
@@ -71,34 +68,32 @@ describe("documentText", () => {
     await a.as.mutation(api.documents.deletePermanently, { documentId: two, confirmTitle: "Other" });
     await expectTextMatchesNotes(t, a.profileId);
 
-    // Its search index finds what the note's own index finds.
-    const hits = await t.run(async (ctx) => {
-      const owner = a.profileId as Id<"profiles">;
-      const viaNote = await ctx.db
-        .query("documents")
-        .withSearchIndex("search_text", (s) => s.search("searchText", "giraffes").eq("ownerProfileId", owner).eq("inTrash", false))
-        .collect();
-      const viaText = await ctx.db
-        .query("documentText")
-        .withSearchIndex("search_text", (s) => s.search("searchText", "giraffes").eq("ownerProfileId", owner).eq("inTrash", false))
-        .collect();
-      return { viaNote: viaNote.map((d) => d._id as string), viaText: viaText.map((r) => r.documentId as string) };
-    });
-    expect(hits.viaText).toEqual(hits.viaNote);
-    expect(hits.viaText).toHaveLength(1);
+    // Search finds notes by their text through it.
+    expect((await a.as.query(api.search.documents, { scope: PERSONAL, query: "giraffes" })).map((r) => r.id)).toEqual([one]);
+    expect(await textOf(t, one)).toContain("A line about giraffes");
   });
 
-  test("the backfill builds rows for notes from before, once", async () => {
+  test("the backfill copies text kept on note rows from before; the narrow step empties those copies", async () => {
     const t = setup();
     const a = await person(t, "text-backfill@example.com");
-    for (let i = 0; i < 30; i++) await newNote(a, `Old ${i}`);
+    const ids: string[] = [];
+    for (let i = 0; i < 30; i++) ids.push(await newNote(a, `Old ${i}`));
+    // As notes were before: text on the row, no documentText row.
     await t.run(async (ctx) => {
       for (const r of await ctx.db.query("documentText").collect()) await ctx.db.delete(r._id);
+      for (const d of await ctx.db.query("documents").collect()) await ctx.db.patch(d._id, { searchText: `${d.title}\nlegacy body` });
     });
     const first = await t.action(internal.migrations.backfillDocumentText, {});
     expect(first.failed).toBe(0);
     expect(first.copied).toBeGreaterThanOrEqual(30);
-    await expectTextMatchesNotes(t, a.profileId);
+    expect(await textOf(t, ids[3]!)).toBe("Old 3\nlegacy body");
     expect((await t.action(internal.migrations.backfillDocumentText, {})).copied).toBe(0);
+    // Found by search through the copied rows.
+    expect((await a.as.query(api.search.documents, { scope: PERSONAL, query: "legacy" })).length).toBeGreaterThanOrEqual(30);
+
+    await t.mutation(internal.migrations.narrowDocumentText, {});
+    await t.finishAllScheduledFunctions(() => {});
+    await expectTextMatchesNotes(t, a.profileId);
+    expect(await textOf(t, ids[3]!)).toBe("Old 3\nlegacy body");
   });
 });

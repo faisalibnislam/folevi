@@ -51,7 +51,8 @@ final class PlacesTests: XCTestCase {
         XCTAssertEqual(list[2]["unread"] as? Int, 4)
         XCTAssertEqual(list[2]["name"] as? String, "Benjamin")
         XCTAssertEqual(list[1]["unread"] as? Int, 0, "Ana's page said nothing")
-        XCTAssertEqual(Set(list[1].keys), ["kind", "id", "userId", "profileId", "name", "email", "avatarUrl", "workspaces", "unread", "reminders", "waiting"])
+        XCTAssertEqual(Set(list[1].keys), ["kind", "id", "userId", "profileId", "name", "email", "avatarUrl", "workspaces", "unread", "reminders", "waiting", "server"])
+        XCTAssertTrue(list[1]["server"] is NSNull, "a Folevi Cloud account has no server")
     }
 
     @MainActor

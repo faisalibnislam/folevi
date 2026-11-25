@@ -14,7 +14,7 @@ import { hasValidScope, personalScope, SCOPED_TABLES, sameScope, scopeOfRow, wor
 import { isSealed } from "./lib/e2ee/state";
 import { nextSeq } from "./lib/seq";
 import { buildDraftStats, buildFolderStats } from "./lib/listStats";
-import { buildDocumentText } from "./lib/documentText";
+import { buildDocumentText, documentTextOf } from "./lib/documentText";
 
 /** Fills in the card preview (documents.preview) for pages saved before previews existed. */
 export const backfillDocumentPreviews = internalMutation({
@@ -664,5 +664,29 @@ export const buildDocumentTextBatch = internalMutation({
       if (doc && (await buildDocumentText(ctx, doc))) n++;
     }
     return n;
+  },
+});
+
+/**
+ * Empties the old copy of note text on the note rows (documents.searchText) once readers use documentText (run
+ * only after backfillDocumentText has finished on that deployment). 100 notes per batch, rescheduling itself.
+ * Idempotent. After it has run everywhere, the field can be dropped from the schema.
+ *
+ *   npx convex run migrations:narrowDocumentText
+ */
+export const narrowDocumentText = internalMutation({
+  args: { cursor: v.optional(v.union(v.string(), v.null())) },
+  handler: async (ctx, args) => {
+    const page = await ctx.db.query("documents").paginate({ numItems: 100, cursor: args.cursor ?? null });
+    let cleared = 0;
+    for (const doc of page.page) {
+      if (doc.searchText === undefined) continue;
+      // A note without a documentText row keeps its copy (the backfill hasn't reached it): nothing is lost.
+      if (!(await documentTextOf(ctx, doc._id))) continue;
+      await ctx.db.patch(doc._id, { searchText: undefined });
+      cleared++;
+    }
+    if (!page.isDone) await ctx.scheduler.runAfter(0, internal.migrations.narrowDocumentText, { cursor: page.continueCursor });
+    return { cleared, done: page.isDone };
   },
 });

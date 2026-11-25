@@ -27,6 +27,7 @@
     "format:check": "prettier --check ."
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "1.14.0",
     "@better-auth/oauth-provider": "1.6.33",
     "@better-auth/passkey": "1.6.33",
     "@convex-dev/better-auth": "0.12.5",
@@ -37,6 +38,7 @@
     "better-auth": "1.6.33",
     "convex": "1.46.0",
     "fflate": "0.8.3",
+    "openai": "7.64.0",
     "ts-fsrs": "5.4.2",
     "web-push": "3.6.7"
   },
@@ -51,7 +53,7 @@
     "prettier": "3.9.9",
     "turbo": "2.11.4",
     "typescript": "6.0.3",
-    "typescript-eslint": "8.70.1",
+    "typescript-eslint": "8.72.2",
     "vitest": "5.0.5"
   }
 }

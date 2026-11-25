@@ -1,0 +1,21 @@
+# Render Blueprint for Folevi Server. Unverified: deploy once before publishing a "Deploy to Render" button.
+services:
+  - type: web
+    name: folevi-server
+    # Render disks are owned by root: Dockerfile.render starts the image as root so its entrypoint can fix the
+    # ownership of /data; it then drops to uid 10001 before folevid starts.
+    runtime: docker
+    dockerfilePath: ./Dockerfile.render
+    plan: standard
+    healthCheckPath: /.well-known/folevi.json
+    envVars:
+      - key: PORT
+        value: "8460"
+      - key: FOLEVI_PORT
+        value: "8460"
+      - key: FOLEVI_PUBLIC_URL
+        sync: false
+    disk:
+      name: folevi-data
+      mountPath: /data
+      sizeGB: 10

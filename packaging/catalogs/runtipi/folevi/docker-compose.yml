@@ -1,0 +1,21 @@
+services:
+  folevi:
+    image: ghcr.io/folevi/folevi-server:1.5.73
+    container_name: folevi
+    restart: unless-stopped
+    # Starts as root only to make the host folder owned by uid 10001, then drops to it (docker-entrypoint.sh).
+    user: "0:0"
+    ports:
+      - ${APP_PORT}:8460
+    volumes:
+      - ${APP_DATA_DIR}/data:/data
+    stop_grace_period: 60s
+    networks:
+      - tipi_main_network
+    labels:
+      traefik.enable: ${APP_EXPOSED}
+      traefik.http.services.folevi.loadbalancer.server.port: 8460
+      traefik.http.routers.folevi.rule: Host(`${APP_DOMAIN}`)
+      traefik.http.routers.folevi.entrypoints: websecure
+      traefik.http.routers.folevi.tls.certresolver: myresolver
+      runtipi.managed: true

@@ -1,8 +1,9 @@
 // app://folevi, the built-in interface's origin (docs/MAC_WEBKIT_PLAN.md §3; Electron's protocol.ts, whose rules
 // this keeps): the static export, with
 // - the SPA fallback: any path that isn't a file gets index.html, and the client router takes it from there;
-// - a Content-Security-Policy header chosen by the view's mode (local: nothing but the app itself; account:
-//   Folevi and Convex), which narrows the export's own meta policy (both apply);
+// - a Content-Security-Policy header chosen by the view's mode and place (local: nothing but the app itself;
+//   account: Folevi and Convex, or for a Folevi Server place that server's addresses only, ShellPolicy), which
+//   narrows the export's own meta policy (both apply);
 // - /_files/<sha256>: a library's attachments, through a pluggable reader (WM1 plugs in the iOS library), with
 //   Range for audio and video, nosniff and a sandboxing policy of their own;
 // - /_bridge/<id>: bridge calls too big for a message (POST the JSON body, then name the id in the message) and
@@ -42,6 +43,10 @@ struct AppRequest {
     var body: Data? = nil
     /// The mode of the view asking ("unset", "local" or "account").
     var mode: String = "unset"
+    /// The Folevi Server of the view's place (or of its sign-in screen); nil: Folevi Cloud.
+    var server: ShellServer? = nil
+    /// The view shows the sign-in screen (no place yet): it may look up any server (ShellPolicy.csp).
+    var signIn: Bool = false
 
     func header(_ name: String) -> String? { headers.first { $0.key.caseInsensitiveCompare(name) == .orderedSame }?.value }
 }
@@ -106,6 +111,10 @@ final class AppScheme: NSObject, WKURLSchemeHandler {
     let root: URL
     /// The mode of the view a request comes from (its place's, WindowManager knows).
     var modeOf: (WKWebView) -> String = { _ in "unset" }
+    /// The Folevi Server of the view's place (Places sets it), for its policy.
+    var serverOf: (WKWebView) -> ShellServer? = { _ in nil }
+    /// Whether the view shows the sign-in screen (Places sets it).
+    var signInOf: (WKWebView) -> Bool = { _ in false }
     var files: LibraryFiles = NoLibraryFiles()
     let serviceOrigin: String
     let extraConnect: [String]
@@ -126,7 +135,7 @@ final class AppScheme: NSObject, WKURLSchemeHandler {
 
     func webView(_ webView: WKWebView, start task: WKURLSchemeTask) {
         guard let url = task.request.url else { return task.didFailWithError(URLError(.badURL)) }
-        var request = AppRequest(url: url, method: task.request.httpMethod ?? "GET", headers: task.request.allHTTPHeaderFields ?? [:], body: task.request.httpBody, mode: modeOf(webView))
+        var request = AppRequest(url: url, method: task.request.httpMethod ?? "GET", headers: task.request.allHTTPHeaderFields ?? [:], body: task.request.httpBody, mode: modeOf(webView), server: serverOf(webView), signIn: signInOf(webView))
         if request.body == nil, let stream = task.request.httpBodyStream { request.body = Self.drain(stream) }
         let id = ObjectIdentifier(task)
         work.async {
@@ -220,7 +229,7 @@ final class AppScheme: NSObject, WKURLSchemeHandler {
         let type = Self.types[real.pathExtension.lowercased()] ?? "application/octet-stream"
         var headers = ["Content-Type": type]
         if type.hasPrefix("text/html") {
-            headers["Content-Security-Policy"] = Self.csp(mode: r.mode, serviceOrigin: serviceOrigin, extraConnect: extraConnect)
+            headers["Content-Security-Policy"] = Self.csp(mode: r.mode, serviceOrigin: serviceOrigin, extraConnect: extraConnect, server: r.server, signIn: r.signIn)
             headers["Cache-Control"] = "no-cache"
         } else if segments.count > 1, segments[0] == "_next", segments[1] == "static" {
             // Next's hashed assets never change under the same name.
@@ -313,28 +322,10 @@ final class AppScheme: NSObject, WKURLSchemeHandler {
     static let filesCsp = "default-src 'none'; img-src 'self' data:; media-src 'self'; style-src 'unsafe-inline'; sandbox"
 
     /// The header policy for the interface's pages (protocol.ts shellCsp): local mode and the first-launch choice
-    /// reach nothing but app://folevi itself; signed-in mode adds Folevi's website and Convex.
-    static func csp(mode: String, serviceOrigin: String, extraConnect: [String] = []) -> String {
-        let account = mode == "account"
-        var connect = ["'self'"]
-        if account { connect += [serviceOrigin, "https://*.convex.cloud", "wss://*.convex.cloud", "https://*.convex.site"] + extraConnect }
-        var seen = Set<String>()
-        connect = connect.filter { seen.insert($0).inserted }
-        return [
-            "default-src 'self'",
-            // Next's inline bootstrap scripts carry no nonce in a static export.
-            "script-src 'self' 'unsafe-inline'",
-            "style-src 'self' 'unsafe-inline'",
-            "img-src 'self' data: blob: https:",
-            "media-src 'self' blob:\(account ? " https:" : "")",
-            "font-src 'self'",
-            "connect-src \(connect.joined(separator: " "))",
-            "frame-src https:",
-            "worker-src 'self' blob:",
-            "object-src 'none'",
-            "base-uri 'self'",
-            "form-action 'self'",
-        ].joined(separator: "; ")
+    /// reach nothing but app://folevi itself; signed-in mode adds Folevi's website and Convex, or, for a Folevi
+    /// Server place (`server`), that server's own origins instead (shared with iOS: ShellPolicy, ShellServer.swift).
+    static func csp(mode: String, serviceOrigin: String, extraConnect: [String] = [], server: ShellServer? = nil, signIn: Bool = false) -> String {
+        ShellPolicy.csp(mode: mode, serviceOrigin: serviceOrigin, extraConnect: extraConnect, server: server, signIn: signIn)
     }
 
     static let types: [String: String] = [

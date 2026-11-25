@@ -1,0 +1,50 @@
+#!/bin/sh
+# DSM calls this with start, stop, status or log.
+. "$(dirname "$0")/common"
+
+running() { [ -f "$PID_FILE" ] && kill -0 "$(cat "$PID_FILE")" 2>/dev/null; }
+
+case "$1" in
+  start)
+    running && exit 0
+    DATA="$(data_dir)"
+    if [ ! -d "$DATA" ] || [ ! -w "$DATA" ]; then
+      plog "the data folder $DATA is missing or not writable"
+      exit 1
+    fi
+    plog "starting Folevi Server, data in $DATA"
+    FOLEVI_PACKAGE=synology FOLEVI_MANAGED_BY=store nohup "$FOLEVID" run --data "$DATA" --bundle "$BUNDLE" >> "$PKG_VAR/folevid.out" 2>&1 &
+    echo $! > "$PID_FILE"
+    sleep 2
+    if ! running; then plog "folevid exited right away; see $DATA/logs/folevid.log"; exit 1; fi
+    # Keep the setup address where "View log" in Package Center shows it.
+    ( i=0; while [ $i -lt 60 ]; do
+        url="$("$FOLEVID" setup-url --data "$DATA" --bundle "$BUNDLE" 2>/dev/null)" && [ -n "$url" ] && { plog "setup address: $url"; break; }
+        i=$((i + 1)); sleep 2
+      done ) >/dev/null 2>&1 &
+    exit 0
+    ;;
+  stop)
+    if running; then
+      pid="$(cat "$PID_FILE")"
+      kill -TERM "$pid" 2>/dev/null
+      i=0
+      while kill -0 "$pid" 2>/dev/null && [ $i -lt 60 ]; do sleep 1; i=$((i + 1)); done
+      kill -0 "$pid" 2>/dev/null && { plog "folevid did not stop in 60 s; killing it"; kill -KILL "$pid" 2>/dev/null; }
+    fi
+    rm -f "$PID_FILE"
+    plog "stopped"
+    exit 0
+    ;;
+  status)
+    running && exit 0
+    exit 3
+    ;;
+  log)
+    echo "$LOG_FILE"
+    exit 0
+    ;;
+  *)
+    exit 1
+    ;;
+esac

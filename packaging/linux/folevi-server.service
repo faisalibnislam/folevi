@@ -1,0 +1,36 @@
+[Unit]
+Description=Folevi Server
+Documentation=https://folevi.com/server
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=folevi
+Group=folevi
+# Updates come from apt or dnf; the admin panel says so (CONTRACT.md section 5, GET /v1/update).
+Environment=FOLEVI_MANAGED_BY=apt
+EnvironmentFile=-/etc/default/folevi-server
+ExecStart=/opt/folevi/bin/folevid run --data /var/lib/folevi --bundle /opt/folevi
+# folevid stops the backend and web app cleanly on SIGTERM.
+KillMode=mixed
+TimeoutStopSec=60
+Restart=on-failure
+RestartSec=5
+# Exit code 2 is a bad configuration (CONTRACT.md section 10): restarting will not fix it.
+RestartPreventExitStatus=2
+# Lets folevid bind 80 and 443 on a public server (FOLEVI_PORT=80, FOLEVI_HTTPS_PORT=443) without root.
+AmbientCapabilities=CAP_NET_BIND_SERVICE
+CapabilityBoundingSet=CAP_NET_BIND_SERVICE
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+PrivateDevices=true
+ReadWritePaths=/var/lib/folevi
+StateDirectory=folevi
+StateDirectoryMode=0750
+LimitNOFILE=65536
+
+[Install]
+WantedBy=multi-user.target

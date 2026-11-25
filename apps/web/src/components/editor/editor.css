@@ -449,7 +449,7 @@ mark[class^="fb-hl-"], .fb-hl-yellow, .fb-hl-green, .fb-hl-blue, .fb-hl-pink { c
   position: fixed; left: 0; top: 0; z-index: 81; height: 3px; pointer-events: none; opacity: 0;
   border-radius: var(--radius-tiny); background: var(--color-ember);
   box-shadow: 0 0 0 3px color-mix(in oklab, var(--color-ember) 20%, transparent);
-  transition: transform 120ms var(--motion-easing), width 120ms var(--motion-easing), opacity 120ms;
+  transition: transform 120ms var(--motion-easing), opacity 120ms; /* (not width: a layout property) */
 }
 .fb-drop-line::before {
   content: ""; position: absolute; left: -5px; top: 50%; width: 10px; height: 10px; margin-top: -5px;

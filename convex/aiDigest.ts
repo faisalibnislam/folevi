@@ -16,6 +16,7 @@
 // A skipped digest (no AI on the plan, out of credits, no longer in the workspace, the model failed) is
 // told once per reason in the notification bell, never by email. Note content is never emailed or logged.
 // Turning digests off (or AI off) stops everything: nothing is scheduled, read or sent.
+import { noteText } from "./lib/documentText";
 import { v } from "convex/values";
 import { internalAction, query, type MutationCtx, type QueryCtx } from "./_generated/server";
 import { internalMutation, mutation } from "./lib/functions";
@@ -252,7 +253,7 @@ async function material(ctx: Ctx, profile: Doc<"profiles">, scope: Scope, since:
     // An encrypted note: its readable copy for Foli AI (Background Foli AI on), else it's left out.
     const copy = isSealed(d) ? await sealedAiCopy(ctx, d) : null;
     if (isSealed(d) && !copy) continue;
-    notes.push({ id: d.publicId, title: (copy ? copy.title : d.title) || "Untitled", text: (copy ? copy.text : d.searchText).slice(0, DIGEST_LIMITS.noteChars), isNew: d.createdAt > since });
+    notes.push({ id: d.publicId, title: (copy ? copy.title : d.title) || "Untitled", text: (copy ? copy.text : await noteText(ctx, d._id)).slice(0, DIGEST_LIMITS.noteChars), isNew: d.createdAt > since });
   }
 
   // Tasks: in a workspace only the person's own (assigned to them or made by them); in Personal, all.

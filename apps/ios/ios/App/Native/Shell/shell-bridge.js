@@ -328,10 +328,21 @@ var foleviShellBridge = function (SHELL, host) {
   var placeList = function (r) {
     return r && Array.isArray(r.places) ? r.places : [];
   };
+  // A Folevi Server place's server (docs/self-hosting/CONTRACT.md §6 notes): its name and the addresses in use now
+  // ({ origin, addedOrigin, name, version, serverId, urls: { app, convex, convexSite } }); null: Folevi Cloud.
+  var bootServer = function (v) {
+    if (!v || typeof v !== "object" || !v.urls || typeof v.urls !== "object") return null;
+    try {
+      return Object.freeze(JSON.parse(JSON.stringify(v)));
+    } catch (e) {
+      return null;
+    }
+  };
   var places = SHELL.places && typeof SHELL.places === "object"
     ? Object.freeze({
         current: typeof SHELL.places.current === "string" ? SHELL.places.current : null,
         background: SHELL.places.background === true,
+        server: bootServer(SHELL.places.server),
         list: function () {
           return shellCall("placesList", {}, "Error").then(placeList);
         },
@@ -377,6 +388,23 @@ var foleviShellBridge = function (SHELL, host) {
         setQuickAddPlace: function (id) {
           return shellCall("placesSetQuickAdd", { id: String(id) }, "Error").then(nothing);
         },
+        // "Your own server": the app checks the address and the server's /.well-known/folevi.json itself, then
+        // opens that server's sign-in (the page loads again). `info` is the page's copy, not trusted. Rejects with
+        // { code: "bad_address" | "unreachable" | "not_folevi" | "folevi_cloud" | "server_outdated" | "app_outdated" | "needs_setup" }.
+        addServerPlace: function (o) {
+          var origin = o && typeof o.origin === "string" ? o.origin : "";
+          return shellCall("placesAddServer", { origin: origin }, "Error").then(value);
+        },
+        // Folevi servers on the home network (Bonjour): [{ name, origin, serverId, version }].
+        listLocalServers: function () {
+          return shellCall("placesLocalServers", {}, "Error").then(function (r) {
+            return r && Array.isArray(r.servers) ? r.servers : [];
+          });
+        },
+        // A QR code read with the camera (CONTRACT §6.1; hosts that can scan: the iPhone and iPad app). Resolves with
+        // the code's text, or null when the person closed the scanner; rejects with { code: "camera_denied", message }
+        // when camera access is off. Hosts that can't scan leave it out and the page hides its button.
+        scanCode: typeof host.scanCode === "function" ? host.scanCode : undefined,
       })
     : undefined;
 

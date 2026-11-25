@@ -151,3 +151,42 @@ them, so moving them would only add a read per card.
 Write cost while both copies are kept (300-note library): typing a block reads 25 documents and writes 9 (step 2:
 23 and 8), and writes the text twice until step 3.
 
+### Step 4: note text switch and narrow (draft PR, waits for the owner)
+
+Search (`search.documents`, backlinks' unlinked mentions, Foli AI's keyword half) queries `documentText.search_text`
+and reads the note rows of its hits; Spotlight, Foli AI context, digests, the morning routine and the e2ee readable
+copy read the text through `noteText`. `refreshDerived` writes the text to `documentText` only (`setNoteText`), new
+notes start with their title there, and sealing a note empties its row. `documents.searchText` is optional and no
+longer written; `migrations:narrowDocumentText` empties the old copies (only for notes that have a `documentText`
+row). The `documents.search_text` index is dropped.
+
+Reads at 5,000 notes, step 2 → step 4 (the generated notes are short, about 1 KB of text each apart from the 50 long
+ones, so a library with longer notes gains more):
+
+| Function | Bytes read, step 2 → step 4 | Docs read |
+|---|---:|---:|
+| documents.list all (50) | 202.0 KB → 130.0 KB | 227 → 227 |
+| documents.list unsorted (50) | 160.7 KB → 111.7 KB | 149 → 149 |
+| documents.list starred (50) | 201.1 KB → 148.7 KB | 238 → 238 |
+| documents.list folder (300 notes, 50) | 224.9 KB → 117.0 KB | 155 → 155 |
+| documents.list tag (50) | 107.0 KB → 85.4 KB | 213 → 213 |
+| documents.get (long note) | 37.5 KB → 6.4 KB | 11 → 11 |
+| blocks.list (long note) | 140.6 KB → 109.5 KB | 169 → 169 |
+| sync.manifest (first page) | 1.08 MB → 747.3 KB | 733 → 733 |
+| search.documents 'project' | 423.9 KB → 450.1 KB | 188 → 312 |
+| sync.push (edit a block) | 29.3 KB → 25.3 KB | 25 → 25 (writes the text once again) |
+
+Search reads a text row and a note row per hit, so it reads more documents for about the same bytes.
+`organization.index` previews come from `listStats` (step 2), so they don't change here.
+
+Rollout, in order (the owner's OK for each production step):
+1. #91 (widen) merged and deployed.
+2. `npx convex run --prod migrations:backfillDocumentText`, then check that `documentText` has as many rows as
+   `documents`. If it reports `failed` notes, run it again (it only copies notes without a row).
+3. Merge the switch PR. Production then reads text from `documentText`.
+4. `npx convex run --prod migrations:narrowDocumentText` empties the old copies (it skips any note without a
+   `documentText` row, so nothing is lost).
+Rollback: before step 4, revert the switch PR (the old copies are still on the note rows, and the hook kept both in
+step until the switch). After step 4, reverting also needs the text copied back to the rows (a small migration from
+`documentText`); ask before running step 4 if that matters.
+

@@ -96,7 +96,7 @@ enum WebIconSymbols {
         .bell: "bell", .bellOff: "bell.slash", .bellPlus: "bell.badge", .bellMinus: "bell.slash", .bold: "bold",
         .italic: "italic", .underline: "underline", .strikethrough: "strikethrough", .bookOpen: "book",
         .bookmark: "bookmark", .bookmarkOff: "bookmark.slash", .bookmarkPlus: "bookmark", .brain: "brain",
-        .briefcase: "briefcase", .calendar: "calendar", .calendarDays: "calendar", .calendarPlus: "calendar.badge.plus",
+        .briefcase: "briefcase", .calendarDays: "calendar", .calendarPlus: "calendar.badge.plus",
         .calendarCheck: "calendar.badge.checkmark", .calendarClock: "calendar.badge.clock", .calendarRange: "calendar",
         .camera: "camera", .check: "checkmark", .circleCheck: "checkmark.circle", .circleCheckBig: "checkmark.circle",
         .circleX: "xmark.circle", .circlePlus: "plus.circle", .circleMinus: "minus.circle", .circleAlert: "exclamationmark.circle",

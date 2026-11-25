@@ -52,7 +52,7 @@ export interface LibraryHealth {
 export interface LibraryDevice {
   deviceId: string;
   name: string;
-  platform: "mac" | "ios" | "android" | "web";
+  platform: "mac" | "ios" | "android" | "web" | "windows" | "linux";
   appVersion: string;
   /** When it last wrote its record (its last sync). */
   lastSeen: number;

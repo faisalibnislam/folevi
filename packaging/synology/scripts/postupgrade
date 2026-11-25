@@ -1,0 +1,4 @@
+#!/bin/sh
+. "$(dirname "$0")/common"
+plog "upgraded to $SYNOPKG_PKGVER"
+exit 0

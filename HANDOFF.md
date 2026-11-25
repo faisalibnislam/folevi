@@ -2,7 +2,7 @@
 
 > Read this first if you are a Claude (or any agent) picking this project up, on this Mac or another one. Then read `CLAUDE.md`, `docs/HANDOFF.md` (the long handoff: unfinished branches, release detail, what the owner is waiting on) and `docs/claude-context/memory/MEMORY.md` (the owner's standing rules). Keep this file current: after every change to the project, update "Current state", "Next steps" and "Change log", and commit it.
 
-Last updated: 2026-11-23 · Written on: Faisal's MacBook Pro M5
+Last updated: 2026-11-24 · Written on: Faisal's MacBook Pro M5
 
 ## 1. What this is
 
@@ -25,7 +25,9 @@ on `origin/main`.
 | Backend | Convex, production deployment `fastidious-clownfish-123` | Live |
 | Folevi for Mac | `apps/mac` (AppKit + native screens + one WKWebView for the editor), Developer ID, notarized, Sparkle updates from `folevi.com/download/mac/appcast.xml` | Shipped by direct download only (no Mac App Store build) |
 | Folevi for iPhone and iPad | `apps/ios` (native SwiftUI/UIKit screens, web note editor), iOS 18+ | TestFlight internal group "Folevi team" only; never submitted to App Review |
+| Android | The Capacitor app on branch `claude/android-capacitor-197cf4` (PR 69); `apps/android` on `main` still holds the native Compose app (Gradle root `apps/android`, modules `engine`, `app`) | **Active** (owner, 2026-11-25: "we need Android"): 1.5.74 (build 89) on Play internal testing, PR 69 not merged yet. Only the native Compose app is paused (owner, 2026-11-24: one web app everywhere) |
 | Android | `apps/android`: a native Compose app (Gradle root `apps/android`, modules `engine`, `app`); the Capacitor app is gone | **Resumed 2026-11-23** as a native app "just like iPhone" for phones, foldables, tablets and Googlebooks; first build complete on branch `claude/android-native-622675` (not merged, not on Play; `docs/ANDROID_NATIVE_PLAN.md`) |
+| Folevi for Windows and Linux | `apps/desktop` (Tauri 2, system web view): Windows ARM64/x64 (NSIS, MSI), Linux x86_64/aarch64 (AppImage, deb, rpm, Flatpak); `docs/DESKTOP_APP.md` | **Built 2026-11-24** on branch `claude/desktop-tauri` (replaces the Electron PR 58): CI test builds only; not merged, not published |
 | Web Clipper | `apps/clipper` (Chrome/Edge extension, own lockfile) | Built and tested in CI; store listing status: see `apps/clipper/STORE.md` |
 | MCP server listing | `mcp/` (`server.json`) | Folevi exposes an MCP endpoint through its OAuth provider |
 
@@ -212,7 +214,7 @@ Then, each with the owner's OK:
 
 | Secret | Where it lives | Moving to a new Mac |
 | --- | --- | --- |
-| Convex production env (`BETTER_AUTH_SECRET`, `FOLEVI_SERVER_SECRET`, `FOLEVI_HASH_SALT`, `FOLEVI_FILE_URL_SECRET`, `RESEND_API_KEY`, `RESEND_WEBHOOK_SECRET`, `GEMINI_API_KEY`, `POLAR_ACCESS_TOKEN`, `POLAR_WEBHOOK_SECRET`, `POLAR_PRODUCT_*`, `VAPID_*`, `UNSPLASH_ACCESS_KEY`, `GOOGLE_CLIENT_ID/SECRET`, Sign in with Apple `APPLE_SIGNIN_*`, `SUPPORT_NOTIFY_EMAIL`) | Convex deployment env (dashboard or `npx convex env list --deployment fastidious-clownfish-123`) | Nothing to move; log in to Convex |
+| Convex production env (`BETTER_AUTH_SECRET`, `FOLEVI_SERVER_SECRET`, `FOLEVI_HASH_SALT`, `FOLEVI_FILE_URL_SECRET`, `RESEND_API_KEY`, `RESEND_WEBHOOK_SECRET`, `GEMINI_API_KEY` (optional since 2026-11-25: keys can be saved in Admin > Foli AI), `OPENAI_API_KEY` and `ANTHROPIC_API_KEY` (optional, same), `POLAR_ACCESS_TOKEN`, `POLAR_WEBHOOK_SECRET`, `POLAR_PRODUCT_*`, `VAPID_*`, `UNSPLASH_ACCESS_KEY`, `GOOGLE_CLIENT_ID/SECRET`, Sign in with Apple `APPLE_SIGNIN_*`, `SUPPORT_NOTIFY_EMAIL`) | Convex deployment env (dashboard or `npx convex env list --deployment fastidious-clownfish-123`) | Nothing to move; log in to Convex |
 | Vercel env (`CONVEX_DEPLOY_KEY`, `NEXT_PUBLIC_*` URLs, `FOLEVI_SERVER_SECRET`, same value as Convex) | Vercel project settings | Nothing to move |
 | GitHub Actions secrets/vars (`CONVEX_DEPLOY_KEY`, `BACKUP_CONVEX_DEPLOY_KEY`, `BACKUP_R2_ACCESS_KEY_ID`, `BACKUP_R2_SECRET_ACCESS_KEY`, vars `BACKUP_AGE_RECIPIENT`, `BACKUP_R2_ENDPOINT`, `BACKUP_R2_BUCKET`, `FOLEVI_DEPLOY_ENVIRONMENT`) | GitHub repo settings | Nothing to move. The backup age private key is kept offline by the owner |
 | Local dev env (`apps/web/.env.local`, root `.env.local`) | This Mac only, gitignored | Copy by hand (AirDrop/password manager) or regenerate with `npx convex dev` + `node scripts/setup-local.mjs` |
@@ -247,7 +249,314 @@ The ones most likely to be broken:
 - Snapshot tests: re-record only your own snapshots; never clear `__Snapshots__` wholesale.
 - Give before/after screenshots for UI work and ask the owner with clear options when a decision is theirs.
 
+## 9. Current state (as of 2026-11-25)
+
+**Foli AI on Gemini, OpenAI and Anthropic (branch `claude/foli-ai-openai-anthropic-8112bb`, 2026-11-25, PR open, not
+merged).** Owner's decisions: `docs/claude-context/memory/foli-ai-multi-provider-decisions.md`. Admin > Foli AI
+(`/admin/foli-ai`, `convex/aiConfig.ts`, `components/admin/FoliAiView.tsx`) picks a provider per feature (chat,
+agent, writing, research, attachments, digests, routines, knowledge graph, other) and three models per provider
+(Fast, Main, Heavy; Heavy = tools, web search, files, prompts over ~50k tokens). Keys are saved by the owner,
+sealed in `aiProviderKeys` (AES-GCM from `FOLEVI_HASH_SALT`), shown only as set + last 4; env vars still work.
+Adapters: `lib/ai/gemini.ts` (as before, model and key now from the route), `lib/ai/openai.ts` (OpenAI SDK,
+Responses API), `lib/ai/anthropic.ts` (Anthropic SDK, Messages API), shared bits in `lib/ai/common.ts`, routing in
+`lib/ai/config.ts`. Transcription and search embeddings always use Gemini; no cross-provider fallback; credits follow
+each provider's list price (cache reads/writes and web search priced per provider in `capabilities.ts`).
+**Behaviour change on merge:** the owner chose "cheap first" defaults, so Gemini's Main becomes Flash-Lite
+(`GEMINI_FAST_MODEL`) and 3.8 Flash (`GEMINI_MODEL`) moves to Heavy; every feature stays on Gemini until an admin
+switches it. Tests: `tests/convex/ai-providers.test.ts` (19, fetch stubbed); full convex suite 1,150 pass. Not run
+locally: the e2e suite and a visual check of the admin page (this Mac's local Convex backend refused pushes with a
+500, with or without the change); CI runs both on the PR.
+
+
+**Apple shells performance pass (2026-11-25, `docs/perf/apple-results.md`).** Mac (`claude/perf-apple-3eaf61`, PR into
+`main`): content rules looked up from WebKit's store and in parallel with the library opening, runners start after the
+first page loads (or 5 s), WebKit's private no-throttling switches for runners only, the Keychain read off the main
+thread, the bridge script assembled once, an XCTest host that never takes focus, `PerfTests` (XCTest `measure`), and
+`perf.mjs` / `perf-scroll.mjs` rewritten for the web-view app. Also fixes `main`'s Mac build (the regenerated icon set
+renamed `calendar` to `calendarDays`). iPhone and iPad (`claude/perf-ios-3eaf61`, PR into `claude/ios-feedback-b1307a`):
+the Keychain read off the main thread at launch; note-page memory measured and not leaking; `_bridge` route, splash
+change and `capacitor://` caching measured and not worth changing.
 ## 9. Current state (as of 2026-11-24)
+
+**Mac feedback, 2026-11-25 (branch `claude/mac-feedback-8652d2`, the owner's Mac feedback session).** Three fixes in the
+web UI the Mac shows (so every platform gets them): (1) Home's rows of note cards blocked scrolling the page in the
+Mac app: `globals.css`'s Mac no-bounce rule held both axes on every `.overflow-x-auto`; each region now holds only
+along the way it scrolls (`test/mac-scroll-axes.test.ts`). (2) Folders 35% less round: radius token `folder` (9 px,
+`rounded-folder`) for the folder card and `FolderGlyph`'s corners. (3) Show all tabs redesigned (owner's picks):
+`TabOverview.tsx` + `TabPictures.tsx`; a note tab is its Home card, a split tab two cards (double-wide tile), a
+folder tab its folder card, Home and other views a small drawing; names under the cards; it fills the page's panel
+below the top bar (no clash with the window buttons); arrow keys by position (`test/tab-overview.test.ts`); also on
+the iPad's tab bar now. Then an interface-polish pass (owner's "fix MEDIUM and LOW", conflicts by Folevi's rule):
+Mac buttons don't shrink on press, overlays fade out (`ui/closing.ts`, Popover's copy fade), Reduce Motion keeps
+fades, no hover lift on the Mac except folders, state icons cross-fade (`ui/SwapIcons.tsx`), concentric corners,
+image outlines (`ui-img-outline`), steady-width counters, tab pin/close no longer overlap. Checked headlessly in an offscreen WKWebView harness (real NSEvent wheel events, a
+`FOLEVI_BUILD=shell` dev server with the e2e FakeShell, scratch OPFS library); not yet seen in a Mac release build.
+**Folevi Server on iPhone and iPad (Capacitor app, branch `claude/ios-server-signin`, 2026-11-25).** "Your own server"
+works end to end in `apps/mobile`: the address (typed, or a QR code read with VisionKit's DataScannerViewController,
+`apps/mobile/ios/App/App/ServerCodeScanner.swift`, exposed as PR 100's `foleviShell.places.scanCode()` only where the
+device can scan; with camera access off it refuses with a reason the page shows), `addServerPlace`, the server's own sign-in
+page in the sign-in sheet, and the account becoming a place on that server. The Capacitor host now passes
+`places.server` to the page, loads that sign-in screen in account mode (even on first launch or from the library),
+runs ServerReach (best connection, re-checked on network changes) and keeps the share sheet's REST base on Folevi
+Cloud. The web sign-in screen and scan button are PR 100's (a800051c). Checked on the Simulator: the page at
+`capacitor://localhost` (a secure context) can fetch and open ws:// to a plain-http private address (WKWebView doesn't
+block it as mixed content), and the Capacitor app sets no policy header, so no-place sign-in pages keep the export's
+meta policy (the paused native host in apps/ios would give them ShellPolicy.cloudNarrowing). Server sessions are Keychain items per account (`session.<user id>` in `com.folevi.shell-auth`,
+as for Cloud), never in places.json (new `ServerTests.testAServerPlacesTokenStaysInTheKeychain`). Info.plist has
+`NSLocalNetworkUsageDescription`, `NSBonjourServices` `_folevi._tcp` and `NSAllowsLocalNetworking`. Checked on the
+Simulator against the local test server (http://localhost:8460) as 1.6.0: add, member sign-in, cold restart into the
+server place. This branch also carries PR 83 (`claude/ios-feedback-b1307a`), since `apps/mobile` exists only there.
+
+**Folevi Server, app side on `main` (server lead session, 2026-11-25, branch `claude/server-apps-base`).** "Your own
+server" sign-in (address, QR, home network, linked servers), the server edition of the web app (`FOLEVI_EDITION=server`:
+setup page, server admin panel, `/.well-known/folevi.json`, runtime addresses), Connect's cloud pages
+(`/connect/approve`, `connect:myServers`), the backend's server edition (`convex/server*.ts`, `connect.ts`, SMTP, own AI
+key, invites, roles), the Mac and iPhone/iPad `ShellServer` places, and `lib/server-edition/connection.ts` (best
+connection for the web-based shells). Folevi Cloud is unchanged when `FOLEVI_EDITION` is unset (tests). The supervisor,
+Connect service and packages stay on `claude/sleepy-goodall-3cg4e7` / `claude/server-connect`. Contract:
+`docs/self-hosting/CONTRACT.md`. Local test server and how apps test against it: shared notes `folevi-server-apps.md`.
+Rule for all Folevi Server work: mark every fake test token `// gitleaks:allow` (CI's secret scan reads every branch).
+
+**iOS feedback session, release 1.5.78 (build 93), the Capacitor mobile app, 2026-11-25** (branch
+`claude/ios-feedback-b1307a`, worktree `.claude/worktrees/ios-feedback-b1307a`; the owner's own words in chat:
+"fix all the issues, push to testflight"). The branch holds `main` plus PR 66 (`claude/mobile-capacitor-f41734`, the
+Capacitor app), PR 79 (failed queries keep pages up) and PR 80 (one set of sync words). On top:
+- Widgets, the Control Center control, Siri and Shortcuts intents, and Spotlight carried into `apps/mobile` (a
+  `FoleviWidgets` target, `com.folevi.ios.widgets`, App Group `group.com.folevi`; sources used in place from
+  `apps/ios`; account mode fed by `AppServices.swift`, local mode by the page through `FoleviNative`'s
+  `setWidgetSnapshot` / `takeLocalActions` / `finishLocalAction` / `indexSpotlight`). Not checked: a widget drawn on
+  the Home Screen, running an intent or Shortcut end to end, account mode. See `docs/MOBILE.md`.
+- `mobile-bridge.js` fell back to nothing when `Capacitor.registerPlugin` wasn't there yet, so the page got no native
+  events (deep links from widgets and Shortcuts, app foreground and background); it now uses `Capacitor.Plugins`.
+- iPhone Duo partly open: `FoldMarks.swift` (UIHingeInteraction plus the web view's `.division` reserved region,
+  iOS 27.1) sets `<html data-fold>`, `--fold-start`, `--fold-end` as the native Duo app did. Checked on the Duo
+  Simulator: half open the page gets 455 to 496 px and the sidebar reaches the fold; open and closed unchanged.
+- The phone sync sheet redesigned (owner's feedback with a screenshot: "needs a huge UI improvement on phone"):
+  `components/iphone/SyncStatusTouch.tsx`, a fitted sheet with a coloured status badge, the status and one
+  sentence, and a card with Last synced, Waiting on this device, Connection and where it saves. Checked in the
+  Simulator light and dark with the button shown temporarily in local mode (not committed); not seen signed in.
+- The starter note (`packages/editor-schema/src/seed.ts`) no longer names only Mac shortcuts.
+- iPhone top bar (owner's feedback, twice: cards cut off hard under it, then "too pushed to the icon, needs more
+  spacing"): `.iphone-bar` in `globals.css` is a soft scroll edge on every screen (solid through the buttons and 8
+  pt below them, then a 32 pt cosine fade, no hairline, no blur); the bar's buttons sit 8 pt under the status bar
+  (was 4) and content starts 8 pt lower (`Screen.tsx`, Calendar's sticky header, banners, pull to refresh).
+- A note's small title laid out mid slide-in could sit over Back; `Screen.tsx` lays it out again after the move and
+  when it comes in.
+- Uploaded to TestFlight on the owner's "push to testflight", internal "Folevi team": 1.5.78 build 93 (delivery
+  45243ea1-b324-41f0-a07d-c8c2126386df), build 94 with the soft edge (2a7f351b-688c-4304-ba19-d6ada2ba8a13),
+  build 95 with the spacing and title fix (f11a09ac-9c54-4f2a-8ecc-1e142a4a5dec), build 96 with the Foli AI and
+  pop-in fixes below (b948ddf3-c4eb-4eb8-b34b-2941c6ae6cc0). No tag pushed.
+- Foli AI (owner's screen recording): the composer went behind the keyboard because the Capacitor app sent no
+  keyboard moves and the page's fallback (the visual viewport) reads 0 once the web view shrinks. `KeyboardBridge.swift`
+  is now built into `apps/mobile` and `mobile-bridge.js` has `onKeyboard` / `keyboard`. Not checked with an on-screen
+  keyboard: the Simulator has a hardware keyboard attached (toggle it in the Simulator pane to check). Also: the chat's
+  preloaded code draws in the same turn (`AskAiChat.tsx`, a settled thenable for `lazy`), the stand-in is shaped like
+  the composer, capabilities are kept per account (`ChatThread.tsx useLastKnown`), + Add shows while loading.
+- Pop-ins: Home's counts, Reviews and Vault, the bell dot, Calendar's tasks and Tasks' counts use `useOfflineQuery`.
+  Measured in local mode: no late DOM insertions on All notes, Tasks, Calendar. Account mode not checked (no account).
+- Seen in the recording, not fixed: Home's lower half blank for a frame after the keyboard closes (WebKit repaint after
+  the resize).
+- Phone polish pass (owner: "the app feels finicky, a lot of small things load when I go to the page"), build 97
+  (delivery d20d43f0-5651-4156-ae39-72d39011864a). Cause found by an audit: the iPhone remounts each screen on every
+  push, pop and tab switch (`IphoneShell.tsx key`), so anything not cached loads again. Fixed: note lists keep their
+  first page per list in memory (`DocumentBrowser.tsx firstPages`), Tasks use `useCachedQuery` (now with
+  `failed`/`retry`), theme images keep their signed URL and palette for 50 minutes (`coverImage.ts`), calendar events
+  and backlinks use `useOfflineQuery`, the list header and Select show while loading, Catch me up reads its brief
+  before the first frame, Changes and Reviews hold their last answer, Settings/Changes/Shared/Reviews/Vault preload
+  on the phone and draw in the same turn (`RouteView.tsx soon`), the note bar takes the page's tone in
+  `useLayoutEffect`, press feedback waits 70 ms, and a note no longer fades and tilts in on top of the zoom.
+- The rest of the audit, build 98 (delivery 6ce7ce3e-efa3-4ac1-aeca-0ba594e74920; the first upload try failed when a
+  cleanup removed altool's temporary copy, the retry with the same .ipa succeeded): leaving rows (checked tasks, swipe
+  to Trash/Archive) slide, fade and fold away (`components/iphone/exit.tsx`, `Swipe.tsx` `removes`, `Tasks.tsx`);
+  SwipeRow uses passive Pointer Events with `touch-action: pan-y` (no touchmove listener holding up scrolls); the
+  week-to-month strip moves with transforms only (`WeekStrip.tsx`); the tab bar moves on the push's spring when the
+  move starts (`transitions.ts onMoveStart`); `READY_WAIT_MS` 50 (was 150); Reduce Motion keeps opacity-only fades
+  (150 ms); Spectral uses `display: fallback`. Checked in the Simulator: the Foli AI composer above a real on-screen
+  keyboard (it stays at 292 of 374 pt), the month opening and closing, a checked task folding away after about 0.9 s.
+- Build 99 (delivery cea3add5-fcd0-4340-b6bc-5a8ceefb2abe): the keyboard leaves cleanly. Recorded in the Simulator
+  (`simctl io recordVideo --display=1`, frames at 30 fps): closing Foli AI, the keyboard stayed up about 0.45 s after
+  the sheet had gone, then Home showed blank where it had been for about 150 ms. Cause, measured: Capacitor's Keyboard
+  plugin gives the web view its height back at keyboardWillHide, and WebKit takes about 90 ms (the page's own resize
+  handlers take 0 ms) to lay the page out and draw it at the new size while the keyboard moves. Fix: a sheet closing
+  with its field in focus lets the keyboard go as it starts to close, through `letKeyboardGo` (`lib/native/ui.ts`),
+  which first calls the app's new `foleviNative.keyboardWillLeave` (`FoleviNativePlugin.swift`: the web view back to
+  full height under the keyboard) and blurs once the page has re-laid out and drawn (resize plus two frames, at most
+  300 ms); the sheet's own move starts a frame earlier. Done over a note and Hide keyboard use it too (blur after
+  126 ms, measured). After: no blank frames as the keyboard uncovers Home. A keyboard dismissed by the user's own
+  gesture (dragging it down) still goes the Capacitor way.
+- Swipe axis lock checked in the Simulator with real touch drags (List layout of All notes): a sideways swipe opens
+  Archive and Trash without scrolling; a vertical drag starting on a row scrolls the list 184 pt and opens nothing.
+- iPad polish pass, build 100 (delivery e0d350bc-6c0e-4517-ba54-7b8cb39076b6; owner: "do the same polish pass for
+  iPad"). The tablet layout (Shell, Sidebar, TabStrip, HomeDashboard, PageDock), audited then fixed:
+  - Sidebar: unmounted on close and when a note opens, so its counts and rows loaded again each time; all its queries
+    and the unread badge use `useOfflineQuery` (clock-moving ones held, as on the phone). It slides in and out with the
+    page (transform only, 260 ms; `Shell.tsx`), checked on the iPad Simulator: hide 8 to -320 over about 270 ms, show
+    with an ease-out. 44 pt targets for the folder chevron, Bookmarks toggle and pane buttons.
+  - Home: Today's reviews held, Recent folders measure columns before paint. Settings, Foli AI, Changes, Shared,
+    Reviews and Vault preload on the iPad too (`RouteView.tsx`). Tab titles keep known titles (`TabStrip.tsx`).
+  - Touch: sidebar rows, tabs and sidebar buttons show a press (they only had hover), after the 70 ms beat.
+  - Keyboard: the note's tool bar and overlay panels ride the keyboard (`rideKeyboard` in `lib/native/ui.ts`, the lift
+    is `max(0, keyboard - (screen - 100dvh))` in CSS so the web view's resize can't leave it a frame out of place;
+    measured: no more off-screen frame). Closing the floating chat, the command palette, prompts and popovers with a
+    field in focus lets the keyboard go first (`afterKeyboardGoes`).
+  - Motion: menus and popovers open on one 150 ms rise (`POP_IN`) and fade out (`popOut`); the note's floating side
+    panel fades out on Close panel (`Inspector.tsx`).
+  - Not changed, on purpose: `FolderDropLayer.tsx`'s document-wide non-passive touchmove (it lets press-and-hold drag
+    stop the page scrolling; WebKit decides at touchstart, so it can't be added mid-drag).
+  - Checked in local mode on a new "Folevi Feedback iPad" Simulator (iPad Air 11-inch): no late DOM insertions on Home,
+    All notes, Tasks, Calendar or a folder. Not checked signed in or on a device.
+- iPhone Duo polish pass, build 101 (delivery 1add5ccd-2e5c-4ae5-bb55-0266131abb81; owner: "do the same polish pass
+  for iPhone Duo"). Audited, then fixed:
+  - Folding and unfolding rebuilt the note page (phone and tablet layouts are different trees): the caret, scroll and
+    keyboard were lost, against the owner's carry-over rule. `lib/app/noteCarry.ts` keeps the note's selection, focus and
+    scroll anchor for 1.5 s across a layout switch and `DocumentView` restores them; Capacitor already lets focus()
+    raise the keyboard (`CAPBridgeViewController` keyboardShouldRequireUserInteraction false). Checked on the Duo
+    Simulator both ways: same note, caret at the same offset, editor focused, keyboard up.
+  - App-wide pieces (Foli AI chat, Quick Add, runners) stay mounted across folds (`<Fragment key="globals">`).
+  - The iPad sidebar slide ran on unfold (it saw the layout switch as an open): it now only slides on the user's
+    toggle (`Shell.tsx sidebarLayout`); half open it follows the hinge with a width transition, its toggle and the menu's
+    Hide sidebar aren't offered, and the layout switch fades in over 150 ms.
+  - Half open, nothing in the fold: dialogs and the search window sit past it (`pastFoldFrame`), toasts too, menus and
+    popovers keep to their anchor's side (`popupSpan`, the editor's menus included), the note dock's old fold rule
+    (which crushed it) is gone. Closed and open, the side status column (84 pt) is kept clear: phone sheets, toasts, the
+    palette, the banner, menus (`sideInsets()` in `lib/iphone.ts`; `safeInsets()` answers only in the phone layout).
+  - Not checked: a real Duo; a horizontal fold (upright inner screen) by eye.
+- Android polish pass (owner: "do the same polish pass for Android"), no Play upload. Two parts:
+  - Web side, on this branch (3c8fb728 plus the keyboard bar fix after it): keyboard riding through the app's own
+    frames, ripples in sheets and menus, one press feedback (no ripple plus :active together), no text selection on a
+    long hold, `data-back` on Back buttons for the native back gesture. `NoteBars.tsx`: the plugin's
+    `keyboardWillHide` no longer drops the bar on the keyboard when the app sends its own frames (it landed just
+    before the app's frame and the bar vanished, then came back at the bottom), a bar drawn during a hide rides down
+    from the keyboard's last height, and a hide already under way when writing stops (Android's Back) is followed.
+  - Native side: PR 108 (`claude/android-polish-pass`, based on PR 69's `claude/android-capacitor-197cf4`): keyboard
+    frames from the decor view (web view shrinks at the end of the show, grows back as the hide starts,
+    `keyboardWillLeave`), the back watcher, predictive back with no page peek on phone, the saved launch colour, a
+    cover while reloading, fold marks via WindowInfoTracker (not checkable on the emulator), overscroll off, and the
+    font size following the system on a configuration change.
+  - Measured on the phone emulator (combined build, post-paint frames): opening, the bar leaves the bottom at about
+    150 ms and settles at 587 by 450 ms (before: held 0.9 s, then flew in); Back and Hide keyboard both ride it down
+    to 923 with no gap or jump. Tablet and foldable emulators show the tablet layout; fold marks not checked.
+  - The Capacitor app id on Android is `com.folevi.android` (launch `com.folevi.android/.MainActivity`).
+  - Known: this branch's own `apps/mobile/android` is incomplete (its `web/` Kotlin package is caught by the unanchored
+    `web/` in `.gitignore`); build Android from PR 69's branch. Whichever of PR 83 and PR 69 merges second reconciles
+    `apps/mobile`. Glass blur on Android held as is (owner: same look as iPhone).
+- Memory re-check (the open item): Duo closed, 20 opens of "Welcome to Folevi": 126 MB, 200 MB, 130 MB after
+  `org.WebKit.lowMemory`; nothing kept per open.
+- The three failing e2e specs listed in section 10 were already fixed on `main` by PR 77.
+- Version history: 1.5.77's entry taken from tag `v1.5.77` (the Windows release) so this is 1.5.78.
+
+**Release 1.5.76 (build 91), the Capacitor mobile app, 2026-11-25:** the iPhone note memory fix (PR 74, merged into
+`main` as 85574054, then `main` merged here; PR 74's `transitions.ts` replaces 1.5.75's change); release commit
+`83a4f3fc`, tag `v1.5.76` local; uploaded to TestFlight under the owner's "mobile to testers" approval (relayed by the
+main session), delivery bc805158-7281-477d-923c-970475668b7e, internal "Folevi team". iOS only. Next free: 1.5.77.
+
+**Release 1.5.75 (build 90), the Capacitor mobile app, 2026-11-24:** the iPhone screen moves empty their screen copy
+afterwards (part of the memory growth, docs/mobile/ios-review-2026-11-24.md experiments G to P); release commit
+`21c40255`, tag `v1.5.75` local; uploaded to TestFlight under the owner's standing OK ("release everything when ready",
+relayed by the main session: internal "Folevi team" only, App Store submission still asked), delivery
+13e2530f-5ba1-4952-9fbe-2989389f7657. iOS only.
+
+**Release 1.5.74 (build 89), the Capacitor mobile app, 2026-11-24:** the iOS review's fixes (44 pt hit areas, local
+mode's rules from the first request), cut after 1.5.73's history entry (tag `v1.5.73`, the Mac release); release
+commit `e86fbbca`, tag `v1.5.74` local. Uploaded to TestFlight on the owner's "Release it" (delivery
+9fe1d590-737b-47d1-a14c-fa4968d94428), internal group "Folevi team". iOS only; Android was not rebuilt.
+
+**Release 1.5.72 (build 87), the Capacitor mobile app, 2026-11-24:** owner's OK, relayed by the main session ("release
+all ready apps for all platform", "Mobile to testers": TestFlight and Play internal testing only). Cut on
+`claude/mobile-capacitor-f41734` after 1.5.71's history entry (from tag `v1.5.71`); release commit `d153ae34`, tag
+`v1.5.72` local. iOS: `apps/mobile/scripts/release.mjs --skip-shell --no-upload` made `apps/mobile/release/Folevi.ipa`
+(84 MB, App Store profiles, production push, production backend), **uploaded to TestFlight on the owner's own
+"Release it" in chat (delivery 58636ca8-bf67-4fb5-bcb9-6ce7ec46059c)**, internal group "Folevi team" once Apple has
+processed it. That build predates the local-mode note-style rules (commit 2aa79b97). Android: the Android session builds the same commit for Play internal testing. The Windows session takes 1.5.73.
+Sign-in on the simulator reached iOS's "Folevi wants to use app.folevi.com to sign in" prompt (no account used further).
+
+**One mobile app with Capacitor (2026-11-24, branch `claude/mobile-capacitor-f41734`, PR 66 https://github.com/faisalibnislam/folevi/pull/66 into `main`, not merged):**
+the owner's "one web app everywhere" plan for phones and tablets. `apps/mobile` is one Capacitor 8 project for
+iPhone, iPad, iPhone Duo and Android around the web app's shell export (`build-shell.mjs --platform mobile`), with
+no native screens. Details: `docs/MOBILE.md`.
+- **iOS** (`com.folevi.ios`, same App Group, Keychain group, iCloud container and `capacitor://localhost` origin as
+  the native app): XcodeGen project `apps/mobile/ios/App/project.yml`; the shell services shared with the Mac app are
+  built in place from `apps/ios/ios/App/Native/Shell` behind one Capacitor plugin, `FoleviHost`
+  (`App/Host/HostBridge.swift`); `bridge/mobile-bridge.js` gives the page `foleviNative` and `foleviShell` with
+  Capacitor's Haptics, StatusBar, Share, Clipboard, ActionSheet, App and SplashScreen plugins. Share extension in;
+  widgets, Siri/Shortcuts and Spotlight not carried over yet.
+- **Android** (`com.folevi.android`): the Capacitor project as it was before the native rewrite (`7a4155c0~1`) with
+  its Kotlin plugins and `folevi-bridge.js`, now on Capacitor 8.6.2, R8 in release, splash/insets/start-page fixes.
+- **Layouts** (`apps/web/src/lib/platform.ts`, from PR 61): under 700 px the phone layout, wider the sidebar layout
+  (iPhone Duo open is 951 pt wide, so the sidebar); tests in `apps/web/test/platform.test.ts`. `scripts/version.mjs` now writes the mobile app's version (1.5.70, 85).
+- **Checked** (simulators "Folevi Mobile iPhone/iPad/Duo", emulators `Folevi_Mobile_Phone/Tablet/Foldable`):
+  first launch, a library on the device, Home, the editor (an edit lands in the `.fnote` file), tabs on iPad and
+  Android tablet, the share inbox (a queued share becomes a note), dark mode, Duo closed, foldable open; updating
+  in place over the native iOS and Android apps keeps the library. Release builds: iOS 94 MB vs native 182 MB;
+  Android 125 MB vs native 128 MB (86 MB of each is the web export, 64 MB of that note covers). Memory at Home:
+  iOS about 183 MB vs native 172 MB; Android about 227 MB vs native 205 MB (PSS).
+- **Not checked:** a real device; signing in end to end (on Android it reached the browser, which wanted its own
+  terms accepted on the emulator; iOS's sign-in sheet couldn't be tapped from scripts); iPhone Duo open and
+  folding (the simulator's hinge couldn't be moved from scripts on this Mac); push delivery.
+- Nothing uploaded; native releases stay paused (a release would be 1.5.71 or later via `node scripts/version.mjs`).
+**Folevi for Linux (branch `claude/linux-tauri-02790e`, worktree `.claude/worktrees/linux-tauri-02790e`, PR 73 https://github.com/faisalibnislam/folevi/pull/73 into `claude/desktop-tauri`, not merged; 1.5.75 published as downloads at `https://folevi.com/download/linux/`, latest links `Folevi-x86_64.AppImage`, `Folevi-aarch64.AppImage`, `Folevi-amd64.deb`, `Folevi-arm64.deb`, `Folevi-x86_64.rpm`, `Folevi-aarch64.rpm`, `SHA256SUMS.txt`; docs/LINUX.md "Releasing"):**
+the shared Tauri 2 desktop shell (WebKitGTK) packaged for Linux, per the owner's 2026-11-24 "one web app
+everywhere, system web views" direction. The shell itself comes from the Windows session (`claude/desktop-tauri`,
+`apps/desktop/src-tauri`, merged into this branch 2026-11-24); Linux adds only Linux config, `src-tauri/src/linux.rs` and packaging.
+Committed so far: `packaging/linux/` (desktop template, AppStream metadata, icons, `tauri.linux.conf.json` staged
+for the shell, Flatpak manifest on GNOME 51, optional Snap, apt and dnf/zypper repo scripts), build scripts (Lima
+VM on this Mac: Ubuntu 22.04 arm64 + a Rosetta amd64 root), Linux jobs in `.github/workflows/desktop.yml`,
+`apps/desktop/src-tauri/src/linux.rs` and `tauri.linux.conf.json`, `docs/LINUX.md`, `docs/LINUX-TESTING.md`. Not on Flathub, Snap or apt/dnf (each needs the owner's OK); no in-app updates (no signing key). Untested on real Linux hardware: Wayland Quick Add, tray, notifications, file dialogs, browser sign-in, NVIDIA, Fedora/openSUSE installs, the Flatpak.
+
+**Folevi for Windows and Linux (branch `claude/desktop-tauri`, PR 65 https://github.com/faisalibnislam/folevi/pull/65 into `main`, not merged; Windows 1.5.73 unsigned test installers published at `folevi.com/download/windows/Folevi_1.5.73_<arm64|x64>-setup.exe`):** the owner chose "one
+web app everywhere" and the Mac app's approach (small, light), so the desktop app is now **Tauri 2** in the system
+web view (WebView2, WebKitGTK), replacing the same day's Electron build (PR 58, `claude/windows-electron-4ed862`,
+kept in history; the main session closes PR 58 when the Tauri PR supersedes it). Rust shell with the Mac's
+ShellRouter method names behind the shared shell-bridge.js: library (FLV1), sign-in, places, E2EE keys, Foli AI own
+keys, calendars, reminders, tray, Quick Add (Ctrl+Alt+Space), notifications, badge, folevi:// links, single
+instance, window state, own spelling, printing, Windows caption buttons. Builds: `.github/workflows/desktop.yml` on
+GitHub's native Windows x64/ARM64 and Linux x64/ARM64 machines (owner's pick), with memory measured against Electron.
+141 Rust tests, bridge tests and a local smoke run (`apps/desktop/scripts/smoke.mjs`) pass. Updater off until an
+update signing key is approved. Details and the owner's checklist: `docs/DESKTOP_APP.md`. First CI results (Windows
+x64): NSIS 78 MB and MSI 79 MB against Electron's 182 MB installer; memory about the same as Electron's on Windows
+(214 vs 207 MB private, run 45418586764; an earlier lower figure measured a page that never loaded). Windows ARM64 lost an increment in a
+concurrent-write test (NTFS creation-time tunneling made etags repeat); fixed by using the NTFS file index
+(bb8c25a1). Rerun 45361580640 passed every job (Windows x64 and ARM64, Linux x86_64 and aarch64, Flatpak); its
+Windows test builds are in the owner's Downloads ("Folevi for Windows 1.5.68 Tauri test"), measurements in
+`docs/DESKTOP_APP.md`. Since 2026-11-24 this session is **Windows only**: a Linux session
+(`claude/linux-tauri-02790e`) takes Linux packaging (the Linux CI jobs and `apps/desktop/flatpak/`) on top of this branch.
+**Folevi Server plan, version 2 (2026-11-25).** `docs/SELF_HOSTING_PLAN.md` rewritten for the owner's new brief:
+native packages on Synology, QNAP, ASUSTOR and TerraMaster (UGREEN once they authorize us), a native Unraid plugin,
+one-click catalog apps where only containers are allowed (TrueNAS, ZimaOS/CasaOS, Umbrel), a one-command native
+Linux installer plus DigitalOcean 1-Click for hosted servers, one Go supervisor (`folevid`) wrapping the same
+bundle everywhere, Plex-like Folevi Connect (server listed in the apps, `folevi.app` HTTPS names including LAN,
+pass-through relay), owner/admin/member/guest roles, a full server admin panel, and relays for email, push, AI and
+sign-in. Plan only; Phase 0 is still the only built part.
+**Folevi Server, app side on `main` (server lead session, 2026-11-25, branch `claude/server-apps-base`).** "Your own
+server" sign-in (address, QR, home network, linked servers), the server edition of the web app (`FOLEVI_EDITION=server`:
+setup page, server admin panel, `/.well-known/folevi.json`, runtime addresses), Connect's cloud pages
+(`/connect/approve`, `connect:myServers`), the backend's server edition (`convex/server*.ts`, `connect.ts`, SMTP, own AI
+key, invites, roles), the Mac and iPhone/iPad `ShellServer` places, and `lib/server-edition/connection.ts` (best
+connection for the web-based shells). Folevi Cloud is unchanged when `FOLEVI_EDITION` is unset (tests). The supervisor,
+Connect service and packages stay on `claude/sleepy-goodall-3cg4e7` / `claude/server-connect`. Contract:
+`docs/self-hosting/CONTRACT.md`. Local test server and how apps test against it: shared notes `folevi-server-apps.md`.
+Rule for all Folevi Server work: mark every fake test token `// gitleaks:allow` (CI's secret scan reads every branch).
+
+**Folevi Server on the Mac (session for the Mac, 2026-11-25, branch `claude/focused-brahmagupta-639148`).** Verified
+against the local test server (`http://localhost:8460`) with headless tests, `apps/mac/FoleviTests/ServerFlowTests.swift`:
+adding the address (this 1.5.73 build gets `app_outdated`, a 1.6.0 build gets the server), its sign-in screen (the
+sheet's `/connect` sends a signed-out visitor to the server's `/signin`), signing in through the sheet's PKCE path
+(`/api/auth/native/authorize` then `ShellAuth.exchange`) and through the native email form, a Convex token from the
+server, the place switcher listing the server place next to a Folevi Cloud account and the library, and sign-out
+ending the server's session. Also covered: Bonjour entries (`LocalServers.entry`), the version gate, `ServerReach`
+(home name first, back to the added address when leaving home, no sign-out, `probe` injectable, `networkChanged()`),
+and each server place's token in the Keychain only (`session.<user>` for place `acct:<user>`, never in places.json,
+the run folder or the settings). The live tests skip without the server or `~/FoleviServerTest/test-accounts.env`;
+the real Bonjour browse runs only with `FOLEVI_LIVE_BONJOUR=1` (it can ask for Local Network access; with the
+owner's OK it ran and passed on this Mac on 2026-11-25, headless, `TEST_RUNNER_FOLEVI_LIVE_BONJOUR=1`). The server
+rate-limits sign-ins: run the two live sign-in tests a minute apart if they get 429. Also fixed: the Mac build was
+broken on `main` since the icon regeneration dropped `WebIcon.calendar` (now `.calendarDays`).
+The sign-in screen (account mode, no place yet: `AppScheme.signInOf`) gets `https: http:` in its connect-src so the
+page's own `lookUpServer` can read any server's folevi.json; account pages and local mode are unchanged.
+`ServerPageTests` checks it in an offscreen web view with the real scheme handler and a listener on the Mac's LAN
+address: an `app://` page fetching a home http server is not blocked as mixed content on the Mac (WebKit lets it
+through although `app://` is a secure context), a Folevi Cloud page and local mode can't reach it, and a server
+place on that http address can. That test needs the Mac's firewall off, or `FOLEVI_LIVE_LAN=1`.
 
 **Backend performance pass (session `perf-backend`, 2026-11-25).** A generated 5,000-note test library
 (`convex/lib/fakeLibrary.ts`, seeded by `convex/devSeed.ts` into an `@example.com` test account, refused on
@@ -314,7 +623,8 @@ branch (PR 55, which holds all of `main`), so testers keep the Duo window that 1
 e18198df), tag `v1.5.70` local only. No visible change from 1.5.69: it lines TestFlight up with the merged code
 (engine contract revision 35). Its PR into `main` holds only the version commit once PR 55 merges. **Owner's
 decision the same day: "one web app everywhere"** (Electron for desktop, Capacitor for iPhone, iPad, Duo and
-Android); native releases and new native UI work are paused until the owner says otherwise.
+Android); native releases and new native UI work are paused until the owner says otherwise. This pauses the
+native apps only: Android itself is active as the Capacitor app (owner, 2026-11-25).
 
 **Release, 2026-11-24 (branch `claude/folevi-core-529dbe`, PR 51 merged into `main` as 7e2080e9):**
 - **1.5.66** (tag `v1.5.66`, local): the native Mac app replacing the AppKit one, plus PR 52's iPhone/iPad redesign.
@@ -495,6 +805,42 @@ What's there (checklist in the plan, section 4):
 - Emulators: Taskeni's emulators (another project) use ports 5554-5558 now; this app's AVDs are Folevi_Phone,
   Folevi_Tablet, Folevi_Foldable, Folevi_Desktop (1920x1200 @160). Boot them on free ports.
 
+**Android as Capacitor (2026-11-24, replaces the native app above; owner: one web app everywhere):** branch
+`claude/android-capacitor-197cf4` (worktree `.claude/worktrees/android-capacitor-197cf4`), **PR 69**
+(https://github.com/faisalibnislam/folevi/pull/69, contains PR 66 and `main` up to PR 60; merging it deploys the web). Folder
+`apps/mobile/android`: the Android half of the one Capacitor mobile app; the shared setup (`apps/mobile`,
+`capacitor.config.ts`, `package.json`, `scripts/`) is the iOS session's `claude/mobile-capacitor-f41734`, merged
+into this branch. Both sessions had restored the same Android app; the merge keeps this branch's Kotlin and
+manifest fixes and their shared cloud-kit bundling (`apps/mobile/scripts/bundle-bridge.mjs`), R8 rules and bridge
+additions. The only shared-config line Android adds is `android.includePlugins: []`.
+- Restored from the paused Capacitor app (`e12fb272`) on Capacitor 8.6.2; same package, storage names, Keystore
+  and `https://localhost` origin as the native app, so it updates in place. Version and versionCode from
+  `version.json`, upload-key signing, R8. Android takes no stock Capacitor plugins (`android.includePlugins: []`,
+  the one line it needs in the shared config; reasons in `apps/mobile/android/README.md`).
+- Fixed on the way: `env(safe-area-inset-*)` never reached the WebView (the inset listener replaced its handling;
+  the phone top bar sat under the status bar), and wide windows' Back used browser history instead of the web's
+  tab rule (one Back from a note could leave the app). Back now presses the page's Back, then Home, then leaves.
+- Checked on emulators (debug unless noted): installed over the native app (debug and release builds) it opens
+  the same library; editor, keyboard and its bar; Back on phone and tablet (a tab opened from Home closes back to
+  Home); share target into the Inbox; signing in to a scratch dev account through the Custom Tab (tablet, sidebar
+  layout, account notes open); fold/unfold switches phone/sidebar layout with no reload; Googlebook-size window
+  with Ctrl+Shift+N opening a second window; light and dark. Kotlin unit tests, cloud bridge tests (27), parity
+  tests (133, now on this app's bridge), version test.
+- **On Play internal testing: 87 (1.5.72), published 2026-11-24 19:05** with the owner's OK (relayed by the main
+  session, "release all ready apps for all platform", mobile to testers), replacing 83 (the native app). Built from
+  `d2ef501c` (this branch with the mobile session's release commit `d153ae34` merged): production web export
+  (`build-shell.mjs --platform mobile --production --required`), `FOLEVI_RELEASE=1 npx cap sync android`,
+  `bundleRelease` with the upload key and Firebase push values (`FOLEVI_FIREBASE_*` from the owner's
+  `~/Downloads/google-services.json`, project `folevi-9b8a5`; never committed). The owner dragged the AAB into Play
+  Console; Claude added it from the library, wrote the release notes and published. Only warning: no native debug
+  symbols. Checked on an emulator with that exact build: first launch, local mode Home, editor, Back, no crash.
+  Not tested: production sign-in, push arriving, Drive/Dropbox, widgets and tile, a real device, Android 13, the
+  update from build 83 with release keys (checked with debug-key builds only).
+- Size and memory vs the native app: AAB 96.6 vs 100.8 MB; memory on Home 205.7 vs 199.3 MB (table in the README).
+- Not checked: push arriving (Firebase is set up as of 1.5.72), Drive/Dropbox, widgets and the tile, a real device, Android 13.
+  On a Googlebook the device words say "tablet" (the web knows only phone and tablet for Android).
+- Native app (`apps/android`) stays in the tree as the reference; CI's Kotlin codegen checks still point at it.
+
 **Also in progress:** branch `claude/native-perf-pass` (worktree `.claude/worktrees/recursing-dijkstra-48aa7c`, off
 `main` at `d617d60b`, not released): a native performance pass, report in `docs/NATIVE_PERFORMANCE_2026-11-21.md`.
 Folder cards at rest are drawn once into a picture (`FoleviDesign/Web/CardPicture.swift`; live while hovered, on whole
@@ -591,8 +937,113 @@ signed-in account, 1.5.58's frosted folders with a large library, and the iPad c
 account button should move past iPadOS's window buttons).
 
 ## 10. Next steps / open work
+- Shell performance (2026-11-25): merge PRs 84, 85, 86 into their shell branches; check PR 85 on a Windows PC with two
+  accounts and a library; Android launch time needs the SDK and an emulator (owner's OK).
+- Apple performance: the Mac launch run (owner's OK, 2026-11-25) showed no measurable difference at a load average
+  of 43; re-run `perf.mjs` (and `perf-scroll.mjs`) on a quiet Mac with a generated 5,000-note library (`--library`);
+  confirm the iOS launch and memory numbers on a Release build on a device.
+- Foli AI providers (PR from `claude/foli-ai-openai-anthropic-8112bb`): check CI's e2e and the admin page, then the
+  owner merges. After deploy, the owner adds the OpenAI and Anthropic keys in Admin > Foli AI (or sets
+  `OPENAI_API_KEY` / `ANTHROPIC_API_KEY` in Convex) and switches features. Possible follow-ups: a "Test key" button
+  (one cheap call), a local-mode equivalent is already there (own keys), Anthropic's server-side refusal fallback
+  (left out: the owner chose no fallback), and audio attachments in a chat routed to OpenAI or Claude are refused
+  by the adapter rather than up front.
+- Mac feedback branch (`claude/mac-feedback-8652d2`): the owner checks Home scrolling, folder corners and the new Show
+  all tabs in the next Mac build (needs "release it"); a split-view tab in the overview was not drawn in the
+  headless check (no split tab in the scratch library).
+- Android own server (`claude/android-own-server`, PR 103): merge after PR 69 and PR 100, then merge main into it.
+  Still open: Android's other windows don't reload when a server is added (only the one that added it); reading a
+  real QR code and a full sign-in on a server are untested.
+- Android emulators: the android-36 image is still kernel-only (no `system.img`), and `Folevi_Phone` (the
+  `phone` AVD in `apps/mobile/android/scripts/emulator.mjs`) uses it. Boot it on the 37.0 image with
+  `-sysdir ~/Library/Android/sdk/system-images/android-37.0/google_apis_playstore/arm64-v8a -read-only -wipe-data`,
+  or move the AVD to 37.0. Android 37 debug builds log "unable to find plugin : SplashScreen" for the page's
+  `SplashScreen.hide` calls (`includePlugins: []`); harmless, but the page could skip that call on Android.
+- iPhone/iPad Folevi Server (`claude/ios-server-signin`): not yet checked: QR scanning on a real device (the Simulator
+  has no camera), switching names on a network change (the test server has no Connect hostnames), two server places in
+  the switcher, the "found on your home network" list (bridge `listLocalServers` exists; no web UI uses it yet), an
+  invite QR's token (reduced to the server's origin, not yet carried to its sign-up), and a per-place
+  page policy header (the Capacitor app serves pages through Capacitor's own handler, so the meta policy applies alone).
+  `apps/mobile` `pnpm sync` names `scripts/prepare-web.mjs`, which was never committed (run `pnpm bundle && npx cap sync`).
+  Server side: the server's "Use another account" page in the sign-in sheet fails with "Invalid callbackURL", so a second
+  account on the same server can't be added there yet. A pending server sign-in screen has no way back to the open
+  place except `places.switchTo`.
+- Folevi Server: DS223 install of the ARM64 `.spk` (owner gives SSH user and address), memory on 2 GB (the backend
+  reached 1.9 GB RSS after seeding 5,000 notes on an 8 GB VM), Connect on Fly.io (owner's OK per deploy; Cloudflare
+  DNS token for folevi.app; `connect.folevi.com` records at folevi.com's DNS), then each app session adds server
+  sign-in to its shell (Mac, iPhone/iPad, Android, Windows, Linux). minAppVersion is 1.6.0.
+- iOS feedback session (`claude/ios-feedback-b1307a`): 1.5.78 on TestFlight; the branch's PR into `main` carries PRs
+  66, 79 and 80 too. Open: on a real iPhone, iPad and Duo, sign in, push, the widgets on the Home Screen, a Shortcut
+  run and a Spotlight tap; the new sync sheet signed in; `BackgroundRefresh.swift` not carried over (needs
+  Info.plist background task entries). Done here: widgets/Shortcuts/Spotlight, the memory re-run, Duo's fold marks,
+  sync words, the starter note's shortcuts.
+- Mobile app (`apps/mobile`, PR 66 from `claude/mobile-capacitor-f41734`): note covers stay bundled (owner, 2026-11-24) and styles sync from the server when they change (docs/MOBILE.md "Note styles and covers": signed-in offline caching to build in `apps/web` with the web session; local mode may check for new styles too (owner, 2026-11-24): iOS network rules allow `convex.site/note-styles` and Convex storage images only, copy updated; the endpoint and the page's fetch and cache are the web session's); the owner reviews and merges (merging
+  deploys the web, which has the layout change in `lib/iphone.ts`); then check sign-in, push and iPhone Duo folding
+  on real devices; carry over widgets, Siri/Shortcuts and Spotlight; one bridge script for both platforms; from the iOS review (docs/mobile/ios-review-2026-11-24.md), the web session's iPad touch targets and the note page's memory growth; release
+  scripts for TestFlight and Play (only with the owner's OK).
+- Android polish (owner asked 2026-11-25): PR 108 waits on PR 69; then check fold marks and predictive back on a real
+  foldable, and a Play build only with the owner's OK.
+- Folevi for Linux, changelog at the sync with `main` (main session's ask, 2026-11-25; PR 73 merges last, after PR 65):
+  combine Linux into the existing 1.5.75 entry (iOS's, from `claude/mobile-capacitor-f41734` / tag v1.5.75, build
+  90) in CHANGELOG.json and CHANGELOG.md rather than adding a second one. Proposed: summary "Folevi on iPhone uses
+  less memory as you open and close notes, and Folevi for Linux is here."; added: "Folevi for Linux: AppImage,
+  .deb and .rpm for Intel/AMD and ARM computers, at folevi.com/download/linux."; keep iOS's improved line. Tags
+  already go to v1.5.76, so nothing new is cut for this.
+- Folevi for Linux stores (PR 99 `claude/linux-stores`, owner's OK 2026-11-25; docs/LINUX.md): apt and rpm
+  repositories LIVE at `folevi.com/download/linux/apt` and `/rpm` (1.5.75), checked by installing from the live
+  addresses on Ubuntu 24.04, Debian 12, Fedora 41, openSUSE Tumbleweed (arm64 containers). Snap: LIVE at
+  snapcraft.io/folevi, 1.5.75 stable for amd64 (revision 4, Launchpad remote-build) and arm64 (revision 3), new icon. Flathub: blocked, its AI policy forbids
+  AI-written manifests and AI-opened submissions (docs/LINUX.md "Flathub"); only the owner can do it by hand. The
+  owner should copy `~/.folevi-linux-signing/folevi-repo-secret.asc` into their password manager. From the next
+  Linux release the .deb and .rpm add the repositories on install; each release also runs the repo scripts.
+- Folevi for Linux (`claude/linux-tauri-02790e`, 1.5.75 published): the owner tries it on real Linux (docs/LINUX-TESTING.md, files in `~/Downloads/Folevi for Linux 1.5.75 test/`); PR 73 into `claude/desktop-tauri` waits on the owner's review and merge (it reaches `main` with PR 65); record 1.5.75 in version.json/CHANGELOG/tag at merge (main session); the blank-window fix reached Windows (c150ba78); Linux memory (docs/LINUX.md "Memory"): the web export as files beside the program landed (6269a7ff) and is merged here: Linux 355 MB PSS in the VM; later, each with an OK: Flathub, Snap, apt/dnf repositories, an update signing key. Earlier notes:
+  check the Linux compile and tests of the merged shell in the VM, build AppImage/.deb/.rpm for x86_64 and
+  aarch64 in the Lima VM `folevi-linux`, smoke-test, put test builds in `~/Downloads/Folevi for Linux <version> test/`.
+  Owner decisions pending: Linux signing key and repositories on R2, Flathub/Snap submission (all need an OK).
+- iPhone and iPad redesign (`claude/ios-native-redesign-f4a8be`): PR 56 into `main` waits on the owner's review
+  and merge; the owner tries 1.5.67 from TestFlight. The `v1.5.65` and `v1.5.67` tags are local only (pushing them
+  was not asked for). Open question: should the iPad inspector's Foli AI tab get back the web panel's ready-made
+  actions (Summarize, Continue...) next to the Ask chat?
+  Owner's calls from the 2026-11-23 HIG audit: Foli AI is a tab that opens a sheet (the HIG says tabs navigate,
+  never act); section headings stay sentence case (Apple uses title case); dark mode keeps a pure black frame.
+  Known gaps: the notifications sheet's rows are not on cards yet; screens borrowed from the iPad (Foli DNA,
+  Reviews) keep their own white page under the system bar.
+- Folevi for Windows and Linux (`claude/desktop-tauri`, Tauri): the owner tries the CI test builds (checklist in
+  `docs/DESKTOP_APP.md`); the Web session adds Windows to folevi.com's download page (stable links above) and the main
+  session records 1.5.73; when PR 65's turn comes (after PR 66), merge main and, if the Mac PR merged first,
+  combine the two 1.5.73 CHANGELOG entries into one (version.json stays 1.5.73 / 88); fix what testers find; open the Tauri PR into `main` (supersedes PR 58, which the main session
+  closes); then, each with the owner's OK: an update signing key (turns the updater on), Windows signing, uploads to
+  R2, a download page entry, Flathub (manifest ready), Dropbox/Google Drive sign-in on this platform, a `windows`
+  and `linux` minimum in `convex/lib/shellVersions.ts`. Mac keeps its own app (no Mac target here).
+- Web everywhere: PRs #61 (platform model, `claude/web-everywhere-0e2975`), #62 (shortcut labels), #63 (Mac no-bounce,
+  Android ripple) and #64 (one wording set) are open and wait on CI and the owner's merge (merging deploys). Next PRs: shortcut labels per OS (about 40 files still write ⌘ by hand; `lib/shortcuts.ts keyLabel` exists),
+  Windows/Linux/Android accents behind `data-shell`, one motion/empty/loading style, mobile web view performance,
+  the "Your own server" sign-in with the Synology session. The starter "Welcome to Folevi" note names Mac shortcuts.
+- Folevi Server (`docs/SELF_HOSTING_PLAN.md` v2, `docs/self-hosting/CONTRACT.md`): built on branch
+  `claude/sleepy-goodall-3cg4e7` (backend server edition, web server edition with setup and admin panel, `folevid`
+  in `server/`, Folevi Connect in `services/connect/`, every package in `packaging/`, Mac/iOS server places, the
+  folevi.com/server download page). Owner approved (2026-11-25) merging to main after CI passes and uploading
+  packages to R2 (`folevi-updates`, `server/<version>/` and `server/latest.json`): Linux/container after the full
+  server run passes, each NAS package after its first real install (Synology on the owner's DS223). Open: the
+  Mac/iOS build check on the owner's Mac; Connect deploy (Fly.io, folevi.app DNS on Cloudflare, keys); store
+  developer accounts; Convex license confirmation; real icons; email-to-note on servers; guests' limits; owner
+  Google keys and covers on servers; dialog closing on resize in the admin panel; invite tokens in `next dev` logs.
+- Folevi Server: DS223 install of the ARM64 `.spk` (owner gives SSH user and address), memory on 2 GB (the backend
+  reached 1.9 GB RSS after seeding 5,000 notes on an 8 GB VM), Connect on Fly.io (owner's OK per deploy; Cloudflare
+  DNS token for folevi.app; `connect.folevi.com` records at folevi.com's DNS), then each app session adds server
+  sign-in to its shell (Mac, iPhone/iPad, Android, Windows, Linux). minAppVersion is 1.6.0.
+- Folevi Server on the Mac, still to do with the owner: one run of the real sign-in sheet against the test server in
+  a 1.6.0 Debug build on scratch data (GUI, needs the owner's OK), and a check with the real bundled export that a server place's data loads over
+  `http://localhost:8460/convex` (the header policy and mixed content are covered; the export's own meta CSP must
+  also allow `http:`/`ws:`). Optional: `places.scanCode()` on Macs with a camera (left out for now). Possible
+  hardening: the Mac's Keychain items use the login keychain, which keeps no "this device only" class; moving
+  them to the data protection keychain needs a migration of existing items.
 - Backend performance pass, owner's OK needed for production: run `migrations:backfillListStats` (optional, speeds
   up existing folders) and `migrations:backfillDocumentText` (required before the note text switch PR merges).
+- Backend performance pass, production: `migrations:backfillDocumentText` ran on 2026-11-25 (373 notes copied, 0
+  failed). Next, with the owner's OK: merge #93 (the note text switch), let it deploy, then run
+  `npx convex run --prod migrations:narrowDocumentText` from the main checkout. Optional at any time:
+  `migrations:backfillListStats` (speeds up existing folders).
 - Backend performance pass (`docs/perf/backend-results.md`): kept folder and Drafts counts, task rows that carry
   their note's title, a cheaper `changes.list`, then note text (`searchText`) split out of `documents`
   (widen, backfill, narrow; the owner approves each production backfill).
@@ -602,7 +1053,14 @@ account button should move past iPadOS's window buttons).
   splitting the phone interface out of every page's bundle (measure with a production build first); "Your own server"
   sign-in for the apps, planned in the shared notes (`web-everywhere-own-server-plan.md`), after the Synology branch
   lands; the starter "Welcome to Folevi" note names Mac shortcuts. Known failing e2e on `main` (not from this work):
-  `iphone-local-settings` switch size, `local-mode` Insert panel, `iphone-chrome` theme bar colour.
+  `iphone-local-settings` switch size, `local-mode` Insert panel, `iphone-chrome` theme bar colour (PR 77 fixes the
+  three specs) and `multi-select-local` rubber band (fixed on `claude/project-thread-8numex`).
+- Dependencies (2026-11-25 triage): tiptap 3.32 breaks the Markdown list shortcuts ("1. " and "- " stay text;
+  `editor-core-edges` and `editor-core-keys` unit tests), so tiptap stays on 3.31.3 until that is understood; bump all
+  four `@tiptap/*` together. @types/node stays on 24 to match `.nvmrc` (Dependabot now skips its majors). TypeScript 7
+  (Dependabot PR 22, `apps/ios` only) waits for a whole-repo move. The Actions majors (checkout, setup-node,
+  upload-artifact v7, pnpm/action-setup v6) are open as Dependabot PRs 19, 20, 21, 27: take them together, since runners
+  already force the v4 actions onto Node 24.
 - Folevi for Mac on the web view: 1.5.73 is live. PR 67 (`claude/mac-webview`) merges after PR 60. Watch for reports
   of signed-in Macs stuck on loading after updating (no signed-in Release run was observed); the fix path is
   `AppScheme.modeOf` / WebViewFactory. Push the `v1.5.69` to `v1.5.73` and `archive/mac-swiftui` tags if the owner asks. Ask the web session (through the main session) for the Mac's no-bounce motion when
@@ -633,7 +1091,15 @@ account button should move past iPadOS's window buttons).
   never act); section headings stay sentence case (Apple uses title case); dark mode keeps a pure black frame.
   Known gaps: the notifications sheet's rows are not on cards yet; screens borrowed from the iPad (Foli DNA,
   Reviews) keep their own white page under the system bar.
-- Android native (PR 54, merged into `main` as 289b11af): next are the owner's Play steps (`apps/android/README.md` "Steps only the owner can do"), and the
+- Android **89 (1.5.74) is live on Play internal testing** (published 2026-11-24 21:51, owner: "release everything
+  when ready"), replacing 87. Built from `b5b4b4a3` (this branch with the mobile release `e86fbbca` merged), upload
+  key, Firebase push on; on an emulator it updated over the signed 1.5.72 release keeping the library. Testers
+  update and report; the next Android upload needs a `build` above 89. Native debug symbols could go up later.
+- Android as Capacitor (`claude/android-capacitor-197cf4`, `apps/mobile/android`, with the iOS session's
+  `claude/mobile-capacitor-f41734` merged in): open a PR with the owner's OK; it and the iOS branch should land
+  together (or this one alone, since it contains the other). Web session: "This Googlebook" device words for Android laptops (FEATURE_PC).
+  No Play upload until the owner says so (native releases paused); the upload needs a versionCode above 83.
+- Android native (PR 54, merged into `main` as 289b11af): superseded by the Capacitor app above. Its next steps were the owner's Play steps (`apps/android/README.md` "Steps only the owner can do"), and the
   plan's remaining phase 2 items (Credential Manager sign-in, onboarding, sharing sheet, templates).
 - Folevi for Mac (native, `apps/mac`, branch `claude/folevi-core-529dbe`), the owner's order of 2026-11-23:
   1. Done 2026-11-23: the owner's Mac UI guide (`docs/design/macloving-mac-ui.md`) as the **full window
@@ -750,8 +1216,202 @@ account button should move past iPadOS's window buttons).
   `DATABASE_UDF_USER_TIMEOUT_SECONDS=4` for that backend. Bursts show in `convex.log` as "took a long time".
 
 ## 12. Change log
+- 2026-11-25: **Integration branch `claude/integration-2026-11-25`** (the owner: "check and resolve [the merging issues]
+  and release all apps and platforms, I approve everything"). The backlog could not drain PR by PR: every PR edits
+  this file, so each merge made the others conflict and restart CI, and the PRs also conflicted in code. PRs 104, 96,
+  92, 89, 78, 97, 98, 81, 82, 69 (with 66), 83, 65, 99, 107, 100, 105, 103, 106 and 93 are merged here once, with one
+  CI run and one production deploy. Resolutions worth knowing:
+  - Foli AI: Folevi Cloud keeps PR 81's per-feature routes and native adapters (`convex/lib/ai/openai.ts`); a Folevi
+    Server takes its provider from the server's settings (`provider()` in `convex/lib/ai/provider.ts`), and its
+    OpenAI-compatible adapter moved to `convex/lib/ai/openaiCompatible.ts`. `aiConfig.ts` route readers answer from
+    `serverRoute` on a server.
+  - PRs 100 and 107 were two copies of the server work: merged file by file from the 107 commit each PR 100 file was
+    copied from. `convex/auth.config.ts` is main's (107's fix); the server bundle has its own.
+  - Folevi Server's repo scripts are `packaging/linux/repo/build-server-apt-repo.sh` and `build-server-rpm-repo.sh`;
+    `build-apt-repo.sh` and `build-rpm-repo.sh` are the Linux desktop app's (PR 99).
+  - `build-shell.mjs` takes `--platform mobile` and `--platform windows`. Version files follow PR 83 (1.5.78, build 101).
+  - Dialog and command palette: the keyboard leaves first (PR 83), then the 150 ms fade (PR 82).
+  - The Downloads and Apps pages' pills use `rounded-control` (the corner test refuses `rounded-full`).
+  - Auto-merge was turned off on those PRs; they close as merged when this lands.
+  - Found by building the apps and by CI's e2e run, and fixed on this branch: PRs 66, 69 and 83 carried the
+    SwiftUI-era `apps/mac/project.yml` (the Mac app did not build; main's file is back, with `ShellServer.swift`);
+    PR 82's 150 ms closing fade left the page inert, so typing right after a dialog closed was lost
+    (`ui/closing.ts` now closes the dialog first and fades its picture as an inert manual popover); PR 83's
+    pointer-event swipe rows stayed open after a quick tap elsewhere in Chromium on Linux (they also close on a
+    touch `pointerdown` outside the list).
+  - Released from this branch as **1.6.78** (build 102), a Big update cut with `scripts/version.mjs release update`
+    (the owner asked for 1.6.0; a Big update keeps the patch number, and 1.6.78 meets Folevi Server's
+    `minAppVersion` 1.6.0).
 - 2026-11-25: CI secret scan reads only the history HEAD reaches (`--log-opts=HEAD`, owner's OK), not every fetched
   branch: test tokens on unmerged branches (Folevi Server, Linux stores) had failed the required check on every PR.
+- 2026-11-25: Notes say Android is active (the Capacitor app, PR 69, Play internal testing); only the native Compose
+  app is paused. An Android SDK is installed at `~/Library/Android/sdk` (not on PATH), so Android builds can run on
+  this Mac.
+- 2026-11-25: Performance pass, Android and Windows/Linux shells (`docs/perf/android-windows-results.md`). PRs into
+  each shell's branch: #86 Android (Firebase and legacy session off the main thread, one resize per keyboard slide,
+  a new Android CI workflow), #84 Tauri (library and reminders open after the window, lighter asset serving and
+  scans, launch time in `measure.mjs`), #85 Electron (Quick Add on first use, runners on demand, throttling back
+  on). Electron uses about 28% less memory on Windows x64 (CI). Android not measured (no SDK).
+- 2026-11-25: Apple shells performance pass (`docs/perf/apple-results.md`). Mac: rules lookup in parallel with the
+  library, runners after the first page, private throttling switches for runners only, Keychain off the main thread,
+  bridge script cached (2.3 to 0.68 ms per view), test host never activates, `PerfTests`, perf scripts for the web-view
+  app, `calendarDays` build fix. iOS (`claude/perf-ios-3eaf61`): Keychain off the main thread. Measured: note-page
+  memory flat after warm-up (162 MB Home, about 223 MB after 60 opens, 190 MB under memory pressure). Mac tests: 117
+  of 119 pass (the Vision OCR test timed out under load, passes alone). The launch run found and fixed a crash (WebKit's
+  default rule store first touched off the main thread through an `async let` default argument).
+- 2026-11-25: New Downloads page (`/downloads`, owner's request): every download in one list (Mac, Windows x64 and
+  arm64, the six Linux packages and checksums, App Store, Android coming soon, web), in the site nav after Apps and
+  in the sitemap. The page is `/downloads` because `/download/*` is rewritten to the R2 download bucket.
+- 2026-11-25: Apps page (`/apps`): an Android card, "coming soon to Google Play" with the web app meanwhile (owner's
+  choice while Play is internal testing only). Mac, Windows and Linux download links checked (all 200).
+- 2026-11-25: Foli AI providers branch: main merged in again (backend performance pass); `convex/aiConfig.ts` now
+  builds its mutations from `lib/functions.ts` like every other mutation.
+- 2026-11-25: Foli AI on OpenAI and Anthropic too (`claude/foli-ai-openai-anthropic-8112bb`): Admin > Foli AI with
+  sealed keys, a provider per feature and Fast/Main/Heavy models; OpenAI (Responses API) and Anthropic (Messages
+  API) adapters through their SDKs with native streaming, tools, JSON, web search and prompt caching; credits priced
+  per provider; "cheap first" defaults (Gemini Main is now Flash-Lite). 19 new tests; 4 existing tests updated for
+  the new default (3 metering tests pin Main to Flash).
+- 2026-11-25: Interface-polish pass on the whole web UI (review by typography, surfaces and motion; owner chose to fix
+  every MEDIUM and LOW finding): see the commit "Interface polish pass". Checked: typecheck, lint, full unit suite,
+  WebKit harness (dialog, command palette and Show all tabs fade out; Mac fades only), screenshots.
+- 2026-11-25: Mac feedback: Home's card rows no longer block page scrolling in the Mac app (overscroll held per axis);
+  folders 35% less round (`folder` radius token, 9); Show all tabs redesigned (cards of what each tab holds, below
+  the top bar, names under cards, on iPad too). How scrolling was checked: a Swift harness puts a WKWebView in an
+  offscreen window and calls `scrollWheel(with:)` with CGEvent-made wheel events (location = window coordinates,
+  since the event has no window); Playwright's wheel bypasses macOS's scrolling path and can't show this bug.
+- 2026-11-25: Android own server, part 2 (PR 103): merged PR 100's a800051c (the sign-in names the server, the
+  version check uses the app's version, `places.scanCode`). Added `scanCode` with Google's code scanner
+  (`play-services-code-scanner`, no camera permission; the module is installed on first use), only on devices with
+  a camera. Emulator: the server's sign-in screen says "Sign in with your account on localhost:8460" with one Sign in
+  button; the scanner opens and closing it answers null (Play services reports Back as error 13 there). Reading a
+  real QR code wasn't tested (the emulator's camera shows a virtual scene).
+- 2026-11-25: Android "Your own server" (Folevi Server places, CONTRACT §6.1) on `claude/android-own-server`, built on
+  PR 69 with PR 100 (`claude/server-apps-base`) merged in: `server/ShellServer.kt` (address rules, folevi.json
+  check, CSP, the Kotlin twin of ShellServer.swift), `server/LocalServers.kt` (NsdManager `_folevi._tcp`), Places
+  accounts carry `server`, AuthBridge sends each account's calls to its own website, `places.server`,
+  `addServerPlace`, `listLocalServers` in the bridge, the best connection through connection.ts bundled as
+  `assets/folevi-server.js`, per-place CSP header, mixed content only for http server places and sign-in pages,
+  cleartext allowed in network_security_config but enforced to home addresses by `net/Http.kt`. Server accounts
+  are left out of the share sheet, Quick Add and the outbox (Folevi Cloud's REST API only). 46 unit tests pass
+  (8 new). On the emulator against the test server (`adb reverse tcp:8460`; its folevi.json says
+  `http://localhost:8460`, so 10.0.2.2 doesn't work): add, refusals, reload bound to the server, CSP and the
+  own-server lookup UI checked; sign-in not completed (no test password used). No QR scan: the contract has no
+  bridge call for it.
+- 2026-11-25: CI secret scan fix for PR 69: gitleaks scans every branch (`git log --all`), so false positives on
+  `claude/sleepy-goodall-3cg4e7` (the certificate key type line in folevid's `acme.go`, and made-up tokens in three
+  folevid and Connect tests) failed the check on every PR. Their fingerprints are now in `.gitleaksignore`. New test
+  values on any branch should carry a `gitleaks:allow` comment, or every open PR fails again.
+- 2026-11-25: PR 69 checked on this Mac (Android session): the Android SDK is at `~/Library/Android/sdk` (set
+  `ANDROID_HOME`, put `platform-tools` and `emulator` on PATH; JDK is Homebrew `openjdk`). `apps/android` compiles
+  (`:app:compileDebugKotlin`, so `CALENDAR_DAYS` is fine); `apps/mobile/android` `:app:assembleDebug` builds and
+  `:app:testDebugUnitTest` passes (38 tests, 11 suites). Fixed `pnpm sync` in `apps/mobile`: it ran
+  `scripts/prepare-web.mjs`, which never existed (build-shell `--dest ../mobile/web` already copies the export).
+  Emulator not run: both installed system images (android-36, android-37.0 google_apis_playstore arm64) are only
+  the kernel, without `system.img`; re-downloading android-37.0 is about 2.0 GB and waits for the owner's OK.
+- 2026-11-25: Owner OK'd the image download: `system-images;android-37.0;google_apis_playstore;arm64-v8a` reinstalled
+  (about 2 GB). PR 69's debug APK installed on `Folevi_Phone` (headless, read-only, 37.0 image, port 5560): MainActivity
+  resumed in 2.5 s, no crash, the first-launch screen ("Where should your notes live?") renders.
+- 2026-11-25: PR 69 build fix: `Routes.kt:61` and `Tabs.kt:88` used `WebIcon.CALENDAR`, which the icon regeneration
+  (c3ce5640) removed; both now use `WebIcon.CALENDAR_DAYS` (owner's pick, matching the web's command palette). Not
+  compiled locally (no Android SDK on this Mac).
+- 2026-11-25: Merged `main` (e35a97d3, the backend performance pass and the sync status words) into
+  `claude/android-capacitor-197cf4` for PR 69 (owner's OK); only HANDOFF.md conflicted, both sides kept.
+- 2026-11-25: Merged `main` (4d22880f, the web PRs) into `claude/android-capacitor-197cf4` for PR 69: versions stay 1.5.74 / 89; the web layout files take main's width-decides version (formFactor).
+- 2026-11-25: Android polish pass: web side on `claude/ios-feedback-b1307a` (3c8fb728, keyboard bar fix), native side in PR 108 on PR 69's branch; measured on the phone emulator; no Play upload.
+- 2026-11-25: iPhone/iPad "Your own server" in the Capacitor app (`claude/ios-server-signin`, PR 106): VisionKit QR
+  scan as `places.scanCode`, server places wired into the mobile host, Keychain test for server tokens, Info.plist
+  local network keys; PR 100's web sign-in and scan button taken over this branch's; with an account open, adding a
+  server no longer reopens that account instead of the server's sign-in (startPlaces skips a pending sign-in, mobile
+  and apps/ios hosts). Swift 86/86 (5 ServerTests).
+- 2026-11-25: Folevi Server, app side split onto `main` (`claude/server-apps-base`): web server edition, admin panel,
+  Your own server sign-in, Connect pages, backend server edition, Mac/iOS server places, best-connection module; server
+  functions registered for E2EE routing and local mode; server fallback origin is 127.0.0.1 so shell exports pass.
+- 2026-11-25: iOS feedback session: PRs 66, 79 and 80 merged into `claude/ios-feedback-b1307a`; widgets, Shortcuts, Spotlight in the Capacitor app; Duo fold marks; phone sync sheet redesigned; starter note wording; 1.5.78 (build 93) cut for TestFlight.
+- 2026-11-25: `main` (4d22880f, all web PRs) merged into `claude/mobile-capacitor-f41734` for PR 66: `lib/iphone.ts`, NotificationsButton and DocumentView taken from `main` (PR 61's width rule, `lib/platform.ts`, replaces this branch's iPhone Duo 600 x 600 rule; `test/mobile-layout.test.ts` removed, `test/platform.test.ts` covers it); HANDOFF both sides kept. Checks: typecheck, lint, all 2,161 web tests, version check and the iOS build pass. 1.5.76 unchanged.
+- 2026-11-25: 1.5.76 (build 91) with PR 74's iPhone memory fix uploaded to TestFlight (delivery bc805158); `main` (85574054) merged into `claude/mobile-capacitor-f41734`.
+- 2026-11-24: PR 74 plus 1.5.75's change measured: 140 MB after the low-memory signal against a 130 MB start, the same as PR 74 alone; nothing left of the memory growth. 1.5.75 is one shared release with Linux (published untagged by the Linux session first): when PR 66 merges, combine the Linux notes into the 1.5.75 changelog entry. Next free version 1.5.76.
+- 2026-11-24: PR 74's fix for the iPhone note memory growth measured on the simulator: after 20 opens and WebKit's low-memory signal, 138 MB against a 136 MB start (before: 232 to 241 MB). Goes into the next TestFlight build once PR 74 merges; when merging main here, keep PR 74's `transitions.ts` (my 1.5.75 change is superseded).
+- 2026-11-24: Memory growth traced further: about 60% is the screen copy shown during iPhone moves (kept by WebKit after removal), the rest elsewhere in the iPhone layout; emptying the copy recovers a third of it, shipped as 1.5.75 (build 90) to TestFlight (delivery 13e2530f). A Safari heap snapshot is still needed for the rest.
+- 2026-11-24: Mobile memory growth narrowed (docs/mobile/ios-review-2026-11-24.md follow-up): only in the iPhone layout under WebKit, about 5 MB kept per note open; not the bridge, logging, close path or WebKit caches; none on iPad. Needs a Safari Web Inspector heap snapshot next.
+- 2026-11-24: 1.5.74 (build 89), the mobile app with the iOS review's fixes, uploaded to TestFlight with the owner's OK (delivery 9fe1d590); tag local.
+- 2026-11-24: iOS review of the mobile app (design/HIG, polish, performance; docs/mobile/ios-review-2026-11-24.md): 44 pt hit areas for Calendar's grabber, a note's place chip and Foli AI's Add; local mode's network rules now apply from the first request and compile once. Open for the web session: iPad touch targets under 44 pt and about 4 MB of web memory kept per note open and close.
+- 2026-11-24: 1.5.72 (build 87), the Capacitor mobile app, uploaded to TestFlight with the owner's OK (delivery 58636ca8); internal testing only.
+- 2026-11-24: Owner: local mode may check Folevi for new note styles. iOS local-mode rules allow only `<deployment>.convex.site/note-styles` and Convex storage images (checked on the simulator: everything else still blocked); features and docs pages say notes never leave the device and the app only checks for new styles.
+- 2026-11-24: 1.5.72 (build 87) cut on `claude/mobile-capacitor-f41734` (tag local) for the Capacitor mobile app; iOS IPA exported, TestFlight upload pending a permission; Android build handed to the Android session. PR 66: main merged again; its one failing e2e (vault-team) had passed on the same code the run before.
+- 2026-11-24: Owner: keep note covers inside the mobile app and sync note styles when the server changes them. Plan in docs/MOBILE.md; local mode's part asked of the owner.
+- 2026-11-24: PR 66 opened for the Capacitor mobile app (`claude/mobile-capacitor-f41734` pushed); open question to the owner: note covers.
+- 2026-11-24: `apps/mobile`: one Capacitor app for iPhone, iPad, iPhone Duo and Android around the web app (no native screens), reusing the shared Swift and Kotlin services; window-size layouts in `lib/iphone.ts`; `version.mjs` covers it; checked on simulators and emulators, size and memory compared (docs/MOBILE.md). Branch `claude/mobile-capacitor-f41734`, PR not merged.
+- 2026-11-25: Linux icons: every package now uses the desktop icon (`apps/desktop/build/icon-1024.png`, sizes from `icons.mjs`) instead of the web's full-bleed icon-512; Snap `folevi` registered, shipped without the D-Bus slot (owner's pick) so it needs no manual review; arm64 revision 3 uploaded, amd64 building on Launchpad.
+- 2026-11-25: Linux apt/rpm repositories published (owner's OK, after the owner's Cloudflare sign-in) and install-tested from the live addresses; Flathub stopped by Flathub's Generative AI policy (no AI-written manifests or AI-opened submissions), recorded in docs/LINUX.md.
+- 2026-11-25: Linux stores prepared (owner's OK): signed apt and rpm repositories for 1.5.75 at
+  `folevi.com/download/linux/apt` and `/rpm` (built and install-tested in the VM on Ubuntu 24.04, Debian 12, Fedora 41,
+  openSUSE Tumbleweed; upload waits on a Cloudflare sign-in), new signing key AEF1 4472 8549 A0B5 9ADC 3A77 67F3 C502
+  BF6A 5D42, the .deb and .rpm add the repositories on install from the next release; Flathub manifest on the
+  published 1.5.75 .debs, lint clean except screenshots not yet online, real-app screenshots in
+  `packaging/linux/screenshots/`; snap built for arm64 and run in the VM (first-launch screen, single instance via
+  `com.folevi.Folevi.SingleInstance`).
+- 2026-11-25: Windows session: PR 84 (Tauri perf: library opens after the window, lighter asset serving and scans) merged into `claude/desktop-tauri`, then `main` (e35a97d3, backend perf PRs 87, 88, 91 and the safe-queries work) merged in for PR 65; HANDOFF.md conflicts only, both sides kept. version.json stays 1.5.77 / 92 (1.5.77 not published; folevi.com still serves Windows 1.5.73).
+- 2026-11-25: PR 73: merged `claude/desktop-tauri` (Windows 1.5.77, main 1a1ca06f); `apps/desktop/RELEASE_VERSION` removed (version.json is 1.5.77), so the next Linux build is 1.5.77 or later unless stamped. CHANGELOG now has iOS's 1.5.75 entry; Linux joins it at the sync after PR 65.
+- 2026-11-25: PR 73: merged `claude/desktop-tauri` (now carrying main 4d22880f, the web PRs); HANDOFF conflict only. The web download page's Linux links (apps/web/src/components/marketing/site.ts) match the uploaded latest names.
+- 2026-11-25: Main session: PR 73 merges last (after PR 65); its 1.5.75 changelog lines join iOS's 1.5.75 entry at the sync with main (proposed text in Next steps). PR 73 e2e shard 7 (tab-switch.spec) failed twice, then passed on rerun (flaky; the branch changes no web code); all PR 73 checks green. Merge order (main session): 66, 69, 65, then 73.
+- 2026-11-24: PR 73: merged `claude/desktop-tauri` again (HANDOFF conflict only); Flatpak CI chose the sandboxed builder on Ubuntu 24.04 (flatpak-builder 1.4.2) and it couldn't find the SDK; the version check in `flatpak-bundle.sh` now parses robustly and logs what it found.
+- 2026-11-24: PR 73 conflict (HANDOFF only) resolved by merging `claude/desktop-tauri` (interface installed as files, 6269a7ff; ready marker for measurements). On Linux in the VM: .deb puts the interface at /usr/lib/Folevi/web, the Flatpak at /app/lib/Folevi/web, AppImage inside; all three open; memory 355 MB PSS (main 101).
+- 2026-11-24: First Flatpak: ARM bundle from the 1.5.75 .deb built in the VM, installed system-wide and opens to the first-launch screen (tray library loads); copy in `~/Downloads/Folevi for Linux 1.5.75 test/`. Not on Flathub or folevi.com. AppStream release set to 1.5.75.
+- 2026-11-24: Flatpak in the VM: the inlined tray modules and the Folevi module build; Ubuntu 22.04's flatpak-builder 1.2 then fails on appstream-compose (gone from GNOME 51), so `flatpak-bundle.sh` uses Flathub's org.flatpak.Builder below 1.3.
+- 2026-11-24: `install-build-deps.sh --test-tools` adds elfutils (flatpak-builder needs eu-strip).
+- 2026-11-24: PR 73 CI: both Flatpak jobs failed (Flathub's shared tray module puts ayatana-ido in /app/lib64 with the GNOME 51 SDK); the tray modules are now inlined in `packaging/linux/flatpak/com.folevi.Folevi.yml` with `-DCMAKE_INSTALL_LIBDIR=lib` and their patches.
+- 2026-11-24: Windows session takes on the web-export-as-files memory idea for Windows and Linux; Linux merges it when it lands and re-measures.
+- 2026-11-24: Linux memory measured in the VM (docs/LINUX.md "Memory"): 1.5.75 as published 446 MB PSS; with the merged Quick Add-on-first-use change (e75ac156) 369 MB (Electron on CI: 348). Folevi's own process: 27 MB program file (web export compiled in), 23 MB software renderer (no GPU). Merged `claude/desktop-tauri` (e75ac156, d5283c55) into PR 73.
+- 2026-11-24: 1.5.75 is one shared release: Linux downloads and the iPhone/iPad TestFlight build (mobile session tagged v1.5.75); the Linux files keep their names. Next version on any platform: 1.5.76 or later, check the tags first.
+- 2026-11-24: PR 73 CI: gitleaks flagged the made-up Vault demo login in apps/mac/scripts/screens.mjs (from the Mac web-view work); added main's same `.gitleaksignore` entry.
+- 2026-11-24: PR 73 opened (owner's OK): `claude/linux-tauri-02790e` into `claude/desktop-tauri`, after merging its two newest commits (the cherry-picked blank-window fix, smoke.mjs `--embedded`); the `--embedded` smoke walk passes 7/7 on Linux.
+- 2026-11-24: Folevi for Linux 1.5.75 published (owner's OK in chat): 14 files at R2 `folevi-updates/linux/` (versioned AppImage, .deb, .rpm for x86_64 and aarch64, SHA256SUMS-1.5.75.txt, and no-cache latest names), all checked live (sizes, types, a downloaded .deb's checksum). 144 Rust tests pass on the merged code.
+- 2026-11-24: Linux 1.5.75 built (AppImage, .deb, .rpm for x86_64 and aarch64) and smoke-tested in the VM: installed .deb and AppImage of both architectures render the first-launch screen (x86_64 through Rosetta); test copies in `~/Downloads/Folevi for Linux 1.5.75 test/`; upload next.
+- 2026-11-24: Linux release 1.5.75 under way (owner in chat: upload the Linux builds now; Flathub, Snap, apt/dnf still need an OK): merged the latest `claude/desktop-tauri` (Windows 1.5.73 recorded), `apps/desktop/RELEASE_VERSION` = 1.5.75, `packaging/linux/scripts/upload-release.sh` added; building in the VM, upload to `folevi.com/download/linux/` after the smoke tests.
+- 2026-11-24: Desktop app fix found on Linux: release builds showed a blank window because a built-in page was served under the asked-for name ("documents" as application/octet-stream, no boot script); `asset()` in lib.rs now takes exact names only. Likely affects Windows release builds too (told the Windows session). On Linux: release renders from its built-in files, 144 Rust tests and all 7 smoke-walk checks pass; AppImage, .deb, .rpm built for aarch64 and x86_64 with `build-in-lima.sh`.
+- 2026-11-24: Linux on the shared shell: merged `claude/desktop-tauri` (ed8a4c17) into `claude/linux-tauri-02790e`; added `apps/desktop/src-tauri/src/linux.rs` with cfg(linux) hooks, the Linux dialog/portal dependencies, `tauri.linux.conf.json`; one Flatpak manifest (`packaging/linux/flatpak`, GNOME 51, tray module) replaced `apps/desktop/flatpak`; `desktop.yml` builds Flatpaks for both architectures. Linux compile and tests running in the VM.
+- 2026-11-24: The merged shell compiles on Linux (Ubuntu 22.04 arm64 VM) and 143 of 144 Rust tests pass, the new Linux ones included; `reminders::survive_a_restart_and_late_ones_show_within_a_day` failed once under heavy load and passes 3 of 3 alone (timing). `build-in-lima.sh` now also copies the iOS shell-bridge.js and the local-store fixtures and keeps macOS `._` files out.
+- 2026-11-24: Linux probe (a small Tauri app with `linux.rs`, scratch only) passed on X11 in the VM: window renders, tray, notification sent, global shortcut registered, `folevi://new` from a second launch reaches the running app, Secret Service store and read back, desktop dark mode through the portal turns the page dark (WebKitGTK 2.50 does that by itself; the hook keeps GTK's title bar and menus in step). Smoke test fixed (inner part re-invokes the script; test keyring password; portals get the display).
+- 2026-11-24: Linux build root fix: the amd64 root is Ubuntu's own 22.04 base image (debootstrap unmounts /proc mid-way and Rosetta can't run x86_64 programs without it); `setup-amd64-root.sh` and `install-build-deps.sh` (no sudo needed as root) updated. The build scripts live in `packaging/linux/scripts/` (the repo's .gitignore drops any `build/` folder, so the first commit missed them).
+- 2026-11-24: Folevi for Linux started on `claude/linux-tauri-02790e`: packaging, docs, build scripts and CI workflow committed (34cc11fe); waiting on the shared Tauri shell from `claude/desktop-tauri`.
+- 2026-11-25: Merged main (4d22880f, the web PRs incl. the Windows download page, PR 70) into `claude/desktop-tauri` for PR 65; 1.5.73's Mac and Windows changelog entries combined into one release (build 88, tag v1.5.73); web 2,169, Rust 141, bridge 4 tests and the Windows smoke walk pass.
+- 2026-11-24: Desktop CI measurements now require the page to have started (the app prints "FOLEVI READY" with FOLEVI_REPORT_READY; measure.mjs --expect-ready fails otherwise). Verified run 45443908032 (every Tauri page started) with both memory changes: Windows x64 151 MB private (375 MB working set) vs Electron's 207 (433), ARM64 149 MB, Linux x86_64 365 vs 349 MB PSS. Not in the published 1.5.73 yet.
+- 2026-11-24: Desktop memory work (not in the published 1.5.73 yet): Quick Add's window made on first use (e75ac156; Linux measured 446 -> 369 MB PSS) and the web export installed as files beside the app instead of compiled in (6269a7ff; frontendDist is `apps/desktop/shell-stub`, the pages read from `<resources>/web`); CI run measuring both on Windows pending.
+- 2026-11-24: The published Windows 1.5.73 installers opened a blank window (built-in pages served under the asked-for name, so as application/octet-stream without the boot script; the Linux session found it, fix bb9906f0 cherry-picked as c150ba78). Replaced in place with the fixed build from CI run 45418586764 (owner's choice; same names and version; sha256 arm64 4a651ed1..., x64 326d03ba...). Memory corrected: with the page loaded Tauri is about Electron's on Windows (214 vs 207 MB private) and higher on Linux; the earlier "a third lighter" measured the blank page. Quick Add's window is now made on first use. `smoke.mjs --embedded` covers built-in assets.
+- 2026-11-24: Release 1.5.73 (build 88) recorded on `claude/desktop-tauri` (untagged: the Mac session's own 1.5.73 on `claude/mac-webview` took tag v1.5.73 three minutes earlier; the main session decided: one release 1.5.73 / build 88 for both, the Mac's tag v1.5.73 (b972616a) stays, no rebuild; whichever of PR 65 and the Mac PR merges second merges main and combines the two CHANGELOG entries into one 1.5.73 entry) with the 1.5.69 to 1.5.72 history from tag v1.5.72; PR 66 (1.5.72) merges first, take the higher version on conflict.
+- 2026-11-24: Owner: "release it", on folevi.com: stable latest links live (folevi.com/download/windows/Folevi-arm64-setup.exe and Folevi-x64-setup.exe, no-cache, now 1.5.73); the download page entry (Web session) and the 1.5.73 version record and tag on main (main session) requested.
+- 2026-11-24: Folevi for Windows 1.5.73 test download published (owner's OK, after v1.5.72): unsigned NSIS installers at https://folevi.com/download/windows/Folevi_1.5.73_arm64-setup.exe (sha256 72f39313...2f4c) and .../Folevi_1.5.73_x64-setup.exe (sha256 a54b07bf...c241), R2 `folevi-updates` windows/, from CI run 45392111016; no update feed (no signing key); version.json/CHANGELOG/tag for 1.5.73 still to record at merge.
+- 2026-11-24: Owner (directly): build Folevi for Windows 1.5.73 test installers now and upload them unsigned to `folevi.com/download/windows/` once tag v1.5.72 exists; `apps/desktop/RELEASE_VERSION` stamps 1.5.73 on this branch (version.json and CHANGELOG still to record it at merge).
+- 2026-11-24: PR 65 opened (Tauri desktop app into `main`, supersedes PR 58); merge `main` in when its turn comes (after PRs 55 and 57).
+- 2026-11-24: Desktop CI: Windows x64 builds (NSIS 78 MB, MSI 79 MB) and is lighter than Electron (139 vs 204 MB private); Windows etags now use the NTFS file index (concurrent writes lost an update on ARM64); the workflow's binary lookup fixed for Linux.
+- 2026-11-24: Folevi desktop moved to Tauri 2 for Windows (ARM64, x64) and Linux (x86_64, aarch64) on `claude/desktop-tauri` (owner: "one web app everywhere", small and light like the Mac app); CI builds and memory measurements; Electron PR 58 superseded, not merged.
+- 2026-11-24: Merged `main` (PR 56, iPhone/iPad second round, and the e2e and secret-scan fixes) into `claude/windows-electron-4ed862` to clear PR 58's conflict; only HANDOFF.md conflicted (both sides kept). Owner decided "one web app everywhere": this Electron app becomes the desktop app for Windows, Mac and Linux (Mac and Linux targets wait for the plan).
+- 2026-11-24: Folevi for Windows: branch pushed and PR 58 opened into `main` with the owner's OK; not merged.
+- 2026-11-24: Folevi for Windows built on `claude/windows-electron-4ed862` (Electron `apps/desktop` revived, Mac parts removed, web `windows` platform); unsigned arm64 and x64 test installers handed to the owner; not merged or published.
+- 2026-11-25: Folevi Server built (branch `claude/sleepy-goodall-3cg4e7`): backend and web server editions, setup
+  and admin panel walked end to end on a real backend, `folevid` supervisor (encrypted backups, Connect client,
+  memory profiles), Folevi Connect service, packages for Synology/QNAP/ASUSTOR/TerraMaster/UGREEN/Unraid/Linux/
+  container/TrueNAS/CasaOS/Umbrel, Mac/iOS server places, folevi.com/server. Server domain `folevi.app` (owner
+  bought it); owner's test NAS is a DS223 (ARM64, 2 GB).
+- 2026-11-25: Self-hosting plan version 2 (`docs/SELF_HOSTING_PLAN.md`): native packages on every NAS that allows
+  them, catalog apps on TrueNAS and the container-only systems, native Linux installer for DigitalOcean/Hetzner,
+  Folevi Connect for Plex-like access, roles and admin panel, email and other services through optional relays.
+- 2026-11-25: the live Bonjour browse (`testAServerAdvertisedOnThisNetworkIsFound`) ran on this Mac with the owner's
+  OK and passed: it advertised `_folevi._tcp` and found it with its TXT name, version and url.
+- 2026-11-25: Mac sign-in screen may look up any server (`https: http:` in its connect-src, `ShellPolicy.csp`
+  `signIn`); `ServerPageTests` (offscreen web view) shows home http servers aren't mixed content on the Mac.
+- 2026-11-25: Folevi Server on the Mac: `ServerFlowTests` (end to end against the local test server, Bonjour entries,
+  version gate, best connection on a network change, Keychain only); `ServerReach.probe`/`networkChanged()`,
+  `LocalServers.entry` (TXT values checked), `ShellAuth.exchange` split out of the sheet; Mac build fixed for the
+  regenerated icons (`calendar` is `calendarDays`).
+- 2026-11-25: Folevi Server, app side split onto `main` (`claude/server-apps-base`): web server edition, admin panel,
+  Your own server sign-in, Connect pages, backend server edition, Mac/iOS server places, best-connection module; server
+  functions registered for E2EE routing and local mode; server fallback origin is 127.0.0.1 so shell exports pass.
+- 2026-11-25: The owner ran `migrations:backfillDocumentText` on production (373 notes copied, 0 failed); #93 is
+  ready to merge, then `migrations:narrowDocumentText`.
+- 2026-11-25: Backend performance pass, step 4 (draft PR, waits for the owner and the production backfill): search,
+  Foli AI and Spotlight read note text from `documentText`; `documents.searchText` is no longer written, emptied by
+  `migrations:narrowDocumentText`, and its search index dropped. Tests read text through `textOf` (tests/convex/helpers.ts).
 - 2026-11-25: Backend performance pass, step 3 (widen): `documentText` table holds each note's search text and search
   fields, kept in step by the write hook; `migrations:backfillDocumentText` copies older notes (production run waits
   for the owner). Readers are unchanged until the switch PR.
@@ -775,6 +1435,29 @@ account button should move past iPadOS's window buttons).
 - 2026-11-24: Failed queries keep the page: `lib/convex/queries.ts` hooks (retry with backoff, last good result,
   `failed` and `retry()`), used in every component with an eslint rule; `LoadFailed` error state on the main lists;
   local query cache re-runs failed entries; `test/safe-queries.test.tsx`.
+- 2026-11-25: Main green pass (`claude/project-thread-8numex`): `multi-select-local` draws its rectangle from under
+  Birch (the smaller desktop cards of 2026-11-20 put Alder, Birch and Cedar on one row, so a rectangle from the right of
+  Cedar crossed Cedar); `e2ee-approve` waits for the first dialog to close and for the second request's code before
+  "They don't match" (failed twice on `main` after PR 76, which changed only docs); safe dependency bumps (katex 0.19.1,
+  typescript-eslint 8.72.2, the clipper's @types/chrome 0.3.7 and jsdom 30.1.3, lockfiles regenerated); Dependabot
+  groups `@tiptap/*` and skips @types/node majors.
+- 2026-11-24: Android 89 (1.5.74) published to Play internal testing (owner dragged the AAB in; Claude added it from the library, notes, published).
+- 2026-11-24: Android 1.5.74 (89) built from the merged mobile release for Play internal testing; upload waits on the owner's drag-in.
+- 2026-11-24: PR 69 opened for the Android Capacitor app (contains PR 66); mergeable with `main`, not merged.
+- 2026-11-24: Merged `main` (PR 60, Mac 1.5.71) into `claude/android-capacitor-197cf4` for its PR: versions stay 1.5.72 / 87, both changelog entries kept.
+- 2026-11-24: Android 87 (1.5.72), the Capacitor app, published to Play internal testing with the owner's OK (built from `d2ef501c`, Firebase push on); replaces 83.
+- 2026-11-24: Android release prepared for Play internal testing (owner's OK via the main session): dry-run AAB with Firebase push built, signed with build 83's upload key; waiting for the mobile session's 1.5.72 commit.
+- 2026-11-24: Merged the iOS session's `claude/mobile-capacitor-f41734` into the Android branch: both had restored the same Capacitor Android app into `apps/mobile/android`; kept this branch's Kotlin and manifest fixes and their shared cloud-kit bundling, R8 rules and bridge additions; `apps/mobile/.gitignore` now ignores only `/web/` (a bare `web/` had hidden the app's `com/folevi/android/web/` Kotlin from their commits).
+- 2026-11-24: Android as Capacitor: safe areas reach the WebView, wide-window Back follows the web's tab rule; checked on phone, tablet (signed in), foldable and desktop emulators; size and memory measured against the native app (README). Pushed, no PR.
+- 2026-11-24: Android as Capacitor on `claude/android-capacitor-197cf4`: `apps/mobile/android` restored from the paused Capacitor app on Capacitor 8.6.2, updating in place over the native app (same package and storage); version from version.json, upload-key signing, R8, multi-window, no stock plugins on Android; unit, bridge, parity and version tests pass; not pushed.
+- 2026-11-24: 1.5.74 (build 89), the mobile app with the iOS review's fixes, uploaded to TestFlight with the owner's OK (delivery 9fe1d590); tag local.
+- 2026-11-24: iOS review of the mobile app (design/HIG, polish, performance; docs/mobile/ios-review-2026-11-24.md): 44 pt hit areas for Calendar's grabber, a note's place chip and Foli AI's Add; local mode's network rules now apply from the first request and compile once. Open for the web session: iPad touch targets under 44 pt and about 4 MB of web memory kept per note open and close.
+- 2026-11-24: 1.5.72 (build 87), the Capacitor mobile app, uploaded to TestFlight with the owner's OK (delivery 58636ca8); internal testing only.
+- 2026-11-24: Owner: local mode may check Folevi for new note styles. iOS local-mode rules allow only `<deployment>.convex.site/note-styles` and Convex storage images (checked on the simulator: everything else still blocked); features and docs pages say notes never leave the device and the app only checks for new styles.
+- 2026-11-24: 1.5.72 (build 87) cut on `claude/mobile-capacitor-f41734` (tag local) for the Capacitor mobile app; iOS IPA exported, TestFlight upload pending a permission; Android build handed to the Android session. PR 66: main merged again; its one failing e2e (vault-team) had passed on the same code the run before.
+- 2026-11-24: Owner: keep note covers inside the mobile app and sync note styles when the server changes them. Plan in docs/MOBILE.md; local mode's part asked of the owner.
+- 2026-11-24: PR 66 opened for the Capacitor mobile app (`claude/mobile-capacitor-f41734` pushed); open question to the owner: note covers.
+- 2026-11-24: `apps/mobile`: one Capacitor app for iPhone, iPad, iPhone Duo and Android around the web app (no native screens), reusing the shared Swift and Kotlin services; window-size layouts in `lib/iphone.ts`; `version.mjs` covers it; checked on simulators and emulators, size and memory compared (docs/MOBILE.md). Branch `claude/mobile-capacitor-f41734`, PR not merged.
 - 2026-11-25: Web everywhere queue landed (61, 62, 63, 64, 70, 75, 71, 72 after 68 and 74); this is their combined entry:
   PR 62 shortcuts per system (and documents.spec:187 waits for the bar's Share and the panel's focus instead of racing
   them); PR 63 Mac no-bounce motion and Android press ripple, the owner's picks in the web-everywhere memory; PR 64 one

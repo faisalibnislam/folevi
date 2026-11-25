@@ -7,6 +7,7 @@
 // credit packs). Every purchase surface asks canPurchaseHere() first; text written by the server that says
 // where to buy goes through withoutPurchaseHints().
 
+import { isServerEdition } from "./edition";
 import { currentBackendMode } from "./backendMode";
 import { MARKER_GLOBAL, type NativeChromeMarker } from "./engine/protocol";
 
@@ -263,6 +264,8 @@ export interface NativeBridge {
   share?(o: { title?: string; text?: string; url?: string; anchor?: NativeRect }): Promise<boolean>;
   /** How the keyboard behaves: dragging a view that scrolls down past the keyboard takes it away with the finger. */
   keyboard?(o: { interactiveDismiss?: boolean }): void;
+  /** The page is about to let the keyboard go: the app gives the web view its full height back first. */
+  keyboardWillLeave?(): Promise<void>;
   /** Every move of the keyboard (shown, hidden, resized, dragged by a finger); returns the function that stops. */
   onKeyboard?(listener: (frame: NativeKeyboardFrame) => void): () => void;
   /** Text onto the pasteboard; true once it's there. (The app also stands in for navigator.clipboard.writeText when WebKit refuses it.) */
@@ -324,7 +327,8 @@ export function inIosApp(): boolean {
  * there Plan & billing shows the plan as it is, and nothing in the app links to buying or says where to.
  * Never in local mode either, on any platform: a library on the person's devices has no plan to buy.
  */
-export const canPurchaseHere = (): boolean => !isNativeStoreApp() && currentBackendMode() !== "local";
+// Folevi Server (lib/edition.ts) has no billing at all.
+export const canPurchaseHere = (): boolean => !isServerEdition() && !isNativeStoreApp() && currentBackendMode() !== "local";
 
 /**
  * Server messages end with where to buy ("Buy more in Settings → Plan & billing.", "Upgrade to use it.").

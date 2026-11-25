@@ -9,6 +9,7 @@
 // (sharedLabels), since no particular reader is known. A sealed note never comes here: `readableFor`
 // checks `isSealed` first, and this refuses one anyway (an empty result) so no caller can read placeholders
 // as if they were text.
+import { noteText } from "../documentText";
 import { blocksToMarkdown, folderPath } from "@folevi/editor-schema";
 import type { Doc } from "../../_generated/dataModel";
 import type { QueryCtx } from "../../_generated/server";
@@ -50,8 +51,9 @@ export async function plainReadable(ctx: QueryCtx, doc: Doc<"documents">, purpos
 
 /** The note's search text and the text found in its files, as one string. */
 async function searchTextOf(ctx: QueryCtx, doc: Doc<"documents">): Promise<string> {
-  const parts = [doc.searchText];
-  let size = doc.searchText.length;
+  const own = await noteText(ctx, doc._id);
+  const parts = [own];
+  let size = own.length;
   const found = await ctx.db
     .query("fileTexts")
     .withIndex("by_document_block", (q) => q.eq("documentId", doc._id))

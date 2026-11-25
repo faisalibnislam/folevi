@@ -26,7 +26,7 @@ describe("backend invariants", () => {
   });
 
   test("every public function authenticates (requireProfile/requirePlatformRole/optionalProfile) or is explicitly public", () => {
-    const allowPublic = new Set(["users.ts:me", "settings.ts:status", "settings.ts:ping", "sharing.ts:openPublicLink", "vaultShares.ts:openLink", "authEmails.ts:devMailbox", "users.ts:bootstrap", "users.ts:registerSession", "users.ts:heartbeat", "users.ts:listSessions", "users.ts:revokeOtherSessions", "themes.ts:list"]);
+    const allowPublic = new Set(["users.ts:me", "settings.ts:status", "settings.ts:ping", "sharing.ts:openPublicLink", "vaultShares.ts:openLink", "authEmails.ts:devMailbox", "users.ts:bootstrap", "users.ts:registerSession", "users.ts:heartbeat", "users.ts:listSessions", "users.ts:revokeOtherSessions", "themes.ts:list", "server.ts:info", "serverInvites.ts:preview"]);
     for (const { p, s } of sources) {
       // The Better Auth component's functions are only reachable from Folevi's own functions, never the internet.
       if (p.includes("/betterAuth/")) continue;
@@ -34,7 +34,7 @@ describe("backend invariants", () => {
       const re = /export const (\w+) = (query|mutation|action)\(\{[\s\S]*?handler: async \([^)]*\)[^{]*\{([\s\S]*?)\n {2}\},\n\}\);/g;
       for (const m of s.matchAll(re)) {
         const [, fn, , body] = m;
-        const guarded = /requireProfile|requirePlatformRole|optionalProfile|requireIdentity|collectionFor|threadFor|commentFor|folderFor|tagFor|writableDoc|historyDocument|versionByPublicId|checkServer|taskBlock|currentProfileId|internal\.exports\.prepare/.test(body!);
+        const guarded = /requireProfile|requirePlatformRole|requireServerAdmin|optionalProfile|requireIdentity|collectionFor|threadFor|commentFor|folderFor|tagFor|writableDoc|historyDocument|versionByPublicId|checkServer|taskBlock|currentProfileId|internal\.exports\.prepare|internal\.aiConfig\.assertKeyEditor/.test(body!);
         if (!guarded && !allowPublic.has(`${name}:${fn}`)) throw new Error(`${name}:${fn} has no authorization check`);
       }
     }
@@ -43,7 +43,19 @@ describe("backend invariants", () => {
   test("only Folevi's own issuer is trusted, and development-only tools refuse production", () => {
     const cfg = readFileSync(join(root, "auth.config.ts"), "utf8");
     expect(cfg).toMatch(/providers: \[getAuthConfigProvider\(\)\]/);
-    expect(cfg).not.toMatch(/customJwt|auth0|FOLEVI_DEV_AUTH/i);
+    expect(cfg).not.toMatch(/customJwt|auth0|FOLEVI_DEV_AUTH|process\.env/i);
+    // Folevi Server's bundle swaps in its own config: static keys from FOLEVI_JWKS, same issuer, and only
+    // variables folevid always sets (Convex refuses to deploy an auth config that reads an unset one).
+    const serverCfg = readFileSync(join(root, "..", "server", "bundle", "auth.config.server.ts"), "utf8");
+    expect(serverCfg).toMatch(/providers: \[authProvider\(\{ FOLEVI_EDITION: "server", FOLEVI_JWKS: process\.env\.FOLEVI_JWKS, CONVEX_SITE_URL: process\.env\.CONVEX_SITE_URL \}\)\]/);
+    expect([...serverCfg.matchAll(/process\.env\.(\w+)/g)].map((m) => m[1])).toEqual(["FOLEVI_JWKS", "CONVEX_SITE_URL"]);
+    // lib/jwks.ts: Better Auth's own provider; static keys only in the server edition (FOLEVI_JWKS), same issuer.
+    const jwks = readFileSync(join(root, "lib", "jwks.ts"), "utf8");
+    expect(jwks).toMatch(/return getAuthConfigProvider\(\);\n\}/);
+    // (Read through optionalEnv: Convex refuses an auth config that reads an unset variable.)
+    expect(jwks).toMatch(/optionalEnv\(env, "FOLEVI_EDITION"\)\.trim\(\)\.toLowerCase\(\) !== "server"\) return \{ kind: "none" \}/);
+    expect(jwks).toMatch(/issuer: `\$\{env\.CONVEX_SITE_URL\}`/);
+    expect(jwks).not.toMatch(/auth0|FOLEVI_DEV_AUTH/i);
     const mailbox = readFileSync(join(root, "authEmails.ts"), "utf8");
     expect(mailbox).toMatch(/FOLEVI_ENV !== "production"/);
     expect(mailbox).toMatch(/timingSafeEqualHex\(args\.secret, expected\)/);

@@ -4,6 +4,14 @@ updates:
     directory: /
     schedule: { interval: weekly }
     open-pull-requests-limit: 5
+    # The editor's packages move together: one tiptap package ahead of the others breaks the editor.
+    groups:
+      tiptap:
+        patterns: ["@tiptap/*"]
+    # @types/node follows the Node major in .nvmrc, not the newest Node.
+    ignore:
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
   - package-ecosystem: github-actions
     directory: /
     schedule: { interval: weekly }
@@ -12,7 +20,13 @@ updates:
     directory: /apps/clipper
     schedule: { interval: weekly }
     open-pull-requests-limit: 3
+    ignore:
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
   - package-ecosystem: npm
     directory: /apps/ios
     schedule: { interval: weekly }
     open-pull-requests-limit: 3
+    ignore:
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]

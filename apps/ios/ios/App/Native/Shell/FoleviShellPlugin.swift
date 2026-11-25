@@ -14,6 +14,7 @@ final class FoleviShellPlugin: BridgePlugin {
     static let names: Set<String> = [
         "setMode",
         "placesList", "placesSwitch", "placesSignIn", "placesDescribe", "placesSignOut", "placesForgetLibrary", "placesConvexToken", "placesQuickAdd", "placesSetQuickAdd",
+        "placesAddServer", "placesLocalServers",
         "libSetup", "libInfo", "libList", "libRead", "libWrite", "libRemove", "libConflictVersions", "libResolveConflicts", "libStartDownload",
         "libWatch", "libUnwatch", "libRescan", "journalAppend", "journalRead", "journalTruncate", "libUnlock", "libSetPassphrase", "libChangePassphrase", "libMove",
         "secretsHas", "secretsSet", "secretsDelete",
@@ -207,6 +208,34 @@ final class FoleviShellPlugin: BridgePlugin {
         guarded(call) {
             if let id = call.getString("id") { ShellPlaces.setQuickAdd(id) }
             call.resolve()
+        }
+    }
+
+    // MARK: Folevi Server places (docs/self-hosting/CONTRACT.md §6)
+
+    /// "Your own server" (the page's addServerPlace): checks the address, fetches the server's folevi.json here
+    /// (what the page passed is never trusted), checks the versions, then opens that server's sign-in screen: the
+    /// page loads again bound to it, and signing in there makes the account a place on that server. Answers
+    /// { value: server } or rejects with the reason (ShellServer.Problem's code and words).
+    @objc func placesAddServer(_ call: BridgeCall) {
+        guarded(call) {
+            Task { @MainActor in
+                switch await ShellServer.lookUp(call.getString("origin") ?? "", appVersion: ShellServer.appVersion) {
+                case .failure(let problem):
+                    call.reject(problem.message, problem.code)
+                case .success(let server):
+                    ShellPlaces.setCurrent(nil, pending: true, server: server)
+                    call.resolve(["value": server.json])
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) { FoleviViewController.restart() }
+                }
+            }
+        }
+    }
+
+    /// Folevi servers found on the home network (Bonjour): { servers: [{ name, origin, serverId, version }] }.
+    @objc func placesLocalServers(_ call: BridgeCall) {
+        guarded(call) {
+            Task { call.resolve(["servers": await LocalServers.shared.list()]) }
         }
     }
 

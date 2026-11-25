@@ -433,7 +433,7 @@ function FindPanel({ editor }: { editor: Editor | null }) {
         ) : null}
       </div>
       <div className="mt-2 flex items-center gap-1 px-1">
-        <p id={`${inputId}-count`} role="status" className="flex-1 text-footnote text-muted">
+        <p id={`${inputId}-count`} role="status" className="flex-1 text-footnote text-muted tabular-nums">
           {!query.trim() ? "Type to search this page" : matches.length ? `${current + 1} of ${matches.length}${matches.length >= MAX_MATCHES ? "+" : ""}` : "No results in this page"}
         </p>
         <IconButton label="Previous match" shortcut="⇧Enter" onClick={() => reveal(current - 1)} disabled={!matches.length} className="!h-7 !w-7">

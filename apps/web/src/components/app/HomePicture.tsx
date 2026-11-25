@@ -19,23 +19,24 @@ const COLUMNS = 4;
  * row of note cards and a "Recent folders" row of folder cards, with breathing room between the rows. Only the
  * cards' faces, no links or menus: the picture sits inside the overview's button.
  */
-export function HomePicture({ className = "" }: { className?: string }) {
+/** `width`, `height` and `columns` lay it out for another shape (Show all tabs draws it in a note card's shape). */
+export function HomePicture({ className = "", width = WIDTH, height = HEIGHT, columns = COLUMNS }: { className?: string; width?: number; height?: number; columns?: number }) {
   const { scope } = useAppState();
-  const notes = useOfflineQuery(api.documents.recentNotes, { scope, limit: COLUMNS });
-  const org = useOfflineQuery(api.organization.recentFolders, { scope, limit: COLUMNS });
+  const notes = useOfflineQuery(api.documents.recentNotes, { scope, limit: columns });
+  const org = useOfflineQuery(api.organization.recentFolders, { scope, limit: columns });
   const box = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(0);
   useEffect(() => {
     const el = box.current;
     if (!el) return;
-    const fit = () => setScale(el.clientWidth / WIDTH);
+    const fit = () => setScale(el.clientWidth / width);
     fit();
     const watch = new ResizeObserver(fit);
     watch.observe(el);
     return () => watch.disconnect();
-  }, []);
-  const rows = (notes ?? []).slice(0, COLUMNS);
-  const folders = (org?.folders ?? []).slice(0, COLUMNS);
+  }, [width]);
+  const rows = (notes ?? []).slice(0, columns);
+  const folders = (org?.folders ?? []).slice(0, columns);
 
   return (
     <div ref={box} aria-hidden className={`relative overflow-hidden bg-[var(--color-canvas)] ${className}`}>
@@ -46,11 +47,11 @@ export function HomePicture({ className = "" }: { className?: string }) {
           </span>
         </div>
       ) : scale > 0 ? (
-        <div className="pointer-events-none absolute left-0 top-0 origin-top-left p-6" style={{ width: WIDTH, height: HEIGHT, transform: `scale(${scale})` }}>
+        <div className="pointer-events-none absolute left-0 top-0 origin-top-left p-6" style={{ width, height, transform: `scale(${scale})` }}>
           {rows.length ? (
             <>
               <Heading icon={<Clock3 size={18} />} title="Recent notes" />
-              <div className="mb-8 grid gap-4" style={{ gridTemplateColumns: `repeat(${COLUMNS}, minmax(0, 1fr))` }}>
+              <div className="mb-8 grid gap-4" style={{ gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` }}>
                 {rows.map((d) => (
                   <div key={d.id} className="relative [container-type:inline-size]">
                     <div className={NOTE_CARD_LINK}>
@@ -76,7 +77,7 @@ export function HomePicture({ className = "" }: { className?: string }) {
           {folders.length ? (
             <>
               <Heading icon={<Folder size={18} />} title="Recent folders" />
-              <div className="grid gap-4" style={{ gridTemplateColumns: `repeat(${COLUMNS}, minmax(0, 1fr))` }}>
+              <div className="grid gap-4" style={{ gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` }}>
                 {folders.map((f) => (
                   <div key={f.id} className={FOLDER_CARD_BOX}>
                     <div className="absolute inset-0">

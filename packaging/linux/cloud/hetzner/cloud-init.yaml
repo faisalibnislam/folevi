@@ -1,0 +1,27 @@
+#cloud-config
+# Folevi Server on Hetzner Cloud. Paste this into "Cloud config" when creating a server
+# (Ubuntu 24.04 or Debian 12, CX22 or bigger recommended). It adds swap on small servers, opens the firewall for
+# Folevi and runs the normal installer. When it is done, the setup address is in /root/folevi-setup.txt
+# (ssh in, then: cat /root/folevi-setup.txt). Unverified on a real Hetzner server: test before publishing.
+package_update: true
+packages:
+  - curl
+  - ca-certificates
+write_files:
+  - path: /etc/default/folevi-server
+    permissions: "0644"
+    content: |
+      # A public server: Folevi answers on 80 and 443 and gets its own certificate.
+      FOLEVI_PORT=80
+      FOLEVI_HTTPS_PORT=443
+runcmd:
+  - |
+    if [ "$(awk '/^MemTotal:/{print $2}' /proc/meminfo)" -lt 3500000 ] && ! swapon --show | grep -q .; then
+      fallocate -l 2G /swapfile && chmod 600 /swapfile && mkswap /swapfile && swapon /swapfile
+      echo '/swapfile none swap sw 0 0' >> /etc/fstab
+    fi
+  - if command -v ufw >/dev/null 2>&1; then ufw allow 22/tcp; ufw allow 80/tcp; ufw allow 443/tcp; ufw --force enable; fi
+  - curl -fsSL https://get.folevi.com/server -o /root/folevi-install.sh
+  - sh /root/folevi-install.sh > /root/folevi-install.log 2>&1
+  - runuser -u folevi -- /opt/folevi/bin/folevid setup-url --data /var/lib/folevi --bundle /opt/folevi > /root/folevi-setup.txt 2>&1 || true
+  - chmod 600 /root/folevi-setup.txt /root/folevi-install.log

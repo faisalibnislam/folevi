@@ -3,7 +3,7 @@
 // web logs them. What an item holds is kept in this page's memory while it's open (to save it again under the same
 // item key), and dropped when the Vault locks.
 import { api } from "@/lib/convex/api";
-import { APP_URL } from "@/lib/env";
+import { appUrl } from "@/lib/env";
 import { ensureEncryptionAccount } from "@/components/vault/useVault";
 import { vaultSessions } from "@/lib/vault/keys";
 import { changedFields, ITEM_KINDS, newItemId, openSecrets, openSummary, sealItem, splitItem, type ItemContent, type ItemKind, type ItemSecrets, type ItemSummary } from "@/lib/vault/items";
@@ -572,7 +572,7 @@ export const VAULT_COMMANDS = {
       const password = text(args, "password", { max: 200, optional: true, allowEmpty: true }) || undefined;
       if (password && password.length < 5) throw new BridgeError("invalid_args", "A link's password has at least 5 characters.");
       const h = held.get(itemId) ?? (await openItem(deps, vaultId, itemId).then(({ r }) => (hold(vaultId, r, null), held.get(itemId))))!;
-      const link = await makeLink(vaultId, h.row, keys(h.row.keyVersion), APP_URL);
+      const link = await makeLink(vaultId, h.row, keys(h.row.keyVersion), appUrl());
       await deps.client.mutation(api.vaultShares.createLink, { vaultId, itemId, linkId: link.linkId, wrappedKey: link.wrappedKey, maxViews: num(args, "maxViews", { min: 1, max: 10 }), expiresInMs: num(args, "lastsMs", { min: 3_600_000, max: 30 * 86_400_000 }), ...(password ? { password } : {}), client: s().info(vaultId) });
       return { url: link.url };
     },

@@ -3,6 +3,8 @@ import { buildContentSecurityPolicy, createNonce } from "@/lib/security/csp";
 import { themeBootScriptHash } from "@/lib/theme/bootScript";
 import { SIGNED_IN_HINT, hintCookie, hintDomain } from "@/lib/auth/signedInHint";
 import { SIGNED_IN_PATH, signedInCheckScriptHash } from "@/lib/auth/signedInCheck";
+import { isServerEdition } from "@/lib/edition";
+import { runtimeConfig, servedOverHttps } from "@/lib/runtime/config";
 
 const MARKETING_URL = process.env.NEXT_PUBLIC_MARKETING_URL ?? "https://folevi.com";
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://app.folevi.com";
@@ -10,10 +12,10 @@ const marketingHost = new URL(MARKETING_URL).host;
 const appHost = new URL(APP_URL).host;
 
 // Paths that only exist on the marketing site.
-const MARKETING_ONLY = /^\/($|mac$|mac\/|features|template-gallery|security|pricing|changelog|privacy|terms|docs|status|support|compare|blog)/;
+const MARKETING_ONLY = /^\/($|mac$|mac\/|server$|server\/|features|template-gallery|security|pricing|changelog|privacy|terms|docs|status|support|compare|blog)/;
 // Paths that only exist on the product host (app + admin + auth + share pages).
 const APP_ONLY =
-  /^\/(documents|notes|d\/|ai(?:\/|$)|graph(?:\/|$)|tasks|calendar|review(?:\/|$)|changes(?:\/|$)|daily|shared|templates|starred|archive|trash|vault(?:\/|$)|vault-link\/|drafts|unsorted|folders|tags|settings|help|onboarding|invite|share-invite|share(?:$|\/)|share-target$|place-sync$|admin|signin|signup|connect|verify-email|forgot-password|reset-password|two-factor|signout|s\/|api\/|offline|dev\/|oauth\/|mcp(?:\/|$)|native\/callback$|\.well-known\/oauth-|\.well-known\/assetlinks\.json$)/;
+  /^\/(documents|notes|d\/|ai(?:\/|$)|graph(?:\/|$)|tasks|calendar|review(?:\/|$)|changes(?:\/|$)|daily|shared|templates|starred|archive|trash|vault(?:\/|$)|vault-link\/|drafts|unsorted|folders|tags|settings|help|onboarding|invite|share-invite|share(?:$|\/)|share-target$|place-sync$|admin|setup(?:\/|$)|join\/|signin|signup|connect|verify-email|forgot-password|reset-password|two-factor|signout|s\/|api\/|offline|dev\/|oauth\/|mcp(?:\/|$)|native\/callback$|\.well-known\/oauth-|\.well-known\/assetlinks\.json$)/;
 
 function isAppPath(pathname: string): boolean {
   return APP_ONLY.test(pathname);
@@ -23,7 +25,7 @@ function isAppPath(pathname: string): boolean {
 // nonce-based CSP without 'unsafe-inline'. Statically prerendered pages keep next.config's static policy,
 // because they have no per-request nonce to put on Next's inline scripts.
 const NONCE_ROUTES =
-  /^\/(documents|notes|d\/|ai(?:\/|$)|graph(?:\/|$)|tasks|calendar|review(?:\/|$)|changes(?:\/|$)|shared|templates|starred|archive|trash|drafts|unsorted|folders|tags|settings|help|onboarding|invite|share-invite|share(?:$|\/)|place-sync$|admin|signin|signup|connect|verify-email|reset-password|two-factor|s\/)/;
+  /^\/(documents|notes|d\/|ai(?:\/|$)|graph(?:\/|$)|tasks|calendar|review(?:\/|$)|changes(?:\/|$)|shared|templates|starred|archive|trash|drafts|unsorted|folders|tags|settings|help|onboarding|invite|share-invite|share(?:$|\/)|place-sync$|admin|setup(?:\/|$)|join\/|signin|signup|connect|verify-email|reset-password|two-factor|s\/)/;
 
 /**
  * Redirects to another host. Next rewrites a redirect whose host equals the request URL's host into a
@@ -45,16 +47,27 @@ function wantsNonce(request: NextRequest): boolean {
   return !h.has("rsc") && !h.has("next-router-prefetch") && h.get("purpose") !== "prefetch";
 }
 
+/**
+ * The policy's addresses: build-time in Folevi Cloud (as before), the runtime environment in Folevi Server, which
+ * also leaves out upgrade-insecure-requests while it's served over plain http (lib/security/csp.ts).
+ */
+function policyAddresses() {
+  if (!isServerEdition()) {
+    return { convexUrl: process.env.NEXT_PUBLIC_CONVEX_URL ?? "", convexSiteUrl: process.env.NEXT_PUBLIC_CONVEX_SITE_URL ?? "", appUrl: APP_URL };
+  }
+  const config = runtimeConfig();
+  return { convexUrl: config.convexUrl, convexSiteUrl: config.convexSiteUrl, appUrl: config.appUrl, upgradeInsecure: servedOverHttps(config) };
+}
+
 async function withNonce(request: NextRequest): Promise<NextResponse> {
   const nonce = createNonce();
   const policy = buildContentSecurityPolicy({
     nonce,
     dev: process.env.NODE_ENV !== "production",
-    convexUrl: process.env.NEXT_PUBLIC_CONVEX_URL ?? "",
-    convexSiteUrl: process.env.NEXT_PUBLIC_CONVEX_SITE_URL ?? "",
-    appUrl: APP_URL,
+    ...policyAddresses(),
     scriptHashes: [await themeBootScriptHash(), await signedInCheckScriptHash()],
     frameAncestors: request.nextUrl.pathname === "/place-sync" ? "self" : "none",
+    connectToServers: request.nextUrl.pathname === "/signin",
   });
   const headers = new Headers(request.headers);
   headers.set("x-nonce", nonce);
@@ -83,7 +96,35 @@ function syncSignedInHint(request: NextRequest, response: NextResponse): NextRes
   return response;
 }
 
+/**
+ * Folevi Server: one host, no marketing site (its pages go to the app), and the content policy and HSTS made here
+ * at run time from the server's public address, since next.config.ts's headers are fixed when the app is built.
+ * Over plain http there is no HSTS and no upgrade-insecure-requests (docs/self-hosting/PHASE0.md item 7).
+ */
+async function serverRoute(request: NextRequest): Promise<NextResponse> {
+  const pathname = request.nextUrl.pathname;
+  if (pathname === "/" || (MARKETING_ONLY.test(pathname) && !isAppPath(pathname))) {
+    return NextResponse.redirect(new URL("/documents", request.url));
+  }
+  // API routes answer JSON (and /api/embed brings its own policy from next.config.ts).
+  const response = pathname.startsWith("/api/")
+    ? NextResponse.next()
+    : NONCE_ROUTES.test(pathname) && wantsNonce(request)
+      ? await withNonce(request)
+      : (() => {
+          const r = NextResponse.next();
+          r.headers.set(
+            "Content-Security-Policy",
+            buildContentSecurityPolicy({ dev: process.env.NODE_ENV !== "production", ...policyAddresses(), frameAncestors: pathname === "/place-sync" ? "self" : "none" }),
+          );
+          return r;
+        })();
+  if (servedOverHttps()) response.headers.set("Strict-Transport-Security", "max-age=63072000; includeSubDomains");
+  return response;
+}
+
 export async function proxy(request: NextRequest) {
+  if (isServerEdition()) return serverRoute(request);
   const response = await route(request);
   const host = request.headers.get("x-forwarded-host")?.split(",")[0]?.trim() || request.headers.get("host") || "";
   return host === appHost ? syncSignedInHint(request, response) : response;

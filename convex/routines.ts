@@ -19,6 +19,7 @@
 // longer able to add pages there, the model failed) is told once per reason in the bell, never by email.
 // Note content is never emailed or logged. Turning a routine off (or AI off) stops it: nothing is scheduled,
 // read or sent.
+import { noteText } from "./lib/documentText";
 import { v } from "convex/values";
 import { internalAction, query, type MutationCtx, type QueryCtx } from "./_generated/server";
 import { internalMutation, mutation } from "./lib/functions";
@@ -30,7 +31,7 @@ import { fail } from "./lib/errors";
 import { aiAccountFor, estimateCredits } from "./lib/credits";
 import { consume } from "./lib/rateLimit";
 import { personalScope, vScopeArg, workspaceScope, type Scope } from "./lib/scope";
-import { provider } from "./lib/ai/provider";
+import { provider, loadAiSettings } from "./lib/ai/provider";
 import { indexEligible } from "./lib/ai/indexing";
 import { unfence } from "./lib/ai/writing";
 import { localDay, nextDigestAt } from "./lib/ai/digest";
@@ -73,6 +74,7 @@ import { sealedAiCopy } from "./lib/ai/indexing";
 import { storedError } from "./aiChat";
 import { contradictionItems, scopeContradictionRows } from "./aiGraph";
 import { schedulePush } from "./lib/push";
+import { routeIn } from "./aiConfig";
 
 type Ctx = QueryCtx | MutationCtx;
 
@@ -111,12 +113,13 @@ const scopeOf = (profile: Doc<"profiles">, workspaceId: Id<"workspaces"> | undef
 
 /** Whether the plan whose credits pay in `scope` includes routines (Pro or Pro AI, a trial counting as Pro AI). */
 async function routinesIncluded(ctx: Ctx, profile: Doc<"profiles">, scope: Scope): Promise<boolean> {
+  await loadAiSettings(ctx);
   const access = await aiAccountFor(ctx, profile, scope);
   return access.allowed && routineTier(access.account.tier);
 }
 
 /** Credits one run holds (the estimate shown before it's on). */
-const perRun = (kind: RoutineKind) => estimateCredits(routinePlan(kind), provider().models());
+const perRun = async (ctx: QueryCtx | MutationCtx, kind: RoutineKind) => estimateCredits(routinePlan(kind), (await routeIn(ctx, "routines")).models);
 
 const PLAN_REFUSAL = `${PLAN_NOTE} Upgrade in Settings > Plan & billing.`;
 const capMessage = (kind: RoutineKind, cap: number, period: string, locale?: string) =>
@@ -151,7 +154,7 @@ export const list = query({
       const aiOn = profile.aiEnabled !== false;
       const available = aiOn && (await routinesIncluded(ctx, profile, scopeOf(profile, workspaceId)));
       const last = row?.lastDocumentId ? await ctx.db.get(row.lastDocumentId) : null;
-      const credits = perRun(kind);
+      const credits = await perRun(ctx, kind);
       const enabled = Boolean(row?.enabled && aiOn);
       routines.push({
         kind,
@@ -233,7 +236,7 @@ export const runNow = mutation({
     if (!place) fail("forbidden", "You can't add pages where it's saved anymore. Pick another place.");
     if (!(await routinesIncluded(ctx, profile, place.scope))) fail("forbidden", PLAN_REFUSAL, { reason: "routines_not_included" });
     const period = periodKey(Date.now(), profile.timeZone);
-    if (spentIn(row.spend, period) + perRun(args.kind) > row.monthlyCap) fail("forbidden", capMessage(args.kind, row.monthlyCap, period, profile.locale));
+    if (spentIn(row.spend, period) + (await perRun(ctx, args.kind)) > row.monthlyCap) fail("forbidden", capMessage(args.kind, row.monthlyCap, period, profile.locale));
     await consume(ctx, "routineRunNow", profile._id);
     await ctx.scheduler.runAfter(0, internal.routines.run, { routineId: row._id });
     return null;
@@ -370,7 +373,7 @@ async function morningMaterial(ctx: Ctx, profile: Doc<"profiles">, scope: Scope,
     // An encrypted note: its readable copy for Foli AI (Background Foli AI on), else it's left out.
     const copy = isSealed(d) ? await sealedAiCopy(ctx, d) : null;
     if (isSealed(d) && !copy) continue;
-    changed.push({ id: d.publicId, title: (copy ? copy.title : d.title) || "Untitled", text: (copy ? copy.text : d.searchText).slice(0, MORNING_LIMITS.noteChars), by: await nameOf(d.lastEditedBy) });
+    changed.push({ id: d.publicId, title: (copy ? copy.title : d.title) || "Untitled", text: (copy ? copy.text : await noteText(ctx, d._id)).slice(0, MORNING_LIMITS.noteChars), by: await nameOf(d.lastEditedBy) });
   }
 
   const recent = await (
@@ -482,7 +485,7 @@ export const start = internalMutation({
     // An encrypted space: only with Background Foli AI on (docs/E2EE_DESIGN.md §7.2).
     if (!(await backgroundAiAllowed(ctx, place.scope))) return { status: "skipped", reason: "off" };
     const until = Date.now();
-    if (spentIn(row.spend, periodKey(until, profile.timeZone)) + perRun(row.kind) > row.monthlyCap) return await skip(ctx, row, profile, "cap");
+    if (spentIn(row.spend, periodKey(until, profile.timeZone)) + (await perRun(ctx, row.kind)) > row.monthlyCap) return await skip(ctx, row, profile, "cap");
     const today = localDay(until, profile.timeZone);
     let found: { kind: "morning"; morning: MorningMaterial } | { kind: "openLoops"; loops: LoopItem[] };
     if (row.kind === "morning") {

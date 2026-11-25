@@ -1,0 +1,28 @@
+{
+  "webservice": {
+    "services": [
+      {
+        "service": "folevi",
+        "display_name": "Folevi Server",
+        "support_alias": true,
+        "support_server": true,
+        "type": "reverse_proxy",
+        "proxy_target": "http://127.0.0.1:8460",
+        "proxy_headers": [
+          { "name": "Upgrade", "value": "$http_upgrade" },
+          { "name": "Connection", "value": "$connection_upgrade" }
+        ],
+        "icon": "ui/images/icon_{0}.png"
+      }
+    ],
+    "portals": [
+      {
+        "service": "folevi",
+        "type": "alias",
+        "name": "Folevi Server",
+        "alias": "folevi",
+        "app": "SYNO.SDS._ThirdParty.App.folevi"
+      }
+    ]
+  }
+}

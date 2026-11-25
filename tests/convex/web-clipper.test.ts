@@ -7,7 +7,7 @@ import { api, components } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
 import { originAllowed } from "../../convex/mcpServer";
 import { checkArgs, TOOL_BY_NAME } from "../../convex/lib/mcp/tools";
-import { person, setup, teamWorkspace, ulid, type T } from "./helpers";
+import { person, setup, teamWorkspace, ulid, type T, textOf } from "./helpers";
 
 type Person = Awaited<ReturnType<typeof person>>;
 
@@ -111,7 +111,7 @@ describe("create_note with inInbox", () => {
     expect(made.isError).toBeFalsy();
     expect(made.structuredContent).toMatchObject({ title: "A long read", place: "Personal", inInbox: true, url: expect.stringMatching(/\/d\/[0-9A-Za-z]+$/) });
     const noteId = made.structuredContent!.noteId as string;
-    const { doc, inbox, card } = await t.run(async (ctx) => {
+    const { inbox, card } = await t.run(async (ctx) => {
       const doc = (await ctx.db.query("documents").withIndex("by_public_id", (q) => q.eq("publicId", noteId)).unique())!;
       const inbox = (await ctx.db.get(doc.parentDocumentId!))!;
       const blocks = await ctx.db.query("blocks").withIndex("by_document", (q) => q.eq("documentId", inbox._id)).collect();
@@ -120,7 +120,7 @@ describe("create_note with inInbox", () => {
     expect(inbox.title).toBe("Inbox");
     expect(inbox.publicId.startsWith("inbox-")).toBe(true);
     expect((card?.props as { documentId?: string } | undefined)?.documentId).toBe(noteId);
-    expect(doc.searchText).toContain("A long read");
+    expect(await textOf(t, noteId)).toContain("A long read");
 
     // Without inInbox nothing changes: a note at the top of the place.
     const plain = await call(t, bearer, "create_note", { title: "Loose", markdown: "x" });

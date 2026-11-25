@@ -1,0 +1,153 @@
+// Folevi for Android: the app module (Kotlin, AGP's built-in Kotlin). docs/ANDROID_PLAN.md, apps/android/README.md.
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+
+plugins {
+    alias(libs.plugins.android.application)
+    alias(libs.plugins.kotlin.compose)
+}
+
+/** A Gradle property, then an environment variable, then the default (never a secret: these ship in the app). */
+fun setting(name: String, env: String, default: String): String =
+    (project.findProperty(name) as String?)?.takeIf { it.isNotBlank() } ?: System.getenv(env)?.takeIf { it.isNotBlank() } ?: default
+
+/** The unified version (version.json at the repo root, scripts/version.mjs). */
+val folevi = groovy.json.JsonSlurper().parse(rootProject.file("../../../version.json")) as Map<*, *>
+
+fun quoted(value: String) = "\"" + value.replace("\\", "\\\\").replace("\"", "\\\"") + "\""
+
+android {
+    namespace = "com.folevi.android"
+    compileSdk = rootProject.extra["compileSdkVersion"] as Int
+
+    defaultConfig {
+        applicationId = "com.folevi.android"
+        minSdk = rootProject.extra["minSdkVersion"] as Int
+        targetSdk = rootProject.extra["targetSdkVersion"] as Int
+        versionCode = (folevi["build"] as Number).toInt()
+        versionName = folevi["version"] as String
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        // OAuth client ids are public (they ship in every copy of the app) but come from the build, never the
+        // repository (docs/LOCAL_MODE.md "Owner setup checklist"; apps/android/README.md). Empty hides the option.
+        buildConfigField("String", "DROPBOX_APP_KEY", quoted(setting("folevi.dropboxAppKey", "FOLEVI_DROPBOX_APP_KEY", "")))
+        buildConfigField("String", "GOOGLE_ANDROID_CLIENT_ID", quoted(setting("folevi.googleAndroidClientId", "FOLEVI_GOOGLE_ANDROID_CLIENT_ID", "")))
+        // The Firebase project's Android app settings (Firebase console > Project settings > Your apps), all public;
+        // without them the app has no push notifications and Settings > Notifications says so (README "Notifications").
+        buildConfigField("String", "FIREBASE_APP_ID", quoted(setting("folevi.firebaseAppId", "FOLEVI_FIREBASE_APP_ID", "")))
+        buildConfigField("String", "FIREBASE_API_KEY", quoted(setting("folevi.firebaseApiKey", "FOLEVI_FIREBASE_API_KEY", "")))
+        buildConfigField("String", "FIREBASE_PROJECT_ID", quoted(setting("folevi.firebaseProjectId", "FOLEVI_FIREBASE_PROJECT_ID", "")))
+        buildConfigField("String", "FIREBASE_SENDER_ID", quoted(setting("folevi.firebaseSenderId", "FOLEVI_FIREBASE_SENDER_ID", "")))
+        manifestPlaceholders["appLinkHost"] = "app.folevi.com"
+    }
+
+    signingConfigs {
+        // The owner's upload key, from their own ~/.gradle/gradle.properties; never in the repo.
+        val store = (project.findProperty("folevi.uploadStoreFile") as String?)?.takeIf { it.isNotBlank() }
+        if (store != null) {
+            create("upload") {
+                storeFile = file(store)
+                storePassword = project.findProperty("folevi.uploadStorePassword") as String?
+                keyAlias = project.findProperty("folevi.uploadKeyAlias") as String?
+                keyPassword = project.findProperty("folevi.uploadKeyPassword") as String?
+            }
+        }
+    }
+
+    buildTypes {
+        debug {
+            // The website the app signs in with: the local dev server (reached through `adb reverse tcp:3002 tcp:3002`,
+            // apps/android/README.md), or another with -Pfolevi.serviceUrl=... .
+            buildConfigField("String", "SERVICE_URL", quoted(setting("folevi.serviceUrl", "FOLEVI_SERVICE_URL", "http://app.localhost:3002")))
+            // Emulators can't verify App Links for a dev server: sign-in comes back on the app's own scheme.
+            buildConfigField("String", "AUTH_REDIRECT_URI", quoted("com.folevi.android://auth/callback"))
+        }
+        release {
+            buildConfigField("String", "SERVICE_URL", quoted("https://app.folevi.com"))
+            buildConfigField("String", "AUTH_REDIRECT_URI", quoted("https://app.folevi.com/native/callback"))
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            // Signed with the owner's upload key when it's set up (~/.gradle/gradle.properties, never the repo);
+            // -Pfolevi.releaseWithDebugKey=true signs a local test build with the debug key (never upload one).
+            signingConfig = signingConfigs.findByName("upload")
+                ?: if (project.findProperty("folevi.releaseWithDebugKey") == "true") signingConfigs.getByName("debug") else null
+        }
+    }
+
+    buildFeatures {
+        buildConfig = true
+        compose = true
+    }
+
+    androidResources {
+        // The built-in interface's files (web/ copied to assets/public): keep files whose names start with "_"
+        // (Next's /_next folder) and dots; omit only version-control and OS clutter.
+        ignoreAssetsPattern = "!.svn:!.git:!.ds_store:!*.scc:!CVS:!thumbs.db:!picasa.ini:!*~"
+    }
+
+    testOptions {
+        unitTests.isReturnDefaultValues = true
+    }
+}
+
+kotlin {
+    compilerOptions {
+        jvmTarget.set(JvmTarget.JVM_21)
+    }
+}
+
+dependencies {
+    implementation(project(":capacitor-android"))
+    implementation(project(":capacitor-cordova-android-plugins"))
+    implementation(libs.kotlinx.coroutines.android)
+    implementation(libs.kotlinx.coroutines.play.services)
+    implementation(libs.androidx.core.ktx)
+    implementation(libs.androidx.activity.ktx)
+    implementation(libs.androidx.appcompat)
+    implementation(libs.androidx.coordinatorlayout)
+    implementation(libs.androidx.webkit)
+    implementation(libs.androidx.browser)
+    implementation(libs.androidx.splashscreen)
+    implementation(libs.androidx.biometric)
+    implementation(libs.androidx.window)
+    implementation(libs.okhttp)
+    // End-to-end encryption's device keys: X25519 and Ed25519 (Tink), sealed with a Keystore key.
+    implementation(libs.tink.android)
+    // Google Drive: Google's authorization for the drive.file scope on Android (no client secret, no redirect).
+    implementation(libs.play.services.auth)
+    // Foli AI on the device: Gemini Nano through ML Kit's GenAI Prompt API, where the phone's AICore has it.
+    implementation(libs.mlkit.genai.prompt)
+    // Home screen widgets (Glance, which draws with Compose).
+    implementation(platform(libs.compose.bom))
+    implementation(libs.compose.runtime)
+    implementation(libs.glance.appwidget)
+    implementation(libs.androidx.work)
+    // The document scanner and the words in an image (ML Kit, on the phone).
+    implementation(libs.mlkit.docscanner)
+    implementation(libs.mlkit.text)
+    // "Scan QR code" for Your own server: Google's code scanner draws its own camera screen (no camera permission).
+    implementation(libs.code.scanner)
+    // Notifications from Folevi's server (Firebase Cloud Messaging), switched on by the Firebase settings below.
+    implementation(platform(libs.firebase.bom))
+    implementation(libs.firebase.messaging)
+
+    testImplementation(libs.junit)
+    testImplementation(libs.orgjson)
+    testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation(libs.okhttp.mockwebserver)
+    androidTestImplementation(libs.androidx.test.junit)
+    androidTestImplementation(libs.androidx.test.runner)
+    androidTestImplementation(libs.uiautomator)
+}
+
+apply(from = "capacitor.build.gradle")
+
+// The bridge's TypeScript half (apps/android/bridge with packages/cloud-folders) into assets/folevi-cloud.js.
+val bundleBridge by tasks.registering(Exec::class) {
+    description = "Builds assets/folevi-cloud.js from apps/android/bridge (esbuild)."
+    workingDir = rootProject.projectDir.parentFile
+    commandLine("node", "scripts/bundle-bridge.mjs")
+    inputs.dir(rootProject.projectDir.parentFile.resolve("bridge"))
+    inputs.dir(rootProject.projectDir.parentFile.resolve("../../packages/cloud-folders/src"))
+    outputs.file(layout.projectDirectory.file("src/main/assets/folevi-cloud.js"))
+}
+tasks.named("preBuild") { dependsOn(bundleBridge) }

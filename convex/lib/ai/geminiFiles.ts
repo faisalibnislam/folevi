@@ -6,6 +6,7 @@
 //
 // Privacy: the bytes go to Google and nowhere else. Only sizes, states and statuses are logged.
 import { fail } from "../errors";
+import { geminiKey } from "./gemini";
 
 const BASE = "https://generativelanguage.googleapis.com";
 /** Where an upload may be sent: Google's own upload address, nothing a response could point elsewhere. */
@@ -35,8 +36,9 @@ export interface GeminiFile {
 
 type FileJson = { name?: unknown; uri?: unknown; mimeType?: unknown; state?: unknown };
 
-const keyOf = (): string => {
-  const key = process.env.GEMINI_API_KEY;
+/** The key saved in the admin panel (passed in by the caller, from its route), else GEMINI_API_KEY (a server: its settings' key). */
+const keyOf = (saved?: string): string => {
+  const key = saved ?? geminiKey();
   if (!key) fail("maintenance", "Foli AI isn't set up on this server yet.");
   return key;
 };
@@ -77,8 +79,8 @@ function fileOf(json: FileJson | undefined, mimeType: string): GeminiFile & { st
  * Uploads bytes to the Files API (a resumable upload in two requests) and returns the file with its state.
  * A Blob straight from storage is sent as it is, so a large recording is never copied in memory here.
  */
-export async function uploadFile(blob: Blob, o: { mimeType: string; displayName: string }): Promise<GeminiFile & { state: string }> {
-  const key = keyOf();
+export async function uploadFile(blob: Blob, o: { mimeType: string; displayName: string }, apiKey?: string): Promise<GeminiFile & { state: string }> {
+  const key = keyOf(apiKey);
   const start = await call(
     `${BASE}/upload/v1beta/files`,
     {
@@ -132,8 +134,8 @@ const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
  * Waits until Google has processed an uploaded file (ACTIVE), polling for up to PROCESSING_TIMEOUT_MS.
  * A file that failed processing, or one still processing at the deadline, fails the request.
  */
-export async function waitUntilActive(file: GeminiFile & { state: string }, timeoutMs = PROCESSING_TIMEOUT_MS): Promise<GeminiFile> {
-  const key = keyOf();
+export async function waitUntilActive(file: GeminiFile & { state: string }, timeoutMs = PROCESSING_TIMEOUT_MS, apiKey?: string): Promise<GeminiFile> {
+  const key = keyOf(apiKey);
   const deadline = Date.now() + timeoutMs;
   let state = file.state;
   for (let i = 0; state !== "ACTIVE"; i++) {
@@ -154,10 +156,10 @@ export async function waitUntilActive(file: GeminiFile & { state: string }, time
 }
 
 /** Deletes a file from the Files API. Best effort: a failure is logged (Google removes it after 48 hours). */
-export async function deleteFile(name: string): Promise<void> {
+export async function deleteFile(name: string, apiKey?: string): Promise<void> {
   if (!FILE_NAME.test(name)) return;
   try {
-    const res = await call(`${BASE}/v1beta/${name}`, { method: "DELETE", headers: { "x-goog-api-key": keyOf() } }, REQUEST_TIMEOUT_MS, "delete");
+    const res = await call(`${BASE}/v1beta/${name}`, { method: "DELETE", headers: { "x-goog-api-key": keyOf(apiKey) } }, REQUEST_TIMEOUT_MS, "delete");
     if (!res.ok) console.warn(JSON.stringify({ event: "ai.file_error", step: "delete", status: res.status }));
   } catch {
     /* Logged by `call`; the file expires on its own. */
@@ -168,11 +170,11 @@ export async function deleteFile(name: string): Promise<void> {
  * Uploads `blob`, waits until it's ready, runs `work` with it, and deletes it afterwards, whether the work
  * (or the wait) succeeded or not.
  */
-export async function withGeminiFile<T>(blob: Blob, o: { mimeType: string; displayName: string }, work: (file: GeminiFile) => Promise<T>): Promise<T> {
-  const uploaded = await uploadFile(blob, o);
+export async function withGeminiFile<T>(blob: Blob, o: { mimeType: string; displayName: string }, work: (file: GeminiFile) => Promise<T>, apiKey?: string): Promise<T> {
+  const uploaded = await uploadFile(blob, o, apiKey);
   try {
-    return await work(await waitUntilActive(uploaded));
+    return await work(await waitUntilActive(uploaded, PROCESSING_TIMEOUT_MS, apiKey));
   } finally {
-    await deleteFile(uploaded.name);
+    await deleteFile(uploaded.name, apiKey);
   }
 }

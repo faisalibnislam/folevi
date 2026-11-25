@@ -1,18 +1,35 @@
 "use client";
 
-import { useEffect, useId, useLayoutEffect, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
+import { useEffect, useId, useLayoutEffect, useRef, useState, type CSSProperties, type KeyboardEvent, type ReactNode } from "react";
 import { X } from "lucide-react";
 import { IconButton } from "./Button";
-import { isIpadNativeWide, useIphoneApp } from "@/lib/iphone";
+import { isIpadNativeWide, sideInsets, useIphoneApp } from "@/lib/iphone";
 import { Sheet } from "@/components/iphone/Sheet";
 import { confirmAction, hasNative } from "@/lib/native/ui";
 import { nativeChrome } from "@/lib/nativeApp";
+import { fadeOut, type Closing } from "./closing";
+import { useFold, type Fold } from "@/lib/platform";
 
 /**
  * Folevi for Mac's note page (native chrome mode): the window's tab strip is drawn over the page's top
  * (--native-inset-top) and the note's floating dock sits at its bottom, so a dialog keeps between the two (and
  * scrolls inside when the window is short). Null elsewhere: the dialog centres in the whole window.
  */
+/**
+ * An iPhone Duo or a foldable partly open: a dialog that would centre in the window sits in the part past the
+ * fold instead, 16 px clear of it (nothing interactive on the fold): right of a fold down the middle, below
+ * one across. `room` (macFrameRoom) still holds where it applies.
+ */
+export function pastFoldFrame(f: Fold | null, room: { top: number; bottom: number } | null): { room: { top: number; bottom: number } | null; side: CSSProperties | null } {
+  if (!f) return { room, side: null };
+  const past = f.start + f.size + 16;
+  if (f.orientation === "horizontal") return { room: { top: Math.max(room?.top ?? 0, past), bottom: Math.max(room?.bottom ?? 0, 16) }, side: null };
+  // (Between `left` and `right` the dialog's auto margins centre it; the width fills that span, its max-width caps it.
+  // On the right it keeps clear of the screen's side inset too: the iPhone Duo's status column, 84 pt open.)
+  const right = 16 + (typeof window === "undefined" ? 0 : sideInsets().right);
+  return { room, side: { left: past, right, width: `calc(100% - ${past + right}px)` } };
+}
+
 function macFrameRoom(): { top: number; bottom: number } | null {
   if (typeof window === "undefined" || (nativeChrome()?.platform !== "macos" && !isIpadNativeWide())) return null;
   const inset = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--native-inset-top"));
@@ -69,14 +86,35 @@ export function Dialog({
   // takes the focus. Rendered with the dialog still closed, its focus went nowhere and the browser then
   // put it on the Close button, ringed, every time a dialog opened.
   const [shown, setShown] = useState(false);
-  const [room, setRoom] = useState<{ top: number; bottom: number } | null>(null);
+  const [macRoom, setRoom] = useState<{ top: number; bottom: number } | null>(null);
+  const { room, side } = pastFoldFrame(useFold(), macRoom);
+  // Closing fades out over 150 ms (a 4 px rise on the web; only the fade on the Mac and with Reduce Motion), then the
+  // dialog closes and its content goes (2026-11-25 polish review: it used to vanish at once after its animated entry).
+  const closing = useRef<Closing | null>(null);
   useLayoutEffect(() => {
     const el = ref.current;
     if (!el) return;
-    if (open) setRoom(macFrameRoom());
-    if (open && !el.open) el.showModal();
-    if (!open && el.open) el.close();
-    setShown(open);
+    if (open) {
+      closing.current?.cancel();
+      closing.current = null;
+      setRoom(macFrameRoom());
+      if (!el.open) el.showModal();
+      setShown(true);
+      return;
+    }
+    if (!el.open) {
+      setShown(false);
+      return;
+    }
+    // Without the Web Animations API `done` runs at once, before `fade` is set: then it just closes.
+    let fade: Closing | null = null;
+    fade = fadeOut(el, () => {
+      if (fade && closing.current !== fade) return;
+      closing.current = null;
+      el.close();
+      setShown(false);
+    });
+    closing.current = fade;
   }, [open]);
   // A confirmation in the apps: the system's alert, asked once each time the dialog opens.
   const [native] = useState(() => Boolean(confirm) && hasNative("alert"));
@@ -119,9 +157,9 @@ export function Dialog({
       }}
       onKeyDown={(e) => macDialogKeys(e, ref.current, onClose)}
       className={`m-auto w-[calc(100%-2rem)] ${width} ui-pop ui-modal rounded-panel p-0 text-ink outline-none shadow-[var(--glass-edge),0_16px_48px_rgb(0_0_0/0.1),0_2px_8px_rgb(0_0_0/0.1)] open:animate-[folio-pop_520ms_var(--spring-pop)]`}
-      style={room ? { top: room.top, bottom: room.bottom, maxHeight: `calc(100dvh - ${room.top + room.bottom}px)` } : undefined}
+      style={room || side ? { ...side, ...(room ? { top: room.top, bottom: room.bottom, maxHeight: `calc(100dvh - ${room.top + room.bottom}px)` } : null) } : undefined}
     >
-      {open && shown ? (
+      {shown ? (
         <div className="flex max-h-[85dvh] flex-col" style={room ? { maxHeight: `min(85dvh, calc(100dvh - ${room.top + room.bottom}px))` } : undefined}>
           <header className="flex items-start gap-3 px-6 pb-2 pt-5">
             <div className="min-w-0 flex-1">
@@ -129,7 +167,7 @@ export function Dialog({
                 {title}
               </h2>
               {description ? (
-                <div id={descId} className="mt-1 text-subheadline text-muted">
+                <div id={descId} className="mt-1 text-pretty text-subheadline text-muted">
                   {description}
                 </div>
               ) : null}

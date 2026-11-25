@@ -81,7 +81,7 @@ export interface SendPolicy {
 }
 
 /** Which provider a send went through. */
-export type EmailProviderKind = "resend";
+export type EmailProviderKind = "resend" | "folevi" | "smtp";
 
 export interface SendEmailInput {
   key: TemplateKey;

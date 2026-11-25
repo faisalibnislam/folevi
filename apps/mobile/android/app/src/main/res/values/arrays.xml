@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- What people say to Google Assistant or Gemini for each App Action (OPEN_APP_FEATURE's feature names). -->
+<resources>
+    <string-array name="feature_new_note">
+        <item>new note</item>
+        <item>note</item>
+    </string-array>
+    <string-array name="feature_quick_add">
+        <item>quick add</item>
+        <item>new task</item>
+        <item>new to-do</item>
+        <item>add a task</item>
+    </string-array>
+    <string-array name="feature_today">
+        <item>today</item>
+        <item>my tasks</item>
+        <item>today\'s tasks</item>
+    </string-array>
+</resources>

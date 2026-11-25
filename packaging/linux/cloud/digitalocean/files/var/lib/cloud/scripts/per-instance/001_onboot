@@ -1,0 +1,13 @@
+#!/bin/sh
+# First boot of a new Droplet: start Folevi Server (it makes this Droplet's own secrets) and save the setup address.
+set -eu
+install -d -o folevi -g folevi -m 0750 /var/lib/folevi
+systemctl enable --now folevi-server.service
+i=0
+while [ $i -lt 60 ]; do
+  if runuser -u folevi -- /opt/folevi/bin/folevid setup-url --data /var/lib/folevi --bundle /opt/folevi > /root/folevi-setup.txt 2>/dev/null; then
+    break
+  fi
+  i=$((i + 1)); sleep 2
+done
+chmod 600 /root/folevi-setup.txt

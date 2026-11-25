@@ -6,6 +6,8 @@ import { authClient, authErrorMessage } from "@/lib/auth/client";
 import { passkeyAutofillAvailable, passkeysAvailable } from "@/lib/auth/passkeys";
 import { Alert, AuthHeading, Field, PasswordField, SubmitButton, TextLink, safeReturnTo } from "./fields";
 import { SocialSignIn } from "./SocialSignIn";
+import { OwnServerSignIn } from "@/components/server/OwnServerSignIn";
+import { isServerEdition } from "@/lib/edition";
 
 /** "Apple, Google, or with " (whichever are offered) before "your email and password". */
 export function socialLede(social: { google: boolean; apple: boolean }): string {
@@ -21,7 +23,10 @@ export function SignInForm({
   social = { google: false, apple: false },
   socialProblem,
   adding = false,
+  server,
 }: {
+  /** Folevi Server (lib/edition.ts): its name, and whether people may create accounts without an invite. */
+  server?: { name: string | null; signUp: "invite" | "open" | "domains" };
   /** "Sign in to another account": the accounts already signed in here stay signed in. */
   adding?: boolean;
   returnTo?: string;
@@ -76,7 +81,7 @@ export function SignInForm({
       {adding ? (
         <AuthHeading title="Add an account" lede={`Sign in to another Folevi account with ${socialLede(social)}your email and password. You stay signed in to the others.`} />
       ) : (
-        <AuthHeading title="Welcome back" lede={`Sign in with ${socialLede(social)}your email and password.`} />
+        <AuthHeading title={server?.name ? `Sign in to ${server.name}` : "Welcome back"} lede={`Sign in with ${socialLede(social)}your email and password.`} />
       )}
       {notice ? (
         <div className="mb-4">
@@ -142,14 +147,20 @@ export function SignInForm({
           </button>
         </>
       ) : null}
-      <p className="mt-6 text-subheadline text-muted">
-        New to Folevi? <TextLink href={adding ? "/signup?add=1" : "/signup"}>Create an account</TextLink>
-      </p>
+      {server && server.signUp === "invite" ? (
+        <p className="mt-6 text-subheadline text-muted">New here? Ask the person who runs this server for an invite.</p>
+      ) : (
+        <p className="mt-6 text-subheadline text-muted">
+          New to Folevi? <TextLink href={adding ? "/signup?add=1" : "/signup"}>Create an account</TextLink>
+        </p>
+      )}
       {adding ? (
         <p className="mt-2 text-subheadline text-muted">
           <TextLink href={destination}>Back to Folevi</TextLink>
         </p>
       ) : null}
+      {/* Folevi Cloud: "Your own server", and the servers linked to this account (docs/SELF_HOSTING_PLAN.md §8). */}
+      {!server && !isServerEdition() ? <OwnServerSignIn signedIn={adding} /> : null}
     </>
   );
 }

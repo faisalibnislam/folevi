@@ -1,0 +1,4 @@
+#!/bin/sh
+# The shared folder with the data is never touched here.
+. "$(dirname "$0")/common"
+exit 0

@@ -39,7 +39,7 @@ export interface SelectionAction {
  */
 export function SelectionBar({ count, total, actions, onSelectAll, onClear, label = "Selected notes" }: { count: number; total: number; actions: SelectionAction[]; onSelectAll: () => void; onClear: () => void; label?: string }) {
   const btn =
-    "inline-flex h-9 items-center gap-1.5 rounded-chip px-2.5 text-subheadline font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-focus";
+    "inline-flex h-9 items-center gap-1.5 rounded-small px-2.5 text-subheadline font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-focus";
   return (
     <div
       role="toolbar"

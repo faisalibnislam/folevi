@@ -1,0 +1,6 @@
+# Folevi Server settings read by systemd (folevi-server.service). Change, then: sudo systemctl restart folevi-server
+# The installer copies this file to /etc/default/folevi-server once and never overwrites your copy.
+#
+# The public port (CONTRACT.md section 2). On a server with a public address you may want 80 and 443.
+#FOLEVI_PORT=8460
+#FOLEVI_HTTPS_PORT=8443

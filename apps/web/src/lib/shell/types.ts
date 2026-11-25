@@ -5,9 +5,10 @@
 //
 // It will absorb lib/desktop.ts and lib/nativeApp.ts; until the hosts implement it those stay as they are.
 // Types only: nothing here runs.
+import type { ServerInfo } from "@/lib/server-edition/info";
 
 /** Which host the shell runs in ("android": apps/android, docs/ANDROID_PLAN.md). */
-export type ShellPlatform = "mac" | "ios" | "android";
+export type ShellPlatform = "mac" | "ios" | "android" | "windows" | "linux";
 
 /** Where the person's notes live: on their devices (local mode) or in their Folevi account. */
 export type Backend = "local" | "account";
@@ -253,6 +254,23 @@ export interface ShellE2ee {
   setTouchId?(on: boolean): Promise<{ touchId: boolean; available: boolean }>;
 }
 
+/** A Folevi server's `/.well-known/folevi.json` (lib/server-edition/info.ts, CONTRACT §6). */
+export type ServerInfoDocument = ServerInfo;
+
+/** A Folevi server as the host keeps it (CONTRACT §6.1): `origin` and `urls` at the name in use now. */
+export interface ShellServerInfo {
+  origin: string;
+  /** The address the person added (a home name, their domain, a folevi.app name). */
+  addedOrigin: string;
+  name: string;
+  version: string;
+  serverId: string | null;
+  urls: { app: string; convex: string; convexSite: string };
+}
+
+/** Why `places.addServerPlace` refused (the rejection's `code`; `message` is in words). */
+export type ShellServerError = { code: "bad_address" | "unreachable" | "not_folevi" | "folevi_cloud" | "server_outdated" | "app_outdated" | "needs_setup"; message: string };
+
 /** A workspace as the switcher shows it under its account. */
 export interface ShellPlaceWorkspace {
   id: string;
@@ -276,6 +294,8 @@ export type ShellPlace =
       email: string;
       avatarUrl: string | null;
       workspaces: ShellPlaceWorkspace[];
+      /** The Folevi server this account is on; null (or absent, on older hosts) for Folevi Cloud. */
+      server?: ShellServerInfo | null;
       unread: number;
       reminders: number;
       waiting: number;
@@ -317,6 +337,26 @@ export interface ShellPlaces {
   forgetLibrary(): Promise<void>;
   /** Another account's short-lived Convex token, for moving notes between two accounts. */
   convexToken(id: string): Promise<string | null>;
+  /**
+   * Folevi Server (docs/self-hosting/CONTRACT.md §6.1): the server of this page's place, or of the sign-in screen it
+   * shows; null for Folevi Cloud and the library. Set before page scripts run. When it's there, the page reads its
+   * Convex and site addresses from it (lib/runtime/config.ts), not the build's. Hosts that predate it leave it out.
+   */
+  server?: ShellServerInfo | null;
+  /**
+   * "Your own server": the host adds a Folevi server and every window reloads on its sign-in screen; the account
+   * that signs in there becomes a place. The host fetches `/.well-known/folevi.json` itself (`info`, what the page
+   * read, is only a hint). Rejects with `{ code, message }` (ShellServerError). Hosts that predate it leave it out.
+   */
+  addServerPlace?(o: { origin: string; info?: ServerInfoDocument | null }): Promise<ShellServerInfo>;
+  /**
+   * Opens the camera to read a QR code (the address an admin panel shows, or an invite link); the code's text, or
+   * null when the person closed the scanner. The page turns it into a server address. Hosts without a camera, or
+   * that predate it, leave it out.
+   */
+  scanCode?(): Promise<string | null>;
+  /** Folevi servers found on the home network (Bonjour, `_folevi._tcp`). */
+  listLocalServers?(): Promise<{ name: string; origin: string; serverId: string | null; version: string | null }[]>;
   /** Quick Add's place, remembered between uses. */
   quickAddPlace?(): Promise<string | null>;
   setQuickAddPlace?(id: string): Promise<void>;

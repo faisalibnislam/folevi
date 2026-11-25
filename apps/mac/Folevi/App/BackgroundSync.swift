@@ -233,7 +233,8 @@ final class BackgroundSync {
     /// From the timer while Folevi isn't the app in front, every third tick (3 minutes, not 1): a person away from
     /// the app doesn't need each account's count every minute, and each ask wakes the network.
     func pollUnread(timer: Bool = false) {
-        guard !polling, !Paths.offline, let convex = Self.convexURL else { return }
+        guard !polling, !Paths.offline else { return }
+        let cloudConvex = Self.convexURL
         let accounts = wanted.filter { ShellPlaces.userIdOf($0) != nil }
         guard !accounts.isEmpty else { return }
         if timer, !NSApp.isActive, let last = lastPoll, Date().timeIntervalSince(last) < pollInterval * 3 - 1 { return }
@@ -242,7 +243,10 @@ final class BackgroundSync {
         Task { @MainActor in
             defer { self.polling = false }
             for place in accounts {
-                guard let user = ShellPlaces.userIdOf(place), let count = await self.unread(user: user, place: place, convex: convex) else { continue }
+                // A Folevi Server account asks its own server's Convex (at the name in use now), others Folevi Cloud's.
+                let server = ShellPlaces.server(of: place).flatMap { URL(string: $0.activeUrls.convex) }
+                guard let user = ShellPlaces.userIdOf(place), let convex = server ?? cloudConvex,
+                      let count = await self.unread(user: user, place: place, convex: convex) else { continue }
                 let previous = self.lastUnread[place]
                 self.lastUnread[place] = count
                 ShellPlaces.describe(place, ["unread": count])

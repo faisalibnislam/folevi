@@ -43,7 +43,7 @@ import { api } from "@/lib/convex/api";
 import { placesAvailable, usePlaces } from "@/lib/places";
 import { openMovePlaces } from "@/components/places/MovePlaces";
 import { useFolderTree } from "@/lib/app/folders";
-import { useOutboxSelect } from "@/lib/sync/queryCache";
+import { useOfflineQuery, useOutboxSelect } from "@/lib/sync/queryCache";
 import { pendingNoteFolders, waitingRowPage } from "@/lib/sync/overlays";
 import { formatRelative } from "@/lib/format";
 import { Avatar } from "@/components/ui/Avatar";
@@ -113,6 +113,7 @@ const nativeChromeMode = typeof window !== "undefined" && nativeChrome() !== nul
 // the panels it opens) are part of the note page, as on the web (docs/MAC_REBUILD_PLAN.md: only the note stays web).
 const macNativeFrame = typeof window !== "undefined" && nativeChrome()?.platform === "macos";
 import { useKeyboardInset } from "@/lib/hooks/useVisualViewport";
+import { rideKeyboard } from "@/lib/native/ui";
 import "@/components/editor/editor.css";
 import "@/components/editor/insert-blocks.css";
 import "@/components/editor/flowchart/flowchart.css";
@@ -124,7 +125,8 @@ import "@/components/editor/wireframe/wireframe.css";
 import { Select } from "@/components/ui/Select";
 import { useFileText } from "./useFileText";
 import { useMacNoteCommands } from "@/components/app/MacCommands";
-import { useNoteViewState } from "@/lib/app/noteViewState";
+import { saveNoteView, useNoteViewState } from "@/lib/app/noteViewState";
+import { applyNoteCarry, CARRY_MS, keepNoteCarry, takeNoteCarry, type NoteCarry } from "@/lib/app/noteCarry";
 import { useLockMenuItem } from "@/components/e2ee/LockDialog";
 import { usePrimaryPane } from "@/lib/app/panes";
 import { noteFolderIdOf, shareIndicatorLabel, shareIndicatorOf } from "./noteStatus";
@@ -590,6 +592,63 @@ export function DocumentView({ documentId }: { documentId: string }) {
     return () => window.removeEventListener("hashchange", onHash);
   }, []);
   const handledHash = useRef<string | null>(null);
+
+  // An iPhone Duo folding or unfolding makes this page again in the other layout (Shell.tsx): the old page keeps
+  // its place as it goes (lib/app/noteCarry.ts), and the new one takes it back (scroll, caret, keyboard) as soon as
+  // its content is in, before that shows.
+  const noteLayout = iphone ? "phone" : "tablet";
+  const scrollElRef = useRef<HTMLDivElement | null>(null);
+  scrollElRef.current = scrollEl;
+  const carry = useRef<NoteCarry | null>(null);
+  const applyCarry = useCallback(() => {
+    const c = carry.current;
+    const ed = editorRef.current?.editor;
+    const el = scrollElRef.current;
+    if (!c || !ed || ed.isDestroyed || !el || !ed.view.dom.isConnected || !el.contains(ed.view.dom)) return false;
+    carry.current = null;
+    const scrollTop = applyNoteCarry(c, ed, el);
+    // The tab's own memory of the place (useNoteViewState) gives back the same, not the old layout's scrollTop.
+    saveNoteView(documentId, { scrollTop: Math.round(scrollTop), anchor: c.from, head: c.to, focused: c.focused, at: Date.now() });
+    return true;
+  }, [documentId]);
+  useLayoutEffect(() => {
+    const c = takeNoteCarry(documentId, noteLayout);
+    carry.current = c;
+    if (!c) return;
+    // A deep link in the address was followed already: not again over the place being given back.
+    handledHash.current = `${documentId}${window.location.hash}:${hashTick}`;
+    if (applyCarry()) return;
+    // The editor makes its page after this one draws: each frame looks for it, so the place is back before it shows.
+    const until = Date.now() + 2 * CARRY_MS;
+    let frame = 0;
+    const look = () => {
+      if (applyCarry() || !carry.current) return;
+      if (Date.now() > until) {
+        carry.current = null;
+        return;
+      }
+      frame = requestAnimationFrame(look);
+    };
+    frame = requestAnimationFrame(look);
+    return () => cancelAnimationFrame(frame);
+    // (Only as the page is made, or shows another note.)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [documentId]);
+  useLayoutEffect(() => {
+    if (editor) applyCarry();
+  }, [editor, applyCarry]);
+  useLayoutEffect(() => {
+    if (!editor || !scrollEl) return;
+    let blurredAt = 0;
+    const onBlur = () => {
+      blurredAt = Date.now();
+    };
+    editor.on("blur", onBlur);
+    return () => {
+      editor.off("blur", onBlur);
+      keepNoteCarry(documentId, noteLayout, editor, scrollEl, blurredAt);
+    };
+  }, [documentId, noteLayout, editor, scrollEl]);
   useEffect(() => {
     if (!editor) return;
     const hash = window.location.hash;
@@ -718,6 +777,12 @@ export function DocumentView({ documentId }: { documentId: string }) {
     });
     return () => cancelAnimationFrame(id);
   }, [inspectorOpen]);
+  // The tools floating over the note (a narrow window) stay above the on-screen keyboard as it moves (PageDock).
+  const inspectorFloats = inspectorOpen && drawerMode && !iphone;
+  useEffect(() => {
+    const el = inspectorRef.current;
+    return inspectorFloats && el ? rideKeyboard(el) : undefined;
+  }, [inspectorFloats]);
   const closeInspector = useCallback(() => {
     setInspectorOpen(false);
     // Focus that was in the panel goes back to whatever had focus when it opened (the editor after a click,
@@ -1449,7 +1514,7 @@ export function DocumentView({ documentId }: { documentId: string }) {
                 closeInspector();
               }
             }}
-            className="ui-pop absolute bottom-[calc(84px+var(--kb-inset,0px))] left-1/2 z-30 flex max-h-[min(640px,calc(100%-112px-var(--kb-inset,0px)))] w-[min(400px,calc(100%-24px))] -translate-x-1/2 flex-col overflow-hidden rounded-panel animate-[folio-rise_180ms_var(--ease-folio)] motion-reduce:animate-none [&>div]:min-h-0"
+            className="ui-pop absolute bottom-[calc(84px+var(--kb-inset,0px)+var(--kb-ride,0px))] left-1/2 z-30 flex max-h-[min(640px,calc(100%-112px-var(--kb-inset,0px)-var(--kb-ride,0px)))] w-[min(400px,calc(100%-24px))] -translate-x-1/2 flex-col overflow-hidden rounded-panel animate-[folio-rise_180ms_var(--ease-folio)] motion-reduce:animate-none [&>div]:min-h-0"
           >
             <Inspector
               documentId={documentId}
@@ -1564,6 +1629,11 @@ const sameJson = <T,>(a: T, b: T) => a === b || JSON.stringify(a) === JSON.strin
 function RightPanel({ width, onWidth, overlay, children }: { width: number; onWidth: (w: number) => void; overlay: boolean; children: React.ReactNode }) {
   const panel = useRef<HTMLElement>(null);
   const w = clampPanelWidth(width);
+  // Over the note, its bottom stays above the on-screen keyboard as it moves (its top stays put).
+  useEffect(() => {
+    const el = panel.current;
+    return overlay && el ? rideKeyboard(el, { stretch: true }) : undefined;
+  }, [overlay]);
   // The floating AI button and chat keep clear of it.
   useEffect(() => {
     const root = document.documentElement;
@@ -1599,7 +1669,7 @@ function RightPanel({ width, onWidth, overlay, children }: { width: number; onWi
       // As an overlay it stops above the floating bar (0.25rem inset + 1.25rem, 3.25rem tall, 0.75rem gap), 0.75rem in from the page's edge.
       // Bookmarks, it runs down to the window's bottom edge (past the page's 4px inset and the shell's 8px), so its
       // list scrolls out of the window rather than stopping short of it.
-      className={`flex min-h-0 flex-none flex-col ${overlay ? "ui-pop absolute bottom-[calc(5.5rem+var(--kb-inset,0px))] right-4 top-3 z-30 max-w-[calc(100%-44px)] overflow-hidden rounded-panel animate-[folio-settle_180ms_var(--ease-folio)] motion-reduce:animate-none" : "relative h-[calc(100%+12px)]"}`}
+      className={`flex min-h-0 flex-none flex-col ${overlay ? "ui-pop absolute bottom-[calc(5.5rem+var(--kb-inset,0px)+var(--kb-ride,0px))] right-4 top-3 z-30 max-w-[calc(100%-44px)] overflow-hidden rounded-panel animate-[folio-settle_180ms_var(--ease-folio)] motion-reduce:animate-none" : "relative h-[calc(100%+12px)]"}`}
     >
       <div
         role="separator"
@@ -2128,7 +2198,8 @@ const PAPER_ROW =
   "flex min-h-11 items-center gap-3 border-b border-[color-mix(in_oklab,var(--color-heading)_10%,transparent)] py-2.5 text-ink last:border-b-0 active:opacity-60";
 
 function Backlinks({ documentId, paper = false }: { documentId: string; paper?: boolean }) {
-  const data = useQuery(api.documents.backlinks, { documentId });
+  // The last answer kept on this device draws at once on a revisit, so the list doesn't pop in at the note's end.
+  const data = useOfflineQuery(api.documents.backlinks, { documentId });
   if (!data || (!data.linked.length && !data.unlinked.length)) return null;
   if (paper) {
     // On the note's own paper (the iPhone): plain lists in the theme's colours, each row a full-width target.

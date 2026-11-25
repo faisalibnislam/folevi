@@ -43,6 +43,11 @@ async function docRow(t: T, publicId: string) {
   return await t.run(async (ctx) => (await ctx.db.query("documents").withIndex("by_public_id", (q) => q.eq("publicId", publicId)).unique())!);
 }
 
+/** A note's search text: its documentText row (convex/lib/documentText.ts), "" when it has none. */
+async function textOf(t: T, documentId: Id<"documents">): Promise<string> {
+  return await t.run(async (ctx) => (await ctx.db.query("documentText").withIndex("by_document", (q) => q.eq("documentId", documentId)).unique())?.searchText ?? "");
+}
+
 async function blockRows(t: T, documentId: Id<"documents">) {
   return await t.run(async (ctx) => await ctx.db.query("blocks").withIndex("by_document", (q) => q.eq("documentId", documentId)).collect());
 }
@@ -83,7 +88,7 @@ describe("the migration runner", () => {
       const row = await docRow(t, id);
       expect(row.sealedAt).toBeTypeOf("number");
       expect(row.title).toBe("");
-      expect(row.searchText).toBe("");
+      expect(await textOf(t, row._id)).toBe("");
       const rows = await blockRows(t, row._id);
       expect(rows.every((r) => r.sealed !== undefined && r.type === "sealed")).toBe(true);
       // What the device sealed, the device opens.
@@ -188,7 +193,7 @@ describe("the migration runner", () => {
       memories: await ctx.db.query("aiMemories").collect(),
       records: await ctx.db.query("e2eeRecords").collect(),
     }));
-    expect((await docRow(t, a)).searchText).toBe("");
+    expect(await textOf(t, (await docRow(t, a))._id)).toBe("");
     // Schedules and memories moved into this person's sealed records; nothing readable is left.
     expect(sealedState.study).toHaveLength(0);
     expect(sealedState.memories).toHaveLength(0);
@@ -205,7 +210,7 @@ describe("the migration runner", () => {
     const row = await docRow(t, a);
     expect(row.sealedAt).toBeUndefined();
     expect(row.title).toBe("ZQXJ-TITLE-u");
-    expect(row.searchText).toContain("ZQXJ-BODY-u");
+    expect(await textOf(t, row._id)).toContain("ZQXJ-BODY-u");
     const after = await t.run(async (ctx) => ({
       tasks: await ctx.db.query("tasks").withIndex("by_document", (q) => q.eq("documentId", row._id)).collect(),
       snaps: await ctx.db.query("documentSnapshots").withIndex("by_document", (q) => q.eq("documentId", row._id)).collect(),

@@ -15,6 +15,8 @@ export function useShellOutdated(): boolean {
   const host = isShell() ? shell() : null;
   const status = useQuery(api.settings.status, host ? {} : "skip");
   if (!host || !status) return false;
+  // Folevi for Windows and Linux have no minimum on the backend yet (convex/lib/shellVersions.ts knows mac, ios and android).
+  if (host.platform === "windows" || host.platform === "linux") return false;
   return shellNeedsUpdate(host.shellVersion, status.minShellVersion?.[host.platform]);
 }
 
@@ -30,7 +32,9 @@ export function ShellUpdateGate({ children }: { children: ReactNode }) {
       body={
         mac
           ? "This version of Folevi for Mac is too old to sync with your account. Choose Check for Updates in the Folevi menu, then open Folevi again. Your notes on this Mac are safe."
-          : platform === "android"
+          : platform === "windows"
+            ? "This version of Folevi for Windows is too old to sync with your account. Right-click the Folevi icon by the clock, choose Check for updates, then open Folevi again. Your notes on this PC are safe."
+            : platform === "android"
             ? "This version of Folevi is too old to sync with your account. Update it from Google Play, then open it again. Your notes on this phone are safe."
             : "This version of Folevi is too old to sync with your account. Update it from the App Store, then open it again. Your notes on this device are safe."
       }

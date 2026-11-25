@@ -1,0 +1,36 @@
+# TrueNAS Community Edition app (truenas/apps repository: ix-dev/community/folevi). Unverified: run the repo's
+# own test tooling (./.github/scripts/ci.py --app folevi --train community) before opening the pull request,
+# and copy the current base library version from a recent community app into lib_version.
+app_version: "1.5.73"
+capabilities: []
+categories:
+  - productivity
+changelog_url: https://folevi.com/server/changelog
+date_added: "2026-11-25"
+description: Your own Folevi server for your family or team. Notes, tasks and files on your own TrueNAS, used from the normal Folevi apps on Mac, iPhone, iPad, Android and the web.
+home: https://folevi.com/server
+host_mounts: []
+icon: https://pkg.folevi.com/icons/folevi-256.png
+keywords:
+  - notes
+  - tasks
+  - productivity
+lib_version: 2.1.77
+lib_version_hash: REPLACE_WITH_CURRENT_LIBRARY_HASH
+maintainers:
+  - email: support@folevi.com
+    name: Folevi
+    url: https://folevi.com
+name: folevi
+run_as_context:
+  - description: Folevi Server runs as a non-root user.
+    gid: 568
+    group_name: apps
+    uid: 568
+    user_name: apps
+screenshots: []
+sources:
+  - https://folevi.com/server
+title: Folevi Server
+train: community
+version: 1.0.0

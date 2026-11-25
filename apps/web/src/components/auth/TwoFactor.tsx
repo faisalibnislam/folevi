@@ -5,6 +5,7 @@ import { Check, Copy, Download, KeyRound, ShieldCheck } from "lucide-react";
 import { authClient, authErrorMessage } from "@/lib/auth/client";
 import { Alert, AuthHeading, Field, PasswordField, SubmitButton, TextLink, safeReturnTo } from "./fields";
 import { Checkbox } from "@/components/ui/Checkbox";
+import { SwapIcons } from "@/components/ui/SwapIcons";
 
 /** Six-digit code input tuned for authenticator apps and password managers. */
 function CodeField({ value, onChange, label = "6-digit code", autoFocus = true }: { value: string; onChange: (v: string) => void; label?: string; autoFocus?: boolean }) {
@@ -137,7 +138,7 @@ export function BackupCodes({ codes, onDone, doneLabel = "Continue" }: { codes: 
             });
           }}
         >
-          {copied ? <Check size={15} aria-hidden /> : <Copy size={15} aria-hidden />} {copied ? "Copied" : "Copy"}
+          <SwapIcons index={copied ? 1 : 0} icons={[<Copy key="copy" size={15} />, <Check key="check" size={15} />]} /> {copied ? "Copied" : "Copy"}
         </button>
         <button
           type="button"

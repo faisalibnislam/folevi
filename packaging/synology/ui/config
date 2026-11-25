@@ -1,0 +1,16 @@
+{
+  ".url": {
+    "SYNO.SDS._ThirdParty.App.folevi": {
+      "type": "url",
+      "icon": "images/icon_{0}.png",
+      "title": "Folevi Server",
+      "desc": "Set up and manage Folevi Server",
+      "protocol": "http",
+      "port": "8460",
+      "url": "/",
+      "allUsers": false,
+      "grantPrivilege": "local",
+      "advanceGrantPrivilege": true
+    }
+  }
+}

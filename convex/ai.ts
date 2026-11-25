@@ -20,6 +20,7 @@
 // Privacy: note text goes to Google only when a person asks for AI help, and only the notes that request
 // needs. Prompts, note text and answers are never logged or stored. Only the event, model, status and
 // token counts are.
+import { noteText as textOfNote } from "./lib/documentText";
 import { v } from "convex/values";
 import { action, internalQuery, query, type ActionCtx, type MutationCtx } from "./_generated/server";
 import { internalMutation, mutation } from "./lib/functions";
@@ -36,7 +37,9 @@ import { ReaderLabels } from "./lib/linkLabels";
 import { inScope, sameScope, scopeOfRow, vScopeArg, type Scope, type ScopeArg } from "./lib/scope";
 import { FLOWCHART_SYSTEM, flowchartForPrompt, flowchartRequest, parseFlowchartDraft, type FlowDraft } from "./lib/flowchartAi";
 import { ACT_SYSTEM, actReply, checkPlan, parsePlan, type AiAction } from "./lib/aiActions";
-import { provider, type GenerateRequest, type OnDelta } from "./lib/ai/provider";
+import { loadAiSettings, provider, type GenerateRequest, type OnDelta } from "./lib/ai/provider";
+import { isServerEdition } from "./lib/edition";
+import { aiConfigured, readServerSettings, serverRoleOf } from "./lib/serverSettings";
 import { dedupePassages, fitToBudget, reciprocalRankFusion } from "./lib/ai/retrieval";
 import { hybridSearch } from "./aiIndex";
 import { PAGE_CHARS, webBlock, webForQuestion, type WebSource } from "./lib/ai/web";
@@ -47,6 +50,8 @@ import { withSyncedForReader } from "./lib/synced";
 import { failE2ee, isSealed, readableFor } from "./lib/e2ee/state";
 import { aiGate, providedMemories, providedMeta, providedNote, providedSources, vProvidedContext, vProvidedMeta, type ProvidedContext } from "./lib/e2ee/ai";
 import { memoryPrompt } from "./lib/ai/memory";
+import { routedFeatureOf, setMeterRoute } from "./lib/ai/config";
+import { loadHoldRoute, routeIn } from "./aiConfig";
 import {
   ASK_MESSAGES,
   BRIEF_EMPTY,
@@ -74,7 +79,6 @@ export { FOLLOW_UPS, MAX_QUESTION, PERSONA, hideFollowUps, splitFollowUps, type 
 type GeminiRequest = GenerateRequest;
 
 /** The models requests use, for estimates (the provider's settings: GEMINI_MODEL, GEMINI_FAST_MODEL). */
-const models = () => provider().models();
 
 /**
  * One call to the AI provider (Gemini; lib/ai/gemini.ts has the details: fallback model, deadlines,
@@ -240,7 +244,7 @@ async function streamed(ctx: RunCtx, streamId: Id<"aiStreams"> | undefined, req:
 
 const vPlannedCall = v.object({ fast: v.boolean(), inputChars: v.number(), maxOutputTokens: v.number(), searches: v.optional(v.number()) });
 const vRefusalKind = v.union(v.literal("harmful"), v.literal("crisis"), v.literal("other"), v.literal("filtered"));
-const vCallUsage = v.object({ model: v.string(), promptTokens: v.number(), outputTokens: v.number(), thoughtsTokens: v.number(), searches: v.optional(v.number()), refused: v.optional(v.object({ kind: vRefusalKind, free: v.boolean() })) });
+const vCallUsage = v.object({ model: v.string(), promptTokens: v.number(), cachedTokens: v.optional(v.number()), cacheWriteTokens: v.optional(v.number()), outputTokens: v.number(), thoughtsTokens: v.number(), searches: v.optional(v.number()), refused: v.optional(v.object({ kind: vRefusalKind, free: v.boolean() })) });
 
 /**
  * Auth, whether AI may be used where it's asked for, the hourly abuse limit, and a hold on the request's
@@ -296,6 +300,14 @@ export const begin = internalMutation({
  * background jobs that act for someone (digests, convex/aiDigest.ts).
  */
 export async function holdFor(ctx: MutationCtx, profile: Doc<"profiles">, target: Scope, plan: PlannedCall[], also: Scope[] = [], feature?: AiFeature): Promise<Id<"aiCreditHolds">> {
+  // Folevi Server: Foli AI only when the owner set it up, and only for the people they allow.
+  if (isServerEdition()) {
+    const settings = await readServerSettings(ctx);
+    if (!aiConfigured(settings)) fail("forbidden", "Foli AI is off on this server.", { reason: "ai_off" });
+    const role = serverRoleOf(profile);
+    if (settings.ai.allowed === "admins" && role !== "owner" && role !== "admin") fail("forbidden", "On this server, Foli AI is only for its admins.", { reason: "ai_not_allowed" });
+    await loadAiSettings(ctx);
+  }
   // Nothing from a Core Personal or a Core workspace is ever sent to AI, whoever asks.
   for (const s of [target, ...also]) {
     const blocked = await aiBlockedIn(ctx, profile._id, s);
@@ -304,7 +316,9 @@ export async function holdFor(ctx: MutationCtx, profile: Doc<"profiles">, target
   const access = await aiAccountFor(ctx, profile, target);
   if (!access.allowed) fail("forbidden", access.message ?? "Foli AI isn't available here.", { reason: "ai_not_included" });
   await consume(ctx, access.account.rateRule, access.account.rateSubject);
-  return await holdCredits(ctx, access.account, target, estimateCredits(plan, models()), Date.now(), feature);
+  // Held at the models the feature's provider would use (lib/ai/config.ts, Admin > Foli AI).
+  const route = await routeIn(ctx, routedFeatureOf(feature));
+  return await holdCredits(ctx, access.account, target, estimateCredits(plan, route.models), Date.now(), feature);
 }
 
 /** Ends a request: releases its hold and charges what its Gemini calls really cost. */
@@ -315,7 +329,7 @@ export const settle = internalMutation({
 
 type SettleCtx = {
   runMutation: (ref: typeof internal.ai.settle, args: { holdId: Id<"aiCreditHolds">; calls: CallUsage[] }) => Promise<unknown>;
-  runQuery: (ref: typeof internal.aiMemory.forHold, args: { holdId: Id<"aiCreditHolds"> }) => Promise<string | null>;
+  runQuery: Pick<ActionCtx, "runQuery">["runQuery"];
 };
 
 /** What a settled request cost: credits charged and tokens used. */
@@ -328,7 +342,8 @@ export interface Settled {
 /**
  * Runs a request's work, then settles its credits from the calls it made, however it ends. `onSettled`
  * hears what it cost (an AI chat stores it on the answer). The person's saved preferences (memory, when
- * it's on) ride on the meter, so every call the work makes gets them (lib/ai/memory.ts).
+ * it's on) ride on the meter, so every call the work makes gets them (lib/ai/memory.ts), and so does the
+ * route of the hold's feature, so every call goes to the provider and models set for it (lib/ai/config.ts).
  */
 export async function metered<T>(
   ctx: SettleCtx,
@@ -339,6 +354,8 @@ export async function metered<T>(
 ): Promise<T> {
   const meter: CallUsage[] = [];
   try {
+    // Folevi Server: the provider the owner chose (a no-op on Folevi Cloud).
+    await loadAiSettings(ctx as unknown as { runQuery: (ref: never, args: never) => Promise<unknown> });
     let memory: string | null = null;
     // An encrypted space's device sends the person's preferences with the request (they're sealed records there).
     const sent = providedMemories(provided);
@@ -350,6 +367,8 @@ export async function metered<T>(
         /* answered without preferences */
       }
     setMeterMemory(meter, memory);
+    // Where the request's calls go: its feature's provider, models and key (lib/ai/config.ts).
+    setMeterRoute(meter, await loadHoldRoute(ctx, holdId));
     return await work(meter);
   } finally {
     const r = (await ctx.runMutation(internal.ai.settle, { holdId, calls: meter })) as { credits: number } | null;
@@ -442,15 +461,15 @@ export const gather = internalQuery({
       const text = q.trim().slice(0, 200);
       if (!text) continue;
       const found = await ctx.db
-        .query("documents")
+        .query("documentText")
         .withSearchIndex("search_text", (s) => {
           const found = s.search("searchText", text);
           const b = (scope.kind === "personal" ? found.eq("ownerProfileId", scope.profileId) : found.eq("workspaceId", scope.workspaceId)).eq("inTrash", false);
           return folder ? b.eq("folderId", folder._id) : b;
         })
         .take(12);
-      for (const d of found) {
-        docs.set(d._id, d);
+      for (const r of found) {
+        const d = { _id: r.documentId };
         const cur = score.get(d._id);
         if (cur) cur.hits++;
         else score.set(d._id, { hits: 1, rank: rank++ });
@@ -490,7 +509,7 @@ export const gather = internalQuery({
         const ordered = [...chunks].sort((a, b) => a.chunk.chunkIndex - b.chunk.chunkIndex);
         out.push({ id: d.publicId, title, text: ordered.map((c) => c.chunk.text).join("\n\n…\n\n").slice(0, NOTE_CHARS), blockIds: [...new Set(chunks.flatMap((c) => c.chunk.blockIds))] });
       } else {
-        out.push({ id: d.publicId, title, text: (copy ? copy.text : d.searchText).slice(0, NOTE_CHARS) });
+        out.push({ id: d.publicId, title, text: (copy ? copy.text : await textOfNote(ctx, d._id)).slice(0, NOTE_CHARS) });
       }
     }
     if (out.length) return fitToBudget(dedupePassages(out), SOURCES_TOKENS, Math.ceil(NOTE_CHARS / 4));
@@ -516,7 +535,7 @@ export const gather = internalQuery({
       if (!accessAtLeast(await documentAccess(ctx, profile, d), "read")) continue;
       const copy = isSealed(d) ? await readableFor(ctx, d, "ai") : null;
       if (isSealed(d) && !copy) continue;
-      out.push({ id: d.publicId, title: (copy ? copy.title : d.title) || "Untitled", text: (copy ? copy.text : d.searchText).slice(0, NOTE_CHARS), recent: true });
+      out.push({ id: d.publicId, title: (copy ? copy.title : d.title) || "Untitled", text: (copy ? copy.text : await textOfNote(ctx, d._id)).slice(0, NOTE_CHARS), recent: true });
     }
     return fitToBudget(out, SOURCES_TOKENS, Math.ceil(NOTE_CHARS / 4));
   },
@@ -819,7 +838,7 @@ export const recent = internalQuery({
       if (!accessAtLeast(await documentAccess(ctx, profile, d), "read")) continue;
       const copy = isSealed(d) ? await readableFor(ctx, d, "ai") : null;
       if (isSealed(d) && !copy) continue;
-      notes.push({ id: d.publicId, title: (copy ? copy.title : d.title) || "Untitled", text: (copy ? copy.text : d.searchText).slice(0, 2500) });
+      notes.push({ id: d.publicId, title: (copy ? copy.title : d.title) || "Untitled", text: (copy ? copy.text : await textOfNote(ctx, d._id)).slice(0, 2500) });
     }
     const open = await (
       scope.kind === "personal"

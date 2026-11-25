@@ -119,8 +119,8 @@ test("iPhone shell polish: bar material, tab bar, Home, cards, focus rings, swip
   expect(Math.round((await tabs.boundingBox())!.height)).toBe(64);
   expect(await bottomCovers(page)).toEqual([]);
 
-  // The bar's material: none at rest, the screen's solid neutral colour with a hairline once content passes
-  // under it (nothing shows through behind the avatar and buttons); the small title fades in with the scroll.
+  // The bar's material: none at rest, the screen's neutral colour once content passes under it, solid behind
+  // the avatar and buttons and easing out below them (no hairline); the small title fades in with the scroll.
   const bar = page.locator(".iphone-bar");
   await expect(bar).not.toHaveAttribute("data-on", "");
   expect(await bar.evaluate((b) => getComputedStyle(b).backgroundColor)).toBe(await page.locator("body").evaluate((b) => getComputedStyle(b).backgroundColor));

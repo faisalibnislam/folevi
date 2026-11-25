@@ -27,7 +27,7 @@ import type { PlannedCall } from "./lib/credits";
 import { aiPrefsOf } from "./lib/ai/prefs";
 import { attachmentTokens } from "./lib/ai/attachments";
 import { ATTACHMENTS_OFF } from "./lib/ai/attachmentFiles";
-import { capabilities, type Part } from "./lib/ai/provider";
+import { capabilities, type Part, loadAiSettings } from "./lib/ai/provider";
 import type { AiFeature } from "./lib/ai/usage";
 import { gemini, metered, MAX_QUESTION, providedArgs } from "./ai";
 import { vProvidedContext, type ProvidedContext } from "./lib/e2ee/ai";
@@ -153,11 +153,12 @@ export const photo = action({
   args: { scope: vScopeArg, documentId: v.optional(v.string()), image: v.object({ mimeType: v.string(), data: v.string() }), provided: v.optional(vProvidedContext) },
   handler: async (ctx, args): Promise<{ notes: { text: string; color: string }[] }> => {
     await requireIdentity(ctx);
+    await loadAiSettings(ctx);
     const { mimeType, data } = args.image;
     if (!(PHOTO_TYPES as readonly string[]).includes(mimeType)) fail("unsupported_file", STICKIES_MESSAGES.badPhotoType);
     if (!data || data.length > MAX_PHOTO_BASE64 || !/^[A-Za-z0-9+/]+={0,2}$/.test(data.slice(-64))) fail("invalid_argument", STICKIES_MESSAGES.photoTooLarge);
     if (!(await ctx.runQuery(internal.stickiesAi.photoAllowed, {}))) fail("forbidden", ATTACHMENTS_OFF);
-    if (!capabilities().vision) fail("unsupported_file", STICKIES_MESSAGES.noVision);
+    if (!capabilities("heavy", await ctx.runQuery(internal.aiConfig.publicRoute, { feature: "writing" })).vision) fail("unsupported_file", STICKIES_MESSAGES.noVision);
     const notes = await run(ctx, args, {
       request: photoRequest(),
       attachments: [{ inlineData: { mimeType, data } }],

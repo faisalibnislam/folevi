@@ -70,6 +70,7 @@ import { EDIT_BOOKMARK_EVENT } from "./NodeViews";
 import { keyLabel } from "@/lib/shortcuts";
 import { HOLD_MOVE_EVENT, isLongPress } from "@/lib/touchContextMenu";
 import { safeInsets, useIphoneApp } from "@/lib/iphone";
+import { popupSpan } from "@/components/ui/topLayer";
 import { liftController } from "@/lib/native/lift";
 import { feel } from "@/lib/native/ui";
 import { nativeApp } from "@/lib/nativeApp";
@@ -1005,7 +1006,8 @@ function Panel({
       left = anchor.right + w + margin > window.innerWidth ? anchor.left - w + 4 : anchor.right - 4;
       top = anchor.top - 6;
     }
-    left = Math.min(Math.max(margin, left), window.innerWidth - w - margin);
+    // Inside the screen's sides (the iPhone Duo's status column) and on its anchor's side of a fold.
+    left = popupSpan(anchor, margin).clamp(left, w);
     // (In the iPhone app, below the status bar.)
     top = Math.min(Math.max(margin + safeInsets().top, top), bottom - h - margin);
     setPos({ left, top });

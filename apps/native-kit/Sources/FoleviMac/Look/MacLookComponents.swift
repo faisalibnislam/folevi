@@ -102,7 +102,7 @@ public struct MacSymbol: View {
     static func icon(_ name: String) -> WebIcon? { preferred[name] ?? fromMenus[name] }
 
     static let preferred: [String: WebIcon] = [
-        "house": .house, "tray": .inbox, "doc.on.doc": .files, "checkmark.square": .squareCheckBig, "calendar": .calendar,
+        "house": .house, "tray": .inbox, "doc.on.doc": .files, "checkmark.square": .squareCheckBig, "calendar": .calendarDays,
         "rectangle.stack": .layers, "person.2": .users, "lock": .lock, "plus.forwardslash.minus": .fileDiff,
         "rectangle.3.group": .layoutTemplate, "archivebox": .archive, "trash": .trash, "folder": .folder, "number": .hash,
         "doc.text": .fileText, "magnifyingglass": .search, "newspaper": .newspaper,

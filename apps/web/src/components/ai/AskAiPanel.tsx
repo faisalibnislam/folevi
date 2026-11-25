@@ -7,8 +7,8 @@ import { useMutation } from "convex/react";
 import { useQuery } from "@/lib/convex/queries";
 import { History, Maximize2, MoreHorizontal, Plus, X } from "lucide-react";
 import { useIphoneApp } from "@/lib/iphone";
-import { inIosApp } from "@/lib/nativeApp";
-import { KEYBOARD_EASE, onKeyboardFrame } from "@/lib/native/ui";
+import { inAndroidApp, inIosApp } from "@/lib/nativeApp";
+import { KEYBOARD_EASE, afterKeyboardGoes, isTextField, onKeyboardFrame, popOut } from "@/lib/native/ui";
 import { SHEET_BUTTON, Sheet } from "@/components/iphone/Sheet";
 import { api } from "@/lib/convex/api";
 import { AiMark } from "@/components/ai/AiMark";
@@ -65,6 +65,14 @@ export function AskAiPanel({ open, onOpen, onClose, initial, folder, hideLaunche
   // (Before the first paint: taking over from AskAiChat's stand-in sheet leaves no frame without one.)
   useLayoutEffect(() => setMounted(true), []);
   const iphone = useIphoneApp();
+  // Closing, it fades out (popOut) rather than vanishing; shown until then (the iPhone's sheet leaves by itself).
+  const [leaving, setLeaving] = useState(false);
+  const [wasOpen, setWasOpen] = useState(open);
+  if (wasOpen !== open) {
+    setWasOpen(open);
+    setLeaving(!open && !iphone);
+  }
+  const shown = open || leaving;
   useEffect(() => {
     if (!open) return;
     const active = document.activeElement;
@@ -84,13 +92,15 @@ export function AskAiPanel({ open, onOpen, onClose, initial, folder, hideLaunche
     setThread((n) => n + 1);
   }, [open, folder]);
 
-  // The iPad app: the floating chat stays where it is when the keyboard comes, getting shorter so its composer
-  // sits on the keyboard, in step with it (the web view shrinks only once the keyboard has landed, Capacitor:
-  // laid out from the bottom of the window, the chat would sit under the keyboard until then, then jump).
+  // The iPad app (and the Android app): the floating chat stays where it is when the keyboard comes, getting
+  // shorter so its composer sits on the keyboard, in step with it (the iOS web view shrinks only once the keyboard
+  // has landed, Capacitor: laid out from the bottom of the window, the chat would sit under the keyboard until
+  // then, then jump). It's placed from the top of the window, so the web view shrinking, then or at once as on
+  // Android, doesn't move it.
   const sectionRef = useRef<HTMLElement>(null);
   useLayoutEffect(() => {
     const el = sectionRef.current;
-    if (!open || !el || iphone || !inIosApp()) return;
+    if (!shown || !el || iphone || !(inIosApp() || inAndroidApp())) return;
     let screenH = window.innerHeight;
     let base = { top: el.offsetTop, height: el.offsetHeight };
     let keyboard = 0;
@@ -142,20 +152,27 @@ export function AskAiPanel({ open, onOpen, onClose, initial, folder, hideLaunche
       for (const a of anims) a.cancel();
       el.style.top = el.style.bottom = el.style.height = "";
     };
-  }, [open, iphone, mounted]);
+  }, [shown, iphone, mounted]);
+  useLayoutEffect(() => {
+    const el = sectionRef.current;
+    if (!leaving || !el) return;
+    return popOut(el, () => setLeaving(false));
+  }, [leaving]);
 
   if (!mounted || onAiPage) return null;
 
   const close = () => {
+    // Back to the floating button, or (on a note, where there's none) to where you were.
+    const back = launcherRef.current ?? (returnTo.current?.isConnected ? returnTo.current : null);
+    // Typing in it: the keyboard goes first (the page drawn under it before it uncovers it), and the focus goes
+    // back once it has. (Going back to a field keeps the keyboard; the iPhone's sheet lets it go itself.)
+    afterKeyboardGoes(iphone || isTextField(back) ? null : sectionRef.current, () => requestAnimationFrame(() => back?.focus()));
     // History off: the conversation goes when the chat closes.
     if (conversationId && convo?.conversation.ephemeral) {
       void discard({ conversationId });
       startOver();
     }
     onClose();
-    // Back to the floating button, or (on a note, where there's none) to where you were.
-    const back = launcherRef.current ?? (returnTo.current?.isConnected ? returnTo.current : null);
-    requestAnimationFrame(() => back?.focus());
   };
 
   // The iPhone app: a sheet from the bottom (half the screen, pulled up to all of it). The conversations
@@ -213,7 +230,7 @@ export function AskAiPanel({ open, onOpen, onClose, initial, folder, hideLaunche
       {/* Kept mounted while closed so the conversation survives closing and reopening. */}
       <section
         ref={sectionRef}
-        hidden={!open}
+        hidden={!shown}
         role="dialog"
         aria-modal="false"
         aria-labelledby={`${uid}-title`}

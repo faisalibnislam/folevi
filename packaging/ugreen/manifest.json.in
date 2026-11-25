@@ -1,0 +1,15 @@
+{
+  "_comment": "UNVERIFIED best-effort layout for UGREEN UGOS Pro. Needs UGREEN developer authorization; replace with UGREEN's real schema.",
+  "appid": "com.folevi.server",
+  "name": "Folevi Server",
+  "version": "@VERSION@",
+  "arch": "@ARCH@",
+  "developer": "Folevi",
+  "website": "https://folevi.com/server",
+  "description": "@FOLEVI_DESCRIPTION@",
+  "install_dir": "@APP_DIR@",
+  "service": "folevi.service",
+  "entry": { "type": "url", "port": @FOLEVI_PORT_DEFAULT@, "path": "/" },
+  "ports": [@FOLEVI_PORT_DEFAULT@, @FOLEVI_HTTPS_PORT_DEFAULT@],
+  "data_dir": "@DATA_DEFAULT@"
+}

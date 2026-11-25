@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <!-- Placeholder artwork. Replace with the real Folevi Server icon before store submission. -->
+  <rect x="8" y="8" width="240" height="240" rx="56" fill="#1f7a5a"/>
+  <path d="M72 168 C72 104 120 64 188 60 C184 128 144 172 80 176 Z" fill="#ffffff"/>
+  <rect x="64" y="196" width="128" height="16" rx="8" fill="#ffffff"/>
+</svg>

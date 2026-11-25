@@ -1,0 +1,15 @@
+#!/bin/sh
+cat <<'MSG'
+********************************************************************************
+Welcome to Folevi Server.
+
+Your setup address (open it in a browser to create the owner account):
+MSG
+cat /root/folevi-setup.txt 2>/dev/null || echo "  (still starting; run: cat /root/folevi-setup.txt in a minute)"
+cat <<'MSG'
+
+Logs:     journalctl -u folevi-server
+Settings: /etc/default/folevi-server   Data: /var/lib/folevi
+Docs:     https://folevi.com/server
+********************************************************************************
+MSG

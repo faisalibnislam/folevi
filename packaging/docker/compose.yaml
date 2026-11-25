@@ -1,0 +1,13 @@
+# Folevi Server with Docker Compose. Start: docker compose up -d
+# Then get the setup address: docker compose exec folevi /opt/folevi/bin/folevid setup-url --data /data --bundle /opt/folevi
+services:
+  folevi:
+    image: ghcr.io/folevi/folevi-server:latest
+    container_name: folevi
+    restart: unless-stopped
+    ports:
+      - "8460:8460"
+      - "8443:8443"
+    volumes:
+      - ./folevi-data:/data
+    stop_grace_period: 60s

@@ -45,7 +45,7 @@ import { useNoteActions } from "./noteActions";
 import { useAiEnabled } from "@/components/ai/useAi";
 import { AiIcon } from "@/components/ai/AiIcon";
 import { useIphoneApp } from "@/lib/iphone";
-import { IphoneNoteList } from "@/components/iphone/NoteList";
+import { IphoneNoteList } from "@/components/iphone/lazy";
 import { useCapabilities } from "@/lib/mode";
 import { FolderShareDialog } from "@/components/app/FolderShareDialog";
 import { FolderMenu } from "@/components/app/FolderMenu";

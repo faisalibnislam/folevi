@@ -20,8 +20,11 @@
 // keyframes played linearly (not a CSS linear() curve, a clip-path or a border-radius, which WebKit may run on
 // the page's own thread): Core Animation runs them at the display's rate (120 Hz on ProMotion) whatever the
 // page is doing. Layers are promoted (will-change) for the move only, and a move to a note waits (up to
-// 150 ms) for the note's words and the pictures on screen, so the page isn't busy drawing them while it moves
-// (docs/IOS_PERFORMANCE.md, "120 Hz").
+// 50 ms, so the tap still feels immediate) for the note's words and the pictures on screen, so the page isn't
+// busy drawing them while it moves (docs/IOS_PERFORMANCE.md, "120 Hz").
+//
+// The tab bar moves with the screens: onMoveStart tells it the moment a move really starts (after that wait)
+// and on which spring, and moveIsComing whether one is about to.
 //
 // The edge swipe isn't animated here: WebKit draws its own interactive swipe (allowsBackForwardNavigationGestures
 // in FoleviViewController; it follows the finger 1:1 and finishes with its release speed), so only Back pressed
@@ -32,11 +35,11 @@ import { SPRINGS, type Spring } from "@/lib/native/physics";
 import { springFrames } from "./sheetMotion";
 
 /** A spring as keyframes: `frame(k)` at each 120th of a second of its progress `k` (0 to 1, past 1 on overshoot). */
-function track(spring: Spring, frame: (k: number) => Keyframe): { frames: Keyframe[]; ms: number } {
+export function track(spring: Spring, frame: (k: number) => Keyframe): { frames: Keyframe[]; ms: number } {
   const { progress, ms } = springFrames(spring);
   return { frames: progress.map(frame), ms };
 }
-const linear = (ms: number): KeyframeAnimationOptions => ({ duration: ms, easing: "linear" });
+export const linear = (ms: number): KeyframeAnimationOptions => ({ duration: ms, easing: "linear" });
 const round = (n: number) => Math.round(n * 1000) / 1000;
 /** How far the screen underneath moves, and how dark it gets (12 % black over it). */
 const UNDER_SHIFT = -30;
@@ -47,6 +50,31 @@ const SHADOW_WIDTH = 32;
 let backButton = false;
 let tabSwitch = false;
 let pending: { kind: "push" | "pop"; picture: HTMLElement; scrolls: number[]; fade?: boolean; zoom?: Zoom } | null = null;
+
+/** A move whose animations wait on their first frame for the screen coming in (whenReady). */
+let held = false;
+const starts = new Set<(spring: Spring | null) => void>();
+
+/**
+ * Calls `listener` each time a move starts moving (or turns out not to move at all: `null`), with the spring
+ * it moves on. Returns the function that stops listening.
+ */
+export function onMoveStart(listener: (spring: Spring | null) => void): () => void {
+  starts.add(listener);
+  return () => {
+    starts.delete(listener);
+  };
+}
+
+/** Whether a push or pop is about to start (its screen not drawn yet, or waiting on its first frame). */
+export function moveIsComing(): boolean {
+  return pending !== null || held;
+}
+
+function started(spring: Spring | null) {
+  held = false;
+  for (const listener of [...starts]) listener(spring);
+}
 
 /** Where a note zooms from (or back into): its card's or row's box on screen and its corners. */
 interface Zoom {
@@ -190,15 +218,17 @@ function release(anims: Animation[]) {
 
 /**
  * Starts the animations once the screen coming in is ready to be moved: a note with its words in, the pictures
- * on screen decoded, at most 150 ms after the tap's screen is drawn. Until then they wait on their first frame.
+ * on screen decoded, at most READY_WAIT_MS after the tap's screen is drawn. Until then they wait on their first
+ * frame. `onStart` is called when they start (at once when there's nothing to wait for).
  */
-function whenReady(entering: HTMLElement, anims: Animation[], note: boolean) {
+function whenReady(entering: HTMLElement, anims: Animation[], note: boolean, onStart: () => void) {
   const images = [...entering.querySelectorAll<HTMLImageElement>("img")].filter((i) => {
     const r = i.getBoundingClientRect();
     return r.bottom > 0 && r.top < window.innerHeight && !i.complete;
   });
-  if (!images.length && (!note || noteHasText(entering))) return;
+  if (!images.length && (!note || noteHasText(entering))) return onStart();
   anims.forEach((a) => a.pause());
+  held = true;
   let decoded = images.length === 0;
   if (!decoded) void Promise.all(images.map((i) => i.decode().catch(() => undefined))).then(() => (decoded = true));
   const started = performance.now();
@@ -209,8 +239,10 @@ function whenReady(entering: HTMLElement, anims: Animation[], note: boolean) {
     // it before the move rather than in the middle of it (an empty note has none to wait for).
     if (note && !titled && noteReady(entering)) titled = now;
     const noteIn = !note || noteHasText(entering) || (titled > 0 && now - titled > 60);
-    if ((decoded && noteIn) || now - started > READY_WAIT_MS) anims.forEach((a) => a.play());
-    else requestAnimationFrame(wait);
+    if ((decoded && noteIn) || now - started > READY_WAIT_MS) {
+      anims.forEach((a) => a.play());
+      onStart();
+    } else requestAnimationFrame(wait);
   };
   requestAnimationFrame(wait);
 }
@@ -261,7 +293,7 @@ function playZoom(kind: "push" | "pop", entering: HTMLElement, leaving: HTMLElem
     // Its first moments fade in over the card, so the card's face gives way to the note's.
     anims.push(entering.animate([{ opacity: 0.2 }, { opacity: 1, offset: 0.3 }, { opacity: 1 }], t));
     zoomed = href;
-    whenReady(entering, anims, true);
+    whenReady(entering, anims, true, () => started(ZOOM));
   } else {
     // The screen coming back steps forward under the note, which shrinks into the card and fades at the end.
     pictures.replaceChildren(dim, leaving);
@@ -274,14 +306,18 @@ function playZoom(kind: "push" | "pop", entering: HTMLElement, leaving: HTMLElem
     leaving.style.transformOrigin = "0 0";
     out = leaving.animate(shrink.frames, t);
     anims.push(out, leaving.animate([{ opacity: 1 }, { opacity: 1, offset: 0.6 }, { opacity: 0 }], t));
+    started(ZOOM);
   }
   all.push(...anims);
   out.onfinish = done;
   out.oncancel = done;
 }
 
-/** How long a move waits for the screen coming in (a note's words, its pictures), at most. */
-const READY_WAIT_MS = 150;
+/**
+ * How long a move waits for the screen coming in (a note's words, its pictures), at most: short enough that
+ * the move still starts with the tap (owner's feedback, 2026-11-25: 150 ms felt late).
+ */
+export const READY_WAIT_MS = 50;
 
 /** Whether the note on the screen has its text in. */
 function noteHasText(screen: HTMLElement): boolean {
@@ -306,7 +342,10 @@ export function attachStage(screens: HTMLElement, pictures: HTMLElement): () => 
     stop();
     if (stage === screens) stage = null;
     if (layer === pictures) layer = null;
-    pending = null;
+    if (pending) {
+      pending = null;
+      started(null);
+    }
   };
 }
 
@@ -317,10 +356,11 @@ export function attachStage(screens: HTMLElement, pictures: HTMLElement): () => 
 export function playTransition(entering: HTMLElement | null) {
   const move = pending;
   pending = null;
-  if (!move || !entering || !layer) return;
+  if (!move) return;
+  if (!entering || !layer) return started(null);
   if (move.fade) {
     entering.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 150, easing: "ease-out" });
-    return;
+    return started(null);
   }
   const { kind, picture: leaving, scrolls } = move;
   if (move.zoom) {
@@ -364,13 +404,14 @@ export function playTransition(entering: HTMLElement | null) {
     out = leaving.animate(track(SPRINGS.push, (k) => ({ transform: under(k) })).frames, t);
     anims.push(out);
     // A note slid in (a link to it): it moves once its words are in. A new note has none to wait for.
-    whenReady(entering, anims, location.pathname.startsWith("/d/") && new URLSearchParams(location.search).get("new") !== "1");
+    whenReady(entering, anims, location.pathname.startsWith("/d/") && new URLSearchParams(location.search).get("new") !== "1", () => started(SPRINGS.push));
   } else {
     anims.push(entering.animate(track(SPRINGS.push, (k) => ({ transform: under(1 - k) })).frames, t));
     anims.push(dim.animate(track(SPRINGS.push, (k) => ({ opacity: round(Math.max(0, UNDER_DIM * (1 - k))) })).frames, t));
     anims.push(shadow.animate(track(SPRINGS.push, (k) => ({ transform: `translateX(${round(k * 100)}vw)` })).frames, t));
     out = leaving.animate(track(SPRINGS.push, (k) => ({ transform: `translateX(${at(k)}%)` })).frames, t);
     anims.push(out);
+    started(SPRINGS.push);
   }
   all.push(...anims);
   out.onfinish = done;
@@ -379,5 +420,7 @@ export function playTransition(entering: HTMLElement | null) {
 
 /** The same screen stayed (another task view, the next month): the picture isn't needed. */
 export function dropTransition() {
+  if (!pending) return;
   pending = null;
+  started(null);
 }

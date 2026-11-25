@@ -2,7 +2,8 @@
 // Sharing one password item (docs/VAULT_PLAN.md §6): with a person (their account key, checked against their signed
 // statement, gets the item key; someone outside the workspace gets an end date), or by a one-time link (its key only
 // in the link's fragment). Ending a share gives the item a new key, so what they may have kept stops opening it.
-import { useMutation, useQuery } from "convex/react";
+import { useMutation } from "convex/react";
+import { useQuery } from "@/lib/convex/queries";
 import { useId, useState } from "react";
 import { Copy, Link2, UserPlus, X } from "lucide-react";
 import { api } from "@/lib/convex/api";

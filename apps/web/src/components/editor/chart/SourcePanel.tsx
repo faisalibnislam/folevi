@@ -4,7 +4,7 @@
 // the chart follows it as it changes), a collection grouped by one of its fields and counted, summed or
 // averaged (live), or a CSV file or rows pasted from a spreadsheet (copied in). Chosen in the toolbar's
 // Data menu; this is the panel behind it.
-import { useQuery } from "convex/react";
+import { useQuery } from "@/lib/convex/queries";
 import { useMemo, useRef, useState } from "react";
 import { FileUp, Table2, LayoutList, ClipboardPaste, PencilLine } from "lucide-react";
 import type { Editor } from "@tiptap/react";

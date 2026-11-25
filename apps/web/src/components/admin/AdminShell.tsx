@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Component, Suspense, useState, type ReactNode } from "react";
-import { useQuery } from "convex/react";
+import { useQuery } from "@/lib/convex/queries";
 import { ArrowLeft, ArrowUp, BarChart3, Building2, ClipboardList, CreditCard, DollarSign, Eye, Gauge, LifeBuoy, LogOut, Mail, Palette, Settings2, Sparkles, Trash2, Users } from "lucide-react";
 import { api } from "@/lib/convex/api";
 import { FoleviLogo } from "@/components/brand/FoleviMark";

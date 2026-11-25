@@ -1,6 +1,7 @@
 "use client";
 
-import { useConvex, useMutation, useQuery } from "convex/react";
+import { useConvex, useMutation } from "convex/react";
+import { useQuery } from "@/lib/convex/queries";
 import { useEffect, useRef, useState } from "react";
 import type { FunctionReturnType } from "convex/server";
 import { Bell, BellOff, Check, FileText, MoreHorizontal, Settings, UserPlus, KeyRound, AtSign, MessageSquare, Share2, Trash2, CircleDot } from "lucide-react";

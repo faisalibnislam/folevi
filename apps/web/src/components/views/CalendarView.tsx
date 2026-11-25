@@ -1,7 +1,8 @@
 "use client";
 
 import { useCapabilities } from "@/lib/mode";
-import { useMutation, useQuery } from "convex/react";
+import { useMutation } from "convex/react";
+import { useQuery } from "@/lib/convex/queries";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { CalendarPlus, ChevronLeft, ChevronRight, Rss, CalendarCheck } from "lucide-react";
 import { addDays } from "@folevi/editor-schema";

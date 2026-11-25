@@ -1,6 +1,6 @@
 "use client";
 
-import { useQuery } from "convex/react";
+import { useQuery } from "@/lib/convex/queries";
 import { api } from "@/lib/convex/api";
 import { formatDateTime } from "@/lib/format";
 import { Badge, DataTable, DocTitle, EmptyRow, LoadingRows, ShortId, PageHeader, StatusBadge, Time, humanize, td, th } from "./ui";

@@ -4,7 +4,8 @@
 // which provider each feature uses. Keys go to the server once and are never shown again: the page sees
 // only whether one is set and its last four characters. Every change needs a reason and is audited.
 import { useState } from "react";
-import { useAction, useMutation, useQuery } from "convex/react";
+import { useAction, useMutation } from "convex/react";
+import { useQuery } from "@/lib/convex/queries";
 import type { FunctionReturnType } from "convex/server";
 import { api } from "@/lib/convex/api";
 import { Button } from "@/components/ui/Button";

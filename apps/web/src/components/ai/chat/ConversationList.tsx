@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useMutation, usePaginatedQuery, useQuery } from "convex/react";
+import { useMutation } from "convex/react";
+import { usePaginatedQuery, useQuery } from "@/lib/convex/queries";
 import { MessageSquare, MoreHorizontal, Pencil, Pin, PinOff, Plus, Search, Trash2, Users } from "lucide-react";
 import { api } from "@/lib/convex/api";
 import { useAppState } from "@/lib/app/state";
@@ -13,6 +14,7 @@ import { MenuButton } from "@/components/ui/Menu";
 import { errorMessage, useToast } from "@/components/ui/Toast";
 import { useConversationActions } from "./ConversationActions";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { LoadFailed } from "@/components/ui/LoadFailed";
 
 interface Row {
   id: string;
@@ -193,7 +195,7 @@ export function ConversationList({ activeId, onNavigate }: { activeId: string | 
   const pinned = useQuery(api.aiChat.pinned, term ? "skip" : { scope });
   // Conversations others shared with this workspace (none in Personal).
   const shared = useQuery(api.aiSharing.list, term || scope.kind !== "workspace" ? "skip" : { scope });
-  const { results, status, loadMore } = usePaginatedQuery(api.aiChat.list, { scope, search: term || undefined }, { initialNumItems: 30 });
+  const { results, status, loadMore, failed, retry } = usePaginatedQuery(api.aiChat.list, { scope, search: term || undefined }, { initialNumItems: 30 });
   const historyOff = (profile as { aiPrefs?: { history: boolean } }).aiPrefs?.history === false;
   const rows = (list: Row[]) => list.map((r) => <ConversationRow key={r.id} row={r} active={r.id === activeId} onNavigate={onNavigate} />);
   const nothing = status !== "LoadingFirstPage" && !results.length && !(pinned?.length ?? 0) && !(shared?.length ?? 0);
@@ -241,6 +243,9 @@ export function ConversationList({ activeId, onNavigate }: { activeId: string | 
             {!term && pinned?.length ? <p className="ui-caps px-2.5 pb-1">Recent</p> : null}
             <ul className="space-y-0.5">{rows(results)}</ul>
           </section>
+        ) : null}
+        {failed && status === "LoadingFirstPage" && !results.length ? (
+          <LoadFailed size="inline" what="your conversations" onRetry={retry} />
         ) : null}
         {nothing ? (
           <EmptyState size="inline" icon={MessageSquare} title={term ? "No conversations match that" : "No conversations yet"} body={term ? undefined : "Your conversations will show up here."} />

@@ -147,6 +147,8 @@ struct WebCalendarScreen: View {
     @State private var bodyHeight: CGFloat = 748
     /// The height the calendar has on screen, clear of the card's bar (the native look's month fits it).
     @State private var visibleHeight: CGFloat = 0
+    /// The calendar's width (an iPad's narrow content beside today's sidebar puts the day's list under the month).
+    @State private var bodyWidth: CGFloat = 0
     @FocusState private var gridFocused: Bool
     @Environment(\.colorScheme) private var scheme
     /// The Mac's native look (NativeChrome).
@@ -190,6 +192,7 @@ struct WebCalendarScreen: View {
             .frame(maxWidth: .infinity)
         }
         .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { bodyHeight = $0 }
+        .onGeometryChange(for: CGFloat.self) { $0.size.width.rounded() } action: { bodyWidth = $0 }
         // What shows of the calendar: the scroller's own height (it is laid out under the card's bar, in the safe area).
         .onGeometryChange(for: CGFloat.self) { $0.size.height.rounded() } action: { visibleHeight = $0 }
         .plannerAnchor(tasks.anchor)
@@ -348,12 +351,21 @@ struct WebCalendarScreen: View {
         // rows), and the day's tasks and the unscheduled ones scroll beside the month in a list of their own. As
         // one long page, the month's card ran on empty under its last week to the end of that list, and a task far
         // down it could not be dragged to a day: the month had scrolled away.
-        let native = chrome != nil
+        // (An iPad's content under 760 pt wide, beside today's sidebar in portrait: the day's tasks and the unscheduled
+        // ones go under the month, as today's tablet layout has them; the month's rows keep the web's height. The Mac
+        // keeps them beside.)
+        #if os(iOS)
+        let stacked = bodyWidth > 0 && bodyWidth < 760
+        #else
+        let stacked = false
+        #endif
+        let native = chrome != nil && !stacked
         let wd = PS("cal.weekdays").resolve(scheme)
         let base = PS("cal.cell").resolve(scheme).height
         let content = PS("cal.content").resolve(scheme)
         let rowHeight = native ? MonthFit.rowHeight(visible: visibleHeight - 12 - content.padding.top - MonthFit.below, header: wd.height, base: base) : base
-        return HStack(alignment: .top, spacing: split.gap) {
+        let layout = stacked ? AnyLayout(VStackLayout(alignment: .leading, spacing: split.gap)) : AnyLayout(HStackLayout(alignment: .top, spacing: split.gap))
+        return layout {
             VStack(spacing: 0) {
                 HStack(spacing: 0) {
                     ForEach(0..<7, id: \.self) { i in
@@ -400,6 +412,8 @@ struct WebCalendarScreen: View {
                 .scrollIndicators(.automatic)
                 .frame(width: 300, height: wd.height + rowHeight * 6)
                 .topAligned()
+            } else if stacked {
+                aside(byDate: byDate, events: events).frame(maxWidth: .infinity, alignment: .leading)
             } else {
                 aside(byDate: byDate, events: events).frame(width: 300).topAligned()
             }

@@ -2236,6 +2236,11 @@ struct WebListPageHeader<Controls: View>: View {
                 name
                 controlRow
             }
+            // (Narrower still, an iPad's content beside today's sidebar in portrait: the controls scroll sideways.)
+            VStack(alignment: .leading, spacing: 12) {
+                name
+                ScrollView(.horizontal) { controlRow }.scrollIndicators(.never).scrollClipDisabled()
+            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         // Room above the row (the owner, 6 November 2026: "give more space on the top"): 20 pt on the page's 12.

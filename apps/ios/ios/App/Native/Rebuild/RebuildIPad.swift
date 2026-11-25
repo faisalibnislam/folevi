@@ -32,9 +32,10 @@ enum RebuildIPad {
     }
 }
 
-/// Tells the note page which layout is showing on an iPhone (iPhone Duo): the iPad's look and its tools in the wide
-/// layout, the phone's (native bars) otherwise. The page reads `wide` on its marker and follows the event
-/// (lib/iphone.ts nativeWide); the iPad's page measures its own width instead and is never told.
+/// Tells the note page which layout is showing: the iPad's look and its tools (the floating dock) in the wide layout,
+/// the phone's (native bars) otherwise. The page reads `wide` on its marker and follows the event (lib/iphone.ts
+/// nativeWide). The iPad's page is told too: with today's sidebar beside it, the page itself can be under 700 pt
+/// wide in the wide layout (portrait), which its own width would take for the phone's.
 @MainActor
 enum RebuildPageLayout {
     nonisolated private static let key = "folevi-native-wide"
@@ -48,7 +49,6 @@ enum RebuildPageLayout {
 
     /// Tells the page, again every half second until it has loaded and taken it (it may still be loading at launch).
     static func tell(wide: Bool) {
-        guard UIDevice.current.userInterfaceIdiom == .phone else { return }
         self.wide = wide
         telling += 1
         send(telling: telling, tries: 40)

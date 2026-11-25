@@ -349,6 +349,12 @@ export interface ShellPlaces {
    * read, is only a hint). Rejects with `{ code, message }` (ShellServerError). Hosts that predate it leave it out.
    */
   addServerPlace?(o: { origin: string; info?: ServerInfoDocument | null }): Promise<ShellServerInfo>;
+  /**
+   * Opens the camera to read a QR code (the address an admin panel shows, or an invite link); the code's text, or
+   * null when the person closed the scanner. The page turns it into a server address. Hosts without a camera, or
+   * that predate it, leave it out.
+   */
+  scanCode?(): Promise<string | null>;
   /** Folevi servers found on the home network (Bonjour, `_folevi._tcp`). */
   listLocalServers?(): Promise<{ name: string; origin: string; serverId: string | null; version: string | null }[]>;
   /** Quick Add's place, remembered between uses. */

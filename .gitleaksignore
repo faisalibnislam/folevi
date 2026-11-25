@@ -46,3 +46,9 @@ d30d0351a16ecce8d5690a391fe76e5564030656:tests/convex/apple-signin.test.ts:priva
 72d0fcbed919bb8da5a40070d743aa0a04b5da22:apps/web/e2e/showcase-capture.spec.ts:generic-api-key:243
 # Not a secret: lego's certificate key type constant (certcrypto.EC256) in folevid's ACME client (claude/sleepy-goodall-3cg4e7).
 b9ca0904fdc07051333200ea33436949fbf3ff8f:server/folevid/internal/connect/acme.go:generic-api-key:153
+# The HANDOFF change log line about the entry above, which quoted that code.
+1b6e99cab9afc0fdfab794fd922724fd6b428501:HANDOFF.md:generic-api-key:850
+# Test fixtures in folevid and the Connect service (claude/sleepy-goodall-3cg4e7): made-up tokens and secrets.
+028cf82fdc7aa5ef799a533260aea416c45d1a9e:server/folevid/internal/connect/connect_test.go:generic-api-key:56
+028cf82fdc7aa5ef799a533260aea416c45d1a9e:server/folevid/internal/control/control_test.go:generic-api-key:44
+028cf82fdc7aa5ef799a533260aea416c45d1a9e:services/connect/internal/push/push_test.go:generic-api-key:52

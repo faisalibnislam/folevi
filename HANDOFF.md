@@ -249,6 +249,15 @@ The ones most likely to be broken:
 
 ## 9. Current state (as of 2026-11-24)
 
+**Apple shells performance pass (2026-11-25, `docs/perf/apple-results.md`).** Mac (`claude/perf-apple-3eaf61`, PR into
+`main`): content rules looked up from WebKit's store and in parallel with the library opening, runners start after the
+first page loads (or 5 s), WebKit's private no-throttling switches for runners only, the Keychain read off the main
+thread, the bridge script assembled once, an XCTest host that never takes focus, `PerfTests` (XCTest `measure`), and
+`perf.mjs` / `perf-scroll.mjs` rewritten for the web-view app. Also fixes `main`'s Mac build (the regenerated icon set
+renamed `calendar` to `calendarDays`). iPhone and iPad (`claude/perf-ios-3eaf61`, PR into `claude/ios-feedback-b1307a`):
+the Keychain read off the main thread at launch; note-page memory measured and not leaking; `_bridge` route, splash
+change and `capacitor://` caching measured and not worth changing.
+
 **A failed query no longer takes a page down (branch `claude/project-thread-u99yc5`, open PR, 2026-11-24).** Components
 read queries through `apps/web/src/lib/convex/queries.ts` (`useQuery`, `usePaginatedQuery`, `useQueryState`), never
 convex/react's (an eslint `no-restricted-imports` rule says so). A failed query reads as still loading (keeping its
@@ -578,6 +587,9 @@ signed-in account, 1.5.58's frosted folders with a large library, and the iPad c
 account button should move past iPadOS's window buttons).
 
 ## 10. Next steps / open work
+- Apple performance (owner's OK needed): run `node apps/mac/scripts/perf.mjs --fresh --runs 3` and `perf-scroll.mjs`
+  on `main` and on the perf branch (they launch the Mac app, which takes focus) for the Mac's launch, footprint and
+  idle energy before and after; confirm the iOS launch and memory numbers on a Release build on a device.
 - Web everywhere (all landed 2026-11-25). Open: the iOS simulator `footprint` re-run of the iPhone memory fix (mobile
   session); there are four empty-state components; lists not yet given `LoadFailed` still load until a retry answers
   (settings lists, Calendar, Graph, pickers);
@@ -732,6 +744,12 @@ account button should move past iPadOS's window buttons).
   `DATABASE_UDF_USER_TIMEOUT_SECONDS=4` for that backend. Bursts show in `convex.log` as "took a long time".
 
 ## 12. Change log
+- 2026-11-25: Apple shells performance pass (`docs/perf/apple-results.md`). Mac: rules lookup in parallel with the
+  library, runners after the first page, private throttling switches for runners only, Keychain off the main thread,
+  bridge script cached (2.3 to 0.68 ms per view), test host never activates, `PerfTests`, perf scripts for the web-view
+  app, `calendarDays` build fix. iOS (`claude/perf-ios-3eaf61`): Keychain off the main thread. Measured: note-page
+  memory flat after warm-up (162 MB Home, about 223 MB after 60 opens, 190 MB under memory pressure). Mac tests: 117
+  of 119 pass (the Vision OCR test timed out under load, passes alone).
 - 2026-11-25: One set of sync status words on every screen (owner's pick: the desktop's): the phone and iPad's sync
   button (`components/iphone/SyncStatusTouch.tsx`) now reads `SYNC_LABELS` from `components/app/SyncStatus.tsx`
   (Saved, Saving…, Syncing…, Offline, Conflict, Not saved) instead of Synced / Waiting to sync / Edited in two places,

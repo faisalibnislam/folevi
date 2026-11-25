@@ -1259,6 +1259,9 @@ account button should move past iPadOS's window buttons).
   `DATABASE_UDF_USER_TIMEOUT_SECONDS=4` for that backend. Bursts show in `convex.log` as "took a long time".
 
 ## 12. Change log
+- 2026-11-25: **Parity table brought up to date** (docs/DESKTOP_PARITY.md): items 1 to 9 marked done with their PRs,
+  `serverPlaces: false` taken out of bridge/host.js (lib.rs handles placesAddServer and placesLocalServers since PR
+  128), and the remaining gaps listed.
 - 2026-11-25: **Windows and Linux parity PRs landed together** (branch `claude/desktop-parity-integration`): PRs 116,
   118, 119, 120, 121, 123, 124, 125, 126 and 127 merged into one branch (each conflicted with the next in HANDOFF.md,
   Cargo.toml and lib.rs). Resolved once: one `windows` crate line with every feature; the page's boot carries the
@@ -1276,6 +1279,11 @@ account button should move past iPadOS's window buttons).
   `packaging/desktop/publish-update-feed.sh` signs the published installers and writes the feed
   (docs/DESKTOP_APP.md, "Updates"). Takes effect from the first release that carries it; 1.6.78 and older have no
   updater, so their users install that release by hand once.
+- 2026-11-25: **Desktop parity.** Owner rule: web and Mac features also go to the Windows and Linux app
+  (`CLAUDE.md`, `docs/claude-context/memory/desktop-feature-parity.md`). Audit and to-do list in
+  `docs/DESKTOP_PARITY.md`. Fixed: the web app now recognises the Windows and Linux apps as native
+  (`macBridge.ts`; Linux had counted as a Mac, Windows as a browser), and the Tauri host leaves "Your own server" out
+  of the bridge (`host.serverPlaces = false`) until it is built, instead of failing.
 - 2026-11-25: **App lock and Windows Hello in Folevi for Windows and Linux** (branch `claude/desktop-app-lock`, item 3
   of docs/DESKTOP_PARITY.md): lockGet/lockSet as on the Mac; Windows Hello on Windows, a passphrase on Linux; the
   shell's cover over the main windows at launch, after time away and after sleep; "Ask for Windows Hello to unlock

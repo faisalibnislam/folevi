@@ -11,8 +11,9 @@
 // - "Cache-Control: no-cache" on everything.
 // Plus the Mac's /_bridge/<id> (Bridge.swift): bridge calls too big for a message (POST the JSON, then name the id)
 // and answers too big for a reply (one GET). And for a Folevi Server place, a Content-Security-Policy header on the
-// page that lets it reach that server's addresses only (ShellPolicy, as the Mac's); Folevi Cloud and the library
-// keep the export's own meta policy alone, as before.
+// page that lets it reach that server's addresses only (ShellPolicy, as the Mac's). Folevi Cloud and the library get
+// ShellPolicy.cloudNarrowing, which narrows the export's meta policy back to what it allowed before servers existed
+// (the meta policy now allows any http(s) origin so server places can work).
 import Foundation
 import UniformTypeIdentifiers
 import WebKit
@@ -32,7 +33,7 @@ final class AppScheme: NSObject, WKURLSchemeHandler {
     /// sign-in screen's server).
     var pagePolicy: () -> String? = {
         let place = ShellPlaces.state.current
-        guard let server = ShellPlaces.server(of: place) else { return nil }
+        guard let server = ShellPlaces.server(of: place) else { return ShellPolicy.cloudNarrowing }
         return ShellPolicy.csp(mode: ShellPlaces.modeOf(place), serviceOrigin: "", server: server)
     }
 

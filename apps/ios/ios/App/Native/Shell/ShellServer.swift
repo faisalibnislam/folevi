@@ -262,6 +262,15 @@ enum ShellPolicy {
         return out
     }
 
+    /// iPhone and iPad, for every place that isn't a server's: the connections, images and media the export's meta
+    /// policy allowed before it was widened for server places (apps/web/src/lib/shell/csp.ts). A header policy with
+    /// only these directives narrows just them; everything else stays as the meta policy says.
+    static let cloudNarrowing = [
+        "connect-src 'self' folevi-file: https://*.convex.cloud wss://*.convex.cloud https://*.convex.site",
+        "img-src 'self' data: blob: folevi-file: https://*.convex.site https:",
+        "media-src 'self' blob: folevi-file: https://*.convex.site",
+    ].joined(separator: "; ")
+
     /// Local mode and the first-launch choice reach nothing but the app itself; a Folevi Cloud account adds
     /// Folevi's website and Convex (`serviceOrigin`, `*.convex.cloud`, `*.convex.site`, plus `extraConnect`); a
     /// server place's account (`server`) reaches that server's origins only.

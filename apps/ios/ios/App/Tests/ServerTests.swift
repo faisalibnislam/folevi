@@ -44,8 +44,10 @@ final class ServerTests: XCTestCase {
         defer { try? FileManager.default.removeItem(at: root) }
         try Data("<html>index</html>".utf8).write(to: root.appendingPathComponent("index.html"))
         let scheme = AppScheme(root: root)
-        // Folevi Cloud (no server): no header, the export's meta policy alone.
-        XCTAssertNil(scheme.respond(url: URL(string: "capacitor://localhost/documents")!, method: "GET").headers["Content-Security-Policy"])
+        // Folevi Cloud (no server): the narrowing header that restores the export's old limits.
+        let cloud = try XCTUnwrap(scheme.respond(url: URL(string: "capacitor://localhost/documents")!, method: "GET").headers["Content-Security-Policy"])
+        XCTAssertEqual(cloud, ShellPolicy.cloudNarrowing)
+        XCTAssertFalse(cloud.contains("http:"))
         let s = try XCTUnwrap(server())
         ShellPlaces.setCurrent(nil, pending: true, server: s)
         let csp = try XCTUnwrap(scheme.respond(url: URL(string: "capacitor://localhost/documents")!, method: "GET").headers["Content-Security-Policy"])

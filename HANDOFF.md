@@ -328,6 +328,15 @@ Mac buttons don't shrink on press, overlays fade out (`ui/closing.ts`, Popover's
 fades, no hover lift on the Mac except folders, state icons cross-fade (`ui/SwapIcons.tsx`), concentric corners,
 image outlines (`ui-img-outline`), steady-width counters, tab pin/close no longer overlap. Checked headlessly in an offscreen WKWebView harness (real NSEvent wheel events, a
 `FOLEVI_BUILD=shell` dev server with the e2e FakeShell, scratch OPFS library); not yet seen in a Mac release build.
+**Mac feedback, round 2 (2026-11-25, same branch, new PR).** Web UI fixes, so every platform gets them: (1) New
+note (and New folder) sit 6 px from the tab bar's edges on every side, corners concentric (`rounded-small` inside
+the bar's 14). (2) A note in two joined tabs no longer jumps to the other tab: the tabs provider keeps the tab on
+screen (`shownId`, sticky `current` in `lib/app/tabs.tsx`); a click on a tab or a Show all tabs tile `pick`s that
+tab; the strip, `NotePanes` and close follow `shownId` (tests in `test/tabs.test.tsx`). (3) The pin on a hovered
+tab no longer sits on the title: the open tab's title fades out clear of pin and close on hover (48 px,
+`globals.css` `.ui-tab`), pin and close in `text-muted`. (4) Table cells wrap the same being edited (their `<p>`
+lines took `text-wrap: pretty`) as not: `editor.css` sets `text-wrap: wrap` on cells.
+
 **Folevi Server on iPhone and iPad (Capacitor app, branch `claude/ios-server-signin`, 2026-11-25).** "Your own server"
 works end to end in `apps/mobile`: the address (typed, or a QR code read with VisionKit's DataScannerViewController,
 `apps/mobile/ios/App/App/ServerCodeScanner.swift`, exposed as PR 100's `foleviShell.places.scanCode()` only where the
@@ -993,6 +1002,8 @@ account button should move past iPadOS's window buttons).
 - Mac feedback branch (`claude/mac-feedback-8652d2`): the owner checks Home scrolling, folder corners and the new Show
   all tabs in the next Mac build (needs "release it"); a split-view tab in the overview was not drawn in the
   headless check (no split tab in the scratch library).
+- Mac feedback round 2 (same branch): the owner's floating note request (float a note in an always-on-top window,
+  from a tab or a folder's note list) waits on the owner's answers; not started.
 - Android own server (`claude/android-own-server`, PR 103): merge after PR 69 and PR 100, then merge main into it.
   Still open: Android's other windows don't reload when a server is added (only the one that added it); reading a
   real QR code and a full sign-in on a server are untested.
@@ -1258,6 +1269,10 @@ account button should move past iPadOS's window buttons).
   `DATABASE_UDF_USER_TIMEOUT_SECONDS=4` for that backend. Bursts show in `convex.log` as "took a long time".
 
 ## 12. Change log
+- 2026-11-25: Mac feedback round 2: New note's even 6 px inset; one note in two joined tabs stays in the tab on
+  screen (`shownId`/`pick` in `lib/app/tabs.tsx`); hovered tab's pin clear of the title; table cells wrap alike
+  edited or not. Checked: typecheck, lint, unit suite (2247), WebKit probes (inset 6/6/6, pin fade 48 px). The table
+  wrap and the joined tabs were not checked in a Mac build.
 - 2026-11-25: **1.6.78 released** from PR 109's merge (`e0183862`): web and Convex deployed; Mac published
   (notarized, Sparkle feed); iPhone and iPad on TestFlight (delivery 7120ad6e); Windows installers and Linux packages
   uploaded, apt and rpm repositories rebuilt and uploaded; the Android bundle built and left for the owner's Play

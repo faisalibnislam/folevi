@@ -151,6 +151,13 @@ interface TabsValue {
    * (Settings, Help…): the browser's history goes on there.
    */
   tabHistory: BackForwardValue | null;
+  /**
+   * The tab on screen. One note can be in more than one tab (two joined tabs may share it): this says which of them
+   * is showing it, so moving between a joined tab's panes never jumps to the other tab (the owner, 2026-11-25).
+   */
+  shownId: string | null;
+  /** Marks tab `id` as the one to show (a click on it in the strip or in Show all tabs), just before going to its page. */
+  pick: (id: string) => void;
 }
 
 /** A note or folder to open in a background tab. */
@@ -275,6 +282,8 @@ export function TabsProvider({ accountKey, workspaceId, children }: { accountKey
   // The name the view on screen gave itself. Its page's effect runs before this provider's, so the name can
   // come before the view's tab exists; the new tab takes it then (a folder's tab said "Folder").
   const viewTitle = useRef<{ path: string; title: string } | null>(null);
+  // The tab on screen, kept while its page changes: a note in two tabs stays in the one it's in (see `shownId`).
+  const [current, setCurrent] = useState<string | null>(null);
   useEffect(() => {
     const from = previousDoc.current;
     previousDoc.current = docId;
@@ -311,7 +320,9 @@ export function TabsProvider({ accountKey, workspaceId, children }: { accountKey
       return;
     }
     if (docId) {
-      const open = tabs.findIndex((t) => tabHolds(t, docId));
+      // The tab on screen first, when it has the note (a joined tab's other pane): never another tab with it too.
+      const mine = tabs.findIndex((t) => t.id === current && tabHolds(t, docId));
+      const open = mine !== -1 ? mine : tabs.findIndex((t) => tabHolds(t, docId));
       if (open !== -1) {
         if (tabPage(tabs[open]!) !== docId) setTabs((cur) => cur.map((t) => (t.id === tabs[open]!.id ? withTrail(t, { ...t, at: docId, atTitle: undefined }, `/d/${docId}`) : t)));
         return;
@@ -377,11 +388,20 @@ export function TabsProvider({ accountKey, workspaceId, children }: { accountKey
 
   // Whether a tab is the one on screen (a note's page, or a view at its path).
   const isShown = useCallback((t: DocTab) => (t.view ? t.view.path === pathname : Boolean(docId) && tabHolds(t, docId!)), [pathname, docId]);
-  const shown = tabs.find(isShown) ?? null;
+  const shown = tabs.find((t) => t.id === current && isShown(t)) ?? tabs.find(isShown) ?? null;
   const shownId = shown?.id ?? null;
   useEffect(() => {
     if (shownId) used.current.set(shownId, ++useClock.current);
+    if (shownId) setCurrent(shownId);
   }, [shownId]);
+  // Going to a tab: it becomes the one on screen, even when another tab holds the same page.
+  const goTab = useCallback(
+    (t: DocTab) => {
+      setCurrent(t.id);
+      navigate(tabHref(t));
+    },
+    [navigate],
+  );
 
   // The tab on screen's own Back and Forward: the tab goes to the address in place (the effect above). A page that's
   // in another tab by now shows in that tab instead, and this tab stays where it was.
@@ -394,7 +414,7 @@ export function TabsProvider({ accountKey, workspaceId, children }: { accountKey
       const href = trail[to];
       if (!href) return;
       const other = tabs.find((t) => t.id !== shown.id && tabShows(t, href));
-      if (other) return navigate(tabHref(other));
+      if (other) return goTab(other);
       travel.current = { id: shown.id, at: to, href };
       navigate(href);
     };
@@ -403,10 +423,11 @@ export function TabsProvider({ accountKey, workspaceId, children }: { accountKey
     const toOpener = () => {
       if (!opener) return;
       setTabs((cur) => cur.filter((t) => t.id !== shown.id));
-      navigate(opener === "home" ? "/documents" : tabHref(opener));
+      if (opener === "home") navigate("/documents");
+      else goTab(opener);
     };
     return { back: () => (at > 0 ? go(at - 1) : toOpener()), forward: () => go(at + 1), canBack: at > 0 || Boolean(opener), canForward: at < trail.length - 1 };
-  }, [shown, onHome, tabs, navigate, setTabs]);
+  }, [shown, onHome, tabs, navigate, setTabs, goTab]);
 
   const close = useCallback(
     (id: string) => {
@@ -414,12 +435,13 @@ export function TabsProvider({ accountKey, workspaceId, children }: { accountKey
       if (i === -1) return;
       const next = tabs.filter((t) => t.id !== id);
       setTabs((cur) => cur.filter((t) => t.id !== id));
-      if (isShown(tabs[i]!)) {
+      if (tabs[i]!.id === shownId) {
         const neighbor = next[i] ?? next[i - 1];
-        navigate(neighbor ? tabHref(neighbor) : "/documents");
+        if (neighbor) goTab(neighbor);
+        else navigate("/documents");
       }
     },
-    [tabs, setTabs, isShown, navigate],
+    [tabs, setTabs, shownId, goTab, navigate],
   );
   const closeMany = useCallback(
     (ids: string[], then?: string) => {
@@ -427,12 +449,13 @@ export function TabsProvider({ accountKey, workspaceId, children }: { accountKey
       if (!gone.size) return;
       const next = tabs.filter((t) => !gone.has(t.id));
       setTabs((cur) => cur.filter((t) => !gone.has(t.id)));
-      if (tabs.some((t) => gone.has(t.id) && isShown(t))) {
+      if (shownId !== null && gone.has(shownId)) {
         const stay = next.find((t) => t.id === then);
-        navigate(stay ? tabHref(stay) : "/documents");
+        if (stay) goTab(stay);
+        else navigate("/documents");
       }
     },
-    [tabs, setTabs, isShown, navigate],
+    [tabs, setTabs, shownId, goTab, navigate],
   );
 
   const move = useCallback(
@@ -619,8 +642,8 @@ export function TabsProvider({ accountKey, workspaceId, children }: { accountKey
   );
   const openInBackground = useCallback((folder: { id: string; name: string }) => openManyInBackground([{ kind: "folder", ...folder }]), [openManyInBackground]);
   const value = useMemo(
-    () => ({ tabs, view, setView, homeHref, close, closeMany, move, setPinned, join, unjoin, setSizes, movePane, detachPane, place, warm, openInBackground, openManyInBackground, tabHistory }),
-    [tabs, view, setView, homeHref, close, closeMany, move, setPinned, join, unjoin, setSizes, movePane, detachPane, place, warm, openInBackground, openManyInBackground, tabHistory],
+    () => ({ tabs, view, setView, homeHref, close, closeMany, move, setPinned, join, unjoin, setSizes, movePane, detachPane, place, warm, openInBackground, openManyInBackground, tabHistory, shownId, pick: setCurrent }),
+    [tabs, view, setView, homeHref, close, closeMany, move, setPinned, join, unjoin, setSizes, movePane, detachPane, place, warm, openInBackground, openManyInBackground, tabHistory, shownId],
   );
 
   // The pages placed (useDocTab), placed again with each change to the tabs: a page names its tab before the tab
@@ -711,6 +734,9 @@ export function NativeTabsProvider({ children }: { accountKey?: string; workspac
       warm: [],
       // Native keeps each tab's Back and Forward.
       tabHistory: null,
+      // The note's own tab comes first (native knows which of its tabs is on screen).
+      shownId: tabs[0]?.id ?? null,
+      pick: noop,
     }),
     [tabs],
   );

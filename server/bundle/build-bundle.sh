@@ -157,7 +157,7 @@ find "$DEST/web" -maxdepth 3 -name '.env*' -type f -delete
 [ -d "$FUNCTIONS_DIR/convex" ] || die "FUNCTIONS_DIR has no convex/ folder"
 [ -f "$FUNCTIONS_DIR/node_modules/convex/bin/main.js" ] || die "FUNCTIONS_DIR has no node_modules/convex"
 [ -d "$FUNCTIONS_DIR/convex/_generated" ] || die "FUNCTIONS_DIR/convex/_generated is missing (run codegen first; the deploy runs with --codegen=disable)"
-for f in convex package.json convex.json tsconfig.json node_modules; do
+for f in convex packages package.json convex.json tsconfig.json node_modules; do
   [ -e "$FUNCTIONS_DIR/$f" ] && cp -RL "$FUNCTIONS_DIR/$f" "$DEST/functions/"
 done
 find "$DEST/functions" -maxdepth 1 -name '.env*' -delete

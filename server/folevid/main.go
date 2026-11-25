@@ -4,6 +4,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -17,6 +18,7 @@ import (
 	"os/signal"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"syscall"
 	"time"
 
@@ -38,7 +40,9 @@ Usage:
   folevid version                            print the version
   folevid setup-url --data <dir>             print the first-setup address
   folevid backup --data <dir>                take a backup now (folevid must be running)
-  folevid restore <id> --data <dir>          restore a backup (folevid must be running)
+  folevid restore <id> --data <dir> [--key-file <file>]
+                                             restore a backup (folevid must be running); --key-file holds
+                                             the backup key of the server that made it, if not this one
   folevid healthcheck --data <dir>           exit 0 when the backend and web app are running
 
 Defaults: --data from FOLEVI_DATA, --bundle from FOLEVI_BUNDLE or the folder above bin/folevid.
@@ -57,6 +61,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 	fs.SetOutput(stderr)
 	data := fs.String("data", os.Getenv("FOLEVI_DATA"), "data folder")
 	bundle := fs.String("bundle", os.Getenv("FOLEVI_BUNDLE"), "bundle folder")
+	keyFile := fs.String("key-file", "", "restore: file with the backup key of the server that made the backup")
 	var positional []string
 	// Allow flags after positional arguments (folevid restore <id> --data x).
 	for len(rest) > 0 {
@@ -87,10 +92,10 @@ func run(args []string, stdout, stderr io.Writer) int {
 		return cmdBackup(*data, stdout, stderr)
 	case "restore":
 		if len(positional) != 1 {
-			fmt.Fprintln(stderr, "usage: folevid restore <id> --data <dir>")
+			fmt.Fprintln(stderr, "usage: folevid restore <id> --data <dir> [--key-file <file>]")
 			return 2
 		}
-		return cmdRestore(*data, positional[0], stdout, stderr)
+		return cmdRestore(*data, positional[0], *keyFile, stdout, stderr)
 	case "healthcheck":
 		return cmdHealth(*data, stdout, stderr)
 	}
@@ -184,6 +189,11 @@ func cmdSetupURL(data string, stdout, stderr io.Writer) int {
 
 // callControl calls the running folevid's control API.
 func callControl(data, method, path string, timeout time.Duration, out any) error {
+	return callControlBody(data, method, path, timeout, nil, out)
+}
+
+// callControlBody is callControl with a JSON request body (nil for none).
+func callControlBody(data, method, path string, timeout time.Duration, in, out any) error {
 	c, sec, err := loadLocal(data)
 	if err != nil {
 		return err
@@ -192,8 +202,19 @@ func callControl(data, method, path string, timeout time.Duration, out any) erro
 	if err != nil {
 		return err
 	}
-	req, _ := http.NewRequest(method, "http://"+net.JoinHostPort("127.0.0.1", strconv.Itoa(c.ControlPort))+path, nil)
+	var rd io.Reader
+	if in != nil {
+		b, err := json.Marshal(in)
+		if err != nil {
+			return err
+		}
+		rd = bytes.NewReader(b)
+	}
+	req, _ := http.NewRequest(method, "http://"+net.JoinHostPort("127.0.0.1", strconv.Itoa(c.ControlPort))+path, rd)
 	req.Header.Set("Authorization", "Bearer "+secret)
+	if in != nil {
+		req.Header.Set("Content-Type", "application/json")
+	}
 	resp, err := (&http.Client{Timeout: timeout, Transport: &http.Transport{Proxy: nil}}).Do(req)
 	if err != nil {
 		return fmt.Errorf("folevid is not running (control API: %v)", err)
@@ -224,12 +245,25 @@ func cmdBackup(data string, stdout, stderr io.Writer) int {
 	return 0
 }
 
-func cmdRestore(data, id string, stdout, stderr io.Writer) int {
+func cmdRestore(data, id, keyFile string, stdout, stderr io.Writer) int {
 	if !backup.ValidID(id) {
 		fmt.Fprintf(stderr, "folevid: %q is not a backup id (for example 20261125T030000Z-nightly)\n", id)
 		return 2
 	}
-	if err := callControl(data, http.MethodPost, "/v1/backups/"+id+"/restore", 6*time.Hour, nil); err != nil {
+	// The key comes from a file, never the command line, so it stays out of the process list.
+	var body any
+	if keyFile != "" {
+		b, err := os.ReadFile(keyFile)
+		if err != nil {
+			return reportErr(stderr, err)
+		}
+		if _, err := backup.ParseKey(string(b)); err != nil {
+			fmt.Fprintf(stderr, "folevid: %s: %v\n", keyFile, err)
+			return 2
+		}
+		body = control.RestoreRequest{Key: strings.TrimSpace(string(b))}
+	}
+	if err := callControlBody(data, http.MethodPost, "/v1/backups/"+id+"/restore", 6*time.Hour, body, nil); err != nil {
 		return reportErr(stderr, err)
 	}
 	fmt.Fprintln(stdout, "restored", id)

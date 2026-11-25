@@ -14,6 +14,7 @@ import (
 type fake struct {
 	schedule Schedule
 	restored string
+	key      string
 	remote   RemoteUpdate
 }
 
@@ -26,12 +27,15 @@ func (f *fake) Backups() (Backups, error) {
 }
 func (f *fake) StartBackup(string, bool) (string, error) { return "20261125T030000Z-manual", nil }
 func (f *fake) SetSchedule(s Schedule) error             { f.schedule = s; return nil }
-func (f *fake) Restore(id string) error {
+func (f *fake) Restore(id, key string) error {
 	if id == "missing" {
 		return NotFound("no such backup")
 	}
-	f.restored = id
+	f.restored, f.key = id, key
 	return nil
+}
+func (f *fake) BackupKey() (BackupKey, error) {
+	return BackupKey{Key: "AGE-SECRET-KEY-1TEST", Recipient: "age1test"}, nil
 }
 func (f *fake) Remote() Remote                 { return Remote{PublicURL: "http://x"} }
 func (f *fake) SetRemote(u RemoteUpdate) error { f.remote = u; return nil }
@@ -125,6 +129,18 @@ func TestHandlerRoutes(t *testing.T) {
 	}
 	if code, _ := do(t, h, "POST", "/v1/backups/20261125T030000Z-nightly/restore", auth, ""); code != 200 || f.restored != "20261125T030000Z-nightly" {
 		t.Fatalf("restore: %d", code)
+	}
+	if code, _ := do(t, h, "POST", "/v1/backups/20261125T030000Z-manual/restore", auth, `{"key":"AGE-SECRET-KEY-1OTHER"}`); code != 200 || f.key != "AGE-SECRET-KEY-1OTHER" {
+		t.Fatalf("restore with a key: %d %q", code, f.key)
+	}
+	if code, _ := do(t, h, "POST", "/v1/backups/20261125T030000Z-manual/restore", auth, `{"other":1}`); code != 400 {
+		t.Fatalf("restore with a bad body: %d", code)
+	}
+	if code, out := do(t, h, "GET", "/v1/backups/key", auth, ""); code != 200 || out["key"] != "AGE-SECRET-KEY-1TEST" || out["recipient"] != "age1test" {
+		t.Fatalf("backup key: %d %v", code, out)
+	}
+	if code, _ := do(t, h, "GET", "/v1/backups/key", "", ""); code != 401 {
+		t.Fatalf("backup key without auth: %d", code)
 	}
 	if code, _ := do(t, h, "POST", "/v1/backups/missing/restore", auth, ""); code != 404 {
 		t.Fatalf("restore missing: %d", code)

@@ -399,6 +399,7 @@ func (a *App) Run(ctx context.Context) error {
 	a.bk = &backup.Manager{
 		Dir: filepath.Join(a.data, "backups"), TmpDir: a.tmpDir, Version: a.version, Snap: a.snapshotter(),
 		Secrets: a.portableSecrets, SetSecrets: a.restorePortableSecrets,
+		Key: func() string { k, _ := a.sec.Get(secrets.BackupKey); return k },
 	}
 	a.backend = supervisor.New(supervisor.Spec{Name: "backend", Build: a.backendCommand, Output: a.childOutput("backend"), Log: a.log})
 	a.web = supervisor.New(supervisor.Spec{Name: "web", Build: a.webCommand, Output: a.childOutput("web"), Log: a.log})

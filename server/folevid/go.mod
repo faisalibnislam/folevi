@@ -3,6 +3,7 @@ module github.com/faisalibnislam/folevi/server/folevid
 go 1.24.7
 
 require (
+	filippo.io/age v1.2.1
 	github.com/coder/websocket v1.8.13
 	github.com/go-acme/lego/v4 v4.25.2
 	github.com/hashicorp/mdns v1.0.6

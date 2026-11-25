@@ -2,9 +2,12 @@ package backup
 
 import (
 	"archive/zip"
+	"bytes"
 	"context"
+	"errors"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 )
@@ -86,13 +89,13 @@ func TestCreateListRestore(t *testing.T) {
 	}
 	var got map[string]string
 	m.SetSecrets = func(s map[string]string) error { got = s; return nil }
-	if err := m.Restore(context.Background(), id, target); err != nil {
+	if _, err := m.Restore(context.Background(), id, target, ""); err != nil {
 		t.Fatal(err)
 	}
 	if string(snap.imported) != "EXPORT-DATA" || got["hash-salt"] != "salty" {
 		t.Fatalf("restore: %q %v", snap.imported, got)
 	}
-	if err := m.Restore(context.Background(), NewID(time.Now().Add(-time.Hour), KindManual), target); err == nil {
+	if _, err := m.Restore(context.Background(), NewID(time.Now().Add(-time.Hour), KindManual), target, ""); err == nil {
 		t.Fatal("restored a missing backup")
 	}
 }
@@ -122,7 +125,7 @@ func TestFolderTargetAndRotation(t *testing.T) {
 		t.Fatalf("kept %+v", list)
 	}
 	// Restore from the folder target.
-	if err := m.Restore(context.Background(), ids[6], other); err != nil {
+	if _, err := m.Restore(context.Background(), ids[6], other, ""); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -141,5 +144,137 @@ func TestDueNightly(t *testing.T) {
 	}
 	if !DueNightly(at(3, 0).Add(24*time.Hour), 3, at(3, 1)) {
 		t.Error("not due the next day")
+	}
+}
+
+func TestEncryptedBackups(t *testing.T) {
+	ctx := context.Background()
+	key, err := NewKey()
+	if err != nil {
+		t.Fatal(err)
+	}
+	m, snap, _ := newManager(t)
+	m.Key = func() string { return key }
+	share := &FolderTarget{Dir: filepath.Join(t.TempDir(), "share")}
+	id := NewID(time.Date(2026, 11, 20, 3, 0, 0, 0, time.UTC), KindNightly)
+	info, err := m.Create(ctx, id, share, 14)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !info.Encrypted || info.Name != id+ExtEncrypted {
+		t.Fatalf("info %+v", info)
+	}
+	raw, err := os.ReadFile(filepath.Join(share.Dir, id+ExtEncrypted))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.HasPrefix(raw, ageMagic) {
+		t.Fatal("not an age file")
+	}
+	for _, plain := range []string{"salty", "EXPORT-DATA", "secrets.json", "PK\x03\x04"} {
+		if bytes.Contains(raw, []byte(plain)) {
+			t.Fatalf("%q readable in the encrypted backup", plain)
+		}
+	}
+	list, _ := List(ctx, share)
+	if len(list) != 1 || !list[0].Encrypted || list[0].ID != id {
+		t.Fatalf("list %+v", list)
+	}
+
+	// Same machine: its own key opens it.
+	var got map[string]string
+	m.SetSecrets = func(s map[string]string) error { got = s; return nil }
+	if used, err := m.Restore(ctx, id, share, ""); err != nil || used {
+		t.Fatal(err, used)
+	}
+	// A typed key that is not needed: its own key opens it, and the typed key is reported unused.
+	unneeded, _ := NewKey()
+	if used, err := m.Restore(ctx, id, share, unneeded); err != nil || used {
+		t.Fatal(err, used)
+	}
+	if string(snap.imported) != "EXPORT-DATA" || got["hash-salt"] != "salty" {
+		t.Fatalf("restore: %q %v", snap.imported, got)
+	}
+
+	// A new machine with its own key: refused until the old key is given.
+	other, err := NewKey()
+	if err != nil {
+		t.Fatal(err)
+	}
+	m2, snap2, _ := newManager(t)
+	m2.Key = func() string { return other }
+	if _, err := m2.Restore(ctx, id, share, ""); !errors.Is(err, ErrWrongKey) {
+		t.Fatalf("want ErrWrongKey, got %v", err)
+	}
+	if _, err := m2.Restore(ctx, id, share, other); !errors.Is(err, ErrWrongKey) {
+		t.Fatalf("a wrong typed key: want ErrWrongKey, got %v", err)
+	}
+	if _, err := m2.Restore(ctx, id, share, "not a key"); err == nil || errors.Is(err, ErrWrongKey) {
+		t.Fatalf("a malformed key: %v", err)
+	}
+	used, err := m2.Restore(ctx, id, share, "  "+strings.ToLower(key)+"\n")
+	if err != nil || !used {
+		t.Fatal(err, used)
+	}
+	if string(snap2.imported) != "EXPORT-DATA" {
+		t.Fatalf("new machine restore: %q", snap2.imported)
+	}
+	// No key at all on this server: still refused cleanly.
+	m3, _, _ := newManager(t)
+	if _, err := m3.Restore(ctx, id, share, ""); !errors.Is(err, ErrWrongKey) {
+		t.Fatalf("no key: %v", err)
+	}
+}
+
+func TestOldPlainBackupsStillRestore(t *testing.T) {
+	ctx := context.Background()
+	m, snap, _ := newManager(t)
+	target := &FolderTarget{Dir: m.Dir, IsLocal: true}
+	base := time.Date(2026, 11, 1, 3, 0, 0, 0, time.UTC)
+	old := NewID(base, KindNightly)
+	if info, err := m.Create(ctx, old, target, 14); err != nil || info.Encrypted || info.Name != old+ExtPlain {
+		t.Fatalf("plain backup: %+v %v", info, err)
+	}
+	key, _ := NewKey()
+	m.Key = func() string { return key }
+	var ids []string
+	for i := 1; i <= 3; i++ {
+		id := NewID(base.Add(time.Duration(i)*24*time.Hour), KindNightly)
+		ids = append(ids, id)
+		if _, err := m.Create(ctx, id, target, 14); err != nil {
+			t.Fatal(err)
+		}
+	}
+	snap.imported = nil
+	if _, err := m.Restore(ctx, old, target, ""); err != nil {
+		t.Fatal(err)
+	}
+	if string(snap.imported) != "EXPORT-DATA" {
+		t.Fatal("old backup not imported")
+	}
+	// Rotation removes the plain file by its own name.
+	if err := Rotate(ctx, target, 2); err != nil {
+		t.Fatal(err)
+	}
+	list, _ := List(ctx, target)
+	if len(list) != 2 || list[0].ID != ids[2] || !list[0].Encrypted {
+		t.Fatalf("after rotation %+v", list)
+	}
+	if _, err := os.Stat(filepath.Join(m.Dir, old+ExtPlain)); !os.IsNotExist(err) {
+		t.Fatal("old plain backup not rotated away")
+	}
+}
+
+func TestParseKey(t *testing.T) {
+	key, _ := NewKey()
+	if !strings.HasPrefix(key, "AGE-SECRET-KEY-1") {
+		t.Fatal(key)
+	}
+	r, err := Recipient(key)
+	if err != nil || !strings.HasPrefix(r, "age1") {
+		t.Fatal(r, err)
+	}
+	if _, err := ParseKey("AGE-SECRET-KEY-1XYZ"); err == nil {
+		t.Fatal("accepted a bad key")
 	}
 }

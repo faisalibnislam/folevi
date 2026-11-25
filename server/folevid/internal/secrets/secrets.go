@@ -15,6 +15,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"filippo.io/age"
 )
 
 // File names inside secrets/ (CONTRACT §3).
@@ -31,7 +33,10 @@ const (
 	ConnectToken     = "connect-token"
 	// ConnectKey is the server's Ed25519 private key for Folevi Connect (base64 of the 64-byte key).
 	ConnectKey = "connect-key"
-	TLSDir     = "tls"
+	// BackupKey encrypts backups: an age X25519 identity ("AGE-SECRET-KEY-1..."), made on first start. The owner
+	// saves it once (GET /v1/backups/key) to restore on a new machine.
+	BackupKey = "backup-key"
+	TLSDir    = "tls"
 )
 
 // Store is the secrets folder.
@@ -137,6 +142,13 @@ func (s *Store) EnsureAll(keygen AdminKeyFunc) error {
 		{FileURLSecret, func() (string, error) { return randHex(32) }},
 		{ServerSecret, func() (string, error) { return randHex(32) }},
 		{SetupToken, func() (string, error) { return randB64(24, base64.RawURLEncoding) }},
+		{BackupKey, func() (string, error) {
+			id, err := age.GenerateX25519Identity()
+			if err != nil {
+				return "", err
+			}
+			return id.String(), nil
+		}},
 	}
 	for _, g := range gen {
 		if err := s.ensure(g.name, g.make); err != nil {
@@ -218,7 +230,7 @@ func (s *Store) ConnectKeyPair() (ed25519.PrivateKey, error) {
 func (s *Store) Values() []string {
 	var out []string
 	for _, n := range []string{InstanceSecret, AdminKey, BetterAuthSecret, HashSalt, FileURLSecret, ServerSecret,
-		SetupToken, VapidPrivate, ConnectToken, ConnectKey} {
+		SetupToken, VapidPrivate, ConnectToken, ConnectKey, BackupKey} {
 		if v, _ := s.Get(n); v != "" {
 			out = append(out, v)
 		}

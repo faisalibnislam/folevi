@@ -127,8 +127,9 @@ final class FoleviViewController: CAPBridgeViewController {
         let libraryFile = Platform.supportFolder.appendingPathComponent("library.json")
         ShellPlaces.migrate(libraryConfigured: FileManager.default.fileExists(atPath: libraryFile.path))
         if ShellMode.current == "account", ShellPlaces.state.current == nil, let first = ShellPlaces.state.accounts.first { ShellPlaces.setCurrent(first.id) }
-        guard ShellAuth.shared.token(for: nil) != nil else { return }
-        Task {
+        // The Keychain is read off the main thread: this runs before the first page loads, on every launch.
+        Task.detached(priority: .utility) {
+            guard ShellAuth.shared.token(for: nil) != nil else { return }
             guard let u = await ShellAuth.shared.adoptLegacy() else { return }
             await MainActor.run {
                 let first = ShellPlaces.state.accounts.isEmpty

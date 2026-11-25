@@ -2385,6 +2385,19 @@ export default defineSchema({
     updatedAt: v.number(),
   }).index("by_key", ["key"]),
 
+  /**
+   * Foli AI provider keys saved in the admin panel (convex/aiConfig.ts), one per provider, sealed with
+   * AES-GCM under the server's secret (lib/crypto.ts sealSecret): the database never holds a key in the
+   * clear, and no query returns it, only whether it's set and its last four characters.
+   */
+  aiProviderKeys: defineTable({
+    provider: v.union(v.literal("gemini"), v.literal("openai"), v.literal("anthropic")),
+    sealed: v.string(),
+    last4: v.string(),
+    updatedBy: v.id("profiles"),
+    updatedAt: v.number(),
+  }).index("by_provider", ["provider"]),
+
   systemSettings: defineTable({
     key: v.string(),
     value: v.any(),

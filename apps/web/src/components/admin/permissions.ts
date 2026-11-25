@@ -40,7 +40,10 @@ export type Capability =
   | "support.view"
   | "support.reply"
   | "themes.view"
-  | "themes.edit";
+  | "themes.edit"
+  | "ai.view"
+  | "ai.edit"
+  | "ai.keys";
 
 const ALL: AdminRole[] = ["super_admin", "ops_admin", "support_admin"];
 const ADMIN: AdminRole[] = ["super_admin", "ops_admin"];
@@ -85,6 +88,10 @@ export const PERMISSIONS: Record<Capability, AdminRole[]> = {
   /** The Theme manager (mirrors convex/adminThemes.ts): everyone looks; owners and admins change themes. */
   "themes.view": ALL,
   "themes.edit": ADMIN,
+  /** Admin > Foli AI (convex/aiConfig.ts): see it, route features and pick models, save provider keys. */
+  "ai.view": ALL,
+  "ai.edit": ADMIN,
+  "ai.keys": OWNER,
 };
 
 /** The longest trial extension each role may give (mirrors adminBilling.extendTrial). */

@@ -212,7 +212,7 @@ Then, each with the owner's OK:
 
 | Secret | Where it lives | Moving to a new Mac |
 | --- | --- | --- |
-| Convex production env (`BETTER_AUTH_SECRET`, `FOLEVI_SERVER_SECRET`, `FOLEVI_HASH_SALT`, `FOLEVI_FILE_URL_SECRET`, `RESEND_API_KEY`, `RESEND_WEBHOOK_SECRET`, `GEMINI_API_KEY`, `POLAR_ACCESS_TOKEN`, `POLAR_WEBHOOK_SECRET`, `POLAR_PRODUCT_*`, `VAPID_*`, `UNSPLASH_ACCESS_KEY`, `GOOGLE_CLIENT_ID/SECRET`, Sign in with Apple `APPLE_SIGNIN_*`, `SUPPORT_NOTIFY_EMAIL`) | Convex deployment env (dashboard or `npx convex env list --deployment fastidious-clownfish-123`) | Nothing to move; log in to Convex |
+| Convex production env (`BETTER_AUTH_SECRET`, `FOLEVI_SERVER_SECRET`, `FOLEVI_HASH_SALT`, `FOLEVI_FILE_URL_SECRET`, `RESEND_API_KEY`, `RESEND_WEBHOOK_SECRET`, `GEMINI_API_KEY` (optional since 2026-11-25: keys can be saved in Admin > Foli AI), `OPENAI_API_KEY` and `ANTHROPIC_API_KEY` (optional, same), `POLAR_ACCESS_TOKEN`, `POLAR_WEBHOOK_SECRET`, `POLAR_PRODUCT_*`, `VAPID_*`, `UNSPLASH_ACCESS_KEY`, `GOOGLE_CLIENT_ID/SECRET`, Sign in with Apple `APPLE_SIGNIN_*`, `SUPPORT_NOTIFY_EMAIL`) | Convex deployment env (dashboard or `npx convex env list --deployment fastidious-clownfish-123`) | Nothing to move; log in to Convex |
 | Vercel env (`CONVEX_DEPLOY_KEY`, `NEXT_PUBLIC_*` URLs, `FOLEVI_SERVER_SECRET`, same value as Convex) | Vercel project settings | Nothing to move |
 | GitHub Actions secrets/vars (`CONVEX_DEPLOY_KEY`, `BACKUP_CONVEX_DEPLOY_KEY`, `BACKUP_R2_ACCESS_KEY_ID`, `BACKUP_R2_SECRET_ACCESS_KEY`, vars `BACKUP_AGE_RECIPIENT`, `BACKUP_R2_ENDPOINT`, `BACKUP_R2_BUCKET`, `FOLEVI_DEPLOY_ENVIRONMENT`) | GitHub repo settings | Nothing to move. The backup age private key is kept offline by the owner |
 | Local dev env (`apps/web/.env.local`, root `.env.local`) | This Mac only, gitignored | Copy by hand (AirDrop/password manager) or regenerate with `npx convex dev` + `node scripts/setup-local.mjs` |
@@ -247,7 +247,24 @@ The ones most likely to be broken:
 - Snapshot tests: re-record only your own snapshots; never clear `__Snapshots__` wholesale.
 - Give before/after screenshots for UI work and ask the owner with clear options when a decision is theirs.
 
-## 9. Current state (as of 2026-11-24)
+## 9. Current state (as of 2026-11-25)
+
+**Foli AI on Gemini, OpenAI and Anthropic (branch `claude/foli-ai-openai-anthropic-8112bb`, 2026-11-25, PR open, not
+merged).** Owner's decisions: `docs/claude-context/memory/foli-ai-multi-provider-decisions.md`. Admin > Foli AI
+(`/admin/foli-ai`, `convex/aiConfig.ts`, `components/admin/FoliAiView.tsx`) picks a provider per feature (chat,
+agent, writing, research, attachments, digests, routines, knowledge graph, other) and three models per provider
+(Fast, Main, Heavy; Heavy = tools, web search, files, prompts over ~50k tokens). Keys are saved by the owner,
+sealed in `aiProviderKeys` (AES-GCM from `FOLEVI_HASH_SALT`), shown only as set + last 4; env vars still work.
+Adapters: `lib/ai/gemini.ts` (as before, model and key now from the route), `lib/ai/openai.ts` (OpenAI SDK,
+Responses API), `lib/ai/anthropic.ts` (Anthropic SDK, Messages API), shared bits in `lib/ai/common.ts`, routing in
+`lib/ai/config.ts`. Transcription and search embeddings always use Gemini; no cross-provider fallback; credits follow
+each provider's list price (cache reads/writes and web search priced per provider in `capabilities.ts`).
+**Behaviour change on merge:** the owner chose "cheap first" defaults, so Gemini's Main becomes Flash-Lite
+(`GEMINI_FAST_MODEL`) and 3.8 Flash (`GEMINI_MODEL`) moves to Heavy; every feature stays on Gemini until an admin
+switches it. Tests: `tests/convex/ai-providers.test.ts` (19, fetch stubbed); full convex suite 1,150 pass. Not run
+locally: the e2e suite and a visual check of the admin page (this Mac's local Convex backend refused pushes with a
+500, with or without the change); CI runs both on the PR.
+
 
 **One web app everywhere: the web side (branch `claude/web-everywhere-0e2975`, 2026-11-24).** The web app is now the
 interface on every platform (browser, Mac, Windows, Linux, iPhone, iPad, Duo, Android, Folevi Server). Layout rule
@@ -567,6 +584,12 @@ signed-in account, 1.5.58's frosted folders with a large library, and the iPad c
 account button should move past iPadOS's window buttons).
 
 ## 10. Next steps / open work
+- Foli AI providers (PR from `claude/foli-ai-openai-anthropic-8112bb`): check CI's e2e and the admin page, then the
+  owner merges. After deploy, the owner adds the OpenAI and Anthropic keys in Admin > Foli AI (or sets
+  `OPENAI_API_KEY` / `ANTHROPIC_API_KEY` in Convex) and switches features. Possible follow-ups: a "Test key" button
+  (one cheap call), a local-mode equivalent is already there (own keys), Anthropic's server-side refusal fallback
+  (left out: the owner chose no fallback), and audio attachments in a chat routed to OpenAI or Claude are refused
+  by the adapter rather than up front.
 - Web everywhere (all landed 2026-11-25). Open: the iOS simulator `footprint` re-run of the iPhone memory fix (mobile
   session); sync status labels still differ between phone and desktop (Saved/Synced, Offline/Waiting to sync,
   Conflict/Edited in two places) and there are four empty-state components; no error state when a list fails to load;
@@ -721,6 +744,11 @@ account button should move past iPadOS's window buttons).
   `DATABASE_UDF_USER_TIMEOUT_SECONDS=4` for that backend. Bursts show in `convex.log` as "took a long time".
 
 ## 12. Change log
+- 2026-11-25: Foli AI on OpenAI and Anthropic too (`claude/foli-ai-openai-anthropic-8112bb`): Admin > Foli AI with
+  sealed keys, a provider per feature and Fast/Main/Heavy models; OpenAI (Responses API) and Anthropic (Messages
+  API) adapters through their SDKs with native streaming, tools, JSON, web search and prompt caching; credits priced
+  per provider; "cheap first" defaults (Gemini Main is now Flash-Lite). 19 new tests; 4 existing tests updated for
+  the new default (3 metering tests pin Main to Flash).
 - 2026-11-25: Web everywhere queue landed (61, 62, 63, 64, 70, 75, 71, 72 after 68 and 74); this is their combined entry:
   PR 62 shortcuts per system (and documents.spec:187 waits for the bar's Share and the panel's focus instead of racing
   them); PR 63 Mac no-bounce motion and Android press ripple, the owner's picks in the web-everywhere memory; PR 64 one

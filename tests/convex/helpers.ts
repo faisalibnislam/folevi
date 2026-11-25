@@ -296,3 +296,18 @@ export async function e2eeSpace(owner: E2eePerson, scope: ScopeArg, members: E2e
   const result = await owner.as.mutation(api.e2ee.spaces.setUp, { scope, key, grants });
   return { sk, scopeId, ...result };
 }
+
+/**
+ * Sets Foli AI's routing as an admin would in Admin > Foli AI (lib/ai/config.ts): a provider per feature
+ * and models per provider. Tests that check metering on a particular model pin it here.
+ */
+export async function setAiSettings(t: T, value: { routes?: Record<string, "gemini" | "openai" | "anthropic">; models?: Record<string, { fast?: string; main?: string; heavy?: string }> }) {
+  await t.run(async (ctx) => {
+    const row = await ctx.db
+      .query("systemSettings")
+      .withIndex("by_key", (q) => q.eq("key", "foliAi"))
+      .unique();
+    if (row) await ctx.db.patch(row._id, { value, updatedAt: Date.now() });
+    else await ctx.db.insert("systemSettings", { key: "foliAi", value, updatedAt: Date.now() });
+  });
+}

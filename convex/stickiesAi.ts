@@ -157,7 +157,7 @@ export const photo = action({
     if (!(PHOTO_TYPES as readonly string[]).includes(mimeType)) fail("unsupported_file", STICKIES_MESSAGES.badPhotoType);
     if (!data || data.length > MAX_PHOTO_BASE64 || !/^[A-Za-z0-9+/]+={0,2}$/.test(data.slice(-64))) fail("invalid_argument", STICKIES_MESSAGES.photoTooLarge);
     if (!(await ctx.runQuery(internal.stickiesAi.photoAllowed, {}))) fail("forbidden", ATTACHMENTS_OFF);
-    if (!capabilities().vision) fail("unsupported_file", STICKIES_MESSAGES.noVision);
+    if (!capabilities("heavy", await ctx.runQuery(internal.aiConfig.publicRoute, { feature: "writing" })).vision) fail("unsupported_file", STICKIES_MESSAGES.noVision);
     const notes = await run(ctx, args, {
       request: photoRequest(),
       attachments: [{ inlineData: { mimeType, data } }],

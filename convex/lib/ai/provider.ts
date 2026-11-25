@@ -1,9 +1,15 @@
-// The one interface every AI provider implements (docs/AI_ASSISTANT.md, "Provider layer"), so another
-// provider is configuration, not a rewrite. Today there is one: Gemini (lib/ai/gemini.ts). Tests stub
-// `fetch` (the adapter's only way out), which keeps every request, tool call and usage count testable.
+// The one interface every AI provider implements (docs/AI_ASSISTANT.md, "Provider layer"): Gemini
+// (lib/ai/gemini.ts), OpenAI (lib/ai/openai.ts) and Anthropic (lib/ai/anthropic.ts). Each request goes to
+// the provider and model its feature's route names (lib/ai/config.ts, carried on the request's meter), in
+// that provider's own way: its streaming, tool calling, JSON mode, web search and prompt caching. Tests stub
+// `fetch` (every adapter's only way out), which keeps every request, tool call and usage count testable.
 import type { CallUsage } from "../credits";
+import { fail } from "../errors";
 import { capabilitiesOf, type ModelCapabilities } from "./capabilities";
-import { geminiProvider } from "./gemini";
+import { fallbackRoute, meterRoute, slotFor, type AiRoute, type ModelSet } from "./config";
+import { geminiAdapter, geminiEmbeddings } from "./gemini";
+import { openaiAdapter } from "./openai";
+import { anthropicAdapter } from "./anthropic";
 import { withMemory } from "./memory";
 
 /** One piece of a message: text, a file sent inline (base64), or a file the provider already holds. */
@@ -12,7 +18,12 @@ export type Part =
   | { inlineData: { mimeType: string; data: string } }
   | { fileData: { mimeType: string; fileUri: string } }
   | { functionCall: { name: string; args: Record<string, unknown>; id?: string }; thoughtSignature?: string }
-  | { functionResponse: { name: string; response: Record<string, unknown>; id?: string } };
+  | { functionResponse: { name: string; response: Record<string, unknown>; id?: string } }
+  /**
+   * A model turn exactly as OpenAI or Anthropic returned it (reasoning and thinking included), sent back
+   * as-is in the next request of a tool loop: both require it. Other providers ignore it.
+   */
+  | { raw: { provider: "openai" | "anthropic"; items: unknown[] } };
 
 /** One turn of a conversation, as the provider sees it. */
 export interface Content {
@@ -126,35 +137,75 @@ export interface EmbedResult {
   tokens: number;
 }
 
+/** Where one call goes: the model, Gemini's lighter model to try once when busy, and the key. */
+export interface CallTarget {
+  model: string;
+  /** Gemini only: a lighter model of the same provider for one retry when the model is busy. */
+  lighter?: string;
+  /** The key saved in the admin panel; without it the adapter reads its environment variable. */
+  apiKey?: string;
+  /** Which of the route's models this is (adapters tune effort by it). */
+  slot: "fast" | "main" | "heavy";
+}
+
+/** One provider's way of making a call. */
+export interface ProviderAdapter {
+  id: "gemini" | "openai" | "anthropic";
+  generate(req: GenerateRequest, meter: CallUsage[], onDelta: OnDelta | undefined, target: CallTarget): Promise<GenerateResult>;
+}
+
+const ADAPTERS: Record<AiRoute["provider"], ProviderAdapter> = { gemini: geminiAdapter, openai: openaiAdapter, anthropic: anthropicAdapter };
+
 export interface AiProvider {
-  id: string;
-  /** The models requests use (from the server's settings). */
-  models(): { main: string; fast: string };
-  /** The model `embed` uses (stored on every chunk, so a model change re-embeds). */
+  /** The models a route uses (without a route: Gemini's defaults). */
+  models(route?: AiRoute | null): ModelSet;
+  /** The model `embed` uses (stored on every chunk, so a model change re-embeds). Always Gemini. */
   embeddingModel(): string;
-  /** Turns texts into vectors for semantic search. Fails with a person-readable error like `generate`. */
-  embed(texts: string[], task: EmbedTask): Promise<EmbedResult>;
+  /** Turns texts into vectors for semantic search (Gemini). Fails with a person-readable error like `generate`. */
+  embed(texts: string[], task: EmbedTask, apiKey?: string): Promise<EmbedResult>;
   /**
-   * One request. Every answered call adds its token counts to `meter` (a reply that turned out unusable
-   * was still billed). Fails with a person-readable error when the provider can't be reached.
+   * One request, to the provider and model its meter's route names. Every answered call adds its token
+   * counts to `meter` (a reply that turned out unusable was still billed). Fails with a person-readable
+   * error when the provider can't be reached. No other provider is tried.
    */
   generate(req: GenerateRequest, meter: CallUsage[], onDelta?: OnDelta): Promise<GenerateResult>;
 }
 
-/**
- * The provider with the memory layer: a call made with a request's meter gets the person's preferences
- * added to its system prompt (lib/ai/memory.ts withMemory), whichever feature makes it.
- */
-const active: AiProvider = { ...geminiProvider, generate: (req, meter, onDelta) => geminiProvider.generate(withMemory(req, meter), meter, onDelta) };
+/** The route a meter carries, or Gemini at its defaults with the environment's key (a call made without one). */
+const routeFor = (meter: CallUsage[]) => meterRoute(meter) ?? fallbackRoute();
 
-/** The provider requests go to. */
+/**
+ * Each call goes to its route's provider, with the memory layer: a call made with a request's meter gets
+ * the person's preferences added to its system prompt (lib/ai/memory.ts withMemory), whichever feature
+ * makes it.
+ */
+const active: AiProvider = {
+  models: (route) => (route ?? fallbackRoute()).models,
+  embeddingModel: geminiEmbeddings.model,
+  embed: geminiEmbeddings.embed,
+  generate: (req, meter, onDelta) => {
+    const route = routeFor(meter);
+    const slot = slotFor(req);
+    const model = route.models[slot];
+    const caps = capabilitiesOf(model);
+    // What a model can't take is refused here with the same words whichever provider it is.
+    if (req.searchGrounding && !caps.searchGrounding) fail("maintenance", "The AI model in use can't search the web.");
+    const target: CallTarget = { model, slot, ...(route.apiKey ? { apiKey: route.apiKey } : {}), ...(route.provider === "gemini" && slot !== "fast" ? { lighter: route.models.fast } : {}) };
+    return ADAPTERS[route.provider].generate(withMemory(req, meter), meter, onDelta, target);
+  },
+};
+
+/** The provider layer requests go through. */
 export function provider(): AiProvider {
   return active;
 }
 
-/** What the model a request would use can do. */
-export function capabilities(fast = false): ModelCapabilities & { model: string } {
-  const p = provider().models();
-  const model = fast ? p.fast : p.main;
+/**
+ * What the model a request would use can do: the route's fast, main or heavy model (without a route,
+ * Gemini's defaults). Pass the slot the request will use (lib/ai/config.ts slotFor).
+ */
+export function capabilities(slot: "fast" | "main" | "heavy" | boolean = false, route?: AiRoute | null): ModelCapabilities & { model: string } {
+  const set = provider().models(route);
+  const model = set[slot === true ? "fast" : slot === false ? "main" : slot];
   return { ...capabilitiesOf(model), model };
 }

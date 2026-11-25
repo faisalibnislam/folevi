@@ -52,3 +52,4 @@
 - [Android native decisions 2026-11-23](android-native-decisions-2026-11-23.md): native Compose app like iPhone: Googlebook/phones/tablets, API 33, M3 Expressive + Folevi colors, replaces Capacitor
 - [iOS redesign decisions 2026-11-23](ios-redesign-decisions-2026-11-23.md) — iPhone native Mac profile, tab bar Home/Tasks/Calendar/Foli AI + search, iPad ScreenBar + flat inspector, PR into core branch, TestFlight 1.5.65
 - [Web everywhere rules](web-everywhere-layout-rules-2026-11-24.md): 2026-11-24, width decides (under ~700 px = phone + bottom bar, open Duo = tablet); Instrument Sans everywhere; springs kept except Mac; Android light touches
+- [Foli AI multi-provider decisions](foli-ai-multi-provider-decisions.md): 2026-11-25, encrypted admin keys, provider per feature, Fast/Main/Heavy, cheap-first defaults, no fallback, real-cost credits

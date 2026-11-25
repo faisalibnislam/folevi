@@ -15,7 +15,8 @@ export const REASON_MAX = 500;
 export interface FieldSpec {
   name: string;
   label: string;
-  type: "number" | "text" | "select" | "textarea";
+  /** "secret": typed hidden (an API key), never autofilled or spell-checked. */
+  type: "number" | "text" | "select" | "textarea" | "secret";
   initial: string;
   hint?: ReactNode;
   options?: { value: string; label: string }[];
@@ -202,13 +203,15 @@ export function ActionDialog({
                 <div className="flex items-center gap-2">
                   <input
                     {...common}
-                    type={f.type === "number" ? "number" : "text"}
+                    type={f.type === "number" ? "number" : f.type === "secret" ? "password" : "text"}
+                    spellCheck={f.type === "secret" ? false : undefined}
+                    data-1p-ignore={f.type === "secret" ? true : undefined}
                     inputMode={f.type === "number" ? "decimal" : undefined}
                     min={f.min}
                     max={f.max}
                     step={f.step}
                     maxLength={f.maxLength}
-                    autoComplete="off"
+                    autoComplete={f.type === "secret" ? "new-password" : "off"}
                     className={`${inputCls} ${f.type === "number" ? "max-w-[180px] tabular-nums" : ""}`}
                     onChange={(e) => setValues((v) => ({ ...v, [f.name]: e.target.value }))}
                   />

@@ -23,7 +23,7 @@ import { formatRelative } from "@/lib/format";
 import { t } from "@/i18n";
 import { Select } from "@/components/ui/Select";
 import { useIphoneApp } from "@/lib/iphone";
-import { IphoneScopes } from "@/components/iphone/SearchScopes";
+import { IphoneScopes } from "@/components/iphone/lazy";
 import { useKeyLabels } from "@/lib/shortcuts";
 
 /** A group's heading in the iPhone's search: caption caps (13/18 600, uppercase) at the 20 pt inset. */

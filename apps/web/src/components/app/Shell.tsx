@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, lazy, Suspense, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { createContext, Fragment, lazy, Suspense, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useQuery } from "@/lib/convex/queries";
 import { useOfflineQuery } from "@/lib/sync/queryCache";
 import { ChevronLeft, ChevronRight, GripVertical, PanelLeft, Plus, X } from "lucide-react";
@@ -51,6 +51,9 @@ import { IphoneScreen, type IphoneScreenOptions } from "@/components/iphone/Scre
 
 // Quick add (and its plain-words dates, chrono-node, the largest library the first screen would otherwise
 // read) loads the first time it's opened, then stays (docs/IOS_PERFORMANCE.md, "Startup").
+// The sidebar of a fold's split following the hinge (iPadOS's sidebar curve).
+const FOLD_SIDEBAR_TRANSITION = "width 260ms cubic-bezier(0.32, 0.72, 0, 1), margin-right 260ms cubic-bezier(0.32, 0.72, 0, 1)";
+
 const QuickAddTask = lazy(() => import("./QuickAddTask").then((m) => ({ default: m.QuickAddTask })));
 
 export interface ShellValue {
@@ -465,11 +468,27 @@ function WebShell() {
   const contentPanel = useRef<HTMLDivElement>(null);
   const sidebarMotion = useRef<Animation[]>([]);
   const sidebarWasShown = useRef(sidebarShown);
+  // Which layout it's in (the phone's, the tablet's, a fold's split): a change of layout (an iPhone Duo unfolding or
+  // folding, a window resized) shows or hides the sidebar at once, under iOS's own move; only opening or closing it
+  // on purpose slides.
+  const sidebarLayout = `${ipad}:${isNarrow}:${foldSplit}`;
+  const sidebarLayoutWas = useRef(sidebarLayout);
+  const reduceMotion = useMediaQuery("(prefers-reduced-motion: reduce)");
   useLayoutEffect(() => {
+    const layoutChanged = sidebarLayoutWas.current !== sidebarLayout;
+    sidebarLayoutWas.current = sidebarLayout;
     if (sidebarWasShown.current === sidebarShown) return;
     sidebarWasShown.current = sidebarShown;
     const panel = sidebarPanel.current;
     const content = contentPanel.current;
+    if (layoutChanged) {
+      for (const a of sidebarMotion.current) a.cancel();
+      sidebarMotion.current = [];
+      if (content) content.style.marginRight = "";
+      if (panel) panel.style.marginRight = "";
+      if (!sidebarShown) setSidebarLeaving(false);
+      return;
+    }
     if (!ipad || isNarrow || !panel || !content) return;
     // Interrupted halfway (opened again as it closes, say): each part goes on from where it is now.
     const offset = (el: Element) => {
@@ -484,6 +503,9 @@ function WebShell() {
     content.style.marginRight = "";
     // How far the page moves: the sidebar's width and the gap after it.
     const delta = panel.getBoundingClientRect().width + (parseFloat(getComputedStyle(panel.parentElement ?? panel).columnGap) || 0);
+    // Sliding out, it gives its room back at once (the page takes its full width under it): as much as it measures,
+    // which isn't always 320 (a fold's split makes it wider).
+    panel.style.marginRight = sidebarShown ? "" : `${-delta}px`;
     const timing: KeyframeAnimationOptions = { duration: 260, easing: "cubic-bezier(0.32, 0.72, 0, 1)" };
     let anims: Animation[];
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
@@ -513,12 +535,14 @@ function WebShell() {
       },
       () => undefined,
     );
-  }, [sidebarShown, ipad, isNarrow]);
+  }, [sidebarShown, ipad, isNarrow, sidebarLayout]);
+  // A fold's split always shows the sidebar: nothing to toggle then, and the choice saved for the open layout stays.
   const toggleSidebar = useCallback(() => {
+    if (foldSplit) return;
     if (isNarrow) setDrawerOpen((o) => !o);
     else if (tight) setTightOpen((o) => !o);
     else setCollapsed(!collapsed);
-  }, [isNarrow, tight, collapsed, setCollapsed]);
+  }, [foldSplit, isNarrow, tight, collapsed, setCollapsed]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -563,7 +587,8 @@ function WebShell() {
 
   const value = useMemo<ShellValue>(
     () => ({
-      sidebarOpen,
+      // (In a fold's split the sidebar shows whatever was saved, so the app is told it's open: no Show sidebar button.)
+      sidebarOpen: sidebarShown,
       toggleSidebar,
       inspectorOpen: inspectorPref,
       setInspectorOpen: setInspectorPref,
@@ -580,15 +605,15 @@ function WebShell() {
       setDocSidebarMode: (mode) => {
         setDocSidebarModePref(mode);
         if (isNarrow) setDrawerOpen(true);
-        else setCollapsed(false);
+        else if (!foldSplit) setCollapsed(false);
       },
-      focusMode: !sidebarOpen && !inspectorPref,
+      focusMode: !sidebarShown && !inspectorPref,
       setFocusMode: (on) => {
         if (on) {
           setDrawerOpen(false);
-          setCollapsed(true);
+          if (!foldSplit) setCollapsed(true);
           setInspectorPref(false);
-        } else setCollapsed(false);
+        } else if (!foldSplit) setCollapsed(false);
       },
       setAmbient,
       // A typed question (the palette) or a folder is about more than this note: the floating chat. Plain Ask AI on
@@ -596,7 +621,7 @@ function WebShell() {
       openAsk: (q, folder) => (noteAi.current && !folder && !q ? noteAi.current({ view: "note" }) : setAskOpen({ q, folder })),
       setNoteAi,
     }),
-    [sidebarOpen, toggleSidebar, inspectorPref, setInspectorPref, isNarrow, isMedium, pageSidebar, sidebarSlot, docSidebarMode, setDocSidebarModePref, setCollapsed, setAmbient, setNoteAi],
+    [sidebarShown, foldSplit, toggleSidebar, inspectorPref, setInspectorPref, isNarrow, isMedium, pageSidebar, sidebarSlot, docSidebarMode, setDocSidebarModePref, setCollapsed, setAmbient, setNoteAi],
   );
 
   // Dragging moves the panel's edge directly and saves the width once, on release: saving on every move
@@ -623,8 +648,21 @@ function WebShell() {
     window.addEventListener("pointercancel", up);
   };
 
+  // The phone's layout and the tablet's are different trees (an iPhone Duo folding or unfolding swaps them): the new
+  // one fades in, not a hard cut (not on the first draw, nor under Reduce Motion).
+  const layoutRoot = useRef<HTMLDivElement>(null);
+  const layoutWas = useRef(iphone);
+  useLayoutEffect(() => {
+    if (layoutWas.current === iphone) return;
+    layoutWas.current = iphone;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    layoutRoot.current?.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 150, easing: "ease-out" });
+  }, [iphone]);
+
+  // The app-wide pieces (Foli AI's chat, Quick add's draft, the runners) stay mounted when the layout changes: both
+  // returns below hold them in the same keyed fragment under the same parents, so React keeps it.
   const globals = (
-    <>
+    <Fragment key="globals">
       <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
       <AppContextMenu />
       {/* Dropping notes and folders on folders (sidebar, folder cards and chips), by mouse or by finger. */}
@@ -647,7 +685,7 @@ function WebShell() {
       ) : null}
       {/* The floating Ask AI chat (bottom right), only where AI is included and on: Core has no AI, so nothing offers it. */}
       {ai.on ? <AskAiChat open={Boolean(askOpen)} onOpen={() => setAskOpen({})} initial={askOpen?.q} folder={askOpen?.folder} onClose={() => setAskOpen(null)} hideLauncher={(isNarrow && drawerOpen) || iphone || ipad || route.name === "settings"} /> : null}
-    </>
+    </Fragment>
   );
 
   // Folevi for Mac's Settings window (⌘,, decision M2, docs/MAC_POLISH_PLAN.md §3.10): the section alone, under the
@@ -670,6 +708,8 @@ function WebShell() {
     return (
       <TabsProvider accountKey={profile.id} workspaceId={context.kind === "workspace" ? context.workspaceId : null}>
         <ShellContext.Provider value={value}>
+          {/* (A plain holder for the fade: the phone's layout is fixed to the screen, so it takes no room.) */}
+          <div ref={layoutRoot}>
           <IphoneShell
             banner={
               settings?.bannerMessage ? (
@@ -680,6 +720,7 @@ function WebShell() {
               ) : null
             }
           />
+          </div>
           {globals}
         </ShellContext.Provider>
       </TabsProvider>
@@ -699,7 +740,7 @@ function WebShell() {
         </div>
       ) : null}
       {/* The app never scrolls as a page: each region scrolls on its own (and nothing can push the tab strip away). */}
-      <div className={`ui-canvas ui-shell flex h-dvh min-h-0 overflow-hidden text-ink ${isNarrow ? "" : "gap-2 p-2"}`}>
+      <div ref={layoutRoot} className={`ui-canvas ui-shell flex h-dvh min-h-0 overflow-hidden text-ink ${isNarrow ? "" : "gap-2 p-2"}`}>
         {/* Ambient light behind the glass: on a note, its theme image, heavily blurred and veiled. */}
         <div aria-hidden className={`ui-ambient pointer-events-none fixed inset-0 -z-[1] transition-opacity duration-500 ${ambient ? "opacity-100" : "opacity-0"}`}>
           {ambient ? <div className="absolute -inset-24 blur-[56px] saturate-[1.4]" style={{ background: ambient }} /> : null}
@@ -716,8 +757,13 @@ function WebShell() {
             data-ipad-sidebar={ipad ? "" : undefined}
             inert={sidebarGoing}
             className="relative z-20 flex-none"
-            // (Sliding out, it gives its room back at once: the page takes its full width under it.)
-            style={foldSplit && foldLine ? { width: Math.max(240, foldLine.start - 12), marginRight: foldLine.size + 4 } : { width: ipad ? 320 : width, marginRight: sidebarGoing ? -(320 + 8) : undefined }}
+            // (Sliding out, it gives its room back at once: the effect above sets its margin from its measured width.)
+            // As the hinge moves it follows the fold smoothly, not in jumps (none under Reduce Motion).
+            style={
+              foldSplit && foldLine
+                ? { width: Math.max(240, foldLine.start - 12), marginRight: foldLine.size + 4, transition: reduceMotion ? undefined : FOLD_SIDEBAR_TRANSITION }
+                : { width: ipad ? 320 : width }
+            }
           >
             {pageSidebar ? <div ref={setSidebarSlot} className="h-full" /> : <Sidebar />}
             {ipad || foldSplit ? null : <div

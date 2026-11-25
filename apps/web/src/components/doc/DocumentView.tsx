@@ -126,7 +126,8 @@ import "@/components/editor/wireframe/wireframe.css";
 import { Select } from "@/components/ui/Select";
 import { useFileText } from "./useFileText";
 import { useMacNoteCommands } from "@/components/app/MacCommands";
-import { useNoteViewState } from "@/lib/app/noteViewState";
+import { saveNoteView, useNoteViewState } from "@/lib/app/noteViewState";
+import { applyNoteCarry, CARRY_MS, keepNoteCarry, takeNoteCarry, type NoteCarry } from "@/lib/app/noteCarry";
 import { useLockMenuItem } from "@/components/e2ee/LockDialog";
 import { usePrimaryPane } from "@/lib/app/panes";
 import { noteFolderIdOf, shareIndicatorLabel, shareIndicatorOf } from "./noteStatus";
@@ -592,6 +593,63 @@ export function DocumentView({ documentId }: { documentId: string }) {
     return () => window.removeEventListener("hashchange", onHash);
   }, []);
   const handledHash = useRef<string | null>(null);
+
+  // An iPhone Duo folding or unfolding makes this page again in the other layout (Shell.tsx): the old page keeps
+  // its place as it goes (lib/app/noteCarry.ts), and the new one takes it back (scroll, caret, keyboard) as soon as
+  // its content is in, before that shows.
+  const noteLayout = iphone ? "phone" : "tablet";
+  const scrollElRef = useRef<HTMLDivElement | null>(null);
+  scrollElRef.current = scrollEl;
+  const carry = useRef<NoteCarry | null>(null);
+  const applyCarry = useCallback(() => {
+    const c = carry.current;
+    const ed = editorRef.current?.editor;
+    const el = scrollElRef.current;
+    if (!c || !ed || ed.isDestroyed || !el || !ed.view.dom.isConnected || !el.contains(ed.view.dom)) return false;
+    carry.current = null;
+    const scrollTop = applyNoteCarry(c, ed, el);
+    // The tab's own memory of the place (useNoteViewState) gives back the same, not the old layout's scrollTop.
+    saveNoteView(documentId, { scrollTop: Math.round(scrollTop), anchor: c.from, head: c.to, focused: c.focused, at: Date.now() });
+    return true;
+  }, [documentId]);
+  useLayoutEffect(() => {
+    const c = takeNoteCarry(documentId, noteLayout);
+    carry.current = c;
+    if (!c) return;
+    // A deep link in the address was followed already: not again over the place being given back.
+    handledHash.current = `${documentId}${window.location.hash}:${hashTick}`;
+    if (applyCarry()) return;
+    // The editor makes its page after this one draws: each frame looks for it, so the place is back before it shows.
+    const until = Date.now() + 2 * CARRY_MS;
+    let frame = 0;
+    const look = () => {
+      if (applyCarry() || !carry.current) return;
+      if (Date.now() > until) {
+        carry.current = null;
+        return;
+      }
+      frame = requestAnimationFrame(look);
+    };
+    frame = requestAnimationFrame(look);
+    return () => cancelAnimationFrame(frame);
+    // (Only as the page is made, or shows another note.)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [documentId]);
+  useLayoutEffect(() => {
+    if (editor) applyCarry();
+  }, [editor, applyCarry]);
+  useLayoutEffect(() => {
+    if (!editor || !scrollEl) return;
+    let blurredAt = 0;
+    const onBlur = () => {
+      blurredAt = Date.now();
+    };
+    editor.on("blur", onBlur);
+    return () => {
+      editor.off("blur", onBlur);
+      keepNoteCarry(documentId, noteLayout, editor, scrollEl, blurredAt);
+    };
+  }, [documentId, noteLayout, editor, scrollEl]);
   useEffect(() => {
     if (!editor) return;
     const hash = window.location.hash;

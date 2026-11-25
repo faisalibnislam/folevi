@@ -4,6 +4,27 @@ Every Folevi release, newest first, written by `node scripts/version.mjs` from `
 
 Versions are MAJOR.UPDATE.PATCH, PATCH at least two digits: a Major release (2.0.00), a Big update (1.1.05 after 1.0.05) or a Small update (1.0.06 after 1.0.05).
 
+## Version 1.7.78: Big update
+
+Released 2026-11-26 00:24:24+06:00 (build 103, tag v1.7.78)
+
+Float any note in its own always-on-top window, automatic updates and much more for Windows and Linux, and smoother tabs.
+
+### Added
+
+- Float this note: open a note in a small floating window that stays on top, from a tab or a note's right-click menu, on Mac, Windows and in Chrome or Edge
+- Windows and Linux: automatic updates, Your own server, app lock with Windows Hello, background sync, Jump List, Dropbox and Google Drive, notification actions, call recording, window restore, Windows Share and text in images
+
+### Improved
+
+- Joined notes stay in their own tab group when you switch between them
+- The pin on a long tab name stays visible when you hover it, and the New note button has room on the right
+- The Windows and Linux apps call themselves by their own names, not the Mac or a browser
+
+### Fixed
+
+- Table text no longer rewraps when you click into a note
+
 ## Version 1.6.78: Big update
 
 Released 2026-11-25 13:33:54+06:00 (build 102, tag v1.6.78)

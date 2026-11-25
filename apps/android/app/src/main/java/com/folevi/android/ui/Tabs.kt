@@ -49,8 +49,7 @@ fun Route.tabKey(): String = when (this) {
     is WebShowRoute -> "view:web:$page"
     FoldersRoute -> "view:folders"
     NotificationsRoute -> "view:notifications"
-    // Screens added later (Settings pages) key by what they are.
-    else -> "view:$this"
+    is SettingsPageRoute -> "view:settings:$page"
 }
 
 /** A folder: it shows in a folder tab that moves between folders. */
@@ -75,7 +74,7 @@ fun Route.tabTitle(): String = when (this) {
     is WebShowRoute -> title
     FoldersRoute -> "Folders"
     NotificationsRoute -> "Notifications"
-    else -> "Settings"
+    is SettingsPageRoute -> title
 }
 
 fun Route.tabIcon(): WebIcon = when (this) {
@@ -97,7 +96,7 @@ fun Route.tabIcon(): WebIcon = when (this) {
     is PageRoute, is WebShowRoute -> WebIcon.FILE_TEXT
     FoldersRoute -> WebIcon.FOLDER_TREE
     NotificationsRoute -> WebIcon.BELL
-    else -> WebIcon.SETTINGS
+    is SettingsPageRoute -> WebIcon.SETTINGS
 }
 
 /** A tab's own Back and Forward (Finder style): the pages it showed, oldest first, and the one it shows. */

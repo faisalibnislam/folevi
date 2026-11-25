@@ -325,6 +325,7 @@ private fun TabPage(route: Route, name: String, open: (Route) -> Unit, back: (()
         AiRoute -> AiHome(open)
         is AiChatRoute -> AiChatScreen(route, back)
         SettingsRoute -> SettingsScreen(open, back)
+        is SettingsPageRoute -> SettingsPageScreen(route, open, back)
         VaultRoute -> VaultScreen(back)
         SharedRoute -> SharedScreen(open, back)
         ChangesRoute -> ChangesScreen(open, back)
@@ -364,6 +365,7 @@ private fun PhoneContent(stack: NavBackStack<NavKey>, open: (Route) -> Unit, mod
                 entry<AiRoute>(metadata = ListDetailSceneStrategy.listPane()) { AiHome(open) }
                 entry<AiChatRoute>(metadata = ListDetailSceneStrategy.detailPane()) { AiChatScreen(it, back) }
                 entry<SettingsRoute>(metadata = ListDetailSceneStrategy.listPane()) { SettingsScreen(open, back) }
+                entry<SettingsPageRoute>(metadata = ListDetailSceneStrategy.listPane()) { SettingsPageScreen(it, open, back) }
                 entry<VaultRoute>(metadata = ListDetailSceneStrategy.listPane()) { VaultScreen(back) }
                 entry<SharedRoute>(metadata = ListDetailSceneStrategy.listPane()) { SharedScreen(open, back) }
                 entry<ChangesRoute>(metadata = ListDetailSceneStrategy.listPane()) { ChangesScreen(open, back) }

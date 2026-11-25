@@ -4,6 +4,31 @@ Every Folevi release, newest first, written by `node scripts/version.mjs` from `
 
 Versions are MAJOR.UPDATE.PATCH, PATCH at least two digits: a Major release (2.0.00), a Big update (1.1.05 after 1.0.05) or a Small update (1.0.06 after 1.0.05).
 
+## Version 1.6.78: Big update
+
+Released 2026-11-25 13:33:54+06:00 (build 102, tag v1.6.78)
+
+Every Folevi app can now sign in to a Folevi Server, the self-hosted Folevi for a NAS or a Linux server. The web app and the Mac app are faster, and Foli AI can run on OpenAI and Anthropic models as well as Google Gemini.
+
+### Added
+
+- "Your own server" sign-in on the web, Mac, iPhone, iPad, Android, Windows and Linux, by address, QR code or on your home network.
+- A Downloads page with every Folevi download in one place.
+- Linux: apt and dnf repositories, and the .deb and .rpm add the repository when installed, so Folevi updates with the rest of the system.
+- Foli AI: an administrator can pick Google Gemini, OpenAI or Anthropic for each feature.
+
+### Improved
+
+- All notes and Home answer a click in under a fifth of a second on the web.
+- Lists, search and long notes load less data, so they open sooner.
+- Folevi for Mac starts faster and uses less energy in the background.
+- Mac: Home scrolls smoothly, folders are less round, and Show all tabs has a new look.
+- Dialogs and the command palette fade out when they close instead of vanishing.
+
+### Fixed
+
+- On iPhone and iPad, a sign-in that was waiting is still there after the app restarts.
+
 ## Version 1.5.78: Small update
 
 Released 2026-11-25 06:39:59+06:00 (build 101, tag v1.5.78)

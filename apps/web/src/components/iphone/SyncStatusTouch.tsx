@@ -10,7 +10,8 @@ import { usePendingDocs } from "@/lib/hooks/usePendingDocs";
 import { useLocalNotes } from "@/lib/hooks/useLocalNotes";
 import type { Outbox } from "@/lib/sync/outbox";
 import { useOutboxEntries } from "@/lib/sync/queryCache";
-import { combinedStatus } from "@/components/app/SyncStatus";
+import { combinedStatus, SYNC_LABELS } from "@/components/app/SyncStatus";
+import { t } from "@/i18n";
 import { Sheet } from "./Sheet";
 import { PillButton } from "./Glass";
 import { ageText } from "@/lib/format";
@@ -28,14 +29,8 @@ import { ageText } from "@/lib/format";
 
 type Status = EngineStatus;
 
-const TITLES: Record<Status, string> = {
-  saved: "Synced",
-  saving: "Syncing",
-  syncing: "Syncing",
-  offline: "Waiting to sync",
-  conflict: "Edited in two places",
-  error: "Not saved",
-};
+// The same words as the web and Mac's cloud button (owner's pick, 2026-11-25: one set on every screen).
+const TITLES: Record<Status, string> = SYNC_LABELS;
 
 function useOutboxStatus(outbox: Outbox | null): ReturnType<Outbox["status"]> {
   return useSyncExternalStore(
@@ -217,7 +212,8 @@ function badgeOf(sync: TouchSync, count: number) {
   return null;
 }
 
-const label = (sync: TouchSync) => `Sync status: ${TITLES[sync.status]}${sync.pending ? `, ${sync.pending === 1 ? "1 change" : `${sync.pending} changes`} on this device` : ""}`;
+// Read out exactly as the web and Mac's button: "Sync status: Offline, 2 changes waiting".
+const label = (sync: TouchSync) => t("sync.button.label", { status: TITLES[sync.status], pending: sync.pending });
 
 /**
  * The status button for a top bar (a 44 pt pill button). Slot: iPhone Home's top right pill beside the bell
@@ -247,7 +243,7 @@ export function NoteSyncButton({ documentId }: { documentId: string }) {
   const [open, setOpen] = useState(false);
   const own = useMemo(() => ({ ...sync, status: noteStatus(sync) }), [sync]);
   if (!sync.notePending && !sync.noteRefused) return null;
-  const text = own.status === "offline" ? "Saved on this device, will sync" : own.status === "error" || own.status === "conflict" ? "Not saved: tap for details" : "Syncing";
+  const text = own.status === "offline" ? "Saved on this device, will sync" : own.status === "error" || own.status === "conflict" ? "Not saved: tap for details" : TITLES.syncing;
   return (
     <>
       <PillButton label={text} onClick={() => setOpen(true)} data-testid="note-sync-status" data-status={own.status} className={own.status === "error" || own.status === "conflict" ? "text-danger" : "text-heading"}>

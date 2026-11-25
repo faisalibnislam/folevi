@@ -135,6 +135,10 @@ struct IPadToolbar: ToolbarContent {
     /// iPhone Duo open across (iOS 27.1's toolbar in a column at the side): the whole toolbar there, as before.
     @ToolbarContentBuilder private var columnBar: some ToolbarContent {
         ToolbarItemGroup(placement: .topBarLeading) {
+            if model.sidebarHidden || (model.sidebarFloats && !model.sidebarOverlayShown) {
+                Button { model.toggleSidebar() } label: { Label("Show sidebar", systemImage: "sidebar.left") }
+                    .accessibilityIdentifier("ipad-sidebar")
+            }
             Button { model.goBack() } label: { Label("Back", systemImage: "chevron.left") }
                 .disabled(!model.canGoBack)
                 .accessibilityIdentifier("ipad-back")

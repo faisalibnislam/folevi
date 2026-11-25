@@ -84,9 +84,9 @@ public struct IPadFrameView<Page: View>: View {
         NavigationSplitView(columnVisibility: columnVisibility) {
             sidebar
                 .navigationSplitViewColumnWidth(min: 240, ideal: sidebarIdeal, max: max(340, sidebarIdeal))
-                .toolbar { sidebarToolbar }
-                // (Today's sidebar has its own button at its top, and the toolbar shows one while it's away.)
-                .modifier(IPadNoSystemSidebarToggle(on: !sideBars))
+                // (Today's sidebar has its own button at its top, and the toolbar shows one while it's away; its
+                // menu has Show folders and Show document on a note.)
+                .modifier(IPadNoSystemSidebarToggle(on: true))
         } detail: {
             detail
         }
@@ -150,7 +150,6 @@ public struct IPadFrameView<Page: View>: View {
         // Nothing floats over a note, so its page keeps only a small gap at its top (MacLook.notePageTop), as the
         // Mac's does. (Again once the note has drawn: at launch the page may not be listening yet.)
         .onChange(of: model.route.noteId, initial: true) { _, id in
-            noteDrawnAt = Date()
             if id != nil { model.editor(.insets(top: Double(MacLook.notePageTop), bottom: 0)) }
         }
         .onChange(of: model.drawnNote) { _, id in
@@ -200,21 +199,6 @@ public struct IPadFrameView<Page: View>: View {
                 }
             }
         )
-    }
-
-    /// The sidebar column's own bar: on a note, the switch between the note's outline (and comments, tasks, files)
-    /// and the folders in the sidebar.
-    @ToolbarContentBuilder private var sidebarToolbar: some ToolbarContent {
-        // (Today's layout has the switch in the sidebar's own button menu, Show folders and Show document.)
-        if model.route.isNote && sideBars {
-            ToolbarItem(placement: .topBarTrailing) {
-                let tools = model.noteToolsShown
-                Button { WebSidebarController.setNoteTools(model, shown: !tools) } label: {
-                    Label(tools ? "Show folders" : "Show the note's outline", systemImage: tools ? "folder" : "list.bullet.rectangle")
-                }
-                .accessibilityValue(tools ? "Note outline" : "Folders")
-            }
-        }
     }
 
     /// The detail column: the screen or the note under the system toolbar, the tabs in a row of their own under it
@@ -274,7 +258,8 @@ public struct IPadFrameView<Page: View>: View {
             model.editor(.panelClose)
             // (A note opening asks for its panel by itself, the web's remembered inspector: today's tablet layout opens
             // a note with its outline in the sidebar and the page's dock, the tools shut until asked for.)
-            guard Date().timeIntervalSince(noteDrawnAt) > 1.5 else { return }
+            // (Said by the page as the note registers and becomes ready: before it has drawn, or just after.)
+            guard model.drawnNote != nil, model.drawnNote == model.route.noteId, Date().timeIntervalSince(noteDrawnAt) > 1.5 else { return }
             tool = t
             toolsShown = true
         }

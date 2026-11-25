@@ -1,8 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import Link from "next/link";
 import { useMutation } from "convex/react";
-import { Check, Copy, UserPlus } from "lucide-react";
+import { Check, QrCode as QrIcon, UserPlus } from "lucide-react";
+import { QrCode } from "@/components/server/QrCode";
+import { ShareLink } from "@/components/server/ShareLink";
 import { useQueryState } from "@/lib/convex/queries";
 import { serverAdminRefs, type InvitableRole, type ServerInvite, type ServerPerson, type ServerRole } from "@/lib/server-edition/refs";
 import { formatBytes } from "@/lib/format";
@@ -11,8 +14,9 @@ import { Dialog } from "@/components/ui/Dialog";
 import { Select } from "@/components/ui/Select";
 import { errorMessage, useToast } from "@/components/ui/Toast";
 import { useAdmin } from "../AdminApp";
-import { Badge, Callout, DataTable, DocTitle, EmptyRow, ErrorNotice, LoadingRows, PageHeader, Panel, Time, td, tdMid, th, thNum, tdNum, trHover } from "../ui";
-import { TextInput, bytesToGb, gbToBytes } from "./kit";
+import { Badge, Callout, DataTable, DocTitle, EmptyRow, ErrorNotice, LoadingRows, PageHeader, Panel, Time, td, tdMid, th, thNum, tdNum, trHover, selectCls } from "../ui";
+import { TextInput, bytesToGb, gbToBytes, useServerSettings } from "./kit";
+import { ConnectAppsDialog } from "./OverviewView";
 
 export const ROLE_NAMES: Record<ServerRole, string> = { owner: "Owner", admin: "Admin", member: "Member", guest: "Guest" };
 const ROLE_HINTS: Record<InvitableRole, string> = {
@@ -21,58 +25,38 @@ const ROLE_HINTS: Record<InvitableRole, string> = {
   guest: "Sees only what's shared with them",
 };
 
-function CopyField({ value, label }: { value: string; label: string }) {
-  const [copied, setCopied] = useState(false);
-  return (
-    <div className="flex items-center gap-2">
-      <input readOnly value={value} aria-label={label} onFocus={(e) => e.currentTarget.select()} className="ui-input h-9 min-w-0 flex-1 rounded-chip px-3 font-mono text-footnote text-ink" />
-      <Button
-        size="sm"
-        onClick={() =>
-          void navigator.clipboard.writeText(value).then(() => {
-            setCopied(true);
-            window.setTimeout(() => setCopied(false), 1500);
-          })
-        }
-      >
-        {copied ? <Check size={14} aria-hidden /> : <Copy size={14} aria-hidden />}
-        {copied ? "Copied" : "Copy"}
-      </Button>
-    </div>
-  );
-}
-
-/** A QR code of the invite link, for someone holding a phone next to the screen. */
-function Qr({ value }: { value: string }) {
-  const [src, setSrc] = useState<string | null>(null);
-  useEffect(() => {
-    let alive = true;
-    void import("qrcode")
-      .then(({ default: QRCode }) => QRCode.toDataURL(value, { margin: 1, width: 180, errorCorrectionLevel: "M", color: { dark: "#1D1814", light: "#FFFFFF" } }))
-      .then((url) => alive && setSrc(url));
-    return () => {
-      alive = false;
-    };
-  }, [value]);
-  // eslint-disable-next-line @next/next/no-img-element -- a data: URL made here, nothing to optimize
-  return src ? <img src={src} alt="QR code of the invite link" width={180} height={180} className="rounded-control" /> : <div className="size-[180px] rounded-control bg-[var(--glass-hover)]" aria-hidden />;
-}
-
 function InvitePanel() {
   const admin = useAdmin();
+  const { settings } = useServerSettings();
+  const emailOn = settings ? settings.email.mode !== "off" : false;
   const invite = useMutation(serverAdminRefs.invite);
   const toast = useToast();
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<InvitableRole>("member");
   const [busy, setBusy] = useState(false);
-  const [made, setMade] = useState<{ url: string; expiresAt: number; email: string } | null>(null);
+  const [made, setMade] = useState<{ url: string; expiresAt: number; email: string; emailed: boolean } | null>(null);
   const roles: InvitableRole[] = admin.role === "super_admin" ? ["member", "admin", "guest"] : ["member", "guest"];
   return (
-    <Panel title="Invite someone" description="Send an invite by email, or share the link or QR code yourself. Each invite works once.">
+    <Panel
+      title="Invite someone"
+      description={
+        emailOn ? (
+          "Add their email to send the invite, or leave it empty and share the link or QR code yourself. Each invite works once, for 7 days."
+        ) : (
+          <>
+            Make a link, then send it in a message or let them scan the QR code. Each invite works once, for 7 days. Email is off, so nothing is emailed (
+            <Link href="/admin/email" className="underline underline-offset-2 hover:text-heading">
+              turn it on
+            </Link>
+            ).
+          </>
+        )
+      }
+    >
       <div className="grid gap-3 sm:grid-cols-[1fr_200px_auto] sm:items-end">
         <div className="space-y-1">
           <label htmlFor="invite-email" className="block text-subheadline font-medium text-ink">
-            Email (optional)
+            {emailOn ? "Email (optional)" : "Their email (optional, only they can use it)"}
           </label>
           <TextInput id="invite-email" type="email" inputMode="email" value={email} onChange={setEmail} placeholder="sam@example.com" />
         </div>
@@ -80,7 +64,7 @@ function InvitePanel() {
           <span id="invite-role" className="block text-subheadline font-medium text-ink">
             Role
           </span>
-          <Select aria-labelledby="invite-role" value={role} onChange={(e) => setRole(e.target.value as InvitableRole)} className="w-full">
+          <Select aria-labelledby="invite-role" value={role} onChange={(e) => setRole(e.target.value as InvitableRole)} className={`${selectCls} w-full`}>
             {roles.map((r) => (
               <option key={r} value={r} data-description={ROLE_HINTS[r]}>
                 {ROLE_NAMES[r]}
@@ -101,26 +85,30 @@ function InvitePanel() {
             setBusy(true);
             invite({ role, ...(to ? { email: to } : {}) })
               .then((r) => {
-                setMade({ url: r.url, expiresAt: r.expiresAt, email: to });
+                setMade({ url: r.url, expiresAt: r.expiresAt, email: to, emailed: Boolean((r as { emailed?: boolean }).emailed) });
                 setEmail("");
               })
               .catch((e: unknown) => toast.show(errorMessage(e), { tone: "error" }))
               .finally(() => setBusy(false));
           }}
         >
-          <UserPlus size={15} aria-hidden /> Create invite
+          <UserPlus size={15} aria-hidden /> {busy ? "Making it…" : emailOn && email.trim() ? "Send invite" : "Make invite link"}
         </Button>
       </div>
       {made ? (
-        <div className="mt-4 flex flex-col gap-4 rounded-control bg-[var(--glass-hover)] p-4 sm:flex-row sm:items-center">
-          <Qr value={made.url} />
+        <div className="mt-4 flex flex-col gap-4 rounded-control bg-[var(--glass-hover)] p-4 sm:flex-row sm:items-center" role="status">
+          <div className="self-center">
+            <QrCode value={made.url} label="QR code of the invite link" size={152} />
+          </div>
           <div className="min-w-0 flex-1 space-y-2 text-subheadline">
-            <p className="font-semibold text-heading">{made.email ? `Invite ready for ${made.email}` : "Invite link ready"}</p>
-            <p className="text-muted">
-              {made.email ? "If email is set up, it's on its way. You can also share this link. " : "Share this link or let them scan the code. "}
-              It works until <Time ts={made.expiresAt} />.
+            <p className="flex items-center gap-2 font-semibold text-heading">
+              <Check size={15} aria-hidden /> {made.emailed ? `Invite emailed to ${made.email}` : made.email ? `Invite ready for ${made.email}` : "Invite link ready"}
             </p>
-            <CopyField value={made.url} label="Invite link" />
+            <p className="text-muted">
+              {made.emailed ? "You can also send them this link yourself. " : "Send them this link, or let them scan the code with their phone's camera. "}
+              It works once, until <Time ts={made.expiresAt} />.
+            </p>
+            <ShareLink value={made.url} label="Invite link" shareTitle={`Join ${settings?.name ?? "our server"} on Folevi`} shareText={`Join ${settings?.name ?? "our Folevi server"}:`} qrFileName="folevi-invite.png" />
           </div>
         </div>
       ) : null}
@@ -187,6 +175,8 @@ function PersonDialog({ person, onClose }: { person: ServerPerson; onClose: () =
   const [quota, setQuotaText] = useState(bytesToGb(person.quotaBytes));
   const [resetLink, setResetLink] = useState<string | null>(null);
   const [confirm, setConfirm] = useState<null | "remove" | "transfer">(null);
+  const [ask, setAsk] = useState<null | "suspend" | "signout">(null);
+  const [quotaError, setQuotaError] = useState<string | null>(null);
   const [typed, setTyped] = useState("");
   const [busy, setBusy] = useState(false);
   const isOwner = person.role === "owner";
@@ -212,7 +202,7 @@ function PersonDialog({ person, onClose }: { person: ServerPerson; onClose: () =
             <span id="person-role" className="block font-medium text-ink">
               Role
             </span>
-            <Select aria-labelledby="person-role" value={person.role} disabled={busy} onChange={(e) => run(() => setRole({ userId: person.userId, role: e.target.value as InvitableRole }), "Role changed.")} className="w-full">
+            <Select aria-labelledby="person-role" value={person.role} disabled={busy} onChange={(e) => run(() => setRole({ userId: person.userId, role: e.target.value as InvitableRole }), "Role changed.")} className={`${selectCls} w-full`}>
               {roles.map((r) => (
                 <option key={r} value={r} data-description={ROLE_HINTS[r]}>
                   {ROLE_NAMES[r]}
@@ -226,16 +216,29 @@ function PersonDialog({ person, onClose }: { person: ServerPerson; onClose: () =
             Storage limit in GB
           </label>
           <div className="flex gap-2">
-            <TextInput id="person-quota" inputMode="numeric" value={quota} onChange={setQuotaText} placeholder="The server's default" />
-            <Button disabled={busy} onClick={() => run(() => setQuota({ userId: person.userId, quotaBytes: quota.trim() ? gbToBytes(quota) : null }), "Storage limit saved.")}>
+            <TextInput id="person-quota" inputMode="numeric" value={quota} onChange={(v) => (setQuotaText(v), setQuotaError(null))} placeholder="The server's default" aria-invalid={quotaError ? true : undefined} />
+            <Button
+              disabled={busy}
+              onClick={() => {
+                const bytes = quota.trim() ? gbToBytes(quota.replace(",", ".")) : null;
+                if (quota.trim() && (bytes === null || bytes === 0)) return setQuotaError("Enter a number of gigabytes, like 5 or 0.5. Leave it empty for the server's default.");
+                run(() => setQuota({ userId: person.userId, quotaBytes: bytes }), bytes === null ? "Back to the server's default." : `Limit set to ${formatBytes(bytes)}.`);
+              }}
+            >
               Save
             </Button>
           </div>
-          <p className="text-footnote text-muted">Uses {formatBytes(person.storageBytes)} now. Leave empty for the server&apos;s default.</p>
+          {quotaError ? (
+            <p className="text-footnote text-danger" role="alert">
+              {quotaError}
+            </p>
+          ) : (
+            <p className="text-footnote text-muted">Uses {formatBytes(person.storageBytes)} now. Leave empty for the server&apos;s default. When they reach it, they can still read and edit, but not add files.</p>
+          )}
         </div>
         {canManage || self ? (
           <div className="flex flex-wrap gap-2 border-t border-line pt-4">
-            <Button size="sm" disabled={busy} onClick={() => run(() => endSessions({ userId: person.userId }), "Signed out everywhere.")}>
+            <Button size="sm" disabled={busy} onClick={() => setAsk("signout")}>
               Sign out everywhere
             </Button>
             {canManage ? (
@@ -263,7 +266,7 @@ function PersonDialog({ person, onClose }: { person: ServerPerson; onClose: () =
                   Restore access
                 </Button>
               ) : (
-                <Button size="sm" disabled={busy} onClick={() => run(() => suspend({ userId: person.userId }), "Suspended. Their notes are kept.")}>
+                <Button size="sm" disabled={busy} onClick={() => setAsk("suspend")}>
                   Suspend
                 </Button>
               )
@@ -280,11 +283,39 @@ function PersonDialog({ person, onClose }: { person: ServerPerson; onClose: () =
             ) : null}
           </div>
         ) : null}
+        {ask ? (
+          <div className="space-y-2 rounded-control bg-[var(--glass-hover)] p-4" role="alertdialog" aria-label={ask === "suspend" ? "Suspend" : "Sign out everywhere"}>
+            <p className="font-semibold text-heading">{ask === "suspend" ? `Suspend ${person.name || person.email}?` : `Sign ${person.name || person.email} out everywhere?`}</p>
+            <p className="text-muted">
+              {ask === "suspend"
+                ? "They're signed out at once and can't sign in until you restore access. Their notes stay as they are."
+                : "Every app and browser they use is signed out. They can sign in again with their password."}
+            </p>
+            <div className="flex justify-end gap-2">
+              <Button size="sm" variant="quiet" onClick={() => setAsk(null)}>
+                Cancel
+              </Button>
+              <Button
+                size="sm"
+                variant={ask === "suspend" ? "danger" : "primary"}
+                disabled={busy}
+                onClick={() => {
+                  const which = ask;
+                  setAsk(null);
+                  if (which === "suspend") run(() => suspend({ userId: person.userId }), "Suspended. Their notes are kept.");
+                  else run(() => endSessions({ userId: person.userId }), "Signed out everywhere.");
+                }}
+              >
+                {ask === "suspend" ? "Suspend" : "Sign out everywhere"}
+              </Button>
+            </div>
+          </div>
+        ) : null}
         {resetLink ? (
           <div className="space-y-1.5">
-            <p className="font-medium text-ink">One-time reset link</p>
-            <CopyField value={resetLink} label="Password reset link" />
-            <p className="text-footnote text-muted">Email is off on this server, so give them this link yourself. It works once.</p>
+            <p className="font-medium text-ink">One-time password reset link</p>
+            <p className="text-footnote text-muted">Email is off on this server, so send them this link yourself, for example in a message. It works once, for an hour.</p>
+            <ShareLink value={resetLink} label="Password reset link" shareTitle="Reset your Folevi password" />
           </div>
         ) : null}
         {confirm ? (
@@ -325,12 +356,22 @@ function PersonDialog({ person, onClose }: { person: ServerPerson; onClose: () =
 export function ServerPeopleView() {
   const people = useQueryState(serverAdminRefs.listPeople, {});
   const [open, setOpen] = useState<string | null>(null);
+  const [apps, setApps] = useState(false);
+  const { settings } = useServerSettings();
   const rows = (people.data ?? []) as ServerPerson[];
   const person = rows.find((p) => p.userId === open) ?? null;
   return (
     <>
       <DocTitle>People</DocTitle>
-      <PageHeader title="People" description="Everyone with an account on this server. You see names, roles and sizes, never anyone's notes." />
+      <PageHeader
+        title="People"
+        description="Everyone with an account on this server. You see names, roles and sizes, never anyone's notes."
+        actions={
+          <Button onClick={() => setApps(true)}>
+            <QrIcon size={15} aria-hidden /> Connect your apps
+          </Button>
+        }
+      />
       <div className="space-y-4">
         <InvitePanel />
         <InvitesList />
@@ -351,7 +392,7 @@ export function ServerPeopleView() {
             </thead>
             <tbody>
               {people.data === undefined ? <LoadingRows colSpan={6} /> : null}
-              {people.data && rows.length === 0 ? <EmptyRow colSpan={6}>Nobody yet.</EmptyRow> : null}
+              {people.data && rows.length === 0 ? <EmptyRow colSpan={6}>Nobody yet. Invite someone above.</EmptyRow> : null}
               {rows.map((p) => (
                 <tr key={p.userId} className={trHover}>
                   <td className={td}>
@@ -382,6 +423,7 @@ export function ServerPeopleView() {
         </Panel>
       </div>
       {person ? <PersonDialog person={person} onClose={() => setOpen(null)} /> : null}
+      <ConnectAppsDialog open={apps} onClose={() => setApps(false)} serverName={settings?.name} />
     </>
   );
 }

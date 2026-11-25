@@ -11,9 +11,10 @@ import { formatBytes } from "@/lib/format";
 import { Button } from "@/components/ui/Button";
 import { Select } from "@/components/ui/Select";
 import { errorMessage, useToast } from "@/components/ui/Toast";
-import { Callout, DataTable, DocTitle, EmptyRow, LoadingRows, Meter, PageHeader, Panel, td, tdNum, th, thNum } from "../ui";
+import { Callout, DataTable, DocTitle, EmptyRow, LoadingRows, Meter, PageHeader, Panel, td, tdNum, th, thNum, selectCls } from "../ui";
 import { SaveBar, SecretInput, type SaveSettings, SettingRow, SwitchRow, TextInput, WithSettings, bytesToGb, gbToBytes, useControl, useDraft } from "./kit";
 import type { ControlStatus } from "./types";
+import { EMAIL_PRESETS, SECURITY_NAMES, presetFor } from "@/components/server/emailPresets";
 
 type Save = SaveSettings;
 
@@ -49,7 +50,7 @@ function SignInForm({ settings, save }: { settings: ServerSettings; save: Save }
       </Panel>
       <Panel title="Who can create an account">
         <SettingRow label="New accounts" description="Invites always work, whichever you choose.">
-          <Select aria-label="New accounts" value={settings.signUp} onChange={(e) => void save({ signUp: e.target.value as ServerSettings["signUp"] })} className="w-64">
+          <Select aria-label="New accounts" value={settings.signUp} onChange={(e) => void save({ signUp: e.target.value as ServerSettings["signUp"] })} className={`${selectCls} w-64`}>
             <option value="invite" data-description="Only people you invite">
               By invite only
             </option>
@@ -176,18 +177,19 @@ function EmailForm({ settings, save }: { settings: ServerSettings; save: Save })
   const [busy, setBusy] = useState(false);
   const [to, setTo] = useState("");
   const [testing, setTesting] = useState(false);
+  const [result, setResult] = useState<{ ok: boolean; text: string } | null>(null);
   const test = useAction(serverAdminRefs.testEmail);
   const toast = useToast();
   return (
     <div className="space-y-4">
       <Panel title="Sending email" description="Verification links, password resets, invites, sharing notices, reminders and digests.">
         <SettingRow label="Send through">
-          <Select aria-label="Send email through" value={draft.mode} onChange={(e) => set("mode", e.target.value as SmtpDraft["mode"])} className="w-64">
+          <Select aria-label="Send email through" value={draft.mode} onChange={(e) => set("mode", e.target.value as SmtpDraft["mode"])} className={`${selectCls} w-64`}>
             <option value="folevi" data-description="Works once this server is linked to a Folevi account">
               Folevi Mail
             </option>
-            <option value="smtp" data-description="Your own mail account or service">
-              Your own SMTP server
+            <option value="smtp" data-description="Gmail, iCloud, Outlook or any mail service (SMTP)">
+              Your own email account
             </option>
             <option value="off" data-description="Invites by link, password resets by an admin">
               Don&apos;t send email
@@ -197,8 +199,35 @@ function EmailForm({ settings, save }: { settings: ServerSettings; save: Save })
         {draft.mode === "folevi" ? <Callout>Email goes out from no-reply@folevi.app with replies going to the server&apos;s owner. Folevi never sees your notes, only the email itself.</Callout> : null}
         {draft.mode === "off" ? <Callout>With email off, new accounts don&apos;t need to confirm their address, invites are shared as links, and admins reset passwords from People.</Callout> : null}
         {draft.mode === "smtp" ? (
-          <div className="mt-2 grid gap-3 sm:grid-cols-2">
-            <Field id="smtp-host" label="Server">
+          <p className="mt-1 text-subheadline text-muted">Folevi sends through your mail account the way a mail app does (this is called SMTP). Pick your service and the details fill themselves in.</p>
+        ) : null}
+        {draft.mode === "smtp" ? (
+          <div className="mt-3 space-y-1">
+            <span id="smtp-preset" className="block text-subheadline font-medium text-ink">
+              Email service
+            </span>
+            <Select
+              aria-labelledby="smtp-preset"
+              value={presetFor(draft.host).id}
+              onChange={(e) => {
+                const p = EMAIL_PRESETS.find((x) => x.id === e.target.value)!;
+                if (p.id === "other") set("host", "");
+                else (set("host", p.host), set("port", String(p.port)), set("security", p.security));
+              }}
+              className={`${selectCls} w-full sm:w-72`}
+            >
+              {EMAIL_PRESETS.map((x) => (
+                <option key={x.id} value={x.id}>
+                  {x.name}
+                </option>
+              ))}
+            </Select>
+            <p className="text-footnote text-muted">{presetFor(draft.host).passwordHint}</p>
+          </div>
+        ) : null}
+        {draft.mode === "smtp" ? (
+          <div className="mt-3 grid gap-3 sm:grid-cols-2">
+            <Field id="smtp-host" label="Sending server">
               <TextInput id="smtp-host" value={draft.host} onChange={(v) => set("host", v)} placeholder="smtp.example.com" />
             </Field>
             <div className="grid grid-cols-[100px_1fr] gap-3">
@@ -209,14 +238,16 @@ function EmailForm({ settings, save }: { settings: ServerSettings; save: Save })
                 <span id="smtp-security" className="block text-subheadline font-medium text-ink">
                   Security
                 </span>
-                <Select aria-labelledby="smtp-security" value={draft.security} onChange={(e) => set("security", e.target.value as SmtpDraft["security"])} className="w-full">
-                  <option value="starttls">STARTTLS</option>
-                  <option value="tls">TLS</option>
-                  <option value="none">None</option>
+                <Select aria-labelledby="smtp-security" value={draft.security} onChange={(e) => set("security", e.target.value as SmtpDraft["security"])} className={`${selectCls} w-full`}>
+                  {(["starttls", "tls", "none"] as const).map((k) => (
+                    <option key={k} value={k} data-description={SECURITY_NAMES[k].description}>
+                      {SECURITY_NAMES[k].title}
+                    </option>
+                  ))}
                 </Select>
               </div>
             </div>
-            <Field id="smtp-user" label="Username">
+            <Field id="smtp-user" label="Username" hint="Usually your full email address.">
               <TextInput id="smtp-user" value={draft.username} onChange={(v) => set("username", v)} />
             </Field>
             <Field id="smtp-password" label="Password">
@@ -246,7 +277,7 @@ function EmailForm({ settings, save }: { settings: ServerSettings; save: Save })
           }}
         />
       </Panel>
-      <Panel title="Send a test email" description="Saves nothing. Uses the settings saved above.">
+      <Panel title="Send a test email" description={settings.email.mode === "off" ? "Turn on email above and save first." : "Checks the settings saved above by sending a short email."}>
         <div className="flex flex-col gap-2 sm:flex-row">
           <TextInput type="email" inputMode="email" value={to} onChange={setTo} placeholder="you@example.com" aria-label="Send the test to" />
           <Button
@@ -255,18 +286,26 @@ function EmailForm({ settings, save }: { settings: ServerSettings; save: Save })
             onClick={() => {
               setTesting(true);
               test({ to: to.trim() })
-                .then((r) => toast.show(r.ok ? `Sent to ${to.trim()}.` : `It didn't send: ${r.error ?? "unknown error"}.`, { tone: r.ok ? "success" : "error", duration: 8000 }))
-                .catch((e: unknown) => toast.show(errorMessage(e), { tone: "error" }))
+                .then((r) => {
+                  setResult(r.ok ? { ok: true, text: `Sent to ${to.trim()}. Check the inbox, and the spam folder, in a minute.` } : { ok: false, text: `It didn't send: ${r.error ?? "the mail service gave no reason"}. Check the server, port, username and password above, save, and try again.` });
+                  toast.show(r.ok ? "Test email sent." : "The test email didn't send.", { tone: r.ok ? "success" : "error" });
+                })
+                .catch((e: unknown) => setResult({ ok: false, text: errorMessage(e) }))
                 .finally(() => setTesting(false));
             }}
           >
-            <Send size={14} aria-hidden /> Send test
+            <Send size={14} aria-hidden /> {testing ? "Sending…" : "Send test"}
           </Button>
         </div>
+        {result ? (
+          <div className="mt-3" role="status">
+            <Callout tone={result.ok ? "neutral" : "danger"}>{result.text}</Callout>
+          </div>
+        ) : null}
       </Panel>
       <Panel title="Email to Folevi" description="Each person gets an address that turns the email they forward into a note.">
         <SettingRow label="Receive through">
-          <Select aria-label="Receive email through" value={settings.emailIn.mode} onChange={(e) => void save({ emailIn: { mode: e.target.value as ServerSettings["emailIn"]["mode"] } })} className="w-64">
+          <Select aria-label="Receive email through" value={settings.emailIn.mode} onChange={(e) => void save({ emailIn: { mode: e.target.value as ServerSettings["emailIn"]["mode"] } })} className={`${selectCls} w-64`}>
             <option value="folevi">Folevi&apos;s mail server</option>
             <option value="imap">A mailbox you set up (IMAP)</option>
             <option value="off">Off</option>
@@ -308,7 +347,7 @@ function AiForm({ settings, save }: { settings: ServerSettings; save: Save }) {
   return (
     <Panel title="Foli AI" description="Off means Foli AI is hidden everywhere on this server.">
       <SettingRow label="Answers come from">
-        <Select aria-label="Foli AI answers come from" value={draft.mode} onChange={(e) => set("mode", e.target.value as AiDraft["mode"])} className="w-64">
+        <Select aria-label="Foli AI answers come from" value={draft.mode} onChange={(e) => set("mode", e.target.value as AiDraft["mode"])} className={`${selectCls} w-64`}>
           <option value="off">Off</option>
           <option value="folevi" data-description="Counts against the owner's Folevi plan">
             Folevi AI
@@ -351,7 +390,7 @@ function AiForm({ settings, save }: { settings: ServerSettings; save: Save }) {
       {draft.mode !== "off" ? (
         <div className="mt-3">
           <SettingRow label="Who can use it">
-            <Select aria-label="Who can use Foli AI" value={draft.allowed} onChange={(e) => set("allowed", e.target.value as AiDraft["allowed"])} className="w-64">
+            <Select aria-label="Who can use Foli AI" value={draft.allowed} onChange={(e) => set("allowed", e.target.value as AiDraft["allowed"])} className={`${selectCls} w-64`}>
               <option value="everyone">Everyone</option>
               <option value="admins">Only the owner and admins</option>
             </Select>
@@ -412,7 +451,7 @@ function NotificationsForm({ settings, save }: { settings: ServerSettings; save:
       </Panel>
       <Panel title="Cover photos" description="The photo picker for page covers.">
         <SettingRow label="Photos from">
-          <Select aria-label="Cover photos from" value={settings.covers.mode} onChange={(e) => void save({ covers: { mode: e.target.value as ServerSettings["covers"]["mode"] } })} className="w-64">
+          <Select aria-label="Cover photos from" value={settings.covers.mode} onChange={(e) => void save({ covers: { mode: e.target.value as ServerSettings["covers"]["mode"] } })} className={`${selectCls} w-64`}>
             <option value="folevi">Unsplash, through Folevi</option>
             <option value="unsplash">Unsplash, with your own key</option>
             <option value="off">Off</option>

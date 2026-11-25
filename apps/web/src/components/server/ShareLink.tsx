@@ -28,7 +28,9 @@ export function ShareLink({
   shareTitle,
   shareText,
   qrFileName,
+  copyLabel = "Copy link",
 }: {
+  copyLabel?: string;
   value: string;
   label: string;
   /** For the share sheet. */
@@ -51,7 +53,6 @@ export function ShareLink({
       <div className="flex flex-wrap gap-2">
         <Button
           size="sm"
-          variant="primary"
           onClick={() =>
             void copyText(value).then((ok) => {
               setCopied(ok ? "ok" : "failed");
@@ -60,7 +61,7 @@ export function ShareLink({
           }
         >
           {copied === "ok" ? <Check size={14} aria-hidden /> : <Copy size={14} aria-hidden />}
-          {copied === "ok" ? "Copied" : "Copy link"}
+          {copied === "ok" ? "Copied" : copyLabel}
         </Button>
         {canShare ? (
           <Button size="sm" onClick={() => void navigator.share({ title: shareTitle, text: shareText, url: value }).catch(() => undefined)}>

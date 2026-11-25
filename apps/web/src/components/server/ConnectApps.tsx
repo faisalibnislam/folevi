@@ -51,13 +51,13 @@ const APPS = [
   { icon: Smartphone, name: "Android" },
 ];
 
-export function ConnectApps({ address, serverName, remoteHref }: { address?: string | null; serverName?: string; /** Where an admin sets up remote access; members get plain words instead. */ remoteHref?: string }) {
+export function ConnectApps({ address, serverName, remoteHref, stacked }: { address?: string | null; serverName?: string; /** Where an admin sets up remote access; members get plain words instead. */ remoteHref?: string; /** QR code above the steps at every width (narrow cards). */ stacked?: boolean }) {
   const origin = useServerAddress(address);
   const homeOnly = origin ? isHomeOnlyAddress(origin) : false;
   return (
     <div className="space-y-4">
-      <div className="flex flex-col gap-5 sm:flex-row sm:items-start">
-        <div className="flex flex-col items-center gap-2 self-center sm:self-start">
+      <div className={`flex flex-col gap-5 ${stacked ? "" : "sm:flex-row sm:items-start"}`}>
+        <div className={`flex flex-col items-center gap-2 self-center ${stacked ? "" : "sm:self-start"}`}>
           {origin ? <QrCode value={origin} label={`QR code of the address of ${serverName ?? "this server"}`} /> : <span className="block size-[184px] rounded-control bg-[var(--glass-hover)]" aria-hidden />}
           <span className="text-footnote text-muted">Scan with the phone&apos;s camera</span>
         </div>
@@ -76,7 +76,7 @@ export function ConnectApps({ address, serverName, remoteHref }: { address?: str
             </li>
             <li>Scan this code, or type the address below. Then sign in with your account here.</li>
           </ol>
-          {origin ? <ShareLink value={origin} label="This server's address" shareTitle={serverName ?? "Folevi"} shareText={`Add ${serverName ?? "this Folevi server"} in the Folevi app: Your own server, then this address.`} /> : null}
+          {origin ? <ShareLink value={origin} label="This server's address" copyLabel="Copy address" shareTitle={serverName ?? "Folevi"} shareText={`Add ${serverName ?? "this Folevi server"} in the Folevi app: Your own server, then this address.`} /> : null}
         </div>
       </div>
       {homeOnly ? (

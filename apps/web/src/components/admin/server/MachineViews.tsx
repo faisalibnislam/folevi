@@ -3,15 +3,16 @@
 // The admin panel's sections backed by folevid (docs/self-hosting/CONTRACT.md §5) through /api/server/*:
 // remote access, backups, updates, logs and diagnostics.
 import { useState } from "react";
-import { Download, ExternalLink, RotateCw, Send } from "lucide-react";
+import { Check, Copy, Download, ExternalLink, Eye, EyeOff, KeyRound, Lock, RotateCw, Send } from "lucide-react";
+import { downloadKey } from "@/components/server/SetupFlow";
 import { formatBytes } from "@/lib/format";
 import { Button } from "@/components/ui/Button";
 import { Dialog } from "@/components/ui/Dialog";
 import { Select } from "@/components/ui/Select";
 import { useToast } from "@/components/ui/Toast";
 import { useAdmin } from "../AdminApp";
-import { Badge, Callout, DataTable, DocTitle, EmptyRow, ErrorNotice, KeyValues, LoadingRows, PageHeader, Panel, Time, td, tdMid, tdNum, th, thNum } from "../ui";
-import { SaveBar, SettingRow, SwitchRow, TextInput, control, controlMessage, useControl, useDraft } from "./kit";
+import { Badge, Callout, DataTable, DocTitle, EmptyRow, ErrorNotice, KeyValues, LoadingRows, PageHeader, Panel, Time, td, tdMid, tdNum, th, thNum, selectCls } from "../ui";
+import { SaveBar, SettingRow, SwitchRow, TextInput, control, controlMessage, useControl, useDraft, useServerSettings } from "./kit";
 import { toMillis, type BackupList, type BackupTarget, type RemoteState, type UpdateState } from "./types";
 
 function ControlError({ error, onRetry }: { error: unknown; onRetry: () => void }) {
@@ -183,7 +184,7 @@ function ScheduleForm({ list, onSaved }: { list: BackupList; onSaved: () => void
     <Panel title="Schedule" description="Folevi also takes a backup before every update.">
       <SwitchRow label="Back up every night" checked={draft.enabled} disabled={!owner} onChange={(v) => set("enabled", v)} />
       <SettingRow label="At">
-        <Select aria-label="Backup time" value={draft.hour} disabled={!owner} onChange={(e) => set("hour", e.target.value)} className="w-40">
+        <Select aria-label="Backup time" value={draft.hour} disabled={!owner} onChange={(e) => set("hour", e.target.value)} className={`${selectCls} w-40`}>
           {Array.from({ length: 24 }, (_, h) => (
             <option key={h} value={String(h)}>
               {`${String(h).padStart(2, "0")}:00`}
@@ -195,7 +196,7 @@ function ScheduleForm({ list, onSaved }: { list: BackupList; onSaved: () => void
         <TextInput id="backup-keep" inputMode="numeric" value={draft.keep} onChange={(v) => set("keep", v.replace(/\D/g, ""))} className="w-24" />
       </SettingRow>
       <SettingRow label="Where">
-        <Select aria-label="Where backups go" value={draft.kind} disabled={!owner} onChange={(e) => set("kind", e.target.value as BackupTarget["kind"])} className="w-64">
+        <Select aria-label="Where backups go" value={draft.kind} disabled={!owner} onChange={(e) => set("kind", e.target.value as BackupTarget["kind"])} className={`${selectCls} w-64`}>
           <option value="local" data-description="Inside Folevi's data folder">
             The data folder
           </option>
@@ -252,6 +253,72 @@ function ScheduleForm({ list, onSaved }: { list: BackupList; onSaved: () => void
 
 const KIND_NAMES = { nightly: "Nightly", manual: "By hand", "pre-update": "Before an update" } as const;
 
+/** The backup key (secrets/backup-key): shown to the owner to keep somewhere other than this machine. */
+function BackupKeyPanel() {
+  const admin = useAdmin();
+  const owner = admin.role === "super_admin";
+  const { settings, save } = useServerSettings();
+  const toast = useToast();
+  const [key, setKey] = useState<string | null>(null);
+  const [shown, setShown] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const saved = settings?.setup?.backupKey !== undefined;
+  const load = async (): Promise<string | null> => {
+    if (key) return key;
+    setLoading(true);
+    try {
+      const r = await control<{ key: string }>("GET", "backups/key");
+      setKey(r.key);
+      return r.key;
+    } catch (e) {
+      toast.show(controlMessage(e), { tone: "error" });
+      return null;
+    } finally {
+      setLoading(false);
+    }
+  };
+  return (
+    <section id="backup-key" className="scroll-mt-24">
+      <Panel
+        title="Backup key"
+        description="Backups are locked with this key. To restore them on a new machine (if this one breaks or is stolen), you need it. Keep it in a password manager or on paper, not only on this NAS."
+        actions={saved ? <Badge tone="success">Saved</Badge> : <Badge tone="warning">Not saved yet</Badge>}
+      >
+        {owner ? (
+          <div className="space-y-3">
+            <div className="flex items-center gap-2 rounded-chip bg-sunken p-2.5">
+              <KeyRound size={15} aria-hidden className="flex-none text-muted" />
+              <code className="min-w-0 flex-1 truncate font-mono text-footnote text-heading" aria-label="Backup key">
+                {shown && key ? key : "AGE-SECRET-KEY-1" + "•".repeat(24)}
+              </code>
+              <Button size="sm" variant="quiet" disabled={loading} onClick={() => (shown ? setShown(false) : void load().then((k) => k && setShown(true)))}>
+                {shown ? <EyeOff size={14} aria-hidden /> : <Eye size={14} aria-hidden />} {shown ? "Hide" : "Show"}
+              </Button>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Button size="sm" disabled={loading} onClick={() => void load().then((k) => {
+                    if (k) void navigator.clipboard.writeText(k).then(() => toast.show("Backup key copied. Paste it somewhere safe.", { tone: "success" }), () => setShown(true));
+                  })}>
+                <Copy size={14} aria-hidden /> Copy
+              </Button>
+              <Button size="sm" disabled={loading} onClick={() => void load().then((k) => k && downloadKey(k))}>
+                <Download size={14} aria-hidden /> Download as a file
+              </Button>
+              {!saved ? (
+                <Button size="sm" variant="primary" onClick={() => void save({ setup: { done: ["backups", "backupKey"] } }, "Marked as saved.")}>
+                  <Check size={14} aria-hidden /> I saved it somewhere safe
+                </Button>
+              ) : null}
+            </div>
+          </div>
+        ) : (
+          <p className="text-subheadline text-muted">{OWNER_ONLY}</p>
+        )}
+      </Panel>
+    </section>
+  );
+}
+
 export function ServerBackupsView() {
   const admin = useAdmin();
   const owner = admin.role === "super_admin";
@@ -273,21 +340,23 @@ export function ServerBackupsView() {
             title={owner ? undefined : OWNER_ONLY}
             onClick={() => {
               setBusy(true);
-              control("POST", "backups")
+              toast.show("Backing up. This takes a minute or two.");
+              control("POST", "backups?wait=1")
                 .then(() => {
-                  toast.show("Backup started. It appears below when it's done.", { tone: "success" });
-                  window.setTimeout(backups.reload, 5000);
-                }, (e: unknown) => toast.show(controlMessage(e), { tone: "error" }))
+                  toast.show("Backup done.", { tone: "success" });
+                  backups.reload();
+                }, (e: unknown) => toast.show(`The backup didn't finish: ${controlMessage(e)} Look at Logs for details.`, { tone: "error", duration: 10_000 }))
                 .finally(() => setBusy(false));
             }}
           >
-            Back up now
+            {busy ? "Backing up…" : "Back up now"}
           </Button>
         }
       />
       {backups.error && !backups.data ? <ControlError error={backups.error} onRetry={backups.reload} /> : null}
       <div className="space-y-4">
         {backups.data ? <ScheduleForm list={backups.data} onSaved={backups.reload} /> : null}
+        <BackupKeyPanel />
         <Panel title="Backups on hand" flush>
           <DataTable caption="Backups" minWidth={520}>
             <thead>
@@ -308,7 +377,16 @@ export function ServerBackupsView() {
                   <td className={tdMid}>
                     <Time ts={toMillis(b.createdAt)} />
                   </td>
-                  <td className={tdMid}>{KIND_NAMES[b.kind] ?? b.kind}</td>
+                  <td className={tdMid}>
+                    <span className="flex flex-wrap items-center gap-1.5">
+                      {KIND_NAMES[b.kind] ?? b.kind}
+                      {b.encrypted ? (
+                        <Badge title="Locked with the backup key">
+                          <Lock size={11} aria-hidden /> Locked
+                        </Badge>
+                      ) : null}
+                    </span>
+                  </td>
                   <td className={tdNum}>{formatBytes(b.sizeBytes)}</td>
                   <td className={`${td} text-right`}>
                     {owner ? (
@@ -420,7 +498,7 @@ export function ServerLogsView() {
           title="Logs"
           actions={
             <>
-              <Select aria-label="Which part" value={service} onChange={(e) => setService(e.target.value)} className="w-48">
+              <Select aria-label="Which part" value={service} onChange={(e) => setService(e.target.value)} className={`${selectCls} w-48`}>
                 {SERVICES.map((s) => (
                   <option key={s.value} value={s.value}>
                     {s.label}

@@ -66,7 +66,7 @@ export function SignUpForm({ template, social = { google: false, apple: false },
 
   return (
     <>
-      <AuthHeading title="Start writing" lede={lede} />
+      <AuthHeading title={server?.inviteToken && server.serverName ? `Join ${server.serverName}` : "Start writing"} lede={lede} />
       <SocialSignIn providers={social} returnTo={callbackURL} />
       <form
         className="space-y-4"

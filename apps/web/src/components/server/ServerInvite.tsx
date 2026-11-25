@@ -6,9 +6,10 @@
 import { useState } from "react";
 import { useConvexAuth, useMutation } from "convex/react";
 import { FoleviLogo } from "@/components/brand/FoleviMark";
-import { Alert, AuthHeading, TextLink } from "@/components/auth/fields";
+import { Alert, AuthHeading } from "@/components/auth/fields";
 import { errorMessage } from "@/components/ui/Toast";
 import { ConvexClientProvider } from "@/lib/convex/provider";
+import { api } from "@/lib/convex/api";
 import { serverInviteRefs, type ServerRole } from "@/lib/server-edition/refs";
 
 const ROLE_WORDS: Record<ServerRole, string> = { owner: "as its owner", admin: "as an admin", member: "", guest: "as a guest" };
@@ -18,6 +19,7 @@ type Preview = { serverName: string; invitedBy: string; email?: string | null; r
 function Join({ token }: { token: string }) {
   const { isAuthenticated, isLoading } = useConvexAuth();
   const accept = useMutation(serverInviteRefs.accept);
+  const bootstrap = useMutation(api.users.bootstrap);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   return (
@@ -35,15 +37,17 @@ function Join({ token }: { token: string }) {
         onClick={() => {
           setBusy(true);
           setError(null);
-          accept({ token })
-            .then(() => window.location.assign("/documents"))
+          // A brand-new account's profile is made when Folevi first opens; joining needs it now.
+          bootstrap({ timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC", locale: navigator.language || "en-US" })
+            .then(() => accept({ token }))
+            .then(() => window.location.assign("/join/welcome"))
             .catch((e: unknown) => {
               setBusy(false);
               setError(errorMessage(e));
             });
         }}
       >
-        Join
+        {busy ? "Joining…" : "Join"}
       </button>
     </>
   );
@@ -63,8 +67,13 @@ export function ServerInvite({ token, invite, signedIn }: { token: string; invit
           <div className="relative ui-card rounded-control p-8">
             {invite.expired ? (
               <>
-                <AuthHeading title="This invite has expired" lede={`Ask ${invite.invitedBy || "the person who invited you"} for a new one.`} />
-                <TextLink href="/signin">Sign in</TextLink>
+                <AuthHeading
+                  title="This invite doesn't work any more"
+                  lede={signedIn ? `Invites work once, for 7 days. If you already joined ${invite.serverName}, you're all set. If not, ask ${invite.invitedBy || "the person who invited you"} for a new one.` : `Invites work once, for 7 days. Ask ${invite.invitedBy || "the person who invited you"} for a new one. Already joined? Sign in.`}
+                />
+                <a href={signedIn ? "/documents" : "/signin"} className="ui-btn ui-btn-primary h-11 w-full text-body">
+                  {signedIn ? "Open Folevi" : "Sign in"}
+                </a>
               </>
             ) : (
               <>
@@ -75,7 +84,7 @@ export function ServerInvite({ token, invite, signedIn }: { token: string; invit
                   </ConvexClientProvider>
                 ) : (
                   <div className="space-y-2">
-                    <a href={`/signup?invite=${encodeURIComponent(token)}${invite.email ? `&email=${encodeURIComponent(invite.email)}` : ""}`} className="ui-btn ui-btn-primary h-11 w-full text-body">
+                    <a href={`/signup?invite=${encodeURIComponent(token)}&returnTo=${encodeURIComponent("/join/welcome")}${invite.email ? `&email=${encodeURIComponent(invite.email)}` : ""}`} className="ui-btn ui-btn-primary h-11 w-full text-body">
                       Create an account
                     </a>
                     <a href={`/signin?returnTo=${encodeURIComponent(here)}`} className="ui-btn ui-btn-secondary h-11 w-full text-body">

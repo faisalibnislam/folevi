@@ -6,7 +6,8 @@ export interface ControlStatus {
   publicUrl: string;
   services: { name: string; state: string; pid?: number | null; rssBytes?: number | null; restarts?: number }[];
   disk: { dataBytes: number; freeBytes: number };
-  memory: { totalBytes: number; availableBytes: number };
+  /** `profile` and `low` from folevid (CONTRACT §10.1): tiny up to 2.5 GB of RAM, low up to 8 GB, high above. */
+  memory: { totalBytes: number; availableBytes: number; profile?: "tiny" | "low" | "high"; low?: boolean };
 }
 
 export interface Backup {
@@ -14,6 +15,8 @@ export interface Backup {
   createdAt: number | string;
   sizeBytes: number;
   kind: "nightly" | "manual" | "pre-update";
+  /** Locked with the backup key (CONTRACT §10.1). */
+  encrypted?: boolean;
 }
 
 export interface BackupTarget {

@@ -20,7 +20,7 @@ import { useIpadLayout } from "@/lib/iphone";
 import { PillButton } from "@/components/iphone/Glass";
 import { useAiAccess } from "@/components/ai/useAi";
 import { TabPicture } from "./TabPreview";
-import { TabOverview, type OverviewEntry } from "./TabOverview";
+import { TabOverview, type OverviewEntry, type OverviewFrame } from "./TabOverview";
 import { NewFolderButton } from "./NewFolderButton";
 import { useKeyLabels } from "@/lib/shortcuts";
 
@@ -352,8 +352,24 @@ export function TabStrip() {
 
   // The Tab Overview: every tab as a picture (⌘⇧\ or the button by Back and Forward).
   const [overview, setOverview] = useState(false);
+  // It fills the page's panel under this bar (the owner, 2026-11-25), so the window's buttons and the tabs stay put.
+  const strip = useRef<HTMLDivElement>(null);
+  const [overviewFrame, setOverviewFrame] = useState<OverviewFrame | null>(null);
+  useLayoutEffect(() => {
+    if (!overview) return;
+    const measure = () => {
+      const bar = strip.current;
+      if (!bar) return setOverviewFrame(null);
+      const r = bar.getBoundingClientRect();
+      const panel = (bar.offsetParent as HTMLElement | null)?.getBoundingClientRect();
+      const gap = r.left - (panel?.left ?? r.left);
+      setOverviewFrame({ top: Math.round(r.bottom + gap), left: Math.round(r.left), right: Math.round(window.innerWidth - r.right), bottom: Math.round(window.innerHeight - (panel ? panel.bottom - gap : window.innerHeight)) });
+    };
+    measure();
+    window.addEventListener("resize", measure);
+    return () => window.removeEventListener("resize", measure);
+  }, [overview]);
   useEffect(() => {
-    if (ipad) return;
     const onKey = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.code === "Backslash") {
         e.preventDefault();
@@ -362,7 +378,7 @@ export function TabStrip() {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [ipad]);
+  }, []);
   const titleMap: Record<string, string> = {};
   for (const t of noteTabs) for (const id of t.panes ?? [t.at ?? t.id]) titleMap[id] = live?.[id]?.title || "";
   const overviewEntries: OverviewEntry[] = [
@@ -400,6 +416,7 @@ export function TabStrip() {
 
   return (
     <div
+      ref={strip}
       data-ipad-tabs={ipad ? "" : undefined}
       className={ipad ? "ui-liquid absolute inset-x-2 top-2 z-30 flex h-[52px] items-center gap-1 px-1.5" : `ui-drag ui-glass ui-glass-sidebar ui-tabbar absolute inset-x-1 top-1 z-30 flex h-11 items-center gap-1.5 rounded-panel px-1 ${route.name === "vault" ? "!bg-surface" : ""}`}
     >
@@ -416,11 +433,10 @@ export function TabStrip() {
 
       {/* Back and Forward, like a browser's, then a divider before the tab arrows and tabs. */}
       <BackForward ipad={ipad} />
-      {ipad ? null : (
-        <button type="button" aria-label="Show all tabs" title={keys("Show all tabs (⌘⇧\\)")} aria-haspopup="dialog" aria-expanded={overview} onClick={() => setOverview(true)} className="grid h-9 w-8 flex-none place-items-center rounded-control text-muted transition-colors hover:bg-accent-soft hover:text-heading focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">
-          <LayoutGrid size={15} aria-hidden />
-        </button>
-      )}
+      {/* Show all tabs (⌘⇧\), on every device with tabs. */}
+      <button type="button" aria-label="Show all tabs" title={keys("Show all tabs (⌘⇧\\)")} aria-haspopup="dialog" aria-expanded={overview} onClick={() => setOverview(true)} className="grid h-9 w-8 flex-none place-items-center rounded-control text-muted transition-colors hover:bg-accent-soft hover:text-heading focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">
+        <LayoutGrid size={15} aria-hidden />
+      </button>
       {ipad ? null : <span aria-hidden className="h-5 w-px flex-none bg-black/10" />}
 
       {/* (A finger scrolls the strip on the iPad: no arrows.) */}
@@ -546,6 +562,7 @@ export function TabStrip() {
         <TabOverview
           entries={overviewEntries}
           titles={titleMap}
+          frame={overviewFrame}
           onOpen={(href) => {
             setOverview(false);
             navigate(href);

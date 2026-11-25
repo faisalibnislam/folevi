@@ -304,6 +304,8 @@ struct PhoneCreateButton: View {
             action()
         } label: {
             WebIcon.plus.image(size: 24, strokeWidth: 2.4)
+                // The accent's own ink: black on the light accent in dark mode, white on the dark one in light.
+                .foregroundStyle(PhoneNativeLook.onAccent)
                 .frame(width: 52, height: 52)
                 .contentShape(Circle())
         }

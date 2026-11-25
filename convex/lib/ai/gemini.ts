@@ -5,6 +5,7 @@
 // Privacy: prompts, note text and answers are never logged. Only the event, model, status and token
 // counts are.
 import { fail } from "../errors";
+import { isServerEdition } from "../edition";
 import { tokensForChars, type CallUsage } from "../credits";
 import type { AiProvider, Content, EmbedResult, EmbedTask, GenerateRequest, GenerateResult, Grounding, OnDelta, Part, ToolCall } from "./provider";
 import { capabilitiesOf } from "./capabilities";
@@ -27,12 +28,14 @@ let serverGemini: GeminiSettings | null = null;
 export function setServerGemini(settings: GeminiSettings | null): void {
   serverGemini = settings;
 }
+/** The server's settings, only ever in the server edition (Folevi Cloud never reads them). */
+const server = (): GeminiSettings | null => (isServerEdition() ? (serverGemini ?? {}) : null);
 /** The Gemini key requests use (undefined when there is none). */
-export const geminiKey = (): string | undefined => (serverGemini ? serverGemini.apiKey : process.env.GEMINI_API_KEY);
-export const geminiModel = () => serverGemini?.model ?? process.env.GEMINI_MODEL ?? "gemini-3.8-flash";
-export const geminiFastModel = () => serverGemini?.fastModel ?? process.env.GEMINI_FAST_MODEL ?? "gemini-flash-lite-latest";
+export const geminiKey = (): string | undefined => (server() ? server()!.apiKey : process.env.GEMINI_API_KEY);
+export const geminiModel = () => server()?.model ?? process.env.GEMINI_MODEL ?? "gemini-3.8-flash";
+export const geminiFastModel = () => server()?.fastModel ?? process.env.GEMINI_FAST_MODEL ?? "gemini-flash-lite-latest";
 /** Semantic search's embeddings (GEMINI_EMBEDDING_MODEL; lib/ai/capabilities.ts prices it). */
-export const geminiEmbeddingModel = () => serverGemini?.embeddingModel ?? process.env.GEMINI_EMBEDDING_MODEL ?? "gemini-embedding-001";
+export const geminiEmbeddingModel = () => server()?.embeddingModel ?? process.env.GEMINI_EMBEDDING_MODEL ?? "gemini-embedding-001";
 
 type GeminiUsage = { promptTokenCount?: number; candidatesTokenCount?: number; thoughtsTokenCount?: number };
 type GeminiPart = { text?: string; thought?: boolean; thoughtSignature?: string; functionCall?: { name?: string; args?: Record<string, unknown>; id?: string } };

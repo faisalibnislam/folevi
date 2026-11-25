@@ -8,6 +8,8 @@ Wants=network-online.target
 Type=simple
 User=folevi
 Group=folevi
+# Updates come from apt or dnf; the admin panel says so (CONTRACT.md section 5, GET /v1/update).
+Environment=FOLEVI_MANAGED_BY=apt
 EnvironmentFile=-/etc/default/folevi-server
 ExecStart=/opt/folevi/bin/folevid run --data /var/lib/folevi --bundle /opt/folevi
 # folevid stops the backend and web app cleanly on SIGTERM.

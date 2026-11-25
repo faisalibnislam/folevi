@@ -2,6 +2,8 @@ package connect
 
 import (
 	"context"
+	"crypto/ed25519"
+	"encoding/base64"
 	"encoding/json"
 	"io"
 	"log/slog"
@@ -178,7 +180,7 @@ func TestRelay(t *testing.T) {
 		if err != nil {
 			return
 		}
-		_, _ = st.Write([]byte("hello"))
+		_, _ = st.Write([]byte("PROXY TCP4 203.0.113.7 10.0.0.1 51234 443\r\nhello"))
 		b := make([]byte, 10)
 		_, _ = io.ReadFull(st, b)
 		got <- string(b)
@@ -200,5 +202,49 @@ func TestRelay(t *testing.T) {
 	}
 	if !r.Connected() {
 		t.Fatal("not marked connected")
+	}
+}
+
+func TestReadProxyHeader(t *testing.T) {
+	a, b := net.Pipe()
+	go func() {
+		_, _ = a.Write([]byte("PROXY TCP4 203.0.113.7 10.0.0.1 51234 443\r\n\x16\x03\x01rest"))
+		a.Close()
+	}()
+	c, err := ReadProxyHeader(b)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c.RemoteAddr().String() != "203.0.113.7:51234" {
+		t.Fatalf("remote %s", c.RemoteAddr())
+	}
+	rest, _ := io.ReadAll(c)
+	if string(rest) != "\x16\x03\x01rest" {
+		t.Fatalf("rest %q", rest)
+	}
+	for _, bad := range []string{"GET / HTTP/1.1\r\n", "PROXY TCP4 x y z w\r\n", "PROXY TCP4 1.2.3.4 5.6.7.8 1 2"} {
+		a, b := net.Pipe()
+		go func() { _, _ = a.Write([]byte(bad)); a.Close() }()
+		if _, err := ReadProxyHeader(b); err == nil {
+			t.Errorf("accepted %q", bad)
+		}
+	}
+}
+
+func TestReachHandler(t *testing.T) {
+	_, priv, _ := ed25519.GenerateKey(nil)
+	h := ReachHandler(func() string { return "abcdefghij" }, func() (ed25519.PrivateKey, error) { return priv, nil })
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, httptest.NewRequest("GET", ReachPath+"?nonce=n1", nil))
+	var body struct{ Signature string }
+	_ = json.Unmarshal(rec.Body.Bytes(), &body)
+	sig, _ := base64.StdEncoding.DecodeString(body.Signature)
+	if !ed25519.Verify(priv.Public().(ed25519.PublicKey), ReachMessage("abcdefghij", "n1"), sig) {
+		t.Fatal("bad signature")
+	}
+	rec = httptest.NewRecorder()
+	h.ServeHTTP(rec, httptest.NewRequest("GET", ReachPath, nil))
+	if rec.Code != 404 {
+		t.Fatal("no nonce answered")
 	}
 }

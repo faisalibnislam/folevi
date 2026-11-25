@@ -44,10 +44,10 @@ contents:
     file_info:
       mode: 0750
 scripts:
-  preinstall: @LINUX_DIR@/scripts/preinstall.sh
-  postinstall: @LINUX_DIR@/scripts/postinstall.sh
-  preremove: @LINUX_DIR@/scripts/preremove.sh
-  postremove: @LINUX_DIR@/scripts/postremove.sh
+  preinstall: @SCRIPTS_DIR@/preinstall.sh
+  postinstall: @SCRIPTS_DIR@/postinstall.sh
+  preremove: @SCRIPTS_DIR@/preremove.sh
+  postremove: @SCRIPTS_DIR@/postremove.sh
 rpm:
   compression: xz
 deb:

@@ -5,6 +5,7 @@
 //
 // It will absorb lib/desktop.ts and lib/nativeApp.ts; until the hosts implement it those stay as they are.
 // Types only: nothing here runs.
+import type { ServerInfo } from "@/lib/server-edition/info";
 
 /** Which host the shell runs in ("android": apps/android, docs/ANDROID_PLAN.md). */
 export type ShellPlatform = "mac" | "ios" | "android";
@@ -253,6 +254,9 @@ export interface ShellE2ee {
   setTouchId?(on: boolean): Promise<{ touchId: boolean; available: boolean }>;
 }
 
+/** A Folevi server's `/.well-known/folevi.json` (lib/server-edition/info.ts, CONTRACT §6). */
+export type ServerInfoDocument = ServerInfo;
+
 /** A workspace as the switcher shows it under its account. */
 export interface ShellPlaceWorkspace {
   id: string;
@@ -317,6 +321,18 @@ export interface ShellPlaces {
   forgetLibrary(): Promise<void>;
   /** Another account's short-lived Convex token, for moving notes between two accounts. */
   convexToken(id: string): Promise<string | null>;
+  /**
+   * "Your own server" (docs/self-hosting/CONTRACT.md §6): adds a Folevi server as a new place and switches to it.
+   * The host keeps the place's addresses (`info.urls`, else `origin` with /convex and /convex-site), allows them
+   * in that place's content policy and network rules, and signs in there (its /connect page in the sign-in sheet,
+   * as for an account). `origin` is the address the person chose or picked from "Your servers" (an
+   * `<id>.folevi.app` name, a home-network name or their own domain); `info` is the server's
+   * `/.well-known/folevi.json` as the page read it, or null when the page couldn't (the host then fetches it).
+   * The host refuses http outside localhost and private ranges, and an `apiVersion` it doesn't know.
+   * Host message: `addServerPlace` with `{ origin, info }`; it answers with the new place id (`server:<origin>`
+   * or the host's own scheme), or null when the person cancelled. Hosts that predate it leave it out.
+   */
+  addServerPlace?(o: { origin: string; info: ServerInfoDocument | null }): Promise<string | null>;
   /** Quick Add's place, remembered between uses. */
   quickAddPlace?(): Promise<string | null>;
   setQuickAddPlace?(id: string): Promise<void>;

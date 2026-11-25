@@ -15,6 +15,7 @@ work="$(mktemp -d)"; trap 'rm -rf "$work"' EXIT
 
 # 1. Plugin package (.txz, Slackware layout).
 copy_bundle "$HERE/src" "$work/txz"
+cp "$PACKAGING_DIR/lib/pre-update-backup.sh" "$work/txz/usr/local/emhttp/plugins/folevi/scripts/pre-update-backup.sh"
 (cd "$work/txz" && tar --sort=name --owner=0 --group=0 --numeric-owner -cJf "$OUT/folevi-plugin-${VERSION}-x86_64-1.txz" .)
 # 2. Bundle tarball, one top-level folder.
 top="folevi-server-${VERSION}-linux-x86_64"

@@ -8,6 +8,8 @@ set -euo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
 source "$HERE/../lib/common.sh"
 LOG_PREFIX=fake-test
+# Checks read archives through pipes that may close early (SIGPIPE); judge each check by its last command.
+set +o pipefail
 keep=""
 [ "${1:-}" = "--keep" ] && keep="$2"
 work="${keep:-$(mktemp -d)}"; mkdir -p "$work"
@@ -153,10 +155,12 @@ done
 echo "== repositories"
 mkdir -p "$work/debs" "$work/rpms"; cp "$work"/out/*/linux/*.deb "$work/debs/"; cp "$work"/out/*/linux/*.rpm "$work/rpms/"
 # A throwaway key made only for this test, in a temp GNUPGHOME that is deleted at once. Never a real key.
-export GNUPGHOME="$work/gnupg-test"; mkdir -p "$GNUPGHOME"; chmod 700 "$GNUPGHOME"
-gpg --batch --quiet --passphrase '' --quick-gen-key "Folevi test key (throwaway) <test@invalid>" ed25519 sign 1d 2>/dev/null
-testkey="$(gpg --batch --armor --export-secret-keys)"
-unset GNUPGHOME
+# (A short path: gpg-agent's socket path must stay under about 100 characters.)
+export GNUPGHOME="$(mktemp -d "/tmp/fvgpg.XXXXXX")"; chmod 700 "$GNUPGHOME"; testgnupg="$GNUPGHOME"
+gpg --batch --quiet --pinentry-mode loopback --passphrase '' --quick-gen-key "Folevi test key (throwaway) <test@invalid>" ed25519 sign 1d 2>/dev/null
+testkey="$(gpg --batch --pinentry-mode loopback --passphrase '' --armor --export-secret-keys)"
+gpgconf --kill gpg-agent >/dev/null 2>&1 || true
+unset GNUPGHOME; rm -rf "$testgnupg"
 FOLEVI_REPO_GPG_PRIVATE_KEY="$testkey" "$PACKAGING_DIR/linux/repo/build-apt-repo.sh" --debs "$work/debs" --out "$work/apt" >/dev/null 2>&1 \
   && ok "apt repository built" || bad "apt repository"
 unset testkey
@@ -164,7 +168,6 @@ for a in amd64 arm64; do grep -q '^Package: folevi-server' "$work/apt/dists/stab
 if [ -f "$work/apt/dists/stable/InRelease" ] && [ -f "$work/apt/folevi-archive-keyring.gpg" ]; then
   gpgv --keyring "$work/apt/folevi-archive-keyring.gpg" "$work/apt/dists/stable/InRelease" >/dev/null 2>&1 && ok "InRelease signature verifies" || bad "InRelease signature"
 else bad "InRelease missing"; fi
-rm -rf "$work/gnupg-test"
 if command -v createrepo_c >/dev/null; then
   "$PACKAGING_DIR/linux/repo/build-rpm-repo.sh" --rpms "$work/rpms" --out "$work/rpm" >/dev/null 2>&1 && ok "rpm repository" || bad "rpm repository"
 else ok "rpm repository skipped (createrepo_c not installed; CI installs it)"; fi
@@ -173,12 +176,13 @@ echo "== scripts and templates"
 for f in $(grep -rlE '^#!/(usr/)?bin/(env )?(ba)?sh' "$PACKAGING_DIR" --include='*' | grep -v '/icons/'); do
   case "$(head -n 1 "$f")" in *bash*) bash -n "$f" ;; *) sh -n "$f" ;; esac 2>/dev/null && ok "syntax $(basename "$f")" || bad "syntax $f"
 done
-for f in $(find "$PACKAGING_DIR" \( -name '*.yaml' -o -name '*.yml' \) ! -path '*/truenas/*/templates/docker-compose.yaml'); do
+for f in $(find "$PACKAGING_DIR" \( -name '*.yaml' -o -name '*.yml' \) ! -path '*/truenas/*/templates/docker-compose.yaml' ! -name nfpm.yaml); do
   python3 -c "import yaml,sys; yaml.safe_load(open(sys.argv[1]))" "$f" && ok "yaml $(basename "$(dirname "$f")")/$(basename "$f")" || bad "yaml $f"
 done
 python3 -c "import yaml,sys; yaml.safe_load(open(sys.argv[1]))" "$PACKAGING_DIR/../.github/workflows/server-packages.yml" && ok "workflow yaml" || bad "workflow yaml"
 grep -qE '^\s*(push|pull_request|schedule|pull_request_target):' "$PACKAGING_DIR/../.github/workflows/server-packages.yml" && bad "workflow has a non-manual trigger" || ok "workflow is workflow_dispatch only"
-if grep -rn $'—' "$PACKAGING_DIR" "$PACKAGING_DIR/../.github/workflows/server-packages.yml" >/dev/null 2>&1; then bad "em dash found"; else ok "no em dashes"; fi
+dash="$(printf '\342\200\224')"
+if grep -rn "$dash" "$PACKAGING_DIR" "$PACKAGING_DIR/../.github/workflows/server-packages.yml" >/dev/null 2>&1; then bad "em dash found"; else ok "no em dashes"; fi
 
 echo "== private glibc (QNAP)"
 if [ "$(uname -m)" = x86_64 ] || [ "$(uname -m)" = aarch64 ]; then

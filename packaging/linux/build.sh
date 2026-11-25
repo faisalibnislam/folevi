@@ -16,6 +16,10 @@ NFPM="${NFPM:-$(command -v nfpm || echo "$HOME/go/bin/nfpm")}"
 export_template_vars
 export NFPM_ARCH="$(deb_arch "$ARCH")" FOLEVI_BUNDLE="$BUNDLE" LINUX_DIR="$(cd "$(dirname "$0")" && pwd)"
 work="$(mktemp -d)"; trap 'rm -rf "$work"' EXIT
+mkdir -p "$work/scripts"
+cp "$LINUX_DIR"/scripts/*.sh "$work/scripts/"
+embed_backup_helper "$LINUX_DIR/scripts/preinstall.sh" "$work/scripts/preinstall.sh"
+export SCRIPTS_DIR="$work/scripts"
 render "$LINUX_DIR/nfpm.yaml" "$work/nfpm.yaml"
 if [ -n "${FOLEVI_RPM_SIGNING_KEY_FILE:-}" ]; then
   [ -f "$FOLEVI_RPM_SIGNING_KEY_FILE" ] || die "FOLEVI_RPM_SIGNING_KEY_FILE does not point at a file"

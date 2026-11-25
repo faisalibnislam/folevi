@@ -14,7 +14,7 @@ services:
       - folevi-data:/data
     stop_grace_period: 60s
     healthcheck:
-      test: ["CMD", "/opt/folevi/runtime/node/bin/node", "-e", "fetch('http://127.0.0.1:8460/.well-known/folevi.json').then(r=>process.exit(r.ok?0:1),()=>process.exit(1))"]
+      test: ["CMD", "/opt/folevi/bin/folevid", "healthcheck", "--data", "/data"]
       interval: 30s
       timeout: 5s
       retries: 5

@@ -10,6 +10,7 @@ Type=simple
 User=folevi
 Group=folevi
 Environment=FOLEVI_PACKAGE=@PLATFORM@
+Environment=FOLEVI_MANAGED_BY=store
 EnvironmentFile=-@APP_DIR@/folevi.env
 ExecStart=@APP_DIR@/bundle/bin/folevid run --data ${FOLEVI_DATA} --bundle @APP_DIR@/bundle
 KillMode=mixed

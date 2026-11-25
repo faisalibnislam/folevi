@@ -8,7 +8,7 @@ case "$1" in
     mkdir -p "$DATA"
     ensure_user && chown -R "$RUN_USER" "$DATA" 2>/dev/null
     plog "starting, data in $DATA"
-    as_user "FOLEVI_PACKAGE=asustor exec '$FOLEVID' run --data '$DATA' --bundle '$BUNDLE' >> '$PKG_DIR/folevid.out' 2>&1" &
+    as_user "FOLEVI_PACKAGE=asustor FOLEVI_MANAGED_BY=store exec '$FOLEVID' run --data '$DATA' --bundle '$BUNDLE' >> '$PKG_DIR/folevid.out' 2>&1" &
     echo $! > "$PID_FILE"
     ;;
   stop)

@@ -16,6 +16,7 @@ work="$(mktemp -d)"; trap 'rm -rf "$work"' EXIT
 app="$work/folevi"; mkdir -p "$app/CONTROL"
 copy_bundle "$BUNDLE" "$app/bundle"
 cp "$HERE"/CONTROL/*.sh "$HERE/CONTROL/description.txt" "$HERE/CONTROL/changelog.txt" "$app/CONTROL/"
+embed_backup_helper "$HERE/CONTROL/pre-install.sh" "$app/CONTROL/pre-install.sh"
 chmod 755 "$app"/CONTROL/*.sh
 cp "$(icon 90)" "$app/CONTROL/icon.png"
 if [ -f "$BUNDLE/LICENSES/LICENSE" ]; then cp "$BUNDLE/LICENSES/LICENSE" "$app/CONTROL/license.txt"

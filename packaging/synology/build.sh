@@ -20,7 +20,13 @@ while [ $# -gt 0 ]; do
   esac
 done
 HERE="$(cd "$(dirname "$0")" && pwd)"
-case "$ARCH" in x86_64) SPK_ARCH="x86_64" ;; aarch64) SPK_ARCH="armv8" ;; esac
+# DSM 7 "arch" lists: the family plus the platform names Package Center reports, so a source or manual install
+# matches on every model. aarch64 is first class: the owner's test NAS is a DS223 (rtd1619b).
+# Unverified against Synology's current toolkit list: check "uname -a" / /etc.defaults/synoinfo.conf on new models.
+case "$ARCH" in
+  x86_64) SPK_ARCH="x86_64 apollolake avoton braswell broadwell broadwellnk broadwellnkv2 broadwellntbap bromolow cedarview denverton epyc7002 geminilake geminilakenk grantley kvmx64 purley r1000 r1000nk v1000 v1000nk"; ARCH_TAG=x86_64 ;;
+  aarch64) SPK_ARCH="armv8 rtd1619b rtd1296 armada37xx"; ARCH_TAG=armv8 ;;
+esac
 
 work="$(mktemp -d)"; trap 'rm -rf "$work"' EXIT
 target="$work/target" spk="$work/spk"
@@ -33,7 +39,9 @@ cp "$HERE/app/folevi.sc" "$target/app/folevi.sc"
 
 (cd "$target" && tar --sort=name --owner=0 --group=0 --numeric-owner -cf - .) | gzip -n -6 > "$spk/package.tgz"
 
-cp "$HERE"/scripts/* "$spk/scripts/"; chmod 755 "$spk"/scripts/*
+cp "$HERE"/scripts/* "$spk/scripts/"
+cp "$PACKAGING_DIR/lib/pre-update-backup.sh" "$spk/scripts/pre-update-backup"
+chmod 755 "$spk"/scripts/*
 cp "$HERE"/WIZARD_UIFILES/* "$spk/WIZARD_UIFILES/"
 cp "$HERE/conf/privilege" "$spk/conf/privilege"
 if [ "$webservice" = 1 ]; then
@@ -54,7 +62,7 @@ export SPK_CHECKSUM="$(md5sum "$spk/package.tgz" | cut -d' ' -f1)"
 export SPK_CREATE_TIME="$(date -u ${SOURCE_DATE_EPOCH:+-d @$SOURCE_DATE_EPOCH} '+%Y%m%d-%H:%M:%S')"
 render "$HERE/INFO.in" "$spk/INFO"
 
-name="folevi-server-${VERSION}-dsm7-${SPK_ARCH}.spk"
+name="folevi-server-${VERSION}-dsm7-${ARCH_TAG}.spk"
 (cd "$spk" && tar --format=gnu --sort=name --owner=0 --group=0 --numeric-owner -cf "$OUT/$name" \
   INFO package.tgz scripts conf WIZARD_UIFILES PACKAGE_ICON.PNG PACKAGE_ICON_256.PNG LICENSE)
 log "built $OUT/$name"

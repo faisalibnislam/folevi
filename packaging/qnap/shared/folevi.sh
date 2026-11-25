@@ -70,7 +70,7 @@ case "$1" in
     running && exit 0
     prepare
     log "starting, data in $DATA"
-    as_user "FOLEVI_PACKAGE=qnap exec '$FOLEVID' run --data '$DATA' --bundle '$BUNDLE' >> '$QPKG_ROOT/folevid.out' 2>&1" &
+    as_user "FOLEVI_PACKAGE=qnap FOLEVI_MANAGED_BY=store exec '$FOLEVID' run --data '$DATA' --bundle '$BUNDLE' >> '$QPKG_ROOT/folevid.out' 2>&1" &
     echo $! > "$PID_FILE"
     sleep 2
     running || { log "folevid exited right away; see $DATA/logs/folevid.log"; exit 1; }

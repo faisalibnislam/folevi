@@ -6,6 +6,8 @@ package connect
 import (
 	"bytes"
 	"context"
+	"crypto/ed25519"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -85,6 +87,7 @@ func (c *Client) do(ctx context.Context, method, path string, in, out any) error
 type Registration struct {
 	ServerID string `json:"serverId"`
 	Token    string `json:"token"`
+	Hostname string `json:"hostname,omitempty"`
 }
 
 // Register creates the server's Connect entry. publicKey is the Ed25519 public key, base64.
@@ -112,8 +115,9 @@ func (c *Client) Update(ctx context.Context, id string, p Patch) error {
 
 // LinkCode is the answer to POST /v1/servers/{id}/link-codes.
 type LinkCode struct {
-	Code       string `json:"code"`
-	ApproveURL string `json:"approveUrl"`
+	Code       string     `json:"code"`
+	ApproveURL string     `json:"approveUrl"`
+	ExpiresAt  *time.Time `json:"expiresAt,omitempty"`
 }
 
 // NewLinkCode asks for a code the owner approves in their Folevi account (valid 10 minutes).
@@ -151,8 +155,9 @@ func (c *Client) DeleteACME(ctx context.Context, id, label, value string) error 
 
 // Reachability is POST /v1/servers/{id}/reachability.
 type Reachability struct {
-	Reachable bool   `json:"reachable"`
-	PublicIP  string `json:"publicIp"`
+	Reachable        bool   `json:"reachable"`
+	PublicIP         string `json:"publicIp"`
+	CertificateValid bool   `json:"certificateValid"`
 }
 
 // CheckReachable asks Connect to connect back to the public port.
@@ -169,4 +174,34 @@ func (c *Client) UploadDiagnostics(ctx context.Context, text string) (string, er
 	}
 	err := c.do(ctx, http.MethodPost, "/diagnostics", map[string]string{"text": text}, &r)
 	return r.Reference, err
+}
+
+// ReachPath is what Connect asks for on the HTTPS port during the reachability check (CONTRACT §9.1).
+const ReachPath = "/.well-known/folevi-connect/reach"
+
+// ReachMessage is the text the server signs for a nonce.
+func ReachMessage(serverID, nonce string) []byte {
+	return []byte("folevi-connect-reach:" + serverID + ":" + nonce)
+}
+
+// ReachHandler answers GET ReachPath?nonce=N with {"signature": base64(Ed25519 sign(ReachMessage))}, proving to
+// Connect that the HTTPS port it reached is this server. It answers 404 until the server is registered.
+func ReachHandler(serverID func() string, key func() (ed25519.PrivateKey, error)) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		id := serverID()
+		nonce := r.URL.Query().Get("nonce")
+		if r.Method != http.MethodGet || id == "" || nonce == "" || len(nonce) > 256 {
+			http.NotFound(w, r)
+			return
+		}
+		k, err := key()
+		if err != nil {
+			http.NotFound(w, r)
+			return
+		}
+		sig := ed25519.Sign(k, ReachMessage(id, nonce))
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Cache-Control", "no-store")
+		_ = json.NewEncoder(w).Encode(map[string]string{"signature": base64.StdEncoding.EncodeToString(sig)})
+	})
 }

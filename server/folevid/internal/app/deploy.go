@@ -127,6 +127,13 @@ func (a *App) ensureDeployed(ctx context.Context, force bool) error {
 	if err := a.conv.SetEnv(ctx, env); err != nil {
 		return fmt.Errorf("set env: %w", err)
 	}
+	// The Convex CLI refuses to push an auth config that reads an unset variable, and the keys only exist
+	// after the first deploy. A blank FOLEVI_JWKS means "none" to convex/lib/jwks.ts, so start with that.
+	if cur, err := a.conv.GetEnv(ctx, "FOLEVI_JWKS"); err == nil && cur == "" {
+		if err := a.conv.SetEnv(ctx, map[string]string{"FOLEVI_JWKS": " "}); err != nil {
+			return fmt.Errorf("set FOLEVI_JWKS placeholder: %w", err)
+		}
+	}
 	if err := cli.Deploy(ctx); err != nil {
 		return fmt.Errorf("deploy: %w", err)
 	}

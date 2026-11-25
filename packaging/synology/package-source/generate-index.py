@@ -95,21 +95,21 @@ def main():
         with open(os.path.join(a.out, name), "w") as f:
             json.dump({"packages": clean, "keyrings": []}, f, indent=1)
     dump("index.json", entries)
-    arches = sorted({x for e in entries for x in e["_arch"].split()})
+    arches = sorted({("armv8" if "armv8" in e["_arch"].split() else "x86_64") for e in entries})
     for arch in arches:
         dump(f"index-{arch}.json", [e for e in entries if arch in e["_arch"].split()])
     with open(os.path.join(a.out, "nginx-folevi-source.conf"), "w") as f:
         f.write("# Package Center sends ?arch=<platform or family>. Answer with the matching static index.\n")
         f.write("map $arg_arch $folevi_index {\n    default index.json;\n")
-        for arch in arches:
-            f.write(f"    {arch} index-{arch}.json;\n")
-        # Platform names some models send instead of the family (partial list; extend as needed).
-        for plat in ("apollolake", "geminilake", "denverton", "v1000", "r1000", "broadwellnk", "epyc7002"):
-            if "x86_64" in arches:
-                f.write(f"    {plat} index-x86_64.json;\n")
-        for plat in ("rtd1296", "rtd1619b", "armada37xx"):
-            if "armv8" in arches:
-                f.write(f"    {plat} index-armv8.json;\n")
+        # Every name in INFO arch maps to the family index that carries it (x86_64 or armv8).
+        fam = {}
+        for e in entries:
+            names = e["_arch"].split()
+            family = "armv8" if "armv8" in names else ("x86_64" if "x86_64" in names else names[0])
+            for n in names:
+                fam.setdefault(n, family)
+        for n in sorted(fam):
+            f.write(f"    {n} index-{fam[n]}.json;\n")
         f.write("}\nlocation = /synology/ { default_type application/json; try_files /synology/$folevi_index =404; }\n")
     print(f"wrote {len(entries)} package(s), arches: {', '.join(arches)}")
 

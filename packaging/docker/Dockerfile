@@ -26,16 +26,16 @@ COPY --chmod=0755 docker-entrypoint.sh /usr/local/bin/folevi-entrypoint
 
 ENV FOLEVI_DATA=/data \
     FOLEVI_BUNDLE=/opt/folevi \
-    FOLEVI_PACKAGE=container
+    FOLEVI_PACKAGE=container \
+    FOLEVI_MANAGED_BY=store
 
 USER folevi
 VOLUME ["/data"]
 EXPOSE 8460 8443
 
-# The web app's well-known file answers only when folevid, the backend and the web app are all up.
-# Our own Node does the check, so the image needs no curl.
-HEALTHCHECK --interval=30s --timeout=5s --start-period=120s --retries=3 \
-  CMD ["/opt/folevi/runtime/node/bin/node", "-e", "fetch('http://127.0.0.1:'+(process.env.FOLEVI_PORT||8460)+'/.well-known/folevi.json').then(r=>process.exit(r.ok?0:1),()=>process.exit(1))"]
+# "folevid healthcheck" exits 0 when the backend and the web app are running, so the image needs no curl.
+HEALTHCHECK --interval=30s --timeout=10s --start-period=180s --retries=3 \
+  CMD ["/opt/folevi/bin/folevid", "healthcheck", "--data", "/data"]
 
 STOPSIGNAL SIGTERM
 # Runs as uid 10001 by default. Run with user 0:0 only when the host makes /data as root: the entrypoint then

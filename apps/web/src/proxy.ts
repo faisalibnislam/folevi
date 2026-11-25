@@ -67,6 +67,7 @@ async function withNonce(request: NextRequest): Promise<NextResponse> {
     ...policyAddresses(),
     scriptHashes: [await themeBootScriptHash(), await signedInCheckScriptHash()],
     frameAncestors: request.nextUrl.pathname === "/place-sync" ? "self" : "none",
+    connectToServers: request.nextUrl.pathname === "/signin",
   });
   const headers = new Headers(request.headers);
   headers.set("x-nonce", nonce);

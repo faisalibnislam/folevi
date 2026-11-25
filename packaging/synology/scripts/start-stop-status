@@ -13,7 +13,7 @@ case "$1" in
       exit 1
     fi
     plog "starting Folevi Server, data in $DATA"
-    FOLEVI_PACKAGE=synology nohup "$FOLEVID" run --data "$DATA" --bundle "$BUNDLE" >> "$PKG_VAR/folevid.out" 2>&1 &
+    FOLEVI_PACKAGE=synology FOLEVI_MANAGED_BY=store nohup "$FOLEVID" run --data "$DATA" --bundle "$BUNDLE" >> "$PKG_VAR/folevid.out" 2>&1 &
     echo $! > "$PID_FILE"
     sleep 2
     if ! running; then plog "folevid exited right away; see $DATA/logs/folevid.log"; exit 1; fi

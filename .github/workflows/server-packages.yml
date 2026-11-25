@@ -1,0 +1,210 @@
+# Folevi Server packages: builds the bundle for x86_64 and aarch64, every package format from it, the apt and rpm
+# repositories, the container image (as an OCI archive) and runs the old-glibc test for QNAP.
+# Manual only. It never publishes, pushes an image, deploys or uploads to any store: everything ends as workflow
+# artifacts for the owner to check. The only secret is the optional repository signing key.
+name: Server packages
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Folevi version, for example 1.5.73 (empty: version.json)"
+        required: false
+        type: string
+      sign:
+        description: "Sign the apt/rpm repositories and rpm packages with the FOLEVI_PACKAGE_SIGNING_KEY secret"
+        required: false
+        type: boolean
+        default: false
+      fake_bundle:
+        description: "Use a fake bundle (packaging test only, no real server)"
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: server-packages-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  NFPM_VERSION: v2.43.0
+
+jobs:
+  bundle:
+    name: Bundle (${{ matrix.arch }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: x86_64
+            runner: ubuntu-24.04
+          - arch: aarch64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
+    outputs:
+      version: ${{ steps.v.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: v
+        name: Version
+        run: |
+          v="${{ inputs.version }}"
+          [ -n "$v" ] || v="$(jq -r .version version.json)"
+          echo "version=$v" >> "$GITHUB_OUTPUT"
+      - name: Build the bundle
+        if: ${{ !inputs.fake_bundle }}
+        run: |
+          # Interface agreed with the supervisor workstream (server/bundle/build-bundle.sh).
+          server/bundle/build-bundle.sh --version "${{ steps.v.outputs.version }}" --arch "${{ matrix.arch }}" --out "$RUNNER_TEMP/bundle"
+      - name: Make a fake bundle
+        if: ${{ inputs.fake_bundle }}
+        run: packaging/test/make-fake-bundle.sh "$RUNNER_TEMP/bundle" "${{ steps.v.outputs.version }}" "${{ matrix.arch }}" --native
+      - name: Pack the bundle
+        run: |
+          cd "$RUNNER_TEMP/bundle"
+          d="$(ls -d folevi-server-*-linux-${{ matrix.arch }})"
+          tar -cJf "$RUNNER_TEMP/$d.tar.xz" "$d"
+          echo "BUNDLE_TAR=$RUNNER_TEMP/$d.tar.xz" >> "$GITHUB_ENV"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: bundle-${{ matrix.arch }}
+          path: ${{ env.BUNDLE_TAR }}
+          retention-days: 14
+
+  packages:
+    name: Packages (${{ matrix.arch }})
+    needs: bundle
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: x86_64
+            runner: ubuntu-24.04
+          - arch: aarch64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.24"
+          cache: false
+      - name: Tools
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq patchelf jq libxml2-utils xz-utils dpkg-dev
+          go install github.com/goreleaser/nfpm/v2/cmd/nfpm@${NFPM_VERSION}
+          echo "$HOME/go/bin" >> "$GITHUB_PATH"
+      - name: QNAP QDK (optional; falls back to the scripted .qpkg)
+        continue-on-error: true
+        run: |
+          # QNAP's QDK builds the release .qpkg with QNAP's checksum. Unverified on GitHub runners.
+          git clone --depth 1 https://github.com/qnap-dev/QDK "$RUNNER_TEMP/QDK"
+          cd "$RUNNER_TEMP/QDK" && sudo ./InstallToUbuntu.sh install
+          command -v qbuild
+      - uses: actions/download-artifact@v4
+        with:
+          name: bundle-${{ matrix.arch }}
+          path: ${{ runner.temp }}/in
+      - name: Unpack the bundle
+        run: |
+          mkdir -p "$RUNNER_TEMP/bundle"
+          tar -xJf "$RUNNER_TEMP"/in/*.tar.xz -C "$RUNNER_TEMP/bundle"
+          echo "BUNDLE=$(ls -d "$RUNNER_TEMP"/bundle/folevi-server-*)" >> "$GITHUB_ENV"
+      - name: Signing key (optional)
+        if: ${{ inputs.sign }}
+        env:
+          KEY: ${{ secrets.FOLEVI_PACKAGE_SIGNING_KEY }}
+        run: |
+          [ -n "$KEY" ] || { echo "FOLEVI_PACKAGE_SIGNING_KEY is not set"; exit 1; }
+          umask 077
+          printf '%s\n' "$KEY" > "$RUNNER_TEMP/signing.asc"
+          echo "FOLEVI_RPM_SIGNING_KEY_FILE=$RUNNER_TEMP/signing.asc" >> "$GITHUB_ENV"
+      - name: Build every package
+        run: |
+          packaging/build-all.sh --bundle "$BUNDLE" --version "${{ needs.bundle.outputs.version }}" \
+            --arch "${{ matrix.arch }}" --out "$RUNNER_TEMP/out" --keep-going
+          rm -f "$RUNNER_TEMP/signing.asc"
+      - name: Old-glibc test (QNAP private glibc)
+        run: |
+          packaging/test/test-private-glibc.sh --bundle "$BUNDLE" --arch "${{ matrix.arch }}" \
+            --images "ubuntu:16.04 centos:7" --require-docker
+      - uses: actions/upload-artifact@v4
+        with:
+          name: packages-${{ matrix.arch }}
+          path: |
+            ${{ runner.temp }}/out/*/*.spk
+            ${{ runner.temp }}/out/*/*.qpkg
+            ${{ runner.temp }}/out/*/*.apk
+            ${{ runner.temp }}/out/*/*.tpk
+            ${{ runner.temp }}/out/*/*.upk
+            ${{ runner.temp }}/out/*/*.deb
+            ${{ runner.temp }}/out/*/*.rpm
+            ${{ runner.temp }}/out/unraid/*
+          retention-days: 14
+      - uses: actions/upload-artifact@v4
+        with:
+          name: docker-context-${{ matrix.arch }}
+          path: ${{ runner.temp }}/out/docker/docker-context
+          retention-days: 3
+
+  repositories:
+    name: apt, rpm and Synology sources
+    needs: [bundle, packages]
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Tools
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq dpkg-dev createrepo-c jq
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: packages-*
+          path: ${{ runner.temp }}/pk
+          merge-multiple: true
+      - name: Build the repositories
+        env:
+          FOLEVI_REPO_GPG_PRIVATE_KEY: ${{ inputs.sign && secrets.FOLEVI_PACKAGE_SIGNING_KEY || '' }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/debs" "$RUNNER_TEMP/rpms" "$RUNNER_TEMP/spks"
+          find "$RUNNER_TEMP/pk" -name '*.deb' -exec cp {} "$RUNNER_TEMP/debs/" \;
+          find "$RUNNER_TEMP/pk" -name '*.rpm' -exec cp {} "$RUNNER_TEMP/rpms/" \;
+          find "$RUNNER_TEMP/pk" -name '*.spk' -exec cp {} "$RUNNER_TEMP/spks/" \;
+          packaging/linux/repo/build-apt-repo.sh --debs "$RUNNER_TEMP/debs" --out "$RUNNER_TEMP/repos/apt"
+          packaging/linux/repo/build-rpm-repo.sh --rpms "$RUNNER_TEMP/rpms" --out "$RUNNER_TEMP/repos/rpm/stable"
+          python3 packaging/synology/package-source/generate-index.py --spks "$RUNNER_TEMP/spks" \
+            --base-url https://pkg.folevi.com/synology --out "$RUNNER_TEMP/repos/synology"
+          cp packaging/linux/install.sh "$RUNNER_TEMP/repos/install.sh"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: repositories
+          path: ${{ runner.temp }}/repos
+          retention-days: 14
+
+  image:
+    name: Container image (not pushed)
+    needs: [bundle, packages]
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: bundle-*
+          path: ${{ runner.temp }}/in
+          merge-multiple: true
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+      - name: Build the multi-arch image as an OCI archive
+        run: |
+          mkdir -p "$RUNNER_TEMP/b"
+          for f in "$RUNNER_TEMP"/in/*.tar.xz; do tar -xJf "$f" -C "$RUNNER_TEMP/b"; done
+          packaging/docker/build.sh --bundle "$(ls -d "$RUNNER_TEMP"/b/*-linux-x86_64)" \
+            --bundle-arm64 "$(ls -d "$RUNNER_TEMP"/b/*-linux-aarch64)" \
+            --version "${{ needs.bundle.outputs.version }}" --arch x86_64 --out "$RUNNER_TEMP/img" --build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: container-image
+          path: ${{ runner.temp }}/img/*.oci.tar
+          retention-days: 7

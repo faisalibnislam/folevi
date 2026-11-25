@@ -14,6 +14,7 @@ build_systemd_nas() {
   export_template_vars; export PLATFORM APP_DIR DATA_DEFAULT
   render "$PACKAGING_DIR/lib/folevi-systemd.service.in" "$pkg/app/folevi.service"
   cp "$PACKAGING_DIR/lib/systemd-nas-scripts.sh" "$pkg/app/systemd-nas-scripts.sh"
+  cp "$PACKAGING_DIR/lib/pre-update-backup.sh" "$pkg/app/pre-update-backup.sh"
   for a in preinst postinst prerm postrm; do
     printf '#!/bin/sh\n# Unverified hook name: see README.md.\nexec sh "$(dirname "$0")/../app/systemd-nas-scripts.sh" %s "%s" "%s"\n' \
       "$a" "$APP_DIR" "$DATA_DEFAULT" > "$pkg/scripts/$a"

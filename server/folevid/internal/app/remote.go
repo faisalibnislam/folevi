@@ -141,7 +141,13 @@ func (a *App) connectStep(ctx context.Context) error {
 			return err
 		}
 		a.red.Add(reg.Token)
-		if err := a.cfg.Update(func(c *config.Config) error { c.Connect.ServerID = reg.ServerID; return nil }); err != nil {
+		if err := a.cfg.Update(func(c *config.Config) error {
+			c.Connect.ServerID = reg.ServerID
+			if reg.Hostname != "" {
+				c.Connect.Hostname = reg.Hostname
+			}
+			return nil
+		}); err != nil {
 			return err
 		}
 		a.log.Info("registered with folevi connect", "serverId", reg.ServerID)
@@ -291,6 +297,11 @@ func (a *App) relayStep(ctx context.Context) {
 		Target: net.JoinHostPort("127.0.0.1", strconv.Itoa(c.HTTPSPort)),
 		Log:    a.log,
 	}
+	a.httpsMu.Lock()
+	if a.relayLn != nil {
+		r.Deliver = a.relayLn.Put
+	}
+	a.httpsMu.Unlock()
 	a.remote.relay, a.remote.relayStop = r, cancel
 	go r.Run(rctx)
 }
@@ -386,6 +397,9 @@ func (a *App) ConnectLink() (control.Link, error) {
 		return control.Link{}, err
 	}
 	exp := time.Now().Add(10 * time.Minute).UTC()
+	if lc.ExpiresAt != nil {
+		exp = lc.ExpiresAt.UTC()
+	}
 	a.remote.mu.Lock()
 	start := a.remote.linkUntil.Before(time.Now())
 	a.remote.linkUntil = exp

@@ -4,6 +4,7 @@ package app
 
 import (
 	"context"
+	"crypto/ed25519"
 	"crypto/tls"
 	"errors"
 	"fmt"
@@ -83,6 +84,7 @@ type App struct {
 	cert     atomic.Pointer[tls.Certificate]
 	httpsMu  sync.Mutex
 	httpsSrv *http.Server
+	relayLn  *connect.ChanListener
 	servers  []*http.Server
 
 	remote remoteState
@@ -533,9 +535,19 @@ func (a *App) startHTTPS() error {
 	if bind == "" {
 		bind = "0.0.0.0"
 	}
+	mux := http.NewServeMux()
+	mux.Handle(connect.ReachPath, connect.ReachHandler(
+		func() string { return a.cfg.Get().Connect.ServerID },
+		func() (ed25519.PrivateKey, error) {
+			if tok, _ := a.sec.Get(secrets.ConnectToken); tok == "" {
+				return nil, errors.New("not registered")
+			}
+			return a.sec.ConnectKeyPair()
+		}))
+	mux.Handle("/", a.proxyHandler("https"))
 	srv := &http.Server{
 		Addr:              net.JoinHostPort(bind, strconv.Itoa(c.HTTPSPort)),
-		Handler:           a.proxyHandler("https"),
+		Handler:           mux,
 		ReadHeaderTimeout: 30 * time.Second,
 		ErrorLog:          slogErrorLog(a.log),
 		TLSConfig: &tls.Config{
@@ -554,11 +566,15 @@ func (a *App) startHTTPS() error {
 	}
 	a.httpsSrv = srv
 	a.servers = append(a.servers, srv)
-	go func() {
-		if err := srv.ServeTLS(ln, "", ""); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			a.log.Error("https server stopped", "err", err)
-		}
-	}()
+	// Relay streams (already stripped of their PROXY line) are served by the same HTTPS server.
+	a.relayLn = connect.NewChanListener(ln.Addr())
+	for _, l := range []net.Listener{ln, a.relayLn} {
+		go func(l net.Listener) {
+			if err := srv.ServeTLS(l, "", ""); err != nil && !errors.Is(err, http.ErrServerClosed) {
+				a.log.Error("https server stopped", "err", err)
+			}
+		}(l)
+	}
 	a.log.Info("https listener started", "addr", srv.Addr)
 	return nil
 }

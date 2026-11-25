@@ -4,8 +4,8 @@
 {% do c1.set_user(values.run_as.user, values.run_as.group) %}
 {% do c1.set_stop_grace_period(60) %}
 {% do c1.set_command(["run", "--data", values.consts.data_path, "--bundle", "/opt/folevi"]) %}
-{# The image has no curl or wget; check with its own Node (unverified helper name: check the library version). #}
-{% do c1.healthcheck.set_custom_test(["CMD", "/opt/folevi/runtime/node/bin/node", "-e", "fetch('http://127.0.0.1:%d/.well-known/folevi.json').then(r=>process.exit(r.ok?0:1),()=>process.exit(1))" | format(values.network.web_port.port_number)]) %}
+{# The image has no curl or wget; folevid has its own check (unverified helper name: check the library version). #}
+{% do c1.healthcheck.set_custom_test(["CMD", "/opt/folevi/bin/folevid", "healthcheck", "--data", values.consts.data_path]) %}
 
 {% do c1.environment.add_env("FOLEVI_PORT", values.network.web_port.port_number) %}
 {% do c1.environment.add_env("FOLEVI_PACKAGE", "truenas") %}

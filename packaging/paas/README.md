@@ -12,8 +12,11 @@ persistent volume at `/data`. **Unverified: deploy each once before publishing a
 | Render | `render/render.yaml` | Blueprint; a persistent disk needs a paid instance type |
 
 Every platform puts its own HTTPS proxy in front. Folevi Server must then use the platform's public address as
-its origin: these templates set `FOLEVI_PUBLIC_URL`, which needs folevid to read that variable (proposed
-addition to `docs/self-hosting/CONTRACT.md`, see `../README.md`). Folevi Connect names under `folevi.app` are not
-needed on these platforms.
+its origin: these templates set `FOLEVI_PUBLIC_URL`, which folevid reads (server/folevid config). Folevi Connect
+names under `folevi.app` are not needed on these platforms.
+
+Volumes on Fly, Render and Railway are owned by root, so those templates use a two-line Dockerfile
+(`FROM` the image, `USER root`): the image's entrypoint then fixes the owner of `/data` and drops to uid 10001
+before folevid starts. folevid never runs as root.
 
 Memory: give the service at least 1 GB (2 GB recommended); Folevi Server does not fit in 512 MB.

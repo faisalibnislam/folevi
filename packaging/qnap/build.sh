@@ -42,7 +42,7 @@ cp "$HERE/shared/folevi.sh" "$proj/shared/folevi.sh"; chmod 755 "$proj/shared/fo
 cp "$PACKAGING_DIR/icons/folevi-qnap-64.gif" "$proj/icons/folevi.gif"
 cp "$PACKAGING_DIR/icons/folevi-qnap-80.gif" "$proj/icons/folevi_80.gif"
 cp "$PACKAGING_DIR/icons/folevi-qnap-64-gray.gif" "$proj/icons/folevi_gray.gif"
-cp "$HERE/package_routines" "$proj/package_routines"
+embed_backup_helper "$HERE/package_routines" "$proj/package_routines"
 export_template_vars
 render "$HERE/qpkg.cfg.in" "$proj/qpkg.cfg"
 name="folevi-server-${VERSION}-qts5-${QARCH}.qpkg"

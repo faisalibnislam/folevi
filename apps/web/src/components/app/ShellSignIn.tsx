@@ -20,6 +20,8 @@ import { FoleviLogo } from "@/components/brand/FoleviMark";
 import { ModeChoice, PRE_APP_PAGE, mobileApp, preAppBackground, preAppTitle, useSystemTheme } from "./ModeChoice";
 import { MOBILE_TEXT_BUTTON } from "./LibrarySetup";
 import { NativeGate, type NativeGateAction } from "@/lib/engine/NativeGate";
+import { OwnServerAddress } from "@/components/server/OwnServerSignIn";
+import { canAddServerPlace } from "@/lib/server-edition/handoff";
 
 /** The phone and tablet apps' sign-in buttons: full width, 50 tall, 17 pt (12 apart, from the grid). */
 const MOBILE_BUTTON = "!h-[50px] w-full !rounded-control !text-headline font-semibold";
@@ -31,7 +33,8 @@ export function ShellSignIn() {
   // The phone and tablet screen isn't a FullPageMessage: it follows the system's appearance itself.
   useSystemTheme();
   // "choose": Apple, Google or email, before anything opens.
-  const [state, setState] = useState<"idle" | "choose" | "waiting" | "failed">("idle");
+  // "server": "Your own server" (docs/self-hosting/CONTRACT.md §6), on hosts that can add a server place.
+  const [state, setState] = useState<"idle" | "choose" | "waiting" | "failed" | "server">("idle");
   const [way, setWay] = useState<SignInWay>("email");
   const [apple, setApple] = useState<"idle" | "busy" | { error: string }>("idle");
   // Opening the sheet again replaces the attempt before it, which then answers false: only the latest counts.
@@ -101,6 +104,11 @@ export function ShellSignIn() {
           <Button variant="secondary" className={buttonClass} disabled={apple === "busy"} onClick={() => void start("email")}>
             Sign in with email
           </Button>
+          {canAddServerPlace() ? (
+            <Button variant="ghost" className={buttonClass} disabled={apple === "busy"} onClick={() => setState("server")}>
+              Sign in to your own server
+            </Button>
+          ) : null}
         </>
       )}
       {typeof apple === "object" && !waiting ? (
@@ -148,6 +156,17 @@ export function ShellSignIn() {
           }}
         />
       </div>
+    );
+  if (state === "server")
+    return (
+      <FullPageMessage title="Your own server" body="Enter the address of a Folevi server. It's added beside your other places.">
+        <div className="grid gap-3 text-left">
+          <OwnServerAddress />
+          <Button variant="ghost" className={MAC_BUTTON} onClick={() => setState("choose")}>
+            Back
+          </Button>
+        </div>
+      </FullPageMessage>
     );
   if (mobile)
     // The phone and tablet apps: a screen of the app's own (no web card), the buttons iOS's size.

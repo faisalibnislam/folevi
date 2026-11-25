@@ -1,10 +1,12 @@
 #!/bin/sh
-# DSM has stopped the old version. Take a pre-update backup with the old program before it is replaced.
+# Take a pre-update backup with the old program before it is replaced (it is started briefly if DSM has
+# already stopped it). Runs as the package user.
 . "$(dirname "$0")/common"
+. "$(dirname "$0")/pre-update-backup"
 DATA="$(data_dir)"
 if [ -x "$FOLEVID" ] && [ -d "$DATA" ]; then
   plog "pre-update backup of $DATA"
-  if "$FOLEVID" backup --data "$DATA" --bundle "$BUNDLE" >> "$LOG_FILE" 2>&1; then
+  if folevi_pre_update_backup "$FOLEVID" "$DATA" "$BUNDLE" >> "$LOG_FILE" 2>&1; then
     plog "pre-update backup done"
   else
     # Not fatal: folevid also backs up before it migrates on first start of the new version.

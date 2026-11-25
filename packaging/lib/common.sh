@@ -118,3 +118,19 @@ export_template_vars() {
 }
 
 icon() { echo "$PACKAGING_DIR/icons/folevi-$1.png"; }
+
+# Copy <src> to <dst>, replacing the line "# @@PRE_UPDATE_BACKUP_HELPER@@" with a shell variable that holds
+# lib/pre-update-backup.sh, so a root script can run it as the service user: printf ... | su ... sh -s
+embed_backup_helper() {
+  python3 - "$1" "$2" "$PACKAGING_DIR/lib/pre-update-backup.sh" <<'PY'
+import sys
+src, dst, helper = sys.argv[1:4]
+text = open(src).read()
+marker = "# @@PRE_UPDATE_BACKUP_HELPER@@"
+if marker not in text:
+    sys.exit(f"{src}: no {marker} line")
+block = "FOLEVI_BACKUP_HELPER=$(cat <<'FOLEVI_HELPER'\n" + open(helper).read() + "FOLEVI_HELPER\n)"
+open(dst, "w").write(text.replace(marker, block))
+PY
+  chmod --reference="$1" "$2"
+}

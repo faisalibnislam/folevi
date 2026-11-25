@@ -10,9 +10,11 @@ case "$action" in
   preinst)
     if [ -x "$app/bundle/bin/folevid" ] && [ -f "$envf" ]; then
       . "$envf"
+      { cat "$(dirname "$0")/pre-update-backup.sh"
+        printf 'folevi_pre_update_backup "%s" "%s" "%s"\n' "$app/bundle/bin/folevid" "$FOLEVI_DATA" "$app/bundle"
+      } | runuser -u folevi -- sh -s \
+        || echo "Folevi Server: pre-update backup did not finish; folevid protects its own migrations."
       systemctl stop folevi.service 2>/dev/null || true
-      runuser -u folevi -- "$app/bundle/bin/folevid" backup --data "$FOLEVI_DATA" --bundle "$app/bundle" \
-        || echo "Folevi Server: pre-update backup did not finish; folevid backs up again before migrating."
     fi
     ;;
   postinst)

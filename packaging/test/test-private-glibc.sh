@@ -6,7 +6,7 @@
 # Checks, in each image:
 #   1. the plain binaries FAIL there (proves the image really is too old; informative)
 #   2. "ld.so --library-path runtime/lib <program>" works: node --version, convex-backend --help
-#   3. the QNAP way works: binaries patched by packaging/qnap/patch-private-glibc.sh, loader linked at
+#   3. the QNAP way works (and so does folevid's own "ld.so --library-path" wrapping of the patched files): binaries patched by packaging/qnap/patch-private-glibc.sh, loader linked at
 #      /usr/local/lib/folevi-rt/ld.so, run directly; for a real node also a child process via process.execPath
 # A real bundle gets runtime/lib from Ubuntu 22.04 (packaging/qnap/populate-runtime-lib.sh). A fake bundle made
 # with "make-fake-bundle.sh ... --native" was compiled on this machine, so its runtime/lib comes from "/" here.
@@ -70,6 +70,7 @@ checks() { # $1: label. Runs inside the old system, with the plain bundle at /b 
     ln -sfn /p/runtime/lib/$loader /usr/local/lib/folevi-rt/ld.so
     /p/runtime/node/bin/node --version
     /p/bin/convex-backend --help | head -n 1
+    /p/runtime/lib/$loader --library-path /p/runtime/lib /p/runtime/node/bin/node --version
     $node_child
     echo 'ok: private glibc works in $1'
 SCRIPT

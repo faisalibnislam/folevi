@@ -43,10 +43,12 @@ do_start() {
   chown "$RUN_AS:users" "$DATA_DIR"
   if [ -n "$old" ] && [ "$old" != "$new" ] && [ -x "$old/bin/folevid" ]; then
     log "update: pre-update backup with $old"
-    su -s /bin/sh "$RUN_AS" -c "'$old/bin/folevid' backup --data '$DATA_DIR' --bundle '$old'" || log "pre-update backup failed"
+    { cat /usr/local/emhttp/plugins/folevi/scripts/pre-update-backup.sh
+      printf 'folevi_pre_update_backup "%s" "%s" "%s"\n' "$old/bin/folevid" "$DATA_DIR" "$old"
+    } | su -s /bin/sh "$RUN_AS" -c "sh -s" || log "pre-update backup failed; folevid protects its own migrations"
   fi
   log "starting Folevi Server, data in $DATA_DIR"
-  su -s /bin/sh "$RUN_AS" -c "FOLEVI_PACKAGE=unraid exec '$new/bin/folevid' run --data '$DATA_DIR' --bundle '$new' >> /var/log/folevi.log 2>&1" &
+  su -s /bin/sh "$RUN_AS" -c "FOLEVI_PACKAGE=unraid FOLEVI_MANAGED_BY=store exec '$new/bin/folevid' run --data '$DATA_DIR' --bundle '$new' >> /var/log/folevi.log 2>&1" &
   echo $! > "$PID_FILE"
 }
 

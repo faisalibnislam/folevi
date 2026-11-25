@@ -234,7 +234,22 @@ class MainActivity : FragmentActivity(), PageView.Host {
             .put("webViewVersion", WebViewCompat.getCurrentWebViewPackage(this)?.versionName ?: "")
             // Native chrome: the native bars sit around the page, so it has no insets of its own.
             .put("insets", JSONObject().put("top", 0).put("right", 0).put("bottom", 0).put("left", 0).put("keyboard", 0))
-            .put("places", JSONObject().put("current", app.places.state.current ?: JSONObject.NULL).put("background", false))
+            // A camera for "Scan QR code" (places.scanCode); without one the page hides the button.
+            .put("camera", packageManager.hasSystemFeature(android.content.pm.PackageManager.FEATURE_CAMERA_ANY))
+            .put("places", placesBoot())
+    }
+
+    /**
+     * What the page knows of its place before its first render. `server` (CONTRACT §6.1): the open place's Folevi
+     * Server, or the sign-in screen's, with the addresses in use now; null for Folevi Cloud and the library.
+     * `serverReach` stays in the bridge script (the best connection); the page never sees it.
+     */
+    private fun placesBoot(): JSONObject {
+        val current = app.places.state.current
+        val server = app.places.serverOf(current)
+        val boot = JSONObject().put("current", current ?: JSONObject.NULL).put("background", false).put("server", server?.json() ?: JSONObject.NULL)
+        if (server != null && current != null) boot.put("serverReach", server.reachJson())
+        return boot
     }
 
     /** Several places: the session older builds kept moves to its account, then the page opens in it. */

@@ -170,6 +170,14 @@ Owner's answers (2026-11-25, relayed by the iOS session):
     in-app web pages.
   - Phone first, then tablet and foldable.
 
+More owner answers (2026-11-25):
+
+- The UX to keep is the **Capacitor app's** (the web phone and tablet UI).
+- Surfaces use **Folevi's own glass, colors and shadows** (`design/Glass.kt`, the web's `.ui-liquid` values), not
+  Material's tonal tint or elevation.
+- Touch feedback is **Android's ripple**.
+- "Your own server" is drawn natively **under the sign-in buttons, like the web**.
+
 Starting point: this app (sections 3 and 4), which still builds (59 unit tests pass, 2026-11-25) and runs in demo
 mode.
 
@@ -178,17 +186,32 @@ mode.
 1. **Phone bar** matches the web's (done 2026-11-25, `ui/PhoneBar.kt`):
    - Home, Tasks and Calendar in one floating capsule; Foli AI and + in another.
    - + offers New note, New folder and Quick task. On Tasks, + is Quick task straight away.
+   - Restyled to the web's look:
+     - Glass capsules with the web's shadow.
+     - Icon-only tabs, with a lens that slides between them.
+     - The gradient Foli AI mark (`design/AiMark.kt`).
+     - The dark + disc.
+   - One difference from the web: the bar sits above Android's gesture area.
+   - Headless UI tests: `PhoneBarTest`.
    - Still to do:
      - From template (needs a native templates screen).
      - Content scrolling under the bar.
-     - The lens sliding between tabs.
-2. **Port the Capacitor app's newer service work** into `apps/android` (most file differences are only the
-   plugin base class):
+2. **Port the Capacitor app's newer service work** into `apps/android` (done 2026-11-25 for "Your own server";
+   most file differences are only the plugin base class). Ported:
    - "Your own server": `server/ShellServer.kt`, `server/LocalServers.kt`, `Places.kt` (server places),
      `AuthBridge` per-site sign-in, `PlacesPlugin` (addServer, localServers, scanCode, setActiveOrigin).
    - The per-place CSP and the Http home-network rule.
    - SaveTargets and PlaceOutbox skipping server places.
-   - PR 108's keyboard and polish fixes in `MainActivity`.
+   - Also:
+     - The page's bridge (`places.server`, `addServerPlace`, `scanCode`, `listLocalServers`, best connection
+       through `folevi-server.js`).
+     - Cleartext only to home addresses.
+     - `server/ServerSignIn.kt`, shared by the bridge and the native block.
+   - The native block is `ui/OwnServer.kt` (`OwnServerTest`), shown under Folevi Cloud's sign-in gate.
+   - Not yet checked on an emulator: the sign-in gate needs the dev server. A full server sign-in and a real QR
+     read are untested.
+   - Not ported, since they're Capacitor-only and the native chrome replaces them: PR 108's keyboard and polish
+     fixes in the Capacitor `MainActivity`.
 3. **Screen-by-screen match with the web phone layout**, with screenshot tests per screen against the web's:
    - Home (glass top bar, Recent cards, rows, Starred).
    - Notes lists (swipe actions, Select mode, Organize).

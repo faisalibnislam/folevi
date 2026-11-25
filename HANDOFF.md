@@ -1217,6 +1217,12 @@ account button should move past iPadOS's window buttons).
 
 ## 12. Change log
 
+- 2026-11-25: Android native: "Your own server" ported from the Capacitor app.
+  - What moved: the server code, places, per-site sign-in, CSP, cleartext to home addresses, and the bridge.
+  - A native block under the sign-in gate, like the web's (`ui/OwnServer.kt`).
+  - The phone bar restyled with Folevi's glass and shadows (`design/Glass.kt`, `design/AiMark.kt`; owner: Capacitor app's UX, Folevi styling, Android ripple).
+  - Robolectric 4.18.1 Compose UI tests (headless).
+  - Results: 68 app tests pass; the sign-in gate is not yet checked on an emulator (it needs the dev server).
 - 2026-11-25: Android native Compose resumed (owner, relayed by the iOS session). `apps/android` on `main` builds and its 59 unit tests pass; the phone bar now matches the web's (Home, Tasks, Calendar capsule plus Foli AI and + capsule, `ui/PhoneBar.kt`); gap plan in `docs/ANDROID_NATIVE_PLAN.md` section 6. Branch `claude/android-native-compose`.
 - 2026-11-25: **Integration branch `claude/integration-2026-11-25`** (the owner: "check and resolve [the merging issues]
   and release all apps and platforms, I approve everything"). The backlog could not drain PR by PR: every PR edits

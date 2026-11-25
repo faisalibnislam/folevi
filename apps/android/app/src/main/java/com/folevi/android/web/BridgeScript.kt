@@ -17,6 +17,10 @@ class BridgeScript(private val context: Context) {
     private val source: String by lazy { context.assets.open("folevi-bridge.js").bufferedReader().use { it.readText() } }
     /** The bridge's TypeScript half (scripts/bundle-bridge.mjs): defines FoleviCloudKit, local to the wrapper below. */
     private val kit: String by lazy { context.assets.open("folevi-cloud.js").bufferedReader().use { it.readText() } }
+    /** The best connection to a Folevi Server (scripts/bundle-bridge.mjs): defines FoleviServerReach, also local. */
+    private val reach: String by lazy {
+        runCatching { context.assets.open("folevi-server.js").bufferedReader().use { it.readText() } }.getOrDefault("var FoleviServerReach = null;")
+    }
 
     fun supported(): Boolean = WebViewFeature.isFeatureSupported(WebViewFeature.DOCUMENT_START_SCRIPT)
 
@@ -25,7 +29,7 @@ class BridgeScript(private val context: Context) {
         handle?.remove()
         handle = null
         if (!supported()) return
-        val script = "$prelude\n(function () {\n$kit\n;(${source.trimEnd().removeSuffix(";")})($boot, FoleviCloudKit);\n})();"
+        val script = "$prelude\n(function () {\n$kit\n;$reach\n;(${source.trimEnd().removeSuffix(";")})($boot, FoleviCloudKit, FoleviServerReach);\n})();"
         handle = WebViewCompat.addDocumentStartJavaScript(webView, script, setOf(origin))
     }
 }

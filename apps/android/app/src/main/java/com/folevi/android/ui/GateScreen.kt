@@ -63,6 +63,9 @@ fun GateScreen(gate: GateChangedEvent) {
             for (a in gate.actions) {
                 GateButton(a) { scope.launch { runCatching { session.client.command(Commands.gateAct(action = a.id, values = values.toMap())) } } }
             }
+            // "Your own server" under Folevi Cloud's sign-in, as on the web (OwnServer.kt). Not on a server's own
+            // sign-in screen (that place is already a server).
+            if (gate.gate == "signedOut" && com.folevi.android.FoleviApp.instance.places.actingServer == null) OwnServerSignIn(Modifier.padding(top = 8.dp))
         }
     }
 }

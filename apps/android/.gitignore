@@ -5,3 +5,4 @@ local.properties
 /app/src/main/assets/public/
 /app/src/debug/assets/demo/
 /app/src/main/assets/folevi-cloud.js
+/app/src/main/assets/folevi-server.js

@@ -20,6 +20,9 @@ fun interface LocalFiles {
  * ([Links]: the app's own pages stay in the web view, other sites open in a Custom Tab, mail and phone links go
  * to their apps, folevi:// links go to the page, everything else never loads), and the page's lifecycle for the
  * engine transport.
+ *
+ * Each HTML page of the app also gets the open place's Content-Security-Policy header ([pagePolicy],
+ * ShellServer.Policy): a Folevi Server place's pages reach that server only; it narrows the export's meta policy.
  */
 class FoleviWebViewClient(
     private val appOrigin: String,
@@ -30,6 +33,8 @@ class FoleviWebViewClient(
     private val files: LocalFiles?,
     private val onStarted: () -> Unit,
     private val onGone: () -> Unit,
+    /** The policy header for the app's HTML pages, or null for none. */
+    private val pagePolicy: () -> String? = { null },
 ) : WebViewClient() {
 
     override fun shouldInterceptRequest(view: WebView, request: WebResourceRequest): WebResourceResponse? {
@@ -38,7 +43,13 @@ class FoleviWebViewClient(
         if (files != null && url.encodedPath?.startsWith("/_files/") == true) {
             return files.serve(request) ?: WebResourceResponse("text/plain", "utf-8", 404, "Not Found", mapOf("x-content-type-options" to "nosniff"), null)
         }
-        return assets(url)
+        val res = assets(url) ?: return null
+        if (res.mimeType?.startsWith("text/html") == true) {
+            pagePolicy()?.let { policy ->
+                res.responseHeaders = HashMap(res.responseHeaders ?: emptyMap()).apply { put("Content-Security-Policy", policy) }
+            }
+        }
+        return res
     }
 
     override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {

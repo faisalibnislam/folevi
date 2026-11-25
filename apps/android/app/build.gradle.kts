@@ -89,6 +89,8 @@ android {
 
     testOptions {
         unitTests.isReturnDefaultValues = true
+        // Robolectric reads the merged resources and manifest (the Compose UI tests).
+        unitTests.isIncludeAndroidResources = true
     }
 
     androidResources {
@@ -142,6 +144,8 @@ dependencies {
     implementation(libs.glance.appwidget)
     // The document scanner and the words in an image (ML Kit, on the phone).
     implementation(libs.mlkit.docscanner)
+    // "Scan QR code" for a Folevi Server invite (places.scanCode): Google's scanner, no camera permission.
+    implementation(libs.code.scanner)
     implementation(libs.mlkit.text)
     // Notifications from Folevi's server (Firebase Cloud Messaging), switched on by the Firebase settings above.
     implementation(platform(libs.firebase.bom))
@@ -151,6 +155,11 @@ dependencies {
     testImplementation(libs.orgjson)
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.okhttp.mockwebserver)
+    // Headless Compose UI tests of the native screens (Robolectric: no emulator, nothing on the desktop).
+    testImplementation(platform(libs.compose.bom))
+    testImplementation(libs.compose.ui.test.junit4)
+    testImplementation(libs.robolectric)
+    debugImplementation(libs.compose.ui.test.manifest)
 }
 
 // The bridge's TypeScript half (apps/android/bridge with packages/cloud-folders) into assets/folevi-cloud.js.

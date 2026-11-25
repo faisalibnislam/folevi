@@ -1259,6 +1259,11 @@ account button should move past iPadOS's window buttons).
   `DATABASE_UDF_USER_TIMEOUT_SECONDS=4` for that backend. Bursts show in `convex.log` as "took a long time".
 
 ## 12. Change log
+- 2026-11-25: **Windows and Linux parity PRs landed together** (branch `claude/desktop-parity-integration`): PRs 116,
+  118, 119, 120, 121, 123, 124, 125, 126 and 127 merged into one branch (each conflicted with the next in HANDOFF.md,
+  Cargo.toml and lib.rs). Resolved once: one `windows` crate line with every feature; the page's boot carries the
+  server, the lock and `background`; background sync's unread count uses each Folevi Server account's own Convex
+  and site; the open windows are saved in `prepare_to_quit`, so an update's restart keeps them too. 177 Rust tests.
 - 2026-11-25: **Your own server in Folevi for Windows and Linux** (branch `claude/desktop-server-places`, item 2 of
   docs/DESKTOP_PARITY.md): `src/server.rs` ports ShellServer (address and folevi.json checks, names, page policy,
   ServerReach, Bonjour); places, sign-in, Convex tokens and the page's config follow each account's server. Rust

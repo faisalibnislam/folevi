@@ -5,6 +5,8 @@
 // components. A tile inserts below the current line (`insert { kind }`).
 package com.folevi.android.ui
 
+import androidx.compose.ui.semantics.heading
+
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -142,7 +144,7 @@ internal fun InsertSheetContent(scanner: Boolean, stockPhotos: Boolean, insert: 
 private fun InsertSection(s: InsertSectionSpec, first: Boolean, showTable: Boolean, insert: (String) -> Unit) {
     val p = LocalPalette.current
     Column(Modifier.fillMaxWidth().padding(top = if (first) 0.dp else 24.dp)) {
-        Text(s.title.uppercase(), style = PhoneType.eyebrow, color = p.inkMuted, modifier = Modifier.padding(start = 4.dp, end = 4.dp, bottom = 10.dp))
+        Text(s.title.uppercase(), style = PhoneType.eyebrow, color = p.inkMuted, modifier = Modifier.padding(start = 4.dp, end = 4.dp, bottom = 10.dp).semantics { heading() })
         // Four to a row: 8 across, 6 down (the label's two lines keep rows apart, 14 between pictures).
         s.tiles.chunked(4).forEach { row ->
             Row(Modifier.fillMaxWidth().padding(bottom = 6.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {

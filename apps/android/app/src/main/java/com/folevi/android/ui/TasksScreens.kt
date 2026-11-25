@@ -5,6 +5,12 @@
 // and shadows (design/PhoneKit.kt), Android's ripple, Material for sheets, menus and pickers.
 package com.folevi.android.ui
 
+import androidx.compose.ui.semantics.heading
+
+import androidx.compose.ui.state.ToggleableState
+
+import androidx.compose.foundation.selection.triStateToggleable
+
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
@@ -290,7 +296,7 @@ fun TasksHome(open: (Route) -> Unit) {
                     GlassPill {
                         PillButton("More", onClick = { menuOpen = true }) { FoleviIcon(WebIcon.ELLIPSIS, null, size = 24.dp, tint = p.ink) }
                     }
-                    DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }, shape = MaterialTheme.shapes.large, containerColor = p.surfaceRaised) {
+                    PhoneMenu(menuOpen, { menuOpen = false }) {
                         DropdownMenuItem(text = { Text("Calendar") }, leadingIcon = { FoleviIcon(WebIcon.CALENDAR_DAYS, null) }, onClick = { menuOpen = false; open(CalendarRoute) })
                         DropdownMenuItem(text = { Text("Completed tasks") }, leadingIcon = { FoleviIcon(WebIcon.CIRCLE_CHECK, null) }, onClick = { menuOpen = false; view = TaskViewName.COMPLETED })
                     }
@@ -349,7 +355,7 @@ fun TasksHome(open: (Route) -> Unit) {
                 }
             }
         }
-        SnackbarHost(snackbar, Modifier.align(Alignment.BottomCenter).padding(bottom = 96.dp))
+        SnackbarHost(snackbar, Modifier.align(Alignment.BottomCenter).padding(bottom = 16.dp))
     }
     sheet?.let { t -> TaskSheet(t, onDismiss = { sheet = null }, openNote = { sheet = null; open(NoteRoute(t.noteId, t.noteTitle)) }) }
 }
@@ -376,19 +382,19 @@ private fun TaskGroupHeader(g: TaskGroup, today: LocalDate, folded: Boolean, cou
             Row(Modifier.weight(1f).clickable(role = Role.Button, onClick = onOpenNote), verticalAlignment = Alignment.CenterVertically) {
                 FoleviIcon(WebIcon.FILE_TEXT, null, size = 17.dp, tint = p.inkMuted)
                 Spacer(Modifier.width(8.dp))
-                Text(g.title.ifBlank { "Untitled" }, style = PhoneType.headline, color = p.heading, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
+                Text(g.title.ifBlank { "Untitled" }, style = PhoneType.headline, color = p.heading, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false).semantics { heading() })
                 FoleviIcon(WebIcon.CHEVRON_RIGHT, null, size = 15.dp, tint = p.inkFaint, modifier = Modifier.padding(start = 2.dp))
             }
         } else {
             val date = runCatching { LocalDate.parse(g.id) }.getOrNull()
             val (main, rest) = if (date != null || g.title.isBlank()) dayHeader(date, today) else g.title to null
             Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
-                Text(main, style = PhoneType.headline, color = p.heading, maxLines = 1)
-                if (rest != null) Text(" · $rest", style = PhoneType.body, color = p.inkMuted, maxLines = 1)
+                Text(main, style = PhoneType.headline, color = p.heading, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.semantics { heading() })
+                if (rest != null) Text(" · $rest", style = PhoneType.body, color = p.inkMuted, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
         }
         if (folded) Text("$count", style = PhoneType.subheadline, color = p.inkMuted)
-        val turn by animateFloatAsState(if (folded) -90f else 0f, label = "fold")
+        val turn by animateFloatAsState(if (folded) -90f else 0f, com.folevi.android.design.Motion.fastSpatial(), label = "fold")
         Box(
             Modifier.size(44.dp).clip(CircleShape).clickable(role = Role.Button, onClickLabel = if (folded) "Show" else "Hide", onClick = onFold)
                 .semantics { contentDescription = if (folded) "Show ${g.title}" else "Hide ${g.title}" },
@@ -410,17 +416,17 @@ internal fun TaskSwipeLine(
 ) {
     val closed = isClosed(t)
     var menu by remember { mutableStateOf(false) }
-    val leading = listOf(if (closed) SwipeAction("Reopen", WebIcon.ROTATE_CCW, Color(0xFF6B6B73)) { onAction("reopen") } else SwipeAction("Done", WebIcon.CHECK, Color(0xFF3F7D58)) { onAction("done") })
+    val leading = listOf(if (closed) SwipeAction("Reopen", WebIcon.ROTATE_CCW, LocalPalette.current.swipeArchive) { onAction("reopen") } else SwipeAction("Done", WebIcon.CHECK, LocalPalette.current.swipeRestore) { onAction("done") })
     val trailing = if (closed) emptyList() else listOf(
-        SwipeAction("Tomorrow", WebIcon.SUN, Color(0xFFC58A12)) { onAction("tomorrow") },
-        SwipeAction("Date", WebIcon.CALENDAR_DAYS, Color(0xFF5B6AD0)) { onAction("date") },
+        SwipeAction("Tomorrow", WebIcon.SUN, LocalPalette.current.swipeBookmark) { onAction("tomorrow") },
+        SwipeAction("Date", WebIcon.CALENDAR_DAYS, LocalPalette.current.swipeDate) { onAction("date") },
     )
     Box {
         SwipeRow(leading, trailing) {
             TaskLine(t, timeOnly, showNote, today, onOpen = onOpen, onLongPress = { menu = true }, onToggle = { onAction(if (closed) "reopen" else "done") })
         }
         val p = LocalPalette.current
-        DropdownMenu(expanded = menu, onDismissRequest = { menu = false }, shape = MaterialTheme.shapes.large, containerColor = p.surfaceRaised) {
+        PhoneMenu(menu, { menu = false }) {
             if (closed) DropdownMenuItem(text = { Text("Reopen") }, leadingIcon = { FoleviIcon(WebIcon.ROTATE_CCW, null) }, onClick = { menu = false; onAction("reopen") })
             else {
                 DropdownMenuItem(text = { Text("Done") }, leadingIcon = { FoleviIcon(WebIcon.CHECK, null) }, onClick = { menu = false; onAction("done") })
@@ -447,7 +453,7 @@ internal fun TaskLine(t: TaskRow, timeOnly: Boolean, showNote: Boolean, today: L
     val meta = taskMeta(t, today, timeOnly, showNote)
     val c = phoneColors()
     Row(
-        Modifier.fillMaxWidth().combinedClickable(role = Role.Button, onClick = onOpen, onLongClick = onLongPress)
+        Modifier.fillMaxWidth().combinedClickable(role = Role.Button, onClick = onOpen, onLongClickLabel = "More actions", onLongClick = onLongPress)
             .padding(start = 20.dp).testTag("task-${t.id}"),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -492,10 +498,11 @@ internal fun TaskLine(t: TaskRow, timeOnly: Boolean, showNote: Boolean, today: L
 internal fun TaskBox(done: Boolean, canceled: Boolean, onClick: () -> Unit, label: String) {
     val p = LocalPalette.current
     val c = phoneColors()
-    val draw by animateFloatAsState(if (done) 1f else 0f, tween(180, delayMillis = if (done) 60 else 0), label = "tick")
+    val draw by animateFloatAsState(if (done) 1f else 0f, com.folevi.android.design.Motion.fastEffects(), label = "tick")
     Box(
-        Modifier.offset(x = (-11).dp).size(44.dp).clip(CircleShape).clickable(role = Role.Checkbox, onClick = onClick)
-            .semantics { contentDescription = label; stateDescription = if (done) "Done" else if (canceled) "Canceled" else "Open" },
+        Modifier.offset(x = (-11).dp).size(44.dp).clip(CircleShape)
+            .triStateToggleable(state = if (done) ToggleableState.On else ToggleableState.Off, role = Role.Checkbox, onClick = onClick)
+            .semantics { contentDescription = label; if (canceled) stateDescription = "Canceled" },
         contentAlignment = Alignment.Center,
     ) {
         val shape = RoundedCornerShape(6.dp)
@@ -602,11 +609,11 @@ fun TaskSheet(task: TaskRow, onDismiss: () -> Unit, openNote: () -> Unit) {
                 var priorityMenu by remember { mutableStateOf(false) }
                 Box {
                     SheetRow(WebIcon.FLAG, "Priority", t.priority?.takeIf { it != "none" }?.replaceFirstChar { it.uppercase() } ?: "None") { priorityMenu = true }
-                    DropdownMenu(expanded = priorityMenu, onDismissRequest = { priorityMenu = false }, containerColor = p.surfaceRaised) {
+                    PhoneMenu(priorityMenu, { priorityMenu = false }) {
                         for (pr in TaskUpdateArgs.Priority.entries) {
                             DropdownMenuItem(
                                 text = { Text(pr.value.replaceFirstChar { it.uppercase() }) },
-                                leadingIcon = { FoleviIcon(WebIcon.FLAG, null, tint = priorityColor(pr.value) ?: p.inkMuted) },
+                                leadingIcon = { FoleviIcon(WebIcon.FLAG, null, tint = priorityColor(pr.value, p) ?: p.inkMuted) },
                                 trailingIcon = { if ((t.priority ?: "none") == pr.value) FoleviIcon(WebIcon.CHECK, null) },
                                 onClick = {
                                     priorityMenu = false
@@ -622,7 +629,7 @@ fun TaskSheet(task: TaskRow, onDismiss: () -> Unit, openNote: () -> Unit) {
                     var assignMenu by remember { mutableStateOf(false) }
                     Box {
                         SheetRow(WebIcon.USERS, "Assignee", t.assigneeName ?: "Nobody") { assignMenu = true }
-                        DropdownMenu(expanded = assignMenu, onDismissRequest = { assignMenu = false }, containerColor = p.surfaceRaised) {
+                        PhoneMenu(assignMenu, { assignMenu = false }) {
                             DropdownMenuItem(text = { Text("Nobody") }, onClick = {
                                 assignMenu = false
                                 save(t.copy(assigneeId = null, assigneeName = null)) { session.client.command(Commands.taskUpdate(id = t.id, assigneeId = Patch.Clear)) }
@@ -672,10 +679,10 @@ fun TaskSheet(task: TaskRow, onDismiss: () -> Unit, openNote: () -> Unit) {
     }
 }
 
-internal fun priorityColor(priority: String?): Color? = when (priority) {
-    "low" -> Color(0xFF5B6AD0)
-    "medium" -> Color(0xFFC58A12)
-    "high" -> Color(0xFFD6453D)
+internal fun priorityColor(priority: String?, p: com.folevi.android.design.FoleviPalette = com.folevi.android.design.FoleviPalette.Light): Color? = when (priority) {
+    "low" -> p.priorityLow
+    "medium" -> p.priorityMedium
+    "high" -> p.priorityHigh
     else -> null
 }
 
@@ -728,7 +735,7 @@ internal fun SheetRow(icon: WebIcon, label: String, value: String?, valueColor: 
         Box(Modifier.width(24.dp), contentAlignment = Alignment.Center) { FoleviIcon(icon, null, size = 20.dp, tint = p.inkMuted) }
         Spacer(Modifier.width(16.dp))
         Text(label, style = PhoneType.body, color = p.ink, modifier = Modifier.weight(1f))
-        if (value != null) Text(value, style = PhoneType.body, color = valueColor ?: p.inkMuted, maxLines = 1)
+        if (value != null) Text(value, style = PhoneType.body, color = valueColor ?: p.inkMuted, maxLines = 1, overflow = TextOverflow.Ellipsis)
         if (chevron && onClick != null) FoleviIcon(WebIcon.CHEVRON_RIGHT, null, size = 15.dp, tint = p.inkFaint, modifier = Modifier.padding(start = 6.dp))
     }
 }
@@ -862,7 +869,7 @@ fun QuickAddSheet(onDismiss: () -> Unit, dueDate: String? = null) {
                 for (line in parsePreview(parsed, today)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(line, style = PhoneType.footnote, color = p.inkMuted, modifier = Modifier.weight(1f))
-                        Box(Modifier.size(28.dp).clip(CircleShape).clickable(onClickLabel = "Keep as text") { keepText = true }.semantics { contentDescription = "Keep as text" }, contentAlignment = Alignment.Center) {
+                        Box(Modifier.size(44.dp).clip(CircleShape).clickable(role = Role.Button, onClickLabel = "Keep as text") { keepText = true }.semantics { contentDescription = "Keep as text" }, contentAlignment = Alignment.Center) {
                             FoleviIcon(WebIcon.X, null, size = 14.dp, tint = p.inkMuted)
                         }
                     }
@@ -877,12 +884,12 @@ fun QuickAddSheet(onDismiss: () -> Unit, dueDate: String? = null) {
                 }
                 var prMenu by remember { mutableStateOf(false) }
                 Box {
-                    QuickChip(WebIcon.FLAG, priority?.replaceFirstChar { it.uppercase() } ?: "Priority", muted = priority == null, tint = priorityColor(priority)) { prMenu = true }
-                    DropdownMenu(expanded = prMenu, onDismissRequest = { prMenu = false }, containerColor = p.surfaceRaised) {
+                    QuickChip(WebIcon.FLAG, priority?.replaceFirstChar { it.uppercase() } ?: "Priority", muted = priority == null, tint = priorityColor(priority, p)) { prMenu = true }
+                    PhoneMenu(prMenu, { prMenu = false }) {
                         for (pr in listOf("none", "low", "medium", "high")) {
                             DropdownMenuItem(
                                 text = { Text(pr.replaceFirstChar { it.uppercase() }) },
-                                leadingIcon = { FoleviIcon(WebIcon.FLAG, null, tint = priorityColor(pr) ?: p.inkMuted) },
+                                leadingIcon = { FoleviIcon(WebIcon.FLAG, null, tint = priorityColor(pr, p) ?: p.inkMuted) },
                                 onClick = { prMenu = false; priority = pr.takeIf { it != "none" } },
                             )
                         }
@@ -902,7 +909,7 @@ fun QuickAddSheet(onDismiss: () -> Unit, dueDate: String? = null) {
 private fun QuickChip(icon: WebIcon, label: String, muted: Boolean, tint: Color? = null, onClick: () -> Unit) {
     val p = LocalPalette.current
     Row(
-        Modifier.height(36.dp).widthIn(max = 224.dp).background(phoneColors().ink(0.065f), CircleShape).clip(CircleShape).clickable(role = Role.Button, onClick = onClick).padding(horizontal = 14.dp),
+        Modifier.heightIn(min = 36.dp).widthIn(max = 224.dp).background(phoneColors().ink(0.065f), CircleShape).clip(CircleShape).clickable(role = Role.Button, onClick = onClick).padding(horizontal = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(6.dp),
     ) {

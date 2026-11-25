@@ -182,7 +182,7 @@ fun NewFolderSheet(onDismiss: () -> Unit, open: (Route) -> Unit, parentId: Strin
             Spacer(Modifier.height(20.dp))
             val ok = folderNameOk(name) && !busy
             Box(
-                Modifier.fillMaxWidth().padding(horizontal = 16.dp).height(48.dp).clip(PhoneRadius.panel)
+                Modifier.fillMaxWidth().padding(horizontal = 16.dp).heightIn(min = 48.dp).clip(PhoneRadius.panel)
                     .background(if (ok) p.heading else c.ink(0.08f)).clickable(enabled = ok, role = Role.Button, onClick = create),
                 contentAlignment = Alignment.Center,
             ) {

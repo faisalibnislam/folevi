@@ -234,7 +234,7 @@ private fun PlaceRowView(place: PlaceRow, current: Boolean, last: Boolean, onCli
         if (place.kind == PlaceRow.Kind.LIBRARY) {
             Box(Modifier.size(36.dp).clip(RoundedCornerShape(8.dp)).background(c.ink(0.07f)), contentAlignment = Alignment.Center) { FoleviIcon(WebIcon.SMARTPHONE, null, size = 19.dp, tint = p.heading) }
         } else {
-            Box(Modifier.size(36.dp).clip(CircleShape).background(p.accentSoft).border(0.5.dp, Color.Black.copy(alpha = 0.12f), CircleShape), contentAlignment = Alignment.Center) {
+            Box(Modifier.size(36.dp).clip(CircleShape).background(p.accentSoft).border(0.5.dp, phoneColors().separator, CircleShape), contentAlignment = Alignment.Center) {
                 Text(place.name.trim().firstOrNull()?.uppercase() ?: "F", style = PhoneType.subheadline.copy(fontWeight = FontWeight.SemiBold), color = p.accentSoftInk)
             }
         }
@@ -251,7 +251,7 @@ private fun PlaceRowView(place: PlaceRow, current: Boolean, last: Boolean, onCli
                     style = PhoneType.body.copy(fontWeight = FontWeight.Medium), color = p.heading, maxLines = 1, overflow = TextOverflow.Ellipsis,
                 )
                 val sub = if (place.kind == PlaceRow.Kind.LIBRARY) place.syncs else place.email?.let { middleEllipsis(it) }
-                if (!sub.isNullOrBlank()) Text(sub, style = PhoneType.subheadline, color = p.inkMuted, maxLines = 1)
+                if (!sub.isNullOrBlank()) Text(sub, style = PhoneType.subheadline, color = p.inkMuted, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
             if (!current && place.unread > 0) {
                 Box(Modifier.heightIn(min = 20.dp).clip(CircleShape).background(p.coral).padding(horizontal = 6.dp), contentAlignment = Alignment.Center) {
@@ -284,7 +284,7 @@ private fun SubRow(label: String, detail: String? = null, checked: Boolean = fal
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             Text(label, style = PhoneType.body, color = p.ink, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
-            if (detail != null) Text(detail, style = PhoneType.subheadline, color = p.inkMuted, maxLines = 1)
+            if (detail != null) Text(detail, style = PhoneType.subheadline, color = p.inkMuted, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Box(Modifier.width(28.dp), contentAlignment = Alignment.CenterEnd) { if (checked) FoleviIcon(WebIcon.CHECK, "Open", size = 20.dp, tint = p.heading) }
         }
     }

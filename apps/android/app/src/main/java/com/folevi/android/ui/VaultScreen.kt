@@ -112,7 +112,7 @@ private fun PasscodeForm(label: String, action: String, minLength: Int, error: S
     val ready = passcode.length >= minLength
     Column(Modifier.padding(horizontal = 16.dp, vertical = 12.dp).widthIn(max = 440.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Text(label, style = PhoneType.footnote, color = p.inkMuted, modifier = Modifier.padding(start = 4.dp))
-        Box(Modifier.fillMaxWidth().height(48.dp).clip(PhoneRadius.panel).background(c.ink(0.06f)).padding(horizontal = 14.dp), contentAlignment = Alignment.CenterStart) {
+        Box(Modifier.fillMaxWidth().heightIn(min = 48.dp).clip(PhoneRadius.panel).background(c.ink(0.06f)).padding(horizontal = 14.dp), contentAlignment = Alignment.CenterStart) {
             BasicTextField(
                 passcode,
                 { passcode = it.filter(Char::isDigit).take(12) },
@@ -126,7 +126,7 @@ private fun PasscodeForm(label: String, action: String, minLength: Int, error: S
         }
         error?.let { Text(it, style = PhoneType.subheadline, color = p.destructive) }
         Box(
-            Modifier.fillMaxWidth().height(48.dp).clip(PhoneRadius.panel).background(if (ready) p.heading else c.ink(0.08f))
+            Modifier.fillMaxWidth().heightIn(min = 48.dp).clip(PhoneRadius.panel).background(if (ready) p.heading else c.ink(0.08f))
                 .clickable(enabled = ready, role = Role.Button) { onSubmit(passcode); passcode = "" },
             contentAlignment = Alignment.Center,
         ) { Text(action, style = PhoneType.headline, color = if (ready) p.canvas else p.inkFaint) }

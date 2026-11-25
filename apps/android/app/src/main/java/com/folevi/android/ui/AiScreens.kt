@@ -4,6 +4,8 @@
 // with the composer card at the bottom. Engine: ai.conversations, ai.conversation, ai.stream, ai.send and friends.
 package com.folevi.android.ui
 
+import androidx.compose.ui.semantics.heading
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -148,7 +150,7 @@ internal fun unavailableText(code: String): String = when (code) {
 
 @Composable
 private fun Caps(text: String) {
-    Text(text.uppercase(), style = PhoneType.eyebrow, color = LocalPalette.current.inkMuted, modifier = Modifier.padding(start = 20.dp, top = 24.dp, bottom = 6.dp))
+    Text(text.uppercase(), style = PhoneType.eyebrow, color = LocalPalette.current.inkMuted, modifier = Modifier.padding(start = 20.dp, top = 24.dp, bottom = 6.dp).semantics { heading() })
 }
 
 @Composable
@@ -323,7 +325,7 @@ fun AiChatScreen(route: AiChatRoute, onBack: (() -> Unit)?) {
 private fun Messages(messages: List<ChatMessage>, onRegenerate: () -> Unit, onSuggestion: (String) -> Unit) {
     val list = rememberLazyListState()
     LaunchedEffect(messages.size) { if (messages.isNotEmpty()) list.animateScrollToItem(messages.lastIndex) }
-    LazyColumn(Modifier.fillMaxSize(), state = list, contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+    LazyColumn(Modifier.fillMaxSize(), state = list, contentPadding = PaddingValues(start = 16.dp + com.folevi.android.design.landscapeInset(), end = 16.dp + com.folevi.android.design.landscapeInset(), top = 16.dp, bottom = 24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
         items(messages, key = { it.id }) { m ->
             if (m.role == ChatMessage.Role.USER) UserMessage(m.text)
             else Answer(m, last = m == messages.last(), onRegenerate = onRegenerate, onSuggestion = onSuggestion)

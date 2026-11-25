@@ -5,6 +5,10 @@
 // go to the web because the engine has no typed view for them yet (see `webOnly` below).
 package com.folevi.android.ui
 
+import androidx.compose.foundation.selection.selectable
+
+import androidx.compose.foundation.selection.toggleable
+
 import android.net.Uri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -206,7 +210,7 @@ fun bytesLabel(bytes: Long?): String {
 @Composable
 internal fun groupedColors(): Pair<Color, Color> {
     val dark = LocalPalette.current == FoleviPalette.Dark
-    return if (dark) Color(0xFF000000) to Color(0xFF1C1C1E) else Color(0xFFF2F2F4) to Color(0xFFFFFFFF)
+    return LocalPalette.current.let { it.groupedBg to it.groupedRow }
 }
 
 /** A grouped screen: back circle, large title that scrolls away, small title, the grouped background. */
@@ -220,7 +224,7 @@ internal fun GroupedScreen(title: String, onBack: (() -> Unit)?, content: LazyLi
     val nav = 0.dp
     val gone by remember { derivedStateOf { state.firstVisibleItemIndex > 0 || state.firstVisibleItemScrollOffset > 120 } }
     Box(Modifier.fillMaxSize().background(bg)) {
-        LazyColumn(state = state, modifier = Modifier.fillMaxSize(), contentPadding = PaddingValues(top = top + 60.dp, bottom = nav + 40.dp)) {
+        LazyColumn(state = state, modifier = Modifier.fillMaxSize(), contentPadding = PaddingValues(start = com.folevi.android.design.landscapeInset(), end = com.folevi.android.design.landscapeInset(), top = top + 60.dp, bottom = nav + 40.dp)) {
             item(key = "_title") {
                 Text(title, style = PhoneType.largeTitle, color = p.heading, modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = 4.dp, bottom = 6.dp).semantics { heading() })
             }
@@ -282,12 +286,16 @@ internal fun SettingRow(
     chevron: Boolean = onClick != null,
     destructive: Boolean = false,
     last: Boolean = false,
+    /** The row's own interaction when it isn't a plain button (a switch row's toggleable, a choice's selectable). */
+    interaction: Modifier? = null,
     trailing: (@Composable () -> Unit)? = null,
 ) {
     val p = LocalPalette.current
     val c = phoneColors()
     Row(
-        Modifier.fillMaxWidth().heightIn(min = 52.dp).then(if (onClick != null) Modifier.clickable(role = Role.Button, onClick = onClick) else Modifier).padding(start = 16.dp),
+        Modifier.fillMaxWidth().heightIn(min = 52.dp)
+            .then(interaction ?: if (onClick != null) Modifier.clickable(role = Role.Button, onClick = onClick) else Modifier)
+            .padding(start = 16.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         if (icon != null) {
@@ -314,10 +322,15 @@ internal fun SettingRow(
 @Composable
 internal fun SwitchRow(label: String, checked: Boolean, onChange: (Boolean) -> Unit, hint: String? = null, last: Boolean = false, enabled: Boolean = true) {
     val p = LocalPalette.current
-    SettingRow(label, onClick = if (enabled) ({ onChange(!checked) }) else null, hint = hint, chevron = false, last = last) {
+    // One target with its state: the row toggles (Role.Switch), the Switch only shows it.
+    SettingRow(
+        label, onClick = null, hint = hint, chevron = false, last = last,
+        interaction = Modifier.toggleable(value = checked, enabled = enabled, role = Role.Switch, onValueChange = onChange),
+    ) {
         Switch(
             checked = checked,
-            onCheckedChange = if (enabled) onChange else null,
+            onCheckedChange = null,
+            enabled = enabled,
             colors = SwitchDefaults.colors(checkedTrackColor = p.moss, checkedThumbColor = Color.White, uncheckedTrackColor = phoneColors().ink(0.12f), uncheckedBorderColor = Color.Transparent, uncheckedThumbColor = Color.White),
         )
     }
@@ -326,8 +339,11 @@ internal fun SwitchRow(label: String, checked: Boolean, onChange: (Boolean) -> U
 @Composable
 internal fun ChoiceRow(label: String, selected: Boolean, onClick: () -> Unit, hint: String? = null, last: Boolean = false) {
     val p = LocalPalette.current
-    SettingRow(label, onClick = onClick, hint = hint, chevron = false, last = last) {
-        if (selected) FoleviIcon(WebIcon.CHECK, "Selected", size = 20.dp, tint = p.heading)
+    SettingRow(
+        label, onClick = onClick, hint = hint, chevron = false, last = last,
+        interaction = Modifier.selectable(selected = selected, role = Role.RadioButton, onClick = onClick),
+    ) {
+        if (selected) FoleviIcon(WebIcon.CHECK, null, size = 20.dp, tint = p.heading)
     }
 }
 
@@ -578,7 +594,10 @@ private fun DevicesSection() {
                     chevron = false,
                     last = i == rows.lastIndex,
                 ) {
-                    if (!r.current) TextButton(onClick = { run { session.client.command(Commands.sessionRevoke(id = r.id)) } }) { Text("Sign out", color = LocalPalette.current.destructive) }
+                    if (!r.current) Box(
+                        Modifier.heightIn(min = 44.dp).clip(CircleShape).clickable(role = Role.Button) { run { session.client.command(Commands.sessionRevoke(id = r.id)) } }.padding(horizontal = 12.dp),
+                        contentAlignment = Alignment.Center,
+                    ) { Text("Sign out", style = PhoneType.body.copy(fontWeight = FontWeight.Medium), color = LocalPalette.current.destructive) }
                 }
             }
         }

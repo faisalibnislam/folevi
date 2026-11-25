@@ -3,6 +3,12 @@
 // ripple). Sizes are the web's px as dp; type is tokens.css's phone scale.
 package com.folevi.android.design
 
+import androidx.compose.ui.semantics.customActions
+
+import androidx.compose.ui.semantics.CustomAccessibilityAction
+
+import androidx.compose.ui.platform.LocalConfiguration
+
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
@@ -124,7 +130,7 @@ class PhoneColors(dark: Boolean, p: FoleviPalette) {
     val separator = if (dark) Color(84, 84, 88).copy(alpha = 0.5f) else Color(60, 60, 67).copy(alpha = 0.16f)
     val press = if (dark) Color.White.copy(alpha = 0.16f) else Color.Black.copy(alpha = 0.10f)
     val active = if (dark) Color.White.copy(alpha = 0.12f) else Color.Black.copy(alpha = 0.075f)
-    val solid = if (dark) Color(0xFF2C2C2E) else Color(0xFFF7F7F8)
+    val solid = p.glassBase
     /** ink at a percentage over nothing (`color-mix(ink N%, transparent)`). */
     private val ink = p.ink
     fun ink(fraction: Float) = ink.copy(alpha = fraction)
@@ -137,6 +143,20 @@ fun phoneColors(): PhoneColors {
 }
 
 // ---------------------------------------------------------------- the screen
+
+/**
+ * On a phone turned sideways (a short, wide window) a list keeps to 640 in the middle instead of running edge to
+ * edge: the side inset that centers it, or 0.
+ */
+@Composable
+fun landscapeInset(): Dp {
+    val cfg = LocalConfiguration.current
+    return if (cfg.screenHeightDp < 480 && cfg.screenWidthDp > 600) ((cfg.screenWidthDp - 640) / 2).coerceAtLeast(0).dp else 0.dp
+}
+
+/** Whether the window is short (a phone turned sideways): big top spacing gives way. */
+@Composable
+fun shortWindow(): Boolean = LocalConfiguration.current.screenHeightDp < 480
 
 /**
  * A phone screen (Screen.tsx): a floating bar (leading and trailing glass controls), the eyebrow and large title
@@ -172,7 +192,7 @@ fun PhoneScreen(
         LazyColumn(
             state = state,
             modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(top = top + 60.dp, bottom = maxOf(10.dp, nav) + bottomPadding),
+            contentPadding = PaddingValues(start = landscapeInset(), end = landscapeInset(), top = top + 60.dp, bottom = maxOf(10.dp, nav) + bottomPadding),
         ) {
             item(key = "_title", contentType = "title") {
                 Column(Modifier.fillMaxWidth().alpha(1f - titleGone)) {
@@ -193,7 +213,7 @@ fun PhoneScreen(
             content()
         }
         // The fade behind the bar: canvas, opaque to safe+60, then fading out over 32 (no blur, no hairline).
-        val fade by animateFloatAsState(if (scrolled) 1f else 0f, tween(120), label = "bar-fade")
+        val fade by animateFloatAsState(if (scrolled) 1f else 0f, Motion.fastEffects(), label = "bar-fade")
         Box(
             Modifier.fillMaxWidth().height(top + 92.dp).alpha(fade).drawBehind {
                 val solidTo = (top + 60.dp).toPx() / size.height
@@ -207,7 +227,7 @@ fun PhoneScreen(
         ) {
             leading?.invoke(this)
             Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
-                val small by animateFloatAsState(if (titleGone >= 1f) 1f else 0f, tween(150), label = "small-title")
+                val small by animateFloatAsState(if (titleGone >= 1f) 1f else 0f, Motion.fastEffects(), label = "small-title")
                 Text(title, style = PhoneType.headline, color = p.heading, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.alpha(small))
             }
             trailing?.invoke(this)
@@ -238,7 +258,7 @@ fun GlassPill(modifier: Modifier = Modifier, content: @Composable RowScope.() ->
 @Composable
 fun PillButton(label: String, onClick: () -> Unit, content: @Composable BoxScope.() -> Unit) {
     Box(
-        Modifier.heightIn(min = 40.dp).widthIn(min = 40.dp).clip(CircleShape).clickable(role = Role.Button, onClickLabel = label, onClick = onClick)
+        Modifier.heightIn(min = 44.dp).widthIn(min = 44.dp).clip(CircleShape).clickable(role = Role.Button, onClickLabel = label, onClick = onClick)
             .padding(horizontal = 8.dp).semantics { contentDescription = label },
         contentAlignment = Alignment.Center,
         content = content,
@@ -250,12 +270,12 @@ fun PillButton(label: String, onClick: () -> Unit, content: @Composable BoxScope
 fun GlassTextButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifier, strong: Boolean = false, enabled: Boolean = true) {
     val p = LocalPalette.current
     val shape = CircleShape
-    val base = if (strong) modifier.height(44.dp).dropShadowLiquid(shape).background(p.heading, shape) else modifier.height(44.dp).foleviGlass(shape)
+    val base = if (strong) modifier.heightIn(min = 44.dp).dropShadowLiquid(shape).background(p.heading, shape) else modifier.heightIn(min = 44.dp).foleviGlass(shape)
     Box(
         base.clip(shape).clickable(enabled = enabled, role = Role.Button, onClick = onClick).padding(horizontal = 16.dp).alpha(if (enabled) 1f else 0.35f),
         contentAlignment = Alignment.Center,
     ) {
-        Text(text, style = PhoneType.headline.copy(fontWeight = if (strong) FontWeight.SemiBold else FontWeight.Medium), color = if (strong) p.canvas else p.ink, maxLines = 1)
+        Text(text, style = PhoneType.headline.copy(fontWeight = if (strong) FontWeight.SemiBold else FontWeight.Medium), color = if (strong) p.canvas else p.ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
 }
 
@@ -265,7 +285,7 @@ fun AvatarButton(name: String, onClick: () -> Unit, imageUrl: String? = null) {
     val p = LocalPalette.current
     Box(Modifier.size(44.dp).clip(CircleShape).clickable(role = Role.Button, onClickLabel = "Account", onClick = onClick).semantics { contentDescription = "Account" }, contentAlignment = Alignment.Center) {
         Box(
-            Modifier.size(34.dp).clip(CircleShape).background(p.accentSoft).border(0.5.dp, Color.Black.copy(alpha = 0.12f), CircleShape),
+            Modifier.size(34.dp).clip(CircleShape).background(p.accentSoft).border(0.5.dp, phoneColors().separator, CircleShape),
             contentAlignment = Alignment.Center,
         ) {
             Text(name.trim().firstOrNull()?.uppercase() ?: "F", style = PhoneType.subheadline.copy(fontWeight = FontWeight.SemiBold), color = p.accentSoftInk)
@@ -281,7 +301,7 @@ fun SearchPill(placeholder: String, onClick: () -> Unit, modifier: Modifier = Mo
     val p = LocalPalette.current
     val c = phoneColors()
     Row(
-        modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 4.dp).height(44.dp).clip(PhoneRadius.panel).background(c.ink(0.065f))
+        modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 4.dp).heightIn(min = 44.dp).clip(PhoneRadius.panel).background(c.ink(0.065f))
             .clickable(role = Role.Button, onClick = onClick).padding(horizontal = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -297,19 +317,21 @@ fun FilterField(value: String, onChange: (String) -> Unit, placeholder: String, 
     val p = LocalPalette.current
     val c = phoneColors()
     Row(
-        modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 4.dp).height(44.dp).clip(PhoneRadius.panel).background(c.ink(0.065f)).padding(horizontal = 12.dp),
+        modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 4.dp).heightIn(min = 44.dp).clip(PhoneRadius.panel).background(c.ink(0.065f)).padding(start = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         FoleviIcon(icon, null, size = 19.dp, tint = p.inkMuted)
         Box(Modifier.weight(1f)) {
-            if (value.isEmpty()) Text(placeholder, style = PhoneType.body, color = p.inkFaint, maxLines = 1)
+            if (value.isEmpty()) Text(placeholder, style = PhoneType.body, color = p.inkFaint, maxLines = 1, overflow = TextOverflow.Ellipsis)
             BasicTextField(value, onChange, singleLine = true, textStyle = PhoneType.body.copy(color = p.ink), cursorBrush = SolidColor(p.accent), modifier = Modifier.fillMaxWidth().semantics { contentDescription = placeholder })
         }
         if (value.isNotEmpty()) {
-            Box(Modifier.size(28.dp).clip(CircleShape).clickable(onClickLabel = "Clear") { onChange("") }, contentAlignment = Alignment.Center) {
-                FoleviIcon(WebIcon.CIRCLE_X, "Clear", size = 17.dp, tint = p.inkFaint)
+            Box(Modifier.size(44.dp).clip(CircleShape).clickable(role = Role.Button, onClickLabel = "Clear") { onChange("") }.semantics { contentDescription = "Clear" }, contentAlignment = Alignment.Center) {
+                FoleviIcon(WebIcon.CIRCLE_X, null, size = 17.dp, tint = p.inkFaint)
             }
+        } else {
+            Spacer(Modifier.width(12.dp))
         }
     }
 }
@@ -323,14 +345,14 @@ fun FilterField(value: String, onChange: (String) -> Unit, placeholder: String, 
 @Composable
 fun SectionHeader(title: String, onTitle: (() -> Unit)? = null, seeAll: (() -> Unit)? = null, more: (@Composable () -> Unit)? = null, chevronTurned: Boolean = false) {
     val p = LocalPalette.current
-    Row(Modifier.fillMaxWidth().padding(top = 28.dp, start = 20.dp, end = 5.dp).height(44.dp), verticalAlignment = Alignment.CenterVertically) {
+    Row(Modifier.fillMaxWidth().padding(top = 28.dp, start = 20.dp, end = 5.dp).heightIn(min = 44.dp), verticalAlignment = Alignment.CenterVertically) {
         Row(
             Modifier.weight(1f).then(if (onTitle != null) Modifier.clickable(role = Role.Button, onClick = onTitle) else Modifier),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(title, style = PhoneType.title2Serif, color = p.heading, maxLines = 1, modifier = Modifier.semantics { heading() })
+            Text(title, style = PhoneType.title2Serif, color = p.heading, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false).semantics { heading() })
             if (onTitle != null) {
-                val turn by animateFloatAsState(if (chevronTurned) 90f else 0f, label = "chevron")
+                val turn by animateFloatAsState(if (chevronTurned) 90f else 0f, Motion.fastSpatial(), label = "chevron")
                 FoleviIcon(WebIcon.CHEVRON_RIGHT, null, size = 20.dp, tint = p.inkFaint, modifier = Modifier.padding(start = 2.dp).graphicsLayer { rotationZ = turn })
             }
         }
@@ -371,7 +393,7 @@ fun ListRow(
     val c = phoneColors()
     Row(
         modifier.fillMaxWidth().heightIn(min = if (grouped) 48.dp else 52.dp)
-            .combinedClickable(role = Role.Button, onClick = onClick, onLongClick = onLongClick)
+            .combinedClickable(role = Role.Button, onClick = onClick, onLongClickLabel = if (onLongClick != null) "More actions" else null, onLongClick = onLongClick)
             .padding(start = if (grouped) 14.dp else 20.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -388,7 +410,7 @@ fun ListRow(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(label, style = PhoneType.body, color = if (destructive) p.destructive else p.ink, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
-            if (detail != null) Text(detail, style = PhoneType.body.copy(fontFeatureSettings = "tnum"), color = p.inkMuted, maxLines = 1, modifier = Modifier.padding(start = 8.dp))
+            if (detail != null) Text(detail, style = PhoneType.body.copy(fontFeatureSettings = "tnum"), color = p.inkMuted, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(start = 8.dp))
             if (chevron) FoleviIcon(WebIcon.CHEVRON_RIGHT, null, size = 20.dp, tint = p.inkFaint, modifier = Modifier.offset(x = 4.dp))
         }
     }
@@ -409,7 +431,7 @@ fun EmptyNote(text: String, modifier: Modifier = Modifier) {
 @Composable
 fun ScreenEmpty(icon: WebIcon, title: String, body: String? = null, action: (@Composable () -> Unit)? = null, modifier: Modifier = Modifier) {
     val p = LocalPalette.current
-    Box(modifier.fillMaxWidth().padding(top = 120.dp), contentAlignment = Alignment.TopCenter) {
+    Box(modifier.fillMaxWidth().padding(top = if (shortWindow()) 24.dp else 120.dp), contentAlignment = Alignment.TopCenter) {
         Column(Modifier.width(280.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp)) {
             FoleviIcon(icon, null, size = 40.dp, tint = p.inkFaint)
             Spacer(Modifier.height(6.dp))
@@ -437,14 +459,14 @@ fun ViewChip(label: String, selected: Boolean, onClick: () -> Unit, icon: WebIco
     val fill = if (selected) p.heading else c.ink(0.065f)
     val ink = if (selected) p.canvas else p.ink
     val muted = if (selected) p.canvas.copy(alpha = 0.7f) else p.inkMuted
-    Box(Modifier.height(44.dp).clip(CircleShape).clickable(role = Role.Tab, onClick = onClick).semantics { contentDescription = label; this.selected = selected }, contentAlignment = Alignment.Center) {
+    Box(Modifier.heightIn(min = 44.dp).clip(CircleShape).clickable(role = Role.Tab, onClick = onClick).semantics { contentDescription = label; this.selected = selected }, contentAlignment = Alignment.Center) {
         Row(
             Modifier.heightIn(min = 34.dp).clip(CircleShape).background(fill).padding(start = 12.dp, end = 14.dp, top = 4.dp, bottom = 4.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(6.dp),
         ) {
             if (icon != null) FoleviIcon(icon, null, size = 17.dp, tint = if (selected) p.canvas else p.inkMuted)
-            Text(label, style = PhoneType.subheadline.copy(fontWeight = FontWeight.Medium), color = ink, maxLines = 1)
+            Text(label, style = PhoneType.subheadline.copy(fontWeight = FontWeight.Medium), color = ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
             if (count != null) Text("$count", style = PhoneType.subheadline.copy(fontFeatureSettings = "tnum"), color = muted)
         }
     }
@@ -469,9 +491,13 @@ fun SwipeRow(leading: List<SwipeAction> = emptyList(), trailing: List<SwipeActio
     val offset = remember { Animatable(0f) }
     var width = remember { floatArrayOf(1f) }
     val action = with(density) { 76.dp.toPx() }
-    val settle = spring<Float>(dampingRatio = 0.86f, stiffness = Spring.StiffnessMediumLow)
+    // The web's spring (response 0.3, damping 0.86); a snap when animations are off.
+    val settle: androidx.compose.animation.core.AnimationSpec<Float> = if (rememberReducedMotion()) androidx.compose.animation.core.snap() else spring(dampingRatio = 0.86f, stiffness = Spring.StiffnessMediumLow)
     var armed = remember { booleanArrayOf(false) }
-    Box(modifier.fillMaxWidth().onSizeChanged { width[0] = it.width.toFloat().coerceAtLeast(1f) }) {
+    Box(
+        modifier.fillMaxWidth().onSizeChanged { width[0] = it.width.toFloat().coerceAtLeast(1f) }
+            .semantics { customActions = swipeAccessibilityActions(leading, trailing) },
+    ) {
         // The actions under the row.
         val x = offset.value
         if (x > 0 && leading.isNotEmpty()) {
@@ -515,6 +541,10 @@ fun SwipeRow(leading: List<SwipeAction> = emptyList(), trailing: List<SwipeActio
     }
 }
 
+/** The swipe actions as accessibility actions, leading first, so they can be run without swiping. */
+fun swipeAccessibilityActions(leading: List<SwipeAction>, trailing: List<SwipeAction>): List<CustomAccessibilityAction> =
+    (leading + trailing).map { a -> CustomAccessibilityAction(a.label) { a.run(); true } }
+
 @Composable
 private fun SwipeButton(a: SwipeAction, modifier: Modifier, onClick: () -> Unit) {
     Column(
@@ -523,7 +553,7 @@ private fun SwipeButton(a: SwipeAction, modifier: Modifier, onClick: () -> Unit)
         verticalArrangement = Arrangement.Center,
     ) {
         FoleviIcon(a.icon, null, size = 20.dp, tint = Color.White)
-        Text(a.label, style = PhoneType.footnote.copy(fontWeight = FontWeight.Medium), color = Color.White, maxLines = 1, modifier = Modifier.padding(top = 4.dp))
+        Text(a.label, style = PhoneType.footnote.copy(fontWeight = FontWeight.Medium), color = Color.White, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 4.dp))
     }
 }
 

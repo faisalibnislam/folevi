@@ -115,7 +115,7 @@ internal fun TabletSidebar(route: Route, open: (Route) -> Unit, onHide: (() -> U
     var openFolders by rememberSaveable { mutableStateOf(emptyList<String>()) }
     Column(modifier.width(320.dp).fillMaxHeight().background(p.sidebar).testTag("tablet-sidebar")) {
         // The top bar: the mark, the bell, Hide sidebar.
-        Row(Modifier.fillMaxWidth().height(52.dp).padding(horizontal = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+        Row(Modifier.fillMaxWidth().heightIn(min = 52.dp).padding(horizontal = 12.dp), verticalAlignment = Alignment.CenterVertically) {
             Text("Folevi", style = PhoneType.title2Serif.copy(fontSize = 24.sp), color = p.heading, modifier = Modifier.weight(1f).clickable(onClickLabel = "Go to Home") { open(HomeRoute) })
             SidebarIconButton(WebIcon.BELL, "Notifications", { open(NotificationsRoute) }, dot = (notes.value?.unread ?: 0) > 0)
             if (onHide != null) SidebarIconButton(WebIcon.PANEL_LEFT, "Hide sidebar", onHide)
@@ -206,7 +206,7 @@ internal fun TabletSidebar(route: Route, open: (Route) -> Unit, onHide: (() -> U
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            Box(Modifier.size(32.dp).clip(CircleShape).background(p.accentSoft).border(0.5.dp, Color.Black.copy(alpha = 0.12f), CircleShape), contentAlignment = Alignment.Center) {
+            Box(Modifier.size(32.dp).clip(CircleShape).background(p.accentSoft).border(0.5.dp, phoneColors().separator, CircleShape), contentAlignment = Alignment.Center) {
                 Text(profile?.name?.trim()?.firstOrNull()?.uppercase() ?: "F", style = PhoneType.subheadline.copy(fontWeight = FontWeight.SemiBold), color = p.accentSoftInk)
             }
             Column(Modifier.weight(1f)) {
@@ -277,7 +277,7 @@ private fun NavRow(
 @Composable
 private fun SectionHead(title: String, open: Boolean, toggle: () -> Unit, onTitle: (() -> Unit)? = null, actions: (@Composable () -> Unit)? = null) {
     val p = LocalPalette.current
-    Row(Modifier.fillMaxWidth().padding(top = 20.dp).height(36.dp).padding(start = 4.dp, end = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+    Row(Modifier.fillMaxWidth().padding(top = 16.dp).heightIn(min = 44.dp).padding(start = 0.dp, end = 4.dp), verticalAlignment = Alignment.CenterVertically) {
         FoldChevron(open, title, toggle)
         Text(
             title.uppercase(),
@@ -293,7 +293,7 @@ private fun SectionHead(title: String, open: Boolean, toggle: () -> Unit, onTitl
 private fun FoldChevron(open: Boolean, name: String, onClick: () -> Unit) {
     val p = LocalPalette.current
     Box(
-        Modifier.size(28.dp).clip(CircleShape).clickable(role = Role.Button, onClickLabel = if (open) "Collapse $name" else "Expand $name", onClick = onClick)
+        Modifier.size(44.dp).clip(CircleShape).clickable(role = Role.Button, onClickLabel = if (open) "Collapse $name" else "Expand $name", onClick = onClick)
             .semantics { contentDescription = if (open) "Collapse $name" else "Expand $name" },
         contentAlignment = Alignment.Center,
     ) { FoleviIcon(if (open) WebIcon.CHEVRON_DOWN else WebIcon.CHEVRON_RIGHT, null, size = 14.dp, tint = p.inkFaint) }

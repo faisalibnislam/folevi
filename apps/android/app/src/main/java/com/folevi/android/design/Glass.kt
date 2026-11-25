@@ -26,7 +26,7 @@ fun Modifier.foleviGlass(shape: Shape): Modifier {
     val far = if (dark) Shadow(radius = 34.dp, spread = (-10).dp, offset = DpOffset(0.dp, 12.dp), color = rgb(0, 0, 0, 0.65f))
     else Shadow(radius = 30.dp, spread = (-10).dp, offset = DpOffset(0.dp, 10.dp), color = rgb(0, 0, 0, 0.2f))
     val near = Shadow(radius = 8.dp, spread = (-2).dp, offset = DpOffset(0.dp, 2.dp), color = rgb(0, 0, 0, if (dark) 0.4f else 0.08f))
-    val base = if (dark) Color(0xFF2C2C2E) else Color(0xFFF7F7F8)
+    val base = LocalPalette.current.glassBase
     // --liquid-rim: a 1px light edge, brightest at the top left and the bottom right.
     val rim = if (dark) Brush.linearGradient(
         0f to rgb(255, 255, 255, 0.5f), 0.22f to rgb(255, 255, 255, 0.12f), 0.48f to rgb(255, 255, 255, 0.02f),

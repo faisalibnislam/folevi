@@ -205,7 +205,7 @@ private fun NoteChrome(state: NoteChromeState, title: String, onBack: (() -> Uni
     Box(Modifier.fillMaxSize()) {
         // The bar's fade once the page has scrolled under it (the web's .iphone-bar on a page): the page's color,
         // solid to the bar's middle, then clear.
-        val fade by androidx.compose.animation.core.animateFloatAsState(if (session.pageScroll.value > 0) 1f else 0f, androidx.compose.animation.core.tween(120), label = "bar-fade")
+        val fade by androidx.compose.animation.core.animateFloatAsState(if (session.pageScroll.value > 0) 1f else 0f, com.folevi.android.design.Motion.fastEffects(), label = "bar-fade")
         if (fade > 0f) {
             val page = LocalPalette.current.surface
             Box(Modifier.fillMaxWidth().height(96.dp).alpha(fade).background(androidx.compose.ui.graphics.Brush.verticalGradient(0f to page.copy(alpha = 0.92f), 0.46f to page.copy(alpha = 0.92f), 1f to page.copy(alpha = 0f))))
@@ -219,7 +219,7 @@ private fun NoteChrome(state: NoteChromeState, title: String, onBack: (() -> Uni
             if (onBack != null) GlassCircle(WebIcon.CHEVRON_LEFT, "Back", onBack)
             Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
                 val collapsed = session.pageScroll.value == 2
-                val chip by androidx.compose.animation.core.animateFloatAsState(if (collapsed) 0f else 1f, androidx.compose.animation.core.tween(200), label = "chip")
+                val chip by androidx.compose.animation.core.animateFloatAsState(if (collapsed) 0f else 1f, com.folevi.android.design.Motion.fastEffects(), label = "chip")
                 if (chip > 0f) Box(Modifier.alpha(chip).graphicsLayer { translationY = (1f - chip) * -4.dp.toPx() }) { PlaceChip(meta, title) }
                 if (chip < 1f) Text(title, style = PhoneType.headline, color = LocalPalette.current.heading, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.alpha(1f - chip))
             }
@@ -229,8 +229,8 @@ private fun NoteChrome(state: NoteChromeState, title: String, onBack: (() -> Uni
         // Bottom: the tools (not writing) or the keyboard bar (writing, no tool open).
         AnimatedVisibility(
             visible = !writing && editor?.focus != true,
-            enter = fadeIn(),
-            exit = fadeOut(),
+            enter = fadeIn(com.folevi.android.design.Motion.fastEffects()),
+            exit = fadeOut(com.folevi.android.design.Motion.fastEffects()),
             modifier = Modifier.align(Alignment.BottomCenter),
         ) {
             Row(Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, bottom = 10.dp), horizontalArrangement = Arrangement.SpaceBetween) {
@@ -249,11 +249,13 @@ private fun NoteChrome(state: NoteChromeState, title: String, onBack: (() -> Uni
         }
         AnimatedVisibility(
             visible = writing && panel == null && !formatOpen,
-            enter = slideInVertically { it } + fadeIn(),
-            exit = slideOutVertically { it } + fadeOut(),
+            enter = slideInVertically(com.folevi.android.design.Motion.defaultSpatial()) { it } + fadeIn(com.folevi.android.design.Motion.fastEffects()),
+            exit = slideOutVertically(com.folevi.android.design.Motion.fastSpatial()) { it } + fadeOut(com.folevi.android.design.Motion.fastEffects()),
             modifier = Modifier.align(Alignment.BottomCenter),
         ) {
+          Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.BottomCenter) {
             KeyboardBar(editor, ai, run, onFormat = { formatOpen = true }, onLink = { linkOpen = true }, onInsert = { insertOpen = true })
+          }
         }
     }
     if (formatOpen) FormatSheet(editor, run, onLink = { linkOpen = true }) { formatOpen = false }
@@ -278,7 +280,7 @@ private fun PlaceChip(meta: NoteMeta?, title: String) {
         else -> WebIcon.INBOX
     }
     Row(
-        Modifier.widthIn(max = 220.dp).height(32.dp).foleviGlass(CircleShape).padding(start = 10.dp, end = 8.dp).semantics { contentDescription = "In $label" },
+        Modifier.widthIn(max = 220.dp).heightIn(min = 32.dp).foleviGlass(CircleShape).padding(start = 10.dp, end = 8.dp).semantics { contentDescription = "In $label" },
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(6.dp),
     ) {
@@ -372,7 +374,7 @@ private fun KeyboardBar(editor: EditorStateEvent?, ai: Boolean, run: (suspend ()
     val p = LocalPalette.current
     val e = { spec: com.folevi.engine.generated.EditorSpec<*, *> -> run { session.client.editor(spec) } }
     Row(
-        Modifier.fillMaxWidth().padding(start = 8.dp, end = 8.dp, bottom = 8.dp).height(48.dp).foleviGlass(CircleShape).padding(2.dp),
+        Modifier.padding(start = 8.dp, end = 8.dp, bottom = 8.dp).widthIn(max = 480.dp).fillMaxWidth().height(48.dp).foleviGlass(CircleShape).padding(2.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Row(Modifier.weight(1f).horizontalScroll(rememberScrollState()), verticalAlignment = Alignment.CenterVertically) {

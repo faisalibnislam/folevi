@@ -333,6 +333,6 @@ Left as they are, by choice or for later:
 
 Checked on the emulator in light, dark, 200% text, landscape and tablet size.
 
-**Known gaps**
-- In dark mode the page paints its top inset in a darker shade than the note (the web's CSS).
-- Onboarding's first heading can't greet by first name: the engine doesn't send the name.
+**Former gaps, fixed:**
+- Dark mode: a plain note's paper now runs up under the native top bar (globals.css).
+- Onboarding: the first step greets by first name (`OnboardingGateInfo.firstName`, contract revision 36).

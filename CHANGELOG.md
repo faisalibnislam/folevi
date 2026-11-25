@@ -4,6 +4,28 @@ Every Folevi release, newest first, written by `node scripts/version.mjs` from `
 
 Versions are MAJOR.UPDATE.PATCH, PATCH at least two digits: a Major release (2.0.00), a Big update (1.1.05 after 1.0.05) or a Small update (1.0.06 after 1.0.05).
 
+## Version 1.5.78: Small update
+
+Released 2026-11-25 06:39:59+06:00 (build 93, tag v1.5.78)
+
+Folevi for iPhone and iPad gets its widgets, Siri and Shortcuts back, a clearer sync sheet, and iPhone Duo keeps clear of the fold.
+
+### Added
+
+- Widgets, the Control Center control, Siri and Shortcuts, and Spotlight search on iPhone and iPad.
+
+### Improved
+
+- The sync sheet on iPhone shows a clear status, when it last synced and what is waiting, on one card.
+- Sync status uses the same words on every screen.
+- Lists that fail to load show it and try again instead of taking the page down.
+- The starter note reads right on phones, tablets and computers.
+
+### Fixed
+
+- On iPhone Duo partly open, the sidebar keeps to its side of the fold and nothing sits in the crease.
+- Links from widgets and Shortcuts, and returning to the app, now reach the page.
+
 ## Version 1.5.77: Small update
 
 Released 2026-11-25 04:56:22+06:00 (build 92, tag v1.5.77)

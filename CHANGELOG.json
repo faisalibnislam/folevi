@@ -1,6 +1,27 @@
 {
   "releases": [
     {
+      "version": "1.5.78",
+      "build": 93,
+      "released": "2026-11-25T06:39:59+06:00",
+      "type": "patch",
+      "summary": "Folevi for iPhone and iPad gets its widgets, Siri and Shortcuts back, a clearer sync sheet, and iPhone Duo keeps clear of the fold.",
+      "added": [
+        "Widgets, the Control Center control, Siri and Shortcuts, and Spotlight search on iPhone and iPad."
+      ],
+      "improved": [
+        "The sync sheet on iPhone shows a clear status, when it last synced and what is waiting, on one card.",
+        "Sync status uses the same words on every screen.",
+        "Lists that fail to load show it and try again instead of taking the page down.",
+        "The starter note reads right on phones, tablets and computers."
+      ],
+      "fixed": [
+        "On iPhone Duo partly open, the sidebar keeps to its side of the fold and nothing sits in the crease.",
+        "Links from widgets and Shortcuts, and returning to the app, now reach the page."
+      ],
+      "tag": "v1.5.78"
+    },
+    {
       "version": "1.5.77",
       "build": 92,
       "released": "2026-11-25T04:56:22+06:00",

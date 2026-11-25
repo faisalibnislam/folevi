@@ -23,6 +23,18 @@ export interface CspOptions {
    * another account of this browser in sync (docs/MULTI_ACCOUNT_PLAN.md §5.1).
    */
   frameAncestors?: "none" | "self";
+  /**
+   * `upgrade-insecure-requests` (on by default outside development). Folevi Server turns it off while it's served
+   * over plain http (a first setup on the home network): it would rewrite every request, the sync socket too, to
+   * an https address that doesn't exist (docs/self-hosting/PHASE0.md item 7).
+   */
+  upgradeInsecure?: boolean;
+  /**
+   * The sign-in page's "Your own server" reads `/.well-known/folevi.json` from an address the person types
+   * (components/server/OwnServerSignIn.tsx), so it may connect to any https origin (and any http one when the page
+   * itself is on plain http, as a server on the home network is).
+   */
+  connectToServers?: boolean;
 }
 
 export function origin(url: string): string {
@@ -48,6 +60,7 @@ export function buildContentSecurityPolicy(opts: CspOptions): string {
   const site = origin(opts.convexSiteUrl);
   const app = origin(opts.appUrl);
   const extra = (opts.extraOrigins ?? []).map(origin).filter(Boolean).join(" ");
+  const servers = opts.connectToServers ? (opts.upgradeInsecure === false ? " https: http:" : " https:") : "";
   const scriptSrc = opts.nonce
     ? `script-src 'self' 'nonce-${opts.nonce}' ${(opts.scriptHashes ?? []).join(" ")} 'strict-dynamic'${opts.dev ? " 'unsafe-eval'" : ""}`
     : `script-src 'self' 'unsafe-inline'${opts.dev ? " 'unsafe-eval'" : ""}`;
@@ -62,7 +75,7 @@ export function buildContentSecurityPolicy(opts: CspOptions): string {
     `media-src 'self' blob: ${site}`,
     "font-src 'self'",
     // The app origin: the marketing home page asks it whether this browser is signed in (lib/auth/signedInCheck.ts).
-    `connect-src 'self' ${convex} ${convexWs} ${site} ${app} ${extra}${opts.dev ? " ws://localhost:* ws://127.0.0.1:* http://127.0.0.1:*" : ""}`,
+    `connect-src 'self' ${convex} ${convexWs} ${site} ${app} ${extra}${servers}${opts.dev ? " ws://localhost:* ws://127.0.0.1:* http://127.0.0.1:*" : ""}`,
     // Embed blocks: only the players that packages/editor-schema/src/embeds.ts builds addresses for.
     // 'self': the hidden pages that keep this browser's other accounts in sync (components/places/PlaceRunners.tsx).
     `frame-src 'self' ${site} ${EMBED_FRAME_ORIGINS.join(" ")}`,
@@ -72,7 +85,7 @@ export function buildContentSecurityPolicy(opts: CspOptions): string {
     "object-src 'none'",
     "worker-src 'self' blob:",
     "manifest-src 'self'",
-    ...(opts.dev ? [] : ["upgrade-insecure-requests"]),
+    ...(opts.dev || opts.upgradeInsecure === false ? [] : ["upgrade-insecure-requests"]),
   ]
     .map((d) => d.replace(/\s+/g, " ").trim())
     .filter(Boolean)

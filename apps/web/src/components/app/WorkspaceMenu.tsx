@@ -1,5 +1,6 @@
 "use client";
 
+import { isServerEdition } from "@/lib/edition";
 import { useEffect, useState } from "react";
 import { AiIcon } from "@/components/ai/AiIcon";
 import { ArrowRightLeft, ChevronsUpDown, HelpCircle, Laptop, LogIn, LogOut, Smartphone, Plus, Settings, Tablet } from "lucide-react";
@@ -13,7 +14,7 @@ import { NewWorkspaceDialog } from "./NewWorkspaceDialog";
 import { canPurchaseHere } from "@/lib/nativeApp";
 import { isShell, shell } from "@/lib/shell";
 import type { LibraryKind } from "@/lib/shell/types";
-import { APP_URL } from "@/lib/env";
+import { appUrl } from "@/lib/env";
 import { useCapabilities } from "@/lib/mode";
 import { flushBeforeSwitch, LIBRARY_PLACE, placesAvailable, signInToAnotherAccount, switchToPlace, syncsWords, usePlaces, type AccountPlace, type Place, type PlaceId } from "@/lib/places";
 import { MAX_BROWSER_ACCOUNTS } from "@/lib/places/web";
@@ -23,7 +24,7 @@ import { openMovePlaces } from "@/components/places/MovePlaces";
 import "./accountMenu.css";
 
 // The console is part of the website; the bundled app shell has no /admin, so it opens there in the browser.
-export const openAdminConsole = () => (isShell() ? void window.open(`${APP_URL}/admin`, "_blank", "noopener") : void (window.location.href = "/admin"));
+export const openAdminConsole = () => (isShell() ? void window.open(`${appUrl()}/admin`, "_blank", "noopener") : void (window.location.href = "/admin"));
 
 /** A team workspace's mark: its square logo, or its initial on a neutral tile. */
 export function WorkspaceLogo({ workspace, size = 24, className = "" }: { workspace: Pick<Workspace, "name" | "logoUrl">; size?: number; className?: string }) {
@@ -297,7 +298,8 @@ function AccountMenu({ onNavigate }: { onNavigate?: () => void }) {
   const store = canPurchaseHere();
   const ent = (profile as { entitlements?: { trialing: boolean; trialEndsAt: number | null; paid?: boolean } }).entitlements;
   const trialDays = ent?.trialing && ent.trialEndsAt ? Math.max(1, Math.ceil((ent.trialEndsAt - Date.now()) / 86_400_000)) : 0;
-  const pill = !ent || context.kind !== "personal" ? null : ent.trialing ? `${TIER_NAMES[TRIAL_TIER]} trial · ${trialDays} ${trialDays === 1 ? "day" : "days"} left` : ent.paid === false && store ? "Upgrade to Pro" : null;
+  // Folevi Server has no plans or trials (lib/edition.ts).
+  const pill = !ent || context.kind !== "personal" || isServerEdition() ? null : ent.trialing ? `${TIER_NAMES[TRIAL_TIER]} trial · ${trialDays} ${trialDays === 1 ? "day" : "days"} left` : ent.paid === false && store ? "Upgrade to Pro" : null;
   const title = workspace ? workspace.name : profile.displayName;
 
   return (

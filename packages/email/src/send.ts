@@ -1,14 +1,28 @@
 // Provider selection and the one entry point Convex uses to send a template.
 import { EMAIL_SENDING_DOMAIN, emailManifest } from "./manifest";
 import { isRecipientAllowed } from "./policy";
+import { postToFoleviMail } from "./providers/folevi";
 import { postToResend } from "./providers/resend";
+import type { SmtpMessage } from "./providers/smtp";
 import { EmailRenderError, renderEmail } from "./render";
 import type { EmailProviderKind, SendEmailInput, SendOutcome, SendPolicy } from "./types";
 import { isPlausibleEmail } from "./validate";
 
 type Env = Record<string, string | undefined>;
 
-export type ProviderSelection = { kind: "resend"; apiKey: string } | { kind: "none" };
+/**
+ * Who sends. Folevi Cloud: Resend (from the environment). Folevi Server picks one from its settings and passes it
+ * in: Folevi Mail through Connect ("folevi"), the owner's SMTP server ("smtp", whose socket lives in a Node action,
+ * so the caller hands over a transport), or nothing.
+ */
+export type ProviderSelection =
+  | { kind: "resend"; apiKey: string }
+  | { kind: "folevi"; baseUrl: string; token: string }
+  | { kind: "smtp"; from: { email: string; name?: string } }
+  | { kind: "none" };
+
+/** Sends one rendered message over SMTP (convex/smtpSend.ts). */
+export type SmtpTransport = (message: SmtpMessage) => Promise<SendOutcome>;
 
 const HOSTNAME_RE = /^(?=.{1,253}$)[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)+$/;
 const ATTEMPT_ID_RE = /^[A-Za-z0-9_-]{1,64}$/;
@@ -66,6 +80,10 @@ export async function sendEmail(
   opts: {
     env: Env;
     policy: SendPolicy;
+    /** The provider to use instead of the environment's (Folevi Server's settings). */
+    provider?: ProviderSelection;
+    /** Required with an "smtp" provider. */
+    smtp?: SmtpTransport;
     fetchImpl?: typeof fetch;
     sleep?: (ms: number) => Promise<void>;
     maxAttempts?: number;
@@ -85,8 +103,9 @@ export async function sendEmail(
   const to = typeof input.to === "string" ? input.to.trim() : "";
   if (!isPlausibleEmail(to)) return fail("invalid_recipient");
 
-  const provider = selectProvider(opts.env, opts.policy.environment);
+  const provider = opts.provider ?? selectProvider(opts.env, opts.policy.environment);
   if (provider.kind === "none") return fail("provider_not_configured");
+  if (provider.kind === "smtp" && !opts.smtp) return fail("provider_not_configured", "smtp");
 
   if (typeof input.attemptId !== "string" || !ATTEMPT_ID_RE.test(input.attemptId)) {
     return fail("invalid_attempt_id", provider.kind);
@@ -115,6 +134,25 @@ export async function sendEmail(
   // A template may fix its Reply-To (support mail answers to the support mailbox) or have none (staff notices).
   const replyTo = def.replyTo === undefined ? value(opts.env, "EMAIL_REPLY_TO") : (def.replyTo ?? undefined);
   const headers = threadHeaders(input.thread);
+  if (provider.kind === "folevi") {
+    const outcome = await postToFoleviMail(
+      { to, subject: rendered.subject, html: rendered.html, text: rendered.text, ...(replyTo && isPlausibleEmail(replyTo) ? { replyTo } : {}), tag: input.key },
+      { baseUrl: provider.baseUrl, token: provider.token, idempotencyKey: `folevi-${input.attemptId}`, fetchImpl: opts.fetchImpl, sleep: opts.sleep, maxAttempts: opts.maxAttempts, timeoutMs: opts.timeoutMs },
+    );
+    return { ...outcome, provider: provider.kind };
+  }
+  if (provider.kind === "smtp") {
+    const outcome = await opts.smtp!({
+      from: { email: provider.from.email, name: provider.from.name ?? def.sender.name },
+      to,
+      ...(replyTo && isPlausibleEmail(replyTo) ? { replyTo } : {}),
+      ...(Object.keys(headers).length ? { headers } : {}),
+      subject: rendered.subject,
+      text: rendered.text,
+      html: rendered.html,
+    });
+    return { ...outcome, provider: provider.kind };
+  }
   const outcome = await postToResend(
     {
       from: { email: def.sender.address ?? `${def.sender.localPart}@${sendingDomain(opts.env)}`, name: def.sender.name },

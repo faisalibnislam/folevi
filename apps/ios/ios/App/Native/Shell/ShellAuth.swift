@@ -33,8 +33,20 @@ final class ShellAuth: NSObject {
     private static let hiddenHeaders: Set<String> = ["set-cookie", "set-cookie2", "set-auth-token"]
     private static let tokenPattern = #"^[A-Za-z0-9._~+/=-]{16,1024}$"#
 
-    /// The website (sign-in, /api/auth): the build's NEXT_PUBLIC_APP_URL as shell/build.json records it.
-    var service = URL(string: "https://app.folevi.com")!
+    /// Folevi Cloud's website (sign-in, /api/auth): the build's NEXT_PUBLIC_APP_URL as shell/build.json records it.
+    var cloudService = URL(string: "https://app.folevi.com")!
+
+    /// The website of the place a call acts for: its Folevi Server's (ShellPlaces.actingServer, at the address in
+    /// use now), else Folevi Cloud's. Setting it sets Folevi Cloud's.
+    var service: URL {
+        get { ShellPlaces.actingServer?.appURL ?? cloudService }
+        set { cloudService = newValue }
+    }
+
+    /// The website an account's session belongs to (its server's, or Folevi Cloud's), whichever place is acting.
+    func service(for userId: String?) -> URL {
+        ShellPlaces.server(ofUser: userId)?.appURL ?? cloudService
+    }
 
     private lazy var session: URLSession = {
         let c = URLSessionConfiguration.ephemeral
@@ -100,7 +112,7 @@ final class ShellAuth: NSObject {
 
     /// Another account's Convex token (moving notes between two accounts).
     func convexToken(for userId: String) async throws -> String? {
-        guard let bearer = token(for: userId), let url = URL(string: "/api/auth/convex/token", relativeTo: service)?.absoluteURL else { return nil }
+        guard let bearer = token(for: userId), let url = URL(string: "/api/auth/convex/token", relativeTo: service(for: userId))?.absoluteURL else { return nil }
         let (res, data, _) = try await send(url, method: "GET", bearer: bearer, slot: .some(userId))
         guard (200..<300).contains(res.statusCode) else { return nil }
         let jwt = (try? JSONSerialization.jsonObject(with: data) as? [String: Any])?["token"] as? String
@@ -109,7 +121,7 @@ final class ShellAuth: NSObject {
 
     /// Ends one account's session here and forgets its token.
     func signOut(userId: String) async {
-        if let bearer = token(for: userId) { await endSession(bearer) }
+        if let bearer = token(for: userId) { await endSession(bearer, at: service(for: userId)) }
         setToken(nil, for: userId)
     }
 
@@ -152,7 +164,8 @@ final class ShellAuth: NSObject {
         req.httpMethod = method
         req.cachePolicy = .reloadIgnoringLocalAndRemoteCacheData
         for (k, v) in headers { req.setValue(v, forHTTPHeaderField: k) }
-        req.setValue(origin, forHTTPHeaderField: "Origin")
+        // The website's own origin: the one the request goes to (every call here is on a place's website).
+        req.setValue(Self.origin(of: url), forHTTPHeaderField: "Origin")
         if let bearer { req.setValue("Bearer \(bearer)", forHTTPHeaderField: "Authorization") }
         if let body { req.httpBody = Data(body.utf8) }
         let (data, response) = try await session.data(for: req)
@@ -165,14 +178,15 @@ final class ShellAuth: NSObject {
         return (http, data, rotated)
     }
 
-    private var origin: String {
-        var o = "\(service.scheme ?? "https")://\(service.host ?? "")"
-        if let p = service.port { o += ":\(p)" }
+    static func origin(of url: URL) -> String {
+        let host = url.host ?? ""
+        var o = "\(url.scheme ?? "https")://\(host.contains(":") ? "[\(host)]" : host)"
+        if let p = url.port { o += ":\(p)" }
         return o
     }
 
-    private func endSession(_ bearer: String) async {
-        guard let url = URL(string: "/api/auth/sign-out", relativeTo: service) else { return }
+    private func endSession(_ bearer: String, at site: URL? = nil) async {
+        guard let url = URL(string: "/api/auth/sign-out", relativeTo: site ?? service) else { return }
         // Offline: the session expires on its own, and Settings > Devices can end it from anywhere.
         _ = try? await send(url.absoluteURL, method: "POST", headers: ["content-type": "application/json"], body: "{}", bearer: bearer)
     }

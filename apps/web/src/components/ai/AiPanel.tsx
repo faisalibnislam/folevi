@@ -31,7 +31,7 @@ import { asksToChange } from "./editIntent";
 import { openFindTodos, scheduleResultTodos } from "./FindTodos";
 import { hasTodoLines } from "@/lib/ai/actionItems";
 import { AI_ASK_EVENT, AI_FOCUS_EVENT, noteAiTakesKeyboard, takeNoteAiAsk } from "./chat/events";
-import { MARKETING_URL } from "@/lib/env";
+import { websiteUrl } from "@/lib/env";
 
 const NOTE_ACTIONS: { task: AiTask; label: string; icon: React.ReactNode }[] = [
   { task: "summarize", label: "Summarize", icon: <FileText size={15} /> },
@@ -591,7 +591,7 @@ export function AiPanel({
 
       <p className="px-1 text-footnote text-muted">
         Foli AI can make mistakes.{" "}
-        <a href={`${MARKETING_URL}/ai-policy`} target="_blank" rel="noopener noreferrer" className="-my-1 inline-block py-1 underline underline-offset-2">
+        <a href={`${websiteUrl()}/ai-policy`} target="_blank" rel="noopener noreferrer" className="-my-1 inline-block py-1 underline underline-offset-2">
           AI policy
         </a>
       </p>

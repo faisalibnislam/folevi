@@ -34,6 +34,11 @@ export const E2EE_ROUTES: Record<string, Route> = {
   "workspaces:*": pass,
   "billing:*": pass,
   "workspaceBilling:*": pass,
+  // Folevi Server and Folevi Connect: server settings, people, invites and linked servers, never note content.
+  ...each(pass, "server", "info claimOwner"),
+  ...each(pass, "serverInvites", "preview accept"),
+  ...each(pass, "serverAdmin", "updateSettings"),
+  ...each(pass, "connect", "myServers approveLink"),
   "settings:*": pass,
   "themes:*": pass,
   "presence:*": pass,

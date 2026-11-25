@@ -20,6 +20,8 @@ import type { MutationCtx, QueryCtx } from "../_generated/server";
 import { subscriptionOf, workspaceSubscriptionOf, type WorkspaceSubscription } from "./billing";
 import { GB, PLAN_CATALOG, STORAGE_BYTES, TIER_NAMES, personalEntitlementsOf, planName, workspaceEntitlementsOf, type PersonalEntitlements, type WorkspaceEntitlements, type WorkspaceSubscriptionLike } from "./plans";
 import type { Scope } from "./scope";
+import { isServerEdition } from "./edition";
+import { quotaFor, readServerSettings, storageUsedBy } from "./serverSettings";
 
 type Ctx = QueryCtx | MutationCtx;
 
@@ -29,7 +31,14 @@ export type { Scope } from "./scope";
 export const DEFAULT_WORKSPACE_QUOTA_BYTES = 5 * 1024 * 1024 * 1024;
 
 export async function personalEntitlements(ctx: Ctx, profileId: Id<"profiles">, now = Date.now()): Promise<PersonalEntitlements> {
-  return personalEntitlementsOf(await subscriptionOf(ctx, profileId), now);
+  const e = personalEntitlementsOf(await subscriptionOf(ctx, profileId), now);
+  return isServerEdition() ? { ...e, monthlyCredits: await serverMonthlyCredits(ctx, e.monthlyCredits) } : e;
+}
+
+/** Folevi Server: the owner's monthly Foli AI limit per person, when one is set (else unlimited). */
+async function serverMonthlyCredits(ctx: Ctx, fallback: number): Promise<number> {
+  const limit = (await readServerSettings(ctx)).ai.monthlyLimitPerPerson;
+  return limit ?? fallback;
 }
 
 /**
@@ -57,7 +66,8 @@ export function workspaceSubscriptionLike(sub: WorkspaceSubscription | null): Wo
 export async function workspaceEntitlements(ctx: Ctx, workspace: Id<"workspaces"> | Doc<"workspaces">, now = Date.now()): Promise<WorkspaceEntitlements> {
   const w = typeof workspace === "string" ? await ctx.db.get(workspace) : workspace;
   const subscription = w ? workspaceSubscriptionLike(await workspaceSubscriptionOf(ctx, w._id)) : null;
-  return workspaceEntitlementsOf(subscription, { storageBytes: w ? workspaceStorageOverride(w) : undefined }, now);
+  const e = workspaceEntitlementsOf(subscription, { storageBytes: w ? workspaceStorageOverride(w) : undefined }, now);
+  return isServerEdition() ? { ...e, monthlyCredits: await serverMonthlyCredits(ctx, e.monthlyCredits) } : e;
 }
 
 const isMember = async (ctx: Ctx, profileId: Id<"profiles">, workspaceId: Id<"workspaces">) =>
@@ -186,6 +196,24 @@ export async function releaseFileStorage(ctx: MutationCtx, file: Doc<"files">, s
   await adjustStorageUsed(ctx, scope, -file.size, scope.kind === "workspace" ? (file.chargedTo ?? file.uploadedBy) : undefined);
 }
 
+/**
+ * Folevi Server: the quota of the person an upload counts against (their own, else the server's default), over
+ * everything they store on the server. Null when it fits or nobody set a quota. Only growth is refused.
+ */
+async function serverQuotaProblem(ctx: Ctx, scope: Scope, bytes: number, actorId?: Id<"profiles">, documentId?: Id<"documents">): Promise<string | null> {
+  if (bytes <= 0) return null;
+  const chargedId = scope.kind === "personal" ? scope.profileId : actorId ? await storageChargeFor(ctx, scope.workspaceId, actorId, documentId) : (await ctx.db.get(scope.workspaceId))?.ownerId;
+  const charged = chargedId ? await ctx.db.get(chargedId) : null;
+  if (!charged) return null;
+  const quota = quotaFor(charged, await readServerSettings(ctx));
+  if (quota === undefined) return null;
+  const used = await storageUsedBy(ctx, charged);
+  if (used + bytes <= quota) return null;
+  const amounts = `${gb(used)} of ${gb(quota)}`;
+  if (actorId && charged._id !== actorId) return `The owner of this note has used their storage on this server (${amounts}). Everything already stored stays available.`;
+  return `You've used your storage on this server (${amounts}). Everything already stored stays available; free some up, or ask the server's owner for more.`;
+}
+
 const gb = (bytes: number) => {
   const n = bytes / GB;
   if (bytes < GB) return `${Math.round(bytes / (1024 * 1024))} MB`;
@@ -197,6 +225,10 @@ const gb = (bytes: number) => {
  * the limit only growth is refused: everything already stored stays readable, and deleting frees room.
  */
 export async function assertStorageFor(ctx: Ctx, scope: Scope, bytes: number, actorId?: Id<"profiles">, documentId?: Id<"documents">): Promise<string | null> {
+  if (isServerEdition()) {
+    const problem = await serverQuotaProblem(ctx, scope, bytes, actorId, documentId);
+    if (problem) return problem;
+  }
   const usage = await storageUsage(ctx, scope, actorId, documentId);
   if (usage.usedBytes + bytes <= usage.limitBytes) return null;
   const over = usage.usedBytes > usage.limitBytes;

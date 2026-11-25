@@ -4,6 +4,7 @@ import type { UserIdentity } from "convex/server";
 import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
 import { fail } from "./errors";
+import { isServerEdition } from "./edition";
 import { CLAIM_EMAIL_VERIFIED, CLAIM_MFA } from "./claims";
 import { findActiveSession } from "./authStore";
 import { deviceStatus } from "./devices";
@@ -773,9 +774,10 @@ export async function requirePlatformRole(ctx: Ctx, roles: PlatformRole[]): Prom
     fail("not_found", "Not found.");
   }
   // Two-step verification is optional for accounts, but the admin console always requires it. Checked
-  // after the role so nobody else learns that an admin area exists.
+  // after the role so nobody else learns that an admin area exists. A Folevi Server's owner and admins are the
+  // exception (docs/self-hosting/CONTRACT.md 7.1): the server's own admin panel doesn't require it.
   const identity = await requireIdentity(ctx);
-  if (!claimsOf(identity).mfa) fail("mfa_required", "Turn on two-step verification to use the admin console.");
+  if (!isServerEdition() && !claimsOf(identity).mfa) fail("mfa_required", "Turn on two-step verification to use the admin console.");
   return profile;
 }
 

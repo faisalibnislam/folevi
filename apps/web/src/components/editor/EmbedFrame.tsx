@@ -2,7 +2,7 @@
 
 import { ExternalLink } from "lucide-react";
 import { EMBED_PROVIDER_LABEL, embedFor, sanitizeHref } from "@folevi/editor-schema";
-import { APP_URL } from "@/lib/env";
+import { appUrl } from "@/lib/env";
 
 // An embed block's frame (the editor and shared pages): the provider's player built from the stored page
 // address (packages/editor-schema/src/embeds.ts), never the address itself. The frame is sandboxed to
@@ -12,7 +12,7 @@ import { APP_URL } from "@/lib/env";
 
 function frameSrc(src: string): string {
   if (typeof location === "undefined" || /^https?:$/.test(location.protocol)) return src;
-  return `${APP_URL.replace(/\/$/, "")}/api/embed?src=${encodeURIComponent(src)}`;
+  return `${appUrl().replace(/\/$/, "")}/api/embed?src=${encodeURIComponent(src)}`;
 }
 
 export function EmbedFrame({ url, children }: { url: string; children?: React.ReactNode }) {

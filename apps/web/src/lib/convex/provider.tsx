@@ -11,8 +11,10 @@ import { api } from "@/lib/convex/api";
 import type { E2eeRouterClient } from "@/lib/e2ee/router/client";
 import { setActiveRouter } from "@/lib/e2ee/router/active";
 import { adoptSession, pinnedUserId } from "@/lib/places/pin";
+import { runtimeConfig } from "@/lib/runtime/config";
 
-const convexUrl = process.env.NEXT_PUBLIC_CONVEX_URL;
+/** The Convex address: build-time in Folevi Cloud, the server's runtime address in Folevi Server (lib/runtime/config.ts). */
+const convexUrlNow = () => runtimeConfig().convexUrl || undefined;
 
 let client: ConvexReactClient | null = null;
 /**
@@ -21,6 +23,7 @@ let client: ConvexReactClient | null = null;
  */
 export function getConvexClient(): ConvexReactClient {
   if (currentBackendMode() === "local") throw new Error("There's no Convex client in local mode (getConvexClient).");
+  const convexUrl = convexUrlNow();
   if (!convexUrl) throw new Error("NEXT_PUBLIC_CONVEX_URL is not configured");
   // initialAuthTokenReuse: the first token is always freshly minted (see fetchAccessToken), so once the
   // server accepts it there's no need for Convex's usual second fetch, which also re-ran every query.
@@ -338,7 +341,7 @@ export function ConvexClientProvider({ children }: { children: ReactNode }) {
     useEffect(() => setPhase(current), [current]);
     return auth;
   }, []);
-  if (!convexUrl) {
+  if (!convexUrlNow()) {
     return (
       <div role="alert" className="ui-card m-8 p-6">
         Folevi isn&apos;t connected to a backend yet (NEXT_PUBLIC_CONVEX_URL is missing). See docs/DEPLOYMENT.md.

@@ -1,14 +1,15 @@
 import "server-only";
 import { convexBetterAuthNextJs } from "@convex-dev/better-auth/nextjs";
-import { APP_HOST, APP_URL, MARKETING_HOST } from "@/lib/env";
+import { appHost, appUrl, marketingHost } from "@/lib/env";
+import { internalConvexSiteUrl, internalConvexUrl } from "@/lib/runtime/internal";
 import { hintCookie, hintDomain, sessionChange } from "@/lib/auth/signedInHint";
 import { appleFormPost, withAppleUser } from "@/lib/auth/appleCallback";
 import { answeredSignedOut, checkPinnedSession, listPlaces, pinRequest, signOutPlace, type Forward } from "@/lib/auth/places";
 import { isPrivateAuthPath } from "@/lib/auth/placesCookies";
 
 const convexAuth = convexBetterAuthNextJs({
-  convexUrl: process.env.NEXT_PUBLIC_CONVEX_URL ?? "",
-  convexSiteUrl: process.env.NEXT_PUBLIC_CONVEX_SITE_URL ?? "",
+  convexUrl: internalConvexUrl(),
+  convexSiteUrl: internalConvexSiteUrl(),
 });
 
 /** Server-side bridge to Better Auth running inside Convex. */
@@ -106,7 +107,7 @@ function withSignedInHint(response: Response): Response {
   const change = sessionChange(response.headers.getSetCookie());
   if (!change) return response;
   const headers = new Headers(response.headers);
-  headers.append("set-cookie", hintCookie(change === "set", hintDomain(APP_HOST, MARKETING_HOST), APP_URL.startsWith("https:")));
+  headers.append("set-cookie", hintCookie(change === "set", hintDomain(appHost(), marketingHost()), appUrl().startsWith("https:")));
   return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
 }
 
@@ -118,7 +119,7 @@ function withCookie(response: Response, cookie: string | null): Response {
   return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
 }
 
-const secureCookies = () => APP_URL.startsWith("https:");
+const secureCookies = () => appUrl().startsWith("https:");
 
 /** Adds Set-Cookies to a response (the places map, a kept session: lib/auth/places.ts). */
 function withCookies(response: Response, cookies: string[]): Response {
@@ -187,7 +188,7 @@ const HINT_COOKIE = /(?:^|;\s*)folevi_signed_in=/;
  */
 export async function signedInStatus(request: Request): Promise<{ signedIn: boolean; setCookies: string[] }> {
   const cookie = request.headers.get("cookie") ?? "";
-  const hint = (on: boolean) => hintCookie(on, hintDomain(APP_HOST, MARKETING_HOST), secureCookies());
+  const hint = (on: boolean) => hintCookie(on, hintDomain(appHost(), marketingHost()), secureCookies());
   if (!SESSION_COOKIE.test(cookie)) return { signedIn: false, setCookies: HINT_COOKIE.test(cookie) ? [hint(false)] : [] };
   const headers = new Headers(request.headers);
   for (const h of ["origin", "referer", "content-length", "content-type"]) headers.delete(h);

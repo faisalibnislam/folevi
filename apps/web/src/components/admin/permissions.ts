@@ -40,7 +40,11 @@ export type Capability =
   | "support.view"
   | "support.reply"
   | "themes.view"
-  | "themes.edit";
+  | "themes.edit"
+  /** Folevi Server's admin panel (docs/SELF_HOSTING_PLAN.md §6): owners and admins. */
+  | "server.view"
+  /** Folevi Server: backups and restore, remote access, other admins, ownership (the owner only). */
+  | "server.owner";
 
 const ALL: AdminRole[] = ["super_admin", "ops_admin", "support_admin"];
 const ADMIN: AdminRole[] = ["super_admin", "ops_admin"];
@@ -78,6 +82,8 @@ export const PERMISSIONS: Record<Capability, AdminRole[]> = {
   "billing.setup": OWNER,
   "analytics.view": ALL,
   "revenue.view": ADMIN,
+  "server.view": ADMIN,
+  "server.owner": OWNER,
   /** The Support inbox and tickets (each ticket view is audited). */
   "support.view": ALL,
   /** Reply to the requester (emailed), add internal notes, change status, assign to yourself. */

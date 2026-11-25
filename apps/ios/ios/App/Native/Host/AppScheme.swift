@@ -10,7 +10,10 @@
 // - Range requests (audio and video seek);
 // - "Cache-Control: no-cache" on everything.
 // Plus the Mac's /_bridge/<id> (Bridge.swift): bridge calls too big for a message (POST the JSON, then name the id)
-// and answers too big for a reply (one GET).
+// and answers too big for a reply (one GET). And for a Folevi Server place, a Content-Security-Policy header on the
+// page that lets it reach that server's addresses only (ShellPolicy, as the Mac's). Folevi Cloud and the library get
+// ShellPolicy.cloudNarrowing, which narrows the export's meta policy back to what it allowed before servers existed
+// (the meta policy now allows any http(s) origin so server places can work).
 import Foundation
 import UniformTypeIdentifiers
 import WebKit
@@ -26,6 +29,13 @@ final class AppScheme: NSObject, WKURLSchemeHandler {
     /// The page allowed to use /_bridge from another origin (a development server's page); nil in the bundled app,
     /// where the page is on this origin.
     var bridgeOrigin: String?
+    /// The policy header for the page's HTML, or nil for none: a Folevi Server place's (the open place, or the
+    /// sign-in screen's server).
+    var pagePolicy: () -> String? = {
+        let place = ShellPlaces.state.current
+        guard let server = ShellPlaces.server(of: place) else { return ShellPolicy.cloudNarrowing }
+        return ShellPolicy.csp(mode: ShellPlaces.modeOf(place), serviceOrigin: "", server: server)
+    }
 
     private let work = DispatchQueue(label: "com.folevi.ios.app-scheme", qos: .userInitiated, attributes: .concurrent)
     private var stopped = Set<ObjectIdentifier>()
@@ -109,6 +119,7 @@ final class AppScheme: NSObject, WKURLSchemeHandler {
         var isDir: ObjCBool = false
         guard FileManager.default.fileExists(atPath: file.path, isDirectory: &isDir), !isDir.boolValue else { return .failed(URLError(.fileDoesNotExist)) }
         var headers = ["Content-Type": Self.mimeType(url.pathExtension), "Cache-Control": "no-cache"]
+        if headers["Content-Type"]?.hasPrefix("text/html") == true, let policy = pagePolicy() { headers["Content-Security-Policy"] = policy }
         if let range, let size = (try? file.resourceValues(forKeys: [.fileSizeKey]))?.fileSize, let r = Self.parseRange(range, size: size) {
             guard let handle = try? FileHandle(forReadingFrom: file) else { return .failed(URLError(.cannotOpenFile)) }
             defer { try? handle.close() }

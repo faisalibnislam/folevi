@@ -44,7 +44,8 @@ public struct PhoneGroupedSection<Content: View>: View {
                 .environment(\.phoneRowGrouped, true)
         } header: {
             if let title {
-                Text(title).webText(PhoneType.captionCaps).textCase(nil)
+                // In capitals, as today's app (`.ui-caption-caps`, the owner, 2026-11-25).
+                Text(title).webText(PhoneType.captionCaps).textCase(.uppercase)
                     .foregroundStyle(FoleviTokens.Chrome.inkMuted.resolve(scheme).color)
             }
         } footer: {
@@ -59,9 +60,10 @@ public struct PhoneGroupedSection<Content: View>: View {
     private var stackBody: some View {
         VStack(alignment: .leading, spacing: 0) {
             if let title {
-                // The Mac's section heading (the owner, 2026-11-23): sentence case, semibold, the muted ink.
+                // In capitals, as today's app (`.ui-caption-caps`, the owner, 2026-11-25).
                 Text(title)
                     .webText(PhoneType.captionCaps)
+                    .textCase(.uppercase)
                     .lineLimit(1)
                     .foregroundStyle(FoleviTokens.Chrome.inkMuted.resolve(scheme).color)
                     .padding(.horizontal, 16)

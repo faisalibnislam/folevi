@@ -83,6 +83,11 @@ final class RebuildFrameController: UIViewController, PhoneRouting {
     private var retiring: PageRetirement?
     private var observers: [Observer] = []
     private var tokens: [NSObjectProtocol] = []
+    /// The launch snapshot (plan 4.6): what was on screen last time, drawn at once on the next launch while the
+    /// engine starts, so Home and the lists don't arrive empty and fill in seconds later.
+    let snapshot: LaunchSnapshotStore
+    /// The place this frame opened (its snapshot is that place's).
+    private let place: String
     /// The iPad's wide layout: the Mac frame's model on the same engine (RebuildIPad.swift).
     lazy var desk: FrameModel = {
         let f = FrameModel(client: model.client)
@@ -107,7 +112,13 @@ final class RebuildFrameController: UIViewController, PhoneRouting {
         self.transport = transport
         let info = Bundle.main.infoDictionary
         let platform: AppInfo.Platform = UIDevice.current.userInterfaceIdiom == .pad ? .ipados : .ios
-        let client = EngineClient(transport: transport, place: ShellPlaces.state.current ?? "", app: AppInfo(platform: platform, version: info?["CFBundleShortVersionString"] as? String ?? "0", build: info?["CFBundleVersion"] as? String ?? "0", protocol: EngineContract.protocolVersion, schemaHash: EngineContract.schemaHash))
+        let place = ShellPlaces.state.current ?? ""
+        let client = EngineClient(transport: transport, place: place, app: AppInfo(platform: platform, version: info?["CFBundleShortVersionString"] as? String ?? "0", build: info?["CFBundleVersion"] as? String ?? "0", protocol: EngineContract.protocolVersion, schemaHash: EngineContract.schemaHash))
+        self.place = place
+        let support = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+        let safe = (place.isEmpty ? "none" : place).replacingOccurrences(of: "/", with: "_").replacingOccurrences(of: ":", with: "_")
+        snapshot = LaunchSnapshotStore(url: support.appendingPathComponent("Places/\(safe)/launch.json"))
+        client.snapshot = snapshot
         model = PhoneModel(client: client)
         pageHost = PageViewHost(pageView: host.pageView)
         super.init(nibName: nil, bundle: nil)
@@ -184,6 +195,17 @@ final class RebuildFrameController: UIViewController, PhoneRouting {
         })
         let center = NotificationCenter.default
         tokens = [
+            // Saved as the app leaves the screen; never for an encrypted space (plan 3.7).
+            center.addObserver(forName: UIApplication.didEnterBackgroundNotification, object: nil, queue: .main) { [weak self] _ in
+                MainActor.assumeIsolated {
+                    guard let self else { return }
+                    if self.model.session.value?.spaces.contains(where: { $0.encrypted }) == true {
+                        self.snapshot.clear(lock: true)
+                    } else {
+                        self.snapshot.flush()
+                    }
+                }
+            },
             center.addObserver(forName: UIResponder.keyboardWillChangeFrameNotification, object: nil, queue: .main) { [weak self] note in
                 let end = (note.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? NSValue)?.cgRectValue ?? .zero
                 MainActor.assumeIsolated { self?.keyboardMoved(to: end, hiding: false) }
@@ -259,6 +281,8 @@ final class RebuildFrameController: UIViewController, PhoneRouting {
     func retire(then done: @escaping () -> Void) {
         model.stop()
         transport.detach()
+        // Leaving this place (signed out, another place chosen): its snapshot goes; the same place again keeps it.
+        if ShellPlaces.state.current != place { snapshot.clear() } else { snapshot.flush() }
         retiring = PageRetirement(host.pageView) { [weak self] in
             self?.retiring = nil
             self?.host.tearDown()
@@ -308,7 +332,16 @@ final class RebuildFrameController: UIViewController, PhoneRouting {
         let overlap = hiding ? 0 : KeyboardBridge.coveredHeight(keyboard: keyboard, bounds: window.bounds)
         model.keyboardOverlap = overlap
         let appeared = overlap > 0 && !model.keyboardVisible
-        if overlap == 0, model.keyboardVisible { keyboardHidAt = Date() }
+        if overlap == 0, model.keyboardVisible {
+            keyboardHidAt = Date()
+            model.keyboardLeaving = true
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) { [weak self] in
+                guard let self, !self.model.keyboardVisible else { return }
+                self.model.keyboardLeaving = false
+            }
+        } else if overlap > 0 {
+            model.keyboardLeaving = false
+        }
         model.keyboardVisible = overlap > 0
         if appeared { model.refreshEditorState() }
     }

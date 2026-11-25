@@ -89,7 +89,7 @@ export default function DownloadsPage() {
         <p className="mk-lede mt-6 max-w-[56ch]">Every Folevi app and package, for every platform, in one list.</p>
         <nav aria-label="Platforms" className="mt-7 flex flex-wrap gap-2">
           {PLATFORMS.map((p) => (
-            <a key={p.id} href={`#${p.id}`} className="rounded-full border mk-hair px-3.5 py-1.5 text-[14px] font-medium text-(--color-heading) hover:bg-(--glass-active)">
+            <a key={p.id} href={`#${p.id}`} className="rounded-control border mk-hair px-3.5 py-1.5 text-[14px] font-medium text-(--color-heading) hover:bg-(--glass-active)">
               {p.title}
             </a>
           ))}
@@ -109,7 +109,7 @@ export default function DownloadsPage() {
                   <div className="text-[14px] text-muted">{item.detail}</div>
                 </div>
                 {item.href ? (
-                  <a href={item.href} className="mk-btn-secondary inline-flex h-9 items-center rounded-full px-4 text-[14px] font-medium">
+                  <a href={item.href} className="mk-btn-secondary inline-flex h-9 items-center rounded-control px-4 text-[14px] font-medium">
                     {item.action}
                     <span className="sr-only">
                       {" "}
@@ -117,7 +117,7 @@ export default function DownloadsPage() {
                     </span>
                   </a>
                 ) : (
-                  <span className="inline-flex h-9 items-center rounded-full border mk-hair px-4 text-[14px] font-medium text-muted">{item.action}</span>
+                  <span className="inline-flex h-9 items-center rounded-control border mk-hair px-4 text-[14px] font-medium text-muted">{item.action}</span>
                 )}
               </li>
             ))}

@@ -313,7 +313,7 @@ export default function AppsPage() {
           points={ANDROID_POINTS}
           actions={
             <>
-              <span className="inline-flex items-center rounded-full border mk-hair px-4 py-2 text-[15px] font-medium text-muted">
+              <span className="inline-flex items-center rounded-control border mk-hair px-4 py-2 text-[15px] font-medium text-muted">
                 Coming soon to Google Play
               </span>
               <ButtonLink href={WEB_APP_URL} variant="secondary">

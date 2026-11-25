@@ -1216,6 +1216,23 @@ account button should move past iPadOS's window buttons).
   `DATABASE_UDF_USER_TIMEOUT_SECONDS=4` for that backend. Bursts show in `convex.log` as "took a long time".
 
 ## 12. Change log
+- 2026-11-25: **Integration branch `claude/integration-2026-11-25`** (the owner: "check and resolve [the merging issues]
+  and release all apps and platforms, I approve everything"). The backlog could not drain PR by PR: every PR edits
+  this file, so each merge made the others conflict and restart CI, and the PRs also conflicted in code. PRs 104, 96,
+  92, 89, 78, 97, 98, 81, 82, 69 (with 66), 83, 65, 99, 107, 100, 105, 103, 106 and 93 are merged here once, with one
+  CI run and one production deploy. Resolutions worth knowing:
+  - Foli AI: Folevi Cloud keeps PR 81's per-feature routes and native adapters (`convex/lib/ai/openai.ts`); a Folevi
+    Server takes its provider from the server's settings (`provider()` in `convex/lib/ai/provider.ts`), and its
+    OpenAI-compatible adapter moved to `convex/lib/ai/openaiCompatible.ts`. `aiConfig.ts` route readers answer from
+    `serverRoute` on a server.
+  - PRs 100 and 107 were two copies of the server work: merged file by file from the 107 commit each PR 100 file was
+    copied from. `convex/auth.config.ts` is main's (107's fix); the server bundle has its own.
+  - Folevi Server's repo scripts are `packaging/linux/repo/build-server-apt-repo.sh` and `build-server-rpm-repo.sh`;
+    `build-apt-repo.sh` and `build-rpm-repo.sh` are the Linux desktop app's (PR 99).
+  - `build-shell.mjs` takes `--platform mobile` and `--platform windows`. Version files follow PR 83 (1.5.78, build 101).
+  - Dialog and command palette: the keyboard leaves first (PR 83), then the 150 ms fade (PR 82).
+  - The Downloads and Apps pages' pills use `rounded-control` (the corner test refuses `rounded-full`).
+  - Auto-merge was turned off on those PRs; they close as merged when this lands.
 - 2026-11-25: CI secret scan reads only the history HEAD reaches (`--log-opts=HEAD`, owner's OK), not every fetched
   branch: test tokens on unmerged branches (Folevi Server, Linux stores) had failed the required check on every PR.
 - 2026-11-25: Notes say Android is active (the Capacitor app, PR 69, Play internal testing); only the native Compose

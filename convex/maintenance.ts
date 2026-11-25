@@ -1,7 +1,8 @@
 // Background jobs: permanent deletion cascades, retention windows and housekeeping.
 // All cascades are bounded per invocation and reschedule themselves until finished.
 import { v } from "convex/values";
-import { internalAction, internalMutation } from "./_generated/server";
+import { internalAction } from "./_generated/server";
+import { internalMutation } from "./lib/functions";
 import { internal } from "./_generated/api";
 import type { Doc, Id } from "./_generated/dataModel";
 import type { MutationCtx } from "./_generated/server";

@@ -1,5 +1,6 @@
 import { v } from "convex/values";
-import { internalMutation, mutation, query } from "./_generated/server";
+import { query } from "./_generated/server";
+import { internalMutation, mutation } from "./lib/functions";
 import { internal } from "./_generated/api";
 import type { Doc } from "./_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
@@ -42,26 +43,43 @@ function tasksByCompleted(ctx: QueryCtx, scope: Scope, status: Doc<"tasks">["sta
 
 const vView = v.union(v.literal("inbox"), v.literal("today"), v.literal("upcoming"), v.literal("all"), v.literal("completed"), v.literal("mine"));
 
-async function present(ctx: QueryCtx, profile: Doc<"profiles">, tasks: Doc<"tasks">[]) {
+/**
+ * Tasks as lists show them, leaving out those on pages in Trash, sealed or that this person can't open. The
+ * note's id, title and icon come from the task row (kept in step, lib/documents.ts syncTaskLabels), so a list
+ * reads no notes when the person opens every page here; a row saved before those were kept reads its note.
+ */
+async function present(ctx: QueryCtx, profile: Doc<"profiles">, tasks: Doc<"tasks">[], reader: PageReader) {
+  const all = await reader.opensAllInScope();
   const docs = new Map<string, Doc<"documents"> | null>();
   const readable = new Map<string, boolean>();
   const out = [];
   for (const t of tasks) {
     // A row left from an empty checkbox (before those stopped being tasks, QA F06) isn't one; the row goes
     // the next time its block is saved, or with migrations.dropEmptyTasks.
-    if (!hasTaskTitle(t.title)) continue;
-    if (!docs.has(t.documentId)) docs.set(t.documentId, await ctx.db.get(t.documentId));
-    const d = docs.get(t.documentId);
-    // A sealed note's to-dos are projected on the device (docs/E2EE_DESIGN.md §5.7).
-    if (!d || d.inTrash || isSealed(d)) continue;
-    if (!readable.has(d._id)) readable.set(d._id, accessAtLeast(await documentAccess(ctx, profile, d), "read"));
-    if (!readable.get(d._id)) continue;
+    if (!hasTaskTitle(t.title) || t.documentInTrash) continue;
+    let note: { publicId: string; title: string; icon: string | null };
+    if (t.documentPublicId !== undefined && t.documentTitle !== undefined) {
+      // (A sealed note has no task rows: sealing drops them, lib/e2ee/purge.ts.)
+      if (!all) {
+        if (!readable.has(t.documentId)) readable.set(t.documentId, await reader.canOpenId(t.documentId));
+        if (!readable.get(t.documentId)) continue;
+      }
+      note = { publicId: t.documentPublicId, title: t.documentTitle, icon: t.documentIcon ?? null };
+    } else {
+      if (!docs.has(t.documentId)) docs.set(t.documentId, await ctx.db.get(t.documentId));
+      const d = docs.get(t.documentId);
+      // A sealed note's to-dos are projected on the device (docs/E2EE_DESIGN.md §5.7).
+      if (!d || d.inTrash || isSealed(d)) continue;
+      if (!readable.has(d._id)) readable.set(d._id, accessAtLeast(await documentAccess(ctx, profile, d), "read"));
+      if (!readable.get(d._id)) continue;
+      note = { publicId: d.publicId, title: d.title, icon: d.icon ?? null };
+    }
     const assignee = t.assigneeId ? await ctx.db.get(t.assigneeId) : null;
     out.push({
       blockId: t.blockId,
-      documentId: d.publicId,
-      documentTitle: d.title,
-      documentIcon: d.icon ?? null,
+      documentId: note.publicId,
+      documentTitle: note.title,
+      documentIcon: note.icon,
       title: t.title,
       status: t.status,
       dueDate: t.dueDate ?? null,
@@ -114,7 +132,7 @@ export async function listTasks(ctx: QueryCtx, profile: Doc<"profiles">, scope: 
     rows = rows.filter((t) => taskViews({ status: t.status, dueDate: t.dueDate ?? null, assigneeId: t.assigneeId ?? null }, args.today, profile._id, { personal }).includes(args.view));
   }
   rows = rows.filter((t) => !t.documentInTrash);
-  const presented = await present(ctx, profile, rows);
+  const presented = await present(ctx, profile, rows, await PageReader.forScope(ctx, profile, scope));
   if (args.view !== "completed") {
     presented.sort(
       (a, b) =>
@@ -158,7 +176,7 @@ export const range = query({
     const statuses: Doc<"tasks">["status"][] = args.includeCompleted ? ["open", "done"] : ["open"];
     const rows: Doc<"tasks">[] = [];
     for (const status of statuses) rows.push(...(await tasksByDue(ctx, scope, status, { from: args.from, to: args.to }).take(1000)));
-    return await present(ctx, profile, rows.filter((t) => !t.documentInTrash));
+    return await present(ctx, profile, rows.filter((t) => !t.documentInTrash), await PageReader.forScope(ctx, profile, scope));
   },
 });
 

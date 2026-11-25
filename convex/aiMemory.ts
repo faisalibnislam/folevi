@@ -12,7 +12,8 @@
 //
 // Privacy: memory text is never logged.
 import { v } from "convex/values";
-import { internalQuery, mutation, query, type MutationCtx, type QueryCtx } from "./_generated/server";
+import { internalQuery, query, type MutationCtx, type QueryCtx } from "./_generated/server";
+import { mutation } from "./lib/functions";
 import type { Doc, Id } from "./_generated/dataModel";
 import { assertWritable, requireProfile, resolveScope } from "./lib/auth";
 import { fail } from "./lib/errors";

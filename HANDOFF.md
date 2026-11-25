@@ -249,6 +249,19 @@ The ones most likely to be broken:
 
 ## 9. Current state (as of 2026-11-24)
 
+**Backend performance pass (session `perf-backend`, 2026-11-25).** A generated 5,000-note test library
+(`convex/lib/fakeLibrary.ts`, seeded by `convex/devSeed.ts` into an `@example.com` test account, refused on
+production) and a read-cost harness (`tests/convex/perf/`, run with `FOLEVI_PERF=1`). Baseline and every fix's
+before/after numbers: `docs/perf/backend-results.md`. At 5,000 notes `organization.index` reads 13 MB per run (the
+limit is 16 MiB) and task lists read up to 1,476 documents.
+Step 2: every mutation is now built from `convex/lib/functions.ts` (not `_generated/server`), whose db wrapper reports
+writes to `documents` and `folders` to `lib/listStats.ts`. That keeps `listStats` (per folder: page count, last edit,
+5 newest previews; per scope: the Drafts count) in step, and `organization.index`, `recentFolders` and `draftCount`
+read it instead of the pages. A folder or scope without a row is counted from its pages as before until
+`migrations:backfillListStats` runs (production run waits for the owner's OK). Task rows carry their note's public
+id, title and icon (`syncTaskLabels`, cleared when a note is sealed), so task lists read no notes. Writing straight
+to the db in a test (`t.run`) skips the wrapper: use `watchedDb(ctx)` from `lib/functions.ts` there.
+
 **A failed query no longer takes a page down (branch `claude/project-thread-u99yc5`, open PR, 2026-11-24).** Components
 read queries through `apps/web/src/lib/convex/queries.ts` (`useQuery`, `usePaginatedQuery`, `useQueryState`), never
 convex/react's (an eslint `no-restricted-imports` rule says so). A failed query reads as still loading (keeping its
@@ -580,6 +593,11 @@ account button should move past iPadOS's window buttons).
 ## 10. Next steps / open work
 - Shell performance (2026-11-25): merge PRs 84, 85, 86 into their shell branches; check PR 85 on a Windows PC with two
   accounts and a library; Android launch time needs the SDK and an emulator (owner's OK).
+- Backend performance pass, owner's OK needed for production: run `migrations:backfillListStats` (optional, speeds
+  up existing folders) and `migrations:backfillDocumentText` (required before the note text switch PR merges).
+- Backend performance pass (`docs/perf/backend-results.md`): kept folder and Drafts counts, task rows that carry
+  their note's title, a cheaper `changes.list`, then note text (`searchText`) split out of `documents`
+  (widen, backfill, narrow; the owner approves each production backfill).
 - Web everywhere (all landed 2026-11-25). Open: the iOS simulator `footprint` re-run of the iPhone memory fix (mobile
   session); there are four empty-state components; lists not yet given `LoadFailed` still load until a retry answers
   (settings lists, Calendar, Graph, pickers);
@@ -739,6 +757,15 @@ account button should move past iPadOS's window buttons).
   a new Android CI workflow), #84 Tauri (library and reminders open after the window, lighter asset serving and
   scans, launch time in `measure.mjs`), #85 Electron (Quick Add on first use, runners on demand, throttling back
   on). Electron uses about 28% less memory on Windows x64 (CI). Android not measured (no SDK).
+- 2026-11-25: Backend performance pass, step 3 (widen): `documentText` table holds each note's search text and search
+  fields, kept in step by the write hook; `migrations:backfillDocumentText` copies older notes (production run waits
+  for the owner). Readers are unchanged until the switch PR.
+- 2026-11-25: Backend performance pass, step 2: kept folder and Drafts stats (`listStats`, through the new
+  `lib/functions.ts` write hook), task rows with their note's title and icon, `changes.list` reads a note only once it
+  has unseen changes, a folder by last edit pages through its index. Numbers in `docs/perf/backend-results.md`.
+- 2026-11-25: Backend performance pass, step 1: a generated 5,000-note test library (`convex/devSeed.ts`, test
+  accounts only, refused on production), a read-cost harness with Convex's limits on (`tests/convex/perf/`), and the
+  baseline in `docs/perf/backend-results.md`.
 - 2026-11-25: One set of sync status words on every screen (owner's pick: the desktop's): the phone and iPad's sync
   button (`components/iphone/SyncStatusTouch.tsx`) now reads `SYNC_LABELS` from `components/app/SyncStatus.tsx`
   (Saved, Saving…, Syncing…, Offline, Conflict, Not saved) instead of Synced / Waiting to sync / Edited in two places,

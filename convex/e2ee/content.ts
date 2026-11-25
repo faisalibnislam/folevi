@@ -4,7 +4,8 @@
 // Names, bodies and records arrive sealed (FLV1 0x03); the server checks their headers, sizes and key
 // versions and never opens them. WP3.
 import { v } from "convex/values";
-import { mutation, type MutationCtx } from "../_generated/server";
+import { type MutationCtx } from "../_generated/server";
+import { mutation } from "../lib/functions";
 import type { Doc, Id } from "../_generated/dataModel";
 import { MAX_FOLDER_DEPTH, canNestFolderIn, isValidId, rankBetween } from "@folevi/editor-schema";
 import { accessAtLeast, assertWritable, documentAccess, documentAccessInfo, getDocumentByPublicId, requireDocument, requireProfile, requireRowScope, resolveScope } from "../lib/auth";

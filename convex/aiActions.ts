@@ -2,7 +2,8 @@
 // notes into them, move notes into them. Everything is authorized here as if the person did it by hand.
 import { v } from "convex/values";
 import { requireServerCompose } from "./lib/e2ee/ai";
-import { internalQuery, mutation } from "./_generated/server";
+import { internalQuery } from "./_generated/server";
+import { mutation } from "./lib/functions";
 import type { Doc, Id } from "./_generated/dataModel";
 import { markdownToBlocks, rankBetween, ulid } from "@folevi/editor-schema";
 import { accessAtLeast, assertWritable, documentAccess, requireDocument, requireProfile, resolveScope } from "./lib/auth";

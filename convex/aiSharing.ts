@@ -16,7 +16,8 @@
 // Sharing and unsharing write an audit-style log line (who, which conversation, counts); never content.
 import { v } from "convex/values";
 import { requireServerCompose } from "./lib/e2ee/ai";
-import { mutation, query, type QueryCtx } from "./_generated/server";
+import { query, type QueryCtx } from "./_generated/server";
+import { mutation } from "./lib/functions";
 import type { Doc, Id } from "./_generated/dataModel";
 import { accessAtLeast, assertWritable, documentAccess, getDocumentByPublicId, requireProfile, requireRowScope, resolveScope } from "./lib/auth";
 import { fail } from "./lib/errors";

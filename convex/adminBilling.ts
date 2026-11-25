@@ -3,7 +3,7 @@
 // through the payment provider (Polar); here admins set plans by hand (comps, fixes), grant AI credits and
 // record refunds. A plan billed through Polar is changed in Polar, never here.
 import { v } from "convex/values";
-import { mutation } from "./_generated/server";
+import { mutation } from "./lib/functions";
 import { internal } from "./_generated/api";
 import type { Doc, Id } from "./_generated/dataModel";
 import type { MutationCtx } from "./_generated/server";

@@ -11,7 +11,8 @@
 // people who can read the note only, and they go with the file, the whiteboard's block or the note
 // (maintenance.ts), and come with the account's export (exports.ts).
 import { v } from "convex/values";
-import { action, internalMutation, internalQuery, mutation, query, type MutationCtx, type QueryCtx } from "./_generated/server";
+import { action, internalQuery, query, type MutationCtx, type QueryCtx } from "./_generated/server";
+import { internalMutation, mutation } from "./lib/functions";
 import { internal } from "./_generated/api";
 import type { Doc, Id } from "./_generated/dataModel";
 import { cleanFileText, MAX_FILE_TEXT, pageAt, searchSnippet, validPageStarts, highlightRanges, type FileTextSource } from "@folevi/editor-schema";

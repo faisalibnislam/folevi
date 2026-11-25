@@ -1,5 +1,6 @@
 "use client";
 
+import { POP_IN } from "@/lib/native/ui";
 import { useConvex, useMutation } from "convex/react";
 import { useQuery } from "@/lib/convex/queries";
 import { useOfflineQuery } from "@/lib/sync/queryCache";
@@ -95,7 +96,7 @@ function NotificationsBell() {
           ref={panelRef}
           popover="manual"
           style={panelStyle}
-          className="ui-pop z-[100] flex max-h-[min(560px,calc(100vh-72px))] w-[380px] max-w-[calc(100vw-1rem)] flex-col overflow-hidden rounded-panel border-0 p-0 text-ink animate-[folio-rise_140ms_var(--ease-folio)] motion-reduce:animate-none"
+          className={`ui-pop z-[100] flex max-h-[min(560px,calc(100vh-72px))] w-[380px] max-w-[calc(100vw-1rem)] flex-col overflow-hidden rounded-panel border-0 p-0 text-ink ${POP_IN} motion-reduce:animate-none`}
         >
           <NotificationPanel
             unread={count}

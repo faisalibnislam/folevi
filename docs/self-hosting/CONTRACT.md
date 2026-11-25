@@ -184,6 +184,63 @@ Cloud edition only (for Connect, §9):
 | `connect:myServers` action | the signed-in person's linked servers from the Connect service: `[{serverId, name, hostname, lanHostnames, version, online, role:"owner"\|"member"}]` |
 | `connect:approveLink` action | `{code}`; links the server waiting on that code to the signed-in person |
 
+### 7.1 Notes from the Backend build (2026-11-25)
+
+Built in `convex/server.ts`, `convex/serverAdmin.ts`, `convex/serverInvites.ts`, `convex/connect.ts` (tests:
+`tests/convex/server-edition.test.ts`). What the table above left open, now fixed:
+
+1. **`userId`** in every `serverAdmin:*` call and result is the **profile id** (`profiles._id`), as in the cloud
+   admin console.
+2. **Admin access:** owner and admin, no two-step requirement (the cloud console requires it; a home server's
+   owner may not have an authenticator app).
+3. **`serverAdmin:updateSettings`** takes `{patch}` (a partial of §8). A secret field: a string sets it, `null`
+   clears it, left out keeps it. Validation errors are `invalid_argument` with a message for the admin. It returns
+   the same view as `getSettings`, which also has `configured: {email, ai, pushRelay}`. Audit records list the
+   changed field names only.
+4. **Invites:** `serverAdmin:invite` returns `{token, url, expiresAt, inviteId, emailed}`; the link is
+   `<origin>/join/<token>` (`/invite/` is taken by workspace invites), 7 days. `serverAdmin:revokeInvite` takes
+   `{inviteId}`; `listInvites` returns `[{inviteId, email?, role, invitedBy, createdAt, expiresAt,
+   state: "pending"|"used"|"accepted"|"revoked"|"expired", acceptedBy?}]`. `serverInvites:preview` returns null for
+   an unknown token. An invite never lowers anyone's role; only `setRole` does. `setRole` takes
+   `"admin"|"member"|"guest"` (the owner changes only through `transferOwnership`).
+5. **Sign-up with an invite (web and apps):** the sign-up request carries the token as `inviteToken` in the
+   `/api/auth/sign-up/email` JSON body, or as the `x-folevi-invite` header (Google and Apple sign-ups: the header).
+   Better Auth's user hook checks the server's sign-up mode for every new account, spends the invite, and the
+   account gets the invite's role when `users:bootstrap` makes its profile. Refusals are 403 with codes
+   `SIGNUP_INVITE_ONLY`, `SIGNUP_DOMAIN`, `INVITE_INVALID`, `INVITE_OTHER_EMAIL`. While the server has no owner
+   (`needsSetup`), sign-up is open so the setup page can create the owner's account, which then calls
+   `server:claimOwner`.
+6. **Email off:** new accounts start verified (nothing to verify with), so sign-up and sign-in need no email. With
+   email on, verification works as in the cloud. Password sign-in or passkeys turned off in `signIn` are refused
+   by the backend too (`PASSWORD_SIGN_IN_OFF`, `PASSKEY_SIGN_IN_OFF`).
+7. **`serverAdmin:resetPassword`** returns `{emailed, link, expiresAt}`: with email on, `{emailed: true, link:
+   null}`; with email off, a one-time `<origin>/reset-password?token=...` link valid for 1 hour.
+8. **`serverAdmin:overview`** returns `{people, storageBytes, notes, lastSignIns: [{userId, name, at}]}` (the ten
+   most recently active people).
+9. **`serverAdmin:testEmail`** returns `{ok, error?}` with `error` in words for the admin.
+10. **`server:info`** works on both editions (the cloud returns `kind: "folevi-cloud"`). `features.ai` is the
+    "Foli AI configured" flag: hide Foli AI when it is false. `connect` comes from the optional backend variables
+    `FOLEVI_CONNECT_SERVER_ID` and `FOLEVI_CONNECT_HOSTNAMES` (comma separated), else `{serverId: null,
+    hostnames: []}`; the web server may fill it from the control API instead. Google and Apple show as on only
+    when their keys are in the backend's environment (`GOOGLE_CLIENT_ID`/`_SECRET`, `APPLE_SIGNIN_*`).
+11. **`connect:myServers`** returns `[]` when Connect isn't available (a server, or no `CONNECT_SERVICE_KEY`) or
+    can't be reached. **`connect:approveLink`** returns `{ok: true}` or `{ok: false, error: "not_available" |
+    "invalid_code" | "expired" | "failed"}`. Both need a signed-in person.
+12. **`FOLEVI_JWKS`** (§4) accepts either the public set `{"keys":[...]}` from `/api/auth/convex/jwks` (tokens keep
+    being signed with the key in the database) or the key rows Better Auth's `getLatestJwks` returns. It is read
+    only in the server edition. Changing it needs a redeploy, since `auth.config.ts` is read at deploy time.
+13. **Folevi AI** (`ai.mode: "folevi"`) calls `${FOLEVI_CONNECT_URL}/v1/ai/chat/completions` with model
+    `folevi-default` and `/v1/ai/embeddings` with model `folevi-embedding` and `dimensions: 768`, bearer the Connect
+    token. Streaming requests send `stream: true` and `stream_options: {include_usage: true}`.
+14. **Billing** is off in the server edition: everyone has the top plan with no trial, `billing:checkout`,
+    `buyCredits`, `portal` and the workspace billing actions answer `not_found`. Storage is limited only by quotas;
+    `ai.monthlyLimitPerPerson` is in AI credits (100 credits = US$1 of model usage at Gemini Flash prices).
+15. **Push relay:** a 410 drops the device token; a 503 is tried once more after 1.5 s. The `data` sent is
+    `{kind, path, taskId?, label?, place?}`.
+16. **Not built yet:** inbound email (`emailIn`), Google sign-in from `settings.google` (Google keys come from the
+    environment for now), covers through Folevi or the server's Unsplash key, and limits for guests (a guest is
+    stored as `profiles.serverGuest` but can still make notes of their own).
+
 ## 8. Server settings (singleton table `serverSettings`)
 
 ```ts

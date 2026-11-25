@@ -7,9 +7,9 @@ persistent volume at `/data`. **Unverified: deploy each once before publishing a
 | --- | --- | --- |
 | Coolify | `coolify/folevi.yaml` | Service template (docker-compose with Coolify's magic variables). Coolify's proxy serves HTTPS |
 | Dokploy | `dokploy/docker-compose.yml` + `dokploy/template.toml` | Template for Dokploy's templates repository |
-| Railway | `railway/railway.json` | Deploy from the image; add a volume at `/data` in the service settings (Railway volumes are not set in config) |
-| Fly.io | `fly/fly.toml` | `fly launch --copy-config --no-deploy`, `fly volumes create folevi_data --size 10`, `fly deploy` |
-| Render | `render/render.yaml` | Blueprint; a persistent disk needs a paid instance type |
+| Railway | `railway/railway.json` + `Dockerfile.railway` | Add a volume at `/data` and `FOLEVI_PUBLIC_URL` in the service settings (Railway volumes are not set in config) |
+| Fly.io | `fly/fly.toml` + `Dockerfile.fly` | `fly launch --copy-config --no-deploy`, `fly volumes create folevi_data --size 10`, `fly deploy` |
+| Render | `render/render.yaml` + `Dockerfile.render` | Blueprint; a persistent disk needs a paid instance type |
 
 Every platform puts its own HTTPS proxy in front. Folevi Server must then use the platform's public address as
 its origin: these templates set `FOLEVI_PUBLIC_URL`, which folevid reads (server/folevid config). Folevi Connect

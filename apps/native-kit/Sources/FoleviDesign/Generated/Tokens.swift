@@ -216,6 +216,7 @@ public enum FoleviTokens {
         public static let small: CGFloat = 8
         public static let control: CGFloat = 10
         public static let panel: CGFloat = 14
+        public static let folder: CGFloat = 9
         public static let container: CGFloat = 18
         public static let sheet: CGFloat = 28
         public static let float: CGFloat = 40

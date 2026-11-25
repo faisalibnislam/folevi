@@ -208,6 +208,7 @@ and `tokens.radius` for images drawn without CSS (Open Graph cards).
 | --- | --- | --- | --- |
 | container | 18 | `rounded-container` | Large containers: the window, view column, cards, modals, dialogs, sheets |
 | panel | 14 | `rounded-panel` | Panels, dropdowns, context menus, popovers, the floating bar and dock |
+| folder | 9 | `rounded-folder` | Folders only: folder cards and the folder icon (35% less round than a panel, owner 2026-11-25) |
 | control | 10 | `rounded-control` | Buttons, inputs, selects, segmented controls, tabs, smaller cards |
 | small | 8 | `rounded-small` | Compact controls and menu items |
 | chip | 6 | `rounded-chip` | Badges, tags, chips, segmented items, list rows, avatars |

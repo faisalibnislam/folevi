@@ -60,6 +60,8 @@
   --radius-control: var(--radius-control);
   --radius-panel: var(--radius-panel);
   --radius-container: var(--radius-container);
+  /* Folders (cards, the small folder icon): 35% less round than a panel (the owner, 2026-11-25). */
+  --radius-folder: var(--radius-folder);
   /* The iPhone app only (components/iphone): its bottom sheets, a sheet floating inset from the screen's
      edges (concentric with its corners), and its floating glass capsules. */
   --radius-sheet: var(--radius-sheet);

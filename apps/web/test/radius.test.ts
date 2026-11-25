@@ -18,7 +18,7 @@ function files(dir: string, out: string[] = []): string[] {
   return out;
 }
 
-const TOKENS = "none|tiny|chip|small|control|panel|container|sheet|float|capsule";
+const TOKENS = "none|tiny|chip|small|control|panel|folder|container|sheet|float|capsule";
 const SIDES = "(?:-(?:t|b|l|r|tl|tr|bl|br|s|e|ss|se|es|ee))?";
 
 /** Every way a corner could be set outside the scale, with what it found. */
@@ -53,7 +53,7 @@ function violations(path: string, text: string): string[] {
   // Inline styles: tokens only (CSS variables, or tokens.radius in images rendered without CSS).
   for (const m of text.matchAll(/borderRadius:\s*([^,}\n]+)/g)) {
     const value = m[1]!.trim();
-    if (/^"var\(--radius-(?:[a-z]+)\)"$/.test(value) || /\bR\.(?:none|tiny|chip|small|control|panel|container|sheet|float|capsule)\b/.test(value) || value === "inherit" || value === '"inherit"') continue;
+    if (/^"var\(--radius-(?:[a-z]+)\)"$/.test(value) || /\bR\.(?:none|tiny|chip|small|control|panel|folder|container|sheet|float|capsule)\b/.test(value) || value === "inherit" || value === '"inherit"') continue;
     found.push(`${at(m.index!)} borderRadius: ${value}`);
   }
   return found;
@@ -67,7 +67,7 @@ describe("corners", () => {
 
   test("the scale is 18 at most, and every step is on it (plus the iPhone app's sheets and capsules)", async () => {
     const { tokens } = await import("@folevi/design-tokens");
-    expect(tokens.radius).toEqual({ none: 0, tiny: 4, chip: 6, small: 8, control: 10, panel: 14, container: 18, sheet: 28, float: 40, capsule: 999 });
+    expect(tokens.radius).toEqual({ none: 0, tiny: 4, chip: 6, small: 8, control: 10, panel: 14, folder: 9, container: 18, sheet: 28, float: 40, capsule: 999 });
   });
 
   // (Shared components that draw their iPhone look in their own iPhone branch: Foli AI's composer, the

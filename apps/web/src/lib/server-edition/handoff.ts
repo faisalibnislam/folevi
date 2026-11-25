@@ -35,15 +35,23 @@ export function canAddServerPlace(): boolean {
 }
 
 /**
- * Goes to the server: the host adds it as a place (in the apps), or the browser opens its sign-in page. `origin`
+ * Goes to the server: the host adds it as a place (in the apps), or the browser opens its sign-in page. Returns
+ * the host's refusal in words, or null. `origin`
  * is the address the person chose (it may differ from `info.urls.app`, a home-network name for example).
  */
-export async function openServer(origin: string, info: ServerInfo | null): Promise<void> {
+export async function openServer(origin: string, info: ServerInfo | null): Promise<string | null> {
   const places = shell()?.places;
   if (places?.addServerPlace) {
-    await places.addServerPlace({ origin, info });
-    return;
+    // The host reloads every window on the server's sign-in screen; a refusal comes back as words to show.
+    try {
+      await places.addServerPlace({ origin, info });
+      return null;
+    } catch (e) {
+      const message = (e as { message?: unknown } | null)?.message;
+      return typeof message === "string" && message ? message : "That server couldn't be added. Try again.";
+    }
   }
   const target = info?.needsSetup ? `${origin}/setup` : `${origin}/signin`;
   window.location.assign(target);
+  return null;
 }

@@ -6,6 +6,7 @@
 // hands it to the browser (RuntimeConfigProvider, a JSON script tag), and the browser reads it from there.
 import { isServerEdition } from "@/lib/edition";
 import { serverUrlsFor, type ServerFeatures } from "@/lib/server-edition/info";
+import type {} from "@/lib/shell/types";
 
 export interface RuntimeConfig {
   /** Convex's client API (queries, mutations, the sync socket). */
@@ -99,8 +100,22 @@ function readBrowserCopy(): RuntimeConfig {
   return serverRuntimeConfig(window.location.origin);
 }
 
+/**
+ * The apps' bundled interface on a Folevi server place (CONTRACT §6.1): the host sets `places.server` before page
+ * scripts run, with the server's addresses at the name in use now. Null on Folevi Cloud and the library.
+ */
+function shellServerConfig(): RuntimeConfig | null {
+  if (process.env.NEXT_PUBLIC_FOLEVI_SHELL !== "1" || typeof window === "undefined") return null;
+  const server = window.foleviShell?.places?.server;
+  if (!server || typeof server.urls?.convex !== "string" || typeof server.urls.app !== "string") return null;
+  const app = server.urls.app.replace(/\/+$/, "");
+  return { convexUrl: server.urls.convex, convexSiteUrl: server.urls.convexSite, appUrl: app, marketingUrl: app, shareOrigin: app, features: null, serverName: server.name ?? null };
+}
+
 /** The addresses for this process (server) or this page (browser). */
 export function runtimeConfig(): RuntimeConfig {
+  const shellServer = shellServerConfig();
+  if (shellServer) return shellServer;
   if (!isServerEdition()) return cloudRuntimeConfig();
   if (typeof window === "undefined") return serverRuntimeConfig(process.env.FOLEVI_PUBLIC_URL);
   return readBrowserCopy();

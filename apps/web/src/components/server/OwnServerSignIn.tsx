@@ -17,6 +17,7 @@ import { Alert, Field } from "@/components/auth/fields";
 
 function Found({ origin, info, onBack }: { origin: string; info: ServerInfo; onBack: () => void }) {
   const [busy, setBusy] = useState(false);
+  const [refused, setRefused] = useState<string | null>(null);
   const tooOld = info.minAppVersion && compareVersions(FOLEVI_VERSION, info.minAppVersion) < 0;
   return (
     <div className="space-y-3">
@@ -30,6 +31,7 @@ function Found({ origin, info, onBack }: { origin: string; info: ServerInfo; onB
         </span>
       </div>
       {info.kind === "folevi-cloud" ? <Alert tone="info">That&apos;s Folevi Cloud. Sign in above.</Alert> : null}
+      {refused ? <Alert>{refused}</Alert> : null}
       {tooOld ? <Alert tone="info">This server needs a newer version of Folevi. Update Folevi to sign in there.</Alert> : null}
       <div className="flex gap-2">
         <button type="button" onClick={onBack} className="ui-btn ui-btn-ghost h-11 px-4 text-body">
@@ -42,7 +44,10 @@ function Found({ origin, info, onBack }: { origin: string; info: ServerInfo; onB
           className="ui-btn ui-btn-primary h-11 flex-1 text-body"
           onClick={() => {
             setBusy(true);
-            void openServer(origin, info).finally(() => setBusy(false));
+            setRefused(null);
+            void openServer(origin, info)
+              .then(setRefused)
+              .finally(() => setBusy(false));
           }}
         >
           {busy ? <Loader2 size={16} className="animate-spin motion-reduce:animate-none" aria-hidden /> : null}
@@ -106,7 +111,7 @@ function AddressForm() {
       {unreachable ? (
         <p className="text-subheadline text-muted">
           A browser can&apos;t always check a server on your home network from here.{" "}
-          <button type="button" className="font-medium text-accent underline underline-offset-2 hover:decoration-current" onClick={() => void openServer(unreachable, null)}>
+          <button type="button" className="font-medium text-accent underline underline-offset-2 hover:decoration-current" onClick={() => void openServer(unreachable, null).then((why) => why && setError(why))}>
             Open it anyway
           </button>
         </p>
@@ -124,6 +129,7 @@ function LinkedServers() {
   const myServers = useAction(connectRefs.myServers);
   const [servers, setServers] = useState<LinkedServer[] | null>(null);
   const [opening, setOpening] = useState<string | null>(null);
+  const [problem, setProblem] = useState<string | null>(null);
   useEffect(() => {
     if (!isAuthenticated) return;
     let live = true;
@@ -141,6 +147,11 @@ function LinkedServers() {
       <h2 id="your-servers" className="mb-2 text-subheadline font-semibold text-heading">
         Your servers
       </h2>
+      {problem ? (
+        <div className="mb-2">
+          <Alert>{problem}</Alert>
+        </div>
+      ) : null}
       <ul className="space-y-1">
         {servers.map((s) => (
           <li key={s.serverId}>
@@ -150,8 +161,10 @@ function LinkedServers() {
               onClick={() => {
                 const origin = connectOrigin(s.hostname);
                 setOpening(s.serverId);
+                setProblem(null);
                 void lookUpServer(origin)
                   .then((r) => openServer(origin, r.ok ? r.info : null))
+                  .then(setProblem)
                   .finally(() => setOpening(null));
               }}
               className="flex w-full items-center gap-3 rounded-control p-2.5 text-left transition-colors hover:bg-[var(--glass-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:opacity-60"

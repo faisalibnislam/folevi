@@ -21,7 +21,7 @@ export default async function JoinPage({ params }: { params: Promise<{ token: st
   const { token } = await params;
   const url = internalConvexUrl();
   if (!url || !TOKEN_RE.test(token)) notFound();
-  let invite = null;
+  let invite;
   try {
     invite = await new ConvexHttpClient(url).query(serverInviteRefs.preview, { token });
   } catch {

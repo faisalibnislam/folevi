@@ -24,7 +24,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   // Folevi Server: the owner and admins, with no two-step requirement (CONTRACT §7.1: a home server's owner may
   // not have an authenticator app). Their platform role says which; the serverAdmin functions check it again.
   if (isServerEdition()) {
-    let role: string | null = null;
+    let role: string | null;
     try {
       const token = await getToken();
       const me = token ? await fetchQuery(api.users.me, {}, { token, url: internalConvexUrl() }) : null;

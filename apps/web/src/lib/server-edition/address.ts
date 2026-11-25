@@ -1,6 +1,7 @@
 // "Your own server" at sign-in (docs/SELF_HOSTING_PLAN.md §8): what someone types into the address field, made
 // into an origin, and whether it may be used. Plain http only for addresses on this device or the home network
-// (localhost, private IPv4 and IPv6 ranges, .local names); anywhere else a server must use https.
+// (localhost, a name with no dots, .local names, private, link-local and 100.64/10 addresses, CONTRACT §6.1);
+// anywhere else a server must use https.
 
 export type AddressCheck = { ok: true; origin: string } | { ok: false; reason: string };
 
@@ -14,6 +15,8 @@ function ipv4(host: string): number[] | null {
 /** On this device or the home network: where plain http is allowed. */
 export function isPrivateHost(hostname: string): boolean {
   const host = hostname.toLowerCase().replace(/^\[|\]$/g, "").replace(/\.$/, "");
+  // A name with no dots (a NAS's own name on the home network).
+  if (host && !host.includes(".") && !host.includes(":")) return true;
   if (host === "localhost" || host.endsWith(".localhost") || host.endsWith(".local") || host.endsWith(".home.arpa")) return true;
   const v4 = ipv4(host);
   if (v4) {

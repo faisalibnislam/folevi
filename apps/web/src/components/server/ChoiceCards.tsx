@@ -69,7 +69,7 @@ export function ChoiceCards<T extends string>({ label, value, onChange, choices 
               </span>
               <span className="mt-0.5 block text-subheadline text-muted">{c.body}</span>
             </span>
-            <span aria-hidden className={`mt-1 grid size-5 flex-none place-items-center rounded-full ${on ? "bg-heading text-canvas" : "shadow-[inset_0_0_0_1.5px_var(--color-line-strong)]"}`}>
+            <span aria-hidden className={`mt-1 grid size-5 flex-none place-items-center rounded-control ${on ? "bg-heading text-canvas" : "shadow-[inset_0_0_0_1.5px_var(--color-line-strong)]"}`}>
               {on ? <Check size={12} strokeWidth={3} /> : null}
             </span>
           </button>

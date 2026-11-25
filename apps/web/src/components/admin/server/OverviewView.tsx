@@ -25,7 +25,7 @@ function ChecklistRow({ item, onSkip, onOpen, busy, canSkip }: { item: Checklist
   return (
     <li className="flex flex-col gap-2 border-t border-line px-5 py-3 first:border-t-0 sm:flex-row sm:items-center sm:gap-4">
       <div className="flex min-w-0 flex-1 items-start gap-3">
-        <span aria-hidden className={`mt-0.5 grid size-5 flex-none place-items-center rounded-full ${done ? "bg-heading text-canvas" : "text-faint"}`}>
+        <span aria-hidden className={`mt-0.5 grid size-5 flex-none place-items-center rounded-control ${done ? "bg-heading text-canvas" : "text-faint"}`}>
           {done ? <Check size={12} strokeWidth={3} /> : <Circle size={20} strokeWidth={1.5} />}
         </span>
         <div className="min-w-0">

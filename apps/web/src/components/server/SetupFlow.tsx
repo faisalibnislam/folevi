@@ -597,7 +597,7 @@ export function CheckRow({ checked, onChange, disabled, children }: { checked: b
       onClick={() => onChange(!checked)}
       className="-mx-1 flex w-[calc(100%+0.5rem)] items-center gap-2.5 rounded-chip px-1 py-1.5 text-left text-subheadline font-medium text-heading transition-colors hover:bg-[var(--glass-hover)] disabled:opacity-50"
     >
-      <span aria-hidden className={`grid size-5 flex-none place-items-center rounded-[6px] transition-colors ${checked ? "bg-heading text-canvas" : "bg-surface shadow-[inset_0_0_0_1.5px_var(--color-line-strong)]"}`}>
+      <span aria-hidden className={`grid size-5 flex-none place-items-center rounded-chip transition-colors ${checked ? "bg-heading text-canvas" : "bg-surface shadow-[inset_0_0_0_1.5px_var(--color-line-strong)]"}`}>
         {checked ? <Check size={13} strokeWidth={3} /> : null}
       </span>
       {children}
@@ -748,7 +748,7 @@ function Guide({ step, token }: { step: GuideStep; token: string }) {
 function Ready({ onNext }: { onNext: () => void }) {
   return (
     <>
-      <span className="mb-4 grid size-11 place-items-center rounded-full bg-heading text-canvas" aria-hidden>
+      <span className="mb-4 grid size-11 place-items-center rounded-container bg-heading text-canvas" aria-hidden>
         <Check size={22} strokeWidth={2.5} />
       </span>
       <AuthHeading title="Your server is ready" lede="You're its owner, and Folevi works now. A few quick choices make it work everywhere. Each one has a sensible default, so you can skip any of them." />

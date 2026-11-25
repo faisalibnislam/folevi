@@ -17,7 +17,7 @@ export function JoinedWelcome({ serverName }: { serverName: string }) {
         <main id="main" className="relative">
           <div aria-hidden className="absolute inset-0 translate-x-2 translate-y-2 ui-card rounded-control" />
           <div className="relative ui-card rounded-control p-6 sm:p-8">
-            <span className="mb-4 grid size-11 place-items-center rounded-full bg-heading text-canvas" aria-hidden>
+            <span className="mb-4 grid size-11 place-items-center rounded-container bg-heading text-canvas" aria-hidden>
               <Check size={22} strokeWidth={2.5} />
             </span>
             <AuthHeading title={`You're in ${serverName}`} lede="Your notes live on this server. Use Folevi right here in the browser, or add the server in the app on your phone, tablet or computer." />

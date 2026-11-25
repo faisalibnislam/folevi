@@ -1259,6 +1259,9 @@ account button should move past iPadOS's window buttons).
   `DATABASE_UDF_USER_TIMEOUT_SECONDS=4` for that backend. Bursts show in `convex.log` as "took a long time".
 
 ## 12. Change log
+- 2026-11-25: **Parity table brought up to date** (docs/DESKTOP_PARITY.md): items 1 to 9 marked done with their PRs,
+  `serverPlaces: false` taken out of bridge/host.js (lib.rs handles placesAddServer and placesLocalServers since PR
+  128), and the remaining gaps listed.
 - 2026-11-25: **Windows and Linux parity PRs landed together** (branch `claude/desktop-parity-integration`): PRs 116,
   118, 119, 120, 121, 123, 124, 125, 126 and 127 merged into one branch (each conflicted with the next in HANDOFF.md,
   Cargo.toml and lib.rs). Resolved once: one `windows` crate line with every feature; the page's boot carries the

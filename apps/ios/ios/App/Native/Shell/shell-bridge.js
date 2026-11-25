@@ -391,7 +391,7 @@ var foleviShellBridge = function (SHELL, host) {
         // "Your own server": the app checks the address and the server's /.well-known/folevi.json itself, then
         // opens that server's sign-in (the page loads again). `info` is the page's copy, not trusted. Rejects with
         // { code: "bad_address" | "unreachable" | "not_folevi" | "folevi_cloud" | "server_outdated" | "app_outdated" | "needs_setup" }.
-        // Hosts without it (host.serverPlaces === false: the Windows and Linux app for now) leave it out, and the
+        // Hosts without it (host.serverPlaces === false) leave it out, and the
         // page offers no "Your own server" in the app.
         addServerPlace: host.serverPlaces === false ? undefined : function (o) {
           var origin = o && typeof o.origin === "string" ? o.origin : "";

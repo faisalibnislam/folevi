@@ -64,3 +64,15 @@ export function checkServerAddress(input: string): AddressCheck {
 export function connectOrigin(hostname: string): string {
   return `https://${hostname.replace(/^https?:\/\//, "").replace(/\/.*$/, "")}`;
 }
+
+/** The server address in a scanned QR code: a bare address, or a link on the server (an invite) reduced to its origin. */
+export function addressFromCode(text: string): string {
+  const raw = text.trim();
+  try {
+    const url = new URL(raw);
+    if (url.protocol === "https:" || url.protocol === "http:") return url.origin;
+  } catch {
+    // Not a full link: the text is the address itself.
+  }
+  return raw;
+}

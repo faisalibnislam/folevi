@@ -3,6 +3,8 @@
 // asks the host to add the server as a new place (`places.addServerPlace`, lib/shell/types.ts), which keeps its
 // addresses, security policy and session apart from every other place.
 import { shell } from "@/lib/shell";
+import type { ShellServerInfo } from "@/lib/shell/types";
+import { FOLEVI_VERSION } from "@/lib/version";
 import { parseServerInfo, SERVER_API_VERSION, type ServerInfo } from "./info";
 
 const TIMEOUT_MS = 6000;
@@ -27,6 +29,19 @@ export async function lookUpServer(origin: string): Promise<LookupResult> {
   if (!info) return { ok: false, reason: "That address answered, but it isn't a Folevi server." };
   if (info.apiVersion > SERVER_API_VERSION) return { ok: false, reason: "This server is newer than this version of Folevi. Update Folevi to use it." };
   return { ok: true, info };
+}
+
+/**
+ * The version a server's `minAppVersion` is compared with: the app's own (`shellVersion`) inside an app, since
+ * the app is what the person updates; the web app's in a browser.
+ */
+export function appVersion(): string {
+  return shell()?.shellVersion || FOLEVI_VERSION;
+}
+
+/** The server whose sign-in screen this page shows (an app's place on a Folevi server), or null. */
+export function pendingServer(): ShellServerInfo | null {
+  return shell()?.places?.server ?? null;
 }
 
 /** Whether the app around this page can add a server place itself. */

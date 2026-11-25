@@ -6,19 +6,19 @@
 // own sign-in page; the Mac, iPhone and iPad apps add it as a place.
 import { useEffect, useState } from "react";
 import { useAction, useConvexAuth } from "convex/react";
-import { ArrowRight, Loader2, Server } from "lucide-react";
+import { ArrowRight, Loader2, QrCode, Server } from "lucide-react";
+import { shell } from "@/lib/shell";
 import { ConvexClientProvider } from "@/lib/convex/provider";
-import { checkServerAddress, connectOrigin } from "@/lib/server-edition/address";
-import { lookUpServer, openServer } from "@/lib/server-edition/handoff";
+import { addressFromCode, checkServerAddress, connectOrigin } from "@/lib/server-edition/address";
+import { appVersion, lookUpServer, openServer } from "@/lib/server-edition/handoff";
 import { compareVersions, type ServerInfo } from "@/lib/server-edition/info";
 import { connectRefs, type LinkedServer } from "@/lib/server-edition/refs";
-import { FOLEVI_VERSION } from "@/lib/version";
 import { Alert, Field } from "@/components/auth/fields";
 
 function Found({ origin, info, onBack }: { origin: string; info: ServerInfo; onBack: () => void }) {
   const [busy, setBusy] = useState(false);
   const [refused, setRefused] = useState<string | null>(null);
-  const tooOld = info.minAppVersion && compareVersions(FOLEVI_VERSION, info.minAppVersion) < 0;
+  const tooOld = info.minAppVersion && compareVersions(appVersion(), info.minAppVersion) < 0;
   return (
     <div className="space-y-3">
       <div className="flex items-center gap-3 rounded-control bg-[var(--glass-hover)] p-3">
@@ -69,29 +69,33 @@ function AddressForm() {
   const [unreachable, setUnreachable] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [found, setFound] = useState<{ origin: string; info: ServerInfo } | null>(null);
+  const scan = shell()?.places?.scanCode;
+  const go = async (value: string) => {
+    if (busy) return;
+    setError(null);
+    setUnreachable(null);
+    const checked = checkServerAddress(value);
+    if (!checked.ok) {
+      setError(checked.reason);
+      return;
+    }
+    setBusy(true);
+    const r = await lookUpServer(checked.origin);
+    setBusy(false);
+    if (r.ok) setFound({ origin: checked.origin, info: r.info });
+    else {
+      setError(r.reason);
+      setUnreachable(checked.origin);
+    }
+  };
   if (found) return <Found origin={found.origin} info={found.info} onBack={() => setFound(null)} />;
   return (
     <form
       className="space-y-3"
       noValidate
-      onSubmit={async (e) => {
+      onSubmit={(e) => {
         e.preventDefault();
-        if (busy) return;
-        setError(null);
-        setUnreachable(null);
-        const checked = checkServerAddress(address);
-        if (!checked.ok) {
-          setError(checked.reason);
-          return;
-        }
-        setBusy(true);
-        const r = await lookUpServer(checked.origin);
-        setBusy(false);
-        if (r.ok) setFound({ origin: checked.origin, info: r.info });
-        else {
-          setError(r.reason);
-          setUnreachable(checked.origin);
-        }
+        void go(address);
       }}
     >
       <Field
@@ -120,6 +124,23 @@ function AddressForm() {
         {busy ? <Loader2 size={16} className="animate-spin motion-reduce:animate-none" aria-hidden /> : <ArrowRight size={16} aria-hidden />}
         Continue
       </button>
+      {scan ? (
+        <button
+          type="button"
+          disabled={busy}
+          className="ui-btn ui-btn-ghost h-11 w-full text-body"
+          onClick={async () => {
+            const text = await scan().catch(() => null);
+            if (!text) return;
+            const value = addressFromCode(text);
+            setAddress(value);
+            void go(value);
+          }}
+        >
+          <QrCode size={16} aria-hidden />
+          Scan QR code
+        </button>
+      ) : null}
     </form>
   );
 }

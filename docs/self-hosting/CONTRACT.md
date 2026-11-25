@@ -137,6 +137,11 @@ don't know, and show "Ask the person who runs this server to update it" when the
     `auth.signIn`, `auth.fetch` and `places.signIn` then go to that server, and the account that signs in becomes
     a place on it.
   - `listLocalServers(): Promise<{ name, origin, serverId: string | null, version: string | null }[]>` (Bonjour).
+  - `scanCode?(): Promise<string | null>` (added 2026-11-25): the camera reads a QR code and returns its text (null
+    when closed); the page reduces a link to its origin (`addressFromCode`) and looks the server up. Hosts without
+    a camera leave it out, and the "Scan QR code" button is hidden.
+  - With `server` set and nobody signed in, the shell's sign-in screen names that server and offers only "Sign in"
+    (the server's own page offers its ways in). `minAppVersion` is compared with the shell's `shellVersion`.
   - `ShellPlace` (kind `account`) gains `server: ShellServerInfo | null`.
 - Accepted addresses: `https://` anywhere; `http://` only for localhost, a name with no dots, `*.local`, or a
   private, link-local or 100.64/10 IP. No path, query or user name.

@@ -146,14 +146,124 @@ shared addresses) keeps the server's name. The sign-in screen's own look at an h
 Windows ("A browser can't always check a server on your home network"), and "Open it anyway" lets the app check it.
 `lan_bridge::needed()` is Windows only; turn it on for Linux if WebKitGTK blocks the same traffic.
 
+## Updates
+
+Folevi for Windows and the Linux AppImage update themselves the way Sparkle updates the Mac app (`src/updates.rs`):
+a check a minute after launch and every 12 hours, and Check for Updates… in the notification area icon's menu. When
+there's a newer version Folevi asks; Install and Restart downloads it, saves notes and reminders, installs and opens
+again (Windows's installer runs in passive mode). Later skips that version until the next launch. A .deb, .rpm,
+Snap or Flatpak updates through the system (`linux::self_update_allowed`), so it has no menu item and never checks.
+
+- Feed: `https://folevi.com/download/desktop/<target>-<arch>/latest.json` (`windows-x86_64`, `windows-aarch64`,
+  `linux-x86_64`, `linux-aarch64`), R2 `folevi-updates/desktop/`, `no-cache`. Each points at the release's versioned
+  installer that's already published (`windows/Folevi_<v>_x64-setup.exe`, `linux/Folevi_<v>_amd64.AppImage`...).
+- Signing: every update is signed with Folevi's update key (minisign, Ed25519). The private key is at
+  `~/.folevi-desktop-signing/folevi-updater.key` on the owner's Mac, outside the repository, with no password; its
+  public key is `plugins.updater.pubkey` in `tauri.conf.json`. The app refuses an update whose signature doesn't
+  match. Losing the key means shipping the next version as a fresh download, so keep a copy in the password manager.
+- Publishing (with the owner's OK, after the installers are on folevi.com):
+  `packaging/desktop/publish-update-feed.sh <v> <dir with the release files> [--notes "..."] [--dry-run]`. It checks
+  the hosted installer is byte for byte the local one, signs it and uploads each `latest.json`. Nothing is in CI: the
+  key never leaves the Mac.
+## App lock
+
+As on the Mac (Settings > Library > App lock, `src/applock.rs`): Folevi covers its main windows when it opens, when
+you come back after the chosen time away ("Ask again when you come back") and after the computer slept, until you
+show it's you. Quick Add stays usable, as on the Mac. The cover is drawn by the shell (`bridge/host.js`, a closed
+shadow root, the page under it inert).
+- Windows: Windows Hello (a face, a fingerprint or the PIN; `src/hello.rs`), which also confirms turning the lock on
+  or off. A PC without Windows Hello can't turn it on, and a lock whose Windows Hello went away is dropped.
+- Linux: a passphrase chosen for Folevi's lock when it's turned on, and typed to unlock or to turn it off. lock.json
+  keeps its PBKDF2-SHA256 hash, never the passphrase. Forgotten: quit Folevi and delete
+  `~/.local/share/com.folevi.Folevi/lock.json` (the lock covers the screen; it encrypts nothing).
+
+"Ask for Windows Hello to unlock encrypted notes" (Settings > Desktop app) asks before the device keys open a box;
+a yes counts for 30 seconds (the Mac's Touch ID rule). The choice is kept in the keys' `prefs.json` (`touchId`).
+Linux has nothing to ask with, so the switch isn't shown there.
+
+Not covered: Windows locking the screen without sleeping or leaving Folevi (the Mac also watches the screen lock).
+## Background sync
+
+As on the Mac (`src/backsync.rs`, a port of BackgroundSync.swift): every place no window shows (each account but the
+open one, and the library when another place is open) syncs in a hidden "runner" window (`runner-<place>`, the page
+at `/place-sync?place=<id>`, `places.background` true). Runners are woken only for a reason and closed once nothing
+waits, so many accounts don't keep many pages open:
+- the place left the screen; the library's folder changed (3 s debounce); its unread count went up; or a catch-up
+  every 10 minutes, one place at a time, the one synced longest ago;
+- a woken page stays at least 15 s, goes when it says nothing waits, after 2 minutes if it never says, and after
+  10 minutes with work still waiting (`FOLEVI_BACKGROUND_*` change these, as on the Mac).
+
+The unread count of each background account is asked natively every minute (every three while no Folevi window is
+in front): `POST <convex>/api/query notifications:unreadCount` with the account's Convex token. It feeds the place
+switcher's dots and the taskbar badge, and wakes the page to show the notification. Runners are off in test runs
+(`FOLEVI_USER_DATA`) unless `FOLEVI_RUNNERS=1`. A Folevi Server account's count comes from its own server's Convex.
+Not yet: closing idle runners on low memory.
+## Jump List and launcher actions
+
+Right-click Folevi in the Windows taskbar or Start menu: New Note, Quick Add Task and Today's Tasks
+(`src/jumplist.rs`, set once per launch). Linux's launchers show the same three from the .desktop file's actions
+(`packaging/linux/folevi.desktop.hbs`, in the .deb, .rpm, AppImage, Snap and Flatpak). Each opens a folevi:// link,
+which a running Folevi receives through the single-instance plugin.
+## Dropbox and Google Drive
+
+The library can sync through Dropbox or Google Drive as on the Mac (`src/cloud.rs`, a port of ShellCloud.swift).
+The syncing is the shared code in the page (packages/cloud-folders, bundled by `apps/ios/scripts/bundle-cloud.mjs`
+and put in every page by lib.rs). The shell signs in, keeps the tokens sealed in the secret store
+(`cloud.dropbox`, `cloud.googleDrive`; never readable by the page), refreshes them, and makes the page's requests
+only to the provider's own hosts.
+
+Sign-in is OAuth with PKCE in the browser, ending on a loopback address Folevi listens on (no secret):
+- Dropbox: `http://127.0.0.1:41753/` (or `:41754/`, `:41755/`). The Dropbox app needs those three redirect URIs and
+  "Allow public clients (Implicit Grant & PKCE)" (docs/LOCAL_MODE.md has the checklist).
+- Google: a "Desktop app" OAuth client (any `http://127.0.0.1:<port>/` works; the Mac's iOS client doesn't).
+
+Owner step before it shows up: set the public client ids as repository variables `FOLEVI_DROPBOX_APP_KEY` and
+`FOLEVI_GOOGLE_DESKTOP_CLIENT_ID` (and for local builds, the same names in the environment of
+`packaging/linux/scripts/build-in-lima.sh`). Without them Dropbox and Google Drive aren't offered.
+## Notification actions
+
+As on the Mac (`src/notify.rs`): a comment or mention has Reply (typed in the toast, Windows only: Linux's
+notification protocol has no typed replies) and Mark as Read; an assigned task Open and Complete; a task's
+reminder Complete, Snooze 1 Hour, Snooze Until This Evening and Snooze Until Tomorrow; anything else Mark as Read.
+Windows groups a note's toasts together in Action Center. A button reaches the open place's page as the command
+`{ type: "notification", action, id, kind, path, text?, thread? }` (DesktopBridge.tsx useNotificationActions,
+which now does Complete and Snooze too, for the Mac as well); a place with no page open hears nothing, as on the Mac.
+## Recording a call (Windows)
+
+The recorder's "Record a call" (the microphone and everything the PC plays) works in Folevi for Windows the way it
+did in the Electron app: WebView2's screen picker offers "Share system audio", the recorder keeps only the sound
+and mixes it with the microphone (apps/web/src/lib/callCapture.ts; `foleviDesktop.callCapture`). If no sound comes
+with the capture, Folevi says to choose the screen and turn on Share system audio. Linux records the microphone
+only (WebKitGTK's screen capture has no system sound). Not tried on a real PC yet.
+## Shortcuts and opening attachments
+
+Beyond the tab, window and zoom keys, Folevi for Windows and Linux has the Mac's menu shortcuts with Ctrl (host.js
+keyAction): Ctrl+N New Note, Ctrl+Alt+Shift+N New from Template, Ctrl+Shift+F Search, Ctrl+/ Keyboard Shortcuts,
+Ctrl+Shift+] and [ next and previous tab, Ctrl+Alt+C Calendar, Ctrl+Alt+\ Focus, and on Linux Ctrl+Q Quit. Ctrl+Alt
+keys are left alone when they're AltGr. Formatting keys are the editor's own.
+
+An attachment's Open button (the Mac's Quick Look) opens a copy in the app that opens its kind: the copy goes to
+`<temp>/Folevi Open/`, emptied at the next launch.
+## Windows open again where they were
+
+As on the Mac (WindowRestore.swift): Folevi keeps the main windows it has open and the page each shows in
+`windows.json` (`[{ label, path }]`, saved when focus leaves a window, when one closes and at Quit) and opens them
+again at launch; the window-state plugin puts each back at its size and position by label. Quick Add, background
+pages and internal pages open at /documents instead. Tabs come back from the page's own storage, as before.
+## Share and text in images (Windows)
+
+The note's Share dialog has Share… beside Copy link in Folevi for Windows: Windows' Share sheet with the note's link
+(`src/winshare.rs`, DataTransferManager in front of Folevi's window). Text in images (search in files) is read with
+Windows.Media.Ocr when a recognition language is installed (`foleviDesktop.recognizeText`; 25 MB, the engine's
+largest size, 30 s and 100,000 characters at most). Linux has neither (no standard share sheet, no text recognition
+built in), so the page doesn't offer them there.
+
 ## Not done yet
 
-- Updates: the Tauri updater is in the app and points at `folevi.com/download/desktop/<target>-<arch>/latest.json`,
-  but stays off until the owner approves an update signing key (it signs every update) and its public key is put in
-  `tauri.conf.json`.
 - Signing (Windows), uploading to R2, a download page, Flathub submission (`packaging/linux/flatpak/com.folevi.Folevi.yml`
   needs the release's .deb addresses and checksums; docs/LINUX.md), the Microsoft Store.
 - Dropbox and Google Drive sign-in on this platform (the library's cloud copy is ported; the sign-in flow isn't).
+- Notification actions, call recording, text in images.
 - An app lock, notification actions, call recording, text in images.
 - Snap layouts when hovering the maximize button (Windows+Z still works).
 

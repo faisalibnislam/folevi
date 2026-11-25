@@ -7,12 +7,17 @@
 //! ShellRouter.swift. Since 2026-11-24 (the owner's "one web app everywhere", small and light like the Mac app);
 //! it replaces the Electron build of PR 58. docs/DESKTOP_APP.md.
 mod ai;
+mod applock;
+mod hello;
 mod auth;
+mod backsync;
+mod cloud;
 mod badge;
 mod e2ee;
 mod events;
 mod http;
 mod lan_bridge;
+mod jumplist;
 mod library;
 #[cfg(target_os = "linux")]
 pub mod linux;
@@ -24,6 +29,8 @@ mod secrets;
 mod settings;
 mod server;
 mod shell;
+mod updates;
+mod winshare;
 
 use parking_lot::Mutex;
 use serde_json::{json, Value};
@@ -57,6 +64,8 @@ const THIS_DEVICE: &str = linux::THIS_DEVICE;
 const CAPTION_HEIGHT: u32 = 40;
 const HOST_JS: &str = include_str!("../bridge/host.js");
 const SHELL_BRIDGE_JS: &str = include_str!("../../../ios/ios/App/Native/Shell/shell-bridge.js");
+/// The shared Dropbox and Google Drive code, when this build has it (build.rs; empty otherwise).
+const CLOUD_KIT_JS: &str = include_str!(concat!(env!("OUT_DIR"), "/folevi-cloud.js"));
 
 /// The look the page gets: "windows", or "linux"; a development run on a Mac gets Windows' (FOLEVI_LOOK=linux for Linux's).
 fn look() -> &'static str {
@@ -82,6 +91,9 @@ fn app_url(path: &str) -> tauri::Url {
     let safe = if path.starts_with('/') && !path.starts_with("//") && path.len() <= 600 { path } else { "/documents" };
     tauri::Url::parse(&format!("app://localhost{safe}")).unwrap_or_else(|_| tauri::Url::parse("app://localhost/documents").unwrap())
 }
+
+/// The origins the app's pages have (app_origin per platform, and http on Windows).
+const APP_ORIGINS: [&str; 3] = ["app://localhost", "https://app.localhost", "http://app.localhost"];
 
 /// Whether a URL is one of the app's own pages.
 fn is_app_url(url: &str) -> bool {
@@ -132,7 +144,14 @@ struct Services {
     auth: Arc<auth::Auth>,
     ai: Arc<ai::Ai>,
     reminders: Arc<reminders::Reminders>,
+    lock: Arc<applock::AppLock>,
+    /// Dropbox and Google Drive for the library: sign-in, tokens, the page's requests (cloud.rs).
+    cloud: Arc<cloud::Cloud>,
     places: Mutex<PlacesStore>,
+    /// Background sync's plan: which places sync in hidden runners, which are awake (backsync.rs).
+    backsync: Mutex<backsync::BackSync>,
+    /// Convex tokens for the native unread count, by place, with when each runs out (unix seconds).
+    poll_tokens: Mutex<HashMap<String, (String, u64)>>,
     settings: Mutex<DesktopSettings>,
     /// Which place each window's page belongs to (by label).
     bound: Mutex<HashMap<String, Option<String>>>,
@@ -151,6 +170,8 @@ struct Ui {
     windows: u32,
     tray: Option<TrayIcon>,
     dark: Option<bool>,
+    /// Background sync has begun (a few seconds after launch).
+    runners_started: bool,
 }
 
 fn services(app: &AppHandle) -> tauri::State<'_, Arc<Services>> {
@@ -211,7 +232,12 @@ fn emit_to_pages(app: &AppHandle, key: &str, payload: &Value, only: Option<&str>
 
 fn emitter(app: &AppHandle) -> events::Emit {
     let app = app.clone();
-    Arc::new(move |event: &str, payload: Value| emit_to_pages(&app, &format!("FoleviShell:{event}"), &payload, None))
+    Arc::new(move |event: &str, payload: Value| {
+        emit_to_pages(&app, &format!("FoleviShell:{event}"), &payload, None);
+        if event == "libraryChanges" {
+            library_changed(&app);
+        }
+    })
 }
 
 /// What every page of a window starts with (host.js's BOOT): the look and the app's facts. The page's own place
@@ -223,16 +249,18 @@ fn boot_script(_app: &AppHandle, label: &str) -> String {
         "shell": true,
         "platform": look(),
         "mac": MAC,
-        "window": if quick { "quickadd" } else { "main" },
+        "window": if quick { "quickadd" } else if is_runner(label) { "runner" } else { "main" },
         "version": FOLEVI_VERSION,
         "deviceName": device_name(),
         "accent": accent,
         "captionHeight": CAPTION_HEIGHT,
         // FOLEVI_PROBE=1 (development builds): the page reports its state to the terminal, for scripted checks.
         "probe": cfg!(debug_assertions) && std::env::var_os("FOLEVI_PROBE").is_some(),
+        // Windows can read text in images when a recognition language is installed (winshare.rs).
+        "ocr": ocr_here(),
         "origins": [app_origin()],
     });
-    let script = HOST_JS.replace("/*BOOT*/ { shell: false, platform: \"windows\", window: \"main\" } /*BOOT_END*/", &boot.to_string()).replace("/*SHELL_BRIDGE*/", SHELL_BRIDGE_JS);
+    let script = HOST_JS.replace("/*BOOT*/ { shell: false, platform: \"windows\", window: \"main\" } /*BOOT_END*/", &boot.to_string()).replace("/*SHELL_BRIDGE*/", SHELL_BRIDGE_JS).replace("/*CLOUD_KIT*/", CLOUD_KIT_JS);
     if cfg!(debug_assertions) && std::env::var_os("FOLEVI_PROBE").is_some() {
         // Development: the script's own failures reach the terminal too.
         let report = "function(m){try{fetch(location.origin+'/_probe?'+encodeURIComponent(m))}catch(_){}}";
@@ -258,7 +286,10 @@ fn page_boot(s: &Services, label: &str, path: &str) -> Value {
         "deviceName": device_name(),
         "start": if path.starts_with('/') && !path.starts_with("//") && path != "/" && path != "/index.html" { path } else { "/documents" },
         // "Your own server": the server the page talks to (its website, Convex and Convex site), or null.
-        "places": { "current": place, "background": false, "server": s.server_of(place.as_deref()).map(|sv| lan_bridge::page_json(&sv)) },
+        "places": { "current": place, "background": is_runner(label), "server": s.server_of(place.as_deref()).map(|sv| lan_bridge::page_json(&sv)) },
+        // The app lock's cover, from the page's first moment (no flash of notes while locked).
+        "locked": is_main_label(label) && s.lock.covered(),
+        "lockMethod": s.lock.method(),
     })
 }
 
@@ -363,6 +394,9 @@ fn watch_window(app: &AppHandle, w: &WebviewWindow) {
         WindowEvent::Destroyed => {
             let s = services(&app);
             s.bound.lock().remove(&label);
+            if !s.ui.lock().quitting {
+                save_windows(&app);
+            }
             if label == "main" && !s.ui.lock().quitting && s.ui.lock().tray.is_none() {
                 app.exit(0);
             }
@@ -370,6 +404,13 @@ fn watch_window(app: &AppHandle, w: &WebviewWindow) {
         WindowEvent::Resized(_) | WindowEvent::Focused(_) => {
             let state = json!({ "maximized": win.is_maximized().unwrap_or(false), "fullscreen": win.is_fullscreen().unwrap_or(false), "focused": win.is_focused().unwrap_or(true) });
             emit_to_pages(&app, "desktop:window", &state, Some(&label));
+            if let WindowEvent::Focused(f) = event {
+                note_focus(&app, *f);
+            }
+            // Where each window is, kept as focus leaves it (a shutdown that never quits Folevi still finds it).
+            if let WindowEvent::Focused(false) = event {
+                save_windows(&app);
+            }
             if let WindowEvent::Focused(true) = event {
                 let lib = services(&app).library.clone();
                 tauri::async_runtime::spawn(async move { lib.rescan().await });
@@ -401,6 +442,205 @@ fn show_main(app: &AppHandle, path: Option<&str>) {
 fn command_main(app: &AppHandle, command: Value) {
     show_main(app, None);
     emit_to_pages(app, "desktop:command", &command, Some("main"));
+}
+
+// ---------------------------------------------------------------- the app lock (applock.rs)
+
+/// The passphrase prompts the page shows for the lock (Linux), by id: the page's answer, or None when cancelled.
+static LOCK_PROMPTS: once_cell::sync::Lazy<Mutex<HashMap<String, tokio::sync::oneshot::Sender<Option<String>>>>> = once_cell::sync::Lazy::new(|| Mutex::new(HashMap::new()));
+
+/// This PC's way to unlock: Windows Hello when it's set up, a passphrase on Linux.
+fn lock_method() -> &'static str {
+    if cfg!(windows) {
+        if std::thread::spawn(hello::available).join().unwrap_or(false) {
+            "windowsHello"
+        } else {
+            "none"
+        }
+    } else if cfg!(target_os = "linux") {
+        "passphrase"
+    } else {
+        "none"
+    }
+}
+
+fn is_main_label(label: &str) -> bool {
+    label == "main" || label.starts_with("main-")
+}
+
+/// Covers every main window (Quick Add stays, as on the Mac) when the lock is on.
+fn cover_windows(app: &AppHandle) {
+    let s = services(app);
+    if s.lock.cover() {
+        let state = json!({ "covered": true, "method": s.lock.method() });
+        for (label, w) in app.webview_windows() {
+            if is_main_label(&label) {
+                let _ = w.eval(&format!("window.__foleviHost&&window.__foleviHost.emit(\"desktop:lock\",{state})"));
+            }
+        }
+    }
+}
+
+fn uncover_windows(app: &AppHandle) {
+    services(app).lock.uncover();
+    emit_to_pages(app, "desktop:lock", &json!({ "covered": false }), None);
+}
+
+/// Windows Hello for the encrypted notes (e2ee.rs), in front of the window that asked.
+struct HelloAsk {
+    hwnd: isize,
+}
+
+impl HelloAsk {
+    fn for_window(app: &AppHandle, label: &str) -> Self {
+        #[cfg(windows)]
+        let hwnd = app.get_webview_window(label).and_then(|w| w.hwnd().ok()).map(|h| h.0 as isize).unwrap_or(0);
+        #[cfg(not(windows))]
+        let hwnd = {
+            let _ = (app, label);
+            0isize
+        };
+        Self { hwnd }
+    }
+}
+
+impl e2ee::Ask for HelloAsk {
+    fn available(&self) -> bool {
+        hello::available()
+    }
+    fn confirm(&self, message: &str) -> bool {
+        hello::verify(self.hwnd, message)
+    }
+}
+
+/// Windows Hello in front of the window `label`, on a blocking thread: true when it said it's them.
+async fn ask_hello(app: &AppHandle, label: &str, message: &'static str) -> bool {
+    #[cfg(windows)]
+    let hwnd = app.get_webview_window(label).and_then(|w| w.hwnd().ok()).map(|h| h.0 as isize).unwrap_or(0);
+    #[cfg(not(windows))]
+    let hwnd = {
+        let _ = (app, label);
+        0isize
+    };
+    tauri::async_runtime::spawn_blocking(move || hello::verify(hwnd, message)).await.unwrap_or(false)
+}
+
+/// The page's passphrase prompt in the window `label` ("set": choose one; "check": type it): the passphrase, or
+/// None when cancelled (or after five minutes).
+async fn ask_passphrase(app: &AppHandle, label: &str, mode: &str) -> Option<String> {
+    let id = format!("p{}", now_ms());
+    let (tx, rx) = tokio::sync::oneshot::channel();
+    LOCK_PROMPTS.lock().insert(id.clone(), tx);
+    emit_to_pages(app, "desktop:lockPrompt", &json!({ "id": id, "mode": mode, "min": applock::MIN_PASSPHRASE }), Some(label));
+    let answer = tokio::time::timeout(std::time::Duration::from_secs(300), rx).await.ok().and_then(Result::ok).flatten();
+    LOCK_PROMPTS.lock().remove(&id);
+    answer
+}
+
+/// lockSet { lock?, lockAfter? } (MacAppLock.swift): turning the lock on or off needs the person to confirm it.
+async fn lock_set(app: &AppHandle, s: &Arc<Services>, label: &str, o: &Value) -> ShellResult {
+    let after = match o.get("lockAfter") {
+        None | Some(Value::Null) => None,
+        Some(v) => Some(applock::valid_after(v).ok_or_else(|| ShellError::invalid("lockAfter is a number of seconds."))?),
+    };
+    let lock = match o.get("lock") {
+        None | Some(Value::Null) => None,
+        Some(Value::Bool(b)) => Some(*b),
+        Some(_) => return Err(ShellError::invalid("lock is true or false.")),
+    };
+    if cfg!(windows) {
+        let method = lock_method();
+        s.lock.set_method(method);
+    }
+    if let Some(on) = lock.filter(|on| *on != s.lock.on()) {
+        match s.lock.method() {
+            "windowsHello" => {
+                let message = if on { "Turn on the Windows Hello lock for Folevi" } else { "Turn off the Windows Hello lock for Folevi" };
+                if !ask_hello(app, label, message).await {
+                    return Err(ShellError::new("cancelled", "Windows Hello didn't confirm it."));
+                }
+                s.lock.set_lock(on, None).map_err(|e| ShellError::io(e.to_string()))?;
+            }
+            "passphrase" if on => {
+                let Some(p) = ask_passphrase(app, label, "set").await else { return Err(ShellError::new("cancelled", "The lock wasn't turned on.")) };
+                if p.chars().count() < applock::MIN_PASSPHRASE {
+                    return Err(ShellError::invalid(format!("Use at least {} characters.", applock::MIN_PASSPHRASE)));
+                }
+                s.lock.set_lock(true, Some(applock::hash_passphrase(&p))).map_err(|e| ShellError::io(e.to_string()))?;
+            }
+            "passphrase" => {
+                let Some(p) = ask_passphrase(app, label, "check").await else { return Err(ShellError::new("cancelled", "The lock is still on.")) };
+                let ok = s.lock.passphrase().is_some_and(|h| applock::passphrase_matches(&h, &p));
+                if !ok {
+                    return Err(ShellError::new("wrong_passphrase", "That passphrase isn't right."));
+                }
+                s.lock.set_lock(false, None).map_err(|e| ShellError::io(e.to_string()))?;
+            }
+            _ => return Err(ShellError::unavailable("Windows Hello isn't set up on this PC, so Folevi can't lock. Set it up in Settings > Accounts > Sign-in options.")),
+        }
+    }
+    if let Some(a) = after {
+        s.lock.set_after(a).map_err(|e| ShellError::io(e.to_string()))?;
+    }
+    Ok(s.lock.settings())
+}
+
+/// lockUnlock { passphrase? } from the cover: Windows Hello, or the passphrase; then every window is uncovered.
+async fn lock_unlock(app: &AppHandle, s: &Arc<Services>, label: &str, passphrase: Option<&str>) -> ShellResult {
+    if !s.lock.covered() {
+        return Ok(value(true));
+    }
+    let ok = match s.lock.method() {
+        "windowsHello" => ask_hello(app, label, "Unlock your Folevi notes").await,
+        "passphrase" => {
+            let ok = passphrase.zip(s.lock.passphrase()).is_some_and(|(p, h)| applock::passphrase_matches(&h, p));
+            if !ok {
+                return Err(ShellError::new("wrong_passphrase", "That passphrase isn't right."));
+            }
+            true
+        }
+        _ => true,
+    };
+    if ok {
+        uncover_windows(app);
+    }
+    Ok(value(ok))
+}
+
+/// Whether any Folevi window is in front; when none is, the lock's away clock runs.
+fn note_focus(app: &AppHandle, focused: bool) {
+    let s = services(app);
+    if focused {
+        if s.lock.back(std::time::Instant::now()) {
+            cover_windows(app);
+        }
+        return;
+    }
+    let app = app.clone();
+    tauri::async_runtime::spawn(async move {
+        // Focus moving between Folevi's own windows isn't being away.
+        tokio::time::sleep(std::time::Duration::from_millis(200)).await;
+        if !app.webview_windows().values().any(|w| w.is_focused().unwrap_or(false)) {
+            services(&app).lock.away(std::time::Instant::now());
+        }
+    });
+}
+
+/// Covers after the computer slept (a tick that came far too late), whatever "Ask again" says, as on the Mac.
+fn watch_sleep(app: &AppHandle) {
+    let app = app.clone();
+    tauri::async_runtime::spawn(async move {
+        let mut last = std::time::SystemTime::now();
+        loop {
+            tokio::time::sleep(std::time::Duration::from_secs(5)).await;
+            let now = std::time::SystemTime::now();
+            if now.duration_since(last).is_ok_and(|d| d > std::time::Duration::from_secs(40)) {
+                let a = app.clone();
+                let _ = app.run_on_main_thread(move || cover_windows(&a));
+            }
+            last = now;
+        }
+    });
 }
 
 /// Opens a place in every main window: each is made again with the new place's page (its policy and session are
@@ -448,6 +688,200 @@ fn switch_with(app: &AppHandle, place: Option<String>, path: &str, pending: bool
         recreate_quick_add(app);
     }
     update_badge(app);
+    // The place now on screen stops syncing in the background; the one it replaced starts.
+    ensure_runners(app);
+}
+
+// ---------------------------------------------------------------- background sync (backsync.rs)
+
+fn is_runner(label: &str) -> bool {
+    label.starts_with("runner-")
+}
+
+fn runner_label(place: &str) -> String {
+    format!("runner-{place}")
+}
+
+/// Whether runners run: not in test runs (FOLEVI_RUNNERS=1 turns them on there, for checks).
+fn runners_allowed(s: &Services) -> bool {
+    !s.paths.test_run || std::env::var_os("FOLEVI_RUNNERS").is_some()
+}
+
+/// The places that sync in the background: every account not on screen, and the library when another place is.
+fn wanted_places(s: &Services) -> Vec<String> {
+    let p = s.places.lock();
+    let current = p.current();
+    let mut want: Vec<String> = p.account_ids().into_iter().filter(|id| Some(id) != current.as_ref()).collect();
+    if p.has_library() && current.as_deref() != Some(LIBRARY) {
+        want.push(LIBRARY.to_string());
+    }
+    want
+}
+
+/// Brings the runners in line with the places: newly wanted ones wake, ones now on screen (or gone) close.
+fn ensure_runners(app: &AppHandle) {
+    let s = services(app);
+    if !runners_allowed(&s) || !s.ui.lock().runners_started {
+        return;
+    }
+    let (added, gone) = s.backsync.lock().set_wanted(wanted_places(&s));
+    for p in gone {
+        close_runner(app, &p);
+    }
+    for p in added {
+        wake_runner(app, &p, "background", None);
+    }
+}
+
+/// Wakes a place's runner (makes its hidden page, or keeps the one that's up).
+fn wake_runner(app: &AppHandle, place: &str, why: &str, hold: Option<std::time::Duration>) {
+    let s = services(app);
+    if !s.backsync.lock().wanted().iter().any(|p| p == place) {
+        return;
+    }
+    s.backsync.lock().woke(place, std::time::Instant::now(), hold);
+    let label = runner_label(place);
+    if app.get_webview_window(&label).is_some() {
+        return;
+    }
+    log::info!("Folevi: background sync wakes {place} ({why})");
+    s.bound.lock().insert(label.clone(), Some(place.to_string()));
+    let path = format!("/place-sync?place={}", percent_encoding::utf8_percent_encode(place, percent_encoding::NON_ALPHANUMERIC));
+    let script = boot_script(app, &label);
+    let app = app.clone();
+    // Made off the event handler: WebView2 needs the message loop free while a webview starts.
+    tauri::async_runtime::spawn(async move {
+        #[allow(unused_mut)]
+        let mut b = WebviewWindowBuilder::new(&app, &label, WebviewUrl::CustomProtocol(app_url(&path)))
+            .title("Folevi")
+            .inner_size(480.0, 320.0)
+            .visible(false)
+            .skip_taskbar(true)
+            .focused(false)
+            .initialization_script(&script)
+            .disable_drag_drop_handler()
+            .on_navigation(|url| is_app_url(url.as_str()) || url.as_str().starts_with("about:"));
+        #[cfg(windows)]
+        {
+            b = b.use_https_scheme(true);
+        }
+        if let Err(e) = b.build() {
+            log::warn!("Folevi: couldn't start background sync for a place ({e})");
+            services(&app).bound.lock().remove(&label);
+        }
+    });
+}
+
+fn close_runner(app: &AppHandle, place: &str) {
+    let label = runner_label(place);
+    if let Some(w) = app.get_webview_window(&label) {
+        let _ = w.destroy();
+    }
+    services(app).bound.lock().remove(&label);
+}
+
+/// The library's folder changed: its runner wakes (debounced, as the Mac's 3 seconds).
+fn library_changed(app: &AppHandle) {
+    static PENDING: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+    if PENDING.swap(true, std::sync::atomic::Ordering::SeqCst) {
+        return;
+    }
+    let app = app.clone();
+    tauri::async_runtime::spawn(async move {
+        tokio::time::sleep(std::time::Duration::from_secs(3)).await;
+        PENDING.store(false, std::sync::atomic::Ordering::SeqCst);
+        wake_runner(&app, LIBRARY, "folder", None);
+    });
+}
+
+/// The scheduler: closes runners that are done, wakes the next place due a catch-up, and asks each background
+/// account's unread count natively (waking its page when it went up).
+fn start_background_sync(app: &AppHandle) {
+    let s = services(app);
+    if !runners_allowed(&s) {
+        return;
+    }
+    let app2 = app.clone();
+    tauri::async_runtime::spawn(async move {
+        // After the first window has loaded its page (or five seconds).
+        tokio::time::sleep(std::time::Duration::from_secs(5)).await;
+        services(&app2).ui.lock().runners_started = true;
+        let a = app2.clone();
+        let _ = app2.run_on_main_thread(move || ensure_runners(&a));
+        loop {
+            let pace = services(&app2).backsync.lock().pace();
+            tokio::time::sleep(pace).await;
+            let now = std::time::Instant::now();
+            let (done, due) = {
+                let s = services(&app2);
+                let mut b = s.backsync.lock();
+                let done = b.to_release(now);
+                let due = b.due(now);
+                (done, due)
+            };
+            for p in done {
+                close_runner(&app2, &p);
+            }
+            for p in due {
+                wake_runner(&app2, &p, "catch up", None);
+            }
+        }
+    });
+    let app3 = app.clone();
+    tauri::async_runtime::spawn(async move {
+        tokio::time::sleep(std::time::Duration::from_secs(10)).await;
+        loop {
+            poll_unread(&app3).await;
+            let front = app3.webview_windows().values().any(|w| w.is_focused().unwrap_or(false));
+            let every = backsync::poll_interval();
+            tokio::time::sleep(if front { every } else { every * 3 }).await;
+        }
+    });
+}
+
+/// The Convex deployment a place's account syncs with: its Folevi Server's ("Your own server"), else the one this
+/// interface was built for (shell/build.json).
+fn convex_url_of(app: &AppHandle, place: &str) -> Option<String> {
+    if let Some(sv) = services(app).server_of(Some(place)) {
+        return Some(sv.active_urls().convex);
+    }
+    let (bytes, _) = asset(app, "shell/build.json")?;
+    let v: Value = serde_json::from_slice(&bytes).ok()?;
+    v.get("convexUrl").and_then(Value::as_str).filter(|u| u.starts_with("https://") || u.starts_with("http://")).map(|u| u.trim_end_matches('/').to_string())
+}
+
+async fn poll_unread(app: &AppHandle) {
+    let s = services(app).inner().clone();
+    let accounts: Vec<String> = s.backsync.lock().wanted().iter().filter(|p| user_id_of(Some(p)).is_some()).cloned().collect();
+    let client = reqwest::Client::builder().timeout(std::time::Duration::from_secs(20)).build().unwrap_or_default();
+    for place in accounts {
+        let Some(convex) = convex_url_of(app, &place) else { continue };
+        let now_s = now_ms() / 1000;
+        let cached = s.poll_tokens.lock().get(&place).filter(|(_, until)| *until > now_s).map(|(t, _)| t.clone());
+        let token = match cached {
+            Some(t) => t,
+            None => {
+                let site = s.site_of(Some(&place));
+                let Ok(Some(t)) = s.auth.convex_token(user_id_of(Some(&place)).as_deref(), site.as_ref()).await else { continue };
+                s.poll_tokens.lock().insert(place.clone(), (t.clone(), backsync::token_good_until(&t, now_s)));
+                t
+            }
+        };
+        let body = json!({ "path": "notifications:unreadCount", "args": {}, "format": "json" });
+        let Ok(res) = client.post(format!("{convex}/api/query")).bearer_auth(&token).json(&body).send().await else { continue };
+        if matches!(res.status().as_u16(), 401 | 403) {
+            s.poll_tokens.lock().remove(&place);
+            continue;
+        }
+        let Ok(v) = res.json::<Value>().await else { continue };
+        let Some(count) = v.get("value").and_then(Value::as_u64) else { continue };
+        s.places.lock().describe(&place, &json!({ "unread": count }));
+        let new = s.backsync.lock().unread_now(&place, count);
+        signal_places_changed(app);
+        if new {
+            wake_runner(app, &place, "notification", None);
+        }
+    }
 }
 
 /// ServerReach (ShellServer.swift): each server account uses the first of its server's names that answers, home
@@ -494,6 +928,9 @@ fn signal_places_changed(app: &AppHandle) {
         let list = places_list(&app).await;
         emit_to_pages(&app, "FoleviShell:placesChanged", &json!({ "places": list }), None);
         update_badge(&app);
+        // A place added, signed out or opened: background sync follows.
+        let a = app.clone();
+        let _ = app.run_on_main_thread(move || ensure_runners(&a));
     });
 }
 
@@ -661,6 +1098,9 @@ fn update_tray(app: &AppHandle) {
         }
         m.append(&MenuItem::with_id(app, "open", "Open Folevi", true, None::<&str>)?)?;
         m.append(&MenuItem::with_id(app, "settings", "Settings", true, None::<&str>)?)?;
+        if updates::supported() {
+            m.append(&MenuItem::with_id(app, "check-updates", "Check for Updates…", true, None::<&str>)?)?;
+        }
         m.append(&PredefinedMenuItem::separator(app)?)?;
         m.append(&MenuItem::with_id(app, "quit", "Quit Folevi", true, None::<&str>)?)?;
         Ok(m)
@@ -685,6 +1125,7 @@ fn update_tray(app: &AppHandle) {
                 "new-note" => command_main(app, json!({ "type": "new-note" })),
                 "open" => show_main(app, None),
                 "settings" => show_main(app, Some("/settings/desktop")),
+                "check-updates" => updates::check_by_hand(app),
                 "quit" => quit(app),
                 _ => {
                     if let Some(note) = id.strip_prefix("note:") {
@@ -728,11 +1169,63 @@ fn update_badge(app: &AppHandle) {
     }
 }
 
+// ---------------------------------------------------------------- windows open again where they were
+
+/// A page a window may open again at: Folevi's own path (with its query and fragment), never Quick Add, a background
+/// page or an internal one (the Mac's WindowRestore.restorablePath).
+fn restorable_path(url: &str) -> String {
+    let path = APP_ORIGINS.iter().find_map(|o| url.strip_prefix(o)).unwrap_or("");
+    let bare = path.split(['?', '#']).next().unwrap_or("");
+    if !path.starts_with('/') || path.starts_with("//") || path.len() > 500 || bare == "/" || bare.starts_with("/quick-add") || bare.starts_with("/place-sync") || bare.starts_with("/_") || bare == "/index.html" {
+        return "/documents".into();
+    }
+    path.to_string()
+}
+
+/// windows.json: the main windows open now, `[{ label, path }]` ("main" first).
+fn save_windows(app: &AppHandle) {
+    let s = services(app);
+    if s.paths.test_run {
+        return;
+    }
+    let mut list: Vec<(String, String)> = app
+        .webview_windows()
+        .into_iter()
+        .filter(|(l, w)| (l == "main" || l.starts_with("main-")) && (l == "main" || w.is_visible().unwrap_or(false)))
+        .map(|(l, w)| (l, restorable_path(&w.url().map(|u| u.to_string()).unwrap_or_default())))
+        .collect();
+    list.sort_by_key(|(l, _)| if l == "main" { 0 } else { l.strip_prefix("main-").and_then(|n| n.parse::<u32>().ok()).unwrap_or(u32::MAX) });
+    list.truncate(20);
+    let json = json!({ "v": 1, "windows": list.iter().map(|(l, p)| json!({ "label": l, "path": p })).collect::<Vec<_>>() });
+    let _ = shell::write_atomic(&s.paths.user_data.join("windows.json"), json.to_string().as_bytes());
+}
+
+/// What windows.json says, cleaned: labels "main" or "main-<n>", paths restorable_path would give.
+fn read_windows(user_data: &std::path::Path) -> Vec<(String, String)> {
+    let v: Value = std::fs::read(user_data.join("windows.json")).ok().and_then(|b| serde_json::from_slice(&b).ok()).unwrap_or(Value::Null);
+    let mut out: Vec<(String, String)> = vec![];
+    for w in v.get("windows").and_then(Value::as_array).into_iter().flatten().take(20) {
+        let label = w.get("label").and_then(Value::as_str).unwrap_or("");
+        let ok_label = label == "main" || label.strip_prefix("main-").is_some_and(|n| !n.is_empty() && n.len() <= 3 && n.bytes().all(|b| b.is_ascii_digit()));
+        let path = w.get("path").and_then(Value::as_str).unwrap_or("");
+        if ok_label && !out.iter().any(|(l, _)| l == label) {
+            out.push((label.to_string(), restorable_path(&format!("{}{path}", APP_ORIGINS[0]))));
+        }
+    }
+    out
+}
+
 fn quit(app: &AppHandle) {
+    prepare_to_quit(app);
+    app.exit(0);
+}
+
+/// Saves the open windows and reminders and closes the library before Folevi quits or an update replaces it.
+pub(crate) fn prepare_to_quit(app: &AppHandle) {
+    save_windows(app);
     services(app).ui.lock().quitting = true;
     services(app).reminders.save_now();
     services(app).library.dispose();
-    app.exit(0);
 }
 
 fn apply_login_item(app: &AppHandle) {
@@ -787,6 +1280,7 @@ async fn route_call(app: &AppHandle, s: &Arc<Services>, label: &str, place: Opti
     match method {
         "setMode" => set_mode(app, s, place, req_str(o, "mode")?),
         m if m.starts_with("places") => places_call(app, s, label, place, m, o).await,
+        "cloudStatus" | "cloudConnect" | "cloudCancel" | "cloudSignOut" | "cloudRequest" => s.cloud.call(method, o).await,
         m if m.starts_with("lib") || m.starts_with("journal") || m.starts_with("cloud") || m.starts_with("mirror") => s.library.call(m, o).await,
         "secretsHas" => Ok(value(secrets::is_page_secret(req_str(o, "name")?) && s.secrets.has(req_str(o, "name")?))),
         "secretsSet" => {
@@ -829,8 +1323,8 @@ async fn route_call(app: &AppHandle, s: &Arc<Services>, label: &str, place: Opti
         "authFetch" => s.auth.fetch(o, slot.as_deref(), s.site_of(place.as_deref()).as_ref()).await,
         "authConvexToken" => Ok(value(s.auth.convex_token(slot.as_deref(), s.site_of(place.as_deref()).as_ref()).await?)),
         m if m.starts_with("ai") => s.ai.call(m, o, emitter(app)).await,
-        "lockGet" => Ok(Value::Null),
-        "lockSet" => Err(ShellError::unavailable("Folevi on this computer has no app lock yet.")),
+        "lockGet" => Ok(s.lock.settings()),
+        "lockSet" => lock_set(app, s, label, o).await,
         "notifySchedule" => Ok(value(local && s.reminders.schedule(o))),
         "notifyCancel" => {
             if local {
@@ -845,7 +1339,8 @@ async fn route_call(app: &AppHandle, s: &Arc<Services>, label: &str, place: Opti
         m if m.starts_with("e2ee") => {
             let keys = s.keys_for(place.as_deref());
             let (m, o) = (m.to_string(), o.clone());
-            tauri::async_runtime::spawn_blocking(move || keys.call(&m, &o)).await.map_err(|e| ShellError::io(e.to_string()))?
+            let hello = HelloAsk::for_window(app, label);
+            tauri::async_runtime::spawn_blocking(move || keys.call_asking(&m, &o, &hello)).await.map_err(|e| ShellError::io(e.to_string()))?
         }
         _ => Err(ShellError::unavailable(format!("{method} isn't in Folevi for this computer."))),
     }
@@ -966,8 +1461,14 @@ async fn places_call(app: &AppHandle, s: &Arc<Services>, label: &str, place: Opt
                     _ => {}
                 }
             }
-            if label == "main" {
+            if is_runner(label) {
+                if let (Some(pl), Some(w)) = (place.as_deref(), o.get("waiting").and_then(Value::as_u64)) {
+                    s.backsync.lock().reported(pl, w);
+                }
+            }
+            if label == "main" || is_runner(label) {
                 signal_places_changed(app);
+                update_badge(app);
             }
             Ok(Value::Null)
         }
@@ -1024,6 +1525,88 @@ async fn places_call(app: &AppHandle, s: &Arc<Services>, label: &str, place: Opt
     }
 }
 
+/// A copy of an attachment opened in the app that opens its kind (quickLook from the page; the Mac's Quick Look):
+/// written to `<temp>/Folevi Open/<random>/<name>`, which is emptied at the next launch (the app that opened it
+/// may still hold it now).
+async fn open_file(app: &AppHandle, o: &Value) -> ShellResult {
+    let name: String = req_str(o, "name")?.chars().filter(|c| !"\\/:*?\"<>|".contains(*c) && !c.is_control()).take(150).collect();
+    let name = name.trim().trim_start_matches('.').to_string();
+    let name = if name.is_empty() { "Attachment".to_string() } else { name };
+    let bytes = shell::req_bytes(o, "bytes")?;
+    if bytes.len() > 200 * 1024 * 1024 {
+        return Err(ShellError::invalid("That file is too big to open from here. Save it, then open it."));
+    }
+    let dir = open_files_dir(app).join(e2ee::ulid(now_ms()));
+    std::fs::create_dir_all(&dir).map_err(|e| ShellError::io(e.to_string()))?;
+    let path = dir.join(&name);
+    shell::write_atomic(&path, &bytes).map_err(|e| ShellError::io(e.to_string()))?;
+    app.opener().open_path(path.to_string_lossy(), None::<&str>).map_err(|_| ShellError::unavailable("No app on this computer opens that kind of file."))?;
+    Ok(value(true))
+}
+
+fn open_files_dir(app: &AppHandle) -> PathBuf {
+    app.path().temp_dir().unwrap_or_else(|_| std::env::temp_dir()).join("Folevi Open")
+}
+
+/// Whether this PC reads text in images (asked once).
+fn ocr_here() -> bool {
+    static HERE: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+    *HERE.get_or_init(|| std::thread::spawn(winshare::ocr_available).join().unwrap_or(false))
+}
+
+/// recognizeText { data }: `{ text }` (Windows.Media.Ocr; 30 seconds at most).
+async fn recognize_text(bytes: Vec<u8>) -> ShellResult {
+    #[cfg(windows)]
+    {
+        let job = tauri::async_runtime::spawn_blocking(move || winshare::recognize(&bytes).map_err(|e| e.to_string()));
+        match tokio::time::timeout(std::time::Duration::from_secs(30), job).await {
+            Ok(Ok(Ok(text))) => Ok(json!({ "text": text })),
+            _ => Err(ShellError::io("Folevi couldn't read the text in that image.")),
+        }
+    }
+    #[cfg(not(windows))]
+    {
+        let _ = bytes;
+        Err(ShellError::unavailable("Reading text in images isn't in Folevi for this computer."))
+    }
+}
+
+/// share { title, text, url }: Windows' Share sheet in front of the window; true once the person picks where (Windows
+/// says nothing when it's closed, so after two minutes it's false).
+async fn share(app: &AppHandle, label: &str, o: &Value) -> ShellResult {
+    #[cfg(windows)]
+    {
+        let get = |k: &str, max: usize| opt_str(o, k).unwrap_or("").chars().take(max).collect::<String>();
+        let (title, text, url) = (get("title", 200), get("text", 100_000), get("url", 2000));
+        let url = if url.starts_with("https://") || url.starts_with("http://") { url } else { String::new() };
+        if text.is_empty() && url.is_empty() {
+            return Ok(value(false));
+        }
+        let Some(w) = app.get_webview_window(label) else { return Ok(value(false)) };
+        let hwnd = w.hwnd().map(|h| h.0 as isize).unwrap_or(0);
+        let (tx, rx) = tokio::sync::oneshot::channel::<()>();
+        let tx = std::sync::Arc::new(parking_lot::Mutex::new(Some(tx)));
+        let (started_tx, started_rx) = tokio::sync::oneshot::channel::<bool>();
+        let _ = app.run_on_main_thread(move || {
+            let chosen = Box::new(move || {
+                if let Some(t) = tx.lock().take() {
+                    let _ = t.send(());
+                }
+            });
+            let _ = started_tx.send(winshare::share_now(hwnd, &title, &text, &url, chosen));
+        });
+        if !started_rx.await.unwrap_or(false) {
+            return Err(ShellError::unavailable("Windows couldn't open the Share sheet."));
+        }
+        Ok(value(tokio::time::timeout(std::time::Duration::from_secs(120), rx).await.is_ok_and(|r| r.is_ok())))
+    }
+    #[cfg(not(windows))]
+    {
+        let _ = (app, label, o);
+        Err(ShellError::unavailable("There's no Share sheet in Folevi for this computer."))
+    }
+}
+
 async fn files_save(app: &AppHandle, o: &Value) -> ShellResult {
     let name: String = req_str(o, "name")?.chars().filter(|c| !"\\/:*?\"<>|".contains(*c) && !c.is_control()).take(150).collect();
     let bytes = shell::req_bytes(o, "bytes")?;
@@ -1064,6 +1647,14 @@ async fn desktop_call(app: AppHandle, webview: tauri::Webview, name: String, arg
             }
             Ok(Value::Null)
         }
+        "lockUnlock" => lock_unlock(&app, &s, &label, opt_str(&args, "passphrase")).await,
+        "lockAnswer" => {
+            let id = text("id", 40);
+            if let Some(tx) = LOCK_PROMPTS.lock().remove(&id) {
+                let _ = tx.send(opt_str(&args, "passphrase").map(|p| p.chars().take(1000).collect()));
+            }
+            Ok(Value::Null)
+        }
         "ready" => {
             // FOLEVI_REPORT_READY (any build): the page and its bridge started, said on stdout, so a measurement
             // (scripts/measure.mjs) can tell a loaded page from a blank window.
@@ -1090,22 +1681,50 @@ async fn desktop_call(app: AppHandle, webview: tauri::Webview, name: String, arg
             }
             let path = text("path", 500);
             let place = s.place_of(&label);
+            let note = notify::Note {
+                id: text("id", 120),
+                title,
+                body: text("body", 400),
+                kind: text("kind", 40),
+                thread: text("thread", 80),
+                comment_thread: text("commentThread", 80),
+            };
             let app2 = app.clone();
-            notify::show(
+            let (id, kind, thread) = (note.id.clone(), note.kind.clone(), note.comment_thread.clone());
+            // Buttons only for a notification the page can name (its id: Mark as Read and the rest need it).
+            notify::show_note(
                 APP_ID,
-                &title,
-                &text("body", 400),
-                Arc::new(move || {
+                &note,
+                !note.id.is_empty(),
+                Arc::new(move |action, typed| {
                     let app3 = app2.clone();
                     let (path, place) = (path.clone(), place.clone());
+                    let (id, kind, thread) = (id.clone(), kind.clone(), thread.clone());
                     let _ = app2.run_on_main_thread(move || {
                         let current = services(&app3).places.lock().current();
-                        if place.is_some() && place != current && place.as_ref().is_some_and(|p| services(&app3).places.lock().has(p)) {
-                            switch_to(&app3, place, if path.starts_with('/') { &path } else { "/documents" }, false);
-                            show_main(&app3, None);
-                        } else {
-                            show_main(&app3, (!path.is_empty()).then_some(path.as_str()));
+                        let Some(action) = action else {
+                            // The click: Folevi forward at the page, in the notification's place.
+                            if place.is_some() && place != current && place.as_ref().is_some_and(|p| services(&app3).places.lock().has(p)) {
+                                switch_to(&app3, place, if path.starts_with('/') { &path } else { "/documents" }, false);
+                                show_main(&app3, None);
+                            } else {
+                                show_main(&app3, (!path.is_empty()).then_some(path.as_str()));
+                            }
+                            return;
+                        };
+                        // A button: the page of that place does it, without coming forward (the Mac's way: a place
+                        // with no page open hears nothing).
+                        if place != current {
+                            return;
                         }
+                        let mut command = json!({ "type": "notification", "action": action, "id": id, "kind": kind, "path": path });
+                        if !thread.is_empty() {
+                            command["thread"] = json!(thread);
+                        }
+                        if let Some(t) = typed.filter(|t| !t.trim().is_empty()) {
+                            command["text"] = json!(t);
+                        }
+                        emit_to_pages(&app3, "desktop:command", &command, Some("main"));
                     });
                 }),
             );
@@ -1235,6 +1854,20 @@ async fn desktop_call(app: AppHandle, webview: tauri::Webview, name: String, arg
             #[cfg(debug_assertions)]
             webview.open_devtools();
             Ok(Value::Null)
+        }
+        "quit" => {
+            let a = app.clone();
+            let _ = app.run_on_main_thread(move || quit(&a));
+            Ok(Value::Null)
+        }
+        "openFile" => open_file(&app, &args).await,
+        "share" => share(&app, &label, &args).await,
+        "recognizeText" => {
+            let bytes = shell::req_bytes(&args, "data")?;
+            if bytes.len() > winshare::MAX_IMAGE {
+                return Err(ShellError::invalid("That image is too big to read."));
+            }
+            recognize_text(bytes).await
         }
         "newWindow" => {
             let app2 = app.clone();
@@ -1427,6 +2060,7 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_process::init())
+        .plugin(tauri_plugin_updater::Builder::new().build())
         .register_asynchronous_uri_scheme_protocol("app", |ctx, request, responder| {
             let app = ctx.app_handle().clone();
             let label = ctx.webview_label().to_string();
@@ -1462,6 +2096,10 @@ pub fn run() {
                 }),
                 emit: emitter(&handle),
             });
+            let cloud_opener = handle.clone();
+            let cloud = cloud::Cloud::new(user_data.clone(), cloud::Config::from_build(), secret_store.clone(), Arc::new(move |url: &str| {
+                let _ = cloud_opener.opener().open_url(url, None::<&str>);
+            }), emitter(&handle));
             let opener_app = handle.clone();
             let auth = auth::Auth::new(service_url.clone(), secret_store.clone(), Arc::new(move |url: &str| {
                 let _ = opener_app.opener().open_url(url, None::<&str>);
@@ -1520,7 +2158,11 @@ pub fn run() {
                 auth,
                 ai: ai::Ai::new(secret_store),
                 reminders: reminders.clone(),
+                lock: Arc::new(applock::AppLock::load(user_data.join("lock.json"), lock_method())),
+                cloud,
                 places: Mutex::new(places),
+                backsync: Mutex::new(backsync::BackSync::new(backsync::Plan::default())),
+                poll_tokens: Mutex::new(HashMap::new()),
                 settings: Mutex::new(settings),
                 bound: Mutex::new(HashMap::new()),
                 keys: Mutex::new(HashMap::new()),
@@ -1545,6 +2187,24 @@ pub fn run() {
             services.ui.lock().shortcut_error = error;
             update_tray(&handle);
             watch_server_names(&handle);
+            updates::start(&handle, services.paths.test_run);
+            // The app lock: covered from the first page when it's on; again after time away or sleep.
+            if services.lock.cover() {
+                log::info!("Folevi: locked at launch");
+            }
+            watch_sleep(&handle);
+            start_background_sync(&handle);
+            // The Jump List: New Note, Quick Add Task, Today's Tasks (once per launch; COM on its own thread).
+            #[cfg(windows)]
+            if !services.paths.test_run {
+                std::thread::spawn(|| {
+                    if let Err(e) = jumplist::set_tasks(APP_ID) {
+                        log::warn!("Folevi: no Jump List ({e})");
+                    }
+                });
+            }
+            // Attachments opened last time (open_file): the apps that held them have let go by now.
+            let _ = std::fs::remove_dir_all(open_files_dir(&handle));
 
             // folevi:// links: the one that started the app, then each later one (the single-instance plugin
             // forwards a second start's). Registered at run time too, for the AppImage and test builds.
@@ -1566,7 +2226,18 @@ pub fn run() {
             let start_link = std::env::args().find(|a| a.to_ascii_lowercase().starts_with("folevi:"));
             let hidden = std::env::args().any(|a| a == "--hidden") && services.ui.lock().tray.is_some();
             if start_link.is_none() {
-                create_main(&handle, "/documents", Some("main".into()), !hidden)?;
+                // The windows open last time, each at its page (the Mac's WindowRestore); sizes and places come back
+                // through the window-state plugin by label.
+                let saved = read_windows(&services.paths.user_data);
+                let main_path = saved.iter().find(|(l, _)| l == "main").map(|(_, p)| p.clone()).unwrap_or_else(|| "/documents".into());
+                create_main(&handle, &main_path, Some("main".into()), !hidden)?;
+                let mut highest = 1u32;
+                for (label, path) in saved.iter().filter(|(l, _)| l != "main") {
+                    let n = label.strip_prefix("main-").and_then(|n| n.parse::<u32>().ok()).unwrap_or(0);
+                    highest = highest.max(n);
+                    let _ = create_main(&handle, path, Some(label.clone()), !hidden);
+                }
+                services.ui.lock().windows = highest.saturating_sub(1);
             }
             // Quick Add's window is made on first use (toggle_quick_add): a second copy of the interface loaded at
             // launch would cost as much memory as the main window's.
@@ -1613,6 +2284,23 @@ mod tests {
         assert!(is_app_url("app://localhost/"));
         assert!(!is_app_url("https://app.localhost.evil.com/"));
         assert!(!is_app_url("https://folevi.com/"));
+    }
+
+    #[test]
+    fn windows_open_again_at_their_own_pages() {
+        assert_eq!(restorable_path("app://localhost/d/01HZY?x=1#block-a"), "/d/01HZY?x=1#block-a");
+        assert_eq!(restorable_path("https://app.localhost/tasks/today"), "/tasks/today");
+        for odd in ["app://localhost/quick-add?place=library", "app://localhost/place-sync?place=x", "app://localhost/_files/abc", "app://localhost/", "https://evil.example/d/1", "about:blank", ""] {
+            assert_eq!(restorable_path(odd), "/documents", "{odd}");
+        }
+        let d = tempfile::tempdir().unwrap();
+        std::fs::write(
+            d.path().join("windows.json"),
+            r#"{"v":1,"windows":[{"label":"main","path":"/d/A"},{"label":"main-3","path":"/calendar"},{"label":"quickadd","path":"/quick-add"},{"label":"main-3","path":"/x"},{"label":"main-x","path":"/y"},{"label":"main-2","path":"//evil"}]}"#,
+        )
+        .unwrap();
+        assert_eq!(read_windows(d.path()), vec![("main".into(), "/d/A".into()), ("main-3".into(), "/calendar".into()), ("main-2".into(), "/documents".into())]);
+        assert!(read_windows(&d.path().join("missing")).is_empty());
     }
 
     #[test]

@@ -6,6 +6,7 @@ import { Switch } from "@/components/ui/Switch";
 import { useToast } from "@/components/ui/Toast";
 import { copy } from "@/lib/e2ee/copy";
 import { macE2ee, useKeySession } from "@/lib/e2ee/keys";
+import { shell } from "@/lib/shell";
 
 /**
  * Settings > Desktop app: "Ask for Touch ID to unlock encrypted notes" (docs/E2EE_DESIGN.md §6.2). The Mac app
@@ -25,7 +26,10 @@ export function TouchIdCard() {
     void bridge!.settings!().then(setValue, () => setValue(null));
   }, [bridge, supported, state]);
   if (!supported || state === "none" || !value) return null;
-  const d = copy.desktop;
+  const platform = shell()?.platform;
+  // Folevi for Linux has nothing to ask with: no switch to show.
+  if (platform === "linux" && !value.available) return null;
+  const d = platform === "windows" ? copy.desktopWindows : copy.desktop;
   return (
     <Card title="Encrypted notes">
       <div className="flex max-w-xl items-center justify-between gap-6">

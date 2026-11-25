@@ -337,6 +337,22 @@ Capacitor app), PR 79 (failed queries keep pages up) and PR 80 (one set of sync 
     stop the page scrolling; WebKit decides at touchstart, so it can't be added mid-drag).
   - Checked in local mode on a new "Folevi Feedback iPad" Simulator (iPad Air 11-inch): no late DOM insertions on Home,
     All notes, Tasks, Calendar or a folder. Not checked signed in or on a device.
+- iPhone Duo polish pass, build 101 (delivery 1add5ccd-2e5c-4ae5-bb55-0266131abb81; owner: "do the same polish pass
+  for iPhone Duo"). Audited, then fixed:
+  - Folding and unfolding rebuilt the note page (phone and tablet layouts are different trees): the caret, scroll and
+    keyboard were lost, against the owner's carry-over rule. `lib/app/noteCarry.ts` keeps the note's selection, focus and
+    scroll anchor for 1.5 s across a layout switch and `DocumentView` restores them; Capacitor already lets focus()
+    raise the keyboard (`CAPBridgeViewController` keyboardShouldRequireUserInteraction false). Checked on the Duo
+    Simulator both ways: same note, caret at the same offset, editor focused, keyboard up.
+  - App-wide pieces (Foli AI chat, Quick Add, runners) stay mounted across folds (`<Fragment key="globals">`).
+  - The iPad sidebar slide ran on unfold (it saw the layout switch as an open): it now only slides on the user's
+    toggle (`Shell.tsx sidebarLayout`); half open it follows the hinge with a width transition, its toggle and the menu's
+    Hide sidebar aren't offered, and the layout switch fades in over 150 ms.
+  - Half open, nothing in the fold: dialogs and the search window sit past it (`pastFoldFrame`), toasts too, menus and
+    popovers keep to their anchor's side (`popupSpan`, the editor's menus included), the note dock's old fold rule
+    (which crushed it) is gone. Closed and open, the side status column (84 pt) is kept clear: phone sheets, toasts, the
+    palette, the banner, menus (`sideInsets()` in `lib/iphone.ts`; `safeInsets()` answers only in the phone layout).
+  - Not checked: a real Duo; a horizontal fold (upright inner screen) by eye.
 - Memory re-check (the open item): Duo closed, 20 opens of "Welcome to Folevi": 126 MB, 200 MB, 130 MB after
   `org.WebKit.lowMemory`; nothing kept per open.
 - The three failing e2e specs listed in section 10 were already fixed on `main` by PR 77.

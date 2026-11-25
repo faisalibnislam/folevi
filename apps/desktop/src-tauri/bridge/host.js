@@ -313,6 +313,24 @@
     platform: BOOT.platform,
     // Recording a call: WebView2's screen capture carries the PC's sound ("Share system audio"); WebKitGTK's doesn't.
     callCapture: BOOT.platform === "windows",
+    // An attachment, opened in the app that opens its kind (the Mac's Quick Look): a copy in a temporary folder.
+    quickLook: function (files) {
+      var list = Array.isArray(files) ? files.slice(0, 5) : [];
+      if (!list.length) return Promise.resolve(false);
+      return Promise.all(
+        list.map(function (f) {
+          var bytes = f && f.bytes instanceof Uint8Array ? f.bytes : new Uint8Array(0);
+          return desktop("openFile", { name: String((f && f.name) || "Attachment"), bytes: b64(bytes) });
+        }),
+      ).then(
+        function () {
+          return true;
+        },
+        function () {
+          return false;
+        },
+      );
+    },
     setBadge: function (count) {
       void desktop("badge", { count: Number(count) || 0 }).catch(function () {});
     },
@@ -540,6 +558,14 @@
     if ((!mod && !e.altKey && !e.shiftKey && key === "F12") || (mod && e.shiftKey && !e.altKey && key === "i")) return { kind: "devtools" };
     if (e.altKey && !mod && !e.shiftKey && key === "ArrowLeft") return { kind: "menu", id: "go.back" };
     if (e.altKey && !mod && !e.shiftKey && key === "ArrowRight") return { kind: "menu", id: "go.forward" };
+    // Ctrl+Alt: the Mac's Option-Command items. Not AltGr (Ctrl+Alt on European keyboards types characters), and
+    // not the editor's own Ctrl+Alt+digit headings.
+    if (mod && e.altKey && !(e.getModifierState && e.getModifierState("AltGraph"))) {
+      if (!e.shiftKey && key === "c") return { kind: "menu", id: "go.calendar" };
+      if (!e.shiftKey && e.code === "Backslash") return { kind: "menu", id: "view.focus" };
+      if (e.shiftKey && key === "n") return { kind: "menu", id: "file.new-from-template" };
+      return null;
+    }
     if (!mod || e.altKey) return null;
     if (key === "Tab") return { kind: "menu", id: e.shiftKey ? "go.previous-tab" : "go.next-tab" };
     if (!e.shiftKey && key === "PageDown") return { kind: "menu", id: "go.next-tab" };
@@ -550,10 +576,17 @@
       if (key === "t") return { kind: "menu", id: "file.reopen-closed-tab" };
       if (key === "n") return { kind: "new-window" };
       if (key === "w") return { kind: "close-window" };
+      if (key === "f") return { kind: "menu", id: "edit.search-all" };
+      if (e.code === "BracketRight") return { kind: "menu", id: "go.next-tab" };
+      if (e.code === "BracketLeft") return { kind: "menu", id: "go.previous-tab" };
       if (key === "\\" || key === "|" || e.code === "Backslash") return { kind: "menu", id: "file.tab-overview" };
       return null;
     }
     if (key === "t") return { kind: "menu", id: "file.new-tab" };
+    if (key === "n") return { kind: "menu", id: "file.new-note" };
+    if (key === "/") return { kind: "menu", id: "help.shortcuts" };
+    // Linux's Quit (Windows closes with Alt+F4 and the tray's Quit Folevi).
+    if (key === "q" && BOOT.platform === "linux") return { kind: "quit" };
     if (key === "w" || key === "F4") return { kind: "menu", id: "file.close-tab" };
     if (key === "p") return { kind: "print" };
     if (key === ",") return { kind: "settings" };

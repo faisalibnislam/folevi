@@ -1464,6 +1464,29 @@ async fn places_call(app: &AppHandle, s: &Arc<Services>, label: &str, place: Opt
     }
 }
 
+/// A copy of an attachment opened in the app that opens its kind (quickLook from the page; the Mac's Quick Look):
+/// written to `<temp>/Folevi Open/<random>/<name>`, which is emptied at the next launch (the app that opened it
+/// may still hold it now).
+async fn open_file(app: &AppHandle, o: &Value) -> ShellResult {
+    let name: String = req_str(o, "name")?.chars().filter(|c| !"\\/:*?\"<>|".contains(*c) && !c.is_control()).take(150).collect();
+    let name = name.trim().trim_start_matches('.').to_string();
+    let name = if name.is_empty() { "Attachment".to_string() } else { name };
+    let bytes = shell::req_bytes(o, "bytes")?;
+    if bytes.len() > 200 * 1024 * 1024 {
+        return Err(ShellError::invalid("That file is too big to open from here. Save it, then open it."));
+    }
+    let dir = open_files_dir(app).join(e2ee::ulid(now_ms()));
+    std::fs::create_dir_all(&dir).map_err(|e| ShellError::io(e.to_string()))?;
+    let path = dir.join(&name);
+    shell::write_atomic(&path, &bytes).map_err(|e| ShellError::io(e.to_string()))?;
+    app.opener().open_path(path.to_string_lossy(), None::<&str>).map_err(|_| ShellError::unavailable("No app on this computer opens that kind of file."))?;
+    Ok(value(true))
+}
+
+fn open_files_dir(app: &AppHandle) -> PathBuf {
+    app.path().temp_dir().unwrap_or_else(|_| std::env::temp_dir()).join("Folevi Open")
+}
+
 async fn files_save(app: &AppHandle, o: &Value) -> ShellResult {
     let name: String = req_str(o, "name")?.chars().filter(|c| !"\\/:*?\"<>|".contains(*c) && !c.is_control()).take(150).collect();
     let bytes = shell::req_bytes(o, "bytes")?;
@@ -1712,6 +1735,12 @@ async fn desktop_call(app: AppHandle, webview: tauri::Webview, name: String, arg
             webview.open_devtools();
             Ok(Value::Null)
         }
+        "quit" => {
+            let a = app.clone();
+            let _ = app.run_on_main_thread(move || quit(&a));
+            Ok(Value::Null)
+        }
+        "openFile" => open_file(&app, &args).await,
         "newWindow" => {
             let app2 = app.clone();
             let _ = app.run_on_main_thread(move || {
@@ -2046,6 +2075,8 @@ pub fn run() {
                     }
                 });
             }
+            // Attachments opened last time (open_file): the apps that held them have let go by now.
+            let _ = std::fs::remove_dir_all(open_files_dir(&handle));
 
             // folevi:// links: the one that started the app, then each later one (the single-instance plugin
             // forwards a second start's). Registered at run time too, for the AppImage and test builds.

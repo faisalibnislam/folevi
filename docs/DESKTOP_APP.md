@@ -229,6 +229,15 @@ did in the Electron app: WebView2's screen picker offers "Share system audio", t
 and mixes it with the microphone (apps/web/src/lib/callCapture.ts; `foleviDesktop.callCapture`). If no sound comes
 with the capture, Folevi says to choose the screen and turn on Share system audio. Linux records the microphone
 only (WebKitGTK's screen capture has no system sound). Not tried on a real PC yet.
+## Shortcuts and opening attachments
+
+Beyond the tab, window and zoom keys, Folevi for Windows and Linux has the Mac's menu shortcuts with Ctrl (host.js
+keyAction): Ctrl+N New Note, Ctrl+Alt+Shift+N New from Template, Ctrl+Shift+F Search, Ctrl+/ Keyboard Shortcuts,
+Ctrl+Shift+] and [ next and previous tab, Ctrl+Alt+C Calendar, Ctrl+Alt+\ Focus, and on Linux Ctrl+Q Quit. Ctrl+Alt
+keys are left alone when they're AltGr. Formatting keys are the editor's own.
+
+An attachment's Open button (the Mac's Quick Look) opens a copy in the app that opens its kind: the copy goes to
+`<temp>/Folevi Open/`, emptied at the next launch.
 
 ## Not done yet
 

@@ -41,7 +41,13 @@ export interface ServerSettings {
   push: { relay: boolean };
   covers: { mode: "off" | "folevi" | "unsplash"; unsplashKey?: SecretState };
   ownerUserId?: string;
+  /** First-run checklist: step to when the owner finished or skipped it. */
+  setup?: Partial<Record<SetupStep, number>>;
+  configured?: { email: boolean; ai: boolean; pushRelay: boolean };
 }
+
+/** The first-run checklist steps the owner can mark as finished or skipped (serverAdmin:updateSettings `setup`). */
+export type SetupStep = "name" | "remote" | "email" | "ai" | "backups" | "backupKey" | "invite" | "apps" | "checklist";
 
 export interface ServerPerson {
   userId: string;

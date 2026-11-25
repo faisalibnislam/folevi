@@ -41,7 +41,7 @@ Public addresses: app `<origin>`, Convex `<origin>/convex`, Convex site `<origin
 config.json          settings folevid owns (port, public URL, connect state, backup schedule)
 secrets/             mode 700; one file per secret, never logged
   instance-secret  admin-key  better-auth-secret  hash-salt  file-url-secret  server-secret
-  setup-token  vapid-public  vapid-private  connect-token  tls/
+  setup-token  vapid-public  vapid-private  connect-token  connect-key  backup-key  tls/
 convex/              convex.sqlite3, storage/
 backups/             <timestamp>.zip (Convex export + files), 14 kept by default
 logs/                folevid.log, backend.log, web.log (rotated, 10 MB x 5)
@@ -85,10 +85,11 @@ Only the web server calls it, after checking that the signed-in person is the ow
 | --- | --- |
 | `GET /v1/status` | `{version, uptimeSeconds, publicUrl, services:[{name, state, pid, rssBytes, restarts}], disk:{dataBytes, freeBytes}, memory:{totalBytes, availableBytes}}` |
 | `GET /v1/logs?service=folevid\|backend\|web&lines=500` | `{lines:[string]}` (secrets redacted) |
-| `GET /v1/backups` | `{backups:[{id, createdAt, sizeBytes, kind:"nightly"\|"manual"\|"pre-update"}], schedule:{enabled, hour, keep, target}}` |
+| `GET /v1/backups` | `{backups:[{id, createdAt, sizeBytes, kind:"nightly"\|"manual"\|"pre-update", encrypted}], schedule:{enabled, hour, keep, target}}` |
 | `POST /v1/backups` | start one now: `{id}` |
 | `PUT /v1/backups/schedule` | `{enabled, hour, keep, target:{kind:"local"\|"folder"\|"s3", path?, s3?:{endpoint, bucket, prefix, accessKeyId, secretAccessKey, region}}}` |
-| `POST /v1/backups/{id}/restore` | restore, restarting services: `{ok}` |
+| `POST /v1/backups/{id}/restore` | optional body `{key?}` (the backup key of the server that made it); restore, restarting services: `{ok}`. 422 when the backup is encrypted with a key this server does not have, 400 for a malformed key |
+| `GET /v1/backups/key` | `{key, recipient}`: the backup key (`AGE-SECRET-KEY-1...`, secret; owner only, shown once for the owner to save) and its public half (`age1...`) |
 | `GET /v1/remote` | `{publicUrl, connect:{state:"off"\|"registered"\|"linked", serverId?, hostname?, lanHostnames?}, upnp:{state, externalPort?}, reachable?:boolean, relay:{enabled, connected}, customDomain?}` |
 | `PUT /v1/remote` | `{connectEnabled?, relayEnabled?, upnpEnabled?, customDomain?}` |
 | `POST /v1/connect/link` | start linking to a Folevi account: `{code, approveUrl, expiresAt}` |
@@ -330,9 +331,18 @@ Server version numbers follow the app's unified version (`docs/claude-context/me
 
 ### 10.1 Changes from the folevid build (2026-11-25)
 
-- Backup files are `backups/<UTC timestamp>-<kind>.zip`. Each holds the Convex export with stored files and
-  `secrets.json` (hash salt, auth and file-URL secrets) so a restore on a new machine keeps sign-ins and file links.
-  Treat backups as secret; encrypting them (above all on S3) is open work.
+- Backup files are `backups/<UTC timestamp>-<kind>.zip.age` (older ones `.zip`). Each holds the Convex export with
+  stored files and `secrets.json` (hash salt, auth and file-URL secrets) so a restore on a new machine keeps
+  sign-ins and file links.
+- **Encrypted backups (added later the same day):** every new backup is the ZIP streamed through
+  [age](https://age-encryption.org/v1) to the X25519 key in `secrets/backup-key` (made on first start, never
+  logged), on every target (local, folder, S3). Restore tells encrypted and plain files apart by their first bytes,
+  so old `.zip` backups still restore. On the same machine nothing is asked. On a new machine the owner gives the
+  old server's key: `POST /v1/backups/{id}/restore` with `{"key": "AGE-SECRET-KEY-1..."}` (or `folevid restore <id>
+  --key-file <file>`); when that key (not the machine's own) opened the backup it becomes this server's
+  `backup-key`, so the one key the owner saved keeps opening every backup. `GET /v1/backups/key` returns
+  `{key, recipient}` for the admin panel to show once ("save this key somewhere safe; without it a backup cannot be
+  restored on another machine"). Backup rows have `encrypted`. A key that fits no identity answers 422.
 - New secret file `secrets/connect-key` (the server's Ed25519 key for Connect).
 - `FOLEVI_JWKS` starts as a single space: the Convex CLI refuses an auth config that reads an unset variable.
 - Additions: `/v1/status` has `memory.profile` (`tiny` up to 2.5 GB of RAM, `low` up to 8 GB, `high` above) and
@@ -342,3 +352,11 @@ Server version numbers follow the app's unified version (`docs/claude-context/me
 - `server/bundle/build-bundle.sh --version V --arch A --out DIR` also needs `CONVEX_BACKEND`, `NODE_DIST`,
   `WEB_STANDALONE` and `FUNCTIONS_DIR` (paths, or https URLs it downloads), and `functions/` needs the target
   chip's `@esbuild` binary.
+- `FUNCTIONS_DIR` comes from `server/bundle/prepare-functions.sh --arch A --out DIR` (about 70 MB instead of the
+  workspace's 560 MB): `convex/` with `_generated`, the few `packages/` files convex/ imports by relative path,
+  and only the node_modules the Convex CLI reads (found by running esbuild the way the CLI does). `functions/` may
+  therefore contain `packages/` beside `convex/`.
+- Download manifest: `packaging/manifest/make-latest.sh` writes `latest.json`
+  (`{version, releasedAt, channel, notesUrl, baseUrl, files:[{platform, arch, name, url, sha256, sizeBytes}],
+  unraidPluginUrl, installScript, dockerImage}`), built by the Server packages workflow as an artifact; it is
+  uploaded by hand to R2 (`folevi-updates`, `server/<version>/` and `server/latest.json`).

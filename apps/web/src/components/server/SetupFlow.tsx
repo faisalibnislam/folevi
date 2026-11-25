@@ -789,9 +789,7 @@ export function SetupFlow({ token, signedIn, needsSetup, initialStep }: { token:
       </>
     );
   }
-  if (needsSetup && !token) {
-    return <AuthHeading title="Open the setup link" lede="Setting up needs the link from your NAS's Folevi page (open Folevi from the NAS's main menu). On a Linux server, run folevid setup-url to see it." />;
-  }
+  if (needsSetup && !token) return <FindSetupLink />;
   if (step === "ready") return <Ready onNext={() => setStep("remote")} />;
   if (guide) {
     return (
@@ -827,6 +825,38 @@ export function SetupFlow({ token, signedIn, needsSetup, initialStep }: { token:
           />
         </ConvexClientProvider>
       )}
+    </>
+  );
+}
+
+/**
+ * A Folevi Server with no owner, opened without its setup link (the NAS's Folevi icon, a bookmark, the sign-in
+ * page). The link carries a one-time token that only the NAS shows, so whoever has the NAS becomes the owner.
+ */
+function FindSetupLink() {
+  const places: { name: string; steps: ReactNode }[] = [
+    { name: "Synology", steps: <>Open <b>Package Center</b>, click <b>Folevi</b>, then <b>View log</b> (under <b>Action</b>).</> },
+    { name: "QNAP", steps: <>Open <b>App Center</b>, click <b>Folevi</b>, then its log, or run <code className="font-mono text-footnote">sudo /etc/init.d/folevi.sh setup-url</code> over SSH.</> },
+    { name: "Unraid, TrueNAS and other app stores", steps: <>Open Folevi&apos;s log in the app&apos;s page.</> },
+    { name: "Linux server", steps: <>Run <code className="break-all font-mono text-footnote">sudo -u folevi /opt/folevi/bin/folevid setup-url --data /var/lib/folevi --bundle /opt/folevi</code>.</> },
+  ];
+  return (
+    <>
+      <StepDots at={0} of={3} label="Welcome" />
+      <AuthHeading
+        title="Let's set up your server"
+        lede="Nobody owns this server yet. To make sure the owner is the person who has the NAS, setting it up starts from a one-time link your NAS shows. It begins with this server's address and /setup?token=."
+      />
+      <h2 className="text-headline text-heading">Where to find the link</h2>
+      <ul className="mt-3 space-y-3">
+        {places.map((p) => (
+          <li key={p.name} className="rounded-small bg-sunken px-3.5 py-3 text-subheadline leading-relaxed text-muted">
+            <span className="block font-medium text-heading">{p.name}</span>
+            {p.steps}
+          </li>
+        ))}
+      </ul>
+      <p className="mt-5 text-subheadline leading-relaxed text-muted">Open the link in this browser. Then you name the server and create your account; you choose the email and password.</p>
     </>
   );
 }

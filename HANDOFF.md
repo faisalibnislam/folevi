@@ -1325,10 +1325,6 @@ account button should move past iPadOS's window buttons).
   tests pass (155, plus a live lookup against the test server at localhost:8460). Not yet: http servers on the
   home network other than localhost (WebView2 mixed content; the shell is to carry that traffic), and
   `serverPlaces: false` in bridge/host.js comes out once PR 113 is on main.
-- 2026-11-25: **Float this note** on the Mac app, Windows and Linux app and the web (Chrome and Edge's Document
-  Picture-in-Picture): right-click a note tab or a listed note; one window per note on the desktop apps (pinned on
-  top until turned off, size and place remembered); full editing in the main window's editor, compact. Branch
-  `claude/float-this-note`, nothing released.
 - 2026-11-25: **Automatic updates for Folevi for Windows and the Linux AppImage** (branch `claude/desktop-updater`,
   first item of docs/DESKTOP_PARITY.md): the Tauri updater is registered, checks a minute after launch and every 12
   hours, and the tray has Check for Updates…. Update key made and kept at `~/.folevi-desktop-signing/` (section 7);

@@ -284,7 +284,7 @@ fun TasksHome(open: (Route) -> Unit) {
     Box(Modifier.fillMaxSize()) {
         PhoneScreen(
             title = "Tasks",
-            leading = { AvatarButton("", onClick = { open(SettingsRoute) }) },
+            leading = { AvatarButton(rememberView(com.folevi.engine.generated.Views.session()).value.value?.profile?.name ?: "", onClick = LocalPhoneSheets.current.account) },
             trailing = {
                 Box {
                     GlassPill {

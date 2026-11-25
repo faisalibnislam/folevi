@@ -229,13 +229,16 @@ fun AppShell() {
         // The account sheet and New folder (Home's avatar and menus, the lists' empty states).
         var newFolderIn by remember { mutableStateOf<String?>(null) }
         var newFolderOpen by remember { mutableStateOf(false) }
+        var accountOpen by remember { mutableStateOf(false) }
         val sheets = remember(tabbed) {
             PhoneSheets(
-                account = { if (isTabbed) tabs.show(SettingsRoute, fromPage = false) else openOnPhone(SettingsRoute) },
+                account = { accountOpen = true },
                 newFolder = { parent -> newFolderIn = parent; newFolderOpen = true },
             )
         }
-        if (newFolderOpen) NewFolderDialog(parentId = newFolderIn) { newFolderOpen = false }
+        val openAnywhere: (Route) -> Unit = { r -> if (isTabbed) tabs.show(r, fromPage = false) else openOnPhone(r) }
+        if (newFolderOpen) NewFolderSheet(onDismiss = { newFolderOpen = false }, open = openAnywhere, parentId = newFolderIn)
+        if (accountOpen) AccountSheet(onDismiss = { accountOpen = false }, open = openAnywhere)
         CompositionLocalProvider(LocalPhoneSheets provides sheets) {
         key(window) {
             if (tabbed) {

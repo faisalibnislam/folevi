@@ -205,7 +205,7 @@ fun CalendarHome(open: (Route) -> Unit) {
 
     PhoneScreen(
         title = calendarTitle(day, today),
-        leading = { AvatarButton("", onClick = { open(SettingsRoute) }) },
+        leading = { AvatarButton(rememberView(com.folevi.engine.generated.Views.session()).value.value?.profile?.name ?: "", onClick = LocalPhoneSheets.current.account) },
         trailing = {
             if (day != today) GlassTextButton("Today", onClick = { picked = today.toString() })
             Box {

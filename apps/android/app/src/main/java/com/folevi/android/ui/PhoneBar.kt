@@ -96,7 +96,7 @@ fun PhoneBar(tab: Tab, pick: (Tab) -> Unit, newNote: () -> Unit, modifier: Modif
                 // On Tasks, + is a quick task straight away (as on the web).
                 var asking by remember { mutableStateOf(false) }
                 GlassButton("Quick task", onClick = { asking = true }) { PlusDisc() }
-                if (asking) QuickTaskDialog { asking = false }
+                if (asking) QuickAddSheet(onDismiss = { asking = false })
             } else {
                 CreateMenu(newNote)
             }
@@ -164,23 +164,17 @@ private fun PlusDisc() {
 @Composable
 private fun CreateMenu(newNote: () -> Unit) {
     var open by remember { mutableStateOf(false) }
-    var folder by remember { mutableStateOf(false) }
+    val sheets = LocalPhoneSheets.current
     var task by remember { mutableStateOf(false) }
     Box {
         GlassButton("Create", onClick = { open = true }) { PlusDisc() }
         DropdownMenu(expanded = open, onDismissRequest = { open = false }, shape = MaterialTheme.shapes.large, containerColor = LocalPalette.current.surfaceRaised, tonalElevation = 0.dp, shadowElevation = 8.dp) {
             DropdownMenuItem(text = { Text("New note") }, leadingIcon = { FoleviIcon(WebIcon.FILE_PLUS_CORNER, null) }, onClick = { open = false; newNote() })
-            DropdownMenuItem(text = { Text("New folder") }, leadingIcon = { FoleviIcon(WebIcon.FOLDER_PLUS, null) }, onClick = { open = false; folder = true })
+            DropdownMenuItem(text = { Text("New folder") }, leadingIcon = { FoleviIcon(WebIcon.FOLDER_PLUS, null) }, onClick = { open = false; sheets.newFolder(null) })
             DropdownMenuItem(text = { Text("Quick task") }, leadingIcon = { FoleviIcon(WebIcon.LIST_PLUS, null) }, onClick = { open = false; task = true })
         }
     }
-    if (folder) NewFolderDialog(parentId = null) { folder = false }
-    if (task) QuickTaskDialog { task = false }
-}
-
-@Composable
-private fun QuickTaskDialog(onDone: () -> Unit) {
-    NameDialog("Quick task", "What needs doing?", "Add", onDone = onDone) { session, text -> session.client.command(Commands.taskCreate(text = text)) }
+    if (task) QuickAddSheet(onDismiss = { task = false })
 }
 
 /** A one-field dialog that runs [act] with the trimmed text, then closes. */
@@ -202,12 +196,4 @@ private fun NameDialog(title: String, label: String, confirm: String, onDone: ()
         },
         dismissButton = { TextButton(onClick = onDone) { Text("Cancel") } },
     )
-}
-
-/** New folder (until the native New folder sheet lands): a name, created at the top level or in [parentId]. */
-@Composable
-fun NewFolderDialog(parentId: String?, onDone: () -> Unit) {
-    NameDialog("New folder", "Folder name", "Create", onDone = onDone) { session, name ->
-        session.client.command(Commands.folderCreate(name = name, parentId = parentId?.let { com.folevi.engine.protocol.Patch.Set(it) } ?: com.folevi.engine.protocol.Patch.Keep))
-    }
 }

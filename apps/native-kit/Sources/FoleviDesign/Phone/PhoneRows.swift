@@ -214,7 +214,7 @@ public struct PhoneHomeSection<Content: View>: View {
     /// "See all" at the heading's right (Bookmarks, when Home shows only some).
     let seeAll: (() -> Void)?
     let content: Content
-    @State private var moreFrame: CGRect = .zero
+    @State private var moreFrame = PhoneFrameBox()
     @Environment(\.phoneMenus) private var menus
     @Environment(\.colorScheme) private var scheme
 
@@ -282,14 +282,14 @@ public struct PhoneHomeSection<Content: View>: View {
                             .contentShape(Rectangle())
                     }
                 } else if let more {
-                    Button { more(moreFrame) } label: {
+                    Button { more(moreFrame.rect) } label: {
                         WebIconView(.ellipsis, size: 22, strokeWidth: 2.2)
                             .foregroundStyle(dots.color.color)
                             .frame(width: dots.width, height: dots.height)
                             .contentShape(Rectangle())
                     }
                     .buttonStyle(PhoneRowPressStyle())
-                    .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { moreFrame = $0 }
+                    .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { moreFrame.rect = $0 }
                     .accessibilityLabel("\(title) options")
                 }
             }

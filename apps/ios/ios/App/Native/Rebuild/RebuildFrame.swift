@@ -460,17 +460,24 @@ private struct RebuildRoot: View {
     @Namespace private var zoom
     /// Regular width (iPhone Duo open): the wide layout, as on the iPad.
     @Environment(\.horizontalSizeClass) private var sizeClass
+    /// Which layout shows (nil until the first layout pass has measured the window).
+    @State private var wide: Bool?
+    /// The window's width, kept out of SwiftUI's state (it changes on every frame of a resize).
+    @State private var frameWidth = WidthBox()
+    final class WidthBox { var value: CGFloat = 0 }
 
     var body: some View {
         // The iPad in a window wide enough for the sidebar: the web's desktop layout (lib/iphone.ts
         // isIpadLayout, under 700 pt the phone's). An iPhone window of regular width (iPhone Duo open, the owner's
         // pick of 2026-11-23) takes the same layout; any other iPhone window the phone's.
-        GeometryReader { g in
-            let wide = RebuildIPad.isWide(width: g.size.width, regular: sizeClass == .regular)
-            // The desk's touch sizes (the iPad's styles) while it shows, set before either layout is built.
-            let _ = (WebStyles.isPad = UIDevice.current.userInterfaceIdiom == .pad || wide)
-            let _ = (RebuildIPad.showingWide = wide)
-            Group {
+        // (Which layout, not the width itself, is the state: a GeometryReader here built this whole frame again on
+        // every point of a Stage Manager or Split View resize. Settled in the first layout pass, before anything
+        // is drawn.)
+        Group {
+            if let wide {
+                // The desk's touch sizes (the iPad's styles) while it shows, set before either layout is built.
+                let _ = (WebStyles.isPad = UIDevice.current.userInterfaceIdiom == .pad || wide)
+                let _ = (RebuildIPad.showingWide = wide)
                 if wide {
                     RebuildIPadRoot(desk: desk, phone: phone, pageHost: pageHost, gate: gate)
                 } else {
@@ -478,14 +485,27 @@ private struct RebuildRoot: View {
                     // Dynamic Type, Folevi's accent; notes and their cards keep Folevi's fonts.
                     phoneBody.phoneNativeChrome(menus: menus)
                 }
+            } else {
+                Color.clear
             }
-            .onChange(of: wide) { _, isWide in
-                // Keep the open screen when Split View or Stage Manager crosses the layout boundary, or iPhone Duo
-                // opens or closes.
-                if isWide { desk.open(model.top) } else { model.open(desk.route) }
-            }
+        }
+        .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { width in
+            frameWidth.value = width
+            let next = RebuildIPad.isWide(width: width, regular: sizeClass == .regular)
+            if wide != next { wide = next }
+        }
+        .onChange(of: sizeClass) { _, size in
+            let next = RebuildIPad.isWide(width: frameWidth.value, regular: size == .regular)
+            if wide != nil, wide != next { wide = next }
+        }
+        .onChange(of: wide) { old, new in
+            // Keep the open screen when Split View or Stage Manager crosses the layout boundary, or iPhone Duo
+            // opens or closes.
+            guard let new else { return }
             // The note page's look follows the layout (iPhone Duo).
-            .onChange(of: wide, initial: true) { _, isWide in RebuildPageLayout.tell(wide: isWide) }
+            RebuildPageLayout.tell(wide: new)
+            guard let old, old != new else { return }
+            if new { desk.open(model.top) } else { model.open(desk.route) }
         }
         .ignoresSafeArea(.keyboard)
         .environment(\.sheetZoom, zoom)

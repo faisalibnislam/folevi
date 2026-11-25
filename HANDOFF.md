@@ -1036,6 +1036,12 @@ signed-in account, 1.5.58's frosted folders with a large library, and the iPad c
 account button should move past iPadOS's window buttons).
 
 ## 10. Next steps / open work
+- Native iPhone, bug found 2026-11-25 (also in build 106 on TestFlight): a list's "…" menu (All notes: View as, Sort
+  by; `RebuildLists.showMenu` through `PhoneMenuLayer`) opens half faded and its rows don't take a tap; a tap
+  outside closes it. The + menu (iOS's own `Menu`) works. Not fixed yet.
+- Native iPhone performance, left from the SwiftUI audit: `CardPicture` still reads `@Environment(\.self)` (any
+  environment change runs its body; cheap while the picture is kept); the Mac's `PlaceholderCard` pulses each on its
+  own animation (not used on the iPhone); nothing measured with Instruments before and after.
 - Native iOS (`claude/ios-native-sync-signin`): check QR scanning and a server sign-in on a device; the sync sheet's
   "Notes waiting to sync" and "Other changes" lists need the outbox and pending notes in the bridge contract (not in
   `sync.status` yet); R5.7's page side (note.prepare waiting for the store); the iPhone's message-card gates
@@ -1328,6 +1334,16 @@ account button should move past iPadOS's window buttons).
   `DATABASE_UDF_USER_TIMEOUT_SECONDS=4` for that backend. Bursts show in `convex.log` as "took a long time".
 
 ## 12. Change log
+- 2026-11-25: Native iOS SwiftUI refactors (not released): each tab's stack is its own observed box
+  (`PhoneTabStack`) drawn by its own view (`PhoneTabStackView`), so a push in one tab doesn't draw the others or the
+  tab bar; frames kept for menus are boxes (`PhoneFrameBox`, `PhoneFrameBoxes`), not `@State` written on every scroll
+  frame (Foli AI history, Move places, task sheet, notifications, Vault, search chips, folders, bars); notes list
+  cards and rows are `PhoneSkipCell`s keyed on what they show, so a window of rows loading doesn't run every card's
+  body; `CardPictures` counts changes per card, not one global count; `RebuildFrame` keeps which layout shows
+  (phone or wide) as state from `onGeometryChange` instead of a root `GeometryReader` (launch time unchanged:
+  Home at about 1.5 s on the Simulator both ways). PhoneScreen's scroll offset turned out to be the web drawing
+  only; the iPhone uses the native bar. Tests: tab stacks, card pictures, phone and design suites pass; checked on
+  the iPhone Simulator (Home, All notes, Tasks, a note and back, menus).
 - 2026-11-25: Native iOS 1.6.79 (build 106) on TestFlight (delivery 8c768201; build 105's upload was cut off by the app quitting): + in the top bar before the sync and the bell with iOS's own menu; performance pass (energy, memory and SwiftUI audits): per-card line slots in WebLineLayout, cached card title lines, cached Foli AI flower, shared calendar/formatters, background refresh at most once a minute, LibraryWatcher's timer paused in the background, PhoneModel.start once, cover colours trimmed. Open from the SwiftUI audit (bigger refactors, not done): PhoneFrameView reading every tab's stack, PhoneScreen's scroll offset re-running the whole screen, per-row frame @State in PhoneRows/Notifications/Vault/FoliAI history/MovePlaces, NotesListModel rebuilding all slots per window load, CardPicture's @Environment(\.self) and global change counter, the root GeometryReader in RebuildFrame, per-card placeholder pulses.
 - 2026-11-25: Native iOS 1.6.79 (build 104) on TestFlight (delivery efdcbcd1): Foli AI's sheet slides up and down as iOS's own and its tab is never selected (owner's video: the zoom from the middle of the screen and the blank page looked weird).
 - 2026-11-25: Native iOS 1.6.79 (build 103) uploaded to TestFlight from `claude/ios-native-today-ui` (delivery fd1a648b).

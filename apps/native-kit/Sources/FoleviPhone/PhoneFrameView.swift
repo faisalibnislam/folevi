@@ -62,8 +62,6 @@ private struct ZoomSource: ViewModifier {
 public struct PhoneFrameView<Screen: View>: View {
     @Bindable var model: PhoneFrameModel
     @Namespace private var zoom
-    /// The frame's size, for where the tab bar's + opens its menu from.
-    @State private var frameSize: CGSize = .zero
     let menus: PhoneMenus
     let aiOn: Bool
     /// Whether the tab bar steps out of the way (the keyboard, Select).
@@ -105,11 +103,6 @@ public struct PhoneFrameView<Screen: View>: View {
     /// What the tab bar's selection is: one of the three tabs, or search. (Foli AI is never selected: it opens its
     /// sheet over the tab you're on.)
     private enum Selection: Hashable { case tab(PhoneTab), ai, search }
-
-    /// The tab bar steps away for a note (which has its own bars), the Foli AI page, the keyboard and Select.
-    private func barHidden(_ route: FrameRoute) -> Bool {
-        route.isNote || isAI(route) || (tabBarHidden && route == model.tabTop && !model.searching)
-    }
 
     /// The native look (the owner, 2026-11-19): iOS 26's tab bar in Liquid Glass. Home, Tasks and Calendar, each
     /// with its own navigation stack, then Foli AI (only for people who have it), and search as a tab of its own
@@ -160,16 +153,10 @@ public struct PhoneFrameView<Screen: View>: View {
         // instead, so the screen doesn't blank to the tab's empty page and back before the sheet comes up (the
         // owner's video, 2026-11-25).
         .background { TabActionTabs(title: "Foli AI") { actions.openAI() }.frame(width: 0, height: 0) }
-        .onGeometryChange(for: CGSize.self) { $0.size } action: { frameSize = $0 }
         .phoneSideBarsReader()
         // A note's bottom bars, where the tab bar is (PhoneNoteBarsSlot): they trade places with it, not ride the page.
         .overlay { PhoneNoteBarsLayer(model: model) }
         .overlay { PhoneMenuLayer(menus: menus) }
-    }
-
-    /// Where the floating + sits: its menu opens above it, its right edge on the button's.
-    private var createFrom: CGRect {
-        CGRect(x: max(0, frameSize.width - 22 - 52), y: max(0, frameSize.height - 74 - 52), width: 52, height: 52)
     }
 
     /// + in a tab's first screen's bar (the owner, 2026-11-25: at the top, before the sync and the bell, with iOS's
@@ -192,7 +179,7 @@ public struct PhoneFrameView<Screen: View>: View {
                 }
                 // The tab bar floats over the home indicator and steps away for a note (which has its own bars),
                 // the keyboard and Select, on FoleviSpring.slide.
-                let hidden = tabBarHidden || model.top.isNote || model.top == .web("/ai") || isAI(model.top)
+                let hidden = tabBarHidden || model.top.isNote || model.top == .web("/ai") || PhoneTabStackView<Screen>.isAI(model.top)
                 PhoneTabBar(current: model.current, aiOn: aiOn, pick: { model.pick($0) }, openAI: actions.openAI, plus: plus)
                     .padding(.leading, geo.safeAreaInsets.leading)
                     .padding(.trailing, geo.safeAreaInsets.trailing)
@@ -208,46 +195,68 @@ public struct PhoneFrameView<Screen: View>: View {
         .overlay { PhoneMenuLayer(menus: menus) }
     }
 
-    private func isAI(_ route: FrameRoute) -> Bool {
+    /// A tab's screens, as a view of its own: it reads only its own tab's stack, so opening a screen in one tab
+    /// doesn't draw the other tabs' stacks (or the tab bar) again.
+    private func stack(_ tab: PhoneTab) -> some View {
+        PhoneTabStackView(model: model, tab: tab, zoom: zoom, tabBarHidden: tabBarHidden, rootCreate: rootCreate(tab), screen: screen)
+    }
+}
+
+/// One tab's navigation stack: its first screen, then what was opened on top (bound to the model, so Back by the
+/// edge swipe pops the model too).
+private struct PhoneTabStackView<Screen: View>: View {
+    let model: PhoneFrameModel
+    let tab: PhoneTab
+    let zoom: Namespace.ID
+    /// Whether the tab bar steps out of the way (the keyboard, Select).
+    let tabBarHidden: Bool
+    let rootCreate: PhoneRootCreate?
+    let screen: (FrameRoute) -> Screen
+
+    static func isAI(_ route: FrameRoute) -> Bool {
         if case .web(let p) = route { return p == "/ai" || p.hasPrefix("/ai/") }
         return false
     }
 
-    /// A tab's screens: its first screen, then what was opened on top (bound to the model, so Back by the edge swipe
-    /// pops the model too).
-    private func stack(_ tab: PhoneTab) -> some View {
-        let first = model.stacks[tab]?.first?.route ?? PhoneFrameModel.root(of: tab)
+    var body: some View {
+        let entries = model.entries(of: tab)
+        // (Read here, so a tab switch or search draws this tab's bar visibility again.)
+        let onShow = model.current == tab && !model.searching
+        let top = entries.last?.route
+        let first = entries.first?.route ?? PhoneFrameModel.root(of: tab)
         let path = Binding<[PhoneStackEntry]>(
-            get: { Array((model.stacks[tab] ?? []).dropFirst()) },
+            get: { Array(model.entries(of: tab).dropFirst()) },
             set: { model.setPath($0, in: tab) }
         )
-        return NavigationStack(path: path) { root(tab, first) }
-            .environment(\.phoneZoom, zoom)
+        return NavigationStack(path: path) {
+            screen(first)
+                .environment(\.phoneRootCreate, rootCreate)
+                .toolbarVisibility(barHidden(first, onShow: onShow, top: top) ? .hidden : .automatic, for: .tabBar)
+                .navigationDestination(for: PhoneStackEntry.self) { entry in
+                    destination(entry.route, onShow: onShow, top: top)
+                }
+        }
+        .environment(\.phoneZoom, zoom)
     }
 
-    /// A tab's first screen, and the screens pushed over it.
-    private func root(_ tab: PhoneTab, _ first: FrameRoute) -> some View {
-        screen(first)
-            .environment(\.phoneRootCreate, rootCreate(tab))
-            .toolbarVisibility(barHidden(first) ? .hidden : .automatic, for: .tabBar)
-            .navigationDestination(for: PhoneStackEntry.self) { entry in
-                destination(entry.route)
-            }
+    /// The tab bar steps away for a note (which has its own bars), the Foli AI page, the keyboard and Select.
+    private func barHidden(_ route: FrameRoute, onShow: Bool, top: FrameRoute?) -> Bool {
+        route.isNote || Self.isAI(route) || (tabBarHidden && onShow && route == top)
     }
 
     /// A pushed screen; a note zooms out of the card it was opened from.
     @ViewBuilder
-    private func destination(_ route: FrameRoute) -> some View {
+    private func destination(_ route: FrameRoute, onShow: Bool, top: FrameRoute?) -> some View {
         if case .note(let id) = route {
             // (The note draws its own bars, as the page asks: PhoneNoteBars; iOS's where bars are at the side.)
             // (The tab bar goes as the model opens a note and comes back as Back is pressed, not when the page has
-            // finished leaving: it follows the model's top, so it and the note's bars trade places together.)
+            // finished leaving: it follows the stack's top, so it and the note's bars trade places together.)
             screen(route).phoneNoteBar()
                 .environment(\.phoneNoteBarsInFrame, true)
-                .toolbarVisibility(model.top.isNote ? .hidden : .automatic, for: .tabBar)
+                .toolbarVisibility(onShow && top?.isNote == true ? .hidden : .automatic, for: .tabBar)
                 .navigationTransition(.zoom(sourceID: id, in: zoom))
         } else {
-            screen(route).toolbarVisibility(barHidden(route) ? .hidden : .automatic, for: .tabBar)
+            screen(route).toolbarVisibility(barHidden(route, onShow: onShow, top: top) ? .hidden : .automatic, for: .tabBar)
         }
     }
 }

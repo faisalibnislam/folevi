@@ -509,7 +509,7 @@ struct PhoneAiChips: View {
     let menus: PhoneMenus
     @Environment(\.colorScheme) private var scheme
     @State private var recent: [NoteRow] = []
-    @State private var addFrame: CGRect = .zero
+    @State private var addFrame = PhoneFrameBox()
 
     var body: some View {
         let look = AiLook(scheme: scheme, phone: true)
@@ -566,7 +566,7 @@ struct PhoneAiChips: View {
 
     private func drawnAdd(look: AiLook) -> some View {
         let s = look.s("ai.chip.add")
-        return Button { menus.show(entries(), from: addFrame, side: .top, align: .start) } label: {
+        return Button { menus.show(entries(), from: addFrame.rect, side: .top, align: .start) } label: {
             HStack(spacing: s.gap) {
                 WebIconView(.plus, size: 13)
                 Text("Add").webText(s.text).lineLimit(1)
@@ -578,7 +578,7 @@ struct PhoneAiChips: View {
             .padding(.vertical, max(0, (44 - s.height) / 2)).contentShape(Rectangle()).padding(.vertical, -max(0, (44 - s.height) / 2))
         }
         .buttonStyle(PhonePressFade())
-        .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { addFrame = $0 }
+        .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { addFrame.rect = $0 }
         .accessibilityLabel("Add to what Foli AI reads")
     }
 
@@ -647,7 +647,7 @@ public struct PhoneAiSheet: View {
     /// Conversations: the page, on this conversation or a new chat.
     let openPage: (String?) -> Void
     @State private var menus = PhoneMenus()
-    @State private var moreFrame: CGRect = .zero
+    @State private var moreFrame = PhoneFrameBox()
 
     public init(model: FoliChatModel, host: PhoneAiHost, close: @escaping () -> Void, openPage: @escaping (String?) -> Void) {
         self.model = model
@@ -672,11 +672,11 @@ public struct PhoneAiSheet: View {
                     .accessibilityLabel("Conversation options")
                 } else {
                     PhoneSheetButton("Conversation options", action: {
-                        menus.show(PhoneAiMenus.conversation(model: model, id: id, title: model.title, local: host.local), from: moreFrame, side: .bottom, align: .start)
+                        menus.show(PhoneAiMenus.conversation(model: model, id: id, title: model.title, local: host.local), from: moreFrame.rect, side: .bottom, align: .start)
                     }) {
                         WebIconView(.ellipsis, size: 15, strokeWidth: 2.4)
                     }
-                    .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { moreFrame = $0 }
+                    .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { moreFrame.rect = $0 }
                 }
             }
         } trailing: {
@@ -742,7 +742,7 @@ struct PhoneAiExportButton: View {
     let menus: PhoneMenus
     let messageId: String
     let saves: Bool
-    @State private var frame: CGRect = .zero
+    @State private var frame = PhoneFrameBox()
 
     @Environment(\.phoneMenus) private var nativeMenus
 
@@ -754,9 +754,9 @@ struct PhoneAiExportButton: View {
             .accessibilityLabel("Export this answer")
         } else {
             AiRowButton(icon: .ellipsis, title: "Export") {
-                menus.show(PhoneAiMenus.export(model: model, messageId: messageId, saves: saves), from: frame, side: .top, align: .start)
+                menus.show(PhoneAiMenus.export(model: model, messageId: messageId, saves: saves), from: frame.rect, side: .top, align: .start)
             }
-            .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { frame = $0 }
+            .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { frame.rect = $0 }
             .accessibilityLabel("Export this answer")
         }
     }
@@ -778,7 +778,7 @@ public struct PhoneAiPage: View {
     @Environment(\.colorScheme) private var scheme
     @State private var menus = PhoneMenus()
     @State private var drawer = false
-    @State private var moreFrame: CGRect = .zero
+    @State private var moreFrame = PhoneFrameBox()
     @State private var deleting: ChatConversationRow?
     @State private var titleWidth: CGFloat = 0
     /// The keyboard is up: the composer then sits just over it instead of over the tab bar's room.
@@ -916,14 +916,14 @@ public struct PhoneAiPage: View {
                 .accessibilityLabel("Conversation options")
             } else if let id = model.conversationId, model.info != nil {
                 Button {
-                    menus.show(PhoneAiMenus.conversation(model: model, id: id, title: title, local: host.local), from: moreFrame, side: .bottom, align: .end)
+                    menus.show(PhoneAiMenus.conversation(model: model, id: id, title: title, local: host.local), from: moreFrame.rect, side: .bottom, align: .end)
                 } label: {
                     // (Drawn 32, taking a finger's 44: IPHONE-09.)
                     WebIconView(.ellipsis, size: 16).frame(width: 32, height: 32).foregroundStyle(look.muted)
                         .contentShape(Rectangle().inset(by: -6))
                 }
                 .buttonStyle(PhonePressFade())
-                .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { moreFrame = $0 }
+                .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { moreFrame.rect = $0 }
                 .accessibilityLabel("Conversation options")
             }
         }
@@ -949,7 +949,7 @@ struct PhoneAiDrawer: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var renaming: ChatConversationRow?
     @State private var name = ""
-    @State private var rowFrames: [String: CGRect] = [:]
+    @State private var rowFrames = PhoneFrameBoxes()
     @State private var heldRow: String?
 
     var body: some View {

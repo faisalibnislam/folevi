@@ -188,7 +188,7 @@ public struct PhoneRowGroup<Content: View>: View {
         VStack(spacing: 0) { content }
             .environment(\.phoneRowGrouped, true)
             .padding(.vertical, 4)
-            .background(shape.fill(PhoneLook.card.resolve(scheme).color))
+            .background(shape.fill(PhoneSurface.row.resolve(scheme).color))
             .clipShape(shape)
             .padding(.horizontal, PhoneRowGroupMetrics.inset)
             .accessibilityElement(children: .contain)
@@ -356,6 +356,41 @@ public struct PhoneEmptyBox: View {
 }
 
 /// SearchField with a value: the same pill as a field that filters a list, Cancel beside it while it's in use.
+/// Home's search field (today's app, `SearchField` with `onOpen`): drawn as the search field, a tap opens the app's
+/// Search, with the keyboard up there.
+public struct PhoneSearchOpener: View {
+    let placeholder: String
+    let action: () -> Void
+    @Environment(\.colorScheme) private var scheme
+
+    public init(_ placeholder: String, action: @escaping () -> Void) {
+        self.placeholder = placeholder
+        self.action = action
+    }
+
+    public var body: some View {
+        let wrap = ps("phone.search.wrap", scheme)
+        let box = ps("phone.searchfield.box", scheme)
+        let input = ps("phone.searchfield.input", scheme)
+        let icon = ps("phone.search.icon", scheme)
+        Button(action: action) {
+            HStack(spacing: box.gap) {
+                WebIconView(.search, size: icon.width, strokeWidth: 2.1).foregroundStyle(icon.color.color)
+                Text(placeholder).webText(input.text).lineLimit(1).foregroundStyle(box.color.color)
+                Spacer(minLength: 0)
+            }
+            .padding(.horizontal, box.padding.left)
+            .frame(height: box.height)
+            .background(RoundedRectangle(cornerRadius: box.radius, style: .continuous).fill(box.background.color))
+            .contentShape(RoundedRectangle(cornerRadius: box.radius, style: .continuous))
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(placeholder)
+        .accessibilityAddTraits(.isSearchField)
+        .padding(wrap.padding.edgeInsets)
+    }
+}
+
 public struct PhoneSearchField: View {
     let placeholder: String
     @Binding var text: String

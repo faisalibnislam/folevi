@@ -30,7 +30,7 @@ their targets by themselves (Xcode synchronized folders).
 This folder is outside the pnpm workspace (like `apps/mac` and `apps/clipper`), so Vercel's build of
 `apps/web` never sees it. The Xcode project uses Swift Package Manager (no CocoaPods).
 
-Needs Xcode 27 (or 26) and Node 22. iOS 17 or later; iPhone and iPad.
+Needs Xcode 27 (or 26) and Node 22. iOS 26 or later (owner, 2026-11-25); iPhone and iPad.
 
 ## Commands
 

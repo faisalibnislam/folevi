@@ -73,7 +73,7 @@ public struct PhoneGroupedSection<Content: View>: View {
             VStack(spacing: 0) { content }
             .environment(\.phoneRowGrouped, true)
             .padding(.vertical, chrome != nil ? 4 : 0)
-            .background(PhoneLook.card.resolve(scheme).color)
+            .background(PhoneSurface.row.resolve(scheme).color)
             // (The native look: iOS 26's inset grouped corners, wide and continuous.)
             .clipShape(RoundedRectangle(cornerRadius: chrome != nil ? PhoneLook.cardRadius : FoleviTokens.Radius.container, style: chrome != nil ? .continuous : .circular))
             if let footer {

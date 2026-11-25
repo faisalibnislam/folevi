@@ -50,9 +50,22 @@ enum RebuildFrame {
         model.restore(data: data)
     }
 
+    /// The screens' titles as today's app sets them (the owner, 2026-11-25): the large title in Spectral semibold
+    /// (`.ui-large-title`: 34, -0.02em), the title collapsed into the bar in Instrument Sans semibold 17. Only the
+    /// words change: the bars keep iOS 26's own Liquid Glass and scroll-edge behaviour.
+    private static func titlesInFolevisFonts() {
+        let bar = UINavigationBar.appearance()
+        bar.largeTitleTextAttributes = [
+            .font: FoleviFonts.uiFont(.display, size: 34, weight: .semibold, relativeTo: .largeTitle),
+            .kern: -0.68,
+        ]
+        bar.titleTextAttributes = [.font: FoleviFonts.uiFont(.ui, size: 17, weight: .semibold, relativeTo: .headline)]
+    }
+
     static func controller() -> UIViewController {
         FoleviFonts.register()
         WebStyles.isPad = UIDevice.current.userInterfaceIdiom == .pad
+        titlesInFolevisFonts()
         return RebuildFrameController(frame: model, menus: menus)
     }
 }

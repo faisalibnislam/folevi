@@ -62,6 +62,8 @@ private struct ZoomSource: ViewModifier {
 public struct PhoneFrameView<Screen: View>: View {
     @Bindable var model: PhoneFrameModel
     @Namespace private var zoom
+    /// The frame's size, for where the tab bar's + opens its menu from.
+    @State private var frameSize: CGSize = .zero
     let menus: PhoneMenus
     let aiOn: Bool
     /// Whether the tab bar steps out of the way (the keyboard, Select).
@@ -152,15 +154,33 @@ public struct PhoneFrameView<Screen: View>: View {
             }
         }
         .tabBarMinimizeBehavior(.onScrollDown)
+        .onGeometryChange(for: CGSize.self) { $0.size } action: { frameSize = $0 }
         .phoneSideBarsReader()
         // A note's bottom bars, where the tab bar is (PhoneNoteBarsSlot): they trade places with it, not ride the page.
+        // + floats over the bar's trailing end, above the search button (the owner, 2026-11-25: + beside the
+        // tab bar, as today's app has it; iOS's bar holds five items at most, so it can't be a tab).
+        .overlay(alignment: .bottomTrailing) {
+            if !barHidden(model.tabTop) && !model.searching {
+                PhoneCreateButton { plus(createFrom) }
+                    .padding(.trailing, 22)
+                    .padding(.bottom, 74)
+                    .transition(.scale(scale: 0.6).combined(with: .opacity))
+            }
+        }
+        .animation(WebMotion.reduced ? nil : .spring(response: 0.32, dampingFraction: 0.82), value: barHidden(model.tabTop) || model.searching)
         .overlay { PhoneNoteBarsLayer(model: model) }
         .overlay { PhoneMenuLayer(menus: menus) }
     }
 
-    /// + in a tab's first screen's bar (the owner, 2026-11-19: no bar of its own over the tab bar; Foli AI is a tab).
+    /// Where the floating + sits: its menu opens above it, its right edge on the button's.
+    private var createFrom: CGRect {
+        CGRect(x: max(0, frameSize.width - 22 - 52), y: max(0, frameSize.height - 74 - 52), width: 52, height: 52)
+    }
+
+    /// + in a tab's first screen's bar: none since 2026-11-25 (+ is in the tab bar). Before iOS 26 the drawn bar has
+    /// its own.
     private func rootCreate(_ tab: PhoneTab) -> PhoneRootCreate? {
-        guard #available(iOS 26, *) else { return nil }
+        if #available(iOS 26, *) { return nil }
         return PhoneRootCreate(aiOn: false, quickTaskOnly: tab == .tasks, openAI: actions.openAI, newNote: actions.newNote,
                                fromTemplate: actions.fromTemplate, quickTask: actions.quickTask)
     }
@@ -266,6 +286,33 @@ private struct PhoneEdgeSwipeBack: UIViewControllerRepresentable {
         func gestureRecognizerShouldBegin(_ g: UIGestureRecognizer) -> Bool {
             (nav?.viewControllers.count ?? 0) > 1
         }
+    }
+}
+#endif
+
+#if os(iOS)
+/// The floating + (today's app's black + by Foli AI): a prominent Liquid Glass circle in Folevi's ink, 52 pt, with a
+/// light tap.
+@available(iOS 26, *)
+struct PhoneCreateButton: View {
+    let action: () -> Void
+    @State private var taps = 0
+
+    var body: some View {
+        Button {
+            taps += 1
+            action()
+        } label: {
+            WebIcon.plus.image(size: 24, strokeWidth: 2.4)
+                .frame(width: 52, height: 52)
+                .contentShape(Circle())
+        }
+        .buttonStyle(.glassProminent)
+        .buttonBorderShape(.circle)
+        .tint(PhoneNativeLook.accent)
+        .sensoryFeedback(.impact(weight: .light), trigger: taps)
+        .accessibilityLabel("New")
+        .accessibilityHint("Opens New note, From template, New folder and Quick task")
     }
 }
 #endif

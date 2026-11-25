@@ -22,6 +22,7 @@ struct RebuildHomeScreen: View {
     @State private var deletingTag: TagRow?
     @State private var tagName = ""
     @Environment(\.colorScheme) private var scheme
+    @Environment(\.phoneOpenSearch) private var openSearch
 
     private var signedIn: Bool { home.session.value?.mode == .account }
 
@@ -52,6 +53,9 @@ struct RebuildHomeScreen: View {
                     }
                 }
             }
+        } header: {
+            // As today's app: "Search in <place>" under the title, opening Search (the owner, 2026-11-25).
+            PhoneSearchOpener("Search in \(home.spaceName)") { openSearch?() }
         } content: {
             PhoneHomeContent(model: home, actions: homeActions)
             .padding(.bottom, 24)

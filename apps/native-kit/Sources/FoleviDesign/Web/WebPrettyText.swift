@@ -227,7 +227,7 @@ public struct WebPrettyText: View {
     }
 
     public var body: some View {
-        if let chrome, style.family != .mono {
+        if let chrome = chrome?.forText, style.family != .mono {
             // Interface text under the Mac's native look: the system font, wrapped as AppKit wraps it.
             let h: HorizontalAlignment = alignment == .center ? .center : alignment == .trailing ? .trailing : .leading
             Text(verbatim: text).webText(chrome.text(style)).multilineTextAlignment(alignment)

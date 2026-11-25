@@ -32,7 +32,8 @@ public enum PhoneNativeLook {
     /// (Large Title 34, Title 28, Title 3 20, Body 17, Footnote 13 as the fixed fallbacks), the accent for the one
     /// prominent action.
     public static let chrome = NativeChrome(title: 28, title3: 20, body: 17, small: 13, accent: accent, onAccent: onAccent,
-                                            hover: Color.primary.opacity(0.08), dynamicType: true)
+                                            hover: Color.primary.opacity(0.08), dynamicType: true,
+                                            brandText: true)
 
     /// How much of the web's drawn shadows (a note card's lift) the native look keeps: half, as the Mac (the
     /// owner, 2026-11-18: "less shadows").
@@ -153,9 +154,8 @@ struct PhoneCardModifier: ViewModifier {
     func body(content: Content) -> some View {
         let shape = RoundedRectangle(cornerRadius: radius, style: .continuous)
         content
-            .environment(\.phoneRowGrouped, true)
             .padding(.vertical, PhoneLook.cardPadding)
-            .background(shape.fill(PhoneLook.card.resolve(scheme).color))
+            // Plain rows on the screen's own colour, as today's app (the owner, 2026-11-25), not a card.
             .clipShape(shape)
             .padding(.horizontal, inset)
     }
@@ -167,9 +167,11 @@ struct PhoneCardModifier: ViewModifier {
 public enum PhoneLook {
     /// The frame: the grey every screen sits on.
     /// iOS's own grouped background (systemGroupedBackground), as its lists draw it.
-    public static let frame = ColorPair(light: RGBA(242, 242, 247), dark: RGBA(0, 0, 0))
-    /// A card on it: opaque white (dark: the raised grey).
-    public static let card = PhoneSurface.row
+    /// Since 2026-11-25 (the owner: "match today's UI"): the web's canvas, white and near-black, as today's app.
+    public static let frame = FoleviTokens.Chrome.canvas
+    /// A tile or chip on it (Home's tiles, a filter's pills, an empty state): the web's whisper of grey
+    /// (--iphone-card).
+    public static let card = PhoneSurface.card
     /// A section's card corners (iOS 26's inset grouped corners), and a small card's (a tile, a chip row).
     public static let cardRadius: CGFloat = 26
     public static let tileRadius: CGFloat = 20

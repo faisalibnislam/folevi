@@ -262,7 +262,8 @@ public struct PhoneScreen<Leading: View, Trailing: View, Header: View, Content: 
                 }
             }
         }
-        return openSearch
+        // Search is the tab bar's own button (the owner, 2026-11-25): the bar offers no second way in.
+        return nil
     }
     #endif
 
@@ -374,11 +375,8 @@ public struct PhoneScreen<Leading: View, Trailing: View, Header: View, Content: 
     /// The screen's surface: the frame's grey (since the 2026-11-23 redesign every native screen, its sections the
     /// rounded opaque cards on it), with the tint mixed in. The web's drawing keeps its canvas unless grouped.
     private var surface: RGBA {
-        #if os(iOS)
-        let base = PhoneLook.frame.resolve(scheme)
-        #else
+        // As today's app (the owner, 2026-11-25): the canvas, or iOS's grouped grey under grouped rows (Settings).
         let base = (options.grouped ? PhoneSurface.grouped : FoleviTokens.Chrome.canvas).resolve(scheme)
-        #endif
         guard let tint = options.tint else { return base }
         return tint.oklabMix(base, scheme == .dark ? 0.16 : 0.10)
     }

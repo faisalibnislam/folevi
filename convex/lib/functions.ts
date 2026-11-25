@@ -1,5 +1,6 @@
 // Every mutation of the app is built here (not straight from _generated/server), so writes to a few tables
-// keep their derived rows in step wherever they happen: a note's folder and Drafts stats (lib/listStats.ts).
+// keep their derived rows in step wherever they happen: a note's folder and Drafts stats (lib/listStats.ts),
+// its search text row (lib/documentText.ts) and its task rows' title.
 // The wrapper sees each insert, patch, replace and delete of a watched table with the row before and after;
 // other tables pass straight through. Reads are untouched.
 import { internalMutation as rawInternalMutation, mutation as rawMutation } from "../_generated/server";
@@ -7,6 +8,7 @@ import type { MutationCtx } from "../_generated/server";
 import type { Doc, Id, TableNames } from "../_generated/dataModel";
 import { documentWritten, folderWritten, scopeCreated } from "./listStats";
 import { clearTaskLabels } from "./documents";
+import { documentTextWritten } from "./documentText";
 import { personalScope, workspaceScope } from "./scope";
 
 type Watched = "documents" | "folders";
@@ -19,6 +21,7 @@ async function fire(ctx: MutationCtx, table: Watched, before: Doc<Watched> | nul
     const b = before as Doc<"documents"> | null;
     const a = after as Doc<"documents"> | null;
     await documentWritten(ctx, b, a);
+    await documentTextWritten(ctx, b, a);
     if (b && a && (b.sealedAt === undefined) !== (a.sealedAt === undefined)) await clearTaskLabels(ctx, a._id);
   }
   else await folderWritten(ctx, before as Doc<"folders"> | null, after as Doc<"folders"> | null);

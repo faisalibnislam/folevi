@@ -14,6 +14,7 @@ import { hasValidScope, personalScope, SCOPED_TABLES, sameScope, scopeOfRow, wor
 import { isSealed } from "./lib/e2ee/state";
 import { nextSeq } from "./lib/seq";
 import { buildDraftStats, buildFolderStats } from "./lib/listStats";
+import { buildDocumentText } from "./lib/documentText";
 
 /** Fills in the card preview (documents.preview) for pages saved before previews existed. */
 export const backfillDocumentPreviews = internalMutation({
@@ -605,5 +606,63 @@ export const buildListStats = internalMutation({
     const id = ctx.db.normalizeId("workspaces", args.id);
     const workspace = id ? await ctx.db.get(id) : null;
     return workspace && workspace.status !== "deleting" ? await buildDraftStats(ctx, workspaceScope(workspace._id)) : false;
+  },
+});
+
+/**
+ * Copies every note's search text and search fields into documentText (lib/documentText.ts) for notes saved
+ * before it existed. Batches of 25 notes, each in its own transaction (a batch that fails is retried one note at
+ * a time). Idempotent: notes with a row are left alone, and writes keep the rows in step from then on.
+ *
+ *   npx convex run migrations:backfillDocumentText
+ */
+export const backfillDocumentText = internalAction({
+  args: {},
+  handler: async (ctx): Promise<{ copied: number; failed: number }> => {
+    let copied = 0;
+    let failed = 0;
+    let cursor: string | null = null;
+    for (;;) {
+      const page: { ids: string[]; isDone: boolean; continueCursor: string } = await ctx.runQuery(internal.migrations.documentIdsPage, { cursor });
+      for (let i = 0; i < page.ids.length; i += 25) {
+        const batch = page.ids.slice(i, i + 25);
+        try {
+          copied += (await ctx.runMutation(internal.migrations.buildDocumentTextBatch, { ids: batch })) as number;
+        } catch {
+          for (const id of batch) {
+            try {
+              copied += (await ctx.runMutation(internal.migrations.buildDocumentTextBatch, { ids: [id] })) as number;
+            } catch {
+              failed++;
+            }
+          }
+        }
+      }
+      if (page.isDone) break;
+      cursor = page.continueCursor;
+    }
+    return { copied, failed };
+  },
+});
+
+/** Note ids a page at a time (the note rows are read here only for their ids). */
+export const documentIdsPage = internalQuery({
+  args: { cursor: v.union(v.string(), v.null()) },
+  handler: async (ctx, args) => {
+    const page = await ctx.db.query("documents").paginate({ cursor: args.cursor, numItems: 100 });
+    return { ids: page.page.map((d) => d._id as string), isDone: page.isDone, continueCursor: page.continueCursor };
+  },
+});
+
+export const buildDocumentTextBatch = internalMutation({
+  args: { ids: v.array(v.string()) },
+  handler: async (ctx, args): Promise<number> => {
+    let n = 0;
+    for (const raw of args.ids) {
+      const id = ctx.db.normalizeId("documents", raw);
+      const doc = id ? await ctx.db.get(id) : null;
+      if (doc && (await buildDocumentText(ctx, doc))) n++;
+    }
+    return n;
   },
 });

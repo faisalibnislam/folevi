@@ -591,6 +591,8 @@ signed-in account, 1.5.58's frosted folders with a large library, and the iPad c
 account button should move past iPadOS's window buttons).
 
 ## 10. Next steps / open work
+- Backend performance pass, owner's OK needed for production: run `migrations:backfillListStats` (optional, speeds
+  up existing folders) and `migrations:backfillDocumentText` (required before the note text switch PR merges).
 - Backend performance pass (`docs/perf/backend-results.md`): kept folder and Drafts counts, task rows that carry
   their note's title, a cheaper `changes.list`, then note text (`searchText`) split out of `documents`
   (widen, backfill, narrow; the owner approves each production backfill).
@@ -748,6 +750,9 @@ account button should move past iPadOS's window buttons).
   `DATABASE_UDF_USER_TIMEOUT_SECONDS=4` for that backend. Bursts show in `convex.log` as "took a long time".
 
 ## 12. Change log
+- 2026-11-25: Backend performance pass, step 3 (widen): `documentText` table holds each note's search text and search
+  fields, kept in step by the write hook; `migrations:backfillDocumentText` copies older notes (production run waits
+  for the owner). Readers are unchanged until the switch PR.
 - 2026-11-25: Backend performance pass, step 2: kept folder and Drafts stats (`listStats`, through the new
   `lib/functions.ts` write hook), task rows with their note's title and icon, `changes.list` reads a note only once it
   has unseen changes, a folder by last edit pages through its index. Numbers in `docs/perf/backend-results.md`.

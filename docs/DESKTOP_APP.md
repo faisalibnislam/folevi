@@ -222,6 +222,13 @@ reminder Complete, Snooze 1 Hour, Snooze Until This Evening and Snooze Until Tom
 Windows groups a note's toasts together in Action Center. A button reaches the open place's page as the command
 `{ type: "notification", action, id, kind, path, text?, thread? }` (DesktopBridge.tsx useNotificationActions,
 which now does Complete and Snooze too, for the Mac as well); a place with no page open hears nothing, as on the Mac.
+## Recording a call (Windows)
+
+The recorder's "Record a call" (the microphone and everything the PC plays) works in Folevi for Windows the way it
+did in the Electron app: WebView2's screen picker offers "Share system audio", the recorder keeps only the sound
+and mixes it with the microphone (apps/web/src/lib/callCapture.ts; `foleviDesktop.callCapture`). If no sound comes
+with the capture, Folevi says to choose the screen and turn on Share system audio. Linux records the microphone
+only (WebKitGTK's screen capture has no system sound). Not tried on a real PC yet.
 
 ## Not done yet
 

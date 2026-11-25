@@ -9,8 +9,8 @@ only Linux config, a Linux module, a few `#[cfg(target_os = "linux")]` lines and
 forked.
 
 Status: **1.5.75 published 2026-11-24** as downloads at `https://folevi.com/download/linux/` (owner's OK in chat):
-AppImage, .deb and .rpm for x86_64 and aarch64, stable latest links and SHA256 lists. Not on Flathub, the Snap Store
-or any apt/dnf repository: each needs its own OK. No in-app updates yet (no update signing key).
+AppImage, .deb and .rpm for x86_64 and aarch64, stable latest links and SHA256 lists. Repositories live and the Snap
+Store under way since 2026-11-25; Flathub blocked by its AI policy (see those sections). No in-app updates yet (no update signing key).
 
 ## Where things are
 
@@ -153,33 +153,78 @@ Then, from `apps/desktop`: `pnpm exec tauri build --bundles appimage,deb,rpm` (o
 Versioned copies stay beside them (`Folevi_1.5.75_amd64.AppImage`, `Folevi_1.5.75_arm64.deb`,
 `Folevi-1.5.75-1.x86_64.rpm`, `SHA256SUMS-1.5.75.txt`...).
 
-## Repositories (plan, not live)
+## Repositories (apt, dnf, zypper)
 
-- **apt** at `https://folevi.com/linux/apt` (R2, beside the Mac and Windows downloads): `build-apt-repo.sh` makes
-  a signed `stable` suite for amd64 and arm64. People add it with the `folevi.sources` file and the key in
-  `/usr/share/keyrings/folevi-archive-keyring.gpg`.
-- **dnf and zypper** at `https://folevi.com/linux/rpm/<arch>`: `build-rpm-repo.sh` signs each package and the
-  metadata; `folevi.repo` works for both.
-- **One click with updates:** once the repositories are live, the .deb and .rpm add them on install
-  (`deb-postinst.sh`, `rpm-postinst.sh`, the way Chrome and VS Code do), so a double-clicked download keeps
-  updating through the system's updater. They aren't wired into the packages yet: a repository that doesn't
-  exist would make `apt update` fail.
-- Needs from the owner first: a new GPG signing key for Linux packages (kept in the password manager), and an OK
-  to upload to R2.
+Owner's OK 2026-11-25 ("go ahead with ... our own apt/dnf repository").
 
-## Flathub (ready, not submitted)
+| | Where | People add it with |
+| --- | --- | --- |
+| apt (Ubuntu, Debian, Mint, Pop!_OS, elementary, Zorin) | `https://folevi.com/download/linux/apt`, suite `stable`, amd64 and arm64 | `/etc/apt/sources.list.d/folevi.sources` (`apt/folevi.sources`) and the key at `/usr/share/keyrings/folevi-archive-keyring.gpg` |
+| dnf and zypper (Fedora, RHEL/Alma/Rocky 9+, openSUSE) | `https://folevi.com/download/linux/rpm/<x86_64\|aarch64>` | `rpm/folevi.repo` in `/etc/yum.repos.d/` or `/etc/zypp/repos.d/` |
 
-1. Publish the release .deb files at the URLs in the manifest; fill in their sha256.
-2. Put the two screenshots at the URLs in the metainfo file.
-3. Verify the app id: Flathub checks that we own folevi.com (a token at
-   `https://folevi.com/.well-known/org.flathub.VerifiedApps.txt`).
-4. Open a pull request to `flathub/flathub` with the manifest and `flathub.json` (owner's OK first).
+Under `/download/` because that path already reaches the R2 bucket (`next.config.ts` rewrite), so the repositories
+need no website deploy. Packages and hashed metadata are cached for a year; the indexes are no-cache, though the
+site answers `/download/*` with `max-age=300`, so a new release can take up to 5 minutes to show in `apt update`.
 
-## Snap (optional)
+**Signing key:** "Folevi Linux Packages <support@folevi.com>", RSA 4096, no expiry, fingerprint
+`AEF1 4472 8549 A0B5 9ADC 3A77 67F3 C502 BF6A 5D42`, made 2026-11-25. Public halves in `packaging/linux/repo/keys/`
+(shipped in the .deb and .rpm). The private key: the Lima VM `folevi-linux` keeps it in `~/.folevi-repo-gnupg` (no
+passphrase, used for unattended signing there) and this Mac has a backup in `~/.folevi-linux-signing/` (0600); the
+owner keeps a copy in their password manager. Never in the repository or CI.
 
-`packaging/linux/snap/snapcraft.yaml` repackages the .deb with the gnome extension. Registering the name
-`folevi` and uploading need the owner's OK. `password-manager-service` (the keyring) needs a manual Snap Store
-review before it connects automatically; until then the sign-in falls back to the app's data folder.
+**One click with updates:** from the first release after 1.5.77 the .deb and .rpm add the repository on install
+(`deb-postinst.sh`, `rpm-postinst.sh`, wired in through `tauri.linux.conf.json`'s `postInstallScript`, the keys
+installed under `/usr/lib/folevi/`), the way Chrome and VS Code do, so a double-clicked download keeps updating
+through the Software Updater, dnf or zypper. Earlier installs can add the repository by hand (the table above).
+
+**Each release** (after `upload-release.sh`, same OK): in the VM, with `GNUPGHOME=~/.folevi-repo-gnupg`
+`FOLEVI_REPO_KEY=AEF144728549A0B59ADC3A7767F3C502BF6A5D42`, run `build-apt-repo.sh <dir with the .debs> ~/repo-out` <!-- gitleaks:allow (public key fingerprint) -->
+and `build-rpm-repo.sh <dir with the .rpms> ~/repo-out` (keep `~/repo-out`: earlier versions stay listed), copy
+`~/repo-out` to the Mac (`limactl copy -r`) and run `packaging/linux/repo/upload-repos.sh <copy>`.
+
+Tested 2026-11-25 against a local copy of the repositories in the VM (ARM): install and signature checks pass on
+Ubuntu 24.04 and Debian 12 (apt), Fedora 41 (dnf) and openSUSE Tumbleweed (zypper).
+
+## Flathub (blocked by Flathub's AI policy)
+
+Owner's OK 2026-11-25, but Flathub's rules stop it as prepared: its Generative AI policy
+(https://docs.flathub.org/docs/for-app-authors/requirements#generative-ai-policy, and `AGENTS.md` in
+`flathub/flathub`) says Flathub manifests must not contain AI-generated or AI-assisted content even when disclosed,
+AI agents must not open or automate submission pull requests or write their text or review replies, and submitters
+must disclose AI-generated material in the app and its packaging. `packaging/linux/flatpak/com.folevi.Folevi.yml`
+was written by Claude sessions, so it can't be submitted. A Flathub listing needs the owner (or another person) to
+write the manifest and the pull request by hand, disclose the AI-generated parts of Folevi, and attach a video of the
+Flatpak running on Linux. Claude must not draft, edit or submit any of it.
+
+Our own manifest still builds the test Flatpak bundles in CI (`flatpak-bundle.sh`); it is not for Flathub.
+Prepared before the policy was found: the manifest points at the published 1.5.75 .debs, real-app screenshots are
+online at `https://folevi.com/download/linux/screenshots/` (also in `packaging/linux/screenshots/`, made by
+`scripts/screenshots.sh`), and the metainfo file passes `flatpak-builder-lint appstream`.
+
+## Snap Store
+
+Owner's OK 2026-11-25. The name `folevi` is registered to the owner's account (faisalibnislam), login kept in the
+Lima VM (`snapcraft login`, file storage, expires 2027-11-25). `packaging/linux/snap/snapcraft.yaml` repackages the
+.deb with the gnome extension (core24); `packaging/linux/scripts/snap-build.sh <.deb> <out>` builds arm64 in the VM
+with LXD. amd64: `snapcraft remote-build --build-for amd64 --launchpad-accept-public-upload` from a git folder holding
+`snap/snapcraft.yaml`, `icons/` and the amd64 .deb as `folevi.deb` (built on Launchpad; its access is approved in the
+browser for a day at a time). Upload: `snapcraft upload --release=stable <snap>`.
+
+- No D-Bus slot (owner's pick 2026-11-25): a `dbus` slot needs a manual Store review (revision 1 was held for it).
+  Without it the single-instance plugin can't own `com.folevi.Folevi.SingleInstance` and launches normally, so in
+  the snap a second launch or a `folevi://` link opens a second window. The yaml says how to bring it back.
+- `password-manager-service` (the keyring) doesn't connect on its own; until the Store grants auto-connection the
+  sign-in falls back to the app's data folder. People can run `snap connect folevi:password-manager-service`.
+- The launcher icon is the snap's own `meta/gui/icon.png` (from `packaging/linux/icons/512x512.png`). The Store page's
+  icon, summary and description are separate: after an icon or text change run `snapcraft upload-metadata --force
+  <snap>` (done 2026-11-25; before that the page showed a grey placeholder).
+
+## App icons
+
+Every Linux package uses `packaging/linux/icons/` (16 to 512 px), made by `apps/desktop/scripts/icons.mjs` from
+`apps/desktop/build/icon-1024.png` (the iPhone, iPad and Mac artwork as GNOME's rounded square with a margin), the
+same icon as Windows. Until 2026-11-25 they were the web app's `icon-512.png` (full bleed, stray coloured edge
+pixels); the published 1.5.75 .deb, .rpm and AppImage still carry that one until the next Linux release.
 
 ## Testing
 

@@ -114,16 +114,17 @@ modules:
   - name: folevi
     buildsystem: simple
     sources:
-      # The release .deb for each architecture. scripts in packaging/linux/scripts/ fill in version and sha256.
+      # The release .deb for each architecture, from folevi.com/download/linux (versioned files never change).
+      # A new release: packaging/linux/scripts/flathub-submission.sh --set-version <v> fills in both.
       - type: file
         only-arches: [x86_64]
-        url: https://folevi.com/download/linux/x86_64/folevi_1.5.68_amd64.deb
-        sha256: 0000000000000000000000000000000000000000000000000000000000000000
+        url: https://folevi.com/download/linux/Folevi_1.5.75_amd64.deb
+        sha256: d3844283c2109c775116fab626ef21d01c559add0b0d489f35b34071500ba4b3
         dest-filename: folevi.deb
       - type: file
         only-arches: [aarch64]
-        url: https://folevi.com/download/linux/aarch64/folevi_1.5.68_arm64.deb
-        sha256: 0000000000000000000000000000000000000000000000000000000000000000
+        url: https://folevi.com/download/linux/Folevi_1.5.75_arm64.deb
+        sha256: d18bc16d163ea583cdabbf84eb3a8a14cfb035a85f789172f11b1d69c4c398bd
         dest-filename: folevi.deb
       - type: file
         path: ../com.folevi.Folevi.metainfo.xml

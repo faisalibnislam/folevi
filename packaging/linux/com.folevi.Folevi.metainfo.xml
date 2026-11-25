@@ -2,7 +2,7 @@
 <!-- AppStream metadata: what software centers (GNOME Software, KDE Discover, Flathub) show for Folevi.
      Installed as /usr/share/metainfo/com.folevi.Folevi.metainfo.xml (deb, rpm) and /app/share/metainfo/ (Flatpak).
      Check it with appstreamcli validate (the pedantic option catches the most).
-     Before Flathub: the screenshots below must exist at those URLs (docs/LINUX.md, "Flathub"). -->
+     The screenshots are packaging/linux/screenshots/, uploaded to folevi.com/download/linux/screenshots/. -->
 <component type="desktop-application">
   <id>com.folevi.Folevi</id>
   <name>Folevi</name>
@@ -13,7 +13,6 @@
   <metadata_license>CC0-1.0</metadata_license>
   <project_license>LicenseRef-proprietary=https://folevi.com/terms</project_license>
   <launchable type="desktop-id">Folevi.desktop</launchable>
-  <icon type="remote" width="512" height="512">https://folevi.com/icons/icon-512.png</icon>
 
   <description>
     <p>
@@ -31,9 +30,9 @@
   </description>
 
   <url type="homepage">https://folevi.com</url>
-  <url type="help">https://folevi.com/help</url>
-  <url type="bugtracker">https://folevi.com/help</url>
-  <url type="contact">https://folevi.com/help</url>
+  <url type="help">https://folevi.com/support</url>
+  <url type="bugtracker">https://folevi.com/support</url>
+  <url type="contact">https://folevi.com/support</url>
 
   <categories>
     <category>Office</category>
@@ -49,12 +48,12 @@
 
   <screenshots>
     <screenshot type="default">
-      <caption>Notes and folders</caption>
-      <image>https://folevi.com/marketing/linux/screenshot-notes.png</image>
+      <caption>Recent notes and folders</caption>
+      <image>https://folevi.com/download/linux/screenshots/folevi-home.png</image>
     </screenshot>
     <screenshot>
-      <caption>Tasks for today</caption>
-      <image>https://folevi.com/marketing/linux/screenshot-today.png</image>
+      <caption>A note with tasks, dates and a table</caption>
+      <image>https://folevi.com/download/linux/screenshots/folevi-note.png</image>
     </screenshot>
   </screenshots>
 

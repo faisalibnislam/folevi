@@ -1,20 +1,20 @@
-# Folevi as a Snap (optional; docs/LINUX.md, "Snap"). Not registered or uploaded: that needs the owner's OK.
+# Folevi as a Snap (docs/LINUX.md, "Snap"). Built by packaging/linux/scripts/snap-build.sh; uploaded to the Snap Store
+# with the owner's OK.
 # Like the Flatpak it repackages the release .deb; the gnome extension brings GTK 3 and WebKitGTK 4.1 from the
 # gnome-46-2404 content snap, so the snap itself stays small.
 #
-# Build (on Ubuntu, with snapcraft and LXD):  cp folevi_<version>_<arch>.deb packaging/linux/snap/folevi.deb
-#                                             cd packaging/linux/snap && snapcraft pack
+# Build (on Ubuntu, with snapcraft and LXD): packaging/linux/scripts/snap-build.sh <Folevi .deb> <out dir>
 name: folevi
 title: Folevi
 base: core24
-version: '1.5.68'
+version: '1.5.75'
 summary: Notes, tasks and docs in one calm place
 description: |
   Folevi keeps your notes, tasks and documents together. Write in a clean editor, organize with folders,
   and find anything fast. A Folevi account syncs your notes with the web, Mac, Windows, iPhone, iPad and
   Android apps.
 website: https://folevi.com
-contact: https://folevi.com/help
+contact: https://folevi.com/support
 license: Proprietary
 icon: ../icons/512x512.png
 grade: stable
@@ -42,14 +42,12 @@ apps:
       - password-manager-service
       # The tray icon.
       - unity7
-    slots:
-      - dbus-folevi
 
-slots:
-  dbus-folevi:
-    interface: dbus
-    bus: session
-    name: com.folevi.Folevi
+# No D-Bus slot for tauri-plugin-single-instance's com.folevi.Folevi.SingleInstance: a dbus slot needs a manual Store
+# review (owner's pick 2026-11-25: ship without it). The plugin then can't own the name and launches normally, so a
+# second launch (a folevi:// link) opens a second window in the snap. To add it back, restore the slot
+#   slots: { dbus-folevi: { interface: dbus, bus: session, name: com.folevi.Folevi.SingleInstance } }
+# on the app (slots: [dbus-folevi]) and ask for the review on forum.snapcraft.io (store-requests).
 
 parts:
   folevi:
@@ -61,5 +59,5 @@ parts:
       - libxdo3
     override-prime: |
       craftctl default
-      sed -i -e 's|^Icon=.*|Icon=${SNAP}/usr/share/icons/hicolor/512x512/apps/folevi.png|' \
+      sed -i -e 's|^Icon=.*|Icon=${SNAP}/meta/gui/icon.png|' \
         usr/share/applications/Folevi.desktop

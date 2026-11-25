@@ -45,8 +45,10 @@
           "xdg-desktop-portal"
         ],
         "files": {
-          "/usr/share/metainfo/com.folevi.Folevi.metainfo.xml": "../../../packaging/linux/com.folevi.Folevi.metainfo.xml"
-        }
+          "/usr/share/metainfo/com.folevi.Folevi.metainfo.xml": "../../../packaging/linux/com.folevi.Folevi.metainfo.xml",
+          "/usr/lib/folevi/folevi-archive-keyring.gpg": "../../../packaging/linux/repo/keys/folevi-archive-keyring.gpg"
+        },
+        "postInstallScript": "../../../packaging/linux/repo/deb-postinst.sh"
       },
       "rpm": {
         "release": "1",
@@ -55,8 +57,10 @@
           "xdg-utils"
         ],
         "files": {
-          "/usr/share/metainfo/com.folevi.Folevi.metainfo.xml": "../../../packaging/linux/com.folevi.Folevi.metainfo.xml"
-        }
+          "/usr/share/metainfo/com.folevi.Folevi.metainfo.xml": "../../../packaging/linux/com.folevi.Folevi.metainfo.xml",
+          "/usr/lib/folevi/RPM-GPG-KEY-folevi": "../../../packaging/linux/repo/keys/RPM-GPG-KEY-folevi"
+        },
+        "postInstallScript": "../../../packaging/linux/repo/rpm-postinst.sh"
       }
     }
   },

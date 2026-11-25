@@ -910,6 +910,13 @@ account button should move past iPadOS's window buttons).
   less memory as you open and close notes, and Folevi for Linux is here."; added: "Folevi for Linux: AppImage,
   .deb and .rpm for Intel/AMD and ARM computers, at folevi.com/download/linux."; keep iOS's improved line. Tags
   already go to v1.5.76, so nothing new is cut for this.
+- Folevi for Linux stores (PR 99 `claude/linux-stores`, owner's OK 2026-11-25; docs/LINUX.md): apt and rpm
+  repositories LIVE at `folevi.com/download/linux/apt` and `/rpm` (1.5.75), checked by installing from the live
+  addresses on Ubuntu 24.04, Debian 12, Fedora 41, openSUSE Tumbleweed (arm64 containers). Snap: `folevi` registered,
+  arm64 uploaded (revision 1 held for review, to be rejected), amd64 via Launchpad remote-build. Flathub: blocked, its AI policy forbids
+  AI-written manifests and AI-opened submissions (docs/LINUX.md "Flathub"); only the owner can do it by hand. The
+  owner should copy `~/.folevi-linux-signing/folevi-repo-secret.asc` into their password manager. From the next
+  Linux release the .deb and .rpm add the repositories on install; each release also runs the repo scripts.
 - Folevi for Linux (`claude/linux-tauri-02790e`, 1.5.75 published): the owner tries it on real Linux (docs/LINUX-TESTING.md, files in `~/Downloads/Folevi for Linux 1.5.75 test/`); PR 73 into `claude/desktop-tauri` waits on the owner's review and merge (it reaches `main` with PR 65); record 1.5.75 in version.json/CHANGELOG/tag at merge (main session); the blank-window fix reached Windows (c150ba78); Linux memory (docs/LINUX.md "Memory"): the web export as files beside the program landed (6269a7ff) and is merged here: Linux 355 MB PSS in the VM; later, each with an OK: Flathub, Snap, apt/dnf repositories, an update signing key. Earlier notes:
   check the Linux compile and tests of the merged shell in the VM, build AppImage/.deb/.rpm for x86_64 and
   aarch64 in the Lima VM `folevi-linux`, smoke-test, put test builds in `~/Downloads/Folevi for Linux <version> test/`.
@@ -1180,6 +1187,15 @@ account button should move past iPadOS's window buttons).
 - 2026-11-24: Owner: keep note covers inside the mobile app and sync note styles when the server changes them. Plan in docs/MOBILE.md; local mode's part asked of the owner.
 - 2026-11-24: PR 66 opened for the Capacitor mobile app (`claude/mobile-capacitor-f41734` pushed); open question to the owner: note covers.
 - 2026-11-24: `apps/mobile`: one Capacitor app for iPhone, iPad, iPhone Duo and Android around the web app (no native screens), reusing the shared Swift and Kotlin services; window-size layouts in `lib/iphone.ts`; `version.mjs` covers it; checked on simulators and emulators, size and memory compared (docs/MOBILE.md). Branch `claude/mobile-capacitor-f41734`, PR not merged.
+- 2026-11-25: Linux icons: every package now uses the desktop icon (`apps/desktop/build/icon-1024.png`, sizes from `icons.mjs`) instead of the web's full-bleed icon-512; Snap `folevi` registered, shipped without the D-Bus slot (owner's pick) so it needs no manual review; arm64 revision 3 uploaded, amd64 building on Launchpad.
+- 2026-11-25: Linux apt/rpm repositories published (owner's OK, after the owner's Cloudflare sign-in) and install-tested from the live addresses; Flathub stopped by Flathub's Generative AI policy (no AI-written manifests or AI-opened submissions), recorded in docs/LINUX.md.
+- 2026-11-25: Linux stores prepared (owner's OK): signed apt and rpm repositories for 1.5.75 at
+  `folevi.com/download/linux/apt` and `/rpm` (built and install-tested in the VM on Ubuntu 24.04, Debian 12, Fedora 41,
+  openSUSE Tumbleweed; upload waits on a Cloudflare sign-in), new signing key AEF1 4472 8549 A0B5 9ADC 3A77 67F3 C502
+  BF6A 5D42, the .deb and .rpm add the repositories on install from the next release; Flathub manifest on the
+  published 1.5.75 .debs, lint clean except screenshots not yet online, real-app screenshots in
+  `packaging/linux/screenshots/`; snap built for arm64 and run in the VM (first-launch screen, single instance via
+  `com.folevi.Folevi.SingleInstance`).
 - 2026-11-25: Windows session: PR 84 (Tauri perf: library opens after the window, lighter asset serving and scans) merged into `claude/desktop-tauri`, then `main` (e35a97d3, backend perf PRs 87, 88, 91 and the safe-queries work) merged in for PR 65; HANDOFF.md conflicts only, both sides kept. version.json stays 1.5.77 / 92 (1.5.77 not published; folevi.com still serves Windows 1.5.73).
 - 2026-11-25: PR 73: merged `claude/desktop-tauri` (Windows 1.5.77, main 1a1ca06f); `apps/desktop/RELEASE_VERSION` removed (version.json is 1.5.77), so the next Linux build is 1.5.77 or later unless stamped. CHANGELOG now has iOS's 1.5.75 entry; Linux joins it at the sync after PR 65.
 - 2026-11-25: PR 73: merged `claude/desktop-tauri` (now carrying main 4d22880f, the web PRs); HANDOFF conflict only. The web download page's Linux links (apps/web/src/components/marketing/site.ts) match the uploaded latest names.

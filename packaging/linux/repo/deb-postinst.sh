@@ -1,6 +1,6 @@
 #!/bin/sh
-# Runs after the Folevi .deb installs (bundle.linux.deb.postInstallScript, wired in only once the apt repository is
-# live: docs/LINUX.md, "Repositories"). It adds Folevi's apt repository, the way Chrome and VS Code do, so the
+# Runs after the Folevi .deb installs (bundle.linux.deb.postInstallScript in tauri.linux.conf.json; the repository
+# is live, docs/LINUX.md "Repositories"). It adds Folevi's apt repository, the way Chrome and VS Code do, so the
 # Software Updater keeps Folevi current after a one-click install of the downloaded .deb.
 # Someone who removed the source on purpose (by leaving an empty folevi.sources) keeps it removed.
 set -e
@@ -13,7 +13,7 @@ if [ "$1" = "configure" ] && [ ! -e "$SOURCES" ]; then
   fi
   cat > "$SOURCES" <<'EOF'
 Types: deb
-URIs: https://folevi.com/linux/apt
+URIs: https://folevi.com/download/linux/apt
 Suites: stable
 Components: main
 Architectures: amd64 arm64

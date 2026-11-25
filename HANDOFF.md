@@ -251,13 +251,15 @@ The ones most likely to be broken:
 
 **Folevi Server on iPhone and iPad (Capacitor app, branch `claude/ios-server-signin`, 2026-11-25).** "Your own server"
 works end to end in `apps/mobile`: the address (typed, or a QR code read with VisionKit's DataScannerViewController,
-`apps/mobile/ios/App/App/ServerCodeScanner.swift`, exposed as `foleviShell.places.scanServerCode()`; no camera or no
-camera access refuses with a reason and the address field takes over), `addServerPlace`, the server's own sign-in
+`apps/mobile/ios/App/App/ServerCodeScanner.swift`, exposed as PR 100's `foleviShell.places.scanCode()` only where the
+device can scan; with camera access off it refuses with a reason the page shows), `addServerPlace`, the server's own sign-in
 page in the sign-in sheet, and the account becoming a place on that server. The Capacitor host now passes
 `places.server` to the page, loads that sign-in screen in account mode (even on first launch or from the library),
 runs ServerReach (best connection, re-checked on network changes) and keeps the share sheet's REST base on Folevi
-Cloud. The web sign-in screen (`ShellSignIn.tsx`) opens straight on a pending server's sign-in ("Sign in to <name>",
-no Apple or Google). Server sessions are Keychain items per account (`session.<user id>` in `com.folevi.shell-auth`,
+Cloud. The web sign-in screen and scan button are PR 100's (a800051c). Checked on the Simulator: the page at
+`capacitor://localhost` (a secure context) can fetch and open ws:// to a plain-http private address (WKWebView doesn't
+block it as mixed content), and the Capacitor app sets no policy header, so no-place sign-in pages keep the export's
+meta policy (the paused native host in apps/ios would give them ShellPolicy.cloudNarrowing). Server sessions are Keychain items per account (`session.<user id>` in `com.folevi.shell-auth`,
 as for Cloud), never in places.json (new `ServerTests.testAServerPlacesTokenStaysInTheKeychain`). Info.plist has
 `NSLocalNetworkUsageDescription`, `NSBonjourServices` `_folevi._tcp` and `NSAllowsLocalNetworking`. Checked on the
 Simulator against the local test server (http://localhost:8460) as 1.6.0: add, member sign-in, cold restart into the
@@ -776,9 +778,12 @@ account button should move past iPadOS's window buttons).
 - iPhone/iPad Folevi Server (`claude/ios-server-signin`): not yet checked: QR scanning on a real device (the Simulator
   has no camera), switching names on a network change (the test server has no Connect hostnames), two server places in
   the switcher, the "found on your home network" list (bridge `listLocalServers` exists; no web UI uses it yet), an
-  invite QR's token (read by `lib/server-edition/scan.ts`, not yet carried to the server's sign-up), and a per-place
+  invite QR's token (reduced to the server's origin, not yet carried to its sign-up), and a per-place
   page policy header (the Capacitor app serves pages through Capacitor's own handler, so the meta policy applies alone).
   `apps/mobile` `pnpm sync` names `scripts/prepare-web.mjs`, which was never committed (run `pnpm bundle && npx cap sync`).
+  Server side: the server's "Use another account" page in the sign-in sheet fails with "Invalid callbackURL", so a second
+  account on the same server can't be added there yet. A pending server sign-in screen has no way back to the open
+  place except `places.switchTo`.
 - Folevi Server: DS223 install of the ARM64 `.spk` (owner gives SSH user and address), memory on 2 GB (the backend
   reached 1.9 GB RSS after seeding 5,000 notes on an 8 GB VM), Connect on Fly.io (owner's OK per deploy; Cloudflare
   DNS token for folevi.app; `connect.folevi.com` records at folevi.com's DNS), then each app session adds server
@@ -955,9 +960,11 @@ account button should move past iPadOS's window buttons).
   `DATABASE_UDF_USER_TIMEOUT_SECONDS=4` for that backend. Bursts show in `convex.log` as "took a long time".
 
 ## 12. Change log
-- 2026-11-25: iPhone/iPad "Your own server" in the Capacitor app (`claude/ios-server-signin`): QR scan through the
-  bridge, server places wired into the mobile host, the sign-in screen goes straight to a pending server's sign-in,
-  Keychain test for server tokens, Info.plist local network keys. Swift 86/86 (5 ServerTests), web unit tests pass.
+- 2026-11-25: iPhone/iPad "Your own server" in the Capacitor app (`claude/ios-server-signin`, PR 106): VisionKit QR
+  scan as `places.scanCode`, server places wired into the mobile host, Keychain test for server tokens, Info.plist
+  local network keys; PR 100's web sign-in and scan button taken over this branch's; with an account open, adding a
+  server no longer reopens that account instead of the server's sign-in (startPlaces skips a pending sign-in, mobile
+  and apps/ios hosts). Swift 86/86 (5 ServerTests).
 - 2026-11-25: Folevi Server, app side split onto `main` (`claude/server-apps-base`): web server edition, admin panel,
   Your own server sign-in, Connect pages, backend server edition, Mac/iOS server places, best-connection module; server
   functions registered for E2EE routing and local mode; server fallback origin is 127.0.0.1 so shell exports pass.

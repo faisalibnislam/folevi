@@ -416,10 +416,12 @@
       deviceFamily: ios ? (family === "iPad" ? "iPad" : "iPhone") : family === "tablet" ? "tablet" : "phone",
       fileBase: typeof SHELL.fileBase === "string" ? SHELL.fileBase : "folevi-file://lib/",
       cloudKit: typeof FoleviCloudKit === "object" && FoleviCloudKit ? FoleviCloudKit : null,
-      // "Your own server": a server's QR code (ios: ServerCodeScanner.swift). Android has no scanner yet.
-      scanServerCode: ios
+      // "Your own server": a server's QR code (ios: ServerCodeScanner.swift), where this device can scan (not the
+      // Simulator, nor a device without a camera). Android has no scanner yet.
+      scanCode:
+        ios && SHELL.canScan === true
         ? function () {
-            return call("FoleviNative", "scanServerCode", {}).then(function (r) {
+            return call("FoleviNative", "scanCode", {}).then(function (r) {
               return r && typeof r.value === "string" ? r.value : null;
             });
           }

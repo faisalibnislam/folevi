@@ -5,6 +5,7 @@
 // whole page, and local mode's network rules (it never reaches Folevi). Everything else is the web app.
 import Capacitor
 import UIKit
+import VisionKit
 import WebKit
 
 final class FoleviViewController: CAPBridgeViewController {
@@ -135,6 +136,8 @@ final class FoleviViewController: CAPBridgeViewController {
         let server = ShellPlaces.server(of: current)
         return [
             "mode": pageMode, "deviceName": ShellAuth.deviceName, "deviceFamily": UIDevice.current.userInterfaceIdiom == .pad ? "iPad" : "iPhone",
+            // Whether this device can read QR codes ("Your own server", ServerCodeScanner.swift).
+            "canScan": DataScannerViewController.isSupported,
             "places": ["current": current.map { $0 as Any } ?? NSNull(), "background": false,
                        "server": server.map { $0.json as Any } ?? NSNull()] as [String: Any],
             "start": start.map { $0 as Any } ?? NSNull(),
@@ -145,7 +148,9 @@ final class FoleviViewController: CAPBridgeViewController {
     private static func startPlaces() {
         let libraryFile = Platform.supportFolder.appendingPathComponent("library.json")
         ShellPlaces.migrate(libraryConfigured: FileManager.default.fileExists(atPath: libraryFile.path))
-        if ShellMode.current == "account", ShellPlaces.state.current == nil, let first = ShellPlaces.state.accounts.first { ShellPlaces.setCurrent(first.id) }
+        // Nothing open in account mode: the first account opens, unless a sign-in is waiting (another account, or a
+        // Folevi server's sign-in screen after "Your own server"; this runs again on every restart).
+        if ShellMode.current == "account", ShellPlaces.state.current == nil, !ShellPlaces.pendingAccount, let first = ShellPlaces.state.accounts.first { ShellPlaces.setCurrent(first.id) }
         guard ShellAuth.shared.token(for: nil) != nil else { return }
         Task {
             guard let u = await ShellAuth.shared.adoptLegacy() else { return }

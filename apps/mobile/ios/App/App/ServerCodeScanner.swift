@@ -1,12 +1,12 @@
 // "Your own server": scanning a Folevi server's QR code (its address, or an invite link on it) with the camera,
 // for the sign-in screen's "Scan QR code" (apps/web components/server/OwnServerSignIn.tsx). The page reaches it as
-// `foleviShell.places.scanServerCode()` (bridge/mobile-bridge.js, through FoleviNative's "scanServerCode"); the
+// `foleviShell.places.scanCode()` (bridge/mobile-bridge.js, through FoleviNative's "scanCode"); the
 // code's text goes back to the page, which reads the address out of it and adds the server as it would a typed
 // one (places.addServerPlace, where the app checks it again). Nothing is opened from the code here.
 //
-// VisionKit's DataScannerViewController does the scanning. Where it can't (no camera, the Simulator, camera access
-// turned off, Screen Time) the call is refused with a reason in words and the page keeps the address field, so the
-// person types the address instead.
+// VisionKit's DataScannerViewController does the scanning. Where the device can't (no camera, the Simulator) the
+// page isn't offered it at all (FoleviViewController's `canScan`); with camera access turned off (or Screen Time) the
+// call is refused with a reason in words and the person types the address instead.
 import AVFoundation
 import UIKit
 import VisionKit
@@ -14,7 +14,7 @@ import VisionKit
 extension FoleviNativePlugin {
     /// { value: string | null }: the first QR code's text, or null when the person closed the scanner. Refuses with
     /// code "unavailable" (this device can't scan) or "camera_denied" (camera access is off for Folevi).
-    @objc func scanServerCode(_ call: BridgeCall) {
+    @objc func scanCode(_ call: BridgeCall) {
         Task { @MainActor in
             guard self.fromFolevi else { return call.reject("Not allowed here") }
             switch await ServerCodeScanner.readiness() {

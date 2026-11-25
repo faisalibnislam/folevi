@@ -255,3 +255,18 @@ Server version numbers follow the app's unified version (`docs/claude-context/me
 - Never push `main`, deploy, use `--prod` with the Convex CLI, notarize or upload anything.
 - Never print secrets. No em dashes in text. The assistant is "Foli AI".
 - Folevi Cloud must behave exactly as before when `FOLEVI_EDITION` is unset; tests prove it.
+
+### 9.1 Changes from the Connect build (2026-11-25)
+
+1. **Reachability:** the server answers `GET /.well-known/folevi-connect/reach?nonce=N` on its HTTPS port with
+   `{"signature": "<base64 Ed25519 signature of folevi-connect-reach:<serverId>:N>"}`, signed with its registered
+   key. The reachability response also has `certificateValid`.
+2. **Tunnel:** folevid is the yamux **server** side. Each stream starts with a PROXY protocol v1 line naming the
+   client, then the raw TLS bytes.
+3. **Push:** `/v1/push` returns `410 {"error":"token_gone"}` for a dead device token (the server drops that token)
+   and `503` when the provider is busy (retry later), otherwise `202`.
+4. **Mail:** `to` is one address, not a list.
+5. **Server list:** `GET /v1/accounts/{userId}/servers` returns a bare array, and `X-Folevi-User` must equal
+   `userId`.
+6. **Additions:** a `/v1/admin/*` API for Folevi staff (flags, kill switches), extra fields on `GET
+   /v1/servers/{id}`, and `hostname` in the register response. See `services/connect/README.md`.

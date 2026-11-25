@@ -1,0 +1,23 @@
+<?xml version="1.0"?>
+<!-- Community Applications container template for Folevi Server. Unverified: test on real Unraid. -->
+<Container version="2">
+  <Name>Folevi-Server</Name>
+  <Repository>ghcr.io/folevi/folevi-server:latest</Repository>
+  <Registry>https://github.com/orgs/folevi/packages/container/package/folevi-server</Registry>
+  <Network>bridge</Network>
+  <Privileged>false</Privileged>
+  <Support>https://folevi.com/server/unraid</Support>
+  <Project>https://folevi.com/server</Project>
+  <Overview>Your own Folevi server: notes, tasks and files for your family or team, used from the normal Folevi apps on Mac, iPhone, iPad, Android and the web. Open the WebUI to create the owner account. Prefer no containers? Install the Folevi Server plugin instead.</Overview>
+  <Category>Productivity: Cloud: Tools:</Category>
+  <WebUI>http://[IP]:[PORT:8460]/</WebUI>
+  <TemplateURL>https://pkg.folevi.com/unraid/folevi.xml</TemplateURL>
+  <Icon>https://pkg.folevi.com/icons/folevi-256.png</Icon>
+  <ExtraParams>--stop-timeout 60 --user 0:0</ExtraParams>
+  <Requires>2 GB of free memory (4 GB recommended).</Requires>
+  <Config Name="HTTP port" Target="8460" Default="8460" Mode="tcp" Description="The Folevi Server web and app port." Type="Port" Display="always" Required="true" Mask="false">8460</Config>
+  <Config Name="HTTPS port" Target="8443" Default="8443" Mode="tcp" Description="Used once Folevi Server has a certificate." Type="Port" Display="always" Required="false" Mask="false">8443</Config>
+  <Config Name="Run as user id" Target="FOLEVI_UID" Default="99" Description="Folevi Server starts as root only to set the data folder owner, then runs as this user (99 is nobody)." Type="Variable" Display="advanced" Required="true" Mask="false">99</Config>
+  <Config Name="Run as group id" Target="FOLEVI_GID" Default="100" Description="100 is users." Type="Variable" Display="advanced" Required="true" Mask="false">100</Config>
+  <Config Name="Data" Target="/data" Default="/mnt/user/appdata/folevi" Mode="rw" Description="Everyone's notes, files and backups. A pool path (for example /mnt/cache/appdata/folevi) is best for the database." Type="Path" Display="always" Required="true" Mask="false">/mnt/user/appdata/folevi</Config>
+</Container>

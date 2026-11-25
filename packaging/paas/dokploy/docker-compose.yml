@@ -1,0 +1,14 @@
+services:
+  folevi:
+    image: ghcr.io/folevi/folevi-server:latest
+    restart: unless-stopped
+    expose:
+      - 8460
+    environment:
+      - FOLEVI_PUBLIC_URL=${FOLEVI_PUBLIC_URL}
+    volumes:
+      - folevi-data:/data
+    stop_grace_period: 60s
+
+volumes:
+  folevi-data: {}

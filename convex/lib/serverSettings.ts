@@ -62,8 +62,8 @@ export const serverSettingsFields = {
   updatedBy: v.optional(v.id("profiles")),
 };
 
-const vStored = v.object(serverSettingsFields);
-export type ServerSettings = Infer<typeof vStored>;
+export const vServerSettings = v.object(serverSettingsFields);
+export type ServerSettings = Infer<typeof vServerSettings>;
 export type ServerRole = Infer<typeof vServerRole>;
 export type InvitableRole = Infer<typeof vInvitableRole>;
 
@@ -126,6 +126,11 @@ export function aiConfigured(s: ServerSettings): boolean {
   if (s.ai.mode === "openai") return Boolean(s.ai.openai?.baseUrl && s.ai.openai.model);
   if (s.ai.mode === "folevi") return hasConnectToken();
   return false;
+}
+
+/** The AI part of the settings the provider needs (keys included: backend only, never returned to a client). */
+export function serverAiSettingsOf(s: ServerSettings) {
+  return { mode: s.ai.mode, configured: aiConfigured(s), gemini: s.ai.gemini ?? null, openai: s.ai.openai ?? null };
 }
 
 /** Whether notifications to phones go through Folevi's push relay (it needs the Connect token). */

@@ -26,7 +26,7 @@ import { fail } from "./lib/errors";
 import { consume } from "./lib/rateLimit";
 import { insertScoped, sameScopeRows, scopeOfRow, vScopeArg, type ScopeArg } from "./lib/scope";
 import { createDocument } from "./lib/create";
-import { capabilities, provider } from "./lib/ai/provider";
+import { capabilities, provider, loadAiSettings } from "./lib/ai/provider";
 import { titleFromQuestion, vAiContext } from "./lib/ai/chat";
 import { aiPrefsOf } from "./lib/ai/prefs";
 import { MAX_DRAFT_BLOCKS, MAX_DRAFT_CHARS } from "./lib/ai/writing";
@@ -151,6 +151,7 @@ export const allowed = internalQuery({
   args: {},
   handler: async (ctx) => {
     const profile = await requireProfile(ctx);
+    await loadAiSettings(ctx);
     if (!aiPrefsOf(profile).webResearch) fail("forbidden", WEB_OFF);
     if (!capabilities().searchGrounding) fail("maintenance", "The AI model in use can't search the web.");
     return null;

@@ -2,6 +2,7 @@
 // (docs/SELF_HOSTING_PLAN.md, docs/self-hosting/CONTRACT.md §1). `FOLEVI_EDITION=server` turns the server
 // edition on; unset (or "cloud") is Folevi Cloud, which must behave exactly as it always has. Every server-only
 // behavior checks `isServerEdition()` first, so a cloud deployment never reaches it.
+import { fail } from "./errors";
 
 /** Whether this deployment is Folevi Server (FOLEVI_EDITION=server). */
 export function isServerEdition(): boolean {
@@ -41,3 +42,8 @@ export const MIN_APP_VERSION = "1.6.0";
 
 /** The API version of /.well-known/folevi.json (CONTRACT §6). Apps refuse a server whose version they don't know. */
 export const SERVER_API_VERSION = 1;
+
+/** Folevi Server has no billing (plans, credit packs, Polar): those entry points refuse there. */
+export function assertBillingAvailable(): void {
+  if (isServerEdition()) fail("not_found", "Billing isn't part of Folevi Server.");
+}

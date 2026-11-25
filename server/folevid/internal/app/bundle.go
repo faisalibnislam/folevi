@@ -27,7 +27,9 @@ type Manifest struct {
 	Files         map[string]string `json:"files"`
 }
 
-func (b Bundle) Path(parts ...string) string { return filepath.Join(append([]string{b.Dir}, parts...)...) }
+func (b Bundle) Path(parts ...string) string {
+	return filepath.Join(append([]string{b.Dir}, parts...)...)
+}
 
 // Backend is bin/convex-backend.
 func (b Bundle) Backend() string { return b.Path("bin", "convex-backend") }

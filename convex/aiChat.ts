@@ -28,7 +28,7 @@ import { inScope, insertScoped, scopeOfRow, vScopeArg, type ScopeArg } from "./l
 import { liveBlocks, toWireBlock } from "./lib/documents";
 import { ReaderLabels } from "./lib/linkLabels";
 import { aiPrefsOf } from "./lib/ai/prefs";
-import { capabilities as modelCapabilities, provider } from "./lib/ai/provider";
+import { capabilities as modelCapabilities, provider, loadAiSettings } from "./lib/ai/provider";
 import { vAiAction } from "./lib/aiActions";
 import { wireRun } from "./lib/ai/tools/wire";
 import { NEW_CHAT_TITLE, bestBlock, citingSentences, passageBlock, cleanTitle, conversationFilename, conversationMarkdown, normalizeContext, titleFromQuestion, vAiContext, type AiContext, type MarkdownMessage } from "./lib/ai/chat";
@@ -200,6 +200,7 @@ export async function runsOf(ctx: Ctx, messages: Doc<"aiMessages">[]): Promise<M
 const applied = (run: Doc<"aiRuns"> | null) => Boolean(run && (run.status === "done" || run.status === "partial" || run.status === "executing" || run.status === "undoing"));
 
 async function createConversation(ctx: MutationCtx, profile: Doc<"profiles">, scopeArg: ScopeArg, publicId: string | undefined, context: AiContext | undefined): Promise<Doc<"aiConversations">> {
+  await loadAiSettings(ctx);
   if (profile.aiEnabled === false) fail("forbidden", "Foli AI is turned off in your settings.");
   const { scope } = await resolveScope(ctx, profile, scopeArg);
   // An encrypted space keeps its chats on the person's devices (aiChat records): none is stored here.
@@ -261,6 +262,7 @@ export const capabilities = query({
   args: {},
   handler: async (ctx) => {
     const profile = await requireProfile(ctx);
+    await loadAiSettings(ctx);
     const c = modelCapabilities();
     return {
       model: c.model,

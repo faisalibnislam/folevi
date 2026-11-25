@@ -13,10 +13,26 @@ import { attachmentTokens } from "./attachments";
 import { DECLINE_RULE, MAX_FREE_REFUSAL_CHARS, readDecline, SAFETY_RULE, visibleSoFar, type RefusalKind } from "@folevi/ai-prompts/safety";
 
 const ENDPOINT = "https://generativelanguage.googleapis.com/v1beta/models";
-export const geminiModel = () => process.env.GEMINI_MODEL ?? "gemini-3.8-flash";
-export const geminiFastModel = () => process.env.GEMINI_FAST_MODEL ?? "gemini-flash-lite-latest";
+/**
+ * Folevi Server's Gemini settings (its key and models, from the server's settings: lib/ai/provider.ts
+ * loadAiSettings). Unset on Folevi Cloud, which reads the environment as it always has.
+ */
+export interface GeminiSettings {
+  apiKey?: string;
+  model?: string;
+  fastModel?: string;
+  embeddingModel?: string;
+}
+let serverGemini: GeminiSettings | null = null;
+export function setServerGemini(settings: GeminiSettings | null): void {
+  serverGemini = settings;
+}
+/** The Gemini key requests use (undefined when there is none). */
+export const geminiKey = (): string | undefined => (serverGemini ? serverGemini.apiKey : process.env.GEMINI_API_KEY);
+export const geminiModel = () => serverGemini?.model ?? process.env.GEMINI_MODEL ?? "gemini-3.8-flash";
+export const geminiFastModel = () => serverGemini?.fastModel ?? process.env.GEMINI_FAST_MODEL ?? "gemini-flash-lite-latest";
 /** Semantic search's embeddings (GEMINI_EMBEDDING_MODEL; lib/ai/capabilities.ts prices it). */
-export const geminiEmbeddingModel = () => process.env.GEMINI_EMBEDDING_MODEL ?? "gemini-embedding-001";
+export const geminiEmbeddingModel = () => serverGemini?.embeddingModel ?? process.env.GEMINI_EMBEDDING_MODEL ?? "gemini-embedding-001";
 
 type GeminiUsage = { promptTokenCount?: number; candidatesTokenCount?: number; thoughtsTokenCount?: number };
 type GeminiPart = { text?: string; thought?: boolean; thoughtSignature?: string; functionCall?: { name?: string; args?: Record<string, unknown>; id?: string } };
@@ -199,7 +215,7 @@ const TOO_SLOW = "The AI took too long to answer. Try again shortly.";
  * connection can't hold the action, and the person's credit hold, until the platform kills it.
  */
 async function generate(req: GenerateRequest, meter: CallUsage[], onDelta?: OnDelta): Promise<GenerateResult> {
-  const key = process.env.GEMINI_API_KEY;
+  const key = geminiKey();
   if (!key) fail("maintenance", "Foli AI isn't set up on this server yet.");
   // A grounded request only goes to models that can search (no fallback to one that can't).
   const models = (req.fast ? [geminiFastModel()] : [geminiModel(), geminiFastModel()]).filter((m, i) => i === 0 || !req.searchGrounding || capabilitiesOf(m).searchGrounding);
@@ -342,7 +358,7 @@ const EMBED_TIMEOUT_MS = 30_000;
  * so tokens are estimated from the characters sent.
  */
 async function embed(texts: string[], task: EmbedTask): Promise<EmbedResult> {
-  const key = process.env.GEMINI_API_KEY;
+  const key = geminiKey();
   if (!key) fail("maintenance", "Foli AI isn't set up on this server yet.");
   const model = geminiEmbeddingModel();
   const vectors: number[][] = [];

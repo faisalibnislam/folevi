@@ -50,6 +50,14 @@ def main():
     # Greyed variant for QNAP's "disabled" icon.
     grey = draw(64).convert("LA").convert("RGBA")
     grey.save(os.path.join(HERE, "folevi-64-gray.png"), optimize=True)
+    # QNAP App Center wants GIFs: 64x64, 80x80 and a grey 64x64.
+    def gif(img, name):
+        bg = Image.new("RGBA", img.size, (255, 255, 255, 0))
+        bg.alpha_composite(img)
+        bg.convert("RGB").convert("P", palette=Image.ADAPTIVE).save(os.path.join(HERE, name))
+    gif(draw(64), "folevi-qnap-64.gif")
+    gif(draw(80), "folevi-qnap-80.gif")
+    gif(grey, "folevi-qnap-64-gray.gif")
 
 if __name__ == "__main__":
     main()

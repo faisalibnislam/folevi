@@ -12,6 +12,7 @@ import type { Doc, Id } from "./_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
 import { getDocumentByPublicId, requireDocument, requireIdentity, requireProfile, resolveScope } from "./lib/auth";
 import { fail } from "./lib/errors";
+import { assertBillingAvailable } from "./lib/edition";
 import {
   ensureSubscription,
   ensureWorkspaceSubscription,
@@ -360,6 +361,7 @@ export const checkoutContext = internalQuery({
 export const checkout = action({
   args: { plan: vPaidPersonalTier, interval: vInterval },
   handler: async (ctx, args): Promise<{ url: string | null }> => {
+    assertBillingAvailable();
     await requireIdentity(ctx);
     const planId = personalPlanId(args.plan, args.interval) as PaidPersonalPlanId;
     const me: { profileId: string; email: string; live: boolean; polarSubscriptionId: string | null; planId: string } = await ctx.runQuery(internal.billing.checkoutContext, {});
@@ -383,6 +385,7 @@ export const checkout = action({
 export const buyCredits = action({
   args: { pack: vCreditPackId, scope: vScopeArg },
   handler: async (ctx, args): Promise<{ url: string }> => {
+    assertBillingAvailable();
     await requireIdentity(ctx);
     const target: { profileId: string; email: string; workspaceId: string | null } = await ctx.runQuery(internal.billing.creditsCheckoutContext, { scope: args.scope });
     const ids: ProductIds = await ctx.runQuery(internal.billingSetup.productIds, {});
@@ -406,6 +409,7 @@ export const creditsCheckoutContext = internalQuery({
 export const portal = action({
   args: {},
   handler: async (ctx): Promise<{ url: string }> => {
+    assertBillingAvailable();
     await requireIdentity(ctx);
     const me: { profileId: string; hasPolarCustomer: boolean } = await ctx.runQuery(internal.billing.checkoutContext, {});
     if (!me.hasPolarCustomer) fail("invalid_argument", "There's nothing billed through Polar to manage yet.");

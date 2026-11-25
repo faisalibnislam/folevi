@@ -6,6 +6,7 @@ import { action, internalQuery, mutation, query, type MutationCtx } from "./_gen
 import { components, internal } from "./_generated/api";
 import type { Doc } from "./_generated/dataModel";
 import { recordAudit } from "./lib/audit";
+import { requireIdentity } from "./lib/auth";
 import { randomToken } from "./lib/crypto";
 import { fail } from "./lib/errors";
 import { appUrl } from "./lib/notify";
@@ -377,6 +378,7 @@ export const adminCheck = internalQuery({
 export const testEmail = action({
   args: { to: v.string() },
   handler: async (ctx, args): Promise<{ ok: boolean; error?: string }> => {
+    await requireIdentity(ctx);
     await ctx.runQuery(internal.serverAdmin.adminCheck, {});
     return await ctx.runAction(internal.email.sendServerTest, { to: args.to });
   },

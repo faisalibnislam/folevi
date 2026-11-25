@@ -7,7 +7,7 @@ import { requireProfile } from "./auth";
 import { sha256Hex } from "./crypto";
 import { isServerEdition } from "./edition";
 import { fail } from "./errors";
-import { readServerSettings, serverRoleOf, type ServerRole, type ServerSettings } from "./serverSettings";
+import { readServerSettings, roleFields, serverRoleOf, type ServerRole, type ServerSettings } from "./serverSettings";
 
 type Ctx = QueryCtx | MutationCtx;
 
@@ -93,3 +93,20 @@ export function roleAfterInvite(current: ServerRole, invited: ServerRole): Serve
   return rank[invited] > rank[current] ? invited : current;
 }
 
+
+/**
+ * Folevi Server: when a new account was created with an invitation (Better Auth's user hook spent it for this
+ * address), the account gets the invite's role as its profile is made (users.bootstrap). The newest such invite
+ * counts; nothing happens without one.
+ */
+export async function acceptSpentInvite(ctx: MutationCtx, profileId: Doc<"profiles">["_id"], email: string): Promise<void> {
+  const addr = email.trim().toLowerCase();
+  const recent = await ctx.db.query("serverInvites").withIndex("by_created").order("desc").take(500);
+  const invite = recent.find((i) => !i.revokedAt && !i.acceptedBy && i.usedByEmail === addr);
+  if (!invite) return;
+  const profile = await ctx.db.get(profileId);
+  if (!profile) return;
+  const role = roleAfterInvite(serverRoleOf(profile), invite.role);
+  await ctx.db.patch(profileId, roleFields(role));
+  await ctx.db.patch(invite._id, { acceptedBy: profileId, acceptedAt: Date.now() });
+}

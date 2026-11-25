@@ -76,7 +76,9 @@ export function controlMessage(error: unknown): string {
 
 // ---------------------------------------------------------------- settings
 
-export function useServerSettings() {
+export type SaveSettings = (patch: ServerSettingsPatch, done?: string) => Promise<boolean>;
+
+export function useServerSettings(): { settings: ServerSettings | undefined; error: unknown; save: SaveSettings } {
   const state = useQueryState(serverAdminRefs.getSettings, {});
   const update = useMutation(serverAdminRefs.updateSettings);
   const toast = useToast();
@@ -97,7 +99,7 @@ export function useServerSettings() {
 }
 
 /** The settings, or a loading line, or the error with a retry. */
-export function WithSettings({ children }: { children: (settings: ServerSettings, save: ReturnType<typeof useServerSettings>["save"]) => ReactNode }) {
+export function WithSettings({ children }: { children: (settings: ServerSettings, save: SaveSettings) => ReactNode }) {
   const { settings, error, save } = useServerSettings();
   if (error && !settings) return <ErrorNotice error={error} />;
   if (!settings) return <Loading />;

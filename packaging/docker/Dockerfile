@@ -22,6 +22,7 @@ RUN apt-get update \
  && install -d -o folevi -g folevi -m 0750 /data
 
 COPY --chown=root:root bundles/${TARGETARCH}/ /opt/folevi/
+COPY --chmod=0755 docker-entrypoint.sh /usr/local/bin/folevi-entrypoint
 
 ENV FOLEVI_DATA=/data \
     FOLEVI_BUNDLE=/opt/folevi \
@@ -37,5 +38,7 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=120s --retries=3 \
   CMD ["/opt/folevi/runtime/node/bin/node", "-e", "fetch('http://127.0.0.1:'+(process.env.FOLEVI_PORT||8460)+'/.well-known/folevi.json').then(r=>process.exit(r.ok?0:1),()=>process.exit(1))"]
 
 STOPSIGNAL SIGTERM
-ENTRYPOINT ["/usr/bin/tini", "--", "/opt/folevi/bin/folevid"]
+# Runs as uid 10001 by default. Run with user 0:0 only when the host makes /data as root: the entrypoint then
+# fixes ownership and drops to FOLEVI_UID:FOLEVI_GID (docker-entrypoint.sh).
+ENTRYPOINT ["/usr/bin/tini", "--", "/usr/local/bin/folevi-entrypoint"]
 CMD ["run", "--data", "/data", "--bundle", "/opt/folevi"]

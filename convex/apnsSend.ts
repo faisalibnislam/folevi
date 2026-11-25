@@ -4,20 +4,49 @@
 // (lib/apnsHttp2.ts). What it carries is in lib/apns.ts. Tokens Apple says are gone are removed; a busy
 // Apple is tried again a couple of times. Never logs a token or what a notification says.
 import { v } from "convex/values";
-import { internalAction } from "./_generated/server";
+import { internalAction, type ActionCtx } from "./_generated/server";
 import { internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 import { apnsConfig, apnsHeaders, apnsHost, apnsPayload, deliverWithRetry, vApnsMessage, type ApnsMessage } from "./lib/apns";
 import { apnsJwt } from "./lib/apnsJwt";
 import { createApnsClient } from "./lib/apnsHttp2";
+import { isServerEdition } from "./lib/edition";
+import { sendThroughRelay } from "./lib/pushRelay";
 
 const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
+
+type RelayCtx = { runQuery: ActionCtx["runQuery"]; runMutation: ActionCtx["runMutation"] };
+
+/**
+ * Folevi Server: the notice goes through Folevi's push relay (lib/pushRelay.ts), which holds Apple's key. Only
+ * with push.relay on. The same notice the cloud sends, with what the app needs to open it in `data`.
+ */
+async function relayToApple(ctx: RelayCtx, profileId: Id<"profiles">, message: ApnsMessage): Promise<{ sent: number }> {
+  if (!(await ctx.runQuery(internal.server.pushRelayEnabled, {}))) return { sent: 0 };
+  const { tokens, place } = await ctx.runQuery(internal.push.apnsTargets, { profileId });
+  const gone: Id<"apnsTokens">[] = [];
+  const sent: Id<"apnsTokens">[] = [];
+  let failed = 0;
+  for (const t of tokens) {
+    const data: Record<string, string> = { kind: message.kind, path: message.path, ...(message.taskId ? { taskId: message.taskId } : {}), ...(t.label ? { label: t.label } : {}), ...(t.label && place ? { place } : {}) };
+    const r = await sendThroughRelay({ platform: "apns", token: t.token, environment: t.environment, title: message.title, body: message.body, data, collapseId: message.collapseId, threadId: message.threadId });
+    if (r.outcome === "sent") sent.push(t.id);
+    else if (r.outcome === "gone") gone.push(t.id);
+    else failed++;
+  }
+  await ctx.runMutation(internal.push.afterApnsSend, { gone, sent });
+  console.log(JSON.stringify({ event: "apns.relay", kind: message.kind, devices: tokens.length, sent: sent.length, gone: gone.length, failed }));
+  return { sent: sent.length };
+}
 
 export const sendToProfile = internalAction({
   args: { profileId: v.id("profiles"), message: vApnsMessage },
   handler: async (ctx, args) => {
     const config = apnsConfig();
-    if (!config) return { sent: 0 };
+    if (!config) {
+      if (!isServerEdition()) return { sent: 0 };
+      return await relayToApple(ctx, args.profileId, args.message);
+    }
     const { tokens, badge, place } = await ctx.runQuery(internal.push.apnsTargets, { profileId: args.profileId });
     // Only tokens for this app (a token from another bundle id would be refused as not for this topic).
     const targets = tokens.filter((t) => t.bundleId === config.bundleId);

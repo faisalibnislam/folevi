@@ -104,7 +104,9 @@ func FromHeader(name, address string) string {
 	var b strings.Builder
 	for _, r := range name {
 		switch {
-		case r < 0x20 || r == 0x7f, r == '"', r == '<', r == '>', r == '\\', r == ',', r == ';', r == ':', r == '@':
+		case r < 0x20 || r == 0x7f:
+			b.WriteByte(' ')
+		case r == '"', r == '<', r == '>', r == '\\', r == ',', r == ';', r == ':', r == '@':
 			continue
 		default:
 			b.WriteRune(r)

@@ -5,6 +5,8 @@ services:
     image: ghcr.io/folevi/folevi-server:latest
     container_name: folevi
     restart: unless-stopped
+    # Starts as root only to make the host folder owned by uid 10001, then drops to it (docker-entrypoint.sh).
+    user: "0:0"
     ports:
       - "8460:8460"
       - "8443:8443"

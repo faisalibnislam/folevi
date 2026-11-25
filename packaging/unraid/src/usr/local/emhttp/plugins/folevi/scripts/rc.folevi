@@ -1,0 +1,72 @@
+#!/bin/bash
+# Folevi Server control for Unraid: start, stop, restart, status, install, setup-url.
+# The bundle tarball is cached on the flash drive (/boot/config/plugins/folevi) so it survives reboots (Unraid's
+# root filesystem lives in RAM); "install" unpacks it to INSTALL_DIR on the array once the array is started.
+PLG_DIR=/boot/config/plugins/folevi
+CFG="$PLG_DIR/folevi.cfg"
+DEFAULT_CFG=/usr/local/emhttp/plugins/folevi/default.cfg
+PID_FILE=/var/run/folevi.pid
+[ -f "$CFG" ] || cp "$DEFAULT_CFG" "$CFG"
+# shellcheck disable=SC1090
+source "$DEFAULT_CFG"; source "$CFG"
+export FOLEVI_PORT FOLEVI_HTTPS_PORT
+
+log() { logger -t folevi "$*"; }
+current_tarball() { ls -1t "$PLG_DIR"/folevi-server-*-x86_64.tar.xz 2>/dev/null | head -n 1; }
+bundle_dir() { echo "$INSTALL_DIR/current"; }
+running() { [ -f "$PID_FILE" ] && kill -0 "$(cat "$PID_FILE")" 2>/dev/null; }
+array_started() { [ -d /mnt/user ] && mountpoint -q /mnt/user 2>/dev/null; }
+
+do_install() {
+  local tb ver dir
+  tb="$(current_tarball)"
+  [ -n "$tb" ] || { log "no Folevi Server bundle in $PLG_DIR"; return 1; }
+  ver="$(basename "$tb" | sed -E 's/^folevi-server-(.*)-x86_64\.tar\.xz$/\1/')"
+  dir="$INSTALL_DIR/$ver"
+  if [ ! -x "$dir/bin/folevid" ]; then
+    log "unpacking Folevi Server $ver to $dir"
+    mkdir -p "$dir.tmp" && tar -xJf "$tb" -C "$dir.tmp" --strip-components=1 && rm -rf "$dir" && mv "$dir.tmp" "$dir" || return 1
+  fi
+  ln -sfn "$dir" "$INSTALL_DIR/current"
+  # Keep the running version and one older one.
+  ls -1d "$INSTALL_DIR"/[0-9]* 2>/dev/null | sort -V | head -n -2 | xargs -r rm -rf
+}
+
+do_start() {
+  running && return 0
+  array_started || { log "array not started; Folevi Server waits for it"; return 0; }
+  local old new
+  old="$(readlink "$INSTALL_DIR/current" 2>/dev/null || true)"
+  do_install || return 1
+  new="$(readlink "$INSTALL_DIR/current")"
+  mkdir -p "$DATA_DIR"
+  chown "$RUN_AS:users" "$DATA_DIR"
+  if [ -n "$old" ] && [ "$old" != "$new" ] && [ -x "$old/bin/folevid" ]; then
+    log "update: pre-update backup with $old"
+    su -s /bin/sh "$RUN_AS" -c "'$old/bin/folevid' backup --data '$DATA_DIR' --bundle '$old'" || log "pre-update backup failed"
+  fi
+  log "starting Folevi Server, data in $DATA_DIR"
+  su -s /bin/sh "$RUN_AS" -c "FOLEVI_PACKAGE=unraid exec '$new/bin/folevid' run --data '$DATA_DIR' --bundle '$new' >> /var/log/folevi.log 2>&1" &
+  echo $! > "$PID_FILE"
+}
+
+do_stop() {
+  running || { rm -f "$PID_FILE"; return 0; }
+  local pid i=0
+  pid="$(cat "$PID_FILE")"
+  kill -TERM "$pid" 2>/dev/null
+  while kill -0 "$pid" 2>/dev/null && [ $i -lt 60 ]; do sleep 1; i=$((i + 1)); done
+  kill -0 "$pid" 2>/dev/null && kill -KILL "$pid"
+  rm -f "$PID_FILE"
+  log "stopped"
+}
+
+case "$1" in
+  start) [ "$AUTOSTART" = "yes" ] || [ "${2:-}" = "force" ] || exit 0; do_start ;;
+  stop) do_stop ;;
+  restart) do_stop; do_start ;;
+  install) do_install ;;
+  status) running && echo running || echo stopped ;;
+  setup-url) su -s /bin/sh "$RUN_AS" -c "'$(bundle_dir)/bin/folevid' setup-url --data '$DATA_DIR' --bundle '$(bundle_dir)'" ;;
+  *) echo "usage: $0 start|stop|restart|status|install|setup-url"; exit 1 ;;
+esac

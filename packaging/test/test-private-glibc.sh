@@ -97,6 +97,9 @@ if [ "$(id -u)" = 0 ] && command -v chroot >/dev/null; then
   root="$work/xenial"; mkdir -p "$root"
   tar -xzf "$work/base.tgz" -C "$root" --exclude='./dev/*'
   copy_bundle "$stage" "$root/b"; copy_bundle "$patched" "$root/p"
+  # $ORIGIN in RPATH is resolved through /proc/self/exe, so the chroot needs /proc (Docker and QTS have it).
+  mount -t proc proc "$root/proc" || die "cannot mount /proc in the chroot"
+  trap 'umount "$root/proc" 2>/dev/null || true; rm -rf "$work"' EXIT
   log "chroot ubuntu-base 16.04 ($arch)"
   chroot "$root" /bin/sh -ec "$(checks "ubuntu-base 16.04 chroot")"
   log "chroot checks passed (the Docker images, including centos:7, run in CI)"

@@ -116,7 +116,7 @@ func Default() Config {
 }
 
 // MDNSOn says whether to announce on the home network.
-func (c *Config) MDNSOn() bool { return c.MDNS == nil || *c.MDNS }
+func (c Config) MDNSOn() bool { return c.MDNS == nil || *c.MDNS }
 
 // fillDefaults sets zero fields to their defaults.
 func (c *Config) fillDefaults() {

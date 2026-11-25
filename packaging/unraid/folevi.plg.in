@@ -1,0 +1,57 @@
+<?xml version="1.0" standalone="yes"?>
+<!DOCTYPE PLUGIN [
+<!ENTITY name      "folevi">
+<!ENTITY author    "Folevi">
+<!ENTITY version   "@VERSION@">
+<!ENTITY baseURL   "@UNRAID_BASE_URL@">
+<!ENTITY pluginURL "&baseURL;/folevi.plg">
+<!ENTITY plgdir    "/boot/config/plugins/&name;">
+<!ENTITY uitxz     "folevi-plugin-&version;-x86_64-1.txz">
+<!ENTITY bundle    "folevi-server-&version;-x86_64.tar.xz">
+]>
+<!-- Folevi Server for Unraid (native plugin). Built by packaging/unraid/build.sh. Unverified on real Unraid:
+     test before submitting to Community Applications. -->
+<PLUGIN name="&name;" author="&author;" version="&version;" pluginURL="&pluginURL;"
+        launch="Settings/Folevi" icon="folevi.png" min="6.12.0" support="https://folevi.com/server/unraid">
+
+<CHANGES>
+### &version;
+- See https://folevi.com/server/changelog
+</CHANGES>
+
+<!-- Settings page, control script and array event hooks. -->
+<FILE Name="&plgdir;/&uitxz;" Run="upgradepkg --install-new">
+<URL>&baseURL;/&uitxz;</URL>
+<MD5>@UI_MD5@</MD5>
+</FILE>
+
+<!-- The server itself, cached on the flash drive and unpacked to the array at start. -->
+<FILE Name="&plgdir;/&bundle;">
+<URL>&baseURL;/&bundle;</URL>
+<MD5>@BUNDLE_MD5@</MD5>
+</FILE>
+
+<FILE Run="/bin/bash">
+<INLINE>
+# Keep only this version's files on the flash drive.
+find &plgdir; -maxdepth 1 \( -name 'folevi-plugin-*.txz' ! -name '&uitxz;' -o -name 'folevi-server-*.tar.xz' ! -name '&bundle;' \) -delete
+[ -f &plgdir;/folevi.cfg ] || cp /usr/local/emhttp/plugins/folevi/default.cfg &plgdir;/folevi.cfg
+# Installing or updating while the array runs: (re)start now. At boot the "started" event starts it.
+if [ -d /mnt/user ] &amp;&amp; mountpoint -q /mnt/user; then
+  /usr/local/emhttp/plugins/folevi/scripts/rc.folevi restart
+fi
+echo "Folevi Server &version; installed. Open Settings > Folevi Server."
+</INLINE>
+</FILE>
+
+<FILE Run="/bin/bash" Method="remove">
+<INLINE>
+/usr/local/emhttp/plugins/folevi/scripts/rc.folevi stop
+removepkg &plgdir;/&uitxz;
+rm -rf /usr/local/emhttp/plugins/folevi
+rm -f &plgdir;/*.txz &plgdir;/*.tar.xz
+echo "Folevi Server removed. Your data and settings are kept (data folder and &plgdir;/folevi.cfg)."
+</INLINE>
+</FILE>
+
+</PLUGIN>

@@ -1,0 +1,56 @@
+# CasaOS / ZimaOS app store entry (CasaOS-AppStore format). Unverified: test on a real ZimaOS/CasaOS box.
+name: folevi
+services:
+  folevi:
+    image: ghcr.io/folevi/folevi-server:1.5.73
+    container_name: folevi
+    restart: unless-stopped
+    # Starts as root only to make the host folder owned by uid 10001, then drops to it (docker-entrypoint.sh).
+    user: "0:0"
+    ports:
+      - target: 8460
+        published: "8460"
+        protocol: tcp
+      - target: 8443
+        published: "8443"
+        protocol: tcp
+    volumes:
+      - type: bind
+        source: /DATA/AppData/$AppID/data
+        target: /data
+    stop_grace_period: 60s
+    x-casaos:
+      ports:
+        - container: "8460"
+          description:
+            en_us: Web and app port
+        - container: "8443"
+          description:
+            en_us: HTTPS port (once a certificate exists)
+      volumes:
+        - container: /data
+          description:
+            en_us: Everyone's notes, files and backups
+x-casaos:
+  architectures:
+    - amd64
+    - arm64
+  main: folevi
+  author: Folevi
+  developer: Folevi
+  category: Productivity
+  description:
+    en_us: Your own Folevi server for your family or team. Notes, tasks and files on your own hardware, used from the normal Folevi apps on Mac, iPhone, iPad, Android and the web.
+  tagline:
+    en_us: Your notes, on your own server
+  title:
+    en_us: Folevi Server
+  icon: https://pkg.folevi.com/icons/folevi-256.png
+  screenshot_link: []
+  thumbnail: https://pkg.folevi.com/icons/folevi-256.png
+  index: /
+  port_map: "8460"
+  scheme: http
+  tips:
+    before_install:
+      en_us: Folevi Server needs about 1 GB of free memory (4 GB recommended for a family).

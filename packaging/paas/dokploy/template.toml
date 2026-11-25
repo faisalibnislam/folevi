@@ -1,0 +1,11 @@
+[variables]
+main_domain = "${domain}"
+
+[config]
+[[config.domains]]
+serviceName = "folevi"
+port = 8460
+host = "${main_domain}"
+
+[config.env]
+FOLEVI_PUBLIC_URL = "https://${main_domain}"

@@ -1,0 +1,3 @@
+#!/bin/bash
+# Unraid runs this after the array has started.
+/usr/local/emhttp/plugins/folevi/scripts/rc.folevi start

@@ -1,0 +1,3 @@
+# See fly.toml. Starts as root only so the entrypoint can chown the Fly volume, then drops privileges.
+FROM ghcr.io/folevi/folevi-server:latest
+USER root

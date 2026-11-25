@@ -1,0 +1,16 @@
+{
+  "_comment": "UNVERIFIED best-effort layout for TerraMaster TOS 6. Replace with the TOS Developer Platform's real schema.",
+  "id": "folevi",
+  "name": "Folevi Server",
+  "version": "@VERSION@",
+  "arch": "@ARCH@",
+  "os_min_version": "6.0",
+  "author": "Folevi",
+  "website": "https://folevi.com/server",
+  "description": "@FOLEVI_DESCRIPTION@",
+  "install_dir": "@APP_DIR@",
+  "service": "folevi.service",
+  "web": { "port": @FOLEVI_PORT_DEFAULT@, "path": "/", "protocol": "http" },
+  "ports": [@FOLEVI_PORT_DEFAULT@, @FOLEVI_HTTPS_PORT_DEFAULT@],
+  "data_dir": "@DATA_DEFAULT@"
+}

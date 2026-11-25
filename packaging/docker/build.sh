@@ -19,8 +19,8 @@ while [ $# -gt 0 ]; do
 done
 ctx="$OUT/docker-context"
 rm -rf "$ctx"; mkdir -p "$ctx/bundles"
-cp "$(dirname "$0")/Dockerfile" "$ctx/Dockerfile"
-printf '*\n!Dockerfile\n!bundles/\n' > "$ctx/.dockerignore"
+cp "$(dirname "$0")/Dockerfile" "$(dirname "$0")/docker-entrypoint.sh" "$ctx/"
+printf '*\n!Dockerfile\n!docker-entrypoint.sh\n!bundles/\n' > "$ctx/.dockerignore"
 copy_bundle "$BUNDLE" "$ctx/bundles/$(deb_arch "$ARCH")"
 have="linux/$(deb_arch "$ARCH")"
 if [ -n "$second" ]; then

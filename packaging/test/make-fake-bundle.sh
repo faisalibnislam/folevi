@@ -33,11 +33,12 @@ case "$cmd" in
   version) echo "folevid fake $(cat "$(dirname "$0")/../VERSION")" ;;
   setup-url) echo "http://127.0.0.1:${FOLEVI_PORT:-8460}/setup?token=FAKE" ;;
   run) [ -n "$data" ] || { echo "folevid: --data is required" >&2; exit 2; }
-       mkdir -p "$data/logs"; echo "fake run" >> "$data/logs/folevid.log"
-       trap 'exit 0' TERM INT; while :; do sleep 1; done ;;
+       mkdir -p "$data/logs"; echo "fake run" >> "$data/logs/folevid.log"; : > "$data/.fake-running"
+       trap 'rm -f "$data/.fake-running"; exit 0' TERM INT; while :; do sleep 1; done ;;
   backup) [ -n "$data" ] || exit 2; mkdir -p "$data/backups"; : > "$data/backups/fake.zip"; echo fake ;;
   restore) exit 0 ;;
-  *) echo "usage: folevid run|version|setup-url|backup|restore" >&2; exit 2 ;;
+  healthcheck) [ -n "$data" ] && [ -f "$data/.fake-running" ] ;;
+  *) echo "usage: folevid run|version|setup-url|backup|restore|healthcheck" >&2; exit 2 ;;
 esac
 SH
 chmod 755 "$b/bin/folevid"

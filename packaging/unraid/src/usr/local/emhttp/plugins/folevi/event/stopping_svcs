@@ -1,0 +1,3 @@
+#!/bin/bash
+# Unraid runs this before it stops services and unmounts the array.
+/usr/local/emhttp/plugins/folevi/scripts/rc.folevi stop

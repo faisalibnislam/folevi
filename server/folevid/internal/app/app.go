@@ -28,7 +28,6 @@ import (
 	"github.com/faisalibnislam/folevi/server/folevid/internal/control"
 	"github.com/faisalibnislam/folevi/server/folevid/internal/convex"
 	"github.com/faisalibnislam/folevi/server/folevid/internal/logs"
-	"github.com/faisalibnislam/folevi/server/folevid/internal/netx"
 	"github.com/faisalibnislam/folevi/server/folevid/internal/proxy"
 	"github.com/faisalibnislam/folevi/server/folevid/internal/secrets"
 	"github.com/faisalibnislam/folevi/server/folevid/internal/supervisor"
@@ -88,9 +87,9 @@ type App struct {
 
 	remote remoteState
 
-	diskMu     sync.Mutex
-	diskAt     time.Time
-	diskBytes  uint64
+	diskMu      sync.Mutex
+	diskAt      time.Time
+	diskBytes   uint64
 	lastNightly time.Time
 }
 
@@ -388,7 +387,7 @@ func (a *App) Run(ctx context.Context) error {
 	}
 	c := a.cfg.Get()
 	a.log.Info("folevid starting", "version", a.version, "data", a.data, "bundle", a.bundle.Dir, "loader", a.bundle.Loader() != "")
-	if cert, err := connect.CertStore{Dir: a.sec.Path(secrets.TLSDir)}.Load(); err == nil && cert != nil {
+	if cert, err := (connect.CertStore{Dir: a.sec.Path(secrets.TLSDir)}).Load(); err == nil && cert != nil {
 		a.cert.Store(cert)
 	}
 	a.log.Info("public address", "origin", a.Origin())
@@ -615,4 +614,6 @@ func mustURL(s string) *url.URL {
 	return u
 }
 
-func slogErrorLog(l *slog.Logger) *stdlog.Logger { return slog.NewLogLogger(l.Handler(), slog.LevelWarn) }
+func slogErrorLog(l *slog.Logger) *stdlog.Logger {
+	return slog.NewLogLogger(l.Handler(), slog.LevelWarn)
+}

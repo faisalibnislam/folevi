@@ -35,7 +35,7 @@ import { insertScoped, scopeOfRow, vScopeArg, type ScopeArg } from "./lib/scope"
 import { estimateCredits, type CallUsage, type PlannedCall } from "./lib/credits";
 import { aiPrefsOf } from "./lib/ai/prefs";
 import { REMEMBER_RULE, takeRemember, vMemoryKind } from "./lib/ai/memory";
-import { capabilities, provider, type Content, type Part } from "./lib/ai/provider";
+import { capabilities, provider, type Content, type Part, loadAiSettings } from "./lib/ai/provider";
 import { vAiContext, type AiContext } from "./lib/ai/chat";
 import { recordUserAction } from "./lib/audit";
 import { refreshNoteRefs } from "./lib/ai/sharing";
@@ -296,6 +296,7 @@ async function opening(ctx: ActionCtx, env: Env, question: string, o: { files?: 
  * proposed and says what's left, with Continue.
  */
 async function runAgent(ctx: ActionCtx, messageId: Id<"aiMessages">): Promise<{ status: "done" | "error" }> {
+  await loadAiSettings(ctx);
   const turn = await ctx.runQuery(internal.aiChat.turn, { messageId });
   const prefs = await ctx.runQuery(internal.aiAgent.prefs, {});
   // The web tools only when the person's settings allow web research and the model can search.

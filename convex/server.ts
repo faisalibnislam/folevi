@@ -12,7 +12,7 @@ import { editionKind, isServerEdition, MIN_APP_VERSION, SERVER_API_VERSION, serv
 import { fail } from "./lib/errors";
 import { consume } from "./lib/rateLimit";
 import { findInvite, inviteState, requireServerEdition, serverOwner } from "./lib/serverAccess";
-import { aiConfigured, domainAllowed, emailConfigured, pushRelayOn, readServerSettings, roleFields, writeServerSettings } from "./lib/serverSettings";
+import { aiConfigured, domainAllowed, emailConfigured, pushRelayOn, readServerSettings, roleFields, serverAiSettingsOf, writeServerSettings } from "./lib/serverSettings";
 
 const googleKeys = () => Boolean(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET);
 
@@ -176,8 +176,7 @@ export const aiSettings = internalQuery({
   args: {},
   handler: async (ctx) => {
     if (!isServerEdition()) return null;
-    const s = await readServerSettings(ctx);
-    return { mode: s.ai.mode, configured: aiConfigured(s), gemini: s.ai.gemini ?? null, openai: s.ai.openai ?? null };
+    return serverAiSettingsOf(await readServerSettings(ctx));
   },
 });
 

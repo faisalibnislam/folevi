@@ -17,11 +17,11 @@ import (
 
 // Targets are the three upstreams.
 type Targets struct {
-	Web     *url.URL // http://127.0.0.1:3501
-	Convex  *url.URL // http://127.0.0.1:3510
-	Site    *url.URL // http://127.0.0.1:3511
-	Scheme  string   // "http" or "https", for X-Forwarded-Proto
-	Logger  *slog.Logger
+	Web    *url.URL // http://127.0.0.1:3501
+	Convex *url.URL // http://127.0.0.1:3510
+	Site   *url.URL // http://127.0.0.1:3511
+	Scheme string   // "http" or "https", for X-Forwarded-Proto
+	Logger *slog.Logger
 	// Starting reports whether services are still coming up; upstream connection errors then get a
 	// friendly "starting" page instead of a bare 502.
 	Starting func() bool

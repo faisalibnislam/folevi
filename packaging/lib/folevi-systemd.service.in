@@ -1,0 +1,23 @@
+# Folevi Server systemd unit for NAS systems that use systemd (TerraMaster TOS 6, UGREEN UGOS Pro).
+# Unverified on those systems: test on real hardware.
+[Unit]
+Description=Folevi Server
+After=network-online.target local-fs.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=folevi
+Group=folevi
+Environment=FOLEVI_PACKAGE=@PLATFORM@
+EnvironmentFile=-@APP_DIR@/folevi.env
+ExecStart=@APP_DIR@/bundle/bin/folevid run --data ${FOLEVI_DATA} --bundle @APP_DIR@/bundle
+KillMode=mixed
+TimeoutStopSec=60
+Restart=on-failure
+RestartSec=5
+RestartPreventExitStatus=2
+NoNewPrivileges=true
+
+[Install]
+WantedBy=multi-user.target

@@ -18,11 +18,23 @@ function passwordProblem(password: string, email: string): string | null {
   return null;
 }
 
-export function SignUpForm({ template, social = { google: false, apple: false }, adding = false }: { template?: string; social?: { google: boolean; apple: boolean }; adding?: boolean }) {
+/**
+ * Folevi Server's sign-up (lib/edition.ts): the server's name in the heading, where to go next (an invite's page),
+ * and whether the address is confirmed by email (only when the server sends email; otherwise the new account is
+ * signed in at once).
+ */
+export interface ServerSignUp {
+  serverName: string | null;
+  returnTo?: string;
+  email?: string;
+  confirmByEmail: boolean;
+}
+
+export function SignUpForm({ template, social = { google: false, apple: false }, adding = false, server }: { template?: string; social?: { google: boolean; apple: boolean }; adding?: boolean; server?: ServerSignUp }) {
   // A template picked on folevi.com opens as the first page after sign-up (Shell), in this browser.
   useEffect(() => rememberTemplate(template), [template]);
   const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(server?.email ?? "");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -30,12 +42,19 @@ export function SignUpForm({ template, social = { google: false, apple: false },
   const [sentTo, setSentTo] = useState<string | null>(null);
 
   const offered = [social.apple ? "Apple" : null, social.google ? "Google" : null].filter(Boolean).join(" or ");
-  if (sentTo) return <CheckInbox email={sentTo} callbackURL={signUpCallback(template ?? pendingTemplate()?.key)} />;
+  const callbackURL = server?.returnTo ?? signUpCallback(template ?? pendingTemplate()?.key);
+  if (sentTo) return <CheckInbox email={sentTo} callbackURL={callbackURL} />;
+  const where = server?.serverName ? ` on ${server.serverName}` : "";
+  const lede = server
+    ? `Create your Folevi account${where}${offered ? ` with ${offered}, or with your email` : ""}.${server.confirmByEmail ? " We'll email you a link to confirm your address." : ""}`
+    : offered
+      ? `Create your Folevi account with ${offered}, or with your email (we'll email you a link to confirm it).`
+      : "Create your Folevi account. We'll email you a link to confirm your address.";
 
   return (
     <>
-      <AuthHeading title="Start writing" lede={offered ? `Create your Folevi account with ${offered}, or with your email (we'll email you a link to confirm it).` : "Create your Folevi account. We'll email you a link to confirm your address."} />
-      <SocialSignIn providers={social} returnTo={signUpCallback(template ?? pendingTemplate()?.key)} />
+      <AuthHeading title="Start writing" lede={lede} />
+      <SocialSignIn providers={social} returnTo={callbackURL} />
       <form
         className="space-y-4"
         noValidate
@@ -56,9 +75,15 @@ export function SignUpForm({ template, social = { google: false, apple: false },
             name: name.trim().slice(0, 80),
             email: trimmedEmail,
             password,
-            callbackURL: signUpCallback(template ?? pendingTemplate()?.key),
+            callbackURL,
           });
           setBusy(false);
+          // A server without email signs the new account in at once (no link to confirm): on to the next page.
+          if (server && !server.confirmByEmail) {
+            if (err) setError(err.code === "USER_ALREADY_EXISTS" || err.code === "USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL" ? "There's already an account with that email here. Sign in instead." : authErrorMessage(err, undefined, "up to an hour"));
+            else window.location.assign(callbackURL);
+            return;
+          }
           // An address that already has an account gets the same answer (no account enumeration).
           if (err?.code === "PASSWORD_COMPROMISED") {
             setFieldError({ password: authErrorMessage(err) });
@@ -87,13 +112,13 @@ export function SignUpForm({ template, social = { google: false, apple: false },
           error={fieldError.password}
         />
         <SubmitButton busy={busy}>Create account</SubmitButton>
-        <p className="text-footnote leading-relaxed text-muted">
+        <p className="text-footnote leading-relaxed text-muted" hidden={Boolean(server)}>
           By creating an account you agree to the <TextLink href={`${websiteUrl()}/terms`}>Terms</TextLink> and{" "}
           <TextLink href={`${websiteUrl()}/privacy`}>Privacy Policy</TextLink>.
         </p>
       </form>
       <p className="mt-6 text-subheadline text-muted">
-        Already have an account? <TextLink href={adding ? "/signin?add=1" : "/signin"}>Sign in</TextLink>
+        Already have an account? <TextLink href={adding ? "/signin?add=1" : server?.returnTo ? `/signin?returnTo=${encodeURIComponent(server.returnTo)}` : "/signin"}>Sign in</TextLink>
       </p>
     </>
   );

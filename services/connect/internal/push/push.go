@@ -46,7 +46,7 @@ type Sender interface {
 
 var (
 	apnsTokenRe = regexp.MustCompile(`^[0-9a-f]{64,200}$`)
-	fcmTokenRe  = regexp.MustCompile(`^[A-Za-z0-9_:\-.]{20,4096}$`)
+	fcmTokenRe  = regexp.MustCompile(`^[A-Za-z0-9_:\-.]{20,1000}$`)
 	dataKeyRe   = regexp.MustCompile(`^[A-Za-z][A-Za-z0-9_]{0,31}$`)
 )
 

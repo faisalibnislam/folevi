@@ -9,7 +9,6 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	"errors"
-	"io"
 	"log/slog"
 	"net"
 	"net/http"
@@ -343,4 +342,3 @@ func validAccount(s string) bool {
 	}
 	return true
 }
-

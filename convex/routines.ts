@@ -29,7 +29,7 @@ import { fail } from "./lib/errors";
 import { aiAccountFor, estimateCredits } from "./lib/credits";
 import { consume } from "./lib/rateLimit";
 import { personalScope, vScopeArg, workspaceScope, type Scope } from "./lib/scope";
-import { provider } from "./lib/ai/provider";
+import { provider, loadAiSettings } from "./lib/ai/provider";
 import { indexEligible } from "./lib/ai/indexing";
 import { unfence } from "./lib/ai/writing";
 import { localDay, nextDigestAt } from "./lib/ai/digest";
@@ -110,6 +110,7 @@ const scopeOf = (profile: Doc<"profiles">, workspaceId: Id<"workspaces"> | undef
 
 /** Whether the plan whose credits pay in `scope` includes routines (Pro or Pro AI, a trial counting as Pro AI). */
 async function routinesIncluded(ctx: Ctx, profile: Doc<"profiles">, scope: Scope): Promise<boolean> {
+  await loadAiSettings(ctx);
   const access = await aiAccountFor(ctx, profile, scope);
   return access.allowed && routineTier(access.account.tier);
 }

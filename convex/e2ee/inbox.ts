@@ -14,7 +14,8 @@
 // Who applies an item: an email or an app's write belongs to the person it came for (`appliedBy` holds that
 // person while the item waits, and keeps them once applied), so in a workspace only their devices see it.
 import { v } from "convex/values";
-import { internalMutation, mutation, query, type QueryCtx } from "../_generated/server";
+import { query, type QueryCtx } from "../_generated/server";
+import { internalMutation, mutation } from "../lib/functions";
 import { internal } from "../_generated/api";
 import type { Doc } from "../_generated/dataModel";
 import { assertWritable, requireProfile, resolveScope } from "../lib/auth";

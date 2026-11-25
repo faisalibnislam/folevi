@@ -3,7 +3,8 @@
 // file key; only ciphertext is stored, and it counts toward the place's storage). Opening, downloading, moving in
 // and out, and the Vault's Trash are all logged. Password items are in vaultItems.ts, which this shares checks with.
 import { v } from "convex/values";
-import { internalMutation, mutation, query } from "./_generated/server";
+import { query } from "./_generated/server";
+import { internalMutation, mutation } from "./lib/functions";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
 import type { Doc, Id } from "./_generated/dataModel";
 import { assertWritable, requireProfile } from "./lib/auth";

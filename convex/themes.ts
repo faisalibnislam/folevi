@@ -1,6 +1,7 @@
 // Note themes for the app (lib/themes.ts explains them; adminThemes.ts is the admin's Theme manager).
 import { v } from "convex/values";
-import { internalMutation, query, type QueryCtx } from "./_generated/server";
+import { query, type QueryCtx } from "./_generated/server";
+import { internalMutation } from "./lib/functions";
 import { internal } from "./_generated/api";
 import type { Doc } from "./_generated/dataModel";
 import { accessAtLeast, documentAccess, getDocumentByPublicId, optionalProfile } from "./lib/auth";

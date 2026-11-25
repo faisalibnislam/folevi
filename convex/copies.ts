@@ -14,7 +14,8 @@
 // Moving between places isn't offered: a copy leaves the original where it was.
 import { v } from "convex/values";
 import { failE2ee, requirePlainWriteInScope } from "./lib/e2ee/state";
-import { mutation, type MutationCtx } from "./_generated/server";
+import { type MutationCtx } from "./_generated/server";
+import { mutation } from "./lib/functions";
 import type { Doc, Id } from "./_generated/dataModel";
 import { LIMITS, SCHEMA_VERSION, evaluateCollectionFormulas, ulid, type InlineNode, type WireBlock } from "@folevi/editor-schema";
 import { assertWritable, getDocumentByPublicId, PageReader, requireDocument, requireProfile, resolveScope } from "./lib/auth";

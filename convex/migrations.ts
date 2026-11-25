@@ -1,7 +1,8 @@
 // One-off data backfills. Each runs in small batches and reschedules itself until done, so it is safe on
 // large deployments. Run with `npx convex run migrations:<name>`.
 import { v, type Infer } from "convex/values";
-import { internalAction, internalMutation, internalQuery } from "./_generated/server";
+import { internalAction, internalQuery } from "./_generated/server";
+import { internalMutation } from "./lib/functions";
 import { internal } from "./_generated/api";
 import type { Doc, Id } from "./_generated/dataModel";
 import { liveBlocks, refreshDerived, syncTaskProjection } from "./lib/documents";
@@ -9,9 +10,10 @@ import { studyKindOf, syncStudyCard } from "./lib/study";
 import { hasTaskTitle, randomNoteEmoji, randomNoteCover } from "@folevi/editor-schema";
 import { currentFolderColor, isFolderColor, randomFolderColor } from "./lib/folderColors";
 import { startTrial } from "./lib/billing";
-import { hasValidScope, SCOPED_TABLES, sameScope, scopeOfRow, type ScopedTable } from "./lib/scope";
+import { hasValidScope, personalScope, SCOPED_TABLES, sameScope, scopeOfRow, workspaceScope, type ScopedTable } from "./lib/scope";
 import { isSealed } from "./lib/e2ee/state";
 import { nextSeq } from "./lib/seq";
+import { buildDraftStats, buildFolderStats } from "./lib/listStats";
 
 /** Fills in the card preview (documents.preview) for pages saved before previews existed. */
 export const backfillDocumentPreviews = internalMutation({
@@ -539,5 +541,69 @@ export const accountModelReport = internalQuery({
       ...r.counts,
       tables: r.tables,
     };
+  },
+});
+
+/**
+ * Builds the folder and Drafts stats (listStats, lib/listStats.ts) for folders and scopes made before they
+ * existed. Each folder and each scope's Drafts is built in its own transaction from its pages; one that can't
+ * be (too large to read at once) is skipped and keeps being counted from its pages, as before. Idempotent:
+ * ones with stats are left alone, and writes keep the stats in step from then on.
+ *
+ *   npx convex run migrations:backfillListStats
+ */
+export const backfillListStats = internalAction({
+  args: {},
+  handler: async (ctx): Promise<{ folders: number; scopes: number; skipped: number }> => {
+    let folders = 0;
+    let scopes = 0;
+    let skipped = 0;
+    for (const table of ["folders", "profiles", "workspaces"] as const) {
+      let cursor: string | null = null;
+      for (;;) {
+        const page: { ids: string[]; isDone: boolean; continueCursor: string } = await ctx.runQuery(internal.migrations.listStatsPage, { table, cursor });
+        for (const id of page.ids) {
+          try {
+            const built: boolean = await ctx.runMutation(internal.migrations.buildListStats, { table, id });
+            if (built) {
+              if (table === "folders") folders++;
+              else scopes++;
+            }
+          } catch {
+            skipped++;
+          }
+        }
+        if (page.isDone) break;
+        cursor = page.continueCursor;
+      }
+    }
+    return { folders, scopes, skipped };
+  },
+});
+
+export const listStatsPage = internalQuery({
+  args: { table: v.union(v.literal("folders"), v.literal("profiles"), v.literal("workspaces")), cursor: v.union(v.string(), v.null()) },
+  handler: async (ctx, args) => {
+    const page = await ctx.db.query(args.table).paginate({ cursor: args.cursor, numItems: 100 });
+    const ids = page.page.filter((r) => !("deletedAt" in r && r.deletedAt !== undefined)).map((r) => r._id as string);
+    return { ids, isDone: page.isDone, continueCursor: page.continueCursor };
+  },
+});
+
+export const buildListStats = internalMutation({
+  args: { table: v.union(v.literal("folders"), v.literal("profiles"), v.literal("workspaces")), id: v.string() },
+  handler: async (ctx, args) => {
+    if (args.table === "folders") {
+      const id = ctx.db.normalizeId("folders", args.id);
+      const folder = id ? await ctx.db.get(id) : null;
+      return folder && folder.deletedAt === undefined ? await buildFolderStats(ctx, folder) : false;
+    }
+    if (args.table === "profiles") {
+      const id = ctx.db.normalizeId("profiles", args.id);
+      return id ? await buildDraftStats(ctx, personalScope(id)) : false;
+    }
+    const id = ctx.db.normalizeId("workspaces", args.id);
+    const workspace = id ? await ctx.db.get(id) : null;
+    return workspace && workspace.status !== "deleting" ? await buildDraftStats(ctx, workspaceScope(workspace._id)) : false;
   },
 });

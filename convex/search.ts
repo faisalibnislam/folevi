@@ -1,5 +1,6 @@
 import { v } from "convex/values";
-import { action, internalMutation, query, type QueryCtx } from "./_generated/server";
+import { action, query, type QueryCtx } from "./_generated/server";
+import { internalMutation } from "./lib/functions";
 import { internal } from "./_generated/api";
 import { hybridSearch } from "./aiIndex";
 import { indexEligible } from "./lib/ai/indexing";

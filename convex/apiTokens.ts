@@ -10,7 +10,8 @@
 // share extension, Shortcuts and Spotlight can reach Folevi: listed here like any other token ("Folevi for
 // iPhone (iPhone 18 Pro)"), revocable the same way, and revoked by the app when the person signs out.
 import { v } from "convex/values";
-import { internalMutation, internalQuery, mutation, query, type MutationCtx, type QueryCtx } from "./_generated/server";
+import { internalQuery, query, type MutationCtx, type QueryCtx } from "./_generated/server";
+import { internalMutation, mutation } from "./lib/functions";
 import type { Doc, Id } from "./_generated/dataModel";
 import { assertWritable, requireProfile, resolveScope } from "./lib/auth";
 import { fail } from "./lib/errors";

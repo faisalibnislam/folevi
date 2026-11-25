@@ -4,7 +4,8 @@
 // shows in the Templates list and the template picker like any other.
 import { v } from "convex/values";
 import { requireServerCompose } from "./lib/e2ee/ai";
-import { mutation, type MutationCtx } from "./_generated/server";
+import { type MutationCtx } from "./_generated/server";
+import { mutation } from "./lib/functions";
 import type { Doc } from "./_generated/dataModel";
 import { linkPeople, markdownToBlocks, type MentionablePerson } from "@folevi/editor-schema";
 import { assertWritable, requireProfile, resolveScope } from "./lib/auth";

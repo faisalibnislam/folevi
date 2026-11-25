@@ -4,7 +4,8 @@
 // VAPID_SUBJECT), the iOS app from apnsSend.ts (the APNS_* keys, lib/apns.ts). What's pushed follows the
 // bell's choices for each kind; lib/push.ts schedules both.
 import { v } from "convex/values";
-import { internalMutation, internalQuery, mutation, query } from "./_generated/server";
+import { internalQuery, query } from "./_generated/server";
+import { internalMutation, mutation } from "./lib/functions";
 import { requireProfile } from "./lib/auth";
 import { fail } from "./lib/errors";
 import { APNS_TOKEN_RE, apnsConfig } from "./lib/apns";

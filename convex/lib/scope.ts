@@ -33,6 +33,7 @@ export const workspaceScope = (workspaceId: Id<"workspaces">): WorkspaceScope =>
 /** Tables whose rows belong to a scope. */
 export const SCOPED_TABLES = [
   "folders",
+  "listStats",
   "tags",
   "documentTags",
   "documents",
@@ -144,6 +145,7 @@ export function scopeKey(scope: Scope): string {
 /** For each scoped table, an index whose first field is `workspaceId` / `ownerProfileId`. */
 const WORKSPACE_INDEX: Record<ScopedTable, string> = {
   folders: "by_workspace",
+  listStats: "by_workspace_folder",
   tags: "by_workspace",
   documentTags: "by_workspace",
   documents: "by_workspace_created",
@@ -207,6 +209,7 @@ const WORKSPACE_INDEX: Record<ScopedTable, string> = {
 };
 const OWNER_INDEX: Record<ScopedTable, string> = {
   folders: "by_owner",
+  listStats: "by_owner_folder",
   tags: "by_owner",
   documentTags: "by_owner",
   documents: "by_owner_created",

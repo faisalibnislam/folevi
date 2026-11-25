@@ -64,6 +64,18 @@ function RecentCard({ doc }: { doc: Summary }) {
 }
 
 /** A note as a row (Bookmarks), with its actions on a long press. */
+/** Answers whose arguments move with the clock (each minute, each 5 minutes) miss any cache: the last one seen this
+ * session stands in until the new one arrives, so the Changes count and the Reviews tile don't drop out and come
+ * back on a Home visit (the iPhone draws Home anew each time). */
+const held = new Map<string, unknown>();
+function useHeld<T>(key: string, value: T | undefined): T | undefined {
+  if (value !== undefined) {
+    held.set(key, value);
+    return value;
+  }
+  return held.get(key) as T | undefined;
+}
+
 export function NoteRow({ doc }: { doc: Summary }) {
   const [ctx, setCtx] = useState<{ x: number; y: number } | null>(null);
   return (
@@ -108,8 +120,8 @@ export function IphoneHome() {
   const graph = useCanCall(api.aiGraph.graph);
   const changes = useOfflineQuery(api.changes.list, caps.changes ? {} : "skip");
   const minute = useMinute();
-  const proposed = useQuery(api.proposals.count, caps.changes ? { now: minute } : "skip");
-  const reviews = useOfflineQuery(api.study.summary, useReviewWindow(5 * 60_000));
+  const proposed = useHeld(`proposals:${JSON.stringify(scope)}`, useQuery(api.proposals.count, caps.changes ? { now: minute } : "skip"));
+  const reviews = useHeld(`reviews:${JSON.stringify(scope)}`, useOfflineQuery(api.study.summary, useReviewWindow(5 * 60_000)));
   // The Vault, for whoever has one here, as the sidebar lists it (Sidebar.tsx): the phone has no sidebar.
   const mode = useBackendMode();
   const canVault = useCanCall(api.vault.get);

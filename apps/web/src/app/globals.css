@@ -968,6 +968,14 @@
    WebKit (docs/IOS_PERFORMANCE.md). */
 [data-iphone-picture], [data-iphone-picture] * { filter: none !important; box-shadow: none !important; -webkit-backdrop-filter: none !important; backdrop-filter: none !important; }
 
+/* The phone's press feedback waits a beat before it shows, as UIKit's does in a scroll view, so a scroll that
+   starts on a card, tile, row or glass button doesn't flash it pressed; a tap still shows it (letting go has no
+   delay). The owner's feedback, 2026-11-25: the app felt finicky. */
+:root[data-iphone] :is(.ui-glass-press, [class*="active:scale-"], [class*="active:bg-"]):active { transition-delay: 70ms !important; }
+/* A note opened on the phone arrives with the screen's own zoom or push: the page doesn't also fade and tilt in
+   (folio-settle), which ran on top of the move and made opening a note look loose. */
+:root[data-iphone] .fb-sheet.ui-sheet { animation: none; }
+
 /* ------------------------------------------------------------------------------------------------
  * iOS polish WP1: the shell, lists and Home on the iPhone (docs/IOS_POLISH_PLAN.md §2). Phone layout only.
  * --------------------------------------------------------------------------------------------- */

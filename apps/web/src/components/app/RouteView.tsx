@@ -21,6 +21,26 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { Waypoints } from "lucide-react";
 import { SignInToCollaborate } from "./SignInToCollaborate";
 
+/**
+ * A page loaded when it's first opened, that can also be fetched ahead (`preload`): once its code is here, lazy() is
+ * handed it on the spot and draws the page in the same turn instead of its empty frame first.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function soon<C extends React.ComponentType<any>>(load: () => Promise<C>): [React.LazyExoticComponent<C>, () => Promise<C>] {
+  let ready: C | null = null;
+  const fetch = () =>
+    load().then((c) => {
+      ready = c;
+      return c;
+    });
+  const View = lazy(() => {
+    const here = ready;
+    if (here) return { then: (resolve: (m: { default: C }) => void) => resolve({ default: here }) } as unknown as Promise<{ default: C }>;
+    return fetch().then((c) => ({ default: c }));
+  });
+  return [View, fetch];
+}
+
 // A note's page brings the editor, which is most of the app's code: it loads on its own, so the first
 // screen paints without it. It starts downloading straight away when the app opens on a note (alongside
 // signing in), otherwise as soon as the first screen is up, so a new note is ready to type in.
@@ -32,7 +52,7 @@ const DocumentView = lazy(() => {
   if (ready) return { then: (resolve: (m: { default: typeof ready }) => void) => resolve({ default: ready }) } as unknown as Promise<{ default: typeof ready }>;
   return loadDocumentView().then((m) => ({ default: m.DocumentView }));
 });
-const SettingsView = lazy(() => import("@/components/views/SettingsView").then((m) => ({ default: m.SettingsView })));
+const [SettingsView, preloadSettings] = soon(() => import("@/components/views/SettingsView").then((m) => m.SettingsView));
 // The Foli AI page (its chat) and the graph load when they're opened, never with the first screen
 // (docs/MAC_WEBKIT_PLAN.md "Memory", step 4).
 const AiView = lazy(() => import("@/components/views/AiView").then((m) => ({ default: m.AiView })));
@@ -40,13 +60,13 @@ const GraphView = lazy(() => import("@/components/views/GraphView").then((m) => 
 // Pages a few people open now and then load when they're opened too: Changes and Reviews (each brings the
 // read-only drawing of every kind of block), Shared with Me, Help and the invitations. Kept out of the code
 // every launch reads before the first screen (docs/IOS_PERFORMANCE.md, "Startup").
-const ReviewView = lazy(() => import("@/components/views/ReviewView").then((m) => ({ default: m.ReviewView })));
-const ChangesView = lazy(() => import("@/components/views/ChangesView").then((m) => ({ default: m.ChangesView })));
-const SharedView = lazy(() => import("@/components/views/SharedView").then((m) => ({ default: m.SharedView })));
+const [ReviewView, preloadReview] = soon(() => import("@/components/views/ReviewView").then((m) => m.ReviewView));
+const [ChangesView, preloadChanges] = soon(() => import("@/components/views/ChangesView").then((m) => m.ChangesView));
+const [SharedView, preloadShared] = soon(() => import("@/components/views/SharedView").then((m) => m.SharedView));
 const HelpView = lazy(() => import("@/components/views/HelpView").then((m) => ({ default: m.HelpView })));
 const InviteView = lazy(() => import("@/components/views/InviteView").then((m) => ({ default: m.InviteView })));
 const ShareInviteView = lazy(() => import("@/components/views/ShareInviteView").then((m) => ({ default: m.ShareInviteView })));
-const VaultView = lazy(() => import("@/components/vault/VaultView").then((m) => ({ default: m.VaultView })));
+const [VaultView, preloadVault] = soon(() => import("@/components/vault/VaultView").then((m) => m.VaultView));
 const SharedFolderView = lazy(() => import("@/components/views/SharedFolderView").then((m) => ({ default: m.SharedFolderView })));
 const FolderInviteView = lazy(() => import("@/components/views/FolderInviteView").then((m) => ({ default: m.FolderInviteView })));
 
@@ -78,6 +98,33 @@ export function RouteView() {
   useEffect(() => {
     void loadDocumentView();
   }, []);
+  // On the phone a screen slides in: the pages kept out of the first screen's code are fetched once the app is
+  // idle, one after another, so opening one slides in the page itself, not its empty frame with the rest popping
+  // in mid-move. (Not on the Mac or the web, where they wait to be opened: docs/MAC_WEBKIT_PLAN.md "Memory".)
+  const iphone = useIphoneApp();
+  useEffect(() => {
+    if (!iphone) return;
+    let stopped = false;
+    const w = window as Window & { requestIdleCallback?: (cb: () => void, o?: { timeout: number }) => number; cancelIdleCallback?: (id: number) => void };
+    const run = async () => {
+      for (const load of [preloadSettings, preloadChanges, preloadShared, preloadReview, preloadVault]) {
+        if (stopped) return;
+        await load().catch(() => undefined);
+      }
+    };
+    if (w.requestIdleCallback) {
+      const id = w.requestIdleCallback(() => void run(), { timeout: 6000 });
+      return () => {
+        stopped = true;
+        w.cancelIdleCallback?.(id);
+      };
+    }
+    const t = setTimeout(() => void run(), 3000);
+    return () => {
+      stopped = true;
+      clearTimeout(t);
+    };
+  }, [iphone]);
   return <Routes />;
 }
 

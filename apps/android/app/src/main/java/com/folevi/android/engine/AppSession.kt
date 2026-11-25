@@ -41,6 +41,15 @@ class AppSession(context: Context, private val scope: CoroutineScope, demo: Bool
     /** Where the note page sits in the window (set by the note pane while it is on screen). */
     val noteSlot = mutableStateOf<Rect?>(null)
 
+    /**
+     * The note page's native chrome (NoteScreen): drawn on a layer above the Page View, over the note pane, so its
+     * glass bars float over the page as on the web. Touches that miss the chrome reach the page.
+     */
+    val noteOverlay = mutableStateOf<(@androidx.compose.runtime.Composable () -> Unit)?>(null)
+
+    /** The app's appearance (the overlay layer's theme follows the main one). */
+    val dark = mutableStateOf(false)
+
     /** Routes the page itself to one of its own routes (`/drafts`), for screens the web draws in the note pane. */
     fun openRoute(route: String) {
         if (page == null) return

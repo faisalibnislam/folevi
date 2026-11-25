@@ -5,7 +5,8 @@
 // stored or logged. Products in Polar are never edited or archived from here: a product that differs is
 // reported, to be fixed in Polar (or used anyway, which is recorded). docs/BILLING.md.
 import { v } from "convex/values";
-import { action, internalMutation, internalQuery, mutation, query } from "./_generated/server";
+import { action, internalQuery, query } from "./_generated/server";
+import { internalMutation, mutation } from "./lib/functions";
 import { internal } from "./_generated/api";
 import type { Doc } from "./_generated/dataModel";
 import type { ActionCtx, MutationCtx, QueryCtx } from "./_generated/server";

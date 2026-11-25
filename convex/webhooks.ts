@@ -10,7 +10,8 @@
 // Payloads are minimal on purpose: notes carry their title and link, never their content; tasks carry
 // their text (that's what a task is); comments carry ids and the note's link, never the comment's words.
 import { v } from "convex/values";
-import { internalAction, internalMutation, mutation, query, type MutationCtx } from "./_generated/server";
+import { internalAction, query, type MutationCtx } from "./_generated/server";
+import { internalMutation, mutation } from "./lib/functions";
 import { internal } from "./_generated/api";
 import type { Doc, Id } from "./_generated/dataModel";
 import { ulid } from "@folevi/editor-schema";

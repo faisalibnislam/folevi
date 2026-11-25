@@ -287,6 +287,36 @@ export default defineSchema({
     .index("by_workspace_seq", ["workspaceId", "seq"])
     .index("by_owner_seq", ["ownerProfileId", "seq"]),
 
+  /**
+   * Per folder, and per scope for its Drafts (folderId unset): how many pages the list shows, when a folder's
+   * pages last changed and its newest pages as card previews. Derived, kept in step by every write to a note
+   * (lib/listStats.ts through lib/functions.ts), so folder views and counts needn't read the pages.
+   */
+  listStats: defineTable({
+    ...scoped,
+    folderId: v.optional(v.id("folders")),
+    count: v.number(),
+    lastEditedAt: v.optional(v.number()),
+    previews: v.array(
+      v.object({
+        documentId: v.id("documents"),
+        updatedAt: v.number(),
+        /** The page's _creationTime (ties in time are ordered by it). */
+        created: v.number(),
+        createdAt: v.number(),
+        title: v.string(),
+        cover: vDocumentCover,
+        excerpt: v.string(),
+        restricted: v.optional(v.boolean()),
+        /** A sealed note's sealed title and appearance (lib/e2ee/sealedRows.ts sealedFieldsOf). */
+        sealed: v.optional(v.any()),
+      }),
+    ),
+  })
+    .index("by_folder", ["folderId"])
+    .index("by_owner_folder", ["ownerProfileId", "folderId"])
+    .index("by_workspace_folder", ["workspaceId", "folderId"]),
+
   tags: defineTable({
     publicId: v.string(),
     ...scoped,
@@ -1293,6 +1323,13 @@ export default defineSchema({
     createdBy: v.id("profiles"),
     updatedAt: v.number(),
     documentInTrash: v.boolean(),
+    /**
+     * The note's title and icon, kept in step (lib/documents.ts syncTaskProjection, syncTaskLabels) so task lists
+     * needn't read each note. Unset on rows saved before they were kept; lists then read the note.
+     */
+    documentPublicId: v.optional(v.string()),
+    documentTitle: v.optional(v.string()),
+    documentIcon: v.optional(v.string()),
   })
     .index("by_block", ["blockId"])
     .index("by_document", ["documentId"])

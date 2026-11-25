@@ -3,7 +3,8 @@
 // check value, a self-signed statement, and the AMK wrapped for each way in (a trusted device, the recovery
 // key, a passkey, the passphrase). WP2.
 import { v } from "convex/values";
-import { internalMutation, mutation, query } from "../_generated/server";
+import { query } from "../_generated/server";
+import { internalMutation, mutation } from "../lib/functions";
 import type { Doc, Id } from "../_generated/dataModel";
 import { ulid } from "@folevi/editor-schema";
 import { assertWritable, requireIdentity, requireProfile, sessionIdOf } from "../lib/auth";

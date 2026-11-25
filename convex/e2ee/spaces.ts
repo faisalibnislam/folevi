@@ -4,7 +4,8 @@
 import { v } from "convex/values";
 import { makeFunctionReference } from "convex/server";
 import { inboxDocumentId, scopeIdKey } from "@folevi/editor-schema";
-import { mutation, query } from "../_generated/server";
+import { query } from "../_generated/server";
+import { mutation } from "../lib/functions";
 import { legacyPersonalInbox } from "../tasks";
 import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";

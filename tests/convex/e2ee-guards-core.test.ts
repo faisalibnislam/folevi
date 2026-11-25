@@ -18,6 +18,7 @@ import { copyCollectionsInto } from "../../convex/lib/collections";
 import { proposeAppend } from "../../convex/proposals";
 import { markerNeedles } from "../../convex/testSupport";
 import { join, para, person, PERSONAL, setup, teamWorkspace, ulid, inWorkspace, type ScopeArg, type T } from "./helpers";
+import { watchedDb } from "../../convex/lib/functions";
 
 type Person = Awaited<ReturnType<typeof person>>;
 
@@ -92,7 +93,8 @@ async function encrypt(t: T, scope: Scope, by: Person, level: "standard" | "sele
 async function seal(t: T, publicId: string, opts: { keepPlain?: boolean; locked?: boolean } = {}) {
   await t.run(async (ctx) => {
     const doc = (await ctx.db.query("documents").withIndex("by_public_id", (q) => q.eq("publicId", publicId)).unique())!;
-    await ctx.db.patch(doc._id, {
+    // Through the app's write hook, as sealing a note does (its task rows drop their title, lib/functions.ts).
+    await watchedDb(ctx as never).patch(doc._id, {
       sealedAt: Date.now(),
       sealedTitle: { ...sealedField(`title-${publicId}`), mac: MAC },
       sealedAppearance: sealedField(`appearance-${publicId}`),

@@ -1,7 +1,8 @@
 // Platform administration. Every entry point enforces platform roles server-side and every mutation
 // or sensitive view writes an immutable audit record. There is deliberately no document-content viewer.
 import { v } from "convex/values";
-import { internalMutation, mutation, query } from "./_generated/server";
+import { query } from "./_generated/server";
+import { internalMutation, mutation } from "./lib/functions";
 import { internal } from "./_generated/api";
 import type { Doc, Id } from "./_generated/dataModel";
 import type { MutationCtx } from "./_generated/server";

@@ -10,7 +10,8 @@
 import { v } from "convex/values";
 import { failE2ee } from "./lib/e2ee/state";
 import { sealedFieldsOf } from "./lib/e2ee/sealedRows";
-import { mutation, query } from "./_generated/server";
+import { query } from "./_generated/server";
+import { mutation } from "./lib/functions";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
 import type { Doc, Id } from "./_generated/dataModel";
 import type { WireBlock } from "@folevi/editor-schema";
@@ -49,10 +50,10 @@ function kindOf(b: Doc<"blocks">, seenAt: number): "added" | "edited" | "removed
 }
 
 /** A note's lines changed by others since `seenSeq`, oldest change first. */
-async function changedLines(ctx: QueryCtx | MutationCtx, doc: Doc<"documents">, me: Id<"profiles">, seenSeq: number, limit: number) {
+async function changedLines(ctx: QueryCtx | MutationCtx, documentId: Id<"documents">, me: Id<"profiles">, seenSeq: number, limit: number) {
   const rows = await ctx.db
     .query("blocks")
-    .withIndex("by_document_seq", (q) => q.eq("documentId", doc._id).gt("seq", seenSeq))
+    .withIndex("by_document_seq", (q) => q.eq("documentId", documentId).gt("seq", seenSeq))
     .take(limit);
   return { lines: rows.filter(byOthers(me)), more: rows.length === limit };
 }
@@ -77,13 +78,14 @@ export const list = query({
       .withIndex("by_profile_viewed", (q) => q.eq("profileId", profile._id))
       .order("desc")
       .take(CANDIDATES);
+    // The note open in front of them: skipped before its lines are read (an edit there needn't re-run this).
+    const excluded = args.exclude ? (await getDocumentByPublicId(ctx, args.exclude))?._id : undefined;
     const people = new People(ctx);
     const notes = [];
     for (const r of rows) {
-      if (r.seenSeq === undefined || r.seenAt === undefined) continue;
-      const doc = await ctx.db.get(r.documentId);
-      if (!doc || doc.inTrash || doc.publicId === args.exclude) continue;
-      const { lines, more } = await changedLines(ctx, doc, profile._id, r.seenSeq, LINES_PER_NOTE);
+      if (r.seenSeq === undefined || r.seenAt === undefined || r.documentId === excluded) continue;
+      // The lines first: most opened notes have no unseen changes, and those cost no note read.
+      const { lines, more } = await changedLines(ctx, r.documentId, profile._id, r.seenSeq, LINES_PER_NOTE);
       const counts = { added: 0, edited: 0, removed: 0 };
       const actors = new Map<string, number>();
       let at = 0;
@@ -96,6 +98,8 @@ export const list = query({
         at = Math.max(at, b.deletedAt ?? b.updatedAt);
       }
       if (!actors.size) continue;
+      const doc = await ctx.db.get(r.documentId);
+      if (!doc || doc.inTrash) continue;
       // (Checked last: only notes that changed cost the access check.)
       if (!accessAtLeast(await documentAccess(ctx, profile, doc), "read")) continue;
       const sealed = sealedFieldsOf(doc);
@@ -134,7 +138,7 @@ export const note = query({
     const row = await seenRow(ctx, profile._id, doc._id);
     if (row?.seenSeq === undefined || row.seenAt === undefined) return null;
     const seenAt = row.seenAt;
-    const { lines, more } = await changedLines(ctx, doc, profile._id, row.seenSeq, LINES_PER_DETAIL);
+    const { lines, more } = await changedLines(ctx, doc._id, profile._id, row.seenSeq, LINES_PER_DETAIL);
     const canEdit = accessAtLeast(access, "write");
     const base = canEdit && row.seenVersionId ? await ctx.db.get(row.seenVersionId) : null;
     const before = base && base.documentId === doc._id ? await versionBlocks(ctx, base) : null;
@@ -282,7 +286,7 @@ export const undo = mutation({
     const base = row?.seenVersionId ? await ctx.db.get(row.seenVersionId) : null;
     const before = base && base.documentId === doc._id ? await versionBlocks(ctx, base) : null;
     if (!row || row.seenSeq === undefined || !before) fail("not_found", "The version from when you last looked is gone. Open version history to go back further.");
-    const { lines, more } = await changedLines(ctx, doc, profile._id, row.seenSeq, LINES_PER_DETAIL);
+    const { lines, more } = await changedLines(ctx, doc._id, profile._id, row.seenSeq, LINES_PER_DETAIL);
     if (more) fail("limit_exceeded", "That's too many changes to undo here. Open version history instead.");
     const was = new Map(before.map((b) => [b.id, b]));
     const page = new Map((await liveBlocks(ctx, doc._id)).map((b) => [b.blockId, toWireBlock(b)]));

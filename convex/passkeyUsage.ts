@@ -4,7 +4,8 @@
 // any left over are pruned on the owner's next sign-in) and with the account (maintenance.ts purgeAccount).
 import { v } from "convex/values";
 import { components } from "./_generated/api";
-import { internalMutation, query } from "./_generated/server";
+import { query } from "./_generated/server";
+import { internalMutation } from "./lib/functions";
 import type { MutationCtx } from "./_generated/server";
 import { requireProfile } from "./lib/auth";
 

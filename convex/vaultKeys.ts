@@ -3,7 +3,8 @@
 // open either layer, so passcodes are checked on the device; the server logs every unlock it serves, counts the
 // wrong passcodes the device reports, and locks the person out for a while after too many.
 import { v } from "convex/values";
-import { mutation, query } from "./_generated/server";
+import { query } from "./_generated/server";
+import { mutation } from "./lib/functions";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
 import type { Doc, Id } from "./_generated/dataModel";
 import { assertWritable, requireProfile } from "./lib/auth";

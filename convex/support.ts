@@ -10,7 +10,8 @@
 // - Staff reads of a ticket are audited like other user-data views; replies, notes, status changes and
 //   assignments write audit entries.
 import { v } from "convex/values";
-import { internalMutation, internalQuery, mutation, query, type MutationCtx } from "./_generated/server";
+import { internalQuery, query, type MutationCtx } from "./_generated/server";
+import { internalMutation, mutation } from "./lib/functions";
 import { internal } from "./_generated/api";
 import type { Doc, Id } from "./_generated/dataModel";
 import { environment } from "./email";

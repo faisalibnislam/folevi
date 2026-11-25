@@ -27,6 +27,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // automatically is left as it was: the Mac's own Keyboard setting until the menu says otherwise.
         UserDefaults.standard.register(defaults: ["WebContinuousSpellCheckingEnabled": true])
         let app = NSApplication.shared
+        // The test host never comes to the front (no Dock icon, no menu bar, no focus taken from whoever is
+        // working on this Mac while `xcodebuild test` runs).
+        if Paths.testing { app.setActivationPolicy(.prohibited) }
         let delegate = AppDelegate()
         app.delegate = delegate
         app.run()
@@ -93,9 +96,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // Memory: pages made on demand and released, and memory pressure (App/Memory.swift).
         Memory.install()
         Task { @MainActor in
-            await WebViewFactory.prepareRules()
+            // FOLEVI_OFFLINE's rules (a lookup in WebKit's store) while the migration checks the support folder.
+            async let offlineRules: Void = WebViewFactory.prepareRules()
             WebViewFactory.scheme.modeOf = { view in WindowManager.shared.modeOf((view as? FoleviWebView)?.place) }
             guard await Self.migrate() else { return }
+            await offlineRules
             for step in Self.beforeFirstWindow { guard await step() else { return } }
             self.launched = true
             let first = self.pendingLinks

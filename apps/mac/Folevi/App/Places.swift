@@ -58,6 +58,10 @@ final class Places {
         }
         lib.onCloudWant = { path in Self.toLibrary("cloudWant", ["path": path]) }
         ShellCloud.shared.onStatus = { status in Self.toLibrary("cloudStatus", ["status": status]) }
+        // The library's network rules come from WebKit's store (compiled on an earlier launch) while the library
+        // opens on its own queue: neither waits for the other before the first window.
+        let rulesJSON = Self.localRulesJSON(serviceHost: Paths.serviceURL.host ?? "")
+        async let rules = WebViewFactory.ruleList("folevi-library", json: rulesJSON)
         let info = await Self.onLibraryQueue { () -> [String: Any] in
             lib.open()
             return lib.info()
@@ -66,7 +70,7 @@ final class Places {
         startPlaces()
         WindowManager.shared.modeOf = { ShellPlaces.modeOf($0) }
         WindowManager.shared.currentPlace = { ShellPlaces.state.current }
-        localRules = await Self.compileLocalRules()
+        localRules = await rules
         WebViewFactory.rulesFor = { place, _ in
             guard ShellPlaces.modeOf(place) == "local", let rules = Places.shared.localRules else { return [] }
             return [rules]
@@ -76,9 +80,12 @@ final class Places {
             // run in the page), keep their timers behind other windows.
             guard role == .runner || ShellPlaces.modeOf(place) == "local" else { return }
             config.preferences.inactiveSchedulingPolicy = .none
-            // A page in no window (or behind others) counts as hidden, and WebKit also stretches a hidden page's
-            // timers (1 s became 2 s in a 30-minute check) and lets its process nap: both off for these pages,
-            // through WebKit's own switches where this macOS has them (nothing changes where it doesn't).
+            // A page in no window counts as hidden, and WebKit also stretches a hidden page's timers (1 s became 2 s
+            // in a 30-minute check) and lets its process nap: both off for a runner, which exists only while its
+            // place has work (BackgroundSync), through WebKit's own switches where this macOS has them. A library
+            // window keeps WebKit's defaults for these: it is hidden only when minimized or covered, and then its
+            // timers may stretch and its process nap like any page's (energy, docs/perf/apple-results.md).
+            guard role == .runner else { return }
             for (name, value) in [("_setHiddenPageDOMTimerThrottlingEnabled:", false), ("_setPageVisibilityBasedProcessSuppressionEnabled:", false)] {
                 let selector = Selector((name))
                 guard config.preferences.responds(to: selector) else { continue }
@@ -91,8 +98,16 @@ final class Places {
             MainActor.assumeIsolated { Places.shared.placesChanged() }
         }
         MacAppLock.shared.start()
-        // Once the first window is on its way.
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1) { MainActor.assumeIsolated { Places.shared.ensureRunners() } }
+        // The runners start once the first window's page has loaded (they would compete with it for the CPU and
+        // the disk), or after 5 s whatever happens.
+        var observer: NSObjectProtocol?
+        let first = { MainActor.assumeIsolated {
+            if let o = observer { NotificationCenter.default.removeObserver(o) }
+            observer = nil
+            Places.shared.startRunnersOnce()
+        } }
+        observer = NotificationCenter.default.addObserver(forName: WindowManager.mainLoaded, object: nil, queue: .main) { _ in first() }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 5) { first() }
         return true
     }
 
@@ -118,8 +133,9 @@ final class Places {
         }
         if mode == "local" && ShellPlaces.state.current == nil && ShellPlaces.state.library { ShellPlaces.setCurrent(ShellPlaces.library) }
         // The one session an older build kept moves to its account (as the iOS app's startPlaces).
-        guard ShellAuth.shared.token(for: nil) != nil else { return }
+        // The Keychain is read off the main thread (it can take tens of milliseconds right after login).
         Task { @MainActor in
+            guard await Task.detached(priority: .utility, operation: { ShellAuth.shared.token(for: nil) != nil }).value else { return }
             guard let u = await ShellAuth.shared.adoptLegacy(), let a = self.addAccount(u) else { return }
             if ShellPlaces.state.current == nil && ShellMode.current == "account" { self.switchTo(a.id) }
         }
@@ -305,10 +321,19 @@ final class Places {
 
     // MARK: runners (§6.6)
 
+    /// Whether the runners may start (the first window loaded, or 5 s went by).
+    private var runnersAllowed = false
+
+    func startRunnersOnce() {
+        guard !runnersAllowed else { return }
+        runnersAllowed = true
+        ensureRunners()
+    }
+
     /// The places no main window shows (every account but the open one, and the library when it's set up and not
     /// open) get a runner while they have work (BackgroundSync decides when).
     func ensureRunners() {
-        guard !Paths.testing else { return }
+        guard !Paths.testing, runnersAllowed else { return }
         let s = ShellPlaces.state
         var want = Set(s.accounts.map(\.id).filter { $0 != s.current })
         if s.library && libraryConfigured && s.current != ShellPlaces.library { want.insert(ShellPlaces.library) }
@@ -358,11 +383,6 @@ final class Places {
         }
         let rules = Array(Set(filters)).sorted().map { #"{"trigger":{"url-filter":"\#($0)","url-filter-is-case-sensitive":false},"action":{"type":"block"}}"# }
         return "[" + rules.joined(separator: ",") + "]"
-    }
-
-    private static func compileLocalRules() async -> WKContentRuleList? {
-        let json = localRulesJSON(serviceHost: Paths.serviceURL.host ?? "")
-        return try? await WKContentRuleListStore.default().compileContentRuleList(forIdentifier: "folevi-library", encodedContentRuleList: json)
     }
 }
 

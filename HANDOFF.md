@@ -249,6 +249,14 @@ The ones most likely to be broken:
 
 ## 9. Current state (as of 2026-11-24)
 
+**Apple shells performance pass (2026-11-25, `docs/perf/apple-results.md`).** Mac (`claude/perf-apple-3eaf61`, PR into
+`main`): content rules looked up from WebKit's store and in parallel with the library opening, runners start after the
+first page loads (or 5 s), WebKit's private no-throttling switches for runners only, the Keychain read off the main
+thread, the bridge script assembled once, an XCTest host that never takes focus, `PerfTests` (XCTest `measure`), and
+`perf.mjs` / `perf-scroll.mjs` rewritten for the web-view app. Also fixes `main`'s Mac build (the regenerated icon set
+renamed `calendar` to `calendarDays`). iPhone and iPad (`claude/perf-ios-3eaf61`, PR into `claude/ios-feedback-b1307a`):
+the Keychain read off the main thread at launch; note-page memory measured and not leaking; `_bridge` route, splash
+change and `capacitor://` caching measured and not worth changing.
 **Backend performance pass (session `perf-backend`, 2026-11-25).** A generated 5,000-note test library
 (`convex/lib/fakeLibrary.ts`, seeded by `convex/devSeed.ts` into an `@example.com` test account, refused on
 production) and a read-cost harness (`tests/convex/perf/`, run with `FOLEVI_PERF=1`). Baseline and every fix's
@@ -594,6 +602,9 @@ account button should move past iPadOS's window buttons).
 ## 10. Next steps / open work
 - Shell performance (2026-11-25): merge PRs 84, 85, 86 into their shell branches; check PR 85 on a Windows PC with two
   accounts and a library; Android launch time needs the SDK and an emulator (owner's OK).
+- Apple performance: the Mac launch run (owner's OK, 2026-11-25) showed no measurable difference at a load average
+  of 43; re-run `perf.mjs` (and `perf-scroll.mjs`) on a quiet Mac with a generated 5,000-note library (`--library`);
+  confirm the iOS launch and memory numbers on a Release build on a device.
 - Backend performance pass, owner's OK needed for production: run `migrations:backfillListStats` (optional, speeds
   up existing folders) and `migrations:backfillDocumentText` (required before the note text switch PR merges).
 - Backend performance pass (`docs/perf/backend-results.md`): kept folder and Drafts counts, task rows that carry
@@ -763,6 +774,13 @@ account button should move past iPadOS's window buttons).
   a new Android CI workflow), #84 Tauri (library and reminders open after the window, lighter asset serving and
   scans, launch time in `measure.mjs`), #85 Electron (Quick Add on first use, runners on demand, throttling back
   on). Electron uses about 28% less memory on Windows x64 (CI). Android not measured (no SDK).
+- 2026-11-25: Apple shells performance pass (`docs/perf/apple-results.md`). Mac: rules lookup in parallel with the
+  library, runners after the first page, private throttling switches for runners only, Keychain off the main thread,
+  bridge script cached (2.3 to 0.68 ms per view), test host never activates, `PerfTests`, perf scripts for the web-view
+  app, `calendarDays` build fix. iOS (`claude/perf-ios-3eaf61`): Keychain off the main thread. Measured: note-page
+  memory flat after warm-up (162 MB Home, about 223 MB after 60 opens, 190 MB under memory pressure). Mac tests: 117
+  of 119 pass (the Vision OCR test timed out under load, passes alone). The launch run found and fixed a crash (WebKit's
+  default rule store first touched off the main thread through an `async let` default argument).
 - 2026-11-25: Backend performance pass, step 3 (widen): `documentText` table holds each note's search text and search
   fields, kept in step by the write hook; `migrations:backfillDocumentText` copies older notes (production run waits
   for the owner). Readers are unchanged until the switch PR.

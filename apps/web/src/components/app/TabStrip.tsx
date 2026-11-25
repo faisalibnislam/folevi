@@ -5,7 +5,8 @@ import { createPortal } from "react-dom";
 import { Archive, ArrowLeftToLine, CircleHelp, Settings, ArrowRightToLine, CalendarDays, SquareCheckBig, ChevronLeft, ChevronRight, FileDiff, FileText, Files, Folder, Hash, House, Inbox, Layers, LayoutGrid, LayoutList, LayoutTemplate, Lock, Pin, PinOff, Plus, SquareSplitHorizontal, Share2, Trash2, Waypoints, X, XCircle } from "lucide-react";
 import { Bookmark } from "lucide-react";
 import { AppLink, useAppRouter } from "@/lib/app/router";
-import { tabHolds, tabHref, useTabs, type DocTab } from "@/lib/app/tabs";
+import { tabHolds, tabHref, tabPage, useTabs, type DocTab } from "@/lib/app/tabs";
+import { floatMenuItems } from "./floatMenu";
 import { AiIcon } from "@/components/ai/AiIcon";
 import { Button } from "@/components/ui/Button";
 import { ContextMenu } from "@/components/ui/Menu";
@@ -514,6 +515,8 @@ export function TabStrip() {
         const left = tabs.slice(0, i).filter((x) => !x.pinned).map((x) => x.id);
         const right = tabs.slice(i + 1).filter((x) => !x.pinned).map((x) => x.id);
         const joinedPanes = t.panes && t.panes.length > 1 ? t.panes.length : 0;
+        // A note's tab (not a folder's or a view's) can float; a joined tab floats the note in front.
+        const floats = t.view ? [] : floatMenuItems({ id: tabPage(t), title: joinedPanes ? "" : labelOf(t) });
         return (
           <ContextMenu
             at={tabMenu.at}
@@ -529,6 +532,7 @@ export function TabStrip() {
                     for (let g = joinedPanes - 2; g >= 0; g--) unjoin(tabMenu.id, g);
                   } }]
                 : []),
+              ...floats,
               "separator",
               { label: "Close tab", icon: <X size={14} />, disabled: Boolean(t.pinned), onSelect: () => close(tabMenu.id) },
               { label: "Close tabs to the right", icon: <ArrowRightToLine size={14} />, disabled: !right.length, onSelect: () => closeMany(right, tabMenu.id) },

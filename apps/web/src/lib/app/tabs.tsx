@@ -6,6 +6,7 @@ import { useLocalStorage } from "@/lib/hooks/useEngine";
 import { cameFromHistory } from "./historyNav";
 import { emitNoteEvent, nativePanes, onNativePanes, setNativePanes } from "@/lib/engine/noteHost";
 import { requestNavigation } from "@/lib/engine/navigation";
+import { openInMainWindow } from "./float";
 
 /**
  * An open note in the tab strip. A tab is a top-level page (`id`); its nested pages open inside it, and
@@ -739,6 +740,44 @@ export function NativeTabsProvider({ children }: { accountKey?: string; workspac
       pick: noop,
     }),
     [tabs],
+  );
+  return (
+    <TabsActionsContext.Provider value={NATIVE_ACTIONS}>
+      <TabsContext.Provider value={value}>{children}</TabsContext.Provider>
+    </TabsActionsContext.Provider>
+  );
+}
+
+/**
+ * The tabs as a floating note's window sees them (components/app/FloatNote.tsx): one tab, its note, and nothing kept
+ * (the main window's saved tabs stay as they are). A folder or note opened from it goes to the main window.
+ */
+export function FloatTabsProvider({ documentId, children }: { documentId: string; children: ReactNode }) {
+  const value = useMemo<TabsValue>(
+    () => ({
+      tabs: [{ id: documentId, at: documentId, title: "" }],
+      view: null,
+      setView: noop,
+      openInBackground: (folder) => openInMainWindow(documentId, `/folders/${folder.id}`),
+      openManyInBackground: (items) => {
+        const first = items[0];
+        if (first) openInMainWindow(documentId, first.kind === "folder" ? `/folders/${first.id}` : `/d/${first.id}`);
+      },
+      homeHref: "/documents",
+      close: noop,
+      closeMany: noop,
+      move: noop,
+      setPinned: noop,
+      join: noop,
+      unjoin: noop,
+      setSizes: noop,
+      movePane: noop,
+      detachPane: noop,
+      place: noop,
+      warm: [],
+      tabHistory: null,
+    }),
+    [documentId],
   );
   return (
     <TabsActionsContext.Provider value={NATIVE_ACTIONS}>

@@ -18,6 +18,7 @@ import { LockedLibrary } from "./LockedLibrary";
 import { syncNoteStyles } from "@/lib/shell/styleSync";
 
 // The Mac app's Quick Add window (its own page): loaded only there.
+const FloatNote = lazy(() => import("./FloatNote").then((m) => ({ default: m.FloatNote })));
 const DesktopQuickAdd = lazy(() => import("./DesktopQuickAdd").then((m) => ({ default: m.DesktopQuickAdd })));
 
 /**
@@ -138,5 +139,5 @@ export function LocalGate() {
     }
     return <FullPageMessage title="Opening your folio…" busy />;
   }
-  return <AppStateProvider profile={me.profile}>{route.name === "place-sync" ? <LibraryPlaceSync /> : route.name === "quick-add" ? <Suspense fallback={null}><DesktopQuickAdd /></Suspense> : <Shell />}</AppStateProvider>;
+  return <AppStateProvider profile={me.profile}>{route.name === "place-sync" ? <LibraryPlaceSync /> : route.name === "quick-add" ? <Suspense fallback={null}><DesktopQuickAdd /></Suspense> : route.name === "float" ? <Suspense fallback={null}><FloatNote id={route.id} /></Suspense> : <Shell />}</AppStateProvider>;
 }

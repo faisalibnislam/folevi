@@ -248,7 +248,7 @@ fn boot_script(_app: &AppHandle, label: &str) -> String {
         "shell": true,
         "platform": look(),
         "mac": MAC,
-        "window": if quick { "quickadd" } else if is_runner(label) { "runner" } else { "main" },
+        "window": if quick { "quickadd" } else if is_runner(label) { "runner" } else if is_float_label(label) { "float" } else { "main" },
         "version": FOLEVI_VERSION,
         "deviceName": device_name(),
         "accent": accent,
@@ -1031,6 +1031,90 @@ fn toggle_quick_add(app: &AppHandle) {
     emit_to_pages(app, "desktop:command", &json!({ "type": "quick-add-shown" }), Some("quickadd"));
 }
 
+/// "Float this note" (apps/web lib/app/float.ts): a floating note's window is labelled `float-<note id>`.
+const FLOAT_PREFIX: &str = "float-";
+
+fn is_float_label(label: &str) -> bool {
+    label.strip_prefix(FLOAT_PREFIX).is_some_and(is_note_id)
+}
+
+/// A note id a page may ask to float: Folevi's ids are letters and digits.
+fn is_note_id(id: &str) -> bool {
+    (1..=64).contains(&id.len()) && id.chars().all(|c| c.is_ascii_alphanumeric())
+}
+
+fn float_pins_file(s: &Services) -> PathBuf {
+    s.paths.user_data.join("float-pins.json")
+}
+
+/// Each note's Always on top (on until turned off), from float-pins.json.
+fn float_pinned(s: &Services, id: &str) -> bool {
+    std::fs::read(float_pins_file(s))
+        .ok()
+        .and_then(|b| serde_json::from_slice::<Value>(&b).ok())
+        .and_then(|v| v.get(id).and_then(Value::as_bool))
+        .unwrap_or(true)
+}
+
+fn save_float_pin(s: &Services, id: &str, on: bool) {
+    let file = float_pins_file(s);
+    let mut all = std::fs::read(&file).ok().and_then(|b| serde_json::from_slice::<serde_json::Map<String, Value>>(&b).ok()).unwrap_or_default();
+    if on {
+        all.remove(id);
+    } else {
+        all.insert(id.to_string(), Value::Bool(false));
+    }
+    let _ = std::fs::write(file, serde_json::to_vec(&all).unwrap_or_default());
+}
+
+/// Floats a note: a small window on its /float page, on top of other apps (until its pin is turned off), or the
+/// note's window brought forward. Its size and place come back by its label (tauri-plugin-window-state). It's bound
+/// to the place of the window that asked.
+fn create_float(app: &AppHandle, id: &str, title: &str, place: Option<String>) -> tauri::Result<()> {
+    if !is_note_id(id) {
+        return Ok(());
+    }
+    let label = format!("{FLOAT_PREFIX}{id}");
+    if let Some(w) = app.get_webview_window(&label) {
+        if w.is_minimized().unwrap_or(false) {
+            let _ = w.unminimize();
+        }
+        let _ = w.show();
+        let _ = w.set_focus();
+        return Ok(());
+    }
+    let s = services(app);
+    s.bound.lock().insert(label.clone(), place);
+    let dark = s.ui.lock().dark.unwrap_or(false);
+    let script = boot_script(app, &label);
+    let name: String = title.chars().take(200).collect();
+    let mut b = WebviewWindowBuilder::new(app, &label, WebviewUrl::CustomProtocol(app_url(&format!("/float/{id}"))))
+        .title(if name.is_empty() { "Untitled".to_string() } else { name })
+        .inner_size(380.0, 480.0)
+        .min_inner_size(260.0, 200.0)
+        .maximizable(false)
+        .decorations(false)
+        .shadow(true)
+        .always_on_top(float_pinned(&s, id))
+        .visible(false)
+        .background_color(background(dark))
+        .initialization_script(&script)
+        .disable_drag_drop_handler()
+        .on_navigation(|url| {
+            let u = url.as_str();
+            is_app_url(u) || u.starts_with("about:") || u.starts_with("data:")
+        });
+    #[cfg(windows)]
+    {
+        b = b.use_https_scheme(true);
+    }
+    let w = b.build()?;
+    watch_window(app, &w);
+    let _ = w.show();
+    let _ = w.set_focus();
+    Ok(())
+}
+
 fn register_shortcut(app: &AppHandle) -> Option<String> {
     let s = services(app);
     let gs = app.global_shortcut();
@@ -1811,6 +1895,26 @@ async fn desktop_call(app: AppHandle, webview: tauri::Webview, name: String, arg
             let _ = webview.print();
             Ok(Value::Null)
         }
+        "floatNote" => {
+            let id = text("id", 64);
+            let title = text("title", 200);
+            let place = s.place_of(&label);
+            // Made on the main thread, after this call returns (a window made inside a command can hang Windows).
+            later(&app, move |a| {
+                let _ = create_float(a, &id, &title, place);
+            });
+            Ok(Value::Null)
+        }
+        "floatOnTop" => {
+            let (Some(w), Some(id)) = (window.as_ref().filter(|_| is_float_label(&label)), label.strip_prefix(FLOAT_PREFIX)) else {
+                return Ok(Value::Null);
+            };
+            if let Some(on) = opt_bool(&args, "on") {
+                let _ = w.set_always_on_top(on);
+                save_float_pin(&s, id, on);
+            }
+            Ok(Value::Bool(w.is_always_on_top().unwrap_or(true)))
+        }
         "closeWindow" => {
             if let Some(w) = window {
                 let _ = w.close();
@@ -2307,5 +2411,23 @@ mod tests {
         assert!(HOST_JS.contains("/*BOOT*/ { shell: false, platform: \"windows\", window: \"main\" } /*BOOT_END*/"));
         assert!(HOST_JS.contains("/*SHELL_BRIDGE*/"));
         assert!(SHELL_BRIDGE_JS.contains("var foleviShellBridge = function (SHELL, host)"));
+    }
+
+    #[test]
+    fn floating_note_windows() {
+        assert!(is_note_id("01JABCDEFGHJKMNPQRSTVWXYZ0"));
+        assert!(!is_note_id(""));
+        assert!(!is_note_id("../settings"));
+        assert!(!is_note_id("a b"));
+        assert!(!is_note_id(&"A".repeat(65)));
+        assert!(is_float_label("float-01JABC"));
+        assert!(!is_float_label("float-"));
+        assert!(!is_float_label("float-../x"));
+        assert!(!is_float_label("main"));
+        assert!(!is_float_label("quickadd"));
+        // The page's bridge has the calls, and a floating window moves by its bar but never maximizes.
+        assert!(HOST_JS.contains("floatNote: function (note)"));
+        assert!(HOST_JS.contains("floatOnTop: function (on)"));
+        assert!(HOST_JS.contains("BOOT.window !== \"float\""));
     }
 }

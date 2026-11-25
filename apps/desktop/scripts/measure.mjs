@@ -28,8 +28,14 @@ const data = mkdtempSync(join(tmpdir(), "folevi-measure-"));
 const env = { ...process.env, FOLEVI_USER_DATA: data, FOLEVI_UPDATES: "off", FOLEVI_SHELL: "1", FOLEVI_REPORT_READY: "1" };
 const child = spawn(command[0], command.slice(1), { env, stdio: ["ignore", "pipe", "ignore"], detached: process.platform !== "win32" });
 let ready = false;
+// Launch time: from starting the process to the main window's page saying it started (with --expect-ready builds).
+const started = performance.now();
+let readyMs = null;
 child.stdout.on("data", (d) => {
-  if (/FOLEVI READY main /.test(String(d))) ready = true;
+  if (!ready && /FOLEVI READY main /.test(String(d))) {
+    ready = true;
+    readyMs = Math.round(performance.now() - started);
+  }
 });
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -103,7 +109,8 @@ try {
   rmSync(data, { recursive: true, force: true });
 }
 result.ready = ready;
+result.readyMs = readyMs;
 writeFileSync(out, JSON.stringify(result, null, 2));
 const head = process.platform === "win32" ? `working set ${result.workingSetMB} MB, private ${result.privateMB} MB` : `PSS ${result.pssMB} MB, RSS ${result.rssMB} MB`;
-console.log(`${label}: ${result.processes} processes, ${head}${expectReady ? (ready ? ", page ready" : ", PAGE NEVER STARTED") : ""}`);
+console.log(`${label}: ${result.processes} processes, ${head}${expectReady ? (ready ? `, page ready after ${readyMs} ms` : ", PAGE NEVER STARTED") : ""}`);
 if (expectReady && !ready) process.exit(1);

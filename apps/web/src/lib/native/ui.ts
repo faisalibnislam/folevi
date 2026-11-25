@@ -412,13 +412,13 @@ export function rideKeyboard(el: HTMLElement, { stretch = false, onMove }: { str
   if (typeof window === "undefined" || !inIosApp()) return () => undefined;
   let screenH = window.innerHeight;
   let keyboard = 0;
-  let lift = 0;
   let anim: Animation | null = null;
   let timer = 0;
+  // The lift is worked out by the stylesheet, from the keyboard's height and the screen's, less what the web view
+  // has already shrunk by (100dvh follows the web view in the same layout pass): all of the keyboard while the
+  // web view still fills the screen, nothing once it has shrunk, and never a frame out of place in between.
+  const LIFT = "max(0px, calc(var(--kb-k) - (var(--kb-screen) - 100dvh)))";
   const place = (ms: number, curve: string) => {
-    // How much of the keyboard the shrunk web view doesn't already account for.
-    const next = Math.max(0, keyboard - Math.max(0, screenH - window.innerHeight));
-    if (next === lift) return;
     const moving = ms > 0 && !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     const easing = curve === "linear" ? "linear" : KEYBOARD_EASE;
     anim?.cancel();
@@ -426,12 +426,22 @@ export function rideKeyboard(el: HTMLElement, { stretch = false, onMove }: { str
     window.clearTimeout(timer);
     const before = el.getBoundingClientRect().bottom;
     if (stretch) el.style.transition = moving ? `bottom ${Math.round(ms)}ms ${easing}` : "";
-    lift = next;
-    if (lift) el.style.setProperty("--kb-ride", `${lift}px`);
-    else el.style.removeProperty("--kb-ride");
+    if (keyboard) {
+      el.style.setProperty("--kb-k", `${keyboard}px`);
+      el.style.setProperty("--kb-screen", `${screenH}px`);
+      el.style.setProperty("--kb-ride", LIFT);
+    } else {
+      el.style.removeProperty("--kb-k");
+      el.style.removeProperty("--kb-screen");
+      el.style.removeProperty("--kb-ride");
+    }
     if (!moving) return onMove?.();
     if (stretch) {
-      timer = window.setTimeout(() => onMove?.(), ms);
+      // (The transition only for the keyboard's own move: the web view's resize after it must not animate.)
+      timer = window.setTimeout(() => {
+        el.style.transition = "";
+        onMove?.();
+      }, ms);
       return;
     }
     const shift = before - el.getBoundingClientRect().bottom;
@@ -440,12 +450,15 @@ export function rideKeyboard(el: HTMLElement, { stretch = false, onMove }: { str
     anim.onfinish = () => onMove?.();
   };
   const off = onKeyboardFrame((f) => {
-    keyboard = f.visible ? Math.round(f.height) : 0;
+    const next = f.visible ? Math.round(f.height) : 0;
+    if (next === keyboard) return;
+    keyboard = next;
     place(f.duration, f.curve);
   });
   const onResize = () => {
+    // The screen's own height, taken while no keyboard is up (a turn, a window resized).
     if (!keyboard) screenH = window.innerHeight;
-    place(0, "linear");
+    onMove?.();
   };
   window.addEventListener("resize", onResize);
   return () => {
@@ -453,6 +466,8 @@ export function rideKeyboard(el: HTMLElement, { stretch = false, onMove }: { str
     window.removeEventListener("resize", onResize);
     window.clearTimeout(timer);
     anim?.cancel();
+    el.style.removeProperty("--kb-k");
+    el.style.removeProperty("--kb-screen");
     el.style.removeProperty("--kb-ride");
     if (stretch) el.style.transition = "";
   };

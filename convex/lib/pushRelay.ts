@@ -33,28 +33,37 @@ export function relayPushBody(p: RelayPush): Record<string, unknown> {
 
 const RELAY_TIMEOUT_MS = 10_000;
 
+/** How long to wait before the one retry of a busy relay (503). */
+const BUSY_RETRY_MS = 1_500;
+
 /**
- * One notice through the relay. 2xx: sent. 404 or 410: the device token is gone (the caller removes it).
- * Anything else, or no Connect token: failed.
+ * One notice through the relay (CONTRACT §9.1). 2xx: sent. 410 `token_gone`: the device token is dead (the caller
+ * removes it). 503: the provider is busy, tried once more shortly after. Anything else, or no Connect token: failed.
  */
-export async function sendThroughRelay(p: RelayPush, fetchImpl: typeof fetch = fetch): Promise<RelayOutcome> {
+export async function sendThroughRelay(p: RelayPush, fetchImpl: typeof fetch = fetch, sleep: (ms: number) => Promise<void> = (ms) => new Promise((r) => setTimeout(r, ms))): Promise<RelayOutcome> {
   const token = connectToken();
   if (!token) return { outcome: "failed", status: 0 };
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), RELAY_TIMEOUT_MS);
-  try {
-    const res = await fetchImpl(`${connectUrl()}/v1/push`, {
-      method: "POST",
-      signal: controller.signal,
-      headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
-      body: JSON.stringify(relayPushBody(p)),
-    });
-    if (res.status >= 200 && res.status < 300) return { outcome: "sent", status: res.status };
-    if (res.status === 404 || res.status === 410) return { outcome: "gone", status: res.status };
-    return { outcome: "failed", status: res.status };
-  } catch {
-    return { outcome: "failed", status: 0 };
-  } finally {
-    clearTimeout(timer);
+  let last: RelayOutcome = { outcome: "failed", status: 0 };
+  for (let attempt = 1; attempt <= 2; attempt++) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), RELAY_TIMEOUT_MS);
+    try {
+      const res = await fetchImpl(`${connectUrl()}/v1/push`, {
+        method: "POST",
+        signal: controller.signal,
+        headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
+        body: JSON.stringify(relayPushBody(p)),
+      });
+      if (res.status >= 200 && res.status < 300) return { outcome: "sent", status: res.status };
+      if (res.status === 410) return { outcome: "gone", status: res.status };
+      last = { outcome: "failed", status: res.status };
+      if (res.status !== 503) return last;
+    } catch {
+      return { outcome: "failed", status: 0 };
+    } finally {
+      clearTimeout(timer);
+    }
+    if (attempt === 1) await sleep(BUSY_RETRY_MS);
   }
+  return last;
 }

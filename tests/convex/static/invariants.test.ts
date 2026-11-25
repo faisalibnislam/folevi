@@ -47,7 +47,8 @@ describe("backend invariants", () => {
     // lib/jwks.ts: Better Auth's own provider; static keys only in the server edition (FOLEVI_JWKS), same issuer.
     const jwks = readFileSync(join(root, "lib", "jwks.ts"), "utf8");
     expect(jwks).toMatch(/return getAuthConfigProvider\(\);\n\}/);
-    expect(jwks).toMatch(/FOLEVI_EDITION \?\? ""\)\.trim\(\)\.toLowerCase\(\) !== "server"\) return \{ kind: "none" \}/);
+    // (Read through optionalEnv: Convex refuses an auth config that reads an unset variable.)
+    expect(jwks).toMatch(/optionalEnv\(env, "FOLEVI_EDITION"\)\.trim\(\)\.toLowerCase\(\) !== "server"\) return \{ kind: "none" \}/);
     expect(jwks).toMatch(/issuer: `\$\{env\.CONVEX_SITE_URL\}`/);
     expect(jwks).not.toMatch(/auth0|FOLEVI_DEV_AUTH/i);
     const mailbox = readFileSync(join(root, "authEmails.ts"), "utf8");

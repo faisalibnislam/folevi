@@ -263,6 +263,14 @@ everything but the writing area, matching today's UI with Liquid Glass and iOS's
   (`PhoneCreateButton`; iOS's bar holds five items), no + or search capsule in the top bars. Mac package builds.
 - Checked on the "Folevi Native iPhone" Simulator (AC2852C2), local mode: Home, Tasks, Calendar, a note, Foli AI's
   sheet, the account sheet. Reference shots of today's app from the Capacitor build on "Folevi Mobile iPhone".
+- Step 2b (branch `claude/ios-native-sync-signin`, from step 2 at af78bdbd): the sync sheet in this week's design
+  (`RebuildSync.swift`: hero status, facts card with a live "Last synced", Try again now, iOS sheet with a glass
+  Close); "Sign in to your own server" on the native sign-in screen (`RebuildOwnServer.swift`, a native sheet over
+  `ShellServer.lookUp`, VisionKit QR scanning where the device can; the button through `gateOwnServer` in
+  `FoleviScreens/Onboarding/WebGates.swift`); R5.6 fixed in `ShellSignIn.tsx` (the first-launch choice's flag
+  moved to localStorage, so sign-in follows the choice); R5.7 native side (`RebuildNote.swift`: the note's cover
+  and a spinner stay until the engine is ready, the note is asked for once more). Debug `FOLEVI_SLOW_ENGINE=<s>`.
+  Not checked: QR scanning (no camera in the Simulator), a real server sign-in, the sync sheet signed in.
 - Next: screen-by-screen details (Tasks' filter field, Calendar's large title, Search, Settings, sheets), this
   week's Capacitor-only work carried over (sync sheet redesign, Folevi Server sign-in, keyboard and Duo fixes),
   native Foli AI chat finish, then iPad and iPhone Duo, tests, the switch.
@@ -953,6 +961,10 @@ signed-in account, 1.5.58's frosted folders with a large library, and the iPad c
 account button should move past iPadOS's window buttons).
 
 ## 10. Next steps / open work
+- Native iOS (`claude/ios-native-sync-signin`): check QR scanning and a server sign-in on a device; the sync sheet's
+  "Notes waiting to sync" and "Other changes" lists need the outbox and pending notes in the bridge contract (not in
+  `sync.status` yet); R5.7's page side (note.prepare waiting for the store); the iPhone's message-card gates
+  (offline, update required) are drawn wider than the screen (`MessageCardGate` uses the Mac's card width).
 - Shell performance (2026-11-25): merge PRs 84, 85, 86 into their shell branches; check PR 85 on a Windows PC with two
   accounts and a library; Android launch time needs the SDK and an emulator (owner's OK).
 - Apple performance: the Mac launch run (owner's OK, 2026-11-25) showed no measurable difference at a load average
@@ -1232,6 +1244,7 @@ account button should move past iPadOS's window buttons).
   `DATABASE_UDF_USER_TIMEOUT_SECONDS=4` for that backend. Bursts show in `convex.log` as "took a long time".
 
 ## 12. Change log
+- 2026-11-25: Native iOS sync sheet redesign, Your own server sign-in, R5.6 and R5.7 (native) on `claude/ios-native-sync-signin`.
 - 2026-11-25: Native iOS restarted on `claude/ios-native-today-ui` to match today's UI (owner's decision); step 1 committed (ae912d75).
 - 2026-11-25: **Integration branch `claude/integration-2026-11-25`** (the owner: "check and resolve [the merging issues]
   and release all apps and platforms, I approve everything"). The backlog could not drain PR by PR: every PR edits

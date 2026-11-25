@@ -4,7 +4,7 @@
 // the shape shows a link badge that opens it. Works in an account and in local mode (both answer the same
 // queries); the site's demo note has no pages to link to.
 import { useEffect, useState } from "react";
-import { useQuery } from "convex/react";
+import { useQuery } from "@/lib/convex/queries";
 import { ExternalLink, FileText, Search, Unlink } from "lucide-react";
 import { api } from "@/lib/convex/api";
 import { useAppState } from "@/lib/app/state";

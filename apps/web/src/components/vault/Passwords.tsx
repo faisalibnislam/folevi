@@ -2,7 +2,8 @@
 // Passwords & Credentials (docs/VAULT_PLAN.md §4): the list (summaries, opened on this device), adding and editing an
 // item (each kind's fields, a generator, strength), and an item (its secrets fetched by vaultItems.open, which logs it;
 // hidden fields shown only on reveal; copying logged and the clipboard cleared after 30 seconds; live 2FA codes).
-import { useAction, useMutation, useQuery } from "convex/react";
+import { useAction, useMutation } from "convex/react";
+import { useQuery } from "@/lib/convex/queries";
 import { useEffect, useId, useMemo, useState } from "react";
 import { BadgeCheck, CodeXml, Copy, CopyPlus, CreditCard, Eye, EyeOff, History, IdCard, KeyRound, Landmark, Plus, RefreshCw, Search, Share2, SquareTerminal, StickyNote, Trash2, WandSparkles, Wifi, type LucideIcon } from "lucide-react";
 import { api } from "@/lib/convex/api";

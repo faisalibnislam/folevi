@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useBackendMode, useCanCall, useCapabilities } from "@/lib/mode";
-import { useQuery } from "convex/react";
+import { useQuery } from "@/lib/convex/queries";
 import { Archive, FileDiff, FileText, Files, FolderPlus, Hash, Inbox, Layers, LayoutTemplate, Lock, Share2, Trash2, Waypoints } from "lucide-react";
 import { api } from "@/lib/convex/api";
 import { useAppState } from "@/lib/app/state";

@@ -3,7 +3,8 @@
 import { useState } from "react";
 import type { Editor } from "@tiptap/react";
 import type { Node as PmNode } from "@tiptap/pm/model";
-import { useAction, useQuery } from "convex/react";
+import { useAction } from "convex/react";
+import { useQuery } from "@/lib/convex/queries";
 import { Captions } from "lucide-react";
 import { api } from "@/lib/convex/api";
 import { useAppState } from "@/lib/app/state";

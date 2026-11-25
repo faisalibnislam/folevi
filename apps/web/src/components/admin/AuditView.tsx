@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { Fragment, useId, useState } from "react";
-import { useQuery } from "convex/react";
+import { useQuery } from "@/lib/convex/queries";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { api } from "@/lib/convex/api";
 import { Button } from "@/components/ui/Button";

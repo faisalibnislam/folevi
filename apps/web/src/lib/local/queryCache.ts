@@ -75,7 +75,8 @@ export class QueryCache {
         e.subscribers.add(cb);
         if (e.evictTimer) clearTimeout(e.evictTimer);
         e.evictTimer = null;
-        if (e.stale) this.markDirty(e, true);
+        // A failed run is run again for whoever watches it next (lib/convex/queries.ts retries by watching again).
+        if (e.stale || (e.state && "error" in e.state && !e.running)) this.markDirty(e, true);
         return () => {
           e.subscribers.delete(cb);
           if (e.subscribers.size === 0) this.scheduleEvict(e);

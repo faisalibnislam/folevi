@@ -8,7 +8,8 @@
 //
 // NoteFrame wraps the editor in DocumentView: in account mode it's nothing; in local mode it adds the notices,
 // and shows NotePlaceholder instead of the editor for a note that hasn't arrived yet.
-import { useMutation, useQuery } from "convex/react";
+import { useMutation } from "convex/react";
+import { useQuery } from "@/lib/convex/queries";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { History, X } from "lucide-react";

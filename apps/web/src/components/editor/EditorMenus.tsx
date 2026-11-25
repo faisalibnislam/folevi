@@ -5,7 +5,8 @@ import { NodeSelection, TextSelection, type Transaction } from "@tiptap/pm/state
 import { beginPointerDrag, isDragging } from "./blockDrag";
 import { useOpenedOnce } from "@/lib/hooks/useOpenedOnce";
 import { HOLD_MOVE_EVENT, type HoldMoveDetail } from "@/lib/touchContextMenu";
-import { useMutation, useQuery } from "convex/react";
+import { useMutation } from "convex/react";
+import { useQuery } from "@/lib/convex/queries";
 import { aiFeatureHere, useCapabilities } from "@/lib/mode";
 import { lazy, Suspense, useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { AiIcon } from "@/components/ai/AiIcon";

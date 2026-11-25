@@ -1,6 +1,7 @@
 "use client";
 
-import { useConvex, useConvexConnectionState, useQuery } from "convex/react";
+import { useConvex, useConvexConnectionState } from "convex/react";
+import { useQuery } from "@/lib/convex/queries";
 import { createContext, useContext, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { localDate, scopeIdKey, type WireScope } from "@folevi/editor-schema";
 import { FoleviLoader } from "@/components/brand/FoleviLoader";

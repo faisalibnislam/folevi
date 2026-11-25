@@ -3,7 +3,7 @@
 // service (lib/nativePush.ts). Shown only once Folevi can send them (push.apnsAvailable). Turning it on
 // asks iOS the first time; if notifications are off for Folevi in iOS Settings, it says so and opens them.
 // What arrives follows the In app choices above.
-import { useQuery } from "convex/react";
+import { useQuery } from "@/lib/convex/queries";
 import { useCallback, useEffect, useId, useState } from "react";
 import { api } from "@/lib/convex/api";
 import { nativeApp, type NativePushStatus } from "@/lib/nativeApp";

@@ -767,6 +767,8 @@ account button should move past iPadOS's window buttons).
   `DATABASE_UDF_USER_TIMEOUT_SECONDS=4` for that backend. Bursts show in `convex.log` as "took a long time".
 
 ## 12. Change log
+- 2026-11-25: CI secret scan reads only the history HEAD reaches (`--log-opts=HEAD`, owner's OK), not every fetched
+  branch: test tokens on unmerged branches (Folevi Server, Linux stores) had failed the required check on every PR.
 - 2026-11-25: Folevi Server built (branch `claude/sleepy-goodall-3cg4e7`): backend and web server editions, setup
   and admin panel walked end to end on a real backend, `folevid` supervisor (encrypted backups, Connect client,
   memory profiles), Folevi Connect service, packages for Synology/QNAP/ASUSTOR/TerraMaster/UGREEN/Unraid/Linux/

@@ -238,6 +238,12 @@ keys are left alone when they're AltGr. Formatting keys are the editor's own.
 
 An attachment's Open button (the Mac's Quick Look) opens a copy in the app that opens its kind: the copy goes to
 `<temp>/Folevi Open/`, emptied at the next launch.
+## Windows open again where they were
+
+As on the Mac (WindowRestore.swift): Folevi keeps the main windows it has open and the page each shows in
+`windows.json` (`[{ label, path }]`, saved when focus leaves a window, when one closes and at Quit) and opens them
+again at launch; the window-state plugin puts each back at its size and position by label. Quick Add, background
+pages and internal pages open at /documents instead. Tabs come back from the page's own storage, as before.
 
 ## Not done yet
 

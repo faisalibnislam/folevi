@@ -23,7 +23,7 @@ import { formatRelative } from "@/lib/format";
 import { t } from "@/i18n";
 import { Select } from "@/components/ui/Select";
 import { useIphoneApp } from "@/lib/iphone";
-import { IphoneScopes } from "@/components/iphone/SearchScopes";
+import { IphoneScopes } from "@/components/iphone/lazy";
 import { useKeyLabels } from "@/lib/shortcuts";
 import { fadeOut } from "@/components/ui/closing";
 

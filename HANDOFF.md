@@ -767,6 +767,8 @@ account button should move past iPadOS's window buttons).
   `DATABASE_UDF_USER_TIMEOUT_SECONDS=4` for that backend. Bursts show in `convex.log` as "took a long time".
 
 ## 12. Change log
+- 2026-11-25: CI secret scan reads only the history HEAD reaches (`--log-opts=HEAD`, owner's OK), not every fetched
+  branch: test tokens on unmerged branches (Folevi Server, Linux stores) had failed the required check on every PR.
 - 2026-11-25: Interface-polish pass on the whole web UI (review by typography, surfaces and motion; owner chose to fix
   every MEDIUM and LOW finding): see the commit "Interface polish pass". Checked: typecheck, lint, full unit suite,
   WebKit harness (dialog, command palette and Show all tabs fade out; Mac fades only), screenshots.

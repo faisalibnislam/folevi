@@ -24,6 +24,14 @@ class NativePlugin : Plugin() {
     private val scope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.SupervisorJob() + kotlinx.coroutines.Dispatchers.Main)
     private val credential get() = DeviceCredential.get(context)
 
+    /** How far the page has scrolled (0 top, 1 scrolled, 2 past 96): the native note chrome's fold and bar fade. */
+    @PluginMethod
+    fun pageScroll(call: PluginCall) {
+        val state = call.getInt("state") ?: 0
+        activity?.runOnUiThread { (activity as? com.folevi.android.MainActivity)?.session?.pageScroll?.value = state.coerceIn(0, 2) }
+        call.resolve()
+    }
+
     @PluginMethod
     fun device(call: PluginCall) {
         val s = FoleviApp.instance.settings

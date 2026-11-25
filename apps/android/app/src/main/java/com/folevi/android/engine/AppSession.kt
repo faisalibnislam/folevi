@@ -47,6 +47,9 @@ class AppSession(context: Context, private val scope: CoroutineScope, demo: Bool
      */
     val noteOverlay = mutableStateOf<(@androidx.compose.runtime.Composable () -> Unit)?>(null)
 
+    /** The page's scroll as the bridge script reports it: 0 at the top, 1 scrolled, 2 past 96. */
+    val pageScroll = mutableStateOf(0)
+
     /** The app's appearance (the overlay layer's theme follows the main one). */
     val dark = mutableStateOf(false)
 

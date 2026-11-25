@@ -54,6 +54,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.dropShadow
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.shadow.Shadow
 import androidx.compose.ui.layout.boundsInRoot
@@ -117,6 +118,11 @@ fun NoteScreen(route: NoteRoute, onBack: (() -> Unit)? = null) {
                 else -> Unit
             }
         }
+    }
+    // The page's scroll (the bridge script reports it): past 96 the place chip gives way to the note's title.
+    DisposableEffect(route.id) {
+        session.pageScroll.value = 0
+        onDispose { session.pageScroll.value = 0 }
     }
     // The page runs under the bars: it pads itself by what they cover (--native-inset-top/bottom).
     val writing = state.editor.value?.focused == true
@@ -195,6 +201,13 @@ private fun NoteChrome(state: NoteChromeState, title: String, onBack: (() -> Uni
     val run: (suspend () -> Unit) -> Unit = { block -> scope.launch { runCatching { block() } } }
     val togglePanel: (EditorPanel) -> Unit = { which -> run { if (panel == which) session.client.editor(EditorCommands.panelClose()) else session.client.editor(EditorCommands.panelOpen(panel = which)) } }
     Box(Modifier.fillMaxSize()) {
+        // The bar's fade once the page has scrolled under it (the web's .iphone-bar on a page): the page's color,
+        // solid to the bar's middle, then clear.
+        val fade by androidx.compose.animation.core.animateFloatAsState(if (session.pageScroll.value > 0) 1f else 0f, androidx.compose.animation.core.tween(120), label = "bar-fade")
+        if (fade > 0f) {
+            val page = LocalPalette.current.surface
+            Box(Modifier.fillMaxWidth().height(96.dp).alpha(fade).background(androidx.compose.ui.graphics.Brush.verticalGradient(0f to page.copy(alpha = 0.92f), 0.46f to page.copy(alpha = 0.92f), 1f to page.copy(alpha = 0f))))
+        }
         // Top bar: Back, the place chip, Share and the menu (Done while writing).
         Row(
             Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 8.dp).height(44.dp),
@@ -202,7 +215,12 @@ private fun NoteChrome(state: NoteChromeState, title: String, onBack: (() -> Uni
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             if (onBack != null) GlassCircle(WebIcon.CHEVRON_LEFT, "Back", onBack)
-            Box(Modifier.weight(1f), contentAlignment = Alignment.Center) { PlaceChip(meta, title) }
+            Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
+                val collapsed = session.pageScroll.value == 2
+                val chip by androidx.compose.animation.core.animateFloatAsState(if (collapsed) 0f else 1f, androidx.compose.animation.core.tween(200), label = "chip")
+                if (chip > 0f) Box(Modifier.alpha(chip).graphicsLayer { translationY = (1f - chip) * -4.dp.toPx() }) { PlaceChip(meta, title) }
+                if (chip < 1f) Text(title, style = PhoneType.headline, color = LocalPalette.current.heading, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.alpha(1f - chip))
+            }
             if (writing) GlassTextButton("Done", onClick = { run { session.client.editor(EditorCommands.dismissKeyboard()) } })
             else NoteMenuPill(state, run)
         }

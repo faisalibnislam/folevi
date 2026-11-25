@@ -745,6 +745,39 @@
   });
 
   var NATIVE = "FoleviNative";
+  // The native note chrome (NoteScreen.kt) folds its place chip into the title and shows its bar fade as the page
+  // scrolls: 0 at the top, 1 scrolled, 2 past 96 (Screen.tsx collapseAt). Only a vertical scroller counts (a wide
+  // table scrolling sideways doesn't), and only a change is sent.
+  (function () {
+    var last = -1;
+    var pending = false;
+    function measure(target) {
+      var el = target && target.nodeType === 1 ? target : document.scrollingElement || document.documentElement;
+      if (!el || el.scrollHeight - el.clientHeight < 120) return;
+      var y = el.scrollTop || 0;
+      var state = y > 96 ? 2 : y > 4 ? 1 : 0;
+      if (state === last) return;
+      last = state;
+      call(NATIVE, "pageScroll", { state: state }).catch(function () {});
+    }
+    window.addEventListener(
+      "scroll",
+      function (e) {
+        if (pending) return;
+        pending = true;
+        var target = e.target;
+        requestAnimationFrame(function () {
+          pending = false;
+          measure(target);
+        });
+      },
+      { capture: true, passive: true },
+    );
+    // A new page starts at the top.
+    window.addEventListener("folevi:native-scroll-reset", function () {
+      last = -1;
+    });
+  })();
   var nativeBridge = {
     platform: "android",
     version: boot.version,

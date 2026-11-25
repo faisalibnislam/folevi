@@ -35,6 +35,8 @@ func (a *App) Status() control.Status {
 	s.Disk.DataBytes = a.dataSize()
 	s.Disk.FreeBytes = sysinfo.Free(a.data)
 	s.Memory.TotalBytes, s.Memory.AvailableBytes = sysinfo.Memory()
+	s.Memory.Profile = MemoryProfile(a.cfg.Get().MemoryProfile, s.Memory.TotalBytes)
+	s.Memory.Low = s.Memory.Profile == "tiny" || (s.Memory.AvailableBytes > 0 && s.Memory.AvailableBytes < 256<<20)
 	return s
 }
 

@@ -90,7 +90,7 @@ type Config struct {
 	ConnectURL    string   `json:"connectUrl"`
 	RelayURL      string   `json:"relayUrl"`
 	ACMEDirectory string   `json:"acmeDirectory,omitempty"` // Let's Encrypt production when empty
-	MemoryProfile string   `json:"memoryProfile,omitempty"` // auto | low | high
+	MemoryProfile string   `json:"memoryProfile,omitempty"` // auto | tiny | low | high
 	MDNS          *bool    `json:"mdns,omitempty"`
 	Channel       string   `json:"channel,omitempty"`
 	Remote        Remote   `json:"remote"`
@@ -227,7 +227,7 @@ func (c *Config) Validate() error {
 		return errors.New("backup hour must be 0 to 23")
 	}
 	switch c.MemoryProfile {
-	case "", "auto", "low", "high":
+	case "", "auto", "tiny", "low", "high":
 	default:
 		return fmt.Errorf("unknown memoryProfile %q", c.MemoryProfile)
 	}

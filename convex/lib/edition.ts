@@ -5,7 +5,9 @@
 
 /** Whether this deployment is Folevi Server (FOLEVI_EDITION=server). */
 export function isServerEdition(): boolean {
-  return (process.env.FOLEVI_EDITION ?? "").trim().toLowerCase() === "server";
+  // Also imported by browser code (lib/plans.ts through apps/web), where there may be no `process`.
+  const env = typeof process === "undefined" ? undefined : process.env;
+  return (env?.FOLEVI_EDITION ?? "").trim().toLowerCase() === "server";
 }
 
 /** The edition's name as clients see it in /.well-known/folevi.json (`kind`). */

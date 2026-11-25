@@ -54,22 +54,15 @@ else
   log "patchelf missing: skipped the patched form (apt install patchelf, or pip install patchelf)"
 fi
 
-if ! docker info >/dev/null 2>&1; then
-  [ "$require_docker" = 1 ] && die "Docker is not available"
-  log "Docker is not available here: container checks skipped (CI runs them)"
-  exit 0
-fi
-command -v patchelf >/dev/null || die "patchelf is needed for the container checks"
+command -v patchelf >/dev/null || die "patchelf is needed for the old-glibc checks (apt install patchelf)"
 patched="$work/patched"; copy_bundle "$stage" "$patched"
 "$QNAP/patch-private-glibc.sh" --bundle "$patched"
 chmod -R a+rX "$work"
-platform="linux/$(deb_arch "$arch")"
 node_child=""
 [ "$fake" = 0 ] && node_child="/p/runtime/node/bin/node -e \"console.log('child', require('child_process').execFileSync(process.execPath, ['--version']).toString().trim())\""
-for image in $images; do
-  log "image $image ($platform)"
-  docker run --rm --platform "$platform" -v "$stage:/b:ro" -v "$patched:/p:ro" "$image" sh -ec "
-    echo \"system glibc: \$(ldd --version 2>&1 | head -n 1)\"
+checks() { # $1: label. Runs inside the old system, with the plain bundle at /b and the patched one at /p.
+  cat <<SCRIPT
+    echo "system glibc: \$(ldd --version 2>&1 | head -n 1)"
     if /b/bin/convex-backend --help >/dev/null 2>&1; then echo 'note: plain convex-backend ran without the private glibc'; else echo 'ok: plain convex-backend fails here, as expected'; fi
     /b/runtime/lib/$loader --library-path /b/runtime/lib /b/runtime/node/bin/node --version
     /b/runtime/lib/$loader --library-path /b/runtime/lib /b/bin/convex-backend --help | head -n 1
@@ -78,7 +71,35 @@ for image in $images; do
     /p/runtime/node/bin/node --version
     /p/bin/convex-backend --help | head -n 1
     $node_child
-    echo 'ok: private glibc works in $image'
-  "
-done
-log "all container checks passed: $images"
+    echo 'ok: private glibc works in $1'
+SCRIPT
+}
+
+if docker info >/dev/null 2>&1; then
+  platform="linux/$(deb_arch "$arch")"
+  for image in $images; do
+    log "image $image ($platform)"
+    docker run --rm --platform "$platform" -v "$stage:/b:ro" -v "$patched:/p:ro" "$image" sh -ec "$(checks "$image")"
+  done
+  log "all container checks passed: $images"
+  exit 0
+fi
+[ "$require_docker" = 1 ] && die "Docker is not available"
+
+# No Docker: as root, use Ubuntu's official 16.04 base root filesystem (glibc 2.23) in a chroot instead.
+if [ "$(id -u)" = 0 ] && command -v chroot >/dev/null; then
+  case "$arch" in
+    x86_64) tarball=ubuntu-base-16.04.6-base-amd64.tar.gz sum=9c160b522568c0c3f2c396cfe7c966f1a63aa1a5e9f6f966a74fdf3571ad49a0 ;;
+    aarch64) tarball=ubuntu-base-16.04.6-base-arm64.tar.gz sum=3e1ed4a7e5ba750e2ce3556a3de1f4735b5571d8edb3c90a4ba36b6697d783d6 ;;
+  esac
+  curl -fsSL "https://cdimage.ubuntu.com/ubuntu-base/releases/16.04/release/$tarball" -o "$work/base.tgz"
+  echo "$sum  $work/base.tgz" | sha256sum -c --quiet - || die "ubuntu-base checksum mismatch"
+  root="$work/xenial"; mkdir -p "$root"
+  tar -xzf "$work/base.tgz" -C "$root" --exclude='./dev/*'
+  copy_bundle "$stage" "$root/b"; copy_bundle "$patched" "$root/p"
+  log "chroot ubuntu-base 16.04 ($arch)"
+  chroot "$root" /bin/sh -ec "$(checks "ubuntu-base 16.04 chroot")"
+  log "chroot checks passed (the Docker images, including centos:7, run in CI)"
+  exit 0
+fi
+log "neither Docker nor root here: old-glibc checks skipped (CI runs them)"

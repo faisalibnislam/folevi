@@ -39,6 +39,10 @@ type Status struct {
 	Memory struct {
 		TotalBytes     uint64 `json:"totalBytes"`
 		AvailableBytes uint64 `json:"availableBytes"`
+		// Profile is the memory profile in use (tiny, low or high). Low is true when the machine has
+		// 2.5 GB or less in total or under 256 MB available now, so the admin panel can warn.
+		Profile string `json:"profile"`
+		Low     bool   `json:"low"`
 	} `json:"memory"`
 }
 

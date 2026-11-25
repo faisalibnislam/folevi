@@ -247,21 +247,41 @@ func (a *App) computeOrigin() string {
 	return "http://" + net.JoinHostPort(host, strconv.Itoa(c.Port))
 }
 
-// memoryKnobs are the backend's concurrency settings (Phase 0 §5): the low profile by default, a larger one
-// on machines with 8 GB or more.
-func (a *App) memoryKnobs() (env []string, nodeHeapMB int) {
-	profile := a.cfg.Get().MemoryProfile
-	if profile == "" || profile == "auto" {
-		total, _ := sysinfo.Memory()
-		profile = "low"
-		if total >= 8<<30-256<<20 { // "8 GB" machines report a little less
-			profile = "high"
-		}
+// MemoryProfile picks the profile: "high" with 8 GB or more, "low" (Phase 0's knobs) in between, and "tiny"
+// at 2.5 GB or less (for example a 2 GB Synology DS223). "auto" or empty means pick by RAM.
+func MemoryProfile(setting string, totalBytes uint64) string {
+	switch setting {
+	case "tiny", "low", "high":
+		return setting
 	}
-	if profile == "high" {
+	switch {
+	case totalBytes == 0:
+		return "low"
+	case totalBytes <= 2560<<20:
+		return "tiny"
+	case totalBytes >= 8<<30-256<<20: // "8 GB" machines report a little less
+		return "high"
+	}
+	return "low"
+}
+
+// memoryKnobs are the backend's concurrency settings (Phase 0 §5) and the web server's heap limit in MB.
+func (a *App) memoryKnobs() (env []string, nodeHeapMB int) {
+	total, _ := sysinfo.Memory()
+	return Knobs(MemoryProfile(a.cfg.Get().MemoryProfile, total))
+}
+
+// Knobs returns the backend environment and web heap for a profile.
+func Knobs(profile string) ([]string, int) {
+	switch profile {
+	case "high":
 		return []string{"APPLICATION_MAX_CONCURRENT_QUERIES=16", "APPLICATION_MAX_CONCURRENT_MUTATIONS=16",
 			"APPLICATION_MAX_CONCURRENT_V8_ACTIONS=16", "APPLICATION_MAX_CONCURRENT_NODE_ACTIONS=8",
 			"ISOLATE_IDLE_TIMEOUT_SECONDS=120"}, 1024
+	case "tiny":
+		return []string{"APPLICATION_MAX_CONCURRENT_QUERIES=3", "APPLICATION_MAX_CONCURRENT_MUTATIONS=3",
+			"APPLICATION_MAX_CONCURRENT_V8_ACTIONS=2", "APPLICATION_MAX_CONCURRENT_NODE_ACTIONS=1",
+			"ISOLATE_IDLE_TIMEOUT_SECONDS=15"}, 192
 	}
 	return []string{"APPLICATION_MAX_CONCURRENT_QUERIES=4", "APPLICATION_MAX_CONCURRENT_MUTATIONS=4",
 		"APPLICATION_MAX_CONCURRENT_V8_ACTIONS=4", "APPLICATION_MAX_CONCURRENT_NODE_ACTIONS=2",

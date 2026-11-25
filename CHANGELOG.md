@@ -6,7 +6,7 @@ Versions are MAJOR.UPDATE.PATCH, PATCH at least two digits: a Major release (2.0
 
 ## Version 1.5.78: Small update
 
-Released 2026-11-25 06:39:59+06:00 (build 100, tag v1.5.78)
+Released 2026-11-25 06:39:59+06:00 (build 101, tag v1.5.78)
 
 Folevi for iPhone and iPad gets its widgets, Siri and Shortcuts back, a clearer sync sheet, and iPhone Duo keeps clear of the fold.
 
@@ -25,6 +25,7 @@ Folevi for iPhone and iPad gets its widgets, Siri and Shortcuts back, a clearer 
 - On iPhone, notes, tasks, pictures and pages you have seen before show at once when you come back, pages slide in complete, and pressing a card no longer flashes while you scroll.
 - On iPhone, finished tasks and swiped-away notes slide and fold out instead of vanishing, scrolling a list starts at once, the month opens smoothly, the tab bar moves with the screen, and notes open sooner.
 - On iPad, the sidebar slides in and out with the page, Home and the sidebar show their counts and lists at once, tabs keep their titles, taps on the sidebar and tabs show, the note's tool bar rides up with the keyboard, and menus and panels open and close on one quick motion.
+- On iPhone Duo, folding and unfolding keeps the open note, where you were typing and the keyboard; the sidebar no longer slides in on top of the unfold and follows the hinge; dialogs, menus, toasts and the note's tool bar stay clear of the fold and of the status bar on the side.
 
 ### Fixed
 

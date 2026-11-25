@@ -150,7 +150,7 @@ func (s CertStore) Obtain(opts ObtainOptions) error {
 	if opts.DirectoryURL != "" {
 		cfg.CADirURL = opts.DirectoryURL
 	}
-	cfg.Certificate.KeyType = certcrypto.EC256
+	cfg.Certificate.KeyType = certcrypto.EC256 // gitleaks:allow (a key type, not a key)
 	client, err := lego.NewClient(cfg)
 	if err != nil {
 		return err

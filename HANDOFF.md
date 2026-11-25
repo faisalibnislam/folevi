@@ -812,6 +812,9 @@ account button should move past iPadOS's window buttons).
   `DATABASE_UDF_USER_TIMEOUT_SECONDS=4` for that backend. Bursts show in `convex.log` as "took a long time".
 
 ## 12. Change log
+- 2026-11-25: PR 69 build fix: `Routes.kt:61` and `Tabs.kt:88` used `WebIcon.CALENDAR`, which the icon regeneration
+  (c3ce5640) removed; both now use `WebIcon.CALENDAR_DAYS` (owner's pick, matching the web's command palette). Not
+  compiled locally (no Android SDK on this Mac).
 - 2026-11-25: Merged `main` (4d22880f, the web PRs) into `claude/android-capacitor-197cf4` for PR 69: versions stay 1.5.74 / 89; the web layout files take main's width-decides version (formFactor).
 - 2026-11-24: Android 89 (1.5.74) published to Play internal testing (owner dragged the AAB in; Claude added it from the library, notes, published).
 - 2026-11-24: Android 1.5.74 (89) built from the merged mobile release for Play internal testing; upload waits on the owner's drag-in.

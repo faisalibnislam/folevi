@@ -101,6 +101,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             WebViewFactory.scheme.modeOf = { view in WindowManager.shared.modeOf((view as? FoleviWebView)?.place) }
             // A Folevi Server place's pages reach that server only (or the server its sign-in screen is for).
             WebViewFactory.scheme.serverOf = { view in ShellPlaces.server(of: (view as? FoleviWebView)?.place) }
+            // The sign-in screen (a main window with no place, in account mode) looks up any server's folevi.json.
+            WebViewFactory.scheme.signInOf = { view in
+                guard let v = view as? FoleviWebView, v.place == nil else { return false }
+                return WindowManager.shared.modeOf(nil) == "account"
+            }
             guard await Self.migrate() else { return }
             await offlineRules
             for step in Self.beforeFirstWindow { guard await step() else { return } }

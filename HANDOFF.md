@@ -512,6 +512,27 @@ Connect service and packages stay on `claude/sleepy-goodall-3cg4e7` / `claude/se
 `docs/self-hosting/CONTRACT.md`. Local test server and how apps test against it: shared notes `folevi-server-apps.md`.
 Rule for all Folevi Server work: mark every fake test token `// gitleaks:allow` (CI's secret scan reads every branch).
 
+**Folevi Server on the Mac (session for the Mac, 2026-11-25, branch `claude/focused-brahmagupta-639148`).** Verified
+against the local test server (`http://localhost:8460`) with headless tests, `apps/mac/FoleviTests/ServerFlowTests.swift`:
+adding the address (this 1.5.73 build gets `app_outdated`, a 1.6.0 build gets the server), its sign-in screen (the
+sheet's `/connect` sends a signed-out visitor to the server's `/signin`), signing in through the sheet's PKCE path
+(`/api/auth/native/authorize` then `ShellAuth.exchange`) and through the native email form, a Convex token from the
+server, the place switcher listing the server place next to a Folevi Cloud account and the library, and sign-out
+ending the server's session. Also covered: Bonjour entries (`LocalServers.entry`), the version gate, `ServerReach`
+(home name first, back to the added address when leaving home, no sign-out, `probe` injectable, `networkChanged()`),
+and each server place's token in the Keychain only (`session.<user>` for place `acct:<user>`, never in places.json,
+the run folder or the settings). The live tests skip without the server or `~/FoleviServerTest/test-accounts.env`;
+the real Bonjour browse runs only with `FOLEVI_LIVE_BONJOUR=1` (it can ask for Local Network access; with the
+owner's OK it ran and passed on this Mac on 2026-11-25, headless, `TEST_RUNNER_FOLEVI_LIVE_BONJOUR=1`). The server
+rate-limits sign-ins: run the two live sign-in tests a minute apart if they get 429. Also fixed: the Mac build was
+broken on `main` since the icon regeneration dropped `WebIcon.calendar` (now `.calendarDays`).
+The sign-in screen (account mode, no place yet: `AppScheme.signInOf`) gets `https: http:` in its connect-src so the
+page's own `lookUpServer` can read any server's folevi.json; account pages and local mode are unchanged.
+`ServerPageTests` checks it in an offscreen web view with the real scheme handler and a listener on the Mac's LAN
+address: an `app://` page fetching a home http server is not blocked as mixed content on the Mac (WebKit lets it
+through although `app://` is a secure context), a Folevi Cloud page and local mode can't reach it, and a server
+place on that http address can. That test needs the Mac's firewall off, or `FOLEVI_LIVE_LAN=1`.
+
 **Backend performance pass (session `perf-backend`, 2026-11-25).** A generated 5,000-note test library
 (`convex/lib/fakeLibrary.ts`, seeded by `convex/devSeed.ts` into an `@example.com` test account, refused on
 production) and a read-cost harness (`tests/convex/perf/`, run with `FOLEVI_PERF=1`). Baseline and every fix's
@@ -970,6 +991,12 @@ account button should move past iPadOS's window buttons).
   reached 1.9 GB RSS after seeding 5,000 notes on an 8 GB VM), Connect on Fly.io (owner's OK per deploy; Cloudflare
   DNS token for folevi.app; `connect.folevi.com` records at folevi.com's DNS), then each app session adds server
   sign-in to its shell (Mac, iPhone/iPad, Android, Windows, Linux). minAppVersion is 1.6.0.
+- Folevi Server on the Mac, still to do with the owner: one run of the real sign-in sheet against the test server in
+  a 1.6.0 Debug build on scratch data (GUI, needs the owner's OK), and a check with the real bundled export that a server place's data loads over
+  `http://localhost:8460/convex` (the header policy and mixed content are covered; the export's own meta CSP must
+  also allow `http:`/`ws:`). Optional: `places.scanCode()` on Macs with a camera (left out for now). Possible
+  hardening: the Mac's Keychain items use the login keychain, which keeps no "this device only" class; moving
+  them to the data protection keychain needs a migration of existing items.
 - Backend performance pass, owner's OK needed for production: run `migrations:backfillListStats` (optional, speeds
   up existing folders) and `migrations:backfillDocumentText` (required before the note text switch PR merges).
 - Backend performance pass (`docs/perf/backend-results.md`): kept folder and Drafts counts, task rows that carry
@@ -1272,6 +1299,14 @@ account button should move past iPadOS's window buttons).
 - 2026-11-25: Self-hosting plan version 2 (`docs/SELF_HOSTING_PLAN.md`): native packages on every NAS that allows
   them, catalog apps on TrueNAS and the container-only systems, native Linux installer for DigitalOcean/Hetzner,
   Folevi Connect for Plex-like access, roles and admin panel, email and other services through optional relays.
+- 2026-11-25: the live Bonjour browse (`testAServerAdvertisedOnThisNetworkIsFound`) ran on this Mac with the owner's
+  OK and passed: it advertised `_folevi._tcp` and found it with its TXT name, version and url.
+- 2026-11-25: Mac sign-in screen may look up any server (`https: http:` in its connect-src, `ShellPolicy.csp`
+  `signIn`); `ServerPageTests` (offscreen web view) shows home http servers aren't mixed content on the Mac.
+- 2026-11-25: Folevi Server on the Mac: `ServerFlowTests` (end to end against the local test server, Bonjour entries,
+  version gate, best connection on a network change, Keychain only); `ServerReach.probe`/`networkChanged()`,
+  `LocalServers.entry` (TXT values checked), `ShellAuth.exchange` split out of the sheet; Mac build fixed for the
+  regenerated icons (`calendar` is `calendarDays`).
 - 2026-11-25: Folevi Server, app side split onto `main` (`claude/server-apps-base`): web server edition, admin panel,
   Your own server sign-in, Connect pages, backend server edition, Mac/iOS server places, best-connection module; server
   functions registered for E2EE routing and local mode; server fallback origin is 127.0.0.1 so shell exports pass.

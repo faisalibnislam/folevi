@@ -1327,6 +1327,7 @@ account button should move past iPadOS's window buttons).
   `DATABASE_UDF_USER_TIMEOUT_SECONDS=4` for that backend. Bursts show in `convex.log` as "took a long time".
 
 ## 12. Change log
+- 2026-11-25: Native iOS 1.6.79 (build 104) on TestFlight (delivery efdcbcd1): Foli AI's sheet slides up and down as iOS's own and its tab is never selected (owner's video: the zoom from the middle of the screen and the blank page looked weird).
 - 2026-11-25: Native iOS 1.6.79 (build 103) uploaded to TestFlight from `claude/ios-native-today-ui` (delivery fd1a648b).
 - 2026-11-25: Native iOS sync sheet redesign, Your own server sign-in, R5.6 and R5.7 (native) on `claude/ios-native-sync-signin`.
 - 2026-11-25: Native Foli AI on iPhone finished on `claude/ios-native-foli-ai` (glass composer on the keyboard, Stop, follow-ups crash, local message ids).

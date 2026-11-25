@@ -2,8 +2,8 @@
 
 import { DateField, TimeField } from "@/components/ui/DateField";
 import { useMutation } from "convex/react";
-import { useQuery, useQueryState } from "@/lib/convex/queries";
-import { useOfflineQuery } from "@/lib/sync/queryCache";
+import { useQuery } from "@/lib/convex/queries";
+import { useCachedQuery, useOfflineQuery } from "@/lib/sync/queryCache";
 import { useCallback, useDeferredValue, useMemo, useRef, useState, type ReactNode } from "react";
 import { ArrowRightLeft, CalendarDays, Check, FileText, Funnel, Plus, Repeat, RotateCcw, SlidersHorizontal, SquareCheckBig, X } from "lucide-react";
 import { DocumentPicker, type Target } from "@/components/app/QuickAddTask";
@@ -40,9 +40,10 @@ type Priority = "none" | "low" | "medium" | "high";
 const PRIORITY_LABEL: Record<Priority, string> = { none: "None", low: "Low", medium: "Medium", high: "High" };
 
 export type TaskRow = NonNullable<ReturnType<typeof useTasks>["data"]>[number];
+// Kept per view on the device, so a visit (or a chip tap back to a view seen before) draws its rows at once.
 function useTasks(view: View) {
   const { scope, today } = useAppState();
-  return useQueryState(api.tasks.list, { scope, view, today });
+  return useCachedQuery(api.tasks.list, { scope, view, today });
 }
 
 /** Moves a task (its to-do) to the end of another page, or to the Inbox page. */

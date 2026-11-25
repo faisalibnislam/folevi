@@ -29,6 +29,7 @@ import { useCreateDocument } from "@/components/app/useCreateDocument";
 import { ageText, editedText, formatRelative, templatesCountText } from "@/lib/format";
 import { t } from "@/i18n";
 import { localDb } from "@/lib/sync/db";
+import { onMemoryPressure } from "@/lib/memoryPressure";
 import { TemplateTile } from "@/components/ui/TemplateIcon";
 import { DocumentCardPreview, NOTE_CARD_LINK, NoteCardFace } from "./DocumentCard";
 import { FolderBadge } from "./FolderBadge";
@@ -112,6 +113,21 @@ const EMPTY: Record<View, { icon: LucideIcon; title: string; body?: string }> = 
 };
 
 const PAGE_SIZE = 48;
+
+/**
+ * The first page the server last served for each list (account, scope, view, folder, tag and sort), for this visit:
+ * a list opened again (the phone remounts its screens on every push, pop and tab switch) draws these notes on its
+ * first frame, in the server's order, and the live page then replaces them in place.
+ */
+const firstPages = new Map<string, Summary[]>();
+const FIRST_PAGES_KEPT = 60;
+onMemoryPressure(() => firstPages.clear());
+
+function keepFirstPage(key: string, rows: Summary[]) {
+  firstPages.delete(key);
+  firstPages.set(key, rows);
+  if (firstPages.size > FIRST_PAGES_KEPT) firstPages.delete(firstPages.keys().next().value as string);
+}
 
 /** "drag to arrange" as a line of its own: "Drag to arrange". */
 const sentence = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
@@ -218,7 +234,7 @@ function DocumentList({ view, folderId, tagId, org, titleOverride }: { view: Vie
   const createDocument = useCreateDocument();
   const emptyTrash = useMutation(api.documents.emptyTrash);
   const toast = useToast();
-  const [cached, setCached] = useState<Summary[] | null>(null);
+  const [stored, setCached] = useState<Summary[] | null>(null);
   const [confirmEmpty, setConfirmEmpty] = useState(false);
   // A folder's Share dialog, from the folder page's title row (docs/SHARING.md).
   const [sharingFolder, setSharingFolder] = useState(false);
@@ -275,6 +291,14 @@ function DocumentList({ view, folderId, tagId, org, titleOverride }: { view: Vie
       live = false;
     };
   }, [status, fromDevice, profile.id, scopeKey, sort]);
+  // This list's first page as the server last served it (this visit), ahead of the device copy: it's exactly
+  // this list, in the server's order, so the live page replaces it without the notes moving.
+  const listKey = `${profile.id}|${scopeKey}|${view}|${folderId ?? ""}|${tagId ?? ""}|${sort}`;
+  useEffect(() => {
+    if (unsent || status === "LoadingFirstPage") return;
+    keepFirstPage(listKey, results.slice(0, PAGE_SIZE));
+  }, [unsent, status, results, listKey]);
+  const cached = firstPages.get(listKey) ?? stored;
   // Offline, the saved copies come a page at a time too, like the live list.
   const [cachedShown, setCachedShown] = useState(PAGE_SIZE);
 

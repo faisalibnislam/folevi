@@ -751,6 +751,8 @@ account button should move past iPadOS's window buttons).
   `DATABASE_UDF_USER_TIMEOUT_SECONDS=4` for that backend. Bursts show in `convex.log` as "took a long time".
 
 ## 12. Change log
+- 2026-11-25: CI secret scan reads only the history HEAD reaches (`--log-opts=HEAD`, owner's OK), not every fetched
+  branch: test tokens on unmerged branches (Folevi Server, Linux stores) had failed the required check on every PR.
 - 2026-11-25: Notes say Android is active (the Capacitor app, PR 69, Play internal testing); only the native Compose
   app is paused. An Android SDK is installed at `~/Library/Android/sdk` (not on PATH), so Android builds can run on
   this Mac.

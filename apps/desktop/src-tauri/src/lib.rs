@@ -23,6 +23,7 @@ mod secrets;
 mod settings;
 mod server;
 mod shell;
+mod updates;
 
 use parking_lot::Mutex;
 use serde_json::{json, Value};
@@ -660,6 +661,9 @@ fn update_tray(app: &AppHandle) {
         }
         m.append(&MenuItem::with_id(app, "open", "Open Folevi", true, None::<&str>)?)?;
         m.append(&MenuItem::with_id(app, "settings", "Settings", true, None::<&str>)?)?;
+        if updates::supported() {
+            m.append(&MenuItem::with_id(app, "check-updates", "Check for Updates…", true, None::<&str>)?)?;
+        }
         m.append(&PredefinedMenuItem::separator(app)?)?;
         m.append(&MenuItem::with_id(app, "quit", "Quit Folevi", true, None::<&str>)?)?;
         Ok(m)
@@ -684,6 +688,7 @@ fn update_tray(app: &AppHandle) {
                 "new-note" => command_main(app, json!({ "type": "new-note" })),
                 "open" => show_main(app, None),
                 "settings" => show_main(app, Some("/settings/desktop")),
+                "check-updates" => updates::check_by_hand(app),
                 "quit" => quit(app),
                 _ => {
                     if let Some(note) = id.strip_prefix("note:") {
@@ -728,10 +733,15 @@ fn update_badge(app: &AppHandle) {
 }
 
 fn quit(app: &AppHandle) {
+    prepare_to_quit(app);
+    app.exit(0);
+}
+
+/// Saves reminders and closes the library before Folevi quits or an update replaces it.
+pub(crate) fn prepare_to_quit(app: &AppHandle) {
     services(app).ui.lock().quitting = true;
     services(app).reminders.save_now();
     services(app).library.dispose();
-    app.exit(0);
 }
 
 fn apply_login_item(app: &AppHandle) {
@@ -1426,6 +1436,7 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_process::init())
+        .plugin(tauri_plugin_updater::Builder::new().build())
         .register_asynchronous_uri_scheme_protocol("app", |ctx, request, responder| {
             let app = ctx.app_handle().clone();
             let label = ctx.webview_label().to_string();
@@ -1544,6 +1555,7 @@ pub fn run() {
             services.ui.lock().shortcut_error = error;
             update_tray(&handle);
             watch_server_names(&handle);
+            updates::start(&handle, services.paths.test_run);
 
             // folevi:// links: the one that started the app, then each later one (the single-instance plugin
             // forwards a second start's). Registered at run time too, for the AppImage and test builds.

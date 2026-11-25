@@ -140,12 +140,28 @@ Not done: an http server on the home network other than `localhost`. Windows ser
 `https://app.localhost`, so WebView2 blocks http and ws to a LAN address as mixed content (the page policy allows
 it). The owner chose the shell carrying that traffic (the place keeps its origin and storage); that's still to build.
 Check WebKitGTK the same way on Linux.
+## Updates
+
+Folevi for Windows and the Linux AppImage update themselves the way Sparkle updates the Mac app (`src/updates.rs`):
+a check a minute after launch and every 12 hours, and Check for Updates… in the notification area icon's menu. When
+there's a newer version Folevi asks; Install and Restart downloads it, saves notes and reminders, installs and opens
+again (Windows's installer runs in passive mode). Later skips that version until the next launch. A .deb, .rpm,
+Snap or Flatpak updates through the system (`linux::self_update_allowed`), so it has no menu item and never checks.
+
+- Feed: `https://folevi.com/download/desktop/<target>-<arch>/latest.json` (`windows-x86_64`, `windows-aarch64`,
+  `linux-x86_64`, `linux-aarch64`), R2 `folevi-updates/desktop/`, `no-cache`. Each points at the release's versioned
+  installer that's already published (`windows/Folevi_<v>_x64-setup.exe`, `linux/Folevi_<v>_amd64.AppImage`...).
+- Signing: every update is signed with Folevi's update key (minisign, Ed25519). The private key is at
+  `~/.folevi-desktop-signing/folevi-updater.key` on the owner's Mac, outside the repository, with no password; its
+  public key is `plugins.updater.pubkey` in `tauri.conf.json`. The app refuses an update whose signature doesn't
+  match. Losing the key means shipping the next version as a fresh download, so keep a copy in the password manager.
+- Publishing (with the owner's OK, after the installers are on folevi.com):
+  `packaging/desktop/publish-update-feed.sh <v> <dir with the release files> [--notes "..."] [--dry-run]`. It checks
+  the hosted installer is byte for byte the local one, signs it and uploads each `latest.json`. Nothing is in CI: the
+  key never leaves the Mac.
 
 ## Not done yet
 
-- Updates: the Tauri updater is in the app and points at `folevi.com/download/desktop/<target>-<arch>/latest.json`,
-  but stays off until the owner approves an update signing key (it signs every update) and its public key is put in
-  `tauri.conf.json`.
 - Signing (Windows), uploading to R2, a download page, Flathub submission (`packaging/linux/flatpak/com.folevi.Folevi.yml`
   needs the release's .deb addresses and checksums; docs/LINUX.md), the Microsoft Store.
 - Dropbox and Google Drive sign-in on this platform (the library's cloud copy is ported; the sign-in flow isn't).

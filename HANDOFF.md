@@ -626,8 +626,8 @@ account button should move past iPadOS's window buttons).
   already go to v1.5.76, so nothing new is cut for this.
 - Folevi for Linux stores (PR 99 `claude/linux-stores`, owner's OK 2026-11-25; docs/LINUX.md): apt and rpm
   repositories LIVE at `folevi.com/download/linux/apt` and `/rpm` (1.5.75), checked by installing from the live
-  addresses on Ubuntu 24.04, Debian 12, Fedora 41, openSUSE Tumbleweed (arm64 containers). Snap: `folevi` registered,
-  arm64 uploaded (revision 1 held for review, to be rejected), amd64 via Launchpad remote-build. Flathub: blocked, its AI policy forbids
+  addresses on Ubuntu 24.04, Debian 12, Fedora 41, openSUSE Tumbleweed (arm64 containers). Snap: LIVE at
+  snapcraft.io/folevi, 1.5.75 stable for amd64 (revision 4, Launchpad remote-build) and arm64 (revision 3), new icon. Flathub: blocked, its AI policy forbids
   AI-written manifests and AI-opened submissions (docs/LINUX.md "Flathub"); only the owner can do it by hand. The
   owner should copy `~/.folevi-linux-signing/folevi-repo-secret.asc` into their password manager. From the next
   Linux release the .deb and .rpm add the repositories on install; each release also runs the repo scripts.

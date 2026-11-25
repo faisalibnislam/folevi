@@ -198,6 +198,8 @@ private fun NoteChrome(state: NoteChromeState, title: String, onBack: (() -> Uni
     val ai = rememberView(com.folevi.engine.generated.Views.session()).value.value?.capabilities?.ai == true
     var formatOpen by remember { mutableStateOf(false) }
     var linkOpen by remember { mutableStateOf(false) }
+    // Insert is the native sheet (InsertSheet.kt), as on iPhone.
+    var insertOpen by remember { mutableStateOf(false) }
     val run: (suspend () -> Unit) -> Unit = { block -> scope.launch { runCatching { block() } } }
     val togglePanel: (EditorPanel) -> Unit = { which -> run { if (panel == which) session.client.editor(EditorCommands.panelClose()) else session.client.editor(EditorCommands.panelOpen(panel = which)) } }
     Box(Modifier.fillMaxSize()) {
@@ -241,7 +243,7 @@ private fun NoteChrome(state: NoteChromeState, title: String, onBack: (() -> Uni
                 }
                 ToolCapsule {
                     if (ai) ToolButton(null, "Foli AI", selected = panel == EditorPanel.AI, content = { AiMark(26.dp) }) { run { session.client.editor(EditorCommands.ai(action = AiArgs.Action.OPEN)) } }
-                    if (canEdit) ToolButton(null, "Insert", selected = panel == EditorPanel.INSERT, content = { InsertDisc() }) { togglePanel(EditorPanel.INSERT) }
+                    if (canEdit) ToolButton(null, "Insert", selected = insertOpen, content = { InsertDisc() }) { insertOpen = true }
                 }
             }
         }
@@ -251,10 +253,16 @@ private fun NoteChrome(state: NoteChromeState, title: String, onBack: (() -> Uni
             exit = slideOutVertically { it } + fadeOut(),
             modifier = Modifier.align(Alignment.BottomCenter),
         ) {
-            KeyboardBar(editor, ai, run, onFormat = { formatOpen = true }, onLink = { linkOpen = true }, onInsert = { togglePanel(EditorPanel.INSERT) })
+            KeyboardBar(editor, ai, run, onFormat = { formatOpen = true }, onLink = { linkOpen = true }, onInsert = { insertOpen = true })
         }
     }
     if (formatOpen) FormatSheet(editor, run, onLink = { linkOpen = true }) { formatOpen = false }
+    if (insertOpen) InsertSheet(
+        onDismiss = { insertOpen = false },
+        onInsert = { kind -> run { session.client.editor(EditorCommands.insert(kind = kind)) } },
+        scanner = androidx.compose.ui.platform.LocalContext.current.packageManager.hasSystemFeature(android.content.pm.PackageManager.FEATURE_CAMERA_ANY),
+        stockPhotos = rememberView(com.folevi.engine.generated.Views.session()).value.value?.mode?.value != "local",
+    )
     if (linkOpen) LinkDialog(editing = editor?.link == true, onDismiss = { linkOpen = false }) { href -> linkOpen = false; run { session.client.editor(EditorCommands.link(href = href)) } }
 }
 

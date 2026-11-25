@@ -5,31 +5,38 @@
 // - The native Mac app (apps/mac): WebKit's getDisplayMedia has no system sound, so the app records and mixes
 //   both itself (CallRecorder.swift) and hands the finished recording over (foleviDesktop.recordCall, used through
 //   NativeCallRecording below, shaped like the parts of MediaRecorder the recorder panel uses).
-// macOS asks for Screen & System Audio Recording permission the first time. In a browser, or in a Mac app from
-// before call capture (no `callCapture` on its bridge), only the microphone is offered.
+// - Folevi for Windows (apps/desktop): the Electron app's way. WebView2's getDisplayMedia offers "Share system audio"
+//   with the screen; the recorder keeps only the sound and mixes it with the microphone (mixAudio).
+// macOS asks for Screen & System Audio Recording permission the first time. In a browser, in Folevi for Linux (its
+// web view's screen capture has no system sound), or in a Mac app from before call capture (no `callCapture` on its
+// bridge), only the microphone is offered.
 import type { DesktopBridge } from "./desktop";
 import { macDesktop, type MacDesktop, type NativeCallRecorder } from "./desktop/capabilities";
 
 /** Where a recording's sound comes from: the microphone, or a call (the microphone and this Mac's sound). */
 export type RecordingSource = "mic" | "call";
 
-/** Whether calls can be recorded here: only in a Mac app that says it can. */
+/** Whether calls can be recorded here: only in a Mac or Windows app that says it can. */
 export function canRecordCalls(bridge: Pick<DesktopBridge, "platform" | "callCapture"> | null): boolean {
-  return Boolean(bridge && bridge.platform === "mac" && bridge.callCapture === true);
+  return Boolean(bridge && (bridge.platform === "mac" || bridge.platform === "windows") && bridge.callCapture === true);
 }
 
 export const CALL_PERMISSION =
   "Folevi needs Screen & System Audio Recording permission to hear the call. Turn it on in System Settings > Privacy & Security, then try again.";
 const CALL_FAILED = "The call’s sound couldn’t be recorded. Try again, or record from the microphone only.";
+/** Windows: no permission to change, the person chooses what to share each time. */
+export const CALL_SHARE_SOUND = "Folevi didn’t get this PC’s sound. Record a call again, choose your screen and turn on Share system audio.";
 
 /**
  * What went wrong getting this Mac's sound, as a sentence, and whether System Settings would fix it. A
  * refusal (or a capture that can't start, which is how macOS answers without the permission) points to
  * the permission; so does a capture that came back without any sound.
  */
-export function callProblem(error: unknown): { message: string; settings: boolean } {
+export function callProblem(error: unknown, platform: string | undefined = typeof window !== "undefined" ? (window as { foleviDesktop?: { platform?: string } }).foleviDesktop?.platform : undefined): { message: string; settings: boolean } {
   const name = error instanceof DOMException ? error.name : error instanceof Error ? error.name : "";
-  if (["NotAllowedError", "SecurityError", "NotReadableError", "AbortError", "NoSystemAudio"].includes(name)) return { message: CALL_PERMISSION, settings: true };
+  if (["NotAllowedError", "SecurityError", "NotReadableError", "AbortError", "NoSystemAudio"].includes(name)) {
+    return platform === "windows" ? { message: CALL_SHARE_SOUND, settings: false } : { message: CALL_PERMISSION, settings: true };
+  }
   return { message: CALL_FAILED, settings: false };
 }
 

@@ -112,7 +112,7 @@ pub fn restrict(path: &Path) {
 /// The names secrets may have (Electron's secrets.ts SECRET_NAMES): the single session older builds kept, each
 /// account's session, and the three Foli AI keys.
 pub fn is_secret_name(name: &str) -> bool {
-    matches!(name, "auth.session" | "ai.openai" | "ai.anthropic" | "ai.google")
+    matches!(name, "auth.session" | "ai.openai" | "ai.anthropic" | "ai.google" | "cloud.dropbox" | "cloud.googleDrive")
         || name.strip_prefix("auth.session.").is_some_and(|id| !id.is_empty() && id.len() <= 64 && id.chars().all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '-'))
 }
 

@@ -8,14 +8,27 @@ use std::borrow::Cow;
 /// The policy for the interface's pages: local mode (and the first-launch choice) reaches nothing but the app itself;
 /// signed-in mode adds Folevi's website and Convex. Images and embeds from the web stay allowed (the person's own
 /// content). Tauri's IPC origins are allowed in both (the bridge's calls).
-pub fn shell_csp(mode: &str, service_origin: &str, extra_connect: &[String]) -> String {
+///
+/// A Folevi Server's place ("Your own server") reaches that server's names only (`server`: server::connect_sources),
+/// never Folevi Cloud. The sign-in screen (`sign_in`: account mode, no account yet) may also reach any https or http
+/// address, for the page's own look at a server's folevi.json before the app checks it (ShellPolicy.csp).
+pub fn shell_csp(mode: &str, service_origin: &str, extra_connect: &[String], server: Option<&[String]>, sign_in: bool) -> String {
     let account = mode == "account";
     let mut connect: Vec<String> = vec!["'self'".into(), "ipc:".into(), "http://ipc.localhost".into()];
     if account {
-        connect.extend([service_origin.to_string(), "https://*.convex.cloud".into(), "wss://*.convex.cloud".into(), "https://*.convex.site".into()]);
-        connect.extend(extra_connect.iter().cloned());
+        match server {
+            Some(sources) => connect.extend(sources.iter().cloned()),
+            None => {
+                connect.extend([service_origin.to_string(), "https://*.convex.cloud".into(), "wss://*.convex.cloud".into(), "https://*.convex.site".into()]);
+                connect.extend(extra_connect.iter().cloned());
+            }
+        }
+        if sign_in {
+            connect.extend(["https:".to_string(), "http:".to_string()]);
+        }
     }
-    connect.dedup();
+    let mut seen = std::collections::HashSet::new();
+    connect.retain(|c| seen.insert(c.clone()));
     [
         "default-src 'self'".to_string(),
         "script-src 'self' 'unsafe-inline'".into(),
@@ -221,11 +234,18 @@ mod tests {
 
     #[test]
     fn policies() {
-        let local = shell_csp("local", "https://app.folevi.com", &[]);
+        let local = shell_csp("local", "https://app.folevi.com", &[], None, false);
         assert!(local.contains("connect-src 'self' ipc: http://ipc.localhost;"));
         assert!(!local.contains("convex"));
-        let account = shell_csp("account", "https://app.folevi.com", &[]);
+        let account = shell_csp("account", "https://app.folevi.com", &[], None, false);
         assert!(account.contains("https://app.folevi.com") && account.contains("wss://*.convex.cloud"));
+        // A Folevi Server's place reaches that server only; its sign-in screen may look at any address first.
+        let lan = ["http://192.168.1.20:8460".to_string(), "ws://192.168.1.20:8460".to_string()];
+        let server = shell_csp("account", "https://app.folevi.com", &["https://extra.example".into()], Some(&lan), false);
+        assert!(server.contains("connect-src 'self' ipc: http://ipc.localhost http://192.168.1.20:8460 ws://192.168.1.20:8460;"));
+        assert!(!server.contains("convex.cloud") && !server.contains("app.folevi.com") && !server.contains("extra.example"));
+        assert!(shell_csp("account", "https://app.folevi.com", &[], None, true).contains("https://*.convex.site https: http:;"));
+        assert!(!shell_csp("local", "https://app.folevi.com", &[], None, true).contains("http:;"));
         assert_eq!(safe_file_type(Some("image/png"), None), "image/png");
         assert_eq!(safe_file_type(Some("text/html"), Some("image/svg+xml")), "application/octet-stream");
         assert_eq!(allow_ipc_in_meta("x connect-src &#x27;self&#x27; y"), "x connect-src &#x27;self&#x27; ipc: http://ipc.localhost y");

@@ -237,6 +237,11 @@ export const copy = {
     touchIdDone: "Touch ID will be asked for on this Mac",
     notNow: "Not now",
   },
+  vaultUnlockWindows: {
+    touchIdTitle: "Use Windows Hello next time?",
+    touchIdBody: "This PC asks for Windows Hello instead of your passphrase before it opens your encrypted notes and your Vault's keys. You can change this in Settings.",
+    touchIdOn: "Use Windows Hello",
+  },
   approve: {
     waitingTitle: "Waiting for approval",
     waitingBody: "Open Folevi on a device you've already unlocked. It will ask you to approve this one.",
@@ -281,6 +286,14 @@ export const copy = {
     touchIdUnavailable: "This Mac has no Touch ID, or it isn't set up in System Settings.",
     on: "Touch ID will be asked for",
     off: "Touch ID won't be asked for",
+  },
+  /** The same switch in Folevi for Windows, with Windows Hello (a face, a fingerprint or the PIN). */
+  desktopWindows: {
+    touchId: "Ask for Windows Hello to unlock encrypted notes",
+    touchIdBody: "This PC asks for Windows Hello before it opens your encrypted notes, each time Folevi opens.",
+    touchIdUnavailable: "This PC has no Windows Hello, or it isn't set up in Windows Settings.",
+    on: "Windows Hello will be asked for",
+    off: "Windows Hello won't be asked for",
   },
   lock: {
     menuItem: "Always fully encrypted",

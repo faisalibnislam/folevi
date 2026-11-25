@@ -379,9 +379,11 @@ export class LibraryStore implements LocalStore {
     }
     if (table === "files") return (await this.withBlob(v as LocalTables["files"])) as LocalTables[T];
     if (table === "versions" && partition) this.loadHistorySoon(partition);
-    return readRow(v as LocalTables[T], table);
+    // One row: a copy, as before (a reader may fill it in place: the library move's saved progress does).
+    return copyRow(v as LocalTables[T], table);
   }
 
+  /** Every row of a table (or a partition): the kept, frozen rows themselves (`frozen`), not a copy of each. */
   async list<T extends LocalTable>(table: T, partition?: string): Promise<LocalTables[T][]> {
     if (table === "versions" && partition) this.loadHistorySoon(partition);
     const out: LocalTables[T][] = [];
@@ -1347,7 +1349,8 @@ function copyRow<T>(value: T, table: string): T {
  * A row as the store keeps it in memory: frozen all the way down, so a read can hand it out as it is. Copying every
  * row on every read (a list of the documents table copied each of 5,000 notes with its search text) made each query
  * of a big library take most of a second (docs/perf/web-results.md). A reader that wants to change a row copies it
- * first; writes come back through rowBatch, which keeps a frozen copy of what was written.
+ * first; writes come back through rowBatch, which keeps a frozen copy of what was written. Only the whole-table reads
+ * (`list`, `blocksOfTypes`) hand out kept rows; `get` still returns a copy of its one row.
  */
 function frozen<T>(value: T): T {
   if (value === null || typeof value !== "object" || Object.isFrozen(value)) return value;

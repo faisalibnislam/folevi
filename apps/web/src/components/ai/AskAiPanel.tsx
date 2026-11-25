@@ -7,7 +7,7 @@ import { useMutation } from "convex/react";
 import { useQuery } from "@/lib/convex/queries";
 import { History, Maximize2, MoreHorizontal, Plus, X } from "lucide-react";
 import { useIphoneApp } from "@/lib/iphone";
-import { inIosApp } from "@/lib/nativeApp";
+import { inAndroidApp, inIosApp } from "@/lib/nativeApp";
 import { KEYBOARD_EASE, afterKeyboardGoes, isTextField, onKeyboardFrame, popOut } from "@/lib/native/ui";
 import { SHEET_BUTTON, Sheet } from "@/components/iphone/Sheet";
 import { api } from "@/lib/convex/api";
@@ -92,13 +92,15 @@ export function AskAiPanel({ open, onOpen, onClose, initial, folder, hideLaunche
     setThread((n) => n + 1);
   }, [open, folder]);
 
-  // The iPad app: the floating chat stays where it is when the keyboard comes, getting shorter so its composer
-  // sits on the keyboard, in step with it (the web view shrinks only once the keyboard has landed, Capacitor:
-  // laid out from the bottom of the window, the chat would sit under the keyboard until then, then jump).
+  // The iPad app (and the Android app): the floating chat stays where it is when the keyboard comes, getting
+  // shorter so its composer sits on the keyboard, in step with it (the iOS web view shrinks only once the keyboard
+  // has landed, Capacitor: laid out from the bottom of the window, the chat would sit under the keyboard until
+  // then, then jump). It's placed from the top of the window, so the web view shrinking, then or at once as on
+  // Android, doesn't move it.
   const sectionRef = useRef<HTMLElement>(null);
   useLayoutEffect(() => {
     const el = sectionRef.current;
-    if (!shown || !el || iphone || !inIosApp()) return;
+    if (!shown || !el || iphone || !(inIosApp() || inAndroidApp())) return;
     let screenH = window.innerHeight;
     let base = { top: el.offsetTop, height: el.offsetHeight };
     let keyboard = 0;

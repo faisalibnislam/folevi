@@ -2,6 +2,10 @@
 @import "@folevi/design-tokens/tokens.css";
 
 @custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+/* `active:` (a press's scale and tint), except on what ripples inside the Android app (lib/android/ripple.ts, its
+   PRESSABLE and pressTarget): there the ripple is the press's one feedback. (In :where, so it weighs no more than
+   :active alone.) */
+@custom-variant active (&:where(:not(:root[data-native="android"] :is(button, a[href], [role="button"], [role="menuitem"], [role="menuitemradio"], [role="menuitemcheckbox"], [role="tab"], [role="option"], [role="switch"], summary):not(.ProseMirror *, [contenteditable="true"] *, [data-no-ripple], [data-no-ripple] *, [aria-disabled="true"]))):active);
 
 @theme inline {
   --font-sans: var(--font-instrument-sans), ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
@@ -191,7 +195,8 @@
 }
 
 /* Android's press ripple (lib/android/ripple.ts, inside the Android app only): a layer over the pressed control,
-   clipped to it, in the control's own text color at a low opacity. */
+   clipped to it, in the control's own text color at a low opacity. (The control's own `active:` scale and tint are
+   off there: the `active` variant at the top.) */
 .ui-ripple-host { position: fixed; z-index: 2147483000; overflow: hidden; pointer-events: none; opacity: 1; transition: opacity 220ms linear; }
 .ui-ripple-host[data-out] { opacity: 0; }
 .ui-ripple { position: absolute; border-radius: var(--radius-capsule); background: currentColor; opacity: 0.12; transform: scale(0); animation: ui-ripple 380ms cubic-bezier(0.2, 0, 0, 1) forwards; }
@@ -926,6 +931,11 @@
    on their rows and tiles (text fields and notes keep theirs). */
 :root[data-iphone] [data-iphone-tappable] { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
 :root[data-iphone] [data-iphone-tappable] :is(input, textarea, [contenteditable]:not([contenteditable="false"])) { -webkit-user-select: text; user-select: text; }
+/* The Android app: a long press on a row, card or control opens Folevi's hold menu (lib/touchContextMenu.ts), so it
+   doesn't also start Chrome's text selection and its toolbar beside the menu. The note, the editor and text fields
+   keep theirs. */
+:root[data-native="android"] :is([data-ctx-host], [data-lift], a[href], button, [role="button"]):not(.ProseMirror *, [contenteditable="true"] *) { -webkit-user-select: none; user-select: none; }
+:root[data-native="android"] :is([data-ctx-host], [data-lift], a[href], button, [role="button"]) :is(input, textarea, [contenteditable]:not([contenteditable="false"])) { -webkit-user-select: text; user-select: text; }
 :root[data-iphone] [role="listbox"].ui-pop { background: var(--liquid-fill-strong); }
 /* Toasts float above the tab bar. */
 :root[data-iphone] .ui-toasts { bottom: calc(env(safe-area-inset-bottom) + 80px); }

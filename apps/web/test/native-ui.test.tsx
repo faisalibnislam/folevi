@@ -246,6 +246,26 @@ describe("the keyboard", () => {
       { height: 0, duration: 250, curve: "keyboard", visible: false },
     ]);
   });
+
+  test("in the Android app without its frames: Capacitor's events only, not the visual viewport", () => {
+    const vv = Object.assign(new EventTarget(), { height: 400, offsetTop: 0 });
+    const had = Object.getOwnPropertyDescriptor(window, "visualViewport");
+    Object.defineProperty(window, "visualViewport", { value: vv, configurable: true });
+    document.documentElement.dataset.native = "android";
+    try {
+      const frames: NativeKeyboardFrame[] = [];
+      const stop = onKeyboardFrame((f) => frames.push(f));
+      window.dispatchEvent(Object.assign(new Event("keyboardWillShow"), { keyboardHeight: 320 }));
+      // The web view shrinks by the keyboard: the visual viewport then covers the whole page.
+      vv.dispatchEvent(new Event("resize"));
+      stop();
+      expect(frames).toEqual([{ height: 320, duration: 250, curve: "keyboard", visible: true }]);
+    } finally {
+      delete document.documentElement.dataset.native;
+      if (had) Object.defineProperty(window, "visualViewport", had);
+      else delete (window as { visualViewport?: unknown }).visualViewport;
+    }
+  });
 });
 
 test("screenRect: rectangles in the visual viewport's pixels", () => {

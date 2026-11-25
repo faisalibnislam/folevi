@@ -7,7 +7,7 @@
 // Menus stay Folevi's (components/ui/Menu.tsx, in Folevi's fonts, owner's decision D1); only the lifted
 // preview of a long press is native (lib/native/lift.ts).
 
-import { inIosApp, nativeApp, type Haptic, type NativeAction, type NativeBridge, type NativeKeyboardFrame, type NativeRect } from "@/lib/nativeApp";
+import { inAndroidApp, inIosApp, nativeApp, type Haptic, type NativeAction, type NativeBridge, type NativeKeyboardFrame, type NativeRect } from "@/lib/nativeApp";
 
 export type { NativeKeyboardFrame, NativeRect } from "@/lib/nativeApp";
 
@@ -318,14 +318,18 @@ export function onKeyboardFrame(listener: (frame: NativeKeyboardFrame) => void):
   // Capacitor's Keyboard plugin (the Android app, an older iOS app): heights before the move.
   const willShow = (e: Event) => report(Math.round(Number((e as Event & { keyboardHeight?: number }).keyboardHeight) || viewportKeyboard()), 250);
   const willHide = () => report(0, 250);
-  const fromViewport = () => report(viewportKeyboard());
   window.addEventListener("keyboardWillShow", willShow);
   window.addEventListener("keyboardWillHide", willHide);
-  window.visualViewport?.addEventListener("resize", fromViewport);
+  // The Android app shrinks its web view by the keyboard's height, so the visual viewport soon says nothing covers
+  // the page: read there, the keyboard would seem gone and a sheet riding it would drop behind it. The plugin's
+  // events alone say where it is.
+  const viewport = inAndroidApp() ? null : window.visualViewport;
+  const fromViewport = () => report(viewportKeyboard());
+  viewport?.addEventListener("resize", fromViewport);
   return () => {
     window.removeEventListener("keyboardWillShow", willShow);
     window.removeEventListener("keyboardWillHide", willHide);
-    window.visualViewport?.removeEventListener("resize", fromViewport);
+    viewport?.removeEventListener("resize", fromViewport);
   };
 }
 
@@ -401,15 +405,15 @@ export function afterKeyboardGoes(container: Element | null | undefined, then: (
 
 /**
  * Something placed above the bottom of the page with `var(--kb-ride, 0px)` in its `bottom` (the note's floating bar,
- * its tools over the note), kept above the on-screen keyboard in the iOS app and moving with it. The app shrinks the
- * web view only after the keyboard has come up, and grows it back as the keyboard starts leaving, so `--kb-ride`
- * holds the part of the keyboard the web view doesn't account for yet, changed on the keyboard's own duration and
- * curve. `stretch`: it's held at its top too, so its bottom edge moves (a transition on `bottom`) instead of the
+ * its tools over the note), kept above the on-screen keyboard in the iOS and Android apps and moving with it. The
+ * iOS app shrinks the web view only after the keyboard has come up, and grows it back as the keyboard starts
+ * leaving (the Android app shrinks it as the keyboard sets off), so `--kb-ride` holds the part of the keyboard the
+ * web view doesn't account for yet, changed on the keyboard's own duration and curve. `stretch`: it's held at its top too, so its bottom edge moves (a transition on `bottom`) instead of the
  * whole of it (a transform). `onMove` runs once each move has landed. Elsewhere it does nothing (`--kb-inset`, set
  * by useKeyboardInset, lifts it there). Returns the function that stops.
  */
 export function rideKeyboard(el: HTMLElement, { stretch = false, onMove }: { stretch?: boolean; onMove?: () => void } = {}): () => void {
-  if (typeof window === "undefined" || !inIosApp()) return () => undefined;
+  if (typeof window === "undefined" || !(inIosApp() || inAndroidApp())) return () => undefined;
   let screenH = window.innerHeight;
   let keyboard = 0;
   let anim: Animation | null = null;

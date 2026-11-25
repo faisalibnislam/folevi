@@ -6,7 +6,7 @@ import { useAction, useMutation } from "convex/react";
 import { useQuery } from "@/lib/convex/queries";
 import { ArrowDown, ArrowUp, Loader2, MessageCircle } from "lucide-react";
 import { useIphoneApp } from "@/lib/iphone";
-import { inIosApp } from "@/lib/nativeApp";
+import { inAndroidApp, inIosApp } from "@/lib/nativeApp";
 import { KEYBOARD_EASE, onKeyboardFrame } from "@/lib/native/ui";
 import { SendButton } from "@/components/iphone/SendButton";
 import { ulid } from "@folevi/editor-schema";
@@ -240,15 +240,16 @@ export function ChatThread({
       ro?.disconnect();
     };
   }, []);
-  // The iPad app (a note's Foli AI panel, the AI page): the composer rides up on the keyboard in step with it.
-  // The app's web view shrinks for the keyboard only a moment after it has landed (Capacitor), which would
-  // leave the composer under the keyboard until then and then jump it up: until then the composer keeps the
-  // keyboard's room under it itself (the thread above gives it up), and it slides there on the keyboard's
-  // curve. (A sheet, and the floating chat, place themselves: [data-iphone-sheet], AskAiPanel.tsx.)
+  // The iPad app (a note's Foli AI panel, the AI page), and the Android app: the composer rides up on the keyboard
+  // in step with it. The iOS app's web view shrinks for the keyboard only a moment after it has landed
+  // (Capacitor), which would leave the composer under the keyboard until then and then jump it up: until then the
+  // composer keeps the keyboard's room under it itself (the thread above gives it up), and it slides there on the
+  // keyboard's curve. (The Android app shrinks its web view as the keyboard sets off: the room is then only the
+  // part not yet given up, and none once it has shrunk.) (A sheet, and the floating chat, place themselves: [data-iphone-sheet], AskAiPanel.tsx.)
   const dockRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const dock = dockRef.current;
-    if (!dock || !inIosApp() || dock.closest("[data-iphone-sheet], .ui-fab-panel")) return;
+    if (!dock || !(inIosApp() || inAndroidApp()) || dock.closest("[data-iphone-sheet], .ui-fab-panel")) return;
     let screenH = window.innerHeight;
     let keyboard = 0;
     let room = 0;

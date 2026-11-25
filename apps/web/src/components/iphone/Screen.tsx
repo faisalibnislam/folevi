@@ -329,7 +329,7 @@ export function IphoneScreen({ options, fallbackTitle, children, overlay, tint }
         <div ref={leadRef} className="pointer-events-auto flex min-w-11 flex-1 basis-0 items-center">
           {(stacked ? null : leading) ??
             (showBack ? (
-              <GlassCircle label="Back" onClick={goBack}>
+              <GlassCircle label="Back" data-back="" onClick={goBack}>
                 <ChevronLeft size={24} strokeWidth={2.2} aria-hidden className="-ml-0.5" />
               </GlassCircle>
             ) : null)}

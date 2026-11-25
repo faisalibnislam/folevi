@@ -385,7 +385,7 @@ export function applySettingsPatch(current: ServerSettings, patch: SettingsPatch
       const cur = next.email.smtp;
       const host = (p.host ?? cur?.host ?? "").trim().toLowerCase();
       const from = (p.from ?? cur?.from ?? "").trim();
-      if (!host || host.length > 253 || /\s/.test(host)) throw new SettingsError("Enter the SMTP server's host name.");
+      if (!host || host.length > 253 || /\s/.test(host)) throw new SettingsError("Enter your mail service's sending server, like smtp.gmail.com.");
       if (!from || from.length > 320 || !fromAddress(from)) throw new SettingsError('Enter the From address, like "Folevi <folevi@example.com>".');
       next.email.smtp = {
         host,
@@ -397,7 +397,7 @@ export function applySettingsPatch(current: ServerSettings, patch: SettingsPatch
       };
     }
     if (patch.email.mode !== undefined) next.email.mode = patch.email.mode;
-    if (next.email.mode === "smtp" && !next.email.smtp) throw new SettingsError("Enter the SMTP server's details first.");
+    if (next.email.mode === "smtp" && !next.email.smtp) throw new SettingsError("Enter your email account's details first.");
   }
   if (patch.emailIn) {
     if (patch.emailIn.imap) {

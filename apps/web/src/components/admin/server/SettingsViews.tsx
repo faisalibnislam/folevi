@@ -18,6 +18,9 @@ import { EMAIL_PRESETS, SECURITY_NAMES, presetFor } from "@/components/server/em
 
 type Save = SaveSettings;
 
+/** Ends a message from the backend with a full stop. */
+const sentence = (text: string) => (/[.!?]$/.test(text.trim()) ? text.trim() : `${text.trim()}.`);
+
 function Field({ id, label, hint, children }: { id: string; label: string; hint?: string; children: React.ReactNode }) {
   return (
     <div className="space-y-1">
@@ -184,7 +187,20 @@ function EmailForm({ settings, save }: { settings: ServerSettings; save: Save })
     <div className="space-y-4">
       <Panel title="Sending email" description="Verification links, password resets, invites, sharing notices, reminders and digests.">
         <SettingRow label="Send through">
-          <Select aria-label="Send email through" value={draft.mode} onChange={(e) => set("mode", e.target.value as SmtpDraft["mode"])} className={`${selectCls} w-64`}>
+          <Select
+            aria-label="Send email through"
+            value={draft.mode}
+            onChange={(e) => {
+              const mode = e.target.value as SmtpDraft["mode"];
+              set("mode", mode);
+              // Nothing entered yet: start from the most common service, so only the address and password are left.
+              if (mode === "smtp" && !draft.host) {
+                const gmail = EMAIL_PRESETS[0]!;
+                set("host", gmail.host);
+                set("port", String(gmail.port));
+                set("security", gmail.security);
+              }
+            }} className={`${selectCls} w-64`}>
             <option value="folevi" data-description="Works once this server is linked to a Folevi account">
               Folevi Mail
             </option>
@@ -212,7 +228,11 @@ function EmailForm({ settings, save }: { settings: ServerSettings; save: Save })
               onChange={(e) => {
                 const p = EMAIL_PRESETS.find((x) => x.id === e.target.value)!;
                 if (p.id === "other") set("host", "");
-                else (set("host", p.host), set("port", String(p.port)), set("security", p.security));
+                else {
+                  set("host", p.host);
+                  set("port", String(p.port));
+                  set("security", p.security);
+                }
               }}
               className={`${selectCls} w-full sm:w-72`}
             >
@@ -287,7 +307,7 @@ function EmailForm({ settings, save }: { settings: ServerSettings; save: Save })
               setTesting(true);
               test({ to: to.trim() })
                 .then((r) => {
-                  setResult(r.ok ? { ok: true, text: `Sent to ${to.trim()}. Check the inbox, and the spam folder, in a minute.` } : { ok: false, text: `It didn't send: ${r.error ?? "the mail service gave no reason"}. Check the server, port, username and password above, save, and try again.` });
+                  setResult(r.ok ? { ok: true, text: `Sent to ${to.trim()}. Check the inbox, and the spam folder, in a minute.` } : { ok: false, text: `It didn't send. ${sentence(r.error ?? "The mail service gave no reason.")}${/check/i.test(r.error ?? "") ? "" : " Check the details above, save, and try again."}` });
                   toast.show(r.ok ? "Test email sent." : "The test email didn't send.", { tone: r.ok ? "success" : "error" });
                 })
                 .catch((e: unknown) => setResult({ ok: false, text: errorMessage(e) }))
@@ -348,22 +368,27 @@ function AiForm({ settings, save }: { settings: ServerSettings; save: Save }) {
     <Panel title="Foli AI" description="Off means Foli AI is hidden everywhere on this server.">
       <SettingRow label="Answers come from">
         <Select aria-label="Foli AI answers come from" value={draft.mode} onChange={(e) => set("mode", e.target.value as AiDraft["mode"])} className={`${selectCls} w-64`}>
-          <option value="off">Off</option>
-          <option value="folevi" data-description="Counts against the owner's Folevi plan">
+          <option value="off" data-description="Hidden for everyone">
+            Off
+          </option>
+          <option value="folevi" data-description="Needs the server linked to a Folevi account">
             Folevi AI
           </option>
-          <option value="gemini" data-description="Your own Google Gemini key">
-            Gemini
+          <option value="gemini" data-description="Your own key from Google AI Studio">
+            Google Gemini
           </option>
-          <option value="openai" data-description="OpenAI, or a local model such as Ollama or LM Studio">
-            OpenAI-compatible service
+          <option value="openai" data-description="OpenAI, or a model on your own computer (Ollama, LM Studio)">
+            Another service or a local model
           </option>
         </Select>
       </SettingRow>
-      {draft.mode === "folevi" ? <Callout>Requests go through Folevi&apos;s AI gateway, which passes them to the model and keeps nothing.</Callout> : null}
+      {draft.mode === "off" ? (
+        <Callout>Foli AI answers questions about your notes, summarizes and helps people write. Pick where its answers come from to turn it on. Folevi AI is the easiest; your own Gemini key is free to start at aistudio.google.com.</Callout>
+      ) : null}
+      {draft.mode === "folevi" ? <Callout>Requests go through Folevi&apos;s AI gateway, which passes them to the model and keeps nothing. Usage counts toward the linked Folevi account&apos;s plan. Link the server under Remote access first.</Callout> : null}
       {draft.mode === "gemini" ? (
         <div className="mt-2 grid gap-3 sm:grid-cols-2">
-          <Field id="gemini-key" label="API key">
+          <Field id="gemini-key" label="API key" hint="Make one at aistudio.google.com, under Get API key.">
             <SecretInput id="gemini-key" label="Gemini API key" set={ai.gemini?.apiKey?.set} value={draft.geminiKey} onChange={(v) => set("geminiKey", v)} />
           </Field>
           <Field id="gemini-model" label="Model" hint="Leave empty for Folevi's default.">
@@ -395,7 +420,7 @@ function AiForm({ settings, save }: { settings: ServerSettings; save: Save }) {
               <option value="admins">Only the owner and admins</option>
             </Select>
           </SettingRow>
-          <SettingRow label="Monthly limit per person" description="Requests each person can make in a month. Empty for no limit." htmlFor="ai-limit">
+          <SettingRow label="Monthly limit per person" description="In AI credits: 100 credits is about US$1 of use. Leave empty for no limit." htmlFor="ai-limit">
             <TextInput id="ai-limit" inputMode="numeric" value={draft.limit} onChange={(v) => set("limit", v.replace(/\D/g, ""))} placeholder="No limit" className="w-40" />
           </SettingRow>
         </div>

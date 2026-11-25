@@ -380,6 +380,12 @@ export const testEmail = action({
   handler: async (ctx, args): Promise<{ ok: boolean; error?: string }> => {
     await requireIdentity(ctx);
     await ctx.runQuery(internal.serverAdmin.adminCheck, {});
-    return await ctx.runAction(internal.email.sendServerTest, { to: args.to });
+    try {
+      return await ctx.runAction(internal.email.sendServerTest, { to: args.to });
+    } catch (e) {
+      // A send that blew up (the mail server unreachable, a timeout) is still an answer for the admin, not a crash.
+      console.warn(JSON.stringify({ event: "email.server_test", outcome: "threw", error: e instanceof Error ? e.message.slice(0, 200) : "unknown" }));
+      return { ok: false, error: "Folevi couldn't reach the mail server. Check the sending server and port, and that this machine is connected to the internet." };
+    }
   },
 });

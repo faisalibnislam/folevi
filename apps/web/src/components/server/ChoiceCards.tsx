@@ -44,8 +44,14 @@ export function ChoiceCards<T extends string>({ label, value, onChange, choices 
             tabIndex={on ? 0 : -1}
             onClick={() => onChange(c.value)}
             onKeyDown={(e) => {
-              if (e.key === "ArrowDown" || e.key === "ArrowRight") (e.preventDefault(), move(i, 1));
-              if (e.key === "ArrowUp" || e.key === "ArrowLeft") (e.preventDefault(), move(i, -1));
+              if (e.key === "ArrowDown" || e.key === "ArrowRight") {
+                e.preventDefault();
+                move(i, 1);
+              }
+              if (e.key === "ArrowUp" || e.key === "ArrowLeft") {
+                e.preventDefault();
+                move(i, -1);
+              }
             }}
             className={`flex w-full items-start gap-3 rounded-control p-3 text-left outline-none transition-colors focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:opacity-50 ${
               on ? "bg-[var(--glass-hover)] shadow-[0_0_0_1.5px_var(--color-heading)]" : "shadow-[0_0_0_1px_var(--color-line)] hover:bg-[var(--glass-hover)]"

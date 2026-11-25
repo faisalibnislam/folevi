@@ -6,7 +6,8 @@
 // inviting people and connecting the apps. Every guide step has a default that works with no choice made, so
 // "Skip for now" always leaves a usable server; skipped steps stay on the admin Overview's checklist.
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { useAction, useConvexAuth, useMutation, useQuery } from "convex/react";
+import { useAction, useConvexAuth, useMutation } from "convex/react";
+import { useQuery } from "@/lib/convex/queries";
 import { Archive, Building2, Check, Cloud, Copy, Cpu, Download, Eye, EyeOff, Globe, House, KeyRound, Mail, MailX, Send, Sparkles, UserPlus, Wifi } from "lucide-react";
 import { authErrorMessage } from "@/lib/auth/client";
 import { api } from "@/lib/convex/api";
@@ -426,7 +427,7 @@ function EmailStep({ settings, next, mark }: GuideProps) {
               >
                 <Send size={14} aria-hidden /> {testState === "sending" ? "Sending…" : `Send a test to ${address.trim()}`}
               </button>
-              {testState === "sent" ? <Alert tone="success">Sent. Check the inbox (and the spam folder) in a minute.</Alert> : testState && testState !== "sending" ? <Alert>{`It didn't send: ${testState} Check the address and password, then save again.`}</Alert> : null}
+              {testState === "sent" ? <Alert tone="success">Sent. Check the inbox (and the spam folder) in a minute.</Alert> : testState && testState !== "sending" ? <Alert>{`It didn't send. ${/[.!?]$/.test(testState.trim()) ? testState.trim() : `${testState.trim()}.`} Check the address and password, then save again.`}</Alert> : null}
             </div>
           ) : null}
         </div>

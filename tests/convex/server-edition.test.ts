@@ -170,6 +170,17 @@ describe("Folevi Server: setup and settings", () => {
     expect(next.allowedDomains).toEqual(["example.com"]);
     expect(publicSettingsView(next).ai.openai?.apiKey).toEqual({ set: true });
   });
+
+  test("first-run checklist steps: marked once, undone, and shown to admins", () => {
+    const s = defaultServerSettings();
+    expect(publicSettingsView(s).setup).toEqual({});
+    const a = applySettingsPatch(s, { setup: { done: ["email", "backupKey"] } }, 5);
+    expect(a.setup).toEqual({ email: 5, backupKey: 5 });
+    const b = applySettingsPatch(a, { setup: { done: ["email", "apps"], undo: ["backupKey"] } }, 9);
+    expect(b.setup).toEqual({ email: 5, apps: 9 });
+    expect(applySettingsPatch(b, { setup: { undo: ["email", "apps"] } }, 10).setup).toBeUndefined();
+    expect(publicSettingsView(b).setup).toEqual({ email: 5, apps: 9 });
+  });
 });
 
 describe("Folevi Server: people, roles and invites", () => {

@@ -87,7 +87,11 @@ final class WindowManager {
     /// A view's first page finished loading: what waited for it goes now.
     func loaded(_ view: FoleviWebView) {
         for path in pending.removeValue(forKey: ObjectIdentifier(view)) ?? [] { Events.command(["type": "navigate", "path": path], to: view) }
+        if view.role == .main { NotificationCenter.default.post(name: Self.mainLoaded, object: view) }
     }
+
+    /// Posted when a main window's page finished its first load (Places starts the runners after the first one).
+    static let mainLoaded = Notification.Name("folevi.windows.mainLoaded")
 
     /// The window closed: it's forgotten (WM2 decides which windows hide instead).
     func closed(_ controller: MainWindowController) {

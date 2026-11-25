@@ -238,7 +238,7 @@ public struct WebSidebar: View {
             item(.notes(.unsorted), icon: .inbox, title: "Drafts", count: count(.drafts))
             item(.notes(.all), icon: .files, title: "All notes")
             item(.tasks(.today), icon: .squareCheckBig, title: "Tasks", count: tasks.value?.today)
-            item(.calendar(nil), icon: .calendar, title: "Calendar")
+            item(.calendar(nil), icon: .calendarDays, title: "Calendar")
             // Listed once there's something to study, and while Reviews is open (Sidebar.tsx).
             if (count(.reviews) ?? 0) > 0 || model.route.tabKey == FrameRoute.web("/review").tabKey { item(.web("/review"), icon: .layers, title: "Reviews", count: count(.reviews)) }
             if caps?.sharing ?? false { item(.shared, icon: .share2, title: "Shared with Me") }

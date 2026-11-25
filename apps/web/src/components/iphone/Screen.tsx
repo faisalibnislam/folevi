@@ -113,6 +113,7 @@ export function IphoneScreen({ options, fallbackTitle, children, overlay, tint }
   const rootRef = useRef<HTMLDivElement>(null);
   const mainRef = useRef<HTMLElement>(null);
   const titleRef = useRef<HTMLHeadingElement>(null);
+  const fitTitle = useRef<(() => void) | null>(null);
   const smallRef = useRef<HTMLParagraphElement>(null);
   const leadRef = useRef<HTMLDivElement>(null);
   const trailRef = useRef<HTMLDivElement>(null);
@@ -261,6 +262,10 @@ export function IphoneScreen({ options, fallbackTitle, children, overlay, tint }
       }
     };
     fit();
+    fitTitle.current = fit;
+    // Measured while the screen slides in, the buttons can be somewhere else for a moment (a push moves the bar's
+    // two sides on their own): measured again once the move is over.
+    const settled = setTimeout(fit, 700);
     const ro = new ResizeObserver(fit);
     ro.observe(lead);
     ro.observe(trail);
@@ -271,11 +276,17 @@ export function IphoneScreen({ options, fallbackTitle, children, overlay, tint }
     mo.observe(small, { childList: true, subtree: true, characterData: true });
     window.addEventListener("resize", fit);
     return () => {
+      clearTimeout(settled);
+      fitTitle.current = null;
       ro.disconnect();
       mo.disconnect();
       window.removeEventListener("resize", fit);
     };
   }, []);
+  // ...and whenever the small title comes in, so it's placed for where the buttons are now.
+  useEffect(() => {
+    if (collapsed) fitTitle.current?.();
+  }, [collapsed]);
 
   const goBack = useCallback(() => {
     // Writing: the keyboard goes first (what was typed is saved as always).
@@ -313,7 +324,7 @@ export function IphoneScreen({ options, fallbackTitle, children, overlay, tint }
         style={edge === "page" && page ? ({ ["--bar-page" as string]: page.color } as React.CSSProperties) : undefined}
         className="iphone-bar"
       />
-      <header className="pointer-events-none absolute inset-x-0 top-0 z-30 flex items-center gap-2 px-4 pt-[calc(env(safe-area-inset-top)+4px)] pl-[calc(16px+env(safe-area-inset-left))] pr-[calc(16px+env(safe-area-inset-right))]">
+      <header className="pointer-events-none absolute inset-x-0 top-0 z-30 flex items-center gap-2 px-4 pt-[calc(env(safe-area-inset-top)+8px)] pl-[calc(16px+env(safe-area-inset-left))] pr-[calc(16px+env(safe-area-inset-right))]">
         <div ref={leadRef} className="pointer-events-auto flex min-w-11 flex-1 basis-0 items-center">
           {(stacked ? null : leading) ??
             (showBack ? (
@@ -331,7 +342,7 @@ export function IphoneScreen({ options, fallbackTitle, children, overlay, tint }
           aria-hidden={status ? undefined : !smallTitle}
           data-status={status ? "" : undefined}
           style={status ? ({ ["--title-in" as string]: 1 } as React.CSSProperties) : undefined}
-          className={`iphone-small-title pointer-events-none absolute left-1/2 top-[calc(env(safe-area-inset-top)+4px)] flex h-11 -translate-x-1/2 items-center text-headline font-semibold leading-[22px] text-heading`}
+          className={`iphone-small-title pointer-events-none absolute left-1/2 top-[calc(env(safe-area-inset-top)+8px)] flex h-11 -translate-x-1/2 items-center text-headline font-semibold leading-[22px] text-heading`}
         >
           <span className="truncate">{status ?? title}</span>
         </p>
@@ -343,7 +354,7 @@ export function IphoneScreen({ options, fallbackTitle, children, overlay, tint }
         id="main"
         ref={mainRef}
         tabIndex={-1}
-        className={`min-h-0 flex-1 outline-none ${innerScroll ? "flex flex-col overflow-hidden" : "overflow-y-auto overscroll-contain pb-[calc(max(10px,env(safe-area-inset-bottom)-10px)+96px)] pt-[calc(env(safe-area-inset-top)+52px)]"}`}
+        className={`min-h-0 flex-1 outline-none ${innerScroll ? "flex flex-col overflow-hidden" : "overflow-y-auto overscroll-contain pb-[calc(max(10px,env(safe-area-inset-bottom)-10px)+96px)] pt-[calc(env(safe-area-inset-top)+60px)]"}`}
       >
         {innerScroll ? (
           <h1 className="sr-only">{title}</h1>

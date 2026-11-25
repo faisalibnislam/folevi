@@ -639,6 +639,7 @@ account button should move past iPadOS's window buttons).
   session); sync status labels still differ between phone and desktop (Saved/Synced, Offline/Waiting to sync,
   Conflict/Edited in two places) and there are four empty-state components; lists not yet given `LoadFailed` still load
   until a retry answers (settings lists, Calendar, Graph, pickers);
+  session); there are four empty-state components; no error state when a list fails to load;
   splitting the phone interface out of every page's bundle (measure with a production build first); "Your own server"
   sign-in for the apps, planned in the shared notes (`web-everywhere-own-server-plan.md`), after the Synology branch
   lands; the starter "Welcome to Folevi" note names Mac shortcuts. Known failing e2e on `main` (not from this work):
@@ -812,6 +813,12 @@ account button should move past iPadOS's window buttons).
 - 2026-11-24: Failed queries keep the page: `lib/convex/queries.ts` hooks (retry with backoff, last good result,
   `failed` and `retry()`), used in every component with an eslint rule; `LoadFailed` error state on the main lists;
   local query cache re-runs failed entries; `test/safe-queries.test.tsx`.
+- 2026-11-25: One set of sync status words on every screen (owner's pick: the desktop's): the phone and iPad's sync
+  button (`components/iphone/SyncStatusTouch.tsx`) now reads `SYNC_LABELS` from `components/app/SyncStatus.tsx`
+  (Saved, Saving…, Syncing…, Offline, Conflict, Not saved) instead of Synced / Waiting to sync / Edited in two places,
+  and its accessible name is the desktop's `sync.button.label` ("Sync status: Offline, 2 changes waiting").
+  `offline-notes.spec.ts` follows. Help, docs and marketing already used these words. The paused native apps'
+  `SyncStatus.swift` was left as it is. Web unit tests: 2161 pass; e2e not run locally.
 - 2026-11-25: Web everywhere queue landed (61, 62, 63, 64, 70, 75, 71, 72 after 68 and 74); this is their combined entry:
   PR 62 shortcuts per system (and documents.spec:187 waits for the bar's Share and the panel's focus instead of racing
   them); PR 63 Mac no-bounce motion and Android press ripple, the owner's picks in the web-everywhere memory; PR 64 one

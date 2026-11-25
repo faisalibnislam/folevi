@@ -475,6 +475,9 @@ fn cover_windows(app: &AppHandle) {
         for (label, w) in app.webview_windows() {
             if is_main_label(&label) {
                 let _ = w.eval(&format!("window.__foleviHost&&window.__foleviHost.emit(\"desktop:lock\",{state})"));
+            } else if is_float_label(&label) {
+                // A floating note has no cover of its own: it's out of sight until Folevi is unlocked.
+                let _ = w.hide();
             }
         }
     }
@@ -482,6 +485,11 @@ fn cover_windows(app: &AppHandle) {
 
 fn uncover_windows(app: &AppHandle) {
     services(app).lock.uncover();
+    for (label, w) in app.webview_windows() {
+        if is_float_label(&label) {
+            let _ = w.show();
+        }
+    }
     emit_to_pages(app, "desktop:lock", &json!({ "covered": false }), None);
 }
 

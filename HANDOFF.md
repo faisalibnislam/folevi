@@ -313,6 +313,8 @@ suggestions and backlinks; `globals.css` `:root[data-float]`) under a slim bar w
   is an iframe on `/float/<id>?pip=1`, a row of names switches between them once there are two, floating one again
   brings it forward; each note's size is remembered (localStorage `folevi:float-size:<id>`) for when it opens first.
   Chrome places the window itself (position can't be set).
+- App lock: a floating note is covered like the main windows (Mac: the same lock cover on its panel; Windows and
+  Linux: its window hides while locked and comes back on unlock).
 - Tests: `apps/web/test/float-note.test.tsx` (23), `apps/web/e2e/float-note.spec.ts` (4, local mode, Chromium and
   WebKit), `apps/mac/FoleviTests/FloatTests.swift` (8, panels made but never shown), `lib.rs`
   `floating_note_windows`. Not checked: a real floating panel on screen on the Mac or Windows (headless only, per
@@ -1308,6 +1310,10 @@ account button should move past iPadOS's window buttons).
   screen (`shownId`/`pick` in `lib/app/tabs.tsx`); hovered tab's pin clear of the title; table cells wrap alike
   edited or not. Checked: typecheck, lint, unit suite (2247), WebKit probes (inset 6/6/6, pin fade 48 px). The table
   wrap and the joined tabs were not checked in a Mac build.
+- 2026-11-25: **Float this note** on the Mac app, Windows and Linux app and the web (Chrome and Edge's Document
+  Picture-in-Picture): right-click a note tab or a listed note; one window per note on the desktop apps (pinned on
+  top until turned off, size and place remembered); full editing in the main window's editor, compact. Branch
+  `claude/float-this-note`, nothing released.
 - 2026-11-25: **Windows and Linux parity PRs landed together** (branch `claude/desktop-parity-integration`): PRs 116,
   118, 119, 120, 121, 123, 124, 125, 126 and 127 merged into one branch (each conflicted with the next in HANDOFF.md,
   Cargo.toml and lib.rs). Resolved once: one `windows` crate line with every feature; the page's boot carries the

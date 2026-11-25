@@ -269,9 +269,10 @@ only (not pushed). What is live:
 
 Not done, and why:
 - **Android on Play:** needs the owner's drag-in (files this size can't be attached from here).
-- **`migrations:narrowDocumentText` on production (PR 93's last step):** held on purpose. It empties the old text
-  copies on note rows, and with them the easy rollback of PR 93. Run it once production has been seen healthy:
-  `npx convex run --deployment fastidious-clownfish-123 migrations:narrowDocumentText` (the owner's OK first).
+- **`migrations:narrowDocumentText` on production (PR 93's last step):** the owner ran it on 2026-11-25 after the
+  release (first answer `{ cleared: 100, done: false }`; it schedules its own next pages until the notes run out, so
+  one run is enough). Not checked afterwards: that every page finished. From here, rolling PR 93 back also needs the
+  text copied back from `documentText`.
 - **Folevi Server packages and stores:** not part of this release. The server code and "Your own server" in every
   app are in; publishing the NAS and Linux server packages stays with the Folevi Server session.
 - **Flathub:** needs a person (Flathub's AI policy, docs/LINUX.md).
@@ -974,7 +975,7 @@ account button should move past iPadOS's window buttons).
 
 ## 10. Next steps / open work
 - After 1.6.78 (2026-11-25), in order: the owner drags the Android bundle into Play internal testing; look at
-  production for a day, then `migrations:narrowDocumentText` with the owner's OK; the hardware checks listed at the
+  (`migrations:narrowDocumentText` ran on production on 2026-11-25, by the owner); the hardware checks listed at the
   top of section 9; Folevi Server packages (the Folevi Server session). Next free version: 1.6.79 (or 1.7.79 for a
   Big update). Mac deltas need `apps/mac/release-archive/Folevi-1.6.78.zip` (kept in the main checkout).
 - Shell performance (2026-11-25): merge PRs 84, 85, 86 into their shell branches; check PR 85 on a Windows PC with two

@@ -66,13 +66,14 @@ times and listeners grow by about 8 per opened note both times. Not explained ye
 
 What changed and why:
 
-1. **The local library copied every row on every read.** `LibraryStore.get`, `list` and `blocksOfTypes`
+1. **The local library copied every row on every read.** `LibraryStore.list` and `blocksOfTypes`
    (`lib/local/store/libraryStore.ts`) returned `structuredClone` of each row, so a `list("documents")` copied
    all 5,000 notes with their search text on each query: 865 ms of a Calendar click (profile), most of Tasks and
-   Home, and the start's list. Rows are now frozen once when they enter the store (loaded or written) and handed
-   out as they are; nothing in the local functions changed a row it read (the full unit suite passes with frozen
-   rows, where any such write would throw). Applies to every local-mode library: Mac, iPhone, iPad, Android,
-   Windows.
+   Home, and the start's list. Rows are now frozen once when they enter the store (loaded or written) and the
+   whole-table reads hand them out as they are; nothing that lists rows changes them (the web unit suite and the
+   repository's parity and Convex suites pass with frozen rows, where any such write would throw). `get` still
+   copies its one row: the library move fills its saved progress in place (the parity suite caught it). Applies
+   to every local-mode library: Mac, iPhone, iPad, Android, Windows.
 2. **Local mode's backend was back in the website's start** (a regression of the 2026-10-29 fix):
    `DesktopCapabilities` imported one event emitter from `lib/engine/viewsSettings.ts`, which imports takeout
    import, migration targets and through them `lib/local/backend` (functions, store, AI prompts, about 590 KB).

@@ -1464,7 +1464,11 @@
    out of the way (28 point round buttons, shown while the row is pointed at or the keyboard is on them). */
 :root[data-desktop="mac"],
 :root[data-desktop="mac"] body { overscroll-behavior: none; }
-:root[data-desktop="mac"] :is(.overflow-y-auto, .overflow-x-auto, .overflow-auto) { overscroll-behavior: contain; }
+/* Each region holds on to scrolling only along the way it scrolls: a row that scrolls sideways (Home's cards) must
+   hand an up-or-down scroll to the page, or the page can't be scrolled with the pointer over the row (2026-11-25). */
+:root[data-desktop="mac"] .overflow-auto { overscroll-behavior: contain; }
+:root[data-desktop="mac"] .overflow-y-auto { overscroll-behavior-y: contain; }
+:root[data-desktop="mac"] .overflow-x-auto { overscroll-behavior-x: contain; }
 :root[data-desktop="mac"] button:is([aria-label^="Scroll "][aria-label$=" back"], [aria-label^="Scroll "][aria-label$=" forward"]) { width: 28px; height: 28px; border-radius: var(--radius-panel); opacity: 0; transition: opacity 150ms; }
 :root[data-desktop="mac"] :is(:hover, :focus-within) > button:is([aria-label^="Scroll "][aria-label$=" back"], [aria-label^="Scroll "][aria-label$=" forward"]) { opacity: 1; }
 

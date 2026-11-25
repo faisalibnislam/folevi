@@ -6,7 +6,7 @@ Versions are MAJOR.UPDATE.PATCH, PATCH at least two digits: a Major release (2.0
 
 ## Version 1.6.79: Small update
 
-Released 2026-11-25 20:11:23+06:00 (build 105, tag v1.6.79)
+Released 2026-11-25 20:11:23+06:00 (build 106, tag v1.6.79)
 
 Folevi for iPhone and iPad is native again, with the look you know: Liquid Glass bars, faster launch, smoother writing and a native Foli AI.
 

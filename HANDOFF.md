@@ -249,6 +249,17 @@ The ones most likely to be broken:
 
 ## 9. Current state (as of 2026-11-24)
 
+**Mac feedback, 2026-11-25 (branch `claude/mac-feedback-8652d2`, the owner's Mac feedback session).** Three fixes in the
+web UI the Mac shows (so every platform gets them): (1) Home's rows of note cards blocked scrolling the page in the
+Mac app: `globals.css`'s Mac no-bounce rule held both axes on every `.overflow-x-auto`; each region now holds only
+along the way it scrolls (`test/mac-scroll-axes.test.ts`). (2) Folders 35% less round: radius token `folder` (9 px,
+`rounded-folder`) for the folder card and `FolderGlyph`'s corners. (3) Show all tabs redesigned (owner's picks):
+`TabOverview.tsx` + `TabPictures.tsx`; a note tab is its Home card, a split tab two cards (double-wide tile), a
+folder tab its folder card, Home and other views a small drawing; names under the cards; it fills the page's panel
+below the top bar (no clash with the window buttons); arrow keys by position (`test/tab-overview.test.ts`); also on
+the iPad's tab bar now. Checked headlessly in an offscreen WKWebView harness (real NSEvent wheel events, a
+`FOLEVI_BUILD=shell` dev server with the e2e FakeShell, scratch OPFS library); not yet seen in a Mac release build.
+
 **One web app everywhere: the web side (branch `claude/web-everywhere-0e2975`, 2026-11-24).** The web app is now the
 interface on every platform (browser, Mac, Windows, Linux, iPhone, iPad, Duo, Android, Folevi Server). Layout rule
 (owner, 2026-11-24, `docs/claude-context/memory/web-everywhere-layout-rules-2026-11-24.md`): width decides on every
@@ -567,6 +578,9 @@ signed-in account, 1.5.58's frosted folders with a large library, and the iPad c
 account button should move past iPadOS's window buttons).
 
 ## 10. Next steps / open work
+- Mac feedback branch (`claude/mac-feedback-8652d2`): the owner checks Home scrolling, folder corners and the new Show
+  all tabs in the next Mac build (needs "release it"); a split-view tab in the overview was not drawn in the
+  headless check (no split tab in the scratch library).
 - Web everywhere (all landed 2026-11-25). Open: the iOS simulator `footprint` re-run of the iPhone memory fix (mobile
   session); sync status labels still differ between phone and desktop (Saved/Synced, Offline/Waiting to sync,
   Conflict/Edited in two places) and there are four empty-state components; no error state when a list fails to load;
@@ -721,6 +735,11 @@ account button should move past iPadOS's window buttons).
   `DATABASE_UDF_USER_TIMEOUT_SECONDS=4` for that backend. Bursts show in `convex.log` as "took a long time".
 
 ## 12. Change log
+- 2026-11-25: Mac feedback: Home's card rows no longer block page scrolling in the Mac app (overscroll held per axis);
+  folders 35% less round (`folder` radius token, 9); Show all tabs redesigned (cards of what each tab holds, below
+  the top bar, names under cards, on iPad too). How scrolling was checked: a Swift harness puts a WKWebView in an
+  offscreen window and calls `scrollWheel(with:)` with CGEvent-made wheel events (location = window coordinates,
+  since the event has no window); Playwright's wheel bypasses macOS's scrolling path and can't show this bug.
 - 2026-11-25: Web everywhere queue landed (61, 62, 63, 64, 70, 75, 71, 72 after 68 and 74); this is their combined entry:
   PR 62 shortcuts per system (and documents.spec:187 waits for the bar's Share and the panel's focus instead of racing
   them); PR 63 Mac no-bounce motion and Android press ripple, the owner's picks in the web-everywhere memory; PR 64 one

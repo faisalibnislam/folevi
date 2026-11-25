@@ -279,3 +279,25 @@ Still open:
   - A real QR code.
   - Signing in to a home server.
 - **Activity theme:** it is now light by day and dark at night, so the page follows the phone (it was always dark).
+
+### Finished (2026-11-25, night)
+
+New since the evening:
+- **Insert sheet**, native: `ui/InsertSheet.kt`, `design/InsertArt.kt`. Its catalogue `design/InsertCatalog.kt` comes from the same web test that writes iOS's `InsertCatalog.swift`.
+- **Foli AI tab and chat**, restyled: `ui/AiScreens.kt`.
+- **Vault**, restyled: `ui/VaultScreen.kt`.
+- **Shared with Me and Changes**, restyled: `ui/SharedChangesScreens.kt`.
+- **Tablet frame**, the web's sidebar and glass tab strip: `ui/TabletSidebar.kt`, `ui/TabStrip.kt`.
+- **Note bar on scroll:** it folds the place chip into the title and fades in. The bridge script reports the page's scroll to `FoleviNative.pageScroll`.
+
+Checked on the emulator:
+- Folevi Cloud sign-in end to end (Custom Tab, the app's consent step, back to Home signed in), against the local backend. The owner allowed passing Chrome's first-run on the test emulator.
+- Local mode with real data on phone and tablet sizes.
+
+Tests: 101 app unit tests and 5 engine unit tests pass.
+
+Left as they are, by choice or for later:
+- **Comments and Style:** they stay the page's own panels, as in the iPhone app; the engine has no native data for them.
+- **Onboarding:** uses the generic native gate screen.
+- **Foli AI chat:** attachments, research and agent runs aren't shown natively.
+- **Not tested:** home-server sign-in and a real QR code.

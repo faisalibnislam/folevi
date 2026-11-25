@@ -1217,6 +1217,11 @@ account button should move past iPadOS's window buttons).
 
 ## 12. Change log
 
+- 2026-11-25 (night): Android native, remaining screens done (PR 112).
+  - New: native Insert sheet (catalogue generated with iOS's), Foli AI chat, Vault, Shared and Changes restyled, the web's tablet sidebar and tab strip, and the note bar's fold on scroll.
+  - Checked: Cloud sign-in tested end to end on the emulator; 101 app tests and 5 engine tests pass.
+  - What's left is in `docs/ANDROID_NATIVE_PLAN.md` section 6, "Finished".
+
 - 2026-11-25 (evening): Android native, the whole phone UI except the writing area is built in Compose (PR 112, branch `claude/android-native-compose`):
   - Home and lists, the note page chrome, Tasks, Calendar, Search, the account sheet, New folder and Settings.
   - Checked with real data on the emulator in local mode; 92 unit tests pass.

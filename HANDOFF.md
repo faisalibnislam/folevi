@@ -974,9 +974,10 @@ signed-in account, 1.5.58's frosted folders with a large library, and the iPad c
 account button should move past iPadOS's window buttons).
 
 ## 10. Next steps / open work
-- After 1.6.78 (2026-11-25), in order: the owner drags the Android bundle into Play internal testing; look at
-  (`migrations:narrowDocumentText` ran on production on 2026-11-25, by the owner); the hardware checks listed at the
-  top of section 9; Folevi Server packages (the Folevi Server session). Next free version: 1.6.79 (or 1.7.79 for a
+- After 1.6.78 (2026-11-25), in order: the owner drags the Android bundle into Play internal testing; the
+  hardware checks listed at the
+  top of section 9; Folevi Server packages (the Folevi Server session). `migrations:narrowDocumentText` already ran on production (the owner,
+  2026-11-25). Next free version: 1.6.79 (or 1.7.79 for a
   Big update). Mac deltas need `apps/mac/release-archive/Folevi-1.6.78.zip` (kept in the main checkout).
 - Shell performance (2026-11-25): merge PRs 84, 85, 86 into their shell branches; check PR 85 on a Windows PC with two
   accounts and a library; Android launch time needs the SDK and an emulator (owner's OK).

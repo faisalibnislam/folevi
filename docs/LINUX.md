@@ -9,8 +9,8 @@ only Linux config, a Linux module, a few `#[cfg(target_os = "linux")]` lines and
 forked.
 
 Status: **1.5.75 published 2026-11-24** as downloads at `https://folevi.com/download/linux/` (owner's OK in chat):
-AppImage, .deb and .rpm for x86_64 and aarch64, stable latest links and SHA256 lists. Repositories, Flathub and the Snap
-Store approved 2026-11-25 (see those sections for what is live). No in-app updates yet (no update signing key).
+AppImage, .deb and .rpm for x86_64 and aarch64, stable latest links and SHA256 lists. Repositories live and the Snap
+Store under way since 2026-11-25; Flathub blocked by its AI policy (see those sections). No in-app updates yet (no update signing key).
 
 ## Where things are
 
@@ -185,25 +185,21 @@ and `build-rpm-repo.sh <dir with the .rpms> ~/repo-out` (keep `~/repo-out`: earl
 Tested 2026-11-25 against a local copy of the repositories in the VM (ARM): install and signature checks pass on
 Ubuntu 24.04 and Debian 12 (apt), Fedora 41 (dnf) and openSUSE Tumbleweed (zypper).
 
-## Flathub
+## Flathub (blocked by Flathub's AI policy)
 
-Owner's OK 2026-11-25. The Flathub repository holds the manifest, `flathub.json`, the tray modules' patches, the
-metainfo file and the desktop template; `packaging/linux/scripts/flathub-submission.sh <dir>` writes them exactly
-as Flathub wants them. The manifest repackages the published .deb (`Folevi_<v>_amd64.deb`, `Folevi_<v>_arm64.deb`
-under `/download/linux/`, which never change); `flathub-submission.sh --set-version <v>` points it at a new release.
+Owner's OK 2026-11-25, but Flathub's rules stop it as prepared: its Generative AI policy
+(https://docs.flathub.org/docs/for-app-authors/requirements#generative-ai-policy, and `AGENTS.md` in
+`flathub/flathub`) says Flathub manifests must not contain AI-generated or AI-assisted content even when disclosed,
+AI agents must not open or automate submission pull requests or write their text or review replies, and submitters
+must disclose AI-generated material in the app and its packaging. `packaging/linux/flatpak/com.folevi.Folevi.yml`
+was written by Claude sessions, so it can't be submitted. A Flathub listing needs the owner (or another person) to
+write the manifest and the pull request by hand, disclose the AI-generated parts of Folevi, and attach a video of the
+Flatpak running on Linux. Claude must not draft, edit or submit any of it.
 
-1. Screenshots: `packaging/linux/screenshots/` (made with `scripts/screenshots.sh` from the real Linux app in the
-   VM), uploaded to `https://folevi.com/download/linux/screenshots/`.
-2. Checks: `flatpak-builder-lint` (from `org.flatpak.Builder`) passes on the manifest; on the built repository it
-   passes except for the screenshots until they're online.
-3. Submission: a pull request to `flathub/flathub` from a fork, branch based on `new-pr`, titled
-   "Add com.folevi.Folevi". Flathub's reviewers build it and may ask for changes (most likely: `--filesystem=home`,
-   which the manifest explains).
-4. After it's accepted, Flathub makes `flathub/com.folevi.Folevi`; each release is then a pull request there with
-   the new .deb URLs and sha256 (their bot can open it).
-5. Verified badge: in Flathub's developer portal, the owner signs in and gets a token for
-   `https://folevi.com/.well-known/org.flathub.VerifiedApps.txt` (a website file, so a `main` deploy with the owner's
-   OK).
+Our own manifest still builds the test Flatpak bundles in CI (`flatpak-bundle.sh`); it is not for Flathub.
+Prepared before the policy was found: the manifest points at the published 1.5.75 .debs, real-app screenshots are
+online at `https://folevi.com/download/linux/screenshots/` (also in `packaging/linux/screenshots/`, made by
+`scripts/screenshots.sh`), and the metainfo file passes `flatpak-builder-lint appstream`.
 
 ## Snap Store
 

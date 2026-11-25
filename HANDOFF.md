@@ -624,13 +624,13 @@ account button should move past iPadOS's window buttons).
   less memory as you open and close notes, and Folevi for Linux is here."; added: "Folevi for Linux: AppImage,
   .deb and .rpm for Intel/AMD and ARM computers, at folevi.com/download/linux."; keep iOS's improved line. Tags
   already go to v1.5.76, so nothing new is cut for this.
-- Folevi for Linux stores (branch `claude/linux-stores`, owner's OK 2026-11-25 for Flathub, the Snap Store and our own
-  apt/dnf repositories; docs/LINUX.md "Repositories", "Flathub", "Snap Store"): built and tested, waiting on the
-  owner's sign-ins: (1) `npx wrangler login` on the Mac (expired), then `packaging/linux/repo/upload-repos.sh` and the
-  two screenshots to R2; (2) `snapcraft login` in the VM (`limactl shell folevi-linux`), then `snapcraft register
-  folevi`, `snapcraft remote-build` (amd64 + arm64) and upload; (3) the Flathub pull request to `flathub/flathub`
-  once the screenshots are online; (4) the owner copies `~/.folevi-linux-signing/folevi-repo-secret.asc` into their
-  password manager. From the next Linux release the .deb and .rpm add the repositories on install.
+- Folevi for Linux stores (PR 99 `claude/linux-stores`, owner's OK 2026-11-25; docs/LINUX.md): apt and rpm
+  repositories LIVE at `folevi.com/download/linux/apt` and `/rpm` (1.5.75), checked by installing from the live
+  addresses on Ubuntu 24.04, Debian 12, Fedora 41, openSUSE Tumbleweed (arm64 containers). Snap: waits on the owner's
+  `snapcraft login` in the VM, then register `folevi`, `remote-build`, upload. Flathub: blocked, its AI policy forbids
+  AI-written manifests and AI-opened submissions (docs/LINUX.md "Flathub"); only the owner can do it by hand. The
+  owner should copy `~/.folevi-linux-signing/folevi-repo-secret.asc` into their password manager. From the next
+  Linux release the .deb and .rpm add the repositories on install; each release also runs the repo scripts.
 - Folevi for Linux (`claude/linux-tauri-02790e`, 1.5.75 published): the owner tries it on real Linux (docs/LINUX-TESTING.md, files in `~/Downloads/Folevi for Linux 1.5.75 test/`); PR 73 into `claude/desktop-tauri` waits on the owner's review and merge (it reaches `main` with PR 65); record 1.5.75 in version.json/CHANGELOG/tag at merge (main session); the blank-window fix reached Windows (c150ba78); Linux memory (docs/LINUX.md "Memory"): the web export as files beside the program landed (6269a7ff) and is merged here: Linux 355 MB PSS in the VM; later, each with an OK: Flathub, Snap, apt/dnf repositories, an update signing key. Earlier notes:
   check the Linux compile and tests of the merged shell in the VM, build AppImage/.deb/.rpm for x86_64 and
   aarch64 in the Lima VM `folevi-linux`, smoke-test, put test builds in `~/Downloads/Folevi for Linux <version> test/`.
@@ -813,6 +813,7 @@ account button should move past iPadOS's window buttons).
   `DATABASE_UDF_USER_TIMEOUT_SECONDS=4` for that backend. Bursts show in `convex.log` as "took a long time".
 
 ## 12. Change log
+- 2026-11-25: Linux apt/rpm repositories published (owner's OK, after the owner's Cloudflare sign-in) and install-tested from the live addresses; Flathub stopped by Flathub's Generative AI policy (no AI-written manifests or AI-opened submissions), recorded in docs/LINUX.md.
 - 2026-11-25: Linux stores prepared (owner's OK): signed apt and rpm repositories for 1.5.75 at
   `folevi.com/download/linux/apt` and `/rpm` (built and install-tested in the VM on Ubuntu 24.04, Debian 12, Fedora 41,
   openSUSE Tumbleweed; upload waits on a Cloudflare sign-in), new signing key AEF1 4472 8549 A0B5 9ADC 3A77 67F3 C502

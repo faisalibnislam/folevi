@@ -2,7 +2,7 @@
   "releases": [
     {
       "version": "1.5.78",
-      "build": 98,
+      "build": 99,
       "released": "2026-11-25T06:39:59+06:00",
       "type": "patch",
       "summary": "Folevi for iPhone and iPad gets its widgets, Siri and Shortcuts back, a clearer sync sheet, and iPhone Duo keeps clear of the fold.",
@@ -23,7 +23,8 @@
         "On iPhone Duo partly open, the sidebar keeps to its side of the fold and nothing sits in the crease.",
         "Links from widgets and Shortcuts, and returning to the app, now reach the page.",
         "A note's small title no longer sits over the Back button.",
-        "Foli AI's message box stays above the keyboard on iPhone, and the sheet opens without jumping."
+        "Foli AI's message box stays above the keyboard on iPhone, and the sheet opens without jumping.",
+        "Closing Foli AI or tapping Done on iPhone, the keyboard leaves with it and nothing under it shows blank."
       ],
       "tag": "v1.5.78"
     },

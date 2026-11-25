@@ -157,6 +157,11 @@ export const LOCAL_HIDDEN: Readonly<Record<string, Capability>> = {
   "workspaces:*": "workspaces",
   "workspaceBilling:*": "billing",
   "billing:*": "billing",
+  // Folevi Server and Folevi Connect: a server's setup, admin panel, invites and linked servers need an account.
+  "server:*": "account",
+  "serverAdmin:*": "account",
+  "serverInvites:*": "account",
+  "connect:*": "account",
   "apiTokens:*": "connectedApps",
   "webhooks:*": "connectedApps",
   "mcp:*": "connectedApps",

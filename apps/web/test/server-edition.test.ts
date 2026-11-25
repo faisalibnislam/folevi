@@ -36,7 +36,7 @@ describe("runtime addresses", () => {
     expect(c.convexUrl).toBe("https://notes.example.com/convex");
     expect(c.convexSiteUrl).toBe("https://notes.example.com/convex-site");
     expect(c.shareOrigin).toBe("https://notes.example.com");
-    expect(serverRuntimeConfig("not a url").appUrl).toBe("http://localhost:8460");
+    expect(serverRuntimeConfig("not a url").appUrl).toBe("http://127.0.0.1:8460");
     expect(serverUrlsFor("http://192.168.1.20:8460")).toEqual({ app: "http://192.168.1.20:8460", convex: "http://192.168.1.20:8460/convex", convexSite: "http://192.168.1.20:8460/convex-site" });
   });
 

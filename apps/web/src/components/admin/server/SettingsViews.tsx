@@ -398,7 +398,7 @@ function AiForm({ settings, save }: { settings: ServerSettings; save: Save }) {
       ) : null}
       {draft.mode === "openai" ? (
         <div className="mt-2 grid gap-3 sm:grid-cols-2">
-          <Field id="openai-url" label="Address" hint="For example https://api.openai.com/v1, or http://localhost:11434/v1 for Ollama.">
+          <Field id="openai-url" label="Address" hint="For example https://api.openai.com/v1, or http://127.0.0.1:11434/v1 for Ollama.">
             <TextInput id="openai-url" value={draft.baseUrl} onChange={(v) => set("baseUrl", v)} placeholder="https://api.openai.com/v1" />
           </Field>
           <Field id="openai-key" label="API key" hint="Not needed for most local models.">

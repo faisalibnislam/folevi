@@ -47,3 +47,23 @@ export const SERVER_API_VERSION = 1;
 export function assertBillingAvailable(): void {
   if (isServerEdition()) fail("not_found", "Billing isn't part of Folevi Server.");
 }
+
+/**
+ * Server edition: every origin the server answers on (`FOLEVI_TRUSTED_ORIGINS`, set by folevid: the public
+ * origin, Connect names, the owner's domain, LAN addresses, the .local name and loopback), so Better Auth accepts a
+ * sign-in on any of them (CONTRACT §6.1: the session is the server's, whichever name reached it). Only http(s)
+ * origins; nothing in the cloud edition.
+ */
+export function serverTrustedOrigins(): string[] {
+  if (!isServerEdition()) return [];
+  const out: string[] = [];
+  for (const raw of (process.env.FOLEVI_TRUSTED_ORIGINS ?? "").split(",")) {
+    try {
+      const url = new URL(raw.trim());
+      if ((url.protocol === "https:" || url.protocol === "http:") && !out.includes(url.origin)) out.push(url.origin);
+    } catch {
+      // Not an origin: left out.
+    }
+  }
+  return out;
+}

@@ -26,7 +26,7 @@ import { appleClientSecret, appleRevocationFor, appleSignInConfig, type AppleSig
 import { appleNative } from "./lib/appleNative";
 import { guardRefreshTokenRevoke } from "./lib/authAdapter";
 import { ACCESS_TOKEN_PREFIX, mcpResourceUrl, OAUTH_SCOPES, REFRESH_TOKEN_PREFIX } from "./lib/mcp/config";
-import { isServerEdition } from "./lib/edition";
+import { isServerEdition, serverTrustedOrigins } from "./lib/edition";
 import { pluginJwksOptions } from "./lib/jwks";
 
 /** Linking an account needs a sign-in this recent (the session's freshAge). */
@@ -266,7 +266,8 @@ export function createAuthOptions(ctx: GenericCtx<DataModel>) {
     appName: "Folevi",
     baseURL: siteUrl(),
     secret: process.env.BETTER_AUTH_SECRET,
-    trustedOrigins: [siteUrl()],
+    // The server edition also trusts its other names (LAN address, Connect names); the cloud only its site.
+    trustedOrigins: [siteUrl(), ...serverTrustedOrigins().filter((o) => o !== siteUrl())],
     // Refresh token rotation needs one fix on Convex (lib/authAdapter.ts).
     database: guardRefreshTokenRevoke(ctx, authComponent.adapter(ctx)),
     emailAndPassword: {

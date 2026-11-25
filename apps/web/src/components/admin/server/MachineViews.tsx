@@ -147,7 +147,7 @@ export function ServerRemoteView() {
               <p>Enter the machine&apos;s Tailscale name (it ends in ts.net) under Your own domain above.</p>
             </Guide>
             <Guide title="Cloudflare Tunnel">
-              <p>Create a tunnel in Cloudflare Zero Trust, install its connector on this machine, and add a public hostname that points to http://localhost:8460.</p>
+              <p>Create a tunnel in Cloudflare Zero Trust, install its connector on this machine, and add a public hostname that points to http://127.0.0.1:8460 (this machine, port 8460).</p>
               <p>Enter that hostname under Your own domain above.</p>
             </Guide>
           </Panel>

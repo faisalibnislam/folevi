@@ -28,7 +28,8 @@ export interface RuntimeConfig {
 /** The id of the JSON script tag the root layout writes the browser's copy into. */
 export const RUNTIME_CONFIG_ELEMENT_ID = "folevi-runtime";
 
-const DEFAULT_SERVER_ORIGIN = "http://localhost:8460";
+// 127.0.0.1, not the localhost name: shell exports refuse a bundled localhost address (build-shell.mjs check).
+const DEFAULT_SERVER_ORIGIN = "http://127.0.0.1:8460";
 
 function trimSlash(url: string): string {
   return url.replace(/\/+$/, "");

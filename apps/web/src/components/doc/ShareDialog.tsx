@@ -5,7 +5,7 @@ import { useMutation } from "convex/react";
 import { useQuery } from "@/lib/convex/queries";
 import type { FunctionReturnType } from "convex/server";
 import { useState } from "react";
-import { ChevronRight, Copy, Globe, Info, Link2, Lock, Trash2, Users } from "lucide-react";
+import { ChevronRight, Copy, Globe, Info, Link2, Lock, Share2, Trash2, Users } from "lucide-react";
 import { api } from "@/lib/convex/api";
 import { Dialog } from "@/components/ui/Dialog";
 import { Button, IconButton } from "@/components/ui/Button";
@@ -20,6 +20,7 @@ import { useAppState } from "@/lib/app/state";
 import { PublishCopyDialog } from "@/components/e2ee/PublishCopyDialog";
 import { roleLabel } from "@/lib/app/folderSharing";
 import { appUrl, hostOf, publicLinkUrl, shareOrigin } from "@/lib/env";
+import { macDesktop } from "@/lib/desktop/capabilities";
 
 export type ShareData = NonNullable<FunctionReturnType<typeof api.sharing.get>>;
 export type ShareFolderAccess = FunctionReturnType<typeof api.folderSharing.forNote>;
@@ -250,6 +251,12 @@ export function ShareDialogView({
           <Button variant="quiet" className="mr-auto" onClick={() => copyText(`${appUrl().replace(/\/$/, "")}/d/${documentId}`)}>
             <Link2 size={14} aria-hidden /> Copy link
           </Button>
+          {/* Folevi for Windows: the system's Share sheet with the note's link (the Mac has File > Share). */}
+          {macDesktop()?.platform === "windows" && macDesktop()?.share ? (
+            <Button variant="quiet" onClick={() => void macDesktop()?.share?.({ title: title || "Untitled", url: `${appUrl().replace(/\/$/, "")}/d/${documentId}` })}>
+              <Share2 size={14} aria-hidden /> Share…
+            </Button>
+          ) : null}
           <Button variant="primary" onClick={close}>
             Done
           </Button>

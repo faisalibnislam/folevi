@@ -244,6 +244,13 @@ As on the Mac (WindowRestore.swift): Folevi keeps the main windows it has open a
 `windows.json` (`[{ label, path }]`, saved when focus leaves a window, when one closes and at Quit) and opens them
 again at launch; the window-state plugin puts each back at its size and position by label. Quick Add, background
 pages and internal pages open at /documents instead. Tabs come back from the page's own storage, as before.
+## Share and text in images (Windows)
+
+The note's Share dialog has Share… beside Copy link in Folevi for Windows: Windows' Share sheet with the note's link
+(`src/winshare.rs`, DataTransferManager in front of Folevi's window). Text in images (search in files) is read with
+Windows.Media.Ocr when a recognition language is installed (`foleviDesktop.recognizeText`; 25 MB, the engine's
+largest size, 30 s and 100,000 characters at most). Linux has neither (no standard share sheet, no text recognition
+built in), so the page doesn't offer them there.
 
 ## Not done yet
 

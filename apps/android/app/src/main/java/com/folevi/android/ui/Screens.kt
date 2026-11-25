@@ -171,38 +171,5 @@ fun NotesScreen(route: NotesRoute, open: (Route) -> Unit, onBack: (() -> Unit)? 
     }
 }
 
-@OptIn(FlowPreview::class)
-@Composable
-fun SearchScreen(open: (Route) -> Unit, onBack: (() -> Unit)? = null) {
-    val session = LocalSession.current
-    var text by rememberSaveable { mutableStateOf("") }
-    var result by remember { mutableStateOf<SearchValue?>(null) }
-    LaunchedEffect(Unit) {
-        snapshotFlow { text }.debounce(200).collect { q ->
-            result = if (q.isBlank()) null else runCatching { session.client.query(Views.search(text = q)) }.getOrNull()
-        }
-    }
-    Column(Modifier.fillMaxSize()) {
-        if (onBack != null) BigTitle("Search", navigation = { BackButton(onBack) }) else ScreenTitle("Search")
-        OutlinedTextField(
-            value = text,
-            onValueChange = { text = it },
-            placeholder = { Text("Search notes") },
-            leadingIcon = { FoleviIcon(WebIcon.SEARCH, null) },
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
-        )
-        LazyColumn(contentPadding = PaddingValues(bottom = 96.dp)) {
-            items(result?.hits.orEmpty(), key = { it.id + (it.blockId ?: "") }) { h ->
-                ListItem(
-                    headlineContent = { Text(h.title.ifEmpty { "Untitled" }) },
-                    supportingContent = { Text(h.snippet, maxLines = 2, overflow = TextOverflow.Ellipsis) },
-                    leadingContent = { FoleviIcon(WebIcon.FILE_TEXT, null) },
-                    colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-                    modifier = Modifier.clickable { open(NoteRoute(h.id, h.title)) },
-                )
-            }
-        }
-    }
-}
+// Search: SearchScreens.kt.
 

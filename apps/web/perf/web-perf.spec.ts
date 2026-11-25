@@ -42,6 +42,7 @@ function instrument() {
     longTasks: [] as number[],
     interactions: new Map<number, { name: string; duration: number }>(),
     lastInput: 0,
+    shifts: [] as string[],
   };
   Object.defineProperty(window, "__perf", { value: m });
   const observe = (type: string, fn: (e: PerformanceEntry) => void, extra: Record<string, unknown> = {}) => {
@@ -53,8 +54,17 @@ function instrument() {
   };
   observe("largest-contentful-paint", (e) => (m.lcp = e.startTime));
   observe("layout-shift", (e) => {
-    const s = e as unknown as { value: number; hadRecentInput: boolean };
-    if (!s.hadRecentInput) m.cls += s.value;
+    const s = e as unknown as { value: number; hadRecentInput: boolean; sources?: { node?: Node | null; previousRect: DOMRectReadOnly; currentRect: DOMRectReadOnly }[] };
+    if (s.hadRecentInput) return;
+    m.cls += s.value;
+    // What moved (PERF_CLS prints it): the element, where it was and where it went.
+    const describe = (n: Node | null | undefined) => {
+      const el = n instanceof Element ? n : n?.parentElement;
+      if (!el) return "?";
+      const label = el.getAttribute("aria-label") ?? el.getAttribute("data-testid") ?? (el.textContent ?? "").trim().slice(0, 30);
+      return `${el.tagName.toLowerCase()}.${String(el.className).split(" ").slice(0, 3).join(".")} "${label}"`;
+    };
+    for (const src of s.sources ?? []) m.shifts.push(`${Math.round(e.startTime)}ms ${s.value.toFixed(3)} ${describe(src.node)} y ${Math.round(src.previousRect.y)}->${Math.round(src.currentRect.y)} h ${Math.round(src.previousRect.height)}->${Math.round(src.currentRect.height)}`);
   });
   observe("longtask", (e) => m.longTasks.push(e.duration));
   // INP's inputs: each interaction's longest event (input delay + processing + until the next paint).
@@ -84,7 +94,7 @@ function aliasShell() {
   if (fake && !("foleviShell" in window)) Object.defineProperty(window, "foleviShell", { value: fake });
 }
 
-type Meter = { lcp: number; cls: number; longTasks: number[]; interactions: Map<number, { name: string; duration: number }>; lastInput: number };
+type Meter = { shifts: string[]; lcp: number; cls: number; longTasks: number[]; interactions: Map<number, { name: string; duration: number }>; lastInput: number };
 const meter = <T,>(page: Page, fn: (m: Meter) => T) => page.evaluate(`(${fn.toString()})(window.__perf)`) as Promise<T>;
 
 const results: Record<string, unknown> = { cpu: CPU, notes: NOTES, date: new Date().toISOString(), widths: {} };
@@ -180,6 +190,28 @@ async function scrollList(page: Page, cdp: CDPSession) {
     }
     await page.waitForTimeout(500);
   });
+}
+
+/** Listeners on window and document by event type (what stays behind after a note closes). */
+async function globalListeners(cdp: CDPSession): Promise<Record<string, number>> {
+  const out: Record<string, number> = {};
+  for (const expr of ["window", "document"]) {
+    const { result } = (await cdp.send("Runtime.evaluate", { expression: expr })) as { result: { objectId: string } };
+    const { listeners } = (await cdp.send("DOMDebugger.getEventListeners", { objectId: result.objectId })) as { listeners: { type: string }[] };
+    for (const l of listeners) out[`${expr}.${l.type}`] = (out[`${expr}.${l.type}`] ?? 0) + 1;
+  }
+  return out;
+}
+
+/** PERF_HEAP=1: a heap snapshot saved as <PERF_STATE>/<name>.heapsnapshot (perf/heap-diff.mjs compares two). */
+async function heapSnapshot(cdp: CDPSession, name: string) {
+  if (!process.env.PERF_HEAP) return;
+  const chunks: string[] = [];
+  const on = (e: { chunk: string }) => chunks.push(e.chunk);
+  cdp.on("HeapProfiler.addHeapSnapshotChunk", on);
+  await cdp.send("HeapProfiler.takeHeapSnapshot", { reportProgress: false });
+  cdp.off("HeapProfiler.addHeapSnapshotChunk", on);
+  writeFileSync(join(STATE, `${name}.heapsnapshot`), chunks.join(""));
 }
 
 async function heapMB(cdp: CDPSession) {
@@ -288,8 +320,14 @@ test.describe("web app speed with a big library", { tag: "@web-perf" }, () => {
             return { lcpMs: Math.round(m.lcp), cls: Math.round(m.cls * 1000) / 1000, fcpMs: Math.round(fcp?.startTime ?? -1), longTasks: m.longTasks.length, longTaskMs: Math.round(m.longTasks.reduce((a, b) => a + b, 0)), rows: document.querySelectorAll("main a[href^='/d/']").length, nodes: document.getElementsByTagName("*").length };
           });
           log(width, kind, JSON.stringify(out[`start.${kind}`]));
+          if (process.env.PERF_CLS) log(width, kind, "shifts:\n  " + (await meter(page, (m) => m.shifts.slice(0, 20))).join("\n  "));
         }
 
+        // PERF_ONLY=start: only the start (quick checks of LCP and CLS).
+        if (process.env.PERF_ONLY === "start") continue;
+
+        // PERF_ONLY=memory: straight to opening and closing notes.
+        if (process.env.PERF_ONLY !== "memory") {
         // ---- Note open: from All notes, 10 notes, click to editor ready; then back. ----
         await meter(page, (m) => m.interactions.clear());
         const opens: number[] = [];
@@ -385,22 +423,35 @@ test.describe("web app speed with a big library", { tag: "@web-perf" }, () => {
         out.inp = Math.max(out.typingInp ? (out.typingInp as { max: number }).max : 0, (out.listClickInp as { max: number }).max);
         log(width, "list click INP", JSON.stringify(out.listClickInp));
 
+        }
         // ---- Memory: open and close 20 notes. ----
         await page.goto("/notes");
         await expect(noteLinks(page).first()).toBeVisible();
         await page.waitForTimeout(1500);
         const before = await heapMB(cdp);
-        for (let i = 0; i < 20; i++) {
-          const link = noteLinks(page).nth(i % Math.max(1, await noteLinks(page).count()));
-          await link.scrollIntoViewIfNeeded();
-          await link.click();
-          await editorReady(page);
-          await page.goBack();
-          await expect(noteLinks(page).first()).toBeVisible();
-        }
-        await page.waitForTimeout(2000);
-        const after = await heapMB(cdp);
-        out.memory = { before, after, growthMB: Math.round((after.heapMB - before.heapMB) * 10) / 10 };
+        const listenersBefore = await globalListeners(cdp);
+        const openClose = async (from: number) => {
+          for (let i = from; i < from + 20; i++) {
+            const link = noteLinks(page).nth(i % Math.max(1, await noteLinks(page).count()));
+            await link.scrollIntoViewIfNeeded();
+            await link.click();
+            await editorReady(page);
+            await page.goBack();
+            await expect(noteLinks(page).first()).toBeVisible();
+          }
+          await page.waitForTimeout(2000);
+          return heapMB(cdp);
+        };
+        const after = await openClose(0);
+        await heapSnapshot(cdp, `${width}-after20`);
+        const listenersAfter = await globalListeners(cdp);
+        const grew = Object.fromEntries(Object.entries(listenersAfter).map(([k, n]) => [k, n - (listenersBefore[k] ?? 0)]).filter(([k, d]) => d !== 0 && !k.includes("playwright")));
+        if (Object.keys(grew).length) log(width, "window/document listeners that grew", JSON.stringify(grew));
+        // Twenty more: a leak keeps growing, a bounded cache (recent notes' undo history, the query cache) doesn't.
+        const after40 = await openClose(20);
+        await heapSnapshot(cdp, `${width}-after40`);
+        if (process.env.PERF_ONLY === "memory") continue;
+        out.memory = { before, after, after40, growthMB: Math.round((after.heapMB - before.heapMB) * 10) / 10, growth20to40MB: Math.round((after40.heapMB - after.heapMB) * 10) / 10 };
         log(width, "memory", JSON.stringify(out.memory));
 
         // ---- JavaScript per route on a cold load (no CPU slow-down needed). ----

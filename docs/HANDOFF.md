@@ -18,13 +18,14 @@ Part of docs/perf/PERF_PASS_2026-11-25.md; results and how to measure in `docs/p
 
 ### Next steps
 
-1. Desktop CLS 0.114 on All notes; Home and All notes clicks (style and layout of the cards); listener growth per
-   opened note.
+1. Desktop All notes and Home clicks (~300 ms at 4× CPU: style and layout of the note cards).
 2. The web audit's remaining items (listed at the end of `docs/perf/web-results.md`).
 
 ### Change log
 
 - 2026-11-25: measurement setup and PR 1 (see `docs/perf/web-results.md`).
+- 2026-11-25: PR 2: the sidebar's layout shift on every desktop start (CLS 0.114 to 0.001); memory checked with
+  heap snapshots (no per-note leak in local mode); measurement: shift sources, heap snapshots, `PERF_ONLY`.
 
 ## 0. Latest: 2026-11-19, the note editor audit (branch `editor/rock-solid`, pull request 40)
 

@@ -87,12 +87,38 @@ What changed and why:
    before. Shared pieces (Sheet, Glass, SettingsKit, Grouped, Swipe) stay where they were.
 5. **Guard**: `test/startup-imports.test.ts` (fails on the old code).
 
+### PR 2: the sidebar's layout shift, memory checked
+
+Same library and settings, a quieter machine (load average 8 to 16), so this run's times are lower across the board;
+compare the CLS and memory rows, which don't depend on load.
+
+| Target | Desktop | Phone |
+| --- | --- | --- |
+| LCP < 2.5 s (cold / warm) | 1,696 / 1,532 | 1,720 / 1,444 |
+| CLS < 0.1 | 0.114 → 0.001 | 0 |
+| Note open < 300 ms, keyboard (p50 / p95) | 211 / 226 | 208 / 272 |
+| INP, typing in a long note (p95 / max) | 32 / 48 | 48 / 56 |
+| INP, sidebar clicks (Tasks, Home, Calendar, All notes worst) | 120, 280, 200, 304 | 112, 104, 176, n/a |
+| Scrolling All notes / Tasks (average fps) | 57 / 59 | 60 / 60 |
+| Heap, opening and closing notes 1 to 20 / 21 to 40 | +3.8 / +3.4 MB | +4.9 / +3.4 MB |
+
+1. **CLS 0.114 on desktop, every start**: the sidebar drew Templates, Folders, Tags, Archive and Trash before the
+   rows above them were known; when the Vault row and the folder list arrived they all moved down 34 px (and the
+   folder section grew from its "No folders yet" line). Those rows now wait for the Vault query and the folder
+   tree, at most 1.5 s (`useSettled` in `components/app/Sidebar.tsx`), so new rows appear instead of old ones
+   moving. Visible change: the lower sidebar appears a moment after the top on a cold start.
+2. **Memory**: heap grows by about 3.4 MB per 20 notes opened and closed, at the same rate from 20 to 40, while
+   DOM nodes and listeners stay flat. Heap snapshots after 20 and 40 notes (`PERF_HEAP=1`, `perf/heap-diff.mjs`)
+   put the growth in V8's compiled code (each code path compiled once, bounded) and in about 2,900
+   `FileSystemFileHandle`s held by the test FakeShell's OPFS reads (the harness; the apps' native shells don't use
+   OPFS); strings went down. No per-note leak found in the app's code in local mode. Not measured: account mode
+   (the sync engine's block cache, from the web audit), which needs a backend.
+
 ### What's left (in order)
 
-- Desktop CLS 0.114 on All notes (before too): find the shifting element.
-- Desktop Home click (~500 ms) and All notes (~300 ms): mostly style and layout of the new view (note cards with
-  container queries and color-mix) plus each card measuring its lines (`useFitLines`).
-- Listeners grow by about 8 per note opened and closed.
+- Desktop All notes click (~300 ms at 4×) and Home (~280 ms): mostly style and layout of the new view (note cards
+  with container queries and color-mix) plus each card measuring its lines (`useFitLines`, a second render of
+  every card).
 - From the web audit, not done yet: the sync engine keeping every opened note's blocks (memory), validators for
   every block kind in the start (`editor-schema` 233 KB), browsers' warm start without waiting for `me`, the
   note page's whole-note work per save echo, the first list read of the whole scope from IndexedDB.

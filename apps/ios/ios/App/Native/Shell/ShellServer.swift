@@ -315,6 +315,9 @@ final class ServerReach {
     /// A place's origin changed (on the main queue): its pages load again.
     var onChange: ((String) -> Void)?
 
+    /// How a name is asked whether it's this server: its folevi.json (tests answer for the network).
+    var probe: (String) async -> [String: Any]? = { try? await ShellServer.fetchInfo($0, timeout: 4) }
+
     private let monitor = NWPathMonitor()
     private let queue = DispatchQueue(label: "com.folevi.server-reach")
     private var started = false
@@ -333,6 +336,11 @@ final class ServerReach {
             }
             self.monitor.start(queue: self.queue)
         }
+    }
+
+    /// The network changed (NWPathMonitor, or a test): one more check, after any that is running.
+    func networkChanged() {
+        queue.async { self.changed() }
     }
 
     /// On `queue`.
@@ -358,7 +366,7 @@ final class ServerReach {
     func checkAll() async {
         for account in ShellPlaces.state.accounts {
             guard let server = account.server, server.candidates.count > 1 else { continue }
-            guard let best = await Self.best(server), best != server.activeOrigin else { continue }
+            guard let best = await Self.best(server, probe: probe), best != server.activeOrigin else { continue }
             ShellPlaces.setActiveOrigin(account.id, best == server.origin ? nil : best)
             let id = account.id
             await MainActor.run { self.onChange?(id) }
@@ -366,10 +374,10 @@ final class ServerReach {
     }
 
     /// The first candidate (in `candidates` order) whose folevi.json answers as this server; all are tried at once.
-    static func best(_ server: ShellServer) async -> String? {
+    static func best(_ server: ShellServer, probe: @escaping (String) async -> [String: Any]? = { try? await ShellServer.fetchInfo($0, timeout: 4) }) async -> String? {
         let list = server.candidates
         let ok: [String: Bool] = await withTaskGroup(of: (String, Bool).self) { group in
-            for origin in list { group.addTask { (origin, await answers(origin, as: server)) } }
+            for origin in list { group.addTask { (origin, answers(await probe(origin), as: server)) } }
             var out: [String: Bool] = [:]
             for await (origin, yes) in group { out[origin] = yes }
             return out
@@ -377,8 +385,9 @@ final class ServerReach {
         return list.first { ok[$0] == true }
     }
 
-    private static func answers(_ origin: String, as server: ShellServer) async -> Bool {
-        guard let info = try? await ShellServer.fetchInfo(origin, timeout: 4), info["kind"] as? String == "folevi-server" else { return false }
+    /// Whether a name's folevi.json is this server's.
+    static func answers(_ info: [String: Any]?, as server: ShellServer) -> Bool {
+        guard let info, info["kind"] as? String == "folevi-server" else { return false }
         // Linked servers say who they are: another server answering on a home address isn't this one.
         guard let id = server.serverId else { return true }
         return (info["connect"] as? [String: Any])?["serverId"] as? String == id
@@ -424,15 +433,25 @@ final class LocalServers {
             guard case .service(let service, _, _, _) = r.endpoint else { continue }
             var txt: [String: String] = [:]
             if case .bonjour(let record) = r.metadata { txt = record.dictionary }
-            var origin = txt["url"].flatMap(ShellServer.normalizeOrigin)
-            if origin == nil { origin = await resolve(r.endpoint, service) }
-            guard let origin, seen.insert(origin).inserted else { continue }
-            out.append([
-                "name": String((txt["name"] ?? service).prefix(120)), "origin": origin,
-                "serverId": txt["id"].map { $0 as Any } ?? NSNull(), "version": txt["v"].map { $0 as Any } ?? NSNull(),
-            ])
+            let address = txt["url"].flatMap(ShellServer.normalizeOrigin) == nil ? await resolve(r.endpoint, service) : nil
+            guard let e = Self.entry(service: service, txt: txt, resolved: address), let origin = e["origin"] as? String, seen.insert(origin).inserted else { continue }
+            out.append(e)
         }
         return out
+    }
+
+    /// One service as the sign-in screen lists it ({ name, origin, serverId, version }): its TXT `url` when that's
+    /// an address Folevi uses, else the address it resolved to; nil with neither. Anything on the network can
+    /// advertise, so the rest is checked too (and adding it still checks its folevi.json).
+    static func entry(service: String, txt: [String: String], resolved: String?) -> [String: Any]? {
+        guard let origin = txt["url"].flatMap(ShellServer.normalizeOrigin) ?? resolved.flatMap(ShellServer.normalizeOrigin) else { return nil }
+        let name = (txt["name"] ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        let id = txt["id"].flatMap { $0.range(of: #"^[a-z0-9]{1,32}$"#, options: .regularExpression) != nil ? $0 : nil }
+        let version = txt["v"].flatMap { $0.range(of: #"^[0-9A-Za-z.+-]{1,40}$"#, options: .regularExpression) != nil ? $0 : nil }
+        return [
+            "name": String((name.isEmpty ? service : name).prefix(120)), "origin": origin,
+            "serverId": id.map { $0 as Any } ?? NSNull(), "version": version.map { $0 as Any } ?? NSNull(),
+        ]
     }
 
     /// On `queue`.

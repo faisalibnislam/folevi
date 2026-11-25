@@ -241,7 +241,13 @@ final class ShellAuth: NSObject {
               items.first(where: { $0.name == "state" })?.value == state,
               items.first(where: { $0.name == "error" }) == nil,
               let code = items.first(where: { $0.name == "code" })?.value, code.count <= 128 else { return nil }
-        let body: [String: Any] = ["grant_type": "authorization_code", "code": code, "code_verifier": pkce.verifier, "client_id": Self.clientId, "redirect_uri": Self.redirectURI, "device_name": String(Self.deviceName.prefix(60))]
+        return await exchange(code: code, verifier: pkce.verifier)
+    }
+
+    /// The sheet's last step: the code from folevi://auth/callback, with its PKCE verifier, for a new session's
+    /// token at the acting place's website (Folevi Cloud's or a Folevi Server's), or nil.
+    func exchange(code: String, verifier: String) async -> String? {
+        let body: [String: Any] = ["grant_type": "authorization_code", "code": code, "code_verifier": verifier, "client_id": Self.clientId, "redirect_uri": Self.redirectURI, "device_name": String(Self.deviceName.prefix(60))]
         guard let data = try? JSONSerialization.data(withJSONObject: body), let url = URL(string: "/api/auth/native/token", relativeTo: service)?.absoluteURL,
               let (res, out, _) = try? await send(url, method: "POST", headers: ["content-type": "application/json"], body: String(data: data, encoding: .utf8), bearer: nil),
               res.statusCode == 200,

@@ -614,7 +614,7 @@ public struct WebTopBar: View {
         case .shared: return .share2
         case .changes: return .fileDiff
         case .tasks: return .squareCheckBig
-        case .calendar: return .calendar
+        case .calendar: return .calendarDays
         case .note: return .fileText
         case .search: return .search
         case .catchUp: return .newspaper

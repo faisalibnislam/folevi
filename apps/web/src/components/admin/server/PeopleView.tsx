@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useMutation } from "convex/react";
 import { Check, Copy, UserPlus } from "lucide-react";
 import { useQueryState } from "@/lib/convex/queries";
-import { serverAdminRefs, type ServerInvite, type ServerPerson, type ServerRole } from "@/lib/server-edition/refs";
+import { serverAdminRefs, type InvitableRole, type ServerInvite, type ServerPerson, type ServerRole } from "@/lib/server-edition/refs";
 import { formatBytes } from "@/lib/format";
 import { Button } from "@/components/ui/Button";
 import { Dialog } from "@/components/ui/Dialog";
@@ -15,7 +15,7 @@ import { Badge, Callout, DataTable, DocTitle, EmptyRow, ErrorNotice, LoadingRows
 import { TextInput, bytesToGb, gbToBytes } from "./kit";
 
 export const ROLE_NAMES: Record<ServerRole, string> = { owner: "Owner", admin: "Admin", member: "Member", guest: "Guest" };
-const ROLE_HINTS: Record<Exclude<ServerRole, "owner">, string> = {
+const ROLE_HINTS: Record<InvitableRole, string> = {
   admin: "Manages people, sign-in, email and Foli AI",
   member: "Uses Folevi fully",
   guest: "Sees only what's shared with them",
@@ -63,10 +63,10 @@ function InvitePanel() {
   const invite = useMutation(serverAdminRefs.invite);
   const toast = useToast();
   const [email, setEmail] = useState("");
-  const [role, setRole] = useState<ServerRole>("member");
+  const [role, setRole] = useState<InvitableRole>("member");
   const [busy, setBusy] = useState(false);
   const [made, setMade] = useState<{ url: string; expiresAt: number; email: string } | null>(null);
-  const roles: ServerRole[] = admin.role === "super_admin" ? ["member", "admin", "guest"] : ["member", "guest"];
+  const roles: InvitableRole[] = admin.role === "super_admin" ? ["member", "admin", "guest"] : ["member", "guest"];
   return (
     <Panel title="Invite someone" description="Send an invite by email, or share the link or QR code yourself. Each invite works once.">
       <div className="grid gap-3 sm:grid-cols-[1fr_200px_auto] sm:items-end">
@@ -80,9 +80,9 @@ function InvitePanel() {
           <span id="invite-role" className="block text-subheadline font-medium text-ink">
             Role
           </span>
-          <Select aria-labelledby="invite-role" value={role} onChange={(e) => setRole(e.target.value as ServerRole)} className="w-full">
+          <Select aria-labelledby="invite-role" value={role} onChange={(e) => setRole(e.target.value as InvitableRole)} className="w-full">
             {roles.map((r) => (
-              <option key={r} value={r} data-description={ROLE_HINTS[r as Exclude<ServerRole, "owner">]}>
+              <option key={r} value={r} data-description={ROLE_HINTS[r]}>
                 {ROLE_NAMES[r]}
               </option>
             ))}
@@ -132,7 +132,8 @@ function InvitesList() {
   const invites = useQueryState(serverAdminRefs.listInvites, {});
   const revoke = useMutation(serverAdminRefs.revokeInvite);
   const toast = useToast();
-  const rows = (invites.data ?? []) as ServerInvite[];
+  // Only the invites still waiting; used, revoked and expired ones are history (the audit log has them).
+  const rows = ((invites.data ?? []) as ServerInvite[]).filter((i) => i.state === "pending");
   if (invites.data && rows.length === 0) return null;
   return (
     <Panel title="Open invites" flush>
@@ -150,16 +151,15 @@ function InvitesList() {
         <tbody>
           {invites.data === undefined ? <LoadingRows colSpan={4} rows={2} /> : null}
           {rows.map((inv) => {
-            const key = inv.token ?? inv.id ?? "";
             return (
-              <tr key={key} className={trHover}>
+              <tr key={inv.inviteId} className={trHover}>
                 <td className={tdMid}>{inv.email || <span className="text-muted">Anyone with the link</span>}</td>
                 <td className={tdMid}>{ROLE_NAMES[inv.role]}</td>
                 <td className={tdMid}>
                   <Time ts={inv.expiresAt} />
                 </td>
                 <td className={`${tdMid} text-right`}>
-                  <Button size="sm" variant="quiet" onClick={() => void revoke({ token: key }).then(() => toast.show("Invite withdrawn."), (e: unknown) => toast.show(errorMessage(e), { tone: "error" }))}>
+                  <Button size="sm" variant="quiet" onClick={() => void revoke({ inviteId: inv.inviteId }).then(() => toast.show("Invite withdrawn."), (e: unknown) => toast.show(errorMessage(e), { tone: "error" }))}>
                     Withdraw
                   </Button>
                 </td>
@@ -191,7 +191,7 @@ function PersonDialog({ person, onClose }: { person: ServerPerson; onClose: () =
   const [busy, setBusy] = useState(false);
   const isOwner = person.role === "owner";
   const self = person.userId === admin.id;
-  const roles: ServerRole[] = owner ? ["admin", "member", "guest"] : ["member", "guest"];
+  const roles: InvitableRole[] = owner ? ["admin", "member", "guest"] : ["member", "guest"];
   // An admin can't change another admin or the owner (only the owner makes admins).
   const canManage = !isOwner && (owner || person.role !== "admin") && !self;
 
@@ -212,9 +212,9 @@ function PersonDialog({ person, onClose }: { person: ServerPerson; onClose: () =
             <span id="person-role" className="block font-medium text-ink">
               Role
             </span>
-            <Select aria-labelledby="person-role" value={person.role} disabled={busy} onChange={(e) => run(() => setRole({ userId: person.userId, role: e.target.value as ServerRole }), "Role changed.")} className="w-full">
+            <Select aria-labelledby="person-role" value={person.role} disabled={busy} onChange={(e) => run(() => setRole({ userId: person.userId, role: e.target.value as InvitableRole }), "Role changed.")} className="w-full">
               {roles.map((r) => (
-                <option key={r} value={r} data-description={ROLE_HINTS[r as Exclude<ServerRole, "owner">]}>
+                <option key={r} value={r} data-description={ROLE_HINTS[r]}>
                   {ROLE_NAMES[r]}
                 </option>
               ))}
@@ -246,7 +246,7 @@ function PersonDialog({ person, onClose }: { person: ServerPerson; onClose: () =
                   setBusy(true);
                   resetPassword({ userId: person.userId })
                     .then((r) => {
-                      const link = r?.url ?? r?.link ?? null;
+                      const link = r.link;
                       setResetLink(link);
                       toast.show(link ? "Reset link ready. Give it to them yourself." : "A reset link is on its way to them.", { tone: "success" });
                     })

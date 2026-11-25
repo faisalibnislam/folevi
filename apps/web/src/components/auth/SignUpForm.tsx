@@ -27,6 +27,8 @@ export interface ServerSignUp {
   serverName: string | null;
   returnTo?: string;
   email?: string;
+  /** A `/join/<token>` invite: sent with the sign-up (`x-folevi-invite`, CONTRACT §7.1), which spends it. */
+  inviteToken?: string;
   confirmByEmail: boolean;
 }
 
@@ -76,6 +78,7 @@ export function SignUpForm({ template, social = { google: false, apple: false },
             email: trimmedEmail,
             password,
             callbackURL,
+            ...(server?.inviteToken ? { fetchOptions: { headers: { "x-folevi-invite": server.inviteToken } } } : {}),
           });
           setBusy(false);
           // A server without email signs the new account in at once (no link to confirm): on to the next page.

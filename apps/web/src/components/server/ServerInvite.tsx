@@ -1,7 +1,8 @@
 "use client";
 
-// An invitation to a Folevi server (`/invite/<token>`, serverInvites:preview and :accept, CONTRACT §7). Signed out:
-// create an account (sign-up keeps the invite and comes back here) or sign in. Signed in: join.
+// An invitation to a Folevi server (`/join/<token>`, serverInvites:preview and :accept, CONTRACT §7). Signed out:
+// create an account (the sign-up carries the invite, which gives the new account its role) or sign in and come
+// back. Signed in: join.
 import { useState } from "react";
 import { useConvexAuth, useMutation } from "convex/react";
 import { FoleviLogo } from "@/components/brand/FoleviMark";
@@ -49,7 +50,7 @@ function Join({ token }: { token: string }) {
 }
 
 export function ServerInvite({ token, invite, signedIn }: { token: string; invite: Preview; signedIn: boolean }) {
-  const here = `/invite/${encodeURIComponent(token)}`;
+  const here = `/join/${encodeURIComponent(token)}`;
   const role = ROLE_WORDS[invite.role];
   return (
     <div className="ui-canvas ui-neutral-chrome grid min-h-dvh place-items-center px-4 py-12">
@@ -74,7 +75,7 @@ export function ServerInvite({ token, invite, signedIn }: { token: string; invit
                   </ConvexClientProvider>
                 ) : (
                   <div className="space-y-2">
-                    <a href={`/signup?invite=${encodeURIComponent(token)}&returnTo=${encodeURIComponent(here)}${invite.email ? `&email=${encodeURIComponent(invite.email)}` : ""}`} className="ui-btn ui-btn-primary h-11 w-full text-body">
+                    <a href={`/signup?invite=${encodeURIComponent(token)}${invite.email ? `&email=${encodeURIComponent(invite.email)}` : ""}`} className="ui-btn ui-btn-primary h-11 w-full text-body">
                       Create an account
                     </a>
                     <a href={`/signin?returnTo=${encodeURIComponent(here)}`} className="ui-btn ui-btn-secondary h-11 w-full text-body">

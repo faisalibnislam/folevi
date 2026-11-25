@@ -10,7 +10,7 @@ import { serverInfoCore } from "@/lib/server-edition/serverInfo";
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Create your account" };
 
-export default async function SignUpPage({ searchParams }: { searchParams: Promise<{ template?: string | string[]; add?: string | string[]; returnTo?: string | string[]; email?: string | string[] }> }) {
+export default async function SignUpPage({ searchParams }: { searchParams: Promise<{ template?: string | string[]; add?: string | string[]; returnTo?: string | string[]; email?: string | string[]; invite?: string | string[] }> }) {
   // "Use this template" on folevi.com: keep the template key (checked against the built-in list later).
   const params = await searchParams;
   const raw = params.template;
@@ -23,7 +23,8 @@ export default async function SignUpPage({ searchParams }: { searchParams: Promi
     const info = await serverInfoCore();
     const returnTo = typeof params.returnTo === "string" ? safeReturnTo(params.returnTo) : undefined;
     const email = typeof params.email === "string" && params.email.length <= 200 ? params.email : undefined;
-    const server = { serverName: info?.name ?? null, returnTo, email, confirmByEmail: info?.features.email === true };
+    const inviteToken = typeof params.invite === "string" && /^[A-Za-z0-9_-]{8,200}$/.test(params.invite) ? params.invite : undefined;
+    const server = { serverName: info?.name ?? null, returnTo, email, inviteToken, confirmByEmail: info?.features.email === true };
     return <SignUpForm adding={adding} social={await socialSignInOptions()} server={server} />;
   }
   return <SignUpForm adding={adding} template={template} social={await socialSignInOptions()} />;

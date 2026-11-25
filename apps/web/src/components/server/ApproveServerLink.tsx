@@ -9,6 +9,13 @@ import { connectRefs } from "@/lib/server-edition/refs";
 import { errorMessage } from "@/components/ui/Toast";
 import { Alert, AuthHeading, SubmitButton, TextLink } from "@/components/auth/fields";
 
+const APPROVE_ERRORS: Record<string, string> = {
+  invalid_code: "That code doesn't match a server waiting to be linked. Check it, or start again on your server.",
+  expired: "That code has expired. Start again from your server's Remote access page.",
+  not_available: "Linking servers isn't available right now. Try again later.",
+  failed: "The server couldn't be linked. Try again.",
+};
+
 function Approve({ code }: { code: string }) {
   const { isAuthenticated } = useConvexAuth();
   const approve = useAction(connectRefs.approveLink);
@@ -42,7 +49,7 @@ function Approve({ code }: { code: string }) {
           setBusy(true);
           setError(null);
           approve({ code })
-            .then((r) => setDone(r?.name ?? ""))
+            .then((r) => (r.ok ? setDone("") : setError(APPROVE_ERRORS[r.error ?? "failed"] ?? APPROVE_ERRORS.failed!)))
             .catch((err: unknown) => setError(errorMessage(err)))
             .finally(() => setBusy(false));
         }}

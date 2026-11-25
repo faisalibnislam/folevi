@@ -19,7 +19,9 @@ export function ServerOverviewView() {
   const o = overview.data;
   const s = status.data;
   const last = backups.data?.backups.slice().sort((a, b) => toMillis(b.createdAt) - toMillis(a.createdAt))[0];
-  const signIns = o ? (typeof o.lastSignIns === "number" ? o.lastSignIns : o.lastSignIns.length) : undefined;
+  // The ten most recently active people (serverAdmin:overview): how many of them were here this week.
+  const weekAgo = Date.now() - 7 * 86_400_000;
+  const signIns = o ? o.lastSignIns.filter((x) => x.at >= weekAgo).length : undefined;
 
   return (
     <>
@@ -30,7 +32,7 @@ export function ServerOverviewView() {
         <StatTile label="People" value={o ? o.people : "…"} hint={<Link className="underline underline-offset-2 hover:text-heading" href="/admin/people">Manage people</Link>} />
         <StatTile label="Notes" value={o ? o.notes.toLocaleString() : "…"} />
         <StatTile label="Storage used" value={o ? formatBytes(o.storageBytes) : "…"} />
-        <StatTile label="Signed in this week" value={signIns ?? "…"} />
+        <StatTile label="Active this week" value={signIns === undefined ? "…" : signIns >= 10 ? "10+" : signIns} />
       </dl>
 
       <div className="mt-6 grid gap-4 xl:grid-cols-2">

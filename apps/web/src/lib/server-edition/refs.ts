@@ -1,11 +1,11 @@
-// The Convex functions of the server edition and of Folevi Connect (docs/self-hosting/CONTRACT.md §7), named by
-// string. The backend workstream adds them to convex/; until convex/_generated/api has them, these references
-// keep the web build typechecking either way. Once generated, they can move to `api.server.info` and friends
-// (same names, same shapes).
-import { makeFunctionReference } from "convex/server";
-import type { ServerInfoCore } from "./info";
+// The Convex functions of the server edition and of Folevi Connect (docs/self-hosting/CONTRACT.md §7, §7.1), and
+// the shapes the admin panel reads from them (secrets come back as `{set}`; `userId` is the profile id).
+import type { FunctionArgs } from "convex/server";
+import { api } from "@/lib/convex/api";
 
 export type ServerRole = "owner" | "admin" | "member" | "guest";
+/** The roles an invite or setRole can give (the owner changes only through transferOwnership). */
+export type InvitableRole = Exclude<ServerRole, "owner">;
 
 // ---------------------------------------------------------------- settings (CONTRACT §8)
 
@@ -43,31 +43,6 @@ export interface ServerSettings {
   ownerUserId?: string;
 }
 
-/**
- * What `serverAdmin:updateSettings` takes: any part of the settings, with secrets as plain strings (write-only;
- * left out, a stored secret stays as it is).
- */
-export type ServerSettingsPatch = {
-  name?: string;
-  signUp?: ServerSettings["signUp"];
-  allowedDomains?: string[];
-  signIn?: Partial<ServerSettings["signIn"]>;
-  google?: { clientId: string; clientSecret?: string };
-  publicLinks?: boolean;
-  defaultQuotaBytes?: number | null;
-  email?: { mode: ServerSettings["email"]["mode"]; smtp?: Omit<SmtpSettings, "password"> & { password?: string } };
-  emailIn?: { mode: ServerSettings["emailIn"]["mode"]; imap?: { host: string; port: number; username: string; password?: string; folder: string } };
-  ai?: {
-    mode: ServerSettings["ai"]["mode"];
-    gemini?: { apiKey?: string; model?: string; embeddingModel?: string };
-    openai?: { baseUrl: string; apiKey?: string; model: string; embeddingModel?: string };
-    allowed?: ServerSettings["ai"]["allowed"];
-    monthlyLimitPerPerson?: number | null;
-  };
-  push?: { relay: boolean };
-  covers?: { mode: ServerSettings["covers"]["mode"]; unsplashKey?: string };
-};
-
 export interface ServerPerson {
   userId: string;
   name: string;
@@ -81,21 +56,20 @@ export interface ServerPerson {
 }
 
 export interface ServerInvite {
-  token?: string;
-  id?: string;
-  email?: string | null;
+  inviteId: string;
+  email?: string;
   role: ServerRole;
-  url?: string;
+  invitedBy: string;
+  createdAt: number;
   expiresAt: number;
-  createdAt?: number;
-  invitedBy?: string;
+  state: "pending" | "used" | "accepted" | "revoked" | "expired";
 }
 
 export interface ServerOverview {
   people: number;
   storageBytes: number;
   notes: number;
-  lastSignIns: { name?: string; email?: string; at: number }[] | number;
+  lastSignIns: { userId: string; name: string; at: number }[];
 }
 
 export interface LinkedServer {
@@ -108,39 +82,11 @@ export interface LinkedServer {
   role: "owner" | "member";
 }
 
-const q = makeFunctionReference;
-
-export const serverRefs = {
-  info: q<"query", Record<string, never>, ServerInfoCore>("server:info"),
-  claimOwner: q<"mutation", { setupToken: string }, { ok: boolean }>("server:claimOwner"),
-};
-
-export const serverInviteRefs = {
-  preview: q<"query", { token: string }, { serverName: string; invitedBy: string; email?: string | null; role: ServerRole; expired: boolean } | null>("serverInvites:preview"),
-  accept: q<"mutation", { token: string }, { ok?: boolean } | null>("serverInvites:accept"),
-};
-
-export const serverAdminRefs = {
-  getSettings: q<"query", Record<string, never>, ServerSettings>("serverAdmin:getSettings"),
-  updateSettings: q<"mutation", ServerSettingsPatch, unknown>("serverAdmin:updateSettings"),
-  listPeople: q<"query", Record<string, never>, ServerPerson[]>("serverAdmin:listPeople"),
-  invite: q<"mutation", { email?: string; role: ServerRole }, { token: string; url: string; expiresAt: number }>("serverAdmin:invite"),
-  listInvites: q<"query", Record<string, never>, ServerInvite[]>("serverAdmin:listInvites"),
-  revokeInvite: q<"mutation", { token: string }, unknown>("serverAdmin:revokeInvite"),
-  setRole: q<"mutation", { userId: string; role: ServerRole }, unknown>("serverAdmin:setRole"),
-  transferOwnership: q<"mutation", { userId: string }, unknown>("serverAdmin:transferOwnership"),
-  suspend: q<"mutation", { userId: string }, unknown>("serverAdmin:suspend"),
-  unsuspend: q<"mutation", { userId: string }, unknown>("serverAdmin:unsuspend"),
-  removePerson: q<"mutation", { userId: string }, unknown>("serverAdmin:removePerson"),
-  endSessions: q<"mutation", { userId: string }, unknown>("serverAdmin:endSessions"),
-  resetPassword: q<"mutation", { userId: string }, { url?: string; link?: string } | null>("serverAdmin:resetPassword"),
-  setQuota: q<"mutation", { userId: string; quotaBytes: number | null }, unknown>("serverAdmin:setQuota"),
-  testEmail: q<"action", { to: string }, { ok: boolean; error?: string }>("serverAdmin:testEmail"),
-  overview: q<"query", Record<string, never>, ServerOverview>("serverAdmin:overview"),
-};
-
+export const serverRefs = { info: api.server.info, claimOwner: api.server.claimOwner };
+export const serverInviteRefs = { preview: api.serverInvites.preview, accept: api.serverInvites.accept };
+export const serverAdminRefs = api.serverAdmin;
 /** Folevi Cloud only (CONTRACT §7, Connect). */
-export const connectRefs = {
-  myServers: q<"action", Record<string, never>, LinkedServer[]>("connect:myServers"),
-  approveLink: q<"action", { code: string }, { ok?: boolean; name?: string } | null>("connect:approveLink"),
-};
+export const connectRefs = { myServers: api.connect.myServers, approveLink: api.connect.approveLink };
+
+/** What serverAdmin:updateSettings takes as `patch` (CONTRACT §7.1: a secret string sets, null clears, left out keeps). */
+export type ServerSettingsPatch = FunctionArgs<typeof api.serverAdmin.updateSettings>["patch"];

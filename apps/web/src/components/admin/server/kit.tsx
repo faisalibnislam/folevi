@@ -85,7 +85,7 @@ export function useServerSettings(): { settings: ServerSettings | undefined; err
   const save = useCallback(
     async (patch: ServerSettingsPatch, done = "Saved.") => {
       try {
-        await update(patch);
+        await update({ patch });
         toast.show(done, { tone: "success" });
         return true;
       } catch (e) {

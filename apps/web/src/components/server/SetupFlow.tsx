@@ -126,7 +126,7 @@ function Claim({ token, onDone }: { token: string; onDone: () => void }) {
         const r = await claim({ setupToken: token });
         if (!r?.ok) throw new Error("refused");
         const name = readName().trim();
-        if (name) await update({ name });
+        if (name) await update({ patch: { name } });
         onDone();
       } catch (e) {
         setError(e instanceof Error && e.message === "refused" ? "This setup link doesn't work any more. The server may already have an owner." : errorMessage(e));

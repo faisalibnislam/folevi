@@ -972,21 +972,30 @@
  * iOS polish WP1: the shell, lists and Home on the iPhone (docs/IOS_POLISH_PLAN.md §2). Phone layout only.
  * --------------------------------------------------------------------------------------------- */
 /* The top bar's material (components/iphone/Screen.tsx): once content has scrolled 4 points under the bar, the
-   screen's own neutral colour, solid (what passes under it, a large title or a note, is hidden by it rather
-   than showing through behind the buttons), with a hairline at its foot. Solid also costs the web view no blur
-   of what's under it on every frame of a scroll (docs/IOS_PERFORMANCE.md). */
+   screen's own neutral colour, solid through the status bar and the buttons (what passes under them, a large
+   title or a card, is hidden rather than showing through), then easing out below them over many stops (a
+   cosine), as iOS 26's soft scroll edge does: no band, no hard edge cutting cards in half, no hairline (the
+   owner's iPhone feedback, 2026-11-25). No blur, so a scroll costs the web view nothing extra per frame
+   (docs/IOS_PERFORMANCE.md). Reduce Transparency and Increase Contrast keep a short, firmer fade (below). */
 .iphone-bar {
   --bar-solid: var(--color-canvas);
+  --bar-top: calc(env(safe-area-inset-top) + 48px);
+  --bar-fade: linear-gradient(#000 0, #000 var(--bar-top), rgb(0 0 0 / 0.962) calc(var(--bar-top) + 4px), rgb(0 0 0 / 0.854) calc(var(--bar-top) + 8px), rgb(0 0 0 / 0.691) calc(var(--bar-top) + 12px), rgb(0 0 0 / 0.5) calc(var(--bar-top) + 16px), rgb(0 0 0 / 0.309) calc(var(--bar-top) + 20px), rgb(0 0 0 / 0.146) calc(var(--bar-top) + 24px), rgb(0 0 0 / 0.038) calc(var(--bar-top) + 28px), transparent calc(var(--bar-top) + 32px));
   position: absolute;
   inset-inline: 0;
   top: 0;
   z-index: 20;
-  height: calc(env(safe-area-inset-top) + 52px);
+  height: calc(env(safe-area-inset-top) + 80px);
   pointer-events: none;
   background: var(--bar-solid);
-  box-shadow: inset 0 -0.5px 0 var(--iphone-separator);
+  -webkit-mask-image: var(--bar-fade);
+  mask-image: var(--bar-fade);
   opacity: 0;
   transition: opacity 120ms ease-out;
+}
+:root:is([data-increase-contrast], [data-reduce-transparency]) .iphone-bar:not([data-surface="page"]) {
+  height: calc(env(safe-area-inset-top) + 64px);
+  --bar-fade: linear-gradient(#000 0, #000 calc(var(--bar-top) + 4px), rgb(0 0 0 / 0.5) calc(var(--bar-top) + 10px), transparent calc(var(--bar-top) + 16px));
 }
 .iphone-bar[data-on] { opacity: 1; }
 .iphone-bar[data-surface="grouped"] { --bar-solid: var(--iphone-grouped); }

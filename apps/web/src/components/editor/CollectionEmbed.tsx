@@ -1175,7 +1175,7 @@ function BoardCollection({ data, view, rows, visible, canEdit, onAdd }: { data: 
               <span className="rounded-chip px-2 py-0.5" style={optionColor(col.color)}>
                 {col.name}
               </span>
-              <span className="text-faint">{items.length}</span>
+              <span className="text-faint tabular-nums">{items.length}</span>
             </h4>
             <ul className="space-y-2">
               {items.map((row) => (
@@ -1256,7 +1256,7 @@ function FormulaBoard({ data, group, rows, visible }: { data: CollectionData; gr
           <section key={col.key} aria-label={t("collection.board.column", { name, count: items.length })} className="flex w-64 flex-none flex-col rounded-chip bg-sunken p-2">
             <h4 className="mb-2 flex items-center gap-2 px-1 text-footnote font-semibold">
               <span className="truncate rounded-chip bg-raised px-2 py-0.5 shadow-[0_0_0_1px_var(--color-line)]">{name}</span>
-              <span className="text-faint">{items.length}</span>
+              <span className="text-faint tabular-nums">{items.length}</span>
             </h4>
             <ul className="space-y-2">
               {items.map((row) => (
@@ -1415,7 +1415,7 @@ function CalendarCollection({ data, view, rows, visible, canEdit, onAdd }: { dat
       {undated.length || canEdit ? (
         <section aria-label="No date" {...dropTarget(null)} className="mt-3 rounded-chip bg-sunken p-2">
           <h4 className="mb-1.5 flex items-center gap-2 px-1 text-footnote font-semibold">
-            No date <span className="font-normal text-faint">{undated.length}</span>
+            No date <span className="font-normal text-faint tabular-nums">{undated.length}</span>
           </h4>
           {undated.length ? (
             <ul className="flex flex-wrap gap-1">

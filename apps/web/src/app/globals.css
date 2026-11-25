@@ -60,6 +60,8 @@
   --radius-control: var(--radius-control);
   --radius-panel: var(--radius-panel);
   --radius-container: var(--radius-container);
+  /* Folders (cards, the small folder icon): 35% less round than a panel (the owner, 2026-11-25). */
+  --radius-folder: var(--radius-folder);
   /* The iPhone app only (components/iphone): its bottom sheets, a sheet floating inset from the screen's
      edges (concentric with its corners), and its floating glass capsules. */
   --radius-sheet: var(--radius-sheet);
@@ -185,6 +187,8 @@
   }
   /* With Reduce Motion what floats in still fades in (the owner, 2026-11-01), without moving or bouncing. */
   .ui-pop { animation-name: folio-fade !important; animation-duration: 120ms !important; animation-timing-function: linear !important; }
+  /* Toasts, Show all tabs and closing overlays fade too, without moving (2026-11-25 polish review). */
+  :is(.ui-toasts > *, [data-tab-overview], [data-closing]) { animation-name: folio-fade !important; animation-duration: 120ms !important; transition-property: opacity !important; transition-duration: 150ms !important; translate: none !important; transform: none !important; }
 }
 
 /* Android's press ripple (lib/android/ripple.ts, inside the Android app only): a layer over the pressed control,
@@ -884,7 +888,7 @@
 :root:is([data-mac-native], [data-ipad-native]) :is(aside[aria-label="Page tools"], #document-inspector) .ui-display { font-family: var(--font-sans); letter-spacing: 0; font-size: var(--type-headline); }
 /* Push buttons in the page (a dialog's Done and Cancel, "Use your own image…"): the Mac's one shape for a push
    button, a capsule, as its native dialogs draw them (docs/MAC_NATIVE_LOOK.md, Controls). */
-:root:is([data-mac-native], [data-ipad-native]) :is(.ui-btn-primary, .ui-btn-secondary, .ui-btn-danger) { border-radius: var(--radius-capsule); }
+:root:is([data-mac-native], [data-ipad-native]) :is(.ui-btn-primary, .ui-btn-secondary, .ui-btn-danger):not(.ui-tabbar *) { border-radius: var(--radius-capsule); }
 /* The page tools' open tool is a quiet raised segment, not a second black button beside the bar's New note. */
 :root:is([data-mac-native], [data-ipad-native]) [role="toolbar"][aria-label="Page tools"] button[aria-pressed="true"] {
   background: color-mix(in srgb, var(--color-ink) 10%, transparent); color: var(--color-heading);
@@ -1315,6 +1319,8 @@
    lift (a Mac button doesn't move); disabled ones are 40 % with no hover. */
 :root[data-desktop="mac"] :is(button, a, [role="button"], [role="tab"], [role="menuitem"], [role="option"]):hover { transition-duration: 0s; }
 :root[data-desktop="mac"] :is(button, a, [role="button"]):is(:hover, :active) { scale: none; }
+/* (.ui-btn presses with transform, not scale: it darkens instead on the Mac.) */
+:root[data-desktop="mac"] .ui-btn:active:not(:disabled) { transform: none; filter: brightness(0.92); }
 :root[data-desktop="mac"] :is(.ui-btn-quiet, .ui-btn-ghost):active:not(:disabled),
 :root[data-desktop="mac"] nav[aria-label="Folio"] a.group:active { background: var(--mac-press); }
 :root[data-desktop="mac"] .ui-btn:disabled { opacity: 0.4; }
@@ -1358,6 +1364,9 @@
 :root[data-desktop="mac"] :is(dialog, [popover]) .ui-input:is(.h-9, .h-10) { height: 28px; border-radius: var(--radius-small); font-size: var(--type-callout); }
 /* The Ask Foli AI pill stays (owner's answer to P2), without the lift on hover. */
 :root[data-desktop="mac"] .ui-fab:hover { translate: none; }
+/* Nor do note cards, list rows and Show all tabs' tiles (a Mac control doesn't move; folders keep their rise). */
+:root[data-desktop="mac"] :is(.note-card-r, [data-card-row], [data-tab-overview] [data-overview-index] > button):hover { translate: none; }
+:root[data-desktop="mac"] [data-tab-overview] { translate: none; }
 
 /* §2.3, §3.14 Menus (Folevi's own everywhere, decision M1), in Folevi's type: at least 200 wide, 32 point rows in
    13.5 / 18 as the web's (the owner, 2026-10-31: AppKit's 26 point rows read cramped), 6 points of padding, 10
@@ -1445,8 +1454,8 @@
 /* §3.14 The command palette isn't a sheet: it keeps its place, 640 wide, its rows 36 tall. */
 :root[data-desktop="mac"] dialog.ui-pop.mt-\[12vh\] { margin-top: 12vh; max-width: 640px; }
 :root[data-desktop="mac"] dialog.ui-pop.mt-\[12vh\] [role="option"] { min-height: 36px; border-radius: var(--radius-chip); }
-@keyframes mac-pop-in { from { opacity: 0; transform: translateY(4px) scale(0.92); } 30% { opacity: 1; } to { opacity: 1; transform: none; } }
-@keyframes mac-sheet-in { from { opacity: 0; transform: translateY(-8px) scale(0.94); } 30% { opacity: 1; } to { opacity: 1; transform: none; } }
+@keyframes mac-pop-in { from { opacity: 0; transform: translateY(4px) scale(0.97); } 30% { opacity: 1; } to { opacity: 1; transform: none; } }
+@keyframes mac-sheet-in { from { opacity: 0; transform: translateY(-8px) scale(0.97); } 30% { opacity: 1; } to { opacity: 1; transform: none; } }
 @keyframes mac-fade-in { from { opacity: 0; } to { opacity: 1; } }
 @media (prefers-reduced-motion: reduce) {
   :root[data-desktop="mac"] :is([role="dialog"][popover].ui-pop, dialog.ui-pop[open]) { animation: mac-fade-in 120ms linear; }
@@ -1464,7 +1473,11 @@
    out of the way (28 point round buttons, shown while the row is pointed at or the keyboard is on them). */
 :root[data-desktop="mac"],
 :root[data-desktop="mac"] body { overscroll-behavior: none; }
-:root[data-desktop="mac"] :is(.overflow-y-auto, .overflow-x-auto, .overflow-auto) { overscroll-behavior: contain; }
+/* Each region holds on to scrolling only along the way it scrolls: a row that scrolls sideways (Home's cards) must
+   hand an up-or-down scroll to the page, or the page can't be scrolled with the pointer over the row (2026-11-25). */
+:root[data-desktop="mac"] .overflow-auto { overscroll-behavior: contain; }
+:root[data-desktop="mac"] .overflow-y-auto { overscroll-behavior-y: contain; }
+:root[data-desktop="mac"] .overflow-x-auto { overscroll-behavior-x: contain; }
 :root[data-desktop="mac"] button:is([aria-label^="Scroll "][aria-label$=" back"], [aria-label^="Scroll "][aria-label$=" forward"]) { width: 28px; height: 28px; border-radius: var(--radius-panel); opacity: 0; transition: opacity 150ms; }
 :root[data-desktop="mac"] :is(:hover, :focus-within) > button:is([aria-label^="Scroll "][aria-label$=" back"], [aria-label^="Scroll "][aria-label$=" forward"]) { opacity: 1; }
 

@@ -16,6 +16,7 @@ import { useOutboxEntries } from "@/lib/sync/queryCache";
 import { t } from "@/i18n";
 import { useToast } from "@/components/ui/Toast";
 import { useBackendMode } from "@/lib/mode";
+import { SwapIcons } from "@/components/ui/SwapIcons";
 
 /** The sync status's words, the same on every screen (the phone and iPad's SyncStatusTouch reads these too). */
 export const SYNC_LABELS = {
@@ -91,12 +92,19 @@ export function SyncStatus({ documentId, compact = true, align = "end" }: { docu
     status === "offline" ? "bg-[var(--color-ink-faint)]" :
     status === "conflict" || status === "error" ? "bg-coral" :
     "bg-heading animate-pulse motion-reduce:animate-none";
-  const icon =
-    status === "offline" ? <CloudOff size={13} aria-hidden /> :
-    status === "conflict" ? <GitMerge size={13} aria-hidden /> :
-    status === "error" ? <AlertTriangle size={13} aria-hidden /> :
-    status === "saved" ? <Check size={13} aria-hidden className="text-moss-ink" /> :
-    <Loader2 size={13} aria-hidden className="animate-spin text-heading motion-reduce:animate-none" />;
+  // One state's icon turns into the next's (SwapIcons) rather than replacing it at once.
+  const icon = (
+    <SwapIcons
+      index={status === "offline" ? 0 : status === "conflict" ? 1 : status === "error" ? 2 : status === "saved" ? 3 : 4}
+      icons={[
+        <CloudOff key="offline" size={13} />,
+        <GitMerge key="conflict" size={13} />,
+        <AlertTriangle key="error" size={13} />,
+        <Check key="saved" size={13} className="text-moss-ink" />,
+        <Loader2 key="busy" size={13} className="animate-spin text-heading motion-reduce:animate-none" />,
+      ]}
+    />
+  );
   const tone =
     status === "offline" ? "text-warning" :
     status === "conflict" ? "text-plum-ink" :

@@ -19,6 +19,7 @@ import { ResearchFooter, ResearchProgress, type ResearchHandlers } from "./Resea
 import { SearchSuggestions } from "./SearchSuggestions";
 import { MessageMemory } from "./SaveMemoryCard";
 import { useConversationActions } from "./ConversationActions";
+import { SwapIcons } from "@/components/ui/SwapIcons";
 
 export type ChatMessageData = NonNullable<FunctionReturnType<typeof api.aiChat.get>>["messages"][number];
 export type Citation = ChatMessageData["citations"][number];
@@ -53,7 +54,7 @@ function CopyButton({ text, label = "Copy" }: { text: string; label?: string }) 
         });
       }}
     >
-      {copied ? <Check size={12} aria-hidden /> : <Copy size={12} aria-hidden />}
+      <SwapIcons index={copied ? 1 : 0} icons={[<Copy key="copy" size={12} />, <Check key="check" size={12} />]} />
       {copied ? "Copied" : label}
     </button>
   );

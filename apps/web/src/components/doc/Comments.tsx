@@ -251,7 +251,7 @@ export function CommentThreadCard({
             <IconButton label="Previous thread" className="!h-6 !w-6 pointer-coarse:!h-11 pointer-coarse:!w-11" disabled={at === 0} onClick={() => onSelectThread?.(siblings[at - 1]!.id)}>
               <ChevronLeft size={13} aria-hidden />
             </IconButton>
-            <span aria-live="polite">
+            <span aria-live="polite" className="min-w-[3.25rem] text-center tabular-nums">
               {at + 1} of {siblings.length}
             </span>
             <IconButton label="Next thread" className="!h-6 !w-6 pointer-coarse:!h-11 pointer-coarse:!w-11" disabled={at === siblings.length - 1} onClick={() => onSelectThread?.(siblings[at + 1]!.id)}>
@@ -792,7 +792,7 @@ function CommentsList({ documentId, onOpenThread, focusThreadId = null }: { docu
         <p className="text-muted">You can read comments on this note but not add them.</p>
       )}
       <div className="space-y-2">
-        <div role="group" aria-label="Show threads" className="ui-seg bg-[color-mix(in_oklab,var(--color-ink)_6%,transparent)]">
+        <div role="group" aria-label="Show threads" className="ui-seg tabular-nums bg-[color-mix(in_oklab,var(--color-ink)_6%,transparent)]">
           <button type="button" aria-pressed={filter === "open"} onClick={() => setFilter("open")} className="whitespace-nowrap">
             Open{open.length ? ` · ${open.length}` : ""}
           </button>

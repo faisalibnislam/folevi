@@ -271,6 +271,7 @@ export const tokens = {
     "small": 8,
     "control": 10,
     "panel": 14,
+    "folder": 9,
     "container": 18,
     "sheet": 28,
     "float": 40,

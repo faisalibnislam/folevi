@@ -6,7 +6,8 @@ import { folderHex } from "@/lib/folderColors";
  * small stack of folders behind it; an empty one shows no page. `size` is the height; the colours (light and
  * dark) are in globals.css (.fg-*).
  */
-const BACK = "M0 22Q0 0 22 0H72C86 0 90 14 104 14H218Q240 14 240 36V198Q240 220 218 220H22Q0 220 0 198Z";
+// Corners 35% less round than they were (22 and 24 units, the owner, 2026-11-25): 14.3 and 15.6.
+const BACK = "M0 14.3Q0 0 14.3 0H72C86 0 90 14 104 14H225.7Q240 14 240 28.3V205.7Q240 220 225.7 220H14.3Q0 220 0 205.7Z";
 
 export type FolderGlyphKind = "notes" | "stack" | "empty";
 
@@ -31,7 +32,7 @@ export function FolderGlyph({ color, size = 18, kind = "notes", className = "" }
       ) : null}
       <path className="fg-back" d={BACK} />
       {kind === "notes" ? <rect className="fg-page" x="40" y="32" width="160" height="120" rx="12" /> : null}
-      <rect className="fg-front" x="0" y="96" width="240" height="124" rx="24" />
+      <rect className="fg-front" x="0" y="96" width="240" height="124" rx="15.6" />
     </svg>
   );
 }

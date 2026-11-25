@@ -274,6 +274,22 @@ thread, the bridge script assembled once, an XCTest host that never takes focus,
 renamed `calendar` to `calendarDays`). iPhone and iPad (`claude/perf-ios-3eaf61`, PR into `claude/ios-feedback-b1307a`):
 the Keychain read off the main thread at launch; note-page memory measured and not leaking; `_bridge` route, splash
 change and `capacitor://` caching measured and not worth changing.
+## 9. Current state (as of 2026-11-24)
+
+**Mac feedback, 2026-11-25 (branch `claude/mac-feedback-8652d2`, the owner's Mac feedback session).** Three fixes in the
+web UI the Mac shows (so every platform gets them): (1) Home's rows of note cards blocked scrolling the page in the
+Mac app: `globals.css`'s Mac no-bounce rule held both axes on every `.overflow-x-auto`; each region now holds only
+along the way it scrolls (`test/mac-scroll-axes.test.ts`). (2) Folders 35% less round: radius token `folder` (9 px,
+`rounded-folder`) for the folder card and `FolderGlyph`'s corners. (3) Show all tabs redesigned (owner's picks):
+`TabOverview.tsx` + `TabPictures.tsx`; a note tab is its Home card, a split tab two cards (double-wide tile), a
+folder tab its folder card, Home and other views a small drawing; names under the cards; it fills the page's panel
+below the top bar (no clash with the window buttons); arrow keys by position (`test/tab-overview.test.ts`); also on
+the iPad's tab bar now. Then an interface-polish pass (owner's "fix MEDIUM and LOW", conflicts by Folevi's rule):
+Mac buttons don't shrink on press, overlays fade out (`ui/closing.ts`, Popover's copy fade), Reduce Motion keeps
+fades, no hover lift on the Mac except folders, state icons cross-fade (`ui/SwapIcons.tsx`), concentric corners,
+image outlines (`ui-img-outline`), steady-width counters, tab pin/close no longer overlap. Checked headlessly in an offscreen WKWebView harness (real NSEvent wheel events, a
+`FOLEVI_BUILD=shell` dev server with the e2e FakeShell, scratch OPFS library); not yet seen in a Mac release build.
+
 **Backend performance pass (session `perf-backend`, 2026-11-25).** A generated 5,000-note test library
 (`convex/lib/fakeLibrary.ts`, seeded by `convex/devSeed.ts` into an `@example.com` test account, refused on
 production) and a read-cost harness (`tests/convex/perf/`, run with `FOLEVI_PERF=1`). Baseline and every fix's
@@ -628,6 +644,9 @@ account button should move past iPadOS's window buttons).
   (one cheap call), a local-mode equivalent is already there (own keys), Anthropic's server-side refusal fallback
   (left out: the owner chose no fallback), and audio attachments in a chat routed to OpenAI or Claude are refused
   by the adapter rather than up front.
+- Mac feedback branch (`claude/mac-feedback-8652d2`): the owner checks Home scrolling, folder corners and the new Show
+  all tabs in the next Mac build (needs "release it"); a split-view tab in the overview was not drawn in the
+  headless check (no split tab in the scratch library).
 - Backend performance pass, owner's OK needed for production: run `migrations:backfillListStats` (optional, speeds
   up existing folders) and `migrations:backfillDocumentText` (required before the note text switch PR merges).
 - Backend performance pass (`docs/perf/backend-results.md`): kept folder and Drafts counts, task rows that carry
@@ -823,6 +842,14 @@ account button should move past iPadOS's window buttons).
   API) adapters through their SDKs with native streaming, tools, JSON, web search and prompt caching; credits priced
   per provider; "cheap first" defaults (Gemini Main is now Flash-Lite). 19 new tests; 4 existing tests updated for
   the new default (3 metering tests pin Main to Flash).
+- 2026-11-25: Interface-polish pass on the whole web UI (review by typography, surfaces and motion; owner chose to fix
+  every MEDIUM and LOW finding): see the commit "Interface polish pass". Checked: typecheck, lint, full unit suite,
+  WebKit harness (dialog, command palette and Show all tabs fade out; Mac fades only), screenshots.
+- 2026-11-25: Mac feedback: Home's card rows no longer block page scrolling in the Mac app (overscroll held per axis);
+  folders 35% less round (`folder` radius token, 9); Show all tabs redesigned (cards of what each tab holds, below
+  the top bar, names under cards, on iPad too). How scrolling was checked: a Swift harness puts a WKWebView in an
+  offscreen window and calls `scrollWheel(with:)` with CGEvent-made wheel events (location = window coordinates,
+  since the event has no window); Playwright's wheel bypasses macOS's scrolling path and can't show this bug.
 - 2026-11-25: Backend performance pass, step 3 (widen): `documentText` table holds each note's search text and search
   fields, kept in step by the write hook; `migrations:backfillDocumentText` copies older notes (production run waits
   for the owner). Readers are unchanged until the switch PR.

@@ -87,7 +87,7 @@ export function CatchUp({ row = false }: { /** A list row (the iPhone app's Home
           onClick={() => void run()}
           aria-label="Catch me up"
           aria-description="A quick Foli AI brief of this week’s notes and what’s due"
-          className="ui-key-focus flex min-h-[68px] w-full items-center gap-3 rounded-container bg-[var(--iphone-card)] px-4 py-3 text-left outline-none transition-[background-color,transform] duration-150 hover:bg-[var(--glass-hover)] active:scale-[0.98] active:bg-[var(--liquid-press)] active:duration-0 motion-reduce:active:scale-100"
+          className="ui-key-focus flex min-h-[68px] w-full items-center gap-3 rounded-container bg-[var(--iphone-card)] px-4 py-3 text-left outline-none transition-[background-color,transform] duration-150 hover:bg-[var(--glass-hover)] active:scale-[0.96] active:bg-[var(--liquid-press)] active:duration-0 motion-reduce:active:scale-100"
         >
           <span aria-hidden className="grid h-9 w-9 flex-none place-items-center">
             <AiIcon size={28} />

@@ -60,7 +60,8 @@ final class Places {
         ShellCloud.shared.onStatus = { status in Self.toLibrary("cloudStatus", ["status": status]) }
         // The library's network rules come from WebKit's store (compiled on an earlier launch) while the library
         // opens on its own queue: neither waits for the other before the first window.
-        async let rules = WebViewFactory.ruleList("folevi-library", json: Self.localRulesJSON(serviceHost: Paths.serviceURL.host ?? ""))
+        let rulesJSON = Self.localRulesJSON(serviceHost: Paths.serviceURL.host ?? "")
+        async let rules = WebViewFactory.ruleList("folevi-library", json: rulesJSON)
         let info = await Self.onLibraryQueue { () -> [String: Any] in
             lib.open()
             return lib.info()

@@ -267,8 +267,10 @@ enum WebViewFactory {
     /// on an earlier launch is looked up (a few milliseconds) and compiling (tens of milliseconds, before the first
     /// window) happens only when the text is new. The identifier carries a hash of the text, so a changed text
     /// (another website host) compiles once and the older lists of that name go.
-    static func ruleList(_ name: String, json: String, store: WKContentRuleListStore? = .default()) async -> WKContentRuleList? {
-        guard let store else { return nil }
+    /// `store` nil is WebKit's default store, looked up here on the main actor: never as a default argument, which an
+    /// `async let` evaluates off the main thread, where WebKit's first use crashes (it must start on the main thread).
+    static func ruleList(_ name: String, json: String, store: WKContentRuleListStore? = nil) async -> WKContentRuleList? {
+        guard let store = store ?? WKContentRuleListStore.default() else { return nil }
         let id = name + "-" + SHA256.hash(data: Data(json.utf8)).prefix(8).map { String(format: "%02x", $0) }.joined()
         if let found = try? await store.contentRuleList(forIdentifier: id) { return found }
         let list = try? await store.compileContentRuleList(forIdentifier: id, encodedContentRuleList: json)

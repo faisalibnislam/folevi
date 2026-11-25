@@ -587,9 +587,9 @@ signed-in account, 1.5.58's frosted folders with a large library, and the iPad c
 account button should move past iPadOS's window buttons).
 
 ## 10. Next steps / open work
-- Apple performance (owner's OK needed): run `node apps/mac/scripts/perf.mjs --fresh --runs 3` and `perf-scroll.mjs`
-  on `main` and on the perf branch (they launch the Mac app, which takes focus) for the Mac's launch, footprint and
-  idle energy before and after; confirm the iOS launch and memory numbers on a Release build on a device.
+- Apple performance: the Mac launch run (owner's OK, 2026-11-25) showed no measurable difference at a load average
+  of 43; re-run `perf.mjs` (and `perf-scroll.mjs`) on a quiet Mac with a generated 5,000-note library (`--library`);
+  confirm the iOS launch and memory numbers on a Release build on a device.
 - Web everywhere (all landed 2026-11-25). Open: the iOS simulator `footprint` re-run of the iPhone memory fix (mobile
   session); there are four empty-state components; lists not yet given `LoadFailed` still load until a retry answers
   (settings lists, Calendar, Graph, pickers);
@@ -749,7 +749,8 @@ account button should move past iPadOS's window buttons).
   bridge script cached (2.3 to 0.68 ms per view), test host never activates, `PerfTests`, perf scripts for the web-view
   app, `calendarDays` build fix. iOS (`claude/perf-ios-3eaf61`): Keychain off the main thread. Measured: note-page
   memory flat after warm-up (162 MB Home, about 223 MB after 60 opens, 190 MB under memory pressure). Mac tests: 117
-  of 119 pass (the Vision OCR test timed out under load, passes alone).
+  of 119 pass (the Vision OCR test timed out under load, passes alone). The launch run found and fixed a crash (WebKit's
+  default rule store first touched off the main thread through an `async let` default argument).
 - 2026-11-25: One set of sync status words on every screen (owner's pick: the desktop's): the phone and iPad's sync
   button (`components/iphone/SyncStatusTouch.tsx`) now reads `SYNC_LABELS` from `components/app/SyncStatus.tsx`
   (Saved, Saving…, Syncing…, Offline, Conflict, Not saved) instead of Synced / Waiting to sync / Edited in two places,

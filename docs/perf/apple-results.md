@@ -31,13 +31,30 @@ list (another website host) compiles once and replaces the older one (`testRuleL
 - FOLEVI_OFFLINE's rules are looked up while the migration check runs.
 - The XCTest host never activates (`.prohibited` activation policy when testing), so `xcodebuild test` takes no focus.
 
-### Waiting on the owner
+### Launched (owner's OK, 2026-11-25): `perf.mjs`, before and after
 
-Launch-to-first-window, memory footprint and idle energy need the app launched, which brings it to the front. With the
-owner's OK: `node apps/mac/scripts/perf.mjs --fresh --runs 3` (now measures the web-view app: the first page drawn,
-footprint of the app and its WebKit helpers, idle energy) and `node apps/mac/scripts/perf-scroll.mjs` (scrolls the web
-app's lists in the page and counts late frames). Both take `--library <folder>` / the scratch library; neither touches
-the installed app or the owner's library. Run once on `main` before this PR and once after for the before/after.
+`node apps/mac/scripts/perf.mjs` with two Debug builds side by side: "before" is `main`'s Mac code with only the
+`calendarDays` build fix, "after" is this branch. Same scratch library (local mode, the starter notes, two made-up
+accounts), same web export (`FOLEVI_SHELL_DIR`). The Mac was heavily loaded by other sessions (load average about 43).
+
+| | Before | After |
+| --- | --- | --- |
+| Launch to the first page loaded (median) | 0.93 s (3 runs), 1.09 s (4 runs) | 1.12 s (4 runs) |
+| Launch to the first screen drawn (median) | 1.03 s, 1.81 s | 1.45 s |
+| Footprint at Home, app and its 5 WebKit helpers | 383 MB | 395 MB |
+| The app process alone | 44 to 46 MB | 39 to 42 MB |
+| Idle, 30 s, Energy Impact (top) | 0.4 avg, 1.5 max | 0.7 avg, 1.4 max |
+
+No measurable launch, memory or idle-energy difference on this Mac at this load: the run-to-run spread (0.9 to 1.7 s)
+is larger than anything these changes could save. The runner and throttling changes can't show here at all: the
+script's made-up accounts never start a runner. A run on a quiet Mac, with a generated 5,000-note library
+(`--library`), is what would show them. `perf-scroll.mjs` wasn't run: the scratch library has nothing long enough to
+scroll.
+
+The launch run found a crash the unit tests missed: `async let` evaluated `ruleList`'s default argument
+(`WKContentRuleListStore.default()`) off the main thread, where WebKit's first use traps. Fixed (the store is looked up
+inside the main-actor function) before these numbers; the "after" first launch right after the fix took 9 s once and
+didn't repeat.
 
 ### Tests
 

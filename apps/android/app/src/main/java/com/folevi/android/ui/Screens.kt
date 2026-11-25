@@ -1,5 +1,4 @@
-// The first native screens: Home, a notes list, search, Tasks, Calendar and Foli AI, each drawn from the engine's
-// live views (protocol.ts) like the iPhone's, in Material 3 Expressive with Folevi's cards and folders.
+// Search, drawn from the engine's live views (protocol.ts). Home and the note lists are in HomeScreens.kt.
 package com.folevi.android.ui
 
 import androidx.compose.foundation.clickable
@@ -70,105 +69,6 @@ private fun ScreenTitle(title: String, action: (@Composable () -> Unit)? = null)
         actions = { action?.invoke() },
         colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent),
     )
-}
-
-@Composable
-fun HomeScreen(open: (Route) -> Unit) {
-    val home by rememberView(Views.home())
-    val v = home.value
-    LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 96.dp)) {
-        item {
-            ScreenTitle(v?.spaceName?.takeIf { it.isNotBlank() } ?: "Home") {
-                androidx.compose.material3.IconButton(onClick = { open(SearchRoute) }) { FoleviIcon(WebIcon.SEARCH, "Search") }
-                androidx.compose.material3.IconButton(onClick = { open(SettingsRoute) }) { FoleviIcon(WebIcon.SETTINGS, "Settings") }
-            }
-        }
-        if (v == null) {
-            item { EmptyBox(if (home.error != null) home.error!!.message else "Opening your folio…") }
-            return@LazyColumn
-        }
-        if (v.recents.isNotEmpty()) {
-            item { SectionTitle("Recent") }
-            item {
-                LazyRow(contentPadding = PaddingValues(horizontal = 20.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    items(v.recents, key = { it.id }) { r -> NoteActions(r, open) { m -> NoteCard(r, onClick = null, modifier = m, width = 220.dp) } }
-                }
-            }
-        }
-        item { Spacer(Modifier.height(8.dp)) }
-        items(v.rows, key = { it.id.value }) { r ->
-            ListItem(
-                headlineContent = { Text(r.title) },
-                leadingContent = { FoleviIcon(rowIcon(r.id), null) },
-                trailingContent = { r.count?.let { Text("$it", color = MaterialTheme.colorScheme.onSurfaceVariant) } },
-                colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-                modifier = Modifier.clickable {
-                    when (r.id) {
-                        HomeRow.Id.NOTES -> open(NotesRoute(NotesListView.ALL.value, r.title))
-                        // Drafts are the notes in no folder (`unsorted`), as on iPhone.
-                        HomeRow.Id.DRAFTS -> open(NotesRoute(NotesListView.UNSORTED.value, r.title))
-                        HomeRow.Id.SHARED -> open(SharedRoute)
-                        HomeRow.Id.CHANGES -> open(ChangesRoute)
-                        HomeRow.Id.REVIEWS -> open(WebShowRoute("reviews", r.title))
-                    }
-                },
-            )
-        }
-        if (v.starred.rows.isNotEmpty()) {
-            item { SectionTitle("Starred") }
-            items(v.starred.rows, key = { "s" + it.id }) { r -> Box(Modifier.padding(horizontal = 20.dp, vertical = 6.dp)) { NoteActions(r, open) { m -> NoteCard(r, onClick = null, modifier = m) } } }
-        }
-        if (v.folders.isNotEmpty()) {
-            item { SectionTitle("Folders") }
-            item {
-                LazyRow(contentPadding = PaddingValues(horizontal = 12.dp)) {
-                    items(v.folders, key = { it.id }) { f -> FrostedFolder(f, onClick = { open(NotesRoute(NotesListView.FOLDER.value, f.name, folderId = f.id)) }) }
-                }
-            }
-        }
-    }
-}
-
-private fun rowIcon(id: HomeRow.Id): WebIcon = when (id) {
-    HomeRow.Id.NOTES -> WebIcon.FILE_TEXT
-    HomeRow.Id.DRAFTS -> WebIcon.PEN_LINE
-    HomeRow.Id.SHARED -> WebIcon.USERS
-    HomeRow.Id.CHANGES -> WebIcon.ACTIVITY
-    HomeRow.Id.REVIEWS -> WebIcon.MESSAGE_SQUARE_TEXT
-}
-
-/** A windowed notes list (`notes.list`): the store moves its window as rows scroll into view. */
-@Composable
-fun NotesScreen(route: NotesRoute, open: (Route) -> Unit, onBack: (() -> Unit)? = null) {
-    val view = NotesListView.of(route.view) ?: NotesListView.ALL
-    val (store, state) = rememberList(ListViews.notesList(view = view, folderId = route.folderId, tagId = route.tagId), key = route)
-    val list = state.value.list
-    val grid = rememberLazyGridState()
-    LaunchedEffect(store) {
-        snapshotFlow { grid.layoutInfo.visibleItemsInfo.let { it.firstOrNull()?.index to it.lastOrNull()?.index } }.collect { (first, last) ->
-            if (first != null && last != null) store.visibleRows(first..last)
-        }
-    }
-    Column(Modifier.fillMaxSize()) {
-        if (onBack != null) BigTitle(route.title, navigation = { BackButton(onBack) }) else ScreenTitle(route.title)
-        if (list.total == 0) {
-            EmptyBox(if (state.value.status == com.folevi.engine.client.StoreStatus.LOADING) "Loading…" else "No notes here yet.")
-            return
-        }
-        LazyVerticalGrid(
-            columns = GridCells.Adaptive(minSize = 260.dp),
-            state = grid,
-            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 96.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            items(count = list.total, key = { i -> list.order.getOrNull(i - list.start) ?: "slot$i" }, contentType = { i -> if (list.rowAt(i) != null) "note" else "slot" }) { i ->
-                val row = list.rowAt(i)
-                if (row != null) NoteActions(row, open) { m -> NoteCard(row, onClick = null, modifier = m) }
-                else Spacer(Modifier.height(120.dp))
-            }
-        }
-    }
 }
 
 @OptIn(FlowPreview::class)

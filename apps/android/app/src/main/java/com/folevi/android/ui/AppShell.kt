@@ -51,6 +51,8 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -224,6 +226,17 @@ fun AppShell() {
         // out again.) Resizing within a class, as dragging a Googlebook window's edge does, keeps every screen's
         // state: it used to start over at every step.
         val window = "$width@${LocalConfiguration.current.densityDpi}"
+        // The account sheet and New folder (Home's avatar and menus, the lists' empty states).
+        var newFolderIn by remember { mutableStateOf<String?>(null) }
+        var newFolderOpen by remember { mutableStateOf(false) }
+        val sheets = remember(tabbed) {
+            PhoneSheets(
+                account = { if (isTabbed) tabs.show(SettingsRoute, fromPage = false) else openOnPhone(SettingsRoute) },
+                newFolder = { parent -> newFolderIn = parent; newFolderOpen = true },
+            )
+        }
+        if (newFolderOpen) NewFolderDialog(parentId = newFolderIn) { newFolderOpen = false }
+        CompositionLocalProvider(LocalPhoneSheets provides sheets) {
         key(window) {
             if (tabbed) {
                 TabbedFrame(width, tabs, newNote)
@@ -231,7 +244,7 @@ fun AppShell() {
                 // The web's phone bar: two floating capsules (PhoneBar.kt). It steps away while a note, a page or
                 // Settings is open (as on iPhone).
                 val top = stack.lastOrNull() as? Route
-                val showBar = top != null && !top.isDetail() && top !is SettingsRoute && top !is VaultRoute
+                val showBar = top != null && !top.isDetail() && top !is SettingsRoute && top !is VaultRoute && !PhoneChrome.selecting.value
                 PhoneContent(stack, phoneOpen, Modifier.fillMaxSize()) {
                     AnimatedVisibility(
                         visible = showBar,
@@ -247,6 +260,7 @@ fun AppShell() {
                     onBackCompleted = { tab = Tab.HOME },
                 )
             }
+        }
         }
     }
 }
@@ -304,6 +318,8 @@ private fun TabPage(route: Route, name: String, open: (Route) -> Unit, back: (()
         HomeRoute -> HomeScreen(open)
         is NotesRoute -> NotesScreen(route, open, back)
         SearchRoute -> SearchScreen(open, back)
+        FoldersRoute -> FoldersScreen(open, back)
+        NotificationsRoute -> NotificationsScreen(open, back)
         TasksRoute -> TasksHome(open)
         CalendarRoute -> CalendarHome(open)
         AiRoute -> AiHome(open)
@@ -339,8 +355,10 @@ private fun PhoneContent(stack: NavBackStack<NavKey>, open: (Route) -> Unit, mod
             modifier = Modifier.padding(padding).consumeWindowInsets(padding),
             entryProvider = entryProvider {
                 entry<HomeRoute>(metadata = ListDetailSceneStrategy.listPane()) { HomeScreen(open) }
-                entry<NotesRoute>(metadata = ListDetailSceneStrategy.listPane()) { NotesScreen(it, open) }
-                entry<SearchRoute>(metadata = ListDetailSceneStrategy.listPane()) { SearchScreen(open) }
+                entry<NotesRoute>(metadata = ListDetailSceneStrategy.listPane()) { NotesScreen(it, open, back) }
+                entry<SearchRoute>(metadata = ListDetailSceneStrategy.listPane()) { SearchScreen(open, back) }
+                entry<FoldersRoute>(metadata = ListDetailSceneStrategy.listPane()) { FoldersScreen(open, back) }
+                entry<NotificationsRoute>(metadata = ListDetailSceneStrategy.listPane()) { NotificationsScreen(open, back) }
                 entry<TasksRoute>(metadata = ListDetailSceneStrategy.listPane()) { TasksHome(open) }
                 entry<CalendarRoute>(metadata = ListDetailSceneStrategy.listPane()) { CalendarHome(open) }
                 entry<AiRoute>(metadata = ListDetailSceneStrategy.listPane()) { AiHome(open) }

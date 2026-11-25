@@ -174,7 +174,7 @@ private fun CreateMenu(newNote: () -> Unit) {
             DropdownMenuItem(text = { Text("Quick task") }, leadingIcon = { FoleviIcon(WebIcon.LIST_PLUS, null) }, onClick = { open = false; task = true })
         }
     }
-    if (folder) NameDialog("New folder", "Folder name", "Create", onDone = { folder = false }) { session, name -> session.client.command(Commands.folderCreate(name = name)) }
+    if (folder) NewFolderDialog(parentId = null) { folder = false }
     if (task) QuickTaskDialog { task = false }
 }
 
@@ -202,4 +202,12 @@ private fun NameDialog(title: String, label: String, confirm: String, onDone: ()
         },
         dismissButton = { TextButton(onClick = onDone) { Text("Cancel") } },
     )
+}
+
+/** New folder (until the native New folder sheet lands): a name, created at the top level or in [parentId]. */
+@Composable
+fun NewFolderDialog(parentId: String?, onDone: () -> Unit) {
+    NameDialog("New folder", "Folder name", "Create", onDone = onDone) { session, name ->
+        session.client.command(Commands.folderCreate(name = name, parentId = parentId?.let { com.folevi.engine.protocol.Patch.Set(it) } ?: com.folevi.engine.protocol.Patch.Keep))
+    }
 }

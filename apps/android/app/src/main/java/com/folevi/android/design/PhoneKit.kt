@@ -151,13 +151,14 @@ fun PhoneScreen(
     state: LazyListState = rememberLazyListState(),
     leading: (@Composable RowScope.() -> Unit)? = null,
     trailing: (@Composable RowScope.() -> Unit)? = null,
-    bottomPadding: Dp = 96.dp,
+    bottomPadding: Dp = 24.dp,
     header: (@Composable ColumnScope.() -> Unit)? = null,
     content: LazyListScope.() -> Unit,
 ) {
     val p = LocalPalette.current
-    val top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
-    val nav = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+    // The frame (AppShell's scaffold, the tab strip) already keeps clear of the status bar and the tab bar.
+    val top = 0.dp
+    val nav = 0.dp
     val density = LocalDensity.current
     // How far the large title has scrolled away (0 to 1), and whether anything has scrolled at all.
     val titleGone by remember(state) {

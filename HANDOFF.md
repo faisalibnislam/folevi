@@ -247,7 +247,51 @@ The ones most likely to be broken:
 - Snapshot tests: re-record only your own snapshots; never clear `__Snapshots__` wholesale.
 - Give before/after screenshots for UI work and ask the owner with clear options when a decision is theirs.
 
-## 9. Current state (as of 2026-11-24)
+## 9. Current state (as of 2026-11-25)
+
+**iOS feedback session, release 1.5.78 (build 93), the Capacitor mobile app, 2026-11-25** (branch
+`claude/ios-feedback-b1307a`, worktree `.claude/worktrees/ios-feedback-b1307a`; the owner's own words in chat:
+"fix all the issues, push to testflight"). The branch holds `main` plus PR 66 (`claude/mobile-capacitor-f41734`, the
+Capacitor app), PR 79 (failed queries keep pages up) and PR 80 (one set of sync words). On top:
+- Widgets, the Control Center control, Siri and Shortcuts intents, and Spotlight carried into `apps/mobile` (a
+  `FoleviWidgets` target, `com.folevi.ios.widgets`, App Group `group.com.folevi`; sources used in place from
+  `apps/ios`; account mode fed by `AppServices.swift`, local mode by the page through `FoleviNative`'s
+  `setWidgetSnapshot` / `takeLocalActions` / `finishLocalAction` / `indexSpotlight`). Not checked: a widget drawn on
+  the Home Screen, running an intent or Shortcut end to end, account mode. See `docs/MOBILE.md`.
+- `mobile-bridge.js` fell back to nothing when `Capacitor.registerPlugin` wasn't there yet, so the page got no native
+  events (deep links from widgets and Shortcuts, app foreground and background); it now uses `Capacitor.Plugins`.
+- iPhone Duo partly open: `FoldMarks.swift` (UIHingeInteraction plus the web view's `.division` reserved region,
+  iOS 27.1) sets `<html data-fold>`, `--fold-start`, `--fold-end` as the native Duo app did. Checked on the Duo
+  Simulator: half open the page gets 455 to 496 px and the sidebar reaches the fold; open and closed unchanged.
+- The phone sync sheet redesigned (owner's feedback with a screenshot: "needs a huge UI improvement on phone"):
+  `components/iphone/SyncStatusTouch.tsx`, a fitted sheet with a coloured status badge, the status and one
+  sentence, and a card with Last synced, Waiting on this device, Connection and where it saves. Checked in the
+  Simulator light and dark with the button shown temporarily in local mode (not committed); not seen signed in.
+- The starter note (`packages/editor-schema/src/seed.ts`) no longer names only Mac shortcuts.
+- iPhone top bar (owner's feedback, twice: cards cut off hard under it, then "too pushed to the icon, needs more
+  spacing"): `.iphone-bar` in `globals.css` is a soft scroll edge on every screen (solid through the buttons and 8
+  pt below them, then a 32 pt cosine fade, no hairline, no blur); the bar's buttons sit 8 pt under the status bar
+  (was 4) and content starts 8 pt lower (`Screen.tsx`, Calendar's sticky header, banners, pull to refresh).
+- A note's small title laid out mid slide-in could sit over Back; `Screen.tsx` lays it out again after the move and
+  when it comes in.
+- Uploaded to TestFlight on the owner's "push to testflight", internal "Folevi team": 1.5.78 build 93 (delivery
+  45243ea1-b324-41f0-a07d-c8c2126386df), build 94 with the soft edge (2a7f351b-688c-4304-ba19-d6ada2ba8a13),
+  build 95 with the spacing and title fix (f11a09ac-9c54-4f2a-8ecc-1e142a4a5dec), build 96 with the Foli AI and
+  pop-in fixes below (b948ddf3-c4eb-4eb8-b34b-2941c6ae6cc0). No tag pushed.
+- Foli AI (owner's screen recording): the composer went behind the keyboard because the Capacitor app sent no
+  keyboard moves and the page's fallback (the visual viewport) reads 0 once the web view shrinks. `KeyboardBridge.swift`
+  is now built into `apps/mobile` and `mobile-bridge.js` has `onKeyboard` / `keyboard`. Not checked with an on-screen
+  keyboard: the Simulator has a hardware keyboard attached (toggle it in the Simulator pane to check). Also: the chat's
+  preloaded code draws in the same turn (`AskAiChat.tsx`, a settled thenable for `lazy`), the stand-in is shaped like
+  the composer, capabilities are kept per account (`ChatThread.tsx useLastKnown`), + Add shows while loading.
+- Pop-ins: Home's counts, Reviews and Vault, the bell dot, Calendar's tasks and Tasks' counts use `useOfflineQuery`.
+  Measured in local mode: no late DOM insertions on All notes, Tasks, Calendar. Account mode not checked (no account).
+- Seen in the recording, not fixed: Home's lower half blank for a frame after the keyboard closes (WebKit repaint after
+  the resize).
+- Memory re-check (the open item): Duo closed, 20 opens of "Welcome to Folevi": 126 MB, 200 MB, 130 MB after
+  `org.WebKit.lowMemory`; nothing kept per open.
+- The three failing e2e specs listed in section 10 were already fixed on `main` by PR 77.
+- Version history: 1.5.77's entry taken from tag `v1.5.77` (the Windows release) so this is 1.5.78.
 
 **Release 1.5.76 (build 91), the Capacitor mobile app, 2026-11-25:** the iPhone note memory fix (PR 74, merged into
 `main` as 85574054, then `main` merged here; PR 74's `transitions.ts` replaces 1.5.75's change); release commit
@@ -627,6 +671,11 @@ signed-in account, 1.5.58's frosted folders with a large library, and the iPad c
 account button should move past iPadOS's window buttons).
 
 ## 10. Next steps / open work
+- iOS feedback session (`claude/ios-feedback-b1307a`): 1.5.78 on TestFlight; the branch's PR into `main` carries PRs
+  66, 79 and 80 too. Open: on a real iPhone, iPad and Duo, sign in, push, the widgets on the Home Screen, a Shortcut
+  run and a Spotlight tap; the new sync sheet signed in; `BackgroundRefresh.swift` not carried over (needs
+  Info.plist background task entries). Done here: widgets/Shortcuts/Spotlight, the memory re-run, Duo's fold marks,
+  sync words, the starter note's shortcuts.
 - Mobile app (`apps/mobile`, PR 66 from `claude/mobile-capacitor-f41734`): note covers stay bundled (owner, 2026-11-24) and styles sync from the server when they change (docs/MOBILE.md "Note styles and covers": signed-in offline caching to build in `apps/web` with the web session; local mode may check for new styles too (owner, 2026-11-24): iOS network rules allow `convex.site/note-styles` and Convex storage images only, copy updated; the endpoint and the page's fetch and cache are the web session's); the owner reviews and merges (merging
   deploys the web, which has the layout change in `lib/iphone.ts`); then check sign-in, push and iPhone Duo folding
   on real devices; carry over widgets, Siri/Shortcuts and Spotlight; one bridge script for both platforms; from the iOS review (docs/mobile/ios-review-2026-11-24.md), the web session's iPad touch targets and the note page's memory growth; release
@@ -791,6 +840,7 @@ account button should move past iPadOS's window buttons).
   `DATABASE_UDF_USER_TIMEOUT_SECONDS=4` for that backend. Bursts show in `convex.log` as "took a long time".
 
 ## 12. Change log
+- 2026-11-25: iOS feedback session: PRs 66, 79 and 80 merged into `claude/ios-feedback-b1307a`; widgets, Shortcuts, Spotlight in the Capacitor app; Duo fold marks; phone sync sheet redesigned; starter note wording; 1.5.78 (build 93) cut for TestFlight.
 - 2026-11-25: `main` (4d22880f, all web PRs) merged into `claude/mobile-capacitor-f41734` for PR 66: `lib/iphone.ts`, NotificationsButton and DocumentView taken from `main` (PR 61's width rule, `lib/platform.ts`, replaces this branch's iPhone Duo 600 x 600 rule; `test/mobile-layout.test.ts` removed, `test/platform.test.ts` covers it); HANDOFF both sides kept. Checks: typecheck, lint, all 2,161 web tests, version check and the iOS build pass. 1.5.76 unchanged.
 - 2026-11-25: 1.5.76 (build 91) with PR 74's iPhone memory fix uploaded to TestFlight (delivery bc805158); `main` (85574054) merged into `claude/mobile-capacitor-f41734`.
 - 2026-11-24: PR 74 plus 1.5.75's change measured: 140 MB after the low-memory signal against a 130 MB start, the same as PR 74 alone; nothing left of the memory growth. 1.5.75 is one shared release with Linux (published untagged by the Linux session first): when PR 66 merges, combine the Linux notes into the 1.5.75 changelog entry. Next free version 1.5.76.

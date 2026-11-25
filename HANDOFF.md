@@ -353,6 +353,25 @@ Capacitor app), PR 79 (failed queries keep pages up) and PR 80 (one set of sync 
     (which crushed it) is gone. Closed and open, the side status column (84 pt) is kept clear: phone sheets, toasts, the
     palette, the banner, menus (`sideInsets()` in `lib/iphone.ts`; `safeInsets()` answers only in the phone layout).
   - Not checked: a real Duo; a horizontal fold (upright inner screen) by eye.
+- Android polish pass (owner: "do the same polish pass for Android"), no Play upload. Two parts:
+  - Web side, on this branch (3c8fb728 plus the keyboard bar fix after it): keyboard riding through the app's own
+    frames, ripples in sheets and menus, one press feedback (no ripple plus :active together), no text selection on a
+    long hold, `data-back` on Back buttons for the native back gesture. `NoteBars.tsx`: the plugin's
+    `keyboardWillHide` no longer drops the bar on the keyboard when the app sends its own frames (it landed just
+    before the app's frame and the bar vanished, then came back at the bottom), a bar drawn during a hide rides down
+    from the keyboard's last height, and a hide already under way when writing stops (Android's Back) is followed.
+  - Native side: PR 108 (`claude/android-polish-pass`, based on PR 69's `claude/android-capacitor-197cf4`): keyboard
+    frames from the decor view (web view shrinks at the end of the show, grows back as the hide starts,
+    `keyboardWillLeave`), the back watcher, predictive back with no page peek on phone, the saved launch colour, a
+    cover while reloading, fold marks via WindowInfoTracker (not checkable on the emulator), overscroll off, and the
+    font size following the system on a configuration change.
+  - Measured on the phone emulator (combined build, post-paint frames): opening, the bar leaves the bottom at about
+    150 ms and settles at 587 by 450 ms (before: held 0.9 s, then flew in); Back and Hide keyboard both ride it down
+    to 923 with no gap or jump. Tablet and foldable emulators show the tablet layout; fold marks not checked.
+  - The Capacitor app id on Android is `com.folevi.android` (launch `com.folevi.android/.MainActivity`).
+  - Known: this branch's own `apps/mobile/android` is incomplete (its `web/` Kotlin package is caught by the unanchored
+    `web/` in `.gitignore`); build Android from PR 69's branch. Whichever of PR 83 and PR 69 merges second reconciles
+    `apps/mobile`. Glass blur on Android held as is (owner: same look as iPhone).
 - Memory re-check (the open item): Duo closed, 20 opens of "Welcome to Folevi": 126 MB, 200 MB, 130 MB after
   `org.WebKit.lowMemory`; nothing kept per open.
 - The three failing e2e specs listed in section 10 were already fixed on `main` by PR 77.
@@ -758,6 +777,8 @@ account button should move past iPadOS's window buttons).
   deploys the web, which has the layout change in `lib/iphone.ts`); then check sign-in, push and iPhone Duo folding
   on real devices; carry over widgets, Siri/Shortcuts and Spotlight; one bridge script for both platforms; from the iOS review (docs/mobile/ios-review-2026-11-24.md), the web session's iPad touch targets and the note page's memory growth; release
   scripts for TestFlight and Play (only with the owner's OK).
+- Android polish (owner asked 2026-11-25): PR 108 waits on PR 69; then check fold marks and predictive back on a real
+  foldable, and a Play build only with the owner's OK.
 - Web everywhere: PRs #61 (platform model, `claude/web-everywhere-0e2975`), #62 (shortcut labels), #63 (Mac no-bounce,
   Android ripple) and #64 (one wording set) are open and wait on CI and the owner's merge (merging deploys). Next PRs: shortcut labels per OS (about 40 files still write ⌘ by hand; `lib/shortcuts.ts keyLabel` exists),
   Windows/Linux/Android accents behind `data-shell`, one motion/empty/loading style, mobile web view performance,
@@ -921,6 +942,7 @@ account button should move past iPadOS's window buttons).
   `DATABASE_UDF_USER_TIMEOUT_SECONDS=4` for that backend. Bursts show in `convex.log` as "took a long time".
 
 ## 12. Change log
+- 2026-11-25: Android polish pass: web side on `claude/ios-feedback-b1307a` (3c8fb728, keyboard bar fix), native side in PR 108 on PR 69's branch; measured on the phone emulator; no Play upload.
 - 2026-11-25: iOS feedback session: PRs 66, 79 and 80 merged into `claude/ios-feedback-b1307a`; widgets, Shortcuts, Spotlight in the Capacitor app; Duo fold marks; phone sync sheet redesigned; starter note wording; 1.5.78 (build 93) cut for TestFlight.
 - 2026-11-25: `main` (4d22880f, all web PRs) merged into `claude/mobile-capacitor-f41734` for PR 66: `lib/iphone.ts`, NotificationsButton and DocumentView taken from `main` (PR 61's width rule, `lib/platform.ts`, replaces this branch's iPhone Duo 600 x 600 rule; `test/mobile-layout.test.ts` removed, `test/platform.test.ts` covers it); HANDOFF both sides kept. Checks: typecheck, lint, all 2,161 web tests, version check and the iOS build pass. 1.5.76 unchanged.
 - 2026-11-25: 1.5.76 (build 91) with PR 74's iPhone memory fix uploaded to TestFlight (delivery bc805158); `main` (85574054) merged into `claude/mobile-capacitor-f41734`.

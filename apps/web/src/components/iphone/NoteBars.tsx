@@ -9,6 +9,7 @@ import { requestSpecialInsert } from "@/components/editor/EditorMenus";
 import type { InspectorTab } from "@/components/doc/Inspector";
 import { useToast } from "@/components/ui/Toast";
 import { KEYBOARD_EASE, askText, feel, letKeyboardGo, onKeyboardFrame, prepareFeel, setKeyboardInteractiveDismiss, type NativeKeyboardFrame } from "@/lib/native/ui";
+import { nativeApp } from "@/lib/nativeApp";
 import { PillButton } from "./Glass";
 import { useIphoneChrome } from "./chrome";
 import "./editor-phone.css";
@@ -116,6 +117,16 @@ export function NoteBars({ editor, ai, open, tab, onPick, readOnly }: { editor: 
 function useKeyboardLeaving(writing: boolean, keyboard: boolean): "none" | "linger" | "leave" {
   const [phase, setPhase] = useState<"none" | "linger" | "leave">("none");
   const wrote = useRef(false);
+  // When a keyboard already on its way down lands (0 while it's up): on Android the system's Back takes it away
+  // before the note loses focus, so its news can come before writing stops.
+  const down = useRef(0);
+  useEffect(
+    () =>
+      onKeyboardFrame((f) => {
+        down.current = f.visible ? 0 : performance.now() + f.duration - Math.min(f.late ?? 0, f.duration);
+      }),
+    [],
+  );
   useEffect(() => {
     if (writing) {
       wrote.current = true;
@@ -137,15 +148,18 @@ function useKeyboardLeaving(writing: boolean, keyboard: boolean): "none" | "ling
     });
     // No news of the keyboard going: it stays up (another field has it) and the bar on it goes.
     const wait = setTimeout(() => setPhase((p) => (p === "linger" ? "none" : p)), 150);
+    const going = down.current - performance.now();
+    if (going > 0) leave(going);
     return () => {
       stop();
       clearTimeout(wait);
       clearTimeout(done);
     };
   }, [writing]);
-  // (Without the app's keyboard news: the plugin's "will hide".)
+  // (Without the app's keyboard news: the plugin's "will hide". With it, the plugin's news can land a moment
+  // before the app's frame, and the bar would be taken off the keyboard instead of riding down with it.)
   useEffect(() => {
-    if (!keyboard && phase === "linger") setPhase("none");
+    if (!keyboard && phase === "linger" && typeof nativeApp()?.onKeyboard !== "function") setPhase("none");
   }, [keyboard, phase]);
   // The render where writing stops already lingers (the effect above runs after it): the bar isn't taken off
   // the keyboard for a frame and put back.
@@ -159,7 +173,7 @@ function useKeyboardLeaving(writing: boolean, keyboard: boolean): "none" | "ling
  * is shifted back by as much, and its move with the keyboard carries on undisturbed. Returns the bar's ref.
  */
 function useKeyboardRide(): (el: HTMLElement | null) => void {
-  const state = useRef({ frame: null as NativeKeyboardFrame | null, at: 0, rest: 0, inner: 0 });
+  const state = useRef({ frame: null as NativeKeyboardFrame | null, at: 0, rest: 0, inner: 0, up: 0 });
   const bar = useRef<HTMLElement | null>(null);
   const ride = useRef<{ apply: (el: HTMLElement, shift: number, ms: number, elapsed?: number) => void; watch: () => void; mount: (el: HTMLElement) => void } | null>(null);
   if (!ride.current) {
@@ -231,6 +245,8 @@ function useKeyboardRide(): (el: HTMLElement | null) => void {
         track.last = Number.NaN;
         const s = state.current;
         if (left() > 0 && s.frame?.visible) move(el, Math.max(0, s.rest - window.innerHeight) + 64, s.frame.duration, performance.now() - s.at);
+        // Drawn while the keyboard is already going down: from where its top was, riding down with it.
+        else if (left() > 0 && s.frame && s.up > 0) move(el, -Math.max(0, s.up - Math.max(0, s.rest - window.innerHeight)), s.frame.duration, performance.now() - s.at);
         else move(el, -target(), 0);
         watch();
       },
@@ -241,6 +257,7 @@ function useKeyboardRide(): (el: HTMLElement | null) => void {
     s.rest = s.inner = window.innerHeight;
     const stop = onKeyboardFrame((f) => {
       if (!f.visible) s.rest = Math.max(s.rest, window.innerHeight);
+      else s.up = Math.round(f.height);
       s.frame = f;
       const late = Math.min(f.late ?? 0, f.duration);
       s.at = performance.now() - late;

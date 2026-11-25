@@ -16,6 +16,7 @@ import { useAppState } from "@/lib/app/state";
 import { useAppRouter } from "@/lib/app/router";
 import { Kbd } from "@/components/ui/Button";
 import { useCreateDocument } from "./useCreateDocument";
+import { afterKeyboardGoes } from "@/lib/native/ui";
 import { useShell } from "./Shell";
 import { useAiEnabled } from "@/components/ai/useAi";
 import { Highlight } from "./Highlight";
@@ -93,7 +94,9 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
   // Opened in the same pass as the ⌘K that asked for it, the field focused before the next key arrives: every
   // key typed right after ⌘K lands in the search, none in the note underneath (QA audit F04).
   const inputRef = useRef<HTMLInputElement>(null);
+  const openRef = useRef(open);
   useLayoutEffect(() => {
+    openRef.current = open;
     const d = dialogRef.current;
     if (!d) return;
     if (open && !d.open) {
@@ -102,7 +105,8 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
       d.showModal();
       inputRef.current?.focus();
     }
-    if (!open && d.open) d.close();
+    // Typing in it: the keyboard goes before the palette does (the page drawn under it first), not after it.
+    if (!open && d.open) afterKeyboardGoes(d, () => !openRef.current && d.open && d.close());
   }, [open]);
 
   // A note found here can be dragged onto a folder in the sidebar. The browser's own drag can't leave the

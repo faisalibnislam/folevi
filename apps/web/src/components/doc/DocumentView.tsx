@@ -114,6 +114,7 @@ const nativeChromeMode = typeof window !== "undefined" && nativeChrome() !== nul
 // the panels it opens) are part of the note page, as on the web (docs/MAC_REBUILD_PLAN.md: only the note stays web).
 const macNativeFrame = typeof window !== "undefined" && nativeChrome()?.platform === "macos";
 import { useKeyboardInset } from "@/lib/hooks/useVisualViewport";
+import { rideKeyboard } from "@/lib/native/ui";
 import "@/components/editor/editor.css";
 import "@/components/editor/insert-blocks.css";
 import "@/components/editor/flowchart/flowchart.css";
@@ -719,6 +720,12 @@ export function DocumentView({ documentId }: { documentId: string }) {
     });
     return () => cancelAnimationFrame(id);
   }, [inspectorOpen]);
+  // The tools floating over the note (a narrow window) stay above the on-screen keyboard as it moves (PageDock).
+  const inspectorFloats = inspectorOpen && drawerMode && !iphone;
+  useEffect(() => {
+    const el = inspectorRef.current;
+    return inspectorFloats && el ? rideKeyboard(el) : undefined;
+  }, [inspectorFloats]);
   const closeInspector = useCallback(() => {
     setInspectorOpen(false);
     // Focus that was in the panel goes back to whatever had focus when it opened (the editor after a click,
@@ -1450,7 +1457,7 @@ export function DocumentView({ documentId }: { documentId: string }) {
                 closeInspector();
               }
             }}
-            className="ui-pop absolute bottom-[calc(84px+var(--kb-inset,0px))] left-1/2 z-30 flex max-h-[min(640px,calc(100%-112px-var(--kb-inset,0px)))] w-[min(400px,calc(100%-24px))] -translate-x-1/2 flex-col overflow-hidden rounded-panel animate-[folio-rise_180ms_var(--ease-folio)] motion-reduce:animate-none [&>div]:min-h-0"
+            className="ui-pop absolute bottom-[calc(84px+var(--kb-inset,0px)+var(--kb-ride,0px))] left-1/2 z-30 flex max-h-[min(640px,calc(100%-112px-var(--kb-inset,0px)-var(--kb-ride,0px)))] w-[min(400px,calc(100%-24px))] -translate-x-1/2 flex-col overflow-hidden rounded-panel animate-[folio-rise_180ms_var(--ease-folio)] motion-reduce:animate-none [&>div]:min-h-0"
           >
             <Inspector
               documentId={documentId}
@@ -1565,6 +1572,11 @@ const sameJson = <T,>(a: T, b: T) => a === b || JSON.stringify(a) === JSON.strin
 function RightPanel({ width, onWidth, overlay, children }: { width: number; onWidth: (w: number) => void; overlay: boolean; children: React.ReactNode }) {
   const panel = useRef<HTMLElement>(null);
   const w = clampPanelWidth(width);
+  // Over the note, its bottom stays above the on-screen keyboard as it moves (its top stays put).
+  useEffect(() => {
+    const el = panel.current;
+    return overlay && el ? rideKeyboard(el, { stretch: true }) : undefined;
+  }, [overlay]);
   // The floating AI button and chat keep clear of it.
   useEffect(() => {
     const root = document.documentElement;
@@ -1600,7 +1612,7 @@ function RightPanel({ width, onWidth, overlay, children }: { width: number; onWi
       // As an overlay it stops above the floating bar (0.25rem inset + 1.25rem, 3.25rem tall, 0.75rem gap), 0.75rem in from the page's edge.
       // Bookmarks, it runs down to the window's bottom edge (past the page's 4px inset and the shell's 8px), so its
       // list scrolls out of the window rather than stopping short of it.
-      className={`flex min-h-0 flex-none flex-col ${overlay ? "ui-pop absolute bottom-[calc(5.5rem+var(--kb-inset,0px))] right-4 top-3 z-30 max-w-[calc(100%-44px)] overflow-hidden rounded-panel animate-[folio-settle_180ms_var(--ease-folio)] motion-reduce:animate-none" : "relative h-[calc(100%+12px)]"}`}
+      className={`flex min-h-0 flex-none flex-col ${overlay ? "ui-pop absolute bottom-[calc(5.5rem+var(--kb-inset,0px)+var(--kb-ride,0px))] right-4 top-3 z-30 max-w-[calc(100%-44px)] overflow-hidden rounded-panel animate-[folio-settle_180ms_var(--ease-folio)] motion-reduce:animate-none" : "relative h-[calc(100%+12px)]"}`}
     >
       <div
         role="separator"

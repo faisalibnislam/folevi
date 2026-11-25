@@ -3,7 +3,7 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { Dialog } from "./Dialog";
 import { Button } from "./Button";
-import { askText, hasNative } from "@/lib/native/ui";
+import { afterKeyboardGoes, askText, hasNative } from "@/lib/native/ui";
 
 /**
  * A small accessible text-input dialog (replaces window.prompt). Inside the iOS and Android apps it's the
@@ -49,17 +49,20 @@ export function PromptDialog({
       }
     });
   }, [native, open]);
+  // Typing in it: the keyboard goes before the dialog does (the page drawn under it first), not after it.
+  const formRef = useRef<HTMLFormElement>(null);
+  const close = () => afterKeyboardGoes(formRef.current, () => latest.current.onClose());
   if (native) return null;
   // The buttons sit in the dialog's footer band, as in every other dialog; Create submits the form by its id.
   return (
     <Dialog
       open={open}
-      onClose={onClose}
+      onClose={close}
       title={title}
       size="sm"
       footer={
         <>
-          <Button onClick={onClose}>Cancel</Button>
+          <Button onClick={close}>Cancel</Button>
           <Button type="submit" form={formId} variant="primary" disabled={!value.trim()}>
             {confirmLabel}
           </Button>
@@ -67,12 +70,13 @@ export function PromptDialog({
       }
     >
       <form
+        ref={formRef}
         id={formId}
         onSubmit={async (e) => {
           e.preventDefault();
           if (!value.trim()) return;
           await onSubmit(value.trim());
-          onClose();
+          close();
         }}
       >
         <label className="block text-subheadline font-medium" htmlFor={inputId}>

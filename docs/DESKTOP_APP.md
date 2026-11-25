@@ -120,6 +120,27 @@ https://folevi.com/download/windows/Folevi-arm64-setup.exe and https://folevi.co
 Uploaded with `npx wrangler r2 object put folevi-updates/windows/<file> --remote` from CI run 45418586764 (the fixed build). The
 version came from `apps/desktop/RELEASE_VERSION` (1.5.73) because this branch's version.json predates 1.5.72.
 
+## Your own server
+
+A Folevi Server is a place like a Folevi Cloud account (`src/server.rs`, a port of the Mac's ShellServer.swift; keep
+the two in step). The page's "Your own server" sign-in calls:
+- `placesAddServer { origin }`: the app checks the address (https anywhere; http only for localhost, `.local`,
+  names with no dot and private, link-local or 100.64/10 addresses) and fetches the server's
+  `/.well-known/folevi.json` itself (10 s, no redirects, 64 KB at most). It refuses with `bad_address`,
+  `unreachable`, `not_folevi`, `folevi_cloud`, `server_outdated`, `app_outdated` or `needs_setup`, else every main
+  window opens that server's sign-in screen. An account signed in there lives on that server (places.json `server`).
+- `placesLocalServers`: Folevi servers on the home network (`_folevi._tcp`, the mdns-sd crate, 2 s).
+
+A server account's session, Convex token and `/api/auth/*` calls go to its server's website; its pages are told the
+server's addresses (`places.server`) and may reach only that server's names (page policy, `protocol::shell_csp`).
+Every two minutes Folevi checks which of a server's names answers, home names first (Folevi Connect), and moves the
+place there without signing anyone out.
+
+Not done: an http server on the home network other than `localhost`. Windows serves the page from
+`https://app.localhost`, so WebView2 blocks http and ws to a LAN address as mixed content (the page policy allows
+it). The owner chose the shell carrying that traffic (the place keeps its origin and storage); that's still to build.
+Check WebKitGTK the same way on Linux.
+
 ## Not done yet
 
 - Updates: the Tauri updater is in the app and points at `folevi.com/download/desktop/<target>-<arch>/latest.json`,

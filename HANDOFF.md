@@ -1258,6 +1258,12 @@ account button should move past iPadOS's window buttons).
   `DATABASE_UDF_USER_TIMEOUT_SECONDS=4` for that backend. Bursts show in `convex.log` as "took a long time".
 
 ## 12. Change log
+- 2026-11-25: **Your own server in Folevi for Windows and Linux** (branch `claude/desktop-server-places`, item 2 of
+  docs/DESKTOP_PARITY.md): `src/server.rs` ports ShellServer (address and folevi.json checks, names, page policy,
+  ServerReach, Bonjour); places, sign-in, Convex tokens and the page's config follow each account's server. Rust
+  tests pass (155, plus a live lookup against the test server at localhost:8460). Not yet: http servers on the
+  home network other than localhost (WebView2 mixed content; the shell is to carry that traffic), and
+  `serverPlaces: false` in bridge/host.js comes out once PR 113 is on main.
 - 2026-11-25: **1.6.78 released** from PR 109's merge (`e0183862`): web and Convex deployed; Mac published
   (notarized, Sparkle feed); iPhone and iPad on TestFlight (delivery 7120ad6e); Windows installers and Linux packages
   uploaded, apt and rpm repositories rebuilt and uploaded; the Android bundle built and left for the owner's Play

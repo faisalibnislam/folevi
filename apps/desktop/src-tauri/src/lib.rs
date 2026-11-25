@@ -21,6 +21,7 @@ mod protocol;
 mod reminders;
 mod secrets;
 mod settings;
+mod server;
 mod shell;
 
 use parking_lot::Mutex;
@@ -156,6 +157,17 @@ fn services(app: &AppHandle) -> tauri::State<'_, Arc<Services>> {
 }
 
 impl Services {
+    /// The Folevi Server a place belongs to ("Your own server"; the sign-in screen's for no place). None: Folevi
+    /// Cloud, or the library.
+    fn server_of(&self, place: Option<&str>) -> Option<server::ShellServer> {
+        self.places.lock().server_of(place)
+    }
+
+    /// The website a place's session lives on, when it's a Folevi Server's (None: Folevi Cloud's).
+    fn site_of(&self, place: Option<&str>) -> Option<url::Url> {
+        self.server_of(place).and_then(|sv| sv.app_url())
+    }
+
     fn settings_file(&self) -> PathBuf {
         self.paths.user_data.join("settings.json")
     }
@@ -244,7 +256,8 @@ fn page_boot(s: &Services, label: &str, path: &str) -> Value {
         "mode": s.mode_of(place.as_deref()),
         "deviceName": device_name(),
         "start": if path.starts_with('/') && !path.starts_with("//") && path != "/" && path != "/index.html" { path } else { "/documents" },
-        "places": { "current": place, "background": false },
+        // "Your own server": the server the page talks to (its website, Convex and Convex site), or null.
+        "places": { "current": place, "background": false, "server": s.server_of(place.as_deref()).map(|sv| sv.json()) },
     })
 }
 
@@ -392,12 +405,23 @@ fn command_main(app: &AppHandle, command: Value) {
 /// Opens a place in every main window: each is made again with the new place's page (its policy and session are
 /// the place's), keeping its size and position.
 fn switch_to(app: &AppHandle, place: Option<String>, path: &str, pending: bool) {
+    switch_with(app, place, path, pending, None)
+}
+
+/// "Your own server" (placesAddServer, the server checked already): every main window opens that server's sign-in
+/// screen; signing in there makes the account a place on that server.
+fn switch_to_server(app: &AppHandle, server: server::ShellServer) {
+    switch_with(app, None, "/documents", true, Some(server))
+}
+
+fn switch_with(app: &AppHandle, place: Option<String>, path: &str, pending: bool, server: Option<server::ShellServer>) {
     let s = services(app);
     {
         let mut p = s.places.lock();
-        p.set_current(place.clone());
         if place.is_none() && pending {
-            p.pending_account = true;
+            p.begin_sign_in(server);
+        } else {
+            p.set_current(place.clone());
         }
         let mode = p.mode_of(place.as_deref()).to_string();
         drop(p);
@@ -423,6 +447,44 @@ fn switch_to(app: &AppHandle, place: Option<String>, path: &str, pending: bool) 
         recreate_quick_add(app);
     }
     update_badge(app);
+}
+
+/// ServerReach (ShellServer.swift): each server account uses the first of its server's names that answers, home
+/// names first, checked soon after launch and every two minutes (a laptop that left home moves to the public name).
+/// The session belongs to the server, so a move never signs anyone out; the place's windows load again where they
+/// were, with the new addresses and policy.
+fn watch_server_names(app: &AppHandle) {
+    let app = app.clone();
+    tauri::async_runtime::spawn(async move {
+        tokio::time::sleep(std::time::Duration::from_secs(5)).await;
+        loop {
+            let accounts = services(&app).places.lock().server_accounts();
+            for (id, sv) in accounts.into_iter().filter(|(_, sv)| sv.candidates().len() > 1) {
+                let Some(best) = server::best_origin(&sv).await else { continue };
+                if best == sv.active_origin() {
+                    continue;
+                }
+                let moved = services(&app).places.lock().set_active_origin(&id, (best != sv.origin).then_some(best));
+                if moved {
+                    later(&app, move |app| server_moved(app, &id));
+                }
+            }
+            tokio::time::sleep(std::time::Duration::from_secs(120)).await;
+        }
+    });
+}
+
+/// A server place now uses another of its names: its windows load again where they were.
+fn server_moved(app: &AppHandle, place: &str) {
+    let s = services(app);
+    for (label, w) in app.webview_windows() {
+        if s.place_of(&label).as_deref() == Some(place) {
+            if let Ok(url) = w.url() {
+                let _ = w.navigate(url);
+            }
+        }
+    }
+    signal_places_changed(app);
 }
 
 fn signal_places_changed(app: &AppHandle) {
@@ -743,9 +805,10 @@ async fn route_call(app: &AppHandle, s: &Arc<Services>, label: &str, place: Opti
         }
         "authSignIn" => {
             let provider = opt_str(o, "provider").filter(|p| *p == "google" || *p == "apple");
-            let user = s.auth.sign_in_account(provider).await?;
+            let server = s.server_of(place.as_deref());
+            let user = s.auth.sign_in_account(provider, server.as_ref().and_then(|sv| sv.app_url()).as_ref()).await?;
             let Some(u) = user else { return Ok(value(false)) };
-            let id = add_account(app, s, &u);
+            let id = add_account(app, s, &u, server.as_ref());
             if place.as_deref() != Some(LIBRARY) && id.as_deref() != place.as_deref() {
                 let app2 = app.clone();
                 tauri::async_runtime::spawn(async move {
@@ -758,12 +821,12 @@ async fn route_call(app: &AppHandle, s: &Arc<Services>, label: &str, place: Opti
         "authSignOut" => {
             match place.as_deref() {
                 Some(p) if user_id_of(Some(p)).is_some() => sign_out_place(app, s, p.to_string(), None).await,
-                _ => s.auth.sign_out(None).await,
+                _ => s.auth.sign_out(None, None).await,
             }
             Ok(Value::Null)
         }
-        "authFetch" => s.auth.fetch(o, slot.as_deref()).await,
-        "authConvexToken" => Ok(value(s.auth.convex_token(slot.as_deref()).await?)),
+        "authFetch" => s.auth.fetch(o, slot.as_deref(), s.site_of(place.as_deref()).as_ref()).await,
+        "authConvexToken" => Ok(value(s.auth.convex_token(slot.as_deref(), s.site_of(place.as_deref()).as_ref()).await?)),
         m if m.starts_with("ai") => s.ai.call(m, o, emitter(app)).await,
         "lockGet" => Ok(Value::Null),
         "lockSet" => Err(ShellError::unavailable("Folevi on this computer has no app lock yet.")),
@@ -822,11 +885,11 @@ fn later(app: &AppHandle, f: impl FnOnce(&AppHandle) + Send + 'static) {
     });
 }
 
-fn add_account(app: &AppHandle, s: &Arc<Services>, u: &auth::SessionUser) -> Option<String> {
+fn add_account(app: &AppHandle, s: &Arc<Services>, u: &auth::SessionUser, server: Option<&server::ShellServer>) -> Option<String> {
     let id = {
         let mut p = s.places.lock();
         let first = p.account_ids().is_empty();
-        let id = p.add_account(u);
+        let id = p.add_account(u, server);
         if first && id.is_some() {
             adopt_legacy_keys(s, &u.user_id);
         }
@@ -853,7 +916,7 @@ fn adopt_legacy_keys(s: &Services, user_id: &str) {
 
 async fn sign_out_place(app: &AppHandle, s: &Arc<Services>, id: String, next: Option<String>) {
     let Some(user) = user_id_of(Some(&id)) else { return };
-    s.auth.sign_out(Some(&user)).await;
+    s.auth.sign_out(Some(&user), s.site_of(Some(&id)).as_ref()).await;
     if let Some(k) = s.keys.lock().remove(&user) {
         k.reset();
     }
@@ -888,8 +951,10 @@ async fn places_call(app: &AppHandle, s: &Arc<Services>, label: &str, place: Opt
         }
         "placesSignIn" => {
             let provider = opt_str(o, "provider").filter(|p| *p == "google" || *p == "apple");
-            let user = s.auth.sign_in_account(provider).await?;
-            Ok(value(user.and_then(|u| add_account(app, s, &u))))
+            // Another account on the same service as the page asking (a server's switcher signs in to that server).
+            let server = s.server_of(place.as_deref());
+            let user = s.auth.sign_in_account(provider, server.as_ref().and_then(|sv| sv.app_url()).as_ref()).await?;
+            Ok(value(user.and_then(|u| add_account(app, s, &u, server.as_ref()))))
         }
         "placesDescribe" => {
             {
@@ -928,12 +993,21 @@ async fn places_call(app: &AppHandle, s: &Arc<Services>, label: &str, place: Opt
             }
             Ok(value(true))
         }
+        "placesAddServer" => {
+            // "Your own server": the address and the server's folevi.json are checked here (never the page's copy),
+            // then every window opens that server's sign-in screen.
+            let found = server::look_up(opt_str(o, "origin").unwrap_or(""), FOLEVI_VERSION).await.map_err(|p| ShellError::new(p.code(), p.message()))?;
+            let answer = found.json();
+            later(app, move |app| switch_to_server(app, found));
+            Ok(value(answer))
+        }
+        "placesLocalServers" => Ok(json!({ "servers": server::local_servers(std::time::Duration::from_secs(2)).await })),
         "placesConvexToken" => {
             let id = req_str(o, "id")?;
             if user_id_of(place.as_deref()).is_none() || !s.places.lock().has(id) {
                 return Ok(value(Value::Null));
             }
-            Ok(value(s.auth.convex_token(user_id_of(Some(id)).as_deref()).await.ok().flatten()))
+            Ok(value(s.auth.convex_token(user_id_of(Some(id)).as_deref(), s.site_of(Some(id)).as_ref()).await.ok().flatten()))
         }
         "placesQuickAdd" => Ok(value(quick_add_place(s))),
         "placesSetQuickAdd" => {
@@ -1246,7 +1320,10 @@ async fn serve(app: &AppHandle, label: &str, request: &tauri::http::Request<Vec<
             let body = if ctype.starts_with("text/html") {
                 let place = s.place_of(label);
                 let mode = s.mode_of(place.as_deref());
-                b = b.header("content-security-policy", protocol::shell_csp(mode, &s.service_url.origin().ascii_serialization(), &s.extra_connect)).header("cache-control", "no-store");
+                let sources = s.server_of(place.as_deref()).map(|sv| server::connect_sources(&sv));
+                let sign_in = place.is_none() && mode == "account";
+                let csp = protocol::shell_csp(mode, &s.service_url.origin().ascii_serialization(), &s.extra_connect, sources.as_deref(), sign_in);
+                b = b.header("content-security-policy", csp).header("cache-control", "no-store");
                 let boot = page_boot(&s, label, uri.path());
                 protocol::insert_boot(&protocol::allow_ipc_in_meta(&String::from_utf8_lossy(&bytes)), &boot.to_string()).into_bytes()
             } else {
@@ -1466,6 +1543,7 @@ pub fn run() {
             let error = register_shortcut(&handle);
             services.ui.lock().shortcut_error = error;
             update_tray(&handle);
+            watch_server_names(&handle);
 
             // folevi:// links: the one that started the app, then each later one (the single-instance plugin
             // forwards a second start's). Registered at run time too, for the AppImage and test builds.

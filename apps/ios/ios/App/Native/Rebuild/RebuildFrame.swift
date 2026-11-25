@@ -332,7 +332,16 @@ final class RebuildFrameController: UIViewController, PhoneRouting {
         let overlap = hiding ? 0 : KeyboardBridge.coveredHeight(keyboard: keyboard, bounds: window.bounds)
         model.keyboardOverlap = overlap
         let appeared = overlap > 0 && !model.keyboardVisible
-        if overlap == 0, model.keyboardVisible { keyboardHidAt = Date() }
+        if overlap == 0, model.keyboardVisible {
+            keyboardHidAt = Date()
+            model.keyboardLeaving = true
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) { [weak self] in
+                guard let self, !self.model.keyboardVisible else { return }
+                self.model.keyboardLeaving = false
+            }
+        } else if overlap > 0 {
+            model.keyboardLeaving = false
+        }
         model.keyboardVisible = overlap > 0
         if appeared { model.refreshEditorState() }
     }

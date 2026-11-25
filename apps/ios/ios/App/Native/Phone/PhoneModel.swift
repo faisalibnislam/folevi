@@ -55,6 +55,9 @@ final class PhoneModel {
     var keyboardVisible = false
     /// How much of the window's bottom the keyboard covers (points).
     var keyboardOverlap: CGFloat = 0
+    /// The keyboard on its way down (its hide animation): the bar on it stays and rides down with it, as today's app,
+    /// rather than vanishing as it sets off.
+    var keyboardLeaving = false
     /// Shared by the + button, keyboard shortcut, widgets and deep links.
     var quickAddShown = false
     /// "Move or copy notes" asked for (the account sheet, a folder's menu): its sheet shows while set.

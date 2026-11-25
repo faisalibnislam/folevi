@@ -120,6 +120,13 @@ https://folevi.com/download/windows/Folevi-arm64-setup.exe and https://folevi.co
 Uploaded with `npx wrangler r2 object put folevi-updates/windows/<file> --remote` from CI run 45418586764 (the fixed build). The
 version came from `apps/desktop/RELEASE_VERSION` (1.5.73) because this branch's version.json predates 1.5.72.
 
+## Windows open again where they were
+
+As on the Mac (WindowRestore.swift): Folevi keeps the main windows it has open and the page each shows in
+`windows.json` (`[{ label, path }]`, saved when focus leaves a window, when one closes and at Quit) and opens them
+again at launch; the window-state plugin puts each back at its size and position by label. Quick Add, background
+pages and internal pages open at /documents instead. Tabs come back from the page's own storage, as before.
+
 ## Not done yet
 
 - Updates: the Tauri updater is in the app and points at `folevi.com/download/desktop/<target>-<arch>/latest.json`,

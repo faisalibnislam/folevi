@@ -81,6 +81,9 @@ fn app_url(path: &str) -> tauri::Url {
     tauri::Url::parse(&format!("app://localhost{safe}")).unwrap_or_else(|_| tauri::Url::parse("app://localhost/documents").unwrap())
 }
 
+/// The origins the app's pages have (app_origin per platform, and http on Windows).
+const APP_ORIGINS: [&str; 3] = ["app://localhost", "https://app.localhost", "http://app.localhost"];
+
 /// Whether a URL is one of the app's own pages.
 fn is_app_url(url: &str) -> bool {
     url.starts_with("app://localhost/") || url.starts_with("https://app.localhost/") || url.starts_with("http://app.localhost/") || url == "app://localhost" || url == "https://app.localhost"
@@ -349,6 +352,9 @@ fn watch_window(app: &AppHandle, w: &WebviewWindow) {
         WindowEvent::Destroyed => {
             let s = services(&app);
             s.bound.lock().remove(&label);
+            if !s.ui.lock().quitting {
+                save_windows(&app);
+            }
             if label == "main" && !s.ui.lock().quitting && s.ui.lock().tray.is_none() {
                 app.exit(0);
             }
@@ -356,6 +362,10 @@ fn watch_window(app: &AppHandle, w: &WebviewWindow) {
         WindowEvent::Resized(_) | WindowEvent::Focused(_) => {
             let state = json!({ "maximized": win.is_maximized().unwrap_or(false), "fullscreen": win.is_fullscreen().unwrap_or(false), "focused": win.is_focused().unwrap_or(true) });
             emit_to_pages(&app, "desktop:window", &state, Some(&label));
+            // Where each window is, kept as focus leaves it (a shutdown that never quits Folevi still finds it).
+            if let WindowEvent::Focused(false) = event {
+                save_windows(&app);
+            }
             if let WindowEvent::Focused(true) = event {
                 let lib = services(&app).library.clone();
                 tauri::async_runtime::spawn(async move { lib.rescan().await });
@@ -665,7 +675,54 @@ fn update_badge(app: &AppHandle) {
     }
 }
 
+// ---------------------------------------------------------------- windows open again where they were
+
+/// A page a window may open again at: Folevi's own path (with its query and fragment), never Quick Add, a background
+/// page or an internal one (the Mac's WindowRestore.restorablePath).
+fn restorable_path(url: &str) -> String {
+    let path = APP_ORIGINS.iter().find_map(|o| url.strip_prefix(o)).unwrap_or("");
+    let bare = path.split(['?', '#']).next().unwrap_or("");
+    if !path.starts_with('/') || path.starts_with("//") || path.len() > 500 || bare == "/" || bare.starts_with("/quick-add") || bare.starts_with("/place-sync") || bare.starts_with("/_") || bare == "/index.html" {
+        return "/documents".into();
+    }
+    path.to_string()
+}
+
+/// windows.json: the main windows open now, `[{ label, path }]` ("main" first).
+fn save_windows(app: &AppHandle) {
+    let s = services(app);
+    if s.paths.test_run {
+        return;
+    }
+    let mut list: Vec<(String, String)> = app
+        .webview_windows()
+        .into_iter()
+        .filter(|(l, w)| (l == "main" || l.starts_with("main-")) && (l == "main" || w.is_visible().unwrap_or(false)))
+        .map(|(l, w)| (l, restorable_path(&w.url().map(|u| u.to_string()).unwrap_or_default())))
+        .collect();
+    list.sort_by_key(|(l, _)| if l == "main" { 0 } else { l.strip_prefix("main-").and_then(|n| n.parse::<u32>().ok()).unwrap_or(u32::MAX) });
+    list.truncate(20);
+    let json = json!({ "v": 1, "windows": list.iter().map(|(l, p)| json!({ "label": l, "path": p })).collect::<Vec<_>>() });
+    let _ = shell::write_atomic(&s.paths.user_data.join("windows.json"), json.to_string().as_bytes());
+}
+
+/// What windows.json says, cleaned: labels "main" or "main-<n>", paths restorable_path would give.
+fn read_windows(user_data: &std::path::Path) -> Vec<(String, String)> {
+    let v: Value = std::fs::read(user_data.join("windows.json")).ok().and_then(|b| serde_json::from_slice(&b).ok()).unwrap_or(Value::Null);
+    let mut out: Vec<(String, String)> = vec![];
+    for w in v.get("windows").and_then(Value::as_array).into_iter().flatten().take(20) {
+        let label = w.get("label").and_then(Value::as_str).unwrap_or("");
+        let ok_label = label == "main" || label.strip_prefix("main-").is_some_and(|n| !n.is_empty() && n.len() <= 3 && n.bytes().all(|b| b.is_ascii_digit()));
+        let path = w.get("path").and_then(Value::as_str).unwrap_or("");
+        if ok_label && !out.iter().any(|(l, _)| l == label) {
+            out.push((label.to_string(), restorable_path(&format!("{}{path}", APP_ORIGINS[0]))));
+        }
+    }
+    out
+}
+
 fn quit(app: &AppHandle) {
+    save_windows(app);
     services(app).ui.lock().quitting = true;
     services(app).reminders.save_now();
     services(app).library.dispose();
@@ -1487,7 +1544,18 @@ pub fn run() {
             let start_link = std::env::args().find(|a| a.to_ascii_lowercase().starts_with("folevi:"));
             let hidden = std::env::args().any(|a| a == "--hidden") && services.ui.lock().tray.is_some();
             if start_link.is_none() {
-                create_main(&handle, "/documents", Some("main".into()), !hidden)?;
+                // The windows open last time, each at its page (the Mac's WindowRestore); sizes and places come back
+                // through the window-state plugin by label.
+                let saved = read_windows(&services.paths.user_data);
+                let main_path = saved.iter().find(|(l, _)| l == "main").map(|(_, p)| p.clone()).unwrap_or_else(|| "/documents".into());
+                create_main(&handle, &main_path, Some("main".into()), !hidden)?;
+                let mut highest = 1u32;
+                for (label, path) in saved.iter().filter(|(l, _)| l != "main") {
+                    let n = label.strip_prefix("main-").and_then(|n| n.parse::<u32>().ok()).unwrap_or(0);
+                    highest = highest.max(n);
+                    let _ = create_main(&handle, path, Some(label.clone()), !hidden);
+                }
+                services.ui.lock().windows = highest.saturating_sub(1);
             }
             // Quick Add's window is made on first use (toggle_quick_add): a second copy of the interface loaded at
             // launch would cost as much memory as the main window's.
@@ -1534,6 +1602,23 @@ mod tests {
         assert!(is_app_url("app://localhost/"));
         assert!(!is_app_url("https://app.localhost.evil.com/"));
         assert!(!is_app_url("https://folevi.com/"));
+    }
+
+    #[test]
+    fn windows_open_again_at_their_own_pages() {
+        assert_eq!(restorable_path("app://localhost/d/01HZY?x=1#block-a"), "/d/01HZY?x=1#block-a");
+        assert_eq!(restorable_path("https://app.localhost/tasks/today"), "/tasks/today");
+        for odd in ["app://localhost/quick-add?place=library", "app://localhost/place-sync?place=x", "app://localhost/_files/abc", "app://localhost/", "https://evil.example/d/1", "about:blank", ""] {
+            assert_eq!(restorable_path(odd), "/documents", "{odd}");
+        }
+        let d = tempfile::tempdir().unwrap();
+        std::fs::write(
+            d.path().join("windows.json"),
+            r#"{"v":1,"windows":[{"label":"main","path":"/d/A"},{"label":"main-3","path":"/calendar"},{"label":"quickadd","path":"/quick-add"},{"label":"main-3","path":"/x"},{"label":"main-x","path":"/y"},{"label":"main-2","path":"//evil"}]}"#,
+        )
+        .unwrap();
+        assert_eq!(read_windows(d.path()), vec![("main".into(), "/d/A".into()), ("main-3".into(), "/calendar".into()), ("main-2".into(), "/documents".into())]);
+        assert!(read_windows(&d.path().join("missing")).is_empty());
     }
 
     #[test]

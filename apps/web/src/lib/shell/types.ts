@@ -351,12 +351,6 @@ export interface ShellPlaces {
   addServerPlace?(o: { origin: string; info?: ServerInfoDocument | null }): Promise<ShellServerInfo>;
   /** Folevi servers found on the home network (Bonjour, `_folevi._tcp`). */
   listLocalServers?(): Promise<{ name: string; origin: string; serverId: string | null; version: string | null }[]>;
-  /**
-   * A server's QR code, read with the camera: the code's text (lib/server-edition/scan.ts reads the address out of
-   * it), or null when the person closed the scanner. Rejects with `{ code: "unavailable" | "camera_denied", message }`
-   * where it can't; the page keeps its address field. Only hosts with a camera scanner have it (iPhone and iPad).
-   */
-  scanServerCode?(): Promise<string | null>;
   /** Quick Add's place, remembered between uses. */
   quickAddPlace?(): Promise<string | null>;
   setQuickAddPlace?(id: string): Promise<void>;

@@ -291,8 +291,11 @@ everything but the writing area, matching today's UI with Liquid Glass and iOS's
 - Tests: app Debug build, `swift build`, `swift test` (2 timing tests flake only under the full run), web engine
   tests 168/168, tsc. Unchecked: iPad landscape, Split View, Slide Over, rotation (Simulator access not granted), QR
   scan, a real server sign-in, signed-in Foli AI and sync sheet, a device.
-- Next: the owner tests; then the switch (a TestFlight build from `apps/ios`, `pnpm release`), and `apps/mobile`
-  stays for Android.
+- **The switch is uploaded: 1.6.79 (build 103), native `apps/ios`, TestFlight internal "Folevi team", delivery
+  `fd1a648b-4f59-4d51-b0f2-758ec65709ae` (owner: "Yes, upload it", 2026-11-25).** It replaces the Capacitor build
+  1.6.78 (102) for testers; same `com.folevi.ios`, data carries over. Not opened on a device yet. `version.json` is
+  1.6.79/103 on this branch only: merging it into `main` also deploys the two web changes above.
+- Next: the owner tests on devices; `apps/mobile` stays for Android (native Compose in the Android session).
 - **iPad and iPhone Duo, today's tablet layout (branch `claude/ios-native-ipad-duo`, off this one, 2026-11-25).**
   `IPadFrameView` keeps iOS's split view but draws today's tablet Shell: the sidebar beside the content at every
   wide width (320 pt; it steps aside only for the note's tools in a window under 1000 pt), today's web sidebar
@@ -1324,6 +1327,7 @@ account button should move past iPadOS's window buttons).
   `DATABASE_UDF_USER_TIMEOUT_SECONDS=4` for that backend. Bursts show in `convex.log` as "took a long time".
 
 ## 12. Change log
+- 2026-11-25: Native iOS 1.6.79 (build 103) uploaded to TestFlight from `claude/ios-native-today-ui` (delivery fd1a648b).
 - 2026-11-25: Native iOS sync sheet redesign, Your own server sign-in, R5.6 and R5.7 (native) on `claude/ios-native-sync-signin`.
 - 2026-11-25: Native Foli AI on iPhone finished on `claude/ios-native-foli-ai` (glass composer on the keyboard, Stop, follow-ups crash, local message ids).
 - 2026-11-25: Native iPad and iPhone Duo matched to today's tablet layout on `claude/ios-native-ipad-duo` (49c8757b, 7347a057).

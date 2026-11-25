@@ -301,3 +301,38 @@ Left as they are, by choice or for later:
 - **Onboarding:** uses the generic native gate screen.
 - **Foli AI chat:** attachments, research and agent runs aren't shown natively.
 - **Not tested:** home-server sign-in and a real QR code.
+
+### Onboarding and polish (2026-11-25, late)
+
+**Onboarding**
+- Every screen before the app is native (`ui/Gates.kt`):
+  - Loading and the first-launch choice.
+  - Library setup, and the locked library.
+  - Sign-in, with Your own server.
+  - All six onboarding steps, with the same values as the web.
+  - One native card for every other gate.
+- Tested end to end with fresh accounts on the emulator. Finishing onboarding opens the Welcome page, because a navigation that arrives before the frame is ready now waits for it.
+
+**Polish pass** (the android-design skill, within the owner's style rules)
+- **TalkBack:**
+  - Swipe actions are also custom actions.
+  - Switch, choice and check rows each have one target that reports its state.
+  - Long presses are labelled.
+  - Section titles are headings.
+- **Touch and text:**
+  - Touch targets are at least 44 to 48.
+  - Containers grow with large text.
+  - Notebook cards grow at 200% text instead of breaking words.
+- **Motion:** uses the theme's motion scheme and snaps when animations are off (`design/Motion.kt`).
+- **Theming:**
+  - Palette tokens for the glass, grouped rows, swipe and priority colors.
+  - Avatar rings are visible in dark mode.
+- **Layout:**
+  - On a landscape phone, the content keeps a centered column.
+  - On short windows, the sidebar starts hidden and slides over the page.
+
+Checked on the emulator in light, dark, 200% text, landscape and tablet size.
+
+**Known gaps**
+- In dark mode the page paints its top inset in a darker shade than the note (the web's CSS).
+- Onboarding's first heading can't greet by first name: the engine doesn't send the name.

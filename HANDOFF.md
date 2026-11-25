@@ -1217,6 +1217,11 @@ account button should move past iPadOS's window buttons).
 
 ## 12. Change log
 
+- 2026-11-25 (late): Android native onboarding and polish pass (PR 112).
+  - Every gate is native, including the six onboarding steps, tested with fresh accounts.
+  - Polish pass: accessibility, large text, motion scheme and reduced motion, palette tokens, landscape, short windows.
+  - 115 app tests and 5 engine tests pass.
+
 - 2026-11-25 (night): Android native, remaining screens done (PR 112).
   - New: native Insert sheet (catalogue generated with iOS's), Foli AI chat, Vault, Shared and Changes restyled, the web's tablet sidebar and tab strip, and the note bar's fold on scroll.
   - Checked: Cloud sign-in tested end to end on the emulator; 101 app tests and 5 engine tests pass.

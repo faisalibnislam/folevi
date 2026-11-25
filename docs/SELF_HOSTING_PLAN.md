@@ -319,8 +319,11 @@ early, during Phase 1.
    vendor account.
 2. **Register the Connect domain** (for example `folevi.net`; it must be its own domain, not a subdomain of
    folevi.com, for the Public Suffix List) and approve the PSL request.
-3. **Test hardware:** which Synology and QNAP models you own (we need one x86-64 and one ARM64 of each, ideally a
-   2 GB model too).
+3. **Test hardware:** the owner has a Synology (model to confirm: its chip decides which `.spk` gets tested first)
+   and no QNAP. QNAP is tested without hardware: the private glibc runs in an old-glibc Linux container in CI
+   (Ubuntu 16.04 has glibc 2.23, near QTS 5's 2.21), then on QNAP's QuTScloud virtual appliance (QTS in a VM, which
+   can run in Synology's Virtual Machine Manager; license terms unverified), then with beta testers who own QNAPs
+   before the QNAP package leaves beta.
 4. **OK to download** Convex's Linux backend and Node.js for the bundle (Phase 0 is waiting on this).
 5. **Fix Resend sending** (open since 2026-10-15), needed for Folevi Mail.
 6. **Ask Convex** to confirm in writing that bundling their backend (FSL-1.1) in Folevi Server is fine.
@@ -341,7 +344,8 @@ early, during Phase 1.
 
 - **Store approval is outside our control.** Synology, QNAP and UGREEN may take months or say no. Our own package
   sources (Synology, QNAP) and the container route (UGREEN) are the fallbacks, so launch doesn't wait on them.
-- **QNAP's old glibc.** The private glibc approach must be proven on real QTS 5 hardware in Phase 3. Fallback:
+- **QNAP's old glibc.** The private glibc approach must be proven on QTS 5 in Phase 3: in an old-glibc container,
+  on QuTScloud, then by beta testers (we own no QNAP). Fallback:
   build Convex's backend ourselves against an older glibc.
 - **Memory on small NAS models.** Phase 0's tuned numbers fit 2 GB, but a family's real use must be measured on the
   hardware. The requirements say 4 GB recommended.

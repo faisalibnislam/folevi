@@ -156,6 +156,10 @@ public struct PhoneFrameView<Screen: View>: View {
             }
         }
         .tabBarMinimizeBehavior(.onScrollDown)
+        // Foli AI's tab never becomes the selected one: the tab bar is told not to select it and its sheet opens
+        // instead, so the screen doesn't blank to the tab's empty page and back before the sheet comes up (the
+        // owner's video, 2026-11-25).
+        .background { TabActionTabs(title: "Foli AI") { actions.openAI() }.frame(width: 0, height: 0) }
         .onGeometryChange(for: CGSize.self) { $0.size } action: { frameSize = $0 }
         .phoneSideBarsReader()
         // A note's bottom bars, where the tab bar is (PhoneNoteBarsSlot): they trade places with it, not ride the page.
@@ -317,6 +321,101 @@ struct PhoneCreateButton: View {
         .sensoryFeedback(.impact(weight: .light), trigger: taps)
         .accessibilityLabel("New")
         .accessibilityHint("Opens New note, From template, New folder and Quick task")
+    }
+}
+#endif
+
+#if os(iOS)
+import UIKit
+
+/// Makes one tab of the SwiftUI `TabView` around it an action: its tab bar controller is told not to select it, and
+/// `action` runs instead. SwiftUI's own delegate keeps everything else (a proxy forwards to it).
+struct TabActionTabs: UIViewRepresentable {
+    let title: String
+    let action: @MainActor () -> Void
+
+    func makeUIView(context: Context) -> Finder { Finder() }
+
+    func updateUIView(_ view: Finder, context: Context) {
+        view.title = title
+        view.action = action
+        view.attach()
+    }
+
+    final class Finder: UIView {
+        var title = ""
+        var action: (@MainActor () -> Void)?
+        private var proxy: TabActionDelegate?
+
+        override func didMoveToWindow() {
+            super.didMoveToWindow()
+            attach()
+        }
+
+        func attach() {
+            guard window != nil else { return }
+            // (After SwiftUI has set up its controller and delegate.)
+            DispatchQueue.main.async { [weak self] in self?.install() }
+        }
+
+        private func install() {
+            var responder: UIResponder? = self
+            while let r = responder, !(r is UITabBarController) { responder = r.next }
+            // (The tab view's controller is usually beside this view rather than above it: look down from the root.)
+            func find(_ vc: UIViewController?) -> UITabBarController? {
+                guard let vc else { return nil }
+                if let t = vc as? UITabBarController { return t }
+                for child in vc.children { if let t = find(child) { return t } }
+                return find(vc.presentedViewController)
+            }
+            guard let tabs = (responder as? UITabBarController) ?? find(window?.rootViewController), let action else { return }
+            if let proxy, tabs.delegate === proxy {
+                proxy.title = title
+                proxy.action = action
+                return
+            }
+            let p = TabActionDelegate(original: tabs.delegate, title: title, action: action)
+            proxy = p
+            tabs.delegate = p
+        }
+    }
+}
+
+/// Refuses the action tab (by its title) and runs its action; every other question goes to SwiftUI's delegate.
+final class TabActionDelegate: NSObject, UITabBarControllerDelegate {
+    weak var original: UITabBarControllerDelegate?
+    var title: String
+    var action: (@MainActor () -> Void)?
+
+    init(original: UITabBarControllerDelegate?, title: String, action: @escaping @MainActor () -> Void) {
+        self.original = original
+        self.title = title
+        self.action = action
+    }
+
+    func tabBarController(_ tabBarController: UITabBarController, shouldSelectTab tab: UITab) -> Bool {
+        if tab.title == title {
+            MainActor.assumeIsolated { action?() }
+            return false
+        }
+        return original?.tabBarController?(tabBarController, shouldSelectTab: tab) ?? true
+    }
+
+    func tabBarController(_ tabBarController: UITabBarController, shouldSelect viewController: UIViewController) -> Bool {
+        if viewController.tabBarItem.title == title {
+            MainActor.assumeIsolated { action?() }
+            return false
+        }
+        return original?.tabBarController?(tabBarController, shouldSelect: viewController) ?? true
+    }
+
+    override func responds(to aSelector: Selector!) -> Bool {
+        super.responds(to: aSelector) || (original?.responds(to: aSelector) ?? false)
+    }
+
+    override func forwardingTarget(for aSelector: Selector!) -> Any? {
+        if let original, original.responds(to: aSelector), !super.responds(to: aSelector) { return original }
+        return super.forwardingTarget(for: aSelector)
     }
 }
 #endif

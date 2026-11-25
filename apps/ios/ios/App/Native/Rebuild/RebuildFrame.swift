@@ -587,7 +587,10 @@ private struct RebuildRoot: View {
         }
         // Foli AI from the tab bar (or search's Ask Foli AI): medium, pulled up to the whole screen. With history off,
         // its conversation goes when it closes.
-        .phoneSheet(isPresented: Bindable(ai).sheetOpen, size: .medium, zoomFrom: "ai", onDismiss: { ai.sheet.closed() }) {
+        // iOS's own sheet, up from the bottom edge and back down (the owner, 2026-11-25: the zoom looked weird).
+        // Foli AI is a tab in iOS's tab bar now, which can't be a zoom's source, so the zoom grew out of the middle
+        // of the screen and shrank back into it.
+        .phoneSheet(isPresented: Bindable(ai).sheetOpen, size: .medium, onDismiss: { ai.sheet.closed() }) {
             RebuildAiSheet(ai: ai, frame: model)
         }
         .phoneSheet(isPresented: $notifications, size: .medium) {

@@ -318,6 +318,25 @@ Capacitor app), PR 79 (failed queries keep pages up) and PR 80 (one set of sync 
   gesture (dragging it down) still goes the Capacitor way.
 - Swipe axis lock checked in the Simulator with real touch drags (List layout of All notes): a sideways swipe opens
   Archive and Trash without scrolling; a vertical drag starting on a row scrolls the list 184 pt and opens nothing.
+- iPad polish pass, build 100 (delivery e0d350bc-6c0e-4517-ba54-7b8cb39076b6; owner: "do the same polish pass for
+  iPad"). The tablet layout (Shell, Sidebar, TabStrip, HomeDashboard, PageDock), audited then fixed:
+  - Sidebar: unmounted on close and when a note opens, so its counts and rows loaded again each time; all its queries
+    and the unread badge use `useOfflineQuery` (clock-moving ones held, as on the phone). It slides in and out with the
+    page (transform only, 260 ms; `Shell.tsx`), checked on the iPad Simulator: hide 8 to -320 over about 270 ms, show
+    with an ease-out. 44 pt targets for the folder chevron, Bookmarks toggle and pane buttons.
+  - Home: Today's reviews held, Recent folders measure columns before paint. Settings, Foli AI, Changes, Shared,
+    Reviews and Vault preload on the iPad too (`RouteView.tsx`). Tab titles keep known titles (`TabStrip.tsx`).
+  - Touch: sidebar rows, tabs and sidebar buttons show a press (they only had hover), after the 70 ms beat.
+  - Keyboard: the note's tool bar and overlay panels ride the keyboard (`rideKeyboard` in `lib/native/ui.ts`, the lift
+    is `max(0, keyboard - (screen - 100dvh))` in CSS so the web view's resize can't leave it a frame out of place;
+    measured: no more off-screen frame). Closing the floating chat, the command palette, prompts and popovers with a
+    field in focus lets the keyboard go first (`afterKeyboardGoes`).
+  - Motion: menus and popovers open on one 150 ms rise (`POP_IN`) and fade out (`popOut`); the note's floating side
+    panel fades out on Close panel (`Inspector.tsx`).
+  - Not changed, on purpose: `FolderDropLayer.tsx`'s document-wide non-passive touchmove (it lets press-and-hold drag
+    stop the page scrolling; WebKit decides at touchstart, so it can't be added mid-drag).
+  - Checked in local mode on a new "Folevi Feedback iPad" Simulator (iPad Air 11-inch): no late DOM insertions on Home,
+    All notes, Tasks, Calendar or a folder. Not checked signed in or on a device.
 - Memory re-check (the open item): Duo closed, 20 opens of "Welcome to Folevi": 126 MB, 200 MB, 130 MB after
   `org.WebKit.lowMemory`; nothing kept per open.
 - The three failing e2e specs listed in section 10 were already fixed on `main` by PR 77.

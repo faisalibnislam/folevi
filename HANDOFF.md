@@ -262,6 +262,20 @@ Mac buttons don't shrink on press, overlays fade out (`ui/closing.ts`, Popover's
 fades, no hover lift on the Mac except folders, state icons cross-fade (`ui/SwapIcons.tsx`), concentric corners,
 image outlines (`ui-img-outline`), steady-width counters, tab pin/close no longer overlap. Checked headlessly in an offscreen WKWebView harness (real NSEvent wheel events, a
 `FOLEVI_BUILD=shell` dev server with the e2e FakeShell, scratch OPFS library); not yet seen in a Mac release build.
+
+**Backend performance pass (session `perf-backend`, 2026-11-25).** A generated 5,000-note test library
+(`convex/lib/fakeLibrary.ts`, seeded by `convex/devSeed.ts` into an `@example.com` test account, refused on
+production) and a read-cost harness (`tests/convex/perf/`, run with `FOLEVI_PERF=1`). Baseline and every fix's
+before/after numbers: `docs/perf/backend-results.md`. At 5,000 notes `organization.index` reads 13 MB per run (the
+limit is 16 MiB) and task lists read up to 1,476 documents.
+Step 2: every mutation is now built from `convex/lib/functions.ts` (not `_generated/server`), whose db wrapper reports
+writes to `documents` and `folders` to `lib/listStats.ts`. That keeps `listStats` (per folder: page count, last edit,
+5 newest previews; per scope: the Drafts count) in step, and `organization.index`, `recentFolders` and `draftCount`
+read it instead of the pages. A folder or scope without a row is counted from its pages as before until
+`migrations:backfillListStats` runs (production run waits for the owner's OK). Task rows carry their note's public
+id, title and icon (`syncTaskLabels`, cleared when a note is sealed), so task lists read no notes. Writing straight
+to the db in a test (`t.run`) skips the wrapper: use `watchedDb(ctx)` from `lib/functions.ts` there.
+
 **A failed query no longer takes a page down (branch `claude/project-thread-u99yc5`, open PR, 2026-11-24).** Components
 read queries through `apps/web/src/lib/convex/queries.ts` (`useQuery`, `usePaginatedQuery`, `useQueryState`), never
 convex/react's (an eslint `no-restricted-imports` rule says so). A failed query reads as still loading (keeping its
@@ -594,10 +608,14 @@ account button should move past iPadOS's window buttons).
 - Mac feedback branch (`claude/mac-feedback-8652d2`): the owner checks Home scrolling, folder corners and the new Show
   all tabs in the next Mac build (needs "release it"); a split-view tab in the overview was not drawn in the
   headless check (no split tab in the scratch library).
+- Backend performance pass, owner's OK needed for production: run `migrations:backfillListStats` (optional, speeds
+  up existing folders) and `migrations:backfillDocumentText` (required before the note text switch PR merges).
+- Backend performance pass (`docs/perf/backend-results.md`): kept folder and Drafts counts, task rows that carry
+  their note's title, a cheaper `changes.list`, then note text (`searchText`) split out of `documents`
+  (widen, backfill, narrow; the owner approves each production backfill).
 - Web everywhere (all landed 2026-11-25). Open: the iOS simulator `footprint` re-run of the iPhone memory fix (mobile
-  session); sync status labels still differ between phone and desktop (Saved/Synced, Offline/Waiting to sync,
-  Conflict/Edited in two places) and there are four empty-state components; lists not yet given `LoadFailed` still load
-  until a retry answers (settings lists, Calendar, Graph, pickers);
+  session); there are four empty-state components; lists not yet given `LoadFailed` still load until a retry answers
+  (settings lists, Calendar, Graph, pickers);
   splitting the phone interface out of every page's bundle (measure with a production build first); "Your own server"
   sign-in for the apps, planned in the shared notes (`web-everywhere-own-server-plan.md`), after the Synology branch
   lands; the starter "Welcome to Folevi" note names Mac shortcuts. Known failing e2e on `main` (not from this work):
@@ -757,6 +775,21 @@ account button should move past iPadOS's window buttons).
   the top bar, names under cards, on iPad too). How scrolling was checked: a Swift harness puts a WKWebView in an
   offscreen window and calls `scrollWheel(with:)` with CGEvent-made wheel events (location = window coordinates,
   since the event has no window); Playwright's wheel bypasses macOS's scrolling path and can't show this bug.
+- 2026-11-25: Backend performance pass, step 3 (widen): `documentText` table holds each note's search text and search
+  fields, kept in step by the write hook; `migrations:backfillDocumentText` copies older notes (production run waits
+  for the owner). Readers are unchanged until the switch PR.
+- 2026-11-25: Backend performance pass, step 2: kept folder and Drafts stats (`listStats`, through the new
+  `lib/functions.ts` write hook), task rows with their note's title and icon, `changes.list` reads a note only once it
+  has unseen changes, a folder by last edit pages through its index. Numbers in `docs/perf/backend-results.md`.
+- 2026-11-25: Backend performance pass, step 1: a generated 5,000-note test library (`convex/devSeed.ts`, test
+  accounts only, refused on production), a read-cost harness with Convex's limits on (`tests/convex/perf/`), and the
+  baseline in `docs/perf/backend-results.md`.
+- 2026-11-25: One set of sync status words on every screen (owner's pick: the desktop's): the phone and iPad's sync
+  button (`components/iphone/SyncStatusTouch.tsx`) now reads `SYNC_LABELS` from `components/app/SyncStatus.tsx`
+  (Saved, Saving…, Syncing…, Offline, Conflict, Not saved) instead of Synced / Waiting to sync / Edited in two places,
+  and its accessible name is the desktop's `sync.button.label` ("Sync status: Offline, 2 changes waiting").
+  `offline-notes.spec.ts` follows. Help, docs and marketing already used these words. The paused native apps'
+  `SyncStatus.swift` was left as it is. Web unit tests: 2161 pass; e2e not run locally.
 - 2026-11-25: PR 79 review fix: a paginated list that failed emptied and swapped "Couldn't load" for the loading
   placeholder on every retry (the retry starts the query over from its first page, and that first load read as
   "ok"). `usePaginatedQuery` now keeps the loaded results and `failed` until the restarted query answers; new

@@ -14,7 +14,8 @@
 import { v } from "convex/values";
 import { isSealed } from "./lib/e2ee/state";
 import { sealedAiCopy } from "./lib/ai/indexing";
-import { mutation, query } from "./_generated/server";
+import { query } from "./_generated/server";
+import { mutation } from "./lib/functions";
 import type { Id } from "./_generated/dataModel";
 import { accessAtLeast, documentAccess, getDocumentByPublicId, requireDocument, requireProfile } from "./lib/auth";
 import { fail } from "./lib/errors";

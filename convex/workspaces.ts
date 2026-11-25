@@ -1,6 +1,7 @@
 import { v } from "convex/values";
 import { vaultMemberLeftWorkspace } from "./vaultPeople";
-import { mutation, query } from "./_generated/server";
+import { query } from "./_generated/server";
+import { mutation } from "./lib/functions";
 import type { MutationCtx } from "./_generated/server";
 import { internal } from "./_generated/api";
 import type { Doc, Id } from "./_generated/dataModel";

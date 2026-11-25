@@ -11,7 +11,8 @@
 //
 // WP3.
 import { v } from "convex/values";
-import { action, internalMutation, internalQuery, mutation, query, type MutationCtx } from "../_generated/server";
+import { action, internalQuery, query, type MutationCtx } from "../_generated/server";
+import { internalMutation, mutation } from "../lib/functions";
 import { internal } from "../_generated/api";
 import type { Doc, Id } from "../_generated/dataModel";
 import { isValidId } from "@folevi/editor-schema";

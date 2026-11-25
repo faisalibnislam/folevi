@@ -3,7 +3,8 @@
 // other sites' pages. Only public http(s) pages are fetched, with a time and size limit, rate-limited per
 // person. Images are returned as addresses (the note shows them from the site).
 import { v } from "convex/values";
-import { action, internalMutation } from "./_generated/server";
+import { action } from "./_generated/server";
+import { internalMutation } from "./lib/functions";
 import { internal } from "./_generated/api";
 import { assertWritable, getDocumentByPublicId, requireIdentity, requireProfile, resolveScope } from "./lib/auth";
 import { consume } from "./lib/rateLimit";

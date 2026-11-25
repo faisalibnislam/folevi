@@ -2,7 +2,8 @@
 // Folevi's own Better Auth store (convex/auth.ts). Every function reports what actually happened;
 // when the admin console passes `actorId` + `requestId`, the outcome is appended to the audit log.
 import { v } from "convex/values";
-import { internalAction, internalMutation, type ActionCtx } from "./_generated/server";
+import { internalAction, type ActionCtx } from "./_generated/server";
+import { internalMutation } from "./lib/functions";
 import { internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 import { createAuth, siteUrl } from "./auth";

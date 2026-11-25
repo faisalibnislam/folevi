@@ -120,6 +120,23 @@ https://folevi.com/download/windows/Folevi-arm64-setup.exe and https://folevi.co
 Uploaded with `npx wrangler r2 object put folevi-updates/windows/<file> --remote` from CI run 45418586764 (the fixed build). The
 version came from `apps/desktop/RELEASE_VERSION` (1.5.73) because this branch's version.json predates 1.5.72.
 
+## Background sync
+
+As on the Mac (`src/backsync.rs`, a port of BackgroundSync.swift): every place no window shows (each account but the
+open one, and the library when another place is open) syncs in a hidden "runner" window (`runner-<place>`, the page
+at `/place-sync?place=<id>`, `places.background` true). Runners are woken only for a reason and closed once nothing
+waits, so many accounts don't keep many pages open:
+- the place left the screen; the library's folder changed (3 s debounce); its unread count went up; or a catch-up
+  every 10 minutes, one place at a time, the one synced longest ago;
+- a woken page stays at least 15 s, goes when it says nothing waits, after 2 minutes if it never says, and after
+  10 minutes with work still waiting (`FOLEVI_BACKGROUND_*` change these, as on the Mac).
+
+The unread count of each background account is asked natively every minute (every three while no Folevi window is
+in front): `POST <convex>/api/query notifications:unreadCount` with the account's Convex token. It feeds the place
+switcher's dots and the taskbar badge, and wakes the page to show the notification. Runners are off in test runs
+(`FOLEVI_USER_DATA`) unless `FOLEVI_RUNNERS=1`. Not yet: Folevi Server accounts' own Convex for the unread count
+(their pages sync; the count waits for the server-places work), and closing idle runners on low memory.
+
 ## Not done yet
 
 - Updates: the Tauri updater is in the app and points at `folevi.com/download/desktop/<target>-<arch>/latest.json`,

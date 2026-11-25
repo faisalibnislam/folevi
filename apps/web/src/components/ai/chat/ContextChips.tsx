@@ -75,12 +75,14 @@ export function ContextChips({ context, names, onChange, disabled }: { context: 
           {whole}
         </span>
       )}
-      {add.length && !disabled ? (
+      {/* (Shown while recent notes load too, so it doesn't pop in after the composer is drawn.) */}
+      {(add.length || recent === undefined) && !disabled ? (
         <MenuButton
           label="Add to what Foli AI reads"
           align="start"
           side="top"
-          triggerClassName="inline-flex h-7 items-center gap-1 rounded-chip px-2 text-subheadline text-muted transition-colors hover:bg-[var(--glass-hover)] hover:text-heading"
+          // 44 pt to tap on touch screens (HIG): the hit area reaches past the 28 pt chip above and below.
+          triggerClassName="relative inline-flex h-7 items-center gap-1 rounded-chip px-2 text-subheadline text-muted transition-colors before:absolute before:inset-x-0 before:-inset-y-2 before:content-[''] hover:bg-[var(--glass-hover)] hover:text-heading"
           trigger={
             <>
               <Plus size={13} aria-hidden /> Add

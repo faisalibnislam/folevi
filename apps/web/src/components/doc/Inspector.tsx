@@ -1,5 +1,6 @@
 "use client";
 
+import { popOut } from "@/lib/native/ui";
 import type { Editor } from "@tiptap/react";
 import { useConvex, useMutation } from "convex/react";
 import { useQuery } from "@/lib/convex/queries";
@@ -62,6 +63,16 @@ const aiPanels = [lazy(loadAiPanel)];
 const aiPanelFor = (attempt: number) => (aiPanels[attempt] ??= lazy(loadAiPanel));
 
 // The page outline lives in the document sidebar (Table of contents); comments open from the top bar.
+/**
+ * Closes the panel; floating over the note (the iPad and narrow windows), it fades out first, as popovers do,
+ * instead of vanishing.
+ */
+function closeWithExit(e: { currentTarget: EventTarget | null }, close: () => void) {
+  const aside = e.currentTarget instanceof HTMLElement ? e.currentTarget.closest<HTMLElement>("aside.ui-pop") : null;
+  if (aside) popOut(aside, close);
+  else close();
+}
+
 export type InspectorTab = "ai" | "insert" | "format" | "style" | "info" | "comments" | "related";
 type Meta = FunctionReturnType<typeof api.documents.get>;
 
@@ -138,7 +149,7 @@ export function Inspector({
               {tab === "ai" ? <AiIcon size={18} aria-hidden /> : null}
               {TITLES[tab]}
             </h2>
-            <IconButton label="Close panel" shortcut="⌘⌥I" onClick={onClose} className="!h-7 !w-7 pointer-coarse:!h-11 pointer-coarse:!w-11">
+            <IconButton label="Close panel" shortcut="⌘⌥I" onClick={(e) => closeWithExit(e, onClose)} className="!h-7 !w-7 pointer-coarse:!h-11 pointer-coarse:!w-11">
               <X size={15} aria-hidden />
             </IconButton>
           </div>
@@ -150,7 +161,7 @@ export function Inspector({
             <h2 id={`${baseId}-tab-comments`} className="flex-1 text-center text-body font-semibold text-heading">
               Comments
             </h2>
-            <IconButton label="Close panel" shortcut="⌘⌥I" onClick={onClose} className="!h-7 !w-7 pointer-coarse:!h-11 pointer-coarse:!w-11">
+            <IconButton label="Close panel" shortcut="⌘⌥I" onClick={(e) => closeWithExit(e, onClose)} className="!h-7 !w-7 pointer-coarse:!h-11 pointer-coarse:!w-11">
               <X size={15} aria-hidden />
             </IconButton>
           </div>
@@ -185,7 +196,7 @@ export function Inspector({
               </button>
             ))}
           </div>
-          <IconButton label="Close panel" shortcut="⌘⌥I" onClick={onClose} className="!h-8 !w-8 flex-none pointer-coarse:!h-11 pointer-coarse:!w-11">
+          <IconButton label="Close panel" shortcut="⌘⌥I" onClick={(e) => closeWithExit(e, onClose)} className="!h-8 !w-8 flex-none pointer-coarse:!h-11 pointer-coarse:!w-11">
             <X size={15} aria-hidden />
           </IconButton>
         </div>

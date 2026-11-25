@@ -1,6 +1,6 @@
 "use client";
 
-import { useQuery } from "@/lib/convex/queries";
+import { useOfflineQuery } from "@/lib/sync/queryCache";
 import { useBackendMode, useCapabilities } from "@/lib/mode";
 import { TouchSyncButton } from "@/components/iphone/SyncStatusTouch";
 import { Bell, MoreHorizontal } from "lucide-react";
@@ -34,7 +34,8 @@ export function RootPill({ more, moreLabel = "More" }: { more?: MenuEntry[]; mor
   const { openNotifications } = useIphoneActions();
   // Local mode has no notifications bell.
   const { notifications } = useCapabilities();
-  const unread = useQuery(api.notifications.unreadCount, notifications ? {} : "skip") ?? 0;
+  // (As last seen until the server answers, so the bell's dot doesn't appear a moment after the bar.)
+  const unread = useOfflineQuery(api.notifications.unreadCount, notifications ? {} : "skip") ?? 0;
   // The list too, kept up to date in the background: the sheet opens on it, not on a placeholder.
   useNotificationList(notifications);
   // Signed in, the sync status sits beside the bell (a library on this device has nothing to sync with Folevi).

@@ -21,20 +21,21 @@ export function welcomeBlocks(today: string, opts: { local?: boolean } = {}): Bl
     { type: "heading", props: { level: 2 }, md: "Capture in three seconds" },
     {
       type: "bulleted",
-      md: "Press **⌘N** in the Mac app (**⌘⌥N** on the web) for a new document, or **⌘K** to search and jump anywhere.",
+      md: "Tap **+** for a new note, or **Search** to jump anywhere. With a keyboard, **⌘N** makes a note in the apps (**⌘⌥N** in a browser) and **⌘K** searches.",
     },
     { type: "bulleted", md: "Type `/` on an empty line to insert headings, checklists, tables, code, callouts and more." },
     { type: "bulleted", md: "Type `[[` to link to another page. Links show up as backlinks on the page you linked to." },
     { type: "heading", props: { level: 2 }, md: "Shape it when you are ready" },
     {
       type: "paragraph",
-      md: "Every paragraph is a block. Drag the handle to the left of a block, or use **⌥⇧↑** and **⌥⇧↓** to move it. **Tab** nests a block under the one above it.",
+      md: "Every paragraph is a block. Drag the handle beside a block to move it, or on a touch screen press and hold the block, then move your finger. With a keyboard, **⌥⇧↑** and **⌥⇧↓** move it too, and **Tab** nests a block under the one above it.",
     },
     {
       type: "toggle",
       props: { collapsed: true },
       md: "Keyboard shortcuts worth learning first",
       children: [
+        { type: "bulleted", md: "On Windows, Linux and Android, use **Ctrl** where you see **⌘**, and **Alt** for **⌥**." },
         { type: "bulleted", md: "**⌘B**, **⌘I**, **⌘U**: bold, italic, underline" },
         { type: "bulleted", md: "**⌘E**: inline code" },
         { type: "bulleted", md: "**⌘⇧9**: turn a line into a checklist item" },
@@ -43,7 +44,7 @@ export function welcomeBlocks(today: string, opts: { local?: boolean } = {}): Bl
       ],
     },
     { type: "heading", props: { level: 2 }, md: "Try these" },
-    { type: "todo", props: { checked: false }, md: "Add a task with Quick Add (⇧⌘A). It lands in your Inbox page" },
+    { type: "todo", props: { checked: false }, md: "Add a task with Quick Add (**Quick task** in the bottom bar on a phone, or **⇧⌘A** with a keyboard). It lands in your Inbox page" },
     { type: "todo", props: { checked: false, dueDate: today }, md: "Give this task a due date and find it again under **Tasks → Today**" },
     { type: "todo", props: { checked: false }, md: "Open the inspector and change this page's accent color" },
     { type: "todo", props: { checked: true }, md: "Open Folevi for the first time" },

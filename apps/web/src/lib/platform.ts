@@ -114,9 +114,15 @@ export function fold(): Fold | null {
   if (fromSegments) return fromSegments;
   const root = document.documentElement;
   if (foldMarkedHere || !root.hasAttribute("data-fold")) return null;
-  const style = getComputedStyle(root);
-  const start = parseFloat(style.getPropertyValue("--fold-start"));
-  const end = parseFloat(style.getPropertyValue("--fold-end"));
+  // The app writes the span inline on <html>: read it there, as computing <html>'s style on every write to it
+  // (watchPlatform wakes on each) costs a style pass. Computed only when a stylesheet sets it instead.
+  let start = parseFloat(root.style.getPropertyValue("--fold-start"));
+  let end = parseFloat(root.style.getPropertyValue("--fold-end"));
+  if (!Number.isFinite(start) || !Number.isFinite(end)) {
+    const style = getComputedStyle(root);
+    start = parseFloat(style.getPropertyValue("--fold-start"));
+    end = parseFloat(style.getPropertyValue("--fold-end"));
+  }
   if (!Number.isFinite(start)) return null;
   return { orientation: root.getAttribute("data-fold") === "horizontal" ? "horizontal" : "vertical", start, size: Number.isFinite(end) ? Math.max(0, end - start) : 0 };
 }

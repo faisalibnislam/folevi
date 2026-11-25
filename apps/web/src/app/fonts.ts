@@ -13,8 +13,11 @@ const dmSans = DM_Sans({ subsets: ["latin"], display: "swap", preload: false, st
 const plusJakartaSans = Plus_Jakarta_Sans({ subsets: ["latin"], display: "swap", preload: false, style: ["normal", "italic"], variable: "--font-plus-jakarta-sans" });
 const figtree = Figtree({ subsets: ["latin"], display: "swap", preload: false, style: ["normal", "italic"], variable: "--font-figtree" });
 const ibmPlexSans = IBM_Plex_Sans({ subsets: ["latin"], display: "swap", preload: false, style: ["normal", "italic"], variable: "--font-ibm-plex-sans" });
-// Serif (Spectral is also the app's display face: titles and larger text)
-const spectral = Spectral({ subsets: ["latin"], display: "swap", preload: false, style: ["normal", "italic"], weight: ["400", "500", "600", "700"], variable: "--font-spectral" });
+// Serif (Spectral is also the app's display face: titles and larger text). "fallback": text waits up to 100 ms for
+// it, so in the apps, where it's a local file, large titles draw in Spectral from the first frame instead of
+// swapping from the system font (the owner: things change after a page shows); slow connections still get the
+// fallback font quickly.
+const spectral = Spectral({ subsets: ["latin"], display: "fallback", preload: false, style: ["normal", "italic"], weight: ["400", "500", "600", "700"], variable: "--font-spectral" });
 const newsreader = Newsreader({ subsets: ["latin"], display: "swap", preload: false, style: ["normal", "italic"], variable: "--font-newsreader" });
 const fraunces = Fraunces({ subsets: ["latin"], display: "swap", preload: false, style: ["normal", "italic"], variable: "--font-fraunces" });
 const lora = Lora({ subsets: ["latin"], display: "swap", preload: false, style: ["normal", "italic"], variable: "--font-lora" });

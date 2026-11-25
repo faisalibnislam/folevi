@@ -6,6 +6,7 @@ import { useEffect, useMemo, useRef, useState, type RefObject } from "react";
 import type { FunctionReturnType } from "convex/server";
 import { CalendarRange, MapPin, RefreshCw, Trash2 } from "lucide-react";
 import { api } from "@/lib/convex/api";
+import { useOfflineQuery } from "@/lib/sync/queryCache";
 import { Button } from "@/components/ui/Button";
 import { Dialog } from "@/components/ui/Dialog";
 import { Popover } from "@/components/ui/Popover";
@@ -44,7 +45,14 @@ export function useExternalEvents(days: string[], timeZone: string): Map<string,
   // A day of margin each side: the server range is in UTC, the days are in your zone.
   const from = Date.parse(`${first}T00:00:00Z`) - 86_400_000;
   const to = Date.parse(`${last}T00:00:00Z`) + 2 * 86_400_000;
-  const events = useQuery(api.externalCalendars.events, { from, to });
+  // The last answer for this range on this device, else the previous range's events while the new range loads
+  // (the days they share stay drawn instead of emptying for a moment).
+  const answer = useOfflineQuery(api.externalCalendars.events, { from, to });
+  const previous = useRef(answer);
+  useEffect(() => {
+    if (answer !== undefined) previous.current = answer;
+  }, [answer]);
+  const events = answer ?? previous.current;
   const viewed = useMutation(api.externalCalendars.viewed);
   useEffect(() => {
     void viewed({}).catch(() => {});
@@ -60,8 +68,16 @@ export function useExternalEvents(days: string[], timeZone: string): Map<string,
       }
     }
     for (const day of m.values()) day.sort((a, b) => Number(b.segment.allDay) - Number(a.segment.allDay) || a.segment.start - b.segment.start);
+    if (events === undefined) loadingEvents.add(m);
     return m;
   }, [events, timeZone, first, last]);
+}
+
+const loadingEvents = new WeakSet<Map<string, PlacedEvent[]>>();
+
+/** True for a `useExternalEvents` map made before any events arrived (so an empty day isn't "Nothing planned" yet). */
+export function eventsLoading(eventsByDate: Map<string, unknown>): boolean {
+  return loadingEvents.has(eventsByDate as Map<string, PlacedEvent[]>);
 }
 
 /** "09:00 to 10:30", "All day" or a date range, in your time zone. */

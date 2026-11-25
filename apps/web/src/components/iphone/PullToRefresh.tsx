@@ -125,7 +125,7 @@ export function PullToRefresh({ onRefresh, label = "Refreshing" }: { onRefresh: 
           role={spinning ? "status" : undefined}
           aria-label={spinning ? label : undefined}
           aria-hidden={spinning ? undefined : true}
-          className="pointer-events-none fixed left-1/2 top-[calc(env(safe-area-inset-top)+56px)] z-30 grid h-8 w-8 -translate-x-1/2 place-items-center text-muted"
+          className="pointer-events-none fixed left-1/2 top-[calc(env(safe-area-inset-top)+64px)] z-30 grid h-8 w-8 -translate-x-1/2 place-items-center text-muted"
           style={{
             opacity: shown ? Math.min(1, progress * 1.4) : 0,
             transform: reduced ? undefined : `translateY(${spinning ? 4 : Math.min(pull, THRESHOLD * 1.4) * 0.3}px)`,

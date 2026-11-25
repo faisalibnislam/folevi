@@ -162,13 +162,17 @@ test("iPhone Tasks, Calendar and Search: capsules, the box, the details sheet, t
   await page.getByRole("button", { name: "Today", exact: true }).click();
   await expect(todayCell).toHaveAttribute("aria-pressed", "true");
   // The pull-down month: the grabber opens the whole month (four to six weeks), and a day folds it again.
-  const strip = page.locator("[data-date]:visible").first().locator("xpath=ancestor::div[contains(@class,'overflow-hidden')][1]");
-  const weekHeight = await strip.evaluate((el) => el.getBoundingClientRect().height);
+  // (How much of the days shows: the month opens with transforms, the layout keeping the week's height while it
+  // moves, so what shows is measured down to the grabber's band.)
+  const stripRoot = page.locator("[data-week-strip]:visible").first();
+  const strip = stripRoot.locator("[data-week-strip-days]");
+  const shownHeight = () => stripRoot.evaluate((el) => el.querySelector("[data-week-strip-band]")!.getBoundingClientRect().top - el.querySelector("[data-week-strip-days]")!.getBoundingClientRect().top);
+  const weekHeight = await shownHeight();
   await page.getByRole("button", { name: "Show the whole month" }).click();
-  await expect.poll(() => strip.evaluate((el) => Math.round(el.getBoundingClientRect().height / 48))).toBeGreaterThanOrEqual(4);
+  await expect.poll(() => shownHeight().then((h) => Math.round(h / 48))).toBeGreaterThanOrEqual(4);
   await expect(page.getByRole("button", { name: "Show the week" })).toHaveAttribute("aria-expanded", "true");
   await page.locator(`[data-date="${day(1)}"]:visible`).first().click();
-  await expect.poll(() => strip.evaluate((el) => el.getBoundingClientRect().height)).toBe(weekHeight);
+  await expect.poll(() => shownHeight()).toBe(weekHeight);
 
   // By touch: pulling the strip down follows the finger, and let go past half way it opens the month.
   const at = (await strip.boundingBox())!;
@@ -180,8 +184,8 @@ test("iPhone Tasks, Calendar and Search: capsules, the box, the details sheet, t
     await cdp.send("Input.dispatchTouchEvent", { type: "touchMove", touchPoints: [{ x: from.x, y: from.y + i * 15 }] });
   }
   // (Held 90 points down, the strip is 90 points taller: 1:1 with the finger.)
-  await expect.poll(() => strip.evaluate((el) => el.getBoundingClientRect().height), { timeout: 3000 }).toBeGreaterThan(weekHeight + 80);
-  expect(await strip.evaluate((el) => el.getBoundingClientRect().height)).toBeLessThan(weekHeight + 100);
+  await expect.poll(() => shownHeight(), { timeout: 3000 }).toBeGreaterThan(weekHeight + 80);
+  expect(await shownHeight()).toBeLessThan(weekHeight + 100);
   for (let i = 7; i <= 10; i++) {
     await page.waitForTimeout(30);
     await cdp.send("Input.dispatchTouchEvent", { type: "touchMove", touchPoints: [{ x: from.x, y: from.y + i * 15 }] });
@@ -194,7 +198,7 @@ test("iPhone Tasks, Calendar and Search: capsules, the box, the details sheet, t
   const open = (await strip.boundingBox())!;
   await drag(page, { x: open.x + open.width / 2, y: open.y + open.height - 30 }, [1, 2, 3, 4, 5, 6, 7, 8].map((i) => ({ x: open.x + open.width / 2, y: open.y + open.height - 30 - i * 20 })));
   await expect(page.getByRole("button", { name: "Show the whole month" })).toHaveAttribute("aria-expanded", "false");
-  await expect.poll(() => strip.evaluate((el) => el.getBoundingClientRect().height)).toBe(weekHeight);
+  await expect.poll(() => shownHeight()).toBe(weekHeight);
   // A swipe sideways pages to the next week, keeping the weekday picked.
   const week = (await strip.boundingBox())!;
   await drag(page, { x: week.x + week.width - 30, y: week.y + 20 }, [1, 2, 3, 4, 5, 6, 7, 8].map((i) => ({ x: week.x + week.width - 30 - i * 40, y: week.y + 21 })), 20);

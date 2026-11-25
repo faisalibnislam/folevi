@@ -27,6 +27,20 @@ const picked = new Map<string, ImagePalette>();
 const picking = new Map<string, Promise<ImagePalette | null>>();
 
 /**
+ * The last signed URL and stored colours seen per file id, so a card or note that mounts again draws its image on
+ * the first frame instead of after the query answers. `at` is the half-hour bucket the URL was signed for: the
+ * server signs until the next hour plus one (convex/files.ts urls), so a URL lasts at least an hour past `at`, and
+ * it is used here for 50 minutes.
+ */
+const seen = new Map<string, { url: string; palette: ImagePalette | null; at: number }>();
+const SEEN_FOR_MS = 50 * 60_000;
+
+function seenImage(fileId: string | null) {
+  const hit = fileId ? seen.get(fileId) : undefined;
+  return hit && Date.now() - hit.at < SEEN_FOR_MS ? hit : null;
+}
+
+/**
  * Uploads a note theme image into the note (so it follows the note's access) and returns its file id. The
  * page and text colours are picked from the local file and saved with it.
  */
@@ -68,8 +82,15 @@ export function useCoverImage(cover: DocumentCover | null | undefined): { url: s
   const urls = useQuery(api.files.urls, fileId ? { fileIds: [fileId], now } : "skip");
   const savePalette = useMutation(api.files.setPalette);
   const entry = fileId ? urls?.[fileId] : undefined;
-  const url = entry?.url ?? null;
-  const stored = isImagePalette(entry?.palette) ? entry.palette : null;
+  // While the query loads, the last answer for this image (if its URL is still good) stands in.
+  const kept = urls === undefined ? seenImage(fileId) : null;
+  const url = entry?.url ?? kept?.url ?? null;
+  const stored = isImagePalette(entry?.palette) ? entry.palette : (kept?.palette ?? null);
+  const liveUrl = entry?.url ?? null;
+  const livePalette = isImagePalette(entry?.palette) ? entry.palette : null;
+  useEffect(() => {
+    if (fileId && liveUrl) seen.set(fileId, { url: liveUrl, palette: livePalette, at: now });
+  }, [fileId, liveUrl, livePalette, now]);
   // Colours picked here, tagged with their image so a note that changes image never shows stale ones.
   const [local, setLocal] = useState<{ fileId: string; palette: ImagePalette } | null>(null);
   useEffect(() => {

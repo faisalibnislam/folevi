@@ -17,7 +17,8 @@ import { MoveWarningHost } from "./MoveWarning";
 /**
  * The product. `backend` says where the notes live: "account" (Folevi's servers, the website and the default)
  * or "local" (a library on this device, only in the bundled shell: components/app/ShellRoot.tsx). In local
- * mode every query and mutation runs against the library (lib/local) and nothing reaches Folevi.
+ * mode every query and mutation runs against the library (lib/local) and nothing reaches Folevi, except that the
+ * apps may fetch the public list of note styles when online (owner, 2026-11-24; docs/MOBILE.md).
  */
 export function ProductApp({ backend = "account" }: { backend?: Backend } = {}) {
   return (

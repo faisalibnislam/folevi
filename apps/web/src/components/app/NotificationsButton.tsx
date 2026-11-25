@@ -1,7 +1,9 @@
 "use client";
 
+import { POP_IN } from "@/lib/native/ui";
 import { useConvex, useMutation } from "convex/react";
 import { useQuery } from "@/lib/convex/queries";
+import { useOfflineQuery } from "@/lib/sync/queryCache";
 import { useEffect, useRef, useState } from "react";
 import type { FunctionReturnType } from "convex/server";
 import { Bell, BellOff, Check, FileText, MoreHorizontal, Settings, UserPlus, KeyRound, AtSign, MessageSquare, Share2, Trash2, CircleDot } from "lucide-react";
@@ -37,7 +39,8 @@ export function NotificationsButton() {
 }
 
 function NotificationsBell() {
-  const unread = useQuery(api.notifications.unreadCount, {});
+  // The last count kept, so a sidebar drawn again shows its badge at once (no pop-in).
+  const unread = useOfflineQuery(api.notifications.unreadCount, {});
   // On a touch device the list is kept warm too, so the popover opens on it (a touch screen has no hover to get ahead).
   useNotificationList(touchPrimary());
   const [open, setOpen] = useState(false);
@@ -93,7 +96,7 @@ function NotificationsBell() {
           ref={panelRef}
           popover="manual"
           style={panelStyle}
-          className="ui-pop z-[100] flex max-h-[min(560px,calc(100vh-72px))] w-[380px] max-w-[calc(100vw-1rem)] flex-col overflow-hidden rounded-panel border-0 p-0 text-ink animate-[folio-rise_140ms_var(--ease-folio)] motion-reduce:animate-none"
+          className={`ui-pop z-[100] flex max-h-[min(560px,calc(100vh-72px))] w-[380px] max-w-[calc(100vw-1rem)] flex-col overflow-hidden rounded-panel border-0 p-0 text-ink ${POP_IN} motion-reduce:animate-none`}
         >
           <NotificationPanel
             unread={count}

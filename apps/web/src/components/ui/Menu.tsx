@@ -7,7 +7,8 @@ import { keyLabel } from "@/lib/shortcuts";
 import { visibleBottom } from "@/lib/hooks/useVisualViewport";
 import { nativeApp } from "@/lib/nativeApp";
 import { safeInsets } from "@/lib/iphone";
-import { feel } from "@/lib/native/ui";
+import { popupSpan } from "./topLayer";
+import { POP_IN, POP_MS, feel } from "@/lib/native/ui";
 import { heldLiftRect, placeAroundLift, shiftHeldLift, reportLiftPlacement } from "@/lib/native/lift";
 import { SPRINGS, prefersReducedMotion } from "@/lib/native/physics";
 import { springFrames } from "@/components/iphone/sheetMotion";
@@ -106,6 +107,9 @@ export function menuEntriesHere(items: MenuEntry[], inApp: boolean = nativeApp()
 
 /** The iPhone, iPad and Android apps draw menus as iOS does (globals.css, "iOS polish WP3"). */
 const appMenus = () => typeof document !== "undefined" && document.documentElement.matches('[data-iphone], [data-native="ios"]');
+/** The iPhone layout: its menus grow out of what opened them on a spring. On the iPad (the tablet layout) they rise
+ * in as every popover does (POP_IN), and all of them leave with the same fade (popOut's). */
+const phoneMenus = () => typeof document !== "undefined" && document.documentElement.matches("[data-iphone]");
 /**
  * Folevi for Mac (docs/MAC_POLISH_PLAN.md §3.14, globals.css "Mac polish WM4"): menus open on mouse-down and a
  * press, drag and release picks an item, as AppKit's do; the row under the pointer is the one the keyboard is on;
@@ -445,10 +449,11 @@ function MenuPanel({
         const pad = parseFloat(getComputedStyle(menu).paddingTop) || 6;
         const bottom = visibleBottom();
         const safeTop = safeInsets().top;
+        const span = popupSpan(a, margin);
         let left = a.right + pad + 2;
-        const flip = left + w > window.innerWidth - margin;
+        const flip = left + w > span.max;
         if (flip) left = a.left - pad - 2 - w;
-        left = Math.min(Math.max(margin, left), window.innerWidth - w - margin);
+        left = span.clamp(left, w);
         const maxHeight = bottom - margin * 2 - safeTop;
         const top = Math.max(margin + safeTop, Math.min(a.top - pad, bottom - Math.min(h, maxHeight) - margin));
         setPos({ position: "fixed", left, top, maxHeight, margin: 0, right: "auto", bottom: "auto", transformOrigin: `${flip ? "right" : "left"} top` });
@@ -458,7 +463,8 @@ function MenuPanel({
       // picture, drawn above the page), below, above or beside it, on screen (WP0, lib/native/lift.ts).
       const held = heldLiftRect();
       if (held) {
-        const view = { left: margin, top: margin + safeInsets().top, right: window.innerWidth - margin, bottom: visibleBottom() - margin };
+        const span = popupSpan(held, margin);
+        const view = { left: span.min, top: margin + safeInsets().top, right: span.max, bottom: visibleBottom() - margin };
         const size = { width: fullWidth ? held.right - held.left : menu.offsetWidth, height: Math.max(menu.offsetHeight, menu.scrollHeight) };
         const p = placeAroundLift(held, size, view, align);
         setPos({ position: "fixed", left: p.left, top: p.top, width: fullWidth ? size.width : undefined, maxHeight: p.maxHeight, margin: 0, right: "auto", bottom: "auto", transformOrigin: p.origin });
@@ -474,8 +480,7 @@ function MenuPanel({
       const below = bottom - a.bottom - gap - margin;
       const above = a.top - gap - margin;
       const up = side === "top" ? !(above < h && below > above) : below < h && above > below;
-      let left = align === "end" ? a.right - w : a.left;
-      left = Math.min(Math.max(margin, left), window.innerWidth - w - margin);
+      const left = popupSpan(a, margin).clamp(align === "end" ? a.right - w : a.left, w);
       let top = up ? a.top - gap - h : a.bottom + gap;
       // (In the iPhone app, below the status bar.)
       const safeTop = safeInsets().top;
@@ -519,12 +524,13 @@ function MenuPanel({
     if (mac) setLit(i);
   };
 
-  // In the apps (§2.4): the menu grows out of what opened it on a spring (scale 0.5 to 1), and when it closes a
-  // picture of it shrinks to 0.9 and fades over 160 ms while whatever was chosen goes ahead. Reduce Motion: fades.
+  // On the iPhone (§2.4): the menu grows out of what opened it on a spring (scale 0.5 to 1). In the apps, when it
+  // closes a picture of it shrinks to 0.96 and fades over 150 ms while whatever was chosen goes ahead. Reduce
+  // Motion: fades.
   const entered = useRef(false);
   useLayoutEffect(() => {
     const menu = menuRef.current;
-    if (!pos || entered.current || !menu || !appMenus()) return;
+    if (!pos || entered.current || !menu || !phoneMenus()) return;
     entered.current = true;
     if (prefersReducedMotion()) {
       menu.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 150, easing: "linear" });
@@ -559,10 +565,10 @@ function MenuPanel({
       }
       // (The Mac's menus only fade, as AppKit's: 150 ms.)
       const fade = macFade
-        ? ghost.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 150, easing: "ease-out", fill: "forwards" })
+        ? ghost.animate([{ opacity: 1 }, { opacity: 0 }], { duration: POP_MS, easing: "ease-out", fill: "forwards" })
         : prefersReducedMotion()
-        ? ghost.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 150, easing: "linear", fill: "forwards" })
-        : ghost.animate([{ opacity: 1, transform: "scale(1)" }, { opacity: 0, transform: "scale(0.96)" }], { duration: 150, easing: "ease-out", fill: "forwards" });
+        ? ghost.animate([{ opacity: 1 }, { opacity: 0 }], { duration: POP_MS, easing: "linear", fill: "forwards" })
+        : ghost.animate([{ opacity: 1, transform: "scale(1)" }, { opacity: 0, transform: "scale(0.96)" }], { duration: POP_MS, easing: "ease-out", fill: "forwards" });
       fade.onfinish = () => ghost.remove();
       fade.oncancel = () => ghost.remove();
     };
@@ -581,7 +587,7 @@ function MenuPanel({
       data-submenu={nested || undefined}
       onPointerEnter={onPointerIn}
       style={pos ?? { position: "fixed", left: 0, top: 0, margin: 0, right: "auto", bottom: "auto", visibility: "hidden" }}
-      className={`ui-pop z-[100] min-w-56 overflow-y-auto border-0 p-1.5 text-ink origin-top animate-[folio-rise_150ms_var(--ease-folio)] ${(menuClassName ?? "").replace(/(^|\s)w-full(?=\s|$)/g, " ")}`}
+      className={`ui-pop z-[100] min-w-56 overflow-y-auto border-0 p-1.5 text-ink origin-top ${POP_IN} ${(menuClassName ?? "").replace(/(^|\s)w-full(?=\s|$)/g, " ")}`}
       onContextMenu={(e) => e.preventDefault()}
       onKeyDown={(e) => {
         // Keys pressed in an open submenu are its own (React passes them on through its portal to this panel).

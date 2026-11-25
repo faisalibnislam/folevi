@@ -10,7 +10,7 @@ import { FolderGlyph } from "@/components/ui/FolderGlyph";
 import { GlassPill, PillButton } from "./Glass";
 import { MoreMenu } from "./RootBar";
 import { Sheet } from "./Sheet";
-import { feel } from "@/lib/native/ui";
+import { feel, letKeyboardGo } from "@/lib/native/ui";
 import type { InspectorTab } from "@/components/doc/Inspector";
 
 /** Top right of a note: Share and the note's "…" menu (the same actions as on the web). */
@@ -23,7 +23,9 @@ export function NoteTrailing({ onShare, shared, actions }: { onShare?: () => voi
         onMouseDown={(e) => e.preventDefault()}
         onClick={() => {
           feel("toggle");
-          (document.activeElement as HTMLElement | null)?.blur();
+          // (The page is laid out at its full height under the keyboard first, so nothing shows blank as it goes.)
+          const active = document.activeElement;
+          if (active instanceof HTMLElement && active !== document.body) letKeyboardGo(active);
         }}
         className="iphone-done ui-liquid ui-glass-press h-11 items-center rounded-capsule px-4 text-headline font-semibold leading-[22px] text-heading outline-none focus-visible:ring-2 focus-visible:ring-focus"
       >
@@ -63,14 +65,13 @@ export function NotePlaceChip({ parent, folder }: { parent?: { id: string; title
   const href = parent ? `/d/${parent.id}` : folder ? `/folders/${folder.id}` : "/drafts";
   const label = parent ? parent.title || "Untitled" : folder ? folder.name : "Drafts";
   return (
-    <AppLink
-      href={href}
-      aria-label={`In ${label}`}
-      className="ui-liquid flex h-8 max-w-full items-center gap-1.5 rounded-capsule pl-2.5 pr-2 text-footnote font-medium text-heading outline-none active:scale-[0.97] focus-visible:ring-2 focus-visible:ring-focus"
-    >
-      {parent ? <FileText size={14} aria-hidden className="flex-none text-muted" /> : <FolderGlyph color={folder?.color ?? null} size={15} />}
-      <span className="min-w-0 truncate">{label}</span>
-      <ChevronRight size={13} strokeWidth={2.4} aria-hidden className="flex-none text-faint" />
+    // The link is 44 pt tall to tap (HIG); the glass capsule inside it stays 32 pt.
+    <AppLink href={href} aria-label={`In ${label}`} className="group flex h-11 max-w-full items-center rounded-capsule outline-none">
+      <span className="ui-liquid flex h-8 max-w-full items-center gap-1.5 rounded-capsule pl-2.5 pr-2 text-footnote font-medium text-heading group-active:scale-[0.97] group-focus-visible:ring-2 group-focus-visible:ring-focus">
+        {parent ? <FileText size={14} aria-hidden className="flex-none text-muted" /> : <FolderGlyph color={folder?.color ?? null} size={15} />}
+        <span className="min-w-0 truncate">{label}</span>
+        <ChevronRight size={13} strokeWidth={2.4} aria-hidden className="flex-none text-faint" />
+      </span>
     </AppLink>
   );
 }

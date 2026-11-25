@@ -90,6 +90,8 @@ public enum WebIcon: String, CaseIterable, Sendable {
     case clock = "clock"
     case clock3 = "clock-3"
     case cloud = "cloud"
+    case cloudAlert = "cloud-alert"
+    case cloudCheck = "cloud-check"
     case cloudDownload = "cloud-download"
     case cloudOff = "cloud-off"
     case codeXml = "code-xml"
@@ -436,6 +438,8 @@ public enum WebIcon: String, CaseIterable, Sendable {
         case .clock: [.circle(cx: 12, cy: 12, r: 10), .path("M12 6v6l4 2")]
         case .clock3: [.circle(cx: 12, cy: 12, r: 10), .path("M12 6v6h4")]
         case .cloud: [.path("M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z")]
+        case .cloudAlert: [.path("M12 12v4"), .path("M12 20h.01"), .path("M8.128 16.949A7 7 0 1 1 15.71 8h1.79a1 1 0 0 1 0 9h-1.642")]
+        case .cloudCheck: [.path("m17 15-5.5 5.5L9 18"), .path("M5.516 16.07A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 3.501 7.327")]
         case .cloudDownload: [.path("M12 13v8l-4-4"), .path("m12 21 4-4"), .path("M4.393 15.269A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.436 8.284")]
         case .cloudOff: [.path("M10.94 5.274A7 7 0 0 1 15.71 10h1.79a4.5 4.5 0 0 1 4.222 6.057"), .path("M18.796 18.81A4.5 4.5 0 0 1 17.5 19H9A7 7 0 0 1 5.79 5.78"), .path("m2 2 20 20")]
         case .codeXml: [.path("m18 16 4-4-4-4"), .path("m6 8-4 4 4 4"), .path("m14.5 4-5 16")]

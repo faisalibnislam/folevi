@@ -1,7 +1,6 @@
 "use client";
 
 import { useMutation } from "convex/react";
-import { useQuery } from "@/lib/convex/queries";
 import { useEffect, useMemo, useState } from "react";
 import { ArrowDownUp, Archive, CalendarDays, SquareCheckBig, ChevronDown, ChevronRight, FileDiff, FolderPlus, Hash, Files, Inbox, Layers, LayoutTemplate, MoreHorizontal, Search, Share2, Trash2, House as Home, FileText, Waypoints, Lock } from "lucide-react";
 import { Bookmark } from "lucide-react";
@@ -38,6 +37,19 @@ import { AiIcon } from "@/components/ai/AiIcon";
 import { useAiEnabled } from "@/components/ai/useAi";
 import { useBackendMode, useCanCall, useCapabilities } from "@/lib/mode";
 import { useReviewWindow } from "@/components/study/review";
+
+/**
+ * The last answer of a query whose arguments move with the clock or the page (a minute, a review window, the note in
+ * front), held per query name while the new arguments' answer loads, so a count doesn't blink out and back.
+ */
+const held = new Map<string, unknown>();
+function useHeld<T>(key: string, value: T | undefined): T | undefined {
+  if (value !== undefined) {
+    held.set(key, value);
+    return value;
+  }
+  return held.get(key) as T | undefined;
+}
 
 function isActive(route: Route, href: string): boolean {
   const map: Record<string, (r: Route) => boolean> = {
@@ -443,11 +455,14 @@ function useSettled(ready: boolean, maxMs: number): boolean {
 export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   const { scope, canEdit, today } = useAppState();
   const org = useFolderTree(scope);
-  const counts = useQuery(api.tasks.counts, { scope, today });
-  const drafts = useQuery(api.organization.draftCount, { scope });
-  // Reviews (flashcards due today, everywhere): listed once there's something to study.
-  const reviews = useQuery(api.study.summary, useReviewWindow(5 * 60_000));
-  const starred = useQuery(api.documents.list, { scope, view: "starred", paginationOpts: { numItems: 8, cursor: null } });
+  // Every list here is the last answer kept on this device until the live one comes (useOfflineQuery): the sidebar
+  // is drawn anew each time it opens, and its rows mustn't pop in and push the folders down.
+  const counts = useHeld(`tasks:${JSON.stringify(scope)}`, useOfflineQuery(api.tasks.counts, { scope, today }));
+  const drafts = useOfflineQuery(api.organization.draftCount, { scope });
+  // Reviews (flashcards due today, everywhere): listed once there's something to study. (Its window moves with the
+  // clock, so the last answer is held while the next window's loads.)
+  const reviews = useHeld("reviews", useOfflineQuery(api.study.summary, useReviewWindow(5 * 60_000)));
+  const starred = useOfflineQuery(api.documents.list, { scope, view: "starred", paginationOpts: { numItems: 8, cursor: null } });
   const folderActions = useFolderActions();
   const { route } = useAppRouter();
   // Changes others made in notes you've opened (everywhere), leaving out the note in front of you.
@@ -456,17 +471,17 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   // The graph comes to local mode later (lib/local/registry.ts LOCAL_PLANNED).
   const graph = useCanCall(api.aiGraph.graph);
   // Foli DNA's saved views, listed under it.
-  const dnaViews = useQuery(api.graphViews.list, graph ? { scope } : "skip");
+  const dnaViews = useOfflineQuery(api.graphViews.list, graph ? { scope } : "skip");
   const mode = useBackendMode();
   const canVault = useCanCall(api.vault.get);
-  const changes = useQuery(api.changes.list, !caps.changes ? "skip" : route.name === "doc" ? { exclude: route.id } : {});
+  const changes = useHeld("changes", useOfflineQuery(api.changes.list, !caps.changes ? "skip" : route.name === "doc" ? { exclude: route.id } : {}));
   // The Vault shows for whoever can see one here (null: none for them; held back while its flag is off).
   // A library on this device has its own Vault (docs/MAC_REBUILD_PLAN.md §5.6), when local mode has it.
   const vaultHere = caps.sharing || (mode === "local" && canVault);
-  const vault = useQuery(api.vault.get, vaultHere ? { scope } : "skip");
+  const vault = useOfflineQuery(api.vault.get, vaultHere ? { scope } : "skip");
   // Changes apps proposed count too: they wait there for an answer.
   const minute = useMinute();
-  const proposed = useQuery(api.proposals.count, caps.changes ? { now: minute } : "skip");
+  const proposed = useHeld("proposals", useOfflineQuery(api.proposals.count, caps.changes ? { now: minute } : "skip"));
   // The rows from Templates down wait until the rows above them are known (the Vault appears when its query answers,
   // the folders replace their placeholder): drawn early, they jumped down a moment later (a layout shift on every
   // start, docs/perf/web-results.md). Never longer than a moment, so a query that keeps failing can't hide them.
@@ -553,7 +568,7 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
       <div key={f.id}>
         <FolderRow id={f.id} name={f.name} depth={depth} open={open} hasChildren={children.length > 0}>
           {children.length ? (
-            <button type="button" aria-label={open ? `Collapse ${f.name}` : `Expand ${f.name}`} aria-expanded={open} className="grid h-8 w-5 flex-none place-items-center rounded-chip text-faint hover:text-heading focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus" onClick={() => setFolderOpen(f.id, !open)}>
+            <button type="button" aria-label={open ? `Collapse ${f.name}` : `Expand ${f.name}`} aria-expanded={open} className="ui-hit grid h-8 w-5 flex-none place-items-center rounded-chip text-faint hover:text-heading focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus" onClick={() => setFolderOpen(f.id, !open)}>
               {open ? <ChevronDown size={12} aria-hidden /> : <ChevronRight size={12} aria-hidden />}
             </button>
           ) : (
@@ -609,7 +624,9 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
                 aria-label={starredOpen ? "Collapse Bookmarks" : "Expand Bookmarks"}
                 className="absolute right-1 top-1/2 grid h-6 w-6 -translate-y-1/2 place-items-center rounded-chip text-faint transition-colors hover:bg-[var(--glass-hover)] hover:text-heading focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
               >
-                {starredOpen ? <ChevronDown size={12} aria-hidden /> : <ChevronRight size={12} aria-hidden />}
+                {/* (The 44 pt touch area is on a span inside: on a tablet .ui-hit makes its element relative, and this
+                    button is absolute.) */}
+                <span aria-hidden className="ui-hit grid h-full w-full place-items-center">{starredOpen ? <ChevronDown size={12} /> : <ChevronRight size={12} />}</span>
               </button>
             ) : null}
           </div>

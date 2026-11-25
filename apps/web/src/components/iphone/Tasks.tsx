@@ -17,6 +17,7 @@ import type { TaskRow } from "@/components/views/TasksView";
 import { RootAvatar, RootPill } from "./RootBar";
 import { SwipeRow } from "./Swipe";
 import { SearchField } from "./Rows";
+import { ExitLi, ExitSection, useExitingList } from "./exit";
 
 type View = "inbox" | "today" | "upcoming" | "all" | "completed" | "mine";
 
@@ -28,6 +29,8 @@ const CHIPS: { id: View; label: string; short: string; Icon: LucideIcon }[] = [
   { id: "mine", label: "My tasks", short: "Mine", Icon: UserRound },
   { id: "completed", label: "Completed", short: "Done", Icon: CircleCheckBig },
 ];
+
+const NO_TASKS: TaskRow[] = [];
 
 /** How long a checked task stays in its list, ticked, before it goes (as in Reminders). */
 const CHECK_HOLD_MS = 420;
@@ -70,27 +73,41 @@ export function IphoneTasks({
   const [folded, setFolded] = useLocalStorage<Record<string, true>>("folevi:iphone-tasks-folded", {});
   const chip = CHIPS.find((c) => c.id === view)!;
 
+  // A task the person checks off, completes, reopens or moves away fades and folds out of the list (and an
+  // emptied group with it) once it has left the list's data; the rows below glide up.
+  const groupOf = (t: TaskRow) => (view === "upcoming" ? (t.dueDate ?? "none") : t.documentId);
+  const { entries, finish, expect } = useExitingList(tasks ?? NO_TASKS, (t) => `${groupOf(t)}:${t.blockId}`, (t) => t.blockId, view);
+  const toggle = (t: TaskRow, opts?: { felt?: boolean }) => {
+    expect(t.blockId);
+    onToggle(t, opts);
+  };
+
   const groups = useMemo(() => {
-    const list = tasks ?? [];
-    const out = new Map<string, { key: string; label: string; detail?: string; href?: string; items: TaskRow[] }>();
-    for (const t of list) {
+    const out = new Map<string, { key: string; label: string; detail?: string; href?: string; items: typeof entries; leaving: boolean }>();
+    for (const e of entries) {
+      const t = e.item;
       const byDay = view === "upcoming";
       const key = byDay ? (t.dueDate ?? "none") : t.documentId;
       const group = out.get(key);
-      if (group) group.items.push(t);
+      if (group) {
+        group.items.push(e);
+        group.leaving &&= e.leaving;
+      }
       else
         out.set(key, {
           key,
           label: byDay ? (key === "none" ? "No date" : dayLabel(key, today).name) : t.documentTitle || "Untitled",
           detail: byDay && key !== "none" ? dayLabel(key, today).date : undefined,
           href: byDay ? undefined : `/d/${t.documentId}`,
-          items: [t],
+          items: [e],
+          leaving: e.leaving,
         });
     }
     return [...out.values()];
-  }, [tasks, view, today]);
+  }, [entries, view, today]);
 
   const moveTo = (t: TaskRow, date: string, label: string) => {
+    expect(t.blockId);
     const previous = { dueDate: t.dueDate, dueTime: t.dueTime };
     const device = deviceId ?? undefined;
     update({ blockId: t.blockId, dueDate: date, deviceId: device }).then(
@@ -187,7 +204,7 @@ export function IphoneTasks({
             </li>
           ))}
         </ul>
-      ) : tasks.length === 0 ? (
+      ) : entries.length === 0 ? (
         <PhoneEmpty Icon={chip.id === "today" ? Sun : CircleCheckBig} title={filter ? "No tasks match that filter" : empty.title} body={filter ? undefined : empty.body} />
       ) : (
         groups.map((g) => {
@@ -201,34 +218,35 @@ export function IphoneTasks({
               return next;
             });
           return (
-            <section key={g.key} aria-label={g.detail ? `${g.label}, ${g.detail}` : g.label} className="mt-4">
-              <GroupHeader label={g.label} detail={g.detail} href={g.href} count={isFolded ? g.items.length : undefined} folded={isFolded} onFold={toggleFold} />
+            <ExitSection key={g.key} leaving={g.leaving} aria-label={g.detail ? `${g.label}, ${g.detail}` : g.label} className="mt-4">
+              <GroupHeader label={g.label} detail={g.detail} href={g.href} count={isFolded ? g.items.filter((e) => !e.leaving).length : undefined} folded={isFolded} onFold={toggleFold} />
               {isFolded ? null : (
                 <ul data-iphone-tappable="">
-                  {g.items.map((t) => (
-                    <li key={t.blockId}>
+                  {g.items.map(({ item: t, key, leaving }) => (
+                    <ExitLi key={t.blockId} leaving={leaving} onDone={() => finish(key)}>
                       <SwipeRow
                         leading={[
+                          // (Done leaves every view but Completed; Reopen leaves only Completed.)
                           t.status === "open"
-                            ? { label: "Done", icon: <Check />, tone: "#3f7d58", onAction: () => onToggle(t) }
-                            : { label: "Reopen", icon: <RotateCcw />, tone: "#6b6b73", onAction: () => onToggle(t) },
+                            ? { label: "Done", icon: <Check />, tone: "#3f7d58", removes: view !== "completed", onAction: () => toggle(t) }
+                            : { label: "Reopen", icon: <RotateCcw />, tone: "#6b6b73", removes: view === "completed", onAction: () => toggle(t) },
                         ]}
                         trailing={
                           t.status === "open"
                             ? [
-                                { label: "Tomorrow", icon: <SunMedium />, tone: "#c58a12", onAction: () => moveTo(t, addDays(today, 1), "tomorrow") },
-                                { label: "Date", icon: <CalendarClock />, tone: "#5b6ad0", onAction: () => onEdit(t) },
+                                { label: "Tomorrow", icon: <SunMedium />, tone: "#c58a12", removes: view === "today" || view === "upcoming", onAction: () => moveTo(t, addDays(today, 1), "tomorrow") },
+                                { label: "Date", icon: <CalendarClock />, tone: "#5b6ad0", removes: false, onAction: () => onEdit(t) },
                               ]
                             : []
                         }
                       >
-                        <TaskLine task={t} today={today} onToggle={onToggle} onOpen={() => onEdit(t)} showNote={view === "upcoming"} onDay={view === "today" || view === "upcoming"} />
+                        <TaskLine task={t} today={today} onToggle={toggle} onOpen={() => onEdit(t)} showNote={view === "upcoming"} onDay={view === "today" || view === "upcoming"} />
                       </SwipeRow>
-                    </li>
+                    </ExitLi>
                   ))}
                 </ul>
               )}
-            </section>
+            </ExitSection>
           );
         })
       )}

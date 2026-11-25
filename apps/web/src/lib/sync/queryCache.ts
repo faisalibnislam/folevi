@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from "react";
-import { useQuery } from "@/lib/convex/queries";
+import { useQueryState } from "@/lib/convex/queries";
 import { getFunctionName, type FunctionArgs, type FunctionReference, type FunctionReturnType } from "convex/server";
 import { canonicalJson } from "@folevi/editor-schema";
 import { useAppState } from "@/lib/app/state";
@@ -72,10 +72,16 @@ async function recall(accountKey: string, key: string): Promise<unknown> {
 /**
  * `useQuery`, plus the last answer seen on this device while there's no live one (offline, or still
  * loading): a list read once reads again with no connection. `fromCache` says the answer is the kept one.
+ * `failed` says the live query failed (it keeps retrying) and `retry` tries it again now.
  */
-export function useCachedQuery<Q extends FunctionReference<"query">>(query: Q, args: FunctionArgs<Q> | "skip"): { data: FunctionReturnType<Q> | undefined; fromCache: boolean } {
+export function useCachedQuery<Q extends FunctionReference<"query">>(
+  query: Q,
+  args: FunctionArgs<Q> | "skip",
+): { data: FunctionReturnType<Q> | undefined; fromCache: boolean; failed: boolean; retry: () => void } {
   const { profile } = useAppState();
-  const live = useQuery(query, args);
+  const state = useQueryState(query, args);
+  const live = state.data;
+  const { failed, retry } = state;
   const key = args === "skip" ? null : queryKey(getFunctionName(query), args);
   const memoryKey = key ? `${profile.id}|${key}` : null;
   const [loaded, setLoaded] = useState<{ key: string; value: unknown } | null>(null);
@@ -95,9 +101,9 @@ export function useCachedQuery<Q extends FunctionReference<"query">>(query: Q, a
       cancelled = true;
     };
   }, [key, memoryKey, waiting, profile.id]);
-  if (live !== undefined || !memoryKey) return { data: live, fromCache: false };
+  if (live !== undefined || !memoryKey) return { data: live, fromCache: false, failed, retry };
   const kept = memory.has(memoryKey) ? memory.get(memoryKey) : loaded?.key === key ? loaded.value : undefined;
-  return { data: kept as FunctionReturnType<Q> | undefined, fromCache: kept !== undefined };
+  return { data: kept as FunctionReturnType<Q> | undefined, fromCache: kept !== undefined, failed, retry };
 }
 
 /**

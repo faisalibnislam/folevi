@@ -242,6 +242,10 @@ object GateRules {
         return STEPS.indexOfFirst { it.first == key }.coerceAtLeast(0)
     }
 
+    /** A step's heading; the first greets the person by first name when the page sends it (revision 36), as the web does. */
+    fun heading(step: Int, firstName: String?): String =
+        if (step == 0 && !firstName.isNullOrBlank()) "Welcome, ${firstName.trim()}." else HEADINGS[step]
+
     val HEADINGS = listOf(
         "Welcome to Folevi",
         "What will you use Folevi for?",
@@ -980,7 +984,7 @@ private fun OnboardingGate(gate: GateChangedEvent, info: OnboardingGateInfo, ui:
             if (step == 4) {
                 Box(Modifier.padding(bottom = 20.dp).size(56.dp).gateCard(RoundedCornerShape(18.dp)), contentAlignment = Alignment.Center) { AiMark(30.dp) }
             }
-            Text(GateRules.HEADINGS[step], style = GateType.onboardingTitle, color = p.heading, modifier = Modifier.semantics { heading() })
+            Text(GateRules.heading(step, info.firstName), style = GateType.onboardingTitle, color = p.heading, modifier = Modifier.semantics { heading() })
             Text(GateRules.LEDES[step], style = PhoneType.body.copy(lineHeight = 26.sp), color = p.inkMuted, modifier = Modifier.padding(top = 14.dp))
             Spacer(Modifier.height(28.dp))
             when (step) {

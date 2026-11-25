@@ -1,0 +1,30 @@
+{
+  "kind": "event",
+  "name": "gate.changed",
+  "description": "Onboarding's first step, with the person's first name (revision 36).",
+  "data": {
+    "gate": "onboarding",
+    "title": "",
+    "message": "",
+    "busy": false,
+    "actions": [],
+    "fields": [],
+    "progress": null,
+    "migration": null,
+    "deviceLimit": null,
+    "e2ee": null,
+    "onboarding": {
+      "index": 0,
+      "total": 6,
+      "useCases": [],
+      "useCaseOptions": [],
+      "noteStyle": "",
+      "noteStyleOptions": [],
+      "appearance": "system",
+      "aiEnabled": true,
+      "step": "workspace",
+      "firstName": "Mia"
+    },
+    "error": null
+  }
+}

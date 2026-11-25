@@ -166,4 +166,11 @@ class GatesTest {
         compose.waitForIdle()
         assertEquals(listOf("retry" to null), sent)
     }
+
+    @Test fun firstStepGreetsByFirstNameWhenTheEngineSendsIt() {
+        org.junit.Assert.assertEquals("Welcome, Mia.", GateRules.heading(0, "Mia"))
+        org.junit.Assert.assertEquals("Welcome to Folevi", GateRules.heading(0, null))
+        org.junit.Assert.assertEquals("Welcome to Folevi", GateRules.heading(0, " "))
+        org.junit.Assert.assertEquals("What will you use Folevi for?", GateRules.heading(1, "Mia"))
+    }
 }

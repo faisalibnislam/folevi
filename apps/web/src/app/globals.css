@@ -977,6 +977,11 @@
 :root[data-iphone][data-iphone-keyboard] [data-iphone-scroll][data-native-chrome] > .fb-sheet { padding-bottom: 66px; }
 /* A note without artwork fills the screen like a sheet of paper (no card on a grey backdrop). */
 :root[data-iphone] [data-iphone-plain] > .fb-sheet { max-width: none !important; min-height: 100%; border-radius: 0; box-shadow: none; padding-top: calc(env(safe-area-inset-top) + 44px); }
+/* Under the native apps' bars (native chrome mode) the bars' room is the sheet's too, not the page's: the paper's
+   colour then runs up under the top bar instead of the page's plainer colour showing above it (a darker band in
+   dark mode). The words start where they did. */
+:root[data-iphone] [data-iphone-scroll][data-native-chrome][data-iphone-plain] { padding-top: 0; }
+:root[data-iphone] [data-iphone-scroll][data-native-chrome][data-iphone-plain] > .fb-sheet { padding-top: calc(var(--native-inset-top, 0px) + env(safe-area-inset-top) + 44px); }
 /* A note with a theme or a colour: the page edge to edge too, its cover band starting 12 pt under the bar's row
    (DocumentView's top padding), on the app's neutral colour, so it reads as a card with rounded top corners (the
    app's chrome stays neutral; the note carries its colour). No backdrop shows at its sides. */

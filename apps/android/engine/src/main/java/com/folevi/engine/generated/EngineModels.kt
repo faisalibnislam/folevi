@@ -1324,6 +1324,11 @@ data class OnboardingGateInfo(
     val noteStyleOptions: List<String>,
     val appearance: String,
     val aiEnabled: Boolean,
+    /**
+     * Revision 36: the person's first name, for the first step's "Welcome, {firstName}." (the native apps draw that
+     * heading themselves). Left out when the page doesn't know it yet.
+     */
+    val firstName: String? = null,
 )
 
 @Serializable

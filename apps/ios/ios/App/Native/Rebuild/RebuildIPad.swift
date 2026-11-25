@@ -16,9 +16,10 @@ import FoleviScreens
 enum RebuildIPad {
     /// lib/iphone.ts: `(max-width: 699px)` is compact.
     static let minWidth: CGFloat = 700
-    /// An iPhone window this wide or wider, of regular width, takes the wide layout (iPhone Duo's inner screen is
-    /// 951 pt across and 669 pt upright; its outer screen and a Split View half are compact).
-    static let phoneMinWidth: CGFloat = 600
+    /// An iPhone window this wide or wider, of regular width, takes the wide layout: the same 700 pt as everywhere
+    /// (the owner, 2026-11-25: iPhone Duo upright, 669 pt, shows the phone layout as today's app does; open across,
+    /// 951 pt, the wide one).
+    static let phoneMinWidth: CGFloat = 700
 
     /// Whether a window this wide shows the wide layout: an iPad window from 700 pt, an iPhone window of regular
     /// width (iPhone Duo open). Decided by size, never by the device's model.

@@ -38,3 +38,4 @@ done; no Play upload without the OK.
   it and Search as iOS's separate search button.
 - Lists (Calendar, Tasks and the like): plain rows on the screen's background, as today, not cards on grey.
 - Home in today's order: search field, recent notes, Catch me up, All notes / Drafts, Bookmarks, Folders.
+- iPhone Duo upright (open, 669 pt) shows the phone layout, as today's 700 pt rule (replaces "across or upright" from [[iphone-duo-decisions]]); open across stays the wide layout.

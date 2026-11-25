@@ -176,6 +176,19 @@ final class ServerTests: XCTestCase {
         XCTAssertEqual(again.accounts.first?.server, next.accounts[0].server)
     }
 
+    /// A places.json as the app wrote it before servers, every field set: Folevi Cloud accounts read the same and
+    /// are written back the same (no `server` key appears), so sign-in and switching work as before.
+    func testACurrentPlacesFileRoundTripsUnchanged() throws {
+        let file = #"{"v":1,"current":"acct:userA","library":true,"quickAdd":"library","lastAdded":"acct:userB","accounts":[{"userId":"userA","profileId":"prof1","name":"Ana","email":"ana@example.com","avatarUrl":"https://example.com/a.png","workspaces":[{"id":"w1","name":"Home","logoUrl":"https://example.com/w.png"},{"id":"w2","name":"Work"}],"unread":3,"reminders":2,"waiting":1},{"userId":"userB","name":"Ben","email":"ben@example.com","workspaces":[],"unread":0,"reminders":0,"waiting":0}]}"#
+        let state = try JSONDecoder().decode(ShellPlaces.State.self, from: Data(file.utf8))
+        XCTAssertEqual(state.current, "acct:userA")
+        XCTAssertEqual(state.accounts.map(\.userId), ["userA", "userB"])
+        XCTAssertTrue(state.accounts.allSatisfy { $0.server == nil }, "accounts from before are Folevi Cloud's")
+        let written = try JSONSerialization.jsonObject(with: JSONEncoder().encode(state)) as! NSDictionary
+        let original = try JSONSerialization.jsonObject(with: Data(file.utf8)) as! NSDictionary
+        XCTAssertEqual(written, original, "written back exactly as read")
+    }
+
     func testANewAccountTakesTheServerItsSignInWentTo() throws {
         let s = try XCTUnwrap(server())
         XCTAssertNil(ShellPlaces.server(of: nil), "no sign-in screen yet")

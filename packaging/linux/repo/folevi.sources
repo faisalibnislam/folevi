@@ -1,0 +1,6 @@
+Types: deb
+URIs: https://folevi.com/linux/apt
+Suites: stable
+Components: main
+Architectures: amd64 arm64
+Signed-By: /usr/share/keyrings/folevi-archive-keyring.gpg

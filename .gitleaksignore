@@ -60,3 +60,4 @@ b9ca0904fdc07051333200ea33436949fbf3ff8f:server/folevid/internal/connect/acme.go
 # The HANDOFF change log line about the entry above, which quoted that code.
 # Test fixtures in folevid and the Connect service (claude/sleepy-goodall-3cg4e7): made-up tokens and secrets.
 # docs/LINUX.md (claude/sleepy-goodall-3cg4e7 side): names the apt repository's signing key by its public fingerprint, not a secret.
+# The same script's made-up Vault demo login, brought back with the AppKit Mac app (claude/mac-webview).

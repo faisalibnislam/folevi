@@ -120,6 +120,13 @@ https://folevi.com/download/windows/Folevi-arm64-setup.exe and https://folevi.co
 Uploaded with `npx wrangler r2 object put folevi-updates/windows/<file> --remote` from CI run 45418586764 (the fixed build). The
 version came from `apps/desktop/RELEASE_VERSION` (1.5.73) because this branch's version.json predates 1.5.72.
 
+## Jump List and launcher actions
+
+Right-click Folevi in the Windows taskbar or Start menu: New Note, Quick Add Task and Today's Tasks
+(`src/jumplist.rs`, set once per launch). Linux's launchers show the same three from the .desktop file's actions
+(`packaging/linux/folevi.desktop.hbs`, in the .deb, .rpm, AppImage, Snap and Flatpak). Each opens a folevi:// link,
+which a running Folevi receives through the single-instance plugin.
+
 ## Not done yet
 
 - Updates: the Tauri updater is in the app and points at `folevi.com/download/desktop/<target>-<arch>/latest.json`,

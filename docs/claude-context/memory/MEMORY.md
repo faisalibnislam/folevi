@@ -55,3 +55,4 @@
 - [Layout rule: width decides](web-everywhere-layout-rules-2026-11-24.md) — 2026-11-24: under ~700 px every window (phone, folded Duo, narrow computer window) gets the phone layout with the bottom bar; an open Duo gets the tablet layout
 - [Web everywhere rules](web-everywhere-layout-rules-2026-11-24.md): 2026-11-24, width decides (under ~700 px = phone + bottom bar, open Duo = tablet); Instrument Sans everywhere; springs kept except Mac; Android light touches
 - [Foli AI multi-provider decisions](foli-ai-multi-provider-decisions.md): 2026-11-25, encrypted admin keys, provider per feature, Fast/Main/Heavy, cheap-first defaults, no fallback, real-cost credits
+- [Desktop feature parity](desktop-feature-parity.md): 2026-11-25, web and Mac features also go to Windows and Linux when relevant; keep docs/DESKTOP_PARITY.md current

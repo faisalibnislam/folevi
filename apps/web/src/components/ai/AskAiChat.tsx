@@ -24,8 +24,21 @@ export interface AskAiProps {
   hideLauncher?: boolean;
 }
 
-const loadPanel = () => import("./AskAiPanel").then((m) => ({ default: m.AskAiPanel }));
-const AskAiPanel = lazy(loadPanel);
+/** The chat once its code is in (preloaded on touch screens, below). */
+let loadedPanel: typeof import("./AskAiPanel").AskAiPanel | null = null;
+const loadPanel = () =>
+  import("./AskAiPanel").then((m) => {
+    loadedPanel = m.AskAiPanel;
+    return { default: m.AskAiPanel };
+  });
+// Already loaded, lazy() gets an answer that's settled on the spot and draws the chat in the same turn; a promise,
+// even a finished one, makes it wait a turn first, which put the stand-in sheet up for a frame and then swapped it
+// for the chat (the jump people saw on the iPhone).
+const AskAiPanel = lazy(() => {
+  const ready = loadedPanel;
+  if (!ready) return loadPanel();
+  return { then: (resolve: (m: { default: NonNullable<typeof loadedPanel> }) => void) => resolve({ default: ready }) } as unknown as ReturnType<typeof loadPanel>;
+});
 
 /**
  * The floating "Ask Foli AI" button. Its flower blooms now and then, drifts while Foli AI works (`thinking`, the
@@ -119,10 +132,18 @@ function StandInSheet({ open, onClose, onDrawn }: { open: boolean; onClose: () =
       }
     >
       <div className="min-h-0 flex-1" aria-busy="true" />
+      {/* Shaped like the chat's composer (its chips, the field and Send), so the chat takes over without a jump. */}
       <div className="flex-none px-4 pb-3 pt-1">
-        <div className="h-[104px] rounded-sheet bg-surface shadow-[0_0_0_0.5px_rgb(0_0_0/0.1),0_8px_24px_-10px_rgb(0_0_0/0.25)] dark:bg-raised">
-          <p className="px-4 pt-3 text-body leading-6 text-faint">Ask Foli AI anything…</p>
+        <div className="rounded-sheet bg-surface shadow-[0_0_0_0.5px_rgb(0_0_0/0.1),0_8px_24px_-10px_rgb(0_0_0/0.25)] dark:bg-raised">
+          <div aria-hidden className="flex gap-2 px-2.5 pt-2.5">
+            <span className="h-7 w-24 rounded-capsule bg-[var(--color-surface-sunken)]" />
+          </div>
+          <p className="min-h-[3rem] px-4 pb-1 pt-2.5 text-body leading-6 text-faint">Ask Foli AI anything…</p>
+          <div aria-hidden className="flex justify-end px-2.5 pb-2.5">
+            <span className="h-[34px] w-[34px] rounded-capsule bg-[var(--color-surface-sunken)]" />
+          </div>
         </div>
+        <p className="mt-2 px-4 text-center text-footnote leading-[18px] text-faint">Foli AI can make mistakes.</p>
       </div>
     </Sheet>
   );

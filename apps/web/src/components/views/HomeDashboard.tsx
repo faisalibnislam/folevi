@@ -1,7 +1,6 @@
 "use client";
 
-import { useQuery } from "@/lib/convex/queries";
-import { startTransition, useEffect, useState, type ReactNode } from "react";
+import { startTransition, useEffect, useLayoutEffect, useState, type ReactNode } from "react";
 import { useAiEnabled } from "@/components/ai/useAi";
 import { CatchUp } from "@/components/ai/CatchUp";
 import { ArrowRight, ChevronLeft, ChevronRight, Clock3, Folder, Layers } from "lucide-react";
@@ -24,12 +23,17 @@ import { useCardSizes } from "@/lib/cardSize";
 
 const GAP = 32;
 
+/** Today's reviews as last seen this session (its question moves with the clock, so the cache misses at each step). */
+let lastReviews: ReturnType<typeof useOfflineQuery<typeof api.study.summary>>;
+
 /** How many grid columns fit (auto-fill with a minimum width), so a section can show whole rows only. */
 function useColumns(min: number, gap = GAP) {
   // A callback ref, so a grid that mounts later (after data loads) is measured too.
   const [el, setEl] = useState<HTMLDivElement | null>(null);
   const [cols, setCols] = useState(4);
-  useEffect(() => {
+  // Measured before the first paint, so the grid is drawn at the right number of columns instead of 4 and then
+  // reflowing (the iPad's portrait width or an open sidebar fits 3).
+  useLayoutEffect(() => {
     if (!el) return;
     const measure = () => setCols(Math.max(1, Math.floor((el.clientWidth + gap) / (min + gap))));
     measure();
@@ -190,7 +194,11 @@ function NoteCarousel({ docs, label, recent, allCards }: { docs: Summary[] | und
  * once there's something to study at all.
  */
 function TodaysReviews() {
-  const today = useQuery(api.study.summary, useReviewWindow(5 * 60_000));
+  // (As last seen until the server answers, held across the review window's moves: the card is drawn with Home
+  // instead of appearing at the top a moment later and pushing the page down.)
+  const live = useOfflineQuery(api.study.summary, useReviewWindow(5 * 60_000));
+  if (live !== undefined) lastReviews = live;
+  const today = live ?? lastReviews;
   if (!today?.hasCards) return null;
   const waiting = today.due + today.new;
   return (

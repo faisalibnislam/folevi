@@ -75,7 +75,8 @@ export function ContextChips({ context, names, onChange, disabled }: { context: 
           {whole}
         </span>
       )}
-      {add.length && !disabled ? (
+      {/* (Shown while recent notes load too, so it doesn't pop in after the composer is drawn.) */}
+      {(add.length || recent === undefined) && !disabled ? (
         <MenuButton
           label="Add to what Foli AI reads"
           align="start"

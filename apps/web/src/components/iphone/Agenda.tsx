@@ -8,7 +8,7 @@ import { feel } from "@/lib/native/ui";
 import type { MenuEntry } from "@/components/ui/Menu";
 import { ViewChrome, useShell } from "@/components/app/Shell";
 import type { TaskRow } from "@/components/views/TasksView";
-import { calendarColor, eventWhen, type ExternalEvent } from "@/components/views/CalendarSubscriptions";
+import { calendarColor, eventWhen, eventsLoading, type ExternalEvent } from "@/components/views/CalendarSubscriptions";
 import { GlassTextButton } from "./Glass";
 import { RootAvatar, RootPill } from "./RootBar";
 import { TaskLine } from "./Tasks";
@@ -59,6 +59,8 @@ export function IphoneAgenda({
   const title = formatCalendarDate(selected, year ? { month: "long", year: "numeric" } : { month: "long" });
   const marked = (d: string) => (byDate.get(d)?.length ?? 0) + (eventsByDate.get(d)?.length ?? 0) > 0;
   const shown = days.filter((d) => d === selected || (byDate.get(d)?.length ?? 0) + (eventsByDate.get(d)?.length ?? 0) > 0);
+  // Calendar events not arrived yet either: an empty day waits too.
+  const eventsWaiting = eventsLoading(eventsByDate);
   const late = selected === today && overdue?.length ? [...overdue].sort((a, b) => ((a.dueDate ?? "") < (b.dueDate ?? "") ? -1 : 1)) : [];
 
   // A day picked in the strip starts the list there: back to the top of it.
@@ -121,7 +123,7 @@ export function IphoneAgenda({
         header: (
           // Stuck under the bar while the days scroll. WebKit measures a sticky offset from inside the
           // scroller's padding (which already clears the bar), Chromium (Android) from its edge.
-          <div ref={top} className="sticky top-[calc(env(safe-area-inset-top)+52px)] z-10 bg-canvas [:root[data-native=ios]_&]:top-0">
+          <div ref={top} className="sticky top-[calc(env(safe-area-inset-top)+60px)] z-10 bg-canvas [:root[data-native=ios]_&]:top-0">
             <WeekStrip today={today} selected={selected} onSelect={onSelect} marked={marked} />
           </div>
         ),
@@ -136,7 +138,7 @@ export function IphoneAgenda({
         return (
           <section key={d} aria-label={d === today ? `Today, ${label}` : label} className={i ? "mt-5" : "mt-2"}>
             <DayHeader date={d} today={today} onAdd={() => openQuickAdd({ due: d })} />
-            {empty && loading ? (
+            {empty && (loading || eventsWaiting) ? (
               <div aria-hidden className="mx-5 my-2 h-10 animate-pulse rounded-control bg-sunken motion-reduce:animate-none" />
             ) : empty ? (
               <p className="mx-5 flex min-h-14 items-center text-subheadline italic leading-5 text-faint [font-family:var(--font-display)]">Nothing planned</p>

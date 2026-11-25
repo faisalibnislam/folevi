@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useId, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { useTopLayer } from "@/components/ui/topLayer";
+import { POP_IN, popOut } from "@/lib/native/ui";
 import { useQueries } from "convex/react";
 import { AlertTriangle, Check, Cloud, CloudOff, FileText, GitMerge, ListTodo, Loader2, Paperclip, RefreshCw } from "lucide-react";
 import type { SyncStatus as EngineStatus } from "@folevi/editor-schema";
@@ -54,7 +55,19 @@ export function SyncStatus({ documentId, compact = true, align = "end" }: { docu
   const last = useRef(status);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
-  const panelStyle = useTopLayer(open, panelRef, buttonRef, { align, gap: 8 });
+  // Closing, the details fade out (popOut) as every popover does, rather than vanishing.
+  const [leaving, setLeaving] = useState(false);
+  const [wasOpen, setWasOpen] = useState(open);
+  if (wasOpen !== open) {
+    setWasOpen(open);
+    setLeaving(!open);
+  }
+  const panelStyle = useTopLayer(open || leaving, panelRef, buttonRef, { align, gap: 8 });
+  useLayoutEffect(() => {
+    const el = panelRef.current;
+    if (!leaving || !el) return;
+    return popOut(el, () => setLeaving(false));
+  }, [leaving]);
   const panelId = useId();
 
   useEffect(() => {
@@ -147,8 +160,8 @@ export function SyncStatus({ documentId, compact = true, align = "end" }: { docu
       <span className="sr-only" aria-live="polite">
         {announce}
       </span>
-      {open ? (
-        <div ref={panelRef} id={panelId} role="dialog" aria-label="Sync details" popover="manual" style={panelStyle} className={`ui-pop z-[100] border-0 text-ink w-72 max-w-[calc(100vw-2rem)] rounded-panel px-4 py-3.5 text-subheadline leading-snug animate-[folio-rise_160ms_var(--ease-folio)]`}>
+      {open || leaving ? (
+        <div ref={panelRef} id={panelId} role="dialog" aria-label="Sync details" popover="manual" style={panelStyle} className={`ui-pop z-[100] border-0 text-ink w-72 max-w-[calc(100vw-2rem)] rounded-panel px-4 py-3.5 text-subheadline leading-snug ${POP_IN}`}>
           <p className="flex items-center gap-2 font-semibold text-heading">
             <span className={`h-2 w-2 flex-none rounded-tiny ${dot}`} aria-hidden />
             {SYNC_LABELS[status]}

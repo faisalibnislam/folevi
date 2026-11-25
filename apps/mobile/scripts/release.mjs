@@ -11,7 +11,7 @@
 //    production website for signing in (no FOLEVI_SERVICE_URL or FOLEVI_SHELL_URL).
 // 3. version.json's version and build (scripts/version.mjs writes them; --build <n> raises the build first).
 // 4. A Release archive, signed automatically on team 7K32QQ2FX8, exported for App Store Connect with App Store
-//    profiles for the app and its share extension (made through the API when missing).
+//    profiles for the app, its share extension and its widgets (made through the API when missing).
 // 5. The upload (altool with the App Store Connect API key, read here only to sign API requests; never printed).
 import { execFileSync } from "node:child_process";
 import { createPrivateKey, sign } from "node:crypto";
@@ -29,7 +29,7 @@ const TEAM = "7K32QQ2FX8";
 const KEY_ID = process.env.FOLEVI_ASC_KEY_ID ?? "HS88CK5RQF";
 const ISSUER = process.env.FOLEVI_ASC_ISSUER ?? "9479ebb4-e44a-45b4-bfef-e625408057ae";
 const KEY_PATH = join(homedir(), ".appstoreconnect/private_keys", `AuthKey_${KEY_ID}.p8`);
-const TARGETS = { "com.folevi.ios": "Folevi App Store com.folevi.ios", "com.folevi.ios.share": "Folevi App Store com.folevi.ios.share" };
+const TARGETS = { "com.folevi.ios": "Folevi App Store com.folevi.ios", "com.folevi.ios.share": "Folevi App Store com.folevi.ios.share", "com.folevi.ios.widgets": "Folevi App Store com.folevi.ios.widgets" };
 const PROFILES_DIR = join(homedir(), "Library/Developer/Xcode/UserData/Provisioning Profiles");
 
 const argv = process.argv.slice(2);

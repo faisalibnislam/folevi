@@ -10,7 +10,7 @@ import { FolderGlyph } from "@/components/ui/FolderGlyph";
 import { GlassPill, PillButton } from "./Glass";
 import { MoreMenu } from "./RootBar";
 import { Sheet } from "./Sheet";
-import { feel } from "@/lib/native/ui";
+import { feel, letKeyboardGo } from "@/lib/native/ui";
 import type { InspectorTab } from "@/components/doc/Inspector";
 
 /** Top right of a note: Share and the note's "…" menu (the same actions as on the web). */
@@ -23,7 +23,9 @@ export function NoteTrailing({ onShare, shared, actions }: { onShare?: () => voi
         onMouseDown={(e) => e.preventDefault()}
         onClick={() => {
           feel("toggle");
-          (document.activeElement as HTMLElement | null)?.blur();
+          // (The page is laid out at its full height under the keyboard first, so nothing shows blank as it goes.)
+          const active = document.activeElement;
+          if (active instanceof HTMLElement && active !== document.body) letKeyboardGo(active);
         }}
         className="iphone-done ui-liquid ui-glass-press h-11 items-center rounded-capsule px-4 text-headline font-semibold leading-[22px] text-heading outline-none focus-visible:ring-2 focus-visible:ring-focus"
       >

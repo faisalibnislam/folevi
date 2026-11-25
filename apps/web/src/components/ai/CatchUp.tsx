@@ -32,19 +32,19 @@ export function CatchUp({ row = false }: { /** A list row (the iPhone app's Home
   const { scope, scopeKey, today } = useAppState();
   const brief = useAction(api.ai.brief);
   const stream = useAiStream();
-  const [data, setData] = useState<Brief | null>(null);
+  // The brief kept for this visit is read before the first frame, so Home doesn't draw the short row and then swap
+  // it for the brief, pushing everything under it down (the iPhone remounts Home on every visit).
+  const [data, setData] = useState<Brief | null>(() => savedBrief(scopeKey));
+  const [shownFor, setShownFor] = useState(scopeKey);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<AiProblem | null>(null);
-
+  if (shownFor !== scopeKey) {
+    setShownFor(scopeKey);
+    setData(savedBrief(scopeKey));
+  }
   useEffect(() => {
-    try {
-      const saved = sessionStorage.getItem(key(scopeKey));
-      if (saved) void loadMarkdown();
-      setData(saved ? (JSON.parse(saved) as Brief) : null);
-    } catch {
-      setData(null);
-    }
-  }, [scopeKey]);
+    if (data) void loadMarkdown();
+  }, [data]);
 
   const run = async () => {
     void loadMarkdown();
@@ -168,4 +168,15 @@ export function CatchUp({ row = false }: { /** A list row (the iPhone app's Home
       {error ? <AiProblemNotice problem={error} className={error.kind === "other" ? "mt-2 text-subheadline text-danger" : "mt-3"} /> : data && !busy ? <AiCreditsNote className="mt-3" /> : null}
     </section>
   );
+}
+
+/** This visit's brief for a place, kept in sessionStorage, or null. */
+function savedBrief(scopeKey: string): Brief | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const saved = sessionStorage.getItem(key(scopeKey));
+    return saved ? (JSON.parse(saved) as Brief) : null;
+  } catch {
+    return null;
+  }
 }

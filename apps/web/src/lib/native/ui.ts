@@ -7,7 +7,7 @@
 // Menus stay Folevi's (components/ui/Menu.tsx, in Folevi's fonts, owner's decision D1); only the lifted
 // preview of a long press is native (lib/native/lift.ts).
 
-import { nativeApp, type Haptic, type NativeAction, type NativeBridge, type NativeKeyboardFrame, type NativeRect } from "@/lib/nativeApp";
+import { inAndroidApp, inIosApp, nativeApp, type Haptic, type NativeAction, type NativeBridge, type NativeKeyboardFrame, type NativeRect } from "@/lib/nativeApp";
 
 export type { NativeKeyboardFrame, NativeRect } from "@/lib/nativeApp";
 
@@ -318,18 +318,215 @@ export function onKeyboardFrame(listener: (frame: NativeKeyboardFrame) => void):
   // Capacitor's Keyboard plugin (the Android app, an older iOS app): heights before the move.
   const willShow = (e: Event) => report(Math.round(Number((e as Event & { keyboardHeight?: number }).keyboardHeight) || viewportKeyboard()), 250);
   const willHide = () => report(0, 250);
-  const fromViewport = () => report(viewportKeyboard());
   window.addEventListener("keyboardWillShow", willShow);
   window.addEventListener("keyboardWillHide", willHide);
-  window.visualViewport?.addEventListener("resize", fromViewport);
+  // The Android app shrinks its web view by the keyboard's height, so the visual viewport soon says nothing covers
+  // the page: read there, the keyboard would seem gone and a sheet riding it would drop behind it. The plugin's
+  // events alone say where it is.
+  const viewport = inAndroidApp() ? null : window.visualViewport;
+  const fromViewport = () => report(viewportKeyboard());
+  viewport?.addEventListener("resize", fromViewport);
   return () => {
     window.removeEventListener("keyboardWillShow", willShow);
     window.removeEventListener("keyboardWillHide", willHide);
-    window.visualViewport?.removeEventListener("resize", fromViewport);
+    viewport?.removeEventListener("resize", fromViewport);
   };
 }
 
 /** Lets a drag down in a view that scrolls take the keyboard away with the finger (the note editor), or not. */
+/**
+ * Takes the keyboard away from `field` (a sheet closing while its field has the focus). In the iPhone app the web
+ * view first gets its full height back while the keyboard still covers the bottom, so the page is laid out and
+ * drawn there before the keyboard uncovers it (else that part showed blank for a moment); the focus goes a beat
+ * later. Elsewhere the focus simply goes now.
+ */
+export function letKeyboardGo(field: HTMLElement): void {
+  const leave = nativeApp()?.keyboardWillLeave;
+  if (typeof leave !== "function") return field.blur();
+  let done = false;
+  const go = () => {
+    if (done) return;
+    done = true;
+    window.removeEventListener("resize", onResize);
+    if (document.activeElement === field) field.blur();
+  };
+  // Once the page has been laid out at its full height and drawn (the resize, then two frames), or at the latest
+  // after 300 ms: the keyboard then uncovers a page that's already there.
+  const onResize = () => requestAnimationFrame(() => requestAnimationFrame(go));
+  window.addEventListener("resize", onResize, { once: true });
+  const before = window.innerHeight;
+  void leave()
+    .then(() => {
+      // Already at full height (no resize coming): go now.
+      if (window.innerHeight === before) window.setTimeout(() => window.innerHeight === before && go(), 60);
+    })
+    .catch(go);
+  window.setTimeout(go, 300);
+}
+
+/** Input types that never bring up the on-screen keyboard. */
+const NOT_TYPED = new Set(["button", "checkbox", "color", "file", "hidden", "image", "radio", "range", "reset", "submit"]);
+
+/** Whether `el` brings up the on-screen keyboard when it has the focus (a text input, a text area, editable text). */
+export function isTextField(el: Element | null | undefined): el is HTMLElement {
+  if (!(el instanceof HTMLElement)) return false;
+  return el.isContentEditable || el instanceof HTMLTextAreaElement || (el instanceof HTMLInputElement && !NOT_TYPED.has(el.type));
+}
+
+/** The text field inside `container` that has the focus (and so the on-screen keyboard), if any. */
+export function focusedFieldIn(container: Element | null | undefined): HTMLElement | null {
+  if (typeof document === "undefined" || !container) return null;
+  const a = document.activeElement;
+  return a && container.contains(a) && isTextField(a) ? a : null;
+}
+
+/**
+ * Closing something while a text field in it has the keyboard: lets the keyboard go (letKeyboardGo) and runs
+ * `then` once the field has lost the focus, at the latest after 350 ms, so what closes is still there while the
+ * keyboard leaves. With no field typing in it, or outside the app (the focus goes at once there), `then` runs now.
+ */
+export function afterKeyboardGoes(container: Element | null | undefined, then: () => void): void {
+  const field = focusedFieldIn(container);
+  if (!field) return then();
+  letKeyboardGo(field);
+  if (document.activeElement !== field) return then();
+  let done = false;
+  let timer = 0;
+  const finish = () => {
+    if (done) return;
+    done = true;
+    field.removeEventListener("blur", finish);
+    window.clearTimeout(timer);
+    then();
+  };
+  field.addEventListener("blur", finish);
+  timer = window.setTimeout(finish, 350);
+}
+
+/**
+ * Something placed above the bottom of the page with `var(--kb-ride, 0px)` in its `bottom` (the note's floating bar,
+ * its tools over the note), kept above the on-screen keyboard in the iOS and Android apps and moving with it. The
+ * iOS app shrinks the web view only after the keyboard has come up, and grows it back as the keyboard starts
+ * leaving (the Android app shrinks it as the keyboard sets off), so `--kb-ride` holds the part of the keyboard the
+ * web view doesn't account for yet, changed on the keyboard's own duration and curve. `stretch`: it's held at its top too, so its bottom edge moves (a transition on `bottom`) instead of the
+ * whole of it (a transform). `onMove` runs once each move has landed. Elsewhere it does nothing (`--kb-inset`, set
+ * by useKeyboardInset, lifts it there). Returns the function that stops.
+ */
+export function rideKeyboard(el: HTMLElement, { stretch = false, onMove }: { stretch?: boolean; onMove?: () => void } = {}): () => void {
+  if (typeof window === "undefined" || !(inIosApp() || inAndroidApp())) return () => undefined;
+  let screenH = window.innerHeight;
+  let keyboard = 0;
+  let anim: Animation | null = null;
+  let timer = 0;
+  // The lift is worked out by the stylesheet, from the keyboard's height and the screen's, less what the web view
+  // has already shrunk by (100dvh follows the web view in the same layout pass): all of the keyboard while the
+  // web view still fills the screen, nothing once it has shrunk, and never a frame out of place in between.
+  const LIFT = "max(0px, calc(var(--kb-k) - (var(--kb-screen) - 100dvh)))";
+  const place = (ms: number, curve: string) => {
+    const moving = ms > 0 && !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const easing = curve === "linear" ? "linear" : KEYBOARD_EASE;
+    anim?.cancel();
+    anim = null;
+    window.clearTimeout(timer);
+    const before = el.getBoundingClientRect().bottom;
+    if (stretch) el.style.transition = moving ? `bottom ${Math.round(ms)}ms ${easing}` : "";
+    if (keyboard) {
+      el.style.setProperty("--kb-k", `${keyboard}px`);
+      el.style.setProperty("--kb-screen", `${screenH}px`);
+      el.style.setProperty("--kb-ride", LIFT);
+    } else {
+      el.style.removeProperty("--kb-k");
+      el.style.removeProperty("--kb-screen");
+      el.style.removeProperty("--kb-ride");
+    }
+    if (!moving) return onMove?.();
+    if (stretch) {
+      // (The transition only for the keyboard's own move: the web view's resize after it must not animate.)
+      timer = window.setTimeout(() => {
+        el.style.transition = "";
+        onMove?.();
+      }, ms);
+      return;
+    }
+    const shift = before - el.getBoundingClientRect().bottom;
+    if (Math.abs(shift) <= 0.5) return onMove?.();
+    anim = el.animate([{ transform: `translateY(${shift}px)` }, { transform: "none" }], { duration: ms, easing });
+    anim.onfinish = () => onMove?.();
+  };
+  const off = onKeyboardFrame((f) => {
+    const next = f.visible ? Math.round(f.height) : 0;
+    if (next === keyboard) return;
+    keyboard = next;
+    place(f.duration, f.curve);
+  });
+  const onResize = () => {
+    // The screen's own height, taken while no keyboard is up (a turn, a window resized).
+    if (!keyboard) screenH = window.innerHeight;
+    onMove?.();
+  };
+  window.addEventListener("resize", onResize);
+  return () => {
+    off();
+    window.removeEventListener("resize", onResize);
+    window.clearTimeout(timer);
+    anim?.cancel();
+    el.style.removeProperty("--kb-k");
+    el.style.removeProperty("--kb-screen");
+    el.style.removeProperty("--kb-ride");
+    if (stretch) el.style.transition = "";
+  };
+}
+
+// ---------------------------------------------------------------------------------------------- popovers
+
+/** How long a menu or popover takes to open and to leave. */
+export const POP_MS = 150;
+
+/** How a menu or popover opens, everywhere (globals.css folio-rise; Reduce Motion makes it a fade there). */
+export const POP_IN = "animate-[folio-rise_150ms_var(--ease-folio)]";
+
+/**
+ * A popover or panel leaving: it fades out over POP_MS, shrinking a touch (Reduce Motion: the fade alone), as a
+ * menu does (Menu.tsx). `done` runs after, once no field in it has the focus any more (at the latest 350 ms after
+ * the fade), so a keyboard let go from it (afterKeyboardGoes) leaves before it goes; it's left faded until then.
+ * Returns the function that stops (and puts it back).
+ */
+export function popOut(el: HTMLElement, done: () => void): () => void {
+  let stopped = false;
+  let timer = 0;
+  let field: HTMLElement | null = null;
+  const finish = () => {
+    window.clearTimeout(timer);
+    field?.removeEventListener("blur", finish);
+    if (!stopped) done();
+  };
+  const faded = () => {
+    field = focusedFieldIn(el);
+    if (!field) return finish();
+    field.addEventListener("blur", finish, { once: true });
+    timer = window.setTimeout(finish, 350);
+  };
+  el.style.pointerEvents = "none";
+  const reduce = typeof window.matchMedia === "function" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const anim =
+    typeof el.animate === "function"
+      ? el.animate(reduce ? [{ opacity: 1 }, { opacity: 0 }] : [{ opacity: 1, transform: "scale(1)" }, { opacity: 0, transform: "scale(0.96)" }], {
+          duration: POP_MS,
+          easing: reduce ? "linear" : "ease-out",
+          fill: "forwards",
+        })
+      : null;
+  if (anim) anim.onfinish = faded;
+  else faded();
+  return () => {
+    stopped = true;
+    window.clearTimeout(timer);
+    field?.removeEventListener("blur", finish);
+    anim?.cancel();
+    el.style.pointerEvents = "";
+  };
+}
+
 export function setKeyboardInteractiveDismiss(on: boolean): void {
   nativeApp()?.keyboard?.({ interactiveDismiss: on });
 }

@@ -25,23 +25,19 @@ barely changed since (import swaps only).
 
 ## Layouts: one UI, picked by the window
 
-The web app decides in `apps/web/src/lib/iphone.ts`, by the window's size, never the model:
+The web app decides in `apps/web/src/lib/platform.ts` (with `lib/iphone.ts` on top), by the window's width, never the
+model (the owner's rule, 2026-11-24): any window under 700 px gets the phone interface (`components/iphone`: large
+titles, the floating bottom bar with Home, Tasks, Calendar, Foli AI and +, bottom sheets), and wider windows get the
+sidebar layout, with touch sizes on a touch device (`<html data-tablet>`, and `data-ipad` on Apple's). It switches in
+place as the window changes.
 
-- **iPhone**: the phone interface (`components/iphone`: large titles, the floating bottom bar with Home, Tasks,
-  Calendar, Foli AI and +, bottom sheets). Upright or sideways.
-- **iPad**: the sidebar layout with iPadOS touches (`<html data-ipad>`); under 700 pt (Slide Over, a third of Split
-  View) the phone interface, switching in place.
-- **iPhone Duo**: open (inner screen, 951 x 669 or 669 x 951 pt) is a window at least 600 x 600 pt, so it takes the
-  iPad's sidebar layout (`isWideIphone`, `isTabletApp`); closed (466 x 678) the phone interface, with iOS's side
-  column kept clear by the safe-area insets. Folding or unfolding switches the layout in place, without reloading
-  the page. (Checked: closed, on the iPhone Duo simulator; open: by the unit tests only, since the hinge couldn't be
-  moved from scripts on the build Mac.)
-- **Android**: the phone interface on phones (also sideways: short windows) and folded foldables; the sidebar layout
-  on tablets and unfolded foldables.
+- **iPhone**: the phone interface, upright or sideways.
+- **iPad**: the sidebar layout; Slide Over or a narrow Split View the phone interface.
+- **iPhone Duo**: closed, the phone interface, with iOS's side column kept clear by the safe-area insets; open (951 pt
+  wide), the sidebar layout. Checked: closed on the iPhone Duo simulator; open by `apps/web/test/platform.test.ts`.
+- **Android**: phones and folded foldables the phone interface; tablets and unfolded foldables the sidebar layout.
 - **Tabs** follow the web's rule everywhere the sidebar layout shows (a note from a list opens a tab that remembers its
   opener; the sidebar and New note open fresh tabs).
-
-Tests: `apps/web/test/mobile-layout.test.ts`.
 
 ## Build and run
 
@@ -107,8 +103,21 @@ The owner's words: "keep inside the app and sync if sever side changes the note 
 
 ## Not carried over yet (follow-ups)
 
-- iOS widgets, Control Center control, Siri and Shortcuts intents, Spotlight (their code is in `apps/ios`; add the
-  targets to `project.yml` when wanted). The share extension is in.
+Carried over (2026-11-25): the share extension, and the widgets (Today, Recent notes, Quick add, the Lock Screen's),
+the Control Center control, Siri and Shortcuts (App Intents, `FoleviShortcuts`) and Spotlight. They build from
+`apps/ios` in place (`project.yml`: the `FoleviWidgets` target, `com.folevi.ios.widgets`, App Group
+`group.com.folevi`). With an account the app fetches their data from the REST API with this device's token
+(`App/AppServices.swift`, as the iPhone and iPad app did); in local mode the page feeds them through FoleviNative
+(`setWidgetSnapshot`, `indexSpotlight`, `takeLocalActions`, `finishLocalAction`: `apps/ios` Native/LocalExtensions.swift,
+called by the web app's `LocalExtensions`). Taps on a widget, a Shortcut or a Spotlight result reach the page as
+folevi:// links (`App/DeepLinkRouter.swift`).
+
+Still missing:
+
+
+- The background refresh task (`apps/ios` Native/BackgroundRefresh.swift: BGAppRefreshTask for accounts that aren't
+  open). The widgets refresh their own copy on their timeline, and the app refreshes it as it comes and goes.
+- The widgets' PNG renders for checks in the Simulator (`apps/ios` Native/WidgetSnapshots.swift, Debug only).
 - iOS's native long-press preview, date and colour pickers and keyboard bar (the web's own versions show instead).
 - One bridge script for both platforms (Android still has its own `folevi-bridge.js` with its own plugin names).
 - Release scripts (`pnpm release` for TestFlight and Play) and `scripts/version.mjs` writing `apps/mobile`'s versions.

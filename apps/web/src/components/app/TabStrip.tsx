@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/Button";
 import { ContextMenu } from "@/components/ui/Menu";
 import { useQuery } from "@/lib/convex/queries";
 import { api } from "@/lib/convex/api";
+import type { FunctionReturnType } from "convex/server";
 import { useShell } from "./Shell";
 import { SidebarMenu } from "./SidebarMenu";
 import { SyncStatus } from "./SyncStatus";
@@ -119,6 +120,9 @@ function ViewIcon({ kind }: { kind: string }) {
  * Top strip: sidebar controls, then a Home tab (the last list view you were on) and one tab per open
  * page. Pages open in tabs; closing the current tab moves to its neighbour.
  */
+/** Every note title the tab strip has been told this session, by note. */
+const knownTitles = new Map<string, NonNullable<FunctionReturnType<typeof api.documents.titles>[string]>>();
+
 export function TabStrip() {
   const keys = useKeyLabels();
   const { sidebarOpen, openAsk } = useShell();
@@ -134,8 +138,12 @@ export function TabStrip() {
   // its title arrived, or renamed elsewhere, would keep the old one).
   // Each tab's note, and the nested page it shows (titles change elsewhere too).
   const noteTabs = tabs.filter((t) => !t.view);
-  const live = useQuery(api.documents.titles, noteTabs.length ? { documentIds: [...new Set(noteTabs.flatMap((t) => t.panes ?? (t.at && t.at !== t.id ? [t.id, t.at] : [t.id])))] } : "skip");
-  const paneTitle = (id: string) => live?.[id]?.title || "Untitled";
+  const fresh = useQuery(api.documents.titles, noteTabs.length ? { documentIds: [...new Set(noteTabs.flatMap((t) => t.panes ?? (t.at && t.at !== t.id ? [t.id, t.at] : [t.id])))] } : "skip");
+  // The titles known so far stand in while a new set is asked for (a tab opening changes the question, and the
+  // answer starts empty): the other tabs keep their titles instead of flashing "Untitled".
+  if (fresh) for (const [id, v] of Object.entries(fresh)) if (v) knownTitles.set(id, v);
+  const live = Object.fromEntries(noteTabs.flatMap((t) => [t.id, ...(t.panes ?? []), ...(t.at ? [t.at] : [])]).map((id) => [id, fresh?.[id] ?? knownTitles.get(id)]));
+  const paneTitle = (id: string) => live[id]?.title || tabs.find((t) => t.id === id)?.title || "Untitled";
   // The tab menu (right-click): close this tab, those to its right or left, or all of them.
   const [tabMenu, setTabMenu] = useState<{ id: string; at: { x: number; y: number } } | null>(null);
   const createDocument = useCreateDocument();

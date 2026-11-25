@@ -130,7 +130,7 @@ export function IphoneNoteList(props: IphoneNoteListProps) {
     </GlassTextButton>
   ) : (
     <>
-      {selectable && docs.length ? <GlassTextButton onClick={() => setSelecting(true)}>Select</GlassTextButton> : null}
+      {selectable && (loading || docs.length) ? <GlassTextButton onClick={() => setSelecting(true)}>Select</GlassTextButton> : null}
       <GlassPill>
         <MoreMenu items={screenMenu} label={`${title} options`} />
       </GlassPill>
@@ -163,7 +163,8 @@ export function IphoneNoteList(props: IphoneNoteListProps) {
           <GlassTextButton onClick={() => (all ? selection.clear() : selection.selectAll())}>{all ? "Deselect All" : "Select All"}</GlassTextButton>
         ) : undefined,
         status: selecting ? (picked ? `${picked} selected` : "Select notes") : undefined,
-        header: docs.length || query ? <SearchField filter placeholder="Filter notes" value={query} onChange={setQuery} /> : null,
+        // Drawn while the notes load too, so it doesn't pop in above them and push the list down.
+        header: loading || docs.length || query ? <SearchField filter placeholder="Filter notes" value={query} onChange={setQuery} /> : null,
       }}
     >
       {selecting ? (
@@ -181,7 +182,21 @@ export function IphoneNoteList(props: IphoneNoteListProps) {
         </nav>
       ) : null}
       {before}
-      {loading ? (
+      {loading && layout === "list" ? (
+        <div className="pt-2" aria-busy aria-label="Loading">
+          {[0, 1, 2, 3, 4, 5].map((i) => (
+            <div key={i} className="flex items-center gap-3 pl-5 pr-4">
+              <div className="grid h-7 w-7 flex-none place-items-center">
+                <div className="h-6 w-5 animate-pulse rounded-chip bg-sunken motion-reduce:animate-none" />
+              </div>
+              <div className="ui-row-sep flex min-h-16 min-w-0 flex-1 flex-col justify-center gap-2 py-2.5">
+                <div className="h-4 w-2/3 animate-pulse rounded-capsule bg-sunken motion-reduce:animate-none" />
+                <div className="h-3.5 w-1/3 animate-pulse rounded-capsule bg-sunken motion-reduce:animate-none" />
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : loading ? (
         <div className="grid grid-cols-2 gap-x-3.5 gap-y-5 px-4 pt-4" aria-busy aria-label="Loading">
           {[0, 1, 2, 3].map((i) => (
             <div key={i} className="aspect-[25/27] animate-pulse rounded-container bg-sunken motion-reduce:animate-none" />

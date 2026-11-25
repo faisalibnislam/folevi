@@ -64,6 +64,18 @@ function RecentCard({ doc }: { doc: Summary }) {
 }
 
 /** A note as a row (Bookmarks), with its actions on a long press. */
+/** Answers whose arguments move with the clock (each minute, each 5 minutes) miss any cache: the last one seen this
+ * session stands in until the new one arrives, so the Changes count and the Reviews tile don't drop out and come
+ * back on a Home visit (the iPhone draws Home anew each time). */
+const held = new Map<string, unknown>();
+function useHeld<T>(key: string, value: T | undefined): T | undefined {
+  if (value !== undefined) {
+    held.set(key, value);
+    return value;
+  }
+  return held.get(key) as T | undefined;
+}
+
 export function NoteRow({ doc }: { doc: Summary }) {
   const [ctx, setCtx] = useState<{ x: number; y: number } | null>(null);
   return (
@@ -100,19 +112,21 @@ export function IphoneHome() {
   const starredList = useOfflineQuery(api.documents.list, { scope, view: "starred", sort: "updated", paginationOpts: { numItems: SHOWN + 1, cursor: null } });
   const starredPage = useNotesWithLocal(starredList?.page, { include: "none" });
   const starred = starredList && starredPage ? { ...starredList, page: starredPage } : starredList;
-  const drafts = useQuery(api.organization.draftCount, { scope });
+  // As last seen until the server answers (here and below): the counts, the Reviews tile and the Vault row are
+  // drawn with Home instead of popping in a moment later and moving what's under them.
+  const drafts = useOfflineQuery(api.organization.draftCount, { scope });
   // Local mode has no Shared with Me or Changes (docs/LOCAL_MODE_PLAN.md §5.2).
   const caps = useCapabilities();
   const graph = useCanCall(api.aiGraph.graph);
-  const changes = useQuery(api.changes.list, caps.changes ? {} : "skip");
+  const changes = useOfflineQuery(api.changes.list, caps.changes ? {} : "skip");
   const minute = useMinute();
-  const proposed = useQuery(api.proposals.count, caps.changes ? { now: minute } : "skip");
-  const reviews = useQuery(api.study.summary, useReviewWindow(5 * 60_000));
+  const proposed = useHeld(`proposals:${JSON.stringify(scope)}`, useQuery(api.proposals.count, caps.changes ? { now: minute } : "skip"));
+  const reviews = useHeld(`reviews:${JSON.stringify(scope)}`, useOfflineQuery(api.study.summary, useReviewWindow(5 * 60_000)));
   // The Vault, for whoever has one here, as the sidebar lists it (Sidebar.tsx): the phone has no sidebar.
   const mode = useBackendMode();
   const canVault = useCanCall(api.vault.get);
   const vaultHere = caps.sharing || (mode === "local" && canVault);
-  const vault = useQuery(api.vault.get, vaultHere ? { scope } : "skip");
+  const vault = useOfflineQuery(api.vault.get, vaultHere ? { scope } : "skip");
   const org = useFolderTree(scope);
   // Folders with how many notes each holds (the folder index, with what's waiting to sync laid over it).
   const served = useOfflineQuery(api.organization.index, { scope, only: "folders" });

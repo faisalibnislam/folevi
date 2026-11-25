@@ -5,7 +5,7 @@ import { flushSync } from "react-dom";
 import { X } from "lucide-react";
 import { SPRINGS, VelocityTracker, prefersReducedMotion } from "@/lib/native/physics";
 import { safeInsets } from "@/lib/iphone";
-import { KEYBOARD_EASE, onKeyboardFrame } from "@/lib/native/ui";
+import { KEYBOARD_EASE, letKeyboardGo, onKeyboardFrame } from "@/lib/native/ui";
 import { dimAt, poseFor, releaseTarget, restingDetent, springFrames, springStart, type SheetPose } from "./sheetMotion";
 
 export type SheetSize = "fit" | "medium" | "large";
@@ -310,6 +310,11 @@ export function Sheet({
       const fromDim = s ? Number(getComputedStyle(s).opacity) || 0 : 0;
       stop();
       motion.current.closing = true;
+      // Typing in it: the keyboard goes down with the sheet, as on iOS, not half a second later once the sheet has
+      // gone (its field kept the focus until then, and the screen showed under a keyboard with nothing to type in).
+      const typing = document.activeElement;
+      // (A frame later: the sheet's own move has started by then and runs while the page is laid out again.)
+      if (typing instanceof HTMLElement && el.contains(typing)) requestAnimationFrame(() => letKeyboardGo(typing));
       const done = () => {
         if (!motion.current.closing) return;
         motion.current.closing = false;
@@ -705,7 +710,9 @@ export function Sheet({
       <div
         ref={wrap}
         style={s ? ({ height: `${s.h}px`, "--sheet-safe-b": `${safeBottom}px`, "--sheet-max": `${s.h - s.top - (card ? 24 : 10)}px` } as React.CSSProperties) : { visibility: "hidden" }}
-        className={card ? "pointer-events-none absolute inset-x-0 top-0 grid place-items-center" : "pointer-events-none absolute inset-x-0 top-0 flex flex-col justify-end"}
+        // (Clear of the side insets, so a sheet's content and its close button never sit under a closed iPhone
+        // Duo's status bar, which runs down the outer screen's right edge.)
+        className={card ? "pointer-events-none absolute inset-x-0 top-0 grid place-items-center pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)]" : "pointer-events-none absolute inset-x-0 top-0 flex flex-col justify-end pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)]"}
       >
         <div
           ref={panel}
@@ -715,7 +722,7 @@ export function Sheet({
           style={card ? undefined : { height: `var(--sheet-drag-h, ${height ?? "auto"})` }}
           className={
             card
-              ? `${SURFACE} pointer-events-auto flex max-h-[calc(var(--sheet-max)-var(--sheet-kb,0px))] w-[min(400px,calc(100vw-24px))] flex-col overflow-hidden rounded-sheet outline-none`
+              ? `${SURFACE} pointer-events-auto flex max-h-[calc(var(--sheet-max)-var(--sheet-kb,0px))] w-[min(400px,calc(100%-24px))] flex-col overflow-hidden rounded-sheet outline-none`
               : // Attached to the screen's bottom and side edges at every height, round only at the top (the
                 // display's own corners round its foot); its surface runs on behind the home indicator.
                 `${SURFACE} pointer-events-auto flex max-h-[var(--sheet-max)] flex-col overflow-hidden rounded-t-sheet pb-[var(--sheet-kb,0px)] outline-none [@media(orientation:landscape)]:mx-auto [@media(orientation:landscape)]:w-full [@media(orientation:landscape)]:max-w-[560px]`

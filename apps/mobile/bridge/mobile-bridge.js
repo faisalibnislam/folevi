@@ -20,6 +20,13 @@
   // Taken now, before any page script runs: the page replacing either later changes nothing here.
   var nativePromise = capacitor.nativePromise.bind(capacitor);
   var registerPlugin = typeof capacitor.registerPlugin === "function" ? capacitor.registerPlugin.bind(capacitor) : null;
+  // registerPlugin comes with @capacitor/core, which the page may never load; Capacitor's own native bridge already
+  // has every plugin the app registered in Capacitor.Plugins, ready from the start, so their events come from there.
+  var plugins = capacitor.Plugins && typeof capacitor.Plugins === "object" ? capacitor.Plugins : null;
+  var pluginObject = function (name) {
+    if (registerPlugin) return registerPlugin(name);
+    return (plugins && plugins[name]) || null;
+  };
   var ios = PLATFORM === "ios";
 
   var failure = function (e) {
@@ -97,7 +104,7 @@
       if (at >= 0) list.splice(at, 1);
     };
   };
-  var host = registerPlugin ? registerPlugin("FoleviHost") : null;
+  var host = pluginObject("FoleviHost");
   if (host && typeof host.addListener === "function") {
     host.addListener("event", function (e) {
       if (e && typeof e.plugin === "string" && typeof e.event === "string") emit(e.plugin, e.event, e.data);
@@ -105,7 +112,7 @@
   }
   /** A Capacitor plugin's event (App's appStateChange, Keyboard's moves). */
   var onPlugin = function (name, event, cb) {
-    var p = registerPlugin ? registerPlugin(name) : null;
+    var p = pluginObject(name);
     if (!p || typeof p.addListener !== "function") return function () {};
     var handle = Promise.resolve(p.addListener(event, cb)).catch(function () {
       return null;
@@ -151,7 +158,67 @@
     }
   };
 
-  var bridge = Object.freeze({
+  // Local mode on iOS (no account, so no REST API for the widgets, Shortcuts and Spotlight): the page that holds the
+  // library feeds them and takes what they did meanwhile (apps/ios Native/LocalExtensions.swift). Android has none.
+  var localExtensions = !ios
+    ? {}
+    : {
+        /** The widgets' tasks and recent notes, and the notes Shortcuts can pick from (`catalog`). */
+        setWidgetSnapshot: function (snapshot) {
+          var s = snapshot || {};
+          return quietly(call("FoleviNative", "setWidgetSnapshot", { day: String(s.day || ""), tasks: s.tasks || [], notes: s.notes || [], catalog: s.catalog || [] })).then(function () {});
+        },
+        /** What a widget, Siri or Shortcuts did while the page wasn't there, oldest first. */
+        takeLocalActions: function () {
+          return quietly(call("FoleviNative", "takeLocalActions")).then(function (r) {
+            return (r && r.value) || [];
+          });
+        },
+        /** An action is in the library now (or there was nothing to do): the app lets it go. */
+        finishLocalAction: function (id) {
+          return quietly(call("FoleviNative", "finishLocalAction", { id: String(id) })).then(function () {});
+        },
+        /** The notes Spotlight finds ([{ id, title, excerpt, location, starred, updatedAt }]), exactly these. */
+        indexSpotlight: function (items) {
+          return quietly(call("FoleviNative", "indexSpotlight", { items: items || [] })).then(function () {});
+        },
+      };
+  // The app's "folevi:…" window events (a widget or an intent queued something: "folevi:local-actions").
+  listen("FoleviHost", "windowEvent", function (data) {
+    var name = data && typeof data.name === "string" ? data.name : "";
+    if (/^folevi:[a-z-]+$/.test(name)) window.dispatchEvent(new Event(name));
+  });
+
+  // iOS: the keyboard's own moves, before it moves (its height when it lands, the duration and iOS's curve), from
+  // the app (apps/ios Native/UI/KeyboardBridge.swift), as the iPhone and iPad app sent them. Without these the page
+  // falls back to Capacitor's keyboard events and the visual viewport, which reads "no keyboard" once the web view
+  // has shrunk for it, so a sheet's composer dropped behind the keyboard.
+  var keyboardMoves = !ios
+    ? {}
+    : {
+        /** Every move of the keyboard ({ height, duration, curve, visible, late }); returns the function that stops. */
+        onKeyboard: function (listener) {
+          return listen("FoleviNative", "keyboard", function (event) {
+            if (!event) return;
+            try {
+              var late = Number(event.sentAt) > 0 ? Math.max(0, Math.min(250, Date.now() - Number(event.sentAt))) : 0;
+              listener({ height: Number(event.height) || 0, duration: Number(event.duration) || 0, curve: event.curve === "keyboard" ? "keyboard" : "linear", visible: !!event.visible, late: late });
+            } catch (e) {
+              /* the page's own listener failing changes nothing here */
+            }
+          });
+        },
+        /** The page is about to let the keyboard go: the web view takes its full height back first (drawn under it). */
+        keyboardWillLeave: function () {
+          return quietly(call("FoleviNative", "keyboardWillLeave")).then(function () {});
+        },
+        /** { interactiveDismiss }: whether a drag down in a scrolling view takes the keyboard with the finger. */
+        keyboard: function (o) {
+          return quietly(call("FoleviNative", "keyboard", { interactiveDismiss: !!(o && o.interactiveDismiss) })).then(function () {});
+        },
+      };
+
+  var bridge = Object.freeze(Object.assign(localExtensions, keyboardMoves, {
     platform: PLATFORM,
     version: VERSION,
     haptic: haptic,
@@ -303,7 +370,7 @@
       });
       return stop;
     },
-  });
+  }));
 
   Object.defineProperty(window, "foleviNative", { value: bridge, enumerable: false, configurable: false, writable: false });
 

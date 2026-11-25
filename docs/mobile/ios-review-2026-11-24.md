@@ -30,7 +30,60 @@ load average was 100 to 700 throughout, so absolute times are pessimistic; compa
 ### Memory (web content)
 | Severity | Location | Before | After | Why |
 | --- | --- | --- | --- | --- |
-| MEDIUM | The web app's JavaScript heap (the note page) | Web content 131 MB at Home, 263 MB after 20 rounds of opening and closing two notes, 219 MB after WebKit's low-memory signal (`org.WebKit.lowMemory`): about 4 MB kept per round | For the web session: a heap snapshot in Safari's Web Inspector (Develop > Simulator) around a note open and close | Grows for as long as notes are opened; the native app stayed flat at 25 to 26 MB. Not listeners or timers: window listeners, intervals and Resize/Mutation observers stayed balanced, and the DOM went back to 487 elements with no editor left |
+| MEDIUM | The iPhone layout's note page under WebKit (`components/iphone` and what it renders around a note) | Opening and closing "Welcome to Folevi" 20 times: web content 131 to 300 MB, 238 to 241 MB after WebKit's low-memory signal, about 5 MB kept per open | For the web session (see the follow-up below) | Grows for as long as notes are opened, until iOS ends the web view |
+
+**Follow-up (2026-11-24, at the main session's request).** The web session found no leak in Chromium heap snapshots or in
+WebKit under Playwright, so the steps were narrowed on the simulator. Every run is a fresh launch of the Debug build
+(production web export), local library on this device ("This device only", the sample notes), iPhone 18 Pro or iPad Pro
+13 (iOS 27.2), light mode, one round = tap the Home card, wait 2 s, close, wait 2 s; memory is the app's WebContent
+process (`footprint`):
+
+| Run | Layout | Rounds and note | Closed with | Start | After 20 | After `org.WebKit.lowMemory` |
+| --- | --- | --- | --- | --- | --- | --- |
+| A | iPhone | Home to Tasks and Calendar, no notes | history.back() | 134 MB | 139 MB | 113 MB |
+| B | iPhone | "Reading Shelf" + "Welcome to Folevi", 40 rounds | history.back() | 135 MB | 263 MB (344 MB at 40) | 299 MB |
+| C1 | iPhone | "Welcome to Folevi" twice per round | history.back() | 134 MB | 270 MB | 219 MB |
+| D | iPhone | "Welcome to Folevi" | the note's Back button | 131 MB | 300 MB | 241 MB |
+| E | iPhone | as D, with Capacitor's logging and web inspection off (as in releases) | Back button | 128 MB | 300 MB | 238 MB |
+| F | iPad (sidebar layout) | "Welcome to Folevi" | Back button | 135 MB | 189 MB (levels off) | 136 MB |
+
+| G | iPhone, Reduce Motion on (no screen transitions) | "Welcome to Folevi" | Back button | 130 MB | 209 MB | 173 MB |
+| H | iPhone, transitions on, every animation cancelled and its callbacks dropped after the move | same | Back button | 128 MB | 300 MB | 233 MB |
+| I | iPhone, transitions on, no picture (an empty element instead of the screen's copy) | same | Back button | 130 MB | 207 MB | 172 MB |
+| J | iPhone, copy without `contenteditable`, its fields disabled | same | Back button | 129 MB | 295 MB | 232 MB |
+| K | iPhone, copy made and trimmed but never shown | same | Back button | 130 MB | 210 MB | 172 MB |
+| L | iPhone, copy shown with nothing in it scrollable | same | Back button | 129 MB | 296 MB | 234 MB |
+| M | iPhone, copy shown without its images | same | Back button | 124 MB | 300 MB | 238 MB |
+| N | iPhone, copy shown without `inert` and `aria-hidden` | same | Back button | 127 MB | 308 MB | 241 MB |
+| O | iPhone, copy shown without `will-change` | same | Back button | 129 MB | 308 MB | 241 MB |
+| P | iPhone, copy emptied after the move (shipped) | same | Back button | 131 MB | 281 MB | 216 MB |
+
+| Q | iPhone, PR 74's `transitions.ts` (finished animations let go: `effect = null`, handlers dropped) | same | Back button | 136 MB | 244 MB | **138 MB** |
+| R | iPhone, PR 74 plus emptying the copy (1.5.75's change) | same | Back button | 130 MB | 249 MB | **140 MB** |
+
+**Fixed by PR 74 (2026-11-24):** with the web session's change, WebKit's low-memory signal brings the web view back to
+its starting level after 20 note opens (138 MB against 136 MB at the start), so nothing is kept per open any more. The
+peak before the signal (246 MB) is garbage not yet collected. My cancel-and-drop test (H) didn't detach the effects;
+PR 74 does. The partial fix in 1.5.75 (emptying the copy) becomes unnecessary once PR 74 is in: with both (R) the result is the same as PR 74 alone, and the other 2 MB per open seen without the copy (G, I, K) is gone too, so nothing is left.
+
+What it is, as far as these runs go (2026-11-24, second follow-up):
+- About 60% of the growth is the **screen copy the iPhone layout shows during a move** (`picture()` in
+  `components/iphone/transitions.ts`, a `cloneNode(true)` of the screen being left): with no copy (I), or with the
+  copy made but not shown (K), the growth matches having no transitions at all (G). A shown copy is kept after it's
+  removed, by something none of these switches reach: not its animations (H), scroll areas (L), images (M), editing
+  surfaces (J), accessibility attributes (N) or compositing (O). Emptying the copy after the move (P, shipped) gives
+  back about a third of it (216 MB against 232 to 241 MB).
+- The rest, about 2 MB per open (G, I, K: 172 to 173 MB against iPad's 136 MB), is something else in the iPhone layout.
+- Both need a heap snapshot to name what holds them (Safari's Web Inspector on the Simulator).
+
+- Not WebKit's caches: JIT code is 1.2 MB and graphics memory negligible; the growth is in "WebKit Malloc" (184 of
+  247 MB in run D), where JavaScript objects and WebKit's page objects live, and the low-memory signal doesn't free it.
+- Not the bridge: its event listeners (`listen`) and Capacitor plugin listeners stayed at the same counts; window
+  listeners, intervals and Resize/Mutation observers stayed balanced; the page returned to 487 elements with no editor.
+- Not the close path or debug logging (D, E), and not the shared note page (F: none on iPad).
+- So it is something the **iPhone layout** keeps per note open that WebKit's collector can't free, invisible in
+  Chromium. Next step: a heap snapshot in Safari's Web Inspector (Develop > Simulator > Folevi) on a Debug build before
+  and after five opens, comparing the largest retained types; that needs Safari's window, which these tools can't drive.
 
 ### Launch and local mode's network rules
 | Severity | Location | Before | After | Why |
@@ -60,4 +113,4 @@ wait 0.25 s warm (1.3 s cold under heavy load) for the library to open.
   note open and close with `footprint`; `elementFromPoint` taps 6 to 20 pt outside each fixed control; `tsc` and eslint.
 - Not verified: a real device, Reduce Transparency (no `simctl` switch), iPhone Duo open, VoiceOver itself, the iPad
   fixes (handed over).
-- Verdict: **Needs changes** (MEDIUM items with the web session: iPad touch targets and the web content memory growth).
+- Verdict: **Needs changes** (MEDIUM items with the web session: iPad touch targets and the iPhone layout's memory growth).

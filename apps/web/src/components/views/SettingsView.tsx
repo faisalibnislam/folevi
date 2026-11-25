@@ -327,7 +327,7 @@ function IpadSubscreenBar({ title, actions }: { title: string; actions: (el: HTM
   const screens = useSettingsScreens();
   return (
     <div className="flex items-center gap-2 px-3 pb-1">
-      <PillButton label="Back" onClick={() => screens?.back()}>
+      <PillButton label="Back" data-back="" onClick={() => screens?.back()}>
         <ChevronLeft size={24} strokeWidth={2.2} aria-hidden />
       </PillButton>
       <h2 className="ui-large-title min-w-0 flex-1 truncate !text-title-1">{title}</h2>

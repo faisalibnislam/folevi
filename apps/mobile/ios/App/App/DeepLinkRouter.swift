@@ -1,6 +1,7 @@
 // Every way into the app lands here and goes to the page as a folevi:// link (the "App" plugin's "appUrlOpen" event,
 // which bridge/mobile-bridge.js hands to foleviNative.onCommand and the page reads with lib/deepLink.ts): links from
-// other apps, universal links to app.folevi.com, notifications and Handoff of a Folevi page. Links that arrive
+// other apps and widgets, universal links to app.folevi.com, notifications, App Intents (Siri, Shortcuts, the Control
+// Center control: PendingLink), Spotlight results and Handoff of a Folevi page. Links that arrive
 // before the page's bridge is up (a cold launch) wait here until it says it's ready.
 import CoreSpotlight
 import UIKit
@@ -34,6 +35,11 @@ enum DeepLinkRouter {
         let early = waiting
         waiting = []
         early.forEach(open)
+        openPending()
+    }
+
+    /// A link a widget or an App Intent left in the App Group (it ran before the app was up, or in an extension).
+    static func openPending() {
         if let url = PendingLink.take() { open(url) }
     }
 

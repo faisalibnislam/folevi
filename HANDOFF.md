@@ -1233,6 +1233,15 @@ account button should move past iPadOS's window buttons).
   - Dialog and command palette: the keyboard leaves first (PR 83), then the 150 ms fade (PR 82).
   - The Downloads and Apps pages' pills use `rounded-control` (the corner test refuses `rounded-full`).
   - Auto-merge was turned off on those PRs; they close as merged when this lands.
+  - Found by building the apps and by CI's e2e run, and fixed on this branch: PRs 66, 69 and 83 carried the
+    SwiftUI-era `apps/mac/project.yml` (the Mac app did not build; main's file is back, with `ShellServer.swift`);
+    PR 82's 150 ms closing fade left the page inert, so typing right after a dialog closed was lost
+    (`ui/closing.ts` now closes the dialog first and fades its picture as an inert manual popover); PR 83's
+    pointer-event swipe rows stayed open after a quick tap elsewhere in Chromium on Linux (they also close on a
+    touch `pointerdown` outside the list).
+  - Released from this branch as **1.6.78** (build 102), a Big update cut with `scripts/version.mjs release update`
+    (the owner asked for 1.6.0; a Big update keeps the patch number, and 1.6.78 meets Folevi Server's
+    `minAppVersion` 1.6.0).
 - 2026-11-25: CI secret scan reads only the history HEAD reaches (`--log-opts=HEAD`, owner's OK), not every fetched
   branch: test tokens on unmerged branches (Folevi Server, Linux stores) had failed the required check on every PR.
 - 2026-11-25: Notes say Android is active (the Capacitor app, PR 69, Play internal testing); only the native Compose

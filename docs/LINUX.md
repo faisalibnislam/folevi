@@ -215,7 +215,9 @@ browser for a day at a time). Upload: `snapcraft upload --release=stable <snap>`
   the snap a second launch or a `folevi://` link opens a second window. The yaml says how to bring it back.
 - `password-manager-service` (the keyring) doesn't connect on its own; until the Store grants auto-connection the
   sign-in falls back to the app's data folder. People can run `snap connect folevi:password-manager-service`.
-- The launcher and Store icon is the snap's own `meta/gui/icon.png` (from `packaging/linux/icons/512x512.png`).
+- The launcher icon is the snap's own `meta/gui/icon.png` (from `packaging/linux/icons/512x512.png`). The Store page's
+  icon, summary and description are separate: after an icon or text change run `snapcraft upload-metadata --force
+  <snap>` (done 2026-11-25; before that the page showed a grey placeholder).
 
 ## App icons
 

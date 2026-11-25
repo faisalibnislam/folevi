@@ -203,15 +203,26 @@ online at `https://folevi.com/download/linux/screenshots/` (also in `packaging/l
 
 ## Snap Store
 
-Owner's OK 2026-11-25. `packaging/linux/snap/snapcraft.yaml` repackages the .deb with the gnome extension (core24);
-`packaging/linux/scripts/snap-build.sh <.deb> <out>` builds it for the machine's architecture with LXD (the VM
-builds arm64; amd64 needs an amd64 Ubuntu machine, CI, or `snapcraft remote-build`, which builds both on Launchpad).
+Owner's OK 2026-11-25. The name `folevi` is registered to the owner's account (faisalibnislam), login kept in the
+Lima VM (`snapcraft login`, file storage, expires 2027-11-25). `packaging/linux/snap/snapcraft.yaml` repackages the
+.deb with the gnome extension (core24); `packaging/linux/scripts/snap-build.sh <.deb> <out>` builds arm64 in the VM
+with LXD. amd64: `snapcraft remote-build --build-for amd64 --launchpad-accept-public-upload` from a git folder holding
+`snap/snapcraft.yaml`, `icons/` and the amd64 .deb as `folevi.deb` (built on Launchpad; its access is approved in the
+browser for a day at a time). Upload: `snapcraft upload --release=stable <snap>`.
 
-The owner's account does the store side: `snapcraft login` (their Ubuntu One account), `snapcraft register folevi`,
-then `snapcraft upload --release=stable <snap>` for each architecture. Store review: the `password-manager-service`
-plug (keyring) and the D-Bus slot `com.folevi.Folevi.SingleInstance` (the single-instance plugin's name) need a
-manual review before they connect on their own; until then the sign-in falls back to the app's data folder and a
-second launch opens a second window. Screenshots are set in the store listing (the same files).
+- No D-Bus slot (owner's pick 2026-11-25): a `dbus` slot needs a manual Store review (revision 1 was held for it).
+  Without it the single-instance plugin can't own `com.folevi.Folevi.SingleInstance` and launches normally, so in
+  the snap a second launch or a `folevi://` link opens a second window. The yaml says how to bring it back.
+- `password-manager-service` (the keyring) doesn't connect on its own; until the Store grants auto-connection the
+  sign-in falls back to the app's data folder. People can run `snap connect folevi:password-manager-service`.
+- The launcher and Store icon is the snap's own `meta/gui/icon.png` (from `packaging/linux/icons/512x512.png`).
+
+## App icons
+
+Every Linux package uses `packaging/linux/icons/` (16 to 512 px), made by `apps/desktop/scripts/icons.mjs` from
+`apps/desktop/build/icon-1024.png` (the iPhone, iPad and Mac artwork as GNOME's rounded square with a margin), the
+same icon as Windows. Until 2026-11-25 they were the web app's `icon-512.png` (full bleed, stray coloured edge
+pixels); the published 1.5.75 .deb, .rpm and AppImage still carry that one until the next Linux release.
 
 ## Testing
 

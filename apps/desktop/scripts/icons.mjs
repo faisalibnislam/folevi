@@ -4,6 +4,8 @@
 //   build/icon-1024.png   the artwork as a rounded square on a clear canvas (Windows 11's and GNOME's app icon
 //                         shape), which `tauri icon` turns into src-tauri/icons/ (icon.ico, the PNG sizes)
 //   src-tauri/icons/tray.png  the notification area icon: the round mark (its white F reads on light and dark)
+//   packaging/linux/icons/<n>x<n>.png  Linux's hicolor sizes (16 to 512) from build/icon-1024.png, for the .deb, .rpm,
+//                         AppImage, Flatpak and Snap (tauri.linux.conf.json and the packaging read these)
 // Run after the artwork changes: node apps/desktop/scripts/icons.mjs (sharp from the workspace's dependencies).
 // The outputs are committed, so a build needs neither sharp nor the artwork.
 import { createRequire } from "node:module";
@@ -32,4 +34,9 @@ writeFileSync(join(root, "build/icon-1024.png"), icon);
 const r = spawnSync(join(root, "node_modules/.bin/tauri"), ["icon", "build/icon-1024.png", "-o", "src-tauri/icons"], { cwd: root, stdio: "inherit" });
 if (r.status !== 0) process.exit(r.status ?? 1);
 writeFileSync(join(root, "src-tauri/icons/tray.png"), await sharp(MARK).resize(32, 32, { kernel: "lanczos3" }).png().toBuffer());
-console.log("icons: src-tauri/icons/ from build/icon-1024.png, and tray.png");
+const linux = join(repo, "packaging/linux/icons");
+mkdirSync(linux, { recursive: true });
+for (const n of [16, 22, 24, 32, 48, 64, 128, 256, 512]) {
+  writeFileSync(join(linux, `${n}x${n}.png`), await sharp(icon).resize(n, n, { kernel: "lanczos3" }).png().toBuffer());
+}
+console.log("icons: src-tauri/icons/ and packaging/linux/icons/ from build/icon-1024.png, and tray.png");

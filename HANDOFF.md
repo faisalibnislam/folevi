@@ -626,8 +626,8 @@ account button should move past iPadOS's window buttons).
   already go to v1.5.76, so nothing new is cut for this.
 - Folevi for Linux stores (PR 99 `claude/linux-stores`, owner's OK 2026-11-25; docs/LINUX.md): apt and rpm
   repositories LIVE at `folevi.com/download/linux/apt` and `/rpm` (1.5.75), checked by installing from the live
-  addresses on Ubuntu 24.04, Debian 12, Fedora 41, openSUSE Tumbleweed (arm64 containers). Snap: waits on the owner's
-  `snapcraft login` in the VM, then register `folevi`, `remote-build`, upload. Flathub: blocked, its AI policy forbids
+  addresses on Ubuntu 24.04, Debian 12, Fedora 41, openSUSE Tumbleweed (arm64 containers). Snap: `folevi` registered,
+  arm64 uploaded (revision 1 held for review, to be rejected), amd64 via Launchpad remote-build. Flathub: blocked, its AI policy forbids
   AI-written manifests and AI-opened submissions (docs/LINUX.md "Flathub"); only the owner can do it by hand. The
   owner should copy `~/.folevi-linux-signing/folevi-repo-secret.asc` into their password manager. From the next
   Linux release the .deb and .rpm add the repositories on install; each release also runs the repo scripts.
@@ -813,6 +813,7 @@ account button should move past iPadOS's window buttons).
   `DATABASE_UDF_USER_TIMEOUT_SECONDS=4` for that backend. Bursts show in `convex.log` as "took a long time".
 
 ## 12. Change log
+- 2026-11-25: Linux icons: every package now uses the desktop icon (`apps/desktop/build/icon-1024.png`, sizes from `icons.mjs`) instead of the web's full-bleed icon-512; Snap `folevi` registered, shipped without the D-Bus slot (owner's pick) so it needs no manual review; arm64 revision 3 uploaded, amd64 building on Launchpad.
 - 2026-11-25: Linux apt/rpm repositories published (owner's OK, after the owner's Cloudflare sign-in) and install-tested from the live addresses; Flathub stopped by Flathub's Generative AI policy (no AI-written manifests or AI-opened submissions), recorded in docs/LINUX.md.
 - 2026-11-25: Linux stores prepared (owner's OK): signed apt and rpm repositories for 1.5.75 at
   `folevi.com/download/linux/apt` and `/rpm` (built and install-tested in the VM on Ubuntu 24.04, Debian 12, Fedora 41,

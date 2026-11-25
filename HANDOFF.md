@@ -222,6 +222,7 @@ Then, each with the owner's OK:
 | App Store Connect API key HS88CK5RQF | `~/.appstoreconnect/private_keys/AuthKey_HS88CK5RQF.p8` | Copy the folder securely; never print it |
 | Sign in with Apple key BNZC6FGWJC | `.p8` in `~/.appstoreconnect/private_keys/`; already loaded into Convex env | Only needed to rotate the client secret |
 | Sparkle EdDSA key | login Keychain, account "folevi" (backup with the owner) | Export/import with Sparkle's `generate_keys` |
+| Windows/Linux update key (Tauri updater, minisign) | `~/.folevi-desktop-signing/folevi-updater.key` (chmod 600, no password; public key in `apps/desktop/src-tauri/tauri.conf.json`) | Copy the folder securely; keep a copy in the password manager. Without it, Windows and AppImage users must download the next version by hand |
 | Developer ID / Apple Distribution certs (team 7K32QQ2FX8) | login keychain | Export as .p12 from Keychain Access or let Xcode re-create |
 | Cloudflare (R2 `folevi-updates`) | wrangler OAuth login | `npx wrangler login` |
 | Mac provisioning profile | `apps/mac/signing/Folevi.provisionprofile` (committed) | Comes with the clone |
@@ -250,6 +251,43 @@ The ones most likely to be broken:
 - Give before/after screenshots for UI work and ask the owner with clear options when a decision is theirs.
 
 ## 9. Current state (as of 2026-11-25)
+
+**Read this first: everything open on 2026-11-25 is merged and released as 1.6.78 (build 102).** PR 109
+(`claude/integration-2026-11-25`, merge commit `e0183862`) merged PRs 104, 96, 92, 89, 78, 97, 98, 81, 82, 69 (with
+66), 83, 65, 99, 107, 100, 105, 103, 106 and 93 at once; the change log's first entry says why and what was resolved.
+Where the paragraphs below say a branch or PR is "not merged" or "open", it is merged now. Tag `v1.6.78` is local
+only (not pushed). What is live:
+
+| Platform | 1.6.78 | Checked |
+| --- | --- | --- |
+| Web and Convex | Deployed by the merge (Vercel status success) | Production answers `server:info` and `aiConfig:overview`; `/signin` shows "Sign in to your own server"; `/downloads` is up; no console errors on either |
+| Mac | Published with `apps/mac/scripts/publish.mjs`: notarized, stapled, feed and `mac/Folevi.dmg` on R2, deltas from builds 83, 86 and 88 | Feed's first item is 1.6.78 (102); the DMG is "Notarized Developer ID". Not opened on a Mac |
+| iPhone and iPad | TestFlight, internal "Folevi team", delivery `7120ad6e-d96e-4265-be53-67bdd079ce3e` (the Capacitor app, `apps/mobile`) | Upload accepted. Not opened on a device |
+| Windows | `windows/Folevi_1.6.78_x64-setup.exe` and `_arm64-setup.exe` plus the two stable names, from CI run 45580647007. Unsigned, as before | Links answer with the new sizes. Not installed on Windows |
+| Linux | Six packages and `SHA256SUMS` (`upload-release.sh`); apt and rpm repositories rebuilt in the VM with 1.5.75 and 1.6.78 and uploaded (`upload-repos.sh`) | Both AppImages pass `smoke-test.sh` in the VM; the live `InRelease` verifies with the Folevi key |
+| Snap Store | arm64: revision 5 (1.6.78) on stable, built in the VM (`sg lxd -c "packaging/linux/scripts/snap-build.sh ..."`: a plain `limactl shell` lacks the lxd group). amd64: revision 6 (1.6.78) on stable, built on Launchpad (`snapcraft remote-build` in the VM's `~/snap-remote`, about an hour) | `snapcraft status folevi` in the VM shows what is live per architecture |
+| Android | NOT on Play yet. The signed bundle (upload key, push values from the owner's `google-services.json`) is at `~/Downloads/Folevi 1.6.78 Android/Folevi-1.6.78-102.aab`; the owner drags it into Play Console's internal testing | Signer checked. Not run on a device or emulator |
+
+Not done, and why:
+- **Android on Play:** needs the owner's drag-in (files this size can't be attached from here).
+- **`migrations:narrowDocumentText` on production (PR 93's last step):** the owner ran it on 2026-11-25 after the
+  release (first answer `{ cleared: 100, done: false }`; it schedules its own next pages until the notes run out, so
+  one run is enough). Not checked afterwards: that every page finished. From here, rolling PR 93 back also needs the
+  text copied back from `documentText`.
+- **Folevi Server packages and stores:** not part of this release. The server code and "Your own server" in every
+  app are in; publishing the NAS and Linux server packages stays with the Folevi Server session.
+- **Flathub:** needs a person (Flathub's AI policy, docs/LINUX.md).
+- **Real hardware:** QR scan on real phones, foldable fold marks and the Android back gesture, real-iPhone swipes,
+  the Mac's server sign-in sheet in the app itself, and whether Chromium's click hold-back after a swipe also
+  happens on real Android (the swipe rows now close on touch either way).
+- **Android security trade-off to review (PR 103):** `network_security_config` allows cleartext because it can't name
+  private address ranges; `net/Http.kt` refuses http to hosts that aren't home addresses, and each place has its CSP.
+- Mac XCTest and Swift package tests were not run for this release (the Debug build and the universal Release
+  build with its signing checks were).
+
+How the backlog was merged, for next time: when several PRs are open, don't merge `main` into each in turn (every PR
+edits this file, so each merge restarts the others' CI). Merge them into one integration branch, resolve once, run CI
+once. `gh pr merge <n> --disable-auto` and cancelling queued runs keeps them from landing piecemeal meanwhile.
 
 **Foli AI on Gemini, OpenAI and Anthropic (branch `claude/foli-ai-openai-anthropic-8112bb`, 2026-11-25, PR open, not
 merged).** Owner's decisions: `docs/claude-context/memory/foli-ai-multi-provider-decisions.md`. Admin > Foli AI
@@ -937,6 +975,11 @@ signed-in account, 1.5.58's frosted folders with a large library, and the iPad c
 account button should move past iPadOS's window buttons).
 
 ## 10. Next steps / open work
+- After 1.6.78 (2026-11-25), in order: the owner drags the Android bundle into Play internal testing; the
+  hardware checks listed at the
+  top of section 9; Folevi Server packages (the Folevi Server session). `migrations:narrowDocumentText` already ran on production (the owner,
+  2026-11-25). Next free version: 1.6.79 (or 1.7.79 for a
+  Big update). Mac deltas need `apps/mac/release-archive/Folevi-1.6.78.zip` (kept in the main checkout).
 - Shell performance (2026-11-25): merge PRs 84, 85, 86 into their shell branches; check PR 85 on a Windows PC with two
   accounts and a library; Android launch time needs the SDK and an emulator (owner's OK).
 - Apple performance: the Mac launch run (owner's OK, 2026-11-25) showed no measurable difference at a load average
@@ -1217,6 +1260,10 @@ account button should move past iPadOS's window buttons).
 
 ## 12. Change log
 
+- 2026-11-25 (late night): Android native, the last two web-side gaps fixed (PR 112), and `main` merged in.
+  - Onboarding greets by first name: `OnboardingGateInfo.firstName`, contract revision 36, regenerated in Swift and Kotlin.
+  - In dark mode a plain note's paper now runs up under the native top bar.
+
 - 2026-11-25 (late): Android native onboarding and polish pass (PR 112).
   - Every gate is native, including the six onboarding steps, tested with fresh accounts.
   - Polish pass: accessibility, large text, motion scheme and reduced motion, palette tokens, landscape, short windows.
@@ -1240,6 +1287,18 @@ account button should move past iPadOS's window buttons).
   - Robolectric 4.18.1 Compose UI tests (headless).
   - Results: 68 app tests pass; the sign-in gate is not yet checked on an emulator (it needs the dev server).
 - 2026-11-25: Android native Compose resumed (owner, relayed by the iOS session). `apps/android` on `main` builds and its 59 unit tests pass; the phone bar now matches the web's (Home, Tasks, Calendar capsule plus Foli AI and + capsule, `ui/PhoneBar.kt`); gap plan in `docs/ANDROID_NATIVE_PLAN.md` section 6. Branch `claude/android-native-compose`.
+- 2026-11-25: **Automatic updates for Folevi for Windows and the Linux AppImage** (branch `claude/desktop-updater`,
+  first item of docs/DESKTOP_PARITY.md): the Tauri updater is registered, checks a minute after launch and every 12
+  hours, and the tray has Check for Updates…. Update key made and kept at `~/.folevi-desktop-signing/` (section 7);
+  `packaging/desktop/publish-update-feed.sh` signs the published installers and writes the feed
+  (docs/DESKTOP_APP.md, "Updates"). Takes effect from the first release that carries it; 1.6.78 and older have no
+  updater, so their users install that release by hand once.
+- 2026-11-25: **1.6.78 released** from PR 109's merge (`e0183862`): web and Convex deployed; Mac published
+  (notarized, Sparkle feed); iPhone and iPad on TestFlight (delivery 7120ad6e); Windows installers and Linux packages
+  uploaded, apt and rpm repositories rebuilt and uploaded; the Android bundle built and left for the owner's Play
+  drag-in. CI needed two more fixes before the merge (dialog closing fade, swipe rows) and one re-run of a flaky
+  shard (`tab-switch.spec.ts` timed out once, passed on the re-run). Dependabot PRs 19, 20, 21 and 27 were asked to
+  rebase with auto-merge on.
 - 2026-11-25: **Integration branch `claude/integration-2026-11-25`** (the owner: "check and resolve [the merging issues]
   and release all apps and platforms, I approve everything"). The backlog could not drain PR by PR: every PR edits
   this file, so each merge made the others conflict and restart CI, and the PRs also conflicted in code. PRs 104, 96,

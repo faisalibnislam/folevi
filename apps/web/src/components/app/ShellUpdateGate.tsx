@@ -33,7 +33,9 @@ export function ShellUpdateGate({ children }: { children: ReactNode }) {
         mac
           ? "This version of Folevi for Mac is too old to sync with your account. Choose Check for Updates in the Folevi menu, then open Folevi again. Your notes on this Mac are safe."
           : platform === "windows"
-            ? "This version of Folevi for Windows is too old to sync with your account. Right-click the Folevi icon by the clock, choose Check for updates, then open Folevi again. Your notes on this PC are safe."
+            ? "This version of Folevi for Windows is too old to sync with your account. Right-click the Folevi icon by the clock, choose Check for Updates, then open Folevi again. Your notes on this PC are safe."
+            : platform === "linux"
+            ? "This version of Folevi for Linux is too old to sync with your account. Update it with your software updater, or choose Check for Updates in the Folevi icon's menu if you use the AppImage, then open Folevi again. Your notes on this computer are safe."
             : platform === "android"
             ? "This version of Folevi is too old to sync with your account. Update it from Google Play, then open it again. Your notes on this phone are safe."
             : "This version of Folevi is too old to sync with your account. Update it from the App Store, then open it again. Your notes on this device are safe."

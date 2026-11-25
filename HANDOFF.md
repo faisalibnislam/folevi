@@ -591,8 +591,10 @@ signed-in account, 1.5.58's frosted folders with a large library, and the iPad c
 account button should move past iPadOS's window buttons).
 
 ## 10. Next steps / open work
-- Backend performance pass, owner's OK needed for production: run `migrations:backfillListStats` (optional, speeds
-  up existing folders) and `migrations:backfillDocumentText` (required before the note text switch PR merges).
+- Backend performance pass, production: `migrations:backfillDocumentText` ran on 2026-11-25 (373 notes copied, 0
+  failed). Next, with the owner's OK: merge #93 (the note text switch), let it deploy, then run
+  `npx convex run --prod migrations:narrowDocumentText` from the main checkout. Optional at any time:
+  `migrations:backfillListStats` (speeds up existing folders).
 - Backend performance pass (`docs/perf/backend-results.md`): kept folder and Drafts counts, task rows that carry
   their note's title, a cheaper `changes.list`, then note text (`searchText`) split out of `documents`
   (widen, backfill, narrow; the owner approves each production backfill).
@@ -750,6 +752,8 @@ account button should move past iPadOS's window buttons).
   `DATABASE_UDF_USER_TIMEOUT_SECONDS=4` for that backend. Bursts show in `convex.log` as "took a long time".
 
 ## 12. Change log
+- 2026-11-25: The owner ran `migrations:backfillDocumentText` on production (373 notes copied, 0 failed); #93 is
+  ready to merge, then `migrations:narrowDocumentText`.
 - 2026-11-25: Backend performance pass, step 4 (draft PR, waits for the owner and the production backfill): search,
   Foli AI and Spotlight read note text from `documentText`; `documents.searchText` is no longer written, emptied by
   `migrations:narrowDocumentText`, and its search index dropped. Tests read text through `textOf` (tests/convex/helpers.ts).

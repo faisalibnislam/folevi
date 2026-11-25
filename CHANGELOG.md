@@ -4,6 +4,28 @@ Every Folevi release, newest first, written by `node scripts/version.mjs` from `
 
 Versions are MAJOR.UPDATE.PATCH, PATCH at least two digits: a Major release (2.0.00), a Big update (1.1.05 after 1.0.05) or a Small update (1.0.06 after 1.0.05).
 
+## Version 1.6.79: Small update
+
+Released 2026-11-25 20:11:23+06:00 (build 103, tag v1.6.79)
+
+Folevi for iPhone and iPad is native again, with the look you know: Liquid Glass bars, faster launch, smoother writing and a native Foli AI.
+
+### Added
+
+- Sign in to your own server from the iPhone and iPad sign-in screen
+
+### Improved
+
+- iPhone and iPad screens are native SwiftUI with Liquid Glass, matching today's look
+- Home and lists appear at once when Folevi opens
+- The writing bar rides the keyboard up and down
+- Foli AI chat is native, with its message box on the keyboard
+
+### Fixed
+
+- A note opened right after launch no longer shows a blank page
+- Stop in Foli AI works without an account
+
 ## Version 1.6.78: Big update
 
 Released 2026-11-25 13:33:54+06:00 (build 102, tag v1.6.78)

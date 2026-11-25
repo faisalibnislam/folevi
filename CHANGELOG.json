@@ -1,6 +1,27 @@
 {
   "releases": [
     {
+      "version": "1.6.79",
+      "build": 103,
+      "released": "2026-11-25T20:11:23+06:00",
+      "type": "patch",
+      "summary": "Folevi for iPhone and iPad is native again, with the look you know: Liquid Glass bars, faster launch, smoother writing and a native Foli AI.",
+      "added": [
+        "Sign in to your own server from the iPhone and iPad sign-in screen"
+      ],
+      "improved": [
+        "iPhone and iPad screens are native SwiftUI with Liquid Glass, matching today's look",
+        "Home and lists appear at once when Folevi opens",
+        "The writing bar rides the keyboard up and down",
+        "Foli AI chat is native, with its message box on the keyboard"
+      ],
+      "fixed": [
+        "A note opened right after launch no longer shows a blank page",
+        "Stop in Foli AI works without an account"
+      ],
+      "tag": "v1.6.79"
+    },
+    {
       "version": "1.6.78",
       "build": 102,
       "released": "2026-11-25T13:33:54+06:00",

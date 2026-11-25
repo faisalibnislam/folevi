@@ -67,6 +67,12 @@ const IOS_POINTS = [
   "Foli DNA, the map of how your notes connect",
   "Works offline, syncs when you’re back",
 ];
+const ANDROID_POINTS = [
+  "The same workspace as on your other devices",
+  "Made for Android phones and tablets",
+  "Sign in and your notes are there",
+  "Works offline, syncs when you’re back",
+];
 
 const FAQS: FaqItem[] = [
   {
@@ -293,6 +299,29 @@ export default function AppsPage() {
             </ButtonLink>
           }
           requirement={`${IOS_REQUIREMENT}.`}
+        />
+
+        <AppCard
+          id="android"
+          eyebrow="For Android"
+          title={
+            <>
+              Folevi for Android is <Mark>coming soon.</Mark>
+            </>
+          }
+          lede="The same docs, tasks and databases on your Android phone and tablet. It’s in testing now and comes to Google Play soon."
+          points={ANDROID_POINTS}
+          actions={
+            <>
+              <span className="inline-flex items-center rounded-full border mk-hair px-4 py-2 text-[15px] font-medium text-muted">
+                Coming soon to Google Play
+              </span>
+              <ButtonLink href={WEB_APP_URL} variant="secondary">
+                Open the web app
+              </ButtonLink>
+            </>
+          }
+          requirement="Until then, the web app works in your phone’s browser."
         />
 
         <YourFiles />

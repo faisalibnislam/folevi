@@ -563,7 +563,15 @@ final class NotePageController: UIViewController, PageViewOwner {
     }
     private var holder: PageViewHolder!
     private let cover = UIView()
+    /// While the note is on its way (shown after a moment, so a quick open never flashes it): the engine still
+    /// starting after a cold launch, or a slow page.
+    private let spinner = UIActivityIndicatorView(style: .medium)
     private var still: UIView?
+    /// The note isn't drawn a while after the engine came up: asks for it again (RebuildNote's NotePage).
+    var onStalled: (() -> Void)?
+    /// Whether the wait for the page is running (from the engine being ready); reset with each cover.
+    private var waiting = false
+    private var generation = 0
 
     init(noteId: String) {
         self.noteId = noteId
@@ -583,7 +591,32 @@ final class NotePageController: UIViewController, PageViewOwner {
         cover.frame = view.bounds
         cover.autoresizingMask = [.flexibleWidth, .flexibleHeight]
         cover.isUserInteractionEnabled = false
+        spinner.color = Chrome.inkMuted
+        spinner.hidesWhenStopped = true
+        spinner.translatesAutoresizingMaskIntoConstraints = false
+        spinner.accessibilityLabel = "Opening the note"
+        cover.addSubview(spinner)
+        NSLayoutConstraint.activate([
+            spinner.centerXAnchor.constraint(equalTo: cover.centerXAnchor),
+            spinner.centerYAnchor.constraint(equalTo: cover.centerYAnchor, constant: -40),
+        ])
         view.addSubview(cover)
+    }
+
+    /// The engine is up (or not yet): once it is, the page has a second and a half to draw the note; then it's asked
+    /// for once more, and two and a half seconds later the page shows as it is (a note it can't load says so).
+    func engineReady(_ ready: Bool) {
+        guard ready, !waiting, !cover.isHidden else { return }
+        waiting = true
+        let g = generation
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { [weak self] in
+            guard let self, self.generation == g, !self.cover.isHidden else { return }
+            self.onStalled?()
+            DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) { [weak self] in
+                guard let self, self.generation == g else { return }
+                self.setReady(true)
+            }
+        }
     }
 
     override func viewSafeAreaInsetsDidChange() {
@@ -628,6 +661,9 @@ final class NotePageController: UIViewController, PageViewOwner {
         guard ready, !cover.isHidden || still != nil else { return }
         let s = still
         still = nil
+        generation += 1
+        waiting = false
+        spinner.stopAnimating()
         UIView.animate(withDuration: 0.16, delay: 0, options: [.curveEaseOut, .allowUserInteraction]) {
             self.cover.alpha = 0
             s?.alpha = 0
@@ -642,6 +678,14 @@ final class NotePageController: UIViewController, PageViewOwner {
         cover.alpha = 1
         cover.backgroundColor = still == nil ? Chrome.canvas : .clear
         view.bringSubviewToFront(cover)
+        generation += 1
+        waiting = false
+        // The spinner only when the wait is noticeable (and never over the last view of the note).
+        let g = generation
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) { [weak self] in
+            guard let self, self.generation == g, !self.cover.isHidden, self.still == nil else { return }
+            self.spinner.startAnimating()
+        }
     }
 
     func pageViewWillLeave(_ pageView: WKWebView) {
@@ -743,8 +787,13 @@ private struct NotePage: UIViewControllerRepresentable {
         }
         _ = c.view
         if !model.isReady(noteId) { c.showCover() }
-        // The page has nothing to say after a second and a half (a note it can't load): show it as it is.
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { c.setReady(true) }
+        c.onStalled = { [model, noteId] in
+            // (R5.7: a note asked for while the page was still opening its store can end on the route's error page.
+            // Asked again once, before the page is shown as it is.)
+            guard model.shownNote == noteId, !model.isReady(noteId) else { return }
+            model.show(noteId)
+        }
+        c.engineReady(model.client.state == .ready)
         return NotePageSlot(page: c)
     }
 
@@ -752,6 +801,9 @@ private struct NotePage: UIViewControllerRepresentable {
         let c = slot.page
         if pageHost.isOwned(by: c) { c.adopted(pageHost.pageView) }
         c.setReady(model.isReady(noteId) && model.shownNote == noteId)
+        // (Opened before the engine was up, right after a cold launch: the cover and its spinner stay until the engine
+        // is ready, then the page has its second and a half, not before.)
+        c.engineReady(model.client.state == .ready)
     }
 }
 

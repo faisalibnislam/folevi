@@ -120,6 +120,15 @@ https://folevi.com/download/windows/Folevi-arm64-setup.exe and https://folevi.co
 Uploaded with `npx wrangler r2 object put folevi-updates/windows/<file> --remote` from CI run 45418586764 (the fixed build). The
 version came from `apps/desktop/RELEASE_VERSION` (1.5.73) because this branch's version.json predates 1.5.72.
 
+## Notification actions
+
+As on the Mac (`src/notify.rs`): a comment or mention has Reply (typed in the toast, Windows only: Linux's
+notification protocol has no typed replies) and Mark as Read; an assigned task Open and Complete; a task's
+reminder Complete, Snooze 1 Hour, Snooze Until This Evening and Snooze Until Tomorrow; anything else Mark as Read.
+Windows groups a note's toasts together in Action Center. A button reaches the open place's page as the command
+`{ type: "notification", action, id, kind, path, text?, thread? }` (DesktopBridge.tsx useNotificationActions,
+which now does Complete and Snooze too, for the Mac as well); a place with no page open hears nothing, as on the Mac.
+
 ## Not done yet
 
 - Updates: the Tauri updater is in the app and points at `folevi.com/download/desktop/<target>-<arch>/latest.json`,

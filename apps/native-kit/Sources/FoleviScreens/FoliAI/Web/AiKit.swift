@@ -188,7 +188,7 @@ public extension EnvironmentValues {
 
 /// Stop's hover fill and ⌘. where there's a pointer and a keyboard (the Mac, the iPad's floating chat). Not on the
 /// iPhone's thread: there the button never took a tap while an answer was coming (no ⌘. to offer there anyway).
-private struct AiStopPointerExtras: ViewModifier {
+private struct AiStopHoverExtras: ViewModifier {
     let on: Bool
 
     func body(content: Content) -> some View {
@@ -243,7 +243,7 @@ public struct AiRunStatus: View {
                     .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
-                .modifier(AiStopPointerExtras(on: !phone))
+                .modifier(AiStopHoverExtras(on: !phone))
                 .padding(.leading, 4)
                 .fixedSize()
             }

@@ -14,7 +14,7 @@ import { loadDocumentView, loadedDocumentView } from "@/lib/app/noteView";
 import { useAppState } from "@/lib/app/state";
 import { api } from "@/lib/convex/api";
 import { inboxPage } from "@/lib/share/save";
-import { useIphoneApp } from "@/lib/iphone";
+import { useIpadLayout, useIphoneApp } from "@/lib/iphone";
 import { IphoneHome } from "@/components/iphone/IphoneHome";
 import { useCanCall, useCapabilities } from "@/lib/mode";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -55,7 +55,7 @@ const DocumentView = lazy(() => {
 const [SettingsView, preloadSettings] = soon(() => import("@/components/views/SettingsView").then((m) => m.SettingsView));
 // The Foli AI page (its chat) and the graph load when they're opened, never with the first screen
 // (docs/MAC_WEBKIT_PLAN.md "Memory", step 4).
-const AiView = lazy(() => import("@/components/views/AiView").then((m) => ({ default: m.AiView })));
+const [AiView, preloadAi] = soon(() => import("@/components/views/AiView").then((m) => m.AiView));
 const GraphView = lazy(() => import("@/components/views/GraphView").then((m) => ({ default: m.GraphView })));
 // Pages a few people open now and then load when they're opened too: Changes and Reviews (each brings the
 // read-only drawing of every kind of block), Shared with Me, Help and the invitations. Kept out of the code
@@ -98,16 +98,17 @@ export function RouteView() {
   useEffect(() => {
     void loadDocumentView();
   }, []);
-  // On the phone a screen slides in: the pages kept out of the first screen's code are fetched once the app is
+  // On the phone and the iPad a page slides or swaps in: the pages kept out of the first screen's code are fetched once the app is
   // idle, one after another, so opening one slides in the page itself, not its empty frame with the rest popping
   // in mid-move. (Not on the Mac or the web, where they wait to be opened: docs/MAC_WEBKIT_PLAN.md "Memory".)
   const iphone = useIphoneApp();
+  const ipad = useIpadLayout();
   useEffect(() => {
-    if (!iphone) return;
+    if (!iphone && !ipad) return;
     let stopped = false;
     const w = window as Window & { requestIdleCallback?: (cb: () => void, o?: { timeout: number }) => number; cancelIdleCallback?: (id: number) => void };
     const run = async () => {
-      for (const load of [preloadSettings, preloadChanges, preloadShared, preloadReview, preloadVault]) {
+      for (const load of [preloadSettings, preloadAi, preloadChanges, preloadShared, preloadReview, preloadVault]) {
         if (stopped) return;
         await load().catch(() => undefined);
       }
@@ -124,7 +125,7 @@ export function RouteView() {
       stopped = true;
       clearTimeout(t);
     };
-  }, [iphone]);
+  }, [iphone, ipad]);
   return <Routes />;
 }
 

@@ -401,6 +401,10 @@ var foleviShellBridge = function (SHELL, host) {
             return r && Array.isArray(r.servers) ? r.servers : [];
           });
         },
+        // A server's QR code, read with the camera (hosts that can: the iPhone and iPad app). Resolves with the
+        // code's text, or null when the person closed the scanner; rejects with { code: "unavailable" |
+        // "camera_denied", message } where it can't, and the page keeps its address field.
+        scanServerCode: typeof host.scanServerCode === "function" ? host.scanServerCode : undefined,
       })
     : undefined;
 

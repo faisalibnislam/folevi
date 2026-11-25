@@ -22,7 +22,7 @@ final class FoleviViewController: CAPBridgeViewController {
         configuration.setURLSchemeHandler(libraryFiles, forURLScheme: LibraryFileHandler.scheme)
         // Local mode's rules go on before the page loads, so not even its first request can reach Folevi. They're
         // compiled once (AppDelegate starts it at launch) and looked up from WebKit's store after that.
-        if ShellMode.current == "local", let rules = Self.localRules {
+        if Self.pageMode == "local", let rules = Self.localRules {
             configuration.userContentController.add(rules)
             rulesAtLoad = true
         }
@@ -45,7 +45,7 @@ final class FoleviViewController: CAPBridgeViewController {
     /// In local mode the first page load waits for the network rules (a lookup in WebKit's store, a few milliseconds;
     /// the splash screen is up meanwhile): Capacitor's viewDidLoad is what starts it.
     override func viewDidLoad() {
-        guard ShellMode.current == "local", !rulesAtLoad else { return super.viewDidLoad() }
+        guard Self.pageMode == "local", !rulesAtLoad else { return super.viewDidLoad() }
         Self.prepareLocalRules { [weak self] rules in self?.loadAfterRules(rules) }
     }
 
@@ -69,9 +69,16 @@ final class FoleviViewController: CAPBridgeViewController {
         host.register(FoleviNativePlugin())
         host.register(FoleviShellPlugin())
         Self.startPlaces()
+        // The best connection for Folevi Server places (a home name or a public one), at launch and on network
+        // changes: the open place's page loads again on the new name, still signed in (apps/ios ShellServer.swift).
+        ServerReach.shared.onChange = { place in
+            if place == ShellPlaces.state.current { Self.restart() }
+        }
+        ServerReach.shared.start()
         applyMode()
         AppServices.modeApplied(local: ShellMode.current == "local")
-        AppServices.launched(serverURL: ShellAuth.shared.service)
+        // The share sheet, widgets and Spotlight use Folevi Cloud's REST API, whichever place is open.
+        AppServices.launched(serverURL: ShellAuth.shared.cloudService)
         // After Capacitor's own scripts (they define window.Capacitor, which the bridge calls through).
         if let webView, let source = Self.bridgeScript(origin: host.appOrigin) {
             webView.configuration.userContentController.addUserScript(WKUserScript(source: source, injectionTime: .atDocumentStart, forMainFrameOnly: true))
@@ -112,12 +119,24 @@ final class FoleviViewController: CAPBridgeViewController {
     /// Where the next page opens after a switch to another place (placesSwitch), once.
     static var startPath: String?
 
+    /// The mode this page loads in: the chosen one, except on a Folevi server's sign-in screen ("Your own server",
+    /// placesAddServer), which is an account's even on the very first launch or from the library.
+    static var pageMode: String {
+        ShellPlaces.state.current == nil && ShellPlaces.server(of: nil) != nil ? "account" : ShellMode.current
+    }
+
     private static func shellBootstrap() -> [String: Any] {
         let start = startPath
         startPath = nil
+        let current = ShellPlaces.state.current
+        // A Folevi Server place's addresses, or the server whose sign-in screen this is ("Your own server"): the
+        // page's Convex client and sign-in use them instead of the build's NEXT_PUBLIC values (CONTRACT §6.1). Null:
+        // Folevi Cloud or the library.
+        let server = ShellPlaces.server(of: current)
         return [
-            "mode": ShellMode.current, "deviceName": ShellAuth.deviceName, "deviceFamily": UIDevice.current.userInterfaceIdiom == .pad ? "iPad" : "iPhone",
-            "places": ["current": ShellPlaces.state.current.map { $0 as Any } ?? NSNull(), "background": false] as [String: Any],
+            "mode": pageMode, "deviceName": ShellAuth.deviceName, "deviceFamily": UIDevice.current.userInterfaceIdiom == .pad ? "iPad" : "iPhone",
+            "places": ["current": current.map { $0 as Any } ?? NSNull(), "background": false,
+                       "server": server.map { $0.json as Any } ?? NSNull()] as [String: Any],
             "start": start.map { $0 as Any } ?? NSNull(),
         ]
     }
@@ -184,7 +203,7 @@ final class FoleviViewController: CAPBridgeViewController {
     /// built-in styles current. Account mode has no rules. On the rare launch where the rules weren't ready before the
     /// first load (the first one in local mode), they're added as soon as they are and the page loads again under them.
     private func applyMode() {
-        guard ShellMode.current == "local", !rulesAtLoad else { return }
+        guard Self.pageMode == "local", !rulesAtLoad else { return }
         Self.prepareLocalRules { [weak self] rules in
             guard let self, let rules, let webView = self.webView else { return }
             webView.configuration.userContentController.add(rules)

@@ -24,6 +24,8 @@ final class FoleviNativePlugin: BridgePlugin {
         "setWidgetSnapshot", "takeLocalActions", "finishLocalAction", "indexSpotlight",
         // The keyboard's moves for the page (apps/ios Native/UI/KeyboardBridge.swift).
         "keyboard", "keyboardWillLeave",
+        // "Your own server": a server's QR code (ServerCodeScanner.swift).
+        "scanServerCode",
     ]
 
     /// A widget or an intent queuing something while the app runs tells this page ("folevi:local-actions").

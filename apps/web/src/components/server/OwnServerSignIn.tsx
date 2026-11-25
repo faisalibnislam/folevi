@@ -6,12 +6,14 @@
 // own sign-in page; the Mac, iPhone and iPad apps add it as a place.
 import { useEffect, useState } from "react";
 import { useAction, useConvexAuth } from "convex/react";
-import { ArrowRight, Loader2, Server } from "lucide-react";
+import { ArrowRight, Loader2, ScanQrCode, Server } from "lucide-react";
 import { ConvexClientProvider } from "@/lib/convex/provider";
 import { checkServerAddress, connectOrigin } from "@/lib/server-edition/address";
 import { lookUpServer, openServer } from "@/lib/server-edition/handoff";
 import { compareVersions, type ServerInfo } from "@/lib/server-edition/info";
 import { connectRefs, type LinkedServer } from "@/lib/server-edition/refs";
+import { readServerCode } from "@/lib/server-edition/scan";
+import { shell } from "@/lib/shell";
 import { FOLEVI_VERSION } from "@/lib/version";
 import { Alert, Field } from "@/components/auth/fields";
 
@@ -68,8 +70,58 @@ function AddressForm() {
   const [error, setError] = useState<string | null>(null);
   const [unreachable, setUnreachable] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [scanning, setScanning] = useState(false);
   const [found, setFound] = useState<{ origin: string; info: ServerInfo } | null>(null);
+  // The iPhone and iPad app can read a server's QR code (places.scanServerCode); elsewhere the address is typed.
+  const [canScan] = useState(() => typeof shell()?.places?.scanServerCode === "function");
   if (found) return <Found origin={found.origin} info={found.info} onBack={() => setFound(null)} />;
+
+  const go = async (input: string) => {
+    setError(null);
+    setUnreachable(null);
+    const checked = checkServerAddress(input);
+    if (!checked.ok) {
+      setError(checked.reason);
+      return;
+    }
+    setBusy(true);
+    const r = await lookUpServer(checked.origin);
+    setBusy(false);
+    if (r.ok) setFound({ origin: checked.origin, info: r.info });
+    else {
+      setError(r.reason);
+      setUnreachable(checked.origin);
+    }
+  };
+
+  const scan = async () => {
+    const scanServerCode = shell()?.places?.scanServerCode;
+    if (!scanServerCode || busy || scanning) return;
+    setError(null);
+    setUnreachable(null);
+    setScanning(true);
+    let text: string | null;
+    try {
+      text = await scanServerCode();
+    } catch (e) {
+      // No camera here, or camera access is off: the address field stays for typing.
+      const message = (e as { message?: unknown } | null)?.message;
+      setError(typeof message === "string" && message ? message : "Folevi couldn't scan here. Type the server's address instead.");
+      document.getElementById("server-address")?.focus();
+      return;
+    } finally {
+      setScanning(false);
+    }
+    if (text === null) return;
+    const code = readServerCode(text);
+    if (!code) {
+      setError("That QR code isn't a Folevi server's address. Scan the code on the server's Connect page, or type the address.");
+      return;
+    }
+    setAddress(code.address);
+    await go(code.address);
+  };
+
   return (
     <form
       className="space-y-3"
@@ -77,25 +129,12 @@ function AddressForm() {
       onSubmit={async (e) => {
         e.preventDefault();
         if (busy) return;
-        setError(null);
-        setUnreachable(null);
-        const checked = checkServerAddress(address);
-        if (!checked.ok) {
-          setError(checked.reason);
-          return;
-        }
-        setBusy(true);
-        const r = await lookUpServer(checked.origin);
-        setBusy(false);
-        if (r.ok) setFound({ origin: checked.origin, info: r.info });
-        else {
-          setError(r.reason);
-          setUnreachable(checked.origin);
-        }
+        await go(address);
       }}
     >
       <Field
         label="Server address"
+        id="server-address"
         name="server-address"
         inputMode="url"
         autoComplete="url"
@@ -120,6 +159,12 @@ function AddressForm() {
         {busy ? <Loader2 size={16} className="animate-spin motion-reduce:animate-none" aria-hidden /> : <ArrowRight size={16} aria-hidden />}
         Continue
       </button>
+      {canScan ? (
+        <button type="button" onClick={() => void scan()} disabled={busy || scanning} aria-busy={scanning} className="ui-btn ui-btn-ghost h-11 w-full text-body">
+          {scanning ? <Loader2 size={16} className="animate-spin motion-reduce:animate-none" aria-hidden /> : <ScanQrCode size={16} aria-hidden />}
+          Scan QR code
+        </button>
+      ) : null}
     </form>
   );
 }

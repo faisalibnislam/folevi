@@ -416,6 +416,14 @@
       deviceFamily: ios ? (family === "iPad" ? "iPad" : "iPhone") : family === "tablet" ? "tablet" : "phone",
       fileBase: typeof SHELL.fileBase === "string" ? SHELL.fileBase : "folevi-file://lib/",
       cloudKit: typeof FoleviCloudKit === "object" && FoleviCloudKit ? FoleviCloudKit : null,
+      // "Your own server": a server's QR code (ios: ServerCodeScanner.swift). Android has no scanner yet.
+      scanServerCode: ios
+        ? function () {
+            return call("FoleviNative", "scanServerCode", {}).then(function (r) {
+              return r && typeof r.value === "string" ? r.value : null;
+            });
+          }
+        : null,
     });
     Object.defineProperty(window, "foleviShell", { value: shellBridge, enumerable: false, configurable: false, writable: false });
   }

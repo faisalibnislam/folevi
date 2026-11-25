@@ -24,6 +24,26 @@ export default [
     },
   },
   {
+    // A failed query mustn't take the page to "Something went wrong": read queries through lib/convex/queries.ts,
+    // which treats a failure as still loading and retries.
+    files: ["src/**/*.{ts,tsx}"],
+    ignores: ["src/lib/convex/queries.ts"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          paths: [
+            {
+              name: "convex/react",
+              importNames: ["useQuery", "usePaginatedQuery"],
+              message: "Use useQuery / usePaginatedQuery from @/lib/convex/queries: they retry a failed query instead of throwing to the error page.",
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
     // The iPhone app is touched, not pointed at: no hover, so no tooltips and no hover effects.
     files: ["src/components/iphone/**"],
     rules: { "folevi/icon-button-tooltip": "off", "folevi/button-hover": "off" },
@@ -35,7 +55,7 @@ export default [
   },
   {
     // Node scripts; page.evaluate/addInitScript callbacks run in the browser.
-    files: ["e2e/**/*.mjs", "scripts/**/*.mjs"],
-    languageOptions: { globals: { process: "readonly", console: "readonly", localStorage: "readonly", fetch: "readonly" } },
+    files: ["e2e/**/*.mjs", "scripts/**/*.mjs", "perf/**/*.mjs"],
+    languageOptions: { globals: { process: "readonly", console: "readonly", localStorage: "readonly", fetch: "readonly", URL: "readonly" } },
   },
 ];

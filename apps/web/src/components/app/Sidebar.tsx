@@ -1,6 +1,7 @@
 "use client";
 
-import { useMutation, useQuery } from "convex/react";
+import { useMutation } from "convex/react";
+import { useQuery } from "@/lib/convex/queries";
 import { useEffect, useMemo, useState } from "react";
 import { ArrowDownUp, Archive, CalendarDays, SquareCheckBig, ChevronDown, ChevronRight, FileDiff, FolderPlus, Hash, Files, Inbox, Layers, LayoutTemplate, MoreHorizontal, Search, Share2, Trash2, House as Home, FileText, Waypoints, Lock } from "lucide-react";
 import { Bookmark } from "lucide-react";
@@ -426,6 +427,19 @@ export function SidebarTopBar({ onNavigate }: { onNavigate?: () => void }) {
   );
 }
 
+/** True once `ready` has been true, or `maxMs` after mounting, whichever comes first; then stays true. */
+function useSettled(ready: boolean, maxMs: number): boolean {
+  const [timedOut, setTimedOut] = useState(false);
+  const [was, setWas] = useState(ready);
+  if (ready && !was) setWas(true);
+  useEffect(() => {
+    if (was) return;
+    const t = setTimeout(() => setTimedOut(true), maxMs);
+    return () => clearTimeout(t);
+  }, [was, maxMs]);
+  return was || ready || timedOut;
+}
+
 export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   const { scope, canEdit, today } = useAppState();
   const org = useFolderTree(scope);
@@ -453,6 +467,10 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   // Changes apps proposed count too: they wait there for an answer.
   const minute = useMinute();
   const proposed = useQuery(api.proposals.count, caps.changes ? { now: minute } : "skip");
+  // The rows from Templates down wait until the rows above them are known (the Vault appears when its query answers,
+  // the folders replace their placeholder): drawn early, they jumped down a moment later (a layout shift on every
+  // start, docs/perf/web-results.md). Never longer than a moment, so a query that keeps failing can't hide them.
+  const lowerSettled = useSettled(org !== undefined && (!vaultHere || vault !== undefined), 1500);
   const toast = useToast();
   const [folderOpen, setFolderOpen] = useOpenFolders();
   // A folder being dragged (a moment after its drag starts: the page mustn't change under a drag as it begins).
@@ -611,9 +629,11 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
           {caps.sharing ? <NavItem href="/shared" icon={<Share2 size={16} />} label="Shared with Me" onNavigate={onNavigate} /> : null}
           {vaultHere && vault !== null && vault !== undefined ? <NavItem href="/vault" icon={<Lock size={16} />} label="Vault" onNavigate={onNavigate} /> : null}
           {caps.changes ? <NavItem href="/changes" icon={<FileDiff size={16} />} label="Changes" count={(changes?.notes.length ?? 0) + (proposed ?? 0) || undefined} onNavigate={onNavigate} /> : null}
-          <NavItem href="/templates" icon={<LayoutTemplate size={16} />} label="Templates" onNavigate={onNavigate} />
+          {lowerSettled ? <NavItem href="/templates" icon={<LayoutTemplate size={16} />} label="Templates" onNavigate={onNavigate} /> : null}
         </div>
 
+        {lowerSettled ? (
+        <>
         <Section
           title="Folders"
           href="/folders"
@@ -665,6 +685,8 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
           <NavItem href="/archive" icon={<Archive size={16} />} label="Archive" onNavigate={onNavigate} />
           <NavItem href="/trash" icon={<Trash2 size={16} />} label="Trash" onNavigate={onNavigate} />
         </div>
+        </>
+        ) : null}
       </div>
 
       <PromptDialog

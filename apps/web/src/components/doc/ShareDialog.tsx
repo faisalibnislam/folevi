@@ -1,7 +1,8 @@
 "use client";
 
 import { DateTimeField, localDateTimeValue } from "@/components/ui/DateField";
-import { useMutation, useQuery } from "convex/react";
+import { useMutation } from "convex/react";
+import { useQuery } from "@/lib/convex/queries";
 import type { FunctionReturnType } from "convex/server";
 import { useState } from "react";
 import { ChevronRight, Copy, Globe, Info, Link2, Lock, Trash2, Users } from "lucide-react";

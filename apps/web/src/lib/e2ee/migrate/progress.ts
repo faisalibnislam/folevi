@@ -3,7 +3,7 @@
 // server counts notes (e2ee.migrate.progress: done, total, whether a device holds the lease); this device adds
 // what it knows from its own run: versions and attachments handed out and done, and the items it set aside.
 import { useSyncExternalStore } from "react";
-import { useQuery } from "convex/react";
+import { useQuery } from "@/lib/convex/queries";
 import type { WireScope } from "@folevi/editor-schema";
 import { api } from "@/lib/convex/api";
 import { activeRouter } from "../router/active";

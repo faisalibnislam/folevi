@@ -1,6 +1,7 @@
 "use client";
 
-import { useMutation, useQuery } from "convex/react";
+import { useMutation } from "convex/react";
+import { useQuery } from "@/lib/convex/queries";
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { flushSync } from "react-dom";
 import { ArrowLeft, ArrowRight, Check, Files, Link2, MessageSquareText, Monitor, Moon, Paintbrush, PenLine, Sun, SunMoon, Users, WifiOff, type LucideIcon } from "lucide-react";

@@ -7,7 +7,8 @@
 // someone who can't see it at all gets "You don't have access".
 import { NodeViewWrapper, type ReactNodeViewProps } from "@tiptap/react";
 import type { Editor as TiptapEditor } from "@tiptap/react";
-import { useMutation, useQuery } from "convex/react";
+import { useMutation } from "convex/react";
+import { useQuery } from "@/lib/convex/queries";
 import type { FunctionReturnType } from "convex/server";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { ChevronDown, Copy, ExternalLink, Lock, RefreshCw, Trash2, Unlink } from "lucide-react";

@@ -1,7 +1,8 @@
 "use client";
 
 import { useCapabilities } from "@/lib/mode";
-import { useMutation, useQuery } from "convex/react";
+import { useMutation } from "convex/react";
+import { useQuery } from "@/lib/convex/queries";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { CalendarPlus, ChevronLeft, ChevronRight, Rss, CalendarCheck } from "lucide-react";
 import { addDays } from "@folevi/editor-schema";
@@ -21,9 +22,8 @@ import { useMediaQuery } from "@/lib/hooks/useMediaQuery";
 import { useHardwareKeyboard } from "@/lib/hooks/useHardwareKeyboard";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { isIphoneApp, useIphoneApp } from "@/lib/iphone";
-import { IphoneAgenda, calendarMenu } from "@/components/iphone/Agenda";
-import { IphoneTaskSheet } from "@/components/iphone/TaskSheet";
-import { RootAvatar, RootPill } from "@/components/iphone/RootBar";
+import { IphoneAgenda, IphoneTaskSheet, RootAvatar, RootPill } from "@/components/iphone/lazy";
+import { calendarMenu } from "@/components/iphone/calendarMenu";
 
 type Layout = "month" | "week" | "agenda";
 const LAYOUT_KEY = "folevi:calendar-layout";

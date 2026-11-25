@@ -3,7 +3,7 @@
 import type { Editor } from "@tiptap/react";
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { ChevronDown, ChevronRight, ChevronUp, CircleCheck, ExternalLink, FileText, House, Image as ImageIcon, List, MessageSquare, Mic, PanelLeft, Paperclip, Search, X } from "lucide-react";
-import { useQuery } from "convex/react";
+import { useQuery } from "@/lib/convex/queries";
 import { api } from "@/lib/convex/api";
 import { CommentsOverview, useCommentThreads, type CommentThread } from "./Comments";
 import { flattenTree, plainText, type InlineNode, type WireBlock } from "@folevi/editor-schema";

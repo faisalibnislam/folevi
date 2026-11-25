@@ -1,7 +1,8 @@
 "use client";
 
 import { DateField, TimeField } from "@/components/ui/DateField";
-import { useMutation, useQuery } from "convex/react";
+import { useMutation } from "convex/react";
+import { useQuery } from "@/lib/convex/queries";
 import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
 import { Inbox, X, FileText, CalendarDays } from "lucide-react";
 import { naturalDateLabel, parseNaturalDate, useNaturalDatesReady } from "@/lib/nlDate";
@@ -19,7 +20,7 @@ import { useMediaQuery } from "@/lib/hooks/useMediaQuery";
 import { quickAddOnDevice } from "@/lib/quickAddOffline";
 import { useIphoneApp } from "@/lib/iphone";
 import { Sheet } from "@/components/iphone/Sheet";
-import { PhoneQuickAdd } from "@/components/iphone/QuickAddSheet";
+import { PhoneQuickAdd } from "@/components/iphone/lazy";
 
 /** What Quick add says when it's submitted without a task (the same words as the server's and the Mac app's). */
 export const QUICK_ADD_TITLE_MISSING = "Write the task first.";

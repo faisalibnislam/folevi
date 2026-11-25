@@ -4,7 +4,7 @@
 // is also where the note's file addresses are asked for in one question (NoteFileUrls in NodeViews.tsx): both
 // are what the server knows about the things this note points at.
 import { Component, useCallback, useEffect, useState, type ReactNode } from "react";
-import { useQuery } from "convex/react";
+import { useQuery } from "@/lib/convex/queries";
 import type { Editor } from "@tiptap/core";
 import type { Transaction } from "@tiptap/pm/state";
 import { api } from "@/lib/convex/api";

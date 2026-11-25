@@ -3,7 +3,8 @@
 // local-only "dev mailbox" so people and automated tests can follow the links without a mail
 // provider. The dev mailbox is unreadable in production (and never written there).
 import { v } from "convex/values";
-import { internalAction, internalMutation, internalQuery, query } from "./_generated/server";
+import { internalAction, internalQuery, query } from "./_generated/server";
+import { internalMutation } from "./lib/functions";
 import { internal } from "./_generated/api";
 import { isFeatureEnabled } from "./lib/flags";
 import { timingSafeEqualHex } from "./lib/crypto";

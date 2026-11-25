@@ -1,6 +1,6 @@
 "use client";
 
-import { useQuery } from "convex/react";
+import { useQuery } from "@/lib/convex/queries";
 import { useCallback, useMemo, useState } from "react";
 import { Check, Hash, LayoutGrid, Rows3, FolderOpen } from "lucide-react";
 import { folderAncestors } from "@folevi/editor-schema";
@@ -21,7 +21,7 @@ import { FilterField, ListPageHeader, ROW_SEG, RowSort, RowTraySep } from "./Lis
 import { Select } from "@/components/ui/Select";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { useIphoneApp } from "@/lib/iphone";
-import { IphoneFolders, IphoneTags } from "@/components/iphone/Organize";
+import { IphoneFolders, IphoneTags } from "@/components/iphone/lazy";
 import { endFolderDrag, startFolderDrag, useFolderActions } from "@/lib/app/folders";
 import { startItemsDrag } from "@/lib/app/noteDrag";
 import { ContextMenu } from "@/components/ui/Menu";

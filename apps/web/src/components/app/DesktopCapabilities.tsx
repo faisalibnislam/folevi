@@ -12,7 +12,8 @@
 //   lists for the Trash or for good, comes out at once (not only at the next full look).
 // - Notes dragged out to Finder: each one's Markdown and attachments, made when it's dropped.
 // Rendered by Shell next to DesktopBridge; nothing in the Electron app (it has none of these) or a browser.
-import { useConvex, useMutation, useQuery, type ConvexReactClient } from "convex/react";
+import { useConvex, useMutation, type ConvexReactClient } from "convex/react";
+import { useQuery } from "@/lib/convex/queries";
 import type { WireScope } from "@folevi/editor-schema";
 import { useEffect, useRef } from "react";
 import { api } from "@/lib/convex/api";
@@ -21,7 +22,7 @@ import { useAppRouter } from "@/lib/app/router";
 import { useBackendMode } from "@/lib/mode";
 import { APP_URL } from "@/lib/env";
 import { asCapabilityCommand, macDesktop, noteFromText, setNoteFileSource, spotlightGone, spotlightLeft, type DesktopSpotlightItem, type MacCapabilities, type MacCapabilityCommand } from "@/lib/desktop/capabilities";
-import { desktopChanged } from "@/lib/engine/viewsSettings";
+import { desktopChanged } from "@/lib/engine/desktopChanged";
 // Export (Markdown, PDF, zips) loads when a note is first shared, printed or dragged out.
 const exporting = () => import("@/components/doc/export");
 import { errorMessage, useToast } from "@/components/ui/Toast";

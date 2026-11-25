@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, lazy, Suspense, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { useQuery } from "convex/react";
+import { useQuery } from "@/lib/convex/queries";
 import { ChevronLeft, ChevronRight, GripVertical, PanelLeft, Plus, X } from "lucide-react";
 import { usePane } from "@/lib/app/panes";
 import { api } from "@/lib/convex/api";
@@ -40,13 +40,13 @@ import { WEB_SETTINGS_SECTIONS } from "@/lib/engine/webSettings";
 import { useEditorZoom } from "@/lib/editorZoom";
 import { useScrollActivity } from "@/lib/scrollActivity";
 import { loadDocumentView, loadedDocumentView } from "@/lib/app/noteView";
-import { IphoneShell } from "@/components/iphone/IphoneShell";
+import { IphoneShell, IphoneScreen } from "@/components/iphone/lazy";
 import { installPlatformMarks, os, useFold } from "@/lib/platform";
 import { installInputModality } from "@/components/iphone/chrome";
 import { MacCommands } from "./MacCommands";
 import { installPressRipple } from "@/lib/android/ripple";
 import { inMacApp } from "@/lib/desktop/mac";
-import { IphoneScreen, type IphoneScreenOptions } from "@/components/iphone/Screen";
+import type { IphoneScreenOptions } from "@/components/iphone/Screen";
 
 // Quick add (and its plain-words dates, chrono-node, the largest library the first screen would otherwise
 // read) loads the first time it's opened, then stays (docs/IOS_PERFORMANCE.md, "Startup").

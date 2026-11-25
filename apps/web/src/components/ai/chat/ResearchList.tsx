@@ -1,6 +1,6 @@
 "use client";
 
-import { useQuery } from "convex/react";
+import { useQuery } from "@/lib/convex/queries";
 import { useAiFeature } from "@/lib/mode";
 import { Loader2 } from "lucide-react";
 import { api } from "@/lib/convex/api";

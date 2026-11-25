@@ -10,7 +10,8 @@
 // before an existing note changes, so everything shows in version history and can be undone there. Each
 // call is recorded in mcpEvents (arguments never stored), shown under Settings → Connected apps.
 import { v } from "convex/values";
-import { internalMutation, internalQuery, mutation, query, type MutationCtx, type QueryCtx } from "./_generated/server";
+import { internalQuery, query, type MutationCtx, type QueryCtx } from "./_generated/server";
+import { internalMutation, mutation } from "./lib/functions";
 import type { Doc, Id } from "./_generated/dataModel";
 import { blocksToMarkdown, folderPath, hasTaskTitle, localDate, markdownToBlocks, rankBetween, rankSequence, repeatProps, taskViews, LIMITS, SCHEMA_VERSION, ulid, type RepeatRule, type SyncOp, type WireBlock } from "@folevi/editor-schema";
 import { accessAtLeast, assertWritable, documentAccess, getDocumentByPublicId, membership, PageReader, requireProfile, resolveScope } from "./lib/auth";

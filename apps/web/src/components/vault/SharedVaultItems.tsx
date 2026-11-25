@@ -2,7 +2,8 @@
 // Shared with Me, "From Vaults" (docs/VAULT_PLAN.md §6): items someone shared from their Vault with this person, each
 // opened with this person's own account key (never the Vault's). Opening is logged in that Vault's log; a note shared
 // to edit is saved back under the same item key, and that's logged too.
-import { useMutation, useQuery } from "convex/react";
+import { useMutation } from "convex/react";
+import { useQuery } from "@/lib/convex/queries";
 import { useEffect, useState } from "react";
 import { Copy, KeyRound } from "lucide-react";
 import { api } from "@/lib/convex/api";

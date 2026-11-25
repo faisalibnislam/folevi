@@ -1,6 +1,7 @@
 "use client";
 
-import { useMutation, usePaginatedQuery, useQuery } from "convex/react";
+import { useMutation } from "convex/react";
+import { usePaginatedQuery, useQuery } from "@/lib/convex/queries";
 import { useCardSizes } from "@/lib/cardSize";
 import { lazy, Suspense, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Archive, ArchiveRestore, ArrowDown, ArrowUp, Check, CheckSquare, Copy, CopyPlus, EyeOff, FilePlus2, ExternalLink, FolderInput, LayoutGrid, List, MoreHorizontal, Plus, Rows3, Trash2, Undo2, FileText, Files, FolderOpen, Hash, Inbox, LayoutTemplate, Share2, type LucideIcon } from "lucide-react";
@@ -18,6 +19,7 @@ import { useEngineSelector, useLocalStorage } from "@/lib/hooks/useEngine";
 import { startItemsDrag, startNoteDrag, NOTE_MIME } from "@/lib/app/noteDrag";
 import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { LoadFailed, loadFailedCopy } from "@/components/ui/LoadFailed";
 import { ContextMenu, MenuButton, type MenuItem } from "@/components/ui/Menu";
 import { Dialog } from "@/components/ui/Dialog";
 import { useToast, errorMessage } from "@/components/ui/Toast";
@@ -43,7 +45,7 @@ import { useNoteActions } from "./noteActions";
 import { useAiEnabled } from "@/components/ai/useAi";
 import { AiIcon } from "@/components/ai/AiIcon";
 import { useIphoneApp } from "@/lib/iphone";
-import { IphoneNoteList } from "@/components/iphone/NoteList";
+import { IphoneNoteList } from "@/components/iphone/lazy";
 import { useCapabilities } from "@/lib/mode";
 import { FolderShareDialog } from "@/components/app/FolderShareDialog";
 import { FolderMenu } from "@/components/app/FolderMenu";
@@ -83,6 +85,18 @@ const TITLES: Record<View, string> = {
   unsorted: "Drafts",
   folder: "Folder",
   tag: "Tag",
+};
+
+// What a list that couldn't load says it couldn't load.
+const LIST_WHAT: Record<View, string> = {
+  all: "your notes",
+  starred: "your bookmarks",
+  archive: "the archive",
+  trash: "the trash",
+  templates: "your templates",
+  unsorted: "your drafts",
+  folder: "this folder",
+  tag: "this tag",
 };
 
 // What an empty list says: a short heading and one line of help.
@@ -298,7 +312,9 @@ function DocumentList({ view, folderId, tagId, org, titleOverride }: { view: Vie
   }, [docs, q]);
   const moreCached = fromCache && (kept?.length ?? 0) > cachedShown;
   const canLoadMore = status === "CanLoadMore" || moreCached;
-  const loading = status === "LoadingFirstPage" && !cached && docs.length === 0;
+  // The server's list failed and there's nothing else to show: say so (it keeps retrying) instead of loading forever.
+  const listFailed = paged.failed && status === "LoadingFirstPage" && !cached && docs.length === 0;
+  const loading = status === "LoadingFirstPage" && !cached && docs.length === 0 && !listFailed;
   const canArrange = sort === "manual" && view !== "trash";
   // Only the pages with unsynced work, compared by value: this list shouldn't re-render on every keystroke.
   const pendingDocs = useEngineSelector(engine, pendingByDocument, samePending);
@@ -434,7 +450,7 @@ function DocumentList({ view, folderId, tagId, org, titleOverride }: { view: Vie
   );
   const heading = <h1 className="truncate text-subheadline font-semibold">{title}</h1>;
   // Nothing in the list (and, on Templates, no built-in ones either).
-  const listEmpty = !loading && docs.length === 0 && !(view === "templates" && builtIns?.length);
+  const listEmpty = !loading && !listFailed && docs.length === 0 && !(view === "templates" && builtIns?.length);
   const allText = `${docs.length}${canLoadMore ? "+" : ""} ${docs.length === 1 ? "note" : "notes"}`;
   const countText = filtering ? `${shown.length} of ${allText}` : allText;
   // The filter shows wherever there are notes to narrow (and stays while it has words, so they can be cleared).
@@ -515,6 +531,7 @@ function DocumentList({ view, folderId, tagId, org, titleOverride }: { view: Vie
         title={title}
         docs={docs}
         loading={loading}
+        failed={listFailed ? { ...loadFailedCopy(LIST_WHAT[view]), onRetry: paged.retry } : undefined}
         canLoadMore={canLoadMore}
         onLoadMore={() => (moreCached ? setCachedShown((n) => n + PAGE_SIZE) : loadMore(PAGE_SIZE))}
         subfolders={subfolders}
@@ -698,6 +715,8 @@ function DocumentList({ view, folderId, tagId, org, titleOverride }: { view: Vie
               <div key={i} className="h-52 animate-pulse ui-card rounded-control motion-reduce:animate-none" />
             ))}
           </div>
+        ) : listFailed ? (
+          <LoadFailed what={LIST_WHAT[view]} onRetry={paged.retry} />
         ) : filtering && shown.length === 0 ? (
           <EmptyState icon={FileText} title={`No notes match “${q.trim()}”`} body={canLoadMore ? "Load more to look further, or search all notes." : "Try other words, or search all notes."} />
         ) : docs.length === 0 ? (

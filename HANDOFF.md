@@ -249,6 +249,30 @@ The ones most likely to be broken:
 
 ## 9. Current state (as of 2026-11-24)
 
+**Backend performance pass (session `perf-backend`, 2026-11-25).** A generated 5,000-note test library
+(`convex/lib/fakeLibrary.ts`, seeded by `convex/devSeed.ts` into an `@example.com` test account, refused on
+production) and a read-cost harness (`tests/convex/perf/`, run with `FOLEVI_PERF=1`). Baseline and every fix's
+before/after numbers: `docs/perf/backend-results.md`. At 5,000 notes `organization.index` reads 13 MB per run (the
+limit is 16 MiB) and task lists read up to 1,476 documents.
+Step 2: every mutation is now built from `convex/lib/functions.ts` (not `_generated/server`), whose db wrapper reports
+writes to `documents` and `folders` to `lib/listStats.ts`. That keeps `listStats` (per folder: page count, last edit,
+5 newest previews; per scope: the Drafts count) in step, and `organization.index`, `recentFolders` and `draftCount`
+read it instead of the pages. A folder or scope without a row is counted from its pages as before until
+`migrations:backfillListStats` runs (production run waits for the owner's OK). Task rows carry their note's public
+id, title and icon (`syncTaskLabels`, cleared when a note is sealed), so task lists read no notes. Writing straight
+to the db in a test (`t.run`) skips the wrapper: use `watchedDb(ctx)` from `lib/functions.ts` there.
+
+**A failed query no longer takes a page down (branch `claude/project-thread-u99yc5`, open PR, 2026-11-24).** Components
+read queries through `apps/web/src/lib/convex/queries.ts` (`useQuery`, `usePaginatedQuery`, `useQueryState`), never
+convex/react's (an eslint `no-restricted-imports` rule says so). A failed query reads as still loading (keeping its
+last good result), is dropped and asked again after 1, 2, 5, 10 and then every 30 seconds (shared by every hook on the
+same query and arguments), and says `failed` with a `retry()`. Lists that failed show `components/ui/LoadFailed.tsx`
+("Couldn't load your notes", Try again) in place of their placeholder: note lists (desktop and iPhone), Tasks (both),
+Shared with Me, Changes, the Foli AI chat history. Local mode's query cache re-runs a failed entry when it's watched
+again. Still thrown on purpose: E2eeGate's `e2ee_locked_session` (`throwsToBoundary`), and `useQueryOrThrow` where a
+component's own boundary handles the failure (the admin gate's whoami, a chart's collection source). Tests that mock
+convex/react keep working: `test/setup.ts` hands the app's hooks over to the mock's.
+
 **One web app everywhere: the web side (branch `claude/web-everywhere-0e2975`, 2026-11-24).** The web app is now the
 interface on every platform (browser, Mac, Windows, Linux, iPhone, iPad, Duo, Android, Folevi Server). Layout rule
 (owner, 2026-11-24, `docs/claude-context/memory/web-everywhere-layout-rules-2026-11-24.md`): width decides on every
@@ -567,9 +591,14 @@ signed-in account, 1.5.58's frosted folders with a large library, and the iPad c
 account button should move past iPadOS's window buttons).
 
 ## 10. Next steps / open work
+- Backend performance pass, owner's OK needed for production: run `migrations:backfillListStats` (optional, speeds
+  up existing folders) and `migrations:backfillDocumentText` (required before the note text switch PR merges).
+- Backend performance pass (`docs/perf/backend-results.md`): kept folder and Drafts counts, task rows that carry
+  their note's title, a cheaper `changes.list`, then note text (`searchText`) split out of `documents`
+  (widen, backfill, narrow; the owner approves each production backfill).
 - Web everywhere (all landed 2026-11-25). Open: the iOS simulator `footprint` re-run of the iPhone memory fix (mobile
-  session); sync status labels still differ between phone and desktop (Saved/Synced, Offline/Waiting to sync,
-  Conflict/Edited in two places) and there are four empty-state components; no error state when a list fails to load;
+  session); there are four empty-state components; lists not yet given `LoadFailed` still load until a retry answers
+  (settings lists, Calendar, Graph, pickers);
   splitting the phone interface out of every page's bundle (measure with a production build first); "Your own server"
   sign-in for the apps, planned in the shared notes (`web-everywhere-own-server-plan.md`), after the Synology branch
   lands; the starter "Welcome to Folevi" note names Mac shortcuts. Known failing e2e on `main` (not from this work):
@@ -669,8 +698,8 @@ account button should move past iPadOS's window buttons).
    width, the route parsed on every read, the Debug tab-frame mirror.
 3. The Foli AI chat's "Working on it…" row with Stop (the owner circled it on 2026-11-20 with the composer): not
    restyled yet.
-4. Any one failed query takes a whole web page to "Something went wrong" (`useQuery` throws to
-   `app/global-error.tsx`); treat a failed non-essential query as still loading and retry.
+4. Failed queries retry instead of reaching `app/global-error.tsx` (open PR from `claude/project-thread-u99yc5`); after it
+   merges, give `LoadFailed` to the lists that don't have it yet, and check the e2e shard 8 timeout flake (Gotchas).
 5. Paused work (Chrome extension) and `pricing-decisions`: only when the owner asks.
 6. Mac App Store build (sandboxed, no Sparkle) doesn't exist; only Developer ID. Folevi keeps its `com.folevi.*`
    bundle IDs (the owner's choice, `folevi-keeps-com-bundle-ids.md`): don't rename.
@@ -711,8 +740,8 @@ account button should move past iPadOS's window buttons).
   for the rebuilt frame in Debug, and `scripts/gates.mjs`'s `simulator()` helper (press, engine commands) to make a
   scratch local library.
 - Snapshot tests re-record with `FOLEVI_RECORD_SNAPSHOTS=1` (Mac) or `TEST_RUNNER_FOLEVI_RECORD_SNAPSHOTS=1` (iOS); recording rewrites every image, so restore the ones that didn't really change.
-- CI's local Convex backend stops a query after 1 second, and a timed-out query takes the page to its error screen
-  ("Something went wrong"). On a cold backend the first chat message of a shard can trip it: that is
+- CI's local Convex backend stops a query after 1 second, and a timed-out query took the page to its error screen
+  ("Something went wrong"; since `lib/convex/queries.ts` it retries instead, so this may be gone). On a cold backend the first chat message of a shard can trip it: that is
   `e2e/ai-attachments.spec.ts` in shard 8, flaky on `main` and failing twice in a row once. A failure whose
   screenshot is that error screen is this, not the feature; `convex.log` in the shard's artifact shows the timeouts.
 - Rate limits (`convex/lib/rateLimit.ts`) count within fixed clock windows. A test that calls up to a limit must
@@ -728,6 +757,29 @@ account button should move past iPadOS's window buttons).
   `DATABASE_UDF_USER_TIMEOUT_SECONDS=4` for that backend. Bursts show in `convex.log` as "took a long time".
 
 ## 12. Change log
+- 2026-11-25: Backend performance pass, step 3 (widen): `documentText` table holds each note's search text and search
+  fields, kept in step by the write hook; `migrations:backfillDocumentText` copies older notes (production run waits
+  for the owner). Readers are unchanged until the switch PR.
+- 2026-11-25: Backend performance pass, step 2: kept folder and Drafts stats (`listStats`, through the new
+  `lib/functions.ts` write hook), task rows with their note's title and icon, `changes.list` reads a note only once it
+  has unseen changes, a folder by last edit pages through its index. Numbers in `docs/perf/backend-results.md`.
+- 2026-11-25: Backend performance pass, step 1: a generated 5,000-note test library (`convex/devSeed.ts`, test
+  accounts only, refused on production), a read-cost harness with Convex's limits on (`tests/convex/perf/`), and the
+  baseline in `docs/perf/backend-results.md`.
+- 2026-11-25: One set of sync status words on every screen (owner's pick: the desktop's): the phone and iPad's sync
+  button (`components/iphone/SyncStatusTouch.tsx`) now reads `SYNC_LABELS` from `components/app/SyncStatus.tsx`
+  (Saved, Saving…, Syncing…, Offline, Conflict, Not saved) instead of Synced / Waiting to sync / Edited in two places,
+  and its accessible name is the desktop's `sync.button.label` ("Sync status: Offline, 2 changes waiting").
+  `offline-notes.spec.ts` follows. Help, docs and marketing already used these words. The paused native apps'
+  `SyncStatus.swift` was left as it is. Web unit tests: 2161 pass; e2e not run locally.
+- 2026-11-25: PR 79 review fix: a paginated list that failed emptied and swapped "Couldn't load" for the loading
+  placeholder on every retry (the retry starts the query over from its first page, and that first load read as
+  "ok"). `usePaginatedQuery` now keeps the loaded results and `failed` until the restarted query answers; new
+  regression test in `test/safe-queries.test.tsx` (fails on the old hook). Pages loaded with "load more" before the
+  failure still go back to the first page once it recovers. Web unit tests: 2167 pass.
+- 2026-11-24: Failed queries keep the page: `lib/convex/queries.ts` hooks (retry with backoff, last good result,
+  `failed` and `retry()`), used in every component with an eslint rule; `LoadFailed` error state on the main lists;
+  local query cache re-runs failed entries; `test/safe-queries.test.tsx`.
 - 2026-11-25: Main green pass (`claude/project-thread-8numex`): `multi-select-local` draws its rectangle from under
   Birch (the smaller desktop cards of 2026-11-20 put Alder, Birch and Cedar on one row, so a rectangle from the right of
   Cedar crossed Cedar); `e2ee-approve` waits for the first dialog to close and for the second request's code before

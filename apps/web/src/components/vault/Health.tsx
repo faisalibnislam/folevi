@@ -2,7 +2,7 @@
 // Health (docs/VAULT_PLAN.md §4): weak, reused and breached passwords, and API keys or licences near their expiry.
 // Worked out from what lists already carry: each summary's sealed health (strength and the breach check, made on the
 // device when the item was saved) and the server's count of matching blind indexes. No item is opened for it.
-import { useQuery } from "convex/react";
+import { useQuery } from "@/lib/convex/queries";
 import { useEffect, useMemo, useState } from "react";
 import { HeartPulse } from "lucide-react";
 import { api } from "@/lib/convex/api";

@@ -3,7 +3,8 @@
 // from images.unsplash.com and credited, and their download is reported to Unsplash. Both are required by
 // the Unsplash API guidelines (https://help.unsplash.com/en/articles/2511245-unsplash-api-guidelines).
 import { v } from "convex/values";
-import { action, internalMutation, query } from "./_generated/server";
+import { action, query } from "./_generated/server";
+import { internalMutation } from "./lib/functions";
 import { internal } from "./_generated/api";
 import { assertWritable, requireIdentity, requireProfile } from "./lib/auth";
 import { fail } from "./lib/errors";

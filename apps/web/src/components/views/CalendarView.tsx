@@ -22,9 +22,8 @@ import { useMediaQuery } from "@/lib/hooks/useMediaQuery";
 import { useHardwareKeyboard } from "@/lib/hooks/useHardwareKeyboard";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { isIphoneApp, useIphoneApp } from "@/lib/iphone";
-import { IphoneAgenda, calendarMenu } from "@/components/iphone/Agenda";
-import { IphoneTaskSheet } from "@/components/iphone/TaskSheet";
-import { RootAvatar, RootPill } from "@/components/iphone/RootBar";
+import { IphoneAgenda, IphoneTaskSheet, RootAvatar, RootPill } from "@/components/iphone/lazy";
+import { calendarMenu } from "@/components/iphone/calendarMenu";
 
 type Layout = "month" | "week" | "agenda";
 const LAYOUT_KEY = "folevi:calendar-layout";

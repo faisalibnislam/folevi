@@ -50,6 +50,12 @@ public struct WebGateScreen: View {
     }
 }
 
+extension EnvironmentValues {
+    /// "Sign in to your own server" on the sign-in screen (Folevi Server, docs/self-hosting/CONTRACT.md §6.1), for
+    /// hosts that can add a server place: the host shows its own screen for the address. Nil hides the button.
+    @Entry public var gateOwnServer: (@MainActor () -> Void)? = nil
+}
+
 // MARK: Pieces shared by the screens
 
 /// One line of text in a measured style (its font, line box and colour).
@@ -911,12 +917,21 @@ struct PhoneSignInGate: View {
 struct SignInChoices: View {
     @Bindable var model: GateModel
     @Environment(\.colorScheme) private var scheme
+    @Environment(\.gateOwnServer) private var ownServer
 
     var body: some View {
         let list = gs("gates.signin.list", scheme)
         let actions = model.gate?.actions ?? []
+        // (Folevi Cloud's own choices, not a server's sign-in or the waiting screen: there "Your own server" fits.)
+        let offersServer = ownServer != nil && actions.contains { $0.id == "apple" }
         VStack(spacing: list.gap) {
             ForEach(actions, id: \.id) { a in
+                if a.id == "local", offersServer, let ownServer {
+                    // As today's app (ShellSignIn.tsx): under Sign in with email, before Keep notes on my devices.
+                    GateFullButton(title: "Sign in to your own server", id: "gates.signin.local", leading: AnyView(WebIconView(.server, size: 16).padding(.trailing, 8))) { ownServer() }
+                        .disabled(model.pending != nil)
+                        .accessibilityIdentifier("gate-action-server")
+                }
                 Group {
                     switch a.id {
                     case "apple": WebAppleButton(title: a.label, busy: !a.enabled) { press(a) }

@@ -99,6 +99,8 @@ struct RebuildIPadRoot: View {
     let phone: PhoneModel
     let pageHost: PageViewHost
     let gate: GateModel
+    /// "Sign in to your own server" from the sign-in screen (RebuildOwnServer.swift).
+    @State private var ownServer = false
 
     var body: some View {
         IPadFrameView(model: desk) {
@@ -112,8 +114,13 @@ struct RebuildIPadRoot: View {
         .overlay {
             if let g = phone.gate, g.gate != nil, g.gate != "loading" {
                 WebGateScreen(model: gate)
+                    .environment(\.gateOwnServer, { ownServer = true })
                     .onAppear { gate.show(g) }
                     .onChange(of: g) { _, next in gate.show(next) }
+                    .sheet(isPresented: $ownServer) {
+                        RebuildOwnServerSheet { ownServer = false }
+                            .presentationDetents([.medium, .large])
+                    }
                     .transition(.opacity)
             }
         }

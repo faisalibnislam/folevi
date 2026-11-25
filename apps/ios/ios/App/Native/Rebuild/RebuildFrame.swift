@@ -417,6 +417,8 @@ private struct RebuildRoot: View {
     @State private var notifications = false
     /// The sync status's sheet (the cloud beside the bell).
     @State private var sync = false
+    /// "Sign in to your own server" from the sign-in screen (RebuildOwnServer.swift).
+    @State private var ownServer = false
     /// New folder's card, over everything.
     @State private var newFolder: NewFolderRequest?
     /// New workspace's card, over everything (from the account sheet).
@@ -507,8 +509,13 @@ private struct RebuildRoot: View {
         .overlay {
             if let g = phone.gate, g.gate != nil, g.gate != "loading" {
                 WebGateScreen(model: gate)
+                    .environment(\.gateOwnServer, { ownServer = true })
                     .onAppear { gate.show(g) }
                     .onChange(of: g) { _, next in gate.show(next) }
+                    .sheet(isPresented: $ownServer) {
+                        RebuildOwnServerSheet { ownServer = false }
+                            .presentationDetents([.medium, .large])
+                    }
                     .transition(.opacity)
             }
         }

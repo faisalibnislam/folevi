@@ -19,6 +19,7 @@
 // longer able to add pages there, the model failed) is told once per reason in the bell, never by email.
 // Note content is never emailed or logged. Turning a routine off (or AI off) stops it: nothing is scheduled,
 // read or sent.
+import { noteText } from "./lib/documentText";
 import { v } from "convex/values";
 import { internalAction, query, type MutationCtx, type QueryCtx } from "./_generated/server";
 import { internalMutation, mutation } from "./lib/functions";
@@ -370,7 +371,7 @@ async function morningMaterial(ctx: Ctx, profile: Doc<"profiles">, scope: Scope,
     // An encrypted note: its readable copy for Foli AI (Background Foli AI on), else it's left out.
     const copy = isSealed(d) ? await sealedAiCopy(ctx, d) : null;
     if (isSealed(d) && !copy) continue;
-    changed.push({ id: d.publicId, title: (copy ? copy.title : d.title) || "Untitled", text: (copy ? copy.text : d.searchText).slice(0, MORNING_LIMITS.noteChars), by: await nameOf(d.lastEditedBy) });
+    changed.push({ id: d.publicId, title: (copy ? copy.title : d.title) || "Untitled", text: (copy ? copy.text : await noteText(ctx, d._id)).slice(0, MORNING_LIMITS.noteChars), by: await nameOf(d.lastEditedBy) });
   }
 
   const recent = await (

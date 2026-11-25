@@ -5,7 +5,7 @@ import { describe, expect, test } from "vitest";
 import { api, internal } from "../../convex/_generated/api";
 import { SCHEMA_VERSION, type WireBlock } from "@folevi/editor-schema";
 import { HIDDEN_PAGE_LABEL } from "../../convex/lib/linkLabels";
-import { inWorkspace, join, person, setup, teamWorkspace, ulid, type T } from "./helpers";
+import { inWorkspace, join, person, setup, teamWorkspace, ulid, type T, textOf, setTextOf } from "./helpers";
 
 type Person = Awaited<ReturnType<typeof person>>;
 
@@ -187,7 +187,7 @@ describe("links never show a restricted page's title to someone who can't open i
     expect(JSON.stringify([summary.excerpt, summary.preview])).not.toContain("Secret");
     expect(JSON.stringify([summary.excerpt, summary.preview])).toContain("Roadmap");
     const stored = await t.run(async (ctx) => (await ctx.db.query("documents").withIndex("by_public_id", (q) => q.eq("publicId", note)).unique())!);
-    expect(stored.searchText).not.toMatch(/secret/i);
+    expect(await textOf(t, note)).not.toMatch(/secret/i);
 
     // Renaming the restricted page never writes its new title into the linking page; renaming an open
     // one does.
@@ -217,11 +217,12 @@ describe("links never show a restricted page's title to someone who can't open i
 
     // The one-off migration recomputes text derived before this change.
     await t.run(async (ctx) => {
-      await ctx.db.patch(stored._id, { excerpt: "See Secret plan", searchText: "see secret plan" });
+      await ctx.db.patch(stored._id, { excerpt: "See Secret plan" });
     });
+    await setTextOf(t, note, "see secret plan");
     await t.mutation(internal.migrations.refreshLinkingPages, {});
     const fixed = await t.run(async (ctx) => (await ctx.db.get(stored._id))!);
     expect(fixed.excerpt).not.toContain("Secret");
-    expect(fixed.searchText).not.toMatch(/secret/i);
+    expect(await textOf(t, note)).not.toMatch(/secret/i);
   });
 });

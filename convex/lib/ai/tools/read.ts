@@ -2,6 +2,7 @@
 // in a query as the person (aiAgent.inspect): only notes of the conversation's place (their Personal or a
 // workspace) that they can open, never one in Trash, with links labelled as they may see them. Note text
 // goes back wrapped as untrusted (untrusted.ts).
+import { noteText } from "../../documentText";
 import type { Doc } from "../../../_generated/dataModel";
 import type { QueryCtx } from "../../../_generated/server";
 import { blockSearchText, flattenTree, folderPath, type WireBlock } from "@folevi/editor-schema";
@@ -213,8 +214,10 @@ export const READERS: Record<string, Reader> = {
     const focus = str(args.noteId);
     const notes = await recentNotes(ctx, env, 150);
     if (focus && !notes.some((n) => n.publicId === focus)) notes.push(await readableNote(ctx, env, focus));
+    const texts: { id: string; title: string; text: string }[] = [];
+    for (const d of notes) texts.push({ id: d.publicId, title: d.title || "Untitled", text: (await noteText(ctx, d._id)).slice(0, 4_000) });
     const pairs = duplicatePairs(
-      notes.map((d) => ({ id: d.publicId, title: d.title || "Untitled", text: d.searchText.slice(0, 4_000) })),
+      texts,
       0.5,
       focus || undefined,
     ).slice(0, num(args.limit, 10));
@@ -230,7 +233,7 @@ export const READERS: Record<string, Reader> = {
     const da = await readableNote(ctx, env, a);
     const db = await readableNote(ctx, env, b);
     return {
-      similarity: noteSimilarity({ title: da.title, text: da.searchText }, { title: db.title, text: db.searchText }),
+      similarity: noteSimilarity({ title: da.title, text: await noteText(ctx, da._id) }, { title: db.title, text: await noteText(ctx, db._id) }),
       a: await noteForModel(ctx, env, da, NOTES_CHARS),
       b: await noteForModel(ctx, env, db, NOTES_CHARS),
     };
@@ -264,6 +267,6 @@ export const READERS: Record<string, Reader> = {
   /** find_related's note: its title and opening text, to search with (lib/ai/tools/related.ts). */
   async related_seed(ctx, env, args) {
     const doc = await readableNote(ctx, env, str(args.noteId));
-    return { id: doc.publicId, title: doc.title || "Untitled", text: doc.searchText.slice(0, 1_500) };
+    return { id: doc.publicId, title: doc.title || "Untitled", text: (await noteText(ctx, doc._id)).slice(0, 1_500) };
   },
 };

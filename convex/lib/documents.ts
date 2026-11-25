@@ -13,6 +13,7 @@ import {
   type WireBlock,
 } from "@folevi/editor-schema";
 import { insertScoped, scopeOfRow, type Scope } from "./scope";
+import { setNoteText } from "./documentText";
 import { accessAtLeast, documentAccess, folderAccessInfo, membership } from "./auth";
 import { sharedLabels } from "./linkLabels";
 import { emitWebhook } from "./webhooks";
@@ -292,8 +293,8 @@ export async function refreshDerived(ctx: MutationCtx, doc: Doc<"documents">, ro
   // A synced block's content is never found as a page of its own: the notes showing it are. Counts are of
   // the body only (the title isn't part of the page's word count).
   const derived = deriveDocumentText(doc.title, blocks, { synced: doc.kind === "synced" });
+  await setNoteText(ctx, doc, derived.searchText);
   await ctx.db.patch(doc._id, {
-    searchText: derived.searchText,
     wordCount: derived.wordCount,
     charCount: derived.charCount,
     // The note's own blocks (the limit on blocks per note counts these).

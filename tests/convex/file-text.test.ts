@@ -7,7 +7,7 @@ import { afterEach, describe, expect, test, vi } from "vitest";
 import { api, internal } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
 import { SCHEMA_VERSION, type WireBlock } from "@folevi/editor-schema";
-import { join, PERSONAL, person, setup, teamWorkspace, ulid, type T } from "./helpers";
+import { join, PERSONAL, person, setup, teamWorkspace, ulid, type T, textOf, setTextOf } from "./helpers";
 
 process.env.BETTER_AUTH_SECRET ??= "test-secret-".repeat(4);
 
@@ -91,8 +91,7 @@ describe("text found in files", () => {
     // Everywhere too (⌘K, All places).
     expect((await a.as.query(api.search.everywhere, { query: "quokkaflux" })).map((r) => r.id)).toEqual([documentId]);
     // Kept beside the file, not in the note's own search text.
-    const doc = await t.run(async (ctx) => await ctx.db.query("documents").withIndex("by_public_id", (q) => q.eq("publicId", documentId)).unique());
-    expect(doc!.searchText).not.toContain("quokkaflux");
+    expect(await textOf(t, documentId)).not.toContain("quokkaflux");
     // What the note has, for the device that reads files.
     const has = await a.as.query(api.fileText.forDocument, { documentId });
     expect(has).toEqual([expect.objectContaining({ blockId, source: "pdf", by: "pdf", hash: "sha-manual.pdf", empty: false })]);
@@ -103,10 +102,7 @@ describe("text found in files", () => {
     const a = await person(t, "file-text-body@example.com");
     const { documentId } = await noteWithPdf(t, a, "Zorblatt plans", ["zorblatt in the pdf"]);
     await push(a, PERSONAL, [upsert(documentId, { id: ulid(), type: "paragraph", parentId: null, rank: "A", schemaVersion: SCHEMA_VERSION, text: [{ type: "text", text: "zorblatt in the body" }], props: {} })]);
-    await t.run(async (ctx) => {
-      const d = (await ctx.db.query("documents").withIndex("by_public_id", (q) => q.eq("publicId", documentId)).unique())!;
-      await ctx.db.patch(d._id, { searchText: `${d.title}\nzorblatt in the body` });
-    });
+    await setTextOf(t, documentId, "Zorblatt plans\nzorblatt in the body");
     const [r] = await a.as.query(api.search.documents, { scope: PERSONAL, query: "zorblatt" });
     expect(r!.match).toBeNull();
     expect(r!.snippet).toContain("in the body");

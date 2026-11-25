@@ -12,6 +12,7 @@ import { accessAtLeast, documentAccess, requireIdentity, requireProfile, resolve
 import { HomeFolders } from "./lib/documents";
 import { inScope, personalScope, vScopeArg, workspaceScope, type Scope } from "./lib/scope";
 import { failE2ee, isLocked, isSealed, spaceE2ee, switchesOf } from "./lib/e2ee/state";
+import { noteText } from "./lib/documentText";
 
 /**
  * Full-text search of one scope (your Personal, or a workspace you're in) over titles, text blocks (incl.
@@ -109,8 +110,10 @@ export async function searchDocuments(ctx: QueryCtx, profile: Doc<"profiles">, s
     tagDocs = new Set(links.map((l) => l.documentId as string));
   }
 
-  const byText = await ctx.db
-    .query("documents")
+  // Notes' text is searched in documentText (lib/documentText.ts); the note rows are read for the hits only.
+  const texts = new Map<string, string>();
+  const textHits = await ctx.db
+    .query("documentText")
     .withSearchIndex("search_text", (s) => {
       const text = s.search("searchText", q);
       let b = (scope.kind === "personal" ? text.eq("ownerProfileId", scope.profileId) : text.eq("workspaceId", scope.workspaceId)).eq("inTrash", false);
@@ -119,6 +122,13 @@ export async function searchDocuments(ctx: QueryCtx, profile: Doc<"profiles">, s
       return b;
     })
     .take(100);
+  const byText: Doc<"documents">[] = [];
+  for (const r of textHits) {
+    const d = await ctx.db.get(r.documentId);
+    if (!d) continue;
+    texts.set(d._id, r.searchText);
+    byText.push(d);
+  }
   const byTitle = await ctx.db
     .query("documents")
     .withSearchIndex("search_title", (s) => {
@@ -194,7 +204,7 @@ export async function searchDocuments(ctx: QueryCtx, profile: Doc<"profiles">, s
       if (out.length >= limit) break;
       continue;
     }
-    const body = d.searchText.slice(d.title.length + 1);
+    const body = (texts.get(d._id) ?? (await noteText(ctx, d._id))).slice(d.title.length + 1);
     // Found only in a file or drawing (not in the note's own text): the result says where, and opens there.
     const file = inFiles.get(d._id);
     const inFile = file && !highlightRanges(body, q).length ? file : null;

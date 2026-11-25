@@ -27,7 +27,7 @@ export const SEALED_DOCUMENT_PLACEHOLDERS = {
   icon: undefined,
   cover: DEFAULT_COVER,
   style: DEFAULT_DOCUMENT_STYLE,
-  searchText: "",
+  // (Its search text, in documentText, is emptied when the note is sealed: lib/documentText.ts.)
   excerpt: "",
   preview: undefined,
   wordCount: 0,

@@ -35,7 +35,12 @@ async function rows(t: T, publicId: string) {
       .query("blocks")
       .withIndex("by_document", (q) => q.eq("documentId", doc!._id))
       .collect();
-    return { doc: doc!, blocks };
+    // Its search text is kept in documentText (convex/lib/documentText.ts).
+    const text = await ctx.db
+      .query("documentText")
+      .withIndex("by_document", (q) => q.eq("documentId", doc!._id))
+      .unique();
+    return { doc: { ...doc!, searchText: text?.searchText ?? "" }, blocks };
   });
 }
 

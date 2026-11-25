@@ -41,6 +41,7 @@ import { emitWebhook } from "./lib/webhooks";
 import { refreshSourcesShownBy } from "./lib/synced";
 import { failE2ee, requirePlainWriteInScope } from "./lib/e2ee/state";
 import { bytesToB64u, sealedFieldsOf } from "./lib/e2ee/sealedRows";
+import { noteText } from "./lib/documentText";
 
 /** A sealed note's sealed title and appearance next to the placeholders of a result row; nothing for a Standard note. */
 function sealedOf(doc: Doc<"documents">): { sealed?: ReturnType<typeof sealedFieldsOf> } {
@@ -407,7 +408,7 @@ export const spotlightText = query({
       const doc = await getDocumentByPublicId(ctx, id);
       const open = doc && !doc.inTrash && !doc.deletedAt && accessAtLeast(await documentAccess(ctx, profile, doc), "read");
       const sealed = doc && (doc.sealedAt !== undefined || sealedFieldsOf(doc) !== undefined || doc.locked === true || doc.lockedVia !== undefined);
-      out.push({ id, text: open && !sealed ? doc.searchText.slice(0, SPOTLIGHT_TEXT_CHARS) : null });
+      out.push({ id, text: open && !sealed ? (await noteText(ctx, doc._id)).slice(0, SPOTLIGHT_TEXT_CHARS) : null });
     }
     return out;
   },
@@ -568,7 +569,7 @@ export const backlinks = query({
       const scope = scopeOfRow(doc);
       const phrase = `"${title.replace(/"/g, "")}"`;
       const hits = await ctx.db
-        .query("documents")
+        .query("documentText")
         .withSearchIndex("search_text", (q) =>
           scope.kind === "personal"
             ? q.search("searchText", phrase).eq("ownerProfileId", scope.profileId).eq("inTrash", false)
@@ -576,9 +577,10 @@ export const backlinks = query({
         )
         .take(30);
       const needle = title.toLowerCase();
-      for (const h of hits) {
-        if (h._id === doc._id || seen.has(h._id) || h.sealedAt !== undefined) continue;
-        if (!h.searchText.toLowerCase().includes(needle)) continue;
+      for (const r of hits) {
+        if (r.documentId === doc._id || seen.has(r.documentId) || !r.searchText.toLowerCase().includes(needle)) continue;
+        const h = await ctx.db.get(r.documentId);
+        if (!h || h.sealedAt !== undefined) continue;
         if (!accessAtLeast(await documentAccess(ctx, profile, h), "read")) continue;
         unlinked.push({ id: h.publicId, title: h.title, icon: h.icon ?? null, excerpt: h.excerpt.slice(0, 140) });
       }

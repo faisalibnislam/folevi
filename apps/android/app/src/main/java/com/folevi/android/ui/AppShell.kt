@@ -4,10 +4,10 @@
 // - Compact (phones, a folded foldable): the web's phone bar (PhoneBar.kt; owner 2026-11-25, "Today's UI, Material
 //   3 native"): Home, Tasks and Calendar in one floating capsule, Foli AI and + in another; one page with Back; a
 //   note opens full screen (as on iPhone). Each tab keeps its own Navigation 3 back stack.
-// - Medium and wider (tablets, an open foldable, Googlebooks): a navigation rail (Medium, Expanded) or the sidebar
-//   with the folders (Large and wider), and a tab strip at the top like the web app's, with the web's rules
-//   (Tabs.kt): everything opened from a page gets a tab that goes Back to it; the rail, the sidebar and New note
-//   open fresh tabs.
+// - Medium and wider (tablets, an open foldable, Googlebooks): the web's tablet layout. Its sidebar
+//   (TabletSidebar.kt) sits beside the page on expanded and wider windows and slides over it on a medium one; the
+//   tab strip (TabStrip.kt) floats at the top, with the web's rules (Tabs.kt): everything opened from a page gets
+//   a tab that goes Back to it; the sidebar and New note open fresh tabs.
 //
 // A fold carries the page on screen between the two: unfolding opens it as a tab, folding puts the tab on screen
 // on the phone's stack.
@@ -46,6 +46,13 @@ import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
 import androidx.compose.material3.adaptive.navigation3.ListDetailSceneStrategy
 import androidx.compose.material3.adaptive.navigation3.rememberListDetailSceneStrategy
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandHorizontally
+import androidx.compose.animation.shrinkHorizontally
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.foundation.clickable
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.Alignment
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
@@ -286,31 +293,66 @@ private fun TabbedFrame(width: WidthClass, tabs: TabsModel, newNote: () -> Unit)
         onBackCompleted = { tabs.goBack() },
     )
     val pages = rememberSaveableStateHolder()
-    Row(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
-        if (width >= WidthClass.LARGE) {
-            Sidebar(section, pick = { fresh(it.root) }, onFolder = { id, name -> fresh(NotesRoute(NotesListView.FOLDER.value, name, folderId = id)) })
-        } else {
-            NavigationRail(containerColor = p.sidebar) {
-                Spacer(Modifier.height(8.dp))
-                for (t in Tab.entries) {
-                    NavigationRailItem(selected = t == section, onClick = { fresh(t.root) }, icon = { FoleviIcon(t.icon, null) }, label = { Text(t.label) })
+    // The web's tablet sidebar (TabletSidebar.kt), 320 wide: beside the page on expanded and wider windows, over it
+    // with a scrim on a medium one (an open foldable, a small tablet), where it starts hidden. Hide sidebar and Show
+    // sidebar (the strip) fold it away; the choice holds for this window.
+    val wide = width >= WidthClass.EXPANDED
+    var sidebarChoice by rememberSaveable { mutableStateOf<Boolean?>(null) }
+    val sidebarShown = sidebarChoice ?: wide
+    val showSidebar: () -> Unit = { sidebarChoice = true }
+    val hideSidebar: () -> Unit = { sidebarChoice = false }
+    // From the sidebar a page opens fresh; on a medium window the sidebar goes again once it has.
+    val fromSidebar: (Route) -> Unit = { r -> fresh(r); if (!wide) sidebarChoice = false }
+    val ai = rememberView(Views.session()).value.value?.capabilities?.ai == true
+    val bars = WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Start + WindowInsetsSides.Bottom)
+    Box(Modifier.fillMaxSize().background(p.sidebar)) {
+        Row(Modifier.fillMaxSize()) {
+            AnimatedVisibility(
+                visible = wide && sidebarShown,
+                enter = expandHorizontally(expandFrom = Alignment.Start) + fadeIn(),
+                exit = shrinkHorizontally(shrinkTowards = Alignment.Start) + fadeOut(),
+            ) {
+                TabletSidebar(route, fromSidebar, onHide = hideSidebar, modifier = Modifier.windowInsetsPadding(bars))
+            }
+            Column(Modifier.weight(1f).fillMaxHeight().background(MaterialTheme.colorScheme.background)) {
+                TabStrip(
+                    tabs,
+                    newNote,
+                    Modifier.windowInsetsPadding(WindowInsets.safeDrawing.only(if (sidebarShown && wide) WindowInsetsSides.Top + WindowInsetsSides.End else WindowInsetsSides.Top + WindowInsetsSides.End + WindowInsetsSides.Start)),
+                    onShowSidebar = if (sidebarShown && wide) null else showSidebar,
+                    onAi = if (ai) ({ fresh(AiRoute) }) else null,
+                )
+                // The strip above and the sidebar beside it already keep clear of the status bar and the cutout: the
+                // page's own bars mustn't leave room for them again.
+                Box(
+                    Modifier.weight(1f).fillMaxSize()
+                        .consumeWindowInsets(WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Start))
+                        .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Bottom + WindowInsetsSides.End)),
+                ) {
+                    // Each tab keeps its own scroll positions and fields while another is on screen.
+                    pages.SaveableStateProvider("${tabs.activeId}|${route.hashCode()}") {
+                        TabPage(route, tabs.active.name, fromPage, back)
+                    }
                 }
             }
         }
-        Column(Modifier.weight(1f).fillMaxHeight()) {
-            TabStrip(tabs, newNote, Modifier.background(p.sidebar).windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.End)))
-            // The strip above and the rail or sidebar beside it already keep clear of the status bar and the cutout: the
-            // page's own bars mustn't leave room for them again.
-            Box(
-                Modifier.weight(1f).fillMaxSize()
-                    .consumeWindowInsets(WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Start))
-                    .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Bottom + WindowInsetsSides.End)),
-            ) {
-                // Each tab keeps its own scroll positions and fields while another is on screen.
-                pages.SaveableStateProvider("${tabs.activeId}|${route.hashCode()}") {
-                    TabPage(route, tabs.active.name, fromPage, back)
-                }
+        // A medium window: the sidebar slides in over the page, which dims; a tap on it, or Back, closes it.
+        if (!wide) {
+            AnimatedVisibility(visible = sidebarShown, enter = fadeIn(), exit = fadeOut()) {
+                Box(Modifier.fillMaxSize().background(androidx.compose.ui.graphics.Color.Black.copy(alpha = 0.25f)).clickable(onClickLabel = "Hide sidebar", indication = null, interactionSource = null, onClick = hideSidebar))
             }
+            AnimatedVisibility(
+                visible = sidebarShown,
+                enter = slideInHorizontally { -it },
+                exit = slideOutHorizontally { -it },
+            ) {
+                TabletSidebar(route, fromSidebar, onHide = hideSidebar, modifier = Modifier.windowInsetsPadding(bars))
+            }
+            NavigationBackHandler(
+                state = rememberNavigationEventState(currentInfo = NavigationEventInfo.None),
+                isBackEnabled = sidebarShown,
+                onBackCompleted = hideSidebar,
+            )
         }
     }
 }
@@ -377,38 +419,6 @@ private fun PhoneContent(stack: NavBackStack<NavKey>, open: (Route) -> Unit, mod
                 entry<PageRoute>(metadata = ListDetailSceneStrategy.detailPane()) { WebPageScreen(it, back) }
             },
         )
-    }
-}
-
-/** The Googlebook and big-tablet sidebar: the tabs, then the folders (as the Mac's sidebar). */
-@Composable
-private fun Sidebar(tab: Tab?, pick: (Tab) -> Unit, onFolder: (String, String) -> Unit) {
-    val tree by rememberView(Views.foldersTree())
-    PermanentDrawerSheet(Modifier.width(280.dp).fillMaxHeight(), drawerContainerColor = LocalPalette.current.sidebar) {
-        Column(Modifier.verticalScroll(rememberScrollState()).padding(horizontal = 12.dp, vertical = 16.dp)) {
-            Text("Folevi", style = MaterialTheme.typography.titleLarge, modifier = Modifier.padding(start = 16.dp, bottom = 12.dp))
-            for (t in Tab.entries) {
-                NavigationDrawerItem(
-                    label = { Text(t.label) },
-                    icon = { FoleviIcon(t.icon, null) },
-                    selected = t == tab,
-                    onClick = { pick(t) },
-                    colors = NavigationDrawerItemDefaults.colors(unselectedContainerColor = Color.Transparent),
-                )
-            }
-            Spacer(Modifier.height(16.dp))
-            Text("Folders", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(start = 16.dp, bottom = 4.dp))
-            for (f in tree.value?.folders.orEmpty()) {
-                NavigationDrawerItem(
-                    label = { Text(f.name, maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                    icon = { FoleviIcon(WebIcon.FOLDER, null, tint = folderColor(f.color)) },
-                    selected = false,
-                    onClick = { onFolder(f.id, f.name) },
-                    modifier = Modifier.padding(start = (f.depth.toInt() * 16).dp),
-                    colors = NavigationDrawerItemDefaults.colors(unselectedContainerColor = Color.Transparent),
-                )
-            }
-        }
     }
 }
 

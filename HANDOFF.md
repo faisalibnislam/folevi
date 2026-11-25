@@ -297,10 +297,17 @@ Capacitor app), PR 79 (failed queries keep pages up) and PR 80 (one set of sync 
   before the first frame, Changes and Reviews hold their last answer, Settings/Changes/Shared/Reviews/Vault preload
   on the phone and draw in the same turn (`RouteView.tsx soon`), the note bar takes the page's tone in
   `useLayoutEffect`, press feedback waits 70 ms, and a note no longer fades and tilts in on top of the zoom.
-  Not done from the audit (next): rows that vanish with no exit motion (checked tasks, swipe to Trash), SwipeRow's
-  non-passive touchmove (sticky scroll starts), the week-to-month strip animating height, the tab bar's CSS curve vs
-  the push spring, Reduce Motion cancelling opacity fades, the 150 ms wait before pushing to a note, Spectral swap on
-  cold launch, and the blank frame after the keyboard closes.
+- The rest of the audit, build 98 (delivery 6ce7ce3e-efa3-4ac1-aeca-0ba594e74920; the first upload try failed when a
+  cleanup removed altool's temporary copy, the retry with the same .ipa succeeded): leaving rows (checked tasks, swipe
+  to Trash/Archive) slide, fade and fold away (`components/iphone/exit.tsx`, `Swipe.tsx` `removes`, `Tasks.tsx`);
+  SwipeRow uses passive Pointer Events with `touch-action: pan-y` (no touchmove listener holding up scrolls); the
+  week-to-month strip moves with transforms only (`WeekStrip.tsx`); the tab bar moves on the push's spring when the
+  move starts (`transitions.ts onMoveStart`); `READY_WAIT_MS` 50 (was 150); Reduce Motion keeps opacity-only fades
+  (150 ms); Spectral uses `display: fallback`. Checked in the Simulator: the Foli AI composer above a real on-screen
+  keyboard (it stays at 292 of 374 pt), the month opening and closing, a checked task folding away after about 0.9 s.
+  Still open: Home's blank strip for a moment as the keyboard leaves (Capacitor grows the web view at keyboardWillHide
+  and WebKit paints the uncovered part a frame or two later; the fix changes how the keyboard resizes the web view,
+  so it needs a device to test); swipe axis lock on a real phone; e2e not run locally (CI on the PR).
 - Memory re-check (the open item): Duo closed, 20 opens of "Welcome to Folevi": 126 MB, 200 MB, 130 MB after
   `org.WebKit.lowMemory`; nothing kept per open.
 - The three failing e2e specs listed in section 10 were already fixed on `main` by PR 77.

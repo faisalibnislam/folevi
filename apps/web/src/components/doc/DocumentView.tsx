@@ -43,7 +43,7 @@ import { api } from "@/lib/convex/api";
 import { placesAvailable, usePlaces } from "@/lib/places";
 import { openMovePlaces } from "@/components/places/MovePlaces";
 import { useFolderTree } from "@/lib/app/folders";
-import { useOutboxSelect } from "@/lib/sync/queryCache";
+import { useOfflineQuery, useOutboxSelect } from "@/lib/sync/queryCache";
 import { pendingNoteFolders, waitingRowPage } from "@/lib/sync/overlays";
 import { formatRelative } from "@/lib/format";
 import { Avatar } from "@/components/ui/Avatar";
@@ -2129,7 +2129,8 @@ const PAPER_ROW =
   "flex min-h-11 items-center gap-3 border-b border-[color-mix(in_oklab,var(--color-heading)_10%,transparent)] py-2.5 text-ink last:border-b-0 active:opacity-60";
 
 function Backlinks({ documentId, paper = false }: { documentId: string; paper?: boolean }) {
-  const data = useQuery(api.documents.backlinks, { documentId });
+  // The last answer kept on this device draws at once on a revisit, so the list doesn't pop in at the note's end.
+  const data = useOfflineQuery(api.documents.backlinks, { documentId });
   if (!data || (!data.linked.length && !data.unlinked.length)) return null;
   if (paper) {
     // On the note's own paper (the iPhone): plain lists in the theme's colours, each row a full-width target.

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { ChevronLeft } from "lucide-react";
 import { useAppRouter, type Route } from "@/lib/app/router";
 import { GlassCircle } from "./Glass";
@@ -123,8 +123,9 @@ export function IphoneScreen({ options, fallbackTitle, children, overlay, tint }
   const { pathname, search } = useAppRouter();
 
   // Over a note: what its page paints under the bar, measured again when its look changes in place (a page colour
-  // or theme picked, the app's appearance).
-  useEffect(() => {
+  // or theme picked, the app's appearance). Measured before the first paint, so the bar opens in the page's tone
+  // instead of flipping to it a frame later.
+  useLayoutEffect(() => {
     const el = rootRef.current;
     if (edge !== "page" || !el) return;
     let frame = 0;
@@ -136,7 +137,7 @@ export function IphoneScreen({ options, fallbackTitle, children, overlay, tint }
     const soon = () => {
       if (!frame) frame = requestAnimationFrame(measure);
     };
-    soon();
+    measure();
     const late = window.setTimeout(soon, 400);
     const inPage = new MutationObserver(soon);
     inPage.observe(el, { attributes: true, subtree: true, attributeFilter: ["style", "data-sheet", "data-palette", "data-text"] });

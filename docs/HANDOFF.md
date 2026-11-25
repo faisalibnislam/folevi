@@ -4,6 +4,28 @@ Written at the end of a long Claude Code session on the owner's Mac, so work can
 computer and another Claude Code account. Read this first, then `docs/claude-context/` (the owner's saved
 decisions and rules), then the plan docs named below.
 
+## 0. Performance pass, web app (2026-11-25, branch `claude/perf-web-7eee2e`)
+
+Part of docs/perf/PERF_PASS_2026-11-25.md; results and how to measure in `docs/perf/web-results.md`.
+
+### Current state
+
+- `apps/web/perf/`: a headless Playwright measurement (production shell export, local mode, a generated 5,000-note
+  library) and tools: start-up JS by source file, import chains, CPU profiles mapped to source.
+- PR 1 (this branch): local library reads no longer copy every row (big wins for Calendar, Tasks, Home, note open
+  and start in every local-mode app); local mode's backend and the library move code out of the website's start
+  (902 KB to 698 KB gzip); the phone interface loads only in narrow windows; a guard test for the start's imports.
+
+### Next steps
+
+1. Desktop CLS 0.114 on All notes; Home and All notes clicks (style and layout of the cards); listener growth per
+   opened note.
+2. The web audit's remaining items (listed at the end of `docs/perf/web-results.md`).
+
+### Change log
+
+- 2026-11-25: measurement setup and PR 1 (see `docs/perf/web-results.md`).
+
 ## 0. Latest: 2026-11-19, the note editor audit (branch `editor/rock-solid`, pull request 40)
 
 The sections below this one are from 24 October and are not kept up to date by every session: for this work,

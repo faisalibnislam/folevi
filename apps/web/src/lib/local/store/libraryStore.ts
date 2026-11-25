@@ -294,7 +294,7 @@ export class LibraryStore implements LocalStore {
     const snap = await this.db.load();
     for (const [key, row] of snap.rows) {
       const { table, partition, id } = parseRowKey(key);
-      this.slot(table, partition, true).set(id, row);
+      this.slot(table, partition, true).set(id, table === "files" ? row : frozen(row));
       if (table === "blocks") this.indexBlock(partition, id, row as LocalTables["blocks"]);
     }
     this.notes = snap.notes;
@@ -379,7 +379,7 @@ export class LibraryStore implements LocalStore {
     }
     if (table === "files") return (await this.withBlob(v as LocalTables["files"])) as LocalTables[T];
     if (table === "versions" && partition) this.loadHistorySoon(partition);
-    return copyRow(v as LocalTables[T], table);
+    return readRow(v as LocalTables[T], table);
   }
 
   async list<T extends LocalTable>(table: T, partition?: string): Promise<LocalTables[T][]> {
@@ -388,7 +388,7 @@ export class LibraryStore implements LocalStore {
     const t = this.tables.get(table);
     if (!t) return out;
     const parts = partition !== undefined || table === "blocks" ? [t.get(partition ?? "")] : [...t.values()];
-    for (const p of parts) for (const v of p?.values() ?? []) out.push(table === "files" ? ((await this.withBlob(v as LocalTables["files"])) as LocalTables[T]) : copyRow(v as LocalTables[T], table));
+    for (const p of parts) for (const v of p?.values() ?? []) out.push(table === "files" ? ((await this.withBlob(v as LocalTables["files"])) as LocalTables[T]) : readRow(v as LocalTables[T], table));
     return out;
   }
 
@@ -416,7 +416,7 @@ export class LibraryStore implements LocalStore {
       for (const key of this.byType.get(type) ?? []) {
         const [partition, id] = key.split("\u0001");
         const row = this.row("blocks", id!, partition || undefined);
-        if (row) out.push(copyRow(row as LocalTables["blocks"], "blocks"));
+        if (row) out.push(readRow(row as LocalTables["blocks"], "blocks"));
       }
     return out;
   }
@@ -532,7 +532,7 @@ export class LibraryStore implements LocalStore {
     for (const w of writes) {
       const s = this.slot(w.table, w.partition, true);
       if (w.value === null) s.delete(w.id);
-      else s.set(w.id, copyRow(w.value, w.table));
+      else s.set(w.id, w.table === "files" ? copyRow(w.value, w.table) : frozen(copyRow(w.value, w.table)));
       if (w.table === "blocks") this.indexBlock(w.partition, w.id, w.value as LocalTables["blocks"] | null);
       rows.push([rowKey(w.table, w.partition, w.id), w.value === null ? null : stripBlob(w.value, w.table)]);
     }
@@ -1341,6 +1341,24 @@ export class LibraryStore implements LocalStore {
 function copyRow<T>(value: T, table: string): T {
   if (table === "files") return { ...(value as object) } as T;
   return structuredClone(value);
+}
+
+/**
+ * A row as the store keeps it in memory: frozen all the way down, so a read can hand it out as it is. Copying every
+ * row on every read (a list of the documents table copied each of 5,000 notes with its search text) made each query
+ * of a big library take most of a second (docs/perf/web-results.md). A reader that wants to change a row copies it
+ * first; writes come back through rowBatch, which keeps a frozen copy of what was written.
+ */
+function frozen<T>(value: T): T {
+  if (value === null || typeof value !== "object" || Object.isFrozen(value)) return value;
+  if (ArrayBuffer.isView(value) || value instanceof ArrayBuffer || (typeof Blob !== "undefined" && value instanceof Blob)) return value;
+  for (const key of Object.keys(value)) frozen((value as Record<string, unknown>)[key]);
+  return Object.freeze(value);
+}
+
+/** What a read returns: the kept (frozen) row itself, except files, whose rows are rebuilt with their bytes. */
+function readRow<T>(value: T, table: string): T {
+  return table === "files" ? copyRow(value, table) : value;
 }
 
 /** What IndexedDB keeps of a row (a Blob is kept as it is; everything else is plain data). */

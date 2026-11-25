@@ -44,6 +44,7 @@ import { NativeGate } from "@/lib/engine/NativeGate";
 import { onboardingInfo } from "@/lib/engine/gates";
 
 // The Mac app's Quick Add window (its own page): loaded only there.
+const FloatNote = lazy(() => import("./FloatNote").then((m) => ({ default: m.FloatNote })));
 const DesktopQuickAdd = lazy(() => import("./DesktopQuickAdd").then((m) => ({ default: m.DesktopQuickAdd })));
 
 // Seen once per account, so it loads only for people who haven't finished it.
@@ -217,6 +218,7 @@ export function AccountGate() {
         profile={profile}
         offlineWorkspaces={ready ? undefined : warm!.workspaces}
         route={route.name}
+        floatId={route.name === "float" ? route.id : undefined}
       />
     );
   }
@@ -229,6 +231,8 @@ export function AccountGate() {
           <ShareSheet />
         ) : route.name === "quick-add" && snapshot.profile.onboardingStep === "done" ? (
           <Suspense fallback={null}><DesktopQuickAdd /></Suspense>
+        ) : route.name === "float" && snapshot.profile.onboardingStep === "done" ? (
+          <Suspense fallback={null}><FloatNote id={route.id} /></Suspense>
         ) : (
           <Shell />
         )}
@@ -305,7 +309,7 @@ export function AccountGate() {
         />
       );
     case "ready":
-      return <ReadyApp key={me.profile.id} profile={me.profile} route={route.name} />;
+      return <ReadyApp key={me.profile.id} profile={me.profile} route={route.name} floatId={route.name === "float" ? route.id : undefined} />;
   }
 }
 
@@ -314,10 +318,13 @@ function ReadyApp({
   profile,
   offlineWorkspaces,
   route,
+  floatId,
 }: {
   profile: Profile;
   offlineWorkspaces?: Workspace[];
   route: string;
+  /** A floating note's window (/float/<id>): the note alone. */
+  floatId?: string;
 }) {
   return (
     <ShellUpdateGate>
@@ -330,6 +337,8 @@ function ReadyApp({
           <OauthConsent />
         ) : route === "quick-add" && profile.onboardingStep === "done" ? (
           <Suspense fallback={null}><DesktopQuickAdd /></Suspense>
+        ) : floatId && profile.onboardingStep === "done" ? (
+          <Suspense fallback={null}><FloatNote id={floatId} /></Suspense>
         ) : route === "share" && profile.onboardingStep === "done" ? (
           <ShareSheet />
         ) : profile.onboardingStep !== "done" || route === "onboarding" ? (

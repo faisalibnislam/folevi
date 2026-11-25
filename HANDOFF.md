@@ -2,7 +2,7 @@
 
 > Read this first if you are a Claude (or any agent) picking this project up, on this Mac or another one. Then read `CLAUDE.md`, `docs/HANDOFF.md` (the long handoff: unfinished branches, release detail, what the owner is waiting on) and `docs/claude-context/memory/MEMORY.md` (the owner's standing rules). Keep this file current: after every change to the project, update "Current state", "Next steps" and "Change log", and commit it.
 
-Last updated: 2026-11-24 · Written on: Faisal's MacBook Pro M5
+Last updated: 2026-11-25 · Written on: Faisal's MacBook Pro M5
 
 ## 1. What this is
 
@@ -287,6 +287,36 @@ Not done, and why:
 How the backlog was merged, for next time: when several PRs are open, don't merge `main` into each in turn (every PR
 edits this file, so each merge restarts the others' CI). Merge them into one integration branch, resolve once, run CI
 once. `gh pr merge <n> --disable-auto` and cancelling queued runs keeps them from landing piecemeal meanwhile.
+
+**Float this note (branch `claude/float-this-note`, 2026-11-25, PR open, not released).** The owner's decisions: a
+note in a small window of its own that stays on top of other apps, with full editing, on the Mac app, the Windows
+(and, with the same code, Linux) app and the web (Chrome and Edge). Entry points: "Float this note" in a note tab's
+right-click menu (`TabStrip.tsx`) and in a note's right-click menu in lists (folder pages and Home through
+`NoteContextMenu` in `DocumentBrowser.tsx`, search results in `CommandPalette.tsx`, the sidebar's bookmarks in
+`Sidebar.tsx`); no shortcut and nothing in the ··· menu. The item is left out where a note can't float (Safari,
+Firefox, the iPhone, iPad and Android apps, a desktop app build without the call, a floating window itself). Shared
+logic: `apps/web/src/lib/app/float.ts` (where it can float, the Picture-in-Picture manager, remembered sizes, links
+from a floating note sent to the main window) and the page `/float/<id>` (`components/app/FloatNote.tsx`): the
+note's title and text in the same `DocumentView` (a `useFloating()` flag drops the breadcrumbs, dock, tools panel,
+suggestions and backlinks; `globals.css` `:root[data-float]`) under a slim bar with the note's name, Always on top
+(desktop apps only), Open in main window and Close. Edits sync as between any two windows.
+- Mac: `apps/mac/Folevi/Chrome/FloatWindows.swift`, an `NSPanel` per note (view role `.float`), floating level on
+  every Space and over full-screen apps while pinned, stays when Folevi is in the background; size and place by
+  autosave name `FoleviFloat-<id>`, pin in UserDefaults `folevi.float.onTop.<id>`. Bridge: `floatNote`,
+  `floatOnTop` (features in `mac-bridge.js`), `closeWindow` now also closes a floating panel.
+- Windows and Linux: `lib.rs` `create_float` (window label `float-<id>`, no decorations, `always_on_top`, size and
+  place by tauri-plugin-window-state, pins in `float-pins.json` in the user data folder); `host.js` adds
+  `floatNote`/`floatOnTop` and lets a float window move by its bar (no maximize). On Wayland the compositor may
+  ignore always-on-top.
+- Web: Document Picture-in-Picture. A page may have one such window, so several floated notes share it: each note
+  is an iframe on `/float/<id>?pip=1`, a row of names switches between them once there are two, floating one again
+  brings it forward; each note's size is remembered (localStorage `folevi:float-size:<id>`) for when it opens first.
+  Chrome places the window itself (position can't be set).
+- Tests: `apps/web/test/float-note.test.tsx` (23), `apps/web/e2e/float-note.spec.ts` (4, local mode, Chromium and
+  WebKit), `apps/mac/FoleviTests/FloatTests.swift` (8, panels made but never shown), `lib.rs`
+  `floating_note_windows`. Not checked: a real floating panel on screen on the Mac or Windows (headless only, per
+  the owner's testing rule), and a real Picture-in-Picture window (headless Chromium can't open one; the manager is
+  tested with a stand-in window).
 
 **Foli AI on Gemini, OpenAI and Anthropic (branch `claude/foli-ai-openai-anthropic-8112bb`, 2026-11-25, PR open, not
 merged).** Owner's decisions: `docs/claude-context/memory/foli-ai-multi-provider-decisions.md`. Admin > Foli AI
@@ -974,6 +1004,10 @@ signed-in account, 1.5.58's frosted folders with a large library, and the iPad c
 account button should move past iPadOS's window buttons).
 
 ## 10. Next steps / open work
+- Float this note (PR from `claude/float-this-note`): CI's e2e, then merge; it ships in the next release of each app
+  (Mac and Windows need new builds for the window; the web works on deploy). Then the owner tries it on the Mac
+  (several panels, pin off and on, over a full-screen app), on a Windows PC and in Chrome. Possible follow-ups:
+  reopen floating notes after a relaunch, and close a place's floating notes when that place is signed out.
 - After 1.6.78 (2026-11-25), in order: the owner drags the Android bundle into Play internal testing; the
   hardware checks listed at the
   top of section 9; Folevi Server packages (the Folevi Server session). `migrations:narrowDocumentText` already ran on production (the owner,
@@ -1258,6 +1292,10 @@ account button should move past iPadOS's window buttons).
   `DATABASE_UDF_USER_TIMEOUT_SECONDS=4` for that backend. Bursts show in `convex.log` as "took a long time".
 
 ## 12. Change log
+- 2026-11-25: **Float this note** on the Mac app, Windows and Linux app and the web (Chrome and Edge's Document
+  Picture-in-Picture): right-click a note tab or a listed note; one window per note on the desktop apps (pinned on
+  top until turned off, size and place remembered); full editing in the main window's editor, compact. Branch
+  `claude/float-this-note`, nothing released.
 - 2026-11-25: **1.6.78 released** from PR 109's merge (`e0183862`): web and Convex deployed; Mac published
   (notarized, Sparkle feed); iPhone and iPad on TestFlight (delivery 7120ad6e); Windows installers and Linux packages
   uploaded, apt and rpm repositories rebuilt and uploaded; the Android bundle built and left for the owner's Play

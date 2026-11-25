@@ -8,6 +8,7 @@ import { ConvexClientProvider, useAuthPhase } from "@/lib/convex/provider";
 import { ToastProvider } from "@/components/ui/Toast";
 import { can, type AdminRole, type Capability } from "./permissions";
 import { AdminShell } from "./AdminShell";
+import { isServerEdition } from "@/lib/edition";
 
 export interface AdminIdentity {
   id: string;
@@ -59,8 +60,18 @@ function Gate({ children }: { children: ReactNode }) {
   const { isAuthenticated } = useConvexAuth();
   // Ask for the admin identity only once the Convex connection carries the session token; asking
   // earlier would be rejected as unauthenticated and render the 404.
-  const me = useQueryOrThrow(api.admin.whoami, isAuthenticated ? {} : "skip");
+  // Folevi Server: the owner and admins without two-step verification (CONTRACT §7.1), so the role comes from the
+  // profile; the cloud asks admin.whoami, which requires it.
+  const server = isServerEdition();
+  const cloudMe = useQueryOrThrow(api.admin.whoami, isAuthenticated && !server ? {} : "skip");
+  const serverMe = useQueryOrThrow(api.users.me, isAuthenticated && server ? {} : "skip");
   if (phase === "signed_out") return <AdminNotFound />;
+  let me = cloudMe;
+  if (server && serverMe !== undefined) {
+    const role = serverMe.state === "ready" ? serverMe.profile.platformRole : null;
+    if (serverMe.state !== "ready" || (role !== "super_admin" && role !== "ops_admin")) return <AdminNotFound />;
+    me = { id: serverMe.profile.id, displayName: serverMe.profile.displayName, role };
+  }
   if (me === undefined) {
     return (
       <div className="grid min-h-dvh place-items-center bg-canvas" aria-busy="true">

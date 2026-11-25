@@ -1,6 +1,6 @@
 // The admin panel's way to folevid (docs/self-hosting/CONTRACT.md §5), server edition only: health, logs,
 // backups, remote access, updates and diagnostics. The caller must be signed in as the server's owner or an
-// admin (asked of Convex, admin.whoami); the web server then calls folevid's loopback API with the server
+// admin (asked of Convex, users.me); the web server then calls folevid's loopback API with the server
 // secret, which never reaches the browser.
 import { NextResponse } from "next/server";
 import { fetchQuery } from "convex/nextjs";
@@ -24,8 +24,10 @@ async function callerRole(): Promise<"owner" | "admin" | null> {
   try {
     const token = await getToken();
     if (!token) return null;
-    const me = await fetchQuery(api.admin.whoami, {}, { token, url: internalConvexUrl() });
-    return me.role === "super_admin" ? "owner" : me.role === "ops_admin" ? "admin" : null;
+    // users.me, not admin.whoami: a server's owner and admins need no two-step verification (CONTRACT §7.1).
+    const me = await fetchQuery(api.users.me, {}, { token, url: internalConvexUrl() });
+    const role = me.state === "ready" ? me.profile.platformRole : null;
+    return role === "super_admin" ? "owner" : role === "ops_admin" ? "admin" : null;
   } catch {
     return null;
   }

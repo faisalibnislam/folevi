@@ -8,6 +8,16 @@ import { SocialSignIn } from "./SocialSignIn";
 import { pendingTemplate, rememberTemplate, signUpCallback } from "@/lib/pendingTemplate";
 import { websiteUrl } from "@/lib/env";
 
+/** Folevi Server's refusals (CONTRACT §7.1), in words. */
+const SERVER_SIGN_UP_ERRORS: Record<string, string> = {
+  USER_ALREADY_EXISTS: "There's already an account with that email here. Sign in instead.",
+  USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL: "There's already an account with that email here. Sign in instead.",
+  SIGNUP_INVITE_ONLY: "This server is by invite only. Ask the person who runs it for an invite.",
+  SIGNUP_DOMAIN: "This server only takes email addresses at certain domains. Use your work or family address, or ask for an invite.",
+  INVITE_INVALID: "This invite doesn't work any more. Ask for a new one.",
+  INVITE_OTHER_EMAIL: "This invite is for a different email address. Use the address it was sent to.",
+};
+
 /** Password guidance: length matters most; we only block what's too short or obviously weak. */
 function passwordProblem(password: string, email: string): string | null {
   if (password.length < 10) return "Use at least 10 characters.";
@@ -83,7 +93,7 @@ export function SignUpForm({ template, social = { google: false, apple: false },
           setBusy(false);
           // A server without email signs the new account in at once (no link to confirm): on to the next page.
           if (server && !server.confirmByEmail) {
-            if (err) setError(err.code === "USER_ALREADY_EXISTS" || err.code === "USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL" ? "There's already an account with that email here. Sign in instead." : authErrorMessage(err, undefined, "up to an hour"));
+            if (err) setError(SERVER_SIGN_UP_ERRORS[err.code ?? ""] ?? authErrorMessage(err, undefined, "up to an hour"));
             else window.location.assign(callbackURL);
             return;
           }

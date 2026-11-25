@@ -85,7 +85,7 @@ fun Route.tabIcon(): WebIcon = when (this) {
     SharedRoute -> WebIcon.USERS
     ChangesRoute -> WebIcon.ACTIVITY
     TasksRoute -> WebIcon.SQUARE_CHECK_BIG
-    CalendarRoute -> WebIcon.CALENDAR
+    CalendarRoute -> WebIcon.CALENDAR_DAYS
     SearchRoute -> WebIcon.SEARCH
     is PageRoute, is WebShowRoute -> WebIcon.FILE_TEXT
 }

@@ -1258,6 +1258,9 @@ account button should move past iPadOS's window buttons).
   `DATABASE_UDF_USER_TIMEOUT_SECONDS=4` for that backend. Bursts show in `convex.log` as "took a long time".
 
 ## 12. Change log
+- 2026-11-25: **Share and text in images in Folevi for Windows** (branch `claude/desktop-share-ocr`, the last part of
+  item 9 of docs/DESKTOP_PARITY.md): the Share sheet from the note's Share dialog, and Windows.Media.Ocr for
+  search in images. The Windows code compiles for x86_64-pc-windows-msvc; not run on a real PC.
 - 2026-11-25: **1.6.78 released** from PR 109's merge (`e0183862`): web and Convex deployed; Mac published
   (notarized, Sparkle feed); iPhone and iPad on TestFlight (delivery 7120ad6e); Windows installers and Linux packages
   uploaded, apt and rpm repositories rebuilt and uploaded; the Android bundle built and left for the owner's Play

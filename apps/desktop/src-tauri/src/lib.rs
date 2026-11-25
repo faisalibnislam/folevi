@@ -22,6 +22,7 @@ mod reminders;
 mod secrets;
 mod settings;
 mod shell;
+mod winshare;
 
 use parking_lot::Mutex;
 use serde_json::{json, Value};
@@ -217,6 +218,8 @@ fn boot_script(_app: &AppHandle, label: &str) -> String {
         "captionHeight": CAPTION_HEIGHT,
         // FOLEVI_PROBE=1 (development builds): the page reports its state to the terminal, for scripted checks.
         "probe": cfg!(debug_assertions) && std::env::var_os("FOLEVI_PROBE").is_some(),
+        // Windows can read text in images when a recognition language is installed (winshare.rs).
+        "ocr": ocr_here(),
         "origins": [app_origin()],
     });
     let script = HOST_JS.replace("/*BOOT*/ { shell: false, platform: \"windows\", window: \"main\" } /*BOOT_END*/", &boot.to_string()).replace("/*SHELL_BRIDGE*/", SHELL_BRIDGE_JS);
@@ -949,6 +952,65 @@ async fn places_call(app: &AppHandle, s: &Arc<Services>, label: &str, place: Opt
     }
 }
 
+/// Whether this PC reads text in images (asked once).
+fn ocr_here() -> bool {
+    static HERE: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+    *HERE.get_or_init(|| std::thread::spawn(winshare::ocr_available).join().unwrap_or(false))
+}
+
+/// recognizeText { data }: `{ text }` (Windows.Media.Ocr; 30 seconds at most).
+async fn recognize_text(bytes: Vec<u8>) -> ShellResult {
+    #[cfg(windows)]
+    {
+        let job = tauri::async_runtime::spawn_blocking(move || winshare::recognize(&bytes).map_err(|e| e.to_string()));
+        match tokio::time::timeout(std::time::Duration::from_secs(30), job).await {
+            Ok(Ok(Ok(text))) => Ok(json!({ "text": text })),
+            _ => Err(ShellError::io("Folevi couldn't read the text in that image.")),
+        }
+    }
+    #[cfg(not(windows))]
+    {
+        let _ = bytes;
+        Err(ShellError::unavailable("Reading text in images isn't in Folevi for this computer."))
+    }
+}
+
+/// share { title, text, url }: Windows' Share sheet in front of the window; true once the person picks where (Windows
+/// says nothing when it's closed, so after two minutes it's false).
+async fn share(app: &AppHandle, label: &str, o: &Value) -> ShellResult {
+    #[cfg(windows)]
+    {
+        let get = |k: &str, max: usize| opt_str(o, k).unwrap_or("").chars().take(max).collect::<String>();
+        let (title, text, url) = (get("title", 200), get("text", 100_000), get("url", 2000));
+        let url = if url.starts_with("https://") || url.starts_with("http://") { url } else { String::new() };
+        if text.is_empty() && url.is_empty() {
+            return Ok(value(false));
+        }
+        let Some(w) = app.get_webview_window(label) else { return Ok(value(false)) };
+        let hwnd = w.hwnd().map(|h| h.0 as isize).unwrap_or(0);
+        let (tx, rx) = tokio::sync::oneshot::channel::<()>();
+        let tx = std::sync::Arc::new(parking_lot::Mutex::new(Some(tx)));
+        let (started_tx, started_rx) = tokio::sync::oneshot::channel::<bool>();
+        let _ = app.run_on_main_thread(move || {
+            let chosen = Box::new(move || {
+                if let Some(t) = tx.lock().take() {
+                    let _ = t.send(());
+                }
+            });
+            let _ = started_tx.send(winshare::share_now(hwnd, &title, &text, &url, chosen));
+        });
+        if !started_rx.await.unwrap_or(false) {
+            return Err(ShellError::unavailable("Windows couldn't open the Share sheet."));
+        }
+        Ok(value(tokio::time::timeout(std::time::Duration::from_secs(120), rx).await.is_ok_and(|r| r.is_ok())))
+    }
+    #[cfg(not(windows))]
+    {
+        let _ = (app, label, o);
+        Err(ShellError::unavailable("There's no Share sheet in Folevi for this computer."))
+    }
+}
+
 async fn files_save(app: &AppHandle, o: &Value) -> ShellResult {
     let name: String = req_str(o, "name")?.chars().filter(|c| !"\\/:*?\"<>|".contains(*c) && !c.is_control()).take(150).collect();
     let bytes = shell::req_bytes(o, "bytes")?;
@@ -1160,6 +1222,14 @@ async fn desktop_call(app: AppHandle, webview: tauri::Webview, name: String, arg
             #[cfg(debug_assertions)]
             webview.open_devtools();
             Ok(Value::Null)
+        }
+        "share" => share(&app, &label, &args).await,
+        "recognizeText" => {
+            let bytes = shell::req_bytes(&args, "data")?;
+            if bytes.len() > winshare::MAX_IMAGE {
+                return Err(ShellError::invalid("That image is too big to read."));
+            }
+            recognize_text(bytes).await
         }
         "newWindow" => {
             let app2 = app.clone();

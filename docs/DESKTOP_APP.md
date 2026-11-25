@@ -120,6 +120,14 @@ https://folevi.com/download/windows/Folevi-arm64-setup.exe and https://folevi.co
 Uploaded with `npx wrangler r2 object put folevi-updates/windows/<file> --remote` from CI run 45418586764 (the fixed build). The
 version came from `apps/desktop/RELEASE_VERSION` (1.5.73) because this branch's version.json predates 1.5.72.
 
+## Share and text in images (Windows)
+
+The note's Share dialog has Share… beside Copy link in Folevi for Windows: Windows' Share sheet with the note's link
+(`src/winshare.rs`, DataTransferManager in front of Folevi's window). Text in images (search in files) is read with
+Windows.Media.Ocr when a recognition language is installed (`foleviDesktop.recognizeText`; 25 MB, the engine's
+largest size, 30 s and 100,000 characters at most). Linux has neither (no standard share sheet, no text recognition
+built in), so the page doesn't offer them there.
+
 ## Not done yet
 
 - Updates: the Tauri updater is in the app and points at `folevi.com/download/desktop/<target>-<arch>/latest.json`,

@@ -132,6 +132,34 @@
   };
   var bridge = {
     platform: BOOT.platform,
+    // Windows: the system's Share sheet (a note's link) and text in images (Windows.Media.Ocr). Not on Linux.
+    share:
+      BOOT.platform === "windows"
+        ? function (item) {
+            var i = item || {};
+            return desktop("share", { title: String(i.title || ""), text: i.text ? String(i.text) : "", url: i.url ? String(i.url) : "" }).then(
+              function (r) {
+                return r === true || (r && r.value === true);
+              },
+              function () {
+                return false;
+              },
+            );
+          }
+        : undefined,
+    recognizeText: BOOT.ocr
+      ? function (image) {
+          var bytes = image instanceof Uint8Array ? image : new Uint8Array(0);
+          return desktop("recognizeText", { data: b64(bytes) }).then(
+            function (r) {
+              return r && typeof r.text === "string" ? { text: r.text } : null;
+            },
+            function () {
+              return null;
+            },
+          );
+        }
+      : undefined,
     setBadge: function (count) {
       void desktop("badge", { count: Number(count) || 0 }).catch(function () {});
     },

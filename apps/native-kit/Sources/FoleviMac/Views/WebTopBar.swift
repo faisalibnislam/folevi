@@ -185,8 +185,10 @@ public struct WebTopBar: View {
                     .padding(.leading, list.padding.left)
                     .padding(.trailing, list.gap)
             }
-            // The arrows only while the tabs overflow, each dimmed with nothing more on its side (TabStrip.tsx).
-            if overflow.start || overflow.end {
+            // The arrows only while the tabs overflow, each dimmed with nothing more on its side (TabStrip.tsx). With
+            // one tab besides Home there's nothing to scroll to: the tab takes their room instead (an iPad in
+            // portrait, its bar shared with the sidebar's width).
+            if overflow.start || overflow.end, model.tabs.tabs.filter({ !$0.isHome }).count > 1 {
                 HStack(spacing: style("frame.topbar").gap) {
                     scrollArrow(.chevronLeft, "Scroll tabs left", enabled: overflow.start) { scrollTabs(-1) }
                     scrollArrow(.chevronRight, "Scroll tabs right", enabled: overflow.end) { scrollTabs(1) }

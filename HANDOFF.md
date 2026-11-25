@@ -578,6 +578,8 @@ signed-in account, 1.5.58's frosted folders with a large library, and the iPad c
 account button should move past iPadOS's window buttons).
 
 ## 10. Next steps / open work
+- Shell performance (2026-11-25): merge PRs 84, 85, 86 into their shell branches; check PR 85 on a Windows PC with two
+  accounts and a library; Android launch time needs the SDK and an emulator (owner's OK).
 - Web everywhere (all landed 2026-11-25). Open: the iOS simulator `footprint` re-run of the iPhone memory fix (mobile
   session); there are four empty-state components; lists not yet given `LoadFailed` still load until a retry answers
   (settings lists, Calendar, Graph, pickers);
@@ -732,6 +734,11 @@ account button should move past iPadOS's window buttons).
   `DATABASE_UDF_USER_TIMEOUT_SECONDS=4` for that backend. Bursts show in `convex.log` as "took a long time".
 
 ## 12. Change log
+- 2026-11-25: Performance pass, Android and Windows/Linux shells (`docs/perf/android-windows-results.md`). PRs into
+  each shell's branch: #86 Android (Firebase and legacy session off the main thread, one resize per keyboard slide,
+  a new Android CI workflow), #84 Tauri (library and reminders open after the window, lighter asset serving and
+  scans, launch time in `measure.mjs`), #85 Electron (Quick Add on first use, runners on demand, throttling back
+  on). Electron uses about 28% less memory on Windows x64 (CI). Android not measured (no SDK).
 - 2026-11-25: One set of sync status words on every screen (owner's pick: the desktop's): the phone and iPad's sync
   button (`components/iphone/SyncStatusTouch.tsx`) now reads `SYNC_LABELS` from `components/app/SyncStatus.tsx`
   (Saved, Saving…, Syncing…, Offline, Conflict, Not saved) instead of Synced / Waiting to sync / Edited in two places,

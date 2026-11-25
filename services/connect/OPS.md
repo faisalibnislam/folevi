@@ -1,6 +1,14 @@
 # Folevi Connect: operations
 
-Nothing here has been deployed. Every step below needs the owner's OK first.
+**Deployed 2026-11-25** (owner's OK): Fly app `folevi-connect` (org `personal`, Pay As You Go), one machine in `iad`,
+volume `connect_data` (1 GB), dedicated IPv4 `137.66.16.104` and IPv6 `2a09:8280:1::221:efe2:0`. `relay.folevi.app`
+A/AAAA on Cloudflare (DNS only) point there; Let's Encrypt certificate obtained on first request. Secrets set:
+`CONNECT_SERVICE_KEY`, `CONNECT_ADMIN_KEY` (copies only in the owner's `~/FoleviServerTest/connect-secrets/`, mode
+600), `CLOUDFLARE_API_TOKEN` (zone DNS edit on folevi.app only), `CLOUDFLARE_ZONE_ID`, `CONNECT_ACME_EMAIL`. Not set
+yet: Resend, APNs, FCM, Gemini, Unsplash (those relays answer 503). Still to do: `connect.folevi.com` A/AAAA at
+folevi.com's DNS (Namecheap), and `CONNECT_SERVICE_KEY` in Folevi Cloud's production Convex env (owner).
+
+Every further deploy needs the owner's OK first.
 
 ## Before the first deploy
 

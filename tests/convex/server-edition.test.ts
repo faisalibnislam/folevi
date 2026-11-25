@@ -424,3 +424,17 @@ describe("Folevi Server: trusted origins", () => {
     vi.unstubAllEnvs();
   });
 });
+
+describe("Folevi Server: auth config", () => {
+  test("reads no variable that may be unset when Convex loads it (Folevi Cloud and CI have no FOLEVI_EDITION)", () => {
+    // Convex's auth config loader throws on a read of an unset variable; the guard treats that as unset.
+    const strict = new Proxy({ CONVEX_SITE_URL: "https://x.convex.site" } as Record<string, string | undefined>, {
+      get(target, name: string) {
+        if (!(name in target)) throw new Error(`Environment variable ${name} is used in auth config file but its value was not set.`);
+        return target[name];
+      },
+    });
+    expect(staticJwks(strict)).toEqual({ kind: "none" });
+    expect(() => authProvider(strict)).not.toThrow();
+  });
+});

@@ -14,10 +14,23 @@ import { getAuthConfigProvider } from "@convex-dev/better-auth/auth-config";
 type Provider = ReturnType<typeof getAuthConfigProvider>;
 type StaticJwks = { kind: "none" } | { kind: "rows"; jwks: string } | { kind: "public"; keys: unknown[] };
 
+/**
+ * Reads a variable that may be unset. Convex refuses a deploy whose auth config reads an unset variable ("is used
+ * in auth config file but its value was not set"): Folevi Cloud and CI's backends have no FOLEVI_EDITION, so the
+ * auth config path reads it only through this guard, which treats that refusal as unset.
+ */
+function optionalEnv(env: Record<string, string | undefined>, name: string): string {
+  try {
+    return env[name] ?? "";
+  } catch {
+    return "";
+  }
+}
+
 /** What FOLEVI_JWKS holds (none outside the server edition, or when it's empty or unreadable). */
 export function staticJwks(env: Record<string, string | undefined> = process.env): StaticJwks {
-  if ((env.FOLEVI_EDITION ?? "").trim().toLowerCase() !== "server") return { kind: "none" };
-  const raw = (env.FOLEVI_JWKS ?? "").trim();
+  if (optionalEnv(env, "FOLEVI_EDITION").trim().toLowerCase() !== "server") return { kind: "none" };
+  const raw = optionalEnv(env, "FOLEVI_JWKS").trim();
   if (!raw) return { kind: "none" };
   let parsed: unknown;
   try {

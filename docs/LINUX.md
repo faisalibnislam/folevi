@@ -139,6 +139,8 @@ Then, from `apps/desktop`: `pnpm exec tauri build --bundles appimage,deb,rpm` (o
    built for that version (`build-shell.mjs --platform windows --production --app-version <v>`).
 3. Smoke-test each architecture's .deb and AppImage in the VM (`smoke-test.sh`; x86_64 inside `/srv/jammy-amd64`).
 4. With the owner's OK: `packaging/linux/scripts/upload-release.sh <v> <out>` (R2 `folevi-updates/linux/`).
+5. Then the AppImage's update feed: `packaging/desktop/publish-update-feed.sh <v> <out>` (docs/DESKTOP_APP.md,
+   "Updates"). Until this runs, AppImages keep the version they have.
 
 | Latest link | File |
 | --- | --- |

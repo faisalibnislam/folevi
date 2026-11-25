@@ -1259,6 +1259,16 @@ account button should move past iPadOS's window buttons).
   `DATABASE_UDF_USER_TIMEOUT_SECONDS=4` for that backend. Bursts show in `convex.log` as "took a long time".
 
 ## 12. Change log
+- 2026-11-25: **Folevi Server keeps every account when its address changes** (branch `claude/server-stable-issuer`,
+  server lead). The Better Auth Convex plugin signs tokens with the server's public address as issuer, so turning
+  Folevi Connect on or adding a domain made every account read "Finish setting up". In the server edition only,
+  `findProfile` (convex/lib/auth.ts) now also finds the profile by the Better Auth user id (only this server's keys
+  sign tokens) and a mutation moves it to the new issuer; Folevi Cloud is unchanged. Also merges
+  `claude/server-connect`, which never had its own PR: folevid builds on macOS, folevid gives the backend every name
+  it answers on (`FOLEVI_TRUSTED_ORIGINS`, Connect names), the Synology package refuses to start on another
+  install's leftover files with a clear log line, NAS icons from the app icon, and Connect's Fly config (live at
+  connect.folevi.com; services/connect/OPS.md). The owner's DS223 runs Folevi Server on Connect as
+  `6ge2xhr4kl.folevi.app` (owner: keep it on).
 - 2026-11-25: **Automatic updates for Folevi for Windows and the Linux AppImage** (branch `claude/desktop-updater`,
   first item of docs/DESKTOP_PARITY.md): the Tauri updater is registered, checks a minute after launch and every 12
   hours, and the tray has Check for Updates…. Update key made and kept at `~/.folevi-desktop-signing/` (section 7);

@@ -178,7 +178,7 @@ installed under `/usr/lib/folevi/`), the way Chrome and VS Code do, so a double-
 through the Software Updater, dnf or zypper. Earlier installs can add the repository by hand (the table above).
 
 **Each release** (after `upload-release.sh`, same OK): in the VM, with `GNUPGHOME=~/.folevi-repo-gnupg`
-`FOLEVI_REPO_KEY=AEF144728549A0B59ADC3A7767F3C502BF6A5D42`, run `build-apt-repo.sh <dir with the .debs> ~/repo-out`
+`FOLEVI_REPO_KEY=AEF144728549A0B59ADC3A7767F3C502BF6A5D42`, run `build-apt-repo.sh <dir with the .debs> ~/repo-out` <!-- gitleaks:allow (public key fingerprint) -->
 and `build-rpm-repo.sh <dir with the .rpms> ~/repo-out` (keep `~/repo-out`: earlier versions stay listed), copy
 `~/repo-out` to the Mac (`limactl copy -r`) and run `packaging/linux/repo/upload-repos.sh <copy>`.
 

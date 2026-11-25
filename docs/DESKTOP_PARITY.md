@@ -56,7 +56,7 @@ Yes = built, Partial = built with less, No = missing.
 | Desktop settings | Yes | Yes | Yes | |
 | Web calendars, link previews | Yes | Yes | Yes | |
 
-Fixed on 2026-11-25: the web app now recognises `windows` and `linux` as native apps
+Done (PR 113, 2026-11-25): the web app now recognises `windows` and `linux` as native apps
 (`lib/e2ee/keys/macBridge.ts`), so encryption screens say "this PC" or "this computer", devices register with
 the right platform, and passkeys aren't offered inside the apps. Before, Linux counted as a Mac and Windows as a
 browser.

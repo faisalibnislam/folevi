@@ -60,9 +60,44 @@ for (const node of profile.nodes) {
   byFile.set(src, (byFile.get(src) ?? 0) + ms);
   byFn.set(fn, (byFn.get(fn) ?? 0) + ms);
 }
+// Inclusive time (self and everything it called) per function of the app's own code (src/, packages/): which
+// component or hook a slow interaction spent its time in. Recursion is counted once per stack.
+const nodesById = new Map(profile.nodes.map((n) => [n.id, n]));
+const parentOf = new Map();
+for (const n of profile.nodes) for (const c of n.children ?? []) parentOf.set(c, n.id);
+const nameOf = new Map();
+for (const n of profile.nodes) {
+  const cf = n.callFrame;
+  const c = cf.url ? mapFor(cf.url) : null;
+  let label = null;
+  if (c && cf.lineNumber >= 0) {
+    const o = c.originalPositionFor({ line: cf.lineNumber + 1, column: cf.columnNumber });
+    if (o.source) {
+      const src = clean(o.source);
+      if (/^(src|packages)\//.test(src)) label = `${o.name ?? cf.functionName ?? "?"} (${src}:${o.line})`;
+    }
+  }
+  nameOf.set(n.id, label);
+}
+const inclusive = new Map();
+for (const n of profile.nodes) {
+  const ms = dt.get(n.id) ?? 0;
+  if (!ms) continue;
+  const seen = new Set();
+  for (let id = n.id; id !== undefined; id = parentOf.get(id)) {
+    const label = nameOf.get(id);
+    if (label && !seen.has(label)) {
+      seen.add(label);
+      inclusive.set(label, (inclusive.get(label) ?? 0) + ms);
+    }
+  }
+}
+void nodesById;
 const row = (ms, k) => `${ms.toFixed(0).padStart(7)} ms  ${k}`;
 console.log(`total sampled ${total.toFixed(0)} ms`);
 console.log("\nSelf time by file:");
 for (const [k, ms] of [...byFile].sort((a, b) => b[1] - a[1]).slice(0, top)) console.log(row(ms, k));
 console.log("\nSelf time by function:");
 for (const [k, ms] of [...byFn].sort((a, b) => b[1] - a[1]).slice(0, top)) console.log(row(ms, k));
+console.log("\nInclusive time, the app's own functions:");
+for (const [k, ms] of [...inclusive].sort((a, b) => b[1] - a[1]).slice(0, top)) console.log(row(ms, k));

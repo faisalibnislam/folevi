@@ -3,7 +3,7 @@
 import { useMutation } from "convex/react";
 import { usePaginatedQuery, useQuery } from "@/lib/convex/queries";
 import { useCardSizes } from "@/lib/cardSize";
-import { lazy, Suspense, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { lazy, startTransition, Suspense, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Archive, ArchiveRestore, ArrowDown, ArrowUp, Check, CheckSquare, Copy, CopyPlus, EyeOff, FilePlus2, ExternalLink, FolderInput, LayoutGrid, List, MoreHorizontal, Plus, Rows3, Trash2, Undo2, FileText, Files, FolderOpen, Hash, Inbox, LayoutTemplate, Share2, type LucideIcon } from "lucide-react";
 import { Bookmark, BookmarkOff } from "lucide-react";
 import { folderAncestors } from "@folevi/editor-schema";
@@ -112,6 +112,8 @@ const EMPTY: Record<View, { icon: LucideIcon; title: string; body?: string }> = 
 };
 
 const PAGE_SIZE = 48;
+/** Cards drawn at once when a grid opens: more than a large screen shows before scrolling. */
+const FIRST_CARDS = 24;
 
 /** "drag to arrange" as a line of its own: "Drag to arrange". */
 const sentence = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
@@ -310,6 +312,15 @@ function DocumentList({ view, folderId, tagId, org, titleOverride }: { view: Vie
     if (!needle) return docs;
     return docs.filter((d) => (d.title || "Untitled").toLocaleLowerCase().includes(needle) || d.excerpt.toLocaleLowerCase().includes(needle));
   }, [docs, q]);
+  // The grid's first cards draw with the click that opened the list; the rest (below the fold on any screen) follow
+  // in the background a moment later, so the click answers sooner (INP, docs/perf/web-results.md).
+  // (Per list: going from All notes to a folder reuses this view, and starts over.)
+  const listKey = `${view}:${folderId ?? ""}:${tagId ?? ""}`;
+  const [allCardsFor, setAllCardsFor] = useState<string | null>(null);
+  useEffect(() => {
+    if (allCardsFor !== listKey) startTransition(() => setAllCardsFor(listKey));
+  }, [allCardsFor, listKey]);
+  const cards = allCardsFor === listKey || shown.length <= FIRST_CARDS ? shown : shown.slice(0, FIRST_CARDS);
   const moreCached = fromCache && (kept?.length ?? 0) > cachedShown;
   const canLoadMore = status === "CanLoadMore" || moreCached;
   // The server's list failed and there's nothing else to show: say so (it keeps retrying) instead of loading forever.
@@ -768,7 +779,7 @@ function DocumentList({ view, folderId, tagId, org, titleOverride }: { view: Vie
           </ul>
         ) : (
           <ul className={`grid gap-x-[var(--card-gap)] gap-y-[var(--card-row-gap)] ${layout === "compact" ? (cardScale < 1 ? "grid-cols-3 sm:grid-cols-4 lg:grid-cols-5 xl:grid-cols-7" : "grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5") : "grid-cols-[repeat(auto-fill,minmax(var(--note-card-min),1fr))]"}`}>
-            {shown.map((d) => {
+            {cards.map((d) => {
               const on = selection.selected.has(d.id);
               return (
                 <li

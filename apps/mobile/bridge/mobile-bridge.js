@@ -189,7 +189,32 @@
     if (/^folevi:[a-z-]+$/.test(name)) window.dispatchEvent(new Event(name));
   });
 
-  var bridge = Object.freeze(Object.assign(localExtensions, {
+  // iOS: the keyboard's own moves, before it moves (its height when it lands, the duration and iOS's curve), from
+  // the app (apps/ios Native/UI/KeyboardBridge.swift), as the iPhone and iPad app sent them. Without these the page
+  // falls back to Capacitor's keyboard events and the visual viewport, which reads "no keyboard" once the web view
+  // has shrunk for it, so a sheet's composer dropped behind the keyboard.
+  var keyboardMoves = !ios
+    ? {}
+    : {
+        /** Every move of the keyboard ({ height, duration, curve, visible, late }); returns the function that stops. */
+        onKeyboard: function (listener) {
+          return listen("FoleviNative", "keyboard", function (event) {
+            if (!event) return;
+            try {
+              var late = Number(event.sentAt) > 0 ? Math.max(0, Math.min(250, Date.now() - Number(event.sentAt))) : 0;
+              listener({ height: Number(event.height) || 0, duration: Number(event.duration) || 0, curve: event.curve === "keyboard" ? "keyboard" : "linear", visible: !!event.visible, late: late });
+            } catch (e) {
+              /* the page's own listener failing changes nothing here */
+            }
+          });
+        },
+        /** { interactiveDismiss }: whether a drag down in a scrolling view takes the keyboard with the finger. */
+        keyboard: function (o) {
+          return quietly(call("FoleviNative", "keyboard", { interactiveDismiss: !!(o && o.interactiveDismiss) })).then(function () {});
+        },
+      };
+
+  var bridge = Object.freeze(Object.assign(localExtensions, keyboardMoves, {
     platform: PLATFORM,
     version: VERSION,
     haptic: haptic,

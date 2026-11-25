@@ -95,7 +95,7 @@ export function ChatThread({
   /** Told when Foli AI starts and stops working, and whether it just finished an answer (the launcher's flower reacts). */
   onWorking?: (working: boolean, replied: boolean) => void;
 }) {
-  const { scope } = useAppState();
+  const { scope, profile } = useAppState();
   const { navigate } = useAppRouter();
   const data = useQuery(api.aiChat.get, conversationId ? { conversationId } : "skip");
   const sendAction = useAction(api.aiChat.send);
@@ -118,7 +118,9 @@ export function ChatThread({
   // Local mode offers only what the model on the device can do: no research, agent, web or files (WP11).
   const features = useAiFeatures();
   const jobs = useQuery(api.aiResearch.forConversation, conversationId && features.research ? { conversationId } : "skip");
-  const caps = useQuery(api.aiChat.capabilities, {});
+  // What this account's Foli AI can do, as last known until the server answers: the composer's Web switch, Chat
+  // and Research and Attach are drawn with the sheet instead of popping in a moment later.
+  const caps = useLastKnown(`folevi:ai-caps:${profile?.id ?? "me"}`, useQuery(api.aiChat.capabilities, {}));
   const ai = useAiAccess();
   // The web (the Web switch, Research) only when Settings > Foli AI allows it, the plan has AI and the model can search.
   const webAvailable = Boolean(ai.on && caps?.prefs.webResearch && caps.searchGrounding && features.web);
@@ -748,3 +750,25 @@ const ThreadMessages = memo(function ThreadMessages({
     ) : null,
   );
 });
+
+/** `live` once it's there; until then the value it had last time on this device (kept under `key`), if any. */
+function useLastKnown<T>(key: string, live: T | undefined): T | undefined {
+  const [kept] = useState<T | undefined>(() => {
+    if (typeof window === "undefined") return undefined;
+    try {
+      const raw = localStorage.getItem(key);
+      return raw ? (JSON.parse(raw) as T) : undefined;
+    } catch {
+      return undefined;
+    }
+  });
+  useEffect(() => {
+    if (live === undefined) return;
+    try {
+      localStorage.setItem(key, JSON.stringify(live));
+    } catch {
+      /* storage unavailable: the server's answer is still used */
+    }
+  }, [key, live]);
+  return live ?? kept;
+}

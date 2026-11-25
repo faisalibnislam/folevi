@@ -69,6 +69,8 @@ targets:
       - path: ../../../ios/ios/App/Native/PushNotifications.swift
       - path: ../../../ios/ios/App/Native/SystemSettings.swift
       - path: ../../../ios/ios/App/Native/DeviceModel.swift
+      # The keyboard's moves for the page (foleviNative.onKeyboard): sheets and the note's bar ride with it.
+      - path: ../../../ios/ios/App/Native/UI/KeyboardBridge.swift
       # The widgets' copy and views, and the App Intents (Siri, Shortcuts, the widgets' buttons, the Control Center
       # control), shared with the widget extension; the Shortcuts phrases; Spotlight's notes; and local mode's calls
       # that let the page feed them (FoleviNative: setWidgetSnapshot, indexSpotlight, takeLocalActions).

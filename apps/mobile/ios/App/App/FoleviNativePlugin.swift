@@ -22,11 +22,16 @@ final class FoleviNativePlugin: BridgePlugin {
         "accessibility", "setBackdrop", "authenticate", "recognizeText", "signInWithApple",
         // Local mode's widgets, Shortcuts and Spotlight (apps/ios Native/LocalExtensions.swift).
         "setWidgetSnapshot", "takeLocalActions", "finishLocalAction", "indexSpotlight",
+        // The keyboard's moves for the page (apps/ios Native/UI/KeyboardBridge.swift).
+        "keyboard",
     ]
 
     /// A widget or an intent queuing something while the app runs tells this page ("folevi:local-actions").
     override func load() {
-        MainActor.assumeIsolated { LocalExtensions.attach(bridge) }
+        MainActor.assumeIsolated {
+            LocalExtensions.attach(bridge)
+            KeyboardBridge.shared.attach(self)
+        }
     }
 
     var appOrigin: String { AppOrigin.of(bridge?.serverURL) }

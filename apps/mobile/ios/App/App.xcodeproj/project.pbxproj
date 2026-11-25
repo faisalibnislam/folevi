@@ -99,6 +99,7 @@
 		E9785C1162CF7974B7679E38 /* SaveTargets.swift in Sources */ = {isa = PBXBuildFile; fileRef = B7228A872DC4C5177EFDCD45 /* SaveTargets.swift */; };
 		EC83BCEFC5BA6D36D1841B53 /* WidgetStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 927DEB878BB9B1000D84BC3D /* WidgetStyle.swift */; };
 		EE0DCC8BDD221D448545A066 /* ShellServices.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5730EE47B557DC9DE87DF93C /* ShellServices.swift */; };
+		EE6FFEBD3DD9934AF6304365 /* KeyboardBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 544337F32F82CDDC317B6E3A /* KeyboardBridge.swift */; };
 		F354B2AB35114801AB4CA24E /* WidgetViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00D58B3AF6C63020002850D9 /* WidgetViews.swift */; };
 		F563AF89FB9DC32C47DED7F2 /* DeviceCredential.swift in Sources */ = {isa = PBXBuildFile; fileRef = 26B9BA4BFA5D051264363BA2 /* DeviceCredential.swift */; };
 		FB40705540D0728F2A8E0D05 /* FoleviWidgets.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9BC3647E944E3799111F5654 /* FoleviWidgets.swift */; };
@@ -170,6 +171,7 @@
 		4C0E59F1450FD764F83CEB9E /* ShareViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareViewController.swift; sourceTree = "<group>"; };
 		4CD648EB22208AF4347378BB /* public */ = {isa = PBXFileReference; lastKnownFileType = folder; name = public; path = App/public; sourceTree = SOURCE_ROOT; };
 		526B777995EB115C4DDAF4AD /* AppServices.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppServices.swift; sourceTree = "<group>"; };
+		544337F32F82CDDC317B6E3A /* KeyboardBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyboardBridge.swift; sourceTree = "<group>"; };
 		54A689B155411B8B140C03C6 /* DeviceModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceModel.swift; sourceTree = "<group>"; };
 		54B63D044F30EDE39B853A47 /* folevi-cloud.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; name = "folevi-cloud.js"; path = "../../../bridge/build/folevi-cloud.js"; sourceTree = "<group>"; };
 		5730EE47B557DC9DE87DF93C /* ShellServices.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShellServices.swift; sourceTree = "<group>"; };
@@ -272,6 +274,7 @@
 				9D2C6B5818429C4B03B3E455 /* Shared */,
 				C6D4E426DD3FDC4CD0B6183D /* ShareExtension */,
 				0A983A628C3E0A302696B3F0 /* Shell */,
+				53AC4EFE3FEA73C612D9FFEE /* UI */,
 				7437613141E28473D82E50CB /* Widgets */,
 				E9C3DB3EC6D7655028A9C0D3 /* Products */,
 			);
@@ -296,6 +299,15 @@
 				23F8D68E28D07D16EB72E4AA /* LaunchScreen.storyboard */,
 			);
 			path = App;
+			sourceTree = "<group>";
+		};
+		53AC4EFE3FEA73C612D9FFEE /* UI */ = {
+			isa = PBXGroup;
+			children = (
+				544337F32F82CDDC317B6E3A /* KeyboardBridge.swift */,
+			);
+			name = UI;
+			path = ../../../ios/ios/App/Native/UI;
 			sourceTree = "<group>";
 		};
 		7437613141E28473D82E50CB /* Widgets */ = {
@@ -618,6 +630,7 @@
 				099E49FB50E77BCDD20998DA /* FoleviViewController.swift in Sources */,
 				4D313BA5F68B6F9BEBB00532 /* HostBridge.swift in Sources */,
 				336E241711D8C3B325DF8343 /* Intents.swift in Sources */,
+				EE6FFEBD3DD9934AF6304365 /* KeyboardBridge.swift in Sources */,
 				0CC5C2C9B46E78D4A5441594 /* Keychain.swift in Sources */,
 				4315B594FCF03D8881EB9386 /* LibraryCrypto.swift in Sources */,
 				892604B4B5BEFB5A01F61C49 /* LibraryFS.swift in Sources */,

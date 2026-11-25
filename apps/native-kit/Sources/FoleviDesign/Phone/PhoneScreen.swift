@@ -213,16 +213,16 @@ public struct PhoneScreen<Leading: View, Trailing: View, Header: View, Content: 
                         Text(status).font(.headline).lineLimit(1)
                     }
                 }
-                // The screen's actions: one glass capsule.
-                if hasTrailing {
-                    ToolbarItem(placement: .topBarTrailing) { HStack(spacing: 6) { trailing }.environment(\.phoneInSystemBar, true) }
-                }
-                // The main action (a tab's first screen: Create, or on Tasks a quick task), in Folevi's ink.
+                // + first (a tab's first screen: Create, or on Tasks a quick task), its own glass circle, then the
+                // screen's actions in their capsule (the owner, 2026-11-25: + before the sync and the bell).
                 if root, let rootCreate {
+                    PhoneRootCreateItem(create: rootCreate)
                     if #available(iOS 26, *), hasTrailing {
                         ToolbarSpacer(.fixed, placement: .topBarTrailing)
                     }
-                    PhoneRootCreateItem(create: rootCreate)
+                }
+                if hasTrailing {
+                    ToolbarItem(placement: .topBarTrailing) { HStack(spacing: 6) { trailing }.environment(\.phoneInSystemBar, true) }
                 }
                 // Search, last, as on the Mac.
                 if searchAction != nil {

@@ -199,9 +199,13 @@ public struct PhoneRootCreate {
     public var newNote: @MainActor () -> Void
     public var fromTemplate: @MainActor () -> Void
     public var quickTask: @MainActor () -> Void
+    /// New folder in the menu (today's +: New note, From template, New folder, Quick task); nil leaves it out.
+    public var newFolder: (@MainActor () -> Void)?
 
     public init(aiOn: Bool, quickTaskOnly: Bool, openAI: @escaping @MainActor () -> Void, newNote: @escaping @MainActor () -> Void,
-                fromTemplate: @escaping @MainActor () -> Void, quickTask: @escaping @MainActor () -> Void) {
+                fromTemplate: @escaping @MainActor () -> Void, quickTask: @escaping @MainActor () -> Void,
+                newFolder: (@MainActor () -> Void)? = nil) {
+        self.newFolder = newFolder
         self.aiOn = aiOn
         self.quickTaskOnly = quickTaskOnly
         self.openAI = openAI
@@ -229,16 +233,9 @@ public struct PhoneRootCreateItem: ToolbarContent {
 
     public var body: some ToolbarContent {
         if #available(iOS 26, *) {
-            // The system's prominent glass, tinted with Folevi's ink (liquid-glass: one prominent action per bar,
-            // `.glassProminent` tinted with `.tint`, never hand-rolled glass where the bar provides it).
-            if create.quickTaskOnly {
-                // A button: the bar draws the prominent glass itself, in its shared capsule.
-                ToolbarItem(placement: .topBarTrailing) { prominentItem }
-            } else {
-                // A menu draws its own prominent glass: the bar's shared capsule round it would be glass on glass.
-                ToolbarItem(placement: .topBarTrailing) { prominentItem }
-                    .sharedBackgroundVisibility(.hidden)
-            }
+            // The owner, 2026-11-25: + in the bar as a plain button, its own glass circle (the bar draws it) before
+            // the sync and the bell, and its menu iOS's own, opening out of it in Liquid Glass.
+            ToolbarItem(placement: .topBarTrailing) { PhoneRootCreateButtons(create) }
         } else {
             ToolbarItem(placement: .topBarTrailing) { PhoneRootCreateButtons(create) }
         }
@@ -290,6 +287,10 @@ public struct PhoneRootCreateButtons: View {
                 Menu {
                     Button(action: create.newNote) { Label { Text("New note") } icon: { WebIcon.filePlusCorner.image() } }
                     Button(action: create.fromTemplate) { Label { Text("From template") } icon: { WebIcon.layoutTemplate.image() } }
+                    if let newFolder = create.newFolder {
+                        Button(action: newFolder) { Label { Text("New folder") } icon: { WebIcon.folderPlus.image() } }
+                    }
+                    Divider()
                     Button(action: create.quickTask) { Label { Text("Quick task") } icon: { WebIcon.listPlus.image() } }
                 } label: {
                     plus

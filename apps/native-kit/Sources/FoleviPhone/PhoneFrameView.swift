@@ -163,17 +163,6 @@ public struct PhoneFrameView<Screen: View>: View {
         .onGeometryChange(for: CGSize.self) { $0.size } action: { frameSize = $0 }
         .phoneSideBarsReader()
         // A note's bottom bars, where the tab bar is (PhoneNoteBarsSlot): they trade places with it, not ride the page.
-        // + floats over the bar's trailing end, above the search button (the owner, 2026-11-25: + beside the
-        // tab bar, as today's app has it; iOS's bar holds five items at most, so it can't be a tab).
-        .overlay(alignment: .bottomTrailing) {
-            if !barHidden(model.tabTop) && !model.searching {
-                PhoneCreateButton { plus(createFrom) }
-                    .padding(.trailing, 22)
-                    .padding(.bottom, 74)
-                    .transition(.scale(scale: 0.6).combined(with: .opacity))
-            }
-        }
-        .animation(WebMotion.reduced ? nil : .spring(response: 0.32, dampingFraction: 0.82), value: barHidden(model.tabTop) || model.searching)
         .overlay { PhoneNoteBarsLayer(model: model) }
         .overlay { PhoneMenuLayer(menus: menus) }
     }
@@ -183,12 +172,12 @@ public struct PhoneFrameView<Screen: View>: View {
         CGRect(x: max(0, frameSize.width - 22 - 52), y: max(0, frameSize.height - 74 - 52), width: 52, height: 52)
     }
 
-    /// + in a tab's first screen's bar: none since 2026-11-25 (+ is in the tab bar). Before iOS 26 the drawn bar has
-    /// its own.
+    /// + in a tab's first screen's bar (the owner, 2026-11-25: at the top, before the sync and the bell, with iOS's
+    /// own menu).
     private func rootCreate(_ tab: PhoneTab) -> PhoneRootCreate? {
-        if #available(iOS 26, *) { return nil }
+        guard #available(iOS 26, *) else { return nil }
         return PhoneRootCreate(aiOn: false, quickTaskOnly: tab == .tasks, openAI: actions.openAI, newNote: actions.newNote,
-                               fromTemplate: actions.fromTemplate, quickTask: actions.quickTask)
+                               fromTemplate: actions.fromTemplate, quickTask: actions.quickTask, newFolder: actions.newFolder)
     }
 
     /// Before iOS 26: the floating tab bar drawn as the web's, over the stacks.

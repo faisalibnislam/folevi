@@ -215,8 +215,9 @@ internal fun GroupedScreen(title: String, onBack: (() -> Unit)?, content: LazyLi
     val p = LocalPalette.current
     val (bg, _) = groupedColors()
     val state = rememberLazyListState()
-    val top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
-    val nav = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+    // The frame (AppShell's scaffold, the tab strip) already keeps clear of the status and navigation bars.
+    val top = 0.dp
+    val nav = 0.dp
     val gone by remember { derivedStateOf { state.firstVisibleItemIndex > 0 || state.firstVisibleItemScrollOffset > 120 } }
     Box(Modifier.fillMaxSize().background(bg)) {
         LazyColumn(state = state, modifier = Modifier.fillMaxSize(), contentPadding = PaddingValues(top = top + 60.dp, bottom = nav + 40.dp)) {

@@ -203,8 +203,9 @@ fun SearchScreen(open: (Route) -> Unit, onBack: (() -> Unit)? = null) {
 
     val focus = remember { FocusRequester() }
     LaunchedEffect(Unit) { runCatching { focus.requestFocus() } }
-    val top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
-    val nav = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+    // The frame (AppShell's scaffold, the tab strip) already keeps clear of the status and navigation bars.
+    val top = 0.dp
+    val nav = 0.dp
     val now = System.currentTimeMillis()
 
     Column(Modifier.fillMaxSize().background(p.canvas).padding(top = top)) {

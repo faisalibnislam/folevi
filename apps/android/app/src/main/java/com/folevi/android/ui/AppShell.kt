@@ -178,6 +178,24 @@ fun AppShell() {
         // The page's own requests: a link inside a note replaces that note's tab (a new tab with a modifier click or
         // "Open in new tab"), a link to a screen opens its tab, a web address opens in the browser. Note titles name
         // their tabs.
+        val navigate: (com.folevi.engine.generated.NavigateRequestEvent) -> Unit = { d ->
+            if (d.external) {
+                runCatching { (context as? MainActivity)?.openBrowser(Uri.parse(d.route)) }
+            } else {
+                val r = routeOfPath(d.route, d.noteId)
+                when {
+                    !isTabbed -> openOnPhone(r)
+                    d.newTab -> tabs.addInBackground(r)
+                    else -> tabs.show(r, if (r.isNote && tabs.activeRoute.isNote) TabsModel.Opening.REPLACE else TabsModel.Opening.NEW_TAB)
+                }
+            }
+        }
+        DisposableEffect(session) {
+            session.shellListening = true
+            // One the page sent before the frame was here (the end of onboarding).
+            session.pendingNavigate?.let { session.pendingNavigate = null; navigate(it) }
+            onDispose { session.shellListening = false }
+        }
         LaunchedEffect(session) {
             session.client.events.collect { e ->
                 when (e) {

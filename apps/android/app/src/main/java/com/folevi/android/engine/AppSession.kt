@@ -47,6 +47,12 @@ class AppSession(context: Context, private val scope: CoroutineScope, demo: Bool
      */
     val noteOverlay = mutableStateOf<(@androidx.compose.runtime.Composable () -> Unit)?>(null)
 
+    /** The app frame (AppShell) is taking the page's navigation requests itself. */
+    @Volatile var shellListening = false
+
+    /** A navigation request that came while no frame was listening (taken by AppShell when it starts). */
+    @Volatile var pendingNavigate: com.folevi.engine.generated.NavigateRequestEvent? = null
+
     /** The page's scroll as the bridge script reports it: 0 at the top, 1 scrolled, 2 past 96. */
     val pageScroll = mutableStateOf(0)
 
@@ -62,7 +68,12 @@ class AppSession(context: Context, private val scope: CoroutineScope, demo: Bool
     fun start() {
         scope.launch { client.hello.collect { h -> if (h != null) _gate.value = h.gate.takeIf { it.gate != null } } }
         scope.launch {
-            client.events.collect { e -> if (e is EngineEvent.GateChanged) _gate.value = e.data.takeIf { it.gate != null } }
+            client.events.collect { e ->
+                if (e is EngineEvent.GateChanged) _gate.value = e.data.takeIf { it.gate != null }
+                // A page the web opens as a gate closes (onboarding's "Open Welcome to Folevi") arrives before the app
+                // frame is listening: it waits here for the frame (AppShell) to take it.
+                if (e is EngineEvent.NavigateRequest && !shellListening) pendingNavigate = e.data
+            }
         }
         client.start()
         page?.load()

@@ -241,6 +241,8 @@ for (const f of readFiles) {
   fs.mkdirSync(path.dirname(path.join(out, rel)), { recursive: true });
   fs.copyFileSync(f, path.join(out, rel));
 }
+// Folevi Server's auth config replaces the cloud one (auth.config.server.ts says why).
+fs.copyFileSync(path.join(path.dirname(new URL(import.meta.url).pathname), "auth.config.server.ts"), path.join(out, "convex", "auth.config.ts"));
 for (const f of ["convex.json", "tsconfig.json"]) {
   if (fs.existsSync(path.join(repo, f))) fs.copyFileSync(path.join(repo, f), path.join(out, f));
 }

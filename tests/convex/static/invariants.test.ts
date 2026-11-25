@@ -42,8 +42,13 @@ describe("backend invariants", () => {
 
   test("only Folevi's own issuer is trusted, and development-only tools refuse production", () => {
     const cfg = readFileSync(join(root, "auth.config.ts"), "utf8");
-    expect(cfg).toMatch(/providers: \[authProvider\(\)\]/);
-    expect(cfg).not.toMatch(/customJwt|auth0|FOLEVI_DEV_AUTH/i);
+    expect(cfg).toMatch(/providers: \[getAuthConfigProvider\(\)\]/);
+    expect(cfg).not.toMatch(/customJwt|auth0|FOLEVI_DEV_AUTH|process\.env/i);
+    // Folevi Server's bundle swaps in its own config: static keys from FOLEVI_JWKS, same issuer, and only
+    // variables folevid always sets (Convex refuses to deploy an auth config that reads an unset one).
+    const serverCfg = readFileSync(join(root, "..", "server", "bundle", "auth.config.server.ts"), "utf8");
+    expect(serverCfg).toMatch(/providers: \[authProvider\(\{ FOLEVI_EDITION: "server", FOLEVI_JWKS: process\.env\.FOLEVI_JWKS, CONVEX_SITE_URL: process\.env\.CONVEX_SITE_URL \}\)\]/);
+    expect([...serverCfg.matchAll(/process\.env\.(\w+)/g)].map((m) => m[1])).toEqual(["FOLEVI_JWKS", "CONVEX_SITE_URL"]);
     // lib/jwks.ts: Better Auth's own provider; static keys only in the server edition (FOLEVI_JWKS), same issuer.
     const jwks = readFileSync(join(root, "lib", "jwks.ts"), "utf8");
     expect(jwks).toMatch(/return getAuthConfigProvider\(\);\n\}/);

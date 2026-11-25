@@ -344,7 +344,10 @@ Server version numbers follow the app's unified version (`docs/claude-context/me
   `{key, recipient}` for the admin panel to show once ("save this key somewhere safe; without it a backup cannot be
   restored on another machine"). Backup rows have `encrypted`. A key that fits no identity answers 422.
 - New secret file `secrets/connect-key` (the server's Ed25519 key for Connect).
-- `FOLEVI_JWKS` starts as a single space: the Convex CLI refuses an auth config that reads an unset variable.
+- `FOLEVI_JWKS` starts as a single space: Convex refuses to deploy an auth config that reads an unset variable.
+  So the repo's `convex/auth.config.ts` stays Folevi Cloud's (no environment reads), and the bundle's
+  `functions/convex/auth.config.ts` is `server/bundle/auth.config.server.ts`, which reads only `FOLEVI_JWKS` and
+  `CONVEX_SITE_URL` (prepare-functions.mjs copies it in).
 - Additions: `/v1/status` has `memory.profile` (`tiny` up to 2.5 GB of RAM, `low` up to 8 GB, `high` above) and
   `memory.low`; `POST /v1/backups?wait=1` waits for the backup to finish.
 - Extra settings: `FOLEVI_TMPDIR`, `FOLEVI_BIND`, `FOLEVI_RELAY_URL`, `FOLEVI_MANAGED_BY`, `FOLEVI_PUBLIC_URL`.

@@ -1,18 +1,32 @@
 "use client";
 
-import { useEffect, useId, useLayoutEffect, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
+import { useEffect, useId, useLayoutEffect, useRef, useState, type CSSProperties, type KeyboardEvent, type ReactNode } from "react";
 import { X } from "lucide-react";
 import { IconButton } from "./Button";
 import { isIpadNativeWide, useIphoneApp } from "@/lib/iphone";
 import { Sheet } from "@/components/iphone/Sheet";
 import { confirmAction, hasNative } from "@/lib/native/ui";
 import { nativeChrome } from "@/lib/nativeApp";
+import { useFold, type Fold } from "@/lib/platform";
 
 /**
  * Folevi for Mac's note page (native chrome mode): the window's tab strip is drawn over the page's top
  * (--native-inset-top) and the note's floating dock sits at its bottom, so a dialog keeps between the two (and
  * scrolls inside when the window is short). Null elsewhere: the dialog centres in the whole window.
  */
+/**
+ * An iPhone Duo or a foldable partly open: a dialog that would centre in the window sits in the part past the
+ * fold instead, 16 px clear of it (nothing interactive on the fold): right of a fold down the middle, below
+ * one across. `room` (macFrameRoom) still holds where it applies.
+ */
+export function pastFoldFrame(f: Fold | null, room: { top: number; bottom: number } | null): { room: { top: number; bottom: number } | null; side: CSSProperties | null } {
+  if (!f) return { room, side: null };
+  const past = f.start + f.size + 16;
+  if (f.orientation === "horizontal") return { room: { top: Math.max(room?.top ?? 0, past), bottom: Math.max(room?.bottom ?? 0, 16) }, side: null };
+  // (Between `left` and `right` the dialog's auto margins centre it; the width fills that span, its max-width caps it.)
+  return { room, side: { left: past, right: 16, width: `calc(100% - ${past + 16}px)` } };
+}
+
 function macFrameRoom(): { top: number; bottom: number } | null {
   if (typeof window === "undefined" || (nativeChrome()?.platform !== "macos" && !isIpadNativeWide())) return null;
   const inset = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--native-inset-top"));
@@ -69,7 +83,8 @@ export function Dialog({
   // takes the focus. Rendered with the dialog still closed, its focus went nowhere and the browser then
   // put it on the Close button, ringed, every time a dialog opened.
   const [shown, setShown] = useState(false);
-  const [room, setRoom] = useState<{ top: number; bottom: number } | null>(null);
+  const [macRoom, setRoom] = useState<{ top: number; bottom: number } | null>(null);
+  const { room, side } = pastFoldFrame(useFold(), macRoom);
   useLayoutEffect(() => {
     const el = ref.current;
     if (!el) return;
@@ -119,7 +134,7 @@ export function Dialog({
       }}
       onKeyDown={(e) => macDialogKeys(e, ref.current, onClose)}
       className={`m-auto w-[calc(100%-2rem)] ${width} ui-pop ui-modal rounded-panel p-0 text-ink outline-none shadow-[var(--glass-edge),0_16px_48px_rgb(0_0_0/0.1),0_2px_8px_rgb(0_0_0/0.1)] open:animate-[folio-pop_520ms_var(--spring-pop)]`}
-      style={room ? { top: room.top, bottom: room.bottom, maxHeight: `calc(100dvh - ${room.top + room.bottom}px)` } : undefined}
+      style={room || side ? { ...side, ...(room ? { top: room.top, bottom: room.bottom, maxHeight: `calc(100dvh - ${room.top + room.bottom}px)` } : null) } : undefined}
     >
       {open && shown ? (
         <div className="flex max-h-[85dvh] flex-col" style={room ? { maxHeight: `min(85dvh, calc(100dvh - ${room.top + room.bottom}px))` } : undefined}>

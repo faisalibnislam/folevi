@@ -53,6 +53,7 @@ export function displayCornerRadius(): number | null {
     "420x912": 62, // Air
     "402x874": 62, // 16 Pro, 17, 17 Pro and later
     "440x956": 62, // 16 Pro Max, 17 Pro Max and later
+    "466x678": 62, // iPhone Duo's outer screen (estimated: Apple doesn't give it, so the 17 Pro's)
   };
   return sizes[`${w}x${h}`] ?? null;
 }
@@ -174,17 +175,18 @@ export function useIphoneLook(): boolean {
 
 /**
  * How far the status bar and the home indicator reach into the page, in the iPhone app (0 elsewhere): menus
- * placed by script stay clear of them.
+ * placed by script stay clear of them. Also the sides: a closed iPhone Duo's status bar runs down the outer
+ * screen's right edge, and a phone turned on its side has the camera housing at one.
  */
-export function safeInsets(): { top: number; bottom: number } {
-  if (typeof document === "undefined" || !isIphoneApp()) return { top: 0, bottom: 0 };
+export function safeInsets(): { top: number; bottom: number; left: number; right: number } {
+  if (typeof document === "undefined" || !isIphoneApp()) return { top: 0, bottom: 0, left: 0, right: 0 };
   const probe = document.createElement("div");
   // (The Android app gives its insets as --android-inset-*: older WebViews leave env() at 0.)
   probe.style.cssText = inAndroidApp()
-    ? "position:fixed;left:0;top:var(--android-inset-top,0px);bottom:var(--android-inset-bottom,0px);width:0;visibility:hidden;pointer-events:none"
-    : "position:fixed;left:0;top:env(safe-area-inset-top);bottom:env(safe-area-inset-bottom);width:0;visibility:hidden;pointer-events:none";
+    ? "position:fixed;left:var(--android-inset-left,0px);right:var(--android-inset-right,0px);top:var(--android-inset-top,0px);bottom:var(--android-inset-bottom,0px);visibility:hidden;pointer-events:none"
+    : "position:fixed;left:env(safe-area-inset-left);right:env(safe-area-inset-right);top:env(safe-area-inset-top);bottom:env(safe-area-inset-bottom);visibility:hidden;pointer-events:none";
   document.body.appendChild(probe);
   const r = probe.getBoundingClientRect();
   probe.remove();
-  return { top: r.top, bottom: Math.max(0, window.innerHeight - r.bottom) };
+  return { top: r.top, bottom: Math.max(0, window.innerHeight - r.bottom), left: r.left, right: Math.max(0, window.innerWidth - r.right) };
 }

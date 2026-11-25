@@ -7,6 +7,7 @@ import { keyLabel } from "@/lib/shortcuts";
 import { visibleBottom } from "@/lib/hooks/useVisualViewport";
 import { nativeApp } from "@/lib/nativeApp";
 import { safeInsets } from "@/lib/iphone";
+import { popupSpan } from "./topLayer";
 import { POP_IN, POP_MS, feel } from "@/lib/native/ui";
 import { heldLiftRect, placeAroundLift, shiftHeldLift, reportLiftPlacement } from "@/lib/native/lift";
 import { SPRINGS, prefersReducedMotion } from "@/lib/native/physics";
@@ -448,10 +449,11 @@ function MenuPanel({
         const pad = parseFloat(getComputedStyle(menu).paddingTop) || 6;
         const bottom = visibleBottom();
         const safeTop = safeInsets().top;
+        const span = popupSpan(a, margin);
         let left = a.right + pad + 2;
-        const flip = left + w > window.innerWidth - margin;
+        const flip = left + w > span.max;
         if (flip) left = a.left - pad - 2 - w;
-        left = Math.min(Math.max(margin, left), window.innerWidth - w - margin);
+        left = span.clamp(left, w);
         const maxHeight = bottom - margin * 2 - safeTop;
         const top = Math.max(margin + safeTop, Math.min(a.top - pad, bottom - Math.min(h, maxHeight) - margin));
         setPos({ position: "fixed", left, top, maxHeight, margin: 0, right: "auto", bottom: "auto", transformOrigin: `${flip ? "right" : "left"} top` });
@@ -461,7 +463,8 @@ function MenuPanel({
       // picture, drawn above the page), below, above or beside it, on screen (WP0, lib/native/lift.ts).
       const held = heldLiftRect();
       if (held) {
-        const view = { left: margin, top: margin + safeInsets().top, right: window.innerWidth - margin, bottom: visibleBottom() - margin };
+        const span = popupSpan(held, margin);
+        const view = { left: span.min, top: margin + safeInsets().top, right: span.max, bottom: visibleBottom() - margin };
         const size = { width: fullWidth ? held.right - held.left : menu.offsetWidth, height: Math.max(menu.offsetHeight, menu.scrollHeight) };
         const p = placeAroundLift(held, size, view, align);
         setPos({ position: "fixed", left: p.left, top: p.top, width: fullWidth ? size.width : undefined, maxHeight: p.maxHeight, margin: 0, right: "auto", bottom: "auto", transformOrigin: p.origin });
@@ -477,8 +480,7 @@ function MenuPanel({
       const below = bottom - a.bottom - gap - margin;
       const above = a.top - gap - margin;
       const up = side === "top" ? !(above < h && below > above) : below < h && above > below;
-      let left = align === "end" ? a.right - w : a.left;
-      left = Math.min(Math.max(margin, left), window.innerWidth - w - margin);
+      const left = popupSpan(a, margin).clamp(align === "end" ? a.right - w : a.left, w);
       let top = up ? a.top - gap - h : a.bottom + gap;
       // (In the iPhone app, below the status bar.)
       const safeTop = safeInsets().top;

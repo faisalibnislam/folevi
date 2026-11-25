@@ -117,7 +117,7 @@ export function IphoneShell({ banner }: { banner?: ReactNode }) {
           </div>
           {/* The screen that's leaving, while it slides away (above or below the new one). */}
           <div ref={layer} aria-hidden className="pointer-events-none absolute inset-0 [&>*]:absolute [&>*]:inset-0 [&>*]:flex [&>*]:flex-col [&>*]:bg-canvas" />
-          {banner ? <div className="fixed inset-x-3 top-[calc(env(safe-area-inset-top)+64px)] z-40">{banner}</div> : null}
+          {banner ? <div className="fixed left-[calc(env(safe-area-inset-left)+0.75rem)] right-[calc(env(safe-area-inset-right)+0.75rem)] top-[calc(env(safe-area-inset-top)+64px)] z-40">{banner}</div> : null}
           <TabBar onNewFolder={actions.openNewFolder} />
         </div>
         <AccountSheet open={account} onClose={() => setAccount(false)} />

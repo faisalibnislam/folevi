@@ -55,7 +55,7 @@ const GRAIN = `url("data:image/svg+xml,${encodeURIComponent(`<svg xmlns='http://
  * chip as a note card's "…" (shown on hover or focus, always on touch).
  */
 export const FOLDER_CARD_MENU =
-  "ui-raised absolute top-[calc(45%+8px)] right-2 z-10 rounded-chip opacity-0 transition-opacity group-hover:opacity-100 pointer-coarse:opacity-100";
+  "ui-raised absolute top-[calc(45%+3px)] right-[3px] z-10 rounded-chip opacity-0 transition-opacity group-hover:opacity-100 pointer-coarse:opacity-100";
 
 /** The "…" button's look inside FOLDER_CARD_MENU, for pictures of the card (the app uses its MenuButton). */
 export function FolderCardMenuLook() {

@@ -53,7 +53,7 @@ export function IdentityImageRows({
       <div className="flex items-center gap-4 px-4 py-4">
         {shown ? (
           // eslint-disable-next-line @next/next/no-img-element -- a small signed storage URL, not an optimisable asset
-          <img src={shown} alt={label} width={64} height={64} onError={() => setFailedSrc(shown)} className={`size-16 flex-none object-cover ${radius}`} />
+          <img src={shown} alt={label} width={64} height={64} onError={() => setFailedSrc(shown)} className={`ui-img-outline size-16 flex-none object-cover ${radius}`} />
         ) : (
           <span role="img" aria-label={`${label}: none yet`} className={`grid size-16 flex-none place-items-center bg-heading text-title-1 font-semibold text-canvas ${radius}`}>
             {initial.trim().slice(0, 1).toUpperCase() || "·"}

@@ -537,7 +537,7 @@ export function TabStrip() {
             return createPortal(
               <div
                 aria-hidden
-                className="pointer-events-none fixed z-[60] w-[300px] overflow-hidden rounded-container border border-line bg-[var(--color-surface-raised)] shadow-[0_12px_36px_rgb(0_0_0/0.18)]"
+                className="pointer-events-none fixed z-[60] w-[300px] overflow-hidden rounded-container bg-[var(--color-surface-raised)] shadow-[var(--shadow-pop)]"
                 style={{ left: preview.left, top: preview.top }}
               >
                 {/* The tabs pictured lately stay drawn, one over another: switching shows a page already there. */}
@@ -563,15 +563,9 @@ export function TabStrip() {
           entries={overviewEntries}
           titles={titleMap}
           frame={overviewFrame}
-          onOpen={(href) => {
-            setOverview(false);
-            navigate(href);
-          }}
+          onOpen={(href) => navigate(href)}
           onCloseTab={(id) => close(id)}
-          onNewNote={() => {
-            setOverview(false);
-            void createDocument({});
-          }}
+          onNewNote={() => void createDocument({})}
           onDismiss={() => setOverview(false)}
         />
       ) : null}
@@ -592,7 +586,7 @@ export function TabStrip() {
       ) : (
       <>
       {folderParent !== undefined ? <NewFolderButton key={folderParent ?? "top"} parentId={folderParent} /> : null}
-      <Button size="sm" variant="primary" title={keys(inFolder ? "New note in this folder (⌘⌥N)" : "New note (⌘⌥N)")} onClick={() => void createDocument({})} className="h-9 flex-none rounded-control">
+      <Button size="sm" variant="primary" title={keys(inFolder ? "New note in this folder (⌘⌥N)" : "New note (⌘⌥N)")} onClick={() => void createDocument({})} className="h-9 flex-none rounded-control !pl-3">
         <Plus size={14} aria-hidden /> New note
       </Button>
       </>
@@ -797,7 +791,7 @@ const TabRow = memo(function TabRow({
       {overlay ? (
         // Pin and close float over the end of the title (which fades out under them on hover, `.ui-tab`) instead
         // of keeping their room while hidden, so a closed tab shows as much of its title as it can.
-        <span className="absolute inset-y-0 right-1 z-[1] flex items-center gap-0.5">
+        <span className="absolute inset-y-0 right-1 z-[1] flex items-center gap-1">
           {pinButton}
           {closeButton}
         </span>

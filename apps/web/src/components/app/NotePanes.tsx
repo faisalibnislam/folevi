@@ -486,7 +486,7 @@ function Spine({ id, title, shift, lifted, onDragStart, onOpen }: { id: string; 
       </button>
       {peek
         ? createPortal(
-            <div aria-hidden className="pointer-events-none fixed z-[60] w-[300px] overflow-hidden rounded-container border border-line bg-[var(--color-surface-raised)] shadow-[0_12px_36px_rgb(0_0_0/0.18)]" style={{ left: peek.left, top: peek.top }}>
+            <div aria-hidden className="pointer-events-none fixed z-[60] w-[300px] overflow-hidden rounded-container bg-[var(--color-surface-raised)] shadow-[var(--shadow-pop)]" style={{ left: peek.left, top: peek.top }}>
               <MiniPage documentId={id} title={title} className="aspect-[16/10] w-full" />
               <div className="truncate border-t border-line px-3 py-2 text-subheadline font-semibold text-heading">{title}</div>
             </div>,

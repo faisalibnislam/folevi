@@ -125,7 +125,7 @@ function Body({ file }: { file: Opened }) {
   switch (file.kind) {
     case "image":
       // eslint-disable-next-line @next/next/no-img-element
-      return <img src={file.url} alt={file.name} className="mx-auto max-h-[70vh] max-w-full rounded-tiny object-contain" />;
+      return <img src={file.url} alt={file.name} className="ui-img-outline mx-auto max-h-[70vh] max-w-full rounded-tiny object-contain" />;
     case "pdf":
       return <PdfPages bytes={file.bytes} />;
     case "audio":

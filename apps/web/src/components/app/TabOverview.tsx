@@ -91,6 +91,22 @@ export function TabOverview({
     return { x: r.left, y: r.top, w: r.width, h: r.height };
   });
   const last = q ? shown.length - 1 : shown.length; // the New note tile comes after the tabs
+  // Leaving fades it out over 150 ms (with a 4 px rise, but not on the Mac or with Reduce Motion), then it goes:
+  // what was picked happens at once underneath (2026-11-25 polish review).
+  const [leaving, setLeaving] = useState(false);
+  const leave = () => {
+    if (leaving) return;
+    setLeaving(true);
+    window.setTimeout(onDismiss, 150);
+  };
+  const open = (href: string) => {
+    onOpen(href);
+    leave();
+  };
+  const newNote = () => {
+    onNewNote();
+    leave();
+  };
 
   const place = frame ? { top: frame.top, left: frame.left, right: frame.right, bottom: frame.bottom } : { top: 0, left: 0, right: 0, bottom: 0 };
 
@@ -101,25 +117,25 @@ export function TabOverview({
       aria-label="All tabs"
       data-tab-overview=""
       style={place}
-      className={`fixed z-[70] flex flex-col overflow-hidden bg-[var(--color-canvas)] transition-[opacity,transform] duration-200 ease-[var(--ease-folio)] motion-reduce:transition-none ${frame ? "rounded-panel shadow-[0_0_0_0.5px_rgb(0_0_0/0.08)]" : ""} ${shownIn ? "translate-y-0 opacity-100" : "-translate-y-1 opacity-0"}`}
+      className={`fixed z-[70] flex flex-col overflow-hidden bg-[var(--color-canvas)] transition-[opacity,translate] ease-out ${leaving ? "duration-150" : "duration-200"} ${frame ? "rounded-panel shadow-[0_0_0_0.5px_rgb(0_0_0/0.08)]" : ""} ${shownIn && !leaving ? "translate-y-0 opacity-100" : "pointer-events-none -translate-y-1 opacity-0"}`}
       onKeyDown={(e) => {
-        if (e.key === "Escape") onDismiss();
+        if (e.key === "Escape") leave();
         else if (e.key === "ArrowRight" || e.key === "ArrowLeft" || e.key === "ArrowDown" || e.key === "ArrowUp") {
           // In the search field, Left and Right move the caret.
           if ((e.key === "ArrowLeft" || e.key === "ArrowRight") && e.target instanceof HTMLInputElement && query) return;
           setSel((s) => Math.min(last, nextTile(tiles(), Math.min(s, last), e.key as "ArrowLeft")));
         } else if (e.key === "Enter") {
-          if (sel === shown.length) onNewNote();
-          else if (shown[sel]) onOpen(shown[sel]!.href);
+          if (sel === shown.length) newNote();
+          else if (shown[sel]) open(shown[sel]!.href);
         } else return;
         e.preventDefault();
       }}
       onClick={(e) => {
-        if (e.target === e.currentTarget) onDismiss();
+        if (e.target === e.currentTarget) leave();
       }}
     >
       <div className="flex flex-none items-center gap-3 px-8 pb-2 pt-5">
-        <h2 className="ui-display text-title-2 font-semibold text-heading">
+        <h2 className="ui-display text-title-2 font-semibold text-heading tabular-nums">
           {entries.length} {entries.length === 1 ? "tab" : "tabs"}
         </h2>
         <div className="flex-1" />
@@ -132,7 +148,7 @@ export function TabOverview({
             </button>
           ) : null}
         </label>
-        <button type="button" onClick={onDismiss} className="ui-hit h-8 rounded-control px-3 text-subheadline font-semibold text-heading hover:bg-[var(--glass-hover)]">
+        <button type="button" onClick={leave} className="ui-hit h-8 rounded-control px-3 text-subheadline font-semibold text-heading hover:bg-[var(--glass-hover)]">
           Done
         </button>
       </div>
@@ -140,7 +156,7 @@ export function TabOverview({
         ref={grid}
         className="grid min-h-0 flex-1 auto-rows-max grid-cols-[repeat(auto-fill,minmax(168px,1fr))] gap-x-8 gap-y-7 overflow-y-auto px-8 pb-10 pt-5"
         onClick={(e) => {
-          if (e.target === e.currentTarget) onDismiss();
+          if (e.target === e.currentTarget) leave();
         }}
       >
         {shown.length === 0 ? <p className="col-span-full py-10 text-center text-subheadline text-muted">No tabs match “{query.trim()}”.</p> : null}
@@ -154,7 +170,7 @@ export function TabOverview({
                 type="button"
                 aria-label={`Open ${e.label}`}
                 aria-current={e.active ? "page" : undefined}
-                onClick={() => onOpen(e.href)}
+                onClick={() => open(e.href)}
                 className={`relative block w-full rounded-container p-2 text-left outline-none transition-[background-color,box-shadow,transform] duration-150 ease-[var(--ease-folio)] hover:-translate-y-0.5 ${i === sel ? "bg-[var(--glass-hover)] ring-2 ring-focus" : e.active ? "bg-[var(--glass-hover)] ring-[1.5px] ring-[color-mix(in_oklab,var(--color-heading)_35%,transparent)]" : ""}`}
               >
                 <span className={split ? "relative block w-full aspect-[50/27]" : TAB_PICTURE_BOX + " block"}>
@@ -167,7 +183,7 @@ export function TabOverview({
                   aria-label={`Close ${e.label}`}
                   title="Close tab"
                   onClick={() => onCloseTab(e.tab!.id)}
-                  className="ui-raised absolute -left-1.5 -top-1.5 z-10 grid h-6 w-6 place-items-center rounded-chip text-muted opacity-0 transition-opacity hover:text-heading focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus group-hover:opacity-100 pointer-coarse:opacity-100"
+                  className="ui-raised ui-hit absolute -left-1.5 -top-1.5 z-10 grid h-6 w-6 place-items-center rounded-chip text-muted opacity-0 transition-opacity hover:text-heading focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus group-hover:opacity-100 pointer-coarse:opacity-100"
                 >
                   <X size={13} aria-hidden />
                 </button>
@@ -187,7 +203,7 @@ export function TabOverview({
           <div data-overview-index={shown.length} className="flex min-w-0 flex-col items-center gap-2.5" onMouseEnter={() => setSel(shown.length)}>
             <button
               type="button"
-              onClick={onNewNote}
+              onClick={newNote}
               aria-label="New note"
               className={`block w-full rounded-container p-2 text-faint outline-none transition-colors hover:text-heading ${sel === shown.length ? "bg-[var(--glass-hover)] ring-2 ring-focus" : ""}`}
             >

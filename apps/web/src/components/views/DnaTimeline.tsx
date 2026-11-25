@@ -9,6 +9,7 @@ import { useEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboa
 import { Pause, Play, X } from "lucide-react";
 import { IconButton } from "@/components/ui/Button";
 import { timelineStep, timelineTicks } from "@/lib/graph/timeline";
+import { SwapIcons } from "@/components/ui/SwapIcons";
 
 const day = (t: number) => new Date(t).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" });
 
@@ -84,7 +85,7 @@ export function DnaTimeline({
       className="ui-pop pointer-events-auto flex w-full items-center gap-2 rounded-panel py-2 pl-2 pr-1.5 animate-[folio-rise_180ms_var(--ease-folio)] motion-reduce:animate-none"
     >
       <IconButton label={playing ? "Pause" : "Play"} shortcut="Space" onClick={onPlay} className="!h-8 !w-8 flex-none">
-        {playing ? <Pause size={15} aria-hidden /> : <Play size={15} aria-hidden />}
+        <SwapIcons index={playing ? 1 : 0} icons={[<Play key="play" size={15} />, <Pause key="pause" size={15} />]} />
       </IconButton>
       <div className="min-w-0 flex-1 px-2">
         <div

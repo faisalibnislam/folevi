@@ -120,7 +120,7 @@ function MiniPage({ title, icon, children, bare = false }: { title: string; icon
     <div
       ref={box}
       data-tab-card="view"
-      className="absolute inset-0 overflow-hidden rounded-container bg-[var(--color-surface-raised)] shadow-[0_0_0_1px_var(--color-line),0_6px_18px_-8px_rgb(20_20_30/0.22)]"
+      className="absolute inset-0 overflow-hidden rounded-control bg-[var(--color-surface-raised)] shadow-[0_0_0_1px_var(--color-line),0_6px_18px_-8px_rgb(20_20_30/0.22)]"
     >
       {bare ? (
         children

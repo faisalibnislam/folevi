@@ -752,7 +752,7 @@ export function Sheet({
             </header>
           ) : null}
           {description ? (
-            <div id={descId} className="flex-none px-5 pb-2 text-center text-subheadline text-muted">
+            <div id={descId} className="flex-none px-5 pb-2 text-center text-pretty text-subheadline text-muted">
               {description}
             </div>
           ) : null}

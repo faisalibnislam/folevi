@@ -15,6 +15,7 @@ import { ToolFold, type FoldTool } from "../canvas/ToolFold";
 import { ARRANGE_LABEL, type ArrangeKey } from "./ops";
 import { serverNow } from "./serverClock";
 import { withKeyLabels } from "@/lib/shortcuts";
+import { SwapIcons } from "@/components/ui/SwapIcons";
 
 /** A panel over the board, or a sheet in the iPhone app. */
 export function Panel({ title, onClose, children, className = "", wide = false }: { title: string; onClose: () => void; children: ReactNode; className?: string; wide?: boolean }) {
@@ -467,7 +468,7 @@ export function TimerControl(props: TimerProps) {
         title={done ? "Stop the timer" : running ? "Pause" : "Resume"}
         onClick={() => (done ? onStop() : running ? onPause() : onResume())}
       >
-        {done ? <Timer size={14} aria-hidden /> : running ? <Pause size={13} aria-hidden /> : <Play size={13} aria-hidden />}
+        <SwapIcons index={done ? 2 : running ? 1 : 0} icons={[<Play key="play" size={13} />, <Pause key="pause" size={13} />, <Timer key="timer" size={14} />]} />
         <span className="st-timer-time">{done ? "Time's up" : clock(left)}</span>
       </button>
       <MenuButton label="Timer options" triggerClassName="fb-vc-btn st-timer-more" trigger={<span aria-hidden className="st-more-dots">···</span>} items={optionItems(props)} />

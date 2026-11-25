@@ -695,6 +695,7 @@ function DocumentList({ view, folderId, tagId, org, titleOverride }: { view: Vie
                   type="button"
                   aria-label={`New page from ${t.name}`}
                   onClick={() => void createDocument({ title: t.name, templateId: t.key })}
+                  data-card-row=""
                   className="flex items-start gap-3 ui-card rounded-control p-4 text-left transition-[transform,box-shadow] hover:-translate-y-px hover:shadow-[var(--shadow-pop)]"
                 >
                   <TemplateTile name={t.icon} />
@@ -777,7 +778,7 @@ function DocumentList({ view, folderId, tagId, org, titleOverride }: { view: Vie
                   {...cardProps(d)}
                 >
                   {layout === "compact" ? (
-                    <AppLink href={`/d/${d.id}`} className="block h-28 rounded-chip shadow-[var(--shadow-card)] outline-none transition-[transform,box-shadow] duration-200 ease-[var(--ease-folio)] hover:-translate-y-0.5 hover:shadow-[var(--shadow-pop)] focus-visible:ring-2 focus-visible:ring-focus">
+                    <AppLink href={`/d/${d.id}`} data-card-row="" className="block h-28 rounded-chip shadow-[var(--shadow-card)] outline-none transition-[transform,box-shadow] duration-200 ease-[var(--ease-folio)] hover:-translate-y-0.5 hover:shadow-[var(--shadow-pop)] focus-visible:ring-2 focus-visible:ring-focus">
                       <DocumentCardPreview
                         title={d.title}
                         style={d.style}
@@ -813,7 +814,7 @@ function DocumentList({ view, folderId, tagId, org, titleOverride }: { view: Vie
                   {on ? <SelectedCheck /> : null}
                   <div data-card-menu="" className={`absolute top-2 flex items-center gap-1 ${d.starred && layout !== "compact" ? "right-[calc(11cqw+4px)]" : "right-2"} opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100 pointer-coarse:opacity-100`}>
                     {d.kind === "template" && view !== "trash" ? <UseTemplateButton doc={d} raised /> : null}
-                    <div className="ui-raised rounded-chip">
+                    <div className="ui-raised rounded-tiny [&_button]:rounded-tiny">
                       <DocMenu {...menuProps(d)} />
                     </div>
                   </div>

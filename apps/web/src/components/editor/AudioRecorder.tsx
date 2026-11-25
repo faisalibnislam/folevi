@@ -684,8 +684,9 @@ export function AudioRecorder({
           {levels.map((level, i) => (
             <span
               key={i}
-              className={`w-full rounded-chip transition-[height] duration-75 ${phase.kind === "recording" ? "bg-[#e5484d]" : "bg-line-strong"}`}
-              style={{ height: `${Math.max(8, level * 100)}%` }}
+              // Scaled, not resized: the level changes many times a second, and a height change lays the row out again.
+              className={`h-full w-full rounded-chip transition-transform duration-75 ${phase.kind === "recording" ? "bg-[#e5484d]" : "bg-line-strong"}`}
+              style={{ transform: `scaleY(${Math.max(0.08, level)})` }}
             />
           ))}
         </div>

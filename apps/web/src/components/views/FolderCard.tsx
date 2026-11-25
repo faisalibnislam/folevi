@@ -57,7 +57,7 @@ export function FolderCard({
   const tabClicks = useFolderTabClicks(f);
   return (
     <div data-ctx-host="" data-drop-folder={f.id} data-drop-name={f.name} data-drop-key={`card:${f.id}`} data-drop-state={hint ? (hint.refused ? "refused" : "inside") : undefined} className={FOLDER_CARD_BOX} style={labelScale ? ({ "--fc-text": labelScale } as React.CSSProperties) : undefined}>
-      {(hint && !hint.refused) || selected ? <span aria-hidden data-selected-mark={selected ? "" : undefined} className="pointer-events-none absolute -inset-2 z-0 rounded-panel bg-[var(--glass-active)] shadow-[inset_0_0_0_2px_var(--color-heading)]" /> : null}
+      {(hint && !hint.refused) || selected ? <span aria-hidden data-selected-mark={selected ? "" : undefined} className="pointer-events-none absolute -inset-2 z-0 rounded-container bg-[var(--glass-active)] shadow-[inset_0_0_0_2px_var(--color-heading)]" /> : null}
       {selected ? <SelectedCheck /> : null}
       {hint?.refused ? <DropRefusal text={hint.refused} className="bottom-2 left-1/2 -translate-x-1/2" /> : null}
       <AppLink

@@ -38,7 +38,7 @@ export function EmptyState({
           <Icon size={page ? 19 : 16} strokeWidth={1.9} />
         </span>
       ) : null}
-      <Title className={page ? "ui-display text-title-1" : "text-body font-semibold text-heading"}>{title}</Title>
+      <Title className={page ? "ui-display text-title-1" : "text-balance text-body font-semibold text-heading"}>{title}</Title>
       {body ? <p className={page ? "mt-2 text-body leading-relaxed text-muted" : "mt-1 text-subheadline leading-snug text-muted"}>{body}</p> : null}
       {hint ? <p className={`${page ? "mt-3 text-subheadline" : "mt-2 text-subheadline"} leading-relaxed text-faint`}>{hint}</p> : null}
       {action ? <div className={page ? "mt-6" : "mt-4"}>{action}</div> : null}

@@ -7,6 +7,7 @@ import { isIpadNativeWide, useIphoneApp } from "@/lib/iphone";
 import { Sheet } from "@/components/iphone/Sheet";
 import { confirmAction, hasNative } from "@/lib/native/ui";
 import { nativeChrome } from "@/lib/nativeApp";
+import { fadeOut } from "./closing";
 
 /**
  * Folevi for Mac's note page (native chrome mode): the window's tab strip is drawn over the page's top
@@ -70,13 +71,31 @@ export function Dialog({
   // put it on the Close button, ringed, every time a dialog opened.
   const [shown, setShown] = useState(false);
   const [room, setRoom] = useState<{ top: number; bottom: number } | null>(null);
+  // Closing fades out over 150 ms (a 4 px rise on the web; only the fade on the Mac and with Reduce Motion), then the
+  // dialog closes and its content goes (2026-11-25 polish review: it used to vanish at once after its animated entry).
+  const closing = useRef<Animation | null>(null);
   useLayoutEffect(() => {
     const el = ref.current;
     if (!el) return;
-    if (open) setRoom(macFrameRoom());
-    if (open && !el.open) el.showModal();
-    if (!open && el.open) el.close();
-    setShown(open);
+    if (open) {
+      closing.current?.cancel();
+      closing.current = null;
+      setRoom(macFrameRoom());
+      if (!el.open) el.showModal();
+      setShown(true);
+      return;
+    }
+    if (!el.open) {
+      setShown(false);
+      return;
+    }
+    const fade = fadeOut(el, () => {
+      if (closing.current !== fade) return;
+      closing.current = null;
+      el.close();
+      setShown(false);
+    });
+    closing.current = fade;
   }, [open]);
   // A confirmation in the apps: the system's alert, asked once each time the dialog opens.
   const [native] = useState(() => Boolean(confirm) && hasNative("alert"));
@@ -121,7 +140,7 @@ export function Dialog({
       className={`m-auto w-[calc(100%-2rem)] ${width} ui-pop ui-modal rounded-panel p-0 text-ink outline-none shadow-[var(--glass-edge),0_16px_48px_rgb(0_0_0/0.1),0_2px_8px_rgb(0_0_0/0.1)] open:animate-[folio-pop_520ms_var(--spring-pop)]`}
       style={room ? { top: room.top, bottom: room.bottom, maxHeight: `calc(100dvh - ${room.top + room.bottom}px)` } : undefined}
     >
-      {open && shown ? (
+      {shown ? (
         <div className="flex max-h-[85dvh] flex-col" style={room ? { maxHeight: `min(85dvh, calc(100dvh - ${room.top + room.bottom}px))` } : undefined}>
           <header className="flex items-start gap-3 px-6 pb-2 pt-5">
             <div className="min-w-0 flex-1">
@@ -129,7 +148,7 @@ export function Dialog({
                 {title}
               </h2>
               {description ? (
-                <div id={descId} className="mt-1 text-subheadline text-muted">
+                <div id={descId} className="mt-1 text-pretty text-subheadline text-muted">
                   {description}
                 </div>
               ) : null}

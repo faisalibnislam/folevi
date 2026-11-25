@@ -536,7 +536,7 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
       <div key={f.id}>
         <FolderRow id={f.id} name={f.name} depth={depth} open={open} hasChildren={children.length > 0}>
           {children.length ? (
-            <button type="button" aria-label={open ? `Collapse ${f.name}` : `Expand ${f.name}`} aria-expanded={open} className="grid h-8 w-5 flex-none place-items-center rounded-chip text-faint hover:text-heading focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus" onClick={() => setFolderOpen(f.id, !open)}>
+            <button type="button" aria-label={open ? `Collapse ${f.name}` : `Expand ${f.name}`} aria-expanded={open} className="grid h-8 w-5 flex-none place-items-center rounded-chip text-faint pointer-coarse:w-8 hover:text-heading focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus" onClick={() => setFolderOpen(f.id, !open)}>
               {open ? <ChevronDown size={12} aria-hidden /> : <ChevronRight size={12} aria-hidden />}
             </button>
           ) : (
@@ -590,7 +590,7 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
                 onClick={() => setStarredOpen(!starredOpen)}
                 aria-expanded={starredOpen}
                 aria-label={starredOpen ? "Collapse Bookmarks" : "Expand Bookmarks"}
-                className="absolute right-1 top-1/2 grid h-6 w-6 -translate-y-1/2 place-items-center rounded-chip text-faint transition-colors hover:bg-[var(--glass-hover)] hover:text-heading focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+                className="ui-hit absolute right-1 top-1/2 grid h-6 w-6 -translate-y-1/2 place-items-center rounded-chip text-faint transition-colors hover:bg-[var(--glass-hover)] hover:text-heading focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
               >
                 {starredOpen ? <ChevronDown size={12} aria-hidden /> : <ChevronRight size={12} aria-hidden />}
               </button>
@@ -599,7 +599,7 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
           {starred?.page.length && starredOpen ? (
             <div className="space-y-0.5 pl-5" aria-label="Bookmarked notes" role="group">
               {starred.page.filter((d, i) => i < SIDEBAR_LIMIT || (route.name === "doc" && route.id === d.id)).map((d) => (
-                <NavItem key={d.id} href={`/d/${d.id}`} icon={<FileText size={15} />} label={d.title || "Untitled"} onNavigate={onNavigate} dragNoteId={canEdit ? d.id : undefined} locked={(d as { locked?: boolean }).locked === true} />
+                <NavItem key={d.id} href={`/d/${d.id}`} icon={<FileText size={14} />} label={d.title || "Untitled"} onNavigate={onNavigate} dragNoteId={canEdit ? d.id : undefined} locked={(d as { locked?: boolean }).locked === true} />
               ))}
               <MoreLink href="/starred" count={starred.page.length - starred.page.filter((d, i) => i < SIDEBAR_LIMIT || (route.name === "doc" && route.id === d.id)).length} noun="bookmarked pages" onNavigate={onNavigate} exact={starred.isDone} />
             </div>

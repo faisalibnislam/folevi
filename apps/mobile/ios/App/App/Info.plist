@@ -41,10 +41,21 @@
 	<true/>
 	<key>LSSupportsOpeningDocumentsInPlace</key>
 	<true/>
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsLocalNetworking</key>
+		<true/>
+	</dict>
+	<key>NSBonjourServices</key>
+	<array>
+		<string>_folevi._tcp</string>
+	</array>
 	<key>NSCameraUsageDescription</key>
-	<string>Folevi uses the camera when you take a photo or video to add to a note, or scan a document into one.</string>
+	<string>Folevi uses the camera when you take a photo or video to add to a note, scan a document into one, or scan a Folevi server's QR code to sign in to it.</string>
 	<key>NSFaceIDUsageDescription</key>
 	<string>Folevi asks for Face ID to unlock the app when you turn on the lock in Settings.</string>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>Folevi looks for Folevi servers on your home network so you can sign in to one without typing its address.</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Folevi uses the microphone when you record audio in a note, for voice notes and transcripts.</string>
 	<key>NSPhotoLibraryUsageDescription</key>

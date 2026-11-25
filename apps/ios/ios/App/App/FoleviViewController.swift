@@ -156,7 +156,7 @@ final class FoleviViewController: UIViewController {
     private static func startPlaces() {
         let libraryFile = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0].appendingPathComponent("Folevi", isDirectory: true).appendingPathComponent("library.json")
         ShellPlaces.migrate(libraryConfigured: FileManager.default.fileExists(atPath: libraryFile.path))
-        if ShellMode.current == "account", ShellPlaces.state.current == nil, let first = ShellPlaces.state.accounts.first { ShellPlaces.setCurrent(first.id) }
+        if ShellMode.current == "account", ShellPlaces.state.current == nil, !ShellPlaces.pendingAccount, let first = ShellPlaces.state.accounts.first { ShellPlaces.setCurrent(first.id) }
         guard ShellAuth.shared.token(for: nil) != nil else { return }
         Task {
             guard let u = await ShellAuth.shared.adoptLegacy() else { return }

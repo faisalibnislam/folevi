@@ -21,6 +21,7 @@
 		19A11DCF5266CCBFDCE23A88 /* Spectral-SemiBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 3FED64A95210A5413E52375B /* Spectral-SemiBold.ttf */; };
 		1CA998C627766237F2232BEB /* CapApp-SPM in Frameworks */ = {isa = PBXBuildFile; productRef = FD127B870EFB46EFAC91834E /* CapApp-SPM */; };
 		205F8B4C893766B2F68C02A8 /* Intents.swift in Sources */ = {isa = PBXBuildFile; fileRef = CF953FC2B5C3FB479C8429FA /* Intents.swift */; };
+		2785EA86ED7F0B5B4EE66437 /* ServerCodeScanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0979E8C848548365E93BD14 /* ServerCodeScanner.swift */; };
 		2A18BCD857CE4675E40ABE32 /* Palette.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3CBA0593CD34903EDB4540A3 /* Palette.swift */; };
 		2B915D453F1AAAF41061A211 /* ShellCloud.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B925756625589174B3D1E40 /* ShellCloud.swift */; };
 		2C5DCA5EB7647F6B6BCECEB6 /* FoldMarks.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4738AEA22B58504971425448 /* FoldMarks.swift */; };
@@ -91,6 +92,7 @@
 		D894FDECBA99BDA7F0E8B303 /* ShareQueue.swift in Sources */ = {isa = PBXBuildFile; fileRef = 355E1BBB4063EB34F3136556 /* ShareQueue.swift */; };
 		D905FCD7CDC7604C87130AB9 /* ShareSaver.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0C9FD04904A54B3D88DD4B25 /* ShareSaver.swift */; };
 		DDBD364CB1352FFB5706EBC6 /* FoleviNativePlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = B93FEF2673D0F9650689C5D3 /* FoleviNativePlugin.swift */; };
+		DDC9E84AE1EE79FC0112FC35 /* ShellServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = BCF30E1390EE28BBE9E758F1 /* ShellServer.swift */; };
 		DFC23C5C37392998C3324FF1 /* PushNotifications.swift in Sources */ = {isa = PBXBuildFile; fileRef = C07535498F63D3E064C76484 /* PushNotifications.swift */; };
 		E31E9100F02C72A98318975E /* Folevi.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5A0518B6718F0B648E7C896 /* Folevi.swift */; };
 		E39F60A48A8213B27ADCC485 /* SystemSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3E2931EFDAADA7C8C68A981E /* SystemSettings.swift */; };
@@ -194,6 +196,7 @@
 		95AF78E7BFDEDDD312D00465 /* ShellAI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShellAI.swift; sourceTree = "<group>"; };
 		9BC3647E944E3799111F5654 /* FoleviWidgets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FoleviWidgets.swift; sourceTree = "<group>"; };
 		9E4172F5E9B04E6746EE24BC /* FoleviShellPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FoleviShellPlugin.swift; sourceTree = "<group>"; };
+		A0979E8C848548365E93BD14 /* ServerCodeScanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServerCodeScanner.swift; sourceTree = "<group>"; };
 		A401CF736D7B0D4C389B1406 /* SpotlightIndex.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpotlightIndex.swift; sourceTree = "<group>"; };
 		A5A0518B6718F0B648E7C896 /* Folevi.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Folevi.swift; sourceTree = "<group>"; };
 		A927E021455A57DAEE3D0203 /* SimulatorEval.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SimulatorEval.swift; sourceTree = "<group>"; };
@@ -203,6 +206,7 @@
 		B8A0B87D30FDCC81E0B18E88 /* LocalExtras.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalExtras.swift; sourceTree = "<group>"; };
 		B93FEF2673D0F9650689C5D3 /* FoleviNativePlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FoleviNativePlugin.swift; sourceTree = "<group>"; };
 		BB65F9D58B63BAB0B1B24981 /* LibraryFS.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryFS.swift; sourceTree = "<group>"; };
+		BCF30E1390EE28BBE9E758F1 /* ShellServer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShellServer.swift; sourceTree = "<group>"; };
 		C07535498F63D3E064C76484 /* PushNotifications.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PushNotifications.swift; sourceTree = "<group>"; };
 		CF953FC2B5C3FB479C8429FA /* Intents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Intents.swift; sourceTree = "<group>"; };
 		EAD76DE7C9BD042F04E2D09E /* AppIcon.icon */ = {isa = PBXFileReference; lastKnownFileType = wrapper.icon; path = AppIcon.icon; sourceTree = "<group>"; };
@@ -247,6 +251,7 @@
 				0E6DC60FC172F7819C8D39E4 /* ShellAuth.swift */,
 				5B925756625589174B3D1E40 /* ShellCloud.swift */,
 				43811EE3B5B96F8A243C00F0 /* ShellPlaces.swift */,
+				BCF30E1390EE28BBE9E758F1 /* ShellServer.swift */,
 				5730EE47B557DC9DE87DF93C /* ShellServices.swift */,
 			);
 			name = Shell;
@@ -294,6 +299,7 @@
 				B93FEF2673D0F9650689C5D3 /* FoleviNativePlugin.swift */,
 				88A036FC00BB8528F5AEEA47 /* FoleviViewController.swift */,
 				ED2016878D44EAA9692D059F /* SceneDelegate.swift */,
+				A0979E8C848548365E93BD14 /* ServerCodeScanner.swift */,
 				15BF5FC5D49E176C5C97BF41 /* Bridge */,
 				D3E847546E20FF53D0A18F28 /* Host */,
 				23F8D68E28D07D16EB72E4AA /* LaunchScreen.storyboard */,
@@ -649,12 +655,14 @@
 				DFC23C5C37392998C3324FF1 /* PushNotifications.swift in Sources */,
 				D0E50C5E56AFB1047B25DE3F /* SaveTargets.swift in Sources */,
 				67740B5377F807ABF1532F55 /* SceneDelegate.swift in Sources */,
+				2785EA86ED7F0B5B4EE66437 /* ServerCodeScanner.swift in Sources */,
 				7D5117DED1874387DEADA79C /* ShareQueue.swift in Sources */,
 				9274D422E80DD96E1259E455 /* ShareSaver.swift in Sources */,
 				3E4E6A45BE193F4AEFCFF5C8 /* ShellAI.swift in Sources */,
 				4B1E033F0CB271B0C3529DB1 /* ShellAuth.swift in Sources */,
 				2B915D453F1AAAF41061A211 /* ShellCloud.swift in Sources */,
 				982A580AB20B0F6A25814E01 /* ShellPlaces.swift in Sources */,
+				DDC9E84AE1EE79FC0112FC35 /* ShellServer.swift in Sources */,
 				EE0DCC8BDD221D448545A066 /* ShellServices.swift in Sources */,
 				2EFB1568B559CE5EB25B36FC /* SimulatorEval.swift in Sources */,
 				45439E39F8CCA9AFAA636F17 /* SpotlightIndex.swift in Sources */,

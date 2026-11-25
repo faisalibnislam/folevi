@@ -81,4 +81,32 @@ final class ServerTests: XCTestCase {
         // The share sheet and widgets save through Folevi Cloud's API: a server's accounts aren't offered there.
         XCTAssertFalse(SaveTargets.load().contains { $0.id == a.id })
     }
+
+    /// A server place's session is a Keychain item of its own (ShellAuth's service, the item named after the place's
+    /// account, as for Folevi Cloud's accounts), never in places.json or the place list the page reads, and moving
+    /// to another of the server's names keeps it.
+    func testAServerPlacesTokenStaysInTheKeychain() throws {
+        let s = try XCTUnwrap(server())
+        ShellPlaces.setCurrent(nil, pending: true, server: s)
+        let a = try XCTUnwrap(ShellPlaces.addAccount(userId: "iosServerBen", name: "Ben", email: "ben@nas.example.com", avatarUrl: nil))
+        let token = "fake-server-session-0123456789abcdef" // gitleaks:allow (a made-up token)
+        defer { ShellAuth.shared.setToken(nil, for: a.userId) }
+        ShellAuth.shared.setToken(token, for: a.userId)
+
+        XCTAssertEqual(Keychain.getString("com.folevi.shell-auth", "session.\(a.userId)"), token)
+        XCTAssertEqual(ShellAuth.shared.token(for: a.userId), token)
+        XCTAssertNil(ShellAuth.shared.token(for: "iosServerSomeoneElse"))
+        XCTAssertEqual(ShellAuth.shared.service(for: a.userId).absoluteString, "https://nas.example.com")
+
+        let saved = try XCTUnwrap(String(data: JSONEncoder().encode(ShellPlaces.state), encoding: .utf8))
+        XCTAssertFalse(saved.contains(token))
+        let listed = try JSONSerialization.data(withJSONObject: ShellPlaces.list(libraryKind: nil, displayPath: "", configured: false))
+        XCTAssertFalse(String(decoding: listed, as: UTF8.self).contains(token))
+
+        ShellPlaces.setActiveOrigin(a.id, "https://abcde12345.folevi.app")
+        XCTAssertEqual(ShellAuth.shared.token(for: a.userId), token)
+
+        ShellAuth.shared.setToken(nil, for: a.userId)
+        XCTAssertNil(Keychain.getString("com.folevi.shell-auth", "session.\(a.userId)"))
+    }
 }

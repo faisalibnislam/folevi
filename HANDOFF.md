@@ -291,6 +291,31 @@ Mac buttons don't shrink on press, overlays fade out (`ui/closing.ts`, Popover's
 fades, no hover lift on the Mac except folders, state icons cross-fade (`ui/SwapIcons.tsx`), concentric corners,
 image outlines (`ui-img-outline`), steady-width counters, tab pin/close no longer overlap. Checked headlessly in an offscreen WKWebView harness (real NSEvent wheel events, a
 `FOLEVI_BUILD=shell` dev server with the e2e FakeShell, scratch OPFS library); not yet seen in a Mac release build.
+**Folevi Server on iPhone and iPad (Capacitor app, branch `claude/ios-server-signin`, 2026-11-25).** "Your own server"
+works end to end in `apps/mobile`: the address (typed, or a QR code read with VisionKit's DataScannerViewController,
+`apps/mobile/ios/App/App/ServerCodeScanner.swift`, exposed as PR 100's `foleviShell.places.scanCode()` only where the
+device can scan; with camera access off it refuses with a reason the page shows), `addServerPlace`, the server's own sign-in
+page in the sign-in sheet, and the account becoming a place on that server. The Capacitor host now passes
+`places.server` to the page, loads that sign-in screen in account mode (even on first launch or from the library),
+runs ServerReach (best connection, re-checked on network changes) and keeps the share sheet's REST base on Folevi
+Cloud. The web sign-in screen and scan button are PR 100's (a800051c). Checked on the Simulator: the page at
+`capacitor://localhost` (a secure context) can fetch and open ws:// to a plain-http private address (WKWebView doesn't
+block it as mixed content), and the Capacitor app sets no policy header, so no-place sign-in pages keep the export's
+meta policy (the paused native host in apps/ios would give them ShellPolicy.cloudNarrowing). Server sessions are Keychain items per account (`session.<user id>` in `com.folevi.shell-auth`,
+as for Cloud), never in places.json (new `ServerTests.testAServerPlacesTokenStaysInTheKeychain`). Info.plist has
+`NSLocalNetworkUsageDescription`, `NSBonjourServices` `_folevi._tcp` and `NSAllowsLocalNetworking`. Checked on the
+Simulator against the local test server (http://localhost:8460) as 1.6.0: add, member sign-in, cold restart into the
+server place. This branch also carries PR 83 (`claude/ios-feedback-b1307a`), since `apps/mobile` exists only there.
+
+**Folevi Server, app side on `main` (server lead session, 2026-11-25, branch `claude/server-apps-base`).** "Your own
+server" sign-in (address, QR, home network, linked servers), the server edition of the web app (`FOLEVI_EDITION=server`:
+setup page, server admin panel, `/.well-known/folevi.json`, runtime addresses), Connect's cloud pages
+(`/connect/approve`, `connect:myServers`), the backend's server edition (`convex/server*.ts`, `connect.ts`, SMTP, own AI
+key, invites, roles), the Mac and iPhone/iPad `ShellServer` places, and `lib/server-edition/connection.ts` (best
+connection for the web-based shells). Folevi Cloud is unchanged when `FOLEVI_EDITION` is unset (tests). The supervisor,
+Connect service and packages stay on `claude/sleepy-goodall-3cg4e7` / `claude/server-connect`. Contract:
+`docs/self-hosting/CONTRACT.md`. Local test server and how apps test against it: shared notes `folevi-server-apps.md`.
+Rule for all Folevi Server work: mark every fake test token `// gitleaks:allow` (CI's secret scan reads every branch).
 
 **iOS feedback session, release 1.5.78 (build 93), the Capacitor mobile app, 2026-11-25** (branch
 `claude/ios-feedback-b1307a`, worktree `.claude/worktrees/ios-feedback-b1307a`; the owner's own words in chat:
@@ -934,6 +959,19 @@ account button should move past iPadOS's window buttons).
   `-sysdir ~/Library/Android/sdk/system-images/android-37.0/google_apis_playstore/arm64-v8a -read-only -wipe-data`,
   or move the AVD to 37.0. Android 37 debug builds log "unable to find plugin : SplashScreen" for the page's
   `SplashScreen.hide` calls (`includePlugins: []`); harmless, but the page could skip that call on Android.
+- iPhone/iPad Folevi Server (`claude/ios-server-signin`): not yet checked: QR scanning on a real device (the Simulator
+  has no camera), switching names on a network change (the test server has no Connect hostnames), two server places in
+  the switcher, the "found on your home network" list (bridge `listLocalServers` exists; no web UI uses it yet), an
+  invite QR's token (reduced to the server's origin, not yet carried to its sign-up), and a per-place
+  page policy header (the Capacitor app serves pages through Capacitor's own handler, so the meta policy applies alone).
+  `apps/mobile` `pnpm sync` names `scripts/prepare-web.mjs`, which was never committed (run `pnpm bundle && npx cap sync`).
+  Server side: the server's "Use another account" page in the sign-in sheet fails with "Invalid callbackURL", so a second
+  account on the same server can't be added there yet. A pending server sign-in screen has no way back to the open
+  place except `places.switchTo`.
+- Folevi Server: DS223 install of the ARM64 `.spk` (owner gives SSH user and address), memory on 2 GB (the backend
+  reached 1.9 GB RSS after seeding 5,000 notes on an 8 GB VM), Connect on Fly.io (owner's OK per deploy; Cloudflare
+  DNS token for folevi.app; `connect.folevi.com` records at folevi.com's DNS), then each app session adds server
+  sign-in to its shell (Mac, iPhone/iPad, Android, Windows, Linux). minAppVersion is 1.6.0.
 - iOS feedback session (`claude/ios-feedback-b1307a`): 1.5.78 on TestFlight; the branch's PR into `main` carries PRs
   66, 79 and 80 too. Open: on a real iPhone, iPad and Duo, sign in, push, the widgets on the Home Screen, a Shortcut
   run and a Spotlight tap; the new sync sheet signed in; `BackgroundRefresh.swift` not carried over (needs
@@ -1250,6 +1288,14 @@ account button should move past iPadOS's window buttons).
   `claude/android-capacitor-197cf4` for PR 69 (owner's OK); only HANDOFF.md conflicted, both sides kept.
 - 2026-11-25: Merged `main` (4d22880f, the web PRs) into `claude/android-capacitor-197cf4` for PR 69: versions stay 1.5.74 / 89; the web layout files take main's width-decides version (formFactor).
 - 2026-11-25: Android polish pass: web side on `claude/ios-feedback-b1307a` (3c8fb728, keyboard bar fix), native side in PR 108 on PR 69's branch; measured on the phone emulator; no Play upload.
+- 2026-11-25: iPhone/iPad "Your own server" in the Capacitor app (`claude/ios-server-signin`, PR 106): VisionKit QR
+  scan as `places.scanCode`, server places wired into the mobile host, Keychain test for server tokens, Info.plist
+  local network keys; PR 100's web sign-in and scan button taken over this branch's; with an account open, adding a
+  server no longer reopens that account instead of the server's sign-in (startPlaces skips a pending sign-in, mobile
+  and apps/ios hosts). Swift 86/86 (5 ServerTests).
+- 2026-11-25: Folevi Server, app side split onto `main` (`claude/server-apps-base`): web server edition, admin panel,
+  Your own server sign-in, Connect pages, backend server edition, Mac/iOS server places, best-connection module; server
+  functions registered for E2EE routing and local mode; server fallback origin is 127.0.0.1 so shell exports pass.
 - 2026-11-25: iOS feedback session: PRs 66, 79 and 80 merged into `claude/ios-feedback-b1307a`; widgets, Shortcuts, Spotlight in the Capacitor app; Duo fold marks; phone sync sheet redesigned; starter note wording; 1.5.78 (build 93) cut for TestFlight.
 - 2026-11-25: `main` (4d22880f, all web PRs) merged into `claude/mobile-capacitor-f41734` for PR 66: `lib/iphone.ts`, NotificationsButton and DocumentView taken from `main` (PR 61's width rule, `lib/platform.ts`, replaces this branch's iPhone Duo 600 x 600 rule; `test/mobile-layout.test.ts` removed, `test/platform.test.ts` covers it); HANDOFF both sides kept. Checks: typecheck, lint, all 2,161 web tests, version check and the iOS build pass. 1.5.76 unchanged.
 - 2026-11-25: 1.5.76 (build 91) with PR 74's iPhone memory fix uploaded to TestFlight (delivery bc805158); `main` (85574054) merged into `claude/mobile-capacitor-f41734`.

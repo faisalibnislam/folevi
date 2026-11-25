@@ -130,7 +130,12 @@ function AddressForm() {
           disabled={busy}
           className="ui-btn ui-btn-ghost h-11 w-full text-body"
           onClick={async () => {
-            const text = await scan().catch(() => null);
+            // A refusal (camera access off) says why; the address field stays for typing.
+            const text = await scan().catch((e: unknown) => {
+              const message = (e as { message?: unknown } | null)?.message;
+              setError(typeof message === "string" && message ? message : "Folevi couldn't scan here. Type the server's address instead.");
+              return null;
+            });
             if (!text) return;
             const value = addressFromCode(text);
             setAddress(value);

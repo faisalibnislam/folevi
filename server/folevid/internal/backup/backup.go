@@ -9,10 +9,17 @@
 //	                    new machine keeps hashed lookups and sign-in working
 //
 // Backups go to the data folder, another folder, or an S3-compatible bucket.
+//
+// Encryption: when the Manager has a key (secrets/backup-key, an age X25519 identity made on first start), the
+// ZIP is written straight into an age stream (https://age-encryption.org/v1) and stored as <id>.zip.age. Restore
+// tells the two apart by their first bytes, so plain <id>.zip backups from before still restore. A backup made
+// on another machine needs that machine's key, which the owner saves once (GET /v1/backups/key).
 package backup
 
 import (
 	"archive/zip"
+	"bufio"
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -24,6 +31,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"filippo.io/age"
 )
 
 // Kinds.
@@ -35,12 +44,54 @@ const (
 
 const idLayout = "20060102T150405Z"
 
+// File name endings: a plain ZIP (older backups, or no key) and an age-encrypted one.
+const (
+	ExtPlain     = ".zip"
+	ExtEncrypted = ".zip.age"
+)
+
+// ageMagic starts every age file.
+var ageMagic = []byte("age-encryption.org/v1\n")
+
+// ErrWrongKey means the backup is encrypted with a key this server does not have.
+var ErrWrongKey = errors.New("this backup is encrypted with another backup key: enter the key saved from the server that made it")
+
 // Info describes one backup.
 type Info struct {
 	ID        string
 	Kind      string
 	CreatedAt time.Time
 	SizeBytes int64
+	Name      string // file name in the target: <id>.zip or <id>.zip.age
+	Encrypted bool
+}
+
+// NewKey makes a backup key: an age X25519 identity ("AGE-SECRET-KEY-1...").
+func NewKey() (string, error) {
+	id, err := age.GenerateX25519Identity()
+	if err != nil {
+		return "", err
+	}
+	return id.String(), nil
+}
+
+// ParseKey checks a backup key and returns its identity. Spaces and line breaks around it are ignored, and a
+// key typed in lower case is accepted.
+func ParseKey(key string) (*age.X25519Identity, error) {
+	id, err := age.ParseX25519Identity(strings.ToUpper(strings.TrimSpace(key)))
+	if err != nil {
+		return nil, errors.New("that is not a Folevi backup key (it starts with AGE-SECRET-KEY-1)")
+	}
+	return id, nil
+}
+
+// Recipient is the public half of a backup key (age1...), safe to show.
+func Recipient(key string) (string, error) {
+	id, err := ParseKey(key)
+	if err != nil {
+		return "", err
+	}
+	return id.Recipient().String(), nil
 }
 
 // Manifest is manifest.json inside a backup.
@@ -87,7 +138,9 @@ type Manager struct {
 	// Secrets returns the secrets to keep with the data; SetSecrets writes them back on restore.
 	Secrets    func() map[string]string
 	SetSecrets func(map[string]string) error
-	Now        func() time.Time
+	// Key returns the backup key (secrets/backup-key). Empty or nil: backups are written unencrypted.
+	Key func() string
+	Now func() time.Time
 
 	mu sync.Mutex
 }
@@ -151,14 +204,28 @@ func (m *Manager) Create(ctx context.Context, id string, target Target, keep int
 	if err := m.Snap.Export(ctx, export); err != nil {
 		return Info{}, fmt.Errorf("export: %w", err)
 	}
-	final := filepath.Join(m.Dir, id+".zip")
+	var recipient age.Recipient
+	if m.Key != nil {
+		if key := m.Key(); key != "" {
+			ident, err := ParseKey(key)
+			if err != nil {
+				return Info{}, fmt.Errorf("backup key: %w", err)
+			}
+			recipient = ident.Recipient()
+		}
+	}
+	name := id + ExtPlain
+	if recipient != nil {
+		name = id + ExtEncrypted
+	}
+	final := filepath.Join(m.Dir, name)
 	partial := final + ".partial"
 	man := Manifest{ID: id, Kind: kind, CreatedAt: created, Version: m.Version, Format: 1}
 	var secrets map[string]string
 	if m.Secrets != nil {
 		secrets = m.Secrets()
 	}
-	if err := writeBackupZip(partial, man, export, secrets); err != nil {
+	if err := writeBackupFile(partial, man, export, secrets, recipient); err != nil {
 		os.Remove(partial)
 		return Info{}, err
 	}
@@ -169,9 +236,9 @@ func (m *Manager) Create(ctx context.Context, id string, target Target, keep int
 	if err != nil {
 		return Info{}, err
 	}
-	info := Info{ID: id, Kind: kind, CreatedAt: created, SizeBytes: st.Size()}
+	info := Info{ID: id, Kind: kind, CreatedAt: created, SizeBytes: st.Size(), Name: name, Encrypted: recipient != nil}
 	if !target.Local() {
-		if err := target.Put(ctx, final, id+".zip"); err != nil {
+		if err := target.Put(ctx, final, name); err != nil {
 			return info, fmt.Errorf("copy to backup target: %w", err)
 		}
 		os.Remove(final)
@@ -182,13 +249,39 @@ func (m *Manager) Create(ctx context.Context, id string, target Target, keep int
 	return info, nil
 }
 
-func writeBackupZip(path string, man Manifest, export string, secrets map[string]string) error {
+// writeBackupFile writes the backup ZIP to path, through age when recipient is set (streamed: the export is
+// never held in memory or written out unencrypted).
+func writeBackupFile(path string, man Manifest, export string, secrets map[string]string, recipient age.Recipient) error {
 	f, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o600)
 	if err != nil {
 		return err
 	}
 	defer f.Close()
-	zw := zip.NewWriter(f)
+	bw := bufio.NewWriterSize(f, 1<<20)
+	var dst io.Writer = bw
+	var enc io.WriteCloser
+	if recipient != nil {
+		if enc, err = age.Encrypt(bw, recipient); err != nil {
+			return err
+		}
+		dst = enc
+	}
+	if err := writeBackupZip(dst, man, export, secrets); err != nil {
+		return err
+	}
+	if enc != nil {
+		if err := enc.Close(); err != nil {
+			return err
+		}
+	}
+	if err := bw.Flush(); err != nil {
+		return err
+	}
+	return f.Sync()
+}
+
+func writeBackupZip(dst io.Writer, man Manifest, export string, secrets map[string]string) error {
+	zw := zip.NewWriter(dst)
 	mb, _ := json.MarshalIndent(man, "", "  ")
 	if err := addBytes(zw, "manifest.json", mb, man.CreatedAt); err != nil {
 		return err
@@ -212,10 +305,7 @@ func writeBackupZip(path string, man Manifest, export string, secrets map[string
 	if _, err := io.Copy(w, ef); err != nil {
 		return err
 	}
-	if err := zw.Close(); err != nil {
-		return err
-	}
-	return f.Sync()
+	return zw.Close()
 }
 
 func addBytes(zw *zip.Writer, name string, b []byte, mod time.Time) error {
@@ -235,15 +325,19 @@ func List(ctx context.Context, target Target) ([]Info, error) {
 	}
 	var out []Info
 	for _, o := range objs {
-		id, ok := strings.CutSuffix(o.Name, ".zip")
+		enc := true
+		id, ok := strings.CutSuffix(o.Name, ExtEncrypted)
 		if !ok {
-			continue
+			enc = false
+			if id, ok = strings.CutSuffix(o.Name, ExtPlain); !ok {
+				continue
+			}
 		}
 		t, kind, ok := ParseID(id)
 		if !ok {
 			continue
 		}
-		out = append(out, Info{ID: id, Kind: kind, CreatedAt: t, SizeBytes: o.Size})
+		out = append(out, Info{ID: id, Kind: kind, CreatedAt: t, SizeBytes: o.Size, Name: o.Name, Encrypted: enc})
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i].CreatedAt.After(out[j].CreatedAt) })
 	return out, nil
@@ -269,33 +363,63 @@ func Rotate(ctx context.Context, target Target, keep int) error {
 		if i < keep {
 			continue
 		}
-		if err := target.Delete(ctx, b.ID+".zip"); err != nil {
+		if err := target.Delete(ctx, b.Name); err != nil {
 			errs = append(errs, err)
 		}
 	}
 	return errors.Join(errs...)
 }
 
-// Restore fetches a backup from the target, restores its secrets and imports its data.
+// Restore fetches a backup from the target, restores its secrets and imports its data. An encrypted backup is
+// opened with extraKey (a key the owner typed in, for a backup made on another machine) or this server's own
+// key; ErrWrongKey when neither fits. usedExtraKey reports that extraKey (not this server's key) opened it.
 // The caller must hold the lock and should stop the web server first.
-func (m *Manager) Restore(ctx context.Context, id string, target Target) error {
+func (m *Manager) Restore(ctx context.Context, id string, target Target, extraKey string) (usedExtraKey bool, err error) {
 	if !ValidID(id) {
-		return fmt.Errorf("bad backup id %q", id)
+		return false, fmt.Errorf("bad backup id %q", id)
+	}
+	// Tried in order: the typed key first, then this server's.
+	var idents []age.Identity
+	if strings.TrimSpace(extraKey) != "" {
+		ident, err := ParseKey(extraKey)
+		if err != nil {
+			return false, err
+		}
+		idents = append(idents, ident)
+	}
+	if m.Key != nil {
+		if key := m.Key(); key != "" {
+			if ident, err := ParseKey(key); err == nil {
+				idents = append(idents, ident)
+			}
+		}
 	}
 	work, err := os.MkdirTemp(m.TmpDir, "rs-")
 	if err != nil {
-		return err
+		return false, err
 	}
 	defer os.RemoveAll(work)
-	src := filepath.Join(m.Dir, id+".zip")
-	if !target.Local() {
-		src = filepath.Join(work, id+".zip")
-		if err := target.Get(ctx, id+".zip", src); err != nil {
-			return fmt.Errorf("fetch backup: %w", err)
-		}
-	} else if _, err := os.Stat(src); err != nil {
-		return fmt.Errorf("backup %s not found", id)
+	name, err := findBackup(ctx, target, id)
+	if err != nil {
+		return false, err
 	}
+	src := filepath.Join(m.Dir, name)
+	if !target.Local() {
+		src = filepath.Join(work, name)
+		if err := target.Get(ctx, name, src); err != nil {
+			return false, fmt.Errorf("fetch backup: %w", err)
+		}
+	}
+	src, opened, err := decryptIfNeeded(src, filepath.Join(work, "backup.zip"), idents)
+	if err != nil {
+		return false, err
+	}
+	usedExtraKey = opened == 0 && strings.TrimSpace(extraKey) != ""
+	return usedExtraKey, m.restoreZip(ctx, src, work)
+}
+
+// restoreZip restores the secrets and imports the data of a plain backup ZIP.
+func (m *Manager) restoreZip(ctx context.Context, src, work string) error {
 	zr, err := zip.OpenReader(src)
 	if err != nil {
 		return fmt.Errorf("open backup: %w", err)
@@ -335,6 +459,78 @@ func (m *Manager) Restore(ctx context.Context, id string, target Target) error {
 		return fmt.Errorf("import: %w", err)
 	}
 	return nil
+}
+
+// findBackup returns the file name of backup id in the target, preferring the encrypted one.
+func findBackup(ctx context.Context, target Target, id string) (string, error) {
+	list, err := List(ctx, target)
+	if err != nil {
+		return "", fmt.Errorf("list backups: %w", err)
+	}
+	name := ""
+	for _, b := range list {
+		if b.ID == id && (name == "" || b.Encrypted) {
+			name = b.Name
+		}
+	}
+	if name == "" {
+		return "", fmt.Errorf("backup %s not found", id)
+	}
+	return name, nil
+}
+
+// decryptIfNeeded returns src when it is a plain ZIP (opened -1), else decrypts it into plain with the first of
+// idents that fits and returns that and the identity's index.
+func decryptIfNeeded(src, plain string, idents []age.Identity) (path string, opened int, err error) {
+	isAge, err := isEncrypted(src)
+	if err != nil || !isAge {
+		return src, -1, err
+	}
+	for i, ident := range idents {
+		err := decryptFile(src, plain, ident)
+		var nm *age.NoIdentityMatchError
+		if errors.As(err, &nm) {
+			continue
+		}
+		return plain, i, err
+	}
+	return "", -1, ErrWrongKey
+}
+
+func isEncrypted(path string) (bool, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return false, err
+	}
+	defer f.Close()
+	head := make([]byte, len(ageMagic))
+	n, _ := io.ReadFull(f, head)
+	return bytes.Equal(head[:n], ageMagic), nil
+}
+
+func decryptFile(src, plain string, ident age.Identity) error {
+	f, err := os.Open(src)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	r, err := age.Decrypt(bufio.NewReaderSize(f, 1<<20), ident)
+	if err != nil {
+		var nm *age.NoIdentityMatchError
+		if errors.As(err, &nm) {
+			return err
+		}
+		return fmt.Errorf("open encrypted backup: %w", err)
+	}
+	out, err := os.OpenFile(plain, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o600)
+	if err != nil {
+		return err
+	}
+	if _, err := io.Copy(out, r); err != nil {
+		out.Close()
+		return fmt.Errorf("decrypt backup (damaged file?): %w", err)
+	}
+	return out.Close()
 }
 
 func extract(f *zip.File, dst string) error {

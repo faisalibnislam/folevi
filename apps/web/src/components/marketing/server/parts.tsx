@@ -19,7 +19,7 @@ export function ComingSoon({ className }: { className?: string }) {
 export function CopyLine({ value, label, className }: { value: string; label: string; className?: string }) {
   return (
     <div className={cx("mk-panel flex items-center gap-2 py-1.5 pl-4 pr-1.5", className)}>
-      <code className="min-w-0 flex-1 overflow-x-auto whitespace-nowrap py-1 font-mono text-[13px] text-(--color-heading)">{value}</code>
+      <code className="min-w-0 flex-1 py-1 font-mono text-[13px] text-(--color-heading) [overflow-wrap:anywhere]">{value}</code>
       <CopyButton text={value} label={label} />
     </div>
   );
@@ -40,8 +40,8 @@ export function DownloadRow({ manifest, platform, arch, product, kind }: { manif
             {label} <span className="font-normal text-muted">({arch})</span>
           </p>
           {file ? (
-            <p className="mt-0.5 break-all text-[13px] text-muted">
-              {file.name}, {formatSize(file.sizeBytes)}
+            <p className="mt-0.5 text-[13px] text-muted [overflow-wrap:anywhere]">
+              {file.name}, <span className="whitespace-nowrap">{formatSize(file.sizeBytes)}</span>
             </p>
           ) : null}
         </div>
@@ -69,7 +69,7 @@ export function DownloadRow({ manifest, platform, arch, product, kind }: { manif
 /** Both chips' downloads for one platform. */
 export function ChipDownloads({ manifest, platform, product, className }: { manifest: ServerManifest | null; platform: ServerPlatform; product: string; className?: string }) {
   return (
-    <div className={cx("grid gap-3", className)}>
+    <div className={cx("grid min-w-0 gap-3 [&>*]:min-w-0", className)}>
       <DownloadRow manifest={manifest} platform={platform} arch="x86_64" product={product} />
       <DownloadRow manifest={manifest} platform={platform} arch="aarch64" product={product} />
     </div>

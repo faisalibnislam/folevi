@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
@@ -13,6 +14,7 @@ import (
 	"github.com/faisalibnislam/folevi/server/folevid/internal/config"
 	"github.com/faisalibnislam/folevi/server/folevid/internal/control"
 	"github.com/faisalibnislam/folevi/server/folevid/internal/logs"
+	"github.com/faisalibnislam/folevi/server/folevid/internal/secrets"
 	"github.com/faisalibnislam/folevi/server/folevid/internal/supervisor"
 	"github.com/faisalibnislam/folevi/server/folevid/internal/sysinfo"
 )
@@ -78,7 +80,8 @@ func (a *App) Backups() (control.Backups, error) {
 		return res, err
 	}
 	for _, b := range list {
-		res.Backups = append(res.Backups, control.Backup{ID: b.ID, CreatedAt: b.CreatedAt, SizeBytes: b.SizeBytes, Kind: b.Kind})
+		res.Backups = append(res.Backups, control.Backup{ID: b.ID, CreatedAt: b.CreatedAt, SizeBytes: b.SizeBytes, Kind: b.Kind,
+			Encrypted: b.Encrypted})
 	}
 	return res, nil
 }
@@ -139,10 +142,34 @@ func (a *App) SetSchedule(s control.Schedule) error {
 	return err
 }
 
-// Restore implements control.Backend: stops the web server, imports the backup and starts it again.
-func (a *App) Restore(id string) error {
+// BackupKey implements control.Backend.
+func (a *App) BackupKey() (control.BackupKey, error) {
+	key, err := a.sec.MustGet(secrets.BackupKey)
+	if err != nil {
+		return control.BackupKey{}, err
+	}
+	rcpt, err := backup.Recipient(key)
+	if err != nil {
+		return control.BackupKey{}, fmt.Errorf("secrets/backup-key is damaged: %w", err)
+	}
+	return control.BackupKey{Key: key, Recipient: rcpt}, nil
+}
+
+// Restore implements control.Backend: stops the web server, imports the backup and starts it again. key, when
+// given, is the backup key of the server that made the backup; when it (not this server's own key) opened the
+// backup, it becomes this server's backup key too, so the key the owner saved keeps opening every backup.
+func (a *App) Restore(id, key string) error {
 	if !backup.ValidID(id) {
 		return control.BadRequest("bad backup id")
+	}
+	key = strings.TrimSpace(key)
+	if key != "" {
+		if _, err := backup.ParseKey(key); err != nil {
+			return control.BadRequest(err.Error())
+		}
+		key = strings.ToUpper(key)
+		// Never let the typed key reach a log line.
+		a.red.Set(append(a.sec.Values(), key))
 	}
 	if !a.conv.Ready(context.Background()) {
 		return control.Conflict("the backend is not running")
@@ -162,12 +189,27 @@ func (a *App) Restore(id string) error {
 	if ctx == nil {
 		ctx = context.Background()
 	}
-	if err := a.bk.Restore(ctx, id, t); err != nil {
+	usedKey, err := a.bk.Restore(ctx, id, t, key)
+	if err != nil {
 		a.log.Error("restore failed", "id", id, "err", a.red.Redact(err.Error()))
+		if errors.Is(err, backup.ErrWrongKey) {
+			return &control.Error{Status: http.StatusUnprocessableEntity, Message: err.Error()}
+		}
 		if strings.Contains(err.Error(), "not found") {
 			return control.NotFound(err.Error())
 		}
 		return err
+	}
+	if usedKey {
+		if cur, _ := a.sec.Get(secrets.BackupKey); cur != key {
+			if err := a.sec.Set(secrets.BackupKey, key); err != nil {
+				return fmt.Errorf("restored, but saving the backup key failed: %w", err)
+			}
+			a.log.Info("backup key replaced by the one used for this restore")
+		}
+	}
+	if key != "" {
+		a.red.Set(a.sec.Values())
 	}
 	// The secrets may have changed and the data replaced: set the environment and deploy again.
 	if err := a.ensureDeployed(ctx, true); err != nil {

@@ -66,6 +66,12 @@ node child. Binaries patched with `patchelf` to use the bundle's loader (the QNA
 (default 14); the newest pre-update backup is always kept. Targets: `local`, `folder` (absolute path), `s3`
 (any S3-compatible service, via minio-go). Restore stops the web app, imports with `--replace-all`, redeploys.
 
+Encryption: each backup is streamed through age (X25519) to `secrets/backup-key` and stored as
+`<id>.zip.age`; plain `.zip` backups from before still restore (told apart by their first bytes). The owner saves
+the key once (`GET /v1/backups/key`, shown by the admin panel). Restoring on a new machine:
+`POST /v1/backups/{id}/restore` with `{"key": "..."}` or `folevid restore <id> --key-file <file>`; the key that
+opened the backup then becomes the machine's backup key. A wrong or missing key answers 422.
+
 ## Connect
 
 Registration with an Ed25519 key (`secrets/connect-key`), address updates, link codes (polled every 3 s until
@@ -92,4 +98,6 @@ for linux/arm64 and amd64. `-short` skips the slow ones.
 `server/bundle/build-bundle.sh --version V --arch x86_64|aarch64 --out DIR` writes
 `DIR/folevi-server-V-linux-<arch>/` (CONTRACT §10). Inputs come from the environment (`CONVEX_BACKEND`,
 `NODE_DIST`, `WEB_STANDALONE`, `WEB_STATIC`, `WEB_PUBLIC`, `FUNCTIONS_DIR`, `RUNTIME_LIB`); see the header of the
-script. It downloads only inputs given as https URLs.
+script. It downloads only inputs given as https URLs. `FUNCTIONS_DIR` comes from
+`server/bundle/prepare-functions.sh --arch A --out DIR` (needs a `pnpm install`ed checkout): convex/, the few
+`packages/` files it imports by path, and only the node_modules the Convex CLI reads, about 70 MB.

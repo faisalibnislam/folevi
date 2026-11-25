@@ -18,6 +18,9 @@ import (
 	"testing"
 	"time"
 
+	"filippo.io/age"
+
+	"github.com/faisalibnislam/folevi/server/folevid/internal/backup"
 	"github.com/faisalibnislam/folevi/server/folevid/internal/config"
 	"github.com/faisalibnislam/folevi/server/folevid/internal/control"
 	"github.com/faisalibnislam/folevi/server/folevid/internal/secrets"
@@ -211,12 +214,67 @@ func TestIntegration(t *testing.T) {
 	if code != 200 || !strings.HasSuffix(bk.ID, "-manual") {
 		t.Fatalf("backup: %d %s", code, body)
 	}
-	if _, err := os.Stat(filepath.Join(data, "backups", bk.ID+".zip")); err != nil {
+	// Backups are encrypted with secrets/backup-key.
+	raw, err := os.ReadFile(filepath.Join(data, "backups", bk.ID+".zip.age"))
+	if err != nil {
 		t.Fatal(err)
 	}
+	if !strings.HasPrefix(string(raw), "age-encryption.org/v1\n") {
+		t.Fatal("backup is not encrypted")
+	}
 	body, _ = get(t, ctl+"/v1/backups", serverSecret)
-	if !strings.Contains(body, bk.ID) {
+	if !strings.Contains(body, bk.ID) || !strings.Contains(body, `"encrypted":true`) {
 		t.Fatalf("list: %s", body)
+	}
+	backupKey, _ := sec.Get(secrets.BackupKey)
+	body, code = get(t, ctl+"/v1/backups/key", serverSecret)
+	var bkKey struct{ Key, Recipient string }
+	_ = json.Unmarshal([]byte(body), &bkKey)
+	if code != 200 || backupKey == "" || bkKey.Key != backupKey || !strings.HasPrefix(bkKey.Recipient, "age1") {
+		t.Fatalf("backup key: %d", code)
+	}
+	if _, code = get(t, ctl+"/v1/backups/key", ""); code != 401 {
+		t.Fatalf("backup key without the secret: %d", code)
+	}
+	// A backup encrypted on another server: refused without its key (422), restored with it, and that key then
+	// becomes this server's backup key.
+	otherKey, _ := backup.NewKey()
+	otherIdent, _ := age.ParseX25519Identity(otherKey)
+	foreign := backup.NewID(time.Now().Add(-48*time.Hour), backup.KindManual)
+	encZip, _ := os.ReadFile(filepath.Join(data, "backups", bk.ID+".zip.age"))
+	{
+		// Re-encrypt this server's backup to the other key, as if the other server had made it.
+		r, err := age.Decrypt(bytes.NewReader(encZip), mustIdent(t, backupKey))
+		if err != nil {
+			t.Fatal(err)
+		}
+		var buf bytes.Buffer
+		w, _ := age.Encrypt(&buf, otherIdent.Recipient())
+		_, _ = io.Copy(w, r)
+		_ = w.Close()
+		if err := os.WriteFile(filepath.Join(data, "backups", foreign+".zip.age"), buf.Bytes(), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if body, code = post(t, ctl+"/v1/backups/"+foreign+"/restore", serverSecret); code != 422 {
+		t.Fatalf("restore of a foreign backup without its key: %d %s", code, body)
+	}
+	if body, code = sendBody(t, "POST", ctl+"/v1/backups/"+foreign+"/restore", serverSecret, `{"key":"not-a-key"}`); code != 400 {
+		t.Fatalf("restore with a malformed key: %d %s", code, body)
+	}
+	if body, code = sendBody(t, "POST", ctl+"/v1/backups/"+foreign+"/restore", serverSecret, `{"key":"`+otherKey+`"}`); code != 200 {
+		t.Fatalf("restore with the other server's key: %d %s", code, body)
+	}
+	if now, _ := sec.Get(secrets.BackupKey); now != otherKey {
+		t.Fatal("the key used for the restore did not become the backup key")
+	}
+	// A typed key that is not needed (this server's own key opens the backup) is not adopted.
+	_ = sec.Set(secrets.BackupKey, backupKey)
+	if body, code = sendBody(t, "POST", ctl+"/v1/backups/"+bk.ID+"/restore", serverSecret, `{"key":"`+otherKey+`"}`); code != 200 {
+		t.Fatalf("restore with an unneeded key: %d %s", code, body)
+	}
+	if now, _ := sec.Get(secrets.BackupKey); now != backupKey {
+		t.Fatal("an unneeded typed key replaced the backup key")
 	}
 	if body, code = post(t, ctl+"/v1/backups/"+bk.ID+"/restore", serverSecret); code != 200 {
 		t.Fatalf("restore: %d %s", code, body)
@@ -235,6 +293,9 @@ func TestIntegration(t *testing.T) {
 	}
 	if strings.Contains(string(logText), adminKey) || strings.Contains(stderr.String(), adminKey) {
 		t.Fatal("admin key leaked into the logs")
+	}
+	if strings.Contains(string(logText), backupKey) || strings.Contains(string(logText), otherKey) {
+		t.Fatal("a backup key leaked into the logs")
 	}
 	if strings.Contains(string(logText), serverSecret) {
 		t.Fatal("server secret leaked into the logs")
@@ -305,7 +366,11 @@ func post(t *testing.T, url, bearer string) (string, int) {
 }
 
 func send(t *testing.T, method, url, bearer string) (string, int) {
-	req, _ := http.NewRequest(method, url, nil)
+	return sendBody(t, method, url, bearer, "")
+}
+
+func sendBody(t *testing.T, method, url, bearer, body string) (string, int) {
+	req, _ := http.NewRequest(method, url, strings.NewReader(body))
 	if bearer != "" {
 		req.Header.Set("Authorization", "Bearer "+bearer)
 	}
@@ -395,4 +460,13 @@ func TestPatchedRunsDirectly(t *testing.T) {
 	if p, _ := b.Wrap(prog); p != prog {
 		t.Fatalf("patched program wrapped: %s", p)
 	}
+}
+
+func mustIdent(t *testing.T, key string) *age.X25519Identity {
+	t.Helper()
+	id, err := age.ParseX25519Identity(key)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return id
 }

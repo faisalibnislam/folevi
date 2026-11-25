@@ -28,7 +28,7 @@ func TestEnsureAll(t *testing.T) {
 	if st.Mode().Perm() != 0o700 {
 		t.Fatalf("secrets dir mode %v", st.Mode().Perm())
 	}
-	want := []string{InstanceSecret, AdminKey, BetterAuthSecret, HashSalt, FileURLSecret, ServerSecret, SetupToken, VapidPublic, VapidPrivate}
+	want := []string{InstanceSecret, AdminKey, BetterAuthSecret, HashSalt, FileURLSecret, ServerSecret, SetupToken, VapidPublic, VapidPrivate, BackupKey}
 	before := map[string]string{}
 	for _, n := range want {
 		fi, err := os.Stat(s.Path(n))

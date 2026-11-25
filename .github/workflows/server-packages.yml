@@ -31,6 +31,15 @@ concurrency:
 
 env:
   NFPM_VERSION: v2.43.0
+  # Pinned inputs of the real bundle. Update the version and both SHA-256s together.
+  # Convex backend: https://github.com/get-convex/convex-backend/releases (precompiled-* tags).
+  CONVEX_BACKEND_RELEASE: precompiled-2026-11-24-f1ff8e5
+  CONVEX_BACKEND_SHA256_X86_64: 1b016a4f3b92dbf33650705b6ab6700c50a9efe761ed2c093e80ca195460158b
+  CONVEX_BACKEND_SHA256_AARCH64: edb8b1d50e6d2cebc5c3d119a40cf41eaae1883106ca3a4c386120c3b4ef0d5f
+  # Node.js: https://nodejs.org/dist/v<version>/SHASUMS256.txt
+  NODE_VERSION: 24.22.3
+  NODE_SHA256_X64: 4f2b175a6d53a5c617a80dba2676238a0688cef28c6da4eba35c7d844e66fcfb
+  NODE_SHA256_ARM64: 6e51a2ada00f0011cc266f65d98922b403d7ad88f809ca2aa615a5fe1ce6e86c
 
 jobs:
   bundle:
@@ -54,11 +63,69 @@ jobs:
           v="${{ inputs.version }}"
           [ -n "$v" ] || v="$(jq -r .version version.json)"
           echo "version=$v" >> "$GITHUB_OUTPUT"
-      - name: Build the bundle
+      # The real bundle: each arch builds on its own runner, so pnpm installs the right esbuild and Next.js
+      # native packages.
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+        if: ${{ !inputs.fake_bundle }}
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        if: ${{ !inputs.fake_bundle }}
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - uses: actions/setup-go@v5
+        if: ${{ !inputs.fake_bundle }}
+        with:
+          go-version: "1.24"
+          cache: false
+      - name: Install dependencies
+        if: ${{ !inputs.fake_bundle }}
+        run: pnpm install --frozen-lockfile
+      - name: Check convex/_generated
+        if: ${{ !inputs.fake_bundle }}
+        # convex/_generated is committed (CI checks it with the cloud deploy); the server deploys with
+        # --codegen=disable, so it must be there.
+        run: test -f convex/_generated/api.js && test -f convex/_generated/server.js && test -f convex/betterAuth/_generated/api.ts
+      - name: Build the web app (server edition, standalone)
+        if: ${{ !inputs.fake_bundle }}
+        # No addresses at build time: the server edition reads them at runtime (CONTRACT §4).
+        env:
+          FOLEVI_EDITION: server
+          NEXT_TELEMETRY_DISABLED: "1"
+        run: |
+          pnpm --filter @folevi/web build
+          test -d apps/web/.next/standalone
+      - name: Prepare the functions folder
+        if: ${{ !inputs.fake_bundle }}
+        run: server/bundle/prepare-functions.sh --arch "${{ matrix.arch }}" --out "$RUNNER_TEMP/functions"
+      - name: Download the Convex backend and Node.js
         if: ${{ !inputs.fake_bundle }}
         run: |
+          mkdir -p "$RUNNER_TEMP/dl"
+          if [ "${{ matrix.arch }}" = x86_64 ]; then
+            be_sha="$CONVEX_BACKEND_SHA256_X86_64"; node_arch=x64; node_sha="$NODE_SHA256_X64"
+          else
+            be_sha="$CONVEX_BACKEND_SHA256_AARCH64"; node_arch=arm64; node_sha="$NODE_SHA256_ARM64"
+          fi
+          be="$RUNNER_TEMP/dl/convex-local-backend-${{ matrix.arch }}-unknown-linux-gnu.zip"
+          curl -fsSL --retry 3 -o "$be" \
+            "https://github.com/get-convex/convex-backend/releases/download/$CONVEX_BACKEND_RELEASE/convex-local-backend-${{ matrix.arch }}-unknown-linux-gnu.zip"
+          echo "$be_sha  $be" | sha256sum -c -
+          node_tar="$RUNNER_TEMP/dl/node-v$NODE_VERSION-linux-$node_arch.tar.xz"
+          curl -fsSL --retry 3 -o "$node_tar" "https://nodejs.org/dist/v$NODE_VERSION/node-v$NODE_VERSION-linux-$node_arch.tar.xz"
+          echo "$node_sha  $node_tar" | sha256sum -c -
+          echo "CONVEX_BACKEND=$be" >> "$GITHUB_ENV"
+          echo "NODE_DIST=$node_tar" >> "$GITHUB_ENV"
+      - name: Build the bundle
+        if: ${{ !inputs.fake_bundle }}
+        env:
+          WEB_STANDALONE: apps/web/.next/standalone
+          WEB_STATIC: apps/web/.next/static
+          WEB_PUBLIC: apps/web/public
+        run: |
           # Interface agreed with the supervisor workstream (server/bundle/build-bundle.sh).
-          server/bundle/build-bundle.sh --version "${{ steps.v.outputs.version }}" --arch "${{ matrix.arch }}" --out "$RUNNER_TEMP/bundle"
+          FUNCTIONS_DIR="$RUNNER_TEMP/functions" \
+            server/bundle/build-bundle.sh --version "${{ steps.v.outputs.version }}" --arch "${{ matrix.arch }}" --out "$RUNNER_TEMP/bundle"
+          du -sh "$RUNNER_TEMP"/bundle/*/* | sort -h
       - name: Make a fake bundle
         if: ${{ inputs.fake_bundle }}
         run: packaging/test/make-fake-bundle.sh "$RUNNER_TEMP/bundle" "${{ steps.v.outputs.version }}" "${{ matrix.arch }}" --native
@@ -181,6 +248,30 @@ jobs:
         with:
           name: repositories
           path: ${{ runner.temp }}/repos
+          retention-days: 14
+
+  manifest:
+    name: Download manifest (latest.json)
+    needs: [bundle, packages]
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: packages-*
+          path: ${{ runner.temp }}/pk
+          merge-multiple: true
+      - name: Write latest.json
+        # The owner uploads the package files to R2 (folevi-updates: server/<version>/) and this file to
+        # server/latest.json by hand; nothing is uploaded here.
+        run: |
+          packaging/manifest/make-latest.sh --version "${{ needs.bundle.outputs.version }}" \
+            --out "$RUNNER_TEMP/latest.json" "$RUNNER_TEMP/pk"
+          cat "$RUNNER_TEMP/latest.json"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: latest-json
+          path: ${{ runner.temp }}/latest.json
           retention-days: 14
 
   image:

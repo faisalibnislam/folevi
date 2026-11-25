@@ -109,7 +109,7 @@ export default async function ServerPage() {
           }
           lede="Pick the download for your NAS’s chip. Folevi asks which shared folder to keep its data in, so your NAS’s snapshots and backups cover it."
         />
-        <div className="mt-10 grid gap-12 lg:grid-cols-2 lg:gap-10">
+        <div className="mt-10 grid gap-12 lg:grid-cols-2 lg:gap-10 [&>*]:min-w-0">
           <div>
             <PlatformTitle name="Synology" detail="DSM 7.2 or later" />
             <p className="mt-3 max-w-[56ch] text-[15px] leading-relaxed text-ink">
@@ -148,7 +148,7 @@ export default async function ServerPage() {
           title="ASUSTOR, TerraMaster and UGREEN."
           lede="Download the package for your NAS’s chip and install it from the NAS’s app center."
         />
-        <div className="mt-10 grid gap-10 lg:grid-cols-3 lg:gap-6">
+        <div className="mt-10 grid gap-10 lg:grid-cols-3 lg:gap-6 [&>*]:min-w-0">
           {(
             [
               ["asustor", "ASUSTOR", "ADM 4 or later", "In App Central, choose Manual Install."],
@@ -177,7 +177,7 @@ export default async function ServerPage() {
           lede="These systems install Folevi from their own catalogs, so there’s nothing to download first."
           wide
         />
-        <div className="mt-10 grid gap-6 lg:grid-cols-2">
+        <div className="mt-10 grid gap-6 lg:grid-cols-2 [&>*]:min-w-0">
           <div className="mk-card p-5 sm:p-6">
             <PlatformTitle name="Unraid" detail="plugin" />
             <div className="mt-4">
@@ -245,10 +245,10 @@ export default async function ServerPage() {
             </p>
           )}
         </div>
-        <div className="mt-10 grid gap-10 lg:grid-cols-2 lg:gap-10">
+        <div className="mt-10 grid gap-10 lg:grid-cols-2 lg:gap-10 [&>*]:min-w-0">
           <div>
             <h3 className="mk-caps">Packages</h3>
-            <div className="mt-4 grid gap-3">
+            <div className="mt-4 grid gap-3 [&>*]:min-w-0">
               <DownloadRow manifest={manifest} platform="deb" arch="x86_64" kind=".deb" product="Folevi Server" />
               <DownloadRow manifest={manifest} platform="deb" arch="aarch64" kind=".deb" product="Folevi Server" />
               <DownloadRow manifest={manifest} platform="rpm" arch="x86_64" kind=".rpm" product="Folevi Server" />

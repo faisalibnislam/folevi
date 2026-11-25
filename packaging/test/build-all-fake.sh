@@ -172,6 +172,18 @@ if command -v createrepo_c >/dev/null; then
   "$PACKAGING_DIR/linux/repo/build-rpm-repo.sh" --rpms "$work/rpms" --out "$work/rpm" >/dev/null 2>&1 && ok "rpm repository" || bad "rpm repository"
 else ok "rpm repository skipped (createrepo_c not installed; CI installs it)"; fi
 
+echo "== download manifest"
+if "$PACKAGING_DIR/manifest/make-latest.sh" --version $VERSION --out "$work/latest.json" --released-at 2026-01-01T00:00:00Z \
+    "$work/out" "$work/debs" "$work/rpms" >/dev/null 2>&1; then
+  ok "make-latest.sh"
+  jq -e --arg v $VERSION '.version == $v and .channel == "beta" and .baseUrl == "https://folevi.com/download/server/\($v)/"
+      and .dockerImage == "ghcr.io/folevi/folevi-server:\($v)" and (.files | length) >= 15
+      and all(.files[]; (.url == "https://folevi.com/download/server/\($v)/" + .name) and (.sha256 | test("^[0-9a-f]{64}$"))
+        and .sizeBytes > 0 and (.arch == "x86_64" or .arch == "aarch64"))
+      and ([.files[].platform] | unique | sort) == (["asustor","deb","qnap","rpm","synology","terramaster","ugreen","unraid"])' \
+    "$work/latest.json" >/dev/null && ok "latest.json fields" || bad "latest.json fields"
+else bad "make-latest.sh"; fi
+
 echo "== scripts and templates"
 for f in $(grep -rlE '^#!/(usr/)?bin/(env )?(ba)?sh' "$PACKAGING_DIR" --include='*' | grep -v '/icons/'); do
   case "$(head -n 1 "$f")" in *bash*) bash -n "$f" ;; *) sh -n "$f" ;; esac 2>/dev/null && ok "syntax $(basename "$f")" || bad "syntax $f"

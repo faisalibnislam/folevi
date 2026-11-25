@@ -23,6 +23,23 @@ export const vEmailInMode = v.union(v.literal("off"), v.literal("folevi"), v.lit
 export const vAiMode = v.union(v.literal("off"), v.literal("folevi"), v.literal("gemini"), v.literal("openai"));
 export const vAiAllowed = v.union(v.literal("everyone"), v.literal("admins"));
 export const vCoversMode = v.union(v.literal("off"), v.literal("folevi"), v.literal("unsplash"));
+/**
+ * The owner's first-run checklist (admin Overview): a step the owner finished or chose to skip, with when.
+ * Steps that can be seen from the settings (a name, email on, people invited) are worked out by the web app;
+ * these are the ones only the owner can tell us about (they skipped it, saved the backup key, set up the apps).
+ */
+export const vSetupStep = v.union(
+  v.literal("name"),
+  v.literal("remote"),
+  v.literal("email"),
+  v.literal("ai"),
+  v.literal("backups"),
+  v.literal("backupKey"),
+  v.literal("invite"),
+  v.literal("apps"),
+  v.literal("checklist"),
+);
+export const SETUP_STEPS = ["name", "remote", "email", "ai", "backups", "backupKey", "invite", "apps", "checklist"] as const;
 /** The roles a person can hold on a server (CONTRACT §7). */
 export const vServerRole = v.union(v.literal("owner"), v.literal("admin"), v.literal("member"), v.literal("guest"));
 /** The roles an invite can give (the owner is never invited: ownership is transferred). */
@@ -58,6 +75,8 @@ export const serverSettingsFields = {
   push: v.object({ relay: v.boolean() }),
   covers: v.object({ mode: vCoversMode, unsplashKey: v.optional(v.string()) }),
   ownerUserId: v.optional(v.id("profiles")),
+  /** First-run checklist: step name to when it was finished or skipped (vSetupStep). */
+  setup: v.optional(v.record(v.string(), v.number())),
   updatedAt: v.number(),
   updatedBy: v.optional(v.id("profiles")),
 };
@@ -207,6 +226,7 @@ export function publicSettingsView(s: ServerSettings) {
     push: s.push,
     covers: { mode: s.covers.mode, unsplashKey: isSet(s.covers.unsplashKey) },
     ...(s.ownerUserId ? { ownerUserId: s.ownerUserId as string } : {}),
+    setup: s.setup ?? {},
     configured: { email: emailConfigured(s), ai: aiConfigured(s), pushRelay: pushRelayOn(s) },
     updatedAt: s.updatedAt,
   };
@@ -265,6 +285,8 @@ export const vSettingsPatch = v.object({
   ),
   push: v.optional(v.object({ relay: v.optional(v.boolean()) })),
   covers: v.optional(v.object({ mode: v.optional(vCoversMode), unsplashKey: vSecret })),
+  /** First-run checklist: steps to mark finished or skipped (`done`), or to bring back (`undo`). */
+  setup: v.optional(v.object({ done: v.optional(v.array(vSetupStep)), undo: v.optional(v.array(vSetupStep)) })),
 });
 export type SettingsPatch = Infer<typeof vSettingsPatch>;
 
@@ -432,6 +454,12 @@ export function applySettingsPatch(current: ServerSettings, patch: SettingsPatch
       unsplashKey: secret(patch.covers.unsplashKey, next.covers.unsplashKey, "The Unsplash key"),
     };
     if (next.covers.mode === "unsplash" && !next.covers.unsplashKey) throw new SettingsError("Enter the Unsplash key first.");
+  }
+  if (patch.setup) {
+    const steps: Record<string, number> = { ...(next.setup ?? {}) };
+    for (const step of patch.setup.done ?? []) steps[step] ??= now;
+    for (const step of patch.setup.undo ?? []) delete steps[step];
+    next.setup = Object.keys(steps).length ? steps : undefined;
   }
   // Drop undefined members so the row matches the stored validator exactly.
   next.updatedAt = now;

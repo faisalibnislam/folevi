@@ -47,7 +47,7 @@ func (t *FolderTarget) List(ctx context.Context) ([]Object, error) {
 	}
 	var out []Object
 	for _, e := range ents {
-		if !e.Type().IsRegular() || !strings.HasSuffix(e.Name(), ".zip") {
+		if !e.Type().IsRegular() || !(strings.HasSuffix(e.Name(), ExtPlain) || strings.HasSuffix(e.Name(), ExtEncrypted)) {
 			continue
 		}
 		info, err := e.Info()

@@ -3,10 +3,12 @@
 package control
 
 import (
+	"bytes"
 	"crypto/sha256"
 	"crypto/subtle"
 	"encoding/json"
 	"errors"
+	"io"
 	"log/slog"
 	"net"
 	"net/http"
@@ -52,6 +54,20 @@ type Backup struct {
 	CreatedAt time.Time `json:"createdAt"`
 	SizeBytes int64     `json:"sizeBytes"`
 	Kind      string    `json:"kind"`
+	Encrypted bool      `json:"encrypted"`
+}
+
+// BackupKey is GET /v1/backups/key: the key that encrypts this server's backups (key, secret: the owner saves
+// it once to restore on another machine) and its public half (recipient).
+type BackupKey struct {
+	Key       string `json:"key"`
+	Recipient string `json:"recipient"`
+}
+
+// RestoreRequest is the optional body of POST /v1/backups/{id}/restore: the key of the server that made an
+// encrypted backup, when it is not this one.
+type RestoreRequest struct {
+	Key string `json:"key,omitempty"`
 }
 
 // S3 is the S3 part of a schedule target. The secret is write-only.
@@ -137,7 +153,8 @@ type Backend interface {
 	Backups() (Backups, error)
 	StartBackup(kind string, wait bool) (string, error)
 	SetSchedule(Schedule) error
-	Restore(id string) error
+	Restore(id, key string) error
+	BackupKey() (BackupKey, error)
 	Remote() Remote
 	SetRemote(RemoteUpdate) error
 	ConnectLink() (Link, error)
@@ -219,8 +236,32 @@ func Handler(b Backend, secret func() string, log *slog.Logger) http.Handler {
 		}
 		writeJSON(w, map[string]bool{"ok": true})
 	})
+	mux.HandleFunc("GET /v1/backups/key", func(w http.ResponseWriter, r *http.Request) {
+		k, err := b.BackupKey()
+		if err != nil {
+			writeErr(w, err)
+			return
+		}
+		w.Header().Set("Cache-Control", "no-store")
+		writeJSON(w, k)
+	})
 	mux.HandleFunc("POST /v1/backups/{id}/restore", func(w http.ResponseWriter, r *http.Request) {
-		if err := b.Restore(r.PathValue("id")); err != nil {
+		// The body is optional: {"key": "AGE-SECRET-KEY-1..."} for a backup made on another machine.
+		var req RestoreRequest
+		body, err := io.ReadAll(http.MaxBytesReader(w, r.Body, 64<<10))
+		if err != nil {
+			writeErr(w, BadRequest("body too large"))
+			return
+		}
+		if len(bytes.TrimSpace(body)) > 0 {
+			dec := json.NewDecoder(bytes.NewReader(body))
+			dec.DisallowUnknownFields()
+			if err := dec.Decode(&req); err != nil {
+				writeErr(w, BadRequest("invalid JSON: "+err.Error()))
+				return
+			}
+		}
+		if err := b.Restore(r.PathValue("id"), req.Key); err != nil {
 			writeErr(w, err)
 			return
 		}

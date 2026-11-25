@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { serverSignUp } from "@/lib/server-edition/signUp";
 import { authClient, authErrorMessage } from "@/lib/auth/client";
 import { Alert, AuthHeading, Field, PasswordField, SubmitButton, TextLink } from "./fields";
 import { CheckInbox } from "./CheckInbox";
@@ -83,6 +84,15 @@ export function SignUpForm({ template, social = { google: false, apple: false },
           setFieldError(problems);
           if (Object.keys(problems).length) return;
           setBusy(true);
+          // A server without email signs the new account in at once (no link to confirm): on to the next page.
+          if (server && !server.confirmByEmail) {
+            const { error: err } = await serverSignUp({ name: name.trim().slice(0, 80), email: trimmedEmail, password, callbackURL, inviteToken: server.inviteToken });
+            if (err) {
+              setBusy(false);
+              setError(SERVER_SIGN_UP_ERRORS[err.code ?? ""] ?? authErrorMessage(err, undefined, "up to an hour"));
+            } else window.location.assign(callbackURL);
+            return;
+          }
           const { error: err } = await authClient.signUp.email({
             name: name.trim().slice(0, 80),
             email: trimmedEmail,
@@ -91,12 +101,6 @@ export function SignUpForm({ template, social = { google: false, apple: false },
             ...(server?.inviteToken ? { fetchOptions: { headers: { "x-folevi-invite": server.inviteToken } } } : {}),
           });
           setBusy(false);
-          // A server without email signs the new account in at once (no link to confirm): on to the next page.
-          if (server && !server.confirmByEmail) {
-            if (err) setError(SERVER_SIGN_UP_ERRORS[err.code ?? ""] ?? authErrorMessage(err, undefined, "up to an hour"));
-            else window.location.assign(callbackURL);
-            return;
-          }
           // An address that already has an account gets the same answer (no account enumeration).
           if (err?.code === "PASSWORD_COMPROMISED") {
             setFieldError({ password: authErrorMessage(err) });

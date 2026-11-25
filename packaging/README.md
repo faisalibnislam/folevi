@@ -41,6 +41,14 @@ installed on real hardware yet: **everything is unverified until tested on the r
   folevid, so when the store has already stopped the package the helper starts the old version briefly, waits
   for `folevid healthcheck`, backs up and stops it. Failure is logged, not fatal.
 
+## Download manifest
+
+`manifest/make-latest.sh --version V --out latest.json <package files or folders>` writes the manifest the
+download page reads (`{version, releasedAt, channel, notesUrl, baseUrl, files:[{platform, arch, name, url, sha256,
+sizeBytes}], unraidPluginUrl, installScript, dockerImage}`; channel `beta` by default). The Server packages
+workflow builds it as the `latest-json` artifact. The owner uploads the package files to R2 (`folevi-updates`,
+`server/<version>/<name>`) and the manifest to `server/latest.json`; nothing here uploads.
+
 ## What the owner must provide
 
 - **Accounts:** Synology third-party developer program; QNAP partner program (code signing); ASUSTOR Developer

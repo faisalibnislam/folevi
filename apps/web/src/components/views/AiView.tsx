@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { useMutation, useQuery } from "convex/react";
+import { useMutation } from "convex/react";
+import { useQuery } from "@/lib/convex/queries";
 import { useCapability } from "@/lib/mode";
 import { MessagesSquare, MoreHorizontal, X } from "lucide-react";
 import { api } from "@/lib/convex/api";

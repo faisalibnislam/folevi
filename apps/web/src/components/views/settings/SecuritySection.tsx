@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useQuery } from "convex/react";
+import { useQuery } from "@/lib/convex/queries";
 import { KeyRound, ShieldCheck, ShieldOff } from "lucide-react";
 import { authClient, authErrorMessage } from "@/lib/auth/client";
 import { defaultPasskeyName, passkeysAvailable } from "@/lib/auth/passkeys";

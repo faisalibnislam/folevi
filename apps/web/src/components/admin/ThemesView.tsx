@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { useMutation, useQuery } from "convex/react";
+import { useMutation } from "convex/react";
+import { useQuery } from "@/lib/convex/queries";
 import { GripVertical, Plus } from "lucide-react";
 import { api } from "@/lib/convex/api";
 import { errorMessage, useToast } from "@/components/ui/Toast";

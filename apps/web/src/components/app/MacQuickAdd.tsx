@@ -9,7 +9,7 @@
 // (sizeQuickAdd); the native app's panel draws the material behind a clear page (data-vibrancy).
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import { CalendarDays, Check, FileText, Flag, Inbox, Repeat, X } from "lucide-react";
-import { useQuery } from "convex/react";
+import { useQuery } from "@/lib/convex/queries";
 import { describeRepeat } from "@folevi/editor-schema";
 import { api } from "@/lib/convex/api";
 import { naturalDateLabel } from "@/lib/nlDate";

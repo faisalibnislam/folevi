@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from "react";
-import { useQuery } from "convex/react";
+import { useQuery } from "@/lib/convex/queries";
 import { getFunctionName, type FunctionArgs, type FunctionReference, type FunctionReturnType } from "convex/server";
 import { canonicalJson } from "@folevi/editor-schema";
 import { useAppState } from "@/lib/app/state";

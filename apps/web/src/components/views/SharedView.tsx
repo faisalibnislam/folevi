@@ -1,6 +1,6 @@
 "use client";
 
-import { useQuery } from "convex/react";
+import { useQueryState } from "@/lib/convex/queries";
 import { SharedVaultItems, useSharedVaultCount } from "@/components/vault/SharedVaultItems";
 import { api } from "@/lib/convex/api";
 import { AppLink } from "@/lib/app/router";
@@ -8,13 +8,18 @@ import { ViewChrome } from "@/components/app/Shell";
 import { formatRelative } from "@/lib/format";
 import { FileText, Share2 } from "lucide-react";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { LoadFailed } from "@/components/ui/LoadFailed";
 import { FolderGlyph } from "@/components/ui/FolderGlyph";
 import { roleLabel, sharedPlace } from "@/lib/app/folderSharing";
 
 /** Shared with Me: folders shared with this person (docs/SHARING.md), then pages shared with them one by one. */
 export function SharedView() {
-  const docs = useQuery(api.sharing.sharedWithMe, {});
-  const folders = useQuery(api.folderSharing.sharedFolders, {});
+  const docsState = useQueryState(api.sharing.sharedWithMe, {});
+  const foldersState = useQueryState(api.folderSharing.sharedFolders, {});
+  const docs = docsState.data;
+  const folders = foldersState.data;
+  // Either list failed (it keeps retrying): said in place of the loading placeholder.
+  const failed = (docs === undefined && docsState.failed) || (folders === undefined && foldersState.failed);
   const vaultItems = useSharedVaultCount() ?? 0;
   const loading = docs === undefined || folders === undefined;
   const counts = loading
@@ -34,7 +39,15 @@ export function SharedView() {
       iphone={{ title: "Shared with Me", subtitle: !loading && (docs.length || folders.length || vaultItems) ? counts : undefined }}
     >
       <div className="mx-auto max-w-3xl px-4 pb-[max(6rem,var(--fab-clearance))] pt-6 sm:px-8">
-        {loading ? (
+        {loading && failed ? (
+          <LoadFailed
+            what="what’s shared with you"
+            onRetry={() => {
+              docsState.retry();
+              foldersState.retry();
+            }}
+          />
+        ) : loading ? (
           <div className="mt-6 h-24 animate-pulse rounded-chip bg-surface motion-reduce:animate-none" aria-busy />
         ) : docs.length === 0 && folders.length === 0 && !vaultItems ? (
           <EmptyState icon={Share2} title="Nothing has been shared with you yet" body="Folders and pages people share with you, from their Personal or from any workspace, show up here." />

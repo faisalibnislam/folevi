@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useMutation } from "convex/react";
 import { addDays } from "@folevi/editor-schema";
-import { CalendarClock, CalendarDays, Check, ChevronDown, ChevronRight, CircleCheckBig, FileText, Inbox, ListTodo, Repeat, RotateCcw, Sun, SunMedium, UserRound, type LucideIcon } from "lucide-react";
+import { CalendarClock, CalendarDays, Check, CloudOff, ChevronDown, ChevronRight, CircleCheckBig, FileText, Inbox, ListTodo, Repeat, RotateCcw, Sun, SunMedium, UserRound, type LucideIcon } from "lucide-react";
 import { api } from "@/lib/convex/api";
 import { useAppState } from "@/lib/app/state";
 import { AppLink, useAppRouter } from "@/lib/app/router";
@@ -48,10 +48,13 @@ export function IphoneTasks({
   onToggle,
   onEdit,
   empty,
+  onRetry,
   children,
 }: {
   view: View;
   tasks: TaskRow[] | undefined;
+  /** The list couldn't load (it keeps retrying): Try again asks now. */
+  onRetry?: () => void;
   counts: Partial<Record<View, number>> | undefined;
   filter: string;
   onFilter: (v: string) => void;
@@ -162,7 +165,20 @@ export function IphoneTasks({
         ),
       }}
     >
-      {tasks === undefined ? (
+      {tasks === undefined && onRetry ? (
+        <div role="alert">
+          <PhoneEmpty
+            Icon={CloudOff}
+            title="Couldn’t load your tasks"
+            body="Folevi will keep trying. Check your connection, or try again now."
+            action={
+              <button type="button" onClick={onRetry} className="ui-btn ui-btn-secondary h-11 px-4 text-subheadline">
+                Try again
+              </button>
+            }
+          />
+        </div>
+      ) : tasks === undefined ? (
         <ul className="pt-3" aria-busy aria-label="Loading tasks">
           {[0, 1, 2, 3, 4].map((i) => (
             <li key={i} className="flex h-[52px] items-center gap-3 pl-5 pr-4">

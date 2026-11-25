@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent } from "react";
-import { useMutation, useQuery } from "convex/react";
+import { useMutation } from "convex/react";
+import { useQuery } from "@/lib/convex/queries";
 import { ArrowLeft, Bookmark, ChevronDown, CircleHelp, Download, FileText, Focus, Folder, Maximize, Pause, Play, Search, SlidersHorizontal, Sparkles, SquareDashed, Tag as TagIcon, Waypoints, X, ZoomIn, ZoomOut, FolderInput, ChartNetwork } from "lucide-react";
 import { api } from "@/lib/convex/api";
 import { useAppState } from "@/lib/app/state";

@@ -6,7 +6,8 @@
 // browser), Foli AI can read the images: only when asked ("Make text in images searchable" in the note's
 // menu), or for images added here when the person turned on "Read images with Foli AI" in Settings > Foli AI.
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useAction, useConvex, useQuery } from "convex/react";
+import { useAction, useConvex } from "convex/react";
+import { useQuery } from "@/lib/convex/queries";
 import { parseWhiteboard, textFingerprint, type WireBlock } from "@folevi/editor-schema";
 import { api } from "@/lib/convex/api";
 import { useAppState } from "@/lib/app/state";

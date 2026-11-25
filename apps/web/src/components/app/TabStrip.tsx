@@ -9,7 +9,7 @@ import { tabHolds, tabHref, useTabs, type DocTab } from "@/lib/app/tabs";
 import { AiIcon } from "@/components/ai/AiIcon";
 import { Button } from "@/components/ui/Button";
 import { ContextMenu } from "@/components/ui/Menu";
-import { useQuery } from "convex/react";
+import { useQuery } from "@/lib/convex/queries";
 import { api } from "@/lib/convex/api";
 import { useShell } from "./Shell";
 import { SidebarMenu } from "./SidebarMenu";

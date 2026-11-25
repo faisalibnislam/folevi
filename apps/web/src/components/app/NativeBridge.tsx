@@ -7,7 +7,8 @@
 // (lib/nativePush.ts) and puts the bell's unread count on the app icon, like the Mac app's Dock badge. In local
 // mode it feeds the widgets, Shortcuts and Spotlight from the library instead (LocalExtensions). In a
 // browser and in the Mac app: nothing.
-import { useMutation, useQuery } from "convex/react";
+import { useMutation } from "convex/react";
+import { useQuery } from "@/lib/convex/queries";
 import { useCapabilities } from "@/lib/mode";
 import { useEffect, useRef } from "react";
 import { api } from "@/lib/convex/api";

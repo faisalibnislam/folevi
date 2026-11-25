@@ -2,7 +2,8 @@
 // Files & Notes (docs/VAULT_PLAN.md §5): folders (names opened on this device), files encrypted here before upload and
 // decrypted here after download (the server logs each download), and notes (plain text for now, each save kept as a
 // version; the rich editor comes later).
-import { useMutation, useQuery } from "convex/react";
+import { useMutation } from "convex/react";
+import { useQuery } from "@/lib/convex/queries";
 import { useEffect, useRef, useState } from "react";
 import { ChevronLeft, FilePlus2, FileText, FolderPlus, LayoutGrid, Rows3, Upload } from "lucide-react";
 import { api } from "@/lib/convex/api";

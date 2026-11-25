@@ -1,6 +1,7 @@
 "use client";
 
-import { useConvex, useMutation, useQuery } from "convex/react";
+import { useConvex, useMutation } from "convex/react";
+import { useQuery } from "@/lib/convex/queries";
 import { useEffect, useId, useState } from "react";
 import { CornerLeftUp, FileText } from "lucide-react";
 import { SCHEMA_VERSION, rankBetween, ulid, type WireBlock, type WireScope } from "@folevi/editor-schema";

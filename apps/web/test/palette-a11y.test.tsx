@@ -26,7 +26,7 @@ vi.mock("@/lib/app/router", () => ({ useAppRouter: () => ({ navigate }) }));
 vi.mock("@/components/app/useCreateDocument", () => ({ useCreateDocument: () => vi.fn() }));
 vi.mock("@/components/app/Shell", () => ({ useShell: () => ({ openAsk: vi.fn() }) }));
 vi.mock("@/components/ai/useAi", () => ({ useAiEnabled: () => false }));
-vi.mock("@/lib/iphone", () => ({ useIphoneApp: () => false }));
+vi.mock("@/lib/iphone", () => ({ useIphoneApp: () => false, isIphoneApp: () => false }));
 
 const { CommandPalette, paletteOptionLabel, paletteOptionDetail } = await import("@/components/app/CommandPalette");
 

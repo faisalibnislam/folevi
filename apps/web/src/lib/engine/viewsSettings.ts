@@ -21,6 +21,7 @@ import type { EngineDeps, ViewContext } from "./context";
 import type { ValueViewDef } from "./views";
 import type { CommandDef } from "./commands";
 import { Emitter, signalOf, type Signal } from "./live";
+import { desktopChanged } from "./desktopChanged";
 import { source } from "./views";
 import { BridgeError, oneOf, only } from "./validate";
 import { importFiles } from "@/lib/import/run";
@@ -331,8 +332,6 @@ export function localAiValue(deps: EngineDeps, state: LocalAiState) {
 // ---- the Mac app's own settings (Settings > Desktop app) -------------------------------------------------------
 
 let desktopState: { settings: DesktopSettings; error: string | null } | null = null;
-/** The Mac app's settings changed (DesktopCapabilities' Spotlight feed looks again when they do). */
-export const desktopChanged = new Emitter();
 function readDesktop() {
   void desktop()
     ?.getSettings()

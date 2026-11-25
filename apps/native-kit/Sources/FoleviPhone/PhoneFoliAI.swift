@@ -48,8 +48,13 @@ public struct PhoneAiThread: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var following = true
     @State private var behind = false
+    /// A finger is on the thread, or it's still gliding from one: only then does scrolling up stop the following.
+    /// (The composer moving with the keyboard, or the sheet changing height, moves the offset too, and must not.)
+    @State private var touched = false
     @State private var scrollProxy: ScrollViewProxy?
     @FocusState private var focused: Bool
+    /// Where the answers stop showing under the dock: from the composer's middle down (the footnote's band is clear).
+    @State private var dockFade = PhoneAiDock.Fade()
 
     public init(model: FoliChatModel, variant: PhoneAiVariant, host: PhoneAiHost, menus: PhoneMenus) {
         self.model = model
@@ -61,16 +66,19 @@ public struct PhoneAiThread: View {
     private var look: AiLook { AiLook(scheme: scheme, phone: true) }
 
     public var body: some View {
-        VStack(spacing: 0) {
-            ZStack(alignment: .bottom) {
-                scroller
-                if behind {
-                    jump.padding(.bottom, 12)
-                        .transition(reduceMotion ? .opacity : .opacity.combined(with: .offset(y: 8)))
-                }
+        ZStack(alignment: .bottom) {
+            scroller
+            if behind {
+                jump.padding(.bottom, 12)
+                    .transition(reduceMotion ? .opacity : .opacity.combined(with: .offset(y: 8)))
             }
-            .animation(reduceMotion ? nil : .easeOut(duration: 0.15), value: behind)
-            PhoneAiDock(model: model, variant: variant, host: host, menus: menus, focused: $focused)
+        }
+        .animation(reduceMotion ? nil : .easeOut(duration: 0.15), value: behind)
+        // The composer is the thread's bottom bar: the answers scroll on under its Liquid Glass (iOS's scroll edge
+        // effect softens them there), and it rides the keyboard with SwiftUI's own avoidance, in the keyboard's own
+        // motion, interactive dismissal included, so there's no jump and no gap.
+        .safeAreaBar(edge: .bottom, spacing: 0) {
+            PhoneAiDock(model: model, variant: variant, host: host, menus: menus, focused: $focused, fade: $dockFade)
         }
         .environment(\.aiPhone, true)
         // (As the Mac's chat: with Reduce Motion an answer appears whole instead of word by word.)
@@ -99,12 +107,14 @@ public struct PhoneAiThread: View {
             .defaultScrollAnchor(model.isEmpty ? .top : .bottom, for: .initialOffset)
             .defaultScrollAnchor(model.isEmpty || !following ? .top : .bottom, for: .sizeChanges)
             .onScrollGeometryChange(for: AiScrollFollow.Reading.self) { g in
-                AiScrollFollow.Reading(offset: g.contentOffset.y, atEnd: g.contentSize.height - g.contentOffset.y - g.containerSize.height < 56)
+                // (The end is the composer's top: the bottom inset is the room the bar keeps.)
+                AiScrollFollow.Reading(offset: g.contentOffset.y, atEnd: g.contentSize.height + g.contentInsets.bottom - g.contentOffset.y - g.containerSize.height < 56, height: g.contentSize.height)
             } action: { old, new in
-                following = AiScrollFollow.following(following, old: old, new: new)
+                following = touched ? AiScrollFollow.following(following, old: old, new: new) : (following || new.atEnd)
                 if new.atEnd { behind = false }
-                if following, !model.isEmpty, !new.atEnd, new.offset >= old.offset { proxy.scrollTo("end", anchor: .bottom) }
+                if following, !touched, !model.isEmpty, !new.atEnd { proxy.scrollTo("end", anchor: .bottom) }
             }
+            .onScrollPhaseChange { _, phase in touched = phase == .tracking || phase == .interacting || phase == .decelerating }
             .onChange(of: model.messages.count + (model.shownPending == nil ? 0 : 1)) { _, _ in
                 guard !model.isEmpty else { return }
                 following = true
@@ -118,16 +128,16 @@ public struct PhoneAiThread: View {
                 scrollProxy = proxy
                 if !model.isEmpty { proxy.scrollTo("end", anchor: .bottom) }
             }
-            // In the sheet what scrolls fades out over its last 24 pt rather than being cut off by the composer.
+            // What scrolls under the composer softens as iOS's own bars do it, shows through the glass's upper half,
+            // and is gone by the footnote (which has no surface of its own).
+            .scrollEdgeEffectStyle(.soft, for: .bottom)
             .mask {
-                if variant == .sheet {
-                    VStack(spacing: 0) {
-                        Color.black
-                        LinearGradient(colors: [.black, .clear], startPoint: .top, endPoint: .bottom).frame(height: 24)
-                    }
-                } else {
+                VStack(spacing: 0) {
                     Color.black
+                    LinearGradient(colors: [.black, .clear], startPoint: .top, endPoint: .bottom).frame(height: dockFade.fade)
+                    Color.clear.frame(height: dockFade.clear)
                 }
+                .ignoresSafeArea(.container)
             }
         }
     }
@@ -146,7 +156,7 @@ public struct PhoneAiThread: View {
             Text("This conversation isn't here anymore. Ask something to start a new one.").webText(.role(.body)).foregroundStyle(muted).padding(.horizontal, 4)
         }
         if model.isEmpty, !model.isLoading {
-            if variant == .page { PhoneAiPageIntro(model: model, host: host) } else { PhoneAiSuggestions(model: model) }
+            if variant == .page { PhoneAiPageIntro(model: model, host: host) } else { PhoneAiSuggestions(model: model, local: host.local) }
         }
         let messages = model.messages
         let lastUser = model.lastUserMessageId
@@ -204,6 +214,7 @@ public struct PhoneAiThread: View {
 /// line on how answers work.
 struct PhoneAiSuggestions: View {
     let model: FoliChatModel
+    var local = false
     @Environment(\.colorScheme) private var scheme
 
     var body: some View {
@@ -226,7 +237,8 @@ struct PhoneAiSuggestions: View {
                 }
             }
             .padding(.top, list.margin.top)
-            PhonePrettyText(text: "Answers link to the notes they come from. Foli AI shows you any change before it makes it, and each request uses AI credits.", style: note.text)
+            // (Without an account Foli AI is Apple's on-device model or the person's own key: no credits to use.)
+            PhonePrettyText(text: local ? "Answers link to the notes they come from. Foli AI shows you any change before it makes it." : "Answers link to the notes they come from. Foli AI shows you any change before it makes it, and each request uses AI credits.", style: note.text)
                 .foregroundStyle(note.color.color)
                 .padding(.top, note.margin.top)
         }
@@ -325,24 +337,6 @@ struct PhoneAiPageIntro: View {
 
 // MARK: the composer
 
-/// The composer's box in the sheet: the web's fill, edge and shadow, rounded at `top` and `bottom`.
-/// The composer's card: white with a hairline edge and a soft lifted shadow in light mode; a lighter grey than the
-/// page with a faint edge in dark mode.
-private struct PhoneComposerSurface: View {
-    let radius: CGFloat
-    @Environment(\.colorScheme) private var scheme
-
-    var body: some View {
-        let shape = RoundedRectangle(cornerRadius: radius, style: .continuous)
-        let dark = scheme == .dark
-        shape
-            .fill(dark ? Color(white: 0.17) : Color.white)
-            .shadow(color: .black.opacity(dark ? 0.35 : 0.08), radius: 14, y: 4)
-            .shadow(color: .black.opacity(dark ? 0.2 : 0.04), radius: 2, y: 1)
-            .overlay { shape.strokeBorder(dark ? Color.white.opacity(0.1) : Color.black.opacity(0.1), lineWidth: 1) }
-    }
-}
-
 private struct PhoneComposerBox: View {
     let style: WebComputedStyle
     let top: CGFloat
@@ -372,7 +366,18 @@ struct PhoneAiDock: View {
     let host: PhoneAiHost
     let menus: PhoneMenus
     var focused: FocusState<Bool>.Binding
+    /// Told the band under the composer's middle (the thread hides what scrolls there).
+    var fade: Binding<Fade>? = nil
     @Environment(\.colorScheme) private var scheme
+    @State private var composerHeight: CGFloat = 0
+    @State private var dockHeight: CGFloat = 0
+
+    struct Fade: Equatable {
+        /// The composer's lower half: what scrolls there fades out.
+        var fade: CGFloat = 0
+        /// From the composer's foot to the dock's: nothing shows there.
+        var clear: CGFloat = 0
+    }
 
     var body: some View {
         let look = AiLook(scheme: scheme, phone: true)
@@ -387,17 +392,25 @@ struct PhoneAiDock: View {
             }
             .frame(maxWidth: .infinity)
             // Concentric with what's inside: the controls sit 9 pt in and round at 12, so the box rounds at 21, its
-            // foot too (Chat or Research and Send sit in those corners).
-            .background {
-                // Its own surface, set apart from the replies (the owner, 2026-11-20: the box and the answers ran
-                // together): a raised card with a hairline edge and a soft shadow, a shade off the page in dark mode.
-                PhoneComposerSurface(radius: 21)
+            // foot too (Chat or Research and Send sit in those corners). Liquid Glass, floating over the answers
+            // that scroll under it, which sets it apart from them (the owner, 2026-11-20: the box and the answers
+            // ran together); a hairline keeps its edge on a plain page.
+            .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 21, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: 21, style: .continuous)
+                    .strokeBorder(scheme == .dark ? Color.white.opacity(0.1) : Color.black.opacity(0.08), lineWidth: 0.5)
+                    .allowsHitTesting(false)
             }
             .contentShape(Rectangle())
             .onTapGesture { focused.wrappedValue = true }
+            .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { composerHeight = $0 }
             footnote(look: look)
         }
         .padding(dock.padding.edgeInsets)
+        .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { dockHeight = $0 }
+        .onChange(of: Fade(fade: (composerHeight / 2).rounded(), clear: max(0, dockHeight - composerHeight - dock.padding.top)), initial: true) { _, f in
+            if fade?.wrappedValue != f { fade?.wrappedValue = f }
+        }
     }
 
     private func input(look: AiLook) -> some View {
@@ -417,6 +430,8 @@ struct PhoneAiDock: View {
                 .lineLimit(2...6)
                 .focused(focused)
                 .submitLabel(.send)
+                // Return sends, as Enter does on the web (Shift+Return on a hardware keyboard makes a new line).
+                .onSubmit { if model.canSend { model.send() } }
                 .accessibilityLabel(model.effectiveMode == .research ? "What should Foli AI research?" : "Ask about your notes, or ask Foli AI to change them")
         }
         .padding(s.padding.edgeInsets)
@@ -766,6 +781,9 @@ public struct PhoneAiPage: View {
     @State private var moreFrame: CGRect = .zero
     @State private var deleting: ChatConversationRow?
     @State private var titleWidth: CGFloat = 0
+    /// The keyboard is up: the composer then sits just over it instead of over the tab bar's room.
+    @State private var keyboard = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     public init(model: FoliChatModel, history: FoliHistoryModel, host: PhoneAiHost, back: @escaping () -> Void, open: @escaping (String?) -> Void) {
         self.model = model
@@ -795,22 +813,26 @@ public struct PhoneAiPage: View {
                     }
                 }
                 .padding(.top, safe.top + 52)
-                // (The web's screen keeps the tab bar's room under the page, though the bar steps away here.)
-                // (The web's screen keeps 72 pt under the page for the tab bar, which steps away here.)
-                .padding(.bottom, safe.bottom + 38)
+                // (The web's screen keeps 72 pt under the page for the tab bar, which steps away here.) With the
+                // keyboard up the page ends at the keyboard (SwiftUI's own avoidance, in the keyboard's motion) and
+                // the composer sits 8 pt over it.
+                .padding(.bottom, keyboard ? 8 : safe.bottom + 38)
                 bar(top: safe.top)
                 if drawer {
-                    PhoneAiDrawer(model: model, history: history, host: host, menus: menus, open: { id in
+                    PhoneAiDrawer(model: model, history: history, host: host, menus: menus, top: safe.top, open: { id in
                         drawer = false
                         open(id)
                     }, delete: { deleting = $0 }, close: { drawer = false })
                     .transition(.opacity)
                 }
             }
-            .ignoresSafeArea()
+            // (Under the status bar and the home indicator, but not under the keyboard.)
+            .ignoresSafeArea(.container)
         }
+        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)) { n in keyboardMoves(n, up: true) }
+        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)) { n in keyboardMoves(n, up: false) }
         .overlay { PhoneMenuLayer(menus: menus) }
-        .animation(.easeOut(duration: 0.2), value: drawer)
+        .animation(reduceMotion ? .easeOut(duration: 0.15) : .easeOut(duration: 0.2), value: drawer)
         .alert("Delete this conversation?", isPresented: Binding(get: { deleting != nil }, set: { if !$0 { deleting = nil } }), presenting: deleting) { row in
             Button("Delete", role: .destructive) {
                 let active = row.id == model.conversationId
@@ -822,6 +844,13 @@ public struct PhoneAiPage: View {
             Text("“\(row.title)” and everything in it will be gone for good.")
         }
         .accessibilityIdentifier("screen.ai")
+    }
+
+    /// The composer's foot follows the keyboard in the keyboard's own time.
+    private func keyboardMoves(_ n: Notification, up: Bool) {
+        guard keyboard != up else { return }
+        let duration = (n.userInfo?[UIResponder.keyboardAnimationDurationUserInfoKey] as? Double) ?? 0.25
+        withAnimation(reduceMotion || duration == 0 ? nil : .smooth(duration: duration)) { keyboard = up }
     }
 
     /// The phone's large title (Screen.tsx: Spectral 600 at Large Title, 1.12, -0.02em; px-5 pt-1 pb-1.5).
@@ -861,7 +890,11 @@ public struct PhoneAiPage: View {
     private func header(look: AiLook) -> some View {
         let h = look.s("ai.page.header"), c = look.s("ai.page.conversations"), t = look.s("ai.page.title")
         return HStack(spacing: h.gap) {
-            Button { drawer = true } label: {
+            Button {
+                // (The keyboard goes with the composer's focus: the drawer is drawn over the whole page.)
+                UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+                drawer = true
+            } label: {
                 HStack(spacing: c.gap) {
                     WebIconView(.messagesSquare, size: 15)
                     Text("Conversations").webText(c.text).lineLimit(1)
@@ -907,10 +940,13 @@ struct PhoneAiDrawer: View {
     @Bindable var history: FoliHistoryModel
     let host: PhoneAiHost
     let menus: PhoneMenus
+    /// The status bar's height (the drawer is drawn under it, on the screen's whole height).
+    var top: CGFloat = 0
     let open: (String?) -> Void
     let delete: (ChatConversationRow) -> Void
     let close: () -> Void
     @Environment(\.colorScheme) private var scheme
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var renaming: ChatConversationRow?
     @State private var name = ""
     @State private var rowFrames: [String: CGRect] = [:]
@@ -970,11 +1006,11 @@ struct PhoneAiDrawer: View {
                     .scrollDismissesKeyboard(.interactively)
                 }
                 .padding(.horizontal, 12)
-                .padding(.top, geo.safeAreaInsets.top + 8)
+                .padding(.top, max(geo.safeAreaInsets.top, top) + 8)
                 .frame(width: min(geo.size.width * 0.86, 320))
                 .frame(maxHeight: .infinity, alignment: .top)
                 .background(look.color("color-surface-raised").ignoresSafeArea())
-                .transition(.move(edge: .leading))
+                .transition(reduceMotion ? .opacity : .move(edge: .leading))
                 Color.black.opacity(0.32)
                     .contentShape(Rectangle())
                     .onTapGesture(perform: close)

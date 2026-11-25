@@ -122,7 +122,9 @@ public struct PhoneFrameView<Screen: View>: View {
             set: { s in
                 switch s {
                 case .search: if !model.searching { model.openSearch() }
-                case .ai: actions.openAI()
+                // (On the next turn: set inside the tab bar's own selection callback, the sheet's state change
+                // wasn't drawn until the next touch, so Foli AI's sheet came up only when something else was tapped.)
+                case .ai: Task { @MainActor in actions.openAI() }
                 case .tab(let t): model.pick(t)
                 }
             }

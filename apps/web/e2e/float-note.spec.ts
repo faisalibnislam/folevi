@@ -7,6 +7,7 @@
 //     npx playwright test e2e/float-note.spec.ts --project local --project mac-webkit --workers=1
 import type { Page } from "@playwright/test";
 import { expect, test } from "./fixtures/localShell";
+import { openTool } from "./helpers";
 
 declare global {
   interface Window {
@@ -58,6 +59,29 @@ async function newNote(page: Page, title: string, body: string): Promise<string>
   return /\/d\/([0-9A-Z]{26})/.exec(page.url())![1]!;
 }
 
+/** The note's colour runs edge to edge in a floating window (the owner, 2026-11-26): the page touches the window's
+ *  sides and foot right under the bar, and the bar wears the note's colour. */
+async function expectEdgeToEdge(float: Page) {
+  const fit = await float.evaluate(() => {
+    const r = (s: string) => document.querySelector(s)!.getBoundingClientRect();
+    const sheet = r(".fb-sheet");
+    const barEl = document.querySelector("[data-float-bar]")!;
+    return {
+      left: sheet.left,
+      right: window.innerWidth - sheet.right,
+      top: sheet.top - barEl.getBoundingClientRect().bottom,
+      bottom: window.innerHeight - sheet.bottom,
+      // The sheet's colour, or the page's under a see-through sheet (a plain note).
+      sheetColour: [".fb-sheet", "#doc-scroll"]
+        .map((s) => getComputedStyle(document.querySelector(s)!).backgroundColor)
+        .find((c) => c !== "transparent" && c !== "rgba(0, 0, 0, 0)"),
+      barColour: getComputedStyle(barEl).backgroundColor,
+    };
+  });
+  expect(fit).toMatchObject({ left: 0, right: 0, top: 0, bottom: 0 });
+  expect(fit.barColour).toBe(fit.sheetColour);
+}
+
 const calls = (page: Page, method: string) => page.evaluate((m) => (window.__floatCalls ?? []).filter((c) => c.method === m).map((c) => c.value), method);
 
 test.describe("Float this note", { tag: ["@local", "@mac"] }, () => {
@@ -107,6 +131,9 @@ test.describe("Float this note", { tag: ["@local", "@mac"] }, () => {
     // (After the note's entry animation.)
     await float.waitForTimeout(800);
     if (process.env.FLOAT_SHOTS) await float.screenshot({ path: `${process.env.FLOAT_SHOTS}/float-${test.info().project.name}.png` });
+    // The note's colour runs edge to edge (the owner, 2026-11-26): the page touches the window's sides and foot
+    // right under the bar, and the bar wears the note's colour.
+    await expectEdgeToEdge(float);
 
     // Edited in the floating window, the main window has it.
     await float.locator(".ProseMirror").click();
@@ -126,5 +153,23 @@ test.describe("Float this note", { tag: ["@local", "@mac"] }, () => {
     await expect.poll(() => calls(float, "closeWindow")).toHaveLength(1);
     // The floating window keeps its note.
     expect(new URL(float.url()).pathname).toBe(`/float/${id}`);
+  });
+
+  test("a note with a theme floats in its own colour, edge to edge", async ({ page, context }) => {
+    test.setTimeout(120_000);
+    const id = await newNote(page, "Hello Floating note", "");
+    await openTool(page, "Style");
+    await page.getByRole("group", { name: "Note Theme" }).getByRole("button").first().click();
+    await page.getByRole("radio", { name: "Note theme: Irises" }).click();
+    await page.getByRole("dialog", { name: "Note theme" }).getByRole("button", { name: "Done" }).click();
+    const float = await context.newPage();
+    await float.addInitScript(desktopWithFloat);
+    await float.setViewportSize({ width: 380, height: 480 });
+    await float.goto(`/float/${id}`);
+    await expect(float.locator("[data-float-bar]").getByRole("heading", { name: "Hello Floating note" })).toBeVisible({ timeout: 60_000 });
+    await expect(float.locator("[data-float-bar]")).toHaveAttribute("data-tinted", "");
+    await float.waitForTimeout(800);
+    if (process.env.FLOAT_SHOTS) await float.screenshot({ path: `${process.env.FLOAT_SHOTS}/float-irises-${test.info().project.name}.png` });
+    await expectEdgeToEdge(float);
   });
 });

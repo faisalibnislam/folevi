@@ -30,7 +30,7 @@ export class PanelBoundary extends Component<{ name: string; children: (attempt:
     return (
       <div role="status" data-panel-unloaded="" className="flex flex-col items-start gap-3 px-1 py-2 text-subheadline text-muted">
         <p>{this.props.name} couldn’t load. Check your connection, then try again.</p>
-        <Button size="sm" onClick={this.retry}>
+        <Button onClick={this.retry}>
           Try again
         </Button>
       </div>

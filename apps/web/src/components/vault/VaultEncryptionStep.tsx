@@ -91,12 +91,12 @@ export function VaultEncryptionStep({ onStart, onDone }: { onStart: () => void; 
     );
   return (
     <div className="flex flex-col gap-2">
-      <Button variant="primary" className="h-11 w-full justify-center text-body" onClick={() => void approve()}>
+      <Button variant="primary" className="h-control w-full justify-center text-body" onClick={() => void approve()}>
         <Smartphone size={15} aria-hidden /> {u.approve}
       </Button>
       {app ? null : (
         <Button
-          className="h-11 w-full justify-center text-body"
+          className="h-control w-full justify-center text-body"
           onClick={async () => {
             setNote(null);
             onStart();
@@ -108,10 +108,10 @@ export function VaultEncryptionStep({ onStart, onDone }: { onStart: () => void; 
           <KeyRound size={15} aria-hidden /> {u.passkey}
         </Button>
       )}
-      <Button className="h-11 w-full justify-center text-body" onClick={() => (onStart(), setView("passphrase"))}>
+      <Button className="h-control w-full justify-center text-body" onClick={() => (onStart(), setView("passphrase"))}>
         <LockKeyhole size={15} aria-hidden /> {u.passphrase}
       </Button>
-      <Button className="h-11 w-full justify-center text-body" onClick={() => (onStart(), setView("recovery"))}>
+      <Button className="h-control w-full justify-center text-body" onClick={() => (onStart(), setView("recovery"))}>
         <ScrollText size={15} aria-hidden /> {u.recoveryKey}
       </Button>
       {note ? (
@@ -141,7 +141,6 @@ export function VaultTouchIdOffer() {
       <p className="mt-0.5">{v.touchIdBody}</p>
       <div className="mt-3 flex gap-2">
         <Button
-          size="sm"
           variant="primary"
           disabled={busy}
           onClick={async () => {
@@ -158,7 +157,7 @@ export function VaultTouchIdOffer() {
         >
           {v.touchIdOn}
         </Button>
-        <Button size="sm" variant="quiet" onClick={() => setShow(false)}>
+        <Button variant="quiet" onClick={() => setShow(false)}>
           {v.notNow}
         </Button>
       </div>

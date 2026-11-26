@@ -96,7 +96,7 @@ export function SupportForm({
   };
 
   const site = variant === "site";
-  const input = `ui-input w-full rounded-chip px-3 text-ink placeholder:text-faint aria-[invalid=true]:shadow-[0_0_0_1.5px_var(--color-destructive)] ${site ? "h-11 text-body" : "h-9 text-subheadline"}`;
+  const input = `ui-input w-full px-3 text-ink placeholder:text-faint aria-[invalid=true]:shadow-[0_0_0_1.5px_var(--color-destructive)] ${site ? "h-control text-body" : "h-control text-callout"}`;
   const label = site ? "mb-1.5 block text-body font-medium text-(--color-heading)" : "mb-1 block text-subheadline font-medium text-heading";
   const hint = site ? "mt-1.5 text-subheadline text-muted" : "mt-1 text-subheadline text-muted";
   const errorCls = site ? "mt-1.5 text-subheadline text-danger" : "mt-1 text-subheadline text-danger";

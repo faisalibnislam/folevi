@@ -60,7 +60,7 @@ export function BuyCreditsDialog({ open, onClose, target, name }: { open: boolea
                 <p className="text-body font-semibold text-heading">{pack.credits.toLocaleString()} AI credits</p>
                 <p className="text-subheadline text-muted">{formatPrice(pack.priceCents)}, one time</p>
               </div>
-              <Button variant={id === "credits_1000" ? "primary" : "secondary"} size="sm" disabled={!canBuy || busy !== null} aria-busy={busy === id || undefined} aria-label={`Buy ${pack.credits.toLocaleString()} AI credits for ${formatPrice(pack.priceCents)}${test ? " (test)" : ""}`} onClick={() => void purchase(id)}>
+              <Button variant={id === "credits_1000" ? "primary" : "secondary"} disabled={!canBuy || busy !== null} aria-busy={busy === id || undefined} aria-label={`Buy ${pack.credits.toLocaleString()} AI credits for ${formatPrice(pack.priceCents)}${test ? " (test)" : ""}`} onClick={() => void purchase(id)}>
                 {busy === id ? (test ? "Adding…" : "Opening checkout…") : `Buy${test ? " (test)" : ""}`}
               </Button>
             </li>

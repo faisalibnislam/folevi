@@ -107,7 +107,6 @@ function RecheckForm({ options, onConfirmed }: { options: Recheck[]; onConfirmed
         {options.map((k) => (
           <Button
             key={k}
-            size="sm"
             aria-pressed={kind === k}
             className={kind === k ? "ring-2 ring-heading" : ""}
             onClick={() => {
@@ -146,7 +145,7 @@ function RecheckForm({ options, onConfirmed }: { options: Recheck[]; onConfirmed
               }}
               aria-invalid={error ? true : undefined}
               aria-describedby={error ? `${uid}-error` : undefined}
-              className={`ui-input h-9 min-w-0 flex-1 rounded-control px-3 text-callout pointer-coarse:h-11 ${kind === "recoveryKey" ? "font-mono uppercase" : ""}`}
+              className={`ui-input h-control min-w-0 flex-1 px-3 text-callout ${kind === "recoveryKey" ? "font-mono uppercase" : ""}`}
             />
             <Button type="submit" disabled={!value.trim() || busy} aria-busy={busy || undefined}>
               {busy ? u.unlocking : u.unlock}

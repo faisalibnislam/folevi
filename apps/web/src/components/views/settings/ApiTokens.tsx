@@ -152,11 +152,10 @@ export function ApiTokensCard() {
                 </div>
                 {confirming === t.id ? (
                   <div className="flex flex-none items-center gap-2">
-                    <Button size="sm" onClick={() => setConfirming(null)}>
+                    <Button onClick={() => setConfirming(null)}>
                       Keep
                     </Button>
                     <Button
-                      size="sm"
                       variant="primary"
                       className="bg-danger"
                       onClick={() => revokeToken(t)}
@@ -165,7 +164,7 @@ export function ApiTokensCard() {
                     </Button>
                   </div>
                 ) : (
-                  <Button size="sm" variant="quiet" className="flex-none text-danger" onClick={() => setConfirming(t.id)}>
+                  <Button variant="quiet" className="flex-none text-danger" onClick={() => setConfirming(t.id)}>
                     Revoke…
                   </Button>
                 )}
@@ -175,7 +174,7 @@ export function ApiTokensCard() {
         </ul>
       )}
       <div className="mt-4">
-        <Button size="sm" onClick={() => setCreating(true)} disabled={tokens === undefined || tokens.length >= MAX_TOKENS} title={tokens && tokens.length >= MAX_TOKENS ? `You can have up to ${MAX_TOKENS} tokens.` : undefined}>
+        <Button onClick={() => setCreating(true)} disabled={tokens === undefined || tokens.length >= MAX_TOKENS} title={tokens && tokens.length >= MAX_TOKENS ? `You can have up to ${MAX_TOKENS} tokens.` : undefined}>
           <Plus size={14} aria-hidden /> New token
         </Button>
       </div>
@@ -252,7 +251,7 @@ function NewTokenDialog({ onClose }: { onClose: () => void }) {
       <label htmlFor="token-name" className="ui-caps mb-1.5 block">
         Name
       </label>
-      <input id="token-name" autoFocus value={name} onChange={(e) => setName(e.target.value)} maxLength={60} placeholder="Zapier, my backup script…" className="h-9 w-full ui-input rounded-chip px-3 text-callout outline-none" />
+      <input id="token-name" autoFocus value={name} onChange={(e) => setName(e.target.value)} maxLength={60} placeholder="Zapier, my backup script…" className="h-control w-full ui-input px-3 text-callout outline-none" />
       <fieldset className="mt-5">
         <legend className="ui-caps mb-2">What it can do</legend>
         <div className="space-y-2">
@@ -288,7 +287,7 @@ function NewTokenDialog({ onClose }: { onClose: () => void }) {
       <label id="token-expiry-label" className="ui-caps mt-5 mb-1.5 block">
         Expires
       </label>
-      <Select value={expiry} onChange={(e) => setExpiry(e.target.value)} aria-labelledby="token-expiry-label" className="h-9 w-full ui-input rounded-chip px-3">
+      <Select value={expiry} onChange={(e) => setExpiry(e.target.value)} aria-labelledby="token-expiry-label" className="h-control w-full ui-input px-3">
         {EXPIRY.map((o) => (
           <option key={o.value} value={o.value}>
             {o.label}

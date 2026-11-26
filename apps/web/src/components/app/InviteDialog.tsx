@@ -69,9 +69,9 @@ export function InviteForm({ workspace, onSent }: { workspace: InviteWorkspace; 
           aria-invalid={error ? true : undefined}
           aria-describedby={error ? `${uid}-error` : undefined}
           placeholder="name@example.com"
-          className="h-9 min-w-0 flex-1 ui-input rounded-chip px-3 text-callout"
+          className="h-control min-w-0 flex-1 ui-input px-3 text-callout"
         />
-        <Select aria-label="Role" value={offer} onChange={(e) => setOffer(e.target.value as Offer)} className="h-9 ui-input rounded-chip px-3 text-callout">
+        <Select aria-label="Role" value={offer} onChange={(e) => setOffer(e.target.value as Offer)} className="h-control ui-input px-3 text-callout">
           <option value="member:edit">Member</option>
           <option value="member:comment">Member · can comment</option>
           <option value="member:view">Member · view only</option>

@@ -78,7 +78,7 @@ export function ChangesView() {
         ) : null}
         {notes.length > 1 ? (
           <div className="flex justify-end">
-            <Button size="sm" onClick={() => void markSeen({ documentIds: notes.map((n) => n.id) }).catch((e) => toast.show(errorMessage(e), { tone: "error" }))}>
+            <Button onClick={() => void markSeen({ documentIds: notes.map((n) => n.id) }).catch((e) => toast.show(errorMessage(e), { tone: "error" }))}>
               <Check size={14} aria-hidden /> Mark all as seen
             </Button>
           </div>
@@ -160,11 +160,11 @@ function ProposalCard({ proposal }: { proposal: Proposal }) {
         </div>
         <div className="flex flex-wrap items-center gap-1.5">
           {!shown ? (
-            <Button size="sm" variant="primary" disabled={busy} onClick={() => void run("accept")}>
+            <Button variant="primary" disabled={busy} onClick={() => void run("accept")}>
               <Check size={14} aria-hidden /> Accept
             </Button>
           ) : null}
-          <Button size="sm" variant="ghost" disabled={busy} onClick={() => void run("reject")}>
+          <Button variant="ghost" disabled={busy} onClick={() => void run("reject")}>
             <X size={14} aria-hidden /> Reject
           </Button>
         </div>
@@ -261,14 +261,14 @@ function ChangeCard({ note, people }: { note: NoteChanges; people: People }) {
           <p className="mt-0.5 text-footnote text-muted">{changeCounts(note)}</p>
         </div>
         <div className="flex flex-wrap items-center gap-1.5">
-          <Button size="sm" variant="ghost" onClick={() => navigate(`/d/${note.id}`)}>
+          <Button variant="ghost" onClick={() => navigate(`/d/${note.id}`)}>
             <ExternalLink size={14} aria-hidden /> Open note
           </Button>
-          <Button size="sm" variant="ghost" onClick={() => void markSeen({ documentIds: [note.id] }).catch((e) => toast.show(errorMessage(e), { tone: "error" }))}>
+          <Button variant="ghost" onClick={() => void markSeen({ documentIds: [note.id] }).catch((e) => toast.show(errorMessage(e), { tone: "error" }))}>
             <Check size={14} aria-hidden /> Mark as seen
           </Button>
           {detail?.canUndo ? (
-            <Button size="sm" variant="ghost" disabled={busy} onClick={() => void doUndo()}>
+            <Button variant="ghost" disabled={busy} onClick={() => void doUndo()}>
               <RotateCcw size={14} aria-hidden /> Undo this change
             </Button>
           ) : null}

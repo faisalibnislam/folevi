@@ -3,8 +3,9 @@ import reactHooks from "eslint-plugin-react-hooks";
 import nextPlugin from "@next/eslint-plugin-next";
 import tooltip from "./eslint-rules/tooltip.js";
 import hover from "./eslint-rules/hover.js";
+import controlScale from "./eslint-rules/control-scale.js";
 
-const folevi = { rules: { ...tooltip.rules, ...hover.rules } };
+const folevi = { rules: { ...tooltip.rules, ...hover.rules, ...controlScale.rules } };
 
 export default [
   ...shared,
@@ -17,6 +18,8 @@ export default [
       "folevi/icon-button-tooltip": "warn",
       // Every button shows a visible hover (the owner's rule, 6 November 2026; eslint-rules/hover.js).
       "folevi/button-hover": "warn",
+      // Every control is sized from the control scale (the owner, 2026-11-26; eslint-rules/control-scale.js).
+      "folevi/control-scale": "error",
       "react-hooks/rules-of-hooks": "error",
       "react-hooks/exhaustive-deps": "warn",
       ...nextPlugin.configs.recommended.rules,

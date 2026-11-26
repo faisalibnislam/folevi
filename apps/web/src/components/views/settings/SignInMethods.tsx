@@ -212,11 +212,11 @@ export function SignInMethodsCard() {
                   <span className="block text-footnote text-muted">{facts(p)}</span>
                 </span>
                 {linked(p) ? (
-                  <Button size="sm" className="min-h-11 sm:min-h-0" aria-label={`Remove ${PROVIDER_NAMES[p]}`} disabled={busy !== null} onClick={() => setRemoving(p)}>
+                  <Button aria-label={`Remove ${PROVIDER_NAMES[p]}`} disabled={busy !== null} onClick={() => setRemoving(p)}>
                     Remove
                   </Button>
                 ) : inApp ? null : (
-                  <Button size="sm" className="min-h-11 sm:min-h-0" aria-label={`Link ${PROVIDER_NAMES[p]}`} disabled={busy !== null} onClick={() => void link(p)}>
+                  <Button aria-label={`Link ${PROVIDER_NAMES[p]}`} disabled={busy !== null} onClick={() => void link(p)}>
                     Link
                   </Button>
                 )}

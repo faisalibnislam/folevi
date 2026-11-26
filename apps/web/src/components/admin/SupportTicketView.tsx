@@ -114,15 +114,15 @@ export function SupportTicketView({ number }: { number: number }) {
         }
         actions={
           <>
-            <Button size="sm" variant="quiet" onClick={() => void refresh()} disabled={loading} aria-label="Reload ticket (writes an audit entry)">
+            <Button variant="quiet" onClick={() => void refresh()} disabled={loading} aria-label="Reload ticket (writes an audit entry)">
               <RotateCw size={14} aria-hidden className={loading ? "animate-spin" : ""} /> Reload
             </Button>
             {ticket.assignedToMe ? (
-              <Button size="sm" disabled={busy || !canReply} onClick={async () => void run(async () => assign({ number, to: "nobody", ...(await requestMeta()) }), "Unassigned")}>
+              <Button disabled={busy || !canReply} onClick={async () => void run(async () => assign({ number, to: "nobody", ...(await requestMeta()) }), "Unassigned")}>
                 <UserMinus size={14} aria-hidden /> Unassign
               </Button>
             ) : (
-              <Button size="sm" disabled={busy || !canReply} onClick={async () => void run(async () => assign({ number, to: "me", ...(await requestMeta()) }), "Assigned to you")}>
+              <Button disabled={busy || !canReply} onClick={async () => void run(async () => assign({ number, to: "me", ...(await requestMeta()) }), "Assigned to you")}>
                 <UserCheck size={14} aria-hidden /> Assign to me
               </Button>
             )}
@@ -222,7 +222,7 @@ export function SupportTicketView({ number }: { number: number }) {
                   aria-invalid={textError ? true : undefined}
                   aria-describedby={`${uid}-hint${textError ? ` ${uid}-error` : ""}`}
                   placeholder={mode === "reply" ? `Write to ${ticket.name}…` : "Only staff can see notes."}
-                  className="ui-input w-full resize-y rounded-chip px-3 py-2.5 text-body leading-relaxed text-ink placeholder:text-faint aria-[invalid=true]:shadow-[0_0_0_1.5px_var(--color-destructive)]"
+                  className="ui-input w-full resize-y px-3 py-2.5 text-body leading-relaxed text-ink placeholder:text-faint aria-[invalid=true]:shadow-[0_0_0_1.5px_var(--color-destructive)]"
                 />
                 <p id={`${uid}-hint`} className="mt-1 text-subheadline text-muted">
                   {mode === "reply"

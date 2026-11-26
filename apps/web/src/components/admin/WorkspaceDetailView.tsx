@@ -86,11 +86,10 @@ export function WorkspaceDetailView({ id }: { id: string }) {
         }
         actions={
           <>
-            <Button size="sm" variant="quiet" onClick={() => void refresh()} disabled={loading} aria-label="Reload workspace (writes an audit entry)">
+            <Button variant="quiet" onClick={() => void refresh()} disabled={loading} aria-label="Reload workspace (writes an audit entry)">
               <RotateCw size={14} aria-hidden className={loading ? "animate-spin" : ""} /> Reload
             </Button>
             <Button
-              size="sm"
               variant="primary"
               disabled={Boolean(planBlocked)}
               title={planBlocked ?? undefined}
@@ -116,11 +115,11 @@ export function WorkspaceDetailView({ id }: { id: string }) {
       ) : null}
 
       <section aria-label="Workspace actions" className="flex flex-wrap items-center gap-2 ui-card p-3">
-        <Button size="sm" variant={suspended ? "secondary" : "danger"} onClick={() => setAction("suspend")} disabled={!canSuspend || w.status === "deleting"}>
+        <Button variant={suspended ? "secondary" : "danger"} onClick={() => setAction("suspend")} disabled={!canSuspend || w.status === "deleting"}>
           {suspended ? <Undo2 size={14} aria-hidden /> : <Ban size={14} aria-hidden />}
           {suspended ? "Unsuspend…" : "Suspend…"}
         </Button>
-        <Button size="sm" onClick={() => setAction("quota")} disabled={!canQuota}>
+        <Button onClick={() => setAction("quota")} disabled={!canQuota}>
           <Gauge size={14} aria-hidden /> Set quota…
         </Button>
         {!canQuota ? <span className="text-footnote text-muted">Suspending and quotas: {rolesFor("workspaces.quota")}</span> : null}

@@ -54,7 +54,7 @@ function PersonSearch({ vaultId, value, onChange }: { vaultId: string; value: { 
   };
   if (value) {
     return (
-      <span className="inline-flex h-9 items-center gap-1.5 rounded-chip ui-input pl-3 pr-1 text-callout">
+      <span className="inline-flex h-control items-center gap-1.5 ui-input pl-3 pr-0 text-callout">
         <span className="max-w-48 truncate text-ink">{value.name}</span>
         <button type="button" aria-label={`Show everyone, not just ${value.name}`} title="Clear" onClick={() => onChange(null)} className="grid h-6 w-6 place-items-center rounded-tiny text-muted hover:bg-[var(--glass-hover)] hover:text-heading">
           <X size={13} aria-hidden />
@@ -90,7 +90,7 @@ function PersonSearch({ vaultId, value, onChange }: { vaultId: string; value: { 
             pick(matches[active]);
           } else if (e.key === "Escape") setOpen(false);
         }}
-        className="h-9 w-full ui-input rounded-chip pl-8 pr-3 text-callout"
+        className="h-control w-full ui-input pl-9 pr-3 text-callout"
       />
       {open && matches.length ? (
         <ul id={list} role="listbox" aria-label="People" className="absolute left-0 right-0 top-full z-20 mt-1 overflow-hidden rounded-control ui-card py-1 shadow-lg">
@@ -154,7 +154,7 @@ export function Activity({ info }: { info: Info }) {
   return (
     <section aria-label="Activity">
       <div className="mb-3 flex flex-wrap items-center gap-2">
-        <Select aria-label="What" value={event} onChange={(e) => setEvent(e.target.value)} className="h-9 ui-input rounded-chip px-3 text-callout">
+        <Select aria-label="What" value={event} onChange={(e) => setEvent(e.target.value)} className="h-control ui-input px-3 text-callout">
           <option value="">Everything</option>
           <option value="vault.">Unlocking and locking</option>
           <option value="item.">Items</option>
@@ -232,7 +232,7 @@ export function People({ info }: { info: Info }) {
       ) : null}
       {data?.canAdd ? (
         <div className="flex flex-wrap items-center gap-2">
-          <Select aria-label="Workspace member" value={pick} onChange={(e) => setPick(e.target.value)} className="h-9 min-w-[14rem] ui-input rounded-chip px-3 text-callout">
+          <Select aria-label="Workspace member" value={pick} onChange={(e) => setPick(e.target.value)} className="h-control min-w-[14rem] ui-input px-3 text-callout">
             <option value="">Choose a workspace member</option>
             {candidates.map((m) => (
               <option key={m.profileId} value={m.profileId}>
@@ -262,7 +262,7 @@ export function People({ info }: { info: Info }) {
             {p.role === "owner" ? (
               <span className="text-footnote text-muted">Owner</span>
             ) : data?.canNameCustodians ? (
-              <Select aria-label={`Role for ${p.name}`} value={p.role} onChange={(e) => run(setRole({ vaultId: info.id, profileId: p.profileId, role: e.target.value as "custodian" | "member" }), "Role changed")} className="h-8 ui-input rounded-chip px-2.5 text-footnote">
+              <Select aria-label={`Role for ${p.name}`} value={p.role} onChange={(e) => run(setRole({ vaultId: info.id, profileId: p.profileId, role: e.target.value as "custodian" | "member" }), "Role changed")} className="h-control ui-input px-2.5 text-callout">
                 <option value="custodian">Custodian</option>
                 <option value="member">Member</option>
               </Select>
@@ -270,7 +270,7 @@ export function People({ info }: { info: Info }) {
               <span className="text-footnote text-muted">{p.role === "custodian" ? "Custodian" : "Member"}</span>
             )}
             {p.role !== "owner" && (data?.canAdd || p.isYou) ? (
-              <Button size="sm" variant="quiet" className="text-danger" onClick={() => run(remove({ vaultId: info.id, profileId: p.profileId }), p.isYou ? "You left the Vault" : "Removed. The Vault's key changes when a custodian next opens it.")}>
+              <Button variant="quiet" className="text-danger" onClick={() => run(remove({ vaultId: info.id, profileId: p.profileId }), p.isYou ? "You left the Vault" : "Removed. The Vault's key changes when a custodian next opens it.")}>
                 {p.isYou ? "Leave" : "Remove"}
               </Button>
             ) : null}
@@ -303,14 +303,14 @@ export function VaultSettings({ info }: { info: Info }) {
             It locks itself after {info.autoLockMinutes} idle {info.autoLockMinutes === 1 ? "minute" : "minutes"}. Everything in it is encrypted on this device before it leaves it.
           </span>
         </span>
-        <Button variant="primary" size="sm" className="flex-none" onClick={() => void vaultSessions().lock(info.id, "manual")}>
+        <Button variant="primary" className="flex-none" onClick={() => void vaultSessions().lock(info.id, "manual")}>
           <Lock size={13} aria-hidden /> Lock now
         </Button>
       </div>
       {manage ? (
         <SettingsGroup title="Locking">
           <SettingsRow icon={Timer} name="Lock after" hint="How long the Vault stays open on a device when nobody is using it.">
-            <Select aria-label="Lock after" value={String(info.autoLockMinutes)} onChange={(e) => run(update({ vaultId: info.id, autoLockMinutes: Number(e.target.value), client: vaultSessions().info(info.id) }), "Saved")} className="h-8 ui-input rounded-small px-3">
+            <Select aria-label="Lock after" value={String(info.autoLockMinutes)} onChange={(e) => run(update({ vaultId: info.id, autoLockMinutes: Number(e.target.value), client: vaultSessions().info(info.id) }), "Saved")} className="h-control ui-input px-3">
               {[1, 2, 5, 10, 15, 30].map((m) => (
                 <option key={m} value={m}>
                   {m} {m === 1 ? "minute" : "minutes"}
@@ -322,12 +322,12 @@ export function VaultSettings({ info }: { info: Info }) {
       ) : null}
       <SettingsGroup title="Passcode and recovery">
         <SettingsRow icon={KeyRound} name="Passcode" hint="What you type to open the Vault.">
-          <Button size="sm" onClick={() => setChanging(true)}>
+          <Button onClick={() => setChanging(true)}>
             Change passcode…
           </Button>
         </SettingsRow>
         <SettingsRow icon={LifeBuoy} name="Recovery key" hint="Opens the Vault if you forget the passcode. A new key replaces the old one.">
-          <Button size="sm" onClick={() => void vaultSessions().newRecoveryKey(info.id).catch((e) => toast.show(errorMessage(e), { tone: "error" }))}>
+          <Button onClick={() => void vaultSessions().newRecoveryKey(info.id).catch((e) => toast.show(errorMessage(e), { tone: "error" }))}>
             Make a new key
           </Button>
         </SettingsRow>

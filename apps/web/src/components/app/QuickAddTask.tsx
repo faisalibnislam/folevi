@@ -187,7 +187,7 @@ export function QuickAddForm({ onClose, currentDoc, onAdded, initialDue }: { onC
         maxLength={500}
         aria-invalid={titleError || error ? true : undefined}
         aria-describedby={describedBy}
-        className="h-11 w-full ui-input rounded-chip px-3 text-body outline-none"
+        className="h-control w-full ui-input px-3 text-body outline-none"
       />
       {titleError ? (
         <p id="qa-title-error" role="alert" className="mt-2 text-subheadline text-danger">
@@ -230,7 +230,7 @@ export function QuickAddForm({ onClose, currentDoc, onAdded, initialDue }: { onC
         ) : null}
         <label className="text-subheadline">
           <span className="block text-muted">Priority</span>
-          <Select value={priority} onChange={(e) => setPriority(e.target.value as Priority)} className="mt-1 h-9 ui-input rounded-chip px-3">
+          <Select value={priority} onChange={(e) => setPriority(e.target.value as Priority)} className="mt-1 h-control ui-input px-3">
             <option value="none">None</option>
             <option value="low">Low</option>
             <option value="medium">Medium</option>
@@ -326,7 +326,7 @@ export function DocumentPicker({ scope, value, onChange, label = "Add to", exclu
           }}
           onKeyDown={onKey}
           placeholder={value ? "Search another page…" : "Inbox, or search a page…"}
-          className="h-9 min-w-0 flex-1 ui-input rounded-chip px-3"
+          className="h-control min-w-0 flex-1 ui-input px-3"
         />
       </div>
       {open ? (

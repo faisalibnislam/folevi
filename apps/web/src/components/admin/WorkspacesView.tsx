@@ -111,7 +111,6 @@ export function WorkspacesView() {
                       <td className={`${tdMid} text-right`}>
                         {w.status === "deleting" ? null : (
                           <Button
-                            size="sm"
                             title={w.polarBilled ? "Billed through Polar. Change it in Polar." : undefined}
                             onClick={() => setPlanFor({ workspaceId: w.id, name: w.name, planId, endsAt: w.planEndsAt, polarBilled: w.polarBilled })}
                           >

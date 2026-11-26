@@ -196,6 +196,51 @@ those live in the `noteThemes` table. `convex/lib/themes.ts` holds the shared ru
 Page accents: the “Accent” page accent renders **ember**; moss, marigold, plum and coral render their
 own color. A cover's own color (`cover.value`) wins over the page accent.
 
+## Controls
+
+One scale for every control: fields, dropdowns, buttons, icon buttons and segmented switches (the owner,
+2026-11-26: "use consistent rules/size/space for all UI elements"). The reference is All notes' toolbar (Filter
+notes, Sort, the three-way view switch): every control that sits in a row is its height, on the web and in
+Folevi for Mac, Windows and Linux; the touch apps scale it to 44 pt. The tokens live in
+`packages/design-tokens/src/tokens.json` (`control`), become `--control-*` variables (touch values under
+`data-iphone` / `data-native` and any coarse pointer) and `FoleviTokens.Control` for the native apps.
+
+| Role | Desktop | Touch | Class / variable |
+| --- | --- | --- | --- |
+| Control height (a toolbar's fields, dropdowns, buttons, icon buttons, segmented tracks, a dialog's footer, a form's fields) | 36 | 44 | `h-control`, `size-control`, `--control-height` |
+| Compact height (a segment inside its track, controls inside menus, popovers, cards and dense chrome) | 28 | 36 | `h-control-sm`, `size-control-sm`, `--control-compact` |
+| Padding (x), text button and field | 12 | 16 | `px-3` |
+| Padding (x), compact | 10 | 12 | `px-2.5` |
+| Field text beside a leading icon | 36 | 44 | `pl-9` (icon at 12) |
+| Between controls | 8 | 8 | `gap-2`, `--control-gap` |
+| Segmented track inset | 4 | 4 | `.ui-seg` (10 = 6 + 4) |
+| Icon in a control | 16 | 20 | `--control-icon` (set by CSS, whatever the icon's own size) |
+| Icon in a compact control, a dropdown's chevron | 14 | 18 | `--control-compact-icon` |
+| Icon stroke | 1.5 px | 1.75 px | `--control-icon-stroke` (non-scaling, so every size draws the same line) |
+| Corner | 10 | 10 | `rounded-control` (a segment 6, `rounded-chip`) |
+| Edge | 1 px `line` | 1 px `line` | `--control-ring`: drawn inside the box, so a control is exactly its height |
+| Label weight (buttons, segments) | 550 | 550 | `--control-label-weight` |
+| Value weight (field text, a dropdown's choice) | 400 | 400 | `--control-value-weight` |
+
+- **Which control.** A toolbar has one filled button, its main action (New folder, New template, Add task,
+  Upload); everything else is a field (Filter), a quiet dropdown (Sort), a segmented switch (the view) or a
+  secondary button. Toolbars carry `data-toolbar` (ListPageHeader's title row too).
+- **One edge.** Fields, secondary buttons, segmented tracks and cards (`.ui-card`) share one edge: `--control-line`
+  (`--color-line`; `line-strong` with Increase Contrast), 1 px, inside the box. Primary, quiet and danger buttons
+  have none. Focus replaces the edge with the focus ring.
+- **Components.** `Button` sizes `md` (default, `h-control`), `compact`, `icon` and `icon-compact`;
+  `ListPageHeader`'s `ROW_CONTROL`, `ROW_SEG`, `ROW_ICON_BUTTON`, `RowSort` and `FilterField`; `.ui-seg` sizes
+  its track and segments from the scale. A text area (or a composer that grows) marks itself `ui-grow` and keeps
+  its own height and padding.
+- **Mac, Windows and Linux** draw the same sizes (the Mac look's 28 pt buttons are gone). No control sits under
+  the Mac's window buttons (`.ui-traffic-space`) or Windows' caption buttons (`--win-caption-inset`, 40 px tall).
+- **Checks.** ESLint `folevi/control-scale` (`apps/web/eslint-rules/control-scale.js`) fails on a control's height
+  or padding off the scale (`h-8`, `h-[34px]`, `py-2`, `px-3.5`, `w-8 h-8`) in any class string with `ui-btn`,
+  `ui-input`, `ui-seg` or `ui-control`, and in a `<Button>`'s className. `apps/web/e2e/control-scale.spec.ts`
+  measures every toolbar's controls in Chromium and WebKit, in the web, Mac and Windows looks, light and dark, a
+  dialog's footer, the touch layout's 44 pt and the window-button corners, and fails on any height, corner, edge,
+  weight or icon off the scale.
+
 ## Shape and depth
 
 ### Corners
@@ -404,9 +449,10 @@ the bottom left, ~35% opacity in light, ~50% in dark), fixed behind content. No 
 
 ## Components
 
-- **Buttons**: primary (cocoa gradient pill), secondary (white pill + `control`), ghost (text, hover
-  `accentSoft`), danger (destructive text; destructive-soft hover). Heights 28 (sm) / 34 (md) / 40 (lg).
-- **Icon buttons**: 30px circles/pills, ghost; `aria-label` required; tooltips with shortcuts.
+- **Buttons**: primary (filled), secondary (raised, with the control edge), quiet and ghost (text, hover tint),
+  danger. Heights from the control scale: 36 (`md`, every button in a row), 28 (`compact`); 44 and 36 on touch.
+- **Icon buttons**: square controls (`size-control`, 36; `icon-compact` 28), quiet; `aria-label` required;
+  tooltips with shortcuts.
 - **Segmented control**: sunken pill track, raised thumb that slides (180ms) under the active item. Where it may
   not fit (Tasks' views), whole items wrap to a second row; a label never breaks.
 - **Chips/tags**: pills, 24px, soft fills (`*-soft` + `*-ink`).
@@ -417,7 +463,8 @@ the bottom left, ~35% opacity in light, ~50% in dark), fixed behind content. No 
   and every dialog's buttons in the footer band. A disabled primary button is a sunken fill with faint text.
 - **Slider** (`components/ui/Slider.tsx`, `.ui-slider`): a native range input drawn in Folevi's look (sunken 4px
   track filled to the value in `heading`, a raised 16px thumb, the focus ring), never the browser's own.
-- **Inputs**: radius 6, focus ring 2px `focus` offset 2px.
+- **Inputs**: the control height and corner (36, 10), the control edge, value weight 400; focused, a 1.5px ink
+  edge and a soft halo.
 - **Cards** (documents): `surface`, radius 16, `card` shadow; cover strip uses the page accent; hover
   lifts 1px with a slightly deeper shadow.
 - **Sync status pill**: saved = moss dot, saving/syncing = ember pulsing dot, offline = faint dot,

@@ -162,7 +162,7 @@ export function ShareSheet() {
       <label htmlFor="share-title" className="ui-caps mt-5 mb-1.5 block">
         Title
       </label>
-      <input id="share-title" value={title} onChange={(e) => setTitle(e.target.value)} maxLength={200} placeholder="Untitled" className="h-10 w-full ui-input rounded-chip px-3 text-body outline-none" />
+      <input id="share-title" value={title} onChange={(e) => setTitle(e.target.value)} maxLength={200} placeholder="Untitled" className="h-control w-full ui-input px-3 text-body outline-none" />
       {payload.url || payload.text || files.length ? (
         <div className="mt-4 space-y-2 ui-well rounded-chip p-3 text-subheadline" aria-label="What will be saved">
           {payload.url ? (
@@ -192,7 +192,7 @@ export function ShareSheet() {
       <label id="share-place-label" className="ui-caps mt-5 mb-1.5 block">
         Save to
       </label>
-      <Select value={place} onChange={(e) => setPlace(e.target.value)} aria-labelledby="share-place-label" className="h-10 w-full ui-input rounded-chip px-3 text-callout">
+      <Select value={place} onChange={(e) => setPlace(e.target.value)} aria-labelledby="share-place-label" className="h-control w-full ui-input px-3 text-callout">
         {places.map((p) => (
           <option key={p.id} value={p.id}>
             {`Inbox in ${p.name}`}

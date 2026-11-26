@@ -146,23 +146,23 @@ export function WebhooksCard() {
                   </div>
                 </div>
                 <div className="mt-2 flex flex-wrap items-center gap-2">
-                  <Button size="sm" onClick={() => void sendTest({ webhookId: h.id }).then(() => toast.show("Test event sent"), fail)}>
+                  <Button onClick={() => void sendTest({ webhookId: h.id }).then(() => toast.show("Test event sent"), fail)}>
                     Send test event
                   </Button>
-                  <Button size="sm" variant="quiet" aria-expanded={logOpen === h.id} onClick={() => setLogOpen(logOpen === h.id ? null : h.id)}>
+                  <Button variant="quiet" aria-expanded={logOpen === h.id} onClick={() => setLogOpen(logOpen === h.id ? null : h.id)}>
                     {logOpen === h.id ? "Hide deliveries" : "Recent deliveries"}
                   </Button>
                   {confirming === h.id ? (
                     <>
-                      <Button size="sm" onClick={() => setConfirming(null)}>
+                      <Button onClick={() => setConfirming(null)}>
                         Keep
                       </Button>
-                      <Button size="sm" variant="primary" className="bg-danger" onClick={() => void remove({ webhookId: h.id }).then(() => setConfirming(null), fail)}>
+                      <Button variant="primary" className="bg-danger" onClick={() => void remove({ webhookId: h.id }).then(() => setConfirming(null), fail)}>
                         Delete
                       </Button>
                     </>
                   ) : (
-                    <Button size="sm" variant="quiet" className="text-danger" onClick={() => setConfirming(h.id)}>
+                    <Button variant="quiet" className="text-danger" onClick={() => setConfirming(h.id)}>
                       Delete…
                     </Button>
                   )}
@@ -199,7 +199,7 @@ export function WebhooksCard() {
         </ul>
       )}
       <div className="mt-4">
-        <Button size="sm" onClick={() => setAdding(true)} disabled={hooks === undefined || hooks.length >= MAX_WEBHOOKS} title={hooks && hooks.length >= MAX_WEBHOOKS ? `You can have up to ${MAX_WEBHOOKS} webhooks.` : undefined}>
+        <Button onClick={() => setAdding(true)} disabled={hooks === undefined || hooks.length >= MAX_WEBHOOKS} title={hooks && hooks.length >= MAX_WEBHOOKS ? `You can have up to ${MAX_WEBHOOKS} webhooks.` : undefined}>
           <Plus size={14} aria-hidden /> Add webhook
         </Button>
       </div>
@@ -275,7 +275,7 @@ function NewWebhookDialog({ onClose }: { onClose: () => void }) {
       <label htmlFor="webhook-url" className="ui-caps mb-1.5 block">
         Endpoint address
       </label>
-      <input id="webhook-url" autoFocus type="url" inputMode="url" value={url} onChange={(e) => setUrl(e.target.value)} maxLength={2000} className="h-9 w-full ui-input rounded-chip px-3 font-mono text-callout outline-none" />
+      <input id="webhook-url" autoFocus type="url" inputMode="url" value={url} onChange={(e) => setUrl(e.target.value)} maxLength={2000} className="h-control w-full ui-input px-3 font-mono text-callout outline-none" />
       <fieldset className="mt-5">
         <legend className="ui-caps mb-2">Events</legend>
         <div className="space-y-2">

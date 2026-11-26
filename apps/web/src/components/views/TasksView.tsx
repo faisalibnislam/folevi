@@ -290,7 +290,7 @@ function TaskEditForm({ task, onClose }: { task: TaskRow; onClose: () => void })
             </div>
           ) : null}
           {dueDate ? (
-            <Button size="sm" variant="quiet" className="self-end" onClick={() => { setDueDate(""); setDueTime(""); }}>
+            <Button variant="quiet" className="self-end" onClick={() => { setDueDate(""); setDueTime(""); }}>
               Clear date
             </Button>
           ) : null}
@@ -298,7 +298,7 @@ function TaskEditForm({ task, onClose }: { task: TaskRow; onClose: () => void })
         <div className="flex flex-wrap gap-3">
           <label className="text-subheadline">
             <span className="block text-muted">Priority</span>
-            <Select value={priority} onChange={(e) => setPriority(e.target.value as Priority)} className="mt-1 h-9 ui-input rounded-chip px-3">
+            <Select value={priority} onChange={(e) => setPriority(e.target.value as Priority)} className="mt-1 h-control ui-input px-3">
               {(Object.keys(PRIORITY_LABEL) as Priority[]).map((p) => (
                 <option key={p} value={p}>
                   {PRIORITY_LABEL[p]}
@@ -308,7 +308,7 @@ function TaskEditForm({ task, onClose }: { task: TaskRow; onClose: () => void })
           </label>
           <label className="min-w-0 flex-1 text-subheadline">
             <span className="block text-muted">Assignee</span>
-            <Select value={assigneeId} onChange={(e) => setAssigneeId(e.target.value)} className="mt-1 h-9 w-full ui-input rounded-chip px-3">
+            <Select value={assigneeId} onChange={(e) => setAssigneeId(e.target.value)} className="mt-1 h-control w-full ui-input px-3">
               <option value="">Unassigned</option>
               {people?.map((m) => (
                 <option key={m.profileId} value={m.profileId}>
@@ -397,19 +397,19 @@ export function TasksView({ view }: { view: View }) {
       <div className="mx-auto max-w-3xl px-4 pb-[max(6rem,var(--fab-clearance))] pt-3 sm:px-8">
         {/* The view's count and its actions sit on the list's own column, lined up with the views, the filter and
             the tasks under them at any window width (not at the window's far edges). */}
-        <header className="mb-4 flex min-h-8 flex-wrap items-center gap-2">
+        <header data-toolbar="" className="mb-4 flex min-h-control flex-wrap items-center gap-2">
           <span role="status" className="mr-auto min-w-0 truncate text-subheadline text-muted">
             {`${meta.label}${tasks === undefined ? "" : ` · ${shown.length} ${view === "completed" ? "done" : "open"}`}`}
           </span>
-          <AppLink href="/calendar" title="Calendar" className="ui-btn ui-btn-secondary h-8 gap-1.5 px-3 text-callout pointer-coarse:h-11">
+          <AppLink href="/calendar" title="Calendar" className="ui-btn ui-btn-secondary h-control gap-1.5 px-3 text-callout">
             <CalendarDays size={14} aria-hidden /> <span className="max-md:sr-only">Calendar</span>
           </AppLink>
-          <Button size="sm" variant="primary" title={keys("Add task (⌘⇧A)")} onClick={() => openQuickAdd()}>
+          <Button variant="primary" title={keys("Add task (⌘⇧A)")} onClick={() => openQuickAdd()}>
             <Plus size={14} aria-hidden /> Add task
           </Button>
         </header>
         {/* Whole items wrap to a second row when they don't fit (never a label broken over two lines). */}
-        <nav aria-label="Task views" className="ui-seg ui-well flex-wrap">
+        <nav data-toolbar="" aria-label="Task views" className="ui-seg ui-well flex-wrap">
           {VIEWS.map((v) => {
             const count = counts && v.id !== "completed" ? counts[v.id as keyof typeof counts] : undefined;
             return (
@@ -418,7 +418,7 @@ export function TasksView({ view }: { view: View }) {
                 href={`/tasks/${v.id}`}
                 aria-current={v.id === view ? "page" : undefined}
                 data-active={v.id === view}
-                className="!min-h-8 flex-[1_0_auto] whitespace-nowrap !text-subheadline"
+                className="flex-[1_0_auto] whitespace-nowrap"
               >
                 {v.label}
                 {count ? <span className={`rounded-chip px-1.5 text-caption-2 font-semibold leading-[18px] tabular-nums ${v.id === view ? "bg-heading text-canvas" : "text-[var(--color-ink-faint)]"}`}>{count}</span> : null}
@@ -442,7 +442,7 @@ export function TasksView({ view }: { view: View }) {
                 }
               }}
               placeholder="Filter by task or note"
-              className="h-9 w-full ui-input rounded-chip pl-8 pr-9 text-callout pointer-coarse:h-11"
+              className="h-control w-full ui-input pl-9 pr-9 text-callout"
             />
           </label>
           {filter ? (

@@ -199,7 +199,7 @@ export function BillingSetupView() {
                     </td>
                     <td className={`${td} text-right`}>
                       {p.status === "mismatch" ? (
-                        <Button size="sm" onClick={() => setPending({ kind: "pin", product: p })} aria-label={`Use the Polar product for ${p.name} anyway`}>
+                        <Button onClick={() => setPending({ kind: "pin", product: p })} aria-label={`Use the Polar product for ${p.name} anyway`}>
                           Use this product anyway…
                         </Button>
                       ) : null}

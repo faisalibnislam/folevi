@@ -82,10 +82,10 @@ export function UserDetailView({ id }: { id: string }) {
         description={<span className="break-all">{user.email}</span>}
         actions={
           <>
-            <Button size="sm" variant="quiet" onClick={() => void Promise.all([refresh(), billing.refresh()])} disabled={loading} aria-label="Reload user (writes an audit entry)">
+            <Button variant="quiet" onClick={() => void Promise.all([refresh(), billing.refresh()])} disabled={loading} aria-label="Reload user (writes an audit entry)">
               <RotateCw size={14} aria-hidden className={loading ? "animate-spin" : ""} /> Reload
             </Button>
-            <Button size="sm" variant="primary" onClick={openPlan} disabled={!b || Boolean(planBlocked)} title={planBlocked ?? undefined}>
+            <Button variant="primary" onClick={openPlan} disabled={!b || Boolean(planBlocked)} title={planBlocked ?? undefined}>
               {onFree ? <ArrowUpCircle size={14} aria-hidden /> : <CreditCard size={14} aria-hidden />}
               {onFree ? "Upgrade" : "Change plan"}
             </Button>
@@ -120,7 +120,7 @@ export function UserDetailView({ id }: { id: string }) {
             After several harmful requests in an hour, Foli AI is paused for this person until {formatDateTime(user.aiSafety.pausedUntil)}.
             {admin.role === "super_admin" ? (
               <span className="mt-2 block">
-                <Button size="sm" onClick={() => setAction("liftAiPause")}>
+                <Button onClick={() => setAction("liftAiPause")}>
                   Lift pause…
                 </Button>
               </span>
@@ -346,25 +346,25 @@ function UserActions({ user, role, canManage, selfId, onAction }: { user: UserDe
   return (
     <section aria-label="Account actions" className="ui-card p-3">
       <div className="flex flex-wrap gap-2">
-        <Button size="sm" onClick={() => onAction("suspend")} disabled={!canManage || isSelf || protectedSuper}>
+        <Button onClick={() => onAction("suspend")} disabled={!canManage || isSelf || protectedSuper}>
           {suspended ? <UserCheck size={14} aria-hidden /> : <Ban size={14} aria-hidden />}
           {suspended ? "Unsuspend…" : "Suspend…"}
         </Button>
-        <Button size="sm" onClick={() => onAction("revoke")} disabled={!canManage}>
+        <Button onClick={() => onAction("revoke")} disabled={!canManage}>
           <LogOut size={14} aria-hidden /> Revoke all sessions…
         </Button>
         {!user.emailVerified ? (
-          <Button size="sm" onClick={() => onAction("verify")}>
+          <Button onClick={() => onAction("verify")}>
             <MailCheck size={14} aria-hidden /> Resend verification…
           </Button>
         ) : null}
-        <Button size="sm" onClick={() => onAction("reset")}>
+        <Button onClick={() => onAction("reset")}>
           <KeyRound size={14} aria-hidden /> Send password reset…
         </Button>
-        <Button size="sm" onClick={() => onAction("role")} disabled={!canRole} title={canRole ? undefined : rolesFor("users.setRole")}>
+        <Button onClick={() => onAction("role")} disabled={!canRole} title={canRole ? undefined : rolesFor("users.setRole")}>
           <ShieldCheck size={14} aria-hidden /> Platform role…
         </Button>
-        <Button size="sm" variant="danger" className="ml-auto" onClick={() => onAction("delete")} disabled={!canManage || Boolean(user.platformRole) || user.status === "pending_deletion"}>
+        <Button variant="danger" className="ml-auto" onClick={() => onAction("delete")} disabled={!canManage || Boolean(user.platformRole) || user.status === "pending_deletion"}>
           <Trash2 size={14} aria-hidden /> Schedule deletion…
         </Button>
       </div>

@@ -58,7 +58,6 @@ export function Trash({ vaultId, role }: { vaultId: string; role: string }) {
                   <span className="block truncate text-footnote text-muted">{[kindLabel(row.kind), `deleted ${formatRelative(row.deletedAt ?? row.updatedAt)}`, `${left} ${left === 1 ? "day" : "days"} left`].join(" · ")}</span>
                 </span>
                 <Button
-                  size="sm"
                   variant="secondary"
                   onClick={() =>
                     void restore({ vaultId, itemId: row.id, client: vaultSessions().info(vaultId) }).then(

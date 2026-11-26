@@ -1393,7 +1393,7 @@ function LinkPrompt({
           autoFocus
           value={value}
           onChange={(e) => setValue(e.target.value)}
-          className="mt-2 h-10 w-full ui-input rounded-chip px-4"
+          className="mt-2 h-control w-full ui-input px-4"
           aria-invalid={Boolean(error)}
           aria-describedby={error ? `${formId}-err` : hint ? `${formId}-hint` : undefined}
         />
@@ -1473,7 +1473,7 @@ function DatePopover({ editor, anchor, mode, today, onClose }: { editor: Editor;
               </button>
             ))}
             {mode.mode === "edit" ? (
-              <button type="button" className="ui-btn ui-btn-quiet ml-auto h-7 px-2.5 text-footnote text-danger" onClick={remove}>
+              <button type="button" className="ui-btn ui-btn-quiet ml-auto h-control-sm px-2.5 text-footnote text-danger" onClick={remove}>
                 Remove
               </button>
             ) : null}
@@ -1779,15 +1779,15 @@ function SelectionBubble({ editor, onComment, inCell = false }: { editor: Editor
             aria-label="Link address"
             aria-invalid={Boolean(linkError)}
             aria-describedby={linkError ? linkErrorId : undefined}
-            className={`ui-input h-8 w-60 rounded-chip px-3 text-callout ${linkError ? "shadow-[0_0_0_1.5px_var(--color-danger)]" : ""}`}
+            className={`ui-input h-control w-60 px-3 text-callout ${linkError ? "shadow-[0_0_0_1.5px_var(--color-danger)]" : ""}`}
           />
-          <button type="submit" className="ui-btn ui-btn-primary h-8 px-3 text-footnote">
+          <button type="submit" className="ui-btn ui-btn-primary h-control px-3 text-footnote">
             Apply
           </button>
           {editor.isActive("link") ? (
             <button
               type="button"
-              className="ui-btn ui-btn-quiet h-8 px-2.5 text-footnote"
+              className="ui-btn ui-btn-quiet h-control px-2.5 text-footnote"
               onClick={() => {
                 removeLink(editor);
                 close();
@@ -1853,7 +1853,7 @@ function SelectionBubble({ editor, onComment, inCell = false }: { editor: Editor
           ))}
           <button
             type="button"
-            className="ui-btn ui-btn-quiet h-7 px-2.5 text-footnote"
+            className="ui-btn ui-btn-quiet h-control-sm px-2.5 text-footnote"
             onClick={() => {
               editor.chain().unsetMark("textColor").unsetMark("highlight").run();
               afterAction();
@@ -2677,7 +2677,7 @@ function TaskDetails({ editor }: { editor: Editor }) {
           </div>
           <label className="grid gap-1">
             <span className="text-footnote text-muted">Priority</span>
-            <Select value={(node.attrs.priority as string) ?? "none"} onChange={(e) => set({ priority: e.target.value === "none" ? null : e.target.value })} className="h-8 ui-input rounded-chip px-3">
+            <Select value={(node.attrs.priority as string) ?? "none"} onChange={(e) => set({ priority: e.target.value === "none" ? null : e.target.value })} className="h-control ui-input px-3">
               <option value="none">None</option>
               <option value="low">Low</option>
               <option value="medium">Medium</option>
@@ -2687,7 +2687,7 @@ function TaskDetails({ editor }: { editor: Editor }) {
           {members && members.members.length > 1 ? (
             <label className="grid gap-1">
               <span className="text-footnote text-muted">Assignee</span>
-              <Select value={(node.attrs.assigneeId as string) ?? ""} onChange={(e) => set({ assigneeId: e.target.value || null })} className="h-8 ui-input rounded-chip px-3">
+              <Select value={(node.attrs.assigneeId as string) ?? ""} onChange={(e) => set({ assigneeId: e.target.value || null })} className="h-control ui-input px-3">
                 <option value="">Unassigned</option>
                 {members.members.map((m) => (
                   <option key={m.profileId} value={m.profileId}>
@@ -2719,7 +2719,7 @@ function TaskDetails({ editor }: { editor: Editor }) {
             <button type="button" className="text-footnote text-muted hover:text-ink" onClick={() => set({ dueDate: null, dueTime: null, priority: null, reminderAt: null, assigneeId: null, ...repeatProps(null) })}>
               Clear all
             </button>
-            <button type="submit" className="h-8 ui-btn ui-btn-primary px-3.5 text-footnote">
+            <button type="submit" className="h-control ui-btn ui-btn-primary px-3 text-footnote">
               Done
             </button>
           </div>

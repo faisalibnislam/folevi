@@ -82,10 +82,10 @@ describe("the sign-in buttons", () => {
     expect(none.textContent).toBe("");
   });
 
-  test("Apple's is black on a light page and white on a dark one, with Apple's logo, 44 points tall", async () => {
+  test("Apple's is black on a light page and white on a dark one, with Apple's logo, the control height (36, 44 on touch)", async () => {
     const el = await render(createElement(SocialSignIn, { providers: { google: false, apple: true }, returnTo: "/documents" }));
     const apple = button(el, "Continue with Apple");
-    for (const cls of ["bg-black", "text-white", "dark:bg-white", "dark:text-black", "h-11", "w-full", "ui-btn"]) expect(apple.className.split(/\s+/)).toContain(cls);
+    for (const cls of ["bg-black", "text-white", "dark:bg-white", "dark:text-black", "h-control", "w-full", "ui-btn"]) expect(apple.className.split(/\s+/)).toContain(cls);
     expect(apple.querySelector("svg")?.getAttribute("aria-hidden")).not.toBeNull();
   });
 

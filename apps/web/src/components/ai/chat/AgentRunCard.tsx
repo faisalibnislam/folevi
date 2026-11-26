@@ -217,11 +217,11 @@ export function AgentRunCard({
             ))}
           </ul>
           <div className="mt-3 flex flex-wrap gap-2">
-            <Button variant="primary" size="sm" disabled={busy || !picked.length} onClick={() => onApprove(picked)}>
+            <Button variant="primary" disabled={busy || !picked.length} onClick={() => onApprove(picked)}>
               {activity.busy === "approving" ? <Loader2 size={14} className="animate-spin motion-reduce:animate-none" aria-hidden /> : <Check size={14} aria-hidden />}
               {activity.busy === "approving" ? "Applying…" : all ? "Approve all" : `Approve selected (${picked.length})`}
             </Button>
-            <Button variant="ghost" size="sm" disabled={busy} onClick={onDiscard}>
+            <Button variant="ghost" disabled={busy} onClick={onDiscard}>
               Discard
             </Button>
           </div>
@@ -258,13 +258,13 @@ export function AgentRunCard({
               </ul>
               <p className="mt-1 text-muted">Undo anyway puts them back as they were before Foli AI (the later edits stay in version history).</p>
               <div className="mt-2 flex flex-wrap gap-2">
-                <Button variant="primary" size="sm" disabled={busy} onClick={() => onUndo("all")}>
+                <Button variant="primary" disabled={busy} onClick={() => onUndo("all")}>
                   Undo anyway
                 </Button>
-                <Button variant="secondary" size="sm" disabled={busy} onClick={() => onUndo("rest")}>
+                <Button variant="secondary" disabled={busy} onClick={() => onUndo("rest")}>
                   Undo the rest
                 </Button>
-                <Button variant="ghost" size="sm" disabled={busy} onClick={() => setAskDismissed(true)}>
+                <Button variant="ghost" disabled={busy} onClick={() => setAskDismissed(true)}>
                   Cancel
                 </Button>
               </div>
@@ -273,7 +273,6 @@ export function AgentRunCard({
             <div className="mt-2">
               <Button
                 variant="secondary"
-                size="sm"
                 disabled={busy}
                 onClick={() => {
                   setAskDismissed(false);

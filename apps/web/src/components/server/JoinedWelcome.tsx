@@ -22,7 +22,7 @@ export function JoinedWelcome({ serverName }: { serverName: string }) {
             </span>
             <AuthHeading title={`You're in ${serverName}`} lede="Your notes live on this server. Use Folevi right here in the browser, or add the server in the app on your phone, tablet or computer." />
             <ConnectApps serverName={serverName} stacked />
-            <a href="/documents" className="ui-btn ui-btn-primary mt-6 h-11 w-full text-body">
+            <a href="/documents" className="ui-btn ui-btn-primary mt-6 h-control w-full text-body">
               Open Folevi
             </a>
           </div>

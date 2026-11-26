@@ -132,7 +132,7 @@ export function AppSocialSignIn({ provider, clientId, redirectUri, codeChallenge
           </SubmitButton>
           <button
             type="button"
-            className="ui-btn h-11 w-full text-body"
+            className="ui-btn h-control w-full text-body"
             disabled={busy}
             onClick={() => {
               clearAppSignInMark();

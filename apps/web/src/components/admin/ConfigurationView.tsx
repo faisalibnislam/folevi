@@ -127,11 +127,11 @@ export function ConfigurationView() {
                     <td className={tdMid}>{r.overridden ? <Badge tone="warning">Override</Badge> : <Badge>Default</Badge>}</td>
                     <td className={`${tdMid} text-right`}>
                       <span className="inline-flex gap-1.5">
-                        <Button size="sm" disabled={!canEdit} onClick={() => setPending({ kind: "rate", rule: r })} aria-label={`Edit ${r.name} limit`}>
+                        <Button disabled={!canEdit} onClick={() => setPending({ kind: "rate", rule: r })} aria-label={`Edit ${r.name} limit`}>
                           Edit…
                         </Button>
                         {r.overridden ? (
-                          <Button size="sm" variant="quiet" disabled={!canEdit} onClick={() => setPending({ kind: "rateReset", rule: r })} aria-label={`Reset ${r.name} to default`}>
+                          <Button variant="quiet" disabled={!canEdit} onClick={() => setPending({ kind: "rateReset", rule: r })} aria-label={`Reset ${r.name} to default`}>
                             Reset to default…
                           </Button>
                         ) : null}

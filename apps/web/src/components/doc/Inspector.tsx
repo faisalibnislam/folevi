@@ -149,7 +149,7 @@ export function Inspector({
               {tab === "ai" ? <AiIcon size={18} aria-hidden /> : null}
               {TITLES[tab]}
             </h2>
-            <IconButton label="Close panel" shortcut="⌘⌥I" onClick={(e) => closeWithExit(e, onClose)} className="!h-7 !w-7 pointer-coarse:!h-11 pointer-coarse:!w-11">
+            <IconButton label="Close panel" shortcut="⌘⌥I" onClick={(e) => closeWithExit(e, onClose)} className="!size-control-sm">
               <X size={15} aria-hidden />
             </IconButton>
           </div>
@@ -161,7 +161,7 @@ export function Inspector({
             <h2 id={`${baseId}-tab-comments`} className="flex-1 text-center text-body font-semibold text-heading">
               Comments
             </h2>
-            <IconButton label="Close panel" shortcut="⌘⌥I" onClick={(e) => closeWithExit(e, onClose)} className="!h-7 !w-7 pointer-coarse:!h-11 pointer-coarse:!w-11">
+            <IconButton label="Close panel" shortcut="⌘⌥I" onClick={(e) => closeWithExit(e, onClose)} className="!size-control-sm">
               <X size={15} aria-hidden />
             </IconButton>
           </div>
@@ -196,7 +196,7 @@ export function Inspector({
               </button>
             ))}
           </div>
-          <IconButton label="Close panel" shortcut="⌘⌥I" onClick={(e) => closeWithExit(e, onClose)} className="!h-8 !w-8 flex-none pointer-coarse:!h-11 pointer-coarse:!w-11">
+          <IconButton label="Close panel" shortcut="⌘⌥I" onClick={(e) => closeWithExit(e, onClose)} className="!size-control flex-none">
             <X size={15} aria-hidden />
           </IconButton>
         </div>
@@ -763,7 +763,7 @@ function PageInfo({ documentId, meta, onHistory, disabled }: { documentId: strin
               toast.show(errorMessage(err), { tone: "error" });
             }
           }}
-          className="ui-input h-9 w-full rounded-chip px-3 text-callout"
+          className="ui-input h-control w-full px-3 text-callout"
           aria-label="Folder"
         >
           <option value="">Drafts</option>
@@ -790,7 +790,7 @@ function PageInfo({ documentId, meta, onHistory, disabled }: { documentId: strin
             )}
           </p>
           {!disabled ? (
-            <Button size="sm" onClick={() => setMoveOpen(true)}>
+            <Button onClick={() => setMoveOpen(true)}>
               Move…
             </Button>
           ) : null}
@@ -834,13 +834,13 @@ function PageInfo({ documentId, meta, onHistory, disabled }: { documentId: strin
               }
             }}
           >
-            <input list="tag-suggestions" value={newTag} onChange={(e) => setNewTag(e.target.value)} placeholder="Add a tag" aria-label="Add a tag" className="ui-input h-8 flex-1 rounded-chip px-3 text-callout" />
+            <input list="tag-suggestions" value={newTag} onChange={(e) => setNewTag(e.target.value)} placeholder="Add a tag" aria-label="Add a tag" className="ui-input h-control flex-1 px-3 text-callout" />
             <datalist id="tag-suggestions">
               {org?.tags.map((t) => (
                 <option key={t.id} value={t.name} />
               ))}
             </datalist>
-            <Button size="sm" type="submit">
+            <Button type="submit">
               Add
             </Button>
           </form>

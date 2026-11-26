@@ -347,10 +347,10 @@ function PasskeysCard() {
                 {usage === undefined ? "" : lastUsed.has(p.id) ? ` · Last used ${formatRelative(lastUsed.get(p.id)!)}` : " · Not used yet"}
               </span>
             </span>
-            <Button size="sm" aria-label={`Rename ${label(p)}`} onClick={() => setRenaming(p)}>
+            <Button aria-label={`Rename ${label(p)}`} onClick={() => setRenaming(p)}>
               Rename
             </Button>
-            <Button size="sm" aria-label={`Remove ${label(p)}`} onClick={() => setRemoving(p)}>
+            <Button aria-label={`Remove ${label(p)}`} onClick={() => setRemoving(p)}>
               Remove
             </Button>
           </li>

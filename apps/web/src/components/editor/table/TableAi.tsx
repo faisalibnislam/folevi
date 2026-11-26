@@ -247,10 +247,10 @@ export function TableAi({
             {preview.changed.size ? <span className="text-muted"> {preview.changed.size === 1 ? "1 cell changes" : `${preview.changed.size} cells change`}, marked in the table.</span> : null}
           </p>
           <div className="mt-2 flex gap-1.5">
-            <button type="button" className="ui-btn ui-btn-primary h-8 px-3.5 text-callout" onClick={() => onAccept(preview)}>
+            <button type="button" className="ui-btn ui-btn-primary h-control px-3 text-callout" onClick={() => onAccept(preview)}>
               <Check size={14} aria-hidden /> Accept
             </button>
-            <button type="button" className="ui-btn ui-btn-quiet h-8 px-3.5 text-callout" onClick={() => onPreview(null)}>
+            <button type="button" className="ui-btn ui-btn-quiet h-control px-3 text-callout" onClick={() => onPreview(null)}>
               Discard
             </button>
           </div>
@@ -266,10 +266,10 @@ export function TableAi({
             </ul>
           ) : null}
           <div className="mt-2 flex gap-1.5">
-            <button type="button" className="ui-btn ui-btn-primary h-8 px-3.5 text-callout" onClick={insertBelow}>
+            <button type="button" className="ui-btn ui-btn-primary h-control px-3 text-callout" onClick={insertBelow}>
               Insert under the table
             </button>
-            <button type="button" className="ui-btn ui-btn-quiet h-8 px-3.5 text-callout" onClick={() => setExplained(null)}>
+            <button type="button" className="ui-btn ui-btn-quiet h-control px-3 text-callout" onClick={() => setExplained(null)}>
               Discard
             </button>
           </div>
@@ -304,16 +304,16 @@ export function TableAi({
                 }}
                 aria-label={placeholder}
                 placeholder={placeholder}
-                className="ui-input min-h-[3.25rem] flex-1 resize-none rounded-chip px-3 py-2 text-callout"
+                className="ui-input ui-grow min-h-control flex-1 resize-none px-3 py-2 text-callout"
               />
-              <button type="submit" className="ui-btn ui-btn-primary grid h-9 w-9 place-items-center p-0" aria-label="Ask Foli AI" disabled={busy || !text.trim()}>
+              <button type="submit" className="ui-btn ui-btn-primary grid size-control place-items-center p-0" aria-label="Ask Foli AI" disabled={busy || !text.trim()}>
                 <ArrowUp size={15} aria-hidden />
               </button>
             </div>
           ) : (
             <div className="flex items-center gap-2">
               <p className="flex-1 text-subheadline text-muted">{mode === "clean" ? "Fills empty cells the table makes clear, fixes typos and formats, and removes repeated rows." : "A short summary of what the table says, with its main takeaways."}</p>
-              <button type="submit" autoFocus className="ui-btn ui-btn-primary h-8 px-3.5 text-callout" disabled={busy}>
+              <button type="submit" autoFocus className="ui-btn ui-btn-primary h-control px-3 text-callout" disabled={busy}>
                 {mode === "clean" ? "Clean up" : "Explain"}
               </button>
             </div>

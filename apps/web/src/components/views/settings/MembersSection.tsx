@@ -259,7 +259,7 @@ export function MembersSection({ workspace }: { workspace: Workspace }) {
                 ) : null}
               </span>
               {keys && !m.isYou && !keys.pending.has(m.profileId) ? (
-                <Button size="sm" variant="quiet" onClick={() => setCodeFor({ profileId: m.profileId, name: m.displayName })}>
+                <Button variant="quiet" onClick={() => setCodeFor({ profileId: m.profileId, name: m.displayName })}>
                   {copy.members.securityCode}
                 </Button>
               ) : null}
@@ -269,7 +269,7 @@ export function MembersSection({ workspace }: { workspace: Workspace }) {
                     aria-label={`Role for ${m.displayName}`}
                     value={choiceOf(m.role, m.memberAccess)}
                     onChange={(e) => setChoice(m.profileId, m.displayName, e.target.value as Choice)}
-                    className="h-8 ui-input rounded-chip px-3 text-callout"
+                    className="h-control ui-input px-3 text-callout"
                   >
                     <option value="member:edit">Member</option>
                     <option value="member:comment">Member · can comment</option>
@@ -277,14 +277,14 @@ export function MembersSection({ workspace }: { workspace: Workspace }) {
                     {isOwner ? <option value="admin">Admin</option> : null}
                   </Select>
                   {isOwner ? (
-                    <Button size="sm" variant="quiet" onClick={() => setConfirm({ kind: "owner", profileId: m.profileId, name: m.displayName })}>
+                    <Button variant="quiet" onClick={() => setConfirm({ kind: "owner", profileId: m.profileId, name: m.displayName })}>
                       Make owner
                     </Button>
                   ) : null}
-                  <Button size="sm" variant="quiet" onClick={() => setConfirm({ kind: "guest", profileId: m.profileId, name: m.displayName })}>
+                  <Button variant="quiet" onClick={() => setConfirm({ kind: "guest", profileId: m.profileId, name: m.displayName })}>
                     Convert to guest
                   </Button>
-                  <Button size="sm" variant="quiet" className="text-danger" onClick={() => setConfirm({ kind: "remove", profileId: m.profileId, name: m.displayName })}>
+                  <Button variant="quiet" className="text-danger" onClick={() => setConfirm({ kind: "remove", profileId: m.profileId, name: m.displayName })}>
                     Remove
                   </Button>
                 </>
@@ -308,7 +308,7 @@ export function MembersSection({ workspace }: { workspace: Workspace }) {
                     {ROLE_LABEL[i.role] ?? "Member"}
                     {i.role === "member" && ACCESS_CHIP[i.memberAccess] ? ` · ${ACCESS_CHIP[i.memberAccess]!.toLowerCase()}` : ""} · {i.expired ? "expired" : `expires ${formatRelative(i.expiresAt)}`}
                   </span>
-                  <Button size="sm" variant="quiet" onClick={() => void act(revokeInvite({ inviteId: i.id }), "Invitation revoked")}>
+                  <Button variant="quiet" onClick={() => void act(revokeInvite({ inviteId: i.id }), "Invitation revoked")}>
                     Revoke
                   </Button>
                 </li>

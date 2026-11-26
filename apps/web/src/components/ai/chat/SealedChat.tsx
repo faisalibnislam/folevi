@@ -244,10 +244,10 @@ export function SealedChatThread({
               {copy.consent.remember}
             </Checkbox>
             <div className="mt-3 flex justify-end gap-2">
-              <button type="button" onClick={() => answerConsent(false)} className="h-9 rounded-control px-3 text-callout text-heading ui-btn">
+              <button type="button" onClick={() => answerConsent(false)} className="h-control px-3 text-callout text-heading ui-btn">
                 {copy.consent.dontSend}
               </button>
-              <button type="button" onClick={() => answerConsent(true)} className="h-9 rounded-control px-3 text-callout font-medium ui-btn ui-btn-primary">
+              <button type="button" onClick={() => answerConsent(true)} className="h-control px-3 text-callout font-medium ui-btn ui-btn-primary">
                 {copy.consent.send}
               </button>
             </div>
@@ -261,7 +261,7 @@ export function SealedChatThread({
         ) : null}
       </div>
       <div className={`flex-none pb-3 ${pad}`}>
-        <div className="ui-input rounded-control">
+        <div className="ui-input">
           <label htmlFor={`${uid}-q`} className="sr-only">
             Ask about your notes
           </label>

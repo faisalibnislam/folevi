@@ -139,7 +139,7 @@ export function RecoveryKeyPanel({
               spellCheck={false}
               aria-describedby={`${uid}-check${error ? ` ${uid}-error` : ""}`}
               aria-invalid={error ? true : undefined}
-              className="ui-input mt-1 block h-10 w-full rounded-control px-3 font-mono text-body uppercase tracking-[0.08em] text-ink placeholder:normal-case placeholder:tracking-normal placeholder:font-sans pointer-coarse:h-11"
+              className="ui-input mt-1 block h-control w-full px-3 font-mono text-body uppercase tracking-[0.08em] text-ink placeholder:normal-case placeholder:tracking-normal placeholder:font-sans"
             />
           </label>
         ))}

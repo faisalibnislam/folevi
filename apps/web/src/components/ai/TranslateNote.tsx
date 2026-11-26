@@ -101,7 +101,7 @@ export function TranslateNote({ documentId, editor, readOnly, disabled }: { docu
           </button>
         </div>
         <p className="basis-full px-1 text-footnote text-muted">{how === "note" ? `Makes a copy titled "… (${language})" next to this note.` : "Shows the translation first. A version of the note is saved before anything changes."}</p>
-        <button type="button" disabled={Boolean(busy) || disabled} onClick={() => void translate()} className="ui-btn ui-btn-secondary h-8 px-2.5 text-callout">
+        <button type="button" disabled={Boolean(busy) || disabled} onClick={() => void translate()} className="ui-btn ui-btn-secondary h-control px-2.5 text-callout">
           <Languages size={14} aria-hidden /> Translate
         </button>
       </div>
@@ -122,10 +122,10 @@ export function TranslateNote({ documentId, editor, readOnly, disabled }: { docu
           </div>
           {preview.untranslated ? <p className="mt-2 text-footnote text-muted">{kept(preview.untranslated)}</p> : null}
           <div className="mt-3 flex flex-wrap items-center gap-1.5">
-            <button type="button" disabled={readOnly || !editor} onClick={() => void replace()} className="ui-btn ui-btn-primary h-8 px-3 text-callout">
+            <button type="button" disabled={readOnly || !editor} onClick={() => void replace()} className="ui-btn ui-btn-primary h-control px-3 text-callout">
               <Check size={14} aria-hidden /> Replace note text
             </button>
-            <button type="button" onClick={() => setPreview(null)} aria-label="Discard" title="Discard" className="ui-btn ui-btn-ghost ml-auto h-8 w-8 px-0">
+            <button type="button" onClick={() => setPreview(null)} aria-label="Discard" title="Discard" className="ui-btn ui-btn-ghost ml-auto size-control px-0">
               <X size={14} aria-hidden />
             </button>
           </div>

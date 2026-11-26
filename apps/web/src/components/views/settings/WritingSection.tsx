@@ -94,7 +94,7 @@ export function WritingSection() {
               </span>
               <span className="block text-footnote text-muted">Which spelling English notes are checked against.</span>
             </span>
-            <Select value={s.english} onChange={(e) => save({ english: e.target.value as "en-US" | "en-GB" })} aria-labelledby={englishId} className="ui-input h-9 w-44 flex-none rounded-chip px-3 text-callout">
+            <Select value={s.english} onChange={(e) => save({ english: e.target.value as "en-US" | "en-GB" })} aria-labelledby={englishId} className="ui-input h-control w-44 flex-none px-3 text-callout">
               <option value="en-US">American English</option>
               <option value="en-GB">British English</option>
             </Select>

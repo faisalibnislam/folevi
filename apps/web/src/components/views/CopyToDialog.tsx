@@ -132,7 +132,7 @@ export function CopyToDialog({
               setPlace(e.target.value);
               setFolderId("");
             }}
-            className="ui-input mt-1.5 h-10 w-full rounded-chip px-3 text-callout"
+            className="ui-input mt-1.5 h-control w-full px-3 text-callout"
           >
             {places.map((p) => (
               <option key={p.key} value={p.key}>
@@ -145,7 +145,7 @@ export function CopyToDialog({
           <label htmlFor={`${ids}-folder`} className="block text-subheadline font-medium">
             Folder
           </label>
-          <Select id={`${ids}-folder`} value={folderId} onChange={(e) => setFolderId(e.target.value)} className="ui-input mt-1.5 h-10 w-full rounded-chip px-3 text-callout" disabled={org === undefined}>
+          <Select id={`${ids}-folder`} value={folderId} onChange={(e) => setFolderId(e.target.value)} className="ui-input mt-1.5 h-control w-full px-3 text-callout" disabled={org === undefined}>
             <option value="">No folder (Drafts)</option>
             {flattenFolders(org?.folders ?? []).map(({ folder: f, depth }) => (
               <option key={f.id} value={f.id}>

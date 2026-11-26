@@ -471,7 +471,7 @@ function CreateWorkspaceNudge() {
     <div className="hidden flex-none rounded-control border border-line p-3 @3xl:mt-1 @3xl:block">
       <p className="text-caption-2 font-semibold uppercase tracking-[0.07em] text-faint">Workspace</p>
       <p className="mt-1 max-w-52 text-subheadline text-muted">Work with a team: shared notes, folders and tasks, with its own plan and members.</p>
-      <Button size="sm" className="mt-2" onClick={() => setOpen(true)}>
+      <Button className="mt-2" onClick={() => setOpen(true)}>
         <Plus size={14} aria-hidden /> Create a workspace
       </Button>
       <NewWorkspaceDialog open={open} onClose={() => setOpen(false)} onCreated={() => navigate("/settings/workspace")} />

@@ -2161,25 +2161,25 @@ function ConflictBanner({ documentId, onResolvedAll }: { documentId: string; /**
       <div className="mt-3 flex flex-wrap gap-2">
         {c.reason === "edited" ? (
           <>
-            <Button size="sm" variant="primary" onClick={() => resolve("theirs")}>
+            <Button variant="primary" onClick={() => resolve("theirs")}>
               Keep it
             </Button>
-            <Button size="sm" onClick={() => resolve("mine")}>
+            <Button onClick={() => resolve("mine")}>
               Delete anyway
             </Button>
           </>
         ) : (
           <>
-            <Button size="sm" variant="primary" onClick={() => resolve("mine")}>
+            <Button variant="primary" onClick={() => resolve("mine")}>
               Keep mine
             </Button>
-            <Button size="sm" onClick={() => resolve("theirs")}>
+            <Button onClick={() => resolve("theirs")}>
               Keep theirs
             </Button>
           </>
         )}
         {c.reason !== "deleted" && c.reason !== "edited" ? (
-          <Button size="sm" onClick={keepBoth}>
+          <Button onClick={keepBoth}>
             Keep both
           </Button>
         ) : null}

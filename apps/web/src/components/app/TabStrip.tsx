@@ -603,7 +603,7 @@ export function TabStrip() {
       ) : (
       <>
       {folderParent !== undefined ? <NewFolderButton key={folderParent ?? "top"} parentId={folderParent} /> : null}
-      <Button size="sm" variant="primary" title={keys(inFolder ? "New note in this folder (⌘⌥N)" : "New note (⌘⌥N)")} onClick={() => void createDocument({})} className="h-8 flex-none rounded-small !pl-3">
+      <Button variant="primary" title={keys(inFolder ? "New note in this folder (⌘⌥N)" : "New note (⌘⌥N)")} onClick={() => void createDocument({})} className="h-control flex-none !pl-3">
         <Plus size={14} aria-hidden /> New note
       </Button>
       </>

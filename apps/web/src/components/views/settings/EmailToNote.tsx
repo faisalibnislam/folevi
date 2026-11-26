@@ -162,7 +162,7 @@ export function EmailToNoteView({ status, places, ...on }: { status: EmailNoteSt
 
           <label className="block max-w-xs space-y-1">
             <span className="block font-medium text-heading">Notes go to</span>
-            <Select value={status.place.kind === "workspace" ? status.place.workspaceId : "personal"} onChange={(e) => void run(() => on.onSetPlace(e.target.value))} aria-label="Notes go to" className="ui-input h-9 rounded-chip px-3 text-callout w-full">
+            <Select value={status.place.kind === "workspace" ? status.place.workspaceId : "personal"} onChange={(e) => void run(() => on.onSetPlace(e.target.value))} aria-label="Notes go to" className="ui-input h-control px-3 text-callout w-full">
               <option value="personal">Personal</option>
               {places.map((w) => (
                 <option key={w.id} value={w.id}>
@@ -182,7 +182,7 @@ export function EmailToNoteView({ status, places, ...on }: { status: EmailNoteSt
               {status.extraSenders.map((s) => (
                 <li key={s} className="flex items-center justify-between gap-3 py-2">
                   <span className="min-w-0 truncate">{s}</span>
-                  <Button size="sm" variant="quiet" className="flex-none text-danger" aria-label={`Remove ${s}`} disabled={busy} onClick={() => void run(() => on.onRemoveSender(s))}>
+                  <Button variant="quiet" className="flex-none text-danger" aria-label={`Remove ${s}`} disabled={busy} onClick={() => void run(() => on.onRemoveSender(s))}>
                     Remove
                   </Button>
                 </li>
@@ -198,8 +198,8 @@ export function EmailToNoteView({ status, places, ...on }: { status: EmailNoteSt
                   void run(() => on.onAddSender(email)).then((ok) => ok && setSender(""));
                 }}
               >
-                <input type="email" value={sender} onChange={(e) => setSender(e.target.value)} placeholder="Another address of yours" aria-label="Another address that can send" maxLength={254} className="ui-input h-9 min-w-0 flex-1 rounded-chip px-3" />
-                <Button size="sm" type="submit" disabled={busy || !sender.trim()}>
+                <input type="email" value={sender} onChange={(e) => setSender(e.target.value)} placeholder="Another address of yours" aria-label="Another address that can send" maxLength={254} className="ui-input h-control min-w-0 flex-1 px-3" />
+                <Button type="submit" disabled={busy || !sender.trim()}>
                   Add
                 </Button>
               </form>
@@ -213,11 +213,10 @@ export function EmailToNoteView({ status, places, ...on }: { status: EmailNoteSt
             <div className="max-w-xl rounded-chip border border-line p-3" role="group" aria-label={confirming === "rotate" ? "Get a new address" : "Turn off"}>
               <p>{confirming === "rotate" ? "Your current address stops working at once. Anything sent to it later is ignored." : "Your address stops working at once. Notes you already saved stay."}</p>
               <div className="mt-2 flex gap-2">
-                <Button size="sm" onClick={() => setConfirming(null)}>
+                <Button onClick={() => setConfirming(null)}>
                   Keep
                 </Button>
                 <Button
-                  size="sm"
                   variant={confirming === "remove" ? "danger" : "primary"}
                   disabled={busy}
                   onClick={() => void run(confirming === "rotate" ? on.onRotate : on.onRemove).then((ok) => ok && setConfirming(null))}
@@ -228,10 +227,10 @@ export function EmailToNoteView({ status, places, ...on }: { status: EmailNoteSt
             </div>
           ) : (
             <div className="flex flex-wrap gap-2">
-              <Button size="sm" onClick={() => setConfirming("rotate")}>
+              <Button onClick={() => setConfirming("rotate")}>
                 Get a new address…
               </Button>
-              <Button size="sm" variant="quiet" className="text-danger" onClick={() => setConfirming("remove")}>
+              <Button variant="quiet" className="text-danger" onClick={() => setConfirming("remove")}>
                 Turn off…
               </Button>
             </div>

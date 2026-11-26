@@ -78,7 +78,7 @@ export function ThemesView() {
         description="The themes people pick for their notes: an image, the colours it gives, and the separator, font type and typefaces a note starts with. Drag to set the order in the picker."
         actions={
           canEdit ? (
-            <Link href="/admin/themes/new" className="ui-btn ui-btn-primary h-9 gap-1.5 px-4 text-callout">
+            <Link href="/admin/themes/new" className="ui-btn ui-btn-primary h-control gap-1.5 px-4 text-callout">
               <Plus size={15} aria-hidden /> New theme
             </Link>
           ) : null

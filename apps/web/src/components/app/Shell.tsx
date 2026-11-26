@@ -740,7 +740,7 @@ function WebShell() {
   return (
     <TabsProvider accountKey={profile.id} workspaceId={context.kind === "workspace" ? context.workspaceId : null}>
     <ShellContext.Provider value={value}>
-      <a href="#main" className="sr-only-focusable ui-btn ui-btn-primary fixed left-2 top-2 z-[70] px-4 py-2">
+      <a href="#main" className="sr-only-focusable ui-btn ui-btn-primary fixed left-2 top-2 z-[70] h-control px-4">
         Skip to content
       </a>
       {settings?.bannerMessage ? (

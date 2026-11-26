@@ -39,7 +39,7 @@ export function StudyMode({ editor, canMake, busy, onMake }: { editor: Editor | 
   const others = useMemo(() => unmarkedToggles(lines), [lines]);
   // The fallback: every toggle in the note, for cards people wrote themselves.
   const useAll = others ? (
-    <button type="button" aria-pressed={all} onClick={() => setAll((a) => !a)} className="ui-btn ui-btn-ghost h-8 px-2.5 text-callout">
+    <button type="button" aria-pressed={all} onClick={() => setAll((a) => !a)} className="ui-btn ui-btn-ghost h-control px-2.5 text-callout">
       {all ? "Only cards made by Foli AI" : "Use all toggles"}
     </button>
   ) : null;
@@ -50,10 +50,10 @@ export function StudyMode({ editor, canMake, busy, onMake }: { editor: Editor | 
 
   const make = (
     <div className="flex flex-wrap gap-1.5">
-      <button type="button" disabled={!canMake || busy} onClick={() => onMake("flashcards")} className="ui-btn ui-btn-secondary h-8 px-2.5 text-callout">
+      <button type="button" disabled={!canMake || busy} onClick={() => onMake("flashcards")} className="ui-btn ui-btn-secondary h-control px-2.5 text-callout">
         <Layers size={14} aria-hidden /> Make flashcards
       </button>
-      <button type="button" disabled={!canMake || busy} onClick={() => onMake("quiz")} className="ui-btn ui-btn-secondary h-8 px-2.5 text-callout">
+      <button type="button" disabled={!canMake || busy} onClick={() => onMake("quiz")} className="ui-btn ui-btn-secondary h-control px-2.5 text-callout">
         <CircleHelp size={14} aria-hidden /> Make a quiz
       </button>
     </div>
@@ -156,13 +156,13 @@ export function CardsDeck({ cards }: { cards: readonly Flashcard[] }) {
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-1.5">
-            <button ref={flipRef} type="button" aria-expanded={state.flipped} aria-controls={`${uid}-answer`} onClick={() => dispatch({ type: "flip" })} className="ui-btn ui-btn-secondary h-8 px-3 text-callout">
+            <button ref={flipRef} type="button" aria-expanded={state.flipped} aria-controls={`${uid}-answer`} onClick={() => dispatch({ type: "flip" })} className="ui-btn ui-btn-secondary h-control px-3 text-callout">
               {state.flipped ? "Hide answer" : "Show answer"}
             </button>
-            <button type="button" onClick={() => act("again")} className="ui-btn ui-btn-ghost h-8 px-2.5 text-callout">
+            <button type="button" onClick={() => act("again")} className="ui-btn ui-btn-ghost h-control px-2.5 text-callout">
               <Undo2 size={14} aria-hidden /> Again
             </button>
-            <button type="button" onClick={() => act("know")} className="ui-btn ui-btn-primary h-8 px-3 text-callout">
+            <button type="button" onClick={() => act("know")} className="ui-btn ui-btn-primary h-control px-3 text-callout">
               <Check size={14} aria-hidden /> Know it
             </button>
           </div>
@@ -172,7 +172,7 @@ export function CardsDeck({ cards }: { cards: readonly Flashcard[] }) {
         <div className="space-y-2 rounded-panel bg-[var(--glass-hover)] p-3.5">
           <p className="text-body font-semibold text-heading">You know all {cards.length} cards.</p>
           {state.again.length ? <p className="text-subheadline text-muted">{state.again.length === 1 ? "One needed" : `${state.again.length} needed`} another go.</p> : null}
-          <button type="button" onClick={() => (dispatch({ type: "restart", ids }), setSaid(""))} className="ui-btn ui-btn-secondary h-8 px-3 text-callout">
+          <button type="button" onClick={() => (dispatch({ type: "restart", ids }), setSaid(""))} className="ui-btn ui-btn-secondary h-control px-3 text-callout">
             <RotateCcw size={14} aria-hidden /> Study again
           </button>
         </div>
@@ -207,7 +207,7 @@ export function QuizRun({ questions }: { questions: readonly QuizQuestion[] }) {
         <p className="text-body font-semibold text-heading">
           You got {score} of {questions.length} right.
         </p>
-        <button type="button" onClick={() => dispatch({ type: "restart" })} className="ui-btn ui-btn-secondary h-8 px-3 text-callout">
+        <button type="button" onClick={() => dispatch({ type: "restart" })} className="ui-btn ui-btn-secondary h-control px-3 text-callout">
           <RotateCcw size={14} aria-hidden /> Try again
         </button>
       </div>
@@ -263,7 +263,7 @@ export function QuizRun({ questions }: { questions: readonly QuizQuestion[] }) {
         ) : null}
       </div>
       {answered ? (
-        <button ref={nextRef} type="button" onClick={() => dispatch({ type: "next", total: questions.length })} className="ui-btn ui-btn-primary h-8 px-3 text-callout">
+        <button ref={nextRef} type="button" onClick={() => dispatch({ type: "next", total: questions.length })} className="ui-btn ui-btn-primary h-control px-3 text-callout">
           {state.index + 1 >= questions.length ? "See your score" : "Next question"}
         </button>
       ) : (

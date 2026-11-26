@@ -248,13 +248,13 @@ export function CommentThreadCard({
         </div>
         {siblings.length > 1 && at >= 0 ? (
           <div className="mr-1 flex items-center text-footnote text-muted" role="group" aria-label="Threads on this block">
-            <IconButton label="Previous thread" className="!h-6 !w-6 pointer-coarse:!h-11 pointer-coarse:!w-11" disabled={at === 0} onClick={() => onSelectThread?.(siblings[at - 1]!.id)}>
+            <IconButton label="Previous thread" className="!size-control-sm" disabled={at === 0} onClick={() => onSelectThread?.(siblings[at - 1]!.id)}>
               <ChevronLeft size={13} aria-hidden />
             </IconButton>
             <span aria-live="polite" className="min-w-[3.25rem] text-center tabular-nums">
               {at + 1} of {siblings.length}
             </span>
-            <IconButton label="Next thread" className="!h-6 !w-6 pointer-coarse:!h-11 pointer-coarse:!w-11" disabled={at === siblings.length - 1} onClick={() => onSelectThread?.(siblings[at + 1]!.id)}>
+            <IconButton label="Next thread" className="!size-control-sm" disabled={at === siblings.length - 1} onClick={() => onSelectThread?.(siblings[at + 1]!.id)}>
               <ChevronRight size={13} aria-hidden />
             </IconButton>
           </div>
@@ -271,7 +271,7 @@ export function CommentThreadCard({
           <IconButton
             label={resolved ? "Reopen thread" : "Resolve thread"}
             aria-pressed={resolved}
-            className="!h-7 !w-7 pointer-coarse:!h-11 pointer-coarse:!w-11"
+            className="!size-control-sm"
             onClick={() => {
               actions.setResolved({ threadId: thread.id, resolved: !resolved }).catch(fail);
               if (!resolved) toast.show("Thread resolved");
@@ -281,7 +281,7 @@ export function CommentThreadCard({
           </IconButton>
         ) : null}
         {embedded ? null : (
-          <IconButton label="Close comments" className="!h-7 !w-7 pointer-coarse:!h-11 pointer-coarse:!w-11" onClick={onClose}>
+          <IconButton label="Close comments" className="!size-control-sm" onClick={onClose}>
             <X size={15} aria-hidden />
           </IconButton>
         )}
@@ -290,11 +290,10 @@ export function CommentThreadCard({
       {confirmDelete && thread ? (
         <div role="alert" className="flex items-center gap-2 border-b border-line/70 bg-danger-soft/40 px-4 py-2.5 text-subheadline">
           <span className="flex-1">Delete this thread and its {thread.comments.length === 1 ? "comment" : `${thread.comments.length} comments`}?</span>
-          <Button size="sm" variant="quiet" onClick={() => setConfirmDelete(false)}>
+          <Button variant="quiet" onClick={() => setConfirmDelete(false)}>
             Cancel
           </Button>
           <Button
-            size="sm"
             variant="danger"
             onClick={() => {
               setConfirmDelete(false);
@@ -367,7 +366,7 @@ export function CommentThreadCard({
               Enter to send, Shift+Enter for a new line. Type @ to mention someone who can see this page.
             </span>
           </div>
-          <IconButton label="Send" type="submit" variant="primary" disabled={!draft.trim()} className="!h-7 !w-7 pointer-coarse:!h-11 pointer-coarse:!w-11 !rounded-chip">
+          <IconButton label="Send" type="submit" variant="primary" disabled={!draft.trim()} className="!size-control-sm">
             <ArrowUp size={14} aria-hidden />
           </IconButton>
         </form>
@@ -445,15 +444,15 @@ function CommentRow({
               value={editing}
               onChange={onEditChange}
               people={people}
-              className="ui-input block w-full resize-none rounded-chip px-2 py-1.5 text-body leading-snug"
+              className="ui-input block w-full resize-none px-2 py-1.5 text-body leading-snug"
               onSubmitShortcut={onEditSave}
               onEscape={onEditCancel}
             />
             <div className="mt-1.5 flex justify-end gap-1.5">
-              <Button size="sm" variant="quiet" onClick={onEditCancel}>
+              <Button variant="quiet" onClick={onEditCancel}>
                 Cancel
               </Button>
-              <Button size="sm" variant="primary" type="submit" disabled={!editing.trim()}>
+              <Button variant="primary" type="submit" disabled={!editing.trim()}>
                 Save
               </Button>
             </div>
@@ -758,7 +757,7 @@ function CommentsList({ documentId, onOpenThread, focusThreadId = null }: { docu
       <NoteNotifications documentId={documentId} />
       {data.canComment ? (
         <form
-          className="ui-input rounded-panel pb-1 pl-3 pr-1 pt-2"
+          className="ui-input ui-grow rounded-panel pb-1 pl-3 pr-1 pt-2"
           onSubmit={(e) => {
             e.preventDefault();
             submit();
@@ -783,7 +782,7 @@ function CommentsList({ documentId, onOpenThread, focusThreadId = null }: { docu
             <p id="comment-hint" className="text-footnote text-faint">
               @ to mention · Enter to send
             </p>
-            <Button size="sm" variant="primary" type="submit" disabled={!draft.trim()}>
+            <Button variant="primary" type="submit" disabled={!draft.trim()}>
               Comment
             </Button>
           </div>
@@ -807,7 +806,7 @@ function CommentsList({ documentId, onOpenThread, focusThreadId = null }: { docu
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search comments"
             aria-label="Search comments"
-            className="h-8 w-full ui-input rounded-chip px-2.5 text-callout"
+            className="h-control w-full ui-input px-2.5 text-callout"
           />
         ) : null}
       </div>
@@ -835,11 +834,10 @@ function CommentsList({ documentId, onOpenThread, focusThreadId = null }: { docu
                 {confirmDelete === t.id ? (
                   <div role="alert" className="mb-1 flex items-center gap-2 rounded-control bg-danger-soft/40 px-2.5 py-2 text-subheadline">
                     <span className="flex-1">Delete this thread and its {t.comments.length === 1 ? "comment" : `${t.comments.length} comments`}?</span>
-                    <Button size="sm" variant="quiet" onClick={() => setConfirmDelete(null)}>
+                    <Button variant="quiet" onClick={() => setConfirmDelete(null)}>
                       Cancel
                     </Button>
                     <Button
-                      size="sm"
                       variant="danger"
                       onClick={() => {
                         setConfirmDelete(null);
@@ -941,7 +939,7 @@ export function NoteNotifications({ documentId }: { documentId: string }) {
             (err) => toast.show(errorMessage(err), { tone: "error" }),
           )
         }
-        className="ui-input h-8 w-48 rounded-chip px-2.5 text-callout"
+        className="ui-input h-control w-48 px-2.5 text-callout"
       >
         {sub.isAuthor ? <option value="default">All comments</option> : <option value="follow">All comments</option>}
         {sub.isAuthor ? null : <option value="default">Replies and @mentions</option>}

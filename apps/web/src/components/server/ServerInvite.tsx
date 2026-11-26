@@ -33,7 +33,7 @@ function Join({ token }: { token: string }) {
         type="button"
         disabled={busy || isLoading || !isAuthenticated}
         aria-busy={busy}
-        className="ui-btn ui-btn-primary h-11 w-full text-body"
+        className="ui-btn ui-btn-primary h-control w-full text-body"
         onClick={() => {
           setBusy(true);
           setError(null);
@@ -71,7 +71,7 @@ export function ServerInvite({ token, invite, signedIn }: { token: string; invit
                   title="This invite doesn't work any more"
                   lede={signedIn ? `Invites work once, for 7 days. If you already joined ${invite.serverName}, you're all set. If not, ask ${invite.invitedBy || "the person who invited you"} for a new one.` : `Invites work once, for 7 days. Ask ${invite.invitedBy || "the person who invited you"} for a new one. Already joined? Sign in.`}
                 />
-                <a href={signedIn ? "/documents" : "/signin"} className="ui-btn ui-btn-primary h-11 w-full text-body">
+                <a href={signedIn ? "/documents" : "/signin"} className="ui-btn ui-btn-primary h-control w-full text-body">
                   {signedIn ? "Open Folevi" : "Sign in"}
                 </a>
               </>
@@ -84,10 +84,10 @@ export function ServerInvite({ token, invite, signedIn }: { token: string; invit
                   </ConvexClientProvider>
                 ) : (
                   <div className="space-y-2">
-                    <a href={`/signup?invite=${encodeURIComponent(token)}&returnTo=${encodeURIComponent("/join/welcome")}${invite.email ? `&email=${encodeURIComponent(invite.email)}` : ""}`} className="ui-btn ui-btn-primary h-11 w-full text-body">
+                    <a href={`/signup?invite=${encodeURIComponent(token)}&returnTo=${encodeURIComponent("/join/welcome")}${invite.email ? `&email=${encodeURIComponent(invite.email)}` : ""}`} className="ui-btn ui-btn-primary h-control w-full text-body">
                       Create an account
                     </a>
-                    <a href={`/signin?returnTo=${encodeURIComponent(here)}`} className="ui-btn ui-btn-secondary h-11 w-full text-body">
+                    <a href={`/signin?returnTo=${encodeURIComponent(here)}`} className="ui-btn ui-btn-secondary h-control w-full text-body">
                       I have an account here
                     </a>
                   </div>

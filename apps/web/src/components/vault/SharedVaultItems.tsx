@@ -144,11 +144,11 @@ function SharedItemDialog({ row, onClose }: { row: Row; onClose: () => void }) {
                   <dt className="w-32 flex-none text-footnote text-muted">{f.label}</dt>
                   <dd className={`min-w-0 flex-1 break-words text-ink ${f.type === "secret" || f.type === "totp" ? "font-mono" : ""}`}>{hidden ? "••••••••" : v}</dd>
                   {f.type === "secret" ? (
-                    <Button size="sm" variant="quiet" onClick={() => setRevealed(new Set([...revealed, f.key]))} disabled={!hidden}>
+                    <Button variant="quiet" onClick={() => setRevealed(new Set([...revealed, f.key]))} disabled={!hidden}>
                       Show
                     </Button>
                   ) : null}
-                  <Button size="sm" variant="quiet" aria-label={`Copy ${f.label}`} title="Copy" onClick={() => void copySecret(v).then(() => toast.show(`${f.label} copied. The clipboard clears in 30 seconds.`))}>
+                  <Button variant="quiet" aria-label={`Copy ${f.label}`} title="Copy" onClick={() => void copySecret(v).then(() => toast.show(`${f.label} copied. The clipboard clears in 30 seconds.`))}>
                     <Copy size={13} aria-hidden />
                   </Button>
                 </div>

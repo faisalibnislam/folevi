@@ -915,7 +915,7 @@ function ImageView({ node, selected, updateAttributes, editor, getPos }: ReactNo
                     onCommit={(v) => update({ alt: v })}
                     onExit={() => selectBlock(editor, getPos)}
                     placeholder="What the image shows"
-                    className="h-7 w-56 ui-input rounded-chip px-2 text-ink"
+                    className="h-control-sm w-56 ui-input px-2 text-ink"
                   />
                 </label>
                 <span>Width</span>
@@ -1413,7 +1413,7 @@ function BookmarkView({ node, selected, updateAttributes, editor, getPos }: Reac
                   if (address.trim() !== (a.url ?? "")) saveAddress();
                 }}
                 aria-invalid={Boolean(addressError)}
-                className={`h-8 ui-input rounded-chip px-2 text-callout text-ink ${addressError ? "shadow-[0_0_0_1.5px_var(--color-danger)]" : ""}`}
+                className={`h-control ui-input px-2 text-callout text-ink ${addressError ? "shadow-[0_0_0_1.5px_var(--color-danger)]" : ""}`}
               />
               {addressError ? (
                 <span role="alert" className="text-danger">
@@ -1423,23 +1423,23 @@ function BookmarkView({ node, selected, updateAttributes, editor, getPos }: Reac
             </label>
             <label className="grid gap-1">
               Title
-              <DraftInput value={a.title ?? ""} onCommit={(v) => editor.isEditable && updateAttributes({ title: v || null })} className="h-8 ui-input rounded-chip px-2 text-callout text-ink" />
+              <DraftInput value={a.title ?? ""} onCommit={(v) => editor.isEditable && updateAttributes({ title: v || null })} className="h-control ui-input px-2 text-callout text-ink" />
             </label>
             <label className="grid gap-1">
               Description
-              <DraftInput value={a.description ?? ""} onCommit={(v) => editor.isEditable && updateAttributes({ description: v || null })} className="h-8 ui-input rounded-chip px-2 text-callout text-ink" />
+              <DraftInput value={a.description ?? ""} onCommit={(v) => editor.isEditable && updateAttributes({ description: v || null })} className="h-control ui-input px-2 text-callout text-ink" />
             </label>
             <div className="flex items-center justify-between gap-2">
               <button
                 type="button"
-                className="ui-btn ui-btn-quiet h-8 px-3 text-footnote"
+                className="ui-btn ui-btn-quiet h-control px-3 text-footnote"
                 onClick={() => {
                   if (a.url) void loadPreview(a.url, true, true);
                 }}
               >
                 Refresh preview
               </button>
-              <button type="submit" className="ui-btn ui-btn-primary h-8 px-3.5 text-footnote">
+              <button type="submit" className="ui-btn ui-btn-primary h-control px-3 text-footnote">
                 Done
               </button>
             </div>

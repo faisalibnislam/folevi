@@ -189,7 +189,7 @@ export function IphoneTasks({
             title="Couldn’t load your tasks"
             body="Folevi will keep trying. Check your connection, or try again now."
             action={
-              <button type="button" onClick={onRetry} className="ui-btn ui-btn-secondary h-11 px-4 text-subheadline">
+              <button type="button" onClick={onRetry} className="ui-btn ui-btn-secondary h-control px-4 text-callout">
                 Try again
               </button>
             }

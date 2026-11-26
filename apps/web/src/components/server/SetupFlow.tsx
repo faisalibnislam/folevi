@@ -210,7 +210,7 @@ function GuideFrame({ step, title, lede, children, error, primary, onSkip, skipL
       </div>
       <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-between">
         {onSkip ? (
-          <button type="button" onClick={onSkip} className="ui-btn ui-btn-quiet h-11 px-4 text-body">
+          <button type="button" onClick={onSkip} className="ui-btn ui-btn-quiet h-control px-4 text-body">
             {skipLabel}
           </button>
         ) : (
@@ -224,7 +224,7 @@ function GuideFrame({ step, title, lede, children, error, primary, onSkip, skipL
 
 function PrimaryButton({ children, onClick, busy, disabled }: { children: ReactNode; onClick: () => void; busy?: boolean; disabled?: boolean }) {
   return (
-    <button type="button" onClick={onClick} disabled={busy || disabled} aria-busy={busy} className="ui-btn ui-btn-primary h-11 px-6 text-body">
+    <button type="button" onClick={onClick} disabled={busy || disabled} aria-busy={busy} className="ui-btn ui-btn-primary h-control px-4 text-body">
       {busy ? "One moment…" : children}
     </button>
   );
@@ -261,7 +261,7 @@ function RemoteStep({ next, mark }: GuideProps) {
         skipLabel="Finish this later"
       >
         <p className="rounded-control bg-[var(--glass-hover)] p-4 text-center font-mono text-title-2 tracking-widest text-heading">{link.code}</p>
-        <a href={link.approveUrl} target="_blank" rel="noopener noreferrer" className="ui-btn ui-btn-secondary h-11 w-full text-body">
+        <a href={link.approveUrl} target="_blank" rel="noopener noreferrer" className="ui-btn ui-btn-secondary h-control w-full text-body">
           Open the approval page
         </a>
       </GuideFrame>
@@ -394,7 +394,7 @@ function EmailStep({ settings, next, mark }: GuideProps) {
             <span id="email-provider" className="block text-subheadline font-medium text-ink">
               Email service
             </span>
-            <Select aria-labelledby="email-provider" value={preset} onChange={(e) => (setPreset(e.target.value), setSaved(false))} className="ui-input h-11 w-full rounded-chip px-4 text-body text-ink">
+            <Select aria-labelledby="email-provider" value={preset} onChange={(e) => (setPreset(e.target.value), setSaved(false))} className="ui-input h-control w-full px-4 text-body text-ink">
               {EMAIL_PRESETS.map((x) => (
                 <option key={x.id} value={x.id}>
                   {x.name}
@@ -417,7 +417,7 @@ function EmailStep({ settings, next, mark }: GuideProps) {
               </p>
               <button
                 type="button"
-                className="ui-btn ui-btn-secondary h-10 px-4 text-subheadline"
+                className="ui-btn ui-btn-secondary h-control px-4 text-callout"
                 disabled={testState === "sending"}
                 onClick={() => {
                   setTestState("sending");
@@ -545,14 +545,14 @@ function BackupsStep({ next, mark }: GuideProps) {
           <code className="min-w-0 flex-1 truncate font-mono text-footnote text-heading" aria-label="Backup key">
             {key ? (shown ? key : `${key.slice(0, 15)}${"•".repeat(24)}`) : "Loading…"}
           </code>
-          <button type="button" className="ui-btn ui-btn-quiet h-8 w-8 flex-none" aria-label={shown ? "Hide the key" : "Show the key"} title={shown ? "Hide the key" : "Show the key"} disabled={!key} onClick={() => setShown((v) => !v)}>
+          <button type="button" className="ui-btn ui-btn-quiet size-control flex-none" aria-label={shown ? "Hide the key" : "Show the key"} title={shown ? "Hide the key" : "Show the key"} disabled={!key} onClick={() => setShown((v) => !v)}>
             {shown ? <EyeOff size={15} aria-hidden /> : <Eye size={15} aria-hidden />}
           </button>
         </div>
         <div className="flex flex-wrap gap-2">
           <button
             type="button"
-            className="ui-btn ui-btn-secondary h-9 px-4 text-subheadline"
+            className="ui-btn ui-btn-secondary h-control px-4 text-callout"
             disabled={!key}
             onClick={() =>
               key &&
@@ -564,7 +564,7 @@ function BackupsStep({ next, mark }: GuideProps) {
           >
             {copied ? <Check size={14} aria-hidden /> : <Copy size={14} aria-hidden />} {copied ? "Copied" : "Copy"}
           </button>
-          <button type="button" className="ui-btn ui-btn-secondary h-9 px-4 text-subheadline" disabled={!key} onClick={() => key && downloadKey(key)}>
+          <button type="button" className="ui-btn ui-btn-secondary h-control px-4 text-callout" disabled={!key} onClick={() => key && downloadKey(key)}>
             <Download size={14} aria-hidden /> Download as a file
           </button>
         </div>
@@ -627,7 +627,7 @@ function InviteStep({ settings, next, mark }: GuideProps) {
       primary={
         made ? (
           <>
-            <button type="button" className="ui-btn ui-btn-secondary h-11 px-4 text-body" onClick={() => setMade(null)}>
+            <button type="button" className="ui-btn ui-btn-secondary h-control px-4 text-body" onClick={() => setMade(null)}>
               <UserPlus size={16} aria-hidden /> Another invite
             </button>
             <PrimaryButton onClick={() => void finish()}>Continue</PrimaryButton>
@@ -685,7 +685,7 @@ function AppsStep({ settings, mark }: GuideProps) {
       lede={`${settings.name} is ready. Add it in Folevi on your Mac, iPhone, iPad or Android, and share these steps with the people you invited.`}
       primary={
         <>
-          <button type="button" className="ui-btn ui-btn-secondary h-11 px-4 text-body" disabled={busy !== null} onClick={() => go("admin")}>
+          <button type="button" className="ui-btn ui-btn-secondary h-control px-4 text-body" disabled={busy !== null} onClick={() => go("admin")}>
             Open the admin panel
           </button>
           <PrimaryButton busy={busy === "write"} disabled={busy !== null} onClick={() => go("write")}>
@@ -713,7 +713,7 @@ function Guide({ step, token }: { step: GuideStep; token: string }) {
     return (
       <>
         <AuthHeading title="Sign in to keep going" lede="Sign in with the owner's account to finish setting up the server." />
-        <a href={`/signin?returnTo=${encodeURIComponent(setupUrl(token, at))}`} className="ui-btn ui-btn-primary h-11 w-full text-body">
+        <a href={`/signin?returnTo=${encodeURIComponent(setupUrl(token, at))}`} className="ui-btn ui-btn-primary h-control w-full text-body">
           Sign in
         </a>
       </>
@@ -768,7 +768,7 @@ function Ready({ onNext }: { onNext: () => void }) {
       </ul>
       <div className="flex flex-col gap-2">
         <PrimaryButton onClick={onNext}>Let&apos;s go</PrimaryButton>
-        <a href="/documents" className="ui-btn ui-btn-quiet h-11 text-body">
+        <a href="/documents" className="ui-btn ui-btn-quiet h-control text-body">
           Skip all and start writing
         </a>
       </div>
@@ -784,7 +784,7 @@ export function SetupFlow({ token, signedIn, needsSetup, initialStep }: { token:
     return (
       <>
         <AuthHeading title="This server is set up" lede="It already has an owner. Sign in to use it, or ask its owner for an invite." />
-        <a href={signedIn ? "/documents" : "/signin"} className="ui-btn ui-btn-primary h-11 w-full text-body">
+        <a href={signedIn ? "/documents" : "/signin"} className="ui-btn ui-btn-primary h-control w-full text-body">
           {signedIn ? "Open Folevi" : "Sign in"}
         </a>
       </>

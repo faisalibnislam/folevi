@@ -84,7 +84,7 @@ export function MigrationRow({ scope }: { scope: WireScope }) {
               </li>
             ))}
           </ul>
-          <Button size="sm" className="mt-2" onClick={() => retryFailed()}>
+          <Button className="mt-2" onClick={() => retryFailed()}>
             {m.tryAgain}
           </Button>
         </div>

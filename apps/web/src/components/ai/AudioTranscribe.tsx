@@ -63,10 +63,10 @@ export function TranscribeConfirm({ minutes, credits, onConfirm, onCancel }: { m
       </p>
       <p className="px-4 text-footnote text-muted">Long recordings take a few minutes. The transcript shows here before anything goes into the note.</p>
       <div className="flex items-center gap-1.5 px-3 py-2.5">
-        <button type="button" onClick={onConfirm} className="ui-btn ui-btn-primary h-8 px-3 text-callout">
+        <button type="button" onClick={onConfirm} className="ui-btn ui-btn-primary h-control px-3 text-callout">
           <Captions size={14} aria-hidden /> Transcribe
         </button>
-        <button type="button" onClick={onCancel} className="ui-btn ui-btn-ghost h-8 px-2.5 text-callout">
+        <button type="button" onClick={onCancel} className="ui-btn ui-btn-ghost h-control px-2.5 text-callout">
           Cancel
         </button>
       </div>

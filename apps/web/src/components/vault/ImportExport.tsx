@@ -133,19 +133,19 @@ export function ImportExport({ vaultId, canExport }: { vaultId: string; canExpor
       />
       <SettingsGroup title="Import and export">
         <SettingsRow icon={Upload} name="Import" hint="A CSV from 1Password, Bitwarden, LastPass, Chrome, Safari or Firefox, or a Folevi Vault backup. Items are encrypted on this device before they're sent.">
-          <Button size="sm" disabled={busy !== null} onClick={() => input.current?.click()}>
+          <Button disabled={busy !== null} onClick={() => input.current?.click()}>
             <span className="tabular-nums">{busy ?? "Import…"}</span>
           </Button>
         </SettingsRow>
         {canExport ? (
           <>
             <SettingsRow icon={Archive} name="Encrypted backup" hint="The whole Vault in one encrypted file.">
-              <Button size="sm" disabled={busy !== null} onClick={() => setAsk({ kind: "exportEncrypted" })}>
+              <Button disabled={busy !== null} onClick={() => setAsk({ kind: "exportEncrypted" })}>
                 Export…
               </Button>
             </SettingsRow>
             <SettingsRow icon={FileText} name="Readable CSV" hint="Not encrypted: anyone who has the file can read it.">
-              <Button size="sm" disabled={busy !== null} onClick={() => setAsk({ kind: "exportCsv" })}>
+              <Button disabled={busy !== null} onClick={() => setAsk({ kind: "exportCsv" })}>
                 Export…
               </Button>
             </SettingsRow>
@@ -173,7 +173,7 @@ export function ImportExport({ vaultId, canExport }: { vaultId: string; canExpor
             {needsPassphrase ? (
               <label htmlFor="vault-backup-passphrase" className="block">
                 <span className="mb-1 block text-footnote font-medium text-ink">Passphrase</span>
-                <input id="vault-backup-passphrase" type="password" autoFocus autoComplete="off" value={passphrase} onChange={(e) => setPassphrase(e.target.value)} className="h-9 w-full ui-input rounded-chip px-3" />
+                <input id="vault-backup-passphrase" type="password" autoFocus autoComplete="off" value={passphrase} onChange={(e) => setPassphrase(e.target.value)} className="h-control w-full ui-input px-3" />
               </label>
             ) : null}
           </div>

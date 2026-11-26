@@ -55,7 +55,7 @@ export function SupportRequests({ onContact }: { onContact: () => void }) {
       <div className="ui-card flex flex-wrap items-center gap-3 rounded-control px-4 py-3.5">
         <LifeBuoy size={18} aria-hidden className="flex-none text-muted" />
         <p className="min-w-0 flex-1 text-subheadline text-muted">No support requests yet. Requests you send from here, and our replies, will show up in this list.</p>
-        <Button size="sm" onClick={onContact}>
+        <Button onClick={onContact}>
           Contact support
         </Button>
       </div>
@@ -152,7 +152,7 @@ function ReplyBox({ number, closed }: { number: number; closed: boolean }) {
         }}
         aria-invalid={error ? true : undefined}
         aria-describedby={error ? `${uid}-error` : undefined}
-        className="ui-input w-full resize-y rounded-chip px-3 py-2 text-callout text-ink"
+        className="ui-input w-full resize-y px-3 py-2 text-callout text-ink"
       />
       {error ? (
         <p id={`${uid}-error`} role="alert" className="mt-1 text-subheadline text-danger">
@@ -160,7 +160,7 @@ function ReplyBox({ number, closed }: { number: number; closed: boolean }) {
         </p>
       ) : null}
       <div className="mt-2 flex justify-end">
-        <Button type="submit" size="sm" variant="primary" aria-busy={busy || undefined} disabled={busy}>
+        <Button type="submit" variant="primary" aria-busy={busy || undefined} disabled={busy}>
           {busy ? "Sending…" : "Send reply"}
         </Button>
       </div>

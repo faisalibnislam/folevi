@@ -162,7 +162,7 @@ function SwitchesCard({ scope, switches, canChange }: { scope: WireScope; switch
               const v = e.target.value as Switches["foliAi"];
               save({ ...switches, foliAi: v }, s.foliAi.label, v === "off" && switches.foliAi !== "off");
             }}
-            className="h-9 ui-input rounded-control px-3 text-callout pointer-coarse:h-11"
+            className="h-control ui-input px-3 text-callout"
           >
             <option value="off">{s.foliAi.options.off}</option>
             <option value="ask">{s.foliAi.options.ask}</option>
@@ -267,7 +267,7 @@ function MethodsCard() {
             <span className="block text-subheadline font-medium text-heading">{w.device.label}</span>
             <span className="block text-footnote text-muted">{p.trustedDevices(devices.length)}</span>
           </span>
-          <AppLink href="/settings/devices" className="ui-btn ui-btn-quiet h-8 px-3 text-callout pointer-coarse:h-11">
+          <AppLink href="/settings/devices" className="ui-btn ui-btn-quiet h-control px-3 text-callout">
             {p.devicesLink}
           </AppLink>
         </li>
@@ -277,7 +277,7 @@ function MethodsCard() {
           label={p.addWhich}
           align="start"
           className="mt-3 inline-block"
-          triggerClassName="ui-btn ui-btn-secondary h-9 gap-1.5 px-4 text-callout pointer-coarse:h-11"
+          triggerClassName="ui-btn ui-btn-secondary h-control gap-1.5 px-4 text-callout"
           trigger={
             <>
               <Plus size={14} aria-hidden /> {p.add}

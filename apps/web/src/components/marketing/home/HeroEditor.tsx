@@ -334,7 +334,7 @@ function DemoDock({ editor, art, styles, onPickStyle, notice, setNotice }: { edi
             <h2 id={titleId} className="ui-display flex-1 text-[18px]">
               {panelTitle}
             </h2>
-            <IconButton label="Close" onClick={close} className="!h-7 !w-7">
+            <IconButton label="Close" onClick={close} className="!size-control-sm">
               <X size={15} aria-hidden />
             </IconButton>
           </div>
@@ -431,7 +431,7 @@ function NoticeBody({ notice }: { notice: Notice }) {
           ))}
         </ul>
       ) : null}
-      <a href={SIGN_UP_URL} className="ui-btn ui-btn-primary mt-4 h-9 w-full px-4 text-[14px]">
+      <a href={SIGN_UP_URL} className="ui-btn ui-btn-primary mt-4 h-control w-full px-4 text-[14px]">
         Sign up free
       </a>
     </div>

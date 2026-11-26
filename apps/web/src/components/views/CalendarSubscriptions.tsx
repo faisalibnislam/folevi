@@ -194,7 +194,7 @@ function SubscriptionRow({ cal }: { cal: Subscription }) {
             setName(cal.name);
             setColor(asColor(cal.color));
           }}
-          className="ui-btn ui-btn-ghost h-7 px-2 text-footnote"
+          className="ui-btn ui-btn-ghost h-control-sm px-2 text-footnote"
         >
           {editing ? "Close" : "Edit"}
         </button>
@@ -218,26 +218,25 @@ function SubscriptionRow({ cal }: { cal: Subscription }) {
         >
           <label className="block text-footnote font-medium text-muted">
             Name
-            <input value={name} maxLength={80} onChange={(e) => setName(e.target.value)} className="ui-input mt-1 h-8 w-full rounded-chip px-2.5 text-callout text-ink" />
+            <input value={name} maxLength={80} onChange={(e) => setName(e.target.value)} className="ui-input mt-1 h-control w-full px-2.5 text-callout text-ink" />
           </label>
           <ColorPicker value={color} onChange={setColor} name={`calendar-color-${cal.id}`} />
           <div className="flex flex-wrap items-center gap-1.5 pt-1">
-            <Button size="sm" type="submit" variant="primary">
+            <Button type="submit" variant="primary">
               Save
             </Button>
-            <Button size="sm" onClick={() => void refresh({ calendarId: cal.id }).catch((err) => toast.show(errorMessage(err), { tone: "error" }))}>
+            <Button onClick={() => void refresh({ calendarId: cal.id }).catch((err) => toast.show(errorMessage(err), { tone: "error" }))}>
               <RefreshCw size={13} aria-hidden /> Refresh
             </Button>
             {confirming ? (
               <Button
-                size="sm"
                 variant="danger"
                 onClick={() => void remove({ calendarId: cal.id }).catch((err) => toast.show(errorMessage(err), { tone: "error" }))}
               >
                 Remove calendar
               </Button>
             ) : (
-              <Button size="sm" variant="quiet" className="text-danger" onClick={() => setConfirming(true)}>
+              <Button variant="quiet" className="text-danger" onClick={() => setConfirming(true)}>
                 <Trash2 size={13} aria-hidden /> Remove
               </Button>
             )}
@@ -291,12 +290,12 @@ function AddCalendar({ count }: { count: number }) {
           autoComplete="off"
           spellCheck={false}
           aria-invalid={error ? true : undefined}
-          className="ui-input mt-1 h-8 w-full rounded-chip px-2.5 text-callout text-ink"
+          className="ui-input mt-1 h-control w-full px-2.5 text-callout text-ink"
         />
       </label>
       <label className="block text-footnote font-medium text-muted">
         Name (optional)
-        <input value={name} maxLength={80} onChange={(e) => setName(e.target.value)} className="ui-input mt-1 h-8 w-full rounded-chip px-2.5 text-callout text-ink" />
+        <input value={name} maxLength={80} onChange={(e) => setName(e.target.value)} className="ui-input mt-1 h-control w-full px-2.5 text-callout text-ink" />
       </label>
       <ColorPicker value={color} onChange={setColor} name="new-calendar-color" />
       {error ? (
@@ -306,7 +305,7 @@ function AddCalendar({ count }: { count: number }) {
       ) : null}
       <div className="flex items-center justify-between gap-2 pt-1">
         <p className="text-footnote leading-snug text-faint">Read-only. Folevi checks it for changes about once an hour.</p>
-        <Button size="sm" type="submit" variant="primary" disabled={busy || !url.trim()}>
+        <Button type="submit" variant="primary" disabled={busy || !url.trim()}>
           Add
         </Button>
       </div>
@@ -322,7 +321,7 @@ export function CalendarsButton() {
   const failing = (cals ?? []).some((c) => c.lastError);
   return (
     <>
-      <Button ref={anchor} size="sm" title="Calendars" aria-expanded={open} aria-haspopup="dialog" onClick={() => setOpen((o) => !o)}>
+      <Button ref={anchor} title="Calendars" aria-expanded={open} aria-haspopup="dialog" onClick={() => setOpen((o) => !o)}>
         <CalendarRange size={14} aria-hidden /> <span className="max-md:sr-only">Calendars</span>
         {failing ? (
           <>

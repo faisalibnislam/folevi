@@ -415,7 +415,7 @@ function VersionRow({
                 onCancelName();
               }
             }}
-            className="ui-input h-8 w-full rounded-chip px-2 text-callout"
+            className="ui-input h-control w-full px-2 text-callout"
           />
           <p className="mt-1 text-footnote text-muted">Enter to save, Esc to cancel. Named versions are kept for good.</p>
         </form>

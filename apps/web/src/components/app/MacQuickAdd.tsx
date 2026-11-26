@@ -213,7 +213,7 @@ export function MacQuickAdd({ round, place }: { round: number; /** The place pic
         </p>
         <button
           type="button"
-          className="ui-btn ui-btn-secondary h-7 rounded-small px-3 text-callout"
+          className="ui-btn ui-btn-secondary h-control-sm px-3 text-callout"
           onClick={() => {
             bridge?.openInMain(`/d/${added.documentId}`);
             bridge?.closeQuickAdd();

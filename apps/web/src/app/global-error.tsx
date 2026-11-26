@@ -28,10 +28,10 @@ export default function GlobalError({ error, retry }: { error: unknown; retry: (
               <h1 className="ui-display text-large-title">Something went wrong</h1>
               <p className="mt-3 text-muted">Folevi couldn’t show this page. Try again, or reload Folevi.</p>
               <div className="mt-6 flex flex-wrap items-center justify-center gap-2">
-                <button type="button" onClick={() => retry()} className="ui-btn ui-btn-primary h-9 px-4 text-callout">
+                <button type="button" onClick={() => retry()} className="ui-btn ui-btn-primary h-control px-4 text-callout">
                   Try again
                 </button>
-                <button type="button" onClick={() => window.location.reload()} className="ui-btn ui-btn-secondary h-9 px-4 text-callout">
+                <button type="button" onClick={() => window.location.reload()} className="ui-btn ui-btn-secondary h-control px-4 text-callout">
                   Reload
                 </button>
               </div>

@@ -121,7 +121,7 @@ function RoutineRow({ routine: r, capChoices, timeZone }: { routine: Routine; ca
             {r.kind === "openLoops" ? (
               <label className="space-y-1 text-subheadline">
                 <span className="block font-medium text-heading">Day</span>
-                <Select value={String(r.weekday)} onChange={(e) => change({ weekday: Number(e.target.value) })} aria-label={`${r.name} day`} className="ui-input h-9 rounded-chip px-3 text-callout w-full">
+                <Select value={String(r.weekday)} onChange={(e) => change({ weekday: Number(e.target.value) })} aria-label={`${r.name} day`} className="ui-input h-control px-3 text-callout w-full">
                   {DAY_ORDER.map((d) => (
                     <option key={d} value={String(d)}>
                       {DAYS[d]}
@@ -132,7 +132,7 @@ function RoutineRow({ routine: r, capChoices, timeZone }: { routine: Routine; ca
             ) : null}
             <label className="space-y-1 text-subheadline">
               <span className="block font-medium text-heading">Time</span>
-              <Select value={String(r.hour)} onChange={(e) => change({ hour: Number(e.target.value) })} aria-label={`${r.name} time`} className="ui-input h-9 rounded-chip px-3 text-callout w-full">
+              <Select value={String(r.hour)} onChange={(e) => change({ hour: Number(e.target.value) })} aria-label={`${r.name} time`} className="ui-input h-control px-3 text-callout w-full">
                 {Array.from({ length: 24 }, (_, h) => (
                   <option key={h} value={String(h)}>
                     {hourLabel(h, locale)}
@@ -142,7 +142,7 @@ function RoutineRow({ routine: r, capChoices, timeZone }: { routine: Routine; ca
             </label>
             <label className="space-y-1 text-subheadline">
               <span className="block font-medium text-heading">About</span>
-              <Select value={where} onChange={(e) => change({ scope: e.target.value === "personal" ? { kind: "personal" } : { kind: "workspace", workspaceId: e.target.value } })} aria-label={`${r.name} about`} className="ui-input h-9 rounded-chip px-3 text-callout w-full">
+              <Select value={where} onChange={(e) => change({ scope: e.target.value === "personal" ? { kind: "personal" } : { kind: "workspace", workspaceId: e.target.value } })} aria-label={`${r.name} about`} className="ui-input h-control px-3 text-callout w-full">
                 <option value="personal">Personal</option>
                 {places.map((w) => (
                   <option key={w.id} value={w.id}>
@@ -153,7 +153,7 @@ function RoutineRow({ routine: r, capChoices, timeZone }: { routine: Routine; ca
             </label>
             <label className="space-y-1 text-subheadline">
               <span className="block font-medium text-heading">Monthly limit</span>
-              <Select value={String(r.monthlyCap)} onChange={(e) => change({ monthlyCap: Number(e.target.value) })} aria-label={`${r.name} monthly limit`} className="ui-input h-9 rounded-chip px-3 text-callout w-full">
+              <Select value={String(r.monthlyCap)} onChange={(e) => change({ monthlyCap: Number(e.target.value) })} aria-label={`${r.name} monthly limit`} className="ui-input h-control px-3 text-callout w-full">
                 {capChoices.map((c) => (
                   <option key={c} value={String(c)}>
                     {credits(c)}
@@ -175,7 +175,7 @@ function RoutineRow({ routine: r, capChoices, timeZone }: { routine: Routine; ca
             ) : null}
           </p>
           <div className="mt-3">
-            <Button size="sm" onClick={run} disabled={running || locked}>
+            <Button onClick={run} disabled={running || locked}>
               Run now
             </Button>
           </div>

@@ -155,7 +155,7 @@ function RemoveFromEncryption({ device, onClose }: { device: Row; onClose: () =>
               value={passphrase}
               onChange={(e) => setPassphrase(e.target.value)}
               aria-describedby={`${uid}-pp`}
-              className="ui-input mt-1 block h-10 w-full rounded-control px-3 text-callout font-normal pointer-coarse:h-11"
+              className="ui-input mt-1 block h-control w-full px-3 text-callout font-normal"
             />
             <span id={`${uid}-pp`} className="mt-1 block text-subheadline font-normal text-muted">
               {d.keepPassphraseHint}

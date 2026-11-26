@@ -177,8 +177,8 @@ export default async function SharedPage({ params }: { params: Promise<{ token: 
         <label className="mt-4 block text-subheadline" htmlFor="pw">
           Password
         </label>
-        <input id="pw" name="password" type="password" required autoComplete="off" className="mt-1 h-10 w-full ui-input rounded-chip px-3" />
-        <button type="submit" className="mt-4 h-10 w-full ui-btn ui-btn-primary text-callout font-medium ">
+        <input id="pw" name="password" type="password" required autoComplete="off" className="mt-1 h-control w-full ui-input px-3" />
+        <button type="submit" className="mt-4 h-control w-full ui-btn ui-btn-primary text-callout font-medium ">
           Open page
         </button>
       </form>,

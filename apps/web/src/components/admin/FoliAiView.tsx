@@ -182,7 +182,7 @@ export function FoliAiView() {
                       );
                     })}
                     <td className={`${tdMid} text-right`}>
-                      <Button size="sm" disabled={!canEdit} onClick={() => setPending({ kind: "models", provider: p })} aria-label={`Edit ${p.label} models`}>
+                      <Button disabled={!canEdit} onClick={() => setPending({ kind: "models", provider: p })} aria-label={`Edit ${p.label} models`}>
                         Edit…
                       </Button>
                     </td>
@@ -235,11 +235,11 @@ export function FoliAiView() {
                     <td className={tdMid}>{p.key.updatedAt ? <Time ts={p.key.updatedAt} /> : <span className="text-muted">Not saved here</span>}</td>
                     <td className={`${tdMid} text-right`}>
                       <span className="inline-flex gap-1.5">
-                        <Button size="sm" disabled={!canKeys} onClick={() => setPending({ kind: "key", provider: p })} aria-label={`${p.key.source === "saved" ? "Replace" : "Add"} the ${p.label} key`}>
+                        <Button disabled={!canKeys} onClick={() => setPending({ kind: "key", provider: p })} aria-label={`${p.key.source === "saved" ? "Replace" : "Add"} the ${p.label} key`}>
                           {p.key.source === "saved" ? "Replace…" : "Add key…"}
                         </Button>
                         {p.key.source === "saved" ? (
-                          <Button size="sm" variant="ghost" disabled={!canKeys} onClick={() => setPending({ kind: "removeKey", provider: p })} aria-label={`Remove the saved ${p.label} key`}>
+                          <Button variant="ghost" disabled={!canKeys} onClick={() => setPending({ kind: "removeKey", provider: p })} aria-label={`Remove the saved ${p.label} key`}>
                             Remove…
                           </Button>
                         ) : null}

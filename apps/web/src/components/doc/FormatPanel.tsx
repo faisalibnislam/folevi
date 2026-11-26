@@ -273,7 +273,7 @@ export function FormatPanel({ editor, disabled }: { editor: Editor | null; disab
                 const pos = editor.state.selection.$from.before(1);
                 editor.view.dispatch(editor.state.tr.setNodeMarkup(pos, undefined, { ...node!.attrs, language: e.target.value }));
               }}
-              className="ui-input h-11 w-full rounded-control px-3 text-body"
+              className="ui-input h-control w-full px-3 text-body"
             >
               {["plaintext", "bash", "c", "cpp", "csharp", "css", "diff", "go", "graphql", "html", "java", "javascript", "json", "kotlin", "latex", "markdown", "mermaid", "php", "python", "ruby", "rust", "sql", "swift", "toml", "typescript", "xml", "yaml"].map((l) => (
                 <option key={l} value={l}>
@@ -445,13 +445,13 @@ export function FormatPanel({ editor, disabled }: { editor: Editor | null; disab
             placeholder={marks.state.selection.empty && !linkActive ? "Address to insert as a link" : "Paste or type a link"}
             aria-invalid={Boolean(linkError)}
             aria-describedby={`${linkId}-hint`}
-            className="ui-input h-8 min-w-0 flex-1 rounded-chip px-3 text-callout disabled:opacity-50"
+            className="ui-input h-control min-w-0 flex-1 px-3 text-callout disabled:opacity-50"
           />
-          <Button size="sm" type="submit" disabled={marksOff || !href.trim()}>
+          <Button type="submit" disabled={marksOff || !href.trim()}>
             {linkActive ? "Update" : "Link"}
           </Button>
           {linkActive ? (
-            <Button size="sm" variant="quiet" disabled={marksOff} onClick={() => removeLink(marks)}>
+            <Button variant="quiet" disabled={marksOff} onClick={() => removeLink(marks)}>
               Remove
             </Button>
           ) : null}
@@ -532,7 +532,7 @@ export function FormatPanel({ editor, disabled }: { editor: Editor | null; disab
               const pos = editor.state.selection.$from.before(1);
               editor.view.dispatch(editor.state.tr.setNodeMarkup(pos, undefined, { ...node!.attrs, language: e.target.value }));
             }}
-            className="ui-input h-9 w-full rounded-chip px-3 text-callout"
+            className="ui-input h-control w-full px-3 text-callout"
           >
             {["plaintext", "bash", "c", "cpp", "csharp", "css", "diff", "go", "graphql", "html", "java", "javascript", "json", "kotlin", "latex", "markdown", "mermaid", "php", "python", "ruby", "rust", "sql", "swift", "toml", "typescript", "xml", "yaml"].map((l) => (
               <option key={l} value={l}>

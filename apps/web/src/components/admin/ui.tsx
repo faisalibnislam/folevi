@@ -180,10 +180,10 @@ export function Pager({ page, hasPrev, hasNext, onPrev, onNext, busy }: { page: 
   return (
     <nav aria-label="Pagination" className="flex items-center justify-end gap-2 px-5 py-2.5 text-subheadline text-muted">
       <span aria-live="polite">Page {page}</span>
-      <Button size="sm" onClick={onPrev} disabled={!hasPrev || busy}>
+      <Button onClick={onPrev} disabled={!hasPrev || busy}>
         <ChevronLeft size={14} aria-hidden /> Previous
       </Button>
-      <Button size="sm" onClick={onNext} disabled={!hasNext || busy}>
+      <Button onClick={onNext} disabled={!hasNext || busy}>
         Next <ChevronRight size={14} aria-hidden />
       </Button>
     </nav>
@@ -241,7 +241,7 @@ export function ErrorNotice({ error, onRetry }: { error: unknown; onRetry?: () =
       <AlertTriangle size={16} aria-hidden className="flex-none text-danger" />
       <span className="flex-1">{errorMessage(error)}</span>
       {onRetry ? (
-        <Button size="sm" onClick={onRetry}>
+        <Button onClick={onRetry}>
           <RotateCw size={13} aria-hidden /> Retry
         </Button>
       ) : null}
@@ -262,7 +262,7 @@ export function StatTile({ label, value, hint, footnote }: { label: string; valu
 
 // ---------------------------------------------------------------- form controls
 
-export const inputCls = "ui-input h-9 w-full rounded-chip px-3 text-body text-ink placeholder:text-faint aria-[invalid=true]:shadow-[0_0_0_1.5px_var(--color-destructive)]";
+export const inputCls = "ui-input h-control w-full px-3 text-body text-ink placeholder:text-faint aria-[invalid=true]:shadow-[0_0_0_1.5px_var(--color-destructive)]";
 export const selectCls = `${inputCls} pr-2.5`;
 
 /** The app's on/off switch (dark when on). */

@@ -30,7 +30,7 @@ export const Field = forwardRef<HTMLInputElement, FieldProps>(function Field({ l
         id={inputId}
         aria-invalid={error ? true : undefined}
         aria-describedby={[hint ? hintId : null, error ? errorId : null].filter(Boolean).join(" ") || undefined}
-        className={`ui-input w-full rounded-chip text-ink ${compact ? "h-9 px-3 text-subheadline" : "h-11 px-4 text-body"} placeholder:text-[var(--color-ink-faint)] ${error ? "shadow-[0_0_0_1.5px_var(--color-destructive)]" : ""} ${className ?? ""}`}
+        className={`ui-input w-full text-ink ${compact ? "h-control px-3 text-callout" : "h-control px-4 text-body"} placeholder:text-[var(--color-ink-faint)] ${error ? "shadow-[0_0_0_1.5px_var(--color-destructive)]" : ""} ${className ?? ""}`}
         {...rest}
       />
       {hint ? (
@@ -68,7 +68,7 @@ export function PasswordField(props: Omit<FieldProps, "type">) {
 
 export function SubmitButton({ busy, children, disabled }: { busy: boolean; children: ReactNode; disabled?: boolean }) {
   return (
-    <button type="submit" disabled={busy || disabled} aria-busy={busy} className="ui-btn ui-btn-primary h-11 w-full text-body">
+    <button type="submit" disabled={busy || disabled} aria-busy={busy} className="ui-btn ui-btn-primary h-control w-full text-body">
       {busy ? <Loader2 size={16} className="animate-spin motion-reduce:animate-none" aria-hidden /> : null}
       {children}
     </button>

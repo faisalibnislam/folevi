@@ -180,11 +180,10 @@ export function ConnectedAppsSection() {
                   </div>
                   {confirming === g.id ? (
                     <div className="flex flex-none items-center gap-2">
-                      <Button size="sm" onClick={() => setConfirming(null)}>
+                      <Button onClick={() => setConfirming(null)}>
                         Keep
                       </Button>
                       <Button
-                        size="sm"
                         variant="primary"
                         className="bg-danger"
                         onClick={() => disconnect(g)}
@@ -193,7 +192,7 @@ export function ConnectedAppsSection() {
                       </Button>
                     </div>
                   ) : (
-                    <Button size="sm" variant="quiet" className="flex-none text-danger" onClick={() => setConfirming(g.id)}>
+                    <Button variant="quiet" className="flex-none text-danger" onClick={() => setConfirming(g.id)}>
                       Disconnect…
                     </Button>
                   )}

@@ -260,7 +260,7 @@ export function DateField({
         className={
           bare
             ? "flex w-full min-w-0 items-center bg-transparent text-left outline-none disabled:opacity-50"
-            : `ui-input flex ${size === "lg" ? "h-9" : "h-8"} w-full min-w-0 items-center gap-2 rounded-chip pl-2.5 pr-8 text-left text-callout disabled:opacity-50`
+            : `ui-input flex ${size === "lg" ? "h-control" : "h-control"} w-full min-w-0 items-center gap-2 pl-2.5 pr-9 text-left text-callout disabled:opacity-50`
         }
       >
         {bare ? null : <CalendarDays size={14} aria-hidden className="flex-none text-muted" />}
@@ -316,7 +316,7 @@ export function DateField({
                 <div className="mt-1.5 flex justify-end border-t border-line pt-1.5">
                   <button
                     type="button"
-                    className="ui-btn ui-btn-quiet h-7 px-2.5 text-footnote"
+                    className="ui-btn ui-btn-quiet h-control-sm px-2.5 text-footnote"
                     onClick={() => {
                       onChange("");
                       close();
@@ -380,7 +380,7 @@ export function TimeField({
       onChange={(e) => onChange(e.target.value)}
       disabled={disabled}
       aria-label={ariaLabel}
-      className={`${size === "lg" ? "h-9" : "h-8"} ui-input rounded-chip px-2.5 text-callout ${className}`}
+      className={`${size === "lg" ? "h-control" : "h-control"} ui-input px-2.5 text-callout ${className}`}
     >
       {allowEmpty || !value ? <option value="">{emptyLabel}</option> : null}
       {times.map((t) => (

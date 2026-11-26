@@ -172,7 +172,7 @@ function MissingContainer({ kind }: { kind: "folder" | "tag" }) {
         <p className="mt-3 text-muted">
           It may have been deleted{workspaces.length ? `, or it belongs somewhere other than ${here}` : ""}. Links to {kind === "folder" ? "folders" : "tags"} only work in their own Personal or workspace. Switch there from the menu at the bottom of the sidebar.
         </p>
-        <AppLink href="/documents" className="ui-btn ui-btn-primary mt-6 h-9 px-4 text-callout">
+        <AppLink href="/documents" className="ui-btn ui-btn-primary mt-6 h-control px-4 text-callout">
           Go to Home
         </AppLink>
       </div>
@@ -648,7 +648,7 @@ function DocumentList({ view, folderId, tagId, org, titleOverride }: { view: Vie
       <div className="min-h-full" onPointerDown={selection.onSurfacePointerDown}>
       <div className="mx-auto max-w-[1180px] px-4 pb-[max(6rem,var(--fab-clearance))] pt-3 sm:px-8">
         {folderHeader ?? (
-        <div className="mb-5 flex flex-wrap items-center gap-3">
+        <div data-toolbar="" className="mb-5 flex flex-wrap items-center gap-2">
           <p role="status" className="mr-auto min-w-0 truncate text-subheadline text-muted">
             {loading || listEmpty
               ? undefined
@@ -664,7 +664,7 @@ function DocumentList({ view, folderId, tagId, org, titleOverride }: { view: Vie
               {filterField(false)}
               <label className="flex items-center gap-2 text-subheadline text-muted">
                 <span>Sort</span>
-                <Select value={sort} onChange={(e) => setSort(e.target.value as Sort)} className="ui-hit h-9 ui-input rounded-chip px-3 text-callout text-ink">
+                <Select value={sort} onChange={(e) => setSort(e.target.value as Sort)} className="ui-hit h-control ui-input px-3 text-callout text-ink">
                   {NOTE_SORTS.map(([v, label]) => (
                     <option key={v} value={v}>
                       {label}
@@ -899,7 +899,7 @@ function UseTemplateButton({ doc, raised }: { doc: Summary; raised?: boolean }) 
     <button
       type="button"
       onClick={() => void createDocument({ title: doc.title, templateId: doc.id })}
-      className={`ui-btn ${raised ? "ui-btn-secondary" : "ui-btn-ghost"} h-8 gap-1 px-2.5 text-footnote`}
+      className={`ui-btn ${raised ? "ui-btn-secondary" : "ui-btn-ghost"} h-control gap-1 px-2.5 text-footnote`}
       aria-label={`New page from template ${doc.title || "Untitled"}`}
     >
       <FilePlus2 size={13} aria-hidden /> Use
@@ -1051,7 +1051,7 @@ export function PermanentDeleteDialog({ open, onClose, documentId, title }: { op
       <label className="block text-subheadline" htmlFor="confirm-title">
         Document title
       </label>
-      <input id="confirm-title" value={typed} onChange={(e) => setTyped(e.target.value)} autoFocus className="mt-1 h-10 w-full ui-input rounded-chip px-3 text-callout" />
+      <input id="confirm-title" value={typed} onChange={(e) => setTyped(e.target.value)} autoFocus className="mt-1 h-control w-full ui-input px-3 text-callout" />
     </Dialog>
   );
 }

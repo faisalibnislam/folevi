@@ -49,7 +49,7 @@ export function AiUnavailable({ ai, compact = false, headingLevel = 2 }: { ai: P
         </Heading>
         <p className="text-subheadline leading-snug text-muted">{copy.body}</p>
         {copy.link ? (
-          <AppLink href={copy.link.href} className="ui-btn ui-btn-secondary inline-flex h-8 items-center px-3 text-callout">
+          <AppLink href={copy.link.href} className="ui-btn ui-btn-secondary inline-flex h-control items-center px-3 text-callout">
             {copy.link.label}
           </AppLink>
         ) : null}
@@ -62,7 +62,7 @@ export function AiUnavailable({ ai, compact = false, headingLevel = 2 }: { ai: P
       <Heading className="ui-display mt-4 text-title-1">{copy.title}</Heading>
       <p className="mt-2 text-body text-muted">{copy.body}</p>
       {copy.link ? (
-        <AppLink href={copy.link.href} className="ui-btn ui-btn-secondary mt-6 inline-flex h-9 items-center px-4 text-callout">
+        <AppLink href={copy.link.href} className="ui-btn ui-btn-secondary mt-6 inline-flex h-control items-center px-4 text-callout">
           {copy.link.label}
         </AppLink>
       ) : null}

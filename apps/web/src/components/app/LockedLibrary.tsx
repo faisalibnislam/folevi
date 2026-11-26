@@ -90,7 +90,7 @@ export function LockedLibrary({ control, where }: { control: LibraryControl; whe
             }}
             aria-invalid={problem ? true : undefined}
             aria-describedby={problem ? `${id}-problem` : undefined}
-            className="ui-input h-11 rounded-chip px-3 text-body text-ink"
+            className="ui-input h-control px-3 text-body text-ink"
           />
         </label>
         {problem ? (
@@ -98,12 +98,12 @@ export function LockedLibrary({ control, where }: { control: LibraryControl; whe
             {problem}
           </p>
         ) : null}
-        <Button type="submit" variant="primary" className="h-11 w-full text-body" disabled={busy}>
+        <Button type="submit" variant="primary" className="h-control w-full text-body" disabled={busy}>
           {busy ? <Loader2 size={16} aria-hidden className="animate-spin motion-reduce:animate-none" /> : null}
           Unlock
         </Button>
         <div className="grid justify-items-center gap-2 text-center">
-          <Button variant="quiet" size="sm" aria-expanded={help} onClick={() => setHelp((h) => !h)}>
+          <Button variant="quiet" aria-expanded={help} onClick={() => setHelp((h) => !h)}>
             Forgot the passphrase?
           </Button>
           {help ? (

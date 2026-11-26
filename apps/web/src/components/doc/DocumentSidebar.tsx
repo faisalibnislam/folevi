@@ -85,7 +85,7 @@ export function DocumentSidebar({
           <IconButton label="Hide sidebar" shortcut="⌘\" onClick={onHide}>
             <PanelLeft size={16} aria-hidden />
           </IconButton>
-          <AppLink href="/documents" onClick={onNavigate} aria-label="Home" title="Home" className="ui-btn ui-btn-ghost grid h-8 w-8 place-items-center rounded-chip p-0 text-muted hover:text-heading">
+          <AppLink href="/documents" onClick={onNavigate} aria-label="Home" title="Home" className="ui-btn ui-btn-ghost grid size-control place-items-center p-0 text-muted hover:text-heading">
             <House size={16} aria-hidden />
           </AppLink>
         </div>
@@ -426,7 +426,7 @@ function FindPanel({ editor }: { editor: Editor | null }) {
             }
           }}
           placeholder="Text in document"
-          className="ui-input h-9 w-full rounded-chip pl-8 pr-8 text-callout"
+          className="ui-input h-control w-full pl-9 pr-9 text-callout"
           aria-describedby={`${inputId}-count`}
         />
         {query ? (
@@ -439,10 +439,10 @@ function FindPanel({ editor }: { editor: Editor | null }) {
         <p id={`${inputId}-count`} role="status" className="flex-1 text-footnote text-muted tabular-nums">
           {!query.trim() ? "Type to search this page" : matches.length ? `${current + 1} of ${matches.length}${matches.length >= MAX_MATCHES ? "+" : ""}` : "No results in this page"}
         </p>
-        <IconButton label="Previous match" shortcut="⇧Enter" onClick={() => reveal(current - 1)} disabled={!matches.length} className="!h-7 !w-7">
+        <IconButton label="Previous match" shortcut="⇧Enter" onClick={() => reveal(current - 1)} disabled={!matches.length} className="!size-control-sm">
           <ChevronUp size={15} aria-hidden />
         </IconButton>
-        <IconButton label="Next match" shortcut="Enter" onClick={() => reveal(current + 1)} disabled={!matches.length} className="!h-7 !w-7">
+        <IconButton label="Next match" shortcut="Enter" onClick={() => reveal(current + 1)} disabled={!matches.length} className="!size-control-sm">
           <ChevronDown size={15} aria-hidden />
         </IconButton>
       </div>

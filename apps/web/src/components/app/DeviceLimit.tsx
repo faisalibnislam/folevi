@@ -79,7 +79,7 @@ export function DeviceLimitScreen({ limit }: { limit: number }) {
                 <span className="block truncate text-subheadline font-medium text-heading">{s.label}</span>
                 <span className="block text-footnote text-muted">Active {formatRelative(s.lastSeenAt)}</span>
               </span>
-              <Button size="sm" onClick={() => void run(s.id, () => revoke({ sessionId: s.id }))} disabled={busy !== null} aria-label={`Sign out ${s.label}`}>
+              <Button onClick={() => void run(s.id, () => revoke({ sessionId: s.id }))} disabled={busy !== null} aria-label={`Sign out ${s.label}`}>
                 {busy === s.id ? "Signing out…" : "Sign out"}
               </Button>
             </li>

@@ -16,27 +16,26 @@ export interface PathStep {
 }
 
 /**
- * The height every control in a title row shares (32 px, 44 on touch), level with the middle of the page's name:
- * the compact Sort, the view switch (with ROW_SEG), the search field and the buttons.
+ * The height every control in a toolbar shares: the control scale's h-control (36 px, 44 on touch; docs/DESIGN_SYSTEM.md,
+ * Controls), as All notes' toolbar has it: the filter field, Sort, the view switch (ROW_SEG) and the buttons.
  */
-export const ROW_CONTROL = "h-8 pointer-coarse:h-11";
-/** The view switch at the row's height: 2 px around 28 px segments (36 px segments and 4 px on touch). */
-export const ROW_SEG = "ui-seg ui-well p-0.5 pointer-coarse:p-1 pointer-coarse:[&>*]:min-h-9";
-/** An icon-only button in a title row (Share, the folder's "…"). */
-export const ROW_ICON_BUTTON = "ui-btn ui-btn-secondary h-8 w-8 flex-none pointer-coarse:h-11 pointer-coarse:w-11";
+export const ROW_CONTROL = "h-control";
+/** The view switch at the control height: a 36 px track with 28 px segments (44 and 36 on touch). */
+export const ROW_SEG = "ui-seg ui-well flex-none";
+/** An icon-only button in a toolbar (Share, the folder's "…"). */
+export const ROW_ICON_BUTTON = "ui-btn ui-btn-secondary size-control flex-none";
 
 /**
- * A title row's page controls in one quiet rounded tray (the owner, 6 November 2026: "inside a rounded rectangle
- * but nimble and less prominent"): a faint tint and hairline around controls that drop their own boxes
- * (globals.css .row-tray), with thin dividers (RowTraySep) between the groups. The row's height.
+ * A toolbar's page controls side by side at the control gap (globals.css .row-tray), each drawn as everywhere else:
+ * the Folders toolbar matches All notes (the owner, 2026-11-26: "same height for everything").
  */
 export function RowTray({ children }: { children: ReactNode }) {
   return <div className="row-tray">{children}</div>;
 }
 
-/** The hairline between groups in a RowTray. */
+/** Kept for callers that grouped a tray's controls; groups now sit apart by the control gap alone. */
 export function RowTraySep() {
-  return <span aria-hidden className="row-tray-sep" />;
+  return null;
 }
 
 /**
@@ -62,7 +61,7 @@ function PathMenu({ title, mark, path }: { title: string; mark?: string | null; 
           <ChevronDown size={12} aria-hidden className="-ml-0.5 text-faint" />
         </>
       }
-      triggerClassName={`ui-btn ui-btn-secondary row-tray-path ${ROW_CONTROL} flex-none gap-0.5 px-1.5`}
+      triggerClassName={`ui-btn ui-btn-secondary row-tray-path ${ROW_CONTROL} flex-none gap-0.5 px-2.5`}
       items={items}
     />
   );
@@ -101,7 +100,7 @@ export function ListPageHeader({
   const tray = path?.length || controls;
   return (
     // 20 px above the row on the page's 12 (the owner, 6 November 2026: "give more space on the top").
-    <header data-page-header="" className="mb-6 mt-5 flex flex-wrap items-center gap-x-4 gap-y-3">
+    <header data-page-header="" data-toolbar="" className="mb-6 mt-5 flex flex-wrap items-center gap-x-4 gap-y-3">
       <div className="flex min-w-0 flex-[1_1_18rem] items-center gap-2.5">
         {mark}
         {/* Title 1 on the desktop (24), Title 2 in the apps' iOS scale (22): the size of a folder card's name. */}
@@ -146,8 +145,8 @@ export function RowSort<T extends string>({ value, onChange, options }: { value:
       title="Sort"
       value={value}
       onChange={(e) => onChange(e.target.value as T)}
-      leading={<ArrowDownUp size={14} aria-hidden className="flex-none text-muted" />}
-      className={`ui-input ${ROW_CONTROL} flex-none rounded-chip pl-2.5 pr-2 text-callout text-ink`}
+      leading={<ArrowDownUp size={16} aria-hidden className="flex-none text-muted" />}
+      className={`ui-input ${ROW_CONTROL} flex-none px-3 text-callout text-ink`}
     >
       {options.map(([v, label]) => (
         <option key={v} value={v}>
@@ -173,7 +172,7 @@ export function FilterField({ value, onChange, label, inRow = false }: { value: 
       <label htmlFor={id} className="sr-only">
         {label}
       </label>
-      <Funnel size={14} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-faint" aria-hidden />
+      <Funnel size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-faint" aria-hidden />
       <input
         id={id}
         type="text"
@@ -187,10 +186,10 @@ export function FilterField({ value, onChange, label, inRow = false }: { value: 
         }}
         placeholder={label}
         autoComplete="off"
-        className={`ui-input ${inRow ? ROW_CONTROL : "h-9"} w-full rounded-chip pl-8 pr-8 text-callout`}
+        className={`ui-input ${ROW_CONTROL} w-full pl-9 pr-9 text-callout`}
       />
       {value ? (
-        <button type="button" aria-label="Clear filter" title="Clear filter" onClick={() => onChange("")} className="absolute right-2 top-1/2 grid h-6 w-6 -translate-y-1/2 place-items-center rounded-chip text-faint hover:text-ink">
+        <button type="button" aria-label="Clear filter" title="Clear filter" onClick={() => onChange("")} className="absolute right-1.5 top-1/2 grid size-6 -translate-y-1/2 place-items-center rounded-chip text-faint hover:text-ink">
           <X size={13} aria-hidden />
         </button>
       ) : null}

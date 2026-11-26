@@ -223,7 +223,6 @@ export function SetupWizard({
                   </span>
                 ) : kind === "device" || (kind === "passkey" && (!passkeyHere || passkeyNote)) ? null : (
                   <Button
-                    size="sm"
                     disabled={busy}
                     aria-label={`${copy.privacy.add} ${w.methods[kind].label}`}
                     onClick={() => {
@@ -405,7 +404,7 @@ export function PassphraseForm({ onSaved, onCancel }: { onSaved: () => void; onC
             setError(null);
           }}
           aria-describedby={`${uid}-hint ${uid}-strength`}
-          className="ui-input mt-1 block h-10 w-full rounded-control px-3 text-callout font-normal pointer-coarse:h-11"
+          className="ui-input mt-1 block h-control w-full px-3 text-callout font-normal"
         />
       </label>
       <p id={`${uid}-strength`} aria-live="polite" className={`-mt-2 text-subheadline ${p1 ? (ok ? "text-heading" : "text-danger") : "text-muted"}`}>
@@ -423,7 +422,7 @@ export function PassphraseForm({ onSaved, onCancel }: { onSaved: () => void; onC
           }}
           aria-invalid={error ? true : undefined}
           aria-describedby={error ? `${uid}-error` : undefined}
-          className="ui-input mt-1 block h-10 w-full rounded-control px-3 text-callout font-normal pointer-coarse:h-11"
+          className="ui-input mt-1 block h-control w-full px-3 text-callout font-normal"
         />
       </label>
       {error ? (

@@ -185,7 +185,6 @@ export function RelatedList({
                 </NoteLink>
                 {onLink ? (
                   <Button
-                    size="sm"
                     variant="quiet"
                     className="mt-1 flex-none"
                     aria-label={`Link “${m.title || "Untitled"}” in this note`}

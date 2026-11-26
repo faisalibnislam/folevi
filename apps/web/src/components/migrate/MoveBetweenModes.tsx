@@ -104,7 +104,7 @@ function MoveToThisMacCard() {
         <div className="space-y-4 text-subheadline">
           <label className="grid gap-1.5">
             <span className="font-medium">Where the library goes</span>
-            <Select value={kind} onChange={(e) => setKind(e.target.value as LibraryKind)} aria-label="Where the library goes" className="ui-input h-9 w-full rounded-chip px-3 text-callout">
+            <Select value={kind} onChange={(e) => setKind(e.target.value as LibraryKind)} aria-label="Where the library goes" className="ui-input h-control w-full px-3 text-callout">
               {PLACES.map((p) => (
                 <option key={p.kind} value={p.kind}>
                   {p.label}

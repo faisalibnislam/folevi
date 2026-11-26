@@ -180,6 +180,7 @@ public enum FoleviTokens {
         public static let control = ShadowPair(light: [ShadowLayer(x: 0, y: 1, blur: 0, spread: 0, color: RGBA(255, 255, 255, 0.27), inset: true), ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(74, 47, 44, 0.075)), ShadowLayer(x: 0, y: 0, blur: 1, spread: 0, color: RGBA(74, 47, 44, 0.018)), ShadowLayer(x: 0, y: 1, blur: 3, spread: -1, color: RGBA(74, 47, 44, 0.024))], dark: [ShadowLayer(x: 0, y: 1, blur: 0, spread: 0, color: RGBA(255, 240, 230, 0.021), inset: true), ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(255, 240, 230, 0.068)), ShadowLayer(x: 0, y: 1, blur: 3, spread: -1, color: RGBA(0, 0, 0, 0.15))])
         public static let primary = ShadowPair(light: [ShadowLayer(x: 0, y: 1, blur: 0, spread: 0, color: RGBA(255, 255, 255, 0.066), inset: true), ShadowLayer(x: 0, y: -1, blur: 0, spread: 0, color: RGBA(29, 24, 20, 0.075), inset: true), ShadowLayer(x: 0, y: 0, blur: 1, spread: 0, color: RGBA(29, 24, 20, 0.054)), ShadowLayer(x: 0, y: 3, blur: 7, spread: -3, color: RGBA(74, 47, 44, 0.165))], dark: [ShadowLayer(x: 0, y: 1, blur: 0, spread: 0, color: RGBA(255, 255, 255, 0.135), inset: true), ShadowLayer(x: 0, y: -1, blur: 0, spread: 0, color: RGBA(42, 23, 20, 0.075), inset: true), ShadowLayer(x: 0, y: 3, blur: 7, spread: -3, color: RGBA(0, 0, 0, 0.21))])
         public static let card = ShadowPair(light: [ShadowLayer(x: 0, y: 1, blur: 0, spread: 0, color: RGBA(255, 255, 255, 0.9), inset: true), ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(74, 47, 44, 0.06)), ShadowLayer(x: 0, y: 1, blur: 2, spread: 0, color: RGBA(74, 47, 44, 0.05)), ShadowLayer(x: 0, y: 14, blur: 32, spread: -14, color: RGBA(74, 47, 44, 0.2))], dark: [ShadowLayer(x: 0, y: 1, blur: 0, spread: 0, color: RGBA(255, 240, 230, 0.06), inset: true), ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(255, 240, 230, 0.07)), ShadowLayer(x: 0, y: 14, blur: 32, spread: -14, color: RGBA(0, 0, 0, 0.6))])
+        public static let cardDrop = ShadowPair(light: [ShadowLayer(x: 0, y: 1, blur: 2, spread: 0, color: RGBA(74, 47, 44, 0.05)), ShadowLayer(x: 0, y: 14, blur: 32, spread: -14, color: RGBA(74, 47, 44, 0.2))], dark: [ShadowLayer(x: 0, y: 14, blur: 32, spread: -14, color: RGBA(0, 0, 0, 0.6))])
         public static let sheet = ShadowPair(light: [ShadowLayer(x: 0, y: 1, blur: 0, spread: 0, color: RGBA(255, 255, 255, 0.9), inset: true), ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(74, 47, 44, 0.06)), ShadowLayer(x: 0, y: 2, blur: 4, spread: 0, color: RGBA(74, 47, 44, 0.04)), ShadowLayer(x: 0, y: 28, blur: 64, spread: -28, color: RGBA(74, 47, 44, 0.26))], dark: [ShadowLayer(x: 0, y: 1, blur: 0, spread: 0, color: RGBA(255, 240, 230, 0.05), inset: true), ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(255, 240, 230, 0.07)), ShadowLayer(x: 0, y: 28, blur: 64, spread: -24, color: RGBA(0, 0, 0, 0.7))])
         public static let pop = ShadowPair(light: [ShadowLayer(x: 0, y: 1, blur: 0, spread: 0, color: RGBA(255, 255, 255, 0.9), inset: true), ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(74, 47, 44, 0.08)), ShadowLayer(x: 0, y: 4, blur: 10, spread: -2, color: RGBA(74, 47, 44, 0.08)), ShadowLayer(x: 0, y: 24, blur: 48, spread: -12, color: RGBA(74, 47, 44, 0.28))], dark: [ShadowLayer(x: 0, y: 1, blur: 0, spread: 0, color: RGBA(255, 240, 230, 0.07), inset: true), ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(255, 240, 230, 0.1)), ShadowLayer(x: 0, y: 24, blur: 48, spread: -12, color: RGBA(0, 0, 0, 0.7))])
         public static let lift = ShadowPair(light: [ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(74, 47, 44, 0.08)), ShadowLayer(x: 0, y: 10, blur: 24, spread: -6, color: RGBA(74, 47, 44, 0.25)), ShadowLayer(x: 0, y: 30, blur: 60, spread: -20, color: RGBA(74, 47, 44, 0.3))], dark: [ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(255, 240, 230, 0.1)), ShadowLayer(x: 0, y: 10, blur: 24, spread: -6, color: RGBA(0, 0, 0, 0.6)), ShadowLayer(x: 0, y: 30, blur: 60, spread: -20, color: RGBA(0, 0, 0, 0.6))])
@@ -270,6 +271,41 @@ public enum FoleviTokens {
 
     /// The smallest text field font size on a touch screen.
     public static let inputMinSize: CGFloat = 16
+
+    /// The control scale (tokens.control, docs/DESIGN_SYSTEM.md "Controls"): Desktop for the Mac, Touch for the
+    /// iPhone and iPad (44 pt controls).
+    public enum Control {
+        public enum Desktop {
+            public static let height: CGFloat = 36
+            public static let compact: CGFloat = 28
+            public static let paddingX: CGFloat = 12
+            public static let compactPaddingX: CGFloat = 10
+            public static let iconInset: CGFloat = 36
+            public static let gap: CGFloat = 8
+            public static let icon: CGFloat = 16
+            public static let compactIcon: CGFloat = 14
+            public static let iconStroke: CGFloat = 1.5
+            public static let border: CGFloat = 1
+            public static let segmentInset: CGFloat = 4
+            public static let labelWeight: CGFloat = 550
+            public static let valueWeight: CGFloat = 400
+        }
+        public enum Touch {
+            public static let height: CGFloat = 44
+            public static let compact: CGFloat = 36
+            public static let paddingX: CGFloat = 16
+            public static let compactPaddingX: CGFloat = 12
+            public static let iconInset: CGFloat = 44
+            public static let gap: CGFloat = 8
+            public static let icon: CGFloat = 20
+            public static let compactIcon: CGFloat = 18
+            public static let iconStroke: CGFloat = 1.75
+            public static let border: CGFloat = 1
+            public static let segmentInset: CGFloat = 4
+            public static let labelWeight: CGFloat = 550
+            public static let valueWeight: CGFloat = 400
+        }
+    }
 
     /// Spacing by role (spaceRoles, docs/DESIGN_SYSTEM.md "Spacing").
     public enum SpaceRole {

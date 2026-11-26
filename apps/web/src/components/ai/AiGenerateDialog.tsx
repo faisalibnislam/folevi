@@ -151,7 +151,7 @@ export function AiGenerateDialog({ open, onClose, kind }: { open: boolean; onClo
               }
             }}
             placeholder={kind === "template" ? "A one-on-one with my manager: wins, blockers, feedback, next steps" : "A plan for moving house next month"}
-            className="ui-input block w-full resize-none rounded-control px-3 py-2.5 text-body text-ink placeholder:text-faint"
+            className="ui-input block w-full resize-none px-3 py-2.5 text-body text-ink placeholder:text-faint"
           />
           {!busy ? (
             <div className="flex flex-wrap gap-1.5" role="group" aria-label="Examples">
@@ -184,7 +184,7 @@ export function AiGenerateDialog({ open, onClose, kind }: { open: boolean; onClo
               value={draft.title}
               maxLength={120}
               onChange={(e) => setDraft({ ...draft, title: e.target.value })}
-              className="ui-input block h-9 w-full rounded-control px-3 text-headline font-semibold text-heading"
+              className="ui-input block h-control w-full px-3 text-headline font-semibold text-heading"
             />
           </div>
           <div className="max-h-[46vh] overflow-y-auto rounded-control bg-[var(--glass-hover)] p-3 shadow-[inset_0_0_0_1px_var(--glass-border)]">

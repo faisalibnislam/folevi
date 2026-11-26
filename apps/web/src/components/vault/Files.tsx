@@ -109,7 +109,7 @@ export function Files({ vaultId, role }: { vaultId: string; role: string }) {
 
   return (
     <section aria-label="Files and notes">
-      <div className="mb-3 flex flex-wrap items-center gap-2">
+      <div data-toolbar="" className="mb-3 flex flex-wrap items-center gap-2">
         {folderId ? (
           <Button variant="quiet" onClick={() => setFolderId(parent)}>
             <ChevronLeft size={14} aria-hidden /> {parent ? names[parent] : "Files & Notes"}

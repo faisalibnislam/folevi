@@ -64,7 +64,7 @@ export function ResetPasswordForm({ token, linkError }: { token: string | null; 
     return (
       <>
         <AuthHeading title="Password changed" lede="For your security, every other device has been signed out. Sign in with your new password." />
-        <a href="/signin" className="ui-btn ui-btn-primary h-11 w-full text-body">
+        <a href="/signin" className="ui-btn ui-btn-primary h-control w-full text-body">
           Sign in
         </a>
       </>

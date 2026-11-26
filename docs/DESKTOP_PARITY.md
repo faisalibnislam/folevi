@@ -14,6 +14,10 @@ When you change the Mac shell, port the change here or add a row below. When a g
 Last full audit: 2026-11-25, on main at `e0183862` (read from code, not tested in the running apps). Updated
 2026-11-25 for PRs 115 and 128 (items 1 to 9 below); none of it has run on a real Windows PC or Linux desktop yet.
 
+**Linux is Beta** (owner, 2026-11-26): Folevi for Linux shows a Beta badge (window title "Folevi (Beta)", Settings >
+About) and the website and Snap/AppStream listings say Beta. Windows is not Beta and must not show it: gate on the
+platform (`isLinuxApp()` in `apps/web/src/lib/beta.ts`, `MAIN_TITLE` in `src-tauri/src/lib.rs`).
+
 ## Status
 
 Yes = built, Partial = built with less, No = missing.

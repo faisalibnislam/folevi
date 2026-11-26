@@ -8,11 +8,13 @@ name: folevi
 title: Folevi
 base: core24
 version: '1.5.75'
-summary: Notes, tasks and docs in one calm place
+summary: Notes, tasks and docs in one calm place (Beta)
 description: |
   Folevi keeps your notes, tasks and documents together. Write in a clean editor, organize with folders,
   and find anything fast. A Folevi account syncs your notes with the web, Mac, Windows, iPhone, iPad and
   Android apps.
+
+  Folevi for Linux is in beta. Beta: works, but expect rough edges. Send feedback at https://folevi.com/support.
 website: https://folevi.com
 contact: https://folevi.com/support
 license: Proprietary

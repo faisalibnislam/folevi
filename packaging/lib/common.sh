@@ -19,7 +19,7 @@ FOLEVI_PORT_DEFAULT=8460
 FOLEVI_HTTPS_PORT_DEFAULT=8443
 # The container image every catalog entry points at. The owner picks the real registry before release.
 FOLEVI_IMAGE="${FOLEVI_IMAGE:-ghcr.io/folevi/folevi-server}"
-FOLEVI_DESCRIPTION="Your own Folevi server: notes, tasks and files for your family or team, on your own hardware."
+FOLEVI_DESCRIPTION="Your own Folevi server (Beta): notes, tasks and files for your family or team, on your own hardware."
 
 log() { printf '[%s] %s\n' "${LOG_PREFIX:-packaging}" "$*" >&2; }
 die() { log "error: $*"; exit 1; }

@@ -1,3 +1,4 @@
+import { BetaBadge, BetaNote } from "@/components/marketing/Beta";
 import { Card, HeaderCard, PageFrame } from "@/components/marketing/cards";
 import { pageMetadata } from "@/components/marketing/seo";
 import {
@@ -17,7 +18,7 @@ import { Eyebrow, cx } from "@/components/marketing/ui";
 export const metadata = pageMetadata({
   title: "Download Folevi for Mac, Windows, Linux, iPhone, iPad and Android",
   description:
-    "Every Folevi download in one place: Mac, Windows, Linux (AppImage, .deb, .rpm), iPhone and iPad, Android and the web app.",
+    "Every Folevi download in one place: Mac, Windows, Linux (Beta: AppImage, .deb, .rpm), iPhone and iPad, Android, the web app and Folevi Server (Beta).",
   path: "/downloads",
 });
 
@@ -27,7 +28,8 @@ const CRUMBS = [
 ];
 
 type Item = { name: string; detail: string; href?: string; action: string };
-type Platform = { id: string; title: string; note?: string; items: Item[] };
+/** `beta`: still in beta (lib/beta.ts): a Beta badge by the title and the Beta note under the list. */
+type Platform = { id: string; title: string; note?: string; beta?: boolean; items: Item[] };
 
 /** Every download Folevi offers, one row each. Links come from components/marketing/site.ts. */
 const PLATFORMS: Platform[] = [
@@ -49,6 +51,7 @@ const PLATFORMS: Platform[] = [
   {
     id: "linux",
     title: "Linux",
+    beta: true,
     note: "This early build’s packages aren’t signed yet, and it doesn’t update itself yet.",
     items: [
       { name: "AppImage", detail: "Most distributions, Intel and AMD", href: LINUX_DOWNLOADS.appimage.x64, action: "Download" },
@@ -78,6 +81,16 @@ const PLATFORMS: Platform[] = [
     note: "Nothing to install: sign in from any browser.",
     items: [{ name: "Folevi on the web", detail: "Chrome, Safari, Edge and Firefox", href: WEB_APP_URL, action: "Open" }],
   },
+  {
+    id: "server",
+    title: "Folevi Server",
+    beta: true,
+    note: "Run Folevi on your own NAS or server. Every package, with its checksum, is on the Folevi Server page.",
+    items: [
+      { name: "Synology, QNAP and other NAS", detail: "Packages for Intel and AMD or ARM", href: "/server#nas", action: "Get it" },
+      { name: "Linux servers and containers", detail: "One install command, .deb and .rpm packages, a container image", href: "/server#linux", action: "Get it" },
+    ],
+  },
 ];
 
 export default function DownloadsPage() {
@@ -91,6 +104,7 @@ export default function DownloadsPage() {
           {PLATFORMS.map((p) => (
             <a key={p.id} href={`#${p.id}`} className="rounded-control border mk-hair px-3.5 py-1.5 text-[14px] font-medium text-(--color-heading) hover:bg-(--glass-active)">
               {p.title}
+              {p.beta ? <span className="text-muted"> (Beta)</span> : null}
             </a>
           ))}
         </nav>
@@ -98,8 +112,9 @@ export default function DownloadsPage() {
 
       {PLATFORMS.map((p) => (
         <Card key={p.id} id={p.id} aria-labelledby={`${p.id}-title`} className="scroll-mt-20">
-          <h2 id={`${p.id}-title`} className="text-[24px] font-semibold text-(--color-heading)">
+          <h2 id={`${p.id}-title`} className="flex flex-wrap items-center gap-3 text-[24px] font-semibold text-(--color-heading)">
             {p.title}
+            {p.beta ? <BetaBadge /> : null}
           </h2>
           <ul className="mt-4">
             {p.items.map((item, i) => (
@@ -123,6 +138,7 @@ export default function DownloadsPage() {
             ))}
           </ul>
           {p.note ? <p className="mt-3 text-[13px] text-muted">{p.note}</p> : null}
+          {p.beta ? <BetaNote className="mt-2" /> : null}
         </Card>
       ))}
     </PageFrame>

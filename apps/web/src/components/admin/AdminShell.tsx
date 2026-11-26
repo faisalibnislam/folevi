@@ -7,6 +7,7 @@ import { useQuery } from "@/lib/convex/queries";
 import { ArrowLeft, ArrowUp, BarChart3, Bell, Building2, ClipboardList, CreditCard, DatabaseBackup, DollarSign, Eye, Gauge, Globe, HardDrive, KeyRound, LifeBuoy, LogOut, Mail, Palette, RefreshCw, ScrollText, Settings2, Sparkles, Trash2, Users } from "lucide-react";
 import { AiIcon } from "@/components/ai/AiIcon";
 import { isServerEdition } from "@/lib/edition";
+import { BetaBadge, BetaNote } from "@/components/ui/Beta";
 import { api } from "@/lib/convex/api";
 import { FoleviLogo } from "@/components/brand/FoleviMark";
 import { Avatar } from "@/components/ui/Avatar";
@@ -156,6 +157,8 @@ export function AdminShell({ children }: { children: ReactNode }) {
               <FoleviLogo height={26} title={null} className="flex-none" />
             </Link>
             <span className="rounded-chip bg-[var(--glass-hover)] px-2 py-0.5 text-footnote font-semibold text-muted">Admin</span>
+            {/* Folevi Server is in beta (lib/beta.ts); the cloud's console isn't. */}
+            {isServerEdition() ? <BetaBadge /> : null}
           </div>
           <nav aria-label="Admin" className="px-2.5 md:min-h-0 md:flex-1 md:overflow-y-auto">
             <div className="flex gap-0.5 overflow-x-auto pb-2 md:block md:overflow-visible md:pb-4">
@@ -190,6 +193,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
             </div>
           </nav>
           <div className="hidden flex-none px-2 pb-2 md:block">
+            {isServerEdition() ? <BetaNote className="px-2.5 pb-2" /> : null}
             <a href="/documents" className={`${ROW} ${ROW_OFF}`}>
               <ArrowLeft size={16} aria-hidden className="flex-none text-muted group-hover:text-heading" /> Back to Folevi
             </a>

@@ -55,6 +55,9 @@ const SCHEME: &str = "folevi";
 const FOLEVI_VERSION: &str = env!("FOLEVI_VERSION");
 const WINDOWS: bool = cfg!(windows);
 const MAC: bool = cfg!(target_os = "macos");
+/// The main window's title. Folevi for Linux is in beta (owner, 2026-11-26; apps/web/src/lib/beta.ts), so it says so
+/// there; Windows keeps plain "Folevi".
+const MAIN_TITLE: &str = if cfg!(target_os = "linux") { "Folevi (Beta)" } else { "Folevi" };
 /// How notes "on this device" are named in notifications: Windows says "this PC", Linux "this computer".
 #[cfg(not(target_os = "linux"))]
 const THIS_DEVICE: &str = "On this PC";
@@ -346,7 +349,7 @@ fn create_main(app: &AppHandle, path: &str, label: Option<String>, show: bool) -
     let dark = s.ui.lock().dark.unwrap_or(false);
     let script = boot_script(app, &label);
     let mut b = WebviewWindowBuilder::new(app, &label, WebviewUrl::CustomProtocol(app_url(path)))
-        .title("Folevi")
+        .title(MAIN_TITLE)
         .inner_size(1280.0, 820.0)
         .min_inner_size(800.0, 480.0)
         .visible(false)

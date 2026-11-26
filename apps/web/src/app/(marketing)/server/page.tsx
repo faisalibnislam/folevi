@@ -1,6 +1,7 @@
 import { Globe, Laptop, Smartphone, Tablet, type LucideIcon } from "lucide-react";
 import { Card, HeaderCard, PageFrame } from "@/components/marketing/cards";
 import { Checks } from "@/components/marketing/Checks";
+import { BetaBadge, BetaNote } from "@/components/marketing/Beta";
 import { Mark, Sticker } from "@/components/marketing/fun";
 import { pageMetadata } from "@/components/marketing/seo";
 import { APP_STORE_URL, MAC_DOWNLOAD_URL } from "@/components/marketing/site";
@@ -16,7 +17,7 @@ import {
 import { ChipDownloads, ComingSoon, CopyLine, DownloadRow, PlatformTitle, Steps, WhichChip } from "@/components/marketing/server/parts";
 
 export const metadata = pageMetadata({
-  title: "Folevi Server: your notes on your own NAS or server",
+  title: "Folevi Server (Beta): your notes on your own NAS or server",
   description:
     "Run Folevi on your Synology, QNAP, Unraid or TrueNAS, or on a Linux server. Install it from your NAS’s app store and keep using the normal Folevi apps.",
   path: "/server",
@@ -94,6 +95,7 @@ export default async function ServerPage() {
               </Sticker>
             </p>
             <Release manifest={manifest} />
+            <BetaNote className="mt-5 border-t mk-hair pt-4" />
           </div>
         </div>
       </HeaderCard>
@@ -257,7 +259,9 @@ export default async function ServerPage() {
           </div>
           <div className="space-y-10">
             <div>
-              <h3 className="mk-caps">Container image</h3>
+              <h3 className="mk-caps flex items-center gap-2">
+                Container image <BetaBadge className="normal-case tracking-normal" />
+              </h3>
               <p className="mt-3 text-[15px] leading-relaxed text-ink">
                 The same server as a container, for Coolify, Dokploy, Railway and other container hosts.
               </p>

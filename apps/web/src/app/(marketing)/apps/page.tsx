@@ -1,4 +1,5 @@
 import { Check, Minus } from "lucide-react";
+import { BetaNote } from "@/components/marketing/Beta";
 import { Card, HeaderCard, PageFrame } from "@/components/marketing/cards";
 import { Float, Mark, Sticker } from "@/components/marketing/fun";
 import { MacPicture } from "@/components/marketing/home/GetApps";
@@ -97,7 +98,7 @@ const FAQS: FaqItem[] = [
   },
   {
     q: "What do the apps need?",
-    a: `Folevi for Mac needs ${MAC_REQUIREMENT}, on Apple silicon or Intel. Folevi for Windows needs ${WINDOWS_REQUIREMENT}. Folevi for Linux comes as an AppImage for most distributions, a .deb for Ubuntu, Debian and Mint, and an .rpm for Fedora and openSUSE, on Intel and AMD or ARM. Folevi for iPhone and iPad needs ${IOS_REQUIREMENT}.`,
+    a: `Folevi for Mac needs ${MAC_REQUIREMENT}, on Apple silicon or Intel. Folevi for Windows needs ${WINDOWS_REQUIREMENT}. Folevi for Linux, in beta, comes as an AppImage for most distributions, a .deb for Ubuntu, Debian and Mint, and an .rpm for Fedora and openSUSE, on Intel and AMD or ARM. Folevi for iPhone and iPad needs ${IOS_REQUIREMENT}.`,
   },
 ];
 
@@ -107,7 +108,7 @@ function Cell({ value }: { value: boolean | string }) {
   return <span>{value}</span>;
 }
 
-function AppCard({ id, eyebrow, title, lede, points, picture, pictureLabel, actions, requirement }: {
+function AppCard({ id, eyebrow, title, lede, points, picture, pictureLabel, actions, requirement, beta = false }: {
   id: string;
   eyebrow: string;
   title: React.ReactNode;
@@ -118,6 +119,8 @@ function AppCard({ id, eyebrow, title, lede, points, picture, pictureLabel, acti
   pictureLabel?: string;
   actions: React.ReactNode;
   requirement: React.ReactNode;
+  /** Still in beta (lib/beta.ts): the Beta badge and its note above the downloads. */
+  beta?: boolean;
 }) {
   return (
     <Card id={id} aria-labelledby={`${id}-title`} className="scroll-mt-20">
@@ -132,7 +135,8 @@ function AppCard({ id, eyebrow, title, lede, points, picture, pictureLabel, acti
               </li>
             ))}
           </ul>
-          <div className="mt-8 flex flex-wrap gap-2.5">{actions}</div>
+          {beta ? <BetaNote badge className="mt-7" /> : null}
+          <div className={cx(beta ? "mt-4" : "mt-8", "flex flex-wrap gap-2.5")}>{actions}</div>
           <div className="mt-4 text-[13px] text-muted">{requirement}</div>
         </div>
         {picture ? (
@@ -277,6 +281,7 @@ export default function AppsPage() {
           }
           lede="The same docs, tasks and databases on your Linux computer, whichever distribution you use."
           points={LINUX_POINTS}
+          beta
           actions={<LinuxDownload />}
           requirement="This early build’s packages aren’t signed yet, and it doesn’t update itself yet."
         />
@@ -325,16 +330,19 @@ export default function AppsPage() {
         />
         <Card tint aria-labelledby="server-title">
           <div className="grid gap-8 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)] lg:items-end lg:gap-16">
-            <SectionHeading
-              id="server-title"
-              eyebrow="Folevi Server"
-              title={
-                <>
-                  Or run Folevi on your own <Mark>NAS.</Mark>
-                </>
-              }
-              lede="Install Folevi Server on a Synology, QNAP, Unraid or TrueNAS, or on a Linux server. These apps connect to it with Your own server."
-            />
+            <div>
+              <SectionHeading
+                id="server-title"
+                eyebrow="Folevi Server"
+                title={
+                  <>
+                    Or run Folevi on your own <Mark>NAS.</Mark>
+                  </>
+                }
+                lede="Install Folevi Server on a Synology, QNAP, Unraid or TrueNAS, or on a Linux server. These apps connect to it with Your own server."
+              />
+              <BetaNote badge className="mt-5" />
+            </div>
             <div className="flex flex-wrap gap-2.5">
               <ButtonLink href="/server" variant="secondary" icon="arrow-right">
                 Get Folevi Server

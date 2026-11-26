@@ -3,7 +3,9 @@
 // it (what's new, privacy, terms, the AI policy, security, status). The version lives here only; Settings has no
 // version line at its foot any more (the owner, 2026-11-01).
 import { ExternalLink } from "lucide-react";
+import { isLinuxApp } from "@/lib/beta";
 import { websiteUrl } from "@/lib/env";
+import { BetaNote } from "@/components/ui/Beta";
 import { useIphoneLook } from "@/lib/iphone";
 import { versionLabel } from "@/lib/version";
 import { IosRow, IosSection, useShownVersion } from "@/components/iphone/SettingsKit";
@@ -22,6 +24,8 @@ export const ABOUT_LINKS: { label: string; path: string }[] = [
 export function AboutSection() {
   const version = useShownVersion();
   const iphone = useIphoneLook();
+  // Folevi for Linux is in beta (lib/beta.ts); Windows, the Mac and browsers show no badge.
+  const linux = isLinuxApp();
   if (iphone) {
     return (
       <>
@@ -38,7 +42,7 @@ export function AboutSection() {
   }
   return (
     <div className="space-y-5">
-      <Card title={versionLabel(version)}>
+      <Card title={versionLabel(version)} description={linux ? <BetaNote badge /> : undefined}>
         <ul className="grid gap-x-6 gap-y-2 sm:grid-cols-2">
           {ABOUT_LINKS.map((l) => (
             <li key={l.path}>

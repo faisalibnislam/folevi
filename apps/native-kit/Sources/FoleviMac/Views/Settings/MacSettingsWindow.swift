@@ -66,6 +66,7 @@ public enum MacSettingsCategories {
         case "devices": "laptopcomputer.and.iphone"
         case "connected-apps": "powerplug"
         case "appearance": "paintpalette"
+        case "writing": "pencil.line"
         case "notifications": "bell"
         case "sync": "arrow.triangle.2.circlepath"
         case "library": "books.vertical"

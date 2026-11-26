@@ -73,9 +73,10 @@ shells and in `next.config.ts`.
 
 ## Not done / follow-ups
 
-- The Mac and iPhone/iPad apps draw Settings natively: they don't have a Writing row yet. Every app has the same
-  switches in the note's right-click menu (Spelling and prediction). A native row could open the web section
-  (`WEB_SETTINGS_SECTIONS` already lists `writing`).
+- The Mac (and the iPad's wide Settings) have a native Writing section since 2026-11-26
+  (`apps/native-kit/Sources/FoleviMac/Views/Settings/WritingSettings.swift`, through Settings' Convex allowlist in
+  `viewsSettings.ts`). The iPhone's native Settings has no Writing row yet; every app has the same switches in the
+  note's right-click menu (Spelling and prediction).
 - The system keyboard's own suggestion bar can't be written to from a web view; Folevi's strip sits above it.
 - The phone website (Safari or Chrome on a phone) has the bubble and the long-press menu but no keyboard strip.
 - Not tried in the Mac, iOS, Android, Windows or Linux builds, or on a device; Foli AI completion not tried

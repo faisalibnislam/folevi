@@ -17,7 +17,7 @@ import FoleviEngine
 
 /// The web's Settings sections (SettingsView.tsx `Section`).
 public enum MacSettingsSection: String, CaseIterable, Sendable {
-    case account, ai, billing, security, privacy, devices, connectedApps = "connected-apps", appearance, notifications, sync, library, data, desktop, about
+    case account, ai, billing, security, privacy, devices, connectedApps = "connected-apps", appearance, writing, notifications, sync, library, data, desktop, about
     case workspace, members, workspacePrivacy = "workspace-privacy", workspaceGuests = "workspace-guests", workspaceBilling = "workspace-billing", workspaceData = "workspace-data"
     /// The iPad's own: its app lock (the iPhone's This device). Listed where the app has a lock (FrameHost.frameDeviceLock).
     case thisDevice = "this-device"
@@ -34,6 +34,7 @@ public enum MacSettingsSection: String, CaseIterable, Sendable {
         case .devices: "Signed-in devices"
         case .connectedApps: "Connected apps"
         case .appearance: "Appearance"
+        case .writing: "Writing"
         case .notifications: "Notifications"
         case .sync: "Offline & sync"
         case .library: "Library"
@@ -70,6 +71,7 @@ public enum MacSettingsSection: String, CaseIterable, Sendable {
         case .devices: .monitorSmartphone
         case .connectedApps: .plug
         case .appearance: .palette
+        case .writing: .spellCheck2
         case .notifications: .bell
         case .sync: .refreshCw
         case .library: .libraryBig
@@ -194,8 +196,8 @@ public final class MacSettingsModel {
     /// The sections in their groups, as SettingsView.tsx lists them for this mode and role.
     var groups: [(label: String, items: [MacSettingsSection])] {
         var you: [MacSettingsSection] = isLocal
-            ? [.library, .ai, .appearance, .data, .desktop]
-            : [.account, .ai, .billing, .security, .privacy, .devices, .connectedApps, .appearance, .notifications, .sync, .data, .desktop]
+            ? [.library, .ai, .appearance, .writing, .data, .desktop]
+            : [.account, .ai, .billing, .security, .privacy, .devices, .connectedApps, .appearance, .writing, .notifications, .sync, .data, .desktop]
         // (The Mac app's own settings: the menu bar icon, the global Quick Add key. An iPad has none of them.)
         #if os(iOS)
         you.removeAll { $0 == .desktop }
@@ -437,6 +439,7 @@ struct SettingsContent: View {
         case .library: LibrarySettings(model: model)
         case .ai: if model.isLocal { LocalAiSettings(model: model) } else { AccountAiSettings(model: model) }
         case .appearance: AppearanceSettingsView(model: model)
+        case .writing: WritingSettings(model: model)
         case .data: DataSettings(model: model, workspace: nil)
         case .desktop: DesktopSettingsView(model: model)
         case .about: AboutSettingsView(model: model)

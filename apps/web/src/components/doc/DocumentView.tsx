@@ -78,6 +78,7 @@ import { useThemesVersion } from "@/lib/useThemes";
 import { BlurredBackdrop } from "./BlurredBackdrop";
 import { NotePaletteProvider } from "@/components/editor/notePalette";
 import { useCoverImage } from "@/lib/app/coverImage";
+import { archivedSet, restored, starSet, trashed, useOptimisticMutation } from "@/lib/convex/optimistic";
 import { PermanentDeleteDialog } from "@/components/views/DocumentBrowser";
 import { Inspector, type InspectorTab } from "./Inspector";
 import { BlockThread, useCommentThreads, useNoteNotifyItems } from "./Comments";
@@ -2333,10 +2334,10 @@ function useDocumentActions({
   /** "Make text in images searchable": Foli AI reads the note's images (useFileText), when there are any to read. */
   readImages?: { count: number; run: () => void; busy: boolean } | null;
 }): Omit<NoteMenuParts, "settings"> {
-  const setStarred = useMutation(api.documents.setStarred);
-  const setArchived = useMutation(api.documents.setArchived);
-  const trash = useMutation(api.documents.moveToTrash);
-  const restore = useMutation(api.documents.restoreFromTrash);
+  const setStarred = useOptimisticMutation(api.documents.setStarred, starSet);
+  const setArchived = useOptimisticMutation(api.documents.setArchived, archivedSet);
+  const trash = useOptimisticMutation(api.documents.moveToTrash, trashed);
+  const restore = useOptimisticMutation(api.documents.restoreFromTrash, restored);
   const duplicate = useMutation(api.documents.duplicate);
   const toast = useToast();
   const { navigate } = useAppRouter();

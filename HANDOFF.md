@@ -252,21 +252,6 @@ The ones most likely to be broken:
 
 ## 9. Current state (as of 2026-11-26)
 
-**One control scale for every control (2026-11-26, branch `claude/ui-scale`).** The owner: "use consistent
-rules/size/space for all UI elements"; All notes' toolbar is the reference. Every control that sits in a row (fields,
-dropdowns, buttons, icon buttons, segmented switches, a dialog's footer) is 36 px (44 on touch), compact ones 28
-(36 on touch), with one corner (10; a segment 6), one edge (1 px `--color-line` inside the box, `--control-ring`), one
-weight per role (550 labels, 400 values), 16 px icons (14 compact and for a dropdown's chevron) at a 1.5 px stroke.
-Tokens: `packages/design-tokens` `control` (CSS `--control-*`, Tailwind `h-control` / `h-control-sm` / `size-control`,
-Swift `FoleviTokens.Control`); rules in `docs/DESIGN_SYSTEM.md` "Controls". `Button` sizes are now `md` (default),
-`compact`, `icon`, `icon-compact` (`sm` is gone: its 222 uses are `md`). The Folders toolbar matches All notes (the
-6 November tinted tray is gone; `RowTray` is a plain group). The Mac look's 28 pt buttons are gone (36 there too).
-Checks: ESLint `folevi/control-scale` (error) and `apps/web/e2e/control-scale.spec.ts` (Chromium and WebKit; web, Mac
-and Windows looks; light and dark; a dialog footer; touch 44; nothing under the window buttons). Before and after
-shots: `docs/audits/control-scale-2026-11-26/`. Not checked: Vault and Settings in the browser audit (Vault needs a
-set-up vault; their classes pass the lint), the running Mac, Windows and Linux apps, and the native Swift screens
-(they copy the web's computed styles; see Next steps).
-
 **1.7.78 (build 103) is released**, a Big update cut from PR 131's merge (`b11f3256`): the Mac feedback round 2
 fixes and Float this note (PR 114, which carried PR 122), plus everything merged since 1.6.78 (the Windows and Linux
 parity work in PR 113). Tag `v1.7.78` is local only (not pushed). What is live:
@@ -290,6 +275,26 @@ Not done, and why:
   release; worth a look.
 
 ## 9. Current state (as of 2026-11-25)
+
+**2026-11-26, spell check and prediction (branch `claude/vigorous-raman-bb697b`, PR 143):** Folevi's own spell
+check (Hunspell as WebAssembly, ten languages, offline), suggestions in the right-click menu, a bubble and the phone
+keyboard strip, and next-word prediction with Tab, in every app. Plan, design and what's left:
+`docs/SPELLING_PLAN.md`. Not released; not tried in the native builds or on devices.
+**Signed-in feel, web and Mac (2026-11-26, branch `claude/perf-web-mac-1126`, `docs/perf/feel-results.md`).** The
+owner found the web and Mac apps sluggish. Measured signed in (300 notes, a local backend behind
+`apps/web/perf/latency-proxy.mjs` at a 260 ms round trip, about the owner's to Convex; `apps/web/perf/feel.spec.ts`):
+the app mostly waits on the network, and the website's own pages and auth routes take 0.45 to 1 s from the owner's
+location (rendered per request in iad1). Fixed: task check-off, bookmark, archive, trash, restore and delete show at
+the click (Convex optimistic updates, `lib/convex/optimistic.ts`; check-off 350 to 400 ms to about 14 ms); the
+workspaces list is asked for with `me` (start 1.0 to 1.2 s to 0.75 to 0.9 s); no backdrop blur on `.ui-content`
+(invisible at 90 % opacity); Mac/iOS hosts keep the Convex JWT for the next page (`ShellAuth.convexToken(fresh:)`,
+the bridge passes `fresh` on Convex renewals); the waiting-edits count reaches the Mac host only once it holds 2 s
+(it caused a places-file write, Keychain mirror and broadcast on the main thread twice per save); a place's runner
+starts 3 s after a switch; Quick Add's page stays 10 minutes. Not done (in the doc): static app pages from the edge
+(needs a hash-based CSP instead of the per-request nonce), browsers starting from the snapshot without waiting for
+`me`, a spare web view for new Mac windows. The Mac app itself measured signed in (owner's OK, `apps/mac/scripts/perf-feel.mjs`,
+development deployment, real network): task check-off 0.7 to 1.1 s to under 10 ms, a page's Convex token 0.5 to
+0.75 s to about 2 ms; launch and scrolling unchanged.
 
 **Native iOS again, matching today's UI (2026-11-25, branch `claude/ios-native-today-ui`, worktree
 `.claude/worktrees/ios-native-today`).** The owner found the Capacitor app finicky and chose native SwiftUI for
@@ -1116,11 +1121,13 @@ signed-in account, 1.5.58's frosted folders with a large library, and the iPad c
 account button should move past iPadOS's window buttons).
 
 ## 10. Next steps / open work
-- Control scale follow-ups (2026-11-26): re-export the web's computed styles for the native Swift screens
-  (`node scripts/web-styles.mjs --app`, reads the running Dev app) so they draw the 36 px controls; add Vault (a set-up
-  vault) and Settings to `e2e/control-scale.spec.ts`; look over the editor's inline tools (collections, charts, table
-  AI, audio) at 36, which the codemod moved from 32; once PR 137 is in, drop `rounded-chip` from the page picker's
-  field in `CollectionEmbed.tsx` (left alone to keep clear of 137's change on the line above).
+- Spell check and prediction (`docs/SPELLING_PLAN.md`): merge PR 143 when CI is green; then a native Settings row
+  for Writing on the Mac and iPhone/iPad, and a check in each app's build (Mac, iOS, Android, Windows, Linux).
+- Signed-in feel (`docs/perf/feel-results.md` "Not done"): serve the app's pages statically from Vercel's edge with a
+  hash-based Content Security Policy (each website load waits 0.45 to 0.75 s for HTML from iad1 today); let browsers
+  start from the snapshot when the tab's account is the last one; more optimistic clicks (tags, reorder, notification
+  read marks); share the sidebar's duplicate live queries; a prewarmed web view for new Mac windows. Scrolling a long
+  note list in the Mac app (the 2026-11-26 run's list was short).
 - Native iPhone performance, left from the SwiftUI audit: `CardPicture` still reads `@Environment(\.self)` (any
   environment change runs its body; cheap while the picture is kept); the Mac's `PlaceholderCard` pulses each on its
   own animation (not used on the iPhone); nothing measured with Instruments before and after.
@@ -1426,10 +1433,16 @@ account button should move past iPadOS's window buttons).
   `DATABASE_UDF_USER_TIMEOUT_SECONDS=4` for that backend. Bursts show in `convex.log` as "took a long time".
 
 ## 12. Change log
-- 2026-11-26: **One control scale** (branch `claude/ui-scale`): control tokens (36 / 28, 44 / 36 on touch), one
-  corner, edge, weight and icon stroke for every field, button, dropdown and segmented switch; Folders' toolbar now
-  matches All notes; Button sizes `md`/`compact`/`icon`/`icon-compact`; ESLint `folevi/control-scale`; Playwright
-  audit `e2e/control-scale.spec.ts`; docs/DESIGN_SYSTEM.md "Controls"; desktop parity row.
+- 2026-11-26: **Spell check, suggestions and next-word prediction** for every app (`docs/SPELLING_PLAN.md`): Hunspell
+  WebAssembly in a worker, 10 languages detected per line, personal dictionary synced (`convex/spelling.ts`), ghost
+  text with Tab (on-device model, Foli AI after a pause), Settings > Writing, per-note switch, F7. Checked: typecheck,
+  lint, web unit suite, Convex and parity tests, Playwright in Chromium and WebKit (local mode). Not checked in the
+  native builds or on devices.
+- 2026-11-26: Signed-in feel pass, web and Mac (`claude/perf-web-mac-1126`, `docs/perf/feel-results.md`): optimistic
+  task check-off, bookmark, archive, trash, restore and delete; workspaces asked with `me`; no blur on `.ui-content`;
+  Convex JWT kept by the Mac/iOS host for the next page; waiting-edits count debounced before it reaches the host;
+  runner start 3 s after a place switch; Quick Add page kept 10 minutes; `perf/feel.spec.ts` and
+  `perf/latency-proxy.mjs` to measure account mode near and far.
 - 2026-11-26: **PR 132 (`claude/integration-2026-11-26`, merge `135a99af`) landed PRs 117, 130 and 129 together**
   (the owner: "resolve all merging conflict please"). All three edit this file, so they went in as one branch with
   one CI run; checked first with CI's steps, the Mac Debug build and the iOS Simulator build. PR 112 (Android native,

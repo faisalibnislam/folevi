@@ -523,7 +523,7 @@ final class FoleviShellPlugin: BridgePlugin {
     @objc func authConvexToken(_ call: BridgeCall) {
         guarded(call) {
             Task {
-                do { call.resolve(["value": try await ShellAuth.shared.convexToken() ?? NSNull()]) } catch { self.fail(call, error) }
+                do { call.resolve(["value": try await ShellAuth.shared.convexToken(fresh: call.getBool("fresh") ?? false) ?? NSNull()]) } catch { self.fail(call, error) }
             }
         }
     }

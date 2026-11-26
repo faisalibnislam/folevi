@@ -13,6 +13,9 @@ import { adoptSession, isPlaceRunner, pinnedUserId } from "@/lib/places/pin";
 import { rememberAccount } from "@/lib/places/registry";
 import { holdPlaceOpen } from "@/lib/places/locks";
 
+/** How long the count of waiting edits must hold before the app hears of it. */
+const WAITING_SETTLE_MS = 2000;
+
 export function PlacesReporter() {
   const { profile, workspaces, engine } = useAppState();
   const { data: session } = authClient.useSession();
@@ -21,11 +24,23 @@ export function PlacesReporter() {
   const [waiting, setWaiting] = useState(0);
   const opened = useRef(false);
 
+  // How many edits wait to sync, once the number has held for a moment. Every save takes it from 0 to 1 and back
+  // within a second; reported as it happened, each of those made the app write its places file, mirror it to the
+  // Keychain and tell every window, on its main thread, twice per save while typing (docs/perf/feel-results.md).
+  // Edits that really are waiting (offline, a refused change) still show after two seconds.
   useEffect(() => {
     if (!engine) return;
-    const read = () => setWaiting(engine.pendingCount());
-    read();
-    return engine.subscribe(read);
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const read = () => {
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(() => setWaiting(engine.pendingCount()), WAITING_SETTLE_MS);
+    };
+    setWaiting(engine.pendingCount());
+    const off = engine.subscribe(read);
+    return () => {
+      if (timer) clearTimeout(timer);
+      off();
+    };
   }, [engine]);
 
   useEffect(() => {

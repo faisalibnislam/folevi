@@ -490,11 +490,12 @@
   /* The tab bar floats over the scrolling content: tinted enough that a heading scrolled under it doesn't stay
      legible through it (it ghosted behind Back and Forward), still glass. */
   .ui-glass.ui-tabbar { background: color-mix(in oklab, var(--color-surface) 86%, transparent); }
-  /* The content panel beside the sidebar: nearly opaque, so reading surfaces stay calm. */
+  /* The content panel beside the sidebar: nearly opaque, so reading surfaces stay calm. No backdrop blur: what's
+     behind it is the ambient light, already a soft blur, and a tenth of it shows through, so blurring it again
+     changed nothing one could see while making the browser keep a blurred copy of everything under the largest
+     surface in the window, with the tab bar's own blur nested inside it (docs/perf/feel-results.md). */
   .ui-content {
     background: var(--glass-content);
-    -webkit-backdrop-filter: blur(30px) saturate(1.4);
-    backdrop-filter: blur(30px) saturate(1.4);
     box-shadow: var(--glass-edge), var(--glass-shadow);
   }
   @media (prefers-reduced-transparency: reduce) {
@@ -1789,18 +1790,22 @@
 :root[data-iphone][data-iphone-keyboard] [data-iphone-scroll][data-native-chrome][data-iphone-plain] > .fb-sheet[data-pages] { padding-bottom: 3rem; }
 
 /* "Float this note" (components/app/FloatNote.tsx): a compact window, the note's title and text filling it under the
-   slim bar. The page loses its floating card (rounded corners, shadow, wide margins) and a cover shrinks to a band. */
-:root[data-float] #doc-scroll {
-  padding: 4px 4px 48px;
-  border-radius: 0;
-  box-shadow: none;
-}
+   slim bar. The page loses its floating card (rounded corners, shadow, margins) and a cover shrinks to a band. The
+   note's colour runs to every edge of the window (the owner, 2026-11-26: no white at the sides, top or bottom); the
+   room under the last line is the sheet's own, so it stays the note's colour too. */
+:root[data-float] [data-float-root] div:has(> [data-note-panel]),
 :root[data-float] [data-note-panel] {
   padding: 0;
+}
+:root[data-float] #doc-scroll {
+  padding: 0;
+  border-radius: 0;
+  box-shadow: none;
 }
 :root[data-float] .fb-sheet {
   max-width: none !important;
   min-height: 100%;
+  padding-bottom: 48px;
   border-radius: 0;
   box-shadow: none;
 }
@@ -1817,6 +1822,18 @@
   -webkit-user-select: none;
   user-select: none;
 }
+/* The bar in the note's own colour (FloatNote reads it off the page): one colour from the window's top edge down,
+   its title and buttons in the note's ink. */
+:root[data-float] [data-float-bar][data-tinted] {
+  background: var(--float-paper);
+  color: var(--float-ink);
+  border-color: transparent;
+}
+:root[data-float] [data-float-bar][data-tinted] h1 { color: inherit; }
+:root[data-float] [data-float-bar][data-tinted] button { color: inherit; opacity: 0.7; }
+:root[data-float] [data-float-bar][data-tinted] button:hover,
+:root[data-float] [data-float-bar][data-tinted] button[aria-pressed="true"] { opacity: 1; }
+:root[data-float] [data-float-bar][data-tinted] button:hover { background: color-mix(in oklab, currentColor 10%, transparent); }
 /* The Mac app's window has no buttons of its own here: the bar starts at the edge. */
 :root[data-float][data-desktop] [data-float-bar] {
   padding-left: 12px;

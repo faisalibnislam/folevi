@@ -96,8 +96,8 @@ function tokenExpiry(jwt: string): number {
 
 type TokenResult = Awaited<ReturnType<typeof authClient.convex.token>>;
 /** A Convex token: from Better Auth, or in the apps' built-in interface from the host, which keeps the session. */
-function requestToken(): Promise<TokenResult> {
-  if (hostAuth()) return hostConvexToken(TOKEN_FETCH_TIMEOUT_MS) as Promise<TokenResult>;
+function requestToken(fresh = false): Promise<TokenResult> {
+  if (hostAuth()) return hostConvexToken(TOKEN_FETCH_TIMEOUT_MS, fresh) as Promise<TokenResult>;
   return authClient.convex.token({ fetchOptions: { throw: false, timeout: TOKEN_FETCH_TIMEOUT_MS } });
 }
 // Opening the app asks for the session and then a token for it. Both need a round trip to the auth server,
@@ -181,7 +181,7 @@ function useFoleviAuth() {
         const cached = cache.current?.sessionId === current || !current ? cache.current : null;
         if (!forceRefreshToken && cached && cached.exp - Date.now() > 60_000) return cached.token;
         try {
-          const res = (forceRefreshToken || attempt ? null : await takeEarlyToken()) ?? (await requestToken());
+          const res = (forceRefreshToken || attempt ? null : await takeEarlyToken()) ?? (await requestToken(forceRefreshToken));
           const token = res.data?.token ?? null;
           if (token) {
             cache.current = { token, exp: tokenExpiry(token), sessionId: sessionRef.current };

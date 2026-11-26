@@ -1,7 +1,6 @@
 "use client";
 
 import { useCapabilities } from "@/lib/mode";
-import { useMutation } from "convex/react";
 import { useOfflineQuery } from "@/lib/sync/queryCache";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { CalendarPlus, ChevronLeft, ChevronRight, Rss, CalendarCheck } from "lucide-react";
@@ -24,6 +23,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { isIphoneApp, useIphoneApp } from "@/lib/iphone";
 import { IphoneAgenda, IphoneTaskSheet, RootAvatar, RootPill } from "@/components/iphone/lazy";
 import { calendarMenu } from "@/components/iphone/calendarMenu";
+import { taskUpdated, useOptimisticMutation } from "@/lib/convex/optimistic";
 
 type Layout = "month" | "week" | "agenda";
 const LAYOUT_KEY = "folevi:calendar-layout";
@@ -92,7 +92,7 @@ export function CalendarView({ month }: { month: string | null }) {
   const open = useOfflineQuery(api.tasks.list, { scope, view: "all", today });
   const unscheduled = useMemo(() => (open ?? []).filter((t) => !t.dueDate), [open]);
   const [editing, setEditing] = useState<TaskRow | null>(null);
-  const update = useMutation(api.tasks.update);
+  const update = useOptimisticMutation(api.tasks.update, taskUpdated);
   const toast = useToast();
   const toggle = useToggleTask();
   const [feedOpen, setFeedOpen] = useState(false);

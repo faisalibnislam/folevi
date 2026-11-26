@@ -10,6 +10,7 @@ import { useCapabilities } from "@/lib/mode";
 import { moveWarning } from "@/lib/app/folderSharing";
 import { confirmMoveWarning } from "@/components/app/MoveWarning";
 import { selectionNoun } from "@/lib/app/multiSelect";
+import { bulkUpdated, useOptimisticMutation } from "@/lib/convex/optimistic";
 
 /** The server takes at most this many notes per bulk call (documents.MAX_BULK); bigger sets go in turns. */
 const CHUNK = 50;
@@ -36,7 +37,7 @@ const notes = (n: number) => (n === 1 ? "1 note" : `${n.toLocaleString()} notes`
  * notes the person can't change are skipped and reported.
  */
 export function useNoteActions() {
-  const bulk = useMutation(api.documents.bulkUpdate);
+  const bulk = useOptimisticMutation(api.documents.bulkUpdate, bulkUpdated);
   const hide = useMutation(api.documents.hideFromRecent);
   const unhide = useMutation(api.documents.showInRecent);
   const toast = useToast();

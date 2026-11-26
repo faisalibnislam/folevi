@@ -12,11 +12,22 @@ case "$1" in
       plog "the data folder $DATA is missing or not writable"
       exit 1
     fi
+    # Files this package's user can't use (for example an earlier test install's, owned by another user) stop
+    # folevid at once; say so where Package Center's "View log" shows it.
+    for d in "$DATA/secrets" "$DATA/convex" "$DATA/logs"; do
+      if [ -e "$d" ] && { [ ! -r "$d" ] || [ ! -w "$d" ] || [ ! -x "$d" ]; }; then
+        plog "the shared folder $DATA holds files from another install that Folevi Server can't use ($d). Choose an empty shared folder when installing, or delete the old Folevi files in File Station, then start again."
+        exit 1
+      fi
+    done
     plog "starting Folevi Server, data in $DATA"
     FOLEVI_PACKAGE=synology FOLEVI_MANAGED_BY=store nohup "$FOLEVID" run --data "$DATA" --bundle "$BUNDLE" >> "$PKG_VAR/folevid.out" 2>&1 &
     echo $! > "$PID_FILE"
     sleep 2
-    if ! running; then plog "folevid exited right away; see $DATA/logs/folevid.log"; exit 1; fi
+    if ! running; then
+      plog "folevid exited right away: $(tail -n 1 "$PKG_VAR/folevid.out" 2>/dev/null)"
+      exit 1
+    fi
     # Keep the setup address where "View log" in Package Center shows it.
     ( i=0; while [ $i -lt 60 ]; do
         url="$("$FOLEVID" setup-url --data "$DATA" --bundle "$BUNDLE" 2>/dev/null)" && [ -n "$url" ] && { plog "setup address: $url"; break; }

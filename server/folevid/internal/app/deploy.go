@@ -5,13 +5,17 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
+	"net"
+	"os"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/faisalibnislam/folevi/server/folevid/internal/config"
 	"github.com/faisalibnislam/folevi/server/folevid/internal/convex"
 	"github.com/faisalibnislam/folevi/server/folevid/internal/secrets"
+	"github.com/faisalibnislam/folevi/server/folevid/internal/sysinfo"
 )
 
 // convexEnv is the Convex environment from CONTRACT §4, without FOLEVI_JWKS (handled after the deploy).
@@ -48,7 +52,69 @@ func (a *App) convexEnv() (map[string]string, error) {
 	if tok, _ := a.sec.Get(secrets.ConnectToken); tok != "" {
 		env["FOLEVI_CONNECT_TOKEN"] = tok
 	}
+	c := a.cfg.Get()
+	if c.Connect.ServerID != "" {
+		env["FOLEVI_CONNECT_SERVER_ID"] = c.Connect.ServerID
+		env["FOLEVI_CONNECT_HOSTNAMES"] = strings.Join(connectHostnames(c.Connect), ",")
+	}
+	env["FOLEVI_TRUSTED_ORIGINS"] = strings.Join(a.trustedOrigins(), ",")
 	return env, nil
+}
+
+// connectHostnames: the server's Connect names, home names first (CONTRACT §6.1).
+func connectHostnames(c config.Connect) []string {
+	var out []string
+	out = append(out, c.LANHostnames...)
+	if c.Hostname != "" {
+		out = append(out, c.Hostname)
+	}
+	return out
+}
+
+// trustedOrigins lists every origin this server answers on, for Better Auth's origin and callback checks (the
+// contract: the session is the server's, so every one of its names must be trusted): the public origin, the
+// Connect names over https (the HTTPS port when it isn't 443), this machine's LAN addresses and .local name and
+// loopback on the HTTP port, and the owner's own domain.
+func (a *App) trustedOrigins() []string {
+	c := a.cfg.Get()
+	seen := map[string]bool{}
+	var out []string
+	add := func(o string) {
+		if o != "" && !seen[o] {
+			seen[o] = true
+			out = append(out, o)
+		}
+	}
+	add(a.Origin())
+	hostPort := func(host string, port, def int) string {
+		if port == 0 || port == def {
+			return host
+		}
+		return net.JoinHostPort(host, strconv.Itoa(port))
+	}
+	for _, h := range connectHostnames(c.Connect) {
+		if strings.Contains(h, ":") {
+			add("https://" + h)
+		} else {
+			add("https://" + hostPort(h, c.HTTPSPort, 443))
+			add("https://" + h)
+		}
+	}
+	if d := strings.TrimSpace(c.Remote.CustomDomain); d != "" {
+		add("https://" + d)
+	}
+	hosts := []string{"localhost", "127.0.0.1"}
+	for _, ip := range sysinfo.LANIPs() {
+		hosts = append(hosts, ip.String())
+	}
+	if h, err := os.Hostname(); err == nil && h != "" {
+		h = strings.TrimSuffix(strings.ToLower(h), ".local")
+		hosts = append(hosts, h, h+".local")
+	}
+	for _, h := range hosts {
+		add("http://" + hostPort(h, c.Port, 80))
+	}
+	return out
 }
 
 // EnvHash hashes an environment map (the values never leave this process).

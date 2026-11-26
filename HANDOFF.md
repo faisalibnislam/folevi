@@ -1381,6 +1381,21 @@ account button should move past iPadOS's window buttons).
 - 2026-11-26: Native iOS 1.7.78 (build 107) on internal TestFlight from `claude/ios-native-today-ui` (delivery
   2c71915f): the SwiftUI refactors and the bar menu fix. Same bundle ID as the Capacitor 1.7.78 (build 103) the Mac
   session uploaded, so testers get the native app as the newer build.
+- 2026-11-25: **Windows: home servers over plain http** (branch `claude/windows-server-bridge`, on top of
+  `claude/desktop-server-places`): `src/lan_bridge.rs` relays a server place's http and ws traffic to a LAN address
+  through `127.0.0.1` (WebView2 blocks it from `https://app.localhost` as mixed content), with the server's own Host.
+  The page gets the relay for Convex and Convex site only; links keep the server's name. 5 Rust tests (requests,
+  WebSocket, 502, stable port); not yet run against a real server on a real Windows PC.
+- 2026-11-25: **Folevi Server keeps every account when its address changes** (branch `claude/server-stable-issuer`,
+  server lead). The Better Auth Convex plugin signs tokens with the server's public address as issuer, so turning
+  Folevi Connect on or adding a domain made every account read "Finish setting up". In the server edition only,
+  `findProfile` (convex/lib/auth.ts) now also finds the profile by the Better Auth user id (only this server's keys
+  sign tokens) and a mutation moves it to the new issuer; Folevi Cloud is unchanged. Also merges
+  `claude/server-connect`, which never had its own PR: folevid builds on macOS, folevid gives the backend every name
+  it answers on (`FOLEVI_TRUSTED_ORIGINS`, Connect names), the Synology package refuses to start on another
+  install's leftover files with a clear log line, NAS icons from the app icon, and Connect's Fly config (live at
+  connect.folevi.com; services/connect/OPS.md). The owner's DS223 runs Folevi Server on Connect as
+  `6ge2xhr4kl.folevi.app` (owner: keep it on).
 - 2026-11-26: Native iPhone: a bar's "…" menu (All notes' View as and Sort by, Tags' Sort by, every iOS menu with
   checkable rows) opened greyed out and took no taps. Cause: the frame's switch style (`NativeSwitchStyle`, set by
   `phoneNativeChrome`) reached the menu's Toggles and iOS can't draw a custom style as a menu checkmark. Fix:

@@ -6,7 +6,7 @@
 <component type="desktop-application">
   <id>com.folevi.Folevi</id>
   <name>Folevi</name>
-  <summary>Notes, tasks and docs in one calm place</summary>
+  <summary>Notes, tasks and docs in one calm place (Beta)</summary>
   <developer id="com.folevi">
     <name>Folevi</name>
   </developer>
@@ -27,6 +27,7 @@
       <li>Foli AI answers questions about your notes when you turn it on</li>
     </ul>
     <p>A Folevi account syncs your notes with the web, Mac, Windows, iPhone, iPad and Android apps.</p>
+    <p>Folevi for Linux is in beta. Beta: works, but expect rough edges. Send feedback at https://folevi.com/support.</p>
   </description>
 
   <url type="homepage">https://folevi.com</url>

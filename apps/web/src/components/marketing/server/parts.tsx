@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { ButtonLink, cx } from "../ui";
+import { BetaBadge } from "../Beta";
 import { CopyButton } from "./CopyButton";
 import { formatSize, serverFile, type ServerArch, type ServerManifest, type ServerPlatform } from "./manifest";
 
@@ -38,6 +39,8 @@ export function DownloadRow({ manifest, platform, arch, product, kind }: { manif
         <div className="min-w-0">
           <p className="text-[15px] font-medium text-(--color-heading)">
             {label} <span className="font-normal text-muted">({arch})</span>
+            {/* Folevi Server is in beta (lib/beta.ts), so every download says so. */}
+            <BetaBadge className="ml-2 align-middle" />
           </p>
           {file ? (
             <p className="mt-0.5 text-[13px] text-muted [overflow-wrap:anywhere]">

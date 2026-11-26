@@ -13,7 +13,7 @@ vendor: Folevi
 homepage: https://folevi.com/server
 license: Proprietary (bundled third-party licenses in /opt/folevi/LICENSES)
 description: |
-  Folevi Server: your own Folevi for your family or team.
+  Folevi Server (Beta): your own Folevi for your family or team.
   Notes, tasks and files on your own machine, used from the normal Folevi apps.
   Runs as the folevi system user, keeps its data in /var/lib/folevi and listens on port 8460.
 depends:

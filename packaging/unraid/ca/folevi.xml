@@ -8,7 +8,7 @@
   <Privileged>false</Privileged>
   <Support>https://folevi.com/server/unraid</Support>
   <Project>https://folevi.com/server</Project>
-  <Overview>Your own Folevi server: notes, tasks and files for your family or team, used from the normal Folevi apps on Mac, iPhone, iPad, Android and the web. Open the WebUI to create the owner account. Prefer no containers? Install the Folevi Server plugin instead.</Overview>
+  <Overview>Your own Folevi server (Beta): notes, tasks and files for your family or team, used from the normal Folevi apps on Mac, iPhone, iPad, Android and the web. Open the WebUI to create the owner account. Prefer no containers? Install the Folevi Server plugin instead.</Overview>
   <Category>Productivity: Cloud: Tools:</Category>
   <WebUI>http://[IP]:[PORT:8460]/</WebUI>
   <TemplateURL>https://pkg.folevi.com/unraid/folevi.xml</TemplateURL>

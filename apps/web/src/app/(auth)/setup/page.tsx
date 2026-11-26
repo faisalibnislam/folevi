@@ -4,6 +4,7 @@ import { hasSessionCookie } from "@/lib/auth/session";
 import { isServerEdition } from "@/lib/edition";
 import { serverInfoCore } from "@/lib/server-edition/serverInfo";
 import { SetupFlow, type Step } from "@/components/server/SetupFlow";
+import { BetaNote } from "@/components/ui/Beta";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Set up your server", referrer: "no-referrer" };
@@ -18,5 +19,11 @@ export default async function SetupPage({ searchParams }: { searchParams: Promis
   const info = await serverInfoCore();
   const step = typeof params.step === "string" && STEPS.has(params.step) ? (params.step as Step | "ready") : null;
   // Unknown (the backend still starting) counts as "needs setup": claimOwner refuses anyway once there's an owner.
-  return <SetupFlow token={token} signedIn={await hasSessionCookie()} needsSetup={info ? info.needsSetup : true} initialStep={step} />;
+  // Folevi Server is in beta (lib/beta.ts): the badge and its note head every setup step.
+  return (
+    <>
+      <BetaNote badge className="mb-5" />
+      <SetupFlow token={token} signedIn={await hasSessionCookie()} needsSetup={info ? info.needsSetup : true} initialStep={step} />
+    </>
+  );
 }

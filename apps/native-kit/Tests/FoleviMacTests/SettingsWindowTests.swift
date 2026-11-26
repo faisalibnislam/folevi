@@ -125,6 +125,7 @@ final class SettingsFixtureEngine {
             case "mcp.listGrants": return Self.json(#"[{"id":"g1","name":"Claude","canWrite":true,"connectedAt":1799000000000}]"#)
             case "apiTokens.list": return Self.json(#"[{"id":"t1","name":"Scripts","hint":"a1b2","lastUsedAt":1799500000000}]"#)
             case "webhooks.list": return Self.json(#"[{"id":"w1","url":"https://example.com/hooks/folevi","enabled":true}]"#)
+            case "spelling.get": return Self.json(#"{"spellcheck":true,"predictions":null,"english":"en-GB","learnt":["Folevi","Macloving"],"ignored":["lorem"],"offNotes":[]}"#)
             default: return .null
             }
         default:
@@ -151,7 +152,7 @@ struct SettingsWindowTests {
         let ids = groups.flatMap(\.items).map(\.id)
         #expect(ids.first == "desktop")
         #expect(groups.first?.items.first?.title == "General")
-        for s in ["account", "ai", "billing", "security", "privacy", "devices", "connected-apps", "appearance", "notifications", "sync", "data", "about"] {
+        for s in ["account", "ai", "billing", "security", "privacy", "devices", "connected-apps", "appearance", "writing", "notifications", "sync", "data", "about"] {
             #expect(ids.contains(s), "\(s) is listed")
         }
         #expect(groups.last?.label == "Support")
@@ -170,7 +171,7 @@ struct SettingsWindowTests {
         await eventually("session") { frame.session.value?.mode == .local }
         let model = MacSettingsModel(frame: frame)
         let ids = MacSettingsCategories.groups(model).flatMap(\.items).map(\.id)
-        #expect(Array(ids.prefix(5)) == ["desktop", "library", "ai", "appearance", "data"])
+        #expect(Array(ids.prefix(6)) == ["desktop", "library", "ai", "appearance", "writing", "data"])
         #expect(!ids.contains("account"))
         #expect(MacSettingsCategories.resolve("account", model: model) == "library", "an account's section shows the library's")
     }
@@ -193,6 +194,11 @@ struct SettingsWindowTests {
         // A library's Foli AI has keys; an account's doesn't.
         #expect(!SettingsSearch.results("api key", categories: cats, local: true).isEmpty)
         #expect(SettingsSearch.results("your own keys", categories: cats, local: false).isEmpty)
+        // Spell check and prediction are under Writing.
+        let writing = cats + [("writing", "Writing")]
+        #expect(SettingsSearch.results("spell check", categories: writing, local: false).first?.entry.section == "writing")
+        #expect(SettingsSearch.results("dictionary", categories: writing, local: true).first?.entry.section == "writing")
+        #expect(SettingsSearch.results("next word", categories: writing, local: false).first?.entry.anchor == SettingsAnchor.card("Spelling and prediction"))
         // Nothing for nothing.
         #expect(SettingsSearch.results("   ", categories: cats, local: false).isEmpty)
         // Only the categories listed.
@@ -284,8 +290,8 @@ struct SettingsWindowTests {
 
     // MARK: pictures
 
-    static let accountPages = ["desktop", "account", "ai", "billing", "security", "privacy", "devices", "connected-apps", "appearance", "notifications", "sync", "data", "about"]
-    static let libraryPages = ["desktop", "library", "ai", "appearance", "data"]
+    static let accountPages = ["desktop", "account", "ai", "billing", "security", "privacy", "devices", "connected-apps", "appearance", "writing", "notifications", "sync", "data", "about"]
+    static let libraryPages = ["desktop", "library", "ai", "appearance", "writing", "data"]
     static let narrow = CGSize(width: MacSettingsLook.minSize.width, height: 560)
 
     @Test func pictures() async throws {

@@ -7,6 +7,7 @@ Keep this short and true: rewrite it when things change, and put history in `han
 - 1.7.78 is published; installed Macs update through Sparkle. The app is AppKit with the bundled web interface (`apps/mac/project.yml` is main's layout: sources under `Folevi/`, bridge scripts in `Folevi/Bridge/`).
 - "Your own server" sign-in is in (PR 105); the owner has not yet tried the sign-in sheet in the app itself.
 - Import from Apple Notes (PR 139): notes, folders, tags, every attachment and original dates; not in a release yet, and not yet tried on a real Notes library.
+- Settings > Writing (spell check, prediction, US/UK English, the personal dictionary) is a native section (`apps/native-kit/Sources/FoleviMac/Views/Settings/WritingSettings.swift`), saved through Settings' Convex allowlist; not in a release yet.
 - The Mac unit tests (XCTest) and `apps/native-kit` `swift test` were not run for the 1.6.78 release; the Debug build and the universal Release build with its signing checks were.
 
 ## Next steps

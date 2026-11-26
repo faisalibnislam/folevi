@@ -375,6 +375,8 @@ const QUERIES = {
   "webhooks.list": api.webhooks.list,
   "workspaces.members": api.workspaces.members,
   "workspaces.guests": api.workspaces.guests,
+  // Writing: spell check and prediction settings and the personal dictionary (convex/spelling.ts).
+  "spelling.get": api.spelling.get,
 } as const;
 const MUTATIONS = {
   "aiMemory.add": api.aiMemory.add,
@@ -399,6 +401,8 @@ const MUTATIONS = {
   "workspaces.revokeInvite": api.workspaces.revokeInvite,
   "workspaces.convertGuestToMember": api.workspaces.convertGuestToMember,
   "workspaces.removeGuest": api.workspaces.removeGuest,
+  "spelling.setPrefs": api.spelling.setPrefs,
+  "spelling.setWord": api.spelling.setWord,
 } as const;
 const ACTIONS = {
   "exports.exportScope": api.exports.exportScope,

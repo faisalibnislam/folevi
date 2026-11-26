@@ -93,6 +93,10 @@ public enum SettingsSearch {
         // Appearance
         card("appearance", "Theme", ["dark mode", "light mode", "dark", "light", "system", "colors"]),
         card("appearance", "Editor text size", ["font size", "zoom", "text size", "bigger", "smaller", "larger"]),
+        // Writing
+        card("writing", "Spelling and prediction", ["spell check", "spelling", "spellcheck", "autocorrect", "typos", "prediction", "autocomplete", "next word", "tab", "language", "english", "british", "american"]),
+        card("writing", "Your dictionary", ["dictionary", "add to dictionary", "learn word", "words"]),
+        card("writing", "Ignored words", ["ignore", "ignored", "words"]),
         // Notifications
         card("notifications", "Notifications", ["bell", "email", "mentions", "comments", "replies", "reminders", "in app"]),
         card("notifications", "Notifications on this Mac", ["mac notifications", "desktop"], anchor: "notifications-device"),

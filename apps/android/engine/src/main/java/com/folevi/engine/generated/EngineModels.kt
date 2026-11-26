@@ -4634,6 +4634,7 @@ enum class SettingsRunKey(val value: String) {
     @SerialName("desktop.pauseShortcut") DESKTOP_PAUSE_SHORTCUT("desktop.pauseShortcut"),
     @SerialName("text.lines") TEXT_LINES("text.lines"),
     @SerialName("data.import") DATA_IMPORT("data.import"),
+    @SerialName("data.importAppleNotes") DATA_IMPORT_APPLE_NOTES("data.importAppleNotes"),
     @SerialName("takeout.import") TAKEOUT_IMPORT("takeout.import"),
     @SerialName("convex.mutation") CONVEX_MUTATION("convex.mutation"),
     @SerialName("convex.action") CONVEX_ACTION("convex.action"),

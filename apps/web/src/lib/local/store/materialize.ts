@@ -12,6 +12,7 @@ import {
   hlcMs,
   isStub,
   latestStamp,
+  importedModifiedAt,
   liveFolders,
   liveTags,
   normalizeBlocks,
@@ -318,7 +319,8 @@ async function materializeNote(ctx: LocalMutationCtx, id: string, note: NoteLike
       titleRev: titleChanged ? revision : base!.titleRev,
       seq: await nextSeq(),
       contentSeq: (prevDoc?.contentSeq ?? 0) + (changed.length ? 1 : 0),
-      updatedAt: Math.max(base?.updatedAt ?? 0, latest ? hlcMs(latest) : now),
+      // An imported note shows its original last change until it changes here.
+      updatedAt: importedModifiedAt(note) ?? Math.max(base?.updatedAt ?? 0, latest ? hlcMs(latest) : now),
       ...(latest ? { editedByDevice: hlcDevice(latest) } : {}),
     };
     delete doc.pending;

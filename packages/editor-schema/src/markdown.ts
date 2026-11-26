@@ -310,6 +310,11 @@ export interface MarkdownImportResult {
 export interface MarkdownImportOptions {
   /** Resolve a relative image path to an uploaded file id; unresolved images keep their URL if absolute. */
   resolveImage?: (src: string) => { fileId: string } | null;
+  /**
+   * Resolve a link on its own line ("[Report.pdf](src)") to an uploaded file: it becomes a file block (an
+   * imported note's attachments). Links it doesn't resolve stay links.
+   */
+  resolveFile?: (src: string) => { fileId: string; name: string; size: number; mimeType: string } | null;
   newId?: () => string;
   /** Use the first H1 as the document title (default true). */
   titleFromHeading?: boolean;
@@ -342,6 +347,7 @@ const LINK_TARGET = String.raw`\(\s*(?:<([^<>\n]*)>|((?:[^()\s]|\([^()\s]*\))+))
 const LINK_TEXT = String.raw`\[((?:\\.|[^\]\\])*)\]`;
 const LINK = new RegExp(`^${LINK_TEXT}${LINK_TARGET}`);
 const IMAGE_LINE = new RegExp(`^\\s*!${LINK_TEXT}${LINK_TARGET}\\s*$`);
+const FILE_LINE = new RegExp(`^\\s*${LINK_TEXT}${LINK_TARGET}\\s*$`);
 
 /** Parses inline Markdown (emphasis, strong, code, strike, links, autolinks) into inline nodes. */
 export function parseInlineMarkdown(src: string): InlineNode[] {
@@ -770,6 +776,14 @@ export function markdownToBlocks(markdown: string, opts: MarkdownImportOptions =
       }
     }
     listStack.length = 0;
+    // Attachments: a link on its own line to a file the importer uploaded.
+    const fileLink = opts.resolveFile ? FILE_LINE.exec(line) : null;
+    const file = fileLink ? opts.resolveFile!(fileLink[2] ?? fileLink[3]!) : null;
+    if (file) {
+      flushParagraph();
+      drafts.push({ id: newId(), type: "file", depth: 0, text: [], props: { fileId: file.fileId, name: file.name.slice(0, 255) || "file", size: Math.max(0, Math.round(file.size)), mimeType: file.mimeType || "application/octet-stream" } });
+      continue;
+    }
     // Images on their own line
     const img = IMAGE_LINE.exec(line);
     if (img) {
@@ -916,6 +930,18 @@ export function plainTextToBlocks(input: string, newId: () => string = () => uli
  * import, by its path) becomes a page link to that page, keeping the link's text as its label. Works on
  * text blocks and table cells, in place; returns the blocks.
  */
+/**
+ * An imported page's original dates (another app's "created" and "last changed"), made safe to keep: never in the
+ * future, never before 1970, and changed no earlier than made. Missing ones are `now`.
+ */
+export function importedDates(createdAt: number | undefined, updatedAt: number | undefined, now: number): { createdAt: number; updatedAt: number } {
+  const clamp = (t: number | undefined) => (typeof t === "number" && Number.isFinite(t) ? Math.min(Math.max(0, Math.round(t)), now) : undefined);
+  const created = clamp(createdAt);
+  const updated = clamp(updatedAt);
+  const c = created ?? Math.min(updated ?? now, now);
+  return { createdAt: c, updatedAt: Math.max(c, updated ?? (created !== undefined ? c : now)) };
+}
+
 export function linkImportedPages(blocks: WireBlock[], resolve: (href: string) => string | null): WireBlock[] {
   const fix = (nodes: InlineNode[]): InlineNode[] =>
     nodes.map((n) => {

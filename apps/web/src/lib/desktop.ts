@@ -157,6 +157,12 @@ export interface DesktopBridge {
    * (null outside a floating note's window).
    */
   floatOnTop?(on?: boolean): Promise<boolean | null>;
+  /**
+   * Apple Notes, read through Notes' scripting interface once the person lets Folevi control Notes
+   * (lib/import/appleNotes.ts). `access(true)` asks macOS the first time; `openSettings` opens Privacy & Security >
+   * Automation for a "denied". Missing in Mac app builds before Apple Notes import.
+   */
+  appleNotes?: import("@/lib/import/appleNotes").AppleNotesBridge & { openSettings(): void };
 }
 
 declare global {

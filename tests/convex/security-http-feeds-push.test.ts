@@ -2,6 +2,7 @@
 //   L1  the tasks calendar link shows a workspace task only while its owner can still open the task's note;
 //   L5  a web push subscription may only name a browser's own push service (the server sends requests there);
 //   L8  adding and refreshing subscribed calendars is rate limited (each makes the server fetch a link).
+import { createECDH } from "node:crypto";
 import { afterEach, describe, expect, test, vi } from "vitest";
 import { api, internal } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
@@ -107,8 +108,11 @@ describe("L5: web push only to the browsers' push services", { timeout: 30_000 }
     expect(await a.as.query(api.push.status, {})).toMatchObject({ devices: 1 });
 
     // A row from before: the sender skips it without a request and removes it.
-    process.env.VAPID_PUBLIC_KEY = "BEl62iUYgUivxIkv69yViEuiBIa-Ib9-SkvMeAtA3LFgDzkrxZJjSgSnfckjBJuBkr3qBUYIHBQFLXYp5Nksh8U";
-    process.env.VAPID_PRIVATE_KEY = "UUxI4O8-FbRouAevSmBQ6o18hgE4nSG3qwvJTfKc-ls";
+    // A key pair made for this run (the sender only sends with one set); nothing is sent with it here.
+    const pair = createECDH("prime256v1");
+    pair.generateKeys();
+    process.env.VAPID_PUBLIC_KEY = pair.getPublicKey().toString("base64url");
+    process.env.VAPID_PRIVATE_KEY = Buffer.concat([Buffer.alloc(32), pair.getPrivateKey()]).subarray(-32).toString("base64url");
     try {
       const requests: string[] = [];
       vi.stubGlobal("fetch", vi.fn(async (input: string | URL) => (requests.push(String(input)), new Response(null, { status: 201 }))));

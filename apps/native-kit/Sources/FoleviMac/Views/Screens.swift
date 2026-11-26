@@ -293,6 +293,8 @@ struct ScreenRoot: View {
     /// The native look (docs/MAC_NATIVE_LOOK.md): the Mac's and the iPad's wide layout's; false where this stands
     /// for the iPhone's screens (DeskScreen) or the web-matched layout in tests.
     @Environment(\.macNativeLook) private var native
+    /// Today's tablet layout: the screen's controls stay in it (CardItems.swift).
+    @Environment(\.screensKeepControls) private var keepControls
 
     /// The room the card's top bar takes: the screen starts below it.
     private var barRoom: CGFloat {
@@ -364,7 +366,7 @@ struct ScreenRoot: View {
         .environment(\.screenFeedback, models.feedback)
         .environment(\.macBarRoom, barRoom)
         // The screen's own controls go up into the card's glass controls (CardItems.swift), on the native look only.
-        .environment(\.cardSlot, native ? CardSlot(frame: model, owner: route.tabKey) : nil)
+        .environment(\.cardSlot, native && !keepControls ? CardSlot(frame: model, owner: route.tabKey) : nil)
         // System chrome, Folevi content: the screens' interface parts draw natively (note cards opt out).
         .macNativeChrome()
     }

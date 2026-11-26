@@ -350,7 +350,7 @@ public struct PhoneBarMenuButton: View {
     let icon: WebIcon
     let menus: PhoneMenus?
     let show: (CGRect) -> Void
-    @State private var frame: CGRect = .zero
+    @State private var frame = PhoneFrameBox()
     @Environment(\.phoneMenus) private var frameMenus
 
     public init(_ label: String, icon: WebIcon = .ellipsis, menus: PhoneMenus? = nil, show: @escaping (CGRect) -> Void) {
@@ -367,10 +367,10 @@ public struct PhoneBarMenuButton: View {
             }
         } else {
             WebGlassPill {
-                WebPillButton(label, action: { show(frame) }) {
+                WebPillButton(label, action: { show(frame.rect) }) {
                     WebIconView(icon, size: 24, strokeWidth: 2.2)
                 }
-                .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { frame = $0 }
+                .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { frame.rect = $0 }
             }
         }
     }

@@ -425,24 +425,37 @@ public struct AiAssistantMessage: View {
     }
 }
 
-/// A follow-up on the iPhone: the ink at 6.5%, 44 tall at least, the subheadline (ChatMessage.tsx, iphone).
+/// A follow-up on the iPhone (ChatMessage.tsx, iphone: `min-h-11 rounded-container px-4 py-2.5 text-subheadline
+/// leading-5`, the ink at 6.5%, 11% pressed). Drawn from those values: there's no measured `ai.followup` style (asking
+/// WebStyles for one stopped the app the first time an answer came with follow-ups).
 struct PhoneFollowUp: View {
     let text: String
     let action: () -> Void
     @Environment(\.colorScheme) private var scheme
 
     var body: some View {
-        let s = AiLook(scheme: scheme, phone: true).s("ai.followup")
+        let look = AiLook(scheme: scheme, phone: true)
+        let size = WebTypeRole.subheadline.metrics.size
         Button(action: action) {
             Text(text)
-                .webText(s.text)
+                .webText(WebTextStyle(family: .sans, size: size, leading: 20, weight: FoleviTokens.FontWeight.regular))
                 .multilineTextAlignment(.leading)
-                .foregroundStyle(s.color.color)
-                .padding(s.padding.edgeInsets)
-                .frame(minHeight: s.height, alignment: .leading)
-                .background(RoundedRectangle(cornerRadius: s.radius, style: .circular).fill(s.background.color))
+                .foregroundStyle(look.ink)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 10)
+                .frame(minHeight: 44, alignment: .leading)
+                .contentShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
         }
-        .buttonStyle(PressFade())
+        .buttonStyle(PhoneFollowUpStyle(ink: look.ink))
+    }
+}
+
+private struct PhoneFollowUpStyle: ButtonStyle {
+    let ink: Color
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .background(RoundedRectangle(cornerRadius: 18, style: .continuous).fill(ink.opacity(configuration.isPressed ? 0.11 : 0.065)))
     }
 }
 

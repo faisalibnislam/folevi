@@ -123,7 +123,7 @@ struct FoleviFontModifier: ViewModifier {
     let style: FoleviTextStyle
 
     func body(content: Content) -> some View {
-        if let chrome, style != .mono {
+        if let chrome = chrome?.forText, style != .mono {
             // Interface text under the Mac's native look (NativeChrome): the system font, no tracking, no capitals.
             content.font(chrome.font(chrome.text(style)))
         } else {

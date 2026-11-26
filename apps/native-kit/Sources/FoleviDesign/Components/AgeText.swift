@@ -4,6 +4,9 @@
 import Foundation
 
 public enum AgeText {
+    /// One Gregorian calendar for every row (making one per call cost each card a few microseconds on every pass).
+    private static let gregorian = Calendar(identifier: .gregorian)
+
     /// Lower case, for inside a sentence ("Edited 5 mins ago").
     public static func relative(_ date: Date, now: Date = Date(), locale: Locale = .current, timeZone: TimeZone = .current) -> String {
         let ahead = date > now
@@ -19,7 +22,7 @@ public enum AgeText {
         if hours < 24 { return unit(hours, "hour") }
         let days = Int((Double(hours) / 24).rounded())
         if days < 7 { return unit(days, "day") }
-        var calendar = Calendar(identifier: .gregorian)
+        var calendar = gregorian
         calendar.timeZone = timeZone
         let sameYear = calendar.component(.year, from: date) == calendar.component(.year, from: now)
         var style = Date.FormatStyle(locale: locale, timeZone: timeZone).month(.abbreviated).day()

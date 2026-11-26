@@ -51,10 +51,15 @@ public struct WebTopBar: View {
     /// The iPad's native window (the owner, 2026-11-24): only the tabs (Home, Show All Tabs and the tab track), in a
     /// row of their own under the system toolbar, as Safari's on iPadOS.
     var tabsOnly = false
+    /// The iPad's wide layout as today's tablet app has it (the owner, 2026-11-25): the web strip's tabs alone (Home's
+    /// pill and the open tabs, each with its icon, title and ×), held in the system toolbar between Back and Forward
+    /// and Foli AI and New note.
+    var stripOnly = false
 
-    public init(model: FrameModel, tabsOnly: Bool = false) {
+    public init(model: FrameModel, tabsOnly: Bool = false, stripOnly: Bool = false) {
         self.model = model
         self.tabsOnly = tabsOnly
+        self.stripOnly = stripOnly
     }
 
     /// The bar's coordinate space (a tab's picture is placed from its tab's frame in it).
@@ -69,7 +74,11 @@ public struct WebTopBar: View {
         #if os(macOS)
         macBody
         #else
-        if tabsOnly { tabsBody } else if native { macBody } else { webBody }
+        if stripOnly {
+            strip
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .coordinateSpace(name: Self.space)
+        } else if tabsOnly { tabsBody } else if native { macBody } else { webBody }
         #endif
     }
 
@@ -176,8 +185,10 @@ public struct WebTopBar: View {
                     .padding(.leading, list.padding.left)
                     .padding(.trailing, list.gap)
             }
-            // The arrows only while the tabs overflow, each dimmed with nothing more on its side (TabStrip.tsx).
-            if overflow.start || overflow.end {
+            // The arrows only while the tabs overflow, each dimmed with nothing more on its side (TabStrip.tsx). With
+            // one tab besides Home there's nothing to scroll to: the tab takes their room instead (an iPad in
+            // portrait, its bar shared with the sidebar's width).
+            if overflow.start || overflow.end, model.tabs.tabs.filter({ !$0.isHome }).count > 1 {
                 HStack(spacing: style("frame.topbar").gap) {
                     scrollArrow(.chevronLeft, "Scroll tabs left", enabled: overflow.start) { scrollTabs(-1) }
                     scrollArrow(.chevronRight, "Scroll tabs right", enabled: overflow.end) { scrollTabs(1) }

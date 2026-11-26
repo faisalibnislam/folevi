@@ -69,20 +69,26 @@ const LETTERS: [RegExp, Latin, number][] = [
  * stays English or undecided, never something else.
  */
 export function detectLanguage(text: string, english: EnglishVariant = "en-US"): SpellLanguage | null {
-  let letters = 0;
-  for (const _ of text.matchAll(/\p{L}/gu)) letters++;
-  if (!letters) return null;
-  for (const [re, lang] of SCRIPTS) {
-    let n = 0;
-    for (const _ of text.matchAll(re)) n++;
-    if (n / letters > 0.3) return lang;
+  // Plain ASCII (most lines of most notes): no other script and no accented letters to count, so straight to the
+  // little words. (Every line of a note is read here as it's checked: a 2,000 line note must stay quick.)
+  const ascii = !/[^\x00-\x7f]/.test(text);
+  if (!ascii) {
+    let letters = 0;
+    for (const _ of text.matchAll(/\p{L}/gu)) letters++;
+    if (!letters) return null;
+    for (const [re, lang] of SCRIPTS) {
+      let n = 0;
+      for (const _ of text.matchAll(re)) n++;
+      if (n / letters > 0.3) return lang;
+    }
   }
-  const words = text.toLowerCase().match(/\p{L}+/gu) ?? [];
+  const lower = text.toLowerCase();
+  const words = lower.match(ascii ? /[a-z]+/g : /\p{L}+/gu) ?? [];
   if (words.length < 3) return null;
   const score: Record<Latin, number> = { en: 0, es: 0, fr: 0, de: 0, pt: 0, id: 0 };
-  for (const w of words) for (const k of Object.keys(score) as Latin[]) if (STOPSETS[k].has(w)) score[k]++;
-  const lower = text.toLowerCase();
-  for (const [re, k, weight] of LETTERS) score[k] += (lower.match(re)?.length ?? 0) * weight;
+  const langs = Object.keys(score) as Latin[];
+  for (const w of words) for (const k of langs) if (STOPSETS[k].has(w)) score[k]++;
+  if (!ascii) for (const [re, k, weight] of LETTERS) score[k] += (lower.match(re)?.length ?? 0) * weight;
   const ranked = (Object.entries(score) as [Latin, number][]).sort((a, b) => b[1] - a[1]);
   const [best, top] = ranked[0]!;
   if (top < 1) return null;

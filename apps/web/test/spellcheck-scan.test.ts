@@ -104,20 +104,33 @@ describe("the words spelling looks at", () => {
       lines.push(para(`L${i}`, content));
     }
     const { editor, doc } = docOf(lines);
-    const t0 = performance.now();
+    // Timings on a shared machine wander: each is the fastest of a few runs, and the margins are wide. (A cache is
+    // per version of the note, so each run reads a copy of it.)
+    const fastest = (run: () => void, times = 5) => {
+      let best = Infinity;
+      for (let i = 0; i < times; i++) {
+        const t = performance.now();
+        run();
+        best = Math.min(best, performance.now() - t);
+      }
+      return best;
+    };
+    const copy = () => editor.state.doc.type.create(doc.attrs, doc.content);
+    const slow = fastest(() => reference(copy()));
     const old = reference(doc);
-    const slow = performance.now() - t0;
-    const t1 = performance.now();
     const now = plain(doc);
-    const fast = performance.now() - t1;
     expect(now).toEqual(old);
     expect(now.length).toBeGreaterThan(28_000);
-    expect(fast).toBeLessThan(slow / 4);
-    // After one key, only the line typed in is read again.
+    // Lines read for the first time (a fresh note): well under the old full read.
+    const fast = fastest(() => {
+      const d = copy();
+      // (New line nodes too, so nothing is remembered from an earlier run.)
+      plain(editor.state.doc.type.create(d.attrs, d.content.content.map((n) => n.type.create(n.attrs, n.content, n.marks))));
+    });
+    expect(fast).toBeLessThan(slow / 2);
+    // After one key, only the line typed in is read again: a small part of the full read.
     editor.view.dispatch(editor.state.tr.insertText("x", 1));
-    const t2 = performance.now();
-    plain(editor.state.doc);
-    const again = performance.now() - t2;
+    const again = fastest(() => plain(editor.view.state.tr.insertText("y", 1).doc), 3);
     expect(again).toBeLessThan(slow / 4);
     editor.destroy();
   });

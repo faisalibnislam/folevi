@@ -6,6 +6,7 @@ import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { createHash } from "node:crypto";
 import { ConvexHttpClient } from "convex/browser";
+import { isCoverAccent } from "@folevi/editor-schema";
 import { ChevronDown } from "lucide-react";
 import { api } from "@/lib/convex/api";
 import { BlurredBackdrop } from "@/components/doc/BlurredBackdrop";
@@ -42,7 +43,9 @@ const LEGACY_PASSWORD_COOKIE = "folevi_share_unlock";
 
 async function clientKey(): Promise<string> {
   const h = await headers();
-  const ip = h.get("x-forwarded-for")?.split(",")[0]?.trim() ?? h.get("x-real-ip") ?? "unknown";
+  // The address the platform reports: x-real-ip is set by Vercel's edge and by Folevi Server's own proxy
+  // (never taken from the visitor), the same header the sign-in limits use (lib/auth/server.ts).
+  const ip = h.get("x-real-ip")?.trim() || h.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
   // Only a hash of the address leaves this server (Convex uses it for rate limiting).
   return createHash("sha256").update(ip).digest("hex");
 }
@@ -224,7 +227,7 @@ export default async function SharedPage({ params }: { params: Promise<{ token: 
       data-publish={publish}
       {...shareSheet}
       data-separator={document.style.separator}
-      style={{ ...shareSheet.style, ...themeFontVars(art?.fonts), ["--doc-accent" as string]: document.style.accent === "accent" ? "var(--color-accent)" : `var(--color-${document.style.accent})` }}
+      style={{ ...shareSheet.style, ...themeFontVars(art?.fonts), ["--doc-accent" as string]: document.style.accent === "accent" || !isCoverAccent(document.style.accent) ? "var(--color-accent)" : `var(--color-${document.style.accent})` }}
     >
       {backdrop ? <SheetPageBreaks /> : null}
       {bg ? <div className="h-36 rounded-t-chip" style={{ background: bg }} aria-hidden /> : <div className="h-8" />}

@@ -28,6 +28,7 @@ import { guardRefreshTokenRevoke } from "./lib/authAdapter";
 import { ACCESS_TOKEN_PREFIX, mcpResourceUrl, OAUTH_SCOPES, REFRESH_TOKEN_PREFIX } from "./lib/mcp/config";
 import { isServerEdition, serverTrustedOrigins } from "./lib/edition";
 import { pluginJwksOptions } from "./lib/jwks";
+import { isProductionDeployment } from "./lib/deployment";
 
 /** Linking an account needs a sign-in this recent (the session's freshAge). */
 const FRESH_LINK_MS = 10 * 60_000;
@@ -62,7 +63,7 @@ export function siteUrl(): string {
 }
 
 function isProduction(): boolean {
-  return process.env.FOLEVI_ENV === "production";
+  return isProductionDeployment();
 }
 
 /**

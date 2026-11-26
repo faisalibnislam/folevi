@@ -38,7 +38,9 @@ const usage = `folevid, the Folevi Server supervisor
 Usage:
   folevid run --data <dir> --bundle <dir>    start everything (stops cleanly on SIGTERM)
   folevid version                            print the version
-  folevid setup-url --data <dir>             print the first-setup address
+  folevid setup-url --data <dir> [--if-needed]
+                                             print the first-setup address; with --if-needed only while the
+                                             running server has no owner yet (exit 3 once it has one)
   folevid backup --data <dir>                take a backup now (folevid must be running)
   folevid restore <id> --data <dir> [--key-file <file>]
                                              restore a backup (folevid must be running); --key-file holds
@@ -46,7 +48,8 @@ Usage:
   folevid healthcheck --data <dir>           exit 0 when the backend and web app are running
 
 Defaults: --data from FOLEVI_DATA, --bundle from FOLEVI_BUNDLE or the folder above bin/folevid.
-Exit codes: 0 clean, 1 error, 2 bad configuration.
+Exit codes: 0 clean, 1 error, 2 bad configuration, 3 nothing to do (setup-url --if-needed on a server that is
+already set up).
 `
 
 func main() { os.Exit(run(os.Args[1:], os.Stdout, os.Stderr)) }
@@ -62,6 +65,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 	data := fs.String("data", os.Getenv("FOLEVI_DATA"), "data folder")
 	bundle := fs.String("bundle", os.Getenv("FOLEVI_BUNDLE"), "bundle folder")
 	keyFile := fs.String("key-file", "", "restore: file with the backup key of the server that made the backup")
+	ifNeeded := fs.Bool("if-needed", false, "setup-url: print the address only while the server has no owner yet")
 	var positional []string
 	// Allow flags after positional arguments (folevid restore <id> --data x).
 	for len(rest) > 0 {
@@ -87,7 +91,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 	case "run":
 		return cmdRun(*data, *bundle, stderr)
 	case "setup-url":
-		return cmdSetupURL(*data, stdout, stderr)
+		return cmdSetupURL(*data, *ifNeeded, stdout, stderr)
 	case "backup":
 		return cmdBackup(*data, stdout, stderr)
 	case "restore":
@@ -173,10 +177,26 @@ func loadLocal(data string) (config.Config, *secrets.Store, error) {
 	return f.Get(), sec, nil
 }
 
-func cmdSetupURL(data string, stdout, stderr io.Writer) int {
+// exitNothingToDo is the exit code of "setup-url --if-needed" on a server that already has an owner.
+const exitNothingToDo = 3
+
+// cmdSetupURL prints the first-setup address. The setup code in it claims the server, so package scripts that
+// write the address to a log pass --if-needed: it is then printed only while the running server still has no
+// owner (exit 3 once it has one, exit 1 while the server is not answering yet).
+func cmdSetupURL(data string, ifNeeded bool, stdout, stderr io.Writer) int {
 	c, sec, err := loadLocal(data)
 	if err != nil {
 		return reportErr(stderr, err)
+	}
+	if ifNeeded {
+		needs, err := needsSetup(c)
+		if err != nil {
+			return reportErr(stderr, err)
+		}
+		if !needs {
+			fmt.Fprintln(stderr, "folevid: this server is already set up")
+			return exitNothingToDo
+		}
 	}
 	tok, err := sec.MustGet(secrets.SetupToken)
 	if err != nil {
@@ -185,6 +205,35 @@ func cmdSetupURL(data string, stdout, stderr io.Writer) int {
 	host := net.JoinHostPort(sysinfo.PrimaryLANIP(), strconv.Itoa(c.Port))
 	fmt.Fprintf(stdout, "http://%s/setup?token=%s\n", host, url.QueryEscape(tok))
 	return 0
+}
+
+// localBase is the running server's public HTTP port as reached from this machine.
+func localBase(c config.Config) string {
+	host := c.BindAddress
+	if host == "" || host == "0.0.0.0" || host == "::" {
+		host = "127.0.0.1"
+	}
+	return "http://" + net.JoinHostPort(host, strconv.Itoa(c.Port))
+}
+
+// needsSetup asks the running server whether it still has no owner (needsSetup in /.well-known/folevi.json,
+// CONTRACT section 6). An answer that is not that file is an error, never "yes".
+func needsSetup(c config.Config) (bool, error) {
+	hc := &http.Client{Timeout: 10 * time.Second, Transport: &http.Transport{Proxy: nil},
+		CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
+	resp, err := hc.Get(localBase(c) + "/.well-known/folevi.json")
+	if err != nil {
+		return false, fmt.Errorf("the server is not answering yet: %v", err)
+	}
+	defer resp.Body.Close()
+	body, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
+	var info struct {
+		NeedsSetup *bool `json:"needsSetup"`
+	}
+	if resp.StatusCode != http.StatusOK || json.Unmarshal(body, &info) != nil || info.NeedsSetup == nil {
+		return false, fmt.Errorf("the server is not answering yet (/.well-known/folevi.json: %s)", resp.Status)
+	}
+	return *info.NeedsSetup, nil
 }
 
 // callControl calls the running folevid's control API.
@@ -290,11 +339,7 @@ func cmdHealth(data string, stdout, stderr io.Writer) int {
 	if err != nil {
 		return reportErr(stderr, err)
 	}
-	host := c.BindAddress
-	if host == "" || host == "0.0.0.0" || host == "::" {
-		host = "127.0.0.1"
-	}
-	base := "http://" + net.JoinHostPort(host, strconv.Itoa(c.Port))
+	base := localBase(c)
 	hc := &http.Client{Timeout: 10 * time.Second, Transport: &http.Transport{Proxy: nil},
 		CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
 	for _, chk := range []struct {

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { devPagesAvailable } from "@/lib/edition";
 import { icons, type LucideIcon } from "lucide-react";
 import specimens from "@folevi/design-tokens/match/specimens.json";
 import { Samples } from "../samples";
@@ -33,7 +34,7 @@ function className(s: Style): string {
  * CSS, for the Mac app's screenshot diffs (apps/mac/scripts/match.mjs, docs/MAC_REBUILD_PLAN.md section 3.2).
  */
 export default async function MatchSpecimenPage({ params }: { params: Promise<{ specimen: string }> }) {
-  if (process.env.VERCEL_ENV === "production" || process.env.FOLEVI_ENV === "production") notFound();
+  if (!devPagesAvailable()) notFound();
   const { specimen } = await params;
   const spec = specimens.specimens.find((s) => s.id === specimen) as Spec | undefined;
   if (!spec) notFound();

@@ -1,6 +1,7 @@
 #!/bin/sh
 # QTS service script for Folevi Server: start, stop, restart, status, backup, setup-url.
-# QTS runs it as root at boot and from App Center. It runs folevid as the unprivileged "folevi" user when it can.
+# QTS runs it as root at boot and from App Center. It runs folevid as the unprivileged "folevi" user, and refuses
+# to start when that user cannot be made: Folevi Server never runs as root (admin).
 CONF=/etc/config/qpkg.conf
 QPKG_NAME="folevi"
 QPKG_ROOT="$(/sbin/getcfg $QPKG_NAME Install_Path -f $CONF)"
@@ -23,7 +24,7 @@ data_dir() {
 }
 
 # A dedicated unprivileged user. QTS user management is not documented for packages; busybox adduser is
-# tried, and folevid falls back to running as admin with a log line if that fails. Unverified on real QTS.
+# tried. When that fails nothing is started (see prepare). Unverified on real QTS.
 ensure_user() {
   /usr/bin/id "$RUN_USER" >/dev/null 2>&1 && return 0
   if command -v adduser >/dev/null 2>&1; then
@@ -42,33 +43,40 @@ link_runtime() {
   /bin/ln -sfn "$loader" /usr/local/lib/folevi-rt/ld.so
 }
 
-as_user() {
-  if [ "$USE_USER" = 1 ]; then
-    /bin/su -s /bin/sh "$RUN_USER" -c "$*"
-  else
-    /bin/sh -c "$*"
-  fi
-}
+# Always as the service user, never as root.
+as_user() { /bin/su -s /bin/sh "$RUN_USER" -c "$*"; }
 
 running() { [ -f "$PID_FILE" ] && kill -0 "$(cat "$PID_FILE")" 2>/dev/null; }
 
+# Gets the data folder, the runtime link and the service user ready. Returns 1 (and says why) when folevid
+# could not run as the service user: the caller then stops instead of running it as root.
 prepare() {
   DATA="$(data_dir)"
   /bin/mkdir -p "$DATA"
   link_runtime
-  USE_USER=0
-  if ensure_user; then
-    /bin/chown -R "$RUN_USER" "$DATA" 2>/dev/null && USE_USER=1
+  if ! ensure_user; then
+    refuse "could not create the '$RUN_USER' user, and Folevi Server does not run as root (admin). Create a user named '$RUN_USER' (Control Panel > Users), then start Folevi Server again."
+    return 1
   fi
-  [ "$USE_USER" = 1 ] || log "running as the admin user: could not create the folevi user (unverified on QTS)"
+  # -h: change a symbolic link itself, never what it points at (the folder is writable by the service user).
+  if ! /bin/chown -hR "$RUN_USER" "$DATA" 2>/dev/null; then
+    refuse "could not give the data folder $DATA to the '$RUN_USER' user, and Folevi Server does not run as root (admin)."
+    return 1
+  fi
+  # folevid's own output file sits in the package folder (root's); the service user gets this one file.
+  : >> "$QPKG_ROOT/folevid.out"
+  /bin/chown -h "$RUN_USER" "$QPKG_ROOT/folevid.out" 2>/dev/null
+  /bin/chmod 600 "$QPKG_ROOT/folevid.out" 2>/dev/null
+  return 0
 }
+refuse() { log "not started: $*"; echo "Folevi Server: $*" >&2; }
 
 case "$1" in
   start)
     ENABLED=$(/sbin/getcfg $QPKG_NAME Enable -u -d FALSE -f $CONF)
     if [ "$ENABLED" != "TRUE" ]; then echo "$QPKG_NAME is disabled."; exit 1; fi
     running && exit 0
-    prepare
+    prepare || exit 1
     log "starting, data in $DATA"
     as_user "FOLEVI_PACKAGE=qnap FOLEVI_MANAGED_BY=store exec '$FOLEVID' run --data '$DATA' --bundle '$BUNDLE' >> '$QPKG_ROOT/folevid.out' 2>&1" &
     echo $! > "$PID_FILE"
@@ -95,11 +103,11 @@ case "$1" in
     echo "stopped"; exit 1
     ;;
   backup)
-    prepare
+    prepare || exit 1
     as_user "'$FOLEVID' backup --data '$DATA' --bundle '$BUNDLE'"
     ;;
   setup-url)
-    prepare
+    prepare || exit 1
     as_user "'$FOLEVID' setup-url --data '$DATA' --bundle '$BUNDLE'"
     ;;
   remove)

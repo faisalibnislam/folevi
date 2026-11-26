@@ -1,4 +1,4 @@
-import type { InlineNode } from "./generated/schema";
+import { HighlightColorValues, TextColorValues, type InlineNode } from "./generated/schema";
 import type { WireBlock } from "./types";
 import { flattenTree } from "./tree";
 import { liftTabs, tabName } from "./tabs";
@@ -75,11 +75,13 @@ export function inlineToHtml(nodes: readonly InlineNode[], opts: HtmlExportOptio
                 if (href) s = `<a href="${escapeHtml(href)}" rel="noopener noreferrer">${s}</a>`;
                 break;
               }
+              // Only the colours Folevi has: the value goes into a class name, and a note that was end-to-end
+              // encrypted reaches here without the server ever having checked it. Any other value is left out.
               case "color":
-                s = `<span class="text-${m.value}">${s}</span>`;
+                if ((TextColorValues as readonly string[]).includes(m.value)) s = `<span class="text-${m.value}">${s}</span>`;
                 break;
               case "highlight":
-                s = `<mark class="highlight-${m.value}">${s}</mark>`;
+                if ((HighlightColorValues as readonly string[]).includes(m.value)) s = `<mark class="highlight-${m.value}">${s}</mark>`;
                 break;
             }
           }
@@ -233,7 +235,7 @@ function htmlBody(blocks: readonly WireBlock[], opts: HtmlExportOptions): string
         parts.push(`<p>${t || "<br>"}</p>`);
         break;
       case "heading": {
-        const level = Math.min(3, Number(p.level) || 1) + 1;
+        const level = Math.min(3, Math.max(1, Math.round(Number(p.level) || 1))) + 1;
         parts.push(`<h${level}>${t}</h${level}>`);
         break;
       }

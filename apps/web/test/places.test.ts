@@ -58,6 +58,14 @@ describe("cookies", () => {
     expect(isPrivateAuthPath("/api/auth/multi-session/list-device-sessions")).toBe(true);
     expect(isPrivateAuthPath("/api/auth/multi-session/revoke")).toBe(true);
     expect(isPrivateAuthPath("/api/auth/get-session")).toBe(false);
+    // However the path is written: escapes, letter case, a backslash or an empty segment never get one through.
+    for (const path of ["/api/auth/%6dulti-session/list-device-sessions", "/api/auth/%6Dulti-session/revoke", "/api/auth/multi%2Dsession/revoke", "/api/auth/Multi-Session/revoke", "/api/auth/MULTI-SESSION", "/api/auth//multi-session/revoke", "/api/auth/%2e/multi-session/revoke", "/api/auth/x%2F..%2Fmulti-session/revoke", "/api/auth\\multi-session\\revoke", "/api/auth/%256dulti-session/revoke"]) {
+      expect(isPrivateAuthPath(path), path).toBe(true);
+    }
+    // Real sign-in paths are plain, and stay open; a path outside /api/auth is not this check's business.
+    for (const path of ["/api/auth/sign-in/email", "/api/auth/callback/apple", "/api/auth/oauth2/authorize", "/api/auth/.well-known/oauth-authorization-server", "/api/auth/native/token", "/api/auth/multi-sessions", "/api/places", "/documents/a%20b"]) {
+      expect(isPrivateAuthPath(path), path).toBe(false);
+    }
   });
 });
 

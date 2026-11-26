@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { useMutation } from "convex/react";
 import { addDays } from "@folevi/editor-schema";
 import { CalendarClock, CalendarDays, Check, CloudOff, ChevronDown, ChevronRight, CircleCheckBig, FileText, Inbox, ListTodo, Repeat, RotateCcw, Sun, SunMedium, UserRound, type LucideIcon } from "lucide-react";
 import { api } from "@/lib/convex/api";
@@ -18,6 +17,7 @@ import { RootAvatar, RootPill } from "./RootBar";
 import { SwipeRow } from "./Swipe";
 import { SearchField } from "./Rows";
 import { ExitLi, ExitSection, useExitingList } from "./exit";
+import { taskUpdated, useOptimisticMutation } from "@/lib/convex/optimistic";
 
 type View = "inbox" | "today" | "upcoming" | "all" | "completed" | "mine";
 
@@ -68,7 +68,7 @@ export function IphoneTasks({
 }) {
   const { today, deviceId } = useAppState();
   const { navigate } = useAppRouter();
-  const update = useMutation(api.tasks.update);
+  const update = useOptimisticMutation(api.tasks.update, taskUpdated);
   const toast = useToast();
   const [folded, setFolded] = useLocalStorage<Record<string, true>>("folevi:iphone-tasks-folded", {});
   const chip = CHIPS.find((c) => c.id === view)!;

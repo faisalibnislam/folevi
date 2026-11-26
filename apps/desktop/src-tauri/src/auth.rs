@@ -66,6 +66,18 @@ struct Pending {
     tx: oneshot::Sender<Option<String>>,
 }
 
+/// What this PC already holds for the user id a sign-in came back with.
+#[derive(Debug, Clone, PartialEq)]
+pub enum Held {
+    /// No account here has that id.
+    Nobody,
+    /// An account on the server the sign-in went to (the same person again), and the website its session lives on
+    /// (None: Folevi Cloud's).
+    Here(Option<url::Url>),
+    /// An account from another server (or Folevi Cloud's, for a server's sign-in): the sign-in is refused.
+    Elsewhere,
+}
+
 /// Where a rotated token goes: nowhere (a token being checked), or a slot (None: the legacy single session).
 #[derive(Clone, Copy)]
 enum Keep<'a> {
@@ -282,6 +294,16 @@ impl Auth {
         self.secrets.get(&Self::name_of(slot)).filter(|t| !t.is_empty())
     }
 
+    /// The token a call acts with: its slot's own. With no slot (a sign-in screen) it is the one session older
+    /// builds kept, which was always Folevi Cloud's: on a server's sign-in screen (`server`) there is none, so
+    /// Folevi Cloud's old session never goes to a server.
+    fn acting_token(&self, slot: Option<&str>, server: Option<&url::Url>) -> Option<String> {
+        if slot.is_none() && server.is_some() {
+            return None;
+        }
+        self.token(slot)
+    }
+
     /// Whether a session token is stored (for logs and tests; never sent to the page).
     #[allow(dead_code)]
     pub fn signed_in(&self, slot: Option<&str>) -> bool {
@@ -449,17 +471,26 @@ impl Auth {
     /// Signs in in the browser (`provider`: "google" or "apple" go straight there); the new account's user, or
     /// None when it didn't finish. The same person again replaces their old session; other accounts keep theirs.
     /// `server`: the Folevi Server's website the sign-in screen belongs to (None: Folevi Cloud).
-    pub async fn sign_in_account(&self, provider: Option<&str>, server: Option<&url::Url>) -> Result<Option<SessionUser>, ShellError> {
+    /// `held`: what this PC already holds for the user id the sign-in came back with (lib.rs answers from the
+    /// places). Sessions are kept by user id, and a server says what its user ids are, so a sign-in that comes back
+    /// with the id of an account from another server is refused (None), and the session a sign-in replaces is
+    /// ended at the website that issued it, never at the one the new sign-in went to.
+    pub async fn sign_in_account(&self, provider: Option<&str>, server: Option<&url::Url>, held: &(dyn Fn(&str) -> Held + Send + Sync)) -> Result<Option<SessionUser>, ShellError> {
         let site = self.site(server);
         let Some(access) = self.obtain(&site, provider).await else { return Ok(None) };
         let Some(user) = self.user_of(&site, &access).await else {
             self.end_session(&site, &access).await;
             return Ok(None);
         };
+        let held = held(&user.user_id);
+        if held == Held::Elsewhere {
+            self.end_session(&site, &access).await;
+            return Ok(None);
+        }
         let previous = self.token(Some(&user.user_id));
         self.secrets.set(&Self::name_of(Some(&user.user_id)), &access)?;
-        if let Some(prev) = previous.filter(|p| *p != access) {
-            self.end_session(&site, &prev).await;
+        if let (Some(prev), Held::Here(issuer)) = (previous.filter(|p| *p != access), &held) {
+            self.end_session(&self.site(issuer.as_ref()), &prev).await;
         }
         Ok(Some(user))
     }
@@ -494,6 +525,10 @@ impl Auth {
     /// Ends the slot's session on the server (best effort) and forgets its token, online or not.
     pub async fn sign_out(&self, slot: Option<&str>, server: Option<&url::Url>) {
         self.cancel_pending();
+        if slot.is_none() && server.is_some() {
+            // A server's sign-in screen holds no session (the one older builds kept is Folevi Cloud's, and stays).
+            return;
+        }
         if let Some(bearer) = self.token(slot) {
             self.end_session(&self.site(server), &bearer).await;
         }
@@ -509,7 +544,7 @@ impl Auth {
         let url = auth_url(&site, o.get("path").unwrap_or(&Value::Null));
         let clean = clean_init(o);
         let (Some(url), Some(clean)) = (url, clean) else { return Err(ShellError::invalid(REFUSED)) };
-        let bearer = self.token(slot);
+        let bearer = self.acting_token(slot, server);
         let (res, rotated) = self
             .send(&site, url, &clean.method, &clean.headers, clean.body, bearer.as_deref(), Keep::Slot(slot))
             .await
@@ -529,14 +564,14 @@ impl Auth {
             headers.insert(key, Value::String(joined));
         }
         let text = res.text().await.map_err(|_| ShellError::unavailable(OFFLINE))?;
-        let now = self.token(slot);
+        let now = self.acting_token(slot, server);
         let body = scrub(&text, &[bearer.as_deref(), rotated.as_deref(), now.as_deref()]);
         Ok(json!({ "status": status, "headers": headers, "body": body }))
     }
 
     /// The slot's short-lived Convex JWT: None when signed out (a session that ended is forgotten).
     pub async fn convex_token(&self, slot: Option<&str>, server: Option<&url::Url>) -> Result<Option<String>, ShellError> {
-        let Some(bearer) = self.token(slot) else { return Ok(None) };
+        let Some(bearer) = self.acting_token(slot, server) else { return Ok(None) };
         let site = self.site(server);
         let (res, _) = self
             .send(&site, Self::url(&site, "/api/auth/convex/token"), "GET", &[], None, Some(&bearer), Keep::Slot(slot))
@@ -703,7 +738,7 @@ mod tests {
         send(a.fetch(v, None, None));
         send(a.convex_token(None, None));
         send(a.sign_out(None, None));
-        send(a.sign_in_account(None, None));
+        send(a.sign_in_account(None, None, &|_| Held::Nobody));
         send(a.sign_in(None));
         send(a.adopt_legacy());
     }
@@ -912,7 +947,7 @@ mod tests {
     async fn google_and_apple_open_straight_on_their_page() {
         let h = harness(None, ok());
         let auth = h.auth.clone();
-        let done = tokio::spawn(async move { auth.sign_in_account(Some("google"), None).await });
+        let done = tokio::spawn(async move { auth.sign_in_account(Some("google"), None, &|_| Held::Nobody).await });
         let u = h.opened(0).await;
         assert_eq!(u.path(), "/app-google");
         assert_eq!(u.query_pairs().find(|(k, _)| k == "provider").unwrap().1, "google");
@@ -1080,14 +1115,14 @@ mod tests {
         let h = harness(None, server(people, vec![ana1, ben1, ana2]));
 
         let auth = h.auth.clone();
-        let p = tokio::spawn(async move { auth.sign_in_account(None, None).await });
+        let p = tokio::spawn(async move { auth.sign_in_account(None, None, &|_| Held::Nobody).await });
         h.finish(0, "code=c0").await;
         let ana = p.await.unwrap().unwrap().unwrap();
         assert_eq!(ana, SessionUser { user_id: "userAna".into(), name: "ana".into(), email: "ana@example.com".into(), avatar_url: None });
         assert_eq!(serde_json::to_value(&ana).unwrap(), json!({ "userId": "userAna", "name": "ana", "email": "ana@example.com", "avatarUrl": null }));
 
         let auth = h.auth.clone();
-        let p = tokio::spawn(async move { auth.sign_in_account(None, None).await });
+        let p = tokio::spawn(async move { auth.sign_in_account(None, None, &|_| Held::Nobody).await });
         h.finish(1, "code=c1").await;
         assert_eq!(p.await.unwrap().unwrap().unwrap().user_id, "userBen");
         assert_eq!(h.get("auth.session.userAna").as_deref(), Some(ana1));
@@ -1102,7 +1137,7 @@ mod tests {
         // Ana again: her old session ends, Ben's stays.
         h.mock.sent.lock().clear();
         let auth = h.auth.clone();
-        let p = tokio::spawn(async move { auth.sign_in_account(None, None).await });
+        let p = tokio::spawn(async move { auth.sign_in_account(None, None, &|_| Held::Here(None)).await });
         h.finish(2, "code=c2").await;
         assert_eq!(p.await.unwrap().unwrap().unwrap().user_id, "userAna");
         assert_eq!(h.get("auth.session.userAna").as_deref(), Some(ana2));
@@ -1116,12 +1151,60 @@ mod tests {
         assert!(h.auth.signed_in(Some("userAna")));
     }
 
+    /// Sessions are kept by user id, and a server says what its user ids are: a sign-in that comes back with the id
+    /// of an account from another server is refused, and a replaced session ends at the website that issued it.
+    #[tokio::test]
+    async fn a_sign_in_that_comes_back_as_another_servers_account_is_refused() {
+        let held = "Heldsessiontoken0123456789abcdefH";
+        let fresh = "Freshsessiontoken0123456789abcdeF";
+        let again = "Againsessiontoken0123456789abcdeA";
+        let people = vec![(fresh, "userAna", "ana@example.com"), (again, "userAna", "ana@example.com")];
+        let h = harness(None, server(people, vec![fresh, again]));
+        h.auth.secrets.set("auth.session.userAna", held).unwrap();
+
+        // The website this sign-in went to answers with the id of an account from another server.
+        let auth = h.auth.clone();
+        let p = tokio::spawn(async move { auth.sign_in_account(None, None, &|_| Held::Elsewhere).await });
+        h.finish(0, "code=c0").await;
+        assert_eq!(p.await.unwrap().unwrap(), None, "refused");
+        assert_eq!(h.get("auth.session.userAna").as_deref(), Some(held), "the account's own session stays");
+        let outs: Vec<String> = h.sent().iter().filter(|r| r.path == "/api/auth/sign-out").map(Req::bearer).collect();
+        assert_eq!(outs, vec![fresh.to_string()], "only the refused sign-in's own session ends here");
+        assert!(!h.sent().iter().any(|r| r.bearer() == held), "the other account's session never went to this website");
+
+        // The same person again, whose session was issued by another website (their server's): the old session is
+        // ended there, never at the website the new sign-in went to.
+        h.mock.sent.lock().clear();
+        let elsewhere = url::Url::parse("http://127.0.0.1:9").unwrap();
+        let auth = h.auth.clone();
+        let p = tokio::spawn(async move { auth.sign_in_account(None, None, &move |_| Held::Here(Some(elsewhere.clone()))).await });
+        h.finish(1, "code=c1").await;
+        assert_eq!(p.await.unwrap().unwrap().unwrap().user_id, "userAna");
+        assert_eq!(h.get("auth.session.userAna").as_deref(), Some(again));
+        assert!(!h.sent().iter().any(|r| r.bearer() == held), "the old session wasn't sent to this website");
+    }
+
+    /// The one session older builds kept was Folevi Cloud's: a server's sign-in screen (no slot, a server) neither
+    /// sends it nor forgets it.
+    #[tokio::test]
+    async fn the_old_single_session_never_goes_to_a_server() {
+        let h = harness(Some(TOKEN), server(vec![(TOKEN, "userOld", "old@example.com")], vec![]));
+        let nas = h.mock.base.clone();
+        assert_eq!(h.auth.convex_token(None, Some(&nas)).await.unwrap(), None);
+        let _ = h.auth.fetch(&json!({ "path": "/api/auth/get-session", "method": "GET" }), None, Some(&nas)).await.unwrap();
+        h.auth.sign_out(None, Some(&nas)).await;
+        assert!(!h.sent().iter().any(|r| r.bearer() == TOKEN), "nothing carried it to the server");
+        assert_eq!(h.get("auth.session").as_deref(), Some(TOKEN), "and it was not forgotten");
+        // Folevi Cloud's own sign-in screen still uses it.
+        assert_eq!(h.auth.convex_token(None, None).await.unwrap().as_deref(), Some("jwt-for-userOld"));
+    }
+
     #[tokio::test]
     async fn a_session_with_no_user_is_ended_and_signs_nobody_in() {
         let fresh = "Freshsessiontoken0123456789abcdef";
         let h = harness(None, server(vec![], vec![fresh]));
         let auth = h.auth.clone();
-        let p = tokio::spawn(async move { auth.sign_in_account(None, None).await });
+        let p = tokio::spawn(async move { auth.sign_in_account(None, None, &|_| Held::Nobody).await });
         h.finish(0, "code=c").await;
         assert_eq!(p.await.unwrap().unwrap(), None);
         assert!(h.sent().iter().any(|r| r.path == "/api/auth/sign-out" && r.bearer() == fresh));

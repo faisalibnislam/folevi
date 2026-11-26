@@ -14,8 +14,10 @@ export async function generateMetadata({ searchParams }: { searchParams: Promise
 /**
  * The browser half of signing in to the Mac or iOS app with Google or Apple (`provider`, Google when absent;
  * Google doesn't sign in inside an app's web view): the app opens this page in the browser, which signs in
- * with the provider and hands the app a one-time code (convex/lib/nativeAuth.ts, client "folevi-app"). The
- * Mac app only opens this path, so Apple uses it too.
+ * with the provider and, once the person presses Continue, hands the app a one-time code
+ * (convex/lib/nativeAuth.ts, client "folevi-app"). The Mac app only opens this path, so Apple uses it too.
+ * `returned` is only what the page sent round itself: the component checks it against what this tab noted
+ * (lib/auth/appSignIn.ts), so a link can't claim to be back from the provider.
  */
 export default async function AppSignInPage({ searchParams }: { searchParams: Promise<Params> }) {
   const p = await searchParams;
@@ -27,7 +29,7 @@ export default async function AppSignInPage({ searchParams }: { searchParams: Pr
       codeChallenge={p.code_challenge ?? ""}
       codeChallengeMethod={p.code_challenge_method ?? ""}
       state={p.state ?? ""}
-      returned={p.returned === "1"}
+      returned={typeof p.returned === "string" ? p.returned : ""}
       error={p.error}
     />
   );

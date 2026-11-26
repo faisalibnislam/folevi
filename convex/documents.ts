@@ -6,11 +6,12 @@ import { internalMutation, mutation } from "./lib/functions";
 import { internal } from "./_generated/api";
 import type { Doc, Id } from "./_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
-import { isValidId, rankBetween, ulid, type WireBlock } from "@folevi/editor-schema";
+import { isValidId, rankBetween, ulid, validateWireBlock, type WireBlock } from "@folevi/editor-schema";
 import {
   accessAtLeast,
   assertWritable,
   documentAccess,
+  documentAccessInfo,
   getDocumentByPublicId,
   membership,
   optionalProfile,
@@ -18,8 +19,12 @@ import {
   requireProfile,
   requireRowScope,
   resolveScope,
+  roleToAccess,
   levelAtLeast,
+  maxShareRoleFor,
   memberAtLeast,
+  MAX_PAGE_DEPTH,
+  pageChain,
   PageReader,
   type Access,
 } from "./lib/auth";
@@ -38,7 +43,7 @@ import { vDocumentKind, vDocumentStyle, vWireBlock } from "./lib/validators";
 import { People } from "./lib/authors";
 import { queueIndex } from "./lib/ai/indexing";
 import { emitWebhook } from "./lib/webhooks";
-import { refreshSourcesShownBy } from "./lib/synced";
+import { referableBlocks, refreshSourcesShownBy } from "./lib/synced";
 import { failE2ee, requirePlainWriteInScope } from "./lib/e2ee/state";
 import { bytesToB64u, sealedFieldsOf } from "./lib/e2ee/sealedRows";
 import { noteText } from "./lib/documentText";
@@ -425,7 +430,7 @@ export const get = query({
     const ids = new IdResolver(ctx);
     const breadcrumbs: { id: string; title: string; icon: string | null; sealed?: ReturnType<typeof sealedFieldsOf> }[] = [];
     let cursor = doc.parentDocumentId ? await ctx.db.get(doc.parentDocumentId) : null;
-    for (let i = 0; cursor && i < 12; i++) {
+    for (let i = 0; cursor && i < MAX_PAGE_DEPTH; i++) {
       if (accessAtLeast(await documentAccess(ctx, profile, cursor), "read")) {
         breadcrumbs.unshift({ id: cursor.publicId, title: cursor.title, icon: cursor.icon ?? null, ...sealedOf(cursor) });
       }
@@ -440,7 +445,7 @@ export const get = query({
     const document = inItsScope ? extras! : { ...extras!, folderId: null, tags: [], homeFolder: null };
     // A nested page lives where its top-level note does (its own folder is never set).
     let top = doc;
-    for (let i = 0; top.parentDocumentId && i < 12; i++) {
+    for (let i = 0; top.parentDocumentId && i < MAX_PAGE_DEPTH; i++) {
       const parent = await ctx.db.get(top.parentDocumentId);
       if (!parent) break;
       top = parent;
@@ -516,7 +521,7 @@ export const pageTree = query({
     if (!doc || !accessAtLeast(await documentAccess(ctx, profile, doc), "read")) return null;
     const reader = await PageReader.forScope(ctx, profile, scopeOfRow(doc));
     let root = doc;
-    for (let i = 0; root.parentDocumentId && i < 12; i++) {
+    for (let i = 0; root.parentDocumentId && i < MAX_PAGE_DEPTH; i++) {
       const parent = await ctx.db.get(root.parentDocumentId);
       if (!parent || parent.inTrash || !(await reader.filter([parent])).length) break;
       root = parent;
@@ -910,10 +915,44 @@ async function descendantsOf(ctx: QueryCtx | MutationCtx, root: Doc<"documents">
   return out;
 }
 
+/**
+ * The pages under `root` that `profile` may not edit, each with everything below it: pages someone restricted
+ * that they have no way into. Trashing or deleting a page doesn't reach those (see setTrashState and
+ * canDeletePermanently). Nothing to look for when they manage the place, or when `root` is itself inside a
+ * restriction: the people a restriction lets in reach every page under it. `below` is descendantsOf(root),
+ * parents before their sub-pages (read here when not given).
+ */
+async function unwritableUnder(ctx: QueryCtx | MutationCtx, profile: Doc<"profiles">, root: Doc<"documents">, below?: Doc<"documents">[]): Promise<Set<Id<"documents">>> {
+  const blocked = new Set<Id<"documents">>();
+  const info = await documentAccessInfo(ctx, profile, root);
+  if (info.restricted || info.access === "manage") return blocked;
+  // Pages under a restricted page they can edit: the same restriction, so the same answer (not asked again).
+  const cleared = new Set<Id<"documents">>();
+  for (const d of below ?? (await descendantsOf(ctx, root))) {
+    if (d.parentDocumentId !== undefined && blocked.has(d.parentDocumentId)) blocked.add(d._id);
+    else if (d.parentDocumentId !== undefined && cleared.has(d.parentDocumentId)) cleared.add(d._id);
+    else if (d.accessMode === "restricted") (accessAtLeast(await documentAccess(ctx, profile, d), "write") ? cleared : blocked).add(d._id);
+  }
+  return blocked;
+}
+
 export async function setTrashState(ctx: MutationCtx, doc: Doc<"documents">, actor: Id<"profiles">, inTrash: boolean, stamp: number | undefined) {
   const seq = new SeqAllocator(ctx);
   const s = await seq.for(scopeOfRow(doc));
-  const all = [doc, ...(await descendantsOf(ctx, doc))];
+  const below = await descendantsOf(ctx, doc);
+  // Moving a page to Trash takes its sub-pages along, but never a page the person couldn't edit (a restricted
+  // page someone keeps under it): that one stays, with what's under it, and moves out to where its top-level
+  // note was filed, still restricted, so it isn't deleted with a parent its people never trashed.
+  const person = inTrash ? await ctx.db.get(actor) : null;
+  const kept = person ? await unwritableUnder(ctx, person, doc, below) : new Set<Id<"documents">>();
+  if (kept.size) {
+    const home = (await pageChain(ctx, doc)).homeFolderId;
+    for (const d of below) {
+      if (!kept.has(d._id) || (d.parentDocumentId !== undefined && kept.has(d.parentDocumentId))) continue;
+      await ctx.db.patch(d._id, { parentDocumentId: undefined, folderId: home, seq: s, revision: d.revision + 1, updatedAt: Date.now() });
+    }
+  }
+  const all = [doc, ...below.filter((d) => !kept.has(d._id))];
   for (const d of all) {
     // Restoring only brings back pages trashed together with the root.
     if (!inTrash && d._id !== doc._id && d.deletedAt !== doc.deletedAt) continue;
@@ -950,13 +989,32 @@ export const moveToTrash = mutation({
   },
 });
 
+const RESTORE_PARENT_FIRST = "This page is inside a restricted page that's in Trash. Restore that page first, or ask someone who manages it.";
+
+/**
+ * Whether restoring `doc` on its own would open it up: its parent is still in Trash (so it would come back at
+ * the top level), it's only restricted through a page above it, and the person doesn't manage it. Taking a
+ * page out from under a restricted page is for its managers, however it's done (lib/syncEngine.ts updateDoc).
+ */
+async function restoreWouldOpen(ctx: MutationCtx, profile: Doc<"profiles">, doc: Doc<"documents">): Promise<boolean> {
+  if (!doc.inTrash || !doc.parentDocumentId || doc.accessMode === "restricted") return false;
+  const parent = await ctx.db.get(doc.parentDocumentId);
+  if (parent && !parent.inTrash) return false;
+  const info = await documentAccessInfo(ctx, profile, doc);
+  return info.restricted && !accessAtLeast(info.access, "manage");
+}
+
 /** Brings a trashed page back (with the pages trashed together with it). Callers check write access. */
 export async function restoreDoc(ctx: MutationCtx, doc: Doc<"documents">, actor: Id<"profiles">) {
   if (!doc.inTrash) return;
-  // If the parent is still in Trash, restore to the top level.
+  // If the parent is still in Trash, restore to the top level (never out of a restriction, see restoreWouldOpen).
   if (doc.parentDocumentId) {
     const parent = await ctx.db.get(doc.parentDocumentId);
-    if (!parent || parent.inTrash) await ctx.db.patch(doc._id, { parentDocumentId: undefined });
+    if (!parent || parent.inTrash) {
+      const person = await ctx.db.get(actor);
+      if (!person || (await restoreWouldOpen(ctx, person, doc))) fail("forbidden", RESTORE_PARENT_FIRST);
+      await ctx.db.patch(doc._id, { parentDocumentId: undefined });
+    }
   }
   await setTrashState(ctx, (await ctx.db.get(doc._id))!, actor, false, undefined);
 }
@@ -982,7 +1040,9 @@ export const restoreFromTrash = mutation({
  */
 async function canDeletePermanently(ctx: MutationCtx | QueryCtx, profile: Doc<"profiles">, doc: Doc<"documents">, access?: Access) {
   const a = access ?? (await documentAccess(ctx, profile, doc));
-  return accessAtLeast(a, "manage") || (doc.createdBy === profile._id && accessAtLeast(a, "write"));
+  if (!accessAtLeast(a, "manage") && !(doc.createdBy === profile._id && accessAtLeast(a, "write"))) return false;
+  // Deleting a page takes the pages under it with it: not while one of them is a page they couldn't edit.
+  return (await unwritableUnder(ctx, profile, doc)).size === 0;
 }
 
 /**
@@ -1034,7 +1094,7 @@ export const deletePermanently = mutation({
 /** The top of a trashed page's trashed ancestry: the page whose deletion takes this one with it. */
 async function trashRoot(ctx: QueryCtx | MutationCtx, doc: Doc<"documents">): Promise<Doc<"documents">> {
   let root = doc;
-  for (let i = 0; root.parentDocumentId && i < 12; i++) {
+  for (let i = 0; root.parentDocumentId && i < MAX_PAGE_DEPTH; i++) {
     const parent = await ctx.db.get(root.parentDocumentId);
     if (!parent || !parent.inTrash) break;
     root = parent;
@@ -1198,7 +1258,7 @@ export const bulkUpdate = mutation({
       for (const id of ids) {
         let d = 0;
         let cursor = await getDocumentByPublicId(ctx, id);
-        while (cursor?.parentDocumentId && d < 12) {
+        while (cursor?.parentDocumentId && d < MAX_PAGE_DEPTH) {
           cursor = await ctx.db.get(cursor.parentDocumentId);
           d++;
         }
@@ -1249,7 +1309,9 @@ export const bulkUpdate = mutation({
           if (!doc.inTrash) await setTrashState(ctx, doc, profile._id, true, Date.now());
           break;
         case "restore":
-          await restoreDoc(ctx, doc, profile._id);
+          // (A page that can't come back on its own is skipped, as restoreFromTrash refuses it.)
+          if (await restoreWouldOpen(ctx, profile, doc)) ok = false;
+          else await restoreDoc(ctx, doc, profile._id);
           break;
         case "delete":
           if (!doc.inTrash || !(await canDeletePermanently(ctx, profile, doc))) ok = false;
@@ -1301,6 +1363,24 @@ export const reorder = mutation({
   },
 });
 
+/**
+ * A copy made next to a page (Duplicate, a copy of a version) is never more open than the page: the copy of a
+ * page under a restriction is restricted itself, wherever it lands (a template sits at the top level, and a
+ * top-level page's copy next to it). `keep` then makes sure the person still opens their copy: where they
+ * made the restriction it's now under they manage it; otherwise they get on it the access they had on the
+ * original, never more (a grant that was on the original page alone doesn't reach its copy).
+ */
+export async function copyAccess(ctx: MutationCtx, profile: Doc<"profiles">, doc: Doc<"documents">): Promise<{ accessMode?: "restricted"; keep: (copy: Doc<"documents">) => Promise<void> }> {
+  const info = await documentAccessInfo(ctx, profile, doc);
+  if (!info.restricted) return { keep: async () => undefined };
+  const keep = async (copy: Doc<"documents">) => {
+    const role = maxShareRoleFor(info.access);
+    if (!role || accessAtLeast(await documentAccess(ctx, profile, copy), roleToAccess(role))) return;
+    await insertScoped(ctx, "documentPermissions", scopeOfRow(copy), { documentId: copy._id, profileId: profile._id, role, grantedBy: profile._id, createdAt: Date.now() });
+  };
+  return { accessMode: "restricted", keep };
+}
+
 export const duplicate = mutation({
   args: { documentId: v.string(), asTemplate: v.optional(v.boolean()) },
   handler: async (ctx, args) => {
@@ -1315,6 +1395,7 @@ export const duplicate = mutation({
     // The copy owns its files, so deleting the original for good leaves its images in place.
     const files = new FileCopies(ctx, profile);
     const blocks = await files.blocks(cloneBlocks((await liveBlocks(ctx, doc._id)).map(toWireBlock)));
+    const closed = await copyAccess(ctx, profile, doc);
     const copy = await createDocument(ctx, {
       scope,
       actor: profile,
@@ -1325,8 +1406,10 @@ export const duplicate = mutation({
       parentDocumentId: args.asTemplate ? undefined : doc.parentDocumentId,
       style: doc.style,
       cover: await files.cover(doc.cover),
+      accessMode: closed.accessMode,
       blocks,
     });
+    await closed.keep(copy);
     await files.commit(copy);
     await copyCollectionsInto(ctx, copy);
     return await new Placement(ctx, profile).summary(new IdResolver(ctx), copy);
@@ -1500,6 +1583,15 @@ export const importSnapshot = mutation({
     const stored: VersionContent = { title: args.title.slice(0, 300), icon: args.icon, ...(args.style ? { style: args.style } : {}), blocks: args.blocks as WireBlock[] };
     const content = JSON.stringify(stored);
     if (content.length > MAX_IMPORTED_SNAPSHOT_BYTES) fail("limit_exceeded", "That version is too big to bring in.");
+    // What a version holds becomes the note when it's restored: its blocks are checked like any block that's
+    // saved, and each id is used once. (An id that belongs to another note gets a new one on restore, rewritePage.)
+    const importedIds = new Set<string>();
+    for (const b of args.blocks as WireBlock[]) {
+      const issues = validateWireBlock(b);
+      if (issues.length) fail("invalid_block", `${issues[0]!.path}: ${issues[0]!.message}`);
+      if (importedIds.has(b.id)) fail("invalid_block", "id: used twice");
+      importedIds.add(b.id);
+    }
     const imported = (
       await ctx.db
         .query("documentSnapshots")
@@ -1838,6 +1930,7 @@ export const copyVersion = mutation({
     if (!raw) fail("not_found", "Version content is unavailable.");
     const parsed = JSON.parse(raw) as VersionContent;
     const files = new FileCopies(ctx, profile);
+    const closed = await copyAccess(ctx, profile, doc);
     const copy = await createDocument(ctx, {
       scope,
       actor: profile,
@@ -1848,8 +1941,10 @@ export const copyVersion = mutation({
       parentDocumentId: doc.parentDocumentId,
       style: parsed.style ?? doc.style,
       cover: await files.cover(doc.cover),
+      accessMode: closed.accessMode,
       blocks: await files.blocks(cloneBlocks(parsed.blocks)),
     });
+    await closed.keep(copy);
     // Its files and databases are its own, as with Duplicate: rows edited in the copy don't change the original.
     await files.commit(copy);
     await copyCollectionsInto(ctx, copy);
@@ -1875,7 +1970,17 @@ export async function restoreVersion(ctx: MutationCtx, writable: Doc<"documents"
   deviceOnlyForSealed(writable, snap);
   const raw = await snapshotText(ctx, snap);
   if (!raw) fail("not_found", "Version content is unavailable.");
-  return await rewritePage(ctx, writable, JSON.parse(raw) as VersionContent, profile);
+  const parsed = JSON.parse(raw) as VersionContent;
+  // A version brought in from elsewhere holds what a client sent: checked again here, for the ones brought in
+  // before importSnapshot checked them.
+  if (snap.reason === "import") {
+    if (!Array.isArray(parsed.blocks)) fail("not_found", "Version content is unavailable.");
+    for (const b of parsed.blocks) {
+      const issues = validateWireBlock(b);
+      if (issues.length) fail("invalid_block", `${issues[0]!.path}: ${issues[0]!.message}`);
+    }
+  }
+  return await rewritePage(ctx, writable, parsed, profile);
 }
 
 /**
@@ -1913,6 +2018,36 @@ export async function versionBlocks(ctx: QueryCtx | MutationCtx, snap: Doc<"docu
 }
 
 /**
+ * The blocks rewritePage may write into `page`, from what a version holds:
+ * - each id once (a second block with an id already taken in the list is left out);
+ * - a block id is a block's for good, in one note: one that isn't this page's and exists in another note
+ *   gets a new id here (with the lines under it following), so nothing ever writes a second row with an id
+ *   someone else's block has;
+ * - a synced block the page doesn't have already stays only when its content is the person's to show
+ *   (lib/synced.ts referableBlocks), and never inside synced content.
+ */
+async function blocksForPage(ctx: MutationCtx, page: Doc<"documents">, wanted: WireBlock[], own: Map<string, Doc<"blocks">>, profile: Doc<"profiles">): Promise<WireBlock[]> {
+  const seen = new Set<string>();
+  const once = wanted.filter((b) => (seen.has(b.id) ? false : (seen.add(b.id), true)));
+  const renamed = new Map<string, string>();
+  for (const b of once) {
+    if (own.has(b.id)) continue;
+    const elsewhere = await ctx.db
+      .query("blocks")
+      .withIndex("by_block_id", (q) => q.eq("blockId", b.id))
+      .first();
+    if (elsewhere) renamed.set(b.id, ulid());
+  }
+  const placed = renamed.size ? once.map((b) => ({ ...b, id: renamed.get(b.id) ?? b.id, parentId: b.parentId !== null ? (renamed.get(b.parentId) ?? b.parentId) : null })) : once;
+  // (A synced block never goes inside synced content.)
+  if (page.kind === "synced") return placed.filter((b) => b.type !== "synced");
+  return await referableBlocks(ctx, profile, placed, (blockId, sourceId) => {
+    const row = own.get(blockId);
+    return row !== undefined && row.type === "synced" && (row.props as { sourceId?: unknown } | null)?.sourceId === sourceId;
+  });
+}
+
+/**
  * Rewrites a page to hold exactly `parsed` (title, icon, style when given, and blocks, ids kept), after saving
  * the page as it is now, so it can be undone. A whole version (restoreVersion), or the page with some of its
  * lines put back as they were (Changes, "Undo this change"). Callers check the person may edit the page.
@@ -1929,8 +2064,9 @@ export async function rewritePage(ctx: MutationCtx, writable: Doc<"documents">, 
     .withIndex("by_document", (q) => q.eq("documentId", writable._id))
     .collect();
   const byId = new Map(current.map((b) => [b.blockId, b]));
-  const keep = new Set(parsed.blocks.map((b) => b.id));
-  for (const b of parsed.blocks) {
+  const blocks = await blocksForPage(ctx, writable, parsed.blocks, byId, profile);
+  const keep = new Set(blocks.map((b) => b.id));
+  for (const b of blocks) {
     const existing = byId.get(b.id);
     if (existing) {
       // Lines that are already as they were stay untouched: they keep who wrote them ("Show editors"), and

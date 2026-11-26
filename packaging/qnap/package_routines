@@ -33,10 +33,13 @@ pkg_pre_install(){
   [ -n "$data" ] || data="$(/sbin/getcfg Folevi path -f /etc/config/smb.conf)"
   [ -n "$data" ] || data="$SYS_QPKG_DIR/data"
   [ -d "$data" ] || return 0
-  local cmd="sh -s"
-  /usr/bin/id folevi >/dev/null 2>&1 && cmd="/bin/su -s /bin/sh folevi -c 'sh -s'"
-  printf '%s\nfolevi_pre_update_backup "%s" "%s" "%s"\n' "$FOLEVI_BACKUP_HELPER" "$fv" "$data" "$SYS_QPKG_DIR/bundle" \
-    | eval "$cmd" || $CMD_ECHO "Pre-update backup did not finish; folevid protects its own migrations."
+  # Only as the service user: folevid is never run as root (admin), not even for this backup.
+  if /usr/bin/id folevi >/dev/null 2>&1; then
+    printf '%s\nfolevi_pre_update_backup "%s" "%s" "%s"\n' "$FOLEVI_BACKUP_HELPER" "$fv" "$data" "$SYS_QPKG_DIR/bundle" \
+      | /bin/su -s /bin/sh folevi -c 'sh -s' || $CMD_ECHO "Pre-update backup did not finish; folevid protects its own migrations."
+  else
+    $CMD_ECHO "Pre-update backup skipped: there is no folevi user; folevid protects its own migrations."
+  fi
   [ -x "$SYS_QPKG_DIR/folevi.sh" ] && "$SYS_QPKG_DIR/folevi.sh" stop
   return 0
 }

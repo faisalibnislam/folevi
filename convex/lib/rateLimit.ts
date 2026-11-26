@@ -19,6 +19,8 @@ export const DEFAULT_RATE_RULES = {
   passwordReset: { limit: 5, windowMs: 60 * 60_000 },
   publicLinkOpen: { limit: 120, windowMs: 60_000 },
   publicLinkPassword: { limit: 10, windowMs: 15 * 60_000 },
+  /** Wrong passwords for one public link, whoever sends them (the rule above is per client). */
+  publicLinkPasswordLink: { limit: 30, windowMs: 15 * 60_000 },
   syncBatch: { limit: 600, windowMs: 60_000 },
   /** Bulk note actions (move, star, archive, trash, restore, delete, empty Trash); each call is up to 50 notes. */
   bulk: { limit: 60, windowMs: 60_000 },
@@ -27,6 +29,8 @@ export const DEFAULT_RATE_RULES = {
   fileText: { limit: 600, windowMs: 60 * 60_000 },
   comment: { limit: 120, windowMs: 60_000 },
   export: { limit: 20, windowMs: 60 * 60_000 },
+  /** Notes made from imported files (imports.importText), per person: a whole library at once, not without end. */
+  importNote: { limit: 3000, windowMs: 60 * 60_000 },
   /** Versions brought along when a library moves into the account (documents.importSnapshot), per person. */
   snapshotImport: { limit: 3000, windowMs: 60 * 60_000 },
   search: { limit: 600, windowMs: 60_000 },
@@ -71,6 +75,8 @@ export const DEFAULT_RATE_RULES = {
   apiWriteDaily: { limit: 500, windowMs: 24 * 60 * 60_000 },
   /** "Send test event" for a webhook, per person. */
   webhookTest: { limit: 20, windowMs: 60 * 60_000 },
+  /** Subscribed calendars added or refreshed by hand, per person: each one makes the server fetch a link. */
+  externalCalendar: { limit: 30, windowMs: 60 * 60_000 },
 } satisfies Record<string, RateRule>;
 
 export type RateRuleName = keyof typeof DEFAULT_RATE_RULES;

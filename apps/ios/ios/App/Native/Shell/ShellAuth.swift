@@ -70,16 +70,26 @@ final class ShellAuth: NSObject {
     }
 
     /// The open place's session: the page's (the app has one web view, bound to the open place).
+    /// With no account yet (a sign-in screen) it is the one session older builds kept, which was always Folevi
+    /// Cloud's: on a server's sign-in screen there is none, and nothing is kept there, so Folevi Cloud's old
+    /// session never goes to a server and a server's never takes its place.
     var token: String? {
-        get { token(for: ShellPlaces.currentUserId) }
-        set { setToken(newValue, for: ShellPlaces.currentUserId) }
+        get {
+            if let userId = ShellPlaces.currentUserId { return token(for: userId) }
+            return ShellPlaces.actingServer == nil ? token(for: nil) : nil
+        }
+        set {
+            if let userId = ShellPlaces.currentUserId { return setToken(newValue, for: userId) }
+            if ShellPlaces.actingServer == nil { setToken(newValue, for: nil) }
+        }
     }
 
     var signedIn: Bool { token != nil }
 
-    /// Who a session belongs to (Better Auth's get-session with that bearer), or nil.
-    func userOf(_ bearer: String) async -> (userId: String, name: String, email: String, avatarUrl: String?)? {
-        guard let url = URL(string: "/api/auth/get-session", relativeTo: service)?.absoluteURL,
+    /// Who a session belongs to (Better Auth's get-session with that bearer), or nil. `site`: the website asked
+    /// (nil: the acting place's).
+    func userOf(_ bearer: String, at site: URL? = nil) async -> (userId: String, name: String, email: String, avatarUrl: String?)? {
+        guard let url = URL(string: "/api/auth/get-session", relativeTo: site ?? service)?.absoluteURL,
               let (res, data, _) = try? await send(url, method: "GET", bearer: bearer, keepRotated: false), res.statusCode == 200,
               let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any], let user = json["user"] as? [String: Any],
               let id = user["id"] as? String, id.range(of: #"^[A-Za-z0-9_-]{1,64}$"#, options: .regularExpression) != nil else { return nil }
@@ -87,12 +97,24 @@ final class ShellAuth: NSObject {
         return (id, (user["name"] as? String) ?? "", (user["email"] as? String) ?? "", image)
     }
 
-    /// The single session an older build kept, moved to its account's own item: that account, or nil.
+    /// The single session an older build kept, moved to its account's own item: that account, or nil. That session
+    /// was Folevi Cloud's (builds before places had no servers), so Folevi Cloud is asked whose it is, whichever
+    /// place is open. An id that is already an account on a server here is left alone.
     func adoptLegacy() async -> (userId: String, name: String, email: String, avatarUrl: String?)? {
-        guard let legacy = token(for: nil), let user = await userOf(legacy) else { return nil }
+        guard let legacy = token(for: nil), let user = await userOf(legacy, at: cloudService) else { return nil }
+        guard ShellPlaces.server(ofUser: user.userId) == nil else { return nil }
         if token(for: user.userId) == nil { setToken(legacy, for: user.userId) }
         setToken(nil, for: nil)
         return user
+    }
+
+    /// Whether a sign-in that came back as `userId` must be refused: an account with that id is already on this
+    /// device from another server than the one this sign-in went to (the acting place's; nil is Folevi Cloud).
+    /// Sessions are kept by user id, and a server says what its user ids are: without this, a server answering
+    /// with the id of an account from elsewhere would take that account's place here.
+    static func belongsElsewhere(_ userId: String) -> Bool {
+        guard let existing = ShellPlaces.state.accounts.first(where: { $0.userId == userId }) else { return false }
+        return !ShellServer.same(existing.server, ShellPlaces.actingServer)
     }
 
     /// Signs in to one more account: who it is, or nil. The same person again replaces only their own session.
@@ -100,14 +122,22 @@ final class ShellAuth: NSObject {
     @MainActor
     func signInAccount(window: PlatformWindow?, provider: String? = nil) async -> (userId: String, name: String, email: String, avatarUrl: String?)? {
         guard let access = await obtain(window: window, provider: provider) else { return nil }
-        guard let user = await userOf(access) else {
+        guard let user = await userOf(access), !Self.belongsElsewhere(user.userId) else {
             await endSession(access)
             return nil
         }
         let previous = token(for: user.userId)
+        let issuedAt = issuer(of: user.userId)
         setToken(access, for: user.userId)
-        if let previous, previous != access { await endSession(previous) }
+        if let previous, previous != access, let issuedAt { await endSession(previous, at: issuedAt) }
         return user
+    }
+
+    /// The website that issued the session an id holds here: its account's own (its server's, or Folevi Cloud's).
+    /// Nil when no account here has that id: a session nobody can place is dropped without being sent anywhere.
+    /// The session a sign-in replaces is ended there, never at the website the new sign-in went to.
+    func issuer(of userId: String) -> URL? {
+        ShellPlaces.state.accounts.contains { $0.userId == userId } ? service(for: userId) : nil
     }
 
     /// Another account's Convex token (moving notes between two accounts).
@@ -121,6 +151,7 @@ final class ShellAuth: NSObject {
 
     /// Ends one account's session here and forgets its token.
     func signOut(userId: String) async {
+        Self.keepJWT(nil, for: nil)
         if let bearer = token(for: userId) { await endSession(bearer, at: service(for: userId)) }
         setToken(nil, for: userId)
     }
@@ -261,6 +292,7 @@ final class ShellAuth: NSObject {
 
     func signOut() async {
         await MainActor.run { sheet?.session.cancel() }
+        Self.keepJWT(nil, for: nil)
         if let bearer = token { await endSession(bearer) }
         token = nil
     }
@@ -295,18 +327,62 @@ final class ShellAuth: NSObject {
         return ["status": res.statusCode, "headers": out, "body": text]
     }
 
-    /// A short-lived Convex JWT, or nil when signed out (a 401 also forgets the session).
-    func convexToken() async throws -> String? {
+    /// A short-lived Convex JWT, or nil when signed out (a 401 also forgets the session). `fresh`: the page's Convex
+    /// client is renewing one (it's about to run out, or the backend refused it), so never the kept one.
+    ///
+    /// A JWT this session got in the last few minutes is handed out again: every window, floating note and Quick Add
+    /// page asks for one as it opens, and each ask was a round trip to the website (two hops, about 0.7 s far from
+    /// it) before that page's live data could start (docs/perf/feel-results.md). Only while it has more than
+    /// `jwtReuseMargin` left, so a page never starts on a token close to running out.
+    func convexToken(fresh: Bool = false) async throws -> String? {
         guard let bearer = token, let url = URL(string: "/api/auth/convex/token", relativeTo: service)?.absoluteURL else { return nil }
+        if !fresh, let kept = Self.keptJWT(for: bearer) { return kept }
         let (res, data, _) = try await send(url, method: "GET", bearer: bearer)
         if res.statusCode == 401 {
+            Self.keepJWT(nil, for: nil)
             token = nil
             return nil
         }
         if res.statusCode == 403 { return nil }
         guard (200..<300).contains(res.statusCode) else { throw URLError(.badServerResponse) }
         let jwt = (try? JSONSerialization.jsonObject(with: data) as? [String: Any])?["token"] as? String
-        return (jwt?.isEmpty ?? true) ? nil : jwt
+        guard let jwt, !jwt.isEmpty else { return nil }
+        // A session the request rotated keeps the JWT under its new token (send stored it as the session).
+        Self.keepJWT(jwt, for: token ?? bearer)
+        return jwt
+    }
+
+    /// How long a kept JWT must still have to run to be handed out again (Folevi's last 15 minutes).
+    static let jwtReuseMargin: TimeInterval = 5 * 60
+    private static let jwtLock = NSLock()
+    /// The last JWT and the session it's for (only that session's; another account or a new sign-in asks again).
+    private static var kept: (bearer: String, jwt: String, expires: Date)?
+
+    static func keepJWT(_ jwt: String?, for bearer: String?) {
+        jwtLock.lock()
+        defer { jwtLock.unlock() }
+        guard let jwt, let bearer, let expires = expiry(of: jwt) else {
+            kept = nil
+            return
+        }
+        kept = (bearer, jwt, expires)
+    }
+
+    static func keptJWT(for bearer: String, now: Date = Date()) -> String? {
+        jwtLock.lock()
+        defer { jwtLock.unlock() }
+        guard let k = kept, k.bearer == bearer, k.expires.timeIntervalSince(now) > jwtReuseMargin else { return nil }
+        return k.jwt
+    }
+
+    /// A JWT's `exp`, read without checking it (only to know when to stop handing it out).
+    static func expiry(of jwt: String) -> Date? {
+        let parts = jwt.split(separator: ".")
+        guard parts.count == 3 else { return nil }
+        var b64 = String(parts[1]).replacingOccurrences(of: "-", with: "+").replacingOccurrences(of: "_", with: "/")
+        while b64.count % 4 != 0 { b64 += "=" }
+        guard let data = Data(base64Encoded: b64), let claims = try? JSONSerialization.jsonObject(with: data) as? [String: Any], let exp = (claims["exp"] as? NSNumber)?.doubleValue else { return nil }
+        return Date(timeIntervalSince1970: exp)
     }
 }
 
@@ -334,6 +410,9 @@ extension ShellAuth {
     }
 
     private static var twoFactorCookie: String?
+
+    /// What the sign-in screens say when `belongsElsewhere` refuses.
+    static let elsewhereMessage = "This account is already on this device from another server. Sign out of it there first, then sign in again."
 
     private func authPost(_ path: String, _ body: [String: Any], cookie: String? = nil) async -> (status: Int, json: [String: Any], token: String?, cookies: String?)? {
         guard let url = authURL(path), let data = try? JSONSerialization.data(withJSONObject: body) else { return nil }
@@ -378,9 +457,16 @@ extension ShellAuth {
     /// A session token from a sign-in answer becomes that account's session here.
     private func adopt(_ token: String) async -> EmailOutcome {
         guard let user = await userOf(token) else { return .failed("Something went wrong. Please try again.") }
+        if Self.belongsElsewhere(user.userId) {
+            if let url = URL(string: "/api/auth/sign-out", relativeTo: service)?.absoluteURL {
+                _ = try? await send(url, method: "POST", headers: ["content-type": "application/json"], body: "{}", bearer: token, keepRotated: false)
+            }
+            return .failed(Self.elsewhereMessage)
+        }
         let previous = self.token(for: user.userId)
+        let issuedAt = issuer(of: user.userId)
         setToken(token, for: user.userId)
-        if let previous, previous != token, let url = URL(string: "/api/auth/sign-out", relativeTo: service)?.absoluteURL {
+        if let previous, previous != token, let issuedAt, let url = URL(string: "/api/auth/sign-out", relativeTo: issuedAt)?.absoluteURL {
             _ = try? await send(url, method: "POST", headers: ["content-type": "application/json"], body: "{}", bearer: previous, keepRotated: false)
         }
         return .signedIn(userId: user.userId, name: user.name, email: user.email, avatarUrl: user.avatarUrl)

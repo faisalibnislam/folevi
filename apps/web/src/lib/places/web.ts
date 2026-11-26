@@ -3,6 +3,7 @@
 // (/api/places, never a token), switching this tab to another account, signing in to one more, and signing
 // out of one while the others stay. The sessions themselves are HTTP-only cookies the server keeps.
 import { accountPlaceId, forgetAccount, knownAccount, knownAccounts, reconcileAccounts, rememberAccount, type PlaceId } from "./registry";
+import { clearCatchUps } from "@/lib/ai/catchUpStore";
 import { adoptNextSignIn, setTabPlace } from "./pin";
 
 export interface JarEntry {
@@ -65,6 +66,8 @@ export function openPlaceInTab(place: PlaceId, o: { workspaceId?: string | null;
   if (account?.profileId && o.workspaceId !== undefined) setAccountContext(account.profileId, o.workspaceId);
   setTabPlace(place);
   if (account) rememberAccount({ userId: account.userId }, { open: true });
+  // The tab becomes another account's: what it kept of this one for the visit goes first.
+  clearCatchUps();
   window.location.assign(o.path ?? "/documents");
 }
 

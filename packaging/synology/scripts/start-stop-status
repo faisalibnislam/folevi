@@ -21,6 +21,7 @@ case "$1" in
       fi
     done
     plog "starting Folevi Server, data in $DATA"
+    ( umask 077; : >> "$PKG_VAR/folevid.out" ); chmod 600 "$PKG_VAR/folevid.out" 2>/dev/null || true
     FOLEVI_PACKAGE=synology FOLEVI_MANAGED_BY=store nohup "$FOLEVID" run --data "$DATA" --bundle "$BUNDLE" >> "$PKG_VAR/folevid.out" 2>&1 &
     echo $! > "$PID_FILE"
     sleep 2
@@ -28,9 +29,13 @@ case "$1" in
       plog "folevid exited right away: $(tail -n 1 "$PKG_VAR/folevid.out" 2>/dev/null)"
       exit 1
     fi
-    # Keep the setup address where "View log" in Package Center shows it.
-    ( i=0; while [ $i -lt 60 ]; do
-        url="$("$FOLEVID" setup-url --data "$DATA" --bundle "$BUNDLE" 2>/dev/null)" && [ -n "$url" ] && { plog "setup address: $url"; break; }
+    # Keep the setup address where "View log" in Package Center shows it, but only while the server has no
+    # owner yet: the address carries the setup code. "--if-needed" exits 3 once the server is set up (nothing is
+    # logged then) and 1 while it is still starting (a first start on a small NAS can take several minutes).
+    ( i=0; while [ $i -lt 300 ]; do
+        url="$("$FOLEVID" setup-url --if-needed --data "$DATA" --bundle "$BUNDLE" 2>/dev/null)"; rc=$?
+        [ $rc -eq 3 ] && break
+        [ $rc -eq 0 ] && [ -n "$url" ] && { plog "setup address: $url"; break; }
         i=$((i + 1)); sleep 2
       done ) >/dev/null 2>&1 &
     exit 0

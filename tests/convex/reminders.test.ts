@@ -103,7 +103,7 @@ describe("repeating tasks", () => {
 });
 
 describe("web push", () => {
-  const sub = (n: string) => ({ endpoint: `https://push.example.com/send/${n}${"x".repeat(12)}`, p256dh: `p256dh-key-${n}-abcdefgh`, auth: `auth-key-${n}-abcd`, label: "Chrome on macOS" });
+  const sub = (n: string) => ({ endpoint: `https://fcm.googleapis.com/fcm/send/${n}${"x".repeat(12)}`, p256dh: `p256dh-key-${n}-abcdefgh`, auth: `auth-key-${n}-abcd`, label: "Chrome on macOS" });
 
   test("a browser subscribes and unsubscribes; an endpoint belongs to one account", async () => {
     const t = setup();

@@ -75,6 +75,17 @@ class DeviceCredential(context: Context, private val secrets: Secrets) {
         prefs.edit().putString("tokenId", prefs.getString("tokenId.$userId", null)).putString("accountId", accountIdFor(userId)).apply()
     }
 
+    /**
+     * Accounts on a Folevi Server never have a token here: what an earlier build kept for one goes, and with it the
+     * open place's token when it is that account's, so a server's token is never sent to Folevi Cloud.
+     */
+    fun dropServerTokens(onServer: Set<String>) {
+        for (userId in users().intersect(onServer)) {
+            if (accountId != null && accountId == accountIdFor(userId)) clear()
+            clearFor(userId)
+        }
+    }
+
     companion object {
         const val TOKEN = "device.token"
         private var shared: DeviceCredential? = null

@@ -24,6 +24,7 @@ import { haptic } from "@/lib/nativeApp";
 import { useIphoneApp } from "@/lib/iphone";
 import { IphoneTasks, IphoneTaskSheet } from "@/components/iphone/lazy";
 import { useKeyLabels } from "@/lib/shortcuts";
+import { taskUpdated, useOptimisticMutation } from "@/lib/convex/optimistic";
 
 type View = "inbox" | "today" | "upcoming" | "all" | "completed" | "mine";
 const VIEWS: { id: View; label: string; empty: { title: string; body?: string } }[] = [
@@ -187,7 +188,7 @@ export function TaskItem({ task, today, onToggle, onEdit, draggable = true, acti
 }
 
 export function useToggleTask() {
-  const update = useMutation(api.tasks.update);
+  const update = useOptimisticMutation(api.tasks.update, taskUpdated);
   const { deviceId } = useAppState();
   const toast = useToast();
   // `felt`: the caller already gave the tap in the hand (the iPhone's box, as it fills).
@@ -225,7 +226,7 @@ function TaskEditForm({ task, onClose }: { task: TaskRow; onClose: () => void })
   const members = useQuery(api.workspaces.members, workspace ? { workspaceId: workspace.id } : "skip");
   // Personal has no members: its tasks are yours (a guest on a page can still be the assignee already set).
   const people = workspace ? members?.members : [{ profileId: profile.id, displayName: profile.displayName, isYou: true }];
-  const update = useMutation(api.tasks.update);
+  const update = useOptimisticMutation(api.tasks.update, taskUpdated);
   const toast = useToast();
   const [status, setStatus] = useState(task.status);
   const [dueDate, setDueDate] = useState(task.dueDate ?? "");

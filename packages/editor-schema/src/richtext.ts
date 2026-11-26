@@ -149,6 +149,8 @@ const SAFE_PROTOCOLS = ["http:", "https:", "mailto:", "folevi:"];
 
 /** Returns a safe href or null. Relative paths and fragments are allowed; javascript:, data: etc. are not. */
 export function sanitizeHref(raw: string): string | null {
+  // (Asked with whatever a block holds: one nothing checked may hold anything.)
+  if (typeof raw !== "string") return null;
   const href = raw.trim();
   if (!href || href.length > 2048) return null;
   // Two slashes or backslashes in any mix ("//x", "/\\x") are another host to a browser, not a path here.
@@ -163,6 +165,16 @@ export function sanitizeHref(raw: string): string | null {
   if (!match) return `https://${compact}`;
   const protocol = `${match[1]!.toLowerCase()}:`;
   return SAFE_PROTOCOLS.includes(protocol) ? compact : null;
+}
+
+/**
+ * A web address (http or https, with its host) or null: for what is fetched or opened as it is, a bookmark's
+ * preview image and icon, a link opened from a menu. Stricter than sanitizeHref, which also lets a path on
+ * Folevi's own site through: as a picture's address that would make a reader's browser ask Folevi for it.
+ */
+export function webUrl(raw: unknown): string | null {
+  const href = typeof raw === "string" ? sanitizeHref(raw) : null;
+  return href && /^https?:\/\/[^/?#\s]/i.test(href) ? href : null;
 }
 
 export function wordCount(value: string): number {

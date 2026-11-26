@@ -276,23 +276,27 @@ defineLocal(api.organization.deleteFolder, "mutation", async (ctx, args) => {
 defineLocal(api.organization.createTag, "mutation", async (ctx, args) => {
   await requireProfile(ctx);
   checkScope(args.scope);
-  const name = cleanName(args.name.replace(/^#/, ""), 40);
+  return { id: (await ensureLocalTag(ctx, args.name, args.color)).id };
+});
+
+/** The library's tag with this name, made if there's none (createTag; an import's tags, imports.importText). */
+export async function ensureLocalTag(ctx: LocalMutationCtx, rawName: string, color?: string): Promise<LocalTag> {
+  const name = cleanName(rawName.replace(/^#/, ""), 40);
   const normalizedName = normalizeForSearch(name);
   const existing = await tagNamed(ctx.db, normalizedName);
-  if (existing) return { id: existing.id };
-  const id = ulid();
+  if (existing) return existing;
   const tag: LocalTag = {
-    id,
+    id: ulid(),
     name,
     normalizedName,
-    color: TAG_COLORS.includes(args.color ?? "") ? args.color! : TAG_COLORS[Math.floor(Math.random() * 5)]!,
+    color: TAG_COLORS.includes(color ?? "") ? color! : TAG_COLORS[Math.floor(Math.random() * 5)]!,
     createdAt: ctx.now(),
     ordinal: await nextTagOrdinal(ctx),
   };
   await ctx.nextSeq();
-  ctx.db.put("tags", id, tag);
-  return { id };
-});
+  ctx.db.put("tags", tag.id, tag);
+  return tag;
+}
 
 defineLocal(api.organization.updateTag, "mutation", async (ctx, args) => {
   const tag = await tagFor(ctx, args.tagId);

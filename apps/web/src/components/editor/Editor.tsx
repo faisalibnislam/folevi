@@ -21,6 +21,7 @@ import { usePastedFiles } from "./pastedFiles";
 import { useClipboardImageFiles } from "./canvas/imageFiles";
 import { remoteTransaction } from "./remoteApply";
 import { PageLinkStatusWatcher } from "./PageLinkStatusWatcher";
+import { EditorSpelling } from "./EditorSpelling";
 import { DOCK_SCROLL_MARGIN, DOCK_SCROLL_THRESHOLD } from "./scrollEdges";
 import { EditorMenus } from "./EditorMenus";
 import { focusBlockById } from "./findReplace";
@@ -31,7 +32,7 @@ import { closeHistory } from "@tiptap/pm/history";
 import { SYNCED_BODY_ATTR } from "./synced/nested";
 import { useAiEnabled } from "@/components/ai/useAi";
 import { FLUSH_BLOCKS_EVENT, commitOpenField, flushBlocks } from "./canvas/leaveFlush";
-import { ownSpelling } from "@/lib/spelling/web";
+import { spellingSupported } from "@/lib/spelling/web";
 import { keepNoteHistory, restoreNoteHistory } from "./historyKeep";
 
 export interface EditorHandle {
@@ -207,9 +208,10 @@ export const Editor = forwardRef<EditorHandle, Props>(function Editor(
         role: "textbox",
         "aria-multiline": "true",
         "aria-label": label ?? "Document body",
-        // Where Folevi marks misspelt words itself (spellcheck.ts) the browser's own marks are off, or every
-        // slip would be underlined twice; everywhere else the browser's, or the Mac's, stay on.
-        spellcheck: ownSpelling() ? "false" : "true",
+        // Folevi marks misspelt words itself (spellcheck.ts), in every app: the browser's, the Mac's and the
+        // phone's own marks are off, or every slip would be underlined twice (or underlined with spell check
+        // turned off in Folevi's Settings).
+        spellcheck: spellingSupported() ? "false" : "true",
       },
       scrollMargin: DOCK_SCROLL_MARGIN, scrollThreshold: DOCK_SCROLL_THRESHOLD, // the caret scrolls clear of the floating page tools
       // What a paste becomes is decided in paste.ts (code, plain text, Folevi blocks, files, a link, blocks).
@@ -586,6 +588,7 @@ export const Editor = forwardRef<EditorHandle, Props>(function Editor(
         />
       ) : null}
       {editor ? <PageLinkStatusWatcher editor={editor} /> : null}
+      {editor ? <EditorSpelling editor={editor} documentId={documentId} editable={editable} /> : null}
     </div>
   );
 });

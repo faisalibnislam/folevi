@@ -9,6 +9,7 @@ import type { MutationCtx, QueryCtx } from "./_generated/server";
 import type { Doc, Id } from "./_generated/dataModel";
 import { assertWritable, requireProfile } from "./lib/auth";
 import { fail } from "./lib/errors";
+import { requireFreshSession } from "./lib/freshSession";
 import { insertScoped, scopeOfRow } from "./lib/scope";
 import { activeAccount, requireAccount } from "./lib/e2ee/keyStore";
 import { requireVault, vaultRoleOf } from "./lib/vault/access";
@@ -276,6 +277,9 @@ export const requestReset = mutation({
     await assertWritable(ctx, profile);
     const { vault, role } = await requireVault(ctx, profile, args.vaultId);
     if (vault.ownerProfileId) fail("forbidden", "A Personal Vault opens only with your passcode or your recovery key.");
+    // A custodian's device answers this by sharing the key with no passcode on it, so a session alone must not be
+    // enough to ask: the person signed in within the last 10 minutes (lib/freshSession.ts).
+    await requireFreshSession(ctx);
     for (const layer of ["passcode", "recovery", "custodian"] as const) for (const g of await grantsOf(ctx, vault._id, profile._id, layer)) await ctx.db.delete(g._id);
     const pending = await ctx.db
       .query("vaultPendingGrants")

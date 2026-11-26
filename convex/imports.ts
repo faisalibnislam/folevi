@@ -1,14 +1,16 @@
 import { v } from "convex/values";
 import { mutation } from "./lib/functions";
-import { linkImportedPages, markdownToBlocks, plainTextToBlocks } from "@folevi/editor-schema";
+import { importedDates, linkImportedPages, markdownToBlocks, plainTextToBlocks } from "@folevi/editor-schema";
 import { accessAtLeast, assertWritable, documentAccess, getDocumentByPublicId, requireProfile, resolveScope } from "./lib/auth";
 import { fail } from "./lib/errors";
+import { consume } from "./lib/rateLimit";
 import { createDocument } from "./lib/create";
 import { IdResolver, toSummary } from "./lib/documents";
-import { inScope, vScopeArg } from "./lib/scope";
+import { inScope, insertScoped, scopeOfRow, vScopeArg } from "./lib/scope";
 import { failE2ee, isLocked, isSealed } from "./lib/e2ee/state";
 import { isEncryptedSpace } from "./lib/e2ee/coreGuards";
 import { lockFor } from "./lib/e2ee/sealedRows";
+import { ensureTag } from "./organization";
 
 const MAX_IMPORT_CHARS = 2_000_000;
 
@@ -42,12 +44,22 @@ export const importText = mutation({
     publicId: v.optional(v.string()),
     parentId: v.optional(v.string()),
     links: v.optional(v.record(v.string(), v.string())),
+    /** The note's original dates in the app it came from (ms since 1970; Apple Notes): kept, made safe (importedDates). */
+    createdAt: v.optional(v.number()),
+    updatedAt: v.optional(v.number()),
+    /** Its attachments, uploaded first: a link on its own line to one of these srcs becomes a file block. */
+    fileMap: v.optional(v.record(v.string(), v.object({ fileId: v.string(), name: v.string(), size: v.number(), mimeType: v.string() }))),
+    /** Tag names to put on it (made in the scope when missing; at most 20). */
+    tags: v.optional(v.array(v.string())),
   },
   handler: async (ctx, args) => {
     const profile = await requireProfile(ctx);
     await assertWritable(ctx, profile);
     const { scope } = await resolveScope(ctx, profile, args.scope, "edit");
     if (args.content.length > MAX_IMPORT_CHARS) fail("limit_exceeded", "That file is too large to import (2 MB of text max).");
+    // Each call makes a whole note (up to 2 MB of text). Its own generous budget: bringing a library in from
+    // another app is hundreds of files in a row, which the bulk rule (60 a minute) would stop part-way.
+    await consume(ctx, "importNote", profile._id);
     // A new note in an encrypted space, or in a locked folder or page, must be sealed: the device parses and
     // seals it (the local import handler), docs/E2EE_DESIGN.md §5.7.
     if (await isEncryptedSpace(ctx, scope)) failE2ee("e2ee_device_only");
@@ -69,7 +81,8 @@ export const importText = mutation({
     let frontMatter: Record<string, string> = {};
     if (args.format === "markdown") {
       const map = args.imageMap ?? {};
-      const result = markdownToBlocks(args.content, { resolveImage: (src) => (map[src] ? { fileId: map[src]! } : null) });
+      const files = args.fileMap ?? {};
+      const result = markdownToBlocks(args.content, { resolveImage: (src) => (map[src] ? { fileId: map[src]! } : null), resolveFile: (src) => files[src] ?? null });
       blocks = result.blocks;
       warnings = result.warnings;
       frontMatter = result.frontMatter;
@@ -97,7 +110,17 @@ export const importText = mutation({
       if (isSealed(parent) || (await isLocked(ctx, parent)) || (await lockFor(ctx, undefined, parent))) failE2ee("e2ee_device_only");
       parentDocumentId = parent._id;
     }
-    const doc = await createDocument(ctx, { scope, actor: profile, title, folderId, blocks, publicId: args.publicId, parentDocumentId });
+    const dates = args.createdAt !== undefined || args.updatedAt !== undefined ? importedDates(args.createdAt, args.updatedAt, Date.now()) : {};
+    const doc = await createDocument(ctx, { scope, actor: profile, title, folderId, blocks, publicId: args.publicId, parentDocumentId, ...dates });
+    // Its tags: linked here (not through setDocumentTags), so the note keeps its original dates.
+    const tagged = new Set<string>();
+    for (const raw of (args.tags ?? []).slice(0, 20)) {
+      if (!raw.replace(/^#/, "").trim()) continue;
+      const tag = await ensureTag(ctx, scope, raw);
+      if (tagged.has(tag._id)) continue;
+      tagged.add(tag._id);
+      await insertScoped(ctx, "documentTags", scopeOfRow(doc), { documentId: doc._id, tagId: tag._id });
+    }
     return {
       document: await toSummary(new IdResolver(ctx), doc),
       warnings: warnings.slice(0, 100),

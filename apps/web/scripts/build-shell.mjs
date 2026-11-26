@@ -19,8 +19,7 @@
 // --platform mobile: the export the Capacitor mobile app carries (apps/mobile/web, docs/MOBILE.md), one for iPhone,
 // iPad and Android alike, in .next-shell-mobile (or .next-shell-mobile-release with --production).
 // --platform windows: the export Folevi for Windows carries (apps/desktop/web, docs/WINDOWS.md), in
-// .next-shell-windows (or .next-shell-windows-release with --production). It keeps the spelling dictionaries: the
-// Windows app checks spelling with Folevi's own checker, as the website does (lib/spelling/web.ts ownSpelling).
+// .next-shell-windows (or .next-shell-windows-release with --production).
 // --platform android: the export Folevi for Android carries (apps/android/web, docs/ANDROID_PLAN.md), built in a
 // folder of its own (.next-shell-android, or .next-shell-android-release with --production) so it never replaces
 // another app's export while it builds, with Folevi's version in shell/build.json.
@@ -83,11 +82,11 @@ export const PRODUCTION_ENV = {
 /**
  * Files and folders from public/ the shell leaves out: the marketing site's art, the website's service worker,
  * search-console verification, the PWA manifest's icons and the browser-tab icons (the shell has neither), the
- * images only server-rendered emails and Open Graph cards use, and the website's spelling dictionaries (the
- * apps use the system's own checker: lib/spelling/web.ts ownSpelling). Note covers, the brand marks and
+ * images only server-rendered emails and Open Graph cards use. Note covers, the brand marks, the spelling
+ * dictionaries (every app checks spelling with Folevi's own checker, offline: lib/spelling/web.ts) and
  * everything else stay. A path ending in "/" is a folder.
  */
-export const PRUNE = ["marketing/", "sw.js", /^google[0-9a-f]+\.html$/, "icons/", "favicon.ico", "favicon-16x16.png", "favicon-32x32.png", "apple-icon.png", "icon.svg", "brand/email/", "brand/folevi-mark-256.png", "spelling/"];
+export const PRUNE = ["marketing/", "sw.js", /^google[0-9a-f]+\.html$/, "icons/", "favicon.ico", "favicon-16x16.png", "favicon-32x32.png", "apple-icon.png", "icon.svg", "brand/email/", "brand/folevi-mark-256.png"];
 
 const ENV_FILES = [".env.production.local", ".env.local", ".env.production", ".env", ".env.development", ".env.development.local"];
 
@@ -133,8 +132,7 @@ const mb = (n) => `${(n / 1024 / 1024).toFixed(1)} MB`;
 
 async function prune() {
   const removed = [];
-  // Windows keeps the spelling dictionaries (see --platform windows above).
-  for (const rule of windows ? PRUNE.filter((r) => r !== "spelling/") : PRUNE) {
+  for (const rule of PRUNE) {
     if (typeof rule === "string") {
       const p = join(out, rule);
       if (existsSync(p)) {

@@ -4,6 +4,8 @@ import { themeBootScriptHash } from "@/lib/theme/bootScript";
 import { SIGNED_IN_HINT, hintCookie, hintDomain } from "@/lib/auth/signedInHint";
 import { SIGNED_IN_PATH, signedInCheckScriptHash } from "@/lib/auth/signedInCheck";
 import { isServerEdition } from "@/lib/edition";
+import { isNonceRoute } from "@/lib/app/routes";
+import { onHost } from "@/lib/security/redirects";
 import { runtimeConfig, servedOverHttps } from "@/lib/runtime/config";
 
 const MARKETING_URL = process.env.NEXT_PUBLIC_MARKETING_URL ?? "https://folevi.com";
@@ -21,11 +23,10 @@ function isAppPath(pathname: string): boolean {
   return APP_ONLY.test(pathname);
 }
 
-// Routes that always render per request (product views, admin, sign-in flows, share pages). These get a
-// nonce-based CSP without 'unsafe-inline'. Statically prerendered pages keep next.config's static policy,
-// because they have no per-request nonce to put on Next's inline scripts.
-const NONCE_ROUTES =
-  /^\/(documents|notes|d\/|ai(?:\/|$)|graph(?:\/|$)|tasks|calendar|review(?:\/|$)|changes(?:\/|$)|shared|templates|starred|archive|trash|drafts|unsorted|folders|tags|settings|help|onboarding|invite|share-invite|share(?:$|\/)|place-sync$|admin|setup(?:\/|$)|join\/|signin|signup|connect|verify-email|reset-password|two-factor|s\/)/;
+// Routes that always render per request (product views, admin, sign-in flows, share pages) get a nonce-based
+// CSP without 'unsafe-inline': isNonceRoute (lib/app/routes.ts), made from the list of product routes itself so
+// none can be left out. Statically prerendered pages keep next.config's static policy, because they have no
+// per-request nonce to put on Next's inline scripts.
 
 /**
  * Redirects to another host. Next rewrites a redirect whose host equals the request URL's host into a
@@ -109,7 +110,7 @@ async function serverRoute(request: NextRequest): Promise<NextResponse> {
   // API routes answer JSON (and /api/embed brings its own policy from next.config.ts).
   const response = pathname.startsWith("/api/")
     ? NextResponse.next()
-    : NONCE_ROUTES.test(pathname) && wantsNonce(request)
+    : isNonceRoute(pathname) && wantsNonce(request)
       ? await withNonce(request)
       : (() => {
           const r = NextResponse.next();
@@ -139,13 +140,13 @@ async function route(request: NextRequest): Promise<NextResponse> {
 
   // Canonical marketing host: www → apex.
   if (host === `www.${marketingHost}`) {
-    return NextResponse.redirect(new URL(`${pathname}${url.search}`, MARKETING_URL), 308);
+    return NextResponse.redirect(onHost(MARKETING_URL, pathname, url.search), 308);
   }
 
   if (host === appHost) {
     if (pathname === "/") return NextResponse.redirect(new URL("/documents", request.url));
     if (MARKETING_ONLY.test(pathname) && !isAppPath(pathname)) {
-      const redirect = crossHostRedirect(request, new URL(`${pathname}${url.search}`, MARKETING_URL));
+      const redirect = crossHostRedirect(request, onHost(MARKETING_URL, pathname, url.search));
       if (redirect) return redirect;
     }
   } else if (host === marketingHost && pathname === "/" && hasSignedInHint(request) && !url.searchParams.has("home")) {
@@ -156,11 +157,11 @@ async function route(request: NextRequest): Promise<NextResponse> {
       return redirect;
     }
   } else if (host === marketingHost && isAppPath(pathname) && !pathname.startsWith("/api/")) {
-    const redirect = crossHostRedirect(request, new URL(`${pathname}${url.search}`, APP_URL));
+    const redirect = crossHostRedirect(request, onHost(APP_URL, pathname, url.search));
     if (redirect) return redirect;
   }
 
-  if (host === appHost && NONCE_ROUTES.test(pathname) && wantsNonce(request)) return withNonce(request);
+  if (host === appHost && isNonceRoute(pathname) && wantsNonce(request)) return withNonce(request);
   return NextResponse.next();
 }
 

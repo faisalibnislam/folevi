@@ -66,3 +66,6 @@ b9ca0904fdc07051333200ea33436949fbf3ff8f:server/folevid/internal/connect/acme.go
 # Folevi Server (PR 107): made-up test tokens and secrets in Go tests, and a certificate key type name.
 # The handoff quoting that key type line (claude/android-own-server and others).
 # A public GPG key fingerprint for the Linux package repository (claude/linux-stores and others).
+# Security audit (PR 145): the web-push library's published example key pair, used once as a test value and then
+# replaced by a pair made at run time. Not a secret, never used anywhere.
+8e83e11b003294d355b8345998a01cbc418ac478:tests/convex/security-http-feeds-push.test.ts:generic-api-key:111

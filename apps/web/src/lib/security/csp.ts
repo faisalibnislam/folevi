@@ -62,8 +62,8 @@ export function buildContentSecurityPolicy(opts: CspOptions): string {
   const extra = (opts.extraOrigins ?? []).map(origin).filter(Boolean).join(" ");
   const servers = opts.connectToServers ? (opts.upgradeInsecure === false ? " https: http:" : " https:") : "";
   const scriptSrc = opts.nonce
-    ? `script-src 'self' 'nonce-${opts.nonce}' ${(opts.scriptHashes ?? []).join(" ")} 'strict-dynamic'${opts.dev ? " 'unsafe-eval'" : ""}`
-    : `script-src 'self' 'unsafe-inline'${opts.dev ? " 'unsafe-eval'" : ""}`;
+    ? `script-src 'self' 'nonce-${opts.nonce}' ${(opts.scriptHashes ?? []).join(" ")} 'strict-dynamic' 'wasm-unsafe-eval'${opts.dev ? " 'unsafe-eval'" : ""}`
+    : `script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval'${opts.dev ? " 'unsafe-eval'" : ""}`;
   return [
     "default-src 'self'",
     scriptSrc,

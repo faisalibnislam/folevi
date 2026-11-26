@@ -6,6 +6,7 @@ import webpush from "web-push";
 import { internalAction } from "./_generated/server";
 import { internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
+import { isPushServiceEndpoint } from "./lib/pushEndpoints";
 
 export const sendToProfile = internalAction({
   args: { profileId: v.id("profiles"), title: v.string(), body: v.optional(v.string()), url: v.string(), tag: v.optional(v.string()) },
@@ -26,6 +27,11 @@ export const sendToProfile = internalAction({
     const gone: Id<"pushSubscriptions">[] = [];
     const sent: Id<"pushSubscriptions">[] = [];
     for (const s of subs) {
+      // A subscription saved before endpoints were limited to the browsers' push services: never sent to, removed.
+      if (!isPushServiceEndpoint(s.endpoint)) {
+        gone.push(s.id);
+        continue;
+      }
       try {
         await webpush.sendNotification({ endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } }, s.placeLabel ? labelled(s.placeLabel) : payload, {
           vapidDetails: { subject: process.env.VAPID_SUBJECT || "mailto:support@folevi.com", publicKey, privateKey },

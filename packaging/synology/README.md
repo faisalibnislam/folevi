@@ -19,8 +19,9 @@ Build: `./build.sh --bundle <dir> --version 1.5.73 --arch aarch64 --out out/` (a
 | Icons | `PACKAGE_ICON.PNG` 64, `PACKAGE_ICON_256.PNG` 256, `ui/images/icon_{16..256}.png`: placeholders |
 
 Data folder: `/var/packages/folevi/shares/<folder>` resolved to its real path (for example `/volume1/folevi`).
-Package files: `/var/packages/folevi/target/bundle`. Package log (with the setup address after start):
-`/var/packages/folevi/var/folevi-package.log`, shown by Package Center > Folevi Server > View log. folevid's own
+Package files: `/var/packages/folevi/target/bundle`. Package log (mode 600; it holds the setup address after a
+start, only while the server has no owner yet): `/var/packages/folevi/var/folevi-package.log`, shown by Package
+Center > Folevi Server > View log. folevid's own
 logs: `<data folder>/logs/`.
 
 ## Package source

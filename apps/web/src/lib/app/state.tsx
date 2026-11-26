@@ -17,6 +17,7 @@ import { useBackendMode } from "@/lib/mode";
 import { saveAccountSnapshot } from "./offlineSnapshot";
 import { NativeGate, type NativeGateProps } from "@/lib/engine/NativeGate";
 import { useSystemTheme } from "@/components/app/ModeChoice";
+import { SpellingSync } from "@/components/editor/SpellingSync";
 
 export type Profile = NonNullable<Extract<NonNullable<ReturnType<typeof useMeQuery>>, { state: "ready" }>["profile"]>;
 /** A team workspace you belong to (`workspaces.mine`). Personal is never one of these. */
@@ -130,6 +131,11 @@ const AppStateContext = createContext<AppState | null>(null);
  */
 export function StaticAppStateProvider({ value, children }: { value: AppState; children: ReactNode }) {
   return <AppStateContext.Provider value={value}>{children}</AppStateContext.Provider>;
+}
+
+/** The app state, or null outside the signed-in app (an editor in a test or on the website). */
+export function useMaybeAppState(): AppState | null {
+  return useContext(AppStateContext);
 }
 
 export function useAppState(): AppState {
@@ -402,7 +408,12 @@ export function AppStateProvider({ profile, offlineWorkspaces, children }: { pro
   if (!value) {
     return <FullPageMessage title="Opening your folio…" busy />;
   }
-  return <AppStateContext.Provider value={value}>{children}</AppStateContext.Provider>;
+  return (
+    <AppStateContext.Provider value={value}>
+      <SpellingSync />
+      {children}
+    </AppStateContext.Provider>
+  );
 }
 
 function useMutationSafe() {
@@ -523,4 +534,4 @@ type NativeGateExtras = Omit<NativeGateProps, "gate" | "title" | "message" | "bu
   gate?: string;
 };
 
-export { useMeQuery };
+export { useMeQuery, useWorkspacesQuery };

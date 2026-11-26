@@ -82,11 +82,18 @@ export const getSettings = query({
   },
 });
 
+/** Settings sections only the owner changes (the rest are for the owner and admins). */
+const OWNER_ONLY_SETTINGS = ["email", "emailIn", "ai", "google", "covers"] as const;
+
 /** A partial of the settings (CONTRACT §8). Secrets are write-only: a string sets one, null clears it. Audited (field names only). */
 export const updateSettings = mutation({
   args: { patch: vSettingsPatch },
   handler: async (ctx, args) => {
     const admin = await requireServerAdmin(ctx);
+    // Where mail goes, where notes are sent for AI and which keys the server holds are the owner's alone:
+    // an admin who could point mail at their own server would read the owner's password-reset link.
+    const ownerOnly = OWNER_ONLY_SETTINGS.filter((section) => args.patch[section] !== undefined);
+    if (ownerOnly.length > 0 && admin.role !== "owner") fail("forbidden", "Only the owner can change the email, AI, Google sign-in and cover photo settings.");
     const current = await readServerSettings(ctx);
     let next;
     try {
@@ -282,6 +289,8 @@ export const setQuota = mutation({
   handler: async (ctx, args) => {
     const admin = await requireServerAdmin(ctx);
     const p = await person(ctx, args.userId);
+    // An admin sets members' quotas and their own; the owner's and other admins' are the owner's to set.
+    if (p._id !== admin.profile._id) assertCanManage(admin, p, "change the storage of");
     if (args.quotaBytes !== null && (!Number.isFinite(args.quotaBytes) || args.quotaBytes < 0)) fail("invalid_argument", "A storage quota can't be negative.");
     const before = { quotaBytes: p.serverQuotaBytes ?? null };
     await ctx.db.patch(p._id, { serverQuotaBytes: args.quotaBytes === null ? undefined : Math.floor(args.quotaBytes) });

@@ -221,10 +221,24 @@ async function launch(ctx: ActionCtx, messageId: Id<"aiMessages">): Promise<{ me
   const turn = await ctx.runQuery(internal.aiChat.turn, { messageId });
   const { researchId } = await ctx.runMutation(internal.aiResearch.create, { messageId, question: turn.question });
   const steps: ResearchStep[] = [];
+  // The notes the conversation is about (read as the person; one that's gone or no longer theirs is left out).
+  // They can live somewhere other than the conversation's place, so they're named to `ai.begin` below: each
+  // note's own place is then checked like the conversation's (nothing from a Core place, Foli AI allowed in an
+  // encrypted one, no locked note) before any of their text goes into a prompt (security audit 2026-11-26, L2).
+  const notes: ResearchNote[] = [];
   let holdId: Id<"aiCreditHolds">;
   try {
     await ctx.runMutation(internal.aiResearch.limit, {});
-    ({ holdId } = await ctx.runMutation(internal.ai.begin, { scope: turn.scope, plan: RESEARCH_PLAN, feature: "research" }));
+    const ids = turn.context.kind === "note" || turn.context.kind === "notes" ? turn.context.ids.slice(0, 3) : [];
+    for (const id of ids) {
+      try {
+        const n = await ctx.runQuery(internal.ai.noteText, { documentId: id });
+        if (n) notes.push({ id: n.id, title: n.title, text: n.text.slice(0, 6_000) });
+      } catch {
+        /* gone, or no longer theirs */
+      }
+    }
+    ({ holdId } = await ctx.runMutation(internal.ai.begin, { scope: turn.scope, documentIds: notes.map((n) => n.id), plan: RESEARCH_PLAN, feature: "research" }));
     await ctx.runMutation(internal.aiResearch.setHold, { researchId, holdId });
   } catch (e) {
     const error = storedError(e);
@@ -233,20 +247,10 @@ async function launch(ctx: ActionCtx, messageId: Id<"aiMessages">): Promise<{ me
     await ctx.runMutation(internal.aiChat.finishMessage, { messageId, status: "error", error });
     return { messageId, researchId, status: "error" };
   }
-  // The person's notes: the ones the conversation is about first, then a search (as the person, so only
-  // notes they can open). The background part can't act as them, so it gets what's found here.
+  // The person's notes: the ones the conversation is about first (read above), then a search (as the person,
+  // so only notes they can open). The background part can't act as them, so it gets what's found here.
   steps.push({ kind: "notes", label: "Searching your notes", status: "running" });
   await ctx.runMutation(internal.aiResearch.progress, { researchId, steps });
-  const notes: ResearchNote[] = [];
-  const ids = turn.context.kind === "note" || turn.context.kind === "notes" ? turn.context.ids.slice(0, 3) : [];
-  for (const id of ids) {
-    try {
-      const n = await ctx.runQuery(internal.ai.noteText, { documentId: id });
-      if (n) notes.push({ id: n.id, title: n.title, text: n.text.slice(0, 6_000) });
-    } catch {
-      /* gone, or no longer theirs */
-    }
-  }
   try {
     const folderId = turn.context.kind === "folder" ? turn.context.ids[0] : undefined;
     for (const n of await hybridSearch(ctx, { scope: turn.scope, question: turn.question, queries: [turn.question.slice(0, 200)], limit: MAX_NOTES, folderId })) {

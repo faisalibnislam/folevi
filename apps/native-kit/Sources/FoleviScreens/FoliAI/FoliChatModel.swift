@@ -549,6 +549,13 @@ public final class FoliChatModel {
     public func openCitation(_ c: ChatCitation) { onOpen(.note(id: c.noteId)) }
 
     /// A link in an answer: a note's path opens natively; anything else is a web route.
+    /// Whether a link in an answer (or a web source) may be handed to the system: web pages only. An answer is
+    /// written from notes and web pages other people wrote, so a link in it is never allowed to open a file, a
+    /// network share or another app's address (as Web/AiAnswerText.swift).
+    public static func opensOutside(_ url: URL) -> Bool {
+        ["http", "https"].contains(url.scheme?.lowercased() ?? "")
+    }
+
     public func openLink(_ url: URL) -> Bool {
         if url.scheme == "folevi-cite" { return false }
         if url.scheme == nil || url.host == "app.folevi.com" {

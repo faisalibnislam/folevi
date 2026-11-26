@@ -1,6 +1,7 @@
 // Settings > Import & export (views/settings/DataSection.tsx, TakeoutCard.tsx): import files or a folder into
 // Personal or the workspace (the engine runs the web's own import, lib/import/run.ts), a takeout file, and the
-// space's export as a ZIP.
+// space's export as a ZIP. On the Mac, Import from Apple Notes too (Model/AppleNotesReader.swift reads Notes; the
+// engine imports each batch, lib/import/appleNotes.ts).
 #if os(macOS) || os(iOS)
 #if os(macOS)
 import AppKit
@@ -22,11 +23,14 @@ struct DataSettings: View {
     @State private var takeoutBusy = false
     @State private var exporting = false
     @State private var exportNote: String?
+    @State private var notesTask: Task<Void, Never>?
+    @State private var notesDenied = false
     @Environment(\.colorScheme) private var scheme
 
     struct Result: Decodable, Identifiable {
         struct Warning: Decodable { var line: Int?; var message: String }
         var name: String, id: String?, warnings: [Warning], error: String?, images: Int?
+        var files: Int?
         var key: String { "\(name)|\(id ?? "")|\(error ?? "")" }
     }
 
@@ -39,7 +43,22 @@ struct DataSettings: View {
                     SettingsButtons {
                         SButton(importing ? "Importing…" : "Choose files…", icon: .upload, iconSize: 14) { pick(folder: false) }.disabled(importing)
                         SButton("Import a folder…", icon: .folderUp, iconSize: 14) { pick(folder: true) }.disabled(importing)
+                        #if os(macOS)
+                        SButton("Import from Apple Notes…", icon: .notebookText, iconSize: 14) { importAppleNotes() }.disabled(importing)
+                        if notesTask != nil { SButton("Stop") { notesTask?.cancel() } }
+                        #endif
                     }
+                    #if os(macOS)
+                    SText("Apple Notes: every note with its folders (empty ones too), tags, images, attachments and original dates. Notes locked with a password stay in Notes until you remove their lock.", "progress")
+                        .padding(.top, 8)
+                    if notesDenied {
+                        VStack(alignment: .leading, spacing: 8) {
+                            SText("Folevi isn’t allowed to read Apple Notes. Turn on Notes under Folevi in System Settings > Privacy & Security > Automation, then try again.", "dd", color: SettingsColor.v("color-danger", scheme))
+                            SButton("Open System Settings") { AppleNotesReader.openAutomationSettings() }
+                        }
+                        .padding(.top, 8)
+                    }
+                    #endif
                     // (Only while there is progress to show: its room under the buttons made this card's bottom
                     // padding larger than its top and than the other cards'.)
                     if !progress.isEmpty { SText(progress, "progress").padding(.top, SettingsStyle.pair("progress").light.margin.top) }
@@ -79,6 +98,7 @@ struct DataSettings: View {
                         if let e = r.error { SText(e, "dd", color: SettingsColor.v("color-danger", scheme)) }
                     }
                     if let n = r.images, n > 0 { SText(n == 1 ? "1 image uploaded" : "\(n) images uploaded", "progress") }
+                    if let n = r.files, n > 0 { SText(n == 1 ? "1 attachment uploaded" : "\(n) attachments uploaded", "progress") }
                     if !r.warnings.isEmpty {
                         ForEach(Array(r.warnings.enumerated()), id: \.offset) { _, w in SText("• \(w.line.map { "Line \($0): " } ?? "")\(w.message)", "progress") }
                     } else if r.id != nil {
@@ -143,6 +163,100 @@ struct DataSettings: View {
             if case .string(let m)? = o["message"] { model.frame.toast(m, tone: o["allOk"] == .bool(true) ? .success : .error) }
         }
     }
+
+    #if os(macOS)
+    /// Apple Notes: asks once for permission, finds every note, then reads and imports 20 at a time (the engine
+    /// runs the web's importer on each batch) until done or Stop.
+    private func importAppleNotes() {
+        importing = true
+        results = []
+        notesDenied = false
+        progress = "Asking Apple Notes…"
+        notesTask = Task {
+            defer {
+                importing = false
+                progress = ""
+                notesTask = nil
+            }
+            let reader = AppleNotesReader.shared
+            switch await reader.access(ask: true) {
+            case .granted: break
+            case .denied: notesDenied = true; return
+            case .unavailable: model.frame.toast("Apple Notes isn’t on this Mac.", tone: .error); return
+            case .notDetermined: model.frame.toast("Folevi wasn’t allowed to read Apple Notes.", tone: .error); return
+            }
+            do {
+                progress = "Finding your notes in Apple Notes…"
+                let scan = try await reader.scan()
+                let total = scan.notes.count
+                var all: [Result] = []
+                var queue = scan.notes[...]
+                var done = 0
+                // The first call also makes every Notes folder, empty ones too.
+                var folders: JSONValue? = .array(scan.folders.map { .array($0.map { .string($0) }) })
+                while (!queue.isEmpty || folders != nil), !Task.isCancelled {
+                    let refs = Array(queue.prefix(20))
+                    progress = total == 0 ? "Making folders…" : "Importing notes from \(done + 1) of \(total)…"
+                    let read = refs.isEmpty ? AppleNotesReader.Read(notes: [], missing: []) : try await reader.read(ids: refs.map(\.id))
+                    var bodies: [String: AppleNotesReader.Body] = [:]
+                    for b in read.notes { bodies[b.id] = b }
+                    let gone = Set(read.missing)
+                    var notes: [JSONValue] = []
+                    var handled = 0
+                    for r in refs {
+                        if let b = bodies[r.id] {
+                            notes.append(Self.json(r, b))
+                        } else if gone.contains(r.id) {
+                            all.append(Result(name: (r.folder + [r.title]).joined(separator: " / "), id: nil, warnings: [], error: "Notes didn’t hand this note over (it was deleted or locked after the import started).", images: nil))
+                        } else {
+                            break // over the size budget: read again next time
+                        }
+                        handled += 1
+                    }
+                    if !refs.isEmpty, handled == 0 { throw AppleNotesReader.Failure(code: "failed", message: "Apple Notes didn’t hand over the next note. Try the import again.") }
+                    queue = queue.dropFirst(handled)
+                    if Task.isCancelled { break }
+                    if !notes.isEmpty || folders != nil {
+                        var args: [String: JSONValue] = ["notes": .array(notes)]
+                        if let folders { args["folders"] = folders }
+                        if let w = workspace { args["workspaceId"] = .string(w.id) }
+                        if case .object(let o)? = await model.run(.dataImportAppleNotes, args, quiet: true) { all += o["results"]?.decoded([Result].self) ?? [] }
+                        folders = nil
+                    }
+                    results = all
+                    done += handled
+                }
+                let ok = all.filter { $0.id != nil }.count
+                var line = Task.isCancelled ? "Stopped: imported \(ok) of \(total) notes" : "Imported \(ok) of \(total) notes from Apple Notes"
+                if scan.locked > 0 { line += "; \(scan.locked) locked \(scan.locked == 1 ? "note" : "notes") skipped (remove \(scan.locked == 1 ? "its lock" : "their locks") in Notes to import \(scan.locked == 1 ? "it" : "them"))" }
+                model.frame.toast(line, tone: !Task.isCancelled && ok == all.count ? .success : .error)
+            } catch let f as AppleNotesReader.Failure where f.code == "denied" {
+                notesDenied = true
+            } catch {
+                model.frame.toast(error.localizedDescription, tone: .error)
+            }
+        }
+    }
+
+    nonisolated static func json(_ r: AppleNotesReader.NoteRef, _ b: AppleNotesReader.Body) -> JSONValue {
+        var o: [String: JSONValue] = [
+            "id": .string(r.id), "title": .string(r.title), "html": .string(b.html),
+            "folder": .array(r.folder.map { .string($0) }),
+            "attachments": .array(b.attachments.map { a in
+                var o: [String: JSONValue] = ["name": .string(a.name)]
+                if let v = a.cid { o["cid"] = .string(v) }
+                if let v = a.url { o["url"] = .string(v) }
+                if let v = a.mime { o["mime"] = .string(v) }
+                if let v = a.data { o["data"] = .string(v) }
+                if let v = a.error { o["error"] = .string(v) }
+                return .object(o)
+            }),
+        ]
+        if let c = r.created { o["created"] = .number(c) }
+        if let m = r.modified { o["modified"] = .number(m) }
+        return .object(o)
+    }
+    #endif
 
     private func pickTakeout() {
         let panel = NSOpenPanel()

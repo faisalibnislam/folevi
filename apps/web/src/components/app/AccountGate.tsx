@@ -11,6 +11,7 @@ import {
   AppStateProvider,
   FullPageMessage,
   useMeQuery,
+  useWorkspacesQuery,
   type Profile,
   type Workspace,
 } from "@/lib/app/state";
@@ -64,6 +65,10 @@ export function AccountGate() {
   const phase = reported === "signed_out" && unconfirmed ? "offline" : reported;
   const { isLoading } = useConvexAuth();
   const me = useMeQuery();
+  // Asked together with `me`, not after it: the folio needs both before it shows, and one after the other was a
+  // second round trip on every start (docs/perf/feel-results.md). AppStateProvider reads this same answer. Not once
+  // `me` says there's no ready profile (signed out, onboarding): the query needs one.
+  useWorkspacesQuery(reported !== "signed_out" && (me === undefined || me.state === "ready"));
   const bootstrap = useMutation(api.users.bootstrap);
   const [bootError, setBootError] = useState<string | null>(null);
   const started = useRef(false);

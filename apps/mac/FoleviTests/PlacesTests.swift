@@ -261,3 +261,49 @@ final class PlacesTests: XCTestCase {
         XCTAssertNil(defaults.dictionary(forKey: "folevi.lock"), "adopted once")
     }
 }
+
+/// The Convex token kept for the next page that opens (ShellAuth.convexToken, docs/perf/feel-results.md).
+final class KeptJWTTests: XCTestCase {
+    private func jwt(exp: Date) -> String {
+        let claims = try! JSONSerialization.data(withJSONObject: ["sub": "user", "exp": Int(exp.timeIntervalSince1970)])
+        let b64 = claims.base64EncodedString().replacingOccurrences(of: "+", with: "-").replacingOccurrences(of: "/", with: "_").replacingOccurrences(of: "=", with: "")
+        return "eyJhbGciOiJSUzI1NiJ9.\(b64).c2lnbmF0dXJl"
+    }
+
+    override func tearDown() {
+        ShellAuth.keepJWT(nil, for: nil)
+        super.tearDown()
+    }
+
+    func testReadsTheExpiry() {
+        let exp = Date(timeIntervalSince1970: 1_900_000_000)
+        XCTAssertEqual(ShellAuth.expiry(of: jwt(exp: exp)), exp)
+        XCTAssertNil(ShellAuth.expiry(of: "not.a-jwt"))
+        XCTAssertNil(ShellAuth.expiry(of: "abc"))
+    }
+
+    func testHandsOutAFreshTokenOnlyToItsOwnSession() {
+        let token = jwt(exp: Date().addingTimeInterval(15 * 60))
+        ShellAuth.keepJWT(token, for: "sessionA")
+        XCTAssertEqual(ShellAuth.keptJWT(for: "sessionA"), token)
+        XCTAssertNil(ShellAuth.keptJWT(for: "sessionB"), "another account (or a new sign-in) asks the website")
+    }
+
+    func testNeverHandsOutOneCloseToRunningOut() {
+        let now = Date()
+        ShellAuth.keepJWT(jwt(exp: now.addingTimeInterval(ShellAuth.jwtReuseMargin - 1)), for: "s")
+        XCTAssertNil(ShellAuth.keptJWT(for: "s", now: now))
+        ShellAuth.keepJWT(jwt(exp: now.addingTimeInterval(ShellAuth.jwtReuseMargin + 60)), for: "s")
+        XCTAssertNotNil(ShellAuth.keptJWT(for: "s", now: now))
+        XCTAssertNil(ShellAuth.keptJWT(for: "s", now: now.addingTimeInterval(120)), "kept until its last minutes only")
+    }
+
+    func testSigningOutForgetsIt() async {
+        ShellAuth.keepJWT(jwt(exp: Date().addingTimeInterval(15 * 60)), for: "s")
+        ShellAuth.keepJWT(nil, for: nil)
+        XCTAssertNil(ShellAuth.keptJWT(for: "s"))
+        ShellAuth.keepJWT("garbage", for: "s")
+        XCTAssertNil(ShellAuth.keptJWT(for: "s"), "a token it can't read is never kept")
+    }
+}
+

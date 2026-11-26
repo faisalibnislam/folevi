@@ -220,11 +220,13 @@ private struct FoliThreadRow: View {
         if url.scheme == "folevi-cite", let n = Int(url.host ?? "") {
             if let m = model.messages.last(where: { $0.citations.contains { $0.n == n } || $0.webCitations.contains { $0.n == n } }) {
                 if let c = m.citations.first(where: { $0.n == n }) { model.openCitation(c); return .handled }
-                if let w = m.webCitations.first(where: { $0.n == n }), let u = URL(string: w.url) { return .systemAction(u) }
+                if let w = m.webCitations.first(where: { $0.n == n }), let u = URL(string: w.url), FoliChatModel.opensOutside(u) { return .systemAction(u) }
             }
             return .discarded
         }
-        return model.openLink(url) ? .handled : .systemAction
+        if model.openLink(url) { return .handled }
+        // Only web pages leave the app (FoliChatModel.opensOutside).
+        return FoliChatModel.opensOutside(url) ? .systemAction : .discarded
     }
 }
 

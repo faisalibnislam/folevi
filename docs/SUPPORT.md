@@ -50,10 +50,11 @@ email to support@ ──┴─ Resend receiving ─ POST <convex-site>/webhooks/
 | Logs hold ticket numbers, counts and outcome codes, never addresses or message text | `support.ts`, `http.ts`, `/api/support` |
 | Non-production never emails real people (test or allowlisted addresses only, [EMAIL_OPERATIONS.md](./EMAIL_OPERATIONS.md) §4); support mail is also captured in the development mailbox | `lib/support`, `authEmails.recordDevMail` |
 
-The confirmation quotes the requester's own message back to the address they typed, so a signed-out
-visitor could make Folevi send their text to someone else's address. The per-address and per-client
-limits keep that to a trickle, markup can't survive (angle brackets become ‹ ›), and the email says to
-ignore it if you didn't write to us.
+The confirmation quotes the requester's own message back only when they were signed in (the address is
+then their account's). For a signed-out form or an inbound email the address is unproven, so the
+confirmation shows the request number and topic and says the message is saved, without repeating it:
+otherwise anyone could make Folevi Support mail their own text to someone else's address (security audit
+2026-11-26).
 
 ## 2. Inbound email: how it works
 

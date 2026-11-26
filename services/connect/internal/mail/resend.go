@@ -98,26 +98,29 @@ func (r *Resend) Send(ctx context.Context, m Message) (string, error) {
 	return out.ID, nil
 }
 
-// FromHeader builds "<name> <address>" with the server's name made safe for a header: no quotes, angle
-// brackets, control characters or line breaks, at most 60 characters, and "Folevi Server" when nothing is left.
+// FromHeader builds the From header for a server's mail: "Folevi Server (<name>)" <address>. The server picks
+// its own name, so it never stands alone as the sender: the fixed label comes first and the name goes in
+// brackets, made safe for a header (no quotes, brackets, control characters or line breaks, at most 40
+// characters). With nothing left it is just "Folevi Server".
 func FromHeader(name, address string) string {
 	var b strings.Builder
 	for _, r := range name {
 		switch {
 		case r < 0x20 || r == 0x7f:
 			b.WriteByte(' ')
-		case r == '"', r == '<', r == '>', r == '\\', r == ',', r == ';', r == ':', r == '@':
+		case r == '"', r == '<', r == '>', r == '\\', r == ',', r == ';', r == ':', r == '@', r == '(', r == ')', r == '[', r == ']':
 			continue
 		default:
 			b.WriteRune(r)
 		}
 	}
 	clean := strings.Join(strings.Fields(b.String()), " ")
-	if rs := []rune(clean); len(rs) > 60 {
-		clean = strings.TrimSpace(string(rs[:60]))
+	if rs := []rune(clean); len(rs) > 40 {
+		clean = strings.TrimSpace(string(rs[:40]))
 	}
-	if clean == "" {
-		clean = "Folevi Server"
+	display := "Folevi Server"
+	if clean != "" && !strings.EqualFold(clean, display) {
+		display += " (" + clean + ")"
 	}
-	return `"` + clean + `" <` + address + `>`
+	return `"` + display + `" <` + address + `>`
 }

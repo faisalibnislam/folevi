@@ -4,7 +4,7 @@
 import { canonicalJson } from "@folevi/editor-schema";
 import { fromUtf8, utf8 } from "./bytes";
 import { isDeviceId, isHlc } from "./hlc";
-import { isStub, latestStamp, type NoteLike } from "./noteFile";
+import { importedModifiedAt, isStub, latestStamp, type NoteLike } from "./noteFile";
 import { isVersionVector, type VersionVector } from "./vv";
 
 export const CATALOG_FORMAT = "folevi-catalog";
@@ -60,7 +60,7 @@ export function catalogEntryFromNote(
     kind: d.kind?.v ?? "document",
     folderId: d.folderId?.v ?? null,
     parentDocumentId: d.parentDocumentId?.v ?? null,
-    updatedAt: hlcMs(c),
+    updatedAt: importedModifiedAt(file) ?? hlcMs(c),
     trashed: d.trashedAt?.v != null,
   };
 }

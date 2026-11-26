@@ -9,22 +9,7 @@ import type { MutationCtx, QueryCtx } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { ulid } from "@folevi/editor-schema";
 import type { Doc, Id } from "./_generated/dataModel";
-import {
-  accessAtLeast,
-  assertWritable,
-  documentAccess,
-  folderAccessInfo,
-  folderChain,
-  folderGrantsReach,
-  getDocumentByPublicId,
-  memberLevel,
-  membership,
-  requireProfile,
-  roleToAccess,
-  type Access,
-  type FolderAccessInfo,
-  type ShareRole,
-} from "./lib/auth";
+import { accessAtLeast, assertWritable, documentAccess, folderAccessInfo, folderChain, folderGrantsReach, getDocumentByPublicId, memberLevel, membership, requireProfile, roleToAccess, type Access, type FolderAccessInfo, type ShareRole, MAX_PAGE_DEPTH } from "./lib/auth";
 import { fail } from "./lib/errors";
 import { randomToken, sha256Hex } from "./lib/crypto";
 import { consume } from "./lib/rateLimit";
@@ -640,12 +625,13 @@ export const open = query({
 async function homeFolderOf(ctx: Ctx, doc: Doc<"documents">): Promise<{ folderId: Id<"folders"> | undefined; restricted: boolean }> {
   let restricted = false;
   let cursor: Doc<"documents"> | null = doc;
-  for (let depth = 0; cursor && depth < 12; depth++) {
+  for (let depth = 0; cursor && depth < MAX_PAGE_DEPTH; depth++) {
     if (cursor.accessMode === "restricted") restricted = true;
     if (cursor.folderId !== undefined) return { folderId: cursor.folderId, restricted };
     cursor = cursor.parentDocumentId ? await ctx.db.get(cursor.parentDocumentId) : null;
   }
-  return { folderId: undefined, restricted };
+  // Nested deeper than pages go: no folder reaches it, and it reads as restricted (lib/auth.ts pageChain).
+  return { folderId: undefined, restricted: restricted || cursor !== null };
 }
 
 /**

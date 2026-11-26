@@ -1,17 +1,22 @@
-// Spelling in the note, on the website: a wavy red line under each misspelt word, from Folevi's own checker
-// (lib/spelling/web.ts says why its own, and where it applies; elsewhere this extension does nothing and the
-// browser's or the Mac's own spelling stays on). Right-click a marked word for the guesses, Learn and Ignore
-// (EditorContextMenu.tsx, through lib/desktop/textMenu.ts).
+// Spelling in the note: a wavy red line under each misspelt word, from Folevi's own checker (lib/spelling/web.ts),
+// the same in every app, in ten languages (lib/spelling/languages.ts). Each line's language is found from its
+// own words (the note's when the line is too short to tell), so a note can mix English and Spanish. Chinese
+// is never underlined. Right-click or click a marked word for the guesses, Add to dictionary and Ignore
+// (EditorContextMenu.tsx, SpellingBubble.tsx).
 //
 // How: the words of the note are looked up in a worker, a batch at a time, a moment after the note changes,
 // and each word's answer is remembered for the page's life. The marks are decorations (the note itself never
-// changes, and nothing is saved or undone). The word being typed isn't marked until the caret leaves it.
-// Left alone: code, links, mentions, words with digits or inner capitals (iPhone, JavaScript), ALL CAPS,
-// and anything that looks like part of an address or a file name.
+// changes, and nothing is saved or undone); each carries aria-invalid="spelling" so screen readers say so.
+// The word being typed isn't marked until the caret leaves it. Left alone: code, links, mentions, words with
+// digits or inner capitals (iPhone, JavaScript), ALL CAPS, and anything that looks like part of an address or
+// a file name. Spell check can be turned off in Settings, and for one note (settings.ts setNoteSpellcheck; the
+// editor tells this extension its note through `storage.documentId`).
 import { Extension } from "@tiptap/core";
 import type { Node as PMNode } from "@tiptap/pm/model";
 import { Plugin, PluginKey, type EditorState } from "@tiptap/pm/state";
 import { Decoration, DecorationSet, type EditorView } from "@tiptap/pm/view";
+import { detectLanguage, languageFromLocale, spellChecked, type EnglishVariant, type SpellLanguage } from "@/lib/spelling/languages";
+import { noteSpellcheckOn, personalWords, spellingSettings } from "@/lib/spelling/settings";
 import { SPELLING_CHANGED, misspeltAmong, ownSpelling } from "@/lib/spelling/web";
 import "./spellcheck.css";
 
@@ -25,13 +30,15 @@ const WORD = /[\p{L}\p{M}][\p{L}\p{M}\p{N}'\u2019-]*/gu;
 /** A stand-in for mentions, dates and page links: never part of a word. */
 const ATOM = "\ufffc";
 
-/** What is known of each word seen on this page: true when misspelt. */
+/** What is known of each word seen on this page, by language and word ("de\u0000Haus"): true when misspelt. */
 const verdicts = new Map<string, boolean>();
+const vkey = (lang: SpellLanguage, word: string) => `${lang}\u0000${word}`;
 
 interface Found {
   word: string;
   from: number;
   to: number;
+  lang: SpellLanguage;
 }
 
 /** A word in a line of text, by where it starts in that line. */
@@ -43,7 +50,7 @@ interface LineWord {
 /** The words of each line seen, kept for as long as the line itself is (an unchanged line is the same node in every later version of the note). */
 const lineWords = new WeakMap<PMNode, LineWord[]>();
 /** The words of each version of the note looked at, so the two passes over one version (asking, then marking) read it once. */
-const noteWords = new WeakMap<PMNode, Found[]>();
+let noteWords = new WeakMap<PMNode, Found[]>();
 
 /** The words of one line of text that spelling applies to. */
 function wordsOfLine(node: PMNode): LineWord[] {
@@ -89,16 +96,63 @@ function wordsOfLine(node: PMNode): LineWord[] {
   return out;
 }
 
-/** The words of the note that spelling applies to, with where they are. */
+/** Each line's own language, when its words tell (null: too short to tell). */
+let lineLanguage = new WeakMap<PMNode, SpellLanguage | null>();
+/** The English the caches above were made for (American or British, from Settings). */
+let cachedEnglish: string | null = null;
+function cachesFor(english: string) {
+  if (cachedEnglish === english) return;
+  cachedEnglish = english;
+  noteWords = new WeakMap();
+  lineLanguage = new WeakMap();
+}
+function languageOfLine(node: PMNode, english: EnglishVariant): SpellLanguage | null {
+  if (lineLanguage.has(node)) return lineLanguage.get(node)!;
+  const lang = detectLanguage(node.textContent, english);
+  lineLanguage.set(node, lang);
+  return lang;
+}
+
+/** The note's language: from its first few thousand letters, else the browser's. */
+export function noteLanguage(doc: PMNode, english = spellingSettings().english): SpellLanguage {
+  let text = "";
+  doc.descendants((node) => {
+    if (text.length > 4000) return false;
+    if (node.isTextblock) {
+      text += `${node.textContent}\n`;
+      return false;
+    }
+    return true;
+  });
+  return detectLanguage(text, english) ?? languageFromLocale(typeof navigator === "undefined" ? undefined : navigator.language, english);
+}
+
+/** The language of the line around `pos` (for the right-click guesses and ghost words). */
+export function languageAt(doc: PMNode, pos: number): SpellLanguage {
+  const english = spellingSettings().english;
+  cachesFor(english);
+  const $pos = doc.resolve(Math.max(0, Math.min(pos, doc.content.size)));
+  const line = $pos.parent.isTextblock ? $pos.parent : null;
+  return (line && languageOfLine(line, english)) ?? noteLanguage(doc, english);
+}
+
+/** The words of the note that spelling applies to, with where they are and their line's language. */
 export function spellableWords(doc: PMNode): Found[] {
+  const english = spellingSettings().english;
+  cachesFor(english);
   const hit = noteWords.get(doc);
   if (hit) return hit;
   const out: Found[] = [];
+  let fallback: SpellLanguage | null = null;
   doc.descendants((node, pos) => {
     if (!node.isTextblock) return true;
     if (node.type.name === "codeBlock" || node.type.spec.code) return false;
+    const words = wordsOfLine(node);
+    if (!words.length) return false;
+    const lang = languageOfLine(node, english) ?? (fallback ??= noteLanguage(doc, english));
+    if (!spellChecked(lang)) return false;
     const start = pos + 1;
-    for (const w of wordsOfLine(node)) out.push({ word: w.word, from: start + w.at, to: start + w.at + w.word.length });
+    for (const w of words) out.push({ word: w.word, from: start + w.at, to: start + w.at + w.word.length, lang });
     return false;
   });
   noteWords.set(doc, out);
@@ -106,17 +160,44 @@ export function spellableWords(doc: PMNode): Found[] {
 }
 
 function marks(state: EditorState): DecorationSet {
-  const found = spellableWords(state.doc).filter((w) => verdicts.get(w.word) === true);
+  const found = spellableWords(state.doc).filter((w) => verdicts.get(vkey(w.lang, w.word)) === true);
   return DecorationSet.create(
     state.doc,
-    found.map((w) => Decoration.inline(w.from, w.to, { class: "fb-misspelt" }, { word: w.word })),
+    found.map((w) => Decoration.inline(w.from, w.to, { class: "fb-misspelt", "aria-invalid": "spelling" }, { word: w.word, lang: w.lang })),
   );
 }
 
-export const Spellcheck = Extension.create({
+/** The first misspelt word after `pos` (from the note's start when there is none after it). */
+export function nextMisspelt(state: EditorState, pos: number): { from: number; to: number } | null {
+  const set = key.getState(state);
+  if (!set) return null;
+  const all = set.find().sort((a, b) => a.from - b.from);
+  const hit = all.find((d) => d.from >= pos) ?? all[0];
+  return hit ? { from: hit.from, to: hit.to } : null;
+}
+
+/** For tests and the popover: the misspelt word at `pos`, if one is marked there. */
+export function misspeltAt(state: EditorState, pos: number): { word: string; lang: SpellLanguage; from: number; to: number } | null {
+  const set = key.getState(state);
+  const hit = set?.find(pos, pos).find((d) => d.from <= pos && d.to >= pos);
+  if (!hit) return null;
+  const spec = hit.spec as { word: string; lang: SpellLanguage };
+  return { word: spec.word, lang: spec.lang, from: hit.from, to: hit.to };
+}
+
+export interface SpellcheckStorage {
+  /** The note this editor shows (for its own spell check switch). */
+  documentId: string | null;
+}
+
+export const Spellcheck = Extension.create<object, SpellcheckStorage>({
   name: "spellcheck",
+  addStorage() {
+    return { documentId: null };
+  },
   addProseMirrorPlugins() {
     const editor = this.editor;
+    const storage = this.storage;
     return [
       new Plugin<DecorationSet>({
         key,
@@ -130,7 +211,7 @@ export const Spellcheck = Extension.create({
         props: {
           decorations(state) {
             const set = key.getState(state);
-            if (!set || set === DecorationSet.empty || !editor.isEditable) return null;
+            if (!set || set === DecorationSet.empty || !editor.isEditable || !ownSpelling() || !noteSpellcheckOn(storage.documentId)) return null;
             // The word the caret is in (or at the end of) is still being written.
             const sel = state.selection;
             if (!sel.empty) return set;
@@ -139,7 +220,7 @@ export const Spellcheck = Extension.create({
           },
         },
         view(view) {
-          if (!ownSpelling()) return {};
+          if (typeof window === "undefined") return {};
           let timer: ReturnType<typeof setTimeout> | null = null;
           let asking = false;
           let again = false;
@@ -150,25 +231,42 @@ export const Spellcheck = Extension.create({
           };
           const look = async () => {
             timer = null;
-            if (gone || !editor.isEditable) return;
+            if (gone) return;
+            // Off (in Settings, or for this note): the marks are taken away.
+            if (!editor.isEditable || !ownSpelling() || !noteSpellcheckOn(storage.documentId)) return redraw();
             if (asking) {
               again = true;
               return;
             }
-            const unknown = [...new Set(spellableWords(view.state.doc).map((w) => w.word))].filter((w) => !verdicts.has(w));
-            if (!unknown.length) return redraw();
+            const ignored = new Set(personalWords().ignored);
+            const unknown = new Map<SpellLanguage, Set<string>>();
+            let count = 0;
+            for (const w of spellableWords(view.state.doc)) {
+              if (verdicts.has(vkey(w.lang, w.word))) continue;
+              if (ignored.has(w.word)) {
+                verdicts.set(vkey(w.lang, w.word), false);
+                continue;
+              }
+              let words = unknown.get(w.lang);
+              if (!words) unknown.set(w.lang, (words = new Set()));
+              if (!words.has(w.word)) count++;
+              words.add(w.word);
+            }
+            if (!count) return redraw();
             asking = true;
-            const batch = unknown.slice(0, BATCH);
-            const wrong = await misspeltAmong(batch).catch(() => null);
+            // One language at a time, the most words first.
+            const [lang, all] = [...unknown].sort((a, b) => b[1].size - a[1].size)[0]!;
+            const batch = [...all].slice(0, BATCH);
+            const wrong = await misspeltAmong(lang, batch).catch(() => null);
             asking = false;
             if (gone) return;
             // No answer (the dictionary didn't load): nothing is marked, and the next change asks again.
             if (wrong) {
               const bad = new Set(wrong);
-              for (const w of batch) verdicts.set(w, bad.has(w));
+              for (const w of batch) verdicts.set(vkey(lang, w), bad.has(w));
               redraw();
             }
-            if (wrong && (again || unknown.length > batch.length)) {
+            if (wrong && (again || count > batch.length)) {
               again = false;
               schedule(0);
             }
@@ -177,7 +275,7 @@ export const Spellcheck = Extension.create({
             if (timer !== null) clearTimeout(timer);
             timer = setTimeout(() => void look(), wait);
           };
-          // A word was learnt or ignored: what is known is asked again.
+          // A word was learnt or ignored, or a setting changed: what is known is asked again.
           const onChanged = () => {
             verdicts.clear();
             schedule(0);

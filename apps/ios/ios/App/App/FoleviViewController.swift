@@ -104,6 +104,8 @@ final class FoleviViewController: UIViewController {
         AppServices.modeApplied(local: bundled && ShellMode.current == "local")
         LocalExtensions.attach(host)
         // The extensions' REST API is the site this app loads; links that came early can go to the page now.
+        // (A token an earlier build kept for an account on a Folevi Server goes first: that API is Folevi Cloud's.)
+        if bundled { ShellPlaces.dropServerTokens() }
         AppServices.launched(serverURL: bundled ? ShellAuth.shared.cloudService : host.serverURL)
         if let source = bridgeScript(origin: host.appOrigin, shell: bundled ? shellBootstrap() : nil) { host.addUserScript(source) }
         // The native frame: the page runs in native chrome mode (the engine and the note page, no web frame).

@@ -1,5 +1,6 @@
 import { describe, expect, test } from "vitest";
-import { isPrivateHost, previewFromHtml } from "../../convex/bookmarks";
+import { previewFromHtml } from "../../convex/bookmarks";
+import { checkUrl } from "../../convex/lib/ai/web";
 
 describe("bookmark previews", () => {
   test("reads Open Graph, title and icon, resolving relative addresses", () => {
@@ -26,12 +27,17 @@ describe("bookmark previews", () => {
     expect(p).toEqual({ title: "Plain page", description: null, siteName: null, image: null, icon: "https://example.com/favicon.ico" });
   });
 
+  // The preview's own host check went (security audit 2026-11-26, M1): it uses the page reader's checkUrl, and
+  // looks every host name up (tests/convex/security-http-ssrf.test.ts).
   test("private and local hosts are never fetched", () => {
-    for (const h of ["localhost", "app.localhost", "127.0.0.1", "10.1.2.3", "192.168.0.10", "172.20.0.1", "169.254.169.254", "[::1]", "fd00::1", "printer.local", "intranet"]) {
-      expect(isPrivateHost(h), h).toBe(true);
+    const refused = (h: string) => !checkUrl(`http://${h}/`).ok;
+    for (const h of ["localhost", "app.localhost", "127.0.0.1", "10.1.2.3", "192.168.0.10", "172.20.0.1", "169.254.169.254", "[::1]", "[fd00::1]", "printer.local", "intranet"]) {
+      expect(refused(h), h).toBe(true);
     }
-    for (const h of ["involets.com", "www.example.org", "8.8.8.8", "172.32.0.1", "[2606:4700::1]"]) expect(isPrivateHost(h), h).toBe(false);
+    for (const h of ["involets.com", "www.example.org", "8.8.8.8", "172.32.0.1", "[2606:4700::1]"]) expect(refused(h), h).toBe(false);
     // Benchmarking and IETF ranges, and IPv6 forms that carry an IPv4 address or translate to one.
-    for (const h of ["198.18.0.1", "198.19.255.255", "192.0.0.8", "[::7f00:1]", "[::127.0.0.1]", "[64:ff9b::a00:1]"]) expect(isPrivateHost(h), h).toBe(true);
+    for (const h of ["198.18.0.1", "198.19.255.255", "192.0.0.8", "[::7f00:1]", "[::127.0.0.1]", "[64:ff9b::a00:1]"]) expect(refused(h), h).toBe(true);
+    // Only the standard ports.
+    expect(checkUrl("http://involets.com:8080/").ok).toBe(false);
   });
 });

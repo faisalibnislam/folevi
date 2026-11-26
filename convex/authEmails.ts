@@ -2,17 +2,19 @@
 // pipeline (`internal.email.sendTemplate`). Outside production every message is also written to a
 // local-only "dev mailbox" so people and automated tests can follow the links without a mail
 // provider. The dev mailbox is unreadable in production (and never written there).
-import { v } from "convex/values";
+import { ConvexError, v } from "convex/values";
 import { internalAction, internalQuery, query } from "./_generated/server";
 import { internalMutation } from "./lib/functions";
 import { internal } from "./_generated/api";
 import { isFeatureEnabled } from "./lib/flags";
 import { timingSafeEqualHex } from "./lib/crypto";
+import { isProductionDeployment } from "./lib/deployment";
+import { consume } from "./lib/rateLimit";
 
 const MAILBOX_LIMIT = 200;
 
 function devMailboxEnabled(): boolean {
-  return process.env.FOLEVI_ENV !== "production";
+  return !isProductionDeployment();
 }
 
 export const send = internalAction({
@@ -24,6 +26,10 @@ export const send = internalAction({
     idempotencyKey: v.string(),
   },
   handler: async (ctx, args) => {
+    // At most a few of each kind per address per hour, whoever asks and from wherever: Better Auth's own
+    // limits are per client address, so without this one address could be mailed without end.
+    const admitted = await ctx.runMutation(internal.authEmails.admit, { key: args.key, to: args.to });
+    if (!admitted) return null;
     if (devMailboxEnabled()) {
       await ctx.runMutation(internal.authEmails.recordDevMail, { to: args.to, key: args.key, actionUrl: args.actionUrl });
     }
@@ -34,6 +40,24 @@ export const send = internalAction({
       dataVariables: { actionUrl: args.actionUrl, expiresInHours: args.expiresInHours },
     });
     return null;
+  },
+});
+
+/**
+ * Whether one more identity email may go to this address now (rules `emailResend` for confirmations and
+ * `passwordReset` for resets, per recipient). Past the limit the email is dropped without a word, so the
+ * answer to the person asking never says whether the address has an account.
+ */
+export const admit = internalMutation({
+  args: { key: v.union(v.literal("auth_verify_email"), v.literal("auth_password_reset")), to: v.string() },
+  handler: async (ctx, args) => {
+    try {
+      await consume(ctx, args.key === "auth_password_reset" ? "passwordReset" : "emailResend", args.to.trim().toLowerCase());
+      return true;
+    } catch (error) {
+      if (error instanceof ConvexError && (error.data as { code?: string } | undefined)?.code === "rate_limited") return false;
+      throw error;
+    }
   },
 });
 

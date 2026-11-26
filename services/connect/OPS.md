@@ -38,7 +38,8 @@ Every further deploy needs the owner's OK first.
 - Logs are JSON lines on stdout: route pattern, status, duration and server id. Never tokens, keys, link codes,
   recipients, subjects, bodies, prompts or push text.
 - Usage counters live in the `usage` table: `ai_tokens` and `relay_bytes` per month, `mail` and `diagnostics` per
-  day.
+  day. `ai_tokens` and `mail` are counted for the owner's account (the row's `server_id` is `owner:<account>`,
+  shared by every server linked to it); a server with no owner, and the other counters, use the server id.
 
 ## Abuse
 

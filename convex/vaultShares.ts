@@ -40,6 +40,18 @@ async function shareOf(ctx: Ctx, shareId: string): Promise<Doc<"vaultShares"> | 
 const live = (s: Doc<"vaultShares">, now = Date.now()) => s.expiresAt === undefined || s.expiresAt > now;
 
 /**
+ * Whether a share still works for the person it was given to: not past its end date, and, when it has no end
+ * date, the person is still a member of the Vault's workspace. Only a workspace member can hold a share with no
+ * end date (someone outside always gets one, see `share`), so such a share ends with their membership. It's also
+ * deleted when they leave (vaultPeople.vaultMemberLeftWorkspace); this is the check that holds either way.
+ */
+async function usable(ctx: Ctx, s: Doc<"vaultShares">, vault: Doc<"vaults">, now = Date.now()): Promise<boolean> {
+  if (!live(s, now)) return false;
+  if (s.expiresAt === undefined && vault.workspaceId && !(await membership(ctx, s.profileId, vault.workspaceId))) return false;
+  return true;
+}
+
+/**
  * Shares an item with one person (who added it, or a custodian). The device sealed the item key to their account
  * key. Someone outside the workspace gets an expiry (30 days unless chosen).
  */
@@ -73,6 +85,12 @@ export const share = mutation({
       .withIndex("by_item", (q) => q.eq("itemId", item._id))
       .collect())
       if (old.profileId === target._id) await ctx.db.delete(old._id);
+    // Share ids are the device's and looked up by a global index (shareOf): one already used is refused.
+    if (await ctx.db
+      .query("vaultShares")
+      .withIndex("by_public_id", (q) => q.eq("publicId", args.shareId))
+      .first())
+      fail("conflict", "That share already exists.");
     await insertScoped(ctx, "vaultShares", scopeOfRow(vault), { publicId: args.shareId, vaultId: vault._id, itemId: item._id, profileId: target._id, canEdit: args.canEdit, wrappedKey: args.wrappedKey, epoch: args.epoch, ...(expiresAt ? { expiresAt } : {}), sharedBy: profile._id, createdAt: now });
     await appendLog(ctx, vault, { event: "item.shared", actor: { profile, role }, item: { publicId: item.publicId, kind: item.kind }, detail: { to: { profileId: target._id, name: target.displayName, email: target.email }, canEdit: args.canEdit, outsideWorkspace: outside, expiresAt: expiresAt ?? null }, client: args.client });
     if (outside) await notifyVaultSecurity(ctx, vault, profile, `${profile.displayName.slice(0, 80)} shared something from the Vault with someone outside the workspace`, "share.outside");
@@ -166,10 +184,9 @@ export const mine = query({
       .query("vaultShares")
       .withIndex("by_profile", (q) => q.eq("profileId", profile._id))
       .take(500)) {
-      if (!live(s, now)) continue;
       const item = await ctx.db.get(s.itemId);
       const vault = await ctx.db.get(s.vaultId);
-      if (!item || !vault || item.deletedAt !== undefined) continue;
+      if (!item || !vault || item.deletedAt !== undefined || !(await usable(ctx, s, vault, now))) continue;
       const by = await ctx.db.get(s.sharedBy);
       out.push({ shareId: s.publicId, vaultId: vault.publicId, itemId: item.publicId, kind: item.kind, sealedSummary: item.sealedSummary, wrappedKey: s.wrappedKey, canEdit: s.canEdit, expiresAt: s.expiresAt ?? null, sharedBy: by?.displayName ?? "Someone", sharedAt: s.createdAt, updatedAt: item.updatedAt });
     }
@@ -182,7 +199,7 @@ async function requireShare(ctx: Ctx, profileId: Id<"profiles">, shareId: string
   if (!s || s.profileId !== profileId || !live(s)) fail("not_found", "This was unshared or has ended.");
   const item = await ctx.db.get(s.itemId);
   const vault = await ctx.db.get(s.vaultId);
-  if (!item || !vault || item.deletedAt !== undefined) fail("not_found", "This was unshared or has ended.");
+  if (!item || !vault || item.deletedAt !== undefined || !(await usable(ctx, s, vault))) fail("not_found", "This was unshared or has ended.");
   return { s, item, vault };
 }
 
@@ -234,6 +251,12 @@ export const createLink = mutation({
     if (!(args.expiresInMs >= LINK_MIN_MS && args.expiresInMs <= LINK_MAX_MS)) fail("invalid_argument", "A link lasts 1 hour to 30 days.");
     if (args.wrappedKey.byteLength < 32 || args.wrappedKey.byteLength > 1024) fail("invalid_argument", "Invalid key data.");
     if (args.password !== undefined && (args.password.length < 5 || args.password.length > 200)) fail("invalid_argument", "Use a password of at least 5 characters.");
+    // Link ids are the device's and looked up by a global index (linkOf): one already used is refused.
+    if (await ctx.db
+      .query("vaultLinks")
+      .withIndex("by_public_id", (q) => q.eq("publicId", args.linkId))
+      .first())
+      fail("conflict", "That link already exists.");
     const pw = args.password ? await hashSharePassword(args.password) : null;
     const now = Date.now();
     await insertScoped(ctx, "vaultLinks", scopeOfRow(vault), { publicId: args.linkId, vaultId: vault._id, itemId: item._id, wrappedKey: args.wrappedKey, maxViews: args.maxViews, views: 0, expiresAt: now + args.expiresInMs, ...(pw ? { passwordHash: pw.hash, passwordSalt: pw.salt } : {}), createdBy: profile._id, createdAt: now });

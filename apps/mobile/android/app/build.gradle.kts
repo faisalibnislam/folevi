@@ -151,3 +151,30 @@ val bundleBridge by tasks.registering(Exec::class) {
     outputs.file(layout.projectDirectory.file("src/main/assets/folevi-cloud.js"))
 }
 tasks.named("preBuild") { dependsOn(bundleBridge) }
+
+// A release never ships the developer's Capacitor settings. `npx cap sync` writes assets/capacitor.config.json from
+// capacitor.config.ts, which turns web view debugging and bridge logging off and leaves out the development server
+// only when it ran with FOLEVI_RELEASE=1 (README "Release"). A release built after a development sync would ship
+// with them on (anyone with USB debugging could then run code in the page), so a release build stops here instead.
+// Debug builds are not checked.
+val checkReleaseCapacitorConfig = tasks.register("checkReleaseCapacitorConfig") {
+    description = "Fails a release build whose generated capacitor.config.json is a development one."
+    val generated = layout.projectDirectory.file("src/main/assets/capacitor.config.json").asFile
+    inputs.files(generated).optional(true)
+    doLast {
+        val again = "Run `FOLEVI_RELEASE=1 npx cap sync android` in apps/mobile, then build again."
+        if (!generated.exists()) throw GradleException("There is no ${generated.name} for this release build. $again")
+        val config = groovy.json.JsonSlurper().parse(generated) as Map<*, *>
+        val android = config["android"] as? Map<*, *> ?: emptyMap<Any, Any>()
+        val server = config["server"] as? Map<*, *> ?: emptyMap<Any, Any>()
+        val problems = mutableListOf<String>()
+        if (android["webContentsDebuggingEnabled"] != false) problems += "web view debugging is on (android.webContentsDebuggingEnabled must be false)"
+        if ((android["loggingBehavior"] ?: config["loggingBehavior"]) != "none") problems += "bridge logging is on (loggingBehavior must be \"none\")"
+        if (!(server["url"] as? String).isNullOrBlank()) problems += "the page loads from a development server (server.url is set)"
+        if (server["cleartext"] == true) problems += "plain http is allowed (server.cleartext is set)"
+        if (problems.isNotEmpty()) {
+            throw GradleException("${generated.name} is a development one, not a release's: ${problems.joinToString("; ")}. $again")
+        }
+    }
+}
+tasks.matching { it.name == "preReleaseBuild" }.configureEach { dependsOn(checkReleaseCapacitorConfig) }

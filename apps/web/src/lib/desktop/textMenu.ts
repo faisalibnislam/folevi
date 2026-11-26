@@ -5,9 +5,12 @@
 // clipboard); without them (the website) Look Up and Share simply aren't there. Pasting from Folevi's menus
 // reads the Mac's clipboard through the app (no "Paste" bubble in WebKit) when it can.
 //
-// On the website the spelling is Folevi's own (lib/spelling/web.ts): the same checker that underlines misspelt
-// words in the note (components/editor/spellcheck.ts) gives the guesses here.
+// In a note's body the spelling is always Folevi's own (lib/spelling/web.ts), in every app, the Mac's included:
+// the same checker that underlines misspelt words there (components/editor/spellcheck.ts) gives the guesses,
+// in the line's language, then Add to dictionary and Ignore. Elsewhere (a title, a field) the Mac app keeps
+// the Mac's spelling, and the website and Windows and Linux use Folevi's.
 import { desktop } from "@/lib/desktop";
+import type { SpellLanguage } from "@/lib/spelling/languages";
 import { ignoreWebSpelling, learnWebSpelling, ownSpelling, warmWebSpelling, webSpelling } from "@/lib/spelling/web";
 
 export interface MacTextServices {
@@ -41,8 +44,9 @@ export function macTextServices(): MacTextServices | null {
   if (!warmed) {
     warmed = true;
     const idle = (window as { requestIdleCallback?: (cb: () => void, o?: { timeout: number }) => void }).requestIdleCallback;
-    if (idle) idle(warmWebSpelling, { timeout: 4000 });
-    else setTimeout(warmWebSpelling, 1500);
+    // (Called with nothing: an idle callback's own argument isn't a language.)
+    if (idle) idle(() => warmWebSpelling(), { timeout: 4000 });
+    else setTimeout(() => warmWebSpelling(), 1500);
   }
   return WEB_SERVICES;
 }
@@ -79,9 +83,15 @@ export interface MacTextItems {
  * The Mac's text items for a right-click, all null outside the Mac app. `word` is the word under the pointer in
  * editable text (and `replace` puts a guess in its place); `selection` the selected text; `at` where the pointer is.
  */
-export async function macTextActions({ word, selection, at, replace }: { word?: string | null; selection?: string; at: { x: number; y: number }; replace?: (guess: string) => void }): Promise<MacTextItems> {
-  const s = macTextServices();
+export async function macTextActions({ word, selection, at, replace, spellLang, deviceOnly }: { word?: string | null; selection?: string; at: { x: number; y: number }; replace?: (guess: string) => void; /** A note's body: Folevi's spelling in this language. */ spellLang?: SpellLanguage; /** An encrypted note: words added stay on this device. */ deviceOnly?: boolean }): Promise<MacTextItems> {
   const out: MacTextItems = { spelling: null, lookUp: null, share: null };
+  if (word && replace && spellLang) {
+    if (!ownSpelling()) return { ...(await macTextActions({ selection, at })), spelling: null };
+    const r = await webSpelling(word, spellLang).catch(() => null);
+    if (r?.misspelled) out.spelling = spellingActions(word, r.guesses, replace, deviceOnly);
+    return { ...(await macTextActions({ selection: selection || word, at })), spelling: out.spelling };
+  }
+  const s = macTextServices();
   if (!s) return out;
   if (word && replace && s.spelling) {
     const r = await s.spelling(word).catch(() => null);
@@ -99,6 +109,14 @@ export async function macTextActions({ word, selection, at, replace }: { word?: 
   }
   if (selection?.trim() && s.share) out.share = { label: "Share…", run: () => void s.share!({ text: selection, x: at.x, y: at.y }) };
   return out;
+}
+
+/** A misspelt word's menu rows (Folevi's own spelling): the guesses, then Add to dictionary and Ignore. */
+export function spellingActions(word: string, guesses: string[], replace: (guess: string) => void, deviceOnly = false): MacTextAction[] {
+  const rows: MacTextAction[] = guesses.length ? guesses.slice(0, 5).map((g) => ({ label: g, run: () => replace(g) })) : [{ label: "No suggestions", run: () => undefined, disabled: true }];
+  rows.push({ label: "Add to dictionary", run: () => learnWebSpelling(word, deviceOnly) });
+  rows.push({ label: "Ignore", run: () => ignoreWebSpelling(word, deviceOnly) });
+  return rows;
 }
 
 /** The clipboard's text for Folevi's own Paste item: the Mac app's when it has one, else the browser's. */

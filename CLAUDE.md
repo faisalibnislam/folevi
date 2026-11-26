@@ -1,16 +1,20 @@
 # Folevi
 
-> **Handoff:** read [HANDOFF.md](HANDOFF.md) first. After every change, update its Current state, Next steps and Change log, and commit it.
+> **Handoff:** the handoff is the [`handoff/`](handoff/README.md) folder. Before work: read `handoff/guide.md` and run
+> `node scripts/handoff.mjs show` (or `--area <area>`). After every change, in the same pull request: add a log entry
+> with `node scripts/handoff.mjs log "<what changed>" --area <area>` and fill it in, and update
+> `handoff/state/<area>.md` when the area's state or next steps changed. **Never edit `HANDOFF.md`** (it is
+> frozen, and CI fails a pull request that changes it) and never edit another session's log entry.
 
 Notes app: web (Next.js 16, `apps/web`), Convex backend (`convex/`), native Mac app (`apps/mac`), iPhone/iPad
 app (`apps/ios`), Android as the Capacitor app (PR 69, Play internal testing; the separate native Compose app in `apps/android` is paused), Windows and Linux (`apps/desktop`, Tauri, `docs/DESKTOP_APP.md`), shared packages in `packages/`.
 
 Start here when resuming work:
-1. `docs/HANDOFF.md`: current state, branches, unfinished work, how to release, what the owner is waiting on.
+1. `handoff/guide.md`, then `node scripts/handoff.mjs show`: setup, build, release, rules; each area's current state and next steps; the newest changes. (`docs/HANDOFF.md` is the October handoff, history only.)
 2. `docs/claude-context/memory/`: the owner's standing decisions and rules (index: `MEMORY.md`).
 3. `docs/claude-context/APPLE_DEVELOPMENT.md`: Apple team, signing and release rules.
 
-Hard rules (details in the handoff): pushing `main` deploys production, so never push it, deploy, notarize
+Hard rules (details in `handoff/guide.md` section 8): pushing `main` deploys production, so never push it, deploy, notarize
 or upload to TestFlight without the owner's OK; never use `--prod` with the Convex CLI; never print secrets;
 never touch the owner's real library or app data; no em dashes; the assistant is "Foli AI"; commit with
 `git commit <paths>`.

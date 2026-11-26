@@ -68,6 +68,15 @@ class Places(private val store: Store, private val onChange: (State) -> Unit = {
     /** The server of the open place (or its sign-in screen): where AuthBridge signs in and sends /api/auth. */
     val actingServer: ShellServer? get() = serverOf(state.current)
 
+    /**
+     * Whether an account with this user id is already here from another server than the acting one (the open
+     * sign-in screen's; null is Folevi Cloud): a sign-in that comes back with such an id is refused (AuthBridge).
+     */
+    fun belongsElsewhere(userId: String): Boolean {
+        val existing = state.accounts.firstOrNull { it.userId == userId } ?: return false
+        return !ShellServer.same(existing.server, actingServer)
+    }
+
     /** The server an account is on, by its user id. */
     fun serverOfUser(userId: String?): ShellServer? = userId?.let { u -> state.accounts.firstOrNull { it.userId == u }?.server }
 

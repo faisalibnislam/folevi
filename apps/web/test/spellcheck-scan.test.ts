@@ -8,6 +8,9 @@ import type { Node as PMNode } from "@tiptap/pm/model";
 import { ALL_MARKS, ALL_NODES } from "@/components/editor/extensions";
 import { spellableWords } from "@/components/editor/spellcheck";
 
+/** The words and where they are (each also carries its line's language, tested in spelling-languages.test.ts). */
+const plain = (doc: PMNode) => spellableWords(doc).map(({ word, from, to }) => ({ word, from, to }));
+
 const WORD = /[\p{L}\p{M}][\p{L}\p{M}\p{N}'\u2019-]*/gu;
 const ATOM = "\ufffc";
 
@@ -69,7 +72,7 @@ describe("the words spelling looks at", () => {
       para("g", []),
       para("h", [t("code first", CODE), t(" then prose, then "), t("code", CODE), t("joined")]),
     ]);
-    const now = spellableWords(doc);
+    const now = plain(doc);
     expect(now).toEqual(reference(doc));
     // (And it finds what it should: the fixture isn't empty of words.)
     expect(now.map((w) => w.word)).toEqual(expect.arrayContaining(["Teh", "brwn", "then", "bold", "quoted", "dash", "it\u2019s", "lyne", "tpyo"]));
@@ -82,10 +85,10 @@ describe("the words spelling looks at", () => {
 
   test("an edit keeps the other lines' words and moves them with the text", () => {
     const { editor } = docOf([para("a", [t("frist line")]), para("b", [t("second "), t("coded", CODE), t(" lyne")]), para("c", [t("thrid line")])]);
-    const before = spellableWords(editor.state.doc);
-    expect(spellableWords(editor.state.doc)).toBe(before);
+    const before = plain(editor.state.doc);
+    expect(spellableWords(editor.state.doc)).toBe(spellableWords(editor.state.doc));
     editor.view.dispatch(editor.state.tr.insertText("xx ", 1));
-    const after = spellableWords(editor.state.doc);
+    const after = plain(editor.state.doc);
     expect(after).toEqual(reference(editor.state.doc));
     expect(after.find((w) => w.word === "thrid")!.from).toBe(before.find((w) => w.word === "thrid")!.from + 3);
     editor.destroy();
@@ -105,7 +108,7 @@ describe("the words spelling looks at", () => {
     const old = reference(doc);
     const slow = performance.now() - t0;
     const t1 = performance.now();
-    const now = spellableWords(doc);
+    const now = plain(doc);
     const fast = performance.now() - t1;
     expect(now).toEqual(old);
     expect(now.length).toBeGreaterThan(28_000);
@@ -113,7 +116,7 @@ describe("the words spelling looks at", () => {
     // After one key, only the line typed in is read again.
     editor.view.dispatch(editor.state.tr.insertText("x", 1));
     const t2 = performance.now();
-    spellableWords(editor.state.doc);
+    plain(editor.state.doc);
     const again = performance.now() - t2;
     expect(again).toBeLessThan(slow / 4);
     editor.destroy();

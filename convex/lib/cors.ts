@@ -9,6 +9,9 @@
  */
 export const SHELL_ORIGINS: readonly string[] = ["app://folevi", "capacitor://localhost"];
 
+/** Must match convex/lib/deployment.ts (kept here so this file has no imports). */
+const DEV_DEPLOYMENTS = ["development", "test", "preview"];
+
 const DEV_HOST = (host: string) => host === "localhost" || host === "127.0.0.1" || host.endsWith(".localhost");
 
 /** Whether `origin` (an Origin header) may read the bytes. */
@@ -18,7 +21,8 @@ export function corsAllowed(origin: string | null, env: { appUrl?: string; deplo
   try {
     const app = env.appUrl ? new URL(env.appUrl).origin : null;
     if (origin === app) return true;
-    if (env.deployment === "production") return false;
+    // Only a deployment that says it is a development one; unset or mistyped counts as production.
+    if (!DEV_DEPLOYMENTS.includes((env.deployment ?? "").trim().toLowerCase())) return false;
     // Development pages only: http(s) on a local host. Other schemes never pass this rule.
     const url = new URL(origin);
     return (url.protocol === "http:" || url.protocol === "https:") && DEV_HOST(url.hostname);

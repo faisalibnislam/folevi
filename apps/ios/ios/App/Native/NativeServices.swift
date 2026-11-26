@@ -78,6 +78,9 @@ extension FoleviNativePlugin {
     @objc func setCredential(_ call: BridgeCall) {
         Task { @MainActor in
             guard self.fromFolevi else { return call.reject("Not allowed here") }
+            // A Folevi Server place: the share sheet, the widgets, Siri and Spotlight reach Folevi Cloud's REST API
+            // only (SaveTargets), so a server's token is never kept in their slot, where it would be sent there.
+            guard ShellPlaces.actingServer == nil else { return call.resolve(["value": false]) }
             guard let token = call.getString("token"), token.hasPrefix("fvpat_"), token.count < 200, let tokenId = call.getString("tokenId"), let accountId = call.getString("accountId") else { return call.reject("That isn't a token") }
             // Several places: the open account keeps its own copy too, for the share sheet and Siri when it isn't open.
             let userId = ShellPlaces.currentUserId

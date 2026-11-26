@@ -222,6 +222,9 @@ export interface NewDocument {
   collectionId?: string | null;
   tagIds?: string[];
   blocks?: WireBlock[];
+  /** An imported note's original dates (imports.importText). */
+  createdAt?: number;
+  updatedAt?: number;
 }
 
 /**
@@ -258,9 +261,10 @@ export async function insertDocument(ctx: LocalMutationCtx, input: NewDocument):
     templateKey: input.templateKey ?? null,
     collectionId: input.collectionId ?? null,
     rank,
-    createdAt: now,
+    createdAt: input.createdAt ?? now,
     ordinal,
-    updatedAt: now,
+    updatedAt: input.updatedAt ?? now,
+    ...(input.updatedAt !== undefined ? { importedUpdatedAt: input.updatedAt } : {}),
     archivedAt: null,
     deletedAt: null,
     inTrash: false,

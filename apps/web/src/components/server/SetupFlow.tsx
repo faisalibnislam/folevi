@@ -114,7 +114,8 @@ function AccountStep({ token }: { token: string }) {
           setFieldError(problems);
           if (Object.keys(problems).length) return;
           setBusy(true);
-          const { error: err } = await serverSignUp({ name: name.trim().slice(0, 80), email: address, password, callbackURL: next });
+          // The setup code goes with the sign-up: until the server has an owner, only its holder may create an account.
+          const { error: err } = await serverSignUp({ name: name.trim().slice(0, 80), email: address, password, callbackURL: next, inviteToken: token || undefined });
           if (err) {
             setBusy(false);
             setError(authErrorMessage(err, undefined, "a few minutes"));

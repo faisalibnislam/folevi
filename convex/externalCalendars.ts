@@ -21,6 +21,7 @@ import type { Doc } from "./_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
 import { assertWritable, requireProfile } from "./lib/auth";
 import { fail } from "./lib/errors";
+import { consume } from "./lib/rateLimit";
 import { sha256Hex } from "./lib/crypto";
 import { parseIcs } from "./lib/icsParse";
 import { calendarUrlProblem, downloadCalendar, normalizeCalendarUrl } from "./lib/icsFetch";
@@ -156,6 +157,9 @@ export const add = mutation({
       .take(MAX_CALENDARS + 5);
     if (mine.length >= MAX_CALENDARS) fail("limit_exceeded", `You can subscribe to up to ${MAX_CALENDARS} calendars.`);
     if (mine.some((c) => c.url === url)) fail("invalid_argument", "You’ve already added this calendar.");
+    // Each one added makes the server fetch its link: adding and removing in a loop mustn't turn into
+    // unlimited requests to addresses of someone's choosing.
+    await consume(ctx, "externalCalendar", profile._id);
     const name = cleanName(args.name ?? "");
     const used = new Set(mine.map((c) => c.color));
     const now = Date.now();
@@ -216,6 +220,7 @@ export const refresh = mutation({
     const profile = await requireProfile(ctx);
     const cal = await ownCalendar(ctx, profile, args.calendarId);
     if (cal.fetchStartedAt !== undefined && Date.now() - cal.fetchStartedAt < LEASE_MS) return null;
+    await consume(ctx, "externalCalendar", profile._id);
     // A deliberate refresh reads the text again even when it hasn't changed.
     await ctx.db.patch(cal._id, { parsedAt: undefined });
     await ctx.scheduler.runAfter(0, internal.externalCalendars.fetchNow, { calendarId: cal._id });

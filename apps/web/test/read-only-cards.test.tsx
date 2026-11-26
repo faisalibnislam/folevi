@@ -21,6 +21,18 @@ describe("read-only bookmark and file cards", () => {
     document.body.innerHTML = "";
   });
 
+  test("a bookmark's picture and icon are only ever web addresses", () => {
+    // A note nothing checked (one opened from an end-to-end encrypted note) may hold anything in these fields.
+    for (const bad of ["/api/places/sign-out", "javascript:alert(1)", "data:image/svg+xml,<svg onload=alert(1)>", "//evil.example/x.png", 7]) {
+      const host = render([block("b1", "bookmark", { url: "https://example.com/post", title: "T", image: bad, icon: bad }, "a")]);
+      expect(host.querySelector("a[data-bookmark]"), String(bad)).not.toBeNull();
+      expect(host.querySelectorAll("img"), String(bad)).toHaveLength(0);
+      document.body.innerHTML = "";
+    }
+    const host = render([block("b1", "bookmark", { url: "https://example.com/post", title: "T", image: "https://example.com/og.png", icon: "https://example.com/i.png" }, "a")]);
+    expect([...host.querySelectorAll("img")].map((i) => i.getAttribute("src")).sort()).toEqual(["https://example.com/i.png", "https://example.com/og.png"]);
+  });
+
   test("a bookmark is one link card with its title, description, site, image and icon", () => {
     const host = render([
       block("b1", "bookmark", { url: "https://example.com/post", title: "A good post", description: "What it says.", siteName: "Example", image: "https://example.com/og.png", icon: "https://example.com/icon.png" }, "a"),

@@ -549,6 +549,11 @@
   .ui-display { font-family: var(--font-display); font-weight: 600; letter-spacing: -0.012em; color: var(--color-heading); }
 
   /* Menus */
+  /* A menu's separator (ui/Menu.tsx, EditorContextMenu, EditorMenus): one hairline in the ink's own colour, so it
+     shows on a menu's glass over any page, a coloured note's or the Vault's included, light and dark (the owner,
+     2026-11-26: a light grey line vanished on a tinted menu and read as an empty gap). The same room above and
+     below in every menu. */
+  .ui-menu-sep { height: 1px; margin: 6px 8px; flex: none; background: color-mix(in srgb, var(--color-ink) 14%, transparent); }
   .ui-menu-item {
     display: flex; align-items: center; gap: 0.6rem; width: 100%; min-height: 32px; padding: 0 0.6rem; border-radius: var(--radius-small);
     font-size: var(--type-body); text-align: left; color: var(--color-ink);
@@ -1453,7 +1458,7 @@
 :root[data-desktop="mac"] :is([role="menu"], [data-menu-ghost]) [data-menu-part="chevron"] svg { width: 12px; height: 12px; stroke-width: 2.5; }
 :root[data-desktop="mac"] :is([role="menu"], [data-menu-ghost]) .ui-menu-item[aria-expanded="true"] { background: var(--mac-highlight); color: var(--color-heading); }
 :root[data-desktop="mac"] :is([role="menu"], [data-menu-ghost]) .ui-menu-item:is(:hover, [data-highlighted="true"], [aria-expanded="true"]) [data-menu-part="chevron"] { color: inherit; }
-:root[data-desktop="mac"] :is([role="menu"], [data-menu-ghost], [role="listbox"]) [role="separator"] { height: 1px; margin: 6px 10px; background: var(--color-line); }
+:root[data-desktop="mac"] :is([role="menu"], [data-menu-ghost], [role="listbox"]) [role="separator"] { height: 1px; margin: 6px 10px; background: color-mix(in srgb, var(--color-ink) 14%, transparent); }
 :root[data-desktop="mac"] :is([role="menu"], [data-menu-ghost]) .ui-caps { padding: 8px 10px 4px; font-size: var(--type-footnote); line-height: 16px; color: var(--color-ink-muted); }
 /* An item with a second line (a workspace and its plan) and an item under another keep their room. */
 :root[data-desktop="mac"] :is([role="menu"], [data-menu-ghost]) .ui-menu-item[aria-description] { padding-block: 8px; }
@@ -1696,6 +1701,15 @@
 :root:is([data-mac-native], [data-ipad-native]) [role="toolbar"][aria-label="Page tools"].ui-pop { border-radius: var(--radius-capsule); padding: 4px; }
 :root:is([data-mac-native], [data-ipad-native]) [role="toolbar"][aria-label="Page tools"].ui-pop button { border-radius: var(--radius-capsule); }
 /* A dialog is content: nearly opaque, with the glass's edge. */
+/* A menu or popover opened in the Vault (.ui-invert, the other theme): solid in the Vault's own colours, as on the
+   web, not the app's glass, whose light tint under the Vault's light ink washed the words out (the owner,
+   2026-11-26). */
+:root[data-desktop="mac"] .ui-invert .ui-pop,
+:root:is([data-mac-native], [data-ipad-native]) .ui-invert .ui-pop {
+  background: var(--color-surface-raised);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
 :root:is([data-mac-native], [data-ipad-native]) dialog.ui-pop { background: color-mix(in srgb, var(--color-surface-raised) 94%, transparent); }
 @media (prefers-reduced-transparency: reduce) {
   :root:is([data-mac-native], [data-ipad-native]) .ui-pop { background: var(--color-surface-raised); -webkit-backdrop-filter: none; backdrop-filter: none; }
@@ -1703,8 +1717,6 @@
 @media (prefers-contrast: more) {
   :root:is([data-mac-native], [data-ipad-native]) .ui-pop { box-shadow: inset 0 0 0 1px var(--color-line-strong), var(--mac-pop-shadow); }
 }
-/* A separator on glass: a hairline in the ink's own colour, so it shows in dark as it does in light. */
-:root:is([data-mac-native], [data-ipad-native]) :is([role="menu"], [data-menu-ghost], [role="listbox"]) [role="separator"] { background: color-mix(in srgb, var(--color-ink) 13%, transparent); }
 
 /* Folevi for Mac's native look: one segmented design, the pill (the owner, 2026-11-18: the left sidebar's tools
    were pills and the right panel's tabs rounded rectangles). The page's segmented controls (the panel's tabs, Write

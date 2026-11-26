@@ -38,7 +38,7 @@
 :root:not([data-iphone], [data-native="ios"]) :is([role="menu"], [data-menu-ghost])[data-variant="switcher"] [role="separator"] {
   height: 1px;
   margin: 6px 10px;
-  background: var(--color-line);
+  background: color-mix(in srgb, var(--color-ink) 14%, transparent);
 }
 :root:not([data-iphone], [data-native="ios"]) :is([role="menu"], [data-menu-ghost])[data-variant="switcher"] [data-menu-part="shortcut"] {
   padding-left: 12px;

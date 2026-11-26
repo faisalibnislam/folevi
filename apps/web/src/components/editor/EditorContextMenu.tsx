@@ -99,6 +99,11 @@ interface Sub {
   icon?: ReactNode;
   items: Entry[];
 }
+/** A mouse or trackpad drives this window (not a finger): a computer's, however narrow. */
+function pointedWithMouse(): boolean {
+  return typeof window !== "undefined" && typeof window.matchMedia === "function" && window.matchMedia("(hover: hover) and (pointer: fine)").matches;
+}
+
 type Entry = Item | Sub | "separator";
 
 const isSub = (e: Entry): e is Sub => typeof e !== "string" && "items" in e;
@@ -160,7 +165,10 @@ export function EditorContextMenu({ editor, editable, onCommentBlock }: { editor
   const toast = useToast();
   const palette = useNotePalette();
   const { navigate } = useAppRouter();
-  const phone = useIphoneApp();
+  // The phone's menu (held, its own order, no Paste) is for a phone in the hand: a narrow window on a computer (a
+  // floating note, a slim browser window) is pointed at with a mouse and keeps the desktop's menu, Paste and the
+  // Mac's spelling and Look Up included (the owner, 2026-11-26).
+  const phone = useIphoneApp() && !pointedWithMouse();
   const phoneRef = useRef(phone);
   phoneRef.current = phone;
   // The iPhone layout: a held line lifts while its menu is open (the app's own picture of it, as iOS lifts what
@@ -1156,10 +1164,10 @@ function Panel({
             </span>
           </button>
         ) : null}
-        {appLook && !root ? <div role="separator" /> : null}
+        {appLook && !root ? <div role="separator" className="ui-menu-sep" /> : null}
         {entries.map((entry, i) =>
           entry === "separator" ? (
-            <div key={`sep-${i}`} role="separator" className="mx-2 my-1 h-px bg-line" />
+            <div key={`sep-${i}`} role="separator" className="ui-menu-sep" />
           ) : appLook ? (
             <button
               key={`${entry.label}-${i}`}
@@ -1217,15 +1225,31 @@ function Panel({
                 else if (open) hoverTimer.current = setTimeout(() => setOpen(null), wait);
               }}
               onClick={() => activate(i, false)}
-              className={`ui-menu-item !min-h-[30px] !text-subheadline disabled:opacity-40 pointer-coarse:!min-h-11 ${!isSub(entry) && entry.danger ? "!text-danger" : ""}`}
+              // The same rows as every other menu (ui/Menu.tsx): its height, type, icon column, shortcut and chevron,
+              // marked by part so each platform's look (globals.css) sizes them alike.
+              className={`ui-menu-item disabled:opacity-40 pointer-coarse:min-h-11 ${!isSub(entry) && entry.danger ? "!text-danger" : ""}`}
             >
-              <span className="grid w-4 flex-none place-items-center text-muted" aria-hidden>
+              <span data-menu-part="icon" className="grid w-4 flex-none place-items-center text-muted" aria-hidden>
                 {entry.icon}
               </span>
-              <span className="min-w-0 flex-1 truncate">{entry.label}</span>
-              {!isSub(entry) && entry.shortcut ? <span className="flex-none pl-3 text-footnote text-faint pointer-coarse:hidden">{keyLabel(entry.shortcut)}</span> : null}
-              {!isSub(entry) && entry.checked ? <Check size={14} strokeWidth={2.5} aria-hidden className="flex-none text-heading" /> : null}
-              {isSub(entry) ? <ChevronRight size={14} aria-hidden className="flex-none text-faint" /> : null}
+              <span data-menu-part="label" className="min-w-0 flex-1 truncate">
+                {entry.label}
+              </span>
+              {!isSub(entry) && entry.shortcut ? (
+                <span data-menu-part="shortcut" className="flex-none text-footnote text-faint pointer-coarse:hidden">
+                  {keyLabel(entry.shortcut)}
+                </span>
+              ) : null}
+              {!isSub(entry) && entry.checked !== undefined ? (
+                <span data-menu-part="check-end" aria-hidden className="flex-none text-heading">
+                  {entry.checked ? <Check size={14} strokeWidth={2.5} /> : null}
+                </span>
+              ) : null}
+              {isSub(entry) ? (
+                <span data-menu-part="chevron" aria-hidden className="flex-none text-muted">
+                  <ChevronRight size={14} />
+                </span>
+              ) : null}
             </button>
           ),
         )}

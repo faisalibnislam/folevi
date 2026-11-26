@@ -57,3 +57,4 @@
 - [Foli AI multi-provider decisions](foli-ai-multi-provider-decisions.md): 2026-11-25, encrypted admin keys, provider per feature, Fast/Main/Heavy, cheap-first defaults, no fallback, real-cost credits
 - [native-apps-today-ui-2026-11-25.md](native-apps-today-ui-2026-11-25.md): iOS and Android go native except the writing area, matching today's UI with Liquid Glass / Material 3, iOS 26+, one big switch
 - [Desktop feature parity](desktop-feature-parity.md): 2026-11-25, web and Mac features also go to Windows and Linux when relevant; keep docs/DESKTOP_PARITY.md current
+- [Control scale](control-scale-2026-11-26.md): 2026-11-26, one control height (36, 44 on touch), corner, edge, weight and icon for every field, button, dropdown and switch on every platform; All notes is the reference

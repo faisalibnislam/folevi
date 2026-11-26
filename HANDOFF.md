@@ -2,7 +2,7 @@
 
 > Read this first if you are a Claude (or any agent) picking this project up, on this Mac or another one. Then read `CLAUDE.md`, `docs/HANDOFF.md` (the long handoff: unfinished branches, release detail, what the owner is waiting on) and `docs/claude-context/memory/MEMORY.md` (the owner's standing rules). Keep this file current: after every change to the project, update "Current state", "Next steps" and "Change log", and commit it.
 
-Last updated: 2026-11-25 · Written on: Faisal's MacBook Pro M5
+Last updated: 2026-11-26 · Written on: Faisal's MacBook Pro M5
 
 ## 1. What this is
 
@@ -250,7 +250,24 @@ The ones most likely to be broken:
 - Snapshot tests: re-record only your own snapshots; never clear `__Snapshots__` wholesale.
 - Give before/after screenshots for UI work and ask the owner with clear options when a decision is theirs.
 
-## 9. Current state (as of 2026-11-25)
+## 9. Current state (as of 2026-11-26)
+
+**One control scale for every control (2026-11-26, branch `claude/ui-scale`).** The owner: "use consistent
+rules/size/space for all UI elements"; All notes' toolbar is the reference. Every control that sits in a row (fields,
+dropdowns, buttons, icon buttons, segmented switches, a dialog's footer) is 36 px (44 on touch), compact ones 28
+(36 on touch), with one corner (10; a segment 6), one edge (1 px `--color-line` inside the box, `--control-ring`), one
+weight per role (550 labels, 400 values), 16 px icons (14 compact and for a dropdown's chevron) at a 1.5 px stroke.
+Tokens: `packages/design-tokens` `control` (CSS `--control-*`, Tailwind `h-control` / `h-control-sm` / `size-control`,
+Swift `FoleviTokens.Control`); rules in `docs/DESIGN_SYSTEM.md` "Controls". `Button` sizes are now `md` (default),
+`compact`, `icon`, `icon-compact` (`sm` is gone: its 222 uses are `md`). The Folders toolbar matches All notes (the
+6 November tinted tray is gone; `RowTray` is a plain group). The Mac look's 28 pt buttons are gone (36 there too).
+Checks: ESLint `folevi/control-scale` (error) and `apps/web/e2e/control-scale.spec.ts` (Chromium and WebKit; web, Mac
+and Windows looks; light and dark; a dialog footer; touch 44; nothing under the window buttons). Before and after
+shots: `docs/audits/control-scale-2026-11-26/`. Not checked: Vault and Settings in the browser audit (Vault needs a
+set-up vault; their classes pass the lint), the running Mac, Windows and Linux apps, and the native Swift screens
+(they copy the web's computed styles; see Next steps).
+
+## 9b. Earlier state (as of 2026-11-25)
 
 **Native iOS again, matching today's UI (2026-11-25, branch `claude/ios-native-today-ui`, worktree
 `.claude/worktrees/ios-native-today`).** The owner found the Capacitor app finicky and chose native SwiftUI for
@@ -1077,6 +1094,10 @@ signed-in account, 1.5.58's frosted folders with a large library, and the iPad c
 account button should move past iPadOS's window buttons).
 
 ## 10. Next steps / open work
+- Control scale follow-ups (2026-11-26): re-export the web's computed styles for the native Swift screens
+  (`node scripts/web-styles.mjs --app`, reads the running Dev app) so they draw the 36 px controls; add Vault (a set-up
+  vault) and Settings to `e2e/control-scale.spec.ts`; look over the editor's inline tools (collections, charts, table
+  AI, audio) at 36, which the codemod moved from 32.
 - Native iPhone performance, left from the SwiftUI audit: `CardPicture` still reads `@Environment(\.self)` (any
   environment change runs its body; cheap while the picture is kept); the Mac's `PlaceholderCard` pulses each on its
   own animation (not used on the iPhone); nothing measured with Instruments before and after.
@@ -1378,6 +1399,10 @@ account button should move past iPadOS's window buttons).
   `DATABASE_UDF_USER_TIMEOUT_SECONDS=4` for that backend. Bursts show in `convex.log` as "took a long time".
 
 ## 12. Change log
+- 2026-11-26: **One control scale** (branch `claude/ui-scale`): control tokens (36 / 28, 44 / 36 on touch), one
+  corner, edge, weight and icon stroke for every field, button, dropdown and segmented switch; Folders' toolbar now
+  matches All notes; Button sizes `md`/`compact`/`icon`/`icon-compact`; ESLint `folevi/control-scale`; Playwright
+  audit `e2e/control-scale.spec.ts`; docs/DESIGN_SYSTEM.md "Controls"; desktop parity row.
 - 2026-11-25: **Windows: home servers over plain http** (branch `claude/windows-server-bridge`, on top of
   `claude/desktop-server-places`): `src/lan_bridge.rs` relays a server place's http and ws traffic to a LAN address
   through `127.0.0.1` (WebView2 blocks it from `https://app.localhost` as mixed content), with the server's own Host.

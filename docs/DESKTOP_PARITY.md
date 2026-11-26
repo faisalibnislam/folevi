@@ -20,6 +20,7 @@ Yes = built, Partial = built with less, No = missing.
 
 | Feature | Mac | Windows | Linux | Notes |
 |---|---|---|---|---|
+| Control scale (one control height, corner, edge, weight and icon: docs/DESIGN_SYSTEM.md, Controls; 2026-11-26) | Yes | Yes | Yes | The same web CSS in all three; the Mac look's 28 pt buttons are gone. Checked headlessly by `e2e/control-scale.spec.ts` in the Mac look and the Windows look (with `--win-caption-inset`), Chromium and WebKit, light and dark; Linux draws the web look. Not checked in the running apps |
 | Menus and keyboard shortcuts | Yes | Partial | Partial | No menu bar; `host.js` `keyAction` has tabs, windows, print, settings, zoom, F11, Alt+arrows, and since PR 125 Ctrl+N, Ctrl+Shift+F, Ctrl+/, Ctrl+Shift+] and [, Ctrl+Alt+C, Ctrl+Alt+\\, Ctrl+Alt+Shift+N, Ctrl+Q (Linux). Export, Move, Trash, Copy Link and Find Next have no Ctrl key yet (the page doesn't handle them off the Mac) |
 | Text menu (spelling, Learn Word, Look Up) | Yes | Partial | Partial | Web spelling fallback; Look Up is Mac-only |
 | Quick Add shortcut and panel | Yes | Yes | Yes | Wayland uses the GlobalShortcuts portal (not tested on real Wayland) |

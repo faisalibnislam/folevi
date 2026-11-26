@@ -1382,6 +1382,20 @@ account button should move past iPadOS's window buttons).
   checkable rows) opened greyed out and took no taps. Cause: the frame's switch style (`NativeSwitchStyle`, set by
   `phoneNativeChrome`) reached the menu's Toggles and iOS can't draw a custom style as a menu checkmark. Fix:
   `PhoneMenuRow` gives its Toggle `.toggleStyle(.automatic)`. Checked on the iPhone Simulator.
+- 2026-11-26: **Main (1.7.78) merged into `claude/ios-native-today-ui` (PR 129) to clear its conflicts.** The branch
+  had released 1.6.79 (builds 103 to 106, TestFlight only) while main released 1.7.78 (build 103): both follow 1.6.78,
+  and the version script refuses a Big update after 1.6.79, so the two histories can't both stand. Resolved as:
+  version.json, CHANGELOG.json, CHANGELOG.md and every project say main's 1.7.78 (build 103); the iOS projects keep
+  this branch's iOS 26 deployment target; the 1.6.79 changelog entry is NOT in CHANGELOG.json any more. Its notes, for
+  the next release that carries the native iPhone and iPad app (1.7.79, or 1.7.78 uploaded again): summary "Folevi
+  for iPhone and iPad is native again, with the look you know: Liquid Glass bars, faster launch, smoother writing
+  and a native Foli AI."; added "Sign in to your own server from the iPhone and iPad sign-in screen"; improved
+  "iPhone and iPad screens are native SwiftUI with Liquid Glass, matching today's look", "Home and lists appear at
+  once when Folevi opens", "The writing bar rides the keyboard up and down", "Foli AI chat is native, with its
+  message box on the keyboard"; fixed "A note opened right after launch no longer shows a blank page", "Stop in Foli
+  AI works without an account". **Builds 104 to 106 are used on TestFlight (as 1.6.79): the next iOS upload needs a
+  build above 106** (`setBuild` in `scripts/version.mjs`; `version.mjs build` alone would give 104). Also merged
+  main into PR 117 and PR 112 (HANDOFF.md only, both sides kept); PR 130 was brought up to date by its own session.
 - 2026-11-25: Native iOS SwiftUI refactors (not released): each tab's stack is its own observed box
   (`PhoneTabStack`) drawn by its own view (`PhoneTabStackView`), so a push in one tab doesn't draw the others or the
   tab bar; frames kept for menus are boxes (`PhoneFrameBox`, `PhoneFrameBoxes`), not `@State` written on every scroll

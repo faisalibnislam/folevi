@@ -455,8 +455,9 @@ var foleviShellBridge = function (SHELL, host) {
         if (typeof i.body === "string") opts.body = i.body;
         return shellCall("authFetch", opts, "Error");
       },
-      convexToken: function () {
-        return shellCall("authConvexToken", {}, "Error").then(value);
+      // o.fresh: a renewal (never the token the app kept for other windows, ShellAuth.convexToken).
+      convexToken: function (o) {
+        return shellCall("authConvexToken", { fresh: !!(o && o.fresh) }, "Error").then(value);
       },
     }),
     // Foli AI on this device (Native/Shell/ShellAI.swift): Apple's on-device model or the person's own keys.

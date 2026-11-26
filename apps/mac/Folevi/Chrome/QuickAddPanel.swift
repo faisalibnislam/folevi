@@ -51,7 +51,7 @@ final class QuickAddPanel: NSObject, NSWindowDelegate {
     private var held: [NSEvent] = []
 
     /// How long its page stays after it closes (FOLEVI_QUICK_ADD_RELEASE seconds for test runs).
-    static let releaseAfter: TimeInterval = ProcessInfo.processInfo.environment["FOLEVI_QUICK_ADD_RELEASE"].flatMap(TimeInterval.init).map { max(1, $0) } ?? 60
+    static let releaseAfter: TimeInterval = ProcessInfo.processInfo.environment["FOLEVI_QUICK_ADD_RELEASE"].flatMap(TimeInterval.init).map { max(1, $0) } ?? 600
 
     /// The place Quick Add adds to: the one picked there last, or the open place.
     var place: String? {

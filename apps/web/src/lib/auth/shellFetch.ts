@@ -114,13 +114,14 @@ export function websitePage(path: string): string {
  */
 export async function hostConvexToken(
   timeoutMs: number,
+  fresh = false,
 ): Promise<{ data: { token: string } | null; error: { status: number } | null }> {
   const host = shell();
   if (!host) throw new TypeError("Failed to fetch: no app bridge");
   let timer: ReturnType<typeof setTimeout> | undefined;
   try {
     const token = await Promise.race([
-      host.auth.convexToken(),
+      host.auth.convexToken(fresh ? { fresh } : undefined),
       new Promise<never>((_resolve, reject) => {
         timer = setTimeout(() => reject(abortError()), timeoutMs);
       }),

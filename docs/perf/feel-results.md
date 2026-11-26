@@ -27,9 +27,13 @@ times that. This is the sluggishness: the code mostly waits on the network, not 
 - `apps/web/perf/latency-proxy.mjs`: a relay in front of the local backend that adds a fixed delay each way. 130 ms
   each way = a 260 ms round trip, about what the owner has to Convex. Set at run time (`?ms=`), so one build is
   measured near and far. Setup is in the spec's header.
-- WebKit (the Mac app's engine) could not be measured signed in this way: WebKit applies the pages'
-  `upgrade-insecure-requests` to `http://app.localhost` and the session cookie doesn't hold there. The Mac shell's
-  part was audited by reading the code and is covered by its XCTest suite.
+- The Mac app itself (owner's OK, 2026-11-26): `apps/mac/scripts/perf-feel.mjs`, the Debug app before and after
+  (same Swift and web code as `main` at 135a99af, and this branch), each on a scratch data folder, signed in to a
+  test account with 300 notes on the development deployment (a session from `perf/test-account.ts` handed over with
+  the Debug `test-session` command; Debug Keychain items only, removed afterwards). Everything was driven through
+  the page, no mouse or keyboard. Real network: the development deployment answers in about 270 ms from this Mac, like
+  production. A local backend can't be used here: the app's page is a secure page and WebKit refuses it a plain
+  `ws://` connection.
 
 ## Results (Chromium, full speed, 300 notes; before = `main` at 135a99af, after = this branch)
 
@@ -43,6 +47,23 @@ times that. This is the sluggishness: the code mostly waits on the network, not 
 Next to the backend (no delay): reload 262 to 415 ms before, 254 to 334 after; task check-off 96 to 163 ms before,
 12 to 13 after. The first check-off after opening Tasks (229 ms) still waits: the list on screen is the copy kept on
 this device until the live one arrives, and an optimistic change can only be made to the live one.
+
+### The Mac app (WebKit, signed in, real network, 3 runs each)
+
+| | Before | After |
+| --- | --- | --- |
+| Check a task off, click to the box showing it (9 clicks) | 708 to 1,113 ms | 3 to 9 ms |
+| The app handing a page its Convex token (9 asks) | 483 to 745 ms | 1 to 11 ms |
+| A new window's token (what its live data waits for) | 574 to 671 ms | 2 to 82 ms |
+| A new window, to its first note on screen | 415 to 429 ms | 423 to 649 ms (from the device's copy both times; noise) |
+| Launch to the first note on screen (warm) | 976 to 1,163 ms | 981 to 1,355 ms (unchanged: drawn from the device's copy) |
+| Scrolling All notes, frame gaps p95 / slowest | 18 to 19 / 55 to 66 ms | 18 / 56 to 59 ms (60 fps both) |
+
+The check-off is slower in the Mac app than in the Chromium run (about 0.7 s, not 0.35 s) because the real
+development deployment is further than the relay's 260 ms. Scrolling was measured on a short list (one screen and a
+half of cards) and shows no difference either way: the blur change is not shown to matter there. Launch and a new
+window's first note don't change because both already draw from the device's copy; what the kept token changes is
+how soon that window's data goes live (about 0.6 s sooner).
 
 Already instant before this pass, so nobody needs to look again: opening a note (blocks come from the engine and the
 device copy, warmed on hover), sidebar views (kept answers), creating a note, typing, folder changes and note moves

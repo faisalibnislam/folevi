@@ -292,7 +292,9 @@ the bridge passes `fresh` on Convex renewals); the waiting-edits count reaches t
 (it caused a places-file write, Keychain mirror and broadcast on the main thread twice per save); a place's runner
 starts 3 s after a switch; Quick Add's page stays 10 minutes. Not done (in the doc): static app pages from the edge
 (needs a hash-based CSP instead of the per-request nonce), browsers starting from the snapshot without waiting for
-`me`, a spare web view for new Mac windows. WebKit could not be measured signed in over http://app.localhost.
+`me`, a spare web view for new Mac windows. The Mac app itself measured signed in (owner's OK, `apps/mac/scripts/perf-feel.mjs`,
+development deployment, real network): task check-off 0.7 to 1.1 s to under 10 ms, a page's Convex token 0.5 to
+0.75 s to about 2 ms; launch and scrolling unchanged.
 
 **Native iOS again, matching today's UI (2026-11-25, branch `claude/ios-native-today-ui`, worktree
 `.claude/worktrees/ios-native-today`).** The owner found the Capacitor app finicky and chose native SwiftUI for
@@ -1124,8 +1126,8 @@ account button should move past iPadOS's window buttons).
 - Signed-in feel (`docs/perf/feel-results.md` "Not done"): serve the app's pages statically from Vercel's edge with a
   hash-based Content Security Policy (each website load waits 0.45 to 0.75 s for HTML from iad1 today); let browsers
   start from the snapshot when the tab's account is the last one; more optimistic clicks (tags, reorder, notification
-  read marks); share the sidebar's duplicate live queries; a prewarmed web view for new Mac windows. Measure the Mac
-  app itself signed in (needs the owner's OK to launch it) or WebKit over TLS.
+  read marks); share the sidebar's duplicate live queries; a prewarmed web view for new Mac windows. Scrolling a long
+  note list in the Mac app (the 2026-11-26 run's list was short).
 - Native iPhone performance, left from the SwiftUI audit: `CardPicture` still reads `@Environment(\.self)` (any
   environment change runs its body; cheap while the picture is kept); the Mac's `PlaceholderCard` pulses each on its
   own animation (not used on the iPhone); nothing measured with Instruments before and after.

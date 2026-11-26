@@ -4,6 +4,36 @@ Every Folevi release, newest first, written by `node scripts/version.mjs` from `
 
 Versions are MAJOR.UPDATE.PATCH, PATCH at least two digits: a Major release (2.0.00), a Big update (1.1.05 after 1.0.05) or a Small update (1.0.06 after 1.0.05).
 
+## Version 1.8.78: Big update
+
+Released 2026-11-26 14:14:27+06:00 (build 108, tag v1.8.78)
+
+Built-in spell check with suggestions and next-word prediction on Tab, a fuller Apple Notes import, and a cleaner, more consistent interface everywhere.
+
+### Added
+
+- Spell check in every app, with suggestions in the right-click menu, on a click and above the phone keyboard, in nine languages.
+- Next-word prediction: press Tab to take the suggested word, and again for the next.
+- Beta labels for Folevi for Linux and Folevi Server.
+
+### Improved
+
+- Apple Notes import brings every attachment, tags, empty folders and the original dates.
+- Every button, field and menu follows one size and spacing system.
+- Menus have one clear separator style, matching rows and no empty space before the icons.
+- Home always stays in view in the tab strip.
+- Floating notes show the note's colour from edge to edge.
+- Clicks show at once and signing in takes one round trip less, on the web and the Mac.
+- Folevi Server keeps accounts when its address changes, and Windows reaches home servers over plain http.
+- Security fixes across the backend, the web app, the apps and Folevi Server.
+
+### Fixed
+
+- Pickers such as Move to folder no longer cut off their last row on a short window.
+- Version history's top bar no longer sits under the window's buttons.
+- The typing cursor shows in the Vault's passcode field and every other dark field.
+- Desktop library: two writes to the same file can no longer both win.
+
 ## Version 1.7.78: Big update
 
 Released 2026-11-26 00:24:24+06:00 (build 107, tag v1.7.78)

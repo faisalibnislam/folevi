@@ -4,21 +4,20 @@ Keep this short and true: rewrite it when things change, and put history in `han
 
 ## Current state
 
-- Version **1.7.78**, a Big update released 2026-11-26 from PR 131's merge (`b11f3256`). `version.json`'s build is 107: every platform shipped build 103, and the native iPhone and iPad app was uploaded as 107 (builds 104 to 106 are used on TestFlight as 1.6.79, a TestFlight-only release that is not in `CHANGELOG.json`).
-- Web and Convex: deployed by each merge to `main` (Vercel builds it and runs `convex deploy`).
-- Mac: 1.7.78 published with `apps/mac/scripts/publish.mjs` (notarized, stapled, Sparkle feed, `mac/Folevi.dmg`). Not opened on a Mac after publishing.
-- iPhone and iPad: two builds on TestFlight (internal "Folevi team"): the Capacitor app (`apps/mobile`) as 1.7.78 (103), delivery `1ce1048f-6e01-45b8-9da3-a4980ac34711`, and the native app (`apps/ios`, PR 129) as 1.7.78 (107). Neither was opened on a device by a session.
-- Windows: `windows/Folevi_1.7.78_x64-setup.exe` and `_arm64-setup.exe` plus the stable names; unsigned; update feeds `desktop/windows-*/latest.json` published. Not installed on Windows.
-- Linux: six packages and `SHA256SUMS`, apt and rpm repositories, update feeds `desktop/linux-*/latest.json`; Snap Store revisions 7 (arm64) and 8 (amd64) on stable. Both AppImages passed `smoke-test.sh` in the VM.
-- Android: NOT on Play at 1.7.78 as far as any session knows (Play internal testing had 1.5.74, build 89, on 2026-11-24). The signed 1.7.78 bundle is at `~/Downloads/Folevi 1.7.78 Android/Folevi-1.7.78-103.aab`.
-- Tags `v1.6.78` and `v1.7.78` are local only (not pushed).
-- How to release: `handoff/guide.md` section 6. One version for every platform, cut with `scripts/version.mjs`; a Big update keeps the patch number (1.5.78, 1.6.78, 1.7.78). Mac deltas need the earlier ZIPs in `apps/mac/release-archive/` (kept in the main checkout).
+- Version **1.8.78**, a Big update released 2026-11-26 from PR 150's merge (`73d949ec`, tree of main `ba843571` plus the version files). `version.json`'s build is 108 and every platform below shipped 108.
+- Web and Convex: 1.8.78's code and functions live since `ba843571` deployed (08:12 UTC). The release commit's own deploy was skipped (`scripts/vercel-ignore.sh` didn't watch `version.json`), so the version label shows 1.8.78 only from PR 152's deploy, which adds that rule.
+- Mac: 1.8.78 (108) published with `apps/mac/scripts/publish.mjs`: notarized and stapled ("Notarized Developer ID"), `mac/Folevi.dmg`, Sparkle feed's first item 1.8.78 (108), deltas from the kept ZIPs; `Folevi-1.8.78.zip` added to `apps/mac/release-archive/`. Not opened on a Mac after publishing.
+- iPhone and iPad: the native app (`apps/ios`) as 1.8.78 (108) on TestFlight, internal "Folevi team", delivery `0d3e9747-6fce-4809-b30d-26c27c0f2025` (`apps/ios` `node scripts/release.mjs --no-upload`, then `xcrun altool --upload-app`). The Capacitor app was not uploaded this time (owner, 2026-11-26). Not opened on a device by a session.
+- Windows and Linux (installers, update feeds, apt and rpm, Snap Store): released from `73d949ec` by the Linux desktop session; see its log entry for what went where.
+- Android: the signed 1.8.78 bundle (version code 108, upload key "Folevi upload") is at `~/Downloads/Folevi 1.8.78 Android/Folevi-1.8.78-108.aab` for the owner's drag into Play Console's internal testing. Not on Play yet as far as any session knows.
+- Tags `v1.6.78`, `v1.7.78` and `v1.8.78`: not pushed.
+- How to release: `handoff/guide.md` section 6. One version for every platform, cut with `scripts/version.mjs`; a Big update keeps the patch number (1.6.78, 1.7.78, 1.8.78). Mac deltas need the earlier ZIPs in `apps/mac/release-archive/` (kept in the main checkout).
 
 ## Next steps
 
-- The owner drags the Android bundle into Play Console's internal testing (files that size can't be attached by a session).
-- Next free version: 1.7.79 (Small update) or 1.8.79 (Big update). The next iOS upload needs a build above 107.
-- Hardware checks nobody has done: Float this note on a Mac, a Windows PC and in Chrome; the first automatic update from 1.7.78 on Windows and Linux; the native iPhone and iPad build on devices.
+- The owner drags the Android bundle into Play Console's internal testing.
+- Next free version: 1.8.79 (Small update) or 1.9.78 (Big update): run `node scripts/version.mjs prepare`, which prints both. The next iOS upload needs a build above 108.
+- Hardware checks nobody has done: spell check and Tab prediction in the Mac app, the native iPhone app and on Windows; Float this note on a Mac, a Windows PC and in Chrome; the native iPhone app's "..." menus (All notes: View as, Sort by) on a device; the first automatic update from 1.7.78 on Windows and Linux.
 - CI builds no Swift or Kotlin: before merging anything that touches `apps/mac`, `apps/ios`, `apps/mobile` or `apps/native-kit`, build the Mac app and the iOS app (`node apps/mac/scripts/build.mjs`, `apps/ios` `node scripts/simulator.mjs build`).
 
 Detail from before 2026-11-26 is in `handoff/archive/` (search it for this area's name); nothing there is kept up to date.

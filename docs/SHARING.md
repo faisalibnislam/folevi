@@ -17,7 +17,13 @@ page above it), and a grant on its folder (or a folder above it). A lower grant 
 
 - A **Personal** has no members: only its owner, plus the people its pages or folders are shared with.
 - A **workspace**'s members see its pages by their role. A page set to **Only invited people**
-  (`accessMode: "restricted"`) is for owners, admins, its creator and the people added to it.
+  (`accessMode: "restricted"`) is for owners, admins, its creator and the people added to it. The same goes
+  for the pages under it. Being added to an open page above a restricted one doesn't reach in: only a grant
+  on the restricted page, or on a page inside it, does (`pagesGranting` in `convex/lib/auth.ts`). Having
+  made a sub-page under someone else's restricted page gives nothing by itself, so a person taken off the
+  restricted page loses its sub-pages too. Pages nest at most 32 deep (`MAX_PAGE_DEPTH`); a page found
+  deeper than that reads as restricted with no access. A copy of a restricted page (Duplicate, a copy of a
+  version, a translated copy) is restricted too.
 - Someone who isn't a member of the place but was given a page or a folder is a **guest** there: they see
   only what was shared, take no seat and aren't billed (docs/ACCOUNT_MODEL_PLAN.md, Phase D).
 

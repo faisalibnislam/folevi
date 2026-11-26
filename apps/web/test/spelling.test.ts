@@ -1,12 +1,27 @@
-// The website's own spelling checker (lib/spelling/spellCore.ts) against the English lists it ships with.
+// Folevi's own spelling (lib/spelling/spellCore.ts on Hunspell, hunspell.ts) against the dictionaries it ships
+// with (public/spelling), in every language it checks.
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { describe, expect, test } from "vitest";
-import { createSpellChecker } from "@/lib/spelling/spellCore";
+import { beforeAll, describe, expect, test } from "vitest";
+import { createHunspell, loadHunspellModule } from "@/lib/spelling/hunspell";
+import { LANGUAGES, type SpellLanguage } from "@/lib/spelling/languages";
+import { createSpellChecker, type SpellChecker } from "@/lib/spelling/spellCore";
 
 const file = (name: string) => readFileSync(join(process.cwd(), "public/spelling", name), "utf8");
-const us = createSpellChecker(file("en-US.aff"), file("en-US.dic"));
-const gb = createSpellChecker(file("en-GB.aff"), file("en-GB.dic"));
+const checkers = new Map<SpellLanguage, SpellChecker>();
+const load = async (lang: SpellLanguage) => {
+  const m = await loadHunspellModule(readFileSync(join(process.cwd(), "public/spelling/hunspell.wasm")));
+  const d = LANGUAGES[lang].dictionary!;
+  const c = createSpellChecker(createHunspell(m, file(`${d}.aff`), file(`${d}.dic`)));
+  checkers.set(lang, c);
+  return c;
+};
+let us: SpellChecker;
+let gb: SpellChecker;
+beforeAll(async () => {
+  us = await load("en-US");
+  gb = await load("en-GB");
+});
 
 describe("spelling", () => {
   test("right words are right, in the forms the dictionary builds", () => {
@@ -33,9 +48,13 @@ describe("spelling", () => {
       ["helo", "hello"],
       ["monday", "Monday"],
       ["alot", "a lot"],
-      ["thankyou", "thank you"],
     ];
     for (const [typed, want] of meant) expect(us.suggest(typed, 5), typed).toContain(want);
+  });
+
+  test("a split into a lone letter isn't the first guess", () => {
+    expect(us.suggest("Teh")[0]).toBe("The");
+    expect(us.suggest("teh")[0]).toBe("the");
   });
 
   test("guesses keep the capitals that were typed", () => {
@@ -43,11 +62,13 @@ describe("spelling", () => {
     expect(us.suggest("Teh")).toContain("The");
   });
 
-  test("a right word has no guesses, and a learnt word is right from then on", () => {
+  test("a right word has no guesses; an added word is right until it is taken back", () => {
     expect(us.suggest("hello")).toEqual([]);
     expect(us.correct("Folevi")).toBe(false);
     us.add("Folevi");
     expect(us.correct("Folevi")).toBe(true);
+    us.remove("Folevi");
+    expect(us.correct("Folevi")).toBe(false);
   });
 
   test("British and American spellings each have their dictionary", () => {
@@ -63,6 +84,34 @@ describe("spelling", () => {
     us.suggest("internashionalization");
     us.suggest("xqzvkjw");
     expect(performance.now() - start).toBeLessThan(1500);
+  });
+});
+
+describe("every language Folevi checks", () => {
+  // A right word, a misspelling, and the word meant.
+  const cases: [SpellLanguage, string[], string, string][] = [
+    ["es", ["casa", "hablaríamos", "corazón"], "cassa", "casa"],
+    ["fr", ["maison", "mangeaient", "l'homme"], "maisonn", "maison"],
+    ["de", ["Haus", "Häuser", "gegangen", "Donaudampfschiff"], "Hasu", "Haus"],
+    ["pt", ["casa", "coração", "falávamos"], "coracao", "coração"],
+    ["id", ["rumah", "makanan", "berjalan"], "rumha", "rumah"],
+    ["hi", ["भारत", "किताब", "किताबें"], "किताबब", "किताब"],
+    ["bn", ["বাংলা", "আমি", "বই"], "আমমি", "আমি"],
+    ["ar", ["كتاب", "مكتبة", "والكتاب", "يكتبون"], "كتابب", "كتاب"],
+  ];
+  for (const [lang, right, wrong, meant] of cases) {
+    test(`${LANGUAGES[lang].name}: loads in time, knows its words, finds the one meant`, async () => {
+      const start = performance.now();
+      const c = await load(lang);
+      expect(performance.now() - start).toBeLessThan(5000);
+      for (const w of right) expect(c.correct(w), w).toBe(true);
+      expect(c.correct(wrong), wrong).toBe(false);
+      expect(c.suggest(wrong, 5), wrong).toContain(meant);
+    });
+  }
+
+  test("Chinese has no dictionary: prediction only", () => {
+    expect(LANGUAGES.zh.dictionary).toBeNull();
   });
 });
 

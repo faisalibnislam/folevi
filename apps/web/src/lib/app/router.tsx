@@ -44,7 +44,7 @@ export type Route =
   | { name: "notes" }
   | { name: "tags" }
   | { name: "tag"; id: string }
-  | { name: "settings"; section: "account" | "ai" | "billing" | "security" | "privacy" | "devices" | "connected-apps" | "appearance" | "notifications" | "workspace" | "members" | "workspace-guests" | "workspace-billing" | "workspace-data" | "workspace-privacy" | "sync" | "library" | "data" | "desktop" | "this-device" }
+  | { name: "settings"; section: "account" | "ai" | "billing" | "security" | "privacy" | "devices" | "connected-apps" | "appearance" | "writing" | "notifications" | "workspace" | "members" | "workspace-guests" | "workspace-billing" | "workspace-data" | "workspace-privacy" | "sync" | "library" | "data" | "desktop" | "this-device" }
   | { name: "help" }
   | { name: "onboarding" }
   /** The Mac app's Quick Add window (apps/mac QuickAddPanel.swift). */
@@ -66,7 +66,7 @@ export type Route =
   | { name: "not_found" };
 
 const TASK_VIEWS = ["inbox", "today", "upcoming", "all", "completed", "mine"] as const;
-const SETTINGS = ["account", "ai", "billing", "security", "privacy", "devices", "connected-apps", "appearance", "notifications", "workspace", "members", "workspace-guests", "workspace-billing", "workspace-data", "workspace-privacy", "sync", "library", "data", "desktop", "this-device"] as const;
+const SETTINGS = ["account", "ai", "billing", "security", "privacy", "devices", "connected-apps", "appearance", "writing", "notifications", "workspace", "members", "workspace-guests", "workspace-billing", "workspace-data", "workspace-privacy", "sync", "library", "data", "desktop", "this-device"] as const;
 
 export function parseRoute(pathname: string): Route {
   const parts = pathname.split("/").filter(Boolean).map(decodeURIComponent);

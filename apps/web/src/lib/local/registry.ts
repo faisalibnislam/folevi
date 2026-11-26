@@ -187,6 +187,8 @@ export const LOCAL_HIDDEN: Readonly<Record<string, Capability>> = {
   "fileText:readImage": "aiServer",
   // Foli AI for an end-to-end encrypted space (lib/e2ee/features/ai.ts): never reached in local mode.
   "aiChat:sendSealed": "aiServer",
+  // Foli AI's ghost-text completions: the editor asks only with an account (lib/spelling/cloud.ts).
+  "aiComplete:*": "aiServer",
   "unsplash:*": "stockPhotos",
   "copies:copyTo": "copyTo",
   "users:listSessions": "account",

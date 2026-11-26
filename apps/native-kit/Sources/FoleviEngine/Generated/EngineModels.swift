@@ -7892,6 +7892,7 @@ public enum SettingsRunKey: String, Codable, Hashable, Sendable, CaseIterable {
     case desktopPauseShortcut = "desktop.pauseShortcut"
     case textLines = "text.lines"
     case dataImport = "data.import"
+    case dataImportAppleNotes = "data.importAppleNotes"
     case takeoutImport = "takeout.import"
     case convexMutation = "convex.mutation"
     case convexAction = "convex.action"

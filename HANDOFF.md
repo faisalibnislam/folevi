@@ -252,6 +252,19 @@ The ones most likely to be broken:
 
 ## 9. Current state (as of 2026-11-25)
 
+**Import from Apple Notes, Mac only (2026-11-26, branch `claude/vibrant-feistel-d9b85a`).** Settings > Import &
+export has "Import from Apple Notes…" (native Settings, `SettingsDataSection.swift`; the web Import screen shows it
+too when `foleviDesktop.appleNotes` is there). `FoleviMac/Model/AppleNotesReader.swift` reads Notes through its
+scripting interface (ScriptingBridge, off the main thread; per folder one Apple Event per property, then each note's
+body and attachment names, 20 at a time, with Stop); never NoteStore.sqlite. macOS asks once (Info.plist
+`NSAppleEventsUsageDescription`, entitlement `com.apple.security.automation.apple-events`); "denied" shows a button to
+Privacy & Security > Automation. The engine's new run key `data.importAppleNotes` (and the web) convert each batch
+with `lib/import/appleNotes.ts` and import it through `importDocs` (extracted from `run.ts`): Notes folders become
+Folevi folders (account first when there are several), images come along (HEIC/TIFF made JPEG on the Mac), locked
+notes and other attachments are counted and reported. Original dates are NOT kept: `imports.importText` has no date
+arguments. Tests: `apps/web/test/import-apple-notes.test.ts` (fixture HTML in `test/fixtures/apple-notes`),
+`AppleNotesReaderTests.swift`. Not run against a real Notes library (owner's rule: ask before driving Notes).
+
 **Native iOS again, matching today's UI (2026-11-25, branch `claude/ios-native-today-ui`, worktree
 `.claude/worktrees/ios-native-today`).** The owner found the Capacitor app finicky and chose native SwiftUI for
 everything but the writing area, matching today's UI with Liquid Glass and iOS's own controls (decisions:
@@ -1077,6 +1090,10 @@ signed-in account, 1.5.58's frosted folders with a large library, and the iPad c
 account button should move past iPadOS's window buttons).
 
 ## 10. Next steps / open work
+- Apple Notes import: try it against a Notes account made only for testing (or a test macOS user) with the owner's
+  OK, including a large library and the "denied" path; keep the original dates (needs optional `createdAt` /
+  `updatedAt` on `imports.importText` and the local-mode import handler); a localized "Recently Deleted" folder name
+  not in `AppleNotesReader.recentlyDeleted` would be imported.
 - Native iPhone performance, left from the SwiftUI audit: `CardPicture` still reads `@Environment(\.self)` (any
   environment change runs its body; cheap while the picture is kept); the Mac's `PlaceholderCard` pulses each on its
   own animation (not used on the iPhone); nothing measured with Instruments before and after.
@@ -1378,6 +1395,8 @@ account button should move past iPadOS's window buttons).
   `DATABASE_UDF_USER_TIMEOUT_SECONDS=4` for that backend. Bursts show in `convex.log` as "took a long time".
 
 ## 12. Change log
+- 2026-11-26: **Import from Apple Notes (Mac)** (branch `claude/vibrant-feistel-d9b85a`): reader, Settings row, web
+  source, engine run key `data.importAppleNotes`, parity row (Mac only). Not released.
 - 2026-11-25: **Windows: home servers over plain http** (branch `claude/windows-server-bridge`, on top of
   `claude/desktop-server-places`): `src/lan_bridge.rs` relays a server place's http and ws traffic to a LAN address
   through `127.0.0.1` (WebView2 blocks it from `https://app.localhost` as mixed content), with the server's own Host.

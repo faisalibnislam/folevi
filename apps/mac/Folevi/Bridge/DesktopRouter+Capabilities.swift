@@ -11,6 +11,7 @@ import AppKit
 import WebKit
 import UniformTypeIdentifiers
 import FoleviScreens
+import FoleviMac
 
 @MainActor
 enum Capabilities {
@@ -24,7 +25,7 @@ enum Capabilities {
         installed = true
         DesktopRouter.features.formUnion([
             "recognizeText", "callCapture", "screenAccess", "openSystemSettings", "recordCall", "dragFile", "dragNotes",
-            "print", "share", "setShareTarget", "indexSpotlight", "clipboard", "quickLook", "commandDone",
+            "print", "share", "setShareTarget", "indexSpotlight", "clipboard", "quickLook", "commandDone", "appleNotes",
         ])
         WebViewFactory.extraScripts.append("capabilities")
         let handlers: [String: @MainActor (DesktopRouter, [String: Any]) async throws -> [String: Any]] = [
@@ -49,6 +50,11 @@ enum Capabilities {
             "clipboardPaste": { router, _ in ["value": Clipboard.paste(into: try view(router))] },
             "quickLook": quickLook,
             "commandDone": { _, o in commandDone(o); return [:] },
+            // Import from Apple Notes (FoleviMac's AppleNotesReader; the page's lib/import/appleNotes.ts).
+            "appleNotesAccess": { _, o in ["value": await AppleNotesReader.shared.access(ask: o["ask"] as? Bool == true).rawValue] },
+            "appleNotesScan": appleNotesScan,
+            "appleNotesRead": appleNotesRead,
+            "appleNotesSettings": { _, _ in AppleNotesReader.openAutomationSettings(); return [:] },
         ]
         DesktopRouter.extraHandlers.merge(handlers) { _, new in new }
         DragOut.shared.install()
@@ -144,6 +150,29 @@ enum Capabilities {
         guard let url = settingsURL(o["pane"] as? String ?? "") else { throw BridgeError.invalid("Folevi can't open that.") }
         NSWorkspace.shared.open(url)
         return [:]
+    }
+
+    private static func appleNotesScan(_ router: DesktopRouter, _ o: [String: Any]) async throws -> [String: Any] {
+        do {
+            let scan = try await AppleNotesReader.shared.scan()
+            return ["notes": try jsonObject(scan.notes), "locked": scan.locked]
+        } catch let f as AppleNotesReader.Failure {
+            throw BridgeError(code: f.code, message: f.message)
+        }
+    }
+
+    private static func appleNotesRead(_ router: DesktopRouter, _ o: [String: Any]) async throws -> [String: Any] {
+        let ids = (o["ids"] as? [Any] ?? []).compactMap { $0 as? String }.filter { $0.count <= 300 }
+        guard !ids.isEmpty, ids.count <= 100 else { throw BridgeError.invalid("Read between 1 and 100 notes at a time.") }
+        do {
+            return ["notes": try jsonObject(try await AppleNotesReader.shared.read(ids: ids))]
+        } catch let f as AppleNotesReader.Failure {
+            throw BridgeError(code: f.code, message: f.message)
+        }
+    }
+
+    private static func jsonObject(_ value: some Encodable) throws -> Any {
+        try JSONSerialization.jsonObject(with: try JSONEncoder().encode(value))
     }
 
     private static func dragFile(_ router: DesktopRouter, _ o: [String: Any]) async throws -> [String: Any] {

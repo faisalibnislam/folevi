@@ -24,7 +24,8 @@ import { Emitter, signalOf, type Signal } from "./live";
 import { desktopChanged } from "./desktopChanged";
 import { source } from "./views";
 import { BridgeError, oneOf, only } from "./validate";
-import { importFiles } from "@/lib/import/run";
+import { importDocs, importFiles } from "@/lib/import/run";
+import { appleNotesDocs, type AppleNote } from "@/lib/import/appleNotes";
 import { importTakeout } from "@/lib/migrate/takeout";
 import { accountUpload, clientTarget, libraryPutFile } from "@/lib/migrate/target";
 import type { MigrationClient } from "@/lib/migrate/types";
@@ -495,6 +496,18 @@ function filesOf(a: Args): File[] {
   });
 }
 
+/** Notes the Mac read from Apple Notes, checked (at most 100 a batch). */
+function appleNotesOf(a: Args): AppleNote[] {
+  const list = Array.isArray(a.notes) ? a.notes : [];
+  if (!list.length || list.length > 100) throw new BridgeError("invalid_args", "Send between 1 and 100 notes.");
+  return list.map((raw) => {
+    const n = obj(raw);
+    const strings = (v: unknown) => (Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : []);
+    const num = (v: unknown) => (typeof v === "number" && Number.isFinite(v) ? v : undefined);
+    return { id: str(n, "id"), title: typeof n.title === "string" ? n.title : "", html: str(n, "html"), folder: strings(n.folder), created: num(n.created), modified: num(n.modified), attachments: strings(n.attachments) };
+  });
+}
+
 const plural = (n: number, one: string) => `${n.toLocaleString()} ${n === 1 ? one : `${one}s`}`;
 
 async function runKey(deps: EngineDeps, key: SettingsRunKey, a: Args): Promise<unknown> {
@@ -679,6 +692,16 @@ async function runKey(deps: EngineDeps, key: SettingsRunKey, a: Args): Promise<u
       });
       const ok = results.filter((r) => r.id).length;
       return { results, notes, ok, message: `Imported ${ok} of ${results.length} ${results.length === 1 ? "page" : "pages"}`, allOk: ok === results.length };
+    }
+    case "data.importAppleNotes": {
+      // A batch of notes the Mac read from Apple Notes (FoleviMac's AppleNotesReader), imported like any other
+      // source's pages; the Mac sends the next batch, so `offset` and `total` keep the progress line whole.
+      const scope: WireScope = typeof a.workspaceId === "string" ? { kind: "workspace", workspaceId: a.workspaceId } : { kind: "personal" };
+      const results = await importDocs(deps.client as never, scope, appleNotesDocs(appleNotesOf(a)), {
+        importText: (x) => deps.client.mutation(api.imports.importText, x) as never,
+        createFolder: (x) => deps.client.mutation(api.organization.createFolder, x),
+      });
+      return { results, ok: results.filter((r) => r.id).length };
     }
     case "takeout.import": {
       const [file] = filesOf(a);

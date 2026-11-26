@@ -1,6 +1,7 @@
 // Settings > Import & export (views/settings/DataSection.tsx, TakeoutCard.tsx): import files or a folder into
 // Personal or the workspace (the engine runs the web's own import, lib/import/run.ts), a takeout file, and the
-// space's export as a ZIP.
+// space's export as a ZIP. On the Mac, Import from Apple Notes too (Model/AppleNotesReader.swift reads Notes; the
+// engine imports each batch, lib/import/appleNotes.ts).
 #if os(macOS) || os(iOS)
 #if os(macOS)
 import AppKit
@@ -22,6 +23,8 @@ struct DataSettings: View {
     @State private var takeoutBusy = false
     @State private var exporting = false
     @State private var exportNote: String?
+    @State private var notesTask: Task<Void, Never>?
+    @State private var notesDenied = false
     @Environment(\.colorScheme) private var scheme
 
     struct Result: Decodable, Identifiable {
@@ -39,7 +42,22 @@ struct DataSettings: View {
                     SettingsButtons {
                         SButton(importing ? "Importing…" : "Choose files…", icon: .upload, iconSize: 14) { pick(folder: false) }.disabled(importing)
                         SButton("Import a folder…", icon: .folderUp, iconSize: 14) { pick(folder: true) }.disabled(importing)
+                        #if os(macOS)
+                        SButton("Import from Apple Notes…", icon: .notebookText, iconSize: 14) { importAppleNotes() }.disabled(importing)
+                        if notesTask != nil { SButton("Stop") { notesTask?.cancel() } }
+                        #endif
                     }
+                    #if os(macOS)
+                    SText("Apple Notes: every note you can open in Notes, in folders like Notes has them, with the images in it. Locked notes and other attachments (files, scans, drawings) stay in Notes and are listed in the results.", "progress")
+                        .padding(.top, 8)
+                    if notesDenied {
+                        VStack(alignment: .leading, spacing: 8) {
+                            SText("Folevi isn’t allowed to read Apple Notes. Turn on Notes under Folevi in System Settings > Privacy & Security > Automation, then try again.", "dd", color: SettingsColor.v("color-danger", scheme))
+                            SButton("Open System Settings") { AppleNotesReader.openAutomationSettings() }
+                        }
+                        .padding(.top, 8)
+                    }
+                    #endif
                     // (Only while there is progress to show: its room under the buttons made this card's bottom
                     // padding larger than its top and than the other cards'.)
                     if !progress.isEmpty { SText(progress, "progress").padding(.top, SettingsStyle.pair("progress").light.margin.top) }
@@ -143,6 +161,77 @@ struct DataSettings: View {
             if case .string(let m)? = o["message"] { model.frame.toast(m, tone: o["allOk"] == .bool(true) ? .success : .error) }
         }
     }
+
+    #if os(macOS)
+    /// Apple Notes: asks once for permission, finds every note, then reads and imports 20 at a time (the engine
+    /// runs the web's importer on each batch) until done or Stop.
+    private func importAppleNotes() {
+        importing = true
+        results = []
+        notesDenied = false
+        progress = "Asking Apple Notes…"
+        notesTask = Task {
+            defer {
+                importing = false
+                progress = ""
+                notesTask = nil
+            }
+            let reader = AppleNotesReader.shared
+            switch await reader.access(ask: true) {
+            case .granted: break
+            case .denied: notesDenied = true; return
+            case .unavailable: model.frame.toast("Apple Notes isn’t on this Mac.", tone: .error); return
+            case .notDetermined: model.frame.toast("Folevi wasn’t allowed to read Apple Notes.", tone: .error); return
+            }
+            do {
+                progress = "Finding your notes in Apple Notes…"
+                let scan = try await reader.scan()
+                let total = scan.notes.count
+                var all: [Result] = []
+                var start = 0
+                while start < total, !Task.isCancelled {
+                    let refs = Array(scan.notes[start..<min(start + 20, total)])
+                    progress = "Importing notes \(start + 1) to \(start + refs.count) of \(total)…"
+                    var bodies: [String: AppleNotesReader.Body] = [:]
+                    for b in try await reader.read(ids: refs.map(\.id)) { bodies[b.id] = b }
+                    var notes: [JSONValue] = []
+                    for r in refs {
+                        guard let b = bodies[r.id] else {
+                            all.append(Result(name: (r.folder + [r.title]).joined(separator: " / "), id: nil, warnings: [], error: "Notes didn’t hand this note over (it may have been deleted or locked meanwhile).", images: nil))
+                            continue
+                        }
+                        notes.append(Self.json(r, b))
+                    }
+                    if !notes.isEmpty, !Task.isCancelled {
+                        var args: [String: JSONValue] = ["notes": .array(notes)]
+                        if let w = workspace { args["workspaceId"] = .string(w.id) }
+                        if case .object(let o)? = await model.run(.dataImportAppleNotes, args, quiet: true) { all += o["results"]?.decoded([Result].self) ?? [] }
+                    }
+                    results = all
+                    start += refs.count
+                }
+                let ok = all.filter { $0.id != nil }.count
+                var line = Task.isCancelled ? "Stopped: imported \(ok) of \(total) notes" : "Imported \(ok) of \(total) notes from Apple Notes"
+                if scan.locked > 0 { line += "; \(scan.locked) locked \(scan.locked == 1 ? "note" : "notes") skipped (unlock \(scan.locked == 1 ? "it" : "them") in Notes to import)" }
+                model.frame.toast(line, tone: !Task.isCancelled && ok == all.count ? .success : .error)
+            } catch let f as AppleNotesReader.Failure where f.code == "denied" {
+                notesDenied = true
+            } catch {
+                model.frame.toast(error.localizedDescription, tone: .error)
+            }
+        }
+    }
+
+    nonisolated static func json(_ r: AppleNotesReader.NoteRef, _ b: AppleNotesReader.Body) -> JSONValue {
+        var o: [String: JSONValue] = [
+            "id": .string(r.id), "title": .string(r.title), "html": .string(b.html),
+            "folder": .array(r.folder.map { .string($0) }), "attachments": .array(b.attachments.map { .string($0) }),
+        ]
+        if let c = r.created { o["created"] = .number(c) }
+        if let m = r.modified { o["modified"] = .number(m) }
+        return .object(o)
+    }
+    #endif
 
     private func pickTakeout() {
         let panel = NSOpenPanel()

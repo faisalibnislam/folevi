@@ -71,6 +71,8 @@
 			<dict/>
 		</dict>
 	</array>
+	<key>NSAppleEventsUsageDescription</key>
+	<string>Folevi reads your notes from Apple Notes when you import them. It only reads, and only when you choose Import from Apple Notes.</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Folevi records audio into your notes when you ask it to.</string>
 	<!-- Folevi Server: finding servers on the home network (Bonjour, LocalServers in ShellServer.swift). -->

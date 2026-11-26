@@ -48,7 +48,7 @@ function base64ToBytes(b64: string): Uint8Array<ArrayBuffer> {
   return out;
 }
 
-function dataUriImage(src: string, n: number): ImportImage | null {
+export function dataUriImage(src: string, n: number): ImportImage | null {
   const m = /^data:(image\/(?:png|jpeg|gif|webp));base64,(.+)$/i.exec(src);
   if (!m) return null;
   const mime = m[1]!.toLowerCase();

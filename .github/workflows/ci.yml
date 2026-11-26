@@ -27,6 +27,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - name: Generated files are up to date (tokens, block schema, email templates, native bridge, icons)
         run: |
+          node scripts/handoff.mjs check
           node packages/design-tokens/scripts/build.mjs --check
           node packages/editor-schema/scripts/generate.mjs --check
           node packages/design-tokens/scripts/contrast.mjs

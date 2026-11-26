@@ -240,7 +240,11 @@ struct PhoneMenuRow: View {
             Menu { PhoneMenuItems(children) } label: { label(item) }
                 .disabled(item.disabled)
         } else if item.checkable {
+            // The system's own toggle style: the frame's switch style (NativeSwitchStyle, set by phoneNativeChrome)
+            // reaches into menus too, and iOS can't turn a custom style into a menu row's checkmark, so the menu
+            // opened greyed out and took no taps.
             Toggle(isOn: Binding(get: { item.checked }, set: { _ in entry.action() })) { label(item) }
+                .toggleStyle(.automatic)
                 .disabled(item.disabled)
         } else {
             Button(role: item.danger ? .destructive : nil) { entry.action() } label: { label(item) }

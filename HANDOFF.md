@@ -1077,9 +1077,6 @@ signed-in account, 1.5.58's frosted folders with a large library, and the iPad c
 account button should move past iPadOS's window buttons).
 
 ## 10. Next steps / open work
-- Native iPhone, bug found 2026-11-25 (also in build 106 on TestFlight): a list's "…" menu (All notes: View as, Sort
-  by; `RebuildLists.showMenu` through `PhoneMenuLayer`) opens half faded and its rows don't take a tap; a tap
-  outside closes it. The + menu (iOS's own `Menu`) works. Not fixed yet.
 - Native iPhone performance, left from the SwiftUI audit: `CardPicture` still reads `@Environment(\.self)` (any
   environment change runs its body; cheap while the picture is kept); the Mac's `PlaceholderCard` pulses each on its
   own animation (not used on the iPhone); nothing measured with Instruments before and after.
@@ -1396,6 +1393,10 @@ account button should move past iPadOS's window buttons).
   install's leftover files with a clear log line, NAS icons from the app icon, and Connect's Fly config (live at
   connect.folevi.com; services/connect/OPS.md). The owner's DS223 runs Folevi Server on Connect as
   `6ge2xhr4kl.folevi.app` (owner: keep it on).
+- 2026-11-26: Native iPhone: a bar's "…" menu (All notes' View as and Sort by, Tags' Sort by, every iOS menu with
+  checkable rows) opened greyed out and took no taps. Cause: the frame's switch style (`NativeSwitchStyle`, set by
+  `phoneNativeChrome`) reached the menu's Toggles and iOS can't draw a custom style as a menu checkmark. Fix:
+  `PhoneMenuRow` gives its Toggle `.toggleStyle(.automatic)`. Checked on the iPhone Simulator.
 - 2026-11-26: **Main (1.7.78) merged into `claude/ios-native-today-ui` (PR 129) to clear its conflicts.** The branch
   had released 1.6.79 (builds 103 to 106, TestFlight only) while main released 1.7.78 (build 103): both follow 1.6.78,
   and the version script refuses a Big update after 1.6.79, so the two histories can't both stand. Resolved as:

@@ -54,7 +54,7 @@ export async function syncPageCards(client: Client, engine: SyncEngine, input: {
 /** Moves a page under another page (or back to the top level), from the page menu or the Info panel. */
 export function MovePageDialog(props: { open: boolean; onClose: () => void; documentId: string; title: string; currentParentId: string | null; home?: WireScope | null }) {
   return (
-    <Dialog open={props.open} onClose={props.onClose} title="Move page" description={`Choose a page to nest “${props.title || "Untitled"}” under.`}>
+    <Dialog open={props.open} onClose={props.onClose} title="Move page" description={`Choose a page to nest “${props.title || "Untitled"}” under.`} fit>
       <PagePicker {...props} />
     </Dialog>
   );
@@ -150,7 +150,7 @@ export function PagePicker({
           {error}
         </p>
       ) : null}
-      <ul className="mt-3 max-h-[min(360px,50dvh)] space-y-0.5 overflow-y-auto" aria-label={query ? "Matching pages" : "Recent pages"} aria-busy={loading}>
+      <ul className="mt-3 max-h-[min(360px,50dvh)] min-h-0 space-y-0.5 overflow-y-auto" aria-label={query ? "Matching pages" : "Recent pages"} aria-busy={loading}>
         {currentParentId ? (
           <li>
             <button type="button" disabled={busy} onClick={() => void doMove(null, null)} className="ui-menu-item w-full disabled:opacity-50">

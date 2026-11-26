@@ -837,7 +837,7 @@ function RelationEditor({ label, scope, value, onChange }: { label: string; scop
         </button>
       ) : null}
       {scope ? (
-        <Dialog open={open} onClose={() => setOpen(false)} title="Link a page" description={label} size="sm">
+        <Dialog open={open} onClose={() => setOpen(false)} title="Link a page" description={label} size="sm" fit>
           {open ? <PagePicker scope={scope} exclude={value} onPick={(id) => onChange([...value, id])} /> : null}
         </Dialog>
       ) : null}
@@ -877,7 +877,7 @@ function PagePicker({ scope, exclude, onPick }: { scope: WireScope; exclude: str
     }
   };
   return (
-    <div>
+    <div className="flex min-h-0 flex-col">
       <label className="flex items-center gap-2 rounded-chip ui-input px-3">
         <Search size={14} aria-hidden className="text-faint" />
         <input
@@ -899,7 +899,7 @@ function PagePicker({ scope, exclude, onPick }: { scope: WireScope; exclude: str
         />
       </label>
       <p className="ui-caps mt-3 px-1">{debounced ? "Matching pages" : "Recent pages"}</p>
-      <ul id={listId} role="listbox" aria-label="Pages" className="mt-1 max-h-64 overflow-y-auto">
+      <ul id={listId} role="listbox" aria-label="Pages" className="mt-1 max-h-64 min-h-0 overflow-y-auto">
         {options.map((d, i) => (
           <li
             key={d.id}

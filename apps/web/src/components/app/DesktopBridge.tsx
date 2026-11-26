@@ -142,8 +142,12 @@ function Bridge() {
     let last = "";
     const place = () => {
       frame = 0;
-      // A block in full canvas covers the window: its toolbar's space comes first.
-      const spaces = [...document.querySelectorAll<HTMLElement>(".fb-canvas-card[data-full] .ui-traffic-space"), ...document.querySelectorAll<HTMLElement>(".ui-traffic-space")];
+      // What covers the window comes first: a full-window screen (version history), then a block in full canvas.
+      const spaces = [
+        ...document.querySelectorAll<HTMLElement>("dialog[open] .ui-traffic-space"),
+        ...document.querySelectorAll<HTMLElement>(".fb-canvas-card[data-full] .ui-traffic-space"),
+        ...document.querySelectorAll<HTMLElement>(".ui-traffic-space"),
+      ];
       const spot = spaces.map((el) => el.getBoundingClientRect()).find((r) => r.width > 0);
       if (!spot) return;
       const next = { x: spot.left, y: spot.top, height: spot.height };
@@ -159,7 +163,7 @@ function Bridge() {
       if (!frame) frame = requestAnimationFrame(place);
     };
     const watch = new MutationObserver(soon);
-    watch.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ["data-full"] });
+    watch.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ["data-full", "open"] });
     window.addEventListener("resize", soon);
     document.addEventListener("visibilitychange", soon);
     soon();

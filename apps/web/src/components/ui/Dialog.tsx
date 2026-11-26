@@ -67,6 +67,7 @@ export function Dialog({
   children,
   footer,
   size = "md",
+  fit = false,
   confirm,
 }: {
   open: boolean;
@@ -76,6 +77,9 @@ export function Dialog({
   children?: ReactNode;
   footer?: ReactNode;
   size?: "sm" | "md" | "lg" | "xl";
+  /** The body is a column whose list (`min-h-0`) shrinks to fit a short window, so the list is the one thing that
+   *  scrolls and its last row is never cut off under the dialog's edge (the owner, 2026-11-26). */
+  fit?: boolean;
   /** A confirmation: the system's alert in the apps (see DialogConfirm). */
   confirm?: DialogConfirm;
 }) {
@@ -176,7 +180,7 @@ export function Dialog({
               <X size={16} aria-hidden />
             </IconButton>
           </header>
-          <div className="min-h-0 flex-1 overflow-y-auto px-6 py-4">{children}</div>
+          <div className={`min-h-0 flex-1 overflow-y-auto px-6 py-4 ${fit ? "flex flex-col" : ""}`}>{children}</div>
           {footer ? <footer className="flex justify-end gap-2 bg-[color-mix(in_oklab,var(--color-surface-sunken)_60%,transparent)] px-6 py-3.5 shadow-[inset_0_1px_0_var(--color-line)]">{footer}</footer> : null}
         </div>
       ) : null}

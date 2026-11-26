@@ -471,7 +471,7 @@ test.describe("the website's speed", { tag: "@web-perf" }, () => {
     await idle(page, cdp, "note");
     const folio = page.getByRole("navigation", { name: "Folio" });
     // A note's sidebar holds its own tools: the Home tab brings the folio's back.
-    await measure(page, cdp, "Home tab (from a note)", () => strip.getByRole("link", { name: "Home", exact: true }).click(), shown("main a[href^='/d/']"));
+    await measure(page, cdp, "Home tab (from a note)", () => page.locator("[data-tab-home]").click(), shown("main a[href^='/d/']"));
     await page.waitForTimeout(1000);
     await clearNames(page);
     await measure(page, cdp, "All notes", () => folio.getByRole("link", { name: "All notes" }).click(), shown("main a[href^='/d/']", "Note 1"));
@@ -491,7 +491,7 @@ test.describe("the website's speed", { tag: "@web-perf" }, () => {
     });
     const titles = ["Note 240", "Note 239", "Note 238", "Long note 1"];
     for (const t of titles) {
-      await strip.getByRole("link", { name: "Home", exact: true }).click();
+      await page.locator("[data-tab-home]").click();
       await folio.getByRole("link", { name: "All notes" }).click();
       await expect(page.locator("main a[href^='/d/']", { hasText: "Note 1" }).first()).toBeVisible({ timeout: 60_000 });
       await page.waitForTimeout(800);
@@ -570,7 +570,7 @@ test.describe("the website's speed", { tag: "@web-perf" }, () => {
     await typing(page, cdp, "joined pane", " typed beside two other notes");
 
     // 7. Views: Tasks, Calendar, Graph, Home.
-    await strip.getByRole("link", { name: "Home", exact: true }).click();
+    await page.locator("[data-tab-home]").click();
     await expect(folio).toBeVisible();
     await page.waitForTimeout(1000);
     for (const [label, name, until] of [

@@ -55,7 +55,7 @@ export function MoveToFolderDialog({
   const folders = folderIds?.length ?? 0;
   const what = folders ? selectionNoun(count, folders) : count === 1 ? `“${noteTitle?.trim() || "Untitled"}”` : `${count.toLocaleString()} notes`;
   return (
-    <Dialog open={open} onClose={onClose} title="Move to folder" description={`Choose where ${what} should live.`} size="sm">
+    <Dialog open={open} onClose={onClose} title="Move to folder" description={`Choose where ${what} should live.`} size="sm" fit>
       <FolderPicker open={open} onClose={onClose} onPick={onPick} currentFolderId={currentFolderId} movingFolderIds={folders ? folderIds : undefined} notesToo={count > 0} />
     </Dialog>
   );
@@ -234,7 +234,7 @@ export function FolderPicker({
           </button>
         </div>
       ) : null}
-      <ul ref={listRef} hidden={naming} id={`${baseId}-list`} role="listbox" aria-label="Folders" aria-busy={org === undefined} className="mt-3 max-h-[min(360px,50dvh)] space-y-0.5 overflow-y-auto">
+      <ul ref={listRef} hidden={naming} id={`${baseId}-list`} role="listbox" aria-label="Folders" aria-busy={org === undefined} className="mt-3 max-h-[min(360px,50dvh)] min-h-0 space-y-0.5 overflow-y-auto">
         {options.map((o, i) => {
           const here = isCurrent(o);
           const searching = Boolean(q.trim());
@@ -294,7 +294,7 @@ export function MoveFolderDialog({
   onPick: (parent: FolderTarget) => void;
 }) {
   return (
-    <Dialog open={open} onClose={onClose} title={`Move “${folder.name}”`} description="Choose a folder to put it in, or move it to the top level. Its notes and subfolders go with it." size="sm">
+    <Dialog open={open} onClose={onClose} title={`Move “${folder.name}”`} description="Choose a folder to put it in, or move it to the top level. Its notes and subfolders go with it." size="sm" fit>
       <FolderPicker open={open} onClose={onClose} onPick={onPick} currentFolderId={folder.parentFolderId} movingFolderId={folder.id} />
     </Dialog>
   );

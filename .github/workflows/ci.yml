@@ -19,6 +19,9 @@ jobs:
     timeout-minutes: 25
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # Two commits: on a pull request the merge commit and what it merges into (the handoff check below).
+          fetch-depth: 2
       - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
@@ -27,7 +30,9 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - name: Generated files are up to date (tokens, block schema, email templates, native bridge, icons)
         run: |
-          node scripts/handoff.mjs check
+          # The handoff is the handoff/ folder; HANDOFF.md is frozen (handoff/README.md). On a pull request HEAD is
+          # the merge commit and HEAD^1 what it merges into: the file must be the same in both.
+          if [ "${{ github.event_name }}" = "pull_request" ]; then node scripts/handoff.mjs check --base HEAD^1; else node scripts/handoff.mjs check; fi
           node packages/design-tokens/scripts/build.mjs --check
           node packages/editor-schema/scripts/generate.mjs --check
           node packages/design-tokens/scripts/contrast.mjs

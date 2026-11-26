@@ -12,8 +12,11 @@ change adds a file of its own instead of editing a shared one.
 | `log/<date>-<time>Z-<words>.md` | One file per change: what changed, what was checked, what is left | Only the session that made it |
 | `archive/` | `HANDOFF.md`'s old "Current state", "Next steps" and "Change log" as they stood on 2026-11-26 | Nobody (frozen) |
 
-`HANDOFF.md` at the repo root is a pointer to this folder and must not change. CI runs
-`node scripts/handoff.mjs check`, which fails when anything is added to it.
+`HANDOFF.md` at the repo root is frozen: nothing may be added to it or changed in it. On every pull request CI runs
+`node scripts/handoff.mjs check --base HEAD^1`, which fails when the pull request changes that file. It still holds
+the old text for now, because replacing it while other branches were adding to it would have conflicted with each
+of them; once none is left it becomes a short pointer to this folder (the one change the check allows), and
+`archive/` already holds a copy of its old sections.
 
 ## What to do
 
@@ -36,7 +39,9 @@ area's current state or next steps changed, update `state/<area>.md`.
 
 ## Rules
 
-- Never add to `HANDOFF.md`. Never edit or delete another session's log entry; write a new one that corrects it.
+- Never edit `HANDOFF.md`. Never edit or delete another session's log entry; write a new one that corrects it.
+- A branch that already added to `HANDOFF.md`: after merging `main`, `git checkout origin/main -- HANDOFF.md` and put
+  what the branch had added into a log entry (and its area's state file).
 - A state file says what is true now. When something stops being true, remove it; history lives in the log.
 - One area, one state file. A new area is a new file in `state/` (the script reads the areas from the folder).
 - Releases: record what went live, and how it was checked, in `state/release.md` and in a log entry.

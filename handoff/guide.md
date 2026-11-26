@@ -252,8 +252,8 @@ The ones most likely to be broken:
 - Snapshot tests: re-record only your own snapshots; never clear `__Snapshots__` wholesale.
 - Give before/after screenshots for UI work and ask the owner with clear options when a decision is theirs.
 - The handoff is the `handoff/` folder: after every change add a log entry (`node scripts/handoff.mjs log "<what
-  changed>" --area <area>`) and update your area's `handoff/state/<area>.md`. Never add to `HANDOFF.md` (a pointer;
-  CI fails a pull request that changes it) and never edit another session's log entry (`handoff/README.md`).
+  changed>" --area <area>`) and update your area's `handoff/state/<area>.md`. Never edit `HANDOFF.md` (frozen; CI
+  fails a pull request that changes it) and never edit another session's log entry (`handoff/README.md`).
 - Several pull requests open at once: land them through one integration branch rather than merging `main` into each
   (`handoff/state/repo.md`).
 

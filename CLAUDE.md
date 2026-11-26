@@ -3,8 +3,8 @@
 > **Handoff:** the handoff is the [`handoff/`](handoff/README.md) folder. Before work: read `handoff/guide.md` and run
 > `node scripts/handoff.mjs show` (or `--area <area>`). After every change, in the same pull request: add a log entry
 > with `node scripts/handoff.mjs log "<what changed>" --area <area>` and fill it in, and update
-> `handoff/state/<area>.md` when the area's state or next steps changed. **Never edit `HANDOFF.md`** (it is only a
-> pointer, and CI fails a pull request that changes it) and never edit another session's log entry.
+> `handoff/state/<area>.md` when the area's state or next steps changed. **Never edit `HANDOFF.md`** (it is
+> frozen, and CI fails a pull request that changes it) and never edit another session's log entry.
 
 Notes app: web (Next.js 16, `apps/web`), Convex backend (`convex/`), native Mac app (`apps/mac`), iPhone/iPad
 app (`apps/ios`), Android as the Capacitor app (PR 69, Play internal testing; the separate native Compose app in `apps/android` is paused), Windows and Linux (`apps/desktop`, Tauri, `docs/DESKTOP_APP.md`), shared packages in `packages/`.

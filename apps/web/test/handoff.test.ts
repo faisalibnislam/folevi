@@ -1,5 +1,5 @@
-// The handoff is a folder (handoff/README.md, scripts/handoff.mjs): HANDOFF.md stays a pointer, every change adds
-// a file of its own, and each area has one short state file. Until 2026-11-26 every session appended to HANDOFF.md
+// The handoff is a folder (handoff/README.md, scripts/handoff.mjs): HANDOFF.md is frozen, every change adds a file
+// of its own, and each area has one short state file. Until 2026-11-26 every session appended to HANDOFF.md
 // and each merged pull request made every other open one conflict there.
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -22,16 +22,21 @@ describe("the handoff folder", () => {
   });
   afterEach(() => rmSync(root, { recursive: true, force: true }));
 
-  test("this repository's handoff is well formed, and HANDOFF.md is only the pointer", () => {
+  test("this repository's handoff is well formed", () => {
     expect(h.problems(repo)).toEqual([]);
     expect(h.areas(repo)).toContain("release");
   });
 
-  test("anything added to HANDOFF.md is refused, with what to do instead", () => {
-    writeFileSync(join(root, "HANDOFF.md"), `${h.POINTER}\n- 2026-11-27: something changed\n`);
-    const found: string[] = h.problems(root);
-    expect(found).toHaveLength(1);
-    expect(found[0]).toContain("node scripts/handoff.mjs log");
+  test("HANDOFF.md is frozen: a change leaves it as it was or makes it the pointer, nothing else", () => {
+    const old = "# Folevi: handoff\n\n## 12. Change log\n- 2026-11-25: something\n";
+    expect(h.handoffFileProblem(old, old)).toBe("");
+    expect(h.handoffFileProblem(old, h.POINTER)).toBe("");
+    expect(h.handoffFileProblem(h.POINTER, h.POINTER)).toBe("");
+    const added: string = h.handoffFileProblem(old, `${old}- 2026-11-27: something else\n`);
+    expect(added).toContain("HANDOFF.md is frozen");
+    expect(added).toContain("node scripts/handoff.mjs log");
+    expect(h.handoffFileProblem(h.POINTER, `${h.POINTER}\n- one more line\n`)).toContain("frozen");
+    expect(h.handoffFileProblem(null, old)).toContain("frozen");
   });
 
   test("a new entry is a file of its own, named by time, branch and title, so two never collide", () => {

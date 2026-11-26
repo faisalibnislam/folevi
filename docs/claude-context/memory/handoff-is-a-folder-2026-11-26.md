@@ -2,8 +2,8 @@
 
 The owner, after two days of pull requests conflicting in `HANDOFF.md`: "yes, set that up so it stops recurring".
 
-- `HANDOFF.md` is a pointer and never changes. CI's first step (`node scripts/handoff.mjs check`) fails a pull
-  request that edits it.
+- `HANDOFF.md` is frozen and never changes (it becomes a short pointer once no branch still adds to it). On a pull
+  request CI's first step (`node scripts/handoff.mjs check --base HEAD^1`) fails when the file differs from main's.
 - After every change: `node scripts/handoff.mjs log "<what changed>" --area <area>` makes a file of its own in
   `handoff/log/`; fill it in. Update `handoff/state/<area>.md` when the area's state or next steps changed.
 - Read with `node scripts/handoff.mjs show` (or `--area <area>`); the lasting guide is `handoff/guide.md`.

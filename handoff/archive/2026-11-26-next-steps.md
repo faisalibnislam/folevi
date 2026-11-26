@@ -4,6 +4,11 @@
 > Nothing here is kept up to date: the current state is in `handoff/state/`, new entries go in `handoff/log/`.
 
 ## 10. Next steps / open work
+- Signed-in feel (`docs/perf/feel-results.md` "Not done"): serve the app's pages statically from Vercel's edge with a
+  hash-based Content Security Policy (each website load waits 0.45 to 0.75 s for HTML from iad1 today); let browsers
+  start from the snapshot when the tab's account is the last one; more optimistic clicks (tags, reorder, notification
+  read marks); share the sidebar's duplicate live queries; a prewarmed web view for new Mac windows. Measure the Mac
+  app itself signed in (needs the owner's OK to launch it) or WebKit over TLS.
 - Native iPhone performance, left from the SwiftUI audit: `CardPicture` still reads `@Environment(\.self)` (any
   environment change runs its body; cheap while the picture is kept); the Mac's `PlaceholderCard` pulses each on its
   own animation (not used on the iPhone); nothing measured with Instruments before and after.

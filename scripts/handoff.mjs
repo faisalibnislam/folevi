@@ -7,8 +7,9 @@
 //   node scripts/handoff.mjs log "<title>" --area <a> [--body "<text>"]
 //                                                              a new entry in handoff/log/ (prints its path)
 //   node scripts/handoff.mjs areas                             the areas (one file each in handoff/state/)
-//   node scripts/handoff.mjs check                             what CI runs: HANDOFF.md is only the pointer, and
-//                                                              every entry and state file is well formed
+//   node scripts/handoff.mjs check [--base <ref>]              what CI runs: every entry and state file is well
+//                                                              formed, and (with --base) HANDOFF.md is as <ref>
+//                                                              has it: frozen, nothing may be added to it
 import { execFileSync } from "node:child_process";
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
@@ -16,7 +17,11 @@ import { fileURLToPath } from "node:url";
 
 export const REPO = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
-/** HANDOFF.md, whole: a pointer and nothing else. Anything added to it fails `check`. */
+/**
+ * What HANDOFF.md becomes once nothing is in flight that still adds to it: a pointer and nothing else. Until then
+ * the file is frozen as it stood on 2026-11-26. Either way a pull request may not change it (handoffFileProblem),
+ * except to this text.
+ */
 export const POINTER = `# Folevi: handoff
 
 Read this first if you are a Claude (or any agent) picking this project up.
@@ -84,15 +89,38 @@ ${body.trim() || "What changed, what was checked (and how), and what is left."}
   return { name, text };
 }
 
-/** Everything wrong with the handoff's files ([] when it is fine). */
-export function problems(root = REPO) {
+/**
+ * HANDOFF.md is frozen: a change may leave it exactly as it was, or replace it with the pointer, nothing else.
+ * Returns what is wrong ("" when nothing is). `before` is null when the base has no such file.
+ */
+export function handoffFileProblem(before, after) {
+  if (after === before || after === POINTER) return "";
+  return (
+    "HANDOFF.md is frozen and this change edits it. Put what you wrote there in a file of its own instead: " +
+    'node scripts/handoff.mjs log "<what changed>" --area <area> (and update handoff/state/<area>.md), ' +
+    "then restore the file: git checkout origin/main -- HANDOFF.md"
+  );
+}
+
+/** A file's text at a git ref, or null when the ref has no such file. */
+function fileAt(root, ref, file) {
+  try {
+    return execFileSync("git", ["show", `${ref}:${file}`], { cwd: root, encoding: "utf8", maxBuffer: 64 * 1024 * 1024, stdio: ["ignore", "pipe", "ignore"] });
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Everything wrong with the handoff's files ([] when it is fine). With `base` (a git ref: the commit a pull
+ * request merges into), also that HANDOFF.md is unchanged from it.
+ */
+export function problems(root = REPO, { base = null } = {}) {
   const out = [];
-  if (read(root, "HANDOFF.md") !== POINTER)
-    out.push(
-      "HANDOFF.md is only a pointer and must not change. Put what you wrote there in a new file instead: " +
-        'node scripts/handoff.mjs log "<what changed>" --area <area> (and update handoff/state/<area>.md). ' +
-        "To restore the pointer: git checkout origin/main -- HANDOFF.md",
-    );
+  if (base) {
+    const problem = handoffFileProblem(fileAt(root, base, "HANDOFF.md"), read(root, "HANDOFF.md"));
+    if (problem) out.push(problem);
+  }
   const known = areas(root);
   if (!known.length) out.push(`${STATE}/ has no area files.`);
   const marker = /^(<<<<<<<|=======$|>>>>>>>)/m;
@@ -165,7 +193,7 @@ if (fileURLToPath(import.meta.url) === process.argv[1]) {
     writeFileSync(file, text);
     console.log(`${LOG}/${name}`);
   } else if (command === "check") {
-    const found = problems();
+    const found = problems(REPO, { base: value("--base") ?? null });
     if (found.length) fail(found.map((p) => `handoff: ${p}`).join("\n"));
     console.log(`handoff: ok (${areas().length} areas, ${list(REPO, LOG).filter((f) => f !== "README.md").length} log entries)`);
   } else {

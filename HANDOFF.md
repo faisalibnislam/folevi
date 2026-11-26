@@ -2,7 +2,7 @@
 
 > Read this first if you are a Claude (or any agent) picking this project up, on this Mac or another one. Then read `CLAUDE.md`, `docs/HANDOFF.md` (the long handoff: unfinished branches, release detail, what the owner is waiting on) and `docs/claude-context/memory/MEMORY.md` (the owner's standing rules). Keep this file current: after every change to the project, update "Current state", "Next steps" and "Change log", and commit it.
 
-Last updated: 2026-11-25 · Written on: Faisal's MacBook Pro M5
+Last updated: 2026-11-26 · Written on: Faisal's MacBook Pro M5
 
 ## 1. What this is
 
@@ -1435,6 +1435,13 @@ account button should move past iPadOS's window buttons).
 - 2026-11-25: Native Foli AI on iPhone finished on `claude/ios-native-foli-ai` (glass composer on the keyboard, Stop, follow-ups crash, local message ids).
 - 2026-11-25: Native iPad and iPhone Duo matched to today's tablet layout on `claude/ios-native-ipad-duo` (49c8757b, 7347a057).
 - 2026-11-25: Native iOS restarted on `claude/ios-native-today-ui` to match today's UI (owner's decision); step 1 committed (ae912d75).
+- 2026-11-26: Windows/Linux app, library writes: a conditional write (`ifMatch` etag) could lose an update on
+  Linux (CI run 45649696992, `two_folder_fs_on_one_folder_never_lose_increments` ended at 34, not 40). Cause: an
+  ABA etag. ext4 reuses a freed inode at once and stamps files with a coarse clock, so two same-size rewrites in one
+  tick brought back the etag a stale reader held. Fix in `apps/desktop/src-tauri/src/library/fs.rs`: every write
+  stamps its own microsecond, never-repeating mtime (`unique_mtime`), and every Folevi writer (other processes too)
+  holds an OS file lock, `.folevi-tmp/write.lock`, across the final etag check and the rename (and removes).
+  `rust-version` goes to 1.89 for `File::lock`. New tests for both; the race test passed 250 runs in a loop.
 - 2026-11-25: Mac feedback round 2: New note's even 6 px inset; one note in two joined tabs stays in the tab on
   screen (`shownId`/`pick` in `lib/app/tabs.tsx`); hovered tab's pin clear of the title; table cells wrap alike
   edited or not. Checked: typecheck, lint, unit suite (2247), WebKit probes (inset 6/6/6, pin fade 48 px). The table

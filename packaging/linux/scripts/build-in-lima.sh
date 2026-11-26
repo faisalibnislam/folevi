@@ -32,6 +32,9 @@ if [[ $SKIP_WEB == 0 ]]; then
   node "$REPO/apps/ios/scripts/bundle-cloud.mjs"
 fi
 [[ -f "$REPO/apps/desktop/web/index.html" ]] || { echo "no web export in apps/desktop/web"; exit 1; }
+# The app takes Folevi's one version from version.json (apps/desktop/package.json, which tauri.conf.json reads), as
+# the Desktop workflow does; without this the packages carry whatever version package.json last had.
+(cd "$REPO/apps/desktop" && node scripts/version.mjs)
 
 # The sources the build needs, onto the VM's own disk (much faster than a shared folder): the desktop app, the
 # packaging, and what build.rs and the tests read from elsewhere. COPYFILE_DISABLE and --no-xattrs keep macOS's

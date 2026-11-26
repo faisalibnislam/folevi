@@ -62,6 +62,8 @@ final class FoleviViewController: CAPBridgeViewController {
         guard let bridge else { return }
         bridge.registerPluginInstance(hostPlugin)
         let host = hostPlugin.host
+        // Only the app's own page reaches the plugins, never a frame inside it (HostBridge.swift, MainFrameGate).
+        if let capacitor = bridge as? CapacitorBridge { MainFrameGate.install(on: capacitor, appOrigin: { [weak host] in host?.appOrigin ?? "" }) }
         let shellConfig = bridge.config.getPluginConfig("FoleviShell")
         if let raw = shellConfig.getString("serviceUrl"), let url = URL(string: raw) { ShellAuth.shared.service = url }
         ShellCloud.shared.dropboxAppKey = shellConfig.getString("dropboxAppKey") ?? ""
@@ -78,7 +80,9 @@ final class FoleviViewController: CAPBridgeViewController {
         ServerReach.shared.start()
         applyMode()
         AppServices.modeApplied(local: ShellMode.current == "local")
-        // The share sheet, widgets and Spotlight use Folevi Cloud's REST API, whichever place is open.
+        // The share sheet, widgets and Spotlight use Folevi Cloud's REST API, whichever place is open. (A token an
+        // earlier build kept for an account on a Folevi Server goes first, so it is never sent there.)
+        ShellPlaces.dropServerTokens()
         AppServices.launched(serverURL: ShellAuth.shared.cloudService)
         // After Capacitor's own scripts (they define window.Capacitor, which the bridge calls through).
         if let webView, let source = Self.bridgeScript(origin: host.appOrigin) {

@@ -87,10 +87,23 @@ enum Paths {
     static var version: String { Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0.0.0" }
     static var build: String { Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "" }
 
-    /// The built-in interface (the shell export): FOLEVI_SHELL_DIR, else the app's Resources/web, else (Debug builds)
-    /// the development copy in apps/mac/web.
+    /// Whether this run's environment may point it somewhere else (FOLEVI_SHELL_DIR, FOLEVI_URL,
+    /// FOLEVI_SHELL_CONNECT): a Debug build, or a run on a folder of its own (FOLEVI_USER_DATA: its Keychain names
+    /// are its own too, so it holds none of the installed app's sessions or keys). The installed app on its real
+    /// data never is: anything on the Mac can start it with an environment of its choosing, and another interface
+    /// would run with the whole bridge, another website would be sent the account's session.
+    static func redirectable(debug: Bool, ownData: Bool) -> Bool { debug || ownData }
+
+    /// One of those variables, when this run may be redirected (nil otherwise, and when it isn't set).
+    static func redirect(_ name: String, env: [String: String] = Paths.env, debug: Bool = Paths.isDebug, ownData: Bool = Paths.userDataOverride != nil) -> String? {
+        guard redirectable(debug: debug, ownData: ownData), let raw = env[name], !raw.isEmpty else { return nil }
+        return raw
+    }
+
+    /// The built-in interface (the shell export): FOLEVI_SHELL_DIR (see `redirectable`), else the app's
+    /// Resources/web, else (Debug builds) the development copy in apps/mac/web.
     static var shellRoot: URL {
-        if let raw = env["FOLEVI_SHELL_DIR"], !raw.isEmpty { return URL(fileURLWithPath: (raw as NSString).expandingTildeInPath, isDirectory: true).standardizedFileURL }
+        if let raw = redirect("FOLEVI_SHELL_DIR") { return URL(fileURLWithPath: (raw as NSString).expandingTildeInPath, isDirectory: true).standardizedFileURL }
         if let res = Bundle.main.resourceURL?.appendingPathComponent("web", isDirectory: true), FileManager.default.fileExists(atPath: res.appendingPathComponent("index.html").path) { return res }
         if isDebug, let dev = Bundle.main.object(forInfoDictionaryKey: "FoleviDevShellDir") as? String, !dev.isEmpty {
             return URL(fileURLWithPath: dev, isDirectory: true).standardizedFileURL
@@ -104,17 +117,18 @@ enum Paths {
         return (try? JSONSerialization.jsonObject(with: data)) as? [String: Any]
     }
 
-    /// Folevi's website: sign-in, the page's /api/auth requests and links. FOLEVI_URL, else the site the built-in
-    /// interface was built for (a development export names the dev site), else app.folevi.com.
+    /// Folevi's website: sign-in, the page's /api/auth requests and links. FOLEVI_URL (see `redirectable`), else the
+    /// site the built-in interface was built for (a development export names the dev site), else app.folevi.com.
     static var serviceURL: URL {
-        if let raw = env["FOLEVI_URL"], let url = URL(string: raw), url.scheme == "http" || url.scheme == "https" { return url }
+        if let raw = redirect("FOLEVI_URL"), let url = URL(string: raw), url.scheme == "http" || url.scheme == "https" { return url }
         if let raw = shellBuild?["siteUrl"] as? String, let url = URL(string: raw), url.scheme == "http" || url.scheme == "https" { return url }
         return URL(string: "https://app.folevi.com")!
     }
 
-    /// More origins signed-in pages may connect to (FOLEVI_SHELL_CONNECT, e.g. a local Convex backend).
+    /// More origins signed-in pages may connect to (FOLEVI_SHELL_CONNECT, e.g. a local Convex backend; see
+    /// `redirectable`).
     static var extraConnect: [String] {
-        (env["FOLEVI_SHELL_CONNECT"] ?? "").split(whereSeparator: { $0 == " " || $0 == "," || $0 == "\n" }).map(String.init)
+        (redirect("FOLEVI_SHELL_CONNECT") ?? "").split(whereSeparator: { $0 == " " || $0 == "," || $0 == "\n" }).map(String.init)
             .filter { $0.range(of: #"^(https?|wss?)://[^\s;']+$"#, options: .regularExpression) != nil }
     }
 

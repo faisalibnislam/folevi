@@ -1,5 +1,6 @@
 package com.folevi.android.server
 
+import com.folevi.android.BuildConfig
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.json.JSONArray
@@ -46,6 +47,12 @@ data class ShellServer(
 
     /** The website of this place now (sign-in and /api/auth: AuthBridge). */
     val appUrl: String get() = activeUrls.app
+
+    /**
+     * The one origin this server's folevi.json gave its addresses on (its public address, which can be another than
+     * the one the person added).
+     */
+    val publishedOrigin: String? get() = originOf(urls.app)
 
     /**
      * Every origin this server can be reached at, in the order to try: home names (Connect's
@@ -181,6 +188,38 @@ data class ShellServer(
         }
 
         /**
+         * Whether two places' servers are one server (null is Folevi Cloud): the same address added, the same
+         * published address, or the same Folevi Connect id.
+         */
+        fun same(a: ShellServer?, b: ShellServer?): Boolean {
+            if (a == null || b == null) return a == null && b == null
+            if (a.origin == b.origin) return true
+            if (a.publishedOrigin != null && a.publishedOrigin == b.publishedOrigin) return true
+            return a.serverId != null && a.serverId == b.serverId
+        }
+
+        /** The origin of a URL folevi.json gives ("https://host[:port]", as [normalizeOrigin] writes it), or null. */
+        fun originOf(raw: String): String? {
+            val u = runCatching { URI(raw) }.getOrNull() ?: return null
+            val scheme = u.scheme?.lowercase() ?: return null
+            val host = u.host ?: return null
+            val port = if (u.port == -1) "" else ":${u.port}"
+            return normalizeOrigin("$scheme://$host$port")
+        }
+
+        /**
+         * Whether an origin is Folevi Cloud's own: the website this build signs in to ([cloud]), any name under
+         * folevi.com, or Convex's cloud (`*.convex.cloud`, `*.convex.site`). A server's folevi.json never names one of
+         * these: a server that did would have the app sign in at Folevi Cloud and then talk to the server with what
+         * Folevi Cloud issued. (Folevi Connect's names are under folevi.app, which is not Folevi Cloud.)
+         */
+        fun isFoleviCloud(origin: String, cloud: String): Boolean {
+            val host = runCatching { URI(origin).host }.getOrNull()?.lowercase() ?: return true
+            if (originOf(cloud) == origin) return true
+            return listOf("folevi.com", "convex.cloud", "convex.site").any { host == it || host.endsWith(".$it") }
+        }
+
+        /**
          * -1, 0 or 1 as `a` is older than, the same as, or newer than `b`. Dotted numbers; anything after "-" (a
          * pre-release) is ignored, missing parts count as 0 ("1.6" == "1.6.0").
          */
@@ -199,8 +238,10 @@ data class ShellServer(
         /**
          * The server folevi.json describes, checked against this app (CONTRACT §6): a Folevi server, an API version
          * this app speaks, set up, new enough for this app and this app new enough for it, and addresses Folevi uses.
+         * Its three addresses sit on one origin (CONTRACT §2: the app at `/`, Convex at `/convex`, HTTP actions at
+         * `/convex-site`), and neither they nor its other names are Folevi Cloud's ([cloud]: this build's website).
          */
-        fun check(info: JSONObject, origin: String, appVersion: String): Result {
+        fun check(info: JSONObject, origin: String, appVersion: String, cloud: String = BuildConfig.SERVICE_URL): Result {
             val kind = info.opt("kind") as? String ?: return Result.Refused(Problem.NOT_FOLEVI)
             if (kind == "folevi-cloud") return Result.Refused(Problem.FOLEVI_CLOUD)
             if (kind != "folevi-server") return Result.Refused(Problem.NOT_FOLEVI)
@@ -216,10 +257,12 @@ data class ShellServer(
             val convex = u.opt("convex") as? String
             val site = u.opt("convexSite") as? String
             if (app == null || convex == null || site == null || !listOf(app, convex, site).all(::allowedUrl)) return Result.Refused(Problem.NOT_FOLEVI)
+            val published = originOf(app)
+            if (published == null || originOf(convex) != published || originOf(site) != published || isFoleviCloud(published, cloud)) return Result.Refused(Problem.NOT_FOLEVI)
             val connect = info.optJSONObject("connect")
             val raw = connect?.optJSONArray("hostnames") ?: JSONArray()
             val hostnames = (0 until raw.length()).mapNotNull { raw.opt(it) as? String }.map { it.lowercase() }
-                .filter { HOSTNAME.matches(it) && normalizeOrigin("https://$it") != null }.take(10)
+                .filter { HOSTNAME.matches(it) && normalizeOrigin("https://$it")?.let { o -> !isFoleviCloud(o, cloud) } == true }.take(10)
             val serverId = (connect?.opt("serverId") as? String)?.takeIf { SERVER_ID.matches(it) }
             val name = (info.opt("name") as? String ?: "").trim().ifEmpty { "Folevi Server" }.take(120)
             fun trim(s: String) = s.removeSuffix("/")
@@ -265,15 +308,41 @@ data class ShellServer(
             }
         }
 
-        /** Checks an address someone added: the server it names, ready to become a place. Blocking (network). */
-        fun lookUp(http: OkHttpClient, raw: String, appVersion: String): Result {
+        /**
+         * Checks an address someone added: the server it names, ready to become a place. Blocking (network). When
+         * the server's own address is another one than the address added (a home address typed, its public name
+         * published), that address is asked too and must be the same server, so a folevi.json can't hand the app to
+         * somebody else's address.
+         */
+        fun lookUp(http: OkHttpClient, raw: String, appVersion: String, cloud: String = BuildConfig.SERVICE_URL): Result {
             val origin = normalizeOrigin(raw) ?: return Result.Refused(Problem.BAD_ADDRESS)
             val info = try {
                 fetchInfo(http, origin)
             } catch (_: Exception) {
                 return Result.Refused(Problem.UNREACHABLE)
             } ?: return Result.Refused(Problem.NOT_FOLEVI)
-            return check(info, origin, appVersion)
+            val checked = check(info, origin, appVersion, cloud)
+            val server = (checked as? Result.Ok)?.server ?: return checked
+            val published = server.publishedOrigin ?: return Result.Refused(Problem.NOT_FOLEVI)
+            if (published == origin) return checked
+            val there = try {
+                fetchInfo(http, published)
+            } catch (_: Exception) {
+                return Result.Refused(Problem.UNREACHABLE)
+            } ?: return Result.Refused(Problem.NOT_FOLEVI)
+            return if (isItself(there, published, server)) checked else Result.Refused(Problem.NOT_FOLEVI)
+        }
+
+        /**
+         * Whether the folevi.json at a server's published address is that server's own: a Folevi server, with its
+         * addresses on that same address and the same Folevi Connect id (none on both for a server that isn't linked).
+         */
+        fun isItself(info: JSONObject, published: String, server: ShellServer): Boolean {
+            if (info.opt("kind") != "folevi-server") return false
+            val app = info.optJSONObject("urls")?.opt("app") as? String ?: return false
+            if (originOf(app) != published) return false
+            val id = (info.optJSONObject("connect")?.opt("serverId") as? String)?.takeIf { SERVER_ID.matches(it) }
+            return id == server.serverId
         }
     }
 

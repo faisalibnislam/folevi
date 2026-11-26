@@ -141,6 +141,44 @@ struct ShellServer: Codable, Equatable {
         return origin.string.flatMap(normalizeOrigin) != nil
     }
 
+    /// The origin of a URL folevi.json gives ("https://host[:port]", as `normalizeOrigin` writes it), or nil.
+    static func originOf(_ raw: String) -> String? {
+        guard let c = URLComponents(string: raw), let scheme = c.scheme?.lowercased(), let host = c.host else { return nil }
+        var origin = URLComponents()
+        origin.scheme = scheme
+        origin.host = host
+        origin.port = c.port
+        return origin.string.flatMap(normalizeOrigin)
+    }
+
+    /// Whether an origin is Folevi Cloud's own: the website this build signs in to (`cloud`), any name under
+    /// folevi.com, or Convex's cloud (`*.convex.cloud`, `*.convex.site`). A server's folevi.json never names one of
+    /// these: a server that did would have the app sign in at Folevi Cloud and then talk to the server with what
+    /// Folevi Cloud issued. (Folevi Connect's names are under folevi.app, which is not Folevi Cloud.)
+    static func isFoleviCloud(_ origin: String, cloud: URL?) -> Bool {
+        guard let host = URLComponents(string: origin)?.host?.lowercased() else { return true }
+        if let cloud, let own = normalizeOrigin(ShellAuth.origin(of: cloud)), own == origin { return true }
+        return ["folevi.com", "convex.cloud", "convex.site"].contains { host == $0 || host.hasSuffix("." + $0) }
+    }
+
+    /// Whether two places' servers are one server (nil is Folevi Cloud): the same address added, the same published
+    /// address, or the same Folevi Connect id.
+    static func same(_ a: ShellServer?, _ b: ShellServer?) -> Bool {
+        switch (a, b) {
+        case (nil, nil): return true
+        case (let a?, let b?):
+            if a.origin == b.origin { return true }
+            if let x = a.publishedOrigin, x == b.publishedOrigin { return true }
+            if let x = a.serverId, x == b.serverId { return true }
+            return false
+        default: return false
+        }
+    }
+
+    /// The one origin this server's folevi.json gave its addresses on (its public address, which can be another
+    /// than the one the person added: a home address typed, the server's public name published).
+    var publishedOrigin: String? { Self.originOf(urls.app) }
+
     // MARK: versions
 
     /// -1, 0 or 1 as `a` is older than, the same as, or newer than `b`. Dotted numbers; anything after "-" (a
@@ -176,7 +214,9 @@ struct ShellServer: Codable, Equatable {
 
     /// The server folevi.json describes, checked against this app (CONTRACT §6): a Folevi server, an API version
     /// this app speaks, set up, new enough for this app and this app new enough for it, and addresses Folevi uses.
-    static func check(_ info: [String: Any], origin: String, appVersion: String) -> Result<ShellServer, Problem> {
+    /// A server's three addresses sit on one origin (CONTRACT §2: the app at `/`, Convex at `/convex`, HTTP actions
+    /// at `/convex-site`), and neither they nor its other names are Folevi Cloud's (`cloud`: this build's website).
+    static func check(_ info: [String: Any], origin: String, appVersion: String, cloud: URL? = ShellAuth.shared.cloudService) -> Result<ShellServer, Problem> {
         guard let kind = info["kind"] as? String else { return .failure(.notFolevi) }
         if kind == "folevi-cloud" { return .failure(.isCloud) }
         guard kind == "folevi-server" else { return .failure(.notFolevi) }
@@ -189,10 +229,12 @@ struct ShellServer: Codable, Equatable {
         if let min = info["minAppVersion"] as? String, compareVersions(appVersion, min) < 0 { return .failure(.appOutdated) }
         guard let u = info["urls"] as? [String: Any], let app = u["app"] as? String, let convex = u["convex"] as? String, let site = u["convexSite"] as? String,
               [app, convex, site].allSatisfy(allowedURL) else { return .failure(.notFolevi) }
+        guard let published = originOf(app), originOf(convex) == published, originOf(site) == published, !isFoleviCloud(published, cloud: cloud) else { return .failure(.notFolevi) }
         let connect = info["connect"] as? [String: Any]
         let hostnames = ((connect?["hostnames"] as? [Any]) ?? []).compactMap { $0 as? String }
             .map { $0.lowercased() }
-            .filter { $0.range(of: #"^[a-z0-9.-]{1,253}(:[0-9]{1,5})?$"#, options: .regularExpression) != nil && normalizeOrigin("https://" + $0) != nil }
+            .filter { $0.range(of: #"^[a-z0-9.-]{1,253}(:[0-9]{1,5})?$"#, options: .regularExpression) != nil }
+            .filter { name in normalizeOrigin("https://" + name).map { !isFoleviCloud($0, cloud: cloud) } ?? false }
         let serverId = (connect?["serverId"] as? String).flatMap { $0.range(of: #"^[a-z0-9]{1,32}$"#, options: .regularExpression) != nil ? $0 : nil }
         let name = ((info["name"] as? String) ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
         let trim = { (s: String) in s.hasSuffix("/") ? String(s.dropLast()) : s }
@@ -211,18 +253,39 @@ struct ShellServer: Codable, Equatable {
         return json
     }
 
-    /// Checks an address someone added: the server it names, ready to become a place.
-    static func lookUp(_ raw: String, appVersion: String) async -> Result<ShellServer, Problem> {
+    /// Checks an address someone added: the server it names, ready to become a place. When the server's own
+    /// address is another one than the address added, that address is asked too and must be the same server (a
+    /// Folevi server that gives the same addresses and the same Folevi Connect id), so a folevi.json can't hand
+    /// the app to somebody else's address. `fetch` reads an origin's folevi.json (tests answer for the network).
+    static func lookUp(_ raw: String, appVersion: String, cloud: URL? = ShellAuth.shared.cloudService, fetch: (String) async throws -> [String: Any] = { try await fetchInfo($0) }) async -> Result<ShellServer, Problem> {
         guard let origin = normalizeOrigin(raw) else { return .failure(.badAddress) }
         let info: [String: Any]
         do {
-            info = try await fetchInfo(origin)
+            info = try await fetch(origin)
         } catch let p as Problem {
             return .failure(p)
         } catch {
             return .failure(.unreachable)
         }
-        return check(info, origin: origin, appVersion: appVersion)
+        let checked = check(info, origin: origin, appVersion: appVersion, cloud: cloud)
+        guard case .success(let server) = checked, let published = server.publishedOrigin, published != origin else { return checked }
+        let there: [String: Any]
+        do {
+            there = try await fetch(published)
+        } catch let p as Problem {
+            return .failure(p)
+        } catch {
+            return .failure(.unreachable)
+        }
+        return isItself(there, at: published, server: server) ? checked : .failure(.notFolevi)
+    }
+
+    /// Whether the folevi.json at a server's published address is that server's own: a Folevi server, with its
+    /// addresses on that same address and the same Folevi Connect id (none on both for a server that isn't linked).
+    static func isItself(_ info: [String: Any], at published: String, server: ShellServer) -> Bool {
+        guard info["kind"] as? String == "folevi-server", let app = (info["urls"] as? [String: Any])?["app"] as? String, originOf(app) == published else { return false }
+        let id = ((info["connect"] as? [String: Any])?["serverId"] as? String).flatMap { $0.range(of: #"^[a-z0-9]{1,32}$"#, options: .regularExpression) != nil ? $0 : nil }
+        return id == server.serverId
     }
 
     static let session: URLSession = {

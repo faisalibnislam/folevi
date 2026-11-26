@@ -191,10 +191,46 @@ fn is_server_id(s: &str) -> bool {
     (1..=32).contains(&s.len()) && s.bytes().all(|b| b.is_ascii_lowercase() || b.is_ascii_digit())
 }
 
+/// Folevi Cloud's website for this run (FOLEVI_URL, else app.folevi.com), set once at launch.
+static CLOUD: std::sync::OnceLock<String> = std::sync::OnceLock::new();
+
+/// Tells the server rules where Folevi Cloud's website is (lib.rs, at launch).
+pub fn set_cloud(service: &url::Url) {
+    let _ = CLOUD.set(origin_of(service));
+}
+
+fn cloud_origin() -> String {
+    CLOUD.get().cloned().unwrap_or_else(|| "https://app.folevi.com".into())
+}
+
+/// The origin of a URL folevi.json gives, as [`normalize_origin`] writes it.
+fn url_origin(raw: &str) -> Option<String> {
+    normalize_origin(&origin_of(&url::Url::parse(raw).ok()?))
+}
+
+/// Whether an origin is Folevi Cloud's own: the website this build signs in to (`cloud`), any name under
+/// folevi.com, or Convex's cloud. A server's folevi.json never names one of these: a server that did would have the
+/// app sign in at Folevi Cloud and then talk to the server with what Folevi Cloud issued. (Folevi Connect's names
+/// are under folevi.app, which is not Folevi Cloud.)
+fn is_folevi_cloud(origin: &str, cloud: &str) -> bool {
+    let Some(host) = url::Url::parse(origin).ok().and_then(|u| u.host_str().map(str::to_ascii_lowercase)) else { return true };
+    if normalize_origin(cloud).as_deref() == Some(origin) {
+        return true;
+    }
+    ["folevi.com", "convex.cloud", "convex.site"].iter().any(|d| host == *d || host.ends_with(&format!(".{d}")))
+}
+
 // ---------------------------------------------------------------- folevi.json
 
 /// A server's folevi.json, checked: the server, or why it can't be used.
 pub fn check(info: &Value, origin: &str, app_version: &str) -> Result<ShellServer, Problem> {
+    check_for(info, origin, app_version, &cloud_origin())
+}
+
+/// [`check`] with Folevi Cloud's website named. A server's three addresses sit on one origin (CONTRACT §2: the app
+/// at `/`, Convex at `/convex`, HTTP actions at `/convex-site`), and neither they nor its other names are Folevi
+/// Cloud's.
+fn check_for(info: &Value, origin: &str, app_version: &str, cloud: &str) -> Result<ShellServer, Problem> {
     let kind = info.get("kind").and_then(Value::as_str).ok_or(Problem::NotFolevi)?;
     if kind == "folevi-cloud" {
         return Err(Problem::FoleviCloud);
@@ -227,6 +263,10 @@ pub fn check(info: &Value, origin: &str, app_version: &str) -> Result<ShellServe
         Ok(u.strip_suffix('/').unwrap_or(u).to_string())
     };
     let urls = ServerUrls { app: url("app")?, convex: url("convex")?, convex_site: url("convexSite")? };
+    let published = url_origin(&urls.app).ok_or(Problem::NotFolevi)?;
+    if url_origin(&urls.convex).as_deref() != Some(&published) || url_origin(&urls.convex_site).as_deref() != Some(&published) || is_folevi_cloud(&published, cloud) {
+        return Err(Problem::NotFolevi);
+    }
     let connect = info.get("connect");
     let hostnames: Vec<String> = connect
         .and_then(|c| c.get("hostnames"))
@@ -235,7 +275,7 @@ pub fn check(info: &Value, origin: &str, app_version: &str) -> Result<ShellServe
         .flatten()
         .filter_map(Value::as_str)
         .map(str::to_ascii_lowercase)
-        .filter(|h| is_hostname(h) && normalize_origin(&format!("https://{h}")).is_some())
+        .filter(|h| is_hostname(h) && normalize_origin(&format!("https://{h}")).is_some_and(|o| !is_folevi_cloud(&o, cloud)))
         .take(10)
         .collect();
     let server_id = connect.and_then(|c| c.get("serverId")).and_then(Value::as_str).filter(|s| is_server_id(s)).map(str::to_string);
@@ -289,16 +329,60 @@ async fn fetch_info(origin: &str, timeout: Duration) -> Result<Value, Problem> {
     serde_json::from_slice::<Value>(&bytes).ok().filter(Value::is_object).ok_or(Problem::NotFolevi)
 }
 
-/// placesAddServer: the address the person typed, checked, and its server.
+/// placesAddServer: the address the person typed, checked, and its server. When the server's own address is
+/// another one than the address typed (a home address typed, its public name published), that address is asked
+/// too and must be the same server, so a folevi.json can't hand the app to somebody else's address.
 pub async fn look_up(raw: &str, app_version: &str) -> Result<ShellServer, Problem> {
     let origin = normalize_origin(raw).ok_or(Problem::BadAddress)?;
     let info = fetch_info(&origin, Duration::from_secs(10)).await?;
-    check(&info, &origin, app_version)
+    let server = check(&info, &origin, app_version)?;
+    let published = server.published_origin().ok_or(Problem::NotFolevi)?;
+    if published != origin {
+        let there = fetch_info(&published, Duration::from_secs(10)).await?;
+        if !is_itself(&there, &published, &server) {
+            return Err(Problem::NotFolevi);
+        }
+    }
+    Ok(server)
+}
+
+/// Whether the folevi.json at a server's published address is that server's own: a Folevi server, with its
+/// addresses on that same address and the same Folevi Connect id (none on both for a server that isn't linked).
+fn is_itself(info: &Value, published: &str, server: &ShellServer) -> bool {
+    if info.get("kind").and_then(Value::as_str) != Some("folevi-server") {
+        return false;
+    }
+    let app = info.get("urls").and_then(|u| u.get("app")).and_then(Value::as_str);
+    if app.and_then(url_origin).as_deref() != Some(published) {
+        return false;
+    }
+    let id = info.get("connect").and_then(|c| c.get("serverId")).and_then(Value::as_str).filter(|s| is_server_id(s));
+    id == server.server_id.as_deref()
 }
 
 // ---------------------------------------------------------------- a server's names
 
 impl ShellServer {
+    /// Whether two places' servers are one server (None is Folevi Cloud): the same address added, the same
+    /// published address, or the same Folevi Connect id.
+    pub fn same(a: Option<&ShellServer>, b: Option<&ShellServer>) -> bool {
+        match (a, b) {
+            (None, None) => true,
+            (Some(a), Some(b)) => {
+                a.origin == b.origin
+                    || a.published_origin().is_some_and(|o| Some(o) == b.published_origin())
+                    || a.server_id.as_ref().is_some_and(|id| Some(id) == b.server_id.as_ref())
+            }
+            _ => false,
+        }
+    }
+
+    /// The one origin this server's folevi.json gave its addresses on (its public address, which can be another
+    /// than the one the person typed).
+    pub fn published_origin(&self) -> Option<String> {
+        url_origin(&self.urls.app)
+    }
+
     /// A stored server, cleaned (places.json may hold anything). None when it isn't usable.
     pub fn clean(v: &Value) -> Option<ShellServer> {
         let s: ShellServer = serde_json::from_value(v.clone()).ok()?;
@@ -543,6 +627,72 @@ mod tests {
         let s = check(&info(), o, "1.6.78").unwrap();
         assert_eq!(s.name, "Home NAS");
         assert_eq!(s.server_id.as_deref(), Some("abcde12345"));
+    }
+
+    /// What a server could publish to have the app sign in at Folevi Cloud and then talk to the server with what
+    /// Folevi Cloud issued.
+    fn attack() -> Value {
+        json!({ "app": "https://app.folevi.com", "convex": "https://evil.example/convex", "convexSite": "https://evil.example/convex-site" })
+    }
+
+    fn on(origin: &str) -> Value {
+        json!({ "app": origin, "convex": format!("{origin}/convex"), "convexSite": format!("{origin}/convex-site") })
+    }
+
+    #[test]
+    fn a_servers_addresses_are_one_origin_and_never_folevi_clouds() {
+        let refused = |urls: Value, typed: &str| {
+            let mut i = info();
+            i["urls"] = urls;
+            check_for(&i, typed, "1.6.78", "https://app.folevi.com").map(|_| ()).map_err(Problem::code)
+        };
+        assert_eq!(refused(attack(), "https://evil.example"), Err("not_folevi"));
+        assert_eq!(refused(json!({ "app": "https://evil.example", "convex": "https://other.example/convex", "convexSite": "https://evil.example/convex-site" }), "https://evil.example"), Err("not_folevi"));
+        assert_eq!(refused(json!({ "app": "https://evil.example", "convex": "https://evil.example/convex", "convexSite": "https://evil.example:8443/convex-site" }), "https://evil.example"), Err("not_folevi"));
+        for host in ["app.folevi.com", "folevi.com", "x.folevi.com", "happy-otter-123.convex.cloud", "happy-otter-123.convex.site"] {
+            assert_eq!(refused(on(&format!("https://{host}")), "https://evil.example"), Err("not_folevi"), "{host}");
+        }
+        // This build's own website, whatever it is called (FOLEVI_URL).
+        let mut dev = info();
+        dev["urls"] = on("https://dev.example");
+        assert_eq!(check_for(&dev, "https://evil.example", "1.6.78", "https://dev.example").unwrap_err(), Problem::NotFolevi);
+        assert!(check_for(&dev, "https://dev.example", "1.6.78", "https://app.folevi.com").is_ok());
+        // A genuine server: one origin, its own (a Folevi Connect name is under folevi.app, not Folevi Cloud).
+        assert_eq!(refused(on("https://nas.example.com"), "https://nas.example.com"), Ok(()));
+        assert_eq!(refused(on("https://abcde12345.folevi.app"), "http://192.168.1.20:8460"), Ok(()));
+        assert_eq!(refused(on("http://192.168.1.20:8460"), "http://192.168.1.20:8460"), Ok(()));
+        // Folevi Cloud's names are left out of a server's other names too.
+        let mut i = info();
+        i["connect"]["hostnames"] = json!(["abcde12345.folevi.app", "app.folevi.com", "x.convex.cloud"]);
+        let s = check_for(&i, "https://nas.example.com", "1.6.78", "https://app.folevi.com").unwrap();
+        assert_eq!(s.hostnames, vec!["abcde12345.folevi.app"]);
+        assert_eq!(s.published_origin().as_deref(), Some("https://nas.example.com"));
+    }
+
+    #[test]
+    fn a_server_published_at_another_address_must_be_itself_there() {
+        let name = "https://abcde12345.folevi.app";
+        let mut genuine = info();
+        genuine["urls"] = on(name);
+        let s = check_for(&genuine, "http://192.168.1.20:8460", "1.6.78", "https://app.folevi.com").unwrap();
+        assert_eq!(s.published_origin().as_deref(), Some(name));
+        assert!(is_itself(&genuine, name, &s));
+        let mut other = genuine.clone();
+        other["connect"]["serverId"] = json!("zzzzz99999");
+        assert!(!is_itself(&other, name, &s), "another server's Folevi Connect id");
+        let mut cloud = genuine.clone();
+        cloud["kind"] = json!("folevi-cloud");
+        assert!(!is_itself(&cloud, name, &s), "Folevi Cloud");
+        let mut elsewhere = genuine.clone();
+        elsewhere["urls"] = on("https://evil.example");
+        assert!(!is_itself(&elsewhere, name, &s), "a server that gives other addresses");
+        assert!(!is_itself(&json!({ "hello": "world" }), name, &s));
+        // A server that isn't linked has no id on either side.
+        let mut plain = genuine.clone();
+        plain.as_object_mut().unwrap().remove("connect");
+        let p = check_for(&plain, "http://192.168.1.20:8460", "1.6.78", "https://app.folevi.com").unwrap();
+        assert!(is_itself(&plain, name, &p));
+        assert!(!is_itself(&genuine, name, &p), "an id where there was none");
     }
 
     #[test]

@@ -123,6 +123,127 @@ final class ServerTests: XCTestCase {
         XCTAssertNil(odd.serverId)
     }
 
+    // MARK: a server's addresses are its own
+
+    /// What a server could publish to have the app sign in at Folevi Cloud and then talk to the server with what
+    /// Folevi Cloud issued: Folevi Cloud's website for sign-in, its own address for the data.
+    private static let attack: [String: Any] = ["app": "https://app.folevi.com", "convex": "https://evil.example/convex", "convexSite": "https://evil.example/convex-site"]
+
+    func testAServersAddressesAreOneOriginAndNeverFoleviClouds() throws {
+        let cloud = URL(string: "https://app.folevi.com")!
+        let refused = { (urls: [String: Any], origin: String) -> String? in
+            if case .failure(let p) = ShellServer.check(self.info(["urls": urls]), origin: origin, appVersion: "1.6.0", cloud: cloud) { return p.code }
+            return nil
+        }
+        XCTAssertEqual(refused(Self.attack, "https://evil.example"), "not_folevi", "Folevi Cloud's sign-in with the server's own Convex")
+        XCTAssertEqual(refused(["app": "https://evil.example", "convex": "https://other.example/convex", "convexSite": "https://evil.example/convex-site"], "https://evil.example"), "not_folevi", "two origins")
+        XCTAssertEqual(refused(["app": "https://evil.example", "convex": "https://evil.example/convex", "convexSite": "https://evil.example:8443/convex-site"], "https://evil.example"), "not_folevi", "another port is another origin")
+        for host in ["app.folevi.com", "folevi.com", "x.folevi.com", "happy-otter-123.convex.cloud", "happy-otter-123.convex.site"] {
+            XCTAssertEqual(refused(["app": "https://\(host)", "convex": "https://\(host)/convex", "convexSite": "https://\(host)/convex-site"], "https://evil.example"), "not_folevi", host)
+        }
+        // This build's own website, whatever it is called (a development build's).
+        if case .success = ShellServer.check(info(["urls": ["app": "https://dev.example", "convex": "https://dev.example/convex", "convexSite": "https://dev.example/convex-site"]]), origin: "https://evil.example", appVersion: "1.6.0", cloud: URL(string: "https://dev.example")!) { XCTFail("this build's website") }
+        // A genuine server: one origin, its own (a Folevi Connect name is under folevi.app, not Folevi Cloud).
+        XCTAssertNil(refused(["app": "https://nas.example.com", "convex": "https://nas.example.com/convex", "convexSite": "https://nas.example.com/convex-site"], "https://nas.example.com"))
+        XCTAssertNil(refused(["app": "https://abcde12345.folevi.app", "convex": "https://abcde12345.folevi.app/convex", "convexSite": "https://abcde12345.folevi.app/convex-site"], "http://192.168.1.20:8460"))
+        XCTAssertNil(refused(["app": "http://192.168.1.20:8460", "convex": "http://192.168.1.20:8460/convex", "convexSite": "http://192.168.1.20:8460/convex-site"], "http://192.168.1.20:8460"))
+        // Folevi Cloud's names are left out of a server's other names too.
+        let named = try XCTUnwrap(server(["connect": ["serverId": "abcde12345", "hostnames": ["abcde12345.folevi.app", "app.folevi.com", "x.convex.cloud"]]]))
+        XCTAssertEqual(named.hostnames, ["abcde12345.folevi.app"])
+        XCTAssertEqual(named.publishedOrigin, "https://nas.example.com")
+    }
+
+    func testAServerPublishedAtAnotherAddressMustBeItselfThere() async {
+        let cloud = URL(string: "https://app.folevi.com")!
+        let lan = "http://192.168.1.20:8460", name = "https://abcde12345.folevi.app"
+        let genuine = info(["urls": ["app": name, "convex": name + "/convex", "convexSite": name + "/convex-site"]])
+        var asked: [String] = []
+        let look = { (answers: [String: [String: Any]]) async -> Result<ShellServer, ShellServer.Problem> in
+            await ShellServer.lookUp(lan, appVersion: "1.6.0", cloud: cloud) { origin in
+                asked.append(origin)
+                guard let a = answers[origin] else { throw URLError(.cannotConnectToHost) }
+                return a
+            }
+        }
+        // A home address typed, the server's public name published: the same server answers there.
+        guard case .success(let s) = await look([lan: genuine, name: genuine]) else { return XCTFail("a genuine server was refused") }
+        XCTAssertEqual(s.origin, lan)
+        XCTAssertEqual(s.publishedOrigin, name)
+        XCTAssertEqual(asked, [lan, name])
+        // The published address is someone else's server (another Folevi Connect id), Folevi Cloud, not a Folevi
+        // server, or a server that gives other addresses: refused.
+        var other = genuine
+        other["connect"] = ["serverId": "zzzzz99999", "hostnames": []]
+        var cloudDoc = genuine
+        cloudDoc["kind"] = "folevi-cloud"
+        var elsewhere = genuine
+        elsewhere["urls"] = ["app": "https://evil.example", "convex": "https://evil.example/convex", "convexSite": "https://evil.example/convex-site"]
+        for (why, there) in [("another server", other), ("Folevi Cloud", cloudDoc), ("not Folevi", ["hello": "world"]), ("other addresses", elsewhere)] {
+            if case .failure(let p) = await look([lan: genuine, name: there]) { XCTAssertEqual(p.code, "not_folevi", why) } else { XCTFail(why) }
+        }
+        if case .failure(let p) = await look([lan: genuine]) { XCTAssertEqual(p.code, "unreachable") } else { XCTFail("the published address didn't answer") }
+        // The attack never gets as far as a second question.
+        asked = []
+        if case .failure(let p) = await look([lan: info(["urls": Self.attack])]) { XCTAssertEqual(p.code, "not_folevi") } else { XCTFail("the attack was accepted") }
+        XCTAssertEqual(asked, [lan])
+        // The address typed is the published one: asked once.
+        asked = []
+        let same = info(["urls": ["app": lan, "convex": lan + "/convex", "convexSite": lan + "/convex-site"]])
+        if case .failure = await look([lan: same]) { XCTFail("a server on the address typed") }
+        XCTAssertEqual(asked, [lan])
+    }
+
+    // MARK: sessions stay with the server that issued them
+
+    /// Sessions are kept by user id, and a server says what its user ids are: a sign-in that comes back with the id
+    /// of an account from another server is refused, and the session a sign-in replaces ends where it was issued.
+    func testASignInThatComesBackAsAnotherServersAccountIsRefused() throws {
+        let nas = try XCTUnwrap(server())
+        let cloud = ShellAuth.shared.cloudService.absoluteString
+        // A Folevi Cloud account here.
+        ShellPlaces.setCurrent(nil, pending: true)
+        XCTAssertNotNil(ShellPlaces.addAccount(userId: "cloudAna", name: "Ana", email: "ana@example.com", avatarUrl: nil))
+        XCTAssertFalse(ShellAuth.belongsElsewhere("cloudAna"), "Folevi Cloud again: the same person signing in again")
+        XCTAssertEqual(ShellAuth.shared.issuer(of: "cloudAna")?.absoluteString, cloud)
+        // A server's sign-in that answers with that id.
+        ShellPlaces.setCurrent(nil, pending: true, server: nas)
+        XCTAssertTrue(ShellAuth.belongsElsewhere("cloudAna"))
+        XCTAssertEqual(ShellAuth.shared.issuer(of: "cloudAna")?.absoluteString, cloud, "its old session would end at Folevi Cloud, not at the server")
+        XCTAssertFalse(ShellAuth.belongsElsewhere("someoneNew"))
+        XCTAssertNil(ShellAuth.shared.issuer(of: "someoneNew"), "a session nobody can place is sent nowhere")
+        // The other way round: an account on the server, then Folevi Cloud's sign-in comes back with its id.
+        XCTAssertNotNil(ShellPlaces.addAccount(userId: "nasBen", name: "Ben", email: "ben@nas.example.com", avatarUrl: nil))
+        XCTAssertFalse(ShellAuth.belongsElsewhere("nasBen"))
+        ShellPlaces.setCurrent(nil, pending: true)
+        XCTAssertTrue(ShellAuth.belongsElsewhere("nasBen"))
+        XCTAssertEqual(ShellAuth.shared.issuer(of: "nasBen")?.absoluteString, "https://nas.example.com")
+        // The same server added again by its home address is still that server; another server is not.
+        var home = nas
+        home.origin = "http://192.168.1.20:8460"
+        ShellPlaces.setCurrent(nil, pending: true, server: home)
+        XCTAssertFalse(ShellAuth.belongsElsewhere("nasBen"))
+        let other = try XCTUnwrap(server(["urls": ["app": "https://other.example", "convex": "https://other.example/convex", "convexSite": "https://other.example/convex-site"], "connect": ["serverId": "zzzzz99999", "hostnames": []]], origin: "https://other.example"))
+        ShellPlaces.setCurrent(nil, pending: true, server: other)
+        XCTAssertTrue(ShellAuth.belongsElsewhere("nasBen"))
+        XCTAssertTrue(ShellServer.same(nil, nil))
+        XCTAssertFalse(ShellServer.same(nas, nil))
+    }
+
+    /// The one session older builds kept was Folevi Cloud's: a server's sign-in screen neither reads it nor
+    /// replaces it.
+    func testTheOldSingleSessionNeverGoesToAServer() throws {
+        let nas = try XCTUnwrap(server())
+        let legacy = "legacy-cloud-session-0123456789abcdef" // gitleaks:allow (a made-up token)
+        ShellAuth.shared.setToken(legacy, for: nil)
+        defer { ShellAuth.shared.setToken(nil, for: nil) }
+        ShellPlaces.setCurrent(nil, pending: true)
+        XCTAssertEqual(ShellAuth.shared.token, legacy, "Folevi Cloud's sign-in screen")
+        ShellPlaces.setCurrent(nil, pending: true, server: nas)
+        XCTAssertNil(ShellAuth.shared.token, "a server's sign-in screen")
+        ShellAuth.shared.token = "a-server-session-0123456789abcdef" // gitleaks:allow (a made-up token)
+        XCTAssertEqual(ShellAuth.shared.token(for: nil), legacy, "not replaced by a server's")
+    }
+
     // MARK: the page's policy
 
     func testPolicyForAServerPlace() throws {

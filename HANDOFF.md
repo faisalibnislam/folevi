@@ -1036,9 +1036,6 @@ signed-in account, 1.5.58's frosted folders with a large library, and the iPad c
 account button should move past iPadOS's window buttons).
 
 ## 10. Next steps / open work
-- Native iPhone, bug found 2026-11-25 (also in build 106 on TestFlight): a list's "…" menu (All notes: View as, Sort
-  by; `RebuildLists.showMenu` through `PhoneMenuLayer`) opens half faded and its rows don't take a tap; a tap
-  outside closes it. The + menu (iOS's own `Menu`) works. Not fixed yet.
 - Native iPhone performance, left from the SwiftUI audit: `CardPicture` still reads `@Environment(\.self)` (any
   environment change runs its body; cheap while the picture is kept); the Mac's `PlaceholderCard` pulses each on its
   own animation (not used on the iPhone); nothing measured with Instruments before and after.
@@ -1334,6 +1331,10 @@ account button should move past iPadOS's window buttons).
   `DATABASE_UDF_USER_TIMEOUT_SECONDS=4` for that backend. Bursts show in `convex.log` as "took a long time".
 
 ## 12. Change log
+- 2026-11-26: Native iPhone: a bar's "…" menu (All notes' View as and Sort by, Tags' Sort by, every iOS menu with
+  checkable rows) opened greyed out and took no taps. Cause: the frame's switch style (`NativeSwitchStyle`, set by
+  `phoneNativeChrome`) reached the menu's Toggles and iOS can't draw a custom style as a menu checkmark. Fix:
+  `PhoneMenuRow` gives its Toggle `.toggleStyle(.automatic)`. Checked on the iPhone Simulator.
 - 2026-11-25: Native iOS SwiftUI refactors (not released): each tab's stack is its own observed box
   (`PhoneTabStack`) drawn by its own view (`PhoneTabStackView`), so a push in one tab doesn't draw the others or the
   tab bar; frames kept for menus are boxes (`PhoneFrameBox`, `PhoneFrameBoxes`), not `@State` written on every scroll

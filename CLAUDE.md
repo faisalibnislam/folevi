@@ -14,6 +14,11 @@ Start here when resuming work:
 2. `docs/claude-context/memory/`: the owner's standing decisions and rules (index: `MEMORY.md`).
 3. `docs/claude-context/APPLE_DEVELOPMENT.md`: Apple team, signing and release rules.
 
+Pull requests, merging and CI have one manager session (the owner, 2026-11-26): for a conflict with `main` or
+another pull request, CI that is red for a reason outside your change, or a release, message
+`local_c35f3572-0bc6-4217-9c6d-dcf1ccd0c73c` ("Folevi PR, merge and CI manager") instead of merging `main` into
+other sessions' branches (`docs/claude-context/memory/pr-merge-ci-manager-2026-11-26.md`).
+
 Hard rules (details in `handoff/guide.md` section 8): pushing `main` deploys production, so never push it, deploy, notarize
 or upload to TestFlight without the owner's OK; never use `--prod` with the Convex CLI; never print secrets;
 never touch the owner's real library or app data; no em dashes; the assistant is "Foli AI"; commit with

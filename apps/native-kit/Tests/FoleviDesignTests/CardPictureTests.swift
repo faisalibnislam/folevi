@@ -24,13 +24,13 @@ struct CardPictureTests {
             draws += 1
             return self.image(40, 40)
         }
-        let first = pictures.picture("test-card", at: .zero, draw: draw)
+        let first = pictures.picture("test-card", owner: "test-card", at: .zero, draw: draw)
         #expect(first != nil)
         // Asked again at the same place: the kept one, not drawn again.
-        #expect(pictures.picture("test-card", at: .zero, draw: draw) === first)
+        #expect(pictures.picture("test-card", owner: "test-card", at: .zero, draw: draw) === first)
         #expect(draws == 1)
         // At a new place between pixels: drawn again, and that one kept instead (one picture per card).
-        let moved = pictures.picture("test-card", at: CGSize(width: 0.5, height: 0), draw: draw)
+        let moved = pictures.picture("test-card", owner: "test-card", at: CGSize(width: 0.5, height: 0), draw: draw)
         #expect(draws == 2)
         #expect(pictures.kept("test-card") === moved)
         #expect(pictures.drawn == start + 2)
@@ -46,17 +46,20 @@ struct CardPictureTests {
     @Test func aPictureIsForgottenWhenSomethingItShowedChanges() async throws {
         let pictures = CardPictures.shared
         let source = Source()
-        _ = pictures.picture("observed-card", at: .zero) {
+        _ = pictures.picture("observed-card", owner: "observed", at: .zero) {
             _ = source.value
             return self.image(4, 4)
         }
         #expect(pictures.kept("observed-card") != nil)
-        let changes = pictures.changes.count
+        let changes = pictures.change("observed").count
+        let other = pictures.change("another-card").count
         // (A style image came, or WebKit's line breaks: what the picture read has changed.)
         source.value = 1
         try await Task.sleep(for: .milliseconds(100))
         #expect(pictures.kept("observed-card") == nil)
-        #expect(pictures.changes.count == changes + 1)
+        #expect(pictures.change("observed").count == changes + 1)
+        // Only that card's views draw again, not every card on screen.
+        #expect(pictures.change("another-card").count == other)
     }
 
     #if os(macOS)

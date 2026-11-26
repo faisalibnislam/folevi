@@ -174,7 +174,7 @@ private struct PhoneNoteTopBarContent: View {
     let pageColor: RGBA
     @Environment(\.colorScheme) private var scheme
     @Environment(\.phoneMenus) private var menus
-    @State private var moreFrame: CGRect = .zero
+    @State private var moreFrame = PhoneFrameBox()
 
     var body: some View {
         GeometryReader { geo in
@@ -233,10 +233,10 @@ private struct PhoneNoteTopBarContent: View {
                                                 .contentShape(Rectangle())
                                         }
                                     } else {
-                                        WebPillButton("Document actions", action: { bar.more(moreFrame) }) {
+                                        WebPillButton("Document actions", action: { bar.more(moreFrame.rect) }) {
                                             WebIconView(.ellipsis, size: 24, strokeWidth: 2.2)
                                         }
-                                        .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { moreFrame = $0 }
+                                        .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { moreFrame.rect = $0 }
                                     }
                                 }
                             }

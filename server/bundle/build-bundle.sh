@@ -17,6 +17,7 @@
 #   WEB_PUBLIC       optional, apps/web/public
 #   FUNCTIONS_DIR    a folder with convex/ (including convex/_generated), package.json, convex.json and the
 #                    node_modules the Convex CLI needs to bundle it (symlinks are followed)
+#   FOLEVID          optional, a prebuilt linux folevid for ARCH (default: built here with go)
 #   RUNTIME_LIB      optional, a folder with a private glibc and libstdc++ and its ld-linux-* loader
 #   EXTRA_LICENSES   optional, a folder of license files to add to LICENSES/
 #   OUT              output folder (default: ./dist)
@@ -64,7 +65,7 @@ DEST="$OUT/$NAME"
 WORK="$(mktemp -d)"
 trap 'rm -rf "$WORK"' EXIT
 
-sha256() { sha256sum "$1" | cut -d' ' -f1; }
+sha256() { if command -v sha256sum > /dev/null; then sha256sum "$1"; else shasum -a 256 "$1"; fi | cut -d' ' -f1; }
 
 # fetch <value> <expected sha or empty>: prints a local path. Downloads only https:// URLs.
 fetch() {
@@ -90,9 +91,14 @@ mkdir -p "$DEST/bin" "$DEST/runtime" "$DEST/web" "$DEST/functions" "$DEST/LICENS
 printf '%s\n' "$VERSION" > "$DEST/VERSION"
 
 # 1. folevid, static, for the target chip.
-echo "building folevid for linux/$GOARCH"
-(cd "$REPO/server/folevid" && CGO_ENABLED=0 GOOS=linux GOARCH="$GOARCH" GOTOOLCHAIN="${GOTOOLCHAIN:-local}" \
-  go build -trimpath -ldflags "-s -w -X main.version=$VERSION" -o "$DEST/bin/folevid" .)
+if [ -n "${FOLEVID:-}" ]; then
+  [ -f "$FOLEVID" ] || die "FOLEVID not found: $FOLEVID"
+  cp "$FOLEVID" "$DEST/bin/folevid"; chmod 755 "$DEST/bin/folevid"
+else
+  echo "building folevid for linux/$GOARCH"
+  (cd "$REPO/server/folevid" && CGO_ENABLED=0 GOOS=linux GOARCH="$GOARCH" GOTOOLCHAIN="${GOTOOLCHAIN:-local}" \
+    go build -trimpath -ldflags "-s -w -X main.version=$VERSION" -o "$DEST/bin/folevid" .)
+fi
 
 # 2. The Convex backend.
 backend="$(fetch "$CONVEX_BACKEND" "${CONVEX_BACKEND_SHA256:-}")"

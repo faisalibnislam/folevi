@@ -48,18 +48,17 @@ public struct PhoneHomeContent: View {
 
     private func ps(_ id: String) -> WebComputedStyle { WebStyles.named(id).resolve(scheme) }
 
-    /// The Mac's Home order (the owner, 2026-11-23: Home may be reorganized to match the Mac's): the places with
-    /// their counts first, Catch me up, then Recent, Bookmarks, Folders and Tags as titled sections, and the rest of
-    /// the library at the end. Every part is an opaque card on the frame's grey.
+    /// Today's Home order (the owner, 2026-11-25, as `IphoneHome.tsx`): the recent notes as cards straight under
+    /// the search field (no heading), Catch me up, the places two by two, then Bookmarks, Folders and Tags as titled
+    /// sections, and the rest of the library at the end.
     public var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            tiles.padding(.top, 4)
+            recents
             if model.aiOn {
                 PhoneCatchUpCard { actions.open("/catch-up") }
                     .padding(.horizontal, PhoneRowGroupMetrics.inset)
-                    .padding(.top, PhoneLook.gap)
             }
-            PhoneHomeSection("Recent") { recents }
+            tiles.padding(.top, model.aiOn ? 10 : 0)
             starred
             folders
             if !model.tags.isEmpty { tags }

@@ -315,16 +315,16 @@ struct PhoneScopeChip: View {
     var menus: PhoneMenus? = nil
     var build: (() -> Void)? = nil
     let action: (CGRect) -> Void
-    @State private var frame: CGRect = .zero
+    @State private var frame = PhoneFrameBox()
     @Environment(\.colorScheme) private var scheme
 
     var body: some View {
         if let menus, let build {
             PhoneMenuButton(label, menus: menus, build: build) { chip }
         } else {
-            Button { action(frame) } label: { chip }
+            Button { action(frame.rect) } label: { chip }
                 .buttonStyle(PhoneChipPressStyle())
-                .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { frame = $0 }
+                .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { frame.rect = $0 }
                 .accessibilityLabel(label)
         }
     }

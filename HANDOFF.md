@@ -252,6 +252,67 @@ The ones most likely to be broken:
 
 ## 9. Current state (as of 2026-11-25)
 
+**Native iOS again, matching today's UI (2026-11-25, branch `claude/ios-native-today-ui`, worktree
+`.claude/worktrees/ios-native-today`).** The owner found the Capacitor app finicky and chose native SwiftUI for
+everything but the writing area, matching today's UI with Liquid Glass and iOS's own controls (decisions:
+`docs/claude-context/memory/native-apps-today-ui-2026-11-25.md`). The base is `apps/ios` + `apps/native-kit` on
+`main` (RebuildFrame, FoleviPhone), which already had native screens; one big switch, Simulator only until then.
+- Step 1 (ae912d75): iOS 26 minimum; `NativeChrome.brandText` keeps Folevi's fonts for interface text (Instrument
+  Sans, Spectral titles via the navigation bar's appearance); plain rows on the web canvas instead of cards on grey
+  (`PhoneLook.frame` = canvas, `phoneCard` draws no card; grouped screens keep the grey); Home in today's order
+  with "Search in <place>" (`PhoneSearchOpener`); + as a floating Liquid Glass button over the tab bar
+  (`PhoneCreateButton`; iOS's bar holds five items), no + or search capsule in the top bars. Mac package builds.
+- Foli AI (branch `claude/ios-native-foli-ai`): the composer is Liquid Glass and the thread's bottom bar
+  (`safeAreaBar`): answers scroll under it, it rides the keyboard with SwiftUI's own avoidance in the sheet and on the
+  page (the page's composer used to float mid-screen over a gap), Return sends, a light haptic on Send and a tick on
+  Stop (RebuildAI now uses `RebuildFeedback`). Fixed: the tab bar's Foli AI opened its sheet only on the next touch;
+  an answer with follow-ups crashed the app (`ai.followup` style missing; `PhoneFollowUp` draws ChatMessage.tsx's
+  values); Stop never fired on the iPhone (the Mac's hover and Cmd-. on the button ate the tap) and, in local mode,
+  the engine refused it (`validate.ts` ids now allow `~`, a local message id's separator; also fixes Apply, Save as
+  note and Copy as Markdown of one answer); the drawer drew under the status bar and kept the keyboard; the thread
+  stopped following when the keyboard went. No credits line without an account. Checked on the Simulator with
+  Apple's on-device model: send, stream, citations opening notes, follow-ups, Stop, Regenerate, history open and
+  delete, light and dark.
+- Checked on the "Folevi Native iPhone" Simulator (AC2852C2), local mode: Home, Tasks, Calendar, a note, Foli AI's
+  sheet, the account sheet. Reference shots of today's app from the Capacitor build on "Folevi Mobile iPhone".
+- Step 2b (branch `claude/ios-native-sync-signin`, from step 2 at af78bdbd): the sync sheet in this week's design
+  (`RebuildSync.swift`: hero status, facts card with a live "Last synced", Try again now, iOS sheet with a glass
+  Close); "Sign in to your own server" on the native sign-in screen (`RebuildOwnServer.swift`, a native sheet over
+  `ShellServer.lookUp`, VisionKit QR scanning where the device can; the button through `gateOwnServer` in
+  `FoleviScreens/Onboarding/WebGates.swift`); R5.6 fixed in `ShellSignIn.tsx` (the first-launch choice's flag
+  moved to localStorage, so sign-in follows the choice); R5.7 native side (`RebuildNote.swift`: the note's cover
+  and a spinner stay until the engine is ready, the note is asked for once more). Debug `FOLEVI_SLOW_ENGINE=<s>`.
+  Not checked: QR scanning (no camera in the Simulator), a real server sign-in, the sync sheet signed in.
+- Step 2 (all merged on this branch, 2026-11-25): launch snapshot in the rebuild frame (no pop-in), filter fields
+  always shown, capital headings, lists loading not empty at launch, the keyboard bar riding down, + readable in dark;
+  sync sheet, Your own server sign-in, R5.6 and R5.7 native (`claude/ios-native-sync-signin`); native Foli AI
+  finished (`claude/ios-native-foli-ai`); iPad today's tablet layout and Duo (`claude/ios-native-ipad-duo`); Duo
+  upright = phone layout (owner); iPad tabs 128 pt least. Web changes ride along: `ShellSignIn.tsx` (R5.6) and
+  `lib/engine/validate.ts` (`~` in ids): merging this branch into `main` deploys them.
+- Tests: app Debug build, `swift build`, `swift test` (2 timing tests flake only under the full run), web engine
+  tests 168/168, tsc. Unchecked: iPad landscape, Split View, Slide Over, rotation (Simulator access not granted), QR
+  scan, a real server sign-in, signed-in Foli AI and sync sheet, a device.
+- **The switch is uploaded: 1.6.79 (build 103), native `apps/ios`, TestFlight internal "Folevi team", delivery
+  `fd1a648b-4f59-4d51-b0f2-758ec65709ae` (owner: "Yes, upload it", 2026-11-25).** It replaces the Capacitor build
+  1.6.78 (102) for testers; same `com.folevi.ios`, data carries over. Not opened on a device yet. `version.json` is
+  1.6.79/103 on this branch only: merging it into `main` also deploys the two web changes above.
+- Next: the owner tests on devices; `apps/mobile` stays for Android (native Compose in the Android session).
+- **iPad and iPhone Duo, today's tablet layout (branch `claude/ios-native-ipad-duo`, off this one, 2026-11-25).**
+  `IPadFrameView` keeps iOS's split view but draws today's tablet Shell: the sidebar beside the content at every
+  wide width (320 pt; it steps aside only for the note's tools in a window under 1000 pt), today's web sidebar
+  (`WebSidebar.webBody`: wordmark, the real sync status, bell, its own button, "Search or jump to…", places,
+  Folders, Tags, Archive, Trash, account; a note's outline on a note) with no system bar over it; iOS's toolbar in
+  today's order (Back and Forward, the tabs via `WebTopBar(stripOnly:)`, Foli AI, New note as a glass +; no title,
+  no toolbar search, no floating Ask button). Screens keep their own controls in their content
+  (`screensKeepControls`, so `cardSlot` is nil): Calendar's title row, Tasks' views and Add task, list headers;
+  narrow content stacks Calendar's day list under the month (iOS only) and scrolls the Tasks views and list header
+  controls sideways. A note opens with its outline and the page's dock, the inspector shut until a tool is asked
+  for; the page is told `wide` on the iPad too (`RebuildPageLayout.tell`). iPhone Duo open across keeps iOS's
+  toolbar column (sideBars) with the same sidebar; closed is the phone layout; half open the sidebar reaches the
+  fold. Checked on Simulators "Folevi Native iPad" (11-inch, portrait), "Folevi Native iPad 13" and "Folevi Native
+  Duo" (closed, half open, open; note, caret and keyboard carried both ways). Not checked: iPad landscape, Split
+  View and Slide Over (no rotation access to the iPad Simulator), Duo upright (the Simulator's rotation drew a
+  squeezed frame). Screenshots: `/tmp/folevi-ipad-duo/`.
 **Read this first: everything open on 2026-11-25 is merged and released as 1.6.78 (build 102).** PR 109
 (`claude/integration-2026-11-25`, merge commit `e0183862`) merged PRs 104, 96, 92, 89, 78, 97, 98, 81, 82, 69 (with
 66), 83, 65, 99, 107, 100, 105, 103, 106 and 93 at once; the change log's first entry says why and what was resolved.
@@ -1016,6 +1077,17 @@ signed-in account, 1.5.58's frosted folders with a large library, and the iPad c
 account button should move past iPadOS's window buttons).
 
 ## 10. Next steps / open work
+- Native iPhone performance, left from the SwiftUI audit: `CardPicture` still reads `@Environment(\.self)` (any
+  environment change runs its body; cheap while the picture is kept); the Mac's `PlaceholderCard` pulses each on its
+  own animation (not used on the iPhone); nothing measured with Instruments before and after.
+- Native iOS (`claude/ios-native-sync-signin`): check QR scanning and a server sign-in on a device; the sync sheet's
+  "Notes waiting to sync" and "Other changes" lists need the outbox and pending notes in the bridge contract (not in
+  `sync.status` yet); R5.7's page side (note.prepare waiting for the store); the iPhone's message-card gates
+  (offline, update required) were drawn wider than the screen: fixed on `claude/ios-native-today-ui` (3dcf9dc1), not yet seen on screen.
+- Native iPad/Duo (`claude/ios-native-ipad-duo`): check iPad landscape, Split View and Slide Over, and the Duo
+  upright (669 pt: still the wide layout by the Duo decision; today's web rule would give it the phone's under
+  700, owner's call); Foli AI's page is tight beside the sidebar in iPad portrait (conversations and chat side by
+  side in about 500 pt).
 - Float this note (PR from `claude/float-this-note`): CI's e2e, then merge; it ships in the next release of each app
   (Mac and Windows need new builds for the window; the web works on deploy). Then the owner tries it on the Mac
   (several panels, pin off and on, over a full-screen app), on a Windows PC and in Chrome. Possible follow-ups:
@@ -1334,6 +1406,56 @@ account button should move past iPadOS's window buttons).
   - Robolectric 4.18.1 Compose UI tests (headless).
   - Results: 68 app tests pass; the sign-in gate is not yet checked on an emulator (it needs the dev server).
 - 2026-11-25: Android native Compose resumed (owner, relayed by the iOS session). `apps/android` on `main` builds and its 59 unit tests pass; the phone bar now matches the web's (Home, Tasks, Calendar capsule plus Foli AI and + capsule, `ui/PhoneBar.kt`); gap plan in `docs/ANDROID_NATIVE_PLAN.md` section 6. Branch `claude/android-native-compose`.
+- 2026-11-25: **Windows: home servers over plain http** (branch `claude/windows-server-bridge`, on top of
+  `claude/desktop-server-places`): `src/lan_bridge.rs` relays a server place's http and ws traffic to a LAN address
+  through `127.0.0.1` (WebView2 blocks it from `https://app.localhost` as mixed content), with the server's own Host.
+  The page gets the relay for Convex and Convex site only; links keep the server's name. 5 Rust tests (requests,
+  WebSocket, 502, stable port); not yet run against a real server on a real Windows PC.
+- 2026-11-25: **Folevi Server keeps every account when its address changes** (branch `claude/server-stable-issuer`,
+  server lead). The Better Auth Convex plugin signs tokens with the server's public address as issuer, so turning
+  Folevi Connect on or adding a domain made every account read "Finish setting up". In the server edition only,
+  `findProfile` (convex/lib/auth.ts) now also finds the profile by the Better Auth user id (only this server's keys
+  sign tokens) and a mutation moves it to the new issuer; Folevi Cloud is unchanged. Also merges
+  `claude/server-connect`, which never had its own PR: folevid builds on macOS, folevid gives the backend every name
+  it answers on (`FOLEVI_TRUSTED_ORIGINS`, Connect names), the Synology package refuses to start on another
+  install's leftover files with a clear log line, NAS icons from the app icon, and Connect's Fly config (live at
+  connect.folevi.com; services/connect/OPS.md). The owner's DS223 runs Folevi Server on Connect as
+  `6ge2xhr4kl.folevi.app` (owner: keep it on).
+- 2026-11-26: Native iPhone: a bar's "…" menu (All notes' View as and Sort by, Tags' Sort by, every iOS menu with
+  checkable rows) opened greyed out and took no taps. Cause: the frame's switch style (`NativeSwitchStyle`, set by
+  `phoneNativeChrome`) reached the menu's Toggles and iOS can't draw a custom style as a menu checkmark. Fix:
+  `PhoneMenuRow` gives its Toggle `.toggleStyle(.automatic)`. Checked on the iPhone Simulator.
+- 2026-11-26: **Main (1.7.78) merged into `claude/ios-native-today-ui` (PR 129) to clear its conflicts.** The branch
+  had released 1.6.79 (builds 103 to 106, TestFlight only) while main released 1.7.78 (build 103): both follow 1.6.78,
+  and the version script refuses a Big update after 1.6.79, so the two histories can't both stand. Resolved as:
+  version.json, CHANGELOG.json, CHANGELOG.md and every project say main's 1.7.78 (build 103); the iOS projects keep
+  this branch's iOS 26 deployment target; the 1.6.79 changelog entry is NOT in CHANGELOG.json any more. Its notes, for
+  the next release that carries the native iPhone and iPad app (1.7.79, or 1.7.78 uploaded again): summary "Folevi
+  for iPhone and iPad is native again, with the look you know: Liquid Glass bars, faster launch, smoother writing
+  and a native Foli AI."; added "Sign in to your own server from the iPhone and iPad sign-in screen"; improved
+  "iPhone and iPad screens are native SwiftUI with Liquid Glass, matching today's look", "Home and lists appear at
+  once when Folevi opens", "The writing bar rides the keyboard up and down", "Foli AI chat is native, with its
+  message box on the keyboard"; fixed "A note opened right after launch no longer shows a blank page", "Stop in Foli
+  AI works without an account". **Builds 104 to 106 are used on TestFlight (as 1.6.79): the next iOS upload needs a
+  build above 106** (`setBuild` in `scripts/version.mjs`; `version.mjs build` alone would give 104). Also merged
+  main into PR 117 and PR 112 (HANDOFF.md only, both sides kept); PR 130 was brought up to date by its own session.
+- 2026-11-25: Native iOS SwiftUI refactors (not released): each tab's stack is its own observed box
+  (`PhoneTabStack`) drawn by its own view (`PhoneTabStackView`), so a push in one tab doesn't draw the others or the
+  tab bar; frames kept for menus are boxes (`PhoneFrameBox`, `PhoneFrameBoxes`), not `@State` written on every scroll
+  frame (Foli AI history, Move places, task sheet, notifications, Vault, search chips, folders, bars); notes list
+  cards and rows are `PhoneSkipCell`s keyed on what they show, so a window of rows loading doesn't run every card's
+  body; `CardPictures` counts changes per card, not one global count; `RebuildFrame` keeps which layout shows
+  (phone or wide) as state from `onGeometryChange` instead of a root `GeometryReader` (launch time unchanged:
+  Home at about 1.5 s on the Simulator both ways). PhoneScreen's scroll offset turned out to be the web drawing
+  only; the iPhone uses the native bar. Tests: tab stacks, card pictures, phone and design suites pass; checked on
+  the iPhone Simulator (Home, All notes, Tasks, a note and back, menus).
+- 2026-11-25: Native iOS 1.6.79 (build 106) on TestFlight (delivery 8c768201; build 105's upload was cut off by the app quitting): + in the top bar before the sync and the bell with iOS's own menu; performance pass (energy, memory and SwiftUI audits): per-card line slots in WebLineLayout, cached card title lines, cached Foli AI flower, shared calendar/formatters, background refresh at most once a minute, LibraryWatcher's timer paused in the background, PhoneModel.start once, cover colours trimmed. Open from the SwiftUI audit (bigger refactors, not done): PhoneFrameView reading every tab's stack, PhoneScreen's scroll offset re-running the whole screen, per-row frame @State in PhoneRows/Notifications/Vault/FoliAI history/MovePlaces, NotesListModel rebuilding all slots per window load, CardPicture's @Environment(\.self) and global change counter, the root GeometryReader in RebuildFrame, per-card placeholder pulses.
+- 2026-11-25: Native iOS 1.6.79 (build 104) on TestFlight (delivery efdcbcd1): Foli AI's sheet slides up and down as iOS's own and its tab is never selected (owner's video: the zoom from the middle of the screen and the blank page looked weird).
+- 2026-11-25: Native iOS 1.6.79 (build 103) uploaded to TestFlight from `claude/ios-native-today-ui` (delivery fd1a648b).
+- 2026-11-25: Native iOS sync sheet redesign, Your own server sign-in, R5.6 and R5.7 (native) on `claude/ios-native-sync-signin`.
+- 2026-11-25: Native Foli AI on iPhone finished on `claude/ios-native-foli-ai` (glass composer on the keyboard, Stop, follow-ups crash, local message ids).
+- 2026-11-25: Native iPad and iPhone Duo matched to today's tablet layout on `claude/ios-native-ipad-duo` (49c8757b, 7347a057).
+- 2026-11-25: Native iOS restarted on `claude/ios-native-today-ui` to match today's UI (owner's decision); step 1 committed (ae912d75).
 - 2026-11-25: Mac feedback round 2: New note's even 6 px inset; one note in two joined tabs stays in the tab on
   screen (`shownId`/`pick` in `lib/app/tabs.tsx`); hovered tab's pin clear of the title; table cells wrap alike
   edited or not. Checked: typecheck, lint, unit suite (2247), WebKit probes (inset 6/6/6, pin fade 48 px). The table

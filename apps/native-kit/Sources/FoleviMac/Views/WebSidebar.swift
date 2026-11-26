@@ -162,7 +162,12 @@ public struct WebSidebar: View {
                 .accessibilityLabel("Folevi")
             }
             Spacer(minLength: 0)
+            #if os(iOS)
+            // (The real status, its popover from here: the iPad's wide layout, today's place for it.)
+            IPadSyncButton(model: model)
+            #else
             SyncDot(model: model)
+            #endif
             if !local {
                 WebIconButton(.bell, label: "Notifications") { actions.notifications(nil) }
             }

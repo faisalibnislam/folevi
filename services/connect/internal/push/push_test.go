@@ -49,7 +49,7 @@ func verifyES256(t *testing.T, jwt string, pub *ecdsa.PublicKey) map[string]any 
 	return claims
 }
 
-const apnsToken = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+const apnsToken = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef" // gitleaks:allow
 
 func TestAPNsOverHTTP2(t *testing.T) {
 	key, pemText := p8(t)

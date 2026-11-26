@@ -1,4 +1,4 @@
-# Folevi Connect on Fly.io. Not deployed yet; see OPS.md before the first `fly deploy`.
+# Folevi Connect on Fly.io (app folevi-connect, org personal). Every deploy needs the owner's OK; see OPS.md.
 # One machine, one volume: the tunnel registry lives in memory and SQLite on the volume, so do not scale out
 # until the store moves to Postgres and tunnels are shared (OPS.md, "Scaling").
 app = "folevi-connect"
@@ -18,9 +18,10 @@ primary_region = "iad"
   CONNECT_DNS_PROVIDER = "cloudflare"
   CONNECT_APP_URL = "https://app.folevi.com"
   CONNECT_LOG_LEVEL = "info"
-  # Set to the app's dedicated IPs after `fly ips allocate-v4` / `fly ips allocate-v6`.
-  # CONNECT_RELAY_IPV4 = ""
-  # CONNECT_RELAY_IPV6 = ""
+  # The app's dedicated addresses (allocated 2026-11-25). <id>.folevi.app points here when a server is reached
+  # through the relay. CONNECT_ACME_EMAIL and the keys are Fly secrets (OPS.md).
+  CONNECT_RELAY_IPV4 = "137.66.16.104"
+  CONNECT_RELAY_IPV6 = "2a09:8280:1::221:efe2:0"
 
 [mounts]
   source = "connect_data"

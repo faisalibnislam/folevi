@@ -27,6 +27,9 @@ final class LibraryWatcher: NSObject {
     private var observers: [NSObjectProtocol] = []
     private var pending: DispatchWorkItem?
     private var stopped = false
+    /// The periodic scan paused while Folevi isn't in front (no wake every 30 s in the background); it picks up
+    /// again, with a scan, when Folevi comes back. Read and written on the main thread.
+    private var paused = false
 
     /// `list` and `onChanges` run on `queue` (the library's own).
     init(queue: DispatchQueue, iCloudScope: Bool, list: @escaping () throws -> [LibraryEntry], onChanges: @escaping ([[String: String]]) -> Void) {
@@ -41,13 +44,22 @@ final class LibraryWatcher: NSObject {
             guard let self else { return }
             // Only while Folevi is in front (the page isn't running in the background anyway).
             DispatchQueue.main.async {
-                guard Platform.isActive else { return }
+                guard Platform.isActive else {
+                    if !self.paused, !self.stopped { self.paused = true; self.timer?.suspend() }
+                    return
+                }
                 self.queue.async { self.scan() }
             }
         }
         t.resume()
         timer = t
-        observers.append(NotificationCenter.default.addObserver(forName: Platform.didBecomeActive, object: nil, queue: nil) { [weak self] _ in self?.soon() })
+        observers.append(NotificationCenter.default.addObserver(forName: Platform.didBecomeActive, object: nil, queue: nil) { [weak self] _ in
+            guard let self else { return }
+            DispatchQueue.main.async {
+                if self.paused, !self.stopped { self.paused = false; self.timer?.resume() }
+            }
+            self.soon()
+        })
         if iCloudScope {
             DispatchQueue.main.async { self.startQuery() }
         }
@@ -128,6 +140,8 @@ final class LibraryWatcher: NSObject {
 
     func stop() {
         stopped = true
+        // (A suspended dispatch source must be resumed before it's cancelled and released, or libdispatch traps.)
+        if paused { paused = false; timer?.resume() }
         timer?.cancel()
         timer = nil
         pending?.cancel()

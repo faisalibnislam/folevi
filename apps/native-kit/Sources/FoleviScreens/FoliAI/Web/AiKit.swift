@@ -141,10 +141,9 @@ public enum AiAge {
             if hours < 24 { out = unit(hours, "hour") } else {
                 let days = Int((Double(hours) / 24).rounded())
                 if days < 7 { out = unit(days, "day") } else {
-                    let f = DateFormatter()
+                    // (Shared formatters: making one per history row cost each row a DateFormatter on every pass.)
                     let sameYear = Calendar.current.component(.year, from: ts) == Calendar.current.component(.year, from: now)
-                    f.setLocalizedDateFormatFromTemplate(sameYear ? "MMM d" : "MMM d y")
-                    out = f.string(from: ts)
+                    out = ts.formatted(sameYear ? .dateTime.month(.abbreviated).day() : .dateTime.month(.abbreviated).day().year())
                 }
             }
         }
@@ -184,6 +183,20 @@ public enum AiExternal {
 public extension EnvironmentValues {
     /// Foli AI drawn in the iPhone's layout (the web's useIphoneApp()): bigger type, no bubbles on answers.
     @Entry var aiPhone = false
+}
+
+/// Stop's hover fill and ⌘. where there's a pointer and a keyboard (the Mac, the iPad's floating chat). Not on the
+/// iPhone's thread: there the button never took a tap while an answer was coming (no ⌘. to offer there anyway).
+private struct AiStopHoverExtras: ViewModifier {
+    let on: Bool
+
+    func body(content: Content) -> some View {
+        if on {
+            content.webHover(radius: 12).keyboardShortcut(".", modifiers: .command)
+        } else {
+            content
+        }
+    }
 }
 
 /// The web's `RunStatus`: three softly pulsing dots, what Foli AI is doing, and Stop.
@@ -229,9 +242,8 @@ public struct AiRunStatus: View {
                     .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
-                .webHover(radius: 12)
+                .modifier(AiStopHoverExtras(on: !phone))
                 .padding(.leading, 4)
-                .keyboardShortcut(".", modifiers: .command)
                 .fixedSize()
             }
         }

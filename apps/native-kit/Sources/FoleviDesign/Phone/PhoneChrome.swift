@@ -216,7 +216,7 @@ public struct PhoneTabBar: View {
     /// + tapped, with where it is on the screen (the Create menu grows out of it).
     let plus: (CGRect) -> Void
     @Environment(\.colorScheme) private var scheme
-    @State private var plusFrame: CGRect = .zero
+    @State private var plusFrame = PhoneFrameBox()
     /// The lens stretches as it slides to another tab, like liquid, then settles round (the owner's videos).
     @State private var stretch: CGFloat = 1
 
@@ -287,11 +287,11 @@ public struct PhoneTabBar: View {
                 .sheetZoomSource("ai")
                 .accessibilityLabel("Foli AI")
             }
-            Button { plus(plusFrame) } label: {
+            Button { plus(plusFrame.rect) } label: {
                 PlusDisc().frame(width: 56, height: 56)
             }
             .buttonStyle(GlassPressStyle())
-            .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { plusFrame = $0 }
+            .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { plusFrame.rect = $0 }
             .accessibilityLabel(current == .tasks ? "Quick task" : "Create")
         }
         .padding(4)

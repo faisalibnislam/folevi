@@ -315,10 +315,10 @@ struct WebTextModifier: ViewModifier {
     }
 
     func body(content: Content) -> some View {
-        let style = chrome?.text(self.style) ?? self.style
+        let style = chrome?.forText?.text(self.style) ?? self.style
         if style.family == .system {
             // Interface text under the native look: the system font with its own line height, as AppKit sets it.
-            content.font(chrome?.font(style) ?? NativeChrome.font(style))
+            content.font(chrome?.forText?.font(style) ?? NativeChrome.font(style))
         } else {
             webBody(content, style: style)
         }

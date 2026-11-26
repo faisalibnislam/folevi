@@ -19,10 +19,27 @@ public struct PhoneStackEntry: Hashable, Sendable {
     }
 }
 
+/// One tab's stack, observed on its own: a screen pushed in Tasks doesn't draw Home's and Calendar's stacks again.
+@MainActor @Observable
+final class PhoneTabStack {
+    var entries: [PhoneStackEntry]
+    init(_ entries: [PhoneStackEntry]) { self.entries = entries }
+}
+
 @MainActor @Observable
 public final class PhoneFrameModel {
     public private(set) var current: PhoneTab = .home
-    public private(set) var stacks: [PhoneTab: [PhoneStackEntry]] = [:]
+    @ObservationIgnored private let tabStacks: [PhoneTab: PhoneTabStack]
+
+    /// Every tab's stack (reading it follows all three; a view of one tab reads `entries(of:)`).
+    public var stacks: [PhoneTab: [PhoneStackEntry]] {
+        Dictionary(uniqueKeysWithValues: tabStacks.map { ($0.key, $0.value.entries) })
+    }
+
+    /// One tab's stack.
+    public func entries(of tab: PhoneTab) -> [PhoneStackEntry] { tabStacks[tab]?.entries ?? [] }
+
+    private func set(_ tab: PhoneTab, _ entries: [PhoneStackEntry]) { tabStacks[tab]?.entries = entries }
     /// Bumped when the tab on screen should scroll to its top (its own tab tapped at its first screen).
     public private(set) var scrollToTop = 0
     /// The search tab is on show (iOS 26's tab bar: search is a tab of its own, `Tab(role: .search)`), over the tab
@@ -33,7 +50,7 @@ public final class PhoneFrameModel {
     public private(set) var searchID = 0
 
     public init() {
-        for tab in PhoneTab.allCases { stacks[tab] = [PhoneStackEntry(Self.root(of: tab))] }
+        tabStacks = Dictionary(uniqueKeysWithValues: PhoneTab.allCases.map { ($0, PhoneTabStack([PhoneStackEntry(Self.root(of: $0))])) })
     }
 
     /// The tab's first screen.
@@ -59,7 +76,7 @@ public final class PhoneFrameModel {
     }
 
     /// The current tab's stack.
-    public var stack: [PhoneStackEntry] { stacks[current] ?? [] }
+    public var stack: [PhoneStackEntry] { entries(of: current) }
 
     /// The screen on show.
     public var top: FrameRoute { searching ? .search(searchText) : (stack.last?.route ?? Self.root(of: current)) }
@@ -96,17 +113,17 @@ public final class PhoneFrameModel {
             let ownRootAgain = tab == current && stack.count > 1 && !{ if case .tasks = route { true } else { false } }()
             if tab != current || ownRootAgain {
                 current = tab
-                stacks[tab] = [PhoneStackEntry(route)]
+                set(tab, [PhoneStackEntry(route)])
                 return
             }
             if stack.count == 1 {
                 // The same first screen with another address (another task view, another day).
-                stacks[tab] = [PhoneStackEntry(route)]
+                set(tab, [PhoneStackEntry(route)])
                 return
             }
         }
         guard top != route else { return }
-        stacks[current, default: []].append(PhoneStackEntry(route))
+        set(current, stack + [PhoneStackEntry(route)])
     }
 
     /// Back in this tab (the Back button, the edge swipe).
@@ -116,7 +133,7 @@ public final class PhoneFrameModel {
             return
         }
         guard canGoBack else { return }
-        stacks[current]?.removeLast()
+        set(current, Array(stack.dropLast()))
     }
 
     /// The tab bar: another tab shows where it was left; the tab on show goes back to its first screen, or, there
@@ -132,7 +149,7 @@ public final class PhoneFrameModel {
             return
         }
         if canGoBack {
-            stacks[tab] = Array(stack.prefix(1))
+            set(tab, Array(stack.prefix(1)))
         } else {
             scrollToTop += 1
         }
@@ -141,15 +158,18 @@ public final class PhoneFrameModel {
     /// The navigation stack's path changed under the model (iOS's edge swipe popped a screen): the tab's stack is
     /// its first screen and that path.
     public func setPath(_ path: [PhoneStackEntry], in tab: PhoneTab) {
-        let first = stacks[tab]?.first ?? PhoneStackEntry(Self.root(of: tab))
-        stacks[tab] = [first] + path
+        let first = entries(of: tab).first ?? PhoneStackEntry(Self.root(of: tab))
+        let next = [first] + path
+        // (The navigation stack writes its path back on every change, also when nothing moved.)
+        if next != entries(of: tab) { set(tab, next) }
     }
 
     /// Keeps how far the screen on top was scrolled, so it comes back there.
     public func rememberScroll(_ offset: CGFloat) {
-        guard var s = stacks[current], !s.isEmpty else { return }
+        var s = stack
+        guard !s.isEmpty else { return }
         s[s.count - 1].scroll = offset
-        stacks[current] = s
+        set(current, s)
     }
 
     // MARK: Scene restore
@@ -181,9 +201,9 @@ public final class PhoneFrameModel {
         for tab in PhoneTab.allCases {
             let entries = (s.stacks[tab.rawValue] ?? []).map { PhoneStackEntry(FrameRoute(path: $0.path), scroll: CGFloat($0.scroll)) }
             if let first = entries.first, Self.isTabRoot(first.route), Self.tab(of: first.route) == tab {
-                stacks[tab] = entries
+                set(tab, entries)
             } else {
-                stacks[tab] = [PhoneStackEntry(Self.root(of: tab))]
+                set(tab, [PhoneStackEntry(Self.root(of: tab))])
             }
         }
         current = PhoneTab(rawValue: s.current) ?? .home

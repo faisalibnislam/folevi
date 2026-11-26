@@ -11,6 +11,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -181,6 +182,11 @@ func TestIntegration(t *testing.T) {
 		if fakeEnv[k] != want {
 			t.Errorf("convex env %s = %q, want %q", k, fakeEnv[k], want)
 		}
+	}
+	// Every name the server answers on is trusted for sign-in, the public origin first.
+	trusted := strings.Split(fakeEnv["FOLEVI_TRUSTED_ORIGINS"], ",")
+	if len(trusted) < 3 || trusted[0] != cfg.PublicURL || !slices.Contains(trusted, "http://127.0.0.1:"+strconv.Itoa(cfg.Port)) {
+		t.Errorf("FOLEVI_TRUSTED_ORIGINS = %q", fakeEnv["FOLEVI_TRUSTED_ORIGINS"])
 	}
 	setup, _ := sec.Get(secrets.SetupToken)
 	if fakeEnv["FOLEVI_SETUP_TOKEN_HASH"] != secrets.SHA256Hex(setup) {
@@ -469,4 +475,12 @@ func mustIdent(t *testing.T, key string) *age.X25519Identity {
 		t.Fatal(err)
 	}
 	return id
+}
+
+func TestConnectHostnamesHomeFirst(t *testing.T) {
+	got := connectHostnames(config.Connect{Hostname: "abc1234567.folevi.app", LANHostnames: []string{"192-168-1-20.abc1234567.folevi.app"}})
+	want := []string{"192-168-1-20.abc1234567.folevi.app", "abc1234567.folevi.app"}
+	if !slices.Equal(got, want) {
+		t.Fatalf("got %v, want %v", got, want)
+	}
 }

@@ -32,3 +32,26 @@ describe("PDF export copy", () => {
     for (const p of ["mac", "ios", "browser"] as const) expect(Object.values(pdfCopy(p)).join(" ")).not.toContain(String.fromCharCode(0x2014));
   });
 });
+
+describe("the frame a note prints from", () => {
+  test("is sandboxed before it joins the page, with no scripts allowed", async () => {
+    const { printFrame } = await import("@/components/doc/export");
+    const seen: (string | null)[] = [];
+    const observer = new MutationObserver((records) => {
+      for (const r of records) for (const n of r.addedNodes) if (n instanceof HTMLIFrameElement) seen.push(n.getAttribute("sandbox"));
+    });
+    observer.observe(document.body, { childList: true });
+    const frame = printFrame("<!doctype html><title>T</title><p>hello</p>");
+    await Promise.resolve();
+    observer.disconnect();
+    try {
+      expect(seen).toEqual(["allow-same-origin allow-modals"]);
+      expect(frame.getAttribute("sandbox")).not.toContain("allow-scripts");
+      // This page can still write into it and call its print(): the frame needs no script of its own.
+      expect(frame.contentDocument?.body.textContent).toContain("hello");
+      expect(typeof frame.contentWindow?.print).toBe("function");
+    } finally {
+      frame.remove();
+    }
+  });
+});

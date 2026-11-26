@@ -1,6 +1,7 @@
 // Importing files into a space (Settings > Import & export): Evernote, Word, HTML and CSV by themselves, everything
 // else (Markdown, text, folders, ZIPs) as a bundle, which may be a Notion export; folders made as the source has
-// them; images uploaded once. The web's section and the Mac's native one (through the engine) both run this.
+// them; images uploaded once. The web's section and the Mac's native one (through the engine) both run this, and
+// Apple Notes (lib/import/appleNotes.ts, Mac only) runs importDocs in batches.
 import type { WireScope } from "@folevi/editor-schema";
 import { api } from "@/lib/convex/api";
 import { errorMessage } from "@/components/ui/Toast";
@@ -9,7 +10,7 @@ import { entriesFromFiles, entryMap } from "@/components/doc/importBundle";
 import { csvDoc, docxDoc, evernoteDocs, htmlDoc, isNotionExport, loadMarkdown, markdownDocs, notionDocs, type ImportDoc, type ImportImage } from "@/lib/import/sources";
 import { folderPathOf, planFolders } from "@/lib/import/folders";
 
-export type ImportResult = { name: string; id?: string; warnings: { line?: number; message: string }[]; error?: string; images?: number };
+export type ImportResult = { name: string; id?: string; warnings: { line?: number; message: string }[]; error?: string; images?: number; files?: number };
 
 /** Pages per import (a Notion export is often hundreds); the rest can follow in another one. */
 export const MAX_DOCS = 400;
@@ -32,7 +33,6 @@ export async function importFiles(
 ): Promise<ImportResult[]> {
   const setProgress = o.onProgress ?? (() => undefined);
   const out: ImportResult[] = [];
-  const { importText, createFolder } = o;
   try {
       setProgress("Reading files…");
       // Each kind of file becomes pages: Evernote, Word, HTML and CSV by themselves; everything else
@@ -64,58 +64,103 @@ export async function importFiles(
       }
       if (!docs.length && !out.length) out.push({ name: files.length === 1 ? files[0]!.name : `${files.length} files`, warnings: [], error: "Nothing to import here. Folevi imports Markdown, text, Notion and Evernote exports, Word, HTML and CSV files." });
       if (docs.length > MAX_DOCS) o.onNote?.(`Importing the first ${MAX_DOCS} of ${docs.length} pages. Import the rest in another batch.`);
-      // An image used by several pages is uploaded once.
-      const uploaded = new Map<Blob, Promise<string>>();
-      const upload = (img: ImportImage) => {
-        let p = uploaded.get(img.blob);
-        if (!p) {
-          p = uploadFileNow(client, { scope, blob: img.blob, filename: img.filename, mimeType: img.mime, kind: "image" });
-          uploaded.set(img.blob, p);
-        }
-        return p;
-      };
-      const imported = new Map<string, string>(); // path → page id, for nesting
-      const list = docs.slice(0, MAX_DOCS);
-      // The folders the pages go in: the source's tree, reusing folders of the same name already there.
-      const paths = list.flatMap((d) => (d.folderPath?.length ? [d.folderPath] : []));
-      const plan = planFolders(paths, paths.length ? ((await client.query(api.organization.sidebar as never, { scope } as never)) as { folders: never[] }).folders : []);
-      if (plan.steps.length) setProgress(plan.steps.length === 1 ? "Making 1 folder…" : `Making ${plan.steps.length} folders…`);
-      for (const step of plan.steps) await createFolder({ scope, id: step.id, name: step.name, ...(step.parentFolderId ? { parentFolderId: step.parentFolderId } : {}) });
-      for (const [i, doc] of list.entries()) {
-        setProgress(`Importing ${i + 1} of ${list.length}: ${doc.name}`);
-        try {
-          await loadMarkdown(doc);
-          const imageMap: Record<string, string> = {};
-          let images = 0;
-          for (const [src, img] of doc.images) {
-            try {
-              imageMap[src] = await upload(img);
-              images++;
-            } catch (err) {
-              doc.warnings.push({ message: `Image “${img.filename}” couldn’t be uploaded: ${errorMessage(err)}` });
-            }
-          }
-          const parentId = doc.parentPath ? imported.get(doc.parentPath) : undefined;
-          const r = await importText({
-            scope,
-            filename: doc.filename,
-            content: doc.content,
-            format: doc.format,
-            imageMap: images ? imageMap : undefined,
-            publicId: doc.publicId,
-            ...(parentId ? { parentId } : {}),
-            ...(doc.links ? { links: doc.links } : {}),
-            ...(doc.folderPath?.length ? { folderId: plan.folderId(doc.folderPath)! } : {}),
-          });
-          imported.set(doc.path, r.document.id);
-          out.push({ name: doc.name, id: r.document.id, warnings: [...doc.warnings, ...r.warnings], images });
-        } catch (err) {
-          out.push({ name: doc.name, warnings: [], error: errorMessage(err) });
-        }
-        o.onResults?.([...out]);
-      }
+      await importDocs(client, scope, docs.slice(0, MAX_DOCS), { ...o, out });
   } catch (err) {
     out.push({ name: "Import", warnings: [], error: errorMessage(err) });
+  }
+  return out;
+}
+
+type DocOptions = {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  importText: (args: any) => Promise<{ document: { id: string }; warnings: { line?: number; message: string }[] }>;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  createFolder: (args: any) => Promise<unknown>;
+  onProgress?: (text: string) => void;
+  onResults?: (results: ImportResult[]) => void;
+  /** Results so far (another batch's), added to. */
+  out?: ImportResult[];
+  /** Counts the progress line goes on from (an import in batches: Apple Notes). */
+  offset?: number;
+  total?: number;
+  /** Stops before the next page (Apple Notes' Cancel). */
+  signal?: AbortSignal;
+  /** More folders to make even when no page goes in them (Apple Notes' empty folders), names from the top down. */
+  folders?: string[][];
+};
+
+/**
+ * Imports pages that are already read (any source): makes their folders (the source's tree, reusing folders of
+ * the same name already there), uploads their images once each and imports them one by one, parents first.
+ */
+export async function importDocs(client: Client, scope: WireScope, list: ImportDoc[], o: DocOptions): Promise<ImportResult[]> {
+  const setProgress = o.onProgress ?? (() => undefined);
+  const out = o.out ?? [];
+  const { importText, createFolder } = o;
+  const offset = o.offset ?? 0;
+  const total = o.total ?? list.length;
+  // An image used by several pages is uploaded once.
+  const uploaded = new Map<Blob, Promise<string>>();
+  const upload = (img: ImportImage, kind: "image" | "file" = "image") => {
+    let p = uploaded.get(img.blob);
+    if (!p) {
+      p = uploadFileNow(client, { scope, blob: img.blob, filename: img.filename, mimeType: img.mime, kind });
+      uploaded.set(img.blob, p);
+    }
+    return p;
+  };
+  const imported = new Map<string, string>(); // path → page id, for nesting
+  const paths = [...(o.folders ?? []).filter((f) => f.length), ...list.flatMap((d) => (d.folderPath?.length ? [d.folderPath] : []))];
+  const plan = planFolders(paths, paths.length ? ((await client.query(api.organization.sidebar as never, { scope } as never)) as { folders: never[] }).folders : []);
+  if (plan.steps.length) setProgress(plan.steps.length === 1 ? "Making 1 folder…" : `Making ${plan.steps.length} folders…`);
+  for (const step of plan.steps) await createFolder({ scope, id: step.id, name: step.name, ...(step.parentFolderId ? { parentFolderId: step.parentFolderId } : {}) });
+  for (const [i, doc] of list.entries()) {
+    if (o.signal?.aborted) break;
+    setProgress(`Importing ${offset + i + 1} of ${total}: ${doc.name}`);
+    try {
+      await loadMarkdown(doc);
+      const imageMap: Record<string, string> = {};
+      let images = 0;
+      for (const [src, img] of doc.images) {
+        try {
+          imageMap[src] = await upload(img);
+          images++;
+        } catch (err) {
+          doc.warnings.push({ message: `Image “${img.filename}” couldn’t be uploaded: ${errorMessage(err)}` });
+        }
+      }
+      const fileMap: Record<string, { fileId: string; name: string; size: number; mimeType: string }> = {};
+      for (const [src, file] of doc.files ?? []) {
+        if (o.signal?.aborted) break;
+        try {
+          fileMap[src] = { fileId: await upload(file, "file"), name: file.filename, size: file.blob.size, mimeType: file.mime || "application/octet-stream" };
+        } catch (err) {
+          doc.warnings.push({ message: `Attachment “${file.filename}” couldn’t be uploaded: ${errorMessage(err)}` });
+        }
+      }
+      const parentId = doc.parentPath ? imported.get(doc.parentPath) : undefined;
+      const r = await importText({
+        scope,
+        filename: doc.filename,
+        content: doc.content,
+        format: doc.format,
+        imageMap: images ? imageMap : undefined,
+        publicId: doc.publicId,
+        ...(parentId ? { parentId } : {}),
+        ...(doc.links ? { links: doc.links } : {}),
+        ...(doc.folderPath?.length ? { folderId: plan.folderId(doc.folderPath)! } : {}),
+        ...(doc.createdAt !== undefined ? { createdAt: doc.createdAt } : {}),
+        ...(doc.updatedAt !== undefined ? { updatedAt: doc.updatedAt } : {}),
+        ...(Object.keys(fileMap).length ? { fileMap } : {}),
+        ...(doc.tags?.length ? { tags: doc.tags } : {}),
+      });
+      imported.set(doc.path, r.document.id);
+      const files = Object.keys(fileMap).length;
+      out.push({ name: doc.name, id: r.document.id, warnings: [...doc.warnings, ...r.warnings], images, ...(files ? { files } : {}) });
+    } catch (err) {
+      out.push({ name: doc.name, warnings: [], error: errorMessage(err) });
+    }
+    o.onResults?.([...out]);
   }
   return out;
 }

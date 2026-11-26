@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { devPagesAvailable } from "@/lib/edition";
 import { FolderStates } from "./FolderStates";
 
 export const metadata: Metadata = { title: "Folder states", robots: { index: false, follow: false } };
@@ -9,6 +10,6 @@ export const metadata: Metadata = { title: "Folder states", robots: { index: fal
  * and the iPad's sizes, to judge it and for the native apps' screenshot diffs.
  */
 export default function FolderStatesPage() {
-  if (process.env.VERCEL_ENV === "production" || process.env.FOLEVI_ENV === "production") notFound();
+  if (!devPagesAvailable()) notFound();
   return <FolderStates />;
 }

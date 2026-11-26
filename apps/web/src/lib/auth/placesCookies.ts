@@ -171,7 +171,13 @@ export function hasAnySession(header: string | null | undefined): boolean {
   return jar.session !== null || jar.multi.length > 0;
 }
 
-/** /api/auth paths a browser may never call itself: the plugin's, which take raw session tokens. */
+/**
+ * /api/auth paths a browser may never call itself: the plugin's, which take raw session tokens. Judged on the
+ * path as the backend could come to read it, not as it was written: in any letter case, and never one written
+ * with escapes ("%6dulti-session"), a backslash or an empty segment, none of which a real sign-in path has.
+ */
 export function isPrivateAuthPath(pathname: string): boolean {
-  return /^\/api\/auth\/multi-session(\/|$)/.test(pathname);
+  if (!/^\/api\/auth([/\\]|$)/i.test(pathname)) return false;
+  if (/[%\\]/.test(pathname) || pathname.includes("//")) return true;
+  return /^\/api\/auth\/multi-session(\/|$)/i.test(pathname);
 }

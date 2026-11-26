@@ -16,10 +16,11 @@ import { nextSeq } from "./lib/seq";
 import { insertScoped, personalScope } from "./lib/scope";
 import { FAKE_LIBRARY, fakeFolder, fakeNote } from "./lib/fakeLibrary";
 import { FOLDER_COLORS } from "./lib/folderColors";
+import { isProductionDeployment } from "./lib/deployment";
 
 /** Refuses production and anyone but a test address (the seed writes thousands of rows into their Personal). */
 function guard(email: string) {
-  if (process.env.FOLEVI_ENV === "production") throw new Error("devSeed is disabled in production.");
+  if (isProductionDeployment()) throw new Error("devSeed is disabled in production.");
   if (!/^[^@\s]+@example\.com$/i.test(email.trim())) throw new Error("devSeed only fills test accounts (an @example.com address).");
 }
 

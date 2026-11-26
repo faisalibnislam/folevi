@@ -50,16 +50,17 @@ type API struct {
 	cfg   *config.Config
 	names dns.Names
 
-	register   *limits.Window
-	linkCodes  *limits.Window
-	approve    *limits.Window
-	reach      *limits.Window
-	mailHour   *limits.Window
-	rcptHour   *limits.Window
-	rcptDay    *limits.Window
-	pushHour   *limits.Window
-	aiMinute   *limits.Window
-	unsplashHr *limits.Window
+	register    *limits.Window
+	registerAll *limits.Window
+	linkCodes   *limits.Window
+	approve     *limits.Window
+	reach       *limits.Window
+	mailHour    *limits.Window
+	rcptHour    *limits.Window
+	rcptDay     *limits.Window
+	pushHour    *limits.Window
+	aiMinute    *limits.Window
+	unsplashHr  *limits.Window
 
 	touchMu sync.Mutex
 	touched map[string]time.Time
@@ -74,20 +75,21 @@ func New(d Deps) *API {
 	}
 	c := d.Config
 	return &API{
-		Deps:       d,
-		cfg:        c,
-		names:      dns.Names{Zone: c.Zone},
-		register:   limits.NewWindow(c.RegisterPerIPHourly, time.Hour),
-		linkCodes:  limits.NewWindow(c.LinkCodesPerHour, time.Hour),
-		approve:    limits.NewWindow(c.ApprovePerUserHourly, time.Hour),
-		reach:      limits.NewWindow(20, time.Hour),
-		mailHour:   limits.NewWindow(c.MailPerServerHourly, time.Hour),
-		rcptHour:   limits.NewWindow(c.MailPerRecipientHourly, time.Hour),
-		rcptDay:    limits.NewWindow(c.MailPerRecipientDaily, 24*time.Hour),
-		pushHour:   limits.NewWindow(c.PushPerServerHourly, time.Hour),
-		aiMinute:   limits.NewWindow(c.AIPerServerMinute, time.Minute),
-		unsplashHr: limits.NewWindow(c.UnsplashPerServerHourly, time.Hour),
-		touched:    map[string]time.Time{},
+		Deps:        d,
+		cfg:         c,
+		names:       dns.Names{Zone: c.Zone},
+		register:    limits.NewWindow(c.RegisterPerIPHourly, time.Hour),
+		registerAll: limits.NewWindow(c.RegisterGlobalHourly, time.Hour),
+		linkCodes:   limits.NewWindow(c.LinkCodesPerHour, time.Hour),
+		approve:     limits.NewWindow(c.ApprovePerUserHourly, time.Hour),
+		reach:       limits.NewWindow(20, time.Hour),
+		mailHour:    limits.NewWindow(c.MailPerServerHourly, time.Hour),
+		rcptHour:    limits.NewWindow(c.MailPerRecipientHourly, time.Hour),
+		rcptDay:     limits.NewWindow(c.MailPerRecipientDaily, 24*time.Hour),
+		pushHour:    limits.NewWindow(c.PushPerServerHourly, time.Hour),
+		aiMinute:    limits.NewWindow(c.AIPerServerMinute, time.Minute),
+		unsplashHr:  limits.NewWindow(c.UnsplashPerServerHourly, time.Hour),
+		touched:     map[string]time.Time{},
 	}
 }
 
@@ -189,6 +191,22 @@ func (a *API) clientIP(r *http.Request) netip.Addr {
 	ip, _ := netip.ParseAddr(host)
 	return ip.Unmap()
 }
+
+// registerKey is the registration limiter's key for an address: the address itself for IPv4, and the /64 for
+// IPv6, where one customer holds a whole /64 (or more) and could otherwise use a new address for every call.
+func registerKey(ip netip.Addr) string {
+	ip = ip.Unmap()
+	if ip.Is6() {
+		if p, err := ip.WithZone("").Prefix(64); err == nil {
+			return "ip:" + p.String()
+		}
+	}
+	return "ip:" + ip.String()
+}
+
+// accountKey is what a server's mail and AI limits are counted under: its owner's account once linked, so
+// registering more servers does not buy more allowance, else the server itself.
+func accountKey(sv *store.Server) string { return ai.UsageKey(sv.ID, sv.OwnerAccount) }
 
 type ctxKey struct{}
 

@@ -255,6 +255,28 @@
         return r && typeof r.value === "boolean" ? r.value : null;
       });
     };
+  // Import from Apple Notes (lib/import/appleNotes.ts): errors keep their code ("denied") for the page.
+  if (has.appleNotes)
+    desktop.appleNotes = Object.freeze({
+      access: function (ask) {
+        return desk("appleNotesAccess", { ask: ask === true }).then(function (r) {
+          return r && typeof r.value === "string" ? r.value : "unavailable";
+        });
+      },
+      scan: function () {
+        return desk("appleNotesScan").then(function (r) {
+          return { notes: Array.isArray(r && r.notes) ? r.notes : [], folders: Array.isArray(r && r.folders) ? r.folders : [], locked: (r && typeof r.locked === "number" && r.locked) || 0 };
+        });
+      },
+      read: function (ids) {
+        return desk("appleNotesRead", { ids: Array.isArray(ids) ? ids.map(String) : [] }).then(function (r) {
+          return { notes: Array.isArray(r && r.notes) ? r.notes : [], missing: Array.isArray(r && r.missing) ? r.missing : [] };
+        });
+      },
+      openSettings: function () {
+        fire("appleNotesSettings", {});
+      },
+    });
   // Other packages' page-side pieces (drag regions, the native text menu, ...), each a file WebViewFactory
   // places here, with call, listen, desk, fire, quietly and BOOT in reach.
   /*__FOLEVI_EXTRAS__*/

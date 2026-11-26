@@ -30,6 +30,18 @@ export function newNoteToken(): string {
   return [...bytes].map((b) => TOKEN_ALPHABET[b % TOKEN_ALPHABET.length]).join("");
 }
 
+/** A new token no address has. */
+export async function freshNoteToken(ctx: MutationCtx): Promise<string> {
+  for (;;) {
+    const token = newNoteToken();
+    const taken = await ctx.db
+      .query("emailNoteAddresses")
+      .withIndex("by_token", (q) => q.eq("token", token))
+      .first();
+    if (!taken) return token;
+  }
+}
+
 export const noteAddress = (token: string) => `n-${token}@${NOTE_DOMAIN}`;
 
 /** The token of an email-to-note address (lowercased), or null for any other address. */

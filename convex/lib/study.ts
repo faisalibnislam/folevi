@@ -25,6 +25,8 @@ export async function syncStudyCard(ctx: MutationCtx, row: Doc<"blocks">, doc: D
     .query("studyCards")
     .withIndex("by_block", (q) => q.eq("blockId", row.blockId))
     .unique();
+  // A card found under this block id for another note isn't this block's (block ids are unique): left alone.
+  if (existing && existing.documentId !== doc._id) return;
   if (!kind) {
     // People's schedules stay: a card unmarked by mistake (or deleted and brought back) keeps its history.
     if (existing) await ctx.db.delete(existing._id);

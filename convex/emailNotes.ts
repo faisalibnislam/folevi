@@ -29,7 +29,7 @@ import { fail } from "./lib/errors";
 import { consume } from "./lib/rateLimit";
 import { vScopeArg } from "./lib/scope";
 import { isEmail, normalizeEmail } from "./lib/support";
-import { EMAIL_NOTE_LIMITS, emailNoteBlocks, fromIsVerified, newNoteToken, noteAddress } from "./lib/emailNotes";
+import { EMAIL_NOTE_LIMITS, emailNoteBlocks, freshNoteToken, fromIsVerified, noteAddress } from "./lib/emailNotes";
 import { placeOf, saveToInbox } from "./aiDigest";
 import { ulid } from "@folevi/editor-schema";
 import { spaceE2ee, switchesOf } from "./lib/e2ee/state";
@@ -43,17 +43,7 @@ const addressOf = (ctx: Ctx, profileId: Id<"profiles">) =>
     .withIndex("by_profile", (q) => q.eq("profileId", profileId))
     .first();
 
-/** A token no address has. */
-async function freshToken(ctx: MutationCtx): Promise<string> {
-  for (;;) {
-    const token = newNoteToken();
-    const taken = await ctx.db
-      .query("emailNoteAddresses")
-      .withIndex("by_token", (q) => q.eq("token", token))
-      .first();
-    if (!taken) return token;
-  }
-}
+const freshToken = freshNoteToken;
 
 // ---------------------------------------------------------------------------------------------------
 // Settings > Import & export

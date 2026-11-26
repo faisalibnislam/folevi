@@ -9,6 +9,7 @@ import {
   ulid,
   type FormulaPropertyInput,
 } from "@folevi/editor-schema";
+import { accessAtLeast, documentAccess } from "./auth";
 import { fail } from "./errors";
 import { insertScoped, scopeOfRow, type Scope } from "./scope";
 import { nextSeq } from "./seq";
@@ -128,6 +129,16 @@ export async function copyCollectionsInto(ctx: MutationCtx, doc: Doc<"documents"
     .query("blocks")
     .withIndex("by_document", (q) => q.eq("documentId", doc._id))
     .collect();
+  // Whoever made the copy (it was just created by them).
+  const actor = await ctx.db.get(doc.createdBy);
+  const readable = new Map<Id<"documents">, boolean>();
+  const hostReadable = async (hostId: Id<"documents">): Promise<boolean> => {
+    if (!readable.has(hostId)) {
+      const host = await ctx.db.get(hostId);
+      readable.set(hostId, Boolean(actor && host && accessAtLeast(await documentAccess(ctx, actor, host), "read")));
+    }
+    return readable.get(hostId)!;
+  };
   for (const row of rows) {
     if (row.type !== "collection" || row.deletedAt !== undefined) continue;
     const props = (row.props ?? {}) as { collectionId?: string; viewId?: string };
@@ -137,6 +148,9 @@ export async function copyCollectionsInto(ctx: MutationCtx, doc: Doc<"documents"
       .withIndex("by_public_id", (q) => q.eq("publicId", props.collectionId!))
       .unique();
     if (!source || source.documentId === doc._id) continue;
+    // A block's collection id is client data: the collection is copied only when its page is one the person
+    // making this copy can open (the page being copied is). Otherwise the block stays as it is and shows nothing.
+    if (!(await hostReadable(source.documentId))) continue;
     const now = Date.now();
     const publicId = ulid();
     const collectionId = await insertScoped(ctx, "collections", scopeOfRow(doc), {

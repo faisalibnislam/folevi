@@ -12,6 +12,8 @@ import {
   isScheduledForDeletion,
   maxShareRoleFor,
   membership,
+  pageChain,
+  pagesGranting,
   requireDocument,
   requireProfile,
   shareRoleAtMost,
@@ -20,7 +22,7 @@ import {
 } from "./lib/auth";
 import { fail } from "./lib/errors";
 import { hashSharePassword, keyedHash, randomToken, sha256Hex, timingSafeEqualHex } from "./lib/crypto";
-import { consume } from "./lib/rateLimit";
+import { consume, ruleFor } from "./lib/rateLimit";
 import { liveBlocks, toWireBlock } from "./lib/documents";
 import { sharedLabels } from "./lib/linkLabels";
 import { withSyncedShared } from "./lib/synced";
@@ -261,17 +263,14 @@ async function sharingTarget(ctx: QueryCtx, profile: Doc<"profiles">, documentId
   return { doc, info, ...sharePermissions(info) };
 }
 
-/** The grant `profile` holds on `doc` or the nearest page above it (what a guest was given). */
+/** The grant `profile` holds on `doc` or the nearest page above it whose grants reach it (what a guest was given). */
 async function nearestGrant(ctx: QueryCtx, profile: Doc<"profiles">, doc: Doc<"documents">): Promise<Doc<"documentPermissions"> | null> {
-  let cursor: Doc<"documents"> | null = doc;
-  for (let depth = 0; cursor && depth < 12; depth++) {
-    const current: Doc<"documents"> = cursor;
+  for (const page of pagesGranting(await pageChain(ctx, doc))) {
     const g = await ctx.db
       .query("documentPermissions")
-      .withIndex("by_document_profile", (q) => q.eq("documentId", current._id).eq("profileId", profile._id))
+      .withIndex("by_document_profile", (q) => q.eq("documentId", page._id).eq("profileId", profile._id))
       .unique();
     if (g) return g;
-    cursor = current.parentDocumentId ? await ctx.db.get(current.parentDocumentId) : null;
   }
   return null;
 }
@@ -877,6 +876,24 @@ function checkServerSecret(given: string): void {
 }
 
 /**
+ * Refuses (rate_limited) while a link's wrong-password budget is used up (rule publicLinkPasswordLink). Reads
+ * the same counter lib/rateLimit.ts consume keeps for it (bucket and window as there), without counting.
+ */
+async function refuseLockedLink(ctx: MutationCtx, linkId: Id<"publicLinks">): Promise<void> {
+  const rule = await ruleFor(ctx, "publicLinkPasswordLink");
+  const now = Date.now();
+  const windowStart = now - (now % rule.windowMs);
+  const bucket = `publicLinkPasswordLink:${await keyedHash(linkId, "rate")}`;
+  const row = await ctx.db
+    .query("rateLimits")
+    .withIndex("by_bucket", (q) => q.eq("bucket", bucket))
+    .unique();
+  if (row && row.windowStart === windowStart && row.count >= rule.limit) {
+    fail("rate_limited", "Too many requests. Please wait a moment and try again.", { retryAfterMs: windowStart + rule.windowMs - now });
+  }
+}
+
+/**
  * What a public link's preview shows in messages and on social sites (app/s/[token]/opengraph-image.tsx): the
  * note's card (title, its first lines, its theme and look). Only for a link anyone can open as it is: none
  * for a password-protected, expired or revoked link, nor an end-to-end encrypted note. A preview fetch is not a
@@ -926,8 +943,15 @@ export const openPublicLink = mutation({
     if (found.passwordHash) {
       if (!args.password) return { status: "password_required" as const };
       await consume(ctx, "publicLinkPassword", `${client}:${found._id}`);
+      // And per link, whoever asks: guesses spread over many addresses still share one budget. While it's
+      // used up the link takes no password at all, right or wrong, as with the per-client budget above.
+      await refuseLockedLink(ctx, found._id);
       const { hash } = await hashSharePassword(args.password, found.passwordSalt);
-      if (!timingSafeEqualHex(hash, found.passwordHash)) return { status: "password_incorrect" as const };
+      if (!timingSafeEqualHex(hash, found.passwordHash)) {
+        // Only wrong passwords count against the link (readers who know it never use the budget up).
+        await consume(ctx, "publicLinkPasswordLink", found._id);
+        return { status: "password_incorrect" as const };
+      }
     }
     // End-to-end encrypted notes (docs/E2EE_DESIGN.md §9): an encrypted link gets the sealed rows and the
     // link's note key wrap (the page opens them with the key in the URL fragment); a published readable copy

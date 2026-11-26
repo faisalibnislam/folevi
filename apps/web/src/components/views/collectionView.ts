@@ -1,6 +1,7 @@
 // Pure collection view logic (formulas, filters, sorts, summaries and exports), shared by the live embed
 // (client) and the read-only copy on public share pages (server). No React, no Convex.
 import {
+  COLLECTION_OPTION_COLORS,
   evaluateCollectionFormulas,
   formatTableDate,
   formatTableNumber,
@@ -438,4 +439,16 @@ export function formulaGroups(rows: readonly ViewRow[], propertyId: string): For
       if (typeof x === "boolean" && typeof y === "boolean") return Number(y) - Number(x);
       return String(x ?? "").localeCompare(String(y ?? ""), undefined, { numeric: true, sensitivity: "base" });
     });
+}
+
+/**
+ * A select option's chip colours. The colour's name is written into a var(), so only the colours an option can
+ * have (COLLECTION_OPTION_COLORS) are used: a published copy's options and a sealed note's come from the device
+ * that made them, unchecked. Any other name gets no colours at all.
+ */
+export function optionChipStyle(color: unknown): { background: string; color: string } | undefined {
+  if (typeof color !== "string" || !(COLLECTION_OPTION_COLORS as readonly string[]).includes(color)) return undefined;
+  if (color === "muted") return { background: "var(--color-surface-sunken)", color: "var(--color-ink)" };
+  if (color === "accent") return { background: "var(--color-accent-soft)", color: "var(--color-accent-soft-ink)" };
+  return { background: `var(--color-${color}-soft)`, color: `var(--color-${color}-ink)` };
 }

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Download, File, FileArchive, FileAudio, FileImage, FileSpreadsheet, FileText, FileVideo, Link2, type LucideIcon } from "lucide-react";
+import { webUrl } from "@folevi/editor-schema";
 import { formatBytes } from "@/lib/format";
 
 /*
@@ -23,8 +24,8 @@ export function ReadOnlyBookmark({
   title,
   description,
   siteName,
-  image,
-  icon,
+  image: rawImage,
+  icon: rawIcon,
 }: {
   /** The bookmark's address, already checked (sanitizeHref); null when it isn't a usable one. */
   href: string | null;
@@ -36,6 +37,9 @@ export function ReadOnlyBookmark({
 }) {
   const [imageFailed, setImageFailed] = useState(false);
   const [iconFailed, setIconFailed] = useState(false);
+  // The picture and the icon are the linked page's own, on the web: any other address (a path here, data:) isn't shown.
+  const image = webUrl(rawImage);
+  const icon = webUrl(rawIcon);
   const host = href ? hostOf(href) : "";
   const name = title || host || "Bookmark";
   const showImage = Boolean(image) && !imageFailed;

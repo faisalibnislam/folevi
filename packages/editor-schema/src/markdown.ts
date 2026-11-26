@@ -84,7 +84,8 @@ export function inlineToMarkdown(nodes: readonly InlineNode[], opts: MarkdownExp
           let s = escapeMd(n.text);
           // Keep surrounding whitespace outside of emphasis markers.
           const lead = /^\s*/.exec(s)?.[0] ?? "";
-          const trail = /\s*$/.exec(s)?.[0] ?? "";
+          // (Not /\s*$/: unanchored, it starts again at every space of a long run that isn't at the end.)
+          const trail = s.slice(s.trimEnd().length);
           let core = s.slice(lead.length, s.length - trail.length);
           if (!core) return s;
           if (marks.some((m) => m.type === "strike")) core = `~~${core}~~`;
@@ -115,7 +116,7 @@ function joinLines(lines: string[], breaks = false): string {
       return;
     }
     if (/\\$/.test(line)) out += line.slice(0, -1) + "\n";
-    else if (breaks || / {2,}$/.test(line)) out += line.trimEnd() + "\n";
+    else if (breaks || line.endsWith("  ")) out += line.trimEnd() + "\n";
     else out += line.trimEnd() + " ";
   });
   return out;
@@ -310,6 +311,11 @@ export interface MarkdownImportResult {
 export interface MarkdownImportOptions {
   /** Resolve a relative image path to an uploaded file id; unresolved images keep their URL if absolute. */
   resolveImage?: (src: string) => { fileId: string } | null;
+  /**
+   * Resolve a link on its own line ("[Report.pdf](src)") to an uploaded file: it becomes a file block (an
+   * imported note's attachments). Links it doesn't resolve stay links.
+   */
+  resolveFile?: (src: string) => { fileId: string; name: string; size: number; mimeType: string } | null;
   newId?: () => string;
   /** Use the first H1 as the document title (default true). */
   titleFromHeading?: boolean;
@@ -340,8 +346,50 @@ export function tableCutWarning(): string {
 const LINK_TARGET = String.raw`\(\s*(?:<([^<>\n]*)>|((?:[^()\s]|\([^()\s]*\))+))(?:\s+"([^"]*)")?\s*\)`;
 /** Link text or image alt: escaped brackets ("\[1\]") are part of it. */
 const LINK_TEXT = String.raw`\[((?:\\.|[^\]\\])*)\]`;
-const LINK = new RegExp(`^${LINK_TEXT}${LINK_TARGET}`);
+// A link is read in two steps from where it starts (sticky), text then target, so a "[" whose text has no target
+// after it says where the next one can't be either (parseInlineMarkdown).
+const LINK_TEXT_AT = new RegExp(LINK_TEXT, "y");
+const LINK_TARGET_AT = new RegExp(LINK_TARGET, "y");
+/**
+ * The longest line the patterns that must read a whole line are tried on (a divider, a page break, a closing
+ * tag): none of those is ever this long, so a longer line is only ever a heading, a list item, a quote or a
+ * paragraph, whose patterns read just the start of the line.
+ */
+const WHOLE_LINE_MAX = LIMITS.maxTextLength;
+
+/** The same for a table's separator row, which a formatter pads to the width of the widest cells. */
+const SEPARATOR_LINE_MAX = 200_000;
+
+/**
+ * A table's separator row ("| --- | :-: |"). Each run of spaces belongs to one part only (before a "|", or at the
+ * end), so a row that turns out not to be one is given up after one pass.
+ */
+const TABLE_SEPARATOR = /^\s*\|?\s*:?-{2,}:?(?:\s*\|\s*:?-{2,}:?)*\s*(?:\|\s*)?$/;
+
+/** A heading's text: what follows "## ", without closing "#"s ("## Title ##") and the spaces around them. */
+function headingText(rest: string): string {
+  const text = rest.trim();
+  let end = text.length;
+  while (end > 0 && text[end - 1] === "#") end--;
+  return text.slice(0, end).trimEnd();
+}
+
+/**
+ * A toggle written on one line: `<details><summary>Title</summary>`, with what is after it left out, and
+ * whether it closes on the same line. `data-study` marks a flashcard or quiz question.
+ */
+function detailsLine(line: string): { summary: string; study?: string; closed: boolean } | null {
+  const open = /^\s*<details(?:\s+data-study="(card|quiz)")?>\s*<summary>/.exec(line);
+  if (!open) return null;
+  const rest = line.slice(open[0].length);
+  const end = rest.indexOf("</summary>");
+  if (end === -1) return null;
+  const closed = rest.slice(end + "</summary>".length).trimEnd().endsWith("</details>");
+  return { summary: rest.slice(0, end), ...(open[1] ? { study: open[1] } : {}), closed };
+}
+
 const IMAGE_LINE = new RegExp(`^\\s*!${LINK_TEXT}${LINK_TARGET}\\s*$`);
+const FILE_LINE = new RegExp(`^\\s*${LINK_TEXT}${LINK_TARGET}\\s*$`);
 
 /** Parses inline Markdown (emphasis, strong, code, strike, links, autolinks) into inline nodes. */
 export function parseInlineMarkdown(src: string): InlineNode[] {
@@ -352,6 +400,13 @@ export function parseInlineMarkdown(src: string): InlineNode[] {
   const walk = (s: string, marks: Mark[]) => {
     let buf = "";
     let i = 0;
+    // Each of these keeps the walk from reading the rest of the text again and again (text nobody closed: one
+    // "*" after another, one "[" after another, would otherwise each be read to the end).
+    // A delimiter with no closer after one place has none after any later place.
+    const unclosed = new Set<string>();
+    // No "[" before this place starts a link: the one tried last read its text up to the "]" here and found no
+    // target after it, and any "[" in between would read up to the same "]".
+    let noLinkBefore = 0;
     while (i < s.length) {
       const ch = s[i]!;
       // Any ASCII punctuation can be escaped (CommonMark), "1\\." and "\\+" included.
@@ -374,11 +429,12 @@ export function parseInlineMarkdown(src: string): InlineNode[] {
         }
       }
       const tryDelim = (delim: string, mark: Mark | Mark[]): boolean => {
-        if (!s.startsWith(delim, i)) return false;
+        if (unclosed.has(delim) || !s.startsWith(delim, i)) return false;
         const after = s[i + delim.length];
         if (after === undefined || /\s/.test(after)) return false;
         let end = s.indexOf(delim, i + delim.length);
         while (end !== -1 && /\s/.test(s[end - 1] ?? " ")) end = s.indexOf(delim, end + 1);
+        if (end === -1) unclosed.add(delim);
         if (end === -1 || end === i + delim.length) return false;
         // Intra-word underscores are literal.
         if (delim[0] === "_" && /\w/.test(s[i - 1] ?? "")) return false;
@@ -400,19 +456,26 @@ export function parseInlineMarkdown(src: string): InlineNode[] {
           continue;
         }
       }
-      if (ch === "[" && s[i + 1] !== "[") {
-        const m = LINK.exec(s.slice(i));
-        if (m) {
-          const href = sanitizeHref(m[2] ?? m[3]!);
+      if (ch === "[" && s[i + 1] !== "[" && i >= noLinkBefore) {
+        LINK_TEXT_AT.lastIndex = i;
+        const text = LINK_TEXT_AT.exec(s);
+        const textEnd = LINK_TEXT_AT.lastIndex;
+        LINK_TARGET_AT.lastIndex = textEnd;
+        const target = text ? LINK_TARGET_AT.exec(s) : null;
+        if (text && target) {
+          const href = sanitizeHref(target[1] ?? target[2]!);
           push(buf, marks);
           buf = "";
-          walk(m[1]!, href ? [...marks, { type: "link", href }] : marks);
-          i += m[0].length;
+          walk(text[1]!, href ? [...marks, { type: "link", href }] : marks);
+          i = textEnd + target[0].length;
           continue;
         }
+        // No "]" at all from here on, or one with no target after it.
+        noLinkBefore = text ? textEnd - 1 : s.length;
       }
       if (ch === "<") {
-        const m = /^<(https?:\/\/[^>\s]+)>/.exec(s.slice(i));
+        // (An address is never longer than this; without the limit each "<http://" would read to the next space.)
+        const m = /^<(https?:\/\/[^>\s]{1,2048})>/.exec(s.slice(i, i + 2060));
         if (m) {
           push(buf, marks);
           buf = "";
@@ -549,7 +612,9 @@ export function markdownToBlocks(markdown: string, opts: MarkdownImportOptions =
       continue;
     }
     // Page break (the `<div style="page-break-after: always"></div>` convention).
-    if (/^\s*<div\s+style=["']\s*(page-break-after|break-after)\s*:\s*(always|page)\s*;?\s*["']\s*>\s*<\/div>\s*$/i.test(line)) {
+    // Patterns that have to read a whole line are only tried on one that could be what they look for.
+    const whole = line.length <= WHOLE_LINE_MAX;
+    if (whole && /^\s*<div\s+style=["']\s*(page-break-after|break-after)\s*:\s*(always|page)\s*;?\s*["']\s*>\s*<\/div>\s*$/i.test(line)) {
       flushParagraph();
       drafts.push({ id: newId(), type: "pageBreak", depth: 0, text: [], props: {} });
       continue;
@@ -654,11 +719,14 @@ export function markdownToBlocks(markdown: string, opts: MarkdownImportOptions =
       continue;
     }
     // Heading
-    const h = /^\s{0,3}(#{1,6})\s+(.*?)\s*#*\s*$/.exec(line);
+    // Read from its start only ("#" to "######" and a space); the closing "#"s and the spaces around them are
+    // taken off by hand. As one pattern (/^\s{0,3}(#{1,6})\s+(.*?)\s*#*\s*$/) a long run of spaces inside the
+    // heading was read again for every way of sharing it out between the parts: cubic in its length.
+    const h = /^\s{0,3}(#{1,6})\s/.exec(line);
     if (h) {
       flushParagraph();
       const level = h[1]!.length;
-      const content = h[2]!;
+      const content = headingText(line.slice(h[0].length));
       if (level === 1 && titleFromHeading && title === null && drafts.length === 0) {
         title = plainText(parseInlineMarkdown(content));
         continue;
@@ -667,13 +735,13 @@ export function markdownToBlocks(markdown: string, opts: MarkdownImportOptions =
       continue;
     }
     // Divider
-    if (/^\s{0,3}([-*_])(\s*\1){2,}\s*$/.test(line)) {
+    if (whole && /^\s{0,3}([-*_])(\s*\1){2,}\s*$/.test(line)) {
       flushParagraph();
       drafts.push({ id: newId(), type: "divider", depth: 0, text: [], props: {} });
       continue;
     }
     // Table
-    if (line.includes("|") && i + 1 < lines.length && /^\s*\|?\s*:?-{2,}:?\s*(\|\s*:?-{2,}:?\s*)*\|?\s*$/.test(lines[i + 1]!)) {
+    if (line.includes("|") && i + 1 < lines.length && lines[i + 1]!.length <= SEPARATOR_LINE_MAX && TABLE_SEPARATOR.test(lines[i + 1]!)) {
       flushParagraph();
       const depth = depthUnderList(line);
       const startLine = i;
@@ -770,6 +838,14 @@ export function markdownToBlocks(markdown: string, opts: MarkdownImportOptions =
       }
     }
     listStack.length = 0;
+    // Attachments: a link on its own line to a file the importer uploaded.
+    const fileLink = opts.resolveFile ? FILE_LINE.exec(line) : null;
+    const file = fileLink ? opts.resolveFile!(fileLink[2] ?? fileLink[3]!) : null;
+    if (file) {
+      flushParagraph();
+      drafts.push({ id: newId(), type: "file", depth: 0, text: [], props: { fileId: file.fileId, name: file.name.slice(0, 255) || "file", size: Math.max(0, Math.round(file.size)), mimeType: file.mimeType || "application/octet-stream" } });
+      continue;
+    }
     // Images on their own line
     const img = IMAGE_LINE.exec(line);
     if (img) {
@@ -799,15 +875,15 @@ export function markdownToBlocks(markdown: string, opts: MarkdownImportOptions =
       continue;
     }
     // `data-study` marks a flashcard or quiz question the AI wrote (convex/lib/ai/studyTools.ts).
-    const details = /^\s*<details(?:\s+data-study="(card|quiz)")?>\s*<summary>(.*?)<\/summary>(.*?)(<\/details>)?\s*$/.exec(line);
+    const details = detailsLine(line);
     if (details) {
       flushParagraph();
-      drafts.push({ id: newId(), type: "toggle", depth: 0, text: parseInlineMarkdown(details[2]!), props: { collapsed: true, ...(details[1] ? { study: details[1] } : {}) } });
+      drafts.push({ id: newId(), type: "toggle", depth: 0, text: parseInlineMarkdown(details.summary), props: { collapsed: true, ...(details.study ? { study: details.study } : {}) } });
       // Not closed on the same line: what follows, up to </details>, goes inside the toggle.
-      if (!details[4]) openDetails.push(drafts.length);
+      if (!details.closed) openDetails.push(drafts.length);
       continue;
     }
-    if (/^\s*<\/details>\s*$/.test(line)) {
+    if (whole && /^\s*<\/details>\s*$/.test(line)) {
       flushParagraph();
       const from = openDetails.pop();
       if (from !== undefined) for (let k = from; k < drafts.length; k++) drafts[k]!.depth += 1;
@@ -818,7 +894,7 @@ export function markdownToBlocks(markdown: string, opts: MarkdownImportOptions =
     } else if (/^\s{0,3}\[[^\]]+\]:\s+\S+/.test(line)) {
       warnings.push({ line: lineNo(i), code: "reference_link", message: "Reference-style link definition imported as text" });
     }
-    if (/\$\$[^$]+\$\$/.test(line)) {
+    if (whole && /\$\$[^$]+\$\$/.test(line)) {
       warnings.push({ line: lineNo(i), code: "math", message: "Inline math ($$…$$) isn’t rendered yet; it was kept as text" });
     }
     // Trailing spaces stay until the lines are joined: two of them make a line break.
@@ -916,6 +992,18 @@ export function plainTextToBlocks(input: string, newId: () => string = () => uli
  * import, by its path) becomes a page link to that page, keeping the link's text as its label. Works on
  * text blocks and table cells, in place; returns the blocks.
  */
+/**
+ * An imported page's original dates (another app's "created" and "last changed"), made safe to keep: never in the
+ * future, never before 1970, and changed no earlier than made. Missing ones are `now`.
+ */
+export function importedDates(createdAt: number | undefined, updatedAt: number | undefined, now: number): { createdAt: number; updatedAt: number } {
+  const clamp = (t: number | undefined) => (typeof t === "number" && Number.isFinite(t) ? Math.min(Math.max(0, Math.round(t)), now) : undefined);
+  const created = clamp(createdAt);
+  const updated = clamp(updatedAt);
+  const c = created ?? Math.min(updated ?? now, now);
+  return { createdAt: c, updatedAt: Math.max(c, updated ?? (created !== undefined ? c : now)) };
+}
+
 export function linkImportedPages(blocks: WireBlock[], resolve: (href: string) => string | null): WireBlock[] {
   const fix = (nodes: InlineNode[]): InlineNode[] =>
     nodes.map((n) => {

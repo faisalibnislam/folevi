@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { devPagesAvailable } from "@/lib/edition";
 import { CardLooks } from "./CardLooks";
 
 export const metadata: Metadata = { title: "Card looks", robots: { index: false, follow: false } };
@@ -9,6 +10,6 @@ export const metadata: Metadata = { title: "Card looks", robots: { index: false,
  * judge them side by side and for the native apps' screenshot diffs.
  */
 export default function CardLooksPage() {
-  if (process.env.VERCEL_ENV === "production" || process.env.FOLEVI_ENV === "production") notFound();
+  if (!devPagesAvailable()) notFound();
   return <CardLooks />;
 }

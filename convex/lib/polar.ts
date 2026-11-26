@@ -12,6 +12,7 @@ import { fail } from "./errors";
 import { timingSafeEqualHex } from "./crypto";
 import { CREDIT_PACKS, PLAN_CATALOG, type BillingInterval, type CreditPackId, type PaidWorkspacePlanId, type PersonalPlanId, type PersonalTier } from "./plans";
 import { appUrl } from "./notify";
+import { isProductionDeployment } from "./deployment";
 
 /** The API version every request is pinned to (Polar dates its versions; `Polar-Version` header). */
 export const POLAR_API_VERSION = "2026-10";
@@ -20,7 +21,7 @@ export const polarToken = () => process.env.POLAR_ACCESS_TOKEN ?? "";
 export const polarServer = (): "sandbox" | "production" => (process.env.POLAR_SERVER === "production" ? "production" : "sandbox");
 export const polarApiBase = () => (polarServer() === "production" ? "https://api.polar.sh/v1" : "https://sandbox-api.polar.sh/v1");
 /** Development and test deployments may switch plans and add credits without paying; production never. */
-export const testPurchasesAllowed = () => process.env.FOLEVI_ENV !== "production";
+export const testPurchasesAllowed = () => !isProductionDeployment();
 
 // ---------------------------------------------------------------------------------------------------
 // Products

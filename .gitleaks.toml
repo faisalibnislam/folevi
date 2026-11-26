@@ -9,4 +9,7 @@ paths = [
   '''^packages/local-store/fixtures/''',
   '''^apps/web/src/lib/engine/fixtures/''',
   '''^apps/mac/fixtures/''',
+  # HANDOFF.md's old sections, moved as they were on 2026-11-26 (scanned there; its one false positive was listed
+  # in .gitleaksignore by fingerprint, which a moved line no longer matches).
+  '''^handoff/archive/''',
 ]

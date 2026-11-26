@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { embedFor, embedProblem } from "../src/embeds";
+import { embedFor, embedPlayer, embedProblem } from "../src/embeds";
 import { blocksToMarkdown } from "../src/markdown";
 import { validateWireBlock } from "../src/validate";
 import type { WireBlock } from "../src/types";
@@ -63,3 +63,54 @@ describe("embed block", () => {
     expect(blocksToMarkdown([block({ url: "https://youtu.be/dQw4w9WgXcQ", provider: "youtube" })]).trim()).toBe("[YouTube](https://youtu.be/dQw4w9WgXcQ)");
   });
 });
+
+// The website's /api/embed page is handed a player address and frames it: it only ever frames what embedFor itself
+// would have written (embedPlayer), never just any page of the players' sites.
+describe("a player address made again from its own parts", () => {
+  const pages = [
+    "https://youtu.be/dQw4w9WgXcQ",
+    "https://www.youtube.com/watch?v=dQw4w9WgXcQ&t=1m30s",
+    "https://vimeo.com/76979871",
+    "https://vimeo.com/76979871/abcdef0123",
+    "https://www.loom.com/share/0281766fa2d04bb788eaf19e65135184",
+    "https://www.figma.com/design/AbCdEfGhIjKlMnOp/Trip-plan?node-id=1-2&t=secret",
+    "https://www.figma.com/proto/AbCdEfGhIjKlMnOp/x?starting-point-node-id=1-2",
+    "https://www.google.com/maps/place/Eiffel+Tower/@48.8584,2.2945,17z",
+    "https://www.google.com/maps?q=Kyoto",
+  ];
+
+  it("every player embedFor builds comes back the same", () => {
+    for (const page of pages) {
+      const player = embedFor(page)!.src;
+      expect(embedPlayer(player), page).toBe(player);
+    }
+  });
+
+  it("any other page of a player's site is refused", () => {
+    for (const src of [
+      "https://www.figma.com/embed?embed_host=folevi&url=https%3A%2F%2Fevil.example%2Fproto",
+      "https://www.figma.com/embed?embed_host=folevi&url=https%3A%2F%2Fyoutu.be%2FdQw4w9WgXcQ",
+      "https://www.figma.com/community/file/123",
+      "https://www.figma.com/@someone",
+      "https://www.loom.com/looms/videos",
+      "https://www.loom.com/login",
+      "https://maps.google.com/url?q=https://evil.example",
+      "https://maps.google.com/maps/dir/a/b",
+      "https://www.youtube-nocookie.com/redirect?q=https://evil.example",
+      "https://player.vimeo.com/external/1.hd.mp4",
+    ]) expect(embedPlayer(src), src).toBeNull();
+  });
+
+  it("an address anywhere else is refused, and so is a page address that isn't a player", () => {
+    for (const src of ["https://evil.example/embed/dQw4w9WgXcQ", "http://www.youtube-nocookie.com/embed/dQw4w9WgXcQ", "https://www.youtube-nocookie.com.evil.example/embed/dQw4w9WgXcQ", "https://www.youtube-nocookie.com@evil.example/embed/dQw4w9WgXcQ", "javascript:alert(1)", "", "https://youtu.be/dQw4w9WgXcQ"]) {
+      expect(embedPlayer(src), src).toBeNull();
+    }
+  });
+
+  it("only the parts embedFor writes are kept", () => {
+    expect(embedPlayer("https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ?start=90&autoplay=1&list=PLx")).toBe("https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ?start=90");
+    expect(embedPlayer("https://maps.google.com/maps?q=Kyoto&output=embed&z=99&pb=x")).toBe("https://maps.google.com/maps?q=Kyoto&output=embed");
+    expect(embedPlayer("https://maps.google.com/maps?q=Kyoto&output=embed&z=12")).toBe("https://maps.google.com/maps?q=Kyoto&output=embed&z=12");
+  });
+});
+

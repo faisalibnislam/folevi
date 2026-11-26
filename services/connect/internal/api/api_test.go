@@ -11,6 +11,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"net/netip"
 	"net/url"
 	"regexp"
 	"strconv"
@@ -431,7 +432,7 @@ func TestMail(t *testing.T) {
 		t.Fatalf("send %d %s", r.status, r.body)
 	}
 	sent := e.mail.sent[0]
-	if sent.From != `"Smith family" <no-reply@folevi.app>` || sent.To != "alice@example.com" || sent.ReplyTo != "owner@example.com" || sent.Tag != "invite" {
+	if sent.From != `"Folevi Server (Smith family)" <no-reply@folevi.app>` || sent.To != "alice@example.com" || sent.ReplyTo != "owner@example.com" || sent.Tag != "invite" {
 		t.Fatalf("sent %+v", sent)
 	}
 	for _, bad := range []map[string]string{
@@ -527,8 +528,15 @@ func TestAIGatewayThroughAPI(t *testing.T) {
 	if r.status != 200 || !strings.Contains(string(r.body), `"ok"`) {
 		t.Fatalf("ai %d %s", r.status, r.body)
 	}
-	if n, _ := st.GetUsage(context.Background(), s.id, ai.UsageKind, store.Month(time.Now())); n != 12 {
+	// Counted for the owner's account, not the server.
+	if n, _ := st.GetUsage(context.Background(), "owner:user1", ai.UsageKind, store.Month(time.Now())); n != 12 {
 		t.Fatalf("usage %d", n)
+	}
+	if n, _ := st.GetUsage(context.Background(), s.id, ai.UsageKind, store.Month(time.Now())); n != 0 {
+		t.Fatalf("usage under the server id %d", n)
+	}
+	if r := e.do("GET", "/v1/admin/servers/"+s.id, "admin-key-secret", nil); r.status != 200 || r.json(t)["usage"].(map[string]any)[ai.UsageKind] != float64(12) {
+		t.Fatalf("admin usage %d %s", r.status, r.body)
 	}
 	e.noSecretsLogged("private prompt", "gemini-secret")
 }
@@ -613,4 +621,112 @@ func TestSuspendAndTunnel(t *testing.T) {
 		t.Fatal("healthz")
 	}
 	e.noSecretsLogged(s.token)
+}
+
+// Registration: one limit per IPv4 address or IPv6 /64, and one for all callers together.
+func TestRegisterLimits(t *testing.T) {
+	key := base64.StdEncoding.EncodeToString(make([]byte, 32))
+	body := func(name string) map[string]string {
+		return map[string]string{"name": name, "version": "1", "publicKey": key}
+	}
+	e := newEnv(t, map[string]string{"CONNECT_REGISTER_PER_IP_HOURLY": "2", "CONNECT_REGISTER_GLOBAL_HOURLY": "5", "CONNECT_TRUSTED_PROXY_HEADER": "X-Test-IP"}, nil)
+	from := func(ip string) int {
+		return e.do("POST", "/v1/servers", "", body("x"), "X-Test-IP", ip).status
+	}
+	// A new address inside the same /64 does not get a new allowance.
+	if a, b := from("2001:db8:1:2::1"), from("2001:db8:1:2:aaaa:bbbb:cccc:dddd"); a != 201 || b != 201 {
+		t.Fatalf("first two from one /64: %d %d", a, b)
+	}
+	if got := from("2001:db8:1:2:ffff::9"); got != 429 {
+		t.Fatalf("third registration from the same /64 got %d, want 429", got)
+	}
+	// Another /64 and an IPv4 address have their own.
+	if a, b := from("2001:db8:1:3::1"), from("192.0.2.7"); a != 201 || b != 201 {
+		t.Fatalf("other networks: %d %d", a, b)
+	}
+	// A refused or invalid request does not use up the cap for everyone.
+	if r := e.do("POST", "/v1/servers", "", map[string]string{"name": "x", "version": "1", "publicKey": "short"}, "X-Test-IP", "192.0.2.50"); r.status != 400 {
+		t.Fatalf("bad key %d", r.status)
+	}
+	if got := from("192.0.2.8"); got != 201 {
+		t.Fatalf("fifth registration got %d", got)
+	}
+	// Five made this hour: the cap for all callers stops a sixth from any address.
+	if got := from("192.0.2.9"); got != 429 {
+		t.Fatalf("registration over the global cap got %d, want 429", got)
+	}
+	for in, want := range map[string]string{
+		"2001:db8:1:2:aaaa:bbbb:cccc:dddd": "ip:2001:db8:1:2::/64", "192.0.2.7": "ip:192.0.2.7", "::ffff:192.0.2.7": "ip:192.0.2.7",
+	} {
+		if got := registerKey(netip.MustParseAddr(in)); got != want {
+			t.Errorf("registerKey(%s) = %s, want %s", in, got, want)
+		}
+	}
+}
+
+// One account can own only so many servers, and its mail limits are shared by all of them.
+func TestOwnerLimits(t *testing.T) {
+	e := newEnv(t, map[string]string{"CONNECT_MAX_SERVERS_PER_OWNER": "2", "CONNECT_MAIL_PER_SERVER_HOURLY": "3",
+		"CONNECT_REGISTER_PER_IP_HOURLY": "0"}, nil)
+	approve := func(s registered, user string) resp {
+		code := e.do("POST", "/v1/servers/"+s.id+"/link-codes", s.token, nil).json(t)["code"].(string)
+		return e.do("POST", "/v1/link-codes/"+code+"/approve", "svc-key-secret", nil, "X-Folevi-User", user)
+	}
+	a, b, c := e.register("A"), e.register("B"), e.register("C")
+	if r1, r2 := approve(a, "user1"), approve(b, "user1"); r1.status != 200 || r2.status != 200 {
+		t.Fatalf("first two links: %d %d", r1.status, r2.status)
+	}
+	if r := approve(c, "user1"); r.status != 409 || !strings.Contains(string(r.body), "too_many_servers") {
+		t.Fatalf("third server for one account got %d %s, want 409 too_many_servers", r.status, r.body)
+	}
+	if m := e.do("GET", "/v1/servers/"+c.id, c.token, nil).json(t); m["linked"] != false {
+		t.Fatalf("the refused server was linked anyway: %v", m)
+	}
+	// Linking a server the account already owns again is not a new server, and another account is not affected.
+	if r := approve(a, "user1"); r.status != 200 {
+		t.Fatalf("relink %d %s", r.status, r.body)
+	}
+	if r := approve(c, "user2"); r.status != 200 {
+		t.Fatalf("other account %d %s", r.status, r.body)
+	}
+	// A suspended server no longer takes a place.
+	if r := e.do("PUT", "/v1/admin/servers/"+b.id+"/flags", "admin-key-secret", map[string]bool{"Suspended": true}); r.status != 200 {
+		t.Fatalf("suspend %d", r.status)
+	}
+	d := e.register("D")
+	if r := approve(d, "user1"); r.status != 200 {
+		t.Fatalf("link after a suspension %d %s", r.status, r.body)
+	}
+
+	// Mail: user1's servers A and D share one hourly allowance of 3.
+	mailTo := func(s registered, to string) resp {
+		return e.do("POST", "/v1/mail", s.token, map[string]string{"to": to, "subject": "s", "text": "t"})
+	}
+	for i, s := range []registered{a, d, a} {
+		if r := mailTo(s, "p"+strconv.Itoa(i)+"@example.com"); r.status != 202 {
+			t.Fatalf("mail %d: %d %s", i, r.status, r.body)
+		}
+	}
+	if r := mailTo(d, "p3@example.com"); r.status != 429 || !strings.Contains(string(r.body), "server_hourly") {
+		t.Fatalf("fourth mail in the hour from the same owner's other server got %d %s, want 429 server_hourly", r.status, r.body)
+	}
+	// user2's server is not held back by user1's use.
+	if r := mailTo(c, "q@example.com"); r.status != 202 {
+		t.Fatalf("other owner's mail %d %s", r.status, r.body)
+	}
+
+	// The daily cap is the owner's too (no hourly limit here, so only the daily one can refuse).
+	e2 := newEnv(t, map[string]string{"CONNECT_MAIL_PER_SERVER_HOURLY": "0", "CONNECT_MAIL_PER_SERVER_DAILY": "2"}, nil)
+	x, y := e2.register("X"), e2.register("Y")
+	e2.link(x, "user1")
+	e2.link(y, "user1")
+	send := func(s registered, to string) resp {
+		return e2.do("POST", "/v1/mail", s.token, map[string]string{"to": to, "subject": "s", "text": "t"})
+	}
+	if r1, r2 := send(x, "a@example.com"), send(y, "b@example.com"); r1.status != 202 || r2.status != 202 {
+		t.Fatalf("two mails in the day: %d %d", r1.status, r2.status)
+	}
+	if r := send(x, "c@example.com"); r.status != 429 || !strings.Contains(string(r.body), "server_daily") {
+		t.Fatalf("third mail of the day from the same owner got %d %s, want 429 server_daily", r.status, r.body)
+	}
 }

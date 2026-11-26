@@ -3,7 +3,7 @@
 import { useAction, useConvex, useMutation } from "convex/react";
 import { useCapabilities } from "@/lib/mode";
 import { useEffect, useRef, useState } from "react";
-import { FolderUp, Upload } from "lucide-react";
+import { FolderUp, NotebookText, Upload } from "lucide-react";
 import { api } from "@/lib/convex/api";
 import type { WireScope } from "@folevi/editor-schema";
 import { AppLink, useAppRouter } from "@/lib/app/router";
@@ -13,6 +13,7 @@ import { RowIcon } from "@/components/iphone/Grouped";
 import { Button } from "@/components/ui/Button";
 import { useToast, errorMessage } from "@/components/ui/Toast";
 import { importFiles, type ImportResult as Result } from "@/lib/import/run";
+import { appleNotesSummary, importAppleNotes } from "@/lib/import/appleNotes";
 import { Card } from "./Card";
 import { EmailToNoteCard } from "./EmailToNote";
 import { SaveFromAnywhereCard } from "./SaveFromAnywhere";
@@ -59,6 +60,37 @@ export function DataSection({ target }: { target: DataTarget }) {
     setProgress("");
     const ok = out.filter((r) => r.id).length;
     toast.show(`Imported ${ok} of ${out.length} ${out.length === 1 ? "page" : "pages"}`, { tone: ok === out.length ? "success" : "error" });
+  };
+  // Apple Notes, in the Mac app only (foleviDesktop.appleNotes): Notes asks once to let Folevi read it.
+  const appleNotes = typeof window !== "undefined" ? window.foleviDesktop?.appleNotes : undefined;
+  const notesAbort = useRef<AbortController | null>(null);
+  const [notesDenied, setNotesDenied] = useState(false);
+  const runAppleNotes = async () => {
+    if (!appleNotes) return;
+    setNotesDenied(false);
+    setBusy(true);
+    setResults([]);
+    setProgress("Asking Apple Notes…");
+    const abort = new AbortController();
+    notesAbort.current = abort;
+    try {
+      const access = await appleNotes.access(true);
+      if (access !== "granted") {
+        if (access === "denied") setNotesDenied(true);
+        else toast.show(access === "unavailable" ? "Apple Notes isn’t on this Mac." : "Folevi wasn’t allowed to read Apple Notes.", { tone: "error" });
+        return;
+      }
+      const r = await importAppleNotes(client, scope, appleNotes, { importText, createFolder, onProgress: setProgress, onResults: setResults, signal: abort.signal });
+      setResults(r.results);
+      const ok = r.results.filter((x) => x.id).length;
+      toast.show(appleNotesSummary(r), { tone: !r.cancelled && ok === r.results.length ? "success" : "error" });
+    } catch (e) {
+      toast.show(errorMessage(e), { tone: "error" });
+    } finally {
+      notesAbort.current = null;
+      setBusy(false);
+      setProgress("");
+    }
   };
   const runExport = async () => {
     setBusy(true);
@@ -144,7 +176,7 @@ export function DataSection({ target }: { target: DataTarget }) {
                   r.error ? (
                     <span className="text-danger">{r.error}</span>
                   ) : (
-                    [r.images ? (r.images === 1 ? "1 image uploaded" : `${r.images} images uploaded`) : null, ...r.warnings.map((w) => `${w.line ? `Line ${w.line}: ` : ""}${w.message}`)].filter(Boolean).join(" · ") || "Imported without changes."
+                    [r.images ? (r.images === 1 ? "1 image uploaded" : `${r.images} images uploaded`) : null, r.files ? (r.files === 1 ? "1 attachment uploaded" : `${r.files} attachments uploaded`) : null, ...r.warnings.map((w) => `${w.line ? `Line ${w.line}: ` : ""}${w.message}`)].filter(Boolean).join(" · ") || "Imported without changes."
                   )
                 }
                 onClick={r.id ? () => navigate(`/d/${r.id}`) : undefined}
@@ -178,7 +210,26 @@ export function DataSection({ target }: { target: DataTarget }) {
           <Button onClick={() => folderInput.current?.click()} disabled={busy}>
             <FolderUp size={14} aria-hidden /> Import a folder…
           </Button>
+          {appleNotes ? (
+            <Button onClick={() => void runAppleNotes()} disabled={busy}>
+              <NotebookText size={14} aria-hidden /> Import from Apple Notes…
+            </Button>
+          ) : null}
+          {busy && notesAbort.current ? <Button onClick={() => notesAbort.current?.abort()}>Stop</Button> : null}
         </div>
+        {appleNotes ? (
+          <p className="mt-2 text-footnote text-muted">
+            Apple Notes: every note with its folders (empty ones too), tags, images, attachments and original dates. Notes locked with a password stay in Notes until you remove their lock.
+          </p>
+        ) : null}
+        {notesDenied ? (
+          <div className="mt-2 text-footnote" role="alert">
+            <p className="text-danger">Folevi isn’t allowed to read Apple Notes. Turn on Notes under Folevi in System Settings, Privacy &amp; Security, Automation, then try again.</p>
+            <Button className="mt-2" onClick={() => appleNotes?.openSettings()}>
+              Open System Settings
+            </Button>
+          </div>
+        ) : null}
         <p className="mt-2 text-footnote text-muted" role="status" aria-live="polite">
           {progress}
         </p>
@@ -197,6 +248,7 @@ export function DataSection({ target }: { target: DataTarget }) {
                   {r.error ? <span className="ml-2 text-danger">{r.error}</span> : null}
                 </p>
                 {r.images ? <p className="text-footnote text-muted">{r.images === 1 ? "1 image uploaded" : `${r.images} images uploaded`}</p> : null}
+                {r.files ? <p className="text-footnote text-muted">{r.files === 1 ? "1 attachment uploaded" : `${r.files} attachments uploaded`}</p> : null}
                 {r.warnings.length ? (
                   <ul className="mt-1 list-disc pl-5 text-footnote text-muted">
                     {r.warnings.map((w, j) => (

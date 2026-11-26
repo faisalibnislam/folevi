@@ -38,6 +38,44 @@ final class ServerTests: XCTestCase {
         if case .success = ShellServer.check(["kind": "folevi-server", "apiVersion": 1, "version": "1.0.0", "minAppVersion": "9.0.0"], origin: "https://nas.example.com", appVersion: "1.6.0") { XCTFail("app too old") }
     }
 
+    /// A server's addresses are one origin, its own, never Folevi Cloud's (the Mac's ServerTests has the long form).
+    func testAServersAddressesAreItsOwn() async {
+        let cloud = URL(string: "https://app.folevi.com")!
+        let doc = { (urls: [String: Any]) -> [String: Any] in
+            ["kind": "folevi-server", "apiVersion": 1, "name": "Smith family", "version": "1.0.0", "minAppVersion": "1.6.0", "urls": urls, "connect": ["serverId": "abcde12345", "hostnames": ["abcde12345.folevi.app"]]]
+        }
+        let attack = doc(["app": "https://app.folevi.com", "convex": "https://evil.example/convex", "convexSite": "https://evil.example/convex-site"])
+        if case .failure(let p) = ShellServer.check(attack, origin: "https://evil.example", appVersion: "1.6.0", cloud: cloud) { XCTAssertEqual(p.code, "not_folevi") } else { XCTFail("Folevi Cloud's sign-in with another Convex") }
+        let name = "https://abcde12345.folevi.app", lan = "http://192.168.1.20:8460"
+        let genuine = doc(["app": name, "convex": name + "/convex", "convexSite": name + "/convex-site"])
+        if case .failure = ShellServer.check(genuine, origin: name, appVersion: "1.6.0", cloud: cloud) { XCTFail("a genuine server") }
+        // A home address typed, the public name published: that name must answer as the same server.
+        if case .failure = await ShellServer.lookUp(lan, appVersion: "1.6.0", cloud: cloud, fetch: { _ in genuine }) { XCTFail("a genuine server at its home address") }
+        var other = genuine
+        other["connect"] = ["serverId": "zzzzz99999"]
+        let r = await ShellServer.lookUp(lan, appVersion: "1.6.0", cloud: cloud, fetch: { $0 == lan ? genuine : other })
+        if case .failure(let p) = r { XCTAssertEqual(p.code, "not_folevi") } else { XCTFail("someone else's server at the published address") }
+    }
+
+    /// A sign-in that comes back with the id of an account from another server is refused, and the one session
+    /// older builds kept (Folevi Cloud's) is never read on a server's sign-in screen.
+    func testSessionsStayWithTheServerThatIssuedThem() throws {
+        let nas = try XCTUnwrap(server())
+        ShellPlaces.setCurrent(nil, pending: true)
+        XCTAssertNotNil(ShellPlaces.addAccount(userId: "iosCloudAna", name: "Ana", email: "ana@example.com", avatarUrl: nil))
+        XCTAssertFalse(ShellAuth.belongsElsewhere("iosCloudAna"))
+        let legacy = "legacy-cloud-session-0123456789abcdef" // gitleaks:allow (a made-up token)
+        let before = ShellAuth.shared.token(for: nil)
+        ShellAuth.shared.setToken(legacy, for: nil)
+        defer { ShellAuth.shared.setToken(before, for: nil) }
+        XCTAssertEqual(ShellAuth.shared.token, legacy)
+        ShellPlaces.setCurrent(nil, pending: true, server: nas)
+        XCTAssertTrue(ShellAuth.belongsElsewhere("iosCloudAna"))
+        XCTAssertEqual(ShellAuth.shared.issuer(of: "iosCloudAna"), ShellAuth.shared.cloudService)
+        XCTAssertNil(ShellAuth.shared.issuer(of: "iosSomeoneNew"))
+        XCTAssertNil(ShellAuth.shared.token)
+    }
+
     func testAServerPlacesPageGetsItsOwnPolicy() throws {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent("folevi-server-\(UUID().uuidString)", isDirectory: true)
         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)

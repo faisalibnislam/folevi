@@ -45,7 +45,10 @@ class AppLock(private val context: Context) {
         private set(v) = prefs.edit().putInt("lockAfter", v).apply()
 
     private var leftAt = 0L
-    /** Folevi itself opened something over it (a Custom Tab, Google's consent, "Save to"): coming back doesn't lock. */
+    /**
+     * Folevi itself opened something over it (a Custom Tab, Google's consent, "Save to"): coming back soon doesn't
+     * lock ([staysOpen]). Only soon: a link left open for an hour is an hour away.
+     */
     @Volatile private var ownScreen = false
 
     fun openingOwnScreen() {
@@ -113,7 +116,7 @@ class AppLock(private val context: Context) {
         val away = SystemClock.elapsedRealtime() - leftAt
         val own = ownScreen
         ownScreen = false
-        if (!launch && cover == null && (own || away < lockAfter * 1000L)) return
+        if (staysOpen(launch, cover != null, own, away, lockAfter)) return
         show(activity)
         ask(activity)
     }
@@ -181,5 +184,19 @@ class AppLock(private val context: Context) {
 
     companion object {
         fun hasFingerprint(context: Context) = context.packageManager.hasSystemFeature(PackageManager.FEATURE_FINGERPRINT)
+
+        /** How long one of Folevi's own screens may stay up without the lock asking again, whatever "lock after" says. */
+        const val OWN_SCREEN_GRACE_MS = 60_000L
+
+        /**
+         * Whether coming back on screen leaves Folevi open: never at launch or while it is covered; otherwise when
+         * the time away is under "lock after", or, back from one of Folevi's own screens, under that or a minute,
+         * whichever is longer.
+         */
+        fun staysOpen(launch: Boolean, covered: Boolean, ownScreen: Boolean, awayMs: Long, lockAfterSeconds: Int): Boolean {
+            if (launch || covered) return false
+            val limit = lockAfterSeconds * 1000L
+            return awayMs < if (ownScreen) maxOf(limit, OWN_SCREEN_GRACE_MS) else limit
+        }
     }
 }

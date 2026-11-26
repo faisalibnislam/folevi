@@ -150,6 +150,48 @@ final class WebHost: NSObject {
     }
 }
 
+/// Capacitor's "bridge" message handler answers every frame of the web view (an embed in a note is one) and does
+/// not say which frame asked, so a plugin can't tell. This stands in front of it: only the app's own page (its main
+/// frame, on the app's origin) reaches Capacitor's plugins, Folevi's among them, as in the iPhone and iPad app and
+/// the Mac app (their MessageRouter).
+final class MainFrameGate: NSObject, WKScriptMessageHandler {
+    /// The name Capacitor registers its handler under (WebViewDelegationHandler's `handlerName`).
+    static let handlerName = "bridge"
+
+    /// Capacitor's own handler (its bridge keeps it alive).
+    private weak var inner: WKScriptMessageHandler?
+    private let appOrigin: () -> String
+
+    private init(inner: WKScriptMessageHandler, appOrigin: @escaping () -> String) {
+        self.inner = inner
+        self.appOrigin = appOrigin
+    }
+
+    /// Puts the gate in Capacitor's handler's place (once, before the page loads).
+    static func install(on bridge: CapacitorBridge, appOrigin: @escaping () -> String) {
+        let handler = bridge.webViewDelegationHandler
+        let controller = handler.contentController
+        controller.removeScriptMessageHandler(forName: handlerName)
+        controller.add(MainFrameGate(inner: handler, appOrigin: appOrigin), name: handlerName)
+    }
+
+    /// Who may call: the main frame of the app's own origin (a pure function, for tests).
+    static func allows(isMainFrame: Bool, origin: String, appOrigin: String) -> Bool {
+        isMainFrame && !appOrigin.isEmpty && origin == appOrigin
+    }
+
+    /// "scheme://host[:port]" of a frame's security origin, as AppOrigin writes the page's.
+    static func origin(of o: WKSecurityOrigin) -> String {
+        let scheme = o.protocol.lowercased(), host = o.host.lowercased()
+        return o.port == 0 ? "\(scheme)://\(host)" : "\(scheme)://\(host):\(o.port)"
+    }
+
+    func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
+        guard Self.allows(isMainFrame: message.frameInfo.isMainFrame, origin: Self.origin(of: message.frameInfo.securityOrigin), appOrigin: appOrigin()) else { return }
+        inner?.userContentController(userContentController, didReceive: message)
+    }
+}
+
 /// "FoleviHost": the one Capacitor plugin the page's bridge calls; it routes to the Folevi plugins by name.
 @objc(FoleviHostPlugin)
 final class FoleviHostPlugin: CAPPlugin, CAPBridgedPlugin {

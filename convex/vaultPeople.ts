@@ -257,7 +257,8 @@ export const rotate = mutation({
 
 /**
  * Someone stopped being a member of a workspace (removed or left): out of its Vault too, logged by the system, and
- * a new key version is due if they could open it. Called from workspaces.ts.
+ * a new key version is due if they could open it. Items of the Vault shared with them stop being shared. Called
+ * from workspaces.ts.
  */
 export async function vaultMemberLeftWorkspace(ctx: MutationCtx, workspaceId: Id<"workspaces">, profileId: Id<"profiles">): Promise<void> {
   const vault = await ctx.db
@@ -267,6 +268,23 @@ export async function vaultMemberLeftWorkspace(ctx: MutationCtx, workspaceId: Id
   if (!vault) return;
   const row = await vaultMemberRow(ctx, vault._id, profileId);
   const target = await ctx.db.get(profileId);
+  // Items shared with them end too (someone an item was shared with isn't in the Vault, so this runs whether or
+  // not they were): each one logged by the system. The item's owner's device gives it a new key when it next
+  // opens the item's Share panel, as after any unshare.
+  for (const s of await ctx.db
+    .query("vaultShares")
+    .withIndex("by_profile", (q) => q.eq("profileId", profileId))
+    .take(500)) {
+    if (s.vaultId !== vault._id) continue;
+    const item = await ctx.db.get(s.itemId);
+    await ctx.db.delete(s._id);
+    await appendLog(ctx, vault, {
+      event: "share.ended",
+      actor: { profile: null, role: "system", name: "Folevi" },
+      ...(item ? { item: { publicId: item.publicId, kind: item.kind } } : {}),
+      detail: { to: { profileId, name: target?.displayName ?? "Someone" }, why: "leftWorkspace" },
+    });
+  }
   if (!(await dropFromVault(ctx, vault, profileId))) return;
   await appendLog(ctx, vault, { event: "person.leftWorkspace", actor: { profile: null, role: "system", name: "Folevi" }, detail: { profileId, name: target?.displayName ?? "Someone", email: target?.email ?? null, role: row?.role ?? "member" } });
   await notifyVaultChange(ctx, vault, null, { what: "person", verb: "removed", personName: target?.displayName ?? "someone" });

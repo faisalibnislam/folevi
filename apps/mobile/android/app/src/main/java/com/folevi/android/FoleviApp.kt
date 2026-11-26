@@ -65,10 +65,14 @@ class FoleviApp : Application() {
         val credential = com.folevi.android.extras.DeviceCredential.get(this)
         val kept = s.accounts.map { it.userId }.toSet()
         for (gone in credential.users() - kept) credential.clearFor(gone)
+        // An account on a Folevi Server has no REST token here (that API is Folevi Cloud's): one an earlier build
+        // kept for it goes, from its own slot and from the open place's when it is the one there.
+        val onServer = s.accounts.filter { it.server != null }.map { it.userId }.toSet()
+        credential.dropServerTokens(onServer)
         // The open place's token (one kept before places, the one account this phone had) stays that account's own.
-        Places.userIdOf(before)?.takeIf { it in kept }?.let { credential.keepOpen(it) }
+        Places.userIdOf(before)?.takeIf { it in kept && it !in onServer }?.let { credential.keepOpen(it) }
         if (before != s.current) {
-            credential.openedPlace(Places.userIdOf(s.current))
+            credential.openedPlace(Places.userIdOf(s.current)?.takeIf { it !in onServer })
             com.folevi.android.extras.Widgets.clear(this)
             com.folevi.android.extras.Widgets.refreshSoon(this)
             for (l in placeListeners) l()
@@ -127,6 +131,7 @@ class FoleviApp : Application() {
             // Folevi Server places: an account on a server signs in and talks to that server's website.
             actingSite = { places.actingServer?.appUrl },
             siteOfUser = { places.serverOfUser(it)?.appUrl },
+            elsewhere = { places.belongsElsewhere(it) },
         )
     }
 

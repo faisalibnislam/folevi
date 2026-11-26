@@ -60,12 +60,17 @@ export const changes = query({
   },
 });
 
-/** Deleted blocks still inside the retention window (for "recently deleted" recovery). */
+/**
+ * Deleted blocks still inside the retention window (for "recently deleted" recovery). For people who can edit
+ * the page, like its version history: text someone deleted on purpose isn't handed back to people who may only
+ * read it (they get an empty list).
+ */
 export const deleted = query({
   args: { documentId: v.string() },
   handler: async (ctx, args) => {
     const profile = await requireProfile(ctx);
-    const { doc } = await requireDocument(ctx, profile, args.documentId, "read");
+    const { doc, access } = await requireDocument(ctx, profile, args.documentId, "read");
+    if (!accessAtLeast(access, "write")) return [];
     const rows = await ctx.db
       .query("blocks")
       .withIndex("by_document", (q) => q.eq("documentId", doc._id))

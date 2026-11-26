@@ -12,6 +12,7 @@ import { environment as emailEnvironment } from "./email";
 import { ALL_ADMIN_ROLES, normalizeMembership, requirePlatformRole, type PlatformRole } from "./lib/auth";
 import { recordAudit } from "./lib/audit";
 import { fail } from "./lib/errors";
+import { isServerEdition } from "./lib/edition";
 import { DEFAULT_RATE_RULES } from "./lib/rateLimit";
 import { KNOWN_FLAGS, knownFlag } from "./lib/flags";
 import { BUILT_IN_TEMPLATES } from "./lib/templates";
@@ -302,12 +303,23 @@ async function targetProfile(ctx: MutationCtx, raw: string) {
   return p;
 }
 
+/**
+ * Folevi Server: the same order as its own panel (convex/serverAdmin.ts assertCanManage). There an admin is
+ * `ops_admin`, which the cloud console lets act on anyone, so without this an admin could suspend, sign out,
+ * reset or delete the owner or a fellow admin from these functions. Only the owner acts on them.
+ */
+function assertServerOrder(admin: Doc<"profiles">, target: Doc<"profiles">): void {
+  if (!isServerEdition() || admin.platformRole === "super_admin" || target._id === admin._id) return;
+  if (target.platformRole) fail("forbidden", "Only the owner can manage the owner or another admin.");
+}
+
 export const suspendUser = mutation({
   args: { profileId: v.string(), suspend: v.boolean(), confirmEmail: v.string(), ...vRequest },
   handler: async (ctx, args) => {
     const admin = await requirePlatformRole(ctx, ADMIN);
     const reason = requireReason(args.reason);
     const p = await targetProfile(ctx, args.profileId);
+    assertServerOrder(admin, p);
     if (p._id === admin._id) fail("forbidden", "You can't suspend yourself.");
     if (p.platformRole === "super_admin" && admin.platformRole !== "super_admin") fail("forbidden", "Only a super admin can suspend another super admin.");
     if (args.confirmEmail.trim().toLowerCase() !== p.email) fail("invalid_argument", "Type the user's email to confirm.");
@@ -353,6 +365,7 @@ export const revokeAllSessions = mutation({
     const admin = await requirePlatformRole(ctx, ADMIN);
     const reason = requireReason(args.reason);
     const p = await targetProfile(ctx, args.profileId);
+    assertServerOrder(admin, p);
     const sessions = await ctx.db
       .query("sessionsMirror")
       .withIndex("by_profile", (q) => q.eq("profileId", p._id))
@@ -376,6 +389,7 @@ export const resendVerification = mutation({
     const admin = await requirePlatformRole(ctx, STAFF);
     const reason = requireReason(args.reason);
     const p = await targetProfile(ctx, args.profileId);
+    assertServerOrder(admin, p);
     if (p.emailVerified) fail("invalid_argument", "This email address is already verified.");
     await ctx.scheduler.runAfter(0, internal.identity.resendVerificationEmail, { profileId: p._id });
     await audit(ctx, admin, "user.resend_verification", { type: "profile", id: p._id }, { reason, requestId: args.requestId, clientHash: args.clientHash });
@@ -390,6 +404,7 @@ export const initiatePasswordReset = mutation({
     const admin = await requirePlatformRole(ctx, STAFF);
     const reason = requireReason(args.reason);
     const p = await targetProfile(ctx, args.profileId);
+    assertServerOrder(admin, p);
     await ctx.scheduler.runAfter(0, internal.identity.startPasswordReset, { profileId: p._id });
     await audit(ctx, admin, "user.password_reset", { type: "profile", id: p._id }, { reason, requestId: args.requestId, clientHash: args.clientHash });
     return null;
@@ -424,6 +439,7 @@ export const scheduleAccountDeletion = mutation({
     const admin = await requirePlatformRole(ctx, ADMIN);
     const reason = requireReason(args.reason);
     const p = await targetProfile(ctx, args.profileId);
+    assertServerOrder(admin, p);
     if (args.confirmEmail.trim().toLowerCase() !== p.email) fail("invalid_argument", "Type the user's email to confirm.");
     if (p.platformRole) fail("forbidden", "Remove the platform role first.");
     const scheduledFor = Date.now() + 7 * 24 * 60 * 60 * 1000;

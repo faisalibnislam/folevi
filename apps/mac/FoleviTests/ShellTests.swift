@@ -35,6 +35,20 @@ final class ShellTests: XCTestCase {
         XCTAssertTrue(Paths.keychainService("com.folevi.e2ee").hasPrefix("com.folevi.dev.\(Paths.runTag ?? "")."))
     }
 
+    /// The installed app on its real data is never pointed at another interface or website by its environment
+    /// (anything on the Mac can start it with one); a Debug build and a run on a folder of its own are.
+    func testOnlyADebugBuildOrARunOnItsOwnFolderIsRedirected() {
+        let env = ["FOLEVI_URL": "https://evil.example", "FOLEVI_SHELL_DIR": "/tmp/evil", "FOLEVI_SHELL_CONNECT": "https://evil.example", "EMPTY": ""]
+        for name in ["FOLEVI_URL", "FOLEVI_SHELL_DIR", "FOLEVI_SHELL_CONNECT"] {
+            XCTAssertNil(Paths.redirect(name, env: env, debug: false, ownData: false), "\(name) in the installed app")
+            XCTAssertEqual(Paths.redirect(name, env: env, debug: true, ownData: false), env[name], "a Debug build")
+            XCTAssertEqual(Paths.redirect(name, env: env, debug: false, ownData: true), env[name], "a release build on FOLEVI_USER_DATA (release.mjs --launch-check)")
+        }
+        XCTAssertNil(Paths.redirect("EMPTY", env: env, debug: true, ownData: true))
+        XCTAssertNil(Paths.redirect("NOT_SET", env: env, debug: true, ownData: true))
+        XCTAssertFalse(Paths.redirectable(debug: false, ownData: false))
+    }
+
     func testEveryMethodTheBridgeCallsIsRouted() throws {
         let bridge = try String(contentsOf: Self.repo.appendingPathComponent("apps/ios/ios/App/Native/Shell/shell-bridge.js"), encoding: .utf8)
         var called = Set<String>()

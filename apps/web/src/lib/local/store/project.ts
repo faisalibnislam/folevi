@@ -21,6 +21,7 @@ import {
   historyPath,
   hlcDevice,
   isStub,
+  latestStamp,
   liveTags,
   lossNoticeId,
   makeStub,
@@ -351,6 +352,15 @@ export function project(writes: readonly StoreWrite[], env: ProjectionEnv): Proj
         index = setIndexRow(index, w.table, w.partition, w.id, w.value, clock);
       }
     }
+  }
+
+  // A note an import just made with its original last change: stamped with the newest stamp the commit gave it.
+  for (const w of writes) {
+    if (w.table !== "documents" || w.value === null || env.before("documents", w.id, undefined) !== undefined) continue;
+    const at = (w.value as LocalDocument).importedUpdatedAt;
+    const n = out.notes.get(w.id);
+    const c = n && !isStub(n) ? latestStamp(n) : null;
+    if (typeof at === "number" && n && !isStub(n) && c) out.notes.set(w.id, { ...n, doc: { ...n.doc, modifiedAt: { at, c } } });
   }
 
   for (const [id, after] of out.notes) {

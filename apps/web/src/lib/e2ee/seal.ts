@@ -21,7 +21,7 @@ import {
   type SealedBlockFields,
   type SealedWireBlock,
 } from "@folevi/local-store/e2ee";
-import { canonicalJson, DEFAULT_COVER, DEFAULT_DOCUMENT_STYLE, validateWireBlock, type InlineNode, type WireBlock } from "@folevi/editor-schema";
+import { canonicalJson, checkedDocumentCover, checkedDocumentStyle, checkedWireBlock, validateWireBlock, type InlineNode, type WireBlock } from "@folevi/editor-schema";
 import type { KeyRingLike } from "./router/deps";
 
 const enc = new TextEncoder();
@@ -165,8 +165,24 @@ export class Sealer {
     return await macOf(nk.mac, ctx.block(documentId, block.id), blockPlaintext(block));
   }
 
-  /** Opens a sealed block. Throws when it can't (a wrong key, a moved ciphertext, damage). */
+  /**
+   * Opens a sealed block, checked. The server stores a sealed block unread, so what opens is whatever its writer
+   * sealed: it gets the check the server gives a Standard block (editor-schema checkedWireBlock: valid, or
+   * repaired keeping the words) before anything draws or exports it. Throws when it can't be opened (a wrong
+   * key, a moved ciphertext, damage) or isn't a block Folevi can show.
+   */
   async openBlock(documentId: string, block: Pick<SealedWireBlock, "id" | "parentId" | "rank" | "revision" | "sealed">): Promise<WireBlock> {
+    const checked = checkedWireBlock(await this.openBlockExact(documentId, block));
+    // Logged by the caller without content: which block, never what's in it.
+    if (!checked) throw new Error("A sealed block isn't a valid block.");
+    return checked;
+  }
+
+  /**
+   * Opens a sealed block exactly as it was sealed, unchecked: only for sealing it again under another key
+   * (lib/e2ee/migrate/reseal.ts), which must not change it. Never for anything that draws or exports.
+   */
+  async openBlockExact(documentId: string, block: Pick<SealedWireBlock, "id" | "parentId" | "rank" | "revision" | "sealed">): Promise<WireBlock> {
     const bytes = await openRecord(this.noteContentKey(documentId), ctx.block(documentId, block.id), bytesOf(block.sealed.c));
     try {
       return withCollapsedField(blockFromPlaintext(bytes, { id: block.id, parentId: block.parentId, rank: block.rank, revision: block.revision }, block.sealed.collapsed === true));
@@ -215,7 +231,8 @@ export class Sealer {
   async openAppearance(documentId: string, c: Bytes): Promise<Required<Appearance>> {
     const v = parse(await openRecord(this.noteContentKey(documentId), ctx.docAppearance(documentId), bytesOf(c))) as Partial<Appearance> | null;
     if (!v || typeof v !== "object") throw new Error("A sealed appearance isn't an object.");
-    return { icon: typeof v.icon === "string" ? v.icon : null, cover: v.cover ?? DEFAULT_COVER, style: v.style ?? DEFAULT_DOCUMENT_STYLE };
+    // Checked like a block: the cover and style are written into class names and CSS, and the server never saw them.
+    return { icon: typeof v.icon === "string" ? v.icon : null, cover: checkedDocumentCover(v.cover), style: checkedDocumentStyle(v.style) };
   }
 
   async openMeta(documentId: string, c: Bytes): Promise<DocumentMeta> {

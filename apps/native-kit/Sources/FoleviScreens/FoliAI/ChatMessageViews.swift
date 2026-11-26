@@ -270,7 +270,7 @@ struct AnswerFootView: View {
                         .accessibilityLabel("Source \(c.n): \(c.title). Opens the note.")
                 }
                 ForEach(message.webCitations, id: \.self) { c in
-                    Button { if let u = URL(string: c.url) { openURL(u) } } label: { sourceChip(n: c.n, icon: "globe", title: c.title, domain: c.domain) }
+                    Button { if let u = URL(string: c.url), FoliChatModel.opensOutside(u) { openURL(u) } } label: { sourceChip(n: c.n, icon: "globe", title: c.title, domain: c.domain) }
                         .buttonStyle(PressFade())
                         .accessibilityLabel("Source \(c.n): \(c.title), \(c.domain). Opens the page.")
                 }

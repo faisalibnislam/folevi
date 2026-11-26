@@ -198,7 +198,10 @@ describe("signing in and out through the host", () => {
 
   test("signOutNow in the shell ends the host's session and opens the app's own sign-in", async () => {
     vi.doMock("@/lib/nativeDevice", () => ({ forgetThisDevice: vi.fn(async () => undefined) }));
-    vi.doMock("@/lib/sync/db", () => ({ clearAllLocalData: vi.fn(async () => undefined), localDb: vi.fn() }));
+    const clearAllLocalData = vi.fn(async () => undefined);
+    vi.doMock("@/lib/sync/db", () => ({ clearAllLocalData, localDb: vi.fn() }));
+    // What the browser learnt from the account's notes goes with its copy (lib/spelling/learnt.ts).
+    localStorage.setItem("folevi:spelling:learnt", '["Okonkwo"]');
     const assign = vi.fn();
     const original = window.location;
     Object.defineProperty(window, "location", { configurable: true, value: { ...original, assign } });
@@ -207,6 +210,8 @@ describe("signing in and out through the host", () => {
       const { signOutNow } = await import("@/components/auth/SignOut");
       await signOutNow("/signin?notice=signed_out");
       expect(auth.signOut).toHaveBeenCalledTimes(1);
+      expect(clearAllLocalData).toHaveBeenCalledTimes(1);
+      expect(localStorage.getItem("folevi:spelling:learnt")).toBeNull();
       expect(assign).toHaveBeenCalledWith("/");
     } finally {
       Object.defineProperty(window, "location", { configurable: true, value: original });

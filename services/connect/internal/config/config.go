@@ -43,8 +43,10 @@ type Config struct {
 	RelayIdleTimeout    time.Duration
 
 	RegisterPerIPHourly  int
+	RegisterGlobalHourly int
 	LinkCodesPerHour     int
 	ApprovePerUserHourly int
+	MaxServersPerOwner   int
 
 	ResendAPIKey           string // secret
 	ResendBaseURL          string
@@ -210,8 +212,10 @@ func Load(getenv func(string) string) (*Config, error) {
 		RelayIdleTimeout:    r.dur("CONNECT_RELAY_IDLE_TIMEOUT", 5*time.Minute),
 
 		RegisterPerIPHourly:  r.int("CONNECT_REGISTER_PER_IP_HOURLY", 10),
+		RegisterGlobalHourly: r.int("CONNECT_REGISTER_GLOBAL_HOURLY", 120),
 		LinkCodesPerHour:     r.int("CONNECT_LINK_CODES_PER_HOUR", 6),
 		ApprovePerUserHourly: r.int("CONNECT_APPROVE_PER_USER_HOURLY", 20),
+		MaxServersPerOwner:   r.int("CONNECT_MAX_SERVERS_PER_OWNER", 10),
 
 		ResendAPIKey:           r.secretFile("RESEND_API_KEY"),
 		ResendBaseURL:          r.str("CONNECT_RESEND_BASE_URL", "https://api.resend.com"),

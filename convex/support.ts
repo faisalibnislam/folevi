@@ -111,13 +111,24 @@ async function appendRequesterMessage(
   return messageId;
 }
 
-/** "We got your message": the ticket number and the person's own message, from Folevi Support, Reply-To support@folevi.com. */
-async function sendConfirmation(ctx: MutationCtx, ticket: Ticket, message: string): Promise<void> {
+/** What the receipt shows in place of the message when nothing proves the requester owns the address. */
+const UNQUOTED_RECEIPT = "Your message is saved with this request. For your safety we don't repeat it in this email.";
+
+/**
+ * "We got your message": the ticket number, from Folevi Support, Reply-To support@folevi.com. The person's
+ * own message is quoted back only when they were signed in (`quote`): the address on a signed-out form or
+ * in an email's From line can be anyone's, and quoting would mail a stranger's text to it under our name.
+ */
+async function sendConfirmation(ctx: MutationCtx, ticket: Ticket, message: string, quote: boolean): Promise<void> {
   await ctx.scheduler.runAfter(0, internal.email.sendTemplate, {
     key: "support_ticket_received",
     to: ticket.requesterEmail,
     idempotencyKey: `support-received:${ticket._id}`,
-    dataVariables: { ticketNumber: ticket.number, topicLabel: topicLabel(ticket.topic), quotedMessage: message.slice(0, SUPPORT_LIMITS.message) },
+    dataVariables: {
+      ticketNumber: ticket.number,
+      topicLabel: topicLabel(ticket.topic),
+      quotedMessage: quote ? message.slice(0, SUPPORT_LIMITS.message) : UNQUOTED_RECEIPT,
+    },
   });
   await captureInDevMailbox(ctx, ticket.requesterEmail, "support_ticket_received");
 }
@@ -247,7 +258,7 @@ async function fileRequest(
     source,
     profileId: profile?._id,
   });
-  await sendConfirmation(ctx, ticket, request.message);
+  await sendConfirmation(ctx, ticket, request.message, Boolean(profile));
   await notifyStaff(ctx, ticket, "new", messageId);
   console.log(JSON.stringify({ event: "support.ticket_created", ticket: ticket.number, source, signedIn: Boolean(profile) }));
   return { status: "received" as const, number: ticket.number };
@@ -390,7 +401,7 @@ export const ingestInbound = internalMutation({
       emailMessageId,
       inboundMessageId: args.inboundMessageId,
     });
-    await sendConfirmation(ctx, ticket, text);
+    await sendConfirmation(ctx, ticket, text, false);
     await notifyStaff(ctx, ticket, "new", messageId);
     return { outcome: "created" as const, number: ticket.number };
   },

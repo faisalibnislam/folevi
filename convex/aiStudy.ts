@@ -36,7 +36,7 @@ import {
   translationsFor,
   type BlockTranslation,
 } from "./lib/ai/translate";
-import { snapshot } from "./documents";
+import { copyAccess, snapshot } from "./documents";
 import { gemini, metered, providedArgs } from "./ai";
 import { vProvidedContext } from "./lib/e2ee/ai";
 import { failE2ee, isSealed } from "./lib/e2ee/state";
@@ -78,6 +78,8 @@ export const saveTranslated = internalMutation({
     if (isSealed(doc)) failE2ee("e2ee_device_only");
     const { scope } = await requireRowScope(ctx, profile, doc, "edit", "Document not found.");
     const blocks = applyTranslations((await liveBlocks(ctx, doc._id)).map(toWireBlock), args.translations as BlockTranslation[]);
+    // Like Duplicate: the translated copy of a page under a restriction is never more open than the page.
+    const closed = await copyAccess(ctx, profile, doc);
     const copy = await createDocument(ctx, {
       scope,
       actor: profile,
@@ -87,8 +89,10 @@ export const saveTranslated = internalMutation({
       parentDocumentId: doc.parentDocumentId,
       style: doc.style,
       cover: doc.cover,
+      accessMode: closed.accessMode,
       blocks: cloneBlocks(blocks),
     });
+    await closed.keep(copy);
     await copyCollectionsInto(ctx, copy);
     return { id: copy.publicId };
   },

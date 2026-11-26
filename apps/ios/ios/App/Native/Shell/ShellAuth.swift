@@ -70,16 +70,26 @@ final class ShellAuth: NSObject {
     }
 
     /// The open place's session: the page's (the app has one web view, bound to the open place).
+    /// With no account yet (a sign-in screen) it is the one session older builds kept, which was always Folevi
+    /// Cloud's: on a server's sign-in screen there is none, and nothing is kept there, so Folevi Cloud's old
+    /// session never goes to a server and a server's never takes its place.
     var token: String? {
-        get { token(for: ShellPlaces.currentUserId) }
-        set { setToken(newValue, for: ShellPlaces.currentUserId) }
+        get {
+            if let userId = ShellPlaces.currentUserId { return token(for: userId) }
+            return ShellPlaces.actingServer == nil ? token(for: nil) : nil
+        }
+        set {
+            if let userId = ShellPlaces.currentUserId { return setToken(newValue, for: userId) }
+            if ShellPlaces.actingServer == nil { setToken(newValue, for: nil) }
+        }
     }
 
     var signedIn: Bool { token != nil }
 
-    /// Who a session belongs to (Better Auth's get-session with that bearer), or nil.
-    func userOf(_ bearer: String) async -> (userId: String, name: String, email: String, avatarUrl: String?)? {
-        guard let url = URL(string: "/api/auth/get-session", relativeTo: service)?.absoluteURL,
+    /// Who a session belongs to (Better Auth's get-session with that bearer), or nil. `site`: the website asked
+    /// (nil: the acting place's).
+    func userOf(_ bearer: String, at site: URL? = nil) async -> (userId: String, name: String, email: String, avatarUrl: String?)? {
+        guard let url = URL(string: "/api/auth/get-session", relativeTo: site ?? service)?.absoluteURL,
               let (res, data, _) = try? await send(url, method: "GET", bearer: bearer, keepRotated: false), res.statusCode == 200,
               let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any], let user = json["user"] as? [String: Any],
               let id = user["id"] as? String, id.range(of: #"^[A-Za-z0-9_-]{1,64}$"#, options: .regularExpression) != nil else { return nil }
@@ -87,12 +97,24 @@ final class ShellAuth: NSObject {
         return (id, (user["name"] as? String) ?? "", (user["email"] as? String) ?? "", image)
     }
 
-    /// The single session an older build kept, moved to its account's own item: that account, or nil.
+    /// The single session an older build kept, moved to its account's own item: that account, or nil. That session
+    /// was Folevi Cloud's (builds before places had no servers), so Folevi Cloud is asked whose it is, whichever
+    /// place is open. An id that is already an account on a server here is left alone.
     func adoptLegacy() async -> (userId: String, name: String, email: String, avatarUrl: String?)? {
-        guard let legacy = token(for: nil), let user = await userOf(legacy) else { return nil }
+        guard let legacy = token(for: nil), let user = await userOf(legacy, at: cloudService) else { return nil }
+        guard ShellPlaces.server(ofUser: user.userId) == nil else { return nil }
         if token(for: user.userId) == nil { setToken(legacy, for: user.userId) }
         setToken(nil, for: nil)
         return user
+    }
+
+    /// Whether a sign-in that came back as `userId` must be refused: an account with that id is already on this
+    /// device from another server than the one this sign-in went to (the acting place's; nil is Folevi Cloud).
+    /// Sessions are kept by user id, and a server says what its user ids are: without this, a server answering
+    /// with the id of an account from elsewhere would take that account's place here.
+    static func belongsElsewhere(_ userId: String) -> Bool {
+        guard let existing = ShellPlaces.state.accounts.first(where: { $0.userId == userId }) else { return false }
+        return !ShellServer.same(existing.server, ShellPlaces.actingServer)
     }
 
     /// Signs in to one more account: who it is, or nil. The same person again replaces only their own session.
@@ -100,14 +122,22 @@ final class ShellAuth: NSObject {
     @MainActor
     func signInAccount(window: PlatformWindow?, provider: String? = nil) async -> (userId: String, name: String, email: String, avatarUrl: String?)? {
         guard let access = await obtain(window: window, provider: provider) else { return nil }
-        guard let user = await userOf(access) else {
+        guard let user = await userOf(access), !Self.belongsElsewhere(user.userId) else {
             await endSession(access)
             return nil
         }
         let previous = token(for: user.userId)
+        let issuedAt = issuer(of: user.userId)
         setToken(access, for: user.userId)
-        if let previous, previous != access { await endSession(previous) }
+        if let previous, previous != access, let issuedAt { await endSession(previous, at: issuedAt) }
         return user
+    }
+
+    /// The website that issued the session an id holds here: its account's own (its server's, or Folevi Cloud's).
+    /// Nil when no account here has that id: a session nobody can place is dropped without being sent anywhere.
+    /// The session a sign-in replaces is ended there, never at the website the new sign-in went to.
+    func issuer(of userId: String) -> URL? {
+        ShellPlaces.state.accounts.contains { $0.userId == userId } ? service(for: userId) : nil
     }
 
     /// Another account's Convex token (moving notes between two accounts).
@@ -381,6 +411,9 @@ extension ShellAuth {
 
     private static var twoFactorCookie: String?
 
+    /// What the sign-in screens say when `belongsElsewhere` refuses.
+    static let elsewhereMessage = "This account is already on this device from another server. Sign out of it there first, then sign in again."
+
     private func authPost(_ path: String, _ body: [String: Any], cookie: String? = nil) async -> (status: Int, json: [String: Any], token: String?, cookies: String?)? {
         guard let url = authURL(path), let data = try? JSONSerialization.data(withJSONObject: body) else { return nil }
         var headers = ["content-type": "application/json"]
@@ -424,9 +457,16 @@ extension ShellAuth {
     /// A session token from a sign-in answer becomes that account's session here.
     private func adopt(_ token: String) async -> EmailOutcome {
         guard let user = await userOf(token) else { return .failed("Something went wrong. Please try again.") }
+        if Self.belongsElsewhere(user.userId) {
+            if let url = URL(string: "/api/auth/sign-out", relativeTo: service)?.absoluteURL {
+                _ = try? await send(url, method: "POST", headers: ["content-type": "application/json"], body: "{}", bearer: token, keepRotated: false)
+            }
+            return .failed(Self.elsewhereMessage)
+        }
         let previous = self.token(for: user.userId)
+        let issuedAt = issuer(of: user.userId)
         setToken(token, for: user.userId)
-        if let previous, previous != token, let url = URL(string: "/api/auth/sign-out", relativeTo: service)?.absoluteURL {
+        if let previous, previous != token, let issuedAt, let url = URL(string: "/api/auth/sign-out", relativeTo: issuedAt)?.absoluteURL {
             _ = try? await send(url, method: "POST", headers: ["content-type": "application/json"], body: "{}", bearer: previous, keepRotated: false)
         }
         return .signedIn(userId: user.userId, name: user.name, email: user.email, avatarUrl: user.avatarUrl)

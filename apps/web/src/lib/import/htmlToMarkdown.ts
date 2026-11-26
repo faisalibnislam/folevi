@@ -44,6 +44,7 @@ function inline(node: Node, images: HtmlImage[]): string {
       return t.trim() ? `~~${t.trim()}~~` : t;
     }
     case "code":
+    case "tt": // Apple Notes' monospaced text
     case "kbd":
     case "samp":
       return `\`${(el.textContent ?? "").replace(/`/g, "'")}\``;

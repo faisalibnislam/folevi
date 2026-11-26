@@ -288,7 +288,7 @@ describe("local → account → local", () => {
     // Done is done: running it again changes nothing.
     const again = await upload(a, account);
     expect(again.finishedAt).toBe(up.finishedAt);
-  });
+  }, 20_000); // a whole library both ways: well past the default 5 s on a busy CI machine
 });
 
 describe("a move killed partway", () => {

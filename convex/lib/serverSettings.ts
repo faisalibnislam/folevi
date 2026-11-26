@@ -328,6 +328,19 @@ export function fromAddress(from: string): string | null {
   return EMAIL_RE.test(addr) ? addr : null;
 }
 
+/** Whether a stored secret would now go somewhere else: any pair of [next, current] values that differ. */
+const movedSecret = (...pairs: [string | undefined, string | undefined][]): boolean =>
+  pairs.some(([next, current]) => (next ?? "").trim().toLowerCase() !== (current ?? "").trim().toLowerCase());
+
+/** Whether two base URLs are the same service (scheme, host and port). */
+function sameOrigin(a: string, b: string): boolean {
+  try {
+    return new URL(a).origin === new URL(b).origin;
+  } catch {
+    return false;
+  }
+}
+
 /** An http(s) base URL without a trailing slash, or an error. */
 function baseUrl(value: string): string {
   const raw = value.trim().replace(/\/+$/, "");
@@ -386,6 +399,10 @@ export function applySettingsPatch(current: ServerSettings, patch: SettingsPatch
       const host = (p.host ?? cur?.host ?? "").trim().toLowerCase();
       const from = (p.from ?? cur?.from ?? "").trim();
       if (!host || host.length > 253 || /\s/.test(host)) throw new SettingsError("Enter your mail service's sending server, like smtp.gmail.com.");
+      // A stored password belongs to the server and user name it was saved for: it is never sent to another.
+      if (cur?.password && p.password === undefined && movedSecret([host, cur.host], [p.username === undefined ? cur.username : (p.username ?? undefined), cur.username])) {
+        throw new SettingsError("Enter the SMTP password again when you change the sending server or the user name.");
+      }
       if (!from || from.length > 320 || !fromAddress(from)) throw new SettingsError('Enter the From address, like "Folevi <folevi@example.com>".');
       next.email.smtp = {
         host,
@@ -407,6 +424,9 @@ export function applySettingsPatch(current: ServerSettings, patch: SettingsPatch
       const username = (p.username ?? cur?.username ?? "").trim();
       if (!host || host.length > 253 || /\s/.test(host)) throw new SettingsError("Enter the IMAP server's host name.");
       if (!username || username.length > 320) throw new SettingsError("Enter the IMAP user name.");
+      if (cur?.password && p.password === undefined && movedSecret([host, cur.host], [username, cur.username])) {
+        throw new SettingsError("Enter the IMAP password again when you change the server or the user name.");
+      }
       const folder = (p.folder ?? cur?.folder ?? "INBOX").trim() || "INBOX";
       next.emailIn.imap = { host, port: port(p.port ?? cur?.port ?? 993, "The IMAP port"), username, password: secret(p.password, cur?.password, "The IMAP password"), folder: folder.slice(0, 200) };
     }
@@ -429,9 +449,13 @@ export function applySettingsPatch(current: ServerSettings, patch: SettingsPatch
       const model = (a.openai.model ?? cur?.model ?? "").trim();
       if (!rawBase) throw new SettingsError("Enter the AI service's address.");
       if (!model || model.length > MAX_MODEL) throw new SettingsError("Enter the model's name.");
+      const nextBase = baseUrl(rawBase);
+      // A stored key is for the service it was saved with. Pointing at another address without a new key
+      // drops it (a local model needs none), so the old service's key is never sent to the new one.
+      const keptKey = cur && sameOrigin(nextBase, cur.baseUrl) ? cur.apiKey : undefined;
       next.ai.openai = {
-        baseUrl: baseUrl(rawBase),
-        apiKey: secret(a.openai.apiKey, cur?.apiKey, "The API key"),
+        baseUrl: nextBase,
+        apiKey: secret(a.openai.apiKey, keptKey, "The API key"),
         model,
         embeddingModel: optionalText(a.openai.embeddingModel, cur?.embeddingModel, "The embedding model name"),
       };

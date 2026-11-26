@@ -36,6 +36,44 @@ struct Stored {
     lock_after: u64,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     passphrase: Option<Passphrase>,
+    /// Wrong passphrases in a row, and when the last one was (seconds since 1970): kept here so closing Folevi and
+    /// opening it again doesn't start the count over.
+    #[serde(default, skip_serializing_if = "is_zero")]
+    failed: u32,
+    #[serde(default, skip_serializing_if = "is_zero_u64")]
+    failed_at: u64,
+}
+
+fn is_zero(n: &u32) -> bool {
+    *n == 0
+}
+
+fn is_zero_u64(n: &u64) -> bool {
+    *n == 0
+}
+
+/// Wrong passphrases in a row that cost nothing (a slip of the fingers).
+const FREE_TRIES: u32 = 4;
+/// The longest wait between two tries.
+const MAX_WAIT: u64 = 15 * 60;
+
+/// How many seconds the next try waits after `failed` wrong passphrases in a row: none for the first few, then 5
+/// seconds, doubling with each further one, 15 minutes at most. Guessing a short passphrase at the keyboard stops
+/// being worth it.
+pub fn wait_after(failed: u32) -> u64 {
+    if failed < FREE_TRIES {
+        return 0;
+    }
+    (5u64 << (failed - FREE_TRIES).min(10)).min(MAX_WAIT)
+}
+
+/// "5 seconds", "1 minute", "15 minutes": a wait in words.
+pub fn wait_words(seconds: u64) -> String {
+    if seconds < 60 {
+        return format!("{seconds} second{}", if seconds == 1 { "" } else { "s" });
+    }
+    let minutes = seconds.div_ceil(60);
+    format!("{minutes} minute{}", if minutes == 1 { "" } else { "s" })
 }
 
 /// A number of seconds, rounded down to one of [`CHOICES`]; None for anything that isn't a number of seconds.
@@ -109,8 +147,31 @@ impl AppLock {
         json!({ "lock": self.on(), "lockAfter": self.stored.lock().lock_after, "method": self.method() })
     }
 
+    /// The passphrase's hash as kept (the tests read it; the app checks through `try_passphrase`).
+    #[cfg(test)]
     pub fn passphrase(&self) -> Option<Passphrase> {
         self.stored.lock().passphrase.clone()
+    }
+
+    /// Checks the lock's passphrase, counting wrong ones in a row: Ok(whether it's right), or Err(seconds to wait)
+    /// when it's too soon after too many wrong ones (nothing is checked then). `now`: seconds since 1970.
+    pub fn try_passphrase(&self, attempt: &str, now: u64) -> Result<bool, u64> {
+        let old = self.stored.lock().clone();
+        let wait = wait_after(old.failed);
+        // (A clock set back doesn't make the wait longer than it is.)
+        let left = old.failed_at.saturating_add(wait).saturating_sub(now).min(wait);
+        if left > 0 {
+            return Err(left);
+        }
+        let ok = old.passphrase.as_ref().is_some_and(|p| passphrase_matches(p, attempt));
+        if ok {
+            if old.failed != 0 || old.failed_at != 0 {
+                let _ = self.save(Stored { failed: 0, failed_at: 0, ..old });
+            }
+        } else {
+            let _ = self.save(Stored { failed: old.failed.saturating_add(1), failed_at: now, ..old });
+        }
+        Ok(ok)
     }
 
     fn save(&self, s: Stored) -> std::io::Result<()> {
@@ -133,7 +194,7 @@ impl AppLock {
     /// Turns the lock on or off (after the person confirmed it). On with a passphrase keeps its hash; off forgets it.
     pub fn set_lock(&self, on: bool, passphrase: Option<Passphrase>) -> std::io::Result<()> {
         let old = self.stored.lock().clone();
-        let s = Stored { lock: on, passphrase: if on { passphrase.or(old.passphrase.clone()) } else { None }, ..old };
+        let s = Stored { lock: on, passphrase: if on { passphrase.or(old.passphrase.clone()) } else { None }, failed: 0, failed_at: 0, ..old };
         self.save(s)
     }
 
@@ -234,6 +295,41 @@ mod tests {
         l.set_after(0).unwrap();
         l.away(t);
         assert!(l.back(t));
+    }
+
+    #[test]
+    fn wrong_passphrases_in_a_row_make_the_next_one_wait() {
+        assert_eq!([0, 1, 2, 3].map(wait_after), [0, 0, 0, 0], "a few slips cost nothing");
+        assert_eq!([4, 5, 6, 7].map(wait_after), [5, 10, 20, 40]);
+        assert_eq!(wait_after(12), 900);
+        assert_eq!(wait_after(u32::MAX), 900, "15 minutes at most");
+        assert_eq!(wait_words(1), "1 second");
+        assert_eq!(wait_words(40), "40 seconds");
+        assert_eq!(wait_words(60), "1 minute");
+        assert_eq!(wait_words(900), "15 minutes");
+
+        let (d, l) = temp("passphrase");
+        l.set_lock(true, Some(hash_passphrase("correct horse"))).unwrap();
+        let t = 1_800_000_000u64;
+        for i in 0..4 {
+            assert_eq!(l.try_passphrase("guess", t + i), Ok(false));
+        }
+        // The fifth try is too soon: nothing is checked, not even the right passphrase.
+        assert_eq!(l.try_passphrase("correct horse", t + 4), Err(4));
+        assert_eq!(l.try_passphrase("guess", t + 7), Err(1));
+        // Closing Folevi and opening it again doesn't start over.
+        let again = AppLock::load(d.path().join("lock.json"), "passphrase");
+        assert_eq!(again.try_passphrase("correct horse", t + 5), Err(3));
+        // After the wait a wrong one doubles it, and a clock set back doesn't make it longer than it is.
+        assert_eq!(again.try_passphrase("guess", t + 8), Ok(false));
+        assert_eq!(again.try_passphrase("guess", t + 9), Err(9));
+        assert_eq!(again.try_passphrase("guess", t - 1000), Err(10));
+        // The right one, once the wait is over, clears the count.
+        assert_eq!(again.try_passphrase("correct horse", t + 18), Ok(true));
+        assert_eq!(again.try_passphrase("guess", t + 19), Ok(false));
+        assert_eq!(again.try_passphrase("correct horse", t + 19), Ok(true));
+        let saved = std::fs::read_to_string(d.path().join("lock.json")).unwrap();
+        assert!(!saved.contains("failed"), "nothing kept once it's right: {saved}");
     }
 
     #[test]

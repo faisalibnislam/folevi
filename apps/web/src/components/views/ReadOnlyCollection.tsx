@@ -1,6 +1,6 @@
 // Read-only collection for public share pages (server-rendered; no hooks, no client code).
 import { formatCalendarDate, t } from "@/i18n";
-import { TITLE_ID, applyView, formatPropertyNumber, formulaGroupKey, formulaGroups, isEmptyValue, isFormulaResult, summarize, summaryLabel, withFormulaValues, type ViewFilter, type ViewProperty, type ViewSort, type ViewSummary } from "./collectionView";
+import { TITLE_ID, applyView, optionChipStyle, formatPropertyNumber, formulaGroupKey, formulaGroups, isEmptyValue, isFormulaResult, summarize, summaryLabel, withFormulaValues, type ViewFilter, type ViewProperty, type ViewSort, type ViewSummary } from "./collectionView";
 
 export interface ReadOnlyCollectionData {
   name: string;
@@ -12,10 +12,7 @@ export interface ReadOnlyCollectionData {
   rows: { id: string; title: string; icon: string | null; values: Record<string, unknown> }[];
 }
 
-function optionStyle(color: string) {
-  const c = color === "muted" ? "ink-muted" : color;
-  return { background: `var(--color-${c === "accent" ? "accent-soft" : c === "ink-muted" ? "surface-sunken" : `${c}-soft`})`, color: `var(--color-${c === "accent" ? "accent-soft-ink" : c === "ink-muted" ? "ink" : `${c}-ink`})` };
-}
+const optionStyle = optionChipStyle;
 
 const asResult = (v: unknown) => (isFormulaResult(v) ? v : undefined);
 

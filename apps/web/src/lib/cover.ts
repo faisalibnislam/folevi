@@ -1,5 +1,5 @@
 // Shared (server + client) cover/accent helpers.
-import type { DocumentCover, DocumentStyle } from "@folevi/editor-schema";
+import { isCoverAccent, type DocumentCover, type DocumentStyle } from "@folevi/editor-schema";
 import type { StylePalette } from "@/lib/palette";
 import { allThemes, BUILT_IN_THEMES, themeById, type NoteTheme } from "@/lib/themes";
 import { inShowcaseFrame } from "@/lib/showcaseFrame";
@@ -48,8 +48,10 @@ export const coverArtThumbUrl = (id: string) => {
 };
 
 // The "Accent" page accent renders ember (docs/DESIGN_SYSTEM.md); the Mac app loads the web, so it matches.
-export const accentVar = (a: DocumentStyle["accent"]) => (a === "accent" ? "var(--color-ember)" : `var(--color-${a})`);
-export const softVar = (a: DocumentStyle["accent"]) => (a === "accent" ? "var(--color-ember-soft)" : `var(--color-${a}-soft)`);
+// Only the accents Folevi has ever go into the CSS: the name is written into a var(), and a note's style or
+// cover can come from somewhere nothing checked it (a sealed note, an older row). Any other name draws ember.
+export const accentVar = (a: DocumentStyle["accent"]) => (a === "accent" || !isCoverAccent(a) ? "var(--color-ember)" : `var(--color-${a})`);
+export const softVar = (a: DocumentStyle["accent"]) => (a === "accent" || !isCoverAccent(a) ? "var(--color-ember-soft)" : `var(--color-${a}-soft)`);
 
 /**
  * A note style can also be the person's own image (cover.kind "image", value = its file id). Its signed URL
@@ -69,6 +71,8 @@ export function coverBackground(cover: DocumentCover, style: DocumentStyle, imag
     return `linear-gradient(var(--cover-art-tint), var(--cover-art-tint)), ${artUrl(cover.value)} center / cover no-repeat`;
   }
   if (cover.kind === "art") return coverBackground({ kind: "gradient" }, style);
+  // A colour or gradient names one of the accents (or none: the page's own). Any other value draws nothing.
+  if ((cover.kind === "color" || cover.kind === "gradient") && cover.value != null && !isCoverAccent(cover.value)) return undefined;
   if (cover.kind === "color") return softVar((cover.value as DocumentStyle["accent"]) ?? style.accent);
   if (cover.kind === "gradient") {
     const a = (cover.value as DocumentStyle["accent"]) ?? style.accent;

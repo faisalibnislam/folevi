@@ -3,6 +3,7 @@ import { query } from "./_generated/server";
 import { internalMutation, mutation } from "./lib/functions";
 import { accessAtLeast, documentAccess, getDocumentByPublicId, requireProfile } from "./lib/auth";
 import type { MutationCtx } from "./_generated/server";
+import type { Id } from "./_generated/dataModel";
 import { internal } from "./_generated/api";
 import { fail } from "./lib/errors";
 
@@ -17,11 +18,32 @@ import { personColor } from "./lib/authors";
 import { identityImageUrl } from "./lib/identityImages";
 
 const ACTIVE_MS = 45_000;
+/** Block ids as the editor makes them (ULIDs, or ids from an import): letters, digits, "-" and "_". */
+const BLOCK_ID = /^[A-Za-z0-9_-]{1,64}$/;
+/** A session id is a short client-made id (its hash is what's stored). */
+const MAX_SESSION_ID = 64;
+/** Open sessions one person is shown with in one note (windows and devices); a further one replaces their oldest. */
+const MAX_SESSIONS_PER_NOTE = 5;
+
+/**
+ * Before a person's new session row for a note is added: their oldest rows there go when they already hold
+ * MAX_SESSIONS_PER_NOTE, so nobody fills a note's presence (the lists read its newest 50 rows) with made-up sessions.
+ */
+async function makeRoom(ctx: MutationCtx, table: "presence" | "presenceCursors", documentId: Id<"documents">, profileId: Id<"profiles">): Promise<void> {
+  const rows = await ctx.db
+    .query(table)
+    .withIndex("by_document", (q) => q.eq("documentId", documentId))
+    .order("desc")
+    .take(200);
+  const mine = rows.filter((r) => r.profileId === profileId);
+  for (const old of mine.slice(MAX_SESSIONS_PER_NOTE - 1)) await ctx.db.delete(old._id);
+}
 
 /** Heartbeat from a document view. Presence is only readable by people who can read the document. */
 export const heartbeat = mutation({
   args: { documentId: v.string(), sessionId: v.string(), focusedBlockId: v.optional(v.union(v.string(), v.null())) },
   handler: async (ctx, args) => {
+    if (args.sessionId.length > MAX_SESSION_ID) fail("invalid_argument", "Not a session.");
     const profile = await requireProfile(ctx);
     const doc = await readableDoc(ctx, profile, args.documentId);
     if (!doc) return null;
@@ -30,9 +52,13 @@ export const heartbeat = mutation({
       .query("presence")
       .withIndex("by_session", (q) => q.eq("sessionKey", sessionKey).eq("documentId", doc._id))
       .unique();
-    const focusedBlockId = args.focusedBlockId ?? undefined;
+    // A block id or nothing (anything else isn't kept).
+    const focusedBlockId = args.focusedBlockId && BLOCK_ID.test(args.focusedBlockId) ? args.focusedBlockId : undefined;
     if (existing) await ctx.db.patch(existing._id, { updatedAt: Date.now(), focusedBlockId });
-    else await ctx.db.insert("presence", { documentId: doc._id, profileId: profile._id, sessionKey, focusedBlockId, updatedAt: Date.now() });
+    else {
+      await makeRoom(ctx, "presence", doc._id, profile._id);
+      await ctx.db.insert("presence", { documentId: doc._id, profileId: profile._id, sessionKey, focusedBlockId, updatedAt: Date.now() });
+    }
     // A caret left resting for a while stays (the sweep below takes cursors not touched in 10 minutes).
     const cursor = await ctx.db
       .query("presenceCursors")
@@ -47,6 +73,7 @@ export const leave = mutation({
   args: { documentId: v.string(), sessionId: v.string() },
   handler: async (ctx, args) => {
     const profile = await requireProfile(ctx);
+    if (args.sessionId.length > MAX_SESSION_ID) return null;
     const doc = await readableDoc(ctx, profile, args.documentId);
     if (!doc) return null;
     const sessionKey = await keyedHash(`${profile._id}:${args.sessionId}`, "presence");
@@ -64,8 +91,6 @@ export const leave = mutation({
   },
 });
 
-/** Block ids as the editor makes them (ULIDs, or ids from an import): letters, digits, "-" and "_". */
-const BLOCK_ID = /^[A-Za-z0-9_-]{1,64}$/;
 /** Longer than any line can be: an offset past it is a bad request, not a caret. */
 const MAX_OFFSET = 1_000_000;
 
@@ -88,7 +113,7 @@ export const setCursor = mutation({
     cursor: v.union(v.null(), v.object({ anchor: vCaretPoint, head: vCaretPoint, block: v.optional(v.boolean()) })),
   },
   handler: async (ctx, args) => {
-    if (args.sessionId.length > 64) fail("invalid_argument", "Not a session.");
+    if (args.sessionId.length > MAX_SESSION_ID) fail("invalid_argument", "Not a session.");
     if (args.cursor) {
       checkPoint(args.cursor.anchor);
       checkPoint(args.cursor.head);
@@ -115,7 +140,10 @@ export const setCursor = mutation({
       updatedAt: Date.now(),
     };
     if (existing) await ctx.db.patch(existing._id, row);
-    else await ctx.db.insert("presenceCursors", { documentId: doc._id, profileId: profile._id, sessionKey, ...row });
+    else {
+      await makeRoom(ctx, "presenceCursors", doc._id, profile._id);
+      await ctx.db.insert("presenceCursors", { documentId: doc._id, profileId: profile._id, sessionKey, ...row });
+    }
     return null;
   },
 });

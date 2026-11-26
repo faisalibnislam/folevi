@@ -59,6 +59,11 @@ export interface NoteDoc {
   /** A daily note's day (yyyy-mm-dd). */
   dailyDate?: Register<string | null>;
   createdAt?: number;
+  /**
+   * An imported note's last change in the app it came from (Apple Notes): shown as its "last changed" until the
+   * note changes here. `c` is the newest stamp the note had when it was imported. Older apps ignore it.
+   */
+  modifiedAt?: { at: number; c: string };
   tags: Record<string, TagEntry>;
 }
 
@@ -304,6 +309,8 @@ export function validateNoteFile(file: unknown): NoteIssue[] {
       bad("doc.kind", "Invalid kind.");
     if (doc.createdAt !== undefined && typeof doc.createdAt !== "number")
       bad("doc.createdAt", "Invalid createdAt.");
+    if (doc.modifiedAt !== undefined && (!isObject(doc.modifiedAt) || typeof doc.modifiedAt.at !== "number" || !isHlc(doc.modifiedAt.c)))
+      bad("doc.modifiedAt", "Invalid modifiedAt.");
     if (!isObject(doc.tags)) bad("doc.tags", "Missing tags.");
     else
       for (const [id, t] of Object.entries(doc.tags)) {
@@ -460,6 +467,14 @@ export function latestStamp(file: NoteLike): string | null {
   let best: string | null = null;
   for (const v of Object.values(file.seen)) if (best === null || v > best) best = v;
   return best;
+}
+
+/** An imported note's original last change, while nothing has changed it since it was imported (NoteDoc.modifiedAt). */
+export function importedModifiedAt(file: NoteLike): number | null {
+  if (isStub(file)) return null;
+  const m = file.doc.modifiedAt;
+  const latest = latestStamp(file);
+  return m && latest !== null && latest <= m.c ? m.at : null;
 }
 
 /** A permanent-delete stub for a note: it remembers everything the note had seen. */

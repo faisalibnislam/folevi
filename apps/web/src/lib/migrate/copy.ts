@@ -364,7 +364,10 @@ export async function copyLibrary(o: CopyOptions): Promise<MigrationState> {
         try {
           await patiently(() => target.importVersion(id, { ...v, blocks: v.blocks.map((b) => remapBlock(b, m)) }));
         } catch (error) {
-          if (errorData(error).code !== "limit_exceeded") throw error;
+          // Too large, or holding a block the server refuses (an old version in a shape it no longer takes):
+          // that one version is reported and the move goes on.
+          const code = errorData(error).code;
+          if (code !== "limit_exceeded" && code !== "invalid_block") throw error;
           problem({ kind: "version", documentId: note.id, title: note.title, detail: errorText(error) });
         }
         s.versions[v.id] = true;

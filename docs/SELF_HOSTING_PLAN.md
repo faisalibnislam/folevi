@@ -174,7 +174,7 @@ Public share links (`/s/<token>`) work through any of 2 to 4, so people outside 
 | Role | Can |
 | --- | --- |
 | **Owner** (the first account, can be transferred) | Everything, including the server's settings, other admins, backups and restore, deleting the server's data |
-| **Admin** | Invite and manage members, quotas, sign-in rules, email and AI settings, see logs and health |
+| **Admin** | Invite and manage members, quotas, sign-in rules, see logs and health. Email, AI, Google keys and cover photo settings are the owner's alone (security audit 2026-11-26: whoever chooses where mail goes can read a password-reset link, so an admin could have taken over the owner) |
 | **Member** | Use Folevi fully: notes, tasks, sharing with other members and by link, encrypted spaces, Foli AI if allowed |
 | **Guest** (optional) | Only what was shared with them; no library of their own |
 

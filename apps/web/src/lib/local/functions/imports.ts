@@ -2,11 +2,12 @@
 // through the same parser (packages/editor-schema markdown.ts). Settings > Import & export reads the files on
 // the device (folders, ZIPs, Notion, Evernote, Word: lib/import) and sends each page here; their images are
 // put in the library first (client.local.putFile) and named in `imageMap`.
-import { linkImportedPages, markdownToBlocks, plainTextToBlocks, type WireBlock } from "@folevi/editor-schema";
+import { importedDates, linkImportedPages, markdownToBlocks, plainTextToBlocks, type WireBlock } from "@folevi/editor-schema";
 import { api } from "@/lib/convex/api";
 import { fail } from "../errors";
 import { defineLocal } from "../registry";
 import { checkScope, insertDocument, requireProfile, toSummary } from "./shared";
+import { ensureLocalTag } from "./organization";
 
 const MAX_IMPORT_CHARS = 2_000_000;
 const ULID_RE = /^[0-9A-HJKMNP-TV-Z]{26}$/;
@@ -36,7 +37,8 @@ defineLocal(api.imports.importText, "mutation", async (ctx, args) => {
   let frontMatter: Record<string, string> = {};
   if (args.format === "markdown") {
     const map = args.imageMap ?? {};
-    const result = markdownToBlocks(args.content, { resolveImage: (src) => (map[src] ? { fileId: map[src]! } : null) });
+    const files = args.fileMap ?? {};
+    const result = markdownToBlocks(args.content, { resolveImage: (src) => (map[src] ? { fileId: map[src]! } : null), resolveFile: (src) => files[src] ?? null });
     blocks = result.blocks;
     warnings = result.warnings;
     frontMatter = result.frontMatter;
@@ -62,7 +64,14 @@ defineLocal(api.imports.importText, "mutation", async (ctx, args) => {
     if (!parent || parent.inTrash) fail("not_found", "The page to put it in isn't here.");
     parentDocumentId = parent.id;
   }
-  const doc = await insertDocument(ctx, { id: args.publicId, title, folderId, blocks, parentDocumentId });
+  const dates = args.createdAt !== undefined || args.updatedAt !== undefined ? importedDates(args.createdAt, args.updatedAt, ctx.now()) : {};
+  const tagIds: string[] = [];
+  for (const raw of (args.tags ?? []).slice(0, 20)) {
+    if (!raw.replace(/^#/, "").trim()) continue;
+    const tag = await ensureLocalTag(ctx, raw);
+    if (!tagIds.includes(tag.id)) tagIds.push(tag.id);
+  }
+  const doc = await insertDocument(ctx, { id: args.publicId, title, folderId, blocks, parentDocumentId, ...dates, ...(tagIds.length ? { tagIds } : {}) });
   return {
     document: toSummary(doc, profile.id),
     warnings: warnings.slice(0, 100),

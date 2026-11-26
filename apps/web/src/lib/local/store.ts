@@ -26,6 +26,8 @@ export interface LocalDocument {
   /** The library's count of notes made when this one was: orders notes made in the same millisecond. */
   ordinal: number;
   updatedAt: number;
+  /** Set by an import that keeps the note's original last change: the projection writes it into the note file once. */
+  importedUpdatedAt?: number;
   archivedAt: number | null;
   /** When it went to Trash (`inTrash`). */
   deletedAt: number | null;

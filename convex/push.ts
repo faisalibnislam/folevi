@@ -10,9 +10,9 @@ import { requireProfile } from "./lib/auth";
 import { fail } from "./lib/errors";
 import { APNS_TOKEN_RE, apnsConfig } from "./lib/apns";
 import { FCM_TOKEN_RE, fcmConfig } from "./lib/fcm";
+import { isPushServiceEndpoint } from "./lib/pushEndpoints";
 import type { Id } from "./_generated/dataModel";
 
-const ENDPOINT_RE = /^https:\/\/[^\s]{10,2000}$/;
 const KEY_RE = /^[A-Za-z0-9_-]{10,200}$/;
 
 /** The server's public key (browsers need it to subscribe), or null when push isn't set up here. */
@@ -42,7 +42,8 @@ export const subscribe = mutation({
   args: { endpoint: v.string(), p256dh: v.string(), auth: v.string(), label: v.optional(v.string()), placeLabel: v.optional(v.string()), keepOthers: v.optional(v.boolean()) },
   handler: async (ctx, args) => {
     const profile = await requireProfile(ctx);
-    if (!ENDPOINT_RE.test(args.endpoint) || !KEY_RE.test(args.p256dh) || !KEY_RE.test(args.auth)) fail("invalid_argument", "This browser's push details look wrong.");
+    // Only a browser's own push service (lib/pushEndpoints.ts): the server sends requests to this address.
+    if (!isPushServiceEndpoint(args.endpoint) || !KEY_RE.test(args.p256dh) || !KEY_RE.test(args.auth)) fail("invalid_argument", "This browser's push details look wrong.");
     // An endpoint belongs to one browser: if it was someone else's (a shared computer), it's now yours. A browser
     // signed in to several accounts at once (keepOthers) keeps each account's own.
     for (const existing of await ctx.db

@@ -6,6 +6,7 @@ import "./documents";
 import "./documents.history";
 import "./organization";
 import "./sidebarOrder";
+import "./spelling";
 import "./users";
 import "./settings";
 import "./themes";

@@ -310,6 +310,10 @@ branch publishes the details: push, let CI run and merge in one go rather than l
 - The committed `apps/mac/Folevi.xcodeproj` is stale against `project.yml` (it names files this branch doesn't
   have); regenerate it with XcodeGen before the next Mac build.
 
+**2026-11-26, spell check and prediction (branch `claude/vigorous-raman-bb697b`, PR 143):** Folevi's own spell
+check (Hunspell as WebAssembly, ten languages, offline), suggestions in the right-click menu, a bubble and the phone
+keyboard strip, and next-word prediction with Tab, in every app. Plan, design and what's left:
+`docs/SPELLING_PLAN.md`. Not released; not tried in the native builds or on devices.
 **Signed-in feel, web and Mac (2026-11-26, branch `claude/perf-web-mac-1126`, `docs/perf/feel-results.md`).** The
 owner found the web and Mac apps sluggish. Measured signed in (300 notes, a local backend behind
 `apps/web/perf/latency-proxy.mjs` at a 260 ms round trip, about the owner's to Convex; `apps/web/perf/feel.spec.ts`):
@@ -1182,6 +1186,8 @@ account button should move past iPadOS's window buttons).
     30-day Trash purge still removes restricted sub-pages trashed before this fix; the approve page has no
     message for Connect's `too_many_servers`; the lower-encryption dialog should say a fresh sign-in is needed
     before asking for the recovery method.
+- Spell check and prediction (`docs/SPELLING_PLAN.md`): merge PR 143 when CI is green; then a native Settings row
+  for Writing on the Mac and iPhone/iPad, and a check in each app's build (Mac, iOS, Android, Windows, Linux).
 - Signed-in feel (`docs/perf/feel-results.md` "Not done"): serve the app's pages statically from Vercel's edge with a
   hash-based Content Security Policy (each website load waits 0.45 to 0.75 s for HTML from iad1 today); let browsers
   start from the snapshot when the tab's account is the last one; more optimistic clicks (tags, reorder, notification
@@ -1497,6 +1503,11 @@ account button should move past iPadOS's window buttons).
   Tauri and Android shells, `server/folevid`, `services/connect`, `packaging/` and the workflows. What changed and
   what is left: Current state and Next steps above; the controls are described in `docs/SECURITY.md`,
   `docs/SHARING.md`, `docs/SUPPORT.md` and `docs/self-hosting/CONTRACT.md` §7.1. No version change.
+- 2026-11-26: **Spell check, suggestions and next-word prediction** for every app (`docs/SPELLING_PLAN.md`): Hunspell
+  WebAssembly in a worker, 10 languages detected per line, personal dictionary synced (`convex/spelling.ts`), ghost
+  text with Tab (on-device model, Foli AI after a pause), Settings > Writing, per-note switch, F7. Checked: typecheck,
+  lint, web unit suite, Convex and parity tests, Playwright in Chromium and WebKit (local mode). Not checked in the
+  native builds or on devices.
 - 2026-11-26: Signed-in feel pass, web and Mac (`claude/perf-web-mac-1126`, `docs/perf/feel-results.md`): optimistic
   task check-off, bookmark, archive, trash, restore and delete; workspaces asked with `me`; no blur on `.ui-content`;
   Convex JWT kept by the Mac/iOS host for the next page; waiting-edits count debounced before it reaches the host;

@@ -485,6 +485,8 @@ async function purgeAccount(ctx: MutationCtx, profileId: Id<"profiles">, budget:
     () => ctx.db.query("graphViews").withIndex("by_profile_scope", (q) => q.eq("profileId", profileId)).take(200),
     // Their own sidebar folder orders.
     () => ctx.db.query("sidebarOrders").withIndex("by_profile_scope", (q) => q.eq("profileId", profileId)).take(200),
+    // Their spelling settings and personal dictionary.
+    () => ctx.db.query("spelling").withIndex("by_profile", (q) => q.eq("profileId", profileId)).take(200),
     // Their study schedules (the cards stay with the notes).
     () => ctx.db.query("studyReviews").withIndex("by_profile_due", (q) => q.eq("profileId", profileId)).take(200),
     // Their email-to-note address (it stops working) and its receipts.

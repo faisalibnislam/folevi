@@ -84,10 +84,12 @@ describe("what is kept of an account outside its database", () => {
   });
 
   it("the words the browser learnt are forgotten on request, nothing else", async () => {
-    const { forgetLearntSpelling, LEARNT_KEY } = await import("@/lib/spelling/learnt");
+    const { forgetLearntSpelling, LEARNT_KEY, ACCOUNT_WORDS_KEY } = await import("@/lib/spelling/learnt");
     localStorage.setItem(LEARNT_KEY, '["Okonkwo"]');
+    localStorage.setItem(ACCOUNT_WORDS_KEY, '{"learnt":["Adaeze"],"ignored":[]}');
     forgetLearntSpelling();
     expect(localStorage.getItem(LEARNT_KEY)).toBeNull();
+    expect(localStorage.getItem(ACCOUNT_WORDS_KEY)).toBeNull();
     expect(localStorage.getItem("folevi:sidebar-width")).toBe("280");
   });
 });

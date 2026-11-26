@@ -55,6 +55,20 @@ export const scenarios = [
     },
   }),
   scenario({
+    name: "spelling: settings and the personal dictionary",
+    async run(b) {
+      const none = await b.query(api.spelling.get, {});
+      await b.mutation(api.spelling.setPrefs, { english: "en-GB", predictions: false });
+      await b.mutation(api.spelling.setWord, { word: "Folevi", kind: "learnt", add: true });
+      await b.mutation(api.spelling.setWord, { word: "lorem", kind: "ignored", add: true });
+      await b.mutation(api.spelling.setWord, { word: "lorem", kind: "ignored", add: false });
+      await b.mutation(api.spelling.setNote, { documentId: "01J00000000000000000000000", on: false });
+      const saved = await b.query(api.spelling.get, {});
+      const notAWord = await attempt(b.mutation(api.spelling.setWord, { word: "two words", kind: "learnt", add: true }));
+      return { none, saved, notAWord };
+    },
+  }),
+  scenario({
     name: "tags: create, rename, tag a note, list by tag",
     async run(b, k) {
       const garden = k.name((await b.mutation(api.organization.createTag, { scope: b.scope, name: "garden" })).id, "garden");

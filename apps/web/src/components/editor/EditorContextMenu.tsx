@@ -54,6 +54,7 @@ import {
   Underline,
   Unlink,
   X,
+  SpellCheck2,
 } from "lucide-react";
 import { CODE_LANGUAGES, sanitizeHref, webUrl } from "@folevi/editor-schema";
 import { AiIcon } from "@/components/ai/AiIcon";
@@ -79,6 +80,10 @@ import { inBlockControls } from "./blockField";
 import { insertBelowColumns } from "./columns/columnsCommands";
 import { rowOf } from "./columns/columnsModel";
 import { macTextActions, macTextServices, wordAround, type MacTextItems } from "@/lib/desktop/textMenu";
+import { isSealedDocument } from "@/lib/e2ee/router/hooks";
+import { languageAt, nextMisspelt, type SpellcheckStorage } from "./spellcheck";
+import { useSetSpellingSettings, useSpellingSettings } from "./SpellingSync";
+import { noteSpellcheckOn, setNoteSpellcheck, type SpellingSettings } from "@/lib/spelling/settings";
 import { pastePlainText } from "./paste";
 import { blockCopyCount, blockedMessage } from "./blockClipboard";
 
@@ -161,6 +166,8 @@ export function EditorContextMenu({ editor, editable, onCommentBlock }: { editor
   const palette = useNotePalette();
   const { navigate } = useAppRouter();
   const phone = useIphoneApp();
+  const spelling = useSpellingSettings();
+  const saveSpelling = useSetSpellingSettings();
   const phoneRef = useRef(phone);
   phoneRef.current = phone;
   // The iPhone layout: a held line lifts while its menu is open (the app's own picture of it, as iOS lifts what
@@ -270,11 +277,24 @@ export function EditorContextMenu({ editor, editable, onCommentBlock }: { editor
         });
         return;
       }
-      if (e.key !== "ContextMenu" && !(e.shiftKey && e.key === "F10")) return;
+      // F7: the next misspelt word, with its suggestions (as in other writing apps).
+      const f7 = e.key === "F7" && !e.shiftKey && !e.altKey && !e.ctrlKey && !e.metaKey;
+      if (!f7 && e.key !== "ContextMenu" && !(e.shiftKey && e.key === "F10")) return;
       // A field inside a block (a caption, a cell) keeps the browser's menu; a synced block's editor has its own.
       if (inBlockControls(e.target) || inNestedNote(e.target, dom)) return;
       e.preventDefault();
       syncDomSelection(editor.view);
+      if (f7) {
+        const next = nextMisspelt(editor.state, editor.state.selection.to);
+        if (!next) return;
+        editor.view.dispatch(editor.state.tr.setSelection(TextSelection.create(editor.state.doc, next.from)).scrollIntoView());
+        // (Opened once the scroll to the word is done: the menu closes when the page scrolls under it.)
+        requestAnimationFrame(() => requestAnimationFrame(() => !editor.isDestroyed && openAtCaret()));
+        return;
+      }
+      openAtCaret();
+    };
+    const openAtCaret = () => {
       const { from } = editor.state.selection;
       let c: { left: number; top: number; bottom: number };
       try {
@@ -393,11 +413,12 @@ export function EditorContextMenu({ editor, editable, onCommentBlock }: { editor
     if (!open) thaw();
   }, [open, thaw]);
 
-  // Folevi for Mac: what the app's text services add for the word or text under the pointer (asked as the menu
-  // opens; the items join it once answered).
+  // The spelling suggestions for a misspelt word under the pointer (Folevi's own, in every app, phones' long
+  // press included), and in Folevi for Mac what the app's text services add (Look Up, Share): asked as the menu
+  // opens; the items join it once answered.
   const [macText, setMacText] = useState<{ for: object; items: MacTextItems } | null>(null);
   useEffect(() => {
-    if (!menu || phone || !macTextServices()) return;
+    if (!menu) return;
     const { state, view } = editor;
     const hit = menu.keyboard ? null : view.posAtCoords({ left: menu.x, top: menu.y });
     const sel = state.selection;
@@ -418,8 +439,10 @@ export function EditorContextMenu({ editor, editable, onCommentBlock }: { editor
         };
       }
     }
+    const noteId = (editor.storage as { spellcheck?: SpellcheckStorage }).spellcheck?.documentId ?? null;
+    const spellLang = word ? languageAt(state.doc, $p.pos) : undefined;
     let live = true;
-    void macTextActions({ word, selection, at: { x: menu.x, y: menu.y }, replace }).then((items) => {
+    void macTextActions({ word, selection, at: { x: menu.x, y: menu.y }, replace, spellLang, deviceOnly: noteId ? isSealedDocument(noteId) : false }).then((items) => {
       if (live) setMacText({ for: menu, items });
     });
     return () => {
@@ -441,19 +464,42 @@ export function EditorContextMenu({ editor, editable, onCommentBlock }: { editor
   if (!menu) return null;
 
   const built = buildEntries({ editor, editable, target: menu.target, aiOn, palette, onCommentBlock, navigate, toast, phone, inApp: phone || nativeApp() !== null });
-  // Folevi for Mac: the spelling suggestions and Look Up first, Share last (lib/desktop/textMenu.ts).
+  // The spelling suggestions first (then Add to dictionary and Ignore), Look Up next, Share last (lib/desktop/textMenu.ts).
   const mac = macText && macText.for === menu ? macText.items : null;
   const entries: Entry[] = [
     ...(mac?.spelling ? [...mac.spelling.map((a): Item => ({ label: a.label, run: a.run, disabled: a.disabled })), "separator" as const] : []),
     ...(mac?.lookUp ? [{ label: mac.lookUp.label, icon: <BookOpen size={14} />, run: mac.lookUp.run }, "separator" as const] : []),
     ...built,
     ...(mac?.share ? ["separator" as const, { label: mac.share.label, icon: <Share size={14} />, run: mac.share.run }] : []),
+    // Spell check and prediction, for this note and all of them (Settings > Writing has the same; this one is
+    // in every app, the Mac's and the iPhone's included, whose Settings are their own).
+    ...(editable && built.length ? ["separator" as const, spellingSubmenu(editor, spelling, saveSpelling)] : []),
   ];
   if (!entries.length) return null;
-  return <MenuLayer entries={entries} at={{ x: menu.x, y: menu.y, top: menu.top }} keyboard={menu.keyboard} onClose={close} />;
+  // From the keyboard, the first suggestion has the focus once the suggestions are there (they join the menu
+  // a moment after it opens): the menu starts again with them.
+  return <MenuLayer key={menu.keyboard && mac?.spelling ? "spelling" : "menu"} entries={entries} at={{ x: menu.x, y: menu.y, top: menu.top }} keyboard={menu.keyboard} onClose={close} />;
 }
 
 // ------------------------------------------------------------------------------------------------ items
+
+/** The note's Spelling and prediction submenu: this note's spell check, all notes', prediction, which English. */
+function spellingSubmenu(editor: Editor, s: SpellingSettings, save: (next: Partial<SpellingSettings>) => void): Sub {
+  const noteId = (editor.storage as { spellcheck?: SpellcheckStorage }).spellcheck?.documentId ?? null;
+  const noteOn = noteSpellcheckOn(noteId);
+  return {
+    label: "Spelling and prediction",
+    icon: <SpellCheck2 size={14} />,
+    items: [
+      ...(noteId ? [{ label: "Check spelling in this note", checked: s.spellcheck && noteOn, disabled: !s.spellcheck, run: () => setNoteSpellcheck(noteId, !noteOn) }] : []),
+      { label: "Check spelling in all notes", checked: s.spellcheck, run: () => save({ spellcheck: !s.spellcheck }) },
+      { label: "Predict next words", checked: s.predictions, run: () => save({ predictions: !s.predictions }) },
+      "separator",
+      { label: "American English", checked: s.english === "en-US", run: () => save({ english: "en-US" }) },
+      { label: "British English", checked: s.english === "en-GB", run: () => save({ english: "en-GB" }) },
+    ],
+  };
+}
 
 function buildEntries({
   editor,

@@ -93,6 +93,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         Places.install()
         // WM5: recording, text recognition, drag and drop, print, Share, Services, Spotlight, Shortcuts.
         Capabilities.install()
+        FloatWindows.install()
         // Memory: pages made on demand and released, and memory pressure (App/Memory.swift).
         Memory.install()
         Task { @MainActor in

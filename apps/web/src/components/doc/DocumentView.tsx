@@ -65,6 +65,7 @@ import { MenuButton, type MenuItem } from "@/components/ui/Menu";
 import { flattenMenu, noteMenuEntries, type NoteMenuParts } from "./noteMenu";
 import { useToast, errorMessage } from "@/components/ui/Toast";
 import { ViewChrome, useShell } from "@/components/app/Shell";
+import { useFloating } from "@/lib/app/floatContext";
 import { setBlockHighlight } from "@/components/editor/blockHighlight";
 import { usePageBreakMask } from "./usePageBreakMask";
 import { Editor, type EditorHandle } from "@/components/editor/Editor";
@@ -200,6 +201,8 @@ export function DocumentView({ documentId }: { documentId: string }) {
   const [editor, setEditor] = useState<TiptapEditor | null>(null);
   const [cacheLoaded, setCacheLoaded] = useState(false);
   const [reconciled, setReconciled] = useState(false);
+  // A floating note's window (lib/app/float.ts): only the title and the text, no dock, links or suggestions.
+  const floating = useFloating() !== null;
   const { inspectorOpen: inspectorWanted, setInspectorOpen: setInspectorWanted, sidebarSlot, sidebarOpen, toggleSidebar, drawerMode, docSidebarMode, setDocSidebarMode, setNoteAi } = useShell();
   // A note opens with its tools panel (Foli AI, or Insert with Foli AI off) until the panel is closed, which is
   // remembered (the owner, 2026-11-18). Where the panel would lie over the note (a narrow window), a note doesn't
@@ -1312,7 +1315,7 @@ export function DocumentView({ documentId }: { documentId: string }) {
             background: iphone ? "var(--color-canvas)" : blurredBackdrop ? "transparent" : (pageBackdrop(style, look?.cover ?? DEFAULT_COVER, coverImageUrl) ?? "var(--color-surface-sunken)"),
           }}
         >
-          {meta?.breadcrumbs.length && !iphone ? <NestedPath crumbs={meta.breadcrumbs} title={pageTitle} /> : null}
+          {meta?.breadcrumbs.length && !iphone && !floating ? <NestedPath crumbs={meta.breadcrumbs} title={pageTitle} /> : null}
           <article
             ref={setSheetEl}
             // A click or a tap on the empty paper under the note writes there (the paper itself, nothing on it).
@@ -1418,8 +1421,8 @@ export function DocumentView({ documentId }: { documentId: string }) {
           {/* Where the others' carets are, and ours for them, while someone else is in the note. */}
           {meta && online && caps.presence ? <LiveCarets editor={editor} documentId={documentId} sessionId={sessionId} present={others.map((p) => p.profileId)} /> : null}
           {/* Quiet suggestions (open questions, action items, related notes), found without a model call. */}
-          {aiOn && meta && !iphone ? <NoteSuggestions documentId={documentId} editor={editor} readOnly={readOnly} onJump={(id) => editorRef.current?.focusBlock(id)} /> : null}
-          {!iphone ? <Backlinks documentId={documentId} /> : null}
+          {aiOn && meta && !iphone && !floating ? <NoteSuggestions documentId={documentId} editor={editor} readOnly={readOnly} onJump={(id) => editorRef.current?.focusBlock(id)} /> : null}
+          {!iphone && !floating ? <Backlinks documentId={documentId} /> : null}
           {/* Synced content opened as a page: the note showing it opens instead (synced/SyncedRedirect.tsx). */}
           {meta?.document.kind === "synced" ? <SyncedRedirect sourceId={documentId} /> : null}
           {openThread && threads && caps.comments ? (
@@ -1443,7 +1446,7 @@ export function DocumentView({ documentId }: { documentId: string }) {
         </div>
         {/* The floating bar: AI, Insert, Format and Style, then the note's people, Share and its "…" menu. A tool opens
             in the right sidebar (on a phone, a sheet above the bar); AI opens the assistant on this note. */}
-        {(nativeChromeMode && !macNativeFrame && !ipadNativeWide) || (nativeChromeMode && nativeSideTools) ? null : iphone ? (
+        {floating || (nativeChromeMode && !macNativeFrame && !ipadNativeWide) || (nativeChromeMode && nativeSideTools) ? null : iphone ? (
           <NoteBars
             editor={editor}
             ai={aiOn}

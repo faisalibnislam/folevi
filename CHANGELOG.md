@@ -4,27 +4,26 @@ Every Folevi release, newest first, written by `node scripts/version.mjs` from `
 
 Versions are MAJOR.UPDATE.PATCH, PATCH at least two digits: a Major release (2.0.00), a Big update (1.1.05 after 1.0.05) or a Small update (1.0.06 after 1.0.05).
 
-## Version 1.6.79: Small update
+## Version 1.7.78: Big update
 
-Released 2026-11-25 20:11:23+06:00 (build 106, tag v1.6.79)
+Released 2026-11-26 00:24:24+06:00 (build 103, tag v1.7.78)
 
-Folevi for iPhone and iPad is native again, with the look you know: Liquid Glass bars, faster launch, smoother writing and a native Foli AI.
+Float any note in its own always-on-top window, automatic updates and much more for Windows and Linux, and smoother tabs.
 
 ### Added
 
-- Sign in to your own server from the iPhone and iPad sign-in screen
+- Float this note: open a note in a small floating window that stays on top, from a tab or a note's right-click menu, on Mac, Windows and in Chrome or Edge
+- Windows and Linux: automatic updates, Your own server, app lock with Windows Hello, background sync, Jump List, Dropbox and Google Drive, notification actions, call recording, window restore, Windows Share and text in images
 
 ### Improved
 
-- iPhone and iPad screens are native SwiftUI with Liquid Glass, matching today's look
-- Home and lists appear at once when Folevi opens
-- The writing bar rides the keyboard up and down
-- Foli AI chat is native, with its message box on the keyboard
+- Joined notes stay in their own tab group when you switch between them
+- The pin on a long tab name stays visible when you hover it, and the New note button has room on the right
+- The Windows and Linux apps call themselves by their own names, not the Mac or a browser
 
 ### Fixed
 
-- A note opened right after launch no longer shows a blank page
-- Stop in Foli AI works without an account
+- Table text no longer rewraps when you click into a note
 
 ## Version 1.6.78: Big update
 

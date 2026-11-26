@@ -133,7 +133,7 @@ export interface DesktopBridge {
   onCommand(listener: (command: DesktopCommand) => void): () => void;
   /** The native Mac app: what its menu bar can do for this page now. */
   setMenuState?(state: DesktopMenuState): void;
-  /** The native Mac app: closes this window (⌘W with no tab left to close). */
+  /** The native Mac app: closes this window (⌘W with no tab left to close; a floating note's Close). */
   closeWindow?(): void;
   /** The native Mac app: the spell checker on a word, for Folevi's text menu (null when it can't say). */
   spelling?(word: string): Promise<{ misspelled: boolean; guesses: string[] } | null>;
@@ -147,6 +147,16 @@ export interface DesktopBridge {
    * Null when it couldn't be read. Missing in Mac app builds before 1.15.
    */
   recognizeText?(image: Uint8Array, handwriting?: boolean): Promise<{ text: string } | null>;
+  /**
+   * "Float this note" (lib/app/float.ts): the note in a small window of its own, on top of other apps, or its window
+   * brought forward when it's already floating. Missing in app builds before 1.6.79.
+   */
+  floatNote?(note: { id: string; title: string }): void;
+  /**
+   * A floating note's window: whether it stays on top of other apps. With `on`, sets it; answers what it is now
+   * (null outside a floating note's window).
+   */
+  floatOnTop?(on?: boolean): Promise<boolean | null>;
 }
 
 declare global {

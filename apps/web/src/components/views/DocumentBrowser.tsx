@@ -21,6 +21,7 @@ import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { LoadFailed, loadFailedCopy } from "@/components/ui/LoadFailed";
 import { ContextMenu, MenuButton, type MenuItem } from "@/components/ui/Menu";
+import { floatMenuItems } from "@/components/app/floatMenu";
 import { Dialog } from "@/components/ui/Dialog";
 import { useToast, errorMessage } from "@/components/ui/Toast";
 import { ViewChrome } from "@/components/app/Shell";
@@ -914,13 +915,15 @@ interface DocMenuProps {
   select?: { selected: boolean; toggle: () => void };
   /** Offer "Remove from recent" (Home's Recent notes). */
   recent?: boolean;
+  /** Offer "Float this note" (the right-click menu only; lib/app/float.ts). */
+  floatable?: boolean;
 }
 
 /**
  * A note's actions (shared by its "…" button and its right-click menu), with the dialogs they open.
  * `dialogOpen` tells a context menu to stay mounted while one of its dialogs is showing.
  */
-function useDocMenu({ doc, view, arrange, select, recent }: DocMenuProps): { items: (MenuItem | "separator")[]; dialogs: ReactNode; dialogOpen: boolean } {
+function useDocMenu({ doc, view, arrange, select, recent, floatable }: DocMenuProps): { items: (MenuItem | "separator")[]; dialogs: ReactNode; dialogOpen: boolean } {
   const createDocument = useCreateDocument();
   const duplicate = useMutation(api.documents.duplicate);
   const notes = useNoteActions();
@@ -950,6 +953,7 @@ function useDocMenu({ doc, view, arrange, select, recent }: DocMenuProps): { ite
             : [
                 { label: doc.kind === "template" ? "Edit template" : "Open", icon: <ExternalLink size={14} />, onSelect: () => navigate(`/d/${doc.id}`) },
               ]),
+          ...(floatable && doc.kind !== "template" ? floatMenuItems({ id: doc.id, title: doc.title }) : []),
           doc.starred
             ? { label: "Remove bookmark", icon: <BookmarkOff size={14} />, onSelect: () => void notes.star(ids, false) }
             : { label: "Bookmark", icon: <Bookmark size={14} />, onSelect: () => void notes.star(ids, true) },
@@ -994,7 +998,7 @@ export function DocMenu(props: DocMenuProps) {
 
 /** A note's actions at the pointer (right-click on a card or row). Stays mounted while a dialog it opened is showing. */
 export function NoteContextMenu({ at, onDone, ...props }: DocMenuProps & { at: { x: number; y: number }; onDone: () => void }) {
-  const { items, dialogs, dialogOpen } = useDocMenu(props);
+  const { items, dialogs, dialogOpen } = useDocMenu({ ...props, floatable: true });
   const [menuOpen, setMenuOpen] = useState(true);
   useEffect(() => {
     if (!menuOpen && !dialogOpen) onDone();

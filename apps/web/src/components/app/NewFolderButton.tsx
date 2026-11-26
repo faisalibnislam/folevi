@@ -44,7 +44,7 @@ export function NewFolderButton({ parentId, pill = false, inPage = false }: { pa
           <FolderPlus size={20} strokeWidth={2} aria-hidden />
         </PillButton>
       ) : (
-        <Button size="sm" variant={inPage ? "primary" : "secondary"} data-new-folder={inPage ? "" : undefined} title={parentId ? label : undefined} onClick={() => setOpen(true)} className={inPage ? undefined : "h-9 flex-none rounded-control"}>
+        <Button size="sm" variant={inPage ? "primary" : "secondary"} data-new-folder={inPage ? "" : undefined} title={parentId ? label : undefined} onClick={() => setOpen(true)} className={inPage ? undefined : "h-8 flex-none rounded-small"}>
           <FolderPlus size={14} aria-hidden /> New folder
         </Button>
       )}

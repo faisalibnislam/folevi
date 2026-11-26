@@ -55,6 +55,10 @@ describe("the injected bridge", () => {
     win.__foleviHost.boot({ mode: "local", deviceName: "PC", start: "/documents", places: { current: "library", background: false } });
     expect(win.foleviShell.platform).toBe("windows");
     expect(win.foleviShell.initialMode).toBe("local");
+    // "Your own server" is in this app (lib.rs placesAddServer, placesLocalServers), so the page offers it.
+    expect(typeof win.foleviShell.places.addServerPlace).toBe("function");
+    expect(typeof win.foleviShell.places.listLocalServers).toBe("function");
+    expect(typeof win.foleviShell.places.list).toBe("function");
     void win.foleviShell.library.info();
     expect(calls.some(([cmd, a]) => cmd === "shell_call" && a.method === "libInfo" && a.plugin === "FoleviShell")).toBe(true);
   });

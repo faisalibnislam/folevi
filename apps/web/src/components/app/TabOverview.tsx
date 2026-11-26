@@ -60,7 +60,8 @@ export function TabOverview({
   entries: OverviewEntry[];
   titles: Record<string, string>;
   frame?: OverviewFrame | null;
-  onOpen: (href: string) => void;
+  /** Goes to a tile's tab: its page, and the tab's key (a note in two tabs shows in the one picked). */
+  onOpen: (href: string, key: string) => void;
   onCloseTab: (id: string) => void;
   onNewNote: () => void;
   onDismiss: () => void;
@@ -99,8 +100,8 @@ export function TabOverview({
     setLeaving(true);
     window.setTimeout(onDismiss, 150);
   };
-  const open = (href: string) => {
-    onOpen(href);
+  const open = (href: string, key: string) => {
+    onOpen(href, key);
     leave();
   };
   const newNote = () => {
@@ -126,7 +127,7 @@ export function TabOverview({
           setSel((s) => Math.min(last, nextTile(tiles(), Math.min(s, last), e.key as "ArrowLeft")));
         } else if (e.key === "Enter") {
           if (sel === shown.length) newNote();
-          else if (shown[sel]) open(shown[sel]!.href);
+          else if (shown[sel]) open(shown[sel]!.href, shown[sel]!.key);
         } else return;
         e.preventDefault();
       }}
@@ -170,7 +171,7 @@ export function TabOverview({
                 type="button"
                 aria-label={`Open ${e.label}`}
                 aria-current={e.active ? "page" : undefined}
-                onClick={() => open(e.href)}
+                onClick={() => open(e.href, e.key)}
                 className={`relative block w-full rounded-container p-2 text-left outline-none transition-[background-color,box-shadow,transform] duration-150 ease-[var(--ease-folio)] hover:-translate-y-0.5 ${i === sel ? "bg-[var(--glass-hover)] ring-2 ring-focus" : e.active ? "bg-[var(--glass-hover)] ring-[1.5px] ring-[color-mix(in_oklab,var(--color-heading)_35%,transparent)]" : ""}`}
               >
                 <span className={split ? "relative block w-full aspect-[50/27]" : TAB_PICTURE_BOX + " block"}>

@@ -102,10 +102,24 @@ enum ShellPlaces {
         for a in s.accounts where a.server == nil { targets.append(SaveTarget(id: a.id, name: a.name.isEmpty ? a.email : a.name, detail: a.email)) }
         SaveTargets.write(targets, current: s.current)
         if let quickAdd = s.quickAdd, SaveTargets.last() == nil { SaveTargets.remember(quickAdd) }
+        dropServerTokens(s)
         // The open place's token (one kept before places, the one account this device had) stays that account's
-        // own when another place opens.
-        SaveTargets.keepOpenToken(userId: userIdOf(before == s.current ? s.current : before))
+        // own when another place opens. Never a server's account's: what is in that slot is Folevi Cloud's.
+        let leaving = userIdOf(before == s.current ? s.current : before)
+        if !s.accounts.contains(where: { $0.userId == leaving && $0.server != nil }) { SaveTargets.keepOpenToken(userId: leaving) }
         if before != s.current { SaveTargets.openedPlace(s.current) }
+    }
+
+    /// The share sheet, the widgets, Siri and Spotlight reach Folevi Cloud's REST API only, so an account on a
+    /// Folevi Server has no REST token here: one an earlier build kept for it goes (from its own item, and from the
+    /// open place's slot when it is the one there), so a server's token is never sent to Folevi Cloud.
+    static func dropServerTokens(_ s: State = state) {
+        let kept = SaveTargets.accountIds()
+        for a in s.accounts where a.server != nil {
+            guard let accountId = kept[a.userId] else { continue }
+            if SharedAccount.accountId == accountId { SharedAccount.forget() }
+            SaveTargets.forget(userId: a.userId)
+        }
     }
 
     /// Account mode with no account yet (the sign-in screen). Kept for this run only.

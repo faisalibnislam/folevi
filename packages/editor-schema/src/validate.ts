@@ -1,5 +1,6 @@
-import { SPEC, LIMITS, CODE_LANGUAGES, BLOCK_TYPES, SCHEMA_VERSION } from "./generated/schema";
-import type { WireBlock } from "./types";
+import { SPEC, LIMITS, CODE_LANGUAGES, BLOCK_TYPES, SCHEMA_VERSION, DocumentAccentValues } from "./generated/schema";
+import type { DocumentCover, DocumentStyle } from "./generated/schema";
+import { DEFAULT_COVER, DEFAULT_DOCUMENT_STYLE, type WireBlock } from "./types";
 import { isValidId } from "./ids";
 import { isValidRank } from "./rank";
 import { plainText } from "./richtext";
@@ -628,4 +629,73 @@ export function repairWireBlock(block: WireBlock): { block: WireBlock; repaired:
   }
   issues = validateWireBlock(next);
   return { block: next, repaired: JSON.stringify(next) !== JSON.stringify(block), issues };
+}
+
+/**
+ * A block nothing has checked yet, made safe to show or export, or null when it can't be. A Standard note's
+ * blocks are checked by the server on every write; an end-to-end encrypted note's are stored unread, so what
+ * opens on a device is whatever its writer sealed. This gives it the same check: valid as it is, or repaired
+ * the way repairWireBlock repairs an edit (broken marks and unsafe links dropped, wrong props removed or given
+ * their defaults, the words kept). One that is only over a size limit keeps its words with its marks checked.
+ * Anything else still wrong (a required prop that can't be mended) is null: the caller shows a placeholder.
+ * A type this build doesn't know (a newer app's block) comes back as it is, as the server stores it.
+ *
+ * Only the content is judged (type, schema version, text, props): where the block sits (its id, parent and
+ * rank) is the server's own and comes back untouched, whatever it is.
+ */
+export function checkedWireBlock(block: WireBlock): WireBlock | null {
+  if (!isPlainObject(block) || typeof block.type !== "string") return null;
+  const def = Object.hasOwn(SPEC.blocks, block.type) ? (SPEC.blocks as Record<string, { text: boolean; props: Record<string, string> }>)[block.type] : undefined;
+  if (!def) return block;
+  const place = { id: block.id, parentId: block.parentId, rank: block.rank };
+  // Text is mended first: repairWireBlock leaves text over the length limit as it came, marks and all.
+  const mend = def.text && (!Array.isArray(block.text) || validateInline(block.text).length > 0);
+  const text = mend ? (repairInline(block.text) as never) : block.text;
+  const { block: fixed, repaired, issues } = repairWireBlock({ ...block, id: "checked", parentId: null, rank: "V", text });
+  if (issues.some((i) => i.code !== "too_long")) return null;
+  return mend || repaired ? { ...fixed, ...place } : block;
+}
+
+const STYLE_BACKDROP = /^(art:[a-z0-9-]{1,40}|color:[a-z]{1,20})$/;
+
+/**
+ * A note's look from a source nothing has checked (an end-to-end encrypted note's sealed appearance): each
+ * field kept only when it is one of the values Folevi has, since they are written into class names and CSS.
+ * A field that is anything else takes its default (or goes, when it is optional).
+ */
+export function checkedDocumentStyle(value: unknown): DocumentStyle {
+  const out: Record<string, unknown> = { ...DEFAULT_DOCUMENT_STYLE };
+  if (!isPlainObject(value)) return out as unknown as DocumentStyle;
+  for (const [key, spec] of Object.entries((SPEC.structs as Record<string, Record<string, string>>).DocumentStyle!)) {
+    const v = value[key];
+    if (v === undefined || v === null) continue;
+    const { base, arrays } = parseType(spec);
+    const issues: ValidationIssue[] = [];
+    checkValue(v, base, arrays, key, issues);
+    if (!issues.length && (key !== "backdrop" || STYLE_BACKDROP.test(v as string))) out[key] = v;
+  }
+  return out as unknown as DocumentStyle;
+}
+
+const COVER_VALUE = /^[A-Za-z0-9_-]{1,64}$/;
+
+/**
+ * A note's cover from a source nothing has checked: a kind Folevi has, and a value that fits it (an accent
+ * name for a colour or gradient, an id for an image or a theme). Anything else is no cover.
+ */
+export function checkedDocumentCover(value: unknown): DocumentCover {
+  if (!isPlainObject(value)) return DEFAULT_COVER;
+  const kind = value.kind;
+  const v = value.value;
+  if (kind === "color" || kind === "gradient") {
+    if (v === undefined || v === null) return { kind };
+    return isCoverAccent(v) ? { kind, value: v } : DEFAULT_COVER;
+  }
+  if (kind === "image" || kind === "art") return typeof v === "string" && COVER_VALUE.test(v) ? { kind, value: v } : DEFAULT_COVER;
+  return DEFAULT_COVER;
+}
+
+/** The names a colour or gradient cover may carry: the page accents (DocumentAccent). */
+export function isCoverAccent(value: unknown): value is DocumentStyle["accent"] {
+  return typeof value === "string" && (DocumentAccentValues as readonly string[]).includes(value);
 }

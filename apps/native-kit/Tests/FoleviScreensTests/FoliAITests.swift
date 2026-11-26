@@ -474,6 +474,15 @@ struct FoliChatModelTests {
         #expect(log2.routes == [.note(id: "doc_00001")])
         #expect(model.openLink(URL(string: "/d/doc_9")!))
         #expect(log2.routes.last == .note(id: "doc_9"))
+        // A link in an answer that isn't one of the app's own pages: only a web page is handed to the system.
+        for web in ["https://example.com/a", "http://example.com", "HTTPS://EXAMPLE.COM"] {
+            let url = URL(string: web)!
+            #expect(!model.openLink(url))
+            #expect(FoliChatModel.opensOutside(url), "\(web)")
+        }
+        for other in ["file:///Applications/Calculator.app", "smb://evil.example/share", "x-apple.systempreferences:com.apple.preference.security", "tel:123", "javascript:alert(1)", "shortcuts://run-shortcut?name=x", "data:text/html,hi"] {
+            #expect(!FoliChatModel.opensOutside(URL(string: other)!), "\(other)")
+        }
         model.copy(model.messages[1])
         #expect(log.copied == ["The rail pass is still open. Want a packing list?"])
         model.saveAsNote(model.messages[1].id)

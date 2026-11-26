@@ -2,7 +2,7 @@
 // setting a space up, enabling, switches, lowering, rotating; who may do each (members can't); key holders
 // and pending grants; note keys for guests; and the guard helpers other packages call.
 import { describe, expect, test, vi } from "vitest";
-import { api } from "../../convex/_generated/api";
+import { api, components } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
 import { personalScope, workspaceScope } from "../../convex/lib/scope";
 import { isLocked, readableFor, requirePlainWrite, requirePlainWriteInScope, spaceE2ee, switchesOf } from "../../convex/lib/e2ee/state";
@@ -129,6 +129,10 @@ describe("a Personal space", () => {
       expect(await a.as.mutation(api.e2ee.spaces.lower, { scope: PERSONAL, level: "selected", recheckedWrapId: recoveryWrapId })).toEqual({ migrationId: null });
       expect(await a.as.query(api.e2ee.spaces.get, { scope: PERSONAL })).toMatchObject({ level: "selected", switches: { foliAi: "ask", searchEverywhere: false } });
       vi.setSystemTime(Date.UTC(2026, 9, 21, 12, 11));
+      // Lowering also needs a sign-in in the last 10 minutes (lib/freshSession.ts): they sign in again.
+      await t.run(async (ctx) => {
+        await ctx.runMutation(components.betterAuth.adapter.updateOne, { input: { model: "session", where: [{ field: "_id", value: a.sessionId }], update: { createdAt: Date.now() } } });
+      });
       await expect(a.as.mutation(api.e2ee.spaces.lower, { scope: PERSONAL, level: "standard", recheckedWrapId: recoveryWrapId })).rejects.toThrow(/again first/);
       await a.as.mutation(api.e2ee.keys.getWrap, { kind: "recoveryKey" });
       const { migrationId } = await a.as.mutation(api.e2ee.spaces.lower, { scope: PERSONAL, level: "standard", recheckedWrapId: recoveryWrapId });

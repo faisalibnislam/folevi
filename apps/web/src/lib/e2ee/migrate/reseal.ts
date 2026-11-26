@@ -114,7 +114,7 @@ export async function resealDocument(env: MigrateEnv, documentId: string): Promi
     if (!old.length) break;
     const blocks = [];
     for (const r of old) {
-      const opened = await env.sealer.openBlock(documentId, { id: r.block.id, parentId: r.block.parentId, rank: r.block.rank, sealed: r.block.sealed! });
+      const opened = await env.sealer.openBlockExact(documentId, { id: r.block.id, parentId: r.block.parentId, rank: r.block.rank, sealed: r.block.sealed! });
       const { revision: _revision, ...plain } = opened;
       void _revision;
       const s = (await env.sealer.sealBlock(documentId, plain as WireBlock)).sealed;
@@ -178,7 +178,7 @@ export async function resealDocument(env: MigrateEnv, documentId: string): Promi
     const look = await env.sealer.openAppearance(documentId, unb64(parsed.appearance.c).buffer as ArrayBuffer);
     const blocks: WireBlock[] = [];
     for (const b of parsed.blocks) {
-      const opened = await env.sealer.openBlock(documentId, { id: b.id, parentId: b.parentId, rank: b.rank, sealed: { c: unb64(b.c).buffer as ArrayBuffer, mac: b.mac ?? "", k: b.k, ...(b.collapsed ? { collapsed: true } : {}) } });
+      const opened = await env.sealer.openBlockExact(documentId, { id: b.id, parentId: b.parentId, rank: b.rank, sealed: { c: unb64(b.c).buffer as ArrayBuffer, mac: b.mac ?? "", k: b.k, ...(b.collapsed ? { collapsed: true } : {}) } });
       blocks.push(opened);
     }
     const content = await sealVersionContent(env.sealer, documentId, { title: await env.sealer.openTitle(documentId, unb64(parsed.title.c).buffer as ArrayBuffer), icon: look.icon, cover: look.cover, style: look.style, blocks });

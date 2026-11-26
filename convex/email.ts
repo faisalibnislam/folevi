@@ -9,12 +9,12 @@ import { bump, type MetricKey } from "./lib/metrics";
 import { secretOrDevFallback } from "./lib/crypto";
 import { connectToken, connectUrl, isServerEdition } from "./lib/edition";
 import { fromAddress } from "./lib/serverSettings";
+import { deployment } from "./lib/deployment";
 
 type Environment = "production" | "preview" | "development" | "test";
 
 export function environment(): Environment {
-  const env = process.env.FOLEVI_ENV;
-  return env === "production" || env === "preview" || env === "test" ? env : "development";
+  return deployment();
 }
 
 const vTemplateKey = v.string();

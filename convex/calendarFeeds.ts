@@ -1,12 +1,12 @@
 // Your tasks in your calendar app: a private iCalendar link (/api/calendar/<token>.ics on the app host,
 // served by the Convex route /ical/<token>.ics in http.ts) with every open task that has a due date, from
-// your Personal and, if you choose, workspace tasks assigned to you. Read-only. The link is a secret: only
-// its hash is stored, it's shown once, and making a new one ends the old one.
+// your Personal and, if you choose, workspace tasks assigned to you (only in notes you can still open).
+// Read-only. The link is a secret: only its hash is stored, it's shown once, and making a new one ends the old one.
 import { v } from "convex/values";
 import { internalQuery, query } from "./_generated/server";
 import { internalMutation, mutation } from "./lib/functions";
 import type { Doc } from "./_generated/dataModel";
-import { requireProfile } from "./lib/auth";
+import { accessAtLeast, documentAccess, requireProfile } from "./lib/auth";
 import { randomToken, sha256Hex } from "./lib/crypto";
 import { appUrl } from "./lib/notify";
 import { buildCalendar, type FeedTask } from "./lib/ical";
@@ -107,7 +107,9 @@ export const render = internalQuery({
       if (doc === undefined) {
         const d = await ctx.db.get(t.documentId);
         // A sealed note's to-dos come only from its apps copy below (docs/E2EE_DESIGN.md §5.7).
-        doc = d && !d.inTrash && d.deletedAt === undefined && !isSealed(d) ? { title: d.title || "Untitled", publicId: d.publicId } : null;
+        // Only notes the link's owner can open now: a task stays assigned to someone after they leave the
+        // workspace or the page is restricted away from them, and the link must not go on showing it.
+        doc = d && !d.inTrash && d.deletedAt === undefined && !isSealed(d) && accessAtLeast(await documentAccess(ctx, profile, d), "read") ? { title: d.title || "Untitled", publicId: d.publicId } : null;
         titles.set(t.documentId, doc);
       }
       if (!doc) continue;

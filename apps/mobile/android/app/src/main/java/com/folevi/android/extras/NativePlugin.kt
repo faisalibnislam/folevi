@@ -45,6 +45,9 @@ class NativePlugin : Plugin() {
         val accountId = call.getString("accountId").orEmpty()
         if (!DeviceCredential.TOKEN_RE.matches(token) || !DeviceCredential.ID_RE.matches(tokenId) || !DeviceCredential.ID_RE.matches(accountId))
             return call.resolve(JSObject().put("value", false))
+        // A Folevi Server place: the widgets, the share target and notification actions reach Folevi Cloud's REST
+        // API only (DeviceCredential.apiBase), so a server's token is never kept, where it would be sent there.
+        if (FoleviApp.instance.places.actingServer != null) return call.resolve(JSObject().put("value", false))
         try {
             credential.set(token, tokenId, accountId)
             // Several places: the open account keeps its own copy, for the share target and the background worker.

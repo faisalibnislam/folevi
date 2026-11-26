@@ -36,6 +36,9 @@ func upstream(t *testing.T, name string) *httptest.Server {
 		w.Header().Set("X-Seen-Host", r.Host)
 		w.Header().Set("X-Seen-Proto", r.Header.Get("X-Forwarded-Proto"))
 		w.Header().Set("X-Seen-For", r.Header.Get("X-Forwarded-For"))
+		w.Header().Set("X-Seen-Real", r.Header.Get("X-Real-Ip"))
+		w.Header().Set("X-Seen-Cf", r.Header.Get("Cf-Connecting-Ip"))
+		w.Header().Set("X-Seen-True", r.Header.Get("True-Client-Ip"))
 		body, _ := io.ReadAll(r.Body)
 		_, _ = w.Write([]byte(name + " " + string(body)))
 	}))
@@ -104,6 +107,40 @@ func TestProxyHTTP(t *testing.T) {
 		}
 		if !strings.HasPrefix(resp.Header.Get("X-Seen-Host"), "127.0.0.1:") {
 			t.Errorf("host header not kept: %q", resp.Header.Get("X-Seen-Host"))
+		}
+	}
+}
+
+// A visitor must not be able to choose the address the web server keys its sign-in rate limits on.
+func TestProxyDropsClientAddressHeaders(t *testing.T) {
+	_, front := targets(t)
+	for _, path := range []string{"/api/auth/sign-in/email", "/convex-site/api/auth/sign-in/email", "/convex/version"} {
+		req, _ := http.NewRequest(http.MethodPost, front.URL+path, strings.NewReader("hi"))
+		req.Header.Set("X-Real-IP", "203.0.113.7")
+		req.Header.Set("X-Forwarded-For", "203.0.113.8")
+		req.Header.Set("CF-Connecting-IP", "203.0.113.9")
+		req.Header.Set("True-Client-IP", "203.0.113.10")
+		resp, err := http.DefaultClient.Do(req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		resp.Body.Close()
+		if got := resp.Header.Get("X-Seen-Real"); got != "127.0.0.1" {
+			t.Errorf("%s: X-Real-Ip reached the upstream as %q, want the peer address 127.0.0.1", path, got)
+		}
+		if got := resp.Header.Get("X-Seen-For"); got != "127.0.0.1" {
+			t.Errorf("%s: X-Forwarded-For reached the upstream as %q, want 127.0.0.1", path, got)
+		}
+		if cf, tc := resp.Header.Get("X-Seen-Cf"), resp.Header.Get("X-Seen-True"); cf != "" || tc != "" {
+			t.Errorf("%s: client address headers passed through: cf=%q true=%q", path, cf, tc)
+		}
+	}
+}
+
+func TestRemoteIP(t *testing.T) {
+	for in, want := range map[string]string{"192.168.1.5:4000": "192.168.1.5", "[fd00::1]:4000": "fd00::1", "10.0.0.1": "10.0.0.1", "": ""} {
+		if got := remoteIP(in); got != want {
+			t.Errorf("remoteIP(%q) = %q, want %q", in, got, want)
 		}
 	}
 }

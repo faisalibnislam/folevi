@@ -276,6 +276,40 @@ Not done, and why:
 
 ## 9. Current state (as of 2026-11-25)
 
+**Security audit and fixes (2026-11-26, branch `claude/security-audit-2026-11-26`, on top of `origin/main`
+135a99af; committed locally, NOT pushed).** Six read-only audits (page access, accounts and admin, HTTP/AI/Vault,
+the web app, the native apps, Folevi Server/Connect/CI) found about 90 issues; every one that could be fixed in
+code is fixed with a regression test, the rest are listed under Next steps. The repo is public, so pushing this
+branch publishes the details: push, let CI run and merge in one go rather than leaving it open.
+- Highest findings, all fixed: a grant on an open parent page reached restricted sub-pages (`pagesGranting` in
+  `convex/lib/auth.ts`); an imported version could plant another note's block ids (`documents.importSnapshot`,
+  `rewritePage`); a Folevi Server's `folevi.json` could pair Folevi Cloud's sign-in with someone else's backend
+  (`ShellServer` check on Swift, Tauri and Android); the Windows/Linux attachment "Open" ran any file type; HTML
+  and PDF export wrote an unescaped mark value from sealed notes; a Folevi Server admin could redirect stored mail
+  and AI secrets and take over the owner; `X-Real-IP` let anyone dodge sign-in limits on a Folevi Server.
+- Behaviour people will notice: sharing an open page no longer opens "Only invited people" pages under it (share
+  the restricted page itself); a copy of a restricted page is restricted; readers get no deleted text; pages nest
+  32 deep at most; signed-out support receipts no longer quote the message; "Continue with Google/Apple" from the
+  apps asks for one "Continue as <email>" press in the browser; resetting encryption keys, asking back into a team
+  Vault, lowering an encryption level or turning on a readable-copy switch needs a sign-in in the last 10 minutes;
+  on Folevi Server only the owner changes email, AI, Google key and cover photo settings, and an unclaimed server
+  takes a sign-up only with the setup code; push subscriptions are accepted only for the browser push services.
+- `FOLEVI_ENV` now fails closed (`convex/lib/deployment.ts`): only `development`, `test` or `preview` turn
+  development tools on; unset or mistyped means production. Development deployments must set it
+  (`scripts/setup-local.mjs` does; the hosted dev deployment already has `development`).
+- New schema index `vaultItems.by_storage`; new rate rules `publicLinkPasswordLink`, `importNote`,
+  `externalCalendar`. Connect has two new settings, `CONNECT_MAX_SERVERS_PER_OWNER` (10) and
+  `CONNECT_REGISTER_GLOBAL_HOURLY` (120), and keys mail and AI budgets on the owner account.
+- Checked: `pnpm typecheck`, `pnpm lint` (0 errors), `pnpm test` (web 2329, backend 1248, editor-schema 530,
+  email 206, local-store 172, cloud-folders 78, ai-prompts 33), contract and static 36; `go vet` and `go test` in
+  `server/folevid` and `services/connect`; `swift test` in `apps/native-kit` (586); `cargo test` in
+  `apps/desktop/src-tauri` (191); both Android apps' unit tests (52 and 57); Mac, iOS and Capacitor iOS compile
+  (`build-for-testing`). Not run: Playwright e2e (CI runs it on the PR), the app-hosted Mac and iOS XCTest suites
+  (they launch the app), anything on real Windows, QNAP, ASUSTOR or Synology hardware. `gitleaks` over all 2,333
+  commits found no secrets; `pnpm audit` shows only the Better Auth advisories below.
+- The committed `apps/mac/Folevi.xcodeproj` is stale against `project.yml` (it names files this branch doesn't
+  have); regenerate it with XcodeGen before the next Mac build.
+
 **2026-11-26, spell check and prediction (branch `claude/vigorous-raman-bb697b`, PR 143):** Folevi's own spell
 check (Hunspell as WebAssembly, ten languages, offline), suggestions in the right-click menu, a bubble and the phone
 keyboard strip, and next-word prediction with Tab, in every app. Plan, design and what's left:
@@ -1121,6 +1155,39 @@ signed-in account, 1.5.58's frosted folders with a large library, and the iPad c
 account button should move past iPadOS's window buttons).
 
 ## 10. Next steps / open work
+- **Security audit 2026-11-26, left for the owner** (branch `claude/security-audit-2026-11-26`):
+  - Push the branch, open the PR and merge once CI is green (see Current state: the repo is public). After the
+    merge, deploy Connect (`services/connect`) and ship new Folevi Server packages and app builds: the folevid
+    proxy fix, the server sign-in checks in the apps and the Tauri "Open" fix only reach people in a release.
+  - Team Vault and encryption levels (flags `vault`, `e2ee`): a member's key reset is still granted the Vault key
+    by a custodian's device without asking, and devices follow a lowered level without a signed statement. The
+    10-minute sign-in rule stops a stolen session only. Needs custodian confirmation and signed level changes in
+    every client (docs/VAULT_PLAN.md, docs/E2EE_DESIGN.md §8.6).
+  - Server-side fetches (bookmark preview, Foli AI page reader, calendar feeds) check DNS but can't pin the
+    address in Convex's runtime. Move them to Node actions with a pinned lookup or an egress proxy; matters most
+    on Folevi Server.
+  - Private details in this public repo: this file names the home NAS's Connect hostname; `docs/claude-context/`
+    holds account emails, the Cloudflare account id, the backup key's path and Apple key ids. Move them to a
+    private place and re-register the NAS under a new server id (history keeps the old one).
+  - Better Auth: `@convex-dev/better-auth` 0.13.1 now supports `better-auth` 1.7.25 and later, which fixes the
+    four advisories ignored in `pnpm-workspace.yaml` (none reachable: those plugins aren't used). Upgrade both,
+    regenerate `convex/betterAuth/schema.ts`, drop the ignores.
+  - CI: these actions are still on tags because no commit SHA was on disk: `actions/download-artifact`,
+    `actions/setup-go`, `actions/setup-java`, `gradle/actions/setup-gradle`, `dtolnay/rust-toolchain`,
+    `Swatinem/rust-cache`, `docker/setup-qemu-action`, `docker/setup-buildx-action`. QDK is cloned at HEAD (now in
+    a job with no secret). `npx --yes wrangler` is unpinned in three release scripts. Images use `:latest`.
+  - Folevi Server: cloud images (Hetzner, DigitalOcean) do first setup over plain http; the Unraid plugin runs as
+    `nobody`; folevid has no trusted-proxy setting, so behind a reverse proxy everyone shares one rate-limit
+    bucket; the Convex instance secret is on the backend's command line (the backend takes it no other way);
+    with email off, addresses are unverified (use invite-only sign-up).
+  - Apps: session and Keychain slots are still keyed by user id without the server (cross-server sign-ins are
+    refused instead); `folevi://…?place=` still switches place without asking (iOS can't tell widget links from
+    outside ones); biometric gates are booleans, not key-bound; no `FLAG_SECURE` on the Android Vault.
+  - Smaller: an account registered by someone else and then confirmed by its owner keeps their password until
+    reset; Foli AI shared chats gate only on cited notes (needs `readNoteIds` on `aiMessages` and `aiRuns`); the
+    30-day Trash purge still removes restricted sub-pages trashed before this fix; the approve page has no
+    message for Connect's `too_many_servers`; the lower-encryption dialog should say a fresh sign-in is needed
+    before asking for the recovery method.
 - Spell check and prediction (`docs/SPELLING_PLAN.md`): merge PR 143 when CI is green; then a native Settings row
   for Writing on the Mac and iPhone/iPad, and a check in each app's build (Mac, iOS, Android, Windows, Linux).
 - Signed-in feel (`docs/perf/feel-results.md` "Not done"): serve the app's pages statically from Vercel's edge with a
@@ -1433,6 +1500,11 @@ account button should move past iPadOS's window buttons).
   `DATABASE_UDF_USER_TIMEOUT_SECONDS=4` for that backend. Bursts show in `convex.log` as "took a long time".
 
 ## 12. Change log
+- 2026-11-26: **Security audit and fixes** (branch `claude/security-audit-2026-11-26`, not pushed). Six audits,
+  about 90 findings, fixed with regression tests across `convex/`, `apps/web`, `packages/editor-schema`, the Swift,
+  Tauri and Android shells, `server/folevid`, `services/connect`, `packaging/` and the workflows. What changed and
+  what is left: Current state and Next steps above; the controls are described in `docs/SECURITY.md`,
+  `docs/SHARING.md`, `docs/SUPPORT.md` and `docs/self-hosting/CONTRACT.md` §7.1. No version change.
 - 2026-11-26: **Spell check, suggestions and next-word prediction** for every app (`docs/SPELLING_PLAN.md`): Hunspell
   WebAssembly in a worker, 10 languages detected per line, personal dictionary synced (`convex/spelling.ts`), ghost
   text with Tab (on-device model, Foli AI after a pause), Settings > Writing, per-note switch, F7. Checked: typecheck,

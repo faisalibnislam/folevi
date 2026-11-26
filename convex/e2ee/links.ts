@@ -12,7 +12,7 @@
 //   publishCopy: stores (or replaces) the copy for a link (makes a `plainCopy` link when none is given);
 //   unpublish:   deletes the copy, its chunks and its plain files, and revokes the link.
 import { v, type Infer } from "convex/values";
-import { validateWireBlock, type WireBlock } from "@folevi/editor-schema";
+import { COLLECTION_OPTION_COLORS, isCoverAccent, validateWireBlock, type WireBlock } from "@folevi/editor-schema";
 import { type MutationCtx, type QueryCtx } from "../_generated/server";
 import { mutation } from "../lib/functions";
 import type { Doc, Id } from "../_generated/dataModel";
@@ -173,6 +173,22 @@ async function checkCopy(ctx: QueryCtx, doc: Doc<"documents">, copy: PlainCopyIn
     if (issues.length) fail("invalid_argument", "The published copy has a block that isn't valid.");
   }
   if (Object.keys(copy.collections ?? {}).length > MAX_COLLECTIONS) fail("limit_exceeded", "The published copy has too many collections.");
+  // The page's cover and its collections' option colours are names from fixed lists: both end up in style
+  // attributes on the public page, where free text could restyle it.
+  if (copy.cover && (copy.cover.kind === "color" || copy.cover.kind === "gradient") && copy.cover.value !== undefined && !isCoverAccent(copy.cover.value)) {
+    fail("invalid_argument", "The published copy has a cover colour that isn't available.");
+  }
+  for (const collection of Object.values(copy.collections ?? {})) {
+    for (const property of collection.properties) {
+      if (!Array.isArray(property.options)) continue;
+      for (const option of property.options as unknown[]) {
+        const color = (option as { color?: unknown } | null)?.color;
+        if (color !== undefined && color !== null && !(COLLECTION_OPTION_COLORS as readonly unknown[]).includes(color)) {
+          fail("invalid_argument", "The published copy has an option colour that isn't available.");
+        }
+      }
+    }
+  }
   if ((copy.fileIds?.length ?? 0) > MAX_FILES) fail("limit_exceeded", "The published copy has too many images.");
   for (const id of copy.fileIds ?? []) {
     const file = await ctx.db

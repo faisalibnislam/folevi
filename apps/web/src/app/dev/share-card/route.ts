@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { devPagesAvailable } from "@/lib/edition";
 import { renderShareCard, type ShareCard } from "../../s/[token]/cardImage";
 
 /** Development only: a shared note's preview image for sample notes (?n=0…3), to judge it without a real link. */
@@ -10,7 +11,7 @@ const SAMPLES: ShareCard[] = [
 ];
 
 export async function GET(req: Request) {
-  if (process.env.VERCEL_ENV === "production" || process.env.FOLEVI_ENV === "production") notFound();
+  if (!devPagesAvailable()) notFound();
   const n = Number(new URL(req.url).searchParams.get("n") ?? 0);
   return renderShareCard(SAMPLES[Math.max(0, Math.min(SAMPLES.length - 1, n))]!);
 }

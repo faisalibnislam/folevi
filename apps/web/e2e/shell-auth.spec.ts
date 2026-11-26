@@ -79,7 +79,8 @@ function nodeBridge(approver: () => Page) {
    * /app-google: the page goes straight on to Google's or Apple's own page, no choices on the way. Neither runs
    * here (and the dev deployment has no Google keys), so the provider's host answers with a blank page and the
    * test then comes back as the provider would, to the callbackURL /app-google gave Better Auth, as `approver`
-   * (signed in, as the provider's callback would have left it). The page issues the code by itself.
+   * (signed in, as the provider's callback would have left it). Back in the same tab (which noted the trip it
+   * started), the page says who the app will be signed in as and issues the code when Continue is pressed.
    */
   async function viaProvider(url: string) {
     seen.connectUrls.push(url);
@@ -109,6 +110,7 @@ function nodeBridge(approver: () => Page) {
       expect(callback).toMatch(/^\/app-google\?/);
       const authorized = page.waitForResponse((r) => r.url().includes("/api/auth/native/authorize"));
       await page.goto(`${APP}${callback}`);
+      await page.getByRole("button", { name: /^Continue as / }).click();
       const { code } = (await (await authorized).json()) as { code: string };
       await expect(page.getByRole("heading", { name: "Back to Folevi" })).toBeVisible();
       bridge.handleCallback(`folevi://auth/callback?code=${encodeURIComponent(code)}&state=${encodeURIComponent(state)}`);

@@ -200,7 +200,7 @@ func (a *API) syncDNS(ctx context.Context, sv *store.Server, oldLan []string) er
 
 func (a *API) handleRegister(w http.ResponseWriter, r *http.Request) {
 	ip := a.clientIP(r)
-	if !a.register.Allow("ip:" + ip.String()) {
+	if !a.register.Allow(registerKey(ip)) {
 		writeErr(w, http.StatusTooManyRequests, "rate_limited")
 		return
 	}
@@ -224,6 +224,13 @@ func (a *API) handleRegister(w http.ResponseWriter, r *http.Request) {
 	key, ok := decodeKey(in.PublicKey)
 	if !ok {
 		writeErr(w, http.StatusBadRequest, "invalid_public_key")
+		return
+	}
+	// Every registration makes DNS records and a row that stay, so there is a cap on all callers together too
+	// (counted only for requests that would be accepted).
+	if !a.registerAll.Allow("all") {
+		a.Log.Warn("registrations are at the hourly cap for all callers")
+		writeErr(w, http.StatusTooManyRequests, "rate_limited")
 		return
 	}
 	token := newToken()
@@ -369,6 +376,25 @@ func (a *API) handleApprove(w http.ResponseWriter, r *http.Request, user string)
 	if sv.Flags.Suspended {
 		writeErr(w, http.StatusForbidden, "suspended")
 		return
+	}
+	// One account may own only so many servers (suspended ones are not counted, so support can free a place).
+	if max := a.cfg.MaxServersPerOwner; max > 0 && sv.OwnerAccount != user {
+		owned, err := a.Store.ListServersByOwner(r.Context(), user)
+		if err != nil {
+			writeErr(w, http.StatusInternalServerError, "internal")
+			return
+		}
+		n := 0
+		for _, o := range owned {
+			if !o.Flags.Suspended {
+				n++
+			}
+		}
+		if n >= max {
+			a.Log.Warn("link refused: the account has its limit of servers", "server", sv.ID)
+			writeErr(w, http.StatusConflict, "too_many_servers")
+			return
+		}
 	}
 	sv.OwnerAccount = user
 	if err := a.Store.UpdateServer(r.Context(), sv); err != nil {

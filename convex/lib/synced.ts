@@ -156,6 +156,31 @@ export async function canReferenceSource(ctx: Ctx, profile: Doc<"profiles">, sou
 }
 
 /**
+ * Blocks about to be written into a note in one go (a duplicate, a copy, a note from a template, a version put
+ * back), without the synced blocks `profile` may not put there: a synced block shows its content to the note's
+ * readers, so its source must be one they can read (canReferenceSource), exactly as when it's typed in through
+ * sync (lib/syncEngine.ts checkSyncedBlock). `already` says a block is in the note with that source as it is
+ * (nothing new is shown). A line under a dropped block moves to the top level.
+ */
+export async function referableBlocks(ctx: Ctx, profile: Doc<"profiles">, blocks: WireBlock[], already?: (blockId: string, sourceId: unknown) => boolean): Promise<WireBlock[]> {
+  const allowed = new Map<string, boolean>();
+  const dropped = new Set<string>();
+  for (const b of blocks) {
+    if (b.type !== "synced") continue;
+    const sourceId = (b.props as { sourceId?: unknown } | null)?.sourceId;
+    if (already?.(b.id, sourceId)) continue;
+    let ok = false;
+    if (typeof sourceId === "string") {
+      if (!allowed.has(sourceId)) allowed.set(sourceId, await canReferenceSource(ctx, profile, sourceId));
+      ok = allowed.get(sourceId)!;
+    }
+    if (!ok) dropped.add(b.id);
+  }
+  if (!dropped.size) return blocks;
+  return blocks.filter((b) => !dropped.has(b.id)).map((b) => (b.parentId !== null && dropped.has(b.parentId) ? { ...b, parentId: null } : b));
+}
+
+/**
  * The synced blocks of a note made in one go (a duplicate, a copy to another place, a note from a template):
  * recorded as links to their content like any synced block written through sync (syncLinks), so the content
  * knows the new note shows it (and comes back from Trash if it was there).

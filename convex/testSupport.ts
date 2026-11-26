@@ -15,9 +15,10 @@ import { FOLDER_COLORS } from "./lib/folderColors";
 import { deductCredits, personalAccount, seatAccount } from "./lib/credits";
 import { parseIcs } from "./lib/icsParse";
 import { knownFlag } from "./lib/flags";
+import { isProductionDeployment } from "./lib/deployment";
 
 function assertNotProduction() {
-  if (process.env.FOLEVI_ENV === "production") throw new Error("testSupport functions are disabled in production.");
+  if (isProductionDeployment()) throw new Error("testSupport functions are disabled in production.");
 }
 
 /**

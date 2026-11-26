@@ -10,6 +10,7 @@ import { ulid } from "@folevi/editor-schema";
 import { assertWritable, requireIdentity, requireProfile, sessionIdOf } from "../lib/auth";
 import { keyedHash } from "../lib/crypto";
 import { fail } from "../lib/errors";
+import { requireFreshSession } from "../lib/freshSession";
 import { scopeOfRow, vScopeArg, workspaceScope } from "../lib/scope";
 import {
   activeAccount,
@@ -410,6 +411,9 @@ export const resetAccount = mutation({
     const profile = await requireProfile(ctx);
     await assertWritable(ctx, profile);
     const current = await requireAccount(ctx, profile._id);
+    // New account keys with nothing but a session: admins' and custodians' devices then share space and Vault
+    // keys with them. So the session must be a recent sign-in (lib/freshSession.ts), not one left open or stolen.
+    await requireFreshSession(ctx);
     if (args.wraps.length > E2EE_LIMITS.batch) fail("invalid_argument", "Too many items in one call.");
     await newEpoch(ctx, profile._id, current, args.newEpoch);
     for (const w of args.wraps) await storeWrap(ctx, profile._id, args.newEpoch.epoch, w);

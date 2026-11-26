@@ -221,7 +221,9 @@ func (a *API) handleMail(w http.ResponseWriter, r *http.Request, sv *store.Serve
 		a.Log.Warn("mail limited", "server", sv.ID, "limit", code)
 		writeJSON(w, http.StatusTooManyRequests, map[string]string{"error": "rate_limited", "limit": code})
 	}
-	if !a.mailHour.Allow(sv.ID) {
+	// The hourly and daily caps are the owner's, shared by every server linked to that account.
+	account := accountKey(sv)
+	if !a.mailHour.Allow(account) {
 		limited("server_hourly")
 		return
 	}
@@ -229,7 +231,7 @@ func (a *API) handleMail(w http.ResponseWriter, r *http.Request, sv *store.Serve
 		limited("recipient")
 		return
 	}
-	if n, err := a.Store.AddUsage(r.Context(), sv.ID, "mail", store.Day(now), 1); err != nil || (a.cfg.MailPerServerDaily > 0 && n > int64(a.cfg.MailPerServerDaily)) {
+	if n, err := a.Store.AddUsage(r.Context(), account, "mail", store.Day(now), 1); err != nil || (a.cfg.MailPerServerDaily > 0 && n > int64(a.cfg.MailPerServerDaily)) {
 		limited("server_daily")
 		return
 	}
@@ -316,7 +318,7 @@ func (a *API) handleAI(kind ai.Kind) func(http.ResponseWriter, *http.Request, *s
 			writeJSON(w, http.StatusForbidden, map[string]any{"error": map[string]string{"message": "Link this server to a Folevi account to use Folevi AI.", "type": "permission_error", "code": "not_linked"}})
 			return
 		}
-		if !a.aiMinute.Allow(sv.ID) {
+		if !a.aiMinute.Allow(accountKey(sv)) {
 			writeJSON(w, http.StatusTooManyRequests, map[string]any{"error": map[string]string{"message": "Too many requests.", "type": "rate_limit_error", "code": "rate_limited"}})
 			return
 		}
@@ -436,7 +438,12 @@ func (a *API) handleAdminServer(w http.ResponseWriter, r *http.Request) {
 	now := a.Now()
 	usage := map[string]int64{}
 	for kind, period := range map[string]string{ai.UsageKind: store.Month(now), relay.UsageKind: store.Month(now), "mail": store.Day(now), "diagnostics": store.Day(now)} {
-		usage[kind], _ = a.Store.GetUsage(r.Context(), sv.ID, kind, period)
+		// AI tokens and mail are counted for the owner's account (all of its servers together).
+		key := sv.ID
+		if kind == ai.UsageKind || kind == "mail" {
+			key = accountKey(sv)
+		}
+		usage[kind], _ = a.Store.GetUsage(r.Context(), key, kind, period)
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"server": a.view(sv), "flags": sv.Flags, "usage": usage, "createdAt": sv.CreatedAt.Format(time.RFC3339)})
 }

@@ -7,7 +7,7 @@ import type { MutationCtx, QueryCtx } from "./_generated/server";
 import { hasTaskTitle, inboxDocumentId, localDate, nextOccurrence, rankBetween, repeatProps, repeatRule, SCHEMA_VERSION, scopeIdKey, taskViews, ulid, type WireBlock } from "@folevi/editor-schema";
 import { accessAtLeast, assertWritable, documentAccess, getDocumentByPublicId, PageReader, requireProfile, resolveScope } from "./lib/auth";
 import { fail } from "./lib/errors";
-import { liveBlocks, toWireBlock } from "./lib/documents";
+import { canBeAssigned, liveBlocks, toWireBlock } from "./lib/documents";
 import { SyncEngine } from "./lib/syncEngine";
 import { inScope, sameScopeRows, scopeOfRow, vScopeArg, type Scope, type ScopeArg } from "./lib/scope";
 import { setTrashState } from "./documents";
@@ -253,12 +253,9 @@ export const update = mutation({
       if (args.assigneeId === null) delete props.assigneeId;
       else {
         const id = ctx.db.normalizeId("profiles", args.assigneeId);
-        const assignee = id ? await ctx.db.get(id) : null;
-        // Someone who can see the note: a member of its workspace or, in Personal, its owner or a guest on it.
-        const workspaceId = doc.workspaceId;
-        const member = assignee && workspaceId ? await ctx.db.query("workspaceMembers").withIndex("by_workspace_profile", (q) => q.eq("workspaceId", workspaceId).eq("profileId", assignee._id)).unique() : null;
-        const canSee = workspaceId ? Boolean(member) : Boolean(assignee && assignee.status === "active" && accessAtLeast(await documentAccess(ctx, assignee, doc), "read"));
-        if (!canSee) fail("invalid_argument", workspaceId ? "Assignees must be workspace members." : "Assignees must be able to see this note.");
+        // Someone who can see the note: a member of its workspace or, in Personal, its owner or a guest on it
+        // (the same check a to-do block's assignee gets when it's saved, lib/documents.ts canBeAssigned).
+        if (!id || !(await canBeAssigned(ctx, id, doc))) fail("invalid_argument", doc.workspaceId ? "Assignees must be workspace members." : "Assignees must be able to see this note.");
         props.assigneeId = args.assigneeId;
       }
     }
@@ -526,9 +523,12 @@ export const processReminders = internalMutation({
       const recipient = t.assigneeId ?? t.createdBy;
       const profile = await ctx.db.get(recipient);
       await ctx.db.patch(t._id, { reminderSentAt: now });
-      if (!profile || profile.status === "deleted") continue;
+      if (!profile || profile.status !== "active") continue;
       const title = t.title.slice(0, 200) || "Task";
       const doc = await ctx.db.get(t.documentId);
+      // A reminder carries the to-do's text and its note's title: only for someone who can open the note now
+      // (not a person since removed from it, nor one a block merely names).
+      if (!doc || doc.inTrash || !accessAtLeast(await documentAccess(ctx, profile, doc), "read")) continue;
       // Sealed to-dos' reminders come from e2eeReminders (e2ee.reminders.process, docs/E2EE_DESIGN.md §7.6).
       if (doc && isSealed(doc)) continue;
       if (profile.notificationPrefs.inApp?.reminders !== false) {

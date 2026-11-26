@@ -82,16 +82,86 @@ class ServerTest {
         assertEquals("not_folevi", refused(ShellServer.check(plain, "https://nas.example.com", "1.6.0")))
     }
 
+    private fun on(origin: String) = JSONObject().put("app", origin).put("convex", "$origin/convex").put("convexSite", "$origin/convex-site")
+
+    /** A stand-in server whose folevi.json is whatever `body` returns at the time. */
+    private fun answering(body: () -> String) = MockWebServer().apply {
+        dispatcher = object : Dispatcher() {
+            override fun dispatch(request: RecordedRequest): MockResponse =
+                if (request.url.encodedPath == "/.well-known/folevi.json") MockResponse.Builder().code(200).body(body()).build() else MockResponse.Builder().code(404).build()
+        }
+        start()
+    }
+
+    /**
+     * What a server could publish to have the app sign in at Folevi Cloud and then talk to the server with what
+     * Folevi Cloud issued: Folevi Cloud's website for sign-in, its own address for the data.
+     */
+    @Test
+    fun aServersAddressesAreOneOriginAndNeverFoleviClouds() {
+        val cloud = "https://app.folevi.com"
+        fun urls(u: JSONObject, typed: String) = ShellServer.check(info { put("urls", u) }, typed, "1.6.0", cloud)
+        val attack = JSONObject().put("app", "https://app.folevi.com").put("convex", "https://evil.example/convex").put("convexSite", "https://evil.example/convex-site")
+        assertEquals("not_folevi", refused(urls(attack, "https://evil.example")))
+        assertEquals("not_folevi", refused(urls(on("https://evil.example").put("convex", "https://other.example/convex"), "https://evil.example")))
+        assertEquals("not_folevi", refused(urls(on("https://evil.example").put("convexSite", "https://evil.example:8443/convex-site"), "https://evil.example")))
+        for (host in listOf("app.folevi.com", "folevi.com", "x.folevi.com", "happy-otter-123.convex.cloud", "happy-otter-123.convex.site")) {
+            assertEquals(host, "not_folevi", refused(urls(on("https://$host"), "https://evil.example")))
+        }
+        // This build's own website, whatever it is called (a debug build's).
+        assertEquals("not_folevi", refused(ShellServer.check(info { put("urls", on("https://dev.example")) }, "https://evil.example", "1.6.0", "https://dev.example")))
+        // A genuine server: one origin, its own (a Folevi Connect name is under folevi.app, not Folevi Cloud).
+        assertEquals("https://nas.example.com", ok(urls(on("https://nas.example.com"), "https://nas.example.com")).publishedOrigin)
+        assertEquals("https://abc123.folevi.app", ok(urls(on("https://abc123.folevi.app"), "http://192.168.1.20:8460")).publishedOrigin)
+        assertEquals("http://192.168.1.20:8460", ok(urls(on("http://192.168.1.20:8460"), "http://192.168.1.20:8460")).publishedOrigin)
+        // Folevi Cloud's names are left out of a server's other names too.
+        val named = ok(ShellServer.check(info { put("connect", JSONObject().put("serverId", "abc123").put("hostnames", JSONArray(listOf("abc123.folevi.app", "app.folevi.com", "x.convex.cloud")))) }, "https://nas.example.com", "1.6.0", cloud))
+        assertEquals(listOf("abc123.folevi.app"), named.hostnames)
+    }
+
+    @Test
+    fun aServerPublishedAtAnotherAddressMustBeItselfThere() {
+        val cloud = "https://app.folevi.com"
+        val http = ShellServer.client(OkHttpClient())
+        // Two stand-ins: the address typed, and the address the server says is its own.
+        var there = "{}"
+        val published = answering { there }
+        val name = "http://127.0.0.1:${published.port}"
+        val genuine = info { put("urls", on(name)) }
+        val typed = answering { genuine.toString() }
+        val origin = "http://127.0.0.1:${typed.port}"
+        // The same server answers at its own address.
+        there = genuine.toString()
+        val s = ok(ShellServer.lookUp(http, origin, "1.6.0", cloud))
+        assertEquals(origin, s.origin)
+        assertEquals(name, s.publishedOrigin)
+        // Someone else's server (another Folevi Connect id), Folevi Cloud, not a Folevi server, other addresses.
+        there = info { put("urls", on(name)); put("connect", JSONObject().put("serverId", "zzz999")) }.toString()
+        assertEquals("not_folevi", refused(ShellServer.lookUp(http, origin, "1.6.0", cloud)))
+        there = info { put("urls", on(name)); put("kind", "folevi-cloud") }.toString()
+        assertEquals("not_folevi", refused(ShellServer.lookUp(http, origin, "1.6.0", cloud)))
+        there = "<html>hello</html>"
+        assertEquals("not_folevi", refused(ShellServer.lookUp(http, origin, "1.6.0", cloud)))
+        there = info { put("urls", on("https://evil.example")) }.toString()
+        assertEquals("not_folevi", refused(ShellServer.lookUp(http, origin, "1.6.0", cloud)))
+        // Its own address doesn't answer.
+        published.close()
+        assertEquals("unreachable", refused(ShellServer.lookUp(http, origin, "1.6.0", cloud)))
+        typed.close()
+    }
+
     @Test
     fun lookUpFetchesFolevi_jsonItself() {
         val server = MockWebServer()
-        var body = info { remove("minAppVersion") }.toString()
+        // (Its addresses are on the address asked, so that one answer is the whole check.)
+        var body = ""
         server.dispatcher = object : Dispatcher() {
             override fun dispatch(request: RecordedRequest): MockResponse =
                 if (request.url.encodedPath == "/.well-known/folevi.json") MockResponse.Builder().code(200).body(body).build() else MockResponse.Builder().code(404).build()
         }
         server.start()
         val origin = "http://127.0.0.1:${server.port}"
+        body = info { remove("minAppVersion"); put("urls", on(origin)) }.toString()
         val http = ShellServer.client(OkHttpClient())
         assertEquals("Smith family", ok(ShellServer.lookUp(http, origin, "1.6.0")).name)
         body = "<html>not json</html>"
@@ -176,6 +246,114 @@ class ServerTest {
         assertTrue(bare.isNull("serverId"))
         // A public address without a url isn't one Folevi reaches over http.
         assertNull(LocalServers.entry("x", emptyMap(), InetAddress.getByName("8.8.8.8"), 80))
+    }
+
+    /**
+     * Sessions are kept by user id, and a server says what its user ids are. A server that answers a sign-in with
+     * the id of an account from elsewhere is refused and never sees that account's session; the same the other way
+     * round; and the one session older builds kept (Folevi Cloud's) never goes to a server's sign-in screen.
+     */
+    @Test
+    fun aSignInThatComesBackAsAnotherServersAccountIsRefused() = runBlocking {
+        val cloudToken = "sess_" + "c".repeat(40)
+        val nasToken = "sess_" + "n".repeat(40)
+        val legacy = "sess_" + "l".repeat(40)
+        // Both websites answer get-session with the same user id (the server picked Folevi Cloud's).
+        fun site(token: String, bearers: MutableList<String>) = MockWebServer().apply {
+            dispatcher = object : Dispatcher() {
+                override fun dispatch(request: RecordedRequest): MockResponse {
+                    val bearer = request.headers["authorization"]?.removePrefix("Bearer ")
+                    if (bearer != null) bearers += bearer
+                    return when (request.url.encodedPath) {
+                        "/api/auth/native/token" -> MockResponse.Builder().code(200).body(JSONObject().put("access_token", token).toString()).build()
+                        "/api/auth/get-session" -> if (bearer == token) MockResponse.Builder().code(200).body("{\"user\":{\"id\":\"sameId\",\"email\":\"ana@example.com\"}}").build() else MockResponse.Builder().code(200).body("null").build()
+                        else -> MockResponse.Builder().code(200).body("{}").build()
+                    }
+                }
+            }
+            start()
+        }
+        val atCloud = ArrayList<String>()
+        val atNas = ArrayList<String>()
+        val cloud = site(cloudToken, atCloud)
+        val nasSite = site(nasToken, atNas)
+        val nasOrigin = "http://127.0.0.1:${nasSite.port}"
+        val nas = ShellServer(nasOrigin, "NAS", "1.0.0", null, ShellServer.Urls(nasOrigin, "$nasOrigin/convex", "$nasOrigin/convex-site"))
+        fun world(): Triple<Places, AuthBridge, HashMap<String, String>> {
+            val map = HashMap<String, String>()
+            val secrets = object : Secrets {
+                override fun get(name: String) = map[name]
+                override fun set(name: String, value: String) { map[name] = value }
+                override fun delete(name: String) { map.remove(name) }
+            }
+            val places = Places(memory())
+            val bridge = AuthBridge(
+                cloud.url("/").toString(), "com.folevi.android://auth/callback", OkHttpClient(), secrets, { "Pixel" },
+                currentUser = { places.currentUserId },
+                actingSite = { places.actingServer?.appUrl },
+                siteOfUser = { places.serverOfUser(it)?.appUrl },
+                elsewhere = { places.belongsElsewhere(it) },
+            )
+            return Triple(places, bridge, map)
+        }
+        suspend fun signIn(bridge: AuthBridge): AuthBridge.User? {
+            val (url, finish) = bridge.beginAccount()
+            val r = async { finish() }
+            delay(30)
+            bridge.handleCallback("com.folevi.android://auth/callback?code=c&state=${url.toHttpUrl().queryParameter("state")}")
+            return r.await()
+        }
+
+        // A Folevi Cloud account here, then the server's sign-in comes back with its id.
+        run {
+            val (places, bridge, map) = world()
+            places.setCurrent(null, pending = true)
+            val c = signIn(bridge)!!
+            places.addAccount(c.userId, c.name, c.email, null)
+            assertFalse(places.belongsElsewhere("sameId"))
+            places.setCurrent(null, pending = true, server = nas)
+            assertTrue(places.belongsElsewhere("sameId"))
+            assertNull("refused", signIn(bridge))
+            assertEquals("Folevi Cloud's session is still its account's", cloudToken, map["auth.session.sameId"])
+            assertFalse("the server never saw Folevi Cloud's session", atNas.contains(cloudToken))
+            // The same person signing in to Folevi Cloud again is not refused.
+            places.setCurrent(null, pending = true)
+            assertEquals("sameId", signIn(bridge)?.userId)
+        }
+        // The other way round: the server's account first, then Folevi Cloud's sign-in comes back with its id.
+        atNas.clear()
+        run {
+            val (places, bridge, map) = world()
+            places.setCurrent(null, pending = true, server = nas)
+            val n = signIn(bridge)!!
+            places.addAccount(n.userId, n.name, n.email, null)
+            assertEquals(nas, places.serverOfUser("sameId"))
+            places.setCurrent(null, pending = true)
+            assertTrue(places.belongsElsewhere("sameId"))
+            assertNull("refused", signIn(bridge))
+            assertEquals("the server's session is still its account's", nasToken, map["auth.session.sameId"])
+            assertFalse("the server never saw Folevi Cloud's session", atNas.contains(cloudToken))
+        }
+        // The one session older builds kept: read on Folevi Cloud's sign-in screen, never on a server's.
+        atNas.clear()
+        atCloud.clear()
+        run {
+            val (places, bridge, map) = world()
+            map["auth.session"] = legacy
+            places.setCurrent(null, pending = true, server = nas)
+            assertFalse(bridge.signedIn())
+            bridge.fetch("/api/auth/get-session", "GET", emptyMap(), null)
+            assertNull(bridge.convexToken())
+            bridge.signOut()
+            assertTrue("nothing went to the server", atNas.isEmpty())
+            assertEquals("and it was not forgotten", legacy, map["auth.session"])
+            places.setCurrent(null, pending = true)
+            assertTrue(bridge.signedIn())
+            bridge.fetch("/api/auth/get-session", "GET", emptyMap(), null)
+            assertEquals(listOf(legacy), atCloud)
+        }
+        cloud.close()
+        nasSite.close()
     }
 
     @Test

@@ -481,6 +481,8 @@ fn cover_windows(app: &AppHandle) {
                 let _ = w.hide();
             }
         }
+        // The tray menu's recent notes go with them.
+        update_tray(app);
     }
 }
 
@@ -492,6 +494,7 @@ fn uncover_windows(app: &AppHandle) {
         }
     }
     emit_to_pages(app, "desktop:lock", &json!({ "covered": false }), None);
+    update_tray(app);
 }
 
 /// Windows Hello for the encrypted notes (e2ee.rs), in front of the window that asked.
@@ -578,8 +581,7 @@ async fn lock_set(app: &AppHandle, s: &Arc<Services>, label: &str, o: &Value) ->
             }
             "passphrase" => {
                 let Some(p) = ask_passphrase(app, label, "check").await else { return Err(ShellError::new("cancelled", "The lock is still on.")) };
-                let ok = s.lock.passphrase().is_some_and(|h| applock::passphrase_matches(&h, &p));
-                if !ok {
+                if !check_lock_passphrase(s, &p)? {
                     return Err(ShellError::new("wrong_passphrase", "That passphrase isn't right."));
                 }
                 s.lock.set_lock(false, None).map_err(|e| ShellError::io(e.to_string()))?;
@@ -593,6 +595,14 @@ async fn lock_set(app: &AppHandle, s: &Arc<Services>, label: &str, o: &Value) ->
     Ok(s.lock.settings())
 }
 
+/// The lock's passphrase, checked: whether it's right, or a refusal that says how long to wait after too many wrong
+/// ones in a row (applock::wait_after).
+fn check_lock_passphrase(s: &Services, attempt: &str) -> Result<bool, ShellError> {
+    s.lock
+        .try_passphrase(attempt, now_ms() / 1000)
+        .map_err(|wait| ShellError::new("try_later", format!("Too many wrong passphrases. Try again in {}.", applock::wait_words(wait))))
+}
+
 /// lockUnlock { passphrase? } from the cover: Windows Hello, or the passphrase; then every window is uncovered.
 async fn lock_unlock(app: &AppHandle, s: &Arc<Services>, label: &str, passphrase: Option<&str>) -> ShellResult {
     if !s.lock.covered() {
@@ -601,7 +611,10 @@ async fn lock_unlock(app: &AppHandle, s: &Arc<Services>, label: &str, passphrase
     let ok = match s.lock.method() {
         "windowsHello" => ask_hello(app, label, "Unlock your Folevi notes").await,
         "passphrase" => {
-            let ok = passphrase.zip(s.lock.passphrase()).is_some_and(|(p, h)| applock::passphrase_matches(&h, p));
+            let ok = match passphrase {
+                Some(p) => check_lock_passphrase(s, p)?,
+                None => false,
+            };
             if !ok {
                 return Err(ShellError::new("wrong_passphrase", "That passphrase isn't right."));
             }
@@ -1168,7 +1181,8 @@ fn update_tray(app: &AppHandle) {
         }
         return;
     }
-    let recent = ui.recent.clone();
+    // While Folevi is locked the menu names no notes (their titles are what the lock covers).
+    let recent = if s.lock.covered() { vec![] } else { ui.recent.clone() };
     let status = ui.status.clone();
     let shortcut = s.settings.lock().quick_add_shortcut.clone();
     let menu = (|| -> tauri::Result<Menu<tauri::Wry>> {
@@ -1393,7 +1407,7 @@ async fn route_call(app: &AppHandle, s: &Arc<Services>, label: &str, place: Opti
         "authSignIn" => {
             let provider = opt_str(o, "provider").filter(|p| *p == "google" || *p == "apple");
             let server = s.server_of(place.as_deref());
-            let user = s.auth.sign_in_account(provider, server.as_ref().and_then(|sv| sv.app_url()).as_ref()).await?;
+            let user = s.auth.sign_in_account(provider, server.as_ref().and_then(|sv| sv.app_url()).as_ref(), &|id| held(s, id, server.as_ref())).await?;
             let Some(u) = user else { return Ok(value(false)) };
             let id = add_account(app, s, &u, server.as_ref());
             if place.as_deref() != Some(LIBRARY) && id.as_deref() != place.as_deref() {
@@ -1473,6 +1487,23 @@ fn later(app: &AppHandle, f: impl FnOnce(&AppHandle) + Send + 'static) {
     });
 }
 
+/// What this PC already holds for the user id a sign-in on `server` (None: Folevi Cloud) came back with: nothing,
+/// that same server's account (the same person again), or an account from another server, which refuses the
+/// sign-in (auth::Held).
+fn held(s: &Services, user_id: &str, server: Option<&server::ShellServer>) -> auth::Held {
+    let place = format!("acct:{user_id}");
+    let places = s.places.lock();
+    if !places.has(&place) {
+        return auth::Held::Nobody;
+    }
+    let own = places.server_of(Some(&place));
+    if server::ShellServer::same(own.as_ref(), server) {
+        auth::Held::Here(own.and_then(|sv| sv.app_url()))
+    } else {
+        auth::Held::Elsewhere
+    }
+}
+
 fn add_account(app: &AppHandle, s: &Arc<Services>, u: &auth::SessionUser, server: Option<&server::ShellServer>) -> Option<String> {
     let id = {
         let mut p = s.places.lock();
@@ -1541,7 +1572,7 @@ async fn places_call(app: &AppHandle, s: &Arc<Services>, label: &str, place: Opt
             let provider = opt_str(o, "provider").filter(|p| *p == "google" || *p == "apple");
             // Another account on the same service as the page asking (a server's switcher signs in to that server).
             let server = s.server_of(place.as_deref());
-            let user = s.auth.sign_in_account(provider, server.as_ref().and_then(|sv| sv.app_url()).as_ref()).await?;
+            let user = s.auth.sign_in_account(provider, server.as_ref().and_then(|sv| sv.app_url()).as_ref(), &|id| held(s, id, server.as_ref())).await?;
             Ok(value(user.and_then(|u| add_account(app, s, &u, server.as_ref()))))
         }
         "placesDescribe" => {
@@ -1617,13 +1648,48 @@ async fn places_call(app: &AppHandle, s: &Arc<Services>, label: &str, place: Opt
     }
 }
 
+/// The kinds of file `open_file` hands to the app that opens them: ones an app shows or plays (a PDF, pictures,
+/// sound, video, plain text). Anything else (programs, scripts, shortcuts, installers, office files with macros,
+/// web pages, SVG) is never opened from here: the name comes from the note, which someone else may have written.
+const OPENABLE: &[&str] = &[
+    "pdf", "png", "jpg", "jpeg", "gif", "webp", "bmp", "tif", "tiff", "heic", "heif", "avif", "mp3", "m4a", "wav", "aac", "flac", "ogg", "oga", "opus",
+    "mp4", "m4v", "mov", "webm", "mkv", "avi", "txt", "md", "csv",
+];
+
+/// An attachment's name as a file name here: no path or reserved characters, no control or text-direction
+/// characters (which can show "exe.jpg" for a name that ends in "gpj.exe"), no leading dot, and no trailing dots or
+/// spaces (Windows drops them, which would change the kind of file).
+fn open_file_name(raw: &str) -> String {
+    let direction = |c: char| matches!(c, '\u{200E}' | '\u{200F}' | '\u{202A}'..='\u{202E}' | '\u{2066}'..='\u{2069}');
+    let name: String = raw.chars().filter(|c| !"\\/:*?\"<>|".contains(*c) && !c.is_control() && !direction(*c)).take(150).collect();
+    let name = name.trim().trim_start_matches('.').trim_end_matches(['.', ' ']).to_string();
+    if name.is_empty() { "Attachment".to_string() } else { name }
+}
+
+/// Whether a file of this name is one of the kinds `open_file` opens (its last extension, whatever its case).
+fn opens_safely(name: &str) -> bool {
+    std::path::Path::new(name).extension().and_then(|e| e.to_str()).is_some_and(|e| OPENABLE.contains(&e.to_ascii_lowercase().as_str()))
+}
+
+/// Windows: marks a file as come from the internet (the `Zone.Identifier` stream a browser's download carries), so
+/// Windows asks before running it and Office opens it in Protected View. Nothing elsewhere.
+#[cfg(windows)]
+fn mark_from_internet(path: &std::path::Path) {
+    let mut stream = path.as_os_str().to_os_string();
+    stream.push(":Zone.Identifier");
+    let _ = std::fs::write(stream, b"[ZoneTransfer]\r\nZoneId=3\r\n");
+}
+
+#[cfg(not(windows))]
+fn mark_from_internet(_path: &std::path::Path) {}
+
 /// A copy of an attachment opened in the app that opens its kind (quickLook from the page; the Mac's Quick Look):
 /// written to `<temp>/Folevi Open/<random>/<name>`, which is emptied at the next launch (the app that opened it
-/// may still hold it now).
+/// may still hold it now). Only the kinds in `OPENABLE` are opened; any other is shown in its folder instead, for
+/// the person to decide what to do with it. Answers { value: true } when opened, { value: false, revealed: true }
+/// when shown.
 async fn open_file(app: &AppHandle, o: &Value) -> ShellResult {
-    let name: String = req_str(o, "name")?.chars().filter(|c| !"\\/:*?\"<>|".contains(*c) && !c.is_control()).take(150).collect();
-    let name = name.trim().trim_start_matches('.').to_string();
-    let name = if name.is_empty() { "Attachment".to_string() } else { name };
+    let name = open_file_name(req_str(o, "name")?);
     let bytes = shell::req_bytes(o, "bytes")?;
     if bytes.len() > 200 * 1024 * 1024 {
         return Err(ShellError::invalid("That file is too big to open from here. Save it, then open it."));
@@ -1632,6 +1698,11 @@ async fn open_file(app: &AppHandle, o: &Value) -> ShellResult {
     std::fs::create_dir_all(&dir).map_err(|e| ShellError::io(e.to_string()))?;
     let path = dir.join(&name);
     shell::write_atomic(&path, &bytes).map_err(|e| ShellError::io(e.to_string()))?;
+    mark_from_internet(&path);
+    if !opens_safely(&name) {
+        app.opener().reveal_item_in_dir(&path).map_err(|_| ShellError::unavailable("Folevi couldn't show that file. Use Download to save it."))?;
+        return Ok(json!({ "value": false, "revealed": true }));
+    }
     app.opener().open_path(path.to_string_lossy(), None::<&str>).map_err(|_| ShellError::unavailable("No app on this computer opens that kind of file."))?;
     Ok(value(true))
 }
@@ -1773,10 +1844,12 @@ async fn desktop_call(app: AppHandle, webview: tauri::Webview, name: String, arg
             }
             let path = text("path", 500);
             let place = s.place_of(&label);
+            // While Folevi is locked a notification says only that there is one (its words are what the lock covers).
+            let (title, body) = if s.lock.covered() { ("Folevi".to_string(), "Unlock Folevi to read this.".to_string()) } else { (title, text("body", 400)) };
             let note = notify::Note {
                 id: text("id", 120),
                 title,
-                body: text("body", 400),
+                body,
                 kind: text("kind", 40),
                 thread: text("thread", 80),
                 comment_thread: text("commentThread", 80),
@@ -2193,6 +2266,7 @@ pub fn run() {
             let sealer = Arc::new(secrets::Sealer::load(&user_data, !paths.test_run && !MAC).map_err(|e| e.to_string())?);
             let secret_store = Arc::new(secrets::SecretStore::new(user_data.join("secrets"), sealer.clone()));
             let service_url = tauri::Url::parse(&std::env::var("FOLEVI_URL").unwrap_or_else(|_| "https://app.folevi.com".into()))?;
+            server::set_cloud(&service_url);
             let extra_connect = std::env::var("FOLEVI_SHELL_CONNECT").unwrap_or_default().split([' ', ',']).filter(|o| o.starts_with("http") || o.starts_with("ws")).map(str::to_string).collect();
             let chooser_app = handle.clone();
             let library = library::LibraryService::new(library::LibraryOptions {
@@ -2373,6 +2447,28 @@ pub fn run() {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn only_inert_attachments_are_opened() {
+        for yes in ["Report.pdf", "photo.JPG", "a.b.c.png", "song.mp3", "clip.mov", "notes.txt", "list.csv", "read me.md"] {
+            assert!(opens_safely(&open_file_name(yes)), "{yes}");
+        }
+        for no in [
+            "report.pdf.exe", "run.bat", "run.cmd", "x.lnk", "x.hta", "x.js", "x.vbs", "x.msi", "x.scr", "x.ps1", "macro.docm", "page.html", "drawing.svg", "x.desktop", "x.sh",
+            "x.AppImage", "x.jar", "x.url", "noextension", "x.exe. ", "x.pdf:evil.exe",
+        ] {
+            assert!(!opens_safely(&open_file_name(no)), "{no}");
+        }
+        // The name on disk: no path, no reserved or hidden characters, nothing Windows would drop from its end.
+        assert_eq!(open_file_name("..\\..\\evil.exe"), "evil.exe");
+        assert_eq!(open_file_name("/etc/x.pdf"), "etcx.pdf");
+        assert_eq!(open_file_name(".hidden.pdf"), "hidden.pdf");
+        assert_eq!(open_file_name("x.exe. . "), "x.exe");
+        assert_eq!(open_file_name("x.pdf."), "x.pdf");
+        assert_eq!(open_file_name("photo\u{202E}gpj.exe"), "photogpj.exe");
+        assert_eq!(open_file_name("  "), "Attachment");
+        assert_eq!(open_file_name("x.pdf:Zone.Identifier"), "x.pdfZone.Identifier");
+    }
 
     #[test]
     fn links() {

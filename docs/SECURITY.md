@@ -25,7 +25,12 @@ and the full list of properties and gaps are in `docs/AUTH_DECISION.md`.
   sign-ups per hour, 5 two-step codes per minute, 3 password-reset requests per 15 minutes); a sign-in
   challenge allows 5 code attempts and Better Auth locks two-step verification for the account after
   repeated failures. `FOLEVI_AUTH_RATE_LIMIT_SCALE` loosens the limits for automated tests and is ignored
-  when `FOLEVI_ENV=production`.
+  on production. Confirmation and password-reset emails are also limited per recipient address (5 of each
+  per hour, `authEmails.admit`), so no one address can be flooded from many clients; past the limit the
+  email is dropped without a word, so the answer never says whether the address has an account.
+- Production is the default: development tools (test purchases, the dev mailbox, seeding, loosened rate
+  limits, stand-in secrets, local CORS) turn on only when `FOLEVI_ENV` names a development, test or preview
+  deployment (`convex/lib/deployment.ts`). An unset, empty or mistyped value counts as production.
 - The IP those limits key on can't be forged. Browsers reach Better Auth through the web server, which
   signs the visitor's IP (HMAC with `FOLEVI_SERVER_SECRET`, 60-second freshness) in
   `x-folevi-client-ip`; Convex strips every other forwarded-IP header and trusts that one only when the
@@ -40,6 +45,12 @@ and the full list of properties and gaps are in `docs/AUTH_DECISION.md`.
 - Web sessions: HTTP-only, `Secure` (on https) cookies with the `folevi` prefix, first-party on
   `app.folevi.com` through the `/api/auth/*` proxy; rolling 14-day lifetime. The browser receives only
   short-lived (15-minute) RS256 tokens for Convex.
+- Folevi Server: its front proxy (folevid) replaces any client-sent `X-Real-IP`, `CF-Connecting-IP` or
+  `True-Client-IP` with the address that actually connected, so the signed client IP can't be chosen by a
+  visitor. Until the server has an owner, an account can be created only with the setup code the server
+  printed. An admin can't change where email and AI requests go (owner only), and a stored SMTP, IMAP or AI
+  key is never sent to a host other than the one it was saved for. The cloud console's user functions and
+  storage quotas follow the server's order: only the owner acts on the owner or another admin.
 - Instant revocation: every backend call checks that the Better Auth session behind the token still
   exists (`requireActiveSession` in `convex/lib/auth.ts`). Revoking a session in Settings → Security,
   “sign out other devices”, a password change or reset, or an admin suspension ends it on its next
@@ -65,7 +76,8 @@ and the full list of properties and gaps are in `docs/AUTH_DECISION.md`.
   function lacks one.
 - Every content row belongs to exactly one scope: a person's Personal (`ownerProfileId`, only its owner
   browses it) or a team workspace (`workspaceId`, its members). Reads are scoped by that and by document
-  permissions (workspace mode or restricted with explicit grants inherited by nested pages); a page grant
+  permissions (workspace mode or restricted with explicit grants inherited by nested pages; a grant on an
+  open page above a restricted page never reaches into it, docs/SHARING.md); a page grant
   outside your own scope makes you a guest of that page only. Missing and forbidden resources return the
   same `not_found`.
 - Guests never reach workspace-wide data (lists, search, folders, tags, members, settings, billing,
@@ -109,7 +121,8 @@ and the full list of properties and gaps are in `docs/AUTH_DECISION.md`.
 ## Sharing
 
 - Public links are off until created; tokens are 256-bit random, stored only as SHA-256 hashes, can expire,
-  can require a password (PBKDF2-SHA256, 210k iterations, per-link salt), are rate limited per client, are
+  can require a password (PBKDF2-SHA256, 210k iterations, per-link salt), are rate limited per client and,
+  for wrong passwords, per link (30 per 15 minutes whatever address they come from), are
   served with `robots: noindex, nofollow` (unless the owner allowed indexing for an unprotected link),
   `Referrer-Policy: no-referrer` and `no-store`, and are revocable instantly. After a visitor enters a
   link's password, the share page keeps only a sealed unlock grant (AES-256-GCM under a key derived from
@@ -141,6 +154,24 @@ share pages) get a per-request nonce policy from the request proxy (`apps/web/sr
 `'nonce-…' 'strict-dynamic'` plus the SHA-256 of the one inline theme script, no `'unsafe-inline'`.
 Statically prerendered pages (marketing, `/forgot-password`, `/offline`) keep the static header from
 next.config.ts, which still allows inline scripts because they have no per-request nonce.
+The list of nonce routes is derived from the app's own route list (`isNonceRoute` in
+`apps/web/src/lib/app/routes.ts`), and a test fails if an app route is missing from it. Values that reach a
+style attribute (cover colours, collection option colours, page accents) are names from fixed lists, checked
+where they are drawn and where they are stored. HTML and PDF export write only known mark values, the print
+frame is sandboxed, and blocks opened from an end-to-end encrypted note are validated like any other before
+they reach a renderer. `/api/embed` answers only inside a frame and rebuilds the player address itself.
+
+## Apps
+
+- The apps accept a Folevi Server only when its `/.well-known/folevi.json` names one origin for the app and
+  its backend, that origin isn't Folevi Cloud's, and the origin itself publishes the same server id. A
+  sign-in that comes back with a user id already held by another server on the device is refused, and a
+  server's device token is never stored in the shared slot or sent to Folevi Cloud.
+- Web view bridges answer only the app's own main frame (Mac, iPhone and iPad, Android, and the Capacitor
+  iOS shell). The Mac app reads its development overrides (`FOLEVI_URL`, `FOLEVI_SHELL_DIR`,
+  `FOLEVI_SHELL_CONNECT`) only in a Debug build or with a separate data folder.
+- Folevi for Windows and Linux opens an attachment only when it is an inert type (PDF, images, audio, video,
+  text); anything else is shown in its folder. Links in Foli AI answers open only http and https addresses.
 
 ## Abuse controls
 
@@ -201,6 +232,28 @@ Backups: Convex provides deployment backups and point-in-time export (`npx conve
 | Polar | Merchant of record for paid plans and AI credit packs: checkout, tax, receipts, customer portal (not configured yet) | The buyer's email and billing details they enter at checkout, the product bought, seat count, and Folevi's internal ids (profile and workspace ids) in metadata; card details stay with Polar and its processor. Never note content |
 
 ## Known limitations
+
+- Server-side fetches of addresses people give (bookmark previews, Foli AI's page reader, calendar
+  subscriptions) refuse private, loopback and link-local addresses by the literal host and by a DNS lookup,
+  on every redirect hop, on ports 80 and 443 only. The address that was checked can't be pinned for the
+  request itself (Convex's runtime resolves the name again), so a DNS server that answers differently the
+  second time could still point a request inward. This matters on a Folevi Server on a home or office
+  network; the full fix is to move these fetches behind an egress proxy or into Node actions with a pinned
+  lookup.
+- A Folevi Server with email off can't verify addresses: an account's address is whatever was typed at
+  sign-up. With open or domain sign-up, someone can register an address before its owner does and receive
+  what is later shared with that address. Use invite-only sign-up (the default) on such a server, or turn
+  email on.
+- Team Vault and encryption level changes: resetting an account's encryption keys, asking back into a team
+  Vault, lowering a space's encryption level and turning on a switch that sends readable copies all need a
+  sign-in in the last 10 minutes (`convex/lib/freshSession.ts`). That stops a stolen session, not a stolen
+  password: a custodian's device still seals the Vault key to a member's new key without asking the
+  custodian, and devices still follow a lowered level without a statement signed by the account's key.
+  Custodian confirmation and signed level changes are design work for every client (docs/VAULT_PLAN.md,
+  docs/E2EE_DESIGN.md §8.6).
+- An account someone else registered with your address, which you then confirm from the email, keeps the
+  password they chose until you reset it. Signing in with Google or Apple never links to an unconfirmed
+  account, and the confirmation email says to ignore it if you didn't sign up.
 
 - Account email changes are handled by support, not self-service.
 - Passwords are not yet checked against known breach lists; there are no passkeys (see

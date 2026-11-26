@@ -1,6 +1,7 @@
 "use client";
 
 import { openDB, wrap, type DBSchema, type IDBPDatabase, type OpenDBCallbacks } from "idb";
+import { clearCatchUps } from "@/lib/ai/catchUpStore";
 import { ulid, type SyncState, type WireBlock } from "@folevi/editor-schema";
 
 /**
@@ -208,6 +209,8 @@ export async function deviceId(accountKey: string): Promise<string> {
 /** localStorage keys an account's own (each ends in its profile id, or has it after the prefix). */
 const ACCOUNT_KEY_PREFIXES = ["folevi:device-copy:", "folevi:tabs:", "folevi:home-href:", "folevi:context:", "folevi:e2ee:", "folevi:sync-journal:", "folevi:iphone-tabs:"];
 
+const JOURNAL_PREFIX = "folevi:sync-journal:";
+
 function deleteDatabase(name: string): Promise<void> {
   return new Promise<void>((resolve) => {
     const req = indexedDB.deleteDatabase(name);
@@ -241,6 +244,8 @@ export async function clearAccountData(profileId: string, userId?: string | null
   } catch {
     /* no Cache Storage */
   }
+  // What this tab kept of the account for the visit (Home's brief of its notes).
+  clearCatchUps();
   try {
     if (localStorage.getItem("folevi:last-account") === profileId) localStorage.removeItem("folevi:last-account");
     const keys: string[] = [];
@@ -262,8 +267,19 @@ export async function clearAllLocalData(opts: { keep?: (name: string) => boolean
   // A local library's copy on this device (`folevi-local-*`) isn't the account's: signing out of an account
   // never touches it. Only an explicit `library: true` (removing the library itself) clears it.
   const keep = (name: string) => (!opts.library && name.startsWith("folevi-local-")) || Boolean(opts.keep?.(name));
+  clearCatchUps();
   try {
     localStorage.removeItem("folevi:last-account");
+    // Changes still queued when the copy goes (lib/sync/engine.ts keeps them as `folevi:sync-journal:<account>:<tab>`):
+    // they are the copy's, so they go with it, for every account whose database goes below.
+    const journals: string[] = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (!k?.startsWith(JOURNAL_PREFIX)) continue;
+      const account = k.slice(JOURNAL_PREFIX.length).split(":")[0] ?? "";
+      if (!keep(`folevi-${account}`)) journals.push(k);
+    }
+    for (const k of journals) localStorage.removeItem(k);
   } catch {
     /* storage unavailable */
   }

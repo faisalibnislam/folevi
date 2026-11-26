@@ -10,6 +10,11 @@
 //!
 //! Each relay goes to one address only (never an open proxy) and is bound to 127.0.0.1. A port is derived from the
 //! address, so the page's Convex address stays the same from one launch to the next.
+//!
+//! Only the app's own pages use a relay. A request is refused unless it was sent to this computer by name
+//! (`Host: 127.0.0.1:<port>` or localhost: a web page whose own name was pointed at 127.0.0.1 sends that name), and
+//! one that says where it comes from (`Origin`, which a browser adds to every WebSocket and cross-site request) must
+//! come from the app's page. A program on this PC can still reach the home server through it, as it can directly.
 use std::collections::HashMap;
 use std::net::{Ipv4Addr, SocketAddr, TcpListener as StdListener};
 use std::sync::Arc;
@@ -17,7 +22,7 @@ use std::sync::Arc;
 use bytes::Bytes;
 use http_body_util::{combinators::BoxBody, BodyExt, Empty, Full};
 use hyper::body::Incoming;
-use hyper::header::{HeaderValue, HOST, UPGRADE};
+use hyper::header::{HeaderValue, HOST, ORIGIN, UPGRADE};
 use hyper::{Request, Response, StatusCode};
 use hyper_util::rt::TokioIo;
 use once_cell::sync::Lazy;
@@ -149,6 +154,27 @@ async fn serve(listener: StdListener, upstream: Arc<String>) {
     }
 }
 
+fn forbidden() -> Response<Body> {
+    let mut r = Response::new(Full::new(Bytes::from_static(b"Only Folevi's own page may use this.")).map_err(|never| match never {}).boxed());
+    *r.status_mut() = StatusCode::FORBIDDEN;
+    r
+}
+
+/// Whether a request may go on to the server: sent to this computer by name (`host`, with or without a port), and,
+/// when it says where it comes from (`origin`), from the app's own page (`app`).
+fn may_use(host: Option<&str>, origin: Option<&str>, app: &str) -> bool {
+    let Some(host) = host else { return false };
+    // "127.0.0.1:41234", "localhost:41234", "[::1]:41234": the name without its port.
+    let name = match host.rsplit_once(':') {
+        Some((n, p)) if !p.is_empty() && p.bytes().all(|b| b.is_ascii_digit()) => n,
+        _ => host,
+    };
+    if !is_loopback(name) {
+        return false;
+    }
+    origin.is_none_or(|o| o == app)
+}
+
 fn bad_gateway() -> Response<Body> {
     let mut r = Response::new(Full::new(Bytes::from_static(b"Folevi couldn't reach the server.")).map_err(|never| match never {}).boxed());
     *r.status_mut() = StatusCode::BAD_GATEWAY;
@@ -157,6 +183,10 @@ fn bad_gateway() -> Response<Body> {
 
 /// One request (or WebSocket) on to the server, with the server's Host.
 async fn forward(mut req: Request<Incoming>, upstream: Arc<String>) -> Result<Response<Body>, hyper::Error> {
+    let header = |name| req.headers().get(name).and_then(|v: &HeaderValue| v.to_str().ok());
+    if !may_use(header(HOST), header(ORIGIN), crate::app_origin()) {
+        return Ok(forbidden());
+    }
     let path = req.uri().path_and_query().map(|p| p.as_str().to_string()).unwrap_or_else(|| "/".into());
     let Ok(uri) = path.parse() else { return Ok(bad_gateway()) };
     *req.uri_mut() = uri;
@@ -314,6 +344,48 @@ mod tests {
         let mut echo = [0u8; 4];
         s.read_exact(&mut echo).await.unwrap();
         assert_eq!(&echo, b"ping");
+    }
+
+    #[test]
+    fn only_the_apps_own_page_uses_a_relay() {
+        let app = "https://app.localhost";
+        // The page's own requests: to this computer by name, from the app's origin or (a plain GET) saying nothing.
+        assert!(may_use(Some("127.0.0.1:41234"), Some(app), app));
+        assert!(may_use(Some("127.0.0.1:41234"), None, app));
+        assert!(may_use(Some("localhost:41234"), Some(app), app));
+        assert!(may_use(Some("[::1]:41234"), None, app));
+        // A web page in the browser: its WebSockets and cross-site requests carry its own origin.
+        assert!(!may_use(Some("127.0.0.1:41234"), Some("https://evil.example"), app));
+        assert!(!may_use(Some("127.0.0.1:41234"), Some("null"), app));
+        assert!(!may_use(Some("127.0.0.1:41234"), Some("http://app.localhost"), app));
+        // A web page whose own name was pointed at 127.0.0.1 (its requests to itself carry no origin, but its name).
+        assert!(!may_use(Some("evil.example:41234"), None, app));
+        assert!(!may_use(Some("evil.example"), None, app));
+        assert!(!may_use(Some("127.0.0.1.evil.example:41234"), None, app));
+        assert!(!may_use(None, None, app));
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn a_request_from_another_page_never_reaches_the_server() {
+        let upstream = format!("127.0.0.1:{}", fake_server().await);
+        let listener = bind(&format!("test-gate-{upstream}")).unwrap();
+        let port = listener.local_addr().unwrap().port();
+        tokio::spawn(serve(listener, Arc::new(upstream.clone())));
+        let client = reqwest::Client::new();
+        let url = format!("http://127.0.0.1:{port}/convex/api/query");
+        let res = client.get(&url).header("origin", "https://evil.example").send().await.unwrap();
+        assert_eq!(res.status(), 403);
+        let res = client.get(&url).header("host", format!("evil.example:{port}")).send().await.unwrap();
+        assert_eq!(res.status(), 403);
+        // The app's own page goes through.
+        let res = client.get(&url).header("origin", crate::app_origin()).send().await.unwrap();
+        assert_eq!(res.text().await.unwrap(), format!("{upstream} /convex/api/query"));
+        // A WebSocket from another page is refused before the server hears of it.
+        let mut s = TcpStream::connect(("127.0.0.1", port)).await.unwrap();
+        s.write_all(format!("GET /convex/api/sync HTTP/1.1\r\nhost: 127.0.0.1:{port}\r\norigin: https://evil.example\r\nconnection: Upgrade\r\nupgrade: websocket\r\nsec-websocket-version: 13\r\nsec-websocket-key: dGhlIHNhbXBsZSBub25jZQ==\r\n\r\n").as_bytes()).await.unwrap(); // gitleaks:allow (the WebSocket spec's sample key)
+        let mut head = vec![0u8; 1024];
+        let n = s.read(&mut head).await.unwrap();
+        assert!(String::from_utf8_lossy(&head[..n]).starts_with("HTTP/1.1 403"));
     }
 
     #[tokio::test(flavor = "multi_thread")]

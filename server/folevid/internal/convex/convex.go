@@ -1,5 +1,7 @@
 // Package convex talks to the local Convex backend: readiness, environment variables (over its HTTP API, so
-// no secret ever appears in a process list) and the Convex CLI for deploy, export and import.
+// their values never appear in a process list) and the Convex CLI for deploy, export and import. The admin key
+// goes to the CLI through its environment. The one secret that does appear in a process list is the instance
+// secret, on the backend's own command line (see backendCommand in package app).
 package convex
 
 import (

@@ -10,6 +10,7 @@ import { hostAuth } from "@/lib/auth/shellFetch";
 import { shell } from "@/lib/shell";
 import { forgetThisDevice } from "@/lib/nativeDevice";
 import { clearAccountData, clearAllLocalData, localDb, outboxKeys } from "@/lib/sync/db";
+import { forgetLearntSpelling } from "@/lib/spelling/learnt";
 import { adoptNextSignIn, pinnedUserId } from "@/lib/places/pin";
 import { knownAccount } from "@/lib/places/registry";
 import { afterAccountSignedOut, signOutOfAccount } from "@/lib/places/web";
@@ -60,6 +61,11 @@ export async function signOutNow(destination = signedOutDestination(), opts: { f
   const forget = opts.forget ?? !again;
   const keepE2ee = keepOnSignOut(forget)("folevi-e2ee");
   const keep = (name: string) => name === "folevi-e2ee" && keepE2ee;
+  // No account is left on this device: its copy goes, and what the browser learnt from its notes with it.
+  const clearDevice = async () => {
+    forgetLearntSpelling();
+    await clearAllLocalData({ keep });
+  };
   await endKeySession({ forget }).catch(() => undefined);
   if (hostAuth()) {
     const host = shell();
@@ -72,7 +78,7 @@ export async function signOutNow(destination = signedOutDestination(), opts: { f
       return;
     }
     await host?.auth.signOut().catch(() => undefined);
-    await clearAllLocalData({ keep });
+    await clearDevice();
     window.location.assign("/");
     return;
   }
@@ -93,7 +99,7 @@ export async function signOutNow(destination = signedOutDestination(), opts: { f
   const next = userId ? afterAccountSignedOut(userId, left) : null;
   if (again) {
     adoptNextSignIn();
-    if (!next) await clearAllLocalData({ keep });
+    if (!next) await clearDevice();
     window.location.assign(destination);
     return;
   }
@@ -101,7 +107,7 @@ export async function signOutNow(destination = signedOutDestination(), opts: { f
     window.location.assign("/documents");
     return;
   }
-  await clearAllLocalData({ keep });
+  await clearDevice();
   window.location.assign(destination);
 }
 

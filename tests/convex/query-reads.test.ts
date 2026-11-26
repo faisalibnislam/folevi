@@ -266,7 +266,10 @@ describe("document lists", () => {
     const ids = async (p: Person) => (await p.as.query(api.documents.children, { documentId: w.draftB })).map((d) => d.id).sort();
     expect(await ids(w.owner)).toEqual([kidA, kidB].sort());
     expect(await ids(w.member)).toEqual([kidA]);
-    // The guest's grant on the parent reaches the restricted page under it too.
+    // The guest's grant on the open parent doesn't reach into the page restricted under it (security audit
+    // 2026-11-26: only the people invited to a restricted page, or to a page inside it, get in).
+    expect(await ids(guest)).toEqual([kidA]);
+    await w.owner.as.mutation(api.sharing.grant, { documentId: kidB, email: "reads-guest@example.com", role: "viewer" });
     expect(await ids(guest)).toEqual([kidA, kidB].sort());
   });
 });

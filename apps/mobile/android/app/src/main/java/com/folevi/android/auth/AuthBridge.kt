@@ -48,6 +48,12 @@ class AuthBridge(
     private val actingSite: () -> String? = { null },
     /** The website of the Folevi Server an account is on, by user id; null: Folevi Cloud. */
     private val siteOfUser: (String) -> String? = { null },
+    /**
+     * Whether an account with this user id is already on this phone from another server than the one the open
+     * sign-in screen is for (Places.belongsElsewhere). Sessions are kept by user id, and a server says what its user
+     * ids are: a sign-in that comes back with the id of an account from elsewhere is refused.
+     */
+    private val elsewhere: (String) -> Boolean = { false },
 ) {
     /** Folevi Cloud's website (the build's). */
     val cloud: HttpUrl = site(serviceUrl) ?: throw IllegalArgumentException("Not a website: $serviceUrl")
@@ -69,7 +75,20 @@ class AuthBridge(
 
     fun token(user: String?): String? = store.get(slotName(user))?.takeIf { TOKEN_RE.matches(it) }
 
-    private fun token(): String? = token(currentUser())
+    /**
+     * The open place's session. With no account yet (a sign-in screen) it is the one session older builds kept,
+     * which was always Folevi Cloud's: on a server's sign-in screen there is none, so it never goes to a server.
+     */
+    private fun token(): String? {
+        val user = currentUser()
+        return if (user != null || actingSite() == null) token(user) else null
+    }
+
+    /** The slot the open place's session is kept in; null on a server's sign-in screen (nothing is kept there). */
+    private fun openSlot(): String? {
+        val user = currentUser()
+        return if (user != null || actingSite() == null) slotName(user) else null
+    }
 
     fun signedIn(): Boolean = token() != null
 
@@ -106,7 +125,7 @@ class AuthBridge(
         return url to finish@{
             val access = code() ?: return@finish null
             val user = userOf(access, site)
-            if (user == null) {
+            if (user == null || elsewhere(user.userId)) {
                 withContext(Dispatchers.IO) { endSession(access, site) }
                 return@finish null
             }
@@ -163,8 +182,14 @@ class AuthBridge(
         val (url, code) = beginCode(site)
         return url to finish@{
             val access = code() ?: return@finish false
+            // A server's sign-in screen keeps nothing here (an account's sign-in is beginAccount's).
+            val slot = openSlot()
+            if (slot == null) {
+                withContext(Dispatchers.IO) { endSession(access, site) }
+                return@finish false
+            }
             val previous = token()
-            store.set(slotName(currentUser()), access)
+            store.set(slot, access)
             // Signing in again (after a stale session) ends the session this phone held before.
             if (previous != null && previous != access) withContext(Dispatchers.IO) { endSession(previous, site) }
             true
@@ -247,7 +272,7 @@ class AuthBridge(
     suspend fun signOut() = withContext(Dispatchers.IO) {
         cancelPending()
         token()?.let { endSession(it) }
-        store.delete(slotName(currentUser()))
+        openSlot()?.let { store.delete(it) }
     }
 
     /** The page's request, only to the website's /api/auth. Throws for anything else. */
@@ -277,7 +302,7 @@ class AuthBridge(
             when {
                 it.code == 401 -> {
                     // The session ended (signed out from Settings > Devices, expired): forget it.
-                    store.delete(slotName(currentUser()))
+                    openSlot()?.let { slot -> store.delete(slot) }
                     null
                 }
                 it.code == 403 -> null

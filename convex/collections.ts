@@ -4,7 +4,7 @@ import { mutation } from "./lib/functions";
 import type { Doc, Id } from "./_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
 import { COLLECTION_LIMITS, COLLECTION_VIEW_NAMES, clampCollectionViewConfig, collectionFormulaLoop, isValidId, normalizeCollectionOptions, rankBetween, renameInCollectionFormula, ulid } from "@folevi/editor-schema";
-import { accessAtLeast, assertWritable, documentAccess, getDocumentByPublicId, membership, PageReader, requireDocument, requireProfile, type Access } from "./lib/auth";
+import { accessAtLeast, assertWritable, documentAccess, getDocumentByPublicId, membership, PageReader, requireDocument, requireProfile, type Access, pageChain, pagesGranting } from "./lib/auth";
 import { fail } from "./lib/errors";
 import { addView, checkedFormula, createCollection, formulaInputs, normalizeNumberFormat, normalizeValue } from "./lib/collections";
 import { createDocument, specsToWireBlocks } from "./lib/create";
@@ -50,19 +50,19 @@ async function collectionFor(ctx: QueryCtx | MutationCtx, collectionPublicId: st
   return { profile, collection, host, access };
 }
 
-/** People holding a grant on `doc` or a page above it (grants are inherited). */
+/**
+ * People holding a grant that reaches `doc`: on it or a page above it, never on an open page above a
+ * restricted one (lib/auth.ts pagesGranting), so nobody outside a restriction is named inside it.
+ */
 async function pageGrantHolders(ctx: QueryCtx, doc: Doc<"documents">): Promise<Id<"profiles">[]> {
   const out: Id<"profiles">[] = [];
-  let cursor: Doc<"documents"> | null = doc;
-  for (let depth = 0; cursor && depth < 12; depth++) {
-    const current: Doc<"documents"> = cursor;
+  for (const page of pagesGranting(await pageChain(ctx, doc))) {
     for (const g of await ctx.db
       .query("documentPermissions")
-      .withIndex("by_document", (q) => q.eq("documentId", current._id))
+      .withIndex("by_document", (q) => q.eq("documentId", page._id))
       .take(200)) {
       out.push(g.profileId);
     }
-    cursor = current.parentDocumentId ? await ctx.db.get(current.parentDocumentId) : null;
   }
   return out;
 }

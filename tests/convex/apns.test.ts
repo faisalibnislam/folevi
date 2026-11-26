@@ -395,7 +395,7 @@ describe("what sends it", () => {
     const t = setup();
     const a = await person(t, "apns-delete@example.com");
     await a.as.mutation(api.push.registerApns, device(16));
-    await a.as.mutation(api.push.subscribe, { endpoint: `https://push.example.com/send/${"x".repeat(16)}`, p256dh: "p256dh-key-abcdefgh", auth: "auth-key-abcd" });
+    await a.as.mutation(api.push.subscribe, { endpoint: `https://fcm.googleapis.com/fcm/send/${"x".repeat(16)}`, p256dh: "p256dh-key-abcdefgh", auth: "auth-key-abcd" });
     const now = Date.now();
     await t.run(async (ctx) => {
       await ctx.db.patch(a.profileId as Id<"profiles">, { status: "pending_deletion" });

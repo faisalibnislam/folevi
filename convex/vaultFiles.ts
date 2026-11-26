@@ -16,7 +16,7 @@ import { requireVault, vaultRoleAtLeast } from "./lib/vault/access";
 import { appendLog } from "./lib/vault/log";
 import { notifyVaultChange } from "./lib/vault/notify";
 import { vVaultClient } from "./lib/vault/validators";
-import { checkKeyVersion, checkSealed, itemOf, keepVersion, requireCanChange, vSealedItem } from "./vaultItems";
+import { checkKeyVersion, checkSealed, itemOf, keepVersion, requireCanChange, requireNewItemId, vSealedItem } from "./vaultItems";
 
 type Ctx = QueryCtx | MutationCtx;
 
@@ -81,6 +81,12 @@ export const createFolder = mutation({
     await assertWritable(ctx, profile);
     const { vault, role } = await requireVault(ctx, profile, args.vaultId);
     if (!ID.test(args.folderId)) fail("invalid_argument", "Invalid folder id.");
+    // Folder ids are looked up by a global index too (folderOf): a second row with one would break both.
+    const taken = await ctx.db
+      .query("vaultFolders")
+      .withIndex("by_public_id", (q) => q.eq("publicId", args.folderId))
+      .first();
+    if (taken) fail("conflict", "That folder already exists.");
     checkName(args.sealedName);
     checkKeyVersion(vault, args.keyVersion);
     const parent = args.parentId ? await folderOf(ctx, vault, args.parentId) : null;
@@ -174,6 +180,7 @@ export const createNote = mutation({
     if (!ID.test(args.itemId)) fail("invalid_argument", "Invalid item id.");
     checkSealed(args.item);
     checkKeyVersion(vault, args.item.keyVersion);
+    await requireNewItemId(ctx, args.itemId);
     const folderId = await targetFolder(ctx, vault, args.folderId);
     await consume(ctx, "vaultWrite", profile._id);
     const now = Date.now();
@@ -196,8 +203,39 @@ export const uploadUrl = mutation({
   },
 });
 
+/** An upload must be saved within this long of arriving (an upload link itself works for an hour). */
+export const UPLOAD_FRESH_MS = 2 * 60 * 60_000;
+
+/**
+ * The upload must be this save's own: bytes that just arrived, that nothing else in Folevi points at. Storage ids
+ * aren't secret from whoever uploaded the bytes, so without this someone could register a file they uploaded
+ * elsewhere (an attachment of a workspace they have since left, an older Vault file) as a file of their own Vault,
+ * and emptying their Trash would then delete it under its real owner (security audit 2026-11-26, L6). Nothing is
+ * deleted on a refusal: the bytes may be someone else's.
+ */
+async function requireOwnUpload(ctx: MutationCtx, storageId: Id<"_storage">): Promise<void> {
+  const meta = await ctx.db.system.get(storageId);
+  const NOT_YOURS = "The upload didn't arrive. Try again.";
+  if (!meta) fail("not_found", NOT_YOURS);
+  if (Date.now() - meta._creationTime > UPLOAD_FRESH_MS) fail("not_found", NOT_YOURS);
+  const file = await ctx.db
+    .query("files")
+    .withIndex("by_storage", (q) => q.eq("storageId", storageId))
+    .first();
+  const snapshot = await ctx.db
+    .query("documentSnapshots")
+    .withIndex("by_storage", (q) => q.eq("storageId", storageId))
+    .first();
+  const vaultFile = await ctx.db
+    .query("vaultItems")
+    .withIndex("by_storage", (q) => q.eq("storageId", storageId))
+    .first();
+  if (file || snapshot || vaultFile) fail("not_found", NOT_YOURS);
+}
+
 /** The stored size of an upload, which must be what the device says (it can't make a file look smaller). */
 async function storedSize(ctx: MutationCtx, storageId: Id<"_storage">, claimed: number): Promise<number> {
+  await requireOwnUpload(ctx, storageId);
   const meta = await ctx.db.system.get(storageId);
   if (!meta) fail("not_found", "The upload didn't arrive. Try again.");
   if (meta.size !== claimed || claimed > MAX_FILE) {

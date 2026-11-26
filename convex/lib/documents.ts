@@ -14,7 +14,7 @@ import {
 } from "@folevi/editor-schema";
 import { insertScoped, scopeOfRow, type Scope } from "./scope";
 import { setNoteText } from "./documentText";
-import { accessAtLeast, documentAccess, folderAccessInfo, membership } from "./auth";
+import { accessAtLeast, documentAccess, folderAccessInfo, MAX_PAGE_DEPTH, membership } from "./auth";
 import { sharedLabels } from "./linkLabels";
 import { emitWebhook } from "./webhooks";
 import { notesShowingInPlace, withSyncedShared } from "./synced";
@@ -184,7 +184,7 @@ export class HomeFolders {
     const chain: string[] = [];
     let cur: Doc<"documents"> | null = doc;
     let found: HomeFolder | null = null;
-    for (let depth = 0; cur && depth < 12; depth++) {
+    for (let depth = 0; cur && depth < MAX_PAGE_DEPTH; depth++) {
       if (this.byDoc.has(cur._id)) {
         found = this.byDoc.get(cur._id) ?? null;
         break;
@@ -333,6 +333,18 @@ export async function clearTaskLabels(ctx: MutationCtx, documentId: Id<"document
   for (const t of tasks) if (t.documentTitle !== undefined || t.documentPublicId !== undefined) await ctx.db.patch(t._id, { documentPublicId: undefined, documentTitle: undefined, documentIcon: undefined });
 }
 
+/**
+ * Whether a to-do in `doc` may be assigned to `profileId`: in a workspace, its members; in someone's Personal,
+ * anyone active who can open the note. Reminders and "assigned to me" go to this person, so a block can't
+ * name just anyone.
+ */
+export async function canBeAssigned(ctx: Ctx, profileId: Id<"profiles">, doc: Doc<"documents">): Promise<boolean> {
+  const assignee = await ctx.db.get(profileId);
+  if (!assignee) return false;
+  if (doc.workspaceId) return (await membership(ctx, assignee._id, doc.workspaceId)) !== null;
+  return assignee.status === "active" && accessAtLeast(await documentAccess(ctx, assignee, doc), "read");
+}
+
 /** Keeps the task projection in step with a todo block (the block stays canonical). */
 export async function syncTaskProjection(
   ctx: MutationCtx,
@@ -344,6 +356,9 @@ export async function syncTaskProjection(
     .query("tasks")
     .withIndex("by_block", (q) => q.eq("blockId", row.blockId))
     .unique();
+  // A task row belongs to the note its block is in. One found under this block id for another note is not
+  // this block's (block ids are unique, and nothing may write a second row with one): it's left alone.
+  if (existing && existing.documentId !== doc._id) return;
   // Sealed to-dos are projected on devices (docs/E2EE_DESIGN.md §6.7); a projection left from before goes.
   if (row.sealed !== undefined || doc.sealedAt !== undefined) {
     if (existing) await ctx.db.delete(existing._id);
@@ -360,7 +375,9 @@ export async function syncTaskProjection(
   let assigneeId: Id<"profiles"> | undefined;
   if (projection.assigneeId) {
     const normalized = ctx.db.normalizeId("profiles", projection.assigneeId);
-    if (normalized) assigneeId = normalized;
+    // The block is client data: whoever it names is kept only if they may be given this to-do (as tasks.update
+    // checks). An assignee already on the row was checked when they were put there.
+    if (normalized && (normalized === existing?.assigneeId || (await canBeAssigned(ctx, normalized, doc)))) assigneeId = normalized;
   }
   // A done to-do whose block doesn't say when keeps the time it was first seen done (re-projecting it, on
   // any later edit of the block, mustn't move it to now).

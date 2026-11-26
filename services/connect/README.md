@@ -95,16 +95,18 @@ Secrets marked (secret) can also be given as a file path in `<NAME>_FILE`. None 
 | `CONNECT_RELAY_MAX_STREAMS` | `64` | Concurrent client connections per server |
 | `CONNECT_RELAY_MAX_CONNS` | `20000` | Concurrent client connections in all |
 | `CONNECT_RELAY_IDLE_TIMEOUT` | `5m` | Close a relayed connection idle this long |
-| `CONNECT_REGISTER_PER_IP_HOURLY` | `10` | Registrations per IP per hour |
+| `CONNECT_REGISTER_PER_IP_HOURLY` | `10` | Registrations per hour per IPv4 address or IPv6 /64 |
+| `CONNECT_REGISTER_GLOBAL_HOURLY` | `120` | Registrations per hour from all callers together; `0` unlimited |
 | `CONNECT_LINK_CODES_PER_HOUR` | `6` | Link codes per server per hour |
 | `CONNECT_APPROVE_PER_USER_HOURLY` | `20` | Approve attempts per account per hour |
+| `CONNECT_MAX_SERVERS_PER_OWNER` | `10` | Servers one account may own (suspended ones are not counted); approve answers `409 too_many_servers` past it; `0` unlimited |
 | `RESEND_API_KEY` | empty | (secret) Resend key; empty makes `/v1/mail` answer 503 |
 | `CONNECT_RESEND_BASE_URL` | `https://api.resend.com` | |
-| `CONNECT_MAIL_FROM_ADDRESS` | `no-reply@folevi.app` | From address (the name is the server's) |
+| `CONNECT_MAIL_FROM_ADDRESS` | `no-reply@folevi.app` | From address. The name is always `Folevi Server (<server name>)` |
 | `CONNECT_MAIL_DISABLED` | `false` | Global mail kill switch |
 | `CONNECT_MAIL_REQUIRE_LINKED` | `true` | Only servers linked to a Folevi account may send |
-| `CONNECT_MAIL_PER_SERVER_HOURLY` | `30` | |
-| `CONNECT_MAIL_PER_SERVER_DAILY` | `200` | Persisted |
+| `CONNECT_MAIL_PER_SERVER_HOURLY` | `30` | Per owner account: all of its servers together (per server when not linked) |
+| `CONNECT_MAIL_PER_SERVER_DAILY` | `200` | Persisted. Per owner account, as above |
 | `CONNECT_MAIL_PER_RECIPIENT_HOURLY` | `5` | Per address, across all servers |
 | `CONNECT_MAIL_PER_RECIPIENT_DAILY` | `20` | Per address, across all servers |
 | `CONNECT_MAIL_GLOBAL_DAILY` | `10000` | All servers together; persisted |
@@ -119,8 +121,8 @@ Secrets marked (secret) can also be given as a file path in `<NAME>_FILE`. None 
 | `CONNECT_AI_CHAT_MODEL` | `gemini-3.8-flash` | Default chat model |
 | `CONNECT_AI_EMBEDDING_MODEL` | `gemini-embedding-001` | Default embedding model |
 | `CONNECT_AI_ALLOWED_MODELS` | `gemini-3.8-flash,gemini-flash-lite-latest,gemini-embedding-001` | Models a server may name |
-| `CONNECT_AI_MONTHLY_TOKENS` | `2000000` | Per server per month until plans come from the cloud; negative = no limit |
-| `CONNECT_AI_PER_SERVER_MINUTE` | `60` | Requests per server per minute |
+| `CONNECT_AI_MONTHLY_TOKENS` | `2000000` | Per owner account per month, all of its servers together (per server when not linked), until plans come from the cloud; negative = no limit. A stream that ends without a usage chunk is charged an estimate |
+| `CONNECT_AI_PER_SERVER_MINUTE` | `60` | Requests per minute per owner account (per server when not linked) |
 | `CONNECT_AI_REQUIRE_LINKED` | `true` | |
 | `CONNECT_AI_MAX_REQUEST_BYTES` | `4194304` | |
 | `UNSPLASH_ACCESS_KEY` | empty | (secret) Unsplash access key; empty makes the proxy answer 503 |

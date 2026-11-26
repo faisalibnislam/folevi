@@ -11,9 +11,13 @@ import (
 
 func TestFromHeader(t *testing.T) {
 	cases := map[string]string{
-		"Smith family":                     `"Smith family" <no-reply@folevi.app>`,
-		"Evil\" <boss@bank.com>\r\nBcc: x": `"Evil bossbank.com Bcc x" <no-reply@folevi.app>`,
+		"Smith family":                     `"Folevi Server (Smith family)" <no-reply@folevi.app>`,
+		"Evil\" <boss@bank.com>\r\nBcc: x": `"Folevi Server (Evil bossbank.com Bcc x)" <no-reply@folevi.app>`,
 		"   ":                              `"Folevi Server" <no-reply@folevi.app>`,
+		"folevi server":                    `"Folevi Server" <no-reply@folevi.app>`,
+		// The name can't close the brackets to pose as something else, and is cut at 40 characters.
+		"Home) Folevi Security (alert":                        `"Folevi Server (Home Folevi Security alert)" <no-reply@folevi.app>`,
+		"PayPal Security Team [urgent] 0123456789 0123456789": `"Folevi Server (PayPal Security Team urgent 0123456789 0)" <no-reply@folevi.app>`,
 	}
 	for in, want := range cases {
 		if got := FromHeader(in, "no-reply@folevi.app"); got != want {

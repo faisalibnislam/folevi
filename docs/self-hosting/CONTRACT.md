@@ -205,6 +205,13 @@ Built in `convex/server.ts`, `convex/serverAdmin.ts`, `convex/serverInvites.ts`,
    clears it, left out keeps it. Validation errors are `invalid_argument` with a message for the admin. It returns
    the same view as `getSettings`, which also has `configured: {email, ai, pushRelay}`. Audit records list the
    changed field names only.
+   Since 2026-11-26 (security audit): the sections `email`, `emailIn`, `ai`, `google` and `covers` are
+   owner-only (`forbidden` for an admin); a stored SMTP or IMAP password is refused (`invalid_argument`) when the
+   host or user name changes without the password again, and a stored AI key is dropped when the base URL points
+   at another service. `serverAdmin:setQuota` follows the same order as the other people functions (an admin sets
+   members' and their own; only the owner sets the owner's or an admin's). While the server has no owner,
+   `signUpGate` allows a sign-up only when `x-folevi-invite` carries the setup code (code `SETUP_REQUIRED`
+   otherwise), which the setup page sends.
 4. **Invites:** `serverAdmin:invite` returns `{token, url, expiresAt, inviteId, emailed}`; the link is
    `<origin>/join/<token>` (`/invite/` is taken by workspace invites), 7 days. `serverAdmin:revokeInvite` takes
    `{inviteId}`; `listInvites` returns `[{inviteId, email?, role, invitedBy, createdAt, expiresAt,

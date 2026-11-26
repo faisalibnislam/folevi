@@ -2,6 +2,11 @@
 // metadata (Open Graph, Twitter cards, <title>, <link rel=icon>) on the server, since browsers can't read
 // other sites' pages. Only public http(s) pages are fetched, with a time and size limit, rate-limited per
 // person. Images are returned as addresses (the note shows them from the site).
+//
+// Which addresses may be fetched is decided by the same check Foli AI's page reader uses (lib/ai/web.ts
+// checkHost): http or https on ports 80 and 443, no user name or password, never a private, loopback or
+// link-local address, whether written as an IP or reached through a host name (the name is looked up and
+// every address it has must be public). The first request and every redirect hop are checked.
 import { v } from "convex/values";
 import { action } from "./_generated/server";
 import { internalMutation } from "./lib/functions";
@@ -11,6 +16,7 @@ import { consume } from "./lib/rateLimit";
 import { vScopeArg, scopeOfRow } from "./lib/scope";
 import { failE2ee, isSealed } from "./lib/e2ee/state";
 import { isEncryptedSpace } from "./lib/e2ee/coreGuards";
+import { checkHost, checkUrl } from "./lib/ai/web";
 
 export interface BookmarkPreview {
   title: string | null;
@@ -40,33 +46,6 @@ export const consumeQuota = internalMutation({
     return null;
   },
 });
-
-/** Hosts that are never fetched: this machine, private networks, link-local and metadata addresses. */
-export function isPrivateHost(host: string): boolean {
-  const h = host.toLowerCase().replace(/^\[|\]$/g, "");
-  if (h === "localhost" || h.endsWith(".localhost") || h.endsWith(".local") || h.endsWith(".internal") || !h.includes(".") && !h.includes(":")) return true;
-  const v4 = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/.exec(h);
-  if (v4) {
-    const [a, b] = [Number(v4[1]), Number(v4[2])];
-    const c = Number(v4[3]);
-    return (
-      a === 0 ||
-      a === 10 ||
-      a === 127 ||
-      (a === 169 && b === 254) ||
-      (a === 172 && b >= 16 && b <= 31) ||
-      (a === 192 && b === 168) ||
-      (a === 192 && b === 0 && c === 0) ||
-      (a === 100 && b >= 64 && b <= 127) ||
-      (a === 198 && (b === 18 || b === 19)) ||
-      a >= 224
-    );
-  }
-  // Any address starting "::" (loopback, unspecified, IPv4-mapped or -compatible like "::7f00:1"), unique
-  // local, link-local and the NAT64 prefix, which can all reach this side of the network.
-  if (h.includes(":")) return h.startsWith("::") || h.startsWith("fc") || h.startsWith("fd") || h.startsWith("fe80") || h.startsWith("64:ff9b:");
-  return false;
-}
 
 const decode = (s: string) =>
   s
@@ -138,31 +117,32 @@ export const preview = action({
   args: { url: v.string(), scope: v.optional(vScopeArg), documentId: v.optional(v.string()) },
   handler: async (ctx, args): Promise<BookmarkPreview> => {
     await requireIdentity(ctx);
-    let target: URL;
-    try {
-      target = new URL(args.url.trim());
-    } catch {
-      return EMPTY;
-    }
-    if (!/^https?:$/.test(target.protocol) || target.username || target.password || isPrivateHost(target.hostname)) return EMPTY;
+    // The link itself first (no lookup yet), so a link that can never be read costs nothing.
+    const link = checkUrl(args.url);
+    if (!link.ok) return EMPTY;
     await ctx.runMutation(internal.bookmarks.consumeQuota, { scope: args.scope, documentId: args.documentId });
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
     try {
       // Redirects are followed by hand, so each hop is checked too.
       let res: Response | null = null;
-      let current = target;
+      let current = link.url;
       for (let hop = 0; hop < 5; hop++) {
+        // Every address the host name has must be public, on this hop like on the first.
+        const checked = await checkHost(current.href);
+        if (!checked.ok) return EMPTY;
+        current = checked.url;
         res = await fetch(current.href, {
+          credentials: "omit",
           redirect: "manual",
           signal: controller.signal,
           headers: { "User-Agent": "Mozilla/5.0 (compatible; FoleviBot/1.0; +https://folevi.com)", Accept: "text/html,application/xhtml+xml" },
         });
         const location = res.status >= 300 && res.status < 400 ? res.headers.get("location") : null;
         if (!location) break;
-        const next = new URL(location, current);
-        if (!/^https?:$/.test(next.protocol) || isPrivateHost(next.hostname)) return EMPTY;
-        current = next;
+        void res.body?.cancel().catch(() => undefined);
+        res = null;
+        current = new URL(location, current);
       }
       if (!res || !res.ok || !/html/i.test(res.headers.get("content-type") ?? "")) return EMPTY;
       // Only the start of the page (its <head>) is needed.

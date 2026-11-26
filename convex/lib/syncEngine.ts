@@ -13,12 +13,11 @@ import {
   type SyncOp,
   type WireBlock,
   type WireDocumentCreate,
-  type WireDocumentPatch,
-} from "@folevi/editor-schema";
-import { accessAtLeast, documentAccess, documentAccessInfo, getDocumentByPublicId, membership, memberAtLeast, memberLevel, isScheduledForDeletion, DELETION_SCHEDULED_MESSAGE } from "./auth";
+  type WireDocumentPatch, isCoverAccent } from "@folevi/editor-schema";
+import { accessAtLeast, documentAccess, documentAccessInfo, getDocumentByPublicId, membership, memberAtLeast, memberLevel, isScheduledForDeletion, DELETION_SCHEDULED_MESSAGE, MAX_PAGE_DEPTH, pageChain } from "./auth";
 import { IdResolver, liveBlocks, Placement, refreshDerived, sanitizeTitle, syncTaskLabels, syncTaskProjection, toWireBlock, type DocumentSummary } from "./documents";
 import { studyKindOf, syncStudyCard } from "./study";
-import { createDocument, cloneBlocks } from "./create";
+import { createDocument, cloneBlocks, PAGE_TOO_DEEP } from "./create";
 import { builtInTemplateBlocks } from "./templates";
 import { bump } from "./metrics";
 
@@ -1058,6 +1057,9 @@ export class SyncEngine {
   private async checkedCover(cover: Doc<"documents">["cover"], scope: Scope, current?: Doc<"documents">["cover"]): Promise<Doc<"documents">["cover"]> {
     // A theme has to be published and on the plan where the note lives; a note keeps the theme it has.
     if (cover.kind === "art" && cover.value && !(current?.kind === "art" && current.value === cover.value)) await checkThemePick(this.ctx, scope, cover.value);
+    // A colour or gradient names a page accent, nothing else: the value ends up in a style attribute (also on
+    // public pages), so free text there could restyle the page it is shown on.
+    if ((cover.kind === "color" || cover.kind === "gradient") && cover.value !== undefined && !isCoverAccent(cover.value)) fail("invalid_argument", "That cover colour isn't available.");
     if (cover.kind !== "image") return cover;
     const fileId = cover.value;
     const file = fileId
@@ -1126,10 +1128,11 @@ export class SyncEngine {
         // Pages never move between Personal and a workspace (or between workspaces) by moving them.
         if (!sameScopeRows(parent, doc)) fail("invalid_argument", "A page can only be moved under a page in the same place.");
         // Reject cycles: the new parent may not be a descendant of this document.
-        let cursor: Doc<"documents"> | null = parent;
-        for (let i = 0; cursor && i < 32; i++) {
-          if (cursor._id === doc._id) fail("invalid_argument", "A page can't be moved inside itself.");
-          cursor = cursor.parentDocumentId ? await this.ctx.db.get(cursor.parentDocumentId) : null;
+        const above = await pageChain(this.ctx, parent);
+        if (above.pages.some((p) => p._id === doc._id)) fail("invalid_argument", "A page can't be moved inside itself.");
+        // Pages nest only so deep (lib/auth.ts MAX_PAGE_DEPTH): the page and the deepest page under it must fit.
+        if (parent._id !== doc.parentDocumentId && (!above.complete || above.pages.length + (await this.pagesDeep(doc, MAX_PAGE_DEPTH - above.pages.length)) > MAX_PAGE_DEPTH)) {
+          fail("invalid_argument", PAGE_TOO_DEEP);
         }
         update.parentDocumentId = parent._id;
       }
@@ -1165,6 +1168,32 @@ export class SyncEngine {
       return { opId: op.opId, status: "conflict", revision: fresh.revision, document: summary, conflict: { reason: "content", server: null, client: null } };
     }
     return { opId: op.opId, status: "applied", revision: fresh.revision, document: summary };
+  }
+
+  /**
+   * How many pages deep `doc` goes with the pages under it (1: no sub-pages), counted level by level and no
+   * further than one past `room` (enough to tell it doesn't fit).
+   */
+  private async pagesDeep(doc: Doc<"documents">, room: number): Promise<number> {
+    let level: Id<"documents">[] = [doc._id];
+    let deep = 0;
+    let read = 0;
+    while (level.length && deep <= room) {
+      deep++;
+      const next: Id<"documents">[] = [];
+      for (const id of level) {
+        // (A very wide tree stops being read here; pages past the depth pages go are refused access anyway.)
+        if (read >= 2000) break;
+        const kids = await this.ctx.db
+          .query("documents")
+          .withIndex("by_parent", (q) => q.eq("parentDocumentId", id))
+          .take(200);
+        read += kids.length;
+        for (const k of kids) next.push(k._id);
+      }
+      level = next;
+    }
+    return deep;
   }
 
   /**

@@ -16,6 +16,7 @@ mod badge;
 mod e2ee;
 mod events;
 mod http;
+mod lan_bridge;
 mod jumplist;
 mod library;
 #[cfg(target_os = "linux")]
@@ -285,7 +286,7 @@ fn page_boot(s: &Services, label: &str, path: &str) -> Value {
         "deviceName": device_name(),
         "start": if path.starts_with('/') && !path.starts_with("//") && path != "/" && path != "/index.html" { path } else { "/documents" },
         // "Your own server": the server the page talks to (its website, Convex and Convex site), or null.
-        "places": { "current": place, "background": is_runner(label), "server": s.server_of(place.as_deref()).map(|sv| sv.json()) },
+        "places": { "current": place, "background": is_runner(label), "server": s.server_of(place.as_deref()).map(|sv| lan_bridge::page_json(&sv)) },
         // The app lock's cover, from the page's first moment (no flash of notes while locked).
         "locked": is_main_label(label) && s.lock.covered(),
         "lockMethod": s.lock.method(),
@@ -2065,7 +2066,7 @@ async fn serve(app: &AppHandle, label: &str, request: &tauri::http::Request<Vec<
             let body = if ctype.starts_with("text/html") {
                 let place = s.place_of(label);
                 let mode = s.mode_of(place.as_deref());
-                let sources = s.server_of(place.as_deref()).map(|sv| server::connect_sources(&sv));
+                let sources = s.server_of(place.as_deref()).map(|sv| lan_bridge::page_sources(&sv));
                 let sign_in = place.is_none() && mode == "account";
                 let csp = protocol::shell_csp(mode, &s.service_url.origin().ascii_serialization(), &s.extra_connect, sources.as_deref(), sign_in);
                 b = b.header("content-security-policy", csp).header("cache-control", "no-store");

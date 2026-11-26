@@ -1306,6 +1306,11 @@ account button should move past iPadOS's window buttons).
   `DATABASE_UDF_USER_TIMEOUT_SECONDS=4` for that backend. Bursts show in `convex.log` as "took a long time".
 
 ## 12. Change log
+- 2026-11-25: **Windows: home servers over plain http** (branch `claude/windows-server-bridge`, on top of
+  `claude/desktop-server-places`): `src/lan_bridge.rs` relays a server place's http and ws traffic to a LAN address
+  through `127.0.0.1` (WebView2 blocks it from `https://app.localhost` as mixed content), with the server's own Host.
+  The page gets the relay for Convex and Convex site only; links keep the server's name. 5 Rust tests (requests,
+  WebSocket, 502, stable port); not yet run against a real server on a real Windows PC.
 - 2026-11-25: Mac feedback round 2: New note's even 6 px inset; one note in two joined tabs stays in the tab on
   screen (`shownId`/`pick` in `lib/app/tabs.tsx`); hovered tab's pin clear of the title; table cells wrap alike
   edited or not. Checked: typecheck, lint, unit suite (2247), WebKit probes (inset 6/6/6, pin fade 48 px). The table

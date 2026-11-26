@@ -5,7 +5,8 @@ import { createPortal } from "react-dom";
 import { Archive, ArrowLeftToLine, CircleHelp, Settings, ArrowRightToLine, CalendarDays, SquareCheckBig, ChevronLeft, ChevronRight, FileDiff, FileText, Files, Folder, Hash, House, Inbox, Layers, LayoutGrid, LayoutList, LayoutTemplate, Lock, Pin, PinOff, Plus, SquareSplitHorizontal, Share2, Trash2, Waypoints, X, XCircle } from "lucide-react";
 import { Bookmark } from "lucide-react";
 import { AppLink, useAppRouter } from "@/lib/app/router";
-import { tabHolds, tabHref, useTabs, type DocTab } from "@/lib/app/tabs";
+import { tabHolds, tabHref, tabPage, useTabs, type DocTab } from "@/lib/app/tabs";
+import { floatMenuItems } from "./floatMenu";
 import { AiIcon } from "@/components/ai/AiIcon";
 import { Button } from "@/components/ui/Button";
 import { ContextMenu } from "@/components/ui/Menu";
@@ -132,7 +133,7 @@ export function TabStrip() {
   const ipad = useIpadLayout();
   const ai = useAiAccess();
   const { route, pathname } = useAppRouter();
-  const { tabs, close, closeMany, move, setPinned, unjoin } = useTabs();
+  const { tabs, close, closeMany, move, setPinned, unjoin, shownId, pick } = useTabs();
   const { navigate } = useAppRouter();
   // Each tab's title as it is now (a tab only learns its title while its page is open, so one left before
   // its title arrived, or renamed elsewhere, would keep the old one).
@@ -161,7 +162,8 @@ export function TabStrip() {
   const [dragging, setDragging] = useState<string | null>(null);
   // The tab on screen: Home, a view's tab (by its path) or a note's tab. Keyed on this (not on the route) so the
   // strip follows once the tab itself exists: a new note's tab arrives a render after the address changes.
-  const isActive = (t: DocTab) => (t.view ? t.view.path === pathname : Boolean(docId) && tabHolds(t, docId!));
+  // A note in two tabs (two joined tabs sharing it) is on screen in one of them only: the provider's `shownId`.
+  const isActive = (t: DocTab) => (t.view ? t.view.path === pathname : Boolean(docId) && t.id === shownId && tabHolds(t, docId!));
   const activeKey = onHome ? "home" : (tabs.find(isActive)?.id ?? null);
   const order = tabs.map((t) => t.id).join("|");
 
@@ -398,6 +400,7 @@ export function TabStrip() {
   // another tab opens, the pointer hovers or the strip itself draws again).
   const rowAct = useRef<RowActs>(null!);
   rowAct.current = {
+    pick,
     pointerDown: (e, id) => {
       hidePreview();
       dragStart(e, id);
@@ -426,7 +429,7 @@ export function TabStrip() {
     <div
       ref={strip}
       data-ipad-tabs={ipad ? "" : undefined}
-      className={ipad ? "ui-liquid absolute inset-x-2 top-2 z-30 flex h-[52px] items-center gap-1 px-1.5" : `ui-drag ui-glass ui-glass-sidebar ui-tabbar absolute inset-x-1 top-1 z-30 flex h-11 items-center gap-1.5 rounded-panel px-1 ${route.name === "vault" ? "!bg-surface" : ""}`}
+      className={ipad ? "ui-liquid absolute inset-x-2 top-2 z-30 flex h-[52px] items-center gap-1 px-1.5" : `ui-drag ui-glass ui-glass-sidebar ui-tabbar absolute inset-x-1 top-1 z-30 flex h-11 items-center gap-1.5 rounded-panel pl-1 pr-1.5 ${route.name === "vault" ? "!bg-surface" : ""}`}
     >
       {/* While the sidebar is hidden, its menu waits here; otherwise it sits in the sidebar. */}
       {!sidebarOpen ? (
@@ -488,7 +491,7 @@ export function TabStrip() {
               pinned={Boolean(t.pinned)}
               panes={joined ? t.panes!.join("\u0000") : ""}
               paneNames={joined ? t.panes!.map(paneTitle).join("\u0000") : ""}
-              here={joined ? docId : null}
+              here={joined && isActive(t) ? docId : null}
               active={isActive(t)}
               dragging={dragging === t.id}
               ipad={ipad}
@@ -512,6 +515,8 @@ export function TabStrip() {
         const left = tabs.slice(0, i).filter((x) => !x.pinned).map((x) => x.id);
         const right = tabs.slice(i + 1).filter((x) => !x.pinned).map((x) => x.id);
         const joinedPanes = t.panes && t.panes.length > 1 ? t.panes.length : 0;
+        // A note's tab (not a folder's or a view's) can float; a joined tab floats the note in front.
+        const floats = t.view ? [] : floatMenuItems({ id: tabPage(t), title: joinedPanes ? "" : labelOf(t) });
         return (
           <ContextMenu
             at={tabMenu.at}
@@ -527,6 +532,7 @@ export function TabStrip() {
                     for (let g = joinedPanes - 2; g >= 0; g--) unjoin(tabMenu.id, g);
                   } }]
                 : []),
+              ...floats,
               "separator",
               { label: "Close tab", icon: <X size={14} />, disabled: Boolean(t.pinned), onSelect: () => close(tabMenu.id) },
               { label: "Close tabs to the right", icon: <ArrowRightToLine size={14} />, disabled: !right.length, onSelect: () => closeMany(right, tabMenu.id) },
@@ -571,7 +577,10 @@ export function TabStrip() {
           entries={overviewEntries}
           titles={titleMap}
           frame={overviewFrame}
-          onOpen={(href) => navigate(href)}
+          onOpen={(href, id) => {
+            if (id) pick(id);
+            navigate(href);
+          }}
           onCloseTab={(id) => close(id)}
           onNewNote={() => void createDocument({})}
           onDismiss={() => setOverview(false)}
@@ -594,7 +603,7 @@ export function TabStrip() {
       ) : (
       <>
       {folderParent !== undefined ? <NewFolderButton key={folderParent ?? "top"} parentId={folderParent} /> : null}
-      <Button size="sm" variant="primary" title={keys(inFolder ? "New note in this folder (⌘⌥N)" : "New note (⌘⌥N)")} onClick={() => void createDocument({})} className="h-9 flex-none rounded-control !pl-3">
+      <Button size="sm" variant="primary" title={keys(inFolder ? "New note in this folder (⌘⌥N)" : "New note (⌘⌥N)")} onClick={() => void createDocument({})} className="h-8 flex-none rounded-small !pl-3">
         <Plus size={14} aria-hidden /> New note
       </Button>
       </>
@@ -631,6 +640,8 @@ interface RowActs {
   setPinned: (id: string, pinned: boolean) => void;
   moveBy: (id: string, by: number) => void;
   menu: (id: string, at: { x: number; y: number }) => void;
+  /** A click on the tab (or one of its notes): this tab is the one to show, even if another tab has the note too. */
+  pick: (id: string) => void;
 }
 
 /**
@@ -694,7 +705,7 @@ const TabRow = memo(function TabRow({
         ipad
           ? // A finger closes only the open tab (a closed one's × would be too easy to hit); a pointer sees them all on hover.
             `relative grid h-7 w-7 flex-none place-items-center rounded-container text-muted outline-none transition-opacity before:absolute before:-inset-2 before:content-[''] active:bg-[var(--liquid-press)] focus-visible:opacity-100 ${active ? "opacity-100" : "pointer-events-none opacity-0 [@media(hover:hover)]:group-hover:pointer-events-auto [@media(hover:hover)]:group-hover:opacity-100"}`
-          : `${TAB_BUTTON} text-faint ${active ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`
+          : `${TAB_BUTTON} text-muted ${active ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`
       }
     >
       <X size={ipad ? 15 : 12} strokeWidth={ipad ? 2.4 : 2} aria-hidden />
@@ -706,7 +717,7 @@ const TabRow = memo(function TabRow({
       aria-label={pinned ? `Unpin ${label}` : `Pin ${label}`}
       title={pinned ? "Unpin tab" : "Pin tab"}
       onClick={() => act.current.setPinned(id, !pinned)}
-      className={`${TAB_BUTTON} ${pinned ? "text-muted" : "text-faint opacity-0 group-hover:opacity-100"}`}
+      className={`${TAB_BUTTON} ${pinned ? "text-muted" : "text-muted opacity-0 group-hover:opacity-100"}`}
     >
       {pinned ? (
         <>
@@ -762,16 +773,17 @@ const TabRow = memo(function TabRow({
       {joined ? (
         // Joined notes: one tab, a section per note (each opens the group with that note in focus).
         <span className={`flex min-w-0 flex-1 items-stretch self-stretch ${overlay ? "ui-tab-label" : ""}`}>
-          {panes.split("\u0000").map((id, i) => {
+          {panes.split("\u0000").map((page, i) => {
             const name = names[i]!;
             return (
-              <span key={id} className={`flex items-center ${pinned ? "flex-none" : "min-w-0 flex-1"}`}>
+              <span key={page} className={`flex items-center ${pinned ? "flex-none" : "min-w-0 flex-1"}`}>
                 {i > 0 ? <span aria-hidden className="mx-1 h-4 w-px flex-none bg-[color-mix(in_oklab,var(--color-heading)_18%,transparent)]" /> : null}
                 <AppLink
-                  href={`/d/${id}`}
-                  aria-current={id === here ? "page" : undefined}
+                  href={`/d/${page}`}
+                  onClick={() => act.current.pick(id)}
+                  aria-current={page === here ? "page" : undefined}
                   aria-label={`${name} (joined)`}
-                  className={`flex min-w-0 flex-1 items-center gap-1.5 rounded-chip px-0.5 outline-none hover:text-heading ${id === here ? "font-semibold text-heading" : active ? "font-normal text-muted" : ""}`}
+                  className={`flex min-w-0 flex-1 items-center gap-1.5 rounded-chip px-0.5 outline-none hover:text-heading ${page === here ? "font-semibold text-heading" : active ? "font-normal text-muted" : ""}`}
                 >
                   <FileText size={13} aria-hidden className="flex-none opacity-70" />
                   {pinned ? null : <span className="truncate">{name}</span>}
@@ -783,7 +795,7 @@ const TabRow = memo(function TabRow({
       ) : (
         // The whole tab is the link's target (a pseudo-element stretched over it), not only its words: a click on
         // the tab's padding opens it too. Pin and close sit above it.
-        <AppLink href={href} aria-current={active ? "page" : undefined} className={`flex min-w-0 flex-1 items-center gap-2 outline-none before:absolute before:inset-0 before:rounded-[inherit] before:content-[''] ${overlay ? "ui-tab-label" : ""}`} aria-label={label}>
+        <AppLink href={href} onClick={() => act.current.pick(id)} aria-current={active ? "page" : undefined} className={`flex min-w-0 flex-1 items-center gap-2 outline-none before:absolute before:inset-0 before:rounded-[inherit] before:content-[''] ${overlay ? "ui-tab-label" : ""}`} aria-label={label}>
           {viewKind ? <ViewIcon kind={viewKind} /> : <FileText size={14} aria-hidden className="flex-none opacity-70" />}
           {nested !== null ? (
             <span className="flex min-w-0 items-center gap-1">

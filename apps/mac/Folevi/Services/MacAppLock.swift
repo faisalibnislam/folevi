@@ -249,7 +249,7 @@ final class MacAppLock {
             c.view.removeFromSuperview()
             // The keyboard goes back to what had it before the lock, if that is still on screen. Otherwise to
             // the window's page.
-            let page = WindowManager.shared.mains.first { $0.window === c.window }?.view
+            let page = WindowManager.shared.mains.first { $0.window === c.window }?.view ?? FloatWindows.shared.open.values.first { $0.window === c.window }?.view
             if let view = keyboards[id]?.responder as? NSView, view.window === c.window, !view.isHiddenOrHasHiddenAncestor {
                 c.window.makeFirstResponder(view)
             } else if let page {
@@ -262,7 +262,8 @@ final class MacAppLock {
 
     private func attachAll() {
         guard up else { return }
-        let windows = WindowManager.shared.mains.compactMap(\.window)
+        // The main windows and every floating note's panel (Chrome/FloatWindows.swift).
+        let windows = WindowManager.shared.mains.compactMap(\.window) + FloatWindows.shared.open.values.compactMap(\.window)
         for window in windows {
             guard let content = window.contentView else { continue }
             if let c = covers[ObjectIdentifier(window)], c.view.superview === content {

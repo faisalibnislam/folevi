@@ -95,6 +95,8 @@ describe("registering the device", () => {
     ["iPad", { foleviShell: { platform: "ios", deviceFamily: "iPad" } }, "Folevi for iPad", "ios"],
     ["Android", { foleviShell: { platform: "android", deviceName: "Pixel 9" } }, "Folevi for Android on Pixel 9", "android"],
     ["Mac", { foleviDesktop: { platform: "mac" } }, "Folevi for Mac", "mac"],
+    ["Windows", { foleviShell: { platform: "windows", deviceName: "Desk PC" }, foleviDesktop: { platform: "windows" } }, "Folevi for Windows on Desk PC", "windows"],
+    ["Linux", { foleviShell: { platform: "linux" }, foleviDesktop: { platform: "linux" } }, "Folevi for Linux", "linux"],
   ] as const) {
     test(`${name}: an app device with the app's keys, label and platform; a passkey isn't offered`, async () => {
       const bridge = await fakeBridge(`${platform}-device`);
@@ -116,7 +118,7 @@ describe("registering the device", () => {
       await startKeySession({ server: fake.as("p1"), profileId: "p1", store: memoryKeyStore(), reload: () => undefined });
       expect(sessionImpl().state()).toBe("unlocked");
       await new Promise((r) => setTimeout(r, 0));
-      expect(sessionImpl().methods.find((m) => m.kind === "device")?.label).toBe(name === "Android" ? "This phone" : `This ${name}`);
+      expect(sessionImpl().methods.find((m) => m.kind === "device")?.label).toBe(({ Android: "This phone", Windows: "This PC", Linux: "This computer" } as Record<string, string>)[name] ?? `This ${name}`);
     });
   }
 });
@@ -141,6 +143,8 @@ describe("the unlock screen", () => {
     ["iPhone", { foleviShell: { platform: "ios", deviceFamily: "iPhone" } }, "this iPhone"],
     ["iPad", { foleviShell: { platform: "ios", deviceFamily: "iPad" } }, "this iPad"],
     ["Android", { foleviShell: { platform: "android" } }, "this phone"],
+    ["Windows", { foleviShell: { platform: "windows" } }, "this PC"],
+    ["Linux", { foleviShell: { platform: "linux" } }, "this computer"],
   ] as const) {
     test(`${name}: no passkey; it says to approve ${device} from a browser`, async () => {
       as(globals);

@@ -391,12 +391,14 @@ var foleviShellBridge = function (SHELL, host) {
         // "Your own server": the app checks the address and the server's /.well-known/folevi.json itself, then
         // opens that server's sign-in (the page loads again). `info` is the page's copy, not trusted. Rejects with
         // { code: "bad_address" | "unreachable" | "not_folevi" | "folevi_cloud" | "server_outdated" | "app_outdated" | "needs_setup" }.
-        addServerPlace: function (o) {
+        // Hosts without it (host.serverPlaces === false) leave it out, and the
+        // page offers no "Your own server" in the app.
+        addServerPlace: host.serverPlaces === false ? undefined : function (o) {
           var origin = o && typeof o.origin === "string" ? o.origin : "";
           return shellCall("placesAddServer", { origin: origin }, "Error").then(value);
         },
         // Folevi servers on the home network (Bonjour): [{ name, origin, serverId, version }].
-        listLocalServers: function () {
+        listLocalServers: host.serverPlaces === false ? undefined : function () {
           return shellCall("placesLocalServers", {}, "Error").then(function (r) {
             return r && Array.isArray(r.servers) ? r.servers : [];
           });

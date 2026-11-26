@@ -409,6 +409,21 @@
     closeWindow: function () {
       void desktop("closeWindow").catch(function () {});
     },
+    // "Float this note" (lib.rs create_float): a note in a small window of its own, on top of other apps, or its
+    // window brought forward; and that window's pin (null outside a floating note's window).
+    floatNote: function (note) {
+      void desktop("floatNote", { id: String((note && note.id) || ""), title: String((note && note.title) || "") }).catch(function () {});
+    },
+    floatOnTop: function (on) {
+      return desktop("floatOnTop", typeof on === "boolean" ? { on: on } : {}).then(
+        function (v) {
+          return typeof v === "boolean" ? v : null;
+        },
+        function () {
+          return null;
+        },
+      );
+    },
     commandDone: function (id, value) {
       var a = answers[String(id)];
       if (a) a(value && typeof value === "object" ? value : {});
@@ -548,7 +563,8 @@
   // Mac's -webkit-app-region; here a press there starts the system's own window move, and a double-click maximizes.
   var INTERACTIVE = "a,button,input,textarea,select,label,[role=button],[role=tab],[role=combobox],[role=menuitem],[tabindex],[contenteditable],[popover],dialog,.ui-pop,[role=menu],[role=listbox],[role=dialog],folevi-captions";
   var dragArea = function (e) {
-    if (e.button !== 0 || BOOT.window !== "main") return false;
+    // (A floating note's window moves by its slim bar too: apps/web components/app/FloatNote.tsx.)
+    if (e.button !== 0 || (BOOT.window !== "main" && BOOT.window !== "float")) return false;
     var t = e.target;
     if (!(t instanceof Element)) return false;
     if (t.closest(INTERACTIVE)) return false;
@@ -562,8 +578,9 @@
     function (e) {
       if (!dragArea(e)) return;
       e.preventDefault();
-      if (e.detail === 2) void desktop("toggleMaximize");
-      else void desktop("drag");
+      if (e.detail === 2) {
+        if (BOOT.window === "main") void desktop("toggleMaximize");
+      } else void desktop("drag");
     },
     true,
   );

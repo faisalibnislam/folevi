@@ -13,7 +13,7 @@ private func C(_ pair: ColorPair, _ scheme: ColorScheme) -> Color { pair.resolve
 
 /// The web's Settings sections (SettingsView.tsx `Section`).
 public enum PhoneSettingsSection: String, CaseIterable, Sendable {
-    case account, ai, billing, security, privacy, devices, connectedApps = "connected-apps", appearance, notifications, sync, library, data, desktop
+    case account, ai, billing, security, privacy, devices, connectedApps = "connected-apps", appearance, writing, notifications, sync, library, data, desktop
     case thisDevice = "this-device"
     case about
     case workspace, members, workspacePrivacy = "workspace-privacy", workspaceGuests = "workspace-guests", workspaceBilling = "workspace-billing", workspaceData = "workspace-data"
@@ -28,6 +28,7 @@ public enum PhoneSettingsSection: String, CaseIterable, Sendable {
         case .devices: "Signed-in devices"
         case .connectedApps: "Connected apps"
         case .appearance: "Appearance"
+        case .writing: "Writing"
         case .notifications: "Notifications"
         case .sync: "Offline & sync"
         case .library: "Library"
@@ -54,6 +55,7 @@ public enum PhoneSettingsSection: String, CaseIterable, Sendable {
         case .devices: "sessions iphone mac signed in"
         case .connectedApps: "integrations api tokens webhooks mcp"
         case .appearance: "theme dark light system mode editor text size zoom"
+        case .writing: "spell check spelling spellcheck autocorrect typos prediction autocomplete next word language english british american dictionary ignore"
         case .notifications: "push email digest reminders"
         case .sync: "offline device copy storage sync"
         case .library: "folder icloud location passphrase encryption lock app lock face id touch id passcode health move"
@@ -90,6 +92,7 @@ public enum PhoneSettingsSection: String, CaseIterable, Sendable {
         case .devices: .monitorSmartphone
         case .connectedApps: .plug
         case .appearance: .palette
+        case .writing: .spellCheck2
         case .notifications: .bell
         case .sync: .refreshCw
         case .library: .libraryBig
@@ -172,8 +175,8 @@ public struct PhoneSettingsList: View {
         // (The owner, 2026-11-20: named for what they hold, and kept together. App lock sits with Security; a library
         // on this iPhone has its lock in Library already, so it isn't listed twice.)
         let you: [PhoneSettingsSection] = model.isLocal
-            ? [.library, .ai, .appearance, .data]
-            : [.account, .ai, .billing, .security, .thisDevice, .privacy, .devices, .connectedApps, .appearance, .notifications, .sync, .data]
+            ? [.library, .ai, .appearance, .writing, .data]
+            : [.account, .ai, .billing, .security, .thisDevice, .privacy, .devices, .connectedApps, .appearance, .writing, .notifications, .sync, .data]
         var out: [(String, [PhoneSettingsSection])] = [("You", you)]
         if let w = model.workspace, !model.isLocal {
             var items: [PhoneSettingsSection] = [.workspace, .members, .workspacePrivacy]
@@ -260,6 +263,7 @@ public struct PhoneSettingsSectionView: View {
         case "library-lock-after", "lock-after": return "Ask again"
         case "theme": return "Theme"
         case "editor-text-size": return "Editor text size"
+        case "spelling-english": return "English"
         case "ai-provider": return "Provider"
         case "ai-model": return "Model"
         case "import-results": return "Import results"
@@ -277,6 +281,7 @@ public struct PhoneSettingsSectionView: View {
             case .ai:
                 if model.isLocal { PhoneLocalAi(model: model, screen: screen) } else { PhoneAccountSettings(model: model, host: host, section: section, screen: screen) }
             case .appearance: PhoneAppearanceSettings(model: model, screen: screen)
+            case .writing: PhoneWritingSettings(model: model, screen: screen)
             case .data, .workspaceData: PhoneDataSettings(model: model, workspace: section == .workspaceData ? model.workspace : nil, screen: screen)
             case .thisDevice: PhoneThisDeviceSettings(model: model, host: host, screen: screen)
             case .about: PhoneAboutSettings(model: model, host: host)

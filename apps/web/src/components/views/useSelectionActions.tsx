@@ -208,9 +208,9 @@ export function useSelectionActions({ entries, trash = false, clear }: { entries
       {copying ? <CopyToDialog open onClose={() => setCopying(null)} documentIds={copying.ids} noteTitle={copying.title} /> : null}
       {coloring ? <FolderColorDialog open onClose={() => setColoring(null)} folders={coloring} /> : null}
       {tagging ? (
-        <Dialog open onClose={() => setTagging(null)} title="Add tag" description={`Pick a tag for ${selectionNoun(tagging.length, 0)}.`} size="sm">
+        <Dialog open onClose={() => setTagging(null)} title="Add tag" description={`Pick a tag for ${selectionNoun(tagging.length, 0)}.`} size="sm" fit>
           {tags.length ? (
-            <ul role="list" aria-label="Tags" className="max-h-[min(360px,50dvh)] space-y-0.5 overflow-y-auto">
+            <ul role="list" aria-label="Tags" className="max-h-[min(360px,50dvh)] min-h-0 space-y-0.5 overflow-y-auto">
               {tags.map((t) => (
                 <li key={t.id}>
                   <button

@@ -1332,6 +1332,15 @@ account button should move past iPadOS's window buttons).
   `DATABASE_UDF_USER_TIMEOUT_SECONDS=4` for that backend. Bursts show in `convex.log` as "took a long time".
 
 ## 12. Change log
+- 2026-11-26: **Window polish** (owner's feedback): Home stays in the tab strip before the tab arrows, never scrolled
+  away (TabStrip.tsx; tests now find it by `[data-tab-home]`); pickers in a dialog (Move to folder, Move page, Add
+  tag, Link a page) fit a short window: Dialog's new `fit` makes the body a column and the list (`min-h-0`) the one
+  thing that scrolls, so its last row is never cut off; version history's top bar keeps room for the window buttons
+  (`ui-window-bar`: a `ui-traffic-space` for the Mac, which DesktopBridge now prefers inside an open dialog, and
+  `--win-caption-inset` on Windows). Checked: `e2e/window-polish-local.spec.ts` in Chromium and WebKit (fails
+  without the Dialog fix). Not checked: version history in a build (local mode has none, so its step is skipped
+  there); other full-window screens (onboarding, locked library, E2EE gate) not yet audited for the window buttons;
+  AiGenerateDialog's and MovePlacesDialog's inner scroll areas left as they were.
 - 2026-11-26: **Float this note, edge to edge** (owner's feedback on 1.7.78): the note's colour reaches every edge
   of the floating window (no white at the sides, under the bar or at the foot) and the bar wears the note's colour
   and ink (FloatNote reads them off the page). One web change covers the Mac, Windows and Linux windows and Chrome's

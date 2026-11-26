@@ -450,6 +450,20 @@ export function TabStrip() {
       </button>
       {ipad ? null : <span aria-hidden className="h-5 w-px flex-none bg-black/10" />}
 
+      <AppLink
+        href="/documents"
+        aria-current={onHome ? "page" : undefined}
+        data-tab-home=""
+        data-ipad-tab={ipad ? "" : undefined}
+        // Just the house, always there and never scrolled away: it sits before the tab arrows, outside the
+        // scrolling tabs (the owner, 2026-11-26). Its name is in the tooltip.
+        aria-label="Home"
+        title={ipad ? undefined : "Home"}
+        className={`${tabBase} flex-none ${ipad ? "" : "w-9 justify-center !px-0"} ${onHome ? tabOn : tabOff}`}
+      >
+        <House size={ipad ? 17 : 15} aria-hidden className="flex-none" />
+        {ipad ? <span>Home</span> : null}
+      </AppLink>
       {/* (A finger scrolls the strip on the iPad: no arrows.) */}
       {!ipad && (overflow.start || overflow.end) ? (
         <button type="button" aria-label="Scroll tabs left" disabled={!overflow.start} onClick={() => scrollTabs(-1)} className={`${ARROW} disabled:opacity-30`}>
@@ -463,19 +477,6 @@ export function TabStrip() {
         style={{ maskImage: mask, WebkitMaskImage: mask }}
         className="flex min-w-0 flex-initial items-center gap-1.5 overflow-x-auto px-1 py-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       >
-        <AppLink
-          href="/documents"
-          aria-current={onHome ? "page" : undefined}
-          data-tab-home=""
-          data-ipad-tab={ipad ? "" : undefined}
-          // Just the house: Home is the first tab and always there (its name in the tooltip).
-          aria-label="Home"
-          title={ipad ? undefined : "Home"}
-          className={`${tabBase} flex-none ${ipad ? "" : "w-9 justify-center !px-0"} ${onHome ? tabOn : tabOff}`}
-        >
-          <House size={ipad ? 17 : 15} aria-hidden className="flex-none" />
-          {ipad ? <span>Home</span> : null}
-        </AppLink>
         {tabs.map((t) => {
           const label = labelOf(t);
           const joined = Boolean(t.panes && t.panes.length > 1);

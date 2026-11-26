@@ -30,7 +30,7 @@ test.describe("folder tabs", { tag: "@local" }, () => {
     await expect(tabs).toHaveCount(before + 1);
 
     // From Home, the folder tab is reused; Home stays.
-    await strip.getByRole("link", { name: "Home" }).click();
+    await page.locator("[data-tab-home]").click();
     await expect(page).toHaveURL(/\/documents/);
     await folderLink(page, "Plums").click();
     await expect(strip.getByRole("link", { name: "Plums" })).toBeVisible();

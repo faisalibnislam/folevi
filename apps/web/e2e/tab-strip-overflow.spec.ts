@@ -13,6 +13,9 @@ async function current(page: Page) {
   return page.evaluate(() => {
     const nav = document.querySelector<HTMLElement>('nav[aria-label="Open pages"]');
     if (!nav) return null;
+    // Home sits before the scrolling tabs, always in view (the owner, 2026-11-26).
+    const home = document.querySelector<HTMLElement>('[data-tab-home][aria-current="page"]');
+    if (home) return { name: "Home", inside: true, clearOfEdges: true, clearOfEnd: true, width: home.getBoundingClientRect().width, truncated: false, current: "page" };
     const link = nav.querySelector<HTMLElement>('[aria-current="page"]');
     if (!link) return null;
     const tab = link.closest<HTMLElement>("[data-tab]") ?? link;
@@ -171,7 +174,8 @@ test("⌃Tab and ⌃⇧Tab in the Mac app walk the whole strip with the open tab
   });
   await page.reload();
   await expectInView(page, "Mac 14", "after reload");
-  const total = await strip(page).getByRole("link").count();
+  // Home and every tab.
+  const total = (await strip(page).getByRole("link").count()) + 1;
   for (const scheme of ["light", "dark"] as const) {
     await page.emulateMedia({ colorScheme: scheme });
     // Forward around the whole strip (Home, then every tab), and back again.

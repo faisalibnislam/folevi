@@ -205,7 +205,8 @@ function HistoryView({ onClose, documentId, title, style, cover, initialVersion 
       className="fixed inset-0 m-0 h-dvh max-h-none w-screen max-w-none bg-canvas p-0 text-ink backdrop:bg-transparent"
     >
       <div className="flex h-full flex-col">
-        <header className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-line px-3 py-2.5 sm:px-4">
+        <header className="ui-window-bar ui-drag flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-line px-3 py-2.5 sm:px-4">
+          <span aria-hidden className="ui-traffic-space" />
           <IconButton label="Back to the note" onClick={onClose}>
             <ArrowLeft size={18} aria-hidden />
           </IconButton>

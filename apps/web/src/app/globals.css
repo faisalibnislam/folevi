@@ -304,7 +304,7 @@
 /* A screen that covers the whole window (version history, ...) has its own top bar, `ui-window-bar`: on the Mac it
    starts with a `ui-traffic-space` (the window buttons move there while it's open, DesktopBridge), and on Windows it
    ends before the caption buttons, so neither ever sits on its title or its controls. */
-:root[data-desktop="windows"] .ui-window-bar { padding-right: calc(var(--win-caption-inset, 138px) + 4px); }
+:root[data-desktop="windows"] .ui-window-bar { padding-right: calc(var(--win-caption-inset, 136px) + 4px); }
 :root[data-desktop="windows"] .ui-tabbar { right: var(--win-caption-inset, max(4px, calc(100vw - env(titlebar-area-x, 0px) - env(titlebar-area-width, 100vw) - 2px))); }
 /* Windows' own font, as the native Mac app uses the Mac's (the owner's system font rule): Segoe UI Variable on
    Windows 11, Segoe UI on Windows 10. Titles keep Folevi's display face. */

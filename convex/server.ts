@@ -74,6 +74,14 @@ export const info = query({
   },
 });
 
+/** Whether `token` is the setup code folevid printed (its SHA-256 is FOLEVI_SETUP_TOKEN_HASH). */
+async function isSetupToken(raw: string | undefined): Promise<boolean> {
+  const expected = (process.env.FOLEVI_SETUP_TOKEN_HASH ?? "").trim().toLowerCase();
+  const token = (raw ?? "").trim();
+  if (!/^[0-9a-f]{64}$/.test(expected) || !token || token.length > 500) return false;
+  return timingSafeEqualHex(await sha256Hex(token), expected);
+}
+
 /**
  * Makes the signed-in person the server's Owner, once: only while the server has none, and only with the setup
  * code folevid printed (its SHA-256 is FOLEVI_SETUP_TOKEN_HASH). Audited.
@@ -86,8 +94,7 @@ export const claimOwner = mutation({
     await consume(ctx, "bootstrap", `server-claim:${profile._id}`);
     const expected = (process.env.FOLEVI_SETUP_TOKEN_HASH ?? "").trim().toLowerCase();
     if (!/^[0-9a-f]{64}$/.test(expected)) fail("forbidden", "This server has no setup code. Restart Folevi Server to make one.");
-    const token = args.setupToken.trim();
-    if (!token || token.length > 500 || !timingSafeEqualHex(await sha256Hex(token), expected)) fail("forbidden", "That setup code isn't right.");
+    if (!(await isSetupToken(args.setupToken))) fail("forbidden", "That setup code isn't right.");
     const settings = await readServerSettings(ctx);
     const owner = await serverOwner(ctx, settings);
     if (owner) {
@@ -129,7 +136,12 @@ export const signUpGate = internalQuery({
     const s = await readServerSettings(ctx);
     const emailOn = emailConfigured(s);
     // The first account is the owner's (the setup page creates it, then claims the server with the setup code).
-    if (!(await serverOwner(ctx, s))) return { allowed: true, emailOn, invite: false };
+    // Until then only someone holding the setup link may create an account (the page sends its code along
+    // with the sign-up): a stranger who finds a new server first can't leave accounts on it.
+    if (!(await serverOwner(ctx, s))) {
+      if (await isSetupToken(args.inviteToken)) return { allowed: true, emailOn, invite: false };
+      return { allowed: false, code: "SETUP_REQUIRED", message: "This server isn't set up yet. Open the setup link your server shows to create its first account.", emailOn, invite: false };
+    }
     const email = args.email.trim().toLowerCase();
     if (args.inviteToken) {
       const invite = await findInvite(ctx, args.inviteToken);

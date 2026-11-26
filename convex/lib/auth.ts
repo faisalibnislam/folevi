@@ -313,27 +313,80 @@ export async function requireRowScope(ctx: Ctx, profile: Doc<"profiles">, row: S
 }
 
 /**
- * The highest page grant `profile` holds on `doc` or any of its ancestors (grants are inherited), whether a
- * page on the way is restricted, and the page's home folder (its own, or its top-level page's: nested pages
- * live where their top-level note does).
+ * Pages nest at most this deep: a page, its parent and so on up to a top-level page. Creating or moving a
+ * page deeper is refused (lib/create.ts, lib/syncEngine.ts), and every walk up a page's ancestors reads at
+ * most this many pages.
  */
-async function inheritedGrant(ctx: Ctx, profile: Doc<"profiles">, doc: Doc<"documents">): Promise<{ grant: Access; restricted: boolean; homeFolderId: Id<"folders"> | undefined }> {
-  let restricted = false;
-  let grant: Access = "none";
+export const MAX_PAGE_DEPTH = 32;
+
+/** A page and the pages above it, as access decisions read them. */
+export interface PageChain {
+  /** The page first, then its parent, up to the top-level page. */
+  pages: Doc<"documents">[];
+  /**
+   * The walk reached a top-level page. False for a page nested deeper than MAX_PAGE_DEPTH (older data, or a
+   * loop): what's above it is unknown, so callers treat it as restricted with no grant.
+   */
+  complete: boolean;
+  /** Where in `pages` the restricted page nearest the top is (-1: none of them is restricted). */
+  restrictedAt: number;
+  /** The page's home folder (its own, or its top-level page's: nested pages live where their top-level note does). */
+  homeFolderId: Id<"folders"> | undefined;
+}
+
+/** Reads a page's ancestors once (every access walk goes through here, so they all agree). */
+export async function pageChain(ctx: Ctx, doc: Doc<"documents">): Promise<PageChain> {
+  const pages: Doc<"documents">[] = [];
+  let restrictedAt = -1;
   let homeFolderId: Id<"folders"> | undefined;
   let cursor: Doc<"documents"> | null = doc;
-  for (let depth = 0; cursor && depth < 12; depth++) {
-    if (cursor.accessMode === "restricted") restricted = true;
-    if (homeFolderId === undefined && cursor.folderId !== undefined) homeFolderId = cursor.folderId;
+  for (let depth = 0; cursor && depth < MAX_PAGE_DEPTH; depth++) {
     const current: Doc<"documents"> = cursor;
-    const permission = await ctx.db
-      .query("documentPermissions")
-      .withIndex("by_document_profile", (q) => q.eq("documentId", current._id).eq("profileId", profile._id))
-      .unique();
-    if (permission) grant = maxAccess(grant, roleToAccess(permission.role));
+    if (current.accessMode === "restricted") restrictedAt = pages.length;
+    if (homeFolderId === undefined && current.folderId !== undefined) homeFolderId = current.folderId;
+    pages.push(current);
     cursor = current.parentDocumentId ? await ctx.db.get(current.parentDocumentId) : null;
   }
-  return { grant, restricted, homeFolderId };
+  return { pages, complete: cursor === null, restrictedAt, homeFolderId };
+}
+
+/**
+ * The pages of a chain whose grants reach the page at its start. With no restricted page: all of them (grants
+ * are inherited). With one: the page, the pages between, and the restricted page nearest the top, never a page
+ * above that one. A grant on an open page says nothing about a page someone restricted inside it: only the
+ * people invited to the restriction (on it, or on a page inside it) get in. None when the walk didn't finish.
+ */
+export function pagesGranting(chain: PageChain): Doc<"documents">[] {
+  if (!chain.complete) return [];
+  return chain.restrictedAt >= 0 ? chain.pages.slice(0, chain.restrictedAt + 1) : chain.pages;
+}
+
+/** Who made the restricted page nearest the top of a chain (they manage it and what's under it). */
+function restrictionMaker(chain: PageChain): Id<"profiles"> | undefined {
+  return chain.complete && chain.restrictedAt >= 0 ? chain.pages[chain.restrictedAt]!.createdBy : undefined;
+}
+
+/**
+ * The highest page grant `profile` holds on `doc` or a page above it that reaches it (pagesGranting), whether
+ * a page on the way is restricted, who made that restriction, and the page's home folder.
+ */
+async function inheritedGrant(
+  ctx: Ctx,
+  profile: Doc<"profiles">,
+  doc: Doc<"documents">,
+): Promise<{ grant: Access; restricted: boolean; restrictedBy: Id<"profiles"> | undefined; homeFolderId: Id<"folders"> | undefined }> {
+  const chain = await pageChain(ctx, doc);
+  // Nested deeper than pages go: fail closed (restricted, no grant, no folder).
+  if (!chain.complete) return { grant: "none", restricted: true, restrictedBy: undefined, homeFolderId: undefined };
+  let grant: Access = "none";
+  for (const page of pagesGranting(chain)) {
+    const permission = await ctx.db
+      .query("documentPermissions")
+      .withIndex("by_document_profile", (q) => q.eq("documentId", page._id).eq("profileId", profile._id))
+      .unique();
+    if (permission) grant = maxAccess(grant, roleToAccess(permission.role));
+  }
+  return { grant, restricted: chain.restrictedAt >= 0, restrictedBy: restrictionMaker(chain), homeFolderId: chain.homeFolderId };
 }
 
 // ---------------------------------------------------------------- folder grants (docs/SHARING.md)
@@ -450,8 +503,9 @@ export async function folderAccessInfo(ctx: Ctx, profile: Doc<"profiles">, folde
  * - Personal: the owner manages everything in it; anyone else only through a page grant on the page or
  *   an ancestor (a guest). Personal has no members.
  * - workspace-mode documents: the member's workspace role, raised by any explicit grant;
- * - restricted documents (or descendants of one): owners/admins and the creator manage, everyone else
- *   needs an explicit grant on the document or an ancestor.
+ * - restricted documents (or descendants of one): owners/admins and whoever made the restricted page
+ *   manage; everyone else needs an explicit grant on the restricted page or a page inside it (a grant on
+ *   an open page above the restriction doesn't reach in, see pagesGranting).
  */
 export async function documentAccess(ctx: Ctx, profile: Doc<"profiles">, doc: Doc<"documents">): Promise<Access> {
   return (await documentAccessInfo(ctx, profile, doc)).access;
@@ -504,13 +558,15 @@ async function directAccessInfo(ctx: Ctx, profile: Doc<"profiles">, doc: Doc<"do
   if (!workspace || workspace.status === "deleting") return noAccess();
   const member = await membership(ctx, profile._id, workspace._id);
   if (isScheduledForDeletion(workspace)) return scheduledVerdict(member);
-  const { grant, restricted, homeFolderId } = await inheritedGrant(ctx, profile, doc);
+  const { grant, restricted, restrictedBy, homeFolderId } = await inheritedGrant(ctx, profile, doc);
   // A synced block's content isn't open to every member: they see it through the notes showing it (above).
   const closed = restricted || doc.kind === "synced";
+  // Who manages what's closed besides owners and admins: whoever made the restriction, or the synced content.
+  const closedBy = restricted ? restrictedBy : doc.kind === "synced" ? doc.createdBy : undefined;
   // A folder grant reaches the notes in the folder, never a restricted page (only its own invitations open
   // that), and is read only when it could raise what they have.
   const viaFolder = !closed && folderGrantCouldRaise(member, grant) ? await folderGrantOf(ctx, profile._id, doc, homeFolderId) : "none";
-  return workspaceVerdict(profile._id, doc, workspace, member, maxAccess(grant, viaFolder), closed);
+  return workspaceVerdict(profile._id, workspace, member, maxAccess(grant, viaFolder), closed, closedBy);
 }
 
 /** Whether a folder grant (at most "write") could raise a workspace member's or guest's access. */
@@ -540,14 +596,19 @@ function scheduledVerdict(member: Doc<"workspaceMembers"> | null): DocumentAcces
   return member && memberLevel(member) === "owner" ? { access: "read", inScope: true, member, restricted: false } : noAccess();
 }
 
-/** A page of a live workspace, from the person's membership (if any) and their inherited grant. */
+/**
+ * A page of a live workspace, from the person's membership (if any) and their inherited grant. `closedBy` is
+ * who made the restriction the page is under (the restricted page nearest the top), or synced content: while
+ * they're a member they manage it and what's under it. Having made a page under someone else's restriction
+ * gives nothing: there the grant decides, so a person taken off a restricted page loses its sub-pages too.
+ */
 function workspaceVerdict(
   profileId: Id<"profiles">,
-  doc: Doc<"documents">,
   workspace: Doc<"workspaces">,
   member: Doc<"workspaceMembers"> | null,
   grant: Access,
   restricted: boolean,
+  closedBy: Id<"profiles"> | undefined,
 ): DocumentAccessInfo {
   const level = member ? memberLevel(member) : null;
   const info = { inScope: member !== null, member, restricted };
@@ -556,7 +617,7 @@ function workspaceVerdict(
   }
   if (level === "owner" || level === "admin") return { ...info, access: "manage" };
   if (restricted) {
-    if (doc.createdBy === profileId && member) return { ...info, access: "manage" };
+    if (closedBy === profileId && member) return { ...info, access: "manage" };
     return { ...info, access: grant };
   }
   const base: Access = member ? memberToAccess(member) : "none";
@@ -575,27 +636,25 @@ export class PageAudience {
     private doc: Doc<"documents">,
     private grants: Map<string, Access>,
     private restricted: boolean,
+    private restrictedBy: Id<"profiles"> | undefined,
     private owner: Doc<"profiles"> | null,
     private workspace: Doc<"workspaces"> | null,
   ) {}
 
   static async load(ctx: Ctx, doc: Doc<"documents">): Promise<PageAudience> {
-    // The same walk as inheritedGrant, with every grant on each page instead of one person's.
+    // The same walk as inheritedGrant, with every grant on each page that reaches this one instead of one person's.
     const grants = new Map<string, Access>();
-    let restricted = false;
-    let homeFolderId: Id<"folders"> | undefined;
-    let cursor: Doc<"documents"> | null = doc;
-    for (let depth = 0; cursor && depth < 12; depth++) {
-      if (cursor.accessMode === "restricted") restricted = true;
-      if (homeFolderId === undefined && cursor.folderId !== undefined) homeFolderId = cursor.folderId;
-      const current: Doc<"documents"> = cursor;
+    const chain = await pageChain(ctx, doc);
+    // (A walk that didn't finish reads as restricted with no grants, as in inheritedGrant.)
+    const restricted = !chain.complete || chain.restrictedAt >= 0;
+    const homeFolderId = chain.complete ? chain.homeFolderId : undefined;
+    for (const page of pagesGranting(chain)) {
       for (const g of await ctx.db
         .query("documentPermissions")
-        .withIndex("by_document", (q) => q.eq("documentId", current._id))
+        .withIndex("by_document", (q) => q.eq("documentId", page._id))
         .collect()) {
         grants.set(g.profileId, maxAccess(grants.get(g.profileId) ?? "none", roleToAccess(g.role)));
       }
-      cursor = current.parentDocumentId ? await ctx.db.get(current.parentDocumentId) : null;
     }
     const scope = hasValidScope(doc) ? scopeOfRow(doc) : null;
     // Folder grants on its home folder and the folders above it (never on a restricted or encrypted note).
@@ -611,10 +670,10 @@ export class PageAudience {
     }
     const owner = scope?.kind === "personal" ? await ctx.db.get(scope.profileId) : null;
     const workspace = scope?.kind === "workspace" ? await ctx.db.get(scope.workspaceId) : null;
-    return new PageAudience(ctx, doc, grants, restricted, owner, workspace);
+    return new PageAudience(ctx, doc, grants, restricted, restrictionMaker(chain), owner, workspace);
   }
 
-  /** Everyone holding a grant on the page or a page above it (nearest page first). */
+  /** Everyone holding a grant that reaches the page: on it, or on a page above it (see pagesGranting). */
   get grantHolders(): Id<"profiles">[] {
     return [...this.grants.keys()] as Id<"profiles">[];
   }
@@ -642,7 +701,7 @@ export class PageAudience {
       this.members.set(profileId, member);
     }
     if (isScheduledForDeletion(workspace)) return scheduledVerdict(member).access;
-    return workspaceVerdict(profileId, doc, workspace, member, grant, this.restricted).access;
+    return workspaceVerdict(profileId, workspace, member, grant, this.restricted, this.restrictedBy).access;
   }
 }
 
@@ -719,25 +778,32 @@ export class PageReader {
     return this.docs.get(id) ?? null;
   }
 
-  /** The page or a page above it is restricted to invited people. */
+  /**
+   * The page or a page above it is restricted to invited people. A page nested deeper than pages go
+   * (MAX_PAGE_DEPTH) counts as restricted: documentAccess decides it, and refuses.
+   */
   private async underRestriction(doc: Doc<"documents">): Promise<boolean> {
     const chain: string[] = [];
     let found = false;
+    let settled = false;
     let cursor: Doc<"documents"> | null = doc;
-    for (let depth = 0; cursor && depth < 12; depth++) {
+    for (let depth = 0; cursor && depth < MAX_PAGE_DEPTH; depth++) {
       const known = this.restricted.get(cursor._id);
       if (known !== undefined) {
         found = known;
+        settled = true;
         break;
       }
       chain.push(cursor._id);
       // A synced block's content counts as restricted: documentAccess decides it (through its notes).
       if (cursor.accessMode === "restricted" || cursor.kind === "synced") {
         found = true;
+        settled = true;
         break;
       }
       cursor = cursor.parentDocumentId ? await this.get(cursor.parentDocumentId) : null;
     }
+    if (!settled && cursor !== null) found = true;
     // Everything walked sits under the same verdict (a restricted page marks itself and those below it).
     for (const id of chain) this.restricted.set(id, found);
     return found;

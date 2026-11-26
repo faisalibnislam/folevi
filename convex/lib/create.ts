@@ -9,7 +9,8 @@ import { nextSeq } from "./seq";
 import { insertScoped, type Scope } from "./scope";
 import { queueIndex } from "./ai/indexing";
 import { emitWebhook } from "./webhooks";
-import { indexSyncedBlocks } from "./synced";
+import { indexSyncedBlocks, referableBlocks } from "./synced";
+import { MAX_PAGE_DEPTH, pageChain } from "./auth";
 
 // The authoring format and block copies are shared with the local backend (packages/editor-schema content.ts).
 export { cloneBlocks, specsToWireBlocks, type BlockSpec };
@@ -49,6 +50,8 @@ export interface CreateDocumentInput {
   };
 }
 
+export const PAGE_TOO_DEEP = "Pages can't be nested any deeper than this.";
+
 export async function createDocument(ctx: MutationCtx, input: CreateDocumentInput): Promise<Doc<"documents">> {
   const now = Date.now();
   const scope = input.scope;
@@ -59,8 +62,15 @@ export async function createDocument(ctx: MutationCtx, input: CreateDocumentInpu
     .withIndex("by_public_id", (q) => q.eq("publicId", publicId))
     .unique();
   if (existing) fail("conflict", "Document already exists.");
-  const blocks = input.blocks ?? [];
+  // Pages nest only so deep (every walk up a page's ancestors is bounded by it, lib/auth.ts pageChain).
+  if (input.parentDocumentId) {
+    const parent = await ctx.db.get(input.parentDocumentId);
+    const above = parent ? await pageChain(ctx, parent) : null;
+    if (above && (!above.complete || above.pages.length >= MAX_PAGE_DEPTH)) fail("invalid_argument", PAGE_TOO_DEEP);
+  }
   if (input.sealed) return await createSealedDocument(ctx, input, publicId, seq, now);
+  // A synced block comes along only when its content is the actor's to show (a copy never opens it up).
+  const blocks = await referableBlocks(ctx, input.actor, input.blocks ?? []);
   for (const b of blocks) {
     const issues = validateWireBlock(b);
     if (issues.length) fail("invalid_block", `${issues[0]!.path}: ${issues[0]!.message}`);

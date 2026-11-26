@@ -160,19 +160,28 @@ const sign = (what: string) => keyedHash(what, "vault-log-signature");
 
 /**
  * One page of the whole log for an export (owner and custodians), oldest first, with a signature over the page's
- * hashes. Starting an export (`after` 0) is logged, with the format.
+ * hashes. `after` is 0 for the first page, else the last seq of the page before (a whole number, never negative).
+ * Starting an export is logged, with the format: that is any page that begins at the oldest entry kept, however
+ * `after` is spelled.
  */
 export const exportPage = mutation({
   args: { vaultId: v.string(), after: v.number(), format: v.union(v.literal("csv"), v.literal("json"), v.literal("pdf")), client: v.optional(vVaultClient) },
   handler: async (ctx, args) => {
     const { profile, vault, role, all } = await readable(ctx, await requireProfile(ctx), args.vaultId);
     if (!all) fail("forbidden", "Only the Vault's custodians can export its log.");
+    if (!Number.isInteger(args.after) || args.after < 0) fail("invalid_argument", "Invalid page.");
     const rows = await ctx.db
       .query("vaultLog")
       .withIndex("by_vault_seq", (q) => q.eq("vaultPublicId", vault.publicId).gt("seq", args.after))
       .take(EXPORT_PAGE);
-    if (args.after === 0) await appendLog(ctx, vault, { event: "log.exported", actor: { profile, role }, detail: { format: args.format, upToSeq: vault.logSeq }, client: args.client });
-    if (args.after === 0) await notifyVaultSecurity(ctx, vault, profile, `${profile.displayName.slice(0, 80)} exported the Vault's activity log`, "log.exported");
+    // The first page: `after` 0, or any number below the oldest entry still kept (older ones expire).
+    const oldest = await ctx.db
+      .query("vaultLog")
+      .withIndex("by_vault_seq", (q) => q.eq("vaultPublicId", vault.publicId))
+      .first();
+    const starts = args.after === 0 || (oldest !== null && args.after < oldest.seq);
+    if (starts) await appendLog(ctx, vault, { event: "log.exported", actor: { profile, role }, detail: { format: args.format, upToSeq: vault.logSeq }, client: args.client });
+    if (starts) await notifyVaultSecurity(ctx, vault, profile, `${profile.displayName.slice(0, 80)} exported the Vault's activity log`, "log.exported");
     const entries = rows.map(shape);
     const last = entries.at(-1);
     return {

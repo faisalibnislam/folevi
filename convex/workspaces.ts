@@ -6,20 +6,7 @@ import type { MutationCtx } from "./_generated/server";
 import { internal } from "./_generated/api";
 import type { Doc, Id } from "./_generated/dataModel";
 import { ulid } from "@folevi/editor-schema";
-import {
-  accessAtLeast,
-  assertWritable,
-  isScheduledForDeletion,
-  membership,
-  memberLevel,
-  normalizeMembership,
-  requestedRole,
-  requireProfile,
-  requireWorkspace,
-  roleToAccess,
-  type MemberAccess,
-  type ShareRole,
-} from "./lib/auth";
+import { accessAtLeast, assertWritable, isScheduledForDeletion, membership, memberLevel, normalizeMembership, requestedRole, requireProfile, requireWorkspace, roleToAccess, type MemberAccess, type ShareRole, MAX_PAGE_DEPTH } from "./lib/auth";
 import { fail } from "./lib/errors";
 import { consume } from "./lib/rateLimit";
 import { randomToken, sha256Hex } from "./lib/crypto";
@@ -794,11 +781,12 @@ async function subtreeUnrestricted(ctx: MutationCtx, root: Doc<"documents">): Pr
 /** Whether `doc` sits under a restricted page. */
 async function underRestricted(ctx: MutationCtx, doc: Doc<"documents">): Promise<boolean> {
   let cursor = doc.parentDocumentId ? await ctx.db.get(doc.parentDocumentId) : null;
-  for (let depth = 0; cursor && depth < 12; depth++) {
+  for (let depth = 0; cursor && depth < MAX_PAGE_DEPTH; depth++) {
     if (cursor.accessMode === "restricted") return true;
     cursor = cursor.parentDocumentId ? await ctx.db.get(cursor.parentDocumentId) : null;
   }
-  return false;
+  // Nested deeper than pages go: what's above is unknown, so it counts as restricted (lib/auth.ts pageChain).
+  return cursor !== null;
 }
 
 /**

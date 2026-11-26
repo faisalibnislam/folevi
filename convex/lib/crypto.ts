@@ -1,4 +1,6 @@
 // Web Crypto helpers available in the Convex V8 runtime.
+import { isProductionDeployment } from "./deployment";
+
 const enc = new TextEncoder();
 
 export function toHex(bytes: ArrayBuffer | Uint8Array): string {
@@ -30,7 +32,7 @@ export function secretOrDevFallback(names: string[], fallback: string): string {
     const value = process.env[name];
     if (value) return value;
   }
-  if (process.env.FOLEVI_ENV === "production") throw new Error(`${names[0]} is not set`);
+  if (isProductionDeployment()) throw new Error(`${names[0]} is not set`);
   return fallback;
 }
 

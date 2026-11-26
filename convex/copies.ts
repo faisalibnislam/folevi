@@ -87,13 +87,16 @@ const cell = (text: string): InlineNode[] => (text ? [{ type: "text", text: text
  */
 async function collectionTable(ctx: Ctx, reader: PageReader, block: WireBlock): Promise<WireBlock> {
   const collectionId = (block.props as { collectionId?: unknown }).collectionId;
-  const collection =
+  const found =
     typeof collectionId === "string"
       ? await ctx.db
           .query("collections")
           .withIndex("by_public_id", (q) => q.eq("publicId", collectionId))
           .unique()
       : null;
+  // The block's collection id is client data: only a collection whose page the person can open is read.
+  const host = found ? await ctx.db.get(found.documentId) : null;
+  const collection = found && host && (await reader.canOpen(host)) ? found : null;
   const properties = collection
     ? (
         await ctx.db

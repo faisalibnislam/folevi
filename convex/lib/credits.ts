@@ -425,9 +425,24 @@ export async function recordAiUsage(ctx: MutationCtx, profileId: Id<"profiles">,
 }
 
 /**
+ * The calls a request pays for: all of them, but one short refusal. A request that was nothing but a short
+ * refusal is free, as before. In a request of several calls (a search first, an agent's steps, web searches) the
+ * work the other calls did is charged whatever the last one said: the marker that makes a refusal free is text
+ * the model writes, so a whole run must not become free because its closing message carries it (security audit
+ * 2026-11-26, M7). Only one call is ever waived, the last short refusal, so marking every step doesn't help.
+ */
+export function billableCalls(calls: CallUsage[]): CallUsage[] {
+  let waived = -1;
+  calls.forEach((c, i) => {
+    if (c.refused?.free) waived = i;
+  });
+  return waived < 0 ? calls : calls.filter((_, i) => i !== waived);
+}
+
+/**
  * Ends a request: releases its hold and charges what its calls really cost (nothing when no call was
- * made, or when the reply was a short refusal), counted under the hold's feature for the usage card.
- * Idempotent: a hold is settled once.
+ * made, or when the whole request was one short refusal; see billableCalls), counted under the hold's feature
+ * for the usage card. Idempotent: a hold is settled once.
  */
 export async function settleHold(ctx: MutationCtx, holdId: Id<"aiCreditHolds">, calls: CallUsage[], now = Date.now()): Promise<{ credits: number; overrun: number } | null> {
   const hold = await ctx.db.get(holdId);
@@ -436,7 +451,7 @@ export async function settleHold(ctx: MutationCtx, holdId: Id<"aiCreditHolds">, 
   // A refusal is counted (never its text) and, when short, not charged (docs/AI_GUARDRAILS.md).
   const refusal = refusalIn(calls);
   if (refusal) await recordRefusal(ctx, hold.profileId, refusal.kind, hold.feature, now);
-  const credits = refusal?.free ? 0 : creditsFor(calls);
+  const credits = creditsFor(billableCalls(calls));
   if (!credits) return { credits: 0, overrun: 0 };
   const account = await accountByKey(ctx, hold.profileId, hold.workspaceId, now);
   const { overrun } = await deductCredits(ctx, account, credits, now);

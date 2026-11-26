@@ -57,10 +57,10 @@ describe("backend invariants", () => {
     expect(jwks).toMatch(/issuer: `\$\{env\.CONVEX_SITE_URL\}`/);
     expect(jwks).not.toMatch(/auth0|FOLEVI_DEV_AUTH/i);
     const mailbox = readFileSync(join(root, "authEmails.ts"), "utf8");
-    expect(mailbox).toMatch(/FOLEVI_ENV !== "production"/);
+    expect(mailbox).toMatch(/return !isProductionDeployment\(\);/);
     expect(mailbox).toMatch(/timingSafeEqualHex\(args\.secret, expected\)/);
     const testSupport = readFileSync(join(root, "testSupport.ts"), "utf8");
-    expect(testSupport).toMatch(/FOLEVI_ENV === "production"\) throw/);
+    expect(testSupport).toMatch(/if \(isProductionDeployment\(\)\) throw/);
     expect(testSupport).not.toMatch(/export const \w+ = (query|mutation|action)\(/);
   });
 

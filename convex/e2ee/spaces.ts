@@ -11,6 +11,7 @@ import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
 import { assertWritable, requireProfile, resolveScope, type ScopeAccess } from "../lib/auth";
 import { fail } from "../lib/errors";
+import { requireFreshSession } from "../lib/freshSession";
 import { MANAGER_ONLY } from "../lib/permissions";
 import { inScope, insertScoped, personalScope, scopeKey, vScopeArg, workspaceScope, type Scope, type ScopeArg } from "../lib/scope";
 import { nextSeq } from "../lib/seq";
@@ -255,7 +256,18 @@ export const enable = mutation({
   },
 });
 
-/** Changes the feature switches at "Encrypted, with the features you pick". A switch turned off purges its readable copies. */
+const FOLI_AI_RANK = { off: 0, ask: 1, auto: 2 } as const;
+
+/** Whether `next` turns on anything `current` has off (Foli AI: a step up from off to ask, or ask to auto). */
+export function turnsOn(current: Switches, next: Switches): boolean {
+  if (FOLI_AI_RANK[next.foliAi] > FOLI_AI_RANK[current.foliAi]) return true;
+  return (["backgroundAi", "searchEverywhere", "apps", "emailToNote", "webClipper", "notificationPreviews"] as const).some((k) => next[k] && !current[k]);
+}
+
+/**
+ * Changes the feature switches at "Encrypted, with the features you pick". A switch turned off purges its readable
+ * copies. Turning one on needs a sign-in in the last 10 minutes (lib/freshSession.ts).
+ */
 export const setSwitches = mutation({
   args: { scope: vScopeArg, switches: vE2eeSwitches },
   handler: async (ctx, args) => {
@@ -264,6 +276,9 @@ export const setSwitches = mutation({
     const { scope } = await managerScope(ctx, profile, args.scope);
     const space = await requireSpace(ctx, scope);
     if (space.level !== "selected") fail("invalid_argument", space.level === "full" ? "Fully encrypted spaces have every feature off." : "Switches apply once the space is encrypted.");
+    // Turning a switch on makes devices upload readable copies (or lets more in): that needs a recent sign-in,
+    // so a stolen session alone can't open an encrypted space up. Turning switches off never does.
+    if (turnsOn(switchesOf(space), args.switches)) await requireFreshSession(ctx);
     const purged = await schedulePurges(ctx, scope, switchesOf(space), args.switches);
     await touchSpace(ctx, space, scope, profile._id, { switches: { ...args.switches } });
     return { purged };
@@ -283,6 +298,9 @@ export const lower = mutation({
     const { scope } = await managerScope(ctx, profile, args.scope);
     const account = await requireAccount(ctx, profile._id);
     const space = await requireSpace(ctx, scope);
+    // A recent sign-in too: keys.getWrap only shows a wrap was fetched, not that the person could open it, and
+    // every unlocked device acts on a lowered level by itself (lib/freshSession.ts).
+    await requireFreshSession(ctx);
     if (LEVEL_RANK[args.level] >= LEVEL_RANK[space.level]) fail("invalid_argument", "That isn't a lower level.");
     const wrap = await ctx.db
       .query("e2eeAccountWraps")

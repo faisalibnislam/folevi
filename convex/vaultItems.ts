@@ -59,6 +59,18 @@ export async function itemOf(ctx: Ctx, vault: Doc<"vaults">, itemId: string): Pr
   return item;
 }
 
+/**
+ * Refuses an item id something already has, in any Vault. Ids are made on the device and looked up by a global
+ * index (`itemOf`): a second row with one would make every lookup of it fail for everyone, in every Vault.
+ */
+export async function requireNewItemId(ctx: Ctx, itemId: string): Promise<void> {
+  const taken = await ctx.db
+    .query("vaultItems")
+    .withIndex("by_public_id", (q) => q.eq("publicId", itemId))
+    .first();
+  if (taken) fail("conflict", "That item already exists.");
+}
+
 /** Members change what they added; custodians anything (docs/VAULT_PLAN.md §1). */
 export function requireCanChange(role: VaultRole, item: Doc<"vaultItems">, profileId: Id<"profiles">) {
   if (item.createdBy !== profileId && !vaultRoleAtLeast(role, "custodian")) fail("forbidden", "You can change only what you added. Ask a custodian.");
@@ -340,6 +352,8 @@ export const importBatch = mutation({
       if (!/^[0-9A-Z]{26}$/.test(it.itemId)) fail("invalid_argument", "Invalid item id.");
       checkSealed(it.item);
       checkKeyVersion(vault, it.item.keyVersion);
+      // (An id used twice in the batch is refused too: the second one finds the first.)
+      await requireNewItemId(ctx, it.itemId);
       await insertScoped(ctx, "vaultItems", scopeOfRow(vault), {
         publicId: it.itemId,
         vaultId: vault._id,
@@ -364,13 +378,17 @@ export const importBatch = mutation({
 
 /**
  * One page of every password item with its secrets, for an export (custodians; the owner of a Personal Vault).
- * Starting an export (`after` null) is logged with its format.
+ * `after` is null (or "") for the first page, else the last item id of the page before; anything else is refused.
+ * Every page that hands out items is logged with its format and where it starts, and custodians are told: a page
+ * can't be had without an entry, however `after` is spelled.
  */
 export const exportPage = mutation({
   args: { vaultId: v.string(), after: v.union(v.string(), v.null()), format: v.union(v.literal("encrypted"), v.literal("csv")), client: v.optional(vVaultClient) },
   handler: async (ctx, args) => {
     const profile = await requireProfile(ctx);
     const { vault, role } = await requireVault(ctx, profile, args.vaultId, "custodian");
+    const after = args.after === null || args.after === "" ? null : args.after;
+    if (after !== null && !/^[0-9A-Z]{26}$/.test(after)) fail("invalid_argument", "Invalid item id.");
     const all: Doc<"vaultItems">[] = [];
     for (const kind of PASSWORD_KINDS)
       all.push(
@@ -382,10 +400,14 @@ export const exportPage = mutation({
         ).filter((i) => i.deletedAt === undefined),
       );
     all.sort((a, b) => (a.publicId < b.publicId ? -1 : 1));
-    const start = args.after ? all.findIndex((i) => i.publicId > args.after!) : 0;
+    const start = after !== null ? all.findIndex((i) => i.publicId > after) : 0;
     const page = start < 0 ? [] : all.slice(start, start + EXPORT_PAGE);
-    if (args.after === null) await appendLog(ctx, vault, { event: "items.exported", actor: { profile, role }, detail: { format: args.format, count: all.length }, client: args.client });
-    if (args.after === null) await notifyVaultSecurity(ctx, vault, profile, `${profile.displayName.slice(0, 80)} exported the Vault's passwords`, "items.exported");
+    // The first page (an export of an empty Vault too) and every later page with items in it.
+    if (start === 0 || page.length) {
+      await appendLog(ctx, vault, { event: "items.exported", actor: { profile, role }, detail: { format: args.format, count: all.length, ...(start > 0 ? { from: start, items: page.length } : {}) }, client: args.client });
+      // (Pages of one export fold into one notice: lib/vault/notify.ts.)
+      await notifyVaultSecurity(ctx, vault, profile, `${profile.displayName.slice(0, 80)} exported the Vault's passwords`, "items.exported");
+    }
     return {
       items: await Promise.all(page.map(async (i) => ({ ...(await row(ctx, i)), sealed: i.sealed }))),
       next: start >= 0 && start + EXPORT_PAGE < all.length ? page.at(-1)!.publicId : null,

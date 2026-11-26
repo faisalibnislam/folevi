@@ -13,7 +13,7 @@
 import type { Doc } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
 import type { WireBlock } from "@folevi/editor-schema";
-import { accessAtLeast, documentAccess, getDocumentByPublicId } from "./auth";
+import { accessAtLeast, documentAccess, getDocumentByPublicId, pageChain } from "./auth";
 import { hasValidScope, sameScopeRows } from "./scope";
 
 type Ctx = QueryCtx | MutationCtx;
@@ -114,14 +114,13 @@ export class ReaderLabels {
   }
 }
 
-/** Whether `doc` or a page above it is restricted to invited people. */
+/**
+ * Whether `doc` or a page above it is restricted to invited people. A page nested deeper than pages go
+ * counts as restricted (what's above it is unknown).
+ */
 async function underRestriction(ctx: Ctx, doc: Doc<"documents">): Promise<boolean> {
-  let cursor: Doc<"documents"> | null = doc;
-  for (let depth = 0; cursor && depth < 12; depth++) {
-    if (cursor.accessMode === "restricted") return true;
-    cursor = cursor.parentDocumentId ? await ctx.db.get(cursor.parentDocumentId) : null;
-  }
-  return false;
+  const chain = await pageChain(ctx, doc);
+  return !chain.complete || chain.restrictedAt >= 0;
 }
 
 /**

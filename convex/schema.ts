@@ -3176,7 +3176,9 @@ export default defineSchema({
     .index("by_vault_mac", ["vaultId", "passwordMac"])
     .index("by_vault_deleted", ["vaultId", "deletedAt"])
     .index("by_workspace", ["workspaceId"])
-    .index("by_owner", ["ownerProfileId"]),
+    .index("by_owner", ["ownerProfileId"])
+    // Whether stored bytes already belong to a Vault file (vaultFiles.requireOwnUpload).
+    .index("by_storage", ["storageId"]),
 
   /** Every earlier version of an item (an old password can be brought back). */
   vaultItemVersions: defineTable({

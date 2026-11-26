@@ -114,7 +114,10 @@ describe("submitting a request", () => {
     const confirmation = bodies.find((b) => b.subject === "[Folevi #1001] We got your message");
     expect(confirmation.from).toBe("Folevi Support <support@folevi.com>");
     expect(confirmation.reply_to).toBe("support@folevi.com");
-    expect(confirmation.text).toContain("My notes didn't sync");
+    // A signed-out form's address is unproven, so the receipt never carries the text someone typed
+    // (it would let anyone mail their own words to any address under Folevi Support's name).
+    expect(confirmation.text).not.toContain("My notes didn't sync");
+    expect(confirmation.text).toContain("we don't repeat it in this email");
   });
 
   test("the honeypot drops the request with an answer that looks the same", async () => {
@@ -146,6 +149,11 @@ describe("submitting a request", () => {
     // Signed out, "in_app" can't be claimed.
     await t.mutation(api.support.submit, form({ source: "in_app", clientKey: "c-2" }));
     expect((await tickets(t)).find((x) => x.number === 1002)!.source).toBe("web_form");
+    // Signed in, the address is the account's own, so the receipt quotes their message back to them.
+    await runScheduled(t);
+    const bodies = fetchMock.mock.calls.map((c) => JSON.parse(String((c[1] as RequestInit).body)));
+    expect(bodies.find((b) => b.subject === "[Folevi #1001] We got your message").text).toContain("My notes didn't sync");
+    expect(bodies.find((b) => b.subject === "[Folevi #1002] We got your message").text).not.toContain("My notes didn't sync");
   });
 
   test("deleting the account deletes its requests and their messages, including ones sent signed out", async () => {

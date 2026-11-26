@@ -8,7 +8,7 @@ import { type MutationCtx } from "../_generated/server";
 import { mutation } from "../lib/functions";
 import type { Doc, Id } from "../_generated/dataModel";
 import { MAX_FOLDER_DEPTH, canNestFolderIn, isValidId, rankBetween } from "@folevi/editor-schema";
-import { accessAtLeast, assertWritable, documentAccess, documentAccessInfo, getDocumentByPublicId, requireDocument, requireProfile, requireRowScope, resolveScope } from "../lib/auth";
+import { accessAtLeast, assertWritable, documentAccess, documentAccessInfo, getDocumentByPublicId, requireDocument, requireProfile, requireRowScope, resolveScope, MAX_PAGE_DEPTH } from "../lib/auth";
 import { fail } from "../lib/errors";
 import { consume } from "../lib/rateLimit";
 import { nextSeq } from "../lib/seq";
@@ -653,7 +653,7 @@ export async function relockFolder(ctx: MutationCtx, folder: Doc<"folders">): Pr
   const byId = new Map(docs.map((d) => [d._id as string, d]));
   const lockOfDoc = async (d: Doc<"documents">): Promise<Id<"folders"> | undefined> => {
     let cur: Doc<"documents"> | undefined = d;
-    for (let i = 0; cur && i < 12; i++) {
+    for (let i = 0; cur && i < MAX_PAGE_DEPTH; i++) {
       if (!cur.parentDocumentId) return await lockOf(cur.folderId);
       cur = byId.get(cur.parentDocumentId) ?? (await ctx.db.get(cur.parentDocumentId)) ?? undefined;
     }

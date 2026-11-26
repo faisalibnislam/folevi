@@ -75,8 +75,12 @@ export async function lookup(host: string): Promise<string[] | null> {
   return out;
 }
 
-/** A link checked, then its host's addresses: none of them may be private. */
-async function checkHost(raw: string): Promise<{ ok: true; url: URL } | { ok: false; error: string }> {
+/**
+ * A link checked, then its host's addresses: none of them may be private. Also used by bookmark previews
+ * (convex/bookmarks.ts). The fetch that follows resolves the name again by itself (the platform's fetch can't
+ * be given an address to connect to), so this is a check before the request, not a pin on it.
+ */
+export async function checkHost(raw: string): Promise<{ ok: true; url: URL } | { ok: false; error: string }> {
   const checked = checkUrl(raw);
   if (!checked.ok) return checked;
   const host = checked.url.hostname.replace(/^\[|\]$/g, "");

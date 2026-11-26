@@ -52,6 +52,8 @@ import { aiPrefsOf } from "./lib/ai/prefs";
 import { failE2ee, requirePlainWrite } from "./lib/e2ee/state";
 
 const INTENT_TTL_MS = 10 * 60_000;
+/** How much earlier than its intent an upload's bytes may seem to be stored (clocks, not order: the address comes from the intent). */
+const UPLOAD_CLOCK_SLACK_MS = 60_000;
 const vKind = v.union(
   v.literal("image"),
   v.literal("file"),
@@ -155,8 +157,14 @@ export const intentForFinalize = internalQuery({
   handler: async (ctx, args) => {
     const intent = await ctx.db.get(args.intentId);
     const meta = await ctx.db.system.get(args.storageId);
-    return { intent, meta };
+    return { intent, meta, held: await isStorageReferenced(ctx, args.storageId) };
   },
+});
+
+/** Whether stored bytes are already a file's (or a version's): finalize never takes or deletes those. */
+export const storageHeld = internalQuery({
+  args: { storageId: v.id("_storage") },
+  handler: async (ctx, args) => await isStorageReferenced(ctx, args.storageId),
 });
 
 export const commitFile = internalMutation({
@@ -180,6 +188,8 @@ export const commitFile = internalMutation({
       intent.expiresAt < Date.now()
     )
       fail("expired", "Upload expired. Try again.");
+    // Bytes a file already holds are that file's: an upload never becomes a second claim on them.
+    if (await isStorageReferenced(ctx, args.storageId)) fail("expired", "Upload expired. Try again.");
     const scope = scopeOfRow(intent);
     // The note was sealed between the upload URL and now: its files are sealed only (docs/E2EE_DESIGN.md §5.7).
     const forDoc = intent.documentId ? await ctx.db.get(intent.documentId) : null;
@@ -246,12 +256,21 @@ export const finalize = action({
   }> => {
     const profileId: Id<"profiles"> = await ctx.runQuery(internal.files.currentProfileId, {});
     const intentId = args.intentId as Id<"uploadIntents">;
-    const { intent, meta } = await ctx.runQuery(internal.files.intentForFinalize, {
+    const { intent, meta, held } = await ctx.runQuery(internal.files.intentForFinalize, {
       intentId,
       storageId: args.storageId,
     });
-    const reject = async (message: string): Promise<never> => {
+    // The storage id comes from the caller, so it may name anything stored. Refused uploads are cleaned up
+    // only when the bytes can be this upload's own: stored after the caller's own intent was made, and not
+    // held by a file (checked again at the last moment). Anything else is left as it is; bytes nothing
+    // holds go with the daily sweep (sweepOrphanedStorage).
+    const discard = async (): Promise<void> => {
+      const own = intent !== null && intent.profileId === profileId && meta !== null && meta._creationTime >= intent.createdAt - UPLOAD_CLOCK_SLACK_MS;
+      if (!own || (await ctx.runQuery(internal.files.storageHeld, { storageId: args.storageId }))) return;
       await ctx.storage.delete(args.storageId);
+    };
+    const reject = async (message: string): Promise<never> => {
+      await discard();
       fail("unsupported_file", message);
     };
     if (
@@ -259,7 +278,9 @@ export const finalize = action({
       intent.profileId !== profileId ||
       intent.consumedAt ||
       intent.expiresAt < Date.now() ||
-      !meta
+      !meta ||
+      // Bytes a file already holds are never taken as a new upload.
+      held
     )
       return await reject("Upload expired. Try again.");
     const blob = await ctx.storage.get(args.storageId);
@@ -298,7 +319,7 @@ export const finalize = action({
         storageId = await ctx.storage.store(
           new Blob([stripped as Uint8Array<ArrayBuffer>], { type: sniffed.mime }),
         );
-        await ctx.storage.delete(args.storageId);
+        await discard();
         bytes = stripped as Uint8Array<ArrayBuffer>;
       }
     }
@@ -628,7 +649,7 @@ const EXPORT_RETENTION_MS = 24 * 60 * 60 * 1000;
  * Whether a stored blob is still referenced by a Folevi table. Every table that keeps an
  * `Id<"_storage">` must be checked here, or the orphan sweep will delete its blobs.
  */
-async function isStorageReferenced(ctx: MutationCtx, storageId: Id<"_storage">): Promise<boolean> {
+async function isStorageReferenced(ctx: QueryCtx | MutationCtx, storageId: Id<"_storage">): Promise<boolean> {
   const file = await ctx.db
     .query("files")
     .withIndex("by_storage", (q) => q.eq("storageId", storageId))

@@ -3,6 +3,7 @@ import { mutation } from "./lib/functions";
 import { linkImportedPages, markdownToBlocks, plainTextToBlocks } from "@folevi/editor-schema";
 import { accessAtLeast, assertWritable, documentAccess, getDocumentByPublicId, requireProfile, resolveScope } from "./lib/auth";
 import { fail } from "./lib/errors";
+import { consume } from "./lib/rateLimit";
 import { createDocument } from "./lib/create";
 import { IdResolver, toSummary } from "./lib/documents";
 import { inScope, vScopeArg } from "./lib/scope";
@@ -48,6 +49,9 @@ export const importText = mutation({
     await assertWritable(ctx, profile);
     const { scope } = await resolveScope(ctx, profile, args.scope, "edit");
     if (args.content.length > MAX_IMPORT_CHARS) fail("limit_exceeded", "That file is too large to import (2 MB of text max).");
+    // Each call makes a whole note (up to 2 MB of text). Its own generous budget: bringing a library in from
+    // another app is hundreds of files in a row, which the bulk rule (60 a minute) would stop part-way.
+    await consume(ctx, "importNote", profile._id);
     // A new note in an encrypted space, or in a locked folder or page, must be sealed: the device parses and
     // seals it (the local import handler), docs/E2EE_DESIGN.md §5.7.
     if (await isEncryptedSpace(ctx, scope)) failE2ee("e2ee_device_only");

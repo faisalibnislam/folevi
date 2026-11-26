@@ -18,6 +18,7 @@ import { fail } from "./lib/errors";
 import { randomToken, sha256Base64url } from "./lib/crypto";
 import { MCP_SCOPES, type McpScope } from "./lib/mcp/config";
 import { removeGrant } from "./mcp";
+import { freshNoteToken } from "./lib/emailNotes";
 
 export const TOKEN_PREFIX = "fvpat_";
 export const MAX_TOKENS = 20;
@@ -180,10 +181,19 @@ export const revoke = mutation({
   },
 });
 
+/** "1 webhook", "2 webhooks". */
+const counted = (n: number, one: string) => `${n} ${one}${n === 1 ? "" : "s"}`;
+
 /**
- * Ends every way into the account that isn't a session: personal API tokens, the apps' own device tokens and
- * every connected app (MCP). Run when the password is reset or changed, after sessions are ended, so someone who
- * got in for a while can't stay in through a token they made (docs/SECURITY_PLAN.md P0.5).
+ * Ends every way into the account that isn't a session. Run when the password is reset or changed, after
+ * sessions are ended, so someone who got in for a while can't stay in, or keep listening, through something they
+ * set up (docs/SECURITY_PLAN.md P0.5; security audit 2026-11-26, M3):
+ *   - personal API tokens and the apps' own device tokens are deleted;
+ *   - every connected app (MCP) is disconnected;
+ *   - outbound webhooks are turned off (they stay listed in Settings > Connected apps, to turn on again or delete);
+ *   - the private calendar link is deleted;
+ *   - the email-to-note address gets a new token, and the extra addresses allowed to send to it are cleared.
+ * The person is told once, in the bell, what was ended. Returns how many tokens and apps went.
  */
 export const endAllAccess = internalMutation({
   args: { authUserId: v.string(), reason: v.union(v.literal("password_reset"), v.literal("password_changed")) },
@@ -193,6 +203,7 @@ export const endAllAccess = internalMutation({
       .withIndex("by_auth_subject", (q) => q.eq("authSubject", args.authUserId))
       .unique();
     if (!profile) return { tokens: 0, apps: 0 };
+    const now = Date.now();
     const tokens = await ctx.db
       .query("apiTokens")
       .withIndex("by_profile", (q) => q.eq("profileId", profile._id))
@@ -203,7 +214,45 @@ export const endAllAccess = internalMutation({
       .withIndex("by_profile", (q) => q.eq("profileId", profile._id))
       .take(100);
     for (const g of grants) await removeGrant(ctx, profile.authSubject, g);
-    console.info(JSON.stringify({ event: "identity.access_ended", reason: args.reason, tokens: tokens.length, apps: grants.length }));
+
+    // Webhooks: off, so nothing more is sent (a delivery still waiting is given up by webhooks.claim).
+    const hooks = (
+      await ctx.db
+        .query("webhooks")
+        .withIndex("by_profile", (q) => q.eq("profileId", profile._id))
+        .take(100)
+    ).filter((h) => h.enabled);
+    for (const h of hooks) await ctx.db.patch(h._id, { enabled: false, disabledAt: now });
+
+    const feeds = await ctx.db
+      .query("calendarFeeds")
+      .withIndex("by_profile", (q) => q.eq("profileId", profile._id))
+      .take(100);
+    for (const f of feeds) await ctx.db.delete(f._id);
+
+    const addresses = await ctx.db
+      .query("emailNoteAddresses")
+      .withIndex("by_profile", (q) => q.eq("profileId", profile._id))
+      .take(20);
+    for (const a of addresses) await ctx.db.patch(a._id, { token: await freshNoteToken(ctx), rotatedAt: now, extraSenders: [] });
+
+    const ended = [
+      ...(tokens.length ? [counted(tokens.length, "API token")] : []),
+      ...(grants.length ? [counted(grants.length, "connected app")] : []),
+      ...(hooks.length ? [counted(hooks.length, "webhook")] : []),
+      ...(feeds.length ? ["your calendar link"] : []),
+      ...(addresses.length ? ["your email-to-note address (you have a new one)"] : []),
+    ];
+    if (ended.length) {
+      await ctx.db.insert("notifications", {
+        profileId: profile._id,
+        kind: "system",
+        title: "Your password changed, so other ways into your account were ended",
+        body: `Ended: ${ended.join(", ")}. Set up the ones you still use again in Settings.`.slice(0, 500),
+        createdAt: now,
+      });
+    }
+    console.info(JSON.stringify({ event: "identity.access_ended", reason: args.reason, tokens: tokens.length, apps: grants.length, webhooks: hooks.length, calendarFeeds: feeds.length, emailAddresses: addresses.length }));
     return { tokens: tokens.length, apps: grants.length };
   },
 });

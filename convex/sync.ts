@@ -1,8 +1,8 @@
 import { v } from "convex/values";
 import { query } from "./_generated/server";
 import { mutation } from "./lib/functions";
-import type { SyncOp } from "@folevi/editor-schema";
-import { assertWritable, requireProfile, resolveScope, documentAccess, accessAtLeast, getDocumentByPublicId, membership, PageReader } from "./lib/auth";
+import type { SyncOp, WireBlock } from "@folevi/editor-schema";
+import { assertWritable, requireProfile, resolveScope, documentAccess, accessAtLeast, getDocumentByPublicId, membership, PageReader, type Access } from "./lib/auth";
 import { folderSubtree } from "./folderSharing";
 import { consume } from "./lib/rateLimit";
 import { fail } from "./lib/errors";
@@ -118,6 +118,31 @@ async function blockStream(ctx: QueryCtx, scope: Scope, cursor: number, cap: num
   return { rows: [...rows.filter((r) => r.seq < boundary), ...rest], upTo: boundary };
 }
 
+/** The caller's access to each page a pull touches, decided once per page. */
+function accessCache(ctx: QueryCtx, profile: Doc<"profiles">) {
+  const access = new Map<Id<"documents">, Access>();
+  const of = async (doc: Doc<"documents">) => {
+    if (!access.has(doc._id)) access.set(doc._id, await documentAccess(ctx, profile, doc));
+    return access.get(doc._id)!;
+  };
+  return {
+    canRead: async (doc: Doc<"documents">) => accessAtLeast(await of(doc), "read"),
+    canWrite: async (doc: Doc<"documents">) => accessAtLeast(await of(doc), "write"),
+  };
+}
+
+/**
+ * A block row as a pull sends it. A deleted block keeps its place in the stream (devices drop their copy of
+ * it), with what it said only for people who can edit the page, like "recently deleted" and version history:
+ * everyone else gets the same shape with its text and properties blank. (A sealed block's content is
+ * ciphertext either way.)
+ */
+async function wireFor(row: Doc<"blocks">, doc: Doc<"documents">, canWrite: (doc: Doc<"documents">) => Promise<boolean>): Promise<WireBlock> {
+  const block = toWireBlock(row);
+  if (row.deletedAt === undefined || row.sealed !== undefined || (await canWrite(doc))) return block;
+  return { ...block, text: [], props: {} };
+}
+
 async function pullRows(ctx: QueryCtx, profile: Doc<"profiles">, arg: ScopeArg, cursor: number, limit: number) {
   const { scope } = await resolveScope(ctx, profile, arg);
   const head = await headSeq(ctx, scope);
@@ -128,11 +153,7 @@ async function pullRows(ctx: QueryCtx, profile: Doc<"profiles">, arg: ScopeArg, 
   const hasMore = upTo !== Infinity;
   if (!hasMore) upTo = head;
   const ids = new IdResolver(ctx);
-  const access = new Map<Id<"documents">, boolean>();
-  const canRead = async (doc: Doc<"documents">) => {
-    if (!access.has(doc._id)) access.set(doc._id, accessAtLeast(await documentAccess(ctx, profile, doc), "read"));
-    return access.get(doc._id)!;
-  };
+  const { canRead, canWrite } = accessCache(ctx, profile);
   // No parent page id the caller can't open (a page granted on its own under a restricted page).
   const place = new Placement(ctx, profile);
   const outDocs = [];
@@ -150,7 +171,7 @@ async function pullRows(ctx: QueryCtx, profile: Doc<"profiles">, arg: ScopeArg, 
     if (!docCache.has(b.documentId)) docCache.set(b.documentId, await ctx.db.get(b.documentId));
     const d = docCache.get(b.documentId);
     if (!d || !(await canRead(d))) continue;
-    outBlocks.push({ documentId: d.publicId, block: await labels.block(toWireBlock(b)), deleted: b.deletedAt !== undefined });
+    outBlocks.push({ documentId: d.publicId, block: await labels.block(await wireFor(b, d, canWrite)), deleted: b.deletedAt !== undefined });
   }
   return { documents: outDocs, blocks: outBlocks, nextCursor: upTo, hasMore, head };
 }
@@ -325,11 +346,7 @@ export const pullAll = query({
     const ids = new IdResolver(ctx);
     const place = new Placement(ctx, profile);
     const docCache = new Map<Id<"documents">, Doc<"documents"> | null>();
-    const access = new Map<Id<"documents">, boolean>();
-    const canRead = async (d: Doc<"documents">) => {
-      if (!access.has(d._id)) access.set(d._id, accessAtLeast(await documentAccess(ctx, profile, d), "read"));
-      return access.get(d._id)!;
-    };
+    const { canRead, canWrite } = accessCache(ctx, profile);
     const outDocs = [];
     for (const d of docs.rows) {
       if (d.seq > upTo || !(await canRead(d))) continue;
@@ -344,7 +361,7 @@ export const pullAll = query({
       if (!docCache.has(b.documentId)) docCache.set(b.documentId, await ctx.db.get(b.documentId));
       const d = docCache.get(b.documentId);
       if (!d || isSealedNote(d) || !(await canRead(d))) continue;
-      outBlocks.push({ documentId: d.publicId, block: await labels.block(toWireBlock(b)), deleted: b.deletedAt !== undefined, seq: b.seq });
+      outBlocks.push({ documentId: d.publicId, block: await labels.block(await wireFor(b, d, canWrite)), deleted: b.deletedAt !== undefined, seq: b.seq });
     }
     const folderIds = new IdResolver(ctx);
     const outFolders = [];

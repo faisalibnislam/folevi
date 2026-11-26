@@ -3,6 +3,30 @@
 > Frozen copy of `HANDOFF.md`'s "Current state" sections as it stood on 2026-11-26, when the handoff became the `handoff/` folder.
 > Nothing here is kept up to date: the current state is in `handoff/state/`, new entries go in `handoff/log/`.
 
+## 9. Current state (as of 2026-11-26)
+
+**1.7.78 (build 103) is released**, a Big update cut from PR 131's merge (`b11f3256`): the Mac feedback round 2
+fixes and Float this note (PR 114, which carried PR 122), plus everything merged since 1.6.78 (the Windows and Linux
+parity work in PR 113). Tag `v1.7.78` is local only (not pushed). What is live:
+
+| Platform | 1.7.78 | Checked |
+| --- | --- | --- |
+| Web and Convex | Deployed by the merge (Vercel status success) | folevi.com, app.folevi.com, `/downloads` and `/signin` answer 200 |
+| Mac | Published with `apps/mac/scripts/publish.mjs`: notarized, stapled, Sparkle feed and `mac/Folevi.dmg` on R2, delta from build 102 | Feed's first item is 1.7.78; `stapler validate` passes. Not opened on a Mac |
+| iPhone and iPad | TestFlight, internal "Folevi team", delivery `1ce1048f-6e01-45b8-9da3-a4980ac34711` (the Capacitor app, `apps/mobile`) | Upload accepted. Not opened on a device |
+| Windows | `windows/Folevi_1.7.78_x64-setup.exe` and `_arm64-setup.exe` plus the two stable names, from CI run 45680883507. Unsigned, as before. Update feeds `desktop/windows-*/latest.json` published (`packaging/desktop/publish-update-feed.sh`) | The stable x64 link serves the new file (same SHA-256); both feeds say 1.7.78 and carry a signature. Not installed on Windows |
+| Linux | Six packages and `SHA256SUMS` (`upload-release.sh`); apt and rpm repositories rebuilt and uploaded; update feeds `desktop/linux-*/latest.json` published | Both AppImages pass `smoke-test.sh` in the VM (welcome screen); apt `Packages` lists 1.7.78 and `InRelease` verifies |
+| Snap Store | arm64: revision 7 (1.7.78) on stable, built in the VM. amd64: revision 8 (1.7.78) on stable, built on Launchpad (the first `remote-build` lost its connection before building; a plain retry worked) | `snapcraft status folevi` in the VM |
+| Android | NOT on Play yet. The signed bundle is at `~/Downloads/Folevi 1.7.78 Android/Folevi-1.7.78-103.aab`; the owner drags it into Play Console's internal testing | Version code and signer checked. Not run on a device or emulator |
+
+Not done, and why:
+- **Android on Play:** needs the owner's drag-in.
+- **Hardware checks:** Float this note on a Mac (several panels, pin off and on, over a full-screen app), on a Windows
+  PC and in Chrome; the first automatic update from 1.7.78 on Windows and Linux (1.6.78 and older have no updater, so
+  those users install 1.7.78 by hand once).
+- **Flaky Rust test:** `two_folder_fs_on_one_folder_never_lose_increments` failed once on Linux aarch64 during this
+  release; worth a look.
+
 ## 9. Current state (as of 2026-11-25)
 
 **Native iOS again, matching today's UI (2026-11-25, branch `claude/ios-native-today-ui`, worktree

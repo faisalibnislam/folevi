@@ -17,6 +17,10 @@
   side in about 500 pt).
 - Float this note (PR from `claude/float-this-note`): CI's e2e, then merge; it ships in the next release of each app
   (Mac and Windows need new builds for the window; the web works on deploy). Then the owner tries it on the Mac
+- After 1.7.78 (2026-11-26): the owner drags `~/Downloads/Folevi 1.7.78 Android/Folevi-1.7.78-103.aab` into Play
+  internal testing, then the hardware checks at the top of section 9. Next free version: 1.7.79 (or 1.8.79 for a Big
+  update). Mac deltas need `apps/mac/release-archive/Folevi-1.7.78.zip` (kept).
+- Float this note (released in 1.7.78): the owner tries it on the Mac
   (several panels, pin off and on, over a full-screen app), on a Windows PC and in Chrome. Possible follow-ups:
   reopen floating notes after a relaunch, and close a place's floating notes when that place is signed out.
 - After 1.6.78 (2026-11-25), in order: the owner drags the Android bundle into Play internal testing; the

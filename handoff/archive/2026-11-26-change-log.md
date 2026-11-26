@@ -4,6 +4,13 @@
 > Nothing here is kept up to date: the current state is in `handoff/state/`, new entries go in `handoff/log/`.
 
 ## 12. Change log
+- 2026-11-26: **PR 132 (`claude/integration-2026-11-26`, merge `135a99af`) landed PRs 117, 130 and 129 together**
+  (the owner: "resolve all merging conflict please"). All three edit this file, so they went in as one branch with
+  one CI run; checked first with CI's steps, the Mac Debug build and the iOS Simulator build. PR 112 (Android native,
+  draft) has main merged in and stays a draft. When several PRs are open again, do the same: one integration branch.
+- 2026-11-26: Native iOS 1.7.78 (build 107) on internal TestFlight from `claude/ios-native-today-ui` (delivery
+  2c71915f): the SwiftUI refactors and the bar menu fix. Same bundle ID as the Capacitor 1.7.78 (build 103) the Mac
+  session uploaded, so testers get the native app as the newer build.
 - 2026-11-25: **Windows: home servers over plain http** (branch `claude/windows-server-bridge`, on top of
   `claude/desktop-server-places`): `src/lan_bridge.rs` relays a server place's http and ws traffic to a LAN address
   through `127.0.0.1` (WebView2 blocks it from `https://app.localhost` as mixed content), with the server's own Host.
@@ -54,6 +61,26 @@
 - 2026-11-25: Native Foli AI on iPhone finished on `claude/ios-native-foli-ai` (glass composer on the keyboard, Stop, follow-ups crash, local message ids).
 - 2026-11-25: Native iPad and iPhone Duo matched to today's tablet layout on `claude/ios-native-ipad-duo` (49c8757b, 7347a057).
 - 2026-11-25: Native iOS restarted on `claude/ios-native-today-ui` to match today's UI (owner's decision); step 1 committed (ae912d75).
+- 2026-11-26: Windows/Linux app, library writes: a conditional write (`ifMatch` etag) could lose an update on
+  Linux (CI run 45649696992, `two_folder_fs_on_one_folder_never_lose_increments` ended at 34, not 40). Cause: an
+  ABA etag. ext4 reuses a freed inode at once and stamps files with a coarse clock, so two same-size rewrites in one
+  tick brought back the etag a stale reader held. Fix in `apps/desktop/src-tauri/src/library/fs.rs`: every write
+  stamps its own microsecond, never-repeating mtime (`unique_mtime`), and every Folevi writer (other processes too)
+  holds an OS file lock, `.folevi-tmp/write.lock`, across the final etag check and the rename (and removes).
+  `rust-version` goes to 1.89 for `File::lock`. New tests for both; the race test passed 250 runs in a loop.
+- 2026-11-26: **Float this note, edge to edge** (owner's feedback on 1.7.78): the note's colour reaches every edge
+  of the floating window (no white at the sides, under the bar or at the foot) and the bar wears the note's colour
+  and ink (FloatNote reads them off the page). One web change covers the Mac, Windows and Linux windows and Chrome's
+  floating window. Checked: `e2e/float-note.spec.ts` in Chromium and WebKit, with a plain note and an Irises note
+  (edges 0 px, bar colour = note colour). Not checked in a Mac build; ships in the next release.
+- 2026-11-26: **1.7.78 released** (Big update, build 103) from PR 131's merge (`b11f3256`): web and Convex
+  deployed; Mac published; iPhone and iPad on TestFlight (delivery 1ce1048f); Windows installers, Linux packages,
+  apt and rpm repositories and the four desktop update feeds published; Snap revisions 7 (arm64) and 8 (amd64) on stable; the Android
+  bundle left for the owner's Play drag-in. Two things that needed working around: `apps/mobile` is outside the pnpm
+  workspace, so run `pnpm install --ignore-workspace --frozen-lockfile` there before `npx cap sync`; and the x86_64
+  AppImage smoke test in the VM's `/srv/jammy-amd64` chroot needs proc, sys, dev and dev/pts bind-mounted, and the
+  AppImage's squashfs extracted (`unsquashfs -o <offset of "hsqs">`) and `AppRun` run, since Rosetta's binfmt rule
+  doesn't match the AppImage header.
 - 2026-11-25: Mac feedback round 2: New note's even 6 px inset; one note in two joined tabs stays in the tab on
   screen (`shownId`/`pick` in `lib/app/tabs.tsx`); hovered tab's pin clear of the title; table cells wrap alike
   edited or not. Checked: typecheck, lint, unit suite (2247), WebKit probes (inset 6/6/6, pin fade 48 px). The table

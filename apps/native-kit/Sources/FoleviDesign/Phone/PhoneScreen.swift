@@ -120,16 +120,15 @@ public struct PhoneScreen<Leading: View, Trailing: View, Header: View, Content: 
     }
 
     private var listContent: some View {
-        let filter = options.search.flatMap { search in (filterShown || !search.wrappedValue.isEmpty) ? search : nil }
+        // Always in sight under the title, as today's app (the owner, 2026-11-25).
+        let filter = options.search
         let headerRow = !options.pinsHeader && Header.self != EmptyView.self
         return List {
             if filter != nil || headerRow {
                 // The filter and the header run edge to edge, on the screen's grey, not on a card.
                 Section {
                     if let filter {
-                        PhoneSearchField(options.searchPrompt, text: filter, icon: options.searchIcon, autofocus: filterShown) {
-                            withAnimation(PhoneLook.reveal) { filterShown = false }
-                        }
+                        PhoneSearchField(options.searchPrompt, text: filter, icon: options.searchIcon)
                     }
                     if headerRow { header }
                 }
@@ -164,10 +163,8 @@ public struct PhoneScreen<Leading: View, Trailing: View, Header: View, Content: 
                 VStack(alignment: .leading, spacing: 0) {
                     Color.clear.frame(height: 0).id("top")
                     // The screen's filter, opened from the bar's search capsule; it stays while it holds text.
-                    if let search = options.search, filterShown || !search.wrappedValue.isEmpty {
-                        PhoneSearchField(options.searchPrompt, text: search, icon: options.searchIcon, autofocus: filterShown) {
-                            withAnimation(PhoneLook.reveal) { filterShown = false }
-                        }
+                    if let search = options.search {
+                        PhoneSearchField(options.searchPrompt, text: search, icon: options.searchIcon)
                         .transition(.move(edge: .top).combined(with: .opacity))
                     }
                     if !options.pinsHeader { header }
@@ -216,16 +213,16 @@ public struct PhoneScreen<Leading: View, Trailing: View, Header: View, Content: 
                         Text(status).font(.headline).lineLimit(1)
                     }
                 }
-                // The screen's actions: one glass capsule.
-                if hasTrailing {
-                    ToolbarItem(placement: .topBarTrailing) { HStack(spacing: 6) { trailing }.environment(\.phoneInSystemBar, true) }
-                }
-                // The main action (a tab's first screen: Create, or on Tasks a quick task), in Folevi's ink.
+                // + first (a tab's first screen: Create, or on Tasks a quick task), its own glass circle, then the
+                // screen's actions in their capsule (the owner, 2026-11-25: + before the sync and the bell).
                 if root, let rootCreate {
+                    PhoneRootCreateItem(create: rootCreate)
                     if #available(iOS 26, *), hasTrailing {
                         ToolbarSpacer(.fixed, placement: .topBarTrailing)
                     }
-                    PhoneRootCreateItem(create: rootCreate)
+                }
+                if hasTrailing {
+                    ToolbarItem(placement: .topBarTrailing) { HStack(spacing: 6) { trailing }.environment(\.phoneInSystemBar, true) }
                 }
                 // Search, last, as on the Mac.
                 if searchAction != nil {
@@ -254,15 +251,9 @@ public struct PhoneScreen<Leading: View, Trailing: View, Header: View, Content: 
     /// What the bar's search capsule does: open the screen's filter (closing it again when empty), or the app's
     /// Search. Nil: no capsule.
     private var searchAction: (@MainActor () -> Void)? {
-        guard options.showsSearch else { return nil }
-        if let search = options.search {
-            return {
-                withAnimation(PhoneLook.reveal) {
-                    if filterShown, search.wrappedValue.isEmpty { filterShown = false } else { filterShown = true }
-                }
-            }
-        }
-        return openSearch
+        // The filter field is always in sight and Search is the tab bar's own button (the owner, 2026-11-25): the
+        // bar offers neither.
+        return nil
     }
     #endif
 
@@ -374,11 +365,8 @@ public struct PhoneScreen<Leading: View, Trailing: View, Header: View, Content: 
     /// The screen's surface: the frame's grey (since the 2026-11-23 redesign every native screen, its sections the
     /// rounded opaque cards on it), with the tint mixed in. The web's drawing keeps its canvas unless grouped.
     private var surface: RGBA {
-        #if os(iOS)
-        let base = PhoneLook.frame.resolve(scheme)
-        #else
+        // As today's app (the owner, 2026-11-25): the canvas, or iOS's grouped grey under grouped rows (Settings).
         let base = (options.grouped ? PhoneSurface.grouped : FoleviTokens.Chrome.canvas).resolve(scheme)
-        #endif
         guard let tint = options.tint else { return base }
         return tint.oklabMix(base, scheme == .dark ? 0.16 : 0.10)
     }

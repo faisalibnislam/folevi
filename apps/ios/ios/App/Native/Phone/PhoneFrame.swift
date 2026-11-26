@@ -59,7 +59,18 @@ final class PhoneEngineTransport: EngineTransport {
         inner.onLifecycle = { [weak self] event in self?.onLifecycle?(event) }
     }
 
-    func call(_ message: String) async throws -> Data { try await inner.call(message) }
+    func call(_ message: String) async throws -> Data {
+        #if DEBUG
+        if let wait = Self.slowUntil.map({ $0 - PhoneMetrics.secondsSinceProcessStart() }), wait > 0 { try? await Task.sleep(for: .seconds(wait)) }
+        #endif
+        return try await inner.call(message)
+    }
+
+    #if DEBUG
+    /// FOLEVI_SLOW_ENGINE=<seconds>: nothing from the page reaches native until that long after launch, as a slow
+    /// engine start on a busy phone (for checking what a note opened right after a cold launch shows). Debug only.
+    static let slowUntil: Double? = ProcessInfo.processInfo.environment["FOLEVI_SLOW_ENGINE"].flatMap(Double.init)
+    #endif
 
     func pageEvent(_ event: PageLifecycle) {
         switch event {
@@ -71,6 +82,12 @@ final class PhoneEngineTransport: EngineTransport {
     func detach() { inner.detach() }
 
     private func receive(_ data: Data) {
+        #if DEBUG
+        if let wait = Self.slowUntil.map({ $0 - PhoneMetrics.secondsSinceProcessStart() }), wait > 0 {
+            DispatchQueue.main.asyncAfter(deadline: .now() + wait) { [weak self] in self?.receive(data) }
+            return
+        }
+        #endif
         // An array is a batch; an object names a big one.
         if data.first == UInt8(ascii: "{"), let pointer = try? JSONDecoder().decode(BigBatchPointer.self, from: data) {
             if let body = BridgeBodies.shared.takeCall(pointer.bodyId) { onBatch?(body) }

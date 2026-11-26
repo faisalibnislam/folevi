@@ -180,8 +180,9 @@ Work package status:
 - In progress: N12 native Foli AI chat (`apps/native-kit/Sources/FoleviScreens/FoliAI/`, WIP, not wired);
   N16 remaining bridge items (revision 11: R5.1 slash menu insert kind, R5.3 iPhone note full width in
   content-only mode, R5.4 caret in title for a new note, R5.5 editor.state on focus, R5.6 first-launch
-  gate reports `loading` instead of `signedOut` so native sign-in never appears (important), R5.7 a note
-  prepared right after cold launch sometimes ends on "This page couldn't load", R9.1 to R9.4 folder lock,
+  gate reports `loading` instead of `signedOut` (fixed on `claude/ios-native-sync-signin`), R5.7 a note
+  prepared right after cold launch sometimes ends on "This page couldn't load" (native side done there, page
+  side open), R9.1 to R9.4 folder lock,
   changes.diff, folders.cards, ai.generate/saveDraft, invitation decline, support form route).
 - Not started: N15 iPad pass, N17 tests and performance budgets, N18 migration and release; R2 native
   background sync (silent push with APNs key 5PG87M528M, BGAppRefreshTask/BGProcessingTask).

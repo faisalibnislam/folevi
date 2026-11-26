@@ -16,9 +16,10 @@ import FoleviScreens
 enum RebuildIPad {
     /// lib/iphone.ts: `(max-width: 699px)` is compact.
     static let minWidth: CGFloat = 700
-    /// An iPhone window this wide or wider, of regular width, takes the wide layout (iPhone Duo's inner screen is
-    /// 951 pt across and 669 pt upright; its outer screen and a Split View half are compact).
-    static let phoneMinWidth: CGFloat = 600
+    /// An iPhone window this wide or wider, of regular width, takes the wide layout: the same 700 pt as everywhere
+    /// (the owner, 2026-11-25: iPhone Duo upright, 669 pt, shows the phone layout as today's app does; open across,
+    /// 951 pt, the wide one).
+    static let phoneMinWidth: CGFloat = 700
 
     /// Whether a window this wide shows the wide layout: an iPad window from 700 pt, an iPhone window of regular
     /// width (iPhone Duo open). Decided by size, never by the device's model.
@@ -32,9 +33,10 @@ enum RebuildIPad {
     }
 }
 
-/// Tells the note page which layout is showing on an iPhone (iPhone Duo): the iPad's look and its tools in the wide
-/// layout, the phone's (native bars) otherwise. The page reads `wide` on its marker and follows the event
-/// (lib/iphone.ts nativeWide); the iPad's page measures its own width instead and is never told.
+/// Tells the note page which layout is showing: the iPad's look and its tools (the floating dock) in the wide layout,
+/// the phone's (native bars) otherwise. The page reads `wide` on its marker and follows the event (lib/iphone.ts
+/// nativeWide). The iPad's page is told too: with today's sidebar beside it, the page itself can be under 700 pt
+/// wide in the wide layout (portrait), which its own width would take for the phone's.
 @MainActor
 enum RebuildPageLayout {
     nonisolated private static let key = "folevi-native-wide"
@@ -48,7 +50,6 @@ enum RebuildPageLayout {
 
     /// Tells the page, again every half second until it has loaded and taken it (it may still be loading at launch).
     static func tell(wide: Bool) {
-        guard UIDevice.current.userInterfaceIdiom == .phone else { return }
         self.wide = wide
         telling += 1
         send(telling: telling, tries: 40)
@@ -99,6 +100,8 @@ struct RebuildIPadRoot: View {
     let phone: PhoneModel
     let pageHost: PageViewHost
     let gate: GateModel
+    /// "Sign in to your own server" from the sign-in screen (RebuildOwnServer.swift).
+    @State private var ownServer = false
 
     var body: some View {
         IPadFrameView(model: desk) {
@@ -112,8 +115,13 @@ struct RebuildIPadRoot: View {
         .overlay {
             if let g = phone.gate, g.gate != nil, g.gate != "loading" {
                 WebGateScreen(model: gate)
+                    .environment(\.gateOwnServer, { ownServer = true })
                     .onAppear { gate.show(g) }
                     .onChange(of: g) { _, next in gate.show(next) }
+                    .sheet(isPresented: $ownServer) {
+                        RebuildOwnServerSheet { ownServer = false }
+                            .presentationDetents([.medium, .large])
+                    }
                     .transition(.opacity)
             }
         }

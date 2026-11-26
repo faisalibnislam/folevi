@@ -42,7 +42,7 @@ public struct PhoneVaultScreen: View {
     let menus: PhoneMenus
     let back: () -> Void
     @State private var state = PhoneVaultState()
-    @State private var moreFrame: CGRect = .zero
+    @State private var moreFrame = PhoneFrameBox()
     @State private var width: CGFloat = 370
     @Environment(\.colorScheme) private var scheme
 
@@ -134,7 +134,7 @@ public struct PhoneVaultScreen: View {
                     }
                     .buttonStyle(.webPlain)
                     .accessibilityLabel("More in the Vault")
-                    .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { moreFrame = $0 }
+                    .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { moreFrame.rect = $0 }
                 }
             }
         }
@@ -151,7 +151,7 @@ public struct PhoneVaultScreen: View {
         let entries = (model.value?.moreSections ?? []).flatMap { s -> [PhoneMenuEntry] in
             (s == .settings ? [PhoneMenuEntry(.separator())] : []) + [PhoneMenuEntry(.item(s.label, icon: s.icon, checked: model.section == s)) { model.open(s) }]
         }
-        menus.show(entries, from: moreFrame, side: .bottom, align: .end, minWidth: 200)
+        menus.show(entries, from: moreFrame.rect, side: .bottom, align: .end, minWidth: 200)
     }
 
     // MARK: the body

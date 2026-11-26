@@ -111,7 +111,7 @@ public struct PhoneSwipeRow<Content: View>: View {
             }
             content
                 // (On a card: the card's own fill, so the row is one with it.)
-                .background((grouped ? PhoneLook.card : FoleviTokens.Chrome.canvas).resolve(scheme).color)
+                .background((grouped ? PhoneSurface.row : FoleviTokens.Chrome.canvas).resolve(scheme).color)
                 .offset(x: offset)
         }
         .clipped()

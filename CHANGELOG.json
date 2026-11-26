@@ -2,7 +2,7 @@
   "releases": [
     {
       "version": "1.7.78",
-      "build": 103,
+      "build": 107,
       "released": "2026-11-26T00:24:24+06:00",
       "type": "update",
       "summary": "Float any note in its own always-on-top window, automatic updates and much more for Windows and Linux, and smoother tabs.",

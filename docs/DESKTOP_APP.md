@@ -44,6 +44,12 @@ the Electron one the same day. The Mac keeps its own app; there is no Mac target
   `library/` (files, journal, FLV1 encryption, passphrase, moves, watcher, attachments, the Dropbox and Google
   Drive copy), `auth.rs` (Folevi Cloud sign-in, PKCE, straight to Google or Apple), `places.rs`, `e2ee.rs` (device
   keys), `ai.rs` (Foli AI with the person's own keys), `http.rs` (calendars, bookmark previews), `reminders.rs`.
+- Library writes with an etag (`ifMatch`) are compare-and-swap: of writers holding one etag, at most one wins,
+  whether they are threads, two Folevi windows, or two Folevi copies on one folder. Each write gets its own
+  never-repeating modification time (Linux reuses inode numbers and has a coarse file clock, which once let a
+  stale etag match), and the final check and rename happen under an OS file lock, `.folevi-tmp/write.lock`. A
+  sync app that ignores the lock can still slip in during that microsecond window; drives that can't lock files
+  (some network shares) get the in-process guarantee only. Details in `src-tauri/src/library/fs.rs`.
 - Secrets (sessions, AI keys, the unlocked library key, device keys) are sealed with AES-256-GCM under a key kept in
   the system's credential store (Windows Credential Manager, the Secret Service on Linux), or a private file where
   there is none (and always in test runs).
@@ -136,10 +142,16 @@ server's addresses (`places.server`) and may reach only that server's names (pag
 Every two minutes Folevi checks which of a server's names answers, home names first (Folevi Connect), and moves the
 place there without signing anyone out.
 
-Not done: an http server on the home network other than `localhost`. Windows serves the page from
-`https://app.localhost`, so WebView2 blocks http and ws to a LAN address as mixed content (the page policy allows
-it). The owner chose the shell carrying that traffic (the place keeps its origin and storage); that's still to build.
-Check WebKitGTK the same way on Linux.
+An http server on the home network (Windows, `src/lan_bridge.rs`): Windows serves the page from
+`https://app.localhost`, so WebView2 blocks http and ws to a LAN address as mixed content. The owner chose the shell
+carrying that traffic, so the place keeps its origin and storage. For each plain http address other than this
+computer, the app listens on `127.0.0.1` (a port picked from the address, the same each launch). It relays every
+request and WebSocket to that one address, with the server's own `Host`. The page is given
+`http://127.0.0.1:<port>` for Convex and Convex site, and the page policy allows it. The website address (links,
+shared addresses) keeps the server's name. The sign-in screen's own look at an http LAN address still fails on
+Windows ("A browser can't always check a server on your home network"), and "Open it anyway" lets the app check it.
+`lan_bridge::needed()` is Windows only; turn it on for Linux if WebKitGTK blocks the same traffic.
+
 ## Updates
 
 Folevi for Windows and the Linux AppImage update themselves the way Sparkle updates the Mac app (`src/updates.rs`):

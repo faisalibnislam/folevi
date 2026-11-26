@@ -11,11 +11,13 @@ public enum TabStripMath {
     public static let fade: CGFloat = 28
     /// The least a tab shrinks to before the list scrolls. The web's is 172; the Mac's window is often narrower than a
     /// browser's, and at 172 a 920 pt window showed one tab and faded fragments of its neighbours ("1…", "gs"): at 96
-    /// every tab keeps its icon and the start of its title (MAC-35). The iPad keeps the web's.
+    /// every tab keeps its icon and the start of its title (MAC-35). The iPad: 128, since its tabs share the glass
+    /// bar with Back, Forward, Foli AI and New note beside the sidebar (2026-11-25): at 172 an 11-inch iPad in portrait
+    /// scrolled its one tab behind the arrows.
     #if os(macOS)
     public static let minTab: CGFloat = 96
     #else
-    public static let minTab: CGFloat = 172
+    public static let minTab: CGFloat = 128
     #endif
     public static let maxTab: CGFloat = 284
 

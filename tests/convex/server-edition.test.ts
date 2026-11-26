@@ -13,7 +13,7 @@ import { chatBody, fitVector, messagesOf, openAiProvider } from "../../convex/li
 import { relayPushBody, sendThroughRelay } from "../../convex/lib/pushRelay";
 import { applySettingsPatch, defaultServerSettings, publicSettingsView, SettingsError } from "../../convex/lib/serverSettings";
 import { emailManifest } from "@folevi/email";
-import { person, setup, type T } from "./helpers";
+import { identity, person, setup, type T } from "./helpers";
 
 const ENV = ["FOLEVI_EDITION", "FOLEVI_SETUP_TOKEN_HASH", "FOLEVI_CONNECT_TOKEN", "FOLEVI_CONNECT_URL", "FOLEVI_JWKS", "CONVEX_SITE_URL", "GEMINI_API_KEY", "RESEND_API_KEY"] as const;
 const SETUP_TOKEN = "setup-code-for-tests-0123456789";
@@ -448,5 +448,32 @@ describe("Folevi Server: auth config", () => {
     });
     expect(staticJwks(strict)).toEqual({ kind: "none" });
     expect(() => authProvider(strict)).not.toThrow();
+  });
+});
+
+describe("Folevi Server: a new public address keeps every account", () => {
+  // Turning Folevi Connect on (or adding a domain) changes the server's public address, which is the token issuer.
+  const movedTo = (p: Awaited<ReturnType<typeof person>>, t: T, email: string) =>
+    t.withIdentity(identity(email, { subject: p.userId, sessionId: p.sessionId, issuer: "https://abc1234567.folevi.app", tokenIdentifier: `https://abc1234567.folevi.app|${p.userId}` }));
+
+  test("the same account under the new issuer is the same profile, and a mutation moves it", async () => {
+    const t = setup();
+    const owner = await ownedServer(t);
+    const moved = movedTo(owner, t, "owner@example.com");
+    const me = await moved.query(api.users.me, {});
+    expect(me.state).toBe("ready");
+    expect(me.state === "ready" && me.profile.id).toBe(owner.profileId);
+    expect(await moved.mutation(api.users.bootstrap, { timeZone: "UTC", locale: "en" })).toMatchObject({ created: false, profileId: owner.profileId });
+    const row = await profileOf(t, owner.profileId);
+    expect(row).toMatchObject({ authIssuer: "https://abc1234567.folevi.app", tokenIdentifier: `https://abc1234567.folevi.app|${owner.userId}` });
+    // Still the server's owner (owner-only functions work).
+    expect(await codeOf(moved.query(api.serverAdmin.getSettings, {}))).toBe("ok");
+  });
+
+  test("Folevi Cloud never finds a profile by subject alone", async () => {
+    const t = setup();
+    const p = await person(t, "cloud@example.com");
+    const other = movedTo(p, t, "cloud@example.com");
+    expect((await other.query(api.users.me, {})).state).toBe("needs_bootstrap");
   });
 });

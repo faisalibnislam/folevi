@@ -44,7 +44,8 @@ public struct PhoneGroupedSection<Content: View>: View {
                 .environment(\.phoneRowGrouped, true)
         } header: {
             if let title {
-                Text(title).webText(PhoneType.captionCaps).textCase(nil)
+                // In capitals, as today's app (`.ui-caption-caps`, the owner, 2026-11-25).
+                Text(title).webText(PhoneType.captionCaps).textCase(.uppercase)
                     .foregroundStyle(FoleviTokens.Chrome.inkMuted.resolve(scheme).color)
             }
         } footer: {
@@ -59,9 +60,10 @@ public struct PhoneGroupedSection<Content: View>: View {
     private var stackBody: some View {
         VStack(alignment: .leading, spacing: 0) {
             if let title {
-                // The Mac's section heading (the owner, 2026-11-23): sentence case, semibold, the muted ink.
+                // In capitals, as today's app (`.ui-caption-caps`, the owner, 2026-11-25).
                 Text(title)
                     .webText(PhoneType.captionCaps)
+                    .textCase(.uppercase)
                     .lineLimit(1)
                     .foregroundStyle(FoleviTokens.Chrome.inkMuted.resolve(scheme).color)
                     .padding(.horizontal, 16)
@@ -73,7 +75,7 @@ public struct PhoneGroupedSection<Content: View>: View {
             VStack(spacing: 0) { content }
             .environment(\.phoneRowGrouped, true)
             .padding(.vertical, chrome != nil ? 4 : 0)
-            .background(PhoneLook.card.resolve(scheme).color)
+            .background(PhoneSurface.row.resolve(scheme).color)
             // (The native look: iOS 26's inset grouped corners, wide and continuous.)
             .clipShape(RoundedRectangle(cornerRadius: chrome != nil ? PhoneLook.cardRadius : FoleviTokens.Radius.container, style: chrome != nil ? .continuous : .circular))
             if let footer {

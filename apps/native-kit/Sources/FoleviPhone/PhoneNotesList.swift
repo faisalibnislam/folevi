@@ -45,7 +45,6 @@ public struct PhoneNotesListScreen: View {
     @Bindable var model: NotesListModel
     let actions: PhoneNotesListActions
     let scrollToTop: Int
-    @State private var moreFrame: CGRect = .zero
     @State private var swipes = PhoneSwipeState()
     /// Arranging the cards in manual order, as the Home Screen does: they wiggle, one held is dragged about and the
     /// others make room, until Done.
@@ -347,9 +346,15 @@ public struct PhoneNotesListScreen: View {
             let arrangeable = canArrange
             LazyVGrid(columns: columns(grid), spacing: 20) {
                 ForEach(Array(shownSlots.enumerated()), id: \.element.id) { at, slot in
+                    let held = slot.row.map { drag?.id == $0.id } ?? false
+                    let key = PhoneCardCellKey(slot: slot, at: at, held: held, lift: slot.row.map { liftOffset($0.id) } ?? .zero,
+                                               starred: slot.row.map(model.isStarred) ?? false, selecting: model.selecting,
+                                               selected: slot.row.map { model.selection.contains($0.id) } ?? false,
+                                               arranging: arranging, arrangeable: arrangeable, dark: scheme == .dark)
+                    // (A card whose own data didn't change isn't drawn again when the next window of rows loads.)
+                    PhoneSkipCell(key) {
                     Group {
                         if let row = slot.row {
-                            let held = drag?.id == row.id
                             PhonePressable(scale: 0.97, onTap: { tap(row) }, onLongPress: model.selecting || arranging ? nil : { cardMenu(row, $0) }) {
                                 WebNoteCard(model.card(row))
                                     .overlay(alignment: .topTrailing) {
@@ -385,6 +390,8 @@ public struct PhoneNotesListScreen: View {
                     }
                     .onAppear { model.slotAppeared(slot.index) }
                     .onDisappear { model.slotDisappeared(slot.index) }
+                    }
+                    .equatable()
                 }
             }
             .coordinateSpace(name: Self.grid)
@@ -393,6 +400,10 @@ public struct PhoneNotesListScreen: View {
         } else {
             PhoneListSection {
                 ForEach(model.slots) { slot in
+                    let key = PhoneRowCellKey(slot: slot, starred: slot.row.map(model.isStarred) ?? false,
+                                              subtitle: slot.row.map(model.subtitle) ?? "", selecting: model.selecting,
+                                              selected: slot.row.map { model.selection.contains($0.id) } ?? false)
+                    PhoneSkipCell(key) {
                     Group {
                         if let row = slot.row {
                             let rowView = PhonePressable(scale: 1, highlight: true, onTap: { tap(row) }, onLongPress: model.selecting ? nil : { actions.rowMenu(row, $0) }) {
@@ -410,6 +421,8 @@ public struct PhoneNotesListScreen: View {
                     }
                     .onAppear { model.slotAppeared(slot.index) }
                     .onDisappear { model.slotDisappeared(slot.index) }
+                    }
+                    .equatable()
                 }
             }
         }
@@ -557,6 +570,45 @@ struct PhonePressableStyle: ButtonStyle {
             .pressDip(configuration.isPressed, scale: scale)
             .contentShape(Rectangle())
     }
+}
+
+/// A cell drawn only when its key changes: the list's body runs again when any window of rows loads, and every
+/// card on screen ran its body with it (inline closures can't be compared). Everything the cell shows is in the key.
+struct PhoneSkipCell<Key: Equatable, Content: View>: View, Equatable {
+    let key: Key
+    let content: () -> Content
+
+    init(_ key: Key, @ViewBuilder content: @escaping () -> Content) {
+        self.key = key
+        self.content = content
+    }
+
+    var body: some View { content() }
+
+    nonisolated static func == (a: Self, b: Self) -> Bool { a.key == b.key }
+}
+
+/// What a card in the grid shows.
+struct PhoneCardCellKey: Equatable {
+    let slot: NoteSlot
+    let at: Int
+    let held: Bool
+    let lift: CGSize
+    let starred: Bool
+    let selecting: Bool
+    let selected: Bool
+    let arranging: Bool
+    let arrangeable: Bool
+    let dark: Bool
+}
+
+/// What a row in the list shows.
+struct PhoneRowCellKey: Equatable {
+    let slot: NoteSlot
+    let starred: Bool
+    let subtitle: String
+    let selecting: Bool
+    let selected: Bool
 }
 
 /// A pressable's place on screen (a box, so writing it doesn't redraw).

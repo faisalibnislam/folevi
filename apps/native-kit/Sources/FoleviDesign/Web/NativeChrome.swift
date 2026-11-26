@@ -28,8 +28,11 @@ public struct NativeChrome: Hashable, Sendable {
     /// the nearest of Apple's text styles (Body 17, Subheadline 15, Footnote 13, ...), and follows Dynamic Type.
     /// The Mac's four fixed sizes otherwise.
     public var dynamicType: Bool
+    /// The iPhone's look since 2026-11-25 (the owner: "match today's UI"): interface text keeps Folevi's own fonts
+    /// and the web's sizes (Instrument Sans, Spectral titles), while buttons, fields, menus and sheets stay native.
+    public var brandText: Bool
 
-    public init(title: CGFloat, title3: CGFloat, body: CGFloat, small: CGFloat, accent: Color, onAccent: Color, hover: Color, dynamicType: Bool = false) {
+    public init(title: CGFloat, title3: CGFloat, body: CGFloat, small: CGFloat, accent: Color, onAccent: Color, hover: Color, dynamicType: Bool = false, brandText: Bool = false) {
         self.title = title
         self.title3 = title3
         self.body = body
@@ -38,7 +41,11 @@ public struct NativeChrome: Hashable, Sendable {
         self.onAccent = onAccent
         self.hover = hover
         self.dynamicType = dynamicType
+        self.brandText = brandText
     }
+
+    /// This chrome where interface text is set: nil under `brandText` (the text keeps Folevi's fonts).
+    public var forText: NativeChrome? { brandText ? nil : self }
 
     /// Apple's text styles by their default (Large) size, largest first (the HIG's iOS type sizes).
     static let appleStyles: [(size: CGFloat, style: Font.TextStyle)] = [
@@ -137,7 +144,7 @@ public extension WebFont {
     /// Folevi's own family everywhere else (the iPhone, the iPad). The owner, 2026-11-18: the whole Mac app is the
     /// system font but for notes, folders and the editor.
     static func interface(_ chrome: NativeChrome?, _ family: WebFontFamily = .sans, size: CGFloat, weight: CGFloat = 400, italic: Bool = false) -> Font {
-        guard let chrome else { return font(family, size: size, weight: weight, italic: italic) }
+        guard let chrome = chrome?.forText else { return font(family, size: size, weight: weight, italic: italic) }
         if chrome.dynamicType, family != .mono {
             let f = chrome.font(WebTextStyle(family: .system, size: NativeChrome.fourSize(NativeChrome.appleSize(size)), leading: 0, weight: weight))
             return italic ? f.italic() : f

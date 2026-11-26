@@ -34,7 +34,9 @@ export function ShellSignIn() {
   useSystemTheme();
   // "choose": Apple, Google or email, before anything opens.
   // "server": "Your own server" (docs/self-hosting/CONTRACT.md §6), on hosts that can add a server place.
-  const [state, setState] = useState<"idle" | "choose" | "waiting" | "failed" | "server">("idle");
+  // "Sign in to Folevi" on the first-launch choice already chose: straight on to how, from the first frame (so
+  // native never sees the choice again: R5.6).
+  const [state, setState] = useState<"idle" | "choose" | "waiting" | "failed" | "server">(() => (signInNextPending() ? "choose" : "idle"));
   const [way, setWay] = useState<SignInWay>("email");
   const [apple, setApple] = useState<"idle" | "busy" | { error: string }>("idle");
   // Opening the sheet again replaces the attempt before it, which then answers false: only the latest counts.
@@ -53,7 +55,7 @@ export function ShellSignIn() {
   const sheet = deviceWords().ios;
   // The iPhone and iPad app: Apple's own sheet, no web page at all.
   const appleHere = sheet && appleSheetHere();
-  // "Sign in to Folevi" on the first-launch choice already chose: go on to how, without asking twice.
+  // (Used once: a later visit to this screen offers the choice again.)
   useEffect(() => {
     if (takeSignInNext()) setState("choose");
   }, []);
@@ -217,21 +219,38 @@ export function ShellSignIn() {
 }
 
 const SIGN_IN_NEXT = "folevi:shell-sign-in-next";
+/** How long the choice is remembered: the restart into account mode takes a moment, never minutes. */
+const SIGN_IN_NEXT_MS = 2 * 60_000;
 
-/** The first-launch choice picked "Sign in to Folevi": the app restarts in account mode and goes straight on. */
+/**
+ * The first-launch choice picked "Sign in to Folevi": the app restarts in account mode and goes straight on.
+ * Kept in localStorage, not sessionStorage: the iPhone and iPad app restart on a new web view (a new session),
+ * which lost it, so the choice came back instead of sign-in (native contract R5.6).
+ */
 export function rememberSignInNext(): void {
   try {
-    sessionStorage.setItem(SIGN_IN_NEXT, "1");
+    localStorage.setItem(SIGN_IN_NEXT, String(Date.now()));
   } catch {
     // Without storage the choice is offered once more.
   }
 }
 
+/** Whether the choice was just made (read only: takeSignInNext uses it up). */
+function signInNextPending(): boolean {
+  try {
+    const at = Number(localStorage.getItem(SIGN_IN_NEXT));
+    return Number.isFinite(at) && at > 0 && Date.now() - at < SIGN_IN_NEXT_MS;
+  } catch {
+    return false;
+  }
+}
+
 function takeSignInNext(): boolean {
   try {
-    const v = sessionStorage.getItem(SIGN_IN_NEXT) === "1";
+    const at = Number(localStorage.getItem(SIGN_IN_NEXT));
+    localStorage.removeItem(SIGN_IN_NEXT);
     sessionStorage.removeItem(SIGN_IN_NEXT);
-    return v;
+    return Number.isFinite(at) && at > 0 && Date.now() - at < SIGN_IN_NEXT_MS;
   } catch {
     return false;
   }

@@ -45,7 +45,7 @@ func (f *fake) Update() Update {
 }
 func (f *fake) Diagnostics() (string, error) { return "REF1", nil }
 
-const secret = "0123456789abcdef0123456789abcdef"
+const secret = "0123456789abcdef0123456789abcdef" // gitleaks:allow
 
 func do(t *testing.T, h http.Handler, method, path, auth, body string) (int, map[string]any) {
 	t.Helper()

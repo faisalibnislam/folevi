@@ -140,7 +140,7 @@ struct PhoneVaultSelect: View {
     let selected: String
     let menus: PhoneMenus
     let onSelect: (String) -> Void
-    @State private var frame: CGRect = .zero
+    @State private var frame = PhoneFrameBox()
     @Environment(\.colorScheme) private var scheme
 
     /// The measured width where it's known: Lock after (the web's flex row shortens its label), and the kind
@@ -166,7 +166,7 @@ struct PhoneVaultSelect: View {
     private var drawn: some View {
         let s = PV.style(style, scheme)
         return Button {
-            menus.show(options.map { o in PhoneMenuEntry(.item(o.1, checked: o.0 == selected)) { onSelect(o.0) } }, from: frame, side: .bottom, align: .end, minWidth: max(s.width, 200))
+            menus.show(options.map { o in PhoneMenuEntry(.item(o.1, checked: o.0 == selected)) { onSelect(o.0) } }, from: frame.rect, side: .bottom, align: .end, minWidth: max(s.width, 200))
         } label: {
             HStack(spacing: s.gap) {
                 Text(label).webText(s.text).lineLimit(1).truncationMode(.tail)
@@ -183,7 +183,7 @@ struct PhoneVaultSelect: View {
         }
         // (36 drawn, 44 to tap.)
         .buttonStyle(PhoneTallPress(grow: max(0, (44 - s.height) / 2)))
-        .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { frame = $0 }
+        .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { frame.rect = $0 }
         .accessibilityValue(label)
     }
 }
@@ -196,7 +196,7 @@ struct PhoneVaultFiles: View {
     let vaultId: String
     @Environment(\.colorScheme) private var scheme
     @State private var busy = false
-    @State private var uploadFrame: CGRect = .zero
+    @State private var uploadFrame = PhoneFrameBox()
     @Environment(\.nativeChrome) private var chrome
     @State private var importing = false
     @State private var photo: PhotosPickerItem?
@@ -239,7 +239,7 @@ struct PhoneVaultFiles: View {
                 } else {
                     WebButton(busy ? "Encrypting…" : "Upload", icon: .upload, iconSize: 14, styleName: "phone.vault.files.upload", variant: .primary) { chooseUpload() }
                         .disabled(busy)
-                        .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { uploadFrame = $0 }
+                        .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { uploadFrame.rect = $0 }
                 }
             }
             .padding(.bottom, bar.margin.bottom)
@@ -393,7 +393,7 @@ struct PhoneVaultFiles: View {
         menus.show([
             PhoneMenuEntry(.item("Photo Library", icon: .image)) { pickingPhoto = true },
             PhoneMenuEntry(.item("Choose File", icon: .folder)) { importing = true },
-        ], from: uploadFrame, side: .bottom, align: .end, minWidth: 220)
+        ], from: uploadFrame.rect, side: .bottom, align: .end, minWidth: 220)
     }
 
     private func send(_ url: URL) {

@@ -28,8 +28,10 @@ export function argsOf(raw: unknown): Args {
   return raw as Args;
 }
 
-/** Ids and keys: short strings of letters, digits, `_`, `-`, `:` and `.`. */
-const ID = /^[A-Za-z0-9_:.-]{1,128}$/;
+/** Ids and keys: short strings of letters, digits, `_`, `-`, `:`, `.` and `~`. */
+// (`~` too: a local Foli AI message's id is `<conversation id>~<ulid>`, local/ai/chatStore.ts; without it Stop, Apply,
+// Save as note and Copy as Markdown of one answer were refused in local mode.)
+const ID = /^[A-Za-z0-9_:.~-]{1,128}$/;
 
 export function id(args: Args, key: string): string {
   const v = args[key];

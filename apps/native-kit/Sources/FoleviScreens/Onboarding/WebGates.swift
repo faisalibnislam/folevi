@@ -50,6 +50,12 @@ public struct WebGateScreen: View {
     }
 }
 
+extension EnvironmentValues {
+    /// "Sign in to your own server" on the sign-in screen (Folevi Server, docs/self-hosting/CONTRACT.md §6.1), for
+    /// hosts that can add a server place: the host shows its own screen for the address. Nil hides the button.
+    @Entry public var gateOwnServer: (@MainActor () -> Void)? = nil
+}
+
 // MARK: Pieces shared by the screens
 
 /// One line of text in a measured style (its font, line box and colour).
@@ -844,18 +850,22 @@ public struct WebLockCover: View {
 struct MessageCardGate: View {
     @Bindable var model: GateModel
     @Environment(\.colorScheme) private var scheme
+    /// The window's width: on an iPhone the Mac's card is wider than the screen, so it narrows to fit (16 pt each
+    /// side), its words with it.
+    @State private var room: CGFloat = .infinity
 
     var body: some View {
         let card = gs("gates.card", scheme)
         let pair = WebStyles.named("gates.card")
         let title = gs("gates.card.title", scheme)
         let body = gs("gates.card.body", scheme)
-        GateColumn(width: card.width, gap: 0) {
+        let short = max(0, card.width - (room - 32))
+        GateColumn(width: card.width - short, gap: 0) {
             VStack(alignment: .leading, spacing: 0) {
                 // (An h1: text-wrap balance. The text is a div: plain breaks.)
-                WebParagraph(model.title, style: title.text, width: title.width, wrap: .balance).foregroundStyle(title.color.color)
+                WebParagraph(model.title, style: title.text, width: title.width - short, wrap: .balance).foregroundStyle(title.color.color)
                 if !model.message.isEmpty {
-                    WebParagraph(model.message, style: body.text, width: body.width, wrap: .greedy).foregroundStyle(body.color.color).padding(.top, 12)
+                    WebParagraph(model.message, style: body.text, width: body.width - short, wrap: .greedy).foregroundStyle(body.color.color).padding(.top, 12)
                 }
                 if model.gate?.busy == true, model.gate?.progress == nil, model.gate?.actions.isEmpty != false {
                     GateBusyBar().padding(.top, 24)
@@ -869,9 +879,10 @@ struct MessageCardGate: View {
             }
             .padding(card.padding.edgeInsets)
             .padding(card.borderWidth)
-            .frame(width: card.width, alignment: .leading)
+            .frame(width: card.width - short, alignment: .leading)
             .webBox(pair)
         }
+        .background { Color.clear.onGeometryChange(for: CGFloat.self) { $0.size.width } action: { room = $0 } }
     }
 
     private var hasChildren: Bool {
@@ -911,12 +922,21 @@ struct PhoneSignInGate: View {
 struct SignInChoices: View {
     @Bindable var model: GateModel
     @Environment(\.colorScheme) private var scheme
+    @Environment(\.gateOwnServer) private var ownServer
 
     var body: some View {
         let list = gs("gates.signin.list", scheme)
         let actions = model.gate?.actions ?? []
+        // (Folevi Cloud's own choices, not a server's sign-in or the waiting screen: there "Your own server" fits.)
+        let offersServer = ownServer != nil && actions.contains { $0.id == "apple" }
         VStack(spacing: list.gap) {
             ForEach(actions, id: \.id) { a in
+                if a.id == "local", offersServer, let ownServer {
+                    // As today's app (ShellSignIn.tsx): under Sign in with email, before Keep notes on my devices.
+                    GateFullButton(title: "Sign in to your own server", id: "gates.signin.local", leading: AnyView(WebIconView(.server, size: 16).padding(.trailing, 8))) { ownServer() }
+                        .disabled(model.pending != nil)
+                        .accessibilityIdentifier("gate-action-server")
+                }
                 Group {
                     switch a.id {
                     case "apple": WebAppleButton(title: a.label, busy: !a.enabled) { press(a) }

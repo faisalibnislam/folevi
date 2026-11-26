@@ -159,10 +159,36 @@ export async function requireActiveSession(ctx: Ctx, identity: UserIdentity): Pr
 }
 
 export async function findProfile(ctx: Ctx, identity: UserIdentity): Promise<Doc<"profiles"> | null> {
-  return await ctx.db
+  const profile = await ctx.db
     .query("profiles")
     .withIndex("by_token", (q) => q.eq("tokenIdentifier", identity.tokenIdentifier))
     .unique();
+  if (profile || !isServerEdition()) return profile;
+  return await findMovedServerProfile(ctx, identity);
+}
+
+/**
+ * Folevi Server: the token's issuer is the server's public address (the Better Auth Convex plugin signs with
+ * CONVEX_SITE_URL), and that address changes when the owner turns Folevi Connect on or adds a domain. The account
+ * itself doesn't change: the subject is this server's own Better Auth user id, and only this server's keys sign
+ * tokens, so a profile with the same subject under an earlier issuer is the same person. It's found by subject,
+ * and a mutation moves it to the new issuer so later lookups use the token index again. Never in Folevi Cloud,
+ * whose issuer is fixed.
+ */
+async function findMovedServerProfile(ctx: Ctx, identity: UserIdentity): Promise<Doc<"profiles"> | null> {
+  if (!identity.subject) return null;
+  const rows = await ctx.db
+    .query("profiles")
+    .withIndex("by_auth_subject", (q) => q.eq("authSubject", identity.subject))
+    .take(5);
+  const moved = rows.find((p) => p.status !== "deleted" && p.authIssuer !== identity.issuer);
+  if (!moved) return null;
+  if ("patch" in ctx.db) {
+    await (ctx as MutationCtx).db.patch(moved._id, { tokenIdentifier: identity.tokenIdentifier, authIssuer: identity.issuer });
+    console.log(JSON.stringify({ event: "auth.server_issuer_moved", profileId: moved._id }));
+    return { ...moved, tokenIdentifier: identity.tokenIdentifier, authIssuer: identity.issuer };
+  }
+  return moved;
 }
 
 /**

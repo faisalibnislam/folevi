@@ -15,7 +15,7 @@ public struct PhoneMovePlacesSheet: View {
     let close: () -> Void
     /// The sheet's own menus (it sits above the frame's menu layer).
     @State private var menus = PhoneMenus()
-    @State private var rowFrames: [String: CGRect] = [:]
+    @State private var rowFrames = PhoneFrameBoxes()
     @Environment(\.colorScheme) private var scheme
 
     public init(model: MovePlacesModel, close: @escaping () -> Void) {

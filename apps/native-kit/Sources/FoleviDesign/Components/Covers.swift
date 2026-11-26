@@ -234,6 +234,7 @@ public final class CoverFiles {
         while order.count > Self.cap {
             let old = order.removeFirst()
             images[old] = nil
+            colors[old] = nil
             asked.remove(old)
         }
     }
@@ -243,6 +244,7 @@ public final class CoverFiles {
         for id in order { asked.remove(id) }
         order.removeAll()
         images.removeAll()
+        colors.removeAll()
         CoverArtCache.shared.clear()
     }
 

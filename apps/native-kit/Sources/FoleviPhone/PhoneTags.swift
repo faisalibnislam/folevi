@@ -13,7 +13,6 @@ public struct PhoneTagsScreen: View {
     let back: () -> Void
     let menu: (CGRect) -> Void
     let scrollToTop: Int
-    @State private var moreFrame: CGRect = .zero
     @Environment(\.colorScheme) private var scheme
 
     /// `open` gets the tag's path (`/tags/<id>`); `menu` shows the sort menu from the pill's "…".

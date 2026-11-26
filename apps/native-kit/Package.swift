@@ -17,7 +17,7 @@ let strict: [SwiftSetting] = [
 let package = Package(
     name: "FoleviKit",
     defaultLocalization: "en",
-    platforms: [.iOS(.v18), .macOS(.v26)],
+    platforms: [.iOS(.v26), .macOS(.v26)],
     products: [
         .library(name: "FoleviEngine", targets: ["FoleviEngine"]),
         .library(name: "FoleviDesign", targets: ["FoleviDesign"]),

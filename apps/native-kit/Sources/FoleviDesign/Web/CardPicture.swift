@@ -48,17 +48,28 @@ public final class CardPictures {
         pictures.object(forKey: key as NSString)
     }
 
-    /// Bumped when a picture is forgotten because something it showed changed: views read it, so they draw again.
-    @Observable final class Changes {
+    /// Bumped when a card's picture is forgotten because something it showed changed: that card's views read it, so
+    /// they draw again. One per card (`CardPicture.key`): one global count drew every card on screen again whenever
+    /// any one card's picture went.
+    @Observable final class Change {
         var count = 0
     }
-    let changes = Changes()
+    private var changes: [String: Change] = [:]
+
+    /// The change count for the card `owner` (made on first read).
+    func change(_ owner: String) -> Change {
+        if let c = changes[owner] { return c }
+        let c = Change()
+        changes[owner] = c
+        return c
+    }
 
     /// The picture for `key` drawn at `phase`: the kept one if it's drawn there, else `draw`'s, kept instead.
-    func picture(_ key: String, at phase: CGSize, draw: () -> CGImage?) -> Picture? {
+    /// `owner` is the card's own key, whose views draw again when the picture is forgotten.
+    func picture(_ key: String, owner: String, at phase: CGSize, draw: () -> CGImage?) -> Picture? {
         if let kept = kept(key), kept.phase == phase { return kept }
         let image = withObservationTracking(draw) {
-            Task { @MainActor in CardPictures.shared.forget(key) }
+            Task { @MainActor in CardPictures.shared.forget(key, owner: owner) }
         }
         guard let image else { return nil }
         drawn += 1
@@ -86,14 +97,16 @@ public final class CardPictures {
     }
 
     /// Something the picture for `key` showed has changed: it goes, and the views showing it draw it again.
-    func forget(_ key: String) {
+    func forget(_ key: String, owner: String) {
         pictures.removeObject(forKey: key as NSString)
-        changes.count += 1
+        changes[owner]?.count += 1
     }
 
-    /// Memory is short: every picture goes (what shows draws its own again).
+    /// Memory is short: every picture goes (what shows draws its own again). The change counts stay (views on
+    /// screen follow theirs; each is a few bytes), unless there are very many.
     public func relieve() {
         pictures.removeAllObjects()
+        if changes.count > 20_000 { changes.removeAll() }
     }
 }
 
@@ -146,12 +159,12 @@ struct CardPicture<Content: View>: View {
 
     /// Placed between no pixels, the next moment (so a single pass, as in `snapping`, draws it live).
     private var fixed: some View {
-        let _ = CardPictures.shared.changes.count
+        let _ = CardPictures.shared.change(key).count
         return GeometryReader { geo in
             let size = geo.size
             let name = pictureKey(size)
             if size.width > 0, size.height > 0, let at = drawnAt ?? CardPictures.shared.kept(name)?.phase,
-               let picture = CardPictures.shared.picture(name, at: at, draw: { draw(size, shift: .zero) }) {
+               let picture = CardPictures.shared.picture(name, owner: key, at: at, draw: { draw(size, shift: .zero) }) {
                 Image(decorative: picture.image, scale: scale)
                     .offset(x: -margin.leading, y: -margin.top)
             } else {
@@ -163,12 +176,12 @@ struct CardPicture<Content: View>: View {
 
     private var snapping: some View {
         // (Read so the view draws again when a picture is forgotten.)
-        let _ = CardPictures.shared.changes.count
+        let _ = CardPictures.shared.change(key).count
         return GeometryReader { geo in
             let size = geo.size
             let name = pictureKey(size)
             if size.width > 0, size.height > 0, let at = drawnAt ?? CardPictures.shared.kept(name)?.phase,
-               let picture = CardPictures.shared.picture(name, at: at, draw: { draw(size, shift: CGSize(width: at.width / scale, height: at.height / scale)) }) {
+               let picture = CardPictures.shared.picture(name, owner: key, at: at, draw: { draw(size, shift: CGSize(width: at.width / scale, height: at.height / scale)) }) {
                 Image(decorative: picture.image, scale: scale)
                     .offset(x: -margin.leading - picture.phase.width / scale, y: -margin.top - picture.phase.height / scale)
             } else {

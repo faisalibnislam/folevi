@@ -29,7 +29,8 @@ export function shellContentSecurityPolicy(opts: ShellCspOptions): string {
   return [
     "default-src 'self'",
     // Next's inline bootstrap scripts carry no nonce in a static export.
-    `script-src 'self' 'unsafe-inline'${opts.dev ? " 'unsafe-eval'" : ""}`,
+    // ('wasm-unsafe-eval': the spelling checker is WebAssembly, lib/spelling/hunspell.ts.)
+    `script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval'${opts.dev ? " 'unsafe-eval'" : ""}`,
     "style-src 'self' 'unsafe-inline'",
     `img-src 'self' data: blob: folevi-file: ${site} https: http:`,
     `media-src 'self' blob: folevi-file: ${site} https: http:`,

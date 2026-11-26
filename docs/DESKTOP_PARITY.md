@@ -21,7 +21,8 @@ Yes = built, Partial = built with less, No = missing.
 | Feature | Mac | Windows | Linux | Notes |
 |---|---|---|---|---|
 | Menus and keyboard shortcuts | Yes | Partial | Partial | No menu bar; `host.js` `keyAction` has tabs, windows, print, settings, zoom, F11, Alt+arrows, and since PR 125 Ctrl+N, Ctrl+Shift+F, Ctrl+/, Ctrl+Shift+] and [, Ctrl+Alt+C, Ctrl+Alt+\\, Ctrl+Alt+Shift+N, Ctrl+Q (Linux). Export, Move, Trash, Copy Link and Find Next have no Ctrl key yet (the page doesn't handle them off the Mac) |
-| Text menu (spelling, Learn Word, Look Up) | Yes | Partial | Partial | Web spelling fallback; Look Up is Mac-only |
+| Text menu (spelling, Learn Word, Look Up) | Yes | Partial | Partial | Spelling in the note is Folevi's own in all three since 2026-11-26 (docs/SPELLING_PLAN.md); Look Up is Mac-only |
+| Spell check, suggestions, next-word prediction | Yes | Yes | Yes | Same web code everywhere (docs/SPELLING_PLAN.md). Settings > Writing is in the Windows and Linux app's web Settings; the Mac's native Settings has no row yet (the note's right-click menu has the switches) |
 | Quick Add shortcut and panel | Yes | Yes | Yes | Wayland uses the GlobalShortcuts portal (not tested on real Wayland) |
 | Tray / menu bar icon | Yes | Yes | Yes | Tray lacks Search and a place switcher |
 | Dock menu / Jump List / launcher actions | Yes | Yes | Yes | Windows Jump List (`jumplist.rs`, PR 120); Linux .desktop actions. New Note, Quick Add, Today's Tasks |

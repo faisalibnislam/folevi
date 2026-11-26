@@ -22,7 +22,7 @@ describe("content security policy", () => {
     const nonce = createNonce();
     const policy = buildContentSecurityPolicy({ ...env, dev: false, nonce });
     const script = policy.split("; ").find((d) => d.startsWith("script-src"))!;
-    expect(script).toBe(`script-src 'self' 'nonce-${nonce}' 'strict-dynamic'`);
+    expect(script).toBe(`script-src 'self' 'nonce-${nonce}' 'strict-dynamic' 'wasm-unsafe-eval'`);
     expect(policy).toContain("frame-ancestors 'none'");
     expect(policy).toContain("object-src 'none'");
     expect(policy).not.toMatch(/\s{2,}/);

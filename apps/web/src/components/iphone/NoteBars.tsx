@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useReducer, useRef, useState, type ReactNode } from "react";
+import { SuggestionStrip } from "./SuggestionStrip";
 import type { Editor } from "@tiptap/react";
 import { AtSign, ChevronDown, Image as ImageIcon, IndentDecrease, IndentIncrease, Link2, MessageCircle, Paintbrush, Plus, Redo2, SquareCheck, Type, Undo2 } from "lucide-react";
 import { AiIcon } from "@/components/ai/AiIcon";
@@ -383,6 +384,8 @@ function KeyboardBar({ editor, ai, onPick, ride, leaving = false }: { editor: Ed
       className="fixed inset-x-0 bottom-0 z-40 px-2 pb-2 pl-[calc(8px+env(safe-area-inset-left))] pr-[calc(8px+env(safe-area-inset-right))]"
       ref={ride}
     >
+      {/* Spelling suggestions or the next word (SuggestionStrip.tsx), over the bar when there are any. */}
+      <SuggestionStrip editor={editor} />
       <div role="toolbar" aria-label="Writing tools" className="ui-liquid flex h-12 items-center rounded-capsule px-0.5">
         <div className="iphone-kb-scroll flex min-w-0 flex-1 items-center overflow-x-auto overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {key("Insert", <Plus size={23} strokeWidth={2.2} aria-hidden />, () => {

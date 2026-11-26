@@ -2,11 +2,79 @@
 .fb-editor .fb-misspelt {
   text-decoration-line: underline;
   text-decoration-style: wavy;
-  text-decoration-color: var(--color-danger, #d92d20);
+  text-decoration-color: var(--color-destructive, #d92d20);
   text-decoration-thickness: 1px;
   text-decoration-skip-ink: none;
   text-underline-offset: 0.22em;
 }
 @media print {
   .fb-editor .fb-misspelt { text-decoration: none; }
+}
+
+/* The next word predicted after the caret (predict.ts): gray, never selectable, Tab takes it. */
+.fb-editor .fb-ghost {
+  color: var(--color-ink-faint);
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-select: none;
+  white-space: pre-wrap;
+}
+.fb-editor .fb-ghost::after {
+  content: attr(data-ghost);
+}
+@media print {
+  .fb-editor .fb-ghost { display: none; }
+}
+
+/* The bubble under a clicked misspelt word (SpellingBubble.tsx): its likeliest spellings, then Add and Ignore. */
+.fb-spell-bubble {
+  position: fixed;
+  z-index: 60;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px;
+  max-width: min(420px, calc(100vw - 16px));
+  padding: 4px;
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-control);
+  background: var(--color-surface-raised);
+  color: var(--color-ink);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.14), 0 1px 3px rgb(0 0 0 / 0.08);
+  font-size: var(--text-callout);
+  line-height: var(--text-callout--line-height);
+}
+.fb-spell-bubble button {
+  min-height: 28px;
+  padding: 4px 10px;
+  border-radius: var(--radius-chip);
+  color: inherit;
+  white-space: nowrap;
+}
+.fb-spell-bubble__guess {
+  font-weight: 600;
+}
+.fb-spell-bubble__action {
+  color: var(--color-ink-muted) !important;
+}
+.fb-spell-bubble button:hover,
+.fb-spell-bubble button:focus-visible {
+  background: var(--color-accent-soft);
+  outline: none;
+}
+.fb-spell-bubble button:focus-visible {
+  box-shadow: 0 0 0 2px var(--color-focus);
+}
+.fb-spell-bubble__note {
+  padding: 4px 10px;
+  color: var(--color-ink-muted);
+}
+.fb-spell-bubble__sep {
+  align-self: stretch;
+  width: 1px;
+  margin: 2px 2px;
+  background: var(--color-line);
+}
+@media (pointer: coarse) {
+  .fb-spell-bubble button { min-height: 40px; }
 }

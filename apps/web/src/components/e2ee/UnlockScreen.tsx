@@ -127,7 +127,7 @@ export function UnlockScreen({ onDone, onStart }: { onDone?: () => void; /** The
               <div className="mt-6 flex flex-col gap-2">
                 <Button
                   variant="primary"
-                  className="h-11 w-full justify-center text-body"
+                  className="h-control w-full justify-center text-body"
                   onClick={() => {
                     onStart?.();
                     setApproving(true);
@@ -137,7 +137,7 @@ export function UnlockScreen({ onDone, onStart }: { onDone?: () => void; /** The
                 </Button>
                 {onMac ? null : (
                   <Button
-                    className="h-11 w-full justify-center text-body"
+                    className="h-control w-full justify-center text-body"
                     onClick={async () => {
                       setNote(null);
                       onStart?.();
@@ -150,7 +150,7 @@ export function UnlockScreen({ onDone, onStart }: { onDone?: () => void; /** The
                   </Button>
                 )}
                 <Button
-                  className="h-11 w-full justify-center text-body"
+                  className="h-control w-full justify-center text-body"
                   onClick={() => {
                     onStart?.();
                     setView("passphrase");
@@ -159,7 +159,7 @@ export function UnlockScreen({ onDone, onStart }: { onDone?: () => void; /** The
                   <LockKeyhole size={15} aria-hidden /> {u.passphrase}
                 </Button>
                 <Button
-                  className="h-11 w-full justify-center text-body"
+                  className="h-control w-full justify-center text-body"
                   onClick={() => {
                     onStart?.();
                     setView("recovery");
@@ -235,7 +235,7 @@ export function SecretForm({ kind, onBack, onUnlocked }: { kind: "passphrase" | 
         }}
         aria-invalid={error ? true : undefined}
         aria-describedby={error ? `${uid}-error` : undefined}
-        className={`ui-input block h-11 w-full rounded-control px-3 text-callout ${kind === "recovery" ? "font-mono uppercase tracking-[0.06em]" : ""}`}
+        className={`ui-input block h-control w-full px-3 text-callout ${kind === "recovery" ? "font-mono uppercase tracking-[0.06em]" : ""}`}
       />
       {error ? (
         <p id={`${uid}-error`} role="alert" className="text-subheadline text-danger">

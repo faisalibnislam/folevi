@@ -98,10 +98,10 @@ export function VaultView() {
       actions={
         ready ? (
           <div className="flex items-center gap-1.5">
-            <Button size="sm" variant="primary" onClick={() => void vaultSessions().lock(info.id, "manual")}>
+            <Button variant="primary" onClick={() => void vaultSessions().lock(info.id, "manual")}>
               <Lock size={13} aria-hidden /> Lock
             </Button>
-            <MenuButton label="More in the Vault" align="end" triggerClassName="ui-btn ui-btn-secondary grid h-8 w-8 place-items-center pointer-coarse:h-11 pointer-coarse:w-11" trigger={<MoreHorizontal size={15} aria-hidden />} items={menu} />
+            <MenuButton label="More in the Vault" align="end" triggerClassName="ui-btn ui-btn-secondary grid size-control place-items-center" trigger={<MoreHorizontal size={15} aria-hidden />} items={menu} />
           </div>
         ) : null
       }

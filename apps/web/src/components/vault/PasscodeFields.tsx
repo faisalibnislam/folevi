@@ -45,7 +45,7 @@ export function PasscodeField({ label, value, onChange, autoFocus, digits }: { l
         maxLength={digits}
         onChange={(e) => onChange(digits ? e.target.value.replace(/\D/g, "") : e.target.value)}
         style={dots ? ({ WebkitTextSecurity: "disc" } as React.CSSProperties) : undefined}
-        className={`h-10 w-full ui-input rounded-chip px-3 text-body text-ink ${digits ? "font-mono tracking-[0.3em]" : ""}`}
+        className={`h-control w-full ui-input px-3 text-body text-ink ${digits ? "font-mono tracking-[0.3em]" : ""}`}
       />
     </label>
   );

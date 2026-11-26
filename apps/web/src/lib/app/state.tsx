@@ -477,7 +477,7 @@ function LoadingScreen({ title, body }: { title: string; body?: ReactNode }) {
         {slow ? (
           <div role="status" className="mt-2 grid justify-items-center gap-3 text-center text-body text-muted">
             This is taking longer than usual.
-            <button type="button" className="ui-btn ui-btn-secondary h-9 px-4 text-body" onClick={() => window.location.reload()}>
+            <button type="button" className="ui-btn ui-btn-secondary h-control px-4 text-body" onClick={() => window.location.reload()}>
               Reload
             </button>
           </div>

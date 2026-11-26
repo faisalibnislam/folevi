@@ -223,7 +223,7 @@ export function FolderPicker({
             }
           }}
           placeholder={naming ? "Name the new folder" : "Search folders"}
-          className="ui-input h-10 w-full rounded-chip pl-8 pr-3 text-callout"
+          className="ui-input h-control w-full pl-9 pr-3 text-callout"
         />
       </div>
       {naming ? (

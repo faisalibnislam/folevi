@@ -321,7 +321,7 @@ export function ThemeEditor({ themeKey }: { themeKey: string }) {
                   }}
                 />
                 <div className="flex flex-wrap gap-2">
-                  <Button variant="secondary" size="sm" disabled={disabled} aria-busy={busy === "image"} onClick={() => fileInput.current?.click()}>
+                  <Button variant="secondary" disabled={disabled} aria-busy={busy === "image"} onClick={() => fileInput.current?.click()}>
                     {busy === "image" ? <Loader2 size={14} className="mr-1.5 animate-spin" aria-hidden /> : <ImagePlus size={14} className="mr-1.5" aria-hidden />}
                     {busy === "image" ? "Preparing…" : imageCss ? "Replace image…" : "Choose image…"}
                   </Button>
@@ -337,7 +337,7 @@ export function ThemeEditor({ themeKey }: { themeKey: string }) {
               description="Picked from the image. Change any of them; text colours need 4.5:1 against the page to read well."
               actions={
                 form.autoPalette && JSON.stringify(p) !== JSON.stringify(form.autoPalette) ? (
-                  <Button variant="ghost" size="sm" disabled={disabled} onClick={() => set({ palette: form.autoPalette })}>
+                  <Button variant="ghost" disabled={disabled} onClick={() => set({ palette: form.autoPalette })}>
                     <RotateCcw size={13} className="mr-1.5" aria-hidden /> Use the image's colours
                   </Button>
                 ) : null

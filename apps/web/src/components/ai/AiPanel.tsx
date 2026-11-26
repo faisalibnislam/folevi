@@ -476,45 +476,45 @@ export function AiPanel({
           )}
           <div className="mt-3 flex flex-wrap items-center gap-1.5">
             {result.kind === "write" && result.task === "title" ? (
-              <button type="button" disabled={readOnly} onClick={() => (onTitle(result.text), setResult(null))} className="ui-btn ui-btn-primary h-8 px-3 text-callout">
+              <button type="button" disabled={readOnly} onClick={() => (onTitle(result.text), setResult(null))} className="ui-btn ui-btn-primary h-control px-3 text-callout">
                 <Check size={14} aria-hidden /> Use as title
               </button>
             ) : result.kind === "write" && result.placement.kind === "replace" && REWRITE_TASKS.has(result.task) ? (
               <>
-                <button type="button" disabled={readOnly} onClick={() => apply(result.placement)} className="ui-btn ui-btn-primary h-8 px-3 text-callout">
+                <button type="button" disabled={readOnly} onClick={() => apply(result.placement)} className="ui-btn ui-btn-primary h-control px-3 text-callout">
                   <Check size={14} aria-hidden /> Replace selection
                 </button>
-                <button type="button" disabled={readOnly} onClick={() => apply({ kind: "cursor" })} className="ui-btn ui-btn-secondary h-8 px-3 text-callout">
+                <button type="button" disabled={readOnly} onClick={() => apply({ kind: "cursor" })} className="ui-btn ui-btn-secondary h-control px-3 text-callout">
                   <CornerDownLeft size={14} aria-hidden /> Insert below
                 </button>
               </>
             ) : result.kind === "write" && TOOL_TASKS.has(result.task) ? (
               <>
-                <button type="button" disabled={readOnly} onClick={() => apply(result.placement)} className="ui-btn ui-btn-primary h-8 px-3 text-callout">
+                <button type="button" disabled={readOnly} onClick={() => apply(result.placement)} className="ui-btn ui-btn-primary h-control px-3 text-callout">
                   <CornerDownLeft size={14} aria-hidden /> {result.placement.kind === "below" ? "Insert below" : "Insert into note"}
                 </button>
-                <button type="button" disabled={readOnly} onClick={() => apply({ kind: "end" })} className="ui-btn ui-btn-secondary h-8 px-2.5 text-callout">
+                <button type="button" disabled={readOnly} onClick={() => apply({ kind: "end" })} className="ui-btn ui-btn-secondary h-control px-2.5 text-callout">
                   <ArrowDownToLine size={14} aria-hidden /> Append
                 </button>
-                <button type="button" onClick={() => void saveAsNote()} className="ui-btn ui-btn-secondary h-8 px-2.5 text-callout">
+                <button type="button" onClick={() => void saveAsNote()} className="ui-btn ui-btn-secondary h-control px-2.5 text-callout">
                   <FilePlus2 size={14} aria-hidden /> Create note
                 </button>
               </>
             ) : (
-              <button type="button" disabled={readOnly} onClick={() => apply(result.kind === "write" && result.placement.kind === "end" ? { kind: "end" } : { kind: "cursor" })} className="ui-btn ui-btn-primary h-8 px-3 text-callout">
+              <button type="button" disabled={readOnly} onClick={() => apply(result.kind === "write" && result.placement.kind === "end" ? { kind: "end" } : { kind: "cursor" })} className="ui-btn ui-btn-primary h-control px-3 text-callout">
                 <CornerDownLeft size={14} aria-hidden /> {result.kind === "write" && result.placement.kind === "end" ? "Add to the end" : "Insert into note"}
               </button>
             )}
             {result.kind === "write" && (result.task === "meetingSummary" || result.task === "actions") && hasTodoLines(result.text) ? (
-              <button type="button" disabled={readOnly || !editor} onClick={schedule} className="ui-btn ui-btn-secondary h-8 px-2.5 text-callout">
+              <button type="button" disabled={readOnly || !editor} onClick={schedule} className="ui-btn ui-btn-secondary h-control px-2.5 text-callout">
                 <CalendarCheck size={14} aria-hidden /> Add dates and people
               </button>
             ) : null}
-            <button type="button" onClick={copy} aria-label="Copy" title="Copy" className="ui-btn ui-btn-ghost h-8 w-8 px-0">
+            <button type="button" onClick={copy} aria-label="Copy" title="Copy" className="ui-btn ui-btn-ghost size-control px-0">
               <Copy size={14} aria-hidden />
             </button>
             {result.kind === "write" ? (
-              <button type="button" onClick={() => void doWrite(result.request)} aria-label="Try again" title="Try again" className="ui-btn ui-btn-ghost h-8 w-8 px-0">
+              <button type="button" onClick={() => void doWrite(result.request)} aria-label="Try again" title="Try again" className="ui-btn ui-btn-ghost size-control px-0">
                 <RotateCcw size={14} aria-hidden />
               </button>
             ) : null}
@@ -527,7 +527,7 @@ export function AiPanel({
               }}
               aria-label="Discard"
               title="Discard"
-              className="ui-btn ui-btn-ghost ml-auto h-8 w-8 px-0"
+              className="ui-btn ui-btn-ghost ml-auto size-control px-0"
             >
               <X size={14} aria-hidden />
             </button>

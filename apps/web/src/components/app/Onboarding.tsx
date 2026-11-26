@@ -295,7 +295,7 @@ export function Onboarding() {
         <header className="flex h-9 items-center justify-between gap-3">
           <FoleviLogo height={26} className="text-heading" />
           {step < LAST ? (
-            <Button variant="quiet" size="sm" disabled={busy} onClick={skipAll}>
+            <Button variant="quiet" disabled={busy} onClick={skipAll}>
               Skip setup
             </Button>
           ) : null}

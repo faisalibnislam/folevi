@@ -210,7 +210,7 @@ export function VaultGate({ info, onOpen }: { info: Info; onOpen: () => void }) 
           <>
             <label className="block">
               <span className="mb-1 block text-footnote font-medium text-ink">Vault recovery key</span>
-              <input autoFocus autoComplete="off" spellCheck={false} {...NOT_A_LOGIN} value={recovery} onChange={(e) => setRecovery(e.target.value)} className="h-10 w-full ui-input rounded-chip px-3 font-mono text-body text-ink" />
+              <input autoFocus autoComplete="off" spellCheck={false} {...NOT_A_LOGIN} value={recovery} onChange={(e) => setRecovery(e.target.value)} className="h-control w-full ui-input px-3 font-mono text-body text-ink" />
             </label>
             <NewPasscode onChange={setNext} label="New passcode" />
           </>

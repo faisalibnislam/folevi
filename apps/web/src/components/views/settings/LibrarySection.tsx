@@ -246,7 +246,7 @@ function Connection({ provider, cloud }: { provider: CloudProvider; cloud: Retur
         <div role="status" className="flex flex-wrap items-center gap-3 text-subheadline">
           <Loader2 size={15} aria-hidden className="animate-spin text-heading motion-reduce:animate-none" />
           <span className="min-w-0 flex-1">Finish signing in to {name} in {deviceWords().signInPlace}.</span>
-          <Button size="sm" onClick={() => void shell()?.library.cloud?.cancel()}>
+          <Button onClick={() => void shell()?.library.cloud?.cancel()}>
             Cancel
           </Button>
         </div>
@@ -266,12 +266,12 @@ function Connection({ provider, cloud }: { provider: CloudProvider; cloud: Retur
       {busy !== "connect" ? (
         <div className="flex flex-wrap gap-2">
           {state !== "connected" && state !== "offline" ? (
-            <Button size="sm" variant="primary" onClick={() => void connect()} disabled={busy !== null}>
+            <Button variant="primary" onClick={() => void connect()} disabled={busy !== null}>
               {state === "reconnect" ? `Reconnect ${name}` : `Connect ${name}`}
             </Button>
           ) : null}
           {state !== "none" ? (
-            <Button size="sm" onClick={() => setConfirm(true)} disabled={busy !== null}>
+            <Button onClick={() => setConfirm(true)} disabled={busy !== null}>
               Sign out of {name}…
             </Button>
           ) : null}
@@ -562,7 +562,7 @@ function ChangePassphraseDialog({ open, onClose, onDone }: { open: boolean; onCl
       <div className="grid gap-3">
         <label className="grid gap-1 text-subheadline text-muted" htmlFor={`${id}-current`}>
           Current passphrase
-          <input id={`${id}-current`} type="password" autoComplete="current-password" value={current} onChange={(e) => (setCurrent(e.target.value), setProblem(null))} className="ui-input h-10 rounded-chip px-3 text-body text-ink" />
+          <input id={`${id}-current`} type="password" autoComplete="current-password" value={current} onChange={(e) => (setCurrent(e.target.value), setProblem(null))} className="ui-input h-control px-3 text-body text-ink" />
         </label>
         <PassphraseFields
           newLabel="New passphrase"
@@ -627,7 +627,7 @@ function RemovePassphraseDialog({ open, onClose, onDone }: { open: boolean; onCl
     >
       <label className="grid gap-1 text-subheadline text-muted" htmlFor={`${id}-p`}>
         Passphrase
-        <input id={`${id}-p`} type="password" autoComplete="current-password" value={current} onChange={(e) => (setCurrent(e.target.value), setProblem(null))} className="ui-input h-10 rounded-chip px-3 text-body text-ink" />
+        <input id={`${id}-p`} type="password" autoComplete="current-password" value={current} onChange={(e) => (setCurrent(e.target.value), setProblem(null))} className="ui-input h-control px-3 text-body text-ink" />
       </label>
       {problem ? (
         <p role="alert" className="mt-2 text-body text-danger">
@@ -689,7 +689,7 @@ function LockCard() {
         {settings.lock ? (
           <div className="flex flex-wrap items-center justify-between gap-3">
             <span className="text-subheadline text-ink">Ask again when you come back</span>
-            <Select value={String(settings.lockAfter)} onChange={(e) => void change({ lockAfter: Number(e.target.value) })} aria-label="Ask again when you come back" className="ui-input h-9 w-48 rounded-chip px-3 text-callout" disabled={busy}>
+            <Select value={String(settings.lockAfter)} onChange={(e) => void change({ lockAfter: Number(e.target.value) })} aria-label="Ask again when you come back" className="ui-input h-control w-48 px-3 text-callout" disabled={busy}>
               {LOCK_AFTER.map((o) => (
                 <option key={o.value} value={String(o.value)}>
                   {o.label}

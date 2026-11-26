@@ -57,7 +57,7 @@ export function EmailsView() {
         title="Emails"
         description="The 100 most recent transactional send attempts. Opening this log is recorded in the audit log. Recipient addresses are shown only as hints."
         actions={
-          <Button size="sm" variant="quiet" onClick={() => void refresh()} disabled={loading}>
+          <Button variant="quiet" onClick={() => void refresh()} disabled={loading}>
             <RotateCw size={14} aria-hidden className={loading ? "animate-spin" : ""} /> Reload
           </Button>
         }
@@ -201,7 +201,7 @@ export function EmailsView() {
                             Use user page
                           </span>
                         ) : (
-                          <Button size="sm" onClick={() => setTarget(a)} aria-label={`Resend ${a.templateKey} to ${a.recipientHint}`}>
+                          <Button onClick={() => setTarget(a)} aria-label={`Resend ${a.templateKey} to ${a.recipientHint}`}>
                             <Send size={13} aria-hidden /> Resend
                           </Button>
                         )

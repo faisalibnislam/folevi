@@ -72,9 +72,9 @@ export function Passwords({ vaultId, initialSelected = null }: { vaultId: string
         <label className="relative min-w-0 flex-1">
           <span className="sr-only">Search the Vault</span>
           <Search size={14} aria-hidden className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-faint" />
-          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search" className="h-9 w-full ui-input rounded-chip pl-8 pr-3 text-callout" />
+          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search" className="h-control w-full ui-input pl-9 pr-3 text-callout" />
         </label>
-        <Select aria-label="Kind" value={kind} onChange={(e) => setKind(e.target.value as ItemKind | "all")} className="h-9 ui-input rounded-chip px-3 text-callout">
+        <Select aria-label="Kind" value={kind} onChange={(e) => setKind(e.target.value as ItemKind | "all")} className="h-control ui-input px-3 text-callout">
           <option value="all">All kinds</option>
           {Object.entries(ITEM_KINDS).map(([k, v]) => (
             <option key={k} value={k}>
@@ -237,10 +237,10 @@ function ItemPanel({ vaultId, opened, editOnOpen = false, onClosed }: { vaultId:
         </IconButton>
         {full?.canChange ? (
           <>
-            <Button size="sm" variant="secondary" onClick={() => setEditing(true)} disabled={!secrets}>
+            <Button variant="secondary" onClick={() => setEditing(true)} disabled={!secrets}>
               Edit
             </Button>
-            <Button size="sm" variant="secondary" onClick={() => setSharing(true)} disabled={!secrets}>
+            <Button variant="secondary" onClick={() => setSharing(true)} disabled={!secrets}>
               <Share2 size={13} aria-hidden /> Share
             </Button>
             <IconButton
@@ -324,10 +324,10 @@ function ItemPanel({ vaultId, opened, editOnOpen = false, onClosed }: { vaultId:
 // The item dialog's fields (the Mac's Add to the Vault, 2026-11-19): 34px tall with 12px before the words, a 12px
 // label 6px above each one, 16px between them. Touch gets the 44px it needs.
 const FIELD_LABEL = "mb-1.5 block text-caption-1 font-medium text-ink";
-const FIELD = "h-[34px] ui-input rounded-small px-3 pointer-coarse:h-11";
-const AREA = "block w-full ui-input rounded-small px-3 py-2";
+const FIELD = "h-control ui-input px-3";
+const AREA = "ui-grow block w-full ui-input px-3 py-2";
 // The password's tools: small 24px pills (36px to a finger).
-const PILL = "ui-btn ui-btn-secondary h-6 gap-1 rounded-container px-2.5 text-caption-1 font-medium pointer-coarse:h-9";
+const PILL = "ui-btn ui-btn-secondary h-control-sm gap-1 rounded-container px-2.5 text-caption-1 font-medium pointer-coarse:h-control";
 
 const KIND_ICONS: Record<ItemKind, LucideIcon> = {
   login: KeyRound,

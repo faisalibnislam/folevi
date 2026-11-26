@@ -46,7 +46,7 @@ export function RepeatField({ rule, dueDate, onChange }: { rule: RepeatRule | nu
     <div className="grid gap-1">
       <label className="grid gap-1">
         <span className="text-footnote text-muted">Repeat</span>
-        <Select value={choice} onChange={(e) => pick(e.target.value as Choice)} className="h-8 ui-input rounded-chip px-3">
+        <Select value={choice} onChange={(e) => pick(e.target.value as Choice)} className="h-control ui-input px-3">
           <option value="none">Never</option>
           <option value="daily">Every day</option>
           <option value="weekdays">Every weekday</option>

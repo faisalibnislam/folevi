@@ -237,7 +237,7 @@ function SyncSheet({ open, onClose, sync }: { open: boolean; onClose: () => void
           <div className="grid gap-2">
             <button
               type="button"
-              className="ui-btn ui-btn-primary flex h-12 items-center justify-center gap-2 rounded-capsule text-headline font-semibold disabled:opacity-50"
+              className="ui-btn ui-btn-primary flex h-control items-center justify-center gap-2 rounded-capsule text-headline font-semibold disabled:opacity-50"
               disabled={!sync.online && status === "offline"}
               onClick={() => {
                 // Refused changes whose content was kept go again (where this build can repair them).

@@ -161,7 +161,7 @@ export function CalendarView({ month }: { month: string | null }) {
   const weekLabel = `${formatCalendarDate(weekDays[0]!, { month: "short", day: "numeric" })} to ${formatCalendarDate(weekDays[weekDays.length - 1]!, { month: "short", day: "numeric", year: "numeric" })}`;
   // The same height as the buttons beside it (32): 24px items in the 4px track.
   const layoutSwitch = (
-    <div role="radiogroup" aria-label="Calendar layout" className="ui-seg ui-well [&>*]:min-h-6">
+    <div role="radiogroup" aria-label="Calendar layout" className="ui-seg ui-well">
       {(["month", "week", "agenda"] as const).map((m) => (
         <button key={m} type="button" role="radio" aria-checked={mode === m} data-active={mode === m} onClick={() => pickLayout(m)} className="capitalize">
           {m}
@@ -176,7 +176,7 @@ export function CalendarView({ month }: { month: string | null }) {
         <IconButton label="Previous month" onClick={() => navigate(`/calendar/${shiftMonth(current, -1)}`)}>
           <ChevronLeft size={16} aria-hidden />
         </IconButton>
-        <Button size="sm" onClick={() => navigate(`/calendar/${today.slice(0, 7)}`)}>
+        <Button onClick={() => navigate(`/calendar/${today.slice(0, 7)}`)}>
           Today
         </Button>
         <IconButton label="Next month" onClick={() => navigate(`/calendar/${shiftMonth(current, 1)}`)}>
@@ -189,7 +189,6 @@ export function CalendarView({ month }: { month: string | null }) {
           <ChevronLeft size={16} aria-hidden />
         </IconButton>
         <Button
-          size="sm"
           onClick={() => {
             setAnchor(today);
             setSelected(today);
@@ -225,15 +224,15 @@ export function CalendarView({ month }: { month: string | null }) {
       <div className="mx-auto max-w-[1180px] px-4 pb-[max(6rem,var(--fab-clearance))] pt-3 sm:px-8">
         {/* One row: the period (a section title, as on Home) with its paging, then the calendar's tools. On
             phones the tools wrap onto a second line. */}
-        <div className="mb-4 flex flex-wrap items-center gap-x-3 gap-y-2">
+        <div data-toolbar="" className="mb-4 flex flex-wrap items-center gap-x-3 gap-y-2">
           <h2 aria-live="polite" className={iphone ? "sr-only" : "ui-display text-title-2 leading-8"}>
             {heading}
           </h2>
           {pager}
-          <div className="ml-auto flex items-center gap-1.5">
+          <div className="ml-auto flex items-center gap-2">
             {iphone ? null : <CalendarsButton />}
             {iphone || !feeds ? null : (
-              <Button size="sm" title="Subscribe to a calendar feed" onClick={() => setFeedOpen(true)}>
+              <Button title="Subscribe to a calendar feed" onClick={() => setFeedOpen(true)}>
                 <Rss size={14} aria-hidden /> <span className="max-md:sr-only">Subscribe</span>
               </Button>
             )}
@@ -479,7 +478,7 @@ function Unscheduled({
               onToggle={onToggle}
               onEdit={onEdit}
               action={
-                <button type="button" onClick={() => onSchedule(t.blockId, target)} className="ui-btn ui-btn-ghost -ml-2.5 h-7 gap-1 px-2.5 text-footnote" aria-label={`Schedule “${t.title || "Untitled task"}” for ${label}`}>
+                <button type="button" onClick={() => onSchedule(t.blockId, target)} className="ui-btn ui-btn-ghost -ml-2.5 h-control-sm gap-1 px-2.5 text-footnote" aria-label={`Schedule “${t.title || "Untitled task"}” for ${label}`}>
                   <CalendarPlus size={13} aria-hidden /> Schedule for {label}
                 </button>
               }

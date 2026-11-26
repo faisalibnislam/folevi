@@ -72,6 +72,11 @@
   --radius-float: var(--radius-float);
   --radius-capsule: var(--radius-capsule);
 
+  /* The control scale (packages/design-tokens control; docs/DESIGN_SYSTEM.md, Controls): h-control (36, 44 on touch)
+     for every control in a row, h-control-sm (28, 36 on touch) for compact ones; size-* and w-* the same. */
+  --spacing-control: var(--control-height);
+  --spacing-control-sm: var(--control-compact);
+
   --shadow-hairline: var(--shadow-hairline);
   --shadow-control: var(--shadow-control);
   --shadow-primary: var(--shadow-primary);
@@ -246,6 +251,10 @@
  * --------------------------------------------------------------------------------------------- */
 :root {
   --glass-edge: inset 0 0 0 1px rgb(255 255 255 / 0.6), 0 0 0 1px rgb(0 0 0 / 0.06);
+  /* The one edge of fields, secondary buttons, segmented tracks and cards (docs/DESIGN_SYSTEM.md, Controls): a
+     --control-border (1px) line in --color-line, drawn inside the box so a control is exactly its height. */
+  --control-line: var(--color-line);
+  --control-ring: inset 0 0 0 var(--control-border) var(--control-line);
   --glass-shadow: 0 1px 2px rgb(0 0 0 / 0.04), 0 12px 32px -12px rgb(20 20 40 / 0.14);
   --ambient-veil: var(--glass-veil);
 }
@@ -372,7 +381,7 @@
     gap: 0.45rem;
     white-space: nowrap;
     border-radius: var(--radius-control);
-    font-weight: 550;
+    font-weight: var(--control-label-weight);
     letter-spacing: -0.005em;
     user-select: none;
     transition: box-shadow 160ms var(--motion-easing), transform 420ms var(--spring-press), background-color 160ms, color 160ms, filter 160ms;
@@ -390,7 +399,7 @@
   .ui-btn-secondary {
     color: var(--color-ink);
     background: color-mix(in oklab, var(--color-surface-raised) 72%, transparent);
-    box-shadow: var(--glass-edge), 0 1px 2px rgb(0 0 0 / 0.06);
+    box-shadow: var(--control-ring), 0 1px 2px rgb(0 0 0 / 0.06);
   }
   /* Secondary buttons, select pills and switches share one visible hover (on a white page the old one, white on
      72% white, didn't show): a faint ink tint, and for fields a firmer outline. */
@@ -423,17 +432,18 @@
   .ui-input {
     background: var(--color-surface);
     border-radius: var(--radius-control);
-    box-shadow: inset 0 1px 2px color-mix(in oklab, var(--color-heading) 8%, transparent), 0 0 0 1px var(--color-line);
+    font-weight: var(--control-value-weight);
+    box-shadow: var(--control-ring), inset 0 1px 2px color-mix(in oklab, var(--color-heading) 8%, transparent);
     transition: box-shadow 140ms;
   }
   /* Focused or open: the same soft outline as the active tab (16.5% ink), never a dark ring. */
-  button.ui-input:hover:not(:disabled):not([aria-expanded="true"]) { box-shadow: inset 0 1px 2px color-mix(in oklab, var(--color-heading) 8%, transparent), 0 0 0 1px var(--color-line-strong); background: color-mix(in oklab, var(--color-surface), var(--color-ink) 3%); }
+  button.ui-input:hover:not(:disabled):not([aria-expanded="true"]) { box-shadow: inset 0 0 0 var(--control-border) var(--color-line-strong), inset 0 1px 2px color-mix(in oklab, var(--color-heading) 8%, transparent); background: color-mix(in oklab, var(--color-surface), var(--color-ink) 3%); }
   .ui-input:focus, .ui-input:focus-within, .ui-input[aria-expanded="true"] { outline: none; box-shadow: 0 1px 3px rgb(0 0 0 / 0.08), 0 0 0 1.5px color-mix(in oklab, var(--color-heading) 16.5%, transparent); }
   /* With a mouse or keyboard (2026-11-19, from the Mac's fields): a firmer edge on hover, and the field being typed in
      is unmistakable: a lifted fill, a crisp 1.5px ink edge and a soft halo outside it, so it never changes size. Touch
      keeps the soft outline above (the owner's iPhone note: no dark ring on tap). */
   @media (pointer: fine) {
-    :is(input, textarea).ui-input:hover:not(:disabled):not(:focus) { box-shadow: inset 0 1px 2px color-mix(in oklab, var(--color-heading) 8%, transparent), 0 0 0 1px var(--color-line-strong); }
+    :is(input, textarea).ui-input:hover:not(:disabled):not(:focus) { box-shadow: inset 0 0 0 var(--control-border) var(--color-line-strong), inset 0 1px 2px color-mix(in oklab, var(--color-heading) 8%, transparent); }
     :is(input, textarea).ui-input:focus, .ui-input:has(> :is(input, textarea):focus), button.ui-input:focus-visible:not([aria-expanded="true"]) {
       background: var(--color-surface-raised);
       box-shadow: 0 0 0 1.5px color-mix(in oklab, var(--color-heading) 85%, transparent), 0 0 0 5px color-mix(in oklab, var(--color-heading) 10%, transparent);
@@ -441,7 +451,7 @@
   }
 
   /* Surfaces */
-  .ui-card { background: var(--color-surface); border-radius: var(--radius-container); box-shadow: var(--shadow-card); }
+  .ui-card { background: var(--color-surface); border-radius: var(--radius-container); box-shadow: var(--control-ring), var(--shadow-card-drop); }
   .ui-sheet { border-radius: var(--radius-container); box-shadow: var(--shadow-sheet); }
   /* Pictures (note images, avatars, workspace marks): a 1px edge inside the picture, pure black at 10% in light and
      pure white at 10% in dark. A grey border picked up the page's tint and drew a halo on the picture's edge. */
@@ -513,15 +523,16 @@
 
   /* Segmented control (track + raised thumb). The active item carries data-active. */
   /* Segmented control: outer corner = inner corner + padding (10 = 6 + 4). */
-  .ui-seg { display: flex; gap: 2px; padding: 4px; border-radius: var(--radius-control); }
+  /* The track is a control's height (36, 44 on touch): compact segments (28, 36 on touch) inside a 4px inset. */
+  .ui-seg { display: flex; gap: 2px; padding: var(--control-segment-inset); min-height: var(--control-height); border-radius: var(--radius-control); }
+  .ui-seg.ui-well { box-shadow: var(--control-ring); }
   .ui-seg > * {
     flex: 1;
     display: inline-flex; align-items: center; justify-content: center; gap: 0.35rem;
-    min-height: 28px; padding: 0 0.6rem; border-radius: var(--radius-chip);
-    font-size: var(--type-callout); font-weight: 550; color: var(--color-ink-muted);
+    min-height: var(--control-compact); padding: 0 var(--control-compact-padding-x); border-radius: var(--radius-chip);
+    font-size: var(--type-callout); font-weight: var(--control-label-weight); color: var(--color-ink-muted);
     transition: background-color 180ms var(--motion-easing), box-shadow 180ms var(--motion-easing), color 180ms;
   }
-  :root[data-iphone] .ui-seg > * { min-height: 32px; }
   .ui-seg > *:hover { color: var(--color-heading); }
   .ui-seg > [data-active="true"], .ui-seg > [aria-selected="true"], .ui-seg > [aria-pressed="true"] {
     background: var(--glass-active); color: var(--color-heading); box-shadow: var(--glass-edge), 0 1px 3px rgb(0 0 0 / 0.08);
@@ -594,35 +605,21 @@
 }
 
 @media (prefers-contrast: more) {
-  .ui-btn-secondary, .ui-raised, .ui-card { box-shadow: 0 0 0 1px var(--color-line-strong); }
+  .ui-btn-secondary, .ui-raised, .ui-card, .ui-input, .ui-seg.ui-well { --control-line: var(--color-line-strong); }
+  .ui-raised { box-shadow: inset 0 0 0 var(--control-border) var(--color-line-strong); }
 }
 
-/* A title row's tray (ListPageHeader.tsx RowTray; the owner, 6 November 2026: "inside a rounded rectangle but nimble
-   and less prominent"): one faint tinted, hairlined rounded box around the page's controls, which drop their own
-   boxes and show only a soft hover. Unlayered, so it wins over the controls' own utilities (h-8). */
-.row-tray {
-  display: inline-flex; align-items: center; gap: 2px; padding: 2px;
-  border-radius: var(--radius-small);
-  background: color-mix(in oklab, var(--color-ink) 3.5%, transparent);
-  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--color-ink) 7%, transparent);
-}
-.row-tray-sep { flex: none; width: 1px; height: 16px; margin: 0 2px; background: var(--color-line); }
-.row-tray .ui-input, .row-tray .ui-btn-secondary, .row-tray .ui-seg {
-  background: transparent; box-shadow: none; border-radius: var(--radius-chip);
-}
-.row-tray .ui-btn-secondary { color: var(--color-ink-muted); }
-.row-tray .ui-seg { padding: 0; }
-.row-tray .ui-input:hover:not(:disabled), .row-tray button.ui-input:hover:not(:disabled):not([aria-expanded="true"]),
-.row-tray .ui-btn-secondary:hover:not(:disabled), .row-tray [aria-expanded="true"] {
-  background: var(--glass-hover); box-shadow: none; color: var(--color-heading);
-}
-.row-tray .ui-input:focus-visible, .row-tray .ui-btn-secondary:focus-visible { box-shadow: 0 0 0 1.5px color-mix(in oklab, var(--color-heading) 16.5%, transparent); }
-.row-tray :is(input, textarea).ui-input:focus { background: transparent; }
-@media (pointer: fine) {
-  .row-tray .ui-input, .row-tray .ui-btn-secondary { height: 28px; }
-  .row-tray .ui-btn-secondary:not(.row-tray-path) { width: 28px; }
-  .row-tray .ui-seg > * { min-height: 28px; }
-}
+/* A title row's group of page controls (ListPageHeader.tsx RowTray): the controls side by side at the control gap,
+   each drawn as it is everywhere else (the owner, 2026-11-26: the Folders toolbar matches All notes, "same height
+   for everything"; it replaces the tinted tray of 6 November). */
+.row-tray { display: inline-flex; flex-wrap: wrap; align-items: center; gap: var(--control-gap); }
+
+/* Icons in controls (docs/DESIGN_SYSTEM.md, Controls): one stroke, a fixed width whatever the icon's size. */
+:is(.ui-btn, .ui-input, .ui-seg, .ui-control) svg.lucide { stroke-width: var(--control-icon-stroke); }
+:is(.ui-btn, .ui-input, .ui-seg, .ui-control) svg.lucide :is(path, line, polyline, polygon, circle, ellipse, rect) { vector-effect: non-scaling-stroke; }
+/* One icon size per control height: 16 in a control (36), 14 in a compact one (28); a dropdown's chevron is 14. */
+:is(.ui-btn, .ui-input, .ui-seg > *, .ui-control) svg.lucide { width: var(--control-icon); height: var(--control-icon); flex: none; }
+:is(.h-control-sm, .size-control-sm) svg.lucide, :is(.ui-btn, .ui-input, .ui-control) svg.lucide:is(.lucide-chevron-down, .lucide-chevron-up, .lucide-chevrons-up-down) { width: var(--control-compact-icon); height: var(--control-compact-icon); }
 
 :root {
   /* Folevi's springs (the owner, 2026-11-01: playful, as iOS 26's own; FoleviSpring on the native apps). A sheet or
@@ -1309,7 +1306,7 @@
 :root[data-tablet] [role="toolbar"][aria-label="Page tools"] button { min-height: 44px; min-width: 44px; border-radius: var(--radius-capsule); font-size: var(--type-subheadline); }
 :root[data-tablet] [role="toolbar"][aria-label="Page tools"] button svg { width: 20px; height: 20px; }
 /* Segmented controls (a note's sidebar tools, the inspector's tabs): iPadOS's, 36 tall with 18 pt icons. */
-:root[data-tablet] .ui-seg > * { min-height: 36px; font-size: var(--type-subheadline); border-radius: var(--radius-small); }
+:root[data-tablet] .ui-seg > * { font-size: var(--type-subheadline); }
 /* Touch: a control smaller than a finger keeps its look and gets an invisible hit area of at least 44 pt round it
    (Apple's minimum), so nothing on screen moves: .ui-hit on the small chrome controls (the sidebar's header buttons
    and section headers, tabs, See all, a list's sort), and every segmented control's segments. Computers keep the
@@ -1319,7 +1316,7 @@
 /* A tab holds its own link and close button, so it gets no layer of its own on top (it took the link's taps): the
    link's hit area, which already covers the whole tab, reaches 44 pt instead. */
 :root:is([data-tablet], [data-iphone]) [data-ipad-tab] a::before { top: min(0px, calc((100% - 44px) / 2)); bottom: min(0px, calc((100% - 44px) / 2)); }
-:root[data-tablet] .ui-seg { border-radius: var(--radius-control); padding: 2px; }
+
 :root[data-tablet] .ui-seg > * svg { width: 18px; height: 18px; }
 /* The screens before the app in the phone and tablet apps (ModeChoice, LibrarySetup, ShellSignIn): the grouped
    background runs under the status bar and the home indicator too. */
@@ -1411,9 +1408,8 @@
 :root[data-desktop="mac"] nav[aria-label="Open pages"] > [data-tab]:has(> a[aria-current="page"]) { box-shadow: 0 1px 2px rgb(0 0 0 / 0.06), inset 0 0 0 1px var(--color-line-strong); }
 :root[data-desktop="mac"] [data-tab] button[aria-label^="Close "] { width: 16px; height: 16px; border-radius: var(--radius-tiny); }
 
-/* §3.14 Buttons: 28 tall with 8 corners (fields 28 in dialogs and popovers too); icon buttons keep their 32 point box. */
-:root[data-desktop="mac"] .ui-btn:is(.h-8, .h-9):not(.w-8) { height: 28px; padding-inline: 12px; border-radius: var(--radius-small); font-size: var(--type-callout); }
-:root[data-desktop="mac"] :is(dialog, [popover]) .ui-input:is(.h-9, .h-10) { height: 28px; border-radius: var(--radius-small); font-size: var(--type-callout); }
+/* §3.14 Buttons and fields follow the one control scale on the Mac too (the owner, 2026-11-26: the All notes
+   toolbar's 36 for every control in a row, on the Mac, Windows, Linux and the web; docs/DESIGN_SYSTEM.md, Controls). */
 /* The Ask Foli AI pill stays (owner's answer to P2), without the lift on hover. */
 :root[data-desktop="mac"] .ui-fab:hover { translate: none; }
 /* Nor do note cards, list rows and Show all tabs' tiles (a Mac control doesn't move; folders keep their rise). */

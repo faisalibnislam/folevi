@@ -221,11 +221,11 @@ export function PassphraseFields({
       </div>
       <label className="grid gap-1 text-subheadline text-muted" htmlFor={`${id}-p`}>
         {newLabel}
-        <input id={`${id}-p`} type="password" autoComplete="new-password" value={passphrase} onChange={(e) => onPassphrase(e.target.value)} className="ui-input h-10 rounded-chip px-3 text-body text-ink" aria-describedby={`${id}-hint`} />
+        <input id={`${id}-p`} type="password" autoComplete="new-password" value={passphrase} onChange={(e) => onPassphrase(e.target.value)} className="ui-input h-control px-3 text-body text-ink" aria-describedby={`${id}-hint`} />
       </label>
       <label className="grid gap-1 text-subheadline text-muted" htmlFor={`${id}-c`}>
         Type it again
-        <input id={`${id}-c`} type="password" autoComplete="new-password" value={confirm} onChange={(e) => onConfirm(e.target.value)} className="ui-input h-10 rounded-chip px-3 text-body text-ink" />
+        <input id={`${id}-c`} type="password" autoComplete="new-password" value={confirm} onChange={(e) => onConfirm(e.target.value)} className="ui-input h-control px-3 text-body text-ink" />
       </label>
       <p id={`${id}-hint`} className="text-subheadline text-muted">
         Use at least {MIN_PASSPHRASE} characters. A few unrelated words are easy to remember and hard to guess.

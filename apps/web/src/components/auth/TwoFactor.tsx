@@ -130,7 +130,7 @@ export function BackupCodes({ codes, onDone, doneLabel = "Continue" }: { codes: 
       <div className="flex gap-2">
         <button
           type="button"
-          className="ui-btn ui-btn-secondary h-10 flex-1 text-callout"
+          className="ui-btn ui-btn-secondary h-control flex-1 text-callout"
           onClick={() => {
             void navigator.clipboard.writeText(text).then(() => {
               setCopied(true);
@@ -142,7 +142,7 @@ export function BackupCodes({ codes, onDone, doneLabel = "Continue" }: { codes: 
         </button>
         <button
           type="button"
-          className="ui-btn ui-btn-secondary h-10 flex-1 text-callout"
+          className="ui-btn ui-btn-secondary h-control flex-1 text-callout"
           onClick={() => {
             const url = URL.createObjectURL(new Blob([text], { type: "text/plain" }));
             const a = document.createElement("a");
@@ -158,7 +158,7 @@ export function BackupCodes({ codes, onDone, doneLabel = "Continue" }: { codes: 
       <Checkbox checked={saved} onChange={setSaved} className="gap-3 text-subheadline">
         I saved these codes somewhere safe. Each one works once, and they&apos;re the only way in if I lose my authenticator app.
       </Checkbox>
-      <button type="button" disabled={!saved} onClick={onDone} className="ui-btn ui-btn-primary h-11 w-full text-body">
+      <button type="button" disabled={!saved} onClick={onDone} className="ui-btn ui-btn-primary h-control w-full text-body">
         {doneLabel}
       </button>
     </div>

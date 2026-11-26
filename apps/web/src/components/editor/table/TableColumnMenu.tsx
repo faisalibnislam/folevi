@@ -187,7 +187,7 @@ export function TableColumnMenu({
               <button type="button" className={stepBtn} disabled={widthNow !== null && widthNow >= LIMITS.maxTableColumnWidth} onClick={() => stepWidth(WIDTH_STEP)} aria-label="Wider" title="Wider">
                 <Plus size={14} aria-hidden />
               </button>
-              <Button size="sm" variant="quiet" disabled={widthNow === null} onClick={() => onWidth(null)} aria-label="Reset to automatic width">
+              <Button variant="quiet" disabled={widthNow === null} onClick={() => onWidth(null)} aria-label="Reset to automatic width">
                 Reset
               </Button>
             </span>
@@ -226,13 +226,13 @@ export function TableColumnMenu({
                 </option>
               ))}
             </Select>
-            {NO_VALUE.includes(op) ? null : <input value={value} onChange={(e) => setValue(e.target.value)} aria-label="Filter value" placeholder="Value" maxLength={500} className="ui-input h-8 w-full rounded-chip px-3 text-callout" />}
+            {NO_VALUE.includes(op) ? null : <input value={value} onChange={(e) => setValue(e.target.value)} aria-label="Filter value" placeholder="Value" maxLength={500} className="ui-input h-control w-full px-3 text-callout" />}
             <div className="flex gap-1.5">
-              <Button size="sm" type="submit" disabled={!NO_VALUE.includes(op) && !value.trim()}>
+              <Button type="submit" disabled={!NO_VALUE.includes(op) && !value.trim()}>
                 {filter ? "Update filter" : "Filter"}
               </Button>
               {filter ? (
-                <Button size="sm" variant="quiet" onClick={() => setFilter(null)}>
+                <Button variant="quiet" onClick={() => setFilter(null)}>
                   Remove filter
                 </Button>
               ) : null}
@@ -240,13 +240,13 @@ export function TableColumnMenu({
           </form>
         </section>
         <section className="flex flex-wrap gap-1.5 border-t border-line pt-3">
-          <Button size="sm" variant="quiet" disabled={!canAdd} onClick={() => onInsert("left")}>
+          <Button variant="quiet" disabled={!canAdd} onClick={() => onInsert("left")}>
             <Columns2 size={14} aria-hidden /> Insert left
           </Button>
-          <Button size="sm" variant="quiet" disabled={!canAdd} onClick={() => onInsert("right")}>
+          <Button variant="quiet" disabled={!canAdd} onClick={() => onInsert("right")}>
             <Columns2 size={14} aria-hidden /> Insert right
           </Button>
-          <Button size="sm" variant="quiet" disabled={!canDelete} onClick={onDelete} className="text-danger">
+          <Button variant="quiet" disabled={!canDelete} onClick={onDelete} className="text-danger">
             <Trash2 size={14} aria-hidden /> Delete column
           </Button>
         </section>

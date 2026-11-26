@@ -110,7 +110,7 @@ export function UserBillingPanel({
         title="Plan & billing"
         description="Personal plan, personal storage and AI credits in Personal. Team workspaces have their own plans. Changes here don't charge or refund anyone. Money only moves through Polar."
         actions={
-          <Button size="sm" variant="quiet" onClick={() => void refresh()} disabled={loading} aria-label="Reload billing (writes an audit entry)">
+          <Button variant="quiet" onClick={() => void refresh()} disabled={loading} aria-label="Reload billing (writes an audit entry)">
             <RotateCw size={14} aria-hidden className={loading ? "animate-spin" : ""} />
           </Button>
         }
@@ -167,19 +167,19 @@ export function UserBillingPanel({
         </div>
 
         <div className="mt-4 flex flex-wrap gap-2">
-          <Button size="sm" onClick={() => setAction("trial")}>
+          <Button onClick={() => setAction("trial")}>
             <CalendarPlus size={14} aria-hidden /> {e.trialing ? "Extend trial…" : "Give Pro AI trial…"}
           </Button>
-          <Button size="sm" onClick={() => setAction("credits")} disabled={!canGrant} title={canGrant ? undefined : rolesFor("billing.credits")}>
+          <Button onClick={() => setAction("credits")} disabled={!canGrant} title={canGrant ? undefined : rolesFor("billing.credits")}>
             <AiIcon size={14} aria-hidden /> Grant credits…
           </Button>
-          <Button size="sm" onClick={() => setAction("storage")} disabled={!canManage} title={canManage ? undefined : rolesFor("billing.manage")}>
+          <Button onClick={() => setAction("storage")} disabled={!canManage} title={canManage ? undefined : rolesFor("billing.manage")}>
             <HardDrive size={14} aria-hidden /> Storage limit…
           </Button>
-          <Button size="sm" onClick={() => setAction("devices")} disabled={!canManage} title={canManage ? undefined : rolesFor("billing.manage")}>
+          <Button onClick={() => setAction("devices")} disabled={!canManage} title={canManage ? undefined : rolesFor("billing.manage")}>
             <MonitorSmartphone size={14} aria-hidden /> Device limit…
           </Button>
-          <Button size="sm" variant="quiet" className="ml-auto" onClick={() => setAction("export")} disabled={data.personalDocuments === 0} title={data.personalDocuments === 0 ? "Their Personal has no notes yet." : undefined}>
+          <Button variant="quiet" className="ml-auto" onClick={() => setAction("export")} disabled={data.personalDocuments === 0} title={data.personalDocuments === 0 ? "Their Personal has no notes yet." : undefined}>
             <FileArchive size={14} aria-hidden /> Prepare export for user…
           </Button>
         </div>
@@ -288,7 +288,7 @@ export function UserBillingPanel({
                   </td>
                   <td className={`${td} text-right`}>
                     {p.status === "paid" && admin.can("billing.refund") ? (
-                      <Button size="sm" variant="quiet" onClick={() => setAction({ refund: p })}>
+                      <Button variant="quiet" onClick={() => setAction({ refund: p })}>
                         <Undo2 size={13} aria-hidden /> Mark refunded…
                       </Button>
                     ) : null}

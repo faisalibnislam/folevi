@@ -34,14 +34,14 @@ function Found({ origin, info, onBack }: { origin: string; info: ServerInfo; onB
       {refused ? <Alert>{refused}</Alert> : null}
       {tooOld ? <Alert tone="info">This server needs a newer version of Folevi. Update Folevi to sign in there.</Alert> : null}
       <div className="flex gap-2">
-        <button type="button" onClick={onBack} className="ui-btn ui-btn-ghost h-11 px-4 text-body">
+        <button type="button" onClick={onBack} className="ui-btn ui-btn-ghost h-control px-4 text-body">
           Back
         </button>
         <button
           type="button"
           disabled={busy || info.kind === "folevi-cloud" || Boolean(tooOld)}
           aria-busy={busy}
-          className="ui-btn ui-btn-primary h-11 flex-1 text-body"
+          className="ui-btn ui-btn-primary h-control flex-1 text-body"
           onClick={() => {
             setBusy(true);
             setRefused(null);
@@ -120,7 +120,7 @@ function AddressForm() {
           </button>
         </p>
       ) : null}
-      <button type="submit" disabled={busy} aria-busy={busy} className="ui-btn ui-btn-secondary h-11 w-full text-body">
+      <button type="submit" disabled={busy} aria-busy={busy} className="ui-btn ui-btn-secondary h-control w-full text-body">
         {busy ? <Loader2 size={16} className="animate-spin motion-reduce:animate-none" aria-hidden /> : <ArrowRight size={16} aria-hidden />}
         Continue
       </button>
@@ -128,7 +128,7 @@ function AddressForm() {
         <button
           type="button"
           disabled={busy}
-          className="ui-btn ui-btn-ghost h-11 w-full text-body"
+          className="ui-btn ui-btn-ghost h-control w-full text-body"
           onClick={async () => {
             // A refusal (camera access off) says why; the address field stays for typing.
             const text = await scan().catch((e: unknown) => {
@@ -230,7 +230,7 @@ export function OwnServerSignIn({ signedIn }: { signedIn: boolean }) {
             <AddressForm />
           </>
         ) : (
-          <button type="button" onClick={() => setOpen(true)} className="ui-btn ui-btn-ghost h-11 w-full text-body">
+          <button type="button" onClick={() => setOpen(true)} className="ui-btn ui-btn-ghost h-control w-full text-body">
             <Server size={16} aria-hidden /> Sign in to your own server
           </button>
         )}

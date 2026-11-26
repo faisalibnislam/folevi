@@ -208,7 +208,7 @@ function FindTodosDialog({ editor, documentId, target, items, replace, onClose }
       ) : phase.kind === "error" ? (
         <div className="space-y-3 py-2">
           <AiProblemNotice problem={phase.problem} />
-          <Button size="sm" onClick={() => void run()}>
+          <Button onClick={() => void run()}>
             Try again
           </Button>
         </div>
@@ -232,12 +232,12 @@ function FindTodosDialog({ editor, documentId, target, items, replace, onClose }
                       value={r.text}
                       onChange={(e) => update(r.key, { text: e.target.value })}
                       aria-label={`To-do ${i + 1}`}
-                      className="h-9 w-full ui-input rounded-chip px-3 text-body outline-none"
+                      className="h-control w-full ui-input px-3 text-body outline-none"
                     />
                     <div className="flex flex-wrap items-center gap-2 text-subheadline">
                       <DateField value={r.date} onChange={(date) => update(r.key, date ? { date } : { date: "", time: "" })} aria-label={`Due date for ${label}`} className="w-40" />
                       {r.date ? <TimeField value={r.time} onChange={(time) => update(r.key, { time })} emptyLabel="All day" aria-label={`Due time for ${label}`} className="w-28" /> : null}
-                      <Select value={r.assigneeId} onChange={(e) => update(r.key, { assigneeId: e.target.value })} aria-label={`Assignee for ${label}`} className="h-8 ui-input rounded-chip px-3">
+                      <Select value={r.assigneeId} onChange={(e) => update(r.key, { assigneeId: e.target.value })} aria-label={`Assignee for ${label}`} className="h-control ui-input px-3">
                         <option value="">Unassigned</option>
                         {phase.people.map((p) => (
                           <option key={p.profileId} value={p.profileId}>

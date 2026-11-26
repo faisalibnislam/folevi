@@ -143,7 +143,7 @@ export function DevicesSection() {
             ) : null}
           </div>
           {limit !== null && canPurchaseHere() ? (
-            <AppLink href="/settings/billing" className="ui-btn ui-btn-secondary h-9 px-4 text-callout">
+            <AppLink href="/settings/billing" className="ui-btn ui-btn-secondary h-control px-4 text-callout">
               Get unlimited devices
             </AppLink>
           ) : null}
@@ -165,7 +165,7 @@ export function DevicesSection() {
               {s.current ? (
                 <span className="ui-chip h-6 flex-none self-center bg-moss-soft text-footnote text-moss-ink">This device</span>
               ) : (
-                <Button size="sm" aria-label={`Sign out ${s.label}`} onClick={() => signOut(s.id)}>
+                <Button aria-label={`Sign out ${s.label}`} onClick={() => signOut(s.id)}>
                   Sign out
                 </Button>
               )}

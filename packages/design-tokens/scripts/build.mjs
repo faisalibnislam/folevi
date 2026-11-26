@@ -30,6 +30,10 @@ const shadowVars = (theme) => Object.entries(tokens.shadow[theme]).map(([k, v]) 
 const roleName = (r) => kebab(r).replace(/(\d)/, "-$1");
 const typeVars = (scale) => Object.entries(scale).flatMap(([r, { size, leading }]) => [`  --type-${roleName(r)}: ${size}px;`, `  --type-${roleName(r)}-leading: ${leading}px;`]);
 
+/** The control scale (tokens.control) for one platform: --control-height, --control-compact, ... (px; weights as numbers). */
+const controlVars = (platform) =>
+  Object.entries(stripMeta(tokens.control)).map(([k, v]) => `  --control-${kebab(k)}: ${/Weight$/.test(k) ? v[platform] : `${v[platform]}px`};`);
+
 function buildCss() {
   const { color, space, radius, font, layout, motion } = tokens;
   const light = [...cssVars(color.light, "color"), ...shadowVars("light")].join("\n");
@@ -44,6 +48,7 @@ function buildCss() {
     ...Object.entries(font.tracking).map(([k, v]) => `  --tracking-${kebab(k)}: ${v}em;`),
     ...Object.entries(font.family).map(([k, v]) => `  --font-family-${kebab(k)}: "${v}";`),
     ...cssVars(layout, "layout", "px"),
+    ...controlVars("desktop"),
     ...Object.entries(motion).map(([k, v]) => `  --motion-${kebab(k)}: ${typeof v === "number" ? `${v}ms` : v};`),
   ].join("\n");
   const chromeLight = cssVars(stripMeta(tokens.chrome.light), "color").join("\n");
@@ -60,6 +65,17 @@ ${light}
 /* The iPhone and iPad apps (and Android's): Apple's default Dynamic Type sizes for the same roles. */
 :root:is([data-iphone], [data-native]) {
 ${typeVars(font.role.ios).join("\n")}
+}
+
+/* Touch (the iPhone, iPad and Android apps, and any coarse pointer): the control scale at 44 pt. */
+:root:is([data-iphone], [data-native]) {
+${controlVars("touch").join("\n")}
+}
+
+@media (pointer: coarse) {
+  :root {
+${controlVars("touch").join("\n").replace(/^ {2}/gm, "    ")}
+  }
 }
 
 @media (prefers-color-scheme: dark) {
@@ -189,6 +205,10 @@ function buildSwift() {
       .filter(([, v]) => typeof v[platform] === "number")
       .map(([k, v]) => `            public static let ${swiftName(k)}: CGFloat = ${num(v[platform])}`)
       .join("\n");
+  const controlRole = (platform) =>
+    Object.entries(stripMeta(tokens.control))
+      .map(([k, v]) => `            public static let ${swiftName(k)}: CGFloat = ${num(v[platform])}`)
+      .join("\n");
   const bezier = String(motion.easing).match(/cubic-bezier\(([^)]+)\)/)[1].split(",").map((x) => num(Number(x.trim())));
   const themes = covers
     .map(
@@ -258,6 +278,17 @@ ${numbers(font.weight)}
 
     /// The smallest text field font size on a touch screen.
     public static let inputMinSize: CGFloat = ${num(font.inputMin)}
+
+    /// The control scale (tokens.control, docs/DESIGN_SYSTEM.md "Controls"): Desktop for the Mac, Touch for the
+    /// iPhone and iPad (44 pt controls).
+    public enum Control {
+        public enum Desktop {
+${controlRole("desktop")}
+        }
+        public enum Touch {
+${controlRole("touch")}
+        }
+    }
 
     /// Spacing by role (spaceRoles, docs/DESIGN_SYSTEM.md "Spacing").
     public enum SpaceRole {

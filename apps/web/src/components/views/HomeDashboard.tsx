@@ -215,7 +215,7 @@ function TodaysReviews() {
         </p>
       </div>
       {waiting ? (
-        <AppLink href="/review" className="ui-btn ui-btn-primary h-8 gap-1.5 px-3.5 text-callout">
+        <AppLink href="/review" className="ui-btn ui-btn-primary h-control gap-1.5 px-3 text-callout">
           Start review <ArrowRight size={13} aria-hidden />
         </AppLink>
       ) : null}

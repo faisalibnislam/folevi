@@ -78,11 +78,11 @@ export function IdentityImageField({
               void run("upload", () => onUpload(file), `${label} updated`);
             }}
           />
-          <Button size="sm" aria-describedby={hintId} disabled={busy !== null} onClick={() => inputRef.current?.click()}>
+          <Button aria-describedby={hintId} disabled={busy !== null} onClick={() => inputRef.current?.click()}>
             {busy === "upload" ? "Uploading…" : "Upload…"}
           </Button>
           {src ? (
-            <Button size="sm" variant="ghost" disabled={busy !== null} onClick={() => void run("remove", onRemove, `${label} removed`)}>
+            <Button variant="ghost" disabled={busy !== null} onClick={() => void run("remove", onRemove, `${label} removed`)}>
               {busy === "remove" ? "Removing…" : "Remove"}
             </Button>
           ) : null}

@@ -141,7 +141,7 @@ export function SignInForm({
             or
             <span className="h-px flex-1 bg-line" />
           </div>
-          <button type="button" onClick={() => void signInWithPasskey()} disabled={passkeyBusy || busy} aria-busy={passkeyBusy} className="ui-btn ui-btn-secondary h-11 w-full text-body">
+          <button type="button" onClick={() => void signInWithPasskey()} disabled={passkeyBusy || busy} aria-busy={passkeyBusy} className="ui-btn ui-btn-secondary h-control w-full text-body">
             {passkeyBusy ? <Loader2 size={16} className="animate-spin motion-reduce:animate-none" aria-hidden /> : <KeyRound size={16} aria-hidden />}
             Sign in with a passkey
           </button>

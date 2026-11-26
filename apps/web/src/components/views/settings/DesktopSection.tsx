@@ -130,7 +130,7 @@ function ShortcutField({ value, error, platform, onChange }: { value: string; er
           onClick={() => setRecording((r) => !r)}
           onKeyDown={onKeyDown}
           onBlur={() => setRecording(false)}
-          className={`ui-input h-9 min-w-36 rounded-chip px-3 text-left font-medium outline-none ${recording ? "ring-2 ring-focus" : ""}`}
+          className={`ui-input h-control min-w-36 px-3 text-left font-medium outline-none ${recording ? "ring-2 ring-focus" : ""}`}
         >
           {recording ? <span className="text-muted">Press keys…</span> : label(value)}
         </button>

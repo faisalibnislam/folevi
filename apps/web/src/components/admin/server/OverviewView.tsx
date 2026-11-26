@@ -40,16 +40,16 @@ function ChecklistRow({ item, onSkip, onOpen, busy, canSkip }: { item: Checklist
       {item.state !== "done" && item.href ? (
         <div className="flex flex-none items-center gap-1.5 pl-8 sm:pl-0">
           {item.state === "todo" && item.skipAs && canSkip ? (
-            <Button size="sm" variant="quiet" disabled={busy} onClick={onSkip}>
+            <Button variant="quiet" disabled={busy} onClick={onSkip}>
               Skip
             </Button>
           ) : null}
           {item.href.startsWith("#") ? (
-            <Button size="sm" variant={item.state === "todo" ? "secondary" : "quiet"} onClick={onOpen}>
+            <Button variant={item.state === "todo" ? "secondary" : "quiet"} onClick={onOpen}>
               {item.action} <ArrowRight size={14} aria-hidden />
             </Button>
           ) : (
-            <Link href={item.href} className={`ui-btn ${item.state === "todo" ? "ui-btn-secondary" : "ui-btn-quiet"} h-8 px-3.5 text-subheadline pointer-coarse:h-11`}>
+            <Link href={item.href} className={`ui-btn ${item.state === "todo" ? "ui-btn-secondary" : "ui-btn-quiet"} h-control px-3 text-callout`}>
               {item.action} <ArrowRight size={14} aria-hidden />
             </Link>
           )}
@@ -84,7 +84,7 @@ function Checklist({ settings, backups, remote, onConnectApps }: { settings: Ser
       description={`${items.length - left} of ${items.length} done. Each step has a sensible default, so skipping is fine.`}
       actions={
         owner ? (
-          <Button size="sm" variant="quiet" disabled={busy} onClick={() => mark(["checklist"], "Checklist hidden. Everything is still in the menu on the left.")}>
+          <Button variant="quiet" disabled={busy} onClick={() => mark(["checklist"], "Checklist hidden. Everything is still in the menu on the left.")}>
             <X size={14} aria-hidden /> Hide
           </Button>
         ) : null
@@ -289,7 +289,7 @@ export function ServerOverviewView() {
             )}
           </Panel>
 
-          <Panel title="Last backup" actions={<Link className="ui-btn ui-btn-secondary h-8 px-3.5 text-subheadline" href="/admin/backups">Backups</Link>}>
+          <Panel title="Last backup" actions={<Link className="ui-btn ui-btn-secondary h-control px-3 text-callout" href="/admin/backups">Backups</Link>}>
             <p className="text-subheadline">
               {last ? (
                 <>
@@ -305,7 +305,7 @@ export function ServerOverviewView() {
             </p>
           </Panel>
 
-          <Panel title="Reachable from" actions={<Link className="ui-btn ui-btn-secondary h-8 px-3.5 text-subheadline" href="/admin/remote">Remote access</Link>}>
+          <Panel title="Reachable from" actions={<Link className="ui-btn ui-btn-secondary h-control px-3 text-callout" href="/admin/remote">Remote access</Link>}>
             {remote.data ? (
               <div className="space-y-2 text-subheadline">
                 <p className="break-all font-medium text-heading">{remote.data.publicUrl}</p>

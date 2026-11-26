@@ -211,7 +211,7 @@ export function WorkspaceBillingSection({ workspace }: { workspace: Workspace })
                 <p className="mt-1 text-subheadline text-faint">Yours in this workspace. Every member has their own.</p>
                 <CreditLines c={{ ...data.credits, trialing: false }} />
                 {data.credits.canBuy ? (
-                  <Button size="sm" className="mt-3" onClick={() => setBuying(true)}>
+                  <Button className="mt-3" onClick={() => setBuying(true)}>
                     Buy credits
                   </Button>
                 ) : null}

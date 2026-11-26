@@ -578,54 +578,54 @@ export function InlineAi({ editor, documentId, request, onClose }: { editor: Edi
         <div className="space-y-2 border-t border-line/60 px-3 py-2.5">
           <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label="Use the result">
             {replaceable ? (
-              <button type="button" onClick={() => accept("replace")} className="ui-btn ui-btn-primary h-8 px-3 text-callout">
+              <button type="button" onClick={() => accept("replace")} className="ui-btn ui-btn-primary h-control px-3 text-callout">
                 <Check size={14} aria-hidden /> Replace
               </button>
             ) : (
-              <button type="button" onClick={primary} className="ui-btn ui-btn-primary h-8 px-3 text-callout">
+              <button type="button" onClick={primary} className="ui-btn ui-btn-primary h-control px-3 text-callout">
                 <CornerDownLeft size={14} aria-hidden /> {target ? "Insert below" : "Insert"}
               </button>
             )}
-            <button type="button" onClick={() => accept("above")} className="ui-btn ui-btn-secondary h-8 px-2.5 text-callout">
+            <button type="button" onClick={() => accept("above")} className="ui-btn ui-btn-secondary h-control px-2.5 text-callout">
               <ArrowUpToLine size={14} aria-hidden /> Insert above
             </button>
             {replaceable ? (
-              <button type="button" onClick={() => accept("below")} className="ui-btn ui-btn-secondary h-8 px-2.5 text-callout">
+              <button type="button" onClick={() => accept("below")} className="ui-btn ui-btn-secondary h-control px-2.5 text-callout">
                 <CornerDownLeft size={14} aria-hidden /> Insert below
               </button>
             ) : null}
-            <button type="button" onClick={() => accept("end")} className="ui-btn ui-btn-secondary h-8 px-2.5 text-callout">
+            <button type="button" onClick={() => accept("end")} className="ui-btn ui-btn-secondary h-control px-2.5 text-callout">
               <ArrowDownToLine size={14} aria-hidden /> Append to note
             </button>
             {isTool ? (
-              <button type="button" disabled={saving} onClick={() => void save("note")} className="ui-btn ui-btn-secondary h-8 px-2.5 text-callout">
+              <button type="button" disabled={saving} onClick={() => void save("note")} className="ui-btn ui-btn-secondary h-control px-2.5 text-callout">
                 <FilePlus2 size={14} aria-hidden /> Create note
               </button>
             ) : null}
             {schedulable ? (
-              <button type="button" onClick={schedule} className="ui-btn ui-btn-secondary h-8 px-2.5 text-callout">
+              <button type="button" onClick={schedule} className="ui-btn ui-btn-secondary h-control px-2.5 text-callout">
                 <CalendarCheck size={14} aria-hidden /> Add dates and people
               </button>
             ) : null}
             {isPage ? (
               <>
-                <button type="button" disabled={saving} onClick={() => void save("note")} className="ui-btn ui-btn-secondary h-8 px-2.5 text-callout">
+                <button type="button" disabled={saving} onClick={() => void save("note")} className="ui-btn ui-btn-secondary h-control px-2.5 text-callout">
                   <FilePlus2 size={14} aria-hidden /> Create note
                 </button>
-                <button type="button" disabled={saving} onClick={() => void save("template")} className="ui-btn ui-btn-secondary h-8 px-2.5 text-callout">
+                <button type="button" disabled={saving} onClick={() => void save("template")} className="ui-btn ui-btn-secondary h-control px-2.5 text-callout">
                   <LayoutTemplate size={14} aria-hidden /> Save as template
                 </button>
               </>
             ) : null}
           </div>
           <div className="flex flex-wrap items-center gap-1.5">
-            <button type="button" onClick={copy} className="ui-btn ui-btn-ghost h-8 px-2.5 text-callout">
+            <button type="button" onClick={copy} className="ui-btn ui-btn-ghost h-control px-2.5 text-callout">
               <Copy size={13} aria-hidden /> Copy
             </button>
-            <button type="button" onClick={() => void run(result.last, result.label)} className="ui-btn ui-btn-ghost h-8 px-2.5 text-callout">
+            <button type="button" onClick={() => void run(result.last, result.label)} className="ui-btn ui-btn-ghost h-control px-2.5 text-callout">
               <RotateCcw size={13} aria-hidden /> Try again
             </button>
-            <button type="button" onClick={close} className="ui-btn ui-btn-ghost ml-auto h-8 px-2.5 text-callout text-muted">
+            <button type="button" onClick={close} className="ui-btn ui-btn-ghost ml-auto h-control px-2.5 text-callout text-muted">
               Discard
             </button>
           </div>

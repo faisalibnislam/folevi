@@ -496,14 +496,14 @@ export function ChartView(props: ReactNodeViewProps) {
       <span className="fb-chart-hint-actions">
         <button
           type="button"
-          className="ui-btn ui-btn-secondary h-8 px-3 text-callout pointer-coarse:h-11"
+          className="ui-btn ui-btn-secondary h-control px-3 text-callout"
           onClick={() => write(sampleChart(chart.kind))}
         >
           Start with an example
         </button>
         <button
           type="button"
-          className="ui-btn ui-btn-secondary h-8 px-3 text-callout pointer-coarse:h-11"
+          className="ui-btn ui-btn-secondary h-control px-3 text-callout"
           onClick={() => {
             write(blankChart(chart.kind));
             setGridOpen(true);
@@ -513,7 +513,7 @@ export function ChartView(props: ReactNodeViewProps) {
         </button>
         <button
           type="button"
-          className="ui-btn ui-btn-ghost h-8 px-3 text-callout pointer-coarse:h-11"
+          className="ui-btn ui-btn-ghost h-control px-3 text-callout"
           onClick={() => setPanel("source")}
         >
           Use a table or file
@@ -579,7 +579,7 @@ export function ChartView(props: ReactNodeViewProps) {
                 {editable ? (
                   <button
                     type="button"
-                    className="ui-btn ui-btn-secondary h-8 px-3 text-callout pointer-coarse:h-11"
+                    className="ui-btn ui-btn-secondary h-control px-3 text-callout"
                     onClick={() =>
                       write({
                         ...sampleChart(chart.kind),

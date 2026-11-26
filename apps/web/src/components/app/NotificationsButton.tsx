@@ -394,7 +394,7 @@ function NotificationRow({ n, onOpen }: { n: Item; onOpen: () => void }) {
           {n.folderInviteId ? (
             <button
               type="button"
-              className={`ui-btn ui-btn-primary font-medium ${phone ? "h-9 px-3.5 text-subheadline" : "h-7 px-2.5 text-footnote"}`}
+              className={`ui-btn ui-btn-primary font-medium ${phone ? "h-control px-3 text-callout" : "h-control-sm px-2.5 text-footnote"}`}
               onClick={() =>
                 acceptFolder({ inviteId: n.folderInviteId! }).then((r) => {
                   toast.show("The folder was added to Shared with Me.", { tone: "success" });
@@ -408,7 +408,7 @@ function NotificationRow({ n, onOpen }: { n: Item; onOpen: () => void }) {
           {n.folderInviteId ? (
             <button
               type="button"
-              className={`ui-btn font-medium ${phone ? "h-9 px-3.5 text-subheadline" : "h-7 px-2.5 text-footnote"}`}
+              className={`ui-btn font-medium ${phone ? "h-control px-3 text-callout" : "h-control-sm px-2.5 text-footnote"}`}
               onClick={() => declineFolder({ inviteId: n.folderInviteId! }).then(() => toast.show("Invitation declined."), fail)}
             >
               Decline
@@ -417,7 +417,7 @@ function NotificationRow({ n, onOpen }: { n: Item; onOpen: () => void }) {
           {n.pageInviteId ? (
             <button
               type="button"
-              className={`ui-btn ui-btn-primary font-medium ${phone ? "h-9 px-3.5 text-subheadline" : "h-7 px-2.5 text-footnote"}`}
+              className={`ui-btn ui-btn-primary font-medium ${phone ? "h-control px-3 text-callout" : "h-control-sm px-2.5 text-footnote"}`}
               onClick={() =>
                 acceptPage({ inviteId: n.pageInviteId! }).then((r) => {
                   toast.show("The page was added to Shared with Me.", { tone: "success" });
@@ -431,7 +431,7 @@ function NotificationRow({ n, onOpen }: { n: Item; onOpen: () => void }) {
           {n.pageInviteId ? (
             <button
               type="button"
-              className={`ui-btn font-medium ${phone ? "h-9 px-3.5 text-subheadline" : "h-7 px-2.5 text-footnote"}`}
+              className={`ui-btn font-medium ${phone ? "h-control px-3 text-callout" : "h-control-sm px-2.5 text-footnote"}`}
               onClick={() => declinePage({ inviteId: n.pageInviteId! }).then(() => toast.show("Invitation declined."), fail)}
             >
               Decline
@@ -440,7 +440,7 @@ function NotificationRow({ n, onOpen }: { n: Item; onOpen: () => void }) {
           {n.kind === "invite" && n.inviteId ? (
             <button
               type="button"
-              className={`ui-btn ui-btn-primary font-medium ${phone ? "h-9 px-3.5 text-subheadline" : "h-7 px-2.5 text-footnote"}`}
+              className={`ui-btn ui-btn-primary font-medium ${phone ? "h-control px-3 text-callout" : "h-control-sm px-2.5 text-footnote"}`}
               onClick={() =>
                 accept({ inviteId: n.inviteId! }).then(
                   () => toast.show("You joined the workspace.", { tone: "success" }),
@@ -454,7 +454,7 @@ function NotificationRow({ n, onOpen }: { n: Item; onOpen: () => void }) {
           {n.kind === "invite" && n.inviteId ? (
             <button
               type="button"
-              className={`ui-btn font-medium ${phone ? "h-9 px-3.5 text-subheadline" : "h-7 px-2.5 text-footnote"}`}
+              className={`ui-btn font-medium ${phone ? "h-control px-3 text-callout" : "h-control-sm px-2.5 text-footnote"}`}
               onClick={() => decline({ inviteId: n.inviteId! }).then(() => toast.show("Invitation declined."), fail)}
             >
               Decline
@@ -498,7 +498,7 @@ function DownloadFile({ fileId }: { fileId: string }) {
   return (
     <button
       type="button"
-      className="ui-btn ui-btn-secondary h-7 px-2.5 text-footnote font-medium"
+      className="ui-btn ui-btn-secondary h-control-sm px-2.5 text-footnote font-medium"
       onClick={async () => {
         try {
           const urls = await convex.query(api.files.urls, { fileIds: [fileId], now: Math.floor(Date.now() / 3_600_000) * 3_600_000 });

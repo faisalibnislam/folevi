@@ -421,7 +421,7 @@ export function GraphView() {
               List
             </button>
           </div>
-          <label className="ui-input flex h-8 min-w-[10rem] flex-1 items-center gap-1.5 rounded-chip px-2.5 sm:max-w-xs">
+          <label className="ui-input flex h-control min-w-[10rem] flex-1 items-center gap-1.5 px-2.5 sm:max-w-xs">
             <Search size={14} aria-hidden className="flex-none text-faint" />
             <input
               type="search"
@@ -586,7 +586,7 @@ export function GraphView() {
         ) : null}
         {center && data ? (
           <div className="flex flex-none flex-wrap items-center gap-2 px-4 pb-2 text-subheadline sm:px-6">
-            <Button variant="secondary" size="sm" onClick={whole}>
+            <Button variant="secondary" onClick={whole}>
               <ArrowLeft size={14} aria-hidden className="-ml-1 mr-1" />
               Whole map
             </Button>
@@ -760,7 +760,7 @@ function DnaInsights({
                   </button>
                   <IconButton
                     label={`Ask Foli AI to sum up ${c.name}`}
-                    className="!h-6 !min-h-6 !w-6 !min-w-6 flex-none"
+                    className="!size-control-sm !min-w-6 flex-none"
                     onClick={() => openAsk(`Sum up what these notes say together: ${c.members.filter((m) => byId.get(m)?.kind === "note").slice(0, 20).map(name).join(", ")}.`)}
                   >
                     <Sparkles size={12} aria-hidden />
@@ -811,7 +811,6 @@ function DnaInsights({
                     <p className="text-footnote text-faint">Both mention {s.entities.join(", ")}</p>
                     <Button
                       variant="quiet"
-                      size="sm"
                       className="-ml-1.5 mt-0.5"
                       disabled={linked.has(key)}
                       onClick={async () => {
@@ -1766,7 +1765,7 @@ export function GraphCanvas({
             <h2 className="min-w-0 flex-1 text-body font-semibold text-heading">
               {entityPicked.label} <span className="text-footnote font-normal text-faint">{KIND_LABEL[entityPicked.kind]}</span>
             </h2>
-            <IconButton label="Close" onClick={closePicked} className="!h-7 !w-7 -mr-1 -mt-1">
+            <IconButton label="Close" onClick={closePicked} className="!size-control-sm -mr-1 -mt-1">
               <X size={14} aria-hidden />
             </IconButton>
           </div>
@@ -1808,20 +1807,20 @@ export function GraphCanvas({
       {picked.size && !compact ? <SelectionBar ids={[...picked]} byId={byId} onClear={() => setPicked(new Set())} bottom={overlay?.bottomCenter ? TIMELINE_ROOM : 12} /> : null}
       {!compact && !(sideShown && narrow) ? (
         <div role="group" aria-label="Zoom" className="ui-pop absolute z-10 flex items-center gap-0.5 rounded-panel p-1" style={{ right: pillRight, bottom: floorBottom }}>
-          <IconButton label="Zoom in" shortcut="+" onClick={() => zoomBy(1.25)} className="!h-8 !w-8">
+          <IconButton label="Zoom in" shortcut="+" onClick={() => zoomBy(1.25)} className="!size-control">
             <ZoomIn size={15} aria-hidden />
           </IconButton>
-          <IconButton label="Zoom out" shortcut="-" onClick={() => zoomBy(0.8)} className="!h-8 !w-8">
+          <IconButton label="Zoom out" shortcut="-" onClick={() => zoomBy(0.8)} className="!size-control">
             <ZoomOut size={15} aria-hidden />
           </IconButton>
-          <IconButton label="Fit to screen" shortcut="0" onClick={refit} className="!h-8 !w-8">
+          <IconButton label="Fit to screen" shortcut="0" onClick={refit} className="!size-control">
             <Maximize size={15} aria-hidden />
           </IconButton>
-          <IconButton label={boxMode ? "Stop selecting" : "Select notes with a box"} aria-pressed={boxMode} onClick={() => setBoxMode((on) => !on)} className="!h-8 !w-8">
+          <IconButton label={boxMode ? "Stop selecting" : "Select notes with a box"} aria-pressed={boxMode} onClick={() => setBoxMode((on) => !on)} className="!size-control">
             <SquareDashed size={15} aria-hidden />
           </IconButton>
           {focus ? (
-            <IconButton label="Go to the highlighted note" onClick={() => glideTo(focus)} className="!h-8 !w-8">
+            <IconButton label="Go to the highlighted note" onClick={() => glideTo(focus)} className="!size-control">
               <Focus size={15} aria-hidden />
             </IconButton>
           ) : null}
@@ -1907,7 +1906,7 @@ function SelectionBar({ ids, byId, onClear, bottom = 12 }: { ids: string[]; byId
         side="top"
         items={[{ label: "Drafts (no folder)", onSelect: () => void notesApi.moveTo(ids, { id: null, name: "Drafts" }) }, ...(tree?.folders ?? []).map((f) => ({ label: f.name, onSelect: () => void notesApi.moveTo(ids, { id: f.id, name: f.name }) }))]}
       />
-      <Button variant="quiet" className="!h-8 !px-2" onClick={() => void notesApi.star(ids, true)}>
+      <Button variant="quiet" className="!h-control !px-2" onClick={() => void notesApi.star(ids, true)}>
         <Bookmark size={14} aria-hidden /> Bookmark
       </Button>
       {tree?.tags.length ? (
@@ -1922,10 +1921,10 @@ function SelectionBar({ ids, byId, onClear, bottom = 12 }: { ids: string[]; byId
           items={tree.tags.map((tg) => ({ label: `#${tg.name}`, onSelect: () => void addTag(tg.id) }))}
         />
       ) : null}
-      <Button variant="quiet" className="!h-8 !px-2" onClick={ask}>
+      <Button variant="quiet" className="!h-control !px-2" onClick={ask}>
         <Sparkles size={14} aria-hidden /> Ask Foli AI
       </Button>
-      <IconButton label="Clear selection" onClick={onClear} className="!h-8 !w-8">
+      <IconButton label="Clear selection" onClick={onClear} className="!size-control">
         <X size={14} aria-hidden />
       </IconButton>
     </div>

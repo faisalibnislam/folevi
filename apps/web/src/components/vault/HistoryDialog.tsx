@@ -57,12 +57,11 @@ export function HistoryDialog({ vaultId, itemId, canChange, onClose }: { vaultId
                       Version {v.revision} · {v.editedBy} · {formatDateTime(v.editedAt)}
                     </span>
                   </span>
-                  <Button size="sm" variant="quiet" onClick={() => setShown(shown === v.revision ? null : v.revision)} disabled={!v.secrets}>
+                  <Button variant="quiet" onClick={() => setShown(shown === v.revision ? null : v.revision)} disabled={!v.secrets}>
                     {shown === v.revision ? "Hide" : "Show"}
                   </Button>
                   {canChange ? (
                     <Button
-                      size="sm"
                       variant="secondary"
                       onClick={() =>
                         void restore({ vaultId, itemId, revision: v.revision, client: vaultSessions().info(vaultId) }).then(

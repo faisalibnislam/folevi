@@ -42,7 +42,7 @@ export function AccountSection() {
   const zoneField = useMemo(() => {
     const zones = zoneChoices(timeZone);
     return (
-      <Select value={timeZone} onChange={(e) => void update({ timeZone: e.target.value })} className="h-9 w-full ui-input rounded-chip px-3">
+      <Select value={timeZone} onChange={(e) => void update({ timeZone: e.target.value })} className="h-control w-full ui-input px-3">
         {zones.map((z) => (
           <option key={z} value={z}>
             {z}
@@ -121,7 +121,7 @@ export function AccountSection() {
         >
           <label className="text-subheadline">
             <span className="mb-1 block font-medium">Name</span>
-            <input value={name} onChange={(e) => setName(e.target.value)} maxLength={80} className="h-9 w-full ui-input rounded-chip px-3" />
+            <input value={name} onChange={(e) => setName(e.target.value)} maxLength={80} className="h-control w-full ui-input px-3" />
           </label>
           <label className="text-subheadline">
             <span className="mb-1 block font-medium">Email</span>

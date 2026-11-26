@@ -448,7 +448,7 @@ export function CollectionEmbed({ collectionId, initialViewId, editable }: { col
                     const type = e.target.value as View["type"];
                     if (type) addViewOf(type);
                   }}
-                  className="h-7 ui-input rounded-chip px-3 text-footnote text-muted"
+                  className="h-control-sm ui-input px-3 text-footnote text-muted"
                 >
                   <option value="">+ View</option>
                   <option value="table">Table</option>
@@ -881,7 +881,7 @@ function PagePicker({ scope, exclude, onPick }: { scope: WireScope; exclude: str
   };
   return (
     <div>
-      <label className="flex items-center gap-2 rounded-chip ui-input px-3">
+      <label className="flex items-center gap-2 ui-input px-3">
         <Search size={14} aria-hidden className="text-faint" />
         <input
           autoFocus
@@ -1355,7 +1355,7 @@ function CalendarCollection({ data, view, rows, visible, canEdit, onAdd }: { dat
           <IconButton label="Previous month" onClick={() => setMonth(shiftMonth(month, -1))}>
             <ChevronLeft size={15} aria-hidden />
           </IconButton>
-          <Button size="sm" onClick={() => setMonth(today.slice(0, 7))}>
+          <Button onClick={() => setMonth(today.slice(0, 7))}>
             Today
           </Button>
           <IconButton label="Next month" onClick={() => setMonth(shiftMonth(month, 1))}>
@@ -1483,7 +1483,7 @@ function GalleryCollection({ data, view, rows, visible }: { data: CollectionData
 
 function FilterValueEditor({ target, filter, people, onChange }: { target: FilterTarget; filter: ViewFilter; people: Person[]; onChange: (value: unknown) => void }) {
   const value = resolveOption(target, filter.value);
-  const cls = "h-8 w-36 ui-input rounded-chip px-2";
+  const cls = "h-control w-36 ui-input px-2";
   switch (target.type) {
     case "select":
     case "multiSelect":
@@ -1572,7 +1572,7 @@ function ViewSettings({ open, onClose, data, view, onEditFormula }: { open: bool
               value={view.name}
               label="View name"
               maxLength={40}
-              className="mt-1 block h-8 w-full ui-input rounded-chip px-3"
+              className="mt-1 block h-control w-full ui-input px-3"
               onCommit={(name) => void updateView({ collectionId: data.id, viewId: view.id, name: name || view.name }).catch((e) => toast.show(errorMessage(e), { tone: "error" }))}
             />
           </label>
@@ -1592,7 +1592,7 @@ function ViewSettings({ open, onClose, data, view, onEditFormula }: { open: bool
                     const valid = t ? OPS[t.type] : [];
                     setFilter(i, { propertyId: e.target.value, op: valid.includes(f.op) ? f.op : (valid[0] ?? "isNotEmpty"), value: undefined });
                   }}
-                  className="h-8 ui-input rounded-chip px-3"
+                  className="h-control ui-input px-3"
                 >
                   {!target ? <option value={f.propertyId}>Deleted property</option> : null}
                   {targets.map((p) => (
@@ -1601,7 +1601,7 @@ function ViewSettings({ open, onClose, data, view, onEditFormula }: { open: bool
                     </option>
                   ))}
                 </Select>
-                <Select aria-label="Condition" value={f.op} onChange={(e) => setFilter(i, { op: e.target.value as FilterOp })} className="h-8 ui-input rounded-chip px-3">
+                <Select aria-label="Condition" value={f.op} onChange={(e) => setFilter(i, { op: e.target.value as FilterOp })} className="h-control ui-input px-3">
                   {ops.map((op) => (
                     <option key={op} value={op}>
                       {target ? opLabel(target.type, op) : op}
@@ -1615,7 +1615,7 @@ function ViewSettings({ open, onClose, data, view, onEditFormula }: { open: bool
               </div>
             );
           })}
-          <Button size="sm" onClick={() => void save({ filters: [...current().filters, { propertyId: data.properties[0]?.id ?? TITLE_ID, op: data.properties[0] ? OPS[data.properties[0].type][0]! : "contains" }] })}>
+          <Button onClick={() => void save({ filters: [...current().filters, { propertyId: data.properties[0]?.id ?? TITLE_ID, op: data.properties[0] ? OPS[data.properties[0].type][0]! : "contains" }] })}>
             <Plus size={12} aria-hidden /> Add filter
           </Button>
 
@@ -1624,7 +1624,7 @@ function ViewSettings({ open, onClose, data, view, onEditFormula }: { open: bool
           </h3>
           {config.sorts.map((s, i) => (
             <div key={i} className="mb-2 flex items-center gap-1.5 text-subheadline">
-              <Select aria-label="Sort property" value={s.propertyId} onChange={(e) => void save({ sorts: current().sorts.map((x, j) => (j === i ? { ...x, propertyId: e.target.value } : x)) })} className="h-8 ui-input rounded-chip px-3">
+              <Select aria-label="Sort property" value={s.propertyId} onChange={(e) => void save({ sorts: current().sorts.map((x, j) => (j === i ? { ...x, propertyId: e.target.value } : x)) })} className="h-control ui-input px-3">
                 <option value={TITLE_ID}>Name</option>
                 {data.properties.map((p) => (
                   <option key={p.id} value={p.id}>
@@ -1632,7 +1632,7 @@ function ViewSettings({ open, onClose, data, view, onEditFormula }: { open: bool
                   </option>
                 ))}
               </Select>
-              <Select aria-label="Direction" value={s.direction} onChange={(e) => void save({ sorts: current().sorts.map((x, j) => (j === i ? { ...x, direction: e.target.value as "asc" | "desc" } : x)) })} className="h-8 ui-input rounded-chip px-3">
+              <Select aria-label="Direction" value={s.direction} onChange={(e) => void save({ sorts: current().sorts.map((x, j) => (j === i ? { ...x, direction: e.target.value as "asc" | "desc" } : x)) })} className="h-control ui-input px-3">
                 <option value="asc">Ascending</option>
                 <option value="desc">Descending</option>
               </Select>
@@ -1641,7 +1641,7 @@ function ViewSettings({ open, onClose, data, view, onEditFormula }: { open: bool
               </button>
             </div>
           ))}
-          <Button size="sm" onClick={() => void save({ sorts: [...current().sorts, { propertyId: TITLE_ID, direction: "asc" }] })}>
+          <Button onClick={() => void save({ sorts: [...current().sorts, { propertyId: TITLE_ID, direction: "asc" }] })}>
             <Plus size={12} aria-hidden /> Add sort
           </Button>
 
@@ -1649,7 +1649,7 @@ function ViewSettings({ open, onClose, data, view, onEditFormula }: { open: bool
             <label className="mt-6 block text-subheadline">
               <span className="font-semibold">Group by</span>
               <span className="mt-0.5 block text-footnote text-muted">A single-select, or a formula (a column per result).</span>
-              <Select value={config.groupBy ?? ""} onChange={(e) => void save({ groupBy: e.target.value || undefined })} className="mt-1 flex h-8 ui-input rounded-chip px-3">
+              <Select value={config.groupBy ?? ""} onChange={(e) => void save({ groupBy: e.target.value || undefined })} className="mt-1 flex h-control ui-input px-3">
                 {selectProps.map((p) => (
                   <option key={p.id} value={p.id}>
                     {p.name}
@@ -1661,7 +1661,7 @@ function ViewSettings({ open, onClose, data, view, onEditFormula }: { open: bool
           {view.type === "calendar" ? (
             <label className="mt-6 block text-subheadline">
               <span className="font-semibold">Show rows by</span>
-              <Select value={config.dateBy ?? ""} onChange={(e) => void save({ dateBy: e.target.value || undefined })} className="mt-1 flex h-8 ui-input rounded-chip px-3">
+              <Select value={config.dateBy ?? ""} onChange={(e) => void save({ dateBy: e.target.value || undefined })} className="mt-1 flex h-control ui-input px-3">
                 {config.dateBy && !dateProps.some((p) => p.id === config.dateBy) ? <option value={config.dateBy}>Deleted property</option> : null}
                 {dateProps.length === 0 ? <option value="">Add a date property first</option> : null}
                 {dateProps.map((p) => (
@@ -1676,7 +1676,7 @@ function ViewSettings({ open, onClose, data, view, onEditFormula }: { open: bool
             <div className="mt-6 flex gap-4 text-subheadline">
               <label>
                 <span className="font-semibold">Card preview</span>
-                <Select value={config.cardPreview} onChange={(e) => void save({ cardPreview: e.target.value as ViewConfig["cardPreview"] })} className="mt-1 flex h-8 ui-input rounded-chip px-3">
+                <Select value={config.cardPreview} onChange={(e) => void save({ cardPreview: e.target.value as ViewConfig["cardPreview"] })} className="mt-1 flex h-control ui-input px-3">
                   <option value="none">None</option>
                   <option value="cover">Cover</option>
                   <option value="content">Page content</option>
@@ -1684,7 +1684,7 @@ function ViewSettings({ open, onClose, data, view, onEditFormula }: { open: bool
               </label>
               <label>
                 <span className="font-semibold">Card size</span>
-                <Select value={config.cardSize} onChange={(e) => void save({ cardSize: e.target.value as ViewConfig["cardSize"] })} className="mt-1 flex h-8 ui-input rounded-chip px-3">
+                <Select value={config.cardSize} onChange={(e) => void save({ cardSize: e.target.value as ViewConfig["cardSize"] })} className="mt-1 flex h-control ui-input px-3">
                   <option value="small">Small</option>
                   <option value="medium">Medium</option>
                   <option value="large">Large</option>
@@ -1743,7 +1743,7 @@ function ViewSettings({ open, onClose, data, view, onEditFormula }: { open: bool
                     const options = renamedCollectionOptions(p.options, names);
                     void updateProperty({ collectionId: data.id, propertyId: p.id, options }).catch((err) => toast.show(errorMessage(err), { tone: "error" }));
                   }}
-                  className="mt-1 block h-8 w-full ui-input rounded-chip px-3 text-callout"
+                  className="mt-1 block h-control w-full ui-input px-3 text-callout"
                 />
               </label>
             ))}
@@ -1778,21 +1778,21 @@ function ViewSettings({ open, onClose, data, view, onEditFormula }: { open: bool
           >
             <label className="flex-1 text-footnote">
               New property
-              <input value={newProp.name} onChange={(e) => setNewProp({ ...newProp, name: e.target.value })} className="mt-1 block h-8 w-full ui-input rounded-chip px-3 text-callout" />
+              <input value={newProp.name} onChange={(e) => setNewProp({ ...newProp, name: e.target.value })} className="mt-1 block h-control w-full ui-input px-3 text-callout" />
             </label>
-            <Select aria-label="Property type" value={newProp.type} onChange={(e) => setNewProp({ ...newProp, type: e.target.value as Property["type"] })} className="h-8 ui-input rounded-chip px-3 text-callout">
+            <Select aria-label="Property type" value={newProp.type} onChange={(e) => setNewProp({ ...newProp, type: e.target.value as Property["type"] })} className="h-control ui-input px-3 text-callout">
               {Object.entries(TYPE_LABELS).map(([k, v]) => (
                 <option key={k} value={k}>
                   {v}
                 </option>
               ))}
             </Select>
-            <Button size="sm" type="submit" disabled={!newProp.name.trim()}>
+            <Button type="submit" disabled={!newProp.name.trim()}>
               Add
             </Button>
           </form>
           {data.views.length > 1 ? (
-            <Button size="sm" variant="quiet" className="mt-6 text-danger" onClick={() => setConfirmView(true)}>
+            <Button variant="quiet" className="mt-6 text-danger" onClick={() => setConfirmView(true)}>
               <Trash2 size={13} aria-hidden /> Delete this view
             </Button>
           ) : null}

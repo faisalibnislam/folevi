@@ -87,7 +87,7 @@ export function VaultLinkView({ linkId }: { linkId: string }) {
                     {state.at === "password" ? (
                       <label htmlFor="vault-link-password" className="block">
                         <span className="mb-1 block text-footnote font-medium text-ink">Password</span>
-                        <input id="vault-link-password" type="password" autoFocus autoComplete="off" value={password} onChange={(e) => setPassword(e.target.value)} className="h-10 w-full ui-input rounded-chip px-3 text-body text-ink" />
+                        <input id="vault-link-password" type="password" autoFocus autoComplete="off" value={password} onChange={(e) => setPassword(e.target.value)} className="h-control w-full ui-input px-3 text-body text-ink" />
                       </label>
                     ) : null}
                     {state.at === "password" && state.wrong ? <p role="alert" className="text-footnote text-danger">That password isn't right.</p> : null}
@@ -124,7 +124,7 @@ function Opened({ state, copied, onCopy }: { state: Extract<State, { at: "open" 
             <div key={f.key} className="flex items-start gap-3 py-2.5">
               <dt className="w-32 flex-none text-footnote text-muted">{f.label}</dt>
               <dd className={`min-w-0 flex-1 whitespace-pre-wrap break-words text-ink ${f.type === "secret" || f.type === "multiline" || f.type === "totp" ? "font-mono" : ""}`}>{v}</dd>
-              <Button size="sm" variant="quiet" aria-label={`Copy ${f.label}`} onClick={() => onCopy(f.label, v)}>
+              <Button variant="quiet" aria-label={`Copy ${f.label}`} onClick={() => onCopy(f.label, v)}>
                 <Copy size={13} aria-hidden /> {copied === f.label ? "Copied" : ""}
               </Button>
             </div>

@@ -84,7 +84,7 @@ export function DnaTimeline({
       onKeyDown={onKeyDown}
       className="ui-pop pointer-events-auto flex w-full items-center gap-2 rounded-panel py-2 pl-2 pr-1.5 animate-[folio-rise_180ms_var(--ease-folio)] motion-reduce:animate-none"
     >
-      <IconButton label={playing ? "Pause" : "Play"} shortcut="Space" onClick={onPlay} className="!h-8 !w-8 flex-none">
+      <IconButton label={playing ? "Pause" : "Play"} shortcut="Space" onClick={onPlay} className="!size-control flex-none">
         <SwapIcons index={playing ? 1 : 0} icons={[<Play key="play" size={15} />, <Pause key="pause" size={15} />]} />
       </IconButton>
       <div className="min-w-0 flex-1 px-2">
@@ -134,7 +134,7 @@ export function DnaTimeline({
       <p className="flex-none whitespace-nowrap px-1 text-footnote tabular-nums text-muted" aria-live="off">
         {count.shown} of {count.total} {notes}
       </p>
-      <IconButton label="Close the time-lapse" onClick={onClose} className="!h-8 !w-8 flex-none">
+      <IconButton label="Close the time-lapse" onClick={onClose} className="!size-control flex-none">
         <X size={15} aria-hidden />
       </IconButton>
     </div>

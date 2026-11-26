@@ -116,9 +116,9 @@ function AccountShareDialog({ vaultId, row, title, allowEdit = false, rekey, onC
           >
             <label htmlFor={`${uid}-email`} className="min-w-0 flex-1">
               <span className="mb-1 block text-footnote font-medium text-ink">Email</span>
-              <input id={`${uid}-email`} type="email" autoComplete="off" value={email} onChange={(e) => setEmail(e.target.value)} className="h-9 w-full ui-input rounded-chip px-3" />
+              <input id={`${uid}-email`} type="email" autoComplete="off" value={email} onChange={(e) => setEmail(e.target.value)} className="h-control w-full ui-input px-3" />
             </label>
-            <Select aria-label="If outside the workspace, for" value={days} onChange={(e) => setDays(e.target.value)} className="h-9 ui-input rounded-chip px-3">
+            <Select aria-label="If outside the workspace, for" value={days} onChange={(e) => setDays(e.target.value)} className="h-control ui-input px-3">
               {[1, 7, 30, 90, 365].map((d) => (
                 <option key={d} value={d}>
                   {d === 1 ? "1 day" : d === 365 ? "1 year" : `${d} days`} if outside
@@ -126,7 +126,7 @@ function AccountShareDialog({ vaultId, row, title, allowEdit = false, rekey, onC
               ))}
             </Select>
             {allowEdit ? (
-              <Select aria-label="They can" value={canEdit ? "edit" : "view"} onChange={(e) => setCanEdit(e.target.value === "edit")} className="h-9 ui-input rounded-chip px-3">
+              <Select aria-label="They can" value={canEdit ? "edit" : "view"} onChange={(e) => setCanEdit(e.target.value === "edit")} className="h-control ui-input px-3">
                 <option value="view">Can view</option>
                 <option value="edit">Can edit</option>
               </Select>
@@ -143,7 +143,7 @@ function AccountShareDialog({ vaultId, row, title, allowEdit = false, rekey, onC
                     <span className="block truncate text-subheadline font-medium text-ink">{p.name}</span>
                     <span className="block truncate text-footnote text-muted">{[p.email, p.canEdit ? "can edit" : null, p.expired ? "ended" : p.expiresAt ? `until ${formatDateTime(p.expiresAt)}` : "no end date"].filter(Boolean).join(" · ")}</span>
                   </span>
-                  <Button size="sm" variant="quiet" className="text-danger" disabled={busy} onClick={() => void stop(p.id, p.name)}>
+                  <Button variant="quiet" className="text-danger" disabled={busy} onClick={() => void stop(p.id, p.name)}>
                     <X size={13} aria-hidden /> Stop
                   </Button>
                 </li>
@@ -156,14 +156,14 @@ function AccountShareDialog({ vaultId, row, title, allowEdit = false, rekey, onC
           <h3 className="font-semibold text-heading">One-time link</h3>
           <p className="text-footnote text-muted">For someone without Folevi. The key is in the link itself, never on Folevi's servers. Each opening is logged, and it stops working once used up or expired.</p>
           <div className="flex flex-wrap items-end gap-2">
-            <Select aria-label="Works" value={views} onChange={(e) => setViews(e.target.value)} className="h-9 ui-input rounded-chip px-3">
+            <Select aria-label="Works" value={views} onChange={(e) => setViews(e.target.value)} className="h-control ui-input px-3">
               {[1, 2, 3, 5, 10].map((n) => (
                 <option key={n} value={n}>
                   {n === 1 ? "Works once" : `Works ${n} times`}
                 </option>
               ))}
             </Select>
-            <Select aria-label="Lasts" value={lasts} onChange={(e) => setLasts(e.target.value)} className="h-9 ui-input rounded-chip px-3">
+            <Select aria-label="Lasts" value={lasts} onChange={(e) => setLasts(e.target.value)} className="h-control ui-input px-3">
               {[
                 [HOUR, "for 1 hour"],
                 [DAY, "for 1 day"],
@@ -177,7 +177,7 @@ function AccountShareDialog({ vaultId, row, title, allowEdit = false, rekey, onC
             </Select>
             <label htmlFor={`${uid}-linkpw`} className="min-w-0 flex-1">
               <span className="mb-1 block text-footnote font-medium text-ink">Password (optional)</span>
-              <input id={`${uid}-linkpw`} type="text" autoComplete="off" spellCheck={false} value={linkPassword} onChange={(e) => setLinkPassword(e.target.value)} className="h-9 w-full ui-input rounded-chip px-3" />
+              <input id={`${uid}-linkpw`} type="text" autoComplete="off" spellCheck={false} value={linkPassword} onChange={(e) => setLinkPassword(e.target.value)} className="h-control w-full ui-input px-3" />
             </label>
             <Button variant="secondary" disabled={busy || (linkPassword.length > 0 && linkPassword.length < 5)} onClick={() => void makeOne()}>
               <Link2 size={14} aria-hidden /> Make link
@@ -186,7 +186,7 @@ function AccountShareDialog({ vaultId, row, title, allowEdit = false, rekey, onC
           {made ? (
             <div className="flex items-center gap-2 rounded-chip border border-line p-2">
               <input aria-label="Link to send" readOnly value={made} onFocus={(e) => e.currentTarget.select()} className="min-w-0 flex-1 bg-transparent font-mono text-footnote text-ink outline-none" />
-              <Button size="sm" variant="secondary" onClick={() => void navigator.clipboard.writeText(made).then(() => toast.show("Link copied. It's shown only now."))}>
+              <Button variant="secondary" onClick={() => void navigator.clipboard.writeText(made).then(() => toast.show("Link copied. It's shown only now."))}>
                 <Copy size={13} aria-hidden /> Copy
               </Button>
             </div>
@@ -199,7 +199,7 @@ function AccountShareDialog({ vaultId, row, title, allowEdit = false, rekey, onC
                     Opened {l.views} of {l.maxViews} · until {formatDateTime(l.expiresAt)}
                     {l.hasPassword ? " · password" : ""}
                   </span>
-                  <Button size="sm" variant="quiet" className="text-danger" disabled={busy} onClick={() => void run(async () => (await revokeLink({ vaultId, linkId: l.id, client: s.info(vaultId) }), toast.show("Link ended")))}>
+                  <Button variant="quiet" className="text-danger" disabled={busy} onClick={() => void run(async () => (await revokeLink({ vaultId, linkId: l.id, client: s.info(vaultId) }), toast.show("Link ended")))}>
                     End
                   </Button>
                 </li>

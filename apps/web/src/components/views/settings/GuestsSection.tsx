@@ -144,10 +144,10 @@ export function GuestsSection({ workspace }: { workspace: Workspace }) {
                     <span className="block text-subheadline font-medium">{g.displayName}</span>
                     <span className="block text-footnote text-muted">{g.email}</span>
                   </span>
-                  <Button size="sm" variant="quiet" onClick={() => setConfirm({ kind: "member", profileId: g.profileId, name: g.displayName })}>
+                  <Button variant="quiet" onClick={() => setConfirm({ kind: "member", profileId: g.profileId, name: g.displayName })}>
                     Convert to member
                   </Button>
-                  <Button size="sm" variant="quiet" className="text-danger" onClick={() => setConfirm({ kind: "remove", profileId: g.profileId, name: g.displayName })}>
+                  <Button variant="quiet" className="text-danger" onClick={() => setConfirm({ kind: "remove", profileId: g.profileId, name: g.displayName })}>
                     Remove
                   </Button>
                 </div>
@@ -162,7 +162,7 @@ export function GuestsSection({ workspace }: { workspace: Workspace }) {
                         aria-label={`${g.displayName}'s access to ${p.title}`}
                         value={p.role}
                         onChange={(e) => void act(setAccess({ workspaceId: workspace.id, profileId: g.profileId, documentId: p.documentId, role: e.target.value as ShareRole }), `${g.displayName}: ${ROLE_WORDS[e.target.value as ShareRole]} on ${p.title}`)}
-                        className="h-8 ui-input rounded-chip px-3 text-callout"
+                        className="h-control ui-input px-3 text-callout"
                       >
                         <option value="viewer">Can view</option>
                         <option value="commenter">Can comment</option>
@@ -188,7 +188,7 @@ export function GuestsSection({ workspace }: { workspace: Workspace }) {
                   <span className="text-footnote text-muted">
                     {ROLE_WORDS[i.role]} · {i.expired ? "expired" : `expires ${formatRelative(i.expiresAt)}`}
                   </span>
-                  <Button size="sm" variant="quiet" onClick={() => void act(revokeInvite({ inviteId: i.id }), "Invitation revoked")}>
+                  <Button variant="quiet" onClick={() => void act(revokeInvite({ inviteId: i.id }), "Invitation revoked")}>
                     Revoke
                   </Button>
                 </li>

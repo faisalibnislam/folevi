@@ -56,7 +56,7 @@ export function CalendarFeedDialog({ open, onClose }: { open: boolean; onClose: 
             <p className="text-footnote font-medium">Copy this link now. For your privacy, it isn’t shown again.</p>
             <div className="mt-2 flex gap-2">
               <input readOnly value={link} aria-label="Calendar link" className="h-9 min-w-0 flex-1 ui-well rounded-chip px-2 font-mono text-footnote" onFocus={(e) => e.target.select()} />
-              <Button size="sm" onClick={() => void navigator.clipboard.writeText(link).then(() => toast.show("Link copied"))}>
+              <Button onClick={() => void navigator.clipboard.writeText(link).then(() => toast.show("Link copied"))}>
                 <Copy size={13} aria-hidden /> Copy
               </Button>
             </div>

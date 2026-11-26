@@ -107,7 +107,7 @@ function ConversationRow({ row, active, onNavigate }: { row: Row; active: boolea
                 setEditing(false);
               }
             }}
-            className="ui-input h-8 w-full rounded-chip px-2.5 text-body"
+            className="ui-input h-control w-full px-2.5 text-body"
           />
         </form>
       ) : (
@@ -203,7 +203,7 @@ export function ConversationList({ activeId, onNavigate }: { activeId: string | 
   return (
     <nav aria-label="Conversations" className="flex h-full min-h-0 flex-col">
       <div className="flex-none space-y-2 px-2.5 pb-2 pt-3">
-        <AppLink href="/ai" onClick={onNavigate} className="ui-btn ui-btn-secondary flex h-9 w-full items-center justify-center gap-2 text-body">
+        <AppLink href="/ai" onClick={onNavigate} className="ui-btn ui-btn-secondary flex h-control w-full items-center justify-center gap-2 text-body">
           <Plus size={15} aria-hidden /> New chat
         </AppLink>
         <div className="ui-well flex h-9 items-center gap-2 rounded-chip px-2.5">

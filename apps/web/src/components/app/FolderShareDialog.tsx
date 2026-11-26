@@ -101,8 +101,8 @@ export function FolderShareDialog({ open, onClose, folderId, name }: { open: boo
                 <label className="sr-only" htmlFor={`${uid}-email`}>
                   Email address
                 </label>
-                <input id={`${uid}-email`} type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="name@example.com" className="h-9 min-w-0 flex-1 ui-input rounded-chip px-3" />
-                <Select aria-label="Role" value={role} onChange={(e) => setNewRole(e.target.value as ShareRole)} className="h-9 flex-none ui-input rounded-chip px-3">
+                <input id={`${uid}-email`} type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="name@example.com" className="h-control min-w-0 flex-1 ui-input px-3" />
+                <Select aria-label="Role" value={role} onChange={(e) => setNewRole(e.target.value as ShareRole)} className="h-control flex-none ui-input px-3">
                   <option value="viewer">Can view</option>
                   <option value="commenter">Can comment</option>
                   <option value="editor">Can edit</option>
@@ -141,7 +141,7 @@ export function FolderShareDialog({ open, onClose, folderId, name }: { open: boo
                         aria-label={`Access for ${p.displayName}`}
                         value={p.role}
                         onChange={(e) => void run(setRole({ folderId, profileId: p.profileId, role: e.target.value as ShareRole }), "Access changed")}
-                        className="h-8 ui-input rounded-chip px-2.5 text-footnote"
+                        className="h-control ui-input px-2.5 text-footnote"
                       >
                         <option value="viewer">Can view</option>
                         <option value="commenter">Can comment</option>
@@ -155,7 +155,7 @@ export function FolderShareDialog({ open, onClose, folderId, name }: { open: boo
                     <span className="text-footnote text-muted">{roleLabel(p.role)}</span>
                   )}
                   {p.isYou && data.youAreGuest ? (
-                    <Button size="sm" variant="quiet" onClick={() => void run(revoke({ folderId, profileId: p.profileId }).then(onClose), "You left the folder")}>
+                    <Button variant="quiet" onClick={() => void run(revoke({ folderId, profileId: p.profileId }).then(onClose), "You left the folder")}>
                       Leave
                     </Button>
                   ) : null}
@@ -195,7 +195,7 @@ export function FolderShareDialog({ open, onClose, folderId, name }: { open: boo
                       <span className="text-footnote text-muted">
                         {roleLabel(i.role)} · {i.expired ? "expired" : "waiting to accept"}
                       </span>
-                      <Button size="sm" variant="quiet" onClick={() => void run(revokeInvite({ inviteId: i.id }), "Invitation revoked")}>
+                      <Button variant="quiet" onClick={() => void run(revokeInvite({ inviteId: i.id }), "Invitation revoked")}>
                         Revoke
                       </Button>
                     </li>

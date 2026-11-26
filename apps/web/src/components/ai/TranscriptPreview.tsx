@@ -117,31 +117,31 @@ export function TranscriptPreview({
       {!working ? (
         <div className="flex flex-wrap items-center gap-1.5 px-3 py-2.5" role="group" aria-label="Use the transcript">
           {transcript && canInsert ? (
-            <button type="button" onClick={onInsert} className="ui-btn ui-btn-primary h-8 px-3 text-callout">
+            <button type="button" onClick={onInsert} className="ui-btn ui-btn-primary h-control px-3 text-callout">
               <CornerDownLeft size={14} aria-hidden /> Insert below
             </button>
           ) : null}
           {view === "meeting" && meeting && canInsert && onSchedule && hasTodoLines(meeting) ? (
-            <button type="button" onClick={onSchedule} className="ui-btn ui-btn-secondary h-8 px-2.5 text-callout">
+            <button type="button" onClick={onSchedule} className="ui-btn ui-btn-secondary h-control px-2.5 text-callout">
               <CalendarCheck size={14} aria-hidden /> Add dates and people
             </button>
           ) : null}
           {transcript && !summary ? (
-            <button type="button" disabled={summarizing} onClick={onSummarize} className="ui-btn ui-btn-secondary h-8 px-2.5 text-callout">
+            <button type="button" disabled={summarizing} onClick={onSummarize} className="ui-btn ui-btn-secondary h-control px-2.5 text-callout">
               <ListTree size={14} aria-hidden /> {summarizing ? "Summarizing…" : "Summarize"}
             </button>
           ) : null}
           {transcript && !meeting && onMeeting ? (
-            <button type="button" disabled={meetingBusy} onClick={onMeeting} className="ui-btn ui-btn-secondary h-8 px-2.5 text-callout">
+            <button type="button" disabled={meetingBusy} onClick={onMeeting} className="ui-btn ui-btn-secondary h-control px-2.5 text-callout">
               <Users size={14} aria-hidden /> {meetingBusy ? "Summarizing the meeting…" : "Meeting summary"}
             </button>
           ) : null}
           {transcript ? (
-            <button type="button" onClick={copy} className="ui-btn ui-btn-ghost h-8 px-2.5 text-callout">
+            <button type="button" onClick={copy} className="ui-btn ui-btn-ghost h-control px-2.5 text-callout">
               <SwapIcons index={copied ? 1 : 0} icons={[<Copy key="copy" size={14} />, <Check key="check" size={14} />]} /> {copied ? "Copied" : "Copy"}
             </button>
           ) : null}
-          <button type="button" onClick={onDiscard} className="ui-btn ui-btn-ghost ml-auto h-8 px-2.5 text-callout text-muted">
+          <button type="button" onClick={onDiscard} className="ui-btn ui-btn-ghost ml-auto h-control px-2.5 text-callout text-muted">
             <X size={14} aria-hidden /> {transcript ? "Discard" : "Close"}
           </button>
         </div>

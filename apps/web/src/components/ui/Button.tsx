@@ -5,7 +5,12 @@ import { haptic } from "@/lib/nativeApp";
 import { keyLabel, useMacKeys } from "@/lib/shortcuts";
 
 type Variant = "primary" | "secondary" | "ghost" | "danger" | "quiet";
-type Size = "sm" | "md" | "icon";
+/**
+ * The control scale (docs/DESIGN_SYSTEM.md, Controls): "md" is every button in a row (36, 44 on touch), "compact" a
+ * button inside a menu, popover, card or dense chrome (28, 36 on touch); "icon" and "icon-compact" are the same
+ * heights, square.
+ */
+type Size = "md" | "compact" | "icon" | "icon-compact";
 
 const base = "ui-btn";
 const variants: Record<Variant, string> = {
@@ -16,9 +21,10 @@ const variants: Record<Variant, string> = {
   danger: "ui-btn-danger",
 };
 const sizes: Record<Size, string> = {
-  sm: "h-8 px-3.5 text-subheadline pointer-coarse:h-11",
-  md: "h-9 px-4 text-subheadline pointer-coarse:h-11",
-  icon: "h-8 w-8 text-subheadline pointer-coarse:h-11 pointer-coarse:w-11",
+  md: "h-control px-3 text-callout",
+  compact: "h-control-sm px-2.5 text-callout",
+  icon: "size-control text-callout",
+  "icon-compact": "size-control-sm text-callout",
 };
 
 export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {

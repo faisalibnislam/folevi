@@ -215,7 +215,7 @@ export function ShareDialogView({
         <label htmlFor="share-link-password" className="font-medium text-ink">
           Password
         </label>
-        <input id="share-link-password" type="password" autoComplete="new-password" placeholder="None" value={linkForm.password} onChange={(e) => setLinkForm({ ...linkForm, password: e.target.value })} className="block h-9 w-full ui-input rounded-chip px-3 text-callout" />
+        <input id="share-link-password" type="password" autoComplete="new-password" placeholder="None" value={linkForm.password} onChange={(e) => setLinkForm({ ...linkForm, password: e.target.value })} className="block h-control w-full ui-input px-3 text-callout" />
         <span id="share-link-look" className="font-medium text-ink">
           Look
         </span>
@@ -233,7 +233,7 @@ export function ShareDialogView({
         )}
       </div>
       <div className="flex justify-end">
-        <Button variant="primary" size="sm" disabled={busy || !data?.publicLinksAvailable} onClick={() => void makeLink()}>
+        <Button variant="primary" disabled={busy || !data?.publicLinksAvailable} onClick={() => void makeLink()}>
           <Globe size={14} aria-hidden /> Create link
         </Button>
       </div>
@@ -294,8 +294,8 @@ export function ShareDialogView({
                   <label className="sr-only" htmlFor="share-email">
                     Email address
                   </label>
-                  <input id="share-email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="name@example.com" className="h-9 min-w-0 flex-1 ui-input rounded-chip px-3" />
-                  <Select aria-label="Role" value={role} onChange={(e) => setRole(e.target.value as Role)} className="h-9 flex-none ui-input rounded-chip px-3">
+                  <input id="share-email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="name@example.com" className="h-control min-w-0 flex-1 ui-input px-3" />
+                  <Select aria-label="Role" value={role} onChange={(e) => setRole(e.target.value as Role)} className="h-control flex-none ui-input px-3">
                     <option value="viewer">Can view</option>
                     <option value="commenter">Can comment</option>
                     <option value="editor">Can edit</option>
@@ -346,7 +346,7 @@ export function ShareDialogView({
                       <span className="text-footnote text-muted">
                         {roleText(i.role)} · {i.expired ? "expired" : "waiting to accept"}
                       </span>
-                      <Button size="sm" variant="quiet" onClick={() => void run(actions.revokeInvite(i.id), "Invitation revoked")}>
+                      <Button variant="quiet" onClick={() => void run(actions.revokeInvite(i.id), "Invitation revoked")}>
                         Revoke
                       </Button>
                     </li>
@@ -395,7 +395,7 @@ export function ShareDialogView({
                 disabled={!canManage}
                 onChange={(e) => void run(actions.setMode(e.target.value as "workspace" | "restricted"))}
                 leading={data.accessMode === "restricted" ? <Lock size={15} aria-hidden className="flex-none text-muted" /> : <Users size={15} aria-hidden className="flex-none text-muted" />}
-                className="h-9 min-w-0 flex-1 ui-input rounded-chip px-3"
+                className="h-control min-w-0 flex-1 ui-input px-3"
               >
                 <option value="workspace" data-description="Everyone in this workspace, by their role">
                   Workspace
@@ -432,11 +432,11 @@ export function ShareDialogView({
                         </span>
                       )}
                       {url ? (
-                        <Button size="sm" onClick={() => copyText(url)}>
+                        <Button onClick={() => copyText(url)}>
                           <Copy size={13} aria-hidden /> Copy
                         </Button>
                       ) : null}
-                      <Button size="sm" variant="quiet" className="text-danger" onClick={() => void run(actions.revokeLink(l.id), "Link revoked")}>
+                      <Button variant="quiet" className="text-danger" onClick={() => void run(actions.revokeLink(l.id), "Link revoked")}>
                         Revoke
                       </Button>
                     </div>
@@ -498,7 +498,7 @@ export function ShareDialogView({
                         {another ? (
                           <div className="space-y-3 border-t border-line pt-3">{newLinkFields}</div>
                         ) : (
-                          <Button size="sm" variant="quiet" className="-ml-2" disabled={!data.publicLinksAvailable} onClick={() => setAnother(true)}>
+                          <Button variant="quiet" className="-ml-2" disabled={!data.publicLinksAvailable} onClick={() => setAnother(true)}>
                             New link…
                           </Button>
                         )}
@@ -522,10 +522,10 @@ export function ShareDialogView({
                 .map((l) => (
                   <div key={l.id} className="flex flex-wrap items-center gap-2 pl-6">
                     <span className="min-w-0 flex-1 text-footnote text-muted">{e2eeCopy.publish.publishedFrom(formatDateTime((l as { publishedAt?: number }).publishedAt ?? l.createdAt))}</span>
-                    <Button size="sm" variant="quiet" onClick={() => void run(actions.updatePlainCopy(l.id), e2eeCopy.publish.updated)}>
+                    <Button variant="quiet" onClick={() => void run(actions.updatePlainCopy(l.id), e2eeCopy.publish.updated)}>
                       {e2eeCopy.publish.update}
                     </Button>
-                    <Button size="sm" variant="quiet" className="text-danger" onClick={() => void run(actions.unpublish(l.id), e2eeCopy.publish.stopped)}>
+                    <Button variant="quiet" className="text-danger" onClick={() => void run(actions.unpublish(l.id), e2eeCopy.publish.stopped)}>
                       {e2eeCopy.publish.stop}
                     </Button>
                   </div>
@@ -533,13 +533,13 @@ export function ShareDialogView({
               {published ? (
                 <div className="flex gap-2 pl-6">
                   <input readOnly value={published} aria-label={e2eeCopy.publish.row} className="h-8 min-w-0 flex-1 ui-well rounded-chip px-2 font-mono text-footnote" onFocus={(e) => e.target.select()} />
-                  <Button size="sm" onClick={() => copyText(published)}>
+                  <Button onClick={() => copyText(published)}>
                     <Copy size={13} aria-hidden /> Copy
                   </Button>
                 </div>
               ) : null}
               <div className="pl-6">
-                <Button size="sm" onClick={() => setPublishing(true)}>
+                <Button onClick={() => setPublishing(true)}>
                   {e2eeCopy.publish.rowButton}
                 </Button>
               </div>
@@ -555,7 +555,7 @@ export function ShareDialogView({
 /** The public page's look: Folevi's dropdown, each look with its one-line description. */
 function LookSelect({ value, onChange, label, labelledBy }: { value: PublishTheme; onChange: (t: PublishTheme) => void; label?: string; labelledBy?: string }) {
   return (
-    <Select aria-label={label} aria-labelledby={labelledBy} value={value} onChange={(e) => onChange(e.target.value as PublishTheme)} className="h-9 w-full ui-input rounded-chip px-3">
+    <Select aria-label={label} aria-labelledby={labelledBy} value={value} onChange={(e) => onChange(e.target.value as PublishTheme)} className="h-control w-full ui-input px-3">
       {PUBLISH_THEMES.map((t) => (
         <option key={t.id} value={t.id} data-description={t.hint}>
           {t.name}

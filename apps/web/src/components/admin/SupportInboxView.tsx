@@ -67,7 +67,7 @@ export function SupportInboxView() {
           </>
         }
         actions={
-          <Button size="sm" variant="quiet" onClick={() => void refresh()} disabled={loading} aria-label="Reload tickets (writes an audit entry)">
+          <Button variant="quiet" onClick={() => void refresh()} disabled={loading} aria-label="Reload tickets (writes an audit entry)">
             <RotateCw size={14} aria-hidden className={loading ? "animate-spin" : ""} /> Reload
           </Button>
         }

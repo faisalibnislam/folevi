@@ -89,7 +89,7 @@ export function HelpView() {
               Support
             </h3>
             <p className="mt-1 text-subheadline text-muted">A person on the Folevi team reads every email and replies.</p>
-            <a href="mailto:support@folevi.com" className="ui-btn ui-btn-primary mt-3 inline-flex h-9 items-center px-4 text-callout">
+            <a href="mailto:support@folevi.com" className="ui-btn ui-btn-primary mt-3 inline-flex h-control items-center px-4 text-callout">
               Email support
             </a>
           </section>

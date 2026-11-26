@@ -42,7 +42,7 @@ const SAMPLES: Sample[] = [
     {
       id: `button.${variant}.sm`,
       node: (
-        <Button variant={variant} size="sm" data-style={`button.${variant}.sm`}>
+        <Button variant={variant} data-style={`button.${variant}.sm`}>
           <Plus size={15} aria-hidden data-style={`button.${variant}.sm.icon`} />
           New note
         </Button>
@@ -68,7 +68,7 @@ const SAMPLES: Sample[] = [
   {
     id: "select.trigger",
     node: (
-      <button type="button" className="ui-input inline-flex h-8 min-w-40 items-center justify-between gap-1.5 px-2.5 text-left text-callout" data-style="select.trigger">
+      <button type="button" className="ui-input inline-flex h-control min-w-40 items-center justify-between gap-1.5 px-2.5 text-left text-callout" data-style="select.trigger">
         <span className="min-w-0 truncate" data-style="select.trigger.label">
           Newest first
         </span>
@@ -78,7 +78,7 @@ const SAMPLES: Sample[] = [
   },
   {
     id: "input",
-    node: <input readOnly className="ui-input h-8 w-60 px-2.5 text-body" defaultValue="Kyoto in November" data-style="input" />,
+    node: <input readOnly className="ui-input h-control w-60 px-2.5 text-body" defaultValue="Kyoto in November" data-style="input" />,
   },
   {
     id: "menu",
@@ -133,7 +133,7 @@ const SAMPLES: Sample[] = [
           </div>
         </header>
         <div className="px-6 py-4" data-style="dialog.body">
-          <input readOnly className="ui-input h-8 w-full px-2.5 text-body" defaultValue="Travel" />
+          <input readOnly className="ui-input h-control w-full px-2.5 text-body" defaultValue="Travel" />
         </div>
         <footer className="flex justify-end gap-2 bg-[color-mix(in_oklab,var(--color-surface-sunken)_60%,transparent)] px-6 py-3.5 shadow-[inset_0_1px_0_var(--color-line)]" data-style="dialog.footer">
           <Button variant="secondary">Cancel</Button>
@@ -527,11 +527,11 @@ const SAMPLES: Sample[] = [
       return (
         <div className="w-[393px] bg-[var(--iphone-solid)] px-4 pb-4 pt-1">
           <div className="space-y-3 text-subheadline">
-            <form className="ui-input rounded-panel pb-1 pl-3 pr-1 pt-2">
+            <form className="ui-input ui-grow rounded-panel pb-1 pl-3 pr-1 pt-2">
               <textarea rows={1} aria-label="Comment on this document" placeholder="Comment on the whole note" className="block w-full resize-none bg-transparent pr-2 text-body leading-snug outline-none placeholder:text-faint" />
               <div className="mt-1.5 flex items-center justify-between gap-2">
                 <p className="text-footnote text-faint">@ to mention · Enter to send</p>
-                <UiButton size="sm" variant="primary" type="submit" disabled>
+                <UiButton variant="primary" type="submit" disabled>
                   Comment
                 </UiButton>
               </div>

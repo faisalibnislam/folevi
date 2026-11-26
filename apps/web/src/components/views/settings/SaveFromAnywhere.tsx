@@ -50,7 +50,7 @@ export function SaveFromAnywhereCard() {
             e.preventDefault();
             toast.show("Drag it to your bookmarks bar, then click it on the page you want to save.");
           }}
-          className="ui-btn ui-btn-primary h-9 cursor-grab px-4 text-callout"
+          className="ui-btn ui-btn-primary h-control cursor-grab px-4 text-callout"
         >
           <BookmarkPlus size={14} aria-hidden /> Save to Folevi
         </a>

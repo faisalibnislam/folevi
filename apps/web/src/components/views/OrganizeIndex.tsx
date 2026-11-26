@@ -93,7 +93,7 @@ function SortSelect<T extends string>({ value, onChange, options }: { value: T; 
   return (
     <label className="flex items-center gap-2 text-subheadline text-muted">
       Sort
-      <Select value={value} onChange={(e) => onChange(e.target.value as T)} className="ui-input h-9 rounded-chip px-3 text-callout text-ink">
+      <Select value={value} onChange={(e) => onChange(e.target.value as T)} className="ui-input h-control px-3 text-callout text-ink">
         {options.map(([v, label]) => (
           <option key={v} value={v}>
             {label}
@@ -310,7 +310,7 @@ export function TagsIndex() {
       tabTitle="Tags"
     >
       <div className="mx-auto max-w-[1180px] px-4 pb-[max(6rem,var(--fab-clearance))] pt-3 sm:px-8">
-        <div className="flex flex-wrap items-center gap-3">
+        <div data-toolbar="" className="flex flex-wrap items-center gap-2">
           <FilterField value={q} onChange={setQ} label="Filter tags" />
           <p role="status" className="min-w-0 truncate text-subheadline text-muted">
             {data === undefined ? "Loading…" : q.trim() ? `${list.length} of ${data.tags.length} tags` : `${data.tags.length} ${data.tags.length === 1 ? "tag" : "tags"}`}

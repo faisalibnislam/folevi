@@ -415,7 +415,7 @@ export function BillingSection() {
                       )}
                     </div>
                     {a.canBuy ? (
-                      <Button size="sm" onClick={() => setBuyFor({ target: a.kind === "seat" && a.workspaceId ? { kind: "workspace", workspaceId: a.workspaceId } : { kind: "personal" }, name: a.name })}>
+                      <Button onClick={() => setBuyFor({ target: a.kind === "seat" && a.workspaceId ? { kind: "workspace", workspaceId: a.workspaceId } : { kind: "personal" }, name: a.name })}>
                         Buy credits
                       </Button>
                     ) : a.kind === "personal" && a.aiIncluded && !noFreeAi(a) ? (

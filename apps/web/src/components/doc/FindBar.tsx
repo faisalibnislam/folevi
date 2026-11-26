@@ -86,7 +86,7 @@ export function FindBar({ editor, withReplace, focusKey, readOnly, onClose }: { 
             aria-expanded={showReplace}
             aria-controls={`${id}-replace`}
             onClick={() => setShowReplace((v) => !v)}
-            className="!h-8 !w-7 pointer-coarse:!h-11 pointer-coarse:!w-11"
+            className="!size-control"
           >
             {showReplace ? <ChevronDown size={14} aria-hidden /> : <ChevronRight size={14} aria-hidden />}
           </IconButton>
@@ -112,7 +112,7 @@ export function FindBar({ editor, withReplace, focusKey, readOnly, onClose }: { 
               }
             }}
             aria-describedby={`${id}-count`}
-            className="ui-input h-8 w-full rounded-chip pl-7 pr-2 text-callout"
+            className="ui-input h-control w-full pl-9 pr-2 text-callout"
           />
         </div>
         <span id={`${id}-count`} role="status" aria-live="polite" className="min-w-[4.5rem] flex-none px-1.5 text-right text-footnote tabular-nums text-muted">
@@ -122,17 +122,17 @@ export function FindBar({ editor, withReplace, focusKey, readOnly, onClose }: { 
           label="Match case"
           aria-pressed={state.caseSensitive}
           onClick={() => setFind(editor, { caseSensitive: !state.caseSensitive, index: 0 })}
-          className={`!h-8 !w-8 pointer-coarse:!h-11 pointer-coarse:!w-11 ${state.caseSensitive ? "!bg-heading !text-canvas" : ""}`}
+          className={`!size-control ${state.caseSensitive ? "!bg-heading !text-canvas" : ""}`}
         >
           <CaseSensitive size={16} aria-hidden />
         </IconButton>
-        <IconButton label="Previous match" shortcut="Shift+Enter" disabled={!count} onClick={() => step(-1)} className="!h-8 !w-8 pointer-coarse:!h-11 pointer-coarse:!w-11">
+        <IconButton label="Previous match" shortcut="Shift+Enter" disabled={!count} onClick={() => step(-1)} className="!size-control">
           <ChevronUp size={15} aria-hidden />
         </IconButton>
-        <IconButton label="Next match" shortcut="Enter" disabled={!count} onClick={() => step(1)} className="!h-8 !w-8 pointer-coarse:!h-11 pointer-coarse:!w-11">
+        <IconButton label="Next match" shortcut="Enter" disabled={!count} onClick={() => step(1)} className="!size-control">
           <ChevronDown size={15} aria-hidden />
         </IconButton>
-        <IconButton label="Close find" shortcut="Esc" onClick={close} className="!h-8 !w-8 pointer-coarse:!h-11 pointer-coarse:!w-11">
+        <IconButton label="Close find" shortcut="Esc" onClick={close} className="!size-control">
           <X size={15} aria-hidden />
         </IconButton>
       </div>
@@ -155,7 +155,7 @@ export function FindBar({ editor, withReplace, focusKey, readOnly, onClose }: { 
                 replaceCurrent(editor, replacement);
               }
             }}
-            className="ui-input h-8 min-w-0 flex-1 rounded-chip px-2.5 text-callout"
+            className="ui-input h-control min-w-0 flex-1 px-2.5 text-callout"
           />
           <button
             type="button"
@@ -165,7 +165,7 @@ export function FindBar({ editor, withReplace, focusKey, readOnly, onClose }: { 
               // The last match gone disables this button; keep focus in the bar so Escape still closes it.
               if (count <= 1) findRef.current?.focus();
             }}
-            className="ui-btn ui-btn-secondary h-8 flex-none px-3 text-callout disabled:opacity-40">
+            className="ui-btn ui-btn-secondary h-control flex-none px-3 text-callout disabled:opacity-40">
             Replace
           </button>
           <button
@@ -177,7 +177,7 @@ export function FindBar({ editor, withReplace, focusKey, readOnly, onClose }: { 
               findRef.current?.focus();
               if (n) toast.show(`Replaced ${n.toLocaleString()} ${n === 1 ? "match" : "matches"}`, { action: { label: "Undo", onClick: () => editor.commands.undo() } });
             }}
-            className="ui-btn ui-btn-secondary h-8 flex-none px-3 text-callout disabled:opacity-40"
+            className="ui-btn ui-btn-secondary h-control flex-none px-3 text-callout disabled:opacity-40"
           >
             Replace all
           </button>

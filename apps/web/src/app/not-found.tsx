@@ -44,13 +44,13 @@ function AppNotFound() {
           <h1 className="ui-display text-large-title">This page isn’t here</h1>
           <p className="mt-3 text-muted">The link may be old, or the address has a typo.</p>
           <nav aria-label="Ways back" className="mt-6 flex flex-wrap items-center justify-center gap-2">
-            <a href="/documents" className="ui-btn ui-btn-primary h-9 px-4 text-callout">
+            <a href="/documents" className="ui-btn ui-btn-primary h-control px-4 text-callout">
               Open Folevi
             </a>
-            <a href={`${marketingUrl()}/docs`} className="ui-btn ui-btn-secondary h-9 px-4 text-callout">
+            <a href={`${marketingUrl()}/docs`} className="ui-btn ui-btn-secondary h-control px-4 text-callout">
               Docs
             </a>
-            <a href={marketingUrl()} className="ui-btn ui-btn-ghost h-9 px-4 text-callout">
+            <a href={marketingUrl()} className="ui-btn ui-btn-ghost h-control px-4 text-callout">
               Home
             </a>
           </nav>

@@ -193,7 +193,6 @@ export function UsersView() {
                       <td className={`${tdMid} text-right`}>
                         {u.status === "deleted" ? null : (
                           <Button
-                            size="sm"
                             title={u.polarBilled ? "Billed through Polar. Change it in Polar." : undefined}
                             onClick={() => setPlanFor({ profileId: u.id, who: name, plan: u.plan as PersonalTier, interval: u.interval, endsAt: u.planEndsAt, trialEndsAt: u.trialEndsAt, polarBilled: u.polarBilled })}
                           >

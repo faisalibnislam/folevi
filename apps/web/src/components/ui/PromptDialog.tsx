@@ -88,7 +88,7 @@ export function PromptDialog({
           value={value}
           onChange={(e) => setValue(e.target.value)}
           maxLength={80}
-          className="ui-input mt-2 h-10 w-full rounded-chip px-3 text-callout"
+          className="ui-input mt-2 h-control w-full px-3 text-callout"
         />
       </form>
     </Dialog>

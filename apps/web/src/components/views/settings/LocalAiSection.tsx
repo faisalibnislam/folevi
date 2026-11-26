@@ -184,16 +184,16 @@ function KeyRow({ provider, stored, busy, onBusy }: { provider: AiKeyProvider; s
           {stored ? (
             <>
               {host.ai?.testKey ? (
-                <Button size="sm" onClick={() => void test()} disabled={busy}>
+                <Button onClick={() => void test()} disabled={busy}>
                   Test
                 </Button>
               ) : null}
-              <Button size="sm" variant="ghost" onClick={() => void remove()} disabled={busy}>
+              <Button variant="ghost" onClick={() => void remove()} disabled={busy}>
                 Remove
               </Button>
             </>
           ) : !adding ? (
-            <Button size="sm" onClick={() => setAdding(true)} disabled={busy || !secrets}>
+            <Button onClick={() => setAdding(true)} disabled={busy || !secrets}>
               Add key…
             </Button>
           ) : null}
@@ -219,13 +219,12 @@ function KeyRow({ provider, stored, busy, onBusy }: { provider: AiKeyProvider; s
             value={value}
             onChange={(e) => setValue(e.target.value)}
             placeholder={`Paste your ${info.label} key`}
-            className="ui-input h-9 min-w-0 flex-1 rounded-chip px-3 text-callout"
+            className="ui-input h-control min-w-0 flex-1 px-3 text-callout"
           />
-          <Button size="sm" variant="primary" type="submit" disabled={busy || !value.trim()}>
+          <Button variant="primary" type="submit" disabled={busy || !value.trim()}>
             Save
           </Button>
           <Button
-            size="sm"
             variant="ghost"
             onClick={() => {
               setAdding(false);
@@ -304,7 +303,7 @@ function ModelCard({ state }: { state: LocalAiState | null }) {
               const p = v as AiProviderId;
               set({ provider: p, model: PROVIDERS[p].defaultModel });
             }}
-            className="ui-input h-9 w-full rounded-chip px-3 text-callout"
+            className="ui-input h-control w-full px-3 text-callout"
           >
             <option value={AUTO}>Let Folevi pick</option>
             {choices.map((p) => (
@@ -317,7 +316,7 @@ function ModelCard({ state }: { state: LocalAiState | null }) {
         {modelsFor.length ? (
           <label className="text-subheadline" htmlFor={modelId}>
             <span className="mb-1 block font-medium">{PROVIDERS[active!.provider].label} model</span>
-            <Select id={modelId} value={active!.model} onChange={(e) => set({ provider: active!.provider, model: e.target.value })} className="ui-input h-9 w-full rounded-chip px-3 text-callout">
+            <Select id={modelId} value={active!.model} onChange={(e) => set({ provider: active!.provider, model: e.target.value })} className="ui-input h-control w-full px-3 text-callout">
               {modelsFor.map((m) => (
                 <option key={m.id} value={m.id}>
                   {m.label}

@@ -189,7 +189,7 @@ export function SyncStatus({ documentId, compact = true, align = "end" }: { docu
             {status !== "saved" ? (
               <button
                 type="button"
-                className="ui-btn ui-btn-secondary h-8 px-3 text-footnote"
+                className="ui-btn ui-btn-secondary h-control px-3 text-footnote"
                 onClick={() => {
                   // Refused changes whose content was kept are sent again (a refused rank is repaired first).
                   engine?.retryRejected();
@@ -202,7 +202,7 @@ export function SyncStatus({ documentId, compact = true, align = "end" }: { docu
               </button>
             ) : null}
             {errors.length ? (
-              <button type="button" className="ui-btn ui-btn-quiet h-8 px-3 text-footnote" onClick={() => engine?.clearErrors()}>
+              <button type="button" className="ui-btn ui-btn-quiet h-control px-3 text-footnote" onClick={() => engine?.clearErrors()}>
                 Dismiss
               </button>
             ) : null}
@@ -257,10 +257,10 @@ function OutboxList() {
                 <>
                   <p className="text-footnote text-danger">Not saved: {e.failed.message}</p>
                   <div className="mt-1 flex gap-1.5">
-                    <button type="button" className="ui-btn ui-btn-secondary h-7 px-2.5 text-footnote" onClick={() => outbox?.retry(e.id)}>
+                    <button type="button" className="ui-btn ui-btn-secondary h-control-sm px-2.5 text-footnote" onClick={() => outbox?.retry(e.id)}>
                       Retry
                     </button>
-                    <button type="button" className="ui-btn ui-btn-quiet h-7 px-2.5 text-footnote" onClick={() => outbox?.discard(e.id)}>
+                    <button type="button" className="ui-btn ui-btn-quiet h-control-sm px-2.5 text-footnote" onClick={() => outbox?.discard(e.id)}>
                       Discard
                     </button>
                   </div>

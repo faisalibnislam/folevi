@@ -48,11 +48,10 @@ export function ShareLink({
         value={value}
         aria-label={label}
         onFocus={(e) => e.currentTarget.select()}
-        className="ui-input h-10 w-full min-w-0 rounded-chip px-3 font-mono text-footnote text-ink"
+        className="ui-input h-control w-full min-w-0 px-3 font-mono text-footnote text-ink"
       />
       <div className="flex flex-wrap gap-2">
         <Button
-          size="sm"
           onClick={() =>
             void copyText(value).then((ok) => {
               setCopied(ok ? "ok" : "failed");
@@ -64,12 +63,12 @@ export function ShareLink({
           {copied === "ok" ? "Copied" : copyLabel}
         </Button>
         {canShare ? (
-          <Button size="sm" onClick={() => void navigator.share({ title: shareTitle, text: shareText, url: value }).catch(() => undefined)}>
+          <Button onClick={() => void navigator.share({ title: shareTitle, text: shareText, url: value }).catch(() => undefined)}>
             <Share size={14} aria-hidden /> Share
           </Button>
         ) : null}
         {qrFileName ? (
-          <Button size="sm" onClick={() => void downloadQr(value, qrFileName)}>
+          <Button onClick={() => void downloadQr(value, qrFileName)}>
             <Download size={14} aria-hidden /> Save QR code
           </Button>
         ) : null}

@@ -119,7 +119,7 @@ class PageBoundary extends Component<{ children: ReactNode }, { error: unknown }
         <div role="alert" className="rounded-control bg-danger-soft p-5 text-subheadline">
           <p className="font-semibold text-heading">This page couldn&apos;t load.</p>
           <p className="mt-1">{errorMessage(this.state.error)}</p>
-          <Button className="mt-3" size="sm" onClick={() => this.setState({ error: null })}>
+          <Button className="mt-3" onClick={() => this.setState({ error: null })}>
             Try again
           </Button>
         </div>
@@ -147,7 +147,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
   return (
     <AdminTitleContext.Provider value={setRecordTitle}>
       <div className="ui-canvas min-h-dvh text-ink md:flex md:h-dvh md:gap-2 md:overflow-hidden md:p-2">
-        <a href="#admin-main" className="sr-only-focusable ui-btn ui-btn-primary fixed left-2 top-2 z-[70] px-4 py-2">
+        <a href="#admin-main" className="sr-only-focusable ui-btn ui-btn-primary fixed left-2 top-2 z-[70] h-control px-4">
           Skip to content
         </a>
         <aside className="flex flex-none flex-col md:w-[248px]">

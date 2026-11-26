@@ -235,7 +235,7 @@ function Tabs({ note, compact }: { note: boolean; compact?: boolean }) {
         <X size={11} className="flex-none text-faint" />
       </span>
       <span className="flex-1" />
-      <span className="ui-btn ui-btn-primary h-8 flex-none gap-1.5 px-3 text-callout">
+      <span className="ui-btn ui-btn-primary h-control flex-none gap-1.5 px-3 text-callout">
         <Plus size={14} /> New note
       </span>
     </div>

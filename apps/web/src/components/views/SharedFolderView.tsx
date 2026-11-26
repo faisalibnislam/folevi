@@ -31,7 +31,7 @@ export function SharedFolderView({ folderId }: { folderId: string }) {
       iphone={{ title: title || "Shared folder", subtitle: facts }}
       actions={
         data ? (
-          <Button size="sm" variant="quiet" onClick={() => setSharing(true)} aria-label="People with access">
+          <Button variant="quiet" onClick={() => setSharing(true)} aria-label="People with access">
             <Users size={14} aria-hidden /> People
           </Button>
         ) : null

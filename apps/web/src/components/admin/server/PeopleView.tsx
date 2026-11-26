@@ -147,7 +147,7 @@ function InvitesList() {
                   <Time ts={inv.expiresAt} />
                 </td>
                 <td className={`${tdMid} text-right`}>
-                  <Button size="sm" variant="quiet" onClick={() => void revoke({ inviteId: inv.inviteId }).then(() => toast.show("Invite withdrawn."), (e: unknown) => toast.show(errorMessage(e), { tone: "error" }))}>
+                  <Button variant="quiet" onClick={() => void revoke({ inviteId: inv.inviteId }).then(() => toast.show("Invite withdrawn."), (e: unknown) => toast.show(errorMessage(e), { tone: "error" }))}>
                     Withdraw
                   </Button>
                 </td>
@@ -238,12 +238,11 @@ function PersonDialog({ person, onClose }: { person: ServerPerson; onClose: () =
         </div>
         {canManage || self ? (
           <div className="flex flex-wrap gap-2 border-t border-line pt-4">
-            <Button size="sm" disabled={busy} onClick={() => setAsk("signout")}>
+            <Button disabled={busy} onClick={() => setAsk("signout")}>
               Sign out everywhere
             </Button>
             {canManage ? (
               <Button
-                size="sm"
                 disabled={busy}
                 onClick={() => {
                   setBusy(true);
@@ -262,22 +261,22 @@ function PersonDialog({ person, onClose }: { person: ServerPerson; onClose: () =
             ) : null}
             {canManage ? (
               person.suspended ? (
-                <Button size="sm" disabled={busy} onClick={() => run(() => unsuspend({ userId: person.userId }), "Access restored.")}>
+                <Button disabled={busy} onClick={() => run(() => unsuspend({ userId: person.userId }), "Access restored.")}>
                   Restore access
                 </Button>
               ) : (
-                <Button size="sm" disabled={busy} onClick={() => setAsk("suspend")}>
+                <Button disabled={busy} onClick={() => setAsk("suspend")}>
                   Suspend
                 </Button>
               )
             ) : null}
             {owner && !isOwner ? (
-              <Button size="sm" disabled={busy} onClick={() => (setConfirm("transfer"), setTyped(""))}>
+              <Button disabled={busy} onClick={() => (setConfirm("transfer"), setTyped(""))}>
                 Make owner
               </Button>
             ) : null}
             {canManage ? (
-              <Button size="sm" variant="danger" disabled={busy} onClick={() => (setConfirm("remove"), setTyped(""))}>
+              <Button variant="danger" disabled={busy} onClick={() => (setConfirm("remove"), setTyped(""))}>
                 Remove from server
               </Button>
             ) : null}
@@ -292,11 +291,10 @@ function PersonDialog({ person, onClose }: { person: ServerPerson; onClose: () =
                 : "Every app and browser they use is signed out. They can sign in again with their password."}
             </p>
             <div className="flex justify-end gap-2">
-              <Button size="sm" variant="quiet" onClick={() => setAsk(null)}>
+              <Button variant="quiet" onClick={() => setAsk(null)}>
                 Cancel
               </Button>
               <Button
-                size="sm"
                 variant={ask === "suspend" ? "danger" : "primary"}
                 disabled={busy}
                 onClick={() => {
@@ -328,11 +326,10 @@ function PersonDialog({ person, onClose }: { person: ServerPerson; onClose: () =
             </label>
             <TextInput id="confirm-email" value={typed} onChange={setTyped} placeholder={person.email} />
             <div className="flex justify-end gap-2">
-              <Button size="sm" variant="quiet" onClick={() => setConfirm(null)}>
+              <Button variant="quiet" onClick={() => setConfirm(null)}>
                 Cancel
               </Button>
               <Button
-                size="sm"
                 variant="danger"
                 disabled={busy || typed.trim().toLowerCase() !== person.email.toLowerCase()}
                 onClick={() => {
@@ -412,7 +409,7 @@ export function ServerPeopleView() {
                   </td>
                   <td className={td}>{p.lastActiveAt ? <Time ts={p.lastActiveAt} /> : <span className="text-muted">Never</span>}</td>
                   <td className={`${tdMid} text-right`}>
-                    <Button size="sm" onClick={() => setOpen(p.userId)}>
+                    <Button onClick={() => setOpen(p.userId)}>
                       Manage
                     </Button>
                   </td>

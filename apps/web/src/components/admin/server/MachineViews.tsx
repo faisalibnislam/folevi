@@ -59,7 +59,7 @@ export function ServerRemoteView() {
       {!r && !remote.error ? <p className="text-subheadline text-muted">Loading…</p> : null}
       {r ? (
         <div className="space-y-4">
-          <Panel title="Addresses" actions={<Button size="sm" onClick={remote.reload}><RotateCw size={13} aria-hidden /> Check again</Button>}>
+          <Panel title="Addresses" actions={<Button onClick={remote.reload}><RotateCw size={13} aria-hidden /> Check again</Button>}>
             <KeyValues
               items={[
                 { label: "Public address", value: <span className="break-all font-medium text-heading">{r.publicUrl}</span> },
@@ -88,7 +88,7 @@ export function ServerRemoteView() {
                     <p>
                       Open this page signed in to your Folevi account and approve the code <strong className="font-mono text-heading">{link.code}</strong>. It works until <Time ts={toMillis(link.expiresAt)} />.
                     </p>
-                    <a href={link.approveUrl} target="_blank" rel="noopener noreferrer" className="ui-btn ui-btn-primary h-9 px-4 text-subheadline">
+                    <a href={link.approveUrl} target="_blank" rel="noopener noreferrer" className="ui-btn ui-btn-primary h-control px-4 text-callout">
                       Approve on folevi.com <ExternalLink size={14} aria-hidden />
                     </a>
                     <p className="text-muted">Come back here afterwards and choose Check again.</p>
@@ -291,21 +291,21 @@ function BackupKeyPanel() {
               <code className="min-w-0 flex-1 truncate font-mono text-footnote text-heading" aria-label="Backup key">
                 {shown && key ? key : "AGE-SECRET-KEY-1" + "•".repeat(24)}
               </code>
-              <Button size="sm" variant="quiet" disabled={loading} onClick={() => (shown ? setShown(false) : void load().then((k) => k && setShown(true)))}>
+              <Button variant="quiet" disabled={loading} onClick={() => (shown ? setShown(false) : void load().then((k) => k && setShown(true)))}>
                 {shown ? <EyeOff size={14} aria-hidden /> : <Eye size={14} aria-hidden />} {shown ? "Hide" : "Show"}
               </Button>
             </div>
             <div className="flex flex-wrap gap-2">
-              <Button size="sm" disabled={loading} onClick={() => void load().then((k) => {
+              <Button disabled={loading} onClick={() => void load().then((k) => {
                     if (k) void navigator.clipboard.writeText(k).then(() => toast.show("Backup key copied. Paste it somewhere safe.", { tone: "success" }), () => setShown(true));
                   })}>
                 <Copy size={14} aria-hidden /> Copy
               </Button>
-              <Button size="sm" disabled={loading} onClick={() => void load().then((k) => k && downloadKey(k))}>
+              <Button disabled={loading} onClick={() => void load().then((k) => k && downloadKey(k))}>
                 <Download size={14} aria-hidden /> Download as a file
               </Button>
               {!saved ? (
-                <Button size="sm" variant="primary" onClick={() => void save({ setup: { done: ["backups", "backupKey"] } }, "Marked as saved.")}>
+                <Button variant="primary" onClick={() => void save({ setup: { done: ["backups", "backupKey"] } }, "Marked as saved.")}>
                   <Check size={14} aria-hidden /> I saved it somewhere safe
                 </Button>
               ) : null}
@@ -390,7 +390,7 @@ export function ServerBackupsView() {
                   <td className={tdNum}>{formatBytes(b.sizeBytes)}</td>
                   <td className={`${td} text-right`}>
                     {owner ? (
-                      <Button size="sm" onClick={() => setRestore(b.id)}>
+                      <Button onClick={() => setRestore(b.id)}>
                         Restore
                       </Button>
                     ) : null}
@@ -452,7 +452,7 @@ export function ServerUpdatesView() {
       <PageHeader title="Updates" description="Folevi takes a backup before every update, and goes back to it if the update fails." />
       {update.error && !u ? <ControlError error={update.error} onRetry={update.reload} /> : null}
       {u ? (
-        <Panel title={behind ? `Folevi Server ${u.latest} is available` : "Up to date"} actions={<Button size="sm" onClick={update.reload}><RotateCw size={13} aria-hidden /> Check again</Button>}>
+        <Panel title={behind ? `Folevi Server ${u.latest} is available` : "Up to date"} actions={<Button onClick={update.reload}><RotateCw size={13} aria-hidden /> Check again</Button>}>
           <KeyValues
             items={[
               { label: "This server", value: `Folevi Server ${u.current}` },
@@ -462,7 +462,7 @@ export function ServerUpdatesView() {
             ]}
           />
           {u.notesUrl ? (
-            <a href={u.notesUrl} target="_blank" rel="noopener noreferrer" className="ui-btn ui-btn-secondary mt-4 h-9 px-4 text-subheadline">
+            <a href={u.notesUrl} target="_blank" rel="noopener noreferrer" className="ui-btn ui-btn-secondary mt-4 h-control px-4 text-callout">
               What&apos;s new <ExternalLink size={14} aria-hidden />
             </a>
           ) : null}
@@ -505,11 +505,10 @@ export function ServerLogsView() {
                   </option>
                 ))}
               </Select>
-              <Button size="sm" onClick={logs.reload}>
+              <Button onClick={logs.reload}>
                 <RotateCw size={13} aria-hidden /> Refresh
               </Button>
               <Button
-                size="sm"
                 disabled={!lines.length}
                 onClick={() => {
                   const url = URL.createObjectURL(new Blob([lines.join("\n") + "\n"], { type: "text/plain" }));

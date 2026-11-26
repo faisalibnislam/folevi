@@ -67,7 +67,7 @@ export function FormulaValue({ result }: { result: CollectionFormulaResult | und
 
 /** Number format choices: plain, number, currency, percent; decimals; the currency. */
 export function NumberFormatFields({ value, onChange, compact }: { value: CollectionNumberFormat | null | undefined; onChange: (next: CollectionNumberFormat | null) => void; compact?: boolean }) {
-  const cls = compact ? "h-7 ui-input rounded-chip px-2 text-footnote" : "h-8 ui-input rounded-chip px-3 text-callout";
+  const cls = compact ? "h-control-sm ui-input px-2 text-footnote" : "h-control ui-input px-3 text-callout";
   return (
     <div className="flex flex-wrap items-center gap-1.5">
       <Select
@@ -290,7 +290,7 @@ function FormulaForm({
           onClick={syncCaret}
           onBlur={() => setTimeout(() => setHidden(true), 120)}
           onFocus={() => setHidden(false)}
-          className="block w-full resize-y ui-input rounded-chip px-3 py-2 font-mono text-callout leading-5"
+          className="block w-full resize-y ui-input px-3 py-2 font-mono text-callout leading-5"
         />
         {suggestions?.items.length ? (
           <ul id={listId} role="listbox" aria-label="Suggestions" className="mt-1 max-h-56 overflow-y-auto ui-pop rounded-chip p-1">
@@ -430,9 +430,9 @@ function WriteWithAi({
           onChange={(e) => setText(e.target.value)}
           placeholder="Write a formula: price times quantity, days until due..."
           maxLength={500}
-          className="h-9 min-w-0 flex-1 ui-input rounded-chip px-3 text-callout"
+          className="h-control min-w-0 flex-1 ui-input px-3 text-callout"
         />
-        <Button size="sm" type="submit" disabled={busy || !text.trim()} aria-label="Write the formula">
+        <Button type="submit" disabled={busy || !text.trim()} aria-label="Write the formula">
           {busy ? "Writing..." : <ArrowUp size={14} aria-hidden />}
         </Button>
       </form>

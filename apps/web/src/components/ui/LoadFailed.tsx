@@ -22,7 +22,7 @@ export function LoadFailed({ what, onRetry, size = "page", className }: { what: 
         size={size}
         className={className}
         action={
-          <Button variant="secondary" size={size === "page" ? "md" : "sm"} onClick={onRetry}>
+          <Button variant="secondary" size={size === "page" ? "md" : "compact"} onClick={onRetry}>
             <RotateCw size={14} aria-hidden /> Try again
           </Button>
         }

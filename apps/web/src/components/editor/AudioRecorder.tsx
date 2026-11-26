@@ -617,7 +617,7 @@ export function AudioRecorder({
               type="button"
               onClick={() => void begin("mic")}
               aria-label="Microphone"
-              className="ui-btn ui-btn-secondary h-auto flex-col gap-0.5 whitespace-normal rounded-control px-3 py-2.5 text-center text-callout"
+              className="ui-btn ui-btn-secondary h-auto flex-col gap-0.5 whitespace-normal px-3 py-2.5 text-center text-callout"
             >
               <Mic size={16} aria-hidden className="mb-0.5" />
               <span>Microphone</span>
@@ -627,7 +627,7 @@ export function AudioRecorder({
               type="button"
               onClick={() => void begin("call")}
               aria-label="Call (mic and Mac sound)"
-              className="ui-btn ui-btn-secondary h-auto flex-col gap-0.5 whitespace-normal rounded-control px-3 py-2.5 text-center text-callout"
+              className="ui-btn ui-btn-secondary h-auto flex-col gap-0.5 whitespace-normal px-3 py-2.5 text-center text-callout"
             >
               <PhoneCall size={16} aria-hidden className="mb-0.5" />
               <span>Call</span>
@@ -648,14 +648,14 @@ export function AudioRecorder({
               <button
                 type="button"
                 onClick={() => desktop()?.openSystemSettings?.("screen-recording")}
-                className="ui-btn ui-btn-secondary h-9 px-3 text-callout"
+                className="ui-btn ui-btn-secondary h-control px-3 text-callout"
               >
                 Open System Settings
               </button>
               <button
                 type="button"
                 onClick={() => void begin("call")}
-                className="ui-btn ui-btn-ghost ml-auto h-9 px-3 text-callout"
+                className="ui-btn ui-btn-ghost ml-auto h-control px-3 text-callout"
               >
                 Try again
               </button>
@@ -665,7 +665,7 @@ export function AudioRecorder({
               <button
                 type="button"
                 onClick={() => void begin(phase.retry!)}
-                className="ui-btn ui-btn-secondary ml-auto h-9 px-3 text-callout"
+                className="ui-btn ui-btn-secondary ml-auto h-control px-3 text-callout"
               >
                 Try again
               </button>
@@ -698,7 +698,7 @@ export function AudioRecorder({
             <button
               type="button"
               onClick={resume}
-              className="ui-btn ui-btn-secondary h-9 px-3 text-callout"
+              className="ui-btn ui-btn-secondary h-control px-3 text-callout"
             >
               <Play size={14} aria-hidden /> Resume
             </button>
@@ -707,7 +707,7 @@ export function AudioRecorder({
               type="button"
               onClick={pause}
               disabled={phase.kind !== "recording"}
-              className="ui-btn ui-btn-secondary h-9 px-3 text-callout"
+              className="ui-btn ui-btn-secondary h-control px-3 text-callout"
             >
               <Pause size={14} aria-hidden /> Pause
             </button>
@@ -716,7 +716,7 @@ export function AudioRecorder({
             type="button"
             onClick={save}
             disabled={phase.kind === "saving"}
-            className="ui-btn ui-btn-primary ml-auto h-9 px-3.5 text-callout"
+            className="ui-btn ui-btn-primary ml-auto h-control px-3 text-callout"
           >
             <Square size={12} aria-hidden className="fill-current" /> Stop and save
           </button>
@@ -724,18 +724,18 @@ export function AudioRecorder({
       ) : null}
       {stopped ? (
         <div className="flex items-center gap-2">
-          <button type="button" onClick={cancel} className="ui-btn ui-btn-secondary h-9 px-3 text-callout">
+          <button type="button" onClick={cancel} className="ui-btn ui-btn-secondary h-control px-3 text-callout">
             Discard
           </button>
           {stopped.tooLarge ? (
-            <button type="button" onClick={() => downloadRecording(stopped.file)} className="ui-btn ui-btn-primary ml-auto h-9 px-3.5 text-callout">
+            <button type="button" onClick={() => downloadRecording(stopped.file)} className="ui-btn ui-btn-primary ml-auto h-control px-3 text-callout">
               <Download size={14} aria-hidden /> Download
             </button>
           ) : (
             <button
               type="button"
               onClick={() => void store(stopped.file, stopped.seconds)}
-              className="ui-btn ui-btn-primary ml-auto h-9 px-3.5 text-callout"
+              className="ui-btn ui-btn-primary ml-auto h-control px-3 text-callout"
             >
               Save recording
             </button>

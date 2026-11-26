@@ -100,7 +100,7 @@ export function ThisDeviceSection() {
               </span>
               <span className="block text-footnote text-muted">When you come back after Folevi has been in the background this long.</span>
             </span>
-            <Select value={String(settings.lockAfter)} onChange={(e) => void save({ lockAfter: Number(e.target.value) as LockAfter })} aria-labelledby={afterId} className="ui-input h-9 w-44 flex-none rounded-chip px-3 text-callout" disabled={busy}>
+            <Select value={String(settings.lockAfter)} onChange={(e) => void save({ lockAfter: Number(e.target.value) as LockAfter })} aria-labelledby={afterId} className="ui-input h-control w-44 flex-none px-3 text-callout" disabled={busy}>
               {AFTER.map((a) => (
                 <option key={a.value} value={String(a.value)}>
                   {a.label}

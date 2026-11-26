@@ -161,11 +161,11 @@ export function DnaTour({ step, onStep, onDone }: { step: number; onStep: (n: nu
           ))}
         </div>
         {!last ? (
-          <Button variant="quiet" size="sm" onClick={onDone}>
+          <Button variant="quiet" onClick={onDone}>
             Skip
           </Button>
         ) : null}
-        <Button ref={next} variant="primary" size="sm" onClick={() => (last ? onDone() : onStep(step + 1))}>
+        <Button ref={next} variant="primary" onClick={() => (last ? onDone() : onStep(step + 1))}>
           {last ? "Got it" : "Next"}
         </Button>
       </div>
@@ -233,12 +233,12 @@ export function DnaCardHead({
           <h2 className="truncate text-body font-semibold leading-snug text-heading">{title}</h2>
           {sub ? <p className="truncate text-footnote tabular-nums text-muted">{sub}</p> : null}
         </div>
-        <IconButton label={closeLabel} onClick={onClose} className="!h-7 !w-7 -mr-1 -mt-1 flex-none">
+        <IconButton label={closeLabel} onClick={onClose} className="!size-control-sm -mr-1 -mt-1 flex-none">
           <X size={14} aria-hidden />
         </IconButton>
       </div>
       {tab && onTab ? (
-        <div role="group" aria-label="Show in the card" className="ui-seg ui-well mt-2 !p-0.5">
+        <div role="group" aria-label="Show in the card" className="ui-seg ui-well mt-2">
           {(["connections", "insights"] as const).map((t) => (
             <button key={t} type="button" aria-pressed={tab === t} onClick={() => onTab(t)} className="!min-h-7 text-subheadline hover:aria-[pressed=false]:bg-[var(--glass-hover)]">
               {t === "connections" ? "Connections" : "Insights"}
@@ -317,13 +317,13 @@ export function DnaConnections({
                       label={on ? `Hide what ${label} connects to` : `Show what ${label} connects to`}
                       aria-pressed={on}
                       onClick={() => onToggle(id)}
-                      className={`!h-6 !min-h-6 !w-6 !min-w-6 flex-none ${on ? "" : "opacity-0 focus-visible:opacity-100 group-focus-within:opacity-100 group-hover:opacity-100 pointer-coarse:opacity-100"}`}
+                      className={`!size-control-sm !min-w-6 flex-none ${on ? "" : "opacity-0 focus-visible:opacity-100 group-focus-within:opacity-100 group-hover:opacity-100 pointer-coarse:opacity-100"}`}
                     >
                       {on ? <Minus size={13} aria-hidden /> : <Plus size={13} aria-hidden />}
                     </IconButton>
                   ) : null}
                   {note ? (
-                    <IconButton label="Open" onClick={(e) => onOpen(id, e.metaKey || e.ctrlKey)} className="!h-6 !min-h-6 !w-6 !min-w-6 flex-none">
+                    <IconButton label="Open" onClick={(e) => onOpen(id, e.metaKey || e.ctrlKey)} className="!size-control-sm !min-w-6 flex-none">
                       <ArrowUpRight size={14} aria-hidden />
                     </IconButton>
                   ) : null}
@@ -380,25 +380,25 @@ export function DnaNodePanel({
           <KindDot kind={n.kind} />
         </span>
         <h2 className="min-w-0 flex-1 text-body font-semibold leading-snug text-heading">{n.label || "Untitled"}</h2>
-        <IconButton label="Close" onClick={onClose} className="!h-7 !w-7 -mr-1 -mt-1">
+        <IconButton label="Close" onClick={onClose} className="!size-control-sm -mr-1 -mt-1">
           <X size={14} aria-hidden />
         </IconButton>
       </div>
       <p className="px-3 pt-1 text-subheadline leading-snug text-ink">{words.summary}</p>
       <div className="flex flex-wrap gap-2 px-3 pt-2">
         {note ? (
-          <Button size="sm" variant="primary" onClick={(e) => onOpen(id, e.metaKey || e.ctrlKey)}>
+          <Button variant="primary" onClick={(e) => onOpen(id, e.metaKey || e.ctrlKey)}>
             Open note
           </Button>
         ) : null}
         {note && !isCenter ? (
-          <Button size="sm" onClick={() => onCenter(id)}>
+          <Button onClick={() => onCenter(id)}>
             <Waypoints size={14} aria-hidden className="-ml-0.5 mr-1" />
             Map around this note
           </Button>
         ) : null}
         {expand ? (
-          <Button size="sm" variant="quiet" aria-pressed={expand.on} onClick={expand.toggle}>
+          <Button variant="quiet" aria-pressed={expand.on} onClick={expand.toggle}>
             {expand.on ? "Hide its connections" : "Show its connections"}
           </Button>
         ) : null}

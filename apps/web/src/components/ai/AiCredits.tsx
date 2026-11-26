@@ -44,7 +44,7 @@ export function aiProblem(error: unknown): AiProblem {
 function CreditsLink({ action, className }: { action: "buy" | "upgrade"; className?: string }) {
   if (!canPurchaseHere()) return null;
   return (
-    <AppLink href="/settings/billing" className={className ?? "ui-btn ui-btn-secondary h-7 flex-none px-2.5 text-footnote"}>
+    <AppLink href="/settings/billing" className={className ?? "ui-btn ui-btn-secondary h-control-sm flex-none px-2.5 text-footnote"}>
       {action === "buy" ? "Buy more" : "Upgrade"}
     </AppLink>
   );

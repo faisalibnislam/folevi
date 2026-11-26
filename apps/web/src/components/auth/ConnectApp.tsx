@@ -82,7 +82,7 @@ export function ConnectApp({ clientId, redirectUri, codeChallenge, codeChallenge
         </SubmitButton>
         <button
           type="button"
-          className="ui-btn h-11 w-full text-body"
+          className="ui-btn h-control w-full text-body"
           disabled={busy}
           onClick={() => returnToApp(redirectUri, { error: "access_denied" }, state)}
         >

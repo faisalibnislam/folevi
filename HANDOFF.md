@@ -1470,6 +1470,11 @@ account button should move past iPadOS's window buttons).
   stamps its own microsecond, never-repeating mtime (`unique_mtime`), and every Folevi writer (other processes too)
   holds an OS file lock, `.folevi-tmp/write.lock`, across the final etag check and the rename (and removes).
   `rust-version` goes to 1.89 for `File::lock`. New tests for both; the race test passed 250 runs in a loop.
+- 2026-11-26: **Float this note, edge to edge** (owner's feedback on 1.7.78): the note's colour reaches every edge
+  of the floating window (no white at the sides, under the bar or at the foot) and the bar wears the note's colour
+  and ink (FloatNote reads them off the page). One web change covers the Mac, Windows and Linux windows and Chrome's
+  floating window. Checked: `e2e/float-note.spec.ts` in Chromium and WebKit, with a plain note and an Irises note
+  (edges 0 px, bar colour = note colour). Not checked in a Mac build; ships in the next release.
 - 2026-11-26: **1.7.78 released** (Big update, build 103) from PR 131's merge (`b11f3256`): web and Convex
   deployed; Mac published; iPhone and iPad on TestFlight (delivery 1ce1048f); Windows installers, Linux packages,
   apt and rpm repositories and the four desktop update feeds published; Snap revisions 7 (arm64) and 8 (amd64) on stable; the Android

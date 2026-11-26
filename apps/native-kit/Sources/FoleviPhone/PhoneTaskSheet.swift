@@ -19,7 +19,7 @@ public struct PhoneTaskSheet: View {
     @State private var picking: Picking?
     /// The sheet's own menus (it sits above the frame's menu layer).
     @State private var menus = PhoneMenus()
-    @State private var rowFrames: [String: CGRect] = [:]
+    @State private var rowFrames = PhoneFrameBoxes()
     @Environment(\.colorScheme) private var scheme
     @Environment(\.nativeChrome) private var chrome
 

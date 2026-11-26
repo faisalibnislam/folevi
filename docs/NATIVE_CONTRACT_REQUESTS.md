@@ -611,17 +611,28 @@ FoleviScreens' `ScreenIntent.openNote(id:, blockId:)` (a task's to-do, a search 
 signed link: `files.url { id }` answering `{ url, name, size }` (the web's `files.urls`). Until then the Mac says
 to download it on the web.
 
-### R5.6 After "Sign in to Folevi" with no account, the gate stays "loading" **open**
+### R5.6 After "Sign in to Folevi" with no account, the gate stays "loading" **done (2026-11-25)**
 
 On the first-launch choice, `gate.act { action: "account" }` with no account on the device restarts the page into
 account mode with no place; the page then draws the mode choice again (DOM: "Where should your notes live?") while
 `hello.gate` and `gate.changed` say `loading` with no actions, so native shows nothing it can act on. Expected:
 `gate: "signedOut"` (native shows its sign-in flow, R14.1's adapter is in). Seen with the export at revision 9.
 
-### R5.7 A note prepared right after launch sometimes ends on "This page couldn't load" **open**
+Done (branch `claude/ios-native-sync-signin`): the restart runs on a new web view, which lost the
+sessionStorage flag `ShellSignIn` read to go straight on, so the choice came back (and the gate said
+`modeChoice` again, or `loading` with an export built without the Convex address). The flag is in localStorage
+now (two minutes, read on the first render), so the gate goes from `modeChoice` straight to `signedOut`.
+
+### R5.7 A note prepared right after launch sometimes ends on "This page couldn't load" **native side done (2026-11-25)**
 
 Pressing a recent card within a second or two of a cold launch (`note.prepare` while the engine is still opening
 the store) twice left the Page View on the route error page ("This page couldn't load. Reload / Back") and no
 `note.ready`. The same card a few seconds later opens fine. Native now shows the page after 1.5 s without
 `note.ready`, so the error page shows instead of a blank. Please let `note.prepare`/`note.show` wait for the store
 (or retry the route) instead of failing the route.
+
+Native side (branch `claude/ios-native-sync-signin`): the note's cover (with a spinner after 0.4 s) stays until the
+engine is ready, then 1.5 s for `note.ready`, then `note.show` once more (retrying the route), then 2.5 s before
+the page shows as it is. Not reproduced on the Simulator in local mode (the engine is up in about 3 s there);
+`FOLEVI_SLOW_ENGINE=<seconds>` (Debug) holds the bridge back to check the slow case. The page side (waiting for
+the store) is still open.

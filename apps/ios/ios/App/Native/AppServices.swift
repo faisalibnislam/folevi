@@ -42,6 +42,12 @@ enum AppServices {
 
     /// Leaving the screen: one more refresh (with the time iOS gives a backgrounded app), then the widgets reload.
     static func enteredBackground() {
+        // Switching apps back and forth: one refresh a minute is enough (each is a network wake, the widgets'
+        // reload and Spotlight), but a change made just before leaving still reaches the widgets.
+        guard Date().timeIntervalSince(lastRefresh) > 60 else {
+            BackgroundRefresh.schedule()
+            return
+        }
         final class Holder: @unchecked Sendable { var task = UIBackgroundTaskIdentifier.invalid }
         let holder = Holder()
         let end: @MainActor @Sendable () -> Void = {

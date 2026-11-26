@@ -23,7 +23,7 @@ public struct PhoneAllFoldersScreen: View {
     /// Closes a card's long-press menu (a held card moved off it is dragged instead).
     public var closeMenu: () -> Void = {}
     let scrollToTop: Int
-    @State private var moreFrame: CGRect = .zero
+    @State private var moreFrame = PhoneFrameBox()
     /// The card held and dragged about, the order on show while it is (the cards' ids), and the card it would go
     /// inside if let go now.
     @State private var drag: CardDrag?
@@ -304,7 +304,7 @@ public struct PhoneNewFolderForm: View {
     @State private var name = ""
     @State private var color: String
     @State private var parent: String?
-    @State private var insideFrame: CGRect = .zero
+    @State private var insideFrame = PhoneFrameBox()
     let pickParent: (CGRect, String?, @escaping (String?) -> Void) -> Void
     @FocusState private var focused: Bool
     @Environment(\.colorScheme) private var scheme
@@ -372,7 +372,7 @@ public struct PhoneNewFolderForm: View {
                 HStack(spacing: 12) {
                     Text("Inside").webText(WebTextStyle(size: 15, leading: 20)).foregroundStyle(muted.color)
                     Spacer(minLength: 0)
-                    Button { pickParent(insideFrame, parent) { parent = $0 } } label: {
+                    Button { pickParent(insideFrame.rect, parent) { parent = $0 } } label: {
                         HStack(spacing: 6) {
                             Text(parent.flatMap { id in folders.first { $0.id == id }?.name } ?? "Top level")
                                 .webText(WebTextStyle(size: 15, leading: 20)).lineLimit(1)
@@ -385,7 +385,7 @@ public struct PhoneNewFolderForm: View {
                     }
                     .buttonStyle(.plain)
                     .frame(maxWidth: 220, alignment: .trailing)
-                    .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { insideFrame = $0 }
+                    .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { insideFrame.rect = $0 }
                 }
                 .padding(.horizontal, 4)
                 .padding(.top, 16)

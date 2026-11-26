@@ -39,7 +39,8 @@ final class RebuildAI {
     private var models: (sheet: FoliChatModel, page: FoliChatModel, history: FoliHistoryModel) {
         if let made { return made }
         guard let phone else { preconditionFailure("RebuildAI used before attach") }
-        let feedback = ScreenFeedback(toast: { [weak phone] t in phone?.toast(t.message, tone: t.tone == .error ? .error : t.tone == .success ? .success : .info) })
+        // Toasts (with Undo) and haptics: a light tap on Send, a tick on Stop.
+        let feedback = RebuildFeedback.make(phone)
         let sheet = FoliChatModel(client: phone.client, feedback: feedback)
         let page = FoliChatModel(client: phone.client, feedback: feedback)
         sheet.onOpen = { [weak self] route in

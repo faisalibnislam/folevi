@@ -112,7 +112,7 @@ public struct PhoneNotificationsContent: View {
 struct PhoneRowTap: ViewModifier {
     let onTap: () -> Void
     let onLongPress: (CGRect) -> Void
-    @State private var frame: CGRect = .zero
+    @State private var frame = PhoneFrameBox()
     @State private var pressed = false
     @State private var pressGeneration = 0
     @Environment(\.colorScheme) private var scheme
@@ -134,9 +134,9 @@ struct PhoneRowTap: ViewModifier {
         content
             .overlay { if pressed { (WebStyles.vars["liquid-press"]?.resolve(scheme).color ?? Color.black.opacity(0.06)).allowsHitTesting(false) } }
             .animation(.easeOut(duration: pressed ? 0 : 0.15), value: pressed)
-            .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { frame = $0 }
+            .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { frame.rect = $0 }
             .onTapGesture(perform: onTap)
-            .onLongPressGesture(minimumDuration: 0.45) { onLongPress(frame) } onPressingChanged: { down in
+            .onLongPressGesture(minimumDuration: 0.45) { onLongPress(frame.rect) } onPressingChanged: { down in
                 // (Only once the finger has stayed 80 ms, as PhonePressable: a touch that turns into a scroll never
                 // flashes the row. IPHONE-03.)
                 pressGeneration += 1
@@ -147,7 +147,7 @@ struct PhoneRowTap: ViewModifier {
                 }
             }
             .accessibilityAddTraits(.isButton)
-            .accessibilityAction(named: "More actions") { onLongPress(frame) }
+            .accessibilityAction(named: "More actions") { onLongPress(frame.rect) }
     }
 }
 

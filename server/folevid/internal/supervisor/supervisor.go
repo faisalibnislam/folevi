@@ -263,10 +263,6 @@ func (s *Service) terminate(cmd *exec.Cmd, waitCh chan error) {
 	_ = syscall.Kill(-pid, syscall.SIGKILL)
 }
 
-func sysProcAttr() *syscall.SysProcAttr {
-	return &syscall.SysProcAttr{Setpgid: true, Pdeathsig: syscall.SIGTERM}
-}
-
 // RunOnce runs a command to completion (used for keygen, deploy and export). Output goes to out.
 func RunOnce(ctx context.Context, c Command, out io.Writer) error {
 	cmd := exec.CommandContext(ctx, c.Path, c.Args...)

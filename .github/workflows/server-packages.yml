@@ -151,7 +151,7 @@ jobs:
           d="$(ls -d folevi-server-*-linux-${{ matrix.arch }})"
           tar -cJf "$RUNNER_TEMP/$d.tar.xz" "$d"
           echo "BUNDLE_TAR=$RUNNER_TEMP/$d.tar.xz" >> "$GITHUB_ENV"
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: bundle-${{ matrix.arch }}
           path: ${{ env.BUNDLE_TAR }}
@@ -207,7 +207,7 @@ jobs:
             --arch "${{ matrix.arch }}" --out "$RUNNER_TEMP/out" --keep-going \
             --only synology,asustor,terramaster,ugreen,unraid,linux,docker
           rm -f "$RUNNER_TEMP/signing.asc"
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: packages-${{ matrix.arch }}
           path: |
@@ -219,7 +219,7 @@ jobs:
             ${{ runner.temp }}/out/*/*.rpm
             ${{ runner.temp }}/out/unraid/*
           retention-days: 14
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: docker-context-${{ matrix.arch }}
           path: ${{ runner.temp }}/out/docker/docker-context
@@ -272,7 +272,7 @@ jobs:
         run: |
           packaging/test/test-private-glibc.sh --bundle "$BUNDLE" --arch "${{ matrix.arch }}" \
             --images "ubuntu:16.04 centos:7" --require-docker
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: packages-qnap-${{ matrix.arch }}
           path: ${{ runner.temp }}/out/qnap/*.qpkg
@@ -304,7 +304,7 @@ jobs:
           python3 packaging/synology/package-source/generate-index.py --spks "$RUNNER_TEMP/spks" \
             --base-url https://pkg.folevi.com/synology --out "$RUNNER_TEMP/repos/synology"
           cp packaging/linux/install.sh "$RUNNER_TEMP/repos/install.sh"
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: repositories
           path: ${{ runner.temp }}/repos
@@ -330,7 +330,7 @@ jobs:
           packaging/manifest/make-latest.sh --version "$VERSION" \
             --out "$RUNNER_TEMP/latest.json" "$RUNNER_TEMP/pk"
           cat "$RUNNER_TEMP/latest.json"
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: latest-json
           path: ${{ runner.temp }}/latest.json
@@ -358,7 +358,7 @@ jobs:
           packaging/docker/build.sh --bundle "$(ls -d "$RUNNER_TEMP"/b/*-linux-x86_64)" \
             --bundle-arm64 "$(ls -d "$RUNNER_TEMP"/b/*-linux-aarch64)" \
             --version "$VERSION" --arch x86_64 --out "$RUNNER_TEMP/img" --build
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: container-image
           path: ${{ runner.temp }}/img/*.oci.tar

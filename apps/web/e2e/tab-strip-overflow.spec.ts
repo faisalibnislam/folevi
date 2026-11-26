@@ -73,8 +73,9 @@ test("the open tab is always fully in the strip: new notes, clicks, ⌃Tab, Back
 
   // 15 notes: more than fit (and more than the strip keeps, 12).
   for (let i = 1; i <= 15; i++) await newNote(page, `Note ${String(i).padStart(2, "0")}`);
+  // The 12 tabs the strip keeps: Home sits before it, outside the scrolling tabs.
   const links = strip(page).getByRole("link");
-  await expect.poll(() => links.count()).toBe(13);
+  await expect.poll(() => links.count()).toBe(12);
   // Tabs shrank to their minimum width before the strip began to scroll.
   const widths = await strip(page).locator("[data-tab]").evaluateAll((els) => els.map((e) => e.getBoundingClientRect().width));
   expect(Math.min(...widths)).toBeGreaterThanOrEqual(171.5);

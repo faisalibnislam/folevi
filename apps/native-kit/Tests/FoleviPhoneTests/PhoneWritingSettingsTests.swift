@@ -1,5 +1,6 @@
 // Settings > Writing on the iPhone (PhoneWritingSettings.swift): listed after Appearance, reached at
 // /settings/writing, its English choice a pushed screen, and found by what it holds.
+#if os(iOS)
 import Testing
 @testable import FoleviPhone
 
@@ -26,3 +27,4 @@ struct PhoneWritingSettingsTests {
         #expect(PhoneWritingSettings.englishChoices.map(\.value) == ["en-US", "en-GB"])
     }
 }
+#endif

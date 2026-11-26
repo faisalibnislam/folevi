@@ -27,6 +27,9 @@ ROOT64=/srv/jammy-amd64
 
 if [[ $SKIP_WEB == 0 ]]; then
   (cd "$REPO/apps/web" && node scripts/build-shell.mjs --platform windows --production)
+  # Dropbox and Google Drive's shared code, put in the page by lib.rs (offered when FOLEVI_DROPBOX_APP_KEY and
+  # FOLEVI_GOOGLE_DESKTOP_CLIENT_ID are set for the build).
+  node "$REPO/apps/ios/scripts/bundle-cloud.mjs"
 fi
 [[ -f "$REPO/apps/desktop/web/index.html" ]] || { echo "no web export in apps/desktop/web"; exit 1; }
 
@@ -37,21 +40,25 @@ limactl shell "$VM" -- bash -c "rm -rf '$VM_SRC/apps/desktop/web' && mkdir -p '$
 (cd "$REPO" && {
   git ls-files apps/desktop packaging version.json apps/ios/ios/App/Native/Shell/shell-bridge.js packages/local-store/fixtures
   find apps/desktop/web -type f
+  [[ -f apps/ios/ios/App/Native/Shell/folevi-cloud.js ]] && echo apps/ios/ios/App/Native/Shell/folevi-cloud.js
 } | grep -v '^apps/desktop/src-tauri/target/' | COPYFILE_DISABLE=1 tar --no-xattrs -cf - -T -) \
   | limactl shell "$VM" -- tar -xf - -C "$VM_SRC"
+
+# Dropbox and Google Drive's public client ids, when set here, go into the build (cloud.rs, option_env!).
+IDS="FOLEVI_DROPBOX_APP_KEY='${FOLEVI_DROPBOX_APP_KEY:-}' FOLEVI_GOOGLE_DESKTOP_CLIENT_ID='${FOLEVI_GOOGLE_DESKTOP_CLIENT_ID:-}'"
 
 for arch in $ARCHES; do
   echo "== $arch"
   # Old bundles would be copied out with the new ones.
   limactl shell "$VM" -- sudo rm -rf "$VM_SRC/apps/desktop/src-tauri/target/release/bundle" "$ROOT64/root/target-x86/release/bundle"
   if [[ $arch == aarch64 ]]; then
-    limactl shell "$VM" -- bash -lc "cd '$VM_SRC/apps/desktop/src-tauri' && APPIMAGE_EXTRACT_AND_RUN=1 cargo tauri build --bundles appimage,deb,rpm"
+    limactl shell "$VM" -- bash -lc "cd '$VM_SRC/apps/desktop/src-tauri' && $IDS APPIMAGE_EXTRACT_AND_RUN=1 cargo tauri build --bundles appimage,deb,rpm"
     BUNDLE="$VM_SRC/apps/desktop/src-tauri/target/release/bundle"
   else
     limactl shell "$VM" -- sudo bash "$VM_SRC/packaging/linux/scripts/setup-amd64-root.sh" --prepare
     limactl shell "$VM" -- sudo bash -c "mkdir -p $ROOT64/build && { mountpoint -q $ROOT64/build || mount --bind '$VM_SRC' $ROOT64/build; }"
     limactl shell "$VM" -- sudo chroot "$ROOT64" env -u SUDO_USER bash -lc \
-      "cd /build/apps/desktop/src-tauri && CARGO_TARGET_DIR=/root/target-x86 APPIMAGE_EXTRACT_AND_RUN=1 cargo tauri build --bundles appimage,deb,rpm"
+      "cd /build/apps/desktop/src-tauri && $IDS CARGO_TARGET_DIR=/root/target-x86 APPIMAGE_EXTRACT_AND_RUN=1 cargo tauri build --bundles appimage,deb,rpm"
     BUNDLE="$ROOT64/root/target-x86/release/bundle"
   fi
   mkdir -p "$OUT/$arch"

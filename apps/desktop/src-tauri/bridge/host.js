@@ -32,7 +32,11 @@
     version: BOOT.version,
     deviceName: BOOT.deviceName,
     fileBase: origin + "/_files/",
-    cloudKit: null,
+    // The shared Dropbox and Google Drive code (lib.rs fills it in when the build has it): `var FoleviCloudKit = …`.
+    cloudKit: (function () {
+      /*CLOUD_KIT*/
+      return typeof FoleviCloudKit === "object" && FoleviCloudKit ? FoleviCloudKit : null; // eslint-disable-line no-undef
+    })(),
     call: function (plugin, method, options) {
       return invoke("shell_call", { plugin: String(plugin), method: String(method), options: options || {} }).catch(function (e) {
         throw asError(e);
@@ -63,6 +67,180 @@
       });
     },
   };
+  // ---------------------------------------------------------------- the app lock (lib.rs, applock.rs)
+
+  // The cover over the page while Folevi is locked (the Mac's LockCoverView), and Linux's passphrase prompts. It
+  // lives in a closed shadow root over everything, and the page under it is inert until Windows Hello or the
+  // passphrase opens it.
+  var lockUi = (function () {
+    var hostEl = null;
+    var root = null;
+    var covered = false;
+    var method = "none";
+    var css =
+      ":host{all:initial}" +
+      ".wrap{position:fixed;inset:0;z-index:2147483647;display:flex;align-items:center;justify-content:center;background:#f7f6f3;color:#1f1f1f;font:14px/1.45 'Segoe UI Variable','Segoe UI',Cantarell,'Noto Sans',system-ui,sans-serif}" +
+      ".wrap.dim{background:rgba(20,20,20,.38)}" +
+      ".box{width:min(360px,calc(100vw - 32px));padding:28px;border-radius:14px;text-align:center}" +
+      ".dim .box{background:#fff;border:1px solid #e4e2dd;box-shadow:0 12px 40px rgba(0,0,0,.18)}" +
+      "@media (prefers-color-scheme:dark){.wrap{background:#191919;color:#ececec}.wrap.dim{background:rgba(0,0,0,.5)}.dim .box{background:#232323;border-color:#3a3a3a}input{background:#191919!important;color:#ececec!important;border-color:#4a4a4a!important}}" +
+      "h1{font-size:18px;font-weight:600;margin:12px 0 6px}p{margin:0 0 16px;opacity:.8}" +
+      ".tile{width:44px;height:44px;margin:0 auto;border-radius:12px;display:flex;align-items:center;justify-content:center;background:rgba(127,127,127,.14)}" +
+      "input{display:block;width:100%;box-sizing:border-box;margin:0 0 10px;padding:9px 11px;border-radius:8px;border:1px solid #cfcdc8;font:inherit;background:#fff;color:inherit}" +
+      ".err{color:#d0453a;min-height:1.4em;margin:-2px 0 10px;font-size:13px}" +
+      ".row{display:flex;gap:8px;justify-content:center}" +
+      "button{font:inherit;padding:8px 16px;border-radius:8px;border:0;cursor:pointer;background:rgba(127,127,127,.16);color:inherit}" +
+      "button.primary{background:var(--accent,#2f6fde);color:#fff}" +
+      "button:focus-visible,input:focus-visible{outline:2px solid var(--accent,#2f6fde);outline-offset:2px}";
+    var lockIcon =
+      '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>';
+    var el = function (tag, attrs, text) {
+      var e = document.createElement(tag);
+      for (var k in attrs || {}) e.setAttribute(k, attrs[k]);
+      if (text) e.textContent = text;
+      return e;
+    };
+    var setInert = function (on) {
+      var apply = function () {
+        if (document.body) document.body.inert = on;
+      };
+      if (document.body) apply();
+      else document.addEventListener("DOMContentLoaded", apply, { once: true });
+    };
+    var close = function () {
+      if (hostEl) hostEl.remove();
+      hostEl = null;
+      root = null;
+    };
+    // One screen: a title, a line, password fields and buttons. `onButton(value, fields, showError)`.
+    var screen = function (o) {
+      close();
+      hostEl = document.createElement("folevi-lock");
+      if (BOOT.accent) hostEl.setAttribute("style", "--accent:" + BOOT.accent);
+      root = hostEl.attachShadow({ mode: "closed" });
+      root.appendChild(el("style", {}, css));
+      var wrap = el("div", { class: "wrap" + (o.dim ? " dim" : ""), role: "dialog", "aria-modal": "true", "aria-label": o.title });
+      var box = el("div", { class: "box" });
+      var tile = el("div", { class: "tile" });
+      tile.innerHTML = lockIcon;
+      box.appendChild(tile);
+      box.appendChild(el("h1", {}, o.title));
+      box.appendChild(el("p", {}, o.body));
+      var inputs = (o.fields || []).map(function (f) {
+        var i = el("input", { type: "password", autocomplete: "off", spellcheck: "false", "aria-label": f, placeholder: f });
+        box.appendChild(i);
+        return i;
+      });
+      var err = el("div", { class: "err", role: "alert" });
+      if (inputs.length) box.appendChild(err);
+      var showError = function (m) {
+        err.textContent = m || "";
+      };
+      var values = function () {
+        return inputs.map(function (i) { return i.value; });
+      };
+      var row = el("div", { class: "row" });
+      var primary = null;
+      (o.buttons || []).forEach(function (b) {
+        var btn = el("button", { type: "button", class: b.primary ? "primary" : "" }, b.label);
+        btn.addEventListener("click", function () { o.onButton(b.value, values(), showError); });
+        if (b.primary) primary = b.value;
+        row.appendChild(btn);
+      });
+      box.appendChild(row);
+      wrap.appendChild(box);
+      wrap.addEventListener("keydown", function (e) {
+        e.stopPropagation();
+        if (e.key === "Enter" && primary) o.onButton(primary, values(), showError);
+        else if (e.key === "Escape" && o.escape) o.onButton(o.escape, [], showError);
+      });
+      root.appendChild(wrap);
+      (document.documentElement || document).appendChild(hostEl);
+      setTimeout(function () {
+        var first = inputs[0] || row.querySelector("button.primary");
+        if (first) first.focus();
+      }, 0);
+      return { inputs: inputs };
+    };
+    var showCover = function () {
+      var hello = method === "windowsHello";
+      var busy = false;
+      var s = screen({
+        title: "Folevi is locked",
+        body: hello ? "Your notes stay covered until Windows Hello says it's you." : "Type your Folevi lock passphrase to see your notes.",
+        fields: hello ? [] : ["Passphrase"],
+        buttons: [{ label: hello ? "Unlock with Windows Hello" : "Unlock", value: "unlock", primary: true }],
+        onButton: function (_v, fields, showError) {
+          if (busy) return;
+          busy = true;
+          desktop("lockUnlock", hello ? {} : { passphrase: fields[0] || "" }).then(
+            function () { busy = false; },
+            function (e) {
+              busy = false;
+              showError((e && e.message) || "Folevi couldn't unlock.");
+              if (s.inputs[0]) {
+                s.inputs[0].value = "";
+                s.inputs[0].focus();
+              }
+            },
+          );
+        },
+      });
+      // Windows Hello asks straight away, as Touch ID does on the Mac.
+      if (hello && document.hasFocus()) desktop("lockUnlock", {}).catch(function () {});
+    };
+    return {
+      cover: function (m) {
+        method = m || method;
+        if (covered) return;
+        covered = true;
+        setInert(true);
+        showCover();
+      },
+      uncover: function () {
+        if (!covered) return;
+        covered = false;
+        setInert(false);
+        close();
+      },
+      // Linux: choose the lock's passphrase ("set"), or type it to turn the lock off ("check").
+      prompt: function (p) {
+        if (covered || !p || typeof p.id !== "string") return;
+        var setting = p.mode === "set";
+        var min = Number(p.min) || 6;
+        setInert(true);
+        var answer = function (passphrase) {
+          setInert(false);
+          close();
+          desktop("lockAnswer", { id: p.id, passphrase: passphrase });
+        };
+        screen({
+          dim: true,
+          title: setting ? "Choose a passphrase for Folevi's lock" : "Turn off Folevi's lock",
+          body: setting ? "Folevi asks for it when it opens, and when you come back to it. It covers your notes until then." : "Type your Folevi lock passphrase.",
+          fields: setting ? ["Passphrase", "Type it again"] : ["Passphrase"],
+          buttons: [
+            { label: "Cancel", value: "cancel" },
+            { label: setting ? "Turn On Lock" : "Turn Off Lock", value: "ok", primary: true },
+          ],
+          escape: "cancel",
+          onButton: function (value, fields, showError) {
+            if (value !== "ok") return answer(null);
+            var v = fields[0] || "";
+            if (setting && v.length < min) return showError("Use at least " + min + " characters.");
+            if (setting && v !== fields[1]) return showError("The two don't match.");
+            answer(v);
+          },
+        });
+      },
+    };
+  })();
+  host.listen("desktop", "lock", function (state) {
+    if (state && state.covered) lockUi.cover(state.method);
+    else lockUi.uncover();
+  });
+  host.listen("desktop", "lockPrompt", lockUi.prompt);
+
   // ---------------------------------------------------------------- window.foleviShell (the built-in interface)
 
   // Each page's own start (its place, mode and where it opens) comes with the page itself: the app puts
@@ -73,6 +251,7 @@
   hostApi.boot = function (state) {
     if (booted || !BOOT.shell || !state || typeof state !== "object") return;
     booted = true;
+    if (state.locked) lockUi.cover(state.lockMethod);
     var shellBridge = foleviShellBridge(state, host); // eslint-disable-line no-undef
     Object.defineProperty(window, "foleviShell", { value: shellBridge, enumerable: true });
   };
@@ -132,12 +311,71 @@
   };
   var bridge = {
     platform: BOOT.platform,
+    // Recording a call: WebView2's screen capture carries the PC's sound ("Share system audio"); WebKitGTK's doesn't.
+    callCapture: BOOT.platform === "windows",
+    // An attachment, opened in the app that opens its kind (the Mac's Quick Look): a copy in a temporary folder.
+    quickLook: function (files) {
+      var list = Array.isArray(files) ? files.slice(0, 5) : [];
+      if (!list.length) return Promise.resolve(false);
+      return Promise.all(
+        list.map(function (f) {
+          var bytes = f && f.bytes instanceof Uint8Array ? f.bytes : new Uint8Array(0);
+          return desktop("openFile", { name: String((f && f.name) || "Attachment"), bytes: b64(bytes) });
+        }),
+      ).then(
+        function () {
+          return true;
+        },
+        function () {
+          return false;
+        },
+      );
+    },
+    // Windows: the system's Share sheet (a note's link) and text in images (Windows.Media.Ocr). Not on Linux.
+    share:
+      BOOT.platform === "windows"
+        ? function (item) {
+            var i = item || {};
+            return desktop("share", { title: String(i.title || ""), text: i.text ? String(i.text) : "", url: i.url ? String(i.url) : "" }).then(
+              function (r) {
+                return r === true || (r && r.value === true);
+              },
+              function () {
+                return false;
+              },
+            );
+          }
+        : undefined,
+    recognizeText: BOOT.ocr
+      ? function (image) {
+          var bytes = image instanceof Uint8Array ? image : new Uint8Array(0);
+          return desktop("recognizeText", { data: b64(bytes) }).then(
+            function (r) {
+              return r && typeof r.text === "string" ? { text: r.text } : null;
+            },
+            function () {
+              return null;
+            },
+          );
+        }
+      : undefined,
     setBadge: function (count) {
       void desktop("badge", { count: Number(count) || 0 }).catch(function () {});
     },
     notify: function (n) {
       var x = n || {};
-      void desktop("notify", { title: String(x.title || ""), body: x.body ? String(x.body) : "", path: x.path ? String(x.path) : "" }).catch(function () {});
+      var s = function (v) {
+        return typeof v === "string" ? v : "";
+      };
+      void desktop("notify", {
+        id: s(x.id),
+        title: String(x.title || ""),
+        body: x.body ? String(x.body) : "",
+        path: x.path ? String(x.path) : "",
+        kind: s(x.kind),
+        thread: s(x.thread),
+        commentThread: s(x.commentThread),
+      }).catch(function () {});
     },
     setRecent: function (notes) {
       var list = Array.isArray(notes) ? notes.slice(0, 8).map(function (n) { return { id: String((n && n.id) || ""), title: String((n && n.title) || "") }; }) : [];
@@ -170,6 +408,21 @@
     },
     closeWindow: function () {
       void desktop("closeWindow").catch(function () {});
+    },
+    // "Float this note" (lib.rs create_float): a note in a small window of its own, on top of other apps, or its
+    // window brought forward; and that window's pin (null outside a floating note's window).
+    floatNote: function (note) {
+      void desktop("floatNote", { id: String((note && note.id) || ""), title: String((note && note.title) || "") }).catch(function () {});
+    },
+    floatOnTop: function (on) {
+      return desktop("floatOnTop", typeof on === "boolean" ? { on: on } : {}).then(
+        function (v) {
+          return typeof v === "boolean" ? v : null;
+        },
+        function () {
+          return null;
+        },
+      );
     },
     commandDone: function (id, value) {
       var a = answers[String(id)];
@@ -310,7 +563,8 @@
   // Mac's -webkit-app-region; here a press there starts the system's own window move, and a double-click maximizes.
   var INTERACTIVE = "a,button,input,textarea,select,label,[role=button],[role=tab],[role=combobox],[role=menuitem],[tabindex],[contenteditable],[popover],dialog,.ui-pop,[role=menu],[role=listbox],[role=dialog],folevi-captions";
   var dragArea = function (e) {
-    if (e.button !== 0 || BOOT.window !== "main") return false;
+    // (A floating note's window moves by its slim bar too: apps/web components/app/FloatNote.tsx.)
+    if (e.button !== 0 || (BOOT.window !== "main" && BOOT.window !== "float")) return false;
     var t = e.target;
     if (!(t instanceof Element)) return false;
     if (t.closest(INTERACTIVE)) return false;
@@ -324,8 +578,9 @@
     function (e) {
       if (!dragArea(e)) return;
       e.preventDefault();
-      if (e.detail === 2) void desktop("toggleMaximize");
-      else void desktop("drag");
+      if (e.detail === 2) {
+        if (BOOT.window === "main") void desktop("toggleMaximize");
+      } else void desktop("drag");
     },
     true,
   );
@@ -348,6 +603,14 @@
     if ((!mod && !e.altKey && !e.shiftKey && key === "F12") || (mod && e.shiftKey && !e.altKey && key === "i")) return { kind: "devtools" };
     if (e.altKey && !mod && !e.shiftKey && key === "ArrowLeft") return { kind: "menu", id: "go.back" };
     if (e.altKey && !mod && !e.shiftKey && key === "ArrowRight") return { kind: "menu", id: "go.forward" };
+    // Ctrl+Alt: the Mac's Option-Command items. Not AltGr (Ctrl+Alt on European keyboards types characters), and
+    // not the editor's own Ctrl+Alt+digit headings.
+    if (mod && e.altKey && !(e.getModifierState && e.getModifierState("AltGraph"))) {
+      if (!e.shiftKey && key === "c") return { kind: "menu", id: "go.calendar" };
+      if (!e.shiftKey && e.code === "Backslash") return { kind: "menu", id: "view.focus" };
+      if (e.shiftKey && key === "n") return { kind: "menu", id: "file.new-from-template" };
+      return null;
+    }
     if (!mod || e.altKey) return null;
     if (key === "Tab") return { kind: "menu", id: e.shiftKey ? "go.previous-tab" : "go.next-tab" };
     if (!e.shiftKey && key === "PageDown") return { kind: "menu", id: "go.next-tab" };
@@ -358,10 +621,17 @@
       if (key === "t") return { kind: "menu", id: "file.reopen-closed-tab" };
       if (key === "n") return { kind: "new-window" };
       if (key === "w") return { kind: "close-window" };
+      if (key === "f") return { kind: "menu", id: "edit.search-all" };
+      if (e.code === "BracketRight") return { kind: "menu", id: "go.next-tab" };
+      if (e.code === "BracketLeft") return { kind: "menu", id: "go.previous-tab" };
       if (key === "\\" || key === "|" || e.code === "Backslash") return { kind: "menu", id: "file.tab-overview" };
       return null;
     }
     if (key === "t") return { kind: "menu", id: "file.new-tab" };
+    if (key === "n") return { kind: "menu", id: "file.new-note" };
+    if (key === "/") return { kind: "menu", id: "help.shortcuts" };
+    // Linux's Quit (Windows closes with Alt+F4 and the tray's Quit Folevi).
+    if (key === "q" && BOOT.platform === "linux") return { kind: "quit" };
     if (key === "w" || key === "F4") return { kind: "menu", id: "file.close-tab" };
     if (key === "p") return { kind: "print" };
     if (key === ",") return { kind: "settings" };

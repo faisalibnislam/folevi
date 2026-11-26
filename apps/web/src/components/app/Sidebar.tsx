@@ -9,7 +9,8 @@ import { useAppState } from "@/lib/app/state";
 import { AppLink, useAppRouter, type Route } from "@/lib/app/router";
 import { Button, IconButton, Kbd } from "@/components/ui/Button";
 import { Dialog } from "@/components/ui/Dialog";
-import { MenuButton } from "@/components/ui/Menu";
+import { ContextMenu, MenuButton, type MenuItem } from "@/components/ui/Menu";
+import { floatMenuItems } from "./floatMenu";
 import { PromptDialog } from "@/components/ui/PromptDialog";
 import { useToast, errorMessage } from "@/components/ui/Toast";
 import { FoleviLogo } from "@/components/brand/FoleviMark";
@@ -89,6 +90,7 @@ function NavItem({
   dropFolderId,
   dragFolderId,
   dragNoteId,
+  noteId,
   locked,
   tabFolder,
 }: {
@@ -103,6 +105,8 @@ function NavItem({
   dragFolderId?: string;
   /** The note this row stands for (Bookmarks): dragged onto a folder, it moves there. */
   dragNoteId?: string;
+  /** The note this row opens (Bookmarks): its right-click offers Float this note. */
+  noteId?: string;
   /** Always fully encrypted: a small lock after the name (docs/E2EE_DESIGN.md §10.8). */
   locked?: boolean;
   /** The folder this row opens: ⌘-click or middle-click opens it in a tab behind (useFolderTabClicks). */
@@ -113,8 +117,22 @@ function NavItem({
   const active = isActive(route, href);
   const hint = useDropHint(dropFolderId ?? "\u0000");
   const over = hint !== null && !hint.refused;
+  // A bookmarked note's right-click: Float this note (lib/app/float.ts), where a note can float.
+  const [menuAt, setMenuAt] = useState<{ x: number; y: number; items: MenuItem[] } | null>(null);
   return (
+    <>
     <AppLink
+      onContextMenu={
+        noteId
+          ? (e: React.MouseEvent) => {
+              const items = floatMenuItems({ id: noteId, title: label });
+              if (!items.length) return;
+              e.preventDefault();
+              e.stopPropagation();
+              setMenuAt({ x: e.clientX, y: e.clientY, items });
+            }
+          : undefined
+      }
       href={href}
       onClick={(e) => {
         if (tabFolder) {
@@ -142,6 +160,8 @@ function NavItem({
       {locked ? <LockGlyph /> : null}
       {count ? <span className={`min-w-5 rounded-chip px-1.5 text-center text-caption-2 font-semibold leading-5 tabular-nums ${active ? "bg-heading text-canvas" : "bg-[var(--glass-hover)] text-muted"}`}>{count}</span> : null}
     </AppLink>
+    {menuAt ? <ContextMenu at={menuAt} label={`Actions for ${label}`} items={menuAt.items} onClose={() => setMenuAt(null)} /> : null}
+    </>
   );
 }
 
@@ -633,7 +653,7 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
           {starred?.page.length && starredOpen ? (
             <div className="space-y-0.5 pl-5" aria-label="Bookmarked notes" role="group">
               {starred.page.filter((d, i) => i < SIDEBAR_LIMIT || (route.name === "doc" && route.id === d.id)).map((d) => (
-                <NavItem key={d.id} href={`/d/${d.id}`} icon={<FileText size={14} />} label={d.title || "Untitled"} onNavigate={onNavigate} dragNoteId={canEdit ? d.id : undefined} locked={(d as { locked?: boolean }).locked === true} />
+                <NavItem key={d.id} href={`/d/${d.id}`} icon={<FileText size={14} />} label={d.title || "Untitled"} onNavigate={onNavigate} dragNoteId={canEdit ? d.id : undefined} noteId={d.id} locked={(d as { locked?: boolean }).locked === true} />
               ))}
               <MoreLink href="/starred" count={starred.page.length - starred.page.filter((d, i) => i < SIDEBAR_LIMIT || (route.name === "doc" && route.id === d.id)).length} noun="bookmarked pages" onNavigate={onNavigate} exact={starred.isDone} />
             </div>

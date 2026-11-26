@@ -35,7 +35,7 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v6
       - uses: actions/setup-node@v7
         with:
           node-version: 24
@@ -52,6 +52,13 @@ jobs:
           path: apps/web/.next-shell-windows-release
           retention-days: 1
           include-hidden-files: true
+      - name: The Dropbox and Google Drive code (packages/cloud-folders, put in the page by lib.rs)
+        run: node apps/ios/scripts/bundle-cloud.mjs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cloud-kit
+          path: apps/ios/ios/App/Native/Shell/folevi-cloud.js
+          retention-days: 1
 
   build:
     name: ${{ matrix.name }}
@@ -83,7 +90,11 @@ jobs:
         with:
           name: web-export
           path: apps/desktop/web
-      - uses: pnpm/action-setup@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: cloud-kit
+          path: apps/ios/ios/App/Native/Shell
+      - uses: pnpm/action-setup@v6
       - uses: actions/setup-node@v7
         with:
           node-version: 24
@@ -101,12 +112,19 @@ jobs:
         run: CI=true pnpm install --ignore-workspace
       - name: Rust tests
         working-directory: apps/desktop/src-tauri
+        env:
+          FOLEVI_DROPBOX_APP_KEY: ${{ vars.FOLEVI_DROPBOX_APP_KEY }}
+          FOLEVI_GOOGLE_DESKTOP_CLIENT_ID: ${{ vars.FOLEVI_GOOGLE_DESKTOP_CLIENT_ID }}
         run: cargo test --release
       - name: Bridge tests
         working-directory: apps/desktop
         run: pnpm exec vitest run
       - name: Build
         working-directory: apps/desktop
+        # Dropbox and Google Drive's client ids (public; repository variables): without them they aren't offered.
+        env:
+          FOLEVI_DROPBOX_APP_KEY: ${{ vars.FOLEVI_DROPBOX_APP_KEY }}
+          FOLEVI_GOOGLE_DESKTOP_CLIENT_ID: ${{ vars.FOLEVI_GOOGLE_DESKTOP_CLIENT_ID }}
         run: node scripts/version.mjs && pnpm exec tauri build --bundles ${{ matrix.bundles }}
       - name: Linux package checks
         if: runner.os == 'Linux'

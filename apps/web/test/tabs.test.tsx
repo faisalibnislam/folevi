@@ -150,6 +150,35 @@ describe("joined tabs", () => {
     expect(api.tabs[0]!.at).toBe(A);
   });
 
+  // The owner's video (2026-11-25): with one note in two joined tabs, moving to it in the second tab's other pane
+  // jumped to the first tab (the first that held it), which then drew its own notes.
+  test("a note in two joined tabs stays in the one on screen; a click on the other tab shows that one", () => {
+    localStorage.setItem("folevi:tabs:acct", JSON.stringify([{ id: "join:x", title: "", panes: [C, B], at: C }, { id: "join:y", title: "", panes: [A, B], at: A }]));
+    render(`/d/${A}`, null);
+    expect(api.shownId).toBe("join:y");
+    render(`/d/${B}`, null);
+    expect(api.shownId).toBe("join:y");
+    expect(api.tabs.find((t) => t.id === "join:y")!.at).toBe(B);
+    expect(api.tabs.find((t) => t.id === "join:x")!.at).toBe(C);
+    render(`/d/${A}`, null);
+    expect(api.shownId).toBe("join:y");
+    // The strip's click on the first tab picks it: the same note now shows there.
+    act(() => api.pick("join:x"));
+    render(`/d/${B}`, null);
+    expect(api.shownId).toBe("join:x");
+    expect(api.tabs.find((t) => t.id === "join:x")!.at).toBe(B);
+  });
+
+  test("closing a tab that shares the note on screen stays on the tab on screen", () => {
+    localStorage.setItem("folevi:tabs:acct", JSON.stringify([{ id: "join:x", title: "", panes: [C, B], at: B }, { id: "join:y", title: "", panes: [A, B], at: A }]));
+    render(`/d/${A}`, null);
+    render(`/d/${B}`, null);
+    expect(api.shownId).toBe("join:y");
+    act(() => api.close("join:x"));
+    expect(api.tabs.map((t) => t.id)).toEqual(["join:y"]);
+    expect(api.shownId).toBe("join:y");
+  });
+
   test("a joined note moves among the others with its width, or comes out into its own tab", () => {
     localStorage.setItem("folevi:tabs:acct", JSON.stringify([{ id: "join:x", title: "", panes: [A, B, C], at: A, sizes: [0.5, 0.3, 0.2] }]));
     render(`/d/${A}`, null);

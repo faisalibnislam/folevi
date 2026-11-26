@@ -86,9 +86,10 @@ const equal = (n: number) => Array.from({ length: n }, () => 1 / n);
  */
 export function NotePanes({ documentId, render }: { documentId: string; render: (id: string) => ReactNode }) {
   const shell = useShell();
-  const { tabs, setSizes, join, unjoin, movePane, detachPane } = useTabs();
+  const { tabs, setSizes, join, unjoin, movePane, detachPane, shownId } = useTabs();
   const { navigate } = useAppRouter();
-  const tab = tabs.find((t) => !t.view && tabHolds(t, documentId)) ?? null;
+  // The tab on screen when it has the note (two joined tabs can share one), else the first that has it.
+  const tab = tabs.find((t) => t.id === shownId && !t.view && tabHolds(t, documentId)) ?? tabs.find((t) => !t.view && tabHolds(t, documentId)) ?? null;
   const tabPanes = tab?.panes;
   const panes = useMemo(() => tabPanes ?? [documentId], [tabPanes, documentId]);
   const n = panes.length;

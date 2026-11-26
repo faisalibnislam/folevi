@@ -155,7 +155,8 @@ final class DesktopRouter {
             return [:]
 
         case "closeWindow":
-            guard let view, view.role == .main, let window = view.window else { return [:] }
+            // A main window (⌘W with no tab left) or a floating note's panel (its Close).
+            guard let view, view.role == .main || view.role == .float, let window = view.window else { return [:] }
             window.performClose(nil)
             return [:]
 

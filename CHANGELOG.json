@@ -1,6 +1,26 @@
 {
   "releases": [
     {
+      "version": "1.7.78",
+      "build": 103,
+      "released": "2026-11-26T00:24:24+06:00",
+      "type": "update",
+      "summary": "Float any note in its own always-on-top window, automatic updates and much more for Windows and Linux, and smoother tabs.",
+      "added": [
+        "Float this note: open a note in a small floating window that stays on top, from a tab or a note's right-click menu, on Mac, Windows and in Chrome or Edge",
+        "Windows and Linux: automatic updates, Your own server, app lock with Windows Hello, background sync, Jump List, Dropbox and Google Drive, notification actions, call recording, window restore, Windows Share and text in images"
+      ],
+      "improved": [
+        "Joined notes stay in their own tab group when you switch between them",
+        "The pin on a long tab name stays visible when you hover it, and the New note button has room on the right",
+        "The Windows and Linux apps call themselves by their own names, not the Mac or a browser"
+      ],
+      "fixed": [
+        "Table text no longer rewraps when you click into a note"
+      ],
+      "tag": "v1.7.78"
+    },
+    {
       "version": "1.6.78",
       "build": 102,
       "released": "2026-11-25T13:33:54+06:00",

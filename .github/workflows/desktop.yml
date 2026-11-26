@@ -46,7 +46,7 @@ jobs:
           # A desktop release cut before version.json catches up (apps/desktop/RELEASE_VERSION) stamps its own version.
           v=$( [ -f apps/desktop/RELEASE_VERSION ] && tr -d '[:space:]' < apps/desktop/RELEASE_VERSION || true )
           node apps/web/scripts/build-shell.mjs --platform windows --production --required --no-copy ${v:+--app-version "$v"}
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: web-export
           path: apps/web/.next-shell-windows-release
@@ -54,7 +54,7 @@ jobs:
           include-hidden-files: true
       - name: The Dropbox and Google Drive code (packages/cloud-folders, put in the page by lib.rs)
         run: node apps/ios/scripts/bundle-cloud.mjs
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: cloud-kit
           path: apps/ios/ios/App/Native/Shell/folevi-cloud.js
@@ -156,7 +156,7 @@ jobs:
           else
             node scripts/measure.mjs --label tauri --out measure-tauri.json --wait 30 --expect-ready -- "$bin"
           fi
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: Folevi ${{ matrix.name }}
           retention-days: 7
@@ -201,7 +201,7 @@ jobs:
             fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, lines.join("\n") + "\n");
             fs.writeFileSync("measure-summary.json", JSON.stringify(rows, null, 2));
           '
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:
           name: Measurements ${{ matrix.name }}
@@ -239,7 +239,7 @@ jobs:
           deb=$(find artifacts -name '*.deb' | head -1)
           packaging/linux/scripts/flatpak-bundle.sh "$deb" "Folevi-${{ matrix.arch }}.flatpak"
           echo "### Flatpak ${{ matrix.arch }}: $(du -m Folevi-${{ matrix.arch }}.flatpak | cut -f1) MB" >> "$GITHUB_STEP_SUMMARY"
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: Folevi Linux Flatpak ${{ matrix.arch }}
           retention-days: 7

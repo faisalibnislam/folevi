@@ -16,6 +16,7 @@ import { ColumnBlock, ColumnsBlock, ColumnsExtension } from "./columns/columnsEx
 import { TabsExtension } from "./tabs/tabsExtension";
 import { SafeFocus } from "./safeFocus";
 import { Spellcheck } from "./spellcheck";
+import { Predict } from "./predict";
 
 /**
  * The editor's extensions: every block and mark, their node views, undo, the drop and gap cursors, the
@@ -76,8 +77,10 @@ export function editorExtensions({
     BlockHighlight,
     RemoteCarets,
     PageLinkStatus,
-    // Red lines under misspelt words, where Folevi does the spelling itself (the website, in English).
+    // Red lines under misspelt words: Folevi's own spelling, in every app (lib/spelling/web.ts).
     Spellcheck,
+    // The next word as gray ghost text, Tab to take it (predict.ts).
+    Predict,
     Triggers.configure({ onChange: onTrigger }),
   ];
 }

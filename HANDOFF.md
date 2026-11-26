@@ -2,7 +2,7 @@
 
 > Read this first if you are a Claude (or any agent) picking this project up, on this Mac or another one. Then read `CLAUDE.md`, `docs/HANDOFF.md` (the long handoff: unfinished branches, release detail, what the owner is waiting on) and `docs/claude-context/memory/MEMORY.md` (the owner's standing rules). Keep this file current: after every change to the project, update "Current state", "Next steps" and "Change log", and commit it.
 
-Last updated: 2026-11-25 · Written on: Faisal's MacBook Pro M5
+Last updated: 2026-11-26 · Written on: Faisal's MacBook Pro M5
 
 ## 1. What this is
 
@@ -251,6 +251,11 @@ The ones most likely to be broken:
 - Give before/after screenshots for UI work and ask the owner with clear options when a decision is theirs.
 
 ## 9. Current state (as of 2026-11-25)
+
+**2026-11-26, spell check and prediction (branch `claude/vigorous-raman-bb697b`, PR open):** Folevi's own spell
+check (Hunspell as WebAssembly, ten languages, offline), suggestions in the right-click menu, a bubble and the phone
+keyboard strip, and next-word prediction with Tab, in every app. Plan, design and what's left:
+`docs/SPELLING_PLAN.md`. Not released; not tried in the native builds or on devices.
 
 **Read this first: everything open on 2026-11-25 is merged and released as 1.6.78 (build 102).** PR 109
 (`claude/integration-2026-11-25`, merge commit `e0183862`) merged PRs 104, 96, 92, 89, 78, 97, 98, 81, 82, 69 (with
@@ -1016,6 +1021,8 @@ signed-in account, 1.5.58's frosted folders with a large library, and the iPad c
 account button should move past iPadOS's window buttons).
 
 ## 10. Next steps / open work
+- Spell check and prediction (`docs/SPELLING_PLAN.md`): merge the PR when CI is green; then a native Settings row
+  for Writing on the Mac and iPhone/iPad, and a check in each app's build (Mac, iOS, Android, Windows, Linux).
 - Float this note (PR from `claude/float-this-note`): CI's e2e, then merge; it ships in the next release of each app
   (Mac and Windows need new builds for the window; the web works on deploy). Then the owner tries it on the Mac
   (several panels, pin off and on, over a full-screen app), on a Windows PC and in Chrome. Possible follow-ups:
@@ -1306,6 +1313,11 @@ account button should move past iPadOS's window buttons).
   `DATABASE_UDF_USER_TIMEOUT_SECONDS=4` for that backend. Bursts show in `convex.log` as "took a long time".
 
 ## 12. Change log
+- 2026-11-26: **Spell check, suggestions and next-word prediction** for every app (`docs/SPELLING_PLAN.md`): Hunspell
+  WebAssembly in a worker, 10 languages detected per line, personal dictionary synced (`convex/spelling.ts`), ghost
+  text with Tab (on-device model, Foli AI after a pause), Settings > Writing, per-note switch, F7. Checked: typecheck,
+  lint, web unit suite, Convex and parity tests, Playwright in Chromium and WebKit (local mode). Not checked in the
+  native builds or on devices.
 - 2026-11-25: Mac feedback round 2: New note's even 6 px inset; one note in two joined tabs stays in the tab on
   screen (`shownId`/`pick` in `lib/app/tabs.tsx`); hovered tab's pin clear of the title; table cells wrap alike
   edited or not. Checked: typecheck, lint, unit suite (2247), WebKit probes (inset 6/6/6, pin fade 48 px). The table

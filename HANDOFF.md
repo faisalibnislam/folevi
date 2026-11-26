@@ -1332,6 +1332,9 @@ account button should move past iPadOS's window buttons).
   `DATABASE_UDF_USER_TIMEOUT_SECONDS=4` for that backend. Bursts show in `convex.log` as "took a long time".
 
 ## 12. Change log
+- 2026-11-26: **The caret follows the text's colour** in every field (`input`, `textarea`, editable text): left to
+  "auto", WebKit in the apps drew the system's dark insertion point in the Vault's dark passcode field. Editors
+  that colour their caret (the note's ember) keep it. Checked computed styles in a browser; not in a Mac build.
 - 2026-11-26: **Window polish** (owner's feedback): Home stays in the tab strip before the tab arrows, never scrolled
   away (TabStrip.tsx; tests now find it by `[data-tab-home]`); pickers in a dialog (Move to folder, Move page, Add
   tag, Link a page) fit a short window: Dialog's new `fit` makes the body a column and the list (`min-h-0`) the one

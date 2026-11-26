@@ -143,6 +143,10 @@
     min-height: 100dvh;
     font-feature-settings: "cv11", "ss01", "ss03";
   }
+  /* The caret always takes the text's own colour, so it shows on any surface: left to "auto", WebKit in the apps
+     draws the system's insertion point, which follows the window's appearance, not the page (a dark caret in the
+     Vault's dark passcode field in light mode, the owner, 2026-11-26). Editors that colour their caret keep it. */
+  input, textarea, [contenteditable]:not([contenteditable="false"]) { caret-color: currentColor; }
   ::selection {
     background: var(--color-selection);
     color: inherit;

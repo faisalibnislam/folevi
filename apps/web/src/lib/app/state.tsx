@@ -523,4 +523,4 @@ type NativeGateExtras = Omit<NativeGateProps, "gate" | "title" | "message" | "bu
   gate?: string;
 };
 
-export { useMeQuery };
+export { useMeQuery, useWorkspacesQuery };

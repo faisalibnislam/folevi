@@ -344,7 +344,7 @@ final class ShellRouter {
         case "authFetch":
             return try await ShellAuth.shared.fetch(path: s(o, "path") ?? "", method: s(o, "method"), headers: o["headers"] as? [String: Any], body: s(o, "body"))
         case "authConvexToken":
-            return ["value": Self.orNull(try await ShellAuth.shared.convexToken())]
+            return ["value": Self.orNull(try await ShellAuth.shared.convexToken(fresh: (o["fresh"] as? Bool) ?? false))]
 
         // ---- Foli AI on this Mac (ShellAI: Apple's on-device model, or the person's own keys)
         case "aiCapabilities":

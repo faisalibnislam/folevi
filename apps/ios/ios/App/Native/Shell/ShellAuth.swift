@@ -121,6 +121,7 @@ final class ShellAuth: NSObject {
 
     /// Ends one account's session here and forgets its token.
     func signOut(userId: String) async {
+        Self.keepJWT(nil, for: nil)
         if let bearer = token(for: userId) { await endSession(bearer, at: service(for: userId)) }
         setToken(nil, for: userId)
     }
@@ -261,6 +262,7 @@ final class ShellAuth: NSObject {
 
     func signOut() async {
         await MainActor.run { sheet?.session.cancel() }
+        Self.keepJWT(nil, for: nil)
         if let bearer = token { await endSession(bearer) }
         token = nil
     }
@@ -295,18 +297,62 @@ final class ShellAuth: NSObject {
         return ["status": res.statusCode, "headers": out, "body": text]
     }
 
-    /// A short-lived Convex JWT, or nil when signed out (a 401 also forgets the session).
-    func convexToken() async throws -> String? {
+    /// A short-lived Convex JWT, or nil when signed out (a 401 also forgets the session). `fresh`: the page's Convex
+    /// client is renewing one (it's about to run out, or the backend refused it), so never the kept one.
+    ///
+    /// A JWT this session got in the last few minutes is handed out again: every window, floating note and Quick Add
+    /// page asks for one as it opens, and each ask was a round trip to the website (two hops, about 0.7 s far from
+    /// it) before that page's live data could start (docs/perf/feel-results.md). Only while it has more than
+    /// `jwtReuseMargin` left, so a page never starts on a token close to running out.
+    func convexToken(fresh: Bool = false) async throws -> String? {
         guard let bearer = token, let url = URL(string: "/api/auth/convex/token", relativeTo: service)?.absoluteURL else { return nil }
+        if !fresh, let kept = Self.keptJWT(for: bearer) { return kept }
         let (res, data, _) = try await send(url, method: "GET", bearer: bearer)
         if res.statusCode == 401 {
+            Self.keepJWT(nil, for: nil)
             token = nil
             return nil
         }
         if res.statusCode == 403 { return nil }
         guard (200..<300).contains(res.statusCode) else { throw URLError(.badServerResponse) }
         let jwt = (try? JSONSerialization.jsonObject(with: data) as? [String: Any])?["token"] as? String
-        return (jwt?.isEmpty ?? true) ? nil : jwt
+        guard let jwt, !jwt.isEmpty else { return nil }
+        // A session the request rotated keeps the JWT under its new token (send stored it as the session).
+        Self.keepJWT(jwt, for: token ?? bearer)
+        return jwt
+    }
+
+    /// How long a kept JWT must still have to run to be handed out again (Folevi's last 15 minutes).
+    static let jwtReuseMargin: TimeInterval = 5 * 60
+    private static let jwtLock = NSLock()
+    /// The last JWT and the session it's for (only that session's; another account or a new sign-in asks again).
+    private static var kept: (bearer: String, jwt: String, expires: Date)?
+
+    static func keepJWT(_ jwt: String?, for bearer: String?) {
+        jwtLock.lock()
+        defer { jwtLock.unlock() }
+        guard let jwt, let bearer, let expires = expiry(of: jwt) else {
+            kept = nil
+            return
+        }
+        kept = (bearer, jwt, expires)
+    }
+
+    static func keptJWT(for bearer: String, now: Date = Date()) -> String? {
+        jwtLock.lock()
+        defer { jwtLock.unlock() }
+        guard let k = kept, k.bearer == bearer, k.expires.timeIntervalSince(now) > jwtReuseMargin else { return nil }
+        return k.jwt
+    }
+
+    /// A JWT's `exp`, read without checking it (only to know when to stop handing it out).
+    static func expiry(of jwt: String) -> Date? {
+        let parts = jwt.split(separator: ".")
+        guard parts.count == 3 else { return nil }
+        var b64 = String(parts[1]).replacingOccurrences(of: "-", with: "+").replacingOccurrences(of: "_", with: "/")
+        while b64.count % 4 != 0 { b64 += "=" }
+        guard let data = Data(base64Encoded: b64), let claims = try? JSONSerialization.jsonObject(with: data) as? [String: Any], let exp = (claims["exp"] as? NSNumber)?.doubleValue else { return nil }
+        return Date(timeIntervalSince1970: exp)
     }
 }
 

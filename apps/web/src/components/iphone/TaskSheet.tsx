@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState, type ReactNode } from "react";
-import { useMutation } from "convex/react";
 import { useQuery } from "@/lib/convex/queries";
 import { addDays } from "@folevi/editor-schema";
 import { CalendarDays, ChevronRight, Clock, FileText, Flag, Repeat, UserRound } from "lucide-react";
@@ -16,6 +15,7 @@ import { useToast, errorMessage } from "@/components/ui/Toast";
 import type { TaskRow } from "@/components/views/TasksView";
 import { Sheet } from "./Sheet";
 import { TaskBox } from "./Tasks";
+import { taskUpdated, useOptimisticMutation } from "@/lib/convex/optimistic";
 
 type Status = TaskRow["status"];
 type Priority = "none" | "low" | "medium" | "high";
@@ -54,7 +54,7 @@ function TaskDetails({ task, onClose }: { task: TaskRow; onClose: () => void }) 
   const members = useQuery(api.workspaces.members, workspace ? { workspaceId: workspace.id } : "skip");
   // Personal has no members: its tasks are yours (a guest on a page can still be the assignee already set).
   const people = workspace ? (members?.members ?? []) : [{ profileId: profile.id, displayName: profile.displayName, isYou: true }];
-  const update = useMutation(api.tasks.update);
+  const update = useOptimisticMutation(api.tasks.update, taskUpdated);
   const toast = useToast();
   // What's shown follows each change at once; the task's own values catch up when the change is saved.
   const [draft, setDraft] = useState<{ status: Status; dueDate: string | null; dueTime: string | null; priority: Priority; assigneeId: string | null }>(() => ({

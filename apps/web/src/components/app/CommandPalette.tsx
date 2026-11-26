@@ -23,6 +23,8 @@ import { Highlight } from "./Highlight";
 import { formatRelative } from "@/lib/format";
 import { t } from "@/i18n";
 import { Select } from "@/components/ui/Select";
+import { ContextMenu, type MenuItem } from "@/components/ui/Menu";
+import { floatMenuItems } from "./floatMenu";
 import { useIphoneApp, sideInsets } from "@/lib/iphone";
 import { useFold } from "@/lib/platform";
 import { IphoneScopes } from "@/components/iphone/lazy";
@@ -59,6 +61,8 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
   const live = open || visible;
   const dialogRef = useRef<HTMLDialogElement>(null);
   const listId = useId();
+  // A note's right-click in the results: Open, and Float this note where a note can float (lib/app/float.ts).
+  const [docMenu, setDocMenu] = useState<{ x: number; y: number; items: MenuItem[] } | null>(null);
   const [filters, setFilters] = useState<{ folderId?: string; tagId?: string; creatorId?: string; updated?: "7" | "30" | "365" }>({});
   // Search, recents and filters follow the current context (Personal or a workspace).
   const org = useFolderTree(live ? scope : "skip");
@@ -381,6 +385,16 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
                       className={cls}
                       onMouseEnter={() => setActive(i)}
                       onClick={() => run(item)}
+                      onContextMenu={
+                        item.kind === "doc" && !allPlaces
+                          ? (e: React.MouseEvent<HTMLElement>) => {
+                              const items = floatMenuItems({ id: item.id, title: item.title });
+                              if (!items.length) return;
+                              e.preventDefault();
+                              setDocMenu({ x: e.clientX, y: e.clientY, items: [{ label: "Open", icon: <ArrowRight size={14} />, onSelect: () => run(item) }, ...items.map((it) => ({ ...it, onSelect: () => (it.onSelect(), onClose()) }))] });
+                            }
+                          : undefined
+                      }
                       {...(item.kind === "doc" && !allPlaces && !iphone ? { draggable: true, onDragStart: (e: React.DragEvent<HTMLElement>) => dragOut(e, item.id) } : {})}
                     >
                       {item.kind === "doc" ? (
@@ -426,6 +440,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
           </p>
         </div>
       ) : null}
+      {docMenu && dialogRef.current ? <ContextMenu at={docMenu} label="Note actions" items={docMenu.items} host={dialogRef.current} onClose={() => setDocMenu(null)} /> : null}
     </dialog>
   );
 }

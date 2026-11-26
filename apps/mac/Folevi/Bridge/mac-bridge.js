@@ -244,6 +244,17 @@
         return r && typeof r.text === "string" ? { text: r.text } : null;
       });
     };
+  // "Float this note" (Chrome/FloatWindows.swift): a note in a panel of its own, and that panel's pin.
+  if (has.floatNote)
+    desktop.floatNote = function (note) {
+      fire("floatNote", { id: String((note && note.id) || ""), title: String((note && note.title) || "") });
+    };
+  if (has.floatOnTop)
+    desktop.floatOnTop = function (on) {
+      return quietly(desk("floatOnTop", typeof on === "boolean" ? { on: on } : {})).then(function (r) {
+        return r && typeof r.value === "boolean" ? r.value : null;
+      });
+    };
   // Other packages' page-side pieces (drag regions, the native text menu, ...), each a file WebViewFactory
   // places here, with call, listen, desk, fire, quietly and BOOT in reach.
   /*__FOLEVI_EXTRAS__*/

@@ -580,8 +580,12 @@
 
   /* Tab strip tabs (TabStrip): pin and close float over the end of the title. The open tab keeps room for its
      always-visible close; on hover (or keyboard focus inside) the title's end fades out under the buttons. */
-  .ui-tab { --tab-fade: 44px; }
+  /* Pin (20px) + 4px gap + close (20px) + 4px from the edge = 48px. The open tab keeps 20px for its close at rest; on
+     hover its pin shows too, so its title fades out clear of both like any other tab's (the owner, 2026-11-25: the pin
+     sat on the words of a long title and could hardly be seen). */
+  .ui-tab { --tab-fade: 48px; }
   .ui-tab[data-tab-active] { --tab-fade: 20px; }
+  .ui-tab[data-tab-active]:is(:hover, :has(:focus-visible)) { --tab-fade: 48px; }
   .ui-tab[data-tab-active] .ui-tab-label { padding-right: 20px; }
   .ui-tab:is(:hover, :has(:focus-visible)) .ui-tab-label {
     -webkit-mask-image: linear-gradient(to left, transparent var(--tab-fade), #000 calc(var(--tab-fade) + 16px));
@@ -1783,3 +1787,37 @@
 }
 :root[data-iphone] [data-iphone-scroll][data-native-chrome][data-iphone-plain] > .fb-sheet[data-pages],
 :root[data-iphone][data-iphone-keyboard] [data-iphone-scroll][data-native-chrome][data-iphone-plain] > .fb-sheet[data-pages] { padding-bottom: 3rem; }
+
+/* "Float this note" (components/app/FloatNote.tsx): a compact window, the note's title and text filling it under the
+   slim bar. The page loses its floating card (rounded corners, shadow, wide margins) and a cover shrinks to a band. */
+:root[data-float] #doc-scroll {
+  padding: 4px 4px 48px;
+  border-radius: 0;
+  box-shadow: none;
+}
+:root[data-float] [data-note-panel] {
+  padding: 0;
+}
+:root[data-float] .fb-sheet {
+  max-width: none !important;
+  min-height: 100%;
+  border-radius: 0;
+  box-shadow: none;
+}
+:root[data-float] [data-note-cover] {
+  min-height: 0;
+  padding: 20px 16px 12px;
+  border-radius: 0;
+}
+:root[data-float] .fb-sheet .sm\:px-16 {
+  padding-left: 16px;
+  padding-right: 16px;
+}
+:root[data-float] [data-float-bar] {
+  -webkit-user-select: none;
+  user-select: none;
+}
+/* The Mac app's window has no buttons of its own here: the bar starts at the edge. */
+:root[data-float][data-desktop] [data-float-bar] {
+  padding-left: 12px;
+}

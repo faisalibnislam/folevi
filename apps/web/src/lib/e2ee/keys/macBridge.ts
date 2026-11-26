@@ -10,7 +10,7 @@ import type { ShellE2ee } from "@/lib/shell/types";
 import { bytes } from "./util";
 import type { DeviceIdentity } from "./keystore";
 
-export type NativePlatform = "mac" | "ios" | "android";
+export type NativePlatform = "mac" | "ios" | "android" | "windows" | "linux";
 
 type Globals = {
   foleviShell?: { platform?: string; e2ee?: ShellE2ee; deviceName?: string; deviceFamily?: string; model?: string };
@@ -19,7 +19,8 @@ type Globals = {
 };
 const globals = (): Globals => (typeof window === "undefined" ? {} : (window as unknown as Globals));
 
-const asPlatform = (p: unknown): NativePlatform | null => (p === "mac" || p === "ios" || p === "android" ? p : null);
+const asPlatform = (p: unknown): NativePlatform | null =>
+  p === "mac" || p === "ios" || p === "android" || p === "windows" || p === "linux" ? p : null;
 
 /** Which native app this page runs in, or null in a browser. */
 export function nativePlatform(): NativePlatform | null {
@@ -27,7 +28,10 @@ export function nativePlatform(): NativePlatform | null {
   const w = globals();
   const p = asPlatform(w.foleviShell?.platform) ?? asPlatform(w.foleviDesktop?.platform) ?? asPlatform(w.foleviNative?.platform);
   if (p) return p;
-  return typeof location !== "undefined" && location.protocol === "app:" ? "mac" : null;
+  // The Linux app also serves its page from app://, so the protocol alone only means the Mac when no
+  // other desktop shell has said who it is.
+  const tauri = typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
+  return !tauri && typeof location !== "undefined" && location.protocol === "app:" ? "mac" : null;
 }
 
 /** Whether this page runs in one of Folevi's native apps (passkeys aren't offered there). */
@@ -75,9 +79,9 @@ function appleFamily(): "iPhone" | "iPad" {
   return "iPhone";
 }
 
-/** What the app is called on this device: "Mac", "iPhone", "iPad" or "Android". */
-export function nativeProduct(p: NativePlatform | null = nativePlatform()): "Mac" | "iPhone" | "iPad" | "Android" {
-  return p === "ios" ? appleFamily() : p === "android" ? "Android" : "Mac";
+/** What the app is called on this device: "Mac", "iPhone", "iPad", "Android", "Windows" or "Linux". */
+export function nativeProduct(p: NativePlatform | null = nativePlatform()): "Mac" | "iPhone" | "iPad" | "Android" | "Windows" | "Linux" {
+  return p === "ios" ? appleFamily() : p === "android" ? "Android" : p === "windows" ? "Windows" : p === "linux" ? "Linux" : "Mac";
 }
 
 /**
@@ -99,12 +103,12 @@ export function macLabel(): string {
   return nativeLabel("mac");
 }
 
-/** This device in a sentence: "this Mac", "this iPhone", "this iPad", "this phone" (Android). */
+/** This device in a sentence: "this Mac", "this iPhone", "this iPad", "this phone" (Android), "this PC" (Windows), "this computer" (Linux). */
 export function thisDevice(p: NativePlatform | null = nativePlatform()): string {
-  return p === "android" ? "this phone" : `this ${nativeProduct(p)}`;
+  return p === "android" ? "this phone" : p === "windows" ? "this PC" : p === "linux" ? "this computer" : `this ${nativeProduct(p)}`;
 }
 
-/** The platform a device registers with: "mac", "ios", "android", or "web" for a browser. */
+/** The platform a device registers with: "mac", "ios", "android", "windows", "linux", or "web" for a browser. */
 export function devicePlatform(): NativePlatform | "web" {
   return nativePlatform() ?? "web";
 }

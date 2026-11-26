@@ -726,6 +726,10 @@ mark[class^="fb-hl-"], .fb-hl-yellow, .fb-hl-green, .fb-hl-blue, .fb-hl-pink { c
 .fb-table .fb-cell:focus { outline: none; }
 .fb-cell-host .fb-cell-editor { white-space: pre-wrap; overflow-wrap: anywhere; outline: none; caret-color: var(--color-ink); }
 .fb-cell-host .fb-cell-line { margin: 0; min-height: 1.5em; }
+/* A cell wraps the same way being edited (its lines are <p>, which globals.css sets to `text-wrap: pretty`) as
+   not (plain text): clicking into a cell used to rewrap its words (the owner, 2026-11-25). Plain wrapping, as
+   typing would rewrap earlier lines under `pretty`. */
+.fb-table .fb-cell, .fb-table .fb-cell p, .fb-cell-host .fb-cell-line { text-wrap: wrap; }
 .fb-table .fb-cell-active { background: color-mix(in oklab, var(--color-accent-soft) 45%, transparent); box-shadow: inset 0 0 0 1.5px color-mix(in oklab, var(--color-accent) 55%, transparent); }
 .fb-table .fb-cell-number:not(.fb-cell-active) .fb-cell { text-align: right; font-variant-numeric: tabular-nums; }
 td.fb-cell-number, th.fb-cell-number { text-align: right; font-variant-numeric: tabular-nums; }

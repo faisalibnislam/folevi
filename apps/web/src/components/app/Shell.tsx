@@ -5,10 +5,12 @@ import { useQuery } from "@/lib/convex/queries";
 import { useOfflineQuery } from "@/lib/sync/queryCache";
 import { ChevronLeft, ChevronRight, GripVertical, PanelLeft, Plus, X } from "lucide-react";
 import { usePane } from "@/lib/app/panes";
+import { useFloating } from "@/lib/app/floatContext";
 import { api } from "@/lib/convex/api";
 import { useAppRouter } from "@/lib/app/router";
 import { useAppState } from "@/lib/app/state";
-import { NativeTabsProvider, TabsProvider, useViewTab, useWarmTabs } from "@/lib/app/tabs";
+import { NativeTabsProvider, TabsProvider, openNextInNewTab, useViewTab, useWarmTabs } from "@/lib/app/tabs";
+import { setFloatOpenMain } from "@/lib/app/float";
 import { NotePanes } from "./NotePanes";
 import { useLocalStorage } from "@/lib/hooks/useEngine";
 import { localDb } from "@/lib/sync/db";
@@ -338,6 +340,14 @@ function NativeContentShell() {
 
 function WebShell() {
   const { route, navigate, search } = useAppRouter();
+  // A note floating in Chrome's Picture-in-Picture window opens here, in a tab of its own (lib/app/float.ts).
+  useEffect(() => {
+    setFloatOpenMain((path) => {
+      if (path.startsWith("/d/")) openNextInNewTab();
+      navigate(path);
+    });
+    return () => setFloatOpenMain(null);
+  }, [navigate]);
   const [collapsed, setCollapsed] = useLocalStorage("folevi:sidebar-collapsed", false);
   const [width, setWidth] = useLocalStorage("folevi:sidebar-width", 248);
   // Open by default (each note opens on Foli AI, or Insert with it off); a close is remembered (the owner, 2026-11-18).
@@ -808,6 +818,22 @@ export function ViewChrome({ title, subtitle, leading, actions, children, tabTit
   const ipad = useIpadLayout();
   const ipadNativeWide = useIpadNativeWide();
   const pane = usePane();
+  // A floating note's window (components/app/FloatNote.tsx): its own slim bar has the name; the view is the note.
+  const floating = useFloating();
+  const floatName = tabTitle ?? (typeof title === "string" ? title : undefined);
+  useEffect(() => {
+    if (floating && floatName !== undefined) floating.onTitle(floatName);
+  }, [floating, floatName]);
+  if (floating) {
+    return (
+      <div className="relative flex h-full min-h-0 flex-1 flex-col">
+        <main id="main" tabIndex={-1} className="min-h-0 flex-1 overflow-hidden outline-none">
+          {children}
+        </main>
+        {overlay}
+      </div>
+    );
+  }
   if (nativeChrome()) {
     // Native chrome mode: the native app draws the bars; the view keeps clear of them by the insets it was given.
     // Joined notes keep their own bars (the Mac app: each note's, to tell which has focus and to rearrange them).

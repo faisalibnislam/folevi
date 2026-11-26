@@ -6,6 +6,7 @@ import { historyNavServerSnapshot, historyNavSnapshot, locationSnapshot, notifyL
 import { APP_ROUTE_HEADS } from "./routes";
 import { nativeChrome } from "@/lib/nativeApp";
 import { requestNavigation } from "@/lib/engine/navigation";
+import { routeFromFloat } from "./float";
 
 /**
  * Client-side routing for the product shell. Every product URL is rendered by one catch-all route, and
@@ -48,6 +49,8 @@ export type Route =
   | { name: "onboarding" }
   /** The Mac app's Quick Add window (apps/mac QuickAddPanel.swift). */
   | { name: "quick-add" }
+  /** A floating note's own window (lib/app/float.ts): the note alone under a slim bar. */
+  | { name: "float"; id: string }
   /** A place kept in sync behind the scenes (several places at once): no window shows it (components/places/PlaceSync.tsx). */
   | { name: "place-sync" }
   /** Save to Folevi: a share from another app (share target) or the bookmarklet, saved to an Inbox. */
@@ -122,6 +125,8 @@ export function parseRoute(pathname: string): Route {
       return a ? { name: "share-invite", token: a } : { name: "not_found" };
     case "native":
       return { name: "native" };
+    case "float":
+      return a ? { name: "float", id: a } : { name: "not_found" };
     default:
       return { name: "not_found" };
   }
@@ -181,6 +186,8 @@ export function AppRouterProvider({ children }: { children: ReactNode }) {
       if (opts?.engine || (to.origin === window.location.origin && to.pathname === here) || !requestNavigation(href)) replaceEntry(href);
       return;
     }
+    // A floating note's window keeps its note: anything else opens in the main window (lib/app/float.ts).
+    if (routeFromFloat(href)) return;
     if (opts?.replace) replaceEntry(href);
     else pushEntry(href);
     // Move focus to the main region for screen-reader users after navigation.

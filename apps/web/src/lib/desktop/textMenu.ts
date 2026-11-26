@@ -83,7 +83,7 @@ export interface MacTextItems {
  * The Mac's text items for a right-click, all null outside the Mac app. `word` is the word under the pointer in
  * editable text (and `replace` puts a guess in its place); `selection` the selected text; `at` where the pointer is.
  */
-export async function macTextActions({ word, selection, at, replace, spellLang, deviceOnly }: { word?: string | null; selection?: string; at: { x: number; y: number }; replace?: (guess: string) => void; /** A note's body: Folevi's spelling in this language. */ spellLang?: SpellLanguage; /** An encrypted note: words added stay on this device. */ deviceOnly?: boolean }): Promise<MacTextItems> {
+export async function macTextActions({ word, selection, at, replace, spellLang, deviceOnly }: { word?: string | null; selection?: string; at: { x: number; y: number }; replace?: (guess: string) => void; /** A note's body: Folevi's spelling in the line's languages (the first one's guesses first). */ spellLang?: readonly SpellLanguage[]; /** An encrypted note: words added stay on this device. */ deviceOnly?: boolean }): Promise<MacTextItems> {
   const out: MacTextItems = { spelling: null, lookUp: null, share: null };
   if (word && replace && spellLang) {
     if (!ownSpelling()) return { ...(await macTextActions({ selection, at })), spelling: null };

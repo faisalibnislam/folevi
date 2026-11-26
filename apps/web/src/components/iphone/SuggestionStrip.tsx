@@ -28,7 +28,7 @@ export function SuggestionStrip({ editor }: { editor: Editor }) {
           const key = `${hit.from}:${hit.word}`;
           if (asked.current === key) return;
           asked.current = key;
-          void webSpelling(hit.word, hit.lang).then((a) => {
+          void webSpelling(hit.word, hit.langs).then((a) => {
             if (asked.current === key) setRow({ kind: "spelling", word: hit.word, from: hit.from, to: hit.to, guesses: a?.guesses.slice(0, 3) ?? [] });
           });
           return;

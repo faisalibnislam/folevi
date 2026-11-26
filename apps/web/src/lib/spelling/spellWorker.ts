@@ -12,8 +12,9 @@ import { createSpellChecker, type SpellChecker } from "./spellCore";
 export type SpellRequest =
   | { type: "init"; base: string }
   | { type: "personal"; words: string[] }
-  | { type: "check"; id: number; lang: SpellLanguage; words: string[] }
-  | { type: "suggest"; id: number; lang: SpellLanguage; word: string }
+  /** `also`: more languages a word may be right in (wrong only when wrong in all). */
+  | { type: "check"; id: number; lang: SpellLanguage; also?: SpellLanguage[]; words: string[] }
+  | { type: "suggest"; id: number; lang: SpellLanguage; also?: SpellLanguage[]; word: string }
   | { type: "learn"; lang: SpellLanguage; text: string }
   | { type: "predict"; id: number; lang: SpellLanguage; before: string };
 
@@ -59,6 +60,12 @@ function checkerFor(lang: SpellLanguage): Promise<SpellChecker> | null {
     checkers.set(lang, made);
   }
   return made;
+}
+
+/** The checkers for `langs` (those with a dictionary), or null when none has one. */
+function checkersFor(langs: SpellLanguage[]): Promise<SpellChecker[]> | null {
+  const made = [...new Set(langs)].map(checkerFor).filter((m): m is Promise<SpellChecker> => m !== null);
+  return made.length ? Promise.all(made) : null;
 }
 
 // --- Prediction ---------------------------------------------------------------------------------------------
@@ -138,22 +145,25 @@ self.onmessage = (e: MessageEvent<SpellRequest>) => {
       return;
     }
     case "check": {
-      const made = checkerFor(r.lang);
-      if (!made) return reply({ id: r.id, type: "check", wrong: [] });
-      void made.then(
-        (c) => reply({ id: r.id, type: "check", wrong: r.words.filter((w) => !c.correct(w)) }),
+      const all = checkersFor([r.lang, ...(r.also ?? [])]);
+      if (!all) return reply({ id: r.id, type: "check", wrong: [] });
+      void all.then(
+        (cs) => reply({ id: r.id, type: "check", wrong: r.words.filter((w) => cs.every((c) => !c.correct(w))) }),
         () => reply({ id: r.id, type: "check", wrong: null }),
       );
       return;
     }
     case "suggest": {
-      const made = checkerFor(r.lang);
-      if (!made) return reply({ id: r.id, type: "suggest", misspelled: false, guesses: [] });
-      void made.then(
-        (c) => {
-          // An empty word only warms the dictionary up.
-          const misspelled = r.word ? !c.correct(r.word) : false;
-          reply({ id: r.id, type: "suggest", misspelled, guesses: misspelled ? c.suggest(r.word, 5) : [] });
+      const all = checkersFor([r.lang, ...(r.also ?? [])]);
+      if (!all) return reply({ id: r.id, type: "suggest", misspelled: false, guesses: [] });
+      void all.then(
+        (cs) => {
+          // An empty word only warms the dictionaries up.
+          const misspelled = r.word ? cs.every((c) => !c.correct(r.word)) : false;
+          // The first language's guesses first, then the others', five in all.
+          const guesses: string[] = [];
+          if (misspelled) for (const c of cs) for (const g of c.suggest(r.word, 5)) if (!guesses.includes(g)) guesses.push(g);
+          reply({ id: r.id, type: "suggest", misspelled, guesses: guesses.slice(0, 5) });
         },
         () => reply({ id: r.id, type: "suggest", misspelled: false, guesses: [] }),
       );

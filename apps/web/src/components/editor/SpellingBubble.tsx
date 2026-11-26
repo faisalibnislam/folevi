@@ -57,7 +57,7 @@ export function SpellingBubble({ editor }: { editor: TiptapEditor }) {
       const rtl = LANGUAGES[hit.lang].rtl === true;
       const next: Open = { word: hit.word, from: hit.from, to: hit.to, rtl, x: rtl ? r.right : r.left, y: r.bottom + 4, guesses: null };
       setOpen(next);
-      void webSpelling(hit.word, hit.lang).then((a) => {
+      void webSpelling(hit.word, hit.langs).then((a) => {
         if (openRef.current?.from === next.from && openRef.current.word === next.word) setOpen({ ...next, guesses: a?.guesses ?? [] });
       });
     };

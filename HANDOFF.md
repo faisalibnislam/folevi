@@ -1378,6 +1378,10 @@ account button should move past iPadOS's window buttons).
   `DATABASE_UDF_USER_TIMEOUT_SECONDS=4` for that backend. Bursts show in `convex.log` as "took a long time".
 
 ## 12. Change log
+- 2026-11-26: **PR 132 (`claude/integration-2026-11-26`, merge `135a99af`) landed PRs 117, 130 and 129 together**
+  (the owner: "resolve all merging conflict please"). All three edit this file, so they went in as one branch with
+  one CI run; checked first with CI's steps, the Mac Debug build and the iOS Simulator build. PR 112 (Android native,
+  draft) has main merged in and stays a draft. When several PRs are open again, do the same: one integration branch.
 - 2026-11-26: Native iOS 1.7.78 (build 107) on internal TestFlight from `claude/ios-native-today-ui` (delivery
   2c71915f): the SwiftUI refactors and the bar menu fix. Same bundle ID as the Capacitor 1.7.78 (build 103) the Mac
   session uploaded, so testers get the native app as the newer build.

@@ -4,6 +4,24 @@ Every Folevi release, newest first, written by `node scripts/version.mjs` from `
 
 Versions are MAJOR.UPDATE.PATCH, PATCH at least two digits: a Major release (2.0.00), a Big update (1.1.05 after 1.0.05) or a Small update (1.0.06 after 1.0.05).
 
+## Version 1.8.79: Small update
+
+Released 2026-11-26 19:33:04+06:00 (build 109, tag v1.8.79)
+
+Spell check stops mistaking English lines for another language, and the Mac, iPad and iPhone apps get a Writing section in Settings.
+
+### Added
+
+- Settings > Writing in the Mac, iPad and iPhone apps: turn spell check and next-word prediction on or off, choose American or British English, and manage your dictionary and ignored words.
+
+### Improved
+
+- Spell check reads long notes faster.
+
+### Fixed
+
+- English headings and short lines are no longer checked as Portuguese or another language, which underlined correct words and offered wrong suggestions.
+
 ## Version 1.8.78: Big update
 
 Released 2026-11-26 14:14:27+06:00 (build 108, tag v1.8.78)

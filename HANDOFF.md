@@ -261,9 +261,21 @@ body and attachment names, 20 at a time, with Stop); never NoteStore.sqlite. mac
 Privacy & Security > Automation. The engine's new run key `data.importAppleNotes` (and the web) convert each batch
 with `lib/import/appleNotes.ts` and import it through `importDocs` (extracted from `run.ts`): Notes folders become
 Folevi folders (account first when there are several), images come along (HEIC/TIFF made JPEG on the Mac), locked
-notes and other attachments are counted and reported. Original dates are NOT kept: `imports.importText` has no date
-arguments. Tests: `apps/web/test/import-apple-notes.test.ts` (fixture HTML in `test/fixtures/apple-notes`),
-`AppleNotesReaderTests.swift`. Not run against a real Notes library (owner's rule: ask before driving Notes).
+notes are counted and reported. Tests: `apps/web/test/import-apple-notes.test.ts` (fixture HTML in
+`test/fixtures/apple-notes`), `AppleNotesReaderTests.swift`. Not run against a real Notes library (owner's rule: ask
+before driving Notes).
+- **Nothing left behind (2026-11-26, branch `claude/apple-notes-originals`):** every attachment is saved out of Notes
+  with its `save` command (a temporary folder, removed right after; packages such as .pages as a ZIP; 512 MB cap) and
+  goes where the note's HTML refers to it (`cid:`), the rest at the note's end: web images as images, everything else
+  as file blocks (`importText`'s new `fileMap`; Markdown `resolveFile` makes a link on its own line a file block);
+  link attachments stay links. `#tags` become Folevi tags (`importText` `tags`, `ensureTag` / `ensureLocalTag`). Every
+  Notes folder is made, empty ones too. Original dates are kept: `importText` `createdAt` / `updatedAt`, made safe by
+  `importedDates` (editor-schema); in local mode the note file gets `doc.modifiedAt` ({at, c}: the original last
+  change, shown until a newer stamp; older apps ignore it, `importedModifiedAt` in local-store). Reads stop at a 48 MB
+  budget and the rest is asked for again. Only password-locked notes (Apple won't hand them over) and an attachment
+  Notes can't save stay behind, each reported. Tests: `tests/convex/import-originals.test.ts`,
+  `apps/web/test/local-import-originals.test.ts`, `packages/editor-schema/test/markdown-import-files.test.ts`, more in
+  the Apple Notes tests.
 
 **Native iOS again, matching today's UI (2026-11-25, branch `claude/ios-native-today-ui`, worktree
 `.claude/worktrees/ios-native-today`).** The owner found the Capacitor app finicky and chose native SwiftUI for
@@ -1091,9 +1103,10 @@ account button should move past iPadOS's window buttons).
 
 ## 10. Next steps / open work
 - Apple Notes import: try it against a Notes account made only for testing (or a test macOS user) with the owner's
-  OK, including a large library and the "denied" path; keep the original dates (needs optional `createdAt` /
-  `updatedAt` on `imports.importText` and the local-mode import handler); a localized "Recently Deleted" folder name
-  not in `AppleNotesReader.recentlyDeleted` would be imported.
+  OK, including a large library, big attachments, the "denied" path and whether Notes' `save` writes into Folevi's
+  temporary folder (Notes is sandboxed; Apple Events normally extend that to the folder named); checklists' ticks
+  (Notes' HTML may not carry them); a localized "Recently Deleted" folder name not in
+  `AppleNotesReader.recentlyDeleted` would be imported.
 - Native iPhone performance, left from the SwiftUI audit: `CardPicture` still reads `@Environment(\.self)` (any
   environment change runs its body; cheap while the picture is kept); the Mac's `PlaceholderCard` pulses each on its
   own animation (not used on the iPhone); nothing measured with Instruments before and after.
@@ -1397,6 +1410,8 @@ account button should move past iPadOS's window buttons).
 ## 12. Change log
 - 2026-11-26: **Import from Apple Notes (Mac)** (branch `claude/vibrant-feistel-d9b85a`): reader, Settings row, web
   source, engine run key `data.importAppleNotes`, parity row (Mac only). Not released.
+- 2026-11-26: **Apple Notes: nothing left behind** (branch `claude/apple-notes-originals`): every attachment, tags,
+  empty folders, original dates (Convex, local mode and the library file's `doc.modifiedAt`). Not released.
 - 2026-11-25: **Windows: home servers over plain http** (branch `claude/windows-server-bridge`, on top of
   `claude/desktop-server-places`): `src/lan_bridge.rs` relays a server place's http and ws traffic to a LAN address
   through `127.0.0.1` (WebView2 blocks it from `https://app.localhost` as mixed content), with the server's own Host.

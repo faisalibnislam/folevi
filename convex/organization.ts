@@ -505,22 +505,26 @@ export const createTag = mutation({
     const { scope } = await resolveScope(ctx, profile, args.scope, "edit");
     // An encrypted space's tag names are sealed (e2ee.content.createTag).
     await requirePlainWriteInScope(ctx, scope);
-    const name = cleanName(args.name.replace(/^#/, ""), 40);
-    const normalizedName = normalizeForSearch(name);
-    const existing = await tagNamed(ctx, scope, normalizedName);
-    if (existing) return { id: existing.publicId };
-    const publicId = ulid();
-    await insertScoped(ctx, "tags", scope, {
-      publicId,
-      name,
-      normalizedName,
-      color: TAG_COLORS.includes(args.color ?? "") ? args.color! : TAG_COLORS[Math.floor(Math.random() * 5)]!,
-      createdAt: Date.now(),
-      seq: await nextSeq(ctx, scope),
-    });
-    return { id: publicId };
+    return { id: (await ensureTag(ctx, scope, args.name, args.color)).publicId };
   },
 });
+
+/** The scope's tag with this name, made if there's none (createTag; an import's tags, imports.importText). */
+export async function ensureTag(ctx: MutationCtx, scope: Scope, rawName: string, color?: string): Promise<Doc<"tags">> {
+  const name = cleanName(rawName.replace(/^#/, ""), 40);
+  const normalizedName = normalizeForSearch(name);
+  const existing = await tagNamed(ctx, scope, normalizedName);
+  if (existing) return existing;
+  const id = await insertScoped(ctx, "tags", scope, {
+    publicId: ulid(),
+    name,
+    normalizedName,
+    color: TAG_COLORS.includes(color ?? "") ? color! : TAG_COLORS[Math.floor(Math.random() * 5)]!,
+    createdAt: Date.now(),
+    seq: await nextSeq(ctx, scope),
+  });
+  return (await ctx.db.get(id))!;
+}
 
 async function tagFor(ctx: Parameters<typeof requireProfile>[0], tagPublicId: string) {
   const profile = await requireProfile(ctx);

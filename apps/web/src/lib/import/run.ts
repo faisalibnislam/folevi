@@ -10,7 +10,7 @@ import { entriesFromFiles, entryMap } from "@/components/doc/importBundle";
 import { csvDoc, docxDoc, evernoteDocs, htmlDoc, isNotionExport, loadMarkdown, markdownDocs, notionDocs, type ImportDoc, type ImportImage } from "@/lib/import/sources";
 import { folderPathOf, planFolders } from "@/lib/import/folders";
 
-export type ImportResult = { name: string; id?: string; warnings: { line?: number; message: string }[]; error?: string; images?: number };
+export type ImportResult = { name: string; id?: string; warnings: { line?: number; message: string }[]; error?: string; images?: number; files?: number };
 
 /** Pages per import (a Notion export is often hundreds); the rest can follow in another one. */
 export const MAX_DOCS = 400;
@@ -85,6 +85,8 @@ type DocOptions = {
   total?: number;
   /** Stops before the next page (Apple Notes' Cancel). */
   signal?: AbortSignal;
+  /** More folders to make even when no page goes in them (Apple Notes' empty folders), names from the top down. */
+  folders?: string[][];
 };
 
 /**
@@ -99,16 +101,16 @@ export async function importDocs(client: Client, scope: WireScope, list: ImportD
   const total = o.total ?? list.length;
   // An image used by several pages is uploaded once.
   const uploaded = new Map<Blob, Promise<string>>();
-  const upload = (img: ImportImage) => {
+  const upload = (img: ImportImage, kind: "image" | "file" = "image") => {
     let p = uploaded.get(img.blob);
     if (!p) {
-      p = uploadFileNow(client, { scope, blob: img.blob, filename: img.filename, mimeType: img.mime, kind: "image" });
+      p = uploadFileNow(client, { scope, blob: img.blob, filename: img.filename, mimeType: img.mime, kind });
       uploaded.set(img.blob, p);
     }
     return p;
   };
   const imported = new Map<string, string>(); // path → page id, for nesting
-  const paths = list.flatMap((d) => (d.folderPath?.length ? [d.folderPath] : []));
+  const paths = [...(o.folders ?? []).filter((f) => f.length), ...list.flatMap((d) => (d.folderPath?.length ? [d.folderPath] : []))];
   const plan = planFolders(paths, paths.length ? ((await client.query(api.organization.sidebar as never, { scope } as never)) as { folders: never[] }).folders : []);
   if (plan.steps.length) setProgress(plan.steps.length === 1 ? "Making 1 folder…" : `Making ${plan.steps.length} folders…`);
   for (const step of plan.steps) await createFolder({ scope, id: step.id, name: step.name, ...(step.parentFolderId ? { parentFolderId: step.parentFolderId } : {}) });
@@ -127,6 +129,15 @@ export async function importDocs(client: Client, scope: WireScope, list: ImportD
           doc.warnings.push({ message: `Image “${img.filename}” couldn’t be uploaded: ${errorMessage(err)}` });
         }
       }
+      const fileMap: Record<string, { fileId: string; name: string; size: number; mimeType: string }> = {};
+      for (const [src, file] of doc.files ?? []) {
+        if (o.signal?.aborted) break;
+        try {
+          fileMap[src] = { fileId: await upload(file, "file"), name: file.filename, size: file.blob.size, mimeType: file.mime || "application/octet-stream" };
+        } catch (err) {
+          doc.warnings.push({ message: `Attachment “${file.filename}” couldn’t be uploaded: ${errorMessage(err)}` });
+        }
+      }
       const parentId = doc.parentPath ? imported.get(doc.parentPath) : undefined;
       const r = await importText({
         scope,
@@ -138,9 +149,14 @@ export async function importDocs(client: Client, scope: WireScope, list: ImportD
         ...(parentId ? { parentId } : {}),
         ...(doc.links ? { links: doc.links } : {}),
         ...(doc.folderPath?.length ? { folderId: plan.folderId(doc.folderPath)! } : {}),
+        ...(doc.createdAt !== undefined ? { createdAt: doc.createdAt } : {}),
+        ...(doc.updatedAt !== undefined ? { updatedAt: doc.updatedAt } : {}),
+        ...(Object.keys(fileMap).length ? { fileMap } : {}),
+        ...(doc.tags?.length ? { tags: doc.tags } : {}),
       });
       imported.set(doc.path, r.document.id);
-      out.push({ name: doc.name, id: r.document.id, warnings: [...doc.warnings, ...r.warnings], images });
+      const files = Object.keys(fileMap).length;
+      out.push({ name: doc.name, id: r.document.id, warnings: [...doc.warnings, ...r.warnings], images, ...(files ? { files } : {}) });
     } catch (err) {
       out.push({ name: doc.name, warnings: [], error: errorMessage(err) });
     }

@@ -265,12 +265,12 @@
       },
       scan: function () {
         return desk("appleNotesScan").then(function (r) {
-          return { notes: Array.isArray(r && r.notes) ? r.notes : [], locked: (r && typeof r.locked === "number" && r.locked) || 0 };
+          return { notes: Array.isArray(r && r.notes) ? r.notes : [], folders: Array.isArray(r && r.folders) ? r.folders : [], locked: (r && typeof r.locked === "number" && r.locked) || 0 };
         });
       },
       read: function (ids) {
         return desk("appleNotesRead", { ids: Array.isArray(ids) ? ids.map(String) : [] }).then(function (r) {
-          return Array.isArray(r && r.notes) ? r.notes : [];
+          return { notes: Array.isArray(r && r.notes) ? r.notes : [], missing: Array.isArray(r && r.missing) ? r.missing : [] };
         });
       },
       openSettings: function () {

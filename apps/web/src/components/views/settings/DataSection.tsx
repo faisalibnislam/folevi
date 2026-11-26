@@ -176,7 +176,7 @@ export function DataSection({ target }: { target: DataTarget }) {
                   r.error ? (
                     <span className="text-danger">{r.error}</span>
                   ) : (
-                    [r.images ? (r.images === 1 ? "1 image uploaded" : `${r.images} images uploaded`) : null, ...r.warnings.map((w) => `${w.line ? `Line ${w.line}: ` : ""}${w.message}`)].filter(Boolean).join(" · ") || "Imported without changes."
+                    [r.images ? (r.images === 1 ? "1 image uploaded" : `${r.images} images uploaded`) : null, r.files ? (r.files === 1 ? "1 attachment uploaded" : `${r.files} attachments uploaded`) : null, ...r.warnings.map((w) => `${w.line ? `Line ${w.line}: ` : ""}${w.message}`)].filter(Boolean).join(" · ") || "Imported without changes."
                   )
                 }
                 onClick={r.id ? () => navigate(`/d/${r.id}`) : undefined}
@@ -219,7 +219,7 @@ export function DataSection({ target }: { target: DataTarget }) {
         </div>
         {appleNotes ? (
           <p className="mt-2 text-footnote text-muted">
-            Apple Notes: every note you can open in Notes, in folders like Notes has them, with the images in it. Locked notes and other attachments (files, scans, drawings) stay in Notes and are listed in the results.
+            Apple Notes: every note with its folders (empty ones too), tags, images, attachments and original dates. Notes locked with a password stay in Notes until you remove their lock.
           </p>
         ) : null}
         {notesDenied ? (
@@ -248,6 +248,7 @@ export function DataSection({ target }: { target: DataTarget }) {
                   {r.error ? <span className="ml-2 text-danger">{r.error}</span> : null}
                 </p>
                 {r.images ? <p className="text-footnote text-muted">{r.images === 1 ? "1 image uploaded" : `${r.images} images uploaded`}</p> : null}
+                {r.files ? <p className="text-footnote text-muted">{r.files === 1 ? "1 attachment uploaded" : `${r.files} attachments uploaded`}</p> : null}
                 {r.warnings.length ? (
                   <ul className="mt-1 list-disc pl-5 text-footnote text-muted">
                     {r.warnings.map((w, j) => (

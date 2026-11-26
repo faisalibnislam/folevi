@@ -155,7 +155,7 @@ enum Capabilities {
     private static func appleNotesScan(_ router: DesktopRouter, _ o: [String: Any]) async throws -> [String: Any] {
         do {
             let scan = try await AppleNotesReader.shared.scan()
-            return ["notes": try jsonObject(scan.notes), "locked": scan.locked]
+            return ["notes": try jsonObject(scan.notes), "folders": scan.folders, "locked": scan.locked]
         } catch let f as AppleNotesReader.Failure {
             throw BridgeError(code: f.code, message: f.message)
         }
@@ -165,7 +165,8 @@ enum Capabilities {
         let ids = (o["ids"] as? [Any] ?? []).compactMap { $0 as? String }.filter { $0.count <= 300 }
         guard !ids.isEmpty, ids.count <= 100 else { throw BridgeError.invalid("Read between 1 and 100 notes at a time.") }
         do {
-            return ["notes": try jsonObject(try await AppleNotesReader.shared.read(ids: ids))]
+            let read = try await AppleNotesReader.shared.read(ids: ids)
+            return ["notes": try jsonObject(read.notes), "missing": read.missing]
         } catch let f as AppleNotesReader.Failure {
             throw BridgeError(code: f.code, message: f.message)
         }

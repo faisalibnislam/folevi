@@ -54,12 +54,36 @@ import FoleviEngine
 
     @Test func theNoteTheEngineGets() {
         let ref = AppleNotesReader.NoteRef(id: "x-coredata://A/ICNote/p1", title: "Plan", folder: ["iCloud", "Work"], created: 1_700_000_000_000, modified: nil)
-        let body = AppleNotesReader.Body(id: ref.id, html: "<div>Plan</div>", attachments: ["a.pdf"])
+        let body = AppleNotesReader.Body(id: ref.id, html: "<div>Plan</div>", attachments: [
+            .init(name: "a.pdf", cid: "cid:1", mime: "application/pdf", data: "AAAA"),
+            .init(name: "Site", url: "https://example.com"),
+            .init(name: "big.mov", error: "it’s over 512 MB"),
+        ])
         #expect(DataSettings.json(ref, body) == .object([
             "id": .string(ref.id), "title": .string("Plan"), "html": .string("<div>Plan</div>"),
-            "folder": .array([.string("iCloud"), .string("Work")]), "attachments": .array([.string("a.pdf")]),
+            "folder": .array([.string("iCloud"), .string("Work")]),
+            "attachments": .array([
+                .object(["name": .string("a.pdf"), "cid": .string("cid:1"), "mime": .string("application/pdf"), "data": .string("AAAA")]),
+                .object(["name": .string("Site"), "url": .string("https://example.com")]),
+                .object(["name": .string("big.mov"), "error": .string("it’s over 512 MB")]),
+            ]),
             "created": .number(1_700_000_000_000),
         ]))
+    }
+
+    @Test func attachmentFileNames() {
+        #expect(AppleNotesReader.safeFileName("Report: Q1/Q2.pdf") == "Report- Q1-Q2.pdf")
+        #expect(AppleNotesReader.safeFileName("  ") == "Attachment")
+        #expect(AppleNotesReader.safeFileName(".hidden") == "Attachment.hidden")
+    }
+
+    @Test func aPackageComesAsAZip() throws {
+        let dir = FileManager.default.temporaryDirectory.appendingPathComponent("folevi-test-\(UUID().uuidString).pages", isDirectory: true)
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: dir) }
+        try Data("hello".utf8).write(to: dir.appendingPathComponent("index.xml"))
+        let zip = try AppleNotesReader.zip(dir)
+        #expect(zip.prefix(2) == Data("PK".utf8))
     }
 }
 #endif

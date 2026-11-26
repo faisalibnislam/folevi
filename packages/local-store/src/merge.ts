@@ -344,6 +344,8 @@ export function mergeNote(a: NoteFile, b: NoteFile): MergeResult<NoteFile> {
     (v): v is number => typeof v === "number",
   );
   if (created.length) doc.createdAt = Math.min(...created);
+  const modified = [a.doc.modifiedAt, b.doc.modifiedAt].filter((m): m is NonNullable<typeof m> => !!m).sort((x, y) => (x.c < y.c ? 1 : -1))[0];
+  if (modified) doc.modifiedAt = modified;
 
   // Blocks: content by version vector, position and collapsed last writer wins.
   const blocks: Record<string, BlockEntry> = {};

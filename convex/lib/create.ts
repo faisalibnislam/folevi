@@ -32,6 +32,9 @@ export interface CreateDocumentInput {
   collectionId?: Id<"collections">;
   accessMode?: Doc<"documents">["accessMode"];
   blocks?: WireBlock[];
+  /** An imported note's original dates (imports.importText): when it was made and last changed in the other app. */
+  createdAt?: number;
+  updatedAt?: number;
   /**
    * An end-to-end encrypted note (docs/E2EE_DESIGN.md §5.4): its sealed title, appearance and meta and its
    * first note key, wrapped by the space key. The plaintext columns get placeholders (`title`, `icon`,
@@ -84,8 +87,8 @@ export async function createDocument(ctx: MutationCtx, input: CreateDocumentInpu
     rank: newDocumentRank(await lastRootRank(ctx, scope)),
     createdBy: input.actor._id,
     lastEditedBy: input.actor._id,
-    createdAt: now,
-    updatedAt: now,
+    createdAt: input.createdAt ?? now,
+    updatedAt: input.updatedAt ?? now,
     inTrash: false,
     revision: 1,
     titleRev: 1,

@@ -4,7 +4,8 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it, vi } from "vitest";
-import { appleNoteDoc, appleNotesSummary, importAppleNotes, withoutTitleLine, type AppleNotesBridge } from "@/lib/import/appleNotes";
+import { importDocs } from "@/lib/import/run";
+import { appleNoteDoc, appleNotesSummary, hashtags, importAppleNotes, withoutTitleLine, type AppleNotesBridge } from "@/lib/import/appleNotes";
 
 vi.mock("@/lib/sync/uploads", () => ({ uploadFileNow: vi.fn(async () => "file-1") }));
 
@@ -22,16 +23,82 @@ describe("Apple Notes notes as pages", () => {
     expect(doc.warnings).toEqual([]);
   });
 
-  it("brings PNG, JPEG, GIF and WebP images along, leaves others out and counts other attachments", () => {
-    const doc = appleNoteDoc({ id: "p2", title: "Trip photos", html: fixture("photo.html"), folder: [], attachments: ["IMG_1.png", "IMG_2.heic", "Ticket.pdf"] });
-    expect(doc.content).toBe("# Trip photos\n\nDay one\n\n![](apple-notes-image-1)\n\nThe end");
+  it("brings web images along as pictures and keeps any other image as its file", () => {
+    const doc = appleNoteDoc({ id: "p2", title: "Trip photos", html: fixture("photo.html"), folder: [], attachments: [{ name: "IMG_1.png", mime: "image/png", data: "AAAA" }, { name: "IMG_2.heic", mime: "image/heic", data: "AAAA" }] });
+    expect(doc.content).toBe("# Trip photos\n\nDay one\n\n![](apple-notes-image-1)\n\n[Image](apple-notes-file-1)\n\nThe end");
     expect([...doc.images.keys()]).toEqual(["apple-notes-image-1"]);
     expect(doc.images.get("apple-notes-image-1")!.mime).toBe("image/png");
+    expect(doc.files!.get("apple-notes-file-1")).toMatchObject({ filename: "Image.heic", mime: "image/heic" });
+    // Both listed attachments are the body's pictures: nothing is added twice.
+    expect(doc.warnings).toEqual([]);
     expect(doc.folderPath).toBeUndefined();
-    expect(doc.warnings.map((w) => w.message)).toEqual([
-      "1 image in a format other than PNG, JPEG, GIF or WebP was left out",
-      "1 attachment (files, scans, drawings, audio or links) isn’t imported: Notes doesn’t hand it over. Its attachments: IMG_1.png, IMG_2.heic, Ticket.pdf",
+  });
+
+  it("puts every attachment where the note shows it, the rest at the end, and keeps tags and dates", () => {
+    const pdf = btoa("%PDF-1.4 test");
+    const doc = appleNoteDoc({
+      id: "p5",
+      title: "Trip",
+      html: fixture("attachments.html"),
+      folder: ["Travel"],
+      created: 1_600_000_000_000,
+      modified: 1_700_000_000_000,
+      attachments: [
+        { name: "photo.png", mime: "image/png", data: "AAAA" },
+        { name: "Tickets.pdf", cid: "cid:TICKET-1@notes", mime: "application/pdf", data: pdf },
+        { name: "Voice memo.m4a", mime: "audio/mp4", data: "AAAA" },
+        { name: "Hotel", url: "https://example.com/hotel" },
+        { name: "Scan.pdf", error: "it’s over 512 MB" },
+      ],
+    });
+    expect(doc.content).toBe(
+      [
+        "# Trip",
+        "Plans for #travel and #Japan-2027, not #42 or example.com/#anchor.",
+        "![](apple-notes-image-1)",
+        "The tickets:",
+        "[Tickets.pdf](apple-notes-file-1)",
+        "See you there #travel",
+        "[Voice memo.m4a](apple-notes-file-2)",
+        "[Hotel](https://example.com/hotel)",
+      ].join("\n\n"),
+    );
+    expect([...doc.files!.entries()].map(([k, f]) => [k, f.filename, f.mime])).toEqual([
+      ["apple-notes-file-1", "Tickets.pdf", "application/pdf"],
+      ["apple-notes-file-2", "Voice memo.m4a", "audio/mp4"],
     ]);
+    expect(doc.tags).toEqual(["travel", "Japan-2027"]);
+    expect(doc.createdAt).toBe(1_600_000_000_000);
+    expect(doc.updatedAt).toBe(1_700_000_000_000);
+    expect(doc.warnings.map((w) => w.message)).toEqual(["Attachment “Scan.pdf” couldn’t be taken out of Notes: it’s over 512 MB"]);
+  });
+
+  it("sends the attachments, tags and dates to importText", async () => {
+    const doc = appleNoteDoc({
+      id: "p6",
+      title: "Trip",
+      html: "<div>Trip</div><div>#travel</div>",
+      folder: [],
+      created: 1_600_000_000_000,
+      modified: 1_700_000_000_000,
+      attachments: [{ name: "Tickets.pdf", mime: "application/pdf", data: btoa("%PDF") }],
+    });
+    const importText = vi.fn(async () => ({ document: { id: "D1" }, warnings: [] }));
+    const [r] = await importDocs({ query: vi.fn() } as never, { kind: "personal" }, [doc], { importText, createFolder: async () => undefined });
+    expect(importText).toHaveBeenCalledWith(
+      expect.objectContaining({
+        content: "# Trip\n\n#travel\n\n[Tickets.pdf](apple-notes-file-1)",
+        fileMap: { "apple-notes-file-1": { fileId: "file-1", name: "Tickets.pdf", size: 4, mimeType: "application/pdf" } },
+        tags: ["travel"],
+        createdAt: 1_600_000_000_000,
+        updatedAt: 1_700_000_000_000,
+      }),
+    );
+    expect(r).toMatchObject({ id: "D1", files: 1 });
+  });
+
+  it("finds Notes' tags but not numbers, anchors or repeats", () => {
+    expect(hashtags("#Work notes #work, (#ideas) #1 a#b x/#y #to_do- #日本")).toEqual(["Work", "ideas", "to_do", "日本"]);
   });
 
   it("keeps a Notes table as a table", () => {
@@ -54,12 +121,14 @@ describe("Apple Notes notes as pages", () => {
 
 describe("Apple Notes import in batches", () => {
   const refs = Array.from({ length: 45 }, (_, i) => ({ id: `n${i}`, title: `Note ${i}`, folder: i % 2 ? ["Notes"] : ["Notes", "Sub"] }));
-  const bridge = (onRead?: (ids: string[]) => void): AppleNotesBridge => ({
+  /** Hands over at most `budget` notes a read (as a size budget would), and never n7 (deleted meanwhile). */
+  const bridge = (onRead?: (ids: string[]) => void, budget = 20): AppleNotesBridge => ({
     access: async () => "granted",
-    scan: async () => ({ notes: refs, locked: 3 }),
+    scan: async () => ({ notes: refs, locked: 3, folders: [["Notes"], ["Notes", "Sub"], ["Empty"], ["Notes", "Sub", "Deep"]] }),
     read: async (ids) => {
       onRead?.(ids);
-      return ids.filter((id) => id !== "n7").map((id) => ({ id, html: `<div>${id}</div><div>Body of ${id}</div>`, attachments: [] }));
+      const asked = ids.slice(0, budget);
+      return { notes: asked.filter((id) => id !== "n7").map((id) => ({ id, html: `<div>${id}</div><div>Body of ${id}</div>`, attachments: [] })), missing: asked.includes("n7") ? ["n7"] : [] };
     },
   });
   const sidebar = () => {
@@ -67,12 +136,12 @@ describe("Apple Notes import in batches", () => {
     return { client: { query: vi.fn(async () => ({ folders: [...folders] })) }, made: (x: { id: string; name: string; parentFolderId?: string }) => void folders.push({ ...x, parentFolderId: x.parentFolderId ?? null }) };
   };
 
-  it("reads 20 at a time, imports every note it gets, reuses folders and reports the rest", async () => {
+  it("reads in batches, imports every note it gets, makes every folder once (empty ones too) and reports the rest", async () => {
     const reads: number[] = [];
     const created: { name: string }[] = [];
     const { client, made } = sidebar();
     let n = 0;
-    const importText = vi.fn(async () => ({ document: { id: `D${++n}` }, warnings: [] }));
+    const importText = vi.fn(async (_: { createdAt?: number }) => ({ document: { id: `D${++n}` }, warnings: [] }));
     const r = await importAppleNotes(client as never, { kind: "personal" }, bridge((ids) => reads.push(ids.length)), {
       importText,
       createFolder: async (x: { id: string; name: string; parentFolderId?: string }) => {
@@ -84,9 +153,19 @@ describe("Apple Notes import in batches", () => {
     expect(importText).toHaveBeenCalledTimes(44);
     expect(r.results.filter((x) => x.id)).toHaveLength(44);
     expect(r.results.find((x) => !x.id)?.name).toBe("Notes / Note 7");
-    // "Notes" is there already; "Sub" is made once, in the first batch, and found in the sidebar after that.
-    expect(created.map((c) => c.name)).toEqual(["Sub"]);
-    expect(appleNotesSummary(r)).toBe("Imported 44 of 45 notes from Apple Notes; 3 locked notes skipped (unlock them in Notes to import)");
+    // "Notes" is there already; the rest are made once, with the first batch.
+    expect(created.map((c) => c.name)).toEqual(["Sub", "Empty", "Deep"]);
+    expect(appleNotesSummary(r)).toBe("Imported 44 of 45 notes from Apple Notes; 3 locked notes skipped (remove their locks in Notes to import them)");
+  });
+
+  it("asks again for notes a read had no room for", async () => {
+    const reads: string[] = [];
+    const { client } = sidebar();
+    const importText = vi.fn(async () => ({ document: { id: "D" }, warnings: [] }));
+    const r = await importAppleNotes(client as never, { kind: "personal" }, bridge((ids) => reads.push(ids[0]!), 7), { importText, createFolder: async () => undefined });
+    expect(reads.slice(0, 3)).toEqual(["n0", "n7", "n14"]);
+    expect(importText).toHaveBeenCalledTimes(44);
+    expect(r.total).toBe(45);
   });
 
   it("stops between notes when cancelled", async () => {

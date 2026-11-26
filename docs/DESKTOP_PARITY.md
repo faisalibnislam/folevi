@@ -55,7 +55,7 @@ Yes = built, Partial = built with less, No = missing.
 | Title bar | Yes | Yes | Yes | Windows has its own caption buttons |
 | Desktop settings | Yes | Yes | Yes | |
 | Web calendars, link previews | Yes | Yes | Yes | |
-| Import from Apple Notes | Yes | No | No | Mac only by nature: Windows and Linux have no Apple Notes to read. `AppleNotesReader.swift` (FoleviMac) reads Notes through Apple Events; Settings > Import & export and the web Import screen (`foleviDesktop.appleNotes`, only offered when present) import it through `lib/import/appleNotes.ts`. Not a gap to port |
+| Import from Apple Notes | Yes | No | No | Mac only by nature: Windows and Linux have no Apple Notes to read. `AppleNotesReader.swift` (FoleviMac) reads Notes through Apple Events; Settings > Import & export and the web Import screen (`foleviDesktop.appleNotes`, only offered when present) import it through `lib/import/appleNotes.ts` (notes, folders, tags, images, every attachment, original dates). Not a gap to port. The original dates, tags and file blocks it adds to `imports.importText` work for every app |
 
 Done (PR 113, 2026-11-25): the web app now recognises `windows` and `linux` as native apps
 (`lib/e2ee/keys/macBridge.ts`), so encryption screens say "this PC" or "this computer", devices register with

@@ -33,6 +33,13 @@ export interface ImportDoc {
   links?: Record<string, string>;
   /** The folder to put it in, as names from the top level down (made if needed, reused when one is there; folders.ts). */
   folderPath?: string[];
+  /** Its original dates in the source app (ms since 1970), kept when the source has them (Apple Notes). */
+  createdAt?: number;
+  updatedAt?: number;
+  /** Its attachments (any file), by the src a link on its own line uses: each becomes a file block there. */
+  files?: Map<string, ImportImage>;
+  /** Tag names to put on it. */
+  tags?: string[];
   warnings: { message: string }[];
 }
 

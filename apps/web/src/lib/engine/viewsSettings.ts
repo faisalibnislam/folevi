@@ -25,7 +25,7 @@ import { desktopChanged } from "./desktopChanged";
 import { source } from "./views";
 import { BridgeError, oneOf, only } from "./validate";
 import { importDocs, importFiles } from "@/lib/import/run";
-import { appleNotesDocs, type AppleNote } from "@/lib/import/appleNotes";
+import { appleNotesDocs, cleanFolder, type AppleNote, type AppleNoteAttachment } from "@/lib/import/appleNotes";
 import { importTakeout } from "@/lib/migrate/takeout";
 import { accountUpload, clientTarget, libraryPutFile } from "@/lib/migrate/target";
 import type { MigrationClient } from "@/lib/migrate/types";
@@ -499,12 +499,17 @@ function filesOf(a: Args): File[] {
 /** Notes the Mac read from Apple Notes, checked (at most 100 a batch). */
 function appleNotesOf(a: Args): AppleNote[] {
   const list = Array.isArray(a.notes) ? a.notes : [];
-  if (!list.length || list.length > 100) throw new BridgeError("invalid_args", "Send between 1 and 100 notes.");
+  if (list.length > 100) throw new BridgeError("invalid_args", "Send at most 100 notes.");
   return list.map((raw) => {
     const n = obj(raw);
     const strings = (v: unknown) => (Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : []);
     const num = (v: unknown) => (typeof v === "number" && Number.isFinite(v) ? v : undefined);
-    return { id: str(n, "id"), title: typeof n.title === "string" ? n.title : "", html: str(n, "html"), folder: strings(n.folder), created: num(n.created), modified: num(n.modified), attachments: strings(n.attachments) };
+    const text = (v: unknown) => (typeof v === "string" ? v : undefined);
+    const attachments: AppleNoteAttachment[] = (Array.isArray(n.attachments) ? n.attachments : []).map((x) => {
+      const t = obj(x);
+      return { name: text(t.name) ?? "", cid: text(t.cid), url: text(t.url), mime: text(t.mime), data: text(t.data), error: text(t.error) };
+    });
+    return { id: str(n, "id"), title: text(n.title) ?? "", html: str(n, "html"), folder: strings(n.folder), created: num(n.created), modified: num(n.modified), attachments };
   });
 }
 
@@ -697,9 +702,12 @@ async function runKey(deps: EngineDeps, key: SettingsRunKey, a: Args): Promise<u
       // A batch of notes the Mac read from Apple Notes (FoleviMac's AppleNotesReader), imported like any other
       // source's pages; the Mac sends the next batch, so `offset` and `total` keep the progress line whole.
       const scope: WireScope = typeof a.workspaceId === "string" ? { kind: "workspace", workspaceId: a.workspaceId } : { kind: "personal" };
+      // The first batch also brings every Notes folder, empty ones too.
+      const folders = (Array.isArray(a.folders) ? a.folders : []).slice(0, 2000).map((f) => cleanFolder(Array.isArray(f) ? f.filter((x): x is string => typeof x === "string") : [])).filter((f) => f.length);
       const results = await importDocs(deps.client as never, scope, appleNotesDocs(appleNotesOf(a)), {
         importText: (x) => deps.client.mutation(api.imports.importText, x) as never,
         createFolder: (x) => deps.client.mutation(api.organization.createFolder, x),
+        folders,
       });
       return { results, ok: results.filter((r) => r.id).length };
     }

@@ -30,6 +30,7 @@ struct DataSettings: View {
     struct Result: Decodable, Identifiable {
         struct Warning: Decodable { var line: Int?; var message: String }
         var name: String, id: String?, warnings: [Warning], error: String?, images: Int?
+        var files: Int?
         var key: String { "\(name)|\(id ?? "")|\(error ?? "")" }
     }
 
@@ -48,7 +49,7 @@ struct DataSettings: View {
                         #endif
                     }
                     #if os(macOS)
-                    SText("Apple Notes: every note you can open in Notes, in folders like Notes has them, with the images in it. Locked notes and other attachments (files, scans, drawings) stay in Notes and are listed in the results.", "progress")
+                    SText("Apple Notes: every note with its folders (empty ones too), tags, images, attachments and original dates. Notes locked with a password stay in Notes until you remove their lock.", "progress")
                         .padding(.top, 8)
                     if notesDenied {
                         VStack(alignment: .leading, spacing: 8) {
@@ -97,6 +98,7 @@ struct DataSettings: View {
                         if let e = r.error { SText(e, "dd", color: SettingsColor.v("color-danger", scheme)) }
                     }
                     if let n = r.images, n > 0 { SText(n == 1 ? "1 image uploaded" : "\(n) images uploaded", "progress") }
+                    if let n = r.files, n > 0 { SText(n == 1 ? "1 attachment uploaded" : "\(n) attachments uploaded", "progress") }
                     if !r.warnings.isEmpty {
                         ForEach(Array(r.warnings.enumerated()), id: \.offset) { _, w in SText("• \(w.line.map { "Line \($0): " } ?? "")\(w.message)", "progress") }
                     } else if r.id != nil {
@@ -188,31 +190,45 @@ struct DataSettings: View {
                 let scan = try await reader.scan()
                 let total = scan.notes.count
                 var all: [Result] = []
-                var start = 0
-                while start < total, !Task.isCancelled {
-                    let refs = Array(scan.notes[start..<min(start + 20, total)])
-                    progress = "Importing notes \(start + 1) to \(start + refs.count) of \(total)…"
+                var queue = scan.notes[...]
+                var done = 0
+                // The first call also makes every Notes folder, empty ones too.
+                var folders: JSONValue? = .array(scan.folders.map { .array($0.map { .string($0) }) })
+                while (!queue.isEmpty || folders != nil), !Task.isCancelled {
+                    let refs = Array(queue.prefix(20))
+                    progress = total == 0 ? "Making folders…" : "Importing notes from \(done + 1) of \(total)…"
+                    let read = refs.isEmpty ? AppleNotesReader.Read(notes: [], missing: []) : try await reader.read(ids: refs.map(\.id))
                     var bodies: [String: AppleNotesReader.Body] = [:]
-                    for b in try await reader.read(ids: refs.map(\.id)) { bodies[b.id] = b }
+                    for b in read.notes { bodies[b.id] = b }
+                    let gone = Set(read.missing)
                     var notes: [JSONValue] = []
+                    var handled = 0
                     for r in refs {
-                        guard let b = bodies[r.id] else {
-                            all.append(Result(name: (r.folder + [r.title]).joined(separator: " / "), id: nil, warnings: [], error: "Notes didn’t hand this note over (it may have been deleted or locked meanwhile).", images: nil))
-                            continue
+                        if let b = bodies[r.id] {
+                            notes.append(Self.json(r, b))
+                        } else if gone.contains(r.id) {
+                            all.append(Result(name: (r.folder + [r.title]).joined(separator: " / "), id: nil, warnings: [], error: "Notes didn’t hand this note over (it was deleted or locked after the import started).", images: nil))
+                        } else {
+                            break // over the size budget: read again next time
                         }
-                        notes.append(Self.json(r, b))
+                        handled += 1
                     }
-                    if !notes.isEmpty, !Task.isCancelled {
+                    if !refs.isEmpty, handled == 0 { throw AppleNotesReader.Failure(code: "failed", message: "Apple Notes didn’t hand over the next note. Try the import again.") }
+                    queue = queue.dropFirst(handled)
+                    if Task.isCancelled { break }
+                    if !notes.isEmpty || folders != nil {
                         var args: [String: JSONValue] = ["notes": .array(notes)]
+                        if let folders { args["folders"] = folders }
                         if let w = workspace { args["workspaceId"] = .string(w.id) }
                         if case .object(let o)? = await model.run(.dataImportAppleNotes, args, quiet: true) { all += o["results"]?.decoded([Result].self) ?? [] }
+                        folders = nil
                     }
                     results = all
-                    start += refs.count
+                    done += handled
                 }
                 let ok = all.filter { $0.id != nil }.count
                 var line = Task.isCancelled ? "Stopped: imported \(ok) of \(total) notes" : "Imported \(ok) of \(total) notes from Apple Notes"
-                if scan.locked > 0 { line += "; \(scan.locked) locked \(scan.locked == 1 ? "note" : "notes") skipped (unlock \(scan.locked == 1 ? "it" : "them") in Notes to import)" }
+                if scan.locked > 0 { line += "; \(scan.locked) locked \(scan.locked == 1 ? "note" : "notes") skipped (remove \(scan.locked == 1 ? "its lock" : "their locks") in Notes to import \(scan.locked == 1 ? "it" : "them"))" }
                 model.frame.toast(line, tone: !Task.isCancelled && ok == all.count ? .success : .error)
             } catch let f as AppleNotesReader.Failure where f.code == "denied" {
                 notesDenied = true
@@ -225,7 +241,16 @@ struct DataSettings: View {
     nonisolated static func json(_ r: AppleNotesReader.NoteRef, _ b: AppleNotesReader.Body) -> JSONValue {
         var o: [String: JSONValue] = [
             "id": .string(r.id), "title": .string(r.title), "html": .string(b.html),
-            "folder": .array(r.folder.map { .string($0) }), "attachments": .array(b.attachments.map { .string($0) }),
+            "folder": .array(r.folder.map { .string($0) }),
+            "attachments": .array(b.attachments.map { a in
+                var o: [String: JSONValue] = ["name": .string(a.name)]
+                if let v = a.cid { o["cid"] = .string(v) }
+                if let v = a.url { o["url"] = .string(v) }
+                if let v = a.mime { o["mime"] = .string(v) }
+                if let v = a.data { o["data"] = .string(v) }
+                if let v = a.error { o["error"] = .string(v) }
+                return .object(o)
+            }),
         ]
         if let c = r.created { o["created"] = .number(c) }
         if let m = r.modified { o["modified"] = .number(m) }

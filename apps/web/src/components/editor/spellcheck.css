@@ -19,6 +19,9 @@
   -webkit-user-select: none;
   white-space: pre-wrap;
 }
+.fb-editor .fb-ghost::after {
+  content: attr(data-ghost);
+}
 @media print {
   .fb-editor .fb-ghost { display: none; }
 }

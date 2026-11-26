@@ -137,13 +137,18 @@ export class NgramModel {
     if (this.spaced && /[^\s\p{L}\p{M}\p{N}'’-]$/u.test(before)) return null;
     const sentences = tokenize(before.slice(-300), segment);
     const tail = /[.!?。！？]\s*$/u.test(before) || !before.trim() ? [] : (sentences.at(-1) ?? []);
-    const partial = this.spaced && /[\p{L}\p{M}\p{N}'’-]$/u.test(before) ? (tail.at(-1) ?? "") : "";
+    // The word being typed: the letters right before the caret ("Line 1" ends in no word, so nothing).
+    const typing = this.spaced ? (/[\p{L}\p{M}][\p{L}\p{M}\p{N}'’-]*$/u.exec(before)?.[0] ?? "") : "";
+    if (this.spaced && !typing && /[\p{N}'’-]$/u.test(before)) return null;
+    const partial = typing && tail.at(-1) === typing.replace(/[’]/g, "'") ? tail.at(-1)! : "";
     const context = (partial ? tail.slice(0, -1) : tail).map((w) => w.toLowerCase());
     const prev = context.at(-1) ?? START;
     const prev2 = context.at(-2) ?? (context.length ? START : START);
     const sentenceStart = context.length === 0;
     if (partial) {
       const low = partial.toLowerCase();
+      // One letter says too little: "C" isn't finished as anything until there's more of it.
+      if ([...low].length < 2 && !this.uni.has(low)) return null;
       const fits = (w: string) => w.length > low.length && w.startsWith(low);
       const hit =
         best(this.tri.get(`${prev2} ${prev}`), 1, fits) ?? best(this.bi.get(prev), 1, fits) ?? best(this.uni, 3, fits);

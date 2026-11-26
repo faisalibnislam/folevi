@@ -144,7 +144,9 @@ export const Predict = Extension.create<object, PredictStorage>({
                 () => {
                   const span = document.createElement("span");
                   span.className = "fb-ghost";
-                  span.textContent = g.text;
+                  // Drawn by CSS (::after, spellcheck.css), so it is never part of the line's text: not in what's
+                  // read from the page, copied, found or spoken.
+                  span.dataset.ghost = g.text;
                   // Not part of the note: screen readers hear it from the live region instead.
                   span.setAttribute("aria-hidden", "true");
                   span.contentEditable = "false";

@@ -107,12 +107,12 @@ test.describe("spell check and prediction", { tag: ["@local", "@mac"] }, () => {
 
     await page.keyboard.type("Let me ");
     const ghost = page.locator(".fb-ghost");
-    await expect(ghost).toHaveText("know", { timeout: 15_000 });
+    await expect(ghost).toHaveAttribute("data-ghost", "know", { timeout: 15_000 });
     await page.keyboard.press("Tab");
     await expect(body).toContainText("Let me know");
-    await expect(ghost).toHaveText(" if");
+    await expect(ghost).toHaveAttribute("data-ghost", " if");
     await page.keyboard.press("Tab");
-    await expect(ghost).toHaveText(" you");
+    await expect(ghost).toHaveAttribute("data-ghost", " you");
     await expect(page.locator(".fb-editor p").last()).toHaveText(/^Let me know if/);
     // The line wasn't indented by those Tabs.
     await expect(page.locator(".fb-editor p").last()).toHaveAttribute("data-depth", "0");

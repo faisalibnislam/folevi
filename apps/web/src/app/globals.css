@@ -490,11 +490,12 @@
   /* The tab bar floats over the scrolling content: tinted enough that a heading scrolled under it doesn't stay
      legible through it (it ghosted behind Back and Forward), still glass. */
   .ui-glass.ui-tabbar { background: color-mix(in oklab, var(--color-surface) 86%, transparent); }
-  /* The content panel beside the sidebar: nearly opaque, so reading surfaces stay calm. */
+  /* The content panel beside the sidebar: nearly opaque, so reading surfaces stay calm. No backdrop blur: what's
+     behind it is the ambient light, already a soft blur, and a tenth of it shows through, so blurring it again
+     changed nothing one could see while making the browser keep a blurred copy of everything under the largest
+     surface in the window, with the tab bar's own blur nested inside it (docs/perf/feel-results.md). */
   .ui-content {
     background: var(--glass-content);
-    -webkit-backdrop-filter: blur(30px) saturate(1.4);
-    backdrop-filter: blur(30px) saturate(1.4);
     box-shadow: var(--glass-edge), var(--glass-shadow);
   }
   @media (prefers-reduced-transparency: reduce) {

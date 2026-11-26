@@ -115,6 +115,9 @@ describe("the on-device next-word model", () => {
     expect(m.predict("Last year in Pa")?.word).toBe("Paris");
     expect(m.predict("Done.")).toBeNull();
     expect(m.predict("Done. ")?.word).toBe("Let");
+    // After a number, and from one letter: nothing.
+    expect(m.predict("Let me know 1")).toBeNull();
+    expect(m.predict("Let me k")).toBeNull();
   });
 
   test("a sentence is learnt once, however often the note is opened", () => {

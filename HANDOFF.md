@@ -280,6 +280,19 @@ Not done, and why:
 check (Hunspell as WebAssembly, ten languages, offline), suggestions in the right-click menu, a bubble and the phone
 keyboard strip, and next-word prediction with Tab, in every app. Plan, design and what's left:
 `docs/SPELLING_PLAN.md`. Not released; not tried in the native builds or on devices.
+**Signed-in feel, web and Mac (2026-11-26, branch `claude/perf-web-mac-1126`, `docs/perf/feel-results.md`).** The
+owner found the web and Mac apps sluggish. Measured signed in (300 notes, a local backend behind
+`apps/web/perf/latency-proxy.mjs` at a 260 ms round trip, about the owner's to Convex; `apps/web/perf/feel.spec.ts`):
+the app mostly waits on the network, and the website's own pages and auth routes take 0.45 to 1 s from the owner's
+location (rendered per request in iad1). Fixed: task check-off, bookmark, archive, trash, restore and delete show at
+the click (Convex optimistic updates, `lib/convex/optimistic.ts`; check-off 350 to 400 ms to about 14 ms); the
+workspaces list is asked for with `me` (start 1.0 to 1.2 s to 0.75 to 0.9 s); no backdrop blur on `.ui-content`
+(invisible at 90 % opacity); Mac/iOS hosts keep the Convex JWT for the next page (`ShellAuth.convexToken(fresh:)`,
+the bridge passes `fresh` on Convex renewals); the waiting-edits count reaches the Mac host only once it holds 2 s
+(it caused a places-file write, Keychain mirror and broadcast on the main thread twice per save); a place's runner
+starts 3 s after a switch; Quick Add's page stays 10 minutes. Not done (in the doc): static app pages from the edge
+(needs a hash-based CSP instead of the per-request nonce), browsers starting from the snapshot without waiting for
+`me`, a spare web view for new Mac windows. WebKit could not be measured signed in over http://app.localhost.
 
 **Native iOS again, matching today's UI (2026-11-25, branch `claude/ios-native-today-ui`, worktree
 `.claude/worktrees/ios-native-today`).** The owner found the Capacitor app finicky and chose native SwiftUI for
@@ -1108,6 +1121,11 @@ account button should move past iPadOS's window buttons).
 ## 10. Next steps / open work
 - Spell check and prediction (`docs/SPELLING_PLAN.md`): merge PR 143 when CI is green; then a native Settings row
   for Writing on the Mac and iPhone/iPad, and a check in each app's build (Mac, iOS, Android, Windows, Linux).
+- Signed-in feel (`docs/perf/feel-results.md` "Not done"): serve the app's pages statically from Vercel's edge with a
+  hash-based Content Security Policy (each website load waits 0.45 to 0.75 s for HTML from iad1 today); let browsers
+  start from the snapshot when the tab's account is the last one; more optimistic clicks (tags, reorder, notification
+  read marks); share the sidebar's duplicate live queries; a prewarmed web view for new Mac windows. Measure the Mac
+  app itself signed in (needs the owner's OK to launch it) or WebKit over TLS.
 - Native iPhone performance, left from the SwiftUI audit: `CardPicture` still reads `@Environment(\.self)` (any
   environment change runs its body; cheap while the picture is kept); the Mac's `PlaceholderCard` pulses each on its
   own animation (not used on the iPhone); nothing measured with Instruments before and after.
@@ -1418,6 +1436,11 @@ account button should move past iPadOS's window buttons).
   text with Tab (on-device model, Foli AI after a pause), Settings > Writing, per-note switch, F7. Checked: typecheck,
   lint, web unit suite, Convex and parity tests, Playwright in Chromium and WebKit (local mode). Not checked in the
   native builds or on devices.
+- 2026-11-26: Signed-in feel pass, web and Mac (`claude/perf-web-mac-1126`, `docs/perf/feel-results.md`): optimistic
+  task check-off, bookmark, archive, trash, restore and delete; workspaces asked with `me`; no blur on `.ui-content`;
+  Convex JWT kept by the Mac/iOS host for the next page; waiting-edits count debounced before it reaches the host;
+  runner start 3 s after a place switch; Quick Add page kept 10 minutes; `perf/feel.spec.ts` and
+  `perf/latency-proxy.mjs` to measure account mode near and far.
 - 2026-11-26: **PR 132 (`claude/integration-2026-11-26`, merge `135a99af`) landed PRs 117, 130 and 129 together**
   (the owner: "resolve all merging conflict please"). All three edit this file, so they went in as one branch with
   one CI run; checked first with CI's steps, the Mac Debug build and the iOS Simulator build. PR 112 (Android native,

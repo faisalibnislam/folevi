@@ -5,7 +5,7 @@ description = "Folevi for Windows and Linux: Folevi's own interface in the syste
 authors = ["Folevi"]
 license = "UNLICENSED"
 edition = "2021"
-rust-version = "1.80"
+rust-version = "1.89"
 
 [lib]
 name = "folevi_lib"

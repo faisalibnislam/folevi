@@ -6,7 +6,7 @@ Versions are MAJOR.UPDATE.PATCH, PATCH at least two digits: a Major release (2.0
 
 ## Version 1.7.78: Big update
 
-Released 2026-11-26 00:24:24+06:00 (build 103, tag v1.7.78)
+Released 2026-11-26 00:24:24+06:00 (build 107, tag v1.7.78)
 
 Float any note in its own always-on-top window, automatic updates and much more for Windows and Linux, and smoother tabs.
 

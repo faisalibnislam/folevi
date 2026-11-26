@@ -83,7 +83,7 @@ public struct WebParagraph: View {
     @Environment(\.nativeChrome) private var chrome
 
     public var body: some View {
-        if let chrome, style.family != .mono {
+        if let chrome = chrome?.forText, style.family != .mono {
             // Interface text under the Mac's native look: the system font, wrapped as AppKit wraps it.
             let system = chrome.text(style)
             Text(runs.reduce(into: AttributedString()) { text, run in

@@ -131,8 +131,11 @@ export interface ShellAuth {
   signOut(): Promise<void>;
   /** Only `/api/auth/*` on the service; native adds the bearer (and `Origin` on POSTs). */
   fetch(path: string, init: RequestInit): Promise<{ status: number; headers: Record<string, string>; body: string }>;
-  /** A short-lived Convex JWT, or null when signed out. */
-  convexToken(): Promise<string | null>;
+  /**
+   * A short-lived Convex JWT, or null when signed out. Apple hosts hand one they got a few minutes ago to the next
+   * page that opens; `fresh` (Convex renewing one) always asks the website. Older hosts ignore it.
+   */
+  convexToken(o?: { fresh?: boolean }): Promise<string | null>;
 }
 
 /** Where a local Foli AI request goes: Apple's model on this device, or one of the person's own keys. */

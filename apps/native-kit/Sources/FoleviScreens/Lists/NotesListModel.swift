@@ -238,7 +238,11 @@ public final class NotesListModel {
 
     public var isTrash: Bool { kind.view == .trash }
     public var selectable: Bool { kind.view != .templates }
-    public var isLoading: Bool { store.status == .loading && store.total == 0 }
+    /// Nothing to show yet: waiting for the first answer, or the engine still starting at launch with no answer so
+    /// far (a list opened straight at launch said "Nothing here yet" for a moment).
+    public var isLoading: Bool {
+        store.total == 0 && (store.status == .loading || (store.status == .disconnected && store.version == 0))
+    }
     public var total: Int { store.total }
 
     public var currentSpace: SpaceInfo? {

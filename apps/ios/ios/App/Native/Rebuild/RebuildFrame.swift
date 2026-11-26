@@ -50,9 +50,22 @@ enum RebuildFrame {
         model.restore(data: data)
     }
 
+    /// The screens' titles as today's app sets them (the owner, 2026-11-25): the large title in Spectral semibold
+    /// (`.ui-large-title`: 34, -0.02em), the title collapsed into the bar in Instrument Sans semibold 17. Only the
+    /// words change: the bars keep iOS 26's own Liquid Glass and scroll-edge behaviour.
+    private static func titlesInFolevisFonts() {
+        let bar = UINavigationBar.appearance()
+        bar.largeTitleTextAttributes = [
+            .font: FoleviFonts.uiFont(.display, size: 34, weight: .semibold, relativeTo: .largeTitle),
+            .kern: -0.68,
+        ]
+        bar.titleTextAttributes = [.font: FoleviFonts.uiFont(.ui, size: 17, weight: .semibold, relativeTo: .headline)]
+    }
+
     static func controller() -> UIViewController {
         FoleviFonts.register()
         WebStyles.isPad = UIDevice.current.userInterfaceIdiom == .pad
+        titlesInFolevisFonts()
         return RebuildFrameController(frame: model, menus: menus)
     }
 }
@@ -70,6 +83,11 @@ final class RebuildFrameController: UIViewController, PhoneRouting {
     private var retiring: PageRetirement?
     private var observers: [Observer] = []
     private var tokens: [NSObjectProtocol] = []
+    /// The launch snapshot (plan 4.6): what was on screen last time, drawn at once on the next launch while the
+    /// engine starts, so Home and the lists don't arrive empty and fill in seconds later.
+    let snapshot: LaunchSnapshotStore
+    /// The place this frame opened (its snapshot is that place's).
+    private let place: String
     /// The iPad's wide layout: the Mac frame's model on the same engine (RebuildIPad.swift).
     lazy var desk: FrameModel = {
         let f = FrameModel(client: model.client)
@@ -94,7 +112,13 @@ final class RebuildFrameController: UIViewController, PhoneRouting {
         self.transport = transport
         let info = Bundle.main.infoDictionary
         let platform: AppInfo.Platform = UIDevice.current.userInterfaceIdiom == .pad ? .ipados : .ios
-        let client = EngineClient(transport: transport, place: ShellPlaces.state.current ?? "", app: AppInfo(platform: platform, version: info?["CFBundleShortVersionString"] as? String ?? "0", build: info?["CFBundleVersion"] as? String ?? "0", protocol: EngineContract.protocolVersion, schemaHash: EngineContract.schemaHash))
+        let place = ShellPlaces.state.current ?? ""
+        let client = EngineClient(transport: transport, place: place, app: AppInfo(platform: platform, version: info?["CFBundleShortVersionString"] as? String ?? "0", build: info?["CFBundleVersion"] as? String ?? "0", protocol: EngineContract.protocolVersion, schemaHash: EngineContract.schemaHash))
+        self.place = place
+        let support = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+        let safe = (place.isEmpty ? "none" : place).replacingOccurrences(of: "/", with: "_").replacingOccurrences(of: ":", with: "_")
+        snapshot = LaunchSnapshotStore(url: support.appendingPathComponent("Places/\(safe)/launch.json"))
+        client.snapshot = snapshot
         model = PhoneModel(client: client)
         pageHost = PageViewHost(pageView: host.pageView)
         super.init(nibName: nil, bundle: nil)
@@ -171,6 +195,17 @@ final class RebuildFrameController: UIViewController, PhoneRouting {
         })
         let center = NotificationCenter.default
         tokens = [
+            // Saved as the app leaves the screen; never for an encrypted space (plan 3.7).
+            center.addObserver(forName: UIApplication.didEnterBackgroundNotification, object: nil, queue: .main) { [weak self] _ in
+                MainActor.assumeIsolated {
+                    guard let self else { return }
+                    if self.model.session.value?.spaces.contains(where: { $0.encrypted }) == true {
+                        self.snapshot.clear(lock: true)
+                    } else {
+                        self.snapshot.flush()
+                    }
+                }
+            },
             center.addObserver(forName: UIResponder.keyboardWillChangeFrameNotification, object: nil, queue: .main) { [weak self] note in
                 let end = (note.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? NSValue)?.cgRectValue ?? .zero
                 MainActor.assumeIsolated { self?.keyboardMoved(to: end, hiding: false) }
@@ -246,6 +281,8 @@ final class RebuildFrameController: UIViewController, PhoneRouting {
     func retire(then done: @escaping () -> Void) {
         model.stop()
         transport.detach()
+        // Leaving this place (signed out, another place chosen): its snapshot goes; the same place again keeps it.
+        if ShellPlaces.state.current != place { snapshot.clear() } else { snapshot.flush() }
         retiring = PageRetirement(host.pageView) { [weak self] in
             self?.retiring = nil
             self?.host.tearDown()
@@ -295,7 +332,16 @@ final class RebuildFrameController: UIViewController, PhoneRouting {
         let overlap = hiding ? 0 : KeyboardBridge.coveredHeight(keyboard: keyboard, bounds: window.bounds)
         model.keyboardOverlap = overlap
         let appeared = overlap > 0 && !model.keyboardVisible
-        if overlap == 0, model.keyboardVisible { keyboardHidAt = Date() }
+        if overlap == 0, model.keyboardVisible {
+            keyboardHidAt = Date()
+            model.keyboardLeaving = true
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) { [weak self] in
+                guard let self, !self.model.keyboardVisible else { return }
+                self.model.keyboardLeaving = false
+            }
+        } else if overlap > 0 {
+            model.keyboardLeaving = false
+        }
         model.keyboardVisible = overlap > 0
         if appeared { model.refreshEditorState() }
     }
@@ -404,6 +450,8 @@ private struct RebuildRoot: View {
     @State private var notifications = false
     /// The sync status's sheet (the cloud beside the bell).
     @State private var sync = false
+    /// "Sign in to your own server" from the sign-in screen (RebuildOwnServer.swift).
+    @State private var ownServer = false
     /// New folder's card, over everything.
     @State private var newFolder: NewFolderRequest?
     /// New workspace's card, over everything (from the account sheet).
@@ -412,17 +460,24 @@ private struct RebuildRoot: View {
     @Namespace private var zoom
     /// Regular width (iPhone Duo open): the wide layout, as on the iPad.
     @Environment(\.horizontalSizeClass) private var sizeClass
+    /// Which layout shows (nil until the first layout pass has measured the window).
+    @State private var wide: Bool?
+    /// The window's width, kept out of SwiftUI's state (it changes on every frame of a resize).
+    @State private var frameWidth = WidthBox()
+    final class WidthBox { var value: CGFloat = 0 }
 
     var body: some View {
         // The iPad in a window wide enough for the sidebar: the web's desktop layout (lib/iphone.ts
         // isIpadLayout, under 700 pt the phone's). An iPhone window of regular width (iPhone Duo open, the owner's
         // pick of 2026-11-23) takes the same layout; any other iPhone window the phone's.
-        GeometryReader { g in
-            let wide = RebuildIPad.isWide(width: g.size.width, regular: sizeClass == .regular)
-            // The desk's touch sizes (the iPad's styles) while it shows, set before either layout is built.
-            let _ = (WebStyles.isPad = UIDevice.current.userInterfaceIdiom == .pad || wide)
-            let _ = (RebuildIPad.showingWide = wide)
-            Group {
+        // (Which layout, not the width itself, is the state: a GeometryReader here built this whole frame again on
+        // every point of a Stage Manager or Split View resize. Settled in the first layout pass, before anything
+        // is drawn.)
+        Group {
+            if let wide {
+                // The desk's touch sizes (the iPad's styles) while it shows, set before either layout is built.
+                let _ = (WebStyles.isPad = UIDevice.current.userInterfaceIdiom == .pad || wide)
+                let _ = (RebuildIPad.showingWide = wide)
                 if wide {
                     RebuildIPadRoot(desk: desk, phone: phone, pageHost: pageHost, gate: gate)
                 } else {
@@ -430,14 +485,27 @@ private struct RebuildRoot: View {
                     // Dynamic Type, Folevi's accent; notes and their cards keep Folevi's fonts.
                     phoneBody.phoneNativeChrome(menus: menus)
                 }
+            } else {
+                Color.clear
             }
-            .onChange(of: wide) { _, isWide in
-                // Keep the open screen when Split View or Stage Manager crosses the layout boundary, or iPhone Duo
-                // opens or closes.
-                if isWide { desk.open(model.top) } else { model.open(desk.route) }
-            }
+        }
+        .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { width in
+            frameWidth.value = width
+            let next = RebuildIPad.isWide(width: width, regular: sizeClass == .regular)
+            if wide != next { wide = next }
+        }
+        .onChange(of: sizeClass) { _, size in
+            let next = RebuildIPad.isWide(width: frameWidth.value, regular: size == .regular)
+            if wide != nil, wide != next { wide = next }
+        }
+        .onChange(of: wide) { old, new in
+            // Keep the open screen when Split View or Stage Manager crosses the layout boundary, or iPhone Duo
+            // opens or closes.
+            guard let new else { return }
             // The note page's look follows the layout (iPhone Duo).
-            .onChange(of: wide, initial: true) { _, isWide in RebuildPageLayout.tell(wide: isWide) }
+            RebuildPageLayout.tell(wide: new)
+            guard let old, old != new else { return }
+            if new { desk.open(model.top) } else { model.open(desk.route) }
         }
         .ignoresSafeArea(.keyboard)
         .environment(\.sheetZoom, zoom)
@@ -494,8 +562,13 @@ private struct RebuildRoot: View {
         .overlay {
             if let g = phone.gate, g.gate != nil, g.gate != "loading" {
                 WebGateScreen(model: gate)
+                    .environment(\.gateOwnServer, { ownServer = true })
                     .onAppear { gate.show(g) }
                     .onChange(of: g) { _, next in gate.show(next) }
+                    .sheet(isPresented: $ownServer) {
+                        RebuildOwnServerSheet { ownServer = false }
+                            .presentationDetents([.medium, .large])
+                    }
                     .transition(.opacity)
             }
         }
@@ -534,7 +607,10 @@ private struct RebuildRoot: View {
         }
         // Foli AI from the tab bar (or search's Ask Foli AI): medium, pulled up to the whole screen. With history off,
         // its conversation goes when it closes.
-        .phoneSheet(isPresented: Bindable(ai).sheetOpen, size: .medium, zoomFrom: "ai", onDismiss: { ai.sheet.closed() }) {
+        // iOS's own sheet, up from the bottom edge and back down (the owner, 2026-11-25: the zoom looked weird).
+        // Foli AI is a tab in iOS's tab bar now, which can't be a zoom's source, so the zoom grew out of the middle
+        // of the screen and shrank back into it.
+        .phoneSheet(isPresented: Bindable(ai).sheetOpen, size: .medium, onDismiss: { ai.sheet.closed() }) {
             RebuildAiSheet(ai: ai, frame: model)
         }
         .phoneSheet(isPresented: $notifications, size: .medium) {

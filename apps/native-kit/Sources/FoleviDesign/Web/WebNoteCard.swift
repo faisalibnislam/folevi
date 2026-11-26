@@ -470,7 +470,7 @@ public struct WebNoteCard: View {
         let titleStyle = phone
             ? WebTextStyle(family: .display, size: 17, leading: 22, weight: 600, letterSpacing: -0.005 * 17)
             : WebTextStyle(family: .display, size: 6.6 * cq, leading: 6.6 * cq * 1.22, weight: 500, letterSpacing: 0.005 * 6.6 * cq)
-        let createdStyle = WebTextStyle(size: 4.5 * cq, leading: 4.5 * cq * 1.3).cardInterface(chrome != nil)
+        let createdStyle = WebTextStyle(size: 4.5 * cq, leading: 4.5 * cq * 1.3).cardInterface(chrome?.forText != nil)
         let bodyStyle = WebTextStyle(size: 3.6 * cq, leading: 5 * cq)
         let text = NoteCardView.previewText(model.preview, excerpt: model.excerpt)
         // A template's title is a typed label (the iPhone's 12/16, as globals.css sets [data-card="memo"], Caption 1).
@@ -553,12 +553,12 @@ public struct WebNoteCard: View {
     }
 
     private func footer(cq: CGFloat, heading: RGBA, muted: RGBA, chip: RGBA) -> some View {
-        let footStyle = WebTextStyle(size: 3.8 * cq, leading: 3.8 * cq * 1.55).cardInterface(chrome != nil)
+        let footStyle = WebTextStyle(size: 3.8 * cq, leading: 3.8 * cq * 1.55).cardInterface(chrome?.forText != nil)
         return HStack(spacing: 2 * cq) {
             if unsynced {
                 HStack(spacing: 4) {
                     Circle().fill(heading.color).frame(width: 6, height: 6)
-                    Text("Waiting to sync").webText(WebTextStyle.role(.footnote, weight: 500).cardInterface(chrome != nil)).lineLimit(1)
+                    Text("Waiting to sync").webText(WebTextStyle.role(.footnote, weight: 500).cardInterface(chrome?.forText != nil)).lineLimit(1)
                 }
                 .foregroundStyle(heading.color)
                 .fixedSize()
@@ -572,10 +572,10 @@ public struct WebNoteCard: View {
                 HStack(spacing: 1.8 * cq) {
                     if let name = model.folderName {
                         FolderGlyph(colorId: model.folderColorId, size: 4.4 * cq)
-                        Text(name).webText(footStyle.weight(600).cardInterface(chrome != nil)).lineLimit(1)
+                        Text(name).webText(footStyle.weight(600).cardInterface(chrome?.forText != nil)).lineLimit(1)
                     } else {
                         WebIconView(.pencilLine, size: 3.8 * cq)
-                        Text("Draft").webText(footStyle.weight(600).cardInterface(chrome != nil)).lineLimit(1)
+                        Text("Draft").webText(footStyle.weight(600).cardInterface(chrome?.forText != nil)).lineLimit(1)
                     }
                 }
                 .foregroundStyle(heading.color)
@@ -717,7 +717,7 @@ public struct WebCompactNoteCard: View {
                     Spacer(minLength: 0)
                     WebFolderBadge(name: model.folderName, colorId: model.folderColorId, system: chrome != nil)
                 }
-                .webText(footer.text.cardInterface(chrome != nil))
+                .webText(footer.text.cardInterface(chrome?.forText != nil))
                 .foregroundStyle(footer.color.color)
                 .padding(.horizontal, 16)
                 .frame(maxHeight: .infinity, alignment: .bottom)
@@ -1019,8 +1019,8 @@ public struct WebFolderCard: View {
         let nameStyle = phone ? WebTextStyle(family: .display, size: 17, leading: 22, weight: 600) : WebTextStyle(family: .display, size: nameSize, leading: nameSize * 1.15, weight: 600)
         let countSize = min(18, max(11, 4.9 * cq * k))
         let editedSize = min(16, max(10.5, 4.3 * cq * k))
-        let countStyle = WebTextStyle(size: countSize, leading: countSize * 1.3, weight: 500).cardInterface(chrome != nil)
-        let editedStyle = WebTextStyle(size: editedSize, leading: editedSize * 1.3).cardInterface(chrome != nil)
+        let countStyle = WebTextStyle(size: countSize, leading: countSize * 1.3, weight: 500).cardInterface(chrome?.forText != nil)
+        let editedStyle = WebTextStyle(size: editedSize, leading: editedSize * 1.3).cardInterface(chrome?.forText != nil)
         let nameW = Self.nameWidth(w, menuRoom: menuRoom && !phone)
         let nameLines = Self.nameLines(front: frontH, cq: cq, name: nameStyle.leading, count: countStyle.leading, edited: model.editedText.isEmpty ? 0 : editedStyle.leading)
         return ZStack(alignment: .topLeading) {
@@ -1277,7 +1277,7 @@ public struct WebClampedText: View {
     @Environment(\.nativeChrome) private var chrome
 
     public var body: some View {
-        if let chrome, style.family != .mono {
+        if let chrome = chrome?.forText, style.family != .mono {
             // Interface text under the Mac's native look (an empty state's heading): the system font, wrapped and
             // clamped as AppKit does it.
             Text(text).webText(chrome.text(style)).lineLimit(maxLines).truncationMode(.tail)
@@ -1293,7 +1293,7 @@ public struct WebClampedText: View {
         // One word (a folder called "Brainstorming") is never broken across lines: it stays on one and ends in
         // "…" when it doesn't fit (the owner, 2026-11-01).
         let maxLines = text.contains(where: \.isWhitespace) ? maxLines : 1
-        let lines = balance ? Self.balancedClamped(text, style: style, width: width, max: maxLines) : Self.lines(text, style: style, width: width, max: maxLines)
+        let lines = Self.cachedLines(text, style: style, width: width, max: maxLines, balance: balance)
         VStack(alignment: alignment, spacing: 0) {
             ForEach(Array(lines.enumerated()), id: \.offset) { _, line in
                 Text(line).webText(style).lineLimit(1).truncationMode(.tail)
@@ -1301,6 +1301,22 @@ public struct WebClampedText: View {
         }
         .frame(width: width, alignment: Alignment(horizontal: alignment, vertical: .top))
     }
+
+    /// The lines, set once per text, style, width and count: a balanced title is about eight Core Text passes, and
+    /// a card's body runs again on every change around it.
+    static func cachedLines(_ text: String, style: WebTextStyle, width: CGFloat, max: Int, balance: Bool) -> [String] {
+        let key = "\(balance ? 1 : 0)|\(max)|\(width)|\(style.hashValue)|\(text)" as NSString
+        if let made = setLines.object(forKey: key) as? [String] { return made }
+        let made = balance ? balancedClamped(text, style: style, width: width, max: max) : lines(text, style: style, width: width, max: max)
+        setLines.setObject(made as NSArray, forKey: key)
+        return made
+    }
+
+    nonisolated(unsafe) private static let setLines: NSCache<NSString, NSArray> = {
+        let c = NSCache<NSString, NSArray>()
+        c.countLimit = 2000
+        return c
+    }()
 
     /// Balanced lines: the narrowest width that still sets the text in as many lines as `width` does, when they're
     /// all shown; otherwise the plain lines.

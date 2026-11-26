@@ -3325,4 +3325,23 @@ export default defineSchema({
     folderIds: v.array(v.string()),
     updatedAt: v.number(),
   }).index("by_profile_scope", ["profileId", "scopeKey"]),
+
+  /**
+   * One person's spelling and prediction settings and their personal dictionary (convex/spelling.ts): the same
+   * on every device they sign in on. Settings left unset mean on (spell check, prediction) and the browser's
+   * English. Words from end-to-end encrypted notes never come here (the apps keep those on the device).
+   */
+  spelling: defineTable({
+    profileId: v.id("profiles"),
+    spellcheck: v.optional(v.boolean()),
+    predictions: v.optional(v.boolean()),
+    english: v.optional(v.union(v.literal("en-US"), v.literal("en-GB"))),
+    /** Added to the dictionary. */
+    learnt: v.array(v.string()),
+    /** Ignored: never underlined. */
+    ignored: v.array(v.string()),
+    /** Notes (public ids) this person turned spell check off for. */
+    offNotes: v.optional(v.array(v.string())),
+    updatedAt: v.number(),
+  }).index("by_profile", ["profileId"]),
 });

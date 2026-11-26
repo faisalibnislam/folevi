@@ -184,7 +184,16 @@ struct WebTasksScreen: View {
         .padding(h.margin.edgeInsets)
     }
 
+    /// The views in one row; where they don't fit (an iPad's content beside today's sidebar in portrait), the row
+    /// scrolls sideways rather than running off the page.
     private var seg: some View {
+        ViewThatFits(in: .horizontal) {
+            segRow
+            ScrollView(.horizontal) { segRow }.scrollIndicators(.never)
+        }
+    }
+
+    private var segRow: some View {
         WebSeg(
             items: WebTaskView.all.map { v, title in SegItem(id: v.rawValue, title: title, count: model.count(for: v)) },
             selected: model.view.rawValue,

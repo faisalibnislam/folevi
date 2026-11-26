@@ -99,6 +99,10 @@ struct CardSlot {
 
 extension EnvironmentValues {
     @Entry var cardSlot: CardSlot? = nil
+    /// The screens keep their own controls in their content (a title row with ‹ Today ›, the views, Add task), as
+    /// today's tablet layout draws them, instead of sending them up to the bar: the iPad's wide layout (the owner,
+    /// 2026-11-25). The Mac never sets it.
+    @Entry var screensKeepControls = false
 }
 
 extension View {

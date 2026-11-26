@@ -274,15 +274,6 @@ Not done, and why:
 - **Flaky Rust test:** `two_folder_fs_on_one_folder_never_lose_increments` failed once on Linux aarch64 during this
   release; worth a look.
 
-**Beta tags (owner, 2026-11-26):** Folevi for Linux and Folevi Server are in beta; every other platform launches as is.
-One note and link everywhere: "Beta: works, but expect rough edges. Send feedback" (folevi.com/support), from
-`apps/web/src/lib/beta.ts`. Shown on `/downloads` (Linux and a new Folevi Server section), `/apps` (Linux card and the
-server card), `/server` (hero card, every download row, container image); in the Linux app (window title
-"Folevi (Beta)", Settings > About; Windows shows neither); in Folevi Server's `/setup` and admin sidebar (not on the
-"Your own server" sign-in option). Package text says Beta too: snapcraft.yaml, the AppStream metainfo, the deb/rpm
-descriptions (`tauri.linux.conf.json`) and the server's NAS/catalog descriptions. The Snap Store listing changes only
-when the owner pushes it (see Next steps).
-
 ## 9. Current state (as of 2026-11-25)
 
 **Signed-in feel, web and Mac (2026-11-26, branch `claude/perf-web-mac-1126`, `docs/perf/feel-results.md`).** The
@@ -1124,14 +1115,6 @@ signed-in account, 1.5.58's frosted folders with a large library, and the iPad c
 account button should move past iPadOS's window buttons).
 
 ## 10. Next steps / open work
-- **Snap Store listing says Beta (owner approved, not pushed):** the repo's `packaging/linux/snap/snapcraft.yaml` has
-  the Beta summary and description. Either paste them at dashboard.snapcraft.io (folevi, Listing) or let the next
-  uploaded revision carry them; if the VM's snapcraft still has `upload-metadata`, `snapcraft upload-metadata --force
-  <a .snap built from this snapcraft.yaml>` pushes only the text. No new revision has been released for this.
-- Beta tags: remove them in one place (`apps/web/src/lib/beta.ts` and its users, `MAIN_TITLE` in
-  `apps/desktop/src-tauri/src/lib.rs`, the packaging descriptions) when the owner says Linux or Folevi Server is out
-  of beta. Stale FAQ lines still say there is no Windows/Linux/Android app (`HomeFaq.tsx`, `content/docs.tsx`,
-  `support/page.tsx`); not changed here.
 - Signed-in feel (`docs/perf/feel-results.md` "Not done"): serve the app's pages statically from Vercel's edge with a
   hash-based Content Security Policy (each website load waits 0.45 to 0.75 s for HTML from iad1 today); let browsers
   start from the snapshot when the tab's account is the last one; more optimistic clicks (tags, reorder, notification
@@ -1442,8 +1425,6 @@ account button should move past iPadOS's window buttons).
   `DATABASE_UDF_USER_TIMEOUT_SECONDS=4` for that backend. Bursts show in `convex.log` as "took a long time".
 
 ## 12. Change log
-- 2026-11-26: Beta tags for Folevi for Linux and Folevi Server (website, Linux app, server setup and admin, Snap and
-  package listings), one note and feedback link from `apps/web/src/lib/beta.ts`; test `apps/web/test/beta-badges.test.tsx`.
 - 2026-11-26: Signed-in feel pass, web and Mac (`claude/perf-web-mac-1126`, `docs/perf/feel-results.md`): optimistic
   task check-off, bookmark, archive, trash, restore and delete; workspaces asked with `me`; no blur on `.ui-content`;
   Convex JWT kept by the Mac/iOS host for the next page; waiting-edits count debounced before it reaches the host;

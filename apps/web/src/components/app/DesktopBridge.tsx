@@ -27,6 +27,7 @@ import { snoozeUntil } from "@/lib/engine/commandsMac";
 import { useCreateDocument } from "./useCreateDocument";
 import { useShell } from "./Shell";
 import { useCapabilities } from "@/lib/mode";
+import { taskUpdated, useOptimisticMutation } from "@/lib/convex/optimistic";
 
 const STATUS: Record<string, string> = {
   saved: "All changes saved",
@@ -348,7 +349,7 @@ function useMenuCommands(): (id: string) => void {
 function useNotificationActions(): (command: Extract<DesktopCommand, { type: "notification" }>) => void {
   const { notifications } = useCapabilities();
   const markRead = useMutation(api.notifications.markRead);
-  const updateTask = useMutation(api.tasks.update);
+  const updateTask = useOptimisticMutation(api.tasks.update, taskUpdated);
   const convex = useConvex();
   const comments = useCommentActions("");
   const latest = useRef({ notifications, markRead, updateTask, convex, comments });

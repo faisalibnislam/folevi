@@ -3,13 +3,22 @@
 //!
 //! - Paths are checked (relative, forward slashes, no `..`, no control characters) and can't leave the folder,
 //!   whatever links it holds.
-//! - Etags are made of what both Windows and Linux say about a file: its id (the inode on Linux, the creation
-//!   time on Windows), its size and its modification time in nanoseconds. Opaque to the page; stable while the
-//!   file is unchanged.
+//! - Etags are made of what both Windows and Linux say about a file: its id (the inode on Linux and macOS, the NTFS
+//!   file index on Windows), its size and its modification time in nanoseconds. Opaque to the page; stable while
+//!   the file is unchanged.
+//! - Every file Folevi writes gets a modification time of its own (`unique_mtime`): now, to the microsecond, and
+//!   never the same twice in this process. Linux hands a freed inode number straight to the next new file and
+//!   stamps files with the kernel's coarse clock (a few ms), so without it two writes of the same size in one tick
+//!   could leave the very etag a stale reader holds, and its compare-and-swap would win (an ABA).
 //! - A write goes to `.folevi-tmp/`, is flushed to disk and renamed over the file (Windows refuses a rename over a
 //!   file another program has open for a moment, so it's tried again briefly). Create-only (`ifMatch: null`)
-//!   links the temp file in place, so it can't replace a file that appeared meanwhile. A string `ifMatch` is
-//!   checked under a lock shared by every FolderFs in this process, and again just before the rename.
+//!   links the temp file in place, so it can't replace a file that appeared meanwhile.
+//! - The guarantee for a string `ifMatch`: of writers holding one etag, at most one succeeds. Writers in this
+//!   process take turns per path; every writer to the folder (other Folevi copies on this or another PC included)
+//!   takes `.folevi-tmp/write.lock` (an OS file lock) across the final etag check and the rename, so no other
+//!   Folevi write or remove lands in between. A sync app or editor that ignores the lock can still replace the
+//!   file in that window of microseconds; nothing on these systems makes a rename conditional. A drive that
+//!   can't lock files (some network shares) gets the in-process guarantee only.
 //! - Listing skips hidden and temporary files, never follows links, and reports OneDrive's online-only files
 //!   (and iCloud's `.name.icloud` placeholders) with `downloaded: false`.
 use once_cell::sync::{Lazy, OnceCell};
@@ -294,6 +303,38 @@ fn remove_file_retry(path: &Path) -> io::Result<()> {
     }
 }
 
+/// A modification time for a file Folevi is about to put in place: now, rounded to the microsecond (NTFS keeps
+/// 100 ns, ext4 and APFS 1 ns, so it survives), and always later than the last one this process handed out.
+pub fn unique_mtime() -> SystemTime {
+    static LAST: Lazy<Mutex<u128>> = Lazy::new(|| Mutex::new(0));
+    let now = SystemTime::now().duration_since(UNIX_EPOCH).map(|d| d.as_micros()).unwrap_or(0);
+    let mut last = LAST.lock();
+    *last = now.max(*last + 1);
+    UNIX_EPOCH + Duration::from_micros(*last as u64)
+}
+
+/// The OS lock on `.folevi-tmp/write.lock` that every Folevi writer to a folder takes across its etag check and
+/// rename. None when the folder's drive can't lock (the write then relies on the in-process lock alone).
+struct FolderLock(File);
+
+impl FolderLock {
+    const NAME: &'static str = "write.lock";
+
+    fn take(root: &Path) -> Option<FolderLock> {
+        let dir = root.join(TMP_DIR);
+        let _ = fs::create_dir_all(&dir);
+        let f = OpenOptions::new().read(true).write(true).create(true).truncate(false).open(dir.join(Self::NAME)).ok()?;
+        f.lock().ok()?;
+        Some(FolderLock(f))
+    }
+}
+
+impl Drop for FolderLock {
+    fn drop(&mut self) {
+        let _ = self.0.unlock();
+    }
+}
+
 fn random_name() -> String {
     hex::encode(super::crypto::random_bytes::<16>())
 }
@@ -429,8 +470,12 @@ impl FolderFs {
             {
                 let mut f = OpenOptions::new().write(true).create_new(true).open(&tmp).map_err(|e| io_error(e, path))?;
                 f.write_all(bytes).map_err(|e| io_error(e, path))?;
+                // Best effort: a drive that won't take a time keeps its own (the etag is then only as fine as it).
+                let _ = f.set_modified(unique_mtime());
                 f.sync_all().map_err(|e| io_error(e, path))?;
             }
+            // Held until the result's etag is read, so it's this write's etag and not a later one's.
+            let _folder = FolderLock::take(&root);
             match if_match {
                 IfMatch::Create => match fs::hard_link(&tmp, abs) {
                     // Create only: link() fails if the name exists, atomically, whoever made it.
@@ -444,6 +489,7 @@ impl FolderFs {
                             Err(e) => return Err(io_error(e, path)),
                         };
                         f.write_all(bytes).map_err(|e| io_error(e, path))?;
+                        let _ = f.set_modified(unique_mtime());
                         f.sync_all().map_err(|e| io_error(e, path))?;
                     }
                 },
@@ -476,6 +522,9 @@ impl FolderFs {
         let Ok(names) = fs::read_dir(root.join(TMP_DIR)) else { return 0 };
         let mut removed = 0;
         for e in names.flatten() {
+            if e.file_name() == FolderLock::NAME {
+                continue;
+            }
             let old = e.metadata().ok().and_then(|m| m.modified().ok()).and_then(|t| t.elapsed().ok()).is_some_and(|age| age > Duration::from_secs(60));
             if old && fs::remove_file(e.path()).is_ok() {
                 removed += 1;
@@ -635,6 +684,7 @@ impl LibraryFs for FolderFs {
         let abs = self.abs(path)?;
         let root = self.real_root()?.to_path_buf();
         with_path_lock(&abs.clone(), || {
+            let _folder = FolderLock::take(&root);
             let current = Self::current_etag(&abs);
             if current.is_empty() {
                 return Ok(());
@@ -782,6 +832,33 @@ mod tests {
             })
             .collect();
         assert_eq!(creators.into_iter().map(|h| h.join().unwrap()).filter(|w| *w).count(), 1);
+    }
+
+    #[test]
+    fn the_folder_lock_shuts_out_every_other_handle() {
+        // Another Folevi (another process) opens the lock file on its own handle: it must be refused while one
+        // writer holds it, and get it once that writer is done.
+        let d = tempfile::tempdir().unwrap();
+        let held = FolderLock::take(d.path()).expect("the temp folder's drive can lock");
+        let other = File::options().read(true).write(true).open(d.path().join(TMP_DIR).join(FolderLock::NAME)).unwrap();
+        assert!(matches!(other.try_lock(), Err(fs::TryLockError::WouldBlock)));
+        drop(held);
+        other.try_lock().unwrap();
+        // clean_temp never takes the lock file away, however old.
+        other.set_modified(SystemTime::now() - Duration::from_secs(3600)).unwrap();
+        assert_eq!(FolderFs::new(d.path()).clean_temp(), 0);
+    }
+
+    #[test]
+    fn quick_same_size_rewrites_never_repeat_an_etag() {
+        // Linux reuses a freed inode at once and its file times are coarse: without unique_mtime, rewriting a
+        // file with the same size in one clock tick could bring back an etag a stale reader still holds.
+        let (_d, fs) = tmp();
+        let mut seen = std::collections::HashSet::new();
+        for i in 0..300u32 {
+            let e = etag_of(fs.write("f", format!("{:03}", i % 1000).as_bytes(), &IfMatch::Any).unwrap());
+            assert!(seen.insert(e.clone()), "etag {e} came back on write {i}");
+        }
     }
 
     #[test]

@@ -31,7 +31,8 @@ const convexWs = convexOrigin.replace(/^http/, "ws");
 // app bundler, so it can't import that module.)
 export const staticCsp = [
   "default-src 'self'",
-  `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""}`,
+  // ('wasm-unsafe-eval': the spelling checker is WebAssembly, src/lib/spelling/hunspell.ts.)
+  `script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval'${isDev ? " 'unsafe-eval'" : ""}`,
   "style-src 'self' 'unsafe-inline'",
   `img-src 'self' data: blob: ${origin(convexSite)} https:`,
   `media-src 'self' blob: ${origin(convexSite)}`,

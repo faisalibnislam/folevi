@@ -2,7 +2,7 @@
 
 import { isServerEdition } from "@/lib/edition";
 import { useEffect, useState, type ComponentType } from "react";
-import { AppWindowMac, Info, ArrowDownUp, Bell, Building2, CreditCard, HelpCircle, LifeBuoy, LockKeyhole, MonitorSmartphone, Palette, Plug, Plus, RefreshCw, LibraryBig, Shield, ShieldCheck, Smartphone, UserRound, UserRoundPlus, Users } from "lucide-react";
+import { AppWindowMac, Info, ArrowDownUp, Bell, Building2, CreditCard, HelpCircle, LifeBuoy, LockKeyhole, MonitorSmartphone, Palette, Plug, Plus, RefreshCw, LibraryBig, Shield, ShieldCheck, Smartphone, SpellCheck2, UserRound, UserRoundPlus, Users } from "lucide-react";
 import { AiIcon } from "@/components/ai/AiIcon";
 import { AppLink, useAppRouter } from "@/lib/app/router";
 import { useAppState } from "@/lib/app/state";
@@ -17,6 +17,7 @@ import { LocalAiSection } from "./settings/LocalAiSection";
 import { SecuritySection } from "./settings/SecuritySection";
 import { DevicesSection } from "./settings/DevicesSection";
 import { AppearanceSection } from "./settings/AppearanceSection";
+import { WritingSection } from "./settings/WritingSection";
 import { BillingSection } from "./settings/BillingSection";
 import { NotificationsSection } from "./settings/NotificationsSection";
 import { WorkspaceSection } from "./settings/WorkspaceSection";
@@ -43,7 +44,7 @@ import { RowIcon } from "@/components/iphone/Grouped";
 import { inMacApp } from "@/lib/desktop/mac";
 import { IosRow, IosSection, IosText, SettingsScreensHost, useSettingsScreens } from "@/components/iphone/SettingsKit";
 
-type Section = "account" | "ai" | "billing" | "security" | "privacy" | "devices" | "connected-apps" | "appearance" | "notifications" | "workspace" | "members" | "workspace-guests" | "workspace-billing" | "workspace-data" | "workspace-privacy" | "sync" | "library" | "data" | "desktop" | "this-device" | "about";
+type Section = "account" | "ai" | "billing" | "security" | "privacy" | "devices" | "connected-apps" | "appearance" | "writing" | "notifications" | "workspace" | "members" | "workspace-guests" | "workspace-billing" | "workspace-data" | "workspace-privacy" | "sync" | "library" | "data" | "desktop" | "this-device" | "about";
 // (A section's icon: a Lucide icon, or Foli AI's flower, which keeps its colours.)
 type Item = { id: Section; label: string; icon: ComponentType<{ size?: number; className?: string; "aria-hidden"?: boolean }> };
 /** Things about you (your account and your Personal), the same whichever context is open. */
@@ -57,6 +58,8 @@ const YOU: Item[] = [
   { id: "devices", label: "Devices", icon: MonitorSmartphone },
   { id: "connected-apps", label: "Connected apps", icon: Plug },
   { id: "appearance", label: "Appearance", icon: Palette },
+  // Spell check, next-word prediction and the personal dictionary (WritingSection.tsx).
+  { id: "writing", label: "Writing", icon: SpellCheck2 },
   { id: "notifications", label: "Notifications", icon: Bell },
   { id: "sync", label: "Offline & sync", icon: RefreshCw },
   // Local mode's library: where it is, devices, health, passphrase, the lock (WP10). Only in local mode.
@@ -287,6 +290,7 @@ export function SettingsView({ section: asked }: { section: Section }) {
           {section === "devices" ? <DevicesSection /> : null}
           {section === "connected-apps" ? <ConnectedAppsSection /> : null}
           {section === "appearance" ? <AppearanceSection /> : null}
+          {section === "writing" ? <WritingSection /> : null}
           {section === "notifications" ? <NotificationsSection /> : null}
           {noWorkspace ? <NoWorkspaceCard /> : null}
           {section === "workspace" && workspace ? <WorkspaceSection /> : null}
@@ -355,6 +359,7 @@ function SectionBody({ section, noWorkspace, sectionHidden }: { section: Section
       {section === "devices" ? <DevicesSection /> : null}
       {section === "connected-apps" ? <ConnectedAppsSection /> : null}
       {section === "appearance" ? <AppearanceSection /> : null}
+          {section === "writing" ? <WritingSection /> : null}
       {section === "notifications" ? <NotificationsSection /> : null}
       {noWorkspace ? <NoWorkspaceCard /> : null}
       {section === "workspace" && workspace ? <WorkspaceSection /> : null}

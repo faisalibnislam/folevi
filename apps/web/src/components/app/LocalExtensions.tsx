@@ -14,6 +14,7 @@ import { useAppRouter } from "@/lib/app/router";
 import { errorCode } from "@/lib/local/errors";
 import { nativeApp, type NativeLocalAction, type NativeSpotlightItem, type NativeWidgetNote, type NativeWidgetSnapshot, type NativeWidgetTask } from "@/lib/nativeApp";
 import { useToast } from "@/components/ui/Toast";
+import { taskUpdated, useOptimisticMutation } from "@/lib/convex/optimistic";
 
 /** Changes settle this long before the app hears of them (typing in a note changes it many times a second). */
 const SETTLE_MS = 1500;
@@ -124,7 +125,7 @@ export function PlaceActions() {
 /** What a widget, Siri or Shortcuts did while this page wasn't there: put into the library, then let go. */
 function useLocalActions(state: { scope: ReturnType<typeof useAppState>["scope"]; today: string; deviceId: string | null }) {
   const bridge = nativeApp()!;
-  const update = useMutation(api.tasks.update);
+  const update = useOptimisticMutation(api.tasks.update, taskUpdated);
   const quickAdd = useMutation(api.tasks.quickAdd);
   const importText = useMutation(api.imports.importText);
   const { navigate } = useAppRouter();

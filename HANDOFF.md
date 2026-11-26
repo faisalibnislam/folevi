@@ -2,7 +2,7 @@
 
 > Read this first if you are a Claude (or any agent) picking this project up, on this Mac or another one. Then read `CLAUDE.md`, `docs/HANDOFF.md` (the long handoff: unfinished branches, release detail, what the owner is waiting on) and `docs/claude-context/memory/MEMORY.md` (the owner's standing rules). Keep this file current: after every change to the project, update "Current state", "Next steps" and "Change log", and commit it.
 
-Last updated: 2026-11-25 · Written on: Faisal's MacBook Pro M5
+Last updated: 2026-11-26 · Written on: Faisal's MacBook Pro M5
 
 ## 1. What this is
 
@@ -275,6 +275,26 @@ Not done, and why:
   release; worth a look.
 
 ## 9. Current state (as of 2026-11-25)
+
+**2026-11-26, spell check and prediction (branch `claude/vigorous-raman-bb697b`, PR 143):** Folevi's own spell
+check (Hunspell as WebAssembly, ten languages, offline), suggestions in the right-click menu, a bubble and the phone
+keyboard strip, and next-word prediction with Tab, in every app. Plan, design and what's left:
+`docs/SPELLING_PLAN.md`. Not released; not tried in the native builds or on devices.
+**Signed-in feel, web and Mac (2026-11-26, branch `claude/perf-web-mac-1126`, `docs/perf/feel-results.md`).** The
+owner found the web and Mac apps sluggish. Measured signed in (300 notes, a local backend behind
+`apps/web/perf/latency-proxy.mjs` at a 260 ms round trip, about the owner's to Convex; `apps/web/perf/feel.spec.ts`):
+the app mostly waits on the network, and the website's own pages and auth routes take 0.45 to 1 s from the owner's
+location (rendered per request in iad1). Fixed: task check-off, bookmark, archive, trash, restore and delete show at
+the click (Convex optimistic updates, `lib/convex/optimistic.ts`; check-off 350 to 400 ms to about 14 ms); the
+workspaces list is asked for with `me` (start 1.0 to 1.2 s to 0.75 to 0.9 s); no backdrop blur on `.ui-content`
+(invisible at 90 % opacity); Mac/iOS hosts keep the Convex JWT for the next page (`ShellAuth.convexToken(fresh:)`,
+the bridge passes `fresh` on Convex renewals); the waiting-edits count reaches the Mac host only once it holds 2 s
+(it caused a places-file write, Keychain mirror and broadcast on the main thread twice per save); a place's runner
+starts 3 s after a switch; Quick Add's page stays 10 minutes. Not done (in the doc): static app pages from the edge
+(needs a hash-based CSP instead of the per-request nonce), browsers starting from the snapshot without waiting for
+`me`, a spare web view for new Mac windows. The Mac app itself measured signed in (owner's OK, `apps/mac/scripts/perf-feel.mjs`,
+development deployment, real network): task check-off 0.7 to 1.1 s to under 10 ms, a page's Convex token 0.5 to
+0.75 s to about 2 ms; launch and scrolling unchanged.
 
 **Native iOS again, matching today's UI (2026-11-25, branch `claude/ios-native-today-ui`, worktree
 `.claude/worktrees/ios-native-today`).** The owner found the Capacitor app finicky and chose native SwiftUI for
@@ -1101,9 +1121,13 @@ signed-in account, 1.5.58's frosted folders with a large library, and the iPad c
 account button should move past iPadOS's window buttons).
 
 ## 10. Next steps / open work
-- After 1.7.78 (2026-11-26): the owner drags `~/Downloads/Folevi 1.7.78 Android/Folevi-1.7.78-103.aab` into Play
-  internal testing, then the hardware checks at the top of section 9. Next free version: 1.7.79 (or 1.8.79 for a Big
-  update). Mac deltas need `apps/mac/release-archive/Folevi-1.7.78.zip` (kept).
+- Spell check and prediction (`docs/SPELLING_PLAN.md`): merge PR 143 when CI is green; then a native Settings row
+  for Writing on the Mac and iPhone/iPad, and a check in each app's build (Mac, iOS, Android, Windows, Linux).
+- Signed-in feel (`docs/perf/feel-results.md` "Not done"): serve the app's pages statically from Vercel's edge with a
+  hash-based Content Security Policy (each website load waits 0.45 to 0.75 s for HTML from iad1 today); let browsers
+  start from the snapshot when the tab's account is the last one; more optimistic clicks (tags, reorder, notification
+  read marks); share the sidebar's duplicate live queries; a prewarmed web view for new Mac windows. Scrolling a long
+  note list in the Mac app (the 2026-11-26 run's list was short).
 - Native iPhone performance, left from the SwiftUI audit: `CardPicture` still reads `@Environment(\.self)` (any
   environment change runs its body; cheap while the picture is kept); the Mac's `PlaceholderCard` pulses each on its
   own animation (not used on the iPhone); nothing measured with Instruments before and after.
@@ -1115,6 +1139,11 @@ account button should move past iPadOS's window buttons).
   upright (669 pt: still the wide layout by the Duo decision; today's web rule would give it the phone's under
   700, owner's call); Foli AI's page is tight beside the sidebar in iPad portrait (conversations and chat side by
   side in about 500 pt).
+- Float this note (PR from `claude/float-this-note`): CI's e2e, then merge; it ships in the next release of each app
+  (Mac and Windows need new builds for the window; the web works on deploy). Then the owner tries it on the Mac
+- After 1.7.78 (2026-11-26): the owner drags `~/Downloads/Folevi 1.7.78 Android/Folevi-1.7.78-103.aab` into Play
+  internal testing, then the hardware checks at the top of section 9. Next free version: 1.7.79 (or 1.8.79 for a Big
+  update). Mac deltas need `apps/mac/release-archive/Folevi-1.7.78.zip` (kept).
 - Float this note (released in 1.7.78): the owner tries it on the Mac
   (several panels, pin off and on, over a full-screen app), on a Windows PC and in Chrome. Possible follow-ups:
   reopen floating notes after a relaunch, and close a place's floating notes when that place is signed out.
@@ -1404,31 +1433,23 @@ account button should move past iPadOS's window buttons).
   `DATABASE_UDF_USER_TIMEOUT_SECONDS=4` for that backend. Bursts show in `convex.log` as "took a long time".
 
 ## 12. Change log
-- 2026-11-26: **The caret follows the text's colour** in every field (`input`, `textarea`, editable text): left to
-  "auto", WebKit in the apps drew the system's dark insertion point in the Vault's dark passcode field. Editors
-  that colour their caret (the note's ember) keep it. Checked computed styles in a browser; not in a Mac build.
-- 2026-11-26: **Window polish** (owner's feedback): Home stays in the tab strip before the tab arrows, never scrolled
-  away (TabStrip.tsx; tests now find it by `[data-tab-home]`); pickers in a dialog (Move to folder, Move page, Add
-  tag, Link a page) fit a short window: Dialog's new `fit` makes the body a column and the list (`min-h-0`) the one
-  thing that scrolls, so its last row is never cut off; version history's top bar keeps room for the window buttons
-  (`ui-window-bar`: a `ui-traffic-space` for the Mac, which DesktopBridge now prefers inside an open dialog, and
-  `--win-caption-inset` on Windows). Checked: `e2e/window-polish-local.spec.ts` in Chromium and WebKit (fails
-  without the Dialog fix). Not checked: version history in a build (local mode has none, so its step is skipped
-  there); other full-window screens (onboarding, locked library, E2EE gate) not yet audited for the window buttons;
-  AiGenerateDialog's and MovePlacesDialog's inner scroll areas left as they were.
-- 2026-11-26: **Float this note, edge to edge** (owner's feedback on 1.7.78): the note's colour reaches every edge
-  of the floating window (no white at the sides, under the bar or at the foot) and the bar wears the note's colour
-  and ink (FloatNote reads them off the page). One web change covers the Mac, Windows and Linux windows and Chrome's
-  floating window. Checked: `e2e/float-note.spec.ts` in Chromium and WebKit, with a plain note and an Irises note
-  (edges 0 px, bar colour = note colour). Not checked in a Mac build; ships in the next release.
-- 2026-11-26: **1.7.78 released** (Big update, build 103) from PR 131's merge (`b11f3256`): web and Convex
-  deployed; Mac published; iPhone and iPad on TestFlight (delivery 1ce1048f); Windows installers, Linux packages,
-  apt and rpm repositories and the four desktop update feeds published; Snap revisions 7 (arm64) and 8 (amd64) on stable; the Android
-  bundle left for the owner's Play drag-in. Two things that needed working around: `apps/mobile` is outside the pnpm
-  workspace, so run `pnpm install --ignore-workspace --frozen-lockfile` there before `npx cap sync`; and the x86_64
-  AppImage smoke test in the VM's `/srv/jammy-amd64` chroot needs proc, sys, dev and dev/pts bind-mounted, and the
-  AppImage's squashfs extracted (`unsquashfs -o <offset of "hsqs">`) and `AppRun` run, since Rosetta's binfmt rule
-  doesn't match the AppImage header.
+- 2026-11-26: **Spell check, suggestions and next-word prediction** for every app (`docs/SPELLING_PLAN.md`): Hunspell
+  WebAssembly in a worker, 10 languages detected per line, personal dictionary synced (`convex/spelling.ts`), ghost
+  text with Tab (on-device model, Foli AI after a pause), Settings > Writing, per-note switch, F7. Checked: typecheck,
+  lint, web unit suite, Convex and parity tests, Playwright in Chromium and WebKit (local mode). Not checked in the
+  native builds or on devices.
+- 2026-11-26: Signed-in feel pass, web and Mac (`claude/perf-web-mac-1126`, `docs/perf/feel-results.md`): optimistic
+  task check-off, bookmark, archive, trash, restore and delete; workspaces asked with `me`; no blur on `.ui-content`;
+  Convex JWT kept by the Mac/iOS host for the next page; waiting-edits count debounced before it reaches the host;
+  runner start 3 s after a place switch; Quick Add page kept 10 minutes; `perf/feel.spec.ts` and
+  `perf/latency-proxy.mjs` to measure account mode near and far.
+- 2026-11-26: **PR 132 (`claude/integration-2026-11-26`, merge `135a99af`) landed PRs 117, 130 and 129 together**
+  (the owner: "resolve all merging conflict please"). All three edit this file, so they went in as one branch with
+  one CI run; checked first with CI's steps, the Mac Debug build and the iOS Simulator build. PR 112 (Android native,
+  draft) has main merged in and stays a draft. When several PRs are open again, do the same: one integration branch.
+- 2026-11-26: Native iOS 1.7.78 (build 107) on internal TestFlight from `claude/ios-native-today-ui` (delivery
+  2c71915f): the SwiftUI refactors and the bar menu fix. Same bundle ID as the Capacitor 1.7.78 (build 103) the Mac
+  session uploaded, so testers get the native app as the newer build.
 - 2026-11-25: **Windows: home servers over plain http** (branch `claude/windows-server-bridge`, on top of
   `claude/desktop-server-places`): `src/lan_bridge.rs` relays a server place's http and ws traffic to a LAN address
   through `127.0.0.1` (WebView2 blocks it from `https://app.localhost` as mixed content), with the server's own Host.
@@ -1479,6 +1500,26 @@ account button should move past iPadOS's window buttons).
 - 2026-11-25: Native Foli AI on iPhone finished on `claude/ios-native-foli-ai` (glass composer on the keyboard, Stop, follow-ups crash, local message ids).
 - 2026-11-25: Native iPad and iPhone Duo matched to today's tablet layout on `claude/ios-native-ipad-duo` (49c8757b, 7347a057).
 - 2026-11-25: Native iOS restarted on `claude/ios-native-today-ui` to match today's UI (owner's decision); step 1 committed (ae912d75).
+- 2026-11-26: Windows/Linux app, library writes: a conditional write (`ifMatch` etag) could lose an update on
+  Linux (CI run 45649696992, `two_folder_fs_on_one_folder_never_lose_increments` ended at 34, not 40). Cause: an
+  ABA etag. ext4 reuses a freed inode at once and stamps files with a coarse clock, so two same-size rewrites in one
+  tick brought back the etag a stale reader held. Fix in `apps/desktop/src-tauri/src/library/fs.rs`: every write
+  stamps its own microsecond, never-repeating mtime (`unique_mtime`), and every Folevi writer (other processes too)
+  holds an OS file lock, `.folevi-tmp/write.lock`, across the final etag check and the rename (and removes).
+  `rust-version` goes to 1.89 for `File::lock`. New tests for both; the race test passed 250 runs in a loop.
+- 2026-11-26: **Float this note, edge to edge** (owner's feedback on 1.7.78): the note's colour reaches every edge
+  of the floating window (no white at the sides, under the bar or at the foot) and the bar wears the note's colour
+  and ink (FloatNote reads them off the page). One web change covers the Mac, Windows and Linux windows and Chrome's
+  floating window. Checked: `e2e/float-note.spec.ts` in Chromium and WebKit, with a plain note and an Irises note
+  (edges 0 px, bar colour = note colour). Not checked in a Mac build; ships in the next release.
+- 2026-11-26: **1.7.78 released** (Big update, build 103) from PR 131's merge (`b11f3256`): web and Convex
+  deployed; Mac published; iPhone and iPad on TestFlight (delivery 1ce1048f); Windows installers, Linux packages,
+  apt and rpm repositories and the four desktop update feeds published; Snap revisions 7 (arm64) and 8 (amd64) on stable; the Android
+  bundle left for the owner's Play drag-in. Two things that needed working around: `apps/mobile` is outside the pnpm
+  workspace, so run `pnpm install --ignore-workspace --frozen-lockfile` there before `npx cap sync`; and the x86_64
+  AppImage smoke test in the VM's `/srv/jammy-amd64` chroot needs proc, sys, dev and dev/pts bind-mounted, and the
+  AppImage's squashfs extracted (`unsquashfs -o <offset of "hsqs">`) and `AppRun` run, since Rosetta's binfmt rule
+  doesn't match the AppImage header.
 - 2026-11-25: Mac feedback round 2: New note's even 6 px inset; one note in two joined tabs stays in the tab on
   screen (`shownId`/`pick` in `lib/app/tabs.tsx`); hovered tab's pin clear of the title; table cells wrap alike
   edited or not. Checked: typecheck, lint, unit suite (2247), WebKit probes (inset 6/6/6, pin fade 48 px). The table

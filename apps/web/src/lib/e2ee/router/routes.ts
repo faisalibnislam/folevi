@@ -85,6 +85,9 @@ export const E2EE_ROUTES: Record<string, Route> = {
   ...each(pass, "graphViews", "list remove save"),
   // The sidebar's own folder order: folder ids only (the server has those already, as for moveFolder).
   ...each(pass, "sidebarOrder", "get set"),
+  // Spelling settings and the personal dictionary: the apps never send words from sealed notes
+  // (lib/spelling/settings.ts addPersonalWord keeps those on the device).
+  ...each(pass, "spelling", "get setPrefs setWord setNote"),
   ...each(pass, "notifications", "markRead markUnread noteSubscription remove setNoteSubscription unreadCount"),
   "blocks:rebalance": pass,
   // Sealed per op by the router itself (client.ts pushSealed, §6.6), not through a route.
@@ -216,6 +219,7 @@ export const E2EE_ROUTES: Record<string, Route> = {
   // ---- Foli AI (WP8 decides per request) -------------------------------------------------------------------
   "ai:*": ai,
   "aiChat:*": ai,
+  "aiComplete:*": ai,
   "aiResearch:*": ai,
   "aiStudy:*": ai,
   "aiTodos:*": ai,

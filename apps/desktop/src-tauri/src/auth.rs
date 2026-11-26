@@ -288,13 +288,19 @@ impl Auth {
         self.token(slot).is_some()
     }
 
-    fn url(&self, path: &str) -> url::Url {
-        self.service.join(path).expect("a path joins")
+    /// The website a session lives on: `server`'s (a Folevi Server account, "Your own server"), else Folevi Cloud's.
+    fn site(&self, server: Option<&url::Url>) -> url::Url {
+        server.map(origin_of).unwrap_or_else(|| self.service.clone())
+    }
+
+    fn url(site: &url::Url, path: &str) -> url::Url {
+        site.join(path).expect("a path joins")
     }
 
     /// A request to the website with the bearer, as native code sends it. A rotated token goes where `keep` says.
     async fn send(
         &self,
+        site: &url::Url,
         url: url::Url,
         method: &str,
         headers: &[(String, String)],
@@ -307,7 +313,7 @@ impl Auth {
         for (k, v) in headers {
             req = req.header(k.as_str(), v.as_str());
         }
-        req = req.header("origin", origin_header(&self.service));
+        req = req.header("origin", origin_header(site));
         if let Some(b) = bearer {
             req = req.header("authorization", format!("Bearer {b}"));
         }
@@ -328,8 +334,8 @@ impl Auth {
     }
 
     /// Who a token's session belongs to (None: no live session, or no answer).
-    async fn user_of(&self, bearer: &str) -> Option<SessionUser> {
-        let (res, _) = self.send(self.url("/api/auth/get-session"), "GET", &[], None, Some(bearer), Keep::Nowhere).await.ok()?;
+    async fn user_of(&self, site: &url::Url, bearer: &str) -> Option<SessionUser> {
+        let (res, _) = self.send(site, Self::url(site, "/api/auth/get-session"), "GET", &[], None, Some(bearer), Keep::Nowhere).await.ok()?;
         if !res.status().is_success() {
             return None;
         }
@@ -343,9 +349,9 @@ impl Auth {
 
     /// Ends a session on the server, best effort (offline: it expires on its own, and Settings > Devices can end it
     /// from anywhere).
-    async fn end_session(&self, bearer: &str) {
+    async fn end_session(&self, site: &url::Url, bearer: &str) {
         let headers = [("content-type".to_string(), "application/json".to_string())];
-        let _ = self.send(self.url("/api/auth/sign-out"), "POST", &headers, Some("{}".into()), Some(bearer), Keep::Nowhere).await;
+        let _ = self.send(site, Self::url(site, "/api/auth/sign-out"), "POST", &headers, Some("{}".into()), Some(bearer), Keep::Nowhere).await;
     }
 
     /// Ends the sign-in on its way, if any: it answers None.
@@ -385,10 +391,10 @@ impl Auth {
     }
 
     /// The PKCE sign-in in the browser, ending with a new session's token (or None).
-    async fn obtain(&self, provider: Option<&str>) -> Option<String> {
+    async fn obtain(&self, site: &url::Url, provider: Option<&str>) -> Option<String> {
         let (verifier, challenge) = pkce_pair();
         let state = b64url(&random(24));
-        let start = sign_in_start(&self.service, clean_provider(provider), &challenge, &state);
+        let start = sign_in_start(site, clean_provider(provider), &challenge, &state);
         let (tx, rx) = oneshot::channel();
         {
             // A new attempt replaces the one before it.
@@ -426,9 +432,9 @@ impl Auth {
         });
         let res = self
             .client
-            .post(self.url("/api/auth/native/token"))
+            .post(Self::url(site, "/api/auth/native/token"))
             .header("content-type", "application/json")
-            .header("origin", origin_header(&self.service))
+            .header("origin", origin_header(site))
             .body(body.to_string())
             .send()
             .await
@@ -442,16 +448,18 @@ impl Auth {
 
     /// Signs in in the browser (`provider`: "google" or "apple" go straight there); the new account's user, or
     /// None when it didn't finish. The same person again replaces their old session; other accounts keep theirs.
-    pub async fn sign_in_account(&self, provider: Option<&str>) -> Result<Option<SessionUser>, ShellError> {
-        let Some(access) = self.obtain(provider).await else { return Ok(None) };
-        let Some(user) = self.user_of(&access).await else {
-            self.end_session(&access).await;
+    /// `server`: the Folevi Server's website the sign-in screen belongs to (None: Folevi Cloud).
+    pub async fn sign_in_account(&self, provider: Option<&str>, server: Option<&url::Url>) -> Result<Option<SessionUser>, ShellError> {
+        let site = self.site(server);
+        let Some(access) = self.obtain(&site, provider).await else { return Ok(None) };
+        let Some(user) = self.user_of(&site, &access).await else {
+            self.end_session(&site, &access).await;
             return Ok(None);
         };
         let previous = self.token(Some(&user.user_id));
         self.secrets.set(&Self::name_of(Some(&user.user_id)), &access)?;
         if let Some(prev) = previous.filter(|p| *p != access) {
-            self.end_session(&prev).await;
+            self.end_session(&site, &prev).await;
         }
         Ok(Some(user))
     }
@@ -460,11 +468,12 @@ impl Auth {
     /// the session this PC held before.
     #[allow(dead_code)]
     pub async fn sign_in(&self, provider: Option<&str>) -> Result<bool, ShellError> {
-        let Some(access) = self.obtain(provider).await else { return Ok(false) };
+        let site = self.site(None);
+        let Some(access) = self.obtain(&site, provider).await else { return Ok(false) };
         let previous = self.token(None);
         self.secrets.set(LEGACY, &access)?;
         if let Some(prev) = previous.filter(|p| *p != access) {
-            self.end_session(&prev).await;
+            self.end_session(&site, &prev).await;
         }
         Ok(true)
     }
@@ -474,7 +483,7 @@ impl Auth {
     #[allow(dead_code)]
     pub async fn adopt_legacy(&self) -> Option<SessionUser> {
         let legacy = self.token(None)?;
-        let user = self.user_of(&legacy).await?;
+        let user = self.user_of(&self.site(None), &legacy).await?;
         if self.token(Some(&user.user_id)).is_none() && self.secrets.set(&Self::name_of(Some(&user.user_id)), &legacy).is_err() {
             return None;
         }
@@ -483,10 +492,10 @@ impl Auth {
     }
 
     /// Ends the slot's session on the server (best effort) and forgets its token, online or not.
-    pub async fn sign_out(&self, slot: Option<&str>) {
+    pub async fn sign_out(&self, slot: Option<&str>, server: Option<&url::Url>) {
         self.cancel_pending();
         if let Some(bearer) = self.token(slot) {
-            self.end_session(&bearer).await;
+            self.end_session(&self.site(server), &bearer).await;
         }
         if let Err(e) = self.secrets.delete(&Self::name_of(slot)) {
             log::warn!("Folevi: couldn't delete a session token ({})", e.code);
@@ -495,13 +504,14 @@ impl Auth {
 
     /// authFetch `{ path, method, headers, body }`: only the website's /api/auth/*, with the slot's bearer;
     /// `{ status, headers, body }` with the token scrubbed out.
-    pub async fn fetch(&self, o: &Value, slot: Option<&str>) -> ShellResult {
-        let url = auth_url(&self.service, o.get("path").unwrap_or(&Value::Null));
+    pub async fn fetch(&self, o: &Value, slot: Option<&str>, server: Option<&url::Url>) -> ShellResult {
+        let site = self.site(server);
+        let url = auth_url(&site, o.get("path").unwrap_or(&Value::Null));
         let clean = clean_init(o);
         let (Some(url), Some(clean)) = (url, clean) else { return Err(ShellError::invalid(REFUSED)) };
         let bearer = self.token(slot);
         let (res, rotated) = self
-            .send(url, &clean.method, &clean.headers, clean.body, bearer.as_deref(), Keep::Slot(slot))
+            .send(&site, url, &clean.method, &clean.headers, clean.body, bearer.as_deref(), Keep::Slot(slot))
             .await
             .map_err(|_| ShellError::unavailable(OFFLINE))?;
         let status = res.status().as_u16();
@@ -525,10 +535,11 @@ impl Auth {
     }
 
     /// The slot's short-lived Convex JWT: None when signed out (a session that ended is forgotten).
-    pub async fn convex_token(&self, slot: Option<&str>) -> Result<Option<String>, ShellError> {
+    pub async fn convex_token(&self, slot: Option<&str>, server: Option<&url::Url>) -> Result<Option<String>, ShellError> {
         let Some(bearer) = self.token(slot) else { return Ok(None) };
+        let site = self.site(server);
         let (res, _) = self
-            .send(self.url("/api/auth/convex/token"), "GET", &[], None, Some(&bearer), Keep::Slot(slot))
+            .send(&site, Self::url(&site, "/api/auth/convex/token"), "GET", &[], None, Some(&bearer), Keep::Slot(slot))
             .await
             .map_err(|_| ShellError::unavailable(OFFLINE))?;
         match res.status().as_u16() {
@@ -689,10 +700,10 @@ mod tests {
     #[allow(dead_code)]
     fn futures_are_send(a: &Auth, v: &Value) {
         fn send<T: Send>(_: T) {}
-        send(a.fetch(v, None));
-        send(a.convex_token(None));
-        send(a.sign_out(None));
-        send(a.sign_in_account(None));
+        send(a.fetch(v, None, None));
+        send(a.convex_token(None, None));
+        send(a.sign_out(None, None));
+        send(a.sign_in_account(None, None));
         send(a.sign_in(None));
         send(a.adopt_legacy());
     }
@@ -749,7 +760,7 @@ mod tests {
             json!({ "path": "/api/auth/get-session", "method": "GET", "body": "x" }),
             json!({ "path": "/api/auth/sign-out", "method": "POST", "body": [1, 2, 3, 4] }),
         ] {
-            let e = h.auth.fetch(&o, None).await.unwrap_err();
+            let e = h.auth.fetch(&o, None, None).await.unwrap_err();
             assert_eq!(e.code, "invalid_argument");
             assert!(e.message.contains("only sends"));
         }
@@ -767,6 +778,7 @@ mod tests {
                     "headers": { "authorization": "Bearer someone-elses", "cookie": "folevi.session=x", "origin": "app://folevi", "host": "evil.example", "x-forwarded-for": "1.2.3.4", "content-type": "application/json" },
                     "body": "{\"code\":\"123456\"}",
                 }),
+                None,
                 None,
             )
             .await
@@ -788,7 +800,7 @@ mod tests {
     #[tokio::test]
     async fn signed_out_no_authorization_at_all() {
         let h = harness(None, ok());
-        h.auth.fetch(&json!({ "path": "/api/auth/get-session", "method": "GET" }), None).await.unwrap();
+        h.auth.fetch(&json!({ "path": "/api/auth/get-session", "method": "GET" }), None, None).await.unwrap();
         let r = &h.sent()[0];
         assert!(r.header("authorization").is_none());
         assert!(r.header("origin").is_some());
@@ -810,7 +822,7 @@ mod tests {
                 body: json!({ "session": { "id": "s1", "token": TOKEN, "userId": "u1" }, "user": { "email": "a@example.com" }, "echo": format!("{TOKEN}.signature"), "next": rotated }).to_string(),
             }),
         );
-        let res = h.auth.fetch(&json!({ "path": "/api/auth/get-session", "method": "GET" }), None).await.unwrap();
+        let res = h.auth.fetch(&json!({ "path": "/api/auth/get-session", "method": "GET" }), None, None).await.unwrap();
         assert_eq!(res["status"], 200);
         let body = res["body"].as_str().unwrap();
         assert!(!body.contains(TOKEN));
@@ -842,7 +854,7 @@ mod tests {
     #[tokio::test]
     async fn a_rotated_value_that_isnt_a_token_is_ignored() {
         let h = harness(Some(TOKEN), Arc::new(|_| Resp { status: 200, headers: vec![("set-auth-token".into(), "x y".into())], body: "{}".into() }));
-        h.auth.fetch(&json!({ "path": "/api/auth/get-session" }), None).await.unwrap();
+        h.auth.fetch(&json!({ "path": "/api/auth/get-session" }), None, None).await.unwrap();
         assert_eq!(h.get("auth.session").as_deref(), Some(TOKEN));
     }
 
@@ -900,11 +912,11 @@ mod tests {
     async fn google_and_apple_open_straight_on_their_page() {
         let h = harness(None, ok());
         let auth = h.auth.clone();
-        let done = tokio::spawn(async move { auth.sign_in_account(Some("google")).await });
+        let done = tokio::spawn(async move { auth.sign_in_account(Some("google"), None).await });
         let u = h.opened(0).await;
         assert_eq!(u.path(), "/app-google");
         assert_eq!(u.query_pairs().find(|(k, _)| k == "provider").unwrap().1, "google");
-        h.auth.sign_out(None).await;
+        h.auth.sign_out(None, None).await;
         assert_eq!(done.await.unwrap().unwrap(), None);
         // Anything else is /connect.
         let start = sign_in_start(&h.mock.base, clean_provider(Some("github")), "c", "s");
@@ -995,21 +1007,21 @@ mod tests {
     #[tokio::test]
     async fn convex_token_the_jwt_none_when_signed_out_forgotten_when_ended() {
         let ok = harness(Some(TOKEN), Arc::new(|_| json_resp(json!({ "token": JWT }), 200)));
-        assert_eq!(ok.auth.convex_token(None).await.unwrap().as_deref(), Some(JWT));
+        assert_eq!(ok.auth.convex_token(None, None).await.unwrap().as_deref(), Some(JWT));
         assert_eq!(ok.sent()[0].path, "/api/auth/convex/token");
         assert_eq!(ok.sent()[0].bearer(), TOKEN);
 
         let none = harness(None, ok_resp());
-        assert_eq!(none.auth.convex_token(None).await.unwrap(), None);
+        assert_eq!(none.auth.convex_token(None, None).await.unwrap(), None);
         assert!(none.sent().is_empty());
 
         let ended = harness(Some(TOKEN), Arc::new(|_| json_resp(json!({ "code": "UNAUTHORIZED" }), 401)));
-        assert_eq!(ended.auth.convex_token(None).await.unwrap(), None);
+        assert_eq!(ended.auth.convex_token(None, None).await.unwrap(), None);
         assert!(ended.get("auth.session").is_none());
 
         // A server error isn't "signed out": it fails, and the page carries on offline.
         let down = harness(Some(TOKEN), Arc::new(|_| Resp { status: 503, headers: vec![], body: "busy".into() }));
-        assert!(down.auth.convex_token(None).await.is_err());
+        assert!(down.auth.convex_token(None, None).await.is_err());
         assert_eq!(down.get("auth.session").as_deref(), Some(TOKEN));
     }
 
@@ -1020,7 +1032,7 @@ mod tests {
     #[tokio::test]
     async fn sign_out_ends_the_session_then_forgets_it_online_or_not() {
         let h = harness(Some(TOKEN), ok());
-        h.auth.sign_out(None).await;
+        h.auth.sign_out(None, None).await;
         let sent = h.sent();
         assert_eq!(sent.len(), 1);
         assert_eq!(sent[0].path, "/api/auth/sign-out");
@@ -1035,7 +1047,7 @@ mod tests {
         store.set("auth.session.userA", TOKEN).unwrap();
         let port = TcpListener::bind("127.0.0.1:0").unwrap().local_addr().unwrap().port();
         let offline = Auth::new(url::Url::parse(&format!("http://127.0.0.1:{port}")).unwrap(), store.clone(), Arc::new(|_: &str| {}), "PC".into());
-        offline.sign_out(Some("userA")).await;
+        offline.sign_out(Some("userA"), None).await;
         assert!(store.get("auth.session.userA").is_none());
     }
 
@@ -1068,14 +1080,14 @@ mod tests {
         let h = harness(None, server(people, vec![ana1, ben1, ana2]));
 
         let auth = h.auth.clone();
-        let p = tokio::spawn(async move { auth.sign_in_account(None).await });
+        let p = tokio::spawn(async move { auth.sign_in_account(None, None).await });
         h.finish(0, "code=c0").await;
         let ana = p.await.unwrap().unwrap().unwrap();
         assert_eq!(ana, SessionUser { user_id: "userAna".into(), name: "ana".into(), email: "ana@example.com".into(), avatar_url: None });
         assert_eq!(serde_json::to_value(&ana).unwrap(), json!({ "userId": "userAna", "name": "ana", "email": "ana@example.com", "avatarUrl": null }));
 
         let auth = h.auth.clone();
-        let p = tokio::spawn(async move { auth.sign_in_account(None).await });
+        let p = tokio::spawn(async move { auth.sign_in_account(None, None).await });
         h.finish(1, "code=c1").await;
         assert_eq!(p.await.unwrap().unwrap().unwrap().user_id, "userBen");
         assert_eq!(h.get("auth.session.userAna").as_deref(), Some(ana1));
@@ -1083,14 +1095,14 @@ mod tests {
         assert!(h.get("auth.session").is_none());
 
         // Requests go with the named account's bearer ("acct:<id>" works too).
-        assert_eq!(h.auth.convex_token(Some("userBen")).await.unwrap().as_deref(), Some("jwt-for-userBen"));
-        assert_eq!(h.auth.convex_token(Some("acct:userAna")).await.unwrap().as_deref(), Some("jwt-for-userAna"));
-        assert_eq!(h.auth.convex_token(Some("userNobody")).await.unwrap(), None);
+        assert_eq!(h.auth.convex_token(Some("userBen"), None).await.unwrap().as_deref(), Some("jwt-for-userBen"));
+        assert_eq!(h.auth.convex_token(Some("acct:userAna"), None).await.unwrap().as_deref(), Some("jwt-for-userAna"));
+        assert_eq!(h.auth.convex_token(Some("userNobody"), None).await.unwrap(), None);
 
         // Ana again: her old session ends, Ben's stays.
         h.mock.sent.lock().clear();
         let auth = h.auth.clone();
-        let p = tokio::spawn(async move { auth.sign_in_account(None).await });
+        let p = tokio::spawn(async move { auth.sign_in_account(None, None).await });
         h.finish(2, "code=c2").await;
         assert_eq!(p.await.unwrap().unwrap().unwrap().user_id, "userAna");
         assert_eq!(h.get("auth.session.userAna").as_deref(), Some(ana2));
@@ -1099,7 +1111,7 @@ mod tests {
         assert_eq!(outs, vec![ana1.to_string()]);
 
         // Signing out of Ben leaves Ana.
-        h.auth.sign_out(Some("userBen")).await;
+        h.auth.sign_out(Some("userBen"), None).await;
         assert!(h.get("auth.session.userBen").is_none());
         assert!(h.auth.signed_in(Some("userAna")));
     }
@@ -1109,7 +1121,7 @@ mod tests {
         let fresh = "Freshsessiontoken0123456789abcdef";
         let h = harness(None, server(vec![], vec![fresh]));
         let auth = h.auth.clone();
-        let p = tokio::spawn(async move { auth.sign_in_account(None).await });
+        let p = tokio::spawn(async move { auth.sign_in_account(None, None).await });
         h.finish(0, "code=c").await;
         assert_eq!(p.await.unwrap().unwrap(), None);
         assert!(h.sent().iter().any(|r| r.path == "/api/auth/sign-out" && r.bearer() == fresh));

@@ -44,6 +44,26 @@ const SEAL_AAD: &[u8] = b"folevi/e2ee/device-keys/v1";
 const NO_KEYS: &str = "This PC has no encryption keys yet.";
 const NOT_A_BOX: &str = "Not a sealed Folevi box.";
 const FAILED: &str = "Folevi couldn't use this PC's encryption keys.";
+/// A yes from Windows Hello counts this long (the Mac's E2eeKeys.confirmedAt).
+const CONFIRMED_FOR_MS: u64 = 30_000;
+
+/// Asking the person (Windows Hello, hello.rs): whether this PC can, and asking with a message.
+pub trait Ask {
+    fn available(&self) -> bool;
+    fn confirm(&self, message: &str) -> bool;
+}
+
+/// A PC that can't ask (Linux, or no Windows Hello).
+pub struct NoAsk;
+
+impl Ask for NoAsk {
+    fn available(&self) -> bool {
+        false
+    }
+    fn confirm(&self, _message: &str) -> bool {
+        false
+    }
+}
 
 fn err(code: &str, message: &str) -> ShellError {
     ShellError::new(code, message)
@@ -167,19 +187,21 @@ pub struct DeviceKeys {
     dir: PathBuf,
     sealer: Arc<Sealer>,
     loaded: Mutex<Option<Loaded>>,
+    /// When Windows Hello last said yes (ms), for "Ask before unlocking encrypted notes".
+    confirmed_at: Mutex<u64>,
     /// Tests: fixed private halves (X25519 scalar, Ed25519 seed) instead of new random ones.
     fixed: Option<([u8; 32], [u8; 32])>,
 }
 
 impl DeviceKeys {
     pub fn new(dir: PathBuf, sealer: Arc<Sealer>) -> Self {
-        Self { dir, sealer, loaded: Mutex::new(None), fixed: None }
+        Self { dir, sealer, loaded: Mutex::new(None), confirmed_at: Mutex::new(0), fixed: None }
     }
 
     /// Tests: keys made from fixed private halves.
     #[cfg(test)]
     fn with_fixed(dir: PathBuf, sealer: Arc<Sealer>, x: [u8; 32], ed: [u8; 32]) -> Self {
-        Self { dir, sealer, loaded: Mutex::new(None), fixed: Some((x, ed)) }
+        Self { dir, sealer, loaded: Mutex::new(None), confirmed_at: Mutex::new(0), fixed: Some((x, ed)) }
     }
 
     fn json_file(&self) -> PathBuf {
@@ -302,28 +324,80 @@ impl DeviceKeys {
         self.with_keys(false, |k| Ok(json!({ "value": b64u(&k.ed.sign(&statement_message(kind, body)).to_bytes()) })))
     }
 
-    /// No biometric unlock on this platform yet.
+    fn prefs_file(&self) -> PathBuf {
+        self.dir.join("prefs.json")
+    }
+
+    /// "Ask before unlocking encrypted notes" (prefs.json `touchId`, Electron's name for it).
+    fn ask_on(&self) -> bool {
+        std::fs::read(self.prefs_file()).ok().and_then(|b| serde_json::from_slice::<Value>(&b).ok()).and_then(|v| v.get("touchId").and_then(Value::as_bool)).unwrap_or(false)
+    }
+
+    /// `{ touchId, available }`: whether Folevi asks (Windows Hello) before opening encrypted notes.
+    pub fn settings_with(&self, ask: &dyn Ask) -> Value {
+        let available = ask.available();
+        json!({ "touchId": available && self.ask_on(), "available": available })
+    }
+
+    #[allow(dead_code)]
     pub fn settings(&self) -> Value {
-        json!({ "touchId": false, "available": false })
+        self.settings_with(&NoAsk)
+    }
+
+    fn set_ask(&self, on: bool, ask: &dyn Ask) -> ShellResult {
+        if !ask.available() {
+            return Err(err("unavailable", "Windows Hello isn't set up on this PC."));
+        }
+        if on != self.ask_on() {
+            let message = if on { "Ask for Windows Hello before unlocking encrypted notes" } else { "Stop asking for Windows Hello before unlocking encrypted notes" };
+            if !ask.confirm(message) {
+                return Err(err("cancelled", "Windows Hello didn't confirm it."));
+            }
+            std::fs::create_dir_all(&self.dir).map_err(|_| err("failed", FAILED))?;
+            write_atomic(&self.prefs_file(), json!({ "touchId": on }).to_string().as_bytes()).map_err(|_| err("failed", FAILED))?;
+            if on {
+                *self.confirmed_at.lock() = now_ms();
+            }
+        }
+        Ok(self.settings_with(ask))
+    }
+
+    /// Before the keys open a box: Windows Hello, when it's asked for (a yes counts for 30 seconds).
+    fn confirm(&self, ask: &dyn Ask) -> Result<(), ShellError> {
+        if !self.ask_on() || !ask.available() || now_ms().saturating_sub(*self.confirmed_at.lock()) < CONFIRMED_FOR_MS {
+            return Ok(());
+        }
+        if !ask.confirm("Unlock your encrypted notes") {
+            return Err(err("cancelled", "Windows Hello didn't confirm it."));
+        }
+        *self.confirmed_at.lock() = now_ms();
+        Ok(())
     }
 
     /// e2eeDeviceKeys, e2eeOpen, e2eeSign, e2eeReset, e2eeSettings, e2eeSetTouchId. Errors are `{ code, message }`
     /// with e2ee.ts's codes: "unavailable", "invalid_argument", "cancelled", "failed".
+    #[allow(dead_code)]
     pub fn call(&self, method: &str, o: &Value) -> ShellResult {
+        self.call_asking(method, o, &NoAsk)
+    }
+
+    /// The same, asking with `ask` (Windows Hello) where Folevi asks.
+    pub fn call_asking(&self, method: &str, o: &Value, ask: &dyn Ask) -> ShellResult {
         match method {
             "e2eeDeviceKeys" => self.device_keys(),
-            "e2eeOpen" => self.open(o),
+            "e2eeOpen" => {
+                self.confirm(ask)?;
+                self.open(o)
+            }
             "e2eeSign" => self.sign(o),
             "e2eeReset" => {
                 self.reset();
                 Ok(Value::Null)
             }
-            "e2eeSettings" => Ok(self.settings()),
+            "e2eeSettings" => Ok(self.settings_with(ask)),
             "e2eeSetTouchId" => {
-                if !o.get("on").is_some_and(Value::is_boolean) {
-                    return Err(err("invalid_argument", "touchId is true or false."));
-                }
-                Ok(self.settings())
+                let Some(on) = o.get("on").and_then(Value::as_bool) else { return Err(err("invalid_argument", "touchId is true or false.")) };
+                self.set_ask(on, ask)
             }
             _ => Err(err("invalid_argument", &format!("{method} isn't an encryption call."))),
         }
@@ -554,12 +628,54 @@ mod tests {
     }
 
     #[test]
+    fn windows_hello_is_asked_before_encrypted_notes_open() {
+        struct Fake {
+            yes: std::cell::Cell<bool>,
+            asked: std::cell::RefCell<Vec<String>>,
+        }
+        impl Ask for Fake {
+            fn available(&self) -> bool {
+                true
+            }
+            fn confirm(&self, m: &str) -> bool {
+                self.asked.borrow_mut().push(m.to_string());
+                self.yes.get()
+            }
+        }
+        let dir = tempfile::tempdir().unwrap();
+        let k = DeviceKeys::new(dir.path().to_path_buf(), sealer(1));
+        let hello = Fake { yes: std::cell::Cell::new(false), asked: Default::default() };
+        assert_eq!(k.call_asking("e2eeSettings", &json!({}), &hello).unwrap(), json!({ "touchId": false, "available": true }));
+        // A no changes nothing.
+        assert_eq!(k.call_asking("e2eeSetTouchId", &json!({ "on": true }), &hello).unwrap_err().code, "cancelled");
+        assert_eq!(k.call_asking("e2eeSettings", &json!({}), &hello).unwrap()["touchId"], false);
+        hello.yes.set(true);
+        assert_eq!(k.call_asking("e2eeSetTouchId", &json!({ "on": true }), &hello).unwrap()["touchId"], true);
+        assert_eq!(hello.asked.borrow().len(), 2);
+        // Kept with the keys (Electron's prefs.json), and read again by a new copy.
+        let again = DeviceKeys::new(dir.path().to_path_buf(), sealer(1));
+        assert_eq!(again.call_asking("e2eeSettings", &json!({}), &hello).unwrap()["touchId"], true);
+        // Opening a box asks (the yes that turned it on still counts here, so a fresh copy is asked).
+        hello.yes.set(false);
+        let bad_box = json!({ "box": "", "context": "x" });
+        assert_eq!(again.call_asking("e2eeOpen", &bad_box, &hello).unwrap_err().code, "cancelled");
+        assert_eq!(hello.asked.borrow().last().unwrap(), "Unlock your encrypted notes");
+        hello.yes.set(true);
+        assert_eq!(again.call_asking("e2eeOpen", &bad_box, &hello).unwrap_err().code, "invalid_argument");
+        let n = hello.asked.borrow().len();
+        assert_eq!(again.call_asking("e2eeOpen", &bad_box, &hello).unwrap_err().code, "invalid_argument");
+        assert_eq!(hello.asked.borrow().len(), n, "a yes counts for 30 seconds");
+        // Without Windows Hello it never asks, and says so.
+        assert_eq!(again.call("e2eeSettings", &json!({})).unwrap(), json!({ "touchId": false, "available": false }));
+    }
+
+    #[test]
     fn no_biometric_unlock_here() {
         let dir = tempfile::tempdir().unwrap();
         let k = DeviceKeys::new(dir.path().to_path_buf(), sealer(1));
         let off = json!({ "touchId": false, "available": false });
         assert_eq!(k.call("e2eeSettings", &json!({})).unwrap(), off);
-        assert_eq!(k.call("e2eeSetTouchId", &json!({ "on": true })).unwrap(), off);
+        assert_eq!(k.call("e2eeSetTouchId", &json!({ "on": true })).unwrap_err().code, "unavailable");
         assert_eq!(k.call("e2eeSetTouchId", &json!({ "on": "yes" })).unwrap_err().code, "invalid_argument");
         assert_eq!(k.call("e2eeWhatever", &json!({})).unwrap_err().code, "invalid_argument");
     }

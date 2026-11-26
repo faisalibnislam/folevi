@@ -15,6 +15,9 @@ or upload to TestFlight without the owner's OK; never use `--prod` with the Conv
 never touch the owner's real library or app data; no em dashes; the assistant is "Foli AI"; commit with
 `git commit <paths>`.
 
+Feature parity: a feature added to the web or Mac app also goes to the Windows and Linux app (`apps/desktop`)
+when it makes sense there. Port it in the same work or record the gap in `docs/DESKTOP_PARITY.md`.
+
 ## graphify
 
 This project has a knowledge graph at graphify-out/ with god nodes, community structure, and cross-file relationships.

@@ -9,7 +9,8 @@ import FoleviMac
 
 /// What a view is for: a main window's page, a place's hidden runner (WM1), Quick Add's panel (WM2).
 enum ViewRole: String {
-    case main, runner, quickAdd
+    /// `float`: a floating note's panel (Chrome/FloatWindows.swift).
+    case main, runner, quickAdd, float
 }
 
 /// A web view that knows its place and role, and lets the title bar take clicks in drag areas (WM2).

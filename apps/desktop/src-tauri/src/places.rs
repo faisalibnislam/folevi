@@ -8,6 +8,7 @@ use serde_json::{json, Map, Value};
 use std::path::{Path, PathBuf};
 
 use crate::auth::SessionUser;
+use crate::server::ShellServer;
 use crate::shell::write_atomic;
 
 pub const LIBRARY: &str = "library";
@@ -54,6 +55,10 @@ pub struct AccountPlace {
     pub unread: u64,
     pub reminders: u64,
     pub waiting: u64,
+    /// The Folevi Server the account lives on ("Your own server"); none for Folevi Cloud (and not written, so a
+    /// file from before servers reads and writes back the same).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub server: Option<ShellServer>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Default, Serialize, Deserialize)]
@@ -129,6 +134,7 @@ fn clean_account(r: &Value) -> Option<AccountPlace> {
         unread: count(r.get("unread")),
         reminders: count(r.get("reminders")),
         waiting: count(r.get("waiting")),
+        server: r.get("server").and_then(ShellServer::clean),
     })
 }
 
@@ -165,6 +171,8 @@ pub struct PlacesStore {
     state: PlacesState,
     /// Account mode with no account yet (the sign-in screen). Not saved.
     pub pending_account: bool,
+    /// The server that sign-in screen belongs to ("Your own server"; none: Folevi Cloud). Not saved.
+    pending_server: Option<ShellServer>,
 }
 
 impl PlacesStore {
@@ -180,7 +188,7 @@ impl PlacesStore {
             .and_then(|b| serde_json::from_slice::<Value>(&b).ok())
             .map(|v| clean_places(&v))
             .unwrap_or_default();
-        Self { file, state, pending_account: false }
+        Self { file, state, pending_account: false, pending_server: None }
     }
 
     /// Cleans and keeps `next`, and saves it (not saved: it still holds until Folevi quits).
@@ -234,8 +242,9 @@ impl PlacesStore {
         (id == LIBRARY && self.state.library) || self.state.accounts.iter().any(|a| a.id == id)
     }
 
-    /// Adds (or refreshes) an account from what the server said of it after signing in; its place id.
-    pub fn add_account(&mut self, u: &SessionUser) -> Option<String> {
+    /// Adds (or refreshes) an account from what the server said of it after signing in; its place id. A new
+    /// account lives on `server` (the sign-in screen's); one that's here already keeps its own.
+    pub fn add_account(&mut self, u: &SessionUser, server: Option<&ShellServer>) -> Option<String> {
         let existing = self.state.accounts.iter().find(|x| x.user_id == u.user_id).cloned();
         let mut merged = existing.as_ref().map(|e| serde_json::to_value(e).unwrap_or(Value::Null)).filter(Value::is_object).unwrap_or_else(|| json!({}));
         let o = merged.as_object_mut()?;
@@ -243,6 +252,11 @@ impl PlacesStore {
         o.insert("name".into(), json!(u.name));
         o.insert("email".into(), json!(u.email));
         o.insert("avatarUrl".into(), json!(u.avatar_url));
+        if existing.is_none() {
+            if let Some(sv) = server {
+                o.insert("server".into(), serde_json::to_value(sv).unwrap_or(Value::Null));
+            }
+        }
         let next = clean_account(&merged)?;
         let mut s = self.state.clone();
         match existing {
@@ -278,9 +292,49 @@ impl PlacesStore {
             return;
         }
         self.pending_account = false;
+        self.pending_server = None;
         let mut s = self.state.clone();
         s.current = place;
         self.commit(s);
+    }
+
+    /// The sign-in screen for an account (no place open yet), on `server` (None: Folevi Cloud).
+    pub fn begin_sign_in(&mut self, server: Option<ShellServer>) {
+        self.set_current(None);
+        self.pending_account = true;
+        self.pending_server = server;
+    }
+
+    /// The server a place's pages talk to: an account's, or the sign-in screen's. None: Folevi Cloud (or local).
+    pub fn server_of(&self, place: Option<&str>) -> Option<ShellServer> {
+        match place {
+            None if self.pending_account => self.pending_server.clone(),
+            Some(p) => self.state.accounts.iter().find(|a| a.id == p).and_then(|a| a.server.clone()),
+            None => None,
+        }
+    }
+
+    /// The accounts on a server, with it.
+    pub fn server_accounts(&self) -> Vec<(String, ShellServer)> {
+        self.state.accounts.iter().filter_map(|a| a.server.clone().map(|s| (a.id.clone(), s))).collect()
+    }
+
+    /// A server account now uses another of its server's names (None: the one it was added with). Only a name of
+    /// that server; true when it changed.
+    pub fn set_active_origin(&mut self, id: &str, origin: Option<String>) -> bool {
+        let Some(server) = self.server_of(Some(id)) else { return false };
+        let origin = origin.filter(|o| *o != server.origin);
+        if origin.as_ref().is_some_and(|o| !server.candidates().contains(o)) || server.active == origin {
+            return false;
+        }
+        let mut s = self.state.clone();
+        for a in s.accounts.iter_mut().filter(|a| a.id == id) {
+            if let Some(sv) = a.server.as_mut() {
+                sv.active = origin.clone();
+            }
+        }
+        self.commit(s);
+        true
     }
 
     /// The library is a place (set up, or the windows chose it), or is forgotten.
@@ -399,7 +453,11 @@ impl PlacesStore {
             }));
         }
         for a in &self.state.accounts {
-            out.push(serde_json::to_value(a).unwrap_or_else(|_| Value::Object(Map::new())));
+            let mut v = serde_json::to_value(a).unwrap_or_else(|_| Value::Object(Map::new()));
+            if let Some(o) = v.as_object_mut() {
+                o.insert("server".into(), a.server.as_ref().map(ShellServer::json).unwrap_or(Value::Null));
+            }
+            out.push(v);
         }
         Value::Array(out)
     }
@@ -425,8 +483,8 @@ mod tests {
         assert!(!PlacesStore::exists(&f));
         let mut p = PlacesStore::load(f.clone());
         p.set_library(true);
-        let ana = p.add_account(&user("userAna", "Ana", "ana@example.com", None)).unwrap();
-        p.add_account(&user("userBen", "Ben", "ben@example.com", Some("https://example.com/b.png")));
+        let ana = p.add_account(&user("userAna", "Ana", "ana@example.com", None), None).unwrap();
+        p.add_account(&user("userBen", "Ben", "ben@example.com", Some("https://example.com/b.png")), None);
         p.set_current(Some(ana.clone()));
         p.set_quick_add(Some(LIBRARY.into()));
         assert!(PlacesStore::exists(&f));
@@ -460,7 +518,7 @@ mod tests {
     fn what_a_page_says_of_its_account_updates_it_and_junk_is_dropped() {
         let (_d, f) = temp();
         let mut p = PlacesStore::load(f.clone());
-        let a = p.add_account(&user("userAna", "Ana", "ana@example.com", None)).unwrap();
+        let a = p.add_account(&user("userAna", "Ana", "ana@example.com", None), None).unwrap();
         p.describe(
             &a,
             &json!({ "profileId": "prof_1", "name": "Ana Lima", "workspaces": [{ "id": "w1", "name": "Acme", "logoUrl": "javascript:alert(1)" }, { "bad": true }], "unread": 4, "waiting": 2.7 }),
@@ -476,7 +534,7 @@ mod tests {
         p.describe("acct:nobody", &json!({ "unread": 9 }));
         assert_eq!(p.unread_except(None), 4);
         // Signing in again refreshes the name but keeps what the page said.
-        p.add_account(&user("userAna", "Ana L", "ana@example.com", None));
+        p.add_account(&user("userAna", "Ana L", "ana@example.com", None), None);
         let again = PlacesStore::load(f).account(&a).unwrap();
         assert_eq!(again.name, "Ana L");
         assert_eq!(again.workspaces.len(), 1);
@@ -506,8 +564,8 @@ mod tests {
         let (_d, f) = temp();
         let mut p = PlacesStore::load(f);
         p.set_library(true);
-        let a = p.add_account(&user("userAna", "Ana", "a@example.com", None)).unwrap();
-        let b = p.add_account(&user("userBen", "Ben", "b@example.com", None)).unwrap();
+        let a = p.add_account(&user("userAna", "Ana", "a@example.com", None), None).unwrap();
+        let b = p.add_account(&user("userBen", "Ben", "b@example.com", None), None).unwrap();
         p.set_current(Some(a.clone()));
         p.set_quick_add(Some(a.clone()));
         assert_eq!(p.remove_account(&a), Some(b.clone()));
@@ -522,13 +580,79 @@ mod tests {
         assert_eq!(p.list(&json!({ "configured": false })), json!([]));
     }
 
+    fn nas() -> ShellServer {
+        let info = json!({
+            "kind": "folevi-server", "apiVersion": 1, "version": "1.0.0", "name": "Home NAS",
+            "urls": { "app": "https://nas.example.com", "convex": "https://nas.example.com/convex", "convexSite": "https://nas.example.com/convex-site" },
+            "connect": { "serverId": "abcde12345", "hostnames": ["abcde12345.folevi.app"] },
+        });
+        crate::server::check(&info, "https://nas.example.com", "1.6.78").unwrap()
+    }
+
+    #[test]
+    fn a_new_account_takes_the_server_its_sign_in_went_to() {
+        let (_d, f) = temp();
+        let mut p = PlacesStore::load(f.clone());
+        p.begin_sign_in(Some(nas()));
+        assert_eq!(p.mode_of(None), "account");
+        assert_eq!(p.server_of(None), Some(nas()));
+        let a = p.add_account(&user("userAna", "Ana", "a@example.com", None), p.server_of(None).as_ref()).unwrap();
+        assert_eq!(p.server_of(Some(&a)), Some(nas()));
+        // Signing in again (from Folevi Cloud's screen) keeps the account on its server.
+        p.begin_sign_in(None);
+        assert_eq!(p.server_of(None), None);
+        p.add_account(&user("userAna", "Ana L", "a@example.com", None), None);
+        assert_eq!(p.server_of(Some(&a)), Some(nas()));
+        // A cloud account has none, and opening a place ends the server's sign-in screen.
+        let b = p.add_account(&user("userBen", "Ben", "b@example.com", None), None).unwrap();
+        assert_eq!(p.server_of(Some(&b)), None);
+        p.begin_sign_in(Some(nas()));
+        p.set_current(Some(b.clone()));
+        assert_eq!(p.server_of(None), None);
+        // Kept across launches; the page's list says which server.
+        let again = PlacesStore::load(f);
+        assert_eq!(again.server_of(Some(&a)), Some(nas()));
+        let list = again.list(&json!({}));
+        assert_eq!(list[0]["server"]["name"], "Home NAS");
+        assert_eq!(list[0]["server"]["urls"]["convex"], "https://nas.example.com/convex");
+        assert_eq!(list[1]["server"], Value::Null);
+    }
+
+    #[test]
+    fn a_places_file_from_before_servers_reads_and_writes_back_the_same() {
+        let (_d, f) = temp();
+        let old = json!({ "v": 1, "current": "acct:userAna", "library": false, "libraryCounts": { "unread": 0, "reminders": 0, "waiting": 0 },
+            "accounts": [{ "kind": "account", "id": "acct:userAna", "userId": "userAna", "profileId": null, "name": "Ana", "email": "a@example.com",
+                "avatarUrl": null, "workspaces": [], "unread": 0, "reminders": 0, "waiting": 0 }], "quickAdd": null });
+        std::fs::write(&f, serde_json::to_vec_pretty(&old).unwrap()).unwrap();
+        let mut p = PlacesStore::load(f.clone());
+        p.set_quick_add(None);
+        p.set_current(Some("acct:userAna".into()));
+        let back: Value = serde_json::from_slice(&std::fs::read(&f).unwrap()).unwrap();
+        assert_eq!(back, old);
+    }
+
+    #[test]
+    fn the_best_connection_is_kept() {
+        let (_d, f) = temp();
+        let mut p = PlacesStore::load(f.clone());
+        p.begin_sign_in(Some(nas()));
+        let a = p.add_account(&user("userAna", "Ana", "a@example.com", None), p.server_of(None).as_ref()).unwrap();
+        assert!(!p.set_active_origin(&a, Some("https://evil.example.com".into())));
+        assert!(p.set_active_origin(&a, Some("https://abcde12345.folevi.app".into())));
+        assert!(!p.set_active_origin(&a, Some("https://abcde12345.folevi.app".into())));
+        assert_eq!(PlacesStore::load(f.clone()).server_of(Some(&a)).unwrap().json()["urls"]["app"], "https://abcde12345.folevi.app");
+        assert!(p.set_active_origin(&a, None));
+        assert_eq!(PlacesStore::load(f).server_of(Some(&a)).unwrap().active, None);
+    }
+
     #[test]
     fn the_list_the_page_reads() {
         let (_d, f) = temp();
         let mut p = PlacesStore::load(f);
         p.set_library(true);
         p.describe_library(&json!({ "reminders": 3, "unread": 7 }));
-        let a = p.add_account(&user("userAna", "Ana", "a@example.com", None)).unwrap();
+        let a = p.add_account(&user("userAna", "Ana", "a@example.com", None), None).unwrap();
         p.describe(&a, &json!({ "workspaces": [{ "id": "w1", "name": "Acme", "logoUrl": "https://x.example/l.png" }] }));
         let list = p.list(&json!({ "configured": true, "kind": "folder", "displayPath": "~/Documents/Folevi Library" }));
         assert_eq!(
@@ -536,7 +660,7 @@ mod tests {
             json!([
                 { "kind": "library", "id": "library", "configured": true, "syncs": "folder", "displayPath": "~/Documents/Folevi Library", "unread": 0, "reminders": 3, "waiting": 0 },
                 { "kind": "account", "id": "acct:userAna", "userId": "userAna", "profileId": null, "name": "Ana", "email": "a@example.com", "avatarUrl": null,
-                  "workspaces": [{ "id": "w1", "name": "Acme", "logoUrl": "https://x.example/l.png" }], "unread": 0, "reminders": 0, "waiting": 0 },
+                  "workspaces": [{ "id": "w1", "name": "Acme", "logoUrl": "https://x.example/l.png" }], "unread": 0, "reminders": 0, "waiting": 0, "server": null },
             ])
         );
         // An unconfigured library syncs with nothing.

@@ -76,6 +76,42 @@ describe("each line's language", () => {
   });
 });
 
+describe("lines too short to tell their language", () => {
+  const note = (lines: string[]) =>
+    new Editor({ extensions: [...ALL_NODES, ...ALL_MARKS], content: { type: "doc", content: lines.map((text) => ({ type: "paragraph", attrs: { depth: 0 }, content: [{ type: "text", text }] })) } });
+
+  test("an English note of fragments is English, never Portuguese (the owner's note, 26 November 2026)", () => {
+    const lines = ["Website", "Category wise email campaign", "Email Content - Lead generation,", "Funnel from website", "Add pricing section", "Retail: liquitex/cannabox", "RETAIL CLIENT · RETAIL", "Recovering the revenue that was leaking out of checkout.", "a) do this, no extra cost, e.g. as before"];
+    expect(detectLanguage(lines.join("\n"))).not.toBe("pt");
+    const e = note(lines);
+    const english = spellingSettings().english;
+    for (const w of spellableWords(e.state.doc)) expect(w.langs[0], w.word).toBe(english);
+    expect(spellableWords(e.state.doc).find((w) => w.word === "Lead")!.langs).toEqual([english]);
+    e.destroy();
+  });
+
+  test("in a Portuguese note, a short line is checked in English and Portuguese, English first", () => {
+    const e = note(["O jardim está cheio de flores e as abelhas estão felizes, não é verdade?", "Lead generation", "Eles também são muito bonitos, como sempre são."]);
+    const english = spellingSettings().english;
+    const words = spellableWords(e.state.doc);
+    expect(words.find((w) => w.word === "jardim")!.langs).toEqual(["pt"]);
+    expect(words.find((w) => w.word === "Lead")!.langs).toEqual([english, "pt"]);
+    e.destroy();
+  });
+
+  test("Latin letters in a Hindi note are checked as English", () => {
+    const e = note(["मैं आज बाज़ार जा रहा हूँ और फिर घर आऊँगा", "Website ideas"]);
+    expect(spellableWords(e.state.doc).find((w) => w.word === "Website")!.langs).toEqual([spellingSettings().english]);
+    e.destroy();
+  });
+
+  test("another language needs a clear lead over English", () => {
+    expect(detectLanguage("a do no e o as")).not.toBe("pt");
+    expect(detectLanguage("Lead generation for the website and the shop")).toBe(spellingSettings().english);
+    expect(detectLanguage("Eles também são muito bonitos, como sempre são")).toBe("pt");
+  });
+});
+
 describe("guesses: the slips people make come first", () => {
   test("swapped and doubled letters count as half a slip", () => {
     expect(slipDistance("teh", "the")).toBe(0.5);

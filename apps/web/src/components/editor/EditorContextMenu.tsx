@@ -81,7 +81,7 @@ import { insertBelowColumns } from "./columns/columnsCommands";
 import { rowOf } from "./columns/columnsModel";
 import { macTextActions, macTextServices, wordAround, type MacTextItems } from "@/lib/desktop/textMenu";
 import { isSealedDocument } from "@/lib/e2ee/router/hooks";
-import { languageAt, nextMisspelt, type SpellcheckStorage } from "./spellcheck";
+import { languagesAt, nextMisspelt, type SpellcheckStorage } from "./spellcheck";
 import { useSetSpellingSettings, useSpellingSettings } from "./SpellingSync";
 import { noteSpellcheckOn, setNoteSpellcheck, type SpellingSettings } from "@/lib/spelling/settings";
 import { pastePlainText } from "./paste";
@@ -448,7 +448,7 @@ export function EditorContextMenu({ editor, editable, onCommentBlock }: { editor
       }
     }
     const noteId = (editor.storage as { spellcheck?: SpellcheckStorage }).spellcheck?.documentId ?? null;
-    const spellLang = word ? languageAt(state.doc, $p.pos) : undefined;
+    const spellLang = word ? languagesAt(state.doc, $p.pos) : undefined;
     let live = true;
     void macTextActions({ word, selection, at: { x: menu.x, y: menu.y }, replace, spellLang, deviceOnly: noteId ? isSealedDocument(noteId) : false }).then((items) => {
       if (live) setMacText({ for: menu, items });

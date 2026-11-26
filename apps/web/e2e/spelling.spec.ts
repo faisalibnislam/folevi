@@ -93,6 +93,30 @@ test.describe("spell check and prediction", { tag: ["@local", "@mac"] }, () => {
     await expect(body).toContainText("The end.");
   });
 
+  test("short English lines in an English or a Portuguese note aren't checked as another language", async ({ page }) => {
+    await newNote(page, "Campaign");
+    // Fragments with few little words (a note like this once read as Portuguese, and "Lead" was underlined).
+    await page.keyboard.type("Category wise email campaign");
+    await page.keyboard.press("Enter");
+    await page.keyboard.type("Email Content - Lead generation, a do no");
+    await page.keyboard.press("Enter");
+    await page.keyboard.type("Add pricing section with a mispelled word");
+    await page.keyboard.press("Enter");
+    await expect(underlined(page, "mispelled")).toBeVisible({ timeout: 30_000 });
+    await expect(page.locator(".fb-misspelt")).toHaveCount(1);
+    // A Portuguese note with a short English line: the English words are right, a Portuguese slip is still marked.
+    await newNote(page, "Notas");
+    await page.keyboard.type("Eles também são muito bonitos, como sempre são, e a casa está linda.");
+    await page.keyboard.press("Enter");
+    await page.keyboard.type("Lead generation");
+    await page.keyboard.press("Enter");
+    await page.keyboard.type("Ela não sabe se vai para a casa hojje, mas também quer ir.");
+    await page.keyboard.press("Enter");
+    await expect(underlined(page, "hojje")).toBeVisible({ timeout: 30_000 });
+    await expect(underlined(page, "Lead")).toHaveCount(0);
+    await expect(underlined(page, "generation")).toHaveCount(0);
+  });
+
   test("the next word: Tab takes it, Tab again takes the next, Esc dismisses; Tab still indents", async ({ page }) => {
     // The on-device model learns from what's written (twice before it predicts anything).
     const body = await newNote(page, "Prediction");

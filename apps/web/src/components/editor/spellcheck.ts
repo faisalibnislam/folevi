@@ -32,13 +32,18 @@ const ATOM = "\ufffc";
 
 /** What is known of each word seen on this page, by language and word ("de\u0000Haus"): true when misspelt. */
 const verdicts = new Map<string, boolean>();
-const vkey = (lang: SpellLanguage, word: string) => `${lang}\u0000${word}`;
+const vkey = (langs: readonly SpellLanguage[], word: string) => `${langs.join("+")}\u0000${word}`;
 
 interface Found {
   word: string;
   from: number;
   to: number;
+  /** The line's language (the first of `langs`: its guesses come first, and it says which way the text runs). */
   lang: SpellLanguage;
+  /** Every language a word of the line may be right in: one for a line whose words say its language; for a line
+   * too short to tell, the person's English and the note's language, so an English word is never checked as
+   * another language only. */
+  langs: SpellLanguage[];
 }
 
 /** A word in a line of text, by where it starts in that line. */
@@ -127,13 +132,36 @@ export function noteLanguage(doc: PMNode, english = spellingSettings().english):
   return detectLanguage(text, english) ?? languageFromLocale(typeof navigator === "undefined" ? undefined : navigator.language, english);
 }
 
-/** The language of the line around `pos` (for the right-click guesses and ghost words). */
-export function languageAt(doc: PMNode, pos: number): SpellLanguage {
+const LATIN_LANGUAGES = new Set<SpellLanguage>(["en-US", "en-GB", "es", "fr", "de", "pt", "id"]);
+
+/**
+ * The languages a line is checked in. Its own when its words tell. Otherwise (a heading, "Lead generation,") the
+ * person's English first, then the note's language when that is another language written in Latin letters: a
+ * word is misspelt only when every one of them says so. A short line in Latin letters in a Hindi, Bengali or
+ * Arabic note is checked as English.
+ */
+function languagesOfLine(node: PMNode, doc: PMNode, english: EnglishVariant, note: () => SpellLanguage): SpellLanguage[] {
+  const own = languageOfLine(node, english);
+  if (own) return [own];
+  const text = node.textContent;
+  const latin = /\p{Script=Latin}/u.test(text);
+  const n = note();
+  if (latin) return LATIN_LANGUAGES.has(n) && n !== english ? [english, n] : [english];
+  return [n];
+}
+
+/** The languages of the line around `pos` (for the right-click guesses and ghost words); the first is the line's. */
+export function languagesAt(doc: PMNode, pos: number): SpellLanguage[] {
   const english = spellingSettings().english;
   cachesFor(english);
   const $pos = doc.resolve(Math.max(0, Math.min(pos, doc.content.size)));
   const line = $pos.parent.isTextblock ? $pos.parent : null;
-  return (line && languageOfLine(line, english)) ?? noteLanguage(doc, english);
+  return line ? languagesOfLine(line, doc, english, () => noteLanguage(doc, english)) : [noteLanguage(doc, english)];
+}
+
+/** The language of the line around `pos` (for the ghost words). */
+export function languageAt(doc: PMNode, pos: number): SpellLanguage {
+  return languagesAt(doc, pos)[0]!;
 }
 
 /** The words of the note that spelling applies to, with where they are and their line's language. */
@@ -149,10 +177,10 @@ export function spellableWords(doc: PMNode): Found[] {
     if (node.type.name === "codeBlock" || node.type.spec.code) return false;
     const words = wordsOfLine(node);
     if (!words.length) return false;
-    const lang = languageOfLine(node, english) ?? (fallback ??= noteLanguage(doc, english));
-    if (!spellChecked(lang)) return false;
+    const langs = languagesOfLine(node, doc, english, () => (fallback ??= noteLanguage(doc, english))).filter(spellChecked);
+    if (!langs.length) return false;
     const start = pos + 1;
-    for (const w of words) out.push({ word: w.word, from: start + w.at, to: start + w.at + w.word.length, lang });
+    for (const w of words) out.push({ word: w.word, from: start + w.at, to: start + w.at + w.word.length, lang: langs[0]!, langs });
     return false;
   });
   noteWords.set(doc, out);
@@ -160,10 +188,10 @@ export function spellableWords(doc: PMNode): Found[] {
 }
 
 function marks(state: EditorState): DecorationSet {
-  const found = spellableWords(state.doc).filter((w) => verdicts.get(vkey(w.lang, w.word)) === true);
+  const found = spellableWords(state.doc).filter((w) => verdicts.get(vkey(w.langs, w.word)) === true);
   return DecorationSet.create(
     state.doc,
-    found.map((w) => Decoration.inline(w.from, w.to, { class: "fb-misspelt", "aria-invalid": "spelling" }, { word: w.word, lang: w.lang })),
+    found.map((w) => Decoration.inline(w.from, w.to, { class: "fb-misspelt", "aria-invalid": "spelling" }, { word: w.word, lang: w.lang, langs: w.langs })),
   );
 }
 
@@ -177,12 +205,12 @@ export function nextMisspelt(state: EditorState, pos: number): { from: number; t
 }
 
 /** For tests and the popover: the misspelt word at `pos`, if one is marked there. */
-export function misspeltAt(state: EditorState, pos: number): { word: string; lang: SpellLanguage; from: number; to: number } | null {
+export function misspeltAt(state: EditorState, pos: number): { word: string; lang: SpellLanguage; langs: SpellLanguage[]; from: number; to: number } | null {
   const set = key.getState(state);
   const hit = set?.find(pos, pos).find((d) => d.from <= pos && d.to >= pos);
   if (!hit) return null;
-  const spec = hit.spec as { word: string; lang: SpellLanguage };
-  return { word: spec.word, lang: spec.lang, from: hit.from, to: hit.to };
+  const spec = hit.spec as { word: string; lang: SpellLanguage; langs: SpellLanguage[] };
+  return { word: spec.word, lang: spec.lang, langs: spec.langs, from: hit.from, to: hit.to };
 }
 
 export interface SpellcheckStorage {
@@ -239,31 +267,36 @@ export const Spellcheck = Extension.create<object, SpellcheckStorage>({
               return;
             }
             const ignored = new Set(personalWords().ignored);
-            const unknown = new Map<SpellLanguage, Set<string>>();
+            // By the languages a word is checked in ("en-US" or "en-US+pt").
+            const unknown = new Map<string, Set<string>>();
+            const langsOf = new Map<string, SpellLanguage[]>();
             let count = 0;
             for (const w of spellableWords(view.state.doc)) {
-              if (verdicts.has(vkey(w.lang, w.word))) continue;
+              if (verdicts.has(vkey(w.langs, w.word))) continue;
               if (ignored.has(w.word)) {
-                verdicts.set(vkey(w.lang, w.word), false);
+                verdicts.set(vkey(w.langs, w.word), false);
                 continue;
               }
-              let words = unknown.get(w.lang);
-              if (!words) unknown.set(w.lang, (words = new Set()));
+              const group = w.langs.join("+");
+              langsOf.set(group, w.langs);
+              let words = unknown.get(group);
+              if (!words) unknown.set(group, (words = new Set()));
               if (!words.has(w.word)) count++;
               words.add(w.word);
             }
             if (!count) return redraw();
             asking = true;
             // One language at a time, the most words first.
-            const [lang, all] = [...unknown].sort((a, b) => b[1].size - a[1].size)[0]!;
+            const [group, all] = [...unknown].sort((a, b) => b[1].size - a[1].size)[0]!;
+            const langs = langsOf.get(group)!;
             const batch = [...all].slice(0, BATCH);
-            const wrong = await misspeltAmong(lang, batch).catch(() => null);
+            const wrong = await misspeltAmong(langs, batch).catch(() => null);
             asking = false;
             if (gone) return;
             // No answer (the dictionary didn't load): nothing is marked, and the next change asks again.
             if (wrong) {
               const bad = new Set(wrong);
-              for (const w of batch) verdicts.set(vkey(lang, w), bad.has(w));
+              for (const w of batch) verdicts.set(vkey(langs, w), bad.has(w));
               redraw();
             }
             if (wrong && (again || count > batch.length)) {

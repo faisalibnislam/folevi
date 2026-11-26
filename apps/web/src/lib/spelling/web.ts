@@ -92,16 +92,24 @@ export function predictionsOn(): boolean {
   return spellingSupported() && spellingSettings().predictions;
 }
 
-/** Which of `words` are misspelt in `lang`. Null when it can't be asked (no dictionary, or no answer in time). */
-export async function misspeltAmong(lang: SpellLanguage, words: string[]): Promise<string[] | null> {
+/**
+ * Which of `words` are misspelt in every one of `langs` (a word right in any of them is right). Null when it
+ * can't be asked (no dictionary, or no answer in time).
+ */
+export async function misspeltAmong(langs: SpellLanguage | readonly SpellLanguage[], words: string[]): Promise<string[] | null> {
   if (!words.length) return [];
-  const a = await ask({ type: "check", lang, words }, 30_000);
+  const [lang, ...also] = typeof langs === "string" ? [langs] : langs;
+  const a = await ask({ type: "check", lang: lang!, also, words }, 30_000);
   return a?.type === "check" ? a.wrong : null;
 }
 
-/** Is `word` misspelt in `lang`, and what was meant. Null when it can't be asked. */
-export async function webSpelling(word: string, lang: SpellLanguage = spellingSettings().english): Promise<{ misspelled: boolean; guesses: string[] } | null> {
-  const a = await ask({ type: "suggest", lang, word }, 4000);
+/**
+ * Is `word` misspelt (in every one of `langs`), and what was meant: the first language's guesses first. Null
+ * when it can't be asked.
+ */
+export async function webSpelling(word: string, langs: SpellLanguage | readonly SpellLanguage[] = spellingSettings().english): Promise<{ misspelled: boolean; guesses: string[] } | null> {
+  const [lang, ...also] = typeof langs === "string" ? [langs] : langs;
+  const a = await ask({ type: "suggest", lang: lang!, also, word }, 4000);
   return a?.type === "suggest" ? { misspelled: a.misspelled, guesses: a.guesses } : null;
 }
 

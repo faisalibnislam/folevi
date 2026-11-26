@@ -2427,7 +2427,7 @@ function BlockHandle({
                       </button>
                     ))}
                   </div>
-                  <div className="mx-2 my-1.5 h-px bg-line" role="separator" />
+                  <div className="ui-menu-sep" role="separator" />
                 </>
               ) : null}
               {[

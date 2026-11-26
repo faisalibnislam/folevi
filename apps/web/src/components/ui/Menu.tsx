@@ -124,11 +124,14 @@ const SUBMENU_OPEN_MS = 100;
 const SUBMENU_CLOSE_MS = 250;
 
 /**
- * Whether a menu keeps a column before its icons for checkmarks (the Mac and the apps put a check there): only when
- * one of its items can be checked and wants its check there, not for a check shown at the end of its row.
+ * Whether a menu keeps a column before its icons for checkmarks (the Mac and the apps put a check there): only in a
+ * list of choices, where every item can be checked and wants its check there. A menu of actions with one toggle among
+ * them (a folder's "Always fully encrypted") shows that check at the end of its row instead, so its icons line up with
+ * every other menu's and no empty column runs down its left (the owner, 2026-11-26).
  */
 export function menuKeepsCheckColumn(items: MenuEntry[]): boolean {
-  return items.some((it) => it !== "separator" && !isHeading(it) && it.checked !== undefined && it.checkAt !== "end");
+  const rows = items.filter((it): it is MenuItem => it !== "separator" && !isHeading(it));
+  return rows.length > 0 && rows.every((it) => it.checked !== undefined && it.checkAt !== "end");
 }
 
 /** The element an event happened on, or the one holding the text node it happened on. */
@@ -648,7 +651,7 @@ function MenuPanel({
     >
       {items.map((item, i) =>
         item === "separator" ? (
-          <div key={`sep-${i}`} role="separator" className="mx-2 my-1.5 h-px bg-line" />
+          <div key={`sep-${i}`} role="separator" className="ui-menu-sep" />
         ) : isHeading(item) ? (
           // Visual only: the items it labels name themselves (a menu may only hold items, groups and separators).
           <div key={`heading-${i}`} aria-hidden className="ui-caps px-2.5 pb-1 pt-2">
@@ -717,7 +720,7 @@ function MenuPanel({
           >
             {/* The checkmark: at the end on the desktop; in the apps, in a column before the words (globals.css); an
                 item that asks for it at the end has it there everywhere. */}
-            {item.checkAt === "end" ? (
+            {item.checkAt === "end" || (!checks && item.checked !== undefined) ? (
               <span data-menu-part="check-end" aria-hidden className="order-last flex-none text-heading">
                 {item.checked ? <Check size={14} strokeWidth={2.5} /> : null}
               </span>

@@ -106,7 +106,7 @@ const SAMPLES: Sample[] = [
             Mark as done
           </span>
         </button>
-        <div role="separator" className="mx-2 my-1.5 h-px bg-line" data-style="menu.separator" />
+        <div role="separator" className="ui-menu-sep" data-style="menu.separator" />
         <button type="button" role="menuitem" className="ui-menu-item w-full !text-danger" data-style="menu.item.danger">
           <span data-menu-part="icon" className="text-muted" aria-hidden>
             <Trash size={15} />

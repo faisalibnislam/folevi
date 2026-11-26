@@ -87,9 +87,11 @@ describe("the note menu's structure", () => {
     expect(labels).not.toContain("Connections");
   });
 
-  test("the check column is kept only for a check that goes before the words", () => {
+  test("the check column is kept only in a list of choices", () => {
     expect(menuKeepsCheckColumn([it("A"), it("B", { checked: true, checkAt: "end" })])).toBe(false);
-    expect(menuKeepsCheckColumn([it("A"), it("B", { checked: false })])).toBe(true);
+    // One toggle among actions: its check goes at the end, no column for the others.
+    expect(menuKeepsCheckColumn([it("A"), it("B", { checked: false })])).toBe(false);
+    expect(menuKeepsCheckColumn([it("A", { checked: true }), "separator", it("B", { checked: false })])).toBe(true);
     expect(menuKeepsCheckColumn([it("A"), "separator"])).toBe(false);
   });
 });

@@ -1811,10 +1811,10 @@
    ],
    "radius": 0,
    "background": [
-    226,
-    226,
-    230,
-    1
+    24,
+    24,
+    27,
+    0.14
    ],
    "gradient": null,
    "shadows": [],
@@ -4415,10 +4415,10 @@
    ],
    "radius": 0,
    "background": [
-    44,
-    44,
-    47,
-    1
+    242,
+    242,
+    243,
+    0.14
    ],
    "gradient": null,
    "shadows": [],
@@ -7176,7 +7176,7 @@
      255,
      255,
      255,
-     0.8
+     0.9
     ],
     "gradient": null,
     "shadows": [
@@ -9882,10 +9882,10 @@
     ],
     "radius": 14,
     "background": [
-     36,
-     36,
-     40,
-     0.78
+     39,
+     39,
+     42,
+     0.89
     ],
     "gradient": null,
     "shadows": [

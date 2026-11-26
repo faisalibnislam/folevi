@@ -55,7 +55,7 @@ func (f *fakeConnect) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "bad", 400)
 			return
 		}
-		_, _ = io.WriteString(w, `{"serverId":"abcdefghij","token":"tok-123456789"}`)
+		_, _ = io.WriteString(w, `{"serverId":"abcdefghij","token":"tok-123456789"}`) // gitleaks:allow
 	case r.Method == "PATCH" && r.URL.Path == "/v1/servers/abcdefghij":
 		w.WriteHeader(204)
 	case r.Method == "GET" && r.URL.Path == "/v1/servers/abcdefghij":

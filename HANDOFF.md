@@ -1311,6 +1311,16 @@ account button should move past iPadOS's window buttons).
   through `127.0.0.1` (WebView2 blocks it from `https://app.localhost` as mixed content), with the server's own Host.
   The page gets the relay for Convex and Convex site only; links keep the server's name. 5 Rust tests (requests,
   WebSocket, 502, stable port); not yet run against a real server on a real Windows PC.
+- 2026-11-25: **Folevi Server keeps every account when its address changes** (branch `claude/server-stable-issuer`,
+  server lead). The Better Auth Convex plugin signs tokens with the server's public address as issuer, so turning
+  Folevi Connect on or adding a domain made every account read "Finish setting up". In the server edition only,
+  `findProfile` (convex/lib/auth.ts) now also finds the profile by the Better Auth user id (only this server's keys
+  sign tokens) and a mutation moves it to the new issuer; Folevi Cloud is unchanged. Also merges
+  `claude/server-connect`, which never had its own PR: folevid builds on macOS, folevid gives the backend every name
+  it answers on (`FOLEVI_TRUSTED_ORIGINS`, Connect names), the Synology package refuses to start on another
+  install's leftover files with a clear log line, NAS icons from the app icon, and Connect's Fly config (live at
+  connect.folevi.com; services/connect/OPS.md). The owner's DS223 runs Folevi Server on Connect as
+  `6ge2xhr4kl.folevi.app` (owner: keep it on).
 - 2026-11-25: Mac feedback round 2: New note's even 6 px inset; one note in two joined tabs stays in the tab on
   screen (`shownId`/`pick` in `lib/app/tabs.tsx`); hovered tab's pin clear of the title; table cells wrap alike
   edited or not. Checked: typecheck, lint, unit suite (2247), WebKit probes (inset 6/6/6, pin fade 48 px). The table

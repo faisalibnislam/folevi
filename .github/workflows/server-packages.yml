@@ -2,6 +2,11 @@
 # repositories, the container image (as an OCI archive) and runs the old-glibc test for QNAP.
 # Manual only. It never publishes, pushes an image, deploys or uploads to any store: everything ends as workflow
 # artifacts for the owner to check. The only secret is the optional repository signing key.
+#
+# Supply chain: actions are pinned to a commit (the version is in the comment) where a commit was on record in
+# this repository. Still on a tag, to be pinned by the owner: actions/setup-go, actions/download-artifact,
+# docker/setup-qemu-action, docker/setup-buildx-action. QNAP's QDK is cloned at its newest commit and installed
+# with sudo, so it runs only in the "qnap" job, which never sees the signing key.
 name: Server packages
 
 on:
@@ -56,12 +61,20 @@ jobs:
     outputs:
       version: ${{ steps.v.outputs.version }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - id: v
         name: Version
+        # The typed version reaches the shell through the environment, never pasted into the script, and must
+        # look like a version: later steps pass it on to the build scripts.
+        env:
+          INPUT_VERSION: ${{ inputs.version }}
         run: |
-          v="${{ inputs.version }}"
+          v="$INPUT_VERSION"
           [ -n "$v" ] || v="$(jq -r .version version.json)"
+          if ! printf '%s' "$v" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+([.+-][0-9A-Za-z.]+)?$'; then
+            echo "::error::The version must look like 1.5.73"
+            exit 1
+          fi
           echo "version=$v" >> "$GITHUB_OUTPUT"
       # The real bundle: each arch builds on its own runner, so pnpm installs the right esbuild and Next.js
       # native packages.
@@ -121,21 +134,24 @@ jobs:
           WEB_STANDALONE: apps/web/.next/standalone
           WEB_STATIC: apps/web/.next/static
           WEB_PUBLIC: apps/web/public
+          VERSION: ${{ steps.v.outputs.version }}
         run: |
           # Interface agreed with the supervisor workstream (server/bundle/build-bundle.sh).
           FUNCTIONS_DIR="$RUNNER_TEMP/functions" \
-            server/bundle/build-bundle.sh --version "${{ steps.v.outputs.version }}" --arch "${{ matrix.arch }}" --out "$RUNNER_TEMP/bundle"
+            server/bundle/build-bundle.sh --version "$VERSION" --arch "${{ matrix.arch }}" --out "$RUNNER_TEMP/bundle"
           du -sh "$RUNNER_TEMP"/bundle/*/* | sort -h
       - name: Make a fake bundle
         if: ${{ inputs.fake_bundle }}
-        run: packaging/test/make-fake-bundle.sh "$RUNNER_TEMP/bundle" "${{ steps.v.outputs.version }}" "${{ matrix.arch }}" --native
+        env:
+          VERSION: ${{ steps.v.outputs.version }}
+        run: packaging/test/make-fake-bundle.sh "$RUNNER_TEMP/bundle" "$VERSION" "${{ matrix.arch }}" --native
       - name: Pack the bundle
         run: |
           cd "$RUNNER_TEMP/bundle"
           d="$(ls -d folevi-server-*-linux-${{ matrix.arch }})"
           tar -cJf "$RUNNER_TEMP/$d.tar.xz" "$d"
           echo "BUNDLE_TAR=$RUNNER_TEMP/$d.tar.xz" >> "$GITHUB_ENV"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: bundle-${{ matrix.arch }}
           path: ${{ env.BUNDLE_TAR }}
@@ -154,7 +170,7 @@ jobs:
             runner: ubuntu-24.04-arm
     runs-on: ${{ matrix.runner }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-go@v5
         with:
           go-version: "1.24"
@@ -165,13 +181,6 @@ jobs:
           sudo apt-get install -y -qq patchelf jq libxml2-utils xz-utils dpkg-dev
           go install github.com/goreleaser/nfpm/v2/cmd/nfpm@${NFPM_VERSION}
           echo "$HOME/go/bin" >> "$GITHUB_PATH"
-      - name: QNAP QDK (optional; falls back to the scripted .qpkg)
-        continue-on-error: true
-        run: |
-          # QNAP's QDK builds the release .qpkg with QNAP's checksum. Unverified on GitHub runners.
-          git clone --depth 1 https://github.com/qnap-dev/QDK "$RUNNER_TEMP/QDK"
-          cd "$RUNNER_TEMP/QDK" && sudo ./InstallToUbuntu.sh install
-          command -v qbuild
       - uses: actions/download-artifact@v4
         with:
           name: bundle-${{ matrix.arch }}
@@ -190,21 +199,19 @@ jobs:
           umask 077
           printf '%s\n' "$KEY" > "$RUNNER_TEMP/signing.asc"
           echo "FOLEVI_RPM_SIGNING_KEY_FILE=$RUNNER_TEMP/signing.asc" >> "$GITHUB_ENV"
-      - name: Build every package
+      - name: Build every package (QNAP is built in its own job, away from the signing key)
+        env:
+          VERSION: ${{ needs.bundle.outputs.version }}
         run: |
-          packaging/build-all.sh --bundle "$BUNDLE" --version "${{ needs.bundle.outputs.version }}" \
-            --arch "${{ matrix.arch }}" --out "$RUNNER_TEMP/out" --keep-going
+          packaging/build-all.sh --bundle "$BUNDLE" --version "$VERSION" \
+            --arch "${{ matrix.arch }}" --out "$RUNNER_TEMP/out" --keep-going \
+            --only synology,asustor,terramaster,ugreen,unraid,linux,docker
           rm -f "$RUNNER_TEMP/signing.asc"
-      - name: Old-glibc test (QNAP private glibc)
-        run: |
-          packaging/test/test-private-glibc.sh --bundle "$BUNDLE" --arch "${{ matrix.arch }}" \
-            --images "ubuntu:16.04 centos:7" --require-docker
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: packages-${{ matrix.arch }}
           path: |
             ${{ runner.temp }}/out/*/*.spk
-            ${{ runner.temp }}/out/*/*.qpkg
             ${{ runner.temp }}/out/*/*.apk
             ${{ runner.temp }}/out/*/*.tpk
             ${{ runner.temp }}/out/*/*.upk
@@ -212,18 +219,71 @@ jobs:
             ${{ runner.temp }}/out/*/*.rpm
             ${{ runner.temp }}/out/unraid/*
           retention-days: 14
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: docker-context-${{ matrix.arch }}
           path: ${{ runner.temp }}/out/docker/docker-context
           retention-days: 3
+
+  # The QNAP package, in a job of its own: QNAP's QDK is third-party code cloned at its newest commit and
+  # installed with sudo, and its qbuild makes the .qpkg. This job is given no secret, so nothing here can read
+  # the package signing key. Its artifact name starts with "packages-", so the later jobs pick it up.
+  qnap:
+    name: QNAP package (${{ matrix.arch }})
+    needs: bundle
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: x86_64
+            runner: ubuntu-24.04
+          - arch: aarch64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Tools
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq patchelf jq xz-utils dpkg-dev
+      - name: QNAP QDK (optional; falls back to the scripted .qpkg)
+        continue-on-error: true
+        run: |
+          # QNAP's QDK builds the release .qpkg with QNAP's checksum. Unverified on GitHub runners.
+          git clone --depth 1 https://github.com/qnap-dev/QDK "$RUNNER_TEMP/QDK"
+          cd "$RUNNER_TEMP/QDK" && sudo ./InstallToUbuntu.sh install
+          command -v qbuild
+      - uses: actions/download-artifact@v4
+        with:
+          name: bundle-${{ matrix.arch }}
+          path: ${{ runner.temp }}/in
+      - name: Unpack the bundle
+        run: |
+          mkdir -p "$RUNNER_TEMP/bundle"
+          tar -xJf "$RUNNER_TEMP"/in/*.tar.xz -C "$RUNNER_TEMP/bundle"
+          echo "BUNDLE=$(ls -d "$RUNNER_TEMP"/bundle/folevi-server-*)" >> "$GITHUB_ENV"
+      - name: Build the QNAP package
+        env:
+          VERSION: ${{ needs.bundle.outputs.version }}
+        run: |
+          packaging/build-all.sh --bundle "$BUNDLE" --version "$VERSION" \
+            --arch "${{ matrix.arch }}" --out "$RUNNER_TEMP/out" --only qnap
+      - name: Old-glibc test (QNAP private glibc)
+        run: |
+          packaging/test/test-private-glibc.sh --bundle "$BUNDLE" --arch "${{ matrix.arch }}" \
+            --images "ubuntu:16.04 centos:7" --require-docker
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: packages-qnap-${{ matrix.arch }}
+          path: ${{ runner.temp }}/out/qnap/*.qpkg
+          retention-days: 14
 
   repositories:
     name: apt, rpm and Synology sources
     needs: [bundle, packages]
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Tools
         run: sudo apt-get update -qq && sudo apt-get install -y -qq dpkg-dev createrepo-c jq
       - uses: actions/download-artifact@v4
@@ -244,7 +304,7 @@ jobs:
           python3 packaging/synology/package-source/generate-index.py --spks "$RUNNER_TEMP/spks" \
             --base-url https://pkg.folevi.com/synology --out "$RUNNER_TEMP/repos/synology"
           cp packaging/linux/install.sh "$RUNNER_TEMP/repos/install.sh"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: repositories
           path: ${{ runner.temp }}/repos
@@ -252,10 +312,10 @@ jobs:
 
   manifest:
     name: Download manifest (latest.json)
-    needs: [bundle, packages]
+    needs: [bundle, packages, qnap]
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/download-artifact@v4
         with:
           pattern: packages-*
@@ -264,11 +324,13 @@ jobs:
       - name: Write latest.json
         # The owner uploads the package files to R2 (folevi-updates: server/<version>/) and this file to
         # server/latest.json by hand; nothing is uploaded here.
+        env:
+          VERSION: ${{ needs.bundle.outputs.version }}
         run: |
-          packaging/manifest/make-latest.sh --version "${{ needs.bundle.outputs.version }}" \
+          packaging/manifest/make-latest.sh --version "$VERSION" \
             --out "$RUNNER_TEMP/latest.json" "$RUNNER_TEMP/pk"
           cat "$RUNNER_TEMP/latest.json"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: latest-json
           path: ${{ runner.temp }}/latest.json
@@ -279,7 +341,7 @@ jobs:
     needs: [bundle, packages]
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/download-artifact@v4
         with:
           pattern: bundle-*
@@ -288,13 +350,15 @@ jobs:
       - uses: docker/setup-qemu-action@v3
       - uses: docker/setup-buildx-action@v3
       - name: Build the multi-arch image as an OCI archive
+        env:
+          VERSION: ${{ needs.bundle.outputs.version }}
         run: |
           mkdir -p "$RUNNER_TEMP/b"
           for f in "$RUNNER_TEMP"/in/*.tar.xz; do tar -xJf "$f" -C "$RUNNER_TEMP/b"; done
           packaging/docker/build.sh --bundle "$(ls -d "$RUNNER_TEMP"/b/*-linux-x86_64)" \
             --bundle-arm64 "$(ls -d "$RUNNER_TEMP"/b/*-linux-aarch64)" \
-            --version "${{ needs.bundle.outputs.version }}" --arch x86_64 --out "$RUNNER_TEMP/img" --build
-      - uses: actions/upload-artifact@v4
+            --version "$VERSION" --arch x86_64 --out "$RUNNER_TEMP/img" --build
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: container-image
           path: ${{ runner.temp }}/img/*.oci.tar

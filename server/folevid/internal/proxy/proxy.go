@@ -44,6 +44,19 @@ func Route(t *Targets, path string) (*url.URL, string) {
 	return t.Web, path
 }
 
+// clientAddressHeaders are headers an upstream might read as the visitor's address. A visitor can send any of
+// them, so none is passed on as it came in.
+var clientAddressHeaders = []string{"X-Real-Ip", "Cf-Connecting-Ip", "True-Client-Ip"}
+
+// remoteIP is the host part of a connection's remote address ("" when it has none).
+func remoteIP(addr string) string {
+	host, _, err := net.SplitHostPort(addr)
+	if err != nil {
+		host = addr
+	}
+	return strings.Trim(host, "[]")
+}
+
 // New returns the proxy handler.
 func New(t *Targets) http.Handler {
 	if t.Logger == nil {
@@ -76,6 +89,15 @@ func New(t *Targets) http.Handler {
 			pr.Out.Host = pr.In.Host // keep the public Host, as the Phase 0 proxy did
 			pr.SetXForwarded()
 			pr.Out.Header.Set("X-Forwarded-Proto", t.Scheme)
+			// The web server keys sign-in rate limits on X-Real-IP, and ReverseProxy only removes the
+			// X-Forwarded-* headers a visitor sent. Drop every other client-address header and say who
+			// connected to us, so a visitor cannot pick a new address for each attempt.
+			for _, h := range clientAddressHeaders {
+				pr.Out.Header.Del(h)
+			}
+			if ip := remoteIP(pr.In.RemoteAddr); ip != "" {
+				pr.Out.Header.Set("X-Real-Ip", ip)
+			}
 		},
 		ErrorHandler: func(w http.ResponseWriter, r *http.Request, err error) {
 			refused := errors.Is(err, syscall.ECONNREFUSED)

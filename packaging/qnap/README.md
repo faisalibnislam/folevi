@@ -12,7 +12,7 @@ Output: `folevi-server-<version>-qts5-<x86_64|arm_64>.qpkg`.
 | --- | --- |
 | `qpkg.cfg.in` | QDK package definition: name `folevi`, service `folevi.sh`, web UI `/` on 8460 (App Center Open button and main menu icon), QTS 5.0 minimum, volume selection, start/stop timeouts |
 | `package_routines` | QDK hooks: requirement check (64-bit, memory), pre-install backup on upgrade, removal hooks that never touch data |
-| `shared/folevi.sh` | Service script (start, stop, restart, status, backup, setup-url). Runs folevid as a `folevi` user when it can create one (BusyBox `adduser`, unverified), links the private loader, picks the data folder |
+| `shared/folevi.sh` | Service script (start, stop, restart, status, backup, setup-url). Runs folevid as a `folevi` user it creates (BusyBox `adduser`, unverified) and refuses to start, with a line in the package log, when it cannot: Folevi Server never runs as root (admin). Links the private loader, picks the data folder |
 | `populate-runtime-lib.sh` | Fills `bundle/runtime/lib` from Ubuntu 22.04 |
 | `patch-private-glibc.sh` | Points `node` and `convex-backend` at it |
 | `qinstall-minimal.sh` | Installer used only by the scripted format |

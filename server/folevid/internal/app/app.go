@@ -327,6 +327,9 @@ func (a *App) backendCommand() (supervisor.Command, error) {
 	}
 	c := a.cfg.Get()
 	origin := a.Origin()
+	// The backend takes its instance secret only as a command-line flag (its --help lists no environment
+	// variable or file for it, checked against precompiled-2026-11-21), so other local users can read it in the
+	// process list unless /proc is mounted with hidepid. Move it to the environment when the backend allows.
 	path, args := a.bundle.Wrap(a.bundle.Backend(),
 		filepath.Join(a.data, "convex", "convex.sqlite3"),
 		"--db", "sqlite",

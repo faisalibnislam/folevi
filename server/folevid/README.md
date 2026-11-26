@@ -12,7 +12,9 @@ folevid version | setup-url | backup | restore <id> | healthcheck   (all take --
 Exit codes: 0 clean, 1 error, 2 bad configuration. `--data` defaults to `FOLEVI_DATA`, `--bundle` to
 `FOLEVI_BUNDLE` or the folder above `bin/folevid`. `backup`, `restore` and `healthcheck` talk to the running
 instance through the control API; `healthcheck` exits 0 only when both services run and answer through the
-public port.
+public port. `setup-url --if-needed` (what package scripts use when they write the address to a log, because it
+carries the setup code) prints it only while the running server has no owner: exit 3 once it has one, exit 1
+while the server is not answering yet.
 
 ## What `run` does
 

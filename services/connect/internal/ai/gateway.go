@@ -1,6 +1,7 @@
 // Package ai is Folevi AI for servers: an OpenAI-compatible gateway (chat completions and embeddings, streaming
-// passed through as it arrives) in front of Gemini's OpenAI-compatible endpoint, with Folevi's key. Each server's
-// tokens are counted per month and checked against a limit that, later, comes from the owner's plan.
+// passed through as it arrives) in front of Gemini's OpenAI-compatible endpoint, with Folevi's key. Tokens are
+// counted per month against the owner's account (every server linked to one account shares one allowance; a
+// server with no owner has its own) and checked against a limit that, later, comes from the owner's plan.
 // Prompts and answers are never logged or stored.
 package ai
 
@@ -23,6 +24,19 @@ type Usage interface {
 
 // UsageKind is the monthly token counter.
 const UsageKind = "ai_tokens"
+
+// DefaultUpstreamTimeout bounds one upstream request, including reading the rest of an answer for its usage
+// after the client has gone.
+const DefaultUpstreamTimeout = 5 * time.Minute
+
+// UsageKey is the key tokens are counted under: the owner's account when the server is linked, so registering
+// more servers does not buy more allowance, else the server itself.
+func UsageKey(serverID, owner string) string {
+	if owner != "" {
+		return "owner:" + owner
+	}
+	return serverID
+}
 
 // Limits says how many tokens a server may use this month. It is the hook for the owner's plan (entitlements from
 // Folevi Cloud); a negative answer means no limit.
@@ -48,6 +62,8 @@ type Gateway struct {
 	Usage           Usage
 	Limits          Limits
 	MaxRequestBytes int64
+	// UpstreamTimeout bounds one upstream request (DefaultUpstreamTimeout when zero).
+	UpstreamTimeout time.Duration
 	Now             func() time.Time
 }
 
@@ -82,8 +98,9 @@ func (g *Gateway) Handle(w http.ResponseWriter, r *http.Request, kind Kind, serv
 		writeError(w, http.StatusServiceUnavailable, "server_error", "limits_unavailable", "Folevi AI could not check this server's plan.")
 		return
 	}
+	account := UsageKey(serverID, owner)
 	if limit >= 0 {
-		used, err := g.Usage.GetUsage(r.Context(), serverID, UsageKind, month(now))
+		used, err := g.Usage.GetUsage(r.Context(), account, UsageKind, month(now))
 		if err != nil {
 			writeError(w, http.StatusServiceUnavailable, "server_error", "usage_unavailable", "Folevi AI could not check usage.")
 			return
@@ -127,7 +144,15 @@ func (g *Gateway) Handle(w http.ResponseWriter, r *http.Request, kind Kind, serv
 		writeError(w, http.StatusBadRequest, "invalid_request_error", "invalid_json", "The request could not be read.")
 		return
 	}
-	req, err := http.NewRequestWithContext(r.Context(), http.MethodPost, strings.TrimRight(g.BaseURL, "/")+"/"+string(kind), bytes.NewReader(out))
+	// The upstream request does not end when the client goes away: a client that hangs up before the usage
+	// chunk would otherwise use Folevi's key without being counted. It has its own time limit instead.
+	timeout := g.UpstreamTimeout
+	if timeout <= 0 {
+		timeout = DefaultUpstreamTimeout
+	}
+	ctx, cancel := context.WithTimeout(context.WithoutCancel(r.Context()), timeout)
+	defer cancel()
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, strings.TrimRight(g.BaseURL, "/")+"/"+string(kind), bytes.NewReader(out))
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "server_error", "request", "Folevi AI could not make the request.")
 		return
@@ -146,7 +171,12 @@ func (g *Gateway) Handle(w http.ResponseWriter, r *http.Request, kind Kind, serv
 
 	var tokens int64
 	if stream && res.StatusCode == http.StatusOK && strings.HasPrefix(res.Header.Get("Content-Type"), "text/event-stream") {
-		tokens = g.passStream(w, res)
+		var streamed int64
+		tokens, streamed = g.passStream(w, res)
+		if tokens == 0 {
+			// No usage chunk (the upstream broke off or left it out): estimate from what went both ways.
+			tokens = estimateTokens(int64(len(raw)) + streamed)
+		}
 	} else {
 		data, err := io.ReadAll(io.LimitReader(res.Body, 64<<20))
 		if err != nil {
@@ -163,19 +193,23 @@ func (g *Gateway) Handle(w http.ResponseWriter, r *http.Request, kind Kind, serv
 		if res.StatusCode == http.StatusOK {
 			tokens = usageTokens(data)
 			if tokens == 0 {
-				tokens = int64(len(raw)/4) + 1 // no usage reported: estimate from the request size
+				tokens = estimateTokens(int64(len(raw)) + int64(len(data))) // no usage reported: estimate from the sizes
 			}
 		}
 	}
 	if tokens > 0 {
 		// Counted even if the client went away: the upstream work was done.
-		_, _ = g.Usage.AddUsage(context.WithoutCancel(r.Context()), serverID, UsageKind, month(now), tokens)
+		_, _ = g.Usage.AddUsage(context.WithoutCancel(r.Context()), account, UsageKind, month(now), tokens)
 	}
 }
 
+// estimateTokens is the count used when the upstream reported no usage: about one token per four bytes.
+func estimateTokens(bytes int64) int64 { return bytes/4 + 1 }
+
 // passStream copies server-sent events line by line, flushing at each event, and returns the tokens the last
-// usage chunk reported.
-func (g *Gateway) passStream(w http.ResponseWriter, res *http.Response) int64 {
+// usage chunk reported and the bytes the upstream sent. When the client goes away it stops writing but keeps
+// reading to the end of the answer, so the usage chunk (the last one) is still counted.
+func (g *Gateway) passStream(w http.ResponseWriter, res *http.Response) (tokens, streamed int64) {
 	w.Header().Set("Content-Type", "text/event-stream")
 	w.Header().Set("Cache-Control", "no-cache")
 	w.Header().Set("X-Accel-Buffering", "no")
@@ -183,31 +217,33 @@ func (g *Gateway) passStream(w http.ResponseWriter, res *http.Response) int64 {
 	flusher, _ := w.(http.Flusher)
 	rc := http.NewResponseController(w)
 	br := bufio.NewReaderSize(res.Body, 64<<10)
-	var tokens int64
+	gone := false
 	for {
 		line, err := br.ReadBytes('\n')
 		if len(line) > 0 {
+			streamed += int64(len(line))
 			if payload, ok := bytes.CutPrefix(bytes.TrimRight(line, "\r\n"), []byte("data:")); ok {
 				if t := usageTokens(bytes.TrimSpace(payload)); t > 0 {
 					tokens = t
 				}
 			}
-			if _, werr := w.Write(line); werr != nil {
-				return tokens
-			}
-			if len(bytes.TrimSpace(line)) == 0 {
-				if flusher != nil {
-					flusher.Flush()
-				} else {
-					_ = rc.Flush()
+			if !gone {
+				if _, werr := w.Write(line); werr != nil {
+					gone = true
+				} else if len(bytes.TrimSpace(line)) == 0 {
+					if flusher != nil {
+						flusher.Flush()
+					} else {
+						_ = rc.Flush()
+					}
 				}
 			}
 		}
 		if err != nil {
-			if flusher != nil {
+			if flusher != nil && !gone {
 				flusher.Flush()
 			}
-			return tokens // io.EOF, or the upstream broke off mid-stream
+			return tokens, streamed // io.EOF, the upstream broke off mid-stream, or the time limit
 		}
 	}
 }

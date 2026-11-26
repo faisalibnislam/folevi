@@ -98,18 +98,26 @@ final class BackgroundSync {
     private var polling = false
     private var lastPoll: Date?
     private var libraryWake: DispatchWorkItem?
+    /// How long a place that just went to the background waits before its runner starts (FOLEVI_RUNNER_DELAY seconds
+    /// for test runs).
+    static let backgroundWakeDelay: TimeInterval = ProcessInfo.processInfo.environment["FOLEVI_RUNNER_DELAY"].flatMap(TimeInterval.init).map { max(0, $0) } ?? 3
     /// Why each place woke last, and when (`mac.mjs cmd places`).
     private(set) var log: [[String: Any]] = []
 
     // MARK: what the app tells it
 
-    /// The places that want a runner (Places.ensureRunners): one that's new to the list wakes now (it just left the
-    /// windows, or was just added); one that left goes.
+    /// The places that want a runner (Places.ensureRunners): one that's new to the list wakes a moment later (it
+    /// just left the windows, or was just added); one that left goes. The moment: a place switch rebuilds every
+    /// window's page at the same time, and the runner of the place just left is a whole second copy of the app
+    /// starting; it waits until the page in front has had its start (docs/perf/feel-results.md).
     func setWanted(_ places: [String]) {
         let before = Set(wanted)
         wanted = places
         for id in awake.keys where !places.contains(id) { release(id, why: "open") }
-        for id in places where !before.contains(id) { wake(id, why: "background") }
+        for id in places where !before.contains(id) {
+            // wake() checks it's still wanted then (switched back meanwhile: no runner).
+            DispatchQueue.main.asyncAfter(deadline: .now() + Self.backgroundWakeDelay) { MainActor.assumeIsolated { BackgroundSync.shared.wake(id, why: "background") } }
+        }
         lastSync = lastSync.filter { places.contains($0.key) }
         lastUnread = lastUnread.filter { places.contains($0.key) }
         start()

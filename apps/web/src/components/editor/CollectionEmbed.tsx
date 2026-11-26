@@ -881,7 +881,7 @@ function PagePicker({ scope, exclude, onPick }: { scope: WireScope; exclude: str
   };
   return (
     <div>
-      <label className="flex items-center gap-2 ui-input px-3">
+      <label className="flex items-center gap-2 rounded-chip ui-input px-3">
         <Search size={14} aria-hidden className="text-faint" />
         <input
           autoFocus

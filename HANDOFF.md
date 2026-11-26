@@ -1097,7 +1097,8 @@ account button should move past iPadOS's window buttons).
 - Control scale follow-ups (2026-11-26): re-export the web's computed styles for the native Swift screens
   (`node scripts/web-styles.mjs --app`, reads the running Dev app) so they draw the 36 px controls; add Vault (a set-up
   vault) and Settings to `e2e/control-scale.spec.ts`; look over the editor's inline tools (collections, charts, table
-  AI, audio) at 36, which the codemod moved from 32.
+  AI, audio) at 36, which the codemod moved from 32; once PR 137 is in, drop `rounded-chip` from the page picker's
+  field in `CollectionEmbed.tsx` (left alone to keep clear of 137's change on the line above).
 - Native iPhone performance, left from the SwiftUI audit: `CardPicture` still reads `@Environment(\.self)` (any
   environment change runs its body; cheap while the picture is kept); the Mac's `PlaceholderCard` pulses each on its
   own animation (not used on the iPhone); nothing measured with Instruments before and after.

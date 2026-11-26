@@ -2,10 +2,11 @@ import "server-only";
 import { internalConvexUrl } from "@/lib/runtime/internal";
 import { ConvexHttpClient } from "convex/browser";
 import { api } from "@/lib/convex/api";
+import { devPagesAvailable } from "@/lib/edition";
 
-/** Local development/preview only: never available on a production deployment. */
+/** Local development/preview only: never available on a production deployment, nor on a Folevi server. */
 export function devMailboxAvailable(): boolean {
-  return process.env.VERCEL_ENV !== "production" && process.env.FOLEVI_ENV !== "production" && Boolean(process.env.FOLEVI_DEV_MAILBOX_SECRET);
+  return devPagesAvailable() && Boolean(process.env.FOLEVI_DEV_MAILBOX_SECRET);
 }
 
 export async function readDevMailbox(to?: string) {

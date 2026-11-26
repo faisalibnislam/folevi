@@ -55,7 +55,7 @@ import {
   Unlink,
   X,
 } from "lucide-react";
-import { CODE_LANGUAGES } from "@folevi/editor-schema";
+import { CODE_LANGUAGES, sanitizeHref, webUrl } from "@folevi/editor-schema";
 import { AiIcon } from "@/components/ai/AiIcon";
 import { openInlineAi, useAiEnabled } from "@/components/ai/useAi";
 import { useToast } from "@/components/ui/Toast";
@@ -180,10 +180,12 @@ export function EditorContextMenu({ editor, editable, onCommentBlock }: { editor
       const img = (el?.closest<HTMLElement>("[data-block-id]") ?? blockElements(editor.view.dom as HTMLElement)[index])?.querySelector("img");
       return {
         index,
-        link: linkMark ? { href: String(linkMark.attrs.href ?? "") } : null,
+        // Only an address that is safe to open or copy as a link (the mark may hold anything a note was given).
+        link: linkMark && sanitizeHref(String(linkMark.attrs.href ?? "")) ? { href: sanitizeHref(String(linkMark.attrs.href ?? ""))! } : null,
         pageLink: pageEl ? { documentId: pageEl.getAttribute("data-page-link") ?? "" } : null,
         date: dateEl ? { pos: editor.view.posAtDOM(dateEl, 0) } : null,
-        image: img?.src ? { src: img.src } : null,
+        // The picture as the page shows it: a web address, or this page's own copy of one still uploading.
+        image: img?.src && /^(https?|blob):/i.test(img.src) ? { src: img.src } : null,
       };
     },
     [editor],
@@ -573,8 +575,8 @@ function buildEntries({
         { label: inApp ? "Open image" : "Open image in new tab", icon: <ExternalLink size={14} />, run: () => window.open(src, "_blank", "noopener") },
         { label: "Copy image address", icon: <Link2 size={14} />, run: () => void copyText(src, "Image address copied") },
       );
-    } else if (name === "bookmark" && block.attrs.url) {
-      const url = String(block.attrs.url);
+    } else if (name === "bookmark" && webUrl(block.attrs.url)) {
+      const url = webUrl(block.attrs.url)!;
       context.push(
         { label: "Open link", icon: <ExternalLink size={14} />, run: () => window.open(url, "_blank", "noopener,noreferrer") },
         { label: "Copy link address", icon: <Link2 size={14} />, run: () => void copyText(url, "Link copied") },

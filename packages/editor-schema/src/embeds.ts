@@ -127,6 +127,34 @@ export function embedFor(raw: string): Embed | null {
   return youtube(url) ?? vimeo(url) ?? loom(url) ?? figma(url) ?? googleMaps(url);
 }
 
+/**
+ * A player's address (an `Embed.src`) made again from its own parts, or null when it isn't one embedFor builds.
+ * For whoever is handed a player address from outside (the website's /api/embed page, which frames it): what
+ * comes back is always an address embedFor itself would write, on one of EMBED_FRAME_ORIGINS, never just any
+ * page of those sites.
+ */
+export function embedPlayer(src: string): string | null {
+  const url = parse(src);
+  if (!url || url.protocol !== "https:" || !(EMBED_FRAME_ORIGINS as readonly string[]).includes(url.origin)) return null;
+  if (url.origin === "https://www.figma.com") {
+    // Figma's player carries the file's own address, which is what embedFor reads.
+    const page = url.pathname === "/embed" ? parse(url.searchParams.get("url") ?? "") : null;
+    return (page && figma(page)?.src) ?? null;
+  }
+  if (url.origin === "https://maps.google.com") {
+    const map = url.pathname === "/maps" ? googleMaps(url) : null;
+    if (!map) return null;
+    // The zoom is in the player's own query (embedFor takes it from the page address's "@lat,lng,12z").
+    const z = url.searchParams.get("z") ?? "";
+    if (!/^\d{1,2}$/.test(z) || Number(z) < 1 || Number(z) > 21) return map.src;
+    const out = new URL(map.src);
+    out.searchParams.set("z", String(Number(z)));
+    return out.toString();
+  }
+  const video = url.origin === "https://www.youtube-nocookie.com" ? youtube(url) : url.origin === "https://player.vimeo.com" ? vimeo(url) : loom(url);
+  return video?.src ?? null;
+}
+
 /** Why an address can't be embedded, as a sentence to show (null when it can). */
 export function embedProblem(raw: string): string | null {
   if (embedFor(raw)) return null;

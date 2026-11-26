@@ -176,17 +176,29 @@ export async function exportPdf(client: ConvexReactClient, title: string, noteBl
   ]);
   const missing = refs.filter((r) => !urls[r.id]).map((r) => r.name);
   const html = blocksToHtml(blocks, { title: title || "Untitled", resolveFile: (id) => urls[id]?.url ?? null, renderMath, ...links });
+  const frame = printFrame(html);
+  await new Promise((r) => setTimeout(r, 400));
+  frame.contentWindow?.focus();
+  frame.contentWindow?.print();
+  setTimeout(() => frame.remove(), 60_000);
+  return { missingAssets: missing };
+}
+
+/**
+ * The hidden frame a note prints from, with the note's clean HTML written into it. Sandboxed before it joins the
+ * page, so nothing in the note can run there: no "allow-scripts" (the frame needs none: this page writes it and
+ * calls its print()), "allow-same-origin" so this page can write into it, "allow-modals" so its print dialog may
+ * open. Exported for the tests.
+ */
+export function printFrame(html: string): HTMLIFrameElement {
   const frame = document.createElement("iframe");
   frame.setAttribute("aria-hidden", "true");
+  frame.setAttribute("sandbox", "allow-same-origin allow-modals");
   frame.style.cssText = "position:fixed;right:0;bottom:0;width:0;height:0;border:0";
   document.body.appendChild(frame);
   const doc = frame.contentDocument!;
   doc.open();
   doc.write(html);
   doc.close();
-  await new Promise((r) => setTimeout(r, 400));
-  frame.contentWindow?.focus();
-  frame.contentWindow?.print();
-  setTimeout(() => frame.remove(), 60_000);
-  return { missingAssets: missing };
+  return frame;
 }

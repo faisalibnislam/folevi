@@ -93,12 +93,15 @@ function useDeviceToken(accountId: string, online: boolean) {
   // Local mode: no account, so no token (the widgets and intents use the local-actions queue there, WP13:
   // LocalExtensions).
   const account = useCapabilities().account;
+  // A Folevi Server place: the app's widgets, share sheet, Siri and Spotlight reach Folevi Cloud's REST API only, so
+  // a token made on the server is never handed to the app (it would be sent to Folevi Cloud from there).
+  const onServer = Boolean(shell()?.places?.server);
   useEffect(() => {
-    if (!online || !account || done.current === accountId) return;
+    if (!online || !account || onServer || done.current === accountId) return;
     done.current = accountId;
     // Not worth bothering anyone about: the widgets say "Open Folevi to sign in" and it's tried again next launch.
     linkThisDevice(accountId).catch(() => (done.current = null));
-  }, [accountId, online, account]);
+  }, [accountId, online, account, onServer]);
 }
 
 /**

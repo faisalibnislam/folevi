@@ -15,8 +15,19 @@ import { Callout, DataTable, DocTitle, EmptyRow, LoadingRows, Meter, PageHeader,
 import { SaveBar, SecretInput, type SaveSettings, SettingRow, SwitchRow, TextInput, WithSettings, bytesToGb, gbToBytes, useControl, useDraft } from "./kit";
 import type { ControlStatus } from "./types";
 import { EMAIL_PRESETS, SECURITY_NAMES, presetFor } from "@/components/server/emailPresets";
+import { useAdmin } from "../AdminApp";
 
 type Save = SaveSettings;
+
+/**
+ * Shown to admins on the sections only the owner changes (serverAdmin:updateSettings refuses them: whoever
+ * chooses where mail and AI requests go could read password-reset links and notes).
+ */
+function OwnerOnly({ what }: { what: string }) {
+  const admin = useAdmin();
+  if (admin.role === "super_admin") return null;
+  return <Callout>Only the owner can change {what}. You can see how it is set up here.</Callout>;
+}
 
 /** Ends a message from the backend with a full stop. */
 const sentence = (text: string) => (/[.!?]$/.test(text.trim()) ? text.trim() : `${text.trim()}.`);
@@ -86,6 +97,7 @@ function SignInForm({ settings, save }: { settings: ServerSettings; save: Save }
         ) : null}
       </Panel>
       <Panel title="Your own Google keys" description="Optional. Without them, Google sign-in goes through Folevi's sign-in service.">
+        <OwnerOnly what="the Google keys" />
         <div className="grid gap-3 sm:grid-cols-2">
           <Field id="google-client-id" label="Client ID">
             <TextInput id="google-client-id" value={clientId} onChange={setClientId} />
@@ -185,6 +197,7 @@ function EmailForm({ settings, save }: { settings: ServerSettings; save: Save })
   const toast = useToast();
   return (
     <div className="space-y-4">
+      <OwnerOnly what="the email settings" />
       <Panel title="Sending email" description="Verification links, password resets, invites, sharing notices, reminders and digests.">
         <SettingRow label="Send through">
           <Select
@@ -366,6 +379,7 @@ function AiForm({ settings, save }: { settings: ServerSettings; save: Save }) {
   const [busy, setBusy] = useState(false);
   return (
     <Panel title="Foli AI" description="Off means Foli AI is hidden everywhere on this server.">
+      <OwnerOnly what="the Foli AI settings" />
       <SettingRow label="Answers come from">
         <Select aria-label="Foli AI answers come from" value={draft.mode} onChange={(e) => set("mode", e.target.value as AiDraft["mode"])} className={`${selectCls} w-64`}>
           <option value="off" data-description="Hidden for everyone">
@@ -475,6 +489,7 @@ function NotificationsForm({ settings, save }: { settings: ServerSettings; save:
         <p className="mt-2 text-subheadline text-muted">Notifications in web browsers work on this server by itself.</p>
       </Panel>
       <Panel title="Cover photos" description="The photo picker for page covers.">
+        <OwnerOnly what="where cover photos come from" />
         <SettingRow label="Photos from">
           <Select aria-label="Cover photos from" value={settings.covers.mode} onChange={(e) => void save({ covers: { mode: e.target.value as ServerSettings["covers"]["mode"] } })} className={`${selectCls} w-64`}>
             <option value="folevi">Unsplash, through Folevi</option>

@@ -12,9 +12,9 @@
 // uses this: the Mac's own checker does its spelling.
 import { desktop } from "@/lib/desktop";
 import { nativeApp } from "@/lib/nativeApp";
+import { LEARNT_KEY } from "./learnt";
 import type { SpellAnswer, SpellRequest } from "./spellWorker";
 
-const LEARNT_KEY = "folevi:spelling:learnt";
 /** Sent on `window` when a word was learnt or ignored: what is underlined has to be looked at again. */
 export const SPELLING_CHANGED = "folevi:spelling-changed";
 /** Words to leave alone until the page is closed ("Ignore spelling"). */

@@ -7,7 +7,7 @@ import type { AnchorHTMLAttributes } from "react";
 import { createContext, memo, useCallback, useContext, useEffect, useId, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import { ArrowDownUp, ArrowUpRight, CalendarDays, ChevronLeft, ChevronRight, Columns3, Filter, GalleryHorizontalEnd, MoreHorizontal, Plus, Search, Settings2, SquareFunction, Table2, Trash2, FileText } from "lucide-react";
 import { api } from "@/lib/convex/api";
-import { localDate, renamedCollectionOptions, ulid, type WireScope } from "@folevi/editor-schema";
+import { localDate, renamedCollectionOptions, ulid, webUrl, type WireScope } from "@folevi/editor-schema";
 import { AppLink } from "@/lib/app/router";
 import { documentScope } from "@/lib/app/scope";
 import { useAppState } from "@/lib/app/state";
@@ -21,7 +21,7 @@ import { Button, IconButton } from "@/components/ui/Button";
 import { coverBackground } from "@/lib/cover";
 import { useCoverImageUrl } from "@/lib/app/coverImage";
 import { formatCalendarDate, t } from "@/i18n";
-import { NO_VALUE_OPS, OPS, TITLE_ID, applyView, exportValue, filterTargets, formatPropertyNumber, formulaGroupKey, formulaGroups, isEmptyValue, isFormulaResult, opLabel, resolveOption, rowsByDate, withFormulaValues, type FilterTarget, type ViewSummary } from "@/components/views/collectionView";
+import { NO_VALUE_OPS, OPS, TITLE_ID, applyView, optionChipStyle, exportValue, filterTargets, formatPropertyNumber, formulaGroupKey, formulaGroups, isEmptyValue, isFormulaResult, opLabel, resolveOption, rowsByDate, withFormulaValues, type FilterTarget, type ViewSummary } from "@/components/views/collectionView";
 import { FormulaEditor, FormulaValue, NumberFormatFields } from "./collection/FormulaEditor";
 import { ExportMenu, SummaryRow, useExportItems } from "./collection/CollectionTools";
 import { boardDropAfter, cardBelowPointer } from "./collection/boardDrop";
@@ -154,10 +154,7 @@ const typeLabel = (type: string) => TYPE_LABELS[type as Property["type"]] ?? typ
 /** A formula property's result in a row (worked out by useCollection). */
 const formulaResult = (value: unknown): CollectionFormulaResult | undefined => (isFormulaResult(value) ? value : undefined);
 
-function optionColor(color: string) {
-  const c = color === "muted" ? "ink-muted" : color;
-  return { background: `var(--color-${c === "accent" ? "accent-soft" : c === "ink-muted" ? "surface-sunken" : `${c}-soft`})`, color: `var(--color-${c === "accent" ? "accent-soft-ink" : c === "ink-muted" ? "ink" : `${c}-ink`})` };
-}
+const optionColor = optionChipStyle;
 
 const VIEW_NAMES: Record<View["type"], string> = { table: "Table", board: "Board", gallery: "Gallery", calendar: "Calendar" };
 
@@ -959,9 +956,11 @@ function CellDisplay({ prop, value, people, inLink }: { prop: Property; value: u
   }
   if (prop.type === "url" && typeof value === "string") {
     const shown = value.replace(/^https?:\/\//, "");
-    if (inLink) return <span className="text-accent">{shown}</span>;
+    // A web address is a link; anything else a row holds here is shown as the words it is.
+    const href = webUrl(value);
+    if (inLink || !href) return <span className={href ? "text-accent" : undefined}>{shown}</span>;
     return (
-      <a href={value} target="_blank" rel="noopener noreferrer nofollow" className="text-accent underline underline-offset-2">
+      <a href={href} target="_blank" rel="noopener noreferrer nofollow" className="text-accent underline underline-offset-2">
         {shown}
       </a>
     );

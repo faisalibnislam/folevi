@@ -7,6 +7,7 @@ import { FileText, RotateCcw, X } from "lucide-react";
 import { api } from "@/lib/convex/api";
 import { useAppState } from "@/lib/app/state";
 import { AppLink } from "@/lib/app/router";
+import { catchUpKey } from "@/lib/ai/catchUpStore";
 import { useAiStream } from "./useAiStream";
 import { AiCreditsNote, AiProblemNotice, aiProblem, type AiProblem } from "./AiCredits";
 
@@ -21,26 +22,26 @@ interface Brief {
   sources: { id: string; title: string }[];
   at: number;
 }
-// Per context: "personal" or the workspace id (scopeIdKey).
-const key = (scopeKey: string) => `folevi:catchup:${scopeKey}`;
 
 /**
  * Home's "Catch me up": a short AI brief of this week's notes and what's due, citing the notes. Generated
  * on request (never automatically), kept for this browser session.
  */
 export function CatchUp({ row = false }: { /** A list row (the iPhone app's Home) until there's a brief to show. */ row?: boolean } = {}) {
-  const { scope, scopeKey, today } = useAppState();
+  const { scope, scopeKey, today, profile } = useAppState();
+  // The account's own key for this place: a brief is never read back under another account (lib/ai/catchUpStore.ts).
+  const key = catchUpKey(profile.id, scopeKey);
   const brief = useAction(api.ai.brief);
   const stream = useAiStream();
   // The brief kept for this visit is read before the first frame, so Home doesn't draw the short row and then swap
   // it for the brief, pushing everything under it down (the iPhone remounts Home on every visit).
-  const [data, setData] = useState<Brief | null>(() => savedBrief(scopeKey));
-  const [shownFor, setShownFor] = useState(scopeKey);
+  const [data, setData] = useState<Brief | null>(() => savedBrief(key));
+  const [shownFor, setShownFor] = useState(key);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<AiProblem | null>(null);
-  if (shownFor !== scopeKey) {
-    setShownFor(scopeKey);
-    setData(savedBrief(scopeKey));
+  if (shownFor !== key) {
+    setShownFor(key);
+    setData(savedBrief(key));
   }
   useEffect(() => {
     if (data) void loadMarkdown();
@@ -57,7 +58,7 @@ export function CatchUp({ row = false }: { /** A list row (the iPhone app's Home
       const next = { ...r, at: Date.now() };
       setData(next);
       try {
-        sessionStorage.setItem(key(scopeKey), JSON.stringify(next));
+        sessionStorage.setItem(key, JSON.stringify(next));
       } catch {
         /* storage unavailable: keep it in memory */
       }
@@ -72,7 +73,7 @@ export function CatchUp({ row = false }: { /** A list row (the iPhone app's Home
   const clear = () => {
     setData(null);
     try {
-      sessionStorage.removeItem(key(scopeKey));
+      sessionStorage.removeItem(key);
     } catch {
       /* ignore */
     }
@@ -170,11 +171,11 @@ export function CatchUp({ row = false }: { /** A list row (the iPhone app's Home
   );
 }
 
-/** This visit's brief for a place, kept in sessionStorage, or null. */
-function savedBrief(scopeKey: string): Brief | null {
+/** This visit's brief for an account's place (its catchUpKey), kept in sessionStorage, or null. */
+function savedBrief(key: string): Brief | null {
   if (typeof window === "undefined") return null;
   try {
-    const saved = sessionStorage.getItem(key(scopeKey));
+    const saved = sessionStorage.getItem(key);
     return saved ? (JSON.parse(saved) as Brief) : null;
   } catch {
     return null;

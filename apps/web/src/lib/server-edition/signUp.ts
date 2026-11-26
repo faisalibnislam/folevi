@@ -12,7 +12,7 @@ export interface ServerSignUpInput {
   email: string;
   password: string;
   callbackURL: string;
-  /** A `/join/<token>` invite, sent as `x-folevi-invite` (CONTRACT §7.1 item 5). */
+  /** A `/join/<token>` invite, or the setup code for the first account, sent as `x-folevi-invite` (CONTRACT §7.1 item 5). */
   inviteToken?: string;
 }
 

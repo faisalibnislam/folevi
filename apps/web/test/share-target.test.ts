@@ -102,7 +102,7 @@ function serviceWorker() {
     keys: async () => [...store.keys()],
     delete: async (name: string) => store.delete(name),
   };
-  const self = { location: { origin }, addEventListener: (type: string, fn: (event: unknown) => void) => (handlers[type] = fn), skipWaiting() {}, clients: {} };
+  const self = { location: { origin }, addEventListener: (type: string, fn: (event: unknown) => void) => (handlers[type] = fn), skipWaiting() {}, clients: { claim: async () => undefined } };
   const source = readFileSync(join(__dirname, "..", "public", "sw.js"), "utf8");
   runInNewContext(source, { self, caches, URL, Request, Response, fetch: async () => new Response("network"), console, Date, Math, String, parseInt, JSON });
   return { handlers, store };
@@ -125,7 +125,8 @@ describe("service worker share target", () => {
     expect(id).toMatch(/^[0-9a-z]+-[0-9a-z]+$/);
     const cache = sw.store.get("folevi-share-v1")!;
     const meta = await cache.get(`https://app.folevi.com/__share/${id}/meta`)!.json();
-    expect(meta).toEqual({ title: "Shared page", text: "Have a look https://example.com/x", url: "", files: [{ name: "photo.png", type: "image/png" }], skipped: ["empty.png"] });
+    // (`bytes`: what its files weigh, so the worker can keep the cache within its ceiling.)
+    expect(meta).toEqual({ title: "Shared page", text: "Have a look https://example.com/x", url: "", files: [{ name: "photo.png", type: "image/png" }], skipped: ["empty.png"], bytes: 3 });
     expect(new Uint8Array(await cache.get(`https://app.folevi.com/__share/${id}/file/0`)!.arrayBuffer())).toEqual(new Uint8Array([1, 2, 3]));
   });
 
@@ -138,7 +139,104 @@ describe("service worker share target", () => {
   });
 });
 
+// Any page can post a form to /share-target, so what the worker keeps has a ceiling whoever sends it.
+describe("service worker share target: what is kept has a ceiling", () => {
+  const MB = 1024 * 1024;
+  const share = async (sw: ReturnType<typeof serviceWorker>, files: number[], init: { destination?: string } = {}) => {
+    const form = new FormData();
+    form.set("title", "t");
+    for (const [i, size] of files.entries()) form.append("files", new File([new Uint8Array(size)], `f${i}.bin`, { type: "application/octet-stream" }));
+    const request = new Request("https://app.folevi.com/share-target", { method: "POST", body: form });
+    if (init.destination) Object.defineProperty(request, "destination", { value: init.destination });
+    let response: Promise<Response> | null = null;
+    sw.handlers.fetch!({ request, respondWith: (p: Promise<Response>) => (response = p) });
+    if (!response) return null;
+    const res = await (response as Promise<Response>);
+    return new URL(res.headers.get("location")!).searchParams.get("received")!;
+  };
+  const kept = (sw: ReturnType<typeof serviceWorker>) => new Set([...(sw.store.get("folevi-share-v1")?.keys() ?? [])].map((url) => new URL(url).pathname.split("/")[2]!));
+  const tick = () => new Promise((r) => setTimeout(r, 2));
+
+  test("only the newest three shares stay, however many arrive", async () => {
+    const sw = serviceWorker();
+    const ids: string[] = [];
+    for (let i = 0; i < 8; i++) {
+      ids.push((await share(sw, [10]))!);
+      await tick();
+    }
+    expect([...kept(sw)].sort()).toEqual(ids.slice(-3).sort());
+  });
+
+  test("and together they hold at most 100 MB of files: older ones make room", async () => {
+    const sw = serviceWorker();
+    const a = (await share(sw, [20 * MB, 20 * MB, 15 * MB]))!;
+    await tick();
+    const b = (await share(sw, [20 * MB, 20 * MB]))!;
+    expect(kept(sw)).toEqual(new Set([a, b]));
+    await tick();
+    const c = (await share(sw, [20 * MB]))!;
+    // 55 + 40 + 20 is over: the oldest goes.
+    expect(kept(sw)).toEqual(new Set([b, c]));
+  });
+
+  test("one share never keeps more than the ceiling itself: the files over it are named as left out", async () => {
+    const sw = serviceWorker();
+    const id = (await share(sw, [20 * MB, 20 * MB, 20 * MB, 20 * MB, 20 * MB, 20 * MB, 1]))!;
+    const meta = (await sw.store.get("folevi-share-v1")!.get(`https://app.folevi.com/__share/${id}/meta`)!.json()) as { files: unknown[]; skipped: string[]; bytes: number };
+    expect(meta.files).toHaveLength(5);
+    expect(meta.skipped).toEqual(["f5.bin", "f6.bin"]);
+    expect(meta.bytes).toBe(100 * MB);
+  });
+
+  test("a post into a frame is not a share: nothing is kept and the worker leaves it to the server", async () => {
+    const sw = serviceWorker();
+    for (const destination of ["iframe", "frame", "embed", "object"]) expect(await share(sw, [10], { destination })).toBeNull();
+    expect(kept(sw).size).toBe(0);
+    expect(await share(sw, [10], { destination: "document" })).not.toBeNull();
+  });
+
+  test("a new worker drops what is over the ceiling and what is older than a day, without waiting for a share", async () => {
+    const sw = serviceWorker();
+    const cache = new Map<string, Response>();
+    sw.store.set("folevi-share-v1", cache);
+    const put = (at: number, n: string, bytes?: number) => {
+      const id = `${at.toString(36)}-${n}`;
+      cache.set(`https://app.folevi.com/__share/${id}/meta`, new Response(JSON.stringify({ title: n, files: [{ name: "f" }], skipped: [], ...(bytes === undefined ? {} : { bytes }) })));
+      cache.set(`https://app.folevi.com/__share/${id}/file/0`, new Response(new Uint8Array(bytes ?? 7)));
+      return id;
+    };
+    const now = Date.now();
+    const old = put(now - 25 * 60 * 60 * 1000, "old", 5);
+    const [s1, s2, s3, s4] = [put(now - 4000, "s1", 5), put(now - 3000, "s2"), put(now - 2000, "s3", 5), put(now - 1000, "s4", 5)];
+    let done: Promise<unknown> = Promise.resolve();
+    sw.handlers.activate!({ waitUntil: (p: Promise<unknown>) => (done = p) });
+    await done;
+    expect(kept(sw)).toEqual(new Set([s2, s3, s4]));
+    expect(kept(sw).has(old)).toBe(false);
+    expect(kept(sw).has(s1)).toBe(false);
+  });
+});
+
 describe("server share target (no service worker yet)", () => {
+  test("a form another site posts is refused; the share sheet's own post is taken", async () => {
+    const post = (site?: string) => {
+      const form = new FormData();
+      form.set("title", "Your session expired");
+      form.set("url", "https://evil.example/");
+      return shareTargetFallback(new Request("https://app.folevi.com/share-target", { method: "POST", body: form, headers: site ? { "sec-fetch-site": site } : {} }));
+    };
+    const refused = await post("cross-site");
+    expect(refused.status).toBe(403);
+    expect(refused.headers.get("location")).toBeNull();
+    // The share sheet: "none" (the browser itself started it), or no header from a browser that sends none.
+    for (const site of ["none", undefined, "same-origin"]) {
+      const res = await post(site);
+      expect(res.status, String(site)).toBe(303);
+      expect(res.headers.get("location"), String(site)).toMatch(/^\/share\?/);
+    }
+  });
+
+
   test("passes title, text and link on to /share and says how many files didn't come along", async () => {
     const form = new FormData();
     form.set("title", "T");

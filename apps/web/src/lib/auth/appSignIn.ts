@@ -35,3 +35,61 @@ export function appSignInUrl(origin: string, o: { provider: SocialProvider; clie
   if (o.provider !== "google") start.searchParams.set("provider", o.provider);
   return start.toString();
 }
+
+// ---- The return from the provider ------------------------------------------------------------------------
+//
+// The page leaves for Google or Apple and comes back to itself. That it is back is never taken from the address
+// (anyone can write `returned=1` into a link): before leaving, the page notes a random value and the request's
+// challenge in this tab's sessionStorage and sends the value round in `returned`; it is back only when the
+// address carries the value this tab noted, for the same challenge. A return it can't match is a fresh start.
+
+/** Where this tab keeps the note of a sign-in it started. */
+export const APP_SIGN_IN_MARK = "folevi:app-sign-in";
+
+type MarkStore = Pick<Storage, "getItem" | "setItem" | "removeItem">;
+
+const tabStore = (): MarkStore | null => {
+  try {
+    return typeof sessionStorage === "undefined" ? null : sessionStorage;
+  } catch {
+    return null;
+  }
+};
+
+/**
+ * Notes that this tab is leaving for the provider with this challenge. Returns the value to send round in
+ * `returned`, or null when the tab can't keep a note (storage is off): the sign-in can't go on then.
+ */
+export function markAppSignInStart(codeChallenge: string, store: MarkStore | null = tabStore()): string | null {
+  if (!store) return null;
+  const bytes = new Uint8Array(16);
+  crypto.getRandomValues(bytes);
+  const mark = Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
+  try {
+    store.setItem(APP_SIGN_IN_MARK, JSON.stringify({ mark, codeChallenge }));
+    // (Some browsers accept the write and keep nothing.)
+    return store.getItem(APP_SIGN_IN_MARK) ? mark : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Whether this tab is back from a provider trip it started itself for this challenge (see above). */
+export function appSignInReturned(returned: string | null | undefined, codeChallenge: string, store: MarkStore | null = tabStore()): boolean {
+  if (!returned || !store) return false;
+  try {
+    const noted = JSON.parse(store.getItem(APP_SIGN_IN_MARK) ?? "null") as { mark?: unknown; codeChallenge?: unknown } | null;
+    return !!noted && typeof noted.mark === "string" && noted.mark.length === 32 && noted.mark === returned && noted.codeChallenge === codeChallenge;
+  } catch {
+    return false;
+  }
+}
+
+/** Forgets the note (the code was handed over, or the person cancelled). */
+export function clearAppSignInMark(store: MarkStore | null = tabStore()): void {
+  try {
+    store?.removeItem(APP_SIGN_IN_MARK);
+  } catch {
+    /* nothing to forget */
+  }
+}

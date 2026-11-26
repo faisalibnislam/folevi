@@ -15,3 +15,12 @@ export function isServerEdition(): boolean {
 export function edition(): Edition {
   return isServerEdition() ? "server" : "cloud";
 }
+
+/**
+ * Whether this deployment may answer development-only pages (/dev/*, the dev mailbox): never Folevi Cloud's
+ * production, and never a Folevi server. A server is always production, but its web process isn't told so
+ * (folevid sets FOLEVI_ENV for the backend only), so the edition is asked as well.
+ */
+export function devPagesAvailable(): boolean {
+  return process.env.VERCEL_ENV !== "production" && process.env.FOLEVI_ENV !== "production" && !isServerEdition();
+}

@@ -19,7 +19,7 @@ import {
   RotateCw,
   Trash2,
 } from "lucide-react";
-import { CHART_DEFAULT_HEIGHT, MINDMAP_DEFAULT_HEIGHT, STICKIES_DEFAULT_HEIGHT, WIREFRAME_DEFAULT_HEIGHT, imageDescription, looksLikeFileName, sanitizeHref, type SyncState } from "@folevi/editor-schema";
+import { CHART_DEFAULT_HEIGHT, MINDMAP_DEFAULT_HEIGHT, STICKIES_DEFAULT_HEIGHT, WIREFRAME_DEFAULT_HEIGHT, imageDescription, looksLikeFileName, sanitizeHref, webUrl, type SyncState } from "@folevi/editor-schema";
 import { webAddressIn } from "./autolink";
 import { api } from "@/lib/convex/api";
 import { canCallHere } from "@/lib/mode";
@@ -1216,6 +1216,9 @@ function BookmarkView({ node, selected, updateAttributes, editor, getPos }: Reac
     icon: string | null;
   };
   const href = sanitizeHref(a.url ?? "") ?? "#";
+  // The picture and the icon are the linked page's own, on the web: any other address (a path here, data:) isn't shown.
+  const image = webUrl(a.image);
+  const icon = webUrl(a.icon);
   const hostOf = (url: string) => {
     try {
       return new URL(url).host;
@@ -1333,7 +1336,7 @@ function BookmarkView({ node, selected, updateAttributes, editor, getPos }: Reac
     selectBlock(editor, getPos);
   };
 
-  const showImage = Boolean(a.image) && !imageFailed;
+  const showImage = Boolean(image) && !imageFailed;
   return (
     <Frame selected={selected} label={`Bookmark ${a.title ?? host}`}>
       <div ref={card} className="group/bookmark relative my-2 overflow-hidden ui-card rounded-control" contentEditable={false} data-bookmark="">
@@ -1349,9 +1352,9 @@ function BookmarkView({ node, selected, updateAttributes, editor, getPos }: Reac
           className="flex min-h-[7.5rem] items-stretch no-underline transition-colors hover:bg-[var(--glass-hover)]"
         >
           <span className="flex min-w-0 flex-1 flex-col justify-center gap-1 p-4 pr-10">
-            {a.icon && !iconFailed ? (
+            {icon && !iconFailed ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={a.icon} alt="" referrerPolicy="no-referrer" loading="lazy" onError={() => setIconFailed(true)} className="mb-1 h-6 w-6 flex-none rounded-tiny object-contain" />
+              <img src={icon} alt="" referrerPolicy="no-referrer" loading="lazy" onError={() => setIconFailed(true)} className="mb-1 h-6 w-6 flex-none rounded-tiny object-contain" />
             ) : (
               <Link2 size={18} className="mb-1 text-muted" aria-hidden />
             )}
@@ -1366,7 +1369,7 @@ function BookmarkView({ node, selected, updateAttributes, editor, getPos }: Reac
             // The standard social image shape (1.91:1), so the whole picture shows rather than a cropped strip.
             <span className="relative my-3 mr-3 hidden aspect-[1.91/1] w-[34%] max-w-[260px] flex-none self-center overflow-hidden rounded-chip bg-sunken shadow-[inset_0_0_0_1px_var(--color-line)] sm:block" aria-hidden>
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={a.image!} alt="" referrerPolicy="no-referrer" loading="lazy" onError={() => setImageFailed(true)} className="ui-img-outline absolute inset-0 h-full w-full rounded-[inherit] object-cover" />
+              <img src={image!} alt="" referrerPolicy="no-referrer" loading="lazy" onError={() => setImageFailed(true)} className="ui-img-outline absolute inset-0 h-full w-full rounded-[inherit] object-cover" />
             </span>
           ) : null}
         </a>

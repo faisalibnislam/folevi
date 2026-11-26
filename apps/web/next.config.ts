@@ -142,6 +142,19 @@ async function redirects() {
   ];
 }
 
+// What is never cached by a shared cache: every product route (src/lib/app/routes.ts APP_ROUTE_HEADS), the pages
+// rendered per request beside them (REQUEST_PAGE_HEADS and REQUEST_PAGE_PREFIXES there: admin, sign-in flows,
+// share pages, invitations, Vault links), and the API. Written out here because next.config.ts is loaded outside
+// the app bundler; test/routes.test.ts fails when a route in those lists is missing from this one.
+export const PRIVATE_ROUTE_HEADS = [
+  "documents", "notes", "d", "ai", "graph", "tasks", "inbox", "calendar", "review", "changes", "daily", "shared", "vault", "templates", "starred", "archive",
+  "trash", "drafts", "unsorted", "folders", "tags", "settings", "help", "onboarding", "quick-add", "float", "place-sync", "oauth", "invite", "share-invite",
+  "share", "native",
+  "admin", "setup", "signin", "signup", "connect", "verify-email", "reset-password", "two-factor", "app-google",
+  "s", "join", "vault-link",
+  "api", "share-target",
+] as const;
+
 async function headers() {
   return [
     { source: "/:path*", headers: serverHeaders(securityHeaders) },
@@ -166,7 +179,7 @@ async function headers() {
     },
     {
       // Authenticated surfaces and share pages are never cached by shared caches.
-      source: "/:path(d|ai|graph|documents|notes|tasks|calendar|review|changes|daily|settings|admin|s|api|shared|templates|starred|archive|trash|drafts|unsorted|folders|tags|onboarding|invite|share-invite|share|share-target)/:rest*",
+      source: `/:path(${PRIVATE_ROUTE_HEADS.join("|")})/:rest*`,
       headers: [{ key: "Cache-Control", value: "private, no-store" }],
     },
     // Share pages set robots per link (noindex unless the owner allowed indexing) in their metadata.
@@ -208,7 +221,9 @@ async function headers() {
           value: `default-src 'none'; style-src 'unsafe-inline'; frame-src https://www.youtube-nocookie.com https://player.vimeo.com https://www.loom.com https://www.figma.com https://maps.google.com; frame-ancestors 'self' app://folevi capacitor://localhost; base-uri 'none'; form-action 'none'`,
         },
         { key: "X-Frame-Options", value: "ALLOWALL" },
-        { key: "Cache-Control", value: "public, max-age=3600" },
+        // Kept by the browser that asked only, and never a frame's answer for a page load (the route refuses one).
+        { key: "Cache-Control", value: "private, max-age=3600" },
+        { key: "Vary", value: "Sec-Fetch-Dest" },
       ],
     },
   ];

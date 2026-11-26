@@ -1,3 +1,4 @@
+import { restApiTarget } from "@/lib/api/forward";
 import { convexSiteUrl } from "@/lib/server/mcp";
 
 /**
@@ -11,7 +12,9 @@ const FORWARD = ["authorization", "content-type", "accept", "idempotency-key"];
 const RETURN = ["content-type", "cache-control", "retry-after", "allow", "www-authenticate", "idempotent-replayed", "access-control-allow-origin", "access-control-allow-methods", "access-control-allow-headers", "access-control-expose-headers", "access-control-max-age"];
 
 async function forward(request: Request): Promise<Response> {
-  const url = new URL(request.url);
+  // Only the REST API's own paths, however the address was written (lib/api/forward.ts).
+  const target = restApiTarget(request.url);
+  if (!target) return new Response(JSON.stringify({ error: { code: "not_found", message: "Not found." } }), { status: 404, headers: { "content-type": "application/json", "cache-control": "no-store" } });
   const headers = new Headers();
   for (const name of FORWARD) {
     const value = request.headers.get(name);
@@ -19,7 +22,7 @@ async function forward(request: Request): Promise<Response> {
   }
   const init: RequestInit = { method: request.method, headers, cache: "no-store", redirect: "manual" };
   if (request.method === "POST" || request.method === "PATCH" || request.method === "PUT") init.body = await request.arrayBuffer();
-  const res = await fetch(`${convexSiteUrl()}${url.pathname}${url.search}`, init);
+  const res = await fetch(`${convexSiteUrl()}${target}`, init);
   const out = new Headers();
   for (const name of RETURN) {
     const value = res.headers.get(name);

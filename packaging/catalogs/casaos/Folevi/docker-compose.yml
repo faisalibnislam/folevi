@@ -36,8 +36,8 @@ x-casaos:
     - amd64
     - arm64
   main: folevi
-  author: Folevi
-  developer: Folevi
+  author: Space Cherries LLC
+  developer: Space Cherries LLC
   category: Productivity
   description:
     en_us: Your own Folevi server (Beta) for your family or team. Notes, tasks and files on your own hardware, used from the normal Folevi apps on Mac, iPhone, iPad, Android and the web.

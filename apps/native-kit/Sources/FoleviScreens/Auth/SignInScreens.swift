@@ -191,6 +191,12 @@ public struct SignInFlow: View {
             .foregroundStyle(Folevi.color.inkMuted)
             .tint(Folevi.color.accent)
             .multilineTextAlignment(.center)
+        Text(.init(FoleviOperator.signUpMarkdown))
+            .foleviFont(.footnote)
+            .foregroundStyle(Folevi.color.inkMuted)
+            .tint(Folevi.color.accent)
+            .multilineTextAlignment(.center)
+            .accessibilityIdentifier("sign-up-operator")
         HStack(spacing: 4) {
             Text("Already have an account?").foleviFont(.callout).foregroundStyle(Folevi.color.inkMuted)
             TextLinkButton(title: "Sign in", identifier: "sign-up-sign-in") { model.go(.email) }

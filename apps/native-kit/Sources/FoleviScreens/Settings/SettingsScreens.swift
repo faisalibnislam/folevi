@@ -570,6 +570,13 @@ struct AboutSettingsSection: View {
             Button { if let u = URL(string: "https://folevi.com/terms") { model.host.openURL(u) } } label: { label("Terms") }
             Button { if let u = URL(string: "https://folevi.com/privacy") { model.host.openURL(u) } } label: { label("Privacy policy") }
         }
+        // The company that operates Folevi, its address and the copyright line (the owner, 2026-11-27).
+        Section {
+            Button { model.host.openURL(FoleviOperator.website) } label: { label(FoleviOperator.operatedBy) }
+                .accessibilityIdentifier("about-operator")
+        } footer: {
+            footnote("\(FoleviOperator.address)\n\(FoleviOperator.copyright)")
+        }
     }
 }
 

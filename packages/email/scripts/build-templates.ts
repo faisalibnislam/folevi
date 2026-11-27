@@ -23,6 +23,7 @@ import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { EMAIL_LOGO, emailManifest, TEMPLATE_KEYS } from "../src/manifest.ts";
+import { EMAIL_OPERATOR, OPERATOR_HTML_END, OPERATOR_HTML_START, OPERATOR_LINE, OPERATOR_TEXT_END, OPERATOR_TEXT_START } from "../src/operator.ts";
 import type { GeneratedTemplate, TemplateDefinition, TemplateKey } from "../src/types.ts";
 
 // ---------------------------------------------------------------------------
@@ -503,6 +504,7 @@ ${body}
 <tr><td style="padding:24px 8px 0 8px;">
 <p class="fv-muted" style="margin:0 0 12px 0;${font(14, 22, C.muted)}">${footer}</p>
 <p class="fv-muted" style="margin:0;${font(14, 22, C.muted)}">${escapeHtml(SIGN_OFF)}</p>
+${OPERATOR_HTML_START}<p class="fv-muted" style="margin:12px 0 0 0;${font(14, 22, C.muted)}">Folevi is operated by <a href="${EMAIL_OPERATOR.url}" target="_blank" rel="noopener" class="fv-muted" style="color:${C.muted};text-decoration:underline;">${escapeHtml(EMAIL_OPERATOR.name)}</a>, ${escapeHtml(EMAIL_OPERATOR.address)}.</p>${OPERATOR_HTML_END}
 </td></tr>
 </table>
 <!--[if mso]></td></tr></table><![endif]-->
@@ -541,7 +543,7 @@ function renderText(def: TemplateDefinition, content: Content): string {
   } else {
     parts.push(wrap(SECURITY_FOOTER));
   }
-  parts.push(SIGN_OFF, "");
+  parts.push(SIGN_OFF, OPERATOR_TEXT_START, wrap(OPERATOR_LINE), OPERATOR_TEXT_END, "");
   return parts.join("\n");
 }
 

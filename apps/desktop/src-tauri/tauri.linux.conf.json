@@ -23,8 +23,8 @@
     "shortDescription": "Notes, tasks and docs in one calm place (Beta)",
     "longDescription": "Folevi keeps your notes, tasks and documents together. A Folevi account syncs them with the web, Mac, Windows, iPhone, iPad and Android apps. Folevi for Linux is in beta: it works, but expect rough edges. Send feedback at https://folevi.com/support.",
     "homepage": "https://folevi.com",
-    "publisher": "Folevi",
-    "copyright": "Copyright 2026 Folevi",
+    "publisher": "Space Cherries LLC",
+    "copyright": "Copyright 2026 Space Cherries LLC",
     "license": "LicenseRef-proprietary",
     "linux": {
       "appimage": {

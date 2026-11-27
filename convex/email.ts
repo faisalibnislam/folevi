@@ -138,6 +138,8 @@ export const sendTemplate = internalAction({
       { key, to, dataVariables: args.dataVariables, attemptId: attempt.attemptId, ...(args.thread ? { thread: args.thread } : {}) },
       {
         env,
+        // A Folevi Server's emails come from the person who runs it, so they don't name Space Cherries LLC.
+        ...(isServerEdition() ? { operator: false } : {}),
         ...(server ? { provider, smtp: (message: SmtpMessage) => ctx.runAction(internal.smtpSend.deliver, { message }) as Promise<SendOutcome> } : {}),
         policy: {
           environment: environment(),

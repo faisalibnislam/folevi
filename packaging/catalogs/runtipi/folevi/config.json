@@ -4,7 +4,7 @@
   "id": "folevi",
   "available": true,
   "short_desc": "Your notes, on your own server.",
-  "author": "Folevi",
+  "author": "Space Cherries LLC",
   "port": 8460,
   "categories": ["utilities"],
   "description": "Your own Folevi server (Beta) for your family or team, used from the normal Folevi apps.",

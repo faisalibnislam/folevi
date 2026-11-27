@@ -70,7 +70,7 @@ def main():
             "deppkgs": None,
             "conflictpkgs": None,
             "start": True,
-            "maintainer": info.get("maintainer", "Folevi"),
+            "maintainer": info.get("maintainer", "Space Cherries LLC"),
             "maintainer_url": info.get("maintainer_url", "https://folevi.com"),
             "distributor": info.get("distributor", "Folevi"),
             "distributor_url": info.get("distributor_url", "https://folevi.com"),

@@ -5,7 +5,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, test } from "vitest";
 import { organizationLd } from "@/components/marketing/seo";
-import { OPERATOR, OPERATOR_ADDRESS } from "@/components/marketing/site";
+import { OPERATOR, OPERATOR_ADDRESS, OPERATOR_COPYRIGHT } from "@/components/marketing/site";
 
 const SRC = join(__dirname, "../src");
 const read = (path: string) => readFileSync(join(SRC, path), "utf8");
@@ -34,6 +34,25 @@ describe("the operator, Space Cherries LLC", () => {
     for (const path of ["app/(marketing)/terms/page.tsx", "app/(marketing)/privacy/page.tsx", "app/(marketing)/support/page.tsx"]) {
       expect(read(path)).toContain("OPERATOR_ADDRESS");
     }
+  });
+
+  test("the apps carry one copyright line", () => {
+    expect(OPERATOR_COPYRIGHT).toBe("© 2026 Space Cherries LLC");
+  });
+
+  test("Settings > About, next to the terms and privacy links, names it with its address and the copyright", () => {
+    const source = read("components/views/settings/AboutSection.tsx");
+    for (const name of ["OPERATOR.name", "OPERATOR.url", "OPERATOR_ADDRESS", "OPERATOR_COPYRIGHT"]) expect(source).toContain(name);
+    expect(source).not.toContain("Space Cherries");
+  });
+
+  test("sign-up says who operates Folevi under the terms line, and only on Folevi Cloud", () => {
+    const source = read("components/auth/SignUpForm.tsx");
+    expect(source).toMatch(/Folevi is operated by <TextLink href=\{OPERATOR\.url\}>\{OPERATOR\.name\}<\/TextLink>/);
+    // The street address stays in the legal places; sign-up has the name and link only.
+    expect(source).not.toContain("OPERATOR_ADDRESS");
+    expect(source.indexOf("By creating an account")).toBeLessThan(source.indexOf("Folevi is operated by"));
+    expect(source).toMatch(/hidden=\{Boolean\(server\)\}>\s*<p>\s*By creating an account/);
   });
 
   test("search engines see it as the company behind Folevi", () => {

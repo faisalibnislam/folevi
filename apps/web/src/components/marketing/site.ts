@@ -88,3 +88,7 @@ export const OPERATOR = {
 } as const;
 /** "5242 Elbetee Lane, Alexandria, VA 22312, USA" */
 export const OPERATOR_ADDRESS = `${OPERATOR.street}, ${OPERATOR.city}, ${OPERATOR.region} ${OPERATOR.postalCode}, ${OPERATOR.country}`;
+/** The copyright line the apps, their metadata and their installers carry: "© 2026 Space Cherries LLC". The
+ *  year is the first year Folevi was published under the company, so it stays put (the website's footer shows the
+ *  current year instead). */
+export const OPERATOR_COPYRIGHT = `© 2026 ${OPERATOR.name}`;

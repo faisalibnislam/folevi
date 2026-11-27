@@ -2,7 +2,7 @@
 QPKG_NAME="folevi"
 QPKG_DISPLAY_NAME="Folevi Server"
 QPKG_VER="@VERSION@"
-QPKG_AUTHOR="Folevi"
+QPKG_AUTHOR="Space Cherries LLC"
 QPKG_LICENSE="Proprietary; bundled third-party licenses in bundle/LICENSES"
 QPKG_SUMMARY="@FOLEVI_DESCRIPTION@"
 QPKG_RC_NUM="160"

@@ -107,6 +107,16 @@ final class MenuTests: XCTestCase {
         XCTAssertNotNil(Paths.build.range(of: #"^\d+$"#, options: .regularExpression), Paths.build)
     }
 
+    /// About Folevi names the operator with a link (the owner, 2026-11-27); the copyright line comes from the
+    /// Info.plist.
+    func testAboutNamesTheOperator() throws {
+        let credits = try XCTUnwrap(AppDelegate.aboutPanelOptions[.credits] as? NSAttributedString)
+        XCTAssertEqual(credits.string, "Operated by Space Cherries LLC")
+        let range = (credits.string as NSString).range(of: "Space Cherries LLC")
+        XCTAssertEqual(credits.attribute(.link, at: range.location, effectiveRange: nil) as? URL, URL(string: "https://www.spacecherries.com"))
+        XCTAssertEqual(Bundle.main.object(forInfoDictionaryKey: "NSHumanReadableCopyright") as? String, "© 2026 Space Cherries LLC")
+    }
+
     func testGlobalShortcutAsAMenuKey() {
         XCTAssertEqual(MainMenu.menuKey("Alt+Space")?.0, " ")
         XCTAssertEqual(MainMenu.menuKey("Alt+Space")?.1, [.option])

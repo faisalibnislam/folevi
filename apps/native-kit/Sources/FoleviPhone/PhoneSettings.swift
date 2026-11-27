@@ -986,6 +986,11 @@ struct PhoneAboutSettings: View {
                     }
                 }
             }
+            // The company that operates Folevi, its address and the copyright line (the owner, 2026-11-27).
+            PhoneSettingsGroup(footer: "\(FoleviOperator.address)\n\(FoleviOperator.copyright)") {
+                PhoneSettingsRow("Operated by", value: FoleviOperator.name, action: { host.openURL(FoleviOperator.website) })
+            }
+            .accessibilityIdentifier("about-operator")
         }
     }
 }

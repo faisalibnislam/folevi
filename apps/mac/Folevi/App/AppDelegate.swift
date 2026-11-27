@@ -202,8 +202,25 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         NSApp.orderFrontStandardAboutPanel(options: Self.aboutPanelOptions)
     }
 
+    /// The copyright line comes from the Info.plist (NSHumanReadableCopyright, "© 2026 Space Cherries LLC"); the
+    /// credits add "Operated by Space Cherries LLC" with a link to its website (the owner, 2026-11-27).
     nonisolated static var aboutPanelOptions: [NSApplication.AboutPanelOptionKey: Any] {
-        [.applicationVersion: Paths.version, .version: ""]
+        [.applicationVersion: Paths.version, .version: "", .credits: aboutCredits]
+    }
+
+    nonisolated static var aboutCredits: NSAttributedString {
+        let paragraph = NSMutableParagraphStyle()
+        paragraph.alignment = .center
+        let base: [NSAttributedString.Key: Any] = [
+            .font: NSFont.systemFont(ofSize: NSFont.smallSystemFontSize),
+            .foregroundColor: NSColor.secondaryLabelColor,
+            .paragraphStyle: paragraph,
+        ]
+        let credits = NSMutableAttributedString(string: "Operated by ", attributes: base)
+        var link = base
+        link[.link] = FoleviOperator.website
+        credits.append(NSAttributedString(string: FoleviOperator.name, attributes: link))
+        return credits
     }
 }
 

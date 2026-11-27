@@ -4,6 +4,7 @@
   "short_name": "Folevi Clipper",
   "description": "Save the article you're reading, or the part you selected, as a clean note in your Folevi Inbox.",
   "version": "0.0.0",
+  "author": "Space Cherries LLC",
   "minimum_chrome_version": "116",
   "homepage_url": "https://folevi.com/docs/web-clipper",
   "icons": {

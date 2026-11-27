@@ -105,16 +105,10 @@ function Figure({ label, value }: { label: string; value: string }) {
 
 /** The usage card's contents for one credit account. */
 export function UsageSummary({ usage }: { usage: AiUsageData }) {
+  // Every plan includes Foli AI (2026-11-27), so this is a place where it's turned off.
   if (!usage.aiIncluded) {
     return (
-      <p className="text-subheadline text-muted">
-        {withoutPurchaseHints(usage.blockedReason ?? "Foli AI isn't included here.")}{" "}
-        {canPurchaseHere() ? (
-          <AppLink href="/settings/billing" className="underline underline-offset-2 hover:text-heading">
-            See plans
-          </AppLink>
-        ) : null}
-      </p>
+      <p className="text-subheadline text-muted">{withoutPurchaseHints(usage.blockedReason ?? "Foli AI is turned off here.")}</p>
     );
   }
   const most = Math.max(1, ...usage.features.map((f) => f.credits));
@@ -197,7 +191,7 @@ export function AiUsageCard() {
             />
           ) : null}
           {!usage ? <IosText muted>Loading your usage…</IosText> : null}
-          {usage && !usage.aiIncluded ? <IosText muted>{withoutPurchaseHints(usage.blockedReason ?? "Foli AI isn't included here.")}</IosText> : null}
+          {usage && !usage.aiIncluded ? <IosText muted>{withoutPurchaseHints(usage.blockedReason ?? "Foli AI is turned off here.")}</IosText> : null}
           {usage?.aiIncluded ? (
             <>
               <IosRow label={usage.trialing ? "Trial credits" : "Monthly credits"} value={usage.allowance.toLocaleString()} />

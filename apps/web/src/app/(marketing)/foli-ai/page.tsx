@@ -20,12 +20,12 @@ import { SIGN_UP_URL } from "@/components/marketing/site";
 import { ButtonLink, Eyebrow, Kbd, SectionHeading } from "@/components/marketing/ui";
 import { Float, Hand, Mark, Sticker } from "@/components/marketing/fun";
 import { AiPiece, CursorPiece } from "@/components/marketing/pieces";
-import { CREDIT_PACKS, MONTHLY_CREDITS, TRIAL_CREDITS, TRIAL_DAYS } from "@/lib/plans";
+import { CREDIT_PACKS, MONTHLY_CREDITS, PACK_VALID_MONTHS, TIER_NAMES, TRIAL_CREDITS, TRIAL_DAYS, formatPrice } from "@/lib/plans";
 
 export const metadata = pageMetadata({
   title: "Foli AI: the AI assistant in your Folevi workspace",
   description:
-    "Foli AI answers from your pages with sources, edits when you approve, writes, translates and draws flowcharts. On the Mac it can use Apple Intelligence.",
+    "Foli AI answers from your pages with sources, edits when you approve, writes, translates and draws flowcharts. Use it free with your own AI key on your devices, Apple Intelligence on the Mac, or Folevi Cloud's free credits.",
   path: "/foli-ai",
 });
 
@@ -339,22 +339,23 @@ export default function FoliPage() {
         <div className="grid gap-8 lg:grid-cols-2 lg:items-center lg:gap-16">
           <SectionHeading
             id="apps-ai-title"
-            eyebrow="Private AI in the apps"
+            eyebrow="Free AI in the apps"
             title={
               <>
                 Foli AI that never goes <Mark>through us</Mark>.
               </>
             }
-            lede="In a library on your devices, with no account, Foli AI on the Mac uses Apple Intelligence or your own API key."
+            lede="In a library on your devices, Foli AI works with your own OpenAI, Anthropic or Google key, or with Apple Intelligence on your Mac. It costs nothing on our side and needs no account."
           />
           <div>
             <Checks
               className="lg:text-[16px]"
               items={[
-                <>Apple Intelligence, on your Mac</>,
-                <>Or your own OpenAI, Anthropic or Google key</>,
-                <>Your notes go straight from your Mac to the model, never through Folevi</>,
+                <>Your own OpenAI, Anthropic or Google key, called straight from your device</>,
+                <>Or Apple Intelligence, on your Mac</>,
+                <>Your notes go straight from your device to the model, never through Folevi</>,
                 <>No Folevi account or AI credits needed</>,
+                <>On Folevi Cloud, {TIER_NAMES.free} has {MONTHLY_CREDITS.free} AI credits a month</>,
               ]}
             />
             <p className="mt-6 flex flex-wrap gap-x-8 gap-y-1 text-[15px]">
@@ -370,18 +371,18 @@ export default function FoliPage() {
       </Card>
 
       <Card aria-labelledby="plans-title">
-        <SectionHeading id="plans-title" eyebrow="Plans and credits" title="Pay for the AI you use." lede="One credit is one cent of what the AI costs." />
+        <SectionHeading id="plans-title" eyebrow="Plans and credits" title="On Folevi Cloud, pay for the AI you use." lede="Every plan can use Foli AI. One credit is one cent of what the AI costs." />
         <dl className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {[
-            ["Free", `${TRIAL_CREDITS} in the ${TRIAL_DAYS}-day trial`],
-            ["Core", "No AI at all"],
-            ["Pro", `${MONTHLY_CREDITS.pro} credits a month`],
-            ["Pro AI", `${MONTHLY_CREDITS.pro_ai} credits a month`],
+            [TIER_NAMES.free, `${MONTHLY_CREDITS.free} credits a month`],
+            [TIER_NAMES.core, "Credit packs only"],
+            [TIER_NAMES.pro, `${MONTHLY_CREDITS.pro} credits a month`],
+            [TIER_NAMES.pro_ai, `${MONTHLY_CREDITS.pro_ai} credits a month`],
           ].map(([plan, credits]) => (
             <div key={plan} className="mk-card relative p-5">
               <dt className="mk-caps">{plan}</dt>
               <dd className="mk-h3 mt-2 text-[19px]">{credits}</dd>
-              {plan === "Pro AI" ? (
+              {plan === TIER_NAMES.pro_ai ? (
                 <span aria-hidden="true" className="pointer-events-none absolute -top-3.5 right-3">
                   <Sticker tone="ink" rotate={6} className="text-[12px]">
                     Most credits
@@ -398,8 +399,9 @@ export default function FoliPage() {
               New accounts get a {TRIAL_DAYS}-day Pro AI trial with {TRIAL_CREDITS} credits
             </>,
             <>
-              Packs of {CREDIT_PACKS.credits_500.credits.toLocaleString("en-US")} or {CREDIT_PACKS.credits_1000.credits.toLocaleString("en-US")} credits on Pro and Pro AI
+              Packs on every plan: {CREDIT_PACKS.credits_500.credits.toLocaleString("en-US")} credits for {formatPrice(CREDIT_PACKS.credits_500.priceCents)} or {CREDIT_PACKS.credits_1000.credits.toLocaleString("en-US")} for {formatPrice(CREDIT_PACKS.credits_1000.priceCents)}, valid {PACK_VALID_MONTHS} months
             </>,
+            <>Turn Foli AI off on any plan in Settings → Foli AI, and nothing is sent to an AI model</>,
             <>Paid team members each get the plan’s credits</>,
           ]}
         />

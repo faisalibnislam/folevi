@@ -1337,7 +1337,7 @@ button.mk-check[data-checked="true"]:hover { filter: brightness(1.1); }
 }
 .mk-sticker[data-tone="ink"] { color: var(--color-canvas); background: var(--color-heading); box-shadow: var(--shadow-primary); }
 .mk-sticker-icon { display: inline-flex; }
-/* A sticker that catches the light now and then (the price cards' No AI and Unlimited AI). */
+/* A sticker that catches the light now and then (the price cards' Most AI). */
 .mk-sticker[data-shine] { position: relative; overflow: hidden; isolation: isolate; }
 .mk-sticker[data-shine]::after {
   content: "";

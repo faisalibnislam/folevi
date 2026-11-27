@@ -2,7 +2,7 @@
 // flashcards, quizzes and the decision and brainstorming frameworks are writing tasks (lib/ai/writing.ts,
 // lib/ai/studyTools.ts) that work on a selection or the whole note; whole-note translation is
 // aiStudy.translateNote (lib/ai/translate.ts). Prompts keep note text as data, results are checked and
-// tidied, credits are held and charged, Core sends nothing. Gemini is a stubbed `fetch`.
+// tidied, credits are held and charged, Foli AI turned off sends nothing. Gemini is a stubbed `fetch`.
 import { afterEach, describe, expect, test, vi } from "vitest";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
@@ -255,13 +255,13 @@ describe("ai.write with the new tasks", () => {
     expect(systemOf(calls[0]!)).toContain("Markdown table");
   });
 
-  test("refusals: nothing selected and no note, Core (nothing sent)", async () => {
+  test("refusals: nothing selected and no note, Foli AI turned off (nothing sent)", async () => {
     const t = setup();
     const a = await person(t, "study-refuse@example.com");
     const calls = gemini(() => "never");
     await expect(a.as.action(api.ai.write, { scope: a.scope, task: "quiz" })).rejects.toThrow(/Select some text/);
-    await a.as.mutation(api.billing.testPurchase, { plan: "core", interval: "month" });
-    await expect(a.as.action(api.ai.write, { scope: a.scope, task: "swot", text: "Open a café" })).rejects.toThrow(/Core/);
+    await a.as.mutation(api.users.updateProfile, { aiEnabled: false });
+    await expect(a.as.action(api.ai.write, { scope: a.scope, task: "swot", text: "Open a café" })).rejects.toThrow(/turned off/);
     expect(calls).toHaveLength(0);
   });
 });
@@ -370,7 +370,7 @@ describe("whole-note translation", () => {
     expect(again.versionId).not.toBe(versionId);
   });
 
-  test("a segment that comes back broken keeps its original text; refusals for viewers, empty notes, Core", async () => {
+  test("a segment that comes back broken keeps its original text; refusals for viewers, empty notes, Foli AI turned off", async () => {
     const t = setup();
     const a = await person(t, "translate-broken@example.com");
     const id = await structuredNote(t, a);
@@ -389,8 +389,8 @@ describe("whole-note translation", () => {
     const b = await person(t, "translate-stranger@example.com");
     await expect(b.as.action(api.aiStudy.translateNote, { scope: b.scope, documentId: id, language: "Spanish", output: "replace" })).rejects.toThrow(/not found/i);
     await expect(b.as.mutation(api.aiStudy.versionBeforeReplace, { documentId: id })).rejects.toThrow(/not found/i);
-    await a.as.mutation(api.billing.testPurchase, { plan: "core", interval: "month" });
-    await expect(a.as.action(api.aiStudy.translateNote, { scope: a.scope, documentId: id, language: "Spanish", output: "note" })).rejects.toThrow(/Core/);
+    await a.as.mutation(api.users.updateProfile, { aiEnabled: false });
+    await expect(a.as.action(api.aiStudy.translateNote, { scope: a.scope, documentId: id, language: "Spanish", output: "note" })).rejects.toThrow(/turned off/);
     expect(calls).toHaveLength(0);
   });
 

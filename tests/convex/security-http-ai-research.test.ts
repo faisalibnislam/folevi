@@ -1,5 +1,5 @@
 // Deep research reads the notes a conversation is about. Those can live somewhere other than the conversation
-// (a page someone shared from their Core Personal), and nothing from a Core place is ever sent to AI, whoever
+// (a page someone shared from a Personal whose owner turned Foli AI off), and nothing from such a place is ever sent to AI, whoever
 // asks. Chat named the notes to the gate; research didn't, so their text went into its prompts (security audit
 // 2026-11-26, L2).
 import { afterEach, describe, expect, test, vi } from "vitest";
@@ -30,12 +30,12 @@ function network() {
 }
 
 describe("deep research and notes from another place", { timeout: 60_000 }, () => {
-  test("a note shared from a Core Personal is never sent: the job is refused before any request", async () => {
+  test("a note shared from a Personal with Foli AI turned off is never sent: the job is refused before any request", async () => {
     vi.useFakeTimers();
     const t = setup();
     const core = await person(t, "research-core@example.com");
     const guest = await person(t, "research-guest@example.com");
-    await core.as.mutation(api.billing.testPurchase, { plan: "core", interval: "month" });
+    await core.as.mutation(api.users.updateProfile, { aiEnabled: false });
     const { id: note } = await core.as.mutation(api.documents.create, { scope: core.scope, title: SECRET });
     await core.as.mutation(api.sharing.grant, { documentId: note, email: "research-guest@example.com", role: "viewer" });
     const bodies = network();

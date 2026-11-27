@@ -13,7 +13,7 @@ import { fail } from "./lib/errors";
 import { ensureSubscription, ensureWorkspaceSubscription, isPersonalPayment, personalPolarBilled, storedPersonalPlanId, workspacePolarBilled, type PersonalSubscription, type WorkspaceSubscription } from "./lib/billing";
 import { personalEntitlements, storageUsage } from "./lib/entitlements";
 import { addCredits, creditBalance, personalAccount, seatAccount } from "./lib/credits";
-import { DAY_MS, PACK_VALID_MONTHS, addMonthsUtc, isPaidPlan, personalPlanId } from "./lib/plans";
+import { DAY_MS, PACK_VALID_MONTHS, PLAN_CATALOG, addMonthsUtc, isPaidPlan, keptTermsAfter, personalPlanId } from "./lib/plans";
 import { personalScope } from "./lib/scope";
 import { billableSeatCount } from "./lib/seats";
 import { vInterval, vPersonalTier, vWorkspacePlanId } from "./lib/validators";
@@ -146,6 +146,7 @@ export const setPlan = mutation({
       currentPeriodEnd: paid ? (args.until ?? undefined) : undefined,
       cancelAtPeriodEnd: false,
       paidSince: !paid ? undefined : sub.plan === args.plan && sub.paidSince ? sub.paidSince : now,
+      keptTerms: keptTermsAfter(sub.keptTerms, args.plan, wasPaid),
       canceledAt: !paid && wasPaid ? now : undefined,
       updatedAt: now,
     });
@@ -335,6 +336,7 @@ export const setWorkspacePlan = mutation({
       currentPeriodEnd: paid ? (args.until ?? undefined) : undefined,
       cancelAtPeriodEnd: false,
       paidSince: !paid ? undefined : wasPaid && sub.paidSince ? sub.paidSince : now,
+      keptTerms: keptTermsAfter(sub.keptTerms, PLAN_CATALOG[args.planId].tier, wasPaid),
       canceledAt: !paid && wasPaid ? now : undefined,
       updatedAt: now,
     });

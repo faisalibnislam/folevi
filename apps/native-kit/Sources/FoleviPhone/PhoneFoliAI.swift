@@ -1099,11 +1099,11 @@ struct PhoneAiUnavailable: View {
         let copy: (String, String, Bool) = {
             switch reason {
             case "off": return ("Foli AI is turned off", "You turned Foli AI off, so nothing is sent to Foli AI. Turn it on again in Settings > Foli AI.", true)
-            case "workspacePlan": return ("Foli AI isn't part of this workspace's plan", "A workspace owner or admin can change the plan.", false)
+            case "workspacePlan": return ("Foli AI is turned off in this workspace", "Nothing in this workspace is sent to an AI model. A workspace owner or admin can turn Foli AI on in the workspace's Privacy settings.", false)
             case "setup": return ("Set up Foli AI on \(device)", "Turn on Apple Intelligence, or add your own OpenAI, Anthropic or Google key. Your notes go straight from \(device) to the model, never through Folevi.", true)
             default:
                 if host.local { return ("Set up Foli AI on \(device)", "Turn on Apple Intelligence, or add your own OpenAI, Anthropic or Google key. Your notes go straight from \(device) to the model, never through Folevi.", true) }
-                return ("Foli AI isn't part of your plan", "Your plan doesn't include Foli AI.", false)
+                return ("Foli AI isn't available here", "Nothing here is sent to an AI model.", false)
             }
         }()
         VStack(spacing: 0) {

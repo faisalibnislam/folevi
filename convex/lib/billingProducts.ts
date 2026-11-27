@@ -25,7 +25,7 @@ const INTERVAL_WORD: Record<BillingInterval, string> = { month: "monthly", year:
 function features(tier: Exclude<PlanTier, "free">, perMember: boolean): string {
   const storage = `${STORAGE_BYTES[tier] / GB} GB of storage`;
   const lead = perMember ? "Each member gets " : "";
-  if (MONTHLY_CREDITS[tier] === 0) return `${lead}${storage}. No AI.`;
+  if (MONTHLY_CREDITS[tier] === 0) return `${lead}${storage}. AI with credit packs.`;
   return `${lead}${storage} and ${MONTHLY_CREDITS[tier]} AI credits a month.`;
 }
 
@@ -36,7 +36,7 @@ export function expectedProduct(key: ProductKey): ExpectedProduct {
     return {
       key,
       name: `Folevi AI credits: ${pack.credits.toLocaleString("en-US")}`,
-      description: `${pack.credits.toLocaleString("en-US")} AI credits for Folevi Pro and Pro AI. Credits last ${PACK_VALID_MONTHS} months and are used after your monthly credits run out.`,
+      description: `${pack.credits.toLocaleString("en-US")} AI credits for Folevi. Credits last ${PACK_VALID_MONTHS} months and are used after your monthly credits run out.`,
       type: "one_time",
       priceCents: pack.priceCents,
       currency: "usd",

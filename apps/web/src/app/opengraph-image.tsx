@@ -247,7 +247,7 @@ export default async function OpengraphImage() {
             >
               Free to start
             </div>
-            On the web, Mac, iPhone and iPad
+            Free on every device
           </div>
         </div>
       </div>

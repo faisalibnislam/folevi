@@ -34,7 +34,7 @@ const MODES: Array<{ label: string; local: boolean | string; cloud: boolean | st
   { label: "Mac, iPhone and iPad apps", local: true, cloud: true },
   { label: "Works offline", local: true, cloud: true },
   { label: "Docs, tasks, databases, themes, Foli DNA", local: true, cloud: true },
-  { label: "Foli AI", local: "On your Mac: Apple Intelligence or your own key", cloud: "Foli AI credits on every device" },
+  { label: "Foli AI", local: "Your own OpenAI, Anthropic or Google key, or Apple Intelligence on your Mac", cloud: "Foli AI credits on every device" },
   { label: "The web app", local: false, cloud: true },
   { label: "Share, comment and edit together", local: false, cloud: true },
   { label: "Public pages and workspaces", local: false, cloud: true },
@@ -78,7 +78,7 @@ const ANDROID_POINTS = [
 const FAQS: FaqItem[] = [
   {
     q: "Are the apps free?",
-    a: "Yes. Choose Keep notes on my devices when the app opens and the whole workspace (docs, tasks, databases and themes) is free forever on your Mac, iPhone and iPad: no account, no trial and no limit on notes.",
+    a: "Yes. Choose Keep notes on my devices when the app opens and the whole workspace (docs, tasks, databases and themes) is free forever on your Mac, iPhone and iPad, and on Android, Windows and Linux (Beta): no account, no trial and no limit on notes.",
   },
   {
     q: "Can I sign in to my Folevi account in the apps?",
@@ -171,7 +171,8 @@ export default function AppsPage() {
           </h1>
           <p className="mk-lede mt-6 max-w-[56ch]">
             The full Folevi workspace in native apps: docs, tasks, databases and themes. It’s free forever and needs no
-            account. Your pages are files in a folder you pick, and they work offline.
+            account. Your pages are files in a folder you pick, and they work offline. Folevi is also free on Android,
+            Windows and Linux (Beta), with every feature.
           </p>
           <div className="mt-8 flex flex-wrap gap-2.5">
             <ButtonLink href={MAC_DOWNLOAD_URL} lead="mac" size="lg">

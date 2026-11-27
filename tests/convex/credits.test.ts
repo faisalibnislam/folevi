@@ -101,7 +101,7 @@ describe("metering real requests", () => {
     );
     await a.as.action(api.ai.write, { scope: a.scope, task: "longer", text: "Secret draft text" });
     let b = await balance(a);
-    expect(b).toMatchObject({ allowance: 180, used: 7, available: 173 });
+    expect(b).toMatchObject({ allowance: 150, used: 7, available: 143 });
     expect(urls[0]).toContain(`/${FLASH}:generateContent`);
     // Fixing spelling uses Flash-Lite: 1 credit.
     await a.as.action(api.ai.write, { scope: a.scope, task: "fix", text: "Secrit draft" });
@@ -152,34 +152,61 @@ describe("metering real requests", () => {
 });
 
 describe("balances, periods and packs", () => {
-  test("Free after its trial: no AI credits in any calendar month (UTC), so every request is refused with an upgrade", async () => {
+  test("Free after its trial: 30 AI credits each calendar month (UTC); once they're used, requests are refused with 'buy more'", async () => {
     vi.useFakeTimers();
     vi.setSystemTime(Date.UTC(2027, 0, 20, 10));
     const t = setup();
     const a = await person(t, "free-credits@example.com");
     await endTrial(t, a);
-    expect(await balance(a)).toMatchObject({ allowance: 0, available: 0, resetsAt: Date.UTC(2027, 1, 1), account: "personal", canBuy: false });
+    expect(await balance(a)).toMatchObject({ allowance: 30, available: 30, resetsAt: Date.UTC(2027, 1, 1), account: "personal", trialing: false, canBuy: true });
+    await spend(t, a, 200_000); // 30 credits
+    expect(await balance(a)).toMatchObject({ used: 30, available: 0 });
     const err = await a.as.mutation(internal.ai.begin, { scope: PERSONAL }).catch((e: { data: Record<string, unknown> }) => e.data);
-    expect(err).toMatchObject({ code: "out_of_credits", available: 0, action: "upgrade" });
-    // A new month brings nothing: Foli AI needs Pro or Pro AI.
+    expect(err).toMatchObject({ code: "out_of_credits", available: 0, action: "buy" });
+    expect(String(err.message)).toMatch(/^You've used this month's AI credits\. They reset on February 1\. Buy more in Settings → Plan & billing\.$/);
+    // A new month brings 30 more.
     vi.setSystemTime(Date.UTC(2027, 1, 1, 0, 1));
-    expect(await balance(a)).toMatchObject({ allowance: 0, used: 0, available: 0, resetsAt: Date.UTC(2027, 2, 1) });
-    await expect(a.as.mutation(internal.ai.begin, { scope: PERSONAL })).rejects.toThrow(/out_of_credits/);
+    expect(await balance(a)).toMatchObject({ allowance: 30, used: 0, available: 30, resetsAt: Date.UTC(2027, 2, 1) });
+    const { holdId } = await a.as.mutation(internal.ai.begin, { scope: PERSONAL });
+    expect(holdId).toBeTruthy();
   });
 
-  test("Free after its trial: 'Foli AI comes with Pro and Pro AI', and nothing is sent to the model", async () => {
+  test("Free after its trial with its 30 credits used: refused before anything is sent to the model", async () => {
     const t = setup();
     const a = await person(t, "free-no-ai@example.com");
     await endTrial(t, a);
+    await spend(t, a, 200_000); // all 30 credits
+    const usageBefore = await t.run(async (ctx) => (await ctx.db.query("aiUsage").collect()).map((u) => u.count));
     process.env.GEMINI_API_KEY = "test-key";
     const fetchMock = vi.fn(async () => geminiReply("Should never be asked", { promptTokenCount: 100, candidatesTokenCount: 10 }));
     vi.stubGlobal("fetch", fetchMock);
     const err = await a.as.action(api.ai.write, { scope: a.scope, task: "summarize", text: "Private draft" }).catch((e: { data: Record<string, unknown> }) => e.data);
-    expect(err).toMatchObject({ code: "out_of_credits", message: "Foli AI comes with Pro and Pro AI. Upgrade in Settings → Plan & billing.", available: 0, action: "upgrade" });
+    expect(err).toMatchObject({ code: "out_of_credits", available: 0, action: "buy" });
+    expect(String(err.message)).toMatch(/^You've used this month's AI credits\./);
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(await t.run(async (ctx) => (await ctx.db.query("aiUsage").collect()).map((u) => u.count))).toEqual(usageBefore);
+    expect(await t.run(async (ctx) => (await ctx.db.query("aiCreditHolds").collect()).length)).toBe(0);
+    expect((await balance(a)).used).toBe(30);
+  });
+
+  test("Core with no packs: 'There are no AI credits on this plan', and nothing is sent to the model; a pack makes it work", async () => {
+    const t = setup();
+    const a = await person(t, "core-no-credits@example.com");
+    await endTrial(t, a);
+    await a.as.mutation(api.billing.testPurchase, { plan: "core", interval: "month" });
+    expect(await balance(a)).toMatchObject({ allowance: 0, packCredits: 0, available: 0, canBuy: true });
+    process.env.GEMINI_API_KEY = "test-key";
+    const fetchMock = vi.fn(async () => geminiReply("Short", { promptTokenCount: 100, candidatesTokenCount: 10 }));
+    vi.stubGlobal("fetch", fetchMock);
+    const err = await a.as.action(api.ai.write, { scope: a.scope, task: "summarize", text: "Private draft" }).catch((e: { data: Record<string, unknown> }) => e.data);
+    expect(err).toMatchObject({ code: "out_of_credits", available: 0, action: "buy" });
+    expect(String(err.message)).toMatch(/^There are no AI credits on this plan\. /);
     expect(fetchMock).not.toHaveBeenCalled();
     expect(await t.run(async (ctx) => (await ctx.db.query("aiUsage").collect()).length)).toBe(0);
-    expect(await t.run(async (ctx) => (await ctx.db.query("aiCreditHolds").collect()).length)).toBe(0);
-    expect((await balance(a)).used).toBe(0);
+    await a.as.mutation(api.billing.testBuyCredits, { pack: "credits_500", scope: PERSONAL });
+    expect((await a.as.action(api.ai.write, { scope: a.scope, task: "summarize", text: "Private draft" })).text).toBe("Short");
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect((await balance(a)).packCredits).toBeLessThan(500);
   });
 
   test("Pro: packs are used after the monthly credits, soonest-expiring first; expired ones don't count", async () => {
@@ -191,18 +218,18 @@ describe("balances, periods and packs", () => {
     await a.as.mutation(api.billing.testBuyCredits, { pack: "credits_500", scope: PERSONAL });
     vi.setSystemTime(Date.UTC(2027, 0, 11));
     await a.as.mutation(api.billing.testBuyCredits, { pack: "credits_1000", scope: PERSONAL });
-    expect(await balance(a)).toMatchObject({ allowance: 180, packCredits: 1500, available: 1680, canBuy: true });
-    await spend(t, a, 1_300_000); // 195 credits: 180 monthly, then 15 from the older pack
+    expect(await balance(a)).toMatchObject({ allowance: 150, packCredits: 1500, available: 1650, canBuy: true });
+    await spend(t, a, 1_300_000); // 195 credits: 150 monthly, then 45 from the older pack
     const packs = await t.run(async (ctx) => (await ctx.db.query("aiCreditPacks").collect()).sort((x, y) => x.purchasedAt - y.purchasedAt));
-    expect(packs.map((p) => p.remaining)).toEqual([485, 1000]);
-    expect(await balance(a)).toMatchObject({ monthlyLeft: 0, packCredits: 1485 });
+    expect(packs.map((p) => p.remaining)).toEqual([455, 1000]);
+    expect(await balance(a)).toMatchObject({ monthlyLeft: 0, packCredits: 1455 });
     // Packs last 12 months from purchase.
     expect(packs.map((p) => p.expiresAt)).toEqual([Date.UTC(2028, 0, 10), Date.UTC(2028, 0, 11)]);
     // An expired pack no longer counts (and isn't used).
     await t.run(async (ctx) => ctx.db.patch(packs[0]!._id, { expiresAt: Date.now() - 1 }));
     expect((await balance(a)).packCredits).toBe(1000);
     await spend(t, a, 10_000); // 2 credits: from the second pack
-    expect(await t.run(async (ctx) => (await ctx.db.get(packs[0]!._id))!.remaining)).toBe(485);
+    expect(await t.run(async (ctx) => (await ctx.db.get(packs[0]!._id))!.remaining)).toBe(455);
     expect((await balance(a)).packCredits).toBe(998);
   });
 
@@ -237,7 +264,7 @@ describe("balances, periods and packs", () => {
     expect(period).toMatchObject({ used: 100, overrun: 13 });
   });
 
-  test("the trial has 100 credits for its whole length; afterwards Free has none", async () => {
+  test("the trial has 100 credits for its whole length; afterwards Free has 30 a month", async () => {
     const t = setup();
     const a = await person(t, "trial-credits@example.com");
     expect(await balance(a)).toMatchObject({ allowance: 100, trialing: true, plan: "Pro AI trial", canBuy: false });
@@ -245,9 +272,9 @@ describe("balances, periods and packs", () => {
     expect((await balance(a)).available).toBe(10);
     const err = await a.as.mutation(internal.ai.begin, { scope: PERSONAL, plan: [{ fast: false, inputChars: 400_000, maxOutputTokens: 2048 }] }).catch((e: { data: Record<string, unknown> }) => e.data);
     expect(err).toMatchObject({ code: "out_of_credits", available: 10, action: "upgrade" });
-    expect(String(err.message)).toMatch(/you have 10 left\. Your trial ends on .+; after that, Foli AI comes with Pro and Pro AI\. Upgrade for more in Settings → Plan & billing\.$/);
+    expect(String(err.message)).toMatch(/you have 10 left\. Your trial ends on .+; after that, Free has 30 AI credits a month\. Upgrade for more in Settings → Plan & billing\.$/);
     await endTrial(t, a);
-    expect(await balance(a)).toMatchObject({ allowance: 0, available: 0, trialing: false });
+    expect(await balance(a)).toMatchObject({ allowance: 30, available: 30, trialing: false, canBuy: true });
   });
 
   test("a paid workspace seat: its own monthly credits and packs, 'buy more' when they're gone", async () => {
@@ -256,15 +283,15 @@ describe("balances, periods and packs", () => {
     const { id } = await owner.as.mutation(api.workspaces.createTeamWorkspace, { name: "Seat credits" });
     await owner.as.mutation(api.workspaceBilling.testPurchase, { workspaceId: id, planId: "workspace_pro_monthly" });
     const ws = inWorkspace(id);
-    expect(await balance(owner, ws)).toMatchObject({ account: "seat", allowance: 180, canBuy: true });
+    expect(await balance(owner, ws)).toMatchObject({ account: "seat", allowance: 150, canBuy: true });
     await owner.as.mutation(api.billing.testBuyCredits, { pack: "credits_500", scope: ws });
-    expect(await balance(owner, ws)).toMatchObject({ packCredits: 500, available: 680 });
+    expect(await balance(owner, ws)).toMatchObject({ packCredits: 500, available: 650 });
     // Personal is separate: the pack isn't there.
     expect((await balance(owner, PERSONAL)).packCredits).toBe(0);
     await spend(t, owner, 4_600_000, 0, ws); // 690 credits
     const err = await owner.as.mutation(internal.ai.begin, { scope: ws }).catch((e: { data: Record<string, unknown> }) => e.data);
     expect(err).toMatchObject({ code: "out_of_credits", action: "buy" });
-    expect(String(err.message)).toMatch(/You've used this month's AI credits in this workspace\. They reset on .+\. Buy more in Settings → Plan & billing\./);
+    expect(String(err.message)).toMatch(/You've used this month's AI credits in this workspace\. They reset on .+\. Buy more in Settings → Plan & billing\.$/);
     const accounts = await owner.as.query(api.billing.creditAccounts, {});
     expect(accounts.accounts.map((x) => [x.kind, x.name, x.available])).toEqual([
       ["personal", "Personal", 100],

@@ -9,7 +9,7 @@ import { api } from "@/lib/convex/api";
 import { useAppState } from "@/lib/app/state";
 import { useAppRouter } from "@/lib/app/router";
 import { COVER_ART } from "@/lib/cover";
-import { TIER_NAMES, TRIAL_CREDITS, TRIAL_DAYS, TRIAL_TIER } from "@/lib/plans";
+import { MONTHLY_CREDITS, TIER_NAMES, TRIAL_CREDITS, TRIAL_DAYS, TRIAL_TIER } from "@/lib/plans";
 import { ONBOARDING_NOTE_STYLES, PLAIN_STYLE, USE_CASES, isOnboardingNoteStyle, starterPagesFor, type OnboardingStep } from "@/lib/onboarding";
 import { Button } from "@/components/ui/Button";
 import { Switch } from "@/components/ui/Switch";
@@ -568,14 +568,15 @@ function AiChoice({ on, onChange, entitlements }: { on: boolean; onChange: (next
   const keys = useKeyLabels();
   const descId = useId();
   const ends = entitlements.trialEndsAt ? new Date(entitlements.trialEndsAt).toLocaleDateString(undefined, { month: "long", day: "numeric" }) : null;
-  // AI is counted in credits: the trial's fixed allowance, then the plan's monthly credits. Core has none.
-  // (In the iOS app without the pointers to changing plans: nothing there sells them.)
+  // AI is counted in credits: the trial's fixed allowance, then the plan's monthly credits. Every plan includes
+  // Foli AI (2026-11-27); Core has no monthly credits, only packs.
+  // (In the iOS app without the pointers to buying credits: nothing there sells them.)
   const plan = withoutPurchaseHints(
-    entitlements.ai && entitlements.aiSource === "trial"
-      ? `Included in your ${TRIAL_DAYS}-day ${TIER_NAMES[TRIAL_TIER]} trial, with ${TRIAL_CREDITS} AI credits${ends ? ` until ${ends}` : ""}. After that, Foli AI needs Pro or Pro AI, which you can choose in Settings.`
-      : entitlements.ai
+    entitlements.aiSource === "trial"
+      ? `Included in your ${TRIAL_DAYS}-day ${TIER_NAMES[TRIAL_TIER]} trial, with ${TRIAL_CREDITS} AI credits${ends ? ` until ${ends}` : ""}. After that, ${TIER_NAMES.free} has ${MONTHLY_CREDITS.free} AI credits a month.`
+      : entitlements.monthlyCredits > 0
         ? `Your plan includes ${entitlements.monthlyCredits} AI credits a month.`
-        : `Your plan, ${TIER_NAMES.core}, has no AI: nothing is sent to an AI model. You can change plans in Settings.`,
+        : "Your plan has no monthly AI credits. You can buy credits in Settings.",
   );
   return (
     <>

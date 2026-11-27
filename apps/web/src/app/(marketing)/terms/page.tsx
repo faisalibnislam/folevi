@@ -8,7 +8,7 @@ import { PageFrame } from "@/components/marketing/cards";
 
 export const metadata = pageMetadata({
   title: "Terms",
-  description: "The terms for using Folevi, in plain language. They cover Personal and workspaces, plans and billing, device limits, Foli AI (the AI assistant) and your content.",
+  description: "The terms for using Folevi, in plain language. They cover Personal and workspaces, plans and billing, Foli AI (the AI assistant) and your content.",
   path: "/terms",
 });
 
@@ -136,7 +136,7 @@ export default function TermsPage() {
             handles sales tax or VAT at checkout.
           </li>
           <li>
-            AI credit packs are one-time purchases for Pro and Pro AI. Their credits last {PACK_VALID_MONTHS} months from purchase and are used
+            AI credit packs are one-time purchases on every plan. Their credits last {PACK_VALID_MONTHS} months from purchase and are used
             after the monthly credits.
           </li>
           <li>
@@ -150,9 +150,8 @@ export default function TermsPage() {
           </li>
           <li>
             Plan limits apply while you’re on a plan: storage (on Free, your Personal and the free workspaces you own share
-            one allowance; on paid plans, each person has their own), AI credits, and, on the Free personal plan, the number of devices
-            signed in at once, which being in a workspace doesn’t change. Going over a limit, for example after moving to a
-            smaller plan, pauses new uploads or holds a new device until you make room or upgrade. Nothing already stored is
+            one allowance; on paid plans, each person has their own) and AI credits. Going over a limit, for example after moving to a
+            smaller plan, pauses new uploads until you make room or upgrade. Nothing already stored is
             deleted, and you can still open, edit, organize, export and delete it.
           </li>
           <li>
@@ -163,10 +162,11 @@ export default function TermsPage() {
 
         <h2 id="ai">Foli AI, the AI assistant</h2>
         <p>
-          On plans that include it, Foli AI, Folevi’s AI assistant, can answer questions about your notes and help you write. Every plan
-          except Core includes it, with a number of AI credits each month; in a free workspace, members use their own
-          personal credits, and in a paid workspace, each member gets the workspace plan’s credits. Core has no AI. A
-          personal plan never adds AI to a workspace. It’s subject to fair-use limits that keep it available to everyone. It uses Google’s Gemini API, as described in our{" "}
+          Foli AI, Folevi’s AI assistant, can answer questions about your notes and help you write. Every plan includes it.
+          Free, Pro and Pro AI include a number of AI credits each month, and Core includes none, so on Core it works with
+          credit packs; in a free workspace, members use their own personal credits, and in a paid workspace, each member
+          gets the workspace plan’s credits. A workspace’s owner or admins can turn Foli AI off for the workspace, and while
+          it’s off, nothing in it is sent to an AI model. A personal plan never changes a workspace’s AI settings. It’s subject to fair-use limits that keep it available to everyone. It uses Google’s Gemini API, as described in our{" "}
           <Link href="/privacy#ai">privacy policy</Link>, and you can turn it off in settings. AI can be wrong: check what it
           produces before relying on it. You’re responsible for how you use its output, and you keep the same rights to it as
           to the rest of your content.

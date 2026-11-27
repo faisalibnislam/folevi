@@ -3,7 +3,7 @@
 import { describe, expect, test, vi } from "vitest";
 import { api, internal } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
-import { authSession, identity, inWorkspace, person, PERSONAL, setup, ulid, type T } from "./helpers";
+import { authSession, identity, inWorkspace, join, person, PERSONAL, setup, ulid, type T } from "./helpers";
 
 const MB = 1024 ** 2;
 const GB = 1024 ** 3;
@@ -87,48 +87,53 @@ const beginAi = (p: Person, scope: ScopeArg, extra: { documentId?: string; noteO
 const credits = (p: Person, scope: ScopeArg, documentId?: string) => p.as.query(api.billing.credits, { scope, documentId });
 
 describe("personal plans (1–3)", () => {
-  test("Free: the 500 MB pool, 2 devices, and Foli AI only during the trial (refused on the server after it)", async () => {
+  test("Free: the 500 MB pool, unlimited devices, the trial, then 30 AI credits a month and credit packs", async () => {
     const t = setup();
     const a = await person(t, "free@example.com");
     expect((await a.as.query(api.billing.mine, {})).credits).toMatchObject({ trialing: true, allowance: 100 });
     await endTrial(t, a);
     const mine = await a.as.query(api.billing.mine, {});
-    expect(mine.entitlements).toMatchObject({ planId: "personal_free", monthlyCredits: 0, creditPacks: false, storageBytes: 500 * MB, storageRule: "shared_free", devices: 2 });
+    expect(mine.entitlements).toMatchObject({ planId: "personal_free", ai: true, monthlyCredits: 30, creditPacks: true, storageBytes: 500 * MB, storageRule: "shared_free", devices: null });
     expect(mine).toMatchObject({ storageLimitBytes: 500 * MB, storageRule: "shared_free" });
-    expect(mine.credits).toMatchObject({ allowance: 0, available: 0, canBuy: false, trialing: false });
-    await expect(beginAi(a, a.scope)).rejects.toThrow(/Foli AI comes with Pro and Pro AI/);
-    await expect(a.as.mutation(api.billing.testBuyCredits, { pack: "credits_500", scope: PERSONAL })).rejects.toThrow(/Pro and Pro AI/);
+    expect(mine.credits).toMatchObject({ allowance: 30, available: 30, canBuy: true, trialing: false });
+    const { holdId } = await beginAi(a, a.scope);
+    await t.mutation(internal.ai.settle, { holdId, calls: [] });
+    await a.as.mutation(api.billing.testBuyCredits, { pack: "credits_500", scope: PERSONAL });
+    expect(await credits(a, a.scope)).toMatchObject({ allowance: 30, packCredits: 500, available: 530 });
     expect(await t.run(async (ctx) => (await ctx.db.query("aiCreditHolds").collect()).length)).toBe(0);
   });
 
-  test("Core: 10 GB of its own, unlimited devices, and no AI at all (refused on the server)", async () => {
+  test("Core: 5 GB of its own, unlimited devices, and Foli AI with no monthly credits (packs work)", async () => {
     const t = setup();
     const a = await person(t, "core@example.com");
     await a.as.mutation(api.billing.testPurchase, { plan: "core", interval: "year" });
     const mine = await a.as.query(api.billing.mine, {});
-    expect(mine.entitlements).toMatchObject({ planId: "personal_core_yearly", paid: true, ai: false, aiSource: null, monthlyCredits: 0, creditPacks: false, storageBytes: 10 * GB, storageRule: "per_person", devices: null });
-    expect(mine.payments[0]).toMatchObject({ amountCents: 1900, plan: "core" });
-    await expect(beginAi(a, a.scope)).rejects.toThrow(/AI isn't part of Core/);
-    expect(await credits(a, a.scope)).toMatchObject({ aiIncluded: false, canBuy: false, allowance: 0 });
-    await expect(a.as.mutation(api.billing.testBuyCredits, { pack: "credits_500", scope: PERSONAL })).rejects.toThrow(/Pro and Pro AI/);
+    expect(mine.entitlements).toMatchObject({ planId: "personal_core_yearly", paid: true, ai: true, aiSource: "plan", monthlyCredits: 0, creditPacks: true, storageBytes: 5 * GB, storageRule: "per_person", devices: null });
+    expect(mine.payments[0]).toMatchObject({ amountCents: 2000, plan: "core" });
+    await expect(beginAi(a, a.scope)).rejects.toThrow(/There are no AI credits on this plan/);
+    expect(await credits(a, a.scope)).toMatchObject({ aiIncluded: true, canBuy: true, allowance: 0 });
     const me = await a.as.query(api.users.me, {});
-    expect(me.state === "ready" && me.profile.entitlements).toMatchObject({ plan: "core", ai: false });
+    expect(me.state === "ready" && me.profile.entitlements).toMatchObject({ plan: "core", ai: true });
     // Nothing was held or recorded.
     expect(await t.run(async (ctx) => (await ctx.db.query("aiCreditHolds").collect()).length)).toBe(0);
+    // A pack makes it work.
+    await a.as.mutation(api.billing.testBuyCredits, { pack: "credits_500", scope: PERSONAL });
+    expect(await credits(a, a.scope)).toMatchObject({ allowance: 0, packCredits: 500, available: 500 });
+    await beginAi(a, a.scope);
   });
 
-  test("Pro: 10 GB, 180 credits; Pro AI: 50 GB, 550 credits and the higher hourly limit", async () => {
+  test("Pro: 10 GB, 150 credits; Pro AI: 25 GB, 450 credits and the higher hourly limit", async () => {
     const t = setup();
     const a = await person(t, "pro@example.com");
     await a.as.mutation(api.billing.testPurchase, { plan: "pro", interval: "month" });
     let mine = await a.as.query(api.billing.mine, {});
-    expect(mine.entitlements).toMatchObject({ planId: "personal_pro_monthly", ai: true, aiSource: "plan", monthlyCredits: 180, creditPacks: true, storageBytes: 10 * GB, devices: null, aiFairUse: "standard" });
-    expect(mine.payments[0]).toMatchObject({ amountCents: 499, plan: "pro", interval: "month" });
+    expect(mine.entitlements).toMatchObject({ planId: "personal_pro_monthly", ai: true, aiSource: "plan", monthlyCredits: 150, creditPacks: true, storageBytes: 10 * GB, devices: null, aiFairUse: "standard" });
+    expect(mine.payments[0]).toMatchObject({ amountCents: 400, plan: "pro", interval: "month" });
     await a.as.mutation(api.billing.testPurchase, { plan: "pro_ai", interval: "year" });
     mine = await a.as.query(api.billing.mine, {});
-    expect(mine.entitlements).toMatchObject({ planId: "personal_pro_ai_yearly", monthlyCredits: 550, storageBytes: 50 * GB, aiFairUse: "high" });
-    expect(mine.storageLimitBytes).toBe(50 * GB);
-    expect(mine.credits).toMatchObject({ allowance: 550, canBuy: true });
+    expect(mine.entitlements).toMatchObject({ planId: "personal_pro_ai_yearly", monthlyCredits: 450, storageBytes: 25 * GB, aiFairUse: "high" });
+    expect(mine.storageLimitBytes).toBe(25 * GB);
+    expect(mine.credits).toMatchObject({ allowance: 450, canBuy: true });
     await beginAi(a, a.scope);
   });
 });
@@ -141,11 +146,11 @@ describe("a Personal plan never upgrades a workspace (4–6, 24)", () => {
     await pro.as.mutation(api.billing.testPurchase, { plan: "pro", interval: "year" });
     const teamId = await team(owner, "Studio", { p: pro, email: "ws-pro@example.com" });
     expect(await mineEntry(pro, teamId)).toMatchObject({ plan: { scope: "workspace", id: "workspace_free", name: "Workspace Free" }, aiIncluded: true, storageQuotaBytes: 500 * MB, storageRule: "shared_free" });
-    expect(await credits(pro, inWorkspace(teamId))).toMatchObject({ account: "personal", plan: "Pro", allowance: 180 });
+    expect(await credits(pro, inWorkspace(teamId))).toMatchObject({ account: "personal", plan: "Pro", allowance: 150 });
     const { holdId } = await beginAi(pro, inWorkspace(teamId));
     await t.mutation(internal.ai.settle, { holdId, calls: [{ model: "gemini-3.8-flash", promptTokens: 2000, outputTokens: 500, thoughtsTokens: 0 }] });
     // Charged to their Personal (1 credit), recorded against the workspace.
-    expect((await pro.as.query(api.billing.mine, {})).credits).toMatchObject({ used: 1, available: 179 });
+    expect((await pro.as.query(api.billing.mine, {})).credits).toMatchObject({ used: 1, available: 149 });
     const usage = await t.run(async (ctx) => ctx.db.query("aiUsage").collect());
     expect(usage).toHaveLength(1);
     expect(usage[0]).toMatchObject({ scope: "workspace", credits: 1, tokensIn: 2000, tokensOut: 500 });
@@ -165,24 +170,23 @@ describe("a Personal plan never upgrades a workspace (4–6, 24)", () => {
     expect((await pro.as.query(api.billing.mine, {})).entitlements).toMatchObject({ planId: "personal_pro_monthly", ai: true });
   });
 
-  test("a Free user in a Pro AI workspace: 550 credits of their own there, none in Personal after the trial (5)", async () => {
+  test("a Free user in a Pro AI workspace: 450 credits of their own there, Free's 30 in Personal after the trial (5)", async () => {
     const t = setup();
     const owner = await person(t, "biz-owner@example.com");
     const a = await person(t, "free-member@example.com");
     await endTrial(t, a);
     const teamId = await team(owner, "Biz", { p: a, email: "free-member@example.com" });
     await owner.as.mutation(api.workspaceBilling.testPurchase, { workspaceId: teamId, planId: "workspace_pro_ai_monthly" });
-    expect(await mineEntry(a, teamId)).toMatchObject({ plan: { scope: "workspace", id: "workspace_pro_ai_monthly", shortName: "Pro AI" }, aiIncluded: true, storageQuotaBytes: 50 * GB, storageRule: "per_person" });
-    expect(await credits(a, inWorkspace(teamId))).toMatchObject({ account: "seat", plan: "Workspace Pro AI", allowance: 550, canBuy: true });
-    expect(await credits(owner, inWorkspace(teamId))).toMatchObject({ account: "seat", allowance: 550 });
-    expect(await credits(a, PERSONAL)).toMatchObject({ account: "personal", allowance: 0, available: 0 });
-    await expect(beginAi(a, PERSONAL)).rejects.toThrow(/Foli AI comes with Pro and Pro AI/);
+    expect(await mineEntry(a, teamId)).toMatchObject({ plan: { scope: "workspace", id: "workspace_pro_ai_monthly", shortName: "Pro AI" }, aiIncluded: true, storageQuotaBytes: 25 * GB, storageRule: "per_person" });
+    expect(await credits(a, inWorkspace(teamId))).toMatchObject({ account: "seat", plan: "Workspace Pro AI", allowance: 450, canBuy: true });
+    expect(await credits(owner, inWorkspace(teamId))).toMatchObject({ account: "seat", allowance: 450 });
+    expect(await credits(a, PERSONAL)).toMatchObject({ account: "personal", allowance: 30, available: 30 });
     expect((await a.as.query(api.billing.mine, {})).entitlements).toMatchObject({ planId: "personal_free", storageBytes: 500 * MB });
     // Their seat's credits are theirs alone: the owner's use doesn't touch them.
     const { holdId } = await beginAi(owner, inWorkspace(teamId));
     await t.mutation(internal.ai.settle, { holdId, calls: [{ model: "gemini-3.8-flash", promptTokens: 100_000, outputTokens: 2000, thoughtsTokens: 0 }] });
     expect(await credits(owner, inWorkspace(teamId))).toMatchObject({ used: 17 });
-    expect(await credits(a, inWorkspace(teamId))).toMatchObject({ used: 0, available: 550 });
+    expect(await credits(a, inWorkspace(teamId))).toMatchObject({ used: 0, available: 450 });
   });
 
   test("switching Personal → workspace → Personal leaks nothing either way (24)", async () => {
@@ -193,8 +197,8 @@ describe("a Personal plan never upgrades a workspace (4–6, 24)", () => {
     await other.as.mutation(api.workspaceBilling.testPurchase, { workspaceId: teamId, planId: "workspace_pro_monthly" });
     // Trial: Pro AI in Personal; the team's own Pro seat inside it.
     expect(await credits(a, PERSONAL)).toMatchObject({ plan: "Pro AI trial", allowance: 100, trialing: true });
-    expect(await credits(a, inWorkspace(teamId))).toMatchObject({ plan: "Workspace Pro", allowance: 180 });
-    expect((await a.as.query(api.billing.mine, {})).storageLimitBytes).toBe(50 * GB);
+    expect(await credits(a, inWorkspace(teamId))).toMatchObject({ plan: "Workspace Pro", allowance: 150 });
+    expect((await a.as.query(api.billing.mine, {})).storageLimitBytes).toBe(25 * GB);
     expect((await mineEntry(a, teamId)).storageQuotaBytes).toBe(10 * GB);
     // A request about a Personal note made from the team (the note decides) uses Personal credits.
     const note = await newDoc(a);
@@ -205,45 +209,102 @@ describe("a Personal plan never upgrades a workspace (4–6, 24)", () => {
   });
 });
 
-describe("Core: no AI in its scope, for anyone (server-enforced)", () => {
-  test("a Core workspace refuses AI to its owner, its members and its guests; its pages are never sent", async () => {
+describe("Foli AI turned off: nothing in that scope is sent, for anyone (server-enforced)", () => {
+  test("a workspace with Foli AI turned off refuses AI to its owner, its members and its guests; its pages are never sent", async () => {
     const t = setup();
-    const owner = await person(t, "core-ws-owner@example.com");
-    const member = await person(t, "core-ws-member@example.com");
-    const guest = await person(t, "core-ws-guest@example.com");
+    const owner = await person(t, "off-ws-owner@example.com");
+    const member = await person(t, "off-ws-member@example.com");
+    const guest = await person(t, "off-ws-guest@example.com");
     await guest.as.mutation(api.billing.testPurchase, { plan: "pro_ai", interval: "month" });
-    const teamId = await team(owner, "No AI here", { p: member, email: "core-ws-member@example.com" });
-    await owner.as.mutation(api.workspaceBilling.testPurchase, { workspaceId: teamId, planId: "workspace_core_monthly" });
+    const teamId = await team(owner, "No AI here", { p: member, email: "off-ws-member@example.com" });
+    // A paid plan with credits: the setting, not the plan, turns AI off.
+    await owner.as.mutation(api.workspaceBilling.testPurchase, { workspaceId: teamId, planId: "workspace_pro_ai_monthly" });
     const note = await newDoc(owner, inWorkspace(teamId));
-    await owner.as.mutation(api.sharing.grant, { documentId: note, email: "core-ws-guest@example.com", role: "editor" });
+    await owner.as.mutation(api.sharing.grant, { documentId: note, email: "off-ws-guest@example.com", role: "editor" });
+    await owner.as.mutation(api.workspaces.setAiDisabled, { workspaceId: teamId, disabled: true });
     for (const p of [owner, member]) {
-      expect(await mineEntry(p, teamId)).toMatchObject({ plan: { id: "workspace_core_monthly", shortName: "Core" }, aiIncluded: false, storageQuotaBytes: 10 * GB });
-      await expect(beginAi(p, inWorkspace(teamId))).rejects.toThrow(/on Core, which doesn't include AI/);
-      await expect(beginAi(p, inWorkspace(teamId), { documentId: note, noteOnly: true })).rejects.toThrow(/Core/);
+      expect(await mineEntry(p, teamId)).toMatchObject({ plan: { id: "workspace_pro_ai_monthly" }, aiDisabled: true, aiIncluded: false });
+      await expect(beginAi(p, inWorkspace(teamId))).rejects.toThrow(/Foli AI is turned off in this workspace/);
+      await expect(beginAi(p, inWorkspace(teamId), { documentId: note, noteOnly: true })).rejects.toThrow(/turned off in this workspace/);
     }
-    // The guest's own Pro AI never covers a Core workspace's page…
-    await expect(beginAi(guest, PERSONAL, { documentId: note, noteOnly: true })).rejects.toThrow(/Core/);
+    // The guest's own Pro AI never covers the workspace's page…
+    await expect(beginAi(guest, PERSONAL, { documentId: note, noteOnly: true })).rejects.toThrow(/turned off in this workspace/);
     // …nor pulls it into a question in their own Personal.
-    await expect(beginAi(guest, PERSONAL, { documentId: note })).rejects.toThrow(/Core/);
+    await expect(beginAi(guest, PERSONAL, { documentId: note })).rejects.toThrow(/turned off in this workspace/);
     expect(await credits(guest, PERSONAL, note)).toMatchObject({ aiIncluded: false });
+    // Nothing was held.
+    expect(await t.run(async (ctx) => (await ctx.db.query("aiCreditHolds").collect()).length)).toBe(0);
     // Their own Personal still works.
     await beginAi(guest, PERSONAL);
-    // Nobody can buy credits for a Core workspace seat.
-    await expect(owner.as.mutation(api.billing.testBuyCredits, { pack: "credits_500", scope: inWorkspace(teamId) })).rejects.toThrow(/personal credits|isn't included/);
+    // Turned back on, it works again.
+    await owner.as.mutation(api.workspaces.setAiDisabled, { workspaceId: teamId, disabled: false });
+    expect(await mineEntry(member, teamId)).toMatchObject({ aiDisabled: false, aiIncluded: true });
+    await beginAi(member, inWorkspace(teamId));
   });
 
-  test("a Core Personal: shared pages from it are never sent either, and its owner has no AI in free workspaces", async () => {
+  test("workspaces.setAiDisabled: owners and admins turn Foli AI off and on; members, guests and outsiders can't", async () => {
     const t = setup();
-    const core = await person(t, "core-owner@example.com");
-    const guest = await person(t, "core-guest@example.com");
-    await core.as.mutation(api.billing.testPurchase, { plan: "core", interval: "month" });
-    const note = await newDoc(core);
-    await core.as.mutation(api.sharing.grant, { documentId: note, email: "core-guest@example.com", role: "editor" });
-    await expect(beginAi(guest, PERSONAL, { documentId: note, noteOnly: true })).rejects.toThrow(/owner is on Core/);
-    // In a free workspace AI uses personal credits, and Core has none.
-    const free = (await core.as.mutation(api.workspaces.createTeamWorkspace, { name: "Free one" })).id;
-    await expect(beginAi(core, inWorkspace(free))).rejects.toThrow(/personal plan is Core/);
-    expect(await mineEntry(core, free)).toMatchObject({ aiIncluded: false });
+    const owner = await person(t, "toggle-owner@example.com");
+    const admin = await person(t, "toggle-admin@example.com");
+    const member = await person(t, "toggle-member@example.com");
+    const viewer = await person(t, "toggle-viewer@example.com");
+    const outsider = await person(t, "toggle-outsider@example.com");
+    const { id } = await owner.as.mutation(api.workspaces.createTeamWorkspace, { name: "Toggle" });
+    await join(t, owner, admin, "toggle-admin@example.com", id, "admin");
+    await join(t, owner, member, "toggle-member@example.com", id, "editor");
+    await join(t, owner, viewer, "toggle-viewer@example.com", id, "viewer");
+    const stored = async () => await t.run(async (ctx) => (await ctx.db.query("workspaces").withIndex("by_public_id", (q) => q.eq("publicId", id)).unique())!.aiDisabled ?? "unset");
+    expect(await stored()).toBe("unset");
+    expect(await mineEntry(member, id)).toMatchObject({ aiDisabled: false, aiIncluded: true });
+
+    // Members (editors and viewers) and people outside the workspace are refused; nothing changes.
+    await expect(member.as.mutation(api.workspaces.setAiDisabled, { workspaceId: id, disabled: true })).rejects.toThrow(/forbidden/);
+    await expect(viewer.as.mutation(api.workspaces.setAiDisabled, { workspaceId: id, disabled: true })).rejects.toThrow(/forbidden/);
+    await expect(outsider.as.mutation(api.workspaces.setAiDisabled, { workspaceId: id, disabled: true })).rejects.toThrow(/not_found|forbidden/);
+    expect(await stored()).toBe("unset");
+
+    // An admin turns it off: everyone sees it, and AI there is refused.
+    await admin.as.mutation(api.workspaces.setAiDisabled, { workspaceId: id, disabled: true });
+    expect(await stored()).toBe(true);
+    for (const p of [owner, admin, member, viewer]) expect(await mineEntry(p, id)).toMatchObject({ aiDisabled: true, aiIncluded: false });
+    await expect(beginAi(member, inWorkspace(id))).rejects.toThrow(/Foli AI is turned off in this workspace/);
+    await expect(member.as.mutation(api.workspaces.setAiDisabled, { workspaceId: id, disabled: false })).rejects.toThrow(/forbidden/);
+    expect(await stored()).toBe(true);
+
+    // The owner turns it back on: the field is cleared, not stored as false.
+    await owner.as.mutation(api.workspaces.setAiDisabled, { workspaceId: id, disabled: false });
+    expect(await stored()).toBe("unset");
+    expect(await mineEntry(member, id)).toMatchObject({ aiDisabled: false, aiIncluded: true });
+    await beginAi(member, inWorkspace(id));
+  });
+
+  test("a Personal with Foli AI turned off: shared pages from it are never sent either, and its owner is refused everywhere", async () => {
+    const t = setup();
+    const off = await person(t, "off-owner@example.com");
+    const guest = await person(t, "off-guest@example.com");
+    const note = await newDoc(off);
+    await off.as.mutation(api.sharing.grant, { documentId: note, email: "off-guest@example.com", role: "editor" });
+    const free = (await off.as.mutation(api.workspaces.createTeamWorkspace, { name: "Free one" })).id;
+    await off.as.mutation(api.users.updateProfile, { aiEnabled: false });
+    await expect(beginAi(guest, PERSONAL, { documentId: note, noteOnly: true })).rejects.toThrow(/This page's owner turned Foli AI off/);
+    await expect(beginAi(guest, PERSONAL, { documentId: note })).rejects.toThrow(/owner turned Foli AI off/);
+    expect(await credits(guest, PERSONAL, note)).toMatchObject({ aiIncluded: false });
+    await expect(beginAi(off, PERSONAL)).rejects.toThrow(/turned off/);
+    await expect(beginAi(off, inWorkspace(free))).rejects.toThrow(/turned off/);
+    expect(await credits(off, PERSONAL)).toMatchObject({ aiIncluded: false });
+    expect(await t.run(async (ctx) => (await ctx.db.query("aiCreditHolds").collect()).length)).toBe(0);
+    // The guest's own Personal still works.
+    await beginAi(guest, PERSONAL);
+  });
+
+  test("a Core workspace includes Foli AI: members have no credits until they buy a pack for their seat", async () => {
+    const t = setup();
+    const owner = await person(t, "core-ws-owner@example.com");
+    const teamId = (await owner.as.mutation(api.workspaces.createTeamWorkspace, { name: "Core team" })).id;
+    await owner.as.mutation(api.workspaceBilling.testPurchase, { workspaceId: teamId, planId: "workspace_core_monthly" });
+    expect(await mineEntry(owner, teamId)).toMatchObject({ plan: { id: "workspace_core_monthly", shortName: "Core" }, aiIncluded: true, aiDisabled: false, storageQuotaBytes: 5 * GB });
+    expect(await credits(owner, inWorkspace(teamId))).toMatchObject({ account: "seat", allowance: 0, available: 0 });
+    await expect(beginAi(owner, inWorkspace(teamId))).rejects.toThrow(/There are no AI credits on this plan/);
   });
 
   test("guests use their own personal credits on pages they can open (not Core)", async () => {
@@ -340,12 +401,12 @@ describe("storage (18, 19, 22, 23)", () => {
     expect(await memberUsage(t, ws, member)).toBe(10 * GB - MB - 15 * MB);
   });
 
-  test("Core with 8 GB moving to Free: files stay, uploads wait until under 500 MB (18)", async () => {
+  test("Core with 4 GB moving to Free: files stay, uploads wait until under 500 MB (18)", async () => {
     const t = setup();
     const a = await person(t, "down@example.com");
     await a.as.mutation(api.billing.testPurchase, { plan: "core", interval: "month" });
     const note = await newDoc(a);
-    await setUsage(t, a, 8 * GB);
+    await setUsage(t, a, 4 * GB);
     expect((await upload(a, note, 10 * MB)).uploadUrl).toBeTruthy();
     await a.as.mutation(api.billing.cancelPlan, {});
     await t.run(async (ctx) => {
@@ -355,7 +416,7 @@ describe("storage (18, 19, 22, 23)", () => {
     await t.mutation(internal.billing.settleExpiredPlans, {});
     await expect(upload(a, note, 1 * MB)).rejects.toThrow(/free storage/);
     expect(await a.as.query(api.documents.get, { documentId: note })).not.toBeNull();
-    expect((await a.as.query(api.billing.mine, {})).storageUsedBytes).toBe(8 * GB);
+    expect((await a.as.query(api.billing.mine, {})).storageUsedBytes).toBe(4 * GB);
     await setUsage(t, a, 450 * MB);
     expect((await upload(a, note, 10 * MB)).uploadUrl).toBeTruthy();
   });
@@ -440,20 +501,26 @@ describe("devices are per account, from the Personal plan (32, 33)", () => {
     return { as: t.withIdentity(identity(email, { subject: p.userId, tokenIdentifier: `https://test.folevi.local|${p.userId}`, sessionId })), sessionId };
   }
 
-  test("Free allows 2 devices, and joining a workspace (even a paid Pro AI one) doesn't lift it", async () => {
+  test("Free has unlimited devices; an admin device limit still applies, and joining a paid Pro AI workspace doesn't lift it", async () => {
     vi.useFakeTimers();
     try {
       const t = setup();
+      const admin = await person(t, "dev-admin@example.com");
+      await t.run(async (ctx) => ctx.db.patch(admin.profileId as Id<"profiles">, { platformRole: "ops_admin" }));
       const owner = await person(t, "dev-owner@example.com");
       const a = await person(t, "dev-member@example.com");
       await endTrial(t, a);
       const teamId = await team(owner, "Devices", { p: a, email: "dev-member@example.com" });
       await owner.as.mutation(api.workspaceBilling.testPurchase, { workspaceId: teamId, planId: "workspace_pro_ai_yearly" });
-      expect((await a.as.query(api.billing.mine, {})).entitlements).toMatchObject({ planId: "personal_free", devices: 2 });
+      expect((await a.as.query(api.billing.mine, {})).entitlements).toMatchObject({ planId: "personal_free", devices: null });
       vi.advanceTimersByTime(1000);
       const second = await anotherDevice(t, a, "dev-member@example.com");
       vi.advanceTimersByTime(1000);
       const third = await anotherDevice(t, a, "dev-member@example.com");
+      expect((await second.as.query(api.users.me, {})).state).toBe("ready");
+      expect((await third.as.query(api.users.me, {})).state).toBe("ready");
+      await admin.as.mutation(api.adminBilling.setDeviceLimit, { profileId: a.profileId, devices: 2, reason: "Customer support ticket 4321" });
+      expect((await a.as.query(api.billing.mine, {})).entitlements.devices).toBe(2);
       expect((await second.as.query(api.users.me, {})).state).toBe("ready");
       expect(await third.as.query(api.users.me, {})).toMatchObject({ state: "device_limit", limit: 2, active: 3 });
       await expect(third.as.query(api.workspaces.mine, {})).rejects.toThrow(/device_limit/);

@@ -29,7 +29,7 @@ import { ensureWorkspaceSubscription, insertPayment, isWorkspaceSubscription, pe
 import { freePool, memberStorageUsed, storageUsage, workspaceEntitlements } from "./lib/entitlements";
 import { creditBalance, seatAccount } from "./lib/credits";
 import { requireWorkspaceBilling } from "./lib/permissions";
-import { PLAN_CATALOG, TIER_NAMES, isPaidPlan, type PaidWorkspacePlanId, type WorkspacePlanId } from "./lib/plans";
+import { PLAN_CATALOG, TIER_NAMES, isPaidPlan, keptTermsAfter, type PaidWorkspacePlanId, type WorkspacePlanId } from "./lib/plans";
 import { workspaceScope } from "./lib/scope";
 import { billableQuantity, seatChargeCents, seatSummary, seatsChanged } from "./lib/seats";
 import { createCheckout, customerPortal, ms, num, polarGet, polarPatch, polarToken, productId, str, testPurchasesAllowed, workspaceCheckoutReady, type ProductIds } from "./lib/polar";
@@ -144,6 +144,7 @@ export const testPurchase = mutation({
       currentPeriodEnd: periodEndFrom(now, plan.interval),
       cancelAtPeriodEnd: false,
       paidSince: sub.paidSince && livePaid(sub, now) ? sub.paidSince : now,
+      keptTerms: keptTermsAfter(sub.keptTerms, PLAN_CATALOG[args.planId].tier, livePaid(sub, now)),
       canceledAt: undefined,
       updatedAt: now,
     });
@@ -431,6 +432,7 @@ export async function applyWorkspaceSubscriptionEvent(ctx: MutationCtx, row: Wor
     polarProductId: str(o.product_id),
     polarBuyerId: buyer ?? row.polarBuyerId,
     paidSince: wasLive && row.paidSince && sameTier ? row.paidSince : status === "canceled" ? row.paidSince : now,
+    keptTerms: keptTermsAfter(row.keptTerms, PLAN_CATALOG[planId].tier, wasLive),
     canceledAt: status === "canceled" ? (row.canceledAt ?? now) : undefined,
     polarEventAt: at,
     updatedAt: now,
@@ -490,7 +492,7 @@ export async function settleExpiredWorkspacePlans(ctx: MutationCtx, now: number)
       await ctx.db.patch(s._id, { currentPeriodStart: now, currentPeriodEnd: periodEndFrom(now, PLAN_CATALOG[planId].interval), updatedAt: now });
       continue;
     }
-    await ctx.db.patch(s._id, { planId: "workspace_free", status: "canceled", quantity: undefined, canceledAt: now, cancelAtPeriodEnd: false, updatedAt: now });
+    await ctx.db.patch(s._id, { planId: "workspace_free", keptTerms: undefined, status: "canceled", quantity: undefined, canceledAt: now, cancelAtPeriodEnd: false, updatedAt: now });
     changed++;
   }
   return { changed, more };

@@ -32,7 +32,8 @@ private func ago(_ ms: Double?) -> String {
 }
 private func tier(_ t: String) -> String {
     switch t {
-    case "free", "core": "Core"
+    case "free": "Free"
+    case "core": "Core"
     case "pro": "Pro"
     case "proAi", "pro_ai": "Pro AI"
     default: t.capitalized
@@ -151,9 +152,9 @@ struct PhoneAccountSettings: View {
 
     @ViewBuilder private var ai: some View {
         if let a = model.ai.value {
-            let core = !a.included
-            PhoneSettingsGroup(footer: core ? "Foli AI comes with Pro AI." : "Foli AI helps you write, answers from your notes and sums them up. Nothing is sent while it's off.") {
-                PhoneSettingsSwitchRow("Foli AI", on: a.enabled && !core, disabled: core, change: { on in
+            // Every plan includes Foli AI since 2026-11-27, so no plan disables these switches.
+            PhoneSettingsGroup(footer: "Foli AI helps you write, answers from your notes and sums them up. Nothing is sent while it's off.") {
+                PhoneSettingsSwitchRow("Foli AI", on: a.enabled, disabled: false, change: { on in
                     Task { await model.perform(.settingsUpdate(aiEnabled: on), done: on ? "Foli AI turned on" : "Foli AI turned off") }
                 }) { PhoneRowIcon.foliAI }
             }
@@ -167,7 +168,7 @@ struct PhoneAccountSettings: View {
                     PhoneSettingsRow(p.label, description: p.body) {
                         EmptyView()
                     } trailing: {
-                        PhoneSettingsSwitch(label: p.label, on: pref(a, p.key), disabled: core && p.key != .deviceText) { on in
+                        PhoneSettingsSwitch(label: p.label, on: pref(a, p.key), disabled: false) { on in
                             Task { await model.perform(.settingsSetAiPref(key: p.key, on: on), done: on ? p.on : p.off) }
                         }
                     }

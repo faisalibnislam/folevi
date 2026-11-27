@@ -55,7 +55,7 @@ export function workspaceStorageOverride(workspace: Doc<"workspaces">): number |
 export function workspaceSubscriptionLike(sub: WorkspaceSubscription | null): WorkspaceSubscriptionLike | null {
   if (!sub) return null;
   const plan = PLAN_CATALOG[sub.planId];
-  return { tier: plan.tier, interval: plan.interval ?? undefined, status: sub.status, currentPeriodEnd: sub.currentPeriodEnd };
+  return { tier: plan.tier, interval: plan.interval ?? undefined, status: sub.status, currentPeriodEnd: sub.currentPeriodEnd, keptTerms: sub.keptTerms };
 }
 
 /**

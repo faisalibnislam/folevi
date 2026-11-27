@@ -1,6 +1,6 @@
 // Web research (docs/AI_ASSISTANT.md milestone 6): Google Search grounding (the request and its citations),
 // answers from notes and the web, reading pasted links, the SSRF guard and size cap, Settings > Foli AI and
-// Core refusals (nothing fetched), deep research jobs (steps, cancel, credits held and settled, the report
+// Foli AI turned off (nothing fetched), deep research jobs (steps, cancel, credits held and settled, the report
 // saved as a note), and the agent's search_web. The network is a stubbed `fetch`: Gemini, the DNS
 // resolver, Google's grounding redirects and web pages.
 import { afterEach, describe, expect, test, vi } from "vitest";
@@ -12,7 +12,7 @@ import { checkUrl, entryPointsToShow, extractUrls, htmlToText, isPrivateAddress,
 import { MAX_ENTRY_POINT_CHARS } from "../../convex/lib/ai/gemini";
 import { parseSubQuestions, reportNoteMarkdown, RESEARCH_PLAN } from "../../convex/lib/ai/research";
 import { runTool, toolDeclarations, type ToolHost } from "../../convex/lib/ai/tools";
-import { person, setup, ulid, type T } from "./helpers";
+import { person, setup, teamWorkspace, ulid, type T } from "./helpers";
 
 type Person = Awaited<ReturnType<typeof person>>;
 type Init = { body?: string; credentials?: string; redirect?: string; headers?: Record<string, string> };
@@ -260,10 +260,12 @@ describe("chat with the web", () => {
     expect(declared).toContain("search_notes");
   });
 
-  test("Core: the web, links and research are refused before anything is fetched", async () => {
+  test("Foli AI turned off in the workspace: the web, links and research are refused before anything is fetched", async () => {
     const t = setup();
-    const a = await person(t, "web-core@example.com");
-    await a.as.mutation(api.billing.testPurchase, { plan: "core", interval: "month" });
+    const owner = await person(t, "web-core@example.com");
+    const { workspaceId, scope } = await teamWorkspace(owner, "No AI");
+    await owner.as.mutation(api.workspaces.setAiDisabled, { workspaceId, disabled: true });
+    const a = { ...owner, scope };
     const { fetchMock } = net();
     const { answer } = await chat(a, "What does https://ferries.example.com/timetable say?", { web: true });
     expect(answer.error).toMatchObject({ code: "forbidden", reason: "ai_not_included" });

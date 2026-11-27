@@ -197,6 +197,8 @@ export default defineSchema({
     icon: v.optional(v.string()),
     /** Square logo (a `files` row of kind "logo", counted in this workspace's storage). */
     logoFileId: v.optional(v.id("files")),
+    /** Owners and admins turned Foli AI off here: nothing in the workspace is sent to an AI model (lib/credits.ts aiBlockedIn). */
+    aiDisabled: v.optional(v.boolean()),
     /** Legacy change counter, read once to seed the workspace's `scopeCounters` row (lib/seq.ts). */
     changeSeq: v.number(),
     status: v.union(v.literal("active"), v.literal("suspended"), v.literal("deleting")),
@@ -692,6 +694,11 @@ export default defineSchema({
     /** Polar's event time (ms) of the last subscription event applied; older events are ignored. */
     polarEventAt: v.optional(v.number()),
     storageOverrideBytes: v.optional(v.number()),
+    /**
+     * Subscribers from before the 2026-11-27 prices: the storage and credits they keep while on this tier
+     * (lib/plans.ts keptTerms; written by migrations.keepOldTerms).
+     */
+    keptTerms: v.optional(v.object({ tier: vPersonalTier, storageBytes: v.number(), monthlyCredits: v.number() })),
     /** Admin-set device limit (a number, or unlimited); unset = the plan's. */
     deviceLimitOverride: v.optional(v.union(v.number(), v.literal("unlimited"))),
     /** When the current paid plan started (for conversion and churn analytics). */

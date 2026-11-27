@@ -62,6 +62,8 @@ export const mine = query({
         name: w.name,
         icon: w.icon ?? null,
         logoUrl: await workspaceLogoUrl(ctx, w),
+        /** Owners and admins turned Foli AI off for everyone here (setAiDisabled). */
+        aiDisabled: w.aiDisabled === true,
         /** owner | admin | member. */
         role,
         /** A member's access: edit (full), comment or view only. Owners and admins: edit. */
@@ -174,6 +176,21 @@ export const rename = mutation({
     const name = args.name.trim().slice(0, 80);
     if (!name) fail("invalid_argument", "Give the workspace a name.");
     await ctx.db.patch(workspace._id, { name, icon: args.icon?.slice(0, 16) ?? workspace.icon, updatedAt: Date.now() });
+    return null;
+  },
+});
+
+/**
+ * Turns Foli AI on or off for everyone in a team workspace (owners and admins only). While it's off the server
+ * refuses every AI request there, so nothing in the workspace is sent to an AI model (lib/credits.ts aiBlockedIn).
+ */
+export const setAiDisabled = mutation({
+  args: { workspaceId: v.string(), disabled: v.boolean() },
+  handler: async (ctx, args) => {
+    const profile = await requireProfile(ctx);
+    await assertWritable(ctx, profile);
+    const { workspace } = await requireWorkspaceManager(ctx, profile, args.workspaceId, { write: true });
+    await ctx.db.patch(workspace._id, { aiDisabled: args.disabled ? true : undefined, updatedAt: Date.now() });
     return null;
   },
 });

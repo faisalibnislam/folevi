@@ -94,17 +94,17 @@ describe("Meet Foli AI", () => {
 });
 
 describe("empty and plan-gated states", () => {
-  test("AI off says how to turn it on; Core says what's included with Upgrade; a workspace points at its plan", () => {
+  test("AI off says how to turn it on; every plan includes Foli AI; a workspace points at its owner or admin", () => {
     const off = aiUnavailableCopy({ setting: false, context: "personal" });
     expect(off.link).toEqual({ href: "/settings/ai", label: "Open Foli AI settings" });
     expect(off.body).toContain("Settings > Foli AI");
     const core = aiUnavailableCopy({ setting: true, context: "personal" });
-    expect(core.link).toEqual({ href: "/settings/billing", label: "Upgrade" });
-    expect(core.body).toMatch(/Pro and Pro AI/);
+    expect(core.link).toEqual({ href: "/settings/ai", label: "Open Foli AI settings" });
+    expect(core.body).toMatch(/Foli AI is on every plan/);
     expect(aiUnavailableCopy({ setting: true, context: "workspace" }).body).toMatch(/owner or admin/);
     const { host } = render(createElement(AiUnavailable, { ai: { setting: true, context: "personal" }, compact: true, headingLevel: 3 }));
-    expect(host.querySelector("h3")?.textContent).toContain("Foli AI isn't part of your plan");
-    expect(host.querySelector("a")?.getAttribute("href")).toBe("/settings/billing");
+    expect(host.querySelector("h3")?.textContent).toContain("Foli AI isn't available here");
+    expect(host.querySelector("a")?.getAttribute("href")).toBe("/settings/ai");
   });
 
   test("Related with nothing says how to fill it", () => {

@@ -30,7 +30,7 @@ function DeviceIcon({ client, label }: { client: string; label: string }) {
 
 /**
  * Settings → Devices: every browser and app signed in to the account, on every plan, with the plan's
- * device limit (Free: 2; Core, Pro, Pro AI and the trial: unlimited). Signing a device out ends its session at once.
+ * device limit (unlimited on every plan since 2026-11-27, unless a custom limit is set). Signing a device out ends its session at once.
  */
 export function DevicesSection() {
   const sessions = useQuery(api.users.listSessions, {});

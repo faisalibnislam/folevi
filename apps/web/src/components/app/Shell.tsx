@@ -693,7 +693,7 @@ function WebShell() {
           <QuickAddTask open={quickAddOpen} due={quickAddDue} onClose={() => setQuickAddOpen(false)} />
         </Suspense>
       ) : null}
-      {/* The floating Ask AI chat (bottom right), only where AI is included and on: Core has no AI, so nothing offers it. */}
+      {/* The floating Ask AI chat (bottom right), only where Foli AI is on: where it's turned off, nothing offers it. */}
       {ai.on ? <AskAiChat open={Boolean(askOpen)} onOpen={() => setAskOpen({})} initial={askOpen?.q} folder={askOpen?.folder} onClose={() => setAskOpen(null)} hideLauncher={(isNarrow && drawerOpen) || iphone || ipad || route.name === "settings"} /> : null}
     </Fragment>
   );

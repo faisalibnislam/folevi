@@ -66,7 +66,7 @@ export const AskAiLauncher = forwardRef<HTMLButtonElement, { open: boolean; onCl
 /**
  * Ask AI (⌘J): a chat with your notes that pops out from a floating button in the bottom-right corner. Also opened
  * from the command palette, a folder's menu and the note's AI panel. Shown only where AI is included and turned on
- * (never on Core), and not on the AI page itself. Until it's first opened only the button is here: the chat's code
+ * (not where Foli AI is turned off), and not on the AI page itself. Until it's first opened only the button is here: the chat's code
  * (AskAiPanel.tsx) loads then (or as the pointer reaches the button), and stays for the rest of the visit.
  */
 export function AskAiChat(props: AskAiProps) {

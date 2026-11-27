@@ -1,6 +1,6 @@
 // Proactive suggestions (convex/aiSuggestions.ts, lib/ai/suggestions.ts, docs/AI_ASSISTANT.md milestone
 // 8): open questions and action items found by patterns, related notes and duplicates from the knowledge
-// graph, all without a model call; dismissals per person and note; access checks; the off switches; Core.
+// graph, all without a model call; dismissals per person and note; access checks; the off switches (yours, and a workspace's).
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
@@ -186,7 +186,7 @@ describe("suggestions on a note", () => {
     expect(seen.canEdit).toBe(false);
   });
 
-  test("off: suggestions off, AI off, or a Core plan show nothing", async () => {
+  test("off: suggestions off, AI off, or a workspace with Foli AI turned off show nothing; Core shows them", async () => {
     const t = setup();
     noModel();
     const a = await person(t, "sugg-off@example.com");
@@ -199,10 +199,18 @@ describe("suggestions on a note", () => {
     await a.as.mutation(api.users.updateProfile, { aiEnabled: true });
     expect((await a.as.query(api.aiSuggestions.forNote, { documentId: note.id })).on).toBe(true);
 
+    // Core includes Foli AI now: suggestions (no model call) still show.
     const core = await person(t, "sugg-core@example.com");
     await core.as.mutation(api.billing.testPurchase, { plan: "core", interval: "month" });
     const theirs = await writeNote(core, PERSONAL, "Plans", ["TODO: write the plan"]);
-    expect(await core.as.query(api.aiSuggestions.forNote, { documentId: theirs.id })).toEqual({ on: false, canEdit: false, items: [], dismissed: [] });
+    expect((await core.as.query(api.aiSuggestions.forNote, { documentId: theirs.id })).items).toHaveLength(1);
+
+    // A workspace with Foli AI turned off shows nothing, for everyone there.
+    const { workspaceId, scope } = await teamWorkspace(core, "No AI");
+    const inTeam = await writeNote(core, scope, "Plans", ["TODO: write the plan"]);
+    expect((await core.as.query(api.aiSuggestions.forNote, { documentId: inTeam.id })).items).toHaveLength(1);
+    await core.as.mutation(api.workspaces.setAiDisabled, { workspaceId, disabled: true });
+    expect(await core.as.query(api.aiSuggestions.forNote, { documentId: inTeam.id })).toEqual({ on: false, canEdit: false, items: [], dismissed: [] });
   });
 });
 

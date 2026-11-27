@@ -66,8 +66,8 @@ export function Tile({ icon, title, children, wide = false }: { icon: ReactNode;
 
 /** One place's AI credits: what's left this period, when it resets, and any extra (bought or given) credits. */
 export function CreditLines({ c }: { c: { available: number; allowance: number; monthlyLeft: number; packCredits: number; resetsAt: number; nextPackExpiry: number | null; trialing: boolean } }) {
-  // Free after its trial: no monthly credits and nothing bought to use.
-  if (noFreeAi(c)) return <p className="mt-1 text-subheadline text-muted">{withoutPurchaseHints(FREE_NO_AI)}</p>;
+  // No monthly credits (Core) and nothing bought to use.
+  if (noCredits(c)) return <p className="mt-1 text-subheadline text-muted">{withoutPurchaseHints(NO_CREDITS)}</p>;
   return (
     <>
       <p className="mt-1 text-subheadline text-muted">{creditCount(c.available)} left</p>
@@ -80,9 +80,11 @@ export function CreditLines({ c }: { c: { available: number; allowance: number; 
   );
 }
 
-/** Free after its trial has no AI credits: Foli AI needs Pro or Pro AI (pack credits bought earlier still work). */
-const noFreeAi = (c: { allowance: number; packCredits: number; trialing: boolean }) => !c.trialing && c.allowance === 0 && c.packCredits === 0;
-const FREE_NO_AI = "Foli AI comes with Pro and Pro AI. Upgrade to use it.";
+/** No AI credits to use: no monthly credits on the plan (Core) and no pack credits. Foli AI works again with a pack. */
+const noCredits = (c: { allowance: number; packCredits: number; trialing: boolean }) => !c.trialing && c.allowance === 0 && c.packCredits === 0;
+const NO_CREDITS = "Your plan has no monthly AI credits. Buy credits or upgrade to use Foli AI.";
+/** Shown where Foli AI is turned off (Settings → Foli AI, or a workspace's Privacy settings). */
+const AI_OFF = "Foli AI is turned off, so nothing in your notes is sent to an AI model.";
 
 /**
  * Settings → Plan & billing: the person's Personal plan (Free, Core, Pro or Pro AI), storage, AI credits and
@@ -201,13 +203,13 @@ export function BillingSection() {
           header="AI credits"
           footer={
             !c.aiIncluded
-              ? "Core doesn't include AI, so nothing in your notes is sent to an AI model. Pro and Pro AI come with AI credits every month."
-              : noFreeAi(c)
-                ? "Foli AI comes with Pro and Pro AI."
+              ? `${AI_OFF} Turn it on in Settings → Foli AI.`
+              : noCredits(c)
+                ? withoutPurchaseHints(NO_CREDITS)
                 : `${c.trialing ? `Your trial ends on ${creditDate(c.resetsAt)}.` : `Monthly credits reset on ${creditDate(c.resetsAt)}.`}${c.packCredits > 0 && c.nextPackExpiry ? ` The first extra credits expire on ${creditDate(c.nextPackExpiry)}.` : ""}`
           }
         >
-          {c.aiIncluded && !noFreeAi(c) ? (
+          {c.aiIncluded && !noCredits(c) ? (
             <>
               <div className="relative px-4 py-3">
                 <p className="flex items-baseline justify-between gap-3 text-body">
@@ -295,7 +297,7 @@ export function BillingSection() {
             {credits.aiIncluded ? (
               <CreditLines c={credits} />
             ) : (
-              <p className="mt-1 text-subheadline text-muted">Core doesn&apos;t include AI, so nothing in your notes is sent to an AI model. Pro and Pro AI come with AI credits every month.</p>
+              <p className="mt-1 text-subheadline text-muted">{AI_OFF} Turn it on in Settings → Foli AI.</p>
             )}
           </Tile>
           <div className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-control bg-[var(--glass-hover)] p-4 sm:col-span-2">
@@ -403,23 +405,21 @@ export function BillingSection() {
                       <p className="text-body font-semibold text-heading">
                         {a.name} <span className="font-normal text-muted">· {a.plan}</span>
                       </p>
-                      {a.aiIncluded && noFreeAi(a) ? (
-                        <p className="mt-0.5 text-subheadline text-muted">{FREE_NO_AI}</p>
+                      {a.aiIncluded && noCredits(a) ? (
+                        <p className="mt-0.5 text-subheadline text-muted">{NO_CREDITS}</p>
                       ) : a.aiIncluded ? (
                         <p className="mt-0.5 text-subheadline text-muted">
                           {creditCount(a.available)} left · {a.monthlyLeft.toLocaleString()} of {a.allowance.toLocaleString()} {a.trialing ? `trial credits, trial ends on ${creditDate(a.resetsAt)}` : `monthly credits, resets on ${creditDate(a.resetsAt)}`}
                           {a.packCredits > 0 ? ` · ${plural(a.packCredits, "extra credit")}${a.nextPackExpiry ? `, the first expiring on ${creditDate(a.nextPackExpiry)}` : ""}` : ""}
                         </p>
                       ) : (
-                        <p className="mt-0.5 text-subheadline text-muted">Not included in Core. Nothing is sent to an AI model.</p>
+                        <p className="mt-0.5 text-subheadline text-muted">Foli AI is turned off here. Nothing is sent to an AI model.</p>
                       )}
                     </div>
                     {a.canBuy ? (
                       <Button onClick={() => setBuyFor({ target: a.kind === "seat" && a.workspaceId ? { kind: "workspace", workspaceId: a.workspaceId } : { kind: "personal" }, name: a.name })}>
                         Buy credits
                       </Button>
-                    ) : a.kind === "personal" && a.aiIncluded && !noFreeAi(a) ? (
-                      <span className="text-subheadline text-faint">Extra credits come with Pro and Pro AI.</span>
                     ) : null}
                   </li>
                 ))}

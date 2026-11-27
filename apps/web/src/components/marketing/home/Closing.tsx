@@ -1,4 +1,4 @@
-import { PLANS, PLAN_ORDER, TRIAL_DAYS, TRIAL_TIER, TIER_NAMES, formatPrice } from "@/lib/plans";
+import { PLANS, PLAN_ORDER, PRICES, TRIAL_DAYS, TRIAL_TIER, TIER_NAMES, formatPrice } from "@/lib/plans";
 import { AiIcon } from "@/components/ai/AiIcon";
 import Link from "next/link";
 import { FoleviMark } from "@/components/brand/FoleviMark";
@@ -41,9 +41,8 @@ export const SECURITY_CONTROLS: Array<{ icon: IconName; title: string; body: str
   },
 ];
 
-/** The plans the home page singles out: Core for no AI at all, Pro AI for as much AI as you need. */
+/** The plan the home page singles out: Pro AI, with the most AI credits. */
 const BADGES: Partial<Record<(typeof PLAN_ORDER)[number], string>> = {
-  core: "No AI",
   pro_ai: "Most AI",
 };
 
@@ -62,12 +61,12 @@ export function PricingSection() {
           wide
           title={
             <>
-              Free on your devices.
+              Every app is free.
               <br />
               <Mark>Cloud</Mark> when you want it.
             </>
           }
-          lede={`Without an account, the apps cost nothing. Folevi Cloud adds the web app, sharing and Foli AI, and every new account gets ${TIER_NAMES[TRIAL_TIER]} free for ${TRIAL_DAYS} days, with no card needed.`}
+          lede={`The Folevi apps cost nothing, with every feature and no account. Folevi Cloud, from ${formatPrice(PRICES.core.month)} a month, stores and syncs your notes for you and adds the web app, sharing and AI credits. Every new account gets ${TIER_NAMES[TRIAL_TIER]} free for ${TRIAL_DAYS} days, with no card needed.`}
         />
         <div className="mk-card mt-10 flex flex-col gap-5 p-6 sm:p-7 lg:flex-row lg:items-center">
           <div className="flex-1">
@@ -82,7 +81,7 @@ export function PricingSection() {
               <span className="text-[14px] text-muted">forever</span>
             </p>
             <p className="mt-3 max-w-[60ch] text-[15px] leading-snug text-muted">
-              Mac, iPhone and iPad. Unlimited notes in iCloud Drive, Dropbox, Google Drive or any folder. They work offline, and Foli AI runs on your Mac.
+              Mac, iPhone, iPad, Android, Windows and Linux (Beta). Unlimited notes in iCloud Drive, Dropbox, Google Drive, any folder or your own Folevi Server. They work offline, and Foli AI works with your own OpenAI, Anthropic or Google key, or Apple Intelligence on your Mac.
             </p>
           </div>
           <div className="flex flex-wrap gap-2.5">
@@ -92,10 +91,13 @@ export function PricingSection() {
             <ButtonLink href={APP_STORE_URL} lead="app-store" variant="secondary">
               App Store
             </ButtonLink>
+            <ButtonLink href="/downloads" variant="secondary">
+              All downloads
+            </ButtonLink>
           </div>
         </div>
         <div className="mt-10 text-center">
-          <p className="mk-eyebrow">Folevi Cloud</p>
+          <p className="mk-eyebrow">Folevi Cloud, from {formatPrice(PRICES.core.month)} a month</p>
         </div>
         <ul className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           {PLAN_ORDER.map((tier) => {
@@ -112,7 +114,7 @@ export function PricingSection() {
               >
                 <div className="flex min-h-7 items-center gap-2">
                   <h3 className="flex items-center gap-1.5 text-[16px] font-semibold text-(--color-heading)">
-                    {/* The plans with Foli AI carry its flower. */}
+                    {/* The plans with the most AI credits carry Foli AI's flower. */}
                     {tier === "pro" || tier === "pro_ai" ? <AiIcon size={16} /> : null}
                     {plan.name}
                   </h3>
@@ -160,7 +162,7 @@ export function FinalCta() {
         >
           Start with one <Mark kind="circle">note</Mark>.
         </h2>
-        <p className="mk-lede mx-auto mt-5 max-w-[46ch]">Free forever on your Mac, iPhone and iPad. No account.</p>
+        <p className="mk-lede mx-auto mt-5 max-w-[46ch]">Free forever on Mac, iPhone, iPad, Android, Windows, Linux and the web. No account needed for the apps.</p>
         <div className="mt-9 flex flex-wrap justify-center gap-2.5">
           <ButtonLink href={MAC_DOWNLOAD_URL} lead="mac" size="lg">
             Download for Mac

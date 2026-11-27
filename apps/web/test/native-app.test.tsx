@@ -252,15 +252,16 @@ describe("Foli AI out of credits", () => {
     expect(el.querySelector("a")).toBeNull();
   });
 
-  test("Foli AI not on the plan: Upgrade in a browser, only the explanation in the app", () => {
+  test("Foli AI unavailable with no plan to blame: Foli AI settings, in a browser and in the app", () => {
     const ai = { setting: true, context: "personal" } as const;
-    expect(actions(render(createElement(AiUnavailable, { ai })))).toContain("Upgrade");
+    expect(actions(render(createElement(AiUnavailable, { ai })))).toContain("Open Foli AI settings");
     act(() => root?.unmount());
     inTheApp();
     const el = render(createElement(AiUnavailable, { ai }));
-    expect(el.textContent).toContain("Foli AI isn't part of your plan");
-    expect(el.querySelector("a")).toBeNull();
+    expect(el.textContent).toContain("Foli AI isn't available here");
+    expect(el.textContent).not.toMatch(/Upgrade|Pro AI/);
   });
+
 });
 
 // Local mode (docs/LOCAL_MODE_PLAN.md owner decisions, §2.3): a library on the person's devices never shows

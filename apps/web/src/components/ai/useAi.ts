@@ -139,7 +139,8 @@ export function useAiAccess(asked?: NoteHome | null): AiAccess {
   const p = profile as { aiEnabled?: boolean; entitlements?: { ai: boolean; plan?: string } };
   const setting = p.aiEnabled !== false;
   const personalEntitled = p.entitlements ? p.entitlements.ai : true;
-  const personalCore = p.entitlements?.plan === "core";
+  // No plan blocks Foli AI since 2026-11-27 (Core included); kept for callers that still read it.
+  const personalCore = false;
   let context: AiAccess["context"];
   let entitled: boolean;
   if (!note) {

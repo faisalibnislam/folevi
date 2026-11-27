@@ -13,30 +13,41 @@ The same four plans exist for Personal and for Team (a workspace). Team prices a
 personal plan covers the person's Personal only; a team plan covers that workspace only. Each has its own
 storage and its own AI credits, and neither ever changes the other.
 
-|                       | Free                  | Core                     | Pro                      | Pro AI                                   |
-| --------------------- | --------------------- | ------------------------ | ------------------------ | ---------------------------------------- |
-| Personal price        | $0                    | $1.99 a month or $19 a year | $4.99 a month or $49 a year | $13.99 a month or $159 a year        |
-| Team price, per member | $0                   | $1.99 a month or $19 a year | $4.99 a month or $49 a year | $13.99 a month or $159 a year        |
-| Storage               | 500 MB in total, shared (below) | 10 GB per person | 10 GB per person       | 50 GB per person                         |
-| AI credits a month    | none: AI only during the trial | none: Core has no AI | 180 per person      | 550 per person ("Unlimited AI, fair use") |
-| Credit packs          | no                    | no                       | 500 for $7.99, 1,000 for $14.99 | same                              |
-| Devices (Personal)    | 2                     | unlimited                | unlimited                | unlimited                                |
-| Members               | unlimited, nobody billed | unlimited, each billed | unlimited, each billed | unlimited, each billed                 |
-| Guests                | free                  | free                     | free                     | free                                     |
+| | Free | Core | Pro | Pro AI |
+| --- | --- | --- | --- | --- |
+| Personal price | $0 | $2 a month or $20 a year | $4 a month or $40 a year | $10 a month or $100 a year |
+| Team price, per member | $0 | $2 a month or $20 a year | $4 a month or $40 a year | $10 a month or $100 a year |
+| Storage | 500 MB in total, shared (below) | 5 GB per person | 10 GB per person | 25 GB per person |
+| AI credits a month | 30 (calendar month, UTC) | none included | 150 per person | 450 per person |
+| Credit packs | 500 for $8, 1,000 for $15 | same | same | same |
+| Devices (Personal) | unlimited | unlimited | unlimited | unlimited |
+| Members | unlimited, nobody billed | unlimited, each billed | unlimited, each billed | unlimited, each billed |
+| Guests | free | free | free | free |
 
-- **Trial:** every new account gets a 7-day Pro AI trial with 100 AI credits for the whole trial (a fixed
-  allowance, not prorated: 100 credits is at most $1 of AI cost). No card. When it ends the account is on
-  Free unless they chose a plan; choosing a plan ends the trial.
-- **Free has AI only during the trial** (since 2026-10-11; it had 25 credits a month before). After the
-  trial a Free account has no monthly credits and can't buy packs, so every AI request is refused with
-  `out_of_credits` and "Foli AI comes with Pro and Pro AI. Upgrade in Settings → Plan & billing." Nothing is
-  sent to the model. That holds wherever the person's own credits would be used: their Personal, free
-  workspaces and pages they're a guest on.
-- **Core** is the plan without AI, and says so plainly: nothing is sent to an AI model. The server refuses
-  every AI request in a Core Personal or a Core workspace, for everyone there (the owner, members and
-  guests), and never sends a Core scope's pages to AI from anywhere else either. A person on Core Personal
-  has no personal credits, so they have no AI in free workspaces or as a guest either. The app hides every
-  AI entry point in a Core scope; the server check is what enforces it.
+These are the 2026-11-27 prices (owner decision, `docs/PRICING_PLAN.md`). Before that: Core $1.99 (10 GB, no
+AI), Pro $4.99 (10 GB, 180 credits), Pro AI $13.99 (50 GB, 550 credits), yearly $19 / $49 / $159, packs on Pro
+and Pro AI only at $7.99 and $14.99, and Free limited to 2 devices with AI only during the trial.
+
+- Trial: every new account gets a 7-day Pro AI trial with 100 AI credits for the whole trial. No card. When it
+  ends the account is on Free (30 credits a month) unless they chose a plan; choosing a plan ends the trial.
+  Packs can't be bought during the trial.
+- Every plan includes Foli AI. Core has no monthly credits, so AI there runs on credit packs (and, once it
+  ships, the person's own AI key). A request with no credits left is refused with "There are no AI credits on
+  this plan..." and nothing is sent to the model.
+- Turning Foli AI off replaced Core's block. `profiles.aiEnabled === false` makes the server refuse every AI
+  request in that person's Personal, for everyone (including pages shared from it). `workspaces.aiDisabled`
+  (set by owners and admins with `workspaces.setAiDisabled`, Settings → Workspace → Privacy) does the same for a
+  workspace. Both are checked in `aiBlockedIn` (`convex/lib/credits.ts`).
+- Earlier subscribers keep their storage and credits. `subscriptions.keptTerms` holds the old amounts; while
+  the subscription stays on that tier, entitlements use the larger of the old and new amounts
+  (`withKeptTerms` in `convex/lib/plans.ts`). A tier change gets the new tier's amounts. The backfill is
+  `migrations:keepOldTerms` with `paidBefore` set to the deploy time of the new prices; run it right after
+  that deploy.
+- Polar: change the price on the EXISTING products (same product ids) rather than creating new ones. Webhooks
+  find the plan from the product id recorded in Billing setup (`productFor` in `convex/billing.ts`), so a
+  new product would leave old subscriptions unmatched. Admin → Billing setup then shows every product as
+  matching. Polar keeps existing subscriptions on the price they started with until each one is updated to
+  the new price, which is how earlier subscribers move to the lower price.
 - **Members** have no plan limit. (An admin-set `memberLimit` on each workspace row still exists as an abuse
   control; new workspaces get 50. Raise it in the admin console when a team needs more.)
 - **Devices:** Free Personal allows 2 signed-in devices; every other plan has no limit

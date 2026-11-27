@@ -15,7 +15,7 @@ import { SearchPiece, TaskPiece } from "@/components/marketing/pieces";
 export const metadata = pageMetadata({
   title: "Workspace features: docs, tasks, databases, notes",
   description:
-    "Folevi is a workspace for docs, wikis, tasks and databases, with team sharing and Foli AI. The notes apps for Mac, iPhone and iPad are free and need no account.",
+    "Folevi is a workspace for docs, wikis, tasks and databases, with team sharing and Foli AI. The apps for Mac, iPhone, iPad, Android, Windows and Linux are free, with every feature, and need no account.",
   path: "/features",
   ogImage: "segment",
 });
@@ -183,7 +183,7 @@ export default function FeaturesPage() {
             One workspace for your <Mark>docs, tasks</Mark> and team.
           </h1>
           <p className="mk-lede mt-6 max-w-[60ch]">
-            Write docs and wikis, plan your week, keep databases and work with your team, with Foli AI when you want it. Folevi runs on the web, Mac, iPhone and iPad, and it works offline.
+            Write docs and wikis, plan your week, keep databases and work with your team, with Foli AI when you want it. Folevi runs on the web, Mac, iPhone, iPad, Android, Windows and Linux, and it works offline.
           </p>
           <nav aria-label="Feature groups" className="mt-8">
             <ul className="flex flex-wrap gap-2">
@@ -274,7 +274,7 @@ export default function FeaturesPage() {
             </Link>
           </div>
         </div>
-        <SignUpPanel body="Free has no time limit. The Mac, iPhone and iPad apps are free forever, with no account." secondary={{ label: "See pricing", href: "/pricing" }} />
+        <SignUpPanel body="Free has no time limit. Every Folevi app is free forever, with no account." secondary={{ label: "See pricing", href: "/pricing" }} />
       </PageFrame>
     </>
   );

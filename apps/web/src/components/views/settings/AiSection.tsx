@@ -6,7 +6,6 @@ import { api } from "@/lib/convex/api";
 import { useAppState } from "@/lib/app/state";
 import { Switch } from "@/components/ui/Switch";
 import { useToast, errorMessage } from "@/components/ui/Toast";
-import { useAiAccess } from "@/components/ai/useAi";
 import { Card } from "./Card";
 import { AiSettingCard } from "./AccountSection";
 import { AiMemoryCard } from "./AiMemory";
@@ -89,7 +88,7 @@ const IMAGE_SETTINGS: (typeof SETTINGS)[number][] = [
 
 const DEFAULTS: Prefs = { history: true, memory: true, suggestions: true, attachments: true, webResearch: true, digests: false, readImages: false, deviceText: true };
 
-function PrefRow({ item, checked, disabled, onChange }: { item: (typeof SETTINGS)[number]; checked: boolean; disabled: boolean; onChange: (next: boolean) => void }) {
+function PrefRow({ item, checked, disabled, onChange }: { item: (typeof SETTINGS)[number]; checked: boolean; disabled?: boolean; onChange: (next: boolean) => void }) {
   const descId = useId();
   return (
     <div className="flex items-start justify-between gap-6 py-3.5 first:pt-0 last:pb-0">
@@ -112,7 +111,6 @@ function PrefRow({ item, checked, disabled, onChange }: { item: (typeof SETTINGS
 /** Settings > Foli AI: the assistant on or off, and how it works for you. The server enforces each one. */
 export function AiSection() {
   const { profile } = useAppState();
-  const { personalCore: core } = useAiAccess();
   const update = useMutation(api.users.updateProfile);
   const saveDigest = useMutation(api.aiDigest.save);
   const toast = useToast();
@@ -132,7 +130,7 @@ export function AiSection() {
         <AiSettingCard />
         <AiUsageCard />
         <IosSection footer={SETTINGS[0]!.body}>
-          <SwitchRow label={SETTINGS[0]!.label} checked={prefs.history} disabled={core} onChange={(next) => set(SETTINGS[0]!, next)} />
+          <SwitchRow label={SETTINGS[0]!.label} checked={prefs.history} onChange={(next) => set(SETTINGS[0]!, next)} />
         </IosSection>
         <IosSection header="How Foli AI works for you" footer="The server checks each of these wherever the feature runs.">
           {SETTINGS.slice(1).map((item) => (
@@ -142,13 +140,13 @@ export function AiSection() {
         {SETTINGS.slice(1).map((item) => (
           <Subscreen key={item.key} id={`pref-${item.key}`} title={item.label}>
             <IosSection footer={item.body}>
-              <SwitchRow label={item.label} checked={prefs[item.key]} disabled={core} onChange={(next) => set(item, next)} />
+              <SwitchRow label={item.label} checked={prefs[item.key]} onChange={(next) => set(item, next)} />
             </IosSection>
           </Subscreen>
         ))}
         {IMAGE_SETTINGS.map((item, i) => (
           <IosSection key={item.key} header={i === 0 ? "Search in images" : undefined} footer={item.body}>
-            <SwitchRow label={item.label} checked={prefs[item.key]} disabled={item.key === "readImages" && core} onChange={(next) => set(item, next)} />
+            <SwitchRow label={item.label} checked={prefs[item.key]} onChange={(next) => set(item, next)} />
           </IosSection>
         ))}
         <AiMemoryCard />
@@ -162,19 +160,19 @@ export function AiSection() {
       <AiSettingCard />
       <AiUsageCard />
       <Card title="Conversations">
-        <PrefRow item={SETTINGS[0]!} checked={prefs.history} disabled={core} onChange={(next) => set(SETTINGS[0]!, next)} />
+        <PrefRow item={SETTINGS[0]!} checked={prefs.history} onChange={(next) => set(SETTINGS[0]!, next)} />
       </Card>
       <Card title="How Foli AI works for you" description="The server checks each of these wherever the feature runs.">
         <div className="divide-y divide-line/70">
           {SETTINGS.slice(1).map((item) => (
-            <PrefRow key={item.key} item={item} checked={prefs[item.key]} disabled={core} onChange={(next) => set(item, next)} />
+            <PrefRow key={item.key} item={item} checked={prefs[item.key]} onChange={(next) => set(item, next)} />
           ))}
         </div>
       </Card>
       <Card title="Search in images" description="So search finds the words in your images and handwriting, like the words in your PDFs.">
         <div className="divide-y divide-line/70">
           {IMAGE_SETTINGS.map((item) => (
-            <PrefRow key={item.key} item={item} checked={prefs[item.key]} disabled={item.key === "readImages" && core} onChange={(next) => set(item, next)} />
+            <PrefRow key={item.key} item={item} checked={prefs[item.key]} onChange={(next) => set(item, next)} />
           ))}
         </div>
       </Card>

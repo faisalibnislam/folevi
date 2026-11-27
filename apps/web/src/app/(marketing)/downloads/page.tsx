@@ -99,7 +99,7 @@ export default function DownloadsPage() {
       <HeaderCard crumbs={CRUMBS}>
         <Eyebrow>Downloads</Eyebrow>
         <h1 className="mk-display mt-5 text-[44px] leading-[0.98] sm:text-[64px]">Download Folevi.</h1>
-        <p className="mk-lede mt-6 max-w-[56ch]">Every Folevi app and package, for every platform, in one list.</p>
+        <p className="mk-lede mt-6 max-w-[56ch]">Every Folevi app and package, for every platform, in one list. Every app is free with every feature, and you don’t need an account. Folevi Server is free to run yourself.</p>
         <nav aria-label="Platforms" className="mt-7 flex flex-wrap gap-2">
           {PLATFORMS.map((p) => (
             <a key={p.id} href={`#${p.id}`} className="rounded-control border mk-hair px-3.5 py-1.5 text-[14px] font-medium text-(--color-heading) hover:bg-(--glass-active)">

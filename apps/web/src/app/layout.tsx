@@ -16,9 +16,9 @@ const marketingUrl = process.env.NEXT_PUBLIC_MARKETING_URL ?? "https://folevi.co
 
 const metadata: Metadata = {
   metadataBase: new URL(marketingUrl),
-  title: { default: "Folevi: a quiet notes app for ideas that keep growing", template: "%s · Folevi" },
+  title: { default: "Folevi: a free digital workspace for every device", template: "%s · Folevi" },
   description:
-    "Folevi is a notes and writing workspace for the web, Mac, iPhone and iPad: block documents, nested pages, tasks, calendar, offline editing and real-time sync.",
+    "Folevi is a digital workspace for notes, docs, tasks and databases, free on the web, Mac, iPhone, iPad, Android, Windows and Linux.",
   applicationName: "Folevi",
   manifest: "/manifest.webmanifest",
   // The app icon (packages/design-tokens/scripts/app-icon.mjs).

@@ -220,23 +220,28 @@ const POSTS: BlogPost[] = [
   },
   {
     slug: "why-folevi-has-a-plan-with-no-ai",
-    title: "Why Folevi has a plan with no AI",
-    description: `Core costs ${p(PRICES.core.month)} a month and never sends your notes to an AI model. The server refuses AI in a Core space for everyone in it.`,
+    title: "Why Folevi had a plan with no AI",
+    description: "Until 27 November 2026, Core never sent notes to an AI model. Now every plan can use Foli AI, and turning it off is a setting on every plan.",
     published: "2026-09-30",
-    updated: "2026-11-18",
+    updated: "2026-11-27",
     author: BLOG_AUTHOR,
     tags: ["Plans", "AI", "Privacy"],
     related: ["what-an-ai-credit-is", "how-offline-first-notes-work"],
-    // docs/BILLING.md (Core), convex/lib/plans.ts (tierHasAi), content/features.tsx (ai-notes privacy).
+    // A post about Core before the 2026-11-27 prices (docs/PRICING_PLAN.md). Its numbers are the old ones on
+    // purpose, written out instead of read from the plan catalog, which now holds the new prices. The note at the
+    // top says what changed (convex/lib/credits.ts aiBlockedIn, profiles.aiEnabled, workspaces.aiDisabled).
     body: () => (
       <>
         <p>
-          Folevi has four plans. Three of them include Foli AI. The fourth, Core, doesn’t, on purpose. Core costs {p(PRICES.core.month)} a month or {p(PRICES.core.year)} a year, has {gb(STORAGE_BYTES.core)} of storage and no device limit, and never sends anything to an AI model.
+          <strong>Update, 27 November 2026.</strong> Since 27 November 2026, every Folevi plan can use Foli AI, Core included: Core has no monthly AI credits, and it works with credit packs. Turning Foli AI off is now a setting on every plan. Turn it off in Settings → Foli AI for your Personal, or, as an owner or admin, in a workspace’s Privacy settings for the whole workspace. While it’s off, the server refuses every AI request there, as it did on Core. If you subscribed to Core before then, you keep its 10 GB of storage while you stay on it. The rest of this post describes Core as it was before that date.
+        </p>
+        <p>
+          Folevi has four plans. Three of them include Foli AI. The fourth, Core, doesn’t, on purpose. Core cost $1.99 a month or $19 a year, had 10 GB of storage and no device limit, and never sends anything to an AI model.
         </p>
 
         <h2 id="includes">What Core includes</h2>
         <p>
-          Core has everything in Folevi except Foli AI: the block editor, nested and linked pages, tasks with Today and the calendar, offline editing and sync, flowcharts and whiteboards, note themes, templates, sharing with guests and public links, {VERSION_DAYS} days of version history, and export. Compared with Free, it adds room ({gb(STORAGE_BYTES.core)} instead of {gb(STORAGE_BYTES.free)}) and removes the two-device limit.
+          Core had everything in Folevi except Foli AI: the block editor, nested and linked pages, tasks with Today and the calendar, offline editing and sync, flowcharts and whiteboards, note themes, templates, sharing with guests and public links, {VERSION_DAYS} days of version history, and export. Compared with Free, it added room (10 GB instead of {gb(STORAGE_BYTES.free)}) and removed the two-device limit.
         </p>
 
         <h2 id="enforced">What “no AI” means in practice</h2>
@@ -251,22 +256,22 @@ const POSTS: BlogPost[] = [
 
         <h2 id="who">Who Core is for</h2>
         <ul>
-          <li>People who want a notes app, don’t use AI, and would rather not pay for it. Core is less than half the price of Pro ({p(PRICES.pro.month)} a month).</li>
+          <li>People who want a notes app, don’t use AI, and would rather not pay for it. Core was less than half the price of Pro ($4.99 a month).</li>
           <li>Teams with a rule that client or company notes may not go to an AI provider. On a Core workspace, the plan enforces that rule for every member and guest.</li>
           <li>People who write things they’d prefer no model reads: a journal, health notes, early drafts.</li>
         </ul>
         <p>
-          A Core workspace costs {p(PRICES.core.month)} per member a month. Guests are free, and they can’t use AI in it either.
+          A Core workspace cost $1.99 per member a month. Guests are free, and they can’t use AI in it either.
         </p>
 
         <h2 id="sometimes">If you want AI some of the time</h2>
         <p>
-          Free has Foli AI during its {TRIAL_DAYS}-day trial, Pro has {MONTHLY_CREDITS.pro} AI credits a month and Pro AI {MONTHLY_CREDITS.pro_ai}. On any of them you can turn Foli AI off in Settings, and while it’s off none of your notes are sent. The difference with Core is who decides. In Settings, each person decides for themselves; on Core, the plan decides for everyone in that space.
+          Free had Foli AI during its {TRIAL_DAYS}-day trial, Pro had 180 AI credits a month and Pro AI 550. On any of them you can turn Foli AI off in Settings, and while it’s off none of your notes are sent. The difference with Core is who decides. In Settings, each person decides for themselves; on Core, the plan decides for everyone in that space.
         </p>
 
         <h2 id="moving">Moving to Core</h2>
         <p>
-          Moving from Pro to Core keeps your storage the same, {gb(STORAGE_BYTES.core)}, and turns AI off in that space straight away. Moving down from Pro AI takes you from {gb(STORAGE_BYTES.pro_ai)} to {gb(STORAGE_BYTES.core)}. If you’re using more than that, nothing is deleted: everything stays readable, and new uploads wait until there’s room. In a workspace, the owner, and admins the owner allows, change the plan for everyone in it.
+          Moving from Pro to Core kept your storage the same, 10 GB, and turned AI off in that space straight away. Moving down from Pro AI took you from 50 GB to 10 GB. If you’re using more than that, nothing is deleted: everything stays readable, and new uploads wait until there’s room. In a workspace, the owner, and admins the owner allows, change the plan for everyone in it.
         </p>
         <p>
           The jobs the AI does on other plans can be done by hand on Core. Draw a flowchart with shapes and connectors and press Tidy up to lay it out, or paste a Mermaid diagram. Write your own summary at the top of a long page. Pick out the action items from a meeting and turn them into to-dos, which are tasks with dates like any other.
@@ -279,7 +284,7 @@ const POSTS: BlogPost[] = [
 
         <h2 id="why">Why we built it</h2>
         <p>
-          AI costs us money every time it runs, so plans with AI cost more. Some people don’t want it, and a plan without it lets them pay {p(PRICES.core.month)} instead of {p(PRICES.pro.month)}. It also gives teams a short answer to a question their security review will ask: does this tool send our notes to an AI model? On Core, no.
+          AI costs us money every time it runs, so plans with AI cost more. Some people don’t want it, and a plan without it lets them pay $1.99 instead of $4.99. It also gives teams a short answer to a question their security review will ask: does this tool send our notes to an AI model? On Core, no.
         </p>
         <p>
           You can change plans in Settings → Plan & billing. If you do want AI, <Link href="/blog/what-an-ai-credit-is">what an AI credit is</Link> explains how Folevi counts it, and <Link href="/pricing">Pricing</Link> has every plan side by side.
@@ -292,7 +297,7 @@ const POSTS: BlogPost[] = [
     title: "What an AI credit is, and why we count them",
     description: "One Folevi AI credit is one cent of what the AI costs to run. How a request becomes credits, what common actions cost, and how packs and fair use work.",
     published: "2026-09-30",
-    updated: "2026-11-18",
+    updated: "2026-11-27",
     author: BLOG_AUTHOR,
     tags: ["AI", "Plans"],
     related: ["why-folevi-has-a-plan-with-no-ai", "meeting-notes-that-turn-into-tasks"],
@@ -328,9 +333,9 @@ const POSTS: BlogPost[] = [
         <h2 id="plans">How many credits each plan has</h2>
         <ul>
           <li>
-            Free: {TRIAL_CREDITS} credits during the {TRIAL_DAYS}-day trial, then none.
+            Free: {MONTHLY_CREDITS.free} credits a month.
           </li>
-          <li>Core: none. Core has no AI.</li>
+          <li>Core: none included, for {p(PRICES.core.month)} a month. Foli AI works with a credit pack.</li>
           <li>
             Pro: {MONTHLY_CREDITS.pro} credits a month, for {p(PRICES.pro.month)} a month.
           </li>
@@ -342,7 +347,7 @@ const POSTS: BlogPost[] = [
           </li>
         </ul>
         <p>
-          Paid plans reset each month of the billing period, including yearly plans, and monthly credits don’t carry over. In terms of work, {MONTHLY_CREDITS.pro} credits is about {MONTHLY_CREDITS.pro} paragraph rewrites, or about {Math.round(MONTHLY_CREDITS.pro / 3)} questions to Foli AI at 3 credits each. Settings → Plan & billing shows how many credits you have left and the day they reset.
+          Paid plans reset each month of the billing period, including yearly plans, and Free resets on the first of each calendar month (UTC). Monthly credits don’t carry over. In terms of work, {MONTHLY_CREDITS.pro} credits is about {MONTHLY_CREDITS.pro} paragraph rewrites, or about {Math.round(MONTHLY_CREDITS.pro / 3)} questions to Foli AI at 3 credits each. Settings → Plan & billing shows how many credits you have left and the day they reset.
         </p>
         <p>
           In a paid workspace, each member has the plan’s credits there. In a free workspace, and on pages shared with you as a guest, you use your own personal credits.
@@ -350,17 +355,17 @@ const POSTS: BlogPost[] = [
 
         <h2 id="packs">Credit packs</h2>
         <p>
-          On Pro and Pro AI you can buy a pack: {n(CREDIT_PACKS.credits_500.credits)} credits for {p(CREDIT_PACKS.credits_500.priceCents)} or {n(CREDIT_PACKS.credits_1000.credits)} for {p(CREDIT_PACKS.credits_1000.priceCents)}. Packs last {PACK_VALID_MONTHS} months from the day you buy them and are used after your monthly credits, the pack that expires soonest first. A pack belongs to the person who bought it, in the place they bought it for: their Personal, or their seat in one workspace. Packs aren’t shared across a team.
+          On every plan you can buy a pack: {n(CREDIT_PACKS.credits_500.credits)} credits for {p(CREDIT_PACKS.credits_500.priceCents)} or {n(CREDIT_PACKS.credits_1000.credits)} for {p(CREDIT_PACKS.credits_1000.priceCents)}. Packs last {PACK_VALID_MONTHS} months from the day you buy them and are used after your monthly credits, the pack that expires soonest first. A pack belongs to the person who bought it, in the place they bought it for: their Personal, or their seat in one workspace. Packs aren’t shared across a team.
         </p>
 
         <h2 id="fair-use">What fair use means on Pro AI</h2>
         <p>
-          The fair-use line on Pro AI is {MONTHLY_CREDITS.pro_ai} credits a month, about {Math.round(MONTHLY_CREDITS.pro_ai / 30)} a day. Every plan with AI also has an hourly cap on the number of requests, which is there to stop scripts and abuse. For a person writing, the monthly credits are the limit you would meet first, and a pack tops them up.
+          The fair-use line on Pro AI is {MONTHLY_CREDITS.pro_ai} credits a month, about {Math.round(MONTHLY_CREDITS.pro_ai / 30)} a day. Every plan also has an hourly cap on the number of requests, which is there to stop scripts and abuse. For a person writing, the monthly credits are the limit you would meet first, and a pack tops them up.
         </p>
 
         <h2 id="run-out">What happens when you run out</h2>
         <p>
-          Before each request, Folevi sets aside a cautious estimate of what it could cost. If you don’t have enough credits left, the request is turned down before anything is sent, and a refused request costs nothing. The message tells you when your credits reset. On Pro and Pro AI it offers a pack, and on Free it offers an upgrade.
+          Before each request, Folevi sets aside a cautious estimate of what it could cost. If you don’t have enough credits left, the request is turned down before anything is sent, and a refused request costs nothing. The message tells you when your credits reset and offers a credit pack or an upgrade.
         </p>
         <p>
           When a request finishes, Folevi charges what it really cost and releases the rest of the estimate. If the real cost turns out to be more than you had left, your balance goes to zero and the difference is never charged later. If a reply fails after the model has already answered, it is still charged, because Google charged us for it.
@@ -371,7 +376,7 @@ const POSTS: BlogPost[] = [
           Counting in real cost means no plan can cost more in AI than it earns, so the prices on the <Link href="/pricing">pricing page</Link> can stay where they are. It also means you can see what you use, in a unit that means something.
         </p>
         <p>
-          It is also what makes Core possible: a plan with no credits is a plan with no AI. <Link href="/blog/why-folevi-has-a-plan-with-no-ai">Why Folevi has a plan with no AI</Link> explains that one. For what the AI can do, see <Link href="/features/ai-notes">AI notes</Link> and the <Link href="/docs/ai-assistant">Foli AI docs</Link>.
+          Credits are only for Folevi Cloud. In a library on your devices, Foli AI with your own OpenAI, Anthropic or Google key, or with Apple Intelligence on the Mac, uses no credits. If you’d rather not use AI at all, turn Foli AI off in Settings → Foli AI on any plan. For what the AI can do, see <Link href="/features/ai-notes">AI notes</Link> and the <Link href="/docs/ai-assistant">Foli AI docs</Link>.
         </p>
       </>
     ),

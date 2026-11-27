@@ -82,6 +82,7 @@ export default async function ServerPage() {
             <Checks
               className="mt-6"
               items={[
+                <>Free to run yourself, and every Folevi app is free with every feature, no account needed</>,
                 <>Email, notifications and Foli AI work out of the box</>,
                 <>Nothing about your notes passes through Folevi</>,
                 <>Updates come from your NAS’s app store, with a backup taken first</>,

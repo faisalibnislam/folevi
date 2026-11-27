@@ -4,7 +4,6 @@ import {
   CREDIT_PACK_ORDER,
   MONTHLY_CREDITS,
   PACK_VALID_MONTHS,
-  PLANS,
   PLAN_ORDER,
   PRICES,
   STORAGE_BYTES,
@@ -32,8 +31,8 @@ const gb = sizeLabel;
 const credits = (n: number) => n.toLocaleString("en-US");
 
 export const metadata = pageMetadata({
-  title: `Pricing: a free workspace app, Folevi Cloud from ${formatPrice(PRICES.core.month)}/month`,
-  description: `Docs, tasks and databases on Mac, iPhone and iPad, free forever with no account. Folevi Cloud adds the web app, teams and Foli AI from ${formatPrice(PRICES.core.month)} a month.`,
+  title: `Pricing: Folevi is free, Folevi Cloud from ${formatPrice(PRICES.core.month)}/month`,
+  description: `Every Folevi app is free on Mac, iPhone, iPad, Android, Windows, Linux and the web. Sync with your own cloud or server and use your own AI key for free. Folevi Cloud starts free, with paid plans from ${formatPrice(PRICES.core.month)} a month.`,
   path: "/pricing",
 });
 
@@ -51,51 +50,63 @@ const saving = (tier: "core" | "pro" | "pro_ai") =>
 const faqs: FaqItem[] = [
   {
     q: "Are the apps free?",
-    a: `Yes. Folevi for Mac, iPhone and iPad is free forever when you keep notes on your devices: docs, tasks and databases, with no account and no limit on notes. The Mac app is a download from folevi.com (${MAC_REQUIREMENT}); the iPhone and iPad app is on the App Store (${IOS_REQUIREMENT}).`,
+    a: `Yes, all of them, with every feature: Mac, iPhone, iPad, Android, Windows, Linux (Beta) and the web app. Keep your notes on your devices with no account and no limit on notes. The Mac app needs ${MAC_REQUIREMENT}; the iPhone and iPad app needs ${IOS_REQUIREMENT}.`,
+  },
+  {
+    q: "What do I pay for?",
+    a: `Only Folevi Cloud, if you want it: our storage, our sync and our AI credits. ${TIER_NAMES.free} is ${gb(STORAGE_BYTES.free)} with ${MONTHLY_CREDITS.free} AI credits a month. Paid plans start at ${formatPrice(PRICES.core.month)} a month.`,
   },
   {
     q: "Do I need an account?",
-    a: "Not for the apps. Choose Keep notes on my devices and your notes are a folder of files in a place you pick: iCloud Drive, Dropbox, Google Drive, any folder, or this device only. Folevi’s servers never see them. You need a Folevi account for the web app and for sharing.",
+    a: "Not for the apps. Choose Keep notes on my devices and your notes are a folder of files in a place you pick: iCloud Drive, Dropbox, Google Drive, any folder, or this device only. Folevi’s servers never see them. You need a Folevi account for the web app, sharing and team workspaces.",
+  },
+  {
+    q: "Can I host Folevi myself?",
+    a: "Yes, for free. Folevi Server (Beta) runs on your own computer, NAS or cloud server, and every Folevi app can sync with it.",
+  },
+  {
+    q: "Can I use Foli AI without paying?",
+    a: `Yes. In a library on your devices, Foli AI works with your own OpenAI, Anthropic or Google key, called straight from your device, or with Apple Intelligence on your Mac. On Folevi Cloud, ${TIER_NAMES.free} has ${MONTHLY_CREDITS.free} AI credits a month.`,
   },
   {
     q: "What do paid plans add?",
-    a: `A Folevi account (free to make) adds the web app, sharing and public pages, comments with others, workspaces, email-in, the web clipper and the API. Paid plans add room and AI credits: ${TIER_NAMES.core} has more storage and no device limit, ${TIER_NAMES.pro} and ${TIER_NAMES.pro_ai} add Foli AI credits every month.`,
+    a: `More room and more AI credits. ${TIER_NAMES.core} has ${gb(STORAGE_BYTES.core)} and no included credits (buy a pack when you want AI). ${TIER_NAMES.pro} has ${gb(STORAGE_BYTES.pro)} and ${credits(MONTHLY_CREDITS.pro)} credits a month, and ${TIER_NAMES.pro_ai} has ${gb(STORAGE_BYTES.pro_ai)} and ${credits(MONTHLY_CREDITS.pro_ai)} credits a month. Every plan, including ${TIER_NAMES.free}, works on as many devices as you like.`,
   },
   {
-    q: "Can I move my notes between the two?",
+    q: "Can I move my notes between my devices and Folevi Cloud?",
     a: "Yes, both ways. Sign in to upload a library from your devices to your account, or export everything in your account into a folder.",
   },
   {
     q: "How does the free trial work?",
-    a: `Every new account gets ${trialName} free for ${TRIAL_DAYS} days, with ${TRIAL_CREDITS} AI credits and no card. When the trial ends you move to Free, which has no AI, unless you choose a plan. Nothing is charged automatically.`,
+    a: `Every new account gets ${trialName} free for ${TRIAL_DAYS} days, with ${TRIAL_CREDITS} AI credits and no card. When the trial ends you move to ${TIER_NAMES.free}, with ${MONTHLY_CREDITS.free} AI credits a month, unless you choose a plan. Nothing is charged automatically.`,
   },
   {
-    q: `How much AI does ${TIER_NAMES.pro_ai} include?`,
-    a: `${TIER_NAMES.pro_ai} is for people who use AI every day: ${credits(MONTHLY_CREDITS.pro_ai)} credits a month for each person, which is about ${credits(Math.floor(MONTHLY_CREDITS.pro_ai / 2))} questions to Foli AI. If you reach it, buy a credit pack or wait for your credits to reset. There is also an hourly limit that stops automated use.`,
-  },
-  {
-    q: "Why does Core have no AI?",
-    a: "Some people want more room and no AI at all. On Core, nothing you write is sent to an AI model. Foli AI is off in your Personal, and in a Core workspace it’s off for everyone.",
+    q: "Can I turn Foli AI off?",
+    a: "Yes, on every plan, in Settings → Foli AI. While it’s off, nothing in your Personal is sent to an AI model, and Foli AI’s buttons are hidden. Owners and admins can turn it off for a whole workspace in the workspace’s Privacy settings.",
   },
   {
     q: "When do AI credits reset?",
-    a: `Every month. On paid plans, monthly credits reset each billing month, counted from the day your plan started (yearly plans reset monthly too). On Free they reset on the first day of each calendar month (UTC). Unused monthly credits don’t carry over.`,
+    a: `Every month. On paid plans, monthly credits reset each billing month, counted from the day your plan started (yearly plans reset monthly too). On ${TIER_NAMES.free} they reset on the first day of each calendar month (UTC). Unused monthly credits don’t carry over.`,
   },
   {
     q: "Do credit packs expire?",
-    a: `Yes, ${PACK_VALID_MONTHS} months after you buy them. Packs are one-time purchases for ${TIER_NAMES.pro} and ${TIER_NAMES.pro_ai}, and their credits are used only after your monthly credits run out.`,
+    a: `Yes, ${PACK_VALID_MONTHS} months after you buy them. Packs are one-time purchases on every plan, and their credits are used only after your monthly credits run out.`,
   },
   {
     q: "What happens when I run out of AI credits?",
-    a: `AI requests pause until your credits reset. On ${TIER_NAMES.pro} and ${TIER_NAMES.pro_ai} you can buy a credit pack to keep going right away; on Free you can upgrade. Everything else in Folevi keeps working.`,
+    a: "AI requests pause until your credits reset. You can buy a credit pack to keep going right away, or upgrade. Everything else in Folevi keeps working.",
   },
   {
     q: "How does storage work?",
-    a: `Free has ${gb(STORAGE_BYTES.free)} in total, shared by your Personal and every free workspace you own; uploads by anyone in those workspaces count toward it. Paid plans give each person their own room: ${gb(STORAGE_BYTES.core)} on ${TIER_NAMES.core} and ${TIER_NAMES.pro}, ${gb(STORAGE_BYTES.pro_ai)} on ${TIER_NAMES.pro_ai}. In a paid workspace, each member’s uploads count against their own storage there.`,
+    a: `${TIER_NAMES.free} has ${gb(STORAGE_BYTES.free)} in total, shared by your Personal and every free workspace you own; uploads by anyone in those workspaces count toward it. Paid plans give each person their own room: ${gb(STORAGE_BYTES.core)} on ${TIER_NAMES.core}, ${gb(STORAGE_BYTES.pro)} on ${TIER_NAMES.pro} and ${gb(STORAGE_BYTES.pro_ai)} on ${TIER_NAMES.pro_ai}. In a paid workspace, each member’s uploads count against their own storage there.`,
   },
   {
     q: "What happens if I run out of storage?",
     a: "Your notes and files stay put and you can keep writing. New uploads pause until you free up room or move to a plan with more storage. Nothing is deleted.",
+  },
+  {
+    q: "I subscribed before these prices. What changes?",
+    a: "Your plan keeps the storage and AI credits it had for as long as you stay on it, and you pay the new price from your next renewal. If you change plans, you get the new plan’s storage and credits.",
   },
   {
     q: "How are team plans billed?",
@@ -110,16 +121,12 @@ const faqs: FaqItem[] = [
     a: "No. A workspace has its own plan, separate from anyone’s personal plan: a paid personal plan doesn’t upgrade a workspace, and a workspace plan doesn’t change your Personal. Every workspace starts on Free.",
   },
   {
-    q: "What counts as a device?",
-    a: `Each browser or app you’re signed in to. Free works on ${PLANS.free.devices} devices at a time; ${TIER_NAMES.core}, ${TIER_NAMES.pro} and ${TIER_NAMES.pro_ai} work on as many as you like. At the limit, a new device asks you to sign out of another one (from right there) or upgrade. Nothing is deleted.`,
-  },
-  {
     q: "Can I switch plans or cancel?",
     a: "Yes, any time from Settings → Plan & billing. If you cancel, your plan keeps working until the end of the period you paid for, then moves to Free.",
   },
   {
     q: "Is yearly cheaper?",
-    a: `Yes. ${saving("core")}, ${saving("pro")}, and ${saving("pro_ai")}.`,
+    a: `Yes, yearly is the price of 10 months. ${saving("core")}, ${saving("pro")}, and ${saving("pro_ai")}.`,
   },
   {
     q: "How are taxes and payments handled?",
@@ -128,10 +135,6 @@ const faqs: FaqItem[] = [
   {
     q: "What happens to my notes if I downgrade?",
     a: "They stay yours. You can export any page as Markdown, HTML or PDF, or everything in your Personal as a ZIP (owners and admins can export a whole workspace), at any time.",
-  },
-  {
-    q: "Can I use my account in the apps?",
-    a: `Yes. Every plan works in the web app and in the Mac, iPhone and iPad apps. On ${TIER_NAMES.free}, an account works on ${PLANS.free.devices} devices at a time.`,
   },
 ];
 
@@ -153,11 +156,12 @@ export default function PricingPage() {
         </div>
         <Eyebrow>Pricing</Eyebrow>
         <h1 className="mk-display mt-5 max-w-[15ch] text-[44px] leading-[0.98] sm:text-[64px] lg:text-[72px] xl:text-[80px]">
-          <Mark kind="circle">Free</Mark> forever on your devices.
+          Folevi is <Mark kind="circle">free</Mark>.
         </h1>
         <p className="mk-lede mt-6 max-w-[60ch]">
-          Your workspace for docs, tasks and databases is free on Mac, iPhone and iPad, with no account. Folevi Cloud
-          adds the web app, team workspaces, sharing and Foli AI when you want them.
+          Every Folevi app is free on Mac, iPhone, iPad, Android, Windows, Linux and the web, with every feature. Keep
+          your notes on your devices, sync them through iCloud Drive or Dropbox, or run your own Folevi Server. Pay only
+          if you want Folevi Cloud to store and sync them for you.
         </p>
       </HeaderCard>
 
@@ -169,22 +173,24 @@ export default function PricingPage() {
                 No account
               </Sticker>
             </p>
-            <Eyebrow>Folevi for Mac, iPhone and iPad</Eyebrow>
+            <Eyebrow>The Folevi apps</Eyebrow>
             <h2 id="apps-title" className="mt-4 flex items-baseline gap-3">
               <span className="mk-display text-[56px] leading-none sm:text-[64px]">$0</span>{" "}
               <span className="text-[17px] font-semibold text-(--color-heading)">forever</span>
             </h2>
             <p className="mk-lede mt-4 max-w-[52ch]">
-              The whole workspace, on your devices. Choose Keep notes on my devices and your pages are files in a folder
-              you pick. Folevi’s servers never see them.
+              Everything Folevi does, on your devices. Choose Keep notes on my devices and your pages are files in a
+              folder you pick. Folevi’s servers never see them.
             </p>
             <Checks
               className="mt-6"
               items={[
+                <>Mac, iPhone, iPad, Android, Windows and Linux (Beta)</>,
                 <>No account, no limit on notes</>,
                 <>iCloud Drive, Dropbox, Google Drive or any folder, synced by your own cloud</>,
+                <>Folevi Server (Beta) on your own computer, NAS or server</>,
+                <>Foli AI with your own OpenAI, Anthropic or Google key, or Apple Intelligence on your Mac</>,
                 <>Docs, tasks, databases, themes, Foli DNA and search</>,
-                <>Foli AI on your Mac, with Apple Intelligence or your own API key</>,
               ]}
             />
             <p className="mt-6 text-[14px] leading-relaxed text-muted">
@@ -192,8 +198,9 @@ export default function PricingPage() {
               need a Folevi account. You can move a library to an account later, or export it back into a folder.
             </p>
             <div className="mt-7 flex flex-wrap gap-2.5">
-              <ButtonLink href={MAC_DOWNLOAD_URL} lead="mac">
-                Download for Mac
+              <ButtonLink href="/downloads">Download Folevi</ButtonLink>
+              <ButtonLink href={MAC_DOWNLOAD_URL} lead="mac" variant="secondary">
+                Mac
               </ButtonLink>
               <ButtonLink href={APP_STORE_URL} lead="app-store" variant="secondary">
                 App Store
@@ -212,8 +219,9 @@ export default function PricingPage() {
           Folevi <Mark>Cloud</Mark>
         </h2>
         <p className="mk-lede mt-3 mb-8 max-w-[60ch]">
-          An account for the web app, sharing and team workspaces where you edit together. Try {trialName} free for {TRIAL_DAYS} days, with {TRIAL_CREDITS} AI
-          credits. No card.
+          Our storage, sync and AI credits, for when you want us to look after your notes. It adds the web app, sharing and
+          team workspaces. {TIER_NAMES.free} has {gb(STORAGE_BYTES.free)} and {MONTHLY_CREDITS.free} AI credits a month, and every new account
+          gets {trialName} free for {TRIAL_DAYS} days, with {TRIAL_CREDITS} AI credits. No card.
         </p>
         <PlanPicker headingLevel="h3" />
         <p className="mt-5 text-[14px] text-muted">
@@ -277,7 +285,7 @@ export default function PricingPage() {
                       </span>
                       <span className="text-muted">
                         {n === 0
-                          ? "No AI"
+                          ? "Credit packs"
                           : tier === "pro_ai"
                             ? `${credits(n)}, fair use`
                             : credits(n)}
@@ -294,7 +302,7 @@ export default function PricingPage() {
           <div className="mk-card flex flex-col p-6 sm:p-7">
             <h3 className="text-[16px] font-semibold text-(--color-heading)">Credit packs</h3>
             <p className="mt-3 text-[15px] leading-relaxed text-ink">
-              More AI when you need it, on {TIER_NAMES.pro} and {TIER_NAMES.pro_ai}.
+              More AI when you need it, on every plan.
             </p>
             <ul className="mt-5 grid gap-3 sm:grid-cols-2">
               {CREDIT_PACK_ORDER.map((id) => {

@@ -82,7 +82,7 @@ export function PricingSection() {
               <span className="text-[14px] text-muted">forever</span>
             </p>
             <p className="mt-3 max-w-[60ch] text-[15px] leading-snug text-muted">
-              Mac, iPhone and iPad. Unlimited notes in iCloud Drive, Dropbox, Google Drive or any folder. They work offline, and Foli AI runs on your Mac.
+              Mac, Windows, Linux, iPhone and iPad. Unlimited notes in iCloud Drive, Dropbox, Google Drive or any folder. They work offline, and Foli AI runs on your Mac.
             </p>
           </div>
           <div className="flex flex-wrap gap-2.5">
@@ -160,7 +160,7 @@ export function FinalCta() {
         >
           Start with one <Mark kind="circle">note</Mark>.
         </h2>
-        <p className="mk-lede mx-auto mt-5 max-w-[46ch]">Free forever on your Mac, iPhone and iPad. No account.</p>
+        <p className="mk-lede mx-auto mt-5 max-w-[46ch]">Free forever on your Mac, Windows, Linux, iPhone and iPad. No account.</p>
         <div className="mt-9 flex flex-wrap justify-center gap-2.5">
           <ButtonLink href={MAC_DOWNLOAD_URL} lead="mac" size="lg">
             Download for Mac

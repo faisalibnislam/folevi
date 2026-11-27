@@ -15,10 +15,10 @@ import { SlashSection } from "@/components/marketing/home/SlashSection";
 import { JsonLd, organizationLd, pageMetadata, softwareLd } from "@/components/marketing/seo";
 
 export const metadata = pageMetadata({
-  title: "Folevi: a digital workspace for Mac, iPhone, iPad and web",
+  title: "Folevi: a digital workspace for Mac, Windows, Linux, iPhone, iPad and web",
   absoluteTitle: true,
   description:
-    "Folevi is a digital workspace for notes, docs, tasks and databases, with a Vault and Foli DNA. The Mac, iPhone and iPad apps are free, with no account.",
+    "Folevi is a digital workspace for notes, docs, tasks and databases, with a Vault and Foli DNA. The Mac, Windows, Linux, iPhone and iPad apps are free, with no account.",
   path: "/",
 });
 

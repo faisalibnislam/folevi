@@ -61,7 +61,7 @@ export function organizationLd(): Record<string, unknown> {
     "@type": "Organization",
     name: "Folevi",
     url: absoluteUrl("/"),
-    description: "Folevi makes a digital workspace for notes, docs, tasks and databases, on the web and in free Mac, iPhone and iPad apps.",
+    description: "Folevi makes a digital workspace for notes, docs, tasks and databases, on the web and in free Mac, Windows, Linux, iPhone and iPad apps.",
     logo: absoluteUrl("/icons/icon-512.png"),
     email: SUPPORT_EMAIL,
     contactPoint: [
@@ -149,7 +149,7 @@ export function softwareLd(): Record<string, unknown> {
     applicationCategory: "ProductivityApplication",
     operatingSystem: "macOS 26, iOS 18, iPadOS 18, Web",
     description:
-      "A digital workspace for notes, docs, tasks and databases (table, gallery and kanban views), with team workspaces and Foli AI. The Mac, iPhone and iPad apps are free forever with no account: pages are files in iCloud Drive, Dropbox, Google Drive or any folder. Folevi Cloud adds the web app, sharing and teams.",
+      "A digital workspace for notes, docs, tasks and databases (table, gallery and kanban views), with team workspaces and Foli AI. The Mac, Windows, Linux, iPhone and iPad apps are free forever with no account: pages are files in iCloud Drive, Dropbox, Google Drive or any folder. Folevi Cloud adds the web app, sharing and teams.",
     // The Personal plans, one offer per price, from the plan catalog (team plans cost the same per member).
     offers: PLAN_ORDER.flatMap((tier) => {
       const plan = PLANS[tier];

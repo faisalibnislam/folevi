@@ -17,7 +17,7 @@ import { PRICES, formatPrice } from "@/lib/plans";
 export const metadata = pageMetadata({
   title: "Folevi apps: a free notes workspace for Mac, iPhone, iPad",
   description:
-    "Folevi for Mac, iPhone and iPad: docs, tasks and databases in one workspace. Free forever, no account, works offline. Your pages stay in a folder you pick.",
+    "Folevi for Mac, Windows, Linux, iPhone and iPad: docs, tasks and databases in one workspace. Free forever, no account, works offline. Your pages stay in a folder you pick.",
   path: "/apps",
 });
 
@@ -31,7 +31,7 @@ const MODES: Array<{ label: string; local: boolean | string; cloud: boolean | st
   { label: "Price", local: "Free forever", cloud: `Free plan, or from ${formatPrice(PRICES.core.month)} a month` },
   { label: "Account", local: "None", cloud: "A Folevi account" },
   { label: "Where notes live", local: "Files in a folder you pick", cloud: "Folevi Cloud, synced to every device" },
-  { label: "Mac, iPhone and iPad apps", local: true, cloud: true },
+  { label: "Mac, Windows, Linux, iPhone and iPad apps", local: true, cloud: true },
   { label: "Works offline", local: true, cloud: true },
   { label: "Docs, tasks, databases, themes, Foli DNA", local: true, cloud: true },
   { label: "Foli AI", local: "On your Mac: Apple Intelligence or your own key", cloud: "Foli AI credits on every device" },
@@ -78,7 +78,7 @@ const ANDROID_POINTS = [
 const FAQS: FaqItem[] = [
   {
     q: "Are the apps free?",
-    a: "Yes. Choose Keep notes on my devices when the app opens and the whole workspace (docs, tasks, databases and themes) is free forever on your Mac, iPhone and iPad: no account, no trial and no limit on notes.",
+    a: "Yes. Choose Keep notes on my devices when the app opens and the whole workspace (docs, tasks, databases and themes) is free forever on your Mac, Windows, Linux, iPhone and iPad: no account, no trial and no limit on notes.",
   },
   {
     q: "Can I sign in to my Folevi account in the apps?",

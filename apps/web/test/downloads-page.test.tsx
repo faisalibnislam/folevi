@@ -5,7 +5,7 @@ import { afterEach, describe, expect, test, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import DownloadsPage from "@/app/(marketing)/downloads/page";
 import { DownloadsBar } from "@/components/marketing/DownloadsBar";
-import { LINUX_DOWNLOADS, MAC_DOWNLOAD_URL, WINDOWS_DOWNLOAD_ARM64_URL, WINDOWS_DOWNLOAD_X64_URL } from "@/components/marketing/site";
+import { ANDROID_DOWNLOAD_URL, LINUX_DOWNLOADS, MAC_DOWNLOAD_URL, WINDOWS_DOWNLOAD_ARM64_URL, WINDOWS_DOWNLOAD_X64_URL } from "@/components/marketing/site";
 
 const PLATFORM_IDS = ["mac", "windows", "linux", "iphone-ipad", "android", "web", "server"];
 
@@ -30,6 +30,16 @@ describe("/downloads", () => {
     expect(html).toContain('aria-label="Platforms"');
     // One mark per section heading plus one per bar link.
     expect(html.match(/<svg/g)?.length ?? 0).toBeGreaterThanOrEqual(PLATFORM_IDS.length * 2);
+  });
+
+  test("the Android row links to the APK and says how to install it", async () => {
+    serve(null, false);
+    const html = await render();
+    const android = html.slice(html.indexOf('id="android"'), html.indexOf('id="web"'));
+    expect(android).toContain(`href="${ANDROID_DOWNLOAD_URL}"`);
+    expect(android).toContain("Android 13 or later");
+    expect(android).toContain("allow installs from your browser");
+    expect(android).not.toContain("Coming soon");
   });
 
   test("the Mac, Windows and Linux rows link to the real files", async () => {

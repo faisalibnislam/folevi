@@ -18,7 +18,7 @@ export const RELEASES: Release[] = [
     name: "Spell check that knows English, and Writing settings on the Mac",
     date: "2026-11-26",
     label: "November 26, 2026",
-    intro: "A spell check fix for the web and the Mac, and a new Writing section in the Mac app’s Settings.",
+    intro: "A spell check fix for the web and the Mac, a new Writing section in the Mac app’s Settings, and Folevi for Android as a download from folevi.com.",
     groups: [
       {
         title: "Web and Mac",
@@ -32,6 +32,10 @@ export const RELEASES: Release[] = [
         items: [
           "Settings > Writing turns spell check and next-word prediction on or off, picks American or British English, and holds your dictionary and ignored words",
         ],
+      },
+      {
+        title: "Android",
+        items: ["Folevi for Android is a download from folevi.com/downloads, for Android 13 or later on phones and tablets"],
       },
     ],
   },

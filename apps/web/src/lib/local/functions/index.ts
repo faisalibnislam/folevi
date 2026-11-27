@@ -5,6 +5,7 @@ import "./blocks";
 import "./documents";
 import "./documents.history";
 import "./organization";
+import "./sidebarLayout";
 import "./sidebarOrder";
 import "./spelling";
 import "./users";

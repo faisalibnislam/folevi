@@ -1,6 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
-import { APP, createWorkspace, newPerson, showFolders, pick, settle } from "./helpers";
+import { APP, createWorkspace, newPerson, showFolders, pick, settle, openMore } from "./helpers";
 
 test("tasks: quick add with priority, My Tasks in Personal, edit/cancel from the list, schedule from the calendar", async ({ browser }) => {
   const { page } = await newPerson(browser, "Planner");
@@ -77,6 +77,7 @@ test("organization: tags, templates, missing folders, team workspaces from the s
   await expect(page.getByRole("heading", { name: "This folder isn’t here" })).toBeVisible();
 
   // Start a page from a user template.
+  await openMore(nav);
   await nav.getByRole("link", { name: "Templates" }).click();
   await page.getByRole("button", { name: "New page from template Weekly Reset" }).click();
   await page.waitForURL(/\/d\/[0-9A-Z]{26}\?new=1/);

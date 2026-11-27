@@ -14,6 +14,25 @@ export type Release = {
 
 export const RELEASES: Release[] = [
   {
+    version: "1.8.80",
+    name: "Arrange your sidebar",
+    date: "2026-11-27",
+    label: "November 27, 2026",
+    intro: "The sidebar keeps the places you use most in view and the rest under More, and Customize sidebar lets you choose what goes where. On the web and the Mac.",
+    groups: [
+      {
+        title: "Web and Mac",
+        items: [
+          "Shared with Me, Changes and Templates start under a More section, which remembers whether you left it open and opens for the page you’re on",
+          "Right-click an item to move it into More or back onto the sidebar",
+          "Customize sidebar shows or hides each item, reorders them by dragging or with Move up and Move down, and resets to the default",
+          "Home and Drafts always stay on the sidebar",
+          "Your sidebar layout follows your account, so a change on the Mac shows on the web, Windows and Linux too",
+        ],
+      },
+    ],
+  },
+  {
     version: "1.8.79",
     name: "Spell check that knows English, and Writing settings on the Mac",
     date: "2026-11-26",

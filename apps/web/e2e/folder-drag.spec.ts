@@ -5,7 +5,7 @@
 // "Show less" goes back. Every move has one Undo and survives a reload. Mouse on the web, a finger on the iPad.
 //   E2E_BASE_URL=http://app.localhost:3002 E2E_NO_SERVER=1 npx playwright test e2e/folder-drag.spec.ts --workers=1
 import { expect, test } from "@playwright/test";
-import { APP, newPerson, waitForSaved } from "./helpers";
+import { APP, newPerson, untilSettled, waitForSaved } from "./helpers";
 import { centre, drafts, drag, finger, folderLink, line, more, nav, newFolder, roots, row, toast } from "./folderDragHelpers";
 
 test("mouse: reorder, nest, un-nest, refuse, open while resting, and +N more", async ({ browser }) => {
@@ -112,9 +112,14 @@ test("mouse: notes onto folders from a list, a folder page's chips, Home, search
   // From the All notes list onto a sidebar folder; Undo puts it back.
   await folderLink(page, "All notes").click();
   await page.getByRole("radio", { name: "List" }).click();
+  await expect(page.getByRole("radio", { name: "List" })).toBeChecked();
   const listRow = (title: string) => page.getByRole("main").getByRole("listitem").filter({ hasText: title });
+  // Once the list has redrawn as a list and stopped moving: dragging straight after the switch (or while the list,
+  // by last edited, still reorders) picks up whichever note is under the mouse by then.
+  await untilSettled(listRow("").first());
   const title = (await listRow("").first().getByRole("link").first().innerText()).split("\n")[0]!.trim();
-  let d = await drag(page, listRow(title), row(page, "Shelf"), 0.5);
+  await untilSettled(listRow(title).first());
+  let d = await drag(page, listRow(title).first(), row(page, "Shelf"), 0.5);
   await expect(row(page, "Shelf")).toHaveAttribute("data-drop-state", "inside");
   await d.drop();
   await expect(toast(page, "Moved to Shelf")).toBeVisible();

@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { PLANS, PLAN_ORDER } from "@/lib/plans";
-import { SECURITY_EMAIL, SUPPORT_EMAIL, absoluteUrl } from "./site";
+import { OPERATOR, SECURITY_EMAIL, SUPPORT_EMAIL, absoluteUrl } from "./site";
 
 export function pageMetadata({
   title,
@@ -68,6 +68,13 @@ export function organizationLd(): Record<string, unknown> {
       { "@type": "ContactPoint", contactType: "customer support", email: SUPPORT_EMAIL, url: absoluteUrl("/support"), availableLanguage: "English" },
       { "@type": "ContactPoint", contactType: "security", email: SECURITY_EMAIL, url: absoluteUrl("/security") },
     ],
+    // The company that operates Folevi (site.ts OPERATOR).
+    parentOrganization: {
+      "@type": "Organization",
+      name: OPERATOR.name,
+      url: OPERATOR.url,
+      address: { "@type": "PostalAddress", streetAddress: OPERATOR.street, addressLocality: OPERATOR.city, addressRegion: OPERATOR.region, postalCode: OPERATOR.postalCode, addressCountry: OPERATOR.countryCode },
+    },
   };
 }
 

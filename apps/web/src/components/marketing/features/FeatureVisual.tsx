@@ -50,6 +50,7 @@ import { FoldersPageReplica } from "../product/FoldersPageReplica";
 import { StyleShowcase } from "../product/StyleShowcase";
 import { TemplateSheet } from "../templates/TemplateSheet";
 import { cx } from "../ui";
+import { OwnServerPicture, SpellingPicture } from "./WritingPictures";
 
 /*
  * One product picture per feature page, built from the site's replicas of the app (Replica.tsx, the demos,
@@ -101,6 +102,8 @@ export function coverPicture(visual: VisualKey, art: string): { width: number; n
     templates: [980, <TemplateTrio key="templates" />],
     export: [780, <ExportPanels key="export" />],
     security: [780, <SecurityGrid key="security" />],
+    spelling: [620, <SpellingPicture key="spelling" />],
+    server: [520, <OwnServerPicture key="server" />],
   };
   const [width, piece] = pieces[visual];
   return {
@@ -128,6 +131,10 @@ function Visual({ visual, art }: { visual: VisualKey; art: string }) {
       return <SlashDemo />;
     case "search":
       return <PalettePicture />;
+    case "spelling":
+      return <SpellingPicture />;
+    case "server":
+      return <OwnServerPicture />;
     case "calendar":
       return <CalendarPicture />;
     case "comments":

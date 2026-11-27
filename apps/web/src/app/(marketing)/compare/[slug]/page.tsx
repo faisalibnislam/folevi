@@ -32,7 +32,7 @@ function webPageLd(competitor: Competitor): Record<string, unknown> {
     dateModified: competitor.updated,
     isPartOf: { "@type": "WebSite", name: "Folevi", url: absoluteUrl("/") },
     about: [
-      { "@type": "SoftwareApplication", name: "Folevi", applicationCategory: "ProductivityApplication", operatingSystem: "macOS 26, iOS 18, iPadOS 18, Web" },
+      { "@type": "SoftwareApplication", name: "Folevi", applicationCategory: "ProductivityApplication", operatingSystem: "macOS 26, Windows 10, Windows 11, Linux, iOS 26, iPadOS 26, Web" },
       { "@type": "SoftwareApplication", name: competitor.name, applicationCategory: "ProductivityApplication" },
     ],
   };

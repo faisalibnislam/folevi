@@ -63,10 +63,11 @@ const GROUPS: Group[] = [
     lede: "Pages built from blocks, nested and linked, for your own notes or a team wiki.",
     cards: [
       { slug: "blocks", size: "twoThirds" },
-      { slug: "linked-notes", size: "third" },
-      { slug: "foli-dna", size: "third" },
-      { slug: "templates", size: "third" },
-      { slug: "version-history", size: "third" },
+      { slug: "spell-check", size: "third" },
+      { slug: "linked-notes", size: "half" },
+      { slug: "foli-dna", size: "half" },
+      { slug: "templates", size: "half" },
+      { slug: "version-history", size: "half" },
     ],
   },
   {
@@ -110,6 +111,7 @@ const GROUPS: Group[] = [
       { slug: "offline-notes", size: "third" },
       { slug: "import-and-export", size: "third" },
       { slug: "security-and-privacy", size: "third" },
+      { slug: "self-hosting", size: "wide" },
     ],
   },
   {

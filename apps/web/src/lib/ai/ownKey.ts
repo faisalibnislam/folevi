@@ -117,8 +117,34 @@ export function onOwnKeyChange(l: () => void): () => void {
 type Sealed = { iv: Uint8Array<ArrayBuffer>; data: ArrayBuffer };
 let db: Promise<IDBPDatabase> | null = null;
 
-function store(): Promise<IDBPDatabase> | null {
+/** Whether the page's store exists, found without creating it (the upgrade a new database would need is aborted). */
+function storeExists(): Promise<boolean> {
+  return new Promise((done) => {
+    try {
+      const r = indexedDB.open(DB);
+      r.onupgradeneeded = () => r.transaction?.abort();
+      r.onsuccess = () => {
+        r.result.close();
+        done(true);
+      };
+      r.onerror = (e) => {
+        e.preventDefault();
+        done(false);
+      };
+      r.onblocked = () => done(true);
+    } catch {
+      done(false);
+    }
+  });
+}
+
+/**
+ * The page's store. Only saving a key creates it (`create`); reading or removing never does, so a browser that
+ * never kept a key has no database for it, and a public computer never gets one (it keeps keys in memory only).
+ */
+async function store(create = false): Promise<IDBPDatabase | null> {
   if (typeof indexedDB === "undefined" || typeof crypto === "undefined" || !crypto.subtle) return null;
+  if (!db && !create && !(await storeExists())) return null;
   db ??= openDB(DB, 1, {
     upgrade(d) {
       d.createObjectStore("keys");
@@ -136,7 +162,7 @@ async function wrappingKey(d: IDBPDatabase): Promise<CryptoKey> {
 }
 
 async function pageSet(provider: OwnKeyProvider, key: string): Promise<void> {
-  const d = await store();
+  const d = await store(true);
   if (!d) throw new Error("This browser can't keep a key.");
   const iv = crypto.getRandomValues(new Uint8Array(12));
   const data = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, await wrappingKey(d), new TextEncoder().encode(key));
@@ -186,21 +212,30 @@ export async function clearPageOwnKeys(): Promise<void> {
 // Saving, checking and using a key
 // ---------------------------------------------------------------------------------------------------
 
-// This device's copy: the keychain in an app that can hand it back, else the page's store.
+// This device's copy: the keychain in an app that can hand it back, else the page's store. On a public or shared
+// computer, nothing goes to disk: the key stays in this tab's memory until it's closed (lib/ai/ownKeySync.ts).
+
+/** Whether this browser is being used as a public computer (docs/E2EE_DESIGN.md §4.8). */
+export async function onPublicComputer(): Promise<boolean> {
+  return (await sync()).onPublicComputer();
+}
 
 async function localWrite(provider: OwnKeyProvider, key: string): Promise<void> {
+  if (await onPublicComputer()) return (await sync()).keepInMemory(provider, key);
   const secrets = shell()?.secrets;
   if (secrets) await secrets.set(OWN_KEY_INFO[provider].secret, key);
   if (!secrets?.reveal) await pageSet(provider, key);
 }
 
 async function localForget(provider: OwnKeyProvider): Promise<void> {
+  (await sync()).forgetInMemory(provider);
   const secrets = shell()?.secrets;
   if (secrets) await secrets.delete(OWN_KEY_INFO[provider].secret);
   await pageDelete(provider);
 }
 
 async function localRead(provider: OwnKeyProvider): Promise<string | null> {
+  if (await onPublicComputer()) return (await sync()).memoryKey(provider);
   const secrets = shell()?.secrets;
   if (secrets?.reveal) return await secrets.reveal(OWN_KEY_INFO[provider].secret);
   return await pageGet(provider);

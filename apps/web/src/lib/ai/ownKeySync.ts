@@ -54,6 +54,11 @@ export function markSaved(p: RecordName, at: number | null): void {
 /** Keys taken from another device on a public computer: kept in this tab's memory, never on disk. */
 const inMemory = new Map<OwnKeyProvider, string>();
 export const memoryKey = (p: OwnKeyProvider) => inMemory.get(p) ?? null;
+/** A key saved on a public computer: this tab's memory only. */
+export const keepInMemory = (p: OwnKeyProvider, key: string) => void inMemory.set(p, key);
+export const forgetInMemory = (p: OwnKeyProvider) => void inMemory.delete(p);
+/** A public or shared computer: nothing of the account is kept on disk (docs/E2EE_DESIGN.md §4.8). */
+export const onPublicComputer = () => sessionImpl().isPublic();
 
 function unlocked() {
   const s = sessionImpl();

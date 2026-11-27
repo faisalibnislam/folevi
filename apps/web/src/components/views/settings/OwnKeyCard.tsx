@@ -6,7 +6,7 @@
 import { useEffect, useId, useState } from "react";
 import { useAction } from "convex/react";
 import { api } from "@/lib/convex/api";
-import { OWN_KEY_INFO, OWN_KEY_PROVIDERS, cleanOwnKey, hasOwnKey, onOwnKeyChange, ownKeyChoice, ownKeyForRequest, removeOwnKey, saveOwnKey, setOwnKeyChoice, syncOwnKeysNow, type OwnKeyProvider } from "@/lib/ai/ownKey";
+import { OWN_KEY_INFO, OWN_KEY_PROVIDERS, cleanOwnKey, hasOwnKey, onOwnKeyChange, onPublicComputer, ownKeyChoice, ownKeyForRequest, removeOwnKey, saveOwnKey, setOwnKeyChoice, syncOwnKeysNow, type OwnKeyProvider } from "@/lib/ai/ownKey";
 import { useOwnKeyChoice } from "@/components/ai/useAiAction";
 import { Button } from "@/components/ui/Button";
 import { Select } from "@/components/ui/Select";
@@ -30,6 +30,11 @@ export function OwnKeyCard() {
   const switchDesc = useId();
   const info = OWN_KEY_INFO[provider];
   const on = choice?.provider === provider;
+  // A public or shared computer keeps nothing on disk: a key saved here lasts until this tab closes.
+  const [kiosk, setKiosk] = useState(false);
+  useEffect(() => {
+    void onPublicComputer().then(setKiosk, () => undefined);
+  }, []);
 
   // What the person's other devices saved or turned on, before showing this one's.
   useEffect(() => {
@@ -71,7 +76,7 @@ export function OwnKeyCard() {
       await saveOwnKey(provider, key);
       setValue("");
       setResult(null);
-      toast.show(`${info.label} key saved on this device.`);
+      toast.show(kiosk ? `${info.label} key kept in this tab only.` : `${info.label} key saved on this device.`);
     } catch (e) {
       toast.show(errorMessage(e), { tone: "error" });
     } finally {
@@ -150,7 +155,7 @@ export function OwnKeyCard() {
 
         {stored ? (
           <div className="flex flex-wrap items-center gap-2">
-            <p className="mr-auto text-subheadline text-heading">Your {info.label} key is saved on this device.</p>
+            <p className="mr-auto text-subheadline text-heading">{kiosk ? `Your ${info.label} key is kept in this tab until you close it.` : `Your ${info.label} key is saved on this device.`}</p>
             <Button onClick={() => void check()} disabled={busy}>
               Test key
             </Button>
@@ -189,6 +194,10 @@ export function OwnKeyCard() {
             ) : null}
           </form>
         )}
+
+        {kiosk && !stored ? (
+          <p className="text-subheadline text-muted">{"This is a public or shared computer, so your key isn't saved here. It's kept in this tab until you close it."}</p>
+        ) : null}
 
         {result ? (
           <p role="status" className={`text-subheadline ${result.ok ? "text-heading" : "text-danger"}`}>

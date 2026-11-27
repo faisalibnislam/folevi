@@ -10,7 +10,7 @@
 // The rows (`fileTexts`) live in the note's scope with their own search index; search.ts reads them for
 // people who can read the note only, and they go with the file, the whiteboard's block or the note
 // (maintenance.ts), and come with the account's export (exports.ts).
-import { vOwnKey, type OwnKey } from "./lib/ai/ownKey";
+import { vOwnKey } from "./lib/ai/ownKey";
 import { v } from "convex/values";
 import { action, internalQuery, query, type MutationCtx, type QueryCtx } from "./_generated/server";
 import { internalMutation, mutation } from "./lib/functions";

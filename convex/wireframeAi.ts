@@ -14,7 +14,6 @@
 import { vOwnKey, type OwnKey } from "./lib/ai/ownKey";
 import { v } from "convex/values";
 import { action, type ActionCtx } from "./_generated/server";
-import { internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 import type { WireframeData } from "@folevi/editor-schema";
 import { requireIdentity } from "./lib/auth";

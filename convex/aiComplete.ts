@@ -3,10 +3,9 @@
 // when Foli AI is on for the person (begin checks it again, with the plan, the scope and the hourly limit),
 // and never for an end-to-end encrypted note: the client doesn't ask there, and begin's gate refuses a sealed
 // note sent without its device-provided context, which this action never takes.
-import { vOwnKey, type OwnKey } from "./lib/ai/ownKey";
+import { vOwnKey } from "./lib/ai/ownKey";
 import { v } from "convex/values";
 import { action } from "./_generated/server";
-import { internal } from "./_generated/api";
 import { requireIdentity } from "./lib/auth";
 import { fail } from "./lib/errors";
 import type { PlannedCall } from "./lib/credits";

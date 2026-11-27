@@ -6,7 +6,7 @@
 //
 // Credits: one call, held up front and settled from what it really cost (ai.begin, ai.metered), as writing
 // help. Same gates as every AI request; nothing from a Core scope is sent.
-import { vOwnKey, type OwnKey } from "./lib/ai/ownKey";
+import { vOwnKey } from "./lib/ai/ownKey";
 import { v } from "convex/values";
 import { action, internalQuery, query } from "./_generated/server";
 import type { Doc } from "./_generated/dataModel";

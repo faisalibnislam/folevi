@@ -6,10 +6,9 @@
 // Core scope), the hourly limit, and a hold on the estimated AI credits, settled with what the calls really
 // cost (metered). The note's scope decides when a note is named. Nothing is changed here: the client shows
 // the result and applies it as one change (⌘Z undoes it).
-import { vOwnKey, type OwnKey } from "./lib/ai/ownKey";
+import { vOwnKey } from "./lib/ai/ownKey";
 import { v } from "convex/values";
 import { action } from "./_generated/server";
-import { internal } from "./_generated/api";
 import { normalizeChart } from "@folevi/editor-schema";
 import { requireIdentity } from "./lib/auth";
 import { fail } from "./lib/errors";

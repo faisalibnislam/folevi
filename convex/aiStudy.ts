@@ -8,7 +8,7 @@
 //
 // Credits: the note's segments are counted first and the calls held up front (at most MAX_TRANSLATE_CHUNKS
 // of them); `metered` settles what they really cost. Same gates as every AI request (ai.begin).
-import { vOwnKey, type OwnKey } from "./lib/ai/ownKey";
+import { vOwnKey } from "./lib/ai/ownKey";
 import { v } from "convex/values";
 import { action, internalQuery } from "./_generated/server";
 import { internalMutation, mutation } from "./lib/functions";

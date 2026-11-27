@@ -29,6 +29,8 @@ export const ANDROID_REQUIREMENT = "Android 13 or later";
 /** It doesn’t update itself while there is no public Play listing, and Android asks once to allow installs from the browser. */
 export const ANDROID_INSTALL_NOTE = "The first time, Android asks you to allow installs from your browser. It doesn’t update itself yet, so get new versions here.";
 export const WINDOWS_REQUIREMENT = "Windows 11 or Windows 10 (22H2), on Arm or Intel and AMD PCs";
+/** The Windows installers aren't code signed yet (docs/DESKTOP_APP.md), so SmartScreen asks first. Drop this once they are. */
+export const WINDOWS_SMARTSCREEN_NOTE = "This early build isn’t signed yet, so Windows SmartScreen asks you to confirm it: choose More info, then Run anyway.";
 export const SECURITY_EMAIL = "security@folevi.com";
 export const SUPPORT_EMAIL = "support@folevi.com";
 
@@ -48,6 +50,8 @@ export const MARKETING_ROUTES = [
   { path: "/downloads", priority: 0.8, changeFrequency: "monthly", updated: "2026-11-26" },
   { path: "/features", priority: 0.9, changeFrequency: "monthly", updated: "2026-11-06" },
   { path: "/mac", priority: 0.8, changeFrequency: "monthly", updated: "2026-11-19" },
+  { path: "/windows", priority: 0.8, changeFrequency: "monthly", updated: "2026-11-27" },
+  { path: "/linux", priority: 0.7, changeFrequency: "monthly", updated: "2026-11-27" },
   { path: "/server", priority: 0.7, changeFrequency: "weekly", updated: "2026-11-26" },
   { path: "/security", priority: 0.8, changeFrequency: "monthly", updated: "2026-11-06" },
   { path: "/pricing", priority: 0.8, changeFrequency: "monthly", updated: "2026-11-19" },

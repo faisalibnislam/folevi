@@ -407,3 +407,15 @@ export async function settle(page: Page, timeout = 10_000) {
     .waitForFunction(() => document.getAnimations().every((a) => a.playState !== "running" || a.effect?.getTiming().iterations === Infinity), undefined, { timeout })
     .catch(() => undefined);
 }
+
+/**
+ * Opens the sidebar's More section if it's closed (lib/app/sidebarLayout.ts: Shared with Me, Changes and Templates
+ * start under it), so their links can be clicked.
+ */
+export async function openMore(scope: Page | Locator) {
+  const page = "goto" in scope ? scope : scope.page();
+  const toggle = page.getByRole("navigation", { name: "Folio" }).getByRole("button", { name: "More", exact: true });
+  await expect(toggle).toBeVisible();
+  if ((await toggle.getAttribute("aria-expanded")) !== "true") await toggle.click();
+  await expect(toggle).toHaveAttribute("aria-expanded", "true");
+}

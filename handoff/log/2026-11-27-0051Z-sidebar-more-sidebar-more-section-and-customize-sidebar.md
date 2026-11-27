@@ -21,3 +21,5 @@ Checked:
 Left:
 - The Mac app's sidebar is native Swift (apps/native-kit WebSidebar.swift), so the Mac doesn't get More from the web; see the mac/ios/android entry.
 - api.sidebarLayout is not in the engine's views (lib/engine/viewsSettings.ts) yet; the native apps need it there to read the layout.
+
+- E2E specs that open Shared with Me, Changes or Templates from the sidebar now call `openMore` (e2e/helpers.ts) first, since those start under a closed More.

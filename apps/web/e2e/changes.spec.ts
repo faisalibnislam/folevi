@@ -1,5 +1,5 @@
 import { expect, request, test, type Page } from "@playwright/test";
-import { APP, newPerson, openShare, pick, showFolders, waitForSaved } from "./helpers";
+import { APP, newPerson, openShare, pick, showFolders, waitForSaved, openMore } from "./helpers";
 
 // Changes: what someone else changed in a note you've opened shows up in one place until you've seen it.
 
@@ -42,10 +42,12 @@ test("someone edits your shared note: it shows in Changes with what changed, unt
 
   // The owner moves on: nothing new yet.
   const nav = owner.page.getByRole("navigation", { name: "Folio" });
+  await openMore(nav);
   await nav.getByRole("link", { name: "Changes" }).click();
   await expect(owner.page.getByRole("heading", { name: "You’re all caught up" })).toBeVisible();
 
   // The guest adds a line.
+  await openMore(guest.page);
   await guest.page.getByRole("navigation", { name: "Folio" }).getByRole("link", { name: "Shared with Me" }).click();
   await guest.page.getByRole("listitem").filter({ hasText: /Changes plan/ }).getByRole("link").click();
   await expect(guest.page.getByRole("textbox", { name: "Document body" })).toContainText("The owner's first line");
@@ -84,9 +86,11 @@ test("undo a change from Changes, then put it back", async ({ browser }) => {
   await owner.page.keyboard.type("Keep this line");
   await waitForSaved(owner.page);
   await shareWith(owner.page, guest.email, "Casey Editor");
+  await openMore(owner.page);
   await owner.page.getByRole("navigation", { name: "Folio" }).getByRole("link", { name: "Changes" }).click();
   await expect(owner.page.getByRole("heading", { name: "You’re all caught up" })).toBeVisible();
 
+  await openMore(guest.page);
   await guest.page.getByRole("navigation", { name: "Folio" }).getByRole("link", { name: "Shared with Me" }).click();
   await guest.page.getByRole("listitem").filter({ hasText: /Undo plan/ }).getByRole("link").click();
   const body = await addLine(guest.page, "An unwanted line");

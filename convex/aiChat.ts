@@ -16,6 +16,7 @@
 // so `get` (the whole conversation) isn't re-run on every chunk; it reads the message again when it settles.
 //
 // Privacy: prompts, note text and answers are never logged; only events, codes and counts are.
+import { vOwnKey, type OwnKey } from "./lib/ai/ownKey";
 import { v } from "convex/values";
 import { paginationOptsValidator } from "convex/server";
 import { action, internalQuery, query, type ActionCtx, type MutationCtx, type QueryCtx } from "./_generated/server";
@@ -34,7 +35,7 @@ import { routeIn } from "./aiConfig";
 import { vAiAction } from "./lib/aiActions";
 import { wireRun } from "./lib/ai/tools/wire";
 import { NEW_CHAT_TITLE, bestBlock, citingSentences, passageBlock, cleanTitle, conversationFilename, conversationMarkdown, normalizeContext, titleFromQuestion, vAiContext, type AiContext, type MarkdownMessage } from "./lib/ai/chat";
-import { answerFromNotes, answerPlan, gemini, hideFollowUps, metered, providedArgs, providedPlan, streamSink, type AnswerSink, type Settled } from "./ai";
+import { answerFromNotes, answerPlan, gemini, hideFollowUps, metered, providedArgs, providedPlan, streamSink, type AnswerSink, type Settled, beginRequest } from "./ai";
 import { checkProvidedSizes, vProvidedContext } from "./lib/e2ee/ai";
 import { failE2ee, requirePlainWriteInScope, spaceE2ee } from "./lib/e2ee/state";
 import { attachmentChips, claimAttachments, deleteConversationFiles, sweepUnsentAttachments, type AttachmentChip } from "./lib/ai/attachmentFiles";
@@ -831,7 +832,7 @@ const WEB_UNSUPPORTED = "The AI model in use can't search the web.";
  * `web` (the Web toggle) it also searches the web; pages linked in the question are read when web
  * research is allowed. Notes and pages are cited with one numbering.
  */
-async function respond(ctx: ActionCtx, messageId: Id<"aiMessages">, web = false): Promise<{ status: "done" | "error" }> {
+async function respond(ctx: ActionCtx, messageId: Id<"aiMessages">, web = false, ownKey?: OwnKey): Promise<{ status: "done" | "error" }> {
   const turn = await ctx.runQuery(internal.aiChat.turn, { messageId });
   // Files sent with the question (and earlier ones), checked again as the person (aiAttachments.ts). A
   // message with files is answered from them and the conversation's notes.
@@ -865,7 +866,7 @@ async function respond(ctx: ActionCtx, messageId: Id<"aiMessages">, web = false)
   ];
   let holdId: Id<"aiCreditHolds">;
   try {
-    ({ holdId } = await ctx.runMutation(internal.ai.begin, { scope: turn.scope, documentIds: [...documentIds, ...files.noteIds], noteOnly: notesOnly, plan, feature: withFiles ? "attachments" : "chat" }));
+    ({ holdId } = await beginRequest(ctx, { scope: turn.scope, documentIds: [...documentIds, ...files.noteIds], noteOnly: notesOnly, plan, feature: withFiles ? "attachments" : "chat" }, ownKey));
   } catch (e) {
     const error = storedError(e);
     console.warn(JSON.stringify({ event: "ai.chat_refused", code: error.code }));
@@ -938,31 +939,43 @@ async function respond(ctx: ActionCtx, messageId: Id<"aiMessages">, web = false)
  * included) are stored on the answer, not thrown.
  */
 export const send = action({
-  args: { scope: vScopeArg, conversationId: v.string(), text: v.string(), context: v.optional(vAiContext), web: v.optional(v.boolean()), attachments: v.optional(v.array(v.string())) },
+  args: {
+    /** Foli AI on the person's own key (lib/ai/ownKey.ts), for this request only: never stored or logged. */
+    ownKey: v.optional(vOwnKey),
+    scope: vScopeArg, conversationId: v.string(), text: v.string(), context: v.optional(vAiContext), web: v.optional(v.boolean()), attachments: v.optional(v.array(v.string())),
+  },
   handler: async (ctx, args): Promise<{ messageId: Id<"aiMessages">; status: "done" | "error" }> => {
     await requireIdentity(ctx);
     const { messageId } = await ctx.runMutation(internal.aiChat.post, { mode: "send", scope: args.scope, conversationId: args.conversationId, text: args.text, context: args.context, attachments: args.attachments });
-    return { messageId, ...(await respond(ctx, messageId, args.web === true)) };
+    return { messageId, ...(await respond(ctx, messageId, args.web === true, args.ownKey)) };
   },
 });
 
 /** Writes the last answer again. */
 export const regenerate = action({
-  args: { conversationId: v.string(), web: v.optional(v.boolean()) },
+  args: {
+    /** Foli AI on the person's own key (lib/ai/ownKey.ts), for this request only: never stored or logged. */
+    ownKey: v.optional(vOwnKey),
+    conversationId: v.string(), web: v.optional(v.boolean()),
+  },
   handler: async (ctx, args): Promise<{ messageId: Id<"aiMessages">; status: "done" | "error" }> => {
     await requireIdentity(ctx);
     const { messageId } = await ctx.runMutation(internal.aiChat.post, { mode: "regenerate", conversationId: args.conversationId });
-    return { messageId, ...(await respond(ctx, messageId, args.web === true)) };
+    return { messageId, ...(await respond(ctx, messageId, args.web === true, args.ownKey)) };
   },
 });
 
 /** Changes one of the person's messages, drops everything after it, and answers again. */
 export const edit = action({
-  args: { conversationId: v.string(), messageId: v.id("aiMessages"), text: v.string(), web: v.optional(v.boolean()) },
+  args: {
+    /** Foli AI on the person's own key (lib/ai/ownKey.ts), for this request only: never stored or logged. */
+    ownKey: v.optional(vOwnKey),
+    conversationId: v.string(), messageId: v.id("aiMessages"), text: v.string(), web: v.optional(v.boolean()),
+  },
   handler: async (ctx, args): Promise<{ messageId: Id<"aiMessages">; status: "done" | "error" }> => {
     await requireIdentity(ctx);
     const { messageId } = await ctx.runMutation(internal.aiChat.post, { mode: "edit", conversationId: args.conversationId, messageId: args.messageId, text: args.text });
-    return { messageId, ...(await respond(ctx, messageId, args.web === true)) };
+    return { messageId, ...(await respond(ctx, messageId, args.web === true, args.ownKey)) };
   },
 });
 
@@ -993,6 +1006,8 @@ export interface SealedAnswer {
  */
 export const sendSealed = action({
   args: {
+    /** Foli AI on the person's own key (lib/ai/ownKey.ts), for this request only: never stored or logged. */
+    ownKey: v.optional(vOwnKey),
     scope: vScopeArg,
     text: v.string(),
     history: v.array(vTurnSealed),
@@ -1025,7 +1040,7 @@ export const sendSealed = action({
     const plan = files.length ? filesPlan({ questionChars: question.length, historyChars, notes: args.provided.notes.length, files }) : providedPlan(question.length, historyChars, args.provided);
     let holdId: Id<"aiCreditHolds">;
     try {
-      ({ holdId } = await ctx.runMutation(internal.ai.begin, { scope: args.scope, plan, feature: files.length ? "attachments" : "chat", ...providedArgs(args.provided) }));
+      ({ holdId } = await beginRequest(ctx, { scope: args.scope, plan, feature: files.length ? "attachments" : "chat", ...providedArgs(args.provided) }, args.ownKey));
     } catch (e) {
       const error = storedError(e);
       console.warn(JSON.stringify({ event: "ai.chat_refused", code: error.code, sealed: true }));

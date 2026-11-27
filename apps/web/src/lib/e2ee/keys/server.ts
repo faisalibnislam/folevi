@@ -11,6 +11,7 @@ const k = api.e2ee.keys;
 const d = api.e2ee.devices;
 const s = api.e2ee.spaces;
 const g = api.e2ee.grants;
+const r = api.e2ee.accountRecords;
 
 /** A note key wrap as e2ee.pull (WP3) and e2ee.grants.myNoteKeys return it. */
 export interface NoteKeyRow {
@@ -81,6 +82,12 @@ export interface KeysServer {
   watchApproval(requestId: string, cb: (row: ApprovalRow | null) => void): () => void;
   watchWraps(cb: (rows: WrapListRow[]) => void): () => void;
   watchStatus(cb: (status: AccountStatus) => void): () => void;
+  /** The person's own records sealed with their master key (their own AI keys, lib/ai/ownKeySync.ts). Fakes may leave it out. */
+  accountRecords?: {
+    list: Q<typeof r.list>;
+    put: M<typeof r.put>;
+    remove: M<typeof r.remove>;
+  };
 }
 
 /** What the key code needs of a ConvexReactClient. */
@@ -159,5 +166,6 @@ export function convexKeysServer(client: ConvexLike): KeysServer {
     watchApproval: (requestId, cb) => watch(d.approval, { requestId }, cb),
     watchWraps: (cb) => watch(k.listWraps, {}, cb),
     watchStatus: (cb) => watch(k.status, {}, cb),
+    accountRecords: { list: q(r.list), put: m(r.put), remove: m(r.remove) },
   };
 }

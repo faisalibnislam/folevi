@@ -5,7 +5,7 @@
 // Changes show first as a preview in the table, the cells they change marked, then Accept applies them as
 // one change (⌘Z undoes it) or Discard leaves the table as it was. The server checks every reply
 // (convex/tableAi.ts) and charges AI credits like Foli AI's other actions.
-import { useAction } from "convex/react";
+import { useAiAction } from "@/components/ai/useAiAction";
 import { useEffect, useMemo, useState } from "react";
 import { ArrowUp, Check, X } from "lucide-react";
 import type { Editor } from "@tiptap/core";
@@ -131,10 +131,10 @@ export function TableAi({
 }) {
   const { scope } = useAppState();
   const documentId = (editor.view.dom as HTMLElement).closest("[data-fb-root]")?.getAttribute("data-fb-root") ?? undefined;
-  const editAction = useAction(api.tableAi.edit);
-  const cleanAction = useAction(api.tableAi.clean);
-  const formulaAction = useAction(api.tableAi.formula);
-  const explainAction = useAction(api.tableAi.explain);
+  const editAction = useAiAction(api.tableAi.edit);
+  const cleanAction = useAiAction(api.tableAi.clean);
+  const formulaAction = useAiAction(api.tableAi.formula);
+  const explainAction = useAiAction(api.tableAi.explain);
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<AiProblem | null>(null);

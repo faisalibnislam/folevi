@@ -3675,7 +3675,7 @@ export interface RecentViewedValue {
  * the web's Settings words it (viewsSettings.ts); "convex" is one of the Convex queries Settings reads
  * (args { fn, args }, an allowlist).
  */
-export type SettingsQueryKey = "library" | "localAi" | "desktop" | "convex";
+export type SettingsQueryKey = "library" | "localAi" | "ownAiKey" | "desktop" | "convex";
 /** What `settings.run` does: the library's controls, Foli AI's keys on the device, the Mac app's settings, and the Convex changes Settings makes (args { fn, args }, an allowlist). */
 export type SettingsRunKey =
   | "library.syncNow"
@@ -3692,6 +3692,10 @@ export type SettingsRunKey =
   | "localAi.removeKey"
   | "localAi.testKey"
   | "localAi.setChoice"
+  | "ownAiKey.save"
+  | "ownAiKey.remove"
+  | "ownAiKey.test"
+  | "ownAiKey.setChoice"
   | "desktop.set"
   | "desktop.pauseShortcut"
   | "text.lines"
@@ -4537,8 +4541,8 @@ export const NOTES_LIST_VIEWS: readonly NotesListView[] = ["all", "starred", "ar
 export const NOTES_SORTS: readonly NotesSort[] = ["updated", "created", "title", "manual"];
 export const WEB_PAGES: readonly WebPage[] = ["settings.connectedApps", "settings.workspaceData", "settings.data", "settings.aiExport", "reviews", "graph", "settings.security", "settings.privacy", "settings.workspace", "settings.deleteAccount"];
 export const AI_PREF_KEYS: readonly AiPrefKey[] = ["history", "memory", "suggestions", "attachments", "webResearch", "digests", "readImages", "deviceText"];
-export const SETTINGS_QUERY_KEYS: readonly SettingsQueryKey[] = ["library", "localAi", "desktop", "convex"];
-export const SETTINGS_RUN_KEYS: readonly SettingsRunKey[] = ["library.syncNow", "library.move", "library.cloudConnect", "library.cloudCancel", "library.cloudSignOut", "library.setPassphrase", "library.changePassphrase", "library.removePassphrase", "library.lock", "library.forget", "localAi.setKey", "localAi.removeKey", "localAi.testKey", "localAi.setChoice", "desktop.set", "desktop.pauseShortcut", "text.lines", "data.import", "data.importAppleNotes", "takeout.import", "convex.mutation", "convex.action"];
+export const SETTINGS_QUERY_KEYS: readonly SettingsQueryKey[] = ["library", "localAi", "ownAiKey", "desktop", "convex"];
+export const SETTINGS_RUN_KEYS: readonly SettingsRunKey[] = ["library.syncNow", "library.move", "library.cloudConnect", "library.cloudCancel", "library.cloudSignOut", "library.setPassphrase", "library.changePassphrase", "library.removePassphrase", "library.lock", "library.forget", "localAi.setKey", "localAi.removeKey", "localAi.testKey", "localAi.setChoice", "ownAiKey.save", "ownAiKey.remove", "ownAiKey.test", "ownAiKey.setChoice", "desktop.set", "desktop.pauseShortcut", "text.lines", "data.import", "data.importAppleNotes", "takeout.import", "convex.mutation", "convex.action"];
 export const TASK_VIEWS: readonly TaskViewName[] = ["inbox", "today", "upcoming", "all", "completed", "mine"];
 
 /** Features the hello reply lists (for native to check before using something newer than the protocol). */

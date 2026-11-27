@@ -7868,6 +7868,7 @@ public struct RecentViewedValue: Codable, Hashable, Sendable {
 public enum SettingsQueryKey: String, Codable, Hashable, Sendable, CaseIterable {
     case library
     case localAi
+    case ownAiKey
     case desktop
     case convex
 }
@@ -7888,6 +7889,10 @@ public enum SettingsRunKey: String, Codable, Hashable, Sendable, CaseIterable {
     case localAiRemoveKey = "localAi.removeKey"
     case localAiTestKey = "localAi.testKey"
     case localAiSetChoice = "localAi.setChoice"
+    case ownAiKeySave = "ownAiKey.save"
+    case ownAiKeyRemove = "ownAiKey.remove"
+    case ownAiKeyTest = "ownAiKey.test"
+    case ownAiKeySetChoice = "ownAiKey.setChoice"
     case desktopSet = "desktop.set"
     case desktopPauseShortcut = "desktop.pauseShortcut"
     case textLines = "text.lines"

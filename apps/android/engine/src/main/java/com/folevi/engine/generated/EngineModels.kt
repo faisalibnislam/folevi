@@ -4604,6 +4604,7 @@ data class RecentViewedValue(
 enum class SettingsQueryKey(val value: String) {
     @SerialName("library") LIBRARY("library"),
     @SerialName("localAi") LOCAL_AI("localAi"),
+    @SerialName("ownAiKey") OWN_AI_KEY("ownAiKey"),
     @SerialName("desktop") DESKTOP("desktop"),
     @SerialName("convex") CONVEX("convex"),
     ;
@@ -4630,6 +4631,10 @@ enum class SettingsRunKey(val value: String) {
     @SerialName("localAi.removeKey") LOCAL_AI_REMOVE_KEY("localAi.removeKey"),
     @SerialName("localAi.testKey") LOCAL_AI_TEST_KEY("localAi.testKey"),
     @SerialName("localAi.setChoice") LOCAL_AI_SET_CHOICE("localAi.setChoice"),
+    @SerialName("ownAiKey.save") OWN_AI_KEY_SAVE("ownAiKey.save"),
+    @SerialName("ownAiKey.remove") OWN_AI_KEY_REMOVE("ownAiKey.remove"),
+    @SerialName("ownAiKey.test") OWN_AI_KEY_TEST("ownAiKey.test"),
+    @SerialName("ownAiKey.setChoice") OWN_AI_KEY_SET_CHOICE("ownAiKey.setChoice"),
     @SerialName("desktop.set") DESKTOP_SET("desktop.set"),
     @SerialName("desktop.pauseShortcut") DESKTOP_PAUSE_SHORTCUT("desktop.pauseShortcut"),
     @SerialName("text.lines") TEXT_LINES("text.lines"),

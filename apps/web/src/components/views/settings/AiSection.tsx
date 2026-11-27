@@ -14,6 +14,7 @@ import { AiDigestCard } from "./AiDigest";
 import { AiRoutinesCard } from "./AiRoutines";
 import { AiUsageCard } from "./AiUsage";
 import { AiExportCard } from "./AiExport";
+import { OwnKeyCard } from "./OwnKeyCard";
 import { useIphoneLook } from "@/lib/iphone";
 import { IosRow, IosSection, Subscreen, SwitchRow } from "@/components/iphone/SettingsKit";
 
@@ -130,6 +131,7 @@ export function AiSection() {
     return (
       <>
         <AiSettingCard />
+        <OwnKeyCard />
         <AiUsageCard />
         <IosSection footer={SETTINGS[0]!.body}>
           <SwitchRow label={SETTINGS[0]!.label} checked={prefs.history} disabled={core} onChange={(next) => set(SETTINGS[0]!, next)} />
@@ -160,6 +162,7 @@ export function AiSection() {
   return (
     <>
       <AiSettingCard />
+      <OwnKeyCard />
       <AiUsageCard />
       <Card title="Conversations">
         <PrefRow item={SETTINGS[0]!} checked={prefs.history} disabled={core} onChange={(next) => set(SETTINGS[0]!, next)} />

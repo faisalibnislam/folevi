@@ -4,6 +4,7 @@
 // web uses (so the words stay the web's), and the Convex functions the account's sections call, by an allowlist.
 // The host's own parts (the library, its lock, Foli AI on the device, the Mac app's settings) come from shell()
 // and window.foleviDesktop, as the web's sections read them.
+import { OWN_KEY_INFO, OWN_KEY_PROVIDERS, cleanOwnKey, hasOwnKey, onOwnKeyChange, ownKeyChoice, ownKeyForRequest, removeOwnKey, saveOwnKey, setOwnKeyChoice, type OwnKeyProvider } from "@/lib/ai/ownKey";
 import { api } from "@/lib/convex/api";
 import { formatRelative } from "@/lib/format";
 import { shell } from "@/lib/shell";
@@ -332,6 +333,45 @@ export function localAiValue(deps: EngineDeps, state: LocalAiState) {
 
 // ---- the Mac app's own settings (Settings > Desktop app) -------------------------------------------------------
 
+// ---- "Your own AI key" for Folevi Cloud (lib/ai/ownKey.ts; the web's OwnKeyCard.tsx)
+
+const ownKeyChanged = new Emitter();
+let ownStored: Record<OwnKeyProvider, boolean> | null = null;
+function readOwnStored() {
+  void Promise.all(OWN_KEY_PROVIDERS.map(async (p) => [p, await hasOwnKey(p).catch(() => false)] as const)).then((rows) => {
+    ownStored = Object.fromEntries(rows) as Record<OwnKeyProvider, boolean>;
+    ownKeyChanged.emit();
+  });
+}
+onOwnKeyChange(readOwnStored);
+
+/** The card's data: each provider with its models and whether its key is stored here, and what's turned on. */
+export function ownAiKeyValue() {
+  const choice = ownKeyChoice();
+  return {
+    loaded: ownStored !== null,
+    description:
+      "Use Foli AI with your own Anthropic, OpenAI or Google Gemini key. It works on every plan and uses no AI credits; your provider bills you. The key is kept on this device and sent with each Foli AI request. Our server uses it for that request and never saves or logs it. With encryption on in Settings, Privacy, the key also reaches your other devices, end-to-end encrypted. Scheduled digests, routines and deep research still use credits.",
+    on: choice !== null,
+    provider: choice?.provider ?? null,
+    model: choice?.model ?? null,
+    providers: OWN_KEY_PROVIDERS.map((p) => {
+      const info = OWN_KEY_INFO[p];
+      const stored = Boolean(ownStored?.[p]);
+      return {
+        provider: p,
+        label: info.label,
+        stored,
+        status: stored ? "Key saved on this device. It can't be shown again." : "No key.",
+        keyUrl: info.keyUrl ?? null,
+        defaultModel: info.defaultModel,
+        models: info.models.map((m) => ({ value: m.id, label: m.id === info.defaultModel ? `${m.label} (default)` : m.label })),
+      };
+    }),
+    onText: choice ? `Foli AI answers with ${OWN_KEY_INFO[choice.provider].models.find((m) => m.id === choice.model)?.label ?? choice.model} on your ${OWN_KEY_INFO[choice.provider].label} key.` : "Off: Foli AI uses your AI credits.",
+  };
+}
+
 let desktopState: { settings: DesktopSettings; error: string | null } | null = null;
 function readDesktop() {
   void desktop()
@@ -445,6 +485,9 @@ const settingsQuery: ValueViewDef = {
       }
       case "localAi":
         return { signals: [ctx.appSignal, signalOf(subscribeLocalAi)], compute: () => ok(localAiValue(ctx.deps(), localAiState())) };
+      case "ownAiKey":
+        readOwnStored();
+        return { signals: [ownKeyChanged], compute: () => ok(ownAiKeyValue()) };
       case "desktop":
         readDesktop();
         return { signals: [desktopChanged], compute: () => ok(desktopValue(desktopState)) };
@@ -638,6 +681,41 @@ async function runKey(deps: EngineDeps, key: SettingsRunKey, a: Args): Promise<u
       const model = provider ? (typeof a.model === "string" ? a.model : PROVIDERS[provider].defaultModel) : null;
       const s = await setLocalAiChoice(provider && model ? { provider, model } : null);
       return { message: s.active ? `Foli AI uses ${modelLabel(s.active.provider, s.active.model)}` : "Saved" };
+    }
+    case "ownAiKey.save": {
+      const provider = oneOf(a, "provider", OWN_KEY_PROVIDERS) as OwnKeyProvider;
+      const key = cleanOwnKey(str(a, "key"));
+      if (!key) throw new BridgeError("invalid_key", `That doesn't look like a whole ${OWN_KEY_INFO[provider].label} key. Paste it again.`);
+      await saveOwnKey(provider, key);
+      return { message: `${OWN_KEY_INFO[provider].label} key saved on this device` };
+    }
+    case "ownAiKey.remove": {
+      const provider = oneOf(a, "provider", OWN_KEY_PROVIDERS) as OwnKeyProvider;
+      await removeOwnKey(provider);
+      return { message: `${OWN_KEY_INFO[provider].label} key removed from this device` };
+    }
+    case "ownAiKey.test": {
+      const provider = oneOf(a, "provider", OWN_KEY_PROVIDERS) as OwnKeyProvider;
+      const model = typeof a.model === "string" && a.model ? a.model : OWN_KEY_INFO[provider].defaultModel;
+      const k = await ownKeyForRequest({ provider, model });
+      if (!k) return { ok: false, text: `Add your ${OWN_KEY_INFO[provider].label} key first.` };
+      try {
+        const r = (await deps.client.action(api.ai.testOwnKey, { ownKey: k })) as { ok: true; model: string } | { ok: false; message: string };
+        return r.ok ? { ok: true, text: `Your key works with ${OWN_KEY_INFO[provider].models.find((m) => m.id === r.model)?.label ?? r.model}.` } : { ok: false, text: r.message };
+      } catch (e) {
+        return { ok: false, text: e instanceof Error ? e.message : String(e) };
+      }
+    }
+    case "ownAiKey.setChoice": {
+      if (a.provider === undefined || a.provider === null || a.provider === "off") {
+        setOwnKeyChoice(null);
+        return { message: "Foli AI uses your AI credits" };
+      }
+      const provider = oneOf(a, "provider", OWN_KEY_PROVIDERS) as OwnKeyProvider;
+      if (!(await hasOwnKey(provider))) throw new BridgeError("invalid_args", `Add your ${OWN_KEY_INFO[provider].label} key first.`);
+      const model = typeof a.model === "string" && a.model ? a.model : OWN_KEY_INFO[provider].defaultModel;
+      setOwnKeyChoice({ provider, model });
+      return { message: `Foli AI uses your ${OWN_KEY_INFO[provider].label} key` };
     }
     case "desktop.set": {
       const bridge = desktop();

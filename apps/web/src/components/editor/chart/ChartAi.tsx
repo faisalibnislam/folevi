@@ -4,7 +4,7 @@
 // data (takeaways under the chart), tidy and style, and make a chart from words (it finds the numbers in the
 // note). Each result is shown first, then applied as one change (⌘Z undoes it). The server checks every
 // reply (convex/chartAi.ts) and charges AI credits like Foli AI's other actions.
-import { useAction } from "convex/react";
+import { useAiAction } from "@/components/ai/useAiAction";
 import { useState } from "react";
 import { ArrowUp, BarChart3, Lightbulb, ListChecks } from "lucide-react";
 import { CHART_KIND_LABEL, parseChart, type ChartData } from "@folevi/editor-schema";
@@ -49,8 +49,8 @@ export function applyPatch(chart: ChartData, p: ChartPatch): ChartData {
 /** The chart actions, as the signed-in person, in the current place (the note's scope decides on the server). */
 export function useChartAi() {
   const { scope } = useAppState();
-  const assist = useAction(api.chartAi.assist);
-  const words = useAction(api.chartAi.fromWords);
+  const assist = useAiAction(api.chartAi.assist);
+  const words = useAiAction(api.chartAi.fromWords);
   return {
     assist: (task: ChartAiTask, chart: string, documentId?: string) => assist({ scope, task, chart, documentId }) as Promise<ChartPatch>,
     fromWords: (instruction: string, documentId?: string) => words({ scope, instruction, documentId }),

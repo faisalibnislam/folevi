@@ -14,6 +14,7 @@
 // made from a note is made in that note's scope. Maps returned are the block's own data, already through
 // the server's strict check, so the client only applies them (one undo step). Prompts, notes and replies are
 // never logged or stored.
+import { vOwnKey, type OwnKey } from "./lib/ai/ownKey";
 import { v } from "convex/values";
 import { action, internalQuery, type ActionCtx } from "./_generated/server";
 import { internal } from "./_generated/api";
@@ -48,7 +49,7 @@ import {
   summarizeMapRequest,
   tidyRequest,
 } from "./lib/mindmapAi";
-import { gemini, metered, providedArgs, requestNote } from "./ai";
+import { gemini, metered, providedArgs, requestNote, beginRequest } from "./ai";
 import { vProvidedContext, type ProvidedContext } from "./lib/e2ee/ai";
 import { failE2ee } from "./lib/e2ee/state";
 
@@ -57,8 +58,8 @@ const vLayout = v.optional(v.union(v.literal("both"), v.literal("right"), v.lite
 const placeArgs = { scope: vScopeArg, documentId: v.optional(v.string()), provided: v.optional(vProvidedContext) };
 
 /** The gates and the credit hold, in the note's scope when there's a note. */
-async function hold(ctx: ActionCtx, args: { scope: ScopeArg; documentId?: string; provided?: ProvidedContext }, plan: PlannedCall[]): Promise<Id<"aiCreditHolds">> {
-  const { holdId } = await ctx.runMutation(internal.ai.begin, { scope: args.scope, documentId: args.documentId, noteOnly: Boolean(args.documentId), plan, feature: "writing", ...providedArgs(args.provided) });
+async function hold(ctx: ActionCtx, args: { scope: ScopeArg; documentId?: string; provided?: ProvidedContext; ownKey?: OwnKey }, plan: PlannedCall[]): Promise<Id<"aiCreditHolds">> {
+  const { holdId } = await beginRequest(ctx, { scope: args.scope, documentId: args.documentId, noteOnly: Boolean(args.documentId), plan, feature: "writing", ...providedArgs(args.provided) }, args.ownKey);
   return holdId;
 }
 
@@ -86,6 +87,8 @@ export const pdfFile = internalQuery({
 /** A whole map from a prompt, the note, selected text or a PDF of the note. Returns the block's data. */
 export const generate = action({
   args: {
+    /** Foli AI on the person's own key (lib/ai/ownKey.ts), for this request only: never stored or logged. */
+    ownKey: v.optional(vOwnKey),
     ...placeArgs,
     source: v.union(v.literal("prompt"), v.literal("note"), v.literal("text"), v.literal("file")),
     instruction: v.optional(v.string()),
@@ -137,7 +140,11 @@ export const generate = action({
 
 /** New sub-ideas for one idea of the map (`data`, the block's data). */
 export const expand = action({
-  args: { ...placeArgs, data: v.string(), nodeId: v.string() },
+  args: {
+    /** Foli AI on the person's own key (lib/ai/ownKey.ts), for this request only: never stored or logged. */
+    ownKey: v.optional(vOwnKey),
+    ...placeArgs, data: v.string(), nodeId: v.string(),
+  },
   handler: async (ctx, args): Promise<{ ideas: { text: string; children?: { text: string }[] }[] }> => {
     await requireIdentity(ctx);
     const at = ideaContext(args.data, args.nodeId);
@@ -155,7 +162,11 @@ export const expand = action({
 
 /** The map written up as a short Markdown summary. */
 export const summarize = action({
-  args: { ...placeArgs, data: v.string() },
+  args: {
+    /** Foli AI on the person's own key (lib/ai/ownKey.ts), for this request only: never stored or logged. */
+    ownKey: v.optional(vOwnKey),
+    ...placeArgs, data: v.string(),
+  },
   handler: async (ctx, args): Promise<{ markdown: string }> => {
     await requireIdentity(ctx);
     const req = summarizeMapRequest(args.data) ?? noMap();
@@ -170,7 +181,11 @@ export const summarize = action({
 
 /** Chosen branches (`nodeIds`; none means the whole map) as tasks. */
 export const tasks = action({
-  args: { ...placeArgs, data: v.string(), nodeIds: v.array(v.string()) },
+  args: {
+    /** Foli AI on the person's own key (lib/ai/ownKey.ts), for this request only: never stored or logged. */
+    ownKey: v.optional(vOwnKey),
+    ...placeArgs, data: v.string(), nodeIds: v.array(v.string()),
+  },
   handler: async (ctx, args): Promise<{ tasks: string[] }> => {
     await requireIdentity(ctx);
     const req = mapTasksRequest(args.data, args.nodeIds) ?? noMap();
@@ -185,7 +200,11 @@ export const tasks = action({
 
 /** The map reorganised by Foli AI (ids kept for the ideas it keeps). Returns the block's data. */
 export const tidy = action({
-  args: { ...placeArgs, data: v.string() },
+  args: {
+    /** Foli AI on the person's own key (lib/ai/ownKey.ts), for this request only: never stored or logged. */
+    ownKey: v.optional(vOwnKey),
+    ...placeArgs, data: v.string(),
+  },
   handler: async (ctx, args): Promise<{ data: string }> => {
     await requireIdentity(ctx);
     const current = parseMindmap(args.data.slice(0, 250_000));

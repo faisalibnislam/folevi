@@ -196,10 +196,15 @@ final class ShellTests: XCTestCase {
     }
 
     @MainActor
-    func testSecretsAreWrittenNeverRead() async throws {
+    func testSecretsAreWrittenAndOnlyAiKeysReadBack() async throws {
         _ = try await call("secretsSet", ["name": "ai.openai", "value": "sk-test-0123456789"])
         let got18 = try await call("secretsHas", ["name": "ai.openai"])
         XCTAssertEqual(got18["value"] as? Bool, true)
+        // Read back only for a Folevi Cloud request on the person's own key, and only Foli AI's keys.
+        let revealed = try await call("secretsReveal", ["name": "ai.openai"])
+        XCTAssertEqual(revealed["value"] as? String, "sk-test-0123456789")
+        let notAi = try await call("secretsReveal", ["name": "auth.session"])
+        XCTAssertTrue(notAi["value"] is NSNull)
         let got19 = await refusal("secretsSet", ["name": "auth.session", "value": "x"])
         XCTAssertEqual(got19?.code, "invalid_argument")
         let got20 = try await call("secretsHas", ["name": "auth.session"])
@@ -207,6 +212,8 @@ final class ShellTests: XCTestCase {
         _ = try await call("secretsDelete", ["name": "ai.openai"])
         let got21 = try await call("secretsHas", ["name": "ai.openai"])
         XCTAssertEqual(got21["value"] as? Bool, false)
+        let gone = try await call("secretsReveal", ["name": "ai.openai"])
+        XCTAssertTrue(gone["value"] is NSNull)
         XCTAssertFalse(ShellRouter.methods.contains("secretsGet"))
     }
 

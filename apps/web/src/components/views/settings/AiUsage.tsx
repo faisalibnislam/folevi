@@ -159,6 +159,7 @@ export function UsageSummary({ usage }: { usage: AiUsageData }) {
           <p className="text-subheadline text-muted">{usage.used ? "Nothing to show by day yet." : "No credits used yet this period."}</p>
         )}
         {usage.untrackedDays > 0 ? <p className="mt-2 text-footnote text-faint">{credits(usage.untrackedDays)} used before daily tracking started aren&apos;t in the chart.</p> : null}
+        {usage.ownKeyRequests > 0 ? <p className="mt-2 text-subheadline text-muted">{ownKeyLine(usage.ownKeyRequests)}</p> : null}
       </section>
     </div>
   );
@@ -223,6 +224,11 @@ export function AiUsageCard() {
             </div>
           </IosSection>
         ) : null}
+        {usage && usage.ownKeyRequests > 0 ? (
+          <IosSection>
+            <IosRow label="Your key" value={`${usage.ownKeyRequests.toLocaleString()} ${usage.ownKeyRequests === 1 ? "request" : "requests"}`} />
+          </IosSection>
+        ) : null}
         </Subscreen>
       </>
     );
@@ -248,3 +254,6 @@ export function AiUsageCard() {
     </Card>
   );
 }
+
+/** Requests on the person's own AI key this period: no credits, so they're counted apart. */
+const ownKeyLine = (n: number) => `Your key: ${n.toLocaleString()} ${n === 1 ? "request" : "requests"} this period, no credits used.`;

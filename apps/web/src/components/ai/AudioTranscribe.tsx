@@ -1,5 +1,6 @@
 "use client";
 
+import { useAiAction } from "@/components/ai/useAiAction";
 import { useState } from "react";
 import type { Editor } from "@tiptap/react";
 import type { Node as PmNode } from "@tiptap/pm/model";
@@ -84,7 +85,7 @@ export function useTranscription({ fileId, editor, getPos, node, editable, enabl
   const { scope } = useAppState();
   const note = useNoteAi();
   const transcribe = useAction(api.aiAttachments.transcribe);
-  const write = useAction(api.ai.write);
+  const write = useAiAction(api.ai.write);
   const [state, setState] = useState<State>({ phase: "idle" });
   const [summarizing, setSummarizing] = useState(false);
   const [meetingBusy, setMeetingBusy] = useState(false);

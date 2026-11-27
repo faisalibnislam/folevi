@@ -420,7 +420,8 @@ var foleviShellBridge = function (SHELL, host) {
       return shellCall("setMode", { mode: String(mode) }).then(nothing);
     },
     library: library,
-    // The person's Foli AI keys, kept in the Keychain: stored and removed, never read back.
+    // The person's Foli AI keys, kept in the Keychain: stored and removed, and read back only to go with a
+    // Folevi Cloud request on the person's own key (web lib/ai/ownKey.ts; the server uses it for that request).
     secrets: Object.freeze({
       has: function (name) {
         return shellCall("secretsHas", { name: String(name) }).then(function (r) {
@@ -432,6 +433,11 @@ var foleviShellBridge = function (SHELL, host) {
       },
       delete: function (name) {
         return shellCall("secretsDelete", { name: String(name) }, "Error").then(nothing);
+      },
+      reveal: function (name) {
+        return shellCall("secretsReveal", { name: String(name) }, "Error").then(function (r) {
+          return r && typeof r.value === "string" ? r.value : null;
+        });
       },
     }),
     // The account session lives in the app (Native/Shell/ShellAuth.swift) and never comes here.

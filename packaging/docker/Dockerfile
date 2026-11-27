@@ -11,7 +11,7 @@ ARG FOLEVI_VERSION=0.0.0
 LABEL org.opencontainers.image.title="Folevi Server" \
       org.opencontainers.image.description="Your own Folevi server (Beta) for your family or team." \
       org.opencontainers.image.url="https://folevi.com/server" \
-      org.opencontainers.image.vendor="Folevi" \
+      org.opencontainers.image.vendor="Space Cherries LLC" \
       org.opencontainers.image.version="${FOLEVI_VERSION}"
 
 RUN apt-get update \

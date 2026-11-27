@@ -5,7 +5,7 @@
   "version": "@VERSION@",
   "arch": "@ARCH@",
   "os_min_version": "6.0",
-  "author": "Folevi",
+  "author": "Space Cherries LLC",
   "website": "https://folevi.com/server",
   "description": "@FOLEVI_DESCRIPTION@",
   "install_dir": "@APP_DIR@",

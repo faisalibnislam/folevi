@@ -1,4 +1,5 @@
 import { GENERATED_TEMPLATES } from "./generated/templates";
+import { applyOperatorLine, OPERATOR_HTML_END, OPERATOR_HTML_START, OPERATOR_TEXT_END, OPERATOR_TEXT_START } from "./operator";
 import { EMAIL_BRAND_BASE_URL, emailManifest } from "./manifest";
 import type { RenderedEmail, TemplateKey, VariableSpec } from "./types";
 import { validateDataVariables } from "./validate";
@@ -83,7 +84,12 @@ function htmlValue(spec: VariableSpec | undefined, value: string | number): stri
 export function renderEmail(
   key: TemplateKey,
   vars: Record<string, unknown>,
-  opts: { brandBaseUrl?: string; appUrl?: string } = {},
+  opts: {
+    brandBaseUrl?: string;
+    appUrl?: string;
+    /** Name Folevi's operator, Space Cherries LLC, in the footer (default). False on a Folevi Server. */
+    operator?: boolean;
+  } = {},
 ): RenderedEmail {
   const def = emailManifest[key];
   const template = GENERATED_TEMPLATES[key];
@@ -112,7 +118,10 @@ export function renderEmail(
       const out = `${String(value)} ${Number(value) === 1 ? one : many}`;
       return escape ? escapeHtml(out) : out;
     });
-  const html = plural(template.html, true).replace(PLACEHOLDER_RE, (_m, name: string) => {
+  const keepOperator = opts.operator !== false;
+  const templateHtml = applyOperatorLine(template.html, OPERATOR_HTML_START, OPERATOR_HTML_END, keepOperator);
+  const templateText = applyOperatorLine(template.text, OPERATOR_TEXT_START, OPERATOR_TEXT_END, keepOperator);
+  const html = plural(templateHtml, true).replace(PLACEHOLDER_RE, (_m, name: string) => {
     if (name === BRAND) return brand;
     const value = lookup(name);
     if (value === undefined) {
@@ -130,7 +139,7 @@ export function renderEmail(
       }
       return String(value);
     });
-  const text = fill(template.text);
+  const text = fill(templateText);
   const subject = fill(template.subject);
   const previewText = fill(template.previewText);
 

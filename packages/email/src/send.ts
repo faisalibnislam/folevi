@@ -88,6 +88,8 @@ export async function sendEmail(
     sleep?: (ms: number) => Promise<void>;
     maxAttempts?: number;
     timeoutMs?: number;
+    /** False on a Folevi Server: its emails don't name Space Cherries LLC as the operator (renderEmail). */
+    operator?: boolean;
   },
 ): Promise<SendOutcome> {
   const fail = (errorCode: string, provider?: EmailProviderKind): SendOutcome => ({
@@ -120,6 +122,7 @@ export async function sendEmail(
       ...(brand && brand.startsWith("https://") ? { brandBaseUrl: brand } : {}),
       // App-relative links ("/settings/…") resolve against the app origin.
       ...(appUrl && /^https?:\/\//.test(appUrl) ? { appUrl } : {}),
+      ...(opts.operator === false ? { operator: false } : {}),
     });
   } catch (error) {
     if (error instanceof EmailRenderError) return fail("invalid_payload", provider.kind);

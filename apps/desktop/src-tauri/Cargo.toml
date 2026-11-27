@@ -2,7 +2,7 @@
 name = "folevi"
 version = "1.5.68"
 description = "Folevi for Windows and Linux: Folevi's own interface in the system's web view, with Quick Add, a notification area icon and notifications."
-authors = ["Folevi"]
+authors = ["Space Cherries LLC"]
 license = "UNLICENSED"
 edition = "2021"
 rust-version = "1.89"

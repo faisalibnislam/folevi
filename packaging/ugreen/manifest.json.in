@@ -4,7 +4,7 @@
   "name": "Folevi Server",
   "version": "@VERSION@",
   "arch": "@ARCH@",
-  "developer": "Folevi",
+  "developer": "Space Cherries LLC",
   "website": "https://folevi.com/server",
   "description": "@FOLEVI_DESCRIPTION@",
   "install_dir": "@APP_DIR@",

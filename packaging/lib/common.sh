@@ -12,7 +12,8 @@ PACKAGING_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 export PACKAGING_DIR
 
 FOLEVI_NAME="Folevi Server"
-FOLEVI_MAINTAINER="Folevi"
+# The company that makes Folevi Server (the owner, 2026-11-27); the person who runs a server operates it.
+FOLEVI_MAINTAINER="Space Cherries LLC"
 FOLEVI_EMAIL="support@folevi.com"
 FOLEVI_WEBSITE="https://folevi.com"
 FOLEVI_PORT_DEFAULT=8460

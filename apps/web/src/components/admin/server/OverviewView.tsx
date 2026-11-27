@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { ServerMadeBy } from "@/components/server/MadeBy";
 import { useState } from "react";
 import { useMutation } from "convex/react";
 import { ArrowRight, Check, Circle, Info, QrCode as QrIcon, X } from "lucide-react";
@@ -327,6 +328,7 @@ export function ServerOverviewView() {
         </div>
 
         {settings ? <NamePanel settings={settings} address={remote.data?.publicUrl} /> : null}
+        <ServerMadeBy />
       </div>
       <ConnectAppsDialog open={apps} onClose={() => setApps(false)} address={remote.data?.publicUrl} serverName={settings?.name} />
     </>

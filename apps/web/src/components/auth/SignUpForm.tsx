@@ -8,6 +8,7 @@ import { CheckInbox } from "./CheckInbox";
 import { SocialSignIn } from "./SocialSignIn";
 import { pendingTemplate, rememberTemplate, signUpCallback } from "@/lib/pendingTemplate";
 import { websiteUrl } from "@/lib/env";
+import { OPERATOR } from "@/components/marketing/site";
 
 /** Folevi Server's refusals (CONTRACT §7.1), in words. */
 const SERVER_SIGN_UP_ERRORS: Record<string, string> = {
@@ -129,10 +130,16 @@ export function SignUpForm({ template, social = { google: false, apple: false },
           error={fieldError.password}
         />
         <SubmitButton busy={busy}>Create account</SubmitButton>
-        <p className="text-footnote leading-relaxed text-muted" hidden={Boolean(server)}>
-          By creating an account you agree to the <TextLink href={`${websiteUrl()}/terms`}>Terms</TextLink> and{" "}
-          <TextLink href={`${websiteUrl()}/privacy`}>Privacy Policy</TextLink>.
-        </p>
+        {/* Folevi Cloud only: on a Folevi Server the person who runs it is the operator, not the company. */}
+        <div className="space-y-1 text-footnote leading-relaxed text-muted" hidden={Boolean(server)}>
+          <p>
+            By creating an account you agree to the <TextLink href={`${websiteUrl()}/terms`}>Terms</TextLink> and{" "}
+            <TextLink href={`${websiteUrl()}/privacy`}>Privacy Policy</TextLink>.
+          </p>
+          <p data-testid="signup-operator">
+            Folevi is operated by <TextLink href={OPERATOR.url}>{OPERATOR.name}</TextLink>.
+          </p>
+        </div>
       </form>
       <p className="mt-6 text-subheadline text-muted">
         Already have an account? <TextLink href={adding ? "/signin?add=1" : server?.returnTo ? `/signin?returnTo=${encodeURIComponent(server.returnTo)}` : "/signin"}>Sign in</TextLink>

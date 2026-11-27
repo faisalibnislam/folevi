@@ -18,6 +18,7 @@ export type {
   EmailEvent,
   EmailEventName,
 } from "./types";
+export { EMAIL_OPERATOR, OPERATOR_LINE } from "./operator";
 export { emailManifest, TEMPLATE_KEYS, EMAIL_BRAND_BASE_URL, EMAIL_LOGO, EMAIL_SENDING_DOMAIN, SUPPORT_ADDRESS } from "./manifest";
 export { validateDataVariables, isAllowedUrl, isPlausibleEmail } from "./validate";
 export { renderEmail, EmailRenderError, escapeHtml } from "./render";

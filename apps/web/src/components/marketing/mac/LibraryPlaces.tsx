@@ -17,19 +17,38 @@ export const LIBRARY_PLACES: Array<{ kind: "icloud" | "dropbox" | "gdrive" | "fo
 
 const ICONS = { icloud: Cloud, dropbox: Cloud, gdrive: Cloud, folder: Folder, device: HardDrive } as const;
 
-/** "Where should your library live?", the step the apps show after "Keep notes on my devices". */
-export function LibraryPlaces({ className, compact = false }: { className?: string; compact?: boolean }) {
+type PlaceKind = (typeof LIBRARY_PLACES)[number]["kind"];
+const SPOKEN: Record<PlaceKind, string> = { icloud: "iCloud", dropbox: "Dropbox", gdrive: "Google Drive", folder: "a folder you choose", device: "this device only" };
+
+/**
+ * "Where should your library live?", the step the apps show after "Keep notes on my devices". `kinds` keeps only
+ * the places an app offers (Windows and Linux: a folder or this device), `details` rewords a place for that app.
+ */
+export function LibraryPlaces({
+  className,
+  compact = false,
+  kinds,
+  details,
+}: {
+  className?: string;
+  compact?: boolean;
+  kinds?: PlaceKind[];
+  details?: Partial<Record<PlaceKind, string>>;
+}) {
+  const places = LIBRARY_PLACES.filter((place) => !kinds || kinds.includes(place.kind)).map((place) => ({ ...place, detail: details?.[place.kind] ?? place.detail }));
+  const spoken = places.map((place) => SPOKEN[place.kind]);
+  const list = spoken.length > 2 ? `${spoken.slice(0, -1).join(", ")}, or ${spoken.at(-1)}` : spoken.join(" or ");
   return (
     <div
       role="img"
-      aria-label="Folevi asks where your library should live: iCloud, Dropbox, Google Drive, a folder you choose, or this device only."
+      aria-label={`Folevi asks where your library should live: ${list}.`}
       className={cx("mk-app-pop rounded-panel p-4 text-ink sm:p-5", className)}
     >
       <div aria-hidden="true">
         <p className="text-[15px] font-semibold text-(--color-heading)">Where should your library live?</p>
         <p className="mt-1 text-[13px] text-muted">Folevi’s servers never see these notes.</p>
         <ul className="mt-4 space-y-2">
-          {LIBRARY_PLACES.map((place, index) => {
+          {places.map((place, index) => {
             const PlaceIcon = ICONS[place.kind];
             return (
               <li
